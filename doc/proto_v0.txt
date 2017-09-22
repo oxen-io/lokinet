@@ -1,0 +1,297 @@
+SARP v0
+
+SARP (Simple Anon Routing Protocol) is a protocol for anonymizing senders and
+recipiants of encrypted messages sent over the internet without a centralied
+trusted party.
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119 [RFC2119].
+
+basic structures:
+
+all structures are key, value dictionaries encoded with bittorrent encoding
+
+cryptography:
+
+H(x) is 512 bit blake2b digest of x
+MD(x, k) is 512 bit blake2b hmac of x with secret value k
+NE(k, x) is sntrup4591761 encrypt data x to public key k
+ND(k, x) is sntrup4591761 decrypt data x with private key k
+SE(k, n, x) is chacha20 encrypt data x using symettric key k and nounce n
+SD(k, n, x) is chacha20 dectypt data x using symettric key k and nounce n
+S(k, x) is sign x with ed25519 using seed k
+V(k, x, sig) is verify x data using signature sig using public key k
+
+other notation:
+
+a ^ b is a bitwise XOR b
+
+x[a:b] is a memory slice of x from index a to b
+
+BE(x) is bittorrent encode x
+
+BD(x) is bittorrent decode x
+
+{ a: b, y: z } is a dictionary with two keys a and y
+    who's values are b and z respectively
+
+[ a, b, c ... ] is a list containing a b c and more items in that order
+
+"<description>" is a bytestring who's contents and length is described by the
+    quoted value <description>
+
+"<value>" * N is a bytestring containing the <value> concatenated N times.
+
+---
+
+invisible wire protocol version 1:
+
+TODO
+
+---
+
+datastructures:
+
+all datastructures are assumed version 0 if they lack a v value
+otherwise version is provided by the v value
+
+address info (AI)
+
+{
+  c: transport_rank_uint16,
+  d: "<transport dialect name>",
+  i: "<16 bytes big endian public ipv6 address>",
+  p: port_uint16
+}
+
+router contact (RC)
+
+{
+  a: [ one, or, many, AI, here ... ],
+  e: "<32 bytes public encryption key>",
+  k: "<32 bytes public sigining key>",
+  x: seconds_since_epoch_contact_expiration_uint64,
+  z: "<64 bytes signature using signing key>"
+}
+
+service info (SI)
+
+{
+  n: "<optional claimed name>",
+  s: "<32 bytes public signing key>",
+  x: "<optional nounce for vanity>"
+}
+
+service address (SA)
+
+H(BE(SI))
+
+service descriptor (SD)
+
+{
+  i: "<32 bytes public signing key of router>",
+  p: path_id_uint64,
+  x: time_expires_seconds_since_epoch_uint64
+}
+
+descriptor set (DS)
+
+{
+  a: "<64 bytes service address>",
+  d: [ many, RD, here ],
+  e: "<1218 bytes ntru public encryption key>",
+  z: "<64 bytes signature using service info signing key>"
+}
+
+
+---
+
+link layer messages:
+
+the link layer is responsible for anonymising the source and destination of
+routing layer messages.
+
+any link layer message without a key v is assumed to be version 0 otherwise
+indicates the protocol version in use.
+
+link relay commit message (LRCM)
+
+requests path with tunnel id p relay messages for x seconds to router on network
+who's blake2b hash of identity is equal to i and decrypt data any messages using
+k as symettric key for encryption and decryption.
+
+{
+  a: "c",
+  c: "<32 byte public signing key used for canceling path>"
+  i: "<32 byte public kad key of next hop>", 
+  k: "<32 byte symmettric key>",
+  p: path_id_uint64,
+  x: seconds_lifetime_uint64_when_commit_ends
+}
+
+if i is equal to H(router_pk) then we process the decrypted z value of link
+relay upstream messages up to the routing layer.
+
+link relay reject message (LRRM)
+
+sent in reply to a LRCM indicating we have rejected the request to relay data
+for path with id p, the recipiant of this message MUST backoff sending LRCM for
+b milliseconds or recipiant MAY get banned by recipiant router for an undefined
+amount of time. r contains a bytestring of 7 bit clean ascii metadata indicating
+why the commit was rejected. if included r MUST be logged or collected for later
+review by node operator. inclusion of r is OPTIONAL. review of collected events
+is RECOMMENDED.
+
+{
+  a: "r",
+  b: miliseconds_backoff_uint64,
+  p: path_id_uint64,
+  r: "<insert optional reason metadata here>"
+}
+
+link relay accept message (LRAM)
+
+sent in reply to a LRCM indicating we have accepted the request to relay data
+for path with id p.
+
+{
+  a: "a",
+  p: path_id_uint64
+}
+
+link relay upstream message (LRUM)
+
+sent to relay data via upstream direction of a previously created path.
+decrypt z using previously provided key and nounce y. Relay with new_y and new_z
+in upstream direction as a LRUM.
+
+new_z = SD(k, y, z)
+new_y = y ^ new_z[0:8]
+
+{
+  a: "u",
+  p: path_id_uint64,
+  y: "<insert 8 bytes nounce here>",
+  z: "<insert 1240 bytes payload here>"
+}
+
+link relay downstream message (LRDM)
+
+sent to relay data via downstream direction of a previously created path.
+encrypt z using previously provided key and nonce new_y and relay in downstream
+direction as a LRDM.
+
+new_y = y ^ z[0:8]
+new_z = SE(k, new_y, z)
+
+{
+  a: "d",
+  p: path_id_uint64,
+  y: "<insert 8 bytes nounce here>",
+  z: "<insert 1240 bytes payload here>"
+}
+
+link relay exit message (LRXM)
+
+sent to exit a previously commited path before it expires.
+verify signature using cancel key c in relay commit message.
+
+z is filled with zero, the previous value is used as a signature and then
+the message is verified using the message digset of the newly encoded message
+and the symmettric key provide in the corisponding link relay commit message.
+
+sig = msg.z
+msg.z = "\x00" * 64
+h = MD(BE(msg), k)
+V(c, h, sig)
+
+{
+  a: "x",
+  p: path_id_uint64,
+  z: "<64 bytes signature>"
+}
+
+---
+
+routing layer:
+
+the routing layer provides inter network communication between the SARP link
+layer and ip (internet protocol) for exit traffic or hp (hidden protocol) for
+SARP hidden services. replies to messages are sent back via the path they
+originated from inside a LRDM.
+
+obtain exit address message (OXAM)
+
+sent to an exit router to obtain a NAT ip address for ip exit traffic.
+replies are sent down the path that messages originate from.
+
+{
+  A: "A",
+  I: "<32 bytes signing public key for future communication>",
+  X: lifetime_of_address_mapping_in_seconds_uint64
+}
+
+grant exit address messsage (GXAM)
+
+sent in response to a OXAM to grant an ip for exit traffic from an external
+ip address used for exit traffic.
+
+{
+  A: "G",
+  E: "<16 byte big endian externally reachable ipv6 address>",
+  I: "<32 bytes signing public key of requester>",
+  Z: "<64 bytes signature using exit's signing key>"
+}
+
+reject exit address message (RXAM)
+
+{
+  A: "R",
+  B: backoff_milliseconds_uint64,
+  I: "<32 bytes signing public key of requester>",
+  R: "<optional reject metadata>",
+  Z: "<64 bytes signature signed by exit>"
+}
+
+find service address message (FSAM)
+
+{
+  A: "F",
+  S: "<64 bytes service address>",
+  T: transaction_id_uint64
+}
+
+obtained service address message (OSAM)
+
+{
+  A: "O",
+  S: "<64 bytes service address>",
+  T: transaction_id_uint64,
+  X: [ DS, DS, DS ]
+}
+
+publish service address message (PSAM)
+
+{
+  A: "P",
+  H: [ DS, DS, DS, ... ],
+  T: transaction_id_uint64
+}
+
+find router contact message (FRCM)
+
+{
+  A: "F",
+  R: "<32 byte public kad key of router>",
+  T: transaction_id_uint64
+}
+
+obtained router contact message (ORCM)
+
+{
+  A: "O",
+  R: [RC, RC, RC ...],
+  T: transaction_id_uint64
+}
+
