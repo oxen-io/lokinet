@@ -47,7 +47,13 @@ BD(x) is bittorrent decode x
 
 invisible wire protocol version 1:
 
-TODO
+
+inbound handshake:
+
+
+outbound handshake:
+
+
 
 ---
 
@@ -65,13 +71,20 @@ address info (AI)
   p: port_uint16
 }
 
+Exit Info (XI)
+
+{
+  a: "<16 bytes big endian ipv6 address>",
+  b: "<16 bytes big endian ipv6 netmask>"
+}
+
 router contact (RC)
 
 {
   a: [ one, or, many, AI, here ... ],
   e: "<32 bytes public encryption key>",
   k: "<32 bytes public sigining key>",
-  x: seconds_since_epoch_contact_expiration_uint64,
+  x: [ Exit, Infos ],
   z: "<64 bytes signature using signing key>"
 }
 
@@ -123,7 +136,7 @@ k as symettric key for encryption and decryption.
 
 {
   a: "c",
-  c: "<32 byte public signing key used for canceling path>"
+  c: "<32 byte public signing key used for further communication>",
   i: "<32 byte public kad key of next hop>", 
   k: "<32 byte symmettric key>",
   p: path_id_uint64,
@@ -173,7 +186,7 @@ new_y = y ^ new_z[0:8]
   a: "u",
   p: path_id_uint64,
   y: "<insert 8 bytes nounce here>",
-  z: "<insert 1240 bytes payload here>"
+  z: "<insert N bytes payload here>"
 }
 
 link relay downstream message (LRDM)
@@ -189,7 +202,7 @@ new_z = SE(k, new_y, z)
   a: "d",
   p: path_id_uint64,
   y: "<insert 8 bytes nounce here>",
-  z: "<insert 1240 bytes payload here>"
+  z: "<insert N bytes payload here>"
 }
 
 link relay exit message (LRXM)
@@ -229,7 +242,7 @@ replies are sent down the path that messages originate from.
 {
   A: "A",
   I: "<32 bytes signing public key for future communication>",
-  X: lifetime_of_address_mapping_in_seconds_uint64
+  X: lifetime_of_address_mapping_in_seconds_uint64,
 }
 
 grant exit address messsage (GXAM)
@@ -252,6 +265,32 @@ reject exit address message (RXAM)
   I: "<32 bytes signing public key of requester>",
   R: "<optional reject metadata>",
   Z: "<64 bytes signature signed by exit>"
+}
+
+
+
+transfer data fragment message (TDFM)
+
+variant 1 (with path id):
+
+transfer data to another path with id P on the local router place Y and X values into
+y and z values in LRDM message respectively.
+
+{
+  A: "T",
+  P: path_id_uint64,
+  X: "<N bytes payload>", 
+  Y: "<8 bytes nounce>"
+}
+
+variant 2 (no path id):
+
+transfer ip traffic for exit
+
+{
+  A: "T",
+  Y: "<N bytes ipv6 packet>",
+  Z: "<64 bytes signature of previously provided signing key>"
 }
 
 find service address message (FSAM)
