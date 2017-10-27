@@ -1,6 +1,6 @@
-SARP v0
+LLARP v0
 
-SARP (Simple Anon Routing Protocol) is a protocol for anonymizing senders and
+LLARP (Low Latency Anon Routing Protocol) is a protocol for anonymizing senders and
 recipiants of encrypted messages sent over the internet without a centralied
 trusted party.
 
@@ -11,19 +11,9 @@ document are to be interpreted as described in RFC 2119 [RFC2119].
 basic structures:
 
 all structures are key, value dictionaries encoded with bittorrent encoding
+notation:
 
-cryptography:
-
-H(x) is 512 bit blake2b digest of x
-MD(x, k) is 512 bit blake2b hmac of x with secret value k
-NE(k, x) is sntrup4591761 encrypt data x to public key k
-ND(k, x) is sntrup4591761 decrypt data x with private key k
-SE(k, n, x) is chacha20 encrypt data x using symettric key k and nounce n
-SD(k, n, x) is chacha20 dectypt data x using symettric key k and nounce n
-S(k, x) is sign x with ed25519 using seed k
-V(k, x, sig) is verify x data using signature sig using public key k
-
-other notation:
+a + b is a concatanated with b
 
 a ^ b is a bitwise XOR b
 
@@ -43,12 +33,29 @@ BD(x) is bittorrent decode x
 
 "<value>" * N is a bytestring containing the <value> concatenated N times.
 
+cryptography:
+
+H(x) is 512 bit blake2b digest of x
+MD(x, k) is 512 bit blake2b hmac of x with secret value k
+NE(k, x) is sntrup4591761 encrypt data x to public key k
+ND(k, x) is sntrup4591761 decrypt data x with private key k
+SE(k, n, x) is chacha20 encrypt data x using symettric key k and nounce n
+SD(k, n, x) is chacha20 dectypt data x using symettric key k and nounce n
+S(k, x) is sign x with ed25519 using seed k
+V(k, x, sig) is verify x data using signature sig using public key k
+DH(x, y) is a ecdh key exchange using ed25519 scalarmult base between
+  public keys x and y
+KE(x, y) is a ecdh key exchange using H(DH(x, y) + x)
+
+
 ---
 
-invisible wire protocol version 1:
+invisible wire protocol version 0:
 
 
 inbound handshake:
+
+
 
 
 outbound handshake:
@@ -64,8 +71,11 @@ otherwise version is provided by the v value
 
 address info (AI)
 
+An address info (AI) defines a publically reachable ipv6 endpoint
+
 {
   c: transport_rank_uint16,
+  e: "<32 bytes public encryption key>",
   d: "<transport dialect name>",
   i: "<16 bytes big endian public ipv6 address>",
   p: port_uint16
@@ -82,8 +92,7 @@ router contact (RC)
 
 {
   a: [ one, or, many, AI, here ... ],
-  e: "<32 bytes public encryption key>",
-  k: "<32 bytes public sigining key>",
+  k: "<32 bytes public sigining/encryption key>",
   x: [ Exit, Infos ],
   z: "<64 bytes signature using signing key>"
 }
@@ -100,19 +109,18 @@ service address (SA)
 
 H(BE(SI))
 
-service descriptor (SD)
+introducer (I)
 
 {
-  i: "<32 bytes public signing key of router>",
+  i: "<32 bytes public key of router>",
   p: path_id_uint64,
   x: time_expires_seconds_since_epoch_uint64
 }
 
-descriptor set (DS)
+introducer set (IS)
 
 {
-  a: "<64 bytes service address>",
-  d: [ many, RD, here ],
+  d: [ I, I, I, ... ],
   e: "<1218 bytes ntru public encryption key>",
   z: "<64 bytes signature using service info signing key>"
 }
@@ -130,23 +138,36 @@ indicates the protocol version in use.
 
 link relay commit message (LRCM)
 
-requests path with tunnel id p relay messages for x seconds to router on network
-who's blake2b hash of identity is equal to i and decrypt data any messages using
-k as symettric key for encryption and decryption.
 
 {
   a: "c",
-  c: "<32 byte public signing key used for further communication>",
-  i: "<32 byte public kad key of next hop>", 
-  k: "<32 byte symmettric key>",
-  p: path_id_uint64,
-  x: seconds_lifetime_uint64_when_commit_ends
+  b: [ list, of, encrypted, RCR, as, bytes ],
 }
 
-if i is equal to H(router_pk) then we process the decrypted z value of link
-relay upstream messages up to the routing layer.
+relay commit record (RCR)
 
-link relay reject message (LRRM)
+record requesting path with tunnel id p relay messages for x seconds to router
+on network who's i is equal to RC.k and decrypt data any messages using
+KE(c, RC.k) as symettric key for encryption and decryption.
+
+{
+  c: "<32 byte public signing/encryption key used for further communication>",
+  i: "<32 byte public key of next hop>", 
+  p: path_id_uint64,
+  x: seconds_lifetime_uint64
+}
+
+if i is equal to RC.k then any LRDM.z values are decrypted and interpreted as
+routing layer messages.
+
+if i is not equal to RC.k then forward the LRCM with first element removed
+and the last element holding our hop's reply. this ensures that the first entry
+in the forwarded LRCM is for the next hop in the requested path.
+
+if i is equal to RC.k unconditionally send a LRDM with encrypted payload
+holding a LRSM with our record at the end and the previous ones in the front.
+
+link relay reject record (LRRR)
 
 sent in reply to a LRCM indicating we have rejected the request to relay data
 for path with id p, the recipiant of this message MUST backoff sending LRCM for
@@ -157,51 +178,64 @@ review by node operator. inclusion of r is OPTIONAL. review of collected events
 is RECOMMENDED.
 
 {
-  a: "r",
   b: miliseconds_backoff_uint64,
+  c: "r",
   p: path_id_uint64,
   r: "<insert optional reason metadata here>"
 }
 
-link relay accept message (LRAM)
+link relay accept record (LRAR)
 
 sent in reply to a LRCM indicating we have accepted the request to relay data
 for path with id p.
 
 {
-  a: "a",
-  p: path_id_uint64
+  c: "a",
+  p: path_id_uint64,
+  x: "<N bytes arbitrary padding>"
 }
+
+
+link relay status message (LRSM)
+
+sent inside a LRDM after build has reached the end of the path to finish the
+path build and send the result of the build.
+
+{
+  a: "s",
+  p: [list, of, encrypted, replies]
+}
+
 
 link relay upstream message (LRUM)
 
 sent to relay data via upstream direction of a previously created path.
-decrypt z using previously provided key and nounce y. Relay with new_y and new_z
+decrypt z using previously derived key and nounce y. Relay with new_y and new_z
 in upstream direction as a LRUM.
 
 new_z = SD(k, y, z)
-new_y = y ^ new_z[0:8]
+new_y = y ^ new_z[0:24]
 
 {
   a: "u",
   p: path_id_uint64,
-  y: "<insert 8 bytes nounce here>",
+  y: "<insert 24 bytes nounce here>",
   z: "<insert N bytes payload here>"
 }
 
 link relay downstream message (LRDM)
 
 sent to relay data via downstream direction of a previously created path.
-encrypt z using previously provided key and nonce new_y and relay in downstream
+encrypt z using previously derived key and nonce new_y and relay in downstream
 direction as a LRDM.
 
-new_y = y ^ z[0:8]
+new_y = y ^ z[0:24]
 new_z = SE(k, new_y, z)
 
 {
   a: "d",
   p: path_id_uint64,
-  y: "<insert 8 bytes nounce here>",
+  y: "<insert 24 bytes nounce here>",
   z: "<insert N bytes payload here>"
 }
 
@@ -240,7 +274,7 @@ sent to an exit router to obtain a NAT ip address for ip exit traffic.
 replies are sent down the path that messages originate from.
 
 {
-  A: "A",
+  A: "X",
   I: "<32 bytes signing public key for future communication>",
   X: lifetime_of_address_mapping_in_seconds_uint64,
 }
@@ -280,7 +314,8 @@ y and z values in LRDM message respectively.
   A: "T",
   P: path_id_uint64,
   X: "<N bytes payload>", 
-  Y: "<8 bytes nounce>"
+  Y: "<24 bytes nounce>",
+  Z: "<64 bytes signature of entire message where Z is set to NUL>",
 }
 
 variant 2 (no path id):
@@ -289,48 +324,68 @@ transfer ip traffic for exit
 
 {
   A: "T",
-  Y: "<N bytes ipv6 packet>",
+  X: "<N bytes ipv6 packet>",
   Z: "<64 bytes signature of previously provided signing key>"
 }
 
-find service address message (FSAM)
+find introduction message (FIM)
 
 {
   A: "F",
-  S: "<64 bytes service address>",
+  S: "<64 bytes dht key>",
   T: transaction_id_uint64
 }
 
-obtained service address message (OSAM)
+got introduction message (GIM)
 
 {
-  A: "O",
-  S: "<64 bytes service address>",
+  A: "G",
   T: transaction_id_uint64,
-  X: [ DS, DS, DS ]
+  X: [ IS, IS, IS, ... ]
 }
 
-publish service address message (PSAM)
+publish introduction message (PIM)
+
+publish one or many IM into the dht at once.
+each IS will be placed in the dht at the location determined by the dht kdf
+which uses a shared random source to obfuscate keyspace location
 
 {
   A: "P",
-  H: [ DS, DS, DS, ... ],
-  T: transaction_id_uint64
+  T: transaction_id_uint64,
+  X: [ IS, IS, IS, ... ]
+}
+
+acknoleged introduction message (AIM)
+
+acknolege the publishing of a previous PIM
+
+{
+  A: "A",
+  T: transaction_id_uint64,
 }
 
 find router contact message (FRCM)
 
+find a 
+
 {
   A: "F",
-  R: "<32 byte public kad key of router>",
+  R: "<32 byte public key of router>",
   T: transaction_id_uint64
 }
 
-obtained router contact message (ORCM)
+got router contact message (GRCM)
 
 {
-  A: "O",
+  A: "G",
   R: [RC, RC, RC ...],
   T: transaction_id_uint64
 }
 
+store router contact message (SRCM)
+
+{
+  A: "S",
+  R: RC
+}
