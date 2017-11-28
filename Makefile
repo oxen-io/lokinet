@@ -9,13 +9,12 @@ STATIC_OBJ = $(STATIC_SRC:.cpp=.cpp.o)
 DAEMON_SRC = $(wildcard $(REPO)/daemon/*.c)
 DAEMON_OBJ = $(DAEMON_SRC:.c=.o)
 
-PKG = pkg-config
+SODIUM_FLAGS = $(shell pkg-config --cflags libsodium)
+SODIUM_LIBS = $(shell pkg-config --libs libsodium)
 
-PKGS = libsodium
-
-REQUIRED_CFLAGS = $(shell $(PKG) --cflags $(PKGS)) -I$(REPO)/include -std=c99
-REQUIRED_CXXFLAGS = $(shell $(PKG) --cflags $(PKGS)) -I$(REPO)/include -std=c++17
-REQUIRED_LDFLAGS = $(LDFLAGS) $(shell $(PKG) --libs $(PKGS)) -ljemalloc
+REQUIRED_CFLAGS = $(SODIUM_FLAGS) -I$(REPO)/include -std=c99
+REQUIRED_CXXFLAGS = $(SODIUM_FLAGS) -I$(REPO)/include -std=c++17
+REQUIRED_LDFLAGS = $(LDFLAGS) -ljemalloc $(SODIUM_LIBS) 
 CXXFLAGS := $(REQUIRED_CXXFLAGS)
 CFLAGS := $(REQUIRED_CFLAGS)
 

@@ -12,7 +12,7 @@ void sarp_new_config(struct sarp_config ** conf, struct sarp_alloc * mem);
 void sarp_free_config(struct sarp_config **  conf);
 
 int sarp_load_config(struct sarp_config * conf, const char * fname);
-
+  
 #ifdef __cplusplus
 }
 #endif

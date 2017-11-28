@@ -1,39 +1,38 @@
 #include <sarp/config.h>
+#include "config.hpp"
 #include "ini.hpp"
 
 namespace sarp
 {
-  struct config
-  {
-    typedef std::map<std::string, std::string> section_t;
-    section_t router;
-    section_t network;
-    section_t netdb;
 
-    bool Load(const char * fname)
+  template<typename Config, typename Section>
+  static Section find_section(Config & c, const std::string & name, const Section & sect)
+  {
+    if(c.sections.find(name) == c.sections.end())
+      return sect;
+    return c.sections[name].values;
+  }
+   
+  
+  bool Config::Load(const char * fname)  
+  {
+    std::ifstream f;
+    f.open(fname);
+    if(f.is_open())
     {
-      std::ifstream f;
-      f.open(fname);
-      if(f.is_open())
-      {
-        ini::Parser parser(f);
-        auto & top = parser.top();
-        
-        return true;
-      }
-      return false;
-    };
-    
+      ini::Parser parser(f);
+      auto & top = parser.top();
+      router = find_section(top, "router", section_t{});
+      network = find_section(top, "network", section_t{});
+      netdb = find_section(top, "netdb", section_t{});
+      return true;
+    }
+    return false;
   };
 }
 
 
 extern "C" {
-  struct sarp_config
-  {
-    sarp::config impl;
-    sarp_alloc * mem;
-  };
 
   void sarp_new_config(struct sarp_config ** conf, struct sarp_alloc * mem)
   {
