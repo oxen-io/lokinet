@@ -6,11 +6,17 @@ extern "C" {
 #include <stdlib.h>
 #include <stdint.h>
 
-typedef struct {
-  uint8_t * ptr;
-  size_t sz;
-} sarp_buffer_t;
+  typedef struct sarp_buffer_t {
+    uint8_t * base;
+    size_t sz;
+    uint8_t * cur;
+  } sarp_buffer_t;
 
+  static inline size_t sarp_buffer_size_left(sarp_buffer_t * buff)
+  {
+    return buff->sz - (buff->cur - buff->base);
+  }
+  
 #ifdef __cplusplus
 }
 #endif

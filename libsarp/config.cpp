@@ -1,4 +1,5 @@
 #include <sarp/config.h>
+#include <sarp/mem.h>
 #include "config.hpp"
 #include "ini.hpp"
 
@@ -29,22 +30,25 @@ namespace sarp
     }
     return false;
   };
+
+  
 }
 
 
 extern "C" {
 
-  void sarp_new_config(struct sarp_config ** conf, struct sarp_alloc * mem)
+
+  
+  void sarp_new_config(struct sarp_config ** conf)
   {
-    sarp_config * c = static_cast<sarp_config*>(mem->malloc(sizeof(struct sarp_config)));
-    c->mem = mem;
+    sarp_config * c = static_cast<sarp_config *>(sarp_g_mem.malloc(sizeof(sarp_config)));
     *conf = c;
   }
 
   void sarp_free_config(struct sarp_config ** conf)
   {
-    sarp_alloc * mem = (*conf)->mem;
-    mem->free(*conf);
+    if(*conf)
+      sarp_g_mem.free(*conf);
     *conf = nullptr;
   }
 
@@ -52,5 +56,18 @@ extern "C" {
   {
     if(!conf->impl.Load(fname)) return -1;
     return 0;
+  }
+
+  void sarp_config_iter(struct sarp_config * conf, struct sarp_config_iterator iter)
+  {
+    iter.conf = conf;
+    std::map<std::string, sarp::Config::section_t&> sections = {
+      {"router", conf->impl.router},
+      {"network", conf->impl.network},
+      {"netdb", conf->impl.netdb}
+    };
+    for(const auto & section : sections)
+      for(const auto & item : section.second)
+        iter.visit(&iter, section.first.c_str(), item.first.c_str(), item.second.c_str());
   }
 }

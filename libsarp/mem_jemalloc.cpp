@@ -25,11 +25,11 @@ namespace sarp
 }
 
 extern "C" {
-  void sarp_mem_jemalloc(struct sarp_alloc * mem)
+  void sarp_mem_jemalloc()
   {
-    mem->malloc = sarp::jem_malloc;
-    mem->free = sarp::jem_free;
-    mem->calloc = sarp::jem_calloc;
-    mem->realloc = sarp::jem_realloc;
+    sarp_g_mem.malloc = sarp::jem_malloc;
+    sarp_g_mem.free = sarp::jem_free;
+    sarp_g_mem.calloc = sarp::jem_calloc;
+    sarp_g_mem.realloc = sarp::jem_realloc;
   }
 }

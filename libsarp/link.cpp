@@ -9,26 +9,27 @@ bool operator < (const sockaddr_in6 addr0, const sockaddr_in6 addr1)
 namespace sarp
 {
 
-  int Link::Run()
+  static void link_recv_from(struct sarp_udp_listener * l, struct sockaddr src, uint8_t * buff, size_t sz)
   {
-    uint8_t recvbuff[1500];
-    sockaddr_in6 remote;
-    socklen_t remotelen;
-    ssize_t ret = 0;
-    do
+    if(src.sa_family == AF_INET6)
     {
-      ret = recvfrom(sockfd, recvbuff, sizeof(recvbuff),0, (sockaddr *) &remote, &remotelen);
-      if(ret > 0)
+      Link * link = static_cast<Link*>(l->user);
+      struct sockaddr_in6 remote;
+      memcpy(&remote, &src, sizeof(sockaddr_in6));
+      auto itr = link->sessions.find(remote);
+      if(itr == link->sessions.end())
       {
-        auto itr = sessions.find(remote);
-        if(itr == sessions.end())
-        {
-          sessions[remote] = std::make_unique<PeerSession>(crypto, remote);
-        }
-        sessions[remote]->RecvFrom(recvbuff, ret);
+        link->sessions[remote] = std::make_unique<PeerSession>(link->_crypto, remote);
       }
+      link->sessions[remote]->RecvFrom(buff, sz);
     }
-    while(ret != -1);
-    return -1;
   }
+  
+  Link::Link(sarp_crypto * crypto) : _crypto(crypto)
+  {
+    listener.user = this;
+    listener.recvfrom = link_recv_from;
+  }
+
+  
 }

@@ -25,7 +25,6 @@ extern "C" {
   struct sarp_config
   {
     sarp::Config impl;
-    sarp_alloc * mem;
   };
 }
 

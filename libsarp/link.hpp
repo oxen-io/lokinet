@@ -6,8 +6,12 @@
 #include <map>
 #include <memory>
 
+#include <sarp/ev.h>
+
 namespace sarp
 {
+  struct Link;
+  
   struct PeerSession
   {
     sockaddr_in6 remoteAddr;
@@ -38,7 +42,7 @@ namespace sarp
 
     PeerSession & operator=(const PeerSession & other);
     
-    void SendTo(int sockfd, const uint8_t * buff, std::size_t sz);
+    void SendTo(Link * link, const uint8_t * buff, std::size_t sz);
 
     void RecvFrom(const uint8_t * buff, std::size_t sz);
     
@@ -50,14 +54,16 @@ namespace sarp
   {
     typedef std::map<sockaddr_in6, PeerSession_ptr> Sessions;
  
-    int sockfd;
     Sessions sessions;
     sarp_seckey_t transportSecKey;
     sarp_pubkey_t transportPubKey;
 
-    sarp_crypto * crypto;
+    sarp_crypto * _crypto;
+
+    Link(sarp_crypto * crypto);
     
-    int Run();
+    sarp_udp_listener listener;
+    
   };
 }
 

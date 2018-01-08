@@ -43,22 +43,24 @@ SE(k, n, x) is chacha20 encrypt data x using symettric key k and nounce n
 SD(k, n, x) is chacha20 dectypt data x using symettric key k and nounce n
 S(k, x) is sign x with ed25519 using seed k
 V(k, x, sig) is verify x data using signature sig using public key k
-DH(x, y) is a ecdh key exchange using ed25519 scalarmult base between
-  public keys x and y
+DH(x, y) is a ecdh key exchange using ed25519 scalarmult between public keys x
+  and y
 KE(x, y) is a ecdh key exchange using H(DH(x, y) + x)
 
 
 ---
 
-invisible wire protocol version 0:
+
+wire protocol:
+
+as of version 0 plaintext sctp is used, future versions will use an encrypted udp transport (IWP).
 
 
-inbound handshake:
+
+IWP inbound handshake:
 
 
-
-
-outbound handshake:
+IWP outbound handshake:
 
 
 
@@ -120,8 +122,9 @@ introducer (I)
 introducer set (IS)
 
 {
-  d: [ I, I, I, ... ],
+  a: "<64 bytes SA>",
   e: "<1218 bytes ntru public encryption key>",
+  i: [ I, I, I, ... ],
   z: "<64 bytes signature using service info signing key>"
 }
 
@@ -148,11 +151,12 @@ relay commit record (RCR)
 
 record requesting path with tunnel id p relay messages for x seconds to router
 on network who's i is equal to RC.k and decrypt data any messages using
-KE(c, RC.k) as symettric key for encryption and decryption.
+MD(n, KE(c, RC.k)) as symettric key for encryption and decryption.
 
 {
   c: "<32 byte public signing/encryption key used for further communication>",
-  i: "<32 byte public key of next hop>", 
+  i: "<32 byte RC.k of next hop>",
+  n: "<32 bytes nounce for key exchange>",
   p: path_id_uint64,
   x: seconds_lifetime_uint64
 }
@@ -181,7 +185,8 @@ is RECOMMENDED.
   b: miliseconds_backoff_uint64,
   c: "r",
   p: path_id_uint64,
-  r: "<insert optional reason metadata here>"
+  r: "<optional reason metadata here>",
+  x: "<N bytes arbirary padding>"
 }
 
 link relay accept record (LRAR)
@@ -244,18 +249,17 @@ link relay exit message (LRXM)
 sent to exit a previously commited path before it expires.
 verify signature using cancel key c in relay commit message.
 
-z is filled with zero, the previous value is used as a signature and then
-the message is verified using the message digset of the newly encoded message
-and the symmettric key provide in the corisponding link relay commit message.
-
-sig = msg.z
-msg.z = "\x00" * 64
-h = MD(BE(msg), k)
-V(c, h, sig)
-
 {
   a: "x",
+  b: [ list, of, exit, records, as, bytes ]
+}
+
+link relay exit record (LRXR)
+
+{
+  c: "x",
   p: path_id_uint64,
+  x: "<N bytes padding>",
   z: "<64 bytes signature>"
 }
 
@@ -347,8 +351,13 @@ got introduction message (GIM)
 publish introduction message (PIM)
 
 publish one or many IM into the dht at once.
-each IS will be placed in the dht at the location determined by the dht kdf
-which uses a shared random source to obfuscate keyspace location
+each IS will be placed in the dht
+
+version 0 uses the SA of each IS as the keyspace location.
+
+in the future the location will be determined by the dht kdf
+which uses a shared random source to obfuscate keyspace location.
+
 
 {
   A: "P",
@@ -358,16 +367,19 @@ which uses a shared random source to obfuscate keyspace location
 
 acknoleged introduction message (AIM)
 
-acknolege the publishing of a previous PIM
+acknolege the publishing of a previous PIM, back off publishing for B ms.
+nonzero B value indicates failure to publish.
 
 {
   A: "A",
+  B: backoff_milliseconds_uint64,
+  P: number_of_IS_published_uint,
   T: transaction_id_uint64,
 }
 
 find router contact message (FRCM)
 
-find a 
+find a router by public key
 
 {
   A: "F",

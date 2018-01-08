@@ -9,7 +9,7 @@ namespace sarp
   {
     int xchacha20(sarp_buffer_t buff, sarp_symkey_t k, sarp_nounce_t n)
     {
-      return crypto_stream_xchacha20_xor(buff.ptr, buff.ptr, buff.sz, n, k);
+      return crypto_stream_xchacha20_xor(buff.base, buff.base, buff.sz, n, k);
     }
 
     int dh(sarp_sharedkey_t * shared, uint8_t * client_pk, uint8_t * server_pk, uint8_t * remote_key, uint8_t * local_key)
