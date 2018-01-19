@@ -18,7 +18,7 @@ LIBUV_FLAGS = $(shell pkg-config --cflags libuv)
 LIBUV_LIBS = $(shell pkg-config --libs libuv)
 
 REQUIRED_CFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c99 $(CFLAGS)
-REQUIRED_CXXFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c++17 $(CXXFLAGS)
+REQUIRED_CXXFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c++14 $(CXXFLAGS)
 REQUIRED_LDFLAGS = $(LDFLAGS) -ljemalloc $(SODIUM_LIBS) $(LIBUV_LIBS)
 
 all: build

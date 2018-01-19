@@ -36,7 +36,9 @@ BD(x) is bittorrent decode x
 cryptography:
 
 H(x) is 512 bit blake2b digest of x
+HS(x) is 256 bit blake2b digest of x
 MD(x, k) is 512 bit blake2b hmac of x with secret value k
+MDS(x, k) is 256 bit blake2b hmac of x with secret value k
 NE(k, x) is sntrup4591761 encrypt data x to public key k
 ND(k, x) is sntrup4591761 decrypt data x with private key k
 SE(k, n, x) is chacha20 encrypt data x using symettric key k and nounce n
@@ -45,24 +47,203 @@ S(k, x) is sign x with ed25519 using seed k
 V(k, x, sig) is verify x data using signature sig using public key k
 DH(x, y) is a ecdh key exchange using ed25519 scalarmult between public keys x
   and y
-KE(x, y) is a ecdh key exchange using H(DH(x, y) + x)
-
+KE(x, y) is a ecdh key exchange using H(x + y + DH(x, y))
+PKE(x, y, n) is a path key exchange using MDS(n, KE(x, y))
+TKE(x, y, n) is a transport key exchange using MD(n, KE(x, y))
+RAND(n) is n random bytes
 
 ---
 
 
 wire protocol:
 
-as of version 0 plaintext sctp is used, future versions will use an encrypted udp transport (IWP).
+as of version 0 plaintext sctp is used, future versions will use an encrypted
+udp transport (IWP).
 
 
+frame decryption:
 
-IWP inbound handshake:
+the first 32 bytes are message authentication bytes, h
+the next 32 bytes are nounce for shared secret, n
+the remaining bytes are interpreted as ciphertext, x
+
+a shared secret s is generated via TKE(us, them, n)
+next the integrity of the ciphertext is done by checking MDS(n + x, s) == h
+if the ciphertext is valid then the frame is decrypted via SD(s, n, x)
+
+frame encryption:
+
+given variadic sized payload p, 32 byte nounce n and public encryption keys A
+and B
+
+s = TKE(A, B, n)
+x = SE(s, n, p)
+h = MDS(n + x, s)
+
+the resulting frame is:
+
+h + n + x
 
 
-IWP outbound handshake:
+handshake:
+
+0) intro frame:
+
+32 bytes hmac, h
+32 bytes nounce, n
+64 bytes elligator sqaured encoded alice's transport public encryption key, k
+variadic bytes padding, w0
+
+Alice sends ( h + n + k + w0 ) to Bob from the transport address matching her
+public transport encryption key.
+
+1) intro ack frame
+
+in reply to an intro frame, bob sends an intro ack frame encrypted to Alice
+using
 
 
+32 bytes hmac, h
+32 bytes nounce, n
+32 bytes ciphertext, x
+variadic bytes padding, w1
+
+token = RAND(32)
+k = TKE(a.k, b.k, n)
+x = SE(k, token, n[0:24])
+h = MDS(n + x, k)
+
+Bob sends ( h + n + x + w1 ) to Alice
+
+2) token frame:
+
+Alice sends the token from the intro ack frame back to Bob
+
+32 bytes hmac, h
+32 bytes nounce, n
+32 bytes ciphertext, x
+variadic byttes padding, w2
+
+k = TKE(a.k, b.k, n)
+x = SE(k, token, n[0:24])
+h = MDS(n + x, k)
+
+Alice sends ( h + n + x + w2 ) to Bob
+
+4) token ack frame:
+
+Bob acks the token that he got from Alice
+
+32 bytes hmac, h
+32 bytes nounce, n
+32 bytes ciphertext, x
+variadic byttes padding, w3
+
+S = TKE(a.k, b.k, token)
+x = SE(S, token, n[0:24])
+h = MDS(n + x, S)
+
+Alice sends ( h + n + x + w3 ) to Bob and the session is now established using
+shared secret S
+
+
+IWP frame format:
+
+ciphertext:
+32 bytes hmac, h
+32 bytes nounce, n
+N bytes of ciphertext, x
+
+plaintext frame header, H
+8 bits protocol version, v (currently 0)
+8 bits message type, t
+12 bits payload size, s
+4 bits flags, f
+
+plaintext payload: P
+s bytes of data
+N bytes remaining data is discarded
+
+x = SE(H + P, S, n)
+h = MDS(n + x, S)
+
+transmit h + n + x
+
+message types:
+
+XMIT = 0x01
+
+begin link layer message transmission
+
+ACKS = 0x02
+
+acknolege link layer message fragment
+
+FRAG = 0x03
+
+transmit link layer message fragment
+
+flags:
+
+SESSION_INVALIDATED = 1 << 0
+
+this session is now invalidated and a new session is required
+
+HIGH_PACKET_DROP    = 1 << 1
+
+high packet drop detected
+
+HIGH_MTU_DETECTED   = 1 << 2
+
+the network uses an mtu greater than 1488 bytes
+
+PROTOCOL_UPGRADE    = 1 << 3
+
+indicates we want to do protocol upgrade (future use)
+
+XMIT payload:
+
+start transmiting a link layer message 
+
+msg_bytes = BE(msg)
+
+32 bytes msgid computed as HS(msg_bytes)
+12 bits unsigned int fragment size bytes, s
+4 bits unsigned int number of fragments, n
+8 bits size of last fragment in bytes, l
+
+msg_bytes is s * (n - 1) + l bytes long
+
+FRAG payload:
+
+transmit a link layer message fragment
+
+32 bytes msgid
+4 bits ignored
+4 bits unsigned int fragment number
+remaining bytes of payload are fragment data
+
+ACKS payload:
+
+indicates we which chunks we have recieved
+
+32 bytes msgid
+16 bits bitmask of chunks we have received
+remaining bytes discarded
+
+
+control flow:
+
+To transmit link message over an established session the transmitter sends an
+XMIT frame.
+In reply to an XMIT frame the recipiant MUST send an ACKS frame with an emtpy
+bitmask.
+After the transmitter recieves the first ACKS frame it is allowed to start sending FRAG
+messages.
+When all fragmenets are obtained by the recipiant, the recipiant sends an ACKS frame with a full bitfield (0xFFFF), to indicate the link message was recieved.
+In the event of packet drop the sender decides when to retransmit FRAG frames with expontential backoff.
+
+In the event of packet loss greater than 50% over 10 second the session is invalidated and must be renegotiated with a new handshake.
 
 ---
 
@@ -94,9 +275,10 @@ router contact (RC)
 
 {
   a: [ one, or, many, AI, here ... ],
-  k: "<32 bytes public sigining/encryption key>",
+  k: "<32 bytes public signing/encryption identity key>",
   x: [ Exit, Infos ],
-  z: "<64 bytes signature using signing key>"
+  v: 0,
+  z: "<64 bytes signature using identity key>"
 }
 
 service info (SI)
@@ -104,6 +286,7 @@ service info (SI)
 {
   n: "<optional claimed name>",
   s: "<32 bytes public signing key>",
+  v: 0,
   x: "<optional nounce for vanity>"
 }
 
@@ -116,6 +299,7 @@ introducer (I)
 {
   i: "<32 bytes public key of router>",
   p: path_id_uint64,
+  v: 0,
   x: time_expires_seconds_since_epoch_uint64
 }
 
@@ -125,6 +309,7 @@ introducer set (IS)
   a: "<64 bytes SA>",
   e: "<1218 bytes ntru public encryption key>",
   i: [ I, I, I, ... ],
+  v: 0,
   z: "<64 bytes signature using service info signing key>"
 }
 
@@ -144,20 +329,23 @@ link relay commit message (LRCM)
 
 {
   a: "c",
-  b: [ list, of, encrypted, RCR, as, bytes ],
+  b: [ list, of, encrypted, frames ],
+  v: 0,
 }
+
 
 relay commit record (RCR)
 
-record requesting path with tunnel id p relay messages for x seconds to router
+record requesting path with id p relay messages for x seconds to router
 on network who's i is equal to RC.k and decrypt data any messages using
-MD(n, KE(c, RC.k)) as symettric key for encryption and decryption.
+PKE(n, rc.K, c) as symettric key for encryption and decryption.
 
 {
   c: "<32 byte public signing/encryption key used for further communication>",
   i: "<32 byte RC.k of next hop>",
   n: "<32 bytes nounce for key exchange>",
   p: path_id_uint64,
+  v: 0,
   x: seconds_lifetime_uint64
 }
 
@@ -186,6 +374,7 @@ is RECOMMENDED.
   c: "r",
   p: path_id_uint64,
   r: "<optional reason metadata here>",
+  v: 0,
   x: "<N bytes arbirary padding>"
 }
 
@@ -197,6 +386,7 @@ for path with id p.
 {
   c: "a",
   p: path_id_uint64,
+  v: 0,
   x: "<N bytes arbitrary padding>"
 }
 
@@ -208,7 +398,8 @@ path build and send the result of the build.
 
 {
   a: "s",
-  p: [list, of, encrypted, replies]
+  p: [list, of, encrypted, replies],
+  v: 0,
 }
 
 
@@ -224,6 +415,7 @@ new_y = y ^ new_z[0:24]
 {
   a: "u",
   p: path_id_uint64,
+  v: 0,
   y: "<insert 24 bytes nounce here>",
   z: "<insert N bytes payload here>"
 }
@@ -240,6 +432,7 @@ new_z = SE(k, new_y, z)
 {
   a: "d",
   p: path_id_uint64,
+  v: 0,
   y: "<insert 24 bytes nounce here>",
   z: "<insert N bytes payload here>"
 }
@@ -251,7 +444,8 @@ verify signature using cancel key c in relay commit message.
 
 {
   a: "x",
-  b: [ list, of, exit, records, as, bytes ]
+  b: [ list, of, exit, records, as, bytes ],
+  v: 0,
 }
 
 link relay exit record (LRXR)
@@ -259,18 +453,29 @@ link relay exit record (LRXR)
 {
   c: "x",
   p: path_id_uint64,
+  v: 0,
   x: "<N bytes padding>",
   z: "<64 bytes signature>"
 }
 
 ---
 
+direct paths:
+
+a direct path is a "0 hop" path built by Alice to communicate directly to Bob for point to point transmission of routing layer messages.
+
+these are built by sending a LRCM where B has 1 entry
+
+---
+
 routing layer:
 
-the routing layer provides inter network communication between the SARP link
-layer and ip (internet protocol) for exit traffic or hp (hidden protocol) for
-SARP hidden services. replies to messages are sent back via the path they
+the routing layer provides inter network communication between the LLARP link
+layer and ip (internet protocol) for exit traffic or ap (anonymous protocol) for
+hidden services. replies to messages are sent back via the path they
 originated from inside a LRDM.
+
+for direct communication between routers a direct path MUST be used, these messages MUST NOT be sent on the link leyer.
 
 obtain exit address message (OXAM)
 
@@ -280,6 +485,7 @@ replies are sent down the path that messages originate from.
 {
   A: "X",
   I: "<32 bytes signing public key for future communication>",
+  V: 0,
   X: lifetime_of_address_mapping_in_seconds_uint64,
 }
 
@@ -292,6 +498,7 @@ ip address used for exit traffic.
   A: "G",
   E: "<16 byte big endian externally reachable ipv6 address>",
   I: "<32 bytes signing public key of requester>",
+  V: 0,
   Z: "<64 bytes signature using exit's signing key>"
 }
 
@@ -302,6 +509,7 @@ reject exit address message (RXAM)
   B: backoff_milliseconds_uint64,
   I: "<32 bytes signing public key of requester>",
   R: "<optional reject metadata>",
+  V: 0,
   Z: "<64 bytes signature signed by exit>"
 }
 
@@ -317,6 +525,7 @@ y and z values in LRDM message respectively.
 {
   A: "T",
   P: path_id_uint64,
+  V: 0,
   X: "<N bytes payload>", 
   Y: "<24 bytes nounce>",
   Z: "<64 bytes signature of entire message where Z is set to NUL>",
@@ -328,6 +537,7 @@ transfer ip traffic for exit
 
 {
   A: "T",
+  V: 0,
   X: "<N bytes ipv6 packet>",
   Z: "<64 bytes signature of previously provided signing key>"
 }
@@ -337,6 +547,7 @@ find introduction message (FIM)
 {
   A: "F",
   S: "<64 bytes dht key>",
+  V: 0,
   T: transaction_id_uint64
 }
 
@@ -345,6 +556,7 @@ got introduction message (GIM)
 {
   A: "G",
   T: transaction_id_uint64,
+  V: 0,
   X: [ IS, IS, IS, ... ]
 }
 
@@ -362,19 +574,20 @@ which uses a shared random source to obfuscate keyspace location.
 {
   A: "P",
   T: transaction_id_uint64,
-  X: [ IS, IS, IS, ... ]
+  V: 0,
+  X: [ IS, IS, IS, ... ],
 }
 
 acknoleged introduction message (AIM)
 
-acknolege the publishing of a previous PIM, back off publishing for B ms.
-nonzero B value indicates failure to publish.
+acknolege the publishing of a previous PIM, X contains the backoff values in ms
+for the previously provided IS, if backoff is 0 the operation was successfull
 
 {
   A: "A",
-  B: backoff_milliseconds_uint64,
-  P: number_of_IS_published_uint,
   T: transaction_id_uint64,
+  V: 0,
+  X: [ 0, 0, backoff, ...],
 }
 
 find router contact message (FRCM)
@@ -383,21 +596,18 @@ find a router by public key
 
 {
   A: "F",
-  R: "<32 byte public key of router>",
+  K: "<32 byte public key of router>",
   T: transaction_id_uint64
+  V: 0
 }
 
 got router contact message (GRCM)
 
+R is a list containing a single RC if found or is an empty list if not found
+sent in reply to FRCM only
 {
   A: "G",
-  R: [RC, RC, RC ...],
-  T: transaction_id_uint64
-}
-
-store router contact message (SRCM)
-
-{
-  A: "S",
-  R: RC
+  R: [RC],
+  T: transaction_id_uint64,
+  V: 0
 }

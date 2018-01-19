@@ -4,9 +4,9 @@
 
 bool sarp_address_info_bencode(struct sarp_address_info * ai, sarp_buffer_t * buff)
 {
-  uint8_t * ptr = buff->cur;
+  char * ptr = buff->cur;
   size_t sz = sarp_buffer_size_left(buff);
-  uint8_t * end = ptr + sz;
+  char * end = ptr + sz;
   int r = 0;
   r = snprintf(ptr, (end - ptr), "d1:ci%de1:e32:", ai->rank);
   if (r == -1) return false;

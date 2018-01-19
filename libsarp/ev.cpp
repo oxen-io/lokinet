@@ -15,8 +15,22 @@ namespace sarp
   {
     uv_udp_t _handle;
     struct sarp_udp_listener * listener;
+    
+    void recvfrom(const struct sockaddr * addr, char * buff, ssize_t sz)
+    {
+      if(listener->recvfrom)
+        listener->recvfrom(listener, addr, buff, sz);
+    }
 
-    uv_udp_t * handle() { return &_handle; }
+    /** called after closed */
+    void closed()
+    {
+      if(listener->closed)
+        listener->closed(listener);
+      listener->impl = nullptr;
+    }
+    
+    uv_udp_t * udp() { return &_handle; }
   };
 
   static void udp_alloc_cb(uv_handle_t * h, size_t sz, uv_buf_t * buf)
@@ -28,6 +42,15 @@ namespace sarp
   static void udp_recv_cb(uv_udp_t* handle, ssize_t nread, const uv_buf_t* buf, const struct sockaddr* addr, unsigned flags)
   {
     udp_listener * l = static_cast<udp_listener *>(handle->data);
+    l->recvfrom(addr, buf->base, nread);
+    sarp_g_mem.free(buf->base);
+  }
+
+  static void udp_close_cb(uv_handle_t * handle)
+  {
+    udp_listener * l = static_cast<udp_listener *>(handle->data);
+    l->closed();
+    sarp_g_mem.free(l);
   }
 }
 
@@ -64,18 +87,37 @@ extern "C" {
     int ret = 0;
     sarp::udp_listener * l = static_cast<sarp::udp_listener *>(sarp_g_mem.malloc(sizeof(sarp::udp_listener)));
     listener->impl = l;
-    l->handle()->data = l;
+    l->udp()->data = l;
     l->listener = listener;
     
-    ret = uv_udp_init(ev->loop(), l->handle());
+    ret = uv_udp_init(ev->loop(), l->udp());
     if (ret == 0)
     {
-      ret = uv_udp_bind(l->handle(), (const sockaddr *)&addr, 0);
+      ret = uv_udp_bind(l->udp(), (const sockaddr *)&addr, 0);
       if (ret == 0)
       {
-        ret = uv_udp_recv_start(l->handle(), sarp::udp_alloc_cb, sarp::udp_recv_cb);
+        ret = uv_udp_recv_start(l->udp(), sarp::udp_alloc_cb, sarp::udp_recv_cb);
       }
     }
+    return ret;
   }
-  
+
+  int sarp_ev_close_udp_listener(struct sarp_udp_listener * listener)
+  {
+    int ret = -1;
+    if(listener)
+    {
+      sarp::udp_listener * l = static_cast<sarp::udp_listener*>(listener->impl);
+      if(l)
+      {
+        if(!uv_udp_recv_stop(l->udp()))
+        {
+          l->closed();
+          sarp_g_mem.free(l);
+          ret = 0;
+        }
+      }
+    }
+    return ret;
+  }
 }

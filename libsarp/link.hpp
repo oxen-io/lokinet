@@ -24,10 +24,13 @@ namespace sarp
     
     enum State
     {
-      eHandshake0,
-      eHandshake1,
-      eHandshake2,
-      eHandshake3,
+      eStateNULL,
+      eHandshakeInboundInit,
+      eHandshakeOutboundInit,
+      eHandshakeInboundRepliedInit,
+      eHandshakeOutboundGotReply,
+      eHandshakeInboundGotAck,
+      eHandshakeOutboundGotAck,
       eEstablished,
       eTimeout
     };
@@ -42,9 +45,9 @@ namespace sarp
 
     PeerSession & operator=(const PeerSession & other);
     
-    void SendTo(Link * link, const uint8_t * buff, std::size_t sz);
+    void SendTo(Link * link, const char * buff, std::size_t sz);
 
-    void RecvFrom(const uint8_t * buff, std::size_t sz);
+    void RecvFrom(const char * buff, ssize_t sz);
     
   };
 
@@ -65,6 +68,8 @@ namespace sarp
     sarp_udp_listener listener;
     
   };
+
+  typedef std::unique_ptr<Link> Link_ptr;
 }
 
 #endif

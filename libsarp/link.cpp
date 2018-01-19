@@ -1,5 +1,6 @@
 #include "link.hpp"
 #include <cstring>
+#include <sarp/time.h>
 
 bool operator < (const sockaddr_in6 addr0, const sockaddr_in6 addr1)
 {
@@ -9,13 +10,13 @@ bool operator < (const sockaddr_in6 addr0, const sockaddr_in6 addr1)
 namespace sarp
 {
 
-  static void link_recv_from(struct sarp_udp_listener * l, struct sockaddr src, uint8_t * buff, size_t sz)
+  static void link_recv_from(struct sarp_udp_listener * l, const struct sockaddr * src, char * buff, ssize_t sz)
   {
-    if(src.sa_family == AF_INET6)
+    if(src && src->sa_family == AF_INET6)
     {
       Link * link = static_cast<Link*>(l->user);
       struct sockaddr_in6 remote;
-      memcpy(&remote, &src, sizeof(sockaddr_in6));
+      memcpy(&remote, src, sizeof(sockaddr_in6));
       auto itr = link->sessions.find(remote);
       if(itr == link->sessions.end())
       {
@@ -31,5 +32,18 @@ namespace sarp
     listener.recvfrom = link_recv_from;
   }
 
-  
+  PeerSession::PeerSession(sarp_crypto * crypto, sockaddr_in6 remote) :
+    lastRX(0),
+    remoteAddr(remote),
+    _crypto(crypto),
+    state(eHandshakeInboundInit)
+  {
+    memset(remotePubkey, 0, sizeof(remotePubkey));
+    memset(sessionKey, 0, sizeof(sessionKey));
+  }
+
+  void PeerSession::RecvFrom(const char * buff, ssize_t sz)
+  {
+    lastRX = sarp_time_now_ms();
+  }
 }

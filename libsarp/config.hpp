@@ -14,6 +14,7 @@ namespace sarp
     section_t router;
     section_t network;
     section_t netdb;
+    section_t links;
 
     bool Load(const char * fname);
     

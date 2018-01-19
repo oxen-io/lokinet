@@ -4,18 +4,14 @@
 extern "C" {
 #endif
 #include <stdlib.h>
-#include <stdint.h>
 
   typedef struct sarp_buffer_t {
-    uint8_t * base;
+    char * base;
     size_t sz;
-    uint8_t * cur;
+    char * cur;
   } sarp_buffer_t;
 
-  static inline size_t sarp_buffer_size_left(sarp_buffer_t * buff)
-  {
-    return buff->sz - (buff->cur - buff->base);
-  }
+  size_t sarp_buffer_size_left(sarp_buffer_t * buff);
   
 #ifdef __cplusplus
 }

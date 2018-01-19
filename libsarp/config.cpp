@@ -7,10 +7,10 @@ namespace sarp
 {
 
   template<typename Config, typename Section>
-  static Section find_section(Config & c, const std::string & name, const Section & sect)
+  static Section find_section(Config & c, const std::string & name, const Section & fallback)
   {
     if(c.sections.find(name) == c.sections.end())
-      return sect;
+      return fallback;
     return c.sections[name].values;
   }
    
@@ -26,6 +26,7 @@ namespace sarp
       router = find_section(top, "router", section_t{});
       network = find_section(top, "network", section_t{});
       netdb = find_section(top, "netdb", section_t{});
+      links = find_section(top, "links", section_t{});
       return true;
     }
     return false;
@@ -64,6 +65,7 @@ extern "C" {
     std::map<std::string, sarp::Config::section_t&> sections = {
       {"router", conf->impl.router},
       {"network", conf->impl.network},
+      {"links", conf->impl.links},
       {"netdb", conf->impl.netdb}
     };
     for(const auto & section : sections)
