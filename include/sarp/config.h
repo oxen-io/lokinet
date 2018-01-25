@@ -22,7 +22,7 @@ struct sarp_config_iterator
   void (*visit)(struct sarp_config_iterator *, const char *, const char *, const char *);
 };
   
-void sarp_config_iter(struct sarp_config * conf, struct sarp_config_iterator iter);
+void sarp_config_iter(struct sarp_config * conf, struct sarp_config_iterator * iter);
   
 #ifdef __cplusplus
 }

@@ -64,12 +64,13 @@ namespace sarp
     sarp_crypto * _crypto;
 
     Link(sarp_crypto * crypto);
+    ~Link();
     
-    sarp_udp_listener listener;
+    sarp_udp_listener _listener;
+
+    sarp_udp_listener * Listener() { return &_listener; }
     
   };
-
-  typedef std::unique_ptr<Link> Link_ptr;
 }
 
 #endif

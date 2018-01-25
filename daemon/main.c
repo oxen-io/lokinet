@@ -15,21 +15,24 @@ int main(int argc, char * argv[])
   sarp_mem_jemalloc();
   sarp_new_config(&gconfig);
   sarp_ev_loop_alloc(&mainloop);
-  
-  if(sarp_load_config(gconfig, conffname))
+  printf("%s loaded\n", SARP_VERSION);
+  if(!sarp_load_config(gconfig, conffname))
   {
-    printf("!!! failed to load %s\n", conffname);
+    printf("Loaded config %s\n", conffname);
+    sarp_init_router(&router);
+    if(!sarp_configure_router(router, gconfig))
+    {
+      printf("Running\n");
+      sarp_run_router(router, mainloop);
+      sarp_ev_loop_run(mainloop);
+    }
+    else
+      printf("Failed to configure router\n");
   }
   else
-  {
-    printf("loaded config %s\n", conffname);
-    sarp_init_router(&router);
-    sarp_configure_router(router, gconfig);
-    printf("running...\n");
-    sarp_run_router(router, mainloop);
-    sarp_ev_loop_run(mainloop);
-  }
-  printf("shutting down.");
+    printf("Failed to load config %s\n", conffname);
+  
+  printf("Shutting down.");
   sarp_free_router(&router);
   printf(".");
   sarp_free_config(&gconfig);

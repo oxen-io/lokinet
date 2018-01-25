@@ -59,9 +59,9 @@ extern "C" {
     return 0;
   }
 
-  void sarp_config_iter(struct sarp_config * conf, struct sarp_config_iterator iter)
+  void sarp_config_iter(struct sarp_config * conf, struct sarp_config_iterator * iter)
   {
-    iter.conf = conf;
+    iter->conf = conf;
     std::map<std::string, sarp::Config::section_t&> sections = {
       {"router", conf->impl.router},
       {"network", conf->impl.network},
@@ -70,6 +70,6 @@ extern "C" {
     };
     for(const auto & section : sections)
       for(const auto & item : section.second)
-        iter.visit(&iter, section.first.c_str(), item.first.c_str(), item.second.c_str());
+        iter->visit(iter, section.first.c_str(), item.first.c_str(), item.second.c_str());
   }
 }

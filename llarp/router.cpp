@@ -11,15 +11,18 @@ namespace sarp
   
   struct Router
   {
-    std::list<Link_ptr> Links;
+    std::list<Link *> Links;
     sarp_crypto * crypto;
     void Close()
     {
-      for(auto & itr : Links)
+      if(Links.size())
       {
-        sarp_ev_close_udp_listener(&itr->listener);
+        for(auto & itr : Links)
+        {
+          sarp_ev_close_udp_listener(itr->Listener());
+        }
+        Links.clear();
       }
-      Links.clear();
     }
 
     bool Configured()
@@ -54,14 +57,15 @@ extern "C" {
     sarp_config_iterator iter;
     iter.user = router;
     iter.visit = sarp::router_iter_config;
-    sarp_config_iter(conf, iter);
+    sarp_config_iter(conf, &iter);
     return router->impl.Configured() ? 0 : -1;
   }
 
   void sarp_run_router(struct sarp_router * router, struct sarp_ev_loop * loop)
   {
-    for(auto & iter : router->impl.Links)
-      sarp_ev_add_udp_listener(loop, &iter->listener);
+    if(router->impl.Links.size())
+      for(auto & iter : router->impl.Links)
+        sarp_ev_add_udp_listener(loop, iter->Listener());
   }
 
   void sarp_free_router(struct sarp_router ** router)
@@ -86,7 +90,7 @@ namespace sarp
     {
       if(streq(val, "ip"))
       {
-        self->impl.Links.push_back(std::make_unique<Link>(&self->crypto));
+        self->impl.Links.push_back(new Link(&self->crypto));
       }
       else if (streq(val, "eth"))
       {

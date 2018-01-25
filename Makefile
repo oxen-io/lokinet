@@ -17,8 +17,16 @@ SODIUM_LIBS = $(shell pkg-config --libs libsodium)
 LIBUV_FLAGS = $(shell pkg-config --cflags libuv)
 LIBUV_LIBS = $(shell pkg-config --libs libuv)
 
-REQUIRED_CFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c99 $(CFLAGS)
-REQUIRED_CXXFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c++14 $(CXXFLAGS)
+DEBUG_FLAGS = -g
+
+GIT_VERSION ?= $(shell test -e .git && git rev-parse --short HEAD || true)
+
+ifneq ($(GIT_VERSION),"")
+	VER_FLAGS=-DGIT_REV=\"$(GIT_VERSION)\"
+endif
+
+REQUIRED_CFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c99 $(CFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS)
+REQUIRED_CXXFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c++14 $(CXXFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS)
 REQUIRED_LDFLAGS = $(LDFLAGS) -ljemalloc $(SODIUM_LIBS) $(LIBUV_LIBS)
 
 all: build

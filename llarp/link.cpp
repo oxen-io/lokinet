@@ -28,10 +28,14 @@ namespace sarp
   
   Link::Link(sarp_crypto * crypto) : _crypto(crypto)
   {
-    listener.user = this;
-    listener.recvfrom = link_recv_from;
+    _listener.user = this;
+    _listener.recvfrom = link_recv_from;
   }
 
+  Link::~Link()
+  {
+  }
+  
   PeerSession::PeerSession(sarp_crypto * crypto, sockaddr_in6 remote) :
     lastRX(0),
     remoteAddr(remote),
