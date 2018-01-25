@@ -44,6 +44,7 @@ ND(k, x) is sntrup4591761 decrypt data x with private key k
 SE(k, n, x) is chacha20 encrypt data x using symettric key k and nounce n
 SD(k, n, x) is chacha20 dectypt data x using symettric key k and nounce n
 S(k, x) is sign x with ed25519 using seed k
+ECKG() is generate ec keypair (p, s) public key p, seed s, both 32 bytes
 V(k, x, sig) is verify x data using signature sig using public key k
 DH(x, y) is a ecdh key exchange using ed25519 scalarmult between public keys x
   and y
@@ -61,7 +62,7 @@ as of version 0 plaintext sctp is used, future versions will use an encrypted
 udp transport (IWP).
 
 
-frame decryption:
+wire decryption:
 
 the first 32 bytes are message authentication bytes, h
 the next 32 bytes are nounce for shared secret, n
@@ -71,7 +72,7 @@ a shared secret s is generated via TKE(us, them, n)
 next the integrity of the ciphertext is done by checking MDS(n + x, s) == h
 if the ciphertext is valid then the frame is decrypted via SD(s, n, x)
 
-frame encryption:
+wire encryption:
 
 given variadic sized payload p, 32 byte nounce n and public encryption keys A
 and B
@@ -80,28 +81,28 @@ s = TKE(A, B, n)
 x = SE(s, n, p)
 h = MDS(n + x, s)
 
-the resulting frame is:
+the resulting data is:
 
 h + n + x
 
 
 handshake:
 
-0) intro frame:
+0) intro
 
 32 bytes hmac, h
 32 bytes nounce, n
-64 bytes elligator sqaured encoded alice's transport public encryption key, k
+64 bytes elligator sqaured encoded alice's transport public encryption key, a.k
 variadic bytes padding, w0
 
-Alice sends ( h + n + k + w0 ) to Bob from the transport address matching her
-public transport encryption key.
+Alice transmits ( h + n + a.k + w0 ) to Bob from the transport address matching
+his public transport encryption key.
 
-1) intro ack frame
+Bob recieves ( h + n + a.k + w0 ) 
 
-in reply to an intro frame, bob sends an intro ack frame encrypted to Alice
-using
+1) intro ack
 
+sent in reply to an intro, bob sends an intro ack encrypted to Alice using
 
 32 bytes hmac, h
 32 bytes nounce, n
@@ -113,11 +114,13 @@ k = TKE(a.k, b.k, n)
 x = SE(k, token, n[0:24])
 h = MDS(n + x, k)
 
-Bob sends ( h + n + x + w1 ) to Alice
+Bob transmits ( h + n + x + w1 )
+Alice recieves ( h + n + x + w1 ) and verifies that h == MDS(n + x, k) silently
+dropping if it does not match.
 
-2) token frame:
+2) token offer
 
-Alice sends the token from the intro ack frame back to Bob
+Alice sends the token from the intro ack back to Bob
 
 32 bytes hmac, h
 32 bytes nounce, n
@@ -128,9 +131,11 @@ k = TKE(a.k, b.k, n)
 x = SE(k, token, n[0:24])
 h = MDS(n + x, k)
 
-Alice sends ( h + n + x + w2 ) to Bob
+Alice transmits ( h + n + x + w2 )
+Bob recieves ( h + n + x + w2) and verifies that h == MDS(n + x, k) silently
+drops if not matching
 
-4) token ack frame:
+4) token ack
 
 Bob acks the token that he got from Alice
 
@@ -143,18 +148,19 @@ S = TKE(a.k, b.k, token)
 x = SE(S, token, n[0:24])
 h = MDS(n + x, S)
 
-Alice sends ( h + n + x + w3 ) to Bob and the session is now established using
-shared secret S
+Alice transmits ( h + n + x + w3 ) to Bob and the session is now established
+using shared secret S
 
+Bob receves ( h + n + x + w2 ) and verifies that h == MDS(n + x, S)
 
-IWP frame format:
+IWP payload format:
 
 ciphertext:
 32 bytes hmac, h
 32 bytes nounce, n
 N bytes of ciphertext, x
 
-plaintext frame header, H
+plaintext header, H
 8 bits protocol version, v (currently 0)
 8 bits message type, t
 12 bits payload size, s
@@ -164,10 +170,17 @@ plaintext payload: P
 s bytes of data
 N bytes remaining data is discarded
 
-x = SE(H + P, S, n)
+D = H + P
+x = SE(D, S, n)
 h = MDS(n + x, S)
 
-transmit h + n + x
+Alice transmits h + n + x
+
+Bob recieves recieve h + n + x
+
+Bob checks hmac by verifying h == MDS(n + x, S)
+
+if the hmac fails the data is silently dropped
 
 message types:
 
@@ -207,10 +220,10 @@ start transmiting a link layer message
 
 msg_bytes = BE(msg)
 
-32 bytes hash of message computed as HS(msg_bytes)
+32 bytes hash of message computed by HS(msg_bytes)
 64 bits unsigned int message id
 12 bits unsigned int fragment size bytes, s
-4 bits unsigned int number of fragments, n
+4 bits unsigned int nonzero number of fragments, n
 8 bits size of last fragment in bytes, l
 
 msg_bytes is s * (n - 1) + l bytes long
@@ -322,6 +335,55 @@ introducer set (IS)
 
 ---
 
+Encrypted frames:
+
+Encrypted frames are encrypted containers for link message records like LRCR.
+
+32 bytes hmac, h
+32 bytes nounce, n
+32 bytes ephmeral sender's public encryption key, k
+remaining bytes ciphertext, x
+
+decryption:
+
+0) verify hmac
+
+S = PKE(n, k, our_RC.K)
+verify h == MDS(n + k + x, S)
+
+If the hmac verification fails the entire parent message is discarded
+
+1) decrypt and decode
+
+new_x = SD(S, n[0:24], x)
+msg = BD(new_x)
+
+If the decoding fails the entire parent message is discarded
+
+encryption:
+
+to encrypt a frame to a router with public key B.k
+
+0) prepare nounce n, ephemeral keypair (A.k, s) and derive shared secret S
+
+A.k, s = ECKG()
+n = RAND(32)
+S = PKE(p, A.k, B.k)
+
+1) encode and encrypt
+
+x = BE(msg)
+new_x = SE(S, n[0:24], x)
+
+2) generate hmac
+
+h = MDS(n + A.k + x, S)
+
+resulting frame is h + n + A.k + new_x
+
+
+---
+
 link layer messages:
 
 the link layer is responsible for anonymising the source and destination of
@@ -340,7 +402,7 @@ link relay commit message (LRCM)
 }
 
 
-relay commit record (RCR)
+link relay commit record (LRCR)
 
 record requesting path with id p relay messages for x seconds to router
 on network who's i is equal to RC.k and decrypt data any messages using
@@ -450,7 +512,7 @@ verify signature using cancel key c in relay commit message.
 
 {
   a: "x",
-  b: [ list, of, exit, records, as, bytes ],
+  b: [ list, of, exit, records, as, encrpyted, frames ],
   v: 0,
 }
 
