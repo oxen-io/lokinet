@@ -1,6 +1,6 @@
-# SARP
+# LLARP
 
-Simple Anon Routing Protocol
+Low Latency Anon Routing Protocol
 
 [rfc](doc/proto_v0.txt)
 

@@ -1,10 +1,10 @@
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-EXE = $(REPO)/sarpd
-STATIC_LIB = $(REPO)/libsarp.a
+EXE = $(REPO)/llarpd
+STATIC_LIB = $(REPO)/libllarp.a
 
-STATIC_SRC_CPP = $(wildcard $(REPO)/libsarp/*.cpp)
-STATIC_SRC_C = $(wildcard $(REPO)/libsarp/*.c)
+STATIC_SRC_CPP = $(wildcard $(REPO)/llarp/*.cpp)
+STATIC_SRC_C = $(wildcard $(REPO)/llarp/*.c)
 
 STATIC_OBJ = $(STATIC_SRC_CPP:.cpp=.cpp.o) $(STATIC_SRC_C:.c=.c.o)
 
