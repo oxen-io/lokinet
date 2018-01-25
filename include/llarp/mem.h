@@ -1,5 +1,5 @@
-#ifndef SARP_MEM_H_
-#define SARP_MEM_H_
+#ifndef LLARP_MEM_H_
+#define LLARP_MEM_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -7,7 +7,7 @@ extern "C" {
 
 #include <stdlib.h>
 
-  struct sarp_alloc
+  struct llarp_alloc
   {
     void * (*malloc)(size_t sz);
     void * (*realloc)(void * ptr, size_t sz);
@@ -16,11 +16,11 @@ extern "C" {
   };
   
   /** global memory allocator */
-  extern struct sarp_alloc sarp_g_mem;
+  extern struct llarp_alloc llarp_g_mem;
   
-  void sarp_mem_jemalloc();
-  void sarp_mem_std();
-  void sarp_mem_dmalloc();
+  void llarp_mem_jemalloc();
+  void llarp_mem_std();
+  void llarp_mem_dmalloc();
 
 #ifdef __cplusplus
 }

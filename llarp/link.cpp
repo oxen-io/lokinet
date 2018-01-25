@@ -1,16 +1,16 @@
 #include "link.hpp"
 #include <cstring>
-#include <sarp/time.h>
+#include <llarp/time.h>
 
 bool operator < (const sockaddr_in6 addr0, const sockaddr_in6 addr1)
 {
   return memcmp(addr0.sin6_addr.s6_addr, addr1.sin6_addr.s6_addr, sizeof(addr0.sin6_addr)) && addr0.sin6_port < addr1.sin6_port;
 }
 
-namespace sarp
+namespace llarp
 {
 
-  static void link_recv_from(struct sarp_udp_listener * l, const struct sockaddr * src, char * buff, ssize_t sz)
+  static void link_recv_from(struct llarp_udp_listener * l, const struct sockaddr * src, char * buff, ssize_t sz)
   {
     if(src && src->sa_family == AF_INET6)
     {
@@ -26,7 +26,7 @@ namespace sarp
     }
   }
   
-  Link::Link(sarp_crypto * crypto) : _crypto(crypto)
+  Link::Link(llarp_crypto * crypto) : _crypto(crypto)
   {
     _listener.user = this;
     _listener.recvfrom = link_recv_from;
@@ -36,7 +36,7 @@ namespace sarp
   {
   }
   
-  PeerSession::PeerSession(sarp_crypto * crypto, sockaddr_in6 remote) :
+  PeerSession::PeerSession(llarp_crypto * crypto, sockaddr_in6 remote) :
     lastRX(0),
     remoteAddr(remote),
     _crypto(crypto),
@@ -48,6 +48,6 @@ namespace sarp
 
   void PeerSession::RecvFrom(const char * buff, ssize_t sz)
   {
-    lastRX = sarp_time_now_ms();
+    lastRX = llarp_time_now_ms();
   }
 }

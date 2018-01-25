@@ -1,6 +1,6 @@
-#include <sarp/mem.h>
+#include <llarp/mem.h>
 
-namespace sarp
+namespace llarp
 {
   void * std_malloc(size_t sz)
   {
@@ -31,11 +31,11 @@ namespace sarp
 }
 
 extern "C" {
-  void sarp_mem_std()
+  void llarp_mem_std()
   {
-    sarp_g_mem.malloc = sarp::std_malloc;
-    sarp_g_mem.free = sarp::std_free;
-    sarp_g_mem.calloc = sarp::std_calloc;
-    sarp_g_mem.realloc = sarp::std_realloc;
+    llarp_g_mem.malloc = llarp::std_malloc;
+    llarp_g_mem.free = llarp::std_free;
+    llarp_g_mem.calloc = llarp::std_calloc;
+    llarp_g_mem.realloc = llarp::std_realloc;
   }
 }

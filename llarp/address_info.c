@@ -1,11 +1,11 @@
-#include <sarp/address_info.h>
+#include <llarp/address_info.h>
 #include <stdio.h>
 #include <string.h>
 
-bool sarp_address_info_bencode(struct sarp_address_info * ai, sarp_buffer_t * buff)
+bool llarp_address_info_bencode(struct llarp_address_info * ai, llarp_buffer_t * buff)
 {
   char * ptr = buff->cur;
-  size_t sz = sarp_buffer_size_left(buff);
+  size_t sz = llarp_buffer_size_left(buff);
   char * end = ptr + sz;
   int r = 0;
   r = snprintf(ptr, (end - ptr), "d1:ci%de1:e32:", ai->rank);

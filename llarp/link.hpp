@@ -1,26 +1,26 @@
-#ifndef LIBSARP_LINK_HPP
-#define LIBSARP_LINK_HPP
+#ifndef LLARP_LINK_HPP
+#define LLARP_LINK_HPP
 #include <netinet/in.h>
-#include <sarp/crypto.h>
+#include <llarp/crypto.h>
 #include <cstdint>
 #include <map>
 #include <memory>
 
-#include <sarp/ev.h>
+#include <llarp/ev.h>
 
-namespace sarp
+namespace llarp
 {
   struct Link;
   
   struct PeerSession
   {
     sockaddr_in6 remoteAddr;
-    sarp_pubkey_t remotePubkey;
-    sarp_sharedkey_t sessionKey;
+    llarp_pubkey_t remotePubkey;
+    llarp_sharedkey_t sessionKey;
 
     uint64_t lastRX;
 
-    sarp_crypto * _crypto;
+    llarp_crypto * _crypto;
     
     enum State
     {
@@ -38,10 +38,10 @@ namespace sarp
     State state;
 
     /** inbound session */
-    PeerSession(sarp_crypto * crypto, sockaddr_in6 remote);
+    PeerSession(llarp_crypto * crypto, sockaddr_in6 remote);
 
     /** outbound session */
-    PeerSession(sarp_crypto * crypto, sockaddr_in6 remote, sarp_pubkey_t remotePubkey);
+    PeerSession(llarp_crypto * crypto, sockaddr_in6 remote, llarp_pubkey_t remotePubkey);
 
     PeerSession & operator=(const PeerSession & other);
     
@@ -58,17 +58,17 @@ namespace sarp
     typedef std::map<sockaddr_in6, PeerSession_ptr> Sessions;
  
     Sessions sessions;
-    sarp_seckey_t transportSecKey;
-    sarp_pubkey_t transportPubKey;
+    llarp_seckey_t transportSecKey;
+    llarp_pubkey_t transportPubKey;
 
-    sarp_crypto * _crypto;
+    llarp_crypto * _crypto;
 
-    Link(sarp_crypto * crypto);
+    Link(llarp_crypto * crypto);
     ~Link();
     
-    sarp_udp_listener _listener;
+    llarp_udp_listener _listener;
 
-    sarp_udp_listener * Listener() { return &_listener; }
+    llarp_udp_listener * Listener() { return &_listener; }
     
   };
 }

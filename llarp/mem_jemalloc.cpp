@@ -1,7 +1,7 @@
-#include <sarp/mem.h>
+#include <llarp/mem.h>
 #include <jemalloc/jemalloc.h>
 
-namespace sarp
+namespace llarp
 {
   static void * jem_malloc(size_t sz)
   {
@@ -25,11 +25,11 @@ namespace sarp
 }
 
 extern "C" {
-  void sarp_mem_jemalloc()
+  void llarp_mem_jemalloc()
   {
-    sarp_g_mem.malloc = sarp::jem_malloc;
-    sarp_g_mem.free = sarp::jem_free;
-    sarp_g_mem.calloc = sarp::jem_calloc;
-    sarp_g_mem.realloc = sarp::jem_realloc;
+    llarp_g_mem.malloc = llarp::jem_malloc;
+    llarp_g_mem.free = llarp::jem_free;
+    llarp_g_mem.calloc = llarp::jem_calloc;
+    llarp_g_mem.realloc = llarp::jem_realloc;
   }
 }

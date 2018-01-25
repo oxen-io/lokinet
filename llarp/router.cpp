@@ -1,25 +1,25 @@
-#include <sarp/router.h>
-#include <sarp/link.h>
+#include <llarp/router.h>
+#include <llarp/link.h>
 #include "link.hpp"
 #include <list>
 #include "str.hpp"
 
-namespace sarp
+namespace llarp
 {
-  void router_iter_config(sarp_config_iterator * iter, const char * section, const char * key, const char * val);
+  void router_iter_config(llarp_config_iterator * iter, const char * section, const char * key, const char * val);
 
   
   struct Router
   {
     std::list<Link *> Links;
-    sarp_crypto * crypto;
+    llarp_crypto * crypto;
     void Close()
     {
       if(Links.size())
       {
         for(auto & itr : Links)
         {
-          sarp_ev_close_udp_listener(itr->Listener());
+          llarp_ev_close_udp_listener(itr->Listener());
         }
         Links.clear();
       }
@@ -37,55 +37,55 @@ namespace sarp
 
 extern "C" {
 
-  struct sarp_router
+  struct llarp_router
   {
-    sarp::Router impl;
-    sarp_crypto crypto;
+    llarp::Router impl;
+    llarp_crypto crypto;
   };
   
-  void sarp_init_router(struct sarp_router ** router)
+  void llarp_init_router(struct llarp_router ** router)
   {
-    *router = static_cast<sarp_router *>(sarp_g_mem.malloc(sizeof(sarp_router)));
+    *router = static_cast<llarp_router *>(llarp_g_mem.malloc(sizeof(llarp_router)));
     if(*router)
     {
-      sarp_crypto_libsodium_init(&(*router)->crypto);
+      llarp_crypto_libsodium_init(&(*router)->crypto);
     }
   }
 
-  int sarp_configure_router(struct sarp_router * router, struct sarp_config * conf)
+  int llarp_configure_router(struct llarp_router * router, struct llarp_config * conf)
   {
-    sarp_config_iterator iter;
+    llarp_config_iterator iter;
     iter.user = router;
-    iter.visit = sarp::router_iter_config;
-    sarp_config_iter(conf, &iter);
+    iter.visit = llarp::router_iter_config;
+    llarp_config_iter(conf, &iter);
     return router->impl.Configured() ? 0 : -1;
   }
 
-  void sarp_run_router(struct sarp_router * router, struct sarp_ev_loop * loop)
+  void llarp_run_router(struct llarp_router * router, struct llarp_ev_loop * loop)
   {
     if(router->impl.Links.size())
       for(auto & iter : router->impl.Links)
-        sarp_ev_add_udp_listener(loop, iter->Listener());
+        llarp_ev_add_udp_listener(loop, iter->Listener());
   }
 
-  void sarp_free_router(struct sarp_router ** router)
+  void llarp_free_router(struct llarp_router ** router)
   {
     if(*router)
     {
-      sarp_router * r = *router;
+      llarp_router * r = *router;
       r->impl.Close();
-      sarp_g_mem.free(*router);
+      llarp_g_mem.free(*router);
     }
     *router = nullptr;
   }
 }
 
-namespace sarp
+namespace llarp
 {
   
-  void router_iter_config(sarp_config_iterator * iter, const char * section, const char * key, const char * val)
+  void router_iter_config(llarp_config_iterator * iter, const char * section, const char * key, const char * val)
   {
-    sarp_router * self = static_cast<sarp_router *>(iter->user);
+    llarp_router * self = static_cast<llarp_router *>(iter->user);
     if (streq(section, "links"))
     {
       if(streq(val, "ip"))

@@ -1,8 +1,8 @@
-#ifndef LIBSARP_STR_HPP
-#define LIBSARP_STR_HPP
+#ifndef LIBLLARP_STR_HPP
+#define LIBLLARP_STR_HPP
 #include <cstring>
 
-namespace sarp
+namespace llarp
 {
   static bool streq(const char * s1, const char * s2)
   {

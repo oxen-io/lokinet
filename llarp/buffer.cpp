@@ -1,8 +1,8 @@
-#include <sarp/buffer.h>
+#include <llarp/buffer.h>
 
 extern "C" {
 
-  size_t sarp_buffer_size_left(sarp_buffer_t * buff)
+  size_t llarp_buffer_size_left(llarp_buffer_t * buff)
   {
     std::ptrdiff_t diff = buff->cur - buff->base;
     if(diff < 0)

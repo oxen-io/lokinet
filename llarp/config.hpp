@@ -1,11 +1,11 @@
-#ifndef LIBSARP_CONFIG_HPP
-#define LIBSARP_CONFIG_HPP
+#ifndef LIBLLARP_CONFIG_HPP
+#define LIBLLARP_CONFIG_HPP
 #include <map>
 #include <string>
 
-#include <sarp/config.h>
+#include <llarp/config.h>
 
-namespace sarp
+namespace llarp
 {
   struct Config
   {
@@ -23,9 +23,9 @@ namespace sarp
 
 
 extern "C" {
-  struct sarp_config
+  struct llarp_config
   {
-    sarp::Config impl;
+    llarp::Config impl;
   };
 }
 

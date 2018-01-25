@@ -1,7 +1,7 @@
-#include <sarp/mem.h>
+#include <llarp/mem.h>
 
 extern "C" {
-  struct sarp_alloc sarp_g_mem = {
+  struct llarp_alloc llarp_g_mem = {
     .malloc = nullptr,
     .realloc = nullptr,
     .calloc = nullptr,
