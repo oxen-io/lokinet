@@ -16,7 +16,7 @@ extern "C" {
   struct llarp_config_iterator
   {
     void * user;
-    /** set by sarp_config_iter */
+    /** set by llarp_config_iter */
     struct llarp_config * conf;
     /** visit (self, section, key, value) */
     void (*visit)(struct llarp_config_iterator *, const char *, const char *, const char *);
