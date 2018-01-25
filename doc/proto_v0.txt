@@ -239,12 +239,15 @@ To transmit link message over an established session the transmitter sends an
 XMIT frame.
 In reply to an XMIT frame the recipiant MUST send an ACKS frame with an emtpy
 bitmask.
-After the transmitter recieves the first ACKS frame it is allowed to start sending FRAG
-messages.
-When all fragmenets are obtained by the recipiant, the recipiant sends an ACKS frame with a full bitfield (0xFFFF), to indicate the link message was recieved.
-In the event of packet drop the sender decides when to retransmit FRAG frames with expontential backoff.
+After the transmitter recieves the first ACKS frame it is allowed to start
+sending FRAG messages.
+When all fragmenets are obtained by the recipiant, the recipiant sends an ACKS
+frame with a full bitfield (0xFFFF), to indicate the link message was recieved.
+In the event of packet drop the sender decides when to retransmit FRAG frames
+with expontential backoff.
 
-In the event of packet loss greater than 50% over 10 second the session is invalidated and must be renegotiated with a new handshake.
+In the event of packet loss greater than 50% over 10 second the session is
+invalidated and must be renegotiated with a new handshake.
 
 ---
 
@@ -465,7 +468,8 @@ link relay exit record (LRXR)
 
 direct paths:
 
-a direct path is a "0 hop" path built by Alice to communicate directly to Bob for point to point transmission of routing layer messages.
+a direct path is a "0 hop" path built by Alice to communicate directly to Bob
+for point to point transmission of routing layer messages.
 
 these are built by sending a LRCM where B has 1 entry
 
@@ -478,7 +482,8 @@ layer and ip (internet protocol) for exit traffic or ap (anonymous protocol) for
 hidden services. replies to messages are sent back via the path they
 originated from inside a LRDM.
 
-for direct communication between routers a direct path MUST be used, these messages MUST NOT be sent on the link leyer.
+for direct communication between routers a direct path MUST be used, these
+messages MUST NOT be sent on the link leyer.
 
 obtain exit address message (OXAM)
 
@@ -522,8 +527,8 @@ transfer data fragment message (TDFM)
 
 variant 1 (with path id):
 
-transfer data to another path with id P on the local router place Y and X values into
-y and z values in LRDM message respectively.
+transfer data to another path with id P on the local router place Y and X values
+into y and z values in LRDM message respectively.
 
 {
   A: "T",
