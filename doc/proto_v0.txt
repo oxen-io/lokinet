@@ -261,14 +261,16 @@ An address info (AI) defines a publically reachable ipv6 endpoint
   e: "<32 bytes public encryption key>",
   d: "<transport dialect name>",
   i: "<16 bytes big endian public ipv6 address>",
-  p: port_uint16
+  p: port_uint16,
+  v: 0
 }
 
 Exit Info (XI)
 
 {
   a: "<16 bytes big endian ipv6 address>",
-  b: "<16 bytes big endian ipv6 netmask>"
+  b: "<16 bytes big endian ipv6 netmask>",
+  v: 0
 }
 
 router contact (RC)
