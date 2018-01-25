@@ -207,7 +207,8 @@ start transmiting a link layer message
 
 msg_bytes = BE(msg)
 
-32 bytes msgid computed as HS(msg_bytes)
+32 bytes hash of message computed as HS(msg_bytes)
+64 bits unsigned int message id
 12 bits unsigned int fragment size bytes, s
 4 bits unsigned int number of fragments, n
 8 bits size of last fragment in bytes, l
@@ -218,7 +219,7 @@ FRAG payload:
 
 transmit a link layer message fragment
 
-32 bytes msgid
+64 bits message id
 4 bits ignored
 4 bits unsigned int fragment number
 remaining bytes of payload are fragment data
@@ -227,7 +228,7 @@ ACKS payload:
 
 indicates we which chunks we have recieved
 
-32 bytes msgid
+64 bits message id
 16 bits bitmask of chunks we have received
 remaining bytes discarded
 
