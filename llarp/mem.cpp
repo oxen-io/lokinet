@@ -2,9 +2,7 @@
 
 extern "C" {
   struct llarp_alloc llarp_g_mem = {
-    .malloc = nullptr,
-    .realloc = nullptr,
-    .calloc = nullptr,
+    .alloc = nullptr,
     .free = nullptr
   };
 }

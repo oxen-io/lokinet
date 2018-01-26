@@ -7,19 +7,19 @@
 extern "C" {
 #endif
   
-  struct llarp_router_contact
+  struct llarp_rc
   {
     llarp_buffer_t raw;
-    struct llarp_address_info_list * addreses;
+    struct llarp_ai_list * addrs;
     llarp_pubkey_t pubkey;
-    struct llarp_exit_info_list * exits;
+    struct llarp_xi_list * exits;
     llarp_sig_t signature;
   };
 
-  bool llarp_rc_bdecode(struct llarp_router_contact * rc, llarp_buffer_t buf);
-  bool llarp_rc_bencode(struct llarp_router_contact * rc, llarp_buffer_t * buf);
-  void llarp_rc_free(struct llarp_router_contact ** rc);
-  bool llarp_rc_verify_sig(struct llarp_rotuer_contact * rc);
+  bool llarp_rc_bdecode(struct llarp_rc * rc, llarp_buffer_t * buf);
+  bool llarp_rc_bencode(struct llarp_rc * rc, llarp_buffer_t * buf);
+  void llarp_rc_free(struct llarp_rc ** rc);
+  bool llarp_rc_verify_sig(struct llarp_rc * rc);
 
   
   

@@ -1,7 +1,7 @@
 #include <llarp/config.h>
-#include <llarp/mem.h>
 #include "config.hpp"
 #include "ini.hpp"
+#include "mem.hpp"
 
 namespace llarp
 {
@@ -42,7 +42,7 @@ extern "C" {
   
   void llarp_new_config(struct llarp_config ** conf)
   {
-    llarp_config * c = static_cast<llarp_config *>(llarp_g_mem.malloc(sizeof(llarp_config)));
+    llarp_config * c = llarp::alloc<llarp_config>();
     *conf = c;
   }
 

@@ -12,6 +12,7 @@ extern "C" {
   } llarp_buffer_t;
 
   size_t llarp_buffer_size_left(llarp_buffer_t * buff);
+  bool llarp_buffer_write(llarp_buffer_t * buff, const void * data, size_t sz);
   
 #ifdef __cplusplus
 }

@@ -42,7 +42,6 @@ namespace llarp
     _crypto(crypto),
     state(eHandshakeInboundInit)
   {
-    memset(remotePubkey, 0, sizeof(remotePubkey));
     memset(sessionKey, 0, sizeof(sessionKey));
   }
 

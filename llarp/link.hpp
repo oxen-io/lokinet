@@ -5,8 +5,10 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <functional>
 
 #include <llarp/ev.h>
+#include <llarp/router_contact.h>
 
 namespace llarp
 {
@@ -15,7 +17,7 @@ namespace llarp
   struct PeerSession
   {
     sockaddr_in6 remoteAddr;
-    llarp_pubkey_t remotePubkey;
+    llarp_rc rc;
     llarp_sharedkey_t sessionKey;
 
     uint64_t lastRX;
@@ -39,9 +41,8 @@ namespace llarp
 
     /** inbound session */
     PeerSession(llarp_crypto * crypto, sockaddr_in6 remote);
-
     /** outbound session */
-    PeerSession(llarp_crypto * crypto, sockaddr_in6 remote, llarp_pubkey_t remotePubkey);
+    PeerSession(llarp_crypto * crypto, llarp_rc rc);
 
     PeerSession & operator=(const PeerSession & other);
     
@@ -52,6 +53,8 @@ namespace llarp
   };
 
   typedef std::unique_ptr<PeerSession> PeerSession_ptr;
+
+  typedef std::function<void(const PeerSession_ptr &)> PeerSessionVisitor;
   
   struct Link
   {
@@ -69,6 +72,8 @@ namespace llarp
     llarp_udp_listener _listener;
 
     llarp_udp_listener * Listener() { return &_listener; }
+
+    bool VisitPeerByIdent(PeerSessionVisitor v);
     
   };
 }

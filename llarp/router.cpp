@@ -1,6 +1,7 @@
 #include <llarp/router.h>
 #include <llarp/link.h>
 #include "link.hpp"
+#include "mem.hpp"
 #include <list>
 #include "str.hpp"
 
@@ -45,7 +46,7 @@ extern "C" {
   
   void llarp_init_router(struct llarp_router ** router)
   {
-    *router = static_cast<llarp_router *>(llarp_g_mem.malloc(sizeof(llarp_router)));
+    *router = llarp::alloc<llarp_router>(&llarp_g_mem);
     if(*router)
     {
       llarp_crypto_libsodium_init(&(*router)->crypto);
@@ -74,7 +75,7 @@ extern "C" {
     {
       llarp_router * r = *router;
       r->impl.Close();
-      llarp_g_mem.free(*router);
+      llarp_g_mem.free(r);
     }
     *router = nullptr;
   }
@@ -86,13 +87,13 @@ namespace llarp
   void router_iter_config(llarp_config_iterator * iter, const char * section, const char * key, const char * val)
   {
     llarp_router * self = static_cast<llarp_router *>(iter->user);
-    if (streq(section, "links"))
+    if (StrEq(section, "links"))
     {
-      if(streq(val, "ip"))
+      if(StrEq(val, "ip"))
       {
         self->impl.Links.push_back(new Link(&self->crypto));
       }
-      else if (streq(val, "eth"))
+      else if (StrEq(val, "eth"))
       {
         /** todo: ethernet link */
       }

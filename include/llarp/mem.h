@@ -9,17 +9,17 @@ extern "C" {
 
   struct llarp_alloc
   {
-    void * (*malloc)(size_t sz);
-    void * (*realloc)(void * ptr, size_t sz);
-    void * (*calloc)(size_t n, size_t sz);
+    void * (*alloc)(size_t sz, size_t align);
     void (*free)(void * ptr);
   };
   
   /** global memory allocator */
   extern struct llarp_alloc llarp_g_mem;
-  
+  /** init llarp_g_mem with stdlib malloc */
+  void llarp_mem_stdlib();
+  /** init llarp_g_mem with jemalloc */
   void llarp_mem_jemalloc();
-  void llarp_mem_std();
+  /** init llarp_g_mem with dmalloc */
   void llarp_mem_dmalloc();
 
 #ifdef __cplusplus

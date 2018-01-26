@@ -295,8 +295,8 @@ router contact (RC)
 {
   a: [ one, or, many, AI, here ... ],
   k: "<32 bytes public signing/encryption identity key>",
-  x: [ Exit, Infos ],
   v: 0,
+  x: [ Exit, Infos ],
   z: "<64 bytes signature using identity key>"
 }
 

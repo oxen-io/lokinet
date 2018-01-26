@@ -1,6 +1,6 @@
 #include <llarp/ev.h>
-#include <llarp/mem.h>
 #include <uv.h>
+#include "mem.hpp"
 
 struct llarp_ev_loop
 {
@@ -35,7 +35,7 @@ namespace llarp
 
   static void udp_alloc_cb(uv_handle_t * h, size_t sz, uv_buf_t * buf)
   {
-    buf->base = static_cast<char *>(llarp_g_mem.malloc(sz));
+    buf->base = static_cast<char *>(llarp_g_mem.alloc(sz, 512));
     buf->len = sz;
   }
 
@@ -58,7 +58,7 @@ namespace llarp
 extern "C" {
   void llarp_ev_loop_alloc(struct llarp_ev_loop ** ev)
   {
-    *ev = static_cast<llarp_ev_loop*>(llarp_g_mem.malloc(sizeof(struct llarp_ev_loop)));
+    *ev = llarp::alloc<llarp_ev_loop>();
     if (*ev)
     {
       uv_loop_init((*ev)->loop());
@@ -85,7 +85,7 @@ extern "C" {
     sockaddr_in6 addr;
     uv_ip6_addr(listener->host, listener->port, &addr);
     int ret = 0;
-    llarp::udp_listener * l = static_cast<llarp::udp_listener *>(llarp_g_mem.malloc(sizeof(llarp::udp_listener)));
+    llarp::udp_listener * l = llarp::alloc<llarp::udp_listener>();
     listener->impl = l;
     l->udp()->data = l;
     l->listener = listener;
