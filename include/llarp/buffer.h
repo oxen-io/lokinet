@@ -1,10 +1,11 @@
 #ifndef LLARP_BUFFER_H_
 #define LLARP_BUFFER_H_
+
+#include <stdlib.h>
+#include <stdbool.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include <stdlib.h>
-
   typedef struct llarp_buffer_t {
     char * base;
     size_t sz;

@@ -2,6 +2,9 @@
 #define LLARP_ROUTER_H_
 #include <llarp/config.h>
 #include <llarp/ev.h>
+#include <llarp/ibmq.h>
+#include <llarp/obmd.h>
+#include <llarp/threadpool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -9,13 +12,19 @@ extern "C" {
 
   struct llarp_router;
 
-  void llarp_init_router(struct llarp_router ** router);
+  struct llarp_router * llarp_init_router(struct llarp_threadpool * tp);
   void llarp_free_router(struct llarp_router ** router);
 
   int llarp_configure_router(struct llarp_router * router, struct llarp_config * conf);
   
   void llarp_run_router(struct llarp_router * router, struct llarp_ev_loop * loop);
   void llarp_stop_router(struct llarp_router * router);
+
+  
+  /** get router's inbound link level frame queue */
+  struct llarp_link_queue * llarp_router_link_queue(struct llarp_router * router);
+  /** get router's outbound link level frame dispatcher */
+  struct llarp_link_dispatcher * llarp_router_link_dispatcher(struct llarp_router * router);
 
 #ifdef __cplusplus
 }

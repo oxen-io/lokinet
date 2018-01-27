@@ -20,7 +20,7 @@ namespace llarp
       auto itr = link->sessions.find(remote);
       if(itr == link->sessions.end())
       {
-        link->sessions[remote] = std::make_unique<PeerSession>(link->_crypto, remote);
+        link->sessions[remote] = std::make_shared<PeerSession>(link->_crypto, remote);
       }
       link->sessions[remote]->RecvFrom(buff, sz);
     }
@@ -32,9 +32,6 @@ namespace llarp
     _listener.recvfrom = link_recv_from;
   }
 
-  Link::~Link()
-  {
-  }
   
   PeerSession::PeerSession(llarp_crypto * crypto, sockaddr_in6 remote) :
     lastRX(0),

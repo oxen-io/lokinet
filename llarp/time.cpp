@@ -5,21 +5,21 @@ namespace llarp
 {
   typedef std::chrono::steady_clock clock_t;
 
-  template<typename Res>
-  static uint64_t time_since_epoch()
+  template<typename Res, typename IntType>
+  static IntType time_since_epoch()
   {
     return std::chrono::duration_cast<Res>(llarp::clock_t::now().time_since_epoch()).count();
   }
 }
 
 extern "C" {
-  uint64_t llarp_time_now_ms()
+  llarp_time_t llarp_time_now_ms()
   {
-    return llarp::time_since_epoch<std::chrono::milliseconds>();
+    return llarp::time_since_epoch<std::chrono::milliseconds, llarp_time_t>();
   }
   
-  uint64_t llarp_time_now_sec()
+  llarp_seconds_t llarp_time_now_sec()
   {
-    return llarp::time_since_epoch<std::chrono::seconds>();
+    return llarp::time_since_epoch<std::chrono::seconds, llarp_seconds_t>();
   }
 }

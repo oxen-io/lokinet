@@ -2,55 +2,75 @@
 #include <llarp/link.h>
 #include "link.hpp"
 #include "mem.hpp"
-#include <list>
 #include "str.hpp"
 
 namespace llarp
 {
   void router_iter_config(llarp_config_iterator * iter, const char * section, const char * key, const char * val);
-
-  
-  struct Router
+  struct router_links
   {
-    std::list<Link *> Links;
-    llarp_crypto * crypto;
-    void Close()
-    {
-      if(Links.size())
-      {
-        for(auto & itr : Links)
-        {
-          llarp_ev_close_udp_listener(itr->Listener());
-        }
-        Links.clear();
-      }
-    }
-
-    bool Configured()
-    {
-      if(Links.size()) return true;
-      return false;
-    }
+    struct llarp_link * link = nullptr;
+    struct router_links * next = nullptr;
   };
 
 }
 
+struct llarp_router
+{
+  struct llarp_threadpool * tp;
+  llarp::router_links links;
+  llarp_crypto crypto;
+
+
+  static void * operator new(size_t sz)
+  {
+    return llarp_g_mem.alloc(sz, llarp::alignment<llarp_router>());
+  }
+
+  static void operator delete(void * ptr)
+  {
+    llarp_g_mem.free(ptr);
+  }
+
+  void AddLink(struct llarp_link * link)
+  {
+    llarp::router_links * head = &links;
+    while(head->next && head->link)
+      head = head->next;
+    
+    if(head->link)
+      head->next = new llarp::router_links{link, nullptr};
+    else
+      head->link = link;
+  }
+  
+  void ForEachLink(std::function<void(llarp_link *)> visitor)
+  {
+    llarp::router_links * cur = &links;
+    do
+    {
+      if(cur->link)
+        visitor(cur->link);
+      cur = cur->next;
+    }
+    while(cur);
+  }
+  
+  void Close()
+  {
+    ForEachLink(llarp_link_stop);
+  }
+};
+
 
 extern "C" {
 
-  struct llarp_router
+  struct llarp_router * llarp_init_router(struct llarp_threadpool * tp)
   {
-    llarp::Router impl;
-    llarp_crypto crypto;
-  };
-  
-  void llarp_init_router(struct llarp_router ** router)
-  {
-    *router = llarp::alloc<llarp_router>(&llarp_g_mem);
-    if(*router)
-    {
-      llarp_crypto_libsodium_init(&(*router)->crypto);
-    }
+    llarp_router * router = new llarp_router;
+    router->tp = tp;
+    llarp_crypto_libsodium_init(&router->crypto);
+    return router;
   }
 
   int llarp_configure_router(struct llarp_router * router, struct llarp_config * conf)
@@ -59,14 +79,14 @@ extern "C" {
     iter.user = router;
     iter.visit = llarp::router_iter_config;
     llarp_config_iter(conf, &iter);
-    return router->impl.Configured() ? 0 : -1;
+    return 0;
   }
 
   void llarp_run_router(struct llarp_router * router, struct llarp_ev_loop * loop)
   {
-    if(router->impl.Links.size())
-      for(auto & iter : router->impl.Links)
-        llarp_ev_add_udp_listener(loop, iter->Listener());
+    router->ForEachLink([loop](llarp_link * link) {
+      llarp_ev_add_udp_listener(loop, llarp_link_udp_listener(link));
+    });
   }
 
   void llarp_free_router(struct llarp_router ** router)
@@ -74,8 +94,9 @@ extern "C" {
     if(*router)
     {
       llarp_router * r = *router;
-      r->impl.Close();
-      llarp_g_mem.free(r);
+      r->Close();
+      r->ForEachLink([](llarp_link * link) { llarp_g_mem.free(link); });
+      delete r;
     }
     *router = nullptr;
   }
@@ -91,7 +112,14 @@ namespace llarp
     {
       if(StrEq(val, "ip"))
       {
-        self->impl.Links.push_back(new Link(&self->crypto));
+        struct llarp_link * link = llarp_link_alloc();
+        if(llarp_link_configure(link, key, AF_INET6))
+          self->AddLink(link);
+        else
+        {
+          llarp_link_free(&link);
+          printf("failed to configure %s link for %s\n", val, key);
+        }
       }
       else if (StrEq(val, "eth"))
       {

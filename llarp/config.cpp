@@ -42,14 +42,14 @@ extern "C" {
   
   void llarp_new_config(struct llarp_config ** conf)
   {
-    llarp_config * c = llarp::alloc<llarp_config>();
+    llarp_config * c = new llarp_config;
     *conf = c;
   }
 
   void llarp_free_config(struct llarp_config ** conf)
   {
     if(*conf)
-      llarp_g_mem.free(*conf);
+      delete *conf;
     *conf = nullptr;
   }
 

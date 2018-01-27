@@ -5,7 +5,7 @@ namespace llarp
 {
   static void * jem_malloc(size_t sz, size_t align)
   {
-    return mallocx(sz, MALLOCX_ZERO | MALLOCX_ALIGN(align));
+    return mallocx(sz, MALLOCX_ALIGN(align));
   }
 
   static void jem_free(void * ptr)

@@ -43,22 +43,18 @@ namespace llarp
     PeerSession(llarp_crypto * crypto, sockaddr_in6 remote);
     /** outbound session */
     PeerSession(llarp_crypto * crypto, llarp_rc rc);
-
-    PeerSession & operator=(const PeerSession & other);
     
     void SendTo(Link * link, const char * buff, std::size_t sz);
 
     void RecvFrom(const char * buff, ssize_t sz);
-    
+
+
+    typedef std::shared_ptr<PeerSession> Ptr;
   };
-
-  typedef std::unique_ptr<PeerSession> PeerSession_ptr;
-
-  typedef std::function<void(const PeerSession_ptr &)> PeerSessionVisitor;
   
   struct Link
   {
-    typedef std::map<sockaddr_in6, PeerSession_ptr> Sessions;
+    typedef std::map<sockaddr_in6, PeerSession::Ptr> Sessions;
  
     Sessions sessions;
     llarp_seckey_t transportSecKey;
@@ -67,13 +63,10 @@ namespace llarp
     llarp_crypto * _crypto;
 
     Link(llarp_crypto * crypto);
-    ~Link();
     
     llarp_udp_listener _listener;
 
     llarp_udp_listener * Listener() { return &_listener; }
-
-    bool VisitPeerByIdent(PeerSessionVisitor v);
     
   };
 }

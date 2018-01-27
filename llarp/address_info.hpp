@@ -13,7 +13,7 @@ struct llarp_ai_list
 static std::list<llarp_ai> ai_list_to_std(struct llarp_ai_list * l)
 {
   std::list<llarp_ai> list;
-  if(l->data)
+  if(l && l->data)
   {
     do
     {

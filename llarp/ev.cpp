@@ -6,6 +6,16 @@ struct llarp_ev_loop
 {
   uv_loop_t _loop;
 
+  static void * operator new(size_t sz)
+  {
+    return llarp_g_mem.alloc(sz, llarp::alignment<llarp_ev_loop>());
+  }
+
+  static void operator delete(void * ptr)
+  {
+    llarp_g_mem.free(ptr);
+  }
+  
   uv_loop_t * loop() { return &_loop; }
 };
 
@@ -13,6 +23,11 @@ namespace llarp
 {
   struct udp_listener
   {
+    static void * operator new(size_t sz)
+    {
+      return llarp_g_mem.alloc(sz, alignment<udp_listener>());
+    }
+    
     uv_udp_t _handle;
     struct llarp_udp_listener * listener;
     
@@ -35,7 +50,7 @@ namespace llarp
 
   static void udp_alloc_cb(uv_handle_t * h, size_t sz, uv_buf_t * buf)
   {
-    buf->base = static_cast<char *>(llarp_g_mem.alloc(sz, 512));
+    buf->base = static_cast<char *>(llarp_g_mem.alloc(sz, 1024));
     buf->len = sz;
   }
 
@@ -58,7 +73,7 @@ namespace llarp
 extern "C" {
   void llarp_ev_loop_alloc(struct llarp_ev_loop ** ev)
   {
-    *ev = llarp::alloc<llarp_ev_loop>();
+    *ev = new llarp_ev_loop;
     if (*ev)
     {
       uv_loop_init((*ev)->loop());
@@ -85,7 +100,7 @@ extern "C" {
     sockaddr_in6 addr;
     uv_ip6_addr(listener->host, listener->port, &addr);
     int ret = 0;
-    llarp::udp_listener * l = llarp::alloc<llarp::udp_listener>();
+    llarp::udp_listener * l = new llarp::udp_listener;
     listener->impl = l;
     l->udp()->data = l;
     l->listener = listener;
@@ -113,7 +128,7 @@ extern "C" {
         if(!uv_udp_recv_stop(l->udp()))
         {
           l->closed();
-          llarp_g_mem.free(l);
+          delete l;
           ret = 0;
         }
       }
