@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <sys/socket.h>
 
 #ifdef __cplusplus
@@ -35,14 +36,19 @@ extern "C" {
 
   struct llarp_ev_job
   {
+    /** the loop this job belongs to */
     struct llarp_ev_loop * loop;
+    /** user data */
     void * user;
     /** work is called async when ready in the event loop thread */
     void (*work)(struct llarp_ev_job *);
   };
 
-  /** call work async in event loop thread (thread safe) */
-  void llarp_ev_async(struct llarp_ev_loop * ev, struct llarp_ev_job job);
+  /** 
+      call work async in event loop thread (thread safe) 
+      return true if we queued the job otherwise return false
+   */
+  bool llarp_ev_async(struct llarp_ev_loop * ev, struct llarp_ev_job job);
   
 #ifdef __cplusplus
 }

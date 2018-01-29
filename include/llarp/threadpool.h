@@ -13,10 +13,14 @@ extern "C" {
   /** job to be done in worker thread */
   struct llarp_thread_job
   {
-    /** calls result async after work is executed */
+    /** 
+        called async after work is executed 
+     */
     struct llarp_ev_job * result;
+    /** user data to pass to work function */
+    void * user;
     /** called in threadpool worker thread */
-    void (*work)(struct llarp_thread_job *);
+    void (*work)(void *);
   };
   
   void llarp_threadpool_queue_job(struct llarp_threadpool * tp, struct llarp_thread_job j);

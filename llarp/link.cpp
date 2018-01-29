@@ -7,43 +7,30 @@ bool operator < (const sockaddr_in6 addr0, const sockaddr_in6 addr1)
   return memcmp(addr0.sin6_addr.s6_addr, addr1.sin6_addr.s6_addr, sizeof(addr0.sin6_addr)) && addr0.sin6_port < addr1.sin6_port;
 }
 
-namespace llarp
-{
-
-  static void link_recv_from(struct llarp_udp_listener * l, const struct sockaddr * src, char * buff, ssize_t sz)
+extern "C"{
+  struct llarp_link * llarp_link_alloc()
   {
-    if(src && src->sa_family == AF_INET6)
-    {
-      Link * link = static_cast<Link*>(l->user);
-      struct sockaddr_in6 remote;
-      memcpy(&remote, src, sizeof(sockaddr_in6));
-      auto itr = link->sessions.find(remote);
-      if(itr == link->sessions.end())
-      {
-        link->sessions[remote] = std::make_shared<PeerSession>(link->_crypto, remote);
-      }
-      link->sessions[remote]->RecvFrom(buff, sz);
-    }
-  }
-  
-  Link::Link(llarp_crypto * crypto) : _crypto(crypto)
-  {
-    _listener.user = this;
-    _listener.recvfrom = link_recv_from;
+    return new llarp_link;
   }
 
-  
-  PeerSession::PeerSession(llarp_crypto * crypto, sockaddr_in6 remote) :
-    lastRX(0),
-    remoteAddr(remote),
-    _crypto(crypto),
-    state(eHandshakeInboundInit)
+  void llarp_link_free(struct llarp_link ** l)
   {
-    memset(sessionKey, 0, sizeof(sessionKey));
+    if(*l) delete *l;
+    *l =nullptr;
   }
 
-  void PeerSession::RecvFrom(const char * buff, ssize_t sz)
+  struct llarp_udp_listener * llarp_link_udp_listener(struct llarp_link *l)
   {
-    lastRX = llarp_time_now_ms();
+    return &l->listener;
+  }
+
+  bool llarp_link_configure(struct llarp_link * link, const char * ifname, int af)
+  {
+    return false;
+  }
+
+  void llarp_link_stop(struct llarp_link * link)
+  {
+    llarp_ev_close_udp_listener(&link->listener);
   }
 }

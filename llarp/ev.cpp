@@ -27,6 +27,11 @@ namespace llarp
     {
       return llarp_g_mem.alloc(sz, alignment<udp_listener>());
     }
+
+    static void operator delete(void * ptr)
+    {
+      llarp_g_mem.free(ptr);
+    }
     
     uv_udp_t _handle;
     struct llarp_udp_listener * listener;
@@ -65,10 +70,28 @@ namespace llarp
   {
     udp_listener * l = static_cast<udp_listener *>(handle->data);
     l->closed();
-    llarp_g_mem.free(l);
+    delete l;
   }
 }
 
+
+namespace llarp
+{
+
+  static void ev_handle_async_closed(uv_handle_t * handle)
+  {
+    struct llarp_ev_job * ev = static_cast<llarp_ev_job *>(handle->data);
+    llarp_g_mem.free(ev);
+    llarp_g_mem.free(handle);
+  }
+  
+  static void ev_handle_async(uv_async_t * handle)
+  {
+    struct llarp_ev_job * ev = static_cast<llarp_ev_job *>(handle->data);
+    ev->work(ev);
+    uv_close((uv_handle_t *)handle, ev_handle_async_closed);
+  }
+}
 
 extern "C" {
   void llarp_ev_loop_alloc(struct llarp_ev_loop ** ev)
@@ -134,5 +157,28 @@ extern "C" {
       }
     }
     return ret;
+  }
+
+  void llarp_ev_loop_stop(struct llarp_ev_loop * loop)
+  {
+    uv_stop(loop->loop());
+  }
+
+  bool llarp_ev_async(struct llarp_ev_loop * loop, struct llarp_ev_job job)
+  {
+    struct llarp_ev_job * job_copy = static_cast<struct llarp_ev_job *>(llarp_g_mem.alloc(sizeof(struct llarp_ev_job), llarp::alignment<llarp_ev_job>()));
+    job_copy->work = job.work;
+    job_copy->loop = loop;
+    job_copy->user = job.user;
+    uv_async_t * async = static_cast<uv_async_t *>(llarp_g_mem.alloc(sizeof(uv_async_t), llarp::alignment<uv_async_t>()));
+    async->data = job_copy;
+    if(uv_async_init(loop->loop(), async, llarp::ev_handle_async) == 0 && uv_async_send(async))
+      return true;
+    else
+    {
+      llarp_g_mem.free(job_copy);
+      llarp_g_mem.free(async);
+      return false;
+    }
   }
 }

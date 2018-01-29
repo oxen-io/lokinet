@@ -89,14 +89,17 @@ extern "C" {
     });
   }
 
+  void llarp_stop_router(struct llarp_router * router)
+  {
+    router->Close();
+  }
+
   void llarp_free_router(struct llarp_router ** router)
   {
     if(*router)
     {
-      llarp_router * r = *router;
-      r->Close();
-      r->ForEachLink([](llarp_link * link) { llarp_g_mem.free(link); });
-      delete r;
+      (*router)->ForEachLink([](llarp_link * link) { llarp_g_mem.free(link); });
+      delete *router;
     }
     *router = nullptr;
   }
