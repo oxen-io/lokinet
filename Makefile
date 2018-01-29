@@ -11,6 +11,10 @@ STATIC_OBJ = $(STATIC_SRC_CPP:.cpp=.cpp.o) $(STATIC_SRC_C:.c=.c.o)
 DAEMON_SRC = $(wildcard $(REPO)/daemon/*.c)
 DAEMON_OBJ = $(DAEMON_SRC:.c=.c.o)
 
+HDRS = $(wildcard $(REPO)/llarp/*.hpp) $(wildcard $(REPO)/include/*/*.h) 
+SRCS = $(DAEMON_SRC) $(STATIC_SRC_CPP) $(STATIC_SRC_C)
+FORMAT = clang-format
+
 SODIUM_FLAGS = $(shell pkg-config --cflags libsodium)
 SODIUM_LIBS = $(shell pkg-config --libs libsodium)
 
@@ -30,6 +34,9 @@ REQUIRED_CXXFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c++17 
 REQUIRED_LDFLAGS = $(LDFLAGS) -ljemalloc $(SODIUM_LIBS) $(LIBUV_LIBS)
 
 all: build
+
+format: $(HDRS) $(SRCS)
+	$(FORMAT) -i $^
 
 build: $(EXE)
 

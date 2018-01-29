@@ -15,11 +15,14 @@
 
 #ifndef LLARP_VERSION_NUM
 #ifdef GIT_REV
-#define LLARP_VERSION_NUM "-"LLARP_VERSION_MAJ"."LLARP_VERSION_MIN"."LLARP_VERSION_PATCH"-"GIT_REV
+#define LLARP_VERSION_NUM                                                      \
+  "-" LLARP_VERSION_MAJ "." LLARP_VERSION_MIN "." LLARP_VERSION_PATCH          \
+  "-" GIT_REV
 #else
-#define LLARP_VERSION_NUM "-"LLARP_VERSION_MAJ"."LLARP_VERSION_MIN"."LLARP_VERSION_PATCH
+#define LLARP_VERSION_NUM                                                      \
+  "-" LLARP_VERSION_MAJ "." LLARP_VERSION_MIN "." LLARP_VERSION_PATCH
 #endif
 #endif
-#define LLARP_VERSION "llarpd"LLARP_VERSION_NUM
+#define LLARP_VERSION "llarpd" LLARP_VERSION_NUM
 
 #endif

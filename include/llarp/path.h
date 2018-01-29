@@ -5,8 +5,7 @@
 
 typedef uint64_t llarp_path_id_t;
 
-struct llarp_transit_hop
-{
+struct llarp_transit_hop {
   llarp_path_id_t id;
   llarp_sharedkey_t symkey;
   llarp_pubkey_t nextHop;
@@ -14,6 +13,5 @@ struct llarp_transit_hop
   uint64_t lifetime;
   llarp_version_t version;
 };
-
 
 #endif

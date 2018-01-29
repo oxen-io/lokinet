@@ -5,9 +5,9 @@
 extern "C" {
 #endif
 
-  llarp_time_t llarp_time_now_ms();
-  llarp_seconds_t llarp_time_now_sec();
-  
+llarp_time_t llarp_time_now_ms();
+llarp_seconds_t llarp_time_now_sec();
+
 #ifdef __cplusplus
 }
 #endif
