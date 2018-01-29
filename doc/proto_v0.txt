@@ -287,6 +287,7 @@ Exit Info (XI)
 {
   a: "<16 bytes big endian ipv6 address>",
   b: "<16 bytes big endian ipv6 netmask>",
+  k: "<32 bytes public encryption/signing key>",
   v: 0
 }
 
@@ -561,36 +562,51 @@ replies are sent down the path that messages originate from.
 
 grant exit address messsage (GXAM)
 
-sent in response to a OXAM to grant an ip for exit traffic from an external
+sent in response to an OXAM to grant an ip for exit traffic from an external
 ip address used for exit traffic.
 
 {
   A: "G",
-  E: "<16 byte big endian externally reachable ipv6 address>",
+  E: XI,
   I: "<32 bytes signing public key of requester>",
+  T: transaction_id_uint64,
   V: 0,
-  Z: "<64 bytes signature using exit's signing key>"
+  Z: "<64 bytes signature using exit info's signing key>"
 }
 
+E contains an exit info that was granted to the requester that can be used with
+IP exit traffic.
+
+The requester will now have any ip traffic going to the address in XI forwarded
+to them via the path that originally sent the OXAM and any TDFM will is recieved
+on the same path will be forwarded out to the internet, given that they have
+valid signatures and addresses.
+
+
 reject exit address message (RXAM)
+
+sent in response to an OXAM to indicate that exit traffic is not allowed or
+was denied.
 
 {
   A: "R",
   B: backoff_milliseconds_uint64,
   I: "<32 bytes signing public key of requester>",
   R: "<optional reject metadata>",
+  T: transaction_id_uint64,
   V: 0,
-  Z: "<64 bytes signature signed by exit>"
+  Z: "<64 bytes signature signed by exit info's signing key>"
 }
 
+B is set to a backoff value.
+R contains additional metadata text describing why the exit was rejected.
 
 
 transfer data fragment message (TDFM)
 
 variant 1 (with path id):
 
-transfer data to another path with id P on the local router place Y and X values
-into y and z values in LRDM message respectively.
+transfer data between paths.
 
 {
   A: "T",
@@ -601,6 +617,10 @@ into y and z values in LRDM message respectively.
   Z: "<64 bytes signature of entire message where Z is set to NUL>",
 }
 
+transfer data to another path with id P on the local router place Y and X values
+into y and z values into a LRDM message (respectively) and send it in the
+downstream direction.
+
 variant 2 (no path id):
 
 transfer ip traffic for exit
@@ -609,17 +629,77 @@ transfer ip traffic for exit
   A: "T",
   V: 0,
   X: "<N bytes ipv6 packet>",
-  Z: "<64 bytes signature of previously provided signing key>"
+  Y: "<16 bytes nounce>",
+  Z: "<64 bytes signature using previously provided signing key>"
 }
+
+X is parsed as an IPv6 packet and the source addresss is extracted.
+Next we find the corrisponding signing key for a previously granted exit address
+and use it to validate the siganture of the entire message. If the signing key
+cannot be found or the signature is invalid this message is dropped, otherwise
+the X value is sent on the appropriate exit network interface.
+
+When we recieve an ip packet from the internet to an exit address, we put it
+into a TDFM, signed with the exit info's signing key and send it downstream the
+corrispondinn path in an LRDM.
+
+
+update exit path message (UXPM)
+
+sent from a new path by client to indicate that a previously established exit
+should use the new path that this message came from.
+
+{
+  A: "U",
+  T: transaction_id_uint64,
+  V: 0,
+  Y: "<16 bytes nounce>",
+  Z: "<64 bytes signature using previously provided signing key>"
+}
+
+T is the transaction ID from the GXAM
+
+close exit path message (CXPM)
+
+client sends a CXPM when the exit is no longer needed.
+The address used in exit MAY be reused later.
+
+{
+  A: "C",
+  T: transaction_id_uint64,
+  V: 0,
+  Y: "<16 bytes nounce>",
+  Z: "<64 bytes signagure using previously provided signing key>"
+}
+
+---
+
+DHT messages
+
 
 find introduction message (FIM)
 
+recursively find an IS
+
 {
   A: "F",
+  R: r5n_counter,
   S: "<64 bytes dht key>",
-  V: 0,
-  T: transaction_id_uint64
+  T: transaction_id_uint64,
+  V: 0
 }
+
+if R is non-zero and less or equal to than 5, decrement the value and forward
+request to random peer unconditionally. The transaction will persist until
+replied to by a GIM or 60 seconds, whichever is reached first.
+
+if R is greater than 5, immediately reply with a GIM with an X value as an empty
+list, terminating the transaction.
+
+if R is zero, if we have 1 or more IS at position S in dht keyspace reply with a
+GIM holding the IS who contains the introducer with the highest expiration
+timestamp.
+
 
 got introduction message (GIM)
 
@@ -641,8 +721,11 @@ in the future the location will be determined by the dht kdf
 which uses a shared random source to obfuscate keyspace location.
 
 
+R is currently set to 3 +/- 2 by the sender.
+
 {
   A: "P",
+  R: r5n_counter,
   T: transaction_id_uint64,
   V: 0,
   X: [ IS, IS, IS, ... ],
