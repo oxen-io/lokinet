@@ -269,6 +269,10 @@ datastructures:
 all datastructures are assumed version 0 if they lack a v value
 otherwise version is provided by the v value
 
+all ip addresses can be ipv4 via hybrid dual stack ipv4 mapped ipv6 addresses,
+i.e ::ffff.8.8.8.8. The underlying implementation MAY implement ipv4 as native
+ipv4 instead of using a hybrid dual stack.
+
 address info (AI)
 
 An address info (AI) defines a publically reachable ipv6 endpoint
@@ -284,10 +288,27 @@ An address info (AI) defines a publically reachable ipv6 endpoint
 
 Exit Info (XI)
 
+An exit info (XI) defines a exit address that can relay exit traffic to the 
+internet.
+
 {
   a: "<16 bytes big endian ipv6 address>",
   b: "<16 bytes big endian ipv6 netmask>",
   k: "<32 bytes public encryption/signing key>",
+  v: 0
+}
+
+
+Exit Route (XR)
+
+An exit route (XR) define an allocated exit address and any additional
+information required to access the internet via that exit address.
+
+{
+  a: "<16 bytes big endian ipv6 gateway address>",
+  b: "<16 bytes big endian ipv6 netmask>",
+  c: "<16 bytes big endian ipv6 source address>",
+  e: lifetime_in_seconds_uint64,
   v: 0
 }
 
@@ -296,6 +317,7 @@ router contact (RC)
 {
   a: [ one, or, many, AI, here ... ],
   k: "<32 bytes public signing/encryption identity key>",
+  u: last_updated_seconds_since_epoch_uint64,
   v: 0,
   x: [ Exit, Infos ],
   z: "<64 bytes signature using identity key>"
@@ -393,8 +415,25 @@ routing layer messages.
 any link layer message without a key v is assumed to be version 0 otherwise
 indicates the protocol version in use.
 
+
+
+link introduce message (LIM)
+
+This message MUST be the first link message sent before any others. This message
+identifies the sender as having the RC contained in r. The recipiant MUST
+validate the RC's signature and ensure that the public key in use is listed in
+the RC.a matching the ipv6 address it originated from.
+
+{
+  a: "i",
+  r: RC,
+  v: 0
+}
+
+
 link relay commit message (LRCM)
 
+request a commit to relay traffic to another node.
 
 {
   a: "c",
@@ -406,7 +445,7 @@ link relay commit message (LRCM)
 link relay commit record (LRCR)
 
 record requesting path with id p relay messages for x seconds to router
-on network who's i is equal to RC.k and decrypt data any messages using
+-+on network who's i is equal to RC.k and decrypt data any messages using
 PKE(n, rc.K, c) as symettric key for encryption and decryption.
 
 {
@@ -548,6 +587,8 @@ originated from inside a LRDM.
 for direct communication between routers a direct path MUST be used, these
 messages MUST NOT be sent on the link leyer.
 
+ipv4 addresses are allowed via ipv4 mapped ipv6 addresses, i.e. ::ffff.10.0.0.1
+
 obtain exit address message (OXAM)
 
 sent to an exit router to obtain a NAT ip address for ip exit traffic.
@@ -567,19 +608,19 @@ ip address used for exit traffic.
 
 {
   A: "G",
-  E: XI,
+  E: XR,
   I: "<32 bytes signing public key of requester>",
   T: transaction_id_uint64,
   V: 0,
   Z: "<64 bytes signature using exit info's signing key>"
 }
 
-E contains an exit info that was granted to the requester that can be used with
+E contains an exit route that was granted to the requester that can be used with
 IP exit traffic.
 
-The requester will now have any ip traffic going to the address in XI forwarded
-to them via the path that originally sent the OXAM and any TDFM will is recieved
-on the same path will be forwarded out to the internet, given that they have
+The requester will now have any ip traffic going to address S forwarded to them
+via the path that originally sent the OXAM and any TDFM will is recieved on the
+same path will be forwarded out to the internet, given that they have
 valid signatures and addresses.
 
 
@@ -745,7 +786,7 @@ for the previously provided IS, if backoff is 0 the operation was successfull
 
 find router contact message (FRCM)
 
-find a router by public key
+find a router by long term RC.k public key
 
 {
   A: "F",
