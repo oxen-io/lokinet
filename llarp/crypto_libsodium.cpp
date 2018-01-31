@@ -1,17 +1,15 @@
 #include <llarp/crypto.h>
-#include <sodium/crypto_generichash.h>
-#include <sodium/crypto_scalarmult.h>
-#include <sodium/crypto_sign.h>
-#include <sodium/crypto_stream_xchacha20.h>
+#include <sodium.h>
+#include <assert.h>
 
 namespace llarp {
 namespace sodium {
-bool xchacha20(llarp_buffer_t buff, llarp_sharedkey_t k, llarp_nounce_t n) {
+static bool xchacha20(llarp_buffer_t buff, llarp_sharedkey_t k, llarp_nounce_t n) {
   uint8_t *base = (uint8_t *)buff.base;
   return crypto_stream_xchacha20_xor(base, base, buff.sz, n, k) == 0;
 }
 
-bool dh(llarp_sharedkey_t *shared, uint8_t *client_pk, uint8_t *server_pk,
+static bool dh(llarp_sharedkey_t *shared, uint8_t *client_pk, uint8_t *server_pk,
         uint8_t *remote_key, uint8_t *local_key) {
   uint8_t *out = *shared;
   const size_t outsz = SHAREDKEYSIZE;
@@ -26,7 +24,7 @@ bool dh(llarp_sharedkey_t *shared, uint8_t *client_pk, uint8_t *server_pk,
   return true;
 }
 
-bool dh_client(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
+static bool dh_client(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
                llarp_tunnel_nounce_t n, llarp_seckey_t sk) {
   llarp_pubkey_t local_pk;
   crypto_scalarmult_base(local_pk, sk);
@@ -37,7 +35,7 @@ bool dh_client(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
   return false;
 }
 
-bool dh_server(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
+static bool dh_server(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
                llarp_tunnel_nounce_t n, llarp_seckey_t sk) {
   llarp_pubkey_t local_pk;
   crypto_scalarmult_base(local_pk, sk);
@@ -48,31 +46,44 @@ bool dh_server(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
   return false;
 }
 
-bool hash(llarp_hash_t *result, llarp_buffer_t buff) {
+static bool hash(llarp_hash_t *result, llarp_buffer_t buff) {
   const uint8_t *base = (const uint8_t *)buff.base;
   return crypto_generichash(*result, HASHSIZE, base, buff.sz, nullptr, 0) != -1;
 }
 
-bool hmac(llarp_hash_t *result, llarp_buffer_t buff, llarp_seckey_t secret) {
+static bool hmac(llarp_hash_t *result, llarp_buffer_t buff, llarp_seckey_t secret) {
   const uint8_t *base = (const uint8_t *)buff.base;
   return crypto_generichash(*result, sizeof(llarp_hash_t), base, buff.sz,
                             secret, HMACSECSIZE) != -1;
 }
 
-bool sign(llarp_sig_t *result, llarp_seckey_t secret, llarp_buffer_t buff) {
+static bool sign(llarp_sig_t *result, llarp_seckey_t secret, llarp_buffer_t buff) {
   const uint8_t *base = (const uint8_t *)buff.base;
   return crypto_sign_detached(*result, nullptr, base, buff.sz, secret) != -1;
 }
 
-bool verify(llarp_pubkey_t pub, llarp_buffer_t buff, llarp_sig_t sig) {
+static bool verify(llarp_pubkey_t pub, llarp_buffer_t buff, llarp_sig_t sig) {
   const uint8_t *base = (const uint8_t *)buff.base;
   return crypto_sign_verify_detached(sig, base, buff.sz, pub) != -1;
 }
+
+  static void randomize(llarp_buffer_t buff)
+  {
+    randombytes((unsigned char *)buff.base, buff.sz);
+  }
+
+  static void keygen(struct llarp_keypair * keys)
+  {
+    randombytes(keys->sec, sizeof(llarp_seckey_t));
+    unsigned char sk[64];
+    crypto_sign_seed_keypair(keys->pub, sk, keys->sec);
+  }
 } // namespace sodium
 } // namespace llarp
 
 extern "C" {
 void llarp_crypto_libsodium_init(struct llarp_crypto *c) {
+  assert(sodium_init() != -1);
   c->xchacha20 = llarp::sodium::xchacha20;
   c->dh_client = llarp::sodium::dh_client;
   c->dh_server = llarp::sodium::dh_server;
@@ -80,5 +91,7 @@ void llarp_crypto_libsodium_init(struct llarp_crypto *c) {
   c->hmac = llarp::sodium::hmac;
   c->sign = llarp::sodium::sign;
   c->verify = llarp::sodium::verify;
+  c->randomize = llarp::sodium::randomize;
+  c->keygen = llarp::sodium::keygen;
 }
 }

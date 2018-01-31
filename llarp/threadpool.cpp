@@ -4,7 +4,7 @@
 namespace llarp {
 namespace thread {
 Pool::Pool(size_t workers) {
-  stop.store(true);
+  stop.store(false);
   while (workers--) {
     threads.emplace_back([this] {
       for (;;) {
@@ -21,10 +21,12 @@ Pool::Pool(size_t workers) {
         // do work
         job.work(job.user);
         // inform result if needed
-        if (job.result && job.result->loop)
-          if (!llarp_ev_async(job.result->loop, *job.result)) {
+        if (job.caller)
+        {
+          if (!llarp_ev_call_async(job.caller, job.data)) {
             std::cerr << "failed to queue result in thread worker" << std::endl;
           }
+        }
       }
     });
   }
@@ -73,6 +75,16 @@ struct llarp_threadpool *llarp_init_threadpool(int workers) {
 
 void llarp_threadpool_join(struct llarp_threadpool *pool) { pool->impl.Join(); }
 
+void llarp_threadpool_start(struct llarp_threadpool * pool)
+{
+  /** no op */
+}
+
+  void llarp_threadpool_queue_job(struct llarp_threadpool * pool, struct llarp_thread_job job)
+  {
+    pool->impl.QueueJob(job);
+  }
+  
 void llarp_free_threadpool(struct llarp_threadpool **pool) {
   delete *pool;
   *pool = nullptr;

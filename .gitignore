@@ -6,3 +6,6 @@
 *.plist
 
 llarpd
+
+*.test
+*.bin

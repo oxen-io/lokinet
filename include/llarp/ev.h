@@ -34,21 +34,33 @@ int llarp_ev_add_udp_listener(struct llarp_ev_loop *ev,
 
 int llarp_ev_close_udp_listener(struct llarp_udp_listener *listener);
 
-struct llarp_ev_job {
+  struct llarp_ev_async_call;
+  
+typedef void (*llarp_ev_work_func)(struct llarp_ev_async_call *);
+
+
+  struct llarp_ev_caller;
+  
+struct llarp_ev_async_call {
   /** the loop this job belongs to */
-  struct llarp_ev_loop *loop;
+  const struct llarp_ev_loop *loop;
+  /** private implementation */
+  const struct llarp_ev_caller * parent;
   /** user data */
-  void *user;
-  /** work is called async when ready in the event loop thread */
-  void (*work)(struct llarp_ev_job *);
+  const void *user;
+  /** 
+      work is called async when ready in the event loop thread
+      must not free from inside this call as it is done elsewhere
+   */
+  const llarp_ev_work_func work;
 };
 
-/**
-    call work async in event loop thread (thread safe)
-    return true if we queued the job otherwise return false
- */
-bool llarp_ev_async(struct llarp_ev_loop *ev, struct llarp_ev_job job);
+  struct llarp_ev_caller * llarp_ev_prepare_async(struct llarp_ev_loop *ev, llarp_ev_work_func func);
 
+  bool llarp_ev_call_async(struct llarp_ev_caller * c, void * user);
+
+  void llarp_ev_caller_stop(struct llarp_ev_caller * c);
+  
 #ifdef __cplusplus
 }
 #endif
