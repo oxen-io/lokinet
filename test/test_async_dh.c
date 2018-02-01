@@ -12,10 +12,11 @@ struct dh_bench_main {
 
 static void handle_dh_complete(struct llarp_dh_result *res) {
   struct dh_bench_main *m = (struct dh_bench_main *)res->user;
+
   m->completed++;
-  if (m->completed % 1000 == 0) printf("completed %ld\n", m->completed);
-  if (m->completed == m->num) {
-    printf("we done\n");
+  if (m->completed % 10000 == 0) printf("completed %ld\n", m->completed);
+  if (m->completed == m->num)
+  {
     llarp_ev_loop_stop(m->ev);
   }
 }
@@ -30,29 +31,32 @@ int main(int argc, char *argv[]) {
   llarp_ev_loop_alloc(&dh_main.ev);
 
   tp = llarp_init_threadpool(8);
-  dh_main.dh = llarp_async_dh_new(&crypto, dh_main.ev, tp);
-  llarp_threadpool_start(tp);
 
-  dh_main.num = 1000000;
+  dh_main.num = 100000;
   dh_main.completed = 0;
-  struct llarp_keypair ourkey;
-  struct llarp_keypair theirkey;
+  llarp_seckey_t ourkey;
+  llarp_seckey_t theirkey;
 
   crypto.keygen(&ourkey);
   crypto.keygen(&theirkey);
 
+  dh_main.dh = llarp_async_dh_new(ourkey, &crypto, dh_main.ev, tp);
+  llarp_threadpool_start(tp);
+  
   llarp_tunnel_nounce_t nounce;
   llarp_buffer_t n_buff;
   n_buff.base = nounce;
   n_buff.cur = n_buff.base;
   n_buff.sz = sizeof(llarp_tunnel_nounce_t);
 
+  uint8_t * theirpubkey = llarp_seckey_topublic(theirkey);
+  
   size_t sz = dh_main.num;
   printf("starting %ld dh jobs\n", sz);
   /* do work here */
   while (sz--) {
     crypto.randomize(n_buff);
-    llarp_async_client_dh(dh_main.dh, ourkey.sec, theirkey.pub, nounce,
+    llarp_async_client_dh(dh_main.dh, theirpubkey, nounce,
                           handle_dh_complete, &dh_main);
   }
   printf("started %ld dh jobs\n", dh_main.num);

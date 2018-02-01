@@ -52,19 +52,21 @@ all: build
 format:
 	$(FORMAT) -style=Google -i $(HDRS) $(SRCS)
 
-build: $(EXE)
+build: shared $(EXE)
 
 test: $(TEST_OBJ_CPP) $(TEST_OBJ_C)
 
+shared: $(SHARED_LIB)
 
 $(TEST_SRC): $(STATIC_LIB)
 
-$(TEST_OBJ_CPP): $(TEST_SRC_CPP)
+
+$(REPO)/test/%.cpp.bin: $(REPO)/test/%.cpp
 	$(CXX) $(REQUIRED_CXXFLAGS) $< -o $<.bin $(TEST_LDFLAGS)
 	mv $<.bin $<.test
 	$<.test
 
-$(TEST_OBJ_C): $(TEST_SRC_C)
+$(REPO)/test/%.c.bin: $(REPO)/test/%.c
 	$(CC) $(REQUIRED_CFLAGS) $< -o $<.bin $(TEST_LDFLAGS)
 	mv $<.bin $<.test
 	$<.test

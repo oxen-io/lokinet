@@ -34,6 +34,7 @@ struct llarp_ev_caller {
       auto &front = pending.front();
       front->work(front);
       pending.pop();
+      delete front;
     }
   }
 

@@ -73,10 +73,15 @@ static void randomize(llarp_buffer_t buff) {
   randombytes((unsigned char *)buff.base, buff.sz);
 }
 
-static void keygen(struct llarp_keypair *keys) {
-  randombytes(keys->sec, sizeof(llarp_seckey_t));
-  unsigned char sk[64];
-  crypto_sign_seed_keypair(keys->pub, sk, keys->sec);
+static inline void randbytes(void * ptr, size_t sz)
+{
+  randombytes((unsigned char*)ptr, sz);
+}
+  
+static void keygen(llarp_seckey_t *keys) {
+  unsigned char seed[32];
+  uint8_t * pk = llarp_seckey_topublic(*keys);
+  crypto_sign_seed_keypair(pk, *keys, seed);
 }
 }  // namespace sodium
 }  // namespace llarp
@@ -92,6 +97,7 @@ void llarp_crypto_libsodium_init(struct llarp_crypto *c) {
   c->sign = llarp::sodium::sign;
   c->verify = llarp::sodium::verify;
   c->randomize = llarp::sodium::randomize;
+  c->randbytes = llarp::sodium::randbytes;
   c->keygen = llarp::sodium::keygen;
 }
 }
