@@ -38,6 +38,7 @@ int shutdown_llarp(struct llarp_main *m) {
   printf(".");
   llarp_free_threadpool(&m->tp);
   printf(".\n");
+  return 0;
 }
 
 int main(int argc, char *argv[]) {

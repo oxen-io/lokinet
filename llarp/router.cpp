@@ -1,41 +1,35 @@
 #include <llarp/link.h>
 #include <llarp/router.h>
+#include <llarp/ibfq.h>
+#include "router.hpp"
 #include "link.hpp"
-#include "mem.hpp"
 #include "str.hpp"
 
 namespace llarp {
 void router_iter_config(llarp_config_iterator *iter, const char *section,
                         const char *key, const char *val);
-struct router_links {
-  struct llarp_link *link = nullptr;
-  struct router_links *next = nullptr;
-};
-
 }  // namespace llarp
 
-struct llarp_router {
-  struct llarp_threadpool *tp;
-  llarp::router_links links;
-  llarp_crypto crypto;
+llarp_router::llarp_router()
+{
+  llarp_msg_muxer_init(&muxer);
+}
 
-  static void *operator new(size_t sz) {
-    return llarp_g_mem.alloc(sz, llarp::alignment<llarp_router>());
-  }
+llarp_router::~llarp_router()
+{
+}
+  
+void llarp_router::AddLink(struct llarp_link *link) {
+  llarp::router_links *head = &links;
+  while (head->next && head->link) head = head->next;
+  
+  if (head->link)
+    head->next = new llarp::router_links{link, nullptr};
+  else
+    head->link = link;
+}
 
-  static void operator delete(void *ptr) { llarp_g_mem.free(ptr); }
-
-  void AddLink(struct llarp_link *link) {
-    llarp::router_links *head = &links;
-    while (head->next && head->link) head = head->next;
-
-    if (head->link)
-      head->next = new llarp::router_links{link, nullptr};
-    else
-      head->link = link;
-  }
-
-  void ForEachLink(std::function<void(llarp_link *)> visitor) {
+void llarp_router::ForEachLink(std::function<void(llarp_link *)> visitor) {
     llarp::router_links *cur = &links;
     do {
       if (cur->link) visitor(cur->link);
@@ -43,8 +37,7 @@ struct llarp_router {
     } while (cur);
   }
 
-  void Close() { ForEachLink(llarp_link_stop); }
-};
+  void llarp_router::Close() { ForEachLink(llarp_link_stop); }
 
 extern "C" {
 
@@ -88,8 +81,8 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   llarp_router *self = static_cast<llarp_router *>(iter->user);
   if (StrEq(section, "links")) {
     if (StrEq(val, "ip")) {
-      struct llarp_link *link = llarp_link_alloc();
-      if (llarp_link_configure(link, key, AF_INET6))
+      struct llarp_link *link = llarp_link_alloc(&self->muxer);
+      if (llarp_link_configure_addr(link, key, AF_INET6, 7000))
         self->AddLink(link);
       else {
         llarp_link_free(&link);

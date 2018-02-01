@@ -4,6 +4,7 @@
 *.a
 *.o
 *.plist
+*.so
 
 llarpd
 

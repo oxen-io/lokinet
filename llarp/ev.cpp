@@ -97,6 +97,7 @@ static void udp_close_cb(uv_handle_t *handle) {
   l->closed();
   delete l;
 }
+  
 }  // namespace llarp
 
 namespace llarp {
@@ -134,8 +135,6 @@ int llarp_ev_loop_run(struct llarp_ev_loop *ev) {
 
 int llarp_ev_add_udp_listener(struct llarp_ev_loop *ev,
                               struct llarp_udp_listener *listener) {
-  sockaddr_in6 addr;
-  uv_ip6_addr(listener->host, listener->port, &addr);
   int ret = 0;
   llarp::udp_listener *l = new llarp::udp_listener;
   listener->impl = l;
@@ -144,10 +143,13 @@ int llarp_ev_add_udp_listener(struct llarp_ev_loop *ev,
 
   ret = uv_udp_init(ev->loop(), l->udp());
   if (ret == 0) {
-    ret = uv_udp_bind(l->udp(), (const sockaddr *)&addr, 0);
+    ret = uv_udp_bind(l->udp(), (sockaddr*) listener->addr, 0);
     if (ret == 0) {
+      char addr [128] = {0};
+      uv_ip6_name(listener->addr, addr, sizeof(addr));
+      printf("bound udp listener at %s port %d\n", addr, ntohs(listener->addr->sin6_port));
       ret =
-          uv_udp_recv_start(l->udp(), llarp::udp_alloc_cb, llarp::udp_recv_cb);
+          uv_udp_recv_start(l->udp(), &llarp::udp_alloc_cb, &llarp::udp_recv_cb);
     }
   }
   return ret;
@@ -159,8 +161,7 @@ int llarp_ev_close_udp_listener(struct llarp_udp_listener *listener) {
     llarp::udp_listener *l = static_cast<llarp::udp_listener *>(listener->impl);
     if (l) {
       if (!uv_udp_recv_stop(l->udp())) {
-        l->closed();
-        delete l;
+        uv_close((uv_handle_t*)l->udp(), &llarp::udp_close_cb);
         ret = 0;
       }
     }
@@ -190,6 +191,6 @@ bool llarp_ev_call_async(struct llarp_ev_caller *caller, void *user) {
 }
 
 void llarp_ev_caller_stop(struct llarp_ev_caller *caller) {
-  uv_close((uv_handle_t *)&caller->async, llarp::ev_caller_async_closed);
+  uv_close((uv_handle_t *)&caller->async, &llarp::ev_caller_async_closed);
 }
 }
