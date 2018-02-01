@@ -45,6 +45,7 @@ REQUIRED_CFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c99 $(CF
 REQUIRED_CXXFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c++17 $(CXXFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS) -Wall -fPIC
 LIB_LDFLAGS = -ljemalloc $(SODIUM_LIBS) $(LIBUV_LIBS) -lm -lstdc++
 REQUIRED_LDFLAGS = -L$(REPO) -lllarp 
+TEST_LDFLAGS = $(STATIC_LIB) $(LIB_LDFLAGS)
 
 all: build
 
@@ -56,15 +57,15 @@ build: $(EXE)
 test: $(TEST_OBJ_CPP) $(TEST_OBJ_C)
 
 
-$(TEST_SRC): $(SHARED_LIB)
+$(TEST_SRC): $(STATIC_LIB)
 
 $(TEST_OBJ_CPP): $(TEST_SRC_CPP)
-	$(CXX) $(REQUIRED_CXXFLAGS) $< -o $<.bin $(REQUIRED_LDFLAGS)
+	$(CXX) $(REQUIRED_CXXFLAGS) $< -o $<.bin $(TEST_LDFLAGS)
 	mv $<.bin $<.test
 	$<.test
 
 $(TEST_OBJ_C): $(TEST_SRC_C)
-	$(CC) $(REQUIRED_CFLAGS) $< -o $<.bin $(REQUIRED_LDFLAGS)
+	$(CC) $(REQUIRED_CFLAGS) $< -o $<.bin $(TEST_LDFLAGS)
 	mv $<.bin $<.test
 	$<.test
 
