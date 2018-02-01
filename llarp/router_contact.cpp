@@ -17,8 +17,6 @@ bool BEncode(const llarp_rc &a, llarp_buffer_t *buff) {
 }
 }  // namespace llarp
 
-
-
 extern "C" {
 bool llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff) {
   return llarp::BEncode(*rc, buff);

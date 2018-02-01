@@ -1,7 +1,7 @@
+#include "router.hpp"
+#include <llarp/ibfq.h>
 #include <llarp/link.h>
 #include <llarp/router.h>
-#include <llarp/ibfq.h>
-#include "router.hpp"
 #include "link.hpp"
 #include "str.hpp"
 
@@ -10,19 +10,14 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
                         const char *key, const char *val);
 }  // namespace llarp
 
-llarp_router::llarp_router()
-{
-  llarp_msg_muxer_init(&muxer);
-}
+llarp_router::llarp_router() { llarp_msg_muxer_init(&muxer); }
 
-llarp_router::~llarp_router()
-{
-}
-  
+llarp_router::~llarp_router() {}
+
 void llarp_router::AddLink(struct llarp_link *link) {
   llarp::router_links *head = &links;
   while (head->next && head->link) head = head->next;
-  
+
   if (head->link)
     head->next = new llarp::router_links{link, nullptr};
   else
@@ -30,14 +25,14 @@ void llarp_router::AddLink(struct llarp_link *link) {
 }
 
 void llarp_router::ForEachLink(std::function<void(llarp_link *)> visitor) {
-    llarp::router_links *cur = &links;
-    do {
-      if (cur->link) visitor(cur->link);
-      cur = cur->next;
-    } while (cur);
-  }
+  llarp::router_links *cur = &links;
+  do {
+    if (cur->link) visitor(cur->link);
+    cur = cur->next;
+  } while (cur);
+}
 
-  void llarp_router::Close() { ForEachLink(llarp_link_stop); }
+void llarp_router::Close() { ForEachLink(llarp_link_stop); }
 
 extern "C" {
 

@@ -20,7 +20,7 @@ int llarp_ev_loop_run(struct llarp_ev_loop *ev);
 void llarp_ev_loop_stop(struct llarp_ev_loop *ev);
 
 struct llarp_udp_listener {
-  struct sockaddr_in6 * addr;
+  struct sockaddr_in6 *addr;
   void *user;
   void *impl;
   void (*recvfrom)(struct llarp_udp_listener *, const struct sockaddr *, char *,

@@ -3,8 +3,8 @@
 #include "str.hpp"
 
 namespace llarp {
-  template<>
-  bool BEncode(const llarp_ai &a, llarp_buffer_t *buff) {
+template <>
+bool BEncode(const llarp_ai &a, llarp_buffer_t *buff) {
   return bencodeDict(buff) && bencodeDict_Int(buff, "c", a.rank) &&
          bencodeDict_Bytes(buff, "e", a.enc_key, sizeof(a.enc_key)) &&
          bencodeDict_Bytes(buff, "d", a.dialect,
@@ -14,7 +14,6 @@ namespace llarp {
          bencodeEnd(buff);
 }
 }  // namespace llarp
-
 
 extern "C" {
 

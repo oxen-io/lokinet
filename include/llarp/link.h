@@ -1,12 +1,12 @@
 #ifndef LLARP_LINK_H_
 #define LLARP_LINK_H_
 #include <llarp/crypto.h>
-#include <llarp/msg_handler.h>
 #include <llarp/mem.h>
+#include <llarp/msg_handler.h>
 #include <llarp/obmd.h>
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -14,18 +14,19 @@ extern "C" {
 
 struct llarp_link;
 
-struct llarp_link *llarp_link_alloc(struct llarp_msg_muxer * muxer);
+struct llarp_link *llarp_link_alloc(struct llarp_msg_muxer *muxer);
 void llarp_link_free(struct llarp_link **link);
 
-bool llarp_link_configure_addr(struct llarp_link *link, const char *ifname, int af, uint16_t port);
+bool llarp_link_configure_addr(struct llarp_link *link, const char *ifname,
+                               int af, uint16_t port);
 
 /** get link listener for events */
 struct llarp_udp_listener *llarp_link_udp_listener(struct llarp_link *link);
 
-void llarp_link_start(struct llarp_link * link);
+void llarp_link_start(struct llarp_link *link);
 
-  struct llarp_link_queue * llarp_link_frame_queue(struct llarp_link*link);
-  
+struct llarp_link_queue *llarp_link_frame_queue(struct llarp_link *link);
+
 void llarp_link_stop(struct llarp_link *link);
 
 struct llarp_link_session;
