@@ -1,14 +1,15 @@
 #ifndef LLARP_BENCODE_HPP
 #define LLARP_BENCODE_HPP
-#include <list>
 #include <llarp/buffer.h>
+#include <list>
 #include <string>
 
 namespace llarp {
 template <typename ValType>
 bool BEncode(const ValType &t, llarp_buffer_t *buff);
 
-template <typename ValType> bool BDecode(ValType &t, llarp_buffer_t *buff);
+template <typename ValType>
+bool BDecode(ValType &t, llarp_buffer_t *buff);
 
 static bool bencodeDict(llarp_buffer_t *buff) {
   static uint8_t c = 'd';
@@ -50,12 +51,11 @@ template <typename T>
 bool BEncode(const std::list<T> &l, llarp_buffer_t *buff) {
   if (bencodeList(buff)) {
     for (const auto &itr : l)
-      if (!BEncode(itr, buff))
-        return false;
+      if (!BEncode(itr, buff)) return false;
     return bencodeEnd(buff);
   }
   return false;
 }
-} // namespace llarp
+}  // namespace llarp
 
 #endif

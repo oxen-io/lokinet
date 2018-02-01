@@ -46,7 +46,7 @@ struct Level {
   typedef std::list<section_map_t::const_iterator> sections_t;
   value_map_t values;
   section_map_t sections;
-  values_t ordered_values; // original order in the ini file
+  values_t ordered_values;  // original order in the ini file
   sections_t ordered_sections;
   Level *parent;
   size_t depth;
@@ -58,20 +58,20 @@ struct Level {
 };
 
 class Parser {
-public:
+ public:
   Parser(const std::string &fname) : Parser(fname.c_str()) {}
   Parser(const char *fn);
   Parser(std::istream &f) : f_(&f), ln_(0) { parse(top_); }
   Level &top() { return top_; }
   void dump(std::ostream &s) { dump(s, top(), ""); }
 
-private:
+ private:
   void dump(std::ostream &s, const Level &l, const std::string &sname);
   void parse(Level &l);
   void parseSLine(std::string &sname, size_t &depth);
   void err(const char *s);
 
-private:
+ private:
   Level top_;
   std::ifstream f0_;
   std::istream *f_;
@@ -90,17 +90,14 @@ inline std::string trim(const std::string &s) {
   long sp = 0;
   long ep = s.length() - 1;
   for (; sp <= ep; ++sp)
-    if (!strchr(p, s[sp]))
-      break;
+    if (!strchr(p, s[sp])) break;
   for (; ep >= 0; --ep)
-    if (!strchr(p, s[ep]))
-      break;
+    if (!strchr(p, s[ep])) break;
   return s.substr(sp, ep - sp + 1);
 }
 
 inline Parser::Parser(const char *fn) : f0_(fn), f_(&f0_), ln_(0) {
-  if (!f0_)
-    throw std::runtime_error(std::string("failed to open file: ") + fn);
+  if (!f0_) throw std::runtime_error(std::string("failed to open file: ") + fn);
 
   parse(top_);
 }
@@ -108,8 +105,7 @@ inline Parser::Parser(const char *fn) : f0_(fn), f_(&f0_), ln_(0) {
 inline void Parser::parseSLine(std::string &sname, size_t &depth) {
   depth = 0;
   for (; depth < line_.length(); ++depth)
-    if (line_[depth] != '[')
-      break;
+    if (line_[depth] != '[') break;
 
   sname = line_.substr(depth, line_.length() - 2 * depth);
 }
@@ -117,31 +113,26 @@ inline void Parser::parseSLine(std::string &sname, size_t &depth) {
 inline void Parser::parse(Level &l) {
   while (std::getline(*f_, line_)) {
     ++ln_;
-    if (line_[0] == '#' || line_[0] == ';')
-      continue;
+    if (line_[0] == '#' || line_[0] == ';') continue;
     line_ = trim(line_);
-    if (line_.empty())
-      continue;
+    if (line_.empty()) continue;
     if (line_[0] == '[') {
       size_t depth;
       std::string sname;
       parseSLine(sname, depth);
       Level *lp = NULL;
       Level *parent = &l;
-      if (depth > l.depth + 1)
-        err("section with wrong depth");
+      if (depth > l.depth + 1) err("section with wrong depth");
       if (l.depth == depth - 1)
         lp = &l.sections[sname];
       else {
         lp = l.parent;
         size_t n = l.depth - depth;
-        for (size_t i = 0; i < n; ++i)
-          lp = lp->parent;
+        for (size_t i = 0; i < n; ++i) lp = lp->parent;
         parent = lp;
         lp = &lp->sections[sname];
       }
-      if (lp->depth != 0)
-        err("duplicate section name on the same level");
+      if (lp->depth != 0) err("duplicate section name on the same level");
       if (!lp->parent) {
         lp->depth = depth;
         lp->parent = parent;
@@ -150,13 +141,11 @@ inline void Parser::parse(Level &l) {
       parse(*lp);
     } else {
       size_t n = line_.find('=');
-      if (n == std::string::npos)
-        err("no '=' found");
+      if (n == std::string::npos) err("no '=' found");
       std::pair<Level::value_map_t::const_iterator, bool> res = l.values.insert(
           std::make_pair(trim(line_.substr(0, n)),
                          trim(line_.substr(n + 1, line_.length() - n - 1))));
-      if (!res.second)
-        err("duplicated key found");
+      if (!res.second) err("duplicated key found");
       l.ordered_values.push_back(res.first);
     }
   }
@@ -164,16 +153,11 @@ inline void Parser::parse(Level &l) {
 
 inline void Parser::dump(std::ostream &s, const Level &l,
                          const std::string &sname) {
-  if (!sname.empty())
-    s << '\n';
-  for (size_t i = 0; i < l.depth; ++i)
-    s << '[';
-  if (!sname.empty())
-    s << sname;
-  for (size_t i = 0; i < l.depth; ++i)
-    s << ']';
-  if (!sname.empty())
-    s << std::endl;
+  if (!sname.empty()) s << '\n';
+  for (size_t i = 0; i < l.depth; ++i) s << '[';
+  if (!sname.empty()) s << sname;
+  for (size_t i = 0; i < l.depth; ++i) s << ']';
+  if (!sname.empty()) s << std::endl;
   for (Level::values_t::const_iterator it = l.ordered_values.begin();
        it != l.ordered_values.end(); ++it)
     s << (*it)->first << '=' << (*it)->second << std::endl;
@@ -184,6 +168,6 @@ inline void Parser::dump(std::ostream &s, const Level &l,
   }
 }
 
-} // namespace ini
+}  // namespace ini
 
-#endif // INI_HPP
+#endif  // INI_HPP

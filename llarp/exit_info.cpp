@@ -14,4 +14,4 @@ bool BEncode(const llarp_xi &xi, llarp_buffer_t *buff) {
          bencodeDict_Bytes(buff, "b", &xi.netmask, sizeof(xi.netmask)) &&
          bencodeDict_Int(buff, "v", 0) && bencodeEnd(buff);
 }
-} // namespace llarp
+}  // namespace llarp

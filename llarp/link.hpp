@@ -1,15 +1,15 @@
 #ifndef LLARP_LINK_HPP
 #define LLARP_LINK_HPP
+#include <llarp/crypto.h>
+#include <netinet/in.h>
 #include <cstdint>
 #include <functional>
-#include <llarp/crypto.h>
 #include <map>
 #include <memory>
-#include <netinet/in.h>
 
-#include "mem.hpp"
 #include <llarp/ev.h>
 #include <llarp/router_contact.h>
+#include "mem.hpp"
 
 struct llarp_link {
   static void *operator new(size_t sz) {

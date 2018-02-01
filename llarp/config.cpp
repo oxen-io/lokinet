@@ -1,15 +1,14 @@
 #include "config.hpp"
+#include <llarp/config.h>
 #include "ini.hpp"
 #include "mem.hpp"
-#include <llarp/config.h>
 
 namespace llarp {
 
 template <typename Config, typename Section>
 static Section find_section(Config &c, const std::string &name,
                             const Section &fallback) {
-  if (c.sections.find(name) == c.sections.end())
-    return fallback;
+  if (c.sections.find(name) == c.sections.end()) return fallback;
   return c.sections[name].values;
 }
 
@@ -28,7 +27,7 @@ bool Config::Load(const char *fname) {
   return false;
 };
 
-} // namespace llarp
+}  // namespace llarp
 
 extern "C" {
 
@@ -38,14 +37,12 @@ void llarp_new_config(struct llarp_config **conf) {
 }
 
 void llarp_free_config(struct llarp_config **conf) {
-  if (*conf)
-    delete *conf;
+  if (*conf) delete *conf;
   *conf = nullptr;
 }
 
 int llarp_load_config(struct llarp_config *conf, const char *fname) {
-  if (!conf->impl.Load(fname))
-    return -1;
+  if (!conf->impl.Load(fname)) return -1;
   return 0;
 }
 

@@ -3,7 +3,11 @@
 #include "bencode.hpp"
 #include "exit_info.hpp"
 
-extern "C" {}
+extern "C" {
+bool llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff) {
+  return llarp::BEncode(*rc, buff);
+}
+}
 
 namespace llarp {
 bool BEncode(const llarp_rc &a, llarp_buffer_t *buff) {
@@ -17,4 +21,4 @@ bool BEncode(const llarp_rc &a, llarp_buffer_t *buff) {
          bencodeDict_Bytes(buff, "z", a.signature, sizeof(a.signature)) &&
          bencodeEnd(buff);
 }
-} // namespace llarp
+}  // namespace llarp

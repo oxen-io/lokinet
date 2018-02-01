@@ -1,6 +1,6 @@
 #include "link.hpp"
-#include <cstring>
 #include <llarp/time.h>
+#include <cstring>
 
 bool operator<(const sockaddr_in6 addr0, const sockaddr_in6 addr1) {
   return memcmp(addr0.sin6_addr.s6_addr, addr1.sin6_addr.s6_addr,
@@ -14,8 +14,7 @@ struct llarp_link *llarp_link_alloc() {
 }
 
 void llarp_link_free(struct llarp_link **l) {
-  if (*l)
-    delete *l;
+  if (*l) delete *l;
   *l = nullptr;
 }
 

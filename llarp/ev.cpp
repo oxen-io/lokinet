@@ -1,65 +1,48 @@
-#include "mem.hpp"
 #include <llarp/ev.h>
 #include <uv.h>
+#include "mem.hpp"
 
 #include <mutex>
 #include <queue>
 
-struct llarp_ev_caller
-{
-  static void * operator new(size_t sz)
-  {
+struct llarp_ev_caller {
+  static void *operator new(size_t sz) {
     return llarp::Alloc<llarp_ev_caller>();
   }
 
-  static void operator delete(void * ptr)
-  {
-    llarp_g_mem.free(ptr);
-  }
+  static void operator delete(void *ptr) { llarp_g_mem.free(ptr); }
 
-
-  llarp_ev_caller(llarp_ev_loop * ev, llarp_ev_work_func func) :
-    loop(ev),
-    work(func)
-  {
+  llarp_ev_caller(llarp_ev_loop *ev, llarp_ev_work_func func)
+      : loop(ev), work(func) {
     async.data = this;
   }
 
-  ~llarp_ev_caller()
-  {
-  }              
+  ~llarp_ev_caller() {}
 
-  bool appendCall(void * user)
-  {
+  bool appendCall(void *user) {
     std::unique_lock<std::mutex> lock(access);
     bool should = pending.size() == 0;
-    llarp_ev_async_call * call = new llarp_ev_async_call{
-      loop,
-      this,
-      user,
-      this->work};
+    llarp_ev_async_call *call =
+        new llarp_ev_async_call{loop, this, user, this->work};
     pending.push(call);
     return should;
   }
 
-  void Call()
-  {
+  void Call() {
     std::unique_lock<std::mutex> lock(access);
-    while(pending.size() > 0)
-    {
-      auto & front = pending.front();
+    while (pending.size() > 0) {
+      auto &front = pending.front();
       front->work(front);
       pending.pop();
     }
   }
-  
+
   std::mutex access;
-  struct llarp_ev_loop * loop;
+  struct llarp_ev_loop *loop;
   uv_async_t async;
   std::queue<llarp_ev_async_call *> pending;
   llarp_ev_work_func work;
 };
-  
 
 struct llarp_ev_loop {
   uv_loop_t _loop;
@@ -85,14 +68,12 @@ struct udp_listener {
   struct llarp_udp_listener *listener;
 
   void recvfrom(const struct sockaddr *addr, char *buff, ssize_t sz) {
-    if (listener->recvfrom)
-      listener->recvfrom(listener, addr, buff, sz);
+    if (listener->recvfrom) listener->recvfrom(listener, addr, buff, sz);
   }
 
   /** called after closed */
   void closed() {
-    if (listener->closed)
-      listener->closed(listener);
+    if (listener->closed) listener->closed(listener);
     listener->impl = nullptr;
   }
 
@@ -116,7 +97,7 @@ static void udp_close_cb(uv_handle_t *handle) {
   l->closed();
   delete l;
 }
-} // namespace llarp
+}  // namespace llarp
 
 namespace llarp {
 
@@ -126,10 +107,10 @@ static void ev_caller_async_closed(uv_handle_t *handle) {
 }
 
 static void ev_handle_async_call(uv_async_t *handle) {
-  llarp_ev_caller * caller = static_cast<llarp_ev_caller *>(handle->data);
+  llarp_ev_caller *caller = static_cast<llarp_ev_caller *>(handle->data);
   caller->Call();
 }
-} // namespace llarp
+}  // namespace llarp
 
 extern "C" {
 void llarp_ev_loop_alloc(struct llarp_ev_loop **ev) {
@@ -189,29 +170,26 @@ int llarp_ev_close_udp_listener(struct llarp_udp_listener *listener) {
 
 void llarp_ev_loop_stop(struct llarp_ev_loop *loop) { uv_stop(loop->loop()); }
 
-  struct llarp_ev_caller * llarp_ev_prepare_async(struct llarp_ev_loop * loop, llarp_ev_work_func work)
-{
-  llarp_ev_caller * caller = new llarp_ev_caller(loop, work);
-  if(uv_async_init(loop->loop(), &caller->async, llarp::ev_handle_async_call) == 0)
+struct llarp_ev_caller *llarp_ev_prepare_async(struct llarp_ev_loop *loop,
+                                               llarp_ev_work_func work) {
+  llarp_ev_caller *caller = new llarp_ev_caller(loop, work);
+  if (uv_async_init(loop->loop(), &caller->async,
+                    llarp::ev_handle_async_call) == 0)
     return caller;
-  else
-  {
+  else {
     delete caller;
     return nullptr;
   }
 }
 
-bool llarp_ev_call_async(struct llarp_ev_caller * caller, void * user)
-{
-  if(caller->appendCall(user))
+bool llarp_ev_call_async(struct llarp_ev_caller *caller, void *user) {
+  if (caller->appendCall(user))
     return uv_async_send(&caller->async) == 0;
   else
     return true;
 }
 
-void llarp_ev_caller_stop(struct llarp_ev_caller * caller)
-{
-  uv_close((uv_handle_t*)&caller->async, llarp::ev_caller_async_closed);
+void llarp_ev_caller_stop(struct llarp_ev_caller *caller) {
+  uv_close((uv_handle_t *)&caller->async, llarp::ev_caller_async_closed);
 }
-  
 }

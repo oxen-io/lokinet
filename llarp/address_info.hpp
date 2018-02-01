@@ -1,8 +1,8 @@
 #ifndef LLARP_AI_HPP
 #define LLARP_AI_HPP
+#include <llarp/address_info.h>
 #include <cstring>
 #include <list>
-#include <llarp/address_info.h>
 
 struct llarp_ai_list {
   llarp_ai *data;

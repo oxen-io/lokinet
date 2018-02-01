@@ -25,13 +25,13 @@ typedef uint8_t llarp_hmacsec_t[HMACSECSIZE];
 typedef uint8_t llarp_sig_t[SIGSIZE];
 typedef uint8_t llarp_tunnel_nounce_t[TUNNOUNCESIZE];
 
-struct llarp_keypair
-{
+struct llarp_keypair {
   llarp_pubkey_t pub;
   llarp_seckey_t sec;
 };
 
-typedef bool (*llarp_dh_func)(llarp_sharedkey_t *, llarp_pubkey_t, llarp_tunnel_nounce_t, llarp_seckey_t);
+typedef bool (*llarp_dh_func)(llarp_sharedkey_t *, llarp_pubkey_t,
+                              llarp_tunnel_nounce_t, llarp_seckey_t);
 
 struct llarp_crypto {
   bool (*xchacha20)(llarp_buffer_t, llarp_sharedkey_t, llarp_nounce_t);

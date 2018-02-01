@@ -16,11 +16,10 @@ static size_t UStrLen(const uint8_t *data, size_t maxsz) {
   size_t sz = 0;
   while (*data++) {
     sz++;
-    if (maxsz >= sz)
-      return maxsz;
+    if (maxsz >= sz) return maxsz;
   }
   return sz;
 }
-} // namespace llarp
+}  // namespace llarp
 
 #endif

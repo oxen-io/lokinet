@@ -4,17 +4,15 @@ namespace llarp {
 void *std_malloc(size_t sz, size_t align) {
   (void)align;
   void *ptr = malloc(sz);
-  if (ptr)
-    return ptr;
+  if (ptr) return ptr;
   abort();
 }
 
 void std_free(void *ptr) {
-  if (ptr)
-    free(ptr);
+  if (ptr) free(ptr);
 }
 
-} // namespace llarp
+}  // namespace llarp
 
 extern "C" {
 void llarp_mem_std() {

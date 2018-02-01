@@ -16,7 +16,7 @@ struct Config {
 
   bool Load(const char *fname);
 };
-} // namespace llarp
+}  // namespace llarp
 
 extern "C" {
 struct llarp_config {

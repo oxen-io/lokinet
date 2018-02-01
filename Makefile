@@ -45,8 +45,8 @@ REQUIRED_LDFLAGS = $(LDFLAGS) -ljemalloc $(SODIUM_LIBS) $(LIBUV_LIBS) -lm -lstdc
 
 all: build
 
-format: $(HDRS) $(SRCS)
-	$(FORMAT) -i $^
+format:
+	$(FORMAT) -style=Google -i $(HDRS) $(SRCS)
 
 build: $(EXE)
 

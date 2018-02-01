@@ -4,7 +4,7 @@
 
 namespace llarp {
 static void *ai_alloc(size_t sz, size_t align) {}
-} // namespace llarp
+}  // namespace llarp
 
 extern "C" {
 
@@ -19,8 +19,7 @@ void llarp_ai_list_iterate(struct llarp_ai_list *l,
   itr->list = l;
   struct llarp_ai_list *cur = l;
   do {
-    if (!itr->visit(itr, cur->data))
-      return;
+    if (!itr->visit(itr, cur->data)) return;
     cur = cur->next;
   } while (cur->next);
 }
@@ -36,4 +35,4 @@ bool BEncode(const llarp_ai &a, llarp_buffer_t *buff) {
          bencodeDict_Int(buff, "p", a.port) && bencodeDict_Int(buff, "v", 0) &&
          bencodeEnd(buff);
 }
-} // namespace llarp
+}  // namespace llarp

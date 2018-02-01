@@ -10,17 +10,16 @@ struct llarp_threadpool;
 struct llarp_threadpool *llarp_init_threadpool(int workers);
 void llarp_free_threadpool(struct llarp_threadpool **tp);
 
-  typedef void (*llarp_thread_work_func)(void*);
+typedef void (*llarp_thread_work_func)(void *);
 
-  
 /** job to be done in worker thread */
 struct llarp_thread_job {
   /**
       called async after work is executed
    */
-  struct llarp_ev_caller * caller;
-  void * data;
-  
+  struct llarp_ev_caller *caller;
+  void *data;
+
   /** user data to pass to work function */
   void *user;
   /** called in threadpool worker thread */

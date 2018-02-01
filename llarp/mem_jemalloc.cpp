@@ -7,10 +7,9 @@ static void *jem_malloc(size_t sz, size_t align) {
 }
 
 static void jem_free(void *ptr) {
-  if (ptr)
-    free(ptr);
+  if (ptr) free(ptr);
 }
-} // namespace llarp
+}  // namespace llarp
 
 extern "C" {
 void llarp_mem_jemalloc() {

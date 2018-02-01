@@ -1,8 +1,8 @@
+#include <llarp/link.h>
+#include <llarp/router.h>
 #include "link.hpp"
 #include "mem.hpp"
 #include "str.hpp"
-#include <llarp/link.h>
-#include <llarp/router.h>
 
 namespace llarp {
 void router_iter_config(llarp_config_iterator *iter, const char *section,
@@ -12,7 +12,7 @@ struct router_links {
   struct router_links *next = nullptr;
 };
 
-} // namespace llarp
+}  // namespace llarp
 
 struct llarp_router {
   struct llarp_threadpool *tp;
@@ -27,8 +27,7 @@ struct llarp_router {
 
   void AddLink(struct llarp_link *link) {
     llarp::router_links *head = &links;
-    while (head->next && head->link)
-      head = head->next;
+    while (head->next && head->link) head = head->next;
 
     if (head->link)
       head->next = new llarp::router_links{link, nullptr};
@@ -39,8 +38,7 @@ struct llarp_router {
   void ForEachLink(std::function<void(llarp_link *)> visitor) {
     llarp::router_links *cur = &links;
     do {
-      if (cur->link)
-        visitor(cur->link);
+      if (cur->link) visitor(cur->link);
       cur = cur->next;
     } while (cur);
   }
@@ -102,4 +100,4 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
     }
   }
 }
-} // namespace llarp
+}  // namespace llarp
