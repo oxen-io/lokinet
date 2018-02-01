@@ -58,6 +58,8 @@ struct llarp_ev_caller *llarp_ev_prepare_async(struct llarp_ev_loop *ev,
 
 bool llarp_ev_call_async(struct llarp_ev_caller *c, void *user);
 
+bool larp_ev_call_many_async(struct llarp_ev_caller *c, void **users, size_t n);
+
 void llarp_ev_caller_stop(struct llarp_ev_caller *c);
 
 #ifdef __cplusplus

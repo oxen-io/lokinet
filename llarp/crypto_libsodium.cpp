@@ -73,14 +73,13 @@ static void randomize(llarp_buffer_t buff) {
   randombytes((unsigned char *)buff.base, buff.sz);
 }
 
-static inline void randbytes(void * ptr, size_t sz)
-{
-  randombytes((unsigned char*)ptr, sz);
+static inline void randbytes(void *ptr, size_t sz) {
+  randombytes((unsigned char *)ptr, sz);
 }
-  
+
 static void keygen(llarp_seckey_t *keys) {
   unsigned char seed[32];
-  uint8_t * pk = llarp_seckey_topublic(*keys);
+  uint8_t *pk = llarp_seckey_topublic(*keys);
   crypto_sign_seed_keypair(pk, *keys, seed);
 }
 }  // namespace sodium

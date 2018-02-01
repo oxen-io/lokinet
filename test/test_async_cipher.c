@@ -17,16 +17,13 @@ static void handle_cipher_complete(struct llarp_cipher_result *res) {
   size_t sz = m->jobs;
   m->completed++;
   size_t left = m->num - m->completed;
-  if (m->completed % 10000 == 0) printf("completed %ld and %ld left\n", m->completed, left);
-  if (m->completed == m->num)
-  {
+  if (m->completed % 10000 == 0)
+    printf("completed %ld and %ld left\n", m->completed, left);
+  if (m->completed == m->num) {
     llarp_ev_loop_stop(m->ev);
-  }
-  else if(m->completed % sz == 0)
-  {
+  } else if (m->completed % sz == 0) {
     llarp_nounce_t nounce;
-    while(sz--)
-    {
+    while (sz--) {
       m->crypto.randbytes(nounce, sizeof(llarp_nounce_t));
       llarp_async_cipher_queue_op(m->cipher, &res->buff, nounce,
                                   handle_cipher_complete, m);
@@ -42,17 +39,17 @@ int main(int argc, char *argv[]) {
   llarp_crypto_libsodium_init(&b_main.crypto);
   llarp_ev_loop_alloc(&b_main.ev);
 
-  tp = llarp_init_threadpool(8);
+  tp = llarp_init_threadpool(2);
 
   b_main.num = 10000000;
   b_main.jobs = 10000;
   b_main.completed = 0;
   llarp_sharedkey_t key;
   b_main.crypto.randbytes(key, sizeof(llarp_sharedkey_t));
-  
+
   b_main.cipher = llarp_async_cipher_new(key, &b_main.crypto, b_main.ev, tp);
   llarp_threadpool_start(tp);
-  
+
   llarp_nounce_t nounce;
   llarp_buffer_t n_buff;
   n_buff.base = nounce;
@@ -62,7 +59,7 @@ int main(int argc, char *argv[]) {
   printf("starting %ld jobs\n", sz);
   /* do work here */
   while (sz--) {
-    llarp_buffer_t * msg = llarp_g_mem.alloc(sizeof(llarp_buffer_t), 8);
+    llarp_buffer_t *msg = llarp_g_mem.alloc(sizeof(llarp_buffer_t), 8);
     msg->base = llarp_g_mem.alloc(1024, 1024);
     msg->sz = 1024;
     msg->cur = msg->base;

@@ -28,6 +28,16 @@ struct llarp_ev_caller {
     return should;
   }
 
+  bool appendManyCalls(void **users, size_t n) {
+    std::unique_lock<std::mutex> lock(access);
+    bool should = pending.size() == 0;
+    while (n--) {
+      pending.push(new llarp_ev_async_call{loop, this, *users, this->work});
+      users++;
+    }
+    return should;
+  }
+
   void Call() {
     std::unique_lock<std::mutex> lock(access);
     while (pending.size() > 0) {
@@ -187,6 +197,14 @@ struct llarp_ev_caller *llarp_ev_prepare_async(struct llarp_ev_loop *loop,
 
 bool llarp_ev_call_async(struct llarp_ev_caller *caller, void *user) {
   if (caller->appendCall(user))
+    return uv_async_send(&caller->async) == 0;
+  else
+    return true;
+}
+
+bool llarp_ev_call_many_async(struct llarp_ev_caller *caller, void **users,
+                              size_t n) {
+  if (caller->appendManyCalls(users, n))
     return uv_async_send(&caller->async) == 0;
   else
     return true;

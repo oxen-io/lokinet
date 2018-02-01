@@ -12,7 +12,7 @@ struct llarp_async_dh {
 
 struct llarp_dh_internal {
   llarp_pubkey_t theirkey;
-  uint8_t * ourkey;
+  uint8_t *ourkey;
   llarp_tunnel_nounce_t nounce;
   struct llarp_dh_result result;
   llarp_dh_func func;
@@ -20,7 +20,8 @@ struct llarp_dh_internal {
 
 static void llarp_crypto_dh_work(void *user) {
   struct llarp_dh_internal *impl = (struct llarp_dh_internal *)user;
-  impl->func(&impl->result.sharedkey, impl->theirkey, impl->nounce, impl->ourkey);
+  impl->func(&impl->result.sharedkey, impl->theirkey, impl->nounce,
+             impl->ourkey);
 }
 
 static void llarp_crypto_dh_result(struct llarp_ev_async_call *call) {
@@ -48,25 +49,22 @@ static void llarp_async_dh_exec(struct llarp_async_dh *dh, llarp_dh_func func,
   llarp_threadpool_queue_job(dh->tp, job);
 }
 
-void llarp_async_client_dh(struct llarp_async_dh *dh,
-                           llarp_pubkey_t theirkey,
+void llarp_async_client_dh(struct llarp_async_dh *dh, llarp_pubkey_t theirkey,
                            llarp_tunnel_nounce_t nounce,
                            llarp_dh_complete_hook result, void *user) {
   llarp_async_dh_exec(dh, dh->client, theirkey, nounce, result, user);
 }
 
-void llarp_async_server_dh(struct llarp_async_dh *dh,
-                           llarp_pubkey_t theirkey,
+void llarp_async_server_dh(struct llarp_async_dh *dh, llarp_pubkey_t theirkey,
                            llarp_tunnel_nounce_t nounce,
                            llarp_dh_complete_hook result, void *user) {
   llarp_async_dh_exec(dh, dh->server, theirkey, nounce, result, user);
 }
 
-struct llarp_async_dh *llarp_async_dh_new(
-  llarp_seckey_t ourkey, 
-  struct llarp_crypto *crypto,
-  struct llarp_ev_loop *ev,
-  struct llarp_threadpool *tp) {
+struct llarp_async_dh *llarp_async_dh_new(llarp_seckey_t ourkey,
+                                          struct llarp_crypto *crypto,
+                                          struct llarp_ev_loop *ev,
+                                          struct llarp_threadpool *tp) {
   struct llarp_async_dh *dh =
       llarp_g_mem.alloc(sizeof(struct llarp_async_dh), 16);
   dh->client = crypto->dh_client;
@@ -85,39 +83,38 @@ void llarp_async_dh_free(struct llarp_async_dh **dh) {
   }
 }
 
-
-struct llarp_async_cipher_internal
-{
-  uint8_t * key;
+struct llarp_async_cipher_internal {
+  uint8_t *key;
   llarp_nounce_t nounce;
   struct llarp_cipher_result result;
   llarp_sym_cipher_func func;
 };
 
-struct llarp_async_cipher
-{
+struct llarp_async_cipher {
   llarp_sharedkey_t key;
   struct llarp_threadpool *tp;
   struct llarp_ev_caller *caller;
   llarp_sym_cipher_func func;
 };
 
-static void llarp_crypto_cipher_result(struct llarp_ev_async_call * job)
-{
-  struct llarp_async_cipher_internal * impl = (struct llarp_async_cipher_internal *) job->user;
+static void llarp_crypto_cipher_result(struct llarp_ev_async_call *job) {
+  struct llarp_async_cipher_internal *impl =
+      (struct llarp_async_cipher_internal *)job->user;
   impl->result.hook(&impl->result);
   llarp_g_mem.free(impl);
 }
 
-static void llarp_crypto_cipher_work(void * work)
-{
-  struct llarp_async_cipher_internal * impl = (struct llarp_async_cipher_internal *) work;
+static void llarp_crypto_cipher_work(void *work) {
+  struct llarp_async_cipher_internal *impl =
+      (struct llarp_async_cipher_internal *)work;
   impl->func(impl->result.buff, impl->key, impl->nounce);
 }
 
-void llarp_async_cipher_queue_op(struct llarp_async_cipher * c, llarp_buffer_t * buff, llarp_nounce_t n, llarp_cipher_complete_hook h, void * user)
-{
-  struct llarp_async_cipher_internal * impl = llarp_g_mem.alloc(sizeof(struct llarp_async_cipher_internal), 16);
+void llarp_async_cipher_queue_op(struct llarp_async_cipher *c,
+                                 llarp_buffer_t *buff, llarp_nounce_t n,
+                                 llarp_cipher_complete_hook h, void *user) {
+  struct llarp_async_cipher_internal *impl =
+      llarp_g_mem.alloc(sizeof(struct llarp_async_cipher_internal), 16);
   impl->key = c->key;
   memcpy(impl->nounce, n, sizeof(llarp_nounce_t));
   impl->result.user = user;
@@ -132,12 +129,12 @@ void llarp_async_cipher_queue_op(struct llarp_async_cipher * c, llarp_buffer_t *
   llarp_threadpool_queue_job(c->tp, job);
 }
 
-struct llarp_async_cipher * llarp_async_cipher_new(llarp_sharedkey_t key,
-                                                   struct llarp_crypto * crypto,
-                                                   struct llarp_ev_loop * ev,
-                                                   struct llarp_threadpool *tp)
-{
-  struct llarp_async_cipher * cipher = llarp_g_mem.alloc(sizeof(struct llarp_async_cipher), 16);
+struct llarp_async_cipher *llarp_async_cipher_new(llarp_sharedkey_t key,
+                                                  struct llarp_crypto *crypto,
+                                                  struct llarp_ev_loop *ev,
+                                                  struct llarp_threadpool *tp) {
+  struct llarp_async_cipher *cipher =
+      llarp_g_mem.alloc(sizeof(struct llarp_async_cipher), 16);
   cipher->func = crypto->xchacha20;
   cipher->tp = tp;
   cipher->caller = llarp_ev_prepare_async(ev, &llarp_crypto_cipher_result);
