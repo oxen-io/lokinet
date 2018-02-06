@@ -430,7 +430,6 @@ the RC.a matching the ipv6 address it originated from.
   v: 0
 }
 
-
 link relay commit message (LRCM)
 
 request a commit to relay traffic to another node.
@@ -566,14 +565,46 @@ link relay exit record (LRXR)
   z: "<64 bytes signature>"
 }
 
----
+link immediate dht message (LIDM):
 
-direct paths:
+transfer one or more dht messages directly without a previously made path.
 
-a direct path is a "0 hop" path built by Alice to communicate directly to Bob
-for point to point transmission of routing layer messages.
+{
+  a: "d",
+  d: [many, dht, messages],
+  v: 0,
+}
 
-these are built by sending a LRCM where B has 1 entry
+
+link stateless relay message (LSRM)
+
+statelessly relay a link message.
+
+{
+  a: "r",
+  c: r5n_counter_uint8,
+  d: "<32 bytes rc.K of destination>",
+  s: "<32 bytes rc.K of source>",
+  v: 0,
+  x: "<N bytes encrypted link message>",
+  y: "<24 bytes nounce>",
+  z: "<64 bytes signature>"
+}
+
+ONLY exchanged over ethernet, if recieved from an IP link it MUST be discarded.
+
+relay an encrypted link message from source s to destination d.
+check signature z using public key s and discard if invalid signature.
+
+if d is equal to ourRC.k then decrypt x via SD(KE(d, s), y, x) and process it as
+a link message. if the inner decrypted link message is a LRCM forward all
+following LRUM, LRDM and LRSM to s via a LSRM. LIDM and LSRM are discarded.
+
+if d is not equal to ourRC.k then forward it to an ethernet peer that is cloeser
+to d than you are. if you are closer to d than all of your other ethernet peers
+then increment c and send to the ethernet peer with the lowest detected latency
+that isn't the peer that this message was recieved from but ONLY if c is less
+than 128. if c is equal to or greater than 128 then the message is discarded.
 
 ---
 
@@ -583,9 +614,6 @@ the routing layer provides inter network communication between the LLARP link
 layer and ip (internet protocol) for exit traffic or ap (anonymous protocol) for
 hidden services. replies to messages are sent back via the path they
 originated from inside a LRDM.
-
-for direct communication between routers a direct path MUST be used, these
-messages MUST NOT be sent on the link leyer.
 
 ipv4 addresses are allowed via ipv4 mapped ipv6 addresses, i.e. ::ffff.10.0.0.1
 
@@ -682,8 +710,7 @@ the X value is sent on the appropriate exit network interface.
 
 When we recieve an ip packet from the internet to an exit address, we put it
 into a TDFM, signed with the exit info's signing key and send it downstream the
-corrispondinn path in an LRDM.
-
+corrisponding path in an LRDM.
 
 update exit path message (UXPM)
 
