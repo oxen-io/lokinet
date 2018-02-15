@@ -55,212 +55,7 @@ RAND(n) is n random bytes
 
 ---
 
-
-wire protocol:
-
-as of version 0 plaintext sctp is used, future versions will use an encrypted
-udp transport (IWP).
-
-
-wire decryption:
-
-the first 32 bytes are message authentication bytes, h
-the next 32 bytes are nounce for shared secret, n
-the remaining bytes are interpreted as ciphertext, x
-
-a shared secret s is generated via TKE(us, them, n)
-next the integrity of the ciphertext is done by checking MDS(n + x, s) == h
-if the ciphertext is valid then the frame is decrypted via SD(s, n, x)
-
-wire encryption:
-
-given variadic sized payload p, 32 byte nounce n and public encryption keys A
-and B
-
-s = TKE(A, B, n)
-x = SE(s, n, p)
-h = MDS(n + x, s)
-
-the resulting data is:
-
-h + n + x
-
-
-handshake:
-
-0) intro
-
-32 bytes hmac, h
-32 bytes nounce, n
-64 bytes elligator sqaured encoded alice's transport public encryption key, a.k
-variadic bytes padding, w0
-
-Alice transmits ( h + n + a.k + w0 ) to Bob from the transport address matching
-his public transport encryption key.
-
-Bob recieves ( h + n + a.k + w0 ) 
-
-1) intro ack
-
-sent in reply to an intro, bob sends an intro ack encrypted to Alice using
-
-32 bytes hmac, h
-32 bytes nounce, n
-32 bytes ciphertext, x
-variadic bytes padding, w1
-
-token = RAND(32)
-k = TKE(a.k, b.k, n)
-x = SE(k, token, n[0:24])
-h = MDS(n + x, k)
-
-Bob transmits ( h + n + x + w1 )
-Alice recieves ( h + n + x + w1 ) and verifies that h == MDS(n + x, k) silently
-dropping if it does not match.
-
-2) token offer
-
-Alice sends the token from the intro ack back to Bob
-
-32 bytes hmac, h
-32 bytes nounce, n
-32 bytes ciphertext, x
-variadic byttes padding, w2
-
-k = TKE(a.k, b.k, n)
-x = SE(k, token, n[0:24])
-h = MDS(n + x, k)
-
-Alice transmits ( h + n + x + w2 )
-Bob recieves ( h + n + x + w2) and verifies that h == MDS(n + x, k) silently
-drops if not matching
-
-4) token ack
-
-Bob acks the token that he got from Alice
-
-32 bytes hmac, h
-32 bytes nounce, n
-32 bytes ciphertext, x
-variadic byttes padding, w3
-
-S = TKE(a.k, b.k, token)
-x = SE(S, token, n[0:24])
-h = MDS(n + x, S)
-
-Alice transmits ( h + n + x + w3 ) to Bob and the session is now established
-using shared secret S
-
-Bob receves ( h + n + x + w2 ) and verifies that h == MDS(n + x, S)
-
-IWP payload format:
-
-ciphertext:
-32 bytes hmac, h
-32 bytes nounce, n
-N bytes of ciphertext, x
-
-plaintext header, H
-8 bits protocol version, v (currently 0)
-8 bits message type, t
-12 bits payload size, s
-4 bits flags, f
-
-plaintext payload: P
-s bytes of data
-N bytes remaining data is discarded
-
-D = H + P
-x = SE(D, S, n)
-h = MDS(n + x, S)
-
-Alice transmits h + n + x
-
-Bob recieves recieve h + n + x
-
-Bob checks hmac by verifying h == MDS(n + x, S)
-
-if the hmac fails the data is silently dropped
-
-message types:
-
-XMIT = 0x01
-
-begin link layer message transmission
-
-ACKS = 0x02
-
-acknolege link layer message fragment
-
-FRAG = 0x03
-
-transmit link layer message fragment
-
-flags:
-
-SESSION_INVALIDATED = 1 << 0
-
-this session is now invalidated and a new session is required
-
-HIGH_PACKET_DROP    = 1 << 1
-
-high packet drop detected
-
-HIGH_MTU_DETECTED   = 1 << 2
-
-the network uses an mtu greater than 1488 bytes
-
-PROTOCOL_UPGRADE    = 1 << 3
-
-indicates we want to do protocol upgrade (future use)
-
-XMIT payload:
-
-start transmiting a link layer message 
-
-msg_bytes = BE(msg)
-
-32 bytes hash of message computed by HS(msg_bytes)
-64 bits unsigned int message id
-12 bits unsigned int fragment size bytes, s
-4 bits unsigned int nonzero number of fragments, n
-8 bits size of last fragment in bytes, l
-
-msg_bytes is s * (n - 1) + l bytes long
-
-FRAG payload:
-
-transmit a link layer message fragment
-
-64 bits message id
-4 bits ignored
-4 bits unsigned int fragment number
-remaining bytes of payload are fragment data
-
-ACKS payload:
-
-indicates we which chunks we have recieved
-
-64 bits message id
-16 bits bitmask of chunks we have received
-remaining bytes discarded
-
-
-control flow:
-
-To transmit link message over an established session the transmitter sends an
-XMIT frame.
-In reply to an XMIT frame the recipiant MUST send an ACKS frame with an emtpy
-bitmask.
-After the transmitter recieves the first ACKS frame it is allowed to start
-sending FRAG messages.
-When all fragmenets are obtained by the recipiant, the recipiant sends an ACKS
-frame with a full bitfield (0xFFFF), to indicate the link message was recieved.
-In the event of packet drop the sender decides when to retransmit FRAG frames
-with expontential backoff.
-
-In the event of packet loss greater than 50% over 10 second the session is
-invalidated and must be renegotiated with a new handshake.
+wire protocol: dtls
 
 ---
 
@@ -273,18 +68,36 @@ all ip addresses can be ipv4 via hybrid dual stack ipv4 mapped ipv6 addresses,
 i.e ::ffff.8.8.8.8. The underlying implementation MAY implement ipv4 as native
 ipv4 instead of using a hybrid dual stack.
 
+net address:
+
+net addresses are a variable length byte string, if between 7 and 15 bytes it's
+treated as a dot notation ipv4 address (xxx.xxx.xxx.xxx)
+if it's exactly 16 bytes it's treated as a big endian encoding ipv6 address.
+
 address info (AI)
 
-An address info (AI) defines a publically reachable ipv6 endpoint
+An address info (AI) defines a publically reachable endpoint
 
 {
   c: transport_rank_uint16,
   e: "<32 bytes public encryption key>",
   d: "<transport dialect name>",
-  i: "<16 bytes big endian public ipv6 address>",
+  i: "<net address>",
   p: port_uint16,
   v: 0
 }
+
+example dtls address info:
+
+{
+  c: 1,
+  e: "<32 bytes public encryption key>",
+  d: "dtls",
+  i: "123.123.123.123",
+  p: 1234,
+  v: 0
+}
+
 
 Exit Info (XI)
 
