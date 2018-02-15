@@ -35,14 +35,14 @@ int main(int argc, char *argv[]) {
   struct bench_main b_main;
   struct llarp_threadpool *tp;
 
-  llarp_mem_jemalloc();
+  llarp_mem_std();
   llarp_crypto_libsodium_init(&b_main.crypto);
   llarp_ev_loop_alloc(&b_main.ev);
 
   tp = llarp_init_threadpool(2);
 
-  b_main.num = 10000000;
-  b_main.jobs = 10000;
+  b_main.num = 100000;
+  b_main.jobs = 1000;
   b_main.completed = 0;
   llarp_sharedkey_t key;
   b_main.crypto.randbytes(key, sizeof(llarp_sharedkey_t));

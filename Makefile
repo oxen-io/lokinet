@@ -65,11 +65,13 @@ $(REPO)/test/%.cpp.bin: $(REPO)/test/%.cpp
 	$(CXX) $(REQUIRED_CXXFLAGS) $< -o $<.bin $(TEST_LDFLAGS)
 	mv $<.bin $<.test
 	$<.test
+	valgrind --tool=callgrind $<.test
 
 $(REPO)/test/%.c.bin: $(REPO)/test/%.c
 	$(CC) $(REQUIRED_CFLAGS) $< -o $<.bin $(TEST_LDFLAGS)
 	mv $<.bin $<.test
 	$<.test
+	valgrind --tool=callgrind $<.test
 
 $(EXE): $(DAEMON_OBJ) $(STATIC_LIB)
 	$(CXX) $(DAEMON_OBJ) $(STATIC_LIB) $(LIB_LDFLAGS) -o $(EXE) 

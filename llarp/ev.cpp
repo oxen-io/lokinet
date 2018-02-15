@@ -5,6 +5,7 @@
 #include <mutex>
 #include <queue>
 
+
 struct llarp_ev_caller {
   static void *operator new(size_t sz) {
     return llarp::Alloc<llarp_ev_caller>();
@@ -21,37 +22,34 @@ struct llarp_ev_caller {
 
   bool appendCall(void *user) {
     std::unique_lock<std::mutex> lock(access);
-    bool should = pending.size() == 0;
-    llarp_ev_async_call *call =
-        new llarp_ev_async_call{loop, this, user, this->work};
-    pending.push(call);
-    return should;
+    pending.emplace_back(std::move(llarp_ev_async_call{loop, this, user, this->work}));
+    return true;
   }
 
   bool appendManyCalls(void **users, size_t n) {
     std::unique_lock<std::mutex> lock(access);
-    bool should = pending.size() == 0;
     while (n--) {
-      pending.push(new llarp_ev_async_call{loop, this, *users, this->work});
+      pending.emplace_back(std::move(llarp_ev_async_call{loop, this, *users, this->work}));
       users++;
     }
-    return should;
+    return true;
   }
 
   void Call() {
     std::unique_lock<std::mutex> lock(access);
-    while (pending.size() > 0) {
+    auto sz = pending.size();
+    while (sz > 0) {
       auto &front = pending.front();
-      front->work(front);
-      pending.pop();
-      delete front;
+      front.work(&front);
+      pending.pop_front();
+      --sz;
     }
   }
 
   std::mutex access;
   struct llarp_ev_loop *loop;
   uv_async_t async;
-  std::queue<llarp_ev_async_call *> pending;
+  std::deque<llarp_ev_async_call> pending;
   llarp_ev_work_func work;
 };
 

@@ -10,3 +10,5 @@ llarpd
 
 *.test
 *.bin
+
+callgrind.*
