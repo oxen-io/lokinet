@@ -82,8 +82,8 @@ An address info (AI) defines a publically reachable endpoint
 
 {
   c: transport_rank_uint16,
-  e: "<32 bytes public encryption key>",
   d: "<transport dialect name>",
+  e: "<32 bytes public encryption key>",
   i: "<net address>",
   p: port_uint16,
   v: 0
@@ -93,13 +93,16 @@ example iwp address info:
 
 {
   c: 1,
-  e: "<32 bytes public encryption key>",
   d: "iwp",
+  e: "<32 bytes of 0x61>",
   i: "123.123.123.123",
   p: 1234,
   v: 0
 }
 
+bencoded form:
+
+d1:ci1e1:d3:iwp1:e32:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:d3:iwp1:i15:123.123.123.1231:pi1234e1:vi0ee
 
 Exit Info (XI)
 
