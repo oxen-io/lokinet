@@ -213,7 +213,7 @@ new_x = SE(S, n[0:24], x)
 
 2) generate hmac
 
-h = MDS(n + A.k + x, S)
+h = MDS(n + A.k + new_x, S)
 
 resulting frame is h + n + A.k + new_x
 
