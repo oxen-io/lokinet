@@ -55,7 +55,9 @@ RAND(n) is n random bytes
 
 ---
 
-wire protocol: dtls
+wire protocol
+
+see iwp-v0.txt
 
 ---
 
@@ -87,12 +89,12 @@ An address info (AI) defines a publically reachable endpoint
   v: 0
 }
 
-example dtls address info:
+example iwp address info:
 
 {
   c: 1,
   e: "<32 bytes public encryption key>",
-  d: "dtls",
+  d: "iwp",
   i: "123.123.123.123",
   p: 1234,
   v: 0
