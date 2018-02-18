@@ -5,7 +5,14 @@
 namespace llarp {
 template <typename T>
 static constexpr size_t alignment() {
-  return std::exp2(1 + std::floor(std::log2(sizeof(T))));
+  size_t idx = 0;
+  size_t sz = sizeof(T);
+  while(sz)
+  {
+    ++idx;
+    sz >>= 1;
+  }
+  return 1 << idx;
 }
 
 template <typename T>
