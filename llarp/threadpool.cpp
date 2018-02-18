@@ -15,7 +15,7 @@ Pool::Pool(size_t workers) {
               lock, [this] { return this->stop || !this->jobs.empty(); });
           if (this->stop && this->jobs.empty()) return;
           job = std::move(this->jobs.front());
-          this->jobs.pop();
+          this->jobs.pop_front();
         }
         // do work
         job.work(job.user);
@@ -39,14 +39,14 @@ void Pool::Join() {
   for (auto &t : threads) t.join();
 }
 
-void Pool::QueueJob(llarp_thread_job job) {
+void Pool::QueueJob(const llarp_thread_job & job) {
   {
     lock_t lock(queue_mutex);
 
     // don't allow enqueueing after stopping the pool
     if (stop) throw std::runtime_error("enqueue on stopped ThreadPool");
 
-    jobs.emplace(job);
+    jobs.emplace_back(job);
   }
   condition.notify_one();
 }
