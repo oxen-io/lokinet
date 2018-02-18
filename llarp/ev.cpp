@@ -5,7 +5,6 @@
 #include <mutex>
 #include <queue>
 
-
 struct llarp_ev_caller {
   static void *operator new(size_t sz) {
     return llarp::Alloc<llarp_ev_caller>();
@@ -22,14 +21,16 @@ struct llarp_ev_caller {
 
   bool appendCall(void *user) {
     std::unique_lock<std::mutex> lock(access);
-    pending.emplace_back(std::move(llarp_ev_async_call{loop, this, user, this->work}));
+    pending.emplace_back(
+        std::move(llarp_ev_async_call{loop, this, user, this->work}));
     return true;
   }
 
   bool appendManyCalls(void **users, size_t n) {
     std::unique_lock<std::mutex> lock(access);
     while (n--) {
-      pending.emplace_back(std::move(llarp_ev_async_call{loop, this, *users, this->work}));
+      pending.emplace_back(
+          std::move(llarp_ev_async_call{loop, this, *users, this->work}));
       users++;
     }
     return true;
