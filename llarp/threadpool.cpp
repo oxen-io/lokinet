@@ -39,7 +39,7 @@ void Pool::Join() {
   for (auto &t : threads) t.join();
 }
 
-void Pool::QueueJob(const llarp_thread_job & job) {
+void Pool::QueueJob(const llarp_thread_job &job) {
   {
     lock_t lock(queue_mutex);
 

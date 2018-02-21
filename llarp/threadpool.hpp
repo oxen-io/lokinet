@@ -4,8 +4,8 @@
 #include <llarp/threadpool.h>
 
 #include <condition_variable>
-#include <mutex>
 #include <deque>
+#include <mutex>
 #include <thread>
 #include <vector>
 
@@ -15,7 +15,7 @@ typedef std::mutex mtx_t;
 typedef std::unique_lock<mtx_t> lock_t;
 struct Pool {
   Pool(size_t sz);
-  void QueueJob(const llarp_thread_job & job);
+  void QueueJob(const llarp_thread_job& job);
   void Join();
   std::vector<std::thread> threads;
   std::deque<llarp_thread_job> jobs;

@@ -7,8 +7,7 @@ template <typename T>
 static constexpr size_t alignment() {
   size_t idx = 0;
   size_t sz = sizeof(T);
-  while(sz)
-  {
+  while (sz) {
     ++idx;
     sz >>= 1;
   }
