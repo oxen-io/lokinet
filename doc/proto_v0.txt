@@ -178,6 +178,11 @@ introducer set (IS)
 
 Encrypted frames:
 
+{
+  v: 0,
+  w: <32+32+32+N bytes payload>
+}
+
 Encrypted frames are encrypted containers for link message records like LRCR.
 
 32 bytes hmac, h
