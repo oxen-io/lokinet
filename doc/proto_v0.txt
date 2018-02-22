@@ -260,23 +260,23 @@ request a commit to relay traffic to another node.
 {
   a: "c",
   b: [ list, of, encrypted, frames ],
-  v: 0,
+  v: 0
 }
 
 
 link relay commit record (LRCR)
 
-record requesting path with id p relay messages for x seconds to router
--+on network who's i is equal to RC.k and decrypt data any messages using
+record requesting path with id p relay messages for o seconds to router
+on network who's i is equal to RC.k and decrypt data any messages using
 PKE(n, rc.K, c) as symettric key for encryption and decryption.
 
 {
   c: "<32 byte public signing/encryption key used for further communication>",
   i: "<32 byte RC.k of next hop>",
   n: "<32 bytes nounce for key exchange>",
+  o: seconds_lifetime_uint64,
   p: path_id_uint64,
-  v: 0,
-  x: seconds_lifetime_uint64
+  v: 0
 }
 
 if i is equal to RC.k then any LRDM.z values are decrypted and interpreted as
@@ -329,7 +329,7 @@ path build and send the result of the build.
 {
   a: "s",
   p: [list, of, encrypted, replies],
-  v: 0,
+  v: 0
 }
 
 
@@ -375,7 +375,7 @@ verify signature using cancel key c in relay commit message.
 {
   a: "x",
   b: [ list, of, exit, records, as, encrpyted, frames ],
-  v: 0,
+  v: 0
 }
 
 link relay exit record (LRXR)
@@ -395,7 +395,7 @@ transfer one or more dht messages directly without a previously made path.
 {
   a: "d",
   d: [many, dht, messages],
-  v: 0,
+  v: 0
 }
 
 
@@ -506,7 +506,7 @@ transfer data between paths.
   V: 0,
   X: "<N bytes payload>", 
   Y: "<24 bytes nounce>",
-  Z: "<64 bytes signature of entire message where Z is set to NUL>",
+  Z: "<64 bytes signature>"
 }
 
 transfer data to another path with id P on the local router place Y and X values
@@ -619,7 +619,7 @@ R is currently set to 3 +/- 2 by the sender.
   R: r5n_counter,
   T: transaction_id_uint64,
   V: 0,
-  X: [ IS, IS, IS, ... ],
+  X: [ IS, IS, IS, ... ]
 }
 
 acknoleged introduction message (AIM)
@@ -631,7 +631,7 @@ for the previously provided IS, if backoff is 0 the operation was successfull
   A: "A",
   T: transaction_id_uint64,
   V: 0,
-  X: [ 0, 0, backoff, ...],
+  X: [ 0, 0, backoff, ...]
 }
 
 find router contact message (FRCM)
@@ -641,7 +641,7 @@ find a router by long term RC.k public key
 {
   A: "F",
   K: "<32 byte public key of router>",
-  T: transaction_id_uint64
+  T: transaction_id_uint64,
   V: 0
 }
 
@@ -649,6 +649,7 @@ got router contact message (GRCM)
 
 R is a list containing a single RC if found or is an empty list if not found
 sent in reply to FRCM only
+
 {
   A: "G",
   R: [RC],
