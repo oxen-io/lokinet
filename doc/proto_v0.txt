@@ -180,7 +180,7 @@ Encrypted frames:
 
 {
   v: 0,
-  w: <32+32+32+N bytes payload>
+  w: "<32+32+32+N bytes payload>"
 }
 
 Encrypted frames are encrypted containers for link message records like LRCR.
