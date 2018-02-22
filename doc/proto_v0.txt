@@ -102,7 +102,7 @@ example iwp address info:
 
 bencoded form:
 
-d1:ci1e1:d3:iwp1:e32:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa:d3:iwp1:i15:123.123.123.1231:pi1234e1:vi0ee
+d1:ci1e1:d3:iwp1:e32:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1:d3:iwp1:i15:123.123.123.1231:pi1234e1:vi0ee
 
 Exit Info (XI)
 
