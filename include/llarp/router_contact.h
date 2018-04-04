@@ -8,7 +8,6 @@ extern "C" {
 #endif
 
 struct llarp_rc {
-  llarp_buffer_t raw;
   struct llarp_ai_list *addrs;
   llarp_pubkey_t pubkey;
   struct llarp_xi_list *exits;

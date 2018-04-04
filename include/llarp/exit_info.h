@@ -17,6 +17,20 @@ bool llarp_xi_bencode(struct llarp_xi *xi, llarp_buffer_t *buf);
 
 struct llarp_xi_list;
 
+  struct llarp_xi_list * llarp_xi_list_new();
+  void llarp_xi_list_free(struct llarp_xi_list * l);
+
+
+  struct llarp_xi_list_iter
+  {
+    void * user;
+    struct llarp_xi_list * list;
+    bool (*visit)(struct llarp_xi_list_iter *, struct llarp_xi *);
+  };
+
+  void llarp_xi_list_iterate(struct llarp_xi_list *l,
+                             struct llarp_xi_list_iter *iter);
+
 #ifdef __cplusplus
 }
 #endif

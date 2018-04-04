@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
   struct llarp_main llarp = {NULL, NULL, NULL, NULL};
   const char *conffname = "daemon.ini";
   if (argc > 1) conffname = argv[1];
-  llarp_mem_jemalloc();
+  llarp_mem_stdlib();
   llarp_new_config(&llarp.config);
   llarp_ev_loop_alloc(&llarp.mainloop);
   printf("%s loaded\n", LLARP_VERSION);
@@ -55,8 +55,10 @@ int main(int argc, char *argv[]) {
     iter.user = &llarp;
     iter.visit = iter_main_config;
     llarp_config_iter(llarp.config, &iter);
+    
     if (!llarp.tp) llarp.tp = llarp_init_threadpool(2);
     llarp.router = llarp_init_router(llarp.tp);
+    
     if (!llarp_configure_router(llarp.router, llarp.config)) {
       printf("Running\n");
       llarp_run_router(llarp.router, llarp.mainloop);

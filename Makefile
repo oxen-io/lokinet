@@ -9,7 +9,6 @@ STATIC_SRC_C = $(wildcard $(REPO)/llarp/*.c)
 
 STATIC_OBJ = $(STATIC_SRC_CPP:.cpp=.cpp.o) $(STATIC_SRC_C:.c=.c.o)
 
-
 DAEMON_SRC = $(wildcard $(REPO)/daemon/*.c)
 DAEMON_OBJ = $(DAEMON_SRC:.c=.c.o)
 
@@ -41,9 +40,15 @@ ifneq ($(GIT_VERSION),"")
 	VER_FLAGS=-DGIT_REV=\"$(GIT_VERSION)\"
 endif
 
+ifeq ($(JEMALLOC),"1")
+MALLOC_LIB=-ljemalloc
+else
+MALLOC_LIB=
+endif
+
 REQUIRED_CFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c99 $(CFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS) -Wall -fPIC
 REQUIRED_CXXFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c++14 $(CXXFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS) -Wall -fPIC
-LIB_LDFLAGS = -ljemalloc $(SODIUM_LIBS) $(LIBUV_LIBS) -lm -lstdc++
+LIB_LDFLAGS = $(MALLOC_LIB) $(SODIUM_LIBS) $(LIBUV_LIBS) -lm -lstdc++
 REQUIRED_LDFLAGS = -L$(REPO) -lllarp 
 TEST_LDFLAGS = $(STATIC_LIB) $(LIB_LDFLAGS)
 

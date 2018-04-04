@@ -15,7 +15,7 @@ void std_free(void *ptr) {
 }  // namespace llarp
 
 extern "C" {
-void llarp_mem_std() {
+void llarp_mem_stdlib() {
   llarp_g_mem.alloc = llarp::std_malloc;
   llarp_g_mem.free = llarp::std_free;
 }
