@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
   struct llarp_crypto crypto;
   struct llarp_threadpool *tp;
 
-  llarp_mem_jemalloc();
+  llarp_mem_stdlib();
   llarp_crypto_libsodium_init(&crypto);
   llarp_ev_loop_alloc(&dh_main.ev);
 

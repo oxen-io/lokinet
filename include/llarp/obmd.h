@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-// forward declair
+/* forward decl */
 struct llarp_link;
 
 /**

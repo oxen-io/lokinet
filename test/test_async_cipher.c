@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
   struct bench_main b_main;
   struct llarp_threadpool *tp;
 
-  llarp_mem_std();
+  llarp_mem_stdlib();
   llarp_crypto_libsodium_init(&b_main.crypto);
   llarp_ev_loop_alloc(&b_main.ev);
 

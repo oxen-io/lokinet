@@ -110,8 +110,8 @@ An exit info (XI) defines a exit address that can relay exit traffic to the
 internet.
 
 {
-  a: "<16 bytes big endian ipv6 address>",
-  b: "<16 bytes big endian ipv6 netmask>",
+  a: "<net address exit address>",
+  b: "<net address exit netmask>",
   k: "<32 bytes public encryption/signing key>",
   v: 0
 }
@@ -126,7 +126,7 @@ information required to access the internet via that exit address.
   a: "<16 bytes big endian ipv6 gateway address>",
   b: "<16 bytes big endian ipv6 netmask>",
   c: "<16 bytes big endian ipv6 source address>",
-  e: lifetime_in_seconds_uint64,
+  l: lifetime_in_seconds_uint64,
   v: 0
 }
 

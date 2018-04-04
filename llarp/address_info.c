@@ -1,26 +1,12 @@
-#include "address_info.hpp"
+#include <llarp/address_info.h>
 #include <llarp/bencode.h>
-#include <cstring>
+#include <llarp/mem.h>
+#include <string.h>
 #include <arpa/inet.h>
 
-namespace llarp {
-  /*
-template <>
-bool BEncode(const llarp_ai &a, llarp_buffer_t *buff) {
-  return bencodeDict(buff) && bencodeDict_Int(buff, "c", a.rank) &&
-         bencodeDict_Bytes(buff, "d", a.dialect,
-                           UStrLen(a.dialect, sizeof(a.dialect))) &&
-         bencodeDict_Bytes(buff, "e", a.enc_key, sizeof(a.enc_key)) &&
-         bencodeDict_Bytes(buff, "i", &a.ip, sizeof(a.ip)) &&
-         bencodeDict_Int(buff, "p", a.port) && bencodeDict_Int(buff, "v", 0) &&
-         bencodeEnd(buff);
-}
-  */
-}  // namespace llarp
-
-extern "C" {
-
 bool llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff) {
+  char ipbuff [128] = {0};
+  const char * ipstr;
   if(!bencode_start_dict(buff)) return false;
   /* rank */
   if(!bencode_write_bytestring(buff, "c", 1)) return false;
@@ -32,9 +18,8 @@ bool llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff) {
   if(!bencode_write_bytestring(buff, "e", 1)) return false;
   if(!bencode_write_bytestring(buff, ai->enc_key, sizeof(llarp_pubkey_t))) return false;
   /** ip */
-  char ipbuff [128] = {0};
-  const char * ipstr = inet_ntop(AF_INET6, &ai->ip, ipbuff, sizeof(ipbuff));
-  if(ipstr == nullptr) return false;
+  ipstr = inet_ntop(AF_INET6, &ai->ip, ipbuff, sizeof(ipbuff));
+  if(!ipstr) return false;
   if(!bencode_write_bytestring(buff, "i", 1)) return false;
   if(!bencode_write_bytestring(buff, ipstr, strnlen(ipstr, sizeof(ipbuff)))) return false;
   /** port */
@@ -47,13 +32,35 @@ bool llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff) {
   return bencode_end(buff);
 }
 
+
+struct llarp_ai_list
+{
+  struct llarp_ai_list * next;
+  struct llarp_ai data;
+};
+
+struct llarp_ai_list * llarp_ai_list_new()
+{
+  return llarp_g_mem.alloc(sizeof(struct llarp_ai_list), 8);
+}
+
+void llarp_ai_list_free(struct llarp_ai_list * l)
+{
+  struct llarp_ai_list * cur = l;
+  struct llarp_ai_list * tmp;
+  do {
+    tmp = cur->next;
+    llarp_g_mem.free(cur);
+    cur = tmp;
+  }while(cur->next);
+}
+
 void llarp_ai_list_iterate(struct llarp_ai_list *l,
                            struct llarp_ai_list_iter *itr) {
-  itr->list = l;
   struct llarp_ai_list *cur = l;
+  itr->list = l;
   do {
-    if (!itr->visit(itr, cur->data)) return;
+    if (!itr->visit(itr, &cur->data)) return;
     cur = cur->next;
   } while (cur->next);
-}
 }

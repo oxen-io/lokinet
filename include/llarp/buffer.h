@@ -1,6 +1,6 @@
 #ifndef LLARP_BUFFER_H_
 #define LLARP_BUFFER_H_
-
+#include <llarp/common.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
@@ -14,14 +14,14 @@ typedef struct llarp_buffer_t {
   char *cur;
 } llarp_buffer_t;
 
-inline size_t llarp_buffer_size_left(llarp_buffer_t *buff)
+size_t INLINE llarp_buffer_size_left(llarp_buffer_t *buff)
 {
   size_t diff = buff->cur - buff->base;
   if ( diff > buff->sz) return 0;
   else return buff->sz - diff;
 }
   
-inline bool llarp_buffer_write(llarp_buffer_t *buff, const void *data, size_t sz)
+bool INLINE llarp_buffer_write(llarp_buffer_t *buff, const void *data, size_t sz)
 {
   size_t left = llarp_buffer_size_left(buff);
   if (left >= sz)

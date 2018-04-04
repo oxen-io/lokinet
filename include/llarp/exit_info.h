@@ -1,6 +1,7 @@
 #ifndef LLARP_XI_H
 #define LLARP_XI_H
 #include <llarp/buffer.h>
+#include <llarp/crypto.h>
 #include <llarp/net.h>
 
 #ifdef __cplusplus
@@ -10,6 +11,7 @@ extern "C" {
 struct llarp_xi {
   struct in6_addr address;
   struct in6_addr netmask;
+  llarp_pubkey_t pubkey;
 };
 
 bool llarp_xi_bdecode(struct llarp_xi *xi, llarp_buffer_t *buf);

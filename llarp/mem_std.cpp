@@ -1,10 +1,15 @@
 #include <llarp/mem.h>
+#include <cstring>
 
 namespace llarp {
 void *std_malloc(size_t sz, size_t align) {
   (void)align;
   void *ptr = malloc(sz);
-  if (ptr) return ptr;
+  if (ptr)
+  {
+    std::memset(ptr, 0, sz);
+    return ptr;
+  }
   abort();
 }
 

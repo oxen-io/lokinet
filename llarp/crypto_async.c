@@ -36,16 +36,18 @@ static void llarp_async_dh_exec(struct llarp_async_dh *dh, llarp_dh_func func,
                                 llarp_dh_complete_hook result, void *user) {
   struct llarp_dh_internal *impl =
       llarp_g_mem.alloc(sizeof(struct llarp_dh_internal), 32);
+  struct llarp_thread_job job = {
+    .caller = dh->caller,
+    .data = impl,
+    .user = impl,
+    .work = &llarp_crypto_dh_work
+  };
   memcpy(impl->theirkey, theirkey, sizeof(llarp_pubkey_t));
   memcpy(impl->nounce, nounce, sizeof(llarp_tunnel_nounce_t));
   impl->ourkey = dh->ourkey;
   impl->result.user = user;
   impl->result.hook = result;
   impl->func = func;
-  struct llarp_thread_job job = {.caller = dh->caller,
-                                 .data = impl,
-                                 .user = impl,
-                                 .work = &llarp_crypto_dh_work};
   llarp_threadpool_queue_job(dh->tp, job);
 }
 

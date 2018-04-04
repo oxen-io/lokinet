@@ -1,5 +1,6 @@
 #ifndef LLARP_CRYPTO_H_
 #define LLARP_CRYPTO_H_
+#include <llarp/common.h>
 #include <llarp/buffer.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -27,7 +28,7 @@ typedef uint8_t llarp_hmacsec_t[HMACSECSIZE];
 typedef uint8_t llarp_sig_t[SIGSIZE];
 typedef uint8_t llarp_tunnel_nounce_t[TUNNOUNCESIZE];
 
-static inline uint8_t *llarp_seckey_topublic(llarp_seckey_t k) {
+static INLINE uint8_t *llarp_seckey_topublic(llarp_seckey_t k) {
   return k + 32;
 }
 
