@@ -4,6 +4,7 @@
 #include <llarp/mem.h>
 #include <llarp/msg_handler.h>
 #include <llarp/obmd.h>
+#include <llarp/ev.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -11,32 +12,25 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
+  
+/**
+ * wire layer transport interface 
+ */
 struct llarp_link;
 
-struct llarp_link *llarp_link_alloc(struct llarp_msg_muxer *muxer);
-void llarp_link_free(struct llarp_link **link);
-
-bool llarp_link_configure_addr(struct llarp_link *link, const char *ifname,
-                               int af, uint16_t port);
-
-/** get link listener for events */
-struct llarp_udp_listener *llarp_link_udp_listener(struct llarp_link *link);
-
-void llarp_link_start(struct llarp_link *link);
-
-struct llarp_link_queue *llarp_link_frame_queue(struct llarp_link *link);
-
-void llarp_link_stop(struct llarp_link *link);
-
+  
+/**
+ * wire layer transport session for point to point communication between us and another
+ */
 struct llarp_link_session;
 
 struct llarp_link_session_listener {
   void *user;
-  /** set by llarp_try_establish_session */
+  /** set by try_establish */
   struct llarp_link *link;
-  /** set by llarp_try_establish_session */
+  /** set by try_establish */
   struct llarp_rc *rc;
+  /** callback to handle result */
   void (*result)(struct llarp_link_session_listener *,
                  struct llarp_link_session *);
 };
@@ -47,21 +41,35 @@ struct llarp_link_establish_job {
   uint64_t timeout;
 };
 
-void llarp_link_try_establish_session(struct llarp_link *link,
-                                      struct llarp_link_establish_job *job,
-                                      struct llarp_link_session_listener *l);
-
 struct llarp_link_session_iter {
   void *user;
   struct llarp_link *link;
   bool (*visit)(struct llarp_link_session_iter *, struct llarp_link_session *);
 };
 
-void llarp_link_iter_sessions(struct llarp_link *l,
-                              struct llarp_link_session_iter *i);
+struct llarp_link
+{
+  void * impl;
+  int (*configure_addr)(struct llarp_link *, const char *, int, uint16_t);
+  int (*start_link)(struct llarp_link *, struct llarp_ev_loop *);
+  int (*stop_link)(struct llarp_link *);
+  struct llarp_rc * (*get_our_rc)(struct llarp_link *);
+  void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter);
+  void (*try_establish)(struct llarp_link *,
+                        struct llarp_link_establish_job,
+                        struct llarp_link_session_listener);
+  void (*free)(struct llarp_link *);
+};
 
-struct llarp_rc *llarp_link_session_rc(struct llarp_link_session *s);
+struct llarp_link_session
+{
+  void * impl;
+  struct llarp_rc * (*get_remote_rc)(struct llarp_link_session *);
+  /** send an entire message, splits up into smaller pieces and does encryption */
+  ssize_t (*sendto)(struct llarp_link_session *, llarp_buffer_t);
+};
 
+  
 #ifdef __cplusplus
 }
 #endif

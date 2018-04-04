@@ -19,9 +19,6 @@ struct llarp_ai {
   uint16_t port;
 };
 
-/** allocator for address info */
-extern struct llarp_alloc *llarp_ai_alloc;
-
 bool llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff);
 bool llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t buff);
 

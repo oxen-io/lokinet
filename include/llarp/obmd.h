@@ -11,6 +11,9 @@ extern "C" {
 // forward declair
 struct llarp_link;
 
+/**
+ * link layer outbound message sending muxer
+ */
 struct llarp_link_dispatcher;
 
 struct llarp_link_dispatcher *llarp_init_link_dispatcher();

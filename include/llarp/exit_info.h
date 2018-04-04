@@ -8,8 +8,8 @@ extern "C" {
 #endif
 
 struct llarp_xi {
-  in6_addr address;
-  in6_addr netmask;
+  struct in6_addr address;
+  struct in6_addr netmask;
 };
 
 bool llarp_xi_bdecode(struct llarp_xi *xi, llarp_buffer_t *buf);

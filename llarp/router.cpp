@@ -2,7 +2,7 @@
 #include <llarp/ibfq.h>
 #include <llarp/link.h>
 #include <llarp/router.h>
-#include "link.hpp"
+#include <llarp/iwp.h>
 #include "str.hpp"
 
 namespace llarp {
@@ -32,8 +32,7 @@ void llarp_router::ForEachLink(std::function<void(llarp_link *)> visitor) {
   } while (cur);
 }
 
-void llarp_router::Close() { ForEachLink(llarp_link_stop); }
-
+void llarp_router::Close() { ForEachLink([](llarp_link * l) { l->stop_link(l); }); }
 extern "C" {
 
 struct llarp_router *llarp_init_router(struct llarp_threadpool *tp) {
@@ -54,7 +53,7 @@ int llarp_configure_router(struct llarp_router *router,
 
 void llarp_run_router(struct llarp_router *router, struct llarp_ev_loop *loop) {
   router->ForEachLink([loop](llarp_link *link) {
-    llarp_ev_add_udp_listener(loop, llarp_link_udp_listener(link));
+      link->start_link(link, loop);
   });
 }
 
@@ -62,7 +61,7 @@ void llarp_stop_router(struct llarp_router *router) { router->Close(); }
 
 void llarp_free_router(struct llarp_router **router) {
   if (*router) {
-    (*router)->ForEachLink([](llarp_link *link) { llarp_g_mem.free(link); });
+    (*router)->ForEachLink([](llarp_link *link) { link->free(link); });
     delete *router;
   }
   *router = nullptr;
@@ -76,15 +75,27 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   llarp_router *self = static_cast<llarp_router *>(iter->user);
   if (StrEq(section, "links")) {
     if (StrEq(val, "ip")) {
-      struct llarp_link *link = llarp_link_alloc(&self->muxer);
-      if (llarp_link_configure_addr(link, key, AF_INET6, 7000))
+      struct llarp_link *link = llarp::Alloc<llarp_link>();
+      iwp_configure_args args;
+      self->crypto.keygen(&args.seckey);
+      iwp_link_init(link, args, &self->muxer);
+      if (link->configure_addr(link, key, AF_INET6, 7000))
         self->AddLink(link);
       else {
-        llarp_link_free(&link);
+        link->free(link);
         printf("failed to configure %s link for %s\n", val, key);
       }
     } else if (StrEq(val, "eth")) {
-      /** todo: ethernet link */
+     struct llarp_link *link = llarp::Alloc<llarp_link>();
+      iwp_configure_args args;
+      self->crypto.keygen(&args.seckey);
+      iwp_link_init(link, args, &self->muxer);
+      if (link->configure_addr(link, key, AF_PACKET, 0xD1CE))
+        self->AddLink(link);
+      else {
+        link->free(link);
+        printf("failed to configure %s link for %s\n", val, key);
+      }
     }
   }
 }
