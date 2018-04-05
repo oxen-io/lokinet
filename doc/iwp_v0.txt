@@ -37,20 +37,23 @@ handshake:
 
 0) intro
 
-32 bytes random padding, r (for future handshake use)
 32 bytes hmac, h
 32 bytes nounce, n
-32 bytes encrypted alice's transport public encryption key, SE(a.k, HS(b.k + n))
+32 bytes random padding, r (for future handshake use)
+32 bytes encrypted alice's transport public encryption key e
 variadic bytes padding, w0
 
-Alice transmits ( r + h + n + SE(a.k, HS(b.K + n)) + w0 ) to Bob from the transport address matching
+Alice transmits ( h + n + r + e ) to Bob from the transport address matching
 his public transport encryption key (b.k).
 
 w0 = "[insert variable length random padding here]"
+r = RAND(32)
+n = RAND(32)
+e = SE(a.k + w0, HS(b.k + n))
 s = TKE(a.k, b.k, n)
-h = MDS(n + a.k, s)
+h = MDS(r + e, s)
 
-Bob recieves ( r + h + n + a.k + w0 ) 
+Bob recieves ( h + n + r + e ) 
 
 1) intro ack
 
