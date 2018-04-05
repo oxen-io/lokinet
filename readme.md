@@ -4,6 +4,8 @@ Low Latency Anon Routing Protocol
 
 **THIS IS A TOY DO NOT USE UNTIL IT'S NOT A TOY**
 
+This project is "secret" don't tell anyone about it yet. :x
+
 [rfc](doc/proto_v0.txt)
 
 ## Reference Implementation
