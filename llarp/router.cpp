@@ -97,7 +97,7 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
       }
       else {
         link->free(link);
-        printf("failed to configure ethernetn link for %s\n", key);
+        printf("failed to configure ethernet link for %s\n", key);
       }
     } else {
       struct llarp_link *link = llarp::Alloc<llarp_link>();

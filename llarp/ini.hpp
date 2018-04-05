@@ -40,19 +40,21 @@ struct Level {
   Level() : parent(NULL), depth(0) {}
   Level(Level *p) : parent(p), depth(0) {}
 
-  typedef std::map<std::string, std::string> value_map_t;
+  typedef std::list<std::pair<std::string, std::string> > value_map_t;
   typedef std::map<std::string, Level> section_map_t;
-  typedef std::list<value_map_t::const_iterator> values_t;
   typedef std::list<section_map_t::const_iterator> sections_t;
   value_map_t values;
   section_map_t sections;
-  values_t ordered_values;  // original order in the ini file
   sections_t ordered_sections;
   Level *parent;
   size_t depth;
 
+  static std::string default_value;
+  
   const std::string &operator[](const std::string &name) {
-    return values[name];
+    for (const auto & itr : values)
+      if (itr.first == name) return itr.second;
+    return default_value;
   }
   Level &operator()(const std::string &name) { return sections[name]; }
 };
@@ -142,11 +144,10 @@ inline void Parser::parse(Level &l) {
     } else {
       size_t n = line_.find('=');
       if (n == std::string::npos) err("no '=' found");
-      std::pair<Level::value_map_t::const_iterator, bool> res = l.values.insert(
-          std::make_pair(trim(line_.substr(0, n)),
-                         trim(line_.substr(n + 1, line_.length() - n - 1))));
-      if (!res.second) err("duplicated key found");
-      l.ordered_values.push_back(res.first);
+      
+      auto p = std::make_pair(trim(line_.substr(0, n)),
+                              trim(line_.substr(n + 1, line_.length() - n - 1)));
+      l.values.push_back(p);
     }
   }
 }
@@ -158,9 +159,10 @@ inline void Parser::dump(std::ostream &s, const Level &l,
   if (!sname.empty()) s << sname;
   for (size_t i = 0; i < l.depth; ++i) s << ']';
   if (!sname.empty()) s << std::endl;
-  for (Level::values_t::const_iterator it = l.ordered_values.begin();
-       it != l.ordered_values.end(); ++it)
-    s << (*it)->first << '=' << (*it)->second << std::endl;
+  
+  for( const auto & itr : l.values)
+    s << itr.first << '=' << itr.second << std::endl;
+  
   for (Level::sections_t::const_iterator it = l.ordered_sections.begin();
        it != l.ordered_sections.end(); ++it) {
     assert((*it)->second.depth == l.depth + 1);

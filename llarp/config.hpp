@@ -1,13 +1,13 @@
 #ifndef LIBLLARP_CONFIG_HPP
 #define LIBLLARP_CONFIG_HPP
-#include <map>
+#include <list>
 #include <string>
 
 #include <llarp/config.h>
 
 namespace llarp {
 struct Config {
-  typedef std::map<std::string, std::string> section_t;
+  typedef std::list<std::pair<std::string, std::string> > section_t;
 
   section_t router;
   section_t network;
