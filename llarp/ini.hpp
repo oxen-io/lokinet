@@ -50,9 +50,9 @@ struct Level {
   size_t depth;
 
   static std::string default_value;
-  
+
   const std::string &operator[](const std::string &name) {
-    for (const auto & itr : values)
+    for (const auto &itr : values)
       if (itr.first == name) return itr.second;
     return default_value;
   }
@@ -144,9 +144,10 @@ inline void Parser::parse(Level &l) {
     } else {
       size_t n = line_.find('=');
       if (n == std::string::npos) err("no '=' found");
-      
-      auto p = std::make_pair(trim(line_.substr(0, n)),
-                              trim(line_.substr(n + 1, line_.length() - n - 1)));
+
+      auto p =
+          std::make_pair(trim(line_.substr(0, n)),
+                         trim(line_.substr(n + 1, line_.length() - n - 1)));
       l.values.push_back(p);
     }
   }
@@ -159,10 +160,10 @@ inline void Parser::dump(std::ostream &s, const Level &l,
   if (!sname.empty()) s << sname;
   for (size_t i = 0; i < l.depth; ++i) s << ']';
   if (!sname.empty()) s << std::endl;
-  
-  for( const auto & itr : l.values)
+
+  for (const auto &itr : l.values)
     s << itr.first << '=' << itr.second << std::endl;
-  
+
   for (Level::sections_t::const_iterator it = l.ordered_sections.begin();
        it != l.ordered_sections.end(); ++it) {
     assert((*it)->second.depth == l.depth + 1);

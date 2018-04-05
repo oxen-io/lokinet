@@ -19,7 +19,6 @@ struct llarp_ai {
   uint16_t port;
 };
 
-
 bool llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff);
 bool llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t buff);
 

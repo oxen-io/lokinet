@@ -9,15 +9,13 @@
 extern "C" {
 #endif
 
-  struct iwp_configure_args
-  {
-    struct llarp_crypto * crypto;
-  };
+struct iwp_configure_args {
+  struct llarp_crypto* crypto;
+};
 
-  
-  bool iwp_link_init(struct llarp_link * link, struct iwp_configure_args args, struct llarp_msg_muxer * muxer);
+bool iwp_link_init(struct llarp_link* link, struct iwp_configure_args args,
+                   struct llarp_msg_muxer* muxer);
 
-  
 #ifdef __cplusplus
 }
 #endif

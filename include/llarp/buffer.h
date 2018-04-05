@@ -14,18 +14,18 @@ typedef struct llarp_buffer_t {
   char *cur;
 } llarp_buffer_t;
 
-size_t INLINE llarp_buffer_size_left(llarp_buffer_t *buff)
-{
+size_t INLINE llarp_buffer_size_left(llarp_buffer_t *buff) {
   size_t diff = buff->cur - buff->base;
-  if ( diff > buff->sz) return 0;
-  else return buff->sz - diff;
+  if (diff > buff->sz)
+    return 0;
+  else
+    return buff->sz - diff;
 }
-  
-bool INLINE llarp_buffer_write(llarp_buffer_t *buff, const void *data, size_t sz)
-{
+
+bool INLINE llarp_buffer_write(llarp_buffer_t *buff, const void *data,
+                               size_t sz) {
   size_t left = llarp_buffer_size_left(buff);
-  if (left >= sz)
-  {
+  if (left >= sz) {
     memcpy(buff->cur, data, sz);
     buff->cur += sz;
     return true;
@@ -33,9 +33,8 @@ bool INLINE llarp_buffer_write(llarp_buffer_t *buff, const void *data, size_t sz
   return false;
 }
 
-bool llarp_buffer_writef(llarp_buffer_t *buff, const char * fmt, ...);
+bool llarp_buffer_writef(llarp_buffer_t *buff, const char *fmt, ...);
 
-  
 #ifdef __cplusplus
 }
 #endif

@@ -5,8 +5,7 @@ namespace llarp {
 void *std_malloc(size_t sz, size_t align) {
   (void)align;
   void *ptr = malloc(sz);
-  if (ptr)
-  {
+  if (ptr) {
     std::memset(ptr, 0, sz);
     return ptr;
   }

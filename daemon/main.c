@@ -62,10 +62,10 @@ int main(int argc, char *argv[]) {
     iter.user = &llarp;
     iter.visit = iter_main_config;
     llarp_config_iter(llarp.config, &iter);
-    
+
     if (!llarp.tp) llarp.tp = llarp_init_threadpool(2);
     llarp.router = llarp_init_router(llarp.tp);
-    
+
     if (llarp_configure_router(llarp.router, llarp.config)) {
       printf("Running\n");
       llarp_run_router(llarp.router, llarp.mainloop);
