@@ -68,7 +68,7 @@ w1 = "[insert variable length random padding here]"
 token = RAND(32)
 k = TKE(a.k, b.k, n)
 x = SE(k, token, n[0:24])
-h = MDS(n + x, k)
+h = MDS(n + x + w1, k)
 
 Bob transmits ( h + n + x + w1 ), r is ignored and discarded
 Alice recieves ( h + n + x + w1 ) and verifies that h == MDS(n + x, k) silently
@@ -86,7 +86,7 @@ variadic byttes padding, w2
 w2 = "[insert variable length random padding here]"
 k = TKE(a.k, b.k, n)
 x = SE(k, token, n[0:24])
-h = MDS(n + x, k)
+h = MDS(n + x + w2, k)
 
 Alice transmits ( h + n + x + w2 )
 Bob recieves ( h + n + x + w2) and verifies that h == MDS(n + x, k) silently
@@ -104,12 +104,12 @@ variadic byttes padding, w3
 w3 = "[insert variable length random padding here]"
 S = TKE(a.k, b.k, token)
 x = SE(S, token, n[0:24])
-h = MDS(n + x, S)
+h = MDS(n + x + w3, S)
 
 Alice transmits ( h + n + x + w3 ) to Bob and the session is now established
 using shared secret S
 
-Bob receves ( h + n + x + w2 ) and verifies that h == MDS(n + x, S)
+Bob receves ( h + n + x + w3 ) and verifies that h == MDS(n + x + w3, S)
 
 IWP payload format:
 
