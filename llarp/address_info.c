@@ -1,7 +1,7 @@
 #include <llarp/address_info.h>
 #include <llarp/bencode.h>
 #include <llarp/mem.h>
-#include <string.h>
+#include <llarp/string.h>
 #include <arpa/inet.h>
 
 bool llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff) {

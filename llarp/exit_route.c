@@ -1,9 +1,11 @@
 #include <llarp/exit_route.h>
 #include <llarp/bencode.h>
+#include <llarp/string.h>
 #include <arpa/inet.h>
 
 bool llarp_xr_bencode(struct llarp_xr * xr, llarp_buffer_t * buff)
 {
+
   char addr_buff [128] = {0};
   const char * addr;
   

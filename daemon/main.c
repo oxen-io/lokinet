@@ -12,10 +12,11 @@ struct llarp_main {
 void iter_main_config(struct llarp_config_iterator *itr, const char *section,
                       const char *key, const char *val) {
   struct llarp_main *m = (struct llarp_main *)itr->user;
-  if (!strcmp(section, "threadpool")) {
-    if (!strcmp(key, "workers")) {
+  if (!strcmp(section, "router")) {
+    if (!strcmp(key, "threads")) {
       int workers = atoi(val);
-      if (!m->tp && workers > 0) {
+      if (workers > 0 && m->tp == NULL) {
+        printf("%s: %d worker threads\n", section, workers);
         m->tp = llarp_init_threadpool(workers);
       }
     }
@@ -26,16 +27,22 @@ int shutdown_llarp(struct llarp_main *m) {
   printf("Shutting down .");
   llarp_stop_router(m->router);
   printf(".");
+  fflush(stdout);
   llarp_ev_loop_stop(m->mainloop);
   printf(".");
+  fflush(stdout);
   llarp_threadpool_join(m->tp);
   printf(".");
+  fflush(stdout);
   llarp_free_router(&m->router);
   printf(".");
+  fflush(stdout);
   llarp_free_config(&m->config);
   printf(".");
+  fflush(stdout);
   llarp_ev_loop_free(&m->mainloop);
   printf(".");
+  fflush(stdout);
   llarp_free_threadpool(&m->tp);
   printf(".\n");
   return 0;
@@ -59,7 +66,7 @@ int main(int argc, char *argv[]) {
     if (!llarp.tp) llarp.tp = llarp_init_threadpool(2);
     llarp.router = llarp_init_router(llarp.tp);
     
-    if (!llarp_configure_router(llarp.router, llarp.config)) {
+    if (llarp_configure_router(llarp.router, llarp.config)) {
       printf("Running\n");
       llarp_run_router(llarp.router, llarp.mainloop);
       llarp_ev_loop_run(llarp.mainloop);

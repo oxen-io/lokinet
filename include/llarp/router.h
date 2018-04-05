@@ -15,7 +15,7 @@ struct llarp_router;
 struct llarp_router *llarp_init_router(struct llarp_threadpool *tp);
 void llarp_free_router(struct llarp_router **router);
 
-int llarp_configure_router(struct llarp_router *router,
+bool llarp_configure_router(struct llarp_router *router,
                            struct llarp_config *conf);
 
 void llarp_run_router(struct llarp_router *router, struct llarp_ev_loop *loop);

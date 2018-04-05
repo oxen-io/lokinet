@@ -1,5 +1,6 @@
 #ifndef LLARP_IWP_H_
 #define LLARP_IWP_H_
+#include <llarp/crypto.h>
 #include <llarp/link.h>
 #include <llarp/msg_handler.h>
 #include <llarp/router_identity.h>
@@ -10,10 +11,11 @@ extern "C" {
 
   struct iwp_configure_args
   {
-    llarp_seckey_t seckey;
+    struct llarp_crypto * crypto;
   };
+
   
-  void iwp_link_init(struct llarp_link * link, struct iwp_configure_args args, struct llarp_msg_muxer * muxer);
+  bool iwp_link_init(struct llarp_link * link, struct iwp_configure_args args, struct llarp_msg_muxer * muxer);
 
   
 #ifdef __cplusplus

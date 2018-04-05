@@ -1,8 +1,6 @@
 #ifndef LLARP_VERSION_H
 #define LLARP_VERSION_H
 
-#define LLARP_PROTO_VERSION (0)
-
 #ifndef LLARP_VERSION_MAJ
 #define LLARP_VERSION_MAJ "0"
 #endif

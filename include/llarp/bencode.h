@@ -4,7 +4,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <llarp/buffer.h>
-#include <llarp/version.h>
+#include <llarp/proto.h>
 
 #ifdef __cplusplus
 extern "C" {

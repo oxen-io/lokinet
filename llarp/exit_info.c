@@ -1,7 +1,7 @@
 #include <llarp/exit_info.h>
 #include <llarp/bencode.h>
+#include <llarp/string.h>
 #include <arpa/inet.h>
-#include <string.h>
 
 
 bool llarp_xi_bencode(struct llarp_xi *xi, llarp_buffer_t *buff) {

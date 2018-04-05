@@ -15,6 +15,7 @@ struct router_links {
 }  // namespace llarp
 
 struct llarp_router {
+  bool ready;
   struct llarp_threadpool *tp;
   llarp::router_links links;
   llarp_crypto crypto;
@@ -35,6 +36,8 @@ struct llarp_router {
   void ForEachLink(std::function<void(llarp_link *)> visitor);
 
   void Close();
+
+  bool Ready();
 };
 
 #endif
