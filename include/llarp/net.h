@@ -1,5 +1,5 @@
-#ifndef SARP_NET_H
-#define SARP_NET_H
+#ifndef LLARP_NET_H
+#define LLARP_NET_H
 
 #include <netinet/in.h>
 #include <sys/socket.h>

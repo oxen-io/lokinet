@@ -20,6 +20,15 @@ static bool bencode_rc_xi_write(struct llarp_xi_list_iter *i,
 }  // namespace llarp
 
 extern "C" {
+
+  void llarp_rc_free(struct llarp_rc *rc)
+  {
+    if(rc->exits)
+      llarp_xi_list_free(rc->exits);
+    if(rc->addrs)
+      llarp_ai_list_free(rc->addrs);
+  }
+  
 bool llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff) {
   /* write dict begin */
   if (!bencode_start_dict(buff)) return false;

@@ -16,10 +16,11 @@ struct llarp_rc {
 
 bool llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buf);
 bool llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buf);
-void llarp_rc_free(struct llarp_rc **rc);
+void llarp_rc_free(struct llarp_rc *rc);
 bool llarp_rc_verify_sig(struct llarp_rc *rc);
 
 #ifdef __cplusplus
+  
 }
 #endif
 #endif
