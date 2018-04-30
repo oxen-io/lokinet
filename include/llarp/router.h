@@ -5,6 +5,7 @@
 #include <llarp/ibmq.h>
 #include <llarp/obmd.h>
 #include <llarp/threadpool.h>
+#include <llarp/logic.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -19,7 +20,7 @@ bool llarp_configure_router(struct llarp_router *router,
                             struct llarp_config *conf);
 
 void llarp_run_router(struct llarp_router *router,
-                      struct llarp_threadpool *logic);
+                      struct llarp_logic *logic);
 void llarp_stop_router(struct llarp_router *router);
 
 /** get router's inbound link level frame queue */

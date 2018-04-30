@@ -5,6 +5,7 @@
 #include <llarp/mem.h>
 #include <llarp/msg_handler.h>
 #include <llarp/obmd.h>
+#include <llarp/logic.h>
 
 #include <stdbool.h>
 #include <stdint.h>
@@ -65,7 +66,7 @@ struct llarp_link {
   int (*register_listener)(struct llarp_link *, struct llarp_link_ev_listener);
   void (*deregister_listener)(struct llarp_link *, int);
   bool (*configure)(struct llarp_link *, const char *, int, uint16_t);
-  bool (*start_link)(struct llarp_link *, struct llarp_threadpool *);
+  bool (*start_link)(struct llarp_link *, struct llarp_logic *);
   bool (*stop_link)(struct llarp_link *);
   bool (*put_ai)(struct llarp_link *, struct llarp_ai *);
   void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter);

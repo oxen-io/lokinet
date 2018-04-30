@@ -59,7 +59,7 @@ bool llarp_configure_router(struct llarp_router *router,
 }
 
 void llarp_run_router(struct llarp_router *router,
-                      struct llarp_threadpool *logic) {
+                      struct llarp_logic *logic) {
   router->ForEachLink([logic](llarp_link *link) {
     int result = link->start_link(link, logic);
     if (result == -1) printf("link %s failed to start\n", link->name(link));

@@ -5,7 +5,7 @@
 struct llarp_main {
   struct llarp_router *router;
   struct llarp_threadpool *worker;
-  struct llarp_threadpool *logic;
+  struct llarp_logic *logic;
   struct llarp_config *config;
   struct llarp_ev_loop *mainloop;
 };
@@ -40,10 +40,10 @@ int shutdown_llarp(struct llarp_main *m) {
   progress();
   llarp_threadpool_join(m->worker);
   progress();
-  if (m->logic) llarp_threadpool_wait(m->logic);
+
+  if (m->logic) llarp_logic_stop(m->logic);
   progress();
-  if (m->logic) llarp_threadpool_join(m->logic);
-  progress();
+  
   llarp_free_router(&m->router);
   progress();
   llarp_free_config(&m->config);
@@ -52,7 +52,7 @@ int shutdown_llarp(struct llarp_main *m) {
   progress();
   llarp_free_threadpool(&m->worker);
   progress();
-  if (m->logic) llarp_free_threadpool(&m->logic);
+  llarp_free_logic(&m->logic);
   progress();
   printf("\n");
   fflush(stdout);
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     llarp.router = llarp_init_router(llarp.worker);
 
     if (llarp_configure_router(llarp.router, llarp.config)) {
-      llarp.logic = llarp_init_threadpool(1);
+      llarp.logic = llarp_init_logic();
       printf("starting router\n");
       llarp_run_router(llarp.router, llarp.logic);
       printf("running mainloop\n");

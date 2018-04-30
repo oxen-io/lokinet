@@ -4,4 +4,5 @@
 #include <llarp/version.h>
 #include <llarp/mem.h>
 #include <llarp/ev.h>
+#include <llarp/logic.h>
 #endif

@@ -26,7 +26,7 @@ struct link_impl {
 
   const char *name() { return linkname.c_str(); }
 
-  bool start(llarp_threadpool *logic) {
+  bool start(llarp_logic *logic) {
     // todo: implement
     return false;
   }
@@ -43,7 +43,7 @@ static bool configure(struct llarp_link *l, const char *ifname, int af,
   return link->configure(ifname, af, port);
 }
 
-static bool start_link(struct llarp_link *l, struct llarp_threadpool *logic) {
+static bool start_link(struct llarp_link *l, struct llarp_logic *logic) {
   link_impl *link = static_cast<link_impl *>(l->impl);
   return link->start(logic);
 }

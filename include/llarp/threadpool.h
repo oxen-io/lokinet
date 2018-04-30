@@ -1,6 +1,5 @@
 #ifndef LLARP_THREADPOOL_H
 #define LLARP_THREADPOOL_H
-#include <llarp/ev.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -28,6 +27,7 @@ void llarp_threadpool_stop(struct llarp_threadpool *tp);
 void llarp_threadpool_join(struct llarp_threadpool *tp);
 
 void llarp_threadpool_wait(struct llarp_threadpool *tp);
+
 
 #ifdef __cplusplus
 }
