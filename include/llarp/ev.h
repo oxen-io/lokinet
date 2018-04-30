@@ -19,20 +19,21 @@ int llarp_ev_loop_run(struct llarp_ev_loop *ev);
 /** stop event loop and wait for it to complete all jobs */
 void llarp_ev_loop_stop(struct llarp_ev_loop *ev);
 
-struct llarp_udp_listener {
+struct llarp_udp_io {
   struct sockaddr_in6 *addr;
   void *user;
   void *impl;
-  void (*recvfrom)(struct llarp_udp_listener *, const struct sockaddr *, char *,
+  void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *, char *,
                    ssize_t);
-  void (*closed)(struct llarp_udp_listener *);
 };
+  
+int llarp_ev_add_udp(struct llarp_ev_loop *ev,
+                              struct llarp_udp_io *udp);
 
-int llarp_ev_add_udp_listener(struct llarp_ev_loop *ev,
-                              struct llarp_udp_listener *listener);
+int llarp_ev_udp_sendto(struct llarp_udp_io * udp, const struct sockaddr * to, const void * data, size_t sz);
 
-int llarp_ev_close_udp_listener(struct llarp_udp_listener *listener);
-
+int llarp_ev_close_udp(struct llarp_udp_io * udp);
+  
 struct llarp_ev_async_call;
 
 typedef void (*llarp_ev_work_func)(struct llarp_ev_async_call *);
