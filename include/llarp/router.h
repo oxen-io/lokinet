@@ -12,13 +12,13 @@ extern "C" {
 
 struct llarp_router;
 
-struct llarp_router *llarp_init_router(struct llarp_threadpool *tp);
+struct llarp_router *llarp_init_router(struct llarp_threadpool *worker);
 void llarp_free_router(struct llarp_router **router);
 
 bool llarp_configure_router(struct llarp_router *router,
                             struct llarp_config *conf);
 
-void llarp_run_router(struct llarp_router *router, struct llarp_ev_loop *loop);
+void llarp_run_router(struct llarp_router *router, struct llarp_threadpool * logic);
 void llarp_stop_router(struct llarp_router *router);
 
 /** get router's inbound link level frame queue */

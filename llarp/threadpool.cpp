@@ -23,8 +23,7 @@ Pool::Pool(size_t workers) {
   }
 }
 
-void Pool::Stop()
-{
+void Pool::Stop() {
   {
     lock_t lock(queue_mutex);
     stop = true;
@@ -72,13 +71,9 @@ void llarp_threadpool_join(struct llarp_threadpool *pool) { pool->impl.Join(); }
 void llarp_threadpool_start(struct llarp_threadpool *pool) { /** no op */
 }
 
-void llarp_threadpool_stop(struct llarp_threadpool *pool)
-{
-  pool->impl.Stop();
-}
+void llarp_threadpool_stop(struct llarp_threadpool *pool) { pool->impl.Stop(); }
 
-void llarp_threadpool_wait(struct llarp_threadpool *pool)
-{
+void llarp_threadpool_wait(struct llarp_threadpool *pool) {
   std::mutex mtx;
   {
     std::unique_lock<std::mutex> lock(mtx);

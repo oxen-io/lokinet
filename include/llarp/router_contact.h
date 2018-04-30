@@ -20,7 +20,6 @@ void llarp_rc_free(struct llarp_rc *rc);
 bool llarp_rc_verify_sig(struct llarp_rc *rc);
 
 #ifdef __cplusplus
-  
 }
 #endif
 #endif

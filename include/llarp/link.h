@@ -65,7 +65,7 @@ struct llarp_link {
   int (*register_listener)(struct llarp_link *, struct llarp_link_ev_listener);
   void (*deregister_listener)(struct llarp_link *, int);
   bool (*configure)(struct llarp_link *, const char *, int, uint16_t);
-  bool (*start_link)(struct llarp_link *, struct llarp_ev_loop *);
+  bool (*start_link)(struct llarp_link *, struct llarp_threadpool *);
   bool (*stop_link)(struct llarp_link *);
   bool (*put_ai)(struct llarp_link *, struct llarp_ai *);
   void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter);

@@ -23,9 +23,7 @@ void llarp_ev_loop_free(struct llarp_ev_loop **ev) {
   *ev = nullptr;
 }
 
-int llarp_ev_loop_run(struct llarp_ev_loop *ev) {
-  return ev->run();
-}
+int llarp_ev_loop_run(struct llarp_ev_loop *ev) { return ev->run(); }
 
 int llarp_ev_add_udp_listener(struct llarp_ev_loop *ev,
                               struct llarp_udp_listener *listener) {
@@ -39,6 +37,4 @@ int llarp_ev_close_udp_listener(struct llarp_udp_listener *listener) {
 }
 
 void llarp_ev_loop_stop(struct llarp_ev_loop *loop) { loop->stop(); }
-
-
 }

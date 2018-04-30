@@ -45,10 +45,9 @@ struct llarp_cipher_result {
   llarp_cipher_complete_hook hook;
 };
 
-struct llarp_async_cipher *llarp_async_cipher_new(llarp_sharedkey_t key,
-                                                  struct llarp_crypto *crypto,
-                                                  struct llarp_threadpool *result,
-                                                  struct llarp_threadpool *worker);
+struct llarp_async_cipher *llarp_async_cipher_new(
+    llarp_sharedkey_t key, struct llarp_crypto *crypto,
+    struct llarp_threadpool *result, struct llarp_threadpool *worker);
 
 void llarp_async_cipher_free(struct llarp_async_cipher **c);
 

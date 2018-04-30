@@ -32,7 +32,7 @@ int main(int argc, char *argv[]) {
   tp = llarp_init_threadpool(8);
   dh_main.result = llarp_init_threadpool(1);
   llarp_threadpool_start(dh_main.result);
-  
+
   dh_main.num = 500000;
   dh_main.completed = 0;
   llarp_seckey_t ourkey;
@@ -65,10 +65,10 @@ int main(int argc, char *argv[]) {
   llarp_threadpool_join(dh_main.result);
   llarp_threadpool_stop(tp);
   llarp_threadpool_join(tp);
-  
+
   llarp_free_threadpool(&tp);
   llarp_free_threadpool(&dh_main.result);
-  
+
   llarp_async_dh_free(&dh_main.dh);
   printf("did %ld of %ld work\n", dh_main.completed, dh_main.num);
   return 0;

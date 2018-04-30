@@ -15,9 +15,8 @@ struct llarp_dh_internal {
   llarp_tunnel_nounce_t nounce;
   struct llarp_dh_result result;
   llarp_dh_func func;
-  struct llarp_async_dh * parent;
+  struct llarp_async_dh *parent;
 };
-
 
 static void llarp_crypto_dh_result(void *call) {
   struct llarp_dh_internal *impl = (struct llarp_dh_internal *)call;
@@ -25,13 +24,11 @@ static void llarp_crypto_dh_result(void *call) {
   llarp_g_mem.free(impl);
 }
 
-
 static void llarp_crypto_dh_work(void *user) {
   struct llarp_dh_internal *impl = (struct llarp_dh_internal *)user;
   impl->func(&impl->result.sharedkey, impl->theirkey, impl->nounce,
              impl->parent->ourkey);
-  struct llarp_thread_job job = { .user = impl,
-                                 .work = &llarp_crypto_dh_result };
+  struct llarp_thread_job job = {.user = impl, .work = &llarp_crypto_dh_result};
   llarp_threadpool_queue_job(impl->parent->result, job);
 }
 
@@ -41,8 +38,7 @@ static void llarp_async_dh_exec(struct llarp_async_dh *dh, llarp_dh_func func,
                                 llarp_dh_complete_hook result, void *user) {
   struct llarp_dh_internal *impl =
       llarp_g_mem.alloc(sizeof(struct llarp_dh_internal), 32);
-  struct llarp_thread_job job = {.user = impl,
-                                 .work = &llarp_crypto_dh_work};
+  struct llarp_thread_job job = {.user = impl, .work = &llarp_crypto_dh_work};
   memcpy(impl->theirkey, theirkey, sizeof(llarp_pubkey_t));
   memcpy(impl->nounce, nounce, sizeof(llarp_tunnel_nounce_t));
   impl->parent = dh;
@@ -88,7 +84,7 @@ void llarp_async_dh_free(struct llarp_async_dh **dh) {
 struct llarp_async_cipher_internal {
   llarp_nounce_t nounce;
   struct llarp_cipher_result result;
-  struct llarp_async_cipher * parent;
+  struct llarp_async_cipher *parent;
   llarp_sym_cipher_func func;
 };
 
@@ -110,10 +106,8 @@ static void llarp_crypto_cipher_work(void *work) {
   struct llarp_async_cipher_internal *impl =
       (struct llarp_async_cipher_internal *)work;
   impl->func(impl->result.buff, impl->parent->key, impl->nounce);
-  struct llarp_thread_job job = {
-    .user = impl,
-    .work = &llarp_crypto_cipher_result
-  };
+  struct llarp_thread_job job = {.user = impl,
+                                 .work = &llarp_crypto_cipher_result};
   llarp_threadpool_queue_job(impl->parent->result, job);
 }
 
@@ -134,10 +128,9 @@ void llarp_async_cipher_queue_op(struct llarp_async_cipher *c,
   llarp_threadpool_queue_job(c->worker, job);
 }
 
-struct llarp_async_cipher *llarp_async_cipher_new(llarp_sharedkey_t key,
-                                                  struct llarp_crypto *crypto,
-                                                  struct llarp_threadpool *result,
-                                                  struct llarp_threadpool *worker) {
+struct llarp_async_cipher *llarp_async_cipher_new(
+    llarp_sharedkey_t key, struct llarp_crypto *crypto,
+    struct llarp_threadpool *result, struct llarp_threadpool *worker) {
   struct llarp_async_cipher *cipher =
       llarp_g_mem.alloc(sizeof(struct llarp_async_cipher), 16);
   cipher->func = crypto->xchacha20;

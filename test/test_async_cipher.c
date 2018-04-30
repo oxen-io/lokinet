@@ -7,7 +7,7 @@ struct bench_main {
   size_t completed;
   size_t num;
   size_t jobs;
-  struct llarp_threadpool * pool;
+  struct llarp_threadpool *pool;
   struct llarp_async_cipher *cipher;
   struct llarp_crypto crypto;
 };
@@ -42,8 +42,8 @@ int main(int argc, char *argv[]) {
   llarp_threadpool_start(b_main.pool);
   tp = llarp_init_threadpool(8);
 
-  b_main.num = 500000;
-  b_main.jobs = 10;
+  b_main.num = 5000000;
+  b_main.jobs = 5000;
   b_main.completed = 0;
   llarp_sharedkey_t key;
   b_main.crypto.randbytes(key, sizeof(llarp_sharedkey_t));
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
     llarp_async_cipher_queue_op(b_main.cipher, msg, nounce,
                                 handle_cipher_complete, &b_main);
   }
-  
+  printf("started %ld jobs\n", b_main.jobs);
   llarp_threadpool_wait(b_main.pool);
   llarp_threadpool_join(b_main.pool);
   llarp_threadpool_stop(tp);

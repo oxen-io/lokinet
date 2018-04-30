@@ -24,9 +24,9 @@ void llarp_threadpool_queue_job(struct llarp_threadpool *tp,
                                 struct llarp_thread_job j);
 
 void llarp_threadpool_start(struct llarp_threadpool *tp);
-void llarp_threadpool_stop(struct llarp_threadpool * tp);
+void llarp_threadpool_stop(struct llarp_threadpool *tp);
 void llarp_threadpool_join(struct llarp_threadpool *tp);
-  
+
 void llarp_threadpool_wait(struct llarp_threadpool *tp);
 
 #ifdef __cplusplus

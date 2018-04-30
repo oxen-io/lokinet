@@ -23,16 +23,16 @@ struct llarp_udp_io {
   struct sockaddr_in6 *addr;
   void *user;
   void *impl;
-  void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *, char *,
+  void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *, void *,
                    ssize_t);
 };
-  
-int llarp_ev_add_udp(struct llarp_ev_loop *ev,
-                              struct llarp_udp_io *udp);
 
-int llarp_ev_udp_sendto(struct llarp_udp_io * udp, const struct sockaddr * to, const void * data, size_t sz);
+int llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp);
 
-int llarp_ev_close_udp(struct llarp_udp_io * udp);
+int llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,
+                        const void *data, size_t sz);
+
+int llarp_ev_close_udp(struct llarp_udp_io *udp);
 
 #ifdef __cplusplus
 }
