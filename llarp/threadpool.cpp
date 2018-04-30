@@ -1,5 +1,4 @@
 #include "threadpool.hpp"
-#include <iostream>
 
 namespace llarp {
 namespace thread {
@@ -19,23 +18,22 @@ Pool::Pool(size_t workers) {
         }
         // do work
         job.work(job.user);
-        // inform result if needed
-        if (job.caller) {
-          if (!llarp_ev_call_async(job.caller, job.data)) {
-            std::cerr << "failed to queue result in thread worker" << std::endl;
-          }
-        }
       }
     });
   }
 }
 
-void Pool::Join() {
+void Pool::Stop()
+{
   {
     lock_t lock(queue_mutex);
     stop = true;
   }
   condition.notify_all();
+  done.notify_all();
+}
+
+void Pool::Join() {
   for (auto &t : threads) t.join();
 }
 
@@ -72,6 +70,20 @@ struct llarp_threadpool *llarp_init_threadpool(int workers) {
 void llarp_threadpool_join(struct llarp_threadpool *pool) { pool->impl.Join(); }
 
 void llarp_threadpool_start(struct llarp_threadpool *pool) { /** no op */
+}
+
+void llarp_threadpool_stop(struct llarp_threadpool *pool)
+{
+  pool->impl.Stop();
+}
+
+void llarp_threadpool_wait(struct llarp_threadpool *pool)
+{
+  std::mutex mtx;
+  {
+    std::unique_lock<std::mutex> lock(mtx);
+    pool->impl.done.wait(lock);
+  }
 }
 
 void llarp_threadpool_queue_job(struct llarp_threadpool *pool,

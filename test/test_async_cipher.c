@@ -7,7 +7,7 @@ struct bench_main {
   size_t completed;
   size_t num;
   size_t jobs;
-  struct llarp_ev_loop *ev;
+  struct llarp_threadpool * pool;
   struct llarp_async_cipher *cipher;
   struct llarp_crypto crypto;
 };
@@ -20,7 +20,8 @@ static void handle_cipher_complete(struct llarp_cipher_result *res) {
   if (m->completed % 10000 == 0)
     printf("completed %ld and %ld left\n", m->completed, left);
   if (m->completed == m->num) {
-    llarp_ev_loop_stop(m->ev);
+    llarp_threadpool_stop(m->pool);
+    printf("done\n");
   } else if (m->completed % sz == 0) {
     llarp_nounce_t nounce;
     while (sz--) {
@@ -37,9 +38,9 @@ int main(int argc, char *argv[]) {
 
   llarp_mem_stdlib();
   llarp_crypto_libsodium_init(&b_main.crypto);
-  llarp_ev_loop_alloc(&b_main.ev);
-
-  tp = llarp_init_threadpool(2);
+  b_main.pool = llarp_init_threadpool(1);
+  llarp_threadpool_start(b_main.pool);
+  tp = llarp_init_threadpool(8);
 
   b_main.num = 500000;
   b_main.jobs = 10;
@@ -47,7 +48,7 @@ int main(int argc, char *argv[]) {
   llarp_sharedkey_t key;
   b_main.crypto.randbytes(key, sizeof(llarp_sharedkey_t));
 
-  b_main.cipher = llarp_async_cipher_new(key, &b_main.crypto, b_main.ev, tp);
+  b_main.cipher = llarp_async_cipher_new(key, &b_main.crypto, b_main.pool, tp);
   llarp_threadpool_start(tp);
 
   llarp_nounce_t nounce;
@@ -68,13 +69,14 @@ int main(int argc, char *argv[]) {
     llarp_async_cipher_queue_op(b_main.cipher, msg, nounce,
                                 handle_cipher_complete, &b_main);
   }
-  llarp_ev_loop_run(b_main.ev);
-
+  
+  llarp_threadpool_wait(b_main.pool);
+  llarp_threadpool_join(b_main.pool);
+  llarp_threadpool_stop(tp);
   llarp_threadpool_join(tp);
-  llarp_async_cipher_free(&b_main.cipher);
-
-  llarp_ev_loop_free(&b_main.ev);
   llarp_free_threadpool(&tp);
+  llarp_free_threadpool(&b_main.pool);
+  llarp_async_cipher_free(&b_main.cipher);
   printf("did %ld of %ld work\n", b_main.completed, b_main.num);
   return 0;
 }

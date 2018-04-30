@@ -17,11 +17,13 @@ struct Pool {
   Pool(size_t sz);
   void QueueJob(const llarp_thread_job& job);
   void Join();
+  void Stop();
   std::vector<std::thread> threads;
   std::deque<llarp_thread_job> jobs;
 
   mtx_t queue_mutex;
   std::condition_variable condition;
+  std::condition_variable done;
   bool stop;
 };
 
