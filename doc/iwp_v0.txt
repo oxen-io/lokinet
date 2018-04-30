@@ -8,6 +8,27 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
 document are to be interpreted as described in RFC 2119 [RFC2119].
 
+cryptography:
+
+H(x) is 512 bit blake2b digest of x
+HS(x) is 256 bit blake2b digest of x
+MD(x, k) is 512 bit blake2b hmac of x with secret value k
+MDS(x, k) is 256 bit blake2b hmac of x with secret value k
+NE(k, x) is sntrup4591761 encrypt data x to public key k
+ND(k, x) is sntrup4591761 decrypt data x with private key k
+SE(k, n, x) is chacha20 encrypt data x using symettric key k and nounce n
+SD(k, n, x) is chacha20 dectypt data x using symettric key k and nounce n
+S(k, x) is sign x with ed25519 using seed k
+ECKG() is generate ec keypair (p, s) public key p, seed s, both 32 bytes
+V(k, x, sig) is verify x data using signature sig using public key k
+DH(x, y) is a ecdh key exchange using ed25519 scalarmult between public keys x
+  and y
+KE(x, y) is a ecdh key exchange using H(x + y + DH(x, y))
+PKE(x, y, n) is a path key exchange using MDS(n, KE(x, y))
+TKE(x, y, n) is a transport key exchange using MD(n, KE(x, y))
+RAND(n) is n random bytes
+
+
 
 wire decryption:
 
