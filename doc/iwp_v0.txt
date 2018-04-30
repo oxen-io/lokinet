@@ -43,7 +43,7 @@ handshake:
 
 32 bytes hmac, h
 32 bytes nounce, n
-32 bytes random padding, r (for future handshake use)
+32 bytes random, r
 32 bytes encrypted alice's transport public encryption key e
 variadic bytes padding, w0
 
@@ -53,7 +53,7 @@ his public transport encryption key (b.k).
 w0 = "[insert variable length random padding here]"
 r = RAND(32)
 n = RAND(32)
-e = SE(a.k + w0, HS(b.k + n))
+e = SE(a.k + w0, HS(b.k + r), n[0:24])
 s = TKE(a.k, b.k, n)
 h = MDS(r + e, s)
 
