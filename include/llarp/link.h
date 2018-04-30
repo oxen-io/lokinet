@@ -2,10 +2,10 @@
 #define LLARP_LINK_H_
 #include <llarp/crypto.h>
 #include <llarp/ev.h>
+#include <llarp/logic.h>
 #include <llarp/mem.h>
 #include <llarp/msg_handler.h>
 #include <llarp/obmd.h>
-#include <llarp/logic.h>
 
 #include <stdbool.h>
 #include <stdint.h>

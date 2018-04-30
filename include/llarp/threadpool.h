@@ -28,7 +28,6 @@ void llarp_threadpool_join(struct llarp_threadpool *tp);
 
 void llarp_threadpool_wait(struct llarp_threadpool *tp);
 
-
 #ifdef __cplusplus
 }
 #endif

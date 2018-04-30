@@ -43,7 +43,7 @@ int shutdown_llarp(struct llarp_main *m) {
 
   if (m->logic) llarp_logic_stop(m->logic);
   progress();
-  
+
   llarp_free_router(&m->router);
   progress();
   llarp_free_config(&m->config);
