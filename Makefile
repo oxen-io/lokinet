@@ -29,9 +29,6 @@ FORMAT = clang-format
 SODIUM_FLAGS = $(shell pkg-config --cflags libsodium)
 SODIUM_LIBS = $(shell pkg-config --libs libsodium)
 
-LIBUV_FLAGS = $(shell pkg-config --cflags libuv)
-LIBUV_LIBS = $(shell pkg-config --libs libuv)
-
 DEBUG_FLAGS = -g
 
 GIT_VERSION ?= $(shell test -e .git && git rev-parse --short HEAD || true)
@@ -46,9 +43,9 @@ else
 	MALLOC_LIB=
 endif
 
-REQUIRED_CFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c11 $(CFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS) -Wall -fPIC
-REQUIRED_CXXFLAGS = $(LIBUV_FLAGS) $(SODIUM_FLAGS) -I$(REPO)/include -std=c++17 $(CXXFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS) -Wall -fPIC
-LIB_LDFLAGS = $(MALLOC_LIB) $(SODIUM_LIBS) $(LIBUV_LIBS) -lm -lstdc++ -lstdc++fs
+REQUIRED_CFLAGS = $(SODIUM_FLAGS) -I$(REPO)/include -std=c11 $(CFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS) -Wall -fPIC
+REQUIRED_CXXFLAGS = $(SODIUM_FLAGS) -I$(REPO)/include -std=c++17 $(CXXFLAGS) $(DEBUG_FLAGS) $(VER_FLAGS) -Wall -fPIC
+LIB_LDFLAGS = $(MALLOC_LIB) $(SODIUM_LIBS) -pthread -lm -lstdc++ -lstdc++fs
 REQUIRED_LDFLAGS = -L$(REPO) -lllarp 
 TEST_LDFLAGS = $(STATIC_LIB) $(LIB_LDFLAGS)
 
