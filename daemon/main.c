@@ -24,8 +24,7 @@ void iter_main_config(struct llarp_config_iterator *itr, const char *section,
   }
 }
 
-static void progress()
-{
+static void progress() {
   printf(".");
   fflush(stdout);
 }
@@ -41,11 +40,9 @@ int shutdown_llarp(struct llarp_main *m) {
   progress();
   llarp_threadpool_join(m->worker);
   progress();
-  if(m->logic)
-    llarp_threadpool_wait(m->logic);
+  if (m->logic) llarp_threadpool_wait(m->logic);
   progress();
-  if(m->logic)
-    llarp_threadpool_join(m->logic);
+  if (m->logic) llarp_threadpool_join(m->logic);
   progress();
   llarp_free_router(&m->router);
   progress();
@@ -55,8 +52,7 @@ int shutdown_llarp(struct llarp_main *m) {
   progress();
   llarp_free_threadpool(&m->worker);
   progress();
-  if(m->logic)
-    llarp_free_threadpool(&m->logic);
+  if (m->logic) llarp_free_threadpool(&m->logic);
   progress();
   printf("\n");
   fflush(stdout);

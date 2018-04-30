@@ -13,7 +13,7 @@ struct udp_listener : public ev_io {
 
   ~udp_listener() {}
 
-  virtual int read(void * buf, size_t sz) {
+  virtual int read(void* buf, size_t sz) {
     sockaddr src;
     socklen_t slen;
     int ret = ::recvfrom(fd, buf, sz, 0, &src, &slen);

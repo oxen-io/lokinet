@@ -9,7 +9,7 @@ struct ev_io {
   char buff[2048];
   int fd;
   ev_io(int f) : fd(f){};
-  virtual int read(void * buf, size_t sz) = 0;
+  virtual int read(void* buf, size_t sz) = 0;
   virtual int sendto(const sockaddr* dst, const void* data, size_t sz) = 0;
   virtual ~ev_io() { ::close(fd); };
 };
