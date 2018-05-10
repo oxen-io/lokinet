@@ -7,7 +7,9 @@ struct llarp_main {
   struct llarp_threadpool *worker;
   struct llarp_logic *logic;
   struct llarp_config *config;
+  struct llarp_nodedb *nodedb;
   struct llarp_ev_loop *mainloop;
+  char nodedb_dir[256];
 };
 
 void iter_main_config(struct llarp_config_iterator *itr, const char *section,
@@ -20,6 +22,11 @@ void iter_main_config(struct llarp_config_iterator *itr, const char *section,
         printf("%s: %d worker threads\n", section, workers);
         m->worker = llarp_init_threadpool(workers);
       }
+    }
+  }
+  if (!strcmp(section, "nodedb")) {
+    if (!strcmp(key, "dir")) {
+      strncpy(m->nodedb_dir, val, sizeof(m->nodedb_dir));
     }
   }
 }
@@ -76,17 +83,26 @@ int main(int argc, char *argv[]) {
     iter.visit = iter_main_config;
     llarp_config_iter(llarp.config, &iter);
 
-    if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
-    llarp.router = llarp_init_router(llarp.worker);
+    llarp.nodedb = llarp_nodedb_new();
 
-    if (llarp_configure_router(llarp.router, llarp.config)) {
-      llarp.logic = llarp_init_logic();
-      printf("starting router\n");
-      llarp_run_router(llarp.router, llarp.logic);
-      printf("running mainloop\n");
-      llarp_ev_loop_run(llarp.mainloop);
-    } else
-      printf("Failed to configure router\n");
+    if (llarp.nodedb_dir[0]) {
+      llarp.nodedb_dir[sizeof(llarp.nodedb_dir) - 1] = 0;
+      char *dir = llarp.nodedb_dir;
+      if (llarp_nodedb_ensure_dir(dir)) {
+        if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
+        llarp.router = llarp_init_router(llarp.worker);
+
+        if (llarp_configure_router(llarp.router, llarp.config)) {
+          llarp.logic = llarp_init_logic();
+          printf("starting router\n");
+          llarp_run_router(llarp.router, llarp.logic);
+          printf("running mainloop\n");
+          llarp_ev_loop_run(llarp.mainloop);
+        } else
+          printf("Failed to configure router\n");
+      } else
+        printf("failed to initialize nodedb at %s\n", dir);
+    }
   } else
     printf("Failed to load config %s\n", conffname);
 

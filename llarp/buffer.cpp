@@ -3,6 +3,15 @@
 #include <stdio.h>
 
 extern "C" {
+
+size_t llarp_buffer_size_left(llarp_buffer_t* buff) {
+  size_t diff = buff->cur - buff->base;
+  if (diff > buff->sz)
+    return 0;
+  else
+    return buff->sz - diff;
+}
+
 bool llarp_buffer_writef(llarp_buffer_t* buff, const char* fmt, ...) {
   int written;
   size_t sz = llarp_buffer_size_left(buff);
@@ -13,6 +22,16 @@ bool llarp_buffer_writef(llarp_buffer_t* buff, const char* fmt, ...) {
   if (written == -1) return false;
   buff->sz += written;
   return true;
+}
+
+bool llarp_buffer_write(llarp_buffer_t* buff, const void* data, size_t sz) {
+  size_t left = llarp_buffer_size_left(buff);
+  if (left >= sz) {
+    memcpy(buff->cur, data, sz);
+    buff->cur += sz;
+    return true;
+  }
+  return false;
 }
 
 bool llarp_buffer_readfile(llarp_buffer_t* buff, FILE* f, llarp_alloc* mem) {

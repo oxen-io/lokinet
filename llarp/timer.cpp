@@ -64,7 +64,7 @@ struct llarp_timer_context {
   uint32_t call_later(void* user, llarp_timer_handler_func func,
                       uint64_t timeout_ms) {
     std::unique_lock<std::mutex> lock(timersMutex);
-    uint32_t id = ids++;
+    uint32_t id = ++ids;
     timers[id] = llarp::timer(timeout_ms);
     return id;
   }

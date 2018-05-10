@@ -36,31 +36,55 @@ bool llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff) {
   return bencode_end(buff);
 }
 
-struct llarp_ai_list {
-  struct llarp_ai_list *next;
+static bool llarp_ai_list_iter_bencode(struct llarp_ai_list_iter *iter,
+                                       struct llarp_ai *ai) {
+  return llarp_ai_bencode(ai, iter->user);
+}
+
+bool llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff) {
+  if (!bencode_start_list(buff)) return false;
+  struct llarp_ai_list_iter ai_itr = {.user = buff,
+                                      .visit = &llarp_ai_list_iter_bencode};
+  llarp_ai_list_iterate(l, &ai_itr);
+  return bencode_end(buff);
+}
+
+struct llarp_ai_list_node {
   struct llarp_ai data;
+  struct llarp_ai_list_node *next;
+};
+
+struct llarp_ai_list {
+  struct llarp_ai_list_node *root;
 };
 
 struct llarp_ai_list *llarp_ai_list_new() {
-  return llarp_g_mem.alloc(sizeof(struct llarp_ai_list), 8);
+  struct llarp_ai_list *l = llarp_g_mem.alloc(sizeof(struct llarp_ai_list), 8);
+  if (l) {
+    l->root = NULL;
+  }
+  return l;
 }
 
-void llarp_ai_list_free(struct llarp_ai_list *l) {
-  struct llarp_ai_list *cur = l;
-  struct llarp_ai_list *tmp;
-  do {
-    tmp = cur->next;
-    llarp_g_mem.free(cur);
-    cur = tmp;
-  } while (cur->next);
+void llarp_ai_list_free(struct llarp_ai_list **l) {
+  if (*l) {
+    struct llarp_ai_list_node *cur = (*l)->root;
+    while (cur) {
+      struct llarp_ai_list_node *tmp = cur->next;
+      llarp_g_mem.free(cur);
+      cur = tmp;
+    }
+    llarp_g_mem.free(*l);
+    *l = NULL;
+  }
 }
 
 void llarp_ai_list_iterate(struct llarp_ai_list *l,
                            struct llarp_ai_list_iter *itr) {
-  struct llarp_ai_list *cur = l;
+  struct llarp_ai_list_node *cur = l->root;
   itr->list = l;
-  do {
+  while (cur) {
     if (!itr->visit(itr, &cur->data)) return;
     cur = cur->next;
-  } while (cur->next);
+  };
 }

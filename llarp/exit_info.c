@@ -1,7 +1,62 @@
 #include <arpa/inet.h>
 #include <llarp/bencode.h>
 #include <llarp/exit_info.h>
+#include <llarp/mem.h>
 #include <llarp/string.h>
+
+struct llarp_xi_list_node {
+  struct llarp_xi data;
+  struct llarp_xi_list_node *next;
+};
+
+struct llarp_xi_list {
+  struct llarp_xi_list_node *root;
+};
+
+struct llarp_xi_list *llarp_xi_list_new() {
+  struct llarp_xi_list *l = llarp_g_mem.alloc(sizeof(struct llarp_xi_list), 8);
+  if (l) {
+    l->root = NULL;
+  }
+  return l;
+}
+
+void llarp_xi_list_free(struct llarp_xi_list **l) {
+  if (*l) {
+    struct llarp_xi_list_node *current = (*l)->root;
+    while (current) {
+      struct llarp_xi_list_node *tmp = current->next;
+      llarp_g_mem.free(current);
+      current = tmp;
+    }
+    llarp_g_mem.free(*l);
+    *l = NULL;
+  }
+}
+
+static bool llarp_xi_iter_bencode(struct llarp_xi_list_iter *iter,
+                                  struct llarp_xi *xi) {
+  return llarp_xi_bencode(xi, iter->user);
+}
+
+bool llarp_xi_list_bencode(struct llarp_xi_list *l, llarp_buffer_t *buff) {
+  if (!bencode_start_list(buff)) return false;
+  struct llarp_xi_list_iter xi_itr = {.user = buff,
+                                      .visit = &llarp_xi_iter_bencode};
+  llarp_xi_list_iterate(l, &xi_itr);
+  return bencode_end(buff);
+}
+
+void llarp_xi_list_iterate(struct llarp_xi_list *l,
+                           struct llarp_xi_list_iter *iter) {
+  struct llarp_xi_list_node *current = l->root;
+  iter->list = l;
+  while (current) {
+    if (!iter->visit(iter, &current->data)) return;
+
+    current = current->next;
+  }
+}
 
 bool llarp_xi_bencode(struct llarp_xi *xi, llarp_buffer_t *buff) {
   char addr_buff[128] = {0};

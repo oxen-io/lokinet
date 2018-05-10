@@ -5,4 +5,5 @@
 #include <llarp/mem.h>
 #include <llarp/ev.h>
 #include <llarp/logic.h>
+#include <llarp/nodedb.h>
 #endif

@@ -12,3 +12,4 @@ llarpd
 *.bin
 
 callgrind.*
+.gdb_history
