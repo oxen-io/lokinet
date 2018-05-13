@@ -52,6 +52,96 @@ static bool INLINE bencode_write_version_entry(llarp_buffer_t* buff) {
   return llarp_buffer_writef(buff, "1:vi%de", LLARP_PROTO_VERSION);
 }
 
+static bool INLINE bdecode_read_integer(struct llarp_buffer_t * buffer, int64_t * result)
+{
+  size_t len;
+  if(*buffer->cur != 'i')
+    return false;
+
+  char numbuf[32];
+
+  len = llarp_buffer_read_until(buffer, 'e', numbuf, sizeof(numbuf)-1);
+  if(!len)
+    return false;
+
+  numbuf[len] = 0;
+  *result = atol(numbuf);
+  return true;
+}
+
+static bool INLINE bdecode_read_string(llarp_buffer_t * buffer, llarp_buffer_t * result)
+{
+  size_t len, slen;
+  char numbuf[10];
+
+  len = llarp_buffer_read_until(buffer, ':', numbuf, sizeof(numbuf)-1);
+  if(!len) 
+    return false;
+  
+  buffer->cur ++;
+  numbuf[len] = 0;
+  slen = atoi(numbuf);
+  if(slen <= 0)
+    return false;
+  
+  len = llarp_buffer_size_left(buffer);
+  if (len > slen)
+    return false;
+  
+  result->base = buffer->cur;
+  buffer->cur += slen;
+  result->sz = slen;
+  buffer->cur ++;
+  return true; 
+}
+
+struct dict_reader
+{
+  llarp_buffer_t * buffer;
+  void * user;
+  /** 
+   * called when we got a key string, return true to continue iteration 
+   * called with null key on done iterating
+  */
+  bool (*on_key)(struct dict_reader *, llarp_buffer_t *);
+};
+
+static bool INLINE bdecode_read_dict(llarp_buffer_t * buff, struct dict_reader * r)
+{
+  llarp_buffer_t strbuf;
+  r->buffer = buff;
+  while(llarp_buffer_size_left(buff) && *buff->cur != 'e')
+  {
+    if(bdecode_read_string(buff, &strbuf))
+    {
+      if(!r->on_key(r, &strbuf)) return false;
+    }
+  }
+
+  return *buff->cur == 'e' && r->on_key(r, 0);
+}
+
+struct list_reader
+{
+  llarp_buffer_t * buffer;
+  void * user;
+  bool (*on_item) (struct list_reader *, bool);
+};
+
+static bool INLINE bdecode_read_list(llarp_buffer_t * buff, struct list_reader * r)
+{
+  r->buffer = buff;
+  if(*buff->cur != 'l')
+    return false;
+  
+  buff->cur ++;
+  while(llarp_buffer_size_left(buff) && *buff->cur != 'e')
+  {
+    if(!r->on_item(r, true)) return false;
+  }
+  return *buff->cur == 'e' && r->on_item(r, false);
+}
+
 #ifdef __cplusplus
 }
 #endif

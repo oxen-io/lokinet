@@ -25,6 +25,11 @@ bool llarp_buffer_writef(llarp_buffer_t *buff, const char *fmt, ...);
 bool llarp_buffer_readfile(llarp_buffer_t *buff, FILE *f,
                            struct llarp_alloc *mem);
 
+size_t llarp_buffer_read_until(llarp_buffer_t * buff, char delim, char * result, size_t resultlen);
+
+bool llarp_buffer_eq(llarp_buffer_t buff, const char * data);
+
+
 #ifdef __cplusplus
 }
 #endif

@@ -87,3 +87,9 @@ bool llarp_xi_bencode(struct llarp_xi *xi, llarp_buffer_t *buff) {
 
   return bencode_end(buff);
 }
+
+
+bool llarp_xi_list_bdecode(struct llarp_xi_list * l, llarp_buffer_t * buff)
+{
+  return false;
+}

@@ -49,4 +49,35 @@ bool llarp_buffer_readfile(llarp_buffer_t* buff, FILE* f, llarp_alloc* mem) {
   }
   return false;
 }
+
+size_t llarp_buffer_read_until(llarp_buffer_t * buff, char delim, char * result, size_t resultsize)
+{
+  size_t read = 0;
+  
+  while(*buff->cur != delim && resultsize && (buff->cur != buff->base + buff->sz))
+  {
+    *result = *buff->cur;
+    buff->cur ++;
+    result ++;
+    resultsize --;
+    read ++;
+  }
+
+  if(llarp_buffer_size_left(buff))
+    return read;
+  else  
+    return 0;
+}
+
+bool llarp_buffer_eq(llarp_buffer_t buf, const char * str)
+{
+  while(*str && buf.cur != (buf.base + buf.sz))
+  {
+    if(*buf.cur != *str) return false;
+    buf.cur ++;
+    str++;
+  }
+  return *str == 0;
+}
+
 }

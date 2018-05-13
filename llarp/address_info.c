@@ -4,6 +4,11 @@
 #include <llarp/mem.h>
 #include <llarp/string.h>
 
+bool llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t *buff)
+{
+
+}
+
 bool llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff) {
   char ipbuff[128] = {0};
   const char *ipstr;
@@ -87,4 +92,9 @@ void llarp_ai_list_iterate(struct llarp_ai_list *l,
     if (!itr->visit(itr, &cur->data)) return;
     cur = cur->next;
   };
+}
+
+bool llarp_ai_list_bdecode(struct llarp_ai_list * l, llarp_buffer_t * buff)
+{
+  return false;
 }
