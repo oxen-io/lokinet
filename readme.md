@@ -20,6 +20,9 @@ Build requirements:
 
 Building:
 
+    $ mkdir build
+    $ cd build
+    $ cmake ..
     $ make
     
 Running:
