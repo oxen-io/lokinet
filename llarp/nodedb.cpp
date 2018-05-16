@@ -42,7 +42,6 @@ struct llarp_nodedb {
   }
 
   bool loadfile(const fs::path &fpath) {
-    llarp_rc *rc = llarp::Alloc<llarp_rc>(mem);
     llarp_buffer_t buff;
     FILE *f = fopen(fpath.c_str(), "rb");
     if (!f) return false;
@@ -51,6 +50,7 @@ struct llarp_nodedb {
       return false;
     }
     fclose(f);
+    llarp_rc *rc = llarp::Alloc<llarp_rc>(mem);
     if (llarp_rc_bdecode(mem, rc, &buff)) {
       if (llarp_rc_verify_sig(rc)) {
         llarp::pubkey pk;
