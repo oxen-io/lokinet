@@ -25,6 +25,13 @@ Building:
     $ cmake ..
     $ make
     
+Building really fast (requires ninja):
+
+    $ mkdir build
+    $ cd build 
+    $ cmake -GNinja ..
+    $ ninja
+    
 Running:
 
     $ ./llarpd daemon.ini
