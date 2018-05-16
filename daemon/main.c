@@ -10,21 +10,22 @@ struct llarp_main {
   struct llarp_nodedb *nodedb;
   struct llarp_ev_loop *mainloop;
   char nodedb_dir[256];
+  int exitcode;
 };
 
 void iter_main_config(struct llarp_config_iterator *itr, const char *section,
                       const char *key, const char *val) {
   struct llarp_main *m = (struct llarp_main *)itr->user;
+
   if (!strcmp(section, "router")) {
     if (!strcmp(key, "threads")) {
       int workers = atoi(val);
       if (workers > 0 && m->worker == NULL) {
-        printf("%s: %d worker threads\n", section, workers);
         m->worker = llarp_init_threadpool(workers);
       }
     }
   }
-  if (!strcmp(section, "nodedb")) {
+  if (!strcmp(section, "netdb")) {
     if (!strcmp(key, "dir")) {
       strncpy(m->nodedb_dir, val, sizeof(m->nodedb_dir));
     }
@@ -77,7 +78,7 @@ int shutdown_llarp(struct llarp_main *m) {
   
   printf("\n");
   fflush(stdout);
-  return 0;
+  return m->exitcode;
 }
 
 struct llarp_main llarp = {
@@ -87,7 +88,8 @@ struct llarp_main llarp = {
   0,
   0,
   0,
-  {0}
+  {0},
+  1
 };
 
 int main(int argc, char *argv[]) {
@@ -96,9 +98,8 @@ int main(int argc, char *argv[]) {
   llarp_mem_stdlib();
   llarp_new_config(&llarp.config);
   llarp_ev_loop_alloc(&llarp.mainloop);
-  printf("%s starting up\n", LLARP_VERSION);
+  printf("%s loading config file %s\n", LLARP_VERSION, conffname);
   if (!llarp_load_config(llarp.config, conffname)) {
-    printf("Loaded config %s\n", conffname);
     struct llarp_config_iterator iter;
     iter.user = &llarp;
     iter.visit = iter_main_config;
@@ -123,14 +124,18 @@ int main(int argc, char *argv[]) {
           llarp_run_router(llarp.router, llarp.logic);
           
           printf("running mainloop\n");
+          llarp.exitcode = 0;
           llarp_ev_loop_run(llarp.mainloop);
         } else
           printf("Failed to configure router\n");
       } else
         printf("failed to initialize nodedb at %s\n", dir);
-    }
+    } else
+      printf("no nodedb defined\n");
+    
+    return shutdown_llarp(&llarp);
   } else
     printf("Failed to load config %s\n", conffname);
 
-  return shutdown_llarp(&llarp);
+  return 1;
 }

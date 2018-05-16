@@ -76,6 +76,10 @@ struct llarp_link {
   void (*free_impl)(struct llarp_link *);
 };
 
+/** checks if all members are initialized */
+bool llarp_link_initialized(struct llarp_link * link);
+
+  
 struct llarp_link_session {
   void *impl;
   struct llarp_rc *(*remote_rc)(struct llarp_link_session *);

@@ -88,26 +88,32 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
     if (StrEq(val, "eth")) {
       struct llarp_link *link = llarp::Alloc<llarp_link>();
       iwp_configure_args args = {.crypto = &self->crypto, .keyfile=self->transport_keyfile};
-      iwp_link_init(link, args, &self->muxer);
-      if (link->configure(link, key, AF_PACKET, LLARP_ETH_PROTO)) {
-        printf("ethernet link configured on %s\n", key);
-        self->AddLink(link);
-      } else {
-        delete link;
-        printf("failed to configure ethernet link for %s\n", key);
+      if(iwp_link_init(link, args, &self->muxer))
+      {
+        if (link->configure(link, key, AF_PACKET, LLARP_ETH_PROTO))
+        {
+          printf("ethernet link configured on %s\n", key);
+          self->AddLink(link);
+          return;
+        }
       }
+      delete link;
+      printf("failed to configure ethernet link for %s\n", key);
     } else {
       struct llarp_link *link = llarp::Alloc<llarp_link>();
       uint16_t port = std::atoi(val);
       iwp_configure_args args = {.crypto = &self->crypto, .keyfile=self->transport_keyfile};
-      iwp_link_init(link, args, &self->muxer);
-      if (link->configure(link, key, AF_INET6, port)) {
-        printf("inet link configured on %s port %d\n", key, port);
-        self->AddLink(link);
-      } else {
-        delete link;
-        printf("failed to configure inet link for %s port %d\n", key, port);
+      if(iwp_link_init(link, args, &self->muxer))
+      {
+        if (link->configure(link, key, AF_INET6, port))
+        {
+          printf("inet link configured on %s port %d\n", key, port);
+          self->AddLink(link);
+          return;
+        }
       }
+      delete link;
+      printf("failed to configure inet link for %s port %d\n", key, port);
     }
   }
 }

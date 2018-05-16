@@ -107,5 +107,5 @@ bool dtls_link_init(struct llarp_link * link, struct llarp_dtls_args args, struc
   link->iter_sessions = dtls_link_iter_sessions;
   link->try_establish = dtls_link_try_establish;
   link->free_impl = dtls_link_free;
-  return false;
+  return llarp_link_initialized(link);
 }

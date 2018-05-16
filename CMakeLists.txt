@@ -25,6 +25,7 @@ set(LIB_SRC
   llarp/exit_info.c
   llarp/exit_route.c
   llarp/iwp_link.c
+  llarp/link.c
   llarp/link_intro.cpp
   llarp/link_relay_down.cpp
   llarp/link_relay_up.cpp
