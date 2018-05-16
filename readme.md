@@ -13,12 +13,17 @@ This project is "secret" don't tell anyone about it yet. :x
 
 Build requirements:
 
-* CMake
+* CMake / gmake / ninja
 * libsodium >= 1.0.14 
 * c++ 17 capable C++ compiler
 * c11 capable C compiler
 
+
 Building:
+
+    $ make
+
+Building in another directory:
 
     $ mkdir build
     $ cd build

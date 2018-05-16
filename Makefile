@@ -1,0 +1,3 @@
+all:
+	cmake -GNinja 
+	ninja

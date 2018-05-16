@@ -8,8 +8,16 @@
 
 build/
 
+llarpd
 *.test
 *.bin
+
+*.ninja
+cmake_install.cmake
+CMakeFiles
+CMakeCache.txt
+.ninja_log
+.ninja_deps
 
 callgrind.*
 .gdb_history
