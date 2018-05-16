@@ -11,6 +11,7 @@ extern "C" {
 
 struct iwp_configure_args {
   struct llarp_crypto* crypto;
+  const char * keyfile;
 };
 
 bool iwp_link_init(struct llarp_link* link, struct iwp_configure_args args,

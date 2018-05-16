@@ -20,10 +20,11 @@ set(LIB_SRC
   llarp/config.cpp
   llarp/crypto_async.c
   llarp/crypto_libsodium.cpp
+  llarp/dtls_link.c
   llarp/ev.cpp
   llarp/exit_info.c
   llarp/exit_route.c
-  llarp/iwp.cpp
+  llarp/iwp_link.c
   llarp/link_intro.cpp
   llarp/link_relay_down.cpp
   llarp/link_relay_up.cpp

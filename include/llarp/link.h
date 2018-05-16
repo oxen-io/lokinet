@@ -50,29 +50,30 @@ struct llarp_link_session_iter {
 
 struct llarp_link_ev_listener {
   void *user;
-  void (*established)(struct llarp_ev_listener *, struct llarp_link_session *,
+  void (*established)(struct llarp_link_ev_listener *, struct llarp_link_session *,
                       bool);
-  void (*timeout)(struct llarp_ev_listener *, struct llarp_link_session *,
+  void (*timeout)(struct llarp_link_ev_listener *, struct llarp_link_session *,
                   bool);
-  void (*tx)(struct llarp_ev_listener *, struct llarp_link_session *, size_t);
-  void (*rx)(struct llarp_ev_listener *, struct llarp_link_session *, size_t);
-  void (*error)(struct llarp_ev_listener *, struct llarp_link_session *,
+  void (*tx)(struct llarp_link_ev_listener *, struct llarp_link_session *, size_t);
+  void (*rx)(struct llarp_link_ev_listener *, struct llarp_link_session *, size_t);
+  void (*error)(struct llarp_link_ev_listener *, struct llarp_link_session *,
                 const char *);
 };
 
 struct llarp_link {
   void *impl;
   const char *(*name)(struct llarp_link *);
+  /*
   int (*register_listener)(struct llarp_link *, struct llarp_link_ev_listener);
   void (*deregister_listener)(struct llarp_link *, int);
+  */
   bool (*configure)(struct llarp_link *, const char *, int, uint16_t);
   bool (*start_link)(struct llarp_link *, struct llarp_logic *);
   bool (*stop_link)(struct llarp_link *);
-  bool (*put_ai)(struct llarp_link *, struct llarp_ai *);
-  void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter);
+  void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter*);
   void (*try_establish)(struct llarp_link *, struct llarp_link_establish_job,
                         struct llarp_link_session_listener);
-  void (*free)(struct llarp_link *);
+  void (*free_impl)(struct llarp_link *);
 };
 
 struct llarp_link_session {

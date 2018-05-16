@@ -47,10 +47,13 @@ int shutdown_llarp(struct llarp_main *m) {
     llarp_ev_loop_stop(m->mainloop);
   
   progress();
-  llarp_threadpool_stop(m->worker);
+  if(m->worker)
+    llarp_threadpool_stop(m->worker);
   
   progress();
-  llarp_threadpool_join(m->worker);
+  
+  if(m->worker)
+    llarp_threadpool_join(m->worker);
 
   progress();
   if (m->logic) llarp_logic_stop(m->logic);
@@ -93,7 +96,7 @@ int main(int argc, char *argv[]) {
   llarp_mem_stdlib();
   llarp_new_config(&llarp.config);
   llarp_ev_loop_alloc(&llarp.mainloop);
-  printf("%s loaded\n", LLARP_VERSION);
+  printf("%s starting up\n", LLARP_VERSION);
   if (!llarp_load_config(llarp.config, conffname)) {
     printf("Loaded config %s\n", conffname);
     struct llarp_config_iterator iter;

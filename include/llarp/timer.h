@@ -6,6 +6,7 @@
 extern "C" {
 #endif
 
+/** called with userptr, original timeout, left */
 typedef void (*llarp_timer_handler_func)(void *, uint64_t, uint64_t);
 
 struct llarp_timeout_job {
