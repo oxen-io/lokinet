@@ -39,28 +39,39 @@ static void progress() {
 int shutdown_llarp(struct llarp_main *m) {
   printf("Shutting down ");
   progress();
-  llarp_stop_router(m->router);
+  if(m->router)
+    llarp_stop_router(m->router);
+  
   progress();
-  llarp_ev_loop_stop(m->mainloop);
+  if(m->mainloop)
+    llarp_ev_loop_stop(m->mainloop);
+  
   progress();
   llarp_threadpool_stop(m->worker);
+  
   progress();
   llarp_threadpool_join(m->worker);
-  progress();
 
+  progress();
   if (m->logic) llarp_logic_stop(m->logic);
+  
   progress();
-
   llarp_free_router(&m->router);
+  
   progress();
   llarp_free_config(&m->config);
+  
   progress();
   llarp_ev_loop_free(&m->mainloop);
+  
   progress();
   llarp_free_threadpool(&m->worker);
+  
   progress();
+  
   llarp_free_logic(&m->logic);
   progress();
+  
   printf("\n");
   fflush(stdout);
   return 0;
@@ -96,13 +107,18 @@ int main(int argc, char *argv[]) {
       llarp.nodedb_dir[sizeof(llarp.nodedb_dir) - 1] = 0;
       char *dir = llarp.nodedb_dir;
       if (llarp_nodedb_ensure_dir(dir)) {
+        // ensure worker thread pool
         if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
+        
         llarp.router = llarp_init_router(llarp.worker);
 
         if (llarp_configure_router(llarp.router, llarp.config)) {
+          
           llarp.logic = llarp_init_logic();
           printf("starting router\n");
+          
           llarp_run_router(llarp.router, llarp.logic);
+          
           printf("running mainloop\n");
           llarp_ev_loop_run(llarp.mainloop);
         } else

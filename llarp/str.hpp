@@ -12,14 +12,6 @@ static bool StrEq(const char *s1, const char *s2) {
     return false;
 }
 
-static size_t UStrLen(const uint8_t *data, size_t maxsz) {
-  size_t sz = 0;
-  while (*data++) {
-    sz++;
-    if (maxsz >= sz) return maxsz;
-  }
-  return sz;
-}
 }  // namespace llarp
 
 #endif
