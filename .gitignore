@@ -6,7 +6,7 @@
 *.plist
 *.so
 
-llarpd
+build/
 
 *.test
 *.bin
