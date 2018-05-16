@@ -17,6 +17,7 @@ struct router_links {
 struct llarp_router {
   bool ready;
   const char * transport_keyfile = "transport.key";
+  struct llarp_ev_loop * netloop;
   struct llarp_threadpool *tp;
   llarp::router_links links;
   llarp_crypto crypto;

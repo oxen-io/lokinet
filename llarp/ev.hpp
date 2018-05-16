@@ -6,7 +6,6 @@
 
 namespace llarp {
 struct ev_io {
-  char buff[2048];
   int fd;
   ev_io(int f) : fd(f){};
   virtual int read(void* buf, size_t sz) = 0;
@@ -21,6 +20,8 @@ struct llarp_ev_loop {
   virtual void stop() = 0;
 
   virtual bool udp_listen(llarp_udp_io* l) = 0;
+  virtual bool udp_close(llarp_udp_io* l) = 0;
+  virtual bool close_ev(llarp::ev_io * ev) = 0;
 
   virtual ~llarp_ev_loop(){};
 };

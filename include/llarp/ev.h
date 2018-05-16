@@ -23,6 +23,7 @@ struct llarp_udp_io {
   struct sockaddr_in6 *addr;
   void *user;
   void *impl;
+  struct llarp_ev_loop * parent;
   void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *, void *,
                    ssize_t);
 };

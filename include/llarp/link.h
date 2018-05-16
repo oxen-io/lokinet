@@ -62,7 +62,7 @@ struct llarp_link_ev_listener {
 
 struct llarp_link {
   void *impl;
-  const char *(*name)(struct llarp_link *);
+  const char *(*name)(void);
   /*
   int (*register_listener)(struct llarp_link *, struct llarp_link_ev_listener);
   void (*deregister_listener)(struct llarp_link *, int);
@@ -73,6 +73,9 @@ struct llarp_link {
   void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter*);
   void (*try_establish)(struct llarp_link *, struct llarp_link_establish_job,
                         struct llarp_link_session_listener);
+  
+  struct llarp_link_session * (*acquire_session_for_addr)(struct llarp_link *, const struct sockaddr *);
+  void (*mark_session_active)(struct llarp_link *, struct llarp_link_session *);
   void (*free_impl)(struct llarp_link *);
 };
 
@@ -86,11 +89,16 @@ struct llarp_link_session {
   /** send an entire message, splits up into smaller pieces and does encryption
    */
   ssize_t (*sendto)(struct llarp_link_session *, llarp_buffer_t);
+  /** receive raw data from link layer */
+  bool (*recv)(struct llarp_link_session *, const uint8_t *, size_t);
+  
   /** return true if this session is timed out */
   bool (*timeout)(struct llarp_link_session *);
   /** explicit close session */
   void (*close)(struct llarp_link_session *);
 };
+
+bool llarp_link_session_initialized(struct llarp_link_session * s);
 
 #ifdef __cplusplus
 }

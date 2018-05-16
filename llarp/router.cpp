@@ -42,8 +42,9 @@ void llarp_router::Close() {
 }
 extern "C" {
 
-struct llarp_router *llarp_init_router(struct llarp_threadpool *tp) {
+  struct llarp_router *llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop * netloop) {
   llarp_router *router = new llarp_router;
+  router->netloop = netloop;
   router->tp = tp;
   llarp_crypto_libsodium_init(&router->crypto);
   return router;
@@ -61,7 +62,7 @@ bool llarp_configure_router(struct llarp_router *router,
 void llarp_run_router(struct llarp_router *router, struct llarp_logic *logic) {
   router->ForEachLink([logic](llarp_link *link) {
     int result = link->start_link(link, logic);
-    if (result == -1) printf("link %s failed to start\n", link->name(link));
+    if (result == -1) printf("link %s failed to start\n", link->name());
   });
 }
 
@@ -85,10 +86,16 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
                         const char *key, const char *val) {
   llarp_router *self = static_cast<llarp_router *>(iter->user);
   if (StrEq(section, "links")) {
+    iwp_configure_args args = {
+      .mem = &llarp_g_mem,
+      .ev = self->netloop,
+      .crypto = &self->crypto,
+      .keyfile=self->transport_keyfile
+    };
     if (StrEq(val, "eth")) {
       struct llarp_link *link = llarp::Alloc<llarp_link>();
-      iwp_configure_args args = {.crypto = &self->crypto, .keyfile=self->transport_keyfile};
-      if(iwp_link_init(link, args, &self->muxer))
+      iwp_link_init(link, args, &self->muxer);
+      if(llarp_link_initialized(link))
       {
         if (link->configure(link, key, AF_PACKET, LLARP_ETH_PROTO))
         {
@@ -102,8 +109,8 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
     } else {
       struct llarp_link *link = llarp::Alloc<llarp_link>();
       uint16_t port = std::atoi(val);
-      iwp_configure_args args = {.crypto = &self->crypto, .keyfile=self->transport_keyfile};
-      if(iwp_link_init(link, args, &self->muxer))
+      iwp_link_init(link, args, &self->muxer);
+      if(llarp_link_initialized(link))
       {
         if (link->configure(link, key, AF_INET6, port))
         {

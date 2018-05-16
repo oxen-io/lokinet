@@ -14,9 +14,8 @@ static struct dtls_link * dtls_link_alloc(struct llarp_msg_muxer * muxer, char *
 }
 
 
-static const char * dtls_link_name(struct llarp_link * l)
+static const char * dtls_link_name()
 {
-  (void) l;
   return "dtls";
 }
 
@@ -94,7 +93,7 @@ static void dtls_link_free(struct llarp_link *l)
 
 
 
-bool dtls_link_init(struct llarp_link * link, struct llarp_dtls_args args, struct llarp_msg_muxer * muxer)
+void dtls_link_init(struct llarp_link * link, struct llarp_dtls_args args, struct llarp_msg_muxer * muxer)
 {
   link->impl = dtls_link_alloc(muxer, args.key_file, args.cert_file);
   link->name = dtls_link_name;
@@ -107,5 +106,4 @@ bool dtls_link_init(struct llarp_link * link, struct llarp_dtls_args args, struc
   link->iter_sessions = dtls_link_iter_sessions;
   link->try_establish = dtls_link_try_establish;
   link->free_impl = dtls_link_free;
-  return llarp_link_initialized(link);
 }

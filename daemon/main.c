@@ -114,7 +114,7 @@ int main(int argc, char *argv[]) {
         // ensure worker thread pool
         if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
         
-        llarp.router = llarp_init_router(llarp.worker);
+        llarp.router = llarp_init_router(llarp.worker, llarp.mainloop);
 
         if (llarp_configure_router(llarp.router, llarp.config)) {
           

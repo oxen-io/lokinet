@@ -10,11 +10,13 @@ extern "C" {
 #endif
 
 struct iwp_configure_args {
+  struct llarp_alloc * mem;
+  struct llarp_ev_loop * ev;
   struct llarp_crypto* crypto;
   const char * keyfile;
 };
 
-bool iwp_link_init(struct llarp_link* link, struct iwp_configure_args args,
+void iwp_link_init(struct llarp_link* link, struct iwp_configure_args args,
                    struct llarp_msg_muxer* muxer);
 
 #ifdef __cplusplus

@@ -56,14 +56,15 @@ struct llarp_epoll_loop : public llarp_ev_loop {
     int result;
     char readbuf[2048];
     do {
-      result = epoll_wait(epollfd, events, 1024, 0);
+      result = epoll_wait(epollfd, events, 1024, -1);
       if (result > 0) {
         int idx = 0;
         while (idx < result) {
           llarp::ev_io* ev = static_cast<llarp::ev_io*>(events[idx].data.ptr);
           if (events[idx].events & EPOLLIN) {
             if (ev->read(readbuf, sizeof(readbuf)) == -1) {
-              epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr);
+              close_ev(ev);
+              delete ev;
             }
           }
           ++idx;
@@ -94,6 +95,11 @@ struct llarp_epoll_loop : public llarp_ev_loop {
     return fd;
   }
 
+  bool close_ev(llarp::ev_io * ev)
+  {
+    return epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) != -1;
+  }
+
   bool udp_listen(llarp_udp_io* l) {
     int fd = udp_bind((sockaddr*)l->addr);
     if (fd == -1) return false;
@@ -105,8 +111,17 @@ struct llarp_epoll_loop : public llarp_ev_loop {
       delete listener;
       return false;
     }
+    l->impl = listener;
     return true;
   }
+
+  bool udp_close(llarp_udp_io* l)
+  {
+    auto listener = static_cast<llarp::udp_listener*>(l->impl);
+    if(!listener) return false;
+    return close_ev(listener);
+  }
+  
 
   void stop() {
     if (epollfd != -1) ::close(epollfd);
