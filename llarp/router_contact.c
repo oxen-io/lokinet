@@ -7,18 +7,25 @@ void llarp_rc_free(struct llarp_rc *rc) {
   llarp_ai_list_free(&rc->addrs);
 }
 
+struct llarp_rc_decoder
+{
+  struct llarp_rc * rc;
+  struct llarp_alloc * mem;
+};
 
 static bool llarp_rc_decode_dict(struct dict_reader * r, llarp_buffer_t * key)
 {
   int64_t v;
   llarp_buffer_t strbuf;
-  struct llarp_rc * rc = r->user;
+  struct llarp_rc_decoder * dec = r->user;
+  struct llarp_alloc * mem = dec->mem;
+  struct llarp_rc * rc = dec->rc;
 
   if(!key) return true;
 
   if(llarp_buffer_eq(*key, "a"))
   {
-    rc->addrs = llarp_ai_list_new();
+    rc->addrs = llarp_ai_list_new(mem);
     return llarp_ai_list_bdecode(rc->addrs, r->buffer);
   }
 
@@ -41,7 +48,7 @@ static bool llarp_rc_decode_dict(struct dict_reader * r, llarp_buffer_t * key)
 
   if(llarp_buffer_eq(*key, "x"))
   {
-    rc->exits = llarp_xi_list_new();
+    rc->exits = llarp_xi_list_new(mem);
     return llarp_xi_list_bdecode(rc->exits, r->buffer);
   }
 
@@ -58,9 +65,13 @@ static bool llarp_rc_decode_dict(struct dict_reader * r, llarp_buffer_t * key)
   return false;
 }
 
-bool llarp_rc_bdecode(struct llarp_rc * rc, llarp_buffer_t *buff) {
+bool llarp_rc_bdecode(struct llarp_alloc * mem, struct llarp_rc * rc, llarp_buffer_t *buff) {
+  struct llarp_rc_decoder decode = {
+    .rc = rc,
+    .mem = mem
+  };
   struct dict_reader r = {
-    .user = rc,
+    .user = &decode,
     .on_key = &llarp_rc_decode_dict
   };
   return bdecode_read_dict(buff, &r);

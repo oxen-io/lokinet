@@ -1,5 +1,11 @@
 #include <llarp/mem.h>
 
+
 extern "C" {
-struct llarp_alloc llarp_g_mem = {.alloc = nullptr, .free = nullptr};
+
+  void llarp_mem_slab(struct llarp_alloc * mem, uint32_t * buf, size_t sz)
+  {
+    // not implemented
+    abort();
+  }
 }

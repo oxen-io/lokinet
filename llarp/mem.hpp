@@ -15,8 +15,8 @@ static constexpr size_t alignment() {
 }
 
 template <typename T>
-static T *Alloc(llarp_alloc *mem = &llarp_g_mem) {
-  return static_cast<T *>(mem->alloc(sizeof(T), alignment<T>()));
+static T *Alloc(llarp_alloc *mem) {
+  return static_cast<T *>(mem->alloc(mem, sizeof(T), alignment<T>()));
 }
 }  // namespace llarp
 

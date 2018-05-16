@@ -1,26 +1,26 @@
 #ifndef LLARP_MEM_H_
 #define LLARP_MEM_H_
 
+#include <stdlib.h>
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#include <stdlib.h>
-
 struct llarp_alloc {
-  void *(*alloc)(size_t sz, size_t align);
-  void (*free)(void *ptr);
+  void * impl;
+  void *(*alloc)(struct llarp_alloc * mem, size_t sz, size_t align);
+  void (*free)(struct llarp_alloc * mem, void *ptr);
 };
+  
+void llarp_mem_stdlib(struct llarp_alloc * mem);
+void llarp_mem_jemalloc(struct llarp_alloc * mem);
+void llarp_mem_dmalloc(struct llarp_alloc * mem);
+  
+void llarp_mem_slab(struct llarp_alloc * mem, uint32_t * buf, size_t sz);
 
-/** global memory allocator */
-extern struct llarp_alloc llarp_g_mem;
-/** init llarp_g_mem with stdlib malloc */
-void llarp_mem_stdlib();
-/** init llarp_g_mem with jemalloc */
-void llarp_mem_jemalloc();
-/** init llarp_g_mem with dmalloc */
-void llarp_mem_dmalloc();
-
+  
 #ifdef __cplusplus
 }
 #endif

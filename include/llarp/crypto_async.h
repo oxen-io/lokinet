@@ -10,10 +10,13 @@ extern "C" {
 
 struct llarp_async_dh;
 
-struct llarp_async_dh *llarp_async_dh_new(llarp_seckey_t ourkey,
-                                          struct llarp_crypto *crypto,
-                                          struct llarp_threadpool *handler,
-                                          struct llarp_threadpool *worker);
+struct llarp_async_dh *llarp_async_dh_new(
+  struct llarp_alloc * mem,
+  llarp_seckey_t ourkey,
+  struct llarp_crypto *crypto,
+  struct llarp_threadpool *handler,
+  struct llarp_threadpool *worker);
+  
 void llarp_async_dh_free(struct llarp_async_dh **dh);
 
 struct llarp_dh_result;
@@ -46,6 +49,7 @@ struct llarp_cipher_result {
 };
 
 struct llarp_async_cipher *llarp_async_cipher_new(
+  struct llarp_alloc * mem,
     llarp_sharedkey_t key, struct llarp_crypto *crypto,
     struct llarp_threadpool *result, struct llarp_threadpool *worker);
 

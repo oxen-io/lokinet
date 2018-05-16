@@ -10,12 +10,14 @@ struct llarp_xi_list_node {
 };
 
 struct llarp_xi_list {
+  struct llarp_alloc * mem;
   struct llarp_xi_list_node *root;
 };
 
-struct llarp_xi_list *llarp_xi_list_new() {
-  struct llarp_xi_list *l = llarp_g_mem.alloc(sizeof(struct llarp_xi_list), 8);
+struct llarp_xi_list *llarp_xi_list_new(struct llarp_alloc * mem) {
+  struct llarp_xi_list *l = mem->alloc(mem, sizeof(struct llarp_xi_list), 8);
   if (l) {
+    l->mem = mem;
     l->root = NULL;
   }
   return l;
@@ -23,13 +25,14 @@ struct llarp_xi_list *llarp_xi_list_new() {
 
 void llarp_xi_list_free(struct llarp_xi_list **l) {
   if (*l) {
+    struct llarp_alloc * mem = (*l)->mem;
     struct llarp_xi_list_node *current = (*l)->root;
     while (current) {
       struct llarp_xi_list_node *tmp = current->next;
-      llarp_g_mem.free(current);
+      mem->free(mem, current);
       current = tmp;
     }
-    llarp_g_mem.free(*l);
+    mem->free(mem, *l);
     *l = NULL;
   }
 }

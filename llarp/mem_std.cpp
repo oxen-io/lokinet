@@ -2,7 +2,8 @@
 #include <cstring>
 
 namespace llarp {
-void *std_malloc(size_t sz, size_t align) {
+void *std_malloc(struct llarp_alloc *mem, size_t sz, size_t align) {
+  (void)mem;
   (void)align;
   void *ptr = malloc(sz);
   if (ptr) {
@@ -12,15 +13,16 @@ void *std_malloc(size_t sz, size_t align) {
   abort();
 }
 
-void std_free(void *ptr) {
+void std_free(struct llarp_alloc * mem, void *ptr) {
+  (void) mem;
   if (ptr) free(ptr);
 }
 
 }  // namespace llarp
 
 extern "C" {
-void llarp_mem_stdlib() {
-  llarp_g_mem.alloc = llarp::std_malloc;
-  llarp_g_mem.free = llarp::std_free;
+void llarp_mem_stdlib(struct llarp_alloc * mem) {
+  mem->alloc = llarp::std_malloc;
+  mem->free = llarp::std_free;
 }
 }

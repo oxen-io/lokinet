@@ -3,12 +3,27 @@
 #include <map>
 #include "crypto.hpp"
 #include "fs.hpp"
+#include "mem.hpp"
 
 static const char skiplist_subdirs[] = "0123456789ABCDEF";
 
 struct llarp_nodedb {
+
+  llarp_nodedb(struct llarp_alloc * m) : mem(m) {}
+  
+  llarp_alloc * mem;
   std::map<llarp::pubkey, llarp_rc *> entries;
 
+  void Clear()
+  {
+    auto itr = entries.begin();
+    while(itr != entries.end())
+    {
+      mem->free(mem, itr->second);
+      itr = entries.erase(itr);
+    }
+  }
+  
   ssize_t Load(const fs::path &path) {
     std::error_code ec;
     if (!fs::exists(path, ec)) {
@@ -27,16 +42,16 @@ struct llarp_nodedb {
   }
 
   bool loadfile(const fs::path &fpath) {
-    llarp_rc *rc = new llarp_rc;
+    llarp_rc *rc = llarp::Alloc<llarp_rc>(mem);
     llarp_buffer_t buff;
     FILE *f = fopen(fpath.c_str(), "rb");
     if (!f) return false;
-    if (!llarp_buffer_readfile(&buff, f, &llarp_g_mem)) {
+    if (!llarp_buffer_readfile(&buff, f, mem)) {
       fclose(f);
       return false;
     }
     fclose(f);
-    if (llarp_rc_bdecode(rc, &buff)) {
+    if (llarp_rc_bdecode(mem, rc, &buff)) {
       if (llarp_rc_verify_sig(rc)) {
         llarp::pubkey pk;
         memcpy(pk.data(), rc->pubkey, pk.size());
@@ -45,7 +60,7 @@ struct llarp_nodedb {
       }
     }
     llarp_rc_free(rc);
-    delete rc;
+    mem->free(mem, rc);
     return false;
   }
 
@@ -60,12 +75,20 @@ struct llarp_nodedb {
 
 extern "C" {
 
-struct llarp_nodedb *llarp_nodedb_new() {
-  return new llarp_nodedb;
+struct llarp_nodedb *llarp_nodedb_new(struct llarp_alloc * mem) {
+  void * ptr = mem->alloc(mem, sizeof(llarp_nodedb), llarp::alignment<llarp_nodedb>());
+  if(!ptr) return nullptr;
+  return new (ptr) llarp_nodedb(mem);
 }
 
 void llarp_nodedb_free(struct llarp_nodedb **n) {
-  if (*n) delete *n;
+  if (*n)
+  {
+    struct llarp_alloc *mem = (*n)->mem;
+    (*n)->Clear();
+    (*n)->~llarp_nodedb();
+    mem->free(mem, *n);
+  }
   *n = nullptr;
 }
 

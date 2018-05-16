@@ -13,7 +13,7 @@ extern "C" {
 
 struct llarp_router;
 
-struct llarp_router *llarp_init_router(struct llarp_threadpool *worker, struct llarp_ev_loop * netloop);
+struct llarp_router *llarp_init_router(struct llarp_alloc * mem, struct llarp_threadpool *worker, struct llarp_ev_loop * netloop);
 void llarp_free_router(struct llarp_router **router);
 
 bool llarp_configure_router(struct llarp_router *router,

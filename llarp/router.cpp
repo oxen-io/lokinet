@@ -11,7 +11,7 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
                         const char *key, const char *val);
 }  // namespace llarp
 
-llarp_router::llarp_router() : ready(false) { llarp_msg_muxer_init(&muxer); }
+llarp_router::llarp_router(struct llarp_alloc *m) : ready(false), mem(m) { llarp_msg_muxer_init(&muxer); }
 
 llarp_router::~llarp_router() {}
 
@@ -20,7 +20,10 @@ void llarp_router::AddLink(struct llarp_link *link) {
   while (head->next && head->link) head = head->next;
 
   if (head->link)
-    head->next = new llarp::router_links{link, nullptr};
+  {
+    void * ptr = mem->alloc(mem, sizeof(llarp::router_links), 8);
+    head->next = new (ptr) llarp::router_links{link, nullptr};
+  }
   else
     head->link = link;
 
@@ -42,11 +45,16 @@ void llarp_router::Close() {
 }
 extern "C" {
 
-  struct llarp_router *llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop * netloop) {
-  llarp_router *router = new llarp_router;
-  router->netloop = netloop;
-  router->tp = tp;
-  llarp_crypto_libsodium_init(&router->crypto);
+struct llarp_router *llarp_init_router(struct llarp_alloc * mem, struct llarp_threadpool *tp, struct llarp_ev_loop * netloop) {
+  void * ptr = mem->alloc(mem, sizeof(llarp_router), 16);
+  if(!ptr) return nullptr;
+  llarp_router *router = new (ptr) llarp_router(mem);
+  if(router)
+  {
+    router->netloop = netloop;
+    router->tp = tp;
+    llarp_crypto_libsodium_init(&router->crypto);
+  }
   return router;
 }
 
@@ -73,8 +81,10 @@ void llarp_stop_router(struct llarp_router *router) {
 
 void llarp_free_router(struct llarp_router **router) {
   if (*router) {
-    (*router)->ForEachLink([](llarp_link *link) { link->free_impl(link); delete link; });
-    delete *router;
+    struct llarp_alloc * mem = (*router)->mem;
+    (*router)->ForEachLink([mem](llarp_link *link) { link->free_impl(link); mem->free(mem, link); });
+    (*router)->~llarp_router();
+    mem->free(mem, *router);
   }
   *router = nullptr;
 }
@@ -87,13 +97,13 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   llarp_router *self = static_cast<llarp_router *>(iter->user);
   if (StrEq(section, "links")) {
     iwp_configure_args args = {
-      .mem = &llarp_g_mem,
+      .mem = self->mem,
       .ev = self->netloop,
       .crypto = &self->crypto,
       .keyfile=self->transport_keyfile
     };
     if (StrEq(val, "eth")) {
-      struct llarp_link *link = llarp::Alloc<llarp_link>();
+      struct llarp_link *link = llarp::Alloc<llarp_link>(self->mem);
       iwp_link_init(link, args, &self->muxer);
       if(llarp_link_initialized(link))
       {
@@ -104,10 +114,10 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
           return;
         }
       }
-      delete link;
+      self->mem->free(self->mem, link);
       printf("failed to configure ethernet link for %s\n", key);
     } else {
-      struct llarp_link *link = llarp::Alloc<llarp_link>();
+      struct llarp_link *link = llarp::Alloc<llarp_link>(self->mem);
       uint16_t port = std::atoi(val);
       iwp_link_init(link, args, &self->muxer);
       if(llarp_link_initialized(link))
@@ -119,7 +129,7 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
           return;
         }
       }
-      delete link;
+      self->mem->free(self->mem, link);
       printf("failed to configure inet link for %s port %d\n", key, port);
     }
   }

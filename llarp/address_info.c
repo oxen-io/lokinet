@@ -60,12 +60,14 @@ struct llarp_ai_list_node {
 };
 
 struct llarp_ai_list {
+  struct llarp_alloc * mem;
   struct llarp_ai_list_node *root;
 };
 
-struct llarp_ai_list *llarp_ai_list_new() {
-  struct llarp_ai_list *l = llarp_g_mem.alloc(sizeof(struct llarp_ai_list), 8);
+struct llarp_ai_list *llarp_ai_list_new(struct llarp_alloc * mem) {
+  struct llarp_ai_list *l = mem->alloc(mem, sizeof(struct llarp_ai_list), 8);
   if (l) {
+    l->mem = mem;
     l->root = NULL;
   }
   return l;
@@ -73,13 +75,14 @@ struct llarp_ai_list *llarp_ai_list_new() {
 
 void llarp_ai_list_free(struct llarp_ai_list **l) {
   if (*l) {
+    struct llarp_alloc * mem = (*l)->mem;
     struct llarp_ai_list_node *cur = (*l)->root;
     while (cur) {
       struct llarp_ai_list_node *tmp = cur->next;
-      llarp_g_mem.free(cur);
+      mem->free(mem, cur);
       cur = tmp;
     }
-    llarp_g_mem.free(*l);
+    mem->free(mem, *l);
     *l = NULL;
   }
 }

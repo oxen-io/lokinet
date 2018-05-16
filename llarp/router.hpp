@@ -23,14 +23,9 @@ struct llarp_router {
   llarp_crypto crypto;
   llarp_msg_muxer muxer;
   llarp_path_context *paths;
+  llarp_alloc * mem;
 
-  static void *operator new(size_t sz) {
-    return llarp_g_mem.alloc(sz, llarp::alignment<llarp_router>());
-  }
-
-  static void operator delete(void *ptr) { llarp_g_mem.free(ptr); }
-
-  llarp_router();
+  llarp_router(llarp_alloc * mem);
   ~llarp_router();
 
   void AddLink(struct llarp_link *link);

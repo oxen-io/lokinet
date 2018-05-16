@@ -3,6 +3,7 @@
 #include <string.h>
 
 struct llarp_main {
+  struct llarp_alloc mem;
   struct llarp_router *router;
   struct llarp_threadpool *worker;
   struct llarp_logic *logic;
@@ -82,6 +83,7 @@ int shutdown_llarp(struct llarp_main *m) {
 }
 
 struct llarp_main llarp = {
+  {0,0,0},
   0,
   0,
   0,
@@ -95,7 +97,8 @@ struct llarp_main llarp = {
 int main(int argc, char *argv[]) {
   const char *conffname = "daemon.ini";
   if (argc > 1) conffname = argv[1];
-  llarp_mem_stdlib();
+  llarp_mem_jemalloc(&llarp.mem);
+  struct llarp_alloc * mem = &llarp.mem;
   llarp_new_config(&llarp.config);
   llarp_ev_loop_alloc(&llarp.mainloop);
   printf("%s loading config file %s\n", LLARP_VERSION, conffname);
@@ -105,8 +108,8 @@ int main(int argc, char *argv[]) {
     iter.visit = iter_main_config;
     llarp_config_iter(llarp.config, &iter);
 
-    llarp.nodedb = llarp_nodedb_new();
-
+    llarp.nodedb = llarp_nodedb_new(mem);
+    
     if (llarp.nodedb_dir[0]) {
       llarp.nodedb_dir[sizeof(llarp.nodedb_dir) - 1] = 0;
       char *dir = llarp.nodedb_dir;
@@ -114,7 +117,7 @@ int main(int argc, char *argv[]) {
         // ensure worker thread pool
         if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
         
-        llarp.router = llarp_init_router(llarp.worker, llarp.mainloop);
+        llarp.router = llarp_init_router(mem, llarp.worker, llarp.mainloop);
 
         if (llarp_configure_router(llarp.router, llarp.config)) {
           

@@ -24,7 +24,7 @@ static bool iwp_link_configure(struct llarp_link * l, const char * ifname, int a
 
 static struct iwp_link * iwp_link_alloc(struct iwp_configure_args * args)
 {
-  struct iwp_link * l = args->mem->alloc(sizeof(struct iwp_link), 16);
+  struct iwp_link * l = args->mem->alloc(args->mem, sizeof(struct iwp_link), 16);
   l->alloc = args->mem;
   l->netloop = args->ev;
   l->keyfile = args->keyfile;

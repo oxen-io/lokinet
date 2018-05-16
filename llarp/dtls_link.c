@@ -3,13 +3,16 @@
 
 struct dtls_link
 {
+  struct llarp_alloc * mem;
   struct llarp_logic * logic;
   uint32_t timeout_job_id;
 };
 
-static struct dtls_link * dtls_link_alloc(struct llarp_msg_muxer * muxer, char * keyfile, char * certfile)
+static struct dtls_link * dtls_link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, char * keyfile, char * certfile)
 {
-  struct dtls_link * link = llarp_g_mem.alloc(sizeof(struct dtls_link), 8);
+  struct dtls_link * link = mem->alloc(mem, sizeof(struct dtls_link), 8);
+  if(link)
+    link->mem = mem;
   return link;
 }
 
@@ -88,14 +91,16 @@ static void dtls_link_try_establish(struct llarp_link * link, struct llarp_link_
 
 static void dtls_link_free(struct llarp_link *l)
 {
-  llarp_g_mem.free(l->impl);
+  struct dtls_link * link = l->impl;
+  struct llarp_alloc * mem = link->mem;
+  mem->free(mem, link);
 }
 
 
 
 void dtls_link_init(struct llarp_link * link, struct llarp_dtls_args args, struct llarp_msg_muxer * muxer)
 {
-  link->impl = dtls_link_alloc(muxer, args.key_file, args.cert_file);
+  link->impl = dtls_link_alloc(args.mem, muxer, args.key_file, args.cert_file);
   link->name = dtls_link_name;
   /*
   link->register_listener = dtls_link_reg_listener;
