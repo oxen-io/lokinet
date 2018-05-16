@@ -13,11 +13,10 @@ This project is "secret" don't tell anyone about it yet. :x
 
 Build requirements:
 
-* GNU Make
-* pkg-config
+* CMake
 * libsodium >= 1.0.14 
 * c++ 17 capable C++ compiler
-* c99 compliant C compiler
+* c11 capable C compiler
 
 Building:
 
