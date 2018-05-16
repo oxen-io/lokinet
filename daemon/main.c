@@ -66,10 +66,17 @@ int shutdown_llarp(struct llarp_main *m) {
   return 0;
 }
 
-struct llarp_main llarp;
+struct llarp_main llarp = {
+  0,
+  0,
+  0,
+  0,
+  0,
+  0,
+  {0}
+};
 
 int main(int argc, char *argv[]) {
-  memset(&llarp, 0, sizeof(struct llarp_main));
   const char *conffname = "daemon.ini";
   if (argc > 1) conffname = argv[1];
   llarp_mem_stdlib();

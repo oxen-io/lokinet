@@ -65,7 +65,10 @@ void llarp_run_router(struct llarp_router *router, struct llarp_logic *logic) {
   });
 }
 
-void llarp_stop_router(struct llarp_router *router) { router->Close(); }
+void llarp_stop_router(struct llarp_router *router) {
+  if(router)
+    router->Close();
+}
 
 void llarp_free_router(struct llarp_router **router) {
   if (*router) {
