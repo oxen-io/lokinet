@@ -43,7 +43,7 @@ bool llarp_buffer_readfile(llarp_buffer_t* buff, FILE* f, llarp_alloc* mem) {
     buff->base = static_cast<char*>(mem->alloc(len, 8));
     buff->cur = buff->base;
     buff->sz = len;
-    size_t sz = fread(buff->base, len, 1, f);
+    ssize_t sz = fread(buff->base, len, 1, f);
     rewind(f);
     return sz == len;
   }
