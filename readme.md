@@ -6,7 +6,8 @@ Low Latency Anon Routing Protocol
 
 This project is "secret" don't tell anyone about it yet. :x
 
-[rfc](doc/proto_v0.txt)
+[what/why](doc/high-level.txt)
+[how](doc/proto_v0.txt)
 
 ## Reference Implementation
 
