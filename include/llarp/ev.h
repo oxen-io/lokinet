@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -20,7 +21,7 @@ int llarp_ev_loop_run(struct llarp_ev_loop *ev);
 void llarp_ev_loop_stop(struct llarp_ev_loop *ev);
 
 struct llarp_udp_io {
-  struct sockaddr_in6 *addr;
+  struct sockaddr addr;
   void *user;
   void *impl;
   struct llarp_ev_loop * parent;

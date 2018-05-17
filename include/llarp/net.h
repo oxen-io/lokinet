@@ -4,5 +4,15 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <stdbool.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+  
+bool llarp_getifaddr(const char * ifname, int af, struct sockaddr* addr);
+  
+#ifdef __cplusplus
+}
+#endif
 #endif

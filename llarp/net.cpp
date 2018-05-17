@@ -1,12 +1,12 @@
-#include "net.hpp"
+#include <llarp/net.h>
 #include "str.hpp"
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
 
-namespace llarp {
-namespace net {
-bool GetIfAddr(const std::string& ifname, int af, sockaddr* addr) {
+extern "C" {
+  
+bool llarp_getifaddr(const char * ifname, int af, struct sockaddr* addr) {
   ifaddrs* ifa = nullptr;
   bool found = false;
   socklen_t sl = sizeof(sockaddr_in6);
@@ -15,7 +15,7 @@ bool GetIfAddr(const std::string& ifname, int af, sockaddr* addr) {
   if (getifaddrs(&ifa) == -1) return false;
   ifaddrs* i = ifa;
   while (i) {
-    if (llarp::StrEq(i->ifa_name, ifname.c_str()) && i->ifa_addr &&
+    if (llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr &&
         i->ifa_addr->sa_family == af) {
       memcpy(addr, i->ifa_addr, sl);
       found = true;
@@ -26,5 +26,5 @@ bool GetIfAddr(const std::string& ifname, int af, sockaddr* addr) {
   if (ifa) freeifaddrs(ifa);
   return found;
 }
-}  // namespace net
-}  // namespace llarp
+  
+}

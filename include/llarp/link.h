@@ -67,7 +67,7 @@ struct llarp_link {
   int (*register_listener)(struct llarp_link *, struct llarp_link_ev_listener);
   void (*deregister_listener)(struct llarp_link *, int);
   */
-  bool (*configure)(struct llarp_link *, const char *, int, uint16_t);
+  bool (*configure)(struct llarp_link *, struct llarp_ev_loop *, const char *, int, uint16_t);
   bool (*start_link)(struct llarp_link *, struct llarp_logic *);
   bool (*stop_link)(struct llarp_link *);
   void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter*);
@@ -81,7 +81,6 @@ struct llarp_link {
 
 /** checks if all members are initialized */
 bool llarp_link_initialized(struct llarp_link * link);
-
   
 struct llarp_link_session {
   void *impl;
@@ -103,5 +102,4 @@ bool llarp_link_session_initialized(struct llarp_link_session * s);
 #ifdef __cplusplus
 }
 #endif
-
 #endif

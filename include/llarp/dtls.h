@@ -10,12 +10,14 @@ extern "C" {
 
 struct llarp_dtls_args {
   struct llarp_alloc * mem;
-  char key_file[255];
-  char cert_file[255];
+  const char * keyfile;
+  const char * certfile;
 };
 
 void dtls_link_init(struct llarp_link* link, struct llarp_dtls_args args,
                     struct llarp_msg_muxer* muxer);
 
-
+#ifdef __cplusplus
+}
+#endif
 #endif

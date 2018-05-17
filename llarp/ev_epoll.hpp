@@ -101,7 +101,7 @@ struct llarp_epoll_loop : public llarp_ev_loop {
   }
 
   bool udp_listen(llarp_udp_io* l) {
-    int fd = udp_bind((sockaddr*)l->addr);
+    int fd = udp_bind(&l->addr);
     if (fd == -1) return false;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
     epoll_event ev;

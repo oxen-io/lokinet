@@ -1,18 +1,28 @@
 #include <llarp/dtls.h>
-
+#include <llarp/net.h>
 
 struct dtls_link
 {
   struct llarp_alloc * mem;
   struct llarp_logic * logic;
+  struct llarp_ev_loop * netloop;
+  struct llarp_msg_muxer * msghandler;
+  struct llarp_udp_io udp;
+  char keyfile[255];
+  char certfile[255];
   uint32_t timeout_job_id;
 };
 
-static struct dtls_link * dtls_link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, char * keyfile, char * certfile)
+static struct dtls_link * dtls_link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, const char * keyfile, const char * certfile)
 {
   struct dtls_link * link = mem->alloc(mem, sizeof(struct dtls_link), 8);
   if(link)
+  {
     link->mem = mem;
+    link->msghandler = muxer;
+    strncpy(link->keyfile, keyfile, sizeof(link->keyfile));
+    strncpy(link->certfile, certfile, sizeof(link->certfile));
+  }
   return link;
 }
 
@@ -33,6 +43,15 @@ static void dtls_link_issue_cleanup_timer(struct dtls_link * link, uint64_t time
     .handler = &dtls_link_cleanup_timer
   };
   link->timeout_job_id = llarp_logic_call_later(link->logic, job);
+}
+
+static bool dtls_link_configure(struct llarp_link * l, struct llarp_ev_loop * netloop, const char * ifname, int af, uint16_t port)
+{
+  struct dtls_link * link = l->impl;
+  if(!llarp_getifaddr(ifname, af, &link->udp.addr))
+    return false;
+  link->netloop = netloop;
+  return llarp_ev_add_udp(link->netloop, &link->udp) != -1;
 }
 
 static bool dtls_link_start(struct llarp_link * l, struct llarp_logic * logic)
@@ -96,16 +115,15 @@ static void dtls_link_free(struct llarp_link *l)
   mem->free(mem, link);
 }
 
-
-
 void dtls_link_init(struct llarp_link * link, struct llarp_dtls_args args, struct llarp_msg_muxer * muxer)
 {
-  link->impl = dtls_link_alloc(args.mem, muxer, args.key_file, args.cert_file);
+  link->impl = dtls_link_alloc(args.mem, muxer, args.keyfile, args.certfile);
   link->name = dtls_link_name;
   /*
   link->register_listener = dtls_link_reg_listener;
   link->deregister_listener = dtls_link_dereg_listener;
   */
+  link->configure = dtls_link_configure;
   link->start_link = dtls_link_start;
   link->stop_link = dtls_link_stop;
   link->iter_sessions = dtls_link_iter_sessions;

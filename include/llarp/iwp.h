@@ -11,7 +11,6 @@ extern "C" {
 
 struct iwp_configure_args {
   struct llarp_alloc * mem;
-  struct llarp_ev_loop * ev;
   struct llarp_crypto* crypto;
   const char * keyfile;
 };

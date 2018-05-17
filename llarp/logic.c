@@ -44,3 +44,14 @@ void llarp_logic_mainloop(struct llarp_logic* logic) {
   llarp_timer_run(logic->timer, logic->thread);
   llarp_threadpool_wait(logic->thread);
 }
+
+uint32_t llarp_logic_call_later(struct llarp_logic* logic, struct llarp_timeout_job job)
+{
+  return llarp_timer_call_later(logic->timer, job);
+}
+
+void llarp_logic_cancel_call(struct llarp_logic * logic, uint32_t id)
+{
+  llarp_timer_cancel(logic->timer, id);
+}
+  

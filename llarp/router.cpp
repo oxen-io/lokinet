@@ -1,6 +1,6 @@
 #include "router.hpp"
 #include <llarp/ibfq.h>
-#include <llarp/iwp.h>
+#include <llarp/dtls.h>
 #include <llarp/link.h>
 #include <llarp/proto.h>
 #include <llarp/router.h>
@@ -90,24 +90,26 @@ void llarp_free_router(struct llarp_router **router) {
 }
 }
 
-namespace llarp {
+namespace llarp
+{
 
 void router_iter_config(llarp_config_iterator *iter, const char *section,
-                        const char *key, const char *val) {
+                        const char *key, const char *val)
+{
   llarp_router *self = static_cast<llarp_router *>(iter->user);
-  if (StrEq(section, "links")) {
-    iwp_configure_args args = {
-      .mem = self->mem,
-      .ev = self->netloop,
-      .crypto = &self->crypto,
-      .keyfile=self->transport_keyfile
-    };
+  llarp_dtls_args args = {
+    .mem = self->mem,
+    .keyfile=self->transport_keyfile,
+    .certfile=self->transport_certfile,
+  };
+  if (StrEq(section, "links"))
+  {
     if (StrEq(val, "eth")) {
       struct llarp_link *link = llarp::Alloc<llarp_link>(self->mem);
-      iwp_link_init(link, args, &self->muxer);
+      dtls_link_init(link, args, &self->muxer);
       if(llarp_link_initialized(link))
       {
-        if (link->configure(link, key, AF_PACKET, LLARP_ETH_PROTO))
+        if (link->configure(link, self->netloop, key, AF_PACKET, LLARP_ETH_PROTO))
         {
           printf("ethernet link configured on %s\n", key);
           self->AddLink(link);
@@ -119,10 +121,10 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
     } else {
       struct llarp_link *link = llarp::Alloc<llarp_link>(self->mem);
       uint16_t port = std::atoi(val);
-      iwp_link_init(link, args, &self->muxer);
+      dtls_link_init(link, args, &self->muxer);
       if(llarp_link_initialized(link))
       {
-        if (link->configure(link, key, AF_INET6, port))
+        if (link->configure(link, self->netloop, key, AF_INET6, port))
         {
           printf("inet link configured on %s port %d\n", key, port);
           self->AddLink(link);
@@ -134,4 +136,5 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
     }
   }
 }
+  
 }  // namespace llarp
