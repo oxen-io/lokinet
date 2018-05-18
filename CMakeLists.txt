@@ -10,7 +10,7 @@ find_package(sodium)
 set(EXE llarpd)
 set(EXE_SRC daemon/main.c)
 
-set(LIBS ${sodium_LIBRARY_RELEASE} pthread stdc++fs jemalloc mbedtls)
+set(LIBS ${sodium_LIBRARY_RELEASE} pthread stdc++fs jemalloc mbedx509 mbedcrypto mbedtls)
 
 set(LIB llarp)
 
@@ -20,11 +20,10 @@ set(LIB_SRC
   llarp/config.cpp
   llarp/crypto_async.c
   llarp/crypto_libsodium.cpp
-  llarp/dtls_link.cpp
   llarp/ev.cpp
   llarp/exit_info.c
   llarp/exit_route.c
-  llarp/iwp_link.c
+  llarp/iwp_link.cpp
   llarp/link.c
   llarp/link_intro.cpp
   llarp/link_relay_down.cpp

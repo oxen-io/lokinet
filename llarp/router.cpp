@@ -112,23 +112,12 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   }
 
   struct llarp_link *link;
-  if (StrEq(section, "dtls-links"))
-  {
-    link = llarp::Alloc<llarp_link>(self->mem);  
-    llarp::Zero(link, sizeof(*link));
-    llarp_dtls_args args = {
-      .mem = self->mem,
-      .keyfile=self->transport_keyfile,
-      .certfile=self->transport_certfile,
-    };
-    dtls_link_init(link, args, &self->muxer);
-  }
-  else if (StrEq(section, "iwp-links"))
+  if (StrEq(section, "iwp-links"))
   {
     link = llarp::Alloc<llarp_link>(self->mem);  
     llarp::Zero(link, sizeof(*link));
     
-    iwp_configure_args args = {
+    llarp_iwp_args args = {
       .mem = self->mem,
       .crypto = &self->crypto,
       .keyfile=self->transport_keyfile,

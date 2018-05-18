@@ -1,11 +1,14 @@
 #include <llarp/dtls.h>
 #include <llarp/net.h>
 
-#include <mbedtls/ssl.h>
 
 #include <map>
 #include "crypto.hpp"
+#include "fs.hpp"
 #include "net.hpp"
+
+namespace iwp
+{
 
 struct dtls_session
 {
@@ -23,6 +26,21 @@ struct dtls_link
   uint32_t timeout_job_id;
   std::map<llarp::Addr, llarp_link_session> sessions;
 
+  dtls_link()
+  {
+    mbedtls_x509_crt_init( &servercert );
+    mbedtls_pk_init( &privkey );
+  }
+  
+  entropy_context entropy;
+  ecdsa_context ecdsa;
+  mbedtls_ssl_context ssl;
+  mbedtls_ssl_cookie_ctx cookie_ctx;
+  mbedtls_x509_crt servercert;
+  mbedtls_ssl_config conf;
+  mbedtls_pk_context privkey;
+  mbedtls_timing_delay_context timer;
+  
   void inbound_session(llarp::Addr & src)
   {
     
@@ -79,6 +97,15 @@ void dtls_recvfrom(struct llarp_udp_io * udp, const struct sockaddr *saddr, void
 static bool dtls_link_configure(struct llarp_link * l, struct llarp_ev_loop * netloop, const char * ifname, int af, uint16_t port)
 {
   dtls_link * link = static_cast<dtls_link*>(l->impl);
+
+  if(!link->ensure_privkey())
+    return false;
+
+  if(!link->ensure_certfile())
+    return false;
+
+  // bind
+  
   link->udp.addr.sa_family = af;
   if(!llarp_getifaddr(ifname, af, &link->udp.addr))
     return false;
@@ -177,22 +204,22 @@ void dtls_link_free(struct llarp_link *l)
   link->~dtls_link();
   mem->free(mem, link);
 }
-
+}
 
 extern "C" {
 
-void dtls_link_init(struct llarp_link * link, struct llarp_dtls_args args, struct llarp_msg_muxer * muxer)
+void iwp_link_init(struct llarp_link * link, struct llarp_iwp_args args, struct llarp_msg_muxer * muxer)
 {
-  link->impl = dtls_link_alloc(args.mem, muxer, args.keyfile, args.certfile);
-  link->name = dtls_link_name;
-  link->configure = dtls_link_configure;
-  link->start_link = dtls_link_start;
-  link->stop_link = dtls_link_stop;
-  link->iter_sessions = dtls_link_iter_sessions;
-  link->try_establish = dtls_link_try_establish;
-  link->acquire_session_for_addr = dtls_link_session_for_addr;
-  link->mark_session_active = dtls_link_mark_session_active;
-  link->free_impl = dtls_link_free;
+  link->impl = iwp::link_alloc(args.mem, muxer, args.keyfile, args.certfile);
+  link->name = iwp::link_name;
+  link->configure = iwp::link_configure;
+  link->start_link = iwp::link_start;
+  link->stop_link = iwp::link_stop;
+  link->iter_sessions = iwp::link_iter_sessions;
+  link->try_establish = iwp::link_try_establish;
+  link->acquire_session_for_addr = iwp::link_session_for_addr;
+  link->mark_session_active = iwp::link_mark_session_active;
+  link->free_impl = iwp::link_free;
 }
 
 }
