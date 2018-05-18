@@ -9,6 +9,7 @@
 #endif
 
 extern "C" {
+  
 void llarp_ev_loop_alloc(struct llarp_ev_loop **ev) {
 #ifdef __linux__
   *ev = new llarp_epoll_loop;
@@ -39,4 +40,10 @@ int llarp_ev_close_udp_close(struct llarp_udp_io * udp) {
 }
 
 void llarp_ev_loop_stop(struct llarp_ev_loop *loop) { loop->stop(); }
+
+int llarp_ev_udp_sendto(struct llarp_udp_io * udp, const sockaddr * to, const void * buf, size_t sz)
+{
+  return static_cast<llarp::ev_io*>(udp->impl)->sendto(to, buf,sz);
+}
+
 }

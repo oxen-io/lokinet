@@ -25,7 +25,7 @@ struct llarp_udp_io {
   void *user;
   void *impl;
   struct llarp_ev_loop * parent;
-  void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *, void *,
+  void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *, const void *,
                    ssize_t);
 };
 

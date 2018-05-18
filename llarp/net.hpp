@@ -39,20 +39,40 @@ namespace llarp
     int af = AF_INET;
     in6_addr addr = {0};
     uint16_t port = 0;
+    sockaddr saddr;
 
     Addr() {};
+    
+    Addr(const Addr & other) {
+      af = other.af;
+      port = other.port;
+      memcpy(addr.s6_addr, other.addr.s6_addr, 16);
+      memcpy(&saddr, &other.saddr, sizeof(sockaddr));
+    }
+
+    Addr(const llarp_ai & other) {
+      af = AF_INET6;
+      memcpy(addr.s6_addr, other.ip.s6_addr, 16);
+      port = htons(other.port);
+      saddr.sa_family = af;
+      memcpy(((sockaddr_in6 *)&saddr)->sin6_addr.s6_addr, addr.s6_addr, 16);
+      ((sockaddr_in6 *)&saddr)->sin6_port = port;
+    }
+    
     Addr(const sockaddr & other) {
       uint8_t * addrptr = addr.s6_addr;
       switch(other.sa_family)
       {
       case AF_INET:
         // SIIT
+        af = AF_INET;
         memcpy(12+addrptr, &((const sockaddr_in*)(&other))->sin_addr, 4);
         addrptr[11] = 0xff;
         addrptr[10] = 0xff;
         port = ((sockaddr_in*)(&other))->sin_port;
         break;
       case AF_INET6:
+        af = AF_INET6;
         memcpy(addrptr, &((const sockaddr_in6*)(&other))->sin6_addr, 16);
         port = ((sockaddr_in6*)(&other))->sin6_port;
         break;
@@ -60,6 +80,13 @@ namespace llarp
       default:
         break;
       }
+      saddr.sa_family = af;
+      memcpy(saddr.sa_data, other.sa_data, sizeof(saddr.sa_data));
+    }
+
+    operator const sockaddr * () const
+    {
+      return &saddr;
     }
     
     bool operator < (const Addr & other) const

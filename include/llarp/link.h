@@ -86,12 +86,11 @@ bool llarp_link_initialized(struct llarp_link * link);
 struct llarp_link_session {
   struct sockaddr addr;
   void *impl;
-  struct llarp_rc *(*remote_rc)(struct llarp_link_session *);
   /** send an entire message, splits up into smaller pieces and does encryption
    */
-  ssize_t (*sendto)(struct llarp_link_session *, llarp_buffer_t);
+  bool (*sendto)(struct llarp_link_session *, llarp_buffer_t);
   /** receive raw data from link layer */
-  bool (*recv)(struct llarp_link_session *, const uint8_t *, size_t);
+  void (*recv)(struct llarp_link_session *, const void *, size_t);
   
   /** return true if this session is timed out */
   bool (*timeout)(struct llarp_link_session *);

@@ -7,6 +7,6 @@ bool llarp_link_initialized(struct llarp_link * link)
   
 bool llarp_link_session_initialized(struct llarp_link_session * s)
 {
-  return s && s->impl && s->remote_rc && s->sendto && s->recv && s->timeout && s->close;
+  return s && s->impl && s->sendto && s->recv && s->timeout && s->close;
 }
   

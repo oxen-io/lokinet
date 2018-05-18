@@ -4,6 +4,8 @@
 #include <cassert>
 #include <fstream>
 #include <map>
+#include <vector>
+#include <list>
 
 #include "crypto.hpp"
 #include "fs.hpp"
@@ -16,25 +18,105 @@ struct session
 {
   llarp_crypto * crypto;
   llarp_seckey_t eph_seckey;
+  llarp_pubkey_t remote;
   llarp_sharedkey_t sessionkey;
+  llarp_link_session_listener establish_listener = {nullptr, nullptr, nullptr, nullptr};
+  llarp::Addr addr;
+
+  typedef std::vector<uint8_t> sendbuf_t;
+  typedef std::list<sendbuf_t> sendqueue_t;
   
-  session(llarp_crypto * c) :
-    crypto(c)
+  sendqueue_t sendq;
+
+  enum State
+  {
+    eInitial,
+    eIntroSent,
+    eIntroAckSent,
+    eIntroAckRecv,
+    eTokenOfferSent,
+    eTokenOfferRecv,
+    eTokenAckSent,
+    eTokenAckRecv,
+    eEstablished,
+    eTimeout
+  };
+
+  State state;
+  
+  session(llarp_crypto * c, const llarp::Addr & a) :
+    crypto(c),
+    addr(a),
+    state(eInitial)
   {
     c->keygen(&eph_seckey);
   }
+
+  static bool sendto(llarp_link_session * s, llarp_buffer_t msg)
+  {
+    session * self = static_cast<session *>(s->impl);
+    self->sendq.emplace_back(msg.sz);
+    memcpy(self->sendq.back().data(), msg.base, msg.sz);
+    self->pump();
+    return true;
+  }
+
+  // pump sending messages
+  void pump()
+  {
+  }
+  
+  static void handle_recv(llarp_link_session * s, const void * buf, size_t sz)
+  {
+    session * self = static_cast<session *>(s->impl);
+    switch (self->state)
+    {
+    case eIntroSent:
+      // got intro ack
+      self->on_intro_ack(buf, sz);
+      return;
+    default:
+      // invalid state?
+      return;
+    }
+  }
+
+  static bool is_timedout(llarp_link_session * s)
+  {
+    return false;
+  }
+
+  static void close(llarp_link_session * s)
+  {
+    
+  }
+
+  void on_intro_ack(const void * buf, size_t sz)
+  {
+    printf("iwp intro ack\n");
+  }
+
+  void introduce(llarp_udp_io * udp, llarp_pubkey_t pub)
+  {
+    uint8_t buf[140];
+    size_t sz = sizeof(buf);
+    sz -= rand() % (sizeof(buf) - 128);
+    generate_intro(pub, buf, sz);
+    llarp_ev_udp_sendto(udp, addr, buf, sz);
+    printf("sent introduce of size %ld\n", sz);
+  }
   
   /** generate session intro for outbound session */
-  void generate_intro(llarp_pubkey_t remote, uint8_t * buf, size_t sz)
+  void generate_intro(llarp_pubkey_t remotepub, uint8_t * buf, size_t sz)
   {
-    assert(sz > 64);
+    memcpy(remote, remotepub, 32);
+    assert(sz >= 128);
     uint8_t tmp[64];
     llarp_nounce_t nounce;
     llarp_buffer_t buffer;
     llarp_shorthash_t e_key;
     uint8_t * sig = buf;
-    buf += 64;
-    uint8_t * n = buf;
+    uint8_t * n = buf + 64;
     // n = RAND(32)
     crypto->randbytes(n, 32);
     // nounce = n[0:24]
@@ -43,17 +125,18 @@ struct session
     memcpy(tmp, remote, 32);
     memcpy(tmp +32, n, 32);
     buffer.base = (char*)tmp;
-    buffer.cur = (char*)tmp;
     buffer.sz = sizeof(tmp);
     crypto->shorthash(&e_key, buffer);
     // e = SE(a.k, e_k, nounce)
     crypto->xchacha20(buffer, e_key, nounce);
     // S = TKE(a.k, a.b, n)
     crypto->transport_dh_client(&sessionkey, remote, eph_seckey, n);
-    buffer.base = (char*)n;
-    buffer.cur = (char*)n;
-    buffer.sz = sz - 64;
+    // randomize w0
+    if(sz > 128)
+      crypto->randbytes(sig + 128, sz-128);
     // s = S(a.k.privkey, n + e + w0)
+    buffer.base = (char*)n;
+    buffer.sz = sz - 64;
     crypto->sign(sig, eph_seckey, buffer);
   }
 };
@@ -72,11 +155,19 @@ struct server
 
   llarp_seckey_t seckey;
 
-  void inbound_session(llarp::Addr & src)
+  session * create_session(llarp::Addr & src)
   {
-    
+    session * impl = new session(crypto, src);
+    llarp_link_session s;
+    s.impl = impl;
+    s.sendto = session::sendto;
+    s.recv = session::handle_recv;
+    s.timeout = session::is_timedout;
+    s.close = session::close;
+    sessions[src] = s;
+    return impl;
   }
-
+  
   void cleanup_dead()
   {
     // todo: implement
@@ -123,15 +214,18 @@ struct server
     }
   }
 
-  static void handle_recvfrom(struct llarp_udp_io * udp, const struct sockaddr *saddr, void * buf, ssize_t sz)
+  static void handle_recvfrom(struct llarp_udp_io * udp, const struct sockaddr *saddr, const void * buf, ssize_t sz)
   {
     server * link = static_cast<server *>(udp->user);
     llarp::Addr src = *saddr;
     auto itr = link->sessions.find(src);
     if (itr == link->sessions.end())
     {
-      link->inbound_session(src);
+      // new inbound session
+      link->create_session(src);
     }
+    auto & session = link->sessions[src];
+    session.recv(&session, buf, sz);
   }
 
   void cancel_timer()
@@ -173,7 +267,7 @@ struct server
 
 const char * link_name()
 {
-  return "dtls";
+  return "iwp";
 }
 
 
@@ -238,8 +332,13 @@ void link_iter_sessions(struct llarp_link * l, struct llarp_link_session_iter * 
 }
 
 
-void link_try_establish(struct llarp_link * link, struct llarp_link_establish_job job, struct llarp_link_session_listener l)
+void link_try_establish(struct llarp_link * l, struct llarp_link_establish_job job, struct llarp_link_session_listener listener)
 {
+  server * link = static_cast<server *>(l->impl);
+  llarp::Addr dst(*job.ai);
+  session * s = link->create_session(dst);
+  s->establish_listener = listener;
+  s->introduce(&link->udp, job.ai->enc_key);
 }
 
 void link_mark_session_active(struct llarp_link * link, struct llarp_link_session * s)
