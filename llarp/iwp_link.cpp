@@ -213,6 +213,10 @@ struct server
       //TODO: exponential backoff for cleanup timer ?
       link->issue_cleanup_timer(orig);
     }
+    else
+    {
+      printf("cleanup canceled\n");
+    }
   }
 
   static void handle_recvfrom(struct llarp_udp_io * udp, const struct sockaddr *saddr, const void * buf, ssize_t sz)

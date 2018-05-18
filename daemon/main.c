@@ -1,12 +1,13 @@
 #include <llarp.h>
 #include <stdio.h>
+#include <signal.h>
 #include <string.h>
 
 struct llarp_main {
   struct llarp_alloc mem;
   struct llarp_router *router;
   struct llarp_threadpool *worker;
-  struct llarp_threadpool *netio;
+  struct llarp_threadpool *thread;
   struct llarp_logic *logic;
   struct llarp_config *config;
   struct llarp_nodedb *nodedb;
@@ -41,21 +42,11 @@ static void progress() {
 
 int shutdown_llarp(struct llarp_main *m) {
   printf("Shutting down ");
-  progress();
-  if(m->router)
-    llarp_stop_router(m->router);
   
   progress();
   if(m->mainloop)
     llarp_ev_loop_stop(m->mainloop);
 
-  progress();
-  if(m->netio)
-  {
-    llarp_threadpool_stop(m->netio);
-    llarp_threadpool_join(m->netio);
-  }
-  
   progress();
   if(m->worker)
     llarp_threadpool_stop(m->worker);
@@ -66,7 +57,14 @@ int shutdown_llarp(struct llarp_main *m) {
     llarp_threadpool_join(m->worker);
   
   progress();
-  if (m->logic) llarp_logic_stop(m->logic);
+  if (m->logic)
+  {
+    llarp_logic_stop(m->logic);
+  }
+
+  progress();
+  if(m->router)
+    llarp_stop_router(m->router);
   
   progress();
   llarp_free_router(&m->router);
@@ -103,10 +101,18 @@ struct llarp_main llarp = {
   1
 };
 
-void run_netio(void * user)
+void run_net(void * user)
 {
-  struct llarp_ev_loop * loop = user;
-  llarp_ev_loop_run(loop);
+  llarp_ev_loop_run(user);
+}
+
+
+void handle_signal(int sig)
+{
+  printf("interrupted\n");
+  llarp_ev_loop_stop(llarp.mainloop);
+  llarp_logic_stop(llarp.logic);
+  printf("closing...");
 }
 
 int main(int argc, char *argv[]) {
@@ -131,22 +137,23 @@ int main(int argc, char *argv[]) {
       if (llarp_nodedb_ensure_dir(dir)) {
         // ensure worker thread pool
         if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
-        // ensire net io thread
-        llarp.netio = llarp_init_threadpool(1);
+        // ensure thread
+        llarp.thread = llarp_init_threadpool(1);
         
         llarp.router = llarp_init_router(mem, llarp.worker, llarp.mainloop);
 
         if (llarp_configure_router(llarp.router, llarp.config)) {
           
           llarp.logic = llarp_init_logic(mem);
+          signal(SIGINT, handle_signal);
           printf("starting router\n");
           llarp_run_router(llarp.router, llarp.logic);
-          // run io loop
-          struct llarp_thread_job netjob = {
+          // run mainloop
+          struct llarp_thread_job job = {
             .user = llarp.mainloop,
-            .work = &run_netio
+            .work = &run_net
           };
-          llarp_threadpool_queue_job(llarp.netio, netjob);
+          llarp_threadpool_queue_job(llarp.thread, job);
           printf("running\n");
           llarp.exitcode = 0;
           llarp_logic_mainloop(llarp.logic);

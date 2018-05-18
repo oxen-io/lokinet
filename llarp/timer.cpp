@@ -113,8 +113,18 @@ void llarp_free_timer(struct llarp_timer_context** t) {
 }
 
 void llarp_timer_stop(struct llarp_timer_context* t) {
-  t->cancel_all();
   t->stop();
+  {
+    std::unique_lock<std::mutex> lock(t->tickerMutex);
+  
+    auto itr = t->timers.begin();
+    while (itr != t->timers.end())
+    {
+      // timer expired
+      llarp_threadpool_queue_job(t->threadpool, itr->second);
+      ++itr;
+    }
+  }
 }
 
 void llarp_timer_cancel(struct llarp_timer_context* t, uint32_t id) {
@@ -137,7 +147,7 @@ void llarp_timer_run(struct llarp_timer_context* t,
         // timer hit
         llarp_threadpool_queue_job(pool, itr->second);
       }
-        ++itr;
+      ++itr;
     }
   }
 }

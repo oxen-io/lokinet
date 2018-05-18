@@ -34,6 +34,7 @@ void Pool::Stop() {
 
 void Pool::Join() {
   for (auto &t : threads) t.join();
+  threads.clear();
 }
 
 void Pool::QueueJob(const llarp_thread_job &job) {
