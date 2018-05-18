@@ -2,6 +2,7 @@
 #include <llarp/net.h>
 #include <map>
 #include "crypto.hpp"
+#include "net.hpp"
 
 struct dtls_session
 {
@@ -12,7 +13,7 @@ struct dtls_link
   struct llarp_alloc * mem;
   struct llarp_logic * logic;
   struct llarp_ev_loop * netloop;
-  struct llarp_msg_muxer * msghandler;
+  struct llarp_msg_muxer * muxer;
   struct llarp_udp_io udp;
   char keyfile[255];
   char certfile[255];
@@ -27,7 +28,7 @@ static struct dtls_link * dtls_link_alloc(struct llarp_alloc * mem, struct llarp
   {
     struct dtls_link * link = new (ptr) dtls_link;
     link->mem = mem;
-    link->msghandler = muxer;
+    link->muxer = muxer;
     strncpy(link->keyfile, keyfile, sizeof(link->keyfile));
     strncpy(link->certfile, certfile, sizeof(link->certfile));
     return link;
@@ -57,8 +58,21 @@ static void dtls_link_issue_cleanup_timer(struct dtls_link * link, uint64_t time
 static bool dtls_link_configure(struct llarp_link * l, struct llarp_ev_loop * netloop, const char * ifname, int af, uint16_t port)
 {
   dtls_link * link = static_cast<dtls_link*>(l->impl);
+  link->udp.addr.sa_family = af;
   if(!llarp_getifaddr(ifname, af, &link->udp.addr))
     return false;
+  switch(af)
+  {
+  case AF_INET:
+    ((sockaddr_in *)&link->udp.addr)->sin_port = htons(port);
+    break;
+  case AF_INET6:
+    ((sockaddr_in6 *)(&link->udp.addr))->sin6_port = htons(port);
+    break;
+      // TODO: AF_PACKET
+  default:
+      return false;
+  }
   link->netloop = netloop;
   return llarp_ev_add_udp(link->netloop, &link->udp) != -1;
 }
@@ -120,8 +134,16 @@ static void dtls_link_mark_session_active(struct llarp_link * link, struct llarp
 {
 }
 
-static struct llarp_link_session * dtls_link_session_for_addr(struct llarp_link * link, const struct sockaddr * saddr)
+static struct llarp_link_session * dtls_link_session_for_addr(struct llarp_link * l, const struct sockaddr * saddr)
 {
+  if(saddr)
+  {
+    dtls_link * link = static_cast<dtls_link*>(l->impl);
+    for(auto & session : link->sessions)
+    {
+      if(session.second.addr == *saddr) return &link->sessions[session.first];
+    }
+  }
   return nullptr;
 }
 
@@ -140,10 +162,6 @@ void dtls_link_init(struct llarp_link * link, struct llarp_dtls_args args, struc
 {
   link->impl = dtls_link_alloc(args.mem, muxer, args.keyfile, args.certfile);
   link->name = dtls_link_name;
-  /*
-  link->register_listener = dtls_link_reg_listener;
-  link->deregister_listener = dtls_link_dereg_listener;
-  */
   link->configure = dtls_link_configure;
   link->start_link = dtls_link_start;
   link->stop_link = dtls_link_stop;

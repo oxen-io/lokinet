@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
 
         if (llarp_configure_router(llarp.router, llarp.config)) {
           
-          llarp.logic = llarp_init_logic();
+          llarp.logic = llarp_init_logic(mem);
           printf("starting router\n");
           
           llarp_run_router(llarp.router, llarp.logic);

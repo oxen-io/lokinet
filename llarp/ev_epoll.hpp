@@ -1,8 +1,9 @@
 #ifndef EV_EPOLL_HPP
 #define EV_EPOLL_HPP
-#include <netinet/in.h>
+#include <llarp/net.h>
 #include <sys/epoll.h>
 #include <unistd.h>
+#include <cstdio>
 #include "ev.hpp"
 
 namespace llarp {
@@ -83,6 +84,9 @@ struct llarp_epoll_loop : public llarp_ev_loop {
       case AF_INET6:
         slen = sizeof(struct sockaddr_in6);
         break;
+      case AF_PACKET:
+        slen = sizeof(struct sockaddr_ll);
+        break;
       default:
         return -1;
     }
@@ -101,12 +105,14 @@ struct llarp_epoll_loop : public llarp_ev_loop {
   }
 
   bool udp_listen(llarp_udp_io* l) {
+    printf("udp_listen()\n");
     int fd = udp_bind(&l->addr);
     if (fd == -1) return false;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
     epoll_event ev;
     ev.data.ptr = listener;
     ev.events = EPOLLIN;
+    printf("epoll_ctl()\n");
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev) == -1) {
       delete listener;
       return false;

@@ -107,6 +107,7 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   }
   else
   {
+    af = AF_INET;
     proto = std::atoi(val);
   }
 
@@ -139,9 +140,10 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   
   if(llarp_link_initialized(link))
   {
+    printf("link initialized...");
     if (link->configure(link, self->netloop, key, af, proto))
     {
-      printf("link configured on %s\n", key);
+      printf("configured on %s\n", key);
       self->AddLink(link);
       return;
     }

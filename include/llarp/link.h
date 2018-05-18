@@ -84,6 +84,7 @@ struct llarp_link {
 bool llarp_link_initialized(struct llarp_link * link);
   
 struct llarp_link_session {
+  struct sockaddr addr;
   void *impl;
   struct llarp_rc *(*remote_rc)(struct llarp_link_session *);
   /** send an entire message, splits up into smaller pieces and does encryption

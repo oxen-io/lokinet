@@ -16,6 +16,7 @@ void llarp_ev_loop_alloc(struct llarp_ev_loop **ev) {
 #ifdef __FreeBSD__
   *ev = new llarp_kqueue_loop;
 #endif
+  (*ev)->init();
 }
 
 void llarp_ev_loop_free(struct llarp_ev_loop **ev) {

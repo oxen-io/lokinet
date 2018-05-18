@@ -5,6 +5,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <stdbool.h>
+#ifdef __linux__
+#include <linux/if_packet.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
