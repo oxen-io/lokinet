@@ -158,3 +158,104 @@ void llarp_async_cipher_free(struct llarp_async_cipher **c) {
     *c = NULL;
   }
 }
+
+struct llarp_async_iwp
+{
+  struct llarp_alloc * mem;
+  struct llarp_crypto * crypto;
+  struct llarp_logic * logic;
+  struct llarp_threadpool * worker;
+};
+
+struct llarp_async_iwp * llarp_async_iwp_new(struct llarp_alloc * mem,
+                                             struct llarp_crypto * crypto,
+                                             struct llarp_logic * logic,
+                                             struct llarp_threadpool * worker)
+{
+  struct llarp_async_iwp * iwp = mem->alloc(mem, sizeof(struct llarp_async_iwp), 8);
+  if(iwp)
+  {
+    iwp->mem = mem;
+    iwp->crypto = crypto;
+    iwp->logic = logic;
+    iwp->worker = worker;
+  }
+  return iwp;
+}
+
+static void iwp_inform_keygen(void * user)
+{
+  struct iwp_async_keygen * keygen = user;
+  keygen->hook(keygen);
+}
+
+static void iwp_do_keygen(void * user)
+{
+  struct iwp_async_keygen * keygen = user;
+  keygen->iwp->crypto->keygen(keygen->keybuf);
+  struct llarp_thread_job job = {
+    .user = user,
+    .work = iwp_inform_keygen
+  };
+  llarp_logic_queue_job(keygen->iwp->logic, job);
+}
+
+void iwp_call_async_keygen(struct llarp_async_iwp * iwp, struct iwp_async_keygen * keygen)
+{
+  keygen->iwp = iwp;
+  struct llarp_thread_job job = {
+    .user = keygen,
+    .work = &iwp_do_keygen
+  };
+  llarp_threadpool_queue_job(iwp->worker, job);
+}
+
+static void iwp_inform_genintro(void * user)
+{
+  struct iwp_async_gen_intro * intro = user;
+  intro->hook(intro);
+}
+
+static void iwp_do_genintro(void * user)
+{
+  struct iwp_async_gen_intro * intro = user;
+  llarp_shorthash_t sharedkey;
+  llarp_buffer_t buf;
+  struct llarp_crypto * crypto = intro->iwp->crypto;
+  uint8_t tmp[64];
+  struct llarp_thread_job job = {
+    .user = user,
+    .work = &iwp_inform_genintro
+  };
+  // S = TKE(a.k, b.k, n)
+  crypto->transport_dh_client(intro->sharedkey, intro->remote_pubkey, intro->secretkey, intro->nonce);
+  
+  buf.base = (char*)tmp;
+  buf.sz = sizeof(tmp);
+  // e_k = HS(b.k + n)
+  memcpy(tmp, intro->remote_pubkey, 32);
+  memcpy(tmp + 32, intro->nonce, 32);
+  crypto->shorthash(&sharedkey, buf);
+  // e = SE(a.k, e_k, n[0:24])
+  memcpy(intro->buf + 64, llarp_seckey_topublic(intro->secretkey), 32);
+  buf.base = (char*) intro->buf + 64;
+  buf.sz = 32;
+  crypto->xchacha20(buf, sharedkey, intro->nonce);
+  // s = S(a.k.privkey, n + e + w0)
+  buf.sz = intro->sz - 64;
+  crypto->sign(intro->buf, intro->secretkey, buf);
+
+  // inform result
+  llarp_logic_queue_job(intro->iwp->logic, job);
+}
+
+void iwp_call_async_gen_intro(struct llarp_async_iwp * iwp, struct iwp_async_gen_intro * intro)
+{
+  
+  intro->iwp = iwp;
+  struct llarp_thread_job job = {
+    .user = intro,
+    .work = &iwp_do_genintro
+  };
+  llarp_threadpool_queue_job(iwp->worker, job);
+}

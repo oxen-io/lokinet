@@ -38,8 +38,8 @@ typedef bool (*llarp_dh_func)(llarp_sharedkey_t *, llarp_pubkey_t,
                               llarp_tunnel_nounce_t, llarp_seckey_t);
 
   
-typedef bool (*llarp_transport_dh_func)(llarp_sharedkey_t *, llarp_pubkey_t,
-                                          llarp_seckey_t, uint8_t *);
+typedef bool (*llarp_transport_dh_func)(uint8_t *, uint8_t *,
+                                          uint8_t *, uint8_t *);
   
 typedef bool (*llarp_sym_cipher_func)(llarp_buffer_t, llarp_sharedkey_t,
                                       llarp_nounce_t);
@@ -68,7 +68,7 @@ struct llarp_crypto {
   llarp_verify_func verify;
   void (*randomize)(llarp_buffer_t);
   void (*randbytes)(void *, size_t);
-  void (*keygen)(llarp_seckey_t *);
+  void (*keygen)(uint8_t *);
 };
 
 void llarp_crypto_libsodium_init(struct llarp_crypto *c);

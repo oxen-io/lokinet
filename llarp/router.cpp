@@ -46,7 +46,7 @@ void llarp_router::Close() {
 }
 extern "C" {
 
-struct llarp_router *llarp_init_router(struct llarp_alloc * mem, struct llarp_threadpool *tp, struct llarp_ev_loop * netloop) {
+  struct llarp_router *llarp_init_router(struct llarp_alloc * mem, struct llarp_threadpool *tp, struct llarp_ev_loop * netloop, struct llarp_logic * logic) {
   void * ptr = mem->alloc(mem, sizeof(llarp_router), 16);
   if(!ptr) return nullptr;
   llarp_router *router = new (ptr) llarp_router(mem);
@@ -54,6 +54,7 @@ struct llarp_router *llarp_init_router(struct llarp_alloc * mem, struct llarp_th
   {
     router->netloop = netloop;
     router->tp = tp;
+    router->logic = logic;
     llarp_crypto_libsodium_init(&router->crypto);
   }
   return router;
@@ -68,7 +69,8 @@ bool llarp_configure_router(struct llarp_router *router,
   return router->Ready();
 }
 
-void llarp_run_router(struct llarp_router *router, struct llarp_logic *logic) {
+void llarp_run_router(struct llarp_router *router) {
+  llarp_logic * logic = router->logic;
   router->ForEachLink([logic](llarp_link *link) {
     int result = link->start_link(link, logic);
     if (result == -1) printf("link %s failed to start\n", link->name());
@@ -120,6 +122,8 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
     llarp_iwp_args args = {
       .mem = self->mem,
       .crypto = &self->crypto,
+      .logic = self->logic,
+      .cryptoworker = self->tp,
       .keyfile=self->transport_keyfile,
     };
     iwp_link_init(link, args, &self->muxer);

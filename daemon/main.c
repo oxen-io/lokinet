@@ -139,15 +139,14 @@ int main(int argc, char *argv[]) {
         if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
         // ensure thread
         llarp.thread = llarp_init_threadpool(1);
+        llarp.logic = llarp_init_logic(mem);
         
-        llarp.router = llarp_init_router(mem, llarp.worker, llarp.mainloop);
+        llarp.router = llarp_init_router(mem, llarp.worker, llarp.mainloop, llarp.logic);
 
         if (llarp_configure_router(llarp.router, llarp.config)) {
-          
-          llarp.logic = llarp_init_logic(mem);
           signal(SIGINT, handle_signal);
           printf("starting router\n");
-          llarp_run_router(llarp.router, llarp.logic);
+          llarp_run_router(llarp.router);
           // run mainloop
           struct llarp_thread_job job = {
             .user = llarp.mainloop,

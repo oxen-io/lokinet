@@ -1,5 +1,6 @@
 #include <llarp/iwp.h>
 #include <llarp/net.h>
+#include <llarp/crypto_async.h>
 
 #include <cassert>
 #include <fstream>
@@ -16,13 +17,19 @@ namespace iwp
   
 struct session
 {
+  llarp_udp_io * udp;
   llarp_crypto * crypto;
+  llarp_async_iwp * iwp;
   llarp_seckey_t eph_seckey;
   llarp_pubkey_t remote;
   llarp_sharedkey_t sessionkey;
   llarp_link_session_listener establish_listener = {nullptr, nullptr, nullptr, nullptr};
   llarp::Addr addr;
+  iwp_async_gen_intro intro;
+  iwp_async_gen_introack introack;
 
+  uint8_t workbuf[1024];
+  
   typedef std::vector<uint8_t> sendbuf_t;
   typedef std::list<sendbuf_t> sendqueue_t;
   
@@ -44,12 +51,14 @@ struct session
 
   State state;
   
-  session(llarp_crypto * c, const llarp::Addr & a) :
+  session(llarp_udp_io * u, llarp_async_iwp * i, llarp_crypto * c, const llarp::Addr & a) :
+    udp(u),
     crypto(c),
+    iwp(i),
     addr(a),
     state(eInitial)
   {
-    c->keygen(&eph_seckey);
+    c->keygen(eph_seckey);
   }
 
   static bool sendto(llarp_link_session * s, llarp_buffer_t msg)
@@ -96,48 +105,33 @@ struct session
     printf("iwp intro ack\n");
   }
 
-  void introduce(llarp_udp_io * udp, llarp_pubkey_t pub)
+  static void handle_generated_intro(iwp_async_gen_intro * i)
   {
-    uint8_t buf[140];
-    size_t sz = sizeof(buf);
-    sz -= rand() % (sizeof(buf) - 128);
-    generate_intro(pub, buf, sz);
-    llarp_ev_udp_sendto(udp, addr, buf, sz);
-    printf("sent introduce of size %ld\n", sz);
+    session * link = static_cast<session *>(i->user);
+    llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
+    printf("sent introduce of size %ld\n", i->sz);
   }
+
   
-  /** generate session intro for outbound session */
-  void generate_intro(llarp_pubkey_t remotepub, uint8_t * buf, size_t sz)
+  void introduce(llarp_pubkey_t pub)
   {
-    memcpy(remote, remotepub, 32);
-    assert(sz >= 128);
-    uint8_t tmp[64];
-    llarp_nounce_t nounce;
-    llarp_buffer_t buffer;
-    llarp_shorthash_t e_key;
-    uint8_t * sig = buf;
-    uint8_t * n = buf + 64;
-    // n = RAND(32)
-    crypto->randbytes(n, 32);
-    // nounce = n[0:24]
-    memcpy(nounce, n, 24);
-    // e_k = HS(b.k + n)
-    memcpy(tmp, remote, 32);
-    memcpy(tmp +32, n, 32);
-    buffer.base = (char*)tmp;
-    buffer.sz = sizeof(tmp);
-    crypto->shorthash(&e_key, buffer);
-    // e = SE(a.k, e_k, nounce)
-    crypto->xchacha20(buffer, e_key, nounce);
-    // S = TKE(a.k, a.b, n)
-    crypto->transport_dh_client(&sessionkey, remote, eph_seckey, n);
+    memcpy(remote, pub, 32);
+    intro.buf = workbuf;
+    size_t w0sz = (rand() % 64);
+    intro.sz = 128 + w0sz;
     // randomize w0
-    if(sz > 128)
-      crypto->randbytes(sig + 128, sz-128);
-    // s = S(a.k.privkey, n + e + w0)
-    buffer.base = (char*)n;
-    buffer.sz = sz - 64;
-    crypto->sign(sig, eph_seckey, buffer);
+    if(w0sz)
+      crypto->randbytes(intro.buf + 128, w0sz);
+    
+    intro.nonce = workbuf + 64;
+    intro.secretkey = eph_seckey;
+    intro.remote_pubkey = remote;
+    // randomize nonce
+    crypto->randbytes(intro.nonce, 32);
+    // async generate intro packet
+    intro.user = this;
+    intro.hook = &handle_generated_intro;
+    iwp_call_async_gen_intro(iwp, &intro);
   }
 };
 
@@ -148,6 +142,7 @@ struct server
   struct llarp_crypto * crypto;
   struct llarp_ev_loop * netloop;
   struct llarp_msg_muxer * muxer;
+  struct llarp_async_iwp * iwp;
   struct llarp_udp_io udp;
   char keyfile[255];
   uint32_t timeout_job_id;
@@ -155,9 +150,17 @@ struct server
 
   llarp_seckey_t seckey;
 
+  server(llarp_alloc * m, llarp_crypto * c, llarp_logic * l, llarp_threadpool * w)
+  {
+    mem = m;
+    crypto = c;
+    logic = l;
+    iwp = llarp_async_iwp_new(mem, crypto, logic, w);
+  }
+
   session * create_session(llarp::Addr & src)
   {
-    session * impl = new session(crypto, src);
+    session * impl = new session(&udp, iwp, crypto, src);
     llarp_link_session s;
     s.impl = impl;
     s.sendto = session::sendto;
@@ -193,7 +196,7 @@ struct server
 
   bool keygen(const char * fname)
   {
-    crypto->keygen(&seckey);
+    crypto->keygen(seckey);
     std::ofstream f(fname);
     if(f.is_open())
     {
@@ -254,14 +257,12 @@ struct server
   
 };
 
-  server * link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, const char * keyfile, struct llarp_crypto * crypto)
+server * link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, const char * keyfile, struct llarp_crypto * crypto, struct llarp_logic * logic, struct llarp_threadpool * worker)
 {
   void * ptr = mem->alloc(mem, sizeof(struct server), 8);
   if(ptr)
   {
-    server * link = new (ptr) server;
-    link->mem = mem;
-    link->crypto = crypto;
+    server * link = new (ptr) server(mem, crypto, logic, worker);
     link->muxer = muxer;
     strncpy(link->keyfile, keyfile, sizeof(link->keyfile));
     return link;
@@ -343,7 +344,7 @@ void link_try_establish(struct llarp_link * l, struct llarp_link_establish_job j
   llarp::Addr dst(*job.ai);
   session * s = link->create_session(dst);
   s->establish_listener = listener;
-  s->introduce(&link->udp, job.ai->enc_key);
+  s->introduce(job.ai->enc_key);
 }
 
 void link_mark_session_active(struct llarp_link * link, struct llarp_link_session * s)
@@ -376,7 +377,7 @@ extern "C" {
 
 void iwp_link_init(struct llarp_link * link, struct llarp_iwp_args args, struct llarp_msg_muxer * muxer)
 {
-  link->impl = iwp::link_alloc(args.mem, muxer, args.keyfile, args.crypto);
+  link->impl = iwp::link_alloc(args.mem, muxer, args.keyfile, args.crypto, args.logic, args.cryptoworker);
   link->name = iwp::link_name;
   link->configure = iwp::link_configure;
   link->start_link = iwp::link_start;

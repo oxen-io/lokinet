@@ -18,8 +18,9 @@ struct llarp_router {
   bool ready;
   const char * transport_keyfile = "transport.key";
   const char * transport_certfile = "transport.pem";
-  struct llarp_ev_loop * netloop;
-  struct llarp_threadpool *tp;
+  llarp_ev_loop * netloop;
+  llarp_threadpool *tp;
+  llarp_logic * logic;
   llarp::router_links links;
   llarp_crypto crypto;
   llarp_msg_muxer muxer;

@@ -10,9 +10,8 @@ static bool xchacha20(llarp_buffer_t buff, llarp_sharedkey_t k,
   return crypto_stream_xchacha20_xor(base, base, buff.sz, n, k) == 0;
 }
 
-static bool dh(llarp_sharedkey_t *shared, uint8_t *client_pk,
+static bool dh(uint8_t * out, uint8_t *client_pk,
                uint8_t *server_pk, uint8_t *remote_key, uint8_t *local_key) {
-  uint8_t *out = *shared;
   crypto_generichash_state h;
   const size_t outsz = SHAREDKEYSIZE;
   if (crypto_scalarmult(out, local_key, remote_key) == -1) return false;
@@ -26,7 +25,7 @@ static bool dh(llarp_sharedkey_t *shared, uint8_t *client_pk,
 
 static bool dh_client(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
                       llarp_tunnel_nounce_t n, llarp_seckey_t sk) {
-  if (dh(shared, llarp_seckey_topublic(sk), pk, pk, sk)) {
+  if (dh(*shared, llarp_seckey_topublic(sk), pk, pk, sk)) {
     return crypto_generichash(*shared, SHAREDKEYSIZE, *shared, SHAREDKEYSIZE, n,
                               TUNNOUNCESIZE) != -1;
   }
@@ -35,7 +34,7 @@ static bool dh_client(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
 
 static bool dh_server(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
                       llarp_tunnel_nounce_t n, llarp_seckey_t sk) {
-  if (dh(shared, pk, llarp_seckey_topublic(sk), pk, sk)) {
+  if (dh(*shared, pk, llarp_seckey_topublic(sk), pk, sk)) {
     return crypto_generichash(*shared, SHAREDKEYSIZE, *shared, SHAREDKEYSIZE, n,
                               TUNNOUNCESIZE) != -1;
   }
@@ -43,19 +42,19 @@ static bool dh_server(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
 }
 
 
-static bool transport_dh_client(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
-                                llarp_seckey_t sk, uint8_t * n) {
+static bool transport_dh_client(uint8_t *shared, uint8_t * pk,
+                                uint8_t * sk, uint8_t * n) {
   if (dh(shared, llarp_seckey_topublic(sk), pk, pk, sk)) {
-    return crypto_generichash(*shared, SHAREDKEYSIZE, *shared, SHAREDKEYSIZE, n,
+    return crypto_generichash(shared, SHAREDKEYSIZE, shared, SHAREDKEYSIZE, n,
                               NOUNCESIZE) != -1;
   }
   return false;
 }
 
-static bool transport_dh_server(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
-                                llarp_seckey_t sk, uint8_t * n) {
+static bool transport_dh_server(uint8_t *shared, uint8_t * pk,
+                                uint8_t * sk, uint8_t * n) {
   if (dh(shared, pk, llarp_seckey_topublic(sk), pk, sk)) {
-    return crypto_generichash(*shared, SHAREDKEYSIZE, *shared, SHAREDKEYSIZE, n,
+    return crypto_generichash(shared, SHAREDKEYSIZE, shared, SHAREDKEYSIZE, n,
                               NOUNCESIZE) != -1;
   }
   return false;
@@ -97,10 +96,10 @@ static inline void randbytes(void *ptr, size_t sz) {
   randombytes((unsigned char *)ptr, sz);
 }
 
-static void keygen(llarp_seckey_t *keys) {
+static void keygen(uint8_t *keys) {
   unsigned char seed[32];
-  uint8_t *pk = llarp_seckey_topublic(*keys);
-  crypto_sign_seed_keypair(pk, *keys, seed);
+  uint8_t *pk = llarp_seckey_topublic(keys);
+  crypto_sign_seed_keypair(pk, keys, seed);
 }
 }  // namespace sodium
 }  // namespace llarp

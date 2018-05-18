@@ -38,6 +38,11 @@ void llarp_logic_mainloop(struct llarp_logic* logic) {
   llarp_timer_run(logic->timer, logic->thread);
 }
 
+void llarp_logic_queue_job(struct llarp_logic * logic, struct llarp_thread_job job)
+{
+  llarp_threadpool_queue_job(logic->thread, job);
+}
+
 uint32_t llarp_logic_call_later(struct llarp_logic* logic, struct llarp_timeout_job job)
 {
   return llarp_timer_call_later(logic->timer, job);
