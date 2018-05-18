@@ -1,8 +1,9 @@
 #include <llarp/iwp.h>
 #include <llarp/net.h>
 
-
+#include <fstream>
 #include <map>
+
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "net.hpp"
@@ -18,6 +19,7 @@ struct server
 {
   struct llarp_alloc * mem;
   struct llarp_logic * logic;
+  struct llarp_crypto * crypto;
   struct llarp_ev_loop * netloop;
   struct llarp_msg_muxer * muxer;
   struct llarp_udp_io udp;
@@ -25,6 +27,8 @@ struct server
   uint32_t timeout_job_id;
   std::map<llarp::Addr, llarp_link_session> sessions;
 
+  llarp_seckey_t seckey;
+  
   void inbound_session(llarp::Addr & src)
   {
     
@@ -37,6 +41,30 @@ struct server
 
   bool ensure_privkey()
   {
+    std::error_code ec;
+    if(!fs::exists(keyfile, ec))
+    {
+      if(!keygen(keyfile))
+        return false;
+    }
+    std::ifstream f(keyfile);
+    if(f.is_open())
+    {
+      f.read((char*)seckey, sizeof(seckey));
+      return true;
+    }
+    return false;
+  }
+
+  bool keygen(const char * fname)
+  {
+    crypto->keygen(&seckey);
+    std::ofstream f(fname);
+    if(f.is_open())
+    {
+      f.write((char*)seckey, sizeof(seckey));
+      return true;
+    }
     return false;
   }
   
@@ -84,13 +112,14 @@ struct server
   
 };
 
-server * link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, const char * keyfile)
+  server * link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, const char * keyfile, struct llarp_crypto * crypto)
 {
   void * ptr = mem->alloc(mem, sizeof(struct server), 8);
   if(ptr)
   {
     server * link = new (ptr) server;
     link->mem = mem;
+    link->crypto = crypto;
     link->muxer = muxer;
     strncpy(link->keyfile, keyfile, sizeof(link->keyfile));
     return link;
@@ -110,8 +139,11 @@ bool link_configure(struct llarp_link * l, struct llarp_ev_loop * netloop, const
   server * link = static_cast<server*>(l->impl);
 
   if(!link->ensure_privkey())
+  {
+    printf("failed to ensure private key\n");
     return false;
-
+  }
+  
   // bind
   
   link->udp.addr.sa_family = af;
@@ -197,7 +229,7 @@ extern "C" {
 
 void iwp_link_init(struct llarp_link * link, struct llarp_iwp_args args, struct llarp_msg_muxer * muxer)
 {
-  link->impl = iwp::link_alloc(args.mem, muxer, args.keyfile);
+  link->impl = iwp::link_alloc(args.mem, muxer, args.keyfile, args.crypto);
   link->name = iwp::link_name;
   link->configure = iwp::link_configure;
   link->start_link = iwp::link_start;
