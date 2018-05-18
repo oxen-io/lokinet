@@ -1,6 +1,7 @@
 #include <llarp/iwp.h>
 #include <llarp/net.h>
 
+#include <cassert>
 #include <fstream>
 #include <map>
 
@@ -10,9 +11,51 @@
 
 namespace iwp
 {
-
+  
 struct session
 {
+  llarp_crypto * crypto;
+  llarp_seckey_t eph_seckey;
+  llarp_sharedkey_t sessionkey;
+  
+  session(llarp_crypto * c) :
+    crypto(c)
+  {
+    c->keygen(&eph_seckey);
+  }
+  
+  /** generate session intro for outbound session */
+  void generate_intro(llarp_pubkey_t remote, uint8_t * buf, size_t sz)
+  {
+    assert(sz > 64);
+    uint8_t tmp[64];
+    llarp_nounce_t nounce;
+    llarp_buffer_t buffer;
+    llarp_shorthash_t e_key;
+    uint8_t * sig = buf;
+    buf += 64;
+    uint8_t * n = buf;
+    // n = RAND(32)
+    crypto->randbytes(n, 32);
+    // nounce = n[0:24]
+    memcpy(nounce, n, 24);
+    // e_k = HS(b.k + n)
+    memcpy(tmp, remote, 32);
+    memcpy(tmp +32, n, 32);
+    buffer.base = (char*)tmp;
+    buffer.cur = (char*)tmp;
+    buffer.sz = sizeof(tmp);
+    crypto->shorthash(&e_key, buffer);
+    // e = SE(a.k, e_k, nounce)
+    crypto->xchacha20(buffer, e_key, nounce);
+    // S = TKE(a.k, a.b, n)
+    crypto->transport_dh_client(&sessionkey, remote, eph_seckey, n);
+    buffer.base = (char*)n;
+    buffer.cur = (char*)n;
+    buffer.sz = sz - 64;
+    // s = S(a.k.privkey, n + e + w0)
+    crypto->sign(sig, eph_seckey, buffer);
+  }
 };
 
 struct server
@@ -28,7 +71,7 @@ struct server
   std::map<llarp::Addr, llarp_link_session> sessions;
 
   llarp_seckey_t seckey;
-  
+
   void inbound_session(llarp::Addr & src)
   {
     
