@@ -65,6 +65,11 @@ static bool hash(llarp_hash_t *result, llarp_buffer_t buff) {
   const uint8_t *base = (const uint8_t *)buff.base;
   return crypto_generichash(*result, HASHSIZE, base, buff.sz, nullptr, 0) != -1;
 }
+  
+static bool shorthash(llarp_shorthash_t *result, llarp_buffer_t buff) {
+  const uint8_t *base = (const uint8_t *)buff.base;
+  return crypto_generichash(*result, SHORTHASHSIZE, base, buff.sz, nullptr, 0) != -1;
+}
 
 static bool hmac(llarp_hash_t *result, llarp_buffer_t buff,
                  llarp_seckey_t secret) {
@@ -109,6 +114,7 @@ void llarp_crypto_libsodium_init(struct llarp_crypto *c) {
   c->transport_dh_client = llarp::sodium::transport_dh_client;
   c->transport_dh_server = llarp::sodium::transport_dh_server;
   c->hash = llarp::sodium::hash;
+  c->shorthash = llarp::sodium::shorthash;
   c->hmac = llarp::sodium::hmac;
   c->sign = llarp::sodium::sign;
   c->verify = llarp::sodium::verify;
