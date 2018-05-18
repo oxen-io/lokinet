@@ -1,6 +1,7 @@
 #include "router.hpp"
 #include <llarp/ibfq.h>
 #include <llarp/dtls.h>
+#include <llarp/iwp.h>
 #include <llarp/link.h>
 #include <llarp/proto.h>
 #include <llarp/router.h>
@@ -97,44 +98,56 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
                         const char *key, const char *val)
 {
   llarp_router *self = static_cast<llarp_router *>(iter->user);
-  llarp_dtls_args args = {
-    .mem = self->mem,
-    .keyfile=self->transport_keyfile,
-    .certfile=self->transport_certfile,
-  };
-  if (StrEq(section, "links"))
+  int af;
+  uint16_t proto;
+  if (StrEq(val, "eth"))
   {
-    if (StrEq(val, "eth")) {
-      struct llarp_link *link = llarp::Alloc<llarp_link>(self->mem);
-      dtls_link_init(link, args, &self->muxer);
-      if(llarp_link_initialized(link))
-      {
-        if (link->configure(link, self->netloop, key, AF_PACKET, LLARP_ETH_PROTO))
-        {
-          printf("ethernet link configured on %s\n", key);
-          self->AddLink(link);
-          return;
-        }
-      }
-      self->mem->free(self->mem, link);
-      printf("failed to configure ethernet link for %s\n", key);
-    } else {
-      struct llarp_link *link = llarp::Alloc<llarp_link>(self->mem);
-      uint16_t port = std::atoi(val);
-      dtls_link_init(link, args, &self->muxer);
-      if(llarp_link_initialized(link))
-      {
-        if (link->configure(link, self->netloop, key, AF_INET6, port))
-        {
-          printf("inet link configured on %s port %d\n", key, port);
-          self->AddLink(link);
-          return;
-        }
-      }
-      self->mem->free(self->mem, link);
-      printf("failed to configure inet link for %s port %d\n", key, port);
+    af = AF_PACKET;
+    proto = LLARP_ETH_PROTO;
+  }
+  else
+  {
+    proto = std::atoi(val);
+  }
+
+  struct llarp_link *link;
+  if (StrEq(section, "dtls-links"))
+  {
+    link = llarp::Alloc<llarp_link>(self->mem);  
+    llarp::Zero(link, sizeof(*link));
+    llarp_dtls_args args = {
+      .mem = self->mem,
+      .keyfile=self->transport_keyfile,
+      .certfile=self->transport_certfile,
+    };
+    dtls_link_init(link, args, &self->muxer);
+  }
+  else if (StrEq(section, "iwp-links"))
+  {
+    link = llarp::Alloc<llarp_link>(self->mem);  
+    llarp::Zero(link, sizeof(*link));
+    
+    iwp_configure_args args = {
+      .mem = self->mem,
+      .crypto = &self->crypto,
+      .keyfile=self->transport_keyfile,
+    };
+    iwp_link_init(link, args, &self->muxer);
+  }
+  else
+    return;
+  
+  if(llarp_link_initialized(link))
+  {
+    if (link->configure(link, self->netloop, key, af, proto))
+    {
+      printf("link configured on %s\n", key);
+      self->AddLink(link);
+      return;
     }
   }
+  self->mem->free(self->mem, link);
+  printf("failed to configure link for %s\n", key);
 }
   
 }  // namespace llarp

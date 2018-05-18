@@ -21,7 +21,8 @@ bool Config::Load(const char *fname) {
     router = find_section(top, "router", section_t{});
     network = find_section(top, "network", section_t{});
     netdb = find_section(top, "netdb", section_t{});
-    links = find_section(top, "links", section_t{});
+    iwp_links = find_section(top, "iwp-links", section_t{});
+    dtls_links = find_section(top, "dtls-links", section_t{});
     return true;
   }
   return false;
@@ -52,7 +53,8 @@ void llarp_config_iter(struct llarp_config *conf,
   std::map<std::string, llarp::Config::section_t &> sections = {
       {"router", conf->impl.router},
       {"network", conf->impl.network},
-      {"links", conf->impl.links},
+      {"dtls-links", conf->impl.dtls_links},
+      {"iwp-links", conf->impl.iwp_links},
       {"netdb", conf->impl.netdb}};
   for (const auto &section : sections)
     for (const auto &item : section.second)

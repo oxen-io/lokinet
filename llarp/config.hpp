@@ -12,7 +12,8 @@ struct Config {
   section_t router;
   section_t network;
   section_t netdb;
-  section_t links;
+  section_t iwp_links;
+  section_t dtls_links;
 
   bool Load(const char *fname);
 };

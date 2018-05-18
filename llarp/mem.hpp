@@ -17,6 +17,10 @@ template <typename T>
 static T *Alloc(llarp_alloc *mem) {
   return static_cast<T *>(mem->alloc(mem, sizeof(T), alignment<T>()));
 }
+
+  void Zero(void * ptr, size_t sz);
+  
 }  // namespace llarp
+
 
 #endif
