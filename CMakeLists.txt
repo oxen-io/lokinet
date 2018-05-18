@@ -10,7 +10,7 @@ find_package(sodium)
 set(EXE llarpd)
 set(EXE_SRC daemon/main.c)
 
-set(LIBS ${sodium_LIBRARY_RELEASE} pthread stdc++fs jemalloc)
+set(LIBS ${sodium_LIBRARY_RELEASE} pthread stdc++fs jemalloc mbedtls)
 
 set(LIB llarp)
 

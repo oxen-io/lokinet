@@ -1,5 +1,8 @@
 #include <llarp/dtls.h>
 #include <llarp/net.h>
+
+#include <mbedtls/ssl.h>
+
 #include <map>
 #include "crypto.hpp"
 #include "net.hpp"
@@ -18,7 +21,13 @@ struct dtls_link
   char keyfile[255];
   char certfile[255];
   uint32_t timeout_job_id;
-  std::map<llarp::pubkey, llarp_link_session> sessions;
+  std::map<llarp::Addr, llarp_link_session> sessions;
+
+  void inbound_session(llarp::Addr & src)
+  {
+    
+  }
+  
 };
 
 static struct dtls_link * dtls_link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, const char * keyfile, const char * certfile)
@@ -55,6 +64,18 @@ static void dtls_link_issue_cleanup_timer(struct dtls_link * link, uint64_t time
   link->timeout_job_id = llarp_logic_call_later(link->logic, job);
 }
 
+void dtls_recvfrom(struct llarp_udp_io * udp, const struct sockaddr *saddr, void * buf, ssize_t sz)
+{
+  dtls_link * link = static_cast<dtls_link *>(udp->user);
+  llarp::Addr src = *saddr;
+  auto itr = link->sessions.find(src);
+  if (itr == link->sessions.end())
+  {
+    link->inbound_session(src);
+  }
+}
+
+
 static bool dtls_link_configure(struct llarp_link * l, struct llarp_ev_loop * netloop, const char * ifname, int af, uint16_t port)
 {
   dtls_link * link = static_cast<dtls_link*>(l->impl);
@@ -74,10 +95,12 @@ static bool dtls_link_configure(struct llarp_link * l, struct llarp_ev_loop * ne
       return false;
   }
   link->netloop = netloop;
+  link->udp.recvfrom = &dtls_recvfrom;
+  link->udp.user = link;
   return llarp_ev_add_udp(link->netloop, &link->udp) != -1;
 }
 
-static bool dtls_link_start(struct llarp_link * l, struct llarp_logic * logic)
+bool dtls_link_start(struct llarp_link * l, struct llarp_logic * logic)
 {
   dtls_link * link = static_cast<dtls_link*>(l->impl);
   link->timeout_job_id = 0;
@@ -87,12 +110,12 @@ static bool dtls_link_start(struct llarp_link * l, struct llarp_logic * logic)
   return true;
 }
 
-static void dtls_link_cleanup_dead_sessions(struct dtls_link * link)
+void dtls_link_cleanup_dead_sessions(struct dtls_link * link)
 {
   // TODO: implement
 }
 
-static void dtls_link_cleanup_timer(void * l, uint64_t orig, uint64_t left)
+void dtls_link_cleanup_timer(void * l, uint64_t orig, uint64_t left)
 {
   dtls_link * link = static_cast<dtls_link*>(l);
   // clear out previous id of job
@@ -106,7 +129,7 @@ static void dtls_link_cleanup_timer(void * l, uint64_t orig, uint64_t left)
 }
 
 
-static bool dtls_link_stop(struct llarp_link *l)
+bool dtls_link_stop(struct llarp_link *l)
 {
   dtls_link * link = static_cast<dtls_link*>(l->impl);
   if(link->timeout_job_id)
@@ -117,7 +140,7 @@ static bool dtls_link_stop(struct llarp_link *l)
 }
 
 
-static void dtls_link_iter_sessions(struct llarp_link * l, struct llarp_link_session_iter * iter)
+void dtls_link_iter_sessions(struct llarp_link * l, struct llarp_link_session_iter * iter)
 {
   dtls_link * link = static_cast<dtls_link*>(l->impl);
   iter->link = l;
@@ -126,15 +149,15 @@ static void dtls_link_iter_sessions(struct llarp_link * l, struct llarp_link_ses
 }
 
 
-static void dtls_link_try_establish(struct llarp_link * link, struct llarp_link_establish_job job, struct llarp_link_session_listener l)
+void dtls_link_try_establish(struct llarp_link * link, struct llarp_link_establish_job job, struct llarp_link_session_listener l)
 {
 }
 
-static void dtls_link_mark_session_active(struct llarp_link * link, struct llarp_link_session * s)
+void dtls_link_mark_session_active(struct llarp_link * link, struct llarp_link_session * s)
 {
 }
 
-static struct llarp_link_session * dtls_link_session_for_addr(struct llarp_link * l, const struct sockaddr * saddr)
+struct llarp_link_session * dtls_link_session_for_addr(struct llarp_link * l, const struct sockaddr * saddr)
 {
   if(saddr)
   {
@@ -147,7 +170,7 @@ static struct llarp_link_session * dtls_link_session_for_addr(struct llarp_link 
   return nullptr;
 }
 
-static void dtls_link_free(struct llarp_link *l)
+void dtls_link_free(struct llarp_link *l)
 {
   dtls_link * link = static_cast<dtls_link*>(l->impl);
   struct llarp_alloc * mem = link->mem;
