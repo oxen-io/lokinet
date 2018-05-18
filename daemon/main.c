@@ -6,6 +6,7 @@ struct llarp_main {
   struct llarp_alloc mem;
   struct llarp_router *router;
   struct llarp_threadpool *worker;
+  struct llarp_threadpool *netio;
   struct llarp_logic *logic;
   struct llarp_config *config;
   struct llarp_nodedb *nodedb;
@@ -47,6 +48,13 @@ int shutdown_llarp(struct llarp_main *m) {
   progress();
   if(m->mainloop)
     llarp_ev_loop_stop(m->mainloop);
+
+  progress();
+  if(m->netio)
+  {
+    llarp_threadpool_stop(m->netio);
+    llarp_threadpool_join(m->netio);
+  }
   
   progress();
   if(m->worker)
@@ -56,7 +64,7 @@ int shutdown_llarp(struct llarp_main *m) {
   
   if(m->worker)
     llarp_threadpool_join(m->worker);
-
+  
   progress();
   if (m->logic) llarp_logic_stop(m->logic);
   
@@ -90,9 +98,16 @@ struct llarp_main llarp = {
   0,
   0,
   0,
+  0,
   {0},
   1
 };
+
+void run_netio(void * user)
+{
+  struct llarp_ev_loop * loop = user;
+  llarp_ev_loop_run(loop);
+}
 
 int main(int argc, char *argv[]) {
   const char *conffname = "daemon.ini";
@@ -116,6 +131,8 @@ int main(int argc, char *argv[]) {
       if (llarp_nodedb_ensure_dir(dir)) {
         // ensure worker thread pool
         if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
+        // ensire net io thread
+        llarp.netio = llarp_init_threadpool(1);
         
         llarp.router = llarp_init_router(mem, llarp.worker, llarp.mainloop);
 
@@ -123,12 +140,16 @@ int main(int argc, char *argv[]) {
           
           llarp.logic = llarp_init_logic(mem);
           printf("starting router\n");
-          
           llarp_run_router(llarp.router, llarp.logic);
-          
-          printf("running mainloop\n");
+          // run io loop
+          struct llarp_thread_job netjob = {
+            .user = llarp.mainloop,
+            .work = &run_netio
+          };
+          llarp_threadpool_queue_job(llarp.netio, netjob);
+          printf("running\n");
           llarp.exitcode = 0;
-          llarp_ev_loop_run(llarp.mainloop);
+          llarp_logic_mainloop(llarp.logic);
         } else
           printf("Failed to configure router\n");
       } else

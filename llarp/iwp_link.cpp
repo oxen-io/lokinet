@@ -171,6 +171,7 @@ struct server
   void cleanup_dead()
   {
     // todo: implement
+    printf("cleanup dead\n");
   }
 
   bool ensure_privkey()

@@ -12,34 +12,41 @@ struct timer {
         .count();
   }
 
+  llarp_timer_context * parent;
   void* user;
   uint64_t started;
   uint64_t timeout;
   llarp_timer_handler_func func;
+  uint32_t id;
 
-  timer(uint64_t ms = 0, void* _user = nullptr,
-        llarp_timer_handler_func _func = nullptr)
-      : user(_user), started(now()), timeout(ms), func(_func) {}
+  timer(llarp_timer_context * ctx=nullptr, uint64_t ms = 0, void* _user = nullptr,
+        llarp_timer_handler_func _func = nullptr, uint32_t _id=0)
+    : parent(ctx), user(_user), started(now()), timeout(ms), func(_func), id(_id) {}
 
-  void operator()() {
-    if (func) {
-      auto ms = now();
-      auto diff = ms - started;
-      if (diff >= timeout)
-        func(user, timeout, 0);
-      else
-        func(user, timeout, diff);
-    }
+  
+  void exec();
+
+  
+  static void call(void * user)
+  {
+    static_cast<timer *>(user)->exec();
   }
+
+  operator llarp_thread_job ()
+  {
+    return {this, timer::call};
+  }
+  
 };
 };  // namespace llarp
 
 struct llarp_timer_context {
+  llarp_threadpool * threadpool;
   std::mutex timersMutex;
   std::map<uint32_t, llarp::timer> timers;
   std::mutex tickerMutex;
   std::condition_variable ticker;
-  std::chrono::milliseconds nextTickLen = std::chrono::seconds(1);
+  std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(10);
 
   uint32_t ids = 0;
   std::atomic<bool> _run = true;
@@ -54,18 +61,23 @@ struct llarp_timer_context {
 
     auto itr = timers.find(id);
     if (itr != timers.end()) {
-      itr->second();
-      timers.erase(id);
+      itr->second.exec();
     }
 
     if (lock) delete lock;
+  }
+
+  void remove(uint32_t id)
+  {
+    std::unique_lock<std::mutex> lock (timersMutex);
+    timers.erase(id);
   }
 
   uint32_t call_later(void* user, llarp_timer_handler_func func,
                       uint64_t timeout_ms) {
     std::unique_lock<std::mutex> lock(timersMutex);
     uint32_t id = ++ids;
-    timers[id] = llarp::timer(timeout_ms);
+    timers[id] = llarp::timer(this, timeout_ms, user, func, id);
     return id;
   }
 
@@ -111,12 +123,39 @@ void llarp_timer_cancel(struct llarp_timer_context* t, uint32_t id) {
 
 void llarp_timer_run(struct llarp_timer_context* t,
                      struct llarp_threadpool* pool) {
-  std::unique_lock<std::mutex> lock(t->tickerMutex);
+  t->threadpool = pool;
   while (t->run()) {
-    auto status = t->ticker.wait_for(lock, t->nextTickLen);
-    if (status == std::cv_status::no_timeout) {
-      // we woke up
+    std::unique_lock<std::mutex> lock(t->tickerMutex);
+    t->ticker.wait_for(lock, t->nextTickLen);
+    // we woke up
+    auto now = llarp::timer::now();
+    auto itr = t->timers.begin();
+    while (itr != t->timers.end())
+    {
+      if(now - itr->second.started >= itr->second.timeout)
+      {
+        // timer hit
+        llarp_threadpool_queue_job(pool, itr->second);
+      }
+        ++itr;
     }
   }
 }
+}
+
+namespace llarp
+{
+  void timer::exec()
+  {
+    if (func) {
+      auto ms = now();
+      auto diff = ms - started;
+      if (diff >= timeout)
+        func(user, timeout, 0);
+      else
+        func(user, timeout, diff);
+    }
+    if(parent)
+      parent->remove(id);
+  }
 }
