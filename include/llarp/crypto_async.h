@@ -63,11 +63,11 @@ void iwp_call_async_keygen(struct llarp_async_iwp * iwp, struct iwp_async_keygen
 
   
 
-struct iwp_async_gen_intro;
+struct iwp_async_intro;
   
-typedef void (*iwp_intro_gen_hook)(struct iwp_async_gen_intro *);
+typedef void (*iwp_intro_gen_hook)(struct iwp_async_intro *);
   
-struct iwp_async_gen_intro
+struct iwp_async_intro
 {
   struct llarp_async_iwp * iwp;
   void * user;
@@ -86,14 +86,14 @@ struct iwp_async_gen_intro
 };
 
 
-void iwp_call_async_gen_intro(struct llarp_async_iwp * iwp, struct iwp_async_gen_intro * intro); 
+void iwp_call_async_gen_intro(struct llarp_async_iwp * iwp, struct iwp_async_intro * intro); 
 
   
-struct iwp_async_gen_introack;
+struct iwp_async_introack;
   
-typedef void (*iwp_introack_gen_hook)(struct iwp_async_gen_introack *);
+typedef void (*iwp_introack_gen_hook)(struct iwp_async_introack *);
   
-struct iwp_async_gen_introack
+struct iwp_async_introack
 {
   void * user;
   uint8_t * buf;
@@ -109,8 +109,18 @@ struct iwp_async_gen_introack
 };
 
 
-void iwp_call_async_gen_intro(struct llarp_async_iwp * iwp, struct iwp_async_gen_intro * intro); 
+void iwp_call_async_gen_introack(struct llarp_async_iwp * iwp, struct iwp_async_introack * introack);
+  
+void iwp_call_async_verify_introack(struct llarp_async_iwp * iwp, struct iwp_async_introack * introack);
 
+struct iwp_async_token
+{
+  void * user;
+  uint8_t * buf;
+  size_t sz;
+  uint8_t * nonce;
+  uint8_t * sharedkey;
+};
   
 struct llarp_async_cipher;
 struct llarp_cipher_result;

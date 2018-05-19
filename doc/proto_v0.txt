@@ -261,6 +261,8 @@ identifies the sender as having the RC contained in r. The recipiant MUST
 validate the RC's signature and ensure that the public key in use is listed in
 the RC.a matching the ipv6 address it originated from.
 
+if r is not present in sessions made by clients.
+
 {
   a: "i",
   r: RC,

@@ -25,8 +25,9 @@ struct session
   llarp_sharedkey_t sessionkey;
   llarp_link_session_listener establish_listener = {nullptr, nullptr, nullptr, nullptr};
   llarp::Addr addr;
-  iwp_async_gen_intro intro;
-  iwp_async_gen_introack introack;
+  iwp_async_intro intro;
+  iwp_async_introack introack;
+  iwp_async_token token;
 
   uint8_t workbuf[1024];
   
@@ -41,10 +42,7 @@ struct session
     eIntroSent,
     eIntroAckSent,
     eIntroAckRecv,
-    eTokenOfferSent,
-    eTokenOfferRecv,
-    eTokenAckSent,
-    eTokenAckRecv,
+    eSessionStartSent,
     eEstablished,
     eTimeout
   };
@@ -100,16 +98,55 @@ struct session
     
   }
 
+  static void handle_verify_introack(iwp_async_introack * introack)
+  {
+    session * link = static_cast<session *>(introack->user);
+    if(introack->buf == nullptr)
+    {
+      // invalid signature
+      printf("introack validation failed\n");
+      return;
+    }
+    printf("introack validated\n");
+    link->state = eIntroAckRecv;
+    link->session_start();
+  }
+
+  void session_start()
+  {
+    
+  }
+  
   void on_intro_ack(const void * buf, size_t sz)
   {
     printf("iwp intro ack\n");
+    if(sz >= sizeof(workbuf))
+    {
+      // too big?
+      printf("intro ack too big\n");
+      // TOOD: session destroy ?
+      return;
+    }
+    // copy buffer so we own it
+    memcpy(workbuf, buf, sz);
+    // set intro ack parameters
+    introack.buf = workbuf;
+    introack.sz = sz;
+    introack.nonce = workbuf + 64;
+    introack.remote_pubkey = remote;
+    introack.secretkey = eph_seckey;
+    introack.user = this;
+    introack.hook = &handle_verify_introack;
+    // async verify
+    iwp_call_async_verify_introack(iwp, &introack);
   }
 
-  static void handle_generated_intro(iwp_async_gen_intro * i)
+  static void handle_generated_intro(iwp_async_intro * i)
   {
     session * link = static_cast<session *>(i->user);
     llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
     printf("sent introduce of size %ld\n", i->sz);
+    link->state = eIntroSent;
   }
 
   

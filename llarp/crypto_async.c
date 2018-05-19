@@ -212,13 +212,13 @@ void iwp_call_async_keygen(struct llarp_async_iwp * iwp, struct iwp_async_keygen
 
 static void iwp_inform_genintro(void * user)
 {
-  struct iwp_async_gen_intro * intro = user;
+  struct iwp_async_intro * intro = user;
   intro->hook(intro);
 }
 
 static void iwp_do_genintro(void * user)
 {
-  struct iwp_async_gen_intro * intro = user;
+  struct iwp_async_intro * intro = user;
   llarp_shorthash_t sharedkey;
   llarp_buffer_t buf;
   struct llarp_crypto * crypto = intro->iwp->crypto;
@@ -249,7 +249,7 @@ static void iwp_do_genintro(void * user)
   llarp_logic_queue_job(intro->iwp->logic, job);
 }
 
-void iwp_call_async_gen_intro(struct llarp_async_iwp * iwp, struct iwp_async_gen_intro * intro)
+void iwp_call_async_gen_intro(struct llarp_async_iwp * iwp, struct iwp_async_intro * intro)
 {
   
   intro->iwp = iwp;
