@@ -1,25 +1,288 @@
 #include <llarp/iwp.h>
 #include <llarp/net.h>
 #include <llarp/crypto_async.h>
+#include <llarp/time.h>
 
 #include <cassert>
 #include <fstream>
 #include <map>
 #include <vector>
+#include <bitset>
 #include <list>
 
 #include "crypto.hpp"
 #include "fs.hpp"
+#include "mem.hpp"
 #include "net.hpp"
 
 namespace iwp
 {
+
+enum header_flag
+{
+  eSessionInvalidated = (1 << 0),
+  eHighPacketDrop = (1 << 1),
+  eHighMTUDetected = (1 << 2),
+  eProtoUpgrade = (1 << 3)
+};
+
+enum msgtype
+{
+  eALIV = 0x00,
+  eXMIT = 0x01,
+  eACKS = 0x02,
+  eFRAG = 0x03
+};
   
+/** plaintext frame header */
+struct frame_header
+{
+  uint8_t * ptr;
+  
+  frame_header(uint8_t * buf) : ptr(buf)
+  {
+  }
+
+  uint8_t * data()
+  {
+    return ptr + 4;
+  }
+  
+  uint8_t & version()
+  {
+    return ptr[0];
+  }
+
+  uint8_t & msgtype()
+  {
+    return ptr[1];
+  }
+
+  // 12 bits
+  uint16_t size() const
+  {
+    uint16_t sz = (ptr[3] | 0x00fc) << 8;
+    sz |= ptr[2];
+    return sz;
+  }
+
+  void setsize(uint16_t sz)
+  {
+    ptr[3] = (sz | 0xfc00) >> 8;
+    ptr[2] = (sz | 0x00ff);
+  }
+  
+  // 4 bits
+  uint8_t flags() const
+  {
+    return ptr[3] & 0x07;
+  }
+
+  void setflag(header_flag f)
+  {
+    ptr[3] |= f;
+  }
+  
+};
+  
+/** xmit header */
+struct xmit
+{
+  uint32_t buffer[11];
+
+  xmit() {}
+  
+  xmit(uint8_t * ptr)
+  {
+    memcpy(buffer, ptr, 44);
+  }
+
+  xmit(const xmit & other)
+  {
+    memcpy(buffer, other.buffer, 44);
+  }
+  
+  uint64_t msgid() const
+  {
+    // big endian assumed
+    // TODO: implement little endian
+    const uint32_t * start = (buffer + 8);
+    const uint64_t * msgid = (const uint64_t *) start;
+    return *msgid;
+  }
+
+  // size of each full fragment
+  uint16_t fragsize() const
+  {
+    // big endian assumed
+    // TODO: implement little endian
+    return ((buffer[10] & 0xfc000000) >> 20);
+  }
+
+  // number of full fragments
+  uint8_t numfrags() const
+  {
+    return (buffer[10] & 0x07000000) >> 16;
+  }
+
+  // size of the entire message 
+  size_t totalsize() const
+  {
+    return (fragsize() * numfrags()) + lastfrag();
+  }
+
+  // size of the last fragment
+  uint8_t lastfrag() const
+  {
+    // big endian assumed
+    // TODO: implement little endian
+    return (buffer[10] & 0x0000ff00) >> 8;
+  }
+
+  uint8_t flags () const
+  {
+    // big endian assumed
+    // TODO: implement little endian
+    return (buffer[10] & 0x000000ff);
+  }
+  
+};
+
+typedef std::vector<uint8_t> fragment_t;
+
+// forward declare
+struct session;
+  
+struct transitframe
+{
+  session * parent = nullptr;
+  xmit msginfo;
+  std::bitset<16> status;
+
+  std::map<uint16_t, fragment_t> frags;
+  fragment_t lastfrag;
+  
+  transitframe() {}
+
+  // inbound
+  transitframe(const xmit & x) : msginfo(x)
+  {
+  }
+
+  // outbound
+  transitframe(const llarp_buffer_t & buf, session * s) :
+    parent(s)
+  {
+  }
+
+  void put_lastfrag(uint8_t * buf, size_t sz)
+  {
+    lastfrag.resize(sz);
+    memcpy(lastfrag.data(), buf, sz);
+  }
+  
+};
+  
+struct frame_state
+{
+  llarp_time_t lastEvent = 0;
+  std::map<uint64_t, transitframe> rx;
+  std::map<uint64_t, transitframe*> tx;
+
+  bool got_xmit(frame_header & hdr, size_t sz)
+  {
+    if(hdr.size() > sz)
+    {
+      // overflow
+      printf("invalid XMIT frame size\n");
+      return false;
+    }
+    sz = hdr.size();
+    // mark we are alive
+    alive();
+
+    // extract xmit data
+    xmit x(hdr.data());
+    
+    if(sz - 44 != x.lastfrag())
+    {
+      // bad size of last fragment
+      printf("XMIT frag size missmatch, %ld != %d\n", sz - 44, x.lastfrag());
+      return false;
+    }
+    
+    if(x.flags() & 0x80)
+    {
+      auto itr = rx.try_emplace(x.msgid(), x);
+      if(itr.second)
+      {
+        // inserted, put last fragment
+        itr.first->second.put_lastfrag(hdr.data() + 44, x.lastfrag());
+        return true;
+      }
+      else
+        printf("duplicate XMIT msgid=%ld\n", x.msgid());
+    }
+    else
+      printf("XMIT flags MSB not set\n");
+    return false;
+  }
+
+  void alive()
+  {
+    lastEvent = llarp_time_now_ms();
+  }
+
+  bool got_frag(frame_header & hdr, size_t sz)
+  {
+    return false;
+  }
+  
+  bool got_acks(frame_header & hdr, size_t sz)
+  {
+    return false;
+  }
+
+  // queue new outbound message
+  void queue_tx(transitframe * frame)
+  {
+    
+  }
+
+  // get next frame to encrypt and transmit
+  bool next_frame(llarp_buffer_t & buf)
+  {
+    return false;
+  }
+  
+  bool process(uint8_t * buf, size_t sz)
+  {
+    frame_header hdr(buf);
+    switch(hdr.msgtype())
+    {
+    case eALIV:
+      alive();
+      return true;
+    case eXMIT:
+      return got_xmit(hdr, sz - 4);
+    case eACKS:
+      return got_acks(hdr, sz - 4);
+    case eFRAG:
+      return got_frag(hdr, sz - 4);
+    default:
+      return false;
+    }
+  }
+};
+
 struct session
 {
+  llarp_alloc * mem;
+  llarp_msg_muxer * muxer;
   llarp_udp_io * udp;
   llarp_crypto * crypto;
   llarp_async_iwp * iwp;
+  llarp_logic * logic;
   llarp_seckey_t eph_seckey;
   llarp_pubkey_t remote;
   llarp_sharedkey_t sessionkey;
@@ -27,14 +290,11 @@ struct session
   llarp::Addr addr;
   iwp_async_intro intro;
   iwp_async_introack introack;
-  iwp_async_token token;
+  iwp_async_session_start start;
+  frame_state frame;
 
+  uint8_t token[32];
   uint8_t workbuf[1024];
-  
-  typedef std::vector<uint8_t> sendbuf_t;
-  typedef std::list<sendbuf_t> sendqueue_t;
-  
-  sendqueue_t sendq;
 
   enum State
   {
@@ -42,37 +302,55 @@ struct session
     eIntroSent,
     eIntroAckSent,
     eIntroAckRecv,
-    eSessionStartSent,
     eEstablished,
     eTimeout
   };
 
   State state;
   
-  session(llarp_udp_io * u, llarp_async_iwp * i, llarp_crypto * c, const llarp::Addr & a) :
+  session(llarp_alloc * m, llarp_msg_muxer * mux, llarp_udp_io * u, llarp_async_iwp * i, llarp_crypto * c, llarp_logic * l, const llarp::Addr & a) :
+    mem(m),
+    muxer(mux),
     udp(u),
     crypto(c),
     iwp(i),
+    logic(l),
     addr(a),
     state(eInitial)
   {
     c->keygen(eph_seckey);
   }
 
+  static void handle_sendto(void * user)
+  {
+    transitframe * frame = static_cast<transitframe*>(user);
+    frame->parent->frame.queue_tx(frame);
+  }
+
+      
   static bool sendto(llarp_link_session * s, llarp_buffer_t msg)
   {
     session * self = static_cast<session *>(s->impl);
-    self->sendq.emplace_back(msg.sz);
-    memcpy(self->sendq.back().data(), msg.base, msg.sz);
-    self->pump();
+    void * ptr = self->mem->alloc(self->mem, sizeof(transitframe), 64);
+    transitframe * frame = new (ptr) transitframe(msg, self);
+    llarp_thread_job job = {
+      .user = frame,
+      .work = &handle_sendto
+    };
+    llarp_logic_queue_job(self->logic, job);
     return true;
   }
 
-  // pump sending messages
   void pump()
   {
+    llarp_buffer_t buf;
+    while(frame.next_frame(buf))
+    {
+      encrypt_frame_async_send(buf.base, buf.sz);
+    }
   }
-  
+
+  // this is done in net threadpool
   static void handle_recv(llarp_link_session * s, const void * buf, size_t sz)
   {
     session * self = static_cast<session *>(s->impl);
@@ -82,6 +360,9 @@ struct session
       // got intro ack
       self->on_intro_ack(buf, sz);
       return;
+    case eEstablished:
+      // session is started
+      self->decrypt_frame(buf, sz);
     default:
       // invalid state?
       return;
@@ -109,12 +390,86 @@ struct session
     }
     printf("introack validated\n");
     link->state = eIntroAckRecv;
+    // copy decrypted token
+    memcpy(link->token, introack->token, 32);
     link->session_start();
+  }
+
+  static void handle_generated_session_start(iwp_async_session_start * start)
+  {
+    session * link = static_cast<session*>(start->user);
+    llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz);
+    link->state = eEstablished;
+    printf("session start sent\n");
   }
 
   void session_start()
   {
-    
+    size_t w2sz = rand() % 32;
+    start.buf = workbuf;
+    start.sz = w2sz + (32 * 3);
+    start.nonce = workbuf + 32;
+    crypto->randbytes(start.nonce, 32);
+    start.token = token;
+    memcpy(start.buf + 64, token, 32);
+    if(w2sz)
+      crypto->randbytes(start.buf + (32 * 3), w2sz);
+    start.sessionkey = sessionkey;
+    start.user = this;
+    start.hook = &handle_generated_session_start; 
+    iwp_call_async_gen_session_start(iwp, &start);
+  }
+
+  static void handle_frame_decrypt(iwp_async_frame * frame)
+  {
+    session * self = static_cast<session *>(frame->user);
+    if(frame->success)
+    {
+      self->frame.process(frame->buf + 64, frame->sz - 64);
+    }
+    else
+      printf("decrypt frame fail\n");
+
+    self->mem->free(self->mem, frame);
+  }
+  
+  void decrypt_frame(const void * buf, size_t sz)
+  {
+    if(sz > 64)
+    {
+      printf("decrypt frame of size %ld\n", sz);
+      auto frame = alloc_frame(buf, sz);
+      frame->hook = &handle_frame_decrypt;
+      iwp_call_async_frame_decrypt(iwp, frame);
+    }
+    else
+      printf("short packet of size %ld\n", sz);
+  }
+
+  static void handle_frame_encrypt(iwp_async_frame * frame)
+  {
+    session * self = static_cast<session *>(frame->user);
+    printf("sendto %ld\n", frame->sz);
+    llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz);
+    self->mem->free(self->mem, frame);
+  }
+
+  iwp_async_frame * alloc_frame(const void * buf, size_t sz)
+  {
+    iwp_async_frame * frame = (iwp_async_frame*) mem->alloc(mem, sizeof(iwp_async_frame), 1024);
+    memcpy(frame->buf, buf, sz);
+    frame->sz = sz;
+    frame->user = this;
+    frame->sessionkey = sessionkey;
+    return frame;
+  }
+  
+  void encrypt_frame_async_send(const void * buf, size_t sz)
+  {
+    printf("encrypt frame of size %ld\n", sz);
+    auto frame = alloc_frame(buf, sz);
+    frame->hook = &handle_frame_encrypt;
+    iwp_call_async_frame_encrypt(iwp, frame);
   }
   
   void on_intro_ack(const void * buf, size_t sz)
@@ -174,13 +529,13 @@ struct session
 
 struct server
 {
-  struct llarp_alloc * mem;
-  struct llarp_logic * logic;
-  struct llarp_crypto * crypto;
-  struct llarp_ev_loop * netloop;
-  struct llarp_msg_muxer * muxer;
-  struct llarp_async_iwp * iwp;
-  struct llarp_udp_io udp;
+  llarp_alloc * mem;
+  llarp_logic * logic;
+  llarp_crypto * crypto;
+  llarp_ev_loop * netloop;
+  llarp_msg_muxer * muxer;
+  llarp_async_iwp * iwp;
+  llarp_udp_io udp;
   char keyfile[255];
   uint32_t timeout_job_id;
   std::map<llarp::Addr, llarp_link_session> sessions;
@@ -197,7 +552,7 @@ struct server
 
   session * create_session(llarp::Addr & src)
   {
-    session * impl = new session(&udp, iwp, crypto, src);
+    session * impl = new session(mem, muxer, &udp, iwp, crypto, logic, src);
     llarp_link_session s;
     s.impl = impl;
     s.sendto = session::sendto;
@@ -253,12 +608,9 @@ struct server
       //TODO: exponential backoff for cleanup timer ?
       link->issue_cleanup_timer(orig);
     }
-    else
-    {
-      printf("cleanup canceled\n");
-    }
   }
 
+  // this is called in net threadpool
   static void handle_recvfrom(struct llarp_udp_io * udp, const struct sockaddr *saddr, const void * buf, ssize_t sz)
   {
     server * link = static_cast<server *>(udp->user);

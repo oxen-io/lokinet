@@ -8,7 +8,7 @@ extern "C" {
 
 typedef uint8_t llarp_proto_version_t;
 typedef uint64_t llarp_time_t;
-typedef uint32_t llarp_seconds_t;
+typedef uint64_t llarp_seconds_t;
 
 #ifdef __cplusplus
 }

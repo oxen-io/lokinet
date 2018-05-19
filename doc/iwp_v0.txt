@@ -138,6 +138,10 @@ P = D[4:4+H.s]
 
 message types:
 
+ALIV = 0x00 
+
+keepalive message
+
 XMIT = 0x01
 
 begin link layer message transmission

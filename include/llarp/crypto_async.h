@@ -65,7 +65,7 @@ void iwp_call_async_keygen(struct llarp_async_iwp * iwp, struct iwp_async_keygen
 
 struct iwp_async_intro;
   
-typedef void (*iwp_intro_gen_hook)(struct iwp_async_intro *);
+typedef void (*iwp_intro_hook)(struct iwp_async_intro *);
   
 struct iwp_async_intro
 {
@@ -82,7 +82,7 @@ struct iwp_async_intro
   /** resulting shared key */
   uint8_t * sharedkey;
   /** callback */
-  iwp_intro_gen_hook hook;
+  iwp_intro_hook hook;
 };
 
 
@@ -91,7 +91,7 @@ void iwp_call_async_gen_intro(struct llarp_async_iwp * iwp, struct iwp_async_int
   
 struct iwp_async_introack;
   
-typedef void (*iwp_introack_gen_hook)(struct iwp_async_introack *);
+typedef void (*iwp_introack_hook)(struct iwp_async_introack *);
   
 struct iwp_async_introack
 {
@@ -100,12 +100,14 @@ struct iwp_async_introack
   size_t sz;
   /** nonce paramter */
   uint8_t * nonce;
+  /** token paramter */
+  uint8_t * token;
   /** remote public key */
   uint8_t * remote_pubkey;
   /** local private key */
   uint8_t * secretkey;
   /** callback */
-  iwp_introack_gen_hook hook;
+  iwp_introack_hook hook;
 };
 
 
@@ -113,14 +115,47 @@ void iwp_call_async_gen_introack(struct llarp_async_iwp * iwp, struct iwp_async_
   
 void iwp_call_async_verify_introack(struct llarp_async_iwp * iwp, struct iwp_async_introack * introack);
 
-struct iwp_async_token
+
+struct iwp_async_session_start;
+  
+typedef void (*iwp_session_start_hook)(struct iwp_async_session_start *);
+  
+
+struct iwp_async_session_start
 {
   void * user;
   uint8_t * buf;
   size_t sz;
   uint8_t * nonce;
-  uint8_t * sharedkey;
+  uint8_t * token;
+  uint8_t * sessionkey;
+  iwp_session_start_hook hook;
 };
+
+void iwp_call_async_gen_session_start(struct llarp_async_iwp * iwp, struct iwp_async_session_start * start);
+
+void iwp_call_async_verify_session_start(struct llarp_async_iwp * iwp, struct iwp_async_session_start * start);
+
+struct iwp_async_frame;
+
+typedef void (*iwp_async_frame_hook)(struct iwp_async_frame * );
+  
+struct iwp_async_frame
+{
+  void * user;
+  bool success;
+  uint8_t * sessionkey;
+  size_t sz;
+  iwp_async_frame_hook hook;
+  uint8_t buf[1500];
+};
+
+void iwp_call_async_frame_decrypt(struct llarp_async_iwp * iwp, struct iwp_async_frame * frame);
+
+  
+void iwp_call_async_frame_encrypt(struct llarp_async_iwp * iwp, struct iwp_async_frame * frame);
+
+
   
 struct llarp_async_cipher;
 struct llarp_cipher_result;
