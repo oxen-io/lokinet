@@ -6,7 +6,7 @@
 namespace llarp {
 
 template <typename Config, typename Section>
-static Section find_section(Config &c, const std::string &name,
+static const Section & find_section(Config &c, const std::string &name,
                             const Section &fallback) {
   if (c.sections.find(name) == c.sections.end()) return fallback;
   return c.sections[name].values;
@@ -20,9 +20,9 @@ bool Config::Load(const char *fname) {
     auto &top = parser.top();
     router = find_section(top, "router", section_t{});
     network = find_section(top, "network", section_t{});
+    connect = find_section(top, "iwp-connect", section_t{});
     netdb = find_section(top, "netdb", section_t{});
     iwp_links = find_section(top, "iwp-links", section_t{});
-    dtls_links = find_section(top, "dtls-links", section_t{});
     return true;
   }
   return false;
@@ -53,7 +53,7 @@ void llarp_config_iter(struct llarp_config *conf,
   std::map<std::string, llarp::Config::section_t &> sections = {
       {"router", conf->impl.router},
       {"network", conf->impl.network},
-      {"dtls-links", conf->impl.dtls_links},
+      {"iwp-connect", conf->impl.connect},
       {"iwp-links", conf->impl.iwp_links},
       {"netdb", conf->impl.netdb}};
   for (const auto &section : sections)

@@ -3,22 +3,78 @@
 #include <signal.h>
 #include <string.h>
 
-struct llarp_main {
+
+static void progress() {
+  printf(".");
+  fflush(stdout);
+}
+
+struct llarp_main
+{
   struct llarp_alloc mem;
-  struct llarp_router *router;
-  struct llarp_threadpool *worker;
-  struct llarp_threadpool *thread;
-  struct llarp_logic *logic;
-  struct llarp_config *config;
-  struct llarp_nodedb *nodedb;
-  struct llarp_ev_loop *mainloop;
+  struct llarp_router *router = nullptr;
+  struct llarp_threadpool *worker = nullptr;
+  struct llarp_threadpool *thread = nullptr;
+  struct llarp_logic *logic = nullptr;
+  struct llarp_config *config = nullptr; 
+  struct llarp_nodedb *nodedb = nullptr;
+  struct llarp_ev_loop *mainloop = nullptr;
   char nodedb_dir[256];
   int exitcode;
+
+  int shutdown()
+  {
+    printf("Shutting down ");
+    
+    progress();
+    if(mainloop)
+      llarp_ev_loop_stop(mainloop);
+    
+    progress();
+    if(worker)
+      llarp_threadpool_stop(worker);
+  
+    progress();
+  
+    if(worker)
+      llarp_threadpool_join(worker);
+    
+    progress();
+    if (logic)
+      llarp_logic_stop(logic);
+
+    progress();
+    
+    if(router)
+      llarp_stop_router(router);
+  
+    progress();
+    llarp_free_router(&router);
+  
+    progress();
+    llarp_free_config(&config);
+  
+    progress();
+    llarp_ev_loop_free(&mainloop);
+  
+    progress();
+    llarp_free_threadpool(&worker);
+  
+    progress();
+  
+    llarp_free_logic(&logic);
+    progress();
+  
+    printf("\n");
+    fflush(stdout);
+    return exitcode;
+  }
+  
 };
 
 void iter_main_config(struct llarp_config_iterator *itr, const char *section,
                       const char *key, const char *val) {
-  struct llarp_main *m = (struct llarp_main *)itr->user;
+  llarp_main *m = static_cast<llarp_main *>(itr->user);
 
   if (!strcmp(section, "router")) {
     if (!strcmp(key, "threads")) {
@@ -35,77 +91,13 @@ void iter_main_config(struct llarp_config_iterator *itr, const char *section,
   }
 }
 
-static void progress() {
-  printf(".");
-  fflush(stdout);
-}
 
-int shutdown_llarp(struct llarp_main *m) {
-  printf("Shutting down ");
-  
-  progress();
-  if(m->mainloop)
-    llarp_ev_loop_stop(m->mainloop);
-
-  progress();
-  if(m->worker)
-    llarp_threadpool_stop(m->worker);
-  
-  progress();
-  
-  if(m->worker)
-    llarp_threadpool_join(m->worker);
-  
-  progress();
-  if (m->logic)
-  {
-    llarp_logic_stop(m->logic);
-  }
-
-  progress();
-  if(m->router)
-    llarp_stop_router(m->router);
-  
-  progress();
-  llarp_free_router(&m->router);
-  
-  progress();
-  llarp_free_config(&m->config);
-  
-  progress();
-  llarp_ev_loop_free(&m->mainloop);
-  
-  progress();
-  llarp_free_threadpool(&m->worker);
-  
-  progress();
-  
-  llarp_free_logic(&m->logic);
-  progress();
-  
-  printf("\n");
-  fflush(stdout);
-  return m->exitcode;
-}
-
-struct llarp_main llarp = {
-  {0,0,0},
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  0,
-  {0},
-  1
-};
+llarp_main llarp;
 
 void run_net(void * user)
 {
-  llarp_ev_loop_run(user);
+  llarp_ev_loop_run(static_cast<llarp_ev_loop*>(user));
 }
-
 
 void handle_signal(int sig)
 {
@@ -162,8 +154,7 @@ int main(int argc, char *argv[]) {
         printf("failed to initialize nodedb at %s\n", dir);
     } else
       printf("no nodedb defined\n");
-    
-    return shutdown_llarp(&llarp);
+    return llarp.shutdown();
   } else
     printf("Failed to load config %s\n", conffname);
 

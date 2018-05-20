@@ -13,7 +13,7 @@ struct Config {
   section_t network;
   section_t netdb;
   section_t iwp_links;
-  section_t dtls_links;
+  section_t connect;
 
   bool Load(const char *fname);
 };

@@ -8,7 +8,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 find_package(sodium)
 
 set(EXE llarpd)
-set(EXE_SRC daemon/main.c)
+set(EXE_SRC daemon/main.cpp)
 
 set(LIBS ${sodium_LIBRARY_RELEASE} pthread stdc++fs jemalloc mbedx509 mbedcrypto mbedtls)
 

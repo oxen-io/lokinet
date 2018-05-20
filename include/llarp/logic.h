@@ -1,5 +1,6 @@
 #ifndef LLARP_LOGIC_H
 #define LLARP_LOGIC_H
+#include <llarp/mem.h>
 #include <llarp/threadpool.h>
 #include <llarp/timer.h>
 #ifdef __cplusplus
@@ -8,7 +9,7 @@ extern "C" {
 
 struct llarp_logic;
 
-struct llarp_logic* llarp_init_logic();
+struct llarp_logic* llarp_init_logic(struct llarp_alloc * mem);
 
 void llarp_free_logic(struct llarp_logic** logic);
 
