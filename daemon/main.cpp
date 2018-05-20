@@ -81,7 +81,7 @@ void iter_main_config(struct llarp_config_iterator *itr, const char *section,
     if (!strcmp(key, "threads")) {
       int workers = atoi(val);
       if (workers > 0 && m->worker == nullptr) {
-        m->worker = llarp_init_threadpool(workers, "llarp-crypto-worker");
+        m->worker = llarp_init_threadpool(workers, "llarp-worker");
       }
     }
   }
@@ -130,7 +130,7 @@ int main(int argc, char *argv[]) {
       char *dir = llarp->nodedb_dir;
       if (llarp_nodedb_ensure_dir(dir)) {
         // ensure worker thread pool
-        if (!llarp->worker) llarp->worker = llarp_init_threadpool(2, "llarp-crypto-worker");
+        if (!llarp->worker) llarp->worker = llarp_init_threadpool(2, "llarp-worker");
         // ensure netio thread
         llarp->thread = llarp_init_threadpool(1, "llarp-netio");
         llarp->logic = llarp_init_logic(mem);
@@ -144,7 +144,6 @@ int main(int argc, char *argv[]) {
           // run mainloop
           llarp_threadpool_queue_job(llarp->thread, {llarp->mainloop, &run_net});
           printf("running\n");
-          pthread_setname_np(pthread_self(), "llarp-ticker");
           llarp->exitcode = 0;
           llarp_logic_mainloop(llarp->logic);
         } else
