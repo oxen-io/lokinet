@@ -18,7 +18,7 @@ set(LIB_SRC
   llarp/address_info.c
   llarp/buffer.cpp
   llarp/config.cpp
-  llarp/crypto_async.c
+  llarp/crypto_async.cpp
   llarp/crypto_libsodium.cpp
   llarp/ev.cpp
   llarp/exit_info.c
