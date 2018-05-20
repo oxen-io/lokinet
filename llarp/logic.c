@@ -11,7 +11,7 @@ struct llarp_logic* llarp_init_logic(struct llarp_alloc * mem) {
   struct llarp_logic* logic = mem->alloc(mem, sizeof(struct llarp_logic), 8);
   if (logic) {
     logic->mem = mem;
-    logic->thread = llarp_init_threadpool(1);
+    logic->thread = llarp_init_threadpool(1, "llarp-logic");
     logic->timer = llarp_init_timer();
   }
   return logic;
@@ -34,7 +34,6 @@ void llarp_logic_stop(struct llarp_logic* logic) {
 }
 
 void llarp_logic_mainloop(struct llarp_logic* logic) {
-  llarp_threadpool_start(logic->thread);
   llarp_timer_run(logic->timer, logic->thread);
 }
 

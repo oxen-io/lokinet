@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include <signal.h>
 #include <string.h>
-
+#include <pthread.h>
 
 static void progress() {
   printf(".");
@@ -80,8 +80,8 @@ void iter_main_config(struct llarp_config_iterator *itr, const char *section,
   if (!strcmp(section, "router")) {
     if (!strcmp(key, "threads")) {
       int workers = atoi(val);
-      if (workers > 0 && m->worker == NULL) {
-        m->worker = llarp_init_threadpool(workers);
+      if (workers > 0 && m->worker == nullptr) {
+        m->worker = llarp_init_threadpool(workers, "llarp-crypto-worker");
       }
     }
   }
@@ -93,7 +93,7 @@ void iter_main_config(struct llarp_config_iterator *itr, const char *section,
 }
 
 
-llarp_main llarp;
+llarp_main * llarp = nullptr;
 
 void run_net(void * user)
 {
@@ -102,59 +102,60 @@ void run_net(void * user)
 
 void handle_signal(int sig)
 {
-  printf("interrupted\n");
-  llarp_ev_loop_stop(llarp.mainloop);
-  llarp_logic_stop(llarp.logic);
-  printf("closing...");
+  printf("\ninterrupted\n");
+  llarp_ev_loop_stop(llarp->mainloop);
+  llarp_logic_stop(llarp->logic);
 }
 
 int main(int argc, char *argv[]) {
   const char *conffname = "daemon.ini";
   if (argc > 1) conffname = argv[1];
-  llarp_mem_jemalloc(&llarp.mem);
-  auto mem = &llarp.mem;
-  llarp_new_config(&llarp.config);
-  llarp_ev_loop_alloc(&llarp.mainloop);
-  llarp_crypto_libsodium_init(&llarp.crypto);
+  llarp = new llarp_main;
+  llarp_mem_jemalloc(&llarp->mem);
+  auto mem = &llarp->mem;
+  llarp_new_config(&llarp->config);
+  llarp_ev_loop_alloc(&llarp->mainloop);
+  llarp_crypto_libsodium_init(&llarp->crypto);
   printf("%s loading config file %s\n", LLARP_VERSION, conffname);
-  if (!llarp_load_config(llarp.config, conffname)) {
+  if (!llarp_load_config(llarp->config, conffname)) {
     llarp_config_iterator iter;
-    iter.user = &llarp;
+    iter.user = llarp;
     iter.visit = iter_main_config;
-    llarp_config_iter(llarp.config, &iter);
+    llarp_config_iter(llarp->config, &iter);
 
-    llarp.nodedb = llarp_nodedb_new(mem, &llarp.crypto);
+    llarp->nodedb = llarp_nodedb_new(mem, &llarp->crypto);
     
-    if (llarp.nodedb_dir[0]) {
-      llarp.nodedb_dir[sizeof(llarp.nodedb_dir) - 1] = 0;
-      char *dir = llarp.nodedb_dir;
+    if (llarp->nodedb_dir[0]) {
+      llarp->nodedb_dir[sizeof(llarp->nodedb_dir) - 1] = 0;
+      char *dir = llarp->nodedb_dir;
       if (llarp_nodedb_ensure_dir(dir)) {
         // ensure worker thread pool
-        if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
-        // ensure logic thread
-        llarp.thread = llarp_init_threadpool(1);
-        llarp.logic = llarp_init_logic(mem);
+        if (!llarp->worker) llarp->worker = llarp_init_threadpool(2, "llarp-crypto-worker");
+        // ensure netio thread
+        llarp->thread = llarp_init_threadpool(1, "llarp-netio");
+        llarp->logic = llarp_init_logic(mem);
         
-        llarp.router = llarp_init_router(mem, llarp.worker, llarp.mainloop, llarp.logic);
+        llarp->router = llarp_init_router(mem, llarp->worker, llarp->mainloop, llarp->logic);
 
-        if (llarp_configure_router(llarp.router, llarp.config)) {
+        if (llarp_configure_router(llarp->router, llarp->config)) {
           signal(SIGINT, handle_signal);
           printf("starting router\n");
-          llarp_run_router(llarp.router);
+          llarp_run_router(llarp->router);
           // run mainloop
-          llarp_threadpool_queue_job(llarp.thread, {llarp.mainloop, &run_net});
+          llarp_threadpool_queue_job(llarp->thread, {llarp->mainloop, &run_net});
           printf("running\n");
-          llarp.exitcode = 0;
-          llarp_logic_mainloop(llarp.logic);
+          pthread_setname_np(pthread_self(), "llarp-ticker");
+          llarp->exitcode = 0;
+          llarp_logic_mainloop(llarp->logic);
         } else
           printf("Failed to configure router\n");
       } else
         printf("failed to initialize nodedb at %s\n", dir);
     } else
       printf("no nodedb defined\n");
-    return llarp.shutdown();
+    return llarp->shutdown();
   } else
     printf("Failed to load config %s\n", conffname);
-
+  delete llarp;
   return 1;
 }

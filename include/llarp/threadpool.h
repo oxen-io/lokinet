@@ -6,7 +6,7 @@ extern "C" {
 
 struct llarp_threadpool;
 
-struct llarp_threadpool *llarp_init_threadpool(int workers);
+struct llarp_threadpool *llarp_init_threadpool(int workers, const char * name);
 void llarp_free_threadpool(struct llarp_threadpool **tp);
 
 typedef void (*llarp_thread_work_func)(void *);
@@ -22,7 +22,6 @@ struct llarp_thread_job {
 void llarp_threadpool_queue_job(struct llarp_threadpool *tp,
                                 struct llarp_thread_job j);
 
-void llarp_threadpool_start(struct llarp_threadpool *tp);
 void llarp_threadpool_stop(struct llarp_threadpool *tp);
 void llarp_threadpool_join(struct llarp_threadpool *tp);
 

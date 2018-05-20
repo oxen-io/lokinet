@@ -1,11 +1,16 @@
 #include "threadpool.hpp"
+#include <pthread.h>
+#include <cstring>
 
 namespace llarp {
 namespace thread {
-Pool::Pool(size_t workers) {
+  Pool::Pool(size_t workers, const char * name) {
   stop = false;
   while (workers--) {
-    threads.emplace_back([this] {
+    threads.emplace_back([this, name] {
+      if(name)
+        pthread_setname_np(pthread_self(), name);
+          
       llarp_thread_job job;
       for (;;) {
         {
@@ -55,14 +60,14 @@ void Pool::QueueJob(const llarp_thread_job &job) {
 struct llarp_threadpool {
   llarp::thread::Pool impl;
 
-  llarp_threadpool(int workers) : impl(workers) {}
+  llarp_threadpool(int workers, const char * name) : impl(workers, name) {}
 };
 
 extern "C" {
 
-struct llarp_threadpool *llarp_init_threadpool(int workers) {
+struct llarp_threadpool *llarp_init_threadpool(int workers, const char * name) {
   if (workers > 0)
-    return new llarp_threadpool(workers);
+    return new llarp_threadpool(workers, name);
   else
     return nullptr;
 }

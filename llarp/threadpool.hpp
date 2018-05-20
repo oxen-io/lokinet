@@ -14,7 +14,7 @@ namespace thread {
 typedef std::mutex mtx_t;
 typedef std::unique_lock<mtx_t> lock_t;
 struct Pool {
-  Pool(size_t sz);
+  Pool(size_t sz, const char * name);
   void QueueJob(const llarp_thread_job& job);
   void Join();
   void Stop();
