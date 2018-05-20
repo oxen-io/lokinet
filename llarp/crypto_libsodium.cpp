@@ -77,7 +77,7 @@ static bool hmac(uint8_t *result, llarp_buffer_t buff,
                             secret, HMACSECSIZE) != -1;
 }
 
-static bool sign(uint8_t *result, llarp_seckey_t secret,
+static bool sign(uint8_t *result, const uint8_t * secret,
                  llarp_buffer_t buff) {
   const uint8_t *base = (const uint8_t *)buff.base;
   return crypto_sign_detached(result, nullptr, base, buff.sz, secret) != -1;

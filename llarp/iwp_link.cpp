@@ -569,6 +569,11 @@ struct server
     printf("cleanup dead\n");
   }
 
+  uint8_t * pubkey()
+  {
+    return llarp_seckey_topublic(seckey);
+  }
+  
   bool ensure_privkey()
   {
     std::error_code ec;
@@ -662,9 +667,20 @@ server * link_alloc(struct llarp_alloc * mem, struct llarp_msg_muxer * muxer, co
 
 const char * link_name()
 {
-  return "iwp";
+  return "IWP";
 }
 
+
+void link_get_addr(struct llarp_link * l, struct llarp_ai * addr)
+{
+  server * link = static_cast<server *>(l->impl);
+  llarp::Addr linkaddr(link->udp.addr);
+  addr->rank = 1;
+  strncpy(addr->dialect, link_name(), sizeof(addr->dialect));
+  memcpy(addr->enc_key, link->pubkey(), 32);
+  memcpy(addr->ip.s6_addr, linkaddr.addr.s6_addr, 16);
+  addr->port = linkaddr.port;
+}
 
 bool link_configure(struct llarp_link * l, struct llarp_ev_loop * netloop, const char * ifname, int af, uint16_t port)
 {
@@ -768,6 +784,7 @@ void iwp_link_init(struct llarp_link * link, struct llarp_iwp_args args, struct 
 {
   link->impl = iwp::link_alloc(args.mem, muxer, args.keyfile, args.crypto, args.logic, args.cryptoworker);
   link->name = iwp::link_name;
+  link->get_our_address = iwp::link_get_addr;
   link->configure = iwp::link_configure;
   link->start_link = iwp::link_start;
   link->stop_link = iwp::link_stop;

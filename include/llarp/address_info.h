@@ -27,11 +27,13 @@ struct llarp_ai_list;
 struct llarp_ai_list *llarp_ai_list_new(struct llarp_alloc * mem);
 void llarp_ai_list_free(struct llarp_ai_list **l);
 
+void llarp_ai_copy(struct llarp_ai * dst, struct llarp_ai * src);
+  
 bool llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff);
 bool llarp_ai_list_bdecode(struct llarp_ai_list *l, llarp_buffer_t *buff);
 
 struct llarp_ai llarp_ai_list_popfront(struct llarp_ai_list *l);
-void llarp_ai_list_pushback(struct llarp_ai_list *l, struct llarp_ai *ai);
+void llarp_ai_list_pushback(struct llarp_ai_list *l, struct llarp_ai ai);
 size_t llarp_ai_list_size(struct llarp_ai_list *l);
 struct llarp_ai *llarp_ai_list_index(struct llarp_ai_list *l, ssize_t idx);
 

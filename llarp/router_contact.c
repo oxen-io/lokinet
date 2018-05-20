@@ -77,9 +77,32 @@ bool llarp_rc_bdecode(struct llarp_alloc * mem, struct llarp_rc * rc, llarp_buff
   return bdecode_read_dict(buff, &r);
 }
 
-bool llarp_rc_verify_sig(struct llarp_rc * rc)
+
+bool llarp_rc_verify_sig(struct llarp_crypto * crypto, struct llarp_rc * rc)
 {
-  return false;
+  bool result = false;
+  llarp_sig_t sig;
+  char tmp[MAX_RC_SIZE];
+  llarp_buffer_t buf;
+  buf.base = tmp;
+  buf.cur = tmp;
+  buf.sz = sizeof(tmp);
+  // copy sig
+  memcpy(sig, rc->signature, sizeof(llarp_sig_t));
+  // zero sig 
+  memset(rc->signature, 0, sizeof(llarp_sig_t));
+
+  // bencode
+  if(llarp_rc_bencode(rc, &buf))
+  {
+    buf.sz = buf.cur - buf.base;
+    buf.cur = buf.base;
+    // verify
+    result = crypto->verify(rc->pubkey, buf, sig);
+    // restore sig
+    memcpy(rc->signature, sig, sizeof(llarp_sig_t));
+  }
+  return result;
 }
 
 bool llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff) {

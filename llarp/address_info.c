@@ -87,6 +87,30 @@ void llarp_ai_list_free(struct llarp_ai_list **l) {
   }
 }
 
+void llarp_ai_copy(struct llarp_ai * dst, struct llarp_ai * src)
+{
+  memcpy(dst, src, sizeof(struct llarp_ai));
+}
+
+void llarp_ai_list_pushback(struct llarp_ai_list * l, struct llarp_ai a)
+{
+  struct llarp_ai_list_node *cur = l->root;
+  if(cur)
+  {
+    // go to the end of the list
+    while(cur->next)
+      cur = cur->next;
+    
+    cur->next = l->mem->alloc(l->mem, sizeof(struct llarp_ai_list_node), 16);
+    cur = cur->next;
+  }
+  else
+    cur = l->mem->alloc(l->mem, sizeof(struct llarp_ai_list_node), 16);
+  
+  llarp_ai_copy(&cur->data, &a);
+  cur->next = 0;
+}
+
 void llarp_ai_list_iterate(struct llarp_ai_list *l,
                            struct llarp_ai_list_iter *itr) {
   struct llarp_ai_list_node *cur = l->root;

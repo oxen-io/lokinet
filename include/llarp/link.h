@@ -64,6 +64,7 @@ struct llarp_link_ev_listener {
 struct llarp_link {
   void *impl;
   const char *(*name)(void);
+  void (*get_our_address)(struct llarp_link *, struct llarp_ai *);
   /*
   int (*register_listener)(struct llarp_link *, struct llarp_link_ev_listener);
   void (*deregister_listener)(struct llarp_link *, int);

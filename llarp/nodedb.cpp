@@ -9,9 +9,10 @@ static const char skiplist_subdirs[] = "0123456789ABCDEF";
 
 struct llarp_nodedb {
 
-  llarp_nodedb(struct llarp_alloc * m) : mem(m) {}
+  llarp_nodedb(llarp_alloc * m, llarp_crypto * c) : mem(m), crypto(c) {}
   
   llarp_alloc * mem;
+  llarp_crypto * crypto;
   std::map<llarp::pubkey, llarp_rc *> entries;
 
   void Clear()
@@ -51,8 +52,9 @@ struct llarp_nodedb {
     }
     fclose(f);
     llarp_rc *rc = llarp::Alloc<llarp_rc>(mem);
+    llarp::Zero(rc, sizeof(llarp_rc));
     if (llarp_rc_bdecode(mem, rc, &buff)) {
-      if (llarp_rc_verify_sig(rc)) {
+      if (llarp_rc_verify_sig(crypto, rc)) {
         llarp::pubkey pk;
         memcpy(pk.data(), rc->pubkey, pk.size());
         entries[pk] = rc;
@@ -75,10 +77,10 @@ struct llarp_nodedb {
 
 extern "C" {
 
-struct llarp_nodedb *llarp_nodedb_new(struct llarp_alloc * mem) {
+struct llarp_nodedb *llarp_nodedb_new(struct llarp_alloc * mem, struct llarp_crypto * crypto) {
   void * ptr = mem->alloc(mem, sizeof(llarp_nodedb), llarp::alignment<llarp_nodedb>());
   if(!ptr) return nullptr;
-  return new (ptr) llarp_nodedb(mem);
+  return new (ptr) llarp_nodedb(mem, crypto);
 }
 
 void llarp_nodedb_free(struct llarp_nodedb **n) {

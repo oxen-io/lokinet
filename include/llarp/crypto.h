@@ -51,7 +51,7 @@ typedef bool (*llarp_shorthash_func)(llarp_shorthash_t *, llarp_buffer_t);
 typedef bool (*llarp_hmac_func)(uint8_t *, llarp_buffer_t,
                                 const uint8_t *);
 
-typedef bool (*llarp_sign_func)(uint8_t *, llarp_seckey_t, llarp_buffer_t);
+typedef bool (*llarp_sign_func)(uint8_t *, const uint8_t *, llarp_buffer_t);
 
 typedef bool (*llarp_verify_func)(const uint8_t *, llarp_buffer_t, const uint8_t *);
 

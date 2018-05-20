@@ -17,10 +17,10 @@ bool llarp_buffer_writef(llarp_buffer_t* buff, const char* fmt, ...) {
   size_t sz = llarp_buffer_size_left(buff);
   va_list args;
   va_start(args, fmt);
-  written = snprintf(buff->cur, sz, fmt, args);
+  written = vsnprintf(buff->cur, sz, fmt, args);
   va_end(args);
   if (written == -1) return false;
-  buff->sz += written;
+  buff->cur += written;
   return true;
 }
 

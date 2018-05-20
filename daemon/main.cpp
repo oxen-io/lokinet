@@ -12,6 +12,7 @@ static void progress() {
 struct llarp_main
 {
   struct llarp_alloc mem;
+  struct llarp_crypto crypto;
   struct llarp_router *router = nullptr;
   struct llarp_threadpool *worker = nullptr;
   struct llarp_threadpool *thread = nullptr;
@@ -111,17 +112,18 @@ int main(int argc, char *argv[]) {
   const char *conffname = "daemon.ini";
   if (argc > 1) conffname = argv[1];
   llarp_mem_jemalloc(&llarp.mem);
-  struct llarp_alloc * mem = &llarp.mem;
+  auto mem = &llarp.mem;
   llarp_new_config(&llarp.config);
   llarp_ev_loop_alloc(&llarp.mainloop);
+  llarp_crypto_libsodium_init(&llarp.crypto);
   printf("%s loading config file %s\n", LLARP_VERSION, conffname);
   if (!llarp_load_config(llarp.config, conffname)) {
-    struct llarp_config_iterator iter;
+    llarp_config_iterator iter;
     iter.user = &llarp;
     iter.visit = iter_main_config;
     llarp_config_iter(llarp.config, &iter);
 
-    llarp.nodedb = llarp_nodedb_new(mem);
+    llarp.nodedb = llarp_nodedb_new(mem, &llarp.crypto);
     
     if (llarp.nodedb_dir[0]) {
       llarp.nodedb_dir[sizeof(llarp.nodedb_dir) - 1] = 0;
@@ -129,7 +131,7 @@ int main(int argc, char *argv[]) {
       if (llarp_nodedb_ensure_dir(dir)) {
         // ensure worker thread pool
         if (!llarp.worker) llarp.worker = llarp_init_threadpool(2);
-        // ensure thread
+        // ensure logic thread
         llarp.thread = llarp_init_threadpool(1);
         llarp.logic = llarp_init_logic(mem);
         
@@ -140,11 +142,7 @@ int main(int argc, char *argv[]) {
           printf("starting router\n");
           llarp_run_router(llarp.router);
           // run mainloop
-          struct llarp_thread_job job = {
-            .user = llarp.mainloop,
-            .work = &run_net
-          };
-          llarp_threadpool_queue_job(llarp.thread, job);
+          llarp_threadpool_queue_job(llarp.thread, {llarp.mainloop, &run_net});
           printf("running\n");
           llarp.exitcode = 0;
           llarp_logic_mainloop(llarp.logic);
