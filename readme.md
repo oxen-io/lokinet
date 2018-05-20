@@ -2,9 +2,7 @@
 
 Low Latency Anon Routing Protocol
 
-**THIS IS A TOY DO NOT USE UNTIL IT'S NOT A TOY**
-
-This project is "secret" don't tell anyone about it yet. :x
+We'll be ready when we're ready.
 
 [what/why](doc/high-level.txt)
 [how](doc/proto_v0.txt)
