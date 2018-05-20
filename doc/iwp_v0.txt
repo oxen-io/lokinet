@@ -41,7 +41,7 @@ handshake:
 
 0) intro
 
-64 bytes signature, s
+32 bytes hmac, h
 32 bytes nounce, n
 32 bytes encrypted alice's transport public encryption key e
 variadic bytes padding, w0
@@ -53,7 +53,7 @@ w0 = "[insert variable length random padding here]"
 n = RAND(32)
 e = SE(a.k, HS(b.k + n), n[0:24])
 S = TKE(a.k, b.k, n)
-s = S(a.k.privkey, n + e + w0 )
+h = MDS(n + e + w0, S)
 
 Bob recieves ( s + n + e + w0 ) 
 
@@ -61,16 +61,16 @@ Bob recieves ( s + n + e + w0 )
 
 sent in reply to an intro, bob sends an intro ack encrypted to Alice using
 
-64 bytes signature, s
+32 bytes hmac, h
 32 bytes nounce, n
 32 bytes ciphertext, x
 variadic bytes padding, w1
 
 w1 = "[insert variable length random padding here]"
 token = RAND(32)
-k = TKE(a.k, b.k, n)
+S = TKE(a.k, b.k, n)
 x = SE(k, token, n[0:24])
-s = S(b.k.privkey, n + x + w1)
+h = MDS(n + x + w1, S)
 
 Bob transmits ( s + n + x + w1 ), r is ignored and discarded
 Alice recieves ( s + n + x + w1 ) and verifies the signature silently

@@ -20,6 +20,9 @@ void llarp_mem_dmalloc(struct llarp_alloc * mem);
   
 void llarp_mem_slab(struct llarp_alloc * mem, uint32_t * buf, size_t sz);
 
+
+/** constant time memcmp */
+bool llarp_eq(const void * a, const void * b, size_t sz);
   
 #ifdef __cplusplus
 }

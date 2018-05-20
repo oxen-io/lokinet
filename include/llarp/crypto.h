@@ -17,7 +17,7 @@ extern "C" {
 #define HMACSECSIZE 32
 #define SIGSIZE 64
 #define TUNNOUNCESIZE 32
-#define HMACSIZE 64
+#define HMACSIZE 32
 
 typedef uint8_t llarp_pubkey_t[PUBKEYSIZE];
 typedef uint8_t llarp_seckey_t[SECKEYSIZE];
@@ -48,12 +48,12 @@ typedef bool (*llarp_hash_func)(llarp_hash_t *, llarp_buffer_t);
 
 typedef bool (*llarp_shorthash_func)(llarp_shorthash_t *, llarp_buffer_t);
 
-typedef bool (*llarp_hmac_func)(llarp_hmac_t *, llarp_buffer_t,
-                                llarp_hmacsec_t);
+typedef bool (*llarp_hmac_func)(uint8_t *, llarp_buffer_t,
+                                const uint8_t *);
 
 typedef bool (*llarp_sign_func)(uint8_t *, llarp_seckey_t, llarp_buffer_t);
 
-typedef bool (*llarp_verify_func)(llarp_pubkey_t, llarp_buffer_t, llarp_sig_t);
+typedef bool (*llarp_verify_func)(const uint8_t *, llarp_buffer_t, const uint8_t *);
 
 struct llarp_crypto {
   llarp_sym_cipher_func xchacha20;

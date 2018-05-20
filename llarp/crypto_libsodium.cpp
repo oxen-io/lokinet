@@ -70,10 +70,10 @@ static bool shorthash(llarp_shorthash_t *result, llarp_buffer_t buff) {
   return crypto_generichash(*result, SHORTHASHSIZE, base, buff.sz, nullptr, 0) != -1;
 }
 
-static bool hmac(llarp_hash_t *result, llarp_buffer_t buff,
-                 llarp_seckey_t secret) {
+static bool hmac(uint8_t *result, llarp_buffer_t buff,
+                 const uint8_t * secret) {
   const uint8_t *base = (const uint8_t *)buff.base;
-  return crypto_generichash(*result, sizeof(llarp_hash_t), base, buff.sz,
+  return crypto_generichash(result, sizeof(llarp_hash_t), base, buff.sz,
                             secret, HMACSECSIZE) != -1;
 }
 
@@ -83,7 +83,7 @@ static bool sign(uint8_t *result, llarp_seckey_t secret,
   return crypto_sign_detached(result, nullptr, base, buff.sz, secret) != -1;
 }
 
-static bool verify(llarp_pubkey_t pub, llarp_buffer_t buff, llarp_sig_t sig) {
+static bool verify(const uint8_t * pub, llarp_buffer_t buff, const uint8_t * sig) {
   const uint8_t *base = (const uint8_t *)buff.base;
   return crypto_sign_verify_detached(sig, base, buff.sz, pub) != -1;
 }

@@ -79,8 +79,6 @@ struct iwp_async_intro
   uint8_t * remote_pubkey;
   /** local private key */
   uint8_t * secretkey;
-  /** resulting shared key */
-  uint8_t * sharedkey;
   /** callback */
   iwp_intro_hook hook;
 };
@@ -95,6 +93,7 @@ typedef void (*iwp_introack_hook)(struct iwp_async_introack *);
   
 struct iwp_async_introack
 {
+  struct llarp_async_iwp * iwp;
   void * user;
   uint8_t * buf;
   size_t sz;
