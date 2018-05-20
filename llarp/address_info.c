@@ -105,7 +105,10 @@ void llarp_ai_list_pushback(struct llarp_ai_list * l, struct llarp_ai a)
     cur = cur->next;
   }
   else
-    cur = l->mem->alloc(l->mem, sizeof(struct llarp_ai_list_node), 16);
+  {
+    l->root = l->mem->alloc(l->mem, sizeof(struct llarp_ai_list_node), 16);
+    cur = l->root;
+  }
   
   llarp_ai_copy(&cur->data, &a);
   cur->next = 0;
