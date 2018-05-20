@@ -98,6 +98,8 @@ struct iwp_async_session_start
   uint8_t * nonce;
   uint8_t * token;
   uint8_t * sessionkey;
+  uint8_t * secretkey;
+  uint8_t * remote_pubkey;
   iwp_session_start_hook hook;
 };
 

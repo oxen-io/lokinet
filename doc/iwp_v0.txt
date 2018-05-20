@@ -78,18 +78,19 @@ dropping if it does not match.
 
 2) session start
 
-Alice uses the token from bob to start the wire session
+Alice uses the token from the previous message to start the wire session
 
 32 bytes hmac, h
 32 bytes nounce, n
 32 bytes ciphertext, x
 variadic byttes padding, w2
 
-T = HS(token + n)
 w2 = "[insert variable length random padding here]"
+e_K = TKE(a.k, b.k, n)
+x = SE(e_K, token, n[0:24])
+h = MDS(n + x + w2, e_K)
+T = HS(token + n)
 K = TKE(a.k, b.k, T)
-x = SE(K, token, n[0:24])
-h = MDS(n + x + w2, K)
 
 Alice transmits ( h + n + x + w2 )
 Bob recieves ( h + n + x + w2) and verifies that h == MDS(n + x, k) silently
