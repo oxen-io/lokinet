@@ -5,12 +5,12 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -fPIC")
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
-find_package(sodium)
+#find_package(sodium)
 
 set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
-set(LIBS ${sodium_LIBRARY_RELEASE} pthread stdc++fs jemalloc mbedx509 mbedcrypto mbedtls)
+set(LIBS sodium pthread stdc++fs jemalloc mbedx509 mbedcrypto mbedtls)
 
 set(LIB llarp)
 
@@ -50,3 +50,6 @@ include_directories(${sodium_INCLUDE_DIR})
 add_library(${LIB} STATIC ${LIB_SRC})
 add_executable(${EXE} ${EXE_SRC})
 target_link_libraries(${EXE} ${LIB} ${LIBS})
+
+add_executable(rcutil daemon/rcutil.cpp)
+target_link_libraries(rcutil ${LIB} ${LIBS})
