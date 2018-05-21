@@ -19,7 +19,7 @@ bool llarp_xi_bencode(struct llarp_xi *xi, llarp_buffer_t *buf);
 
 struct llarp_xi_list;
 
-struct llarp_xi_list *llarp_xi_list_new();
+struct llarp_xi_list *llarp_xi_list_new(struct llarp_alloc * mem);
 void llarp_xi_list_free(struct llarp_xi_list **l);
 
 bool llarp_xi_list_bdecode(struct llarp_xi_list *l, llarp_buffer_t *buf);
