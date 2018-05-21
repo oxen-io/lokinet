@@ -35,6 +35,27 @@ void llarp_router::AddLink(struct llarp_link *link) {
 
 bool llarp_router::Ready() { return ready; }
 
+bool llarp_findOrCreateIdentity(llarp_crypto *crypto, fs::path path,
+                                llarp_seckey_t *identity) {
+  std::error_code ec;
+  if(!fs::exists(path, ec))
+  {
+    crypto->keygen(*identity);
+    std::ofstream f(path, std::ios::binary);
+    if(f.is_open())
+    {
+      f.write((char*)identity, sizeof(identity));
+    }
+  }
+  std::ifstream f(path, std::ios::binary);
+  if(f.is_open())
+  {
+    f.read((char*)identity, sizeof(identity));
+    return true;
+  }
+  return false;
+}
+
 bool llarp_router::EnsureIdentity()
 {
   std::error_code ec;
@@ -56,6 +77,24 @@ bool llarp_router::EnsureIdentity()
   return false;
 }
 
+bool llarp_rc_write(struct llarp_rc *rc, fs::path our_rc_file) {
+  uint8_t tmp[MAX_RC_SIZE];
+  llarp_buffer_t buf;
+  buf.base = (char*)tmp;
+  buf.cur = (char*) tmp;
+  buf.sz = sizeof(tmp);
+  if(llarp_rc_bencode(rc, &buf))
+  {
+    std::ofstream f(our_rc_file, std::ios::binary);
+    if(f.is_open())
+    {
+      f.write(buf.base, buf.cur - buf.base);
+      return true;
+    }
+  }
+  return false;
+}
+
 bool llarp_router::SaveRC()
 {
   printf("verify rc signature... ");
@@ -65,7 +104,7 @@ bool llarp_router::SaveRC()
     return false;
   }
   printf(" OK.\n");
-  
+
   uint8_t tmp[MAX_RC_SIZE];
   llarp_buffer_t buf;
   buf.base = (char*)tmp;
@@ -120,6 +159,52 @@ bool llarp_configure_router(struct llarp_router *router,
   return router->EnsureIdentity();
 }
 
+void llarp_rc_clear(struct llarp_rc *rc) {
+  // zero out router contact
+  llarp::Zero(rc, sizeof(llarp_rc));
+}
+
+bool llarp_rc_addr_list_iter(struct llarp_ai_list_iter *iter,
+                             struct llarp_ai *ai) {
+  struct llarp_rc *rc = (llarp_rc *)iter->user;
+  llarp_ai_list_pushback(rc->addrs, *ai);
+  return true;
+}
+
+void llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
+                        struct llarp_ai_list *addr) {
+  rc->addrs = llarp_ai_list_new(mem);
+  struct llarp_ai_list_iter ai_itr;
+  ai_itr.user = rc;
+  ai_itr.visit = &llarp_rc_addr_list_iter;
+  llarp_ai_list_iterate(addr, &ai_itr);
+}
+
+void llarp_rc_set_pubkey(struct llarp_rc *rc, uint8_t *pubkey) {
+  // set public key
+  memcpy(rc->pubkey, pubkey, 32);
+}
+
+void llarp_rc_sign(llarp_crypto *crypto, llarp_seckey_t *identity,
+                   struct llarp_rc *rc) {
+  // sign router contact
+  llarp_buffer_t signbuf;
+  char buf[MAX_RC_SIZE];
+  signbuf.base = buf;
+  signbuf.cur = buf;
+  signbuf.sz = sizeof(buf);
+  // encode
+  if(llarp_rc_bencode(rc, &signbuf))
+  {
+    printf("router.cpp::llarp_rc_sign - encoded [%s]\n", buf);
+    // sign
+    signbuf.sz = signbuf.cur - signbuf.base;
+    printf("router.cpp::llarp_rc_sign - sized [%d/%d]\n", signbuf.sz, MAX_RC_SIZE);
+    crypto->sign(rc->signature, *identity, signbuf);
+    printf("router.cpp::llarp_rc_sign - signed\n");
+  }
+}
+
 void llarp_run_router(struct llarp_router *router) {
 
   // zero out router contact
@@ -133,7 +218,7 @@ void llarp_run_router(struct llarp_router *router) {
   });
   // set public key
   memcpy(router->rc.pubkey, router->pubkey(), 32);
-  
+
   // sign router contact
   llarp_buffer_t signbuf;
   char buf[MAX_RC_SIZE];
@@ -199,9 +284,9 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   struct llarp_link *link = nullptr;
   if (StrEq(section, "iwp-links"))
   {
-    link = llarp::Alloc<llarp_link>(self->mem);  
+    link = llarp::Alloc<llarp_link>(self->mem);
     llarp::Zero(link, sizeof(*link));
-    
+
     llarp_iwp_args args = {
       .mem = self->mem,
       .crypto = &self->crypto,
@@ -231,7 +316,7 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   }
   else
     return;
-  
+
   if(llarp_link_initialized(link))
   {
     printf("link initialized...");
@@ -245,5 +330,5 @@ void router_iter_config(llarp_config_iterator *iter, const char *section,
   self->mem->free(self->mem, link);
   printf("failed to configure link for %s\n", key);
 }
-  
+
 }  // namespace llarp
