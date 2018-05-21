@@ -6,6 +6,7 @@
 #include <llarp/proto.h>
 #include <llarp/router.h>
 #include "str.hpp"
+#include "buffer.hpp"
 
 #include <fstream>
 
@@ -67,10 +68,8 @@ bool llarp_router::SaveRC()
   printf(" OK.\n");
   
   uint8_t tmp[MAX_RC_SIZE];
-  llarp_buffer_t buf;
-  buf.base = (char*)tmp;
-  buf.cur = (char*) tmp;
-  buf.sz = sizeof(tmp);
+  auto buf = llarp::StackBuffer<decltype(tmp)>(tmp);
+  
   if(llarp_rc_bencode(&rc, &buf))
   {
     std::ofstream f(our_rc_file, std::ios::binary);
@@ -135,11 +134,8 @@ void llarp_run_router(struct llarp_router *router) {
   memcpy(router->rc.pubkey, router->pubkey(), 32);
   
   // sign router contact
-  llarp_buffer_t signbuf;
   char buf[MAX_RC_SIZE];
-  signbuf.base = buf;
-  signbuf.cur = buf;
-  signbuf.sz = sizeof(buf);
+  auto signbuf = llarp::StackBuffer<decltype(buf)>(buf);
   // encode
   if(llarp_rc_bencode(&router->rc, &signbuf))
   {
