@@ -41,10 +41,8 @@ static bool llarp_rc_decode_dict(struct dict_reader * r, llarp_buffer_t * key)
 
   if(llarp_buffer_eq(*key, "u"))
   {
-      uint64_t u;
-      if(!bdecode_read_integer(r->buffer, &u))
+      if(!bdecode_read_integer(r->buffer, &rc->last_updated))
           return false;
-      rc->last_updated = u;
       return true;
   }
 
