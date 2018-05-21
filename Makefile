@@ -15,4 +15,4 @@ compile: build.ninja
 	ninja
 
 format:
-	clang -i $(find daemon llarp include | grep -E '\.[h,c](pp)?$')
+	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
