@@ -84,6 +84,12 @@ namespace llarp
       memcpy(saddr.sa_data, other.sa_data, sizeof(saddr.sa_data));
     }
 
+    void CopyInto(sockaddr & other) const
+    {
+      memcpy(other.sa_data, saddr.sa_data, sizeof(saddr.sa_data));
+      other.sa_family = af;
+    }
+    
     operator const sockaddr * () const
     {
       return &saddr;

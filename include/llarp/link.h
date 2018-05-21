@@ -76,7 +76,9 @@ struct llarp_link {
   void (*try_establish)(struct llarp_link *, struct llarp_link_establish_job,
                         struct llarp_link_session_listener);
   
-  struct llarp_link_session * (*acquire_session_for_addr)(struct llarp_link *, const struct sockaddr *);
+  /** 
+      struct llarp_link_session * (*acquire_session_for_addr)(struct llarp_link *, const struct sockaddr *);
+  */
   void (*mark_session_active)(struct llarp_link *, struct llarp_link_session *);
   void (*free_impl)(struct llarp_link *);
 };
@@ -90,9 +92,6 @@ struct llarp_link_session {
   /** send an entire message, splits up into smaller pieces and does encryption
    */
   bool (*sendto)(struct llarp_link_session *, llarp_buffer_t);
-  /** receive raw data from link layer */
-  void (*recv)(struct llarp_link_session *, const void *, size_t);
-  
   /** return true if this session is timed out */
   bool (*timeout)(struct llarp_link_session *);
   /** explicit close session */

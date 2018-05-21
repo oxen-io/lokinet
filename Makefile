@@ -2,7 +2,8 @@
 all: remove-build clean compile
 
 remove-build:
-	rm -f build.ninja
+	rm -f build.ninja rules.ninja cmake_install.cmake CMakeCache.txt
+	rm -rf CMakeFiles
 
 clean: build.ninja
 	ninja clean
@@ -12,3 +13,6 @@ build.ninja:
 
 compile: build.ninja
 	ninja
+
+format:
+	clang -i $(find daemon llarp include | grep -E '\.[h,c](pp)?$')

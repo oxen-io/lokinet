@@ -8,6 +8,7 @@
 #include <map>
 #include <vector>
 #include <bitset>
+#include <mutex>
 #include <list>
 
 #include "crypto.hpp"
@@ -18,6 +19,9 @@
 namespace iwp
 {
 
+  // session activity timeout is 10s
+  constexpr llarp_time_t SESSION_TIMEOUT = 10000;
+  
 enum header_flag
 {
   eSessionInvalidated = (1 << 0),
@@ -294,7 +298,7 @@ struct session
   frame_state frame;
 
   uint8_t token[32];
-  uint8_t workbuf[1024];
+  uint8_t workbuf[256];
 
   enum State
   {
@@ -350,33 +354,39 @@ struct session
     }
   }
 
-  // this is done in net threadpool
-  static void handle_recv(llarp_link_session * s, const void * buf, size_t sz)
+  // this is called from net thread
+  void recv(const void * buf, size_t sz)
   {
-    session * self = static_cast<session *>(s->impl);
-    switch (self->state)
+    switch (state)
     {
     case eIntroSent:
       // got intro ack
-      self->on_intro_ack(buf, sz);
+      on_intro_ack(buf, sz);
       return;
     case eEstablished:
       // session is started
-      self->decrypt_frame(buf, sz);
+      decrypt_frame(buf, sz);
     default:
       // invalid state?
       return;
     }
   }
 
+
+  bool timedout(llarp_time_t now, llarp_time_t timeout=SESSION_TIMEOUT)
+  {
+    return now - frame.lastEvent >= timeout;
+  }
+  
   static bool is_timedout(llarp_link_session * s)
   {
-    return false;
+    auto now = llarp_time_now_ms();
+    return static_cast<session*>(s->impl)->timedout(now);
   }
 
   static void close(llarp_link_session * s)
   {
-    
+    // TODO: implement
   }
 
   static void handle_verify_introack(iwp_async_introack * introack)
@@ -456,7 +466,7 @@ struct session
 
   iwp_async_frame * alloc_frame(const void * buf, size_t sz)
   {
-    iwp_async_frame * frame = (iwp_async_frame*) mem->alloc(mem, sizeof(iwp_async_frame), 1024);
+    iwp_async_frame * frame = (iwp_async_frame*) mem->alloc(mem, sizeof(iwp_async_frame), 2048);
     memcpy(frame->buf, buf, sz);
     frame->sz = sz;
     frame->user = this;
@@ -529,6 +539,10 @@ struct session
 
 struct server
 {
+
+  typedef std::mutex mtx_t;
+  typedef std::lock_guard<mtx_t> lock_t;
+  
   llarp_alloc * mem;
   llarp_logic * logic;
   llarp_crypto * crypto;
@@ -538,7 +552,11 @@ struct server
   llarp_udp_io udp;
   char keyfile[255];
   uint32_t timeout_job_id;
-  std::map<llarp::Addr, llarp_link_session> sessions;
+
+  typedef std::map<llarp::Addr, llarp_link_session> LinkMap_t;
+  
+  LinkMap_t m_sessions;
+  mtx_t m_sessions_Mutex;
 
   llarp_seckey_t seckey;
 
@@ -550,23 +568,74 @@ struct server
     iwp = llarp_async_iwp_new(mem, crypto, logic, w);
   }
 
-  session * create_session(llarp::Addr & src)
+  session * create_session(const llarp::Addr & src)
   {
-    session * impl = new session(mem, muxer, &udp, iwp, crypto, logic, src);
-    llarp_link_session s;
-    s.impl = impl;
-    s.sendto = session::sendto;
-    s.recv = session::handle_recv;
-    s.timeout = session::is_timedout;
-    s.close = session::close;
-    sessions[src] = s;
-    return impl;
+    return new session(mem, muxer, &udp, iwp, crypto, logic, src);
   }
+
+  void put_session(const llarp::Addr & src, session * impl)
+  {
+    llarp_link_session s;
+    llarp::Zero(&s, sizeof(s));
+    src.CopyInto(s.addr);
+    s.impl = impl;
+    s.sendto = &session::sendto;
+    s.timeout = &session::is_timedout;
+    s.close = &session::close;
+    {
+      lock_t lock(m_sessions_Mutex);
+      m_sessions[src] = s;
+    }
+  }
+  
+  session * ensure_session(const llarp::Addr & src)
+  {
+    session * s = nullptr;
+    bool put = false;
+    // TODO: will this be a bottleneck since it's called in a hot path?
+    {
+      lock_t lock(m_sessions_Mutex);
+      auto itr = m_sessions.find(src);
+      if (itr == m_sessions.end())
+      {
+        // new inbound session
+        s = create_session(src);
+        put = true;
+      }
+      else
+        s = static_cast<session*>(itr->second.impl);
+    }
+    if(put)
+      put_session(src, s);
+    return s;
+  }
+
   
   void cleanup_dead()
   {
-    // todo: implement
-    printf("cleanup dead\n");
+    auto now = llarp_time_now_ms();
+    std::vector<llarp::Addr> remove;
+    printf("cleanup dead at %ld\n", now);
+    {
+      lock_t lock(m_sessions_Mutex);
+      for (auto & itr : m_sessions)
+      {
+        session * s = static_cast<session *>(itr.second.impl);
+        if(s->timedout(now))
+          remove.push_back(itr.first);
+      }
+      
+      for (const auto & addr : remove)
+      {
+        auto itr = m_sessions.find(addr);
+        if(itr != m_sessions.end())
+        {
+          session * s = static_cast<session *>(itr->second.impl);
+          m_sessions.erase(addr);
+          delete s;
+        }
+      }
+    }
   }
 
   uint8_t * pubkey()
@@ -620,14 +689,8 @@ struct server
   {
     server * link = static_cast<server *>(udp->user);
     llarp::Addr src = *saddr;
-    auto itr = link->sessions.find(src);
-    if (itr == link->sessions.end())
-    {
-      // new inbound session
-      link->create_session(src);
-    }
-    auto & session = link->sessions[src];
-    session.recv(&session, buf, sz);
+    session * s = link->ensure_session(src);
+    s->recv(buf, sz);
   }
 
   void cancel_timer()
@@ -738,7 +801,9 @@ void link_iter_sessions(struct llarp_link * l, struct llarp_link_session_iter * 
 {
   server * link = static_cast<server*>(l->impl);
   iter->link = l;
-  for (auto & item : link->sessions)
+  // TODO: race condition with cleanup timer
+  server::LinkMap_t copy = link->m_sessions;
+  for (auto & item : copy)
     if(!iter->visit(iter, &item.second)) return;
 }
 
@@ -754,19 +819,7 @@ void link_try_establish(struct llarp_link * l, struct llarp_link_establish_job j
 
 void link_mark_session_active(struct llarp_link * link, struct llarp_link_session * s)
 {
-}
-
-struct llarp_link_session * link_session_for_addr(struct llarp_link * l, const struct sockaddr * saddr)
-{
-  if(saddr)
-  {
-    server * link = static_cast<server*>(l->impl);
-    for(auto & session : link->sessions)
-    {
-      if(session.second.addr == *saddr) return &link->sessions[session.first];
-    }
-  }
-  return nullptr;
+  // TODO: implement
 }
 
 void link_free(struct llarp_link *l)
@@ -790,7 +843,6 @@ void iwp_link_init(struct llarp_link * link, struct llarp_iwp_args args, struct 
   link->stop_link = iwp::link_stop;
   link->iter_sessions = iwp::link_iter_sessions;
   link->try_establish = iwp::link_try_establish;
-  link->acquire_session_for_addr = iwp::link_session_for_addr;
   link->mark_session_active = iwp::link_mark_session_active;
   link->free_impl = iwp::link_free;
 }
