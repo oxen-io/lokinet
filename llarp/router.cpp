@@ -354,10 +354,7 @@ llarp_rc_sign(llarp_crypto *crypto, const byte_t *seckey, struct llarp_rc *rc)
   {
     // sign
     signbuf.sz = signbuf.cur - signbuf.base;
-    printf("router.cpp::llarp_rc_sign - sized [%zu/%zu]\n", signbuf.sz,
-           MAX_RC_SIZE);
     crypto->sign(rc->signature, seckey, signbuf);
-    printf("router.cpp::llarp_rc_sign - signed\n");
   }
 }
 
