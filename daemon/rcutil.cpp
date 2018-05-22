@@ -142,8 +142,8 @@ main(int argc, char *argv[])
         "file\n");
     return 0;
   }
-  bool genMode;
-  bool updMode;
+  bool genMode = false;
+  bool updMode = false;
   int c;
   char *rcfname;
   while(1)
@@ -203,6 +203,7 @@ main(int argc, char *argv[])
     tmp.last_updated = llarp_time_now_ms();
     // load longterm identity
     llarp_crypto crypt;
+    llarp_crypto_libsodium_init(&crypt);
     fs::path ident_keyfile = "identity.key";
     llarp_seckey_t identity;
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
@@ -210,7 +211,7 @@ main(int argc, char *argv[])
     uint8_t *pubkey = llarp_seckey_topublic(identity);
     llarp_rc_set_pubkey(&tmp, pubkey);
     // this causes a segfault
-    // llarp_rc_sign(&crypt, &identity, &tmp);
+    llarp_rc_sign(&crypt, identity, &tmp);
     // set filename
     fs::path our_rc_file = rcfname;
     // write file
@@ -220,7 +221,7 @@ main(int argc, char *argv[])
   }
   if(updMode)
   {
-    printf("Loading [%s]\n", rcfname);
+    printf("rcutil.cpp - Loading [%s]\n", rcfname);
     fs::path our_rc_file = rcfname;
     std::error_code ec;
     if(!fs::exists(our_rc_file, ec))
@@ -250,6 +251,7 @@ main(int argc, char *argv[])
     tmp.last_updated = llarp_time_now_ms();
     // load longterm identity
     llarp_crypto crypt;
+    llarp_crypto_libsodium_init(&crypt);
     fs::path ident_keyfile = "identity.key";
     llarp_seckey_t identity;
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
