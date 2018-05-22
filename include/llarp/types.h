@@ -1,5 +1,5 @@
 #ifndef LLARP_TYPES_H
-#define LLARP_TYEPS_H
+#define LLARP_TYPES_H
 #include <stdint.h>
 
 #ifdef __cplusplus

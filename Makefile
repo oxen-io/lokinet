@@ -9,7 +9,7 @@ clean: build.ninja
 	ninja clean
 
 build.ninja:
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang
 
 compile: build.ninja
 	ninja

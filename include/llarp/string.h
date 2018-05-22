@@ -5,9 +5,12 @@
 extern "C" {
 #endif
 
-size_t INLINE strnlen(const char* str, size_t sz) {
+size_t INLINE
+strnlen(const char* str, size_t sz)
+{
   size_t slen = 0;
-  while (sz-- && str[slen]) slen++;
+  while(sz-- && str[slen])
+    slen++;
   return slen;
 }
 

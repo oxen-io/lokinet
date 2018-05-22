@@ -3,6 +3,17 @@
 #include <llarp/bencode.h>
 #include <llarp/mem.h>
 #include <llarp/string.h>
+#include <vector>
+
+struct llarp_ai_list
+{
+  llarp_alloc *mem;
+  std::vector< llarp_ai > list;
+
+  llarp_ai_list(llarp_alloc *m) : mem(m)
+  {
+  }
+};
 
 static bool
 llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
@@ -11,7 +22,7 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
   char tmp[128] = {0};
 
   llarp_buffer_t strbuf;
-  struct llarp_ai *ai = r->user;
+  llarp_ai *ai = static_cast< llarp_ai * >(r->user);
 
   // done
   if(!key)
@@ -97,6 +108,29 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
   return false;
 }
 
+static bool
+llarp_ai_list_bdecode_item(struct list_reader *r, bool more)
+{
+  if(!more)
+    return true;
+  llarp_ai_list *l = static_cast< llarp_ai_list * >(r->user);
+  llarp_ai ai;
+
+  if(!llarp_ai_bdecode(&ai, r->buffer))
+    return false;
+
+  llarp_ai_list_pushback(l, &ai);
+  return true;
+}
+
+static bool
+llarp_ai_list_iter_bencode(struct llarp_ai_list_iter *iter, struct llarp_ai *ai)
+{
+  return llarp_ai_bencode(ai, static_cast< llarp_buffer_t * >(iter->user));
+}
+
+extern "C" {
+
 bool
 llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t *buff)
 {
@@ -148,12 +182,6 @@ llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff)
   return bencode_end(buff);
 }
 
-static bool
-llarp_ai_list_iter_bencode(struct llarp_ai_list_iter *iter, struct llarp_ai *ai)
-{
-  return llarp_ai_bencode(ai, iter->user);
-}
-
 bool
 llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 {
@@ -165,45 +193,25 @@ llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff)
   return bencode_end(buff);
 }
 
-struct llarp_ai_list_node
-{
-  struct llarp_ai data;
-  struct llarp_ai_list_node *next;
-};
-
-struct llarp_ai_list
-{
-  struct llarp_alloc *mem;
-  struct llarp_ai_list_node *root;
-};
-
 struct llarp_ai_list *
 llarp_ai_list_new(struct llarp_alloc *mem)
 {
-  struct llarp_ai_list *l = mem->alloc(mem, sizeof(struct llarp_ai_list), 8);
-  if(l)
+  void *ptr = mem->alloc(mem, sizeof(struct llarp_ai_list), 8);
+  if(ptr)
   {
-    l->mem  = mem;
-    l->root = NULL;
+    return new(ptr) llarp_ai_list(mem);
   }
-  return l;
+  return nullptr;
 }
 
 void
-llarp_ai_list_free(struct llarp_ai_list **l)
+llarp_ai_list_free(struct llarp_ai_list *l)
 {
-  if(*l)
+  if(l)
   {
-    struct llarp_alloc *mem        = (*l)->mem;
-    struct llarp_ai_list_node *cur = (*l)->root;
-    while(cur)
-    {
-      struct llarp_ai_list_node *tmp = cur->next;
-      mem->free(mem, cur);
-      cur = tmp;
-    }
-    mem->free(mem, *l);
-    *l = NULL;
+    struct llarp_alloc *mem = l->mem;
+    l->~llarp_ai_list();
+    mem->free(mem, l);
   }
 }
 
@@ -216,37 +224,18 @@ llarp_ai_copy(struct llarp_ai *dst, struct llarp_ai *src)
 void
 llarp_ai_list_pushback(struct llarp_ai_list *l, struct llarp_ai *ai)
 {
-  struct llarp_ai_list_node *cur = l->root;
-  if(cur)
-  {
-    // go to the end of the list
-    while(cur->next)
-      cur = cur->next;
-
-    cur->next = l->mem->alloc(l->mem, sizeof(struct llarp_ai_list_node), 16);
-    cur       = cur->next;
-  }
-  else
-  {
-    l->root = l->mem->alloc(l->mem, sizeof(struct llarp_ai_list_node), 16);
-    cur     = l->root;
-  }
-
-  llarp_ai_copy(&cur->data, ai);
-  cur->next = 0;
+  llarp_ai a;
+  llarp_ai_copy(&a, ai);
+  l->list.push_back(a);
 }
 
 void
 llarp_ai_list_iterate(struct llarp_ai_list *l, struct llarp_ai_list_iter *itr)
 {
-  struct llarp_ai_list_node *cur = l->root;
-  itr->list                      = l;
-  while(cur)
-  {
-    if(!itr->visit(itr, &cur->data))
+  itr->list = l;
+  for(auto &ai : l->list)
+    if(!itr->visit(itr, &ai))
       return;
-    cur = cur->next;
-  };
 }
 
 bool
@@ -256,38 +245,12 @@ llarp_ai_list_index(struct llarp_ai_list *l, ssize_t idx, struct llarp_ai *dst)
   if(idx < 0)
     return false;
 
-  struct llarp_ai_list_node *cur = l->root;
-
-  if(!cur)
-    return false;
-
-  while(idx && cur)
+  if(l->list.size() > idx)
   {
-    cur = cur->next;
-    --idx;
-  }
-
-  if(cur)
-  {
-    llarp_ai_copy(dst, &cur->data);
+    llarp_ai_copy(dst, &l->list[idx]);
     return true;
   }
   return false;
-}
-
-static bool
-llarp_ai_list_bdecode_item(struct list_reader *r, bool more)
-{
-  if(!more)
-    return true;
-  struct llarp_ai_list *l = r->user;
-  struct llarp_ai ai;
-
-  if(!llarp_ai_bdecode(&ai, r->buffer))
-    return false;
-
-  llarp_ai_list_pushback(l, &ai);
-  return true;
 }
 
 bool
@@ -295,4 +258,5 @@ llarp_ai_list_bdecode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 {
   struct list_reader r = {.user = l, .on_item = &llarp_ai_list_bdecode_item};
   return bdecode_read_list(buff, &r);
+}
 }

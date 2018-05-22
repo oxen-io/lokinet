@@ -3,8 +3,10 @@
 #include <llarp/config.h>
 #include <llarp/ev.h>
 #include <llarp/ibmq.h>
+#include <llarp/link.h>
 #include <llarp/logic.h>
 #include <llarp/obmd.h>
+#include <llarp/router_contact.h>
 #include <llarp/threadpool.h>
 
 #ifdef __cplusplus
@@ -13,20 +15,42 @@ extern "C" {
 
 struct llarp_router;
 
-struct llarp_router *llarp_init_router(struct llarp_alloc * mem, struct llarp_threadpool *worker, struct llarp_ev_loop * netloop, struct llarp_logic *logic);
-void llarp_free_router(struct llarp_router **router);
+struct llarp_router *
+llarp_init_router(struct llarp_alloc *mem, struct llarp_threadpool *worker,
+                  struct llarp_ev_loop *netloop, struct llarp_logic *logic);
 
-bool llarp_configure_router(struct llarp_router *router,
-                            struct llarp_config *conf);
+void
+llarp_free_router(struct llarp_router **router);
 
-void llarp_run_router(struct llarp_router *router);
-void llarp_stop_router(struct llarp_router *router);
+bool
+llarp_configure_router(struct llarp_router *router, struct llarp_config *conf);
+
+void
+llarp_run_router(struct llarp_router *router);
+void
+llarp_stop_router(struct llarp_router *router);
+
+/** return false if we already have a session pending or made */
+bool
+llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote);
 
 /** get router's inbound link level frame queue */
-struct llarp_link_queue *llarp_router_link_queue(struct llarp_router *router);
+struct llarp_link_queue *
+llarp_router_link_queue(struct llarp_router *router);
 /** get router's outbound link level frame dispatcher */
-struct llarp_link_dispatcher *llarp_router_link_dispatcher(
-    struct llarp_router *router);
+struct llarp_link_dispatcher *
+llarp_router_link_dispatcher(struct llarp_router *router);
+
+struct llarp_router_link_iter
+{
+  void *user;
+  bool (*visit)(struct llarp_router_link_iter *, struct llarp_router *,
+                struct llarp_link *);
+};
+
+void
+llarp_router_iterate_links(struct llarp_router *router,
+                           struct llarp_router_link_iter iter);
 
 #ifdef __cplusplus
 }

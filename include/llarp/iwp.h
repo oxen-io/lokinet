@@ -9,16 +9,18 @@
 extern "C" {
 #endif
 
-struct llarp_iwp_args {
-  struct llarp_alloc * mem;
+struct llarp_iwp_args
+{
+  struct llarp_alloc* mem;
   struct llarp_crypto* crypto;
-  struct llarp_logic * logic;
-  struct llarp_threadpool * cryptoworker;
-  const char * keyfile;
+  struct llarp_logic* logic;
+  struct llarp_threadpool* cryptoworker;
+  const char* keyfile;
 };
 
-void iwp_link_init(struct llarp_link* link, struct llarp_iwp_args args,
-                   struct llarp_msg_muxer* muxer);
+void
+iwp_link_init(struct llarp_link* link, struct llarp_iwp_args args,
+              struct llarp_msg_muxer* muxer);
 
 #ifdef __cplusplus
 }

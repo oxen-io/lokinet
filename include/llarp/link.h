@@ -1,5 +1,6 @@
 #ifndef LLARP_LINK_H_
 #define LLARP_LINK_H_
+#include <llarp/address_info.h>
 #include <llarp/crypto.h>
 #include <llarp/ev.h>
 #include <llarp/logic.h>
@@ -25,43 +26,43 @@ struct llarp_link;
  */
 struct llarp_link_session;
 
-struct llarp_link_session_listener {
+/** outbound session establish job */
+struct llarp_link_establish_job
+{
   void *user;
-  /** set by try_establish */
-  struct llarp_link *link;
-  /** set by try_establish */
-  struct llarp_ai *ai;
-  /** callback to handle result */
-  void (*result)(struct llarp_link_session_listener *,
-                 struct llarp_link_session *);
-};
-
-/** information for establishing an outbound session */
-struct llarp_link_establish_job {
-  struct llarp_ai *ai;
+  void (*result)(struct llarp_link_establish_job *);
+  struct llarp_ai ai;
   uint64_t timeout;
+  /** set on success by try_establish */
+  struct llarp_link *link;
+  /** set on success by try_establish */
+  struct llarp_link_session *session;
 };
 
-struct llarp_link_session_iter {
+struct llarp_link_session_iter
+{
   void *user;
   struct llarp_link *link;
   bool (*visit)(struct llarp_link_session_iter *, struct llarp_link_session *);
 };
 
-struct llarp_link_ev_listener {
+struct llarp_link_ev_listener
+{
   void *user;
-  void (*established)(struct llarp_link_ev_listener *, struct llarp_link_session *,
-                      bool);
+  void (*established)(struct llarp_link_ev_listener *,
+                      struct llarp_link_session *, bool);
   void (*timeout)(struct llarp_link_ev_listener *, struct llarp_link_session *,
                   bool);
-  void (*tx)(struct llarp_link_ev_listener *, struct llarp_link_session *, size_t);
-  void (*rx)(struct llarp_link_ev_listener *, struct llarp_link_session *, size_t);
+  void (*tx)(struct llarp_link_ev_listener *, struct llarp_link_session *,
+             size_t);
+  void (*rx)(struct llarp_link_ev_listener *, struct llarp_link_session *,
+             size_t);
   void (*error)(struct llarp_link_ev_listener *, struct llarp_link_session *,
                 const char *);
 };
 
-  
-struct llarp_link {
+struct llarp_link
+{
   void *impl;
   const char *(*name)(void);
   void (*get_our_address)(struct llarp_link *, struct llarp_ai *);
@@ -69,24 +70,27 @@ struct llarp_link {
   int (*register_listener)(struct llarp_link *, struct llarp_link_ev_listener);
   void (*deregister_listener)(struct llarp_link *, int);
   */
-  bool (*configure)(struct llarp_link *, struct llarp_ev_loop *, const char *, int, uint16_t);
+  bool (*configure)(struct llarp_link *, struct llarp_ev_loop *, const char *,
+                    int, uint16_t);
   bool (*start_link)(struct llarp_link *, struct llarp_logic *);
   bool (*stop_link)(struct llarp_link *);
-  void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter*);
-  void (*try_establish)(struct llarp_link *, struct llarp_link_establish_job,
-                        struct llarp_link_session_listener);
-  
-  /** 
-      struct llarp_link_session * (*acquire_session_for_addr)(struct llarp_link *, const struct sockaddr *);
+  void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter);
+  bool (*try_establish)(struct llarp_link *, struct llarp_link_establish_job *);
+
+  /**
+      struct llarp_link_session * (*acquire_session_for_addr)(struct llarp_link
+     *, const struct sockaddr *);
   */
   void (*mark_session_active)(struct llarp_link *, struct llarp_link_session *);
   void (*free_impl)(struct llarp_link *);
 };
 
 /** checks if all members are initialized */
-bool llarp_link_initialized(struct llarp_link * link);
-  
-struct llarp_link_session {
+bool
+llarp_link_initialized(struct llarp_link *link);
+
+struct llarp_link_session
+{
   struct sockaddr addr;
   void *impl;
   /** send an entire message, splits up into smaller pieces and does encryption
@@ -98,7 +102,8 @@ struct llarp_link_session {
   void (*close)(struct llarp_link_session *);
 };
 
-bool llarp_link_session_initialized(struct llarp_link_session * s);
+bool
+llarp_link_session_initialized(struct llarp_link_session *s);
 
 #ifdef __cplusplus
 }

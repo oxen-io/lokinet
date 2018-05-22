@@ -6,8 +6,10 @@ extern "C" {
 
 struct llarp_dht_context;
 
-struct llarp_dht_context* llarp_dht_context_new();
-void llarp_dht_context_free(struct llarp_dht_context* dht);
+struct llarp_dht_context*
+llarp_dht_context_new();
+void
+llarp_dht_context_free(struct llarp_dht_context* dht);
 
 #ifdef __cplusplus
 }

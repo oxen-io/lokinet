@@ -10,25 +10,34 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-typedef struct llarp_buffer_t {
-  char *base;
+
+typedef uint8_t byte_t;
+
+typedef struct llarp_buffer_t
+{
+  byte_t *base;
+  byte_t *cur;
   size_t sz;
-  char *cur;
 } llarp_buffer_t;
 
-size_t llarp_buffer_size_left(llarp_buffer_t *buff);
+size_t
+llarp_buffer_size_left(llarp_buffer_t *buff);
 
-bool llarp_buffer_write(llarp_buffer_t *buff, const void *data, size_t sz);
+bool
+llarp_buffer_write(llarp_buffer_t *buff, const void *data, size_t sz);
 
-bool llarp_buffer_writef(llarp_buffer_t *buff, const char *fmt, ...);
+bool
+llarp_buffer_writef(llarp_buffer_t *buff, const char *fmt, ...);
 
-bool llarp_buffer_readfile(llarp_buffer_t *buff, FILE *f,
-                           struct llarp_alloc *mem);
+bool
+llarp_buffer_readfile(llarp_buffer_t *buff, FILE *f, struct llarp_alloc *mem);
 
-size_t llarp_buffer_read_until(llarp_buffer_t * buff, char delim, char * result, size_t resultlen);
+size_t
+llarp_buffer_read_until(llarp_buffer_t *buff, char delim, byte_t *result,
+                        size_t resultlen);
 
-bool llarp_buffer_eq(llarp_buffer_t buff, const char * data);
-
+bool
+llarp_buffer_eq(llarp_buffer_t buff, const char *data);
 
 #ifdef __cplusplus
 }

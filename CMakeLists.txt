@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8.10)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -fPIC")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -fPIC")
+set(DEBUG_FLAGS "-O1 -g -fsanitize=address -fno-omit-frame-pointer")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -fPIC ${DEBUG_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -fPIC ${DEBUG_FLAGS}")
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -10,12 +12,12 @@ find_package(sodium)
 set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
-set(LIBS ${sodium_LIBRARY_RELEASE} pthread stdc++fs jemalloc mbedx509 mbedcrypto mbedtls)
+set(LIBS ${sodium_LIBRARY_RELEASE} pthread stdc++fs)
 
 set(LIB llarp)
 
 set(LIB_SRC
-  llarp/address_info.c
+  llarp/address_info.cpp
   llarp/buffer.cpp
   llarp/config.cpp
   llarp/crypto_async.cpp
@@ -30,7 +32,6 @@ set(LIB_SRC
   llarp/link_relay_up.cpp
   llarp/logic.c
   llarp/mem.cpp
-  llarp/mem_jemalloc.cpp
   llarp/mem_std.cpp
   llarp/muxer.cpp
   llarp/net.cpp

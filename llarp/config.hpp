@@ -5,22 +5,26 @@
 
 #include <llarp/config.h>
 
-namespace llarp {
-struct Config {
-  typedef std::list<std::pair<std::string, std::string> > section_t;
+namespace llarp
+{
+  struct Config
+  {
+    typedef std::list< std::pair< std::string, std::string > > section_t;
 
-  section_t router;
-  section_t network;
-  section_t netdb;
-  section_t iwp_links;
-  section_t connect;
+    section_t router;
+    section_t network;
+    section_t netdb;
+    section_t iwp_links;
+    section_t connect;
 
-  bool Load(const char *fname);
-};
+    bool
+    Load(const char *fname);
+  };
 }  // namespace llarp
 
 extern "C" {
-struct llarp_config {
+struct llarp_config
+{
   llarp::Config impl;
 };
 }
