@@ -403,7 +403,6 @@ namespace iwp
 
     ~session()
     {
-      printf("~session()\n");
     }
 
     static void
@@ -674,6 +673,11 @@ namespace iwp
       crypto = c;
       logic  = l;
       iwp    = llarp_async_iwp_new(mem, crypto, logic, w);
+    }
+
+    ~server()
+    {
+      llarp_async_iwp_free(iwp);
     }
 
     session *
@@ -963,6 +967,7 @@ namespace iwp
   link_free(struct llarp_link *l)
   {
     server *link = static_cast< server * >(l->impl);
+    llarp_ev_close_udp(&link->udp);
     delete link;
   }
 }

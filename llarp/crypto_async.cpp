@@ -233,7 +233,7 @@ struct llarp_async_iwp *
 llarp_async_iwp_new(struct llarp_alloc *mem, struct llarp_crypto *crypto,
                     struct llarp_logic *logic, struct llarp_threadpool *worker)
 {
-  struct llarp_async_iwp *iwp = llarp::Alloc< llarp_async_iwp >(mem);
+  llarp_async_iwp *iwp = new llarp_async_iwp;
   if(iwp)
   {
     iwp->mem    = mem;
@@ -242,5 +242,11 @@ llarp_async_iwp_new(struct llarp_alloc *mem, struct llarp_crypto *crypto,
     iwp->worker = worker;
   }
   return iwp;
+}
+
+void
+llarp_async_iwp_free(struct llarp_async_iwp *iwp)
+{
+  delete iwp;
 }
 }

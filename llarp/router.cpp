@@ -20,11 +20,13 @@ namespace llarp
 
 llarp_router::llarp_router(struct llarp_alloc *m) : ready(false), mem(m)
 {
+  llarp_rc_clear(&rc);
   llarp_msg_muxer_init(&muxer);
 }
 
 llarp_router::~llarp_router()
 {
+  llarp_rc_free(&rc);
 }
 
 void
@@ -80,7 +82,7 @@ llarp_router::try_connect(fs::path rcfile)
 bool
 llarp_router::EnsureIdentity()
 {
-  return llarp_findOrCreateIdentity(&crypto, ident_keyfile.c_str(), &identity);
+  return llarp_findOrCreateIdentity(&crypto, ident_keyfile.c_str(), identity);
 }
 
 void
@@ -135,12 +137,11 @@ void
 llarp_router::on_try_connect_result(llarp_link_establish_job *job)
 {
   printf("on_try_connect_result\n");
-  llarp_router *self = static_cast< llarp_router * >(job->user);
   if(job->session)
     printf("session made\n");
   else
     printf("session not made\n");
-  self->mem->free(self->mem, job);
+  delete job;
 }
 
 void
@@ -150,31 +151,22 @@ llarp_router::Run()
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
   rc.addrs = llarp_ai_list_new(mem);
-  llarp_ai addr;
   for(auto link : links)
   {
+    llarp_ai addr;
     link->get_our_address(link, &addr);
     llarp_ai_list_pushback(rc.addrs, &addr);
   };
   // set public key
-  memcpy(rc.pubkey, pubkey(), 32);
-  {
-    // sign router contact
-    byte_t rcbuf[MAX_RC_SIZE];
-    llarp_buffer_t signbuf;
-    llarp::StackBuffer< decltype(rcbuf) >(signbuf, rcbuf);
-    // encode
-    if(!llarp_rc_bencode(&rc, &signbuf))
-      return;
+  llarp_rc_set_pubkey(&rc, pubkey());
 
-    // sign
-    signbuf.sz = signbuf.cur - signbuf.base;
-    printf("sign %ld bytes\n", signbuf.sz);
-    crypto.sign(rc.signature, identity, signbuf);
-  }
+  llarp_rc_sign(&crypto, identity, &rc);
 
   if(!SaveRC())
+  {
+    printf("failed to save rc\n");
     return;
+  }
 
   printf("saved router contact\n");
   // start links
@@ -202,9 +194,7 @@ llarp_router::iter_try_connect(llarp_router_link_iter *iter,
   if(!link)
     return false;
 
-  auto mem = router->mem;
-
-  llarp_link_establish_job *job = llarp::Alloc< llarp_link_establish_job >(mem);
+  llarp_link_establish_job *job = new llarp_link_establish_job;
 
   if(!job)
     return false;
@@ -311,23 +301,23 @@ llarp_rc_set_pubkey(struct llarp_rc *rc, uint8_t *pubkey)
 
 bool
 llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
-                           llarp_seckey_t *identity)
+                           byte_t *secretkey)
 {
   fs::path path(fpath);
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
-    crypto->keygen(*identity);
+    crypto->keygen(secretkey);
     std::ofstream f(path, std::ios::binary);
     if(f.is_open())
     {
-      f.write((char *)*identity, sizeof(identity));
+      f.write((char *)secretkey, sizeof(llarp_seckey_t));
     }
   }
   std::ifstream f(path, std::ios::binary);
   if(f.is_open())
   {
-    f.read((char *)*identity, sizeof(identity));
+    f.read((char *)secretkey, sizeof(llarp_seckey_t));
     return true;
   }
   return false;
@@ -353,12 +343,12 @@ llarp_rc_write(struct llarp_rc *rc, const char *fpath)
 }
 
 void
-llarp_rc_sign(llarp_crypto *crypto, llarp_seckey_t *identity,
-              struct llarp_rc *rc)
+llarp_rc_sign(llarp_crypto *crypto, const byte_t *seckey, struct llarp_rc *rc)
 {
-  // sign router contact
   byte_t buf[MAX_RC_SIZE];
   auto signbuf = llarp::StackBuffer< decltype(buf) >(buf);
+  // zero out previous signature
+  llarp::Zero(rc->signature, sizeof(rc->signature));
   // encode
   if(llarp_rc_bencode(rc, &signbuf))
   {
@@ -366,7 +356,7 @@ llarp_rc_sign(llarp_crypto *crypto, llarp_seckey_t *identity,
     signbuf.sz = signbuf.cur - signbuf.base;
     printf("router.cpp::llarp_rc_sign - sized [%zu/%zu]\n", signbuf.sz,
            MAX_RC_SIZE);
-    crypto->sign(rc->signature, *identity, signbuf);
+    crypto->sign(rc->signature, seckey, signbuf);
     printf("router.cpp::llarp_rc_sign - signed\n");
   }
 }
@@ -426,8 +416,8 @@ namespace llarp
     struct llarp_link *link = nullptr;
     if(StrEq(section, "iwp-links"))
     {
-      link = llarp::Alloc< llarp_link >(self->mem);
-      llarp::Zero(link, sizeof(*link));
+      link = new llarp_link;
+      llarp::Zero(link, sizeof(llarp_link));
 
       llarp_iwp_args args = {
           .mem          = self->mem,
@@ -445,6 +435,7 @@ namespace llarp
           link->get_our_address(link, &ai);
           llarp::Addr addr = ai;
           printf("link %s bound to %s\n", key, addr.to_string().c_str());
+          self->AddLink(link);
           return;
         }
       }

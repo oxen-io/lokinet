@@ -196,12 +196,7 @@ llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 struct llarp_ai_list *
 llarp_ai_list_new(struct llarp_alloc *mem)
 {
-  void *ptr = mem->alloc(mem, sizeof(struct llarp_ai_list), 8);
-  if(ptr)
-  {
-    return new(ptr) llarp_ai_list(mem);
-  }
-  return nullptr;
+  return new llarp_ai_list(mem);
 }
 
 void
@@ -209,9 +204,8 @@ llarp_ai_list_free(struct llarp_ai_list *l)
 {
   if(l)
   {
-    struct llarp_alloc *mem = l->mem;
-    l->~llarp_ai_list();
-    mem->free(mem, l);
+    l->list.clear();
+    delete l;
   }
 }
 
@@ -224,9 +218,7 @@ llarp_ai_copy(struct llarp_ai *dst, struct llarp_ai *src)
 void
 llarp_ai_list_pushback(struct llarp_ai_list *l, struct llarp_ai *ai)
 {
-  llarp_ai a;
-  llarp_ai_copy(&a, ai);
-  l->list.push_back(a);
+  l->list.push_back(*ai);
 }
 
 void

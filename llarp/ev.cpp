@@ -45,7 +45,7 @@ llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp)
 }
 
 int
-llarp_ev_close_udp_close(struct llarp_udp_io *udp)
+llarp_ev_close_udp(struct llarp_udp_io *udp)
 {
   if(udp->parent->udp_close(udp))
     return 0;
