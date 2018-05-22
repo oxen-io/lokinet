@@ -23,7 +23,7 @@ struct llarp_rc_decoder
 static bool
 llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 {
-  int64_t v;
+  uint64_t v;
   llarp_buffer_t strbuf;
   struct llarp_rc_decoder *dec = r->user;
   struct llarp_alloc *mem      = dec->mem;
@@ -49,6 +49,13 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
     if(strbuf.sz != sizeof(llarp_pubkey_t))
       return false;
     memcpy(rc->pubkey, strbuf.base, sizeof(llarp_pubkey_t));
+    return true;
+  }
+
+  if(llarp_buffer_eq(*key, "u"))
+  {
+    if(!bdecode_read_integer(r->buffer, &rc->last_updated))
+      return false;
     return true;
   }
 
@@ -140,6 +147,12 @@ llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff)
   if(!bencode_write_bytestring(buff, "k", 1))
     return false;
   if(!bencode_write_bytestring(buff, rc->pubkey, sizeof(llarp_pubkey_t)))
+    return false;
+
+  /* write last updated */
+  if(!bencode_write_bytestring(buff, "u", 1))
+    return false;
+  if(!bencode_write_uint64(buff, rc->last_updated))
     return false;
 
   /* write version */

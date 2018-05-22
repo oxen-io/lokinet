@@ -18,7 +18,7 @@ struct llarp_ai_list
 static bool
 llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
 {
-  int64_t i;
+  uint64_t i;
   char tmp[128] = {0};
 
   llarp_buffer_t strbuf;

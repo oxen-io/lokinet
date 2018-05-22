@@ -15,6 +15,7 @@ struct llarp_rc
   llarp_pubkey_t pubkey;
   struct llarp_xi_list *exits;
   llarp_sig_t signature;
+  uint64_t last_updated;
 };
 
 bool

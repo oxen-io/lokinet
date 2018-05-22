@@ -123,7 +123,7 @@ llarp_xi_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 
   struct llarp_xi *xi = r->user;
   llarp_buffer_t strbuf;
-  int64_t v;
+  uint64_t v;
   char tmp[128] = {0};
 
   // address

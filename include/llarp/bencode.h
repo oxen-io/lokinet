@@ -73,7 +73,7 @@ bencode_write_version_entry(llarp_buffer_t* buff)
 }
 
 static bool INLINE
-bdecode_read_integer(struct llarp_buffer_t* buffer, int64_t* result)
+bdecode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
 {
   size_t len;
   if(*buffer->cur != 'i')
