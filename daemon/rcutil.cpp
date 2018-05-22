@@ -240,7 +240,7 @@ main(int argc, char *argv[])
     buf.cur  = buf.base;
     buf.sz   = sizeof(tmpc);
     f.read((char *)tmpc, sizeof(MAX_RC_SIZE));
-    printf("contents[%s]\n", tmpc);
+    //printf("contents[%s]\n", tmpc);
     if(!llarp_rc_bdecode(mem, &tmp, &buf))
     {
       printf("Can't decode\n");
@@ -256,6 +256,7 @@ main(int argc, char *argv[])
     // get identity public key
     uint8_t *pubkey = llarp_seckey_topublic(identity);
     llarp_rc_set_pubkey(&tmp, pubkey);
+    llarp_rc_sign(&crypt, identity, &tmp);
     // set filename
     fs::path our_rc_file_out = "update_debug.rc";
     // write file
