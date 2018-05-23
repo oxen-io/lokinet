@@ -91,7 +91,6 @@ llarp_link_initialized(struct llarp_link *link);
 
 struct llarp_link_session
 {
-  struct sockaddr addr;
   void *impl;
   /** send an entire message, splits up into smaller pieces and does encryption
    */

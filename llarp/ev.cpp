@@ -36,10 +36,11 @@ llarp_ev_loop_run(struct llarp_ev_loop *ev)
 }
 
 int
-llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp)
+llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp,
+                 const struct sockaddr *src)
 {
   udp->parent = ev;
-  if(ev->udp_listen(udp))
+  if(ev->udp_listen(udp, src))
     return 0;
   return -1;
 }

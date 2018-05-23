@@ -3,6 +3,7 @@
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
+#include <net/if.h>
 #include <cstdio>
 
 bool
@@ -61,8 +62,14 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
       if(llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr->sa_family == af)
       {
         memcpy(addr, i->ifa_addr, sl);
-        addr->sa_family = af;
-        found           = true;
+        if(af == AF_INET6)
+        {
+          // set scope id
+          sockaddr_in6* ip6addr  = (sockaddr_in6*)addr;
+          ip6addr->sin6_scope_id = if_nametoindex(ifname);
+          ip6addr->sin6_flowinfo = 0;
+        }
+        found = true;
         break;
       }
     }

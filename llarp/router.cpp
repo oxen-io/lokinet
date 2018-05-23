@@ -53,6 +53,7 @@ llarp_router::try_connect(fs::path rcfile)
     }
     else
     {
+      printf("failed to open %s\n", rcfile.c_str());
       return;
     }
   }
@@ -409,7 +410,7 @@ namespace llarp
     }
     else
     {
-      af    = AF_INET;
+      af    = AF_INET6;
       proto = std::atoi(val);
     }
 

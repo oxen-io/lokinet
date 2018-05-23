@@ -26,7 +26,6 @@ llarp_ev_loop_stop(struct llarp_ev_loop *ev);
 
 struct llarp_udp_io
 {
-  struct sockaddr addr;
   void *user;
   void *impl;
   struct llarp_ev_loop *parent;
@@ -35,7 +34,8 @@ struct llarp_udp_io
 };
 
 int
-llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp);
+llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp,
+                 const struct sockaddr *src);
 
 int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,

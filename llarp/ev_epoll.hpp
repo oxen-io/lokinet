@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <cstdio>
 #include "ev.hpp"
+#include "net.hpp"
 
 namespace llarp
 {
@@ -129,12 +130,32 @@ struct llarp_epoll_loop : public llarp_ev_loop
     }
     int fd = socket(addr->sa_family, SOCK_DGRAM, 0);
     if(fd == -1)
+    {
+      perror("socket()");
       return -1;
+    }
+
+    if(addr->sa_family == AF_INET6)
+    {
+      // enable dual stack explicitly
+      int dual = 1;
+      if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &dual, sizeof(dual)) == -1)
+      {
+        // failed
+        perror("setsockopt()");
+        close(fd);
+        return -1;
+      }
+    }
+    llarp::Addr a(*addr);
+    printf("binding to %s\n", a.to_string().c_str());
     if(bind(fd, addr, slen) == -1)
     {
+      perror("bind()");
       close(fd);
       return -1;
     }
+
     return fd;
   }
 
@@ -145,9 +166,9 @@ struct llarp_epoll_loop : public llarp_ev_loop
   }
 
   bool
-  udp_listen(llarp_udp_io* l)
+  udp_listen(llarp_udp_io* l, const sockaddr* src)
   {
-    int fd = udp_bind(&l->addr);
+    int fd = udp_bind(src);
     if(fd == -1)
       return false;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);

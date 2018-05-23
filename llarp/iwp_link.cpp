@@ -657,6 +657,7 @@ namespace iwp
     llarp_msg_muxer *muxer;
     llarp_async_iwp *iwp;
     llarp_udp_io udp;
+    llarp::Addr addr;
     char keyfile[255];
     uint32_t timeout_job_id;
 
@@ -697,11 +698,10 @@ namespace iwp
     put_session(const llarp::Addr &src, session *impl)
     {
       llarp_link_session s = {};
-      src.CopyInto(s.addr);
-      s.impl    = impl;
-      s.sendto  = &session::sendto;
-      s.timeout = &session::is_timedout;
-      s.close   = &session::close;
+      s.impl               = impl;
+      s.sendto             = &session::sendto;
+      s.timeout            = &session::is_timedout;
+      s.close              = &session::close;
       {
         lock_t lock(m_sessions_Mutex);
         m_sessions[src] = s;
@@ -732,6 +732,19 @@ namespace iwp
     }
 
     void
+    clear_sessions()
+    {
+      lock_t lock(m_sessions_Mutex);
+      auto itr = m_sessions.begin();
+      while(itr != m_sessions.end())
+      {
+        session *s = static_cast< session * >(itr->second.impl);
+        delete s;
+        itr = m_sessions.erase(itr);
+      }
+    }
+
+    void
     cleanup_dead()
     {
       auto now = llarp_time_now_ms();
@@ -751,6 +764,7 @@ namespace iwp
           auto itr = m_sessions.find(addr);
           if(itr != m_sessions.end())
           {
+            printf("remove session for %s\n", addr.to_string().c_str());
             session *s = static_cast< session * >(itr->second.impl);
             m_sessions.erase(addr);
             delete s;
@@ -859,12 +873,11 @@ namespace iwp
   link_get_addr(struct llarp_link *l, struct llarp_ai *addr)
   {
     server *link = static_cast< server * >(l->impl);
-    llarp::Addr linkaddr(link->udp.addr);
-    addr->rank = 1;
+    addr->rank   = 1;
     strncpy(addr->dialect, link_name(), sizeof(addr->dialect));
     memcpy(addr->enc_key, link->pubkey(), 32);
-    memcpy(addr->ip.s6_addr, linkaddr.addr.s6_addr, 16);
-    addr->port = linkaddr.port;
+    memcpy(addr->ip.s6_addr, link->addr.addr6(), 16);
+    addr->port = link->addr.port();
   }
 
   bool
@@ -880,26 +893,47 @@ namespace iwp
     }
 
     // bind
-
-    link->udp.addr.sa_family = af;
-    if(!llarp_getifaddr(ifname, af, &link->udp.addr))
-      return false;
+    sockaddr_in ip4addr;
+    sockaddr_in6 ip6addr;
+    sockaddr *addr = nullptr;
     switch(af)
     {
       case AF_INET:
-        ((sockaddr_in *)&link->udp.addr)->sin_port = htons(port);
+        addr             = (sockaddr *)&ip4addr;
+        ip4addr.sin_port = htons(port);
         break;
       case AF_INET6:
-        ((sockaddr_in6 *)(&link->udp.addr))->sin6_port = htons(port);
+        addr              = (sockaddr *)&ip6addr;
+        ip6addr.sin6_port = htons(port);
         break;
         // TODO: AF_PACKET
       default:
         return false;
     }
+    if(!llarp_getifaddr(ifname, af, addr))
+    {
+      printf("failed to get address for %s\n", ifname);
+      return false;
+    }
+    switch(af)
+    {
+      case AF_INET:
+        ip4addr.sin_port = htons(port);
+        break;
+      case AF_INET6:
+        ip6addr.sin6_port = htons(port);
+        break;
+        // TODO: AF_PACKET
+      default:
+        return false;
+    }
+
+    link->addr = *addr;
+    printf("bind to %s at %s\n", ifname, link->addr.to_string().c_str());
     link->netloop      = netloop;
     link->udp.recvfrom = &server::handle_recvfrom;
     link->udp.user     = link;
-    return llarp_ev_add_udp(link->netloop, &link->udp) != -1;
+    return llarp_ev_add_udp(link->netloop, &link->udp, link->addr) != -1;
   }
 
   bool
@@ -952,7 +986,6 @@ namespace iwp
       s->establish_job = job;
       s->introduce(job->ai.enc_key);
     }
-    printf("introduced\n");
     return true;
   }
 
@@ -960,7 +993,7 @@ namespace iwp
   link_mark_session_active(struct llarp_link *link,
                            struct llarp_link_session *s)
   {
-    // TODO: implement
+    static_cast< session * >(s->impl)->frame.alive();
   }
 
   void
@@ -968,6 +1001,7 @@ namespace iwp
   {
     server *link = static_cast< server * >(l->impl);
     llarp_ev_close_udp(&link->udp);
+    link->clear_sessions();
     delete link;
   }
 }

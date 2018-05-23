@@ -31,7 +31,7 @@ struct llarp_ev_loop
   stop() = 0;
 
   virtual bool
-  udp_listen(llarp_udp_io* l) = 0;
+  udp_listen(llarp_udp_io* l, const sockaddr* src) = 0;
   virtual bool
   udp_close(llarp_udp_io* l) = 0;
   virtual bool

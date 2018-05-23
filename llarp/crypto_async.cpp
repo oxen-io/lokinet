@@ -47,7 +47,6 @@ namespace iwp
     llarp_crypto *crypto = intro->iwp->crypto;
     byte_t tmp[64];
     // S = TKE(a.k, b.k, n)
-    printf("dh\n");
     crypto->transport_dh_client(sharedkey, intro->remote_pubkey,
                                 intro->secretkey, intro->nonce);
     llarp_buffer_t buf;
@@ -57,18 +56,14 @@ namespace iwp
     // e_k = HS(b.k + n)
     memcpy(tmp, intro->remote_pubkey, 32);
     memcpy(tmp + 32, intro->nonce, 32);
-    printf("shorthash\n");
     crypto->shorthash(e_k, buf);
-    printf("copy\n");
     // e = SE(a.k, e_k, n[0:24])
     memcpy(intro->buf + 32, llarp_seckey_topublic(intro->secretkey), 32);
     buf.base = intro->buf + 32;
     buf.sz   = 32;
-    printf("chacha\n");
     crypto->xchacha20(buf, e_k, n);
     // h = MDS( n + e + w0, S)
     buf.sz = intro->sz - 32;
-    printf("hmac\n");
     crypto->hmac(intro->buf, buf, sharedkey);
     // inform result
     llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_gen_intro});
