@@ -58,6 +58,10 @@ void
 iwp_call_async_gen_intro(struct llarp_async_iwp *iwp,
                          struct iwp_async_intro *intro);
 
+void
+iwp_call_async_verify_intro(struct llarp_async_iwp *iwp,
+                            struct iwp_async_intro *info);
+
 struct iwp_async_introack;
 
 typedef void (*iwp_introack_hook)(struct iwp_async_introack *);

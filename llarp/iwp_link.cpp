@@ -3,6 +3,8 @@
 #include <llarp/net.h>
 #include <llarp/time.h>
 
+#include <sodium/crypto_sign_ed25519.h>
+
 #include <bitset>
 #include <cassert>
 #include <fstream>
@@ -377,6 +379,7 @@ namespace iwp
     enum State
     {
       eInitial,
+      eIntroRecv,
       eIntroSent,
       eIntroAckSent,
       eIntroAckRecv,
@@ -388,7 +391,7 @@ namespace iwp
 
     session(llarp_alloc *m, llarp_msg_muxer *mux, llarp_udp_io *u,
             llarp_async_iwp *i, llarp_crypto *c, llarp_logic *l,
-            const llarp::Addr &a)
+            const byte_t *seckey, const llarp::Addr &a)
         : mem(m)
         , muxer(mux)
         , udp(u)
@@ -398,7 +401,12 @@ namespace iwp
         , addr(a)
         , state(eInitial)
     {
-      c->keygen(eph_seckey);
+      if(seckey)
+        memcpy(eph_seckey, seckey, sizeof(llarp_seckey_t));
+      else
+      {
+        c->encryption_keygen(eph_seckey);
+      }
     }
 
     ~session()
@@ -439,6 +447,10 @@ namespace iwp
     {
       switch(state)
       {
+        case eInitial:
+          // got intro
+          on_intro(buf, sz);
+          return;
         case eIntroSent:
           // got intro ack
           on_intro_ack(buf, sz);
@@ -509,9 +521,11 @@ namespace iwp
       memcpy(start.buf + 64, token, 32);
       if(w2sz)
         crypto->randbytes(start.buf + (32 * 3), w2sz);
-      start.sessionkey = sessionkey;
-      start.user       = this;
-      start.hook       = &handle_generated_session_start;
+      start.remote_pubkey = remote;
+      start.secretkey     = eph_seckey;
+      start.sessionkey    = sessionkey;
+      start.user          = this;
+      start.hook          = &handle_generated_session_start;
       iwp_call_async_gen_session_start(iwp, &start);
     }
 
@@ -573,6 +587,91 @@ namespace iwp
       iwp_call_async_frame_encrypt(iwp, frame);
     }
 
+    static void
+    handle_verify_intro(iwp_async_intro *intro)
+    {
+      session *self = static_cast< session * >(intro->user);
+      if(!intro->buf)
+      {
+        printf("verify intro fail\n");
+        // TODO: delete session from parent here
+        return;
+      }
+      self->intro_ack();
+    }
+
+    static void
+    handle_introack_generated(iwp_async_introack *i)
+    {
+      session *link = static_cast< session * >(i->user);
+      if(i->buf)
+      {
+        printf("sending introack...\n");
+        llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
+      }
+      else
+      {
+        // failed to generate?
+      }
+    }
+
+    void
+    intro_ack()
+    {
+      uint16_t w1sz = rand() % 32;
+      introack.buf  = workbuf;
+      introack.sz   = (32 * 3) + w1sz;
+      // randomize padding
+      if(w1sz)
+        crypto->randbytes(introack.buf + (32 * 3), w1sz);
+
+      // randomize nonce
+      introack.nonce = introack.buf + 32;
+      crypto->randbytes(introack.nonce, 32);
+      // randomize token
+      introack.token = token;
+      crypto->randbytes(introack.token, 32);
+
+      // keys
+      introack.remote_pubkey = remote;
+      introack.secretkey     = eph_seckey;
+
+      // call
+      introack.user = this;
+      introack.hook = &handle_introack_generated;
+      iwp_call_async_gen_introack(iwp, &introack);
+    }
+
+    void
+    on_intro(const void *buf, size_t sz)
+    {
+      printf("iwp intro\n");
+      if(sz >= sizeof(workbuf))
+      {
+        // too big?
+        printf("intro too big\n");
+        // TOOD: session destroy ?
+        return;
+      }
+      // copy so we own it
+      memcpy(workbuf, buf, sz);
+      intro.buf = workbuf;
+      intro.sz  = sz;
+      // give secret key
+      intro.secretkey = eph_seckey;
+      // and nonce
+      intro.nonce = intro.buf + 32;
+      intro.user  = this;
+      // set call back hook
+      intro.hook = &handle_verify_intro;
+      // put remote pubkey into this buffer
+      intro.remote_pubkey = remote;
+
+      // call
+      EnterState(eIntroRecv);
+      iwp_call_async_verify_intro(iwp, &intro);
+    }
+
     void
     on_intro_ack(const void *buf, size_t sz)
     {
@@ -591,6 +690,7 @@ namespace iwp
       introack.sz            = sz;
       introack.nonce         = workbuf + 32;
       introack.remote_pubkey = remote;
+      introack.token         = token;
       introack.secretkey     = eph_seckey;
       introack.user          = this;
       introack.hook          = &handle_verify_introack;
@@ -604,9 +704,8 @@ namespace iwp
       session *link = static_cast< session * >(i->user);
       if(i->buf)
       {
-        printf("sending...\n");
+        printf("sending intro...\n");
         llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
-        printf("sent introduce of size %ld\n", i->sz);
         link->EnterState(eIntroSent);
       }
     }
@@ -615,6 +714,8 @@ namespace iwp
     introduce(uint8_t *pub)
     {
       memcpy(remote, pub, 32);
+      printf("remote introduce to transport key\n");
+      llarp::dumphex< llarp_pubkey_t >(remote);
       intro.buf   = workbuf;
       size_t w0sz = (rand() % 32);
       intro.sz    = (32 * 3) + w0sz;
@@ -625,11 +726,14 @@ namespace iwp
         crypto->randbytes(intro.buf + (32 * 3), w0sz);
       }
 
-      intro.nonce         = workbuf + 32;
-      intro.secretkey     = eph_seckey;
+      intro.nonce     = intro.buf + 32;
+      intro.secretkey = eph_seckey;
+      // copy in pubkey
       intro.remote_pubkey = remote;
       // randomize nonce
       crypto->randbytes(intro.nonce, 32);
+      printf("N\n");
+      llarp::dumphex< llarp_sharedkey_t >(intro.nonce);
       // async generate intro packet
       intro.user = this;
       intro.hook = &handle_generated_intro;
@@ -682,9 +786,9 @@ namespace iwp
     }
 
     session *
-    create_session(const llarp::Addr &src)
+    create_session(const llarp::Addr &src, const byte_t *seckey)
     {
-      return new session(mem, muxer, &udp, iwp, crypto, logic, src);
+      return new session(mem, muxer, &udp, iwp, crypto, logic, seckey, src);
     }
 
     bool
@@ -720,7 +824,7 @@ namespace iwp
         if(itr == m_sessions.end())
         {
           // new inbound session
-          s   = create_session(src);
+          s   = create_session(src, seckey);
           put = true;
         }
         else
@@ -782,6 +886,7 @@ namespace iwp
     bool
     ensure_privkey()
     {
+      printf("ensure transport private key at %s\n", keyfile);
       std::error_code ec;
       if(!fs::exists(keyfile, ec))
       {
@@ -791,7 +896,7 @@ namespace iwp
       std::ifstream f(keyfile);
       if(f.is_open())
       {
-        f.read((char *)seckey, sizeof(seckey));
+        f.read((char *)seckey, sizeof(llarp_seckey_t));
         return true;
       }
       return false;
@@ -800,11 +905,12 @@ namespace iwp
     bool
     keygen(const char *fname)
     {
-      crypto->keygen(seckey);
+      crypto->encryption_keygen(seckey);
+      printf("transport key generated\n");
       std::ofstream f(fname);
       if(f.is_open())
       {
-        f.write((char *)seckey, sizeof(seckey));
+        f.write((char *)seckey, sizeof(llarp_seckey_t));
         return true;
       }
       return false;
@@ -828,9 +934,10 @@ namespace iwp
     handle_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *saddr,
                     const void *buf, ssize_t sz)
     {
-      server *link     = static_cast< server * >(udp->user);
-      llarp::Addr addr = *saddr;
-      session *s       = link->ensure_session(addr);
+      server *link = static_cast< server * >(udp->user);
+      llarp::Addr addr(*saddr);
+      printf("got %ld from %s\n", sz, addr.to_string().c_str());
+      session *s = link->ensure_session(addr);
       s->recv(buf, sz);
     }
 
@@ -859,6 +966,7 @@ namespace iwp
   {
     server *link = new server(mem, crypto, logic, worker);
     link->muxer  = muxer;
+    llarp::Zero(link->keyfile, sizeof(link->keyfile));
     strncpy(link->keyfile, keyfile, sizeof(link->keyfile));
     return link;
   }
@@ -910,11 +1018,13 @@ namespace iwp
       default:
         return false;
     }
+
     if(!llarp_getifaddr(ifname, af, addr))
     {
       printf("failed to get address for %s\n", ifname);
       return false;
     }
+
     switch(af)
     {
       case AF_INET:
@@ -971,15 +1081,14 @@ namespace iwp
   {
     server *link = static_cast< server * >(l->impl);
     {
-      llarp::Addr dst = job->ai;
+      llarp::Addr dst(job->ai);
       printf("try establish to %s\n", dst.to_string().c_str());
       if(link->has_session_to(dst))
       {
         printf("already have session\n");
         return false;
       }
-
-      session *s = link->create_session(dst);
+      session *s = link->create_session(dst, nullptr);
 
       link->put_session(dst, s);
 

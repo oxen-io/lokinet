@@ -32,7 +32,7 @@ namespace llarp
     in6_addr*
     addr6()
     {
-      return (in6_addr*)&_addr.sin6_addr.s6_addr;
+      return (in6_addr*)&_addr.sin6_addr.s6_addr[0];
     }
 
     in_addr*
@@ -44,7 +44,7 @@ namespace llarp
     const in6_addr*
     addr6() const
     {
-      return (const in6_addr*)&_addr.sin6_addr.s6_addr;
+      return (const in6_addr*)&_addr.sin6_addr.s6_addr[0];
     }
 
     const in_addr*
@@ -55,6 +55,7 @@ namespace llarp
 
     Addr(const llarp_ai& other)
     {
+      _addr.sin6_family = AF_INET6;
       memcpy(addr6(), other.ip.s6_addr, 16);
       _addr.sin6_port = htons(other.port);
     }

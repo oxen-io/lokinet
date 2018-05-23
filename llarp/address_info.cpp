@@ -79,8 +79,7 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
 
     memcpy(tmp, strbuf.base, strbuf.sz);
     tmp[strbuf.sz] = 0;
-
-    return inet_pton(AF_INET6, tmp, ai->ip.s6_addr) == 1;
+    return inet_pton(AF_INET6, tmp, &ai->ip.s6_addr[0]) == 1;
   }
 
   // port

@@ -66,7 +66,8 @@ struct llarp_crypto
   llarp_verify_func verify;
   void (*randomize)(llarp_buffer_t);
   void (*randbytes)(void *, size_t);
-  void (*keygen)(byte_t *);
+  void (*identity_keygen)(byte_t *);
+  void (*encryption_keygen)(byte_t *);
 };
 
 void

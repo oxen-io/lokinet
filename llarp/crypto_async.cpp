@@ -25,7 +25,7 @@ namespace iwp
   keygen(void *user)
   {
     iwp_async_keygen *keygen = static_cast< iwp_async_keygen * >(user);
-    keygen->iwp->crypto->keygen(keygen->keybuf);
+    keygen->iwp->crypto->encryption_keygen(keygen->keybuf);
     llarp_thread_job job = {.user = user, .work = &inform_keygen};
     llarp_logic_queue_job(keygen->iwp->logic, job);
   }
@@ -49,8 +49,7 @@ namespace iwp
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_client(sharedkey, intro->remote_pubkey,
                                 intro->secretkey, intro->nonce);
-    llarp_buffer_t buf;
-    llarp::StackBuffer< decltype(tmp) >(buf, tmp);
+    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
     // copy nonce
     memcpy(n, intro->nonce, 24);
     // e_k = HS(b.k + n)
@@ -58,15 +57,68 @@ namespace iwp
     memcpy(tmp + 32, intro->nonce, 32);
     crypto->shorthash(e_k, buf);
     // e = SE(a.k, e_k, n[0:24])
-    memcpy(intro->buf + 32, llarp_seckey_topublic(intro->secretkey), 32);
-    buf.base = intro->buf + 32;
+    memcpy(intro->buf + 64, llarp_seckey_topublic(intro->secretkey), 32);
+    buf.base = intro->buf + 64;
+    buf.cur  = buf.base;
     buf.sz   = 32;
     crypto->xchacha20(buf, e_k, n);
     // h = MDS( n + e + w0, S)
-    buf.sz = intro->sz - 32;
+    buf.base = intro->buf + 32;
+    buf.cur  = buf.base;
+    buf.sz   = intro->sz - 32;
     crypto->hmac(intro->buf, buf, sharedkey);
+    llarp::dumphex< llarp_hmac_t >(intro->buf);
     // inform result
     llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_gen_intro});
+  }
+
+  void
+  inform_verify_intro(void *user)
+  {
+    iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
+    intro->hook(intro);
+  }
+
+  void
+  verify_intro(void *user)
+  {
+    iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
+    auto crypto            = intro->iwp->crypto;
+    llarp_sharedkey_t sharedkey;
+    llarp_shorthash_t e_K;
+    llarp_hmac_t h;
+    llarp_nonce_t N;
+    byte_t tmp[64];
+    auto OurPK = llarp_seckey_topublic(intro->secretkey);
+    // e_k = HS(b.k + n)
+    memcpy(tmp, OurPK, 32);
+    memcpy(tmp + 32, intro->nonce, 32);
+    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    crypto->shorthash(e_K, buf);
+
+    // a.k = SD(x, e_k, n[0:24])
+    memcpy(N, intro->nonce, 24);
+    buf.base = intro->remote_pubkey;
+    buf.cur  = buf.base;
+    buf.sz   = 32;
+    memcpy(intro->remote_pubkey, intro->buf + 64, 32);
+    crypto->xchacha20(buf, e_K, N);
+
+    // S = TKE(a.k, b.k, n)
+    crypto->transport_dh_server(sharedkey, intro->remote_pubkey,
+                                intro->secretkey, intro->nonce);
+    // h = MDS( n + e + w2 )
+    buf.base = intro->buf + 32;
+    buf.cur  = buf.base;
+    buf.sz   = intro->sz - 32;
+    crypto->hmac(h, buf, sharedkey);
+    if(memcmp(h, intro->buf, 32))
+    {
+      // hmac fail
+      intro->buf = nullptr;
+    }
+    // inform result
+    llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_verify_intro});
   }
 
   void
@@ -82,8 +134,6 @@ namespace iwp
     iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
     auto crypto                  = introack->iwp->crypto;
     auto logic                   = introack->iwp->logic;
-
-    llarp_thread_job job = {.user = user, .work = &inform_verify_introack};
 
     llarp_hmac_t digest;
     llarp_sharedkey_t sharedkey;
@@ -110,16 +160,54 @@ namespace iwp
     {
       // fail to verify hmac
       introack->buf = nullptr;
-      llarp_logic_queue_job(logic, job);
-      return;
     }
-    buf.base = token;
+    else
+    {
+      buf.base = token;
+      buf.sz   = 32;
+      // token = SD(S, x, n[0:24])
+      crypto->xchacha20(buf, sharedkey, nonce);
+      // copy token
+      memcpy(introack->token, token, 32);
+    }
+    llarp_logic_queue_job(logic, {introack, &inform_verify_introack});
+  }
+
+  void
+  handle_generated_introack(void *user)
+  {
+    iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
+    introack->hook(introack);
+  }
+
+  void
+  gen_introack(void *user)
+  {
+    iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
+    llarp_sharedkey_t sharedkey;
+    auto crypto    = introack->iwp->crypto;
+    auto pubkey    = introack->remote_pubkey;
+    auto secretkey = introack->secretkey;
+    auto nonce     = introack->nonce;
+    // S = TKE(a.k, b.k, n)
+    crypto->transport_dh_server(sharedkey, pubkey, secretkey, nonce);
+
+    // x = SE(S, token, n[0:24])
+    llarp_buffer_t buf;
+    buf.base = introack->buf + 64;
     buf.sz   = 32;
-    // token = SD(S, x, n[0:24])
+    buf.cur  = buf.base;
+    memcpy(buf.base, introack->token, 32);
     crypto->xchacha20(buf, sharedkey, nonce);
-    // copy token
-    memcpy(introack->token, token, 32);
-    llarp_logic_queue_job(logic, job);
+
+    // h = MDS(n + x + w1, S)
+    buf.base = introack->buf + 32;
+    buf.sz   = introack->sz - 32;
+    buf.cur  = buf.base;
+    crypto->hmac(introack->buf, buf, sharedkey);
+
+    llarp_logic_queue_job(introack->iwp->logic,
+                          {introack, &handle_generated_introack});
   }
 
   void
@@ -216,6 +304,22 @@ iwp_call_async_gen_session_start(struct llarp_async_iwp *iwp,
 {
   session->iwp = iwp;
   llarp_threadpool_queue_job(iwp->worker, {session, &iwp::gen_session_start});
+}
+
+void
+iwp_call_async_verify_intro(struct llarp_async_iwp *iwp,
+                            struct iwp_async_intro *intro)
+{
+  intro->iwp = iwp;
+  llarp_threadpool_queue_job(iwp->worker, {intro, &iwp::verify_intro});
+}
+
+void
+iwp_call_async_gen_introack(struct llarp_async_iwp *iwp,
+                            struct iwp_async_introack *introack)
+{
+  introack->iwp = iwp;
+  llarp_threadpool_queue_job(iwp->worker, {introack, &iwp::gen_introack});
 }
 
 void

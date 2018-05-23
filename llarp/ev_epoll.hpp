@@ -23,12 +23,13 @@ namespace llarp
     virtual int
     read(void* buf, size_t sz)
     {
-      sockaddr src;
-      socklen_t slen;
-      int ret = ::recvfrom(fd, buf, sz, 0, &src, &slen);
+      sockaddr_in6 src;
+      socklen_t slen = sizeof(sockaddr_in6);
+      sockaddr* addr = (sockaddr*)&src;
+      int ret        = ::recvfrom(fd, buf, sz, 0, addr, &slen);
       if(ret == -1)
         return -1;
-      udp->recvfrom(udp, &src, buf, ret);
+      udp->recvfrom(udp, addr, buf, ret);
       return 0;
     }
 

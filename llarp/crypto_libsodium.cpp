@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <llarp/crypto.h>
 #include <sodium.h>
+#include "mem.hpp"
 
 namespace llarp
 {
@@ -14,17 +15,19 @@ namespace llarp
     }
 
     static bool
-    dh(uint8_t *out, uint8_t *client_pk, uint8_t *server_pk,
-       uint8_t *remote_key, uint8_t *local_key)
+    dh(uint8_t *out, uint8_t *client_pk, uint8_t *server_pk, uint8_t *pubkey,
+       uint8_t *secret)
     {
+      llarp_sharedkey_t shared;
       crypto_generichash_state h;
       const size_t outsz = SHAREDKEYSIZE;
-      if(crypto_scalarmult(out, local_key, remote_key) == -1)
+
+      if(crypto_scalarmult_curve25519(shared, secret, pubkey))
         return false;
       crypto_generichash_init(&h, NULL, 0U, outsz);
-      crypto_generichash_update(&h, client_pk, sizeof(llarp_pubkey_t));
-      crypto_generichash_update(&h, server_pk, sizeof(llarp_pubkey_t));
-      crypto_generichash_update(&h, out, crypto_scalarmult_BYTES);
+      crypto_generichash_update(&h, client_pk, 32);
+      crypto_generichash_update(&h, server_pk, 32);
+      crypto_generichash_update(&h, shared, 32);
       crypto_generichash_final(&h, out, outsz);
       return true;
     }
@@ -58,11 +61,10 @@ namespace llarp
     static bool
     transport_dh_client(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
     {
-      if(dh(shared, llarp_seckey_topublic(sk), pk, pk, sk))
+      llarp_sharedkey_t dh_result;
+      if(dh(dh_result, llarp_seckey_topublic(sk), pk, pk, sk))
       {
-        return crypto_generichash(shared, SHAREDKEYSIZE, shared, SHAREDKEYSIZE,
-                                  n, 32)
-            != -1;
+        return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
       }
       return false;
     }
@@ -70,11 +72,10 @@ namespace llarp
     static bool
     transport_dh_server(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
     {
-      if(dh(shared, pk, llarp_seckey_topublic(sk), pk, sk))
+      llarp_sharedkey_t dh_result;
+      if(dh(dh_result, pk, llarp_seckey_topublic(sk), pk, sk))
       {
-        return crypto_generichash(shared, SHAREDKEYSIZE, shared, SHAREDKEYSIZE,
-                                  n, 32)
-            != -1;
+        return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
       }
       return false;
     }
@@ -98,8 +99,8 @@ namespace llarp
     static bool
     hmac(uint8_t *result, llarp_buffer_t buff, const uint8_t *secret)
     {
-      return crypto_generichash(result, sizeof(llarp_hash_t), buff.base,
-                                buff.sz, secret, HMACSECSIZE)
+      return crypto_generichash(result, HMACSIZE, buff.base, buff.sz, secret,
+                                HMACSECSIZE)
           != -1;
     }
 
@@ -129,10 +130,16 @@ namespace llarp
     }
 
     static void
-    keygen(uint8_t *keys)
+    sigkeygen(uint8_t *keys)
     {
-      uint8_t *pk = llarp_seckey_topublic(keys);
-      crypto_sign_keypair(pk, keys);
+      crypto_sign_keypair(keys + 32, keys);
+    }
+
+    static void
+    enckeygen(uint8_t *keys)
+    {
+      randombytes(keys, 32);
+      crypto_scalarmult_curve25519_base(keys + 32, keys);
     }
   }  // namespace sodium
 }  // namespace llarp
@@ -161,7 +168,8 @@ llarp_crypto_libsodium_init(struct llarp_crypto *c)
   c->verify              = llarp::sodium::verify;
   c->randomize           = llarp::sodium::randomize;
   c->randbytes           = llarp::sodium::randbytes;
-  c->keygen              = llarp::sodium::keygen;
+  c->identity_keygen     = llarp::sodium::sigkeygen;
+  c->encryption_keygen   = llarp::sodium::enckeygen;
   int seed;
   c->randbytes(&seed, sizeof(seed));
   srand(seed);

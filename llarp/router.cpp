@@ -193,12 +193,12 @@ llarp_router::iter_try_connect(llarp_router_link_iter *iter,
                                llarp_router *router, llarp_link *link)
 {
   if(!link)
-    return false;
+    return true;
 
   llarp_link_establish_job *job = new llarp_link_establish_job;
 
   if(!job)
-    return false;
+    return true;
   llarp_ai *ai = static_cast< llarp_ai * >(iter->user);
   llarp_ai_copy(&job->ai, ai);
   job->timeout = 5000;
@@ -308,7 +308,7 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
-    crypto->keygen(secretkey);
+    crypto->identity_keygen(secretkey);
     std::ofstream f(path, std::ios::binary);
     if(f.is_open())
     {
@@ -445,6 +445,21 @@ namespace llarp
     else if(StrEq(section, "iwp-connect"))
     {
       self->connect[key] = val;
+    }
+    else if(StrEq(section, "router"))
+    {
+      if(StrEq(key, "contact-file"))
+      {
+        self->our_rc_file = val;
+      }
+      if(StrEq(key, "transport-privkey"))
+      {
+        self->transport_keyfile = val;
+      }
+      if(StrEq(key, "ident-privkey"))
+      {
+        self->ident_keyfile = val;
+      }
     }
   }
 
