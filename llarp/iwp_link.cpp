@@ -714,8 +714,6 @@ namespace iwp
     introduce(uint8_t *pub)
     {
       memcpy(remote, pub, 32);
-      printf("remote introduce to transport key\n");
-      llarp::dumphex< llarp_pubkey_t >(remote);
       intro.buf   = workbuf;
       size_t w0sz = (rand() % 32);
       intro.sz    = (32 * 3) + w0sz;
@@ -732,8 +730,6 @@ namespace iwp
       intro.remote_pubkey = remote;
       // randomize nonce
       crypto->randbytes(intro.nonce, 32);
-      printf("N\n");
-      llarp::dumphex< llarp_sharedkey_t >(intro.nonce);
       // async generate intro packet
       intro.user = this;
       intro.hook = &handle_generated_intro;

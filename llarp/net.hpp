@@ -143,7 +143,7 @@ namespace llarp
         default:
           return;
       }
-      memcpy(ptr, src, slen);
+      memcpy(dst, src, slen);
       *ptr             = htons(port());
       other->sa_family = af();
     }
