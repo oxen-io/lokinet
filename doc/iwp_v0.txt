@@ -181,31 +181,32 @@ msg_bytes = BE(msg)
 
 32 bytes hash of message computed by HS(msg_bytes)
 64 bits unsigned int message id
-12 bits unsigned int fragment size bytes, s
-4 bits unsigned int nonzero number of fragments, n
-8 bits size of last fragment in bytes, l
+16 bits unsigned int fragment size bytes, S
+16 bits size of last fragment in bytes, L
+16 bits reserved for future
+8 bits unsigned int nonzero number of fragments, n
 8 bits reserved flags, f
 if f MSB is set then last fragment is included and is l bytes long
 
 f's MSB MUST be set as of protocol version 0.
 
-msg_bytes is s * (n - 1) + l bytes long
+msg_bytes is S * (n - 1) + L bytes long
 
 FRAG payload:
 
 transmit a link layer message fragment
 
 64 bits message id
-4 bits ignored
-4 bits unsigned int fragment number
-remaining bytes of payload are fragment data
+8 bits unsigned int fragment number
+S bytes of payload fragment data
+remaining bytes discarded
 
 ACKS payload:
 
 indicates we which chunks we have recieved
 
 64 bits message id
-16 bits bitmask of chunks we have received
+32 bits bitmask of chunks we have received
 remaining bytes discarded
 
 
