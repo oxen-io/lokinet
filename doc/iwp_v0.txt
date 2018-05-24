@@ -186,9 +186,9 @@ msg_bytes = BE(msg)
 16 bits reserved for future
 8 bits unsigned int nonzero number of fragments, n
 8 bits reserved flags, f
-if f MSB is set then last fragment is included and is l bytes long
+if f LSB is set then last fragment is included and is l bytes long
 
-f's MSB MUST be set as of protocol version 0.
+f's LSB MUST be set as of protocol version 0.
 
 msg_bytes is S * (n - 1) + L bytes long
 
