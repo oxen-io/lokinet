@@ -124,8 +124,9 @@ typedef void (*iwp_async_frame_hook)(struct iwp_async_frame *);
 
 struct iwp_async_frame
 {
-  void *user;
   bool success;
+  struct llarp_async_iwp *iwp;
+  void *user;
   uint8_t *sessionkey;
   size_t sz;
   iwp_async_frame_hook hook;

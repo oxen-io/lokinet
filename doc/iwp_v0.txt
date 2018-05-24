@@ -16,21 +16,20 @@ see crypto_v0.txt
 wire decryption:
 
 the first 32 bytes are message authentication bytes, h
-the next 32 bytes are nounce for shared secret, n
+the next 32 bytes are nouce for cipher, n
 the remaining bytes are interpreted as ciphertext, x
 
-a shared secret s is generated via TKE(initiater, recipiant, n)
-next the integrity of the ciphertext is done by checking MDS(n + x, s) == h
-if the ciphertext is valid then the frame is decrypted via SD(s, n, x)
+a shared secret S is generated in the session start message
+next the integrity of the ciphertext is done by checking MDS(n + x, S) == h
+if the ciphertext is valid then the frame is decrypted via SD(S, x, n)
 
 wire encryption:
 
 given variadic sized payload p, 32 byte nounce n and public encryption keys A
 and B
 
-s = TKE(A, B, n)
-x = SE(s, n, p)
-h = MDS(n + x, s)
+x = SE(S, p, n[0:24])
+h = MDS(n + x, S)
 
 the resulting data is:
 
@@ -109,8 +108,9 @@ N bytes of ciphertext, x
 plaintext header, H
 8 bits protocol version, v (currently 0)
 8 bits message type, t
-12 bits payload size, s
-4 bits flags, f
+16 bits payload size, s
+8 bits reserved, r (currently 0)
+8 bits flags, f
 
 plaintext payload: P
 s bytes of data
@@ -183,7 +183,7 @@ msg_bytes = BE(msg)
 64 bits unsigned int message id
 16 bits unsigned int fragment size bytes, S
 16 bits size of last fragment in bytes, L
-16 bits reserved for future
+16 bits reserved for future, currently zero
 8 bits unsigned int nonzero number of fragments, n
 8 bits reserved flags, f
 if f LSB is set then last fragment is included and is l bytes long

@@ -2,6 +2,7 @@
 #include <llarp/iwp.h>
 #include <llarp/net.h>
 #include <llarp/time.h>
+#include <llarp/frame_handler.hpp>
 
 #include <sodium/crypto_sign_ed25519.h>
 
@@ -44,16 +45,16 @@ namespace iwp
   /** plaintext frame header */
   struct frame_header
   {
-    uint8_t *ptr;
+    byte_t *ptr;
 
-    frame_header(uint8_t *buf) : ptr(buf)
+    frame_header(byte_t *buf) : ptr(buf)
     {
     }
 
-    uint8_t *
+    byte_t *
     data()
     {
-      return ptr + 4;
+      return ptr + 6;
     }
 
     uint8_t &
@@ -68,53 +69,67 @@ namespace iwp
       return ptr[1];
     }
 
-    // 12 bits
     uint16_t
     size() const
     {
-      uint16_t sz = (ptr[3] | 0x00fc) << 8;
-      sz |= ptr[2];
+      uint16_t sz = (ptr[3] | 0x00ff) << 8;
+      sz |= (ptr[2]  & 0x00ff);
       return sz;
     }
 
     void
     setsize(uint16_t sz)
     {
-      ptr[3] = (sz | 0xfc00) >> 8;
+      ptr[3] = (sz | 0xff00) >> 8;
       ptr[2] = (sz | 0x00ff);
     }
 
-    // 4 bits
     uint8_t
     flags() const
     {
-      return ptr[3] & 0x07;
+      return ptr[5];
     }
 
     void
     setflag(header_flag f)
     {
-      ptr[3] |= f;
+      ptr[5] |= f;
     }
   };
 
   /** xmit header */
   struct xmit
   {
-    uint32_t buffer[11];
+    byte_t buffer[48];
 
     xmit()
     {
     }
 
-    xmit(uint8_t *ptr)
+    xmit(byte_t *ptr)
     {
-      memcpy(buffer, ptr, 44);
+      memcpy(buffer, ptr, sizeof(buffer));
     }
 
     xmit(const xmit &other)
     {
-      memcpy(buffer, other.buffer, 44);
+      memcpy(buffer, other.buffer, sizeof(buffer));
+    }
+
+    void
+    set_info(const byte_t *hash, uint64_t id, uint16_t fragsz, uint16_t lastsz,
+             uint8_t numfrags, uint8_t flags = 0x01)
+    {
+      // big endian assumed
+      // TODO: implement little endian
+      memcpy(buffer, hash, 32);
+      memcpy(buffer + 32, &id, 8);
+      memcpy(buffer + 40, &fragsz, 2);
+      memcpy(buffer + 42, &lastsz, 2);
+      buffer[44] = 0;
+      buffer[45] = 0;
+      buffer[46] = numfrags;
+      buffer[47] = flags;
     }
 
     uint64_t
@@ -122,7 +137,7 @@ namespace iwp
     {
       // big endian assumed
       // TODO: implement little endian
-      const uint32_t *start = (buffer + 8);
+      const byte_t *start   = buffer + 32;
       const uint64_t *msgid = (const uint64_t *)start;
       return *msgid;
     }
@@ -133,14 +148,16 @@ namespace iwp
     {
       // big endian assumed
       // TODO: implement little endian
-      return ((buffer[10] & 0xfc000000) >> 20);
+      const byte_t *start    = buffer + 40;
+      const uint16_t *fragsz = (uint16_t *)start;
+      return *fragsz;
     }
 
     // number of full fragments
     uint8_t
     numfrags() const
     {
-      return (buffer[10] & 0x07000000) >> 16;
+      return buffer[46];
     }
 
     // size of the entire message
@@ -151,20 +168,20 @@ namespace iwp
     }
 
     // size of the last fragment
-    uint8_t
+    uint16_t
     lastfrag() const
     {
       // big endian assumed
       // TODO: implement little endian
-      return (buffer[10] & 0x0000ff00) >> 8;
+      const byte_t *start    = buffer + 42;
+      const uint16_t *lastsz = (uint16_t *)start;
+      return *lastsz;
     }
 
     uint8_t
-    flags() const
+    flags()
     {
-      // big endian assumed
-      // TODO: implement little endian
-      return (buffer[10] & 0x000000ff);
+      return buffer[47];
     }
   };
 
@@ -173,7 +190,7 @@ namespace iwp
   // forward declare
   struct session;
 
-  struct transitframe
+  struct transit_message
   {
     session *parent = nullptr;
     xmit msginfo;
@@ -182,18 +199,46 @@ namespace iwp
     std::map< uint16_t, fragment_t > frags;
     fragment_t lastfrag;
 
-    transitframe()
+    transit_message()
     {
     }
 
     // inbound
-    transitframe(const xmit &x) : msginfo(x)
+    transit_message(const xmit &x) : msginfo(x)
     {
     }
 
     // outbound
-    transitframe(const llarp_buffer_t &buf, session *s) : parent(s)
+    transit_message(session *s) : parent(s)
     {
+    }
+
+    bool reassemble(std::vector<byte_t> & buffer)
+    {
+      // TODO: implement
+      return false;
+    }
+    
+    void
+    put_message(llarp_buffer_t &buf, const byte_t *hash, uint64_t id,
+                uint16_t mtu = 1024)
+    {
+      status.reset();
+      uint16_t fragid   = 0;
+      uint16_t fragsize = mtu;
+      while((buf.cur - buf.base) > fragsize)
+      {
+        fragment_t frag(fragsize);
+        memcpy(frag.data(), buf.cur, fragsize);
+        buf.cur += fragsize;
+        frags[fragid++] = frag;
+      }
+      uint16_t lastfrag = buf.cur - buf.base;
+      // set info for xmit
+      msginfo.set_info(hash, id, mtu, frags.size(), lastfrag);
+      // copy message hash
+      memcpy(msginfo.buffer, hash, 32);
+      put_lastfrag(buf.cur, buf.cur - buf.base);
     }
 
     void
@@ -206,33 +251,52 @@ namespace iwp
 
   struct frame_state
   {
-    uint64_t ids           = 0;
+    uint64_t rxids         = 0;
+    uint64_t txids         = 0;
     llarp_time_t lastEvent = 0;
-    std::map< uint64_t, transitframe > rx;
-    std::map< uint64_t, transitframe * > tx;
+    std::map< uint64_t, transit_message > rx;
+    std::map< uint64_t, transit_message * > tx;
 
-    typedef std::vector< uint8_t > sendbuf_t;
+    typedef std::vector< byte_t > sendbuf_t;
     std::queue< sendbuf_t > sendqueue;
 
+    llarp::FrameHandler * handler = nullptr;
+
+    void
+    inbound_frame_complete(uint64_t id)
+    {
+      std::vector<byte_t> buf;
+      if(rx[id].reassemble(buf) && handler)
+      {
+        if(handler->Process(buf))
+          printf("processed frame %ld\n", id);
+        else
+          printf("failed to process frame %ld", id);
+      }
+      rx.erase(id);
+    }
+    
     void
     init_sendbuf(sendbuf_t &buf, msgtype t, uint16_t sz, uint8_t flags)
     {
-      buf.resize(4 + sz);
+      buf.resize(6 + sz);
       buf[0] = 0;
       buf[1] = t;
-      buf[2] = (sz & 0x00ff);
-      buf[3] = flags;
+      buf[2] = sz & 0x00ff;
+      buf[3] = (sz & 0xff00) >> 8;
+      buf[4] = 0;
+      buf[5] = flags;
     }
 
     void
-    push_ackfor(uint64_t id, uint16_t bitmask)
+    push_ackfor(uint64_t id, uint32_t bitmask)
     {
       sendbuf_t buf;
       // TODO: set flags to nonzero as needed
-      init_sendbuf(buf, eACKS, 10, 0);
+      init_sendbuf(buf, eACKS, 12, 0);
       // TODO: this assumes big endian
-      memcpy(buf.data() + 4, &id, 8);
-      memcpy(buf.data() + 12, &bitmask, 2);
+      memcpy(buf.data() + 6, &id, 8);
+      memcpy(buf.data() + 14, &bitmask, 4);
       sendqueue.push(buf);
     }
 
@@ -252,15 +316,18 @@ namespace iwp
       // extract xmit data
       xmit x(hdr.data());
 
-      if(sz - 44 != x.lastfrag())
+      const auto bufsz = sizeof(x.buffer);
+
+      if(sz - bufsz < x.lastfrag())
       {
         // bad size of last fragment
-        printf("XMIT frag size missmatch, %ld != %d\n", sz - 44, x.lastfrag());
+        printf("XMIT frag size missmatch, %ld < %d\n", sz - bufsz,
+               x.lastfrag());
         return false;
       }
 
-      // check MSB set on flags
-      if(x.flags() & 0x80)
+      // check LSB set on flags
+      if(x.flags() & 0x01)
       {
         if(x.numfrags() > 0)
         {
@@ -268,7 +335,8 @@ namespace iwp
           if(itr.second)
           {
             // inserted, put last fragment
-            itr.first->second.put_lastfrag(hdr.data() + 44, x.lastfrag());
+            itr.first->second.put_lastfrag(hdr.data() + sizeof(x.buffer),
+                                           x.lastfrag());
             return true;
           }
           else
@@ -277,11 +345,13 @@ namespace iwp
         else
         {
           // short XMIT , no fragments so just ack
-          push_ackfor(x.msgid(), 0);
+          auto id = x.msgid();
+          push_ackfor(id, 0); // TODO: should this be before or after handling frame?
+          inbound_frame_complete(id);
         }
       }
       else
-        printf("XMIT flags MSB not set\n");
+        printf("XMIT flags LSB not set\n");
       return false;
     }
 
@@ -305,10 +375,9 @@ namespace iwp
 
     // queue new outbound message
     void
-    queue_tx(transitframe *frame)
+    queue_tx(uint16_t id, transit_message *msg)
     {
-      ids++;
-      tx.try_emplace(ids, frame);
+      tx.try_emplace(id, msg);
     }
 
     // get next frame to encrypt and transmit
@@ -361,6 +430,8 @@ namespace iwp
     llarp_crypto *crypto;
     llarp_async_iwp *iwp;
     llarp_logic *logic;
+    llarp_rc *our_router;
+
     llarp_seckey_t eph_seckey;
     llarp_pubkey_t remote;
     llarp_sharedkey_t sessionkey;
@@ -413,22 +484,24 @@ namespace iwp
     {
     }
 
-    static void
-    handle_sendto(void *user)
-    {
-      transitframe *frame = static_cast< transitframe * >(user);
-      frame->parent->frame.queue_tx(frame);
-    }
-
     static bool
     sendto(llarp_link_session *s, llarp_buffer_t msg)
     {
-      session *self = static_cast< session * >(s->impl);
-      void *ptr     = self->mem->alloc(self->mem, sizeof(transitframe), 64);
-      transitframe *frame  = new(ptr) transitframe(msg, self);
-      llarp_thread_job job = {.user = frame, .work = &handle_sendto};
-      llarp_logic_queue_job(self->logic, job);
+      session *self      = static_cast< session * >(s->impl);
+      transit_message *m = new transit_message(self);
+      auto id            = self->frame.txids++;
+      llarp_hash_t digest;
+      self->crypto->hash(digest, msg);
+      m->put_message(msg, digest, id);
+      self->add_outbound_message(id, m);
       return true;
+    }
+
+    void
+    add_outbound_message(uint16_t id, transit_message *msg)
+    {
+      frame.queue_tx(id, msg);
+      pump();
     }
 
     void
@@ -455,6 +528,10 @@ namespace iwp
           // got intro ack
           on_intro_ack(buf, sz);
           return;
+        case eIntroAckSent:
+          // probably a session start
+          on_session_start(buf, sz);
+          return;
         case eEstablished:
           // session is started
           decrypt_frame(buf, sz);
@@ -462,6 +539,42 @@ namespace iwp
           // invalid state?
           return;
       }
+    }
+
+    static void
+    handle_verify_session_start(iwp_async_session_start *s)
+    {
+      session *self = static_cast< session * >(s->user);
+      if(!s->buf)
+      {
+        // verify fail
+        // TODO: remove session?
+        printf("session start verify fail\n");
+        return;
+      }
+      printf("session start okay\n");
+
+      // auto msg = new transit_message;
+
+      // auto buffer = llarp::EncodeLIM< decltype(buf) >(buf, our_router);
+    }
+
+    void
+    on_session_start(const void *buf, size_t sz)
+    {
+      // own the buffer
+      memcpy(workbuf, buf, sz);
+      // verify session start
+      start.buf           = workbuf;
+      start.sz            = sz;
+      start.nonce         = workbuf + 32;
+      start.token         = token;
+      start.remote_pubkey = remote;
+      start.secretkey     = eph_seckey;
+      start.sessionkey    = sessionkey;
+      start.user          = this;
+      start.hook          = &handle_verify_session_start;
+      iwp_call_async_verify_session_start(iwp, &start);
     }
 
     bool
@@ -540,7 +653,7 @@ namespace iwp
       else
         printf("decrypt frame fail\n");
 
-      self->mem->free(self->mem, frame);
+      delete frame;
     }
 
     void
@@ -563,14 +676,13 @@ namespace iwp
       session *self = static_cast< session * >(frame->user);
       printf("sendto %ld\n", frame->sz);
       llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz);
-      self->mem->free(self->mem, frame);
+      delete frame;
     }
 
     iwp_async_frame *
     alloc_frame(const void *buf, size_t sz)
     {
-      iwp_async_frame *frame =
-          (iwp_async_frame *)mem->alloc(mem, sizeof(iwp_async_frame), 2048);
+      iwp_async_frame *frame = new iwp_async_frame;
       memcpy(frame->buf, buf, sz);
       frame->sz         = sz;
       frame->user       = this;
@@ -608,6 +720,7 @@ namespace iwp
       {
         printf("sending introack...\n");
         llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
+        link->EnterState(eIntroAckSent);
       }
       else
       {

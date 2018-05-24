@@ -31,7 +31,7 @@ namespace iwp
   }
 
   void
-  inform_gen_intro(void *user)
+  inform_intro(void *user)
   {
     iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
     intro->hook(intro);
@@ -69,14 +69,7 @@ namespace iwp
     crypto->hmac(intro->buf, buf, sharedkey);
     llarp::dumphex< llarp_hmac_t >(intro->buf);
     // inform result
-    llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_gen_intro});
-  }
-
-  void
-  inform_verify_intro(void *user)
-  {
-    iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
-    intro->hook(intro);
+    llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_intro});
   }
 
   void
@@ -118,11 +111,11 @@ namespace iwp
       intro->buf = nullptr;
     }
     // inform result
-    llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_verify_intro});
+    llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_intro});
   }
 
   void
-  inform_verify_introack(void *user)
+  inform_introack(void *user)
   {
     iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
     introack->hook(introack);
@@ -170,14 +163,7 @@ namespace iwp
       // copy token
       memcpy(introack->token, token, 32);
     }
-    llarp_logic_queue_job(logic, {introack, &inform_verify_introack});
-  }
-
-  void
-  handle_generated_introack(void *user)
-  {
-    iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
-    introack->hook(introack);
+    llarp_logic_queue_job(logic, {introack, &inform_introack});
   }
 
   void
@@ -206,12 +192,11 @@ namespace iwp
     buf.cur  = buf.base;
     crypto->hmac(introack->buf, buf, sharedkey);
 
-    llarp_logic_queue_job(introack->iwp->logic,
-                          {introack, &handle_generated_introack});
+    llarp_logic_queue_job(introack->iwp->logic, {introack, &inform_introack});
   }
 
   void
-  inform_gen_session_start(void *user)
+  inform_session_start(void *user)
   {
     iwp_async_session_start *session =
         static_cast< iwp_async_session_start * >(user);
@@ -249,13 +234,13 @@ namespace iwp
     memcpy(tmp + 32, N, 32);
     shorthash(T, buf);
 
-    // e_K = TKE(a.k, b.k, N)
+    // e_K = TKE(a.k, b.k, n)
     dh(e_K, b_K, a_sK, N);
     // K = TKE(a.k, b.k, T)
     dh(K, b_K, a_sK, T);
 
     // x = SE(e_K, token, n[0:24])
-    buf.base = (session->buf + 32);
+    buf.base = (session->buf + 64);
     buf.sz   = 32;
     memcpy(buf.base, token, 32);
     encrypt(buf, e_K, N);
@@ -265,10 +250,127 @@ namespace iwp
     buf.sz   = session->sz - 32;
     hmac(session->buf, buf, e_K);
 
-    // K = TKE(a.k, b.k, T)
-    dh(K, b_K, a_sK, T);
+    llarp_logic_queue_job(logic, {user, &inform_session_start});
+  }
 
-    llarp_logic_queue_job(logic, {user, &inform_gen_session_start});
+  void
+  verify_session_start(void *user)
+  {
+    iwp_async_session_start *session =
+        static_cast< iwp_async_session_start * >(user);
+    auto crypto = session->iwp->crypto;
+
+    auto dh        = crypto->transport_dh_server;
+    auto shorthash = crypto->shorthash;
+    auto hmac      = crypto->hmac;
+    auto decrypt   = crypto->xchacha20;
+
+    auto logic = session->iwp->logic;
+    auto b_sK  = session->secretkey;
+    auto a_K   = session->remote_pubkey;
+    auto N     = session->nonce;
+    auto token = session->token;
+    auto K     = session->sessionkey;
+
+    llarp_sharedkey_t e_K;
+    llarp_shorthash_t T;
+
+    byte_t tmp[64];
+
+    llarp_buffer_t buf;
+
+    // e_K = TKE(a.k, b.k, N)
+    dh(e_K, a_K, b_sK, N);
+    // h = MDS( n + x + w2, e_K)
+    buf.base = session->buf + 32;
+    buf.cur  = buf.base;
+    buf.sz   = session->sz - 32;
+    hmac(tmp, buf, e_K);
+    if(memcmp(tmp, session->buf, 32) == 0)
+    {
+      // hmac good
+      buf.base = session->buf + 64;
+      buf.cur  = buf.base;
+      buf.sz   = 32;
+      // token = SD(e_K, x, n[0:24])
+      decrypt(buf, e_K, N);
+      // ensure it's the same token
+      if(memcmp(buf.base, token, 32) == 0)
+      {
+        // T = HS(token + n)
+        memcpy(tmp, token, 32);
+        memcpy(tmp + 32, N, 32);
+        shorthash(T, buf);
+        // K = TKE(a.k, b.k, T)
+        dh(K, a_K, b_sK, T);
+      }
+      else  // token missmatch
+      {
+        session->buf = nullptr;
+        printf("token miss match\n");
+      }
+    }
+    else  // hmac fail
+      session->buf = nullptr;
+
+    llarp_logic_queue_job(logic, {user, &inform_session_start});
+  }
+
+  void
+  inform_frame_done(void *user)
+  {
+    iwp_async_frame *frame = static_cast< iwp_async_frame * >(user);
+    frame->hook(frame);
+  }
+
+  void
+  hmac_then_decrypt(void *user)
+  {
+    iwp_async_frame *frame = static_cast< iwp_async_frame * >(user);
+    auto crypto            = frame->iwp->crypto;
+    auto hmac              = frame->buf;
+    auto nonce             = frame->buf + 32;
+    auto body              = frame->buf + 64;
+
+    llarp_sharedkey_t digest;
+
+    llarp_buffer_t buf;
+    buf.base = body;
+    buf.cur  = buf.base;
+    buf.sz   = frame->sz - 64;
+
+    // h = MDS(n + x, S)
+    crypto->hmac(digest, buf, frame->sessionkey);
+    // check hmac
+    frame->success = memcmp(digest, hmac, 32) == 0;
+    // x = SE(S, p, n[0:24])
+    crypto->xchacha20(buf, frame->sessionkey, nonce);
+    // inform result
+    llarp_logic_queue_job(frame->iwp->logic, {user, &inform_frame_done});
+  }
+
+  void
+  encrypt_then_hmac(void *user)
+  {
+    iwp_async_frame *frame = static_cast< iwp_async_frame * >(user);
+    auto crypto            = frame->iwp->crypto;
+    auto hmac              = frame->buf;
+    auto nonce             = frame->buf + 32;
+    auto body              = frame->buf + 64;
+
+    llarp_buffer_t buf;
+    buf.base = body;
+    buf.cur  = buf.base;
+    buf.sz   = frame->sz - 64;
+
+    // randomize N
+    crypto->randbytes(nonce, 32);
+    // x = SE(S, p, n[0:24])
+    crypto->xchacha20(buf, frame->sessionkey, nonce);
+    // h = MDS(n + x, S)
+    crypto->hmac(hmac, buf, frame->sessionkey);
+    // inform result
+    llarp_logic_queue_job(frame->iwp->logic, {user, &inform_frame_done});
   }
 }
 
@@ -326,6 +428,25 @@ void
 iwp_call_async_frame_decrypt(struct llarp_async_iwp *iwp,
                              struct iwp_async_frame *frame)
 {
+  frame->iwp = iwp;
+  llarp_threadpool_queue_job(iwp->worker, {frame, &iwp::hmac_then_decrypt});
+}
+
+void
+iwp_call_async_frame_encrypt(struct llarp_async_iwp *iwp,
+                             struct iwp_async_frame *frame)
+{
+  frame->iwp = iwp;
+  llarp_threadpool_queue_job(iwp->worker, {frame, &iwp::encrypt_then_hmac});
+}
+
+void
+iwp_call_async_verify_session_start(struct llarp_async_iwp *iwp,
+                                    struct iwp_async_session_start *session)
+{
+  session->iwp = iwp;
+  llarp_threadpool_queue_job(iwp->worker,
+                             {session, &iwp::verify_session_start});
 }
 
 struct llarp_async_iwp *
