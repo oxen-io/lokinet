@@ -6,6 +6,14 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/**
+ * bencode.h
+ *
+ * helper functions for handling bencoding
+ * https://en.wikipedia.org/wiki/Bencode for more information on the format
+ * we utilize llarp_buffer which provides memory management
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -127,7 +135,10 @@ bdecode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
 
 struct dict_reader
 {
+  /// makes passing data into on_key easier
   llarp_buffer_t* buffer;
+  /// not currently used, maybe used in the future to pass additional
+  /// information to on_key
   void* user;
   /**
    * called when we got a key string, return true to continue iteration
@@ -139,21 +150,21 @@ struct dict_reader
 static bool INLINE
 bdecode_read_dict(llarp_buffer_t* buff, struct dict_reader* r)
 {
-  llarp_buffer_t strbuf;
-  r->buffer = buff;
-  if(*r->buffer->cur != 'd')
+  llarp_buffer_t strbuf;      // temporary buffer for current element
+  r->buffer = buff;           // set up dict_reader
+  if(*r->buffer->cur != 'd')  // ensure is a dictionary
     return false;
   r->buffer->cur++;
   while(llarp_buffer_size_left(r->buffer) && *r->buffer->cur != 'e')
   {
     if(bdecode_read_string(r->buffer, &strbuf))
     {
-      if(!r->on_key(r, &strbuf))
+      if(!r->on_key(r, &strbuf))  // check for early abort
         return false;
     }
   }
 
-  if(*r->buffer->cur != 'e')
+  if(*r->buffer->cur != 'e')  // make sure we're at dictionary end
     return false;
   r->buffer->cur++;
   return r->on_key(r, 0);
@@ -161,8 +172,15 @@ bdecode_read_dict(llarp_buffer_t* buff, struct dict_reader* r)
 
 struct list_reader
 {
+  /// makes passing data into on_item easier
   llarp_buffer_t* buffer;
+  /// not currently used, maybe used in the future to pass additional
+  /// information to on_item
   void* user;
+  /**
+   * called when we got an element, return true to continue iteration
+   * called with null item on iteration completion
+   */
   bool (*on_item)(struct list_reader*, bool);
 };
 
@@ -170,16 +188,16 @@ static bool INLINE
 bdecode_read_list(llarp_buffer_t* buff, struct list_reader* r)
 {
   r->buffer = buff;
-  if(*r->buffer->cur != 'l')
+  if(*r->buffer->cur != 'l')  // ensure is a list
     return false;
 
   r->buffer->cur++;
   while(llarp_buffer_size_left(r->buffer) && *r->buffer->cur != 'e')
   {
-    if(!r->on_item(r, true))
+    if(!r->on_item(r, true))  // check for early abort
       return false;
   }
-  if(*r->buffer->cur != 'e')
+  if(*r->buffer->cur != 'e')  // make sure we're at a list end
     return false;
   r->buffer->cur++;
   return r->on_item(r, false);

@@ -73,7 +73,7 @@ namespace iwp
     size() const
     {
       uint16_t sz = (ptr[3] | 0x00ff) << 8;
-      sz |= (ptr[2]  & 0x00ff);
+      sz |= (ptr[2] & 0x00ff);
       return sz;
     }
 
@@ -213,12 +213,13 @@ namespace iwp
     {
     }
 
-    bool reassemble(std::vector<byte_t> & buffer)
+    bool
+    reassemble(std::vector< byte_t > &buffer)
     {
       // TODO: implement
       return false;
     }
-    
+
     void
     put_message(llarp_buffer_t &buf, const byte_t *hash, uint64_t id,
                 uint16_t mtu = 1024)
@@ -260,12 +261,12 @@ namespace iwp
     typedef std::vector< byte_t > sendbuf_t;
     std::queue< sendbuf_t > sendqueue;
 
-    llarp::FrameHandler * handler = nullptr;
+    llarp::FrameHandler *handler = nullptr;
 
     void
     inbound_frame_complete(uint64_t id)
     {
-      std::vector<byte_t> buf;
+      std::vector< byte_t > buf;
       if(rx[id].reassemble(buf) && handler)
       {
         if(handler->Process(buf))
@@ -275,7 +276,7 @@ namespace iwp
       }
       rx.erase(id);
     }
-    
+
     void
     init_sendbuf(sendbuf_t &buf, msgtype t, uint16_t sz, uint8_t flags)
     {
@@ -346,7 +347,8 @@ namespace iwp
         {
           // short XMIT , no fragments so just ack
           auto id = x.msgid();
-          push_ackfor(id, 0); // TODO: should this be before or after handling frame?
+          push_ackfor(
+              id, 0);  // TODO: should this be before or after handling frame?
           inbound_frame_complete(id);
         }
       }
@@ -553,7 +555,7 @@ namespace iwp
         return;
       }
       printf("session start okay\n");
-      
+
       // auto msg = new transit_message;
 
       // auto buffer = llarp::EncodeLIM< decltype(buf) >(buf, our_router);
@@ -685,7 +687,7 @@ namespace iwp
       // TODO don't hard code 1500
       if(sz > 1500)
         return nullptr;
-      
+
       iwp_async_frame *frame = new iwp_async_frame;
       if(buf)
         memcpy(frame->buf, buf, sz);
@@ -700,8 +702,8 @@ namespace iwp
     {
       printf("encrypt frame of size %ld\n", sz);
       // 64 bytes frame overhead for nonce and hmac
-      auto frame  = alloc_frame(nullptr, sz+64);
-      memcpy(frame->buf +64, buf, sz-64);
+      auto frame = alloc_frame(nullptr, sz + 64);
+      memcpy(frame->buf + 64, buf, sz - 64);
       frame->hook = &handle_frame_encrypt;
       iwp_call_async_frame_encrypt(iwp, frame);
     }

@@ -7,23 +7,35 @@
 #include <stdlib.h>
 #include <sys/socket.h>
 
+/**
+ * ev.h
+ *
+ * event handler (cross platform high performance event system for IO)
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 struct llarp_ev_loop;
 
+/// allocator
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev);
+
+// deallocator
 void
 llarp_ev_loop_free(struct llarp_ev_loop **ev);
 
+/// run main loop
 int
 llarp_ev_loop_run(struct llarp_ev_loop *ev);
-/** stop event loop and wait for it to complete all jobs */
+
+/// stop event loop and wait for it to complete all jobs
 void
 llarp_ev_loop_stop(struct llarp_ev_loop *ev);
 
+/// UDP handling configuration
 struct llarp_udp_io
 {
   void *user;
@@ -33,14 +45,17 @@ struct llarp_udp_io
                    ssize_t);
 };
 
+/// add UDP handler
 int
 llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp,
                  const struct sockaddr *src);
 
+/// schedule UDP packet
 int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,
                     const void *data, size_t sz);
 
+/// close UDP handler
 int
 llarp_ev_close_udp(struct llarp_udp_io *udp);
 

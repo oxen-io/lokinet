@@ -4,10 +4,17 @@
 #include <llarp/crypto.h>
 #include <llarp/net.h>
 
+/**
+ * exit_info.h
+ *
+ * utilities for handling exits on the llarp network
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+/// Exit info model
 struct llarp_xi
 {
   struct in6_addr address;

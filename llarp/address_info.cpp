@@ -133,9 +133,8 @@ extern "C" {
 bool
 llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t *buff)
 {
-  struct dict_reader reader;
-  reader.user   = ai;
-  reader.on_key = &llarp_ai_decode_key;
+  struct dict_reader reader = {
+      .buffer = nullptr, .user = ai, .on_key = &llarp_ai_decode_key};
   return bdecode_read_dict(buff, &reader);
 }
 
@@ -188,9 +187,8 @@ llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 {
   if(!bencode_start_list(buff))
     return false;
-  struct llarp_ai_list_iter ai_itr;
-  ai_itr.user  = buff;
-  ai_itr.visit = &llarp_ai_list_iter_bencode;
+  struct llarp_ai_list_iter ai_itr = {
+      .user = buff, .list = nullptr, .visit = &llarp_ai_list_iter_bencode};
   llarp_ai_list_iterate(l, &ai_itr);
   return bencode_end(buff);
 }
@@ -250,9 +248,8 @@ llarp_ai_list_index(struct llarp_ai_list *l, ssize_t idx, struct llarp_ai *dst)
 bool
 llarp_ai_list_bdecode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 {
-  struct list_reader r;
-  r.user    = l;
-  r.on_item = &llarp_ai_list_bdecode_item;
+  struct list_reader r = {
+      .buffer = nullptr, .user = l, .on_item = &llarp_ai_list_bdecode_item};
   return bdecode_read_list(buff, &r);
 }
 }
