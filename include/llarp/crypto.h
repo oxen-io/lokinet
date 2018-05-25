@@ -4,6 +4,14 @@
 #include <llarp/common.h>
 #include <stdbool.h>
 #include <stdint.h>
+
+/**
+ * crypto.h
+ *
+ * libsodium abstraction layer
+ * potentially allow libssl support in the future
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -30,9 +38,11 @@ typedef byte_t llarp_hmacsec_t[HMACSECSIZE];
 typedef byte_t llarp_sig_t[SIGSIZE];
 typedef byte_t llarp_tunnel_nonce_t[TUNNONCESIZE];
 
+/// get public key from secret
 byte_t *
 llarp_seckey_topublic(byte_t *secret);
 
+/// label functors
 typedef bool (*llarp_dh_func)(llarp_sharedkey_t *, llarp_pubkey_t,
                               llarp_tunnel_nonce_t, llarp_seckey_t);
 
@@ -52,6 +62,7 @@ typedef bool (*llarp_sign_func)(byte_t *, const byte_t *, llarp_buffer_t);
 typedef bool (*llarp_verify_func)(const byte_t *, llarp_buffer_t,
                                   const byte_t *);
 
+/// library crypto configuration
 struct llarp_crypto
 {
   llarp_sym_cipher_func xchacha20;
@@ -69,9 +80,11 @@ struct llarp_crypto
   void (*keygen)(byte_t *);
 };
 
+/// allocate crypto
 void
 llarp_crypto_libsodium_init(struct llarp_crypto *c);
 
+/// initialize crypto
 bool
 llarp_crypto_initialized(struct llarp_crypto *c);
 
