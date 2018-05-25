@@ -25,9 +25,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 {
   uint64_t v;
   llarp_buffer_t strbuf;
-  struct llarp_rc_decoder *dec = r->user;
-  struct llarp_alloc *mem      = dec->mem;
-  struct llarp_rc *rc          = dec->rc;
+  struct llarp_rc *rc = r->user;
 
   if(!key)
     return true;
@@ -38,7 +36,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
     {
       llarp_ai_list_free(rc->addrs);
     }
-    rc->addrs = llarp_ai_list_new(mem);
+    rc->addrs = llarp_ai_list_new();
     return llarp_ai_list_bdecode(rc->addrs, r->buffer);
   }
 
@@ -72,7 +70,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
     {
       llarp_xi_list_free(rc->exits);
     }
-    rc->exits = llarp_xi_list_new(mem);
+    rc->exits = llarp_xi_list_new();
     return llarp_xi_list_bdecode(rc->exits, r->buffer);
   }
 
@@ -90,11 +88,9 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 }
 
 bool
-llarp_rc_bdecode(struct llarp_alloc *mem, struct llarp_rc *rc,
-                 llarp_buffer_t *buff)
+llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buff)
 {
-  struct llarp_rc_decoder decode = {.rc = rc, .mem = mem};
-  struct dict_reader r = {.user = &decode, .on_key = &llarp_rc_decode_dict};
+  struct dict_reader r = {.user = rc, .on_key = &llarp_rc_decode_dict};
   return bdecode_read_dict(buff, &r);
 }
 
@@ -135,6 +131,7 @@ llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff)
   /* write dict begin */
   if(!bencode_start_dict(buff))
     return false;
+
   if(rc->addrs)
   {
     /* write ai if they exist */

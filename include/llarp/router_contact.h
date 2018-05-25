@@ -19,8 +19,7 @@ struct llarp_rc
 };
 
 bool
-llarp_rc_bdecode(struct llarp_alloc *mem, struct llarp_rc *rc,
-                 llarp_buffer_t *buf);
+llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buf);
 bool
 llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buf);
 

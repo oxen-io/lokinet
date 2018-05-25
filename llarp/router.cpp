@@ -1,10 +1,10 @@
 #include "router.hpp"
-#include <llarp/dtls.h>
-#include <llarp/ibfq.h>
 #include <llarp/iwp.h>
 #include <llarp/link.h>
 #include <llarp/proto.h>
 #include <llarp/router.h>
+#include <llarp/link_message.hpp>
+
 #include "buffer.hpp"
 #include "net.hpp"
 #include "str.hpp"
@@ -18,15 +18,27 @@ namespace llarp
                      const char *key, const char *val);
 }  // namespace llarp
 
-llarp_router::llarp_router(struct llarp_alloc *m) : ready(false), mem(m)
+llarp_router::llarp_router(struct llarp_alloc *m)
+    : ready(false), mem(m), inbound_msg_handler(this)
 {
   llarp_rc_clear(&rc);
-  llarp_msg_muxer_init(&muxer);
 }
 
 llarp_router::~llarp_router()
 {
   llarp_rc_free(&rc);
+}
+
+bool
+llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
+                                    llarp_buffer_t buf)
+{
+  if(inbound_msg_handler.ProcessFrom(session, buf))
+  {
+    return inbound_msg_handler.FlushReplies();
+  }
+  else
+    return false;
 }
 
 void
@@ -57,7 +69,7 @@ llarp_router::try_connect(fs::path rcfile)
       return;
     }
   }
-  if(llarp_rc_bdecode(mem, &remote, &buf))
+  if(llarp_rc_bdecode(&remote, &buf))
   {
     if(llarp_rc_verify_sig(&crypto, &remote))
     {
@@ -142,7 +154,6 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
     printf("session made\n");
   else
     printf("session not made\n");
-  delete job;
 }
 
 void
@@ -151,7 +162,7 @@ llarp_router::Run()
   // zero out router contact
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
-  rc.addrs = llarp_ai_list_new(mem);
+  rc.addrs = llarp_ai_list_new();
   for(auto link : links)
   {
     llarp_ai addr;
@@ -224,7 +235,6 @@ llarp_init_router(struct llarp_alloc *mem, struct llarp_threadpool *tp,
     router->tp      = tp;
     router->logic   = logic;
     llarp_crypto_libsodium_init(&router->crypto);
-    llarp_msg_muxer_init(&router->muxer);
   }
   return router;
 }
@@ -286,7 +296,7 @@ void
 llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
                    struct llarp_ai_list *addr)
 {
-  rc->addrs = llarp_ai_list_new(mem);
+  rc->addrs = llarp_ai_list_new();
   struct llarp_ai_list_iter ai_itr;
   ai_itr.user  = rc;
   ai_itr.visit = &llarp_rc_addr_list_iter;
@@ -418,13 +428,13 @@ namespace llarp
       llarp::Zero(link, sizeof(llarp_link));
 
       llarp_iwp_args args = {
-          .mem          = self->mem,
           .crypto       = &self->crypto,
           .logic        = self->logic,
           .cryptoworker = self->tp,
+          .router       = self,
           .keyfile      = self->transport_keyfile.c_str(),
       };
-      iwp_link_init(link, args, &self->muxer);
+      iwp_link_init(link, args);
       if(llarp_link_initialized(link))
       {
         if(link->configure(link, self->netloop, key, af, proto))

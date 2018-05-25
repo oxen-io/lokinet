@@ -27,12 +27,10 @@ set(LIB_SRC
   llarp/iwp_link.cpp
   llarp/link.c
   llarp/link_intro.cpp
-  llarp/link_relay_down.cpp
-  llarp/link_relay_up.cpp
+  llarp/link_message.cpp
   llarp/logic.c
   llarp/mem.cpp
   llarp/mem_std.cpp
-  llarp/muxer.cpp
   llarp/net.cpp
   llarp/nodedb.cpp
   llarp/router_contact.c

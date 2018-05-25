@@ -66,7 +66,7 @@ struct llarp_nodedb
     fclose(f);
     llarp_rc *rc = llarp::Alloc< llarp_rc >(mem);
     llarp::Zero(rc, sizeof(llarp_rc));
-    if(llarp_rc_bdecode(mem, rc, &buff))
+    if(llarp_rc_bdecode(rc, &buff))
     {
       if(llarp_rc_verify_sig(crypto, rc))
       {

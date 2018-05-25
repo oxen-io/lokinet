@@ -2,10 +2,8 @@
 #define LLARP_ROUTER_H_
 #include <llarp/config.h>
 #include <llarp/ev.h>
-#include <llarp/ibmq.h>
 #include <llarp/link.h>
 #include <llarp/logic.h>
-#include <llarp/obmd.h>
 #include <llarp/router_contact.h>
 #include <llarp/threadpool.h>
 
@@ -36,13 +34,6 @@ llarp_run_router(struct llarp_router *router);
 
 void
 llarp_stop_router(struct llarp_router *router);
-
-/** get router's inbound link level frame queue */
-struct llarp_link_queue *
-llarp_router_link_queue(struct llarp_router *router);
-/** get router's outbound link level frame dispatcher */
-struct llarp_link_dispatcher *
-llarp_router_link_dispatcher(struct llarp_router *router);
 
 struct llarp_router_link_iter
 {

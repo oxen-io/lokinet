@@ -2,7 +2,7 @@
 #include <llarp/iwp.h>
 #include <llarp/net.h>
 #include <llarp/time.h>
-#include <llarp/frame_handler.hpp>
+#include "link/encoder.hpp"
 
 #include <sodium/crypto_sign_ed25519.h>
 
@@ -16,23 +16,17 @@
 #include <set>
 #include <vector>
 
+#include "buffer.hpp"
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
 #include "net.hpp"
+#include "router.hpp"
 
 namespace iwp
 {
   // session activity timeout is 10s
   constexpr llarp_time_t SESSION_TIMEOUT = 10000;
-
-  enum header_flag
-  {
-    eSessionInvalidated = (1 << 0),
-    eHighPacketDrop     = (1 << 1),
-    eHighMTUDetected    = (1 << 2),
-    eProtoUpgrade       = (1 << 3)
-  };
 
   enum msgtype
   {
@@ -40,6 +34,16 @@ namespace iwp
     eXMIT = 0x01,
     eACKS = 0x02,
     eFRAG = 0x03
+  };
+
+  typedef std::vector< byte_t > sendbuf_t;
+
+  enum header_flag
+  {
+    eSessionInvalidated = (1 << 0),
+    eHighPacketDrop     = (1 << 1),
+    eHighMTUDetected    = (1 << 2),
+    eProtoUpgrade       = (1 << 3)
   };
 
   /** plaintext frame header */
@@ -72,16 +76,15 @@ namespace iwp
     uint16_t
     size() const
     {
-      uint16_t sz = (ptr[3] | 0x00ff) << 8;
-      sz |= (ptr[2] & 0x00ff);
+      uint16_t sz;
+      memcpy(&sz, ptr + 2, 2);
       return sz;
     }
 
     void
     setsize(uint16_t sz)
     {
-      ptr[3] = (sz | 0xff00) >> 8;
-      ptr[2] = (sz | 0x00ff);
+      memcpy(ptr + 2, &sz, 2);
     }
 
     uint8_t
@@ -96,6 +99,19 @@ namespace iwp
       ptr[5] |= f;
     }
   };
+
+  byte_t *
+  init_sendbuf(sendbuf_t &buf, msgtype t, uint16_t sz, uint8_t flags)
+  {
+    buf.resize(6 + sz);
+    frame_header hdr(buf.data());
+    hdr.version() = 0;
+    hdr.msgtype() = t;
+    hdr.setsize(sz);
+    buf[4] = 0;
+    buf[5] = flags;
+    return hdr.data();
+  }
 
   /** xmit header */
   struct xmit
@@ -196,7 +212,7 @@ namespace iwp
     xmit msginfo;
     std::bitset< 16 > status;
 
-    std::map< uint16_t, fragment_t > frags;
+    std::map< uint8_t, fragment_t > frags;
     fragment_t lastfrag;
 
     transit_message()
@@ -213,11 +229,78 @@ namespace iwp
     {
     }
 
+    void
+    ack(uint32_t bitmask)
+    {
+      uint8_t idx = 0;
+      while(idx < 16)
+      {
+        if(bitmask & (1 << idx))
+        {
+          status.set(idx);
+        }
+        ++idx;
+      }
+    }
+
+    bool
+    completed() const
+    {
+      for(const auto &item : frags)
+      {
+        if(!status.test(item.first))
+          return false;
+      }
+      return true;
+    }
+
+    template < typename T >
+    void
+    generate_xmit(T &queue)
+    {
+      queue.emplace();
+      auto &xmitbuf = queue.back();
+      auto body_ptr = init_sendbuf(xmitbuf, eXMIT,
+                                   sizeof(msginfo.buffer) + lastfrag.size(), 0);
+      memcpy(body_ptr, msginfo.buffer, sizeof(msginfo.buffer));
+      body_ptr += sizeof(msginfo.buffer);
+      memcpy(body_ptr, lastfrag.data(), lastfrag.size());
+    }
+
+    template < typename T >
+    void
+    retransmit_frags(T &queue)
+    {
+      auto msgid    = msginfo.msgid();
+      auto fragsize = msginfo.fragsize();
+      for(auto &frag : frags)
+      {
+        if(status.test(frag.first))
+          continue;
+        queue.emplace();
+        auto &fragbuf = queue.back();
+        auto body_ptr = init_sendbuf(fragbuf, eFRAG, 9 + fragsize, 0);
+        memcpy(body_ptr, &msgid, 8);
+        body_ptr[8] = frag.first;
+        memcpy(body_ptr + 9, frag.second.data(), fragsize);
+      }
+    }
+
     bool
     reassemble(std::vector< byte_t > &buffer)
     {
-      // TODO: implement
-      return false;
+      auto total = msginfo.totalsize();
+      printf("reassemble message of size %d\n", total);
+      buffer.resize(total);
+      auto fragsz = msginfo.fragsize();
+      auto ptr    = buffer.data();
+      for(const auto &frag : frags)
+      {
+        memcpy(ptr, frag.second.data(), fragsz);
+        ptr += fragsz;
+      }
+      memcpy(ptr, lastfrag.data(), lastfrag.size());
+      return true;
     }
 
     void
@@ -225,7 +308,7 @@ namespace iwp
                 uint16_t mtu = 1024)
     {
       status.reset();
-      uint16_t fragid   = 0;
+      uint8_t fragid    = 0;
       uint16_t fragsize = mtu;
       while((buf.cur - buf.base) > fragsize)
       {
@@ -234,12 +317,12 @@ namespace iwp
         buf.cur += fragsize;
         frags[fragid++] = frag;
       }
-      uint16_t lastfrag = buf.cur - buf.base;
+      uint16_t lastfrag = buf.sz - (buf.cur - buf.base);
       // set info for xmit
-      msginfo.set_info(hash, id, mtu, frags.size(), lastfrag);
+      msginfo.set_info(hash, id, fragsize, lastfrag, frags.size());
       // copy message hash
       memcpy(msginfo.buffer, hash, 32);
-      put_lastfrag(buf.cur, buf.cur - buf.base);
+      put_lastfrag(buf.cur, lastfrag);
     }
 
     void
@@ -258,47 +341,58 @@ namespace iwp
     std::map< uint64_t, transit_message > rx;
     std::map< uint64_t, transit_message * > tx;
 
-    typedef std::vector< byte_t > sendbuf_t;
-    std::queue< sendbuf_t > sendqueue;
+    typedef std::queue< sendbuf_t > sendqueue_t;
 
-    llarp::FrameHandler *handler = nullptr;
+    llarp_router *router       = nullptr;
+    llarp_link_session *parent = nullptr;
+
+    sendqueue_t sendqueue;
 
     void
-    inbound_frame_complete(uint64_t id)
+    clear()
     {
-      std::vector< byte_t > buf;
-      if(rx[id].reassemble(buf) && handler)
-      {
-        if(handler->Process(buf))
-          printf("processed frame %ld\n", id);
-        else
-          printf("failed to process frame %ld", id);
-      }
-      rx.erase(id);
+      rx.clear();
+      for(auto &item : tx)
+        delete item.second;
+      tx.clear();
     }
 
-    void
-    init_sendbuf(sendbuf_t &buf, msgtype t, uint16_t sz, uint8_t flags)
+    bool
+    inbound_frame_complete(uint64_t id)
     {
-      buf.resize(6 + sz);
-      buf[0] = 0;
-      buf[1] = t;
-      buf[2] = sz & 0x00ff;
-      buf[3] = (sz & 0xff00) >> 8;
-      buf[4] = 0;
-      buf[5] = flags;
+      bool success = false;
+      std::vector< byte_t > msg;
+      if(rx[id].reassemble(msg))
+      {
+        printf("handle message of size: %ld\n", msg.size());
+        auto buf = llarp::Buffer< decltype(msg) >(msg);
+        success  = router->HandleRecvLinkMessage(parent, buf);
+        if(success)
+        {
+          alive();
+          if(id == 0)
+            parent->established(parent);
+        }
+      }
+      else
+      {
+        printf("failed to reassemble message %ld\n", id);
+      }
+      rx.erase(id);
+      return success;
     }
 
     void
     push_ackfor(uint64_t id, uint32_t bitmask)
     {
-      sendbuf_t buf;
+      sendqueue.emplace();
+      auto &buf = sendqueue.back();
       // TODO: set flags to nonzero as needed
       init_sendbuf(buf, eACKS, 12, 0);
       // TODO: this assumes big endian
       memcpy(buf.data() + 6, &id, 8);
       memcpy(buf.data() + 14, &bitmask, 4);
-      sendqueue.push(buf);
+      printf("ACK for %ld %d\n", id, bitmask);
     }
 
     bool
@@ -307,7 +401,7 @@ namespace iwp
       if(hdr.size() > sz)
       {
         // overflow
-        printf("invalid XMIT frame size\n");
+        printf("invalid XMIT frame size %d > %ld\n", hdr.size(), sz);
         return false;
       }
       sz = hdr.size();
@@ -330,27 +424,26 @@ namespace iwp
       // check LSB set on flags
       if(x.flags() & 0x01)
       {
-        if(x.numfrags() > 0)
+        auto id  = x.msgid();
+        auto itr = rx.try_emplace(id, x);
+        if(itr.second)
         {
-          auto itr = rx.try_emplace(x.msgid(), x);
-          if(itr.second)
+          // inserted, put last fragment
+          itr.first->second.put_lastfrag(hdr.data() + sizeof(x.buffer),
+                                         x.lastfrag());
+          alive();
+          if(x.numfrags() == 0)
           {
-            // inserted, put last fragment
-            itr.first->second.put_lastfrag(hdr.data() + sizeof(x.buffer),
-                                           x.lastfrag());
-            return true;
+            printf("short XMIT\n");
+            push_ackfor(id, 0);
+            return inbound_frame_complete(id);
           }
           else
-            printf("duplicate XMIT msgid=%ld\n", x.msgid());
+            printf("got XMIT with %d fragments\n", x.numfrags());
+          return true;
         }
         else
-        {
-          // short XMIT , no fragments so just ack
-          auto id = x.msgid();
-          push_ackfor(
-              id, 0);  // TODO: should this be before or after handling frame?
-          inbound_frame_complete(id);
-        }
+          printf("duplicate XMIT msgid=%ld\n", x.msgid());
       }
       else
         printf("XMIT flags LSB not set\n");
@@ -372,14 +465,62 @@ namespace iwp
     bool
     got_acks(frame_header &hdr, size_t sz)
     {
-      return false;
+      if(hdr.size() > sz)
+      {
+        printf("invalid ACKS frame size %d > %ld\n", hdr.size(), sz);
+        return false;
+      }
+      sz = hdr.size();
+      if(sz < 12)
+      {
+        printf("invalid ACKS frame size %ld < 12\n", sz);
+        return false;
+      }
+
+      auto ptr = hdr.data();
+      uint64_t msgid;
+      uint32_t bitmask;
+      memcpy(&msgid, ptr, 8);
+      memcpy(&bitmask, ptr + 8, 4);
+
+      auto itr = tx.find(msgid);
+      if(itr == tx.end())
+      {
+        printf("ACK for missing TX frame: %ld\n", msgid);
+        return false;
+      }
+
+      alive();
+
+      itr->second->ack(bitmask);
+
+      if(itr->second->completed())
+      {
+        printf("message %ld acknoleged\n", msgid);
+        delete itr->second;
+        tx.erase(itr);
+      }
+      else
+      {
+        printf("message %ld retransmit fragments\n", msgid);
+        itr->second->retransmit_frags(sendqueue);
+      }
+
+      return true;
     }
 
     // queue new outbound message
     void
     queue_tx(uint64_t id, transit_message *msg)
     {
-      tx.try_emplace(id, msg);
+      auto itr = tx.try_emplace(id, msg);
+      if(itr.second)
+      {
+        msg->generate_xmit(sendqueue);
+        msg->retransmit_frags(sendqueue);
+      }
+      else  // duplicate
+        delete msg;
     }
 
     // get next frame to encrypt and transmit
@@ -413,11 +554,11 @@ namespace iwp
           alive();
           return true;
         case eXMIT:
-          return got_xmit(hdr, sz - 4);
+          return got_xmit(hdr, sz - 6);
         case eACKS:
-          return got_acks(hdr, sz - 4);
+          return got_acks(hdr, sz - 6);
         case eFRAG:
-          return got_frag(hdr, sz - 4);
+          return got_frag(hdr, sz - 6);
         default:
           return false;
       }
@@ -427,18 +568,24 @@ namespace iwp
   struct session
   {
     llarp_alloc *mem;
-    llarp_msg_muxer *muxer;
     llarp_udp_io *udp;
     llarp_crypto *crypto;
     llarp_async_iwp *iwp;
     llarp_logic *logic;
-    llarp_rc *our_router;
+
+    llarp_link_session *parent = nullptr;
+    llarp_link *link           = nullptr;
+
+    llarp_rc *our_router = nullptr;
+    llarp_rc remote_router;
 
     llarp_seckey_t eph_seckey;
     llarp_pubkey_t remote;
     llarp_sharedkey_t sessionkey;
 
     llarp_link_establish_job *establish_job = nullptr;
+
+    uint32_t establish_job_id = 0;
 
     llarp::Addr addr;
     iwp_async_intro intro;
@@ -456,23 +603,18 @@ namespace iwp
       eIntroSent,
       eIntroAckSent,
       eIntroAckRecv,
+      eSessionStartSent,
+      eLIMSent,
       eEstablished,
       eTimeout
     };
 
     State state;
 
-    session(llarp_alloc *m, llarp_msg_muxer *mux, llarp_udp_io *u,
-            llarp_async_iwp *i, llarp_crypto *c, llarp_logic *l,
-            const byte_t *seckey, const llarp::Addr &a)
-        : mem(m)
-        , muxer(mux)
-        , udp(u)
-        , crypto(c)
-        , iwp(i)
-        , logic(l)
-        , addr(a)
-        , state(eInitial)
+    session(llarp_alloc *m, llarp_udp_io *u, llarp_async_iwp *i,
+            llarp_crypto *c, llarp_logic *l, const byte_t *seckey,
+            const llarp::Addr &a)
+        : mem(m), udp(u), crypto(c), iwp(i), logic(l), addr(a), state(eInitial)
     {
       if(seckey)
         memcpy(eph_seckey, seckey, sizeof(llarp_seckey_t));
@@ -480,10 +622,21 @@ namespace iwp
       {
         c->encryption_keygen(eph_seckey);
       }
+
+      llarp::Zero(&remote_router, sizeof(llarp_rc));
     }
 
     ~session()
     {
+      llarp_rc_free(&remote_router);
+      frame.clear();
+    }
+
+    static llarp_rc *
+    get_remote_router(llarp_link_session *s)
+    {
+      session *self = static_cast< session * >(s->impl);
+      return &self->remote_router;
     }
 
     static bool
@@ -513,6 +666,7 @@ namespace iwp
       while(frame.next_frame(buf))
       {
         encrypt_frame_async_send(buf.base, buf.sz);
+        frame.pop_next_frame();
       }
     }
 
@@ -534,6 +688,9 @@ namespace iwp
           // probably a session start
           on_session_start(buf, sz);
           return;
+
+        case eSessionStartSent:
+        case eLIMSent:
         case eEstablished:
           // session is started
           decrypt_frame(buf, sz);
@@ -554,11 +711,43 @@ namespace iwp
         printf("session start verify fail\n");
         return;
       }
-      printf("session start okay\n");
+      printf("session start verified, sending LIM\n");
+      self->send_LIM();
+    }
 
-      // auto msg = new transit_message;
+    void
+    send_LIM()
+    {
+      llarp_shorthash_t digest;
+      // 64 bytes overhead for link message
+      byte_t tmp[MAX_RC_SIZE + 64];
+      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      // return a llarp_buffer_t of encoded link message
+      if(llarp::EncodeLIM(&buf, our_router))
+      {
+        // rewind message buffer
+        buf.sz   = buf.cur - buf.base;
+        buf.cur  = buf.base;
+        auto msg = new transit_message;
+        // hash message buffer
+        crypto->shorthash(digest, buf);
+        // put message buffer
+        auto id = frame.txids++;
+        msg->put_message(buf, digest, id);
+        // put into outbound send queue
+        add_outbound_message(id, msg);
+        EnterState(eLIMSent);
+      }
+      else
+        printf("failed to encode LIM\n");
+    }
 
-      // auto buffer = llarp::EncodeLIM< decltype(buf) >(buf, our_router);
+    void
+    session_established()
+    {
+      printf("session established\n");
+      EnterState(eEstablished);
+      llarp_logic_cancel_call(logic, establish_job_id);
     }
 
     void
@@ -593,6 +782,12 @@ namespace iwp
     }
 
     static void
+    set_established(llarp_link_session *s)
+    {
+      static_cast< session * >(s->impl)->session_established();
+    }
+
+    static void
     close(llarp_link_session *s)
     {
       // TODO: implement
@@ -620,7 +815,7 @@ namespace iwp
     {
       session *link = static_cast< session * >(start->user);
       llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz);
-      link->EnterState(eEstablished);
+      link->EnterState(eSessionStartSent);
       printf("session start sent\n");
     }
 
@@ -650,7 +845,12 @@ namespace iwp
       session *self = static_cast< session * >(frame->user);
       if(frame->success)
       {
-        self->frame.process(frame->buf + 64, frame->sz - 64);
+        if(self->frame.process(frame->buf + 64, frame->sz - 64))
+        {
+          self->pump();
+        }
+        else
+          printf("invalid frame\n");
       }
       else
         printf("decrypt frame fail\n");
@@ -703,7 +903,7 @@ namespace iwp
       printf("encrypt frame of size %ld\n", sz);
       // 64 bytes frame overhead for nonce and hmac
       auto frame = alloc_frame(nullptr, sz + 64);
-      memcpy(frame->buf + 64, buf, sz - 64);
+      memcpy(frame->buf + 64, buf, sz);
       frame->hook = &handle_frame_encrypt;
       iwp_call_async_frame_encrypt(iwp, frame);
     }
@@ -832,6 +1032,29 @@ namespace iwp
       }
     }
 
+    static void
+    handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
+    {
+      session *self = static_cast< session * >(user);
+      if(self->establish_job)
+      {
+        self->establish_job->link = self->link;
+        if(left)
+        {
+          // timer cancelled
+          self->establish_job->session = self->parent;
+        }
+        else
+        {
+          // timer timeout
+          self->establish_job->session = nullptr;
+        }
+        self->establish_job->result(self->establish_job);
+        delete self->establish_job;
+        self->establish_job = nullptr;
+      }
+    }
+
     void
     introduce(uint8_t *pub)
     {
@@ -856,13 +1079,15 @@ namespace iwp
       intro.user = this;
       intro.hook = &handle_generated_intro;
       iwp_call_async_gen_intro(iwp, &intro);
+      // start introduce timer
+      establish_job_id = llarp_logic_call_later(
+          logic, {5000, this, &handle_establish_timeout});
     }
 
     void
     EnterState(State st)
     {
-      if(state == eInitial)
-        frame.alive();
+      frame.alive();
       state = st;
     }
   };
@@ -872,12 +1097,13 @@ namespace iwp
     typedef std::mutex mtx_t;
     typedef std::lock_guard< mtx_t > lock_t;
 
+    llarp_router *router;
     llarp_alloc *mem;
     llarp_logic *logic;
     llarp_crypto *crypto;
     llarp_ev_loop *netloop;
-    llarp_msg_muxer *muxer;
     llarp_async_iwp *iwp;
+    llarp_link *link = nullptr;
     llarp_udp_io udp;
     llarp::Addr addr;
     char keyfile[255];
@@ -890,12 +1116,13 @@ namespace iwp
 
     llarp_seckey_t seckey;
 
-    server(llarp_alloc *m, llarp_crypto *c, llarp_logic *l, llarp_threadpool *w)
+    server(llarp_router *r, llarp_crypto *c, llarp_logic *l,
+           llarp_threadpool *w)
     {
-      mem    = m;
+      router = r;
       crypto = c;
       logic  = l;
-      iwp    = llarp_async_iwp_new(mem, crypto, logic, w);
+      iwp    = llarp_async_iwp_new(crypto, logic, w);
     }
 
     ~server()
@@ -906,7 +1133,7 @@ namespace iwp
     session *
     create_session(const llarp::Addr &src, const byte_t *seckey)
     {
-      return new session(mem, muxer, &udp, iwp, crypto, logic, seckey, src);
+      return new session(mem, &udp, iwp, crypto, logic, seckey, src);
     }
 
     bool
@@ -924,10 +1151,17 @@ namespace iwp
       s.sendto             = &session::sendto;
       s.timeout            = &session::is_timedout;
       s.close              = &session::close;
+      s.get_remote_router  = &session::get_remote_router;
+      s.established        = &session::set_established;
       {
         lock_t lock(m_sessions_Mutex);
         m_sessions[src] = s;
+        impl->parent    = &m_sessions[src];
       }
+      impl->link         = link;
+      impl->frame.router = router;
+      impl->frame.parent = impl->parent;
+      impl->our_router   = &router->rc;
     }
 
     session *
@@ -1078,12 +1312,11 @@ namespace iwp
   };
 
   server *
-  link_alloc(struct llarp_alloc *mem, struct llarp_msg_muxer *muxer,
-             const char *keyfile, struct llarp_crypto *crypto,
-             struct llarp_logic *logic, struct llarp_threadpool *worker)
+  link_alloc(struct llarp_router *router, const char *keyfile,
+             struct llarp_crypto *crypto, struct llarp_logic *logic,
+             struct llarp_threadpool *worker)
   {
-    server *link = new server(mem, crypto, logic, worker);
-    link->muxer  = muxer;
+    server *link = new server(router, crypto, logic, worker);
     llarp::Zero(link->keyfile, sizeof(link->keyfile));
     strncpy(link->keyfile, keyfile, sizeof(link->keyfile));
     return link;
@@ -1167,7 +1400,9 @@ namespace iwp
   bool
   link_start(struct llarp_link *l, struct llarp_logic *logic)
   {
-    server *link         = static_cast< server * >(l->impl);
+    server *link = static_cast< server * >(l->impl);
+    // give link implementations
+    link->link           = l;
     link->timeout_job_id = 0;
     link->logic          = logic;
     // start cleanup timer
@@ -1236,10 +1471,9 @@ namespace iwp
 extern "C" {
 
 void
-iwp_link_init(struct llarp_link *link, struct llarp_iwp_args args,
-              struct llarp_msg_muxer *muxer)
+iwp_link_init(struct llarp_link *link, struct llarp_iwp_args args)
 {
-  link->impl = iwp::link_alloc(args.mem, muxer, args.keyfile, args.crypto,
+  link->impl = iwp::link_alloc(args.router, args.keyfile, args.crypto,
                                args.logic, args.cryptoworker);
   link->name = iwp::link_name;
   link->get_our_address     = iwp::link_get_addr;

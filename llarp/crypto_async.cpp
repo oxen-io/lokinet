@@ -6,7 +6,6 @@
 
 struct llarp_async_iwp
 {
-  struct llarp_alloc *mem;
   struct llarp_crypto *crypto;
   struct llarp_logic *logic;
   struct llarp_threadpool *worker;
@@ -67,7 +66,6 @@ namespace iwp
     buf.cur  = buf.base;
     buf.sz   = intro->sz - 32;
     crypto->hmac(intro->buf, buf, sharedkey);
-    llarp::dumphex< llarp_hmac_t >(intro->buf);
     // inform result
     llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_intro});
   }
@@ -300,6 +298,9 @@ namespace iwp
         // T = HS(token + n)
         memcpy(tmp, token, 32);
         memcpy(tmp + 32, N, 32);
+        buf.base = tmp;
+        buf.cur  = buf.base;
+        buf.sz   = sizeof(tmp);
         shorthash(T, buf);
         // K = TKE(a.k, b.k, T)
         dh(K, a_K, b_sK, T);
@@ -335,15 +336,18 @@ namespace iwp
     llarp_sharedkey_t digest;
 
     llarp_buffer_t buf;
-    buf.base = body;
+    buf.base = nonce;
     buf.cur  = buf.base;
-    buf.sz   = frame->sz - 64;
+    buf.sz   = frame->sz - 32;
 
     // h = MDS(n + x, S)
     crypto->hmac(digest, buf, frame->sessionkey);
     // check hmac
     frame->success = memcmp(digest, hmac, 32) == 0;
     // x = SE(S, p, n[0:24])
+    buf.base = body;
+    buf.cur  = buf.base;
+    buf.sz   = frame->sz - 64;
     crypto->xchacha20(buf, frame->sessionkey, nonce);
     // inform result
     llarp_logic_queue_job(frame->iwp->logic, {user, &inform_frame_done});
@@ -368,6 +372,9 @@ namespace iwp
     // x = SE(S, p, n[0:24])
     crypto->xchacha20(buf, frame->sessionkey, nonce);
     // h = MDS(n + x, S)
+    buf.base = nonce;
+    buf.cur  = buf.base;
+    buf.sz   = frame->sz - 32;
     crypto->hmac(hmac, buf, frame->sessionkey);
     // inform result
     llarp_logic_queue_job(frame->iwp->logic, {user, &inform_frame_done});
@@ -450,13 +457,12 @@ iwp_call_async_verify_session_start(struct llarp_async_iwp *iwp,
 }
 
 struct llarp_async_iwp *
-llarp_async_iwp_new(struct llarp_alloc *mem, struct llarp_crypto *crypto,
-                    struct llarp_logic *logic, struct llarp_threadpool *worker)
+llarp_async_iwp_new(struct llarp_crypto *crypto, struct llarp_logic *logic,
+                    struct llarp_threadpool *worker)
 {
   llarp_async_iwp *iwp = new llarp_async_iwp;
   if(iwp)
   {
-    iwp->mem    = mem;
     iwp->crypto = crypto;
     iwp->logic  = logic;
     iwp->worker = worker;

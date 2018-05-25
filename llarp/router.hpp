@@ -1,11 +1,14 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 #include <llarp/link.h>
+#include <llarp/path.h>
 #include <llarp/router.h>
 #include <llarp/router_contact.h>
 #include <functional>
 #include <list>
 #include <map>
+
+#include <llarp/link_message.hpp>
 
 #include "fs.hpp"
 #include "mem.hpp"
@@ -35,22 +38,26 @@ struct llarp_router
   // path to write our self signed rc to
   fs::path our_rc_file = "rc.signed";
 
+  // our router contact
   llarp_rc rc;
 
   llarp_ev_loop *netloop;
   llarp_threadpool *tp;
   llarp_logic *logic;
   llarp_crypto crypto;
-  llarp_msg_muxer muxer;
   llarp_path_context *paths;
   llarp_alloc *mem;
   llarp_seckey_t identity;
 
+  llarp::InboundMessageHandler inbound_msg_handler;
+
   std::list< llarp_link * > links;
-  std::map< char, llarp_frame_handler > frame_handlers;
 
   llarp_router(llarp_alloc *mem);
   ~llarp_router();
+
+  bool
+  HandleRecvLinkMessage(struct llarp_link_session *from, llarp_buffer_t msg);
 
   void
   AddLink(struct llarp_link *link);

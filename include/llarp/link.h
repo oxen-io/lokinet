@@ -5,7 +5,6 @@
 #include <llarp/ev.h>
 #include <llarp/logic.h>
 #include <llarp/mem.h>
-#include <llarp/msg_handler.h>
 #include <llarp/obmd.h>
 
 #include <stdbool.h>
@@ -61,9 +60,13 @@ struct llarp_link_ev_listener
                 const char *);
 };
 
+// forward declare
+struct llarp_router;
+
 struct llarp_link
 {
   void *impl;
+  struct llarp_router *router;
   const char *(*name)(void);
   void (*get_our_address)(struct llarp_link *, struct llarp_ai *);
   /*
@@ -99,6 +102,10 @@ struct llarp_link_session
   bool (*timeout)(struct llarp_link_session *);
   /** explicit close session */
   void (*close)(struct llarp_link_session *);
+  /** set session established */
+  void (*established)(struct llarp_link_session *);
+  /** get router contact of remote router */
+  struct llarp_rc *(*get_remote_router)(struct llarp_link_session *);
 };
 
 bool

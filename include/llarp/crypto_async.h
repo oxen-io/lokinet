@@ -20,8 +20,8 @@ struct llarp_async_iwp;
 
 /// allocator
 struct llarp_async_iwp *
-llarp_async_iwp_new(struct llarp_alloc *mem, struct llarp_crypto *crypto,
-                    struct llarp_logic *logic, struct llarp_threadpool *worker);
+llarp_async_iwp_new(struct llarp_crypto *crypto, struct llarp_logic *logic,
+                    struct llarp_threadpool *worker);
 
 /// deallocator
 void

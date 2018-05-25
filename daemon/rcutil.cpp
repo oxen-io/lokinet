@@ -16,7 +16,6 @@ progress()
 
 struct llarp_main
 {
-  struct llarp_alloc mem;
   struct llarp_crypto crypto;
   struct llarp_router *router     = nullptr;
   struct llarp_threadpool *worker = nullptr;
@@ -182,8 +181,6 @@ main(int argc, char *argv[])
   }
 
   sllarp = new llarp_main;
-  llarp_mem_stdlib(&sllarp->mem);
-  auto mem = &sllarp->mem;
   // llarp_new_config(&sllarp->config);
   // llarp_ev_loop_alloc(&sllarp->mainloop);
   llarp_crypto_libsodium_init(&sllarp->crypto);
@@ -197,8 +194,8 @@ main(int argc, char *argv[])
     llarp_rc_clear(&tmp);
     // if we zero it out then
     // allocate fresh pointers that the bencoder can expect to be ready
-    tmp.addrs = llarp_ai_list_new(mem);
-    tmp.exits = llarp_xi_list_new(mem);
+    tmp.addrs = llarp_ai_list_new();
+    tmp.exits = llarp_xi_list_new();
     // set updated timestamp
     tmp.last_updated = llarp_time_now_ms();
     // load longterm identity
@@ -242,7 +239,7 @@ main(int argc, char *argv[])
     buf.sz   = sizeof(tmpc);
     f.read((char *)tmpc, sizeof(MAX_RC_SIZE));
     // printf("contents[%s]\n", tmpc);
-    if(!llarp_rc_bdecode(mem, &tmp, &buf))
+    if(!llarp_rc_bdecode(&tmp, &buf))
     {
       printf("Can't decode\n");
       return 0;

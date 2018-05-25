@@ -76,20 +76,13 @@ struct llarp_timer_context
   }
 
   void
-  cancel(uint32_t id, bool lockit = true)
+  cancel(uint32_t id)
   {
-    std::unique_lock< std::mutex >* lock = nullptr;
-    if(lockit)
-      lock = new std::unique_lock< std::mutex >(timersMutex);
-
     auto itr = timers.find(id);
     if(itr != timers.end())
     {
       itr->second.exec();
     }
-
-    if(lock)
-      delete lock;
   }
 
   void
@@ -122,7 +115,7 @@ struct llarp_timer_context
 
     for(auto id : ids)
     {
-      cancel(id, false);
+      cancel(id);
     }
   }
 };

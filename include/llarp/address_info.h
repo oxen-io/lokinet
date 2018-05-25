@@ -39,7 +39,7 @@ struct llarp_ai_list;
 
 /// list of address information initialization
 struct llarp_ai_list *
-llarp_ai_list_new(struct llarp_alloc *mem);
+llarp_ai_list_new();
 
 /// list of address information destruction
 void

@@ -7,12 +7,7 @@
 
 struct llarp_ai_list
 {
-  llarp_alloc *mem;
   std::vector< llarp_ai > list;
-
-  llarp_ai_list(llarp_alloc *m) : mem(m)
-  {
-  }
 };
 
 static bool
@@ -194,9 +189,9 @@ llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 }
 
 struct llarp_ai_list *
-llarp_ai_list_new(struct llarp_alloc *mem)
+llarp_ai_list_new()
 {
-  return new llarp_ai_list(mem);
+  return new llarp_ai_list;
 }
 
 void
