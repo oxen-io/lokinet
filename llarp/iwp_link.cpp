@@ -375,7 +375,7 @@ namespace iwp
 
     // queue new outbound message
     void
-    queue_tx(uint16_t id, transit_message *msg)
+    queue_tx(uint64_t id, transit_message *msg)
     {
       tx.try_emplace(id, msg);
     }
@@ -498,7 +498,7 @@ namespace iwp
     }
 
     void
-    add_outbound_message(uint16_t id, transit_message *msg)
+    add_outbound_message(uint64_t id, transit_message *msg)
     {
       frame.queue_tx(id, msg);
       pump();
@@ -553,7 +553,7 @@ namespace iwp
         return;
       }
       printf("session start okay\n");
-
+      
       // auto msg = new transit_message;
 
       // auto buffer = llarp::EncodeLIM< decltype(buf) >(buf, our_router);
@@ -682,8 +682,13 @@ namespace iwp
     iwp_async_frame *
     alloc_frame(const void *buf, size_t sz)
     {
+      // TODO don't hard code 1500
+      if(sz > 1500)
+        return nullptr;
+      
       iwp_async_frame *frame = new iwp_async_frame;
-      memcpy(frame->buf, buf, sz);
+      if(buf)
+        memcpy(frame->buf, buf, sz);
       frame->sz         = sz;
       frame->user       = this;
       frame->sessionkey = sessionkey;
@@ -694,7 +699,9 @@ namespace iwp
     encrypt_frame_async_send(const void *buf, size_t sz)
     {
       printf("encrypt frame of size %ld\n", sz);
-      auto frame  = alloc_frame(buf, sz);
+      // 64 bytes frame overhead for nonce and hmac
+      auto frame  = alloc_frame(nullptr, sz+64);
+      memcpy(frame->buf +64, buf, sz-64);
       frame->hook = &handle_frame_encrypt;
       iwp_call_async_frame_encrypt(iwp, frame);
     }
