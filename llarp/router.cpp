@@ -6,6 +6,7 @@
 #include <llarp/link_message.hpp>
 
 #include "buffer.hpp"
+#include "encode.hpp"
 #include "net.hpp"
 #include "str.hpp"
 
@@ -39,6 +40,12 @@ llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
   }
   else
     return false;
+}
+
+bool
+llarp_router::ProcessLRCM(llarp::LR_CommitMessage msg)
+{
+  return false;
 }
 
 void
@@ -151,9 +158,31 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
 {
   printf("on_try_connect_result\n");
   if(job->session)
-    printf("session made\n");
-  else
-    printf("session not made\n");
+  {
+    llarp_rc *remote = job->session->get_remote_router(job->session);
+    if(remote)
+    {
+      llarp_router *router = static_cast< llarp_router * >(job->user);
+      llarp::pubkey pubkey;
+      memcpy(&pubkey[0], remote->pubkey, 32);
+      char tmp[68] = {0};
+      printf("session made with %s\n",
+             llarp::HexEncode< decltype(pubkey), decltype(tmp) >(pubkey, tmp));
+      auto itr = router->pendingMessages.find(pubkey);
+      if(itr != router->pendingMessages.end())
+      {
+        // flush pending
+        for(auto &msg : itr->second)
+        {
+          auto buf = llarp::Buffer< decltype(msg) >(msg);
+          job->session->sendto(job->session, buf);
+        }
+        router->pendingMessages.erase(itr);
+      }
+      return;
+    }
+  }
+  printf("session not made\n");
 }
 
 void
@@ -181,6 +210,14 @@ llarp_router::Run()
   }
 
   printf("saved router contact\n");
+  char tmp[68] = {0};
+
+  llarp::pubkey ourPubkey;
+  memcpy(&ourPubkey[0], pubkey(), 32);
+
+  printf("we are %s\n",
+         llarp::HexEncode< llarp::pubkey, decltype(tmp) >(ourPubkey, tmp));
+
   // start links
   for(auto link : links)
   {

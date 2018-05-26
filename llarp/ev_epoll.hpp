@@ -40,17 +40,14 @@ namespace llarp
       switch(to->sa_family)
       {
         case AF_INET:
-          printf("af_inet\n");
           slen = sizeof(struct sockaddr_in);
           break;
         case AF_INET6:
-          printf("af_inet6\n");
           slen = sizeof(struct sockaddr_in6);
           break;
         default:
           return -1;
       }
-      printf("send %ld via %d\n", sz, fd);
       ssize_t sent = ::sendto(fd, data, sz, SOCK_NONBLOCK, to, slen);
       if(sent == -1)
         perror("sendto()");
@@ -90,7 +87,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
       result = epoll_wait(epollfd, events, 1024, -1);
       if(result > 0)
       {
-        printf("epoll %d\n", result);
         int idx = 0;
         while(idx < result)
         {

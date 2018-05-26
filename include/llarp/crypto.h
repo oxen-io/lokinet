@@ -62,6 +62,8 @@ typedef bool (*llarp_sign_func)(byte_t *, const byte_t *, llarp_buffer_t);
 typedef bool (*llarp_verify_func)(const byte_t *, llarp_buffer_t,
                                   const byte_t *);
 
+typedef bool (*llarp_frame_crypto_func)(llarp_buffer_t *, const byte_t *);
+
 /// library crypto configuration
 struct llarp_crypto
 {
@@ -75,6 +77,8 @@ struct llarp_crypto
   llarp_hmac_func hmac;
   llarp_sign_func sign;
   llarp_verify_func verify;
+  llarp_frame_crypto_func encrypt_frame;
+  llarp_frame_crypto_func decrypt_frame;
   void (*randomize)(llarp_buffer_t);
   void (*randbytes)(void *, size_t);
   void (*identity_keygen)(byte_t *);

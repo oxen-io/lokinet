@@ -10,6 +10,7 @@
 
 #include <llarp/link_message.hpp>
 
+#include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
 
@@ -53,6 +54,8 @@ struct llarp_router
 
   std::list< llarp_link * > links;
 
+  std::map< llarp::pubkey, std::vector< llarp::Message > > pendingMessages;
+
   llarp_router(llarp_alloc *mem);
   ~llarp_router();
 
@@ -88,6 +91,12 @@ struct llarp_router
 
   bool
   has_session_to(const uint8_t *pubkey) const;
+
+  void
+  QueueSendTo(const byte_t *pubkey, const std::vector< llarp::Message > &msgs);
+
+  bool
+  ProcessLRCM(llarp::LR_CommitMessage msg);
 
   static bool
   iter_try_connect(llarp_router_link_iter *i, llarp_router *router,

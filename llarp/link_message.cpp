@@ -1,6 +1,7 @@
 #include <llarp/router_contact.h>
 #include <llarp/link_message.hpp>
 #include "buffer.hpp"
+#include "router.hpp"
 
 namespace llarp
 {
@@ -46,44 +47,79 @@ namespace llarp
       handler->firstkey = false;
       return true;
     }
-    // check for not the last element
+    // check for last element
     if(!key)
-      return true;
+      return handler->MessageDone();
 
     switch(handler->msgtype)
     {
-        // LIM
+        // link introduce
       case 'i':
-        if(llarp_buffer_eq(*key, "r"))
-        {
-          if(!llarp_rc_bdecode(handler->from->get_remote_router(handler->from),
-                               r->buffer))
-          {
-            printf("failed to decode RC\n");
-            return false;
-          }
-          printf("decoded rc\n");
-          return true;
-        }
-        else if(llarp_buffer_eq(*key, "v"))
-        {
-          if(!bdecode_read_integer(r->buffer, &handler->proto))
-            return false;
-          if(handler->proto != LLARP_PROTO_VERSION)
-          {
-            printf("llarp protocol version missmatch\n");
-            return false;
-          }
-          return true;
-        }
-        else
-        {
-          printf("invalid LIM key: %c\n", *key->cur);
-          return false;
-        }
+        return handler->DecodeLIM(*key, r->buffer);
+        // immidate dht
+      case 'd':
+        return handler->DecodeDHT(*key, r->buffer);
+        // relay commit
+      case 'c':
+        return handler->DecodeLRCM(*key, r->buffer);
+        // unknown message type
       default:
-        printf("unknown link message type: %c\n", handler->msgtype);
         return false;
+    }
+  }
+
+  bool
+  InboundMessageHandler::DecodeLIM(llarp_buffer_t key, llarp_buffer_t* buff)
+  {
+    if(llarp_buffer_eq(key, "r"))
+    {
+      if(!llarp_rc_bdecode(from->get_remote_router(from), buff))
+      {
+        printf("failed to decode RC\n");
+        return false;
+      }
+      printf("decoded rc\n");
+      return true;
+    }
+    else if(llarp_buffer_eq(key, "v"))
+    {
+      if(!bdecode_read_integer(buff, &proto))
+        return false;
+      if(proto != LLARP_PROTO_VERSION)
+      {
+        printf("llarp protocol version missmatch\n");
+        return false;
+      }
+      return true;
+    }
+    else
+    {
+      printf("invalid LIM key: %c\n", *key.cur);
+      return false;
+    }
+  }
+
+  bool
+  InboundMessageHandler::DecodeDHT(llarp_buffer_t key, llarp_buffer_t* buf)
+  {
+    return false;
+  }
+
+  bool
+  InboundMessageHandler::DecodeLRCM(llarp_buffer_t key, llarp_buffer_t* buf)
+  {
+    return false;
+  }
+
+  bool
+  InboundMessageHandler::MessageDone()
+  {
+    switch(msgtype)
+    {
+      case 'c':
+        return router->ProcessLRCM(lrcm);
+      default:
+        return true;
     }
   }
 

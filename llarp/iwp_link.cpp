@@ -290,7 +290,6 @@ namespace iwp
     reassemble(std::vector< byte_t > &buffer)
     {
       auto total = msginfo.totalsize();
-      printf("reassemble message of size %d\n", total);
       buffer.resize(total);
       auto fragsz = msginfo.fragsize();
       auto ptr    = buffer.data();
@@ -358,29 +357,7 @@ namespace iwp
     }
 
     bool
-    inbound_frame_complete(uint64_t id)
-    {
-      bool success = false;
-      std::vector< byte_t > msg;
-      if(rx[id].reassemble(msg))
-      {
-        printf("handle message of size: %ld\n", msg.size());
-        auto buf = llarp::Buffer< decltype(msg) >(msg);
-        success  = router->HandleRecvLinkMessage(parent, buf);
-        if(success)
-        {
-          alive();
-          if(id == 0)
-            parent->established(parent);
-        }
-      }
-      else
-      {
-        printf("failed to reassemble message %ld\n", id);
-      }
-      rx.erase(id);
-      return success;
-    }
+    inbound_frame_complete(uint64_t id);
 
     void
     push_ackfor(uint64_t id, uint32_t bitmask)
@@ -392,7 +369,6 @@ namespace iwp
       // TODO: this assumes big endian
       memcpy(buf.data() + 6, &id, 8);
       memcpy(buf.data() + 14, &bitmask, 4);
-      printf("ACK for %ld %d\n", id, bitmask);
     }
 
     bool
@@ -405,8 +381,6 @@ namespace iwp
         return false;
       }
       sz = hdr.size();
-      // mark we are alive
-      alive();
 
       // extract xmit data
       xmit x(hdr.data());
@@ -431,15 +405,11 @@ namespace iwp
           // inserted, put last fragment
           itr.first->second.put_lastfrag(hdr.data() + sizeof(x.buffer),
                                          x.lastfrag());
-          alive();
           if(x.numfrags() == 0)
           {
-            printf("short XMIT\n");
             push_ackfor(id, 0);
             return inbound_frame_complete(id);
           }
-          else
-            printf("got XMIT with %d fragments\n", x.numfrags());
           return true;
         }
         else
@@ -463,51 +433,7 @@ namespace iwp
     }
 
     bool
-    got_acks(frame_header &hdr, size_t sz)
-    {
-      if(hdr.size() > sz)
-      {
-        printf("invalid ACKS frame size %d > %ld\n", hdr.size(), sz);
-        return false;
-      }
-      sz = hdr.size();
-      if(sz < 12)
-      {
-        printf("invalid ACKS frame size %ld < 12\n", sz);
-        return false;
-      }
-
-      auto ptr = hdr.data();
-      uint64_t msgid;
-      uint32_t bitmask;
-      memcpy(&msgid, ptr, 8);
-      memcpy(&bitmask, ptr + 8, 4);
-
-      auto itr = tx.find(msgid);
-      if(itr == tx.end())
-      {
-        printf("ACK for missing TX frame: %ld\n", msgid);
-        return false;
-      }
-
-      alive();
-
-      itr->second->ack(bitmask);
-
-      if(itr->second->completed())
-      {
-        printf("message %ld acknoleged\n", msgid);
-        delete itr->second;
-        tx.erase(itr);
-      }
-      else
-      {
-        printf("message %ld retransmit fragments\n", msgid);
-        itr->second->retransmit_frags(sendqueue);
-      }
-
-      return true;
-    }
+    got_acks(frame_header &hdr, size_t sz);
 
     // queue new outbound message
     void
@@ -585,7 +511,8 @@ namespace iwp
 
     llarp_link_establish_job *establish_job = nullptr;
 
-    uint32_t establish_job_id = 0;
+    uint32_t establish_job_id   = 0;
+    uint32_t keepalive_timer_id = 0;
 
     llarp::Addr addr;
     iwp_async_intro intro;
@@ -594,7 +521,7 @@ namespace iwp
     frame_state frame;
 
     byte_t token[32];
-    byte_t workbuf[2048];
+    byte_t workbuf[256];
 
     enum State
     {
@@ -711,7 +638,6 @@ namespace iwp
         printf("session start verify fail\n");
         return;
       }
-      printf("session start verified, sending LIM\n");
       self->send_LIM();
     }
 
@@ -742,12 +668,50 @@ namespace iwp
         printf("failed to encode LIM\n");
     }
 
+    static void
+    send_keepalive(void *user)
+    {
+      session *self = static_cast< session * >(user);
+      // all zeros means keepalive
+      byte_t tmp[64] = {0};
+      // 8 bytes iwp header overhead
+      int padsz = rand() % (sizeof(tmp) - 8);
+      auto buf  = llarp::StackBuffer< decltype(tmp) >(tmp);
+      if(padsz)
+        self->crypto->randbytes(buf.base + 8, padsz);
+      buf.sz -= padsz;
+      // send frame after encrypting
+      self->encrypt_frame_async_send(buf.base, buf.sz);
+
+      // send another keepalive
+      self->schedule_keepalive();
+    }
+
+    static void
+    handle_keepalive_timer(void *user, uint64_t orig, uint64_t left)
+    {
+      session *self            = static_cast< session * >(user);
+      self->keepalive_timer_id = 0;
+      // timeout cancelled
+      if(left)
+        return;
+      llarp_logic_queue_job(self->logic, {self, &send_keepalive});
+    }
+
+    void
+    schedule_keepalive()
+    {
+      keepalive_timer_id = llarp_logic_call_later(
+          logic, {1000UL, this, &handle_keepalive_timer});
+    }
+
     void
     session_established()
     {
       printf("session established\n");
       EnterState(eEstablished);
       llarp_logic_cancel_call(logic, establish_job_id);
+      schedule_keepalive();
     }
 
     void
@@ -771,7 +735,8 @@ namespace iwp
     bool
     timedout(llarp_time_t now, llarp_time_t timeout = SESSION_TIMEOUT)
     {
-      return now - frame.lastEvent >= timeout;
+      auto diff = now - frame.lastEvent;
+      return diff >= timeout;
     }
 
     static bool
@@ -782,9 +747,17 @@ namespace iwp
     }
 
     static void
+    handle_session_established(void *user)
+    {
+      session *impl = static_cast< session * >(user);
+      impl->session_established();
+    }
+
+    static void
     set_established(llarp_link_session *s)
     {
-      static_cast< session * >(s->impl)->session_established();
+      session *impl = static_cast< session * >(s->impl);
+      llarp_logic_queue_job(impl->logic, {impl, &handle_session_established});
     }
 
     static void
@@ -803,7 +776,6 @@ namespace iwp
         printf("introack validation failed\n");
         return;
       }
-      printf("introack validated\n");
       link->EnterState(eIntroAckRecv);
       // copy decrypted token
       memcpy(link->token, introack->token, 32);
@@ -816,7 +788,6 @@ namespace iwp
       session *link = static_cast< session * >(start->user);
       llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz);
       link->EnterState(eSessionStartSent);
-      printf("session start sent\n");
     }
 
     void
@@ -847,6 +818,7 @@ namespace iwp
       {
         if(self->frame.process(frame->buf + 64, frame->sz - 64))
         {
+          self->frame.alive();
           self->pump();
         }
         else
@@ -863,7 +835,6 @@ namespace iwp
     {
       if(sz > 64)
       {
-        printf("decrypt frame of size %ld\n", sz);
         auto frame  = alloc_frame(buf, sz);
         frame->hook = &handle_frame_decrypt;
         iwp_call_async_frame_decrypt(iwp, frame);
@@ -876,7 +847,6 @@ namespace iwp
     handle_frame_encrypt(iwp_async_frame *frame)
     {
       session *self = static_cast< session * >(frame->user);
-      printf("sendto %ld\n", frame->sz);
       llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz);
       delete frame;
     }
@@ -900,7 +870,6 @@ namespace iwp
     void
     encrypt_frame_async_send(const void *buf, size_t sz)
     {
-      printf("encrypt frame of size %ld\n", sz);
       // 64 bytes frame overhead for nonce and hmac
       auto frame = alloc_frame(nullptr, sz + 64);
       memcpy(frame->buf + 64, buf, sz);
@@ -927,7 +896,6 @@ namespace iwp
       session *link = static_cast< session * >(i->user);
       if(i->buf)
       {
-        printf("sending introack...\n");
         llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
         link->EnterState(eIntroAckSent);
       }
@@ -967,7 +935,6 @@ namespace iwp
     void
     on_intro(const void *buf, size_t sz)
     {
-      printf("iwp intro\n");
       if(sz >= sizeof(workbuf))
       {
         // too big?
@@ -997,7 +964,6 @@ namespace iwp
     void
     on_intro_ack(const void *buf, size_t sz)
     {
-      printf("iwp intro ack\n");
       if(sz >= sizeof(workbuf))
       {
         // too big?
@@ -1026,7 +992,6 @@ namespace iwp
       session *link = static_cast< session * >(i->user);
       if(i->buf)
       {
-        printf("sending intro...\n");
         llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
         link->EnterState(eIntroSent);
       }
@@ -1065,7 +1030,6 @@ namespace iwp
       // randomize w0
       if(w0sz)
       {
-        printf("random padding %ld bytes\n", w0sz);
         crypto->randbytes(intro.buf + (32 * 3), w0sz);
       }
 
@@ -1205,7 +1169,6 @@ namespace iwp
     {
       auto now = llarp_time_now_ms();
       std::set< llarp::Addr > remove;
-      printf("cleanup dead at %ld\n", now);
       {
         lock_t lock(m_sessions_Mutex);
         for(auto &itr : m_sessions)
@@ -1223,6 +1186,8 @@ namespace iwp
             printf("remove session for %s\n", addr.to_string().c_str());
             session *s = static_cast< session * >(itr->second.impl);
             m_sessions.erase(addr);
+            if(s->keepalive_timer_id)
+              llarp_logic_cancel_call(logic, s->keepalive_timer_id);
             delete s;
           }
         }
@@ -1288,7 +1253,6 @@ namespace iwp
     {
       server *link = static_cast< server * >(udp->user);
       llarp::Addr addr(*saddr);
-      printf("got %ld from %s\n", sz, addr.to_string().c_str());
       session *s = link->ensure_session(addr);
       s->recv(buf, sz);
     }
@@ -1310,6 +1274,87 @@ namespace iwp
           logic, {timeout, this, &server::handle_cleanup_timer});
     }
   };
+
+  bool
+  frame_state::inbound_frame_complete(uint64_t id)
+  {
+    bool success = false;
+    std::vector< byte_t > msg;
+    if(rx[id].reassemble(msg))
+    {
+      printf("handle message of size: %ld\n", msg.size());
+      auto buf = llarp::Buffer< decltype(msg) >(msg);
+      success  = router->HandleRecvLinkMessage(parent, buf);
+      if(success)
+      {
+        alive();
+        session *impl = static_cast< session * >(parent->impl);
+        if(id == 0 && impl->state == session::eSessionStartSent)
+        {
+          // send our LIM
+          impl->send_LIM();
+        }
+      }
+    }
+    else
+    {
+      printf("failed to reassemble message %ld\n", id);
+    }
+    rx.erase(id);
+    return success;
+  }
+
+  bool
+  frame_state::got_acks(frame_header &hdr, size_t sz)
+  {
+    if(hdr.size() > sz)
+    {
+      printf("invalid ACKS frame size %d > %ld\n", hdr.size(), sz);
+      return false;
+    }
+    sz = hdr.size();
+    if(sz < 12)
+    {
+      printf("invalid ACKS frame size %ld < 12\n", sz);
+      return false;
+    }
+
+    auto ptr = hdr.data();
+    uint64_t msgid;
+    uint32_t bitmask;
+    memcpy(&msgid, ptr, 8);
+    memcpy(&bitmask, ptr + 8, 4);
+
+    auto itr = tx.find(msgid);
+    if(itr == tx.end())
+    {
+      printf("ACK for missing TX frame: %ld\n", msgid);
+      return false;
+    }
+
+    alive();
+
+    itr->second->ack(bitmask);
+
+    if(itr->second->completed())
+    {
+      delete itr->second;
+      tx.erase(itr);
+      session *impl = static_cast< session * >(parent->impl);
+      if(impl->state == session::eLIMSent && msgid == 0)
+      {
+        // first message acked we are established?
+        impl->session_established();
+      }
+    }
+    else
+    {
+      printf("message %ld retransmit fragments\n", msgid);
+      itr->second->retransmit_frags(sendqueue);
+    }
+
+    return true;
+  }
 
   server *
   link_alloc(struct llarp_router *router, const char *keyfile,
