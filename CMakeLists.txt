@@ -19,6 +19,8 @@ set(LIBS sodium pthread stdc++fs)
 
 
 set(LIB llarp)
+set(SHARED_LIB ${LIB})
+set(STATIC_LIB ${LIB}-static)
 
 set(LIB_SRC
   llarp/address_info.cpp
@@ -52,9 +54,11 @@ include_directories(include)
 include_directories(${sodium_INCLUDE_DIR})
 
 
-add_library(${LIB} STATIC ${LIB_SRC})
+add_library(${STATIC_LIB} STATIC ${LIB_SRC})
+add_library(${SHARED_LIB} SHARED ${LIB_SRC})
+
 add_executable(${EXE} ${EXE_SRC})
-target_link_libraries(${EXE} ${LIB} ${LIBS})
+target_link_libraries(${EXE} ${STATIC_LIB} ${LIBS})
 
 add_executable(rcutil daemon/rcutil.cpp)
-target_link_libraries(rcutil ${LIB} ${LIBS})
+target_link_libraries(rcutil ${STATIC_LIB} ${LIBS})

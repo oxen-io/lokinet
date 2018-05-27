@@ -1,3 +1,4 @@
+#include <llarp.h>
 #include <signal.h>
 #include <llarp.hpp>
 #include "logger.hpp"
@@ -30,6 +31,8 @@ namespace llarp
       llarp_config_iter(config, &iter);
       return true;
     }
+    llarp_free_config(&config);
+    llarp::Error(__FILE__, "failed to load config file ", configfile);
     return false;
   }
 
@@ -200,4 +203,51 @@ namespace llarp
     configfile = fname;
     return ReloadConfig();
   }
+}
+
+extern "C" {
+struct llarp_main
+{
+  std::unique_ptr< llarp::Context > ctx;
+};
+
+bool
+llarp_main_init(struct llarp_main **ptr, const char *fname)
+{
+  if(!fname)
+    return false;
+
+  llarp_main *m = new llarp_main;
+  m->ctx.reset(new llarp::Context(std::cout));
+  if(!m->ctx->LoadConfig(fname))
+  {
+    m->ctx->Close();
+    delete m;
+    return false;
+  }
+  *ptr = m;
+  return true;
+}
+
+void
+llarp_main_signal(struct llarp_main *ptr, int sig)
+{
+  ptr->ctx->HandleSignal(sig);
+}
+
+int
+llarp_main_run(struct llarp_main *ptr)
+{
+  auto code = ptr->ctx->Run();
+  ptr->ctx->Close();
+  return code;
+}
+
+void
+llarp_main_free(struct llarp_main **ptr)
+{
+  if(*ptr)
+    delete *ptr;
+  *ptr = nullptr;
+}
 }
