@@ -211,11 +211,11 @@ struct llarp_main
   std::unique_ptr< llarp::Context > ctx;
 };
 
-bool
-llarp_main_init(struct llarp_main **ptr, const char *fname)
+struct llarp_main *
+llarp_main_init(const char *fname)
 {
   if(!fname)
-    return false;
+    return nullptr;
 
   llarp_main *m = new llarp_main;
   m->ctx.reset(new llarp::Context(std::cout));
@@ -223,10 +223,9 @@ llarp_main_init(struct llarp_main **ptr, const char *fname)
   {
     m->ctx->Close();
     delete m;
-    return false;
+    return nullptr;
   }
-  *ptr = m;
-  return true;
+  return m;
 }
 
 void
@@ -238,16 +237,13 @@ llarp_main_signal(struct llarp_main *ptr, int sig)
 int
 llarp_main_run(struct llarp_main *ptr)
 {
-  auto code = ptr->ctx->Run();
-  ptr->ctx->Close();
-  return code;
+  return ptr->ctx->Run();
 }
 
 void
-llarp_main_free(struct llarp_main **ptr)
+llarp_main_free(struct llarp_main *ptr)
 {
-  if(*ptr)
-    delete *ptr;
-  *ptr = nullptr;
+  ptr->ctx->Close();
+  delete ptr;
 }
 }

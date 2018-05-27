@@ -15,8 +15,8 @@ extern "C" {
 struct llarp_main;
 
 /** initialize application context and load config */
-bool
-llarp_main_init(struct llarp_main **ptr, const char *fname);
+struct llarp_main *
+llarp_main_init(const char *fname);
 
 /** handle signal for main context */
 void
@@ -27,7 +27,7 @@ int
 llarp_main_run(struct llarp_main *ptr);
 
 void
-llarp_main_free(struct llarp_main **ptr);
+llarp_main_free(struct llarp_main *ptr);
 
 #ifdef __cplusplus
 }
