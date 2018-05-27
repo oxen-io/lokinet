@@ -6,6 +6,7 @@
 #include <unistd.h>
 #include <cstdio>
 #include "ev.hpp"
+#include "logger.hpp"
 #include "net.hpp"
 
 namespace llarp
@@ -95,7 +96,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
           {
             if(ev->read(readbuf, sizeof(readbuf)) == -1)
             {
-              printf("close ev\n");
+              llarp::Info(__FILE__, "close ev");
               close_ev(ev);
               delete ev;
             }
@@ -145,7 +146,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    printf("binding to %s\n", a.to_string().c_str());
+    llarp::Info(__FILE__, "bind to ", a.to_string());
     if(bind(fd, addr, slen) == -1)
     {
       perror("bind()");

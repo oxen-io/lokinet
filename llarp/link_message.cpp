@@ -1,6 +1,7 @@
 #include <llarp/router_contact.h>
 #include <llarp/link_message.hpp>
 #include "buffer.hpp"
+#include "logger.hpp"
 #include "router.hpp"
 
 namespace llarp
@@ -28,19 +29,19 @@ namespace llarp
       // we are expecting the first key to be 'a'
       if(!llarp_buffer_eq(*key, "a"))
       {
-        printf("message does not have message type\n");
+        llarp::Warn(__FILE__, "message has no message type");
         return false;
       }
 
       if(!bdecode_read_string(r->buffer, &strbuf))
       {
-        printf("could not value of message type");
+        llarp::Warn(__FILE__, "could not read value of message type");
         return false;
       }
       // bad key size
       if(strbuf.sz != 1)
       {
-        printf("bad mesage type size: %ld\n", strbuf.sz);
+        llarp::Warn(__FILE__, "bad mesage type size: ", strbuf.sz);
         return false;
       }
       handler->msgtype  = *strbuf.cur;
@@ -75,10 +76,9 @@ namespace llarp
     {
       if(!llarp_rc_bdecode(from->get_remote_router(from), buff))
       {
-        printf("failed to decode RC\n");
+        llarp::Warn(__FILE__, "failed to decode RC");
         return false;
       }
-      printf("decoded rc\n");
       return true;
     }
     else if(llarp_buffer_eq(key, "v"))
@@ -87,14 +87,14 @@ namespace llarp
         return false;
       if(proto != LLARP_PROTO_VERSION)
       {
-        printf("llarp protocol version missmatch\n");
+        llarp::Warn(__FILE__, "llarp protocol version missmatch ", proto);
         return false;
       }
       return true;
     }
     else
     {
-      printf("invalid LIM key: %c\n", *key.cur);
+      llarp::Warn(__FILE__, "invalid LIM key: ", *key.cur);
       return false;
     }
   }
@@ -136,7 +136,6 @@ namespace llarp
   bool
   InboundMessageHandler::FlushReplies()
   {
-    printf("sending replies\n");
     bool success = true;
     while(sendq.size())
     {

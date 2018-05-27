@@ -232,9 +232,11 @@ llarp_ai_list_index(struct llarp_ai_list *l, ssize_t idx, struct llarp_ai *dst)
   if(idx < 0)
     return false;
 
-  if(l->list.size() > idx)
+  size_t i = idx;
+
+  if(l->list.size() > i)
   {
-    llarp_ai_copy(dst, &l->list[idx]);
+    llarp_ai_copy(dst, &l->list[i]);
     return true;
   }
   return false;

@@ -7,6 +7,7 @@
 
 #include "buffer.hpp"
 #include "encode.hpp"
+#include "logger.hpp"
 #include "net.hpp"
 #include "str.hpp"
 
@@ -68,11 +69,11 @@ llarp_router::try_connect(fs::path rcfile)
         f.read((char *)buf.base, sz);
       }
       else
-        printf("file too large\n");
+        llarp::Error(__FILE__, rcfile, " too large");
     }
     else
     {
-      printf("failed to open %s\n", rcfile.c_str());
+      llarp::Error(__FILE__, "failed to open ", rcfile);
       return;
     }
   }
@@ -80,21 +81,17 @@ llarp_router::try_connect(fs::path rcfile)
   {
     if(llarp_rc_verify_sig(&crypto, &remote))
     {
-      printf("signature valided\n");
-      if(llarp_router_try_connect(this, &remote))
+      llarp::Info(__FILE__, "verified signature");
+      if(!llarp_router_try_connect(this, &remote))
       {
-        printf("session attempt started\n");
-      }
-      else
-      {
-        printf("session already pending\n");
+        llarp::Warn(__FILE__, "session already made");
       }
     }
     else
-      printf("failed to verify signature\n");
+      llarp::Error(__FILE__, "failed to verify signature of RC");
   }
   else
-    printf("failed to decode buffer, read=%ld\n", buf.cur - buf.base);
+    llarp::Error(__FILE__, "failed to decode RC");
 
   llarp_rc_free(&remote);
 }
@@ -121,13 +118,12 @@ llarp_router::Ready()
 bool
 llarp_router::SaveRC()
 {
-  printf("verify rc signature... ");
+  llarp::Info(__FILE__, "verify RC signature");
   if(!llarp_rc_verify_sig(&crypto, &rc))
   {
-    printf(" BAD!\n");
+    llarp::Error(__FILE__, "RC has bad signature not saving");
     return false;
   }
-  printf(" OK.\n");
 
   byte_t tmp[MAX_RC_SIZE];
   auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -138,9 +134,11 @@ llarp_router::SaveRC()
     if(f.is_open())
     {
       f.write((char *)buf.base, buf.cur - buf.base);
+      llarp::Info(__FILE__, "RC saved to ", our_rc_file);
       return true;
     }
   }
+  llarp::Error(__FILE__, "did not save RC to ", our_rc_file);
   return false;
 }
 
@@ -156,7 +154,6 @@ llarp_router::Close()
 void
 llarp_router::on_try_connect_result(llarp_link_establish_job *job)
 {
-  printf("on_try_connect_result\n");
   if(job->session)
   {
     llarp_rc *remote = job->session->get_remote_router(job->session);
@@ -166,12 +163,18 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
       llarp::pubkey pubkey;
       memcpy(&pubkey[0], remote->pubkey, 32);
       char tmp[68] = {0};
-      printf("session made with %s\n",
-             llarp::HexEncode< decltype(pubkey), decltype(tmp) >(pubkey, tmp));
+      const char *pubkeystr =
+          llarp::HexEncode< decltype(pubkey), decltype(tmp) >(pubkey, tmp);
+      llarp::Info(__FILE__, "session established with ", pubkeystr);
       auto itr = router->pendingMessages.find(pubkey);
       if(itr != router->pendingMessages.end())
       {
         // flush pending
+        if(itr->second.size())
+        {
+          llarp::Info(__FILE__, pubkeystr, " flush ", itr->second.size(),
+                      " pending messages");
+        }
         for(auto &msg : itr->second)
         {
           auto buf = llarp::Buffer< decltype(msg) >(msg);
@@ -182,7 +185,7 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
       return;
     }
   }
-  printf("session not made\n");
+  llarp::Info(__FILE__, "session not established");
 }
 
 void
@@ -205,33 +208,32 @@ llarp_router::Run()
 
   if(!SaveRC())
   {
-    printf("failed to save rc\n");
     return;
   }
 
-  printf("saved router contact\n");
   char tmp[68] = {0};
 
   llarp::pubkey ourPubkey;
   memcpy(&ourPubkey[0], pubkey(), 32);
 
-  printf("we are %s\n",
-         llarp::HexEncode< llarp::pubkey, decltype(tmp) >(ourPubkey, tmp));
+  const char *us =
+      llarp::HexEncode< llarp::pubkey, decltype(tmp) >(ourPubkey, tmp);
+
+  llarp::Info(__FILE__, "we are ", us);
 
   // start links
   for(auto link : links)
   {
     int result = link->start_link(link, logic);
     if(result == -1)
-      printf("link %s failed to start\n", link->name());
+      llarp::Warn(__FILE__, "Link ", link->name(), " failed to start");
     else
-      printf("link %s started\n", link->name());
+      llarp::Info(__FILE__, "Link ", link->name(), " started");
   }
 
-  printf("connecting to routers\n");
   for(const auto &itr : connect)
   {
-    printf("try connecting to %s\n", itr.first.c_str());
+    llarp::Info(__FILE__, "connecting to node ", itr.first);
     try_connect(itr.second);
   }
 }
@@ -253,9 +255,7 @@ llarp_router::iter_try_connect(llarp_router_link_iter *iter,
   job->result  = &llarp_router::on_try_connect_result;
   // give router as user pointer
   job->user = router;
-  printf("try_establish\n");
   link->try_establish(link, job);
-  printf("return true\n");
   return true;
 }
 
@@ -285,7 +285,6 @@ llarp_configure_router(struct llarp_router *router, struct llarp_config *conf)
   llarp_config_iter(conf, &iter);
   if(!router->Ready())
   {
-    printf("router not ready\n");
     return false;
   }
   return router->EnsureIdentity();
@@ -304,13 +303,11 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote)
   llarp_ai addr;
   if(llarp_ai_list_index(remote->addrs, 0, &addr))
   {
-    printf("try connect to first address\n");
     llarp_router_iterate_links(router,
                                {&addr, &llarp_router::iter_try_connect});
     return true;
   }
-  else
-    printf("router has no addresses?\n");
+
   return false;
 }
 
@@ -479,12 +476,11 @@ namespace llarp
           llarp_ai ai;
           link->get_our_address(link, &ai);
           llarp::Addr addr = ai;
-          printf("link %s bound to %s\n", key, addr.to_string().c_str());
           self->AddLink(link);
           return;
         }
       }
-      printf("link %s failed to configure\n", key);
+      llarp::Error(__FILE__, "link ", key, " failed to configure");
     }
     else if(StrEq(section, "iwp-connect"))
     {

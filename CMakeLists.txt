@@ -25,6 +25,7 @@ set(LIB_SRC
   llarp/exit_info.c
   llarp/exit_route.c
   llarp/iwp_link.cpp
+  llarp/logger.cpp
   llarp/link.c
   llarp/link_intro.cpp
   llarp/link_message.cpp
@@ -33,7 +34,7 @@ set(LIB_SRC
   llarp/mem_std.cpp
   llarp/net.cpp
   llarp/nodedb.cpp
-  llarp/router_contact.c
+  llarp/router_contact.cpp
   llarp/router.cpp
   llarp/router_identity.c
   llarp/threadpool.cpp

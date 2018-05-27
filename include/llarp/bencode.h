@@ -106,8 +106,8 @@ bdecode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
 static bool INLINE
 bdecode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
 {
-  size_t len;
-  int slen;
+  size_t len, slen;
+  int num;
   char numbuf[10];
 
   len =
@@ -116,9 +116,11 @@ bdecode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
     return false;
 
   numbuf[len] = 0;
-  slen        = atoi(numbuf);
-  if(slen < 0)
+  num         = atoi(numbuf);
+  if(num < 0)
     return false;
+
+  slen = num;
 
   buffer->cur++;
 

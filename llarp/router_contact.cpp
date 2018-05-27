@@ -2,6 +2,11 @@
 #include <llarp/router_contact.h>
 #include <llarp/version.h>
 
+#include "buffer.hpp"
+#include "logger.hpp"
+
+extern "C" {
+
 void
 llarp_rc_free(struct llarp_rc *rc)
 {
@@ -25,7 +30,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 {
   uint64_t v;
   llarp_buffer_t strbuf;
-  struct llarp_rc *rc = r->user;
+  llarp_rc *rc = static_cast< llarp_rc * >(r->user);
 
   if(!key)
     return true;
@@ -90,7 +95,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 bool
 llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buff)
 {
-  struct dict_reader r = {.user = rc, .on_key = &llarp_rc_decode_dict};
+  dict_reader r = {buff, rc, &llarp_rc_decode_dict};
   return bdecode_read_dict(buff, &r);
 }
 
@@ -100,10 +105,8 @@ llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc)
   bool result = false;
   llarp_sig_t sig;
   byte_t tmp[MAX_RC_SIZE];
-  llarp_buffer_t buf;
-  buf.base = tmp;
-  buf.cur  = tmp;
-  buf.sz   = sizeof(tmp);
+
+  auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
   // copy sig
   memcpy(sig, rc->signature, sizeof(llarp_sig_t));
   // zero sig
@@ -119,7 +122,7 @@ llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc)
     result  = crypto->verify(rc->pubkey, buf, sig);
   }
   else
-    printf("llarp_rc_bencode() failed\n");
+    llarp::Warn(__FILE__, "RC encode failed");
   // restore sig
   memcpy(rc->signature, sig, sizeof(llarp_sig_t));
   return result;
@@ -171,4 +174,5 @@ llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff)
   if(!bencode_write_bytestring(buff, rc->signature, sizeof(llarp_sig_t)))
     return false;
   return bencode_end(buff);
+}
 }
