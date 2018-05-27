@@ -63,5 +63,11 @@ llarp_logic_call_later(struct llarp_logic* logic, struct llarp_timeout_job job)
 void
 llarp_logic_cancel_call(struct llarp_logic* logic, uint32_t id)
 {
-  llarp_timer_cancel(logic->timer, id);
+  llarp_timer_cancel_job(logic->timer, id);
+}
+
+void
+llarp_logic_remove_call(struct llarp_logic* logic, uint32_t id)
+{
+  llarp_timer_remove_job(logic->timer, id);
 }

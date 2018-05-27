@@ -219,6 +219,11 @@ namespace iwp
     {
     }
 
+    ~transit_message()
+    {
+      frags.clear();
+    }
+
     // inbound
     transit_message(const xmit &x) : msginfo(x)
     {
@@ -694,7 +699,15 @@ namespace iwp
       self->keepalive_timer_id = 0;
       // timeout cancelled
       if(left)
+      {
         return;
+      }
+      auto now = llarp_time_now_ms();
+      if(self->timedout(now, SESSION_TIMEOUT - 1000))
+      {
+        // about to time out so don't reschedle timer
+        return;
+      }
       llarp_logic_queue_job(self->logic, {self, &send_keepalive});
     }
 
@@ -1187,7 +1200,9 @@ namespace iwp
             session *s = static_cast< session * >(itr->second.impl);
             m_sessions.erase(addr);
             if(s->keepalive_timer_id)
-              llarp_logic_cancel_call(logic, s->keepalive_timer_id);
+            {
+              llarp_logic_remove_call(logic, s->keepalive_timer_id);
+            }
             delete s;
           }
         }

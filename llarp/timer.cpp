@@ -56,7 +56,6 @@ struct llarp_timer_context
   llarp_threadpool* threadpool;
   std::mutex timersMutex;
   std::map< uint32_t, llarp::timer > timers;
-  std::mutex tickerMutex;
   std::condition_variable ticker;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(10);
 
@@ -89,7 +88,9 @@ struct llarp_timer_context
   remove(uint32_t id)
   {
     std::unique_lock< std::mutex > lock(timersMutex);
-    timers.erase(id);
+    auto itr = timers.find(id);
+    if(itr != timers.end())
+      timers.erase(itr);
   }
 
   uint32_t
@@ -104,13 +105,15 @@ struct llarp_timer_context
   void
   cancel_all()
   {
-    std::unique_lock< std::mutex > lock(timersMutex);
-
     std::list< uint32_t > ids;
 
-    for(auto& item : timers)
     {
-      ids.push_back(item.first);
+      std::unique_lock< std::mutex > lock(timersMutex);
+
+      for(auto& item : timers)
+      {
+        ids.push_back(item.first);
+      }
     }
 
     for(auto id : ids)
@@ -144,11 +147,17 @@ llarp_free_timer(struct llarp_timer_context** t)
 }
 
 void
+llarp_timer_remove_job(struct llarp_timer_context* t, uint32_t id)
+{
+  t->remove(id);
+}
+
+void
 llarp_timer_stop(struct llarp_timer_context* t)
 {
   t->stop();
   {
-    std::unique_lock< std::mutex > lock(t->tickerMutex);
+    std::unique_lock< std::mutex > lock(t->timersMutex);
 
     auto itr = t->timers.begin();
     while(itr != t->timers.end())
@@ -161,7 +170,7 @@ llarp_timer_stop(struct llarp_timer_context* t)
 }
 
 void
-llarp_timer_cancel(struct llarp_timer_context* t, uint32_t id)
+llarp_timer_cancel_job(struct llarp_timer_context* t, uint32_t id)
 {
   t->cancel(id);
 }
@@ -172,7 +181,7 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
   t->threadpool = pool;
   while(t->run())
   {
-    std::unique_lock< std::mutex > lock(t->tickerMutex);
+    std::unique_lock< std::mutex > lock(t->timersMutex);
     t->ticker.wait_for(lock, t->nextTickLen);
     // we woke up
     auto now = llarp::timer::now();
