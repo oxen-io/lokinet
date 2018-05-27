@@ -85,7 +85,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
     byte_t readbuf[2048];
     do
     {
-      result = epoll_wait(epollfd, events, 1024, -1);
+      result = epoll_wait(epollfd, events, 1024, 100);
       if(result > 0)
       {
         int idx = 0;

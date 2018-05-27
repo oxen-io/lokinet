@@ -1,17 +1,20 @@
 
-all: remove-build clean compile
+all: debug
 
-remove-build:
+clean:
 	rm -f build.ninja rules.ninja cmake_install.cmake CMakeCache.txt
 	rm -rf CMakeFiles
 
-clean: build.ninja
-	ninja clean
+debug-configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DASAN=true
 
-build.ninja:
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug
+configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Release
 
-compile: build.ninja
+compile: configure
+	ninja
+
+debug: debug-configure
 	ninja
 
 format:

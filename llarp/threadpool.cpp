@@ -64,7 +64,7 @@ namespace llarp
 
         // don't allow enqueueing after stopping the pool
         if(stop)
-          throw std::runtime_error("enqueue on stopped ThreadPool");
+          return;
 
         jobs.emplace_back(job);
       }
@@ -131,7 +131,11 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
 void
 llarp_free_threadpool(struct llarp_threadpool **pool)
 {
-  delete *pool;
+  if(*pool)
+  {
+    (*pool)->impl.Join();
+    delete *pool;
+  }
   *pool = nullptr;
 }
 }

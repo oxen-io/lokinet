@@ -5,6 +5,9 @@
 #include <string.h>
 #include <llarp/logger.hpp>
 
+#include <thread>
+#include <vector>
+
 static void
 progress()
 {
@@ -15,10 +18,11 @@ progress()
 struct llarp_main
 {
   struct llarp_alloc mem;
+  int num_nethreads = 1;
+  std::vector< std::thread > netio_threads;
   struct llarp_crypto crypto;
   struct llarp_router *router     = nullptr;
   struct llarp_threadpool *worker = nullptr;
-  struct llarp_threadpool *thread = nullptr;
   struct llarp_logic *logic       = nullptr;
   struct llarp_config *config     = nullptr;
   struct llarp_nodedb *nodedb     = nullptr;
@@ -68,9 +72,19 @@ struct llarp_main
     progress();
 
     llarp_free_logic(&logic);
-    progress();
 
-    printf("\n");
+    progress();
+    llarp_nodedb_free(&nodedb);
+
+    for(auto &t : netio_threads)
+    {
+      progress();
+      t.join();
+    }
+    progress();
+    netio_threads.clear();
+
+    printf("stopped\n");
     fflush(stdout);
     return exitcode;
   }
@@ -84,13 +98,19 @@ iter_main_config(struct llarp_config_iterator *itr, const char *section,
 
   if(!strcmp(section, "router"))
   {
-    if(!strcmp(key, "threads"))
+    if(!strcmp(key, "worker-threads"))
     {
       int workers = atoi(val);
       if(workers > 0 && m->worker == nullptr)
       {
         m->worker = llarp_init_threadpool(workers, "llarp-worker");
       }
+    }
+    if(!strcmp(key, "net-threads"))
+    {
+      m->num_nethreads = atoi(val);
+      if(m->num_nethreads <= 0)
+        m->num_nethreads = 1;
     }
   }
   if(!strcmp(section, "netdb"))
@@ -105,17 +125,24 @@ iter_main_config(struct llarp_config_iterator *itr, const char *section,
 llarp_main *sllarp = nullptr;
 
 void
-run_net(void *user)
-{
-  llarp_ev_loop_run(static_cast< llarp_ev_loop * >(user));
-}
-
-void
 handle_signal(int sig)
 {
+  if(sllarp->logic)
+    llarp_logic_stop(sllarp->logic);
+  if(sllarp->mainloop)
+    llarp_ev_loop_stop(sllarp->mainloop);
+
+  if(sllarp)
+  {
+    for(auto &t : sllarp->netio_threads)
+    {
+      progress();
+      t.join();
+    }
+    progress();
+    sllarp->netio_threads.clear();
+  }
   printf("\ninterrupted\n");
-  llarp_ev_loop_stop(sllarp->mainloop);
-  llarp_logic_stop(sllarp->logic);
 }
 
 int
@@ -149,8 +176,7 @@ main(int argc, char *argv[])
         if(!sllarp->worker)
           sllarp->worker = llarp_init_threadpool(2, "llarp-worker");
         // ensure netio thread
-        sllarp->thread = llarp_init_threadpool(1, "llarp-netio");
-        sllarp->logic  = llarp_init_logic(mem);
+        sllarp->logic = llarp_init_logic(mem);
 
         sllarp->router = llarp_init_router(mem, sllarp->worker,
                                            sllarp->mainloop, sllarp->logic);
@@ -160,9 +186,15 @@ main(int argc, char *argv[])
           signal(SIGINT, handle_signal);
 
           llarp_run_router(sllarp->router);
-          // run mainloop
-          llarp_threadpool_queue_job(sllarp->thread,
-                                     {sllarp->mainloop, &run_net});
+          // run net io thread
+          auto netio = sllarp->mainloop;
+          while(sllarp->num_nethreads--)
+          {
+            sllarp->netio_threads.emplace_back(
+                [netio]() { llarp_ev_loop_run(netio); });
+            pthread_setname_np(sllarp->netio_threads.back().native_handle(),
+                               "llarp-netio");
+          }
           llarp::Info(__FILE__, "running");
           sllarp->exitcode = 0;
           llarp_logic_mainloop(sllarp->logic);
@@ -175,7 +207,10 @@ main(int argc, char *argv[])
     }
     else
       llarp::Error(__FILE__, "no nodedb defined");
-    return sllarp->shutdown();
+    auto code = sllarp->shutdown();
+    delete sllarp;
+    sllarp = nullptr;
+    return code;
   }
   else
     llarp::Error(__FILE__, "failed to load config");

@@ -159,12 +159,12 @@ llarp_timer_stop(struct llarp_timer_context* t)
   {
     std::unique_lock< std::mutex > lock(t->timersMutex);
 
+    // destroy all timers
+    // don't call callbacks on timers
     auto itr = t->timers.begin();
     while(itr != t->timers.end())
     {
-      // timer expired
-      llarp_threadpool_queue_job(t->threadpool, itr->second);
-      ++itr;
+      itr = t->timers.erase(itr);
     }
   }
 }

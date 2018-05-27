@@ -1,6 +1,8 @@
 #include <llarp/nodedb.h>
 #include <llarp/router_contact.h>
+#include <fstream>
 #include <map>
+#include "buffer.hpp"
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
@@ -9,11 +11,10 @@ static const char skiplist_subdirs[] = "0123456789ABCDEF";
 
 struct llarp_nodedb
 {
-  llarp_nodedb(llarp_alloc *m, llarp_crypto *c) : mem(m), crypto(c)
+  llarp_nodedb(llarp_crypto *c) : crypto(c)
   {
   }
 
-  llarp_alloc *mem;
   llarp_crypto *crypto;
   std::map< llarp::pubkey, llarp_rc * > entries;
 
@@ -23,7 +24,7 @@ struct llarp_nodedb
     auto itr = entries.begin();
     while(itr != entries.end())
     {
-      mem->free(mem, itr->second);
+      delete itr->second;
       itr = entries.erase(itr);
     }
   }
@@ -54,19 +55,27 @@ struct llarp_nodedb
   bool
   loadfile(const fs::path &fpath)
   {
-    llarp_buffer_t buff;
-    FILE *f = fopen(fpath.c_str(), "rb");
-    if(!f)
+    std::ifstream f(fpath, std::ios::binary);
+    if(!f.is_open())
       return false;
-    if(!llarp_buffer_readfile(&buff, f, mem))
-    {
-      fclose(f);
+
+    byte_t tmp[MAX_RC_SIZE];
+
+    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    f.seekg(0, std::ios::end);
+    size_t sz = f.tellg();
+    f.seekg(0, std::ios::beg);
+
+    if(sz > buf.sz)
       return false;
-    }
-    fclose(f);
-    llarp_rc *rc = llarp::Alloc< llarp_rc >(mem);
+
+    // TODO: error checking
+    f.read((char *)buf.base, sz);
+    buf.sz = sz;
+
+    llarp_rc *rc = new llarp_rc;
     llarp::Zero(rc, sizeof(llarp_rc));
-    if(llarp_rc_bdecode(rc, &buff))
+    if(llarp_rc_bdecode(rc, &buf))
     {
       if(llarp_rc_verify_sig(crypto, rc))
       {
@@ -77,7 +86,7 @@ struct llarp_nodedb
       }
     }
     llarp_rc_free(rc);
-    mem->free(mem, rc);
+    delete rc;
     return false;
   }
 
@@ -99,11 +108,7 @@ extern "C" {
 struct llarp_nodedb *
 llarp_nodedb_new(struct llarp_alloc *mem, struct llarp_crypto *crypto)
 {
-  void *ptr =
-      mem->alloc(mem, sizeof(llarp_nodedb), llarp::alignment< llarp_nodedb >());
-  if(!ptr)
-    return nullptr;
-  return new(ptr) llarp_nodedb(mem, crypto);
+  return new llarp_nodedb(crypto);
 }
 
 void
@@ -111,10 +116,8 @@ llarp_nodedb_free(struct llarp_nodedb **n)
 {
   if(*n)
   {
-    struct llarp_alloc *mem = (*n)->mem;
     (*n)->Clear();
-    (*n)->~llarp_nodedb();
-    mem->free(mem, *n);
+    delete *n;
   }
   *n = nullptr;
 }

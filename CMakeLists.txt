@@ -1,9 +1,14 @@
 cmake_minimum_required(VERSION 2.8.10)
 
-set(DEBUG_FLAGS "-O1 -g -fsanitize=address -fno-omit-frame-pointer")
+set(DEBUG_FLAGS "")
+
+if(ASAN)
+  set(DEBUG_FLAGS "${DEBUG_FLAGS} -O1 -g -fsanitize=address -fno-omit-frame-pointer")
+endif(ASAN)
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -fPIC ${DEBUG_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -fPIC ${DEBUG_FLAGS}")
+
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 

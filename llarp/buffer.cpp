@@ -44,25 +44,6 @@ llarp_buffer_write(llarp_buffer_t* buff, const void* data, size_t sz)
   return false;
 }
 
-bool
-llarp_buffer_readfile(llarp_buffer_t* buff, FILE* f, llarp_alloc* mem)
-{
-  ssize_t len;
-  fseek(f, 0, SEEK_END);
-  len = ftell(f);
-  rewind(f);
-  if(len > 0)
-  {
-    buff->base = static_cast< uint8_t* >(mem->alloc(mem, len, 8));
-    buff->cur  = buff->base;
-    buff->sz   = len;
-    ssize_t sz = fread(buff->base, len, 1, f);
-    rewind(f);
-    return sz == len;
-  }
-  return false;
-}
-
 size_t
 llarp_buffer_read_until(llarp_buffer_t* buff, char delim, byte_t* result,
                         size_t resultsize)

@@ -41,10 +41,6 @@ llarp_buffer_write(llarp_buffer_t *buff, const void *data, size_t sz);
 bool
 llarp_buffer_writef(llarp_buffer_t *buff, const char *fmt, ...);
 
-/// read from file into buff using allocator "mem"
-bool
-llarp_buffer_readfile(llarp_buffer_t *buff, FILE *f, struct llarp_alloc *mem);
-
 /// read buffer upto character delimiter
 size_t
 llarp_buffer_read_until(llarp_buffer_t *buff, char delim, byte_t *result,
