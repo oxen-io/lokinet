@@ -125,7 +125,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
             {
               llarp::Debug(__FILE__, "close ev");
               close_ev(ev);
-              delete ev;
             }
           }
           ++idx;
@@ -212,13 +211,14 @@ struct llarp_epoll_loop : public llarp_ev_loop
   bool
   udp_close(llarp_udp_io* l)
   {
-    bool ret      = false;
-    auto listener = static_cast< llarp::udp_listener* >(l->impl);
+    bool ret = false;
+    llarp::udp_listener* listener =
+        static_cast< llarp::udp_listener* >(l->impl);
     if(listener)
     {
-      ret = close_ev(listener);
-      delete listener;
+      close_ev(listener);
       l->impl = nullptr;
+      delete listener;
     }
     return ret;
   }
