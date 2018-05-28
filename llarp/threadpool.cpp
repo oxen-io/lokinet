@@ -1,6 +1,7 @@
 #include "threadpool.hpp"
 #include <pthread.h>
 #include <cstring>
+#include "logger.hpp"
 
 namespace llarp
 {
@@ -45,7 +46,6 @@ namespace llarp
         stop = true;
       }
       condition.notify_all();
-      done.notify_all();
     }
 
     void
@@ -54,6 +54,7 @@ namespace llarp
       for(auto &t : threads)
         t.join();
       threads.clear();
+      done.notify_all();
     }
 
     void
@@ -97,6 +98,7 @@ llarp_init_threadpool(int workers, const char *name)
 void
 llarp_threadpool_join(struct llarp_threadpool *pool)
 {
+  llarp::Debug(__FILE__, "threadpool join");
   pool->impl.Join();
 }
 
@@ -108,6 +110,7 @@ llarp_threadpool_start(struct llarp_threadpool *pool)
 void
 llarp_threadpool_stop(struct llarp_threadpool *pool)
 {
+  llarp::Debug(__FILE__, "threadpool stop");
   pool->impl.Stop();
 }
 
@@ -115,6 +118,7 @@ void
 llarp_threadpool_wait(struct llarp_threadpool *pool)
 {
   std::mutex mtx;
+  llarp::Debug(__FILE__, "threadpool wait");
   {
     std::unique_lock< std::mutex > lock(mtx);
     pool->impl.done.wait(lock);
@@ -133,7 +137,6 @@ llarp_free_threadpool(struct llarp_threadpool **pool)
 {
   if(*pool)
   {
-    (*pool)->impl.Join();
     delete *pool;
   }
   *pool = nullptr;

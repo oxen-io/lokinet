@@ -144,10 +144,13 @@ llarp_router::SaveRC()
 void
 llarp_router::Close()
 {
-  for(auto link : links)
+  for(auto &link : links)
   {
     link->stop_link(link);
+    link->free_impl(link);
+    delete link;
   }
+  links.clear();
 }
 
 void
@@ -423,11 +426,6 @@ llarp_free_router(struct llarp_router **router)
 {
   if(*router)
   {
-    for(auto &link : (*router)->links)
-    {
-      link->free_impl(link);
-      delete link;
-    }
     delete *router;
   }
   *router = nullptr;

@@ -1,5 +1,6 @@
 #include <llarp/logic.h>
 #include <llarp/mem.h>
+#include "logger.hpp"
 
 struct llarp_logic
 {
@@ -26,19 +27,26 @@ llarp_free_logic(struct llarp_logic** logic)
 {
   if(*logic)
   {
-    llarp_free_threadpool(&(*logic)->thread);
-    llarp_free_timer(&(*logic)->timer);
+    // llarp_free_timer(&(*logic)->timer);
     delete *logic;
-    *logic = nullptr;
   }
+  *logic = nullptr;
 }
 
 void
 llarp_logic_stop(struct llarp_logic* logic)
 {
-  llarp_timer_stop(logic->timer);
-  llarp_threadpool_stop(logic->thread);
-  llarp_threadpool_join(logic->thread);
+  llarp::Debug(__FILE__, "logic thread stop");
+  if(logic->thread)
+  {
+    llarp_threadpool_stop(logic->thread);
+    llarp_threadpool_join(logic->thread);
+  }
+  llarp_free_threadpool(&logic->thread);
+
+  llarp::Debug(__FILE__, "logic timer stop");
+  if(logic->timer)
+    llarp_timer_stop(logic->timer);
 }
 
 void

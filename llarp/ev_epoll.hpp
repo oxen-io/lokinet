@@ -2,6 +2,7 @@
 #define EV_EPOLL_HPP
 #include <llarp/buffer.h>
 #include <llarp/net.h>
+#include <signal.h>
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <cstdio>
@@ -60,13 +61,23 @@ namespace llarp
 struct llarp_epoll_loop : public llarp_ev_loop
 {
   int epollfd;
-
+  int pipefds[2];
   llarp_epoll_loop() : epollfd(-1)
   {
+    pipefds[0] = -1;
+    pipefds[1] = -1;
   }
 
   ~llarp_epoll_loop()
   {
+    if(pipefds[0] != -1)
+      close(pipefds[0]);
+
+    if(pipefds[1] != -1)
+      close(pipefds[1]);
+
+    if(epollfd != -1)
+      close(epollfd);
   }
 
   bool
@@ -74,7 +85,17 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     if(epollfd == -1)
       epollfd = epoll_create1(EPOLL_CLOEXEC);
-    return epollfd != -1;
+    if(epollfd != -1)
+    {
+      if(pipe(pipefds) == -1)
+        return false;
+      epoll_event sig_ev;
+
+      sig_ev.data.fd = pipefds[0];
+      sig_ev.events  = EPOLLIN;
+      return epoll_ctl(epollfd, EPOLL_CTL_ADD, pipefds[0], &sig_ev) != -1;
+    }
+    return false;
   }
 
   int
@@ -91,6 +112,12 @@ struct llarp_epoll_loop : public llarp_ev_loop
         int idx = 0;
         while(idx < result)
         {
+          // handle signalfd
+          if(events[idx].data.fd == pipefds[0])
+          {
+            llarp::Debug(__FILE__, "exiting epoll loop");
+            return 0;
+          }
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
           if(events[idx].events & EPOLLIN)
           {
@@ -104,7 +131,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
           ++idx;
         }
       }
-    } while(result != -1);
+    } while(epollfd != -1);
     return result;
   }
 
@@ -199,10 +226,9 @@ struct llarp_epoll_loop : public llarp_ev_loop
   void
   stop()
   {
-    if(epollfd != -1)
-      ::close(epollfd);
-
-    epollfd = -1;
+    int i    = 1;
+    auto val = write(pipefds[1], &i, sizeof(i));
+    (void)val;
   }
 };
 

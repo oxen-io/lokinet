@@ -120,7 +120,8 @@ router's full identity
 
 {
   a: [ one, or, many, AI, here ... ],
-  k: "<32 bytes public signing/encryption identity key>",
+  k: "<32 bytes public long term identity signing key>",
+  p: "<32 bytes public path encryption key>",   
   u: last_updated_seconds_since_epoch_uint64,
   v: 0,
   x: [ Exit, Infos ],
@@ -140,7 +141,6 @@ if x is included it MUST be less than or equal to 16 bytes, any larger and it is
 considered invalid.
 
 {
-  n: "<optional claimed name>",
   s: "<32 bytes public signing key>",
   v: 0,
   x: "<optional nounce for vanity>"
@@ -163,7 +163,7 @@ v is the protocol version
 x is the timestamp seconds since epoch that this introducer expires at
 
 {
-  i: "<32 bytes public key of router>",
+  i: "<32 bytes public identity key of router>",
   p: path_id_uint64,
   v: 0,
   x: time_expires_seconds_since_epoch_uint64
@@ -181,7 +181,7 @@ service's signing key.
 
 {
   a: SI,
-  e: "<1218 bytes ntru public encryption key>",
+  e: "<52 bytes curve41417 public encryption key>",
   i: [ I, I, I, ... ],
   v: 0,
   z: "<64 bytes signature using service info signing key>"

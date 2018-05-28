@@ -29,6 +29,8 @@ namespace iwp
   // session activity timeout is 10s
   constexpr llarp_time_t SESSION_TIMEOUT = 10000;
 
+  constexpr size_t MAX_PAD = 256;
+
   enum msgtype
   {
     eALIV = 0x00,
@@ -500,7 +502,6 @@ namespace iwp
 
   struct session
   {
-    llarp_alloc *mem;
     llarp_udp_io *udp;
     llarp_crypto *crypto;
     llarp_async_iwp *iwp;
@@ -528,7 +529,7 @@ namespace iwp
     frame_state frame;
 
     byte_t token[32];
-    byte_t workbuf[256];
+    byte_t workbuf[MAX_PAD + 128];
 
     enum State
     {
@@ -545,10 +546,9 @@ namespace iwp
 
     State state;
 
-    session(llarp_alloc *m, llarp_udp_io *u, llarp_async_iwp *i,
-            llarp_crypto *c, llarp_logic *l, const byte_t *seckey,
-            const llarp::Addr &a)
-        : mem(m), udp(u), crypto(c), iwp(i), logic(l), addr(a), state(eInitial)
+    session(llarp_udp_io *u, llarp_async_iwp *i, llarp_crypto *c,
+            llarp_logic *l, const byte_t *seckey, const llarp::Addr &a)
+        : udp(u), crypto(c), iwp(i), logic(l), addr(a), state(eInitial)
     {
       if(seckey)
         memcpy(eph_seckey, seckey, sizeof(llarp_seckey_t));
@@ -680,7 +680,7 @@ namespace iwp
     {
       session *self = static_cast< session * >(user);
       // all zeros means keepalive
-      byte_t tmp[64] = {0};
+      byte_t tmp[MAX_PAD + 8] = {0};
       // 8 bytes iwp header overhead
       int padsz = rand() % (sizeof(tmp) - 8);
       auto buf  = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -807,7 +807,7 @@ namespace iwp
     void
     session_start()
     {
-      size_t w2sz = rand() % 32;
+      size_t w2sz = rand() % MAX_PAD;
       start.buf   = workbuf;
       start.sz    = w2sz + (32 * 3);
       start.nonce = workbuf + 32;
@@ -922,7 +922,7 @@ namespace iwp
     void
     intro_ack()
     {
-      uint16_t w1sz = rand() % 32;
+      uint16_t w1sz = rand() % MAX_PAD;
       introack.buf  = workbuf;
       introack.sz   = (32 * 3) + w1sz;
       // randomize padding
@@ -1039,7 +1039,7 @@ namespace iwp
     {
       memcpy(remote, pub, 32);
       intro.buf   = workbuf;
-      size_t w0sz = (rand() % 32);
+      size_t w0sz = (rand() % MAX_PAD);
       intro.sz    = (32 * 3) + w0sz;
       // randomize w0
       if(w0sz)
@@ -1076,7 +1076,6 @@ namespace iwp
     typedef std::lock_guard< mtx_t > lock_t;
 
     llarp_router *router;
-    llarp_alloc *mem;
     llarp_logic *logic;
     llarp_crypto *crypto;
     llarp_ev_loop *netloop;
@@ -1111,7 +1110,7 @@ namespace iwp
     session *
     create_session(const llarp::Addr &src, const byte_t *seckey)
     {
-      return new session(mem, &udp, iwp, crypto, logic, seckey, src);
+      return new session(&udp, iwp, crypto, logic, seckey, src);
     }
 
     bool
@@ -1269,8 +1268,7 @@ namespace iwp
                     const void *buf, ssize_t sz)
     {
       server *link = static_cast< server * >(udp->user);
-      llarp::Addr addr(*saddr);
-      session *s = link->ensure_session(addr);
+      session *s   = link->ensure_session(*saddr);
       s->recv(buf, sz);
     }
 
@@ -1477,6 +1475,8 @@ namespace iwp
   {
     server *link = static_cast< server * >(l->impl);
     link->cancel_timer();
+    llarp_ev_close_udp(&link->udp);
+    link->clear_sessions();
     return true;
   }
 
@@ -1524,8 +1524,6 @@ namespace iwp
   link_free(struct llarp_link *l)
   {
     server *link = static_cast< server * >(l->impl);
-    llarp_ev_close_udp(&link->udp);
-    link->clear_sessions();
     delete link;
   }
 }

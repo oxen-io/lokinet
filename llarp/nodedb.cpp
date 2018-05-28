@@ -116,10 +116,11 @@ llarp_nodedb_free(struct llarp_nodedb **n)
 {
   if(*n)
   {
-    (*n)->Clear();
-    delete *n;
+    auto i = *n;
+    *n     = nullptr;
+    i->Clear();
+    delete i;
   }
-  *n = nullptr;
 }
 
 bool
