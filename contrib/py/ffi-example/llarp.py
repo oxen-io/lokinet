@@ -6,19 +6,20 @@ import signal
 import time
 import threading
 
+
 class LLARP(threading.Thread):
 
     lib = None
     ctx = None
-    
+
     def signal(self, sig):
-        if self.ctx and self.lib:     
+        if self.ctx and self.lib:
             self.lib.llarp_main_signal(self.ctx, int(sig))
-            
+
     def run(self):
         code = self.lib.llarp_main_run(self.ctx)
-        print ("llarp_main_run exited with status {}".format(code))
-            
+        print("llarp_main_run exited with status {}".format(code))
+
 
 def main():
     llarp = LLARP()
@@ -36,6 +37,6 @@ def main():
             llarp.lib.llarp_main_free(llarp.ctx)
             return
 
+
 if __name__ == '__main__':
     main()
-    
