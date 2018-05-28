@@ -723,7 +723,6 @@ namespace iwp
     void
     session_established()
     {
-      llarp::Info(__FILE__, "session established");
       EnterState(eEstablished);
       llarp_logic_cancel_call(logic, establish_job_id);
       schedule_keepalive();
