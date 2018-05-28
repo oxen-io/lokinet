@@ -3,18 +3,18 @@
 
 struct llarp_logic
 {
-  struct llarp_alloc* mem;
   struct llarp_threadpool* thread;
   struct llarp_timer_context* timer;
 };
 
+extern "C" {
+
 struct llarp_logic*
-llarp_init_logic(struct llarp_alloc* mem)
+llarp_init_logic()
 {
-  struct llarp_logic* logic = mem->alloc(mem, sizeof(struct llarp_logic), 8);
+  llarp_logic* logic = new llarp_logic;
   if(logic)
   {
-    logic->mem    = mem;
     logic->thread = llarp_init_threadpool(1, "llarp-logic");
     logic->timer  = llarp_init_timer();
   }
@@ -26,11 +26,10 @@ llarp_free_logic(struct llarp_logic** logic)
 {
   if(*logic)
   {
-    struct llarp_alloc* mem = (*logic)->mem;
     llarp_free_threadpool(&(*logic)->thread);
     llarp_free_timer(&(*logic)->timer);
-    mem->free(mem, *logic);
-    *logic = NULL;
+    delete *logic;
+    *logic = nullptr;
   }
 }
 
@@ -70,4 +69,5 @@ void
 llarp_logic_remove_call(struct llarp_logic* logic, uint32_t id)
 {
   llarp_timer_remove_job(logic->timer, id);
+}
 }

@@ -1198,8 +1198,8 @@ namespace iwp
           auto itr = m_sessions.find(addr);
           if(itr != m_sessions.end())
           {
-            llarp::Info(__FILE__, "session with ", addr.to_string(),
-                        " is stale, removing");
+            llarp::Debug(__FILE__, "session with ", addr.to_string(),
+                         " is stale, removing");
             session *s = static_cast< session * >(itr->second.impl);
             m_sessions.erase(addr);
             if(s->keepalive_timer_id)
@@ -1221,7 +1221,7 @@ namespace iwp
     bool
     ensure_privkey()
     {
-      llarp::Info(__FILE__, "ensure transport private key at ", keyfile);
+      llarp::Debug(__FILE__, "ensure transport private key at ", keyfile);
       std::error_code ec;
       if(!fs::exists(keyfile, ec))
       {
@@ -1456,7 +1456,7 @@ namespace iwp
     link->netloop      = netloop;
     link->udp.recvfrom = &server::handle_recvfrom;
     link->udp.user     = link;
-    llarp::Info(__FILE__, "bind IWP link to ", link->addr.to_string());
+    llarp::Debug(__FILE__, "bind IWP link to ", link->addr.to_string());
     return llarp_ev_add_udp(link->netloop, &link->udp, link->addr) != -1;
   }
 

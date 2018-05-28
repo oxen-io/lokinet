@@ -16,7 +16,6 @@ namespace llarp
 
     int num_nethreads = 1;
     std::vector< std::thread > netio_threads;
-    llarp_alloc mem;
     llarp_crypto crypto;
     llarp_router *router     = nullptr;
     llarp_threadpool *worker = nullptr;

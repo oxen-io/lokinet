@@ -9,6 +9,15 @@ endif(ASAN)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -fPIC ${DEBUG_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -fPIC ${DEBUG_FLAGS}")
 
+if(NOT GIT_VERSION)
+  exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION)
+  add_definitions(-DGIT_REV="${GIT_VERSION}")
+endif()
+
+if(RELEASE_MOTTO)
+  add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
+endif()
+
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -16,7 +25,6 @@ set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
 set(LIBS sodium pthread stdc++fs)
-
 
 set(LIB llarp)
 set(SHARED_LIB ${LIB})
@@ -30,16 +38,15 @@ set(LIB_SRC
   llarp/crypto_async.cpp
   llarp/crypto_libsodium.cpp
   llarp/ev.cpp
-  llarp/exit_info.c
+  llarp/exit_info.cpp
   llarp/exit_route.c
   llarp/iwp_link.cpp
   llarp/logger.cpp
   llarp/link.c
   llarp/link_intro.cpp
   llarp/link_message.cpp
-  llarp/logic.c
+  llarp/logic.cpp
   llarp/mem.cpp
-  llarp/mem_std.cpp
   llarp/net.cpp
   llarp/nodedb.cpp
   llarp/router_contact.cpp

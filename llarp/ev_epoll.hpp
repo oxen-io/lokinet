@@ -96,7 +96,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
           {
             if(ev->read(readbuf, sizeof(readbuf)) == -1)
             {
-              llarp::Info(__FILE__, "close ev");
+              llarp::Debug(__FILE__, "close ev");
               close_ev(ev);
               delete ev;
             }
@@ -146,7 +146,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    llarp::Info(__FILE__, "bind to ", a.to_string());
+    llarp::Debug(__FILE__, "bind to ", a.to_string());
     if(bind(fd, addr, slen) == -1)
     {
       perror("bind()");

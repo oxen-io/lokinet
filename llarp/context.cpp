@@ -7,6 +7,7 @@ namespace llarp
 {
   Context::Context(std::ostream &stdout) : out(stdout)
   {
+    llarp::Info(__FILE__, LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
   }
 
   Context::~Context()
@@ -22,13 +23,14 @@ namespace llarp
   bool
   Context::ReloadConfig()
   {
-    llarp::Info(__FILE__, LLARP_VERSION, " loading config at ", configfile);
+    llarp::Info(__FILE__, "loading config at ", configfile);
     if(!llarp_load_config(config, configfile.c_str()))
     {
       llarp_config_iterator iter;
       iter.user  = this;
       iter.visit = &iter_config;
       llarp_config_iter(config, &iter);
+      llarp::Info(__FILE__, "config loaded");
       return true;
     }
     llarp_free_config(&config);
@@ -70,10 +72,10 @@ namespace llarp
   int
   Context::Run()
   {
-    llarp_mem_stdlib(&mem);
+    llarp::Info(__FILE__, "starting up");
     llarp_ev_loop_alloc(&mainloop);
     llarp_crypto_libsodium_init(&crypto);
-    nodedb = llarp_nodedb_new(&mem, &crypto);
+    nodedb = llarp_nodedb_new(&crypto);
     if(nodedb_dir[0])
     {
       nodedb_dir[sizeof(nodedb_dir) - 1] = 0;
@@ -83,9 +85,9 @@ namespace llarp
         if(!worker)
           worker = llarp_init_threadpool(2, "llarp-worker");
         // ensure netio thread
-        logic = llarp_init_logic(&mem);
+        logic = llarp_init_logic();
 
-        router = llarp_init_router(&mem, worker, mainloop, logic);
+        router = llarp_init_router(worker, mainloop, logic);
 
         if(llarp_configure_router(router, config))
         {
@@ -98,7 +100,7 @@ namespace llarp
             pthread_setname_np(netio_threads.back().native_handle(),
                                "llarp-netio");
           }
-          llarp::Info(__FILE__, "running");
+          llarp::Info(__FILE__, "Ready");
           llarp_logic_mainloop(logic);
           return 0;
         }

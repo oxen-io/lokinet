@@ -1,7 +1,8 @@
 #ifndef LLARP_LOGGER_HPP
 #define LLARP_LOGGER_HPP
 
-#include <chrono>
+#include <ctime>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 
@@ -15,7 +16,16 @@ namespace llarp
     eLogError
   };
 
-  extern LogLevel loglevel;
+  struct Logger
+  {
+    LogLevel minlevel = eLogDebug;
+    std::ostream& out = std::cout;
+  };
+
+  extern Logger _glog;
+
+  void
+  SetLogLevel(LogLevel lvl);
 
   /** internal */
   template < typename TArg >
@@ -38,30 +48,35 @@ namespace llarp
   void
   Log(LogLevel lvl, const char* tag, TArgs&&... args)
   {
-    if(loglevel > lvl)
+    if(_glog.minlevel > lvl)
       return;
 
     std::stringstream ss;
     switch(lvl)
     {
       case eLogDebug:
+        ss << (char)27 << "[0m";
         ss << "[DBG] ";
         break;
       case eLogInfo:
+        ss << (char)27 << "[1m";
         ss << "[NFO] ";
         break;
       case eLogWarn:
+        ss << (char)27 << "[1;33m";
         ss << "[WRN] ";
         break;
       case eLogError:
+        ss << (char)27 << "[1;31m";
         ss << "[ERR] ";
         break;
     }
-    auto now = std::chrono::steady_clock::now().time_since_epoch();
-    ss << std::chrono::duration_cast< std::chrono::milliseconds >(now).count()
-       << " " << tag << "\t";
+    auto t   = std::time(nullptr);
+    auto now = std::localtime(&t);
+    ss << std::put_time(now, "%F %T") << " " << tag << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
-    std::cout << ss.str() << std::endl;
+    ss << (char)27 << "[0;0m";
+    _glog.out << ss.str() << std::endl;
   }
 
   template < typename... TArgs >

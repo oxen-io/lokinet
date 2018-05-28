@@ -20,8 +20,7 @@ namespace llarp
                      const char *key, const char *val);
 }  // namespace llarp
 
-llarp_router::llarp_router(struct llarp_alloc *m)
-    : ready(false), mem(m), inbound_msg_handler(this)
+llarp_router::llarp_router() : ready(false), inbound_msg_handler(this)
 {
   llarp_rc_clear(&rc);
 }
@@ -81,7 +80,7 @@ llarp_router::try_connect(fs::path rcfile)
   {
     if(llarp_rc_verify_sig(&crypto, &remote))
     {
-      llarp::Info(__FILE__, "verified signature");
+      llarp::Debug(__FILE__, "verified signature");
       if(!llarp_router_try_connect(this, &remote))
       {
         llarp::Warn(__FILE__, "session already made");
@@ -118,7 +117,7 @@ llarp_router::Ready()
 bool
 llarp_router::SaveRC()
 {
-  llarp::Info(__FILE__, "verify RC signature");
+  llarp::Debug(__FILE__, "verify RC signature");
   if(!llarp_rc_verify_sig(&crypto, &rc))
   {
     llarp::Error(__FILE__, "RC has bad signature not saving");
@@ -134,11 +133,11 @@ llarp_router::SaveRC()
     if(f.is_open())
     {
       f.write((char *)buf.base, buf.cur - buf.base);
-      llarp::Info(__FILE__, "RC saved to ", our_rc_file);
+      llarp::Info(__FILE__, "our RC saved to ", our_rc_file.c_str());
       return true;
     }
   }
-  llarp::Error(__FILE__, "did not save RC to ", our_rc_file);
+  llarp::Error(__FILE__, "did not save RC to ", our_rc_file.c_str());
   return false;
 }
 
@@ -219,7 +218,7 @@ llarp_router::Run()
   const char *us =
       llarp::HexEncode< llarp::pubkey, decltype(tmp) >(ourPubkey, tmp);
 
-  llarp::Info(__FILE__, "we are ", us);
+  llarp::Debug(__FILE__, "our router has public key ", us);
 
   // start links
   for(auto link : links)
@@ -228,7 +227,7 @@ llarp_router::Run()
     if(result == -1)
       llarp::Warn(__FILE__, "Link ", link->name(), " failed to start");
     else
-      llarp::Info(__FILE__, "Link ", link->name(), " started");
+      llarp::Debug(__FILE__, "Link ", link->name(), " started");
   }
 
   for(const auto &itr : connect)
@@ -262,10 +261,10 @@ llarp_router::iter_try_connect(llarp_router_link_iter *iter,
 extern "C" {
 
 struct llarp_router *
-llarp_init_router(struct llarp_alloc *mem, struct llarp_threadpool *tp,
-                  struct llarp_ev_loop *netloop, struct llarp_logic *logic)
+llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
+                  struct llarp_logic *logic)
 {
-  llarp_router *router = new llarp_router(mem);
+  llarp_router *router = new llarp_router();
   if(router)
   {
     router->netloop = netloop;

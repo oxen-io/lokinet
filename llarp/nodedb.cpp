@@ -106,7 +106,7 @@ struct llarp_nodedb
 extern "C" {
 
 struct llarp_nodedb *
-llarp_nodedb_new(struct llarp_alloc *mem, struct llarp_crypto *crypto)
+llarp_nodedb_new(struct llarp_crypto *crypto)
 {
   return new llarp_nodedb(crypto);
 }

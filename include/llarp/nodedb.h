@@ -10,7 +10,7 @@ struct llarp_nodedb;
 
 /** create an empty nodedb */
 struct llarp_nodedb *
-llarp_nodedb_new(struct llarp_alloc *mem, struct llarp_crypto *crypto);
+llarp_nodedb_new(struct llarp_crypto *crypto);
 
 /** free a nodedb and all loaded rc */
 void
