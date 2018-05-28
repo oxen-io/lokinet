@@ -43,53 +43,72 @@ byte_t *
 llarp_seckey_topublic(byte_t *secret);
 
 /// label functors
+
+/// PKE(result, publickey, nonce, secretkey)
 typedef bool (*llarp_dh_func)(llarp_sharedkey_t *, llarp_pubkey_t,
                               llarp_tunnel_nonce_t, llarp_seckey_t);
 
+/// TKE(result publickey, secretkey, nonce)
 typedef bool (*llarp_transport_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
 
+/// SD/SE(buffer, key, nonce)
 typedef bool (*llarp_sym_cipher_func)(llarp_buffer_t, llarp_sharedkey_t,
                                       llarp_nonce_t);
 
+/// H(result, body)
 typedef bool (*llarp_hash_func)(byte_t *, llarp_buffer_t);
 
+/// SH(result, body)
 typedef bool (*llarp_shorthash_func)(byte_t *, llarp_buffer_t);
 
+/// MDS(result, body, shared_secret)
 typedef bool (*llarp_hmac_func)(byte_t *, llarp_buffer_t, const byte_t *);
 
+/// S(sig, secretkey, body)
 typedef bool (*llarp_sign_func)(byte_t *, const byte_t *, llarp_buffer_t);
 
+/// V(sig, body, secretkey)
 typedef bool (*llarp_verify_func)(const byte_t *, llarp_buffer_t,
                                   const byte_t *);
-
-typedef bool (*llarp_frame_crypto_func)(llarp_buffer_t *, const byte_t *);
 
 /// library crypto configuration
 struct llarp_crypto
 {
+  /// xchacha symettric cipher
   llarp_sym_cipher_func xchacha20;
+  /// path dh creator's side
   llarp_dh_func dh_client;
+  /// path dh relay side
   llarp_dh_func dh_server;
+  /// transport dh client side
   llarp_transport_dh_func transport_dh_client;
+  /// transport dh server side
   llarp_transport_dh_func transport_dh_server;
+  /// blake2b 512 bit
   llarp_hash_func hash;
+  /// blake2b 256 bit
   llarp_shorthash_func shorthash;
+  /// blake2s 256 bit hmac
   llarp_hmac_func hmac;
+  /// ed25519 sign
   llarp_sign_func sign;
+  /// ed25519 verify
   llarp_verify_func verify;
-  llarp_frame_crypto_func encrypt_frame;
-  llarp_frame_crypto_func decrypt_frame;
+  /// randomize buffer
   void (*randomize)(llarp_buffer_t);
+  /// randomizer memory
   void (*randbytes)(void *, size_t);
+  /// generate signing keypair
   void (*identity_keygen)(byte_t *);
+  /// generate encryption keypair
   void (*encryption_keygen)(byte_t *);
 };
 
-/// allocate crypto
+/// set crypto function pointers to use libsodium
 void
 llarp_crypto_libsodium_init(struct llarp_crypto *c);
 
-/// initialize crypto
+/// check for initialize crypto
 bool
 llarp_crypto_initialized(struct llarp_crypto *c);
 

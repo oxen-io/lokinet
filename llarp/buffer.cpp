@@ -5,20 +5,20 @@
 extern "C" {
 
 size_t
-llarp_buffer_size_left(llarp_buffer_t* buff)
+llarp_buffer_size_left(llarp_buffer_t buff)
 {
-  size_t diff = buff->cur - buff->base;
-  if(diff > buff->sz)
+  size_t diff = buff.cur - buff.base;
+  if(diff > buff.sz)
     return 0;
   else
-    return buff->sz - diff;
+    return buff.sz - diff;
 }
 
 bool
 llarp_buffer_writef(llarp_buffer_t* buff, const char* fmt, ...)
 {
   int written;
-  ssize_t sz = llarp_buffer_size_left(buff);
+  ssize_t sz = llarp_buffer_size_left(*buff);
   va_list args;
   va_start(args, fmt);
   written = vsnprintf((char*)buff->cur, sz, fmt, args);
@@ -34,7 +34,7 @@ llarp_buffer_writef(llarp_buffer_t* buff, const char* fmt, ...)
 bool
 llarp_buffer_write(llarp_buffer_t* buff, const void* data, size_t sz)
 {
-  size_t left = llarp_buffer_size_left(buff);
+  size_t left = llarp_buffer_size_left(*buff);
   if(left >= sz)
   {
     memcpy(buff->cur, data, sz);
@@ -60,7 +60,7 @@ llarp_buffer_read_until(llarp_buffer_t* buff, char delim, byte_t* result,
     read++;
   }
 
-  if(llarp_buffer_size_left(buff))
+  if(llarp_buffer_size_left(*buff))
     return read;
   else
     return 0;

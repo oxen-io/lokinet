@@ -10,7 +10,7 @@
 /**
  * buffer.h
  *
- * buffer used for bencoding
+ * generic memory buffer
  */
 
 #ifdef __cplusplus
@@ -19,6 +19,29 @@ extern "C" {
 
 typedef uint8_t byte_t;
 
+/**
+  llarp_buffer_t represents a region of memory that is ONLY
+  accessable and valid in the current scope.
+
+  rules:
+
+  ALWAYS copy the contents of the buffer
+  if that data is to be used outside the current scope.
+
+  ALWAYS pass a llarp_buffer_t * if you plan on modifying
+  the data associated with the buffer
+
+  ALWAYS pass a llarp_buffer_t * if you plan on advancing
+  the stream position
+
+  ALWAYS pass a llarp_buffer_t if you are doing a read
+  only operation that does not modify anything
+
+  NEVER dallocate the pointers in the buffer
+
+  NEVER use llarp_buffer_t ** (double pointer)
+
+ */
 typedef struct llarp_buffer_t
 {
   /// starting memory address
@@ -31,7 +54,7 @@ typedef struct llarp_buffer_t
 
 /// how much room is left in buffer
 size_t
-llarp_buffer_size_left(llarp_buffer_t *buff);
+llarp_buffer_size_left(llarp_buffer_t buff);
 
 /// write a chunk of data size "sz"
 bool
