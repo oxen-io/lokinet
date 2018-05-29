@@ -156,12 +156,12 @@ llarp_router::Close()
 void
 llarp_router::on_try_connect_result(llarp_link_establish_job *job)
 {
+  llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
     llarp_rc *remote = job->session->get_remote_router(job->session);
     if(remote)
     {
-      llarp_router *router = static_cast< llarp_router * >(job->user);
       llarp::pubkey pubkey;
       memcpy(&pubkey[0], remote->pubkey, 32);
       char tmp[68] = {0};
@@ -184,10 +184,12 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
         }
         router->pendingMessages.erase(itr);
       }
+      delete job;
       return;
     }
   }
   llarp::Info(__FILE__, "session not established");
+  job->link->try_establish(job->link, job);
 }
 
 void
@@ -253,7 +255,7 @@ llarp_router::iter_try_connect(llarp_router_link_iter *iter,
     return true;
   llarp_ai *ai = static_cast< llarp_ai * >(iter->user);
   llarp_ai_copy(&job->ai, ai);
-  job->timeout = 5000;
+  job->timeout = 1000;
   job->result  = &llarp_router::on_try_connect_result;
   // give router as user pointer
   job->user = router;
@@ -448,7 +450,7 @@ namespace llarp
     }
     else
     {
-      af    = AF_INET6;
+      af    = AF_INET;
       proto = std::atoi(val);
     }
 

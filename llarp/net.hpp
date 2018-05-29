@@ -19,7 +19,7 @@ namespace llarp
   struct Addr
   {
     sockaddr_in6 _addr;
-
+    sockaddr_in _addr4;
     ~Addr(){};
 
     Addr(){};
@@ -55,9 +55,22 @@ namespace llarp
 
     Addr(const llarp_ai& other)
     {
-      _addr.sin6_family = AF_INET6;
       memcpy(addr6(), other.ip.s6_addr, 16);
       _addr.sin6_port = htons(other.port);
+      auto ptr        = &_addr.sin6_addr.s6_addr[0];
+      // TODO: detect SIIT better
+      if(ptr[11] == 0xff && ptr[10] == 0xff && ptr[9] == 0 && ptr[9] == 0
+         && ptr[8] == 0 && ptr[7] == 0 && ptr[6] == 0 && ptr[5] == 0
+         && ptr[4] == 0 && ptr[3] == 0 && ptr[2] == 0 && ptr[1] == 0
+         && ptr[0] == 0)
+      {
+        _addr4.sin_family = AF_INET;
+        _addr4.sin_port   = htons(other.port);
+        _addr.sin6_family = AF_INET;
+        memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
+      }
+      else
+        _addr.sin6_family = AF_INET6;
     }
 
     Addr(const sockaddr& other)
@@ -72,9 +85,12 @@ namespace llarp
           // SIIT
           memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr,
                  sizeof(in_addr));
-          addrptr[11] = 0xff;
-          addrptr[10] = 0xff;
-          *port       = ((sockaddr_in*)(&other))->sin_port;
+          addrptr[11]       = 0xff;
+          addrptr[10]       = 0xff;
+          *port             = ((sockaddr_in*)(&other))->sin_port;
+          _addr4.sin_family = AF_INET;
+          _addr4.sin_port   = *port;
+          memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
           break;
         case AF_INET6:
           memcpy(addrptr, &((const sockaddr_in6*)(&other))->sin6_addr.s6_addr,
@@ -117,7 +133,10 @@ namespace llarp
 
     operator const sockaddr*() const
     {
-      return (const sockaddr*)&_addr;
+      if(af() == AF_INET)
+        return (const sockaddr*)&_addr4;
+      else
+        return (const sockaddr*)&_addr;
     }
 
     void

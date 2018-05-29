@@ -50,6 +50,7 @@ namespace llarp
         default:
           return -1;
       }
+      llarp::Debug(__FILE__, "send ", sz, " bytes");
       ssize_t sent = ::sendto(fd, data, sz, SOCK_NONBLOCK, to, slen);
       if(sent == -1)
         perror("sendto()");

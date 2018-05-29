@@ -24,7 +24,9 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
-set(LIBS sodium pthread stdc++fs)
+set(SODIUM_LIB sodium)
+
+set(LIBS ${SODIUM_LIB} pthread stdc++fs)
 
 set(LIB llarp)
 set(SHARED_LIB ${LIB})

@@ -23,6 +23,7 @@
 #include "mem.hpp"
 #include "net.hpp"
 #include "router.hpp"
+#include "str.hpp"
 
 namespace iwp
 {
@@ -651,6 +652,7 @@ namespace iwp
     void
     send_LIM()
     {
+      llarp::Debug(__FILE__, "send LIM");
       llarp_shorthash_t digest;
       // 64 bytes overhead for link message
       byte_t tmp[MAX_RC_SIZE + 64];
@@ -910,12 +912,19 @@ namespace iwp
       session *link = static_cast< session * >(i->user);
       if(i->buf)
       {
-        llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
+        llarp::Debug(__FILE__, "send introack");
+        if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)
+        {
+          llarp::Warn(__FILE__, "sendto failed");
+          return;
+        }
+        llarp::Debug(__FILE__, "sent");
         link->EnterState(eIntroAckSent);
       }
       else
       {
         // failed to generate?
+        llarp::Warn(__FILE__, "failed to generate introack");
       }
     }
 
@@ -1006,8 +1015,13 @@ namespace iwp
       session *link = static_cast< session * >(i->user);
       if(i->buf)
       {
+        llarp::Debug(__FILE__, "send intro");
         llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
         link->EnterState(eIntroSent);
+      }
+      else
+      {
+        llarp::Warn(__FILE__, "failed to generate intro");
       }
     }
 
@@ -1029,7 +1043,6 @@ namespace iwp
           self->establish_job->session = nullptr;
         }
         self->establish_job->result(self->establish_job);
-        delete self->establish_job;
         self->establish_job = nullptr;
       }
     }
@@ -1410,6 +1423,8 @@ namespace iwp
       return false;
     }
 
+    llarp::Debug(__FILE__, "configure link ifname=", ifname, " af=", af,
+                 " port=", port);
     // bind
     sockaddr_in ip4addr;
     sockaddr_in6 ip6addr;
@@ -1417,23 +1432,28 @@ namespace iwp
     switch(af)
     {
       case AF_INET:
-        addr             = (sockaddr *)&ip4addr;
-        ip4addr.sin_port = htons(port);
+        addr = (sockaddr *)&ip4addr;
+        llarp::Zero(addr, sizeof(ip4addr));
         break;
       case AF_INET6:
-        addr              = (sockaddr *)&ip6addr;
-        ip6addr.sin6_port = htons(port);
+        addr = (sockaddr *)&ip6addr;
+        llarp::Zero(addr, sizeof(ip6addr));
         break;
         // TODO: AF_PACKET
       default:
         return false;
     }
 
-    if(!llarp_getifaddr(ifname, af, addr))
+    addr->sa_family = af;
+
+    if(!llarp::StrEq(ifname, "*"))
     {
-      llarp::Error(__FILE__, "failed to get address of network interface ",
-                   ifname);
-      return false;
+      if(!llarp_getifaddr(ifname, af, addr))
+      {
+        llarp::Error(__FILE__, "failed to get address of network interface ",
+                     ifname);
+        return false;
+      }
     }
 
     switch(af)
@@ -1454,7 +1474,12 @@ namespace iwp
     link->udp.recvfrom = &server::handle_recvfrom;
     link->udp.user     = link;
     llarp::Debug(__FILE__, "bind IWP link to ", link->addr.to_string());
-    return llarp_ev_add_udp(link->netloop, &link->udp, link->addr) != -1;
+    if(llarp_ev_add_udp(link->netloop, &link->udp, link->addr) == -1)
+    {
+      llarp::Error(__FILE__, "failed to bind to ", link->addr.to_string());
+      return false;
+    }
+    return true;
   }
 
   bool
