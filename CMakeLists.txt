@@ -24,7 +24,10 @@ set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
-set(SODIUM_LIB sodium)
+find_package(sodium)
+
+include_directies(${sodium_INCLUDE_DIR})
+set(SODIUM_LIB ${sodium_LIBRARIES})
 
 set(LIBS ${SODIUM_LIB} pthread stdc++fs)
 
