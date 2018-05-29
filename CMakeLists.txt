@@ -68,8 +68,9 @@ add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 add_library(${SHARED_LIB} SHARED ${LIB_SRC})
 
 add_executable(${EXE} ${EXE_SRC})
-target_link_libraries(${EXE} ${STATIC_LIB} ${LIBS})
-target_link_libraries(${SHARED_LIB} ${LIBS})
+target_link_libraries(${STATIC_LIB} ${LIBS})
+target_link_libraries(${EXE} ${STATIC_LIB})
+target_link_libraries(${SHARED_LIB} ${STATIC_LIB})
 
 add_executable(rcutil daemon/rcutil.cpp)
 target_link_libraries(rcutil ${STATIC_LIB} ${LIBS})
