@@ -2,10 +2,13 @@
 #include "mem.hpp"
 
 #ifdef __linux__
-#include "ev_epoll.hpp"
+#  include "ev_epoll.hpp"
+#endif
+#if (__APPLE__ && __MACH__)
+#  include "ev_kqueue.hpp"
 #endif
 #ifdef __FreeBSD__
-#include "ev_kqueue.hpp"
+#  include "ev_kqueue.hpp"
 #endif
 
 extern "C" {
@@ -15,6 +18,9 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {
 #ifdef __linux__
   *ev = new llarp_epoll_loop;
+#endif
+#if (__APPLE__ && __MACH__)
+  *ev = new llarp_kqueue_loop;
 #endif
 #ifdef __FreeBSD__
   *ev = new llarp_kqueue_loop;
