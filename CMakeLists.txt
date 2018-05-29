@@ -26,7 +26,7 @@ set(EXE_SRC daemon/main.cpp)
 
 find_package(sodium)
 
-include_directies(${sodium_INCLUDE_DIR})
+include_directories(${sodium_INCLUDE_DIR})
 set(SODIUM_LIB ${sodium_LIBRARY_RELEASE})
 
 set(LIBS ${SODIUM_LIB} pthread stdc++fs)
@@ -63,8 +63,6 @@ set(LIB_SRC
 )
 
 include_directories(include)
-include_directories(${sodium_INCLUDE_DIR})
-
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 add_library(${SHARED_LIB} SHARED ${LIB_SRC})
