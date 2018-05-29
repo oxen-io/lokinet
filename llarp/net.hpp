@@ -182,7 +182,7 @@ namespace llarp
     bool
     operator<(const Addr& other) const
     {
-      return af() < other.af() && *addr6() < *other.addr6()
+      return af() < other.af() && memcmp(addr6(), other.addr6(), 16) < 0
           && port() < other.port();
     }
   };
