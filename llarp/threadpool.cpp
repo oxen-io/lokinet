@@ -2,6 +2,10 @@
 #include <pthread.h>
 #include <cstring>
 
+#if (__FreeBSD__)
+#include <pthread_np.h>
+#endif
+
 namespace llarp
 {
   namespace thread
@@ -32,8 +36,18 @@ namespace llarp
       }
       if(name)
       {
+#if (__APPLE__ && __MACH__)
+        //for(auto &t : threads)
+          // FIXME: send signal to thread
+          // name has to be set from inside the thread
+          //pthread_setname_np(name);
+#elif (__FreeBSD__)
+        for(auto &t : threads)
+          pthread_set_name_np(t.native_handle(), name);
+#else
         for(auto &t : threads)
           pthread_setname_np(t.native_handle(), name);
+#endif
       }
     }
 
