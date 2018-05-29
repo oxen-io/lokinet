@@ -613,6 +613,7 @@ namespace iwp
 
     uint32_t establish_job_id   = 0;
     uint32_t keepalive_timer_id = 0;
+    uint32_t frames             = 0;
 
     llarp::Addr addr;
     iwp_async_intro intro;
@@ -935,6 +936,7 @@ namespace iwp
         llarp::Error(__FILE__, "decrypt frame fail");
 
       delete frame;
+      --self->frames;
     }
 
     void
@@ -956,6 +958,7 @@ namespace iwp
       session *self = static_cast< session * >(frame->user);
       llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz);
       delete frame;
+      --self->frames;
     }
 
     iwp_async_frame *
@@ -971,6 +974,7 @@ namespace iwp
       frame->sz         = sz;
       frame->user       = this;
       frame->sessionkey = sessionkey;
+      ++frames;
       return frame;
     }
 
@@ -1278,7 +1282,14 @@ namespace iwp
               job->session = nullptr;
               job->result(job);
             }
-            delete s;
+            if(s->frames)
+            {
+              llarp::Warn(__FILE__, "session has ", s->frames,
+                          " left but is idle, not deallocating session so we "
+                          "leak but don't die");
+            }
+            else
+              delete s;
           }
         }
       }
