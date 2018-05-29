@@ -409,7 +409,7 @@ namespace iwp
       if(x.flags() & 0x01)
       {
         auto id  = x.msgid();
-        auto itr = rx.try_emplace(id, x);
+        auto itr = rx.emplace(id, x);
         if(itr.second)
         {
           // inserted, put last fragment
@@ -449,7 +449,7 @@ namespace iwp
     void
     queue_tx(uint64_t id, transit_message *msg)
     {
-      auto itr = tx.try_emplace(id, msg);
+      auto itr = tx.emplace(id, msg);
       if(itr.second)
       {
         msg->generate_xmit(sendqueue);
