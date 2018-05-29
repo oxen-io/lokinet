@@ -1598,6 +1598,7 @@ namespace iwp
         link->put_session(dst, s);
       }
       s->establish_job = job;
+      s->frame.alive();
       s->introduce(job->ai.enc_key);
     }
     return true;
