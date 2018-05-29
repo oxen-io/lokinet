@@ -18,16 +18,18 @@ if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
 endif()
 
-
-set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
-
 set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
-find_package(sodium)
+if(SODIUM_INCLUDE_DIR)
+  include_directories(${SODIUM_INCLUDE_DIR})
+endif()
 
-include_directories(${sodium_INCLUDE_DIR})
-set(SODIUM_LIB ${sodium_LIBRARY_RELEASE})
+if(SODIUM_LIBRARIES)
+  set(SODIUM_LIB ${SODIUM_LIBRARIES})
+else()
+  set(SODIUM_LIB sodium)
+endif()
 
 set(LIBS ${SODIUM_LIB} pthread stdc++fs)
 
