@@ -210,6 +210,7 @@ namespace iwp
 
   // forward declare
   struct session;
+  struct server;
 
   struct transit_message
   {
@@ -599,7 +600,7 @@ namespace iwp
     llarp_logic *logic;
 
     llarp_link_session *parent = nullptr;
-    llarp_link *link           = nullptr;
+    server *serv               = nullptr;
 
     llarp_rc *our_router = nullptr;
     llarp_rc remote_router;
@@ -1101,26 +1102,7 @@ namespace iwp
     }
 
     static void
-    handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
-    {
-      session *self = static_cast< session * >(user);
-      if(self->establish_job)
-      {
-        self->establish_job->link = self->link;
-        if(left)
-        {
-          // timer cancelled
-          self->establish_job->session = self->parent;
-        }
-        else
-        {
-          // timer timeout
-          self->establish_job->session = nullptr;
-        }
-        self->establish_job->result(self->establish_job);
-        self->establish_job = nullptr;
-      }
-    }
+    handle_establish_timeout(void *user, uint64_t orig, uint64_t left);
 
     void
     introduce(uint8_t *pub)
@@ -1168,7 +1150,7 @@ namespace iwp
     llarp_crypto *crypto;
     llarp_ev_loop *netloop;
     llarp_async_iwp *iwp;
-    llarp_link *link = nullptr;
+    llarp_link *parent = nullptr;
     llarp_udp_io udp;
     llarp::Addr addr;
     char keyfile[255];
@@ -1200,7 +1182,9 @@ namespace iwp
     session *
     create_session(const llarp::Addr &src, const byte_t *seckey)
     {
-      return new session(&udp, iwp, crypto, logic, seckey, src);
+      auto s  = new session(&udp, iwp, crypto, logic, seckey, src);
+      s->serv = this;
+      return s;
     }
 
     bool
@@ -1236,7 +1220,6 @@ namespace iwp
         m_sessions[src] = s;
         impl->parent    = &m_sessions[src];
       }
-      impl->link         = link;
       impl->frame.router = router;
       impl->frame.parent = impl->parent;
       impl->our_router   = &router->rc;
@@ -1291,7 +1274,7 @@ namespace iwp
             if(s->establish_job)
             {
               auto job     = s->establish_job;
-              job->link    = s->link;
+              job->link    = s->serv->parent;
               job->session = nullptr;
               job->result(job);
             }
@@ -1364,8 +1347,7 @@ namespace iwp
       if(s == nullptr)
       {
         // new inbound session
-        s       = link->create_session(*saddr, link->seckey);
-        s->link = link->link;
+        s = link->create_session(*saddr, link->seckey);
       }
       s->recv(buf, sz);
     }
@@ -1573,7 +1555,7 @@ namespace iwp
   {
     server *link = static_cast< server * >(l->impl);
     // give link implementations
-    link->link           = l;
+    link->parent         = l;
     link->timeout_job_id = 0;
     link->logic          = logic;
     // start cleanup timer
@@ -1636,21 +1618,43 @@ namespace iwp
   }
 
   void
+  session::handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
+  {
+    session *self          = static_cast< session * >(user);
+    self->establish_job_id = 0;
+    if(self->establish_job)
+    {
+      self->establish_job->link = self->serv->parent;
+      if(left)
+      {
+        // timer cancelled
+        self->establish_job->session = self->parent;
+      }
+      else
+      {
+        // timer timeout
+        self->establish_job->session = nullptr;
+      }
+      self->establish_job->result(self->establish_job);
+      self->establish_job = nullptr;
+    }
+  }
+
+  void
   session::handle_introack_generated(iwp_async_introack *i)
   {
     session *link = static_cast< session * >(i->user);
     if(i->buf)
     {
       // track it with the server here
-      server *s = static_cast< server * >(link->link->impl);
-      if(s->has_session_to(link->addr))
+      if(link->serv->has_session_to(link->addr))
       {
         // duplicate session
         llarp::Warn(__FILE__, "duplicate session to ", link->addr.to_string());
         delete link;
         return;
       }
-      s->put_session(link->addr, link);
+      link->serv->put_session(link->addr, link);
       llarp::Debug(__FILE__, "send introack");
       if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)
       {
