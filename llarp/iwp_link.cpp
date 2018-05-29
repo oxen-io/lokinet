@@ -14,6 +14,7 @@
 #include <mutex>
 #include <queue>
 #include <set>
+#include <unordered_map>
 #include <vector>
 
 #include "buffer.hpp"
@@ -1192,7 +1193,9 @@ namespace iwp
     char keyfile[255];
     uint32_t timeout_job_id;
 
-    typedef std::map< llarp::Addr, llarp_link_session > LinkMap_t;
+    typedef std::unordered_map< llarp::Addr, llarp_link_session,
+                                llarp::addrhash >
+        LinkMap_t;
 
     LinkMap_t m_sessions;
     mtx_t m_sessions_Mutex;

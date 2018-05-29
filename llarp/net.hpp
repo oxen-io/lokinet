@@ -180,10 +180,20 @@ namespace llarp
     }
 
     bool
-    operator<(const Addr& other) const
+    operator==(const Addr& other) const
     {
-      return af() < other.af() && memcmp(addr6(), other.addr6(), 16) < 0
-          && port() < other.port();
+      return af() == other.af() && memcmp(addr6(), other.addr6(), 16) == 0
+          && port() == other.port();
+    }
+  };
+
+  struct addrhash
+  {
+    std::size_t
+    operator()(Addr const& a) const noexcept
+    {
+      uint8_t empty[16] = {0};
+      return a.af() + memcmp(a.addr6(), empty, 16) + a.port();
     }
   };
 }
