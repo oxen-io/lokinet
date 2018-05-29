@@ -1364,7 +1364,8 @@ namespace iwp
       if(s == nullptr)
       {
         // new inbound session
-        s = link->create_session(*saddr, link->seckey);
+        s       = link->create_session(*saddr, link->seckey);
+        s->link = link->link;
       }
       s->recv(buf, sz);
     }
