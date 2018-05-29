@@ -5,6 +5,7 @@
 #include <ifaddrs.h>
 #include <net/if.h>
 #include <cstdio>
+#include "logger.hpp"
 
 bool
 operator==(const sockaddr& a, const sockaddr& b)
@@ -18,9 +19,11 @@ operator==(const sockaddr& a, const sockaddr& b)
     case AF_INET6:
       sz = sizeof(sockaddr_in6);
       break;
+#ifdef AF_PACKET
     case AF_PACKET:
       sz = sizeof(sockaddr_ll);
       break;
+#endif
     default:
       break;
   }
@@ -49,9 +52,19 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
   socklen_t sl = sizeof(sockaddr_in6);
   if(af == AF_INET)
     sl = sizeof(sockaddr_in);
+#ifdef AF_LINK
+  //printf("AF_INET[%d]\n", AF_INET); // FBSD 2
+  //printf("AF_INET6[%d]\n", AF_INET6); // FBSD 28
+  //printf("AF_LINK[%d]\n", AF_LINK); // FBSD 18
+  if(af == AF_LINK) {
+    printf("We dont support AF_LINK yet\n");
+  }
+#endif
+#ifdef AF_PACKET
+  //printf("AF_PACKET[%d]\n", AF_PACKET); // FBSD dne
   if(af == AF_PACKET)
     sl = sizeof(sockaddr_ll);
-
+#endif
   if(getifaddrs(&ifa) == -1)
     return false;
   ifaddrs* i = ifa;
@@ -59,8 +72,10 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
   {
     if(i->ifa_addr)
     {
+      //llarp::Info(__FILE__, "scanning ", i->ifa_name, " af: ", std::to_string(i->ifa_addr->sa_family));
       if(llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr->sa_family == af)
       {
+        //llarp::Info(__FILE__, "found ", ifname, " af: ", af);
         memcpy(addr, i->ifa_addr, sl);
         if(af == AF_INET6)
         {
