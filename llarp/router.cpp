@@ -446,11 +446,17 @@ namespace llarp
     uint16_t proto;
     if(StrEq(val, "eth"))
     {
+#ifdef AF_LINK
+      af    = AF_LINK;
+#endif
+#ifdef AF_PACKET
       af    = AF_PACKET;
+#endif
       proto = LLARP_ETH_PROTO;
     }
     else
     {
+      // try IPv6 first
       af    = AF_INET6;
       proto = std::atoi(val);
     }
@@ -471,6 +477,7 @@ namespace llarp
       iwp_link_init(link, args);
       if(llarp_link_initialized(link))
       {
+        //printf("router -> link initialized\n");
         if(link->configure(link, self->netloop, key, af, proto))
         {
           llarp_ai ai;
@@ -478,6 +485,20 @@ namespace llarp
           llarp::Addr addr = ai;
           self->AddLink(link);
           return;
+        }
+        if (af == AF_INET6) {
+          // we failed to configure IPv6
+          // try IPv4
+          llarp::Info(__FILE__, "link ", key, " failed to configure IPv6, trying IPv4");
+          af    = AF_INET;
+          if(link->configure(link, self->netloop, key, af, proto))
+          {
+            llarp_ai ai;
+            link->get_our_address(link, &ai);
+            llarp::Addr addr = ai;
+            self->AddLink(link);
+            return;
+          }
         }
       }
       llarp::Error(__FILE__, "link ", key, " failed to configure");
