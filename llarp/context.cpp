@@ -3,6 +3,10 @@
 #include <llarp.hpp>
 #include "logger.hpp"
 
+#if (__FreeBSD__)
+#include <pthread_np.h>
+#endif
+
 namespace llarp
 {
   Context::Context(std::ostream &stdout) : out(stdout)
@@ -95,8 +99,15 @@ namespace llarp
           while(num_nethreads--)
           {
             netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
+#if (__APPLE__ && __MACH__)
+
+#elif (__FreeBSD__)
+            pthread_set_name_np(netio_threads.back().native_handle(),
+                                "llarp-netio");
+#else
             pthread_setname_np(netio_threads.back().native_handle(),
                                "llarp-netio");
+#endif
           }
           llarp::Info(__FILE__, "running");
           llarp_logic_mainloop(logic);
