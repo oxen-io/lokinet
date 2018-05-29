@@ -990,33 +990,14 @@ namespace iwp
       if(!intro->buf)
       {
         llarp::Error(__FILE__, "intro verify failed");
-        // TODO: delete session from parent here
+        delete self;
         return;
       }
       self->intro_ack();
     }
 
     static void
-    handle_introack_generated(iwp_async_introack *i)
-    {
-      session *link = static_cast< session * >(i->user);
-      if(i->buf)
-      {
-        llarp::Debug(__FILE__, "send introack");
-        if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)
-        {
-          llarp::Warn(__FILE__, "sendto failed");
-          return;
-        }
-        llarp::Debug(__FILE__, "sent");
-        link->EnterState(eIntroAckSent);
-      }
-      else
-      {
-        // failed to generate?
-        llarp::Warn(__FILE__, "failed to generate introack");
-      }
-    }
+    handle_introack_generated(iwp_async_introack *i);
 
     void
     intro_ack()
@@ -1261,29 +1242,6 @@ namespace iwp
       impl->our_router   = &router->rc;
     }
 
-    session *
-    ensure_session(const llarp::Addr &src)
-    {
-      session *s = nullptr;
-      bool put   = false;
-      // TODO: will this be a bottleneck since it's called in a hot path?
-      {
-        lock_t lock(m_sessions_Mutex);
-        auto itr = m_sessions.find(src);
-        if(itr == m_sessions.end())
-        {
-          // new inbound session
-          s   = create_session(src, seckey);
-          put = true;
-        }
-        else
-          s = static_cast< session * >(itr->second.impl);
-      }
-      if(put)
-        put_session(src, s);
-      return s;
-    }
-
     void
     clear_sessions()
     {
@@ -1401,7 +1359,13 @@ namespace iwp
                     const void *buf, ssize_t sz)
     {
       server *link = static_cast< server * >(udp->user);
-      session *s   = link->ensure_session(*saddr);
+
+      session *s = link->find_session(*saddr);
+      if(s == nullptr)
+      {
+        // new inbound session
+        s = link->create_session(*saddr, link->seckey);
+      }
       s->recv(buf, sz);
     }
 
@@ -1668,6 +1632,39 @@ namespace iwp
   {
     server *link = static_cast< server * >(l->impl);
     delete link;
+  }
+
+  void
+  session::handle_introack_generated(iwp_async_introack *i)
+  {
+    session *link = static_cast< session * >(i->user);
+    if(i->buf)
+    {
+      // track it with the server here
+      server *s = static_cast< server * >(link->link->impl);
+      if(s->has_session_to(link->addr))
+      {
+        // duplicate session
+        llarp::Warn(__FILE__, "duplicate session to ", link->addr.to_string());
+        delete link;
+        return;
+      }
+      s->put_session(link->addr, link);
+      llarp::Debug(__FILE__, "send introack");
+      if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)
+      {
+        llarp::Warn(__FILE__, "sendto failed");
+        return;
+      }
+      llarp::Debug(__FILE__, "sent");
+      link->EnterState(eIntroAckSent);
+    }
+    else
+    {
+      // failed to generate?
+      llarp::Warn(__FILE__, "failed to generate introack");
+      delete link;
+    }
   }
 }
 
