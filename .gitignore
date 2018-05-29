@@ -21,3 +21,7 @@ CMakeCache.txt
 
 callgrind.*
 .gdb_history
+
+*.sig
+*.signed
+*.key

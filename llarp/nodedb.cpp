@@ -41,7 +41,9 @@ struct llarp_nodedb
 
     for(const char &ch : skiplist_subdirs)
     {
-      fs::path sub = path / std::string(ch, 1);
+      std::string p;
+      p += ch;
+      fs::path sub = path / p;
       for(auto &f : fs::directory_iterator(sub))
       {
         ssize_t l = loadSubdir(f);
@@ -106,7 +108,7 @@ struct llarp_nodedb
 extern "C" {
 
 struct llarp_nodedb *
-llarp_nodedb_new(struct llarp_alloc *mem, struct llarp_crypto *crypto)
+llarp_nodedb_new(struct llarp_crypto *crypto)
 {
   return new llarp_nodedb(crypto);
 }
@@ -116,10 +118,11 @@ llarp_nodedb_free(struct llarp_nodedb **n)
 {
   if(*n)
   {
-    (*n)->Clear();
-    delete *n;
+    auto i = *n;
+    *n     = nullptr;
+    i->Clear();
+    delete i;
   }
-  *n = nullptr;
 }
 
 bool
@@ -138,7 +141,9 @@ llarp_nodedb_ensure_dir(const char *dir)
 
   for(const char &ch : skiplist_subdirs)
   {
-    fs::path sub = path / std::string(ch, 1);
+    std::string p;
+    p += ch;
+    fs::path sub = path / p;
     fs::create_directory(sub, ec);
     if(ec)
       return false;

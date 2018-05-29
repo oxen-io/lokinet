@@ -124,7 +124,7 @@ bdecode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
 
   buffer->cur++;
 
-  len = llarp_buffer_size_left(buffer);
+  len = llarp_buffer_size_left(*buffer);
   if(len < slen)
     return false;
 
@@ -157,7 +157,7 @@ bdecode_read_dict(llarp_buffer_t* buff, struct dict_reader* r)
   if(*r->buffer->cur != 'd')  // ensure is a dictionary
     return false;
   r->buffer->cur++;
-  while(llarp_buffer_size_left(r->buffer) && *r->buffer->cur != 'e')
+  while(llarp_buffer_size_left(*r->buffer) && *r->buffer->cur != 'e')
   {
     if(bdecode_read_string(r->buffer, &strbuf))
     {
@@ -180,8 +180,8 @@ struct list_reader
   /// information to on_item
   void* user;
   /**
-   * called when we got an element, return true to continue iteration
-   * called with null item on iteration completion
+   * called with true when we got an element, return true to continue iteration
+   * called with false on iteration completion
    */
   bool (*on_item)(struct list_reader*, bool);
 };
@@ -194,7 +194,7 @@ bdecode_read_list(llarp_buffer_t* buff, struct list_reader* r)
     return false;
 
   r->buffer->cur++;
-  while(llarp_buffer_size_left(r->buffer) && *r->buffer->cur != 'e')
+  while(llarp_buffer_size_left(*r->buffer) && *r->buffer->cur != 'e')
   {
     if(!r->on_item(r, true))  // check for early abort
       return false;

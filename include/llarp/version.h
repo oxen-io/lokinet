@@ -25,4 +25,7 @@
 #endif
 #define LLARP_VERSION "llarpd" LLARP_VERSION_NUM
 
+#ifndef LLARP_RELEASE_MOTTO
+#define LLARP_RELEASE_MOTTO "(dev build)"
+#endif
 #endif

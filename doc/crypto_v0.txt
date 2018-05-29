@@ -6,16 +6,32 @@ H(x) is 512 bit blake2b digest of x
 HS(x) is 256 bit blake2b digest of x
 MD(x, k) is 512 bit blake2b hmac of x with secret value k
 MDS(x, k) is 256 bit blake2b hmac of x with secret value k
-NE(k, x) is sntrup4591761 encrypt data x to public key k
-ND(k, x) is sntrup4591761 decrypt data x with private key k
 SE(k, n, x) is chacha20 encrypt data x using symettric key k and nounce n
 SD(k, n, x) is chacha20 dectypt data x using symettric key k and nounce n
-S(k, x) is sign x with ed25519 using seed k
-ECKG() is generate ec keypair (p, s) public key p, seed s, both 32 bytes
+S(k, x) is sign x with ed25519 using secret key k
+EDKG() is generate ec keypair (p, s) public key p (32 bytes), secret key s (643 bytes)
 V(k, x, sig) is verify x data using signature sig using public key k
-DH(x, y) is a ecdh key exchange using ed25519 scalarmult between public keys x
-  and y
-KE(x, y) is a ecdh key exchange using HS(x + y + DH(x, y))
-PKE(x, y, n) is a path key exchange using MDS(n, KE(x, y))
-TKE(x, y, n) is a transport key exchange using MDS(n, KE(x, y))
+EDDH(a, b) is curve25519 scalar multiplication of a and b
+
+HKE(a, b, x) is hashed key exchange between a and b using a secret key x HS(a + b + EDDH(x, b))
+TKE(a, b, sk, n) is a transport shared secret kdf using MDS(n, HKE(a, b, sk))
+
+when A is client and B is server where n is a 32 bytes shared random
+
+client computes TKE(A.pk, B.pk, A.sk, n)
+server computes TKE(A.pk, B.pk, B.sk, n)
+
+PDH(a, b, x) is path shared secret generation HS(a + b + curve41417_scalar_mult(x, b))
+
+PKE(a, b, x, n) is a path shared secret kdf using MDS(n, PDH(a, b, x))
+
+given A is the path creator and B is a hop in the path and n is 32 bytes shared random
+
+A computes PKE(A.pk, B.pk, A.sk, n) as S_a
+B computes PKE(A.pk, B.pk, B.sk, n) as S_b
+
+S_a is equal to S_b
+
 RAND(n) is n random bytes
+
+

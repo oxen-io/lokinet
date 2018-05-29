@@ -2,5 +2,11 @@
 
 namespace llarp
 {
-  LogLevel loglevel = eLogDebug;
+  Logger _glog;
+
+  void
+  SetLogLevel(LogLevel lvl)
+  {
+    _glog.minlevel = lvl;
+  }
 }

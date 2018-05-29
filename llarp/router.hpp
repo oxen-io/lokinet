@@ -47,7 +47,6 @@ struct llarp_router
   llarp_logic *logic;
   llarp_crypto crypto;
   llarp_path_context *paths;
-  llarp_alloc *mem;
   llarp_seckey_t identity;
 
   llarp::InboundMessageHandler inbound_msg_handler;
@@ -56,7 +55,7 @@ struct llarp_router
 
   std::map< llarp::pubkey, std::vector< llarp::Message > > pendingMessages;
 
-  llarp_router(llarp_alloc *mem);
+  llarp_router();
   ~llarp_router();
 
   bool

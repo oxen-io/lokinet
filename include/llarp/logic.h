@@ -10,7 +10,7 @@ extern "C" {
 struct llarp_logic;
 
 struct llarp_logic*
-llarp_init_logic(struct llarp_alloc* mem);
+llarp_init_logic();
 
 void
 llarp_free_logic(struct llarp_logic** logic);

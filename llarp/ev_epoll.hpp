@@ -2,6 +2,7 @@
 #define EV_EPOLL_HPP
 #include <llarp/buffer.h>
 #include <llarp/net.h>
+#include <signal.h>
 #include <sys/epoll.h>
 #include <unistd.h>
 #include <cstdio>
@@ -49,6 +50,7 @@ namespace llarp
         default:
           return -1;
       }
+      llarp::Debug(__FILE__, "send ", sz, " bytes");
       ssize_t sent = ::sendto(fd, data, sz, SOCK_NONBLOCK, to, slen);
       if(sent == -1)
         perror("sendto()");
@@ -60,13 +62,23 @@ namespace llarp
 struct llarp_epoll_loop : public llarp_ev_loop
 {
   int epollfd;
-
+  int pipefds[2];
   llarp_epoll_loop() : epollfd(-1)
   {
+    pipefds[0] = -1;
+    pipefds[1] = -1;
   }
 
   ~llarp_epoll_loop()
   {
+    if(pipefds[0] != -1)
+      close(pipefds[0]);
+
+    if(pipefds[1] != -1)
+      close(pipefds[1]);
+
+    if(epollfd != -1)
+      close(epollfd);
   }
 
   bool
@@ -74,7 +86,17 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     if(epollfd == -1)
       epollfd = epoll_create1(EPOLL_CLOEXEC);
-    return epollfd != -1;
+    if(epollfd != -1)
+    {
+      if(pipe(pipefds) == -1)
+        return false;
+      epoll_event sig_ev;
+
+      sig_ev.data.fd = pipefds[0];
+      sig_ev.events  = EPOLLIN;
+      return epoll_ctl(epollfd, EPOLL_CTL_ADD, pipefds[0], &sig_ev) != -1;
+    }
+    return false;
   }
 
   int
@@ -91,20 +113,25 @@ struct llarp_epoll_loop : public llarp_ev_loop
         int idx = 0;
         while(idx < result)
         {
+          // handle signalfd
+          if(events[idx].data.fd == pipefds[0])
+          {
+            llarp::Debug(__FILE__, "exiting epoll loop");
+            return 0;
+          }
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
           if(events[idx].events & EPOLLIN)
           {
             if(ev->read(readbuf, sizeof(readbuf)) == -1)
             {
-              llarp::Info(__FILE__, "close ev");
+              llarp::Debug(__FILE__, "close ev");
               close_ev(ev);
-              delete ev;
             }
           }
           ++idx;
         }
       }
-    } while(result != -1);
+    } while(epollfd != -1);
     return result;
   }
 
@@ -146,7 +173,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    llarp::Info(__FILE__, "bind to ", a.to_string());
+    llarp::Debug(__FILE__, "bind to ", a.to_string());
     if(bind(fd, addr, slen) == -1)
     {
       perror("bind()");
@@ -185,13 +212,14 @@ struct llarp_epoll_loop : public llarp_ev_loop
   bool
   udp_close(llarp_udp_io* l)
   {
-    bool ret      = false;
-    auto listener = static_cast< llarp::udp_listener* >(l->impl);
+    bool ret = false;
+    llarp::udp_listener* listener =
+        static_cast< llarp::udp_listener* >(l->impl);
     if(listener)
     {
-      ret = close_ev(listener);
-      delete listener;
+      close_ev(listener);
       l->impl = nullptr;
+      delete listener;
     }
     return ret;
   }
@@ -199,10 +227,9 @@ struct llarp_epoll_loop : public llarp_ev_loop
   void
   stop()
   {
-    if(epollfd != -1)
-      ::close(epollfd);
-
-    epollfd = -1;
+    int i    = 1;
+    auto val = write(pipefds[1], &i, sizeof(i));
+    (void)val;
   }
 };
 

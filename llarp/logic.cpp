@@ -1,20 +1,21 @@
 #include <llarp/logic.h>
 #include <llarp/mem.h>
+#include "logger.hpp"
 
 struct llarp_logic
 {
-  struct llarp_alloc* mem;
   struct llarp_threadpool* thread;
   struct llarp_timer_context* timer;
 };
 
+extern "C" {
+
 struct llarp_logic*
-llarp_init_logic(struct llarp_alloc* mem)
+llarp_init_logic()
 {
-  struct llarp_logic* logic = mem->alloc(mem, sizeof(struct llarp_logic), 8);
+  llarp_logic* logic = new llarp_logic;
   if(logic)
   {
-    logic->mem    = mem;
     logic->thread = llarp_init_threadpool(1, "llarp-logic");
     logic->timer  = llarp_init_timer();
   }
@@ -26,20 +27,26 @@ llarp_free_logic(struct llarp_logic** logic)
 {
   if(*logic)
   {
-    struct llarp_alloc* mem = (*logic)->mem;
-    llarp_free_threadpool(&(*logic)->thread);
-    llarp_free_timer(&(*logic)->timer);
-    mem->free(mem, *logic);
-    *logic = NULL;
+    // llarp_free_timer(&(*logic)->timer);
+    delete *logic;
   }
+  *logic = nullptr;
 }
 
 void
 llarp_logic_stop(struct llarp_logic* logic)
 {
-  llarp_timer_stop(logic->timer);
-  llarp_threadpool_stop(logic->thread);
-  llarp_threadpool_join(logic->thread);
+  llarp::Debug(__FILE__, "logic thread stop");
+  if(logic->thread)
+  {
+    llarp_threadpool_stop(logic->thread);
+    llarp_threadpool_join(logic->thread);
+  }
+  llarp_free_threadpool(&logic->thread);
+
+  llarp::Debug(__FILE__, "logic timer stop");
+  if(logic->timer)
+    llarp_timer_stop(logic->timer);
 }
 
 void
@@ -70,4 +77,5 @@ void
 llarp_logic_remove_call(struct llarp_logic* logic, uint32_t id)
 {
   llarp_timer_remove_job(logic->timer, id);
+}
 }

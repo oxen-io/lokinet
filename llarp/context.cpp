@@ -11,6 +11,7 @@ namespace llarp
 {
   Context::Context(std::ostream &stdout) : out(stdout)
   {
+    llarp::Info(__FILE__, LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
   }
 
   Context::~Context()
@@ -26,13 +27,14 @@ namespace llarp
   bool
   Context::ReloadConfig()
   {
-    llarp::Info(__FILE__, LLARP_VERSION, " loading config at ", configfile);
+    llarp::Info(__FILE__, "loading config at ", configfile);
     if(!llarp_load_config(config, configfile.c_str()))
     {
       llarp_config_iterator iter;
       iter.user  = this;
       iter.visit = &iter_config;
       llarp_config_iter(config, &iter);
+      llarp::Info(__FILE__, "config loaded");
       return true;
     }
     llarp_free_config(&config);
@@ -74,10 +76,10 @@ namespace llarp
   int
   Context::Run()
   {
-    llarp_mem_stdlib(&mem);
+    llarp::Info(__FILE__, "starting up");
     llarp_ev_loop_alloc(&mainloop);
     llarp_crypto_libsodium_init(&crypto);
-    nodedb = llarp_nodedb_new(&mem, &crypto);
+    nodedb = llarp_nodedb_new(&crypto);
     if(nodedb_dir[0])
     {
       nodedb_dir[sizeof(nodedb_dir) - 1] = 0;
@@ -87,9 +89,9 @@ namespace llarp
         if(!worker)
           worker = llarp_init_threadpool(2, "llarp-worker");
         // ensure netio thread
-        logic = llarp_init_logic(&mem);
+        logic = llarp_init_logic();
 
-        router = llarp_init_router(&mem, worker, mainloop, logic);
+        router = llarp_init_router(worker, mainloop, logic);
 
         if(llarp_configure_router(router, config))
         {
@@ -109,7 +111,7 @@ namespace llarp
                                "llarp-netio");
 #endif
           }
-          llarp::Info(__FILE__, "running");
+          llarp::Info(__FILE__, "Ready");
           llarp_logic_mainloop(logic);
           return 0;
         }
@@ -142,69 +144,62 @@ namespace llarp
   void
   Context::SigINT()
   {
-    if(logic)
-      llarp_logic_stop(logic);
-    if(mainloop)
-      llarp_ev_loop_stop(mainloop);
-    for(auto &t : netio_threads)
-    {
-      t.join();
-    }
-    netio_threads.clear();
+    Close();
   }
 
   void
   Context::Close()
   {
-    progress();
-    if(mainloop)
-      llarp_ev_loop_stop(mainloop);
-
-    progress();
-    if(worker)
-      llarp_threadpool_stop(worker);
-
-    progress();
-
-    if(worker)
-      llarp_threadpool_join(worker);
-
-    progress();
-    if(logic)
-      llarp_logic_stop(logic);
-
-    progress();
-
+    llarp::Debug(__FILE__, "stop router");
     if(router)
       llarp_stop_router(router);
 
-    progress();
-    llarp_free_router(&router);
+    llarp::Debug(__FILE__, "stop workers");
+    if(worker)
+      llarp_threadpool_stop(worker);
 
-    progress();
+    llarp::Debug(__FILE__, "join workers");
+    if(worker)
+      llarp_threadpool_join(worker);
+
+    llarp::Debug(__FILE__, "stop logic");
+
+    if(logic)
+      llarp_logic_stop(logic);
+
+    llarp::Debug(__FILE__, "free config");
     llarp_free_config(&config);
 
-    progress();
-    llarp_ev_loop_free(&mainloop);
-
-    progress();
+    llarp::Debug(__FILE__, "free workers");
     llarp_free_threadpool(&worker);
 
-    progress();
-
-    llarp_free_logic(&logic);
-
-    progress();
+    llarp::Debug(__FILE__, "free nodedb");
     llarp_nodedb_free(&nodedb);
+
+    for(size_t i = 0; i < netio_threads.size(); ++i)
+    {
+      if(mainloop)
+      {
+        llarp::Debug(__FILE__, "stopping event loop thread ", i);
+        llarp_ev_loop_stop(mainloop);
+      }
+    }
+
+    llarp::Debug(__FILE__, "free router");
+    llarp_free_router(&router);
+
+    llarp::Debug(__FILE__, "free logic");
+    llarp_free_logic(&logic);
 
     for(auto &t : netio_threads)
     {
-      progress();
+      llarp::Debug(__FILE__, "join netio thread");
       t.join();
     }
-    progress();
+
     netio_threads.clear();
-    out << std::endl << "done" << std::endl;
+    llarp::Debug(__FILE__, "free mainloop");
+    llarp_ev_loop_free(&mainloop);
   }
 
   bool
@@ -226,7 +221,7 @@ struct llarp_main *
 llarp_main_init(const char *fname)
 {
   if(!fname)
-    return nullptr;
+    fname = "daemon.ini";
 
   llarp_main *m = new llarp_main;
   m->ctx.reset(new llarp::Context(std::cout));
@@ -254,7 +249,6 @@ llarp_main_run(struct llarp_main *ptr)
 void
 llarp_main_free(struct llarp_main *ptr)
 {
-  ptr->ctx->Close();
   delete ptr;
 }
 }
