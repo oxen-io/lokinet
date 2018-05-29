@@ -154,6 +154,16 @@ llarp_router::Close()
 }
 
 void
+llarp_router::connect_job_retry(void *user)
+{
+  llarp_link_establish_job *job =
+      static_cast< llarp_link_establish_job * >(user);
+
+  llarp::Info(__FILE__, "trying to establish session again");
+  job->link->try_establish(job->link, job);
+}
+
+void
 llarp_router::on_try_connect_result(llarp_link_establish_job *job)
 {
   llarp_router *router = static_cast< llarp_router * >(job->user);
@@ -189,7 +199,7 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
     }
   }
   llarp::Info(__FILE__, "session not established");
-  job->link->try_establish(job->link, job);
+  llarp_logic_queue_job(router->logic, {job, &llarp_router::connect_job_retry});
 }
 
 void
@@ -255,12 +265,13 @@ llarp_router::iter_try_connect(llarp_router_link_iter *iter,
     return true;
   llarp_ai *ai = static_cast< llarp_ai * >(iter->user);
   llarp_ai_copy(&job->ai, ai);
-  job->timeout = 1000;
+  job->timeout = 10000;
   job->result  = &llarp_router::on_try_connect_result;
   // give router as user pointer
   job->user = router;
   link->try_establish(link, job);
-  return true;
+  // break iteration
+  return false;
 }
 
 extern "C" {
@@ -446,10 +457,10 @@ namespace llarp
     if(StrEq(val, "eth"))
     {
 #ifdef AF_LINK
-      af    = AF_LINK;
+      af = AF_LINK;
 #endif
 #ifdef AF_PACKET
-      af    = AF_PACKET;
+      af = AF_PACKET;
 #endif
       proto = LLARP_ETH_PROTO;
     }
@@ -476,7 +487,7 @@ namespace llarp
       iwp_link_init(link, args);
       if(llarp_link_initialized(link))
       {
-        //printf("router -> link initialized\n");
+        // printf("router -> link initialized\n");
         if(link->configure(link, self->netloop, key, af, proto))
         {
           llarp_ai ai;
@@ -485,11 +496,13 @@ namespace llarp
           self->AddLink(link);
           return;
         }
-        if (af == AF_INET6) {
+        if(af == AF_INET6)
+        {
           // we failed to configure IPv6
           // try IPv4
-          llarp::Info(__FILE__, "link ", key, " failed to configure IPv6, trying IPv4");
-          af    = AF_INET;
+          llarp::Info(__FILE__, "link ", key,
+                      " failed to configure IPv6, trying IPv4");
+          af = AF_INET;
           if(link->configure(link, self->netloop, key, af, proto))
           {
             llarp_ai ai;

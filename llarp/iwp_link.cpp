@@ -27,8 +27,8 @@
 
 namespace iwp
 {
-  // session activity timeout is 10s
-  constexpr llarp_time_t SESSION_TIMEOUT = 10000;
+  // session activity timeout is 5s
+  constexpr llarp_time_t SESSION_TIMEOUT = 5000;
 
   constexpr size_t MAX_PAD = 256;
 
@@ -1016,7 +1016,11 @@ namespace iwp
       if(i->buf)
       {
         llarp::Debug(__FILE__, "send intro");
-        llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
+        if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)
+        {
+          llarp::Warn(__FILE__, "send intro failed");
+          return;
+        }
         link->EnterState(eIntroSent);
       }
       else
@@ -1216,6 +1220,18 @@ namespace iwp
             if(s->keepalive_timer_id)
             {
               llarp_logic_remove_call(logic, s->keepalive_timer_id);
+            }
+            // cancel establish job
+            if(s->establish_job_id)
+            {
+              llarp_logic_remove_call(logic, s->establish_job_id);
+            }
+            if(s->establish_job)
+            {
+              auto job     = s->establish_job;
+              job->link    = s->link;
+              job->session = nullptr;
+              job->result(job);
             }
             delete s;
           }

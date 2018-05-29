@@ -68,6 +68,7 @@ struct llarp_timer_context
   llarp_threadpool* threadpool;
   std::mutex timersMutex;
   std::map< uint32_t, llarp::timer > timers;
+  std::mutex tickerMutex;
   std::condition_variable ticker;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(10);
 
@@ -193,11 +194,15 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
   t->threadpool = pool;
   while(t->run())
   {
+    // wait for timer mutex
+    {
+      std::unique_lock< std::mutex > lock(t->tickerMutex);
+      t->ticker.wait_for(lock, t->nextTickLen);
+    }
+
+    if(t->run())
     {
       std::unique_lock< std::mutex > lock(t->timersMutex);
-      t->ticker.wait_for(lock, t->nextTickLen,
-                         [t]() -> bool { return t->timers.size() == 0; });
-
       // we woke up
       auto now = llarp::timer::now();
       auto itr = t->timers.begin();

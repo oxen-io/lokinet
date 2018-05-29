@@ -103,6 +103,9 @@ struct llarp_router
 
   static void
   on_try_connect_result(llarp_link_establish_job *job);
+
+  static void
+  connect_job_retry(void *user);
 };
 
 #endif

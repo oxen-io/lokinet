@@ -27,6 +27,7 @@ namespace llarp
     Addr(const Addr& other)
     {
       memcpy(&_addr, &other._addr, sizeof(sockaddr_in6));
+      memcpy(&_addr4, &other._addr4, sizeof(sockaddr_in));
     }
 
     in6_addr*
@@ -59,10 +60,9 @@ namespace llarp
       _addr.sin6_port = htons(other.port);
       auto ptr        = &_addr.sin6_addr.s6_addr[0];
       // TODO: detect SIIT better
-      if(ptr[11] == 0xff && ptr[10] == 0xff && ptr[9] == 0 && ptr[9] == 0
-         && ptr[8] == 0 && ptr[7] == 0 && ptr[6] == 0 && ptr[5] == 0
-         && ptr[4] == 0 && ptr[3] == 0 && ptr[2] == 0 && ptr[1] == 0
-         && ptr[0] == 0)
+      if(ptr[11] == 0xff && ptr[10] == 0xff && ptr[9] == 0 && ptr[8] == 0
+         && ptr[7] == 0 && ptr[6] == 0 && ptr[5] == 0 && ptr[4] == 0
+         && ptr[3] == 0 && ptr[2] == 0 && ptr[1] == 0 && ptr[0] == 0)
       {
         _addr4.sin_family = AF_INET;
         _addr4.sin_port   = htons(other.port);
