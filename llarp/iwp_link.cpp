@@ -1137,6 +1137,17 @@ namespace iwp
       return m_sessions.find(dst) != m_sessions.end();
     }
 
+    session *
+    find_session(const llarp::Addr &addr)
+    {
+      lock_t lock(m_sessions_Mutex);
+      auto itr = m_sessions.find(addr);
+      if(itr == m_sessions.end())
+        return nullptr;
+      else
+        return static_cast< session * >(itr->second.impl);
+    }
+
     void
     put_session(const llarp::Addr &src, session *impl)
     {
@@ -1539,15 +1550,12 @@ namespace iwp
     {
       llarp::Addr dst(job->ai);
       llarp::Debug(__FILE__, "establish session to ", dst.to_string());
-      if(link->has_session_to(dst))
+      session *s = link->find_session(dst);
+      if(s == nullptr)
       {
-        llarp::Warn(__FILE__, "already have session made");
-        return false;
+        s = link->create_session(dst, nullptr);
+        link->put_session(dst, s);
       }
-      session *s = link->create_session(dst, nullptr);
-
-      link->put_session(dst, s);
-
       s->establish_job = job;
       s->introduce(job->ai.enc_key);
     }
