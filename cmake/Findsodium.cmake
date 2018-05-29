@@ -33,7 +33,7 @@ endif()
 
 # static library option
 if (NOT DEFINED sodium_USE_STATIC_LIBS)
-    option(sodium_USE_STATIC_LIBS "enable to statically link against sodium" OFF)
+    option(sodium_USE_STATIC_LIBS "enable to statically link against sodium" ON)
 endif()
 if(NOT (sodium_USE_STATIC_LIBS EQUAL sodium_USE_STATIC_LIBS_LAST))
     unset(sodium_LIBRARY CACHE)
