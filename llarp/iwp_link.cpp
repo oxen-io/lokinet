@@ -31,7 +31,7 @@ namespace iwp
   // session activity timeout is 5s
   constexpr llarp_time_t SESSION_TIMEOUT = 5000;
 
-  constexpr size_t MAX_PAD = 256;
+  constexpr size_t MAX_PAD = 128;
 
   enum msgtype
   {
@@ -1319,11 +1319,12 @@ namespace iwp
             llarp::Debug(__FILE__, "session with ", addr.to_string(),
                          " is stale, removing");
             session *s = static_cast< session * >(itr->second.impl);
-            m_sessions.erase(addr);
+            m_sessions.erase(itr);
             if(s->keepalive_timer_id)
             {
               llarp_logic_remove_call(logic, s->keepalive_timer_id);
             }
+
             // cancel establish job
             if(s->establish_job_id)
             {
