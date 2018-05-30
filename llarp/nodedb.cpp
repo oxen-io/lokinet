@@ -6,6 +6,20 @@
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
+#include "logger.hpp"
+
+constexpr char hexmap[] = {'0', '1', '2', '3', '4', '5', '6', '7',
+                           '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+
+std::string hexStr(unsigned char *data, int len)
+{
+  std::string s(len * 2, ' ');
+  for (int i = 0; i < len; ++i) {
+    s[2 * i]     = hexmap[(data[i] & 0xF0) >> 4];
+    s[2 * i + 1] = hexmap[data[i] & 0x0F];
+  }
+  return s;
+}
 
 static const char skiplist_subdirs[] = "0123456789ABCDEF";
 
@@ -27,6 +41,74 @@ struct llarp_nodedb
       delete itr->second;
       itr = entries.erase(itr);
     }
+  }
+
+  inline llarp::pubkey getPubKeyFromRC(llarp_rc *rc) {
+    llarp::pubkey pk;
+    memcpy(pk.data(), rc->pubkey, pk.size());
+    return pk;
+  }
+
+  llarp_rc *getRC(llarp::pubkey pk) {
+    return entries[pk];
+  }
+
+  bool pubKeyExists(llarp_rc *rc) {
+    // extract pk from rc
+    llarp::pubkey pk = getPubKeyFromRC(rc);
+    // return true if we found before end
+    return entries.find(pk) != entries.end();
+  }
+
+  bool check(llarp_rc *rc) {
+    if (!pubKeyExists(rc)) {
+      // we don't have it
+      return false;
+    }
+    llarp::pubkey pk = getPubKeyFromRC(rc);
+
+    // TODO: zero out any fields you don't want to compare
+
+    // serialize both and memcmp
+    byte_t nodetmp[MAX_RC_SIZE];
+    auto nodebuf = llarp::StackBuffer< decltype(nodetmp) >(nodetmp);
+    if (llarp_rc_bencode(entries[pk], &nodebuf)) {
+      byte_t paramtmp[MAX_RC_SIZE];
+      auto parambuf = llarp::StackBuffer< decltype(paramtmp) >(paramtmp);
+      if (llarp_rc_bencode(rc, &parambuf)) {
+        if (memcmp(&parambuf, &nodebuf, MAX_RC_SIZE) == 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  bool setRC(llarp_rc *rc) {
+    byte_t tmp[MAX_RC_SIZE];
+    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+
+    // extract pk from rc
+    llarp::pubkey pk = getPubKeyFromRC(rc);
+
+    // set local db
+    entries[pk] = rc;
+
+    if (llarp_rc_bencode(rc, &buf)) {
+      // write buf to disk
+      auto filename = hexStr(pk.data(), sizeof(pk)) + ".rc";
+      // FIXME: path?
+      printf("filename[%s]\n", filename.c_str());
+      std::ofstream ofs (filename, std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
+      ofs.write((char *)buf.base, buf.sz);
+      ofs.close();
+      if (!ofs) {
+        llarp::Error(__FILE__, "Failed to write", filename);
+        return false;
+      }
+      return true;
+    }
+    return false;
   }
 
   ssize_t
@@ -52,6 +134,18 @@ struct llarp_nodedb
       }
     }
     return loaded;
+  }
+
+  ssize_t
+  loadSubdir(const fs::path &dir)
+  {
+    ssize_t sz = 0;
+    for(auto &path : fs::directory_iterator(dir))
+    {
+      if(loadfile(path))
+        sz++;
+    }
+    return sz;
   }
 
   bool
@@ -92,17 +186,20 @@ struct llarp_nodedb
     return false;
   }
 
-  ssize_t
-  loadSubdir(const fs::path &dir)
+  /*
+  bool Save()
   {
-    ssize_t sz = 0;
-    for(auto &path : fs::directory_iterator(dir))
+    auto itr = entries.begin();
+    while(itr != entries.end())
     {
-      if(loadfile(path))
-        sz++;
+      llarp::pubkey pk = itr->first;
+      llarp_rc *rc= itr->second;
+
+      itr++; // advance
     }
-    return sz;
+    return true;
   }
+  */
 };
 
 extern "C" {
