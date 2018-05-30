@@ -18,6 +18,13 @@ namespace llarp
   void
   router_iter_config(llarp_config_iterator *iter, const char *section,
                      const char *key, const char *val);
+
+  struct async_verify_context
+  {
+    llarp_router *router;
+    llarp_link_establish_job *establish_job;
+  };
+
 }  // namespace llarp
 
 llarp_router::llarp_router() : ready(false), inbound_msg_handler(this)
@@ -164,42 +171,107 @@ llarp_router::connect_job_retry(void *user)
 }
 
 void
+llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
+{
+  llarp::async_verify_context *ctx =
+      static_cast< llarp::async_verify_context * >(job->user);
+  llarp_rc_free(&job->rc);
+  delete ctx;
+}
+
+void
+llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
+{
+  llarp::async_verify_context *ctx =
+      static_cast< llarp::async_verify_context * >(job->user);
+  auto router = ctx->router;
+  if(!job->valid)
+  {
+    llarp::Warn(__FILE__, "invalid server RC");
+    if(ctx->establish_job)
+    {
+      // was an outbound attempt
+      auto session = ctx->establish_job->session;
+      if(session)
+        session->close(session);
+      delete ctx->establish_job;
+    }
+    llarp_rc_free(&job->rc);
+    delete job;
+    return;
+  }
+
+  llarp::Debug(__FILE__, "rc verified");
+  // this was an outbound establish job
+  if(ctx->establish_job->session)
+  {
+    auto session = ctx->establish_job->session;
+
+    llarp::pubkey pubkey;
+    memcpy(&pubkey[0], job->rc.pubkey, pubkey.size());
+
+    auto v = router->validRouters.find(pubkey);
+    if(v != router->validRouters.end())
+    {
+      // free previous RC members
+      llarp_rc_free(&v->second);
+    }
+    router->validRouters[pubkey] = job->rc;
+
+    auto itr = router->pendingMessages.find(pubkey);
+    if(itr != router->pendingMessages.end())
+    {
+      // flush pending
+      if(itr->second.size())
+      {
+        llarp::Debug(__FILE__, "flush ", itr->second.size(),
+                     " pending messages");
+      }
+      for(auto &msg : itr->second)
+      {
+        auto buf = llarp::Buffer< decltype(msg) >(msg);
+        session->sendto(session, buf);
+      }
+      router->pendingMessages.erase(itr);
+    }
+  }
+  else
+    llarp_rc_free(&job->rc);
+
+  delete job;
+}
+
+void
 llarp_router::on_try_connect_result(llarp_link_establish_job *job)
 {
   llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
-    llarp_rc *remote = job->session->get_remote_router(job->session);
-    if(remote)
-    {
-      llarp::pubkey pubkey;
-      memcpy(&pubkey[0], remote->pubkey, 32);
-      char tmp[68] = {0};
-      const char *pubkeystr =
-          llarp::HexEncode< decltype(pubkey), decltype(tmp) >(pubkey, tmp);
-      llarp::Info(__FILE__, "session established with ", pubkeystr);
-      auto itr = router->pendingMessages.find(pubkey);
-      if(itr != router->pendingMessages.end())
-      {
-        // flush pending
-        if(itr->second.size())
-        {
-          llarp::Info(__FILE__, pubkeystr, " flush ", itr->second.size(),
-                      " pending messages");
-        }
-        for(auto &msg : itr->second)
-        {
-          auto buf = llarp::Buffer< decltype(msg) >(msg);
-          job->session->sendto(job->session, buf);
-        }
-        router->pendingMessages.erase(itr);
-      }
-      delete job;
-      return;
-    }
+    auto session = job->session;
+    router->async_verify_RC(session, false, job);
+    return;
   }
   llarp::Info(__FILE__, "session not established");
   llarp_logic_queue_job(router->logic, {job, &llarp_router::connect_job_retry});
+}
+void
+llarp_router::async_verify_RC(llarp_link_session *session,
+                              bool isExpectingClient,
+                              llarp_link_establish_job *establish_job)
+{
+  llarp_async_verify_rc *job = new llarp_async_verify_rc{
+      new llarp::async_verify_context{this, establish_job},
+      {},
+      false,
+      nullptr,
+  };
+  llarp_rc_copy(&job->rc, session->get_remote_router(session));
+  if(isExpectingClient)
+    job->hook = &llarp_router::on_verify_client_rc;
+  else
+    job->hook = &llarp_router::on_verify_server_rc;
+
+  llarp_nodedb_async_verify(nodedb, logic, &crypto, tp, disk, job);
 }
 
 void
@@ -286,6 +358,8 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
     router->netloop = netloop;
     router->tp      = tp;
     router->logic   = logic;
+    // TODO: make disk io threadpool count configurable
+    router->disk = llarp_init_threadpool(1, "llarp-diskio");
     llarp_crypto_libsodium_init(&router->crypto);
   }
   return router;
@@ -306,8 +380,9 @@ llarp_configure_router(struct llarp_router *router, struct llarp_config *conf)
 }
 
 void
-llarp_run_router(struct llarp_router *router)
+llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb)
 {
+  router->nodedb = nodedb;
   router->Run();
 }
 

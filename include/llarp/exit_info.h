@@ -45,6 +45,9 @@ void
 llarp_xi_list_pushback(struct llarp_xi_list *l, struct llarp_xi *xi);
 
 void
+llarp_xi_list_copy(struct llarp_xi_list *dst, struct llarp_xi_list *src);
+
+void
 llarp_xi_copy(struct llarp_xi *dst, struct llarp_xi *src);
 
 struct llarp_xi_list_iter

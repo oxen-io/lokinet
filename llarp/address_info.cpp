@@ -211,6 +211,14 @@ llarp_ai_copy(struct llarp_ai *dst, struct llarp_ai *src)
 }
 
 void
+llarp_ai_list_copy(struct llarp_ai_list *dst, struct llarp_ai_list *src)
+{
+  dst->list.clear();
+  for(auto &itr : src->list)
+    dst->list.emplace_back(itr);
+}
+
+void
 llarp_ai_list_pushback(struct llarp_ai_list *l, struct llarp_ai *ai)
 {
   l->list.push_back(*ai);

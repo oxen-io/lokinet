@@ -2,6 +2,7 @@
 #define LLARP_NODEDB_H
 #include <llarp/common.h>
 #include <llarp/crypto.h>
+#include <llarp/router_contact.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -52,6 +53,13 @@ llarp_nodedb_find_rc(struct llarp_nodedb *n, struct llarp_rc *rc,
                      llarp_pubkey_t k);
 
 /**
+   return true if we have a rc with rc.k of value k on disk
+   otherwise return false
+ */
+bool
+llarp_nodedb_has_rc(struct llarp_nodedb *n, llarp_pubkey_t k);
+
+/**
    put an rc into the node db
    overwrites with new contents if already present
    flushes the single entry to disk
@@ -59,6 +67,35 @@ llarp_nodedb_find_rc(struct llarp_nodedb *n, struct llarp_rc *rc,
  */
 bool
 llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc);
+
+/**
+    struct for async rc verification
+*/
+struct llarp_async_verify_rc;
+
+typedef void (*llarp_async_verify_rc_hook_func)(struct llarp_async_verify_rc *);
+
+struct llarp_async_verify_rc
+{
+  void *user;
+  struct llarp_rc rc;
+  bool valid;
+  llarp_async_verify_rc_hook_func hook;
+};
+
+/**
+    struct for async rc verification
+    data is loaded in disk io threadpool
+    crypto is done on the crypto worker threadpool
+    result is called on the logic thread
+*/
+void
+llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
+                          struct llarp_logic *logic,
+                          struct llarp_crypto *crypto,
+                          struct llarp_threadpool *cryptoworker,
+                          struct llarp_threadpool *diskworker,
+                          struct llarp_async_verify_rc *job);
 
 #ifdef __cplusplus
 }

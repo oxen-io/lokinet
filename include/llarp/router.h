@@ -30,7 +30,7 @@ bool
 llarp_configure_router(struct llarp_router *router, struct llarp_config *conf);
 
 void
-llarp_run_router(struct llarp_router *router);
+llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb);
 
 void
 llarp_stop_router(struct llarp_router *router);

@@ -92,6 +92,27 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
   return false;
 }
 
+void
+llarp_rc_copy(struct llarp_rc *dst, struct llarp_rc *src)
+{
+  llarp_rc_free(dst);
+
+  memcpy(dst->pubkey, src->pubkey, sizeof(llarp_pubkey_t));
+  memcpy(dst->signature, src->signature, sizeof(llarp_sig_t));
+  dst->last_updated = src->last_updated;
+
+  if(src->addrs)
+  {
+    dst->addrs = llarp_ai_list_new();
+    llarp_ai_list_copy(dst->addrs, src->addrs);
+  }
+  if(src->exits)
+  {
+    dst->exits = llarp_xi_list_new();
+    llarp_xi_list_copy(dst->exits, src->exits);
+  }
+}
+
 bool
 llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buff)
 {

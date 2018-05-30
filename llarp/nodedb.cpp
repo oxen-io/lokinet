@@ -156,4 +156,14 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
 {
   return n->Load(dir);
 }
+
+void
+llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
+                          struct llarp_logic *logic,
+                          struct llarp_crypto *crypto,
+                          struct llarp_threadpool *cryptoworker,
+                          struct llarp_threadpool *diskworker,
+                          struct llarp_async_verify_rc *job)
+{
+}
 }

@@ -80,10 +80,6 @@ struct llarp_link
   void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter);
   bool (*try_establish)(struct llarp_link *, struct llarp_link_establish_job *);
 
-  /**
-      struct llarp_link_session * (*acquire_session_for_addr)(struct llarp_link
-     *, const struct sockaddr *);
-  */
   void (*mark_session_active)(struct llarp_link *, struct llarp_link_session *);
   void (*free_impl)(struct llarp_link *);
 };
