@@ -132,7 +132,7 @@ service info (SI)
 
 public information blob for a hidden service
 
-e is the long term public encryption key
+n is the claimed fqdn of the service
 s is the long term public signing key
 v is the protocol version
 x is a nounce value for generating vanity addresses that can be omitted
@@ -141,7 +141,6 @@ if x is included it MUST be less than or equal to 16 bytes, any larger and it is
 considered invalid.
 
 {
-  e: "<32 bytes public encryption key>",
   s: "<32 bytes public signing key>",
   v: 0,
   x: "<optional nounce for vanity>"
@@ -158,13 +157,13 @@ introducer (I)
 
 a descriptor annoucing a path to a hidden service
 
-k is the rc.k value of the router to contact
+i is the rc.k value of the router to contact
 p is the path id on the router that is owned by the service
 v is the protocol version
 x is the timestamp seconds since epoch that this introducer expires at
 
 {
-  k: "<32 bytes public identity key of router>",
+  i: "<32 bytes public identity key of router>",
   p: path_id_uint64,
   v: 0,
   x: time_expires_seconds_since_epoch_uint64
@@ -174,6 +173,7 @@ introducer set (IS)
 
 a signed set of introducers for a hidden service
 a is the service info
+e is the ephemeral public encryption key
 i is the list of introducers that this service is advertising with
 v is the protocol version
 z is the signature of the entire IS where z is set to zero signed by the hidden
@@ -181,6 +181,7 @@ service's signing key.
 
 {
   a: SI,
+  e: "<52 bytes curve41417 public encryption key>",
   i: [ I, I, I, ... ],
   v: 0,
   z: "<64 bytes signature using service info signing key>"
@@ -274,160 +275,112 @@ request a commit to relay traffic to another node.
 
 {
   a: "c",
-  c: [ list, of, encrypted, frames ],
-  f: encrypted data for last hop ,
-  r: [ list, of, encrypted, acks ],
+  b: [ list, of, encrypted, frames ],
   v: 0
 }
-
-c and r MUST contain dummy records if the hop length is less than the maximum
-hop length.
 
 
 link relay commit record (LRCR)
 
-record requesting path with id p relay messages for 600 seconds to router
+record requesting path with id p relay messages for o seconds to router
 on network who's i is equal to RC.k and decrypt data any messages using
 PKE(n, rc.K, c) as symettric key for encryption and decryption.
 
-additionally an ephemeral encryption keypair is made for the downstream
-direction.
-
 {
-  c: "<32 byte public encryption key used for upstream>",
+  c: "<32 byte public signing/encryption key used for further communication>",
   i: "<32 byte RC.k of next hop>",
   n: "<32 bytes nounce for key exchange>",
-  p: "<16 bytes tx path id>",
-  s: "<32 bytes symmettric key for encrypting reply downstream public key>",
-  u: "<24 bytes nonce for encrypting reply downstream public key>",
-  v: 0,
-  w: proof of work (optional),
+  o: seconds_lifetime_uint64,
+  p: path_id_uint64,
+  v: 0
 }
-
 
 if i is equal to RC.k then any LRDM.z values are decrypted and interpreted as
-routing layer messages. This indicates that we are the farthest hop in the path.
-if we are the farthest hop s and u MUST be present and discarded.
-
-we decrypt the encrypted frame f, as encrypted to RC.e 
+routing layer messages.
 
 if i is not equal to RC.k then forward the LRCM with first element removed
-and the last element holding our hop's LRAR, encrypted via
+and the last element holding our hop's reply. this ensures that the first entry
+in the forwarded LRCM is for the next hop in the requested path.
 
-x = SE(s, u, LRAR)
-h = MDS(x, s)
+if i is equal to RC.k unconditionally send a LRDM with encrypted payload
+holding a LRSM with our record at the end and the previous ones in the front.
 
-h + x is stored as the ack and appended to the end of r and the first element of
-r is removed.
+link relay reject record (LRRR)
 
-
-link relay acknowledgement record (LRAR)
+sent in reply to a LRCM indicating we have rejected the request to relay data
+for path with id p, the recipiant of this message MUST backoff sending LRCM for
+b milliseconds or recipiant MAY get banned by recipiant router for an undefined
+amount of time. r contains a bytestring of 7 bit clean ascii metadata indicating
+why the commit was rejected. if included r MUST be logged or collected for later
+review by node operator. inclusion of r is OPTIONAL. review of collected events
+is RECOMMENDED.
 
 {
-  c: "<32 bytes public encryption key>",
-  r: "<16 bytes rx path id>",
+  b: miliseconds_backoff_uint64,
+  c: "r",
+  p: path_id_uint64,
+  r: "<optional reason metadata here>",
+  v: 0,
+  x: "<N bytes arbirary padding>"
 }
 
-all parameters in the LRAR are chosen by the hop
+link relay accept record (LRAR)
 
-it puts an association (rxid, next_hop) -> ( prev_hop, LRAR.c )
-
-when we get an LCAM from next_hop with rxid we will know the parameters for it.
-
-
-plaintext contents of f is:
-
-[ PRI, PRI, PRI ...]
-
-path reply info (PRI):
+sent in reply to a LRCM indicating we have accepted the request to relay data
+for path with id p.
 
 {
-  n: "<24 bytes nonce>",
-  s: "<32 bytes symmettric key>",
+  c: "a",
+  p: path_id_uint64,
+  v: 0,
+  x: "<N bytes arbitrary padding>"
+}
+
+
+link relay status message (LRSM)
+
+sent inside a LRDM after build has reached the end of the path to finish the
+path build and send the result of the build.
+
+{
+  a: "s",
+  p: [list, of, encrypted, replies],
   v: 0
 }
-
-
-
-link commit acknowledgement message (LCAM)
-
-sent in the opposite direction of an LRCM by the farthest hop in the path.
-this establishes the downstream keys.
-
-{
-  a: "a",
-  c: [ list, of, encrypted, LCAR],
-  l: encrypted frame for path creator,
-  r: "<16 bytes rx hop>",
-  v: 0
-}
-
-the recipiant's public key for frame encryption of l is obtained from the LRCM's
-last hop frame. the sender's public key is RC.e of the farthest hop.
-
-each entry in c is encrypted using the symettric key and nonce provided from the
-corrisponding LRCM previously received.
-
-link commit acknowledgement record (LCAR)
-
-a record in an LCAM
-
-{
-  c: "<32 bytes public encryption key for downstream traffic>",
-  n: "<32 bytes nonce for kdf>",
-  r: "<16 bytes next rx path id>",
-  v: 0
-}
-
-downstream key is generated via:
-
-k_down = PKE(LRAR.c, LCAM.c, LCAM.n)
-
-next a LCAM is sent to prev_hop with LCAR.r as rxid with the first element
-popped off and the last element filled with random.
 
 
 link relay upstream message (LRUM)
 
 sent to relay data via upstream direction of a previously created path.
-decrypt z using previously derived upstream key and nounce y. Relay with new_y
-and new_z in upstream direction as a LRUM.
+decrypt z using previously derived key and nounce y. Relay with new_y and new_z
+in upstream direction as a LRUM.
 
-h = MDS(x, k_up)
-
-verify h == z[0:32]
-new_x = SD(k_up, y, x)
-new_y = y ^ new_x[0:24]
-new_z = z[32:] + RAND(32)
+new_z = SD(k, y, z)
+new_y = y ^ new_z[0:24]
 
 {
   a: "u",
-  p: "<16 bytes tx path id>",
+  p: path_id_uint64,
   v: 0,
-  x: "<insert N bytes payload here>",
   y: "<insert 24 bytes nounce here>",
-  z: "<256 bytes rolling hmac>"
+  z: "<insert N bytes payload here>"
 }
 
 link relay downstream message (LRDM)
 
 sent to relay data via downstream direction of a previously created path.
-decrypt z using previously derived downstream key and nounce y. Relay with new_y
-and new_z in downstream direction as a LRUM.
+encrypt z using previously derived key and nonce new_y and relay in downstream
+direction as a LRDM.
 
-h = MDS(x, k_down)
-verify h == z[0:32]
-new_x = SD(k_down, y, x)
-new_y = y ^ new_x[0:24]
-new_z = z[32:] + RAND(32)
+new_y = y ^ z[0:24]
+new_z = SE(k, new_y, z)
 
 {
   a: "d",
-  p: "<16 bytes rx path id>",
+  p: path_id_uint64,
   v: 0,
-  x: "<insert N bytes payload here>",
   y: "<insert 24 bytes nounce here>",
-  z: "<256 bytes rolling hmac>"
+  z: "<insert N bytes payload here>"
 }
 
 link relay exit message (LRXM)
@@ -437,7 +390,7 @@ verify signature using cancel key c in relay commit message.
 
 {
   a: "x",
-  b: [ list, of, ecrypted, exit, records ],
+  b: [ list, of, exit, records, as, encrpyted, frames ],
   v: 0
 }
 
@@ -445,7 +398,7 @@ link relay exit record (LRXR)
 
 {
   c: "x",
-  p: "<16 bytes tx path id>",
+  p: path_id_uint64,
   v: 0,
   x: "<N bytes padding>",
   z: "<64 bytes signature>"
@@ -456,7 +409,7 @@ link immediate dht message (LIDM):
 transfer one or more dht messages directly without a previously made path.
 
 {
-  a: "d",
+  a: "m",
   d: [many, dht, messages],
   v: 0
 }
@@ -468,7 +421,7 @@ statelessly relay a link message.
 
 {
   a: "r",
-  c: r_counter_uint8,
+  c: r5n_counter_uint8,
   d: "<32 bytes rc.K of destination>",
   s: "<32 bytes rc.K of source>",
   v: 0,
@@ -557,22 +510,6 @@ B is set to a backoff value.
 R contains additional metadata text describing why the exit was rejected.
 
 
-
-hidden service data message (HSDM)
-
-signed data sent anonymously over the network to a recipiant from a sender.
-sent inside a TDFM encrypted to the hidden service's public encryption key.
-
-{
-  A: "D",
-  D: "<payload bytes>",
-  I: Introducer for reply,
-  R: SA of recipiant,
-  S: SI of sender,
-  V: 0,
-  Z: "<64 bytes signature from sender of the entire message>"
-}
-
 transfer data fragment message (TDFM)
 
 variant 1 (with path id):
@@ -643,3 +580,262 @@ The address used in exit MAY be reused later.
 }
 
 ---
+
+DHT messages
+
+
+find introduction message (FIM)
+
+recursively find an IS.
+
+variant 1, by SA
+
+{
+  A: "F",
+  R: r5n_counter,
+  S: "<32 bytes SA>",
+  T: transaction_id_uint64,
+  V: 0
+}
+
+variant 2, by claimed name
+
+{
+  A: "F",
+  N: "service.name.tld",
+  R: r5n_counter,
+  T: transaction_id_uin64,
+  V: 0
+}
+
+Transactions will persist until replied to by a GIM or 60 seconds, whichever
+is reached first.
+
+If the timeout is reached before a GIM or the forwarding of the request fails:
+
+* close transaction
+* close linked transactions
+
+if R is non-zero and less or equal to than 5:
+
+* decrement R by 1
+* open a transaction with id T for sender's RC.k
+* pick random dht capable router, F
+* generate new transaction id, U
+* open a transaction with id U for F.k
+* link transaction U to transaction T
+* send FIM with transaction id U to F
+
+if R is greater than 5 or less than 0:
+
+* increment shitlist value of sender's RC.k by 1
+* if the shitlist value for sender's RC.k is less than 10 reply with a GIM with
+  an X
+* if the shitlist value for sender's RC.k is equal to or greater than 10 drop
+  the message
+
+if R is zero and we have 1 or more IS at position S in dht keyspace:
+
+* reply with a GIM holding the IS who contains the introducer with the highest
+  expiration timestamp
+ 
+if R is zero and we do not have any IS at position S in dht keyspace:
+
+* find a router who's RC.k is closest to S, N
+
+if N is our router:
+
+* reply with a GIM with an empty X value
+
+if N is not our router:
+
+* open transaction with id T for sender's RC.k
+* generate new transaction id, U
+* open transaction with id U for N.k
+* link transaction U to transaction T
+* forward request to N using transaction id U
+
+
+got introduction message (GIM)
+
+{
+  A: "G",
+  T: transaction_id_uint64,
+  V: 0,
+  X: [ IS, IS, IS, ... ]
+}
+
+if we have a transaction with id T:
+
+* forward the GIM to all linked transactions
+* terminate transaction T
+
+when a linked transaction gets a GIM:
+
+* set T to the current transaction id
+* foward the GIM to the requester of T
+
+publish introduction message (PIM)
+
+publish one or many IM into the dht at once.
+each IS will be placed in the dht
+
+version 0 uses the SA of each IS as the keyspace location.
+
+in the future the location will be determined by the dht kdf
+which uses a shared random source to obfuscate keyspace location.
+
+
+R is currently set to 3 +/- 2 by the sender.
+
+{
+  A: "P",
+  R: r5n_counter,
+  V: 0,
+  X: [ IS, IS, IS, ... ]
+}
+
+The following steps happen in order:
+
+first stage: reduction
+
+if X's length is divisble by 2:
+
+* split X in half as J and K
+* generate 2 new PIM with the same values as the parent with empty X
+* put J and K into the new PIM's X values
+* associate the 2 new PIM with the current PIM batch
+
+if X's length is not divisible by 2 and greater than 1:
+
+* pop off an IS from X as A
+* generate a new PIM with the same values as the parent with an X value of A
+* associate the new PIM with the current PIM batch
+* associate the old PIM having A removed from X with the current PIM batch
+
+if X's length is 1:
+
+* associate the PIM with the current PIM batch
+
+any other cases for X are ignored.
+
+for each PIM in the current batch:
+
+if R is greater than 0:
+
+* decrement R by 1
+* queue the PIM for shuffle (second stage)
+
+if R is 0:
+
+* queue the PIM for distribution (third stage)
+
+if R is less than 0:
+
+* drop the message entirely
+
+second stage: shuffle 
+
+* The dht node waits until we have collected 10 or more PIM or for 5 seconds,
+which ever comes first.
+* shuffle the list of IS randomly
+* re-combine the IS into new PIMs
+* queue each newly shuffled PIM for distribution (third stage)
+
+if we collected 10 or more PIM:
+
+* X holds 5 IS at most
+
+if we collected less than 10 but more than 1 PIM:
+
+* X holds 2 IS at most
+
+if we only collected 1 PIM:
+
+* the single PIM is unmodified
+
+
+third stage: distribution
+
+if R is less than 0:
+
+* drop message and terminate current transaction, this should never happen but
+  this case is left here in the event of implementation bugs.
+
+if R is greater than 0:
+
+* pick a random dht capable router, N
+* forward the PIM to N
+
+if R is equal to 0:
+
+for each IS in X as A:
+
+* find the router closest to the SA in A, N
+
+if N is our router:
+
+* create dht positon S from SA in A
+* store A for lookup at S
+
+if N is not our router:
+
+* send a PIM with X value containing just A to N
+
+In the future post random walk keyspace batching may be done here.
+As of version 0, none is done.
+
+find router contact message (FRCM)
+
+find a router by long term RC.k public key
+
+{
+  A: "R",
+  K: "<32 byte public key of router>",
+  T: transaction_id_uint64,
+  V: 0
+}
+
+find RC who's RC.k is closest to K:
+
+if A.k is equal to K:
+
+* reply with a GRCM with an R value of just A
+
+if A.k is not equal to K and we are closesr to A.k than anyone we know:
+
+* reply with a GRCM with an empty R value
+
+find a pending transaction id for K, P
+
+if P exists:
+
+* link transaction T to P
+
+if P does not exist:
+
+* generate a new transaction id, U
+* start transaction U for A.k
+* link transaction U to transaction T
+* send FRCM to A.k requesting K
+
+got router contact message (GRCM)
+
+R is a list containing a single RC if found or is an empty list if not found
+sent in reply to FRCM only
+
+{
+  A: "S",
+  R: [RC],
+  T: transaction_id_uint64,
+  V: 0
+}
+
+* send a GRCM with R to requesters in all linked transactions
+* terminate transaction with id T
+
+notes:
+
+if we get a GRCM with empty R on one Tx and then one with a filled R on another
+with the same K, the request is terminated by the first message as not found.
+A backtrack case is needed.
