@@ -3,6 +3,11 @@
 #include <cstdlib>
 #include <cstring>
 
+struct llarp_alloc {
+    void *(*alloc)(struct llarp_alloc *mem, size_t sz, size_t align);
+    void (*free)(struct llarp_alloc *mem, void *ptr);
+};
+
 namespace llarp
 {
   void *
