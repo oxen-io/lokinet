@@ -175,6 +175,14 @@ llarp_xi_list_decode_item(struct list_reader *r, bool more)
   return llarp_xi_bdecode(&l->list.back(), r->buffer);
 }
 
+void
+llarp_xi_list_copy(struct llarp_xi_list *dst, struct llarp_xi_list *src)
+{
+  dst->list.clear();
+  for(auto &itr : src->list)
+    dst->list.emplace_back(itr);
+}
+
 bool
 llarp_xi_list_bdecode(struct llarp_xi_list *l, llarp_buffer_t *buff)
 {

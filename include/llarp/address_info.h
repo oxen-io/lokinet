@@ -69,6 +69,9 @@ llarp_ai_list_pushback(struct llarp_ai_list *l, struct llarp_ai *ai);
 size_t
 llarp_ai_list_size(struct llarp_ai_list *l);
 
+void
+llarp_ai_list_copy(struct llarp_ai_list *dst, struct llarp_ai_list *src);
+
 /// does this index exist in list
 bool
 llarp_ai_list_index(struct llarp_ai_list *l, ssize_t idx,
