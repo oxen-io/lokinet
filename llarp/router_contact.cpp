@@ -123,6 +123,9 @@ llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buff)
 bool
 llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc)
 {
+  // maybe we should copy rc before modifying it
+  // would that make it more thread safe?
+  // jeff agrees
   bool result = false;
   llarp_sig_t sig;
   byte_t tmp[MAX_RC_SIZE];
