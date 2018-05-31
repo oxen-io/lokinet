@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-/// context for doing asynchronous crpytography for iwp
+/// context for doing asynchronous cryptography for iwp
 /// with a worker threadpool
 /// defined in crypto_async.cpp
 struct llarp_async_iwp;
@@ -32,6 +32,22 @@ llarp_async_iwp_new(struct llarp_crypto *crypto, struct llarp_logic *logic,
 void
 llarp_async_iwp_free(struct llarp_async_iwp *iwp);
 
+
+/// context for doing asynchronous cryptography for rc
+/// with a worker threadpool
+/// defined in crypto_async.cpp
+struct llarp_async_rc;
+
+/// rc async context allocator
+struct llarp_async_rc *
+llarp_async_rc_new(struct llarp_crypto *crypto, struct llarp_logic *logic,
+                  struct llarp_threadpool *worker);
+
+/// deallocator
+void
+llarp_async_rc_free(struct llarp_async_rc *rc);
+
+
 struct iwp_async_keygen;
 
 /// define functor for keygen
@@ -42,7 +58,7 @@ struct iwp_async_keygen
 {
   /// internal wire protocol async configuration
   struct llarp_async_iwp *iwp;
-  /// a customizable pointer to pass data to iteration functor
+  /// a pointer to pass ourself to thread worker
   void *user;
   /// destination key buffer
   uint8_t *keybuf;
@@ -167,6 +183,7 @@ struct iwp_async_frame
   /// true if decryption succeded
   bool success;
   struct llarp_async_iwp *iwp;
+  /// a pointer to pass ourself
   void *user;
   /// current session key
   uint8_t *sessionkey;
@@ -187,6 +204,34 @@ iwp_call_async_frame_decrypt(struct llarp_async_iwp *iwp,
 void
 iwp_call_async_frame_encrypt(struct llarp_async_iwp *iwp,
                              struct iwp_async_frame *frame);
+
+
+
+/// define functor for rc_verify
+typedef void (*rc_verify_hook)(struct rc_async_verify *);
+
+/// rc verify request
+struct rc_async_verify
+{
+  /// router contact crypto async configuration
+  struct llarp_async_rc *context;
+  /// a pointer to pass ourself to thread worker
+  void *self;
+  /// the router contact
+  struct llarp_rc *rc;
+  /// result
+  bool result;
+  /// result handler callback
+  rc_verify_hook hook;
+  /// extra data to pass to hook
+  void *hook_user;
+};
+
+
+/// rc verify
+void rc_call_async_verify(struct llarp_async_rc *context,
+                          struct rc_async_verify *request,
+                          struct llarp_rc *rc);
 
 #ifdef __cplusplus
 }

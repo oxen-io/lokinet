@@ -259,12 +259,11 @@ llarp_router::async_verify_RC(llarp_link_session *session,
                               bool isExpectingClient,
                               llarp_link_establish_job *establish_job)
 {
-  llarp_async_verify_rc *job = new llarp_async_verify_rc{
-      new llarp::async_verify_context{this, establish_job},
-      {},
-      false,
-      nullptr,
-  };
+  llarp_async_verify_rc *job = new llarp_async_verify_rc;
+  job->user = new llarp::async_verify_context{this, establish_job};
+  job->rc = {};
+  job->valid = false;
+  job->hook = nullptr;
   llarp_rc_copy(&job->rc, session->get_remote_router(session));
   if(isExpectingClient)
     job->hook = &llarp_router::on_verify_client_rc;

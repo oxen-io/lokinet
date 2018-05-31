@@ -6,7 +6,7 @@ extern "C" {
 #endif
 
 #ifndef __FreeBSD__
-#if !(__APPLE__ && __MACH__)
+#  if !(__APPLE__ && __MACH__)
 size_t INLINE
 strnlen(const char* str, size_t sz)
 {
@@ -15,7 +15,7 @@ strnlen(const char* str, size_t sz)
     slen++;
   return slen;
 }
-#endif
+#  endif
 #endif
 
 #ifdef __cplusplus
