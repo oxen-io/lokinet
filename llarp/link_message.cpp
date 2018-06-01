@@ -9,9 +9,8 @@
 
 namespace llarp
 {
-  ILinkMessage::ILinkMessage(const RouterID& id)
+  ILinkMessage::ILinkMessage(const RouterID& id) : remote(id)
   {
-    remote = id;
   }
 
   InboundMessageParser::InboundMessageParser(llarp_router* _router)
