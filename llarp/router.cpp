@@ -63,7 +63,7 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
 
     if(!llarp_nodedb_find_rc(nodedb, &rc, k))
     {
-      llarp::Warn(__FILE__, "cannot find router ", remote,
+      llarp::Warn(__FILE__, "cannot find router ", remote.Hex(),
                   " locally so we are dropping ", msgs.size(),
                   " messages to them");
 

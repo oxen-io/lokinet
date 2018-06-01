@@ -69,7 +69,7 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
-    llarp::Info(__FILE__, "got LIM from ", remote);
+    llarp::Info(__FILE__, "got LIM from ", remote.Hex());
     return true;
   }
 }

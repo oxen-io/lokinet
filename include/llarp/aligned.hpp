@@ -3,6 +3,7 @@
 
 #include <llarp/crypto.h>
 #include <sodium.h>
+#include <iomanip>
 #include <iostream>
 
 namespace llarp
@@ -37,22 +38,19 @@ namespace llarp
       return buf.b[idx];
     }
 
-    std::ostream&
-    operator<<(std::ostream& out) const
+    std::string
+    Hex() const
     {
-      char buf[(1 + sz) * 2] = {0};
-      size_t idx             = 0;
-      char* ptr              = buf;
-      char* end              = ptr + (sz * 2);
+      std::stringstream out;
+      std::string str;
+      size_t idx = 0;
       while(idx < sz)
       {
-        auto wrote = snprintf(ptr, end - ptr, "%.2x", buf.b[idx]);
-        if(wrote == -1)
-          break;
-        ++idx;
-        ptr += wrote;
+        out << std::hex << std::setw(2) << std::setfill('0')
+            << (int)buf.b[++idx];
       }
-      return out << std::string(buf);
+      str = out.str();
+      return str;
     }
 
     bool
