@@ -410,7 +410,7 @@ transfer one or more dht messages directly without a previously made path.
 
 {
   a: "m",
-  d: [many, dht, messages],
+  m: [many, dht, messages],
   v: 0
 }
 

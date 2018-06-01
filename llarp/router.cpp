@@ -27,13 +27,15 @@ namespace llarp
 
 }  // namespace llarp
 
-llarp_router::llarp_router() : ready(false), inbound_msg_handler(this)
+llarp_router::llarp_router()
+    : ready(false), dht(llarp_dht_context_new()), inbound_msg_parser(this)
 {
   llarp_rc_clear(&rc);
 }
 
 llarp_router::~llarp_router()
 {
+  llarp_dht_context_free(dht);
   llarp_rc_free(&rc);
 }
 
@@ -41,18 +43,54 @@ bool
 llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
                                     llarp_buffer_t buf)
 {
-  if(inbound_msg_handler.ProcessFrom(session, buf))
-  {
-    return inbound_msg_handler.FlushReplies();
-  }
-  else
-    return false;
+  return inbound_msg_parser.ProcessFrom(session, buf);
 }
 
 bool
-llarp_router::ProcessLRCM(llarp::LR_CommitMessage msg)
+llarp_router::SendToOrQueue(const llarp::RouterID &remote,
+                            std::vector< llarp::ILinkMessage * > msgs)
 {
-  return false;
+  bool has = false;
+  for(auto &link : links)
+    has |= link->has_session_to(link, remote);
+
+  if(!has)
+  {
+    llarp_rc rc;
+    llarp_rc_clear(&rc);
+    llarp_pubkey_t k;
+    memcpy(k, remote, sizeof(llarp_pubkey_t));
+
+    if(!llarp_nodedb_find_rc(nodedb, &rc, k))
+    {
+      llarp::Warn(__FILE__, "cannot find router ", remote,
+                  " locally so we are dropping ", msgs.size(),
+                  " messages to them");
+
+      for(auto &msg : msgs)
+        delete msg;
+
+      msgs.clear();
+      return false;
+    }
+
+    for(const auto &msg : msgs)
+    {
+      // this will create an entry in the obmq if it's not already there
+      outboundMesssageQueue[remote].push(msg);
+    }
+    // queued
+    llarp_router_try_connect(this, &rc);
+    llarp_rc_clear(&rc);
+    return true;
+  }
+
+  for(const auto &msg : msgs)
+  {
+    outboundMesssageQueue[remote].push(msg);
+  }
+  FlushOutboundFor(remote);
+  return true;
 }
 
 void
@@ -205,11 +243,10 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   // this was an outbound establish job
   if(ctx->establish_job->session)
   {
-    auto session = ctx->establish_job->session;
-
     llarp::pubkey pubkey;
     memcpy(&pubkey[0], job->rc.pubkey, pubkey.size());
 
+    // refresh valid routers RC value if it's there
     auto v = router->validRouters.find(pubkey);
     if(v != router->validRouters.end())
     {
@@ -218,27 +255,55 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     }
     router->validRouters[pubkey] = job->rc;
 
-    auto itr = router->pendingMessages.find(pubkey);
-    if(itr != router->pendingMessages.end())
-    {
-      // flush pending
-      if(itr->second.size())
-      {
-        llarp::Debug(__FILE__, "flush ", itr->second.size(),
-                     " pending messages");
-      }
-      for(auto &msg : itr->second)
-      {
-        auto buf = llarp::Buffer< decltype(msg) >(msg);
-        session->sendto(session, buf);
-      }
-      router->pendingMessages.erase(itr);
-    }
+    router->FlushOutboundFor(pubkey);
   }
   else
     llarp_rc_free(&job->rc);
 
   delete job;
+}
+
+void
+llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
+{
+  auto itr = outboundMesssageQueue.find(remote);
+  if(itr == outboundMesssageQueue.end())
+    return;
+  while(itr->second.size())
+  {
+    auto buf = llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+
+    auto &msg = itr->second.front();
+
+    if(!msg->BEncode(&buf))
+    {
+      llarp::Warn(__FILE__,
+                  "failed to encode outbound message, buffer size left: ",
+                  llarp_buffer_size_left(buf));
+      delete msg;
+      itr->second.pop();
+      continue;
+    }
+    // set size of message
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+
+    bool sent = false;
+    for(auto &link : links)
+    {
+      if(!sent)
+      {
+        sent = link->sendto(link, remote, buf);
+      }
+    }
+    if(!sent)
+    {
+      llarp::Warn(__FILE__, "failed to flush outboud message queue for ",
+                  remote);
+    }
+    delete msg;
+    itr->second.pop();
+  }
 }
 
 void

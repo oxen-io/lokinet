@@ -1,12 +1,15 @@
 #include <llarp/router_contact.h>
 #include <llarp/link_message.hpp>
+#include <llarp/messages/dht_immediate.hpp>
+#include <llarp/messages/link_intro.hpp>
+#include <llarp/messages/relay_commit.hpp>
 #include "buffer.hpp"
 #include "logger.hpp"
 #include "router.hpp"
 
 namespace llarp
 {
-  InboundMessageHandler::InboundMessageHandler(llarp_router* _router)
+  InboundMessageParser::InboundMessageParser(llarp_router* _router)
       : router(_router)
   {
     reader.user   = this;
@@ -14,10 +17,10 @@ namespace llarp
   }
 
   bool
-  InboundMessageHandler::OnKey(dict_reader* r, llarp_buffer_t* key)
+  InboundMessageParser::OnKey(dict_reader* r, llarp_buffer_t* key)
   {
-    InboundMessageHandler* handler =
-        static_cast< InboundMessageHandler* >(r->user);
+    InboundMessageParser* handler =
+        static_cast< InboundMessageParser* >(r->user);
     llarp_buffer_t strbuf;
 
     // we are reading the first key
@@ -44,31 +47,29 @@ namespace llarp
         llarp::Warn(__FILE__, "bad mesage type size: ", strbuf.sz);
         return false;
       }
-      handler->msgtype  = *strbuf.cur;
+      switch(*strbuf.cur)
+      {
+        case 'i':
+          handler->msg = new LinkIntroMessage(
+              handler->from->get_remote_router(handler->from));
+          break;
+        case 'm':
+          handler->msg = new DHTImmeidateMessage(handler->GetCurrentFrom());
+          break;
+        case 'c':
+          handler->msg = new LR_CommitMessage(handler->GetCurrentFrom());
+      }
       handler->firstkey = false;
-      return true;
+      return handler->msg != nullptr;
     }
     // check for last element
     if(!key)
       return handler->MessageDone();
 
-    switch(handler->msgtype)
-    {
-        // link introduce
-      case 'i':
-        return handler->DecodeLIM(*key, r->buffer);
-        // immidate dht
-      case 'd':
-        return handler->DecodeDHT(*key, r->buffer);
-        // relay commit
-      case 'c':
-        return handler->DecodeLRCM(*key, r->buffer);
-        // unknown message type
-      default:
-        return false;
-    }
+    return handler->msg->DecodeKey(*key, r->buffer);
   }
 
+  /*
   bool
   InboundMessageHandler::DecodeLIM(llarp_buffer_t key, llarp_buffer_t* buff)
   {
@@ -102,6 +103,15 @@ namespace llarp
   bool
   InboundMessageHandler::DecodeDHT(llarp_buffer_t key, llarp_buffer_t* buf)
   {
+    if(llarp_buffer_eq(key, "d"))
+      return llarp::dht::DecodeMesssageList(buf, dhtmsgs);
+    if(llarp_buffer_eq(key, "v"))
+    {
+      if(!bdecode_read_integer(buf, &proto))
+        return false;
+      return proto == LLARP_PROTO_VERSION;
+    }
+    // bad key
     return false;
   }
 
@@ -111,39 +121,33 @@ namespace llarp
     return false;
   }
 
-  bool
-  InboundMessageHandler::MessageDone()
+  */
+
+  RouterID
+  InboundMessageParser::GetCurrentFrom()
   {
-    switch(msgtype)
-    {
-      case 'c':
-        return router->ProcessLRCM(lrcm);
-      default:
-        return true;
-    }
+    auto rc = from->get_remote_router(from);
+    return rc->pubkey;
   }
 
   bool
-  InboundMessageHandler::ProcessFrom(llarp_link_session* src,
-                                     llarp_buffer_t buf)
+  InboundMessageParser::MessageDone()
+  {
+    bool result = false;
+    if(msg)
+    {
+      result = msg->HandleMessage(router);
+      delete msg;
+      msg = nullptr;
+    }
+    return result;
+  }
+
+  bool
+  InboundMessageParser::ProcessFrom(llarp_link_session* src, llarp_buffer_t buf)
   {
     from     = src;
-    msgtype  = 0;
     firstkey = true;
     return bdecode_read_dict(&buf, &reader);
-  }
-
-  bool
-  InboundMessageHandler::FlushReplies()
-  {
-    bool success = true;
-    while(sendq.size())
-    {
-      auto& msg = sendq.front();
-      auto buf  = llarp::Buffer< decltype(msg) >(msg);
-      success &= from->sendto(from, buf);
-      sendq.pop();
-    }
-    return success;
   }
 }

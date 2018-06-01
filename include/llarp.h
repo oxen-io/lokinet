@@ -1,5 +1,6 @@
 #ifndef LLARP_H_
 #define LLARP_H_
+#include <llarp/dht.h>
 #include <llarp/ev.h>
 #include <llarp/logic.h>
 #include <llarp/mem.h>
@@ -21,6 +22,10 @@ llarp_main_init(const char *fname);
 /** handle signal for main context */
 void
 llarp_main_signal(struct llarp_main *ptr, int sig);
+
+/** set custom dht message handler function */
+void
+llarp_main_set_dht_handler(struct llarp_main *ptr, llarp_dht_msg_handler h);
 
 /** run main context */
 int

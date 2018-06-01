@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <llarp.hpp>
 #include "logger.hpp"
+#include "router.hpp"
 
 #if(__FreeBSD__)
 #include <pthread_np.h>
@@ -95,6 +96,11 @@ namespace llarp
 
         if(llarp_configure_router(router, config))
         {
+          if(custom_dht_func)
+          {
+            llarp::Info(__FILE__, "using custom dht function");
+            llarp_dht_set_msg_handler(router->dht, custom_dht_func);
+          }
           llarp_run_router(router, nodedb);
           // run net io thread
           auto netio = mainloop;
@@ -232,6 +238,12 @@ llarp_main_init(const char *fname)
     return nullptr;
   }
   return m;
+}
+
+void
+llarp_main_set_dht_handler(struct llarp_main *ptr, llarp_dht_msg_handler func)
+{
+  ptr->ctx->custom_dht_func = func;
 }
 
 void

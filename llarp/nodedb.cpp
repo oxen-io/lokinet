@@ -166,4 +166,11 @@ llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
                           struct llarp_async_verify_rc *job)
 {
 }
+
+bool
+llarp_nodedb_find_rc(struct llarp_nodedb *nodedb, struct llarp_rc *dst,
+                     llarp_pubkey_t k)
+{
+  return false;
+}
 }

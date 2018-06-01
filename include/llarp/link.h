@@ -14,6 +14,9 @@
 extern "C" {
 #endif
 
+/** 2^15 bytes */
+const size_t MAX_LINK_MSG_SIZE = 32768;
+
 /**
  * wire layer transport interface
  */
@@ -79,7 +82,12 @@ struct llarp_link
   bool (*stop_link)(struct llarp_link *);
   void (*iter_sessions)(struct llarp_link *, struct llarp_link_session_iter);
   bool (*try_establish)(struct llarp_link *, struct llarp_link_establish_job *);
-
+  /// send to already established session given its public identity key
+  /// returns false if we don't have this session
+  /// returns true if the messages were queued
+  bool (*sendto)(struct llarp_link *, const byte_t *, llarp_buffer_t);
+  /// return true if we have a session to router given public identity key
+  bool (*has_session_to)(struct llarp_link *, const byte_t *);
   void (*mark_session_active)(struct llarp_link *, struct llarp_link_session *);
   void (*free_impl)(struct llarp_link *);
 };

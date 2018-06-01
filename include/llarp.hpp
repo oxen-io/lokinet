@@ -17,13 +17,14 @@ namespace llarp
     int num_nethreads = 1;
     std::vector< std::thread > netio_threads;
     llarp_crypto crypto;
-    llarp_router *router     = nullptr;
-    llarp_threadpool *worker = nullptr;
-    llarp_logic *logic       = nullptr;
-    llarp_config *config     = nullptr;
-    llarp_nodedb *nodedb     = nullptr;
-    llarp_ev_loop *mainloop  = nullptr;
-    char nodedb_dir[256]     = {0};
+    llarp_router *router                  = nullptr;
+    llarp_threadpool *worker              = nullptr;
+    llarp_logic *logic                    = nullptr;
+    llarp_config *config                  = nullptr;
+    llarp_nodedb *nodedb                  = nullptr;
+    llarp_ev_loop *mainloop               = nullptr;
+    llarp_dht_msg_handler custom_dht_func = nullptr;
+    char nodedb_dir[256]                  = {0};
 
     bool
     LoadConfig(const std::string &fname);

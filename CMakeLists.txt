@@ -44,6 +44,7 @@ set(LIB_SRC
   llarp/context.cpp
   llarp/crypto_async.cpp
   llarp/crypto_libsodium.cpp
+  llarp/dht.cpp
   llarp/ev.cpp
   llarp/exit_info.cpp
   llarp/exit_route.c
@@ -56,6 +57,7 @@ set(LIB_SRC
   llarp/mem.cpp
   llarp/net.cpp
   llarp/nodedb.cpp
+  llarp/relay_commit.cpp
   llarp/router_contact.cpp
   llarp/router.cpp
   llarp/router_identity.c

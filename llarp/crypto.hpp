@@ -2,11 +2,11 @@
 #define LLARP_CRYPTO_HPP
 
 #include <llarp/crypto.h>
-#include <array>
+#include <llarp/aligned.hpp>
 
 namespace llarp
 {
-  typedef std::array< uint8_t, sizeof(llarp_pubkey_t) > pubkey;
+  typedef AlignedBuffer< PUBKEYSIZE > pubkey;
 
   struct pubkeyhash
   {
