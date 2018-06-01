@@ -4,9 +4,11 @@
 #include <llarp/dht.h>
 #include <llarp/router.h>
 #include <llarp/router_contact.h>
+#include <llarp/time.h>
 #include <llarp/aligned.hpp>
 
 #include <array>
+#include <functional>
 #include <map>
 #include <vector>
 
@@ -16,17 +18,20 @@ namespace llarp
   {
     const size_t MAX_MSG_SIZE = 2048;
 
-    struct SearchJob;
-
     struct Node
     {
-      llarp_rc rc;
+      llarp_rc* rc;
 
       const byte_t*
       ID() const;
 
-      Node();
-      ~Node();
+      Node() : rc(nullptr)
+      {
+      }
+
+      Node(llarp_rc* other) : rc(other)
+      {
+      }
     };
 
     struct Key_t : public llarp::AlignedBuffer< 32 >
@@ -53,6 +58,28 @@ namespace llarp
       {
         return memcmp(data_l(), other.data_l(), 32) < 0;
       }
+    };
+
+    struct SearchJob
+    {
+      const static uint64_t JobTimeout = 30000;
+
+      SearchJob();
+
+      SearchJob(const Key_t& requestor, const Key_t& target,
+                llarp_router_lookup_job* job);
+
+      void
+      Completed(const llarp_rc* router, bool timeout = false) const;
+
+      bool
+      IsExpired(llarp_time_t now) const;
+
+     private:
+      llarp_time_t started;
+      Key_t requestor;
+      Key_t target;
+      llarp_router_lookup_job* job;
     };
 
     struct XorMetric
@@ -105,6 +132,10 @@ namespace llarp
       bool
       FindClosest(const Key_t& target, Key_t& result) const;
 
+      bool
+      FindCloseExcluding(const Key_t& target, Key_t& result,
+                         const Key_t& exclude) const;
+
       BucketStorage_t nodes;
     };
 
@@ -115,11 +146,78 @@ namespace llarp
 
       llarp_dht_msg_handler custom_handler = nullptr;
 
+      SearchJob*
+      FindPendingTX(const Key_t& owner, uint64_t txid);
+
       void
-      Init(const Key_t& us);
+      RemovePendingLookup(const Key_t& owner, uint64_t txid);
+
+      void
+      LookupRouter(const Key_t& target, const Key_t& whoasked,
+                   const Key_t& askpeer,
+                   llarp_router_lookup_job* job = nullptr);
+
+      void
+      LookupRouterViaJob(llarp_router_lookup_job* job);
+
+      void
+      LookupRouterRelayed(const Key_t& requester, uint64_t txid,
+                          const Key_t& target,
+                          std::vector< IMessage* >& replies);
+
+      void
+      Init(const Key_t& us, llarp_router* router);
+
+      void
+      QueueRouterLookup(llarp_router_lookup_job* job);
+
+      static void
+      handle_cleaner_timer(void* user, uint64_t orig, uint64_t left);
+
+      static void
+      queue_router_lookup(void* user);
+
+      llarp_router* router = nullptr;
+      Bucket* nodes        = nullptr;
 
      private:
-      Bucket* nodes = nullptr;
+      void
+      ScheduleCleanupTimer();
+
+      void
+      CleanupTX();
+
+      uint64_t ids;
+
+      struct TXOwner
+      {
+        Key_t requester = {0};
+        uint64_t txid   = 0;
+
+        bool
+        operator==(const TXOwner& other) const
+        {
+          return txid == other.txid && requester == other.requester;
+        }
+        bool
+        operator<(const TXOwner& other) const
+        {
+          return txid < other.txid && requester < other.requester;
+        }
+      };
+
+      struct TXOwnerHash
+      {
+        std::size_t
+        operator()(TXOwner const& o) const noexcept
+        {
+          std::size_t sz2;
+          memcpy(&sz2, &o.requester[0], sizeof(std::size_t));
+          return o.txid ^ (sz2 << 1);
+        }
+      };
+
+      std::unordered_map< TXOwner, SearchJob, TXOwnerHash > pendingTX;
       Key_t ourKey;
     };
 
@@ -127,6 +225,16 @@ namespace llarp
     {
       GotRouterMessage(const Key_t& from) : IMessage(from)
       {
+      }
+      GotRouterMessage(const Key_t& from, uint64_t id, const llarp_rc* result)
+          : IMessage(from), txid(id)
+      {
+        if(result)
+        {
+          R.emplace_back();
+          llarp_rc_clear(&R.back());
+          llarp_rc_copy(&R.back(), result);
+        }
       }
 
       ~GotRouterMessage();
@@ -152,6 +260,11 @@ namespace llarp
       {
       }
 
+      FindRouterMessage(const Key_t& from, const Key_t& target, uint64_t id)
+          : IMessage(from), K(target), txid(id)
+      {
+      }
+
       ~FindRouterMessage();
 
       bool
@@ -174,6 +287,8 @@ namespace llarp
 struct llarp_dht_context
 {
   llarp::dht::Context impl;
+  llarp_router* parent;
+  llarp_dht_context(llarp_router* router);
 };
 
 #endif

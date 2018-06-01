@@ -30,7 +30,7 @@ bool
 llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc);
 
 void
-llarp_rc_copy(struct llarp_rc *dst, struct llarp_rc *src);
+llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src);
 
 void
 llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,

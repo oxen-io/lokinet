@@ -93,7 +93,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 }
 
 void
-llarp_rc_copy(struct llarp_rc *dst, struct llarp_rc *src)
+llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src)
 {
   llarp_rc_free(dst);
   llarp_rc_clear(dst);

@@ -28,7 +28,7 @@ namespace llarp
 }  // namespace llarp
 
 llarp_router::llarp_router()
-    : ready(false), dht(llarp_dht_context_new()), inbound_msg_parser(this)
+    : ready(false), dht(llarp_dht_context_new(this)), inbound_msg_parser(this)
 {
   llarp_rc_clear(&rc);
 }
@@ -310,6 +310,8 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   if(job->session)
   {
     auto session = job->session;
+    llarp_dht_put_local_router(router->dht,
+                               session->get_remote_router(session));
     router->async_verify_RC(session, false, job);
     return;
   }

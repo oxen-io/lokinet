@@ -1232,6 +1232,10 @@ namespace iwp
           [src](const auto &item) -> bool { return src == item.second; });
       if(itr == std::end(m_Connected))
         return;
+
+      // remove from dht tracking
+      llarp_dht_remove_local_router(router->dht, itr->first);
+
       m_Connected.erase(itr);
     }
 
