@@ -56,9 +56,7 @@ namespace llarp
     virtual int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
-      printf("kqueue:::udp_listener::sendto size[%d]\n", sz);
       socklen_t slen;
-      printf("kqueue:::udp_listener::sendto af[%d]\n", to->sa_family);
       switch(to->sa_family)
       {
         case AF_INET:
@@ -70,7 +68,6 @@ namespace llarp
         default:
           return -1;
       }
-      printf("kqueue:::udp_listener::sendto slen[%d]\n", slen);
       ssize_t sent = ::sendto(fd, data, sz, SOCK_NONBLOCK, to, slen);
       if(sent == -1)
         perror("kqueue sendto()");
