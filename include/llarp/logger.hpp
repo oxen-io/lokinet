@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <string>
 
 namespace llarp
 {
@@ -30,14 +31,14 @@ namespace llarp
   /** internal */
   template < typename TArg >
   void
-  LogAppend(std::stringstream& ss, TArg&& arg)
+  LogAppend(std::stringstream& ss, TArg&& arg) noexcept
   {
     ss << std::forward< TArg >(arg);
   }
   /** internal */
   template < typename TArg, typename... TArgs >
   void
-  LogAppend(std::stringstream& ss, TArg&& arg, TArgs&&... args)
+  LogAppend(std::stringstream& ss, TArg&& arg, TArgs&&... args) noexcept
   {
     LogAppend(ss, std::forward< TArg >(arg));
     LogAppend(ss, std::forward< TArgs >(args)...);
@@ -46,12 +47,12 @@ namespace llarp
   /** internal */
   template < typename... TArgs >
   void
-  Log(LogLevel lvl, const char* tag, TArgs&&... args)
+  _Log(LogLevel lvl, const char* fname, TArgs&&... args) noexcept
   {
     if(_glog.minlevel > lvl)
       return;
 
-    std::stringstream ss;
+    std::stringstream ss("");
     switch(lvl)
     {
       case eLogDebug:
@@ -71,41 +72,25 @@ namespace llarp
         ss << "[ERR] ";
         break;
     }
-    auto t   = std::time(nullptr);
-    auto now = std::localtime(&t);
+    auto t          = std::time(nullptr);
+    auto now        = std::localtime(&t);
+    std::string tag = fname;
+    auto pos        = tag.rfind('/');
+    if(pos != std::string::npos)
+      tag = tag.substr(pos + 1);
+
+    while(tag.size() % 8)
+      tag += " ";
     ss << std::put_time(now, "%F %T") << " " << tag << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
     ss << (char)27 << "[0;0m";
     _glog.out << ss.str() << std::endl;
   }
-
-  template < typename... TArgs >
-  void
-  Debug(const char* tag, TArgs&&... args)
-  {
-    Log(eLogDebug, tag, std::forward< TArgs >(args)...);
-  }
-
-  template < typename... TArgs >
-  void
-  Info(const char* tag, TArgs&&... args)
-  {
-    Log(eLogInfo, tag, std::forward< TArgs >(args)...);
-  }
-
-  template < typename... TArgs >
-  void
-  Warn(const char* tag, TArgs&&... args)
-  {
-    Log(eLogWarn, tag, std::forward< TArgs >(args)...);
-  }
-
-  template < typename... TArgs >
-  void
-  Error(const char* tag, TArgs&&... args)
-  {
-    Log(eLogError, tag, std::forward< TArgs >(args)...);
-  }
 }
+
+#define Debug(x, ...) _Log(llarp::eLogDebug, __FILE__, x, ##__VA_ARGS__)
+#define Info(x, ...) _Log(llarp::eLogInfo, __FILE__, x, ##__VA_ARGS__)
+#define Warn(x, ...) _Log(llarp::eLogWarn, __FILE__, x, ##__VA_ARGS__)
+#define Error(x, ...) _Log(llarp::eLogError, __FILE__, x, ##__VA_ARGS__)
 
 #endif

@@ -36,7 +36,7 @@ llarp_free_logic(struct llarp_logic** logic)
 void
 llarp_logic_stop(struct llarp_logic* logic)
 {
-  llarp::Debug(__FILE__, "logic thread stop");
+  llarp::Debug("logic thread stop");
   if(logic->thread)
   {
     llarp_threadpool_stop(logic->thread);
@@ -44,7 +44,7 @@ llarp_logic_stop(struct llarp_logic* logic)
   }
   llarp_free_threadpool(&logic->thread);
 
-  llarp::Debug(__FILE__, "logic timer stop");
+  llarp::Debug("logic timer stop");
   if(logic->timer)
     llarp_timer_stop(logic->timer);
 }

@@ -1,15 +1,18 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
+#include <llarp/dht.h>
 #include <llarp/link.h>
 #include <llarp/nodedb.h>
 #include <llarp/path.h>
 #include <llarp/router.h>
 #include <llarp/router_contact.h>
+
 #include <functional>
 #include <list>
 #include <map>
 #include <unordered_map>
 
+#include <llarp/dht.hpp>
 #include <llarp/link_message.hpp>
 
 #include "crypto.hpp"
@@ -51,15 +54,24 @@ struct llarp_router
   llarp_path_context *paths;
   llarp_seckey_t identity;
   llarp_threadpool *disk;
+  llarp_dht_context *dht;
 
   llarp_nodedb *nodedb;
 
-  llarp::InboundMessageHandler inbound_msg_handler;
+  // buffer for serializing link messages
+  byte_t linkmsg_buffer[MAX_LINK_MSG_SIZE];
+
+  llarp::InboundMessageParser inbound_msg_parser;
 
   std::list< llarp_link * > links;
 
-  std::map< llarp::pubkey, std::vector< llarp::Message > > pendingMessages;
+  typedef std::queue< llarp::ILinkMessage * > MessageQueue;
 
+  /// outbound message queue
+  std::unordered_map< llarp::pubkey, MessageQueue, llarp::pubkeyhash >
+      outboundMesssageQueue;
+
+  /// loki verified routers
   std::unordered_map< llarp::pubkey, llarp_rc, llarp::pubkeyhash > validRouters;
 
   llarp_router();
@@ -95,11 +107,20 @@ struct llarp_router
   void
   try_connect(fs::path rcfile);
 
-  void
-  QueueSendTo(const byte_t *pubkey, const std::vector< llarp::Message > &msgs);
-
+  /// send to remote router or queue for sending
+  /// returns false on overflow
+  /// returns true on successful queue
   bool
-  ProcessLRCM(llarp::LR_CommitMessage msg);
+  SendToOrQueue(const llarp::RouterID &remote,
+                std::vector< llarp::ILinkMessage * > msgs);
+
+  /// manually flush outbound message queue for just 1 router
+  void
+  FlushOutboundFor(const llarp::RouterID &remote);
+
+  /// flush outbound message queue
+  void
+  FlushOutbound();
 
   void
   async_verify_RC(llarp_link_session *session, bool isExpectingClient,

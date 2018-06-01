@@ -346,4 +346,11 @@ llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
   // queue the crypto check
   llarp_threadpool_queue_job(cryptoworker, { job, &verify_rc });
 }
+
+bool
+llarp_nodedb_find_rc(struct llarp_nodedb *nodedb, struct llarp_rc *dst,
+                     llarp_pubkey_t k)
+{
+  return false;
+}
 }

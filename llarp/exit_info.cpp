@@ -106,7 +106,7 @@ llarp_xi_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
   // address
   if(llarp_buffer_eq(*key, "a"))
   {
-    if(!bdecode_read_string(r->buffer, &strbuf))
+    if(!bencode_read_string(r->buffer, &strbuf))
       return false;
     if(strbuf.sz >= sizeof(tmp))
       return false;
@@ -116,7 +116,7 @@ llarp_xi_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 
   if(llarp_buffer_eq(*key, "b"))
   {
-    if(!bdecode_read_string(r->buffer, &strbuf))
+    if(!bencode_read_string(r->buffer, &strbuf))
       return false;
     if(strbuf.sz >= sizeof(tmp))
       return false;
@@ -126,7 +126,7 @@ llarp_xi_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 
   if(llarp_buffer_eq(*key, "k"))
   {
-    if(!bdecode_read_string(r->buffer, &strbuf))
+    if(!bencode_read_string(r->buffer, &strbuf))
       return false;
     if(strbuf.sz != sizeof(llarp_pubkey_t))
       return false;
@@ -136,7 +136,7 @@ llarp_xi_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 
   if(llarp_buffer_eq(*key, "v"))
   {
-    if(!bdecode_read_integer(r->buffer, &v))
+    if(!bencode_read_integer(r->buffer, &v))
       return false;
     return v == LLARP_PROTO_VERSION;
   }
@@ -148,7 +148,7 @@ bool
 llarp_xi_bdecode(struct llarp_xi *xi, llarp_buffer_t *buf)
 {
   struct dict_reader r = {buf, xi, &llarp_xi_decode_dict};
-  return bdecode_read_dict(buf, &r);
+  return bencode_read_dict(buf, &r);
 }
 
 void
@@ -187,6 +187,6 @@ bool
 llarp_xi_list_bdecode(struct llarp_xi_list *l, llarp_buffer_t *buff)
 {
   list_reader r = {buff, l, &llarp_xi_list_decode_item};
-  return bdecode_read_list(buff, &r);
+  return bencode_read_list(buff, &r);
 }
 }

@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <llarp.hpp>
 #include "logger.hpp"
+#include "router.hpp"
 
 #if(__FreeBSD__)
 #include <pthread_np.h>
@@ -11,7 +12,7 @@ namespace llarp
 {
   Context::Context(std::ostream &stdout) : out(stdout)
   {
-    llarp::Info(__FILE__, LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
+    llarp::Info(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
   }
 
   Context::~Context()
@@ -27,18 +28,18 @@ namespace llarp
   bool
   Context::ReloadConfig()
   {
-    llarp::Info(__FILE__, "loading config at ", configfile);
+    llarp::Info("loading config at ", configfile);
     if(!llarp_load_config(config, configfile.c_str()))
     {
       llarp_config_iterator iter;
       iter.user  = this;
       iter.visit = &iter_config;
       llarp_config_iter(config, &iter);
-      llarp::Info(__FILE__, "config loaded");
+      llarp::Info("config loaded");
       return true;
     }
     llarp_free_config(&config);
-    llarp::Error(__FILE__, "failed to load config file ", configfile);
+    llarp::Error("failed to load config file ", configfile);
     return false;
   }
 
@@ -76,7 +77,7 @@ namespace llarp
   int
   Context::Run()
   {
-    llarp::Info(__FILE__, "starting up");
+    llarp::Info("starting up");
     llarp_ev_loop_alloc(&mainloop);
     llarp_crypto_libsodium_init(&crypto);
     nodedb = llarp_nodedb_new(&crypto);
@@ -95,6 +96,11 @@ namespace llarp
 
         if(llarp_configure_router(router, config))
         {
+          if(custom_dht_func)
+          {
+            llarp::Info("using custom dht function");
+            llarp_dht_set_msg_handler(router->dht, custom_dht_func);
+          }
           llarp_run_router(router, nodedb);
           // run net io thread
           auto netio = mainloop;
@@ -111,18 +117,18 @@ namespace llarp
                                "llarp-netio");
 #endif
           }
-          llarp::Info(__FILE__, "Ready");
+          llarp::Info("Ready");
           llarp_logic_mainloop(logic);
           return 0;
         }
         else
-          llarp::Error(__FILE__, "failed to start router");
+          llarp::Error("failed to start router");
       }
       else
-        llarp::Error(__FILE__, "Failed to initialize nodedb");
+        llarp::Error("Failed to initialize nodedb");
     }
     else
-      llarp::Error(__FILE__, "no nodedb defined");
+      llarp::Error("no nodedb defined");
     return 1;
   }
 
@@ -131,12 +137,12 @@ namespace llarp
   {
     if(sig == SIGINT)
     {
-      llarp::Info(__FILE__, "SIGINT");
+      llarp::Info("SIGINT");
       SigINT();
     }
     if(sig == SIGHUP)
     {
-      llarp::Info(__FILE__, "SIGHUP");
+      llarp::Info("SIGHUP");
       ReloadConfig();
     }
   }
@@ -150,55 +156,55 @@ namespace llarp
   void
   Context::Close()
   {
-    llarp::Debug(__FILE__, "stop router");
+    llarp::Debug("stop router");
     if(router)
       llarp_stop_router(router);
 
-    llarp::Debug(__FILE__, "stop workers");
+    llarp::Debug("stop workers");
     if(worker)
       llarp_threadpool_stop(worker);
 
-    llarp::Debug(__FILE__, "join workers");
+    llarp::Debug("join workers");
     if(worker)
       llarp_threadpool_join(worker);
 
-    llarp::Debug(__FILE__, "stop logic");
+    llarp::Debug("stop logic");
 
     if(logic)
       llarp_logic_stop(logic);
 
-    llarp::Debug(__FILE__, "free config");
+    llarp::Debug("free config");
     llarp_free_config(&config);
 
-    llarp::Debug(__FILE__, "free workers");
+    llarp::Debug("free workers");
     llarp_free_threadpool(&worker);
 
-    llarp::Debug(__FILE__, "free nodedb");
+    llarp::Debug("free nodedb");
     llarp_nodedb_free(&nodedb);
 
     for(size_t i = 0; i < netio_threads.size(); ++i)
     {
       if(mainloop)
       {
-        llarp::Debug(__FILE__, "stopping event loop thread ", i);
+        llarp::Debug("stopping event loop thread ", i);
         llarp_ev_loop_stop(mainloop);
       }
     }
 
-    llarp::Debug(__FILE__, "free router");
+    llarp::Debug("free router");
     llarp_free_router(&router);
 
-    llarp::Debug(__FILE__, "free logic");
+    llarp::Debug("free logic");
     llarp_free_logic(&logic);
 
     for(auto &t : netio_threads)
     {
-      llarp::Debug(__FILE__, "join netio thread");
+      llarp::Debug("join netio thread");
       t.join();
     }
 
     netio_threads.clear();
-    llarp::Debug(__FILE__, "free mainloop");
+    llarp::Debug("free mainloop");
     llarp_ev_loop_free(&mainloop);
   }
 
@@ -232,6 +238,12 @@ llarp_main_init(const char *fname)
     return nullptr;
   }
   return m;
+}
+
+void
+llarp_main_set_dht_handler(struct llarp_main *ptr, llarp_dht_msg_handler func)
+{
+  ptr->ctx->custom_dht_func = func;
 }
 
 void

@@ -3,18 +3,43 @@
 
 #include <llarp/bencode.h>
 #include <llarp/link.h>
-#include <llarp/relay_commit.hpp>
+#include <llarp/aligned.hpp>
 
 #include <queue>
 #include <vector>
 
 namespace llarp
 {
-  typedef std::vector< byte_t > Message;
+  typedef AlignedBuffer< 32 > RouterID;
 
-  struct InboundMessageHandler
+  struct ILinkMessage;
+
+  typedef std::queue< ILinkMessage* > SendQueue;
+
+  /// parsed link layer message
+  struct ILinkMessage
   {
-    InboundMessageHandler(llarp_router* router);
+    /// who did this message come from (rc.k)
+    RouterID remote  = {};
+    uint64_t version = 0;
+
+    ILinkMessage(const RouterID& id);
+
+    virtual ~ILinkMessage(){};
+
+    virtual bool
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) = 0;
+
+    virtual bool
+    BEncode(llarp_buffer_t* buf) const = 0;
+
+    virtual bool
+    HandleMessage(llarp_router* router) const = 0;
+  };
+
+  struct InboundMessageParser
+  {
+    InboundMessageParser(llarp_router* router);
     dict_reader reader;
 
     static bool
@@ -29,28 +54,15 @@ namespace llarp
     bool
     MessageDone();
 
-    /// called to send any replies
-    bool
-    FlushReplies();
+   private:
+    RouterID
+    GetCurrentFrom();
 
    private:
-    bool
-    DecodeLIM(llarp_buffer_t key, llarp_buffer_t* buff);
-
-    bool
-    DecodeDHT(llarp_buffer_t key, llarp_buffer_t* buff);
-
-    bool
-    DecodeLRCM(llarp_buffer_t key, llarp_buffer_t* buff);
-
-   private:
-    char msgtype;
     bool firstkey;
-    uint64_t proto;
     llarp_router* router;
     llarp_link_session* from;
-    llarp::LR_CommitMessage lrcm;
-    std::queue< Message > sendq;
+    ILinkMessage* msg = nullptr;
   };
 }
 

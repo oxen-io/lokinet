@@ -175,10 +175,10 @@ llarp_timer_stop(struct llarp_timer_context* t)
 {
   // destroy all timers
   // don't call callbacks on timers
-  llarp::Debug(__FILE__, "clear timers");
+  llarp::Debug("clear timers");
   t->timers.clear();
   t->stop();
-  llarp::Debug(__FILE__, "stop timers");
+  llarp::Debug("stop timers");
   t->ticker.notify_all();
 }
 

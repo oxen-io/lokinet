@@ -3,7 +3,7 @@
 #include <cstring>
 #include "logger.hpp"
 
-#if (__FreeBSD__)
+#if(__FreeBSD__)
 #include <pthread_np.h>
 #endif
 
@@ -16,8 +16,17 @@ namespace llarp
       stop = false;
       while(workers--)
       {
-        threads.emplace_back([this] {
-
+        threads.emplace_back([this, name] {
+          if(name)
+          {
+#if(__APPLE__ && __MACH__)
+            pthread_setname_np(name);
+#elif(__FreeBSD__)
+            pthread_set_name_np(pthread_self(), name);
+#else
+            pthread_setname_np(pthread_self(), name);
+#endif
+          }
           for(;;)
           {
             llarp_thread_job job;
@@ -34,21 +43,6 @@ namespace llarp
             job.work(job.user);
           }
         });
-      }
-      if(name)
-      {
-#if (__APPLE__ && __MACH__)
-        //for(auto &t : threads)
-          // FIXME: send signal to thread
-          // name has to be set from inside the thread
-          //pthread_setname_np(name);
-#elif (__FreeBSD__)
-        for(auto &t : threads)
-          pthread_set_name_np(t.native_handle(), name);
-#else
-        for(auto &t : threads)
-          pthread_setname_np(t.native_handle(), name);
-#endif
       }
     }
 
@@ -112,7 +106,7 @@ llarp_init_threadpool(int workers, const char *name)
 void
 llarp_threadpool_join(struct llarp_threadpool *pool)
 {
-  llarp::Debug(__FILE__, "threadpool join");
+  llarp::Debug("threadpool join");
   pool->impl.Join();
 }
 
@@ -124,7 +118,7 @@ llarp_threadpool_start(struct llarp_threadpool *pool)
 void
 llarp_threadpool_stop(struct llarp_threadpool *pool)
 {
-  llarp::Debug(__FILE__, "threadpool stop");
+  llarp::Debug("threadpool stop");
   pool->impl.Stop();
 }
 
@@ -132,7 +126,7 @@ void
 llarp_threadpool_wait(struct llarp_threadpool *pool)
 {
   std::mutex mtx;
-  llarp::Debug(__FILE__, "threadpool wait");
+  llarp::Debug("threadpool wait");
   {
     std::unique_lock< std::mutex > lock(mtx);
     pool->impl.done.wait(lock);

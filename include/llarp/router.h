@@ -24,7 +24,7 @@ void
 llarp_free_router(struct llarp_router **router);
 
 bool
-llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remtoe);
+llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote);
 
 bool
 llarp_configure_router(struct llarp_router *router, struct llarp_config *conf);

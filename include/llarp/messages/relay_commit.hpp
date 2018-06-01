@@ -2,6 +2,7 @@
 #define LLARP_RELAY_COMMIT_HPP
 #include <llarp/crypto.h>
 #include <llarp/encrypted_frame.hpp>
+#include <llarp/link_message.hpp>
 #include <vector>
 
 namespace llarp
@@ -47,19 +48,27 @@ namespace llarp
     BEncode(llarp_buffer_t *buf);
   };
 
-  struct LR_CommitMessage
+  struct LR_CommitMessage : public ILinkMessage
   {
     std::vector< EncryptedFrame > frames;
     uint64_t version;
+
+    LR_CommitMessage(const RouterID &from) : ILinkMessage(from)
+    {
+    }
+    ~LR_CommitMessage();
 
     void
     Clear();
 
     bool
-    BDecode(llarp_buffer_t *buf);
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf);
 
     bool
-    BEncode(llarp_buffer_t *buf);
+    BEncode(llarp_buffer_t *buf) const;
+
+    bool
+    HandleMessage(llarp_router *router) const;
   };
 
   struct AsyncPathDecryption
