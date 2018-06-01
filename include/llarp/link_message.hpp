@@ -20,12 +20,10 @@ namespace llarp
   struct ILinkMessage
   {
     /// who did this message come from (rc.k)
-    RouterID remote;
+    RouterID remote  = {};
     uint64_t version = 0;
 
-    ILinkMessage(const RouterID& from) : remote(from)
-    {
-    }
+    ILinkMessage(const RouterID& id);
 
     virtual ~ILinkMessage(){};
 
@@ -62,7 +60,6 @@ namespace llarp
 
    private:
     bool firstkey;
-    uint64_t proto;
     llarp_router* router;
     llarp_link_session* from;
     ILinkMessage* msg = nullptr;

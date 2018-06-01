@@ -16,27 +16,29 @@ namespace llarp
     {
       if(!llarp_rc_bdecode(RC, buf))
       {
-        llarp::Warn(__FILE__, "failed to decode RC");
+        llarp::Warn("failed to decode RC");
         return false;
       }
-      remote = RC->pubkey;
+      remote = (byte_t*)RC->pubkey;
+      llarp::Debug("decoded RC from ", remote);
       return true;
     }
     else if(llarp_buffer_eq(key, "v"))
     {
-      if(!bdecode_read_integer(buf, &version))
+      if(!bencode_read_integer(buf, &version))
         return false;
       if(version != LLARP_PROTO_VERSION)
       {
-        llarp::Warn(__FILE__, "llarp protocol version missmatch ", version,
+        llarp::Warn("llarp protocol version missmatch ", version,
                     " != ", LLARP_PROTO_VERSION);
         return false;
       }
+      llarp::Debug("LIM version ", version);
       return true;
     }
     else
     {
-      llarp::Warn(__FILE__, "invalid LIM key: ", *key.cur);
+      llarp::Warn("invalid LIM key: ", *key.cur);
       return false;
     }
   }
@@ -69,7 +71,7 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
-    llarp::Info(__FILE__, "got LIM from ", remote.Hex());
+    llarp::Info("got LIM from ", remote);
     return true;
   }
 }

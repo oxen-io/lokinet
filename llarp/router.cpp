@@ -63,9 +63,8 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
 
     if(!llarp_nodedb_find_rc(nodedb, &rc, k))
     {
-      llarp::Warn(__FILE__, "cannot find router ", remote.Hex(),
-                  " locally so we are dropping ", msgs.size(),
-                  " messages to them");
+      llarp::Warn("cannot find router ", remote, " locally so we are dropping ",
+                  msgs.size(), " messages to them");
 
       for(auto &msg : msgs)
         delete msg;
@@ -113,11 +112,11 @@ llarp_router::try_connect(fs::path rcfile)
         f.read((char *)buf.base, sz);
       }
       else
-        llarp::Error(__FILE__, rcfile, " too large");
+        llarp::Error(rcfile, " too large");
     }
     else
     {
-      llarp::Error(__FILE__, "failed to open ", rcfile);
+      llarp::Error("failed to open ", rcfile);
       return;
     }
   }
@@ -125,17 +124,17 @@ llarp_router::try_connect(fs::path rcfile)
   {
     if(llarp_rc_verify_sig(&crypto, &remote))
     {
-      llarp::Debug(__FILE__, "verified signature");
+      llarp::Debug("verified signature");
       if(!llarp_router_try_connect(this, &remote))
       {
-        llarp::Warn(__FILE__, "session already made");
+        llarp::Warn("session already made");
       }
     }
     else
-      llarp::Error(__FILE__, "failed to verify signature of RC");
+      llarp::Error("failed to verify signature of RC");
   }
   else
-    llarp::Error(__FILE__, "failed to decode RC");
+    llarp::Error("failed to decode RC");
 
   llarp_rc_free(&remote);
 }
@@ -162,10 +161,10 @@ llarp_router::Ready()
 bool
 llarp_router::SaveRC()
 {
-  llarp::Debug(__FILE__, "verify RC signature");
+  llarp::Debug("verify RC signature");
   if(!llarp_rc_verify_sig(&crypto, &rc))
   {
-    llarp::Error(__FILE__, "RC has bad signature not saving");
+    llarp::Error("RC has bad signature not saving");
     return false;
   }
 
@@ -178,11 +177,11 @@ llarp_router::SaveRC()
     if(f.is_open())
     {
       f.write((char *)buf.base, buf.cur - buf.base);
-      llarp::Info(__FILE__, "our RC saved to ", our_rc_file.c_str());
+      llarp::Info("our RC saved to ", our_rc_file.c_str());
       return true;
     }
   }
-  llarp::Error(__FILE__, "did not save RC to ", our_rc_file.c_str());
+  llarp::Error("did not save RC to ", our_rc_file.c_str());
   return false;
 }
 
@@ -204,7 +203,7 @@ llarp_router::connect_job_retry(void *user)
   llarp_link_establish_job *job =
       static_cast< llarp_link_establish_job * >(user);
 
-  llarp::Info(__FILE__, "trying to establish session again");
+  llarp::Info("trying to establish session again");
   job->link->try_establish(job->link, job);
 }
 
@@ -225,7 +224,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   auto router = ctx->router;
   if(!job->valid)
   {
-    llarp::Warn(__FILE__, "invalid server RC");
+    llarp::Warn("invalid server RC");
     if(ctx->establish_job)
     {
       // was an outbound attempt
@@ -239,7 +238,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     return;
   }
 
-  llarp::Debug(__FILE__, "rc verified");
+  llarp::Debug("rc verified");
   // this was an outbound establish job
   if(ctx->establish_job->session)
   {
@@ -277,8 +276,7 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
 
     if(!msg->BEncode(&buf))
     {
-      llarp::Warn(__FILE__,
-                  "failed to encode outbound message, buffer size left: ",
+      llarp::Warn("failed to encode outbound message, buffer size left: ",
                   llarp_buffer_size_left(buf));
       delete msg;
       itr->second.pop();
@@ -298,8 +296,7 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
     }
     if(!sent)
     {
-      llarp::Warn(__FILE__, "failed to flush outboud message queue for ",
-                  remote);
+      llarp::Warn("failed to flush outboud message queue for ", remote);
     }
     delete msg;
     itr->second.pop();
@@ -316,7 +313,7 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
     router->async_verify_RC(session, false, job);
     return;
   }
-  llarp::Info(__FILE__, "session not established");
+  llarp::Info("session not established");
   llarp_logic_queue_job(router->logic, {job, &llarp_router::connect_job_retry});
 }
 void
@@ -362,29 +359,23 @@ llarp_router::Run()
     return;
   }
 
-  char tmp[68] = {0};
+  llarp::pubkey ourPubkey = pubkey();
 
-  llarp::pubkey ourPubkey;
-  memcpy(&ourPubkey[0], pubkey(), 32);
-
-  const char *us =
-      llarp::HexEncode< llarp::pubkey, decltype(tmp) >(ourPubkey, tmp);
-
-  llarp::Debug(__FILE__, "our router has public key ", us);
+  llarp::Info("our router has public key ", ourPubkey);
 
   // start links
   for(auto link : links)
   {
     int result = link->start_link(link, logic);
     if(result == -1)
-      llarp::Warn(__FILE__, "Link ", link->name(), " failed to start");
+      llarp::Warn("Link ", link->name(), " failed to start");
     else
-      llarp::Debug(__FILE__, "Link ", link->name(), " started");
+      llarp::Debug("Link ", link->name(), " started");
   }
 
   for(const auto &itr : connect)
   {
-    llarp::Info(__FILE__, "connecting to node ", itr.first);
+    llarp::Info("connecting to node ", itr.first);
     try_connect(itr.second);
   }
 }
@@ -640,8 +631,7 @@ namespace llarp
         {
           // we failed to configure IPv6
           // try IPv4
-          llarp::Info(__FILE__, "link ", key,
-                      " failed to configure IPv6, trying IPv4");
+          llarp::Info("link ", key, " failed to configure IPv6, trying IPv4");
           af = AF_INET;
           if(link->configure(link, self->netloop, key, af, proto))
           {
@@ -653,7 +643,7 @@ namespace llarp
           }
         }
       }
-      llarp::Error(__FILE__, "link ", key, " failed to configure");
+      llarp::Error("link ", key, " failed to configure");
     }
     else if(StrEq(section, "iwp-connect"))
     {

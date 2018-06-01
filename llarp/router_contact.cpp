@@ -47,7 +47,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 
   if(llarp_buffer_eq(*key, "k"))
   {
-    if(!bdecode_read_string(r->buffer, &strbuf))
+    if(!bencode_read_string(r->buffer, &strbuf))
       return false;
     if(strbuf.sz != sizeof(llarp_pubkey_t))
       return false;
@@ -57,14 +57,14 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 
   if(llarp_buffer_eq(*key, "u"))
   {
-    if(!bdecode_read_integer(r->buffer, &rc->last_updated))
+    if(!bencode_read_integer(r->buffer, &rc->last_updated))
       return false;
     return true;
   }
 
   if(llarp_buffer_eq(*key, "v"))
   {
-    if(!bdecode_read_integer(r->buffer, &v))
+    if(!bencode_read_integer(r->buffer, &v))
       return false;
     return v == LLARP_PROTO_VERSION;
   }
@@ -81,7 +81,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
 
   if(llarp_buffer_eq(*key, "z"))
   {
-    if(!bdecode_read_string(r->buffer, &strbuf))
+    if(!bencode_read_string(r->buffer, &strbuf))
       return false;
     if(strbuf.sz != sizeof(llarp_sig_t))
       return false;
@@ -96,7 +96,7 @@ void
 llarp_rc_copy(struct llarp_rc *dst, struct llarp_rc *src)
 {
   llarp_rc_free(dst);
-
+  llarp_rc_clear(dst);
   memcpy(dst->pubkey, src->pubkey, sizeof(llarp_pubkey_t));
   memcpy(dst->signature, src->signature, sizeof(llarp_sig_t));
   dst->last_updated = src->last_updated;
@@ -117,7 +117,7 @@ bool
 llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buff)
 {
   dict_reader r = {buff, rc, &llarp_rc_decode_dict};
-  return bdecode_read_dict(buff, &r);
+  return bencode_read_dict(buff, &r);
 }
 
 bool

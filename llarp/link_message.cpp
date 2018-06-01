@@ -9,6 +9,11 @@
 
 namespace llarp
 {
+  ILinkMessage::ILinkMessage(const RouterID& id)
+  {
+    remote = id;
+  }
+
   InboundMessageParser::InboundMessageParser(llarp_router* _router)
       : router(_router)
   {
@@ -36,7 +41,7 @@ namespace llarp
         return false;
       }
 
-      if(!bdecode_read_string(r->buffer, &strbuf))
+      if(!bencode_read_string(r->buffer, &strbuf))
       {
         llarp::Warn(__FILE__, "could not read value of message type");
         return false;
@@ -58,6 +63,9 @@ namespace llarp
           break;
         case 'c':
           handler->msg = new LR_CommitMessage(handler->GetCurrentFrom());
+          break;
+        default:
+          return false;
       }
       handler->firstkey = false;
       return handler->msg != nullptr;
@@ -68,60 +76,6 @@ namespace llarp
 
     return handler->msg->DecodeKey(*key, r->buffer);
   }
-
-  /*
-  bool
-  InboundMessageHandler::DecodeLIM(llarp_buffer_t key, llarp_buffer_t* buff)
-  {
-    if(llarp_buffer_eq(key, "r"))
-    {
-      if(!llarp_rc_bdecode(from->get_remote_router(from), buff))
-      {
-        llarp::Warn(__FILE__, "failed to decode RC");
-        return false;
-      }
-      return true;
-    }
-    else if(llarp_buffer_eq(key, "v"))
-    {
-      if(!bdecode_read_integer(buff, &proto))
-        return false;
-      if(proto != LLARP_PROTO_VERSION)
-      {
-        llarp::Warn(__FILE__, "llarp protocol version missmatch ", proto);
-        return false;
-      }
-      return true;
-    }
-    else
-    {
-      llarp::Warn(__FILE__, "invalid LIM key: ", *key.cur);
-      return false;
-    }
-  }
-
-  bool
-  InboundMessageHandler::DecodeDHT(llarp_buffer_t key, llarp_buffer_t* buf)
-  {
-    if(llarp_buffer_eq(key, "d"))
-      return llarp::dht::DecodeMesssageList(buf, dhtmsgs);
-    if(llarp_buffer_eq(key, "v"))
-    {
-      if(!bdecode_read_integer(buf, &proto))
-        return false;
-      return proto == LLARP_PROTO_VERSION;
-    }
-    // bad key
-    return false;
-  }
-
-  bool
-  InboundMessageHandler::DecodeLRCM(llarp_buffer_t key, llarp_buffer_t* buf)
-  {
-    return false;
-  }
-
-  */
 
   RouterID
   InboundMessageParser::GetCurrentFrom()
@@ -148,6 +102,6 @@ namespace llarp
   {
     from     = src;
     firstkey = true;
-    return bdecode_read_dict(&buf, &reader);
+    return bencode_read_dict(&buf, &reader);
   }
 }

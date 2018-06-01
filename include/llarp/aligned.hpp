@@ -5,6 +5,7 @@
 #include <sodium.h>
 #include <iomanip>
 #include <iostream>
+#include <llarp/logger.hpp>
 
 namespace llarp
 {
@@ -14,22 +15,24 @@ namespace llarp
   {
     AlignedBuffer()
     {
+      Zero();
+    }
+
+    AlignedBuffer(const AlignedBuffer& other) : AlignedBuffer(other.data())
+    {
     }
 
     AlignedBuffer(const byte_t* data)
     {
-      memcpy(buf.b, data, sz);
-    }
-
-    AlignedBuffer(const AlignedBuffer& other)
-    {
-      memcpy(buf.b, other.data(), sz);
+      for(size_t idx = 0; idx < sz; ++idx)
+        buf.b[idx] = data[idx];
     }
 
     AlignedBuffer&
-    operator=(const AlignedBuffer& other)
+    operator=(const byte_t* data)
     {
-      memcpy(buf.b, other.data(), sz);
+      for(size_t idx = 0; idx < sz; ++idx)
+        buf.b[idx] = data[idx];
       return *this;
     }
 
@@ -38,19 +41,16 @@ namespace llarp
       return buf.b[idx];
     }
 
-    std::string
-    Hex() const
+    friend std::ostream&
+    operator<<(std::ostream& out, const AlignedBuffer& self)
     {
-      std::stringstream out;
-      std::string str;
       size_t idx = 0;
+      out << std::hex << std::setw(2) << std::setfill('0');
       while(idx < sz)
       {
-        out << std::hex << std::setw(2) << std::setfill('0')
-            << (int)buf.b[++idx];
+        out << (int)self.buf.b[idx++];
       }
-      str = out.str();
-      return str;
+      return out << std::dec << std::setw(0) << std::setfill(' ');
     }
 
     bool
@@ -87,37 +87,42 @@ namespace llarp
     byte_t*
     data()
     {
-      return buf.b;
+      return &buf.b[0];
     }
 
     const byte_t*
     data() const
     {
-      return buf.b;
-    }
-
-    const uint64_t*
-    data_l() const
-    {
-      return buf.l;
+      return &buf.b[0];
     }
 
     uint64_t*
     data_l()
     {
-      return buf.l;
+      return &buf.l[0];
+    }
+
+    const uint64_t*
+    data_l() const
+    {
+      return &buf.l[0];
     }
 
     operator const byte_t*() const
     {
-      return buf.b;
+      return &buf.b[0];
+    }
+
+    operator byte_t*()
+    {
+      return &buf.b[0];
     }
 
    private:
     union {
       byte_t b[sz];
       uint64_t l[sz / 8];
-    } buf = {0};
+    } buf;
   };
 }
 

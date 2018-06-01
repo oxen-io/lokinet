@@ -2,7 +2,7 @@
 #define LLARP_NET_HPP
 #include <llarp/address_info.h>
 #include <llarp/net.h>
-#include <string>
+#include <iostream>
 #include "mem.hpp"
 
 bool
@@ -103,32 +103,31 @@ namespace llarp
       }
     }
 
-    std::string
-    to_string() const
+    friend std::ostream&
+    operator<<(std::ostream& out, const Addr& a)
     {
-      std::string str;
-      char tmp[128];
+      char tmp[128] = {0};
       socklen_t sz;
       const void* ptr = nullptr;
-      if(af() == AF_INET6)
+      if(a.af() == AF_INET6)
       {
-        str += "[";
+        out << "[";
         sz  = sizeof(sockaddr_in6);
-        ptr = addr6();
+        ptr = a.addr6();
       }
       else
       {
         sz  = sizeof(sockaddr_in);
-        ptr = addr4();
+        ptr = a.addr4();
       }
-      if(inet_ntop(af(), ptr, tmp, sz))
+      if(inet_ntop(a.af(), ptr, tmp, sz))
       {
-        str += tmp;
-        if(af() == AF_INET6)
-          str += "]";
+        out << tmp;
+        if(a.af() == AF_INET6)
+          out << "]";
       }
 
-      return str + ":" + std::to_string(port());
+      return out << ":" << a.port();
     }
 
     operator const sockaddr*() const

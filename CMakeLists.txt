@@ -1,13 +1,16 @@
 cmake_minimum_required(VERSION 2.8.10)
 
+set(WITH_SHARED OFF)
 set(DEBUG_FLAGS "")
-
+set(OPTIMIZE_FLAGS "-Os")
 if(ASAN)
-  set(DEBUG_FLAGS "${DEBUG_FLAGS} -O1 -g -fsanitize=address -fno-omit-frame-pointer")
+  set(DEBUG_FLAGS "${DEBUG_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer")
+  set(OPTIMIZE_FLAGS "-O0")
 endif(ASAN)
 
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall -fPIC ${DEBUG_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall -fPIC ${DEBUG_FLAGS}")
+
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
 
 if(NOT GIT_VERSION)
   exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION)
@@ -39,6 +42,7 @@ set(STATIC_LIB ${LIB}-static)
 
 set(LIB_SRC
   llarp/address_info.cpp
+  llarp/bencode.c
   llarp/buffer.cpp
   llarp/config.cpp
   llarp/context.cpp
@@ -69,12 +73,14 @@ set(LIB_SRC
 include_directories(include)
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-add_library(${SHARED_LIB} SHARED ${LIB_SRC})
+if(WITH_SHARED)
+  add_library(${SHARED_LIB} SHARED ${LIB_SRC})
+  target_link_libraries(${SHARED_LIB} ${LIBS})
+endif()
 
 add_executable(${EXE} ${EXE_SRC})
 target_link_libraries(${STATIC_LIB} ${LIBS})
 target_link_libraries(${EXE} ${STATIC_LIB})
-target_link_libraries(${SHARED_LIB} ${STATIC_LIB} ${LIBS})
 
 add_executable(rcutil daemon/rcutil.cpp)
 target_link_libraries(rcutil ${STATIC_LIB} ${LIBS})

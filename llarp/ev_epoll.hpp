@@ -50,10 +50,11 @@ namespace llarp
         default:
           return -1;
       }
-      llarp::Debug(__FILE__, "send ", sz, " bytes");
       ssize_t sent = ::sendto(fd, data, sz, SOCK_NONBLOCK, to, slen);
       if(sent == -1)
-        perror("sendto()");
+      {
+        llarp::Warn(strerror(errno));
+      }
       return sent;
     }
   };
@@ -116,7 +117,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
           // handle signalfd
           if(events[idx].data.fd == pipefds[0])
           {
-            llarp::Debug(__FILE__, "exiting epoll loop");
+            llarp::Debug("exiting epoll loop");
             return 0;
           }
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
@@ -124,7 +125,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
           {
             if(ev->read(readbuf, sizeof(readbuf)) == -1)
             {
-              llarp::Debug(__FILE__, "close ev");
+              llarp::Debug("close ev");
               close_ev(ev);
             }
           }
@@ -173,7 +174,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    llarp::Debug(__FILE__, "bind to ", a.to_string());
+    llarp::Debug("bind to ", a);
     if(bind(fd, addr, slen) == -1)
     {
       perror("bind()");

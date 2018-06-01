@@ -19,7 +19,7 @@ namespace llarp
       return llarp::dht::DecodeMesssageList(remote.data(), buf, msgs);
     if(llarp_buffer_eq(key, "v"))
     {
-      if(!bdecode_read_integer(buf, &version))
+      if(!bencode_read_integer(buf, &version))
         return false;
       return version == LLARP_PROTO_VERSION;
     }
@@ -115,7 +115,7 @@ namespace llarp
       llarp_buffer_t strbuf;
       if(llarp_buffer_eq(key, "K"))
       {
-        if(!bdecode_read_string(val, &strbuf))
+        if(!bencode_read_string(val, &strbuf))
           return false;
         if(strbuf.sz != K.size())
           return false;
@@ -125,11 +125,11 @@ namespace llarp
       }
       if(llarp_buffer_eq(key, "T"))
       {
-        return bdecode_read_integer(val, &txid);
+        return bencode_read_integer(val, &txid);
       }
       if(llarp_buffer_eq(key, "V"))
       {
-        if(!bdecode_read_integer(val, &version))
+        if(!bencode_read_integer(val, &version))
           return false;
         return version == LLARP_PROTO_VERSION;
       }
@@ -167,7 +167,7 @@ namespace llarp
         {
           if(!llarp_buffer_eq(*key, "A"))
             return false;
-          if(!bdecode_read_string(r->buffer, &strbuf))
+          if(!bencode_read_string(r->buffer, &strbuf))
             return false;
           // bad msg size?
           if(strbuf.sz != 1)
@@ -199,7 +199,7 @@ namespace llarp
       dict_reader r;
       r.user   = &dec;
       r.on_key = &MessageDecoder::on_key;
-      if(bdecode_read_dict(buf, &r))
+      if(bencode_read_dict(buf, &r))
         return dec.msg;
       else
       {
@@ -242,7 +242,7 @@ namespace llarp
       list_reader r;
       r.user    = &dec;
       r.on_item = &ListDecoder::on_item;
-      return bdecode_read_list(buf, &r);
+      return bencode_read_list(buf, &r);
     }
 
     Node::Node()

@@ -26,7 +26,7 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
   // rank
   if(llarp_buffer_eq(*key, "c"))
   {
-    if(!bdecode_read_integer(r->buffer, &i))
+    if(!bencode_read_integer(r->buffer, &i))
       return false;
 
     if(i > 65536 || i <= 0)
@@ -39,7 +39,7 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
   // dialect
   if(llarp_buffer_eq(*key, "d"))
   {
-    if(!bdecode_read_string(r->buffer, &strbuf))
+    if(!bencode_read_string(r->buffer, &strbuf))
       return false;
 
     if(strbuf.sz >= sizeof(ai->dialect))
@@ -53,7 +53,7 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
   // encryption public key
   if(llarp_buffer_eq(*key, "e"))
   {
-    if(!bdecode_read_string(r->buffer, &strbuf))
+    if(!bencode_read_string(r->buffer, &strbuf))
       return false;
 
     if(strbuf.sz != sizeof(llarp_pubkey_t))
@@ -66,7 +66,7 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
   // ip address
   if(llarp_buffer_eq(*key, "i"))
   {
-    if(!bdecode_read_string(r->buffer, &strbuf))
+    if(!bencode_read_string(r->buffer, &strbuf))
       return false;
 
     if(strbuf.sz >= sizeof(tmp))
@@ -80,7 +80,7 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
   // port
   if(llarp_buffer_eq(*key, "p"))
   {
-    if(!bdecode_read_integer(r->buffer, &i))
+    if(!bencode_read_integer(r->buffer, &i))
       return false;
 
     if(i > 65536 || i <= 0)
@@ -93,7 +93,7 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
   // version
   if(llarp_buffer_eq(*key, "v"))
   {
-    if(!bdecode_read_integer(r->buffer, &i))
+    if(!bencode_read_integer(r->buffer, &i))
       return false;
     return i == LLARP_PROTO_VERSION;
   }
@@ -130,7 +130,7 @@ llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t *buff)
 {
   struct dict_reader reader = {
       .buffer = nullptr, .user = ai, .on_key = &llarp_ai_decode_key};
-  return bdecode_read_dict(buff, &reader);
+  return bencode_read_dict(buff, &reader);
 }
 
 bool
@@ -255,6 +255,6 @@ llarp_ai_list_bdecode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 {
   struct list_reader r = {
       .buffer = nullptr, .user = l, .on_item = &llarp_ai_list_bdecode_item};
-  return bdecode_read_list(buff, &r);
+  return bencode_read_list(buff, &r);
 }
 }
