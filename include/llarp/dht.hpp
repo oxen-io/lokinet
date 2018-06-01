@@ -10,6 +10,7 @@
 #include <array>
 #include <functional>
 #include <map>
+#include <unordered_map>
 #include <vector>
 
 namespace llarp
