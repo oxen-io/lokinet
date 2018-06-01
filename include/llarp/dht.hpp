@@ -18,22 +18,6 @@ namespace llarp
   {
     const size_t MAX_MSG_SIZE = 2048;
 
-    struct Node
-    {
-      llarp_rc* rc;
-
-      const byte_t*
-      ID() const;
-
-      Node() : rc(nullptr)
-      {
-      }
-
-      Node(llarp_rc* other) : rc(other)
-      {
-      }
-    };
-
     struct Key_t : public llarp::AlignedBuffer< 32 >
     {
       Key_t(const byte_t* val) : llarp::AlignedBuffer< 32 >(val)
@@ -48,8 +32,8 @@ namespace llarp
       operator^(const Key_t& other) const
       {
         Key_t dist;
-        for(size_t idx = 0; idx < 8; ++idx)
-          dist.data_l()[idx] = data_l()[idx] ^ other.data_l()[idx];
+        for(size_t idx = 0; idx < 32; ++idx)
+          dist[idx] = (*this)[idx] ^ other[idx];
         return dist;
       }
 
@@ -57,6 +41,23 @@ namespace llarp
       operator<(const Key_t& other) const
       {
         return memcmp(data_l(), other.data_l(), 32) < 0;
+      }
+    };
+
+    struct Node
+    {
+      llarp_rc* rc;
+
+      Key_t ID;
+
+      Node() : rc(nullptr)
+      {
+        ID.Zero();
+      }
+
+      Node(llarp_rc* other) : rc(other)
+      {
+        ID = other->pubkey;
       }
     };
 

@@ -364,6 +364,7 @@ llarp_router::Run()
   llarp::pubkey ourPubkey = pubkey();
 
   llarp::Info("our router has public key ", ourPubkey);
+  llarp_dht_context_start(dht, ourPubkey);
 
   // start links
   for(auto link : links)

@@ -300,15 +300,6 @@ namespace llarp
       return bencode_read_list(buf, &r);
     }
 
-    const byte_t *
-    Node::ID() const
-    {
-      if(rc)
-        return rc->pubkey;
-      else
-        return nullptr;
-    }
-
     SearchJob::SearchJob()
     {
       started = 0;
@@ -349,7 +340,7 @@ namespace llarp
       if(itr == nodes.end())
         return false;
 
-      result = itr->second.ID();
+      result = itr->second.ID;
       return true;
     }
 
@@ -360,11 +351,11 @@ namespace llarp
       auto itr = nodes.lower_bound(target);
       if(itr == nodes.end())
         return false;
-      if(itr->second.ID() == exclude)
+      if(itr->second.ID == exclude)
         ++itr;
       if(itr == nodes.end())
         return false;
-      result = itr->second.ID();
+      result = itr->second.ID;
       return true;
     }
 
@@ -472,6 +463,7 @@ namespace llarp
       router = r;
       ourKey = us;
       nodes  = new Bucket(ourKey);
+      llarp::Debug("intialize dht with key ", ourKey);
     }
 
     void
@@ -541,7 +533,9 @@ void
 llarp_dht_put_local_router(struct llarp_dht_context *ctx, struct llarp_rc *rc)
 
 {
-  ctx->impl.nodes->nodes[rc->pubkey] = rc;
+  llarp::dht::Key_t k = rc->pubkey;
+  llarp::Debug("put router at ", k);
+  ctx->impl.nodes->nodes[k] = rc;
 }
 
 void
