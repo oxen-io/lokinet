@@ -6,6 +6,7 @@
 
 #include <sodium/crypto_sign_ed25519.h>
 
+#include <algorithm>
 #include <bitset>
 #include <cassert>
 #include <fstream>
