@@ -580,7 +580,7 @@ namespace iwp
     process(uint8_t *buf, size_t sz)
     {
       frame_header hdr(buf);
-      if(hdr.flags() | eSessionInvalidated)
+      if(hdr.flags() & eSessionInvalidated)
       {
         rxflags |= eSessionInvalidated;
       }
