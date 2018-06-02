@@ -933,6 +933,7 @@ namespace iwp
     handle_frame_decrypt(iwp_async_frame *frame)
     {
       session *self = static_cast< session * >(frame->user);
+      llarp::Debug("rx ", frame->sz, " frames=", self->frames);
       if(frame->success)
       {
         if(self->frame.process(frame->buf + 64, frame->sz - 64))
@@ -967,6 +968,7 @@ namespace iwp
     handle_frame_encrypt(iwp_async_frame *frame)
     {
       session *self = static_cast< session * >(frame->user);
+      llarp::Debug("tx ", frame->sz, " frames=", self->frames);
       llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz);
       delete frame;
       --self->frames;
