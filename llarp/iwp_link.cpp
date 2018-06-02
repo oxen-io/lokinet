@@ -400,7 +400,7 @@ namespace iwp
     bool
     flags_agree(byte_t flags) const
     {
-      return (rxflags & flags) == (txflags & flags);
+      return (rxflags & flags) & (txflags & flags) == flags;
     }
 
     void
@@ -591,7 +591,6 @@ namespace iwp
           {
             txflags |= eSessionInvalidated;
           }
-          alive();
           return true;
         case eXMIT:
           return got_xmit(hdr, sz - 6);
@@ -796,6 +795,7 @@ namespace iwp
         // we are timed out
         // when we are done doing stuff with all of our frames from the crypto
         // workers we are done
+        llarp::Debug(addr, " timed out with ", frames, " frames left");
         return frames == 0;
       }
       if(is_invalidated())
@@ -803,10 +803,12 @@ namespace iwp
         // both sides agreeed to session invalidation
         // terminate our session when all of our frames from the crypto workers
         // are done
+        llarp::Debug(addr, " invaldiated session with ", frames,
+                     " frames left");
         return frames == 0;
       }
-      // send keepalive if we are established
-      if(state == eEstablished)
+      // send keepalive if we are established or a session is made
+      if(state == eEstablished || state == eLIMSent)
         send_keepalive(this);
 
       // TODO: determine if we are too idle
@@ -1455,7 +1457,6 @@ namespace iwp
       success  = router->HandleRecvLinkMessage(parent, buf);
       if(success)
       {
-        alive();
         session *impl = static_cast< session * >(parent->impl);
         if(id == 0)
         {
@@ -1544,8 +1545,6 @@ namespace iwp
       llarp::Error("ACK for missing TX frame msgid=", msgid);
       return false;
     }
-
-    alive();
 
     itr->second->ack(bitmask);
 
