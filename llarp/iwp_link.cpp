@@ -805,8 +805,9 @@ namespace iwp
         // are done
         return frames == 0;
       }
-      // send keepalive every tick
-      send_keepalive(this);
+      // send keepalive if we are established
+      if(state == eEstablished)
+        send_keepalive(this);
 
       // TODO: determine if we are too idle
       return false;
