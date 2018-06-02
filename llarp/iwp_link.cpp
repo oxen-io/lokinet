@@ -624,7 +624,6 @@ namespace iwp
 
     llarp_link_establish_job *establish_job = nullptr;
 
-    uint16_t ticks            = 0;
     uint32_t establish_job_id = 0;
     uint32_t frames           = 0;
 
@@ -806,10 +805,8 @@ namespace iwp
         // are done
         return frames == 0;
       }
-      // only send keepalive very 10 ticks
-      ++ticks;
-      if(ticks % 10 == 0)
-        send_keepalive(this);
+      // send keepalive every tick
+      send_keepalive(this);
 
       // TODO: determine if we are too idle
       return false;
