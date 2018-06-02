@@ -1232,8 +1232,11 @@ namespace iwp
         std::set< llarp::Addr > remove;
         auto itr = m_sessions.begin();
         while(itr != m_sessions.end())
+        {
           if(static_cast< session * >(itr->second.impl)->Tick(now))
             remove.insert(itr->first);
+          ++itr;
+        }
 
         for(const auto &addr : remove)
           RemoveSessionByAddr(addr);
