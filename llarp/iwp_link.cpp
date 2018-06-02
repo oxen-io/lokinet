@@ -400,7 +400,7 @@ namespace iwp
     bool
     flags_agree(byte_t flags) const
     {
-      return (rxflags & flags) & (txflags & flags) == flags;
+      return ((rxflags & flags) & (txflags & flags)) == flags;
     }
 
     void
