@@ -1221,23 +1221,20 @@ namespace iwp
       return serv->m_Connected.find(pubkey) != serv->m_Connected.end();
     }
 
-    static void
-    HandleSessionTicker(void *user, uint64_t orig, uint64_t left)
+    void
+    TickSessions()
     {
-      if(left)
-        return;
-      server *serv = static_cast< server * >(user);
-      auto now     = llarp_time_now_ms();
+      auto now = llarp_time_now_ms();
       {
-        lock_t lock(serv->m_sessions_Mutex);
+        lock_t lock(m_sessions_Mutex);
         std::set< llarp::Addr > remove;
-        auto itr = serv->m_sessions.begin();
-        while(itr != serv->m_sessions.end())
+        auto itr = m_sessions.begin();
+        while(itr != m_sessions.end())
           if(static_cast< session * >(itr->second.impl)->Tick(now))
             remove.insert(itr->first);
 
         for(const auto &addr : remove)
-          serv->RemoveSessionByAddr(addr);
+          RemoveSessionByAddr(addr);
       }
     }
 
@@ -1359,27 +1356,6 @@ namespace iwp
       }
     }
 
-    void
-    cleanup_dead()
-    {
-      auto now = llarp_time_now_ms();
-      std::set< llarp::Addr > remove;
-      {
-        lock_t lock(m_sessions_Mutex);
-        for(auto &itr : m_sessions)
-        {
-          session *s = static_cast< session * >(itr.second.impl);
-          if(s->timedout(now))
-            remove.insert(itr.first);
-        }
-
-        for(const auto &addr : remove)
-        {
-          RemoveSessionByAddr(addr);
-        }
-      }
-    }
-
     uint8_t *
     pubkey()
     {
@@ -1422,14 +1398,13 @@ namespace iwp
     static void
     handle_cleanup_timer(void *l, uint64_t orig, uint64_t left)
     {
+      if(left)
+        return;
       server *link         = static_cast< server * >(l);
       link->timeout_job_id = 0;
-      if(!left)
-      {
-        link->cleanup_dead();
-        // TODO: exponential backoff for cleanup timer ?
-        link->issue_cleanup_timer(orig);
-      }
+      link->TickSessions();
+      // TODO: exponential backoff for cleanup timer ?
+      link->issue_cleanup_timer(orig);
     }
 
     // this is called in net threadpool
