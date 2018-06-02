@@ -239,27 +239,42 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   }
 
   llarp::Debug("rc verified");
+
+  // track valid router in dht
+  llarp::pubkey pubkey;
+  memcpy(&pubkey[0], job->rc.pubkey, pubkey.size());
+
+  // refresh valid routers RC value if it's there
+  auto v = router->validRouters.find(pubkey);
+  if(v != router->validRouters.end())
+  {
+    // free previous RC members
+    llarp_rc_free(&v->second);
+  }
+  router->validRouters[pubkey] = job->rc;
+
+  // track valid router in dht
+  llarp_dht_put_local_router(router->dht, &router->validRouters[pubkey]);
+
   // this was an outbound establish job
   if(ctx->establish_job->session)
   {
-    llarp::pubkey pubkey;
-    memcpy(&pubkey[0], job->rc.pubkey, pubkey.size());
-
-    // refresh valid routers RC value if it's there
-    auto v = router->validRouters.find(pubkey);
-    if(v != router->validRouters.end())
-    {
-      // free previous RC members
-      llarp_rc_free(&v->second);
-    }
-    router->validRouters[pubkey] = job->rc;
-
     router->FlushOutboundFor(pubkey);
   }
-  else
-    llarp_rc_free(&job->rc);
-
+  llarp_rc_free(&job->rc);
   delete job;
+}
+
+void
+llarp_router::SessionClosed(const llarp::RouterID &remote)
+{
+  // remove from valid routers and dht if it's a valid router
+  auto itr = validRouters.find(remote);
+  if(itr == validRouters.end())
+    return;
+  llarp_dht_remove_local_router(dht, remote);
+  llarp_rc_free(&itr->second);
+  validRouters.erase(itr);
 }
 
 void
@@ -310,8 +325,6 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   if(job->session)
   {
     auto session = job->session;
-    llarp_dht_put_local_router(router->dht,
-                               session->get_remote_router(session));
     router->async_verify_RC(session, false, job);
     return;
   }

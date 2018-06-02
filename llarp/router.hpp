@@ -122,6 +122,10 @@ struct llarp_router
   void
   FlushOutbound();
 
+  /// called by link when a remote session is expunged
+  void
+  SessionClosed(const llarp::RouterID &remote);
+
   void
   async_verify_RC(llarp_link_session *session, bool isExpectingClient,
                   llarp_link_establish_job *job = nullptr);
