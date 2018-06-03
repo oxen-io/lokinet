@@ -154,6 +154,12 @@ namespace iwp
       buffer[47] = flags;
     }
 
+    const byte_t *
+    hash() const
+    {
+      return &buffer[0];
+    }
+
     uint64_t
     msgid() const
     {
@@ -354,14 +360,15 @@ namespace iwp
       uint16_t fragsize = mtu;
       while((buf.sz - (buf.cur - buf.base)) > fragsize)
       {
-        auto &frag = frags[fragid++];
+        auto &frag = frags[fragid];
         frag.resize(fragsize);
         memcpy(frag.data(), buf.cur, fragsize);
         buf.cur += fragsize;
+        fragid++;
       }
       uint16_t lastfrag = buf.sz - (buf.cur - buf.base);
       // set info for xmit
-      msginfo.set_info(hash, id, fragsize, lastfrag, frags.size());
+      msginfo.set_info(hash, id, fragsize, lastfrag, fragid);
       // copy message hash
       memcpy(msginfo.buffer, hash, 32);
       put_lastfrag(buf.cur, lastfrag);
@@ -1470,10 +1477,20 @@ namespace iwp
   {
     bool success = false;
     std::vector< byte_t > msg;
-    if(rx[id]->reassemble(msg))
+    auto rxmsg = rx[id];
+    if(rxmsg->reassemble(msg))
     {
+      llarp_shorthash_t digest;
       auto buf = llarp::Buffer< decltype(msg) >(msg);
-      success  = router->HandleRecvLinkMessage(parent, buf);
+      router->crypto.shorthash(digest, buf);
+      if(memcmp(digest, rxmsg->msginfo.hash(), 32))
+      {
+        llarp::Warn("message hash missmatch ",
+                    llarp::AlignedBuffer< 32 >(digest),
+                    " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
+        return false;
+      }
+      success = router->HandleRecvLinkMessage(parent, buf);
       if(success)
       {
         session *impl = static_cast< session * >(parent->impl);
@@ -1495,7 +1512,7 @@ namespace iwp
     {
       llarp::Warn("failed to reassemble message ", id);
     }
-    delete rx[id];
+    delete rxmsg;
     rx.erase(id);
     return success;
   }
