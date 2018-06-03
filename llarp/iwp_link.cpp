@@ -283,7 +283,7 @@ namespace iwp
     {
       if(msginfo.numfrags() == 0)
         return true;
-      return status.count() % (1 + (msginfo.numfrags() / 3)) == 0;
+      return status.count() % (1 + (msginfo.numfrags() / 2)) == 0;
     }
 
     bool
@@ -393,7 +393,7 @@ namespace iwp
     uint64_t rxids         = 0;
     uint64_t txids         = 0;
     llarp_time_t lastEvent = 0;
-    std::map< uint64_t, transit_message > rx;
+    std::map< uint64_t, transit_message * > rx;
     std::map< uint64_t, transit_message * > tx;
 
     typedef std::queue< sendbuf_t > sendqueue_t;
@@ -413,6 +413,8 @@ namespace iwp
     void
     clear()
     {
+      for(auto &item : rx)
+        delete item.second;
       rx.clear();
       for(auto &item : tx)
         delete item.second;
@@ -462,14 +464,14 @@ namespace iwp
       if(x.flags() & 0x01)
       {
         auto id  = x.msgid();
-        auto itr = rx.emplace(id, x);
-        if(itr.second)
+        auto itr = rx.find(id);
+        if(itr == rx.end())
         {
+          rx[id] = new transit_message(x);
           llarp::Debug("got message XMIT with ", (int)x.numfrags(),
                        " fragments");
           // inserted, put last fragment
-          itr.first->second.put_lastfrag(hdr.data() + sizeof(x.buffer),
-                                         x.lastfrag());
+          rx[id]->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
           push_ackfor(id, 0);
           if(x.numfrags() == 0)
           {
@@ -522,25 +524,25 @@ namespace iwp
         llarp::Warn("no such RX fragment, msgid=", msgid);
         return false;
       }
-      auto fragsize = itr->second.msginfo.fragsize();
+      auto fragsize = itr->second->msginfo.fragsize();
       if(fragsize != sz - 9)
       {
         llarp::Warn("RX fragment size missmatch ", fragsize, " != ", sz - 9);
         return false;
       }
-      if(!itr->second.put_frag(fragno, hdr.data() + 9))
+      if(!itr->second->put_frag(fragno, hdr.data() + 9))
       {
         llarp::Warn("inbound message does not have fragment msgid=", msgid,
                     " fragno=", (int)fragno);
         return false;
       }
-      auto mask = itr->second.get_bitmask();
-      if(itr->second.completed())
+      auto mask = itr->second->get_bitmask();
+      if(itr->second->completed())
       {
         push_ackfor(msgid, mask);
         return inbound_frame_complete(msgid);
       }
-      else if(itr->second.should_send_ack())
+      else if(itr->second->should_send_ack())
       {
         push_ackfor(msgid, mask);
       }
@@ -1468,7 +1470,7 @@ namespace iwp
   {
     bool success = false;
     std::vector< byte_t > msg;
-    if(rx[id].reassemble(msg))
+    if(rx[id]->reassemble(msg))
     {
       auto buf = llarp::Buffer< decltype(msg) >(msg);
       success  = router->HandleRecvLinkMessage(parent, buf);
@@ -1484,12 +1486,16 @@ namespace iwp
           }
           impl->serv->MapAddr(impl->addr, impl->remote_router.pubkey);
         }
+        llarp::Info("handled message ", id);
       }
+      else
+        llarp::Warn("failed to handle inbound message ", id);
     }
     else
     {
       llarp::Warn("failed to reassemble message ", id);
     }
+    delete rx[id];
     rx.erase(id);
     return success;
   }
