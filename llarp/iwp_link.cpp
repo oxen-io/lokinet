@@ -825,6 +825,11 @@ namespace iwp
     void
     on_session_start(const void *buf, size_t sz)
     {
+      if(sz > sizeof(workbuf))
+      {
+        llarp::Debug("session start too big");
+        return;
+      }
       // own the buffer
       memcpy(workbuf, buf, sz);
       // verify session start
