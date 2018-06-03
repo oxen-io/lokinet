@@ -96,7 +96,7 @@ struct llarp_timer_context
       auto itr = timers.find(id);
       if(itr == timers.end())
         return;
-      t = itr->second;
+      t = std::move(itr->second);
       timers.erase(itr);
     }
     t.exec();
