@@ -66,6 +66,7 @@ namespace llarp
           break;
         case 'z':
           handler->msg = new DiscardMessage(handler->GetCurrentFrom());
+          break;
         default:
           return false;
       }
