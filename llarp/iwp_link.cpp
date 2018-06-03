@@ -341,7 +341,7 @@ namespace iwp
       auto total = msginfo.totalsize();
       buffer.resize(total);
       auto fragsz = msginfo.fragsize();
-      auto ptr    = buffer.data();
+      auto ptr    = &buffer[0];
       for(byte_t idx = 0; idx < msginfo.numfrags(); ++idx)
       {
         if(!status.test(idx))
@@ -360,13 +360,15 @@ namespace iwp
       status.reset();
       uint8_t fragid    = 0;
       uint16_t fragsize = mtu;
-      while((buf.sz - (buf.cur - buf.base)) > fragsize)
+      size_t left       = buf.sz;
+      while(left > fragsize)
       {
         auto &frag = frags[fragid];
         frag.resize(fragsize);
         memcpy(frag.data(), buf.cur, fragsize);
         buf.cur += fragsize;
         fragid++;
+        left -= fragsize;
       }
       uint16_t lastfrag = buf.sz - (buf.cur - buf.base);
       // set info for xmit
@@ -474,11 +476,12 @@ namespace iwp
         auto itr = rx.find(id);
         if(itr == rx.end())
         {
-          rx[id] = new transit_message(x);
+          auto msg = new transit_message(x);
+          rx[id]   = msg;
           llarp::Debug("got message XMIT with ", (int)x.numfrags(),
                        " fragments");
           // inserted, put last fragment
-          rx[id]->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
+          msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
           push_ackfor(id, 0);
           if(x.numfrags() == 0)
           {
@@ -703,8 +706,8 @@ namespace iwp
       session *self      = static_cast< session * >(s->impl);
       transit_message *m = new transit_message(self);
       auto id            = self->frame.txids++;
-      llarp_hash_t digest;
-      self->crypto->hash(digest, msg);
+      llarp_shorthash_t digest;
+      self->crypto->shorthash(digest, msg);
       m->put_message(msg, digest, id);
       self->add_outbound_message(id, m);
       return true;
@@ -714,7 +717,9 @@ namespace iwp
     add_outbound_message(uint64_t id, transit_message *msg)
     {
       llarp::Debug("add outbound message ", id, " of size ",
-                   msg->msginfo.totalsize());
+                   msg->msginfo.totalsize(),
+                   " numfrags=", (int)msg->msginfo.numfrags(),
+                   " lastfrag=", (int)msg->msginfo.lastfrag());
       frame.queue_tx(id, msg);
       pump();
     }
