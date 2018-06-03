@@ -116,7 +116,8 @@ struct llarp_timer_context
   {
     std::unique_lock< std::mutex > lock(timersMutex);
     uint32_t id = ++ids;
-    timers.emplace(id, llarp::timer(this, timeout_ms, user, func, id));
+    timers.emplace(id,
+                   std::move(llarp::timer(this, timeout_ms, user, func, id)));
     return id;
   }
 
