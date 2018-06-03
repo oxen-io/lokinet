@@ -218,7 +218,6 @@ namespace iwp
     session *parent = nullptr;
     xmit msginfo;
     std::bitset< 32 > status;
-    uint16_t times_acked = 0;
 
     std::map< uint8_t, fragment_t > frags;
     fragment_t lastfrag;
@@ -269,7 +268,6 @@ namespace iwp
         }
         ++idx;
       }
-      ++times_acked;
     }
 
     bool
@@ -277,7 +275,7 @@ namespace iwp
     {
       if(msginfo.numfrags() == 0)
         return true;
-      return times_acked % (1 + (msginfo.numfrags() / 3)) == 0;
+      return status.count() % (1 + (msginfo.numfrags() / 3)) == 0;
     }
 
     bool
@@ -375,6 +373,7 @@ namespace iwp
       if(itr == frags.end())
         return false;
       memcpy(itr->second.data(), buf, msginfo.fragsize());
+      status.set(fragno);
       return true;
     }
   };
