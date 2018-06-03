@@ -342,9 +342,9 @@ namespace iwp
       buffer.resize(total);
       auto fragsz = msginfo.fragsize();
       auto ptr    = buffer.data();
-      for(const auto &frag : frags)
+      for(byte_t idx = 0; idx < msginfo.numfrags(); ++idx)
       {
-        memcpy(ptr, frag.second.data(), fragsz);
+        memcpy(ptr, frags[idx].data(), fragsz);
         ptr += fragsz;
       }
       memcpy(ptr, lastfrag.data(), lastfrag.size());
