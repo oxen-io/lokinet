@@ -252,7 +252,7 @@ namespace iwp
       uint16_t fragsize = x.fragsize();
       while(fragidx < x.numfrags())
       {
-        frags.emplace(fragidx, fragsize);
+        frags[fragidx].resize(fragsize);
         ++fragidx;
       }
       status.reset();
