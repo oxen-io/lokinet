@@ -47,6 +47,28 @@ namespace llarp
       id      = other.id;
     }
 
+    timer(timer&& other)
+    {
+      parent  = std::move(other.parent);
+      user    = std::move(other.user);
+      started = std::move(other.started);
+      timeout = std::move(other.timeout);
+      func    = std::move(other.func);
+      id      = std::move(other.id);
+    }
+
+    timer&
+    operator=(const timer& other)
+    {
+      parent  = other.parent;
+      user    = other.user;
+      started = other.started;
+      timeout = other.timeout;
+      func    = other.func;
+      id      = other.id;
+      return *this;
+    }
+
     void
     exec();
 
@@ -97,7 +119,6 @@ struct llarp_timer_context
       if(itr == timers.end())
         return;
       t = itr->second;
-      timers.erase(itr);
     }
     t.exec();
   }
@@ -116,7 +137,8 @@ struct llarp_timer_context
   {
     std::unique_lock< std::mutex > lock(timersMutex);
     uint32_t id = ++ids;
-    timers.emplace(id, llarp::timer(this, timeout_ms, user, func, id));
+    timers.emplace(id,
+                   std::move(llarp::timer(this, timeout_ms, user, func, id)));
     return id;
   }
 
