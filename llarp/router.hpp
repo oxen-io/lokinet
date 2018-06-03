@@ -61,6 +61,11 @@ struct llarp_router
   // buffer for serializing link messages
   byte_t linkmsg_buffer[MAX_LINK_MSG_SIZE];
 
+  // should we be sending padded messages every interval?
+  bool sendPadding = false;
+
+  uint32_t ticker_job_id = 0;
+
   llarp::InboundMessageParser inbound_msg_parser;
 
   std::list< llarp_link * > links;
@@ -126,6 +131,14 @@ struct llarp_router
   void
   SessionClosed(const llarp::RouterID &remote);
 
+  /// call internal router ticker
+  void
+  Tick();
+
+  /// schedule ticker to call i ms from now
+  void
+  ScheduleTicker(uint64_t i = 1000);
+
   void
   async_verify_RC(llarp_link_session *session, bool isExpectingClient,
                   llarp_link_establish_job *job = nullptr);
@@ -145,6 +158,13 @@ struct llarp_router
 
   static void
   on_verify_server_rc(llarp_async_verify_rc *context);
+
+  static void
+  handle_router_ticker(void *user, uint64_t orig, uint64_t left);
+
+  static bool
+  send_padded_message(struct llarp_link_session_iter *itr,
+                      struct llarp_link_session *peer);
 };
 
 #endif

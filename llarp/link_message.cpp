@@ -1,6 +1,7 @@
 #include <llarp/router_contact.h>
 #include <llarp/link_message.hpp>
 #include <llarp/messages/dht_immediate.hpp>
+#include <llarp/messages/discard.hpp>
 #include <llarp/messages/link_intro.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include "buffer.hpp"
@@ -63,6 +64,8 @@ namespace llarp
         case 'c':
           handler->msg = new LR_CommitMessage(handler->GetCurrentFrom());
           break;
+        case 'z':
+          handler->msg = new DiscardMessage(handler->GetCurrentFrom());
         default:
           return false;
       }

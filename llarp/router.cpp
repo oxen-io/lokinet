@@ -4,6 +4,7 @@
 #include <llarp/proto.h>
 #include <llarp/router.h>
 #include <llarp/link_message.hpp>
+#include <llarp/messages/discard.hpp>
 
 #include "buffer.hpp"
 #include "encode.hpp"
@@ -263,6 +264,46 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   }
   llarp_rc_free(&job->rc);
   delete job;
+}
+
+void
+llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
+{
+  if(left)
+    return;
+  llarp_router *self  = static_cast< llarp_router * >(user);
+  self->ticker_job_id = 0;
+  self->Tick();
+  self->ScheduleTicker(orig);
+}
+
+void
+llarp_router::Tick()
+{
+  if(sendPadding)
+  {
+    for(auto &link : links)
+    {
+      link->iter_sessions(link, {this, nullptr, &send_padded_message});
+    }
+  }
+}
+
+bool
+llarp_router::send_padded_message(llarp_link_session_iter *itr,
+                                  llarp_link_session *peer)
+{
+  auto msg           = new llarp::DiscardMessage({}, 4096);
+  llarp_router *self = static_cast< llarp_router * >(itr->user);
+  self->SendToOrQueue(peer->get_remote_router(peer)->pubkey, {msg});
+  return true;
+}
+
+void
+llarp_router::ScheduleTicker(uint64_t ms)
+{
+  ticker_job_id =
+      llarp_logic_call_later(logic, {ms, this, &handle_router_ticker});
 }
 
 void
