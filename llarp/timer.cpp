@@ -57,6 +57,18 @@ namespace llarp
       id      = std::move(other.id);
     }
 
+    timer&
+    operator=(const timer& other)
+    {
+      parent  = other.parent;
+      user    = other.user;
+      started = other.started;
+      timeout = other.timeout;
+      func    = other.func;
+      id      = other.id;
+      return *this;
+    }
+
     void
     exec();
 
