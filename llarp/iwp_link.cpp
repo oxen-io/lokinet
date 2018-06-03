@@ -295,9 +295,9 @@ namespace iwp
     bool
     completed() const
     {
-      for(const auto &item : frags)
+      for(byte_t idx = 0; idx < msginfo.numfrags(); ++idx)
       {
-        if(!status.test(item.first))
+        if(!status.test(idx))
           return false;
       }
       return true;
@@ -344,6 +344,8 @@ namespace iwp
       auto ptr    = buffer.data();
       for(byte_t idx = 0; idx < msginfo.numfrags(); ++idx)
       {
+        if(!status.test(idx))
+          return false;
         memcpy(ptr, frags[idx].data(), fragsz);
         ptr += fragsz;
       }
@@ -369,8 +371,6 @@ namespace iwp
       uint16_t lastfrag = buf.sz - (buf.cur - buf.base);
       // set info for xmit
       msginfo.set_info(hash, id, fragsize, lastfrag, fragid);
-      // copy message hash
-      memcpy(msginfo.buffer, hash, 32);
       put_lastfrag(buf.cur, lastfrag);
     }
 
@@ -537,6 +537,7 @@ namespace iwp
         llarp::Warn("RX fragment size missmatch ", fragsize, " != ", sz - 9);
         return false;
       }
+      llarp::Debug("RX got fragment ", (int)fragno, " msgid=", msgid);
       if(!itr->second->put_frag(fragno, hdr.data() + 9))
       {
         llarp::Warn("inbound message does not have fragment msgid=", msgid,
