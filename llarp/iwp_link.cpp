@@ -470,9 +470,9 @@ namespace iwp
           // inserted, put last fragment
           itr.first->second.put_lastfrag(hdr.data() + sizeof(x.buffer),
                                          x.lastfrag());
+          push_ackfor(id, 0);
           if(x.numfrags() == 0)
           {
-            push_ackfor(id, 0);
             return inbound_frame_complete(id);
           }
           return true;
@@ -558,7 +558,6 @@ namespace iwp
       if(itr.second)
       {
         msg->generate_xmit(sendqueue, txflags);
-        msg->retransmit_frags(sendqueue, txflags);
       }
       else  // duplicate
         delete msg;
