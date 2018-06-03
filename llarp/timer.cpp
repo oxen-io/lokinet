@@ -47,6 +47,16 @@ namespace llarp
       id      = other.id;
     }
 
+    timer(timer&& other)
+    {
+      parent  = std::move(other.parent);
+      user    = std::move(other.user);
+      started = std::move(other.started);
+      timeout = std::move(other.timeout);
+      func    = std::move(other.func);
+      id      = std::move(other.id);
+    }
+
     void
     exec();
 
@@ -96,8 +106,7 @@ struct llarp_timer_context
       auto itr = timers.find(id);
       if(itr == timers.end())
         return;
-      t = std::move(itr->second);
-      timers.erase(itr);
+      t = itr->second;
     }
     t.exec();
   }
