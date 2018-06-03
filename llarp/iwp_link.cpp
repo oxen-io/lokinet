@@ -248,6 +248,14 @@ namespace iwp
     // inbound
     transit_message(const xmit &x) : msginfo(x)
     {
+      byte_t fragidx    = 0;
+      uint16_t fragsize = x.fragsize();
+      while(fragidx < x.numfrags())
+      {
+        frags.emplace(fragidx, fragsize);
+        ++fragidx;
+      }
+      status.reset();
     }
 
     // outbound
@@ -338,18 +346,18 @@ namespace iwp
     }
 
     void
-    put_message(llarp_buffer_t &buf, const byte_t *hash, uint64_t id,
+    put_message(llarp_buffer_t buf, const byte_t *hash, uint64_t id,
                 uint16_t mtu = 1024)
     {
       status.reset();
       uint8_t fragid    = 0;
       uint16_t fragsize = mtu;
-      while((buf.cur - buf.base) > fragsize)
+      while((buf.sz - (buf.cur - buf.base)) > fragsize)
       {
-        fragment_t frag(fragsize);
+        auto &frag = frags[fragid++];
+        frag.resize(fragsize);
         memcpy(frag.data(), buf.cur, fragsize);
         buf.cur += fragsize;
-        frags[fragid++] = frag;
       }
       uint16_t lastfrag = buf.sz - (buf.cur - buf.base);
       // set info for xmit
@@ -457,6 +465,8 @@ namespace iwp
         auto itr = rx.emplace(id, x);
         if(itr.second)
         {
+          llarp::Debug("got message XMIT with ", (int)x.numfrags(),
+                       " fragments");
           // inserted, put last fragment
           itr.first->second.put_lastfrag(hdr.data() + sizeof(x.buffer),
                                          x.lastfrag());
@@ -558,11 +568,13 @@ namespace iwp
     bool
     next_frame(llarp_buffer_t &buf)
     {
-      if(sendqueue.size())
+      auto left = sendqueue.size();
+      llarp::Debug("next frame, ", left, " frames left in send queue");
+      if(left)
       {
         auto &send = sendqueue.front();
-        buf.base   = send.data();
-        buf.cur    = send.data();
+        buf.base   = &send[0];
+        buf.cur    = &send[0];
         buf.sz     = send.size();
         return true;
       }
@@ -692,6 +704,8 @@ namespace iwp
     void
     add_outbound_message(uint64_t id, transit_message *msg)
     {
+      llarp::Debug("add outbound message ", id, " of size ",
+                   msg->msginfo.totalsize());
       frame.queue_tx(id, msg);
       pump();
     }

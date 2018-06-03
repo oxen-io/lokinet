@@ -280,6 +280,7 @@ llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
 void
 llarp_router::Tick()
 {
+  llarp::Debug("tick router");
   if(sendPadding)
   {
     for(auto &link : links)
@@ -435,6 +436,8 @@ llarp_router::Run()
     llarp::Info("connecting to node ", itr.first);
     try_connect(itr.second);
   }
+
+  ScheduleTicker(500);
 }
 
 bool
