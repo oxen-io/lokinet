@@ -18,54 +18,26 @@ namespace llarp
           .count();
     }
 
-    llarp_timer_context* parent;
     void* user;
+    uint64_t called_at;
     uint64_t started;
     uint64_t timeout;
     llarp_timer_handler_func func;
-    uint32_t id;
 
-    timer(llarp_timer_context* ctx = nullptr, uint64_t ms = 0,
-          void* _user = nullptr, llarp_timer_handler_func _func = nullptr,
-          uint32_t _id = 0)
-        : parent(ctx)
-        , user(_user)
-        , started(now())
-        , timeout(ms)
-        , func(_func)
-        , id(_id)
+    timer(uint64_t ms = 0, void* _user = nullptr,
+          llarp_timer_handler_func _func = nullptr)
+        : user(_user), called_at(0), started(now()), timeout(ms), func(_func)
     {
-    }
-
-    timer(const timer& other)
-    {
-      parent  = other.parent;
-      user    = other.user;
-      started = other.started;
-      timeout = other.timeout;
-      func    = other.func;
-      id      = other.id;
-    }
-
-    timer(timer&& other)
-    {
-      parent  = std::move(other.parent);
-      user    = std::move(other.user);
-      started = std::move(other.started);
-      timeout = std::move(other.timeout);
-      func    = std::move(other.func);
-      id      = std::move(other.id);
     }
 
     timer&
     operator=(const timer& other)
     {
-      parent  = other.parent;
-      user    = other.user;
-      started = other.started;
-      timeout = other.timeout;
-      func    = other.func;
-      id      = other.id;
+      user      = other.user;
+      called_at = other.called_at;
+      started   = other.started;
+      timeout   = other.timeout;
+      func      = other.func;
       return *this;
     }
 
@@ -120,6 +92,7 @@ struct llarp_timer_context
         return;
       t = itr->second;
     }
+    t.called_at = llarp::timer::now();
     t.exec();
   }
 
@@ -137,8 +110,7 @@ struct llarp_timer_context
   {
     std::unique_lock< std::mutex > lock(timersMutex);
     uint32_t id = ++ids;
-    timers.emplace(id,
-                   std::move(llarp::timer(this, timeout_ms, user, func, id)));
+    timers.emplace(id, std::move(llarp::timer(timeout_ms, user, func)));
     return id;
   }
 
@@ -232,10 +204,20 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
       {
         if(now - itr->second.started >= itr->second.timeout)
         {
-          // timer hit
-          llarp_threadpool_queue_job(pool, itr->second);
+          if(itr->second.func)
+          {
+            // timer hit
+            itr->second.called_at = now;
+            llarp_threadpool_queue_job(pool, itr->second);
+          }
+          else
+          {
+            // timer was already called, remove timer
+            itr = t->timers.erase(itr);
+          }
         }
-        ++itr;
+        else  // timer not hit yet
+          ++itr;
       }
     }
   }
@@ -249,14 +231,15 @@ namespace llarp
   {
     if(func)
     {
-      auto ms   = now();
-      auto diff = ms - started;
+      auto diff = called_at - started;
+      // zero out function pointer before call to prevent multiple calls being
+      // queued if call takes longer than 1 timer tick
+      auto call = func;
+      func      = nullptr;
       if(diff >= timeout)
-        func(user, timeout, 0);
+        call(user, timeout, 0);
       else
-        func(user, timeout, diff);
+        call(user, timeout, diff);
     }
-    if(parent)
-      parent->remove(id);
   }
 }
