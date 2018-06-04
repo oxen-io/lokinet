@@ -215,6 +215,7 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
             // timer hit
             itr->second.called_at = now;
             llarp_threadpool_queue_job(pool, itr->second);
+            ++itr;
           }
           else if(itr->second.done)
           {
