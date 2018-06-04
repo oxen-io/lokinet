@@ -1673,6 +1673,7 @@ namespace iwp
         break;
         // TODO: AF_PACKET
       default:
+        llarp::Error(__FILE__, "unsupported address family", af);
         return false;
     }
 
@@ -1761,7 +1762,7 @@ namespace iwp
         link->put_session(dst, s);
       }
       s->establish_job = job;
-      s->frame.alive();
+      s->frame.alive(); // mark it alive
       s->introduce(job->ai.enc_key);
     }
     return true;
