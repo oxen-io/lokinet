@@ -23,10 +23,16 @@ namespace llarp
     uint64_t started;
     uint64_t timeout;
     llarp_timer_handler_func func;
+    bool done;
 
     timer(uint64_t ms = 0, void* _user = nullptr,
           llarp_timer_handler_func _func = nullptr)
-        : user(_user), called_at(0), started(now()), timeout(ms), func(_func)
+        : user(_user)
+        , called_at(0)
+        , started(now())
+        , timeout(ms)
+        , func(_func)
+        , done(false)
     {
     }
 
@@ -210,11 +216,13 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
             itr->second.called_at = now;
             llarp_threadpool_queue_job(pool, itr->second);
           }
-          else
+          else if(itr->second.done)
           {
             // timer was already called, remove timer
             itr = t->timers.erase(itr);
           }
+          else
+            ++itr;
         }
         else  // timer not hit yet
           ++itr;
@@ -240,6 +248,7 @@ namespace llarp
         call(user, timeout, 0);
       else
         call(user, timeout, diff);
+      done = true;
     }
   }
 }
