@@ -37,7 +37,8 @@ static void on_crypt_verify_rc(rc_async_verify *job)
     //llarp_logic_queue_job(job->context->logic, job);
   }
   // TODO: is there any deallocation we need to do
-  delete (llarp_async_verify_job_context*)job->context; // clean up our temp context created in verify_rc
+  llarp_async_rc_free(job->context);
+  //delete (llarp_async_rc*)job->context; // clean up our temp context created in verify_rc
   delete job; // we're done with the rc_async_verify
 }
 
@@ -314,10 +315,13 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
 /// allocate verify job context
 struct llarp_async_verify_job_context*
 llarp_async_verify_job_new(struct llarp_threadpool *cryptoworker,
-  struct llarp_threadpool *diskworker) {
+  struct llarp_threadpool *diskworker, struct llarp_logic *logic,
+  struct llarp_crypto *crypto) {
   llarp_async_verify_job_context *context = new llarp_async_verify_job_context;
   if (context)
   {
+    context->logic = logic;
+    context->crypto = crypto;
     context->cryptoworker = cryptoworker;
     context->diskworker = diskworker;
   }
@@ -337,10 +341,9 @@ llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
                           struct llarp_threadpool *diskworker,
                           struct llarp_async_verify_rc *job)
 {
-  printf("llarp_nodedb_async_verify\n");
   // set up context
   llarp_async_verify_job_context *context = llarp_async_verify_job_new(
-    cryptoworker, diskworker);
+    cryptoworker, diskworker, logic, crypto);
   // set up anything we need (in job)
   job->context = context;
   // queue the crypto check
