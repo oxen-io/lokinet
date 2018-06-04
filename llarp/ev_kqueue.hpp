@@ -5,18 +5,24 @@
 
 #if __FreeBSD__
 // kqueue / kevent
-//#  include <sys/types.h> // already in net.h
 #  include <sys/event.h>
 #  include <sys/time.h>
 #endif
 
+#if (__APPLE__ && __MACH__)
+// kqueue / kevent
+#  include <sys/event.h>
+#  include <sys/time.h>
+#endif
 
-//#include <sys/socket.h>
-//#include <ifaddrs.h>
+// MacOS needs this
+#ifndef SOCK_NONBLOCK
+#  include <fcntl.h>
+#  define SOCK_NONBLOCK O_NONBLOCK
+#endif
 
 // original upstream
 #include <unistd.h>
-
 #include <cstdio>
 #include "ev.hpp"
 #include "logger.hpp"
@@ -64,7 +70,7 @@ namespace llarp
       }
       ssize_t sent = ::sendto(fd, data, sz, SOCK_NONBLOCK, to, slen);
       if(sent == -1)
-        perror("sendto()");
+        perror("kqueue sendto()");
       return sent;
     }
   };
@@ -164,7 +170,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    llarp::Info(__FILE__, "bind to ", a.to_string());
+    llarp::Info(__FILE__, "bind to ", a);
     if(bind(fd, addr, slen) == -1)
     {
       perror("bind()");
