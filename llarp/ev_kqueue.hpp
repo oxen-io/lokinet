@@ -68,7 +68,7 @@ namespace llarp
         default:
           return -1;
       }
-      ssize_t sent = ::sendto(fd, data, sz, SOCK_NONBLOCK, to, slen);
+      ssize_t sent = ::sendto(fd, data, sz, 0, to, slen);
       if(sent == -1)
         perror("kqueue sendto()");
       return sent;
@@ -131,6 +131,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   udp_bind(const sockaddr* addr)
   {
     socklen_t slen;
+    llarp::Debug(__FILE__, "kqueue bind affam", addr->sa_family);
     switch(addr->sa_family)
     {
       case AF_INET:
@@ -171,6 +172,10 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     }
     llarp::Addr a(*addr);
     llarp::Info(__FILE__, "bind to ", a);
+    // FreeBSD handbook said to do this
+    if (addr->sa_family == AF_INET && INADDR_ANY)
+      a._addr4.sin_addr.s_addr = htonl(INADDR_ANY);
+
     if(bind(fd, addr, slen) == -1)
     {
       perror("bind()");
