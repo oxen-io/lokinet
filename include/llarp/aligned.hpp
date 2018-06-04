@@ -13,14 +13,7 @@ namespace llarp
   template < size_t sz >
   struct AlignedBuffer
   {
-    AlignedBuffer()
-    {
-      Zero();
-    }
-
-    AlignedBuffer(const AlignedBuffer& other) : AlignedBuffer(other.data())
-    {
-    }
+    AlignedBuffer() = default;
 
     AlignedBuffer(const byte_t* data)
     {
