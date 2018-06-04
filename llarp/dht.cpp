@@ -6,6 +6,7 @@
 #include <sodium.h>
 
 #include <set>
+#include <algorithm>    // std::find
 
 namespace llarp
 {
@@ -414,7 +415,10 @@ namespace llarp
     void
     Context::RemovePendingLookup(const Key_t &owner, uint64_t id)
     {
-      auto itr = pendingTX.find({owner, id});
+      TXOwner search;
+      search.requester = owner;
+      search.txid = id;
+      auto itr = pendingTX.find(search);
       if(itr == pendingTX.end())
         return;
       pendingTX.erase(itr);
@@ -423,7 +427,10 @@ namespace llarp
     SearchJob *
     Context::FindPendingTX(const Key_t &owner, uint64_t id)
     {
-      auto itr = pendingTX.find({owner, id});
+      TXOwner search;
+      search.requester = owner;
+      search.txid = id;
+      auto itr = pendingTX.find(search);
       if(itr == pendingTX.end())
         return nullptr;
       else
@@ -478,7 +485,12 @@ namespace llarp
                           const Key_t &askpeer, llarp_router_lookup_job *job)
     {
       auto id                   = ++ids;
-      pendingTX[{whoasked, id}] = SearchJob(whoasked, target, job);
+      
+      TXOwner ownerKey;
+      ownerKey.requester = whoasked;
+      ownerKey.txid = id;
+
+      pendingTX[ownerKey] = SearchJob(whoasked, target, job);
 
       llarp::Info("Asking ", askpeer, " for router ", target, " for ",
                   whoasked);
