@@ -2,7 +2,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <list>
-#include <map>
+#include <unordered_map>
 
 #include "logger.hpp"
 
@@ -36,17 +36,6 @@ namespace llarp
     {
     }
 
-    timer&
-    operator=(const timer& other)
-    {
-      user      = other.user;
-      called_at = other.called_at;
-      started   = other.started;
-      timeout   = other.timeout;
-      func      = other.func;
-      return *this;
-    }
-
     void
     exec();
 
@@ -56,7 +45,8 @@ namespace llarp
       static_cast< timer* >(user)->exec();
     }
 
-    operator llarp_thread_job()
+    llarp_thread_job
+    to_job()
     {
       return {this, timer::call};
     }
@@ -67,7 +57,7 @@ struct llarp_timer_context
 {
   llarp_threadpool* threadpool;
   std::mutex timersMutex;
-  std::map< uint32_t, llarp::timer > timers;
+  std::unordered_map< uint32_t, llarp::timer* > timers;
   std::mutex tickerMutex;
   std::condition_variable ticker;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(10);
@@ -90,16 +80,18 @@ struct llarp_timer_context
   void
   cancel(uint32_t id)
   {
-    llarp::timer t;
+    llarp::timer* t;
     {
       std::unique_lock< std::mutex > lock(timersMutex);
       auto itr = timers.find(id);
       if(itr == timers.end())
         return;
       t = itr->second;
+      timers.erase(itr);
     }
-    t.called_at = llarp::timer::now();
-    t.exec();
+    t->called_at = llarp::timer::now();
+    t->exec();
+    delete t;
   }
 
   void
@@ -108,7 +100,10 @@ struct llarp_timer_context
     std::unique_lock< std::mutex > lock(timersMutex);
     auto itr = timers.find(id);
     if(itr != timers.end())
+    {
+      delete itr->second;
       timers.erase(itr);
+    }
   }
 
   uint32_t
@@ -116,7 +111,7 @@ struct llarp_timer_context
   {
     std::unique_lock< std::mutex > lock(timersMutex);
     uint32_t id = ++ids;
-    timers.emplace(id, std::move(llarp::timer(timeout_ms, user, func)));
+    timers.emplace(id, new llarp::timer(timeout_ms, user, func));
     return id;
   }
 
@@ -208,18 +203,19 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
       auto itr = t->timers.begin();
       while(itr != t->timers.end())
       {
-        if(now - itr->second.started >= itr->second.timeout)
+        if(now - itr->second->started >= itr->second->timeout)
         {
-          if(itr->second.func)
+          if(itr->second->func && itr->second->called_at == 0)
           {
             // timer hit
-            itr->second.called_at = now;
-            llarp_threadpool_queue_job(pool, itr->second);
+            itr->second->called_at = now;
+            llarp_threadpool_queue_job(pool, itr->second->to_job());
             ++itr;
           }
-          else if(itr->second.done)
+          else if(itr->second->done)
           {
             // timer was already called, remove timer
+            delete itr->second;
             itr = t->timers.erase(itr);
           }
           else
