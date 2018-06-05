@@ -1,3 +1,4 @@
+#include <llarp/time.h>
 #include <llarp/timer.h>
 #include <atomic>
 #include <condition_variable>
@@ -10,29 +11,27 @@ namespace llarp
 {
   struct timer
   {
-    static uint64_t
-    now()
-    {
-      return std::chrono::duration_cast< std::chrono::milliseconds >(
-                 std::chrono::steady_clock::now().time_since_epoch())
-          .count();
-    }
-
     void* user;
     uint64_t called_at;
     uint64_t started;
     uint64_t timeout;
     llarp_timer_handler_func func;
     bool done;
+    bool canceled;
 
     timer(uint64_t ms = 0, void* _user = nullptr,
           llarp_timer_handler_func _func = nullptr)
         : user(_user)
         , called_at(0)
-        , started(now())
+        , started(llarp_time_now_ms())
         , timeout(ms)
         , func(_func)
         , done(false)
+        , canceled(false)
+    {
+    }
+
+    ~timer()
     {
     }
 
@@ -45,10 +44,10 @@ namespace llarp
       static_cast< timer* >(user)->exec();
     }
 
-    llarp_thread_job
-    to_job()
+    void
+    send_job(llarp_threadpool* pool)
     {
-      return {this, timer::call};
+      llarp_threadpool_queue_job(pool, {this, timer::call});
     }
   };
 };  // namespace llarp
@@ -80,18 +79,11 @@ struct llarp_timer_context
   void
   cancel(uint32_t id)
   {
-    llarp::timer* t;
-    {
-      std::unique_lock< std::mutex > lock(timersMutex);
-      auto itr = timers.find(id);
-      if(itr == timers.end())
-        return;
-      t = itr->second;
-      timers.erase(itr);
-    }
-    t->called_at = llarp::timer::now();
-    t->exec();
-    delete t;
+    std::unique_lock< std::mutex > lock(timersMutex);
+    auto itr = timers.find(id);
+    if(itr == timers.end())
+      return;
+    itr->second->canceled = true;
   }
 
   void
@@ -99,11 +91,10 @@ struct llarp_timer_context
   {
     std::unique_lock< std::mutex > lock(timersMutex);
     auto itr = timers.find(id);
-    if(itr != timers.end())
-    {
-      delete itr->second;
-      timers.erase(itr);
-    }
+    if(itr == timers.end())
+      return;
+    itr->second->func     = nullptr;
+    itr->second->canceled = true;
   }
 
   uint32_t
@@ -170,10 +161,8 @@ llarp_timer_stop(struct llarp_timer_context* t)
 {
   // destroy all timers
   // don't call callbacks on timers
-  llarp::Debug("clear timers");
   t->timers.clear();
   t->stop();
-  llarp::Debug("stop timers");
   t->ticker.notify_all();
 }
 
@@ -199,22 +188,23 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
     {
       std::unique_lock< std::mutex > lock(t->timersMutex);
       // we woke up
-      auto now = llarp::timer::now();
+      auto now = llarp_time_now_ms();
       auto itr = t->timers.begin();
       while(itr != t->timers.end())
       {
-        if(now - itr->second->started >= itr->second->timeout)
+        if(now - itr->second->started >= itr->second->timeout
+           || itr->second->canceled)
         {
           if(itr->second->func && itr->second->called_at == 0)
           {
             // timer hit
             itr->second->called_at = now;
-            llarp_threadpool_queue_job(pool, itr->second->to_job());
+            itr->second->send_job(pool);
             ++itr;
           }
           else if(itr->second->done)
           {
-            // timer was already called, remove timer
+            // remove timer
             delete itr->second;
             itr = t->timers.erase(itr);
           }
@@ -245,7 +235,7 @@ namespace llarp
         call(user, timeout, 0);
       else
         call(user, timeout, diff);
-      done = true;
     }
+    done = true;
   }
 }
