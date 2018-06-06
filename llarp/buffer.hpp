@@ -20,7 +20,7 @@ namespace llarp
   StackBuffer(T& stack)
   {
     llarp_buffer_t buff;
-    buff.base = stack;
+    buff.base = &stack[0];
     buff.cur  = buff.base;
     buff.sz   = sizeof(stack);
     return buff;

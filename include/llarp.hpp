@@ -11,10 +11,11 @@ namespace llarp
 {
   struct Context
   {
-    Context(std::ostream &stdout);
+    Context(std::ostream &stdout, bool signleThread = false);
     ~Context();
 
-    int num_nethreads = 1;
+    int num_nethreads   = 1;
+    bool singleThreaded = false;
     std::vector< std::thread > netio_threads;
     llarp_crypto crypto;
     llarp_router *router                  = nullptr;

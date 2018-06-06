@@ -281,11 +281,14 @@ void
 llarp_router::Tick()
 {
   llarp::Debug("tick router");
+  llarp_link_session_iter iter;
+  iter.user  = this;
+  iter.visit = &send_padded_message;
   if(sendPadding)
   {
-    for(auto &link : links)
+    for(auto link : links)
     {
-      link->iter_sessions(link, {this, nullptr, &send_padded_message});
+      link->iter_sessions(link, iter);
     }
   }
 }
@@ -294,10 +297,41 @@ bool
 llarp_router::send_padded_message(llarp_link_session_iter *itr,
                                   llarp_link_session *peer)
 {
-  auto msg           = new llarp::DiscardMessage({}, 4096);
   llarp_router *self = static_cast< llarp_router * >(itr->user);
-  self->SendToOrQueue(peer->get_remote_router(peer)->pubkey, {msg});
+  llarp::RouterID remote;
+  remote = &peer->get_remote_router(peer)->pubkey[0];
+  for(size_t idx = 0; idx < 50; ++idx)
+  {
+    llarp::DiscardMessage msg(9000);
+    self->SendTo(remote, &msg);
+  }
   return true;
+}
+
+void
+llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg)
+{
+  llarp_buffer_t buf =
+      llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+
+  if(!msg->BEncode(&buf))
+  {
+    llarp::Warn("failed to encode outbound message, buffer size left: ",
+                llarp_buffer_size_left(buf));
+    return;
+  }
+  // set size of message
+  buf.sz  = buf.cur - buf.base;
+  buf.cur = buf.base;
+
+  bool sent = false;
+  for(auto link : links)
+  {
+    if(!sent)
+    {
+      sent = link->sendto(link, remote, buf);
+    }
+  }
 }
 
 void
@@ -322,6 +356,7 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
 void
 llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
 {
+  llarp::Debug("Flush outbound for ", remote);
   auto itr = outboundMesssageQueue.find(remote);
   if(itr == outboundMesssageQueue.end())
     return;
@@ -343,12 +378,13 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
 
-    bool sent = false;
+    llarp::RouterID peer = remote;
+    bool sent            = false;
     for(auto &link : links)
     {
       if(!sent)
       {
-        sent = link->sendto(link, remote, buf);
+        sent = link->sendto(link, peer, buf);
       }
     }
     if(!sent)
@@ -366,8 +402,11 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
+    delete job;
+    /*
     auto session = job->session;
     router->async_verify_RC(session, false, job);
+    */
     return;
   }
   llarp::Info("session not established");

@@ -13,16 +13,10 @@ clean:
 	rm -f *.sig
 
 debug-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DASAN=true
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug 
 
 release-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)"
-
-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug
-
-build: configure
-	ninja
 
 debug: debug-configure
 	ninja

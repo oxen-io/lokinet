@@ -179,6 +179,21 @@ namespace llarp
     }
 
     bool
+    operator<(const Addr& other) const
+    {
+      int a = af();
+      if(a == other.af())
+      {
+        if(a == AF_INET)
+        {
+          return port() < other.port() && memcmp(addr4(), other.addr4(), 4) < 0;
+        }
+      }
+      return af() < other.af() && port() < other.port()
+          && memcmp(addr6(), other.addr6(), 16) < 0;
+    }
+
+    bool
     operator==(const Addr& other) const
     {
       return af() == other.af() && memcmp(addr6(), other.addr6(), 16) == 0

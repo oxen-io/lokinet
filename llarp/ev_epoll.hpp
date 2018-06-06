@@ -101,6 +101,40 @@ struct llarp_epoll_loop : public llarp_ev_loop
   }
 
   int
+  tick()
+  {
+    epoll_event events[1024];
+    int result;
+    byte_t readbuf[2048];
+
+    result = epoll_wait(epollfd, events, 1024, 100);
+    if(result > 0)
+    {
+      int idx = 0;
+      while(idx < result)
+      {
+        // handle signalfd
+        if(events[idx].data.fd == pipefds[0])
+        {
+          llarp::Debug("exiting epoll loop");
+          return 0;
+        }
+        llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
+        if(events[idx].events & EPOLLIN)
+        {
+          if(ev->read(readbuf, sizeof(readbuf)) == -1)
+          {
+            llarp::Debug("close ev");
+            close_ev(ev);
+          }
+        }
+        ++idx;
+      }
+    }
+    return result;
+  }
+
+  int
   run()
   {
     epoll_event events[1024];

@@ -23,6 +23,7 @@ namespace llarp
     RouterID remote  = {};
     uint64_t version = 0;
 
+    ILinkMessage() = default;
     ILinkMessage(const RouterID& id);
 
     virtual ~ILinkMessage(){};

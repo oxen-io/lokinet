@@ -10,7 +10,8 @@
 
 namespace llarp
 {
-  Context::Context(std::ostream &stdout) : out(stdout)
+  Context::Context(std::ostream &stdout, bool singleThread)
+      : singleThreaded(singleThread), out(stdout)
   {
     llarp::Info(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
   }
@@ -50,7 +51,7 @@ namespace llarp
     Context *ctx = static_cast< Context * >(itr->user);
     if(!strcmp(section, "router"))
     {
-      if(!strcmp(key, "worker-threads"))
+      if(!strcmp(key, "worker-threads") && !ctx->singleThreaded)
       {
         int workers = atoi(val);
         if(workers > 0 && ctx->worker == nullptr)
@@ -63,6 +64,8 @@ namespace llarp
         ctx->num_nethreads = atoi(val);
         if(ctx->num_nethreads <= 0)
           ctx->num_nethreads = 1;
+        if(ctx->singleThreaded)
+          ctx->num_nethreads = 0;
       }
     }
     if(!strcmp(section, "netdb"))
@@ -87,10 +90,20 @@ namespace llarp
       if(llarp_nodedb_ensure_dir(nodedb_dir))
       {
         // ensure worker thread pool
-        if(!worker)
+        if(!worker && !singleThreaded)
           worker = llarp_init_threadpool(2, "llarp-worker");
+        else if(singleThreaded)
+        {
+          llarp::Info("running in single threaded mode");
+          worker = llarp_init_same_process_threadpool();
+        }
         // ensure netio thread
-        logic = llarp_init_logic();
+        if(singleThreaded)
+        {
+          logic = llarp_init_single_process_logic(worker);
+        }
+        else
+          logic = llarp_init_logic();
 
         router = llarp_init_router(worker, mainloop, logic);
 
@@ -103,22 +116,31 @@ namespace llarp
           }
           llarp_run_router(router, nodedb);
           // run net io thread
-          auto netio = mainloop;
-          while(num_nethreads--)
+          if(singleThreaded)
           {
-            netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
+            llarp::Info("running mainloop");
+            llarp_ev_loop_run_single_process(mainloop, worker, logic);
+          }
+          else
+          {
+            auto netio = mainloop;
+            while(num_nethreads--)
+            {
+              netio_threads.emplace_back(
+                  [netio]() { llarp_ev_loop_run(netio); });
 #if(__APPLE__ && __MACH__)
 
 #elif(__FreeBSD__)
-            pthread_set_name_np(netio_threads.back().native_handle(),
-                                "llarp-netio");
+              pthread_set_name_np(netio_threads.back().native_handle(),
+                                  "llarp-netio");
 #else
-            pthread_setname_np(netio_threads.back().native_handle(),
-                               "llarp-netio");
+              pthread_setname_np(netio_threads.back().native_handle(),
+                                 "llarp-netio");
 #endif
+            }
+            llarp::Info("running mainloop");
+            llarp_logic_mainloop(logic);
           }
-          llarp::Info("Ready");
-          llarp_logic_mainloop(logic);
           return 0;
         }
         else

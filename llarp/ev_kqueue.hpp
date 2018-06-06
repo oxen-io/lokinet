@@ -6,10 +6,9 @@
 #if __FreeBSD__
 // kqueue / kevent
 //#  include <sys/types.h> // already in net.h
-#  include <sys/event.h>
-#  include <sys/time.h>
+#include <sys/event.h>
+#include <sys/time.h>
 #endif
-
 
 //#include <sys/socket.h>
 //#include <ifaddrs.h>
@@ -73,7 +72,7 @@ namespace llarp
 struct llarp_kqueue_loop : public llarp_ev_loop
 {
   int kqueuefd;
-  struct kevent change;    /* event we want to monitor */
+  struct kevent change; /* event we want to monitor */
 
   llarp_kqueue_loop() : kqueuefd(-1)
   {
@@ -86,10 +85,37 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   bool
   init()
   {
-    if (kqueuefd == -1) {
+    if(kqueuefd == -1)
+    {
       kqueuefd = kqueue();
     }
     return kqueuefd != -1;
+  }
+
+  int
+  tick()
+  {
+    struct kevent events[1024];
+    int result;
+    byte_t readbuf[2048];
+    result = kevent(kqueuefd, NULL, 0, events, 1024, NULL);
+    // result: 0 is a timeout
+    if(result > 0)
+    {
+      int idx = 0;
+      while(idx < result)
+      {
+        llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
+        if(ev->read(readbuf, sizeof(readbuf)) == -1)
+        {
+          llarp::Info(__FILE__, "close ev");
+          close_ev(ev);
+          delete ev;
+        }
+        ++idx;
+      }
+    }
+    return result;
   }
 
   int
@@ -102,7 +128,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     {
       result = kevent(kqueuefd, NULL, 0, events, 1024, NULL);
       // result: 0 is a timeout
-      if (result > 0)
+      if(result > 0)
       {
         int idx = 0;
         while(idx < result)
@@ -191,7 +217,8 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
 
     EV_SET(&change, fd, EVFILT_READ, EV_ADD, 0, 0, listener);
-    if (kevent(kqueuefd, &change, 1, NULL, 0, NULL) == -1)  {
+    if(kevent(kqueuefd, &change, 1, NULL, 0, NULL) == -1)
+    {
       delete listener;
       return false;
     }

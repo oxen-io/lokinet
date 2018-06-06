@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 2.8.10)
 
 set(WITH_SHARED OFF)
-set(DEBUG_FLAGS "")
+set(DEBUG_FLAGS "-g")
 set(OPTIMIZE_FLAGS "-Os")
 if(ASAN)
-  set(DEBUG_FLAGS "${DEBUG_FLAGS} -g -fsanitize=address -fno-omit-frame-pointer")
+  set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
   set(OPTIMIZE_FLAGS "-O0")
 endif(ASAN)
 

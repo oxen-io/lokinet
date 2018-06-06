@@ -119,6 +119,10 @@ struct llarp_router
   SendToOrQueue(const llarp::RouterID &remote,
                 std::vector< llarp::ILinkMessage * > msgs);
 
+  /// sendto or drop
+  void
+  SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg);
+
   /// manually flush outbound message queue for just 1 router
   void
   FlushOutboundFor(const llarp::RouterID &remote);

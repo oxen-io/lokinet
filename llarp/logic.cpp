@@ -22,6 +22,24 @@ llarp_init_logic()
   return logic;
 };
 
+struct llarp_logic*
+llarp_init_single_process_logic(struct llarp_threadpool* tp)
+{
+  llarp_logic* logic = new llarp_logic;
+  if(logic)
+  {
+    logic->thread = tp;
+    logic->timer  = llarp_init_timer();
+  }
+  return logic;
+}
+
+void
+llarp_logic_tick(struct llarp_logic* logic)
+{
+  llarp_timer_tick_all(logic->timer, logic->thread);
+}
+
 void
 llarp_free_logic(struct llarp_logic** logic)
 {
@@ -58,13 +76,20 @@ llarp_logic_mainloop(struct llarp_logic* logic)
 void
 llarp_logic_queue_job(struct llarp_logic* logic, struct llarp_thread_job job)
 {
-  llarp_threadpool_queue_job(logic->thread, job);
+  llarp_thread_job j;
+  j.user = job.user;
+  j.work = job.work;
+  llarp_threadpool_queue_job(logic->thread, j);
 }
 
 uint32_t
 llarp_logic_call_later(struct llarp_logic* logic, struct llarp_timeout_job job)
 {
-  return llarp_timer_call_later(logic->timer, job);
+  llarp_timeout_job j;
+  j.user    = job.user;
+  j.timeout = job.timeout;
+  j.handler = job.handler;
+  return llarp_timer_call_later(logic->timer, j);
 }
 
 void

@@ -4,24 +4,22 @@
 
 namespace llarp
 {
+  const std::size_t MAX_DISCARD_SIZE = 10000;
+
   /// a dummy link message that is discarded
   struct DiscardMessage : public ILinkMessage
   {
-    std::vector< byte_t > Z;
-
-    ~DiscardMessage()
-    {
-    }
+    byte_t pad[MAX_DISCARD_SIZE];
+    size_t sz = 0;
 
     DiscardMessage(const RouterID& id) : ILinkMessage(id)
     {
     }
 
-    DiscardMessage(const RouterID& other, std::size_t padding)
-        : ILinkMessage(other)
+    DiscardMessage(std::size_t padding) : ILinkMessage()
     {
-      Z.resize(padding);
-      std::fill(Z.begin(), Z.end(), 'z');
+      sz = padding;
+      memset(pad, 'z', sz);
     }
 
     virtual bool
@@ -38,8 +36,10 @@ namespace llarp
       {
         if(!bencode_read_string(buf, &strbuf))
           return false;
-        Z.resize(strbuf.sz);
-        memcpy(Z.data(), strbuf.base, strbuf.sz);
+        if(strbuf.sz > MAX_DISCARD_SIZE)
+          return false;
+        sz = strbuf.sz;
+        memcpy(pad, strbuf.base, sz);
         return true;
       }
       return false;
@@ -61,7 +61,7 @@ namespace llarp
 
       if(!bencode_write_bytestring(buf, "z", 1))
         return false;
-      if(!bencode_write_bytestring(buf, Z.data(), Z.size()))
+      if(!bencode_write_bytestring(buf, pad, sz))
         return false;
 
       return bencode_end(buf);
@@ -71,7 +71,7 @@ namespace llarp
     HandleMessage(llarp_router* router) const
     {
       (void)router;
-      llarp::Info("got discard message of size ", Z.size(), " bytes");
+      llarp::Info("got discard message of size ", sz, " bytes");
       return true;
     }
   };

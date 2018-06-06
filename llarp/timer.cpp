@@ -54,15 +54,20 @@ namespace llarp
 
 struct llarp_timer_context
 {
-  llarp_threadpool* threadpool;
   std::mutex timersMutex;
   std::unordered_map< uint32_t, llarp::timer* > timers;
   std::mutex tickerMutex;
-  std::condition_variable ticker;
-  std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(10);
+  std::condition_variable* ticker       = nullptr;
+  std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(100);
 
   uint32_t ids = 0;
   bool _run    = true;
+
+  ~llarp_timer_context()
+  {
+    if(ticker)
+      delete ticker;
+  }
 
   bool
   run()
@@ -102,7 +107,7 @@ struct llarp_timer_context
   {
     std::unique_lock< std::mutex > lock(timersMutex);
     uint32_t id = ++ids;
-    timers.emplace(id, new llarp::timer(timeout_ms, user, func));
+    timers[id]  = new llarp::timer(timeout_ms, user, func);
     return id;
   }
 
@@ -163,7 +168,8 @@ llarp_timer_stop(struct llarp_timer_context* t)
   // don't call callbacks on timers
   t->timers.clear();
   t->stop();
-  t->ticker.notify_all();
+  if(t->ticker)
+    t->ticker->notify_all();
 }
 
 void
@@ -173,47 +179,58 @@ llarp_timer_cancel_job(struct llarp_timer_context* t, uint32_t id)
 }
 
 void
+llarp_timer_tick_all(struct llarp_timer_context* t,
+                     struct llarp_threadpool* pool)
+{
+  if(!t->run())
+    return;
+  auto now = llarp_time_now_ms();
+  auto itr = t->timers.begin();
+  while(itr != t->timers.end())
+  {
+    if(now - itr->second->started >= itr->second->timeout
+       || itr->second->canceled)
+    {
+      if(itr->second->func && itr->second->called_at == 0)
+      {
+        // timer hit
+        itr->second->called_at = now;
+        itr->second->send_job(pool);
+        ++itr;
+      }
+      else if(itr->second->done)
+      {
+        // remove timer
+        llarp::timer* timer = itr->second;
+        itr                 = t->timers.erase(itr);
+        delete timer;
+      }
+      else
+        ++itr;
+    }
+    else  // timer not hit yet
+      ++itr;
+  }
+}
+
+void
 llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
 {
-  t->threadpool = pool;
+  t->ticker = new std::condition_variable;
   while(t->run())
   {
     // wait for timer mutex
+    if(t->ticker)
     {
       std::unique_lock< std::mutex > lock(t->tickerMutex);
-      t->ticker.wait_for(lock, t->nextTickLen);
+      t->ticker->wait_for(lock, t->nextTickLen);
     }
 
     if(t->run())
     {
       std::unique_lock< std::mutex > lock(t->timersMutex);
       // we woke up
-      auto now = llarp_time_now_ms();
-      auto itr = t->timers.begin();
-      while(itr != t->timers.end())
-      {
-        if(now - itr->second->started >= itr->second->timeout
-           || itr->second->canceled)
-        {
-          if(itr->second->func && itr->second->called_at == 0)
-          {
-            // timer hit
-            itr->second->called_at = now;
-            itr->second->send_job(pool);
-            ++itr;
-          }
-          else if(itr->second->done)
-          {
-            // remove timer
-            delete itr->second;
-            itr = t->timers.erase(itr);
-          }
-          else
-            ++itr;
-        }
-        else  // timer not hit yet
-          ++itr;
-      }
+      llarp_timer_tick_all(t, pool);
     }
   }
 }
