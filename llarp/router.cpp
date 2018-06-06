@@ -514,7 +514,11 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
     router->tp      = tp;
     router->logic   = logic;
     // TODO: make disk io threadpool count configurable
-    router->disk = llarp_init_threadpool(1, "llarp-diskio");
+#ifdef TESTNET
+    router->disk = tp;
+#else
+    router->disk = llarp_init_threadpool("llarp-diskio", 1);
+#endif
     llarp_crypto_libsodium_init(&router->crypto);
   }
   return router;
@@ -593,10 +597,12 @@ bool
 llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
                            byte_t *secretkey)
 {
+  llarp::Debug("find or create ", fpath);
   fs::path path(fpath);
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
+    llarp::Info("regenerated identity key");
     crypto->identity_keygen(secretkey);
     std::ofstream f(path, std::ios::binary);
     if(f.is_open())
@@ -610,6 +616,7 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
     f.read((char *)secretkey, sizeof(llarp_seckey_t));
     return true;
   }
+  llarp::Info("failed to get identity key");
   return false;
 }
 
@@ -717,7 +724,7 @@ namespace llarp
       iwp_link_init(link, args);
       if(llarp_link_initialized(link))
       {
-        // printf("router -> link initialized\n");
+        llarp::Debug("link ", key, " initialized");
         if(link->configure(link, self->netloop, key, af, proto))
         {
           llarp_ai ai;

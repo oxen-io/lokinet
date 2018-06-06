@@ -84,73 +84,61 @@ namespace llarp
     llarp_ev_loop_alloc(&mainloop);
     llarp_crypto_libsodium_init(&crypto);
     nodedb = llarp_nodedb_new(&crypto);
-    if(nodedb_dir[0])
+    // ensure worker thread pool
+    if(!worker && !singleThreaded)
+      worker = llarp_init_threadpool(2, "llarp-worker");
+    else if(singleThreaded)
     {
-      nodedb_dir[sizeof(nodedb_dir) - 1] = 0;
-      if(llarp_nodedb_ensure_dir(nodedb_dir))
+      llarp::Info("running in single threaded mode");
+      worker = llarp_init_same_process_threadpool();
+    }
+    // ensure netio thread
+    if(singleThreaded)
+    {
+      logic = llarp_init_single_process_logic(worker);
+    }
+    else
+      logic = llarp_init_logic();
+
+    router = llarp_init_router(worker, mainloop, logic);
+
+    if(llarp_configure_router(router, config))
+    {
+      if(custom_dht_func)
       {
-        // ensure worker thread pool
-        if(!worker && !singleThreaded)
-          worker = llarp_init_threadpool(2, "llarp-worker");
-        else if(singleThreaded)
+        llarp::Info("using custom dht function");
+        llarp_dht_set_msg_handler(router->dht, custom_dht_func);
+      }
+      llarp_run_router(router, nodedb);
+      // run net io thread
+      if(singleThreaded)
+      {
+        llarp::Info("running mainloop");
+        llarp_ev_loop_run_single_process(mainloop, worker, logic);
+      }
+      else
+      {
+        auto netio = mainloop;
+        while(num_nethreads--)
         {
-          llarp::Info("running in single threaded mode");
-          worker = llarp_init_same_process_threadpool();
-        }
-        // ensure netio thread
-        if(singleThreaded)
-        {
-          logic = llarp_init_single_process_logic(worker);
-        }
-        else
-          logic = llarp_init_logic();
-
-        router = llarp_init_router(worker, mainloop, logic);
-
-        if(llarp_configure_router(router, config))
-        {
-          if(custom_dht_func)
-          {
-            llarp::Info("using custom dht function");
-            llarp_dht_set_msg_handler(router->dht, custom_dht_func);
-          }
-          llarp_run_router(router, nodedb);
-          // run net io thread
-          if(singleThreaded)
-          {
-            llarp::Info("running mainloop");
-            llarp_ev_loop_run_single_process(mainloop, worker, logic);
-          }
-          else
-          {
-            auto netio = mainloop;
-            while(num_nethreads--)
-            {
-              netio_threads.emplace_back(
-                  [netio]() { llarp_ev_loop_run(netio); });
+          netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
 #if(__APPLE__ && __MACH__)
 
 #elif(__FreeBSD__)
-              pthread_set_name_np(netio_threads.back().native_handle(),
-                                  "llarp-netio");
+          pthread_set_name_np(netio_threads.back().native_handle(),
+                              "llarp-netio");
 #else
-              pthread_setname_np(netio_threads.back().native_handle(),
-                                 "llarp-netio");
+          pthread_setname_np(netio_threads.back().native_handle(),
+                             "llarp-netio");
 #endif
-            }
-            llarp::Info("running mainloop");
-            llarp_logic_mainloop(logic);
-          }
-          return 0;
         }
-        else
-          llarp::Error("failed to start router");
+        llarp::Info("running mainloop");
+        llarp_logic_mainloop(logic);
       }
-      else
-        llarp::Error("Failed to initialize nodedb");
+      return 0;
     }
     else
-      llarp::Error("no nodedb defined");
+      llarp::Error("Failed to configure router");
     return 1;
   }
 

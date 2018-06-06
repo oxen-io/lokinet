@@ -4,8 +4,15 @@ macro(add_cflags)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARGN}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARGN}")
 endmacro(add_cflags)
-  
-set(WITH_SHARED OFF)
+
+if(SHADOW)
+  set(WITH_STATIC OFF)
+  set(WITH_SHARED OFF)
+else()
+  set(WITH_STATIC ON)
+  set(WITH_SHARED OFF)  
+endif()
+
 set(DEBUG_FLAGS "-g")
 set(OPTIMIZE_FLAGS "-Os")
 if(ASAN)
@@ -14,12 +21,30 @@ if(ASAN)
 endif(ASAN)
 
 if(SHADOW)
+  if("${SHADOW_ROOT}" STREQUAL "")
+    set(SHADOW_ROOT "$ENV{HOME}/.shadow")
+  endif("${SHADOW_ROOT}" STREQUAL "")
+  if(EXISTS "${SHADOW_ROOT}")
+    message(STATUS "SHADOW_ROOT = ${SHADOW_ROOT}")
+  else()
+    message(FATAL_ERROR "SHADOW_ROOT path does not exist: '${SHADOW_ROOT}'")
+  endif()
+  set(CMAKE_MODULE_PATH "${SHADOW_ROOT}/share/cmake/Modules")
+  include_directories(${CMAKE_MODULE_PATH})
+  include(ShadowTools)
+  add_cflags("-fno-inline -fno-strict-aliasing")
+
   add_definitions(-DTESTNET=true)
-  add_cflags("-fPIC")
+  add_definitions(-DSHADOW_TESTNET)
+  include_directories(${SHADOW_ROOT}/include)
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
+
+if(SHADOW)
+  add_cflags("-fPIC")
+endif()
 
 if(NOT GIT_VERSION)
   exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION)
@@ -75,41 +100,39 @@ set(LIB_SRC
   llarp/router.cpp
   llarp/router_identity.c
   llarp/threadpool.cpp
+  llarp/testnet.c
   llarp/time.cpp
   llarp/timer.cpp
 )
 
 include_directories(include)
 
-add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-if(WITH_SHARED)
-  add_library(${SHARED_LIB} SHARED ${LIB_SRC})
-  target_link_libraries(${SHARED_LIB} ${LIBS})
-endif()
-
-add_executable(${EXE} ${EXE_SRC})
-target_link_libraries(${STATIC_LIB} ${LIBS})
-target_link_libraries(${EXE} ${STATIC_LIB})
-
-add_executable(rcutil daemon/rcutil.cpp)
-target_link_libraries(rcutil ${STATIC_LIB} ${LIBS})
-
 
 if(SHADOW)
-  if("${SHADOW_ROOT}" STREQUAL "")
-    set(SHADOW_ROOT "$ENV{HOME}/.shadow")
-  endif("${SHADOW_ROOT}" STREQUAL "")
-  if(EXISTS "${SHADOW_ROOT}")
-    message(STATUS "SHADOW_ROOT = ${SHADOW_ROOT}")
-  else()
-    message(FATAL_ERROR "SHADOW_ROOT path does not exist: '${SHADOW_ROOT}'")
+  add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC})
+  target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
+  install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
+else()
+  
+  add_executable(rcutil daemon/rcutil.cpp)
+  add_executable(${EXE} ${EXE_SRC})
+    
+  if(WITH_STATIC)
+    add_library(${STATIC_LIB} STATIC ${LIB_SRC})
+    target_link_libraries(${STATIC_LIB} ${LIBS})
+    if(NOT WITH_SHARED)
+      target_link_libraries(rcutil ${STATIC_LIB})
+      target_link_libraries(${EXE} ${STATIC_LIB})
+    endif()
   endif()
-  set(CMAKE_MODULE_PATH "${SHADOW_ROOT}/share/cmake/Modules")
-  include_directories(${CMAKE_MODULE_PATH})
-  include_directories(${SHADOW_ROOT}/include)
-  include(ShadowTools)
-  add_cflags("-fno-inline -fno-strict-aliasing")
-  add_shadow_plugin(shadow-llarpd ${EXE_SRC})
-  target_link_libraries(shadow-llarpd ${STATIC_LIB})
-  install(TARGETS shadow-llarpd DESTINATION plugins)
+  
+  if(WITH_SHARED)
+    add_library(${SHARED_LIB} SHARED ${LIB_SRC})
+    target_link_libraries(${SHARED_LIB} ${LIBS})
+    if(NOT WITH_STATIC)
+      target_link_libraries(rcutil ${SHARED_LIB})
+      target_link_libraries(${EXE} ${SHARED_LIB})
+    endif()
+  endif()
+
 endif()
