@@ -19,7 +19,7 @@ namespace llarp
 
   struct Logger
   {
-    LogLevel minlevel = eLogDebug;
+    LogLevel minlevel = eLogInfo;
     std::ostream& out = std::cout;
   };
 
@@ -86,6 +86,9 @@ namespace llarp
     LogAppend(ss, std::forward< TArgs >(args)...);
     ss << (char)27 << "[0;0m";
     _glog.out << ss.str() << std::endl;
+#ifdef SHADOW_TESTNET
+    _glog.out << "\n" << std::flush;
+#endif
   }
 }
 

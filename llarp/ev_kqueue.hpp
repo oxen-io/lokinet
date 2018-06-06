@@ -93,8 +93,9 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   }
 
   int
-  tick()
+  tick(int ms)
   {
+    (void)ms;
     struct kevent events[1024];
     int result;
     byte_t readbuf[2048];

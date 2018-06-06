@@ -11,7 +11,7 @@ handle_signal(int sig)
 }
 
 #ifndef TESTNET
-#define TESTNET false
+#define TESTNET 0
 #endif
 
 int

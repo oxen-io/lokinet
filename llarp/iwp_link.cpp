@@ -797,18 +797,7 @@ namespace iwp
     }
 
     static void
-    handle_verify_session_start(iwp_async_session_start *s)
-    {
-      session *self = static_cast< session * >(s->user);
-      if(!s->buf)
-      {
-        // verify fail
-        // TODO: remove session?
-        llarp::Warn("session start verify failed");
-        return;
-      }
-      self->send_LIM();
-    }
+    handle_verify_session_start(iwp_async_session_start *s);
 
     void
     send_LIM()
@@ -948,7 +937,7 @@ namespace iwp
       if(introack->buf == nullptr)
       {
         // invalid signature
-        llarp::Error("introack verify failed");
+        llarp::Error("introack verify failed from ", link->addr);
         return;
       }
       link->EnterState(eIntroAckRecv);
@@ -961,7 +950,9 @@ namespace iwp
     handle_generated_session_start(iwp_async_session_start *start)
     {
       session *link = static_cast< session * >(start->user);
-      llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz);
+      if(llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz)
+         == -1)
+        llarp::Error("sendto failed");
       link->EnterState(eSessionStartSent);
     }
 
@@ -1029,7 +1020,9 @@ namespace iwp
     {
       session *self = static_cast< session * >(frame->user);
       llarp::Debug("tx ", frame->sz, " frames=", self->frames);
-      llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz);
+      if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz)
+         == -1)
+        llarp::Warn("sendto failed");
       self->frames--;
     }
 
@@ -1070,7 +1063,7 @@ namespace iwp
       session *self = static_cast< session * >(intro->user);
       if(!intro->buf)
       {
-        llarp::Error("intro verify failed");
+        llarp::Error("intro verify failed from ", self->addr);
         delete self;
         return;
       }
@@ -1241,7 +1234,9 @@ namespace iwp
     char keyfile[255];
     uint32_t timeout_job_id;
 
-    typedef std::map< llarp::Addr, llarp_link_session > LinkMap_t;
+    typedef std::unordered_map< llarp::Addr, llarp_link_session,
+                                llarp::addrhash >
+        LinkMap_t;
 
     LinkMap_t m_sessions;
     mtx_t m_sessions_Mutex;
@@ -1485,6 +1480,7 @@ namespace iwp
       {
         // new inbound session
         s = link->create_session(*saddr, link->seckey);
+        llarp::Debug("new inbound session from ", s->addr);
       }
       s->recv(buf, sz);
     }
@@ -1639,6 +1635,21 @@ namespace iwp
     }
 
     return true;
+  }
+
+  void
+  session::handle_verify_session_start(iwp_async_session_start *s)
+  {
+    session *self = static_cast< session * >(s->user);
+    if(!s->buf)
+    {
+      // verify fail
+      // TODO: remove session?
+      llarp::Warn("session start verify failed from ", self->addr);
+      self->serv->RemoveSessionByAddr(self->addr);
+      return;
+    }
+    self->send_LIM();
   }
 
   server *

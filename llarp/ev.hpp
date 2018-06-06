@@ -29,7 +29,7 @@ struct llarp_ev_loop
   run() = 0;
 
   virtual int
-  tick() = 0;
+  tick(int ms) = 0;
 
   virtual void
   stop() = 0;

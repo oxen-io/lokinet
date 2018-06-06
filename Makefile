@@ -47,7 +47,7 @@ shadow-build: shadow-configure
 
 shadow: shadow-build
 	python3 contrib/shadow/genconf.py $(SHADOW_CONFIG)
-	$(SHADOW_BIN) -w 16 $(SHADOW_CONFIG)
+	bash -c "$(SHADOW_BIN) -w 16 $(SHADOW_CONFIG) &> shadow.log.txt"
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')

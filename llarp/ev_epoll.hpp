@@ -101,13 +101,13 @@ struct llarp_epoll_loop : public llarp_ev_loop
   }
 
   int
-  tick()
+  tick(int ms)
   {
     epoll_event events[1024];
     int result;
     byte_t readbuf[2048];
 
-    result = epoll_wait(epollfd, events, 1024, 100);
+    result = epoll_wait(epollfd, events, 1024, ms);
     if(result > 0)
     {
       int idx = 0;

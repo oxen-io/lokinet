@@ -49,10 +49,10 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
 {
   while(true)
   {
+    if(ev->tick(10) == -1)
+      return;
     llarp_logic_tick(logic);
     llarp_threadpool_tick(tp);
-    if(ev->tick() == -1)
-      return;
   }
 }
 

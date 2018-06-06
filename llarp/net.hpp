@@ -181,16 +181,8 @@ namespace llarp
     bool
     operator<(const Addr& other) const
     {
-      int a = af();
-      if(a == other.af())
-      {
-        if(a == AF_INET)
-        {
-          return port() < other.port() && memcmp(addr4(), other.addr4(), 4) < 0;
-        }
-      }
-      return af() < other.af() && port() < other.port()
-          && memcmp(addr6(), other.addr6(), 16) < 0;
+      return port() < other.port() || *addr6() < *other.addr6()
+          || af() < other.af();
     }
 
     bool
@@ -198,6 +190,12 @@ namespace llarp
     {
       return af() == other.af() && memcmp(addr6(), other.addr6(), 16) == 0
           && port() == other.port();
+    }
+
+    bool
+    operator!=(const Addr& other) const
+    {
+      return !(*this == other);
     }
   };
 
@@ -207,7 +205,7 @@ namespace llarp
     operator()(Addr const& a) const noexcept
     {
       uint8_t empty[16] = {0};
-      return a.af() + memcmp(a.addr6(), empty, 16) + a.port();
+      return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();
     }
   };
 }

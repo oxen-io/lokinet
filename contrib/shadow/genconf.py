@@ -18,7 +18,10 @@ def nodeconf(conf, baseDir, name, ifname, port):
     conf['router']['contact-file'] = os.path.join(baseDir, '{}.signed'.format(name))
     conf['router']['ident-privkey'] = os.path.join(baseDir, '{}-ident.key'.format(name))
     conf['router']['transport-privkey'] = os.path.join(baseDir, '{}-transport.key'.format(name))
-    conf['iwp-links'] = {ifname : port}
+    if ifname != '*':
+        conf['iwp-links'] = {'*' : port + 1000, ifname: port}
+    else:
+        conf['iwp-links'] = {ifname : port}
     conf['iwp-connect'] = {}
 
 def addPeer(conf, baseDir, peer):
@@ -27,7 +30,7 @@ def addPeer(conf, baseDir, peer):
 def createNode(pluginName, root, peer):
     node = etree.SubElement(root, 'host')
     node.attrib['id'] = peer['name']
-    node.attrib['geocodehint'] = 'US'
+    node.attrib['interfacebuffer'] = '{}'.format(1024 * 1024 * 100)
     app = etree.SubElement(node, 'process')
     app.attrib['plugin'] = pluginName
     app.attrib['time'] = '50'
@@ -73,7 +76,8 @@ def genconf(settings, outf):
     plugin = etree.SubElement(root, "plugin")
     plugin.attrib['id'] = pluginName
     plugin.attrib['path'] = libpath
-    basePort = getSetting(settings, 'base-port', 19000)
+    basePort = getSetting(settings, 'svc-base-port', 19000)
+    clientBasePort = getSetting(settings, 'client-base-port', 18000)
     svcNodeCount = getSetting(settings, 'service-nodes', 20)
     peers = list()
     for nodeid in range(svcNodeCount):
@@ -88,11 +92,11 @@ def genconf(settings, outf):
         
     # add client nodes
     for nodeid in range(getSetting(settings, 'client-nodes', 200)):
-        peer = makeClient(settings, 'client-node-{}'.format(nodeid), str(nodeid), basePort +1)
+        peer = makeClient(settings, 'client-node-{}'.format(nodeid), str(nodeid), clientBasePort +1)
         peers.append(peer)
-        for p in range(getSetting(settings, 'client-connect-to', 1)):
+        for p in range(getSetting(settings, 'client-connect-to', 3)):
             addPeer(peer['config'], baseDir, 'svc-node-{}'.format((p + nodeid) % svcNodeCount))
-        basePort += 1
+        clientBasePort += 1
         
 
     # generate xml and settings files

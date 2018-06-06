@@ -68,7 +68,7 @@ struct llarp_router
 
   llarp::InboundMessageParser inbound_msg_parser;
 
-  std::list< llarp_link * > links;
+  std::list< std::pair< llarp_link *, bool > > links;
 
   typedef std::queue< llarp::ILinkMessage * > MessageQueue;
 
@@ -86,7 +86,7 @@ struct llarp_router
   HandleRecvLinkMessage(struct llarp_link_session *from, llarp_buffer_t msg);
 
   void
-  AddLink(struct llarp_link *link);
+  AddLink(struct llarp_link *link, bool isOutbound);
 
   void
   Close();
