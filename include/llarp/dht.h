@@ -52,7 +52,7 @@ struct llarp_router_lookup_job
   struct llarp_dht_context* dht;
   llarp_pubkey_t target;
   bool found;
-  llarp_rc result;
+  struct llarp_rc result;
 };
 
 // shallow copy

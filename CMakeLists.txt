@@ -8,6 +8,9 @@ if(ASAN)
   set(OPTIMIZE_FLAGS "-O0")
 endif(ASAN)
 
+if(SHADOW)
+  add_definitions(-DTESTNET=true)
+endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
@@ -22,7 +25,7 @@ if(RELEASE_MOTTO)
 endif()
 
 set(EXE llarpd)
-set(EXE_SRC daemon/main.cpp)
+set(EXE_SRC daemon/main.c)
 
 if(SODIUM_INCLUDE_DIR)
   include_directories(${SODIUM_INCLUDE_DIR})
@@ -84,3 +87,10 @@ target_link_libraries(${EXE} ${STATIC_LIB})
 
 add_executable(rcutil daemon/rcutil.cpp)
 target_link_libraries(rcutil ${STATIC_LIB} ${LIBS})
+
+
+if(SHADOW)
+  add_shadow_plugin(shadow-plugin-llarpd ${EXE_SRC})
+  target_link_libraries(shadow-plugin-llarpd ${STATIC_LIB})
+  install(TARGETS shadow-pluging-llarpd DESTINATIONS plugins)
+endif()

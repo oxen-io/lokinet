@@ -15,7 +15,7 @@ extern "C" {
 #endif
 
 /** 2^15 bytes */
-const size_t MAX_LINK_MSG_SIZE = 32768;
+#define MAX_LINK_MSG_SIZE (32768)
 
 /**
  * wire layer transport interface
