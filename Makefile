@@ -32,5 +32,12 @@ $(TARGETS): release-compile
 
 release: $(SIGS)
 
+shadow-configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON
+
+shadow: shadow-configure
+	ninja
+
+
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
