@@ -17,7 +17,7 @@ main(int argc, char *argv[])
   const char *conffname = "daemon.ini";
   if(argc > 1)
     conffname = argv[1];
-  ctx      = llarp_main_init(conffname);
+  ctx      = llarp_main_init(conffname, true);
   int code = 1;
   if(ctx)
   {

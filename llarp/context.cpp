@@ -246,13 +246,13 @@ struct llarp_main
 };
 
 struct llarp_main *
-llarp_main_init(const char *fname)
+llarp_main_init(const char *fname, bool multiProcess)
 {
   if(!fname)
     fname = "daemon.ini";
 
   llarp_main *m = new llarp_main;
-  m->ctx.reset(new llarp::Context(std::cout));
+  m->ctx.reset(new llarp::Context(std::cout, !multiProcess));
   if(!m->ctx->LoadConfig(fname))
   {
     m->ctx->Close();

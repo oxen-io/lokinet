@@ -17,7 +17,7 @@ struct llarp_main;
 
 /** initialize application context and load config */
 struct llarp_main *
-llarp_main_init(const char *fname);
+llarp_main_init(const char *fname, bool multiProcess);
 
 /** handle signal for main context */
 void
