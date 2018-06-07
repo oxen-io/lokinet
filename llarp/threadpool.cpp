@@ -48,7 +48,7 @@ namespace llarp
             job->work(job->user);
             auto after = llarp_time_now_ms();
             auto dlt   = after - now;
-            if(dlt > 1)
+            if(dlt > 10)
               llarp::Warn("work took ", dlt, " ms");
             delete job;
           }
