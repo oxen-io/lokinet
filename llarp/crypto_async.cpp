@@ -26,7 +26,9 @@ namespace iwp
   {
     iwp_async_keygen *keygen = static_cast< iwp_async_keygen * >(user);
     keygen->iwp->crypto->encryption_keygen(keygen->keybuf);
-    llarp_thread_job job = {.user = user, .work = &inform_keygen};
+    llarp_thread_job job;
+    job.user = user;
+    job.work = &inform_keygen;
     llarp_logic_queue_job(keygen->iwp->logic, job);
   }
 
@@ -384,33 +386,6 @@ namespace iwp
   }
 }
 
-// REFACTOR: same as llarp_async_iwp (unify and rename)
-struct llarp_async_rc
-{
-  struct llarp_crypto *crypto;
-  struct llarp_logic *logic;
-  struct llarp_threadpool *worker;
-};
-
-namespace rc {
-
-  void
-  inform_verify(void *user)
-  {
-    rc_async_verify *request = static_cast< rc_async_verify * >(user);
-    request->hook(request);
-  }
-
-  void
-  verify(void *user)
-  {
-    rc_async_verify *request = static_cast< rc_async_verify * >(user);
-    request->result = llarp_rc_verify_sig(request->context->crypto, request->rc);
-    llarp_thread_job job = {.user = user, .work = &inform_verify};
-    llarp_logic_queue_job(request->context->logic, job);
-  }
-}
-
 extern "C" {
 
 void
@@ -486,16 +461,6 @@ iwp_call_async_verify_session_start(struct llarp_async_iwp *iwp,
                              {session, &iwp::verify_session_start});
 }
 
-void rc_call_async_verify(struct llarp_async_rc *context,
-                          struct rc_async_verify *request,
-                          struct llarp_rc *rc)
-{
-  request->context = context;
-  request->rc      = rc;
-  llarp_threadpool_queue_job(context->worker,
-                             {request, &rc::verify});
-}
-
 struct llarp_async_iwp *
 llarp_async_iwp_new(struct llarp_crypto *crypto, struct llarp_logic *logic,
                     struct llarp_threadpool *worker)
@@ -514,26 +479,6 @@ void
 llarp_async_iwp_free(struct llarp_async_iwp *iwp)
 {
   delete iwp;
-}
-
-struct llarp_async_rc *
-llarp_async_rc_new(struct llarp_crypto *crypto, struct llarp_logic *logic,
-                    struct llarp_threadpool *worker)
-{
-  llarp_async_rc *context = new llarp_async_rc;
-  if(context)
-  {
-    context->crypto = crypto;
-    context->logic  = logic;
-    context->worker = worker;
-  }
-  return context;
-}
-
-void
-llarp_async_rc_free(struct llarp_async_rc *context)
-{
-  delete context;
 }
 
 }
