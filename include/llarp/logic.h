@@ -12,6 +12,14 @@ struct llarp_logic;
 struct llarp_logic*
 llarp_init_logic();
 
+/// single threaded mode logic event loop
+struct llarp_logic*
+llarp_init_single_process_logic(struct llarp_threadpool* tp);
+
+/// single threaded tick
+void
+llarp_logic_tick(struct llarp_logic* logic);
+
 void
 llarp_free_logic(struct llarp_logic** logic);
 

@@ -65,11 +65,14 @@ llarp_config_iter(struct llarp_config *conf, struct llarp_config_iterator *iter)
 {
   iter->conf                                                   = conf;
   std::map< std::string, llarp::Config::section_t & > sections = {
-      {"router", conf->impl.router},
       {"network", conf->impl.network},
       {"iwp-connect", conf->impl.connect},
       {"iwp-links", conf->impl.iwp_links},
       {"netdb", conf->impl.netdb}};
+
+  for(const auto item : conf->impl.router)
+    iter->visit(iter, "router", item.first.c_str(), item.second.c_str());
+
   for(const auto section : sections)
     for(const auto item : section.second)
       iter->visit(iter, section.first.c_str(), item.first.c_str(),

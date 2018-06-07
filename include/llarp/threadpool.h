@@ -8,6 +8,11 @@ struct llarp_threadpool;
 
 struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name);
+
+/// for single process mode
+struct llarp_threadpool *
+llarp_init_same_process_threadpool();
+
 void
 llarp_free_threadpool(struct llarp_threadpool **tp);
 
@@ -20,7 +25,23 @@ struct llarp_thread_job
   void *user;
   /** called in threadpool worker thread */
   llarp_thread_work_func work;
+
+#ifdef __cplusplus
+
+  llarp_thread_job(void *u, llarp_thread_work_func w) : user(u), work(w)
+  {
+  }
+
+  llarp_thread_job() : user(nullptr), work(nullptr)
+  {
+  }
+
+#endif
 };
+
+/// for single process mode
+void
+llarp_threadpool_tick(struct llarp_threadpool *tp);
 
 void
 llarp_threadpool_queue_job(struct llarp_threadpool *tp,

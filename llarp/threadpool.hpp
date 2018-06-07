@@ -25,7 +25,7 @@ namespace llarp
       void
       Stop();
       std::vector< std::thread > threads;
-      std::deque< llarp_thread_job > jobs;
+      std::deque< llarp_thread_job* > jobs;
 
       mtx_t queue_mutex;
       std::condition_variable condition;

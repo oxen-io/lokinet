@@ -52,8 +52,13 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             std::vector< llarp::ILinkMessage * > msgs)
 {
   bool has = false;
-  for(auto &link : links)
+  for(auto &item : links)
+  {
+    if(!item.second)
+      continue;
+    auto link = item.first;
     has |= link->has_session_to(link, remote);
+  }
 
   if(!has)
   {
@@ -147,9 +152,9 @@ llarp_router::EnsureIdentity()
 }
 
 void
-llarp_router::AddLink(struct llarp_link *link)
+llarp_router::AddLink(struct llarp_link *link, bool isOutbound)
 {
-  links.push_back(link);
+  links.push_back({link, isOutbound});
   ready = true;
 }
 
@@ -189,8 +194,9 @@ llarp_router::SaveRC()
 void
 llarp_router::Close()
 {
-  for(auto &link : links)
+  for(auto &pair : links)
   {
+    auto link = pair.first;
     link->stop_link(link);
     link->free_impl(link);
     delete link;
@@ -204,7 +210,8 @@ llarp_router::connect_job_retry(void *user)
   llarp_link_establish_job *job =
       static_cast< llarp_link_establish_job * >(user);
 
-  llarp::Info("trying to establish session again");
+  llarp::Addr remote = job->ai;
+  llarp::Info("trying to establish session again with ", remote);
   job->link->try_establish(job->link, job);
 }
 
@@ -281,11 +288,17 @@ void
 llarp_router::Tick()
 {
   llarp::Debug("tick router");
+  llarp_link_session_iter iter;
+  iter.user  = this;
+  iter.visit = &send_padded_message;
   if(sendPadding)
   {
-    for(auto &link : links)
+    for(auto &item : links)
     {
-      link->iter_sessions(link, {this, nullptr, &send_padded_message});
+      if(!item.second)
+        continue;
+      auto link = item.first;
+      link->iter_sessions(link, iter);
     }
   }
 }
@@ -294,10 +307,44 @@ bool
 llarp_router::send_padded_message(llarp_link_session_iter *itr,
                                   llarp_link_session *peer)
 {
-  auto msg           = new llarp::DiscardMessage({}, 4096);
   llarp_router *self = static_cast< llarp_router * >(itr->user);
-  self->SendToOrQueue(peer->get_remote_router(peer)->pubkey, {msg});
+  llarp::RouterID remote;
+  remote = &peer->get_remote_router(peer)->pubkey[0];
+  for(size_t idx = 0; idx < 50; ++idx)
+  {
+    llarp::DiscardMessage msg(9000);
+    self->SendTo(remote, &msg);
+  }
   return true;
+}
+
+void
+llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg)
+{
+  llarp_buffer_t buf =
+      llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+
+  if(!msg->BEncode(&buf))
+  {
+    llarp::Warn("failed to encode outbound message, buffer size left: ",
+                llarp_buffer_size_left(buf));
+    return;
+  }
+  // set size of message
+  buf.sz  = buf.cur - buf.base;
+  buf.cur = buf.base;
+
+  bool sent = false;
+  for(auto &item : links)
+  {
+    if(!item.second)
+      continue;
+    if(!sent)
+    {
+      auto link = item.first;
+      sent      = link->sendto(link, remote, buf);
+    }
+  }
 }
 
 void
@@ -322,6 +369,7 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
 void
 llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
 {
+  llarp::Debug("Flush outbound for ", remote);
   auto itr = outboundMesssageQueue.find(remote);
   if(itr == outboundMesssageQueue.end())
     return;
@@ -343,12 +391,17 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
 
-    bool sent = false;
-    for(auto &link : links)
+    llarp::RouterID peer = remote;
+    bool sent            = false;
+    for(auto &item : links)
     {
-      if(!sent)
+      if(item.second)
       {
-        sent = link->sendto(link, remote, buf);
+        if(!sent)
+        {
+          auto link = item.first;
+          sent      = link->sendto(link, peer, buf);
+        }
       }
     }
     if(!sent)
@@ -366,8 +419,11 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
+    delete job;
+    /*
     auto session = job->session;
     router->async_verify_RC(session, false, job);
+    */
     return;
   }
   llarp::Info("session not established");
@@ -399,8 +455,11 @@ llarp_router::Run()
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
   rc.addrs = llarp_ai_list_new();
-  for(auto link : links)
+  for(auto &item : links)
   {
+    if(item.second)
+      continue;
+    auto link = item.first;
     llarp_ai addr;
     link->get_our_address(link, &addr);
     llarp_ai_list_pushback(rc.addrs, &addr);
@@ -421,8 +480,9 @@ llarp_router::Run()
   llarp_dht_context_start(dht, ourPubkey);
 
   // start links
-  for(auto link : links)
+  for(auto &item : links)
   {
+    auto link  = item.first;
     int result = link->start_link(link, logic);
     if(result == -1)
       llarp::Warn("Link ", link->name(), " failed to start");
@@ -474,7 +534,11 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
     router->tp      = tp;
     router->logic   = logic;
     // TODO: make disk io threadpool count configurable
+#ifdef TESTNET
+    router->disk = tp;
+#else
     router->disk = llarp_init_threadpool(1, "llarp-diskio");
+#endif
     llarp_crypto_libsodium_init(&router->crypto);
   }
   return router;
@@ -508,11 +572,22 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote)
   llarp_ai addr;
   if(llarp_ai_list_index(remote->addrs, 0, &addr))
   {
-    llarp_router_iterate_links(router,
-                               {&addr, &llarp_router::iter_try_connect});
-    return true;
-  }
+    for(auto &item : router->links)
+    {
+      if(!item.second)
+        continue;
+      auto link                     = item.first;
+      llarp_link_establish_job *job = new llarp_link_establish_job;
 
+      llarp_ai_copy(&job->ai, &addr);
+      job->timeout = 10000;
+      job->result  = &llarp_router::on_try_connect_result;
+      // give router as user pointer
+      job->user = router;
+      link->try_establish(link, job);
+      return true;
+    }
+  }
   return false;
 }
 
@@ -553,10 +628,12 @@ bool
 llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
                            byte_t *secretkey)
 {
+  llarp::Debug("find or create ", fpath);
   fs::path path(fpath);
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
+    llarp::Info("regenerated identity key");
     crypto->identity_keygen(secretkey);
     std::ofstream f(path, std::ios::binary);
     if(f.is_open())
@@ -570,6 +647,7 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
     f.read((char *)secretkey, sizeof(llarp_seckey_t));
     return true;
   }
+  llarp::Info("failed to get identity key");
   return false;
 }
 
@@ -619,9 +697,10 @@ void
 llarp_router_iterate_links(struct llarp_router *router,
                            struct llarp_router_link_iter i)
 {
-  for(auto link : router->links)
-    if(!i.visit(&i, router, link))
-      return;
+  for(auto item : router->links)
+    if(item.second)
+      if(!i.visit(&i, router, item.first))
+        return;
 }
 
 void
@@ -677,13 +756,10 @@ namespace llarp
       iwp_link_init(link, args);
       if(llarp_link_initialized(link))
       {
-        // printf("router -> link initialized\n");
+        llarp::Info("link ", key, " initialized");
         if(link->configure(link, self->netloop, key, af, proto))
         {
-          llarp_ai ai;
-          link->get_our_address(link, &ai);
-          llarp::Addr addr = ai;
-          self->AddLink(link);
+          self->AddLink(link, llarp::StrEq(key, "*"));
           return;
         }
         if(af == AF_INET6)
@@ -697,7 +773,7 @@ namespace llarp
             llarp_ai ai;
             link->get_our_address(link, &ai);
             llarp::Addr addr = ai;
-            self->AddLink(link);
+            self->AddLink(link, llarp::StrEq(key, "*"));
             return;
           }
         }

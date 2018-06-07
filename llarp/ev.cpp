@@ -1,14 +1,15 @@
 #include <llarp/ev.h>
+#include <llarp/logic.h>
 #include "mem.hpp"
 
 #ifdef __linux__
-#  include "ev_epoll.hpp"
+#include "ev_epoll.hpp"
 #endif
-#if (__APPLE__ && __MACH__)
-#  include "ev_kqueue.hpp"
+#if(__APPLE__ && __MACH__)
+#include "ev_kqueue.hpp"
 #endif
 #ifdef __FreeBSD__
-#  include "ev_kqueue.hpp"
+#include "ev_kqueue.hpp"
 #endif
 
 extern "C" {
@@ -19,7 +20,7 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 #ifdef __linux__
   *ev = new llarp_epoll_loop;
 #endif
-#if (__APPLE__ && __MACH__)
+#if(__APPLE__ && __MACH__)
   *ev = new llarp_kqueue_loop;
 #endif
 #ifdef __FreeBSD__
@@ -39,6 +40,20 @@ int
 llarp_ev_loop_run(struct llarp_ev_loop *ev)
 {
   return ev->run();
+}
+
+void
+llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
+                                 struct llarp_threadpool *tp,
+                                 struct llarp_logic *logic)
+{
+  while(true)
+  {
+    if(ev->tick(10) == -1)
+      return;
+    llarp_logic_tick(logic);
+    llarp_threadpool_tick(tp);
+  }
 }
 
 int

@@ -441,6 +441,7 @@ namespace llarp
     Context::CleanupTX()
     {
       auto now = llarp_time_now_ms();
+      llarp::Debug("DHT tick");
       std::set< TXOwner > expired;
 
       for(auto &item : pendingTX)
@@ -454,10 +455,11 @@ namespace llarp
         if(e.requester != ourKey)
         {
           // inform not found
-          auto msg = new llarp::DHTImmeidateMessage(e.requester);
-          msg->msgs.push_back(
+          llarp::DHTImmeidateMessage msg(e.requester);
+          msg.msgs.push_back(
               new GotRouterMessage(e.requester, e.txid, nullptr));
-          router->SendToOrQueue(e.requester, {msg});
+          llarp::Info("DHT reply to ", e.requester);
+          router->SendTo(e.requester, &msg);
         }
       }
 

@@ -4,6 +4,7 @@
 #include <llarp/ev.h>
 #include <llarp/link.h>
 #include <llarp/logic.h>
+#include <llarp/nodedb.h>
 #include <llarp/router_contact.h>
 #include <llarp/threadpool.h>
 

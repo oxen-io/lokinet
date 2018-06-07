@@ -186,13 +186,13 @@ struct iwp_async_frame
   /// a pointer to pass ourself
   void *user;
   /// current session key
-  uint8_t *sessionkey;
+  byte_t *sessionkey;
   /// size of the frame
   size_t sz;
   /// result handler
   iwp_async_frame_hook hook;
   /// memory holding the entire frame
-  uint8_t buf[1500];
+  byte_t buf[1500];
 };
 
 /// decrypt iwp frame asynchronously

@@ -5,7 +5,7 @@ namespace llarp
 {
   struct LinkIntroMessage : public ILinkMessage
   {
-    LinkIntroMessage(llarp_rc* rc) : ILinkMessage({}), RC(rc)
+    LinkIntroMessage(llarp_rc* rc) : ILinkMessage(), RC(rc)
     {
     }
 

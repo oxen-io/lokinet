@@ -7,7 +7,10 @@
 extern "C" {
 #endif
 
-const size_t MAX_RC_SIZE = 1024;
+// forward declare
+struct llarp_alloc;
+
+#define MAX_RC_SIZE (1024)
 
 struct llarp_rc
 {

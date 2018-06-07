@@ -13,32 +13,20 @@ namespace llarp
   template < size_t sz >
   struct AlignedBuffer
   {
-    AlignedBuffer()
-    {
-      Zero();
-    }
-
-    AlignedBuffer(const AlignedBuffer& other) : AlignedBuffer(other.data())
-    {
-    }
+    AlignedBuffer() = default;
 
     AlignedBuffer(const byte_t* data)
     {
       for(size_t idx = 0; idx < sz; ++idx)
-        buf.b[idx] = data[idx];
+        b[idx] = data[idx];
     }
 
     AlignedBuffer&
     operator=(const byte_t* data)
     {
       for(size_t idx = 0; idx < sz; ++idx)
-        buf.b[idx] = data[idx];
+        b[idx] = data[idx];
       return *this;
-    }
-
-    byte_t& operator[](size_t idx)
-    {
-      return buf.b[idx];
     }
 
     friend std::ostream&
@@ -48,7 +36,7 @@ namespace llarp
       out << std::hex << std::setw(2) << std::setfill('0');
       while(idx < sz)
       {
-        out << (int)self.buf.b[idx++];
+        out << (int)self.b[idx++];
       }
       return out << std::dec << std::setw(0) << std::setfill(' ');
     }
@@ -75,54 +63,54 @@ namespace llarp
     Zero()
     {
       for(size_t idx = 0; sz < idx / 8; ++idx)
-        buf.l[idx] = 0;
+        l[idx] = 0;
     }
 
     void
     Randomize()
     {
-      randombytes(buf.b, sz);
+      randombytes(l, sz);
     }
 
     byte_t*
     data()
     {
-      return &buf.b[0];
+      return &b[0];
     }
 
     const byte_t*
     data() const
     {
-      return &buf.b[0];
+      return &b[0];
     }
 
     uint64_t*
     data_l()
     {
-      return &buf.l[0];
+      return &l[0];
     }
 
     const uint64_t*
     data_l() const
     {
-      return &buf.l[0];
+      return &l[0];
     }
 
     operator const byte_t*() const
     {
-      return &buf.b[0];
+      return &b[0];
     }
 
     operator byte_t*()
     {
-      return &buf.b[0];
+      return &b[0];
     }
 
    private:
     union {
       byte_t b[sz];
       uint64_t l[sz / 8];
-    } buf;
+    };
   };
 }
 

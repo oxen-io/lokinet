@@ -17,6 +17,10 @@
 extern "C" {
 #endif
 
+// forward declare
+struct llarp_threadpool;
+struct llarp_logic;
+
 struct llarp_ev_loop;
 
 /// allocator
@@ -30,6 +34,11 @@ llarp_ev_loop_free(struct llarp_ev_loop **ev);
 /// run main loop
 int
 llarp_ev_loop_run(struct llarp_ev_loop *ev);
+
+void
+llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
+                                 struct llarp_threadpool *tp,
+                                 struct llarp_logic *logic);
 
 /// stop event loop and wait for it to complete all jobs
 void

@@ -1,6 +1,10 @@
 #include "threadpool.hpp"
 #include <pthread.h>
 #include <cstring>
+
+#include <llarp/time.h>
+#include <queue>
+
 #include "logger.hpp"
 
 #if(__FreeBSD__)
@@ -29,18 +33,24 @@ namespace llarp
           }
           for(;;)
           {
-            llarp_thread_job job;
+            llarp_thread_job *job;
             {
               lock_t lock(this->queue_mutex);
               this->condition.wait(
                   lock, [this] { return this->stop || !this->jobs.empty(); });
               if(this->stop && this->jobs.empty())
                 return;
-              job = std::move(this->jobs.front());
+              job = this->jobs.front();
               this->jobs.pop_front();
             }
+            auto now = llarp_time_now_ms();
             // do work
-            job.work(job.user);
+            job->work(job->user);
+            auto after = llarp_time_now_ms();
+            auto dlt   = after - now;
+            if(dlt > 1)
+              llarp::Warn("work took ", dlt, " ms");
+            delete job;
           }
         });
       }
@@ -75,7 +85,7 @@ namespace llarp
         if(stop)
           return;
 
-        jobs.emplace_back(job);
+        jobs.push_back(new llarp_thread_job(job.user, job.work));
       }
       condition.notify_one();
     }
@@ -85,9 +95,16 @@ namespace llarp
 
 struct llarp_threadpool
 {
-  llarp::thread::Pool impl;
+  llarp::thread::Pool *impl;
 
-  llarp_threadpool(int workers, const char *name) : impl(workers, name)
+  std::queue< llarp_thread_job > jobs;
+
+  llarp_threadpool(int workers, const char *name)
+      : impl(new llarp::thread::Pool(workers, name))
+  {
+  }
+
+  llarp_threadpool() : impl(nullptr)
   {
   }
 };
@@ -103,11 +120,18 @@ llarp_init_threadpool(int workers, const char *name)
     return nullptr;
 }
 
+struct llarp_threadpool *
+llarp_init_same_process_threadpool()
+{
+  return new llarp_threadpool();
+}
+
 void
 llarp_threadpool_join(struct llarp_threadpool *pool)
 {
   llarp::Debug("threadpool join");
-  pool->impl.Join();
+  if(pool->impl)
+    pool->impl->Join();
 }
 
 void
@@ -119,7 +143,8 @@ void
 llarp_threadpool_stop(struct llarp_threadpool *pool)
 {
   llarp::Debug("threadpool stop");
-  pool->impl.Stop();
+  if(pool->impl)
+    pool->impl->Stop();
 }
 
 void
@@ -127,9 +152,10 @@ llarp_threadpool_wait(struct llarp_threadpool *pool)
 {
   std::mutex mtx;
   llarp::Debug("threadpool wait");
+  if(pool->impl)
   {
     std::unique_lock< std::mutex > lock(mtx);
-    pool->impl.done.wait(lock);
+    pool->impl->done.wait(lock);
   }
 }
 
@@ -137,7 +163,21 @@ void
 llarp_threadpool_queue_job(struct llarp_threadpool *pool,
                            struct llarp_thread_job job)
 {
-  pool->impl.QueueJob(job);
+  if(pool->impl)
+    pool->impl->QueueJob(job);
+  else
+    pool->jobs.push(job);
+}
+
+void
+llarp_threadpool_tick(struct llarp_threadpool *pool)
+{
+  while(pool->jobs.size())
+  {
+    auto &job = pool->jobs.front();
+    job.work(job.user);
+    pool->jobs.pop();
+  }
 }
 
 void

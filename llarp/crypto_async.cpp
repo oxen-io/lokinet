@@ -323,6 +323,7 @@ namespace iwp
   {
     iwp_async_frame *frame = static_cast< iwp_async_frame * >(user);
     frame->hook(frame);
+    delete frame;
   }
 
   void
@@ -330,9 +331,9 @@ namespace iwp
   {
     iwp_async_frame *frame = static_cast< iwp_async_frame * >(user);
     auto crypto            = frame->iwp->crypto;
-    auto hmac              = frame->buf;
-    auto nonce             = frame->buf + 32;
-    auto body              = frame->buf + 64;
+    byte_t *hmac           = frame->buf;
+    byte_t *nonce          = frame->buf + 32;
+    byte_t *body           = frame->buf + 64;
 
     llarp_sharedkey_t digest;
 
@@ -351,7 +352,7 @@ namespace iwp
     buf.sz   = frame->sz - 64;
     crypto->xchacha20(buf, frame->sessionkey, nonce);
     // inform result
-    llarp_logic_queue_job(frame->iwp->logic, {user, &inform_frame_done});
+    llarp_logic_queue_job(frame->iwp->logic, {frame, &inform_frame_done});
   }
 
   void
@@ -359,9 +360,9 @@ namespace iwp
   {
     iwp_async_frame *frame = static_cast< iwp_async_frame * >(user);
     auto crypto            = frame->iwp->crypto;
-    auto hmac              = frame->buf;
-    auto nonce             = frame->buf + 32;
-    auto body              = frame->buf + 64;
+    byte_t *hmac           = frame->buf;
+    byte_t *nonce          = frame->buf + 32;
+    byte_t *body           = frame->buf + 64;
 
     llarp_buffer_t buf;
     buf.base = body;
@@ -377,8 +378,9 @@ namespace iwp
     buf.cur  = buf.base;
     buf.sz   = frame->sz - 32;
     crypto->hmac(hmac, buf, frame->sessionkey);
-    // inform result
-    llarp_logic_queue_job(frame->iwp->logic, {user, &inform_frame_done});
+    // call result RIGHT HERE
+    frame->hook(frame);
+    delete frame;
   }
 }
 
