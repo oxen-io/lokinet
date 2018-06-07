@@ -80,24 +80,21 @@ llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc);
 */
 struct llarp_async_verify_rc;
 
-//struct llarp_async_verify_job_context; // forward definition (defined in nodedb.cpp)
-struct llarp_async_verify_job_context
-{
-    struct llarp_logic *logic;
-    struct llarp_crypto *crypto;
-    struct llarp_threadpool *cryptoworker;
-    struct llarp_threadpool *diskworker;
-};
-
 typedef void (*llarp_async_verify_rc_hook_func)(struct llarp_async_verify_rc *);
 
 /// verify rc request
 struct llarp_async_verify_rc
 {
-  /// user pointers
+  /// async_verify_context
   void *user;
-  /// context
-  struct llarp_async_verify_job_context *context;
+  /// nodedb storage
+  struct llarp_nodedb *nodedb;
+  // llarp_logic for llarp_logic_queue_job
+  struct llarp_logic *logic; // includes a llarp_threadpool
+  struct llarp_crypto *crypto;
+  struct llarp_threadpool *cryptoworker;
+  struct llarp_threadpool *diskworker;
+
   /// router contact (should this be a pointer?)
   struct llarp_rc rc;
   /// result

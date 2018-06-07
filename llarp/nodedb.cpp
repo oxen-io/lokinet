@@ -1,7 +1,6 @@
 #include <llarp/nodedb.h>
 #include <llarp/router_contact.h>
 #include <llarp/crypto_async.h>
-#include <llarp/threadpool.h>
 
 #include <fstream>
 #include <map>
@@ -12,62 +11,7 @@
 #include "encode.hpp"
 #include "logger.hpp"
 
-// probably used for more than verify tbh
-/*
-struct llarp_async_verify_job_context
-{
-    struct llarp_logic *logic;
-    struct llarp_crypto *crypto;
-    struct llarp_threadpool *cryptoworker;
-    struct llarp_threadpool *diskworker;
-};
-*/
-
 static const char skiplist_subdirs[] = "0123456789ABCDEF";
-
-static void on_crypt_verify_rc(rc_async_verify *job)
-{
-  if (job->result) {
-    // set up disk request
-    // how do we get our diskworker?
-  } else {
-    // it's not valid, don't update db
-    // send back to logic thread
-
-    // make generic job based on previous job
-    //llarp_thread_job job = {.user = job->user, .work = &inform_verify_rc};
-    //llarp_logic_queue_job(job->context->logic, job);
-  }
-  // TODO: is there any deallocation we need to do
-  llarp_async_rc_free(job->context);
-  //delete (llarp_async_rc*)job->context; // clean up our temp context created in verify_rc
-  delete job; // we're done with the rc_async_verify
-}
-
-void verify_rc(void *user)
-{
-  llarp_async_verify_rc *verify_request =
-    static_cast< llarp_async_verify_rc * >(user);
-  // transfer context
-  // FIXME: move this allocation to more a long term home?
-  llarp_async_rc *async_rc_context = llarp_async_rc_new(
-    verify_request->context->crypto, verify_request->context->logic,
-    verify_request->context->cryptoworker);
-  // set up request
-  rc_async_verify *async_rc_request = new rc_async_verify;
-  // rc_call_async_verify will set up context, rc
-  // user?
-  async_rc_request->result = false; // just initialize it to something secure
-  async_rc_request->hook = &on_crypt_verify_rc;
-
-  rc_call_async_verify(async_rc_context, async_rc_request,
-    &verify_request->rc);
-  // crypto verify
-  // if success write to disk
-  //verify_request->context->crypto
-  //llarp_thread_job job = {.user = user, .work = &inform_keygen};
-  //llarp_logic_queue_job(keygen->iwp->logic, job);
-}
 
 struct llarp_nodedb
 {
@@ -150,22 +94,25 @@ struct llarp_nodedb
 
     if (llarp_rc_bencode(rc, &buf))
     {
-      // write buf to disk
-      //auto filename = hexStr(pk.data(), sizeof(pk)) + ".rc";
       char ftmp[68] = {0};
       const char *hexname =
-        llarp::HexEncode< llarp::pubkey, decltype(ftmp) >(pk, ftmp);
+      llarp::HexEncode< llarp::pubkey, decltype(ftmp) >(pk, ftmp);
       std::string filename(hexname);
+      filename.append(".signed.txt");
+      llarp::Info("saving RC.pubkey ", filename);
+      // write buf to disk
+      //auto filename = hexStr(pk.data(), sizeof(pk)) + ".rc";
       // FIXME: path?
-      printf("filename[%s]\n", filename.c_str());
+      //printf("filename[%s]\n", filename.c_str());
       std::ofstream ofs (filename, std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
       ofs.write((char *)buf.base, buf.sz);
       ofs.close();
       if (!ofs)
       {
-        llarp::Error(__FILE__, "Failed to write", filename);
+        llarp::Error("Failed to write", filename);
         return false;
       }
+      llarp::Info("saved RC.pubkey", filename);
       return true;
     }
     return false;
@@ -262,6 +209,41 @@ struct llarp_nodedb
   */
 };
 
+// call request hook
+void logic_threadworker_callback(void *user) {
+  llarp_async_verify_rc *verify_request =
+    static_cast < llarp_async_verify_rc * >(user);
+  verify_request->hook(verify_request);
+}
+
+// write it to disk
+void disk_threadworker_setRC(void *user) {
+  llarp_async_verify_rc *verify_request =
+    static_cast < llarp_async_verify_rc * >(user);
+  verify_request->valid = verify_request->nodedb->setRC(&verify_request->rc);
+  llarp_logic_queue_job(verify_request->logic, { verify_request, &logic_threadworker_callback });
+}
+
+// we run the crypto verify in the crypto threadpool worker
+void crypto_threadworker_verifyrc(void *user)
+{
+  llarp_async_verify_rc *verify_request =
+    static_cast< llarp_async_verify_rc * >(user);
+  verify_request->valid = llarp_rc_verify_sig(verify_request->crypto, &verify_request->rc);
+  // if it's valid we need to set it
+  if (verify_request->valid)
+  {
+    llarp::Debug("RC is valid, saving to disk");
+    llarp_threadpool_queue_job(verify_request->diskworker,
+                               { verify_request, &disk_threadworker_setRC });
+  } else {
+    // callback to logic thread
+    llarp::Warn("RC is not valid, can't save to disk");
+    llarp_logic_queue_job(verify_request->logic,
+                          { verify_request, &logic_threadworker_callback });
+  }
+}
+
 extern "C" {
 
 struct llarp_nodedb *
@@ -314,27 +296,6 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
   return n->Load(dir);
 }
 
-/// allocate verify job context
-struct llarp_async_verify_job_context*
-llarp_async_verify_job_new(struct llarp_threadpool *cryptoworker,
-  struct llarp_threadpool *diskworker, struct llarp_logic *logic,
-  struct llarp_crypto *crypto) {
-  llarp_async_verify_job_context *context = new llarp_async_verify_job_context;
-  if (context)
-  {
-    context->logic = logic;
-    context->crypto = crypto;
-    context->cryptoworker = cryptoworker;
-    context->diskworker = diskworker;
-  }
-  return context;
-}
-
-void
-llarp_async_verify_job_free(struct llarp_async_verify_job_context *context) {
-  delete context;
-}
-
 void
 llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
                           struct llarp_logic *logic,
@@ -343,13 +304,18 @@ llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
                           struct llarp_threadpool *diskworker,
                           struct llarp_async_verify_rc *job)
 {
-  // set up context
-  llarp_async_verify_job_context *context = llarp_async_verify_job_new(
-    cryptoworker, diskworker, logic, crypto);
-  // set up anything we need (in job)
-  job->context = context;
-  // queue the crypto check
-  llarp_threadpool_queue_job(cryptoworker, { job, &verify_rc });
+  // TODO: ask jeff is safe to remove the parameters
+  // we expect the following to be already set up at this point: user (context: router, llarp_link_establish_job), rc, hook
+  // do additional job set up
+  /*
+  job->logic = logic;
+  job->crypto = crypto;
+  job->cryptoworker = cryptoworker;
+  job->diskworker = diskworker;
+  job->nodedb = nodedb;
+  */
+  // switch to crypto threadpool and continue with crypto_threadworker_verifyrc
+  llarp_threadpool_queue_job(cryptoworker, { job, &crypto_threadworker_verifyrc });
 }
 
 bool
@@ -357,5 +323,5 @@ llarp_nodedb_find_rc(struct llarp_nodedb *nodedb, struct llarp_rc *dst,
                      llarp_pubkey_t k)
 {
   return false;
-}
-}
+} // end function
+} // end extern
