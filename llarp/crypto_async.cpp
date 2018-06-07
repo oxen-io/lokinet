@@ -308,7 +308,6 @@ namespace iwp
       else  // token missmatch
       {
         session->buf = nullptr;
-        printf("token miss match\n");
       }
     }
     else  // hmac fail

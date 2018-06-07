@@ -108,6 +108,8 @@ struct llarp_link_session
   void (*close)(struct llarp_link_session *);
   /** set session established */
   void (*established)(struct llarp_link_session *);
+  /** get parent link */
+  struct llarp_link *(*get_parent)(struct llarp_link_session *);
   /** get router contact of remote router */
   struct llarp_rc *(*get_remote_router)(struct llarp_link_session *);
 };

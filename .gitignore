@@ -26,5 +26,11 @@ callgrind.*
 *.signed
 *.key
 
+shadow.data
 shadow.config.xml
 *.log
+
+testnet_tmp
+
+
+*.pid

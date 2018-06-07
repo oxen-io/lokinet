@@ -51,16 +51,22 @@ bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             std::vector< llarp::ILinkMessage * > msgs)
 {
-  bool has = false;
-  for(auto &item : links)
+  llarp_link *chosen = nullptr;
+  if(!outboundLink->has_session_to(outboundLink, remote))
   {
-    if(!item.second)
-      continue;
-    auto link = item.first;
-    has |= link->has_session_to(link, remote);
+    for(auto link : inboundLinks)
+    {
+      if(link->has_session_to(link, remote))
+      {
+        chosen = link;
+        break;
+      }
+    }
   }
+  else
+    chosen = outboundLink;
 
-  if(!has)
+  if(!chosen)
   {
     llarp_rc rc;
     llarp_rc_clear(&rc);
@@ -94,7 +100,7 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   {
     outboundMesssageQueue[remote].push(msg);
   }
-  FlushOutboundFor(remote);
+  FlushOutboundFor(remote, chosen);
   return true;
 }
 
@@ -152,16 +158,15 @@ llarp_router::EnsureIdentity()
 }
 
 void
-llarp_router::AddLink(struct llarp_link *link, bool isOutbound)
+llarp_router::AddInboundLink(struct llarp_link *link)
 {
-  links.push_back({link, isOutbound});
-  ready = true;
+  inboundLinks.push_back(link);
 }
 
 bool
 llarp_router::Ready()
 {
-  return ready;
+  return outboundLink != nullptr;
 }
 
 bool
@@ -194,14 +199,18 @@ llarp_router::SaveRC()
 void
 llarp_router::Close()
 {
-  for(auto &pair : links)
+  for(auto link : inboundLinks)
   {
-    auto link = pair.first;
     link->stop_link(link);
     link->free_impl(link);
     delete link;
   }
-  links.clear();
+  inboundLinks.clear();
+
+  outboundLink->stop_link(outboundLink);
+  outboundLink->free_impl(outboundLink);
+  delete outboundLink;
+  outboundLink = nullptr;
 }
 
 void
@@ -267,7 +276,8 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   // this was an outbound establish job
   if(ctx->establish_job->session)
   {
-    router->FlushOutboundFor(pubkey);
+    auto session = ctx->establish_job->session;
+    router->FlushOutboundFor(pubkey, session->get_parent(session));
   }
   llarp_rc_free(&job->rc);
   delete job;
@@ -293,13 +303,7 @@ llarp_router::Tick()
   iter.visit = &send_padded_message;
   if(sendPadding)
   {
-    for(auto &item : links)
-    {
-      if(!item.second)
-        continue;
-      auto link = item.first;
-      link->iter_sessions(link, iter);
-    }
+    outboundLink->iter_sessions(outboundLink, iter);
   }
 }
 
@@ -334,15 +338,15 @@ llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg)
   buf.sz  = buf.cur - buf.base;
   buf.cur = buf.base;
 
-  bool sent = false;
-  for(auto &item : links)
+  bool sent = outboundLink->sendto(outboundLink, remote, buf);
+  if(!sent)
   {
-    if(!item.second)
-      continue;
-    if(!sent)
+    for(auto link : inboundLinks)
     {
-      auto link = item.first;
-      sent      = link->sendto(link, remote, buf);
+      if(!sent)
+      {
+        sent = link->sendto(link, remote, buf);
+      }
     }
   }
 }
@@ -367,7 +371,8 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
 }
 
 void
-llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
+llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
+                               llarp_link *chosen)
 {
   llarp::Debug("Flush outbound for ", remote);
   auto itr = outboundMesssageQueue.find(remote);
@@ -390,24 +395,10 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote)
     // set size of message
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
+    if(!chosen->sendto(chosen, remote, buf))
+      llarp::Warn("failed to send outboud message to ", remote, " via ",
+                  chosen->name());
 
-    llarp::RouterID peer = remote;
-    bool sent            = false;
-    for(auto &item : links)
-    {
-      if(item.second)
-      {
-        if(!sent)
-        {
-          auto link = item.first;
-          sent      = link->sendto(link, peer, buf);
-        }
-      }
-    }
-    if(!sent)
-    {
-      llarp::Warn("failed to flush outboud message queue for ", remote);
-    }
     delete msg;
     itr->second.pop();
   }
@@ -419,11 +410,8 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
-    delete job;
-    /*
     auto session = job->session;
     router->async_verify_RC(session, false, job);
-    */
     return;
   }
   llarp::Info("session not established");
@@ -456,11 +444,8 @@ llarp_router::Run()
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
   rc.addrs = llarp_ai_list_new();
-  for(auto &item : links)
+  for(auto link : inboundLinks)
   {
-    if(item.second)
-      continue;
-    auto link = item.first;
     llarp_ai addr;
     link->get_our_address(link, &addr);
     llarp_ai_list_pushback(rc.addrs, &addr);
@@ -480,24 +465,37 @@ llarp_router::Run()
   llarp::Info("our router has public key ", ourPubkey);
   llarp_dht_context_start(dht, ourPubkey);
 
-  // start links
-  for(auto &item : links)
+  llarp::Debug("starting outbound link");
+  if(!outboundLink->start_link(outboundLink, logic))
   {
-    auto link  = item.first;
-    int result = link->start_link(link, logic);
-    if(result == -1)
-      llarp::Warn("Link ", link->name(), " failed to start");
-    else
-      llarp::Debug("Link ", link->name(), " started");
+    llarp::Warn("outbound link failed to start");
   }
 
-  for(const auto &itr : connect)
+  // start links
+  for(auto link : inboundLinks)
   {
-    llarp::Info("connecting to node ", itr.first);
-    try_connect(itr.second);
+    if(link->start_link(link, logic))
+      llarp::Debug("Link ", link->name(), " started");
+    else
+      llarp::Warn("Link ", link->name(), " failed to start");
   }
+
+  llarp_logic_call_later(logic, {1000, this, &ConnectAll});
 
   ScheduleTicker(500);
+}
+
+void
+llarp_router::ConnectAll(void *user, uint64_t orig, uint64_t left)
+{
+  if(left)
+    return;
+  llarp_router *self = static_cast< llarp_router * >(user);
+  for(const auto &itr : self->connect)
+  {
+    llarp::Info("connecting to node ", itr.first);
+    self->try_connect(itr.second);
+  }
 }
 
 bool
@@ -546,12 +544,49 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
 }
 
 bool
+llarp_router::InitOutboundLink()
+{
+  if(outboundLink)
+    return true;
+  auto link = new llarp_link;
+  llarp::Zero(link, sizeof(llarp_link));
+
+  llarp_iwp_args args = {
+      .crypto       = &crypto,
+      .logic        = logic,
+      .cryptoworker = tp,
+      .router       = this,
+      .keyfile      = transport_keyfile.c_str(),
+  };
+  auto afs = {AF_INET, AF_INET6};
+  iwp_link_init(link, args);
+  if(llarp_link_initialized(link))
+  {
+    llarp::Info("outbound link initialized");
+    for(auto af : afs)
+    {
+      if(link->configure(link, netloop, "*", af, 0))
+      {
+        outboundLink = link;
+        llarp::Info("outbound link ready");
+        return true;
+      }
+    }
+  }
+  delete link;
+  llarp::Error("failed to initialize outbound link");
+  return false;
+}
+
+bool
 llarp_configure_router(struct llarp_router *router, struct llarp_config *conf)
 {
   llarp_config_iterator iter;
   iter.user  = router;
   iter.visit = llarp::router_iter_config;
   llarp_config_iter(conf, &iter);
+  if(!router->InitOutboundLink())
+    return false;
   if(!router->Ready())
   {
     return false;
@@ -573,21 +608,16 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote)
   llarp_ai addr;
   if(llarp_ai_list_index(remote->addrs, 0, &addr))
   {
-    for(auto &item : router->links)
-    {
-      if(!item.second)
-        continue;
-      auto link                     = item.first;
-      llarp_link_establish_job *job = new llarp_link_establish_job;
+    auto link                     = router->outboundLink;
+    llarp_link_establish_job *job = new llarp_link_establish_job;
 
-      llarp_ai_copy(&job->ai, &addr);
-      job->timeout = 10000;
-      job->result  = &llarp_router::on_try_connect_result;
-      // give router as user pointer
-      job->user = router;
-      link->try_establish(link, job);
-      return true;
-    }
+    llarp_ai_copy(&job->ai, &addr);
+    job->timeout = 10000;
+    job->result  = &llarp_router::on_try_connect_result;
+    // give router as user pointer
+    job->user = router;
+    link->try_establish(link, job);
+    return true;
   }
   return false;
 }
@@ -698,10 +728,10 @@ void
 llarp_router_iterate_links(struct llarp_router *router,
                            struct llarp_router_link_iter i)
 {
-  for(auto item : router->links)
-    if(item.second)
-      if(!i.visit(&i, router, item.first))
-        return;
+  for(auto link : router->inboundLinks)
+    if(!i.visit(&i, router, link))
+      return;
+  i.visit(&i, router, router->outboundLink);
 }
 
 void
@@ -742,46 +772,49 @@ namespace llarp
     }
 
     struct llarp_link *link = nullptr;
-    if(StrEq(section, "iwp-links"))
+    if(StrEq(section, "bind"))
     {
-      link = new llarp_link;
-      llarp::Zero(link, sizeof(llarp_link));
-
-      llarp_iwp_args args = {
-          .crypto       = &self->crypto,
-          .logic        = self->logic,
-          .cryptoworker = self->tp,
-          .router       = self,
-          .keyfile      = self->transport_keyfile.c_str(),
-      };
-      iwp_link_init(link, args);
-      if(llarp_link_initialized(link))
+      if(!StrEq(key, "*"))
       {
-        llarp::Info("link ", key, " initialized");
-        if(link->configure(link, self->netloop, key, af, proto))
+        link = new llarp_link;
+        llarp::Zero(link, sizeof(llarp_link));
+
+        llarp_iwp_args args = {
+            .crypto       = &self->crypto,
+            .logic        = self->logic,
+            .cryptoworker = self->tp,
+            .router       = self,
+            .keyfile      = self->transport_keyfile.c_str(),
+        };
+        iwp_link_init(link, args);
+        if(llarp_link_initialized(link))
         {
-          self->AddLink(link, llarp::StrEq(key, "*"));
-          return;
-        }
-        if(af == AF_INET6)
-        {
-          // we failed to configure IPv6
-          // try IPv4
-          llarp::Info("link ", key, " failed to configure IPv6, trying IPv4");
-          af = AF_INET;
+          llarp::Info("link ", key, " initialized");
           if(link->configure(link, self->netloop, key, af, proto))
           {
-            llarp_ai ai;
-            link->get_our_address(link, &ai);
-            llarp::Addr addr = ai;
-            self->AddLink(link, llarp::StrEq(key, "*"));
+            self->AddInboundLink(link);
             return;
+          }
+          if(af == AF_INET6)
+          {
+            // we failed to configure IPv6
+            // try IPv4
+            llarp::Info("link ", key, " failed to configure IPv6, trying IPv4");
+            af = AF_INET;
+            if(link->configure(link, self->netloop, key, af, proto))
+            {
+              llarp_ai ai;
+              link->get_our_address(link, &ai);
+              llarp::Addr addr = ai;
+              self->AddInboundLink(link);
+              return;
+            }
           }
         }
       }
       llarp::Error("link ", key, " failed to configure");
     }
-    else if(StrEq(section, "iwp-connect"))
+    else if(StrEq(section, "connect"))
     {
       self->connect[key] = val;
     }
