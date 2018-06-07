@@ -13,6 +13,7 @@
 #include "logger.hpp"
 
 // probably used for more than verify tbh
+/*
 struct llarp_async_verify_job_context
 {
     struct llarp_logic *logic;
@@ -20,6 +21,7 @@ struct llarp_async_verify_job_context
     struct llarp_threadpool *cryptoworker;
     struct llarp_threadpool *diskworker;
 };
+*/
 
 static const char skiplist_subdirs[] = "0123456789ABCDEF";
 
