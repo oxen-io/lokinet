@@ -26,7 +26,7 @@ def addPeer(conf, baseDir, peer):
     conf['connect'][peer] = os.path.join(baseDir, '{}.signed'.format(peer))
 
 def createNode(pluginName, root, peer):
-    node = etree.SubElement(root, 'host')
+    node = etree.SubElement(root, 'node')
     node.attrib['id'] = peer['name']
     node.attrib['interfacebuffer'] = '{}'.format(1024 * 1024 * 100)
     app = etree.SubElement(node, 'process')

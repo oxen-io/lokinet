@@ -11,8 +11,9 @@ SIGS = $(TARGETS:=.sig)
 
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
-SHADOW_CONFIG=shadow.config.xml
-SHADOW_PLUGIN=libshadow-plugin-llarp.so
+SHADOW_CONFIG=$(REPO)/shadow.config.xml
+SHADOW_PLUGIN=$(REPO)/libshadow-plugin-llarp.so
+SHADOW_LOG=$(REPO)/shadow.log.txt
 
 TESTNET_ROOT=$(REPO)/testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
@@ -54,7 +55,7 @@ shadow-build: shadow-configure
 
 shadow: shadow-build
 	python3 contrib/shadow/genconf.py $(SHADOW_CONFIG)
-	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) &> shadow.log.txt"
+	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) &> $(SHADOW_LOG) || true"
 
 testnet-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug
