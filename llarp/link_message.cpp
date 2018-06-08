@@ -1,9 +1,5 @@
 #include <llarp/router_contact.h>
-#include <llarp/link_message.hpp>
-#include <llarp/messages/dht_immediate.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/messages/link_intro.hpp>
-#include <llarp/messages/relay_commit.hpp>
+#include <llarp/messages.hpp>
 #include "buffer.hpp"
 #include "logger.hpp"
 #include "router.hpp"
@@ -52,14 +48,24 @@ namespace llarp
         llarp::Warn(__FILE__, "bad mesage type size: ", strbuf.sz);
         return false;
       }
+      // create the message to parse based off message type
       switch(*strbuf.cur)
       {
         case 'i':
           handler->msg = new LinkIntroMessage(
               handler->from->get_remote_router(handler->from));
           break;
+        case 'd':
+          handler->msg = new RelayDownstreamMessage(handler->GetCurrentFrom());
+          break;
+        case 'u':
+          handler->msg = new RelayUpstreamMessage(handler->GetCurrentFrom());
+          break;
         case 'm':
           handler->msg = new DHTImmeidateMessage(handler->GetCurrentFrom());
+          break;
+        case 'a':
+          handler->msg = new LR_AckMessage(handler->GetCurrentFrom());
           break;
         case 'c':
           handler->msg = new LR_CommitMessage(handler->GetCurrentFrom());

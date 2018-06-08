@@ -95,7 +95,9 @@ set(LIB_SRC
   llarp/mem.cpp
   llarp/net.cpp
   llarp/nodedb.cpp
+  llarp/relay_ack.cpp
   llarp/relay_commit.cpp
+  llarp/relay_up_down.cpp
   llarp/router_contact.cpp
   llarp/router.cpp
   llarp/router_identity.c
