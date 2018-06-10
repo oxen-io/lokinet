@@ -1,6 +1,7 @@
 #include <llarp/crypto_async.h>
 #include <llarp/mem.h>
 #include <string.h>
+#include <llarp/crypto.hpp>
 #include "buffer.hpp"
 #include "mem.hpp"
 
@@ -56,7 +57,7 @@ namespace iwp
     memcpy(tmp + 32, intro->nonce, 32);
     crypto->shorthash(e_k, buf);
     // e = SE(a.k, e_k, n[0:24])
-    memcpy(intro->buf + 64, llarp_seckey_topublic(intro->secretkey), 32);
+    memcpy(intro->buf + 64, llarp::seckey_topublic(intro->secretkey), 32);
     buf.base = intro->buf + 64;
     buf.cur  = buf.base;
     buf.sz   = 32;
@@ -80,7 +81,7 @@ namespace iwp
     llarp_hmac_t h;
     llarp_nonce_t N;
     byte_t tmp[64];
-    auto OurPK = llarp_seckey_topublic(intro->secretkey);
+    auto OurPK = llarp::seckey_topublic(intro->secretkey);
     // e_k = HS(b.k + n)
     memcpy(tmp, OurPK, 32);
     memcpy(tmp + 32, intro->nonce, 32);

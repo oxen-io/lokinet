@@ -2,6 +2,7 @@
 #include <llarp/iwp.h>
 #include <llarp/net.h>
 #include <llarp/time.h>
+#include <llarp/crypto.hpp>
 #include "link/encoder.hpp"
 
 #include <sodium/crypto_sign_ed25519.h>
@@ -19,7 +20,6 @@
 #include <vector>
 
 #include "buffer.hpp"
-#include "crypto.hpp"
 #include "fs.hpp"
 #include "logger.hpp"
 #include "mem.hpp"
@@ -1233,7 +1233,7 @@ namespace iwp
     LinkMap_t m_sessions;
     mtx_t m_sessions_Mutex;
 
-    typedef std::unordered_map< llarp::pubkey, llarp::Addr, llarp::pubkeyhash >
+    typedef std::unordered_map< llarp::PubKey, llarp::Addr, llarp::PubKeyHash >
         SessionMap_t;
 
     SessionMap_t m_Connected;
@@ -1257,7 +1257,7 @@ namespace iwp
 
     // set that src address has identity pubkey
     void
-    MapAddr(const llarp::Addr &src, llarp::pubkey identity)
+    MapAddr(const llarp::Addr &src, const llarp::PubKey &identity)
     {
       lock_t lock(m_Connected_Mutex);
       m_Connected[identity] = src;
@@ -1267,7 +1267,7 @@ namespace iwp
     HasSessionToRouter(llarp_link *l, const byte_t *pubkey)
     {
       server *serv = static_cast< server * >(l->impl);
-      llarp::pubkey pk(pubkey);
+      llarp::PubKey pk(pubkey);
       lock_t lock(serv->m_Connected_Mutex);
       return serv->m_Connected.find(pk) != serv->m_Connected.end();
     }
@@ -1413,7 +1413,7 @@ namespace iwp
     uint8_t *
     pubkey()
     {
-      return llarp_seckey_topublic(seckey);
+      return llarp::seckey_topublic(seckey);
     }
 
     bool

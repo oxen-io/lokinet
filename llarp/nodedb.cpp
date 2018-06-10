@@ -1,9 +1,9 @@
 #include <llarp/nodedb.h>
+#include <llarp/crypto.hpp>
 #include <llarp/router_contact.h>
 #include <fstream>
-#include <map>
+#include <unordered_map>
 #include "buffer.hpp"
-#include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
 
@@ -16,7 +16,7 @@ struct llarp_nodedb
   }
 
   llarp_crypto *crypto;
-  std::map< llarp::pubkey, llarp_rc * > entries;
+  std::unordered_map< llarp::PubKey, llarp_rc * , llarp::PubKeyHash> entries;
 
   void
   Clear()
@@ -81,8 +81,7 @@ struct llarp_nodedb
     {
       if(llarp_rc_verify_sig(crypto, rc))
       {
-        llarp::pubkey pk;
-        memcpy(pk.data(), rc->pubkey, pk.size());
+        llarp::PubKey pk(&rc->pubkey[0]);
         entries[pk] = rc;
         return true;
       }

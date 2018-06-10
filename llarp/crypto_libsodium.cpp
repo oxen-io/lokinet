@@ -1,6 +1,7 @@
 #include <assert.h>
 #include <llarp/crypto.h>
 #include <sodium.h>
+#include <llarp/crypto.hpp>
 #include "mem.hpp"
 
 namespace llarp
@@ -33,26 +34,24 @@ namespace llarp
     }
 
     static bool
-    dh_client(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
-              llarp_tunnel_nonce_t n, llarp_seckey_t sk)
+    dh_client(byte_t *shared, byte_t *pk, byte_t *n, byte_t *sk)
     {
-      if(dh(*shared, llarp_seckey_topublic(sk), pk, pk, sk))
+      if(dh(shared, llarp::seckey_topublic(sk), pk, pk, sk))
       {
-        return crypto_generichash(*shared, SHAREDKEYSIZE, *shared,
-                                  SHAREDKEYSIZE, n, TUNNONCESIZE)
+        return crypto_generichash(shared, SHAREDKEYSIZE, shared, SHAREDKEYSIZE,
+                                  n, TUNNONCESIZE)
             != -1;
       }
       return false;
     }
 
     static bool
-    dh_server(llarp_sharedkey_t *shared, llarp_pubkey_t pk,
-              llarp_tunnel_nonce_t n, llarp_seckey_t sk)
+    dh_server(byte_t *shared, byte_t *pk, byte_t *n, byte_t *sk)
     {
-      if(dh(*shared, pk, llarp_seckey_topublic(sk), pk, sk))
+      if(dh(shared, pk, llarp::seckey_topublic(sk), pk, sk))
       {
-        return crypto_generichash(*shared, SHAREDKEYSIZE, *shared,
-                                  SHAREDKEYSIZE, n, TUNNONCESIZE)
+        return crypto_generichash(shared, SHAREDKEYSIZE, shared, SHAREDKEYSIZE,
+                                  n, TUNNONCESIZE)
             != -1;
       }
       return false;
@@ -62,7 +61,7 @@ namespace llarp
     transport_dh_client(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
     {
       llarp_sharedkey_t dh_result;
-      if(dh(dh_result, llarp_seckey_topublic(sk), pk, pk, sk))
+      if(dh(dh_result, llarp::seckey_topublic(sk), pk, pk, sk))
       {
         return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
       }
@@ -73,7 +72,7 @@ namespace llarp
     transport_dh_server(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
     {
       llarp_sharedkey_t dh_result;
-      if(dh(dh_result, pk, llarp_seckey_topublic(sk), pk, sk))
+      if(dh(dh_result, pk, llarp::seckey_topublic(sk), pk, sk))
       {
         return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
       }
@@ -138,16 +137,28 @@ namespace llarp
     static void
     enckeygen(uint8_t *keys)
     {
-      randombytes(keys, 32);
-      crypto_scalarmult_curve25519_base(keys + 32, keys);
+      crypto_box_keypair(keys + 32, keys);
     }
   }  // namespace sodium
+
+  const byte_t *
+  seckey_topublic(const byte_t *sec)
+  {
+    return sec + 32;
+  }
+
+  byte_t *
+  seckey_topublic(byte_t *sec)
+  {
+    return sec + 32;
+  }
+
 }  // namespace llarp
 
 extern "C" {
 
-uint8_t *
-llarp_seckey_topublic(uint8_t *secret)
+const byte_t *
+llarp_seckey_topublic(const byte_t *secret)
 {
   return secret + 32;
 }

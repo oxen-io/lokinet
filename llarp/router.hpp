@@ -3,9 +3,9 @@
 #include <llarp/dht.h>
 #include <llarp/link.h>
 #include <llarp/nodedb.h>
-#include <llarp/path.h>
 #include <llarp/router.h>
 #include <llarp/router_contact.h>
+#include <llarp/path.hpp>
 
 #include <functional>
 #include <list>
@@ -41,6 +41,8 @@ struct llarp_router
   // long term identity key
   fs::path ident_keyfile = "identity.key";
 
+  fs::path encryption_keyfile = "encryption.key";
+
   // path to write our self signed rc to
   fs::path our_rc_file = "rc.signed";
 
@@ -51,10 +53,11 @@ struct llarp_router
   llarp_threadpool *tp;
   llarp_logic *logic;
   llarp_crypto crypto;
-  llarp_path_context *paths;
+  llarp::PathContext paths;
   llarp_seckey_t identity;
+  llarp_seckey_t encryption;
   llarp_threadpool *disk;
-  llarp_dht_context *dht;
+  llarp_dht_context *dht = nullptr;
 
   llarp_nodedb *nodedb;
 
@@ -74,11 +77,11 @@ struct llarp_router
   typedef std::queue< llarp::ILinkMessage * > MessageQueue;
 
   /// outbound message queue
-  std::unordered_map< llarp::pubkey, MessageQueue, llarp::pubkeyhash >
+  std::unordered_map< llarp::PubKey, MessageQueue, llarp::PubKeyHash >
       outboundMesssageQueue;
 
   /// loki verified routers
-  std::unordered_map< llarp::pubkey, llarp_rc, llarp::pubkeyhash > validRouters;
+  std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKeyHash > validRouters;
 
   llarp_router();
   ~llarp_router();
@@ -91,6 +94,10 @@ struct llarp_router
 
   bool
   InitOutboundLink();
+
+  /// initialize us as a service node
+  void
+  InitServiceNode();
 
   void
   Close();
@@ -108,12 +115,15 @@ struct llarp_router
   EnsureIdentity();
 
   bool
+  EnsureEncryptionKey();
+
+  bool
   SaveRC();
 
-  uint8_t *
-  pubkey()
+  const byte_t *
+  pubkey() const
   {
-    return llarp_seckey_topublic(identity);
+    return llarp::seckey_topublic(identity);
   }
 
   void

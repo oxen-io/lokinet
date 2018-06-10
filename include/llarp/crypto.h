@@ -38,15 +38,10 @@ typedef byte_t llarp_hmacsec_t[HMACSECSIZE];
 typedef byte_t llarp_sig_t[SIGSIZE];
 typedef byte_t llarp_tunnel_nonce_t[TUNNONCESIZE];
 
-/// get public key from secret
-byte_t *
-llarp_seckey_topublic(byte_t *secret);
-
 /// label functors
 
 /// PKE(result, publickey, nonce, secretkey)
-typedef bool (*llarp_dh_func)(llarp_sharedkey_t *, llarp_pubkey_t,
-                              llarp_tunnel_nonce_t, llarp_seckey_t);
+typedef bool (*llarp_path_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
 
 /// TKE(result publickey, secretkey, nonce)
 typedef bool (*llarp_transport_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
@@ -77,9 +72,9 @@ struct llarp_crypto
   /// xchacha symettric cipher
   llarp_sym_cipher_func xchacha20;
   /// path dh creator's side
-  llarp_dh_func dh_client;
+  llarp_path_dh_func dh_client;
   /// path dh relay side
-  llarp_dh_func dh_server;
+  llarp_path_dh_func dh_server;
   /// transport dh client side
   llarp_transport_dh_func transport_dh_client;
   /// transport dh server side

@@ -45,6 +45,16 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
     return llarp_ai_list_bdecode(rc->addrs, r->buffer);
   }
 
+  if(llarp_buffer_eq(*key, "e"))
+  {
+    if(!bencode_read_string(r->buffer, &strbuf))
+      return false;
+    if(strbuf.sz != sizeof(llarp_pubkey_t))
+      return false;
+    memcpy(rc->enckey, strbuf.base, sizeof(llarp_pubkey_t));
+    return true;
+  }
+
   if(llarp_buffer_eq(*key, "k"))
   {
     if(!bencode_read_string(r->buffer, &strbuf))
@@ -98,6 +108,7 @@ llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src)
   llarp_rc_free(dst);
   llarp_rc_clear(dst);
   memcpy(dst->pubkey, src->pubkey, sizeof(llarp_pubkey_t));
+  memcpy(dst->enckey, src->enckey, sizeof(llarp_pubkey_t));
   memcpy(dst->signature, src->signature, sizeof(llarp_sig_t));
   dst->last_updated = src->last_updated;
 
@@ -164,7 +175,14 @@ llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff)
     if(!llarp_ai_list_bencode(rc->addrs, buff))
       return false;
   }
-  /* write pubkey */
+
+  /* write encryption pubkey */
+  if(!bencode_write_bytestring(buff, "e", 1))
+    return false;
+  if(!bencode_write_bytestring(buff, rc->enckey, sizeof(llarp_pubkey_t)))
+    return false;
+
+  /* write signing pubkey */
   if(!bencode_write_bytestring(buff, "k", 1))
     return false;
   if(!bencode_write_bytestring(buff, rc->pubkey, sizeof(llarp_pubkey_t)))
