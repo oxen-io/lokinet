@@ -25,7 +25,7 @@ namespace llarp
     DecryptInPlace(byte_t* seckey, llarp_crypto* crypto);
 
     bool
-    EncryptInPlace(byte_t* seckey, llarp_crypto* crypto);
+    EncryptInPlace(byte_t* seckey, byte_t* other, llarp_crypto* crypto);
   };
 
   /// TOOD: can only handle 1 frame at a time
@@ -40,7 +40,7 @@ namespace llarp
       AsyncFrameEncrypter< User >* ctx =
           static_cast< AsyncFrameEncrypter< User >* >(user);
 
-      if(ctx->frame->EncryptInPlace(ctx->seckey, ctx->crypto))
+      if(ctx->frame->EncryptInPlace(ctx->seckey, ctx->otherKey, ctx->crypto))
         ctx->handler(ctx->frame, ctx->user);
       else
       {
@@ -54,6 +54,7 @@ namespace llarp
     EncryptHandler handler;
     EncryptedFrame* frame;
     User* user;
+    byte_t* otherKey;
 
     AsyncFrameEncrypter(llarp_crypto* c, byte_t* seckey, EncryptHandler h)
         : crypto(c), secretkey(seckey), handler(h)
@@ -61,9 +62,12 @@ namespace llarp
     }
 
     void
-    AsyncEncrypt(llarp_threadpool* worker, llarp_buffer_t buf, User* u)
+    AsyncEncrypt(llarp_threadpool* worker, llarp_buffer_t buf, byte_t* other,
+                 User* u)
     {
-      frame = new EncryptedFrame(buf.sz);
+      // TODO: should we own otherKey?
+      otherKey = other;
+      frame    = new EncryptedFrame(buf.sz);
       memcpy(frame->data + EncryptedFrame::OverheadSize, buf.base, buf.sz);
       user = u;
       llarp_threadpool_queue_job(worker, {this, &Encrypt});
