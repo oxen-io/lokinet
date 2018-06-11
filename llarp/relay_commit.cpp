@@ -11,15 +11,73 @@ namespace llarp
   bool
   LR_CommitMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
   {
-    // TODO: implement
+    if(llarp_buffer_eq(key, "c"))
+    {
+      return DecodeEncryptedFrameList(buf);
+    }
     return false;
+  }
+
+  bool
+  LR_CommitMessage::DecodeEncryptedFrame(list_reader* l, bool item)
+  {
+    LR_CommitMessage* self = static_cast< LR_CommitMessage* >(l->user);
+    // end of list
+    if(!item)
+    {
+      bool success = self->frames.size() > 0;
+      if(!success)
+        llarp::Error("no encrypted frames read in LRCM");
+      return success;
+    }
+
+    llarp_buffer_t strbuf;
+    if(!bencode_read_string(l->buffer, &strbuf))
+      return false;
+
+    if(strbuf.sz <= EncryptedFrame::OverheadSize)
+    {
+      llarp::Error("Encrypted Frame In LRCM too short, ", strbuf.sz,
+                   " <= ", EncryptedFrame::OverheadSize);
+      return false;
+    }
+    // emplace new frame
+    self->frames.emplace_back(strbuf.cur, strbuf.sz);
+    return true;
+  }
+
+  bool
+  LR_CommitMessage::DecodeEncryptedFrameList(llarp_buffer_t* buf)
+  {
+    list_reader r;
+    r.user    = this;
+    r.on_item = &DecodeEncryptedFrame;
+    return bencode_read_list(buf, &r);
   }
 
   bool
   LR_CommitMessage::BEncode(llarp_buffer_t* buf) const
   {
-    // TODO: implement
-    return false;
+    if(!bencode_start_dict(buf))
+      return false;
+    // msg type
+    if(!bencode_write_bytestring(buf, "a", 1))
+      return false;
+    if(!bencode_write_bytestring(buf, "c", 1))
+      return false;
+
+    // frames
+    if(!bencode_write_bytestring(buf, "c", 1))
+      return false;
+    if(!bencode_start_list(buf))
+      return false;
+    for(const auto& frame : frames)
+      if(!bencode_write_bytestring(buf, frame.data, frame.size))
+        return false;
+    if(!bencode_end(buf))
+      return false;
+
+    return bencode_end(buf);
   }
 
   bool

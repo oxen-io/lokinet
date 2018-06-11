@@ -1,6 +1,7 @@
 #ifndef LLARP_RELAY_COMMIT_HPP
 #define LLARP_RELAY_COMMIT_HPP
 #include <llarp/crypto.h>
+#include <llarp/encrypted_ack.hpp>
 #include <llarp/encrypted_frame.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/path_types.hpp>
@@ -56,6 +57,7 @@ namespace llarp
   struct LR_CommitMessage : public ILinkMessage
   {
     std::vector< EncryptedFrame > frames;
+    std::vector< EncryptedAck > acks;
     uint64_t version;
 
     LR_CommitMessage(const RouterID &from) : ILinkMessage(from)
@@ -74,6 +76,13 @@ namespace llarp
 
     bool
     HandleMessage(llarp_router *router) const;
+
+   private:
+    static bool
+    DecodeEncryptedFrame(list_reader *r, bool buf);
+
+    bool
+    DecodeEncryptedFrameList(llarp_buffer_t *buf);
   };
 }
 
