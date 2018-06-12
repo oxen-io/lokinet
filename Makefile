@@ -3,13 +3,21 @@ all: debug
 
 SIGN = gpg --sign --detach
 
+REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
+
+
 TARGETS = llarpd libllarp.so libllarp-static.a
 SIGS = $(TARGETS:=.sig)
 
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
-SHADOW_CONFIG=shadow.config.xml
-SHADOW_PLUGIN=libshadow-plugin-llarp.so
+SHADOW_CONFIG=$(REPO)/shadow.config.xml
+SHADOW_PLUGIN=$(REPO)/libshadow-plugin-llarp.so
+SHADOW_LOG=$(REPO)/shadow.log.txt
+
+TESTNET_ROOT=$(REPO)/testnet_tmp
+TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
+TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 
 clean:
 	rm -f build.ninja rules.ninja cmake_install.cmake CMakeCache.txt
@@ -47,7 +55,19 @@ shadow-build: shadow-configure
 
 shadow: shadow-build
 	python3 contrib/shadow/genconf.py $(SHADOW_CONFIG)
-	bash -c "$(SHADOW_BIN) -w 16 $(SHADOW_CONFIG) &> shadow.log.txt"
+	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) &> $(SHADOW_LOG) || true"
+
+testnet-configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug
+
+testnet-build: testnet-configure
+	ninja clean
+	ninja
+
+testnet: testnet-build
+	mkdir -p $(TESTNET_ROOT)
+	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=30 --clients=300 --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
+	supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')

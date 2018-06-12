@@ -714,6 +714,7 @@ namespace iwp
       }
 
       llarp::Zero(&remote_router, sizeof(llarp_rc));
+      crypto->randbytes(token, 32);
     }
 
     ~session()
@@ -938,11 +939,10 @@ namespace iwp
       {
         // invalid signature
         llarp::Error("introack verify failed from ", link->addr);
+        link->done();
         return;
       }
       link->EnterState(eIntroAckRecv);
-      // copy decrypted token
-      memcpy(link->token, introack->token, 32);
       link->session_start();
     }
 
@@ -1058,17 +1058,7 @@ namespace iwp
     }
 
     static void
-    handle_verify_intro(iwp_async_intro *intro)
-    {
-      session *self = static_cast< session * >(intro->user);
-      if(!intro->buf)
-      {
-        llarp::Error("intro verify failed from ", self->addr);
-        delete self;
-        return;
-      }
-      self->intro_ack();
-    }
+    handle_verify_intro(iwp_async_intro *intro);
 
     static void
     handle_introack_generated(iwp_async_introack *i);
@@ -1086,9 +1076,8 @@ namespace iwp
       // randomize nonce
       introack.nonce = introack.buf + 32;
       crypto->randbytes(introack.nonce, 32);
-      // randomize token
+      // token
       introack.token = token;
-      crypto->randbytes(introack.token, 32);
 
       // keys
       introack.remote_pubkey = remote;
@@ -1153,6 +1142,9 @@ namespace iwp
       // async verify
       iwp_call_async_verify_introack(iwp, &introack);
     }
+
+    static llarp_link *
+    get_parent(llarp_link_session *s);
 
     static void
     handle_generated_intro(iwp_async_intro *i)
@@ -1373,6 +1365,7 @@ namespace iwp
       s.close              = &session::close;
       s.get_remote_router  = &session::get_remote_router;
       s.established        = &session::set_established;
+      s.get_parent         = &session::get_parent;
       {
         lock_t lock(m_sessions_Mutex);
         m_sessions[src] = s;
@@ -1550,6 +1543,19 @@ namespace iwp
   }
 
   void
+  session::handle_verify_intro(iwp_async_intro *intro)
+  {
+    session *self = static_cast< session * >(intro->user);
+    if(!intro->buf)
+    {
+      llarp::Error("intro verify failed from ", self->addr, " via ",
+                   self->serv->addr);
+      return;
+    }
+    self->intro_ack();
+  }
+
+  void
   session::done()
   {
     if(establish_job_id)
@@ -1638,6 +1644,13 @@ namespace iwp
     return true;
   }
 
+  llarp_link *
+  session::get_parent(llarp_link_session *s)
+  {
+    session *link = static_cast< session * >(s->impl);
+    return link->serv->parent;
+  }
+
   void
   session::handle_verify_session_start(iwp_async_session_start *s)
   {
@@ -1647,7 +1660,6 @@ namespace iwp
       // verify fail
       // TODO: remove session?
       llarp::Warn("session start verify failed from ", self->addr);
-      self->serv->RemoveSessionByAddr(self->addr);
       return;
     }
     self->send_LIM();
@@ -1679,6 +1691,12 @@ namespace iwp
     memcpy(addr->enc_key, link->pubkey(), 32);
     memcpy(addr->ip.s6_addr, link->addr.addr6(), 16);
     addr->port = link->addr.port();
+  }
+
+  const char *
+  outboundLink_name()
+  {
+    return "OWP";
   }
 
   bool
@@ -1724,6 +1742,8 @@ namespace iwp
         return false;
       }
     }
+    else
+      l->name = outboundLink_name;
 
     switch(af)
     {
@@ -1863,13 +1883,12 @@ namespace iwp
         return;
       }
       link->serv->put_session(link->addr, link);
-      llarp::Debug("send introack");
+      llarp::Debug("send introack to ", link->addr, " via ", link->serv->addr);
       if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)
       {
         llarp::Warn("sendto failed");
         return;
       }
-      llarp::Debug("sent");
       link->EnterState(eIntroAckSent);
     }
     else

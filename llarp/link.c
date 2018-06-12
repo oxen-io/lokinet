@@ -13,5 +13,5 @@ bool
 llarp_link_session_initialized(struct llarp_link_session* s)
 {
   return s && s->impl && s->sendto && s->timeout && s->close
-      && s->get_remote_router && s->established;
+      && s->get_remote_router && s->established && s->get_parent;
 }

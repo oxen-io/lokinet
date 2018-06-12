@@ -12,23 +12,21 @@ shadowRoot = getSetting(os.environ, "SHADOW_ROOT", os.path.join(os.environ['HOME
 
 libpath = 'libshadow-plugin-llarp.so'
 
-def nodeconf(conf, baseDir, name, ifname, port):
+def nodeconf(conf, baseDir, name, ifname=None, port=None):
     conf['netdb'] = {'dir': 'tmp-nodes'}
     conf['router']  = {}
     conf['router']['contact-file'] = os.path.join(baseDir, '{}.signed'.format(name))
     conf['router']['ident-privkey'] = os.path.join(baseDir, '{}-ident.key'.format(name))
     conf['router']['transport-privkey'] = os.path.join(baseDir, '{}-transport.key'.format(name))
-    if ifname != '*':
-        conf['iwp-links'] = {'*' : port + 1000, ifname: port}
-    else:
-        conf['iwp-links'] = {ifname : port}
-    conf['iwp-connect'] = {}
+    if ifname and port:
+        conf['bind'] = {ifname: port}
+    conf['connect'] = {}
 
 def addPeer(conf, baseDir, peer):
-    conf['iwp-connect'][peer] = os.path.join(baseDir, '{}.signed'.format(peer))
+    conf['connect'][peer] = os.path.join(baseDir, '{}.signed'.format(peer))
 
 def createNode(pluginName, root, peer):
-    node = etree.SubElement(root, 'host')
+    node = etree.SubElement(root, 'node')
     node.attrib['id'] = peer['name']
     node.attrib['interfacebuffer'] = '{}'.format(1024 * 1024 * 100)
     app = etree.SubElement(node, 'process')
@@ -46,9 +44,9 @@ def makeBase(settings, name, id):
         'config': configparser.ConfigParser()
     }
 
-def makeClient(settings, name, id, port):
+def makeClient(settings, name, id):
     peer = makeBase(settings, name, id)
-    nodeconf(peer['config'], getSetting(settings, 'baseDir', 'tmp'), name, '*', port)
+    nodeconf(peer['config'], getSetting(settings, 'baseDir', 'tmp'), name)
     return peer
 
 def makeSVCNode(settings, name, id, port):
@@ -77,7 +75,6 @@ def genconf(settings, outf):
     plugin.attrib['id'] = pluginName
     plugin.attrib['path'] = libpath
     basePort = getSetting(settings, 'svc-base-port', 19000)
-    clientBasePort = getSetting(settings, 'client-base-port', 18000)
     svcNodeCount = getSetting(settings, 'service-nodes', 20)
     peers = list()
     for nodeid in range(svcNodeCount):
@@ -92,11 +89,10 @@ def genconf(settings, outf):
         
     # add client nodes
     for nodeid in range(getSetting(settings, 'client-nodes', 200)):
-        peer = makeClient(settings, 'client-node-{}'.format(nodeid), str(nodeid), clientBasePort +1)
+        peer = makeClient(settings, 'client-node-{}'.format(nodeid), str(nodeid))
         peers.append(peer)
         for p in range(getSetting(settings, 'client-connect-to', 3)):
             addPeer(peer['config'], baseDir, 'svc-node-{}'.format((p + nodeid) % svcNodeCount))
-        clientBasePort += 1
         
 
     # generate xml and settings files

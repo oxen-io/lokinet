@@ -25,9 +25,9 @@ namespace llarp
       auto &top = parser.top();
       router    = find_section(top, "router", section_t{});
       network   = find_section(top, "network", section_t{});
-      connect   = find_section(top, "iwp-connect", section_t{});
+      connect   = find_section(top, "connect", section_t{});
       netdb     = find_section(top, "netdb", section_t{});
-      iwp_links = find_section(top, "iwp-links", section_t{});
+      iwp_links = find_section(top, "bind", section_t{});
       return true;
     }
     return false;
@@ -66,8 +66,8 @@ llarp_config_iter(struct llarp_config *conf, struct llarp_config_iterator *iter)
   iter->conf                                                   = conf;
   std::map< std::string, llarp::Config::section_t & > sections = {
       {"network", conf->impl.network},
-      {"iwp-connect", conf->impl.connect},
-      {"iwp-links", conf->impl.iwp_links},
+      {"connect", conf->impl.connect},
+      {"bind", conf->impl.iwp_links},
       {"netdb", conf->impl.netdb}};
 
   for(const auto item : conf->impl.router)

@@ -68,7 +68,8 @@ struct llarp_router
 
   llarp::InboundMessageParser inbound_msg_parser;
 
-  std::list< std::pair< llarp_link *, bool > > links;
+  llarp_link *outboundLink = nullptr;
+  std::list< llarp_link * > inboundLinks;
 
   typedef std::queue< llarp::ILinkMessage * > MessageQueue;
 
@@ -86,7 +87,10 @@ struct llarp_router
   HandleRecvLinkMessage(struct llarp_link_session *from, llarp_buffer_t msg);
 
   void
-  AddLink(struct llarp_link *link, bool isOutbound);
+  AddInboundLink(struct llarp_link *link);
+
+  bool
+  InitOutboundLink();
 
   void
   Close();
@@ -96,6 +100,9 @@ struct llarp_router
 
   void
   Run();
+
+  static void
+  ConnectAll(void *user, uint64_t orig, uint64_t left);
 
   bool
   EnsureIdentity();
@@ -125,7 +132,7 @@ struct llarp_router
 
   /// manually flush outbound message queue for just 1 router
   void
-  FlushOutboundFor(const llarp::RouterID &remote);
+  FlushOutboundFor(const llarp::RouterID &remote, llarp_link *chosen);
 
   /// flush outbound message queue
   void
