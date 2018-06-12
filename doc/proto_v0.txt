@@ -165,7 +165,7 @@ x is the timestamp seconds since epoch that this introducer expires at
 
 {
   k: "<32 bytes public identity key of router>",
-  p: path_id_uint64,
+  p: "<16 bytes path id>",
   v: 0,
   x: time_expires_seconds_since_epoch_uint64
 }

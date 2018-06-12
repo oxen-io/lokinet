@@ -22,11 +22,12 @@ namespace llarp
     bool
     BDecode(llarp_buffer_t *buf);
 
-    static bool
-    OnKey(dict_reader *r, llarp_buffer_t *buf);
-
     bool
     BEncode(llarp_buffer_t *buf) const;
+
+   private:
+    static bool
+    OnKey(dict_reader *r, llarp_buffer_t *buf);
   };
 
   struct LR_AcceptRecord
@@ -42,18 +43,6 @@ namespace llarp
     BEncode(llarp_buffer_t *buf) const;
   };
 
-  struct LR_StatusMessage
-  {
-    std::vector< EncryptedFrame > replies;
-    uint64_t version;
-
-    bool
-    BDecode(llarp_buffer_t *buf);
-
-    bool
-    BEncode(llarp_buffer_t *buf) const;
-  };
-
   struct LR_CommitMessage : public ILinkMessage
   {
     std::vector< EncryptedFrame > frames;
@@ -64,6 +53,7 @@ namespace llarp
     LR_CommitMessage(const RouterID &from) : ILinkMessage(from)
     {
     }
+
     ~LR_CommitMessage();
 
     void
