@@ -1,3 +1,4 @@
+#include <deque>
 #include <llarp/encrypted_frame.hpp>
 #include <llarp/path.hpp>
 #include "router.hpp"
@@ -23,26 +24,24 @@ namespace llarp
   {
     typedef AsyncFrameDecrypter< LRCMFrameDecrypt > Decrypter;
     Decrypter* decrypter;
-    std::vector< EncryptedFrame > leftovers;
-    EncryptedFrame ourFrame;
+    std::deque< EncryptedFrame > frames;
+    std::deque< EncryptedAck > acks;
+    EncryptedFrame lastFrame;
     PathContext* context;
     RouterID from;
     LR_CommitRecord record;
 
     LRCMFrameDecrypt(PathContext* ctx, Decrypter* dec,
                      const LR_CommitMessage* commit)
-        : decrypter(dec), context(ctx), from(commit->remote)
+        : decrypter(dec)
+        , lastFrame(commit->lasthopFrame)
+        , context(ctx)
+        , from(commit->remote)
     {
-      auto sz    = commit->frames.size();
-      size_t idx = 0;
-      while(idx < sz)
-      {
-        if(sz == 0)
-          ourFrame = commit->frames[idx];
-        else
-          leftovers.push_back(commit->frames[idx]);
-        ++idx;
-      }
+      for(const auto& f : commit->frames)
+        frames.push_front(f);
+      for(const auto& a : commit->acks)
+        acks.push_front(a);
     }
 
     ~LRCMFrameDecrypt()
@@ -53,30 +52,62 @@ namespace llarp
     static void
     HandleDecrypted(llarp_buffer_t* buf, LRCMFrameDecrypt* self)
     {
-      if(buf)
+      if(!buf)
       {
-        llarp::Debug("decrypted LRCM from ", self->from);
-        // successful decrypt
-        if(self->record.BDecode(buf))
-        {
-          TransitHopInfo info(self->from, self->record);
-          if(self->context->HasTransitHop(info))
-          {
-            // duplicate hop
-            llarp::Warn("duplicate transit hop ", info);
-          }
-          else
-          {
-            // accepted
-            return;
-          }
-        }
-        else
-          llarp::Error("malformed LR Commit Record from ", self->from);
+        llarp::Error("LRCM decrypt failed from ", self->from);
+        delete self;
+        return;
+      }
+      llarp::Debug("decrypted LRCM from ", self->from);
+      // successful decrypt
+      if(!self->record.BDecode(buf))
+      {
+        llarp::Error("malformed frame inside LRCM from ", self->from);
+        delete self;
+        return;
+      }
+      TransitHopInfo info(self->from, self->record);
+      if(self->context->HasTransitHop(info))
+      {
+        llarp::Error("duplicate transit hop ", info);
+        delete self;
+        return;
+      }
+      TransitHop hop;
+      // choose rx id
+      // TODO: check for duplicates
+      info.rxID.Randomize();
+
+      // generate tx key as we are in a worker thread
+      auto DH = self->context->Crypto()->dh_server;
+      if(!DH(hop.txKey, self->record.commkey,
+             self->context->EncryptionSecretKey(), self->record.tunnelNonce))
+      {
+        llarp::Error("LRCM DH Failed ", info);
+        delete self;
+        return;
+      }
+      if(self->context->HopIsUs(self->record.nextHop))
+      {
+        // we are the farthest hop
+        llarp::Info("We are the farthest hop for ", info);
       }
       else
-        llarp::Debug("malformed frame inside LRCM from ", self->from);
-      delete self;
+      {
+        llarp::Info("Accepted ", info);
+        self->context->PutPendingRelayCommit(info.upstream, info.txID, info,
+                                             hop);
+        size_t sz = self->frames.front().size;
+        // we pop the front element it was ours
+        self->frames.pop_front();
+        // put random on the end
+        // TODO: should this be an encrypted frame?
+        self->frames.emplace_back(sz);
+        self->frames.back().Randomize();
+        // forward upstream
+        self->context->ForwardLRCM(info.upstream, self->frames, self->acks,
+                                   self->lastFrame);
+      }
     }
   };
 
@@ -101,16 +132,93 @@ namespace llarp
     LRCMFrameDecrypt* frames = new LRCMFrameDecrypt(this, decrypter, commit);
 
     // decrypt frames async
-    decrypter->AsyncDecrypt(m_Router->tp, &frames->ourFrame, frames);
+    decrypter->AsyncDecrypt(m_Router->tp, &frames->frames.front(), frames);
 
     return true;
+  }
+
+  llarp_threadpool*
+  PathContext::Worker()
+  {
+    return m_Router->tp;
+  }
+
+  llarp_crypto*
+  PathContext::Crypto()
+  {
+    return &m_Router->crypto;
+  }
+
+  byte_t*
+  PathContext::EncryptionSecretKey()
+  {
+    return m_Router->encryption;
+  }
+
+  bool
+  PathContext::HopIsUs(const PubKey& k) const
+  {
+    return memcmp(k, m_Router->pubkey(), PUBKEYSIZE) == 0;
+  }
+
+  bool
+  PathContext::ForwardLRCM(const RouterID& nextHop,
+                           std::deque< EncryptedFrame >& frames,
+                           std::deque< EncryptedAck >& acks,
+                           EncryptedFrame& lastHop)
+  {
+    LR_CommitMessage* msg = new LR_CommitMessage;
+    while(frames.size())
+    {
+      msg->frames.push_back(frames.front());
+      frames.pop_front();
+    }
+    while(acks.size())
+    {
+      msg->acks.push_back(acks.front());
+      acks.pop_front();
+    }
+    msg->lasthopFrame = lastHop;
+    return m_Router->SendToOrQueue(nextHop, {msg});
+  }
+
+  template < typename Map_t, typename Value_t >
+  bool
+  MapHas(Map_t& map, const Value_t& val)
+  {
+    std::unique_lock< std::mutex > lock(map.first);
+    return map.second.find(val) != map.second.end();
+  }
+
+  template < typename Map_t, typename Key_t, typename Value_t >
+  void
+  MapPut(Map_t& map, const Key_t& k, const Value_t& v)
+  {
+    std::unique_lock< std::mutex > lock(map.first);
+    map.second[k] = v;
   }
 
   bool
   PathContext::HasTransitHop(const TransitHopInfo& info)
   {
-    std::unique_lock< std::mutex > lock(m_TransitPathsMutex);
-    return m_TransitPaths.find(info) != m_TransitPaths.end();
+    return MapHas(m_TransitPaths, info);
+  }
+
+  void
+  PathContext::PutPendingRelayCommit(const RouterID& upstream,
+                                     const PathID_t& txid,
+                                     const TransitHopInfo& info,
+                                     const TransitHop& hop)
+  {
+    MapPut(m_WaitingForAcks, PendingPathKey(upstream, txid),
+           std::make_pair(info, hop));
+  }
+
+  bool
+  PathContext::HasPendingRelayCommit(const RouterID& upstream,
+                                     const PathID_t& txid)
+  {
+    return MapHas(m_WaitingForAcks, PendingPathKey(upstream, txid));
   }
 
   TransitHopInfo::TransitHopInfo(const RouterID& down,

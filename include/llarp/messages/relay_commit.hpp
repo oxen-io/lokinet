@@ -50,6 +50,9 @@ namespace llarp
     std::vector< EncryptedAck > acks;
     uint64_t version;
 
+    LR_CommitMessage() : ILinkMessage()
+    {
+    }
     LR_CommitMessage(const RouterID &from) : ILinkMessage(from)
     {
     }

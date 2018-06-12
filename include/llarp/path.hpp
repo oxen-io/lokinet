@@ -63,6 +63,8 @@ namespace llarp
 
   struct TransitHop
   {
+    TransitHop() = default;
+
     SharedSecret rxKey;
     SharedSecret txKey;
     llarp_time_t started;
@@ -218,14 +220,76 @@ namespace llarp
     bool
     HandleRelayAck(const LR_AckMessage* msg);
 
+    void
+    PutPendingRelayCommit(const RouterID& router, const PathID_t& txid,
+                          const TransitHopInfo& info, const TransitHop& hop);
+
+    bool
+    HasPendingRelayCommit(const RouterID& upstream, const PathID_t& txid);
+
+    bool
+    ForwardLRCM(const RouterID& nextHop, std::deque< EncryptedFrame >& frames,
+                std::deque< EncryptedAck >& acks, EncryptedFrame& lastFrame);
+
+    bool
+    HopIsUs(const PubKey& k) const;
+
     typedef std::unordered_map< TransitHopInfo, TransitHop,
                                 TransitHopInfo::Hash >
         TransitHopsMap_t;
 
+    typedef std::pair< std::mutex, TransitHopsMap_t > SyncTransitMap_t;
+
+    struct PendingPathKey
+    {
+      RouterID upstream;
+      PathID_t txID;
+
+      PendingPathKey(const RouterID& up, const PathID_t& id)
+          : upstream(up), txID(id)
+      {
+      }
+
+      bool
+      operator==(const PendingPathKey& other) const
+      {
+        return upstream == other.upstream && txID == other.txID;
+      }
+
+      struct Hash
+      {
+        std::size_t
+        operator()(PendingPathKey const& a) const
+        {
+          std::size_t idx0, idx1;
+          memcpy(&idx0, a.upstream, sizeof(std::size_t));
+          memcpy(&idx1, a.txID, sizeof(std::size_t));
+          return idx0 ^ idx1;
+        }
+      };
+    };
+
+    typedef std::pair< TransitHopInfo, TransitHop > PendingCommit_t;
+
+    typedef std::pair< std::mutex,
+                       std::unordered_map< PendingPathKey, PendingCommit_t,
+                                           PendingPathKey::Hash > >
+        SyncPendingCommitMap_t;
+
+    llarp_threadpool*
+    Worker();
+
+    llarp_crypto*
+    Crypto();
+
+    byte_t*
+    EncryptionSecretKey();
+
    private:
     llarp_router* m_Router;
-    std::mutex m_TransitPathsMutex;
-    TransitHopsMap_t m_TransitPaths;
+    SyncTransitMap_t m_TransitPaths;
+    SyncPendingCommitMap_t m_WaitingForAcks;
+
     bool m_AllowTransit;
   };
 }

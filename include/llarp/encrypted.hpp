@@ -3,6 +3,7 @@
 
 #include <llarp/bencode.h>
 #include <llarp/buffer.h>
+#include <sodium.h>
 
 namespace llarp
 {
@@ -18,6 +19,13 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const
     {
       return bencode_write_bytestring(buf, data, size);
+    }
+
+    void
+    Randomize()
+    {
+      if(data)
+        randombytes(data, size);
     }
 
     bool

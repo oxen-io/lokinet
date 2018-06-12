@@ -76,7 +76,7 @@ namespace llarp
     void
     Randomize()
     {
-      randombytes(l, sz);
+      randombytes(b, sz);
     }
 
     byte_t*

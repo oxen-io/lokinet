@@ -90,7 +90,6 @@ namespace llarp
         ctx->result(ctx->target->Buffer(), ctx->context);
       else
         ctx->result(nullptr, ctx->context);
-      delete ctx->target;
     }
 
     AsyncFrameDecrypter(llarp_crypto* c, byte_t* secretkey, DecryptHandler h)

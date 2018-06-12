@@ -1,11 +1,33 @@
 #ifndef LLARP_MESSAGES_RELAY_ACK_HPP
 #define LLARP_MESSAGES_RELAY_ACK_HPP
+#include <llarp/crypto.hpp>
+#include <llarp/encrypted_frame.hpp>
 #include <llarp/link_message.hpp>
+#include <llarp/path_types.hpp>
 
 namespace llarp
 {
+  struct LR_AckRecord
+  {
+    PubKey pubkey;
+    TunnelNonce nonce;
+    PathID_t rxPathID;
+    uint64_t version = 0;
+
+    bool
+    BEncode(llarp_buffer_t* buf) const;
+
+    bool
+    BDecode(llarp_buffer_t* buf);
+  };
+
   struct LR_AckMessage : public ILinkMessage
   {
+    std::vector< EncryptedFrame > acks;
+    EncryptedFrame lasthopFrame;
+    PathID_t txPathID;
+    uint64_t version = 0;
+
     LR_AckMessage(const RouterID& from);
 
     ~LR_AckMessage();

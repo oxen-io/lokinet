@@ -227,14 +227,14 @@ to encrypt a frame to a router with public key B.k
 
 A.k, s = ECKG()
 n = RAND(32)
-S = PKE(p, A.k, B.k)
+S = PKE(p, A.k, B.k, n)
 
 1) encode and encrypt
 
 x = BE(msg)
 new_x = SE(S, n[0:24], x)
 
-2) generate hmac
+2) generate message authentication
 
 h = MDS(n + A.k + new_x, S)
 
