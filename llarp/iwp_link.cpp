@@ -669,9 +669,9 @@ namespace iwp
     llarp_rc *our_router = nullptr;
     llarp_rc remote_router;
 
-    llarp_seckey_t eph_seckey;
-    llarp_pubkey_t remote;
-    llarp_sharedkey_t sessionkey;
+    llarp::SecretKey eph_seckey;
+    llarp::PubKey remote;
+    llarp::SharedSecret sessionkey;
 
     llarp_link_establish_job *establish_job = nullptr;
 
@@ -707,7 +707,7 @@ namespace iwp
         : udp(u), crypto(c), iwp(i), logic(l), addr(a), state(eInitial)
     {
       if(seckey)
-        memcpy(eph_seckey, seckey, sizeof(llarp_seckey_t));
+        eph_seckey = seckey;
       else
       {
         c->encryption_keygen(eph_seckey);
@@ -735,7 +735,7 @@ namespace iwp
     {
       session *self = static_cast< session * >(s->impl);
       auto id       = self->frame.txids++;
-      llarp_shorthash_t digest;
+      llarp::ShortHash digest;
       self->crypto->shorthash(digest, msg);
       transit_message *m = new transit_message(msg, digest, id);
       self->add_outbound_message(id, m);
@@ -804,7 +804,7 @@ namespace iwp
     send_LIM()
     {
       llarp::Debug("send LIM");
-      llarp_shorthash_t digest;
+      llarp::ShortHash digest;
       // 64 bytes overhead for link message
       byte_t tmp[MAX_RC_SIZE + 64];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -1239,7 +1239,7 @@ namespace iwp
     SessionMap_t m_Connected;
     mtx_t m_Connected_Mutex;
 
-    llarp_seckey_t seckey;
+    llarp::SecretKey seckey;
 
     server(llarp_router *r, llarp_crypto *c, llarp_logic *l,
            llarp_threadpool *w)
@@ -1429,7 +1429,7 @@ namespace iwp
       std::ifstream f(keyfile);
       if(f.is_open())
       {
-        f.read((char *)seckey, sizeof(llarp_seckey_t));
+        f.read((char *)seckey.data(), seckey.size());
         return true;
       }
       return false;
@@ -1443,7 +1443,7 @@ namespace iwp
       std::ofstream f(fname);
       if(f.is_open())
       {
-        f.write((char *)seckey, sizeof(llarp_seckey_t));
+        f.write((char *)seckey.data(), seckey.size());
         return true;
       }
       return false;
@@ -1504,7 +1504,7 @@ namespace iwp
     auto rxmsg = rx[id];
     if(rxmsg->reassemble(msg))
     {
-      llarp_shorthash_t digest;
+      llarp::ShortHash digest;
       auto buf = llarp::Buffer< decltype(msg) >(msg);
       router->crypto.shorthash(digest, buf);
       if(memcmp(digest, rxmsg->msginfo.hash(), 32))

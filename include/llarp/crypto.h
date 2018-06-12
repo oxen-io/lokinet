@@ -27,6 +27,7 @@ extern "C" {
 #define TUNNONCESIZE 32
 #define HMACSIZE 32
 
+/*
 typedef byte_t llarp_pubkey_t[PUBKEYSIZE];
 typedef byte_t llarp_seckey_t[SECKEYSIZE];
 typedef byte_t llarp_nonce_t[NONCESIZE];
@@ -37,6 +38,7 @@ typedef byte_t llarp_hmac_t[HMACSIZE];
 typedef byte_t llarp_hmacsec_t[HMACSECSIZE];
 typedef byte_t llarp_sig_t[SIGSIZE];
 typedef byte_t llarp_tunnel_nonce_t[TUNNONCESIZE];
+*/
 
 /// label functors
 
@@ -47,8 +49,8 @@ typedef bool (*llarp_path_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
 typedef bool (*llarp_transport_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
 
 /// SD/SE(buffer, key, nonce)
-typedef bool (*llarp_sym_cipher_func)(llarp_buffer_t, llarp_sharedkey_t,
-                                      llarp_nonce_t);
+typedef bool (*llarp_sym_cipher_func)(llarp_buffer_t, const byte_t *,
+                                      const byte_t *);
 
 /// H(result, body)
 typedef bool (*llarp_hash_func)(byte_t *, llarp_buffer_t);

@@ -71,10 +71,8 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   {
     llarp_rc rc;
     llarp_rc_clear(&rc);
-    llarp_pubkey_t k;
-    memcpy(k, remote, sizeof(llarp_pubkey_t));
 
-    if(!llarp_nodedb_find_rc(nodedb, &rc, k))
+    if(!llarp_nodedb_find_rc(nodedb, &rc, remote))
     {
       llarp::Warn("cannot find router ", remote, " locally so we are dropping ",
                   msgs.size(), " messages to them");
@@ -175,7 +173,7 @@ llarp_router::EnsureEncryptionKey()
                    encryption_keyfile, " ", ec);
       return false;
     }
-    f.write((char *)encryption, sizeof(llarp_seckey_t));
+    f.write((char *)encryption.data(), encryption.size());
   }
   std::ifstream f(encryption_keyfile, std::ios::binary);
   if(!f.is_open())
@@ -183,7 +181,7 @@ llarp_router::EnsureEncryptionKey()
     llarp::Error("could not read ", encryption_keyfile);
     return false;
   }
-  f.read((char *)encryption, sizeof(llarp_seckey_t));
+  f.read((char *)encryption.data(), encryption.size());
   return true;
 }
 
@@ -482,7 +480,7 @@ llarp_router::Run()
     llarp_ai_list_pushback(rc.addrs, &addr);
   };
   // set public keys
-  memcpy(rc.enckey, llarp::seckey_topublic(encryption), sizeof(llarp_pubkey_t));
+  memcpy(rc.enckey, llarp::seckey_topublic(encryption), PUBKEYSIZE);
   llarp_rc_set_pubkey(&rc, pubkey());
 
   llarp_rc_sign(&crypto, identity, &rc);
@@ -719,13 +717,13 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
     std::ofstream f(path, std::ios::binary);
     if(f.is_open())
     {
-      f.write((char *)secretkey, sizeof(llarp_seckey_t));
+      f.write((char *)secretkey, SECKEYSIZE);
     }
   }
   std::ifstream f(path, std::ios::binary);
   if(f.is_open())
   {
-    f.read((char *)secretkey, sizeof(llarp_seckey_t));
+    f.read((char *)secretkey, SECKEYSIZE);
     return true;
   }
   llarp::Info("failed to get identity key");

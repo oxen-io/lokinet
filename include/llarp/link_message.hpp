@@ -10,7 +10,6 @@
 
 namespace llarp
 {
-
   struct ILinkMessage;
 
   typedef std::queue< ILinkMessage* > SendQueue;

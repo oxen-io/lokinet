@@ -6,12 +6,6 @@
 namespace llarp
 {
   typedef AlignedBuffer< 16 > PathID_t;
-
-  typedef AlignedBuffer< 32 > PathSymKey_t;
-
-  typedef AlignedBuffer< 32 > PathNonce_t;
-
-  typedef AlignedBuffer< 24 > SymmNonce_t;
 }
 
 #endif

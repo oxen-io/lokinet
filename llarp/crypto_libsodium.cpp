@@ -9,7 +9,7 @@ namespace llarp
   namespace sodium
   {
     static bool
-    xchacha20(llarp_buffer_t buff, llarp_sharedkey_t k, llarp_nonce_t n)
+    xchacha20(llarp_buffer_t buff, const byte_t *k, const byte_t *n)
     {
       return crypto_stream_xchacha20_xor(buff.base, buff.base, buff.sz, n, k)
           == 0;
@@ -19,7 +19,7 @@ namespace llarp
     dh(uint8_t *out, uint8_t *client_pk, uint8_t *server_pk, uint8_t *pubkey,
        uint8_t *secret)
     {
-      llarp_sharedkey_t shared;
+      llarp::SharedSecret shared;
       crypto_generichash_state h;
       const size_t outsz = SHAREDKEYSIZE;
 
@@ -60,7 +60,7 @@ namespace llarp
     static bool
     transport_dh_client(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
     {
-      llarp_sharedkey_t dh_result;
+      llarp::SharedSecret dh_result;
       if(dh(dh_result, llarp::seckey_topublic(sk), pk, pk, sk))
       {
         return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
@@ -71,7 +71,7 @@ namespace llarp
     static bool
     transport_dh_server(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
     {
-      llarp_sharedkey_t dh_result;
+      llarp::SharedSecret dh_result;
       if(dh(dh_result, pk, llarp::seckey_topublic(sk), pk, sk))
       {
         return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;

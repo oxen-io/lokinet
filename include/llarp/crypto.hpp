@@ -29,6 +29,18 @@ namespace llarp
       return sz;
     }
   };
+
+  typedef AlignedBuffer< SECKEYSIZE > SecretKey;
+
+  typedef AlignedBuffer< SHORTHASHSIZE > ShortHash;
+
+  typedef AlignedBuffer< SIGSIZE > Signature;
+
+  typedef AlignedBuffer< TUNNONCESIZE > TunnelNonce;
+
+  typedef AlignedBuffer< 24 > SymmNonce;
+
+  typedef AlignedBuffer< 32 > SymmKey;
 }
 
 #endif

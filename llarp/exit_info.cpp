@@ -82,7 +82,7 @@ llarp_xi_bencode(struct llarp_xi *xi, llarp_buffer_t *buff)
   /** public key */
   if(!bencode_write_bytestring(buff, "k", 1))
     return false;
-  if(!bencode_write_bytestring(buff, xi->pubkey, sizeof(llarp_pubkey_t)))
+  if(!bencode_write_bytestring(buff, xi->pubkey, PUBKEYSIZE))
     return false;
 
   /** version */
@@ -128,9 +128,9 @@ llarp_xi_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
   {
     if(!bencode_read_string(r->buffer, &strbuf))
       return false;
-    if(strbuf.sz != sizeof(llarp_pubkey_t))
+    if(strbuf.sz != PUBKEYSIZE)
       return false;
-    memcpy(xi->pubkey, strbuf.base, sizeof(llarp_pubkey_t));
+    memcpy(xi->pubkey, strbuf.base, PUBKEYSIZE);
     return true;
   }
 

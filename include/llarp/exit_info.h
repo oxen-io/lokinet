@@ -19,7 +19,7 @@ struct llarp_xi
 {
   struct in6_addr address;
   struct in6_addr netmask;
-  llarp_pubkey_t pubkey;
+  byte_t pubkey[PUBKEYSIZE];
 };
 
 bool

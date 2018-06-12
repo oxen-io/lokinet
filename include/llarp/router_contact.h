@@ -16,11 +16,11 @@ struct llarp_rc
 {
   struct llarp_ai_list *addrs;
   // public encryption public key
-  llarp_pubkey_t enckey;
+  byte_t enckey[PUBKEYSIZE];
   // public signing public key
-  llarp_pubkey_t pubkey;
+  byte_t pubkey[PUBKEYSIZE];
   struct llarp_xi_list *exits;
-  llarp_sig_t signature;
+  byte_t signature[SIGSIZE];
   uint64_t last_updated;
 };
 

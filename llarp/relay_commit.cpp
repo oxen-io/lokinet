@@ -1,3 +1,4 @@
+#include <llarp/bencode.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include "logger.hpp"
 #include "router.hpp"
@@ -13,46 +14,22 @@ namespace llarp
   {
     if(llarp_buffer_eq(key, "c"))
     {
-      return DecodeEncryptedFrameList(buf);
+      return BEncodeReadList(frames, buf);
     }
-    return false;
-  }
-
-  bool
-  LR_CommitMessage::DecodeEncryptedFrame(list_reader* l, bool item)
-  {
-    LR_CommitMessage* self = static_cast< LR_CommitMessage* >(l->user);
-    // end of list
-    if(!item)
+    if(llarp_buffer_eq(key, "f"))
     {
-      bool success = self->frames.size() > 0;
-      if(!success)
-        llarp::Error("no encrypted frames read in LRCM");
-      return success;
+      return lasthopFrame.BDecode(buf);
     }
-
-    llarp_buffer_t strbuf;
-    if(!bencode_read_string(l->buffer, &strbuf))
+    if(llarp_buffer_eq(key, "r"))
+    {
+      return BEncodeReadList(acks, buf);
+    }
+    bool read = false;
+    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
+                                buf))
       return false;
 
-    if(strbuf.sz <= EncryptedFrame::OverheadSize)
-    {
-      llarp::Error("Encrypted Frame In LRCM too short, ", strbuf.sz,
-                   " <= ", EncryptedFrame::OverheadSize);
-      return false;
-    }
-    // emplace new frame
-    self->frames.emplace_back(strbuf.cur, strbuf.sz);
-    return true;
-  }
-
-  bool
-  LR_CommitMessage::DecodeEncryptedFrameList(llarp_buffer_t* buf)
-  {
-    list_reader r;
-    r.user    = this;
-    r.on_item = &DecodeEncryptedFrame;
-    return bencode_read_list(buf, &r);
+    return read;
   }
 
   bool
@@ -61,20 +38,19 @@ namespace llarp
     if(!bencode_start_dict(buf))
       return false;
     // msg type
-    if(!bencode_write_bytestring(buf, "a", 1))
+    if(!BEncodeWriteDictMsgType(buf, "a", "c"))
       return false;
-    if(!bencode_write_bytestring(buf, "c", 1))
-      return false;
-
     // frames
-    if(!bencode_write_bytestring(buf, "c", 1))
+    if(!BEncodeWriteDictList("c", frames, buf))
       return false;
-    if(!bencode_start_list(buf))
+    // last hop
+    if(!BEncodeWriteDictEntry("f", lasthopFrame, buf))
       return false;
-    for(const auto& frame : frames)
-      if(!bencode_write_bytestring(buf, frame.data, frame.size))
-        return false;
-    if(!bencode_end(buf))
+    // acks
+    if(!BEncodeWriteDictList("r", acks, buf))
+      return false;
+    // version
+    if(!bencode_write_version_entry(buf))
       return false;
 
     return bencode_end(buf);
@@ -89,7 +65,25 @@ namespace llarp
   bool
   LR_CommitRecord::BEncode(llarp_buffer_t* buf) const
   {
-    return false;
+    if(!bencode_start_dict(buf))
+      return false;
+
+    if(!BEncodeWriteDictEntry("c", commkey, buf))
+      return false;
+    if(!BEncodeWriteDictEntry("i", nextHop, buf))
+      return false;
+    if(!BEncodeWriteDictEntry("n", tunnelNonce, buf))
+      return false;
+    if(!BEncodeWriteDictEntry("p", txid, buf))
+      return false;
+    if(!BEncodeWriteDictEntry("s", downstreamReplyKey, buf))
+      return false;
+    if(!BEncodeWriteDictEntry("u", downstreamReplyNonce, buf))
+      return false;
+    if(!bencode_write_version_entry(buf))
+      return false;
+
+    return bencode_end(buf);
   }
 
   bool
@@ -98,77 +92,29 @@ namespace llarp
     if(!key)
       return true;
 
-    llarp_buffer_t strbuf;
-
     LR_CommitRecord* self = static_cast< LR_CommitRecord* >(r->user);
-    if(llarp_buffer_eq(*key, "c"))
-    {
-      if(!bencode_read_string(r->buffer, &strbuf))
-        return false;
-      if(strbuf.sz != sizeof(llarp_pubkey_t))
-        return false;
-      memcpy(self->commkey, strbuf.base, strbuf.sz);
-      return true;
-    }
 
-    if(llarp_buffer_eq(*key, "i"))
-    {
-      if(!bencode_read_string(r->buffer, &strbuf))
-        return false;
-      if(strbuf.sz != sizeof(llarp_pubkey_t))
-        return false;
-      memcpy(self->nextHop, strbuf.base, strbuf.sz);
-      return true;
-    }
+    bool read = false;
 
-    if(llarp_buffer_eq(*key, "n"))
-    {
-      if(!bencode_read_string(r->buffer, &strbuf))
-        return false;
-      if(strbuf.sz != sizeof(llarp_tunnel_nonce_t))
-        return false;
-      memcpy(self->tunnelNonce, strbuf.base, strbuf.sz);
-      return true;
-    }
+    if(!BEncodeMaybeReadDictEntry("c", self->commkey, read, *key, r->buffer))
+      return false;
+    if(!BEncodeMaybeReadDictEntry("i", self->nextHop, read, *key, r->buffer))
+      return false;
+    if(BEncodeMaybeReadDictEntry("n", self->tunnelNonce, read, *key, r->buffer))
+      return false;
+    if(!BEncodeMaybeReadDictEntry("p", self->txid, read, *key, r->buffer))
+      return false;
+    if(!BEncodeMaybeReadDictEntry("s", self->downstreamReplyKey, read, *key,
+                                  r->buffer))
+      return false;
+    if(!BEncodeMaybeReadDictEntry("u", self->downstreamReplyNonce, read, *key,
+                                  r->buffer))
+      return false;
+    if(!BEncodeMaybeReadVersion("v", self->version, LLARP_PROTO_VERSION, read,
+                                *key, r->buffer))
+      return false;
 
-    if(llarp_buffer_eq(*key, "p"))
-    {
-      if(!bencode_read_string(r->buffer, &strbuf))
-        return false;
-      if(strbuf.sz != self->txid.size())
-        return false;
-      memcpy(self->txid, strbuf.base, strbuf.sz);
-      return true;
-    }
-
-    if(llarp_buffer_eq(*key, "s"))
-    {
-      if(!bencode_read_string(r->buffer, &strbuf))
-        return false;
-      if(strbuf.sz != self->downstreamReplyKey.size())
-        return false;
-      memcpy(self->downstreamReplyKey, strbuf.base, strbuf.sz);
-      return true;
-    }
-
-    if(llarp_buffer_eq(*key, "u"))
-    {
-      if(!bencode_read_string(r->buffer, &strbuf))
-        return false;
-      if(strbuf.sz != self->downstreamReplyNonce.size())
-        return false;
-      memcpy(self->downstreamReplyNonce, strbuf.base, strbuf.sz);
-      return true;
-    }
-
-    if(llarp_buffer_eq(*key, "v"))
-    {
-      if(!bencode_read_integer(r->buffer, &self->version))
-        return false;
-      return self->version == LLARP_PROTO_VERSION;
-    }
-
-    return false;
+    return read;
   }
 
   bool

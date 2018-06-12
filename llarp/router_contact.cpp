@@ -1,7 +1,7 @@
 #include <llarp/bencode.h>
 #include <llarp/router_contact.h>
 #include <llarp/version.h>
-
+#include <llarp/crypto.hpp>
 #include "buffer.hpp"
 #include "logger.hpp"
 
@@ -49,9 +49,9 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
   {
     if(!bencode_read_string(r->buffer, &strbuf))
       return false;
-    if(strbuf.sz != sizeof(llarp_pubkey_t))
+    if(strbuf.sz != PUBKEYSIZE)
       return false;
-    memcpy(rc->enckey, strbuf.base, sizeof(llarp_pubkey_t));
+    memcpy(rc->enckey, strbuf.base, PUBKEYSIZE);
     return true;
   }
 
@@ -59,9 +59,9 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
   {
     if(!bencode_read_string(r->buffer, &strbuf))
       return false;
-    if(strbuf.sz != sizeof(llarp_pubkey_t))
+    if(strbuf.sz != PUBKEYSIZE)
       return false;
-    memcpy(rc->pubkey, strbuf.base, sizeof(llarp_pubkey_t));
+    memcpy(rc->pubkey, strbuf.base, PUBKEYSIZE);
     return true;
   }
 
@@ -93,9 +93,9 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
   {
     if(!bencode_read_string(r->buffer, &strbuf))
       return false;
-    if(strbuf.sz != sizeof(llarp_sig_t))
+    if(strbuf.sz != SIGSIZE)
       return false;
-    memcpy(rc->signature, strbuf.base, sizeof(llarp_sig_t));
+    memcpy(rc->signature, strbuf.base, SIGSIZE);
     return true;
   }
 
@@ -107,9 +107,9 @@ llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src)
 {
   llarp_rc_free(dst);
   llarp_rc_clear(dst);
-  memcpy(dst->pubkey, src->pubkey, sizeof(llarp_pubkey_t));
-  memcpy(dst->enckey, src->enckey, sizeof(llarp_pubkey_t));
-  memcpy(dst->signature, src->signature, sizeof(llarp_sig_t));
+  memcpy(dst->pubkey, src->pubkey, PUBKEYSIZE);
+  memcpy(dst->enckey, src->enckey, PUBKEYSIZE);
+  memcpy(dst->signature, src->signature, SIGSIZE);
   dst->last_updated = src->last_updated;
 
   if(src->addrs)
@@ -135,15 +135,15 @@ bool
 llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc)
 {
   bool result = false;
-  llarp_sig_t sig;
+  llarp::Signature sig;
   byte_t tmp[MAX_RC_SIZE];
 
   auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
   // copy sig
-  memcpy(sig, rc->signature, sizeof(llarp_sig_t));
+  memcpy(sig, rc->signature, SIGSIZE);
   // zero sig
   size_t sz = 0;
-  while(sz < sizeof(llarp_sig_t))
+  while(sz < SIGSIZE)
     rc->signature[sz++] = 0;
 
   // bencode
@@ -156,7 +156,7 @@ llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc)
   else
     llarp::Warn(__FILE__, "RC encode failed");
   // restore sig
-  memcpy(rc->signature, sig, sizeof(llarp_sig_t));
+  memcpy(rc->signature, sig, SIGSIZE);
   return result;
 }
 
@@ -179,13 +179,13 @@ llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff)
   /* write encryption pubkey */
   if(!bencode_write_bytestring(buff, "e", 1))
     return false;
-  if(!bencode_write_bytestring(buff, rc->enckey, sizeof(llarp_pubkey_t)))
+  if(!bencode_write_bytestring(buff, rc->enckey, PUBKEYSIZE))
     return false;
 
   /* write signing pubkey */
   if(!bencode_write_bytestring(buff, "k", 1))
     return false;
-  if(!bencode_write_bytestring(buff, rc->pubkey, sizeof(llarp_pubkey_t)))
+  if(!bencode_write_bytestring(buff, rc->pubkey, PUBKEYSIZE))
     return false;
 
   /* write last updated */
@@ -210,7 +210,7 @@ llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff)
   /* write signature */
   if(!bencode_write_bytestring(buff, "z", 1))
     return false;
-  if(!bencode_write_bytestring(buff, rc->signature, sizeof(llarp_sig_t)))
+  if(!bencode_write_bytestring(buff, rc->signature, SIGSIZE))
     return false;
   return bencode_end(buff);
 }

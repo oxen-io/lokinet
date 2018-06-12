@@ -2,7 +2,6 @@
 #define LLARP_IWP_H_
 #include <llarp/crypto.h>
 #include <llarp/link.h>
-#include <llarp/router_identity.h>
 
 #ifdef __cplusplus
 extern "C" {

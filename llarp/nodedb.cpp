@@ -1,7 +1,7 @@
 #include <llarp/nodedb.h>
-#include <llarp/crypto.hpp>
 #include <llarp/router_contact.h>
 #include <fstream>
+#include <llarp/crypto.hpp>
 #include <unordered_map>
 #include "buffer.hpp"
 #include "fs.hpp"
@@ -16,7 +16,7 @@ struct llarp_nodedb
   }
 
   llarp_crypto *crypto;
-  std::unordered_map< llarp::PubKey, llarp_rc * , llarp::PubKeyHash> entries;
+  std::unordered_map< llarp::PubKey, llarp_rc *, llarp::PubKeyHash > entries;
 
   void
   Clear()
@@ -168,7 +168,7 @@ llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
 
 bool
 llarp_nodedb_find_rc(struct llarp_nodedb *nodedb, struct llarp_rc *dst,
-                     llarp_pubkey_t k)
+                     const byte_t *k)
 {
   return false;
 }

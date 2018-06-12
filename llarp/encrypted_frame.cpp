@@ -36,11 +36,11 @@ namespace llarp
     // <N bytes encrypted payload>
     //
     byte_t* hash   = data;
-    byte_t* nonce  = hash + sizeof(llarp_shorthash_t);
-    byte_t* pubkey = nonce + sizeof(llarp_tunnel_nonce_t);
-    byte_t* body   = pubkey + sizeof(llarp_pubkey_t);
+    byte_t* nonce  = hash + SHORTHASHSIZE;
+    byte_t* pubkey = nonce + TUNNONCESIZE;
+    byte_t* body   = pubkey + PUBKEYSIZE;
 
-    llarp_sharedkey_t shared;
+    SharedSecret shared;
 
     auto DH      = crypto->dh_client;
     auto Encrypt = crypto->xchacha20;
@@ -52,10 +52,9 @@ namespace llarp
     buf.sz   = size - OverheadSize;
 
     // set our pubkey
-    memcpy(pubkey, llarp::seckey_topublic(ourSecretKey),
-           sizeof(llarp_pubkey_t));
+    memcpy(pubkey, llarp::seckey_topublic(ourSecretKey), PUBKEYSIZE);
     // randomize nonce
-    crypto->randbytes(nonce, sizeof(llarp_tunnel_nonce_t));
+    crypto->randbytes(nonce, TUNNONCESIZE);
 
     // derive shared key
     if(!DH(shared, otherPubkey, nonce, ourSecretKey))
@@ -73,7 +72,7 @@ namespace llarp
     // generate message auth
     buf.base = nonce;
     buf.cur  = buf.base;
-    buf.sz   = size - sizeof(llarp_shorthash_t);
+    buf.sz   = size - SHORTHASHSIZE;
 
     if(!MDS(hash, buf, shared))
     {
@@ -98,9 +97,9 @@ namespace llarp
     // <N bytes encrypted payload>
     //
     byte_t* hash        = data;
-    byte_t* nonce       = hash + sizeof(llarp_shorthash_t);
-    byte_t* otherPubkey = nonce + sizeof(llarp_tunnel_nonce_t);
-    byte_t* body        = otherPubkey + sizeof(llarp_pubkey_t);
+    byte_t* nonce       = hash + SHORTHASHSIZE;
+    byte_t* otherPubkey = nonce + TUNNONCESIZE;
+    byte_t* body        = otherPubkey + PUBKEYSIZE;
 
     // use dh_server becuase we are not the creator of this message
     auto DH      = crypto->dh_server;
@@ -110,10 +109,10 @@ namespace llarp
     llarp_buffer_t buf;
     buf.base = nonce;
     buf.cur  = buf.base;
-    buf.sz   = size - sizeof(llarp_shorthash_t);
+    buf.sz   = size - SHORTHASHSIZE;
 
-    llarp_sharedkey_t shared;
-    llarp_shorthash_t digest;
+    SharedSecret shared;
+    ShortHash digest;
 
     if(!DH(shared, otherPubkey, nonce, ourSecretKey))
     {
@@ -127,7 +126,7 @@ namespace llarp
       return false;
     }
 
-    if(memcmp(digest, hash, sizeof(llarp_shorthash_t)))
+    if(memcmp(digest, hash, digest.size()))
     {
       llarp::Error("message authentication failed");
       return false;

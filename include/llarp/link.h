@@ -5,7 +5,6 @@
 #include <llarp/ev.h>
 #include <llarp/logic.h>
 #include <llarp/mem.h>
-#include <llarp/obmd.h>
 
 #include <stdbool.h>
 #include <stdint.h>

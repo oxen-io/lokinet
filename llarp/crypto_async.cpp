@@ -41,9 +41,9 @@ namespace iwp
   gen_intro(void *user)
   {
     iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
-    llarp_sharedkey_t sharedkey;
-    llarp_shorthash_t e_k;
-    llarp_nonce_t n;
+    llarp::SharedSecret sharedkey;
+    llarp::ShortHash e_k;
+    llarp::SymmNonce n;
     llarp_crypto *crypto = intro->iwp->crypto;
     byte_t tmp[64];
     // S = TKE(a.k, b.k, n)
@@ -76,10 +76,10 @@ namespace iwp
   {
     iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
     auto crypto            = intro->iwp->crypto;
-    llarp_sharedkey_t sharedkey;
-    llarp_shorthash_t e_K;
-    llarp_hmac_t h;
-    llarp_nonce_t N;
+    llarp::SharedSecret sharedkey;
+    llarp::ShortHash e_K;
+    llarp::SharedSecret h;
+    llarp::SymmNonce N;
     byte_t tmp[64];
     auto OurPK = llarp::seckey_topublic(intro->secretkey);
     // e_k = HS(b.k + n)
@@ -127,8 +127,8 @@ namespace iwp
     auto crypto                  = introack->iwp->crypto;
     auto logic                   = introack->iwp->logic;
 
-    llarp_hmac_t digest;
-    llarp_sharedkey_t sharedkey;
+    llarp::ShortHash digest;
+    llarp::SharedSecret sharedkey;
 
     auto hmac      = introack->buf;
     auto body      = introack->buf + 32;
@@ -169,7 +169,7 @@ namespace iwp
   gen_introack(void *user)
   {
     iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
-    llarp_sharedkey_t sharedkey;
+    llarp::SharedSecret sharedkey;
     auto crypto    = introack->iwp->crypto;
     auto pubkey    = introack->remote_pubkey;
     auto secretkey = introack->secretkey;
@@ -221,8 +221,8 @@ namespace iwp
     auto token = session->token;
     auto K     = session->sessionkey;
 
-    llarp_sharedkey_t e_K;
-    llarp_shorthash_t T;
+    llarp::SharedSecret e_K;
+    llarp::ShortHash T;
 
     byte_t tmp[64];
     llarp_buffer_t buf;
@@ -271,8 +271,8 @@ namespace iwp
     auto token = session->token;
     auto K     = session->sessionkey;
 
-    llarp_sharedkey_t e_K;
-    llarp_shorthash_t T;
+    llarp::SharedSecret e_K;
+    llarp::ShortHash T;
 
     byte_t tmp[64];
 
@@ -334,7 +334,7 @@ namespace iwp
     byte_t *nonce          = frame->buf + 32;
     byte_t *body           = frame->buf + 64;
 
-    llarp_sharedkey_t digest;
+    llarp::ShortHash digest;
 
     llarp_buffer_t buf;
     buf.base = nonce;

@@ -63,8 +63,8 @@ namespace llarp
 
   struct TransitHop
   {
-    PathSymKey_t rxKey;
-    PathSymKey_t txKey;
+    SharedSecret rxKey;
+    SharedSecret txKey;
     llarp_time_t started;
     llarp_proto_version_t version;
   };
@@ -76,9 +76,9 @@ namespace llarp
     /// router identity key
     PubKey encryptionKey;
     /// shared secret at this hop
-    PathSymKey_t shared;
+    SharedSecret shared;
     /// nonce for key exchange
-    PathNonce_t nonce;
+    TunnelNonce nonce;
   };
 
   struct Path

@@ -56,10 +56,10 @@ llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
     if(!bencode_read_string(r->buffer, &strbuf))
       return false;
 
-    if(strbuf.sz != sizeof(llarp_pubkey_t))
+    if(strbuf.sz != PUBKEYSIZE)
       return false;
 
-    memcpy(ai->enc_key, strbuf.base, sizeof(llarp_pubkey_t));
+    memcpy(ai->enc_key, strbuf.base, PUBKEYSIZE);
     return true;
   }
 
@@ -154,7 +154,7 @@ llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff)
   /* encryption key */
   if(!bencode_write_bytestring(buff, "e", 1))
     return false;
-  if(!bencode_write_bytestring(buff, ai->enc_key, sizeof(llarp_pubkey_t)))
+  if(!bencode_write_bytestring(buff, ai->enc_key, PUBKEYSIZE))
     return false;
   /** ip */
   ipstr = inet_ntop(AF_INET6, &ai->ip, ipbuff, sizeof(ipbuff));
