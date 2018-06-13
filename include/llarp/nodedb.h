@@ -3,6 +3,13 @@
 #include <llarp/common.h>
 #include <llarp/crypto.h>
 #include <llarp/router_contact.h>
+
+/**
+ * nodedb.h
+ *
+ * persistent storage API for router contacts
+ */
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -75,11 +82,24 @@ struct llarp_async_verify_rc;
 
 typedef void (*llarp_async_verify_rc_hook_func)(struct llarp_async_verify_rc *);
 
+/// verify rc request
 struct llarp_async_verify_rc
 {
+  /// async_verify_context
   void *user;
+  /// nodedb storage
+  struct llarp_nodedb *nodedb;
+  // llarp_logic for llarp_logic_queue_job
+  struct llarp_logic *logic; // includes a llarp_threadpool
+  struct llarp_crypto *crypto;
+  struct llarp_threadpool *cryptoworker;
+  struct llarp_threadpool *diskworker;
+
+  /// router contact (should this be a pointer?)
   struct llarp_rc rc;
+  /// result
   bool valid;
+  /// hook
   llarp_async_verify_rc_hook_func hook;
 };
 

@@ -1,4 +1,5 @@
 #include <llarp/crypto_async.h>
+#include <llarp/router_contact.h>
 #include <llarp/mem.h>
 #include <string.h>
 #include <llarp/crypto.hpp>
@@ -26,7 +27,9 @@ namespace iwp
   {
     iwp_async_keygen *keygen = static_cast< iwp_async_keygen * >(user);
     keygen->iwp->crypto->encryption_keygen(keygen->keybuf);
-    llarp_thread_job job = {.user = user, .work = &inform_keygen};
+    llarp_thread_job job;
+    job.user = user;
+    job.work = &inform_keygen;
     llarp_logic_queue_job(keygen->iwp->logic, job);
   }
 
@@ -477,4 +480,5 @@ llarp_async_iwp_free(struct llarp_async_iwp *iwp)
 {
   delete iwp;
 }
+
 }

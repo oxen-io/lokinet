@@ -15,7 +15,7 @@
 extern "C" {
 #endif
 
-/// context for doing asynchronous crpytography for iwp
+/// context for doing asynchronous cryptography for iwp
 /// with a worker threadpool
 /// defined in crypto_async.cpp
 struct llarp_async_iwp;
@@ -42,7 +42,7 @@ struct iwp_async_keygen
 {
   /// internal wire protocol async configuration
   struct llarp_async_iwp *iwp;
-  /// a customizable pointer to pass data to iteration functor
+  /// a pointer to pass ourself to thread worker
   void *user;
   /// destination key buffer
   uint8_t *keybuf;
@@ -167,6 +167,7 @@ struct iwp_async_frame
   /// true if decryption succeded
   bool success;
   struct llarp_async_iwp *iwp;
+  /// a pointer to pass ourself
   void *user;
   /// current session key
   byte_t *sessionkey;

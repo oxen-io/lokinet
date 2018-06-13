@@ -1316,9 +1316,10 @@ namespace iwp
     UnmapAddr(const llarp::Addr &src)
     {
       lock_t lock(m_Connected_Mutex);
+      // std::unordered_map< llarp::pubkey, llarp::Addr, llarp::pubkeyhash >
       auto itr = std::find_if(
           m_Connected.begin(), m_Connected.end(),
-          [src](const auto &item) -> bool { return src == item.second; });
+                              [src](const std::pair<llarp::pubkey, llarp::Addr> &item) -> bool { return src == item.second; });
       if(itr == std::end(m_Connected))
         return;
 
@@ -1727,6 +1728,7 @@ namespace iwp
         break;
         // TODO: AF_PACKET
       default:
+        llarp::Error(__FILE__, "unsupported address family", af);
         return false;
     }
 
@@ -1823,7 +1825,7 @@ namespace iwp
         link->put_session(dst, s);
       }
       s->establish_job = job;
-      s->frame.alive();
+      s->frame.alive(); // mark it alive
       s->introduce(job->ai.enc_key);
     }
     return true;
