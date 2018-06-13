@@ -9,8 +9,14 @@ extern "C" {
 
 // forward declare
 struct llarp_alloc;
+struct llarp_rc;
 
 #define MAX_RC_SIZE (1024)
+
+bool
+llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buf);
+bool
+llarp_rc_bencode(const struct llarp_rc *rc, llarp_buffer_t *buf);
 
 struct llarp_rc
 {
@@ -22,12 +28,21 @@ struct llarp_rc
   struct llarp_xi_list *exits;
   byte_t signature[SIGSIZE];
   uint64_t last_updated;
-};
 
-bool
-llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buf);
-bool
-llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buf);
+#ifdef __cplusplus
+  bool
+  BEncode(llarp_buffer_t *buf) const
+  {
+    return llarp_rc_bencode(this, buf);
+  }
+
+  bool
+  BDecode(llarp_buffer_t *buf)
+  {
+    return llarp_rc_bdecode(this, buf);
+  }
+#endif
+};
 
 void
 llarp_rc_free(struct llarp_rc *rc);

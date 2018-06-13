@@ -1,12 +1,13 @@
-#include <llarp/bencode.h>
+#include <llarp/bencode.hpp>
 #include <llarp/dht.hpp>
 #include <llarp/messages/dht_immediate.hpp>
 #include "router.hpp"
+#include "router_contact.hpp"
 
 #include <sodium.h>
 
+#include <algorithm>  // std::find
 #include <set>
-#include <algorithm>    // std::find
 
 namespace llarp
 {
@@ -90,7 +91,25 @@ namespace llarp
     bool
     GotRouterMessage::BEncode(llarp_buffer_t *buf) const
     {
-      return false;
+      if(!bencode_start_dict(buf))
+        return false;
+
+      // message type
+      if(!BEncodeWriteDictMsgType(buf, "A", "S"))
+        return false;
+
+      if(!BEncodeWriteDictList("R", R, buf))
+        return false;
+
+      // txid
+      if(!BEncodeWriteDictInt(buf, "T", txid))
+        return false;
+
+      // version
+      if(!BEncodeWriteDictInt(buf, "V", version))
+        return false;
+
+      return bencode_end(buf);
     }
 
     bool
@@ -186,7 +205,13 @@ namespace llarp
     FindRouterMessage::HandleMessage(llarp_router *router,
                                      std::vector< IMessage * > &replies) const
     {
-      auto &dht    = router->dht->impl;
+      auto &dht = router->dht->impl;
+      if(!dht.allowTransit)
+      {
+        llarp::Warn("Got DHT lookup from ", From,
+                    " when we are not allowing dht transit");
+        return false;
+      }
       auto pending = dht.FindPendingTX(From, txid);
       if(pending)
       {
@@ -417,8 +442,8 @@ namespace llarp
     {
       TXOwner search;
       search.requester = owner;
-      search.txid = id;
-      auto itr = pendingTX.find(search);
+      search.txid      = id;
+      auto itr         = pendingTX.find(search);
       if(itr == pendingTX.end())
         return;
       pendingTX.erase(itr);
@@ -429,8 +454,8 @@ namespace llarp
     {
       TXOwner search;
       search.requester = owner;
-      search.txid = id;
-      auto itr = pendingTX.find(search);
+      search.txid      = id;
+      auto itr         = pendingTX.find(search);
       if(itr == pendingTX.end())
         return nullptr;
       else
@@ -452,7 +477,7 @@ namespace llarp
       {
         pendingTX[e].Completed(nullptr, true);
         RemovePendingLookup(e.requester, e.txid);
-        if(e.requester != ourKey)
+        if(e.requester != ourKey && allowTransit)
         {
           // inform not found
           llarp::DHTImmeidateMessage msg(e.requester);
@@ -486,11 +511,11 @@ namespace llarp
     Context::LookupRouter(const Key_t &target, const Key_t &whoasked,
                           const Key_t &askpeer, llarp_router_lookup_job *job)
     {
-      auto id                   = ++ids;
-      
+      auto id = ++ids;
+
       TXOwner ownerKey;
       ownerKey.requester = whoasked;
-      ownerKey.txid = id;
+      ownerKey.txid      = id;
 
       pendingTX[ownerKey] = SearchJob(whoasked, target, job);
 
@@ -567,6 +592,12 @@ llarp_dht_set_msg_handler(struct llarp_dht_context *ctx,
                           llarp_dht_msg_handler handler)
 {
   ctx->impl.custom_handler = handler;
+}
+
+void
+llarp_dht_allow_transit(llarp_dht_context *ctx)
+{
+  ctx->impl.allowTransit = true;
 }
 
 void

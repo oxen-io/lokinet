@@ -55,6 +55,10 @@ struct llarp_router_lookup_job
   struct llarp_rc result;
 };
 
+/// start allowing dht participation on a context
+void
+llarp_dht_allow_transit(struct llarp_dht_context* ctx);
+
 // shallow copy
 void
 llarp_dht_put_local_router(struct llarp_dht_context* ctx, struct llarp_rc* rc);

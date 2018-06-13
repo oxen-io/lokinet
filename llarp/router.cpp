@@ -29,7 +29,10 @@ namespace llarp
 }  // namespace llarp
 
 llarp_router::llarp_router()
-    : ready(false), paths(this), inbound_msg_parser(this)
+    : ready(false)
+    , paths(this)
+    , dht(llarp_dht_context_new(this))
+    , inbound_msg_parser(this)
 
 {
   llarp_rc_clear(&rc);
@@ -350,9 +353,9 @@ llarp_router::send_padded_message(llarp_link_session_iter *itr,
   llarp_router *self = static_cast< llarp_router * >(itr->user);
   llarp::RouterID remote;
   remote = &peer->get_remote_router(peer)->pubkey[0];
-  for(size_t idx = 0; idx < 50; ++idx)
+  for(size_t idx = 0; idx < 5; ++idx)
   {
-    llarp::DiscardMessage msg(9000);
+    llarp::DiscardMessage msg(2000);
     self->SendTo(remote, &msg);
   }
   return true;
@@ -401,7 +404,9 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
   auto itr = validRouters.find(remote);
   if(itr == validRouters.end())
     return;
-  llarp_dht_remove_local_router(dht, remote);
+
+  if(dht)
+    llarp_dht_remove_local_router(dht, remote);
   llarp_rc_free(&itr->second);
   validRouters.erase(itr);
 }
@@ -461,7 +466,7 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   {
     llarp::PubKey pk = job->pubkey;
     llarp::Warn("failed to connect to ", pk, " dropping all pending messages");
-    router->DiscardOutboundFor(job->pubkey);
+    router->DiscardOutboundFor(pk);
   }
 }
 
@@ -553,6 +558,10 @@ llarp_router::Run()
     InitServiceNode();
   }
 
+  llarp::PubKey ourPubkey = pubkey();
+  llarp::Info("starting dht context as ", ourPubkey);
+  llarp_dht_context_start(dht, ourPubkey);
+
   llarp_logic_call_later(logic, {1000, this, &ConnectAll});
 
   ScheduleTicker(500);
@@ -561,13 +570,9 @@ llarp_router::Run()
 void
 llarp_router::InitServiceNode()
 {
-  llarp::PubKey ourPubkey = pubkey();
-
-  llarp::Info("starting dht context as ", ourPubkey);
-  dht = llarp_dht_context_new(this);
-  llarp_dht_context_start(dht, ourPubkey);
   llarp::Info("accepting transit traffic");
   paths.AllowTransit();
+  llarp_dht_allow_transit(dht);
 }
 
 void

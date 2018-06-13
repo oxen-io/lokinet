@@ -15,6 +15,8 @@ namespace llarp
   template < size_t sz >
   struct AlignedBuffer
   {
+    static_assert(sz % 8 == 0, "aligned buffer size is not a multiple of 8");
+
     AlignedBuffer() = default;
 
     AlignedBuffer(const byte_t* data)
