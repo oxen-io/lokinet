@@ -1,6 +1,7 @@
 #ifndef LLARP_ALIGNED_HPP
 #define LLARP_ALIGNED_HPP
 
+#include <llarp/bencode.h>
 #include <llarp/crypto.h>
 #include <sodium.h>
 #include <iomanip>
@@ -59,6 +60,12 @@ namespace llarp
       return sz;
     }
 
+    size_t
+    size()
+    {
+      return sz;
+    }
+
     void
     Zero()
     {
@@ -69,7 +76,7 @@ namespace llarp
     void
     Randomize()
     {
-      randombytes(l, sz);
+      randombytes(b, sz);
     }
 
     byte_t*
@@ -104,6 +111,24 @@ namespace llarp
     operator byte_t*()
     {
       return &b[0];
+    }
+
+    bool
+    BEncode(llarp_buffer_t* buf) const
+    {
+      return bencode_write_bytestring(buf, b, sz);
+    }
+
+    bool
+    BDecode(llarp_buffer_t* buf)
+    {
+      llarp_buffer_t strbuf;
+      if(!bencode_read_string(buf, &strbuf))
+        return false;
+      if(strbuf.sz != sz)
+        return false;
+      memcpy(b, strbuf.base, sz);
+      return true;
     }
 
    private:

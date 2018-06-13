@@ -29,7 +29,8 @@ namespace llarp
 }  // namespace llarp
 
 llarp_router::llarp_router()
-    : ready(false), dht(llarp_dht_context_new(this)), inbound_msg_parser(this)
+    : ready(false), paths(this), inbound_msg_parser(this)
+
 {
   llarp_rc_clear(&rc);
 }
@@ -70,10 +71,8 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   {
     llarp_rc rc;
     llarp_rc_clear(&rc);
-    llarp_pubkey_t k;
-    memcpy(k, remote, sizeof(llarp_pubkey_t));
 
-    if(!llarp_nodedb_find_rc(nodedb, &rc, k))
+    if(!llarp_nodedb_find_rc(nodedb, &rc, remote))
     {
       llarp::Warn("cannot find router ", remote, " locally so we are dropping ",
                   msgs.size(), " messages to them");
@@ -98,7 +97,7 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
 
   for(const auto &msg : msgs)
   {
-    outboundMesssageQueue[remote].push(msg);
+    outboundMesssageQueue[remote.data()].push(msg);
   }
   FlushOutboundFor(remote, chosen);
   return true;
@@ -154,7 +153,36 @@ llarp_router::try_connect(fs::path rcfile)
 bool
 llarp_router::EnsureIdentity()
 {
+  if(!EnsureEncryptionKey())
+    return false;
   return llarp_findOrCreateIdentity(&crypto, ident_keyfile.c_str(), identity);
+}
+
+bool
+llarp_router::EnsureEncryptionKey()
+{
+  std::error_code ec;
+  if(!fs::exists(encryption_keyfile, ec))
+  {
+    llarp::Info("generating encryption key");
+    crypto.encryption_keygen(encryption);
+    std::ofstream f(encryption_keyfile, std::ios::binary);
+    if(!f.is_open())
+    {
+      llarp::Error("could not save encryption private key to ",
+                   encryption_keyfile, " ", ec);
+      return false;
+    }
+    f.write((char *)encryption.data(), encryption.size());
+  }
+  std::ifstream f(encryption_keyfile, std::ios::binary);
+  if(!f.is_open())
+  {
+    llarp::Error("could not read ", encryption_keyfile);
+    return false;
+  }
+  f.read((char *)encryption.data(), encryption.size());
+  return true;
 }
 
 void
@@ -258,27 +286,28 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
 
   llarp::Debug("rc verified");
 
-  // track valid router in dht
-  llarp::pubkey pubkey;
-  memcpy(&pubkey[0], job->rc.pubkey, pubkey.size());
+  llarp::PubKey pk(job->rc.pubkey);
 
   // refresh valid routers RC value if it's there
-  auto v = router->validRouters.find(pubkey);
+  auto v = router->validRouters.find(pk);
   if(v != router->validRouters.end())
   {
     // free previous RC members
     llarp_rc_free(&v->second);
   }
-  router->validRouters[pubkey] = job->rc;
+  router->validRouters[pk] = job->rc;
+
+  // TODO: update nodedb here (?)
 
   // track valid router in dht
-  llarp_dht_put_local_router(router->dht, &router->validRouters[pubkey]);
+  if(router->dht)
+    llarp_dht_put_local_router(router->dht, &router->validRouters[pk]);
 
   // this was an outbound establish job
   if(ctx->establish_job->session)
   {
     auto session = ctx->establish_job->session;
-    router->FlushOutboundFor(pubkey, session->get_parent(session));
+    router->FlushOutboundFor(pk, session->get_parent(session));
   }
   llarp_rc_free(&job->rc);
   delete job;
@@ -457,7 +486,8 @@ llarp_router::Run()
     link->get_our_address(link, &addr);
     llarp_ai_list_pushback(rc.addrs, &addr);
   };
-  // set public key
+  // set public keys
+  memcpy(rc.enckey, llarp::seckey_topublic(encryption), PUBKEYSIZE);
   llarp_rc_set_pubkey(&rc, pubkey());
 
   llarp_rc_sign(&crypto, identity, &rc);
@@ -467,29 +497,47 @@ llarp_router::Run()
     return;
   }
 
-  llarp::pubkey ourPubkey = pubkey();
-
-  llarp::Info("our router has public key ", ourPubkey);
-  llarp_dht_context_start(dht, ourPubkey);
-
   llarp::Debug("starting outbound link");
   if(!outboundLink->start_link(outboundLink, logic))
   {
     llarp::Warn("outbound link failed to start");
   }
 
+  int IBLinksStarted = 0;
+
   // start links
   for(auto link : inboundLinks)
   {
     if(link->start_link(link, logic))
+    {
       llarp::Debug("Link ", link->name(), " started");
+      IBLinksStarted++;
+    }
     else
       llarp::Warn("Link ", link->name(), " failed to start");
+  }
+
+  if(IBLinksStarted > 0)
+  {
+    // initialize as service node
+    InitServiceNode();
   }
 
   llarp_logic_call_later(logic, {1000, this, &ConnectAll});
 
   ScheduleTicker(500);
+}
+
+void
+llarp_router::InitServiceNode()
+{
+  llarp::PubKey ourPubkey = pubkey();
+
+  llarp::Info("starting dht context as ", ourPubkey);
+  dht = llarp_dht_context_new(this);
+  llarp_dht_context_start(dht, ourPubkey);
+  llarp::Info("accepting transit traffic");
+  paths.AllowTransit();
 }
 
 void
@@ -656,7 +704,7 @@ llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
 }
 
 void
-llarp_rc_set_pubkey(struct llarp_rc *rc, uint8_t *pubkey)
+llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubkey)
 {
   // set public key
   memcpy(rc->pubkey, pubkey, 32);
@@ -676,13 +724,13 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
     std::ofstream f(path, std::ios::binary);
     if(f.is_open())
     {
-      f.write((char *)secretkey, sizeof(llarp_seckey_t));
+      f.write((char *)secretkey, SECKEYSIZE);
     }
   }
   std::ifstream f(path, std::ios::binary);
   if(f.is_open())
   {
-    f.read((char *)secretkey, sizeof(llarp_seckey_t));
+    f.read((char *)secretkey, SECKEYSIZE);
     return true;
   }
   llarp::Info("failed to get identity key");
@@ -827,6 +875,10 @@ namespace llarp
     }
     else if(StrEq(section, "router"))
     {
+      if(StrEq(key, "encryption-privkey"))
+      {
+        self->encryption_keyfile = val;
+      }
       if(StrEq(key, "contact-file"))
       {
         self->our_rc_file = val;

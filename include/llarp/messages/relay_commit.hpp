@@ -1,26 +1,33 @@
 #ifndef LLARP_RELAY_COMMIT_HPP
 #define LLARP_RELAY_COMMIT_HPP
-#include <llarp/crypto.h>
+#include <llarp/crypto.hpp>
+#include <llarp/encrypted_ack.hpp>
 #include <llarp/encrypted_frame.hpp>
 #include <llarp/link_message.hpp>
+#include <llarp/path_types.hpp>
 #include <vector>
 
 namespace llarp
 {
   struct LR_CommitRecord
   {
-    llarp_pubkey_t commkey;
-    llarp_pubkey_t nextHop;
-    llarp_tunnel_nonce_t nonce;
-    uint64_t lifetime;
-    uint64_t pathid;
+    PubKey commkey;
+    PubKey nextHop;
+    TunnelNonce tunnelNonce;
+    PathID_t txid;
+    SymmKey downstreamReplyKey;
+    SymmNonce downstreamReplyNonce;
     uint64_t version;
 
     bool
     BDecode(llarp_buffer_t *buf);
 
     bool
-    BEncode(llarp_buffer_t *buf);
+    BEncode(llarp_buffer_t *buf) const;
+
+   private:
+    static bool
+    OnKey(dict_reader *r, llarp_buffer_t *buf);
   };
 
   struct LR_AcceptRecord
@@ -30,32 +37,26 @@ namespace llarp
     std::vector< byte_t > padding;
 
     bool
-    BDecode(llarp_buffer_t *buf);
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf);
 
     bool
-    BEncode(llarp_buffer_t *buf);
-  };
-
-  struct LR_StatusMessage
-  {
-    std::vector< EncryptedFrame > replies;
-    uint64_t version;
-
-    bool
-    BDecode(llarp_buffer_t *buf);
-
-    bool
-    BEncode(llarp_buffer_t *buf);
+    BEncode(llarp_buffer_t *buf) const;
   };
 
   struct LR_CommitMessage : public ILinkMessage
   {
     std::vector< EncryptedFrame > frames;
+    EncryptedFrame lasthopFrame;
+    std::vector< EncryptedAck > acks;
     uint64_t version;
 
+    LR_CommitMessage() : ILinkMessage()
+    {
+    }
     LR_CommitMessage(const RouterID &from) : ILinkMessage(from)
     {
     }
+
     ~LR_CommitMessage();
 
     void
@@ -69,42 +70,6 @@ namespace llarp
 
     bool
     HandleMessage(llarp_router *router) const;
-  };
-
-  struct AsyncPathDecryption
-  {
-    static void
-    Decrypted(void *data);
-
-    LR_CommitMessage lrcm;
-    LR_CommitRecord ourRecord;
-    llarp_threadpool *worker = nullptr;
-    llarp_crypto *crypto     = nullptr;
-    llarp_logic *logic       = nullptr;
-    llarp_thread_job result;
-
-    void
-    AsyncDecryptOurHop();
-  };
-
-  struct AsyncPathEncryption
-  {
-    static void
-    EncryptedFrame(void *data);
-
-    std::vector< LR_CommitRecord > hops;
-    LR_CommitMessage lrcm;
-    llarp_threadpool *worker = nullptr;
-    llarp_crypto *crypto     = nullptr;
-    llarp_logic *logic       = nullptr;
-    llarp_thread_job result;
-
-    void
-    AsyncEncrypt();
-
-   private:
-    void
-    EncryptNext();
   };
 }
 

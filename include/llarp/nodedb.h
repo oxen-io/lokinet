@@ -57,14 +57,14 @@ llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
  */
 bool
 llarp_nodedb_find_rc(struct llarp_nodedb *n, struct llarp_rc *rc,
-                     llarp_pubkey_t k);
+                     const byte_t *k);
 
 /**
    return true if we have a rc with rc.k of value k on disk
    otherwise return false
  */
 bool
-llarp_nodedb_has_rc(struct llarp_nodedb *n, llarp_pubkey_t k);
+llarp_nodedb_has_rc(struct llarp_nodedb *n, const byte_t *k);
 
 /**
    put an rc into the node db

@@ -50,7 +50,7 @@ struct llarp_router_lookup_job
   void* user;
   llarp_rotuer_lookup_handler hook;
   struct llarp_dht_context* dht;
-  llarp_pubkey_t target;
+  byte_t target[PUBKEYSIZE];
   bool found;
   struct llarp_rc result;
 };

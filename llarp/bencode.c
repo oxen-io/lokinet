@@ -132,6 +132,8 @@ bencode_read_dict(llarp_buffer_t* buff, struct dict_reader* r)
       if(!r->on_key(r, &strbuf))  // check for early abort
         return false;
     }
+    else
+      return false;
   }
 
   if(*r->buffer->cur != 'e')  // make sure we're at dictionary end

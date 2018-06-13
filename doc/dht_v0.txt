@@ -210,7 +210,7 @@ find router contact message (FRCM)
 find a router by long term RC.k public key
 
 {
-  A: "F",
+  A: "R",
   K: "<32 byte public key of router>",
   T: transaction_id_uint64,
   V: 0
@@ -245,7 +245,7 @@ R is a list containing a single RC if found or is an empty list if not found
 sent in reply to FRCM only
 
 {
-  A: "G",
+  A: "S",
   R: [RC],
   T: transaction_id_uint64,
   V: 0

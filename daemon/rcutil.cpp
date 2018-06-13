@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <experimental/filesystem>
+#include <llarp/crypto.hpp>
 
 namespace fs = std::experimental::filesystem;
 
@@ -202,10 +203,10 @@ main(int argc, char *argv[])
     llarp_crypto crypt;
     llarp_crypto_libsodium_init(&crypt);
     fs::path ident_keyfile = "identity.key";
-    llarp_seckey_t identity;
+    byte_t identity[SECKEYSIZE];
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
     // get identity public key
-    uint8_t *pubkey = llarp_seckey_topublic(identity);
+    uint8_t *pubkey = llarp::seckey_topublic(identity);
     llarp_rc_set_pubkey(&tmp, pubkey);
     // this causes a segfault
     llarp_rc_sign(&crypt, identity, &tmp);
@@ -250,10 +251,10 @@ main(int argc, char *argv[])
     llarp_crypto crypt;
     llarp_crypto_libsodium_init(&crypt);
     fs::path ident_keyfile = "identity.key";
-    llarp_seckey_t identity;
+    byte_t identity[SECKEYSIZE];
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
     // get identity public key
-    uint8_t *pubkey = llarp_seckey_topublic(identity);
+    uint8_t *pubkey = llarp::seckey_topublic(identity);
     llarp_rc_set_pubkey(&tmp, pubkey);
     llarp_rc_sign(&crypt, identity, &tmp);
     // set filename

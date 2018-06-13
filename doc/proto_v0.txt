@@ -165,7 +165,7 @@ x is the timestamp seconds since epoch that this introducer expires at
 
 {
   k: "<32 bytes public identity key of router>",
-  p: path_id_uint64,
+  p: "<16 bytes path id>",
   v: 0,
   x: time_expires_seconds_since_epoch_uint64
 }
@@ -227,14 +227,14 @@ to encrypt a frame to a router with public key B.k
 
 A.k, s = ECKG()
 n = RAND(32)
-S = PKE(p, A.k, B.k)
+S = PKE(p, A.k, B.k, n)
 
 1) encode and encrypt
 
 x = BE(msg)
 new_x = SE(S, n[0:24], x)
 
-2) generate hmac
+2) generate message authentication
 
 h = MDS(n + A.k + new_x, S)
 
@@ -358,7 +358,7 @@ this establishes the downstream keys.
   a: "a",
   c: [ list, of, encrypted, LCAR],
   l: encrypted frame for path creator,
-  r: "<16 bytes rx hop>",
+  t: "<16 bytes tx hop>",
   v: 0
 }
 
@@ -390,47 +390,44 @@ popped off and the last element filled with random.
 link relay upstream message (LRUM)
 
 sent to relay data via upstream direction of a previously created path.
-decrypt z using previously derived upstream key and nounce y. Relay with new_y
-and new_z in upstream direction as a LRUM.
-
-h = MDS(x, k_up)
-
-verify h == z[0:32]
-new_x = SD(k_up, y, x)
-new_y = y ^ new_x[0:24]
-new_z = z[32:] + RAND(32)
 
 {
   a: "u",
   p: "<16 bytes tx path id>",
   v: 0,
-  x: "<insert N bytes payload here>",
-  y: "<insert 24 bytes nounce here>",
-  z: "<256 bytes rolling hmac>"
+  x: "<N bytes encrypted x1 value>",
+  y: "<32 bytes nonce>",
+  z: "<discard>"
 }
+
+plaintext x1 is a routing message
+
+
+x1 = BD(SD(k_up, y[0:24], x))
+new_y = HS(y + k_up)
+verify new_y == x1.n
+
+in the event we get a path data message (PDM), transmit a LRUM to next hop 
+
+{
+  a: "u",
+  p: x1.P,
+  v: x1.V,
+  x: x1.D,
+  y: x1.N,
+  z: RAND(x1.R)
+}
+
+if we are the farthest hop, process x1 as a routing message
+
 
 link relay downstream message (LRDM)
 
 sent to relay data via downstream direction of a previously created path.
-decrypt z using previously derived downstream key and nounce y. Relay with new_y
-and new_z in downstream direction as a LRUM.
 
-h = MDS(x, k_down)
-verify h == z[0:32]
-new_x = SD(k_down, y, x)
-new_y = y ^ new_x[0:24]
-new_z = z[32:] + RAND(32)
+same as LRUM but a is 'd' and p/x1.p refer to the rx path id
 
-{
-  a: "d",
-  p: "<16 bytes rx path id>",
-  v: 0,
-  x: "<insert N bytes payload here>",
-  y: "<insert 24 bytes nounce here>",
-  z: "<256 bytes rolling hmac>"
-}
-
-link relay exit message (LRXM)
+link relay exit message (LRXM) [under construction]
 
 sent to exit a previously commited path before it expires.
 verify signature using cancel key c in relay commit message.
@@ -503,6 +500,21 @@ originated from inside a LRDM.
 
 ipv4 addresses are allowed via ipv4 mapped ipv6 addresses, i.e. ::ffff.10.0.0.1
 
+path data message (PDM)
+
+intermediate path data
+forward N as LRUM if we got it in a LRUM
+forward N as LRDM if we got it in a LRDM
+
+{
+  A: "D",
+  D: "<N bytes payload here>",
+  N: "<32 bytes next nonce>",
+  P: "<16 bytes next path id>", 
+  R: number_of_bytes_Z_padding,
+  V: 0
+}
+
 obtain exit address message (OXAM)
 
 sent to an exit router to obtain a NAT ip address for ip exit traffic.
@@ -564,8 +576,8 @@ signed data sent anonymously over the network to a recipiant from a sender.
 sent inside a TDFM encrypted to the hidden service's public encryption key.
 
 {
-  A: "D",
-  D: "<payload bytes>",
+  A: "H",
+  H: "<payload bytes>",
   I: Introducer for reply,
   R: SA of recipiant,
   S: SI of sender,

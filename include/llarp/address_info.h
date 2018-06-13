@@ -22,7 +22,7 @@ struct llarp_ai
 {
   uint16_t rank;
   char dialect[MAX_AI_DIALECT_SIZE + 1];
-  llarp_pubkey_t enc_key;
+  byte_t enc_key[PUBKEYSIZE];
   struct in6_addr ip;
   uint16_t port;
 };

@@ -24,6 +24,13 @@ llarp_init_router(struct llarp_threadpool *worker,
 void
 llarp_free_router(struct llarp_router **router);
 
+/// send raw message to router we have a session with
+/// return false on message not sent becasue we don't have a session otherwise
+/// return true
+bool
+llarp_rotuer_sendto(struct llarp_router *router, const byte_t *pubkey,
+                    llarp_buffer_t buf);
+
 bool
 llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote);
 

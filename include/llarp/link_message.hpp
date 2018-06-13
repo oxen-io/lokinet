@@ -3,15 +3,13 @@
 
 #include <llarp/bencode.h>
 #include <llarp/link.h>
-#include <llarp/aligned.hpp>
+#include <llarp/router_id.hpp>
 
 #include <queue>
 #include <vector>
 
 namespace llarp
 {
-  typedef AlignedBuffer< 32 > RouterID;
-
   struct ILinkMessage;
 
   typedef std::queue< ILinkMessage* > SendQueue;

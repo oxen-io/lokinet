@@ -15,9 +15,12 @@ struct llarp_alloc;
 struct llarp_rc
 {
   struct llarp_ai_list *addrs;
-  llarp_pubkey_t pubkey;
+  // public encryption public key
+  byte_t enckey[PUBKEYSIZE];
+  // public signing public key
+  byte_t pubkey[PUBKEYSIZE];
   struct llarp_xi_list *exits;
-  llarp_sig_t signature;
+  byte_t signature[SIGSIZE];
   uint64_t last_updated;
 };
 
@@ -39,7 +42,7 @@ void
 llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
                    struct llarp_ai_list *addr);
 void
-llarp_rc_set_pubkey(struct llarp_rc *rc, uint8_t *pubkey);
+llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubkey);
 
 void
 llarp_rc_sign(struct llarp_crypto *crypto, const byte_t *seckey,
