@@ -84,6 +84,28 @@ namespace llarp
     llarp_ev_loop_alloc(&mainloop);
     llarp_crypto_libsodium_init(&crypto);
     nodedb = llarp_nodedb_new(&crypto);
+    if(!nodedb_dir[0])
+    {
+      llarp::Error("no nodedb_dir configured");
+      return 0;
+    }
+
+    nodedb_dir[sizeof(nodedb_dir) - 1] = 0;
+    if(!llarp_nodedb_ensure_dir(nodedb_dir))
+    {
+      llarp::Error("nodedb_dir is incorrect");
+      return 0;
+    }
+    llarp::Info("nodedb_dir configured!");
+    ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir);
+    llarp::Info("nodedb_dir configured! loaded ", loaded, " RCs");
+    if (loaded < 0)
+    {
+      // shouldn't be possible
+      llarp::Error("nodedb_dir directory doesn't exist");
+      return 0;
+    }
+
     // ensure worker thread pool
     if(!worker && !singleThreaded)
       worker = llarp_init_threadpool(2, "llarp-worker");
