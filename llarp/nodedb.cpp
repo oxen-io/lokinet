@@ -20,7 +20,7 @@ struct llarp_nodedb
   }
 
   llarp_crypto *crypto;
-  //std::map< llarp::pubkey, llarp_rc * > entries;
+  // std::map< llarp::pubkey, llarp_rc * > entries;
   std::unordered_map< llarp::PubKey, llarp_rc *, llarp::PubKeyHash > entries;
   fs::path nodePath;
 
@@ -80,6 +80,22 @@ struct llarp_nodedb
     return false;
   }
 
+  std::string
+  getRCFilePath(const byte_t *pubkey)
+  {
+    char ftmp[68] = {0};
+    const char *hexname =
+        llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pubkey, ftmp);
+    std::string hexString(hexname);
+    std::string filepath = nodePath;
+    filepath.append(PATH_SEP);
+    filepath.append(&hexString[hexString.length() - 1]);
+    filepath.append(PATH_SEP);
+    filepath.append(hexname);
+    filepath.append(".signed");
+    return filepath;
+  }
+
   bool
   setRC(llarp_rc *rc)
   {
@@ -94,21 +110,8 @@ struct llarp_nodedb
 
     if(llarp_rc_bencode(rc, &buf))
     {
-      char ftmp[68] = {0};
-      const char *hexname =
-        llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pk, ftmp);
-      std::string hexString(hexname);
-      std::string filepath = nodePath;
-      filepath.append("/");
-      filepath.append(&hexString[hexString.length() - 1]);
-      filepath.append("/");
-      filepath.append(hexname);
-      filepath.append(".signed.txt");
+      auto filepath = getRCFilePath(rc->pubkey);
       llarp::Info("saving RC.pubkey ", filepath);
-      // write buf to disk
-      // auto filename = hexStr(pk.data(), sizeof(pk)) + ".rc";
-      // FIXME: path?
-      // printf("filename[%s]\n", filename.c_str());
       std::ofstream ofs(
           filepath,
           std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
@@ -189,7 +192,7 @@ struct llarp_nodedb
     {
       if(llarp_rc_verify_sig(crypto, rc))
       {
-        llarp::PubKey pk(&rc->pubkey[0]);
+        llarp::PubKey pk(rc->pubkey);
         entries[pk] = rc;
         return true;
       }
@@ -259,6 +262,27 @@ crypto_threadworker_verifyrc(void *user)
   }
 }
 
+void
+nodedb_inform_load_rc(void *user)
+{
+  llarp_async_load_rc *job = static_cast< llarp_async_load_rc * >(user);
+  job->hook(job);
+}
+
+void
+nodedb_async_load_rc(void *user)
+{
+  llarp_async_load_rc *job = static_cast< llarp_async_load_rc * >(user);
+
+  auto fpath  = job->nodedb->getRCFilePath(job->pubkey);
+  job->loaded = job->nodedb->loadfile(fpath);
+  if(job->loaded)
+  {
+    llarp_rc_copy(&job->rc, job->nodedb->getRC(job->pubkey));
+  }
+  llarp_logic_queue_job(job->logic, {job, &nodedb_inform_load_rc});
+}
+
 extern "C" {
 
 struct llarp_nodedb *
@@ -325,10 +349,11 @@ llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
                              {job, &crypto_threadworker_verifyrc});
 }
 
-bool
-llarp_nodedb_find_rc(struct llarp_nodedb *nodedb, struct llarp_rc *dst,
-                     const byte_t *k)
+void
+llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 {
-  return false;
-}  // end function
+  // call in the disk io thread so we don't bog down the others
+  llarp_threadpool_queue_job(job->diskworker, {job, &nodedb_async_load_rc});
+}
+
 }  // end extern

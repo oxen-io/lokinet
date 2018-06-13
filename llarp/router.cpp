@@ -67,40 +67,46 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   else
     chosen = outboundLink;
 
-  if(!chosen)
-  {
-    llarp_rc rc;
-    llarp_rc_clear(&rc);
-
-    if(!llarp_nodedb_find_rc(nodedb, &rc, remote))
-    {
-      llarp::Warn("cannot find router ", remote, " locally so we are dropping ",
-                  msgs.size(), " messages to them");
-
-      for(auto &msg : msgs)
-        delete msg;
-
-      msgs.clear();
-      return false;
-    }
-
-    for(const auto &msg : msgs)
-    {
-      // this will create an entry in the obmq if it's not already there
-      outboundMesssageQueue[remote].push(msg);
-    }
-    // queued
-    llarp_router_try_connect(this, &rc);
-    llarp_rc_clear(&rc);
-    return true;
-  }
-
   for(const auto &msg : msgs)
   {
-    outboundMesssageQueue[remote.data()].push(msg);
+    // this will create an entry in the obmq if it's not already there
+    outboundMesssageQueue[remote].push(msg);
   }
-  FlushOutboundFor(remote, chosen);
+
+  if(!chosen)
+  {
+    // we don't have an open session to that router right now
+    // try requesting the rc from the disk
+    llarp_async_load_rc *job = new llarp_async_load_rc;
+    job->diskworker          = disk;
+    job->nodedb              = nodedb;
+    job->logic               = logic;
+    job->user                = this;
+    job->hook                = &HandleAsyncLoadRCForSendTo;
+    memcpy(job->pubkey, remote, PUBKEYSIZE);
+    llarp_nodedb_async_load_rc(job);
+  }
+  else
+    FlushOutboundFor(remote, chosen);
   return true;
+}
+
+void
+llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
+{
+  llarp_router *router = static_cast< llarp_router * >(job->user);
+  if(job->loaded)
+  {
+    llarp_router_try_connect(router, &job->rc, 10);
+  }
+  else
+  {
+    // we don't have the RC locally
+    // TODO: dht lookup
+
+    // discard pending messages
+    router->DiscardOutboundFor(job->pubkey);
+  }
 }
 
 void
@@ -136,7 +142,7 @@ llarp_router::try_connect(fs::path rcfile)
     if(llarp_rc_verify_sig(&crypto, &remote))
     {
       llarp::Debug("verified signature");
-      if(!llarp_router_try_connect(this, &remote))
+      if(!llarp_router_try_connect(this, &remote, 10))
       {
         llarp::Warn("session already made");
       }
@@ -267,7 +273,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp::async_verify_context *ctx =
       static_cast< llarp::async_verify_context * >(job->user);
   auto router = ctx->router;
-  llarp::Info("rc verified? ", job->valid?"valid":"invalid");
+  llarp::Info("rc verified? ", job->valid ? "valid" : "invalid");
   if(!job->valid)
   {
     llarp::Warn("invalid server RC");
@@ -444,25 +450,49 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
     router->async_verify_RC(session, false, job);
     return;
   }
-  llarp::Info("session not established");
-  llarp_logic_queue_job(router->logic, {job, &llarp_router::connect_job_retry});
+  if(job->retries > 0)
+  {
+    job->retries--;
+    llarp::Info("session not established");
+    llarp_logic_queue_job(router->logic,
+                          {job, &llarp_router::connect_job_retry});
+  }
+  else
+  {
+    llarp::PubKey pk = job->pubkey;
+    llarp::Warn("failed to connect to ", pk, " dropping all pending messages");
+    router->DiscardOutboundFor(job->pubkey);
+  }
 }
+
+void
+llarp_router::DiscardOutboundFor(const llarp::RouterID &remote)
+{
+  auto &queue = outboundMesssageQueue[remote];
+  while(queue.size())
+  {
+    delete queue.front();
+    queue.pop();
+  }
+  outboundMesssageQueue.erase(remote);
+}
+
 void
 llarp_router::async_verify_RC(llarp_link_session *session,
                               bool isExpectingClient,
                               llarp_link_establish_job *establish_job)
 {
   llarp_async_verify_rc *job = new llarp_async_verify_rc;
-  job->user = new llarp::async_verify_context{this, establish_job};
-  job->rc = {};
+  job->user  = new llarp::async_verify_context{this, establish_job};
+  job->rc    = {};
   job->valid = false;
-  job->hook = nullptr;
+  job->hook  = nullptr;
 
   job->nodedb = nodedb;
-  job->logic = logic;
-  //job->crypto = &crypto; // we already have this
+  job->logic  = logic;
+  // job->crypto = &crypto; // we already have this
   job->cryptoworker = tp;
-  job->diskworker = disk;
+  job->diskworker   = disk;
 
   llarp_rc_copy(&job->rc, session->get_remote_router(session));
   if(isExpectingClient)
@@ -553,28 +583,6 @@ llarp_router::ConnectAll(void *user, uint64_t orig, uint64_t left)
   }
 }
 
-bool
-llarp_router::iter_try_connect(llarp_router_link_iter *iter,
-                               llarp_router *router, llarp_link *link)
-{
-  if(!link)
-    return true;
-
-  llarp_link_establish_job *job = new llarp_link_establish_job;
-
-  if(!job)
-    return true;
-  llarp_ai *ai = static_cast< llarp_ai * >(iter->user);
-  llarp_ai_copy(&job->ai, ai);
-  job->timeout = 10000;
-  job->result  = &llarp_router::on_try_connect_result;
-  // give router as user pointer
-  job->user = router;
-  link->try_establish(link, job);
-  // break iteration
-  return false;
-}
-
 extern "C" {
 
 struct llarp_router *
@@ -657,7 +665,8 @@ llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb)
 }
 
 bool
-llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote)
+llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
+                         uint16_t numretries)
 {
   // try first address only
   llarp_ai addr;
@@ -667,6 +676,8 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote)
     llarp_link_establish_job *job = new llarp_link_establish_job;
 
     llarp_ai_copy(&job->ai, &addr);
+    memcpy(job->pubkey, remote->pubkey, PUBKEYSIZE);
+    job->retries = numretries;
     job->timeout = 10000;
     job->result  = &llarp_router::on_try_connect_result;
     // give router as user pointer

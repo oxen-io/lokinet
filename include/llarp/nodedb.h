@@ -52,21 +52,6 @@ void
 llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
 
 /**
-    find rc by rc.k being value k
-    returns true if found otherwise returns false
- */
-bool
-llarp_nodedb_find_rc(struct llarp_nodedb *n, struct llarp_rc *rc,
-                     const byte_t *k);
-
-/**
-   return true if we have a rc with rc.k of value k on disk
-   otherwise return false
- */
-bool
-llarp_nodedb_has_rc(struct llarp_nodedb *n, const byte_t *k);
-
-/**
    put an rc into the node db
    overwrites with new contents if already present
    flushes the single entry to disk
@@ -90,8 +75,9 @@ struct llarp_async_verify_rc
   /// nodedb storage
   struct llarp_nodedb *nodedb;
   // llarp_logic for llarp_logic_queue_job
-  struct llarp_logic *logic; // includes a llarp_threadpool
-  //struct llarp_crypto *crypto; // probably don't need this because we have it in the nodedb
+  struct llarp_logic *logic;  // includes a llarp_threadpool
+  // struct llarp_crypto *crypto; // probably don't need this because we have it
+  // in the nodedb
   struct llarp_threadpool *cryptoworker;
   struct llarp_threadpool *diskworker;
 
@@ -111,6 +97,34 @@ struct llarp_async_verify_rc
 */
 void
 llarp_nodedb_async_verify(struct llarp_async_verify_rc *job);
+
+struct llarp_async_load_rc;
+
+typedef void (*llarp_async_load_rc_hook_func)(struct llarp_async_load_rc *);
+
+struct llarp_async_load_rc
+{
+  /// async_verify_context
+  void *user;
+  /// nodedb storage
+  struct llarp_nodedb *nodedb;
+  /// llarp_logic for calling hook
+  struct llarp_logic *logic;
+  /// disk worker threadpool
+  struct llarp_threadpool *diskworker;
+  /// target pubkey
+  byte_t pubkey[PUBKEYSIZE];
+  /// router contact result
+  struct llarp_rc rc;
+  /// set to true if we loaded the rc
+  bool loaded;
+  /// hook function called in logic thread
+  llarp_async_load_rc_hook_func hook;
+};
+
+/** asynchronously load an rc from disk */
+void
+llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job);
 
 #ifdef __cplusplus
 }

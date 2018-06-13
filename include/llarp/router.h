@@ -32,7 +32,8 @@ llarp_rotuer_sendto(struct llarp_router *router, const byte_t *pubkey,
                     llarp_buffer_t buf);
 
 bool
-llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote);
+llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
+                         uint16_t numretries);
 
 bool
 llarp_configure_router(struct llarp_router *router, struct llarp_config *conf);

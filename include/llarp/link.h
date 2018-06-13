@@ -34,6 +34,9 @@ struct llarp_link_establish_job
   void (*result)(struct llarp_link_establish_job *);
   struct llarp_ai ai;
   uint64_t timeout;
+  uint16_t retries;
+
+  byte_t pubkey[PUBKEYSIZE];
   /** set on success by try_establish */
   struct llarp_link *link;
   /** set on success by try_establish */
