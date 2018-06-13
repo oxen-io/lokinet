@@ -1319,7 +1319,9 @@ namespace iwp
       // std::unordered_map< llarp::pubkey, llarp::Addr, llarp::pubkeyhash >
       auto itr = std::find_if(
           m_Connected.begin(), m_Connected.end(),
-                              [src](const std::pair<llarp::pubkey, llarp::Addr> &item) -> bool { return src == item.second; });
+          [src](const std::pair< llarp::PubKey, llarp::Addr > &item) -> bool {
+            return src == item.second;
+          });
       if(itr == std::end(m_Connected))
         return;
 
@@ -1825,7 +1827,7 @@ namespace iwp
         link->put_session(dst, s);
       }
       s->establish_job = job;
-      s->frame.alive(); // mark it alive
+      s->frame.alive();  // mark it alive
       s->introduce(job->ai.enc_key);
     }
     return true;

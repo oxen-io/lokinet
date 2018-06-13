@@ -1,15 +1,15 @@
+#include <llarp/crypto_async.h>
 #include <llarp/nodedb.h>
 #include <llarp/router_contact.h>
-#include <llarp/crypto_async.h>
 
 #include <fstream>
 #include <llarp/crypto.hpp>
 #include <unordered_map>
 #include "buffer.hpp"
-#include "fs.hpp"
-#include "mem.hpp"
 #include "encode.hpp"
+#include "fs.hpp"
 #include "logger.hpp"
+#include "mem.hpp"
 
 static const char skiplist_subdirs[] = "0123456789ABCDEF";
 
@@ -33,47 +33,43 @@ struct llarp_nodedb
     }
   }
 
-  inline llarp::pubkey getPubKeyFromRC(llarp_rc *rc)
-  {
-    llarp::pubkey pk;
-    memcpy(pk.data(), rc->pubkey, pk.size());
-    return pk;
-  }
-
-  llarp_rc *getRC(llarp::pubkey pk)
+  llarp_rc *
+  getRC(llarp::PubKey pk)
   {
     return entries[pk];
   }
 
-  bool pubKeyExists(llarp_rc *rc)
+  bool
+  pubKeyExists(llarp_rc *rc)
   {
     // extract pk from rc
-    llarp::pubkey pk = getPubKeyFromRC(rc);
+    llarp::PubKey pk = rc->pubkey;
     // return true if we found before end
     return entries.find(pk) != entries.end();
   }
 
-  bool check(llarp_rc *rc)
+  bool
+  check(llarp_rc *rc)
   {
-    if (!pubKeyExists(rc))
+    if(!pubKeyExists(rc))
     {
       // we don't have it
       return false;
     }
-    llarp::pubkey pk = getPubKeyFromRC(rc);
+    llarp::PubKey pk = rc->pubkey;
 
     // TODO: zero out any fields you don't want to compare
 
     // serialize both and memcmp
     byte_t nodetmp[MAX_RC_SIZE];
     auto nodebuf = llarp::StackBuffer< decltype(nodetmp) >(nodetmp);
-    if (llarp_rc_bencode(entries[pk], &nodebuf))
+    if(llarp_rc_bencode(entries[pk], &nodebuf))
     {
       byte_t paramtmp[MAX_RC_SIZE];
       auto parambuf = llarp::StackBuffer< decltype(paramtmp) >(paramtmp);
-      if (llarp_rc_bencode(rc, &parambuf))
+      if(llarp_rc_bencode(rc, &parambuf))
       {
-        if (memcmp(&parambuf, &nodebuf, MAX_RC_SIZE) == 0)
+        if(memcmp(&parambuf, &nodebuf, MAX_RC_SIZE) == 0)
         {
           return true;
         }
@@ -82,32 +78,36 @@ struct llarp_nodedb
     return false;
   }
 
-  bool setRC(llarp_rc *rc) {
+  bool
+  setRC(llarp_rc *rc)
+  {
     byte_t tmp[MAX_RC_SIZE];
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
 
     // extract pk from rc
-    llarp::pubkey pk = getPubKeyFromRC(rc);
+    llarp::PubKey pk = rc->pubkey;
 
     // set local db
     entries[pk] = rc;
 
-    if (llarp_rc_bencode(rc, &buf))
+    if(llarp_rc_bencode(rc, &buf))
     {
       char ftmp[68] = {0};
       const char *hexname =
-      llarp::HexEncode< llarp::pubkey, decltype(ftmp) >(pk, ftmp);
+          llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pk, ftmp);
       std::string filename(hexname);
       filename.append(".signed.txt");
       llarp::Info("saving RC.pubkey ", filename);
       // write buf to disk
-      //auto filename = hexStr(pk.data(), sizeof(pk)) + ".rc";
+      // auto filename = hexStr(pk.data(), sizeof(pk)) + ".rc";
       // FIXME: path?
-      //printf("filename[%s]\n", filename.c_str());
-      std::ofstream ofs (filename, std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
+      // printf("filename[%s]\n", filename.c_str());
+      std::ofstream ofs(
+          filename,
+          std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
       ofs.write((char *)buf.base, buf.sz);
       ofs.close();
-      if (!ofs)
+      if(!ofs)
       {
         llarp::Error("Failed to write", filename);
         return false;
@@ -209,37 +209,46 @@ struct llarp_nodedb
 };
 
 // call request hook
-void logic_threadworker_callback(void *user) {
+void
+logic_threadworker_callback(void *user)
+{
   llarp_async_verify_rc *verify_request =
-    static_cast < llarp_async_verify_rc * >(user);
+      static_cast< llarp_async_verify_rc * >(user);
   verify_request->hook(verify_request);
 }
 
 // write it to disk
-void disk_threadworker_setRC(void *user) {
+void
+disk_threadworker_setRC(void *user)
+{
   llarp_async_verify_rc *verify_request =
-    static_cast < llarp_async_verify_rc * >(user);
+      static_cast< llarp_async_verify_rc * >(user);
   verify_request->valid = verify_request->nodedb->setRC(&verify_request->rc);
-  llarp_logic_queue_job(verify_request->logic, { verify_request, &logic_threadworker_callback });
+  llarp_logic_queue_job(verify_request->logic,
+                        {verify_request, &logic_threadworker_callback});
 }
 
 // we run the crypto verify in the crypto threadpool worker
-void crypto_threadworker_verifyrc(void *user)
+void
+crypto_threadworker_verifyrc(void *user)
 {
   llarp_async_verify_rc *verify_request =
-    static_cast< llarp_async_verify_rc * >(user);
-  verify_request->valid = llarp_rc_verify_sig(verify_request->crypto, &verify_request->rc);
+      static_cast< llarp_async_verify_rc * >(user);
+  verify_request->valid =
+      llarp_rc_verify_sig(verify_request->crypto, &verify_request->rc);
   // if it's valid we need to set it
-  if (verify_request->valid)
+  if(verify_request->valid)
   {
     llarp::Debug("RC is valid, saving to disk");
     llarp_threadpool_queue_job(verify_request->diskworker,
-                               { verify_request, &disk_threadworker_setRC });
-  } else {
+                               {verify_request, &disk_threadworker_setRC});
+  }
+  else
+  {
     // callback to logic thread
     llarp::Warn("RC is not valid, can't save to disk");
     llarp_logic_queue_job(verify_request->logic,
-                          { verify_request, &logic_threadworker_callback });
+                          {verify_request, &logic_threadworker_callback});
   }
 }
 
@@ -304,8 +313,8 @@ llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
                           struct llarp_async_verify_rc *job)
 {
   // TODO: ask jeff is safe to remove the parameters
-  // we expect the following to be already set up at this point: user (context: router, llarp_link_establish_job), rc, hook
-  // do additional job set up
+  // we expect the following to be already set up at this point: user (context:
+  // router, llarp_link_establish_job), rc, hook do additional job set up
   /*
   job->logic = logic;
   job->crypto = crypto;
@@ -314,7 +323,8 @@ llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
   job->nodedb = nodedb;
   */
   // switch to crypto threadpool and continue with crypto_threadworker_verifyrc
-  llarp_threadpool_queue_job(cryptoworker, { job, &crypto_threadworker_verifyrc });
+  llarp_threadpool_queue_job(cryptoworker,
+                             {job, &crypto_threadworker_verifyrc});
 }
 
 bool
@@ -322,5 +332,5 @@ llarp_nodedb_find_rc(struct llarp_nodedb *nodedb, struct llarp_rc *dst,
                      const byte_t *k)
 {
   return false;
-} // end function
-} // end extern
+}  // end function
+}  // end extern
