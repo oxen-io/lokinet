@@ -6,6 +6,7 @@
 #include <sodium.h>
 #include <iomanip>
 #include <iostream>
+#include <llarp/encode.hpp>
 #include <llarp/logger.hpp>
 
 namespace llarp
@@ -33,13 +34,8 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const AlignedBuffer& self)
     {
-      size_t idx = 0;
-      out << std::hex << std::setw(2) << std::setfill('0');
-      while(idx < sz)
-      {
-        out << (int)self.b[idx++];
-      }
-      return out << std::dec << std::setw(0) << std::setfill(' ');
+      char tmp[(1 + sz) * 2] = {0};
+      return out << HexEncode(self, tmp);
     }
 
     bool

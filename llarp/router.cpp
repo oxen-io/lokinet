@@ -273,7 +273,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp::async_verify_context *ctx =
       static_cast< llarp::async_verify_context * >(job->user);
   auto router = ctx->router;
-  llarp::Info("rc verified? ", job->valid ? "valid" : "invalid");
+  llarp::Debug("rc verified? ", job->valid ? "valid" : "invalid");
   if(!job->valid)
   {
     llarp::Warn("invalid server RC");
