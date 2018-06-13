@@ -21,6 +21,7 @@ struct llarp_nodedb
 
   llarp_crypto *crypto;
   std::map< llarp::pubkey, llarp_rc * > entries;
+  fs::path nodePath;
 
   void
   Clear()
@@ -96,23 +97,28 @@ struct llarp_nodedb
     {
       char ftmp[68] = {0};
       const char *hexname =
-      llarp::HexEncode< llarp::pubkey, decltype(ftmp) >(pk, ftmp);
-      std::string filename(hexname);
-      filename.append(".signed.txt");
-      llarp::Info("saving RC.pubkey ", filename);
+        llarp::HexEncode< llarp::pubkey, decltype(ftmp) >(pk, ftmp);
+      std::string hexString(hexname);
+      std::string filepath = nodePath;
+      filepath.append("/");
+      filepath.append(&hexString[hexString.length() - 1]);
+      filepath.append("/");
+      filepath.append(hexname);
+      filepath.append(".signed.txt");
+      llarp::Info("saving RC.pubkey ", filepath);
       // write buf to disk
       //auto filename = hexStr(pk.data(), sizeof(pk)) + ".rc";
       // FIXME: path?
       //printf("filename[%s]\n", filename.c_str());
-      std::ofstream ofs (filename, std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
+      std::ofstream ofs (filepath, std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
       ofs.write((char *)buf.base, buf.sz);
       ofs.close();
       if (!ofs)
       {
-        llarp::Error("Failed to write", filename);
+        llarp::Error("Failed to write: ", filepath);
         return false;
       }
-      llarp::Info("saved RC.pubkey", filename);
+      llarp::Info("saved RC.pubkey: ", filepath);
       return true;
     }
     return false;
@@ -229,7 +235,7 @@ void crypto_threadworker_verifyrc(void *user)
 {
   llarp_async_verify_rc *verify_request =
     static_cast< llarp_async_verify_rc * >(user);
-  verify_request->valid = llarp_rc_verify_sig(verify_request->crypto, &verify_request->rc);
+  verify_request->valid = llarp_rc_verify_sig(verify_request->nodedb->crypto, &verify_request->rc);
   // if it's valid we need to set it
   if (verify_request->valid)
   {
@@ -293,29 +299,20 @@ llarp_nodedb_ensure_dir(const char *dir)
 ssize_t
 llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
 {
+  std::error_code ec;
+  if(!fs::exists(dir, ec))
+  {
+    return -1;
+  }
+  n->nodePath = dir;
   return n->Load(dir);
 }
 
 void
-llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
-                          struct llarp_logic *logic,
-                          struct llarp_crypto *crypto,
-                          struct llarp_threadpool *cryptoworker,
-                          struct llarp_threadpool *diskworker,
-                          struct llarp_async_verify_rc *job)
+llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
 {
-  // TODO: ask jeff is safe to remove the parameters
-  // we expect the following to be already set up at this point: user (context: router, llarp_link_establish_job), rc, hook
-  // do additional job set up
-  /*
-  job->logic = logic;
-  job->crypto = crypto;
-  job->cryptoworker = cryptoworker;
-  job->diskworker = diskworker;
-  job->nodedb = nodedb;
-  */
   // switch to crypto threadpool and continue with crypto_threadworker_verifyrc
-  llarp_threadpool_queue_job(cryptoworker, { job, &crypto_threadworker_verifyrc });
+  llarp_threadpool_queue_job(job->cryptoworker, { job, &crypto_threadworker_verifyrc });
 }
 
 bool
