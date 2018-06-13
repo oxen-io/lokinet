@@ -431,7 +431,7 @@ llarp_router::async_verify_RC(llarp_link_session *session,
 
   job->nodedb = nodedb;
   job->logic = logic;
-  job->crypto = &crypto;
+  //job->crypto = &crypto; // we already have this
   job->cryptoworker = tp;
   job->diskworker = disk;
 
@@ -441,7 +441,7 @@ llarp_router::async_verify_RC(llarp_link_session *session,
   else
     job->hook = &llarp_router::on_verify_server_rc;
 
-  llarp_nodedb_async_verify(nodedb, logic, &crypto, tp, disk, job);
+  llarp_nodedb_async_verify(job);
 }
 
 void

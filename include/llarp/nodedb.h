@@ -91,7 +91,7 @@ struct llarp_async_verify_rc
   struct llarp_nodedb *nodedb;
   // llarp_logic for llarp_logic_queue_job
   struct llarp_logic *logic; // includes a llarp_threadpool
-  struct llarp_crypto *crypto;
+  //struct llarp_crypto *crypto; // probably don't need this because we have it in the nodedb
   struct llarp_threadpool *cryptoworker;
   struct llarp_threadpool *diskworker;
 
@@ -110,12 +110,7 @@ struct llarp_async_verify_rc
     result is called on the logic thread
 */
 void
-llarp_nodedb_async_verify(struct llarp_nodedb *nodedb,
-                          struct llarp_logic *logic,
-                          struct llarp_crypto *crypto,
-                          struct llarp_threadpool *cryptoworker,
-                          struct llarp_threadpool *diskworker,
-                          struct llarp_async_verify_rc *job);
+llarp_nodedb_async_verify(struct llarp_async_verify_rc *job);
 
 #ifdef __cplusplus
 }
