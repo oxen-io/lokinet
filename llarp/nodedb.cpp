@@ -11,7 +11,7 @@
 #include "logger.hpp"
 #include "mem.hpp"
 
-static const char skiplist_subdirs[] = "0123456789ABCDEF";
+static const char skiplist_subdirs[] = "0123456789abcdef";
 
 struct llarp_nodedb
 {
@@ -110,8 +110,9 @@ struct llarp_nodedb
 
     if(llarp_rc_bencode(rc, &buf))
     {
+      buf.sz        = buf.cur - buf.base;
       auto filepath = getRCFilePath(rc->pubkey);
-      llarp::Info("saving RC.pubkey ", filepath);
+      llarp::Debug("saving RC.pubkey ", filepath);
       std::ofstream ofs(
           filepath,
           std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
@@ -122,7 +123,7 @@ struct llarp_nodedb
         llarp::Error("Failed to write: ", filepath);
         return false;
       }
-      llarp::Info("saved RC.pubkey: ", filepath);
+      llarp::Debug("saved RC.pubkey: ", filepath);
       return true;
     }
     return false;
@@ -143,12 +144,10 @@ struct llarp_nodedb
       std::string p;
       p += ch;
       fs::path sub = path / p;
-      for(auto &f : fs::directory_iterator(sub))
-      {
-        ssize_t l = loadSubdir(f);
-        if(l > 0)
-          loaded += l;
-      }
+
+      ssize_t l = loadSubdir(sub);
+      if(l > 0)
+        loaded += l;
     }
     return loaded;
   }
