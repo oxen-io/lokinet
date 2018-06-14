@@ -99,9 +99,9 @@ struct llarp_nodedb
         llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pk, ftmp);
       std::string hexString(hexname);
       std::string filepath = nodePath;
-      filepath.append("/");
+      filepath.append(PATH_SEP);
       filepath.append(&hexString[hexString.length() - 1]);
-      filepath.append("/");
+      filepath.append(PATH_SEP);
       filepath.append(hexname);
       filepath.append(".signed.txt");
       llarp::Info("saving RC.pubkey ", filepath);
