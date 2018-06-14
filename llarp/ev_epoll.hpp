@@ -182,9 +182,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
       case AF_INET6:
         slen = sizeof(struct sockaddr_in6);
         break;
-      case AF_PACKET:
-        slen = sizeof(struct sockaddr_ll);
-        break;
       default:
         return -1;
     }
