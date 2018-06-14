@@ -379,10 +379,20 @@ llarp_router::send_padded_message(llarp_link_session_iter *itr,
   llarp_router *self = static_cast< llarp_router * >(itr->user);
   llarp::RouterID remote;
   remote = &peer->get_remote_router(peer)->pubkey[0];
+  llarp::DiscardMessage msg(2000);
+
+  llarp_buffer_t buf =
+      llarp::StackBuffer< decltype(linkmsg_buffer) >(self->linkmsg_buffer);
+
+  if(!msg.BEncode(&buf))
+    return false;
+
+  buf.sz  = buf.cur - buf.base;
+  buf.cur = buf.base;
+
   for(size_t idx = 0; idx < 5; ++idx)
   {
-    llarp::DiscardMessage msg(2000);
-    self->SendTo(remote, &msg);
+    peer->sendto(peer, buf);
   }
   return true;
 }

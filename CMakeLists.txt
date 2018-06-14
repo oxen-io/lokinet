@@ -43,7 +43,7 @@ if(SHADOW)
 endif()
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c11 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++17 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11 -Wall ${DEBUG_FLAGS} ${OPTIMIZE_FLAGS}")
 
 if(SHADOW)
   add_cflags("-fPIC")
@@ -110,6 +110,22 @@ set(LIB_SRC
   llarp/testnet.c
   llarp/time.cpp
   llarp/timer.cpp
+  vendor/cppbackport-master/lib/fs/rename.cpp
+  vendor/cppbackport-master/lib/fs/filestatus.cpp
+  vendor/cppbackport-master/lib/fs/filetype.cpp
+  vendor/cppbackport-master/lib/fs/cleanpath.cpp
+  vendor/cppbackport-master/lib/fs/perms.cpp
+  vendor/cppbackport-master/lib/fs/equivalent.cpp
+  vendor/cppbackport-master/lib/fs/current_path.cpp
+  vendor/cppbackport-master/lib/fs/basename.cpp
+  vendor/cppbackport-master/lib/fs/tempdir.cpp
+  vendor/cppbackport-master/lib/fs/create_directory.cpp
+  vendor/cppbackport-master/lib/fs/path.cpp
+  vendor/cppbackport-master/lib/fs/remove.cpp
+  vendor/cppbackport-master/lib/fs/diriter.cpp
+  vendor/cppbackport-master/lib/fs/copyfile.cpp
+  vendor/cppbackport-master/lib/fs/absolute.cpp
+  vendor/cppbackport-master/lib/fs/direntry.cpp
 )
 
 set(TEST_SRC 
@@ -120,7 +136,7 @@ set(TEST_EXE testAll)
 set(GTEST_DIR test/gtest)
 
 include_directories(include)
-
+include_directories(vendor/cppbackport-master/lib)
 
 
 
