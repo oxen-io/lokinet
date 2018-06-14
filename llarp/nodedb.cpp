@@ -163,10 +163,13 @@ struct llarp_nodedb
   loadSubdir(const fs::path &dir)
   {
     ssize_t sz = 0;
-    for(auto &path : fs::directory_iterator(dir))
+    fs::directory_iterator i(dir);
+    auto itr = i.begin();
+    while(itr != itr.end())
     {
-      if(loadfile(path))
+      if(loadfile(*itr))
         sz++;
+      ++itr;
     }
     return sz;
   }
