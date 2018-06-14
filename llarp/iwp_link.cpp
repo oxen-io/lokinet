@@ -876,12 +876,14 @@ namespace iwp
       return false;
     }
 
-    void
-    session_established()
+    bool
+    IsEstablished()
     {
-      EnterState(eEstablished);
-      llarp_logic_cancel_call(logic, establish_job_id);
+      return state == eEstablished;
     }
+
+    void
+    session_established();
 
     void
     on_session_start(const void *buf, size_t sz)
@@ -1531,23 +1533,17 @@ namespace iwp
                     " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
         return false;
       }
-      success = router->HandleRecvLinkMessage(parent, buf);
+      session *impl = static_cast< session * >(parent->impl);
+      success       = router->HandleRecvLinkMessage(parent, buf);
       if(success)
       {
-        session *impl = static_cast< session * >(parent->impl);
         if(id == 0)
         {
           if(impl->CheckRCValid())
           {
-            // send our LIM if we are an outbound session
-            if(impl->state == session::eSessionStartSent)
+            if(!impl->IsEstablished())
             {
               impl->send_LIM();
-            }
-            else
-            {
-              impl->serv->MapAddr(impl->addr, impl->remote_router.pubkey);
-              impl->session_established();
             }
           }
           else
@@ -1559,7 +1555,7 @@ namespace iwp
           }
         }
       }
-      else
+      if(!success)
         llarp::Warn("failed to handle inbound message ", id);
     }
     else
@@ -1582,6 +1578,14 @@ namespace iwp
       return;
     }
     self->intro_ack();
+  }
+
+  void
+  session::session_established()
+  {
+    EnterState(eEstablished);
+    serv->MapAddr(addr, remote_router.pubkey);
+    llarp_logic_cancel_call(logic, establish_job_id);
   }
 
   void
@@ -1656,9 +1660,9 @@ namespace iwp
     {
       llarp::Debug("message transmitted msgid=", msgid);
       session *impl = static_cast< session * >(parent->impl);
-      if(impl->state == session::eLIMSent && msgid == 0)
+      if(msgid == 0)
       {
-        // first message acked we are established?
+        // first message acked means we are established
         impl->session_established();
       }
       tx.erase(msgid);
