@@ -65,7 +65,7 @@ struct llarp_router
   byte_t linkmsg_buffer[MAX_LINK_MSG_SIZE];
 
   // should we be sending padded messages every interval?
-  bool sendPadding = true;
+  bool sendPadding = false;
 
   uint32_t ticker_job_id = 0;
 
