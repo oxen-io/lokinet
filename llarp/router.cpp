@@ -309,8 +309,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   // TODO: update nodedb here (?)
 
   // track valid router in dht
-  if(router->dht)
-    llarp_dht_put_local_router(router->dht, &router->validRouters[pk]);
+  llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
 
   // this was an outbound establish job
   if(ctx->establish_job->session)
@@ -405,8 +404,7 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
   if(itr == validRouters.end())
     return;
 
-  if(dht)
-    llarp_dht_remove_local_router(dht, remote);
+  llarp_dht_remove_peer(dht, remote);
   llarp_rc_free(&itr->second);
   validRouters.erase(itr);
 }

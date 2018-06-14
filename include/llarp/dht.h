@@ -59,12 +59,13 @@ struct llarp_router_lookup_job
 void
 llarp_dht_allow_transit(struct llarp_dht_context* ctx);
 
-// shallow copy
+/// put router as a dht peer
 void
-llarp_dht_put_local_router(struct llarp_dht_context* ctx, struct llarp_rc* rc);
+llarp_dht_put_peer(struct llarp_dht_context* ctx, struct llarp_rc* rc);
 
+/// remove router from tracked dht peer list
 void
-llarp_dht_remove_local_router(struct llarp_dht_context* ctx, const byte_t* id);
+llarp_dht_remove_peer(struct llarp_dht_context* ctx, const byte_t* id);
 
 void
 llarp_dht_lookup_router(struct llarp_dht_context* ctx,

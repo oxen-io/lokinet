@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 2.8.10)
 
+set(PROJECT_NAME llarpd)
+project(${PROJECT_NAME})
+
 macro(add_cflags)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARGN}")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARGN}")
@@ -109,7 +112,16 @@ set(LIB_SRC
   llarp/timer.cpp
 )
 
+set(TEST_SRC 
+  test/main.cpp
+  test/dht_unittest.cpp
+)
+set(TEST_EXE testAll)
+set(GTEST_DIR test/gtest)
+
 include_directories(include)
+
+
 
 
 if(SHADOW)
@@ -121,12 +133,22 @@ else()
   add_executable(rcutil daemon/rcutil.cpp)
   add_executable(${EXE} ${EXE_SRC})
     
+  if(WITH_TESTS)
+    enable_testing()
+    add_subdirectory(${GTEST_DIR})
+    include_directories(${GTEST_DIR}/include ${GTEST_DIR})
+    add_executable(${TEST_EXE} ${TEST_SRC})
+    add_test(runAllTests ${TEST_EXE})
+    target_link_libraries(${TEST_EXE} ${STATIC_LIB} gtest_main)
+  endif()
+
   if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
     target_link_libraries(${STATIC_LIB} ${LIBS})
     if(NOT WITH_SHARED)
       target_link_libraries(rcutil ${STATIC_LIB})
       target_link_libraries(${EXE} ${STATIC_LIB})
+      
     endif()
   endif()
   
@@ -138,5 +160,6 @@ else()
       target_link_libraries(${EXE} ${SHARED_LIB})
     endif()
   endif()
+
 
 endif()
