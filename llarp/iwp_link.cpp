@@ -3,6 +3,7 @@
 #include <llarp/net.h>
 #include <llarp/time.h>
 #include <llarp/crypto.hpp>
+#include "address_info.hpp"
 #include "link/encoder.hpp"
 
 #include <sodium/crypto_sign_ed25519.h>
@@ -706,13 +707,7 @@ namespace iwp
             llarp_logic *l, const byte_t *seckey, const llarp::Addr &a)
         : udp(u), crypto(c), iwp(i), logic(l), addr(a), state(eInitial)
     {
-      if(seckey)
-        eph_seckey = seckey;
-      else
-      {
-        c->encryption_keygen(eph_seckey);
-      }
-
+      eph_seckey = seckey;
       llarp::Zero(&remote_router, sizeof(llarp_rc));
       crypto->randbytes(token, 32);
     }
@@ -755,6 +750,21 @@ namespace iwp
 
     static void
     handle_invalidate_timer(void *user);
+
+    bool
+    CheckRCValid()
+    {
+      auto &list = remote_router.addrs->list;
+      if(list.size() == 0)  // the remote node is a client node so accept it
+        return true;
+      // check if the RC owns a pubkey that we are using
+      for(auto &ai : list)
+      {
+        if(memcmp(ai.enc_key, remote, PUBKEYSIZE) == 0)
+          return true;
+      }
+      return false;
+    }
 
     void
     pump()
@@ -1332,7 +1342,7 @@ namespace iwp
     }
 
     session *
-    create_session(const llarp::Addr &src, const byte_t *seckey)
+    create_session(const llarp::Addr &src)
     {
       auto s  = new session(&udp, iwp, crypto, logic, seckey, src);
       s->serv = this;
@@ -1475,7 +1485,7 @@ namespace iwp
       if(s == nullptr)
       {
         // new inbound session
-        s = link->create_session(*saddr, link->seckey);
+        s = link->create_session(*saddr);
         llarp::Debug("new inbound session from ", s->addr);
       }
       s->recv(buf, sz);
@@ -1528,7 +1538,17 @@ namespace iwp
           {
             impl->send_LIM();
           }
-          impl->serv->MapAddr(impl->addr, impl->remote_router.pubkey);
+          if(impl->CheckRCValid())
+          {
+            impl->serv->MapAddr(impl->addr, impl->remote_router.pubkey);
+          }
+          else
+          {
+            llarp::PubKey k = impl->remote_router.pubkey;
+            llarp::Warn("spoofed LIM from ", k);
+            impl->parent->close(impl->parent);
+            success = false;
+          }
         }
         llarp::Info("handled message ", id);
       }
@@ -1823,7 +1843,7 @@ namespace iwp
       session *s = link->find_session(dst);
       if(s == nullptr)
       {
-        s = link->create_session(dst, nullptr);
+        s = link->create_session(dst);
         link->put_session(dst, s);
       }
       s->establish_job = job;

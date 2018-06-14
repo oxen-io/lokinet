@@ -1,14 +1,8 @@
+#include "address_info.hpp"
 #include <arpa/inet.h>
-#include <llarp/address_info.h>
 #include <llarp/bencode.h>
 #include <llarp/mem.h>
 #include <llarp/string.h>
-#include <vector>
-
-struct llarp_ai_list
-{
-  std::vector< llarp_ai > list;
-};
 
 static bool
 llarp_ai_decode_key(struct dict_reader *r, llarp_buffer_t *key)
