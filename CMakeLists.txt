@@ -73,9 +73,14 @@ endif()
 
 set(LIBS ${SODIUM_LIB} pthread)
 
-if(STATIC_LIBS)
-  set(LIBS ${LIBS} ${STATIC_LIBS})
+if(STATIC_LIBC)
+  set(LIBS ${LIBS} ${STATIC_LIBC})
 endif()
+
+if(STATIC_LIBCXX)
+  set(LIBS ${LIBS} ${STATIC_LIBCXX})
+endif()
+
 
 set(LIB llarp)
 set(SHARED_LIB ${LIB})
