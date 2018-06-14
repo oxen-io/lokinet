@@ -111,6 +111,7 @@ llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
     lookup->hook = &HandleDHTLookupForSendTo;
     llarp_dht_lookup_router(router->dht, lookup);
   }
+  delete job;
 }
 
 void

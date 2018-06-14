@@ -10,6 +10,7 @@
 #include <array>
 #include <functional>
 #include <map>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -77,11 +78,11 @@ namespace llarp
       bool
       IsExpired(llarp_time_t now) const;
 
-     private:
+      llarp_router_lookup_job* job = nullptr;
       llarp_time_t started;
       Key_t requestor;
       Key_t target;
-      llarp_router_lookup_job* job;
+      std::set< Key_t > exclude;
     };
 
     struct XorMetric
@@ -136,7 +137,7 @@ namespace llarp
 
       bool
       FindCloseExcluding(const Key_t& target, Key_t& result,
-                         const Key_t& exclude) const;
+                         const std::set< Key_t >& exclude) const;
 
       void
       PutNode(const Node& val);

@@ -129,7 +129,22 @@ namespace llarp
         if(R.size())
           pending->Completed(&R[0]);
         else
-          pending->Completed(nullptr);
+        {
+          // iterate to next closest peer
+          Key_t nextPeer;
+          pending->exclude.insert(From);
+          if(dht.nodes->FindCloseExcluding(pending->target, nextPeer,
+                                           pending->exclude))
+          {
+            llarp::Info(pending->target, "was not found via ", From,
+                        " iterating to next peer");
+            dht.LookupRouter(pending->target, pending->requestor, nextPeer,
+                             pending->job);
+            return true;
+          }
+          else
+            pending->Completed(nullptr);
+        }
 
         dht.RemovePendingLookup(From, txid);
         return true;
@@ -335,7 +350,7 @@ namespace llarp
 
     SearchJob::SearchJob(const Key_t &asker, const Key_t &key,
                          llarp_router_lookup_job *j)
-        : started(llarp_time_now_ms()), requestor(asker), target(key), job(j)
+        : job(j), started(llarp_time_now_ms()), requestor(asker), target(key)
     {
     }
 
@@ -378,7 +393,7 @@ namespace llarp
 
     bool
     Bucket::FindCloseExcluding(const Key_t &target, Key_t &result,
-                               const Key_t &exclude) const
+                               const std::set< Key_t > &exclude) const
     {
       Key_t maxdist;
       maxdist.Fill(0xff);
@@ -386,7 +401,7 @@ namespace llarp
       mindist.Fill(0xff);
       for(const auto &item : nodes)
       {
-        if(item.first == exclude)
+        if(exclude.find(item.first) != exclude.end())
           continue;
         auto curDist = item.first ^ target;
         if(curDist < mindist)
@@ -504,15 +519,6 @@ namespace llarp
       {
         pendingTX[e].Completed(nullptr, true);
         RemovePendingLookup(e.requester, e.txid);
-        if(e.requester != ourKey && allowTransit)
-        {
-          // inform not found
-          llarp::DHTImmeidateMessage msg(e.requester);
-          msg.msgs.push_back(
-              new GotRouterMessage(e.requester, e.txid, nullptr));
-          llarp::Info("DHT reply to ", e.requester);
-          router->SendTo(e.requester, &msg);
-        }
       }
 
       ScheduleCleanupTimer();
@@ -557,7 +563,7 @@ namespace llarp
     Context::LookupRouterViaJob(llarp_router_lookup_job *job)
     {
       Key_t peer;
-      if(nodes->FindCloseExcluding(job->target, peer, ourKey))
+      if(nodes->FindClosest(job->target, peer))
         LookupRouter(job->target, ourKey, peer, job);
       else if(job->hook)
       {
