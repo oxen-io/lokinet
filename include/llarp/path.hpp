@@ -111,7 +111,7 @@ namespace llarp
       auto& hop = ctx->path.hops[ctx->idx];
       ctx->dh(hop.shared, hop.encryptionKey, hop.nonce, ctx->secretkey);
       ++ctx->idx;
-      if(ctx->idx < ctx.path.hops.size())
+      if(ctx->idx < ctx->path.hops.size())
       {
         llarp_threadpool_queue_job(ctx->worker, {ctx, &GenerateNextKey});
       }
