@@ -137,15 +137,13 @@ namespace llarp
                                            pending->exclude))
           {
             llarp::Info(pending->target, "was not found via ", From,
-                        " iterating to next peer");
+                        " iterating to next peer ", nextPeer);
             dht.LookupRouter(pending->target, pending->requestor, nextPeer,
                              pending->job);
-            return true;
           }
           else
             pending->Completed(nullptr);
         }
-
         dht.RemovePendingLookup(From, txid);
         return true;
       }
