@@ -636,7 +636,8 @@ void
 llarp_dht_lookup_router(struct llarp_dht_context *ctx,
                         struct llarp_router_lookup_job *job)
 {
-  job->dht = ctx;
+  job->dht   = ctx;
+  job->found = false;
   llarp_logic_queue_job(ctx->parent->logic,
                         {job, &llarp::dht::Context::queue_router_lookup});
 }
