@@ -79,6 +79,13 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   if(!chosen)
   {
     // we don't have an open session to that router right now
+    auto rc = llarp_nodedb_get_rc(nodedb, remote);
+    if(rc)
+    {
+      // try connecting directly as the rc is loaded from disk
+      llarp_router_try_connect(this, rc, 10);
+      return true;
+    }
     // try requesting the rc from the disk
     llarp_async_load_rc *job = new llarp_async_load_rc;
     job->diskworker          = disk;
@@ -268,8 +275,10 @@ llarp_router::Close()
 }
 
 void
-llarp_router::connect_job_retry(void *user)
+llarp_router::connect_job_retry(void *user, uint64_t orig, uint64_t left)
 {
+  if(left)
+    return;
   llarp_link_establish_job *job =
       static_cast< llarp_link_establish_job * >(user);
 
@@ -283,7 +292,9 @@ llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
 {
   llarp::async_verify_context *ctx =
       static_cast< llarp::async_verify_context * >(job->user);
+  llarp::PubKey pk = job->rc.pubkey;
   llarp_rc_free(&job->rc);
+  ctx->router->pendingEstablishJobs.erase(pk);
   delete ctx;
 }
 
@@ -294,6 +305,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
       static_cast< llarp::async_verify_context * >(job->user);
   auto router = ctx->router;
   llarp::Debug("rc verified? ", job->valid ? "valid" : "invalid");
+  llarp::PubKey pk(job->rc.pubkey);
   if(!job->valid)
   {
     llarp::Warn("invalid server RC");
@@ -303,16 +315,14 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
       auto session = ctx->establish_job->session;
       if(session)
         session->close(session);
-      delete ctx->establish_job;
     }
     llarp_rc_free(&job->rc);
-    delete job;
+    router->pendingEstablishJobs.erase(pk);
+    router->DiscardOutboundFor(pk);
     return;
   }
 
   llarp::Debug("rc verified");
-
-  llarp::PubKey pk(job->rc.pubkey);
 
   // refresh valid routers RC value if it's there
   auto v = router->validRouters.find(pk);
@@ -333,9 +343,9 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   {
     auto session = ctx->establish_job->session;
     router->FlushOutboundFor(pk, session->get_parent(session));
+    // this frees the job
+    router->pendingEstablishJobs.erase(pk);
   }
-  llarp_rc_free(&job->rc);
-  delete job;
 }
 
 void
@@ -470,18 +480,23 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
     router->async_verify_RC(session, false, job);
     return;
   }
+  llarp::PubKey pk = job->pubkey;
   if(job->retries > 0)
   {
     job->retries--;
-    llarp::Info("session not established");
-    llarp_logic_queue_job(router->logic,
-                          {job, &llarp_router::connect_job_retry});
+    job->timeout *= 3;
+    job->timeout /= 2;
+    llarp::Info("session not established with ", pk, " relaxing timeout to ",
+                job->timeout);
+    // exponential backoff
+    llarp_logic_call_later(
+        router->logic, {job->timeout, job, &llarp_router::connect_job_retry});
   }
   else
   {
-    llarp::PubKey pk = job->pubkey;
     llarp::Warn("failed to connect to ", pk, " dropping all pending messages");
     router->DiscardOutboundFor(pk);
+    router->pendingEstablishJobs.erase(pk);
   }
 }
 
@@ -685,16 +700,26 @@ llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb)
 }
 
 bool
+llarp_router::HasPendingConnectJob(const llarp::RouterID &remote)
+{
+  return pendingEstablishJobs.find(remote) != pendingEstablishJobs.end();
+}
+
+bool
 llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
                          uint16_t numretries)
 {
+  // do  we already have a pending job for this remote?
+  if(router->HasPendingConnectJob(remote->pubkey))
+    return false;
   // try first address only
   llarp_ai addr;
   if(llarp_ai_list_index(remote->addrs, 0, &addr))
   {
-    auto link                     = router->outboundLink;
-    llarp_link_establish_job *job = new llarp_link_establish_job;
-
+    auto link = router->outboundLink;
+    auto itr  = router->pendingEstablishJobs.emplace(
+        std::make_pair(remote->pubkey, llarp_link_establish_job{}));
+    auto job = &itr.first->second;
     llarp_ai_copy(&job->ai, &addr);
     memcpy(job->pubkey, remote->pubkey, PUBKEYSIZE);
     job->retries = numretries;
@@ -702,6 +727,7 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
     job->result  = &llarp_router::on_try_connect_result;
     // give router as user pointer
     job->user = router;
+    // try establishing
     link->try_establish(link, job);
     return true;
   }
@@ -889,9 +915,6 @@ namespace llarp
             af = AF_INET;
             if(link->configure(link, self->netloop, key, af, proto))
             {
-              llarp_ai ai;
-              link->get_our_address(link, &ai);
-              llarp::Addr addr = ai;
               self->AddInboundLink(link);
               return;
             }

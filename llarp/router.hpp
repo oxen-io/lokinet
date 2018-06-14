@@ -83,6 +83,10 @@ struct llarp_router
   /// loki verified routers
   std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKeyHash > validRouters;
 
+  std::unordered_map< llarp::PubKey, llarp_link_establish_job,
+                      llarp::PubKeyHash >
+      pendingEstablishJobs;
+
   llarp_router();
   ~llarp_router();
 
@@ -125,6 +129,9 @@ struct llarp_router
   {
     return llarp::seckey_topublic(identity);
   }
+
+  bool
+  HasPendingConnectJob(const llarp::RouterID &remote);
 
   void
   try_connect(fs::path rcfile);
@@ -176,7 +183,7 @@ struct llarp_router
   on_try_connect_result(llarp_link_establish_job *job);
 
   static void
-  connect_job_retry(void *user);
+  connect_job_retry(void *user, uint64_t orig, uint64_t left);
 
   static void
   on_verify_client_rc(llarp_async_verify_rc *context);

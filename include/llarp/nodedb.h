@@ -61,6 +61,12 @@ bool
 llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc);
 
 /**
+  return a pointer to an already loaded RC or nullptr if it's not there
+  */
+struct llarp_rc *
+llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk);
+
+/**
     struct for async rc verification
 */
 struct llarp_async_verify_rc;
