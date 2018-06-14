@@ -193,6 +193,9 @@ struct llarp_router
 
   static void
   HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
+
+  static void
+  HandleDHTLookupForSendTo(llarp_router_lookup_job *job);
 };
 
 #endif

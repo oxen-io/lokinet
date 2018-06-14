@@ -630,8 +630,8 @@ llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
 }
 
 void
-llarp_dh_lookup_router(struct llarp_dht_context *ctx,
-                       struct llarp_router_lookup_job *job)
+llarp_dht_lookup_router(struct llarp_dht_context *ctx,
+                        struct llarp_router_lookup_job *job)
 {
   job->dht = ctx;
   llarp_logic_queue_job(ctx->parent->logic,

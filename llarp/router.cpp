@@ -104,12 +104,28 @@ llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
   }
   else
   {
-    // we don't have the RC locally
-    // TODO: dht lookup
-
-    // discard pending messages
-    router->DiscardOutboundFor(job->pubkey);
+    // we don't have the RC locally so do a dht lookup
+    llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
+    lookup->user                    = router;
+    memcpy(lookup->target, job->rc.pubkey, PUBKEYSIZE);
+    lookup->hook = &HandleDHTLookupForSendTo;
+    llarp_dht_lookup_router(router->dht, lookup);
   }
+}
+
+void
+llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
+{
+  llarp_router *self = static_cast< llarp_router * >(job->user);
+  if(job->found)
+  {
+    llarp_router_try_connect(self, &job->result, 10);
+  }
+  else
+  {
+    self->DiscardOutboundFor(job->target);
+  }
+  delete job;
 }
 
 void
