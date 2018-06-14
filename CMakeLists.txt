@@ -73,8 +73,8 @@ endif()
 
 set(LIBS ${SODIUM_LIB} pthread)
 
-if(STATIC_LINK)
-  set(LIBS ${LIBS} c c++)
+if(STATIC_LIBS)
+  set(LIBS ${LIBS} ${STATIC_LIBS})
 endif()
 
 set(LIB llarp)
