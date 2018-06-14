@@ -1010,10 +1010,10 @@ namespace iwp
           self->pump();
         }
         else
-          llarp::Error("invalid frame");
+          llarp::Error("invalid frame from ", self->addr);
       }
       else
-        llarp::Error("decrypt frame fail");
+        llarp::Error("decrypt frame fail from ", self->addr);
     }
 
     void
@@ -1537,14 +1537,18 @@ namespace iwp
         session *impl = static_cast< session * >(parent->impl);
         if(id == 0)
         {
-          // send our LIM if we are an outbound session
-          if(impl->state == session::eSessionStartSent)
-          {
-            impl->send_LIM();
-          }
           if(impl->CheckRCValid())
           {
-            impl->serv->MapAddr(impl->addr, impl->remote_router.pubkey);
+            // send our LIM if we are an outbound session
+            if(impl->state == session::eSessionStartSent)
+            {
+              impl->send_LIM();
+            }
+            else
+            {
+              impl->serv->MapAddr(impl->addr, impl->remote_router.pubkey);
+              impl->session_established();
+            }
           }
           else
           {
@@ -1554,7 +1558,6 @@ namespace iwp
             success = false;
           }
         }
-        llarp::Info("handled message ", id);
       }
       else
         llarp::Warn("failed to handle inbound message ", id);
