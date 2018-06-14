@@ -754,6 +754,10 @@ namespace iwp
     bool
     CheckRCValid()
     {
+      // verify signatuire
+      if(!llarp_rc_verify_sig(crypto, &remote_router))
+        return false;
+
       auto &list = remote_router.addrs->list;
       if(list.size() == 0)  // the remote node is a client node so accept it
         return true;
