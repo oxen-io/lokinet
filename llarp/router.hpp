@@ -144,6 +144,10 @@ struct llarp_router
   void
   FlushOutboundFor(const llarp::RouterID &remote, llarp_link *chosen);
 
+  /// manually discard all pending messages to remote router
+  void
+  DiscardOutboundFor(const llarp::RouterID &remote);
+
   /// flush outbound message queue
   void
   FlushOutbound();
@@ -186,6 +190,9 @@ struct llarp_router
   static bool
   send_padded_message(struct llarp_link_session_iter *itr,
                       struct llarp_link_session *peer);
+
+  static void
+  HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
 };
 
 #endif

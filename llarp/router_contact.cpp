@@ -164,7 +164,7 @@ llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc)
 }
 
 bool
-llarp_rc_bencode(struct llarp_rc *rc, llarp_buffer_t *buff)
+llarp_rc_bencode(const struct llarp_rc *rc, llarp_buffer_t *buff)
 {
   /* write dict begin */
   if(!bencode_start_dict(buff))

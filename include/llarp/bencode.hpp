@@ -5,7 +5,7 @@
 
 namespace llarp
 {
-  bool
+  inline bool
   BEncodeWriteDictMsgType(llarp_buffer_t* buf, const char* k, const char* t)
   {
     return bencode_write_bytestring(buf, k, 1)
@@ -17,6 +17,13 @@ namespace llarp
   BEncodeWriteDictEntry(const char* k, const Obj_t& o, llarp_buffer_t* buf)
   {
     return bencode_write_bytestring(buf, k, 1) && o.BEncode(buf);
+  }
+
+  template < typename Int_t >
+  bool
+  BEncodeWriteDictInt(llarp_buffer_t* buf, const char* k, const Int_t& i)
+  {
+    return bencode_write_bytestring(buf, k, 1) && bencode_write_uint64(buf, i);
   }
 
   template < typename Item_t >

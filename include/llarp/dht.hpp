@@ -181,6 +181,7 @@ namespace llarp
 
       llarp_router* router = nullptr;
       Bucket* nodes        = nullptr;
+      bool allowTransit    = false;
 
      private:
       void
