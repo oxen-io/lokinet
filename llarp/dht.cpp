@@ -444,6 +444,7 @@ namespace llarp
       Context *ctx = static_cast< Context * >(u);
 
       ctx->CleanupTX();
+      ctx->ScheduleCleanupTimer();
     }
 
     void
@@ -518,8 +519,6 @@ namespace llarp
         pendingTX[e].Completed(nullptr, true);
         RemovePendingLookup(e.requester, e.txid);
       }
-
-      ScheduleCleanupTimer();
     }
 
     void
