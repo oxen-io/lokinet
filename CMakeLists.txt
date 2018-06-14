@@ -71,7 +71,7 @@ else()
   set(SODIUM_LIB sodium)
 endif()
 
-set(LIBS ${SODIUM_LIB} pthread stdc++fs)
+set(LIBS ${SODIUM_LIB} pthread)
 
 set(LIB llarp)
 set(SHARED_LIB ${LIB})
@@ -135,6 +135,7 @@ set(TEST_SRC
 set(TEST_EXE testAll)
 set(GTEST_DIR test/gtest)
 
+include_directories(llarp)
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
 

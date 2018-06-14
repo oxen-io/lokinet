@@ -3,10 +3,8 @@
 #include <signal.h>
 #include <stdio.h>
 #include <string.h>
-#include <experimental/filesystem>
 #include <llarp/crypto.hpp>
-
-namespace fs = std::experimental::filesystem;
+#include "fs.hpp"
 
 static void
 progress()

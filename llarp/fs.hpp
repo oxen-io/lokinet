@@ -7,11 +7,7 @@
 #define PATH_SEP "/"
 #endif
 
-#if(__cplusplus >= 201703L)
-#include <experimental/filesystem>
-namespace fs = std::experimental::filesystem;
-#else
 #include "filesystem.h"
 namespace fs = cpp17::filesystem;
-#endif
+
 #endif
