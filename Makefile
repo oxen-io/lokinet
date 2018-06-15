@@ -6,7 +6,7 @@ SIGN = gpg --sign --detach
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 
-TARGETS = llarpd libllarp.so libllarp-static.a
+TARGETS = llarpd
 SIGS = $(TARGETS:=.sig)
 
 SHADOW_ROOT ?= $(HOME)/.shadow
@@ -30,7 +30,7 @@ debug-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON
 
 release-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)"
+	cmake -GNinja -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)"
 
 debug: debug-configure
 	ninja
