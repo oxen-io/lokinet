@@ -32,8 +32,7 @@ Build requirements:
 * CMake
 * ninja
 * libsodium >= 1.0.14 
-* c++ 17 capable C++ compiler
-* c11 capable C compiler
+* c++ 11 capable C++ compiler
 
 
 Building a debug build:
