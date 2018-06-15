@@ -139,6 +139,8 @@ struct llarp_router
   /// send to remote router or queue for sending
   /// returns false on overflow
   /// returns true on successful queue
+  /// NOT threadsafe
+  /// MUST be called in the logic thread
   bool
   SendToOrQueue(const llarp::RouterID &remote,
                 std::vector< llarp::ILinkMessage * > msgs);
