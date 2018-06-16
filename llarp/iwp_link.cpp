@@ -948,19 +948,7 @@ namespace iwp
     }
 
     static void
-    handle_verify_introack(iwp_async_introack *introack)
-    {
-      session *link = static_cast< session * >(introack->user);
-      if(introack->buf == nullptr)
-      {
-        // invalid signature
-        llarp::Error("introack verify failed from ", link->addr);
-        link->done();
-        return;
-      }
-      link->EnterState(eIntroAckRecv);
-      link->session_start();
-    }
+    handle_verify_introack(iwp_async_introack *introack);
 
     static void
     handle_generated_session_start(iwp_async_session_start *start)
@@ -1414,10 +1402,7 @@ namespace iwp
       if(itr != m_sessions.end())
       {
         llarp::Debug("removing session ", addr);
-        UnmapAddr(addr);
         session *s = static_cast< session * >(itr->second.impl);
-        m_sessions.erase(itr);
-        s->done();
         if(s->frames)
         {
           llarp::Warn("session has ", s->frames,
@@ -1426,6 +1411,8 @@ namespace iwp
         }
         else
           delete s;
+        m_sessions.erase(itr);
+        UnmapAddr(addr);
       }
     }
 
@@ -1591,17 +1578,6 @@ namespace iwp
   void
   session::done()
   {
-    if(establish_job_id)
-    {
-      llarp_logic_remove_call(logic, establish_job_id);
-    }
-    if(establish_job)
-    {
-      auto job     = establish_job;
-      job->link    = serv->parent;
-      job->session = nullptr;
-      job->result(job);
-    }
   }
 
   void
@@ -1682,6 +1658,20 @@ namespace iwp
   {
     session *link = static_cast< session * >(s->impl);
     return link->serv->parent;
+  }
+
+  void
+  session::handle_verify_introack(iwp_async_introack *introack)
+  {
+    session *link = static_cast< session * >(introack->user);
+    if(introack->buf == nullptr)
+    {
+      // invalid signature
+      llarp::Error("introack verify failed from ", link->addr);
+      return;
+    }
+    link->EnterState(eIntroAckRecv);
+    link->session_start();
   }
 
   void

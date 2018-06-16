@@ -23,7 +23,6 @@ llarp_xi_list_free(struct llarp_xi_list *l)
 {
   if(l)
   {
-    l->list.clear();
     delete l;
   }
 }
