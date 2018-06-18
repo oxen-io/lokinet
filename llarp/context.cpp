@@ -98,7 +98,7 @@ namespace llarp
     }
     llarp::Info("nodedb_dir configured!");
     ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir);
-    llarp::Info("nodedb_dir configured! loaded ", loaded, " RCs");
+    llarp::Info("nodedb_dir loaded ", loaded, " RCs");
     if (loaded < 0)
     {
       // shouldn't be possible
