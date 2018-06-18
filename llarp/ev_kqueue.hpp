@@ -46,7 +46,7 @@ namespace llarp
       sockaddr_in6 src;
       socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
-      int ret        = ::recvfrom(fd, buf, sz, 0, addr, &slen);
+      ssize_t ret        = ::recvfrom(fd, buf, sz, 0, addr, &slen);
       if(ret == -1)
         return -1;
       udp->recvfrom(udp, addr, buf, ret);
@@ -116,7 +116,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev->read(readbuf, sizeof(readbuf)) == -1)
         {
-          llarp::Info(__FILE__, "close ev");
+          llarp::Info("close ev");
           close_ev(ev);
           delete ev;
         }
@@ -144,7 +144,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
           if(ev->read(readbuf, sizeof(readbuf)) == -1)
           {
-            llarp::Info(__FILE__, "close ev");
+            llarp::Info("close ev");
             close_ev(ev);
             delete ev;
           }
@@ -159,7 +159,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   udp_bind(const sockaddr* addr)
   {
     socklen_t slen;
-    llarp::Debug(__FILE__, "kqueue bind affam", addr->sa_family);
+    llarp::Debug("kqueue bind affam", addr->sa_family);
     switch(addr->sa_family)
     {
       case AF_INET:
@@ -176,7 +176,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         break;
 #endif
       default:
-        llarp::Error(__FILE__, "unsupported address family");
+        llarp::Error("unsupported address family");
         return -1;
     }
     int fd = socket(addr->sa_family, SOCK_DGRAM, 0);
@@ -199,7 +199,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    llarp::Info(__FILE__, "bind to ", a);
+    llarp::Info("bind to ", a);
     // FreeBSD handbook said to do this
     if (addr->sa_family == AF_INET && INADDR_ANY)
       a._addr4.sin_addr.s_addr = htonl(INADDR_ANY);
