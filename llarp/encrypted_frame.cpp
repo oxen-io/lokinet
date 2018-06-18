@@ -1,6 +1,7 @@
 #include <llarp/crypto.hpp>
 #include <llarp/encrypted_frame.hpp>
 #include "logger.hpp"
+#include "mem.hpp"
 
 namespace llarp
 {
@@ -10,6 +11,8 @@ namespace llarp
     data = new byte_t[sz];
     if(buf)
       memcpy(data, buf, sz);
+    else
+      llarp::Zero(data, sz);
     m_Buffer.base = data;
     m_Buffer.cur  = data;
     m_Buffer.sz   = size;
@@ -87,7 +90,8 @@ namespace llarp
   {
     if(size <= size_t(EncryptedFrame::OverheadSize))
     {
-      llarp::Warn("encrypted frame too small, ", size, " <= ", size_t(EncryptedFrame::OverheadSize));
+      llarp::Warn("encrypted frame too small, ", size,
+                  " <= ", size_t(EncryptedFrame::OverheadSize));
       return false;
     }
     // format of frame is
@@ -143,4 +147,4 @@ namespace llarp
     }
     return true;
   }
-}
+}  // namespace llarp

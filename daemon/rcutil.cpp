@@ -145,7 +145,7 @@ main(int argc, char *argv[])
   int c;
   char *rcfname;
   char defaultName[] = "other.signed";
-  rcfname = defaultName;
+  rcfname            = defaultName;
   while(1)
   {
     static struct option long_options[] = {

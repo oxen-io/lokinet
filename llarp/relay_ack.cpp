@@ -77,14 +77,8 @@ namespace llarp
   bool
   LR_AckMessage::HandleMessage(llarp_router* router) const
   {
-    if(!router->paths.HasPendingRelayCommit(remote, txPathID))
-    {
-      llarp::Warn("got LRAM from ", remote,
-                  " with no previous LRCM txid=", txPathID);
-      return false;
-    }
     // TODO: use different private key for different path contexts as client
-    LRAM_Decrypt* lram = new LRAM_Decrypt(router, router->encryption, acks);
+    LRAM_Decrypt* lram = new LRAM_Decrypt(router, router->encryption, replies);
     lram->decrypt->AsyncDecrypt(router->tp, &lram->frames[0], lram);
     return true;
   }

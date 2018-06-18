@@ -7,7 +7,10 @@
             "label": "build",
             "type": "shell",
             "command": "make",
-            "group": "build"
+            "group": "build",
+            "problemMatcher": [
+                "$gcc"
+            ]
         }
     ]
 }

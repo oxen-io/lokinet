@@ -6,12 +6,14 @@
                 "path": [
                     "${workspaceFolder}/llarp",
                     "${workspaceFolder}/daemon",
-                    "${workspaceFolder}/include"
+                    "${workspaceFolder}/include",
+                    "${workspaceFolder}/vendor/cppbackport-master/lib"
                 ],
                 "limitSymbolsToIncludedHeaders": true
             },
             "includePath": [
-                "${workspaceFolder}/include"
+                "${workspaceFolder}/include",
+                "${workspaceFolder}/vendor/cppbackport-master/lib"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",

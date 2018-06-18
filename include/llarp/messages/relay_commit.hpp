@@ -5,18 +5,21 @@
 #include <llarp/encrypted_frame.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/path_types.hpp>
+#include <llarp/pow.hpp>
 #include <vector>
 
 namespace llarp
 {
+  // forward declare
+  struct PathContext;
+
   struct LR_CommitRecord
   {
     PubKey commkey;
-    PubKey nextHop;
+    RouterID nextHop;
     TunnelNonce tunnelNonce;
-    PathID_t txid;
-    SymmKey downstreamReplyKey;
-    SymmNonce downstreamReplyNonce;
+    PathID_t pathid;
+    PoW *work = nullptr;
     uint64_t version;
 
     bool
@@ -25,6 +28,8 @@ namespace llarp
     bool
     BEncode(llarp_buffer_t *buf) const;
 
+    ~LR_CommitRecord();
+
    private:
     static bool
     OnKey(dict_reader *r, llarp_buffer_t *buf);
@@ -32,9 +37,10 @@ namespace llarp
 
   struct LR_AcceptRecord
   {
-    uint64_t pathid;
-    uint64_t version;
-    std::vector< byte_t > padding;
+    RouterID upstream;
+    RouterID downstream;
+    PathID_t pathid;
+    uint64_t version = LLARP_PROTO_VERSION;
 
     bool
     DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf);
@@ -46,13 +52,12 @@ namespace llarp
   struct LR_CommitMessage : public ILinkMessage
   {
     std::vector< EncryptedFrame > frames;
-    EncryptedFrame lasthopFrame;
-    std::vector< EncryptedAck > acks;
     uint64_t version;
 
     LR_CommitMessage() : ILinkMessage()
     {
     }
+
     LR_CommitMessage(const RouterID &from) : ILinkMessage(from)
     {
     }
@@ -70,7 +75,10 @@ namespace llarp
 
     bool
     HandleMessage(llarp_router *router) const;
+
+    bool
+    AsyncDecrypt(PathContext *context) const;
   };
-}
+}  // namespace llarp
 
 #endif

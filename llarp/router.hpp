@@ -71,6 +71,8 @@ struct llarp_router
 
   llarp::InboundMessageParser inbound_msg_parser;
 
+  llarp_pathbuilder_select_hop_func selectHopFunc = nullptr;
+
   llarp_link *outboundLink = nullptr;
   std::list< llarp_link * > inboundLinks;
 

@@ -384,100 +384,100 @@ namespace iwp
     frame->hook(frame);
     delete frame;
   }
-}
+}  // namespace iwp
 
-extern "C" {
-
-void
-iwp_call_async_keygen(struct llarp_async_iwp *iwp,
-                      struct iwp_async_keygen *keygen)
+extern "C"
 {
-  keygen->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {keygen, &iwp::keygen});
-}
-
-void
-iwp_call_async_gen_intro(struct llarp_async_iwp *iwp,
-                         struct iwp_async_intro *intro)
-{
-  intro->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {intro, &iwp::gen_intro});
-}
-
-void
-iwp_call_async_verify_introack(struct llarp_async_iwp *iwp,
-                               struct iwp_async_introack *introack)
-{
-  introack->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {introack, &iwp::verify_introack});
-}
-
-void
-iwp_call_async_gen_session_start(struct llarp_async_iwp *iwp,
-                                 struct iwp_async_session_start *session)
-{
-  session->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {session, &iwp::gen_session_start});
-}
-
-void
-iwp_call_async_verify_intro(struct llarp_async_iwp *iwp,
-                            struct iwp_async_intro *intro)
-{
-  intro->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {intro, &iwp::verify_intro});
-}
-
-void
-iwp_call_async_gen_introack(struct llarp_async_iwp *iwp,
-                            struct iwp_async_introack *introack)
-{
-  introack->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {introack, &iwp::gen_introack});
-}
-
-void
-iwp_call_async_frame_decrypt(struct llarp_async_iwp *iwp,
-                             struct iwp_async_frame *frame)
-{
-  frame->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {frame, &iwp::hmac_then_decrypt});
-}
-
-void
-iwp_call_async_frame_encrypt(struct llarp_async_iwp *iwp,
-                             struct iwp_async_frame *frame)
-{
-  frame->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {frame, &iwp::encrypt_then_hmac});
-}
-
-void
-iwp_call_async_verify_session_start(struct llarp_async_iwp *iwp,
-                                    struct iwp_async_session_start *session)
-{
-  session->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker,
-                             {session, &iwp::verify_session_start});
-}
-
-struct llarp_async_iwp *
-llarp_async_iwp_new(struct llarp_crypto *crypto, struct llarp_logic *logic,
-                    struct llarp_threadpool *worker)
-{
-  llarp_async_iwp *iwp = new llarp_async_iwp;
-  if(iwp)
+  void
+  iwp_call_async_keygen(struct llarp_async_iwp *iwp,
+                        struct iwp_async_keygen *keygen)
   {
-    iwp->crypto = crypto;
-    iwp->logic  = logic;
-    iwp->worker = worker;
+    keygen->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker, {keygen, &iwp::keygen});
   }
-  return iwp;
-}
 
-void
-llarp_async_iwp_free(struct llarp_async_iwp *iwp)
-{
-  delete iwp;
-}
+  void
+  iwp_call_async_gen_intro(struct llarp_async_iwp *iwp,
+                           struct iwp_async_intro *intro)
+  {
+    intro->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker, {intro, &iwp::gen_intro});
+  }
+
+  void
+  iwp_call_async_verify_introack(struct llarp_async_iwp *iwp,
+                                 struct iwp_async_introack *introack)
+  {
+    introack->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker, {introack, &iwp::verify_introack});
+  }
+
+  void
+  iwp_call_async_gen_session_start(struct llarp_async_iwp *iwp,
+                                   struct iwp_async_session_start *session)
+  {
+    session->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker, {session, &iwp::gen_session_start});
+  }
+
+  void
+  iwp_call_async_verify_intro(struct llarp_async_iwp *iwp,
+                              struct iwp_async_intro *intro)
+  {
+    intro->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker, {intro, &iwp::verify_intro});
+  }
+
+  void
+  iwp_call_async_gen_introack(struct llarp_async_iwp *iwp,
+                              struct iwp_async_introack *introack)
+  {
+    introack->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker, {introack, &iwp::gen_introack});
+  }
+
+  void
+  iwp_call_async_frame_decrypt(struct llarp_async_iwp *iwp,
+                               struct iwp_async_frame *frame)
+  {
+    frame->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker, {frame, &iwp::hmac_then_decrypt});
+  }
+
+  void
+  iwp_call_async_frame_encrypt(struct llarp_async_iwp *iwp,
+                               struct iwp_async_frame *frame)
+  {
+    frame->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker, {frame, &iwp::encrypt_then_hmac});
+  }
+
+  void
+  iwp_call_async_verify_session_start(struct llarp_async_iwp *iwp,
+                                      struct iwp_async_session_start *session)
+  {
+    session->iwp = iwp;
+    llarp_threadpool_queue_job(iwp->worker,
+                               {session, &iwp::verify_session_start});
+  }
+
+  struct llarp_async_iwp *
+  llarp_async_iwp_new(struct llarp_crypto *crypto, struct llarp_logic *logic,
+                      struct llarp_threadpool *worker)
+  {
+    llarp_async_iwp *iwp = new llarp_async_iwp;
+    if(iwp)
+    {
+      iwp->crypto = crypto;
+      iwp->logic  = logic;
+      iwp->worker = worker;
+    }
+    return iwp;
+  }
+
+  void
+  llarp_async_iwp_free(struct llarp_async_iwp *iwp)
+  {
+    delete iwp;
+  }
 }

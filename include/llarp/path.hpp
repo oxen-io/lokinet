@@ -1,5 +1,6 @@
 #ifndef LLARP_PATH_HPP
 #define LLARP_PATH_HPP
+#include <llarp/path.h>
 #include <llarp/router.h>
 #include <llarp/time.h>
 #include <llarp/aligned.hpp>
@@ -20,15 +21,14 @@ namespace llarp
     TransitHopInfo() = default;
     TransitHopInfo(const RouterID& down, const LR_CommitRecord& record);
 
-    PathID_t rxID;
-    PathID_t txID;
+    PathID_t pathID;
     RouterID upstream;
     RouterID downstream;
 
     friend std::ostream&
     operator<<(std::ostream& out, const TransitHopInfo& info)
     {
-      out << "<Transit Hop rxid=" << info.rxID << " txid=" << info.txID;
+      out << "<Transit Hop id=" << info.pathID;
       out << " upstream=" << info.upstream << " downstream=" << info.downstream;
       return out << ">";
     }
@@ -36,8 +36,8 @@ namespace llarp
     bool
     operator==(const TransitHopInfo& other) const
     {
-      return rxID == other.rxID && txID == other.txID
-          && upstream == other.upstream && downstream == other.downstream;
+      return pathID == other.pathID && upstream == other.upstream
+          && downstream == other.downstream;
     }
 
     bool
@@ -46,41 +46,71 @@ namespace llarp
       return !(*this == other);
     }
 
+    bool
+    operator<(const TransitHopInfo& other) const
+    {
+      return pathID < other.pathID || upstream < other.upstream
+          || downstream < other.downstream;
+    }
+
     struct Hash
     {
       std::size_t
       operator()(TransitHopInfo const& a) const
       {
-        std::size_t idx0, idx1, idx2, idx3;
+        std::size_t idx0, idx1, idx2;
         memcpy(&idx0, a.upstream, sizeof(std::size_t));
         memcpy(&idx1, a.downstream, sizeof(std::size_t));
-        memcpy(&idx2, a.rxID, sizeof(std::size_t));
-        memcpy(&idx3, a.txID, sizeof(std::size_t));
-        return idx0 ^ idx1 ^ idx2 ^ idx3;
+        memcpy(&idx2, a.pathID, sizeof(std::size_t));
+        return idx0 ^ idx1 ^ idx2;
       }
     };
+  };
+
+  struct PathIDHash
+  {
+    std::size_t
+    operator()(const PathID_t& a) const
+    {
+      std::size_t idx0;
+      memcpy(&idx0, a, sizeof(std::size_t));
+      return idx0;
+    }
   };
 
   struct TransitHop
   {
     TransitHop() = default;
 
-    SharedSecret rxKey;
-    SharedSecret txKey;
+    TransitHopInfo info;
+    SharedSecret pathKey;
     llarp_time_t started;
+    // 10 minutes default
+    llarp_time_t lifetime = 360000;
     llarp_proto_version_t version;
+
+    bool
+    Expired(llarp_time_t now) const;
   };
 
+  /// configuration for a single hop when building a path
   struct PathHopConfig
   {
     /// path id
-    PathID_t txID;
-    /// router identity key
-    PubKey encryptionKey;
+    PathID_t pathID;
+    // router contact of router
+    llarp_rc router;
+    // temp public encryption key
+    SecretKey commkey;
     /// shared secret at this hop
     SharedSecret shared;
+    /// next hop's router id
+    RouterID upstream;
     /// nonce for key exchange
     TunnelNonce nonce;
+
+    ~PathHopConfig();
+    PathHopConfig();
   };
 
   struct Path
@@ -88,19 +118,30 @@ namespace llarp
     typedef std::vector< PathHopConfig > HopList;
     HopList hops;
     llarp_time_t buildStarted;
+    Path(llarp_path_hops* path);
   };
 
   template < typename User >
   struct AsyncPathKeyExchangeContext
   {
-    Path path;
-    typedef void (*Handler)(AsyncPathKeyExchangeContext*);
+    Path* path = nullptr;
+    typedef void (*Handler)(AsyncPathKeyExchangeContext< User >*);
     User* user               = nullptr;
     Handler result           = nullptr;
-    const byte_t* secretkey  = nullptr;
     size_t idx               = 0;
     llarp_threadpool* worker = nullptr;
-    llarp_path_dh_func dh    = nullptr;
+    llarp_logic* logic       = nullptr;
+    llarp_crypto* crypto     = nullptr;
+    LR_CommitMessage LRCM;
+
+    static void
+    HandleDone(void* user)
+    {
+      AsyncPathKeyExchangeContext< User >* ctx =
+          static_cast< AsyncPathKeyExchangeContext< User >* >(user);
+      ctx->result(ctx);
+      delete ctx;
+    }
 
     static void
     GenerateNextKey(void* user)
@@ -108,38 +149,73 @@ namespace llarp
       AsyncPathKeyExchangeContext< User >* ctx =
           static_cast< AsyncPathKeyExchangeContext< User >* >(user);
 
-      auto& hop = ctx->path.hops[ctx->idx];
-      ctx->dh(hop.shared, hop.encryptionKey, hop.nonce, ctx->secretkey);
-      ++ctx->idx;
-      if(ctx->idx < ctx->path.hops.size())
+      auto& hop = ctx->path->hops[ctx->idx];
+      // generate key
+      ctx->crypto->encryption_keygen(hop.commkey);
+      // do key exchange
+      if(!ctx->crypto->dh_client(hop.shared, hop.router.enckey, hop.nonce,
+                                 hop.commkey))
       {
+        llarp::Error("Failed to generate shared key for path build");
+        delete ctx;
+        return;
+      }
+      // randomize hop's path id
+      hop.pathID.Randomize();
+
+      LR_CommitRecord record;
+
+      auto& frame = ctx->LRCM.frames[ctx->idx];
+      ++ctx->idx;
+      if(ctx->idx < ctx->path->hops.size())
+      {
+        hop.upstream = ctx->path->hops[ctx->idx].router.pubkey;
+      }
+      else
+      {
+        hop.upstream = hop.router.pubkey;
+      }
+      // generate record
+      if(!record.BEncode(frame.Buffer()))
+      {
+        // failed to encode?
+        llarp::Error("Failed to generate Commit Record");
+        delete ctx;
+        return;
+      }
+
+      if(ctx->idx < ctx->path->hops.size())
+      {
+        // next hop
         llarp_threadpool_queue_job(ctx->worker, {ctx, &GenerateNextKey});
       }
       else
       {
-        ctx->Done();
+        // farthest hop
+        llarp_logic_queue_job(ctx->logic, {ctx, &HandleDone});
       }
     }
 
-    AsyncPathKeyExchangeContext(const byte_t* secret, llarp_crypto* crypto)
-        : secretkey(secret), dh(crypto->dh_client)
+    AsyncPathKeyExchangeContext(llarp_crypto* c) : crypto(c)
     {
-    }
-
-    void
-    Done()
-    {
-      idx = 0;
-      result(this);
     }
 
     /// Generate all keys asynchronously and call hadler when done
     void
-    AsyncGenerateKeys(llarp_threadpool* pool, User* u, Handler func) const
+    AsyncGenerateKeys(Path* p, llarp_logic* l, llarp_threadpool* pool, User* u,
+                      Handler func)
     {
+      path   = p;
+      logic  = l;
       user   = u;
       result = func;
       worker = pool;
+
+      for(size_t idx = 0; idx < MAXHOPS; ++idx)
+      {
+        LRCM.frames.emplace_back(256);
+        LRCM.frames.back().Randomize();
+      }
       llarp_threadpool_queue_job(pool, {this, &GenerateNextKey});
     }
   };
@@ -206,10 +282,17 @@ namespace llarp
     PathContext(llarp_router* router);
     ~PathContext();
 
+    /// called from router tick function
+    void
+    ExpirePaths();
+
     void
     AllowTransit();
     void
     RejectTransit();
+
+    bool
+    AllowingTransit() const;
 
     bool
     HasTransitHop(const TransitHopInfo& info);
@@ -217,64 +300,27 @@ namespace llarp
     bool
     HandleRelayCommit(const LR_CommitMessage* msg);
 
+    void
+    PutTransitHop(const TransitHop& hop);
+
     bool
-    HandleRelayAck(const LR_AckMessage* msg);
+    ForwardLRCM(const RouterID& nextHop, std::deque< EncryptedFrame >& frames);
 
     void
-    PutPendingRelayCommit(const RouterID& router, const PathID_t& txid,
-                          const TransitHopInfo& info, const TransitHop& hop);
+    ForwradLRUM(const PathID_t& id, const RouterID& from, llarp_buffer_t X,
+                const TunnelNonce& nonce);
 
-    bool
-    HasPendingRelayCommit(const RouterID& upstream, const PathID_t& txid);
-
-    bool
-    ForwardLRCM(const RouterID& nextHop, std::deque< EncryptedFrame >& frames,
-                std::deque< EncryptedAck >& acks, EncryptedFrame& lastFrame);
+    void
+    ForwradLRDM(const PathID_t& id, const RouterID& from, llarp_buffer_t X,
+                const TunnelNonce& nonce);
 
     bool
     HopIsUs(const PubKey& k) const;
 
-    typedef std::unordered_map< TransitHopInfo, TransitHop,
-                                TransitHopInfo::Hash >
+    typedef std::unordered_multimap< PathID_t, TransitHop, PathIDHash >
         TransitHopsMap_t;
 
     typedef std::pair< std::mutex, TransitHopsMap_t > SyncTransitMap_t;
-
-    struct PendingPathKey
-    {
-      RouterID upstream;
-      PathID_t txID;
-
-      PendingPathKey(const RouterID& up, const PathID_t& id)
-          : upstream(up), txID(id)
-      {
-      }
-
-      bool
-      operator==(const PendingPathKey& other) const
-      {
-        return upstream == other.upstream && txID == other.txID;
-      }
-
-      struct Hash
-      {
-        std::size_t
-        operator()(PendingPathKey const& a) const
-        {
-          std::size_t idx0, idx1;
-          memcpy(&idx0, a.upstream, sizeof(std::size_t));
-          memcpy(&idx1, a.txID, sizeof(std::size_t));
-          return idx0 ^ idx1;
-        }
-      };
-    };
-
-    typedef std::pair< TransitHopInfo, TransitHop > PendingCommit_t;
-
-    typedef std::pair< std::mutex,
-                       std::unordered_map< PendingPathKey, PendingCommit_t,
-                                           PendingPathKey::Hash > >
-        SyncPendingCommitMap_t;
 
     llarp_threadpool*
     Worker();
@@ -288,13 +334,15 @@ namespace llarp
     byte_t*
     EncryptionSecretKey();
 
+    const byte_t*
+    OurRouterID() const;
+
    private:
     llarp_router* m_Router;
     SyncTransitMap_t m_TransitPaths;
-    SyncPendingCommitMap_t m_WaitingForAcks;
 
     bool m_AllowTransit;
   };
-}
+}  // namespace llarp
 
 #endif

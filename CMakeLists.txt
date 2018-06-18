@@ -59,8 +59,8 @@ if(SHADOW)
   include_directories(${SHADOW_ROOT}/include)
 endif()
 
-add_cflags("-Wall ${OPTIMIZE_FLAGS}")
-add_cxxflags("-Wall ${OPTIMIZE_FLAGS}")
+add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
+add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_cflags("${DEBUG_FLAGS}")
@@ -123,12 +123,13 @@ set(LIB_SRC
   llarp/net.cpp
   llarp/nodedb.cpp
   llarp/path.cpp
+  llarp/pathbuilder.cpp
+  llarp/proofofwork.cpp
   llarp/relay_ack.cpp
   llarp/relay_commit.cpp
   llarp/relay_up_down.cpp
   llarp/router_contact.cpp
   llarp/router.cpp
-  llarp/router_identity.c
   llarp/threadpool.cpp
   llarp/testnet.c
   llarp/time.cpp

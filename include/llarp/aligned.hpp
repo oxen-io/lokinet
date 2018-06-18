@@ -142,6 +142,6 @@ namespace llarp
       uint64_t l[sz / 8];
     };
   };
-}
+}  // namespace llarp
 
 #endif

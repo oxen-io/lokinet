@@ -9,9 +9,6 @@ namespace llarp
 {
   struct LR_AckRecord
   {
-    PubKey pubkey;
-    TunnelNonce nonce;
-    PathID_t rxPathID;
     uint64_t version = 0;
 
     bool
@@ -23,9 +20,7 @@ namespace llarp
 
   struct LR_AckMessage : public ILinkMessage
   {
-    std::vector< EncryptedFrame > acks;
-    EncryptedFrame lasthopFrame;
-    PathID_t txPathID;
+    std::vector< EncryptedFrame > replies;
     uint64_t version = 0;
 
     LR_AckMessage(const RouterID& from);
@@ -41,6 +36,6 @@ namespace llarp
     bool
     HandleMessage(llarp_router* router) const;
   };
-}
+}  // namespace llarp
 
 #endif
