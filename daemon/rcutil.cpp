@@ -143,7 +143,7 @@ main(int argc, char *argv[])
   bool genMode = false;
   bool updMode = false;
   int c;
-  char *rcfname;
+  char *rcfname = "";
   while(1)
   {
     static struct option long_options[] = {
