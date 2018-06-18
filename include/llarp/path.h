@@ -5,15 +5,14 @@
 
 #define MAXHOPS (8)
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
-  struct llarp_path_hops
-  {
-    struct llarp_rc routers[MAXHOPS];
-    size_t numHops;
-  };
+struct llarp_path_hops
+{
+  struct llarp_rc routers[MAXHOPS];
+  size_t numHops;
+};
 
 #ifdef __cplusplus
 }

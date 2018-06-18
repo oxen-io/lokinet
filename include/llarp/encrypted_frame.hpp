@@ -11,7 +11,7 @@ namespace llarp
   struct EncryptedFrame : public Encrypted
   {
     static constexpr size_t OverheadSize =
-      PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
+        PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
     EncryptedFrame() = default;
     EncryptedFrame(byte_t* buf, size_t sz) : Encrypted(buf, sz)
     {
