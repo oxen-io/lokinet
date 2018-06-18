@@ -16,25 +16,24 @@ extern "C" {
 
 struct llarp_nodedb;
 
-/** create an empty nodedb */
+/// create an empty nodedb
 struct llarp_nodedb *
 llarp_nodedb_new(struct llarp_crypto *crypto);
 
-/** free a nodedb and all loaded rc */
+/// free a nodedb and all loaded rc
 void
 llarp_nodedb_free(struct llarp_nodedb **n);
 
-/** ensure a nodedb fs skiplist structure is at dir
-    create if not there.
- */
+/// ensure a nodedb fs skiplist structure is at dir
+/// create if not there.
 bool
 llarp_nodedb_ensure_dir(const char *dir);
 
-/** load entire nodedb from fs skiplist at dir */
+/// load entire nodedb from fs skiplist at dir
 ssize_t
 llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir);
 
-/** store entire nodedb to fs skiplist at dir */
+/// store entire nodedb to fs skiplist at dir
 ssize_t
 llarp_nodedb_store_dir(struct llarp_nodedb *n, const char *dir);
 
@@ -45,9 +44,7 @@ struct llarp_nodedb_iter
   bool (*visit)(struct llarp_nodedb_iter *);
 };
 
-/**
-   iterate over all loaded rc with an iterator
- */
+/// iterate over all loaded rc with an iterator
 void
 llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
 
@@ -60,15 +57,11 @@ llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
 bool
 llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc);
 
-/**
-  return a pointer to an already loaded RC or nullptr if it's not there
-  */
+/// return a pointer to an already loaded RC or nullptr if it's not there
 struct llarp_rc *
 llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk);
 
-/**
-    struct for async rc verification
-*/
+/// struct for async rc verification
 struct llarp_async_verify_rc;
 
 typedef void (*llarp_async_verify_rc_hook_func)(struct llarp_async_verify_rc *);
@@ -128,7 +121,7 @@ struct llarp_async_load_rc
   llarp_async_load_rc_hook_func hook;
 };
 
-/** asynchronously load an rc from disk */
+/// asynchronously load an rc from disk
 void
 llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job);
 
