@@ -31,6 +31,7 @@
 #include <string>
 #include <iosfwd>
 #include <iterator>
+#include <iostream>
 
 namespace cpp17
 {

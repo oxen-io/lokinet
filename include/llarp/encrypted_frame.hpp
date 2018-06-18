@@ -10,14 +10,12 @@ namespace llarp
 {
   struct EncryptedFrame : public Encrypted
   {
-    static constexpr size_t OverheadSize =
-        PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
-
     EncryptedFrame() = default;
     EncryptedFrame(byte_t* buf, size_t sz) : Encrypted(buf, sz)
     {
     }
-    EncryptedFrame(size_t sz) : Encrypted(sz + OverheadSize)
+    EncryptedFrame(size_t sz)
+        : Encrypted(sz + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE)
     {
     }
 
@@ -68,7 +66,8 @@ namespace llarp
       // TODO: should we own otherKey?
       otherKey = other;
       frame    = new EncryptedFrame(buf.sz);
-      memcpy(frame->data + EncryptedFrame::OverheadSize, buf.base, buf.sz);
+      memcpy(frame->data + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE, buf.base,
+             buf.sz);
       user = u;
       llarp_threadpool_queue_job(worker, {this, &Encrypt});
     }
@@ -110,6 +109,6 @@ namespace llarp
       llarp_threadpool_queue_job(worker, {this, &Decrypt});
     }
   };
-}
+}  // namespace llarp
 
 #endif

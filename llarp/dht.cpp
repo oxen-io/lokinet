@@ -129,8 +129,21 @@ namespace llarp
         if(R.size())
           pending->Completed(&R[0]);
         else
-          pending->Completed(nullptr);
-
+        {
+          // iterate to next closest peer
+          Key_t nextPeer;
+          pending->exclude.insert(From);
+          if(dht.nodes->FindCloseExcluding(pending->target, nextPeer,
+                                           pending->exclude))
+          {
+            llarp::Info(pending->target, "was not found via ", From,
+                        " iterating to next peer ", nextPeer);
+            dht.LookupRouter(pending->target, pending->requestor, nextPeer,
+                             pending->job);
+          }
+          else
+            pending->Completed(nullptr);
+        }
         dht.RemovePendingLookup(From, txid);
         return true;
       }
@@ -335,7 +348,7 @@ namespace llarp
 
     SearchJob::SearchJob(const Key_t &asker, const Key_t &key,
                          llarp_router_lookup_job *j)
-        : started(llarp_time_now_ms()), requestor(asker), target(key), job(j)
+        : job(j), started(llarp_time_now_ms()), requestor(asker), target(key)
     {
     }
 
@@ -362,27 +375,54 @@ namespace llarp
     bool
     Bucket::FindClosest(const Key_t &target, Key_t &result) const
     {
-      auto itr = nodes.lower_bound(target);
-      if(itr == nodes.end())
-        return false;
-
-      result = itr->second.ID;
+      Key_t mindist;
+      mindist.Fill(0xff);
+      for(const auto &item : nodes)
+      {
+        auto curDist = item.first ^ target;
+        if(curDist < mindist)
+        {
+          mindist = curDist;
+          result  = item.first;
+        }
+      }
       return true;
     }
 
     bool
     Bucket::FindCloseExcluding(const Key_t &target, Key_t &result,
-                               const Key_t &exclude) const
+                               const std::set< Key_t > &exclude) const
     {
-      auto itr = nodes.lower_bound(target);
-      if(itr == nodes.end())
-        return false;
-      if(itr->second.ID == exclude)
-        ++itr;
-      if(itr == nodes.end())
-        return false;
-      result = itr->second.ID;
-      return true;
+      Key_t maxdist;
+      maxdist.Fill(0xff);
+      Key_t mindist;
+      mindist.Fill(0xff);
+      for(const auto &item : nodes)
+      {
+        if(exclude.find(item.first) != exclude.end())
+          continue;
+        auto curDist = item.first ^ target;
+        if(curDist < mindist)
+        {
+          mindist = curDist;
+          result  = item.first;
+        }
+      }
+      return mindist < maxdist;
+    }
+
+    void
+    Bucket::PutNode(const Node &v)
+    {
+      nodes[v.ID] = v;
+    }
+
+    void
+    Bucket::DelNode(const Key_t &k)
+    {
+      auto itr = nodes.find(k);
+      if(itr != nodes.end())
+        nodes.erase(itr);
     }
 
     Context::Context()
@@ -404,6 +444,7 @@ namespace llarp
       Context *ctx = static_cast< Context * >(u);
 
       ctx->CleanupTX();
+      ctx->ScheduleCleanupTimer();
     }
 
     void
@@ -477,18 +518,7 @@ namespace llarp
       {
         pendingTX[e].Completed(nullptr, true);
         RemovePendingLookup(e.requester, e.txid);
-        if(e.requester != ourKey && allowTransit)
-        {
-          // inform not found
-          llarp::DHTImmeidateMessage msg(e.requester);
-          msg.msgs.push_back(
-              new GotRouterMessage(e.requester, e.txid, nullptr));
-          llarp::Info("DHT reply to ", e.requester);
-          router->SendTo(e.requester, &msg);
-        }
       }
-
-      ScheduleCleanupTimer();
     }
 
     void
@@ -530,7 +560,7 @@ namespace llarp
     Context::LookupRouterViaJob(llarp_router_lookup_job *job)
     {
       Key_t peer;
-      if(nodes->FindCloseExcluding(job->target, peer, ourKey))
+      if(nodes->FindClosest(job->target, peer))
         LookupRouter(job->target, ourKey, peer, job);
       else if(job->hook)
       {
@@ -569,22 +599,18 @@ llarp_dht_context_free(struct llarp_dht_context *ctx)
 }
 
 void
-llarp_dht_put_local_router(struct llarp_dht_context *ctx, struct llarp_rc *rc)
+llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
 
 {
-  llarp::dht::Key_t k = rc->pubkey;
-  llarp::Debug("put router at ", k);
-  ctx->impl.nodes->nodes[k] = rc;
+  llarp::dht::Node n(rc);
+  ctx->impl.nodes->PutNode(n);
 }
 
 void
-llarp_dht_remove_local_router(struct llarp_dht_context *ctx, const byte_t *id)
+llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 {
-  auto &nodes = ctx->impl.nodes->nodes;
-  auto itr    = nodes.find(id);
-  if(itr == nodes.end())
-    return;
-  nodes.erase(itr);
+  llarp::dht::Key_t k = id;
+  ctx->impl.nodes->DelNode(k);
 }
 
 void
@@ -607,10 +633,11 @@ llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
 }
 
 void
-llarp_dh_lookup_router(struct llarp_dht_context *ctx,
-                       struct llarp_router_lookup_job *job)
+llarp_dht_lookup_router(struct llarp_dht_context *ctx,
+                        struct llarp_router_lookup_job *job)
 {
-  job->dht = ctx;
+  job->dht   = ctx;
+  job->found = false;
   llarp_logic_queue_job(ctx->parent->logic,
                         {job, &llarp::dht::Context::queue_router_lookup});
 }

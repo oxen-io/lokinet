@@ -65,9 +65,16 @@ namespace llarp
     }
 
     void
+    Fill(byte_t f)
+    {
+      for(size_t idx = 0; idx < sz; ++idx)
+        b[idx] = f;
+    }
+
+    void
     Zero()
     {
-      for(size_t idx = 0; sz < idx / 8; ++idx)
+      for(size_t idx = 0; idx * 8 < sz; ++idx)
         l[idx] = 0;
     }
 
@@ -129,7 +136,7 @@ namespace llarp
       return true;
     }
 
-   private:
+   protected:
     union {
       byte_t b[sz];
       uint64_t l[sz / 8];

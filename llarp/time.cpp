@@ -3,7 +3,7 @@
 
 namespace llarp
 {
-  typedef std::chrono::system_clock clock_t;
+  typedef std::chrono::steady_clock clock_t;
 
   template < typename Res, typename IntType >
   static IntType

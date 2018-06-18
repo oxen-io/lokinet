@@ -3,6 +3,7 @@
 #include <llarp/net.h>
 #include <llarp/time.h>
 #include <llarp/crypto.hpp>
+#include "address_info.hpp"
 #include "link/encoder.hpp"
 
 #include <sodium/crypto_sign_ed25519.h>
@@ -706,13 +707,7 @@ namespace iwp
             llarp_logic *l, const byte_t *seckey, const llarp::Addr &a)
         : udp(u), crypto(c), iwp(i), logic(l), addr(a), state(eInitial)
     {
-      if(seckey)
-        eph_seckey = seckey;
-      else
-      {
-        c->encryption_keygen(eph_seckey);
-      }
-
+      eph_seckey = seckey;
       llarp::Zero(&remote_router, sizeof(llarp_rc));
       crypto->randbytes(token, 32);
     }
@@ -755,6 +750,25 @@ namespace iwp
 
     static void
     handle_invalidate_timer(void *user);
+
+    bool
+    CheckRCValid()
+    {
+      // verify signatuire
+      if(!llarp_rc_verify_sig(crypto, &remote_router))
+        return false;
+
+      auto &list = remote_router.addrs->list;
+      if(list.size() == 0)  // the remote node is a client node so accept it
+        return true;
+      // check if the RC owns a pubkey that we are using
+      for(auto &ai : list)
+      {
+        if(memcmp(ai.enc_key, remote, PUBKEYSIZE) == 0)
+          return true;
+      }
+      return false;
+    }
 
     void
     pump()
@@ -862,12 +876,14 @@ namespace iwp
       return false;
     }
 
-    void
-    session_established()
+    bool
+    IsEstablished()
     {
-      EnterState(eEstablished);
-      llarp_logic_cancel_call(logic, establish_job_id);
+      return state == eEstablished;
     }
+
+    void
+    session_established();
 
     void
     on_session_start(const void *buf, size_t sz)
@@ -932,19 +948,7 @@ namespace iwp
     }
 
     static void
-    handle_verify_introack(iwp_async_introack *introack)
-    {
-      session *link = static_cast< session * >(introack->user);
-      if(introack->buf == nullptr)
-      {
-        // invalid signature
-        llarp::Error("introack verify failed from ", link->addr);
-        link->done();
-        return;
-      }
-      link->EnterState(eIntroAckRecv);
-      link->session_start();
-    }
+    handle_verify_introack(iwp_async_introack *introack);
 
     static void
     handle_generated_session_start(iwp_async_session_start *start)
@@ -996,10 +1000,10 @@ namespace iwp
           self->pump();
         }
         else
-          llarp::Error("invalid frame");
+          llarp::Error("invalid frame from ", self->addr);
       }
       else
-        llarp::Error("decrypt frame fail");
+        llarp::Error("decrypt frame fail from ", self->addr);
     }
 
     void
@@ -1332,7 +1336,7 @@ namespace iwp
     }
 
     session *
-    create_session(const llarp::Addr &src, const byte_t *seckey)
+    create_session(const llarp::Addr &src)
     {
       auto s  = new session(&udp, iwp, crypto, logic, seckey, src);
       s->serv = this;
@@ -1398,10 +1402,7 @@ namespace iwp
       if(itr != m_sessions.end())
       {
         llarp::Debug("removing session ", addr);
-        UnmapAddr(addr);
         session *s = static_cast< session * >(itr->second.impl);
-        m_sessions.erase(itr);
-        s->done();
         if(s->frames)
         {
           llarp::Warn("session has ", s->frames,
@@ -1410,6 +1411,8 @@ namespace iwp
         }
         else
           delete s;
+        m_sessions.erase(itr);
+        UnmapAddr(addr);
       }
     }
 
@@ -1475,7 +1478,7 @@ namespace iwp
       if(s == nullptr)
       {
         // new inbound session
-        s = link->create_session(*saddr, link->seckey);
+        s = link->create_session(*saddr);
         llarp::Debug("new inbound session from ", s->addr);
       }
       s->recv(buf, sz);
@@ -1517,22 +1520,29 @@ namespace iwp
                     " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
         return false;
       }
-      success = router->HandleRecvLinkMessage(parent, buf);
+      session *impl = static_cast< session * >(parent->impl);
+      success       = router->HandleRecvLinkMessage(parent, buf);
       if(success)
       {
-        session *impl = static_cast< session * >(parent->impl);
         if(id == 0)
         {
-          // send our LIM if we are an outbound session
-          if(impl->state == session::eSessionStartSent)
+          if(impl->CheckRCValid())
           {
-            impl->send_LIM();
+            if(!impl->IsEstablished())
+            {
+              impl->send_LIM();
+            }
           }
-          impl->serv->MapAddr(impl->addr, impl->remote_router.pubkey);
+          else
+          {
+            llarp::PubKey k = impl->remote_router.pubkey;
+            llarp::Warn("spoofed LIM from ", k);
+            impl->parent->close(impl->parent);
+            success = false;
+          }
         }
-        llarp::Info("handled message ", id);
       }
-      else
+      if(!success)
         llarp::Warn("failed to handle inbound message ", id);
     }
     else
@@ -1558,19 +1568,16 @@ namespace iwp
   }
 
   void
+  session::session_established()
+  {
+    EnterState(eEstablished);
+    serv->MapAddr(addr, remote_router.pubkey);
+    llarp_logic_cancel_call(logic, establish_job_id);
+  }
+
+  void
   session::done()
   {
-    if(establish_job_id)
-    {
-      llarp_logic_remove_call(logic, establish_job_id);
-    }
-    if(establish_job)
-    {
-      auto job     = establish_job;
-      job->link    = serv->parent;
-      job->session = nullptr;
-      job->result(job);
-    }
   }
 
   void
@@ -1629,9 +1636,9 @@ namespace iwp
     {
       llarp::Debug("message transmitted msgid=", msgid);
       session *impl = static_cast< session * >(parent->impl);
-      if(impl->state == session::eLIMSent && msgid == 0)
+      if(msgid == 0)
       {
-        // first message acked we are established?
+        // first message acked means we are established
         impl->session_established();
       }
       tx.erase(msgid);
@@ -1651,6 +1658,20 @@ namespace iwp
   {
     session *link = static_cast< session * >(s->impl);
     return link->serv->parent;
+  }
+
+  void
+  session::handle_verify_introack(iwp_async_introack *introack)
+  {
+    session *link = static_cast< session * >(introack->user);
+    if(introack->buf == nullptr)
+    {
+      // invalid signature
+      llarp::Error("introack verify failed from ", link->addr);
+      return;
+    }
+    link->EnterState(eIntroAckRecv);
+    link->session_start();
   }
 
   void
@@ -1823,7 +1844,7 @@ namespace iwp
       session *s = link->find_session(dst);
       if(s == nullptr)
       {
-        s = link->create_session(dst, nullptr);
+        s = link->create_session(dst);
         link->put_session(dst, s);
       }
       s->establish_job = job;

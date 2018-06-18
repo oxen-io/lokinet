@@ -5,20 +5,20 @@
 
 #if __FreeBSD__
 // kqueue / kevent
-#  include <sys/event.h>
-#  include <sys/time.h>
+#include <sys/event.h>
+#include <sys/time.h>
 #endif
 
-#if (__APPLE__ && __MACH__)
+#if(__APPLE__ && __MACH__)
 // kqueue / kevent
-#  include <sys/event.h>
-#  include <sys/time.h>
+#include <sys/event.h>
+#include <sys/time.h>
 #endif
 
 // MacOS needs this
 #ifndef SOCK_NONBLOCK
-#  include <fcntl.h>
-#  define SOCK_NONBLOCK O_NONBLOCK
+#include <fcntl.h>
+#define SOCK_NONBLOCK O_NONBLOCK
 #endif
 
 // original upstream
@@ -201,7 +201,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     llarp::Addr a(*addr);
     llarp::Info("bind to ", a);
     // FreeBSD handbook said to do this
-    if (addr->sa_family == AF_INET && INADDR_ANY)
+    if(addr->sa_family == AF_INET && INADDR_ANY)
       a._addr4.sin_addr.s_addr = htonl(INADDR_ANY);
 
     if(bind(fd, addr, slen) == -1)

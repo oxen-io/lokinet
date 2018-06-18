@@ -30,6 +30,8 @@ namespace llarp
     PathContext* context;
     RouterID from;
     LR_CommitRecord record;
+    TransitHopInfo info;
+    TransitHop hop;
 
     LRCMFrameDecrypt(PathContext* ctx, Decrypter* dec,
                      const LR_CommitMessage* commit)
@@ -50,6 +52,26 @@ namespace llarp
     }
 
     static void
+    AcceptLRCM(void* user)
+    {
+      LRCMFrameDecrypt* self = static_cast< LRCMFrameDecrypt* >(user);
+      llarp::Info("Accepted ", self->info);
+      self->context->PutPendingRelayCommit(self->info.upstream, self->info.txID,
+                                           self->info, self->hop);
+      size_t sz = self->frames.front().size;
+      // we pop the front element it was ours
+      self->frames.pop_front();
+      // put random on the end
+      // TODO: should this be an encrypted frame?
+      // TODO: should we change the size?
+      self->frames.emplace_back(sz);
+      self->frames.back().Randomize();
+      self->context->ForwardLRCM(self->info.upstream, self->frames, self->acks,
+                                 self->lastFrame);
+      delete self;
+    }
+
+    static void
     HandleDecrypted(llarp_buffer_t* buf, LRCMFrameDecrypt* self)
     {
       if(!buf)
@@ -66,47 +88,40 @@ namespace llarp
         delete self;
         return;
       }
-      TransitHopInfo info(self->from, self->record);
-      if(self->context->HasTransitHop(info))
+      self->info = TransitHopInfo(self->from, self->record);
+      if(self->context->HasTransitHop(self->info))
       {
-        llarp::Error("duplicate transit hop ", info);
+        llarp::Error("duplicate transit hop ", self->info);
         delete self;
         return;
       }
-      TransitHop hop;
       // choose rx id
       // TODO: check for duplicates
-      info.rxID.Randomize();
+      self->info.rxID.Randomize();
 
       // generate tx key as we are in a worker thread
       auto DH = self->context->Crypto()->dh_server;
-      if(!DH(hop.txKey, self->record.commkey,
+      if(!DH(self->hop.txKey, self->record.commkey,
              self->context->EncryptionSecretKey(), self->record.tunnelNonce))
       {
-        llarp::Error("LRCM DH Failed ", info);
+        llarp::Error("LRCM DH Failed ", self->info);
         delete self;
         return;
       }
       if(self->context->HopIsUs(self->record.nextHop))
       {
         // we are the farthest hop
-        llarp::Info("We are the farthest hop for ", info);
+        llarp::Info("We are the farthest hop for ", self->info);
+        // TODO: implement
+        delete self;
       }
       else
       {
-        llarp::Info("Accepted ", info);
-        self->context->PutPendingRelayCommit(info.upstream, info.txID, info,
-                                             hop);
-        size_t sz = self->frames.front().size;
-        // we pop the front element it was ours
-        self->frames.pop_front();
-        // put random on the end
-        // TODO: should this be an encrypted frame?
-        self->frames.emplace_back(sz);
-        self->frames.back().Randomize();
+        // TODO: generate rx path
+
         // forward upstream
-        self->context->ForwardLRCM(info.upstream, self->frames, self->acks,
-                                   self->lastFrame);
+        // XXX: we are still in the worker thread so post job to logic
+        llarp_logic_queue_job(self->context->Logic(), {self, &AcceptLRCM});
       }
     }
   };
@@ -149,6 +164,12 @@ namespace llarp
     return &m_Router->crypto;
   }
 
+  llarp_logic*
+  PathContext::Logic()
+  {
+    return m_Router->logic;
+  }
+
   byte_t*
   PathContext::EncryptionSecretKey()
   {
@@ -170,13 +191,13 @@ namespace llarp
     LR_CommitMessage* msg = new LR_CommitMessage;
     while(frames.size())
     {
-      msg->frames.push_back(frames.front());
-      frames.pop_front();
+      msg->frames.push_back(frames.back());
+      frames.pop_back();
     }
     while(acks.size())
     {
-      msg->acks.push_back(acks.front());
-      acks.pop_front();
+      msg->acks.push_back(acks.back());
+      acks.pop_back();
     }
     msg->lasthopFrame = lastHop;
     return m_Router->SendToOrQueue(nextHop, {msg});

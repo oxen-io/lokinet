@@ -282,6 +282,9 @@ namespace llarp
     llarp_crypto*
     Crypto();
 
+    llarp_logic*
+    Logic();
+
     byte_t*
     EncryptionSecretKey();
 

@@ -275,117 +275,52 @@ request a commit to relay traffic to another node.
 {
   a: "c",
   c: [ list, of, encrypted, frames ],
-  f: encrypted data for last hop ,
-  r: [ list, of, encrypted, acks ],
   v: 0
 }
 
 c and r MUST contain dummy records if the hop length is less than the maximum
 hop length.
 
-
 link relay commit record (LRCR)
 
-record requesting path with id p relay messages for 600 seconds to router
+record requesting relaying messages for 300 seconds to router
 on network who's i is equal to RC.k and decrypt data any messages using
 PKE(n, rc.K, c) as symettric key for encryption and decryption.
 
-additionally an ephemeral encryption keypair is made for the downstream
-direction.
+if w is provided and fits the required proof of work then the lifetime of
+the path is extended by w.y seconds
 
 {
   c: "<32 byte public encryption key used for upstream>",
   i: "<32 byte RC.k of next hop>",
   n: "<32 bytes nounce for key exchange>",
-  p: "<16 bytes tx path id>",
-  s: "<32 bytes symmettric key for encrypting reply downstream public key>",
-  u: "<24 bytes nonce for encrypting reply downstream public key>",
+  p: "<16 bytes path id>",
   v: 0,
-  w: proof of work (optional),
+  w: proof of work
 }
 
+w if provided is a dict with the following struct 
 
-if i is equal to RC.k then any LRDM.z values are decrypted and interpreted as
+{
+  v: 0,
+  y: uint32_seconds_extended_lifetime,
+  z: "<32 bytes nonce>"
+}
+
+the validity of the proof of work is that given 
+
+h = HS(BE(w))
+ 
+h has log_e(y) prefix of 0x00 
+
+y = 2 means prefix of 0x00
+y = 4 means prefix of 0x00 0x00
+y = 32 means prefix 0x00 0x00 0x00 0x00 0x00
+
+this proof of work requirement is subject to change 
+
+if i is equal to RC.k then any LRDM.x values are decrypted and interpreted as
 routing layer messages. This indicates that we are the farthest hop in the path.
-if we are the farthest hop s and u MUST be present and discarded.
-
-we decrypt the encrypted frame f, as encrypted to RC.e 
-
-if i is not equal to RC.k then forward the LRCM with first element removed
-and the last element holding our hop's LRAR, encrypted via
-
-x = SE(s, u, LRAR)
-h = MDS(x, s)
-
-h + x is stored as the ack and appended to the end of r and the first element of
-r is removed.
-
-
-link relay acknowledgement record (LRAR)
-
-{
-  c: "<32 bytes public encryption key>",
-  r: "<16 bytes rx path id>",
-}
-
-all parameters in the LRAR are chosen by the hop
-
-it puts an association (rxid, next_hop) -> ( prev_hop, LRAR.c )
-
-when we get an LCAM from next_hop with rxid we will know the parameters for it.
-
-
-plaintext contents of f is:
-
-[ PRI, PRI, PRI ...]
-
-path reply info (PRI):
-
-{
-  n: "<24 bytes nonce>",
-  s: "<32 bytes symmettric key>",
-  v: 0
-}
-
-
-
-link commit acknowledgement message (LCAM)
-
-sent in the opposite direction of an LRCM by the farthest hop in the path.
-this establishes the downstream keys.
-
-{
-  a: "a",
-  c: [ list, of, encrypted, LCAR],
-  l: encrypted frame for path creator,
-  t: "<16 bytes tx hop>",
-  v: 0
-}
-
-the recipiant's public key for frame encryption of l is obtained from the LRCM's
-last hop frame. the sender's public key is RC.e of the farthest hop.
-
-each entry in c is encrypted using the symettric key and nonce provided from the
-corrisponding LRCM previously received.
-
-link commit acknowledgement record (LCAR)
-
-a record in an LCAM
-
-{
-  c: "<32 bytes public encryption key for downstream traffic>",
-  n: "<32 bytes nonce for kdf>",
-  r: "<16 bytes next rx path id>",
-  v: 0
-}
-
-downstream key is generated via:
-
-k_down = PKE(LRAR.c, LCAM.c, LCAM.n)
-
-next a LCAM is sent to prev_hop with LCAR.r as rxid with the first element
-popped off and the last element filled with random.
-
 
 link relay upstream message (LRUM)
 
@@ -393,59 +328,51 @@ sent to relay data via upstream direction of a previously created path.
 
 {
   a: "u",
-  p: "<16 bytes tx path id>",
+  p: "<16 bytes path id>",
   v: 0,
   x: "<N bytes encrypted x1 value>",
-  y: "<32 bytes nonce>",
-  z: "<discard>"
+  y: "<32 bytes nonce>"
 }
 
-plaintext x1 is a routing message
+x1 = SD(k, y, x)
 
-
-x1 = BD(SD(k_up, y[0:24], x))
-new_y = HS(y + k_up)
-verify new_y == x1.n
-
-in the event we get a path data message (PDM), transmit a LRUM to next hop 
+if we are the farthest hop, process x1 as a routing message
+otherwise transmit a LRUM to the next hop
 
 {
   a: "u",
-  p: x1.P,
-  v: x1.V,
-  x: x1.D,
-  y: x1.N,
-  z: RAND(x1.R)
+  p: p,
+  v: 0,
+  x: x1,
+  y: HS(y)
 }
-
-if we are the farthest hop, process x1 as a routing message
-
 
 link relay downstream message (LRDM)
 
 sent to relay data via downstream direction of a previously created path.
 
-same as LRUM but a is 'd' and p/x1.p refer to the rx path id
-
-link relay exit message (LRXM) [under construction]
-
-sent to exit a previously commited path before it expires.
-verify signature using cancel key c in relay commit message.
-
 {
-  a: "x",
-  b: [ list, of, ecrypted, exit, records ],
-  v: 0
+  a: "d",
+  p: "<16 bytes path id>",
+  v: 0,
+  x: "<N bytes encrypted x1 value>",
+  y: "<32 bytes nonce>"
 }
 
-link relay exit record (LRXR)
+if we are the creator of the path decrypt x for each hop key k
+
+x = SD(k, y, x)
+
+otherwise transmit LRDM to next hop
+
+x1 = SE(k, y, x)
 
 {
-  c: "x",
-  p: "<16 bytes tx path id>",
+  a: "d",
+  p: p,
   v: 0,
-  x: "<N bytes padding>",
-  z: "<64 bytes signature>"
+  x: x1,
+  y: y
 }
 
 link immediate dht message (LIDM):

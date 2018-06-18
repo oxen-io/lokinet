@@ -10,6 +10,7 @@
 #include <array>
 #include <functional>
 #include <map>
+#include <set>
 #include <unordered_map>
 #include <vector>
 
@@ -33,8 +34,8 @@ namespace llarp
       operator^(const Key_t& other) const
       {
         Key_t dist;
-        for(size_t idx = 0; idx < 32; ++idx)
-          dist[idx] = (*this)[idx] ^ other[idx];
+        for(size_t idx = 0; idx < 4; ++idx)
+          dist.l[idx] = l[idx] ^ other.l[idx];
         return dist;
       }
 
@@ -77,11 +78,11 @@ namespace llarp
       bool
       IsExpired(llarp_time_t now) const;
 
-     private:
+      llarp_router_lookup_job* job = nullptr;
       llarp_time_t started;
       Key_t requestor;
       Key_t target;
-      llarp_router_lookup_job* job;
+      std::set< Key_t > exclude;
     };
 
     struct XorMetric
@@ -93,7 +94,7 @@ namespace llarp
       bool
       operator()(const Key_t& left, const Key_t& right) const
       {
-        return (us ^ left) < right;
+        return (us ^ left) < (us ^ right);
       };
     };
 
@@ -136,7 +137,13 @@ namespace llarp
 
       bool
       FindCloseExcluding(const Key_t& target, Key_t& result,
-                         const Key_t& exclude) const;
+                         const std::set< Key_t >& exclude) const;
+
+      void
+      PutNode(const Node& val);
+
+      void
+      DelNode(const Key_t& key);
 
       BucketStorage_t nodes;
     };

@@ -20,8 +20,8 @@ struct llarp_nodedb
   }
 
   llarp_crypto *crypto;
-  // std::map< llarp::pubkey, llarp_rc * > entries;
-  std::unordered_map< llarp::PubKey, llarp_rc *, llarp::PubKeyHash > entries;
+  // std::map< llarp::pubkey, llarp_rc  > entries;
+  std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKeyHash > entries;
   fs::path nodePath;
 
   void
@@ -30,15 +30,21 @@ struct llarp_nodedb
     auto itr = entries.begin();
     while(itr != entries.end())
     {
-      delete itr->second;
+      llarp_rc_clear(&itr->second);
       itr = entries.erase(itr);
     }
   }
 
   llarp_rc *
-  getRC(llarp::PubKey pk)
+  getRC(const llarp::PubKey &pk)
   {
-    return entries[pk];
+    return &entries[pk];
+  }
+
+  bool
+  Has(const llarp::PubKey &pk)
+  {
+    return entries.find(pk) != entries.end();
   }
 
   bool
@@ -65,16 +71,14 @@ struct llarp_nodedb
     // serialize both and memcmp
     byte_t nodetmp[MAX_RC_SIZE];
     auto nodebuf = llarp::StackBuffer< decltype(nodetmp) >(nodetmp);
-    if(llarp_rc_bencode(entries[pk], &nodebuf))
+    if(llarp_rc_bencode(&entries[pk], &nodebuf))
     {
       byte_t paramtmp[MAX_RC_SIZE];
       auto parambuf = llarp::StackBuffer< decltype(paramtmp) >(paramtmp);
       if(llarp_rc_bencode(rc, &parambuf))
       {
-        if(memcmp(&parambuf, &nodebuf, MAX_RC_SIZE) == 0)
-        {
-          return true;
-        }
+        if(nodebuf.sz == parambuf.sz)
+          return memcmp(&parambuf, &nodebuf, parambuf.sz) == 0;
       }
     }
     return false;
@@ -105,13 +109,16 @@ struct llarp_nodedb
     // extract pk from rc
     llarp::PubKey pk = rc->pubkey;
 
-    // set local db
-    entries[pk] = rc;
+    // set local db entry to have a copy we own
+    llarp_rc entry;
+    llarp::Zero(&entry, sizeof(entry));
+    llarp_rc_copy(&entry, rc);
+    entries[pk] = entry;
 
-    if(llarp_rc_bencode(rc, &buf))
+    if(llarp_rc_bencode(&entry, &buf))
     {
       buf.sz        = buf.cur - buf.base;
-      auto filepath = getRCFilePath(rc->pubkey);
+      auto filepath = getRCFilePath(pk);
       llarp::Debug("saving RC.pubkey ", filepath);
       std::ofstream ofs(
           filepath,
@@ -156,10 +163,13 @@ struct llarp_nodedb
   loadSubdir(const fs::path &dir)
   {
     ssize_t sz = 0;
-    for(auto &path : fs::directory_iterator(dir))
+    fs::directory_iterator i(dir);
+    auto itr = i.begin();
+    while(itr != itr.end())
     {
-      if(loadfile(path))
+      if(loadfile(*itr))
         sz++;
+      ++itr;
     }
     return sz;
   }
@@ -185,19 +195,18 @@ struct llarp_nodedb
     f.read((char *)buf.base, sz);
     buf.sz = sz;
 
-    llarp_rc *rc = new llarp_rc;
-    llarp::Zero(rc, sizeof(llarp_rc));
-    if(llarp_rc_bdecode(rc, &buf))
+    llarp_rc rc;
+    llarp::Zero(&rc, sizeof(llarp_rc));
+    if(llarp_rc_bdecode(&rc, &buf))
     {
-      if(llarp_rc_verify_sig(crypto, rc))
+      if(llarp_rc_verify_sig(crypto, &rc))
       {
-        llarp::PubKey pk(rc->pubkey);
+        llarp::PubKey pk(rc.pubkey);
         entries[pk] = rc;
         return true;
       }
     }
-    llarp_rc_free(rc);
-    delete rc;
+    llarp_rc_free(&rc);
     return false;
   }
 
@@ -353,6 +362,15 @@ llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 {
   // call in the disk io thread so we don't bog down the others
   llarp_threadpool_queue_job(job->diskworker, {job, &nodedb_async_load_rc});
+}
+
+struct llarp_rc *
+llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
+{
+  if(n->Has(pk))
+    return n->getRC(pk);
+  else
+    return nullptr;
 }
 
 }  // end extern

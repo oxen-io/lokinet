@@ -7,13 +7,7 @@
             "label": "build",
             "type": "shell",
             "command": "make",
-            "group": "build",
-            "osx": {
-                "command": "make CXX=g++-8 CC=gcc-8"
-            },
-            "problemMatcher": [
-                "$gcc"
-            ]
+            "group": "build"
         }
     ]
 }
