@@ -43,12 +43,12 @@ llarp_dht_set_msg_handler(struct llarp_dht_context* ctx,
 
 struct llarp_router_lookup_job;
 
-typedef void (*llarp_rotuer_lookup_handler)(struct llarp_router_lookup_job*);
+typedef void (*llarp_router_lookup_handler)(struct llarp_router_lookup_job*);
 
 struct llarp_router_lookup_job
 {
   void* user;
-  llarp_rotuer_lookup_handler hook;
+  llarp_router_lookup_handler hook;
   struct llarp_dht_context* dht;
   byte_t target[PUBKEYSIZE];
   bool found;
