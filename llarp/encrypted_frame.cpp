@@ -2,8 +2,6 @@
 #include <llarp/encrypted_frame.hpp>
 #include "logger.hpp"
 
-#define OverheadSize (PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE)
-
 namespace llarp
 {
   Encrypted::Encrypted(const byte_t* buf, size_t sz)
