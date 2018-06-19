@@ -29,19 +29,19 @@ namespace llarp
   bool
   Context::ReloadConfig()
   {
-    llarp::Info("loading config at ", configfile);
-    if(!llarp_load_config(config, configfile.c_str()))
+    //llarp::Info("loading config at ", configfile);
+    if(llarp_load_config(config, configfile.c_str()))
     {
-      llarp_config_iterator iter;
-      iter.user  = this;
-      iter.visit = &iter_config;
-      llarp_config_iter(config, &iter);
-      llarp::Info("config loaded");
-      return true;
+      llarp_free_config(&config);
+      llarp::Error("failed to load config file ", configfile);
+      return false;
     }
-    llarp_free_config(&config);
-    llarp::Error("failed to load config file ", configfile);
-    return false;
+    llarp_config_iterator iter;
+    iter.user  = this;
+    iter.visit = &iter_config;
+    llarp_config_iter(config, &iter);
+    llarp::Info("config [", configfile, "] loaded");
+    return true;
   }
 
   void
@@ -78,10 +78,8 @@ namespace llarp
   }
 
   int
-  Context::Run()
+  Context::LoadDatabase()
   {
-    llarp::Info("starting up");
-    llarp_ev_loop_alloc(&mainloop);
     llarp_crypto_libsodium_init(&crypto);
     nodedb = llarp_nodedb_new(&crypto);
     if(!nodedb_dir[0])
@@ -96,15 +94,37 @@ namespace llarp
       llarp::Error("nodedb_dir is incorrect");
       return 0;
     }
-    llarp::Info("nodedb_dir configured!");
+    //llarp::Info("nodedb_dir [", nodedb_dir, "] configured!");
     ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir);
-    llarp::Info("nodedb_dir loaded ", loaded, " RCs");
+    llarp::Info("nodedb_dir loaded ", loaded, " RCs from [", nodedb_dir, "]");
     if(loaded < 0)
     {
       // shouldn't be possible
       llarp::Error("nodedb_dir directory doesn't exist");
       return 0;
     }
+    return 1;
+  }
+
+  int
+  Context::IterateDatabase(struct llarp_nodedb_iter i)
+  {
+    return llarp_nodedb_iterate_all(nodedb, i);
+  }
+
+  bool
+  Context::PutDatabase(struct llarp_rc *rc)
+  {
+    return llarp_nodedb_put_rc(nodedb, rc);
+  }
+
+
+  int
+  Context::Run()
+  {
+    llarp::Info("starting up");
+    this->LoadDatabase();
+    llarp_ev_loop_alloc(&mainloop);
 
     // ensure worker thread pool
     if(!worker && !singleThreaded)
@@ -289,6 +309,25 @@ llarp_main_run(struct llarp_main *ptr)
 {
   return ptr->ctx->Run();
 }
+
+int
+llarp_main_loadDatabase(struct llarp_main *ptr)
+{
+  return ptr->ctx->LoadDatabase();
+}
+
+int
+llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i)
+{
+  return ptr->ctx->IterateDatabase(i);
+}
+
+bool
+llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc)
+{
+  return ptr->ctx->PutDatabase(rc);
+}
+
 
 void
 llarp_main_free(struct llarp_main *ptr)
