@@ -591,7 +591,7 @@ namespace iwp
     void
     queue_tx(uint64_t id, transit_message *msg)
     {
-      tx[id] = msg;
+      tx.insert(std::make_pair(id, msg));
       msg->generate_xmit(sendqueue, txflags);
     }
 
@@ -1921,7 +1921,7 @@ namespace iwp
       delete link;
     }
   }
-}
+}  // namespace iwp
 
 extern "C" {
 void

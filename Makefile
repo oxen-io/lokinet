@@ -62,7 +62,6 @@ testnet-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug
 
 testnet-build: testnet-configure
-	ninja clean
 	ninja
 
 testnet: testnet-build

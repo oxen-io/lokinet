@@ -5,11 +5,14 @@
 #include <llarp/time.h>
 #include <llarp/aligned.hpp>
 #include <llarp/crypto.hpp>
+#include <llarp/endpoint.hpp>
 #include <llarp/messages/relay_ack.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/path_types.hpp>
 #include <llarp/router_id.hpp>
 
+#include <list>
+#include <map>
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -91,6 +94,14 @@ namespace llarp
 
     bool
     Expired(llarp_time_t now) const;
+
+    // forward data in upstream direction
+    void
+    ForwardUpstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
+
+    // forward data in downstream direction
+    void
+    ForwardDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
   };
 
   /// configuration for a single hop when building a path
@@ -113,12 +124,35 @@ namespace llarp
     PathHopConfig();
   };
 
+  enum PathStatus
+  {
+    ePathBuilding,
+    ePathEstablished,
+    ePathTimeout,
+    ePathExpired
+  };
+
+  /// A path we made
   struct Path
   {
     typedef std::vector< PathHopConfig > HopList;
     HopList hops;
     llarp_time_t buildStarted;
+    PathStatus status;
+
     Path(llarp_path_hops* path);
+
+    void
+    EncryptAndSend(llarp_buffer_t buf, llarp_router* r);
+
+    void
+    DecryptAndRecv(llarp_buffer_t buf, IEndpointHandler* handler);
+
+    const PathID_t&
+    PathID() const;
+
+    RouterID
+    Upstream();
   };
 
   template < typename User >
@@ -132,7 +166,7 @@ namespace llarp
     llarp_threadpool* worker = nullptr;
     llarp_logic* logic       = nullptr;
     llarp_crypto* crypto     = nullptr;
-    LR_CommitMessage LRCM;
+    LR_CommitMessage* LRCM   = nullptr;
 
     static void
     HandleDone(void* user)
@@ -157,6 +191,7 @@ namespace llarp
                                  hop.commkey))
       {
         llarp::Error("Failed to generate shared key for path build");
+        delete ctx->user;
         delete ctx;
         return;
       }
@@ -165,7 +200,7 @@ namespace llarp
 
       LR_CommitRecord record;
 
-      auto& frame = ctx->LRCM.frames[ctx->idx];
+      auto& frame = ctx->LRCM->frames[ctx->idx];
       ++ctx->idx;
       if(ctx->idx < ctx->path->hops.size())
       {
@@ -180,6 +215,7 @@ namespace llarp
       {
         // failed to encode?
         llarp::Error("Failed to generate Commit Record");
+        delete ctx->user;
         delete ctx;
         return;
       }
@@ -210,11 +246,12 @@ namespace llarp
       user   = u;
       result = func;
       worker = pool;
+      LRCM   = new LR_CommitMessage;
 
       for(size_t idx = 0; idx < MAXHOPS; ++idx)
       {
-        LRCM.frames.emplace_back(256);
-        LRCM.frames.back().Randomize();
+        LRCM->frames.emplace_back(256);
+        LRCM->frames.back().Randomize();
       }
       llarp_threadpool_queue_job(pool, {this, &GenerateNextKey});
     }
@@ -225,56 +262,6 @@ namespace llarp
     ePathBuildSuccess,
     ePathBuildTimeout,
     ePathBuildReject
-  };
-
-  /// path selection algorithm
-  struct IPathSelectionAlgorithm
-  {
-    virtual ~IPathSelectionAlgorithm(){};
-    /// select full path given an empty hop list to end at target
-    virtual bool
-    SelectFullPathTo(Path::HopList& hops, const RouterID& target) = 0;
-
-    /// report to path builder the result of a path build
-    /// can be used to "improve" path building algoirthm in the
-    /// future
-    virtual void
-    ReportPathBuildStatus(const Path::HopList& hops, const RouterID& target,
-                          PathBuildStatus status){};
-  };
-
-  class PathBuildJob
-  {
-   public:
-    PathBuildJob(llarp_router* router, IPathSelectionAlgorithm* selector);
-    ~PathBuildJob();
-
-    void
-    Start();
-
-   private:
-    typedef AsyncPathKeyExchangeContext< PathBuildJob > KeyExchanger;
-
-    LR_CommitMessage*
-    BuildLRCM();
-
-    static void
-    KeysGenerated(KeyExchanger* ctx);
-
-    llarp_router* router;
-    IPathSelectionAlgorithm* m_HopSelector;
-    KeyExchanger m_KeyExchanger;
-  };
-
-  /// a pool of paths for a hidden service
-  struct PathPool
-  {
-    PathPool(llarp_router* router);
-    ~PathPool();
-
-    /// build a new path to a router by identity key
-    PathBuildJob*
-    BuildNewPathTo(const RouterID& router);
   };
 
   struct PathContext
@@ -300,27 +287,29 @@ namespace llarp
     bool
     HandleRelayCommit(const LR_CommitMessage* msg);
 
+    bool
+    HandleRelayAck(const LR_AckMessage* msg);
+
     void
     PutTransitHop(const TransitHop& hop);
 
     bool
     ForwardLRCM(const RouterID& nextHop, std::deque< EncryptedFrame >& frames);
 
-    void
-    ForwradLRUM(const PathID_t& id, const RouterID& from, llarp_buffer_t X,
-                const TunnelNonce& nonce);
-
-    void
-    ForwradLRDM(const PathID_t& id, const RouterID& from, llarp_buffer_t X,
-                const TunnelNonce& nonce);
-
     bool
     HopIsUs(const PubKey& k) const;
+
+    void
+    AddOwnPath(Path* p);
 
     typedef std::unordered_multimap< PathID_t, TransitHop, PathIDHash >
         TransitHopsMap_t;
 
     typedef std::pair< std::mutex, TransitHopsMap_t > SyncTransitMap_t;
+
+    typedef std::map< PathID_t, Path* > OwnedPathsMap_t;
+
+    typedef std::pair< std::mutex, OwnedPathsMap_t > SyncOwnedPathsMap_t;
 
     llarp_threadpool*
     Worker();
@@ -340,6 +329,7 @@ namespace llarp
    private:
     llarp_router* m_Router;
     SyncTransitMap_t m_TransitPaths;
+    SyncOwnedPathsMap_t m_OurPaths;
 
     bool m_AllowTransit;
   };

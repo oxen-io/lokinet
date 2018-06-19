@@ -10,7 +10,7 @@ namespace llarp
     for(size_t idx = 0; idx < h->numHops; ++idx)
     {
       hops.emplace_back();
-      llarp_rc_copy(&hops[idx].router, &h->routers[idx]);
+      llarp_rc_copy(&hops[idx].router, &h->hops[idx].router);
     }
   }
 
@@ -101,6 +101,12 @@ namespace llarp
     map.second.emplace(k, v);
   }
 
+  void
+  PathContext::AddOwnPath(Path* path)
+  {
+    MapPut(m_OurPaths, path->PathID(), path);
+  }
+
   bool
   PathContext::HasTransitHop(const TransitHopInfo& info)
   {
@@ -148,4 +154,17 @@ namespace llarp
       : pathID(record.pathid), upstream(record.nextHop), downstream(down)
   {
   }
+
+  const PathID_t&
+  Path::PathID() const
+  {
+    return hops[0].pathID;
+  }
+
+  RouterID
+  Path::Upstream()
+  {
+    return hops[0].router.pubkey;
+  }
+
 }  // namespace llarp

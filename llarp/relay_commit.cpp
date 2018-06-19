@@ -237,7 +237,7 @@ namespace llarp
       llarp::Info("Accepted ", self->hop.info);
       self->context->PutTransitHop(self->hop);
 
-      size_t sz = self->frames.front().size;
+      size_t sz = self->frames.front().size();
       // we pop the front element it was ours
       self->frames.pop_front();
       // put our response on the end

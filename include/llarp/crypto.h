@@ -26,6 +26,7 @@ extern "C" {
 #define SIGSIZE 64
 #define TUNNONCESIZE 32
 #define HMACSIZE 32
+#define PATHIDSIZE 16
 
 /*
 typedef byte_t llarp_pubkey_t[PUBKEYSIZE];

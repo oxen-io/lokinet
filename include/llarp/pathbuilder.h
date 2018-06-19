@@ -49,10 +49,8 @@ struct llarp_pathbuild_job
   struct llarp_pathbuilder_context* context;
   // path hop selection
   llarp_pathbuilder_select_hop_func selectHop;
-  // result handler
-  llarp_pathbuilder_hook result;
-  // encryption secret key for hidden service
-  byte_t* secretkey;
+  // called when the path build started
+  llarp_pathbuilder_hook pathBuildStarted;
   // path
   struct llarp_path_hops hops;
 };

@@ -292,7 +292,6 @@ nodedb_async_load_rc(void *user)
 }
 
 extern "C" {
-
 struct llarp_nodedb *
 llarp_nodedb_new(struct llarp_crypto *crypto)
 {
@@ -352,7 +351,8 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
 void
 llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
 {
-  // switch to crypto threadpool and continue with crypto_threadworker_verifyrc
+  // switch to crypto threadpool and continue with
+  // crypto_threadworker_verifyrc
   llarp_threadpool_queue_job(job->cryptoworker,
                              {job, &crypto_threadworker_verifyrc});
 }
@@ -371,6 +371,26 @@ llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
     return n->getRC(pk);
   else
     return nullptr;
+}
+
+size_t
+llarp_nodedb_num_loaded(struct llarp_nodedb *n)
+{
+  return n->entries.size();
+}
+
+void
+llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *result,
+                               size_t N)
+{
+  /// TODO: check for "guard" status for N = 0?
+  auto sz  = n->entries.size();
+  auto itr = n->entries.begin();
+  if(sz > 1)
+  {
+    std::advance(itr, rand() % (sz - 1));
+  }
+  llarp_rc_copy(result, &itr->second);
 }
 
 }  // end extern

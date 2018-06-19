@@ -9,37 +9,44 @@ from configparser import ConfigParser as CP
 
 import os
 
-svcNodeName = lambda id : 'svc-node-%03d' % id
-clientNodeName = lambda id : 'client-node-%03d' % id
+
+def svcNodeName(id): return 'svc-node-%03d' % id
+
+
+def clientNodeName(id): return 'client-node-%03d' % id
+
 
 def main():
     ap = AP()
     ap.add_argument('--dir', type=str, default='testnet_tmp')
-    ap.add_argument('--svc', type=int, default=20, help='number of service nodes')
+    ap.add_argument('--svc', type=int, default=20,
+                    help='number of service nodes')
     ap.add_argument('--baseport', type=int, default=19000)
-    ap.add_argument('--clients', type=int, default=200, help='number of client nodes')
+    ap.add_argument('--clients', type=int, default=200,
+                    help='number of client nodes')
     ap.add_argument('--bin', type=str, required=True)
     ap.add_argument('--out', type=str, required=True)
-    ap.add_argument('--connect', type=int, default=5)
-    
+    ap.add_argument('--connect', type=int, default=10)
+
     args = ap.parse_args()
 
     basedir = os.path.abspath(args.dir)
-    
+
     for nodeid in range(args.svc):
         config = CP()
         config['bind'] = {
-            'lo' : str(args.baseport + nodeid)
+            'lo': str(args.baseport + nodeid)
         }
         config['netdb'] = {
-            'dir' : 'netdb'
+            'dir': 'netdb'
         }
         config['connect'] = {}
         for otherid in range(args.svc):
             if otherid != nodeid:
                 name = svcNodeName(otherid)
-                config['connect'][name] = os.path.join(basedir, name, 'rc.signed')
-        
+                config['connect'][name] = os.path.join(
+                    basedir, name, 'rc.signed')
+
         d = os.path.join(args.dir, svcNodeName(nodeid))
         if not os.path.exists(d):
             os.mkdir(d)
@@ -50,22 +57,22 @@ def main():
     for nodeid in range(args.clients):
         config = CP()
         config['netdb'] = {
-            'dir' : 'netdb'
+            'dir': 'netdb'
         }
         config['connect'] = {}
         for otherid in range(args.svc):
             if otherid % args.connect == 0:
                 name = svcNodeName(otherid)
-                config['connect'][name] = os.path.join(basedir, name, 'rc.signed')
-        
+                config['connect'][name] = os.path.join(
+                    basedir, name, 'rc.signed')
+
         d = os.path.join(args.dir, clientNodeName(nodeid))
         if not os.path.exists(d):
             os.mkdir(d)
         fp = os.path.join(d, 'daemon.ini')
         with open(fp, 'w') as f:
             config.write(f)
-        
-    
+
     with open(args.out, 'w') as f:
         f.write('''[program:svc-node]
 directory = {}
@@ -86,6 +93,7 @@ process_name = client-node-%(process_num)03d
 numprocs = {}
 '''.format(os.path.join(args.dir, 'client-node-%(process_num)03d'), args.bin, args.clients))
         f.write('[supervisord]\ndirectory=.\n')
-        
+
+
 if __name__ == '__main__':
     main()

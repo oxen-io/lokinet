@@ -33,6 +33,7 @@ llarp_router::llarp_router()
     , paths(this)
     , dht(llarp_dht_context_new(this))
     , inbound_msg_parser(this)
+    , explorePool(llarp_pathbuilder_context_new(this, dht))
 
 {
   llarp_rc_clear(&rc);
@@ -53,7 +54,7 @@ llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
 
 bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
-                            std::vector< llarp::ILinkMessage * > msgs)
+                            llarp::ILinkMessage *msg)
 {
   llarp_link *chosen = nullptr;
   if(!outboundLink->has_session_to(outboundLink, remote))
@@ -70,11 +71,9 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   else
     chosen = outboundLink;
 
-  for(const auto &msg : msgs)
-  {
-    // this will create an entry in the obmq if it's not already there
-    outboundMesssageQueue[remote].push(msg);
-  }
+  // this will create an entry in the obmq if it's not already there
+
+  outboundMesssageQueue[remote].push(msg);
 
   if(!chosen)
   {
@@ -360,12 +359,42 @@ llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
 }
 
 void
+llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
+{
+  delete job;
+}
+
+void
+llarp_router::BuildExploritoryPath()
+{
+  llarp_pathbuild_job *job = new llarp_pathbuild_job;
+  job->context             = explorePool;
+  job->selectHop           = selectHopFunc;
+  job->hops.numHops        = 4;
+  job->user                = this;
+  job->pathBuildStarted    = &HandleExploritoryPathBuildStarted;
+  llarp_pathbuilder_build_path(job);
+}
+
+void
 llarp_router::Tick()
 {
   llarp::Debug("tick router");
   paths.ExpirePaths();
-  llarp_pathbuild_job job;
-  llarp_pathbuilder_build_path(&job);
+  // TODO: don't do this if we have enough paths already
+  if(inboundLinks.size() == 0)
+  {
+    auto N = llarp_nodedb_num_loaded(nodedb);
+    if(N > 5)
+    {
+      BuildExploritoryPath();
+    }
+    else
+    {
+      llarp::Warn("not enough nodes known to build exploritory paths, have ", N,
+                  " nodes");
+    }
+  }
   llarp_link_session_iter iter;
   iter.user  = this;
   iter.visit = &send_padded_message;

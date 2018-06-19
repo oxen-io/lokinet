@@ -56,6 +56,11 @@ llarp_nodedb_get_random_rc(struct llarp_nodedb *n, struct llarp_rc *result);
 void
 llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *result,
                                size_t N);
+
+/// return number of RC loaded
+size_t
+llarp_nodedb_num_loaded(struct llarp_nodedb *n);
+
 /**
    put an rc into the node db
    overwrites with new contents if already present
