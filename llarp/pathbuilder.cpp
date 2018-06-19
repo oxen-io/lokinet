@@ -76,6 +76,11 @@ llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
 void
 llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
 {
+  if (!job->context)
+  {
+    llarp::Error("failed to build path because no context is set in job");
+    return;
+  }
   job->router = job->context->router;
   llarp_logic_queue_job(job->router->logic,
                         {job, &llarp::pathbuilder_start_build});
