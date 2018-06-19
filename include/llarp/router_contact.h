@@ -69,6 +69,9 @@ llarp_rc_clear(struct llarp_rc *rc);
 bool
 llarp_rc_addr_list_iter(struct llarp_ai_list_iter *iter, struct llarp_ai *ai);
 
+struct llarp_rc *
+llarp_rc_read(const char *fpath);
+  
 bool
 llarp_rc_write(struct llarp_rc *rc, const char *our_rc_file);
 
