@@ -43,7 +43,7 @@ typedef byte_t llarp_tunnel_nonce_t[TUNNONCESIZE];
 
 /// label functors
 
-/// PKE(result, publickey, nonce, secretkey)
+/// PKE(result, publickey, secretkey, nonce)
 typedef bool (*llarp_path_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
 
 /// TKE(result publickey, secretkey, nonce)

@@ -204,10 +204,14 @@ namespace llarp
     std::size_t
     operator()(Addr const& a) const noexcept
     {
+      if(a.af() == AF_INET)
+      {
+        return a.port() + a.addr4()->s_addr;
+      }
       uint8_t empty[16] = {0};
       return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();
     }
   };
-}
+}  // namespace llarp
 
 #endif

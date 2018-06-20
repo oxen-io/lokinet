@@ -27,10 +27,8 @@ namespace iwp
   {
     iwp_async_keygen *keygen = static_cast< iwp_async_keygen * >(user);
     keygen->iwp->crypto->encryption_keygen(keygen->keybuf);
-    llarp_thread_job job;
-    job.user = user;
-    job.work = &inform_keygen;
-    llarp_logic_queue_job(keygen->iwp->logic, job);
+    keygen->hook(keygen);
+    // llarp_logic_queue_job(keygen->iwp->logic, job);
   }
 
   void
@@ -71,7 +69,8 @@ namespace iwp
     buf.sz   = intro->sz - 32;
     crypto->hmac(intro->buf, buf, sharedkey);
     // inform result
-    llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_intro});
+    intro->hook(intro);
+    // llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_intro});
   }
 
   void
@@ -128,7 +127,7 @@ namespace iwp
   {
     iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
     auto crypto                  = introack->iwp->crypto;
-    auto logic                   = introack->iwp->logic;
+    // auto logic                   = introack->iwp->logic;
 
     llarp::ShortHash digest;
     llarp::SharedSecret sharedkey;
@@ -165,7 +164,8 @@ namespace iwp
       // copy token
       memcpy(introack->token, token, 32);
     }
-    llarp_logic_queue_job(logic, {introack, &inform_introack});
+    introack->hook(introack);
+    // llarp_logic_queue_job(logic, {introack, &inform_introack});
   }
 
   void
@@ -193,8 +193,9 @@ namespace iwp
     buf.sz   = introack->sz - 32;
     buf.cur  = buf.base;
     crypto->hmac(introack->buf, buf, sharedkey);
-
-    llarp_logic_queue_job(introack->iwp->logic, {introack, &inform_introack});
+    introack->hook(introack);
+    // llarp_logic_queue_job(introack->iwp->logic, {introack,
+    // &inform_introack});
   }
 
   void
@@ -217,7 +218,7 @@ namespace iwp
     auto hmac      = crypto->hmac;
     auto encrypt   = crypto->xchacha20;
 
-    auto logic = session->iwp->logic;
+    // auto logic = session->iwp->logic;
     auto a_sK  = session->secretkey;
     auto b_K   = session->remote_pubkey;
     auto N     = session->nonce;
@@ -251,8 +252,8 @@ namespace iwp
     buf.base = (session->buf + 32);
     buf.sz   = session->sz - 32;
     hmac(session->buf, buf, e_K);
-
-    llarp_logic_queue_job(logic, {user, &inform_session_start});
+    session->hook(session);
+    // llarp_logic_queue_job(logic, {user, &inform_session_start});
   }
 
   void
@@ -267,7 +268,7 @@ namespace iwp
     auto hmac      = crypto->hmac;
     auto decrypt   = crypto->xchacha20;
 
-    auto logic = session->iwp->logic;
+    // auto logic = session->iwp->logic;
     auto b_sK  = session->secretkey;
     auto a_K   = session->remote_pubkey;
     auto N     = session->nonce;
@@ -316,8 +317,8 @@ namespace iwp
     }
     else  // hmac fail
       session->buf = nullptr;
-
-    llarp_logic_queue_job(logic, {user, &inform_session_start});
+    session->hook(session);
+    // llarp_logic_queue_job(logic, {user, &inform_session_start});
   }
 
   void
@@ -353,6 +354,9 @@ namespace iwp
     buf.cur  = buf.base;
     buf.sz   = frame->sz - 64;
     crypto->xchacha20(buf, frame->sessionkey, nonce);
+    // call result RIGHT HERE
+    // frame->hook(frame);
+    // delete frame;
     // inform result
     llarp_logic_queue_job(frame->iwp->logic, {frame, &inform_frame_done});
   }

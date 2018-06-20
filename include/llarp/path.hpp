@@ -187,8 +187,8 @@ namespace llarp
       ctx->crypto->encryption_keygen(hop.commkey);
       hop.nonce.Randomize();
       // do key exchange
-      if(!ctx->crypto->dh_client(hop.shared, hop.router.enckey, hop.nonce,
-                                 hop.commkey))
+      if(!ctx->crypto->dh_client(hop.shared, hop.router.enckey, hop.commkey,
+                                 hop.nonce))
       {
         llarp::Error("Failed to generate shared key for path build");
         abort();

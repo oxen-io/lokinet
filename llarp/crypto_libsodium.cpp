@@ -131,34 +131,33 @@ namespace llarp
 
 }  // namespace llarp
 
-extern "C"
+extern "C" {
+const byte_t *
+llarp_seckey_topublic(const byte_t *secret)
 {
-  const byte_t *
-  llarp_seckey_topublic(const byte_t *secret)
-  {
-    return secret + 32;
-  }
+  return secret + 32;
+}
 
-  void
-  llarp_crypto_libsodium_init(struct llarp_crypto *c)
-  {
-    assert(sodium_init() != -1);
-    c->xchacha20           = llarp::sodium::xchacha20;
-    c->dh_client           = llarp::sodium::dh_client;
-    c->dh_server           = llarp::sodium::dh_server;
-    c->transport_dh_client = llarp::sodium::dh_client;
-    c->transport_dh_server = llarp::sodium::dh_server;
-    c->hash                = llarp::sodium::hash;
-    c->shorthash           = llarp::sodium::shorthash;
-    c->hmac                = llarp::sodium::hmac;
-    c->sign                = llarp::sodium::sign;
-    c->verify              = llarp::sodium::verify;
-    c->randomize           = llarp::sodium::randomize;
-    c->randbytes           = llarp::sodium::randbytes;
-    c->identity_keygen     = llarp::sodium::sigkeygen;
-    c->encryption_keygen   = llarp::sodium::enckeygen;
-    int seed;
-    c->randbytes(&seed, sizeof(seed));
-    srand(seed);
-  }
+void
+llarp_crypto_libsodium_init(struct llarp_crypto *c)
+{
+  assert(sodium_init() != -1);
+  c->xchacha20           = llarp::sodium::xchacha20;
+  c->dh_client           = llarp::sodium::dh_client;
+  c->dh_server           = llarp::sodium::dh_server;
+  c->transport_dh_client = llarp::sodium::dh_client;
+  c->transport_dh_server = llarp::sodium::dh_server;
+  c->hash                = llarp::sodium::hash;
+  c->shorthash           = llarp::sodium::shorthash;
+  c->hmac                = llarp::sodium::hmac;
+  c->sign                = llarp::sodium::sign;
+  c->verify              = llarp::sodium::verify;
+  c->randomize           = llarp::sodium::randomize;
+  c->randbytes           = llarp::sodium::randbytes;
+  c->identity_keygen     = llarp::sodium::sigkeygen;
+  c->encryption_keygen   = llarp::sodium::enckeygen;
+  int seed;
+  c->randbytes(&seed, sizeof(seed));
+  srand(seed);
+}
 }
