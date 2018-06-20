@@ -5,15 +5,6 @@
 
 namespace llarp
 {
-  Path::Path(llarp_path_hops* h)
-  {
-    for(size_t idx = 0; idx < h->numHops; ++idx)
-    {
-      hops.emplace_back();
-      llarp_rc_copy(&hops[idx].router, &h->hops[idx].router);
-    }
-  }
-
   PathContext::PathContext(llarp_router* router)
       : m_Router(router), m_AllowTransit(false)
   {
@@ -69,6 +60,7 @@ namespace llarp
   PathContext::ForwardLRCM(const RouterID& nextHop,
                            std::deque< EncryptedFrame >& frames)
   {
+    llarp::Info("fowarding LRCM to ", nextHop);
     LR_CommitMessage* msg = new LR_CommitMessage;
     while(frames.size())
     {
@@ -153,6 +145,14 @@ namespace llarp
                                  const LR_CommitRecord& record)
       : pathID(record.pathid), upstream(record.nextHop), downstream(down)
   {
+  }
+
+  Path::Path(llarp_path_hops* h) : hops(h->numHops)
+  {
+    for(size_t idx = 0; idx < h->numHops; ++idx)
+    {
+      llarp_rc_copy(&hops[idx].router, &h->hops[idx].router);
+    }
   }
 
   const PathID_t&

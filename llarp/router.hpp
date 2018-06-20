@@ -80,15 +80,12 @@ struct llarp_router
   typedef std::queue< llarp::ILinkMessage * > MessageQueue;
 
   /// outbound message queue
-  std::unordered_map< llarp::PubKey, MessageQueue, llarp::PubKeyHash >
-      outboundMesssageQueue;
+  std::map< llarp::PubKey, MessageQueue > outboundMesssageQueue;
 
   /// loki verified routers
   std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKeyHash > validRouters;
 
-  std::unordered_map< llarp::PubKey, llarp_link_establish_job,
-                      llarp::PubKeyHash >
-      pendingEstablishJobs;
+  std::map< llarp::PubKey, llarp_link_establish_job > pendingEstablishJobs;
 
   llarp_router();
   ~llarp_router();
@@ -149,7 +146,8 @@ struct llarp_router
 
   /// sendto or drop
   void
-  SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg);
+  SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg,
+         llarp_link *chosen = nullptr);
 
   /// manually flush outbound message queue for just 1 router
   void

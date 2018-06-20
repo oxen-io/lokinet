@@ -102,6 +102,7 @@ namespace llarp
     llarp_crypto* crypto;
     byte_t* seckey;
     EncryptedFrame* target;
+
     void
     AsyncDecrypt(llarp_threadpool* worker, EncryptedFrame* frame, User* user)
     {

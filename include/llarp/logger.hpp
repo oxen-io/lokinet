@@ -90,7 +90,7 @@ namespace llarp
     _glog.out << "\n" << std::flush;
 #endif
   }
-}
+}  // namespace llarp
 
 #define Debug(x, ...) _Log(llarp::eLogDebug, __FILE__, x, ##__VA_ARGS__)
 #define Info(x, ...) _Log(llarp::eLogInfo, __FILE__, x, ##__VA_ARGS__)

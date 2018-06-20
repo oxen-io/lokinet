@@ -380,17 +380,38 @@ llarp_nodedb_num_loaded(struct llarp_nodedb *n)
 }
 
 void
-llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *result,
-                               size_t N)
+llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
+                               struct llarp_rc *result, size_t N)
 {
   /// TODO: check for "guard" status for N = 0?
-  auto sz  = n->entries.size();
-  auto itr = n->entries.begin();
-  if(sz > 1)
+  auto sz = n->entries.size();
+
+  if(prev)
   {
-    std::advance(itr, rand() % (sz - 1));
+    do
+    {
+      auto itr = n->entries.begin();
+      if(sz > 1)
+      {
+        auto idx = rand() % (sz - 1);
+        std::advance(itr, idx);
+      }
+      if(memcmp(prev->pubkey, itr->second.pubkey, PUBKEYSIZE) == 0)
+        continue;
+      llarp_rc_copy(result, &itr->second);
+      return;
+    } while(true);
   }
-  llarp_rc_copy(result, &itr->second);
+  else
+  {
+    auto itr = n->entries.begin();
+    if(sz > 1)
+    {
+      auto idx = rand() % (sz - 1);
+      std::advance(itr, idx);
+    }
+    llarp_rc_copy(result, &itr->second);
+  }
 }
 
 }  // end extern

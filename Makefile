@@ -70,6 +70,7 @@ testnet: testnet-build
 	supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 test: debug-configure
+	ninja
 	ninja test
 
 format:

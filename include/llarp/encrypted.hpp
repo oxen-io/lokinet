@@ -22,6 +22,12 @@ namespace llarp
     }
 
     void
+    Fill(byte_t fill)
+    {
+      std::fill(_data.begin(), _data.end(), fill);
+    }
+
+    void
     Randomize()
     {
       if(_data.size())

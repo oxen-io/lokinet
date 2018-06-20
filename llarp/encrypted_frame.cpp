@@ -52,11 +52,12 @@ namespace llarp
     crypto->randbytes(nonce, TUNNONCESIZE);
 
     // derive shared key
-    if(!DH(shared, otherPubkey, nonce, ourSecretKey))
+    if(!DH(shared, otherPubkey, ourSecretKey, nonce))
     {
       llarp::Error("DH failed");
       return false;
     }
+
     // encrypt body
     if(!Encrypt(buf, shared, nonce))
     {
@@ -110,7 +111,7 @@ namespace llarp
     SharedSecret shared;
     ShortHash digest;
 
-    if(!DH(shared, otherPubkey, nonce, ourSecretKey))
+    if(!DH(shared, otherPubkey, ourSecretKey, nonce))
     {
       llarp::Error("DH failed");
       return false;

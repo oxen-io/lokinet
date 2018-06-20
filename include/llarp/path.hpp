@@ -169,30 +169,29 @@ namespace llarp
     LR_CommitMessage* LRCM   = nullptr;
 
     static void
-    HandleDone(void* user)
+    HandleDone(void* u)
     {
       AsyncPathKeyExchangeContext< User >* ctx =
-          static_cast< AsyncPathKeyExchangeContext< User >* >(user);
+          static_cast< AsyncPathKeyExchangeContext< User >* >(u);
       ctx->result(ctx);
-      delete ctx;
     }
 
     static void
-    GenerateNextKey(void* user)
+    GenerateNextKey(void* u)
     {
       AsyncPathKeyExchangeContext< User >* ctx =
-          static_cast< AsyncPathKeyExchangeContext< User >* >(user);
+          static_cast< AsyncPathKeyExchangeContext< User >* >(u);
 
       auto& hop = ctx->path->hops[ctx->idx];
       // generate key
       ctx->crypto->encryption_keygen(hop.commkey);
+      hop.nonce.Randomize();
       // do key exchange
       if(!ctx->crypto->dh_client(hop.shared, hop.router.enckey, hop.nonce,
                                  hop.commkey))
       {
         llarp::Error("Failed to generate shared key for path build");
-        delete ctx->user;
-        delete ctx;
+        abort();
         return;
       }
       // randomize hop's path id
@@ -210,13 +209,23 @@ namespace llarp
       {
         hop.upstream = hop.router.pubkey;
       }
+      auto buf = frame.Buffer();
+      buf->cur = buf->base + EncryptedFrame::OverheadSize;
       // generate record
-      if(!record.BEncode(frame.Buffer()))
+      if(!record.BEncode(buf))
       {
         // failed to encode?
         llarp::Error("Failed to generate Commit Record");
-        delete ctx->user;
-        delete ctx;
+        abort();
+        return;
+      }
+      // rewind
+      buf->cur = buf->base;
+
+      if(!frame.EncryptInPlace(hop.commkey, hop.router.enckey, ctx->crypto))
+      {
+        llarp::Error("Failed to encrypt LRCR");
+        abort();
         return;
       }
 

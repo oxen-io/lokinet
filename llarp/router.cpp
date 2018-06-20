@@ -71,32 +71,33 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   else
     chosen = outboundLink;
 
+  if(chosen)
+  {
+    SendTo(remote, msg, chosen);
+    delete msg;
+    return true;
+  }
   // this will create an entry in the obmq if it's not already there
-
   outboundMesssageQueue[remote].push(msg);
 
-  if(!chosen)
+  // we don't have an open session to that router right now
+  auto rc = llarp_nodedb_get_rc(nodedb, remote);
+  if(rc)
   {
-    // we don't have an open session to that router right now
-    auto rc = llarp_nodedb_get_rc(nodedb, remote);
-    if(rc)
-    {
-      // try connecting directly as the rc is loaded from disk
-      llarp_router_try_connect(this, rc, 10);
-      return true;
-    }
-    // try requesting the rc from the disk
-    llarp_async_load_rc *job = new llarp_async_load_rc;
-    job->diskworker          = disk;
-    job->nodedb              = nodedb;
-    job->logic               = logic;
-    job->user                = this;
-    job->hook                = &HandleAsyncLoadRCForSendTo;
-    memcpy(job->pubkey, remote, PUBKEYSIZE);
-    llarp_nodedb_async_load_rc(job);
+    // try connecting directly as the rc is loaded from disk
+    llarp_router_try_connect(this, rc, 10);
+    return true;
   }
-  else
-    FlushOutboundFor(remote, chosen);
+  // try requesting the rc from the disk
+  llarp_async_load_rc *job = new llarp_async_load_rc;
+  job->diskworker          = disk;
+  job->nodedb              = nodedb;
+  job->logic               = logic;
+  job->user                = this;
+  job->hook                = &HandleAsyncLoadRCForSendTo;
+  memcpy(job->pubkey, remote, PUBKEYSIZE);
+  llarp_nodedb_async_load_rc(job);
+
   return true;
 }
 
@@ -280,10 +281,16 @@ llarp_router::connect_job_retry(void *user, uint64_t orig, uint64_t left)
     return;
   llarp_link_establish_job *job =
       static_cast< llarp_link_establish_job * >(user);
-
   llarp::Addr remote = job->ai;
-  llarp::Info("trying to establish session again with ", remote);
-  job->link->try_establish(job->link, job);
+  if(job->link)
+  {
+    llarp::Info("trying to establish session again with ", remote);
+    job->link->try_establish(job->link, job);
+  }
+  else
+  {
+    llarp::Error("establish session retry failed, no link for ", remote);
+  }
 }
 
 void
@@ -430,7 +437,8 @@ llarp_router::send_padded_message(llarp_link_session_iter *itr,
 }
 
 void
-llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg)
+llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg,
+                     llarp_link *link)
 {
   llarp_buffer_t buf =
       llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
@@ -444,7 +452,11 @@ llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg)
   // set size of message
   buf.sz  = buf.cur - buf.base;
   buf.cur = buf.base;
-
+  if(link)
+  {
+    link->sendto(link, remote, buf);
+    return;
+  }
   bool sent = outboundLink->sendto(outboundLink, remote, buf);
   if(!sent)
   {
@@ -485,7 +497,10 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
   llarp::Debug("Flush outbound for ", remote);
   auto itr = outboundMesssageQueue.find(remote);
   if(itr == outboundMesssageQueue.end())
+  {
+    llarp::Error("outbound queue not found for ", remote);
     return;
+  }
   while(itr->second.size())
   {
     auto buf = llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
@@ -700,209 +715,210 @@ llarp_router::HasPendingConnectJob(const llarp::RouterID &remote)
   return pendingEstablishJobs.find(remote) != pendingEstablishJobs.end();
 }
 
-extern "C" {
-struct llarp_router *
-llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
-                  struct llarp_logic *logic)
+extern "C"
 {
-  llarp_router *router = new llarp_router();
-  if(router)
+  struct llarp_router *
+  llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
+                    struct llarp_logic *logic)
   {
-    router->netloop = netloop;
-    router->tp      = tp;
-    router->logic   = logic;
-    // TODO: make disk io threadpool count configurable
+    llarp_router *router = new llarp_router();
+    if(router)
+    {
+      router->netloop = netloop;
+      router->tp      = tp;
+      router->logic   = logic;
+      // TODO: make disk io threadpool count configurable
 #ifdef TESTNET
-    router->disk = tp;
+      router->disk = tp;
 #else
-    router->disk = llarp_init_threadpool(1, "llarp-diskio");
+      router->disk = llarp_init_threadpool(1, "llarp-diskio");
 #endif
-    llarp_crypto_libsodium_init(&router->crypto);
-  }
-  return router;
-}
-
-bool
-llarp_configure_router(struct llarp_router *router, struct llarp_config *conf)
-{
-  llarp_config_iterator iter;
-  iter.user  = router;
-  iter.visit = llarp::router_iter_config;
-  llarp_config_iter(conf, &iter);
-  if(!router->InitOutboundLink())
-    return false;
-  if(!router->Ready())
-  {
-    return false;
-  }
-  return router->EnsureIdentity();
-}
-
-void
-llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb)
-{
-  router->nodedb = nodedb;
-  router->Run();
-}
-
-bool
-llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
-                         uint16_t numretries)
-{
-  // do  we already have a pending job for this remote?
-  if(router->HasPendingConnectJob(remote->pubkey))
-    return false;
-  // try first address only
-  llarp_ai addr;
-  if(llarp_ai_list_index(remote->addrs, 0, &addr))
-  {
-    auto link = router->outboundLink;
-    auto itr  = router->pendingEstablishJobs.emplace(
-        std::make_pair(remote->pubkey, llarp_link_establish_job{}));
-    auto job = &itr.first->second;
-    llarp_ai_copy(&job->ai, &addr);
-    memcpy(job->pubkey, remote->pubkey, PUBKEYSIZE);
-    job->retries = numretries;
-    job->timeout = 10000;
-    job->result  = &llarp_router::on_try_connect_result;
-    // give router as user pointer
-    job->user = router;
-    // try establishing
-    link->try_establish(link, job);
-    return true;
-  }
-  return false;
-}
-
-void
-llarp_rc_clear(struct llarp_rc *rc)
-{
-  // zero out router contact
-  llarp::Zero(rc, sizeof(llarp_rc));
-}
-
-bool
-llarp_rc_addr_list_iter(struct llarp_ai_list_iter *iter, struct llarp_ai *ai)
-{
-  struct llarp_rc *rc = (llarp_rc *)iter->user;
-  llarp_ai_list_pushback(rc->addrs, ai);
-  return true;
-}
-
-void
-llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
-                   struct llarp_ai_list *addr)
-{
-  rc->addrs = llarp_ai_list_new();
-  struct llarp_ai_list_iter ai_itr;
-  ai_itr.user  = rc;
-  ai_itr.visit = &llarp_rc_addr_list_iter;
-  llarp_ai_list_iterate(addr, &ai_itr);
-}
-
-void
-llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubkey)
-{
-  // set public key
-  memcpy(rc->pubkey, pubkey, 32);
-}
-
-bool
-llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
-                           byte_t *secretkey)
-{
-  llarp::Debug("find or create ", fpath);
-  fs::path path(fpath);
-  std::error_code ec;
-  if(!fs::exists(path, ec))
-  {
-    llarp::Info("regenerated identity key");
-    crypto->identity_keygen(secretkey);
-    std::ofstream f(path, std::ios::binary);
-    if(f.is_open())
-    {
-      f.write((char *)secretkey, SECKEYSIZE);
+      llarp_crypto_libsodium_init(&router->crypto);
     }
+    return router;
   }
-  std::ifstream f(path, std::ios::binary);
-  if(f.is_open())
-  {
-    f.read((char *)secretkey, SECKEYSIZE);
-    return true;
-  }
-  llarp::Info("failed to get identity key");
-  return false;
-}
 
-bool
-llarp_rc_write(struct llarp_rc *rc, const char *fpath)
-{
-  fs::path our_rc_file(fpath);
-  byte_t tmp[MAX_RC_SIZE];
-  auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-
-  if(llarp_rc_bencode(rc, &buf))
+  bool
+  llarp_configure_router(struct llarp_router *router, struct llarp_config *conf)
   {
-    std::ofstream f(our_rc_file, std::ios::binary);
-    if(f.is_open())
+    llarp_config_iterator iter;
+    iter.user  = router;
+    iter.visit = llarp::router_iter_config;
+    llarp_config_iter(conf, &iter);
+    if(!router->InitOutboundLink())
+      return false;
+    if(!router->Ready())
     {
-      f.write((char *)buf.base, buf.cur - buf.base);
+      return false;
+    }
+    return router->EnsureIdentity();
+  }
+
+  void
+  llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb)
+  {
+    router->nodedb = nodedb;
+    router->Run();
+  }
+
+  bool
+  llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
+                           uint16_t numretries)
+  {
+    // do  we already have a pending job for this remote?
+    if(router->HasPendingConnectJob(remote->pubkey))
+      return false;
+    // try first address only
+    llarp_ai addr;
+    if(llarp_ai_list_index(remote->addrs, 0, &addr))
+    {
+      auto link = router->outboundLink;
+      auto itr  = router->pendingEstablishJobs.emplace(
+          std::make_pair(remote->pubkey, llarp_link_establish_job{}));
+      auto job = &itr.first->second;
+      llarp_ai_copy(&job->ai, &addr);
+      memcpy(job->pubkey, remote->pubkey, PUBKEYSIZE);
+      job->retries = numretries;
+      job->timeout = 10000;
+      job->result  = &llarp_router::on_try_connect_result;
+      // give router as user pointer
+      job->user = router;
+      // try establishing
+      link->try_establish(link, job);
       return true;
     }
+    return false;
   }
-  return false;
-}
 
-void
-llarp_rc_sign(llarp_crypto *crypto, const byte_t *seckey, struct llarp_rc *rc)
-{
-  byte_t buf[MAX_RC_SIZE];
-  auto signbuf = llarp::StackBuffer< decltype(buf) >(buf);
-  // zero out previous signature
-  llarp::Zero(rc->signature, sizeof(rc->signature));
-  // encode
-  if(llarp_rc_bencode(rc, &signbuf))
+  void
+  llarp_rc_clear(struct llarp_rc *rc)
   {
-    // sign
-    signbuf.sz = signbuf.cur - signbuf.base;
-    crypto->sign(rc->signature, seckey, signbuf);
+    // zero out router contact
+    llarp::Zero(rc, sizeof(llarp_rc));
   }
-}
 
-void
-llarp_stop_router(struct llarp_router *router)
-{
-  if(router)
-    router->Close();
-}
-
-void
-llarp_router_iterate_links(struct llarp_router *router,
-                           struct llarp_router_link_iter i)
-{
-  for(auto link : router->inboundLinks)
-    if(!i.visit(&i, router, link))
-      return;
-  i.visit(&i, router, router->outboundLink);
-}
-
-void
-llarp_free_router(struct llarp_router **router)
-{
-  if(*router)
+  bool
+  llarp_rc_addr_list_iter(struct llarp_ai_list_iter *iter, struct llarp_ai *ai)
   {
-    delete *router;
+    struct llarp_rc *rc = (llarp_rc *)iter->user;
+    llarp_ai_list_pushback(rc->addrs, ai);
+    return true;
   }
-  *router = nullptr;
-}
 
-void
-llarp_router_override_path_selection(struct llarp_router *router,
-                                     llarp_pathbuilder_select_hop_func func)
-{
-  if(func)
-    router->selectHopFunc = func;
-}
+  void
+  llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
+                     struct llarp_ai_list *addr)
+  {
+    rc->addrs = llarp_ai_list_new();
+    struct llarp_ai_list_iter ai_itr;
+    ai_itr.user  = rc;
+    ai_itr.visit = &llarp_rc_addr_list_iter;
+    llarp_ai_list_iterate(addr, &ai_itr);
+  }
+
+  void
+  llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubkey)
+  {
+    // set public key
+    memcpy(rc->pubkey, pubkey, 32);
+  }
+
+  bool
+  llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
+                             byte_t *secretkey)
+  {
+    llarp::Debug("find or create ", fpath);
+    fs::path path(fpath);
+    std::error_code ec;
+    if(!fs::exists(path, ec))
+    {
+      llarp::Info("regenerated identity key");
+      crypto->identity_keygen(secretkey);
+      std::ofstream f(path, std::ios::binary);
+      if(f.is_open())
+      {
+        f.write((char *)secretkey, SECKEYSIZE);
+      }
+    }
+    std::ifstream f(path, std::ios::binary);
+    if(f.is_open())
+    {
+      f.read((char *)secretkey, SECKEYSIZE);
+      return true;
+    }
+    llarp::Info("failed to get identity key");
+    return false;
+  }
+
+  bool
+  llarp_rc_write(struct llarp_rc *rc, const char *fpath)
+  {
+    fs::path our_rc_file(fpath);
+    byte_t tmp[MAX_RC_SIZE];
+    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+
+    if(llarp_rc_bencode(rc, &buf))
+    {
+      std::ofstream f(our_rc_file, std::ios::binary);
+      if(f.is_open())
+      {
+        f.write((char *)buf.base, buf.cur - buf.base);
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void
+  llarp_rc_sign(llarp_crypto *crypto, const byte_t *seckey, struct llarp_rc *rc)
+  {
+    byte_t buf[MAX_RC_SIZE];
+    auto signbuf = llarp::StackBuffer< decltype(buf) >(buf);
+    // zero out previous signature
+    llarp::Zero(rc->signature, sizeof(rc->signature));
+    // encode
+    if(llarp_rc_bencode(rc, &signbuf))
+    {
+      // sign
+      signbuf.sz = signbuf.cur - signbuf.base;
+      crypto->sign(rc->signature, seckey, signbuf);
+    }
+  }
+
+  void
+  llarp_stop_router(struct llarp_router *router)
+  {
+    if(router)
+      router->Close();
+  }
+
+  void
+  llarp_router_iterate_links(struct llarp_router *router,
+                             struct llarp_router_link_iter i)
+  {
+    for(auto link : router->inboundLinks)
+      if(!i.visit(&i, router, link))
+        return;
+    i.visit(&i, router, router->outboundLink);
+  }
+
+  void
+  llarp_free_router(struct llarp_router **router)
+  {
+    if(*router)
+    {
+      delete *router;
+    }
+    *router = nullptr;
+  }
+
+  void
+  llarp_router_override_path_selection(struct llarp_router *router,
+                                       llarp_pathbuilder_select_hop_func func)
+  {
+    if(func)
+      router->selectHopFunc = func;
+  }
 }
 
 namespace llarp

@@ -54,8 +54,8 @@ llarp_nodedb_get_random_rc(struct llarp_nodedb *n, struct llarp_rc *result);
 
 /// select a random rc at hop number N
 void
-llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *result,
-                               size_t N);
+llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
+                               struct llarp_rc *result, size_t N);
 
 /// return number of RC loaded
 size_t

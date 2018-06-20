@@ -20,9 +20,14 @@ namespace llarp
   pathbuilder_generated_keys(
       AsyncPathKeyExchangeContext< llarp_pathbuild_job >* ctx)
   {
-    llarp::Debug("Generated LRCM");
+    auto remote = ctx->path->Upstream();
+    llarp::Debug("Generated LRCM to", remote);
     auto router = ctx->user->router;
-    router->SendToOrQueue(ctx->path->Upstream(), ctx->LRCM);
+    if(!router->SendToOrQueue(remote, ctx->LRCM))
+    {
+      llarp::Error("failed to send LRCM");
+      return;
+    }
     ctx->path->status = ePathBuilding;
     router->paths.AddOwnPath(ctx->path);
     ctx->user->pathBuildStarted(ctx->user);
@@ -33,12 +38,14 @@ namespace llarp
   {
     llarp_pathbuild_job* job = static_cast< llarp_pathbuild_job* >(user);
     // select hops
-    size_t idx = 0;
+    size_t idx     = 0;
+    llarp_rc* prev = nullptr;
     while(idx < job->hops.numHops)
     {
-      auto rc = &job->hops.hops[idx].router;
+      llarp_rc* rc = &job->hops.hops[idx].router;
       llarp_rc_clear(rc);
-      job->selectHop(job->router->nodedb, rc, idx);
+      job->selectHop(job->router->nodedb, prev, rc, idx);
+      prev = rc;
       ++idx;
     }
 
@@ -54,9 +61,8 @@ namespace llarp
 
 llarp_pathbuilder_context::llarp_pathbuilder_context(
     llarp_router* p_router, struct llarp_dht_context* p_dht)
+    : router(p_router), dht(p_dht)
 {
-  this->router = p_router;
-  this->dht    = p_dht;
 }
 
 extern "C" {

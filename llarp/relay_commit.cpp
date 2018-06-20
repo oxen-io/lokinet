@@ -75,6 +75,7 @@ namespace llarp
                    " when we are not allowing transit");
       return false;
     }
+    llarp::Info("Got LRCM from ", remote);
     return AsyncDecrypt(&router->paths);
   }
 
