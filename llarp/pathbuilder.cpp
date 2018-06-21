@@ -33,6 +33,7 @@ namespace llarp
       AsyncPathKeyExchangeContext< User >* ctx =
           static_cast< AsyncPathKeyExchangeContext< User >* >(u);
 
+      // current hop
       auto& hop   = ctx->path->hops[ctx->idx];
       auto& frame = ctx->LRCM->frames[ctx->idx];
       // generate key
@@ -52,13 +53,16 @@ namespace llarp
       LR_CommitRecord record;
 
       ++ctx->idx;
-      if(ctx->idx < ctx->path->hops.size())
+
+      bool isFarthestHop = ctx->idx == ctx->path->hops.size() - 1;
+
+      if(isFarthestHop)
       {
-        hop.upstream = ctx->path->hops[ctx->idx].router.pubkey;
+        hop.upstream = hop.router.pubkey;
       }
       else
       {
-        hop.upstream = hop.router.pubkey;
+        hop.upstream = ctx->path->hops[ctx->idx].router.pubkey;
       }
       auto buf = frame.Buffer();
       buf->cur = buf->base + EncryptedFrame::OverheadSize;
@@ -78,15 +82,15 @@ namespace llarp
         return;
       }
 
-      if(ctx->idx < ctx->path->hops.size())
-      {
-        // next hop
-        llarp_threadpool_queue_job(ctx->worker, {ctx, &GenerateNextKey});
-      }
-      else
+      if(isFarthestHop)
       {
         // farthest hop
         llarp_logic_queue_job(ctx->logic, {ctx, &HandleDone});
+      }
+      else
+      {
+        // next hop
+        llarp_threadpool_queue_job(ctx->worker, {ctx, &GenerateNextKey});
       }
     }
 
@@ -174,28 +178,27 @@ llarp_pathbuilder_context::llarp_pathbuilder_context(
 {
 }
 
-extern "C"
+extern "C" {
+struct llarp_pathbuilder_context*
+llarp_pathbuilder_context_new(struct llarp_router* router,
+                              struct llarp_dht_context* dht)
 {
-  struct llarp_pathbuilder_context*
-  llarp_pathbuilder_context_new(struct llarp_router* router,
-                                struct llarp_dht_context* dht)
-  {
-    return new llarp_pathbuilder_context(router, dht);
-  }
+  return new llarp_pathbuilder_context(router, dht);
+}
 
-  void
-  llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
-  {
-    delete ctx;
-  }
+void
+llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
+{
+  delete ctx;
+}
 
-  void
-  llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
-  {
-    job->router = job->context->router;
-    if(job->selectHop == nullptr)
-      job->selectHop = &llarp_nodedb_select_random_hop;
-    llarp_logic_queue_job(job->router->logic,
-                          {job, &llarp::pathbuilder_start_build});
-  }
+void
+llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
+{
+  job->router = job->context->router;
+  if(job->selectHop == nullptr)
+    job->selectHop = &llarp_nodedb_select_random_hop;
+  llarp_logic_queue_job(job->router->logic,
+                        {job, &llarp::pathbuilder_start_build});
+}
 }
