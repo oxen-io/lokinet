@@ -11,27 +11,31 @@ namespace llarp
   /// encrypted buffer base type
   struct Encrypted
   {
-    Encrypted() = default;
+    Encrypted(Encrypted&&) = delete;
+
     Encrypted(const byte_t* buf, size_t sz);
     Encrypted(size_t sz);
+    ~Encrypted();
 
     bool
     BEncode(llarp_buffer_t* buf) const
     {
-      return bencode_write_bytestring(buf, _data.data(), _data.size());
+      return bencode_write_bytestring(buf, _data, _sz);
     }
 
     void
     Fill(byte_t fill)
     {
-      std::fill(_data.begin(), _data.end(), fill);
+      size_t idx = 0;
+      while(idx < _sz)
+        _data[idx++] = fill;
     }
 
     void
     Randomize()
     {
-      if(_data.size())
-        randombytes(_data.data(), _data.size());
+      if(_data && _sz)
+        randombytes(_data, _sz);
     }
 
     bool
@@ -42,8 +46,12 @@ namespace llarp
         return false;
       if(strbuf.sz == 0)
         return false;
-      _data.resize(strbuf.sz);
-      memcpy(_data.data(), strbuf.base, _data.size());
+      if(_data)
+        delete[] _data;
+      _sz   = strbuf.sz;
+      _data = new byte_t[_sz];
+      memcpy(_data, strbuf.base, _sz);
+      UpdateBuffer();
       return true;
     }
 
@@ -56,24 +64,31 @@ namespace llarp
     size_t
     size()
     {
-      return _data.size();
+      return _sz;
     }
 
     size_t
     size() const
     {
-      return _data.size();
+      return _sz;
     }
 
     byte_t*
     data()
     {
-      return _data.data();
+      return _data;
     }
 
-    std::vector< byte_t > _data;
-
-   private:
+   protected:
+    void
+    UpdateBuffer()
+    {
+      m_Buffer.base = data();
+      m_Buffer.cur  = data();
+      m_Buffer.sz   = size();
+    }
+    byte_t* _data = nullptr;
+    size_t _sz    = 0;
     llarp_buffer_t m_Buffer;
   };
 }  // namespace llarp

@@ -64,10 +64,10 @@ namespace llarp
     LR_CommitMessage* msg = new LR_CommitMessage;
     while(frames.size())
     {
-      msg->frames.push_back(frames.back());
-      frames.pop_back();
+      msg->frames.push_back(frames.front());
+      frames.pop_front();
     }
-    return m_Router->SendToOrQueue(nextHop, {msg});
+    return m_Router->SendToOrQueue(nextHop, msg);
   }
 
   template < typename Map_t, typename Key_t, typename CheckValue_t >

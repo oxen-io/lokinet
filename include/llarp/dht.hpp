@@ -201,8 +201,8 @@ namespace llarp
 
       struct TXOwner
       {
-        Key_t requester = {0};
-        uint64_t txid   = 0;
+        Key_t requester;
+        uint64_t txid = 0;
 
         bool
         operator==(const TXOwner& other) const
@@ -291,8 +291,8 @@ namespace llarp
       uint64_t txid    = 0;
       uint64_t version = 0;
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 
 struct llarp_dht_context
 {

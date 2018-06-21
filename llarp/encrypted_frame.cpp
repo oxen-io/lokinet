@@ -5,15 +5,19 @@
 
 namespace llarp
 {
-  Encrypted::Encrypted(const byte_t* buf, size_t sz) : _data(sz)
+  Encrypted::Encrypted(const byte_t* buf, size_t sz) : _sz(sz)
   {
+    _data = new byte_t[sz];
     if(buf)
       memcpy(data(), buf, sz);
     else
       llarp::Zero(data(), sz);
-    m_Buffer.base = data();
-    m_Buffer.cur  = data();
-    m_Buffer.sz   = size();
+    UpdateBuffer();
+  }
+  Encrypted::~Encrypted()
+  {
+    if(_data)
+      delete[] _data;
   }
 
   Encrypted::Encrypted(size_t sz) : Encrypted(nullptr, sz)

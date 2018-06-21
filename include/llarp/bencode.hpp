@@ -2,6 +2,7 @@
 #define LLARP_BENCODE_HPP
 
 #include <llarp/bencode.h>
+#include <llarp/logger.hpp>
 
 namespace llarp
 {
@@ -35,15 +36,14 @@ namespace llarp
   BEncodeMaybeReadDictEntry(const char* k, Item_t& item, bool& read,
                             llarp_buffer_t key, llarp_buffer_t* buf)
   {
-    llarp_buffer_t strbuf;
     if(llarp_buffer_eq(key, k))
     {
-      if(!bencode_read_string(buf, &strbuf))
-        return false;
       if(!item.BDecode(buf))
+      {
+        llarp::Warn("failed to decode key ", k);
         return false;
+      }
       read = true;
-      return true;
     }
     return true;
   }
@@ -58,7 +58,6 @@ namespace llarp
       if(!bencode_read_integer(buf, &item))
         return false;
       read = item == expect;
-      return true;
     }
     return true;
   }
@@ -103,6 +102,6 @@ namespace llarp
     return bencode_write_bytestring(buf, k, 1)
         && BEncodeWriteList(list.begin(), list.end(), buf);
   }
-}
+}  // namespace llarp
 
 #endif

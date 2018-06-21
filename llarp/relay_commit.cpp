@@ -5,24 +5,6 @@
 
 namespace llarp
 {
-  bool
-  LR_AcceptRecord::BEncode(llarp_buffer_t* buf) const
-  {
-    if(!bencode_start_dict(buf))
-      return false;
-    if(!BEncodeWriteDictMsgType(buf, "c", "a"))
-      return false;
-    if(!BEncodeWriteDictEntry("p", pathid, buf))
-      return false;
-    if(!BEncodeWriteDictEntry("r", downstream, buf))
-      return false;
-    if(!BEncodeWriteDictEntry("t", upstream, buf))
-      return false;
-    if(!BEncodeWriteDictInt(buf, "v", LLARP_PROTO_VERSION))
-      return false;
-    return bencode_end(buf);
-  }
-
   LR_CommitMessage::~LR_CommitMessage()
   {
   }
@@ -121,7 +103,8 @@ namespace llarp
       return false;
     if(!BEncodeMaybeReadDictEntry("i", self->nextHop, read, *key, r->buffer))
       return false;
-    if(BEncodeMaybeReadDictEntry("n", self->tunnelNonce, read, *key, r->buffer))
+    if(!BEncodeMaybeReadDictEntry("n", self->tunnelNonce, read, *key,
+                                  r->buffer))
       return false;
     if(!BEncodeMaybeReadDictEntry("p", self->pathid, read, *key, r->buffer))
       return false;
@@ -132,7 +115,10 @@ namespace llarp
     {
       // check for duplicate
       if(self->work)
+      {
+        llarp::Warn("duplicate POW in LRCR");
         return false;
+      }
 
       self->work = new PoW;
       return self->work->BDecode(r->buffer);
@@ -147,6 +133,18 @@ namespace llarp
     r.user   = this;
     r.on_key = &OnKey;
     return bencode_read_dict(buf, &r);
+  }
+
+  bool
+  LR_CommitRecord::operator==(const LR_CommitRecord& other) const
+  {
+    if(work && other.work)
+    {
+      if(*work != *other.work)
+        return false;
+    }
+    return nextHop == other.nextHop && commkey == other.commkey
+        && pathid == other.pathid;
   }
 
   struct LRCMFrameDecrypt
@@ -165,7 +163,7 @@ namespace llarp
         : decrypter(dec), context(ctx)
     {
       for(const auto& f : commit->frames)
-        frames.push_front(f);
+        frames.push_back(f);
       hop.info.downstream = commit->remote;
     }
 
@@ -198,6 +196,7 @@ namespace llarp
         delete self;
         return;
       }
+      buf->cur = buf->base + EncryptedFrame::OverheadSize;
       llarp::Debug("decrypted LRCM from ", info.downstream);
       // successful decrypt
       if(!self->record.BDecode(buf))
@@ -243,32 +242,9 @@ namespace llarp
       self->frames.pop_front();
       // put our response on the end
       self->frames.emplace_back(sz);
-      auto& reply   = self->frames.back();
-      auto replybuf = reply.Buffer();
-      LR_AcceptRecord replyrecord;
-      replyrecord.upstream   = info.upstream;
-      replyrecord.downstream = info.downstream;
-      replyrecord.pathid     = info.pathID;
-      if(!replyrecord.BEncode(replybuf))
-      {
-        llarp::Error("failed to encode reply to LRCM, buffer too small?");
-        delete self;
-        return;
-      }
-      // randomize leftover data inside reply
-      auto left = llarp_buffer_size_left(*replybuf);
-      if(left)
-        self->context->Crypto()->randbytes(replybuf->cur, left);
+      // random junk for now
+      self->frames.back().Randomize();
 
-      // encrypt in place since we are in the worker thread
-      if(!reply.EncryptInPlace(self->context->EncryptionSecretKey(),
-                               self->record.commkey, self->context->Crypto()))
-      {
-        // failed to encrypt wtf?
-        llarp::Error("Failed to encrypt reply to LRCM");
-        delete self;
-        return;
-      }
       if(self->context->HopIsUs(info.upstream))
       {
         // we are the farthest hop
