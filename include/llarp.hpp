@@ -34,6 +34,15 @@ namespace llarp
     Close();
 
     int
+    LoadDatabase();
+
+    int
+    IterateDatabase(struct llarp_nodedb_iter i);
+
+    bool
+    PutDatabase(struct llarp_rc *rc);
+
+    int
     Run();
 
     void

@@ -859,6 +859,43 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
   return false;
 }
 
+struct llarp_rc *
+llarp_rc_read(const char *fpath)
+{
+  fs::path our_rc_file(fpath);
+  std::error_code ec;
+  if(!fs::exists(our_rc_file, ec))
+  {
+    printf("File[%s] not found\n", fpath);
+    return 0;
+  }
+  std::ifstream f(our_rc_file, std::ios::binary);
+  if(!f.is_open())
+  {
+    printf("Can't open file [%s]\n", fpath);
+    return 0;
+  }
+  byte_t tmp[MAX_RC_SIZE];
+  llarp_buffer_t buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+  f.seekg(0, std::ios::end);
+  size_t sz = f.tellg();
+  f.seekg(0, std::ios::beg);
+
+  if(sz > buf.sz)
+    return 0;
+
+  f.read((char *)buf.base, sz);
+  //printf("contents[%s]\n", tmpc);
+  llarp_rc *rc = new llarp_rc;
+  llarp::Zero(rc, sizeof(llarp_rc));
+  if(!llarp_rc_bdecode(rc, &buf))
+  {
+    printf("Can't decode [%s]\n", fpath);
+    return 0;
+  }
+  return rc;
+}
+  
 bool
 llarp_rc_write(struct llarp_rc *rc, const char *fpath)
 {
