@@ -76,7 +76,7 @@ namespace llarp
     {
       result &= msg->HandleMessage(router, reply->msgs);
     }
-    return result && router->SendToOrQueue(remote.data(), {reply});
+    return result && router->SendToOrQueue(remote.data(), reply);
   }
 
   namespace dht
@@ -553,7 +553,7 @@ namespace llarp
                   whoasked);
       auto msg = new llarp::DHTImmeidateMessage(askpeer);
       msg->msgs.push_back(new FindRouterMessage(askpeer, target, id));
-      router->SendToOrQueue(askpeer, {msg});
+      router->SendToOrQueue(askpeer, msg);
     }
 
     void

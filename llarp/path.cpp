@@ -67,7 +67,7 @@ namespace llarp
       msg->frames.push_back(frames.back());
       frames.pop_back();
     }
-    return m_Router->SendToOrQueue(nextHop, {msg});
+    return m_Router->SendToOrQueue(nextHop, msg);
   }
 
   template < typename Map_t, typename Key_t, typename CheckValue_t >
