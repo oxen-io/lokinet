@@ -177,6 +177,17 @@ struct llarp_nodedb
   bool
   loadfile(const fs::path &fpath)
   {
+    llarp_rc *rc = llarp_rc_read(fpath.c_str());
+    if (rc)
+    {
+      if(llarp_rc_verify_sig(crypto, rc))
+      {
+        llarp::PubKey pk(rc->pubkey);
+        entries[pk] = *rc;
+        return true;
+      }
+    }
+    /*
     std::ifstream f(fpath, std::ios::binary);
     if(!f.is_open())
       return false;
@@ -207,7 +218,20 @@ struct llarp_nodedb
       }
     }
     llarp_rc_free(&rc);
+    */
     return false;
+  }
+
+  bool iterate() {
+    auto itr = entries.begin();
+    while(itr != entries.end())
+    {
+      llarp::PubKey pk = itr->first;
+      llarp_rc rc= itr->second;
+
+      itr++; // advance
+    }
+    return true;
   }
 
   /*
@@ -346,6 +370,29 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
   }
   n->nodePath = dir;
   return n->Load(dir);
+}
+
+bool
+llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc) {
+  return n->setRC(rc);
+}
+
+int
+llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i) {
+  i.index = 0;
+  auto itr = n->entries.begin();
+  while(itr != n->entries.end())
+  {
+    //llarp::PubKey pk = itr->first;
+    //llarp_rc rc= itr->second;
+    //llarp::Info("visit\n");
+    i.rc = &itr->second;
+    i.visit(&i);
+
+    i.index++;
+    itr++; // advance
+  }
+  return n->entries.size();
 }
 
 void
