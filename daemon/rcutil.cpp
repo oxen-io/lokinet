@@ -24,6 +24,7 @@ handle_signal(int sig)
 #include "fs.hpp"
 #include "buffer.hpp"
 #include "crypto.hpp"
+#include "router.hpp"
 
 bool printNode(struct llarp_nodedb_iter *iter) {
   char ftmp[68] = {0};
@@ -160,12 +161,19 @@ main(int argc, char *argv[])
     // load longterm identity
     llarp_crypto crypt;
     llarp_crypto_libsodium_init(&crypt);
+
+    // which is in daemon.ini config: router.encryption-privkey (defaults "encryption.key")
+    fs::path encryption_keyfile = "encryption.key";
+    llarp::SecretKey encryption;
+    llarp_findOrCreateEncryption(&crypt, encryption_keyfile.c_str(), &encryption);
+    llarp_rc_set_pubenckey(&tmp, llarp::seckey_topublic(encryption));
+
+    // get identity public sig key
     fs::path ident_keyfile = "identity.key";
     byte_t identity[SECKEYSIZE];
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
-    // get identity public key
-    uint8_t *pubkey = llarp::seckey_topublic(identity);
-    llarp_rc_set_pubkey(&tmp, pubkey);
+    llarp_rc_set_pubsigkey(&tmp, llarp::seckey_topublic(identity));
+
     // this causes a segfault
     llarp_rc_sign(&crypt, identity, &tmp);
     // set filename
@@ -190,7 +198,7 @@ main(int argc, char *argv[])
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
     // get identity public key
     uint8_t *pubkey = llarp::seckey_topublic(identity);
-    llarp_rc_set_pubkey(rc, pubkey);
+    llarp_rc_set_pubsigkey(rc, pubkey);
     llarp_rc_sign(&crypt, identity, rc);
 
     // set filename
