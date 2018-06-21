@@ -1,6 +1,7 @@
 #ifndef LLARP_ENCODE_HPP
 #define LLARP_ENCODE_HPP
 #include <cstdlib>
+#include <stdint.h>
 
 namespace llarp
 {
