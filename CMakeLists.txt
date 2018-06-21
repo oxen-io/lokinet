@@ -109,6 +109,7 @@ set(LIB_SRC
   llarp/crypto_async.cpp
   llarp/crypto_libsodium.cpp
   llarp/dht.cpp
+  llarp/encode.cpp
   llarp/encrypted_frame.cpp
   llarp/ev.cpp
   llarp/exit_info.cpp
