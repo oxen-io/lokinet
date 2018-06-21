@@ -118,6 +118,11 @@ namespace llarp
     return llarp_nodedb_put_rc(nodedb, rc);
   }
 
+  struct llarp_rc *
+  Context::GetDatabase(const byte_t *pk)
+  {
+    return llarp_nodedb_get_rc(nodedb, pk);
+  }
 
   int
   Context::Run()
@@ -328,6 +333,11 @@ llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc)
   return ptr->ctx->PutDatabase(rc);
 }
 
+struct llarp_rc *
+llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
+{
+  return ptr->ctx->GetDatabase(pk);
+}
 
 void
 llarp_main_free(struct llarp_main *ptr)

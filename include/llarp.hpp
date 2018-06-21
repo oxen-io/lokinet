@@ -42,6 +42,9 @@ namespace llarp
     bool
     PutDatabase(struct llarp_rc *rc);
 
+    struct llarp_rc *
+    GetDatabase(const byte_t *pk);
+
     int
     Run();
 
