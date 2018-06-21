@@ -29,6 +29,11 @@ namespace llarp
 
 }  // namespace llarp
 
+/// c++
+bool
+llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
+                             llarp::SecretKey *encryption);
+
 struct llarp_router
 {
   bool ready;
