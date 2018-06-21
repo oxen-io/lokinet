@@ -26,6 +26,9 @@ namespace llarp
     *ptr = 0;
     return &stack[0];
   }
+
+  int char2int(char input);
+  void HexDecode(const char* src, uint8_t* target);
 }
 
 #endif

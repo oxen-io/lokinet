@@ -30,7 +30,7 @@ bool printNode(struct llarp_nodedb_iter *iter) {
   const char *hexname =
     llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(iter->rc->pubkey, ftmp);
 
-  printf("[%d]=>[%s]\n", iter->index, hexname);
+  printf("[%zu]=>[%s]\n", iter->index, hexname);
   return false;
 }
 
@@ -217,7 +217,20 @@ main(int argc, char *argv[])
   }
   if (exportMode) {
     llarp_main_loadDatabase(ctx);
-    // TODO: write me
+    //llarp::Info("Looking for string: ", rcfname);
+
+    llarp::PubKey binaryPK;
+    llarp::HexDecode(rcfname, binaryPK.data());
+    
+    llarp::Info("Looking for binary: ", binaryPK);
+    struct llarp_rc *rc = llarp_main_getDatabase(ctx, binaryPK.data());
+    if (!rc) {
+      llarp::Error("Can't load RC from database");
+    }
+    std::string filename(rcfname);
+    filename.append(".signed");
+    llarp::Info("Writing out: ", filename);
+    llarp_rc_write(rc, filename.c_str());
   }
   llarp_main_free(ctx);
   return 1; // success
