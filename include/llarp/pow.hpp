@@ -14,7 +14,7 @@ namespace llarp
     RouterID router;
     uint64_t version          = 0;
     uint32_t extendedLifetime = 0;
-    byte_t nonce[32];
+    AlignedBuffer< 32 > nonce;
 
     bool
     BEncode(llarp_buffer_t* buf) const;
@@ -24,6 +24,19 @@ namespace llarp
 
     bool
     IsValid(llarp_shorthash_func hashfunc, const RouterID& us) const;
+
+    bool
+    operator==(const PoW& other) const
+    {
+      return router == other.router && version == other.version
+          && extendedLifetime == other.extendedLifetime && nonce == other.nonce;
+    }
+
+    bool
+    operator!=(const PoW& other) const
+    {
+      return !(*this == other);
+    }
   };
 }  // namespace llarp
 

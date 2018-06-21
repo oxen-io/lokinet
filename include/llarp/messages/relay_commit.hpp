@@ -19,8 +19,8 @@ namespace llarp
     RouterID nextHop;
     TunnelNonce tunnelNonce;
     PathID_t pathid;
-    PoW *work = nullptr;
-    uint64_t version;
+    PoW *work        = nullptr;
+    uint64_t version = 0;
 
     bool
     BDecode(llarp_buffer_t *buf);
@@ -30,23 +30,12 @@ namespace llarp
 
     ~LR_CommitRecord();
 
+    bool
+    operator==(const LR_CommitRecord &other) const;
+
    private:
     static bool
     OnKey(dict_reader *r, llarp_buffer_t *buf);
-  };
-
-  struct LR_AcceptRecord
-  {
-    RouterID upstream;
-    RouterID downstream;
-    PathID_t pathid;
-    uint64_t version = LLARP_PROTO_VERSION;
-
-    bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf);
-
-    bool
-    BEncode(llarp_buffer_t *buf) const;
   };
 
   struct LR_CommitMessage : public ILinkMessage

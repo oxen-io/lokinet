@@ -6,6 +6,115 @@
 
 namespace llarp
 {
+  template < typename User >
+  struct AsyncPathKeyExchangeContext
+  {
+    Path* path = nullptr;
+    typedef void (*Handler)(AsyncPathKeyExchangeContext< User >*);
+    User* user               = nullptr;
+    Handler result           = nullptr;
+    size_t idx               = 0;
+    llarp_threadpool* worker = nullptr;
+    llarp_logic* logic       = nullptr;
+    llarp_crypto* crypto     = nullptr;
+    LR_CommitMessage* LRCM   = nullptr;
+
+    static void
+    HandleDone(void* u)
+    {
+      AsyncPathKeyExchangeContext< User >* ctx =
+          static_cast< AsyncPathKeyExchangeContext< User >* >(u);
+      ctx->result(ctx);
+    }
+
+    static void
+    GenerateNextKey(void* u)
+    {
+      AsyncPathKeyExchangeContext< User >* ctx =
+          static_cast< AsyncPathKeyExchangeContext< User >* >(u);
+
+      auto& hop   = ctx->path->hops[ctx->idx];
+      auto& frame = ctx->LRCM->frames[ctx->idx];
+      // generate key
+      ctx->crypto->encryption_keygen(hop.commkey);
+      hop.nonce.Randomize();
+      // do key exchange
+      if(!ctx->crypto->dh_client(hop.shared, hop.router.enckey, hop.commkey,
+                                 hop.nonce))
+      {
+        llarp::Error("Failed to generate shared key for path build");
+        abort();
+        return;
+      }
+      // randomize hop's path id
+      hop.pathID.Randomize();
+
+      LR_CommitRecord record;
+
+      ++ctx->idx;
+      if(ctx->idx < ctx->path->hops.size())
+      {
+        hop.upstream = ctx->path->hops[ctx->idx].router.pubkey;
+      }
+      else
+      {
+        hop.upstream = hop.router.pubkey;
+      }
+      auto buf = frame.Buffer();
+      buf->cur = buf->base + EncryptedFrame::OverheadSize;
+      // generate record
+      if(!record.BEncode(buf))
+      {
+        // failed to encode?
+        llarp::Error("Failed to generate Commit Record");
+        return;
+      }
+      // use ephameral keypair for frame
+      SecretKey framekey;
+      ctx->crypto->encryption_keygen(framekey);
+      if(!frame.EncryptInPlace(framekey, hop.router.enckey, ctx->crypto))
+      {
+        llarp::Error("Failed to encrypt LRCR");
+        return;
+      }
+
+      if(ctx->idx < ctx->path->hops.size())
+      {
+        // next hop
+        llarp_threadpool_queue_job(ctx->worker, {ctx, &GenerateNextKey});
+      }
+      else
+      {
+        // farthest hop
+        llarp_logic_queue_job(ctx->logic, {ctx, &HandleDone});
+      }
+    }
+
+    AsyncPathKeyExchangeContext(llarp_crypto* c) : crypto(c)
+    {
+    }
+
+    /// Generate all keys asynchronously and call hadler when done
+    void
+    AsyncGenerateKeys(Path* p, llarp_logic* l, llarp_threadpool* pool, User* u,
+                      Handler func)
+    {
+      path   = p;
+      logic  = l;
+      user   = u;
+      result = func;
+      worker = pool;
+      LRCM   = new LR_CommitMessage;
+
+      for(size_t idx = 0; idx < MAXHOPS; ++idx)
+      {
+        LRCM->frames.emplace_back();
+        LRCM->frames.back().Randomize();
+      }
+      llarp_threadpool_queue_job(pool, {this, &GenerateNextKey});
+    }
+  };
+
   PathHopConfig::PathHopConfig()
   {
     llarp_rc_clear(&router);
@@ -21,7 +130,7 @@ namespace llarp
       AsyncPathKeyExchangeContext< llarp_pathbuild_job >* ctx)
   {
     auto remote = ctx->path->Upstream();
-    llarp::Debug("Generated LRCM to", remote);
+    llarp::Info("Generated LRCM to ", remote);
     auto router = ctx->user->router;
     if(!router->SendToOrQueue(remote, ctx->LRCM))
     {
@@ -65,32 +174,33 @@ llarp_pathbuilder_context::llarp_pathbuilder_context(
 {
 }
 
-extern "C" {
-struct llarp_pathbuilder_context*
-llarp_pathbuilder_context_new(struct llarp_router* router,
-                              struct llarp_dht_context* dht)
+extern "C"
 {
-  return new llarp_pathbuilder_context(router, dht);
-}
-
-void
-llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
-{
-  delete ctx;
-}
-
-void
-llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
-{
-  if (!job->context)
+  struct llarp_pathbuilder_context*
+  llarp_pathbuilder_context_new(struct llarp_router* router,
+                                struct llarp_dht_context* dht)
   {
-    llarp::Error("failed to build path because no context is set in job");
-    return;
+    return new llarp_pathbuilder_context(router, dht);
   }
-  job->router = job->context->router;
-  if(job->selectHop == nullptr)
-    job->selectHop = &llarp_nodedb_select_random_hop;
-  llarp_logic_queue_job(job->router->logic,
-                        {job, &llarp::pathbuilder_start_build});
-}
+
+  void
+  llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
+  {
+    delete ctx;
+  }
+
+  void
+  llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
+  {
+    if (!job->context)
+    {
+      llarp::Error("failed to build path because no context is set in job");
+      return;
+    }
+    job->router = job->context->router;
+    if(job->selectHop == nullptr)
+      job->selectHop = &llarp_nodedb_select_random_hop;
+    llarp_logic_queue_job(job->router->logic,
+                          {job, &llarp::pathbuilder_start_build});
+  }
 }

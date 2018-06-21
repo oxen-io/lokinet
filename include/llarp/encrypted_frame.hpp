@@ -12,13 +12,33 @@ namespace llarp
   {
     static constexpr size_t OverheadSize =
         PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
-    EncryptedFrame() = default;
+
+    EncryptedFrame() : EncryptedFrame(256)
+    {
+    }
+
+    EncryptedFrame(const EncryptedFrame& other)
+        : EncryptedFrame(other._data, other._sz)
+    {
+    }
+
     EncryptedFrame(byte_t* buf, size_t sz) : Encrypted(buf, sz)
     {
     }
     EncryptedFrame(size_t sz)
         : Encrypted(sz + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE)
     {
+    }
+
+    EncryptedFrame&
+    operator=(const EncryptedFrame& other)
+    {
+      if(_data)
+        delete[] _data;
+      _sz   = other._sz;
+      _data = new byte_t[_sz];
+      memcpy(_data, other._data, _sz);
+      return *this;
     }
 
     bool
@@ -87,7 +107,11 @@ namespace llarp
           static_cast< AsyncFrameDecrypter< User >* >(user);
 
       if(ctx->target->DecryptInPlace(ctx->seckey, ctx->crypto))
-        ctx->result(ctx->target->Buffer(), ctx->context);
+      {
+        auto buf = ctx->target->Buffer();
+        buf->cur = buf->base + EncryptedFrame::OverheadSize;
+        ctx->result(buf, ctx->context);
+      }
       else
         ctx->result(nullptr, ctx->context);
     }

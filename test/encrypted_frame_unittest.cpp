@@ -6,7 +6,7 @@
 using EncryptedFrame = llarp::EncryptedFrame;
 using SecretKey      = llarp::SecretKey;
 using PubKey         = llarp::PubKey;
-using LRAR           = llarp::LR_AcceptRecord;
+using LRCR           = llarp::LR_CommitRecord;
 
 class FrameTest : public ::testing::Test
 {
@@ -40,9 +40,9 @@ TEST_F(FrameTest, TestFrameCrypto)
 {
   EncryptedFrame f(256);
   f.Fill(0);
-  LRAR record;
-  record.upstream.Fill(1);
-  record.downstream.Fill(2);
+  LRCR record;
+  record.nextHop.Fill(1);
+  record.tunnelNonce.Fill(2);
   record.pathid.Fill(3);
 
   auto buf = f.Buffer();
@@ -50,8 +50,14 @@ TEST_F(FrameTest, TestFrameCrypto)
 
   ASSERT_TRUE(record.BEncode(buf));
 
-  buf->cur = buf->base;
-  // encrypt alice to bob
+  // rewind buffer
+  buf->cur = buf->base + EncryptedFrame::OverheadSize;
+  // encrypt to alice
   ASSERT_TRUE(f.EncryptInPlace(alice, llarp::seckey_topublic(bob), &crypto));
+  // decrypt from alice
   ASSERT_TRUE(f.DecryptInPlace(bob, &crypto));
+
+  LRCR otherRecord;
+  ASSERT_TRUE(otherRecord.BDecode(buf));
+  ASSERT_TRUE(otherRecord == record);
 };
