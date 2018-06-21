@@ -976,7 +976,7 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
 }
 } // end extern C
 
-// C++
+// C++ ...
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
                            llarp::SecretKey *encryption)
