@@ -44,7 +44,6 @@ namespace llarp
         ctx->handler(ctx->frame, ctx->user);
       else
       {
-        delete ctx->frame;
         ctx->handler(nullptr, ctx->user);
       }
     }
@@ -68,8 +67,8 @@ namespace llarp
       // TODO: should we own otherKey?
       otherKey = other;
       frame    = new EncryptedFrame(buf.sz);
-      memcpy(frame->data + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE, buf.base,
-             buf.sz);
+      memcpy(frame->data() + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE,
+             buf.base, buf.sz);
       user = u;
       llarp_threadpool_queue_job(worker, {this, &Encrypt});
     }
@@ -103,6 +102,7 @@ namespace llarp
     llarp_crypto* crypto;
     byte_t* seckey;
     EncryptedFrame* target;
+
     void
     AsyncDecrypt(llarp_threadpool* worker, EncryptedFrame* frame, User* user)
     {

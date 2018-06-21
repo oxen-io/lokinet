@@ -1,11 +1,12 @@
 #ifndef LLARP_PATH_TYPES_HPP
 #define LLARP_PATH_TYPES_HPP
 
+#include <llarp/crypto.h>
 #include <llarp/aligned.hpp>
 
 namespace llarp
 {
-  typedef AlignedBuffer< 16 > PathID_t;
+  typedef AlignedBuffer< PATHIDSIZE > PathID_t;
 }
 
 #endif

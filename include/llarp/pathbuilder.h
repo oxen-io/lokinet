@@ -34,8 +34,10 @@ struct llarp_pathbuild_job;
 
 /// response callback
 typedef void (*llarp_pathbuilder_hook)(struct llarp_pathbuild_job*);
-// select hop function (nodedb, result, hopnnumber) called in logic thread
+// select hop function (nodedb, prevhop, result, hopnnumber) called in logic
+// thread
 typedef void (*llarp_pathbuilder_select_hop_func)(struct llarp_nodedb*,
+                                                  struct llarp_rc*,
                                                   struct llarp_rc*, size_t);
 
 // request struct
@@ -49,10 +51,8 @@ struct llarp_pathbuild_job
   struct llarp_pathbuilder_context* context;
   // path hop selection
   llarp_pathbuilder_select_hop_func selectHop;
-  // result handler
-  llarp_pathbuilder_hook result;
-  // encryption secret key for hidden service
-  byte_t* secretkey;
+  // called when the path build started
+  llarp_pathbuilder_hook pathBuildStarted;
   // path
   struct llarp_path_hops hops;
 };

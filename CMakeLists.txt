@@ -32,7 +32,7 @@ else()
 endif()
 
 set(DEBUG_FLAGS "-g")
-set(OPTIMIZE_FLAGS "-Os")
+set(OPTIMIZE_FLAGS "-O0")
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -155,6 +155,7 @@ set(LIB_SRC
 set(TEST_SRC 
   test/main.cpp
   test/dht_unittest.cpp
+  test/encrypted_frame_unittest.cpp
 )
 set(TEST_EXE testAll)
 set(GTEST_DIR test/gtest)

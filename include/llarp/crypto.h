@@ -26,6 +26,7 @@ extern "C" {
 #define SIGSIZE 64
 #define TUNNONCESIZE 32
 #define HMACSIZE 32
+#define PATHIDSIZE 16
 
 /*
 typedef byte_t llarp_pubkey_t[PUBKEYSIZE];
@@ -42,7 +43,7 @@ typedef byte_t llarp_tunnel_nonce_t[TUNNONCESIZE];
 
 /// label functors
 
-/// PKE(result, publickey, nonce, secretkey)
+/// PKE(result, publickey, secretkey, nonce)
 typedef bool (*llarp_path_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
 
 /// TKE(result publickey, secretkey, nonce)

@@ -72,6 +72,7 @@ struct llarp_router
   llarp::InboundMessageParser inbound_msg_parser;
 
   llarp_pathbuilder_select_hop_func selectHopFunc = nullptr;
+  llarp_pathbuilder_context *explorePool          = nullptr;
 
   llarp_link *outboundLink = nullptr;
   std::list< llarp_link * > inboundLinks;
@@ -79,15 +80,12 @@ struct llarp_router
   typedef std::queue< llarp::ILinkMessage * > MessageQueue;
 
   /// outbound message queue
-  std::unordered_map< llarp::PubKey, MessageQueue, llarp::PubKeyHash >
-      outboundMesssageQueue;
+  std::map< llarp::PubKey, MessageQueue > outboundMesssageQueue;
 
   /// loki verified routers
   std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKeyHash > validRouters;
 
-  std::unordered_map< llarp::PubKey, llarp_link_establish_job,
-                      llarp::PubKeyHash >
-      pendingEstablishJobs;
+  std::map< llarp::PubKey, llarp_link_establish_job > pendingEstablishJobs;
 
   llarp_router();
   ~llarp_router();
@@ -144,12 +142,12 @@ struct llarp_router
   /// NOT threadsafe
   /// MUST be called in the logic thread
   bool
-  SendToOrQueue(const llarp::RouterID &remote,
-                std::vector< llarp::ILinkMessage * > msgs);
+  SendToOrQueue(const llarp::RouterID &remote, llarp::ILinkMessage *msg);
 
   /// sendto or drop
   void
-  SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg);
+  SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg,
+         llarp_link *chosen = nullptr);
 
   /// manually flush outbound message queue for just 1 router
   void
@@ -170,6 +168,9 @@ struct llarp_router
   /// call internal router ticker
   void
   Tick();
+
+  void
+  BuildExploritoryPath();
 
   /// schedule ticker to call i ms from now
   void
@@ -207,6 +208,9 @@ struct llarp_router
 
   static void
   HandleDHTLookupForSendTo(llarp_router_lookup_job *job);
+
+  static void
+  HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job);
 };
 
 #endif

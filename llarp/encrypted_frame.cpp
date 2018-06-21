@@ -5,27 +5,19 @@
 
 namespace llarp
 {
-  Encrypted::Encrypted(const byte_t* buf, size_t sz)
+  Encrypted::Encrypted(const byte_t* buf, size_t sz) : _data(sz)
   {
-    size = sz;
-    data = new byte_t[sz];
     if(buf)
-      memcpy(data, buf, sz);
+      memcpy(data(), buf, sz);
     else
-      llarp::Zero(data, sz);
-    m_Buffer.base = data;
-    m_Buffer.cur  = data;
-    m_Buffer.sz   = size;
+      llarp::Zero(data(), sz);
+    m_Buffer.base = data();
+    m_Buffer.cur  = data();
+    m_Buffer.sz   = size();
   }
 
   Encrypted::Encrypted(size_t sz) : Encrypted(nullptr, sz)
   {
-  }
-
-  Encrypted::~Encrypted()
-  {
-    if(data)
-      delete[] data;
   }
 
   bool
@@ -38,7 +30,7 @@ namespace llarp
     // <32 bytes pubkey>
     // <N bytes encrypted payload>
     //
-    byte_t* hash   = data;
+    byte_t* hash   = data();
     byte_t* nonce  = hash + SHORTHASHSIZE;
     byte_t* pubkey = nonce + TUNNONCESIZE;
     byte_t* body   = pubkey + PUBKEYSIZE;
@@ -52,7 +44,7 @@ namespace llarp
     llarp_buffer_t buf;
     buf.base = body;
     buf.cur  = buf.base;
-    buf.sz   = size - EncryptedFrame::OverheadSize;
+    buf.sz   = size() - EncryptedFrame::OverheadSize;
 
     // set our pubkey
     memcpy(pubkey, llarp::seckey_topublic(ourSecretKey), PUBKEYSIZE);
@@ -60,11 +52,12 @@ namespace llarp
     crypto->randbytes(nonce, TUNNONCESIZE);
 
     // derive shared key
-    if(!DH(shared, otherPubkey, nonce, ourSecretKey))
+    if(!DH(shared, otherPubkey, ourSecretKey, nonce))
     {
       llarp::Error("DH failed");
       return false;
     }
+
     // encrypt body
     if(!Encrypt(buf, shared, nonce))
     {
@@ -75,7 +68,7 @@ namespace llarp
     // generate message auth
     buf.base = nonce;
     buf.cur  = buf.base;
-    buf.sz   = size - SHORTHASHSIZE;
+    buf.sz   = size() - SHORTHASHSIZE;
 
     if(!MDS(hash, buf, shared))
     {
@@ -88,9 +81,9 @@ namespace llarp
   bool
   EncryptedFrame::DecryptInPlace(byte_t* ourSecretKey, llarp_crypto* crypto)
   {
-    if(size <= size_t(EncryptedFrame::OverheadSize))
+    if(size() <= size_t(EncryptedFrame::OverheadSize))
     {
-      llarp::Warn("encrypted frame too small, ", size,
+      llarp::Warn("encrypted frame too small, ", size(),
                   " <= ", size_t(EncryptedFrame::OverheadSize));
       return false;
     }
@@ -100,7 +93,7 @@ namespace llarp
     // <32 bytes pubkey>
     // <N bytes encrypted payload>
     //
-    byte_t* hash        = data;
+    byte_t* hash        = data();
     byte_t* nonce       = hash + SHORTHASHSIZE;
     byte_t* otherPubkey = nonce + TUNNONCESIZE;
     byte_t* body        = otherPubkey + PUBKEYSIZE;
@@ -113,12 +106,12 @@ namespace llarp
     llarp_buffer_t buf;
     buf.base = nonce;
     buf.cur  = buf.base;
-    buf.sz   = size - SHORTHASHSIZE;
+    buf.sz   = size() - SHORTHASHSIZE;
 
     SharedSecret shared;
     ShortHash digest;
 
-    if(!DH(shared, otherPubkey, nonce, ourSecretKey))
+    if(!DH(shared, otherPubkey, ourSecretKey, nonce))
     {
       llarp::Error("DH failed");
       return false;
@@ -138,7 +131,7 @@ namespace llarp
 
     buf.base = body;
     buf.cur  = body;
-    buf.sz   = size - EncryptedFrame::OverheadSize;
+    buf.sz   = size() - EncryptedFrame::OverheadSize;
 
     if(!Decrypt(buf, shared, nonce))
     {

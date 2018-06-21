@@ -30,8 +30,8 @@
 
 namespace iwp
 {
-  // session activity timeout is 5s
-  constexpr llarp_time_t SESSION_TIMEOUT = 5000;
+  // session activity timeout is 10s
+  constexpr llarp_time_t SESSION_TIMEOUT = 10000;
 
   constexpr size_t MAX_PAD = 128;
 
@@ -591,7 +591,7 @@ namespace iwp
     void
     queue_tx(uint64_t id, transit_message *msg)
     {
-      tx[id] = msg;
+      tx.insert(std::make_pair(id, msg));
       msg->generate_xmit(sendqueue, txflags);
     }
 
@@ -678,7 +678,7 @@ namespace iwp
 
     uint32_t establish_job_id = 0;
     uint32_t frames           = 0;
-
+    bool working              = false;
     llarp::Addr addr;
     iwp_async_intro intro;
     iwp_async_introack introack;
@@ -853,6 +853,8 @@ namespace iwp
         // when we are done doing stuff with all of our frames from the crypto
         // workers we are done
         llarp::Debug(addr, " timed out with ", frames, " frames left");
+        if(working)
+          return false;
         return frames == 0;
       }
       if(is_invalidated())
@@ -862,12 +864,17 @@ namespace iwp
         // are done
         llarp::Debug(addr, " invaldiated session with ", frames,
                      " frames left");
+        if(working)
+          return false;
         return frames == 0;
       }
       // send keepalive if we are established or a session is made
       if(state == eEstablished || state == eLIMSent)
-      {
         send_keepalive(this);
+
+      // pump frames
+      if(state == eEstablished)
+      {
         frame.retransmit();
         pump();
       }
@@ -905,6 +912,7 @@ namespace iwp
       start.sessionkey    = sessionkey;
       start.user          = this;
       start.hook          = &handle_verify_session_start;
+      working             = true;
       iwp_call_async_verify_session_start(iwp, &start);
     }
 
@@ -954,6 +962,7 @@ namespace iwp
     handle_generated_session_start(iwp_async_session_start *start)
     {
       session *link = static_cast< session * >(start->user);
+      link->working = false;
       if(llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz)
          == -1)
         llarp::Error("sendto failed");
@@ -983,6 +992,7 @@ namespace iwp
       start.sessionkey    = sessionkey;
       start.user          = this;
       start.hook          = &handle_generated_session_start;
+      working             = true;
       iwp_call_async_gen_session_start(iwp, &start);
     }
 
@@ -1090,6 +1100,7 @@ namespace iwp
       // call
       introack.user = this;
       introack.hook = &handle_introack_generated;
+      working       = true;
       iwp_call_async_gen_introack(iwp, &introack);
     }
 
@@ -1100,7 +1111,7 @@ namespace iwp
       {
         // too big?
         llarp::Error("intro too big");
-        // TOOD: session destroy ?
+        delete this;
         return;
       }
       // copy so we own it
@@ -1119,33 +1130,12 @@ namespace iwp
 
       // call
       EnterState(eIntroRecv);
+      working = true;
       iwp_call_async_verify_intro(iwp, &intro);
     }
 
     void
-    on_intro_ack(const void *buf, size_t sz)
-    {
-      if(sz >= sizeof(workbuf))
-      {
-        // too big?
-        llarp::Error("introack too big");
-        // TOOD: session destroy ?
-        return;
-      }
-      // copy buffer so we own it
-      memcpy(workbuf, buf, sz);
-      // set intro ack parameters
-      introack.buf           = workbuf;
-      introack.sz            = sz;
-      introack.nonce         = workbuf + 32;
-      introack.remote_pubkey = remote;
-      introack.token         = token;
-      introack.secretkey     = eph_seckey;
-      introack.user          = this;
-      introack.hook          = &handle_verify_introack;
-      // async verify
-      iwp_call_async_verify_introack(iwp, &introack);
-    }
+    on_intro_ack(const void *buf, size_t sz);
 
     static llarp_link *
     get_parent(llarp_link_session *s);
@@ -1154,6 +1144,7 @@ namespace iwp
     handle_generated_intro(iwp_async_intro *i)
     {
       session *link = static_cast< session * >(i->user);
+      link->working = false;
       if(i->buf)
       {
         llarp::Debug("send intro");
@@ -1195,6 +1186,7 @@ namespace iwp
       // async generate intro packet
       intro.user = this;
       intro.hook = &handle_generated_intro;
+      working    = true;
       iwp_call_async_gen_intro(iwp, &intro);
       // start introduce timer
       establish_job_id = llarp_logic_call_later(
@@ -1402,7 +1394,10 @@ namespace iwp
       if(itr != m_sessions.end())
       {
         llarp::Debug("removing session ", addr);
+        UnmapAddr(addr);
         session *s = static_cast< session * >(itr->second.impl);
+        m_sessions.erase(itr);
+        s->done();
         if(s->frames)
         {
           llarp::Warn("session has ", s->frames,
@@ -1411,8 +1406,6 @@ namespace iwp
         }
         else
           delete s;
-        m_sessions.erase(itr);
-        UnmapAddr(addr);
       }
     }
 
@@ -1479,7 +1472,6 @@ namespace iwp
       {
         // new inbound session
         s = link->create_session(*saddr);
-        llarp::Debug("new inbound session from ", s->addr);
       }
       s->recv(buf, sz);
     }
@@ -1531,6 +1523,7 @@ namespace iwp
             if(!impl->IsEstablished())
             {
               impl->send_LIM();
+              impl->session_established();
             }
           }
           else
@@ -1552,16 +1545,18 @@ namespace iwp
     delete rxmsg;
     rx.erase(id);
     return success;
-  }
+  }  // namespace iwp
 
   void
   session::handle_verify_intro(iwp_async_intro *intro)
   {
     session *self = static_cast< session * >(intro->user);
+    self->working = false;
     if(!intro->buf)
     {
       llarp::Error("intro verify failed from ", self->addr, " via ",
                    self->serv->addr);
+      delete self;
       return;
     }
     self->intro_ack();
@@ -1570,6 +1565,8 @@ namespace iwp
   void
   session::session_established()
   {
+    llarp::RouterID remote = remote_router.pubkey;
+    llarp::Info("session to ", remote, " established");
     EnterState(eEstablished);
     serv->MapAddr(addr, remote_router.pubkey);
     llarp_logic_cancel_call(logic, establish_job_id);
@@ -1578,6 +1575,37 @@ namespace iwp
   void
   session::done()
   {
+    if(establish_job_id)
+    {
+      llarp_logic_remove_call(logic, establish_job_id);
+      handle_establish_timeout(this, 0, 0);
+    }
+  }
+
+  void
+  session::on_intro_ack(const void *buf, size_t sz)
+  {
+    if(sz >= sizeof(workbuf))
+    {
+      // too big?
+      llarp::Error("introack too big");
+      serv->RemoveSessionByAddr(addr);
+      return;
+    }
+    // copy buffer so we own it
+    memcpy(workbuf, buf, sz);
+    // set intro ack parameters
+    introack.buf           = workbuf;
+    introack.sz            = sz;
+    introack.nonce         = workbuf + 32;
+    introack.remote_pubkey = remote;
+    introack.token         = token;
+    introack.secretkey     = eph_seckey;
+    introack.user          = this;
+    introack.hook          = &handle_verify_introack;
+    // async verify
+    working = true;
+    iwp_call_async_verify_introack(iwp, &introack);
   }
 
   void
@@ -1636,11 +1664,6 @@ namespace iwp
     {
       llarp::Debug("message transmitted msgid=", msgid);
       session *impl = static_cast< session * >(parent->impl);
-      if(msgid == 0)
-      {
-        // first message acked means we are established
-        impl->session_established();
-      }
       tx.erase(msgid);
       delete msg;
     }
@@ -1664,10 +1687,12 @@ namespace iwp
   session::handle_verify_introack(iwp_async_introack *introack)
   {
     session *link = static_cast< session * >(introack->user);
+    link->working = false;
     if(introack->buf == nullptr)
     {
       // invalid signature
       llarp::Error("introack verify failed from ", link->addr);
+      // link->serv->RemoveSessionByAddr(link->addr);
       return;
     }
     link->EnterState(eIntroAckRecv);
@@ -1678,6 +1703,7 @@ namespace iwp
   session::handle_verify_session_start(iwp_async_session_start *s)
   {
     session *self = static_cast< session * >(s->user);
+    self->working = false;
     if(!s->buf)
     {
       // verify fail
@@ -1871,14 +1897,15 @@ namespace iwp
   void
   session::handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
   {
+    if(orig == 0)
+      return;
     session *self          = static_cast< session * >(user);
     self->establish_job_id = 0;
     if(self->establish_job)
     {
       self->establish_job->link = self->serv->parent;
-      if(left)
+      if(self->IsEstablished())
       {
-        // timer cancelled
         self->establish_job->session = self->parent;
       }
       else
@@ -1921,7 +1948,7 @@ namespace iwp
       delete link;
     }
   }
-}
+}  // namespace iwp
 
 extern "C" {
 void

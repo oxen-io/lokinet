@@ -16,14 +16,14 @@ namespace llarp
     }
 
     static bool
-    dh(uint8_t *out, uint8_t *client_pk, uint8_t *server_pk, uint8_t *pubkey,
-       uint8_t *secret)
+    dh(uint8_t *out, uint8_t *client_pk, uint8_t *server_pk, uint8_t *themPub,
+       uint8_t *usSec)
     {
       llarp::SharedSecret shared;
       crypto_generichash_state h;
       const size_t outsz = SHAREDKEYSIZE;
 
-      if(crypto_scalarmult_curve25519(shared, secret, pubkey))
+      if(crypto_scalarmult_curve25519(shared, usSec, themPub))
         return false;
       crypto_generichash_init(&h, NULL, 0U, outsz);
       crypto_generichash_update(&h, client_pk, 32);
@@ -34,31 +34,7 @@ namespace llarp
     }
 
     static bool
-    dh_client(byte_t *shared, byte_t *pk, byte_t *n, byte_t *sk)
-    {
-      if(dh(shared, llarp::seckey_topublic(sk), pk, pk, sk))
-      {
-        return crypto_generichash(shared, SHAREDKEYSIZE, shared, SHAREDKEYSIZE,
-                                  n, TUNNONCESIZE)
-            != -1;
-      }
-      return false;
-    }
-
-    static bool
-    dh_server(byte_t *shared, byte_t *pk, byte_t *n, byte_t *sk)
-    {
-      if(dh(shared, pk, llarp::seckey_topublic(sk), pk, sk))
-      {
-        return crypto_generichash(shared, SHAREDKEYSIZE, shared, SHAREDKEYSIZE,
-                                  n, TUNNONCESIZE)
-            != -1;
-      }
-      return false;
-    }
-
-    static bool
-    transport_dh_client(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
+    dh_client(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
     {
       llarp::SharedSecret dh_result;
       if(dh(dh_result, llarp::seckey_topublic(sk), pk, pk, sk))
@@ -69,7 +45,7 @@ namespace llarp
     }
 
     static bool
-    transport_dh_server(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
+    dh_server(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
     {
       llarp::SharedSecret dh_result;
       if(dh(dh_result, pk, llarp::seckey_topublic(sk), pk, sk))
@@ -156,7 +132,6 @@ namespace llarp
 }  // namespace llarp
 
 extern "C" {
-
 const byte_t *
 llarp_seckey_topublic(const byte_t *secret)
 {
@@ -170,8 +145,8 @@ llarp_crypto_libsodium_init(struct llarp_crypto *c)
   c->xchacha20           = llarp::sodium::xchacha20;
   c->dh_client           = llarp::sodium::dh_client;
   c->dh_server           = llarp::sodium::dh_server;
-  c->transport_dh_client = llarp::sodium::transport_dh_client;
-  c->transport_dh_server = llarp::sodium::transport_dh_server;
+  c->transport_dh_client = llarp::sodium::dh_client;
+  c->transport_dh_server = llarp::sodium::dh_server;
   c->hash                = llarp::sodium::hash;
   c->shorthash           = llarp::sodium::shorthash;
   c->hmac                = llarp::sodium::hmac;

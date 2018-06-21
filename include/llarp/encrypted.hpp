@@ -4,6 +4,7 @@
 #include <llarp/bencode.h>
 #include <llarp/buffer.h>
 #include <sodium.h>
+#include <vector>
 
 namespace llarp
 {
@@ -13,19 +14,24 @@ namespace llarp
     Encrypted() = default;
     Encrypted(const byte_t* buf, size_t sz);
     Encrypted(size_t sz);
-    ~Encrypted();
 
     bool
     BEncode(llarp_buffer_t* buf) const
     {
-      return bencode_write_bytestring(buf, data, size);
+      return bencode_write_bytestring(buf, _data.data(), _data.size());
+    }
+
+    void
+    Fill(byte_t fill)
+    {
+      std::fill(_data.begin(), _data.end(), fill);
     }
 
     void
     Randomize()
     {
-      if(data)
-        randombytes(data, size);
+      if(_data.size())
+        randombytes(_data.data(), _data.size());
     }
 
     bool
@@ -36,11 +42,8 @@ namespace llarp
         return false;
       if(strbuf.sz == 0)
         return false;
-      if(data)
-        delete[] data;
-      size = strbuf.sz;
-      data = new byte_t[size];
-      memcpy(data, strbuf.base, size);
+      _data.resize(strbuf.sz);
+      memcpy(_data.data(), strbuf.base, _data.size());
       return true;
     }
 
@@ -50,12 +53,29 @@ namespace llarp
       return &m_Buffer;
     }
 
-    byte_t* data = nullptr;
-    size_t size  = 0;
+    size_t
+    size()
+    {
+      return _data.size();
+    }
+
+    size_t
+    size() const
+    {
+      return _data.size();
+    }
+
+    byte_t*
+    data()
+    {
+      return _data.data();
+    }
+
+    std::vector< byte_t > _data;
 
    private:
     llarp_buffer_t m_Buffer;
   };
-}
+}  // namespace llarp
 
 #endif

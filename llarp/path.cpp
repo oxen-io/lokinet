@@ -5,15 +5,6 @@
 
 namespace llarp
 {
-  Path::Path(llarp_path_hops* h)
-  {
-    for(size_t idx = 0; idx < h->numHops; ++idx)
-    {
-      hops.emplace_back();
-      llarp_rc_copy(&hops[idx].router, &h->routers[idx]);
-    }
-  }
-
   PathContext::PathContext(llarp_router* router)
       : m_Router(router), m_AllowTransit(false)
   {
@@ -69,6 +60,7 @@ namespace llarp
   PathContext::ForwardLRCM(const RouterID& nextHop,
                            std::deque< EncryptedFrame >& frames)
   {
+    llarp::Info("fowarding LRCM to ", nextHop);
     LR_CommitMessage* msg = new LR_CommitMessage;
     while(frames.size())
     {
@@ -99,6 +91,12 @@ namespace llarp
   {
     std::unique_lock< std::mutex > lock(map.first);
     map.second.emplace(k, v);
+  }
+
+  void
+  PathContext::AddOwnPath(Path* path)
+  {
+    MapPut(m_OurPaths, path->PathID(), path);
   }
 
   bool
@@ -148,4 +146,25 @@ namespace llarp
       : pathID(record.pathid), upstream(record.nextHop), downstream(down)
   {
   }
+
+  Path::Path(llarp_path_hops* h) : hops(h->numHops)
+  {
+    for(size_t idx = 0; idx < h->numHops; ++idx)
+    {
+      llarp_rc_copy(&hops[idx].router, &h->hops[idx].router);
+    }
+  }
+
+  const PathID_t&
+  Path::PathID() const
+  {
+    return hops[0].pathID;
+  }
+
+  RouterID
+  Path::Upstream()
+  {
+    return hops[0].router.pubkey;
+  }
+
 }  // namespace llarp

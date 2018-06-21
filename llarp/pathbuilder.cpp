@@ -20,18 +20,32 @@ namespace llarp
   pathbuilder_generated_keys(
       AsyncPathKeyExchangeContext< llarp_pathbuild_job >* ctx)
   {
-    llarp::Debug("Generated keys for build");
+    auto remote = ctx->path->Upstream();
+    llarp::Debug("Generated LRCM to", remote);
+    auto router = ctx->user->router;
+    if(!router->SendToOrQueue(remote, ctx->LRCM))
+    {
+      llarp::Error("failed to send LRCM");
+      return;
+    }
+    ctx->path->status = ePathBuilding;
+    router->paths.AddOwnPath(ctx->path);
+    ctx->user->pathBuildStarted(ctx->user);
   }
 
   void
   pathbuilder_start_build(void* user)
   {
-    // select hops
     llarp_pathbuild_job* job = static_cast< llarp_pathbuild_job* >(user);
-    size_t idx               = 0;
+    // select hops
+    size_t idx     = 0;
+    llarp_rc* prev = nullptr;
     while(idx < job->hops.numHops)
     {
-      job->selectHop(job->router->nodedb, &job->hops.routers[idx], idx);
+      llarp_rc* rc = &job->hops.hops[idx].router;
+      llarp_rc_clear(rc);
+      job->selectHop(job->router->nodedb, prev, rc, idx);
+      prev = rc;
       ++idx;
     }
 
@@ -42,21 +56,13 @@ namespace llarp
 
     ctx->AsyncGenerateKeys(new Path(&job->hops), job->router->logic,
                            job->router->tp, job, &pathbuilder_generated_keys);
-    // free rc
-    idx = 0;
-    while(idx < job->hops.numHops)
-    {
-      llarp_rc_free(&job->hops.routers[idx]);
-      ++idx;
-    }
   }
 }  // namespace llarp
 
 llarp_pathbuilder_context::llarp_pathbuilder_context(
     llarp_router* p_router, struct llarp_dht_context* p_dht)
+    : router(p_router), dht(p_dht)
 {
-  this->router = p_router;
-  this->dht    = p_dht;
 }
 
 extern "C" {
@@ -82,6 +88,8 @@ llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
     return;
   }
   job->router = job->context->router;
+  if(job->selectHop == nullptr)
+    job->selectHop = &llarp_nodedb_select_random_hop;
   llarp_logic_queue_job(job->router->logic,
                         {job, &llarp::pathbuilder_start_build});
 }

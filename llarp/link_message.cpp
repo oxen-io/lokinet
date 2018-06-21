@@ -49,6 +49,7 @@ namespace llarp
         return false;
       }
       // create the message to parse based off message type
+      llarp::Debug("inbound message ", *strbuf.cur);
       switch(*strbuf.cur)
       {
         case 'i':
@@ -113,4 +114,4 @@ namespace llarp
     firstkey = true;
     return bencode_read_dict(&buf, &reader);
   }
-}
+}  // namespace llarp

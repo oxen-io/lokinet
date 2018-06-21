@@ -33,6 +33,7 @@ llarp_router::llarp_router()
     , paths(this)
     , dht(llarp_dht_context_new(this))
     , inbound_msg_parser(this)
+    , explorePool(llarp_pathbuilder_context_new(this, dht))
 
 {
   llarp_rc_clear(&rc);
@@ -53,7 +54,7 @@ llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
 
 bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
-                            std::vector< llarp::ILinkMessage * > msgs)
+                            llarp::ILinkMessage *msg)
 {
   llarp_link *chosen = nullptr;
   if(!outboundLink->has_session_to(outboundLink, remote))
@@ -70,34 +71,38 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   else
     chosen = outboundLink;
 
-  for(const auto &msg : msgs)
+  if(chosen)
   {
-    // this will create an entry in the obmq if it's not already there
-    outboundMesssageQueue[remote].push(msg);
+    SendTo(remote, msg, chosen);
+    delete msg;
+    return true;
   }
+  // this will create an entry in the obmq if it's not already there
+  auto itr = outboundMesssageQueue.find(remote);
+  if(itr == outboundMesssageQueue.end())
+  {
+    outboundMesssageQueue.emplace(std::make_pair(remote, MessageQueue()));
+  }
+  outboundMesssageQueue[remote].push(msg);
 
-  if(!chosen)
+  // we don't have an open session to that router right now
+  auto rc = llarp_nodedb_get_rc(nodedb, remote);
+  if(rc)
   {
-    // we don't have an open session to that router right now
-    auto rc = llarp_nodedb_get_rc(nodedb, remote);
-    if(rc)
-    {
-      // try connecting directly as the rc is loaded from disk
-      llarp_router_try_connect(this, rc, 10);
-      return true;
-    }
-    // try requesting the rc from the disk
-    llarp_async_load_rc *job = new llarp_async_load_rc;
-    job->diskworker          = disk;
-    job->nodedb              = nodedb;
-    job->logic               = logic;
-    job->user                = this;
-    job->hook                = &HandleAsyncLoadRCForSendTo;
-    memcpy(job->pubkey, remote, PUBKEYSIZE);
-    llarp_nodedb_async_load_rc(job);
+    // try connecting directly as the rc is loaded from disk
+    llarp_router_try_connect(this, rc, 10);
+    return true;
   }
-  else
-    FlushOutboundFor(remote, chosen);
+  // try requesting the rc from the disk
+  llarp_async_load_rc *job = new llarp_async_load_rc;
+  job->diskworker          = disk;
+  job->nodedb              = nodedb;
+  job->logic               = logic;
+  job->user                = this;
+  job->hook                = &HandleAsyncLoadRCForSendTo;
+  memcpy(job->pubkey, remote, PUBKEYSIZE);
+  llarp_nodedb_async_load_rc(job);
+
   return true;
 }
 
@@ -281,10 +286,16 @@ llarp_router::connect_job_retry(void *user, uint64_t orig, uint64_t left)
     return;
   llarp_link_establish_job *job =
       static_cast< llarp_link_establish_job * >(user);
-
   llarp::Addr remote = job->ai;
-  llarp::Info("trying to establish session again with ", remote);
-  job->link->try_establish(job->link, job);
+  if(job->link)
+  {
+    llarp::Info("trying to establish session again with ", remote);
+    job->link->try_establish(job->link, job);
+  }
+  else
+  {
+    llarp::Error("establish session retry failed, no link for ", remote);
+  }
 }
 
 void
@@ -360,12 +371,42 @@ llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
 }
 
 void
+llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
+{
+  delete job;
+}
+
+void
+llarp_router::BuildExploritoryPath()
+{
+  llarp_pathbuild_job *job = new llarp_pathbuild_job;
+  job->context             = explorePool;
+  job->selectHop           = selectHopFunc;
+  job->hops.numHops        = 4;
+  job->user                = this;
+  job->pathBuildStarted    = &HandleExploritoryPathBuildStarted;
+  llarp_pathbuilder_build_path(job);
+}
+
+void
 llarp_router::Tick()
 {
   llarp::Debug("tick router");
   paths.ExpirePaths();
-  llarp_pathbuild_job job;
-  llarp_pathbuilder_build_path(&job);
+  // TODO: don't do this if we have enough paths already
+  if(inboundLinks.size() == 0)
+  {
+    auto N = llarp_nodedb_num_loaded(nodedb);
+    if(N > 5)
+    {
+      BuildExploritoryPath();
+    }
+    else
+    {
+      llarp::Warn("not enough nodes known to build exploritory paths, have ", N,
+                  " nodes");
+    }
+  }
   llarp_link_session_iter iter;
   iter.user  = this;
   iter.visit = &send_padded_message;
@@ -401,7 +442,8 @@ llarp_router::send_padded_message(llarp_link_session_iter *itr,
 }
 
 void
-llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg)
+llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg,
+                     llarp_link *link)
 {
   llarp_buffer_t buf =
       llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
@@ -415,7 +457,11 @@ llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg)
   // set size of message
   buf.sz  = buf.cur - buf.base;
   buf.cur = buf.base;
-
+  if(link)
+  {
+    link->sendto(link, remote, buf);
+    return;
+  }
   bool sent = outboundLink->sendto(outboundLink, remote, buf);
   if(!sent)
   {
@@ -456,7 +502,9 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
   llarp::Debug("Flush outbound for ", remote);
   auto itr = outboundMesssageQueue.find(remote);
   if(itr == outboundMesssageQueue.end())
+  {
     return;
+  }
   while(itr->second.size())
   {
     auto buf = llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
@@ -599,15 +647,21 @@ llarp_router::Run()
   {
     // initialize as service node
     InitServiceNode();
+    // immediate connect all for service node
+    auto delay = rand() % 100;
+    llarp_logic_call_later(logic, {delay, this, &ConnectAll});
+  }
+  else
+  {  // delayed connect all for clients
+    auto delay = ((rand() % 10) * 500) + 1000;
+    llarp_logic_call_later(logic, {delay, this, &ConnectAll});
   }
 
   llarp::PubKey ourPubkey = pubkey();
   llarp::Info("starting dht context as ", ourPubkey);
   llarp_dht_context_start(dht, ourPubkey);
 
-  llarp_logic_call_later(logic, {1000, this, &ConnectAll});
-
-  ScheduleTicker(500);
+  ScheduleTicker(1000);
 }
 
 void
