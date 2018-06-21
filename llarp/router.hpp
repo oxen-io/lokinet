@@ -80,10 +80,10 @@ struct llarp_router
   typedef std::queue< llarp::ILinkMessage * > MessageQueue;
 
   /// outbound message queue
-  std::map< llarp::PubKey, MessageQueue > outboundMesssageQueue;
+  std::map< llarp::RouterID, MessageQueue > outboundMesssageQueue;
 
   /// loki verified routers
-  std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKeyHash > validRouters;
+  std::map< llarp::RouterID, llarp_rc > validRouters;
 
   std::map< llarp::PubKey, llarp_link_establish_job > pendingEstablishJobs;
 

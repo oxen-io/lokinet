@@ -30,6 +30,9 @@ namespace llarp
       {
       }
 
+      bool
+      IsZero() const;
+
       Key_t
       operator^(const Key_t& other) const
       {
@@ -45,6 +48,8 @@ namespace llarp
         return memcmp(data_l(), other.data_l(), 32) < 0;
       }
     };
+
+    extern Key_t ZeroKey;
 
     struct Node
     {
@@ -69,8 +74,8 @@ namespace llarp
 
       SearchJob();
 
-      SearchJob(const Key_t& requestor, const Key_t& target,
-                llarp_router_lookup_job* job,
+      SearchJob(const Key_t& requester, uint64_t requesterTX,
+                const Key_t& target, llarp_router_lookup_job* job,
                 const std::set< Key_t >& excludes);
 
       void
@@ -81,7 +86,8 @@ namespace llarp
 
       llarp_router_lookup_job* job = nullptr;
       llarp_time_t started;
-      Key_t requestor;
+      Key_t requester;
+      uint64_t requesterTX;
       Key_t target;
       std::set< Key_t > exclude;
     };
@@ -164,7 +170,8 @@ namespace llarp
 
       void
       LookupRouter(const Key_t& target, const Key_t& whoasked,
-                   const Key_t& askpeer, llarp_router_lookup_job* job = nullptr,
+                   uint64_t whoaskedTX, const Key_t& askpeer,
+                   llarp_router_lookup_job* job = nullptr,
                    bool iterative = false, std::set< Key_t > excludes = {});
 
       void

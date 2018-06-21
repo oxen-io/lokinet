@@ -50,8 +50,6 @@ namespace llarp
       // randomize hop's path id
       hop.pathID.Randomize();
 
-      LR_CommitRecord record;
-
       ++ctx->idx;
 
       bool isFarthestHop = ctx->idx == ctx->path->hops.size() - 1;
@@ -64,9 +62,18 @@ namespace llarp
       {
         hop.upstream = ctx->path->hops[ctx->idx].router.pubkey;
       }
+
+      // build record
+      LR_CommitRecord record;
+      record.version     = LLARP_PROTO_VERSION;
+      record.pathid      = hop.pathID;
+      record.tunnelNonce = hop.nonce;
+      record.nextHop     = hop.upstream;
+      record.commkey     = llarp::seckey_topublic(hop.commkey);
+
       auto buf = frame.Buffer();
       buf->cur = buf->base + EncryptedFrame::OverheadSize;
-      // generate record
+      // encode record
       if(!record.BEncode(buf))
       {
         // failed to encode?
@@ -178,27 +185,28 @@ llarp_pathbuilder_context::llarp_pathbuilder_context(
 {
 }
 
-extern "C" {
-struct llarp_pathbuilder_context*
-llarp_pathbuilder_context_new(struct llarp_router* router,
-                              struct llarp_dht_context* dht)
+extern "C"
 {
-  return new llarp_pathbuilder_context(router, dht);
-}
+  struct llarp_pathbuilder_context*
+  llarp_pathbuilder_context_new(struct llarp_router* router,
+                                struct llarp_dht_context* dht)
+  {
+    return new llarp_pathbuilder_context(router, dht);
+  }
 
-void
-llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
-{
-  delete ctx;
-}
+  void
+  llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
+  {
+    delete ctx;
+  }
 
-void
-llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
-{
-  job->router = job->context->router;
-  if(job->selectHop == nullptr)
-    job->selectHop = &llarp_nodedb_select_random_hop;
-  llarp_logic_queue_job(job->router->logic,
-                        {job, &llarp::pathbuilder_start_build});
-}
+  void
+  llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
+  {
+    job->router = job->context->router;
+    if(job->selectHop == nullptr)
+      job->selectHop = &llarp_nodedb_select_random_hop;
+    llarp_logic_queue_job(job->router->logic,
+                          {job, &llarp::pathbuilder_start_build});
+  }
 }

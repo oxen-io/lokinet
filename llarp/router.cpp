@@ -786,7 +786,7 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
   {
     auto link = router->outboundLink;
     auto itr  = router->pendingEstablishJobs.emplace(
-        std::make_pair(remote->pubkey, llarp_link_establish_job{}));
+        std::make_pair(remote->pubkey, llarp_link_establish_job()));
     auto job = &itr.first->second;
     llarp_ai_copy(&job->ai, &addr);
     memcpy(job->pubkey, remote->pubkey, PUBKEYSIZE);
