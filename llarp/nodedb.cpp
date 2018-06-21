@@ -218,14 +218,17 @@ struct llarp_nodedb
     return true;
   }
 
-  bool iterate() {
+  bool iterate(struct llarp_nodedb_iter i) {
+    i.index = 0;
     auto itr = entries.begin();
     while(itr != entries.end())
     {
-      llarp::PubKey pk = itr->first;
-      llarp_rc rc= itr->second;
+      i.rc = &itr->second;
+      i.visit(&i);
 
-      itr++; // advance
+      // advance
+      i.index++;
+      itr++;
     }
     return true;
   }
@@ -375,19 +378,7 @@ llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc) {
 
 int
 llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i) {
-  i.index = 0;
-  auto itr = n->entries.begin();
-  while(itr != n->entries.end())
-  {
-    //llarp::PubKey pk = itr->first;
-    //llarp_rc rc= itr->second;
-    //llarp::Info("visit\n");
-    i.rc = &itr->second;
-    i.visit(&i);
-
-    i.index++;
-    itr++; // advance
-  }
+  n->iterate(i);
   return n->entries.size();
 }
 
