@@ -19,6 +19,12 @@ namespace llarp
 
     AlignedBuffer() = default;
 
+    AlignedBuffer(const AlignedBuffer& other)
+    {
+      for(size_t idx = 0; idx < (sz / 8); ++idx)
+        l[idx] = other.l[idx];
+    }
+
     AlignedBuffer(const byte_t* data)
     {
       for(size_t idx = 0; idx < sz; ++idx)

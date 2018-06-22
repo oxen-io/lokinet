@@ -125,6 +125,7 @@ set(LIB_SRC
   llarp/nodedb.cpp
   llarp/path.cpp
   llarp/pathbuilder.cpp
+  llarp/path_confirm.cpp
   llarp/proofofwork.cpp
   llarp/relay_ack.cpp
   llarp/relay_commit.cpp
@@ -132,6 +133,7 @@ set(LIB_SRC
   llarp/router_contact.cpp
   llarp/router.cpp
   llarp/threadpool.cpp
+  llarp/transit_hop.cpp
   llarp/testnet.c
   llarp/time.cpp
   llarp/timer.cpp

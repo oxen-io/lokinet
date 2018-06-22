@@ -43,7 +43,8 @@ TEST_F(FrameTest, TestFrameCrypto)
   LRCR record;
   record.nextHop.Fill(1);
   record.tunnelNonce.Fill(2);
-  record.pathid.Fill(3);
+  record.rxid.Fill(3);
+  record.txid.Fill(4);
 
   auto buf = f.Buffer();
   buf->cur = buf->base + EncryptedFrame::OverheadSize;

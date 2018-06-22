@@ -1396,8 +1396,8 @@ namespace iwp
         llarp::Debug("removing session ", addr);
         UnmapAddr(addr);
         session *s = static_cast< session * >(itr->second.impl);
-        m_sessions.erase(itr);
         s->done();
+        m_sessions.erase(itr);
         if(s->frames)
         {
           llarp::Warn("session has ", s->frames,
@@ -1903,18 +1903,19 @@ namespace iwp
     self->establish_job_id = 0;
     if(self->establish_job)
     {
-      self->establish_job->link = self->serv->parent;
+      auto job            = self->establish_job;
+      self->establish_job = nullptr;
+      job->link           = self->serv->parent;
       if(self->IsEstablished())
       {
-        self->establish_job->session = self->parent;
+        job->session = self->parent;
       }
       else
       {
         // timer timeout
-        self->establish_job->session = nullptr;
+        job->session = nullptr;
       }
-      self->establish_job->result(self->establish_job);
-      self->establish_job = nullptr;
+      job->result(job);
     }
   }
 

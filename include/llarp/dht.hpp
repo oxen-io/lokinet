@@ -30,6 +30,9 @@ namespace llarp
       {
       }
 
+      bool
+      IsZero() const;
+
       Key_t
       operator^(const Key_t& other) const
       {
@@ -45,6 +48,8 @@ namespace llarp
         return memcmp(data_l(), other.data_l(), 32) < 0;
       }
     };
+
+    extern Key_t ZeroKey;
 
     struct Node
     {
@@ -69,8 +74,9 @@ namespace llarp
 
       SearchJob();
 
-      SearchJob(const Key_t& requestor, const Key_t& target,
-                llarp_router_lookup_job* job);
+      SearchJob(const Key_t& requester, uint64_t requesterTX,
+                const Key_t& target, llarp_router_lookup_job* job,
+                const std::set< Key_t >& excludes);
 
       void
       Completed(const llarp_rc* router, bool timeout = false) const;
@@ -80,7 +86,8 @@ namespace llarp
 
       llarp_router_lookup_job* job = nullptr;
       llarp_time_t started;
-      Key_t requestor;
+      Key_t requester;
+      uint64_t requesterTX;
       Key_t target;
       std::set< Key_t > exclude;
     };
@@ -163,15 +170,16 @@ namespace llarp
 
       void
       LookupRouter(const Key_t& target, const Key_t& whoasked,
-                   const Key_t& askpeer,
-                   llarp_router_lookup_job* job = nullptr);
+                   uint64_t whoaskedTX, const Key_t& askpeer,
+                   llarp_router_lookup_job* job = nullptr,
+                   bool iterative = false, std::set< Key_t > excludes = {});
 
       void
       LookupRouterViaJob(llarp_router_lookup_job* job);
 
       void
       LookupRouterRelayed(const Key_t& requester, uint64_t txid,
-                          const Key_t& target,
+                          const Key_t& target, bool recursive,
                           std::vector< IMessage* >& replies);
 
       void
@@ -190,6 +198,12 @@ namespace llarp
       Bucket* nodes        = nullptr;
       bool allowTransit    = false;
 
+      const Key_t&
+      OurKey() const
+      {
+        return ourKey;
+      }
+
      private:
       void
       ScheduleCleanupTimer();
@@ -201,18 +215,18 @@ namespace llarp
 
       struct TXOwner
       {
-        Key_t requester;
+        Key_t node;
         uint64_t txid = 0;
 
         bool
         operator==(const TXOwner& other) const
         {
-          return txid == other.txid && requester == other.requester;
+          return txid == other.txid && node == other.node;
         }
         bool
         operator<(const TXOwner& other) const
         {
-          return txid < other.txid && requester < other.requester;
+          return txid < other.txid || node < other.node;
         }
       };
 
@@ -222,7 +236,7 @@ namespace llarp
         operator()(TXOwner const& o) const noexcept
         {
           std::size_t sz2;
-          memcpy(&sz2, &o.requester[0], sizeof(std::size_t));
+          memcpy(&sz2, &o.node[0], sizeof(std::size_t));
           return o.txid ^ (sz2 << 1);
         }
       };
@@ -288,6 +302,7 @@ namespace llarp
                     std::vector< IMessage* >& replies) const;
 
       Key_t K;
+      bool iterative   = false;
       uint64_t txid    = 0;
       uint64_t version = 0;
     };

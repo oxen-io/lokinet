@@ -12,4 +12,6 @@
 #include <llarp/messages/relay_ack.hpp>
 #include <llarp/messages/relay_commit.hpp>
 
+#include <llarp/messages/path_confirm.hpp>
+
 #endif

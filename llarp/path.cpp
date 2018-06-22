@@ -1,6 +1,7 @@
 #include <deque>
 #include <llarp/encrypted_frame.hpp>
 #include <llarp/path.hpp>
+#include "buffer.hpp"
 #include "router.hpp"
 
 namespace llarp
@@ -69,6 +70,20 @@ namespace llarp
     }
     return m_Router->SendToOrQueue(nextHop, msg);
   }
+  template < typename Map_t, typename Key_t, typename CheckValue_t >
+  IHopHandler*
+  MapGet(Map_t& map, const Key_t& k, CheckValue_t check)
+  {
+    std::unique_lock< std::mutex > lock(map.first);
+    auto itr = map.second.find(k);
+    while(itr != map.second.end())
+    {
+      if(check(itr->second))
+        return itr->second;
+      ++itr;
+    }
+    return nullptr;
+  }
 
   template < typename Map_t, typename Key_t, typename CheckValue_t >
   bool
@@ -93,6 +108,21 @@ namespace llarp
     map.second.emplace(k, v);
   }
 
+  template < typename Map_t, typename Key_t, typename Check_t >
+  void
+  MapDel(Map_t& map, const Key_t& k, Check_t check)
+  {
+    std::unique_lock< std::mutex > lock(map.first);
+    auto itr = map.second.find(k);
+    while(itr != map.second.end())
+    {
+      if(check(itr->second))
+        itr = map.second.erase(itr);
+      else
+        ++itr;
+    }
+  }
+
   void
   PathContext::AddOwnPath(Path* path)
   {
@@ -102,9 +132,22 @@ namespace llarp
   bool
   PathContext::HasTransitHop(const TransitHopInfo& info)
   {
-    return MapHas(
-        m_TransitPaths, info.pathID,
-        [info](const TransitHop& hop) -> bool { return info == hop.info; });
+    return MapHas(m_TransitPaths, info.pathID, [info](TransitHop* hop) -> bool {
+      return info == hop->info;
+    });
+  }
+
+  IHopHandler*
+  PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
+  {
+    auto own = MapGet(m_OurPaths, id, [remote](const Path* p) -> bool {
+      return p->Upstream() == remote;
+    });
+    if(own)
+      return own;
+    return MapGet(m_TransitPaths, id, [remote](const TransitHop* hop) -> bool {
+      return hop->info.upstream == remote;
+    });
   }
 
   const byte_t*
@@ -113,10 +156,17 @@ namespace llarp
     return m_Router->pubkey();
   }
 
-  void
-  PathContext::PutTransitHop(const TransitHop& hop)
+  llarp_router*
+  PathContext::Router()
   {
-    MapPut(m_TransitPaths, hop.info.pathID, hop);
+    return m_Router;
+  }
+
+  void
+  PathContext::PutTransitHop(TransitHop* hop)
+  {
+    MapPut(m_TransitPaths, hop->info.txID, hop);
+    MapPut(m_TransitPaths, hop->info.rxID, hop);
   }
 
   void
@@ -126,25 +176,23 @@ namespace llarp
     auto now  = llarp_time_now_ms();
     auto& map = m_TransitPaths.second;
     auto itr  = map.begin();
+    std::set< TransitHop* > removePaths;
     while(itr != map.end())
     {
-      if(itr->second.Expired(now))
-        itr = map.erase(itr);
-      else
-        ++itr;
+      if(itr->second->Expired(now))
+      {
+        TransitHop* path = itr->second;
+        llarp::Info("transit path expired ", path);
+        removePaths.insert(path);
+      }
+      ++itr;
     }
-  }
-
-  bool
-  TransitHop::Expired(llarp_time_t now) const
-  {
-    return now - started > lifetime;
-  }
-
-  TransitHopInfo::TransitHopInfo(const RouterID& down,
-                                 const LR_CommitRecord& record)
-      : pathID(record.pathid), upstream(record.nextHop), downstream(down)
-  {
+    for(auto& p : removePaths)
+    {
+      map.erase(p->info.txID);
+      map.erase(p->info.rxID);
+      delete p;
+    }
   }
 
   Path::Path(llarp_path_hops* h) : hops(h->numHops)
@@ -156,15 +204,82 @@ namespace llarp
   }
 
   const PathID_t&
-  Path::PathID() const
+  Path::TXID() const
   {
-    return hops[0].pathID;
+    return hops[0].pathTX;
+  }
+
+  const PathID_t&
+  Path::RXID() const
+  {
+    return hops[0].pathRX;
   }
 
   RouterID
-  Path::Upstream()
+  Path::Upstream() const
   {
     return hops[0].router.pubkey;
+  }
+
+  bool
+  Path::HandleUpstream(llarp_buffer_t buf, const TunnelNonce& Y,
+                       llarp_router* r)
+  {
+    for(const auto& hop : hops)
+    {
+      r->crypto.xchacha20(buf, hop.shared, Y);
+    }
+    RelayUpstreamMessage* msg = new RelayUpstreamMessage;
+    msg->X                    = buf;
+    msg->Y                    = Y;
+    msg->pathid               = PathID();
+    msg->pathid.data_l()[1]   = 0;
+    return r->SendToOrQueue(Upstream(), msg);
+  }
+
+  bool
+  Path::Expired(llarp_time_t now) const
+  {
+    return now - buildStarted > hops[0].lifetime;
+  }
+
+  bool
+  Path::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
+                         llarp_router* r)
+  {
+    size_t idx = hops.size() - 1;
+    while(idx >= 0)
+    {
+      r->crypto.xchacha20(buf, hops[idx].shared, Y);
+      if(idx)
+        idx--;
+      else
+        break;
+    }
+    return HandleRoutingMessage(buf, r);
+  }
+
+  bool
+  Path::HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r)
+  {
+    // TODO: implement me
+    return true;
+  }
+
+  bool
+  Path::SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r)
+  {
+    byte_t tmp[MAX_LINK_MSG_SIZE / 2];
+    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    if(!msg->BEncode(&buf))
+      return false;
+    // rewind
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+    // make nonce
+    TunnelNonce N;
+    N.Randomize();
+    return HandleUpstream(buf, N, r);
   }
 
 }  // namespace llarp
