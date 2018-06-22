@@ -18,7 +18,8 @@ namespace llarp
     PubKey commkey;
     RouterID nextHop;
     TunnelNonce tunnelNonce;
-    PathID_t pathid;
+    PathID_t txid, rxid;
+
     PoW *work        = nullptr;
     uint64_t version = 0;
 

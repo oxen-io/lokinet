@@ -1,5 +1,7 @@
 #include <llarp/bencode.hpp>
+#include <llarp/messages/path_confirm.hpp>
 #include <llarp/messages/relay_commit.hpp>
+#include "buffer.hpp"
 #include "logger.hpp"
 #include "router.hpp"
 
@@ -73,7 +75,9 @@ namespace llarp
       return false;
     if(!BEncodeWriteDictEntry("n", tunnelNonce, buf))
       return false;
-    if(!BEncodeWriteDictEntry("p", pathid, buf))
+    if(!BEncodeWriteDictEntry("r", rxid, buf))
+      return false;
+    if(!BEncodeWriteDictEntry("t", txid, buf))
       return false;
     if(!bencode_write_version_entry(buf))
       return false;
@@ -106,7 +110,9 @@ namespace llarp
     if(!BEncodeMaybeReadDictEntry("n", self->tunnelNonce, read, *key,
                                   r->buffer))
       return false;
-    if(!BEncodeMaybeReadDictEntry("p", self->pathid, read, *key, r->buffer))
+    if(!BEncodeMaybeReadDictEntry("r", self->rxid, read, *key, r->buffer))
+      return false;
+    if(!BEncodeMaybeReadDictEntry("t", self->txid, read, *key, r->buffer))
       return false;
     if(!BEncodeMaybeReadVersion("v", self->version, LLARP_PROTO_VERSION, read,
                                 *key, r->buffer))
@@ -144,7 +150,7 @@ namespace llarp
         return false;
     }
     return nextHop == other.nextHop && commkey == other.commkey
-        && pathid == other.pathid;
+        && txid == other.txid && rxid == other.rxid;
   }
 
   struct LRCMFrameDecrypt
@@ -156,15 +162,15 @@ namespace llarp
     // decrypted record
     LR_CommitRecord record;
     // the actual hop
-    TransitHop hop;
+    TransitHop* hop;
 
     LRCMFrameDecrypt(PathContext* ctx, Decrypter* dec,
                      const LR_CommitMessage* commit)
-        : decrypter(dec), context(ctx)
+        : decrypter(dec), context(ctx), hop(new TransitHop)
     {
       for(const auto& f : commit->frames)
         frames.push_back(f);
-      hop.info.downstream = commit->remote;
+      hop->info.downstream = commit->remote;
     }
 
     ~LRCMFrameDecrypt()
@@ -177,19 +183,26 @@ namespace llarp
     SendLRCM(void* user)
     {
       LRCMFrameDecrypt* self = static_cast< LRCMFrameDecrypt* >(user);
-      self->context->ForwardLRCM(self->hop.info.upstream, self->frames);
+      self->context->ForwardLRCM(self->hop->info.upstream, self->frames);
       delete self;
     }
 
     static void
-    SendLRAM(void* user)
+    SendPathConfirm(void* user)
     {
+      LRCMFrameDecrypt* self = static_cast< LRCMFrameDecrypt* >(user);
+      llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
+      if(!self->hop->SendRoutingMessage(&confirm, self->context->Router()))
+      {
+        llarp::Error("failed to send path confirmation for ", self->hop->info);
+      }
+      delete self;
     }
 
     static void
     HandleDecrypted(llarp_buffer_t* buf, LRCMFrameDecrypt* self)
     {
-      auto& info = self->hop.info;
+      auto& info = self->hop->info;
       if(!buf)
       {
         llarp::Error("LRCM decrypt failed from ", info.downstream);
@@ -206,7 +219,8 @@ namespace llarp
         return;
       }
 
-      info.pathID   = self->record.pathid;
+      info.txID     = self->record.txid;
+      info.rxID     = self->record.rxid;
       info.upstream = self->record.nextHop;
       if(self->context->HasTransitHop(info))
       {
@@ -216,7 +230,7 @@ namespace llarp
       }
       // generate path key as we are in a worker thread
       auto DH = self->context->Crypto()->dh_server;
-      if(!DH(self->hop.pathKey, self->record.commkey,
+      if(!DH(self->hop->pathKey, self->record.commkey,
              self->context->EncryptionSecretKey(), self->record.tunnelNonce))
       {
         llarp::Error("LRCM DH Failed ", info);
@@ -229,12 +243,12 @@ namespace llarp
       {
         llarp::Info("LRCM extended lifetime by ",
                     self->record.work->extendedLifetime, " seconds for ", info);
-        self->hop.lifetime += 1000 * self->record.work->extendedLifetime;
+        self->hop->lifetime += 1000 * self->record.work->extendedLifetime;
       }
 
       // TODO: check if we really want to accept it
-      self->hop.started = llarp_time_now_ms();
-      llarp::Info("Accepted ", self->hop.info);
+      self->hop->started = llarp_time_now_ms();
+      llarp::Info("Accepted ", self->hop->info);
       self->context->PutTransitHop(self->hop);
 
       size_t sz = self->frames.front().size();
@@ -250,7 +264,7 @@ namespace llarp
         // we are the farthest hop
         llarp::Info("We are the farthest hop for ", info);
         // send a LRAM down the path
-        llarp_logic_queue_job(self->context->Logic(), {self, &SendLRAM});
+        llarp_logic_queue_job(self->context->Logic(), {self, &SendPathConfirm});
       }
       else
       {

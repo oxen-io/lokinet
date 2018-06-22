@@ -294,7 +294,8 @@ the path is extended by w.y seconds
   c: "<32 byte public encryption key used for upstream>",
   i: "<32 byte RC.k of next hop>",
   n: "<32 bytes nounce for key exchange>",
-  p: "<16 bytes path id>",
+  r: "<16 bytes rx path id>",
+  t: "<16 bytes tx path id>",
   v: 0,
   w: proof of work
 }

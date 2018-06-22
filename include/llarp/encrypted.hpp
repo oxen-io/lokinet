@@ -12,7 +12,7 @@ namespace llarp
   struct Encrypted
   {
     Encrypted(Encrypted&&) = delete;
-
+    Encrypted();
     Encrypted(const byte_t* buf, size_t sz);
     Encrypted(size_t sz);
     ~Encrypted();
@@ -21,6 +21,18 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const
     {
       return bencode_write_bytestring(buf, _data, _sz);
+    }
+
+    Encrypted&
+    operator=(llarp_buffer_t buf)
+    {
+      if(_data)
+        delete[] _data;
+      _sz   = buf.sz;
+      _data = new byte_t[_sz];
+      memcpy(_data, buf.base, _sz);
+      UpdateBuffer();
+      return *this;
     }
 
     void
@@ -59,6 +71,12 @@ namespace llarp
     Buffer()
     {
       return &m_Buffer;
+    }
+
+    llarp_buffer_t
+    Buffer() const
+    {
+      return m_Buffer;
     }
 
     size_t

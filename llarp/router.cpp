@@ -54,7 +54,7 @@ llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
 
 bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
-                            llarp::ILinkMessage *msg)
+                            const llarp::ILinkMessage *msg)
 {
   llarp_link *chosen = nullptr;
   if(!outboundLink->has_session_to(outboundLink, remote))
@@ -444,7 +444,7 @@ llarp_router::send_padded_message(llarp_link_session_iter *itr,
 }
 
 void
-llarp_router::SendTo(llarp::RouterID remote, llarp::ILinkMessage *msg,
+llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
                      llarp_link *link)
 {
   llarp_buffer_t buf =

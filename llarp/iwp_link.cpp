@@ -1396,8 +1396,8 @@ namespace iwp
         llarp::Debug("removing session ", addr);
         UnmapAddr(addr);
         session *s = static_cast< session * >(itr->second.impl);
-        m_sessions.erase(itr);
         s->done();
+        m_sessions.erase(itr);
         if(s->frames)
         {
           llarp::Warn("session has ", s->frames,
@@ -1903,18 +1903,19 @@ namespace iwp
     self->establish_job_id = 0;
     if(self->establish_job)
     {
-      self->establish_job->link = self->serv->parent;
+      auto job            = self->establish_job;
+      self->establish_job = nullptr;
+      job->link           = self->serv->parent;
       if(self->IsEstablished())
       {
-        self->establish_job->session = self->parent;
+        job->session = self->parent;
       }
       else
       {
         // timer timeout
-        self->establish_job->session = nullptr;
+        job->session = nullptr;
       }
-      self->establish_job->result(self->establish_job);
-      self->establish_job = nullptr;
+      job->result(job);
     }
   }
 
@@ -1950,22 +1951,23 @@ namespace iwp
   }
 }  // namespace iwp
 
-extern "C" {
-void
-iwp_link_init(struct llarp_link *link, struct llarp_iwp_args args)
+extern "C"
 {
-  link->impl = iwp::link_alloc(args.router, args.keyfile, args.crypto,
-                               args.logic, args.cryptoworker);
-  link->name = iwp::link_name;
-  link->get_our_address     = iwp::link_get_addr;
-  link->configure           = iwp::link_configure;
-  link->start_link          = iwp::link_start;
-  link->stop_link           = iwp::link_stop;
-  link->iter_sessions       = iwp::link_iter_sessions;
-  link->try_establish       = iwp::link_try_establish;
-  link->has_session_to      = iwp::server::HasSessionToRouter;
-  link->sendto              = iwp::server::SendToSession;
-  link->mark_session_active = iwp::link_mark_session_active;
-  link->free_impl           = iwp::link_free;
-}
+  void
+  iwp_link_init(struct llarp_link *link, struct llarp_iwp_args args)
+  {
+    link->impl = iwp::link_alloc(args.router, args.keyfile, args.crypto,
+                                 args.logic, args.cryptoworker);
+    link->name = iwp::link_name;
+    link->get_our_address     = iwp::link_get_addr;
+    link->configure           = iwp::link_configure;
+    link->start_link          = iwp::link_start;
+    link->stop_link           = iwp::link_stop;
+    link->iter_sessions       = iwp::link_iter_sessions;
+    link->try_establish       = iwp::link_try_establish;
+    link->has_session_to      = iwp::server::HasSessionToRouter;
+    link->sendto              = iwp::server::SendToSession;
+    link->mark_session_active = iwp::link_mark_session_active;
+    link->free_impl           = iwp::link_free;
+  }
 }

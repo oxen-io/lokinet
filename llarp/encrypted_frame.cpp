@@ -5,6 +5,11 @@
 
 namespace llarp
 {
+  Encrypted::Encrypted()
+  {
+    UpdateBuffer();
+  }
+
   Encrypted::Encrypted(const byte_t* buf, size_t sz) : _sz(sz)
   {
     _data = new byte_t[sz];

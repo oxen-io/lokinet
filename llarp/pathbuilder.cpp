@@ -47,8 +47,6 @@ namespace llarp
         abort();
         return;
       }
-      // randomize hop's path id
-      hop.pathID.Randomize();
 
       ++ctx->idx;
 
