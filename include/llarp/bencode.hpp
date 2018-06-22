@@ -48,6 +48,23 @@ namespace llarp
     return true;
   }
 
+  template < typename Int_t >
+  bool
+  BEncodeMaybeReadDictInt(const char* k, Int_t& i, bool& read,
+                          llarp_buffer_t key, llarp_buffer_t* buf)
+  {
+    if(llarp_buffer_eq(key, k))
+    {
+      if(!bencode_read_integer(buf, &i))
+      {
+        llarp::Warn("failed to decode key ", k);
+        return false;
+      }
+      read = true;
+    }
+    return true;
+  }
+
   template < typename Item_t >
   bool
   BEncodeMaybeReadVersion(const char* k, Item_t& item, uint64_t expect,

@@ -124,7 +124,6 @@ set(LIB_SRC
   llarp/nodedb.cpp
   llarp/path.cpp
   llarp/pathbuilder.cpp
-  llarp/path_confirm.cpp
   llarp/proofofwork.cpp
   llarp/relay_ack.cpp
   llarp/relay_commit.cpp
@@ -136,6 +135,8 @@ set(LIB_SRC
   llarp/testnet.c
   llarp/time.cpp
   llarp/timer.cpp
+  llarp/routing/message_parser.cpp
+  llarp/routing/path_confirm.cpp
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
   vendor/cppbackport-master/lib/fs/filetype.cpp

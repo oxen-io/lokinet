@@ -269,14 +269,9 @@ namespace llarp
   Path::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
                          llarp_router* r)
   {
-    size_t idx = hops.size() - 1;
-    while(idx >= 0)
+    for(const auto& hop : hops)
     {
-      r->crypto.xchacha20(buf, hops[idx].shared, Y);
-      if(idx)
-        idx--;
-      else
-        break;
+      r->crypto.xchacha20(buf, hop.shared, Y);
     }
     return HandleRoutingMessage(buf, r);
   }
@@ -284,7 +279,11 @@ namespace llarp
   bool
   Path::HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r)
   {
-    // TODO: implement me
+    if(!m_InboundMessageParser.ParseMessageBuffer(buf, this))
+    {
+      llarp::Warn("Failed to parse inbound routing message");
+      return false;
+    }
     return true;
   }
 

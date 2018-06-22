@@ -47,10 +47,9 @@ namespace llarp
         abort();
         return;
       }
-
       ++ctx->idx;
 
-      bool isFarthestHop = ctx->idx == ctx->path->hops.size() - 1;
+      bool isFarthestHop = ctx->idx == ctx->path->hops.size();
 
       if(isFarthestHop)
       {

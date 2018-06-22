@@ -46,7 +46,7 @@ typedef byte_t llarp_tunnel_nonce_t[TUNNONCESIZE];
 /// PKE(result, publickey, secretkey, nonce)
 typedef bool (*llarp_path_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
 
-/// TKE(result publickey, secretkey, nonce)
+/// TKE(result, publickey, secretkey, nonce)
 typedef bool (*llarp_transport_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
 
 /// SD/SE(buffer, key, nonce)

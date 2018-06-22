@@ -10,7 +10,8 @@
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/path_types.hpp>
 #include <llarp/router_id.hpp>
-#include <llarp/routing_message.hpp>
+#include <llarp/routing/handler.hpp>
+#include <llarp/routing/message.hpp>
 
 #include <list>
 #include <map>
@@ -173,7 +174,7 @@ namespace llarp
   };
 
   /// A path we made
-  struct Path : public IHopHandler
+  struct Path : public IHopHandler, public llarp::routing::IMessageHandler
   {
     typedef std::vector< PathHopConfig > HopList;
     HopList hops;
@@ -207,6 +208,9 @@ namespace llarp
 
     RouterID
     Upstream() const;
+
+   protected:
+    llarp::routing::InboundMessageParser m_InboundMessageParser;
   };
 
   enum PathBuildStatus

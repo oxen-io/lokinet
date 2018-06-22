@@ -291,127 +291,128 @@ nodedb_async_load_rc(void *user)
   llarp_logic_queue_job(job->logic, {job, &nodedb_inform_load_rc});
 }
 
-extern "C" {
-struct llarp_nodedb *
-llarp_nodedb_new(struct llarp_crypto *crypto)
+extern "C"
 {
-  return new llarp_nodedb(crypto);
-}
-
-void
-llarp_nodedb_free(struct llarp_nodedb **n)
-{
-  if(*n)
+  struct llarp_nodedb *
+  llarp_nodedb_new(struct llarp_crypto *crypto)
   {
-    auto i = *n;
-    *n     = nullptr;
-    i->Clear();
-    delete i;
+    return new llarp_nodedb(crypto);
   }
-}
 
-bool
-llarp_nodedb_ensure_dir(const char *dir)
-{
-  fs::path path(dir);
-  std::error_code ec;
-  if(!fs::exists(dir, ec))
-    fs::create_directories(path, ec);
-
-  if(ec)
-    return false;
-
-  if(!fs::is_directory(path))
-    return false;
-
-  for(const char &ch : skiplist_subdirs)
+  void
+  llarp_nodedb_free(struct llarp_nodedb **n)
   {
-    std::string p;
-    p += ch;
-    fs::path sub = path / p;
-    fs::create_directory(sub, ec);
+    if(*n)
+    {
+      auto i = *n;
+      *n     = nullptr;
+      i->Clear();
+      delete i;
+    }
+  }
+
+  bool
+  llarp_nodedb_ensure_dir(const char *dir)
+  {
+    fs::path path(dir);
+    std::error_code ec;
+    if(!fs::exists(dir, ec))
+      fs::create_directories(path, ec);
+
     if(ec)
       return false;
+
+    if(!fs::is_directory(path))
+      return false;
+
+    for(const char &ch : skiplist_subdirs)
+    {
+      std::string p;
+      p += ch;
+      fs::path sub = path / p;
+      fs::create_directory(sub, ec);
+      if(ec)
+        return false;
+    }
+    return true;
   }
-  return true;
-}
 
-ssize_t
-llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
-{
-  std::error_code ec;
-  if(!fs::exists(dir, ec))
+  ssize_t
+  llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
   {
-    return -1;
+    std::error_code ec;
+    if(!fs::exists(dir, ec))
+    {
+      return -1;
+    }
+    n->nodePath = dir;
+    return n->Load(dir);
   }
-  n->nodePath = dir;
-  return n->Load(dir);
-}
 
-void
-llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
-{
-  // switch to crypto threadpool and continue with
-  // crypto_threadworker_verifyrc
-  llarp_threadpool_queue_job(job->cryptoworker,
-                             {job, &crypto_threadworker_verifyrc});
-}
-
-void
-llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
-{
-  // call in the disk io thread so we don't bog down the others
-  llarp_threadpool_queue_job(job->diskworker, {job, &nodedb_async_load_rc});
-}
-
-struct llarp_rc *
-llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
-{
-  if(n->Has(pk))
-    return n->getRC(pk);
-  else
-    return nullptr;
-}
-
-size_t
-llarp_nodedb_num_loaded(struct llarp_nodedb *n)
-{
-  return n->entries.size();
-}
-
-void
-llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
-                               struct llarp_rc *result, size_t N)
-{
-  /// TODO: check for "guard" status for N = 0?
-  auto sz = n->entries.size();
-
-  if(prev)
+  void
+  llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
   {
-    do
+    // switch to crypto threadpool and continue with
+    // crypto_threadworker_verifyrc
+    llarp_threadpool_queue_job(job->cryptoworker,
+                               {job, &crypto_threadworker_verifyrc});
+  }
+
+  void
+  llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
+  {
+    // call in the disk io thread so we don't bog down the others
+    llarp_threadpool_queue_job(job->diskworker, {job, &nodedb_async_load_rc});
+  }
+
+  struct llarp_rc *
+  llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
+  {
+    if(n->Has(pk))
+      return n->getRC(pk);
+    else
+      return nullptr;
+  }
+
+  size_t
+  llarp_nodedb_num_loaded(struct llarp_nodedb *n)
+  {
+    return n->entries.size();
+  }
+
+  void
+  llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
+                                 struct llarp_rc *result, size_t N)
+  {
+    /// TODO: check for "guard" status for N = 0?
+    auto sz = n->entries.size();
+
+    if(prev)
+    {
+      do
+      {
+        auto itr = n->entries.begin();
+        if(sz > 1)
+        {
+          auto idx = rand() % sz;
+          std::advance(itr, idx);
+        }
+        if(memcmp(prev->pubkey, itr->second.pubkey, PUBKEYSIZE) == 0)
+          continue;
+        llarp_rc_copy(result, &itr->second);
+        return;
+      } while(true);
+    }
+    else
     {
       auto itr = n->entries.begin();
       if(sz > 1)
       {
-        auto idx = rand() % (sz - 1);
+        auto idx = rand() % sz;
         std::advance(itr, idx);
       }
-      if(memcmp(prev->pubkey, itr->second.pubkey, PUBKEYSIZE) == 0)
-        continue;
       llarp_rc_copy(result, &itr->second);
-      return;
-    } while(true);
-  }
-  else
-  {
-    auto itr = n->entries.begin();
-    if(sz > 1)
-    {
-      auto idx = rand() % (sz - 1);
-      std::advance(itr, idx);
     }
-    llarp_rc_copy(result, &itr->second);
   }
-}
 
 }  // end extern

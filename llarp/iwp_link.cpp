@@ -1397,7 +1397,7 @@ namespace iwp
         UnmapAddr(addr);
         session *s = static_cast< session * >(itr->second.impl);
         s->done();
-        m_sessions.erase(itr);
+        m_sessions.erase(addr);
         if(s->frames)
         {
           llarp::Warn("session has ", s->frames,
