@@ -11,15 +11,14 @@ namespace llarp
   }
 
   TransitHopInfo::TransitHopInfo(const TransitHopInfo& other)
-      : pathID(other.pathID)
-      , upstream(other.upstream)
+      : upstream(other.upstream)
       , downstream(other.downstream)
   {
   }
 
   TransitHopInfo::TransitHopInfo(const RouterID& down,
                                  const LR_CommitRecord& record)
-      : pathID(record.pathid), upstream(record.nextHop), downstream(down)
+      : upstream(record.nextHop), downstream(down)
   {
   }
 

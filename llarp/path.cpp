@@ -126,15 +126,20 @@ namespace llarp
   void
   PathContext::AddOwnPath(Path* path)
   {
-    MapPut(m_OurPaths, path->PathID(), path);
+    // FIXME: pathID was split into txID/rxID
+    //MapPut(m_OurPaths, path->PathID(), path);
   }
 
   bool
   PathContext::HasTransitHop(const TransitHopInfo& info)
   {
+    // FIXME: pathID was split into txID/rxID
+    return false;
+    /*
     return MapHas(m_TransitPaths, info.pathID, [info](TransitHop* hop) -> bool {
       return info == hop->info;
     });
+    */
   }
 
   IHopHandler*
@@ -206,13 +211,13 @@ namespace llarp
   const PathID_t&
   Path::TXID() const
   {
-    return hops[0].pathTX;
+    return hops[0].txID;
   }
 
   const PathID_t&
   Path::RXID() const
   {
-    return hops[0].pathRX;
+    return hops[0].rxID;
   }
 
   RouterID
@@ -232,7 +237,8 @@ namespace llarp
     RelayUpstreamMessage* msg = new RelayUpstreamMessage;
     msg->X                    = buf;
     msg->Y                    = Y;
-    msg->pathid               = PathID();
+    // FIXME: pathID was split into txID/rxID
+    //msg->pathid               = PathID();
     msg->pathid.data_l()[1]   = 0;
     return r->SendToOrQueue(Upstream(), msg);
   }

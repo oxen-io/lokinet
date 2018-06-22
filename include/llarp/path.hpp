@@ -199,8 +199,15 @@ namespace llarp
     bool
     HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
 
+    // Is this deprecated?
     const PathID_t&
     PathID() const;
+
+    const PathID_t&
+    TXID() const;
+
+    const PathID_t&
+    RXID() const;
 
     RouterID
     Upstream() const;
