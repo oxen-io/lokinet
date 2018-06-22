@@ -183,28 +183,27 @@ llarp_pathbuilder_context::llarp_pathbuilder_context(
 {
 }
 
-extern "C"
+extern "C" {
+struct llarp_pathbuilder_context*
+llarp_pathbuilder_context_new(struct llarp_router* router,
+                              struct llarp_dht_context* dht)
 {
-  struct llarp_pathbuilder_context*
-  llarp_pathbuilder_context_new(struct llarp_router* router,
-                                struct llarp_dht_context* dht)
-  {
-    return new llarp_pathbuilder_context(router, dht);
-  }
+  return new llarp_pathbuilder_context(router, dht);
+}
 
-  void
-  llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
-  {
-    delete ctx;
-  }
+void
+llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
+{
+  delete ctx;
+}
 
-  void
-  llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
-  {
-    job->router = job->context->router;
-    if(job->selectHop == nullptr)
-      job->selectHop = &llarp_nodedb_select_random_hop;
-    llarp_logic_queue_job(job->router->logic,
-                          {job, &llarp::pathbuilder_start_build});
-  }
+void
+llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
+{
+  job->router = job->context->router;
+  if(job->selectHop == nullptr)
+    job->selectHop = &llarp_nodedb_select_random_hop;
+  llarp_logic_queue_job(job->router->logic,
+                        {job, &llarp::pathbuilder_start_build});
+}
 }

@@ -1951,23 +1951,22 @@ namespace iwp
   }
 }  // namespace iwp
 
-extern "C"
+extern "C" {
+void
+iwp_link_init(struct llarp_link *link, struct llarp_iwp_args args)
 {
-  void
-  iwp_link_init(struct llarp_link *link, struct llarp_iwp_args args)
-  {
-    link->impl = iwp::link_alloc(args.router, args.keyfile, args.crypto,
-                                 args.logic, args.cryptoworker);
-    link->name = iwp::link_name;
-    link->get_our_address     = iwp::link_get_addr;
-    link->configure           = iwp::link_configure;
-    link->start_link          = iwp::link_start;
-    link->stop_link           = iwp::link_stop;
-    link->iter_sessions       = iwp::link_iter_sessions;
-    link->try_establish       = iwp::link_try_establish;
-    link->has_session_to      = iwp::server::HasSessionToRouter;
-    link->sendto              = iwp::server::SendToSession;
-    link->mark_session_active = iwp::link_mark_session_active;
-    link->free_impl           = iwp::link_free;
-  }
+  link->impl = iwp::link_alloc(args.router, args.keyfile, args.crypto,
+                               args.logic, args.cryptoworker);
+  link->name = iwp::link_name;
+  link->get_our_address     = iwp::link_get_addr;
+  link->configure           = iwp::link_configure;
+  link->start_link          = iwp::link_start;
+  link->stop_link           = iwp::link_stop;
+  link->iter_sessions       = iwp::link_iter_sessions;
+  link->try_establish       = iwp::link_try_establish;
+  link->has_session_to      = iwp::server::HasSessionToRouter;
+  link->sendto              = iwp::server::SendToSession;
+  link->mark_session_active = iwp::link_mark_session_active;
+  link->free_impl           = iwp::link_free;
+}
 }
