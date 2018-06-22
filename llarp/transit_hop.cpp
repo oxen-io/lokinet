@@ -11,7 +11,8 @@ namespace llarp
   }
 
   TransitHopInfo::TransitHopInfo(const TransitHopInfo& other)
-      : pathID(other.pathID)
+      : txID(other.txID)
+      , rxID(other.rxID)
       , upstream(other.upstream)
       , downstream(other.downstream)
   {
@@ -19,7 +20,10 @@ namespace llarp
 
   TransitHopInfo::TransitHopInfo(const RouterID& down,
                                  const LR_CommitRecord& record)
-      : pathID(record.pathid), upstream(record.nextHop), downstream(down)
+      : txID(record.txid)
+      , rxID(record.rxid)
+      , upstream(record.nextHop)
+      , downstream(down)
   {
   }
 
@@ -56,7 +60,7 @@ namespace llarp
                                llarp_router* r)
   {
     RelayDownstreamMessage* msg = new RelayDownstreamMessage;
-    msg->pathid                 = info.rxID;
+    msg->pathid                 = info.txID;
     msg->Y                      = Y;
 
     r->crypto.xchacha20(buf, pathKey, Y);
@@ -71,7 +75,7 @@ namespace llarp
                              llarp_router* r)
   {
     RelayUpstreamMessage* msg = new RelayUpstreamMessage;
-    msg->pathid               = info.txID;
+    msg->pathid               = info.rxID;
     msg->Y                    = Y;
 
     r->crypto.xchacha20(buf, pathKey, Y);

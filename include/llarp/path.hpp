@@ -200,7 +200,10 @@ namespace llarp
     HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
 
     const PathID_t&
-    PathID() const;
+    TXID() const;
+
+    const PathID_t&
+    RXID() const;
 
     RouterID
     Upstream() const;
@@ -243,7 +246,7 @@ namespace llarp
     GetByUpstream(const RouterID& id, const PathID_t& path);
 
     IHopHandler*
-    GetDownstream(const RouterID& id, const PathID_t& path);
+    GetByDownstream(const RouterID& id, const PathID_t& path);
 
     bool
     ForwardLRCM(const RouterID& nextHop, std::deque< EncryptedFrame >& frames);

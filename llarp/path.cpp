@@ -75,12 +75,11 @@ namespace llarp
   MapGet(Map_t& map, const Key_t& k, CheckValue_t check)
   {
     std::unique_lock< std::mutex > lock(map.first);
-    auto itr = map.second.find(k);
-    while(itr != map.second.end())
+    auto range = map.second.equal_range(k);
+    for(auto i = range.first; i != range.second; ++i)
     {
-      if(check(itr->second))
-        return itr->second;
-      ++itr;
+      if(check(i->second))
+        return i->second;
     }
     return nullptr;
   }
@@ -90,12 +89,11 @@ namespace llarp
   MapHas(Map_t& map, const Key_t& k, CheckValue_t check)
   {
     std::unique_lock< std::mutex > lock(map.first);
-    auto itr = map.second.find(k);
-    while(itr != map.second.end())
+    auto range = map.second.equal_range(k);
+    for(auto i = range.first; i != range.second; ++i)
     {
-      if(check(itr->second))
+      if(check(i->second))
         return true;
-      ++itr;
     }
     return false;
   }
@@ -108,31 +106,41 @@ namespace llarp
     map.second.emplace(k, v);
   }
 
+  template < typename Map_t, typename Visit_t >
+  void
+  MapIter(Map_t& map, Visit_t v)
+  {
+    std::unique_lock< std::mutex > lock(map.first);
+    for(const auto& item : map.second)
+      v(item);
+  }
+
   template < typename Map_t, typename Key_t, typename Check_t >
   void
   MapDel(Map_t& map, const Key_t& k, Check_t check)
   {
     std::unique_lock< std::mutex > lock(map.first);
-    auto itr = map.second.find(k);
-    while(itr != map.second.end())
+    auto range = map.second.equal_range(k);
+    for(auto i = range.first; i != range.second;)
     {
-      if(check(itr->second))
-        itr = map.second.erase(itr);
+      if(check(i->second))
+        i = map.second.erase(i);
       else
-        ++itr;
+        ++i;
     }
   }
 
   void
   PathContext::AddOwnPath(Path* path)
   {
-    MapPut(m_OurPaths, path->PathID(), path);
+    MapPut(m_OurPaths, path->TXID(), path);
+    MapPut(m_OurPaths, path->RXID(), path);
   }
 
   bool
   PathContext::HasTransitHop(const TransitHopInfo& info)
   {
-    return MapHas(m_TransitPaths, info.pathID, [info](TransitHop* hop) -> bool {
+    return MapHas(m_TransitPaths, info.txID, [info](TransitHop* hop) -> bool {
       return info == hop->info;
     });
   }
@@ -145,8 +153,17 @@ namespace llarp
     });
     if(own)
       return own;
+
     return MapGet(m_TransitPaths, id, [remote](const TransitHop* hop) -> bool {
       return hop->info.upstream == remote;
+    });
+  }
+
+  IHopHandler*
+  PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
+  {
+    return MapGet(m_TransitPaths, id, [remote](const TransitHop* hop) -> bool {
+      return hop->info.downstream == remote;
     });
   }
 
@@ -200,19 +217,25 @@ namespace llarp
     for(size_t idx = 0; idx < h->numHops; ++idx)
     {
       llarp_rc_copy(&hops[idx].router, &h->hops[idx].router);
+      hops[idx].txID.Randomize();
+      hops[idx].rxID.Randomize();
+    }
+    for(size_t idx = (h->numHops - 1); idx > 0; --idx)
+    {
+      hops[idx].txID = hops[idx - 1].rxID;
     }
   }
 
   const PathID_t&
   Path::TXID() const
   {
-    return hops[0].pathTX;
+    return hops[0].txID;
   }
 
   const PathID_t&
   Path::RXID() const
   {
-    return hops[0].pathRX;
+    return hops[0].rxID;
   }
 
   RouterID
@@ -232,8 +255,7 @@ namespace llarp
     RelayUpstreamMessage* msg = new RelayUpstreamMessage;
     msg->X                    = buf;
     msg->Y                    = Y;
-    msg->pathid               = PathID();
-    msg->pathid.data_l()[1]   = 0;
+    msg->pathid               = TXID();
     return r->SendToOrQueue(Upstream(), msg);
   }
 

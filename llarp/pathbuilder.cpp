@@ -64,7 +64,8 @@ namespace llarp
       // build record
       LR_CommitRecord record;
       record.version     = LLARP_PROTO_VERSION;
-      record.pathid      = hop.pathID;
+      record.txid        = hop.txID;
+      record.rxid        = hop.rxID;
       record.tunnelNonce = hop.nonce;
       record.nextHop     = hop.upstream;
       record.commkey     = llarp::seckey_topublic(hop.commkey);

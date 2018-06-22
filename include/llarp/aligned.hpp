@@ -58,6 +58,12 @@ namespace llarp
       return !(*this == other);
     }
 
+    bool
+    operator<(const AlignedBuffer& other) const
+    {
+      return memcmp(l, other.l, sz) < 0;
+    }
+
     size_t
     size() const
     {
