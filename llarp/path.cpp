@@ -127,6 +127,7 @@ namespace llarp
   PathContext::AddOwnPath(Path* path)
   {
     // FIXME: pathID was split into txID/rxID
+    llarp::Error("Path::AddOwnPath - pathID was split into txID/rxID, not yet implemented");
     //MapPut(m_OurPaths, path->PathID(), path);
   }
 
@@ -134,6 +135,7 @@ namespace llarp
   PathContext::HasTransitHop(const TransitHopInfo& info)
   {
     // FIXME: pathID was split into txID/rxID
+    llarp::Error("Path::HasTransitHop - pathID was split into txID/rxID, not yet implemented");
     return false;
     /*
     return MapHas(m_TransitPaths, info.pathID, [info](TransitHop* hop) -> bool {
@@ -237,8 +239,9 @@ namespace llarp
     RelayUpstreamMessage* msg = new RelayUpstreamMessage;
     msg->X                    = buf;
     msg->Y                    = Y;
-    // FIXME: pathID was split into txID/rxID
-    //msg->pathid               = PathID();
+    // FIXME: pathID was split into txID/rxID, is RXID correct here?
+    llarp::Info("Path::HandleUpstream using RXID");
+    msg->pathid               = RXID();
     msg->pathid.data_l()[1]   = 0;
     return r->SendToOrQueue(Upstream(), msg);
   }
@@ -253,7 +256,7 @@ namespace llarp
   Path::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
                          llarp_router* r)
   {
-    size_t idx = hops.size() - 1;
+    int idx = hops.size() - 1;
     while(idx >= 0)
     {
       r->crypto.xchacha20(buf, hops[idx].shared, Y);
