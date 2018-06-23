@@ -27,6 +27,10 @@ llarp_main_signal(struct llarp_main *ptr, int sig);
 void
 llarp_main_set_dht_handler(struct llarp_main *ptr, llarp_dht_msg_handler h);
 
+/// setup main context
+int
+llarp_main_setup(struct llarp_main *ptr);
+
 /// run main context
 int
 llarp_main_run(struct llarp_main *ptr);
@@ -44,9 +48,13 @@ llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i);
 bool
 llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc);
 
+/// get RC from nodeDB
 struct llarp_rc *
 llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
 
+/// get RC from DHT
+void
+llarp_main_queryDHT(struct llarp_main *ptr, struct llarp_router_lookup_job *job);
 
 void
 llarp_main_free(struct llarp_main *ptr);
