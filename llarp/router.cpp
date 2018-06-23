@@ -650,13 +650,13 @@ llarp_router::Run()
     // initialize as service node
     InitServiceNode();
     // immediate connect all for service node
-    auto delay = rand() % 100;
+    uint64_t delay = rand() % 100;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
   }
   else
   {
     // delayed connect all for clients
-    auto delay = ((rand() % 10) * 500) + 1000;
+    uint64_t delay = ((rand() % 10) * 500) + 1000;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
   }
 
