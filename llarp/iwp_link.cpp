@@ -1663,7 +1663,7 @@ namespace iwp
     if(msg->completed())
     {
       llarp::Debug("message transmitted msgid=", msgid);
-      session *impl = static_cast< session * >(parent->impl);
+      //session *impl = static_cast< session * >(parent->impl);
       tx.erase(msgid);
       delete msg;
     }
