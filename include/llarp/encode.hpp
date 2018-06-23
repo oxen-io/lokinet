@@ -1,6 +1,7 @@
 #ifndef LLARP_ENCODE_HPP
 #define LLARP_ENCODE_HPP
 #include <cstdlib>
+#include <stdint.h>
 
 namespace llarp
 {
@@ -26,6 +27,9 @@ namespace llarp
     *ptr = 0;
     return &stack[0];
   }
+
+  int char2int(char input);
+  void HexDecode(const char* src, uint8_t* target);
 }
 
 #endif

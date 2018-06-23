@@ -47,6 +47,24 @@ struct llarp_nodedb
     return entries.find(pk) != entries.end();
   }
 
+/*
+  bool
+  Has(const byte_t *pk)
+  {
+    llarp::PubKey test(pk);
+    auto itr = this->entries.begin();
+    while(itr != this->entries.end())
+    {
+      llarp::Info("Has byte_t [", test.size(), "] vs [", itr->first.size(), "]");
+      if (memcmp(test.data(), itr->first.data(), 32) == 0) {
+        llarp::Info("Match");
+      }
+      itr++;
+    }
+    return entries.find(pk) != entries.end();
+  }
+*/
+
   bool
   pubKeyExists(llarp_rc *rc)
   {
@@ -167,8 +185,9 @@ struct llarp_nodedb
     auto itr = i.begin();
     while(itr != itr.end())
     {
-      if(loadfile(*itr))
+      if (fs::is_regular_file(itr->symlink_status()) && loadfile(*itr))
         sz++;
+
       ++itr;
     }
     return sz;
@@ -177,37 +196,41 @@ struct llarp_nodedb
   bool
   loadfile(const fs::path &fpath)
   {
-    std::ifstream f(fpath, std::ios::binary);
-    if(!f.is_open())
+#if __APPLE__ && __MACH__
+    // skip .DS_Store files
+    if (strstr(fpath.c_str(), ".DS_Store") != 0) {
       return false;
-
-    byte_t tmp[MAX_RC_SIZE];
-
-    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-    f.seekg(0, std::ios::end);
-    size_t sz = f.tellg();
-    f.seekg(0, std::ios::beg);
-
-    if(sz > buf.sz)
-      return false;
-
-    // TODO: error checking
-    f.read((char *)buf.base, sz);
-    buf.sz = sz;
-
-    llarp_rc rc;
-    llarp::Zero(&rc, sizeof(llarp_rc));
-    if(llarp_rc_bdecode(&rc, &buf))
-    {
-      if(llarp_rc_verify_sig(crypto, &rc))
-      {
-        llarp::PubKey pk(rc.pubkey);
-        entries[pk] = rc;
-        return true;
-      }
     }
-    llarp_rc_free(&rc);
-    return false;
+#endif
+    llarp_rc *rc = llarp_rc_read(fpath.c_str());
+    if (!rc)
+    {
+      llarp::Error("Signature read failed", fpath);
+      return false;
+    }
+    if(!llarp_rc_verify_sig(crypto, rc))
+    {
+      llarp::Error("Signature verify failed", fpath);
+      return false;
+    }
+    llarp::PubKey pk(rc->pubkey);
+    entries[pk] = *rc;
+    return true;
+  }
+
+  bool iterate(struct llarp_nodedb_iter i) {
+    i.index = 0;
+    auto itr = entries.begin();
+    while(itr != entries.end())
+    {
+      i.rc = &itr->second;
+      i.visit(&i);
+
+      // advance
+      i.index++;
+      itr++;
+    }
+    return true;
   }
 
   /*
@@ -348,6 +371,17 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
   return n->Load(dir);
 }
 
+bool
+llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc) {
+  return n->setRC(rc);
+}
+
+int
+llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i) {
+  n->iterate(i);
+  return n->entries.size();
+}
+
 void
 llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
 {
@@ -367,6 +401,7 @@ llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 struct llarp_rc *
 llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
 {
+  //llarp::Info("llarp_nodedb_get_rc [", pk, "]");
   if(n->Has(pk))
     return n->getRC(pk);
   else

@@ -41,11 +41,12 @@ struct llarp_nodedb_iter
 {
   void *user;
   struct llarp_rc *rc;
+  size_t index;
   bool (*visit)(struct llarp_nodedb_iter *);
 };
 
 /// iterate over all loaded rc with an iterator
-void
+int
 llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
 
 /// get a random rc that is loaded

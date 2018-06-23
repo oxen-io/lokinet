@@ -76,7 +76,7 @@ namespace llarp
     {
       result &= msg->HandleMessage(router, reply->msgs);
     }
-    return result && router->SendToOrQueue(remote.data(), {reply});
+    return result && router->SendToOrQueue(remote.data(), reply);
   }
 
   namespace dht
@@ -650,7 +650,7 @@ namespace llarp
       dhtmsg->iterative = iterative;
       msg->msgs.push_back(dhtmsg);
       router->SendToOrQueue(askpeer, msg);
-    }  // namespace dht
+    }
 
     void
     Context::LookupRouterViaJob(llarp_router_lookup_job *job)

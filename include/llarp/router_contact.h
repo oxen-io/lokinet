@@ -56,8 +56,17 @@ llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src);
 void
 llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
                    struct llarp_ai_list *addr);
+
 void
-llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubkey);
+llarp_rc_set_pubenckey(struct llarp_rc *rc, const uint8_t *pubenckey);
+
+void
+llarp_rc_set_pubsigkey(struct llarp_rc *rc, const uint8_t *pubkey);
+
+/// combo
+void
+llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubenckey,
+                    const uint8_t *pubsigkey);
 
 void
 llarp_rc_sign(struct llarp_crypto *crypto, const byte_t *seckey,
@@ -68,6 +77,9 @@ llarp_rc_clear(struct llarp_rc *rc);
 
 bool
 llarp_rc_addr_list_iter(struct llarp_ai_list_iter *iter, struct llarp_ai *ai);
+
+struct llarp_rc *
+llarp_rc_read(const char *fpath);
 
 bool
 llarp_rc_write(struct llarp_rc *rc, const char *our_rc_file);

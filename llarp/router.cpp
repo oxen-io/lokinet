@@ -180,7 +180,7 @@ llarp_router::try_connect(fs::path rcfile)
       }
     }
     else
-      llarp::Error("failed to verify signature of RC");
+      llarp::Error("failed to verify signature of RC", rcfile);
   }
   else
     llarp::Error("failed to decode RC");
@@ -199,30 +199,8 @@ llarp_router::EnsureIdentity()
 bool
 llarp_router::EnsureEncryptionKey()
 {
-  std::error_code ec;
-  if(!fs::exists(encryption_keyfile, ec))
-  {
-    llarp::Info("generating encryption key");
-    crypto.encryption_keygen(encryption);
-    std::ofstream f(encryption_keyfile, std::ios::binary);
-    if(!f.is_open())
-    {
-      llarp::Error("could not save encryption private key to ",
-                   encryption_keyfile, " ", ec);
-      return false;
-    }
-    f.write((char *)encryption.data(), encryption.size());
-  }
-  std::ifstream f(encryption_keyfile, std::ios::binary);
-  if(!f.is_open())
-  {
-    llarp::Error("could not read ", encryption_keyfile);
-    return false;
-  }
-  f.read((char *)encryption.data(), encryption.size());
-  llarp::PubKey onionenckey = llarp::seckey_topublic(encryption);
-  llarp::Info("encryption key loaded ", onionenckey);
-  return true;
+  return llarp_findOrCreateEncryption(&crypto, encryption_keyfile.c_str(),
+                                      &this->encryption);
 }
 
 void
@@ -614,9 +592,20 @@ llarp_router::Run()
     link->get_our_address(link, &addr);
     llarp_ai_list_pushback(rc.addrs, &addr);
   };
-  // set public keys
-  memcpy(rc.enckey, llarp::seckey_topublic(encryption), PUBKEYSIZE);
-  llarp_rc_set_pubkey(&rc, pubkey());
+  // set public encryption key
+  llarp_rc_set_pubenckey(&rc, llarp::seckey_topublic(encryption));
+
+  char ftmp[68] = {0};
+  const char *hexKey = llarp::HexEncode< llarp::PubKey,
+                                         decltype(ftmp) >(llarp::seckey_topublic(encryption),
+                                                          ftmp);
+  llarp::Info("Your Encryption pubkey ", hexKey);
+  // set public signing key
+  llarp_rc_set_pubsigkey(&rc, llarp::seckey_topublic(identity));
+  hexKey = llarp::HexEncode< llarp::PubKey,
+                             decltype(ftmp) >(llarp::seckey_topublic(identity),
+                                              ftmp);
+  llarp::Info("Your Identity pubkey ", hexKey);
 
   llarp_rc_sign(&crypto, identity, &rc);
 
@@ -650,14 +639,16 @@ llarp_router::Run()
     // initialize as service node
     InitServiceNode();
     // immediate connect all for service node
-    auto delay = rand() % 100;
+    uint64_t delay = rand() % 100;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
+    //llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this, &ConnectAll});
   }
   else
   {
     // delayed connect all for clients
-    auto delay = ((rand() % 10) * 500) + 1000;
+    uint64_t delay = ((rand() % 10) * 500) + 1000;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
+    //llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this, &ConnectAll});
   }
 
   llarp::PubKey ourPubkey = pubkey();
@@ -809,6 +800,67 @@ llarp_rc_clear(struct llarp_rc *rc)
   llarp::Zero(rc, sizeof(llarp_rc));
 }
 
+void
+llarp_rc_set_pubenckey(struct llarp_rc *rc, const uint8_t *pubenckey)
+{
+  // set public encryption key
+  memcpy(rc->enckey, pubenckey, PUBKEYSIZE);
+}
+
+void
+llarp_rc_set_pubsigkey(struct llarp_rc *rc, const uint8_t *pubsigkey)
+{
+  // set public signing key
+  memcpy(rc->pubkey, pubsigkey, PUBKEYSIZE);
+}
+
+void
+llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubenckey,
+                    const uint8_t *pubsigkey)
+{
+  // set public encryption key
+  llarp_rc_set_pubenckey(rc, pubenckey);
+  // set public signing key
+  llarp_rc_set_pubsigkey(rc, pubsigkey);
+}
+
+struct llarp_rc *
+llarp_rc_read(const char *fpath)
+{
+  fs::path our_rc_file(fpath);
+  std::error_code ec;
+  if(!fs::exists(our_rc_file, ec))
+  {
+    printf("File[%s] not found\n", fpath);
+    return 0;
+  }
+  std::ifstream f(our_rc_file, std::ios::binary);
+  if(!f.is_open())
+  {
+    printf("Can't open file [%s]\n", fpath);
+    return 0;
+  }
+  byte_t tmp[MAX_RC_SIZE];
+  llarp_buffer_t buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+  f.seekg(0, std::ios::end);
+  size_t sz = f.tellg();
+  f.seekg(0, std::ios::beg);
+
+  if(sz > buf.sz)
+    return 0;
+
+  f.read((char *)buf.base, sz);
+  //printf("contents[%s]\n", tmpc);
+  llarp_rc *rc = new llarp_rc;
+  llarp::Zero(rc, sizeof(llarp_rc));
+  if(!llarp_rc_bdecode(rc, &buf))
+  {
+    printf("Can't decode [%s]\n", fpath);
+    return 0;
+  }
+  return rc;
+}
+
 bool
 llarp_rc_addr_list_iter(struct llarp_ai_list_iter *iter, struct llarp_ai *ai)
 {
@@ -826,40 +878,6 @@ llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
   ai_itr.user  = rc;
   ai_itr.visit = &llarp_rc_addr_list_iter;
   llarp_ai_list_iterate(addr, &ai_itr);
-}
-
-void
-llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubkey)
-{
-  // set public key
-  memcpy(rc->pubkey, pubkey, 32);
-}
-
-bool
-llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
-                           byte_t *secretkey)
-{
-  llarp::Debug("find or create ", fpath);
-  fs::path path(fpath);
-  std::error_code ec;
-  if(!fs::exists(path, ec))
-  {
-    llarp::Info("regenerated identity key");
-    crypto->identity_keygen(secretkey);
-    std::ofstream f(path, std::ios::binary);
-    if(f.is_open())
-    {
-      f.write((char *)secretkey, SECKEYSIZE);
-    }
-  }
-  std::ifstream f(path, std::ios::binary);
-  if(f.is_open())
-  {
-    f.read((char *)secretkey, SECKEYSIZE);
-    return true;
-  }
-  llarp::Info("failed to get identity key");
-  return false;
 }
 
 bool
@@ -931,6 +949,62 @@ llarp_router_override_path_selection(struct llarp_router *router,
   if(func)
     router->selectHopFunc = func;
 }
+
+bool
+llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
+                           byte_t *secretkey)
+{
+  llarp::Debug("find or create ", fpath);
+  fs::path path(fpath);
+  std::error_code ec;
+  if(!fs::exists(path, ec))
+  {
+    llarp::Info("generating new identity key");
+    crypto->identity_keygen(secretkey);
+    std::ofstream f(path, std::ios::binary);
+    if(f.is_open())
+    {
+      f.write((char *)secretkey, SECKEYSIZE);
+    }
+  }
+  std::ifstream f(path, std::ios::binary);
+  if(f.is_open())
+  {
+    f.read((char *)secretkey, SECKEYSIZE);
+    return true;
+  }
+  llarp::Info("failed to get identity key");
+  return false;
+}
+
+} // end extern C
+
+// C++ ...
+bool
+llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
+                           llarp::SecretKey *encryption)
+{
+  llarp::Debug("find or create ", fpath);
+  fs::path path(fpath);
+  std::error_code ec;
+  if(!fs::exists(path, ec))
+  {
+    llarp::Info("generating new encryption key");
+    crypto->encryption_keygen(*encryption);
+    std::ofstream f(path, std::ios::binary);
+    if(f.is_open())
+    {
+      f.write((char *)encryption, SECKEYSIZE);
+    }
+  }
+  std::ifstream f(path, std::ios::binary);
+  if(f.is_open())
+  {
+    f.read((char *)encryption, SECKEYSIZE);
+    return true;
+  }
+  llarp::Info("failed to get encryption key");
+  return false;
 }
 
 namespace llarp
