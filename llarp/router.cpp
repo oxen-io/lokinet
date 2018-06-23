@@ -639,14 +639,16 @@ llarp_router::Run()
     // initialize as service node
     InitServiceNode();
     // immediate connect all for service node
-    auto delay = rand() % 100;
-    llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this, &ConnectAll});
+    uint64_t delay = rand() % 100;
+    llarp_logic_call_later(logic, {delay, this, &ConnectAll});
+    //llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this, &ConnectAll});
   }
   else
   {
     // delayed connect all for clients
-    auto delay = ((rand() % 10) * 500) + 1000;
-    llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this, &ConnectAll});
+    uint64_t delay = ((rand() % 10) * 500) + 1000;
+    llarp_logic_call_later(logic, {delay, this, &ConnectAll});
+    //llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this, &ConnectAll});
   }
 
   llarp::PubKey ourPubkey = pubkey();

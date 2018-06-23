@@ -125,7 +125,6 @@ set(LIB_SRC
   llarp/nodedb.cpp
   llarp/path.cpp
   llarp/pathbuilder.cpp
-  llarp/path_confirm.cpp
   llarp/proofofwork.cpp
   llarp/relay_ack.cpp
   llarp/relay_commit.cpp
@@ -137,6 +136,12 @@ set(LIB_SRC
   llarp/testnet.c
   llarp/time.cpp
   llarp/timer.cpp
+  llarp/api/create_session.cpp
+  llarp/api/client.cpp
+  llarp/api/message.cpp
+  llarp/api/parser.cpp
+  llarp/routing/message_parser.cpp
+  llarp/routing/path_confirm.cpp
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
   vendor/cppbackport-master/lib/fs/filetype.cpp
@@ -157,11 +162,18 @@ set(LIB_SRC
 
 set(TEST_SRC 
   test/main.cpp
+  test/api_unittest.cpp
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
 )
 set(TEST_EXE testAll)
 set(GTEST_DIR test/gtest)
+
+set(CLIENT_EXE llarpc)
+
+set(CLIENT_SRC 
+  client/main.cpp
+)
 
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
@@ -179,7 +191,8 @@ else()
   
   add_executable(rcutil daemon/rcutil.cpp)
   add_executable(${EXE} ${EXE_SRC})
-    
+  add_executable(${CLIENT_EXE} ${CLIENT_SRC}) 
+
   if(WITH_TESTS)
     enable_testing()
     add_subdirectory(${GTEST_DIR})
@@ -195,6 +208,7 @@ else()
     if(NOT WITH_SHARED)
       target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB})
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB})
+      target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB})
     endif()
   endif()
   

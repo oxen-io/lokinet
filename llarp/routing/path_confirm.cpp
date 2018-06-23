@@ -1,14 +1,30 @@
 #include <llarp/time.h>
 #include <llarp/bencode.hpp>
 #include <llarp/messages/path_confirm.hpp>
+#include <llarp/routing/handler.hpp>
 
 namespace llarp
 {
   namespace routing
   {
+    PathConfirmMessage::PathConfirmMessage() : pathLifetime(0), pathCreated(0)
+    {
+    }
+
     PathConfirmMessage::PathConfirmMessage(uint64_t lifetime)
         : pathLifetime(lifetime), pathCreated(llarp_time_now_ms())
     {
+    }
+
+    bool
+    PathConfirmMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    {
+      bool read = false;
+      if(!BEncodeMaybeReadDictInt("L", pathLifetime, read, key, val))
+        return false;
+      if(!BEncodeMaybeReadDictInt("S", pathCreated, read, key, val))
+        return false;
+      return read;
     }
 
     bool
@@ -26,14 +42,10 @@ namespace llarp
     }
 
     bool
-    PathConfirmMessage::BDecode(llarp_buffer_t* buf)
+    PathConfirmMessage::HandleMessage(IMessageHandler* h) const
     {
-      return false;
-    }
-
-    bool
-    PathConfirmMessage::HandleMessage(llarp_router* r) const
-    {
+      llarp::Info("got path confirm created=", pathCreated,
+                  " lifetime=", pathLifetime);
       return true;
     }
 

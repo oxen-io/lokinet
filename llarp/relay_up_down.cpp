@@ -87,16 +87,14 @@ namespace llarp
   bool
   RelayDownstreamMessage::HandleMessage(llarp_router *router) const
   {
-    PathID_t id    = pathid;
-    id.data_l()[0] = 0;
-    auto path      = router->paths.GetByUpstream(remote, id);
+    auto path = router->paths.GetByUpstream(remote, pathid);
     if(path)
     {
       return path->HandleDownstream(X.Buffer(), Y, router);
     }
     else
     {
-      llarp::Warn("No such path upstream=", remote, " pathid=", id);
+      llarp::Warn("No such path upstream=", remote, " pathid=", pathid);
     }
     return false;
   }

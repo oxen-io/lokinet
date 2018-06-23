@@ -12,6 +12,13 @@ namespace llarp
     return bencode_write_bytestring(buf, k, 1)
         && bencode_write_bytestring(buf, t, 1);
   }
+  template < typename Obj_t >
+  bool
+  BEncodeWriteDictString(const char* k, const Obj_t& str, llarp_buffer_t* buf)
+  {
+    return bencode_write_bytestring(buf, k, 1)
+        && bencode_write_bytestring(buf, str.c_str(), str.size());
+  }
 
   template < typename Obj_t >
   bool
@@ -48,6 +55,23 @@ namespace llarp
     return true;
   }
 
+  template < typename Int_t >
+  bool
+  BEncodeMaybeReadDictInt(const char* k, Int_t& i, bool& read,
+                          llarp_buffer_t key, llarp_buffer_t* buf)
+  {
+    if(llarp_buffer_eq(key, k))
+    {
+      if(!bencode_read_integer(buf, &i))
+      {
+        llarp::Warn("failed to decode key ", k);
+        return false;
+      }
+      read = true;
+    }
+    return true;
+  }
+
   template < typename Item_t >
   bool
   BEncodeMaybeReadVersion(const char* k, Item_t& item, uint64_t expect,
@@ -60,6 +84,22 @@ namespace llarp
       read = item == expect;
     }
     return true;
+  }
+
+  template < typename List_t >
+  bool
+  BEncodeWriteDictBEncodeList(const char* k, const List_t& l,
+                              llarp_buffer_t* buf)
+  {
+    if(!bencode_write_bytestring(buf, k, 1))
+      return false;
+    if(!bencode_start_list(buf))
+      return false;
+
+    for(const auto& item : l)
+      if(!item->BEncode(buf))
+        return false;
+    return bencode_end(buf);
   }
 
   template < typename Iter >
@@ -102,6 +142,19 @@ namespace llarp
     return bencode_write_bytestring(buf, k, 1)
         && BEncodeWriteList(list.begin(), list.end(), buf);
   }
+
+  /// bencode serializable message
+  struct IBEncodeMessage
+  {
+    virtual ~IBEncodeMessage(){};
+
+    virtual bool
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) = 0;
+
+    virtual bool
+    BEncode(llarp_buffer_t* buf) const = 0;
+  };
+
 }  // namespace llarp
 
 #endif

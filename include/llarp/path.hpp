@@ -10,7 +10,8 @@
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/path_types.hpp>
 #include <llarp/router_id.hpp>
-#include <llarp/routing_message.hpp>
+#include <llarp/routing/handler.hpp>
+#include <llarp/routing/message.hpp>
 
 #include <list>
 #include <map>
@@ -173,7 +174,7 @@ namespace llarp
   };
 
   /// A path we made
-  struct Path : public IHopHandler
+  struct Path : public IHopHandler, public llarp::routing::IMessageHandler
   {
     typedef std::vector< PathHopConfig > HopList;
     HopList hops;
@@ -191,6 +192,9 @@ namespace llarp
     bool
     HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r);
 
+    bool
+    HandleHiddenServiceData(llarp_buffer_t buf);
+
     // handle data in upstream direction
     bool
     HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
@@ -201,7 +205,10 @@ namespace llarp
 
     // Is this deprecated?
     const PathID_t&
-    PathID() const;
+    TXID() const;
+
+    const PathID_t&
+    RXID() const;
 
     const PathID_t&
     TXID() const;
@@ -211,6 +218,9 @@ namespace llarp
 
     RouterID
     Upstream() const;
+
+   protected:
+    llarp::routing::InboundMessageParser m_InboundMessageParser;
   };
 
   enum PathBuildStatus
@@ -250,7 +260,7 @@ namespace llarp
     GetByUpstream(const RouterID& id, const PathID_t& path);
 
     IHopHandler*
-    GetDownstream(const RouterID& id, const PathID_t& path);
+    GetByDownstream(const RouterID& id, const PathID_t& path);
 
     bool
     ForwardLRCM(const RouterID& nextHop, std::deque< EncryptedFrame >& frames);

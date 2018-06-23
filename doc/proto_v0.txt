@@ -137,14 +137,13 @@ s is the long term public signing key
 v is the protocol version
 x is a nounce value for generating vanity addresses that can be omitted
 
-if x is included it MUST be less than or equal to 16 bytes, any larger and it is
-considered invalid.
+if x is included it MUST be equal to 16 bytes
 
 {
   e: "<32 bytes public encryption key>",
   s: "<32 bytes public signing key>",
   v: 0,
-  x: "<optional nounce for vanity>"
+  x: "<optional 16 bytes nonce for vanity>"
 }
 
 service address (SA)
@@ -314,10 +313,6 @@ h = HS(BE(w))
  
 h has log_e(y) prefix of 0x00 
 
-y = 2 means prefix of 0x00
-y = 4 means prefix of 0x00 0x00
-y = 32 means prefix 0x00 0x00 0x00 0x00 0x00
-
 this proof of work requirement is subject to change 
 
 if i is equal to RC.k then any LRDM.x values are decrypted and interpreted as
@@ -345,7 +340,7 @@ otherwise transmit a LRUM to the next hop
   p: p,
   v: 0,
   x: x1,
-  y: HS(y)
+  y: y
 }
 
 link relay downstream message (LRDM)
@@ -542,7 +537,7 @@ transfer data between paths.
   P: "<16 bytes path id>",
   T: "<N bytes data>",
   V: 0, 
-  Y: "<32 bytes nounce>",
+  Y: "<32 bytes nounce>"
 }
 
 transfer data to another path with id P on the local router place Y and T values
