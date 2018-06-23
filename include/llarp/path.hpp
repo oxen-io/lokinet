@@ -210,12 +210,6 @@ namespace llarp
     const PathID_t&
     RXID() const;
 
-    const PathID_t&
-    TXID() const;
-
-    const PathID_t&
-    RXID() const;
-
     RouterID
     Upstream() const;
 
