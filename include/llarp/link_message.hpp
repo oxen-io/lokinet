@@ -1,8 +1,8 @@
 #ifndef LLARP_LINK_MESSAGE_HPP
 #define LLARP_LINK_MESSAGE_HPP
 
-#include <llarp/bencode.h>
 #include <llarp/link.h>
+#include <llarp/bencode.hpp>
 #include <llarp/router_id.hpp>
 
 #include <queue>
@@ -15,7 +15,7 @@ namespace llarp
   typedef std::queue< ILinkMessage* > SendQueue;
 
   /// parsed link layer message
-  struct ILinkMessage
+  struct ILinkMessage : public IBEncodeMessage
   {
     /// who did this message come from (rc.k)
     RouterID remote  = {};
@@ -23,14 +23,6 @@ namespace llarp
 
     ILinkMessage() = default;
     ILinkMessage(const RouterID& id);
-
-    virtual ~ILinkMessage(){};
-
-    virtual bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) = 0;
-
-    virtual bool
-    BEncode(llarp_buffer_t* buf) const = 0;
 
     virtual bool
     HandleMessage(llarp_router* router) const = 0;
@@ -63,6 +55,6 @@ namespace llarp
     llarp_link_session* from;
     ILinkMessage* msg = nullptr;
   };
-}
+}  // namespace llarp
 
 #endif

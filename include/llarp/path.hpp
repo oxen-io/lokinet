@@ -192,6 +192,9 @@ namespace llarp
     bool
     HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r);
 
+    bool
+    HandleHiddenServiceData(llarp_buffer_t buf);
+
     // handle data in upstream direction
     bool
     HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);

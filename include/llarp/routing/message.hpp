@@ -3,6 +3,7 @@
 
 #include <llarp/buffer.h>
 #include <llarp/router.h>
+#include <llarp/bencode.hpp>
 #include <llarp/path_types.hpp>
 
 namespace llarp
@@ -11,17 +12,9 @@ namespace llarp
   {
     struct IMessageHandler;
 
-    struct IMessage
+    struct IMessage : public llarp::IBEncodeMessage
     {
       llarp::PathID_t from;
-
-      virtual ~IMessage(){};
-
-      virtual bool
-      BEncode(llarp_buffer_t* buf) const = 0;
-
-      virtual bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) = 0;
 
       virtual bool
       HandleMessage(IMessageHandler* r) const = 0;
