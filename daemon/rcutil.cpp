@@ -35,6 +35,10 @@ bool printNode(struct llarp_nodedb_iter *iter) {
   return false;
 }
 
+void HandleDHTLocate(llarp_router_lookup_job *job) {
+  llarp::Info("DHT result: ", job->found ? "found" : "not found");
+  // save to nodedb?
+}
 
 int
 main(int argc, char *argv[])
@@ -57,7 +61,8 @@ main(int argc, char *argv[])
         "--update   with a path to a router contact file\n"
         "--list     \n"
         "--import   with a path to a router contact file\n"
-        "--export   with a path to a router contact file\n"
+        "--export   a hex formatted public key\n"
+        "--locate   a hex formatted public key"
         "\n");
     return 0;
   }
@@ -66,6 +71,7 @@ main(int argc, char *argv[])
   bool listMode = false;
   bool importMode = false;
   bool exportMode = false;
+  bool locateMode = false;
   int c;
   char *conffname;
   char defaultConfName[] = "daemon.ini";
@@ -83,9 +89,10 @@ main(int argc, char *argv[])
         {"list", no_argument, 0, 'l'},
         {"import", required_argument, 0, 'i'},
         {"export", required_argument, 0, 'e'},
+        {"locate", required_argument, 0, 'q'},
         {0, 0, 0, 0}};
     int option_index = 0;
-    c = getopt_long(argc, argv, "cgluie", long_options, &option_index);
+    c = getopt_long(argc, argv, "cgluieq", long_options, &option_index);
     if(c == -1)
       break;
     switch(c)
@@ -111,6 +118,12 @@ main(int argc, char *argv[])
         haveRequiredOptions = true;
         exportMode = true;
         break;
+      case 'q':
+        // printf ("option -g with value `%s'\n", optarg);
+        rcfname = optarg;
+        haveRequiredOptions = true;
+        locateMode = true;
+        break;
       case 'g':
         // printf ("option -g with value `%s'\n", optarg);
         rcfname = optarg;
@@ -132,7 +145,7 @@ main(int argc, char *argv[])
     return 0;
   }
   printf("parsed options\n");
-  if(!genMode && !updMode && !listMode &&!importMode && !exportMode)
+  if(!genMode && !updMode && !listMode &&!importMode && !exportMode && !locateMode)
   {
     llarp::Error("I don't know what to do, no generate or update parameter\n");
     return 0;
@@ -239,6 +252,24 @@ main(int argc, char *argv[])
     filename.append(".signed");
     llarp::Info("Writing out: ", filename);
     llarp_rc_write(rc, filename.c_str());
+  }
+  if (locateMode) {
+    llarp::Info("Going online");
+    llarp_main_setup(ctx);
+
+    llarp::PubKey binaryPK;
+    llarp::HexDecode(rcfname, binaryPK.data());
+
+    llarp::Info("Queueing job");
+    llarp_router_lookup_job *job = new llarp_router_lookup_job;
+    job->found = false;
+    job->hook = &HandleDHTLocate;
+    memcpy(job->target, binaryPK, PUBKEYSIZE); // set job's target
+    llarp_main_queryDHT(ctx, job);
+
+    llarp::Info("Processing");
+    // run system and wait
+    llarp_main_run(ctx);
   }
   llarp_main_free(ctx);
   return 1; // success
