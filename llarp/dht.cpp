@@ -448,7 +448,7 @@ namespace llarp
           result  = item.first;
         }
       }
-      return true;
+      return nodes.size() > 0;
     }
 
     bool
