@@ -1,4 +1,5 @@
 #include "logger.hpp"
+#include <llarp/logger.h>
 
 namespace llarp
 {
@@ -9,4 +10,13 @@ namespace llarp
   {
     _glog.minlevel = lvl;
   }
+}
+
+extern "C" {
+void
+cSetLogLevel(LogLevel lvl)
+{
+  llarp::SetLogLevel((llarp::LogLevel)lvl);
+}
+
 }
