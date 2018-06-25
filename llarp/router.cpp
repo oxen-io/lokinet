@@ -356,6 +356,7 @@ llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
   delete job;
 }
 
+// TODO: do we still need this?
 void
 llarp_router::BuildExploritoryPath()
 {
@@ -379,7 +380,7 @@ llarp_router::Tick()
     auto N = llarp_nodedb_num_loaded(nodedb);
     if(N > 5)
     {
-      BuildExploritoryPath();
+      paths.BuildPaths();
     }
     else
     {
@@ -595,16 +596,14 @@ llarp_router::Run()
   // set public encryption key
   llarp_rc_set_pubenckey(&rc, llarp::seckey_topublic(encryption));
 
-  char ftmp[68] = {0};
-  const char *hexKey = llarp::HexEncode< llarp::PubKey,
-                                         decltype(ftmp) >(llarp::seckey_topublic(encryption),
-                                                          ftmp);
+  char ftmp[68]      = {0};
+  const char *hexKey = llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(
+      llarp::seckey_topublic(encryption), ftmp);
   llarp::Info("Your Encryption pubkey ", hexKey);
   // set public signing key
   llarp_rc_set_pubsigkey(&rc, llarp::seckey_topublic(identity));
-  hexKey = llarp::HexEncode< llarp::PubKey,
-                             decltype(ftmp) >(llarp::seckey_topublic(identity),
-                                              ftmp);
+  hexKey = llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(
+      llarp::seckey_topublic(identity), ftmp);
   llarp::Info("Your Identity pubkey ", hexKey);
 
   llarp_rc_sign(&crypto, identity, &rc);
@@ -641,14 +640,16 @@ llarp_router::Run()
     // immediate connect all for service node
     uint64_t delay = rand() % 100;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
-    //llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this, &ConnectAll});
+    // llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this,
+    // &ConnectAll});
   }
   else
   {
     // delayed connect all for clients
     uint64_t delay = ((rand() % 10) * 500) + 1000;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
-    //llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this, &ConnectAll});
+    // llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this,
+    // &ConnectAll});
   }
 
   llarp::PubKey ourPubkey = pubkey();
@@ -850,7 +851,7 @@ llarp_rc_read(const char *fpath)
     return 0;
 
   f.read((char *)buf.base, sz);
-  //printf("contents[%s]\n", tmpc);
+  // printf("contents[%s]\n", tmpc);
   llarp_rc *rc = new llarp_rc;
   llarp::Zero(rc, sizeof(llarp_rc));
   if(!llarp_rc_bdecode(rc, &buf))
@@ -977,12 +978,12 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
   return false;
 }
 
-} // end extern C
+}  // end extern C
 
 // C++ ...
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
-                           llarp::SecretKey *encryption)
+                             llarp::SecretKey *encryption)
 {
   llarp::Debug("find or create ", fpath);
   fs::path path(fpath);

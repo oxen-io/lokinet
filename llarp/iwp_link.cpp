@@ -1933,6 +1933,7 @@ namespace iwp
         delete link;
         return;
       }
+      link->frame.alive();
       link->serv->put_session(link->addr, link);
       llarp::Debug("send introack to ", link->addr, " via ", link->serv->addr);
       if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)

@@ -11,7 +11,10 @@
 namespace llarp
 {
   // forward declare
-  struct PathContext;
+  namespace path
+  {
+    struct PathContext;
+  }
 
   struct LR_CommitRecord
   {
@@ -67,7 +70,7 @@ namespace llarp
     HandleMessage(llarp_router *router) const;
 
     bool
-    AsyncDecrypt(PathContext *context) const;
+    AsyncDecrypt(llarp::path::PathContext *context) const;
   };
 }  // namespace llarp
 

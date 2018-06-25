@@ -47,23 +47,23 @@ struct llarp_nodedb
     return entries.find(pk) != entries.end();
   }
 
-/*
-  bool
-  Has(const byte_t *pk)
-  {
-    llarp::PubKey test(pk);
-    auto itr = this->entries.begin();
-    while(itr != this->entries.end())
+  /*
+    bool
+    Has(const byte_t *pk)
     {
-      llarp::Info("Has byte_t [", test.size(), "] vs [", itr->first.size(), "]");
-      if (memcmp(test.data(), itr->first.data(), 32) == 0) {
-        llarp::Info("Match");
+      llarp::PubKey test(pk);
+      auto itr = this->entries.begin();
+      while(itr != this->entries.end())
+      {
+        llarp::Info("Has byte_t [", test.size(), "] vs [", itr->first.size(),
+    "]"); if (memcmp(test.data(), itr->first.data(), 32) == 0) {
+          llarp::Info("Match");
+        }
+        itr++;
       }
-      itr++;
+      return entries.find(pk) != entries.end();
     }
-    return entries.find(pk) != entries.end();
-  }
-*/
+  */
 
   bool
   pubKeyExists(llarp_rc *rc)
@@ -185,7 +185,7 @@ struct llarp_nodedb
     auto itr = i.begin();
     while(itr != itr.end())
     {
-      if (fs::is_regular_file(itr->symlink_status()) && loadfile(*itr))
+      if(fs::is_regular_file(itr->symlink_status()) && loadfile(*itr))
         sz++;
 
       ++itr;
@@ -198,12 +198,13 @@ struct llarp_nodedb
   {
 #if __APPLE__ && __MACH__
     // skip .DS_Store files
-    if (strstr(fpath.c_str(), ".DS_Store") != 0) {
+    if(strstr(fpath.c_str(), ".DS_Store") != 0)
+    {
       return false;
     }
 #endif
     llarp_rc *rc = llarp_rc_read(fpath.c_str());
-    if (!rc)
+    if(!rc)
     {
       llarp::Error("Signature read failed", fpath);
       return false;
@@ -218,8 +219,10 @@ struct llarp_nodedb
     return true;
   }
 
-  bool iterate(struct llarp_nodedb_iter i) {
-    i.index = 0;
+  bool
+  iterate(struct llarp_nodedb_iter i)
+  {
+    i.index  = 0;
     auto itr = entries.begin();
     while(itr != entries.end())
     {
@@ -372,12 +375,14 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
 }
 
 bool
-llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc) {
+llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc)
+{
   return n->setRC(rc);
 }
 
 int
-llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i) {
+llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i)
+{
   n->iterate(i);
   return n->entries.size();
 }
@@ -401,7 +406,7 @@ llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 struct llarp_rc *
 llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
 {
-  //llarp::Info("llarp_nodedb_get_rc [", pk, "]");
+  // llarp::Info("llarp_nodedb_get_rc [", pk, "]");
   if(n->Has(pk))
     return n->getRC(pk);
   else

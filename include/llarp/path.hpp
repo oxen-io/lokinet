@@ -5,10 +5,12 @@
 #include <llarp/time.h>
 #include <llarp/aligned.hpp>
 #include <llarp/crypto.hpp>
+#include <llarp/dht.hpp>
 #include <llarp/endpoint.hpp>
 #include <llarp/messages/relay.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/path_types.hpp>
+#include <llarp/pathset.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message.hpp>
@@ -19,292 +21,315 @@
 #include <unordered_map>
 #include <vector>
 
-#define DEFAULT_PATH_LIFETIME (10 * 60 * 1000)
-
 namespace llarp
 {
-  struct TransitHopInfo
+  namespace path
   {
-    TransitHopInfo() = default;
-    TransitHopInfo(const TransitHopInfo& other);
-    TransitHopInfo(const RouterID& down, const LR_CommitRecord& record);
-
-    PathID_t txID, rxID;
-    RouterID upstream;
-    RouterID downstream;
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const TransitHopInfo& info)
+    struct TransitHopInfo
     {
-      out << "<tx=" << info.txID << " rx=" << info.rxID;
-      out << " upstream=" << info.upstream << " downstream=" << info.downstream;
-      return out << ">";
-    }
+      TransitHopInfo() = default;
+      TransitHopInfo(const TransitHopInfo& other);
+      TransitHopInfo(const RouterID& down, const LR_CommitRecord& record);
 
-    bool
-    operator==(const TransitHopInfo& other) const
-    {
-      return txID == other.txID && rxID == other.rxID
-          && upstream == other.upstream && downstream == other.downstream;
-    }
+      PathID_t txID, rxID;
+      RouterID upstream;
+      RouterID downstream;
 
-    bool
-    operator!=(const TransitHopInfo& other) const
-    {
-      return !(*this == other);
-    }
+      friend std::ostream&
+      operator<<(std::ostream& out, const TransitHopInfo& info)
+      {
+        out << "<tx=" << info.txID << " rx=" << info.rxID;
+        out << " upstream=" << info.upstream
+            << " downstream=" << info.downstream;
+        return out << ">";
+      }
 
-    bool
-    operator<(const TransitHopInfo& other) const
-    {
-      return txID < other.txID || rxID < other.rxID || upstream < other.upstream
-          || downstream < other.downstream;
-    }
+      bool
+      operator==(const TransitHopInfo& other) const
+      {
+        return txID == other.txID && rxID == other.rxID
+            && upstream == other.upstream && downstream == other.downstream;
+      }
 
-    struct Hash
+      bool
+      operator!=(const TransitHopInfo& other) const
+      {
+        return !(*this == other);
+      }
+
+      bool
+      operator<(const TransitHopInfo& other) const
+      {
+        return txID < other.txID || rxID < other.rxID
+            || upstream < other.upstream || downstream < other.downstream;
+      }
+
+      struct Hash
+      {
+        std::size_t
+        operator()(TransitHopInfo const& a) const
+        {
+          std::size_t idx0, idx1, idx2, idx3;
+          memcpy(&idx0, a.upstream, sizeof(std::size_t));
+          memcpy(&idx1, a.downstream, sizeof(std::size_t));
+          memcpy(&idx2, a.txID, sizeof(std::size_t));
+          memcpy(&idx3, a.rxID, sizeof(std::size_t));
+          return idx0 ^ idx1 ^ idx2;
+        }
+      };
+    };
+
+    struct PathIDHash
     {
       std::size_t
-      operator()(TransitHopInfo const& a) const
+      operator()(const PathID_t& a) const
       {
-        std::size_t idx0, idx1, idx2, idx3;
-        memcpy(&idx0, a.upstream, sizeof(std::size_t));
-        memcpy(&idx1, a.downstream, sizeof(std::size_t));
-        memcpy(&idx2, a.txID, sizeof(std::size_t));
-        memcpy(&idx3, a.rxID, sizeof(std::size_t));
-        return idx0 ^ idx1 ^ idx2;
+        std::size_t idx0;
+        memcpy(&idx0, a, sizeof(std::size_t));
+        return idx0;
       }
     };
-  };
 
-  struct PathIDHash
-  {
-    std::size_t
-    operator()(const PathID_t& a) const
+    struct IHopHandler
     {
-      std::size_t idx0;
-      memcpy(&idx0, a, sizeof(std::size_t));
-      return idx0;
-    }
-  };
+      virtual ~IHopHandler(){};
 
-  struct IHopHandler
-  {
-    virtual ~IHopHandler(){};
+      virtual bool
+      Expired(llarp_time_t now) const = 0;
 
-    virtual bool
-    Expired(llarp_time_t now) const = 0;
+      virtual bool
+      SendRoutingMessage(const llarp::routing::IMessage* msg,
+                         llarp_router* r) = 0;
 
-    virtual bool
-    SendRoutingMessage(const llarp::routing::IMessage* msg,
-                       llarp_router* r) = 0;
-
-    // handle data in upstream direction
-    virtual bool
-    HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r) = 0;
-
-    // handle data in downstream direction
-    virtual bool
-    HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
+      // handle data in upstream direction
+      virtual bool
+      HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y,
                      llarp_router* r) = 0;
-  };
 
-  struct TransitHop : public IHopHandler
-  {
-    TransitHop() = default;
+      // handle data in downstream direction
+      virtual bool
+      HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
+                       llarp_router* r) = 0;
+    };
 
-    TransitHop(const TransitHop& other);
-
-    TransitHopInfo info;
-    SharedSecret pathKey;
-    llarp_time_t started = 0;
-    // 10 minutes default
-    llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
-    llarp_proto_version_t version;
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const TransitHop& h)
+    struct TransitHop : public IHopHandler
     {
-      return out << "[TransitHop " << h.info << " started=" << h.started
-                 << " lifetime=" << h.lifetime << "]";
-    }
+      TransitHop() = default;
 
-    bool
-    Expired(llarp_time_t now) const;
+      TransitHop(const TransitHop& other);
 
-    bool
-    SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
+      TransitHopInfo info;
+      SharedSecret pathKey;
+      llarp_time_t started = 0;
+      // 10 minutes default
+      llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
+      llarp_proto_version_t version;
 
-    // handle data in upstream direction
-    bool
-    HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
+      friend std::ostream&
+      operator<<(std::ostream& out, const TransitHop& h)
+      {
+        return out << "[TransitHop " << h.info << " started=" << h.started
+                   << " lifetime=" << h.lifetime << "]";
+      }
 
-    // handle data in downstream direction
-    bool
-    HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
-  };
+      bool
+      Expired(llarp_time_t now) const;
 
-  /// configuration for a single hop when building a path
-  struct PathHopConfig
-  {
-    /// path id
-    PathID_t txID, rxID;
-    // router contact of router
-    llarp_rc router;
-    // temp public encryption key
-    SecretKey commkey;
-    /// shared secret at this hop
-    SharedSecret shared;
-    /// next hop's router id
-    RouterID upstream;
-    /// nonce for key exchange
-    TunnelNonce nonce;
-    // lifetime
-    llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
+      bool
+      SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
 
-    ~PathHopConfig();
-    PathHopConfig();
-  };
+      // handle data in upstream direction
+      bool
+      HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
 
-  enum PathStatus
-  {
-    ePathBuilding,
-    ePathEstablished,
-    ePathTimeout,
-    ePathExpired
-  };
+      // handle data in downstream direction
+      bool
+      HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
+    };
 
-  /// A path we made
-  struct Path : public IHopHandler, public llarp::routing::IMessageHandler
-  {
-    typedef std::vector< PathHopConfig > HopList;
-    HopList hops;
-    llarp_time_t buildStarted;
-    PathStatus status;
+    /// configuration for a single hop when building a path
+    struct PathHopConfig
+    {
+      /// path id
+      PathID_t txID, rxID;
+      // router contact of router
+      llarp_rc router;
+      // temp public encryption key
+      SecretKey commkey;
+      /// shared secret at this hop
+      SharedSecret shared;
+      /// next hop's router id
+      RouterID upstream;
+      /// nonce for key exchange
+      TunnelNonce nonce;
+      // lifetime
+      llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
 
-    Path(llarp_path_hops* path);
+      ~PathHopConfig();
+      PathHopConfig();
+    };
 
-    bool
-    Expired(llarp_time_t now) const;
+    /// A path we made
+    struct Path : public IHopHandler, public llarp::routing::IMessageHandler
+    {
+      typedef std::function< void(Path*) > BuildResultHookFunc;
+      typedef std::vector< PathHopConfig > HopList;
+      HopList hops;
+      llarp_time_t buildStarted;
+      PathStatus status;
 
-    bool
-    SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
+      Path(llarp_path_hops* path);
 
-    bool
-    HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r);
+      void
+      SetBuildResultHook(BuildResultHookFunc func);
 
-    bool
-    HandleHiddenServiceData(llarp_buffer_t buf);
+      bool
+      Expired(llarp_time_t now) const;
 
-    // handle data in upstream direction
-    bool
-    HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
+      bool
+      SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
 
-    // handle data in downstream direction
-    bool
-    HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
+      bool
+      HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg);
 
-    // Is this deprecated?
-    const PathID_t&
-    TXID() const;
+      bool
+      HandlePathLatencyMessage(const llarp::routing::PathLatencyMessage* msg);
 
-    const PathID_t&
-    RXID() const;
+      bool
+      HandleDHTMessage(const llarp::dht::IMessage* msg);
 
-    RouterID
-    Upstream() const;
+      bool
+      HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r);
 
-   protected:
-    llarp::routing::InboundMessageParser m_InboundMessageParser;
-  };
+      bool
+      HandleHiddenServiceData(llarp_buffer_t buf);
 
-  enum PathBuildStatus
-  {
-    ePathBuildSuccess,
-    ePathBuildTimeout,
-    ePathBuildReject
-  };
+      // handle data in upstream direction
+      bool
+      HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
 
-  struct PathContext
-  {
-    PathContext(llarp_router* router);
-    ~PathContext();
+      // handle data in downstream direction
+      bool
+      HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
 
-    /// called from router tick function
-    void
-    ExpirePaths();
+      // Is this deprecated?
+      // nope not deprecated :^DDDD
+      const PathID_t&
+      TXID() const;
 
-    void
-    AllowTransit();
-    void
-    RejectTransit();
+      const PathID_t&
+      RXID() const;
 
-    bool
-    AllowingTransit() const;
+      RouterID
+      Upstream() const;
 
-    bool
-    HasTransitHop(const TransitHopInfo& info);
+     protected:
+      llarp::routing::InboundMessageParser m_InboundMessageParser;
 
-    bool
-    HandleRelayCommit(const LR_CommitMessage* msg);
+     private:
+      BuildResultHookFunc m_BuiltHook;
+    };
 
-    void
-    PutTransitHop(TransitHop* hop);
+    enum PathBuildStatus
+    {
+      ePathBuildSuccess,
+      ePathBuildTimeout,
+      ePathBuildReject
+    };
 
-    IHopHandler*
-    GetByUpstream(const RouterID& id, const PathID_t& path);
+    struct PathContext
+    {
+      PathContext(llarp_router* router);
+      ~PathContext();
 
-    IHopHandler*
-    GetByDownstream(const RouterID& id, const PathID_t& path);
+      /// called from router tick function
+      void
+      ExpirePaths();
 
-    bool
-    ForwardLRCM(const RouterID& nextHop, std::deque< EncryptedFrame >& frames);
+      /// called from router tick function
+      /// builds all paths we need to build at current tick
+      void
+      BuildPaths();
 
-    bool
-    HopIsUs(const PubKey& k) const;
+      ///  track a path builder with this context
+      void
+      AddPathBuilder(llarp_pathbuilder_context* set);
 
-    bool
-    HandleLRUM(const RelayUpstreamMessage* msg);
+      void
+      AllowTransit();
+      void
+      RejectTransit();
 
-    bool
-    HandleLRDM(const RelayDownstreamMessage* msg);
+      bool
+      AllowingTransit() const;
 
-    void
-    AddOwnPath(Path* p);
+      bool
+      HasTransitHop(const TransitHopInfo& info);
 
-    typedef std::multimap< PathID_t, TransitHop* > TransitHopsMap_t;
+      bool
+      HandleRelayCommit(const LR_CommitMessage* msg);
 
-    typedef std::pair< std::mutex, TransitHopsMap_t > SyncTransitMap_t;
+      void
+      PutTransitHop(TransitHop* hop);
 
-    typedef std::map< PathID_t, Path* > OwnedPathsMap_t;
+      IHopHandler*
+      GetByUpstream(const RouterID& id, const PathID_t& path);
 
-    typedef std::pair< std::mutex, OwnedPathsMap_t > SyncOwnedPathsMap_t;
+      IHopHandler*
+      GetByDownstream(const RouterID& id, const PathID_t& path);
 
-    llarp_threadpool*
-    Worker();
+      bool
+      ForwardLRCM(const RouterID& nextHop,
+                  std::deque< EncryptedFrame >& frames);
 
-    llarp_crypto*
-    Crypto();
+      bool
+      HopIsUs(const PubKey& k) const;
 
-    llarp_logic*
-    Logic();
+      bool
+      HandleLRUM(const RelayUpstreamMessage* msg);
 
-    llarp_router*
-    Router();
+      bool
+      HandleLRDM(const RelayDownstreamMessage* msg);
 
-    byte_t*
-    EncryptionSecretKey();
+      void
+      AddOwnPath(PathSet* set, Path* p);
 
-    const byte_t*
-    OurRouterID() const;
+      typedef std::multimap< PathID_t, TransitHop* > TransitHopsMap_t;
 
-   private:
-    llarp_router* m_Router;
-    SyncTransitMap_t m_TransitPaths;
-    SyncTransitMap_t m_Paths;
-    SyncOwnedPathsMap_t m_OurPaths;
+      typedef std::pair< std::mutex, TransitHopsMap_t > SyncTransitMap_t;
 
-    bool m_AllowTransit;
-  };
+      // maps path id -> pathset owner of path
+      typedef std::map< PathID_t, PathSet* > OwnedPathsMap_t;
+
+      typedef std::pair< std::mutex, OwnedPathsMap_t > SyncOwnedPathsMap_t;
+
+      llarp_threadpool*
+      Worker();
+
+      llarp_crypto*
+      Crypto();
+
+      llarp_logic*
+      Logic();
+
+      llarp_router*
+      Router();
+
+      byte_t*
+      EncryptionSecretKey();
+
+      const byte_t*
+      OurRouterID() const;
+
+     private:
+      llarp_router* m_Router;
+      SyncTransitMap_t m_TransitPaths;
+      SyncTransitMap_t m_Paths;
+      SyncOwnedPathsMap_t m_OurPaths;
+      std::list< llarp_pathbuilder_context* > m_PathBuilders;
+      bool m_AllowTransit;
+    };
+  }  // namespace path
 }  // namespace llarp
 
 #endif

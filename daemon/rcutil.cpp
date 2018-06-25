@@ -21,20 +21,21 @@ handle_signal(int sig)
 #include <llarp/router_contact.h>
 #include <llarp/time.h>
 #include <fstream>
-#include "fs.hpp"
 #include "buffer.hpp"
 #include "crypto.hpp"
+#include "fs.hpp"
 #include "router.hpp"
 
-bool printNode(struct llarp_nodedb_iter *iter) {
+bool
+printNode(struct llarp_nodedb_iter *iter)
+{
   char ftmp[68] = {0};
   const char *hexname =
-    llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(iter->rc->pubkey, ftmp);
+      llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(iter->rc->pubkey, ftmp);
 
   printf("[%zu]=>[%s]\n", iter->index, hexname);
   return false;
 }
-
 
 int
 main(int argc, char *argv[])
@@ -61,9 +62,9 @@ main(int argc, char *argv[])
         "\n");
     return 0;
   }
-  bool genMode = false;
-  bool updMode = false;
-  bool listMode = false;
+  bool genMode    = false;
+  bool updMode    = false;
+  bool listMode   = false;
   bool importMode = false;
   bool exportMode = false;
   int c;
@@ -71,8 +72,8 @@ main(int argc, char *argv[])
   char defaultConfName[] = "daemon.ini";
   conffname              = defaultConfName;
   char *rcfname;
-  char defaultRcName[]   = "other.signed";
-  rcfname                = defaultRcName;
+  char defaultRcName[]     = "other.signed";
+  rcfname                  = defaultRcName;
   bool haveRequiredOptions = false;
   while(1)
   {
@@ -97,49 +98,51 @@ main(int argc, char *argv[])
         break;
       case 'l':
         haveRequiredOptions = true;
-        listMode = true;
+        listMode            = true;
         break;
       case 'i':
         // printf ("option -g with value `%s'\n", optarg);
-        rcfname = optarg;
+        rcfname             = optarg;
         haveRequiredOptions = true;
-        importMode = true;
+        importMode          = true;
         break;
       case 'e':
         // printf ("option -g with value `%s'\n", optarg);
-        rcfname = optarg;
+        rcfname             = optarg;
         haveRequiredOptions = true;
-        exportMode = true;
+        exportMode          = true;
         break;
       case 'g':
         // printf ("option -g with value `%s'\n", optarg);
-        rcfname = optarg;
+        rcfname             = optarg;
         haveRequiredOptions = true;
-        genMode = true;
+        genMode             = true;
         break;
       case 'u':
         // printf ("option -u with value `%s'\n", optarg);
-        rcfname = optarg;
+        rcfname             = optarg;
         haveRequiredOptions = true;
-        updMode = true;
+        updMode             = true;
         break;
       default:
         abort();
     }
   }
-  if (!haveRequiredOptions) {
+  if(!haveRequiredOptions)
+  {
     llarp::Error("Parameters dont all have their required parameters.\n");
     return 0;
   }
   printf("parsed options\n");
-  if(!genMode && !updMode && !listMode &&!importMode && !exportMode)
+  if(!genMode && !updMode && !listMode && !importMode && !exportMode)
   {
     llarp::Error("I don't know what to do, no generate or update parameter\n");
     return 0;
   }
 
   ctx = llarp_main_init(conffname, !TESTNET);
-  if (!ctx) {
+  if(!ctx)
+  {
     llarp::Error("Cant set up context");
     return 0;
   }
@@ -162,10 +165,12 @@ main(int argc, char *argv[])
     llarp_crypto crypt;
     llarp_crypto_libsodium_init(&crypt);
 
-    // which is in daemon.ini config: router.encryption-privkey (defaults "encryption.key")
+    // which is in daemon.ini config: router.encryption-privkey (defaults
+    // "encryption.key")
     fs::path encryption_keyfile = "encryption.key";
     llarp::SecretKey encryption;
-    llarp_findOrCreateEncryption(&crypt, encryption_keyfile.c_str(), &encryption);
+    llarp_findOrCreateEncryption(&crypt, encryption_keyfile.c_str(),
+                                 &encryption);
     llarp_rc_set_pubenckey(&tmp, llarp::seckey_topublic(encryption));
 
     // get identity public sig key
@@ -206,33 +211,37 @@ main(int argc, char *argv[])
     // write file
     llarp_rc_write(&tmp, our_rc_file_out.c_str());
   }
-  if (listMode) {
+  if(listMode)
+  {
     llarp_main_loadDatabase(ctx);
     llarp_nodedb_iter iter;
     iter.visit = printNode;
     llarp_main_iterateDatabase(ctx, iter);
   }
-  if (importMode) {
+  if(importMode)
+  {
     llarp_main_loadDatabase(ctx);
     llarp::Info("Loading ", rcfname);
     llarp_rc *rc = llarp_rc_read(rcfname);
-    if (!rc)
+    if(!rc)
     {
       llarp::Error("Can't load RC");
       return 0;
     }
     llarp_main_putDatabase(ctx, rc);
   }
-  if (exportMode) {
+  if(exportMode)
+  {
     llarp_main_loadDatabase(ctx);
-    //llarp::Info("Looking for string: ", rcfname);
+    // llarp::Info("Looking for string: ", rcfname);
 
     llarp::PubKey binaryPK;
     llarp::HexDecode(rcfname, binaryPK.data());
-    
+
     llarp::Info("Looking for binary: ", binaryPK);
     struct llarp_rc *rc = llarp_main_getDatabase(ctx, binaryPK.data());
-    if (!rc) {
+    if(!rc)
+    {
       llarp::Error("Can't load RC from database");
     }
     std::string filename(rcfname);
@@ -241,5 +250,5 @@ main(int argc, char *argv[])
     llarp_rc_write(rc, filename.c_str());
   }
   llarp_main_free(ctx);
-  return 1; // success
+  return 1;  // success
 }

@@ -83,6 +83,14 @@ namespace llarp
         b[idx] = f;
     }
 
+    bool
+    IsZero() const
+    {
+      AlignedBuffer< sz > b;
+      b.Zero();
+      return memcmp(l, b.l, sz) == 0;
+    }
+
     void
     Zero()
     {

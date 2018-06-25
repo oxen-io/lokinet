@@ -58,7 +58,7 @@ struct llarp_router
   llarp_threadpool *tp;
   llarp_logic *logic;
   llarp_crypto crypto;
-  llarp::PathContext paths;
+  llarp::path::PathContext paths;
   llarp::SecretKey identity;
   llarp::SecretKey encryption;
   llarp_threadpool *disk;

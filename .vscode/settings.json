@@ -54,6 +54,9 @@
     "__config": "cpp",
     "__nullptr": "cpp",
     "algorithm": "cpp",
-    "io": "cpp"
+    "io": "cpp",
+    "strstream": "cpp",
+    "numeric": "cpp",
+    "valarray": "cpp"
   }
 }

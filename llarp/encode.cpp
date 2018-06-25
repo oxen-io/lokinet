@@ -3,8 +3,8 @@
 
 namespace llarp
 {
-
-  int char2int(char input)
+  int
+  char2int(char input)
   {
     if(input >= '0' && input <= '9')
       return input - '0';
@@ -15,13 +15,13 @@ namespace llarp
     throw std::invalid_argument("Invalid input string");
   }
 
-  void HexDecode(const char* src, uint8_t* target)
+  void
+  HexDecode(const char* src, uint8_t* target)
   {
     while(*src && src[1])
     {
-      *(target++) = char2int(*src)*16 + char2int(src[1]);
+      *(target++) = char2int(*src) * 16 + char2int(src[1]);
       src += 2;
     }
   }
-
 }

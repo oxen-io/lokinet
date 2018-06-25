@@ -29,7 +29,7 @@ namespace llarp
   bool
   Context::ReloadConfig()
   {
-    //llarp::Info("loading config at ", configfile);
+    // llarp::Info("loading config at ", configfile);
     if(llarp_load_config(config, configfile.c_str()))
     {
       llarp_free_config(&config);
@@ -94,7 +94,7 @@ namespace llarp
       llarp::Error("nodedb_dir is incorrect");
       return 0;
     }
-    //llarp::Info("nodedb_dir [", nodedb_dir, "] configured!");
+    // llarp::Info("nodedb_dir [", nodedb_dir, "] configured!");
     ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir);
     llarp::Info("nodedb_dir loaded ", loaded, " RCs from [", nodedb_dir, "]");
     if(loaded < 0)
