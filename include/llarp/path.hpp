@@ -112,9 +112,10 @@ namespace llarp
                        llarp_router* r) = 0;
     };
 
-    struct TransitHop : public IHopHandler
+    struct TransitHop : public IHopHandler,
+                        public llarp::routing::IMessageHandler
     {
-      TransitHop() = default;
+      TransitHop();
 
       TransitHop(const TransitHop& other);
 
@@ -124,6 +125,8 @@ namespace llarp
       // 10 minutes default
       llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
       llarp_proto_version_t version;
+
+      llarp::routing::InboundMessageParser m_MessageParser;
 
       friend std::ostream&
       operator<<(std::ostream& out, const TransitHop& h)
@@ -135,8 +138,30 @@ namespace llarp
       bool
       Expired(llarp_time_t now) const;
 
+      // send routing message when end of path
       bool
       SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
+
+      // handle routing message when end of path
+      bool
+      HandleRoutingMessage(const llarp::routing::IMessage* msg,
+                           llarp_router* r);
+
+      bool
+      HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,
+                               llarp_router* r);
+      bool
+      HandlePathTransferMessage(const llarp::routing::PathTransferMessage* msg,
+                                llarp_router* r);
+      bool
+      HandlePathLatencyMessage(const llarp::routing::PathLatencyMessage* msg,
+                               llarp_router* r);
+
+      bool
+      HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r);
+
+      bool
+      HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r);
 
       // handle data in upstream direction
       bool
@@ -190,19 +215,25 @@ namespace llarp
       SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
 
       bool
-      HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg);
+      HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,
+                               llarp_router* r);
 
       bool
-      HandlePathLatencyMessage(const llarp::routing::PathLatencyMessage* msg);
+      HandlePathLatencyMessage(const llarp::routing::PathLatencyMessage* msg,
+                               llarp_router* r);
 
       bool
-      HandleDHTMessage(const llarp::dht::IMessage* msg);
+      HandlePathTransferMessage(const llarp::routing::PathTransferMessage* msg,
+                                llarp_router* r);
+
+      bool
+      HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r);
 
       bool
       HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r);
 
       bool
-      HandleHiddenServiceData(llarp_buffer_t buf);
+      HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r);
 
       // handle data in upstream direction
       bool
@@ -223,11 +254,15 @@ namespace llarp
       RouterID
       Upstream() const;
 
+      llarp_time_t Latency = 0;
+
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;
 
      private:
       BuildResultHookFunc m_BuiltHook;
+      llarp_time_t m_LastLatencyTestTime = 0;
+      uint64_t m_LastLatencyTestID       = 0;
     };
 
     enum PathBuildStatus

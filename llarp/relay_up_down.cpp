@@ -21,20 +21,51 @@ namespace llarp
   bool
   RelayUpstreamMessage::BEncode(llarp_buffer_t *buf) const
   {
-    // TODO: implement me
-    return false;
+    if(!bencode_start_dict(buf))
+      return false;
+    if(!BEncodeWriteDictMsgType(buf, "a", "u"))
+      return false;
+
+    if(!BEncodeWriteDictEntry("p", pathid, buf))
+      return false;
+    if(!BEncodeWriteDictInt(buf, "v", LLARP_PROTO_VERSION))
+      return false;
+    if(!BEncodeWriteDictEntry("x", X, buf))
+      return false;
+    if(!BEncodeWriteDictEntry("y", Y, buf))
+      return false;
+    return bencode_end(buf);
   }
 
   bool
   RelayUpstreamMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
   {
-    return false;
+    bool read = false;
+    if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
+      return false;
+    if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
+                                buf))
+      return false;
+    if(!BEncodeMaybeReadDictEntry("x", X, read, key, buf))
+      return false;
+    if(!BEncodeMaybeReadDictEntry("y", Y, read, key, buf))
+      return false;
+    return read;
   }
 
   bool
   RelayUpstreamMessage::HandleMessage(llarp_router *router) const
   {
-    return false;
+    auto path = router->paths.GetByDownstream(remote, pathid);
+    if(path)
+    {
+      return path->HandleUpstream(X.Buffer(), Y, router);
+    }
+    else
+    {
+      llarp::Warn("No such path downstream=", remote, " pathid=", pathid);
+      return false;
+    }
   }
 
   RelayDownstreamMessage::RelayDownstreamMessage(const RouterID &from)
