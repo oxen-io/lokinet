@@ -81,14 +81,6 @@ namespace llarp
 
   namespace dht
   {
-    Key_t ZeroKey;
-
-    bool
-    Key_t::IsZero() const
-    {
-      return memcmp(l, ZeroKey.l, 32) == 0;
-    }
-
     GotRouterMessage::~GotRouterMessage()
     {
       for(auto &rc : R)

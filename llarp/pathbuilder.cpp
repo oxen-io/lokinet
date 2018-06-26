@@ -9,7 +9,10 @@ namespace llarp
   template < typename User >
   struct AsyncPathKeyExchangeContext
   {
-    Path* path = nullptr;
+    typedef llarp::path::Path Path_t;
+    typedef llarp::path::PathSet PathSet_t;
+    PathSet_t* pathset = nullptr;
+    Path_t* path       = nullptr;
     typedef void (*Handler)(AsyncPathKeyExchangeContext< User >*);
     User* user               = nullptr;
     Handler result           = nullptr;
@@ -105,8 +108,8 @@ namespace llarp
 
     /// Generate all keys asynchronously and call hadler when done
     void
-    AsyncGenerateKeys(Path* p, llarp_logic* l, llarp_threadpool* pool, User* u,
-                      Handler func)
+    AsyncGenerateKeys(Path_t* p, llarp_logic* l, llarp_threadpool* pool,
+                      User* u, Handler func)
     {
       path   = p;
       logic  = l;
@@ -124,16 +127,6 @@ namespace llarp
     }
   };
 
-  PathHopConfig::PathHopConfig()
-  {
-    llarp_rc_clear(&router);
-  }
-
-  PathHopConfig::~PathHopConfig()
-  {
-    llarp_rc_free(&router);
-  }
-
   void
   pathbuilder_generated_keys(
       AsyncPathKeyExchangeContext< llarp_pathbuild_job >* ctx)
@@ -146,8 +139,8 @@ namespace llarp
       llarp::Error("failed to send LRCM");
       return;
     }
-    ctx->path->status = ePathBuilding;
-    router->paths.AddOwnPath(ctx->path);
+    ctx->path->status = llarp::path::ePathBuilding;
+    router->paths.AddOwnPath(ctx->pathset, ctx->path);
     ctx->user->pathBuildStarted(ctx->user);
   }
 
@@ -171,16 +164,33 @@ namespace llarp
     AsyncPathKeyExchangeContext< llarp_pathbuild_job >* ctx =
         new AsyncPathKeyExchangeContext< llarp_pathbuild_job >(
             &job->router->crypto);
-
-    ctx->AsyncGenerateKeys(new Path(&job->hops), job->router->logic,
-                           job->router->tp, job, &pathbuilder_generated_keys);
+    ctx->pathset = job->context;
+    auto path    = new llarp::path::Path(&job->hops);
+    path->SetBuildResultHook(std::bind(&llarp::path::PathSet::HandlePathBuilt,
+                                       ctx->pathset, std::placeholders::_1));
+    ctx->AsyncGenerateKeys(path, job->router->logic, job->router->tp, job,
+                           &pathbuilder_generated_keys);
   }
 }  // namespace llarp
 
 llarp_pathbuilder_context::llarp_pathbuilder_context(
     llarp_router* p_router, struct llarp_dht_context* p_dht)
-    : router(p_router), dht(p_dht)
+    // TODO: hardcoded value
+    : llarp::path::PathSet(4), router(p_router), dht(p_dht)
 {
+  p_router->paths.AddPathBuilder(this);
+}
+
+void
+llarp_pathbuilder_context::BuildOne()
+{
+  llarp_pathbuild_job* job = new llarp_pathbuild_job;
+  job->context             = this;
+  job->selectHop           = nullptr;
+  job->hops.numHops        = 4;
+  job->user                = nullptr;
+  job->pathBuildStarted    = [](llarp_pathbuild_job* j) { delete j; };
+  llarp_pathbuilder_build_path(job);
 }
 
 extern "C" {
@@ -200,7 +210,7 @@ llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx)
 void
 llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
 {
-  if (!job->context)
+  if(!job->context)
   {
     llarp::Error("failed to build path because no context is set in job");
     return;
@@ -211,4 +221,4 @@ llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
   llarp_logic_queue_job(job->router->logic,
                         {job, &llarp::pathbuilder_start_build});
 }
-} // end extern c
+}  // end extern c

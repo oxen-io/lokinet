@@ -30,9 +30,6 @@ namespace llarp
       {
       }
 
-      bool
-      IsZero() const;
-
       Key_t
       operator^(const Key_t& other) const
       {
@@ -48,8 +45,6 @@ namespace llarp
         return memcmp(data_l(), other.data_l(), 32) < 0;
       }
     };
-
-    extern Key_t ZeroKey;
 
     struct Node
     {

@@ -125,6 +125,7 @@ set(LIB_SRC
   llarp/nodedb.cpp
   llarp/path.cpp
   llarp/pathbuilder.cpp
+  llarp/pathset.cpp
   llarp/proofofwork.cpp
   llarp/relay_ack.cpp
   llarp/relay_commit.cpp

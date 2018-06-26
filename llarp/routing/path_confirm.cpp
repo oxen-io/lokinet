@@ -44,9 +44,7 @@ namespace llarp
     bool
     PathConfirmMessage::HandleMessage(IMessageHandler* h) const
     {
-      llarp::Info("got path confirm created=", pathCreated,
-                  " lifetime=", pathLifetime);
-      return true;
+      return h && h->HandlePathConfirmMessage(this);
     }
 
   }  // namespace routing

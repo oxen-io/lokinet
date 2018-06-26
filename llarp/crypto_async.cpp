@@ -333,30 +333,7 @@ namespace iwp
   hmac_then_decrypt(void *user)
   {
     iwp_async_frame *frame = static_cast< iwp_async_frame * >(user);
-    auto crypto            = frame->iwp->crypto;
-    byte_t *hmac           = frame->buf;
-    byte_t *nonce          = frame->buf + 32;
-    byte_t *body           = frame->buf + 64;
-
-    llarp::ShortHash digest;
-
-    llarp_buffer_t buf;
-    buf.base = nonce;
-    buf.cur  = buf.base;
-    buf.sz   = frame->sz - 32;
-
-    // h = MDS(n + x, S)
-    crypto->hmac(digest, buf, frame->sessionkey);
-    // check hmac
-    frame->success = memcmp(digest, hmac, 32) == 0;
-    // x = SE(S, p, n[0:24])
-    buf.base = body;
-    buf.cur  = buf.base;
-    buf.sz   = frame->sz - 64;
-    crypto->xchacha20(buf, frame->sessionkey, nonce);
-    // call result RIGHT HERE
-    // frame->hook(frame);
-    // delete frame;
+    iwp_decrypt_frame(frame);
     // inform result
     llarp_logic_queue_job(frame->iwp->logic, {frame, &inform_frame_done});
   }
@@ -365,25 +342,7 @@ namespace iwp
   encrypt_then_hmac(void *user)
   {
     iwp_async_frame *frame = static_cast< iwp_async_frame * >(user);
-    auto crypto            = frame->iwp->crypto;
-    byte_t *hmac           = frame->buf;
-    byte_t *nonce          = frame->buf + 32;
-    byte_t *body           = frame->buf + 64;
-
-    llarp_buffer_t buf;
-    buf.base = body;
-    buf.cur  = buf.base;
-    buf.sz   = frame->sz - 64;
-
-    // randomize N
-    crypto->randbytes(nonce, 32);
-    // x = SE(S, p, n[0:24])
-    crypto->xchacha20(buf, frame->sessionkey, nonce);
-    // h = MDS(n + x, S)
-    buf.base = nonce;
-    buf.cur  = buf.base;
-    buf.sz   = frame->sz - 32;
-    crypto->hmac(hmac, buf, frame->sessionkey);
+    iwp_encrypt_frame(frame);
     // call result RIGHT HERE
     frame->hook(frame);
     delete frame;
@@ -397,6 +356,58 @@ iwp_call_async_keygen(struct llarp_async_iwp *iwp,
 {
   keygen->iwp = iwp;
   llarp_threadpool_queue_job(iwp->worker, {keygen, &iwp::keygen});
+}
+
+bool
+iwp_decrypt_frame(struct iwp_async_frame *frame)
+{
+  auto crypto   = frame->iwp->crypto;
+  byte_t *hmac  = frame->buf;
+  byte_t *nonce = frame->buf + 32;
+  byte_t *body  = frame->buf + 64;
+
+  llarp::ShortHash digest;
+
+  llarp_buffer_t buf;
+  buf.base = nonce;
+  buf.cur  = buf.base;
+  buf.sz   = frame->sz - 32;
+
+  // h = MDS(n + x, S)
+  crypto->hmac(digest, buf, frame->sessionkey);
+  // check hmac
+  frame->success = memcmp(digest, hmac, 32) == 0;
+  // x = SE(S, p, n[0:24])
+  buf.base = body;
+  buf.cur  = buf.base;
+  buf.sz   = frame->sz - 64;
+  crypto->xchacha20(buf, frame->sessionkey, nonce);
+  return frame->success;
+}
+
+bool
+iwp_encrypt_frame(struct iwp_async_frame *frame)
+{
+  auto crypto   = frame->iwp->crypto;
+  byte_t *hmac  = frame->buf;
+  byte_t *nonce = frame->buf + 32;
+  byte_t *body  = frame->buf + 64;
+
+  llarp_buffer_t buf;
+  buf.base = body;
+  buf.cur  = buf.base;
+  buf.sz   = frame->sz - 64;
+
+  // randomize N
+  crypto->randbytes(nonce, 32);
+  // x = SE(S, p, n[0:24])
+  crypto->xchacha20(buf, frame->sessionkey, nonce);
+  // h = MDS(n + x, S)
+  buf.base = nonce;
+  buf.cur  = buf.base;
+  buf.sz   = frame->sz - 32;
+  crypto->hmac(hmac, buf, frame->sessionkey);
+  return true;
 }
 
 void

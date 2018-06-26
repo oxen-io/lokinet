@@ -155,18 +155,20 @@ namespace llarp
 
   struct LRCMFrameDecrypt
   {
+    typedef llarp::path::PathContext Context;
+    typedef llarp::path::TransitHop Hop;
     typedef AsyncFrameDecrypter< LRCMFrameDecrypt > Decrypter;
     Decrypter* decrypter;
     std::deque< EncryptedFrame > frames;
-    PathContext* context;
+    Context* context;
     // decrypted record
     LR_CommitRecord record;
     // the actual hop
-    TransitHop* hop;
+    Hop* hop;
 
-    LRCMFrameDecrypt(PathContext* ctx, Decrypter* dec,
+    LRCMFrameDecrypt(Context* ctx, Decrypter* dec,
                      const LR_CommitMessage* commit)
-        : decrypter(dec), context(ctx), hop(new TransitHop)
+        : decrypter(dec), context(ctx), hop(new Hop)
     {
       for(const auto& f : commit->frames)
         frames.push_back(f);
@@ -276,7 +278,7 @@ namespace llarp
   };
 
   bool
-  LR_CommitMessage::AsyncDecrypt(PathContext* context) const
+  LR_CommitMessage::AsyncDecrypt(llarp::path::PathContext* context) const
   {
     LRCMFrameDecrypt::Decrypter* decrypter = new LRCMFrameDecrypt::Decrypter(
         context->Crypto(), context->EncryptionSecretKey(),

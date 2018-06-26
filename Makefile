@@ -59,14 +59,14 @@ shadow: shadow-build
 	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) &> $(SHADOW_LOG) || true"
 
 testnet-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug 
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug
 
 testnet-build: testnet-configure
 	ninja
 
 testnet: testnet-build
 	mkdir -p $(TESTNET_ROOT)
-	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=30 --clients=1 --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
+	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=30 --clients=300 --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
 	supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 test: debug-configure

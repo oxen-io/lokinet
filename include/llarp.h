@@ -39,14 +39,12 @@ llarp_main_loadDatabase(struct llarp_main *ptr);
 int
 llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i);
 
-
 /// put RC into nodeDB
 bool
 llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc);
 
 struct llarp_rc *
 llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
-
 
 void
 llarp_main_free(struct llarp_main *ptr);

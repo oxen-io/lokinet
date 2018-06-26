@@ -7,7 +7,6 @@ namespace llarp
 {
   namespace api
   {
-
     bool
     CreateSessionMessage::DecodeParams(llarp_buffer_t *buf)
     {
