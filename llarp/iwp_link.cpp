@@ -4,6 +4,7 @@
 #include <llarp/time.h>
 #include <llarp/crypto.hpp>
 #include "address_info.hpp"
+#include "codel.hpp"
 #include "link/encoder.hpp"
 
 #include <sodium/crypto_sign_ed25519.h>
@@ -657,6 +658,16 @@ namespace iwp
     }
   };
 
+  /// get the time from a iwp_async_frame
+  struct FrameGetTime
+  {
+    llarp_time_t
+    operator()(const iwp_async_frame &frame) const
+    {
+      return frame.created;
+    }
+  };
+
   struct session
   {
     llarp_udp_io *udp;
@@ -676,9 +687,22 @@ namespace iwp
 
     llarp_link_establish_job *establish_job = nullptr;
 
+    /// cached timestamp for frame creation
+    llarp_time_t now;
     uint32_t establish_job_id = 0;
     uint32_t frames           = 0;
     bool working              = false;
+
+    llarp::util::CoDelQueue< iwp_async_frame, FrameGetTime > inboundFrames;
+    llarp::util::CoDelQueue< iwp_async_frame, FrameGetTime > outboundFrames;
+
+    std::mutex m_DecryptedFramesMutex;
+    std::queue< iwp_async_frame > decryptedFrames;
+    std::mutex m_EncryptedFramesMutex;
+    std::queue< iwp_async_frame > encryptedFrames;
+    uint32_t pump_send_timer_id = 0;
+    uint32_t pump_recv_timer_id = 0;
+
     llarp::Addr addr;
     iwp_async_intro intro;
     iwp_async_introack introack;
@@ -770,21 +794,50 @@ namespace iwp
       return false;
     }
 
+    static void
+    handle_codel_inbound_pump(void *u, uint64_t orig, uint64_t left);
+    static void
+    handle_codel_outbound_pump(void *u, uint64_t orig, uint64_t left);
+
+    void
+    PumpCrypto();
+
+    void
+    PumpCodelInbound()
+    {
+      pump_recv_timer_id = llarp_logic_call_later(
+          logic,
+          {inboundFrames.nextTickInterval, this, &handle_codel_inbound_pump});
+    }
+
+    void
+    PumpCodelOutbound()
+    {
+      pump_send_timer_id = llarp_logic_call_later(
+          logic,
+          {outboundFrames.nextTickInterval, this, &handle_codel_outbound_pump});
+    }
+
     void
     pump()
     {
+      // TODO: in codel the timestamp may cause excssive drop when all the
+      // packets have a similar timestamp
+      now = llarp_time_now_ms();
       llarp_buffer_t buf;
       while(frame.next_frame(&buf))
       {
         encrypt_frame_async_send(buf.base, buf.sz);
         frame.pop_next_frame();
       }
+      PumpCrypto();
     }
 
     // this is called from net thread
     void
     recv(const void *buf, size_t sz)
     {
+      now = llarp_time_now_ms();
       switch(state)
       {
         case eInitial:
@@ -832,9 +885,11 @@ namespace iwp
         crypto->shorthash(digest, buf);
         auto id  = frame.txids++;
         auto msg = new transit_message(buf, digest, id);
+
+        // enter state
+        EnterState(eLIMSent);
         // put into outbound send queue
         add_outbound_message(id, msg);
-        EnterState(eLIMSent);
       }
       else
         llarp::Error("LIM Encode failed");
@@ -845,43 +900,10 @@ namespace iwp
 
     // return true if we should be removed
     bool
-    Tick(uint64_t now)
-    {
-      if(timedout(now, SESSION_TIMEOUT))
-      {
-        // we are timed out
-        // when we are done doing stuff with all of our frames from the crypto
-        // workers we are done
-        llarp::Debug(addr, " timed out with ", frames, " frames left");
-        if(working)
-          return false;
-        return frames == 0;
-      }
-      if(is_invalidated())
-      {
-        // both sides agreeed to session invalidation
-        // terminate our session when all of our frames from the crypto workers
-        // are done
-        llarp::Debug(addr, " invaldiated session with ", frames,
-                     " frames left");
-        if(working)
-          return false;
-        return frames == 0;
-      }
-      // send keepalive if we are established or a session is made
-      if(state == eEstablished || state == eLIMSent)
-        send_keepalive(this);
+    Tick(uint64_t now);
 
-      // pump frames
-      if(state == eEstablished)
-      {
-        frame.retransmit();
-        pump();
-      }
-
-      // TODO: determine if we are too idle
-      return false;
-    }
+    static void
+    codel_timer_handler(void *user, uint64_t orig, uint64_t left);
 
     bool
     IsEstablished()
@@ -1001,13 +1023,11 @@ namespace iwp
     {
       session *self = static_cast< session * >(frame->user);
       llarp::Debug("rx ", frame->sz, " frames=", self->frames);
-      self->frames--;
       if(frame->success)
       {
         if(self->frame.process(frame->buf + 64, frame->sz - 64))
         {
           self->frame.alive();
-          self->pump();
         }
         else
           llarp::Error("invalid frame from ", self->addr);
@@ -1021,12 +1041,36 @@ namespace iwp
     {
       if(sz > 64)
       {
-        iwp_async_frame *frame = alloc_frame(buf, sz);
-        frame->hook            = &handle_frame_decrypt;
-        iwp_call_async_frame_decrypt(iwp, frame);
+        alloc_frame(inboundFrames, buf, sz);
       }
       else
         llarp::Warn("short packet of ", sz, " bytes");
+    }
+
+    static void
+    handle_crypto_pump(void *u);
+
+    void
+    DecryptInboundFrames()
+    {
+      std::queue< iwp_async_frame > outq;
+      std::queue< iwp_async_frame > inq;
+      inboundFrames.Process(inq);
+      while(inq.size())
+      {
+        auto &front = inq.front();
+        if(iwp_decrypt_frame(&front))
+          outq.push(front);
+        inq.pop();
+      }
+      {
+        std::unique_lock< std::mutex > lock(m_DecryptedFramesMutex);
+        while(outq.size())
+        {
+          decryptedFrames.push(outq.front());
+          outq.pop();
+        }
+      }
     }
 
     static void
@@ -1037,23 +1081,26 @@ namespace iwp
       if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz)
          == -1)
         llarp::Warn("sendto failed");
-      self->frames--;
     }
 
+    template < typename Queue >
     iwp_async_frame *
-    alloc_frame(const void *buf, size_t sz)
+    alloc_frame(Queue &q, const void *buf, size_t sz)
     {
       // TODO don't hard code 1500
       if(sz > 1500)
         return nullptr;
 
-      iwp_async_frame *frame = new iwp_async_frame();
+      iwp_async_frame *frame = new iwp_async_frame;
       if(buf)
         memcpy(frame->buf, buf, sz);
+      frame->iwp        = iwp;
       frame->sz         = sz;
       frame->user       = this;
       frame->sessionkey = sessionkey;
-      frames++;
+      /// TODO: this could be rather slow
+      frame->created = now;
+      q.Put(frame);
       return frame;
     }
 
@@ -1061,14 +1108,35 @@ namespace iwp
     encrypt_frame_async_send(const void *buf, size_t sz)
     {
       // 64 bytes frame overhead for nonce and hmac
-      iwp_async_frame *frame = alloc_frame(nullptr, sz + 64);
+      iwp_async_frame *frame = alloc_frame(outboundFrames, nullptr, sz + 64);
       memcpy(frame->buf + 64, buf, sz);
       auto padding = rand() % MAX_PAD;
       if(padding)
         crypto->randbytes(frame->buf + 64 + sz, padding);
       frame->sz += padding;
-      frame->hook = &handle_frame_encrypt;
-      iwp_call_async_frame_encrypt(iwp, frame);
+    }
+
+    void
+    EncryptOutboundFrames()
+    {
+      std::queue< iwp_async_frame > q;
+      std::queue< iwp_async_frame > outq;
+      outboundFrames.Process(outq);
+      while(outq.size())
+      {
+        auto &front = outq.front();
+        if(iwp_encrypt_frame(&front))
+          q.push(front);
+        outq.pop();
+      }
+      {
+        std::unique_lock< std::mutex > lock(m_EncryptedFramesMutex);
+        while(q.size())
+        {
+          encryptedFrames.push(q.front());
+          q.pop();
+        }
+      }
     }
 
     static void
@@ -1203,6 +1271,11 @@ namespace iwp
     {
       frame.alive();
       state = st;
+      if(state == eLIMSent || state == eSessionStartSent)
+      {
+        PumpCodelInbound();
+        PumpCodelOutbound();
+      }
     }
   };
 
@@ -1216,13 +1289,14 @@ namespace iwp
     llarp_crypto *crypto;
     llarp_ev_loop *netloop;
     llarp_async_iwp *iwp;
+    llarp_threadpool *worker;
     llarp_link *parent = nullptr;
     llarp_udp_io udp;
     llarp::Addr addr;
     char keyfile[255];
     uint32_t timeout_job_id;
 
-    typedef std::unordered_map< llarp::Addr, llarp_link_session,
+    typedef std::unordered_map< llarp::Addr, llarp_link_session *,
                                 llarp::addrhash >
         LinkMap_t;
 
@@ -1243,6 +1317,7 @@ namespace iwp
       router = r;
       crypto = c;
       logic  = l;
+      worker = w;
       iwp    = llarp_async_iwp_new(crypto, logic, w);
     }
 
@@ -1277,7 +1352,7 @@ namespace iwp
         std::set< llarp::Addr > remove;
         for(auto &itr : m_sessions)
         {
-          session *s = static_cast< session * >(itr.second.impl);
+          session *s = static_cast< session * >(itr.second->impl);
           if(s && s->Tick(now))
             remove.insert(itr.first);
         }
@@ -1300,7 +1375,7 @@ namespace iwp
           auto inner_itr = serv->m_sessions.find(itr->second);
           if(inner_itr != serv->m_sessions.end())
           {
-            llarp_link_session *link = &inner_itr->second;
+            llarp_link_session *link = inner_itr->second;
             return link->sendto(link, buf);
           }
         }
@@ -1350,28 +1425,28 @@ namespace iwp
       if(itr == m_sessions.end())
         return nullptr;
       else
-        return static_cast< session * >(itr->second.impl);
+        return static_cast< session * >(itr->second->impl);
     }
 
     void
     put_session(const llarp::Addr &src, session *impl)
     {
-      llarp_link_session s = {};
-      s.impl               = impl;
-      s.sendto             = &session::sendto;
-      s.timeout            = &session::is_timedout;
-      s.close              = &session::close;
-      s.get_remote_router  = &session::get_remote_router;
-      s.established        = &session::set_established;
-      s.get_parent         = &session::get_parent;
+      llarp_link_session *s = new llarp_link_session;
+      s->impl               = impl;
+      s->sendto             = &session::sendto;
+      s->timeout            = &session::is_timedout;
+      s->close              = &session::close;
+      s->get_remote_router  = &session::get_remote_router;
+      s->established        = &session::set_established;
+      s->get_parent         = &session::get_parent;
       {
         lock_t lock(m_sessions_Mutex);
-        m_sessions[src] = s;
-        impl->parent    = &m_sessions[src];
+        m_sessions.emplace(src, s);
+        impl->parent       = m_sessions[src];
+        impl->frame.router = router;
+        impl->frame.parent = impl->parent;
+        impl->our_router   = &router->rc;
       }
-      impl->frame.router = router;
-      impl->frame.parent = impl->parent;
-      impl->our_router   = &router->rc;
     }
 
     void
@@ -1381,8 +1456,9 @@ namespace iwp
       auto itr = m_sessions.begin();
       while(itr != m_sessions.end())
       {
-        session *s = static_cast< session * >(itr->second.impl);
+        session *s = static_cast< session * >(itr->second->impl);
         delete s;
+        delete itr->second;
         itr = m_sessions.erase(itr);
       }
     }
@@ -1395,17 +1471,11 @@ namespace iwp
       {
         llarp::Debug("removing session ", addr);
         UnmapAddr(addr);
-        session *s = static_cast< session * >(itr->second.impl);
+        session *s = static_cast< session * >(itr->second->impl);
         s->done();
-        m_sessions.erase(addr);
-        if(s->frames)
-        {
-          llarp::Warn("session has ", s->frames,
-                      " left but is idle, not deallocating session so we "
-                      "leak but don't die");
-        }
-        else
-          delete s;
+        delete itr->second;
+        m_sessions.erase(itr);
+        delete s;
       }
     }
 
@@ -1556,7 +1626,6 @@ namespace iwp
     {
       llarp::Error("intro verify failed from ", self->addr, " via ",
                    self->serv->addr);
-      delete self;
       return;
     }
     self->intro_ack();
@@ -1575,10 +1644,19 @@ namespace iwp
   void
   session::done()
   {
+    auto logic = serv->logic;
     if(establish_job_id)
     {
       llarp_logic_remove_call(logic, establish_job_id);
       handle_establish_timeout(this, 0, 0);
+    }
+    if(pump_recv_timer_id)
+    {
+      llarp_logic_remove_call(logic, pump_recv_timer_id);
+    }
+    if(pump_send_timer_id)
+    {
+      llarp_logic_remove_call(logic, pump_send_timer_id);
     }
   }
 
@@ -1624,7 +1702,8 @@ namespace iwp
     frame_header hdr(tmp);
     hdr.flags() = self->frame.txflags;
     // send frame after encrypting
-    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    auto buf  = llarp::StackBuffer< decltype(tmp) >(tmp);
+    self->now = llarp_time_now_ms();
     self->encrypt_frame_async_send(buf.base, buf.sz);
   }
 
@@ -1663,7 +1742,6 @@ namespace iwp
     if(msg->completed())
     {
       llarp::Debug("message transmitted msgid=", msgid);
-      session *impl = static_cast< session * >(parent->impl);
       tx.erase(msgid);
       delete msg;
     }
@@ -1697,6 +1775,97 @@ namespace iwp
     }
     link->EnterState(eIntroAckRecv);
     link->session_start();
+  }
+
+  bool
+  session::Tick(llarp_time_t now)
+  {
+    if(timedout(now, SESSION_TIMEOUT))
+    {
+      // we are timed out
+      // when we are done doing stuff with all of our frames from the crypto
+      // workers we are done
+      llarp::Debug(addr, " timed out with ", frames, " frames left");
+      return !working;
+    }
+    if(is_invalidated())
+    {
+      // both sides agreeed to session invalidation
+      // terminate our session when all of our frames from the crypto workers
+      // are done
+      llarp::Debug(addr, " invaldiated session with ", frames, " frames left");
+      return !working;
+    }
+    // send keepalive if we are established or a session is made
+    if(state == eEstablished || state == eLIMSent)
+      send_keepalive(this);
+
+    // pump frame state
+    if(state == eEstablished)
+    {
+      frame.retransmit();
+      pump();
+    }
+    // TODO: determine if we are too idle
+    return false;
+  }
+
+  void
+  session::handle_codel_outbound_pump(void *u, uint64_t orig, uint64_t left)
+  {
+    if(left)
+      return;
+    session *self            = static_cast< session * >(u);
+    self->pump_send_timer_id = 0;
+    if(self->timedout(llarp_time_now_ms()))
+      return;
+    {
+      std::unique_lock< std::mutex > lock(self->m_EncryptedFramesMutex);
+      while(self->encryptedFrames.size())
+      {
+        auto &front = self->encryptedFrames.front();
+        handle_frame_encrypt(&front);
+        self->encryptedFrames.pop();
+      }
+    }
+    self->PumpCodelOutbound();
+    self->PumpCrypto();
+  }
+
+  void
+  session::handle_codel_inbound_pump(void *u, uint64_t orig, uint64_t left)
+  {
+    if(left)
+      return;
+    session *self            = static_cast< session * >(u);
+    self->pump_recv_timer_id = 0;
+    if(self->timedout(llarp_time_now_ms()))
+      return;
+    {
+      std::unique_lock< std::mutex > lock(self->m_DecryptedFramesMutex);
+      while(self->decryptedFrames.size())
+      {
+        auto &front = self->decryptedFrames.front();
+        handle_frame_decrypt(&front);
+        self->decryptedFrames.pop();
+      }
+    }
+    self->PumpCodelInbound();
+    self->PumpCrypto();
+  }
+
+  void
+  session::PumpCrypto()
+  {
+    llarp_threadpool_queue_job(serv->worker, {this, &handle_crypto_pump});
+  }
+
+  void
+  session::handle_crypto_pump(void *u)
+  {
+    session *self = static_cast< session * >(u);
+    self->EncryptOutboundFrames();
+    self->DecryptInboundFrames();
   }
 
   void
@@ -1829,7 +1998,7 @@ namespace iwp
     link->timeout_job_id = 0;
     link->logic          = logic;
     // start cleanup timer
-    link->issue_cleanup_timer(2500);
+    link->issue_cleanup_timer(1000);
     return true;
   }
 
@@ -1854,8 +2023,8 @@ namespace iwp
       iter.link = l;
       // TODO: race condition with cleanup timer
       for(auto &item : link->m_sessions)
-        if(item.second.impl)
-          if(!iter.visit(&iter, &item.second))
+        if(item.second->impl)
+          if(!iter.visit(&iter, item.second))
             return;
     }
   }

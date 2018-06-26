@@ -4,6 +4,7 @@
 #include <llarp/ev.h>
 #include <llarp/logic.h>
 #include <llarp/threadpool.h>
+#include <llarp/time.h>
 
 /**
  * crypto_async.h
@@ -166,6 +167,8 @@ struct iwp_async_frame
 {
   /// true if decryption succeded
   bool success;
+  /// timestamp for CoDel
+  llarp_time_t created;
   struct llarp_async_iwp *iwp;
   /// a pointer to pass ourself
   void *user;
@@ -178,6 +181,14 @@ struct iwp_async_frame
   /// memory holding the entire frame
   byte_t buf[1500];
 };
+
+/// synchronously decrypt a frame
+bool
+iwp_decrypt_frame(struct iwp_async_frame *frame);
+
+/// synchronosuly encrypt a frame
+bool
+iwp_encrypt_frame(struct iwp_async_frame *frame);
 
 /// decrypt iwp frame asynchronously
 void
