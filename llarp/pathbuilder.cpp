@@ -139,7 +139,8 @@ namespace llarp
       llarp::Error("failed to send LRCM");
       return;
     }
-    ctx->path->status = llarp::path::ePathBuilding;
+    ctx->path->status       = llarp::path::ePathBuilding;
+    ctx->path->buildStarted = llarp_time_now_ms();
     router->paths.AddOwnPath(ctx->pathset, ctx->path);
     ctx->user->pathBuildStarted(ctx->user);
   }

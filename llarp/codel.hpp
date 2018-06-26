@@ -10,7 +10,7 @@ namespace llarp
 {
   namespace util
   {
-    template < typename T, typename GetTime, llarp_time_t dropMs = 20,
+    template < typename T, typename GetTime, llarp_time_t dropMs = 5,
                llarp_time_t initialIntervalMs = 100 >
     struct CoDelQueue
     {
@@ -47,7 +47,8 @@ namespace llarp
             if(lowest > dropMs)
             {
               // drop
-              nextTickInterval = initialIntervalMs / std::sqrt(++dropNum);
+              nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
+              llarp::Info("CoDel drop ", nextTickInterval, " ms next interval");
               m_Queue.pop();
               return;
             }

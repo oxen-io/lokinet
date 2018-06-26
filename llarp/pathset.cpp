@@ -12,34 +12,36 @@ namespace llarp
     bool
     PathSet::ShouldBuildMore() const
     {
-      return std::get< 0 >(m_Paths).size() < m_NumPaths;
+      return m_Tx.size() < m_NumPaths;
     }
 
     void
     PathSet::ExpirePaths(llarp_time_t now)
     {
       {
-        auto& map = std::get< 0 >(m_Paths);
-        auto itr  = map.begin();
-        while(itr != map.end())
+        auto itr = m_Rx.begin();
+        while(itr != m_Rx.end())
         {
           if(itr->second->Expired(now))
           {
-            itr = map.erase(itr);
+            itr = m_Rx.erase(itr);
           }
+          else
+            ++itr;
         }
       }
       {
-        auto& map = std::get< 1 >(m_Paths);
-        auto itr  = map.begin();
-        while(itr != map.end())
+        auto itr = m_Tx.begin();
+        while(itr != m_Tx.end())
         {
           if(itr->second->Expired(now))
           {
             // delete path on second iteration
             delete itr->second;
-            itr = map.erase(itr);
+            itr = m_Tx.erase(itr);
           }
+          else
+            ++itr;
         }
       }
     }
@@ -48,9 +50,8 @@ namespace llarp
     PathSet::NumInStatus(PathStatus st) const
     {
       size_t count = 0;
-      auto& map    = std::get< 0 >(m_Paths);
-      auto itr     = map.begin();
-      while(itr != map.end())
+      auto itr     = m_Tx.begin();
+      while(itr != m_Tx.end())
       {
         if(itr->second->status == st)
           ++count;
@@ -62,23 +63,22 @@ namespace llarp
     void
     PathSet::AddPath(Path* path)
     {
-      std::get< 0 >(m_Paths).emplace(path->TXID(), path);
-      std::get< 1 >(m_Paths).emplace(path->RXID(), path);
+      m_Tx.emplace(path->TXID(), path);
+      m_Rx.emplace(path->RXID(), path);
     }
 
     void
     PathSet::RemovePath(Path* path)
     {
-      std::get< 0 >(m_Paths).erase(path->TXID());
-      std::get< 1 >(m_Paths).erase(path->RXID());
+      m_Tx.erase(path->TXID());
+      m_Rx.erase(path->RXID());
     }
 
     Path*
     PathSet::GetByUpstream(const RouterID& remote, const PathID_t& rxid)
     {
-      auto& set = std::get< 1 >(m_Paths);
-      auto itr  = set.begin();
-      while(itr != set.end())
+      auto itr = m_Rx.begin();
+      while(itr != m_Rx.end())
       {
         if(itr->second->Upstream() == remote)
           return itr->second;

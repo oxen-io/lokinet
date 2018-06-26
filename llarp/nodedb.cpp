@@ -312,6 +312,7 @@ nodedb_async_load_rc(void *user)
   job->loaded = job->nodedb->loadfile(fpath);
   if(job->loaded)
   {
+    llarp_rc_clear(&job->rc);
     llarp_rc_copy(&job->rc, job->nodedb->getRC(job->pubkey));
   }
   llarp_logic_queue_job(job->logic, {job, &nodedb_inform_load_rc});

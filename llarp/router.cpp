@@ -356,19 +356,6 @@ llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
   delete job;
 }
 
-// TODO: do we still need this?
-void
-llarp_router::BuildExploritoryPath()
-{
-  llarp_pathbuild_job *job = new llarp_pathbuild_job;
-  job->context             = explorePool;
-  job->selectHop           = selectHopFunc;
-  job->hops.numHops        = 4;
-  job->user                = this;
-  job->pathBuildStarted    = &HandleExploritoryPathBuildStarted;
-  llarp_pathbuilder_build_path(job);
-}
-
 void
 llarp_router::Tick()
 {

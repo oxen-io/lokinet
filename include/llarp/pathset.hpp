@@ -50,11 +50,10 @@ namespace llarp
 
      private:
       typedef std::map< PathID_t, Path* > PathMap_t;
-      // (tx,rx)
-      typedef std::tuple< PathMap_t, PathMap_t > PathContainer_t;
 
       size_t m_NumPaths;
-      PathContainer_t m_Paths;
+      PathMap_t m_Tx;
+      PathMap_t m_Rx;
     };
 
   }  // namespace path

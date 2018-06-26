@@ -653,6 +653,7 @@ namespace iwp
         case eFRAG:
           return got_frag(hdr, sz - 6);
         default:
+          llarp::Warn("invalid message header");
           return false;
       }
     }
@@ -693,13 +694,10 @@ namespace iwp
     uint32_t frames           = 0;
     bool working              = false;
 
-    llarp::util::CoDelQueue< iwp_async_frame, FrameGetTime > inboundFrames;
     llarp::util::CoDelQueue< iwp_async_frame, FrameGetTime > outboundFrames;
-
-    std::mutex m_DecryptedFramesMutex;
-    std::queue< iwp_async_frame > decryptedFrames;
     std::mutex m_EncryptedFramesMutex;
     std::queue< iwp_async_frame > encryptedFrames;
+
     uint32_t pump_send_timer_id = 0;
     uint32_t pump_recv_timer_id = 0;
 
@@ -795,20 +793,13 @@ namespace iwp
     }
 
     static void
-    handle_codel_inbound_pump(void *u, uint64_t orig, uint64_t left);
-    static void
     handle_codel_outbound_pump(void *u, uint64_t orig, uint64_t left);
 
     void
     PumpCrypto();
 
     void
-    PumpCodelInbound()
-    {
-      pump_recv_timer_id = llarp_logic_call_later(
-          logic,
-          {inboundFrames.nextTickInterval, this, &handle_codel_inbound_pump});
-    }
+    HandleCodelOutboundPump();
 
     void
     PumpCodelOutbound()
@@ -831,6 +822,7 @@ namespace iwp
         frame.pop_next_frame();
       }
       PumpCrypto();
+      HandleCodelOutboundPump();
     }
 
     // this is called from net thread
@@ -885,11 +877,10 @@ namespace iwp
         crypto->shorthash(digest, buf);
         auto id  = frame.txids++;
         auto msg = new transit_message(buf, digest, id);
-
-        // enter state
-        EnterState(eLIMSent);
         // put into outbound send queue
         add_outbound_message(id, msg);
+        // enter state
+        EnterState(eLIMSent);
       }
       else
         llarp::Error("LIM Encode failed");
@@ -1022,12 +1013,13 @@ namespace iwp
     handle_frame_decrypt(iwp_async_frame *frame)
     {
       session *self = static_cast< session * >(frame->user);
-      llarp::Debug("rx ", frame->sz, " frames=", self->frames);
+      llarp::Debug("rx ", frame->sz);
       if(frame->success)
       {
         if(self->frame.process(frame->buf + 64, frame->sz - 64))
         {
           self->frame.alive();
+          self->pump();
         }
         else
           llarp::Error("invalid frame from ", self->addr);
@@ -1041,7 +1033,10 @@ namespace iwp
     {
       if(sz > 64)
       {
-        alloc_frame(inboundFrames, buf, sz);
+        llarp::Debug("decrypt frame ", sz);
+        auto f  = alloc_frame(buf, sz);
+        f->hook = &handle_frame_decrypt;
+        iwp_call_async_frame_decrypt(iwp, f);
       }
       else
         llarp::Warn("short packet of ", sz, " bytes");
@@ -1050,42 +1045,18 @@ namespace iwp
     static void
     handle_crypto_pump(void *u);
 
-    void
-    DecryptInboundFrames()
-    {
-      std::queue< iwp_async_frame > outq;
-      std::queue< iwp_async_frame > inq;
-      inboundFrames.Process(inq);
-      while(inq.size())
-      {
-        auto &front = inq.front();
-        if(iwp_decrypt_frame(&front))
-          outq.push(front);
-        inq.pop();
-      }
-      {
-        std::unique_lock< std::mutex > lock(m_DecryptedFramesMutex);
-        while(outq.size())
-        {
-          decryptedFrames.push(outq.front());
-          outq.pop();
-        }
-      }
-    }
-
     static void
     handle_frame_encrypt(iwp_async_frame *frame)
     {
       session *self = static_cast< session * >(frame->user);
-      llarp::Debug("tx ", frame->sz, " frames=", self->frames);
+      llarp::Debug("tx ", frame->sz);
       if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz)
          == -1)
         llarp::Warn("sendto failed");
     }
 
-    template < typename Queue >
     iwp_async_frame *
-    alloc_frame(Queue &q, const void *buf, size_t sz)
+    alloc_frame(const void *buf, size_t sz)
     {
       // TODO don't hard code 1500
       if(sz > 1500)
@@ -1098,9 +1069,7 @@ namespace iwp
       frame->sz         = sz;
       frame->user       = this;
       frame->sessionkey = sessionkey;
-      /// TODO: this could be rather slow
-      frame->created = now;
-      q.Put(frame);
+      frame->created    = now;
       return frame;
     }
 
@@ -1108,12 +1077,13 @@ namespace iwp
     encrypt_frame_async_send(const void *buf, size_t sz)
     {
       // 64 bytes frame overhead for nonce and hmac
-      iwp_async_frame *frame = alloc_frame(outboundFrames, nullptr, sz + 64);
+      iwp_async_frame *frame = alloc_frame(nullptr, sz + 64);
       memcpy(frame->buf + 64, buf, sz);
       auto padding = rand() % MAX_PAD;
       if(padding)
         crypto->randbytes(frame->buf + 64 + sz, padding);
       frame->sz += padding;
+      outboundFrames.Put(frame);
     }
 
     void
@@ -1135,6 +1105,10 @@ namespace iwp
         {
           encryptedFrames.push(q.front());
           q.pop();
+        }
+        if(encryptedFrames.size() && pump_send_timer_id == 0)
+        {
+          PumpCodelOutbound();
         }
       }
     }
@@ -1273,8 +1247,7 @@ namespace iwp
       state = st;
       if(state == eLIMSent || state == eSessionStartSent)
       {
-        PumpCodelInbound();
-        PumpCodelOutbound();
+        HandleCodelOutboundPump();
       }
     }
   };
@@ -1811,6 +1784,21 @@ namespace iwp
   }
 
   void
+  session::HandleCodelOutboundPump()
+  {
+    {
+      std::unique_lock< std::mutex > lock(m_EncryptedFramesMutex);
+      while(encryptedFrames.size())
+      {
+        auto &front = encryptedFrames.front();
+        handle_frame_encrypt(&front);
+        encryptedFrames.pop();
+      }
+    }
+    PumpCodelOutbound();
+  }
+
+  void
   session::handle_codel_outbound_pump(void *u, uint64_t orig, uint64_t left)
   {
     if(left)
@@ -1819,39 +1807,7 @@ namespace iwp
     self->pump_send_timer_id = 0;
     if(self->timedout(llarp_time_now_ms()))
       return;
-    {
-      std::unique_lock< std::mutex > lock(self->m_EncryptedFramesMutex);
-      while(self->encryptedFrames.size())
-      {
-        auto &front = self->encryptedFrames.front();
-        handle_frame_encrypt(&front);
-        self->encryptedFrames.pop();
-      }
-    }
-    self->PumpCodelOutbound();
-    self->PumpCrypto();
-  }
-
-  void
-  session::handle_codel_inbound_pump(void *u, uint64_t orig, uint64_t left)
-  {
-    if(left)
-      return;
-    session *self            = static_cast< session * >(u);
-    self->pump_recv_timer_id = 0;
-    if(self->timedout(llarp_time_now_ms()))
-      return;
-    {
-      std::unique_lock< std::mutex > lock(self->m_DecryptedFramesMutex);
-      while(self->decryptedFrames.size())
-      {
-        auto &front = self->decryptedFrames.front();
-        handle_frame_decrypt(&front);
-        self->decryptedFrames.pop();
-      }
-    }
-    self->PumpCodelInbound();
-    self->PumpCrypto();
+    self->HandleCodelOutboundPump();
   }
 
   void
@@ -1865,7 +1821,6 @@ namespace iwp
   {
     session *self = static_cast< session * >(u);
     self->EncryptOutboundFrames();
-    self->DecryptInboundFrames();
   }
 
   void
