@@ -62,7 +62,7 @@ namespace llarp
                                  llarp_router* r)
     {
       RelayDownstreamMessage* msg = new RelayDownstreamMessage;
-      msg->pathid                 = info.txID;
+      msg->pathid                 = info.rxID;
       msg->Y                      = Y;
 
       r->crypto.xchacha20(buf, pathKey, Y);
@@ -77,7 +77,7 @@ namespace llarp
                                llarp_router* r)
     {
       RelayUpstreamMessage* msg = new RelayUpstreamMessage;
-      msg->pathid               = info.rxID;
+      msg->pathid               = info.txID;
       msg->Y                    = Y;
 
       r->crypto.xchacha20(buf, pathKey, Y);

@@ -12,37 +12,22 @@ namespace llarp
     bool
     PathSet::ShouldBuildMore() const
     {
-      return m_Tx.size() < m_NumPaths;
+      return m_Paths.size() < m_NumPaths;
     }
 
     void
     PathSet::ExpirePaths(llarp_time_t now)
     {
+      auto itr = m_Paths.begin();
+      while(itr != m_Paths.end())
       {
-        auto itr = m_Rx.begin();
-        while(itr != m_Rx.end())
+        if(itr->second->Expired(now))
         {
-          if(itr->second->Expired(now))
-          {
-            itr = m_Rx.erase(itr);
-          }
-          else
-            ++itr;
+          delete itr->second;
+          itr = m_Paths.erase(itr);
         }
-      }
-      {
-        auto itr = m_Tx.begin();
-        while(itr != m_Tx.end())
-        {
-          if(itr->second->Expired(now))
-          {
-            // delete path on second iteration
-            delete itr->second;
-            itr = m_Tx.erase(itr);
-          }
-          else
-            ++itr;
-        }
+        else
+          ++itr;
       }
     }
 
@@ -50,8 +35,8 @@ namespace llarp
     PathSet::NumInStatus(PathStatus st) const
     {
       size_t count = 0;
-      auto itr     = m_Tx.begin();
-      while(itr != m_Tx.end())
+      auto itr     = m_Paths.begin();
+      while(itr != m_Paths.end())
       {
         if(itr->second->status == st)
           ++count;
@@ -63,28 +48,22 @@ namespace llarp
     void
     PathSet::AddPath(Path* path)
     {
-      m_Tx.emplace(path->TXID(), path);
-      m_Rx.emplace(path->RXID(), path);
+      m_Paths.emplace(std::make_pair(path->Upstream(), path->RXID()), path);
     }
 
     void
     PathSet::RemovePath(Path* path)
     {
-      m_Tx.erase(path->TXID());
-      m_Rx.erase(path->RXID());
+      m_Paths.erase({path->Upstream(), path->RXID()});
     }
 
     Path*
     PathSet::GetByUpstream(const RouterID& remote, const PathID_t& rxid)
     {
-      auto itr = m_Rx.begin();
-      while(itr != m_Rx.end())
-      {
-        if(itr->second->Upstream() == remote)
-          return itr->second;
-        ++itr;
-      }
-      return nullptr;
+      auto itr = m_Paths.find({remote, rxid});
+      if(itr == m_Paths.end())
+        return nullptr;
+      return itr->second;
     }
 
     void

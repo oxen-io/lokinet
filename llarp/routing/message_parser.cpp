@@ -63,6 +63,8 @@ namespace llarp
         result = msg->HandleMessage(h);
         delete msg;
       }
+      else
+        llarp::Error("read dict failed");
       return result;
     }
   }  // namespace routing

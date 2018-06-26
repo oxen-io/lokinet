@@ -266,9 +266,15 @@ namespace llarp
         hops[idx].txID.Randomize();
         hops[idx].rxID.Randomize();
       }
+      /*
       for(size_t idx = (h->numHops - 1); idx > 0; --idx)
       {
         hops[idx].txID = hops[idx - 1].rxID;
+      }
+      */
+      for(size_t idx = 0; idx < h->numHops - 1; ++idx)
+      {
+        hops[idx].txID = hops[idx + 1].rxID;
       }
     }
 
@@ -376,6 +382,7 @@ namespace llarp
       {
         // confirm that we build the path
         status = ePathEstablished;
+        llarp::Info("path is confirmed rx=", RXID(), " tx=", TXID());
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
