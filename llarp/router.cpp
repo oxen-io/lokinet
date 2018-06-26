@@ -93,6 +93,12 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
     llarp_router_try_connect(this, rc, 10);
     return true;
   }
+
+  // this would never be true, as everything is in memory
+  // but we'll keep around if we ever need to swap them out of memory
+  // but it's best to keep the paradigm that everythign is in memory at this point in development
+  // as it will reduce complexity
+  /*
   // try requesting the rc from the disk
   llarp_async_load_rc *job = new llarp_async_load_rc;
   job->diskworker          = disk;
@@ -102,10 +108,19 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   job->hook                = &HandleAsyncLoadRCForSendTo;
   memcpy(job->pubkey, remote, PUBKEYSIZE);
   llarp_nodedb_async_load_rc(job);
+  */
+
+  // we don't have the RC locally so do a dht lookup
+  llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
+  lookup->user                    = this;
+  memcpy(lookup->target, this->rc.pubkey, PUBKEYSIZE);
+  lookup->hook = &HandleDHTLookupForSendTo;
+  llarp_dht_lookup_router(this->dht, lookup);
 
   return true;
 }
 
+/*
 void
 llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
 {
@@ -125,6 +140,7 @@ llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
   }
   delete job;
 }
+*/
 
 void
 llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
@@ -144,6 +160,7 @@ llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
 void
 llarp_router::try_connect(fs::path rcfile)
 {
+  // FIXME: update API
   byte_t tmp[MAX_RC_SIZE];
   llarp_rc remote = {0};
   llarp_buffer_t buf;
@@ -295,7 +312,6 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp::async_verify_context *ctx =
       static_cast< llarp::async_verify_context * >(job->user);
   auto router = ctx->router;
-  llarp::Debug("rc verified? ", job->valid ? "valid" : "invalid");
   llarp::PubKey pk(job->rc.pubkey);
   if(!job->valid)
   {
@@ -312,8 +328,9 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     router->DiscardOutboundFor(pk);
     return;
   }
+  // we're valid, which means it's already been committed to the nodedb
 
-  llarp::Debug("rc verified");
+  llarp::Debug("rc verified and saved to nodedb");
 
   // refresh valid routers RC value if it's there
   auto v = router->validRouters.find(pk);
@@ -323,8 +340,6 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     llarp_rc_free(&v->second);
   }
   router->validRouters[pk] = job->rc;
-
-  // TODO: update nodedb here (?)
 
   // track valid router in dht
   llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
@@ -640,16 +655,12 @@ llarp_router::Run()
     // immediate connect all for service node
     uint64_t delay = rand() % 100;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
-    // llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this,
-    // &ConnectAll});
   }
   else
   {
     // delayed connect all for clients
     uint64_t delay = ((rand() % 10) * 500) + 1000;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
-    // llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this,
-    // &ConnectAll});
   }
 
   llarp::PubKey ourPubkey = pubkey();
@@ -1039,6 +1050,7 @@ namespace llarp
     {
       if(!StrEq(key, "*"))
       {
+        llarp::Info("interface specific binding activated");
         link = new llarp_link;
         llarp::Zero(link, sizeof(llarp_link));
 
@@ -1071,8 +1083,12 @@ namespace llarp
             }
           }
         }
+        else
+        {
+         llarp::Error("link ", key, " failed to initialize. Link state", link);
+        }
       }
-      llarp::Error("link ", key, " failed to configure");
+      llarp::Error("link ", key, " failed to configure. (Note: We don't support * yet)");
     }
     else if(StrEq(section, "connect"))
     {

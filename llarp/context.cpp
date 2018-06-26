@@ -125,7 +125,7 @@ namespace llarp
   }
 
   int
-  Context::Run()
+  Context::Setup()
   {
     llarp::Info("starting up");
     this->LoadDatabase();
@@ -149,26 +149,48 @@ namespace llarp
 
     router = llarp_init_router(worker, mainloop, logic);
 
-    if(llarp_configure_router(router, config))
+    if(!llarp_configure_router(router, config))
     {
-      if(custom_dht_func)
+      llarp::Error("Failed to configure router");
+      return 1;
+    }
+    if(custom_dht_func)
+    {
+      llarp::Info("using custom dht function");
+      llarp_dht_set_msg_handler(router->dht, custom_dht_func);
+    }
+    // set nodedb, load our RC, establish DHT
+    llarp_run_router(router, nodedb);
+
+    return 0; // success
+  }
+
+  int
+  Context::Run()
+  {
+    // just check to make sure it's not already set up (either this or we add a bool and/or add another function)
+    if (!this->router)
+    {
+      // set up all requirements
+      if (this->Setup())
       {
-        llarp::Info("using custom dht function");
-        llarp_dht_set_msg_handler(router->dht, custom_dht_func);
+        llarp::Error("Failed to setup router");
+        return 1;
       }
-      llarp_run_router(router, nodedb);
-      // run net io thread
-      if(singleThreaded)
+    }
+
+    // run net io thread
+    if(singleThreaded)
+    {
+      llarp::Info("running mainloop");
+      llarp_ev_loop_run_single_process(mainloop, worker, logic);
+    }
+    else
+    {
+      auto netio = mainloop;
+      while(num_nethreads--)
       {
-        llarp::Info("running mainloop");
-        llarp_ev_loop_run_single_process(mainloop, worker, logic);
-      }
-      else
-      {
-        auto netio = mainloop;
-        while(num_nethreads--)
-        {
-          netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
+        netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
 #if(__APPLE__ && __MACH__)
 
 #elif(__FreeBSD__)
@@ -178,15 +200,11 @@ namespace llarp
           pthread_setname_np(netio_threads.back().native_handle(),
                              "llarp-netio");
 #endif
-        }
-        llarp::Info("running mainloop");
-        llarp_logic_mainloop(logic);
       }
-      return 0;
+      llarp::Info("running mainloop");
+      llarp_logic_mainloop(logic);
     }
-    else
-      llarp::Error("Failed to configure router");
-    return 1;
+    return 0;
   }
 
   void
@@ -310,6 +328,12 @@ llarp_main_signal(struct llarp_main *ptr, int sig)
 }
 
 int
+llarp_main_setup(struct llarp_main *ptr)
+{
+  return ptr->ctx->Setup();
+}
+
+int
 llarp_main_run(struct llarp_main *ptr)
 {
   return ptr->ctx->Run();
@@ -337,6 +361,11 @@ struct llarp_rc *
 llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
 {
   return ptr->ctx->GetDatabase(pk);
+}
+
+void llarp_main_queryDHT(struct llarp_main *ptr, llarp_router_lookup_job *job)
+{
+  llarp_dht_lookup_router(ptr->ctx->router->dht, job);
 }
 
 void

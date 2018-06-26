@@ -46,6 +46,9 @@ namespace llarp
     GetDatabase(const byte_t *pk);
 
     int
+    Setup();
+
+    int
     Run();
 
     void

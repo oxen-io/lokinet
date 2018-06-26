@@ -374,6 +374,8 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
   return n->Load(dir);
 }
 
+/// c api for nodedb::setRC
+/// maybe better to use llarp_nodedb_async_verify
 bool
 llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc)
 {
@@ -387,6 +389,7 @@ llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i)
   return n->entries.size();
 }
 
+/// maybe rename to verify_and_set
 void
 llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
 {
@@ -396,12 +399,15 @@ llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
                              {job, &crypto_threadworker_verifyrc});
 }
 
+// disabled for now
+/*
 void
 llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 {
   // call in the disk io thread so we don't bog down the others
   llarp_threadpool_queue_job(job->diskworker, {job, &nodedb_async_load_rc});
 }
+*/
 
 struct llarp_rc *
 llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
