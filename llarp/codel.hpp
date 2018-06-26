@@ -10,8 +10,8 @@ namespace llarp
 {
   namespace util
   {
-    template < typename T, typename GetTime, llarp_time_t dropMs = 5,
-               llarp_time_t initialIntervalMs = 100 >
+    template < typename T, typename GetTime, llarp_time_t dropMs = 20,
+               llarp_time_t initialIntervalMs = 50 >
     struct CoDelQueue
     {
       struct CoDelCompare

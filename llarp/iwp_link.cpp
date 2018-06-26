@@ -1795,7 +1795,6 @@ namespace iwp
         encryptedFrames.pop();
       }
     }
-    PumpCodelOutbound();
   }
 
   void
@@ -1808,6 +1807,7 @@ namespace iwp
     if(self->timedout(llarp_time_now_ms()))
       return;
     self->HandleCodelOutboundPump();
+    self->PumpCodelOutbound();
   }
 
   void
