@@ -10,7 +10,7 @@ namespace llarp
 {
   namespace util
   {
-    template < typename T, typename GetTime, llarp_time_t dropMs = 20,
+    template < typename T, typename GetTime, llarp_time_t dropMs = 200,
                llarp_time_t initialIntervalMs = 100 >
     struct CoDelQueue
     {
@@ -29,6 +29,8 @@ namespace llarp
       {
         std::unique_lock< std::mutex > lock(m_QueueMutex);
         m_Queue.push(*item);
+
+        //llarp::Info("CoDelQueue::Put - adding item, queue now has ", m_Queue.size(), " items at ", getTime(*item));
       }
 
       void
@@ -36,17 +38,22 @@ namespace llarp
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
         auto start          = llarp_time_now_ms();
+        //llarp::Info("CoDelQueue::Process - start at ", start);
         std::unique_lock< std::mutex > lock(m_QueueMutex);
         while(m_Queue.size())
         {
+          //llarp::Info("CoDelQueue::Process - queue has ", m_Queue.size());
           const auto& item = m_Queue.top();
           auto dlt         = start - getTime(item);
+          //llarp::Info("CoDelQueue::Process - dlt ", dlt);
           lowest           = std::min(dlt, lowest);
           if(m_Queue.size() == 1)
           {
+            //llarp::Info("CoDelQueue::Process - single item: lowest ", lowest, " dropMs: ", dropMs);
             if(lowest > dropMs)
             {
               // drop
+              llarp::Error("CoDelQueue::Process - dropping");
               nextTickInterval = initialIntervalMs / std::sqrt(++dropNum);
               m_Queue.pop();
               return;
@@ -57,6 +64,7 @@ namespace llarp
               dropNum          = 0;
             }
           }
+          //llarp::Info("CoDelQueue::Process - passing");
           result.push(item);
           m_Queue.pop();
         }
