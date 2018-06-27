@@ -5,42 +5,49 @@
 #include <functional>
 #include <mutex>
 #include <queue>
+#include <string>
 
 namespace llarp
 {
   namespace util
   {
-    template < typename T, typename GetTime, llarp_time_t dropMs = 20,
-               llarp_time_t initialIntervalMs = 50 >
+    template < typename T, typename GetTime, typename PutTime,
+               llarp_time_t dropMs = 20, llarp_time_t initialIntervalMs = 100 >
     struct CoDelQueue
     {
+      CoDelQueue(const std::string& name) : m_name(name)
+      {
+      }
+
       struct CoDelCompare
       {
-        GetTime getTime = GetTime();
         bool
         operator()(const T& left, const T& right) const
         {
-          return getTime(left) < getTime(right);
+          return GetTime()(left) < GetTime()(right);
         }
       };
 
       void
-      Put(T* item)
+      Put(const T& i)
       {
         std::unique_lock< std::mutex > lock(m_QueueMutex);
-        m_Queue.push(*item);
+        PutTime()(i);
+        m_Queue.push(i);
+        if(firstPut == 0)
+          firstPut = GetTime()(i);
       }
 
       void
       Process(std::queue< T >& result)
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
-        auto start          = llarp_time_now_ms();
         std::unique_lock< std::mutex > lock(m_QueueMutex);
+        auto start = firstPut;
         while(m_Queue.size())
         {
           const auto& item = m_Queue.top();
-          auto dlt         = start - getTime(item);
+          auto dlt         = start - GetTime()(item);
           lowest           = std::min(dlt, lowest);
           if(m_Queue.size() == 1)
           {
@@ -48,9 +55,11 @@ namespace llarp
             {
               // drop
               nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
-              llarp::Info("CoDel drop ", nextTickInterval, " ms next interval");
+              llarp::Info("CoDel quque ", m_name, " drop ", nextTickInterval,
+                          " ms next interval lowest=", lowest);
+              delete item;
               m_Queue.pop();
-              return;
+              break;
             }
             else
             {
@@ -61,13 +70,15 @@ namespace llarp
           result.push(item);
           m_Queue.pop();
         }
+        firstPut = 0;
       }
 
-      GetTime getTime               = GetTime();
+      llarp_time_t firstPut         = 0;
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       std::mutex m_QueueMutex;
       std::priority_queue< T, std::vector< T >, CoDelCompare > m_Queue;
+      std::string m_name;
     };
   }  // namespace util
 }  // namespace llarp

@@ -3,6 +3,7 @@
 #include <llarp/ev.h>
 
 #include <unistd.h>
+#include <list>
 
 namespace llarp
 {
@@ -12,6 +13,7 @@ namespace llarp
     ev_io(int f) : fd(f){};
     virtual int
     read(void* buf, size_t sz) = 0;
+
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz) = 0;
     virtual ~ev_io()
@@ -42,6 +44,8 @@ struct llarp_ev_loop
   close_ev(llarp::ev_io* ev) = 0;
 
   virtual ~llarp_ev_loop(){};
+
+  std::list< llarp_udp_io* > udp_listeners;
 };
 
 #endif
