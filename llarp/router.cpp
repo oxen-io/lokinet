@@ -596,15 +596,16 @@ llarp_router::Run()
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
   rc.addrs = llarp_ai_list_new();
-  bool publicFound = true;
+  bool publicFound = false;
   
   sockaddr * dest = (sockaddr *) &this->ip4addr;
   llarp::Addr publicAddr(*dest);
-  llarp::Addr blank;
-  if (publicAddr != blank)
+  if (this->publicOverride)
   {
-    llarp::Info("public address:port ", publicAddr);
-    publicFound = false;
+    if (publicAddr)
+    {
+      llarp::Info("public address:port ", publicAddr);;
+    }
   }
   
   llarp::Info("You have ", inboundLinks.size(), " inbound links");
@@ -613,7 +614,7 @@ llarp_router::Run()
     llarp_ai addr;
     link->get_our_address(link, &addr);
     llarp::Addr a(addr);
-    if (a.sameAddr(publicAddr))
+    if (this->publicOverride && a.sameAddr(publicAddr))
     {
       llarp::Info("Found adapter for public address");
       publicFound = true;
@@ -627,7 +628,7 @@ llarp_router::Run()
     
     llarp_ai_list_pushback(rc.addrs, &addr);
   };
-  if (!publicFound)
+  if (this->publicOverride && !publicFound)
   {
     //llarp::Warn("Need to load our public IP into RC!");
     
@@ -1193,6 +1194,7 @@ namespace llarp
           llarp::Addr a(*dest);
           llarp::Info("setting public ipv4 ", a);
           self->addrInfo.ip = *a.addr6();
+          self->publicOverride = true;
         }
         //llarp::Addr a(val);
         
@@ -1202,6 +1204,7 @@ namespace llarp
         llarp::Info("Setting public port ", val);
         self->ip4addr.sin_port = htons(atoi(val));
         self->addrInfo.port = htons(atoi(val));
+        self->publicOverride = true;
       }
     }
   }

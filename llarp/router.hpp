@@ -61,6 +61,7 @@ struct llarp_router
   llarp_rc rc;
 
   // our ipv4 public setting
+  bool publicOverride = false;
   struct sockaddr_in ip4addr;
   llarp_ai addrInfo;
 
