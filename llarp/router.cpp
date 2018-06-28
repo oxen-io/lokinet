@@ -32,7 +32,7 @@ llarp_router::llarp_router()
     : ready(false)
     , paths(this)
     , dht(llarp_dht_context_new(this))
-    , inbound_msg_parser(this)
+    , inbound_link_msg_parser(this)
     , explorePool(llarp_pathbuilder_context_new(this, dht))
 
 {
@@ -49,7 +49,7 @@ bool
 llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
                                     llarp_buffer_t buf)
 {
-  return inbound_msg_parser.ProcessFrom(session, buf);
+  return inbound_link_msg_parser.ProcessFrom(session, buf);
 }
 
 bool
@@ -369,19 +369,6 @@ void
 llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
 {
   delete job;
-}
-
-// TODO: do we still need this?
-void
-llarp_router::BuildExploritoryPath()
-{
-  llarp_pathbuild_job *job = new llarp_pathbuild_job;
-  job->context             = explorePool;
-  job->selectHop           = selectHopFunc;
-  job->hops.numHops        = 4;
-  job->user                = this;
-  job->pathBuildStarted    = &HandleExploritoryPathBuildStarted;
-  llarp_pathbuilder_build_path(job);
 }
 
 void

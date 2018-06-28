@@ -17,14 +17,15 @@ namespace llarp
       llarp::PathID_t from;
 
       virtual bool
-      HandleMessage(IMessageHandler* r) const = 0;
+      HandleMessage(IMessageHandler* h, llarp_router* r) const = 0;
     };
 
     struct InboundMessageParser
     {
       InboundMessageParser();
       bool
-      ParseMessageBuffer(llarp_buffer_t buf, IMessageHandler* handler);
+      ParseMessageBuffer(llarp_buffer_t buf, IMessageHandler* handler,
+                         llarp_router* r);
 
      private:
       static bool

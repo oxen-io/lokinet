@@ -131,6 +131,9 @@ struct llarp_epoll_loop : public llarp_ev_loop
         ++idx;
       }
     }
+    for(auto& l : udp_listeners)
+      if(l->tick)
+        l->tick(l);
     return result;
   }
 
@@ -166,6 +169,9 @@ struct llarp_epoll_loop : public llarp_ev_loop
           ++idx;
         }
       }
+      for(auto& l : udp_listeners)
+        if(l->tick)
+          l->tick(l);
     } while(epollfd != -1);
     return result;
   }
@@ -238,6 +244,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
       return false;
     }
     l->impl = listener;
+    udp_listeners.push_back(l);
     return true;
   }
 
@@ -252,6 +259,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
       close_ev(listener);
       l->impl = nullptr;
       delete listener;
+      udp_listeners.remove(l);
     }
     return ret;
   }

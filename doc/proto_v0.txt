@@ -528,8 +528,6 @@ sent inside a TDFM encrypted to the hidden service's public encryption key.
 
 transfer data fragment message (TDFM)
 
-variant 1 (with path id):
-
 transfer data between paths.
 
 {
@@ -544,12 +542,12 @@ transfer data to another path with id P on the local router place Y and T values
 into y and z values into a LRDM message (respectively) and send it in the
 downstream direction.
 
-variant 2 (no path id):
+transfer ip traffic message (TITM)
 
 transfer ip traffic for exit
 
 {
-  A: "T",
+  A: "E",
   V: 0,
   X: "<N bytes ipv6 packet>",
   Y: "<16 bytes nounce>",
@@ -563,7 +561,7 @@ cannot be found or the signature is invalid this message is dropped, otherwise
 the X value is sent on the appropriate exit network interface.
 
 When we recieve an ip packet from the internet to an exit address, we put it
-into a TDFM, signed with the exit info's signing key and send it downstream the
+into a TITM, signed with the exit info's signing key and send it downstream the
 corrisponding path in an LRDM.
 
 update exit path message (UXPM)

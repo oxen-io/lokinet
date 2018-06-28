@@ -49,12 +49,11 @@ namespace llarp
       ShouldBuildMore() const;
 
      private:
-      typedef std::map< PathID_t, Path* > PathMap_t;
-      // (tx,rx)
-      typedef std::tuple< PathMap_t, PathMap_t > PathContainer_t;
+      typedef std::pair< RouterID, PathID_t > PathInfo_t;
+      typedef std::map< PathInfo_t, Path* > PathMap_t;
 
       size_t m_NumPaths;
-      PathContainer_t m_Paths;
+      PathMap_t m_Paths;
     };
 
   }  // namespace path

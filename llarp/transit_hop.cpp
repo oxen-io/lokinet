@@ -1,4 +1,5 @@
 #include <llarp/path.hpp>
+#include <llarp/routing/handler.hpp>
 #include "buffer.hpp"
 #include "router.hpp"
 
@@ -6,6 +7,10 @@ namespace llarp
 {
   namespace path
   {
+    TransitHop::TransitHop()
+    {
+    }
+
     bool
     TransitHop::Expired(llarp_time_t now) const
     {
@@ -62,7 +67,7 @@ namespace llarp
                                  llarp_router* r)
     {
       RelayDownstreamMessage* msg = new RelayDownstreamMessage;
-      msg->pathid                 = info.txID;
+      msg->pathid                 = info.rxID;
       msg->Y                      = Y;
 
       r->crypto.xchacha20(buf, pathKey, Y);
@@ -76,15 +81,69 @@ namespace llarp
     TransitHop::HandleUpstream(llarp_buffer_t buf, const TunnelNonce& Y,
                                llarp_router* r)
     {
-      RelayUpstreamMessage* msg = new RelayUpstreamMessage;
-      msg->pathid               = info.rxID;
-      msg->Y                    = Y;
-
       r->crypto.xchacha20(buf, pathKey, Y);
-      msg->X = buf;
-      llarp::Info("relay ", msg->X.size(), " bytes upstream from ",
-                  info.downstream, " to ", info.upstream);
-      return r->SendToOrQueue(info.upstream, msg);
+      if(info.upstream == RouterID(r->pubkey()))
+      {
+        return m_MessageParser.ParseMessageBuffer(buf, this, r);
+      }
+      else
+      {
+        RelayUpstreamMessage* msg = new RelayUpstreamMessage;
+        msg->pathid               = info.txID;
+        msg->Y                    = Y;
+
+        msg->X = buf;
+        llarp::Info("relay ", msg->X.size(), " bytes upstream from ",
+                    info.downstream, " to ", info.upstream);
+        return r->SendToOrQueue(info.upstream, msg);
+      }
     }
+
+    bool
+    TransitHop::HandleDHTMessage(const llarp::dht::IMessage* msg,
+                                 llarp_router* r)
+    {
+      // TODO: implement me
+      return false;
+    }
+
+    bool
+    TransitHop::HandlePathLatencyMessage(
+        const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
+    {
+      llarp::routing::PathLatencyMessage reply;
+      reply.L = msg->T;
+      llarp::Info("got latency message ", msg->T);
+      return SendRoutingMessage(&reply, r);
+    }
+
+    bool
+    TransitHop::HandlePathConfirmMessage(
+        const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
+    {
+      llarp::Warn("unwarrented path confirm message on ", info);
+      return false;
+    }
+
+    bool
+    TransitHop::HandlePathTransferMessage(
+        const llarp::routing::PathTransferMessage* msg, llarp_router* r)
+    {
+      auto path = r->paths.GetByDownstream(r->pubkey(), msg->P);
+      if(path)
+      {
+        return path->HandleDownstream(msg->T.Buffer(), msg->Y, r);
+      }
+      llarp::Warn("No such path for path transfer pathid=", msg->P);
+      return false;
+    }
+
+    bool
+    TransitHop::HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r)
+    {
+      llarp::Warn("unwarrented hidden service data on ", info);
+      return false;
+    }
+
   }  // namespace path
 }  // namespace llarp

@@ -13,7 +13,6 @@
 #endif
 
 extern "C" {
-
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {

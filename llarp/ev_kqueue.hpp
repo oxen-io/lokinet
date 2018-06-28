@@ -123,6 +123,9 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         ++idx;
       }
     }
+    for(auto& l : udp_listeners)
+      if(l->tick)
+        l->tick(l);
     return result;
   }
 
@@ -151,6 +154,9 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           ++idx;
         }
       }
+      for(auto& l : udp_listeners)
+        if(l->tick)
+          l->tick(l);
     } while(result != -1);
     return result;
   }
@@ -235,7 +241,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       delete listener;
       return false;
     }
-
+    udp_listeners.push_back(l);
     l->impl = listener;
     return true;
   }
@@ -250,6 +256,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       ret = close_ev(listener);
       delete listener;
       l->impl = nullptr;
+      udp_listeners.remove(l);
     }
     return ret;
   }

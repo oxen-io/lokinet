@@ -143,6 +143,7 @@ set(LIB_SRC
   llarp/api/parser.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp
+  llarp/routing/path_latency.cpp
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
   vendor/cppbackport-master/lib/fs/filetype.cpp

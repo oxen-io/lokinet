@@ -266,9 +266,15 @@ namespace llarp
         hops[idx].txID.Randomize();
         hops[idx].rxID.Randomize();
       }
+      /*
       for(size_t idx = (h->numHops - 1); idx > 0; --idx)
       {
         hops[idx].txID = hops[idx - 1].rxID;
+      }
+      */
+      for(size_t idx = 0; idx < h->numHops - 1; ++idx)
+      {
+        hops[idx].txID = hops[idx + 1].rxID;
       }
     }
 
@@ -334,7 +340,7 @@ namespace llarp
     }
 
     bool
-    Path::HandleHiddenServiceData(llarp_buffer_t buf)
+    Path::HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r)
     {
       // TODO: implement me
       return false;
@@ -343,7 +349,7 @@ namespace llarp
     bool
     Path::HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r)
     {
-      if(!m_InboundMessageParser.ParseMessageBuffer(buf, this))
+      if(!m_InboundMessageParser.ParseMessageBuffer(buf, this, r))
       {
         llarp::Warn("Failed to parse inbound routing message");
         return false;
@@ -369,17 +375,31 @@ namespace llarp
     }
 
     bool
+    Path::HandlePathTransferMessage(
+        const llarp::routing::PathTransferMessage* msg, llarp_router* r)
+    {
+      llarp::Warn("unwarrented path transfer message on tx=", TXID(),
+                  " rx=", RXID());
+      return false;
+    }
+
+    bool
     Path::HandlePathConfirmMessage(
-        const llarp::routing::PathConfirmMessage* msg)
+        const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
     {
       if(status == ePathBuilding)
       {
         // confirm that we build the path
         status = ePathEstablished;
+        llarp::Info("path is confirmed rx=", RXID(), " tx=", TXID());
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
-        return true;
+        llarp::routing::PathLatencyMessage latency;
+        latency.T             = rand();
+        m_LastLatencyTestID   = latency.T;
+        m_LastLatencyTestTime = llarp_time_now_ms();
+        return SendRoutingMessage(&latency, r);
       }
       llarp::Warn("got unwarrented path confirm message on rx=", RXID(),
                   " tx=", TXID());
@@ -388,14 +408,19 @@ namespace llarp
 
     bool
     Path::HandlePathLatencyMessage(
-        const llarp::routing::PathLatencyMessage* msg)
+        const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
-      // TODO: implement me
+      if(msg->L == m_LastLatencyTestID)
+      {
+        Latency = llarp_time_now_ms() - m_LastLatencyTestTime;
+        llarp::Info("path latency is ", Latency, " ms");
+        return true;
+      }
       return false;
     }
 
     bool
-    Path::HandleDHTMessage(const llarp::dht::IMessage* msg)
+    Path::HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r)
     {
       // TODO: implement me
       return false;

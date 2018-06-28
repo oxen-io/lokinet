@@ -25,7 +25,7 @@ namespace llarp
       BDecode(llarp_buffer_t* buf);
 
       bool
-      HandleMessage(IMessageHandler* h) const;
+      HandleMessage(IMessageHandler* h, llarp_router* r) const;
     };
   }  // namespace routing
 }  // namespace llarp

@@ -14,6 +14,7 @@
 
 #include <llarp/dht.hpp>
 #include <llarp/link_message.hpp>
+#include <llarp/routing/handler.hpp>
 
 #include "crypto.hpp"
 #include "fs.hpp"
@@ -27,6 +28,11 @@ namespace llarp
     llarp_ai addr;
   };
 
+  // forward declare
+  namespace path
+  {
+    struct TransitHop;
+  }
 }  // namespace llarp
 
 /// c++
@@ -74,7 +80,8 @@ struct llarp_router
 
   uint32_t ticker_job_id = 0;
 
-  llarp::InboundMessageParser inbound_msg_parser;
+  llarp::InboundMessageParser inbound_link_msg_parser;
+  llarp::routing::InboundMessageParser inbound_routing_msg_parser;
 
   llarp_pathbuilder_select_hop_func selectHopFunc = nullptr;
   llarp_pathbuilder_context *explorePool          = nullptr;
@@ -93,7 +100,7 @@ struct llarp_router
   std::map< llarp::PubKey, llarp_link_establish_job > pendingEstablishJobs;
 
   llarp_router();
-  ~llarp_router();
+  virtual ~llarp_router();
 
   bool
   HandleRecvLinkMessage(struct llarp_link_session *from, llarp_buffer_t msg);
@@ -173,9 +180,6 @@ struct llarp_router
   /// call internal router ticker
   void
   Tick();
-
-  void
-  BuildExploritoryPath();
 
   /// schedule ticker to call i ms from now
   void

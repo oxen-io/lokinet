@@ -1,4 +1,5 @@
 #include <llarp/messages/path_confirm.hpp>
+#include <llarp/messages/path_latency.hpp>
 #include <llarp/routing/message.hpp>
 
 namespace llarp
@@ -36,6 +37,9 @@ namespace llarp
           return false;
         switch(*strbuf.cur)
         {
+          case 'L':
+            self->msg = new PathLatencyMessage;
+            break;
           case 'P':
             self->msg = new PathConfirmMessage;
             break;
@@ -53,16 +57,19 @@ namespace llarp
 
     bool
     InboundMessageParser::ParseMessageBuffer(llarp_buffer_t buf,
-                                             IMessageHandler* h)
+                                             IMessageHandler* h,
+                                             llarp_router* r)
     {
       bool result = false;
       msg         = nullptr;
       firstKey    = true;
       if(bencode_read_dict(&buf, &reader))
       {
-        result = msg->HandleMessage(h);
+        result = msg->HandleMessage(h, r);
         delete msg;
       }
+      else
+        llarp::Error("read dict failed");
       return result;
     }
   }  // namespace routing

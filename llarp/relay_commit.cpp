@@ -257,7 +257,7 @@ namespace llarp
       // we pop the front element it was ours
       self->frames.pop_front();
       // put our response on the end
-      self->frames.emplace_back(sz);
+      self->frames.emplace_back(sz - EncryptedFrame::OverheadSize);
       // random junk for now
       self->frames.back().Randomize();
 

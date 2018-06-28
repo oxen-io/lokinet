@@ -42,9 +42,9 @@ namespace llarp
     }
 
     bool
-    PathConfirmMessage::HandleMessage(IMessageHandler* h) const
+    PathConfirmMessage::HandleMessage(IMessageHandler* h, llarp_router* r) const
     {
-      return h && h->HandlePathConfirmMessage(this);
+      return h && h->HandlePathConfirmMessage(this, r);
     }
 
   }  // namespace routing
