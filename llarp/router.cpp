@@ -36,6 +36,9 @@ llarp_router::llarp_router()
     , explorePool(llarp_pathbuilder_context_new(this, dht))
 
 {
+  // set rational defaults
+  this->ip4addr.sin_family = AF_INET;
+  this->ip4addr.sin_port = htons(1090);
   llarp_rc_clear(&rc);
 }
 
@@ -380,14 +383,14 @@ llarp_router::Tick()
   if(inboundLinks.size() == 0)
   {
     auto N = llarp_nodedb_num_loaded(nodedb);
-    if(N > 5)
+    if(N > 2)
     {
       paths.BuildPaths();
     }
     else
     {
       llarp::Warn("not enough nodes known to build exploritory paths, have ", N,
-                  " nodes");
+                  " nodes, need 3 now (will be 5 later)");
     }
   }
   llarp_link_session_iter iter;
@@ -520,10 +523,12 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
+    //llarp::Debug("try_connect got session");
     auto session = job->session;
     router->async_verify_RC(session, false, job);
     return;
   }
+  //llarp::Debug("try_connect no session");
   llarp::PubKey pk = job->pubkey;
   if(job->retries > 0)
   {
@@ -582,6 +587,8 @@ llarp_router::async_verify_RC(llarp_link_session *session,
   llarp_nodedb_async_verify(job);
 }
 
+#include <string.h>
+
 void
 llarp_router::Run()
 {
@@ -589,12 +596,75 @@ llarp_router::Run()
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
   rc.addrs = llarp_ai_list_new();
+  bool publicFound = false;
+  
+  sockaddr * dest = (sockaddr *) &this->ip4addr;
+  llarp::Addr publicAddr(*dest);
+  llarp::Info("public address:port ", publicAddr);
+  
+  llarp::Info("You have ", inboundLinks.size(), " inbound links");
   for(auto link : inboundLinks)
   {
     llarp_ai addr;
     link->get_our_address(link, &addr);
+    llarp::Addr a(addr);
+    if (a.sameAddr(publicAddr))
+    {
+      llarp::Info("Found adapter for public address");
+      publicFound = true;
+    }
+    if (a.isPrivate())
+    {
+      llarp::Warn("Skipping private network");
+      continue;
+    }
+    llarp::Info("Loading Addr: ", a, " into our RC");
+    
     llarp_ai_list_pushback(rc.addrs, &addr);
   };
+  if (!publicFound)
+  {
+    llarp::Warn("Need to load our public IP into RC!");
+    
+    llarp_link *link = nullptr;
+    if (inboundLinks.size() == 1)
+    {
+      link = inboundLinks.front();
+    }
+    else
+    {
+      if (!inboundLinks.size())
+      {
+        llarp::Error("No inbound links found, aborting");
+        return;
+      }
+      link = inboundLinks.front();
+      /*
+      // create a new link
+      link = new llarp_link;
+      llarp::Zero(link, sizeof(llarp_link));
+      
+      llarp_iwp_args args = {
+        .crypto       = &this->crypto,
+        .logic        = this->logic,
+        .cryptoworker = this->tp,
+        .router       = this,
+        .keyfile      = this->transport_keyfile.c_str(),
+      };
+      iwp_link_init(link, args);
+      if(llarp_link_initialized(link))
+      {
+        
+      }
+      */
+    }
+    link->get_our_address(link, &this->addrInfo);
+    // override ip and port
+    this->addrInfo.ip = *publicAddr.addr6();
+    this->addrInfo.port = publicAddr.port();
+    // we need the link to set the pubkey
+    llarp_ai_list_pushback(rc.addrs, &this->addrInfo);
+  }
   // set public encryption key
   llarp_rc_set_pubenckey(&rc, llarp::seckey_topublic(encryption));
 
@@ -767,9 +837,15 @@ bool
 llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
                          uint16_t numretries)
 {
-  // do  we already have a pending job for this remote?
-  if(router->HasPendingConnectJob(remote->pubkey))
+  char ftmp[68] = {0};
+  const char *hexname =
+  llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(remote->pubkey, ftmp);
+
+  // do we already have a pending job for this remote?
+  if(router->HasPendingConnectJob(remote->pubkey)) {
+    llarp::Debug("We have pending connect jobs to ", hexname);
     return false;
+  }
   // try first address only
   llarp_ai addr;
   if(llarp_ai_list_index(remote->addrs, 0, &addr))
@@ -789,6 +865,7 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
     link->try_establish(link, job);
     return true;
   }
+  llarp::Warn("couldn't get first address for ", hexname);
   return false;
 }
 
@@ -1098,6 +1175,27 @@ namespace llarp
       if(StrEq(key, "ident-privkey"))
       {
         self->ident_keyfile = val;
+      }
+      if(StrEq(key, "public-address"))
+      {
+        llarp::Info("public ip ", val, " size ", strlen(val));
+        if (strlen(val) < 17) {
+          // assume IPv4
+          inet_pton(AF_INET, val, &self->ip4addr.sin_addr);
+          //struct sockaddr dest;
+          sockaddr * dest = (sockaddr *) &self->ip4addr;
+          llarp::Addr a(*dest);
+          llarp::Info("setting public ipv4 ", a);
+          self->addrInfo.ip = *a.addr6();
+        }
+        //llarp::Addr a(val);
+        
+      }
+      if(StrEq(key, "public-port"))
+      {
+        llarp::Info("Setting public port ", val);
+        self->ip4addr.sin_port = htons(atoi(val));
+        self->addrInfo.port = htons(atoi(val));
       }
     }
   }
