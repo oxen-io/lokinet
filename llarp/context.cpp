@@ -3,6 +3,7 @@
 #include <llarp.hpp>
 #include "logger.hpp"
 #include "router.hpp"
+#include "math.h"
 
 #if(__FreeBSD__)
 #include <pthread_np.h>
