@@ -596,11 +596,16 @@ llarp_router::Run()
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
   rc.addrs = llarp_ai_list_new();
-  bool publicFound = false;
+  bool publicFound = true;
   
   sockaddr * dest = (sockaddr *) &this->ip4addr;
   llarp::Addr publicAddr(*dest);
-  llarp::Info("public address:port ", publicAddr);
+  llarp::Addr blank;
+  if (publicAddr != blank)
+  {
+    llarp::Info("public address:port ", publicAddr);
+    publicFound = false;
+  }
   
   llarp::Info("You have ", inboundLinks.size(), " inbound links");
   for(auto link : inboundLinks)
@@ -615,7 +620,7 @@ llarp_router::Run()
     }
     if (a.isPrivate())
     {
-      llarp::Warn("Skipping private network");
+      llarp::Warn("Skipping private network link: ", a);
       continue;
     }
     llarp::Info("Loading Addr: ", a, " into our RC");
@@ -624,7 +629,7 @@ llarp_router::Run()
   };
   if (!publicFound)
   {
-    llarp::Warn("Need to load our public IP into RC!");
+    //llarp::Warn("Need to load our public IP into RC!");
     
     llarp_link *link = nullptr;
     if (inboundLinks.size() == 1)
@@ -662,6 +667,7 @@ llarp_router::Run()
     // override ip and port
     this->addrInfo.ip = *publicAddr.addr6();
     this->addrInfo.port = publicAddr.port();
+    llarp::Info("Loaded our public ", publicAddr, " override into RC!");
     // we need the link to set the pubkey
     llarp_ai_list_pushback(rc.addrs, &this->addrInfo);
   }
