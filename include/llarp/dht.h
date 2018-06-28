@@ -47,6 +47,7 @@ typedef void (*llarp_router_lookup_handler)(struct llarp_router_lookup_job*);
 
 struct llarp_router_lookup_job
 {
+  /// can be anything but usually a class context for hook
   void* user;
   llarp_router_lookup_handler hook;
   struct llarp_dht_context* dht;
