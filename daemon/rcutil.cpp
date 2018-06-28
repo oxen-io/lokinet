@@ -25,6 +25,7 @@ handle_signal(int sig)
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "router.hpp"
+#include "net.hpp"
 
 bool
 printNode(struct llarp_nodedb_iter *iter)
@@ -37,9 +38,22 @@ printNode(struct llarp_nodedb_iter *iter)
   return false;
 }
 
-void HandleDHTLocate(llarp_router_lookup_job *job) {
+// fwd declr
+struct check_online_request;
+
+void HandleDHTLocate(llarp_router_lookup_job *job)
+{
   llarp::Info("DHT result: ", job->found ? "found" : "not found");
   // save to nodedb?
+}
+
+bool aiLister(struct llarp_ai_list_iter *request, struct llarp_ai *addr)
+{
+  static size_t count = 0;
+  count ++;
+  llarp::Addr a(*addr);
+  std::cout << "AddressInfo " << count << ": " << a << std::endl;
+  return true;
 }
 
 int
@@ -74,6 +88,7 @@ main(int argc, char *argv[])
   bool importMode = false;
   bool exportMode = false;
   bool locateMode = false;
+  bool localMode  = false;
   int c;
   char *conffname;
   char defaultConfName[] = "daemon.ini";
@@ -92,9 +107,10 @@ main(int argc, char *argv[])
         {"import", required_argument, 0, 'i'},
         {"export", required_argument, 0, 'e'},
         {"locate", required_argument, 0, 'q'},
+        {"localInfo", no_argument, 0, 'n'},
         {0, 0, 0, 0}};
     int option_index = 0;
-    c = getopt_long(argc, argv, "cgluieq", long_options, &option_index);
+    c = getopt_long(argc, argv, "cgluieqn", long_options, &option_index);
     if(c == -1)
       break;
     switch(c)
@@ -138,6 +154,10 @@ main(int argc, char *argv[])
         haveRequiredOptions = true;
         updMode             = true;
         break;
+      case 'n':
+        haveRequiredOptions = true;
+        localMode           = true;
+        break;
       default:
         abort();
     }
@@ -148,7 +168,7 @@ main(int argc, char *argv[])
     return 0;
   }
   printf("parsed options\n");
-  if(!genMode && !updMode && !listMode && !importMode && !exportMode && !locateMode)
+  if(!genMode && !updMode && !listMode && !importMode && !exportMode && !locateMode && !localMode)
   {
     llarp::Error("I don't know what to do, no generate or update parameter\n");
     return 0;
@@ -263,23 +283,49 @@ main(int argc, char *argv[])
     llarp::Info("Writing out: ", filename);
     llarp_rc_write(rc, filename.c_str());
   }
-  if (locateMode) {
+  if (locateMode)
+  {
     llarp::Info("Going online");
     llarp_main_setup(ctx);
 
     llarp::PubKey binaryPK;
     llarp::HexDecode(rcfname, binaryPK.data());
-
+    
+    //llarp::SetLogLevel(llarp::eLogDebug);
+    
     llarp::Info("Queueing job");
     llarp_router_lookup_job *job = new llarp_router_lookup_job;
     job->found = false;
     job->hook = &HandleDHTLocate;
     memcpy(job->target, binaryPK, PUBKEYSIZE); // set job's target
-    llarp_main_queryDHT(ctx, job);
+    // create query DHT request
+    check_online_request *request = new check_online_request;
+    request->ptr = ctx;
+    request->job = job;
+    request->online = false;
+    request->nodes = 0;
+    request->first = false;
+    llarp_main_queryDHT(request);
 
     llarp::Info("Processing");
     // run system and wait
     llarp_main_run(ctx);
+  }
+  if (localMode)
+  {
+    //llarp::Info("find our local rc file");
+
+    //llarp_rc *rc = llarp_rc_read("router.signed");
+    llarp_rc *rc = llarp_main_getLocalRC(ctx);
+    char ftmp[68] = {0};
+    const char *hexPubSigKey =
+    llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(rc->pubkey, ftmp);
+    printf("PubSigKey [%s]\n", hexPubSigKey);
+
+    struct llarp_ai_list_iter iter;
+    //iter.user
+    iter.visit=&aiLister;
+    llarp_ai_list_iterate(rc->addrs, &iter);
   }
   llarp_main_free(ctx);
   return 1;  // success
