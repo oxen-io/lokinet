@@ -51,9 +51,27 @@ llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc);
 struct llarp_rc *
 llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
 
+// fwd declr
+struct check_online_request;
+
+/// check_online_request hook definition
+typedef void (*check_online_request_hook_func)(struct check_online_request *);
+
+struct check_online_request {
+  struct llarp_main *ptr;
+  struct llarp_router_lookup_job *job;
+  bool online;
+  size_t nodes;
+  bool first;
+  check_online_request_hook_func hook;
+};
+
 /// get RC from DHT
 void
-llarp_main_queryDHT(struct llarp_main *ptr, struct llarp_router_lookup_job *job);
+llarp_main_queryDHT(struct check_online_request *request);
+
+struct llarp_rc *
+llarp_main_getLocalRC(struct llarp_main *ptr);
 
 void
 llarp_main_free(struct llarp_main *ptr);
