@@ -282,9 +282,12 @@ hop length.
 
 link relay commit record (LRCR)
 
-record requesting relaying messages for 300 seconds to router
+record requesting relaying messages for 600 seconds to router
 on network who's i is equal to RC.k and decrypt data any messages using
 PKE(n, rc.K, c) as symettric key for encryption and decryption.
+
+if l is provided and is less than 600 and greater than 10 then that lifespan 
+is used (in seconds) instead of 600 seconds.
 
 if w is provided and fits the required proof of work then the lifetime of
 the path is extended by w.y seconds
@@ -292,6 +295,7 @@ the path is extended by w.y seconds
 {
   c: "<32 byte public encryption key used for upstream>",
   i: "<32 byte RC.k of next hop>",
+  l: uint_optional_lifespan,
   n: "<32 bytes nounce for key exchange>",
   r: "<16 bytes rx path id>",
   t: "<16 bytes tx path id>",
@@ -302,6 +306,7 @@ the path is extended by w.y seconds
 w if provided is a dict with the following struct 
 
 {
+  t: time_created_seconds_since_epoch,
   v: 0,
   y: uint32_seconds_extended_lifetime,
   z: "<32 bytes nonce>"

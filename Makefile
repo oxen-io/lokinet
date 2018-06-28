@@ -5,8 +5,10 @@ SIGN = gpg --sign --detach
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
+CC ?= cc 
+CXX ?= c++
 
-TARGETS = llarpd
+TARGETS = lokinet
 SIGS = $(TARGETS:=.sig)
 
 SHADOW_ROOT ?= $(HOME)/.shadow
@@ -22,15 +24,15 @@ TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 clean:
 	rm -f build.ninja rules.ninja cmake_install.cmake CMakeCache.txt
 	rm -rf CMakeFiles
-	rm -f $(TARGETS)
+	rm -f $(TARGETS) llarpd
 	rm -f $(SHADOW_PLUGIN) $(SHADOW_CONFIG)
 	rm -f *.sig
 
 debug-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 release-configure: clean
-	cmake -GNinja -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)"
+	cmake -GNinja -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) 
 
 debug: debug-configure
 	ninja
@@ -38,9 +40,11 @@ debug: debug-configure
 
 release-compile: release-configure
 	ninja
+	cp llarpd lokinet
 	strip $(TARGETS)
 
 $(TARGETS): release-compile
+
 
 %.sig: $(TARGETS)
 	$(SIGN) $*
@@ -48,7 +52,7 @@ $(TARGETS): release-compile
 release: $(SIGS)
 
 shadow-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 shadow-build: shadow-configure
 	ninja clean
@@ -59,7 +63,7 @@ shadow: shadow-build
 	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) &> $(SHADOW_LOG) || true"
 
 testnet-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 testnet-build: testnet-configure
 	ninja

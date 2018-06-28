@@ -119,7 +119,7 @@ llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
     // we don't have the RC locally so do a dht lookup
     llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
     lookup->user                    = router;
-    memcpy(lookup->target, job->rc.pubkey, PUBKEYSIZE);
+    memcpy(lookup->target, job->pubkey, PUBKEYSIZE);
     lookup->hook = &HandleDHTLookupForSendTo;
     llarp_dht_lookup_router(router->dht, lookup);
   }
@@ -365,7 +365,7 @@ llarp_router::Tick()
   if(inboundLinks.size() == 0)
   {
     auto N = llarp_nodedb_num_loaded(nodedb);
-    if(N > 5)
+    if(N > 2)
     {
       paths.BuildPaths();
     }
