@@ -116,7 +116,7 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   // we don't have the RC locally so do a dht lookup
   llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
   lookup->user                    = this;
-  memcpy(lookup->target, this->rc.pubkey, PUBKEYSIZE);
+  memcpy(lookup->target, remote, PUBKEYSIZE);
   lookup->hook = &HandleDHTLookupForSendTo;
   llarp_dht_lookup_router(this->dht, lookup);
 
