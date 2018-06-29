@@ -13,7 +13,20 @@ namespace llarp
     {
       PathID_t P;
       Encrypted T;
+      uint64_t V = 0;
       TunnelNonce Y;
+
+      PathTransferMessage();
+      ~PathTransferMessage();
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      HandleMessage(IMessageHandler*, llarp_router* r) const;
     };
 
   }  // namespace routing

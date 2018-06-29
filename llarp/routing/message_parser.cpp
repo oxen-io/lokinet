@@ -1,5 +1,7 @@
+#include <llarp/messages/dht.hpp>
 #include <llarp/messages/path_confirm.hpp>
 #include <llarp/messages/path_latency.hpp>
+#include <llarp/messages/path_transfer.hpp>
 #include <llarp/routing/message.hpp>
 
 namespace llarp
@@ -40,8 +42,14 @@ namespace llarp
           case 'L':
             self->msg = new PathLatencyMessage;
             break;
+          case 'M':
+            self->msg = new DHTMessage;
+            break;
           case 'P':
             self->msg = new PathConfirmMessage;
+            break;
+          case 'T':
+            self->msg = new PathTransferMessage;
             break;
           default:
             llarp::Error("invalid routing message id: ", *strbuf.cur);

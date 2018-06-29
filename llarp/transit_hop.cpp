@@ -72,8 +72,8 @@ namespace llarp
 
       r->crypto.xchacha20(buf, pathKey, Y);
       msg->X = buf;
-      llarp::Info("relay ", msg->X.size(), " bytes downstream from ",
-                  info.upstream, " to ", info.downstream);
+      llarp::Debug("relay ", msg->X.size(), " bytes downstream from ",
+                   info.upstream, " to ", info.downstream);
       return r->SendToOrQueue(info.downstream, msg);
     }
 
@@ -93,8 +93,8 @@ namespace llarp
         msg->Y                    = Y;
 
         msg->X = buf;
-        llarp::Info("relay ", msg->X.size(), " bytes upstream from ",
-                    info.downstream, " to ", info.upstream);
+        llarp::Debug("relay ", msg->X.size(), " bytes upstream from ",
+                     info.downstream, " to ", info.upstream);
         return r->SendToOrQueue(info.upstream, msg);
       }
     }
@@ -113,7 +113,6 @@ namespace llarp
     {
       llarp::routing::PathLatencyMessage reply;
       reply.L = msg->T;
-      llarp::Info("got latency message ", msg->T);
       return SendRoutingMessage(&reply, r);
     }
 

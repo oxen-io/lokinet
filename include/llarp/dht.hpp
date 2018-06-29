@@ -6,6 +6,8 @@
 #include <llarp/router_contact.h>
 #include <llarp/time.h>
 #include <llarp/aligned.hpp>
+#include <llarp/path_types.hpp>
+#include <llarp/service.hpp>
 
 #include <array>
 #include <functional>
@@ -46,20 +48,37 @@ namespace llarp
       }
     };
 
-    struct Node
+    struct RCNode
     {
       llarp_rc* rc;
 
       Key_t ID;
 
-      Node() : rc(nullptr)
+      RCNode() : rc(nullptr)
       {
         ID.Zero();
       }
 
-      Node(llarp_rc* other) : rc(other)
+      RCNode(llarp_rc* other) : rc(other)
       {
         ID = other->pubkey;
+      }
+    };
+
+    struct ISNode
+    {
+      llarp::service::IntroSet* introset;
+
+      Key_t ID;
+
+      ISNode() : introset(nullptr)
+      {
+        ID.Zero();
+      }
+
+      ISNode(llarp::service::IntroSet* other) : introset(other)
+      {
+        other->A.CalculateAddress(ID);
       }
     };
 
@@ -128,24 +147,65 @@ namespace llarp
     DecodeMesssageList(const Key_t& from, llarp_buffer_t* buf,
                        std::vector< IMessage* >& dst);
 
+    template < typename Val_t >
     struct Bucket
     {
-      typedef std::map< Key_t, Node, XorMetric > BucketStorage_t;
+      typedef std::map< Key_t, Val_t, XorMetric > BucketStorage_t;
 
       Bucket(const Key_t& us) : nodes(XorMetric(us)){};
 
       bool
-      FindClosest(const Key_t& target, Key_t& result) const;
+      FindClosest(const Key_t& target, Key_t& result) const
+      {
+        Key_t mindist;
+        mindist.Fill(0xff);
+        for(const auto& item : nodes)
+        {
+          auto curDist = item.first ^ target;
+          if(curDist < mindist)
+          {
+            mindist = curDist;
+            result  = item.first;
+          }
+        }
+        return nodes.size() > 0;
+      }
 
       bool
       FindCloseExcluding(const Key_t& target, Key_t& result,
-                         const std::set< Key_t >& exclude) const;
+                         const std::set< Key_t >& exclude) const
+      {
+        Key_t maxdist;
+        maxdist.Fill(0xff);
+        Key_t mindist;
+        mindist.Fill(0xff);
+        for(const auto& item : nodes)
+        {
+          if(exclude.find(item.first) != exclude.end())
+            continue;
+          auto curDist = item.first ^ target;
+          if(curDist < mindist)
+          {
+            mindist = curDist;
+            result  = item.first;
+          }
+        }
+        return mindist < maxdist;
+      }
 
       void
-      PutNode(const Node& val);
+      PutNode(const Val_t& val)
+      {
+        nodes[val.ID] = val;
+      }
 
       void
-      DelNode(const Key_t& key);
+      DelNode(const Key_t& key)
+      {
+        auto itr = nodes.find(key);
+        if(itr != nodes.end())
+          nodes.erase(itr);
+      }
 
       BucketStorage_t nodes;
     };
@@ -177,6 +237,10 @@ namespace llarp
                           const Key_t& target, bool recursive,
                           std::vector< IMessage* >& replies);
 
+      bool
+      RelayRequestForPath(const llarp::PathID_t& localPath,
+                          const IMessage* msg);
+
       void
       Init(const Key_t& us, llarp_router* router);
 
@@ -190,8 +254,12 @@ namespace llarp
       queue_router_lookup(void* user);
 
       llarp_router* router = nullptr;
-      Bucket* nodes        = nullptr;
-      bool allowTransit    = false;
+      // for router contacts
+      Bucket< RCNode >* nodes = nullptr;
+
+      // for introduction sets
+      Bucket< ISNode >* services = nullptr;
+      bool allowTransit          = false;
 
       const Key_t&
       OurKey() const

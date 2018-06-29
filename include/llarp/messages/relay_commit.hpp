@@ -23,8 +23,9 @@ namespace llarp
     TunnelNonce tunnelNonce;
     PathID_t txid, rxid;
 
-    PoW *work        = nullptr;
-    uint64_t version = 0;
+    PoW *work         = nullptr;
+    uint64_t version  = 0;
+    uint64_t lifetime = 0;
 
     bool
     BDecode(llarp_buffer_t *buf);

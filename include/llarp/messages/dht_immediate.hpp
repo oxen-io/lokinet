@@ -25,6 +25,6 @@ namespace llarp
     bool
     HandleMessage(llarp_router* router) const;
   };
-}
+}  // namespace llarp
 
 #endif

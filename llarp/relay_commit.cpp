@@ -59,7 +59,6 @@ namespace llarp
                    " when we are not allowing transit");
       return false;
     }
-    llarp::Info("Got LRCM from ", remote);
     return AsyncDecrypt(&router->paths);
   }
 
@@ -73,6 +72,11 @@ namespace llarp
       return false;
     if(!BEncodeWriteDictEntry("i", nextHop, buf))
       return false;
+    if(lifetime > 10 && lifetime < 600)
+    {
+      if(!BEncodeWriteDictInt(buf, "i", lifetime))
+        return false;
+    }
     if(!BEncodeWriteDictEntry("n", tunnelNonce, buf))
       return false;
     if(!BEncodeWriteDictEntry("r", rxid, buf))
@@ -106,6 +110,8 @@ namespace llarp
     if(!BEncodeMaybeReadDictEntry("c", self->commkey, read, *key, r->buffer))
       return false;
     if(!BEncodeMaybeReadDictEntry("i", self->nextHop, read, *key, r->buffer))
+      return false;
+    if(!BEncodeMaybeReadDictInt("l", self->lifetime, read, *key, r->buffer))
       return false;
     if(!BEncodeMaybeReadDictEntry("n", self->tunnelNonce, read, *key,
                                   r->buffer))
@@ -246,6 +252,12 @@ namespace llarp
         llarp::Info("LRCM extended lifetime by ",
                     self->record.work->extendedLifetime, " seconds for ", info);
         self->hop->lifetime += 1000 * self->record.work->extendedLifetime;
+      }
+      else if(self->record.lifetime < 600 && self->record.lifetime > 10)
+      {
+        self->hop->lifetime = self->record.lifetime;
+        llarp::Info("LRCM short lifespan set to ", self->hop->lifetime,
+                    " seconds for ", info);
       }
 
       // TODO: check if we really want to accept it

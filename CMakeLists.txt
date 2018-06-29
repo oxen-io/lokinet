@@ -170,9 +170,11 @@ set(LIB_SRC
   llarp/api/client.cpp
   llarp/api/message.cpp
   llarp/api/parser.cpp
+  llarp/routing/dht_message.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp
   llarp/routing/path_latency.cpp
+  llarp/routing/path_transfer.cpp
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
   vendor/cppbackport-master/lib/fs/filetype.cpp

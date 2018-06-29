@@ -153,14 +153,14 @@ the "network address" of a hidden service, which is computed as the blake2b
 
 HS(BE(SI))
 
-introducer (I)
+introduction (I)
 
 a descriptor annoucing a path to a hidden service
 
 k is the rc.k value of the router to contact
 p is the path id on the router that is owned by the service
 v is the protocol version
-x is the timestamp seconds since epoch that this introducer expires at
+x is the timestamp seconds since epoch that this introduction expires at
 
 {
   k: "<32 bytes public identity key of router>",
@@ -169,12 +169,13 @@ x is the timestamp seconds since epoch that this introducer expires at
   x: time_expires_seconds_since_epoch_uint64
 }
 
-introducer set (IS)
+introduction set (IS)
 
-a signed set of introducers for a hidden service
+a signed set of introductions for a hidden service
 a is the service info
-i is the list of introducers that this service is advertising with
+i is the list of introductions that this service is advertising with
 v is the protocol version
+w is an optinal proof of work for DoS protection (slot for future)
 z is the signature of the entire IS where z is set to zero signed by the hidden
 service's signing key.
 
@@ -182,6 +183,7 @@ service's signing key.
   a: SI,
   i: [ I, I, I, ... ],
   v: 0,
+  w: optional proof of work,
   z: "<64 bytes signature using service info signing key>"
 }
 
@@ -190,10 +192,6 @@ service's signing key.
 
 Encrypted frames:
 
-{
-  v: 0,
-  w: "<32+32+32+N bytes payload>"
-}
 
 Encrypted frames are encrypted containers for link message records like LRCR.
 
@@ -502,7 +500,7 @@ sent in response to an OXAM to indicate that exit traffic is not allowed or
 was denied.
 
 {
-  A: "R",
+  A: "J",
   B: backoff_milliseconds_uint64,
   I: "<32 bytes signing public key of requester>",
   R: "<optional reject metadata>",
@@ -595,4 +593,14 @@ The address used in exit MAY be reused later.
   V: 0,
   Y: "<16 bytes nounce>",
   Z: "<64 bytes signagure using previously provided signing key>"
+}
+
+DHT message holder message:
+
+wrapper message for sending many dht messages down a path.
+
+{
+  A: "M",
+  M: [many, dht, messages, here],
+  V: 0
 }

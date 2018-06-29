@@ -3,6 +3,9 @@
 #include <llarp/aligned.hpp>
 #include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
+#include <llarp/path_types.hpp>
+
+#include <set>
 
 namespace llarp
 {
@@ -22,7 +25,7 @@ namespace llarp
 
       /// calculate our address
       void
-      CalculateAddress(llarp_crypto* c, Address& addr) const;
+      CalculateAddress(Address& addr) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const;
@@ -49,6 +52,33 @@ namespace llarp
       // load from file
       bool
       LoadFromFile(const std::string& fpath);
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+    };
+
+    struct Introduction : public llarp::IBEncodeMessage
+    {
+      llarp::PubKey router;
+      llarp::PathID_t pathID;
+      uint64_t version = 0;
+      uint64_t expiresAt;
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+    };
+
+    struct IntroSet : public llarp::IBEncodeMessage
+    {
+      Info A;
+      std::set< Introduction > I;
+      llarp::Signature Z;
     };
 
   };  // namespace service

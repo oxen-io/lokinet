@@ -426,59 +426,6 @@ namespace llarp
       return now - started >= JobTimeout;
     }
 
-    bool
-    Bucket::FindClosest(const Key_t &target, Key_t &result) const
-    {
-      Key_t mindist;
-      mindist.Fill(0xff);
-      for(const auto &item : nodes)
-      {
-        auto curDist = item.first ^ target;
-        if(curDist < mindist)
-        {
-          mindist = curDist;
-          result  = item.first;
-        }
-      }
-      return nodes.size() > 0;
-    }
-
-    bool
-    Bucket::FindCloseExcluding(const Key_t &target, Key_t &result,
-                               const std::set< Key_t > &exclude) const
-    {
-      Key_t maxdist;
-      maxdist.Fill(0xff);
-      Key_t mindist;
-      mindist.Fill(0xff);
-      for(const auto &item : nodes)
-      {
-        if(exclude.find(item.first) != exclude.end())
-          continue;
-        auto curDist = item.first ^ target;
-        if(curDist < mindist)
-        {
-          mindist = curDist;
-          result  = item.first;
-        }
-      }
-      return mindist < maxdist;
-    }
-
-    void
-    Bucket::PutNode(const Node &v)
-    {
-      nodes[v.ID] = v;
-    }
-
-    void
-    Bucket::DelNode(const Key_t &k)
-    {
-      auto itr = nodes.find(k);
-      if(itr != nodes.end())
-        nodes.erase(itr);
-    }
-
     Context::Context()
     {
       randombytes((byte_t *)&ids, sizeof(uint64_t));
@@ -488,6 +435,8 @@ namespace llarp
     {
       if(nodes)
         delete nodes;
+      if(services)
+        delete services;
     }
 
     void
@@ -603,9 +552,10 @@ namespace llarp
     void
     Context::Init(const Key_t &us, llarp_router *r)
     {
-      router = r;
-      ourKey = us;
-      nodes  = new Bucket(ourKey);
+      router   = r;
+      ourKey   = us;
+      nodes    = new Bucket< RCNode >(ourKey);
+      services = new Bucket< ISNode >(ourKey);
       llarp::Debug("intialize dht with key ", ourKey);
     }
 
@@ -614,6 +564,13 @@ namespace llarp
     {
       llarp_logic_call_later(router->logic,
                              {1000, this, &handle_cleaner_timer});
+    }
+
+    bool
+    Context::RelayRequestForPath(const llarp::PathID_t &id, const IMessage *msg)
+    {
+      // TODO: implement me
+      return false;
     }
 
     void
@@ -673,60 +630,61 @@ llarp_dht_context::llarp_dht_context(llarp_router *router)
   parent = router;
 }
 
-extern "C" {
-struct llarp_dht_context *
-llarp_dht_context_new(struct llarp_router *router)
+extern "C"
 {
-  return new llarp_dht_context(router);
-}
+  struct llarp_dht_context *
+  llarp_dht_context_new(struct llarp_router *router)
+  {
+    return new llarp_dht_context(router);
+  }
 
-void
-llarp_dht_context_free(struct llarp_dht_context *ctx)
-{
-  delete ctx;
-}
+  void
+  llarp_dht_context_free(struct llarp_dht_context *ctx)
+  {
+    delete ctx;
+  }
 
-void
-llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
+  void
+  llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
 
-{
-  llarp::dht::Node n(rc);
-  ctx->impl.nodes->PutNode(n);
-}
+  {
+    llarp::dht::RCNode n(rc);
+    ctx->impl.nodes->PutNode(n);
+  }
 
-void
-llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
-{
-  llarp::dht::Key_t k = id;
-  ctx->impl.nodes->DelNode(k);
-}
+  void
+  llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
+  {
+    llarp::dht::Key_t k = id;
+    ctx->impl.nodes->DelNode(k);
+  }
 
-void
-llarp_dht_set_msg_handler(struct llarp_dht_context *ctx,
-                          llarp_dht_msg_handler handler)
-{
-  ctx->impl.custom_handler = handler;
-}
+  void
+  llarp_dht_set_msg_handler(struct llarp_dht_context *ctx,
+                            llarp_dht_msg_handler handler)
+  {
+    ctx->impl.custom_handler = handler;
+  }
 
-void
-llarp_dht_allow_transit(llarp_dht_context *ctx)
-{
-  ctx->impl.allowTransit = true;
-}
+  void
+  llarp_dht_allow_transit(llarp_dht_context *ctx)
+  {
+    ctx->impl.allowTransit = true;
+  }
 
-void
-llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
-{
-  ctx->impl.Init(key, ctx->parent);
-}
+  void
+  llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
+  {
+    ctx->impl.Init(key, ctx->parent);
+  }
 
-void
-llarp_dht_lookup_router(struct llarp_dht_context *ctx,
-                        struct llarp_router_lookup_job *job)
-{
-  job->dht   = ctx;
-  job->found = false;
-  llarp_logic_queue_job(ctx->parent->logic,
-                        {job, &llarp::dht::Context::queue_router_lookup});
-}
+  void
+  llarp_dht_lookup_router(struct llarp_dht_context *ctx,
+                          struct llarp_router_lookup_job *job)
+  {
+    job->dht   = ctx;
+    job->found = false;
+    llarp_logic_queue_job(ctx->parent->logic,
+                          {job, &llarp::dht::Context::queue_router_lookup});
+  }
 }

@@ -2,29 +2,18 @@ DHT messages
 
 these messages can be either wrapped in a LIDM message or sent anonymously over a path
 
+This document is currently out of date (probably)
 
 
 find introduction message (FIM)
 
-recursively find an IS.
-
-variant 1, by SA
+recursively find an IS by SA
 
 {
   A: "F",
   R: r_counter,
   S: "<32 bytes SA>",
   T: transaction_id_uint64,
-  V: 0
-}
-
-variant 2, by claimed name
-
-{
-  A: "F",
-  N: "service.name.tld",
-  R: r_counter,
-  T: transaction_id_uin64,
   V: 0
 }
 
@@ -80,9 +69,9 @@ got introduction message (GIM)
 
 {
   A: "G",
+  I: [IS],
   T: transaction_id_uint64,
   V: 0,
-  X: [ IS, IS, IS, ... ]
 }
 
 if we have a transaction with id T:
@@ -95,115 +84,36 @@ when a linked transaction gets a GIM:
 * set T to the current transaction id
 * foward the GIM to the requester of T
 
+
 publish introduction message (PIM)
 
-publish one or many IM into the dht at once.
-each IS will be placed in the dht
+publish one IS to the DHT.
 
-version 0 uses the SA of each IS as the keyspace location.
+version 0 uses the SA of the IS as the keyspace location.
 
 in the future the location will be determined by the dht kdf
 which uses a shared random source to obfuscate keyspace location.
 
 
-R is currently set to 3 +/- 2 by the sender.
+R is currently set to 0 by the sender.
 
 {
-  A: "P",
+  A: "I",
+  I: IS,
   R: r_counter,
-  V: 0,
-  X: [ IS, IS, IS, ... ]
+  S: optional member 0 for immediate store otherwise non zero,
+  V: 0
 }
 
-The following steps happen in order:
+if R is greater than 0, do a random walk, otherwise if we are
+closer to the SA of the IS than anyone else we know in the DHT 
+store the IS for later lookup. 
 
-first stage: reduction
+If S is provided store the IS for later lookup unconditionally, 
+decrement S by 1 and forward to dht peer who is next closest to 
+the SA of the IS. If S is greater than 3, don't store and discard
+this message.
 
-if X's length is divisble by 2:
-
-* split X in half as J and K
-* generate 2 new PIM with the same values as the parent with empty X
-* put J and K into the new PIM's X values
-* associate the 2 new PIM with the current PIM batch
-
-if X's length is not divisible by 2 and greater than 1:
-
-* pop off an IS from X as A
-* generate a new PIM with the same values as the parent with an X value of A
-* associate the new PIM with the current PIM batch
-* associate the old PIM having A removed from X with the current PIM batch
-
-if X's length is 1:
-
-* associate the PIM with the current PIM batch
-
-any other cases for X are ignored.
-
-for each PIM in the current batch:
-
-if R is greater than 0:
-
-* decrement R by 1
-* queue the PIM for shuffle (second stage)
-
-if R is 0:
-
-* queue the PIM for distribution (third stage)
-
-if R is less than 0:
-
-* drop the message entirely
-
-second stage: shuffle 
-
-* The dht node waits until we have collected 10 or more PIM or for 5 seconds,
-which ever comes first.
-* shuffle the list of IS randomly
-* re-combine the IS into new PIMs
-* queue each newly shuffled PIM for distribution (third stage)
-
-if we collected 10 or more PIM:
-
-* X holds 5 IS at most
-
-if we collected less than 10 but more than 1 PIM:
-
-* X holds 2 IS at most
-
-if we only collected 1 PIM:
-
-* the single PIM is unmodified
-
-
-third stage: distribution
-
-if R is less than 0:
-
-* drop message and terminate current transaction, this should never happen but
-  this case is left here in the event of implementation bugs.
-
-if R is greater than 0:
-
-* pick a random dht capable router, N
-* forward the PIM to N
-
-if R is equal to 0:
-
-for each IS in X as A:
-
-* find the router closest to the SA in A, N
-
-if N is our router:
-
-* create dht positon S from SA in A
-* store A for lookup at S
-
-if N is not our router:
-
-* send a PIM with X value containing just A to N
-
-In the future post random walk keyspace batching may be done here.
-As of version 0, none is done.
 
 find router contact message (FRCM)
 
@@ -254,8 +164,3 @@ sent in reply to FRCM only
 * send a GRCM with R to requesters in all linked transactions
 * terminate transaction with id T
 
-notes:
-
-if we get a GRCM with empty R on one Tx and then one with a filled R on another
-with the same K, the request is terminated by the first message as not found.
-A backtrack case is needed.

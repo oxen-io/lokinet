@@ -1,9 +1,7 @@
 #include <gtest/gtest.h>
 #include <llarp/dht.hpp>
 
-using Node   = llarp::dht::Node;
-using Key_t  = llarp::dht::Key_t;
-using Bucket = llarp::dht::Bucket;
+using Key_t = llarp::dht::Key_t;
 
 class KademliaDHTTest : public ::testing::Test
 {
@@ -19,12 +17,12 @@ class KademliaDHTTest : public ::testing::Test
   SetUp()
   {
     us.Fill(16);
-    nodes           = new Bucket(us);
+    nodes           = new llarp::dht::Bucket< llarp::dht::RCNode >(us);
     size_t numNodes = 10;
     byte_t fill     = 1;
     while(numNodes)
     {
-      Node n;
+      llarp::dht::RCNode n;
       n.ID.Fill(fill);
       nodes->PutNode(n);
       --numNodes;
@@ -38,15 +36,15 @@ class KademliaDHTTest : public ::testing::Test
     delete nodes;
   }
 
-  Bucket* nodes = nullptr;
-  Key_t us;
+  llarp::dht::Bucket< llarp::dht::RCNode >* nodes = nullptr;
+  llarp::dht::Key_t us;
 };
 
 TEST_F(KademliaDHTTest, TestBucketFindClosest)
 {
-  Key_t result;
-  Key_t target;
-  Key_t oldResult;
+  llarp::dht::Key_t result;
+  llarp::dht::Key_t target;
+  llarp::dht::Key_t oldResult;
   target.Fill(5);
   ASSERT_TRUE(nodes->FindClosest(target, result));
   ASSERT_TRUE(target == result);
@@ -61,13 +59,13 @@ TEST_F(KademliaDHTTest, TestBucketRandomzied)
   size_t moreNodes = 100;
   while(moreNodes--)
   {
-    Node n;
+    llarp::dht::RCNode n;
     n.ID.Randomize();
     nodes->PutNode(n);
   }
-  Key_t result;
-  Key_t target;
-  Key_t oldResult;
+  llarp::dht::Key_t result;
+  llarp::dht::Key_t target;
+  llarp::dht::Key_t oldResult;
   target.Randomize();
   ASSERT_TRUE(nodes->FindClosest(target, result));
 };

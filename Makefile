@@ -70,7 +70,7 @@ testnet-build: testnet-configure
 
 testnet: testnet-build
 	mkdir -p $(TESTNET_ROOT)
-	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=10 --clients=1 --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
+	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=30 --clients=100 --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
 	supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 test: debug-configure
