@@ -86,7 +86,7 @@ namespace llarp
       passbuf.sz   = password.size();
       crypto->shorthash(secret, passbuf);
 
-      llarp::ShortHash digest;
+      //llarp::ShortHash digest;
       // zero hash
       hash.Zero();
 

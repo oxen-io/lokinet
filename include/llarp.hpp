@@ -26,6 +26,7 @@ namespace llarp
     llarp_ev_loop *mainloop               = nullptr;
     llarp_dht_msg_handler custom_dht_func = nullptr;
     char nodedb_dir[256]                  = {0};
+    char conatctFile[256]                 = "router.signed";
 
     bool
     LoadConfig(const std::string &fname);
@@ -44,6 +45,9 @@ namespace llarp
 
     struct llarp_rc *
     GetDatabase(const byte_t *pk);
+
+    int
+    Setup();
 
     int
     Run();

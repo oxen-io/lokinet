@@ -60,6 +60,11 @@ struct llarp_router
   // our router contact
   llarp_rc rc;
 
+  // our ipv4 public setting
+  bool publicOverride = false;
+  struct sockaddr_in ip4addr;
+  llarp_ai addrInfo;
+
   llarp_ev_loop *netloop;
   llarp_threadpool *tp;
   llarp_logic *logic;

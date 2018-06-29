@@ -36,6 +36,9 @@ llarp_router::llarp_router()
     , explorePool(llarp_pathbuilder_context_new(this, dht))
 
 {
+  // set rational defaults
+  this->ip4addr.sin_family = AF_INET;
+  this->ip4addr.sin_port = htons(1090);
   llarp_rc_clear(&rc);
 }
 
@@ -93,6 +96,12 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
     llarp_router_try_connect(this, rc, 10);
     return true;
   }
+
+  // this would never be true, as everything is in memory
+  // but we'll keep around if we ever need to swap them out of memory
+  // but it's best to keep the paradigm that everythign is in memory at this point in development
+  // as it will reduce complexity
+  /*
   // try requesting the rc from the disk
   llarp_async_load_rc *job = new llarp_async_load_rc;
   job->diskworker          = disk;
@@ -102,10 +111,19 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   job->hook                = &HandleAsyncLoadRCForSendTo;
   memcpy(job->pubkey, remote, PUBKEYSIZE);
   llarp_nodedb_async_load_rc(job);
+  */
+
+  // we don't have the RC locally so do a dht lookup
+  llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
+  lookup->user                    = this;
+  memcpy(lookup->target, this->rc.pubkey, PUBKEYSIZE);
+  lookup->hook = &HandleDHTLookupForSendTo;
+  llarp_dht_lookup_router(this->dht, lookup);
 
   return true;
 }
 
+/*
 void
 llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
 {
@@ -125,6 +143,7 @@ llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
   }
   delete job;
 }
+*/
 
 void
 llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
@@ -144,6 +163,7 @@ llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
 void
 llarp_router::try_connect(fs::path rcfile)
 {
+  // FIXME: update API
   byte_t tmp[MAX_RC_SIZE];
   llarp_rc remote = {0};
   llarp_buffer_t buf;
@@ -295,7 +315,6 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp::async_verify_context *ctx =
       static_cast< llarp::async_verify_context * >(job->user);
   auto router = ctx->router;
-  llarp::Debug("rc verified? ", job->valid ? "valid" : "invalid");
   llarp::PubKey pk(job->rc.pubkey);
   if(!job->valid)
   {
@@ -312,8 +331,9 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     router->DiscardOutboundFor(pk);
     return;
   }
+  // we're valid, which means it's already been committed to the nodedb
 
-  llarp::Debug("rc verified");
+  llarp::Debug("rc verified and saved to nodedb");
 
   // refresh valid routers RC value if it's there
   auto v = router->validRouters.find(pk);
@@ -323,8 +343,6 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     llarp_rc_free(&v->second);
   }
   router->validRouters[pk] = job->rc;
-
-  // TODO: update nodedb here (?)
 
   // track valid router in dht
   llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
@@ -372,7 +390,7 @@ llarp_router::Tick()
     else
     {
       llarp::Warn("not enough nodes known to build exploritory paths, have ", N,
-                  " nodes");
+                  " nodes, need 3 now (will be 5 later)");
     }
   }
   llarp_link_session_iter iter;
@@ -505,10 +523,12 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
+    //llarp::Debug("try_connect got session");
     auto session = job->session;
     router->async_verify_RC(session, false, job);
     return;
   }
+  //llarp::Debug("try_connect no session");
   llarp::PubKey pk = job->pubkey;
   if(job->retries > 0)
   {
@@ -567,6 +587,8 @@ llarp_router::async_verify_RC(llarp_link_session *session,
   llarp_nodedb_async_verify(job);
 }
 
+#include <string.h>
+
 void
 llarp_router::Run()
 {
@@ -574,12 +596,82 @@ llarp_router::Run()
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
   rc.addrs = llarp_ai_list_new();
+  bool publicFound = false;
+  
+  sockaddr * dest = (sockaddr *) &this->ip4addr;
+  llarp::Addr publicAddr(*dest);
+  if (this->publicOverride)
+  {
+    if (publicAddr)
+    {
+      llarp::Info("public address:port ", publicAddr);;
+    }
+  }
+  
+  llarp::Info("You have ", inboundLinks.size(), " inbound links");
   for(auto link : inboundLinks)
   {
     llarp_ai addr;
     link->get_our_address(link, &addr);
+    llarp::Addr a(addr);
+    if (this->publicOverride && a.sameAddr(publicAddr))
+    {
+      llarp::Info("Found adapter for public address");
+      publicFound = true;
+    }
+    if (a.isPrivate())
+    {
+      llarp::Warn("Skipping private network link: ", a);
+      continue;
+    }
+    llarp::Info("Loading Addr: ", a, " into our RC");
+    
     llarp_ai_list_pushback(rc.addrs, &addr);
   };
+  if (this->publicOverride && !publicFound)
+  {
+    //llarp::Warn("Need to load our public IP into RC!");
+    
+    llarp_link *link = nullptr;
+    if (inboundLinks.size() == 1)
+    {
+      link = inboundLinks.front();
+    }
+    else
+    {
+      if (!inboundLinks.size())
+      {
+        llarp::Error("No inbound links found, aborting");
+        return;
+      }
+      link = inboundLinks.front();
+      /*
+      // create a new link
+      link = new llarp_link;
+      llarp::Zero(link, sizeof(llarp_link));
+      
+      llarp_iwp_args args = {
+        .crypto       = &this->crypto,
+        .logic        = this->logic,
+        .cryptoworker = this->tp,
+        .router       = this,
+        .keyfile      = this->transport_keyfile.c_str(),
+      };
+      iwp_link_init(link, args);
+      if(llarp_link_initialized(link))
+      {
+        
+      }
+      */
+    }
+    link->get_our_address(link, &this->addrInfo);
+    // override ip and port
+    this->addrInfo.ip = *publicAddr.addr6();
+    this->addrInfo.port = publicAddr.port();
+    llarp::Info("Loaded our public ", publicAddr, " override into RC!");
+    // we need the link to set the pubkey
+    llarp_ai_list_pushback(rc.addrs, &this->addrInfo);
+  }
   // set public encryption key
   llarp_rc_set_pubenckey(&rc, llarp::seckey_topublic(encryption));
 
@@ -627,16 +719,12 @@ llarp_router::Run()
     // immediate connect all for service node
     uint64_t delay = rand() % 100;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
-    // llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this,
-    // &ConnectAll});
   }
   else
   {
     // delayed connect all for clients
     uint64_t delay = ((rand() % 10) * 500) + 1000;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
-    // llarp_logic_call_later(logic, {static_cast<uint64_t>(delay), this,
-    // &ConnectAll});
   }
 
   llarp::PubKey ourPubkey = pubkey();
@@ -756,9 +844,15 @@ bool
 llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
                          uint16_t numretries)
 {
-  // do  we already have a pending job for this remote?
-  if(router->HasPendingConnectJob(remote->pubkey))
+  char ftmp[68] = {0};
+  const char *hexname =
+  llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(remote->pubkey, ftmp);
+
+  // do we already have a pending job for this remote?
+  if(router->HasPendingConnectJob(remote->pubkey)) {
+    llarp::Debug("We have pending connect jobs to ", hexname);
     return false;
+  }
   // try first address only
   llarp_ai addr;
   if(llarp_ai_list_index(remote->addrs, 0, &addr))
@@ -778,6 +872,7 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
     link->try_establish(link, job);
     return true;
   }
+  llarp::Warn("couldn't get first address for ", hexname);
   return false;
 }
 
@@ -1026,6 +1121,7 @@ namespace llarp
     {
       if(!StrEq(key, "*"))
       {
+        llarp::Info("interface specific binding activated");
         link = new llarp_link;
         llarp::Zero(link, sizeof(llarp_link));
 
@@ -1058,8 +1154,12 @@ namespace llarp
             }
           }
         }
+        else
+        {
+         llarp::Error("link ", key, " failed to initialize. Link state", link);
+        }
       }
-      llarp::Error("link ", key, " failed to configure");
+      llarp::Error("link ", key, " failed to configure. (Note: We don't support * yet)");
     }
     else if(StrEq(section, "connect"))
     {
@@ -1082,6 +1182,29 @@ namespace llarp
       if(StrEq(key, "ident-privkey"))
       {
         self->ident_keyfile = val;
+      }
+      if(StrEq(key, "public-address"))
+      {
+        llarp::Info("public ip ", val, " size ", strlen(val));
+        if (strlen(val) < 17) {
+          // assume IPv4
+          inet_pton(AF_INET, val, &self->ip4addr.sin_addr);
+          //struct sockaddr dest;
+          sockaddr * dest = (sockaddr *) &self->ip4addr;
+          llarp::Addr a(*dest);
+          llarp::Info("setting public ipv4 ", a);
+          self->addrInfo.ip = *a.addr6();
+          self->publicOverride = true;
+        }
+        //llarp::Addr a(val);
+        
+      }
+      if(StrEq(key, "public-port"))
+      {
+        llarp::Info("Setting public port ", val);
+        self->ip4addr.sin_port = htons(atoi(val));
+        self->addrInfo.port = htons(atoi(val));
+        self->publicOverride = true;
       }
     }
   }
