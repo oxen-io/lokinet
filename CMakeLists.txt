@@ -100,6 +100,35 @@ set(LIB llarp)
 set(SHARED_LIB ${LIB})
 set(STATIC_LIB ${LIB}-static)
 
+set(TT_ROOT vendor/libtuntap-master)
+
+add_definitions(-D${CMAKE_SYSTEM_NAME})
+add_definitions(-DUNIX)
+if(UNIX)
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
+        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-openbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
+        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-netbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
+        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c) 
+    else()
+        message(FATAL_ERROR "Your operating system is not supported yet")
+    endif()
+endif(UNIX)
+
+
+set(LIBTUNTAP_SRC
+  ${TT_ROOT}/tuntap.c
+  ${TT_ROOT}/tuntap_log.c
+  ${TT_ROOT}/tuntap-unix.c
+  ${LIBTUNTAP_IMPL})
+
 set(LIB_SRC
   llarp/address_info.cpp
   llarp/bencode.c
@@ -160,6 +189,7 @@ set(LIB_SRC
   vendor/cppbackport-master/lib/fs/copyfile.cpp
   vendor/cppbackport-master/lib/fs/absolute.cpp
   vendor/cppbackport-master/lib/fs/direntry.cpp
+  ${LIBTUNTAP_SRC}
 )
 
 set(TEST_SRC 
@@ -182,8 +212,6 @@ include_directories(llarp)
 
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
-
-
 
 if(SHADOW)
   add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC})
