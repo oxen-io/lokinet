@@ -316,7 +316,7 @@ the validity of the proof of work is that given
 
 h = HS(BE(w))
  
-h has log_e(y) prefix of 0x00 
+h has log_e(y) prefixed bytes being 0x00
 
 this proof of work requirement is subject to change 
 

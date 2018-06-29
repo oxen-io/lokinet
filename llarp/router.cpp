@@ -38,7 +38,7 @@ llarp_router::llarp_router()
 {
   // set rational defaults
   this->ip4addr.sin_family = AF_INET;
-  this->ip4addr.sin_port = htons(1090);
+  this->ip4addr.sin_port   = htons(1090);
   llarp_rc_clear(&rc);
 }
 
@@ -99,8 +99,8 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
 
   // this would never be true, as everything is in memory
   // but we'll keep around if we ever need to swap them out of memory
-  // but it's best to keep the paradigm that everythign is in memory at this point in development
-  // as it will reduce complexity
+  // but it's best to keep the paradigm that everythign is in memory at this
+  // point in development as it will reduce complexity
   /*
   // try requesting the rc from the disk
   llarp_async_load_rc *job = new llarp_async_load_rc;
@@ -523,12 +523,12 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
-    //llarp::Debug("try_connect got session");
+    // llarp::Debug("try_connect got session");
     auto session = job->session;
     router->async_verify_RC(session, false, job);
     return;
   }
-  //llarp::Debug("try_connect no session");
+  // llarp::Debug("try_connect no session");
   llarp::PubKey pk = job->pubkey;
   if(job->retries > 0)
   {
@@ -595,51 +595,52 @@ llarp_router::Run()
   // zero out router contact
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
-  rc.addrs = llarp_ai_list_new();
+  rc.addrs         = llarp_ai_list_new();
   bool publicFound = false;
-  
-  sockaddr * dest = (sockaddr *) &this->ip4addr;
+
+  sockaddr *dest = (sockaddr *)&this->ip4addr;
   llarp::Addr publicAddr(*dest);
-  if (this->publicOverride)
+  if(this->publicOverride)
   {
-    if (publicAddr)
+    if(publicAddr)
     {
-      llarp::Info("public address:port ", publicAddr);;
+      llarp::Info("public address:port ", publicAddr);
+      ;
     }
   }
-  
+
   llarp::Info("You have ", inboundLinks.size(), " inbound links");
   for(auto link : inboundLinks)
   {
     llarp_ai addr;
     link->get_our_address(link, &addr);
     llarp::Addr a(addr);
-    if (this->publicOverride && a.sameAddr(publicAddr))
+    if(this->publicOverride && a.sameAddr(publicAddr))
     {
       llarp::Info("Found adapter for public address");
       publicFound = true;
     }
-    if (a.isPrivate())
+    if(a.isPrivate())
     {
       llarp::Warn("Skipping private network link: ", a);
       continue;
     }
     llarp::Info("Loading Addr: ", a, " into our RC");
-    
+
     llarp_ai_list_pushback(rc.addrs, &addr);
   };
-  if (this->publicOverride && !publicFound)
+  if(this->publicOverride && !publicFound)
   {
-    //llarp::Warn("Need to load our public IP into RC!");
-    
+    // llarp::Warn("Need to load our public IP into RC!");
+
     llarp_link *link = nullptr;
-    if (inboundLinks.size() == 1)
+    if(inboundLinks.size() == 1)
     {
       link = inboundLinks.front();
     }
     else
     {
-      if (!inboundLinks.size())
+      if(!inboundLinks.size())
       {
         llarp::Error("No inbound links found, aborting");
         return;
@@ -649,7 +650,7 @@ llarp_router::Run()
       // create a new link
       link = new llarp_link;
       llarp::Zero(link, sizeof(llarp_link));
-      
+
       llarp_iwp_args args = {
         .crypto       = &this->crypto,
         .logic        = this->logic,
@@ -660,13 +661,13 @@ llarp_router::Run()
       iwp_link_init(link, args);
       if(llarp_link_initialized(link))
       {
-        
+
       }
       */
     }
     link->get_our_address(link, &this->addrInfo);
     // override ip and port
-    this->addrInfo.ip = *publicAddr.addr6();
+    this->addrInfo.ip   = *publicAddr.addr6();
     this->addrInfo.port = publicAddr.port();
     llarp::Info("Loaded our public ", publicAddr, " override into RC!");
     // we need the link to set the pubkey
@@ -846,10 +847,11 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
 {
   char ftmp[68] = {0};
   const char *hexname =
-  llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(remote->pubkey, ftmp);
+      llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(remote->pubkey, ftmp);
 
   // do we already have a pending job for this remote?
-  if(router->HasPendingConnectJob(remote->pubkey)) {
+  if(router->HasPendingConnectJob(remote->pubkey))
+  {
     llarp::Debug("We have pending connect jobs to ", hexname);
     return false;
   }
@@ -1156,10 +1158,11 @@ namespace llarp
         }
         else
         {
-         llarp::Error("link ", key, " failed to initialize. Link state", link);
+          llarp::Error("link ", key, " failed to initialize. Link state", link);
         }
       }
-      llarp::Error("link ", key, " failed to configure. (Note: We don't support * yet)");
+      llarp::Error("link ", key,
+                   " failed to configure. (Note: We don't support * yet)");
     }
     else if(StrEq(section, "connect"))
     {
@@ -1186,25 +1189,25 @@ namespace llarp
       if(StrEq(key, "public-address"))
       {
         llarp::Info("public ip ", val, " size ", strlen(val));
-        if (strlen(val) < 17) {
+        if(strlen(val) < 17)
+        {
           // assume IPv4
           inet_pton(AF_INET, val, &self->ip4addr.sin_addr);
-          //struct sockaddr dest;
-          sockaddr * dest = (sockaddr *) &self->ip4addr;
+          // struct sockaddr dest;
+          sockaddr *dest = (sockaddr *)&self->ip4addr;
           llarp::Addr a(*dest);
           llarp::Info("setting public ipv4 ", a);
-          self->addrInfo.ip = *a.addr6();
+          self->addrInfo.ip    = *a.addr6();
           self->publicOverride = true;
         }
-        //llarp::Addr a(val);
-        
+        // llarp::Addr a(val);
       }
       if(StrEq(key, "public-port"))
       {
         llarp::Info("Setting public port ", val);
         self->ip4addr.sin_port = htons(atoi(val));
-        self->addrInfo.port = htons(atoi(val));
-        self->publicOverride = true;
+        self->addrInfo.port    = htons(atoi(val));
+        self->publicOverride   = true;
       }
     }
   }

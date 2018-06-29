@@ -57,7 +57,8 @@ struct check_online_request;
 /// check_online_request hook definition
 typedef void (*check_online_request_hook_func)(struct check_online_request *);
 
-struct check_online_request {
+struct check_online_request
+{
   struct llarp_main *ptr;
   struct llarp_router_lookup_job *job;
   bool online;

@@ -18,5 +18,4 @@ cSetLogLevel(LogLevel lvl)
 {
   llarp::SetLogLevel((llarp::LogLevel)lvl);
 }
-
 }

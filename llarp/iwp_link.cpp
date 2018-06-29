@@ -657,7 +657,9 @@ namespace iwp
           llarp::Debug("iwp_link::frame_state::process Got frag");
           return got_frag(hdr, sz - 6);
         default:
-          llarp::Warn("iwp_link::frame_state::process - unknown header message type: ", (int)hdr.msgtype());
+          llarp::Warn(
+              "iwp_link::frame_state::process - unknown header message type: ",
+              (int)hdr.msgtype());
           return false;
       }
     }
@@ -780,7 +782,7 @@ namespace iwp
     {
       session *self = static_cast< session * >(s->impl);
       auto id       = self->frame.txids++;
-      //llarp::Debug("session sending to, number", id);
+      // llarp::Debug("session sending to, number", id);
       llarp::ShortHash digest;
       self->crypto->shorthash(digest, msg);
       transit_message *m = new transit_message(msg, digest, id);
@@ -894,7 +896,7 @@ namespace iwp
     void
     pump()
     {
-      //llarp::Info("session pump");
+      // llarp::Info("session pump");
       // TODO: in codel the timestamp may cause excssive drop when all the
       // packets have a similar timestamp
       now = llarp_time_now_ms();
@@ -910,10 +912,10 @@ namespace iwp
     void
     recv(const void *buf, size_t sz)
     {
-      //llarp::Debug("session recv", state);
+      // llarp::Debug("session recv", state);
 
-      //frame_header hdr((byte_t *)buf);
-      //llarp::Debug("recv - message header type ", (int)hdr.msgtype());
+      // frame_header hdr((byte_t *)buf);
+      // llarp::Debug("recv - message header type ", (int)hdr.msgtype());
 
       now = llarp_time_now_ms();
       switch(state)
@@ -938,7 +940,10 @@ namespace iwp
         case eLIMSent:
         case eEstablished:
           // session is started
-          llarp::Debug("session recv - ", state==eSessionStartSent?"startsent":"", state==eLIMSent?"limset":"", state==eEstablished?"established":"");
+          llarp::Debug("session recv - ",
+                       state == eSessionStartSent ? "startsent" : "",
+                       state == eLIMSent ? "limset" : "",
+                       state == eEstablished ? "established" : "");
 
           decrypt_frame(buf, sz);
           break;
@@ -1128,8 +1133,8 @@ namespace iwp
     {
       if(sz > 64)
       {
-        //auto frame = alloc_frame(inboundFrames, buf, sz);
-        //inboundFrames.Put(frame);
+        // auto frame = alloc_frame(inboundFrames, buf, sz);
+        // inboundFrames.Put(frame);
         auto f = alloc_frame(buf, sz);
         /*
         if(iwp_decrypt_frame(f))
@@ -1153,8 +1158,8 @@ namespace iwp
         llarp::Warn("short packet of ", sz, " bytes");
     }
 
-    //static void
-    //handle_crypto_pump(void *u);
+    // static void
+    // handle_crypto_pump(void *u);
 
     static void
     handle_crypto_outbound(void *u);
@@ -1218,9 +1223,9 @@ namespace iwp
       frame->user       = this;
       frame->sessionkey = sessionkey;
       /// TODO: this could be rather slow
-      //frame->created = now;
-      //llarp::Info("alloc_frame putting into q");
-      //q.Put(frame);
+      // frame->created = now;
+      // llarp::Info("alloc_frame putting into q");
+      // q.Put(frame);
       return frame;
     }
 
@@ -1248,8 +1253,8 @@ namespace iwp
       {
         auto &front = outq.front();
 
-        //if(iwp_encrypt_frame(&front))
-          //q.push(front);
+        // if(iwp_encrypt_frame(&front))
+        // q.push(front);
         if(iwp_encrypt_frame(front))
           handle_frame_encrypt(front);
         delete front;
@@ -1391,14 +1396,16 @@ namespace iwp
     void
     EnterState(State st)
     {
-      llarp::Debug("EnterState - entering state: ", st, state==eLIMSent?"eLIMSent":"", state==eSessionStartSent?"eSessionStartSent":"");
+      llarp::Debug("EnterState - entering state: ", st,
+                   state == eLIMSent ? "eLIMSent" : "",
+                   state == eSessionStartSent ? "eSessionStartSent" : "");
       frame.alive();
       state = st;
       if(state == eSessionStartSent || state == eIntroAckSent)
       {
-        //llarp::Info("EnterState - ",  state==eLIMSent?"eLIMSent":"", state==eSessionStartSent?"eSessionStartSent":"");
-        //PumpCodelInbound();
-        //PumpCodelOutbound();
+        // llarp::Info("EnterState - ",  state==eLIMSent?"eLIMSent":"",
+        // state==eSessionStartSent?"eSessionStartSent":"");  PumpCodelInbound();
+        // PumpCodelOutbound();
         PumpCryptoOutbound();
         // StartInboundCodel();
       }
@@ -1922,19 +1929,24 @@ namespace iwp
       // both sides agreeed to session invalidation
       // terminate our session when all of our frames from the crypto workers
       // are done
-      llarp::Warn("Tick - ", addr, " invaldiated session with ", frames, " frames left");
+      llarp::Warn("Tick - ", addr, " invaldiated session with ", frames,
+                  " frames left");
       return !working;
     }
     // send keepalive if we are established or a session is made
-    if(state == eEstablished || state == eLIMSent) {
-      llarp::Debug("Tick - sending keepalive because state=", state == eEstablished ? "eEstablished" : "", state == eLIMSent ? "eLIMSent" : "");
+    if(state == eEstablished || state == eLIMSent)
+    {
+      llarp::Debug("Tick - sending keepalive because state=",
+                   state == eEstablished ? "eEstablished" : "",
+                   state == eLIMSent ? "eLIMSent" : "");
       send_keepalive(this);
     }
 
     // pump frame state
     if(state == eEstablished)
     {
-      //llarp::Debug("Tick - pumping and retransmitting because we're eEstablished");
+      // llarp::Debug("Tick - pumping and retransmitting because we're
+      // eEstablished");
       frame.retransmit();
       pump();
       PumpCryptoOutbound();

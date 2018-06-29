@@ -204,15 +204,16 @@ namespace llarp
       return !(*this == other);
     }
 
-    bool isPrivate()
+    bool
+    isPrivate()
     {
       in_addr_t addr = this->addr4()->s_addr;
-      unsigned byte = ntohl(addr);
+      unsigned byte  = ntohl(addr);
       unsigned byte1 = byte >> 24 & 0xff;
       unsigned byte2 = byte >> 16 & 0xff;
-      return (byte1 == 10 || (byte1 == 192 && byte2 == 168) || (byte1 == 172 && (byte2 & 0xf0) == 16));
+      return (byte1 == 10 || (byte1 == 192 && byte2 == 168)
+              || (byte1 == 172 && (byte2 & 0xf0) == 16));
     }
-
   };
 
   struct addrhash

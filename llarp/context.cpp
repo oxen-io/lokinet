@@ -2,8 +2,8 @@
 #include <signal.h>
 #include <llarp.hpp>
 #include "logger.hpp"
-#include "router.hpp"
 #include "math.h"
+#include "router.hpp"
 
 #if(__FreeBSD__)
 #include <pthread_np.h>
@@ -59,12 +59,12 @@ namespace llarp
         {
           ctx->worker = llarp_init_threadpool(workers, "llarp-worker");
         }
-      } else
-      if (!strcmp(key, "contact-file"))
+      }
+      else if(!strcmp(key, "contact-file"))
       {
         strncpy(ctx->conatctFile, val, fmin(255, strlen(val)));
-      } else
-      if(!strcmp(key, "net-threads"))
+      }
+      else if(!strcmp(key, "net-threads"))
       {
         ctx->num_nethreads = atoi(val);
         if(ctx->num_nethreads <= 0)
@@ -167,17 +167,18 @@ namespace llarp
     // set nodedb, load our RC, establish DHT
     llarp_run_router(router, nodedb);
 
-    return 0; // success
+    return 0;  // success
   }
 
   int
   Context::Run()
   {
-    // just check to make sure it's not already set up (either this or we add a bool and/or add another function)
-    if (!this->router)
+    // just check to make sure it's not already set up (either this or we add a
+    // bool and/or add another function)
+    if(!this->router)
     {
       // set up all requirements
-      if (this->Setup())
+      if(this->Setup())
       {
         llarp::Error("Failed to setup router");
         return 1;
@@ -199,11 +200,10 @@ namespace llarp
 #if(__APPLE__ && __MACH__)
 
 #elif(__FreeBSD__)
-          pthread_set_name_np(netio_threads.back().native_handle(),
-                              "llarp-netio");
+        pthread_set_name_np(netio_threads.back().native_handle(),
+                            "llarp-netio");
 #else
-          pthread_setname_np(netio_threads.back().native_handle(),
-                             "llarp-netio");
+        pthread_setname_np(netio_threads.back().native_handle(), "llarp-netio");
 #endif
       }
       llarp::Info("running mainloop");
@@ -367,7 +367,7 @@ llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
 {
   return ptr->ctx->GetDatabase(pk);
 }
-  
+
 struct llarp_rc *
 llarp_main_getLocalRC(struct llarp_main *ptr)
 {
@@ -383,17 +383,22 @@ llarp_main_getLocalRC(struct llarp_main *ptr)
   return rc;
 }
 
-void llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left) {
-  //llarp::Info("checkOnline - check ", left);
+void
+llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
+{
+  // llarp::Info("checkOnline - check ", left);
   if(left)
     return;
-  struct check_online_request *request = static_cast<struct check_online_request *>(u);
-  //llarp::Debug("checkOnline - running");
-  //llarp::Info("checkOnline - DHT nodes ", request->ptr->ctx->router->dht->impl.nodes->nodes.size());
+  struct check_online_request *request =
+      static_cast< struct check_online_request * >(u);
+  // llarp::Debug("checkOnline - running");
+  // llarp::Info("checkOnline - DHT nodes ",
+  // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
   request->online = false;
-  request->nodes = request->ptr->ctx->router->dht->impl.nodes->nodes.size();
-  if (request->ptr->ctx->router->dht->impl.nodes->nodes.size()) {
-    //llarp::Info("checkOnline - Going to say we're online");
+  request->nodes  = request->ptr->ctx->router->dht->impl.nodes->nodes.size();
+  if(request->ptr->ctx->router->dht->impl.nodes->nodes.size())
+  {
+    // llarp::Info("checkOnline - Going to say we're online");
     request->online = true;
   }
   request->hook(request);
@@ -401,9 +406,13 @@ void llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left) {
   llarp_main_queryDHT(request);
 }
 
-void llarp_main_queryDHT_online(struct check_online_request *request) {
-  //Info("llarp_main_queryDHT_online: ", request->online ? "online" : "offline");
-  if (request->online && !request->first) {
+void
+llarp_main_queryDHT_online(struct check_online_request *request)
+{
+  // Info("llarp_main_queryDHT_online: ", request->online ? "online" :
+  // "offline");
+  if(request->online && !request->first)
+  {
     request->first = true;
     llarp::Info("llarp_main_queryDHT_online - We're online");
     llarp::Info("llarp_main_queryDHT_online - Querying DHT");
@@ -411,13 +420,14 @@ void llarp_main_queryDHT_online(struct check_online_request *request) {
   }
 }
 
-void llarp_main_queryDHT(struct check_online_request *request)
+void
+llarp_main_queryDHT(struct check_online_request *request)
 {
-  //llarp::Info("llarp_main_queryDHT - setting up timer");
+  // llarp::Info("llarp_main_queryDHT - setting up timer");
   request->hook = &llarp_main_queryDHT_online;
   llarp_logic_call_later(request->ptr->ctx->router->logic,
                          {1000, request, &llarp_main_checkOnline});
-  //llarp_dht_lookup_router(ptr->ctx->router->dht, job);
+  // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
 }
 
 void
