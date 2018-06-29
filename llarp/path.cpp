@@ -213,7 +213,7 @@ namespace llarp
         if(itr->second->Expired(now))
         {
           TransitHop* path = itr->second;
-          llarp::Info("transit path expired ", path);
+          llarp::Info("transit path expired ", path->info);
           removePaths.insert(path);
         }
         ++itr;
@@ -243,6 +243,14 @@ namespace llarp
     }
 
     void
+    PathContext::TickPaths()
+    {
+      auto now = llarp_time_now_ms();
+      for(auto& builder : m_PathBuilders)
+        builder->Tick(now, m_Router);
+    }
+
+    void
     PathContext::AddPathBuilder(llarp_pathbuilder_context* ctx)
     {
       m_PathBuilders.push_back(ctx);
@@ -266,12 +274,7 @@ namespace llarp
         hops[idx].txID.Randomize();
         hops[idx].rxID.Randomize();
       }
-      /*
-      for(size_t idx = (h->numHops - 1); idx > 0; --idx)
-      {
-        hops[idx].txID = hops[idx - 1].rxID;
-      }
-      */
+
       for(size_t idx = 0; idx < h->numHops - 1; ++idx)
       {
         hops[idx].txID = hops[idx + 1].rxID;
@@ -300,6 +303,20 @@ namespace llarp
     Path::Upstream() const
     {
       return hops[0].router.pubkey;
+    }
+
+    void
+    Path::Tick(llarp_time_t now, llarp_router* r)
+    {
+      auto dlt = now - m_LastLatencyTestTime;
+      if(dlt > 5000)
+      {
+        llarp::routing::PathLatencyMessage latency;
+        latency.T             = rand();
+        m_LastLatencyTestID   = latency.T;
+        m_LastLatencyTestTime = now;
+        SendRoutingMessage(&latency, r);
+      }
     }
 
     bool
@@ -391,7 +408,7 @@ namespace llarp
       {
         // confirm that we build the path
         status = ePathEstablished;
-        llarp::Info("path is confirmed rx=", RXID(), " tx=", TXID());
+        llarp::Info("path is confirmed tx=", TXID(), " rx=", RXID());
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
@@ -401,8 +418,8 @@ namespace llarp
         m_LastLatencyTestTime = llarp_time_now_ms();
         return SendRoutingMessage(&latency, r);
       }
-      llarp::Warn("got unwarrented path confirm message on rx=", RXID(),
-                  " tx=", TXID());
+      llarp::Warn("got unwarrented path confirm message on tx=", RXID(),
+                  " rx=", RXID());
       return false;
     }
 
@@ -413,7 +430,8 @@ namespace llarp
       if(msg->L == m_LastLatencyTestID)
       {
         Latency = llarp_time_now_ms() - m_LastLatencyTestTime;
-        llarp::Info("path latency is ", Latency, " ms");
+        llarp::Info("path latency is ", Latency, " ms for tx=", TXID(),
+                    " rx=", RXID());
         return true;
       }
       return false;

@@ -26,6 +26,10 @@ namespace llarp
       /// @params numPaths the number of paths to maintain
       PathSet(size_t numPaths);
 
+      /// tick owned paths
+      void
+      Tick(llarp_time_t now, llarp_router* r);
+
       void
       RemovePath(Path* path);
 

@@ -16,6 +16,18 @@ namespace llarp
     }
 
     void
+    PathSet::Tick(llarp_time_t now, llarp_router* r)
+    {
+      for(auto& item : m_Paths)
+      {
+        if(item.second->status == ePathEstablished)
+        {
+          item.second->Tick(now, r);
+        }
+      }
+    }
+
+    void
     PathSet::ExpirePaths(llarp_time_t now)
     {
       auto itr = m_Paths.begin();
@@ -69,7 +81,9 @@ namespace llarp
     void
     PathSet::HandlePathBuilt(Path* path)
     {
-      // TODO: implement me
+      auto dlt = llarp_time_now_ms() - path->buildStarted;
+      llarp::Info("Path build took ", dlt, "ms for tx=", path->TXID(),
+                  " rx=", path->RXID());
     }
 
   }  // namespace path

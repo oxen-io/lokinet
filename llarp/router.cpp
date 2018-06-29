@@ -393,6 +393,7 @@ llarp_router::Tick()
                   " nodes, need 3 now (will be 5 later)");
     }
   }
+  paths.TickPaths();
   llarp_link_session_iter iter;
   iter.user  = this;
   iter.visit = &send_padded_message;

@@ -211,6 +211,9 @@ namespace llarp
       bool
       Expired(llarp_time_t now) const;
 
+      void
+      Tick(llarp_time_t now, llarp_router* r);
+
       bool
       SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
 
@@ -285,6 +288,10 @@ namespace llarp
       /// builds all paths we need to build at current tick
       void
       BuildPaths();
+
+      /// called from router tick function
+      void
+      TickPaths();
 
       ///  track a path builder with this context
       void

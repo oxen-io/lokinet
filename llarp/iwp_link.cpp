@@ -251,6 +251,8 @@ namespace iwp
 
     std::unordered_map< byte_t, fragment_t > frags;
     fragment_t lastfrag;
+    llarp_time_t lastAck = 0;
+    llarp_time_t started;
 
     void
     clear()
@@ -277,12 +279,14 @@ namespace iwp
     transit_message(llarp_buffer_t buf, const byte_t *hash, uint64_t id,
                     uint16_t mtu = 1024)
     {
+      started = llarp_time_now_ms();
       put_message(buf, hash, id, mtu);
     }
 
     // inbound
     transit_message(const xmit &x) : msginfo(x)
     {
+      started           = llarp_time_now_ms();
       byte_t fragidx    = 0;
       uint16_t fragsize = x.fragsize();
       while(fragidx < x.numfrags())
@@ -306,14 +310,21 @@ namespace iwp
         }
         ++idx;
       }
+      lastAck = llarp_time_now_ms();
     }
 
     bool
-    should_send_ack() const
+    should_send_ack(llarp_time_t now) const
     {
       if(msginfo.numfrags() == 0)
         return true;
-      return status.count() % (1 + (msginfo.numfrags() / 2)) == 0;
+      return now - lastAck > 250;
+    }
+
+    bool
+    should_resend_xmit(llarp_time_t now) const
+    {
+      return lastAck == 0 && now - started > 1000;
     }
 
     bool
@@ -557,7 +568,7 @@ namespace iwp
       if(itr == rx.end())
       {
         llarp::Warn("no such RX fragment, msgid=", msgid);
-        return true;
+        return false;
       }
       auto fragsize = itr->second->msginfo.fragsize();
       if(fragsize != sz - 9)
@@ -578,7 +589,7 @@ namespace iwp
         push_ackfor(msgid, mask);
         return inbound_frame_complete(msgid);
       }
-      else if(itr->second->should_send_ack())
+      else if(itr->second->should_send_ack(llarp_time_now_ms()))
       {
         push_ackfor(msgid, mask);
       }
@@ -597,10 +608,14 @@ namespace iwp
     }
 
     void
-    retransmit()
+    retransmit(llarp_time_t now)
     {
       for(auto &item : tx)
       {
+        if(item.second->should_resend_xmit(now))
+        {
+          item.second->generate_xmit(sendqueue, txflags);
+        }
         item.second->retransmit_frags(sendqueue, txflags);
       }
     }
@@ -1947,7 +1962,7 @@ namespace iwp
     {
       // llarp::Debug("Tick - pumping and retransmitting because we're
       // eEstablished");
-      frame.retransmit();
+      frame.retransmit(now);
       pump();
       PumpCryptoOutbound();
     }
