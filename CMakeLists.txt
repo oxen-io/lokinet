@@ -122,12 +122,15 @@ if(UNIX)
     endif()
 endif(UNIX)
 
-
+if(TUNTAP)
 set(LIBTUNTAP_SRC
   ${TT_ROOT}/tuntap.c
   ${TT_ROOT}/tuntap_log.c
   ${TT_ROOT}/tuntap-unix.c
   ${LIBTUNTAP_IMPL})
+else()
+set(LIBTUNTAP_SRC "")
+endif()
 
 set(LIB_SRC
   llarp/address_info.cpp
