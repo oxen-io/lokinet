@@ -11,7 +11,24 @@ namespace llarp
 {
   namespace util
   {
+    struct DummyMutex
+    {
+    };
+
+    template < typename Mutex_t >
+    struct DummyLock
+    {
+      DummyLock(const Mutex_t& mtx){
+
+      };
+      ~DummyLock()
+      {
+      }
+    };
+
     template < typename T, typename GetTime, typename PutTime,
+               typename Mutex_t    = std::mutex,
+               typename Lock_t     = std::unique_lock< Mutex_t >,
                llarp_time_t dropMs = 20, llarp_time_t initialIntervalMs = 100 >
     struct CoDelQueue
     {
@@ -28,10 +45,17 @@ namespace llarp
         }
       };
 
+      size_t
+      Size()
+      {
+        Lock_t lock(m_QueueMutex);
+        return m_Queue.size();
+      }
+
       void
       Put(const T& i)
       {
-        std::unique_lock< std::mutex > lock(m_QueueMutex);
+        Lock_t lock(m_QueueMutex);
         // llarp::Info("CoDelQueue::Put - adding item, queue now has ",
         // m_Queue.size(), " items at ", getTime(*item));
         PutTime()(i);
@@ -46,7 +70,7 @@ namespace llarp
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
         // auto start          = llarp_time_now_ms();
         // llarp::Info("CoDelQueue::Process - start at ", start);
-        std::unique_lock< std::mutex > lock(m_QueueMutex);
+        Lock_t lock(m_QueueMutex);
         auto start = firstPut;
         while(m_Queue.size())
         {
@@ -85,7 +109,7 @@ namespace llarp
       llarp_time_t firstPut         = 0;
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
-      std::mutex m_QueueMutex;
+      Mutex_t m_QueueMutex;
       std::priority_queue< T, std::vector< T >, CoDelCompare > m_Queue;
       std::string m_name;
     };

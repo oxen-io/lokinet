@@ -3,7 +3,9 @@
 #include <llarp/router_contact.h>
 #include <string.h>
 #include <llarp/crypto.hpp>
+#include <llarp/router_id.hpp>
 #include "buffer.hpp"
+#include "logger.hpp"
 #include "mem.hpp"
 
 struct llarp_async_iwp
@@ -44,15 +46,12 @@ namespace iwp
     iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
     llarp::SharedSecret sharedkey;
     llarp::ShortHash e_k;
-    llarp::SymmNonce n;
     llarp_crypto *crypto = intro->iwp->crypto;
     byte_t tmp[64];
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_client(sharedkey, intro->remote_pubkey,
                                 intro->secretkey, intro->nonce);
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-    // copy nonce
-    memcpy(n, intro->nonce, 24);
     // e_k = HS(b.k + n)
     memcpy(tmp, intro->remote_pubkey, 32);
     memcpy(tmp + 32, intro->nonce, 32);
@@ -62,7 +61,7 @@ namespace iwp
     buf.base = intro->buf + 64;
     buf.cur  = buf.base;
     buf.sz   = 32;
-    crypto->xchacha20(buf, e_k, n);
+    crypto->xchacha20(buf, e_k, intro->nonce);
     // h = MDS( n + e + w0, S)
     buf.base = intro->buf + 32;
     buf.cur  = buf.base;
@@ -81,27 +80,24 @@ namespace iwp
     llarp::SharedSecret sharedkey;
     llarp::ShortHash e_K;
     llarp::SharedSecret h;
-    llarp::SymmNonce N;
     byte_t tmp[64];
-    auto OurPK = llarp::seckey_topublic(intro->secretkey);
+    const auto OurPK = llarp::seckey_topublic(intro->secretkey);
     // e_k = HS(b.k + n)
     memcpy(tmp, OurPK, 32);
     memcpy(tmp + 32, intro->nonce, 32);
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
     crypto->shorthash(e_K, buf);
 
-    // a.k = SD(x, e_k, n[0:24])
-    memcpy(N, intro->nonce, 24);
     buf.base = intro->remote_pubkey;
     buf.cur  = buf.base;
     buf.sz   = 32;
     memcpy(intro->remote_pubkey, intro->buf + 64, 32);
-    crypto->xchacha20(buf, e_K, N);
-
+    crypto->xchacha20(buf, e_K, intro->nonce);
+    llarp::Info("handshake from ", llarp::RouterID(intro->remote_pubkey));
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_server(sharedkey, intro->remote_pubkey,
                                 intro->secretkey, intro->nonce);
-    // h = MDS( n + e + w2 )
+    // h = MDS( n + e + w2, S)
     buf.base = intro->buf + 32;
     buf.cur  = buf.base;
     buf.sz   = intro->sz - 32;

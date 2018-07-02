@@ -34,6 +34,10 @@ def main():
 
     for nodeid in range(args.svc):
         config = CP()
+        config['router'] = {
+            'net-threads': '1',
+            'worker-threads': '4'
+        }
         config['bind'] = {
             'lo': str(args.baseport + nodeid)
         }
@@ -56,6 +60,10 @@ def main():
 
     for nodeid in range(args.clients):
         config = CP()
+        config['router'] = {
+            'net-threads': '1',
+            'worker-threads': '2'
+        }
         config['netdb'] = {
             'dir': 'netdb'
         }
