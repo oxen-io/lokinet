@@ -32,7 +32,8 @@
 namespace iwp
 {
   // session activity timeout is 10s
-  constexpr llarp_time_t SESSION_TIMEOUT = 10000;
+  constexpr llarp_time_t SESSION_TIMEOUT     = 10000;
+  constexpr llarp_time_t KEEP_ALIVE_INTERVAL = SESSION_TIMEOUT / 4;
 
   constexpr size_t MAX_PAD = 128;
 
@@ -790,10 +791,11 @@ namespace iwp
     llarp_link_establish_job *establish_job = nullptr;
 
     /// cached timestamp for frame creation
-    llarp_time_t now, inboundNow;
-    uint32_t establish_job_id = 0;
-    uint32_t frames           = 0;
-    bool working              = false;
+    llarp_time_t now;
+    llarp_time_t lastKeepalive = 0;
+    uint32_t establish_job_id  = 0;
+    uint32_t frames            = 0;
+    bool working               = false;
 
     llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime >
         outboundFrames;
@@ -1984,8 +1986,9 @@ namespace iwp
     hdr.flags() = self->frame.txflags;
 
     // send frame after encrypting
-    auto buf  = llarp::StackBuffer< decltype(tmp) >(tmp);
-    self->now = llarp_time_now_ms();
+    auto buf            = llarp::StackBuffer< decltype(tmp) >(tmp);
+    self->now           = llarp_time_now_ms();
+    self->lastKeepalive = self->now;
     self->encrypt_frame_async_send(buf.base, buf.sz);
     self->pump();
     self->PumpCryptoOutbound();
@@ -2083,16 +2086,18 @@ namespace iwp
                   " frames left");
       return !working;
     }
+    if(state == eLIMSent || state == eEstablished)
+    {
+      if(now - lastKeepalive > KEEP_ALIVE_INTERVAL)
+        send_keepalive(this);
+    }
 
     // pump frame state
     if(state == eEstablished)
     {
       // llarp::Debug("Tick - pumping and retransmitting because we're
       // eEstablished");
-      if(now - frame.lastEvent > 200)
-      {
-        send_keepalive(this);
-      }
+
       frame.retransmit(now);
       pump();
       PumpCryptoOutbound();
