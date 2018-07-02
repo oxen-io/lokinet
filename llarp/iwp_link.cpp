@@ -2089,7 +2089,7 @@ namespace iwp
     {
       // llarp::Debug("Tick - pumping and retransmitting because we're
       // eEstablished");
-      if(now - frame.lastEvent > 1000)
+      if(now - frame.lastEvent > 200)
       {
         send_keepalive(this);
       }
