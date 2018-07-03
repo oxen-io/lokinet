@@ -35,6 +35,9 @@ llarp_main_setup(struct llarp_main *ptr);
 int
 llarp_main_run(struct llarp_main *ptr);
 
+void
+llarp_main_abort(struct llarp_main *ptr);
+
 /// load nodeDB into memory
 int
 llarp_main_loadDatabase(struct llarp_main *ptr);

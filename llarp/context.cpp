@@ -344,6 +344,12 @@ llarp_main_run(struct llarp_main *ptr)
   return ptr->ctx->Run();
 }
 
+void
+llarp_main_abort(struct llarp_main *ptr)
+{
+  llarp_logic_stop_timer(ptr->ctx->router->logic);
+}
+
 int
 llarp_main_loadDatabase(struct llarp_main *ptr)
 {

@@ -52,6 +52,13 @@ llarp_free_logic(struct llarp_logic** logic)
 }
 
 void
+llarp_logic_stop_timer(struct llarp_logic* logic)
+{
+  if(logic->timer)
+    llarp_timer_stop(logic->timer);
+}
+
+void
 llarp_logic_stop(struct llarp_logic* logic)
 {
   llarp::Debug("logic thread stop");
