@@ -15,12 +15,10 @@ namespace llarp
     {
     };
 
-    template < typename Mutex_t >
     struct DummyLock
     {
-      DummyLock(const Mutex_t& mtx){
+      DummyLock(const DummyMutex& mtx){};
 
-      };
       ~DummyLock()
       {
       }

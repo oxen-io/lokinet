@@ -516,10 +516,13 @@ namespace iwp
       while(q.size())
       {
         // TODO: is this right?
-        nextMsgID = std::max(nextMsgID, q.front()->msgid);
-        if(!router->HandleRecvLinkMessage(parent, q.front()->Buffer()))
-          llarp::Warn("failed to process inbound message ", q.front()->msgid);
-        delete q.front();
+        auto &front = q.front();
+        nextMsgID   = std::max(nextMsgID, front->msgid);
+        if(!router->HandleRecvLinkMessage(parent, front->Buffer()))
+        {
+          llarp::Warn("failed to process inbound message ", front->msgid);
+        }
+        delete front;
         q.pop();
       }
       // TODO: this isn't right
@@ -1796,7 +1799,8 @@ namespace iwp
         }
         else if(recvqueue.Size() > 2)
         {
-          return process_inbound_queue();
+          recvqueue.Put(new InboundMessage(id, msg));
+          success = process_inbound_queue();
         }
       }
       else
