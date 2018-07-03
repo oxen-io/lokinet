@@ -1560,11 +1560,11 @@ namespace iwp
     {
       server *serv = static_cast< server * >(l->impl);
       {
-        lock_t lock(serv->m_Connected_Mutex);
+        // lock_t lock(serv->m_Connected_Mutex);
         auto itr = serv->m_Connected.find(pubkey);
         if(itr != serv->m_Connected.end())
         {
-          lock_t innerlock(serv->m_sessions_Mutex);
+          // lock_t innerlock(serv->m_sessions_Mutex);
           auto inner_itr = serv->m_sessions.find(itr->second);
           if(inner_itr != serv->m_sessions.end())
           {
