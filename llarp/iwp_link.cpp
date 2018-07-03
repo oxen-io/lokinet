@@ -469,7 +469,7 @@ namespace iwp
       bool
       operator()(const InboundMessage *left, const InboundMessage *right)
       {
-        return left->msgid > right->msgid;
+        return left->msgid < right->msgid;
       }
     };
 
@@ -524,6 +524,7 @@ namespace iwp
                            InboundMessage::OrderCompare >
           q;
       recvqueue.Process(q);
+      bool increment = false;
       while(q.size())
       {
         // TODO: is this right?
@@ -536,7 +537,10 @@ namespace iwp
         }
         delete front;
         q.pop();
+        increment = true;
       }
+      if(increment)
+        ++nextMsgID;
       // TODO: this isn't right
       return true;
     }
@@ -1809,14 +1813,11 @@ namespace iwp
           }
           ++nextMsgID;
         }
-        else
-        {
-          recvqueue.Put(new InboundMessage(id, msg));
-          success = process_inbound_queue();
-        }
       }
       else
       {
+        llarp::Warn("out of order message expected ", nextMsgID, " but got ",
+                    id);
         recvqueue.Put(new InboundMessage(id, msg));
         success = true;
       }
