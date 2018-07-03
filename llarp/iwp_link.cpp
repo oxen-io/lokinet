@@ -516,7 +516,8 @@ namespace iwp
       {
         // TODO: is this right?
         auto &front = q.front();
-        nextMsgID   = std::max(nextMsgID, front->msgid);
+        // the items are already sorted anyways so this doesn't really do much
+        nextMsgID = std::max(nextMsgID, front->msgid);
         if(!router->HandleRecvLinkMessage(parent, front->Buffer()))
         {
           llarp::Warn("failed to process inbound message ", front->msgid);
@@ -1796,7 +1797,7 @@ namespace iwp
           }
           ++nextMsgID;
         }
-        else if(recvqueue.Size() > 2)
+        else
         {
           recvqueue.Put(new InboundMessage(id, msg));
           success = process_inbound_queue();
