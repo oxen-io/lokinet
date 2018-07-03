@@ -22,8 +22,8 @@ extern "C" {
 struct llarp_link;
 
 /**
- * wire layer transport session for point to point communication between us and
- * another
+ * wire layer transport session for point to point communication between us
+ * and another
  */
 struct llarp_link_session;
 
@@ -75,8 +75,9 @@ struct llarp_link
   const char *(*name)(void);
   void (*get_our_address)(struct llarp_link *, struct llarp_ai *);
   /*
-  int (*register_listener)(struct llarp_link *, struct llarp_link_ev_listener);
-  void (*deregister_listener)(struct llarp_link *, int);
+  int (*register_listener)(struct llarp_link *, struct
+  llarp_link_ev_listener); void (*deregister_listener)(struct llarp_link *,
+  int);
   */
   bool (*configure)(struct llarp_link *, struct llarp_ev_loop *, const char *,
                     int, uint16_t);
@@ -101,7 +102,8 @@ llarp_link_initialized(struct llarp_link *link);
 struct llarp_link_session
 {
   void *impl;
-  /** send an entire message, splits up into smaller pieces and does encryption
+  /** send an entire message, splits up into smaller pieces and does
+   * encryption
    */
   bool (*sendto)(struct llarp_link_session *, llarp_buffer_t);
   /** return true if this session is timed out */

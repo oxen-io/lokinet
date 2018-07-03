@@ -348,13 +348,15 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
 
   // this was an outbound establish job
-  if(ctx->establish_job->session)
+  if(ctx->establish_job)
   {
     auto session = ctx->establish_job->session;
     router->FlushOutboundFor(pk, session->get_parent(session));
     // this frees the job
     router->pendingEstablishJobs.erase(pk);
   }
+  else  // this was an inbound session
+    router->FlushOutboundFor(pk, GetLinkWithSessionByPubkey(pk));
 }
 
 void
@@ -482,6 +484,19 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
   validRouters.erase(itr);
 }
 
+llarp_link *
+llarp_router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
+{
+  for(auto &link : inboundLinks)
+  {
+    if(link->has_session_to(link, pubkey))
+      return link;
+  }
+  if(outboundLink->has_session_to(outboundLink, pubkey))
+    return outboundLink;
+  return nullptr;
+}
+
 void
 llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
                                llarp_link *chosen)
@@ -490,6 +505,11 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
   auto itr = outboundMesssageQueue.find(remote);
   if(itr == outboundMesssageQueue.end())
   {
+    return;
+  }
+  if(!chosen)
+  {
+    DiscardOutboundFor(remote);
     return;
   }
   while(itr->second.size())

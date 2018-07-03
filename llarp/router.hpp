@@ -190,6 +190,9 @@ struct llarp_router
   void
   ScheduleTicker(uint64_t i = 1000);
 
+  llarp_link *
+  GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
+
   void
   async_verify_RC(llarp_rc *rc, bool isExpectingClient,
                   llarp_link_establish_job *job = nullptr);
