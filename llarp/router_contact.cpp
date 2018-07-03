@@ -101,6 +101,12 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
   return false;
 }
 
+bool
+llarp_rc_is_public_router(const struct llarp_rc *const rc)
+{
+  return rc->addrs && llarp_ai_list_size(rc->addrs) > 0;
+}
+
 void
 llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src)
 {

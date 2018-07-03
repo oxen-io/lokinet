@@ -191,7 +191,7 @@ struct llarp_router
   ScheduleTicker(uint64_t i = 1000);
 
   void
-  async_verify_RC(llarp_link_session *session, bool isExpectingClient,
+  async_verify_RC(llarp_rc *rc, bool isExpectingClient,
                   llarp_link_establish_job *job = nullptr);
 
   static bool

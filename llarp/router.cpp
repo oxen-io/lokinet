@@ -526,7 +526,7 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   {
     // llarp::Debug("try_connect got session");
     auto session = job->session;
-    router->async_verify_RC(session, false, job);
+    router->async_verify_RC(session->get_remote_router(session), false, job);
     return;
   }
   // llarp::Debug("try_connect no session");
@@ -563,8 +563,7 @@ llarp_router::DiscardOutboundFor(const llarp::RouterID &remote)
 }
 
 void
-llarp_router::async_verify_RC(llarp_link_session *session,
-                              bool isExpectingClient,
+llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
                               llarp_link_establish_job *establish_job)
 {
   llarp_async_verify_rc *job = new llarp_async_verify_rc;
@@ -579,7 +578,7 @@ llarp_router::async_verify_RC(llarp_link_session *session,
   job->cryptoworker = tp;
   job->diskworker   = disk;
 
-  llarp_rc_copy(&job->rc, session->get_remote_router(session));
+  llarp_rc_copy(&job->rc, rc);
   if(isExpectingClient)
     job->hook = &llarp_router::on_verify_client_rc;
   else

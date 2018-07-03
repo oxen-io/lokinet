@@ -443,9 +443,10 @@ namespace iwp
     }
 
     bool
-    operator<(const InboundMessage &other) const
+    operator>(const InboundMessage &other) const
     {
-      return msgid < other.msgid;
+      // order in ascending order for codel queue
+      return msgid > other.msgid;
     }
 
     llarp_buffer_t
@@ -460,6 +461,15 @@ namespace iwp
       operator()(const InboundMessage *msg)
       {
         return msg->queued;
+      }
+    };
+
+    struct OrderCompare
+    {
+      bool
+      operator()(const InboundMessage *left, const InboundMessage *right)
+      {
+        return left->msgid > right->msgid;
       }
     };
 
@@ -510,12 +520,14 @@ namespace iwp
     bool
     process_inbound_queue()
     {
-      std::queue< InboundMessage * > q;
+      std::priority_queue< InboundMessage *, std::vector< InboundMessage * >,
+                           InboundMessage::OrderCompare >
+          q;
       recvqueue.Process(q);
       while(q.size())
       {
         // TODO: is this right?
-        auto &front = q.front();
+        auto &front = q.top();
         // the items are already sorted anyways so this doesn't really do much
         nextMsgID = std::max(nextMsgID, front->msgid);
         if(!router->HandleRecvLinkMessage(parent, front->Buffer()))

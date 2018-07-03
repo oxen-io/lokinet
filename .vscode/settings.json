@@ -57,6 +57,7 @@
     "io": "cpp",
     "strstream": "cpp",
     "numeric": "cpp",
-    "valarray": "cpp"
+    "valarray": "cpp",
+    "*.ipp": "cpp"
   }
 }

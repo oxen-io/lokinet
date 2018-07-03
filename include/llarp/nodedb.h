@@ -94,7 +94,7 @@ struct llarp_async_verify_rc
   struct llarp_threadpool *cryptoworker;
   struct llarp_threadpool *diskworker;
 
-  /// router contact (should this be a pointer?)
+  /// router contact
   struct llarp_rc rc;
   /// result
   bool valid;
