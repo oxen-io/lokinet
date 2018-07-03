@@ -9,6 +9,7 @@ llarp_main *sllarp = nullptr;
 void
 handle_signal(int sig)
 {
+  printf("rcutil::handle_signal [%x] got [%d]\n", ctx, sig);
   if(ctx)
     llarp_main_signal(ctx, sig);
 }
@@ -45,7 +46,21 @@ void
 HandleDHTLocate(llarp_router_lookup_job *job)
 {
   llarp::Info("DHT result: ", job->found ? "found" : "not found");
-  // save to nodedb?
+  if (job->found)
+  {
+    // save to nodedb?
+  }
+  // shutdown router
+  
+  // well because we're in the gotroutermessage, we can't sigint because we'll deadlock because we're session locked
+  //llarp_main_signal(ctx, SIGINT);
+
+  // llarp_timer_run(logic->timer, logic->thread);
+  // we'll we don't want logic thread
+  // but we want to switch back to the main thread
+  //llarp_logic_stop();
+  // still need to exit this logic thread...
+  llarp_main_abort(ctx);
 }
 
 bool
@@ -294,13 +309,14 @@ main(int argc, char *argv[])
     llarp::PubKey binaryPK;
     llarp::HexDecode(rcfname, binaryPK.data());
 
-    // llarp::SetLogLevel(llarp::eLogDebug);
+    //llarp::SetLogLevel(llarp::eLogDebug);
 
     llarp::Info("Queueing job");
     llarp_router_lookup_job *job = new llarp_router_lookup_job;
     job->found                   = false;
     job->hook                    = &HandleDHTLocate;
     memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
+    
     // create query DHT request
     check_online_request *request = new check_online_request;
     request->ptr                  = ctx;
@@ -330,6 +346,7 @@ main(int argc, char *argv[])
     iter.visit = &aiLister;
     llarp_ai_list_iterate(rc->addrs, &iter);
   }
-  llarp_main_free(ctx);
+  // it's a unique_ptr, should clean up itself
+  //llarp_main_free(ctx);
   return 1;  // success
 }
