@@ -1811,8 +1811,8 @@ namespace iwp
             impl->parent->close(impl->parent);
             success = false;
           }
-          ++nextMsgID;
         }
+        ++nextMsgID;
       }
       else
       {
