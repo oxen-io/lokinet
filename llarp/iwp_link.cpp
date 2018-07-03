@@ -486,8 +486,7 @@ namespace iwp
     typedef std::queue< sendbuf_t * > sendqueue_t;
     typedef llarp::util::CoDelQueue<
         InboundMessage *, InboundMessage::GetTime, InboundMessage::PutTime,
-        llarp::util::DummyMutex,
-        llarp::util::DummyLock< llarp::util::DummyMutex > >
+        llarp::util::DummyMutex, llarp::util::DummyLock >
         recvqueue_t;
 
     llarp_router *router       = nullptr;
