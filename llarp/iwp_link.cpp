@@ -1793,9 +1793,10 @@ namespace iwp
       if(id == nextMsgID)
       {
         session *impl = static_cast< session * >(parent->impl);
-        success       = router->HandleRecvLinkMessage(parent, buf);
+
         if(id == 0)
         {
+          success = router->HandleRecvLinkMessage(parent, buf);
           if(impl->CheckRCValid())
           {
             if(!impl->IsEstablished())
@@ -1803,6 +1804,7 @@ namespace iwp
               impl->send_LIM();
               impl->session_established();
             }
+            ++nextMsgID;
           }
           else
           {
@@ -1812,7 +1814,11 @@ namespace iwp
             success = false;
           }
         }
-        ++nextMsgID;
+        else
+        {
+          recvqueue.Put(new InboundMessage(id, msg));
+          success = process_inbound_queue();
+        }
       }
       else
       {
