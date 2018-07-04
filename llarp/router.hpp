@@ -194,10 +194,6 @@ struct llarp_router
   GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
   void
-  resolve_job_type(llarp_rc *rc,
-                   llarp_link_establish_job *establish_job = nullptr);
-
-  void
   async_verify_RC(llarp_rc *rc, bool isExpectingClient,
                   llarp_link_establish_job *job = nullptr);
 
