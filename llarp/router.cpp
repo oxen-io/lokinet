@@ -348,13 +348,15 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
 
   // this was an outbound establish job
-  if(ctx->establish_job->session)
+  if(ctx->establish_job)
   {
     auto session = ctx->establish_job->session;
     router->FlushOutboundFor(pk, session->get_parent(session));
     // this frees the job
     router->pendingEstablishJobs.erase(pk);
   }
+  else  // this was an inbound session
+    router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
 }
 
 void
@@ -482,6 +484,19 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
   validRouters.erase(itr);
 }
 
+llarp_link *
+llarp_router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
+{
+  for(auto &link : inboundLinks)
+  {
+    if(link->has_session_to(link, pubkey))
+      return link;
+  }
+  if(outboundLink->has_session_to(outboundLink, pubkey))
+    return outboundLink;
+  return nullptr;
+}
+
 void
 llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
                                llarp_link *chosen)
@@ -490,6 +505,11 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
   auto itr = outboundMesssageQueue.find(remote);
   if(itr == outboundMesssageQueue.end())
   {
+    return;
+  }
+  if(!chosen)
+  {
+    DiscardOutboundFor(remote);
     return;
   }
   while(itr->second.size())
@@ -526,7 +546,7 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   {
     // llarp::Debug("try_connect got session");
     auto session = job->session;
-    router->async_verify_RC(session, false, job);
+    router->async_verify_RC(session->get_remote_router(session), false, job);
     return;
   }
   // llarp::Debug("try_connect no session");
@@ -563,8 +583,7 @@ llarp_router::DiscardOutboundFor(const llarp::RouterID &remote)
 }
 
 void
-llarp_router::async_verify_RC(llarp_link_session *session,
-                              bool isExpectingClient,
+llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
                               llarp_link_establish_job *establish_job)
 {
   llarp_async_verify_rc *job = new llarp_async_verify_rc;
@@ -579,7 +598,7 @@ llarp_router::async_verify_RC(llarp_link_session *session,
   job->cryptoworker = tp;
   job->diskworker   = disk;
 
-  llarp_rc_copy(&job->rc, session->get_remote_router(session));
+  llarp_rc_copy(&job->rc, rc);
   if(isExpectingClient)
     job->hook = &llarp_router::on_verify_client_rc;
   else

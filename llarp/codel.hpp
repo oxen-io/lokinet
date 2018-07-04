@@ -15,12 +15,10 @@ namespace llarp
     {
     };
 
-    template < typename Mutex_t >
     struct DummyLock
     {
-      DummyLock(const Mutex_t& mtx){
+      DummyLock(const DummyMutex& mtx){};
 
-      };
       ~DummyLock()
       {
       }
@@ -64,8 +62,9 @@ namespace llarp
           firstPut = GetTime()(i);
       }
 
+      template < typename Queue_t >
       void
-      Process(std::queue< T >& result)
+      Process(Queue_t& result)
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
         // auto start          = llarp_time_now_ms();

@@ -218,6 +218,16 @@ llarp_ai_list_pushback(struct llarp_ai_list *l, struct llarp_ai *ai)
   l->list.push_back(*ai);
 }
 
+size_t
+llarp_ai_list_size(struct llarp_ai_list *l)
+{
+  if(l)
+  {
+    return l->list.size();
+  }
+  return 0;
+}
+
 void
 llarp_ai_list_iterate(struct llarp_ai_list *l, struct llarp_ai_list_iter *itr)
 {

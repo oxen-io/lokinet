@@ -2,6 +2,7 @@
 #include <llarp/router_contact.h>
 #include <llarp/messages/link_intro.hpp>
 #include "logger.hpp"
+#include "router.hpp"
 
 namespace llarp
 {
@@ -71,7 +72,7 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
-    llarp::Info("got LIM from ", remote);
+    router->async_verify_RC(RC, !llarp_rc_is_public_router(RC));
     return true;
   }
-}
+}  // namespace llarp

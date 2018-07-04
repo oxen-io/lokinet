@@ -53,6 +53,9 @@ llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc);
 void
 llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src);
 
+bool
+llarp_rc_is_public_router(const struct llarp_rc *const rc);
+
 void
 llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
                    struct llarp_ai_list *addr);

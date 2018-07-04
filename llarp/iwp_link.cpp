@@ -443,9 +443,10 @@ namespace iwp
     }
 
     bool
-    operator<(const InboundMessage &other) const
+    operator>(const InboundMessage &other) const
     {
-      return msgid < other.msgid;
+      // order in ascending order for codel queue
+      return msgid > other.msgid;
     }
 
     llarp_buffer_t
@@ -460,6 +461,15 @@ namespace iwp
       operator()(const InboundMessage *msg)
       {
         return msg->queued;
+      }
+    };
+
+    struct OrderCompare
+    {
+      bool
+      operator()(const InboundMessage *left, const InboundMessage *right)
+      {
+        return left->msgid < right->msgid;
       }
     };
 
@@ -486,8 +496,7 @@ namespace iwp
     typedef std::queue< sendbuf_t * > sendqueue_t;
     typedef llarp::util::CoDelQueue<
         InboundMessage *, InboundMessage::GetTime, InboundMessage::PutTime,
-        llarp::util::DummyMutex,
-        llarp::util::DummyLock< llarp::util::DummyMutex > >
+        llarp::util::DummyMutex, llarp::util::DummyLock >
         recvqueue_t;
 
     llarp_router *router       = nullptr;
@@ -511,17 +520,27 @@ namespace iwp
     bool
     process_inbound_queue()
     {
-      std::queue< InboundMessage * > q;
+      std::priority_queue< InboundMessage *, std::vector< InboundMessage * >,
+                           InboundMessage::OrderCompare >
+          q;
       recvqueue.Process(q);
+      bool increment = false;
       while(q.size())
       {
         // TODO: is this right?
-        nextMsgID = std::max(nextMsgID, q.front()->msgid);
-        if(!router->HandleRecvLinkMessage(parent, q.front()->Buffer()))
-          llarp::Warn("failed to process inbound message ", q.front()->msgid);
-        delete q.front();
+        auto &front = q.top();
+        // the items are already sorted anyways so this doesn't really do much
+        nextMsgID = std::max(nextMsgID, front->msgid);
+        if(!router->HandleRecvLinkMessage(parent, front->Buffer()))
+        {
+          llarp::Warn("failed to process inbound message ", front->msgid);
+        }
+        delete front;
         q.pop();
+        increment = true;
       }
+      if(increment)
+        ++nextMsgID;
       // TODO: this isn't right
       return true;
     }
@@ -1557,11 +1576,11 @@ namespace iwp
     {
       server *serv = static_cast< server * >(l->impl);
       {
-        lock_t lock(serv->m_Connected_Mutex);
+        // lock_t lock(serv->m_Connected_Mutex);
         auto itr = serv->m_Connected.find(pubkey);
         if(itr != serv->m_Connected.end())
         {
-          lock_t innerlock(serv->m_sessions_Mutex);
+          // lock_t innerlock(serv->m_sessions_Mutex);
           auto inner_itr = serv->m_sessions.find(itr->second);
           if(inner_itr != serv->m_sessions.end())
           {
@@ -1774,9 +1793,10 @@ namespace iwp
       if(id == nextMsgID)
       {
         session *impl = static_cast< session * >(parent->impl);
-        success       = router->HandleRecvLinkMessage(parent, buf);
+
         if(id == 0)
         {
+          success = router->HandleRecvLinkMessage(parent, buf);
           if(impl->CheckRCValid())
           {
             if(!impl->IsEstablished())
@@ -1784,6 +1804,7 @@ namespace iwp
               impl->send_LIM();
               impl->session_established();
             }
+            ++nextMsgID;
           }
           else
           {
@@ -1792,15 +1813,17 @@ namespace iwp
             impl->parent->close(impl->parent);
             success = false;
           }
-          ++nextMsgID;
         }
-        else if(recvqueue.Size() > 2)
+        else
         {
-          return process_inbound_queue();
+          recvqueue.Put(new InboundMessage(id, msg));
+          success = process_inbound_queue();
         }
       }
       else
       {
+        llarp::Warn("out of order message expected ", nextMsgID, " but got ",
+                    id);
         recvqueue.Put(new InboundMessage(id, msg));
         success = true;
       }

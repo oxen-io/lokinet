@@ -309,7 +309,7 @@ namespace llarp
     Path::Tick(llarp_time_t now, llarp_router* r)
     {
       auto dlt = now - m_LastLatencyTestTime;
-      if(dlt > 5000)
+      if(dlt > 5000 && m_LastLatencyTestID == 0)
       {
         llarp::routing::PathLatencyMessage latency;
         latency.T             = rand();
@@ -432,6 +432,7 @@ namespace llarp
         Latency = llarp_time_now_ms() - m_LastLatencyTestTime;
         llarp::Info("path latency is ", Latency, " ms for tx=", TXID(),
                     " rx=", RXID());
+        m_LastLatencyTestID = 0;
         return true;
       }
       return false;
