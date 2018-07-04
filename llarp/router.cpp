@@ -304,8 +304,25 @@ llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
   llarp::async_verify_context *ctx =
       static_cast< llarp::async_verify_context * >(job->user);
   llarp::PubKey pk = job->rc.pubkey;
+  if(!job->valid)
+  {
+    llarp::Warn("invalid inbound RC");
+    llarp_rc_free(&job->rc);
+    ctx->router->pendingEstablishJobs.erase(pk);
+    delete ctx;
+    return;
+  }
+  // we're valid, which means it's already been committed to the nodedb
+  llarp::Info("inbound connection: rc verified and saved to nodedb");
+
+  auto router = ctx->router;
+  router->validRouters[pk] = job->rc;
+  llarp::Info("putting valid router into dht ", pk);
+  // track valid router in dht
+  llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
+
   llarp_rc_free(&job->rc);
-  ctx->router->pendingEstablishJobs.erase(pk);
+  router->pendingEstablishJobs.erase(pk);
   delete ctx;
 }
 
@@ -318,7 +335,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp::PubKey pk(job->rc.pubkey);
   if(!job->valid)
   {
-    llarp::Warn("invalid server RC");
+    llarp::Warn("invalid outbound RC");
     if(ctx->establish_job)
     {
       // was an outbound attempt
@@ -333,7 +350,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   }
   // we're valid, which means it's already been committed to the nodedb
 
-  llarp::Debug("rc verified and saved to nodedb");
+  llarp::Info("rc verified and saved to nodedb");
 
   // refresh valid routers RC value if it's there
   auto v = router->validRouters.find(pk);
@@ -343,6 +360,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     llarp_rc_free(&v->second);
   }
   router->validRouters[pk] = job->rc;
+  llarp::Info("putting valid router into dht ", pk);
 
   // track valid router in dht
   llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
@@ -381,12 +399,13 @@ llarp_router::Tick()
 {
   llarp::Debug("tick router");
   paths.ExpirePaths();
-  // TODO: don't do this if we have enough paths already
+  // why is it important we have no inboundLinks
   if(inboundLinks.size() == 0)
   {
     auto N = llarp_nodedb_num_loaded(nodedb);
     if(N > 2)
     {
+      // TODO: don't do this if we have enough paths already
       paths.BuildPaths();
     }
     else
@@ -541,6 +560,7 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
 void
 llarp_router::on_try_connect_result(llarp_link_establish_job *job)
 {
+  llarp::Info("llarp_router::on_try_connect_result");
   llarp_router *router = static_cast< llarp_router * >(job->user);
   if(job->session)
   {
@@ -580,6 +600,29 @@ llarp_router::DiscardOutboundFor(const llarp::RouterID &remote)
     queue.pop();
   }
   outboundMesssageQueue.erase(remote);
+}
+
+void
+llarp_router::resolve_job_type(llarp_rc *rc, llarp_link_establish_job *establish_job)
+{
+  char ftmp[68] = {0};
+  const char *hexPubSigKey =
+  llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(rc->pubkey, ftmp);
+
+  llarp::Info("is this a outbound or inbound job? ", hexPubSigKey);
+  llarp::Info("RC status: ", !llarp_rc_is_public_router(rc)?"private":"public");
+
+  auto it = pendingEstablishJobs.find(rc->pubkey);
+  if (it != pendingEstablishJobs.end())
+  {
+    llarp::Info("in outbound pending queue");
+    async_verify_RC(rc, false, establish_job);
+  }
+  else
+  {
+    llarp::Info("likely inbound connection");
+    async_verify_RC(rc, true, establish_job);
+  }
 }
 
 void
