@@ -72,7 +72,8 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
-    router->async_verify_RC(RC, !llarp_rc_is_public_router(RC));
+    //router->async_verify_RC(RC, true);
+    router->resolve_job_type(RC);
     return true;
   }
 }  // namespace llarp
