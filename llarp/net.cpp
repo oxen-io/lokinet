@@ -38,7 +38,6 @@ operator<(const in6_addr& a, const in6_addr& b)
 }
 
 extern "C" {
-
 bool
 llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
 {
@@ -55,11 +54,11 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
   {
     if(i->ifa_addr)
     {
-      // llarp::Info(__FILE__, "scanning ", i->ifa_name, " af: ",
+      // llarp::LogInfo(__FILE__, "scanning ", i->ifa_name, " af: ",
       // std::to_string(i->ifa_addr->sa_family));
       if(llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr->sa_family == af)
       {
-        // llarp::Info(__FILE__, "found ", ifname, " af: ", af);
+        // llarp::LogInfo(__FILE__, "found ", ifname, " af: ", af);
         memcpy(addr, i->ifa_addr, sl);
         if(af == AF_INET6)
         {

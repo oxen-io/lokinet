@@ -49,7 +49,7 @@ namespace llarp
             auto after = llarp_time_now_ms();
             auto dlt   = after - now;
             if(dlt > 10)
-              llarp::Warn("work took ", dlt, " ms");
+              llarp::LogWarn("work took ", dlt, " ms");
             delete job;
           }
         });
@@ -110,7 +110,6 @@ struct llarp_threadpool
 };
 
 extern "C" {
-
 struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name)
 {
@@ -129,7 +128,7 @@ llarp_init_same_process_threadpool()
 void
 llarp_threadpool_join(struct llarp_threadpool *pool)
 {
-  llarp::Debug("threadpool join");
+  llarp::LogDebug("threadpool join");
   if(pool->impl)
     pool->impl->Join();
 }
@@ -142,7 +141,7 @@ llarp_threadpool_start(struct llarp_threadpool *pool)
 void
 llarp_threadpool_stop(struct llarp_threadpool *pool)
 {
-  llarp::Debug("threadpool stop");
+  llarp::LogDebug("threadpool stop");
   if(pool->impl)
     pool->impl->Stop();
 }
@@ -151,7 +150,7 @@ void
 llarp_threadpool_wait(struct llarp_threadpool *pool)
 {
   std::mutex mtx;
-  llarp::Debug("threadpool wait");
+  llarp::LogDebug("threadpool wait");
   if(pool->impl)
   {
     std::unique_lock< std::mutex > lock(mtx);

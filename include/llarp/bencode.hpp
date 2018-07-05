@@ -47,7 +47,7 @@ namespace llarp
     {
       if(!item.BDecode(buf))
       {
-        llarp::Warn("failed to decode key ", k);
+        llarp::LogWarn("failed to decode key ", k);
         return false;
       }
       read = true;
@@ -64,7 +64,7 @@ namespace llarp
     {
       if(!bencode_read_integer(buf, &i))
       {
-        llarp::Warn("failed to decode key ", k);
+        llarp::LogWarn("failed to decode key ", k);
         return false;
       }
       read = true;

@@ -18,7 +18,7 @@ namespace llarp
       from.Zero();
       if(llarp_buffer_eq(key, "M"))
       {
-        return llarp::dht::DecodeMesssageList(from, val, M);
+        return llarp::dht::DecodeMesssageList(from, val, M, true);
       }
       else if(llarp_buffer_eq(key, "V"))
       {
@@ -50,8 +50,9 @@ namespace llarp
       llarp::dht::Key_t us = r->pubkey();
       for(auto& msg : M)
       {
-        msg->From = us;
-        if(!r->dht->impl.RelayRequestForPath(from, msg))
+        msg->From   = us;
+        msg->pathID = from;
+        if(!h->HandleDHTMessage(msg, r))
           return false;
       }
       return true;

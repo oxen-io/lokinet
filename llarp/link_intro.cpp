@@ -17,11 +17,11 @@ namespace llarp
     {
       if(!llarp_rc_bdecode(RC, buf))
       {
-        llarp::Warn("failed to decode RC");
+        llarp::LogWarn("failed to decode RC");
         return false;
       }
       remote = (byte_t*)RC->pubkey;
-      llarp::Debug("decoded RC from ", remote);
+      llarp::LogDebug("decoded RC from ", remote);
       return true;
     }
     else if(llarp_buffer_eq(key, "v"))
@@ -30,16 +30,16 @@ namespace llarp
         return false;
       if(version != LLARP_PROTO_VERSION)
       {
-        llarp::Warn("llarp protocol version missmatch ", version,
-                    " != ", LLARP_PROTO_VERSION);
+        llarp::LogWarn("llarp protocol version missmatch ", version,
+                       " != ", LLARP_PROTO_VERSION);
         return false;
       }
-      llarp::Debug("LIM version ", version);
+      llarp::LogDebug("LIM version ", version);
       return true;
     }
     else
     {
-      llarp::Warn("invalid LIM key: ", *key.cur);
+      llarp::LogWarn("invalid LIM key: ", *key.cur);
       return false;
     }
   }

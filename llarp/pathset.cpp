@@ -82,8 +82,8 @@ namespace llarp
     PathSet::HandlePathBuilt(Path* path)
     {
       auto dlt = llarp_time_now_ms() - path->buildStarted;
-      llarp::Info("Path build took ", dlt, "ms for tx=", path->TXID(),
-                  " rx=", path->RXID());
+      llarp::LogInfo("Path build took ", dlt, "ms for tx=", path->TXID(),
+                     " rx=", path->RXID());
     }
 
   }  // namespace path

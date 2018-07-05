@@ -116,7 +116,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev->read(readbuf, sizeof(readbuf)) == -1)
         {
-          llarp::Info("close ev");
+          llarp::LogInfo("close ev");
           close_ev(ev);
           delete ev;
         }
@@ -147,7 +147,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
           if(ev->read(readbuf, sizeof(readbuf)) == -1)
           {
-            llarp::Info("close ev");
+            llarp::LogInfo("close ev");
             close_ev(ev);
             delete ev;
           }
@@ -165,7 +165,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   udp_bind(const sockaddr* addr)
   {
     socklen_t slen;
-    llarp::Debug("kqueue bind affam", addr->sa_family);
+    llarp::LogDebug("kqueue bind affam", addr->sa_family);
     switch(addr->sa_family)
     {
       case AF_INET:
@@ -182,7 +182,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         break;
 #endif
       default:
-        llarp::Error("unsupported address family");
+        llarp::LogError("unsupported address family");
         return -1;
     }
     int fd = socket(addr->sa_family, SOCK_DGRAM, 0);
@@ -205,7 +205,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    llarp::Info("bind to ", a);
+    llarp::LogInfo("bind to ", a);
     // FreeBSD handbook said to do this
     if(addr->sa_family == AF_INET && INADDR_ANY)
       a._addr4.sin_addr.s_addr = htonl(INADDR_ANY);

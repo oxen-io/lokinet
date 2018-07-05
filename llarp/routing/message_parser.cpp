@@ -52,7 +52,7 @@ namespace llarp
             self->msg = new PathTransferMessage;
             break;
           default:
-            llarp::Error("invalid routing message id: ", *strbuf.cur);
+            llarp::LogError("invalid routing message id: ", *strbuf.cur);
         }
         self->firstKey = false;
         return self->msg != nullptr;
@@ -77,7 +77,7 @@ namespace llarp
         delete msg;
       }
       else
-        llarp::Error("read dict failed");
+        llarp::LogError("read dict failed");
       return result;
     }
   }  // namespace routing

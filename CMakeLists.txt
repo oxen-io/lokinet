@@ -164,6 +164,7 @@ set(LIB_SRC
   llarp/relay_up_down.cpp
   llarp/router_contact.cpp
   llarp/router.cpp
+  llarp/service.cpp
   llarp/threadpool.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c

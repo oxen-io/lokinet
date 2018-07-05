@@ -44,7 +44,7 @@ struct check_online_request;
 void
 HandleDHTLocate(llarp_router_lookup_job *job)
 {
-  llarp::Info("DHT result: ", job->found ? "found" : "not found");
+  llarp::LogInfo("DHT result: ", job->found ? "found" : "not found");
   // save to nodedb?
 }
 
@@ -166,21 +166,22 @@ main(int argc, char *argv[])
   }
   if(!haveRequiredOptions)
   {
-    llarp::Error("Parameters dont all have their required parameters.\n");
+    llarp::LogError("Parameters dont all have their required parameters.\n");
     return 0;
   }
   printf("parsed options\n");
   if(!genMode && !updMode && !listMode && !importMode && !exportMode
      && !locateMode && !localMode)
   {
-    llarp::Error("I don't know what to do, no generate or update parameter\n");
+    llarp::LogError(
+        "I don't know what to do, no generate or update parameter\n");
     return 0;
   }
 
   ctx = llarp_main_init(conffname, !TESTNET);
   if(!ctx)
   {
-    llarp::Error("Cant set up context");
+    llarp::LogError("Cant set up context");
     return 0;
   }
   signal(SIGINT, handle_signal);
@@ -258,11 +259,11 @@ main(int argc, char *argv[])
   if(importMode)
   {
     llarp_main_loadDatabase(ctx);
-    llarp::Info("Loading ", rcfname);
+    llarp::LogInfo("Loading ", rcfname);
     llarp_rc *rc = llarp_rc_read(rcfname);
     if(!rc)
     {
-      llarp::Error("Can't load RC");
+      llarp::LogError("Can't load RC");
       return 0;
     }
     llarp_main_putDatabase(ctx, rc);
@@ -270,25 +271,25 @@ main(int argc, char *argv[])
   if(exportMode)
   {
     llarp_main_loadDatabase(ctx);
-    // llarp::Info("Looking for string: ", rcfname);
+    // llarp::LogInfo("Looking for string: ", rcfname);
 
     llarp::PubKey binaryPK;
     llarp::HexDecode(rcfname, binaryPK.data());
 
-    llarp::Info("Looking for binary: ", binaryPK);
+    llarp::LogInfo("Looking for binary: ", binaryPK);
     struct llarp_rc *rc = llarp_main_getDatabase(ctx, binaryPK.data());
     if(!rc)
     {
-      llarp::Error("Can't load RC from database");
+      llarp::LogError("Can't load RC from database");
     }
     std::string filename(rcfname);
     filename.append(".signed");
-    llarp::Info("Writing out: ", filename);
+    llarp::LogInfo("Writing out: ", filename);
     llarp_rc_write(rc, filename.c_str());
   }
   if(locateMode)
   {
-    llarp::Info("Going online");
+    llarp::LogInfo("Going online");
     llarp_main_setup(ctx);
 
     llarp::PubKey binaryPK;
@@ -296,7 +297,7 @@ main(int argc, char *argv[])
 
     // llarp::SetLogLevel(llarp::eLogDebug);
 
-    llarp::Info("Queueing job");
+    llarp::LogInfo("Queueing job");
     llarp_router_lookup_job *job = new llarp_router_lookup_job;
     job->found                   = false;
     job->hook                    = &HandleDHTLocate;
@@ -310,13 +311,13 @@ main(int argc, char *argv[])
     request->first                = false;
     llarp_main_queryDHT(request);
 
-    llarp::Info("Processing");
+    llarp::LogInfo("Processing");
     // run system and wait
     llarp_main_run(ctx);
   }
   if(localMode)
   {
-    // llarp::Info("find our local rc file");
+    // llarp::LogInfo("find our local rc file");
 
     // llarp_rc *rc = llarp_rc_read("router.signed");
     llarp_rc *rc  = llarp_main_getLocalRC(ctx);

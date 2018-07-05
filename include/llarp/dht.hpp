@@ -310,6 +310,30 @@ namespace llarp
       Key_t ourKey;
     };
 
+    struct PublishIntroMessage : public IMessage
+    {
+      llarp::service::IntroSet I;
+      uint64_t R;
+      uint64_t S;
+      bool hasS = false;
+      uint64_t V;
+      PublishIntroMessage() : IMessage({})
+      {
+      }
+
+      ~PublishIntroMessage();
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+
+      virtual bool
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage* >& replies) const;
+    };
+
     struct GotRouterMessage : public IMessage
     {
       GotRouterMessage(const Key_t& from) : IMessage(from)

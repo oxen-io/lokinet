@@ -55,9 +55,9 @@ struct llarp_nodedb
       auto itr = this->entries.begin();
       while(itr != this->entries.end())
       {
-        llarp::Info("Has byte_t [", test.size(), "] vs [", itr->first.size(),
+        llarp::LogInfo("Has byte_t [", test.size(), "] vs [", itr->first.size(),
     "]"); if (memcmp(test.data(), itr->first.data(), 32) == 0) {
-          llarp::Info("Match");
+          llarp::LogInfo("Match");
         }
         itr++;
       }
@@ -137,7 +137,7 @@ struct llarp_nodedb
     {
       buf.sz        = buf.cur - buf.base;
       auto filepath = getRCFilePath(pk);
-      llarp::Debug("saving RC.pubkey ", filepath);
+      llarp::LogDebug("saving RC.pubkey ", filepath);
       std::ofstream ofs(
           filepath,
           std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
@@ -145,10 +145,10 @@ struct llarp_nodedb
       ofs.close();
       if(!ofs)
       {
-        llarp::Error("Failed to write: ", filepath);
+        llarp::LogError("Failed to write: ", filepath);
         return false;
       }
-      llarp::Debug("saved RC.pubkey: ", filepath);
+      llarp::LogDebug("saved RC.pubkey: ", filepath);
       return true;
     }
     return false;
@@ -206,12 +206,12 @@ struct llarp_nodedb
     llarp_rc *rc = llarp_rc_read(fpath.c_str());
     if(!rc)
     {
-      llarp::Error("Signature read failed", fpath);
+      llarp::LogError("Signature read failed", fpath);
       return false;
     }
     if(!llarp_rc_verify_sig(crypto, rc))
     {
-      llarp::Error("Signature verify failed", fpath);
+      llarp::LogError("Signature verify failed", fpath);
       return false;
     }
     llarp::PubKey pk(rc->pubkey);
@@ -283,14 +283,14 @@ crypto_threadworker_verifyrc(void *user)
   // if it's valid we need to set it
   if(verify_request->valid)
   {
-    llarp::Debug("RC is valid, saving to disk");
+    llarp::LogDebug("RC is valid, saving to disk");
     llarp_threadpool_queue_job(verify_request->diskworker,
                                {verify_request, &disk_threadworker_setRC});
   }
   else
   {
     // callback to logic thread
-    llarp::Warn("RC is not valid, can't save to disk");
+    llarp::LogWarn("RC is not valid, can't save to disk");
     llarp_logic_queue_job(verify_request->logic,
                           {verify_request, &logic_threadworker_callback});
   }
@@ -413,7 +413,7 @@ llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 struct llarp_rc *
 llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
 {
-  // llarp::Info("llarp_nodedb_get_rc [", pk, "]");
+  // llarp::LogInfo("llarp_nodedb_get_rc [", pk, "]");
   if(n->Has(pk))
     return n->getRC(pk);
   else

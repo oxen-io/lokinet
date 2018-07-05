@@ -49,14 +49,14 @@ namespace llarp
   {
     if(frames.size() != MAXHOPS)
     {
-      llarp::Error("LRCM invalid number of records, ", frames.size(),
-                   "!=", MAXHOPS);
+      llarp::LogError("LRCM invalid number of records, ", frames.size(),
+                      "!=", MAXHOPS);
       return false;
     }
     if(!router->paths.AllowingTransit())
     {
-      llarp::Error("got an LRCM from ", remote,
-                   " when we are not allowing transit");
+      llarp::LogError("got an LRCM from ", remote,
+                      " when we are not allowing transit");
       return false;
     }
     return AsyncDecrypt(&router->paths);
@@ -128,7 +128,7 @@ namespace llarp
       // check for duplicate
       if(self->work)
       {
-        llarp::Warn("duplicate POW in LRCR");
+        llarp::LogWarn("duplicate POW in LRCR");
         return false;
       }
 
@@ -202,7 +202,8 @@ namespace llarp
       llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
       if(!self->hop->SendRoutingMessage(&confirm, self->context->Router()))
       {
-        llarp::Error("failed to send path confirmation for ", self->hop->info);
+        llarp::LogError("failed to send path confirmation for ",
+                        self->hop->info);
       }
       delete self;
     }
@@ -213,16 +214,16 @@ namespace llarp
       auto& info = self->hop->info;
       if(!buf)
       {
-        llarp::Error("LRCM decrypt failed from ", info.downstream);
+        llarp::LogError("LRCM decrypt failed from ", info.downstream);
         delete self;
         return;
       }
       buf->cur = buf->base + EncryptedFrame::OverheadSize;
-      llarp::Debug("decrypted LRCM from ", info.downstream);
+      llarp::LogDebug("decrypted LRCM from ", info.downstream);
       // successful decrypt
       if(!self->record.BDecode(buf))
       {
-        llarp::Error("malformed frame inside LRCM from ", info.downstream);
+        llarp::LogError("malformed frame inside LRCM from ", info.downstream);
         delete self;
         return;
       }
@@ -232,7 +233,7 @@ namespace llarp
       info.upstream = self->record.nextHop;
       if(self->context->HasTransitHop(info))
       {
-        llarp::Error("duplicate transit hop ", info);
+        llarp::LogError("duplicate transit hop ", info);
         delete self;
         return;
       }
@@ -241,7 +242,7 @@ namespace llarp
       if(!DH(self->hop->pathKey, self->record.commkey,
              self->context->EncryptionSecretKey(), self->record.tunnelNonce))
       {
-        llarp::Error("LRCM DH Failed ", info);
+        llarp::LogError("LRCM DH Failed ", info);
         delete self;
         return;
       }
@@ -249,20 +250,21 @@ namespace llarp
          && self->record.work->IsValid(self->context->Crypto()->shorthash,
                                        self->context->OurRouterID()))
       {
-        llarp::Info("LRCM extended lifetime by ",
-                    self->record.work->extendedLifetime, " seconds for ", info);
+        llarp::LogInfo("LRCM extended lifetime by ",
+                       self->record.work->extendedLifetime, " seconds for ",
+                       info);
         self->hop->lifetime += 1000 * self->record.work->extendedLifetime;
       }
       else if(self->record.lifetime < 600 && self->record.lifetime > 10)
       {
         self->hop->lifetime = self->record.lifetime;
-        llarp::Info("LRCM short lifespan set to ", self->hop->lifetime,
-                    " seconds for ", info);
+        llarp::LogInfo("LRCM short lifespan set to ", self->hop->lifetime,
+                       " seconds for ", info);
       }
 
       // TODO: check if we really want to accept it
       self->hop->started = llarp_time_now_ms();
-      llarp::Info("Accepted ", self->hop->info);
+      llarp::LogInfo("Accepted ", self->hop->info);
       self->context->PutTransitHop(self->hop);
 
       size_t sz = self->frames.front().size();
@@ -276,7 +278,7 @@ namespace llarp
       if(self->context->HopIsUs(info.upstream))
       {
         // we are the farthest hop
-        llarp::Info("We are the farthest hop for ", info);
+        llarp::LogInfo("We are the farthest hop for ", info);
         // send a LRAM down the path
         llarp_logic_queue_job(self->context->Logic(), {self, &SendPathConfirm});
       }

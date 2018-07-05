@@ -61,13 +61,13 @@ namespace llarp
     {
       if(!buf)
       {
-        llarp::Error("Failed to decrypt LRAM frame");
+        llarp::LogError("Failed to decrypt LRAM frame");
         delete self;
         return;
       }
       if(!self->record.BDecode(buf))
       {
-        llarp::Error("LRAR invalid format");
+        llarp::LogError("LRAR invalid format");
         delete self;
         return;
       }

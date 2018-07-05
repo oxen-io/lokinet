@@ -46,7 +46,7 @@ namespace llarp
       if(!ctx->crypto->dh_client(hop.shared, hop.router.enckey, hop.commkey,
                                  hop.nonce))
       {
-        llarp::Error("Failed to generate shared key for path build");
+        llarp::LogError("Failed to generate shared key for path build");
         abort();
         return;
       }
@@ -78,7 +78,7 @@ namespace llarp
       if(!record.BEncode(buf))
       {
         // failed to encode?
-        llarp::Error("Failed to generate Commit Record");
+        llarp::LogError("Failed to generate Commit Record");
         return;
       }
       // use ephameral keypair for frame
@@ -86,7 +86,7 @@ namespace llarp
       ctx->crypto->encryption_keygen(framekey);
       if(!frame.EncryptInPlace(framekey, hop.router.enckey, ctx->crypto))
       {
-        llarp::Error("Failed to encrypt LRCR");
+        llarp::LogError("Failed to encrypt LRCR");
         return;
       }
 
@@ -132,11 +132,11 @@ namespace llarp
       AsyncPathKeyExchangeContext< llarp_pathbuild_job >* ctx)
   {
     auto remote = ctx->path->Upstream();
-    llarp::Info("Generated LRCM to ", remote);
+    llarp::LogInfo("Generated LRCM to ", remote);
     auto router = ctx->user->router;
     if(!router->SendToOrQueue(remote, ctx->LRCM))
     {
-      llarp::Error("failed to send LRCM");
+      llarp::LogError("failed to send LRCM");
       return;
     }
     ctx->path->status       = llarp::path::ePathBuilding;
@@ -213,7 +213,7 @@ llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
 {
   if(!job->context)
   {
-    llarp::Error("failed to build path because no context is set in job");
+    llarp::LogError("failed to build path because no context is set in job");
     return;
   }
   job->router = job->context->router;

@@ -16,12 +16,14 @@ namespace llarp
 
     typedef llarp::AlignedBuffer< 16 > VanityNonce;
 
-    struct Info : public llarp::IBEncodeMessage
+    struct ServiceInfo : public llarp::IBEncodeMessage
     {
       llarp::PubKey enckey;
       llarp::PubKey signkey;
       uint64_t version = 0;
       VanityNonce vanity;
+
+      ~ServiceInfo();
 
       /// calculate our address
       void
@@ -43,7 +45,7 @@ namespace llarp
       VanityNonce vanity;
 
       // public service info
-      Info pub;
+      ServiceInfo pub;
 
       // regenerate secret keys
       void
@@ -67,6 +69,10 @@ namespace llarp
       uint64_t version = 0;
       uint64_t expiresAt;
 
+      ~Introduction()
+      {
+      }
+
       bool
       BEncode(llarp_buffer_t* buf) const;
 
@@ -76,9 +82,20 @@ namespace llarp
 
     struct IntroSet : public llarp::IBEncodeMessage
     {
-      Info A;
+      ServiceInfo A;
       std::set< Introduction > I;
       llarp::Signature Z;
+
+      ~IntroSet();
+
+      bool
+      BDecode(llarp_buffer_t* buf);
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
     };
 
   };  // namespace service

@@ -63,14 +63,14 @@ namespace llarp
     // derive shared key
     if(!DH(shared, otherPubkey, ourSecretKey, nonce))
     {
-      llarp::Error("DH failed");
+      llarp::LogError("DH failed");
       return false;
     }
 
     // encrypt body
     if(!Encrypt(buf, shared, nonce))
     {
-      llarp::Error("encrypt failed");
+      llarp::LogError("encrypt failed");
       return false;
     }
 
@@ -81,7 +81,7 @@ namespace llarp
 
     if(!MDS(hash, buf, shared))
     {
-      llarp::Error("Failed to generate messgae auth");
+      llarp::LogError("Failed to generate messgae auth");
       return false;
     }
     return true;
@@ -92,8 +92,8 @@ namespace llarp
   {
     if(size() <= size_t(EncryptedFrame::OverheadSize))
     {
-      llarp::Warn("encrypted frame too small, ", size(),
-                  " <= ", size_t(EncryptedFrame::OverheadSize));
+      llarp::LogWarn("encrypted frame too small, ", size(),
+                     " <= ", size_t(EncryptedFrame::OverheadSize));
       return false;
     }
     // format of frame is
@@ -122,19 +122,19 @@ namespace llarp
 
     if(!DH(shared, otherPubkey, ourSecretKey, nonce))
     {
-      llarp::Error("DH failed");
+      llarp::LogError("DH failed");
       return false;
     }
 
     if(!MDS(digest, buf, shared))
     {
-      llarp::Error("Digest failed");
+      llarp::LogError("Digest failed");
       return false;
     }
 
     if(memcmp(digest, hash, digest.size()))
     {
-      llarp::Error("message authentication failed");
+      llarp::LogError("message authentication failed");
       return false;
     }
 
@@ -144,7 +144,7 @@ namespace llarp
 
     if(!Decrypt(buf, shared, nonce))
     {
-      llarp::Error("decrypt failed");
+      llarp::LogError("decrypt failed");
       return false;
     }
     return true;

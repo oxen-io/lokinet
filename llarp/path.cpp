@@ -64,7 +64,7 @@ namespace llarp
     PathContext::ForwardLRCM(const RouterID& nextHop,
                              std::deque< EncryptedFrame >& frames)
     {
-      llarp::Info("fowarding LRCM to ", nextHop);
+      llarp::LogInfo("fowarding LRCM to ", nextHop);
       LR_CommitMessage* msg = new LR_CommitMessage;
       while(frames.size())
       {
@@ -213,7 +213,7 @@ namespace llarp
         if(itr->second->Expired(now))
         {
           TransitHop* path = itr->second;
-          llarp::Info("transit path expired ", path->info);
+          llarp::LogInfo("transit path expired ", path->info);
           removePaths.insert(path);
         }
         ++itr;
@@ -368,7 +368,7 @@ namespace llarp
     {
       if(!m_InboundMessageParser.ParseMessageBuffer(buf, this, r))
       {
-        llarp::Warn("Failed to parse inbound routing message");
+        llarp::LogWarn("Failed to parse inbound routing message");
         return false;
       }
       return true;
@@ -395,8 +395,8 @@ namespace llarp
     Path::HandlePathTransferMessage(
         const llarp::routing::PathTransferMessage* msg, llarp_router* r)
     {
-      llarp::Warn("unwarrented path transfer message on tx=", TXID(),
-                  " rx=", RXID());
+      llarp::LogWarn("unwarrented path transfer message on tx=", TXID(),
+                     " rx=", RXID());
       return false;
     }
 
@@ -408,7 +408,7 @@ namespace llarp
       {
         // confirm that we build the path
         status = ePathEstablished;
-        llarp::Info("path is confirmed tx=", TXID(), " rx=", RXID());
+        llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID());
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
@@ -418,8 +418,8 @@ namespace llarp
         m_LastLatencyTestTime = llarp_time_now_ms();
         return SendRoutingMessage(&latency, r);
       }
-      llarp::Warn("got unwarrented path confirm message on tx=", RXID(),
-                  " rx=", RXID());
+      llarp::LogWarn("got unwarrented path confirm message on tx=", RXID(),
+                     " rx=", RXID());
       return false;
     }
 
@@ -430,8 +430,8 @@ namespace llarp
       if(msg->L == m_LastLatencyTestID)
       {
         Latency = llarp_time_now_ms() - m_LastLatencyTestTime;
-        llarp::Info("path latency is ", Latency, " ms for tx=", TXID(),
-                    " rx=", RXID());
+        llarp::LogInfo("path latency is ", Latency, " ms for tx=", TXID(),
+                       " rx=", RXID());
         m_LastLatencyTestID = 0;
         return true;
       }
@@ -441,8 +441,11 @@ namespace llarp
     bool
     Path::HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r)
     {
-      // TODO: implement me
-      return false;
+      std::vector< llarp::dht::IMessage* > discard;
+      auto result = msg->HandleMessage(r->dht, discard);
+      for(auto& msg : discard)
+        delete msg;
+      return result;
     }
   }  // namespace path
 }  // namespace llarp

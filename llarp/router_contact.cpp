@@ -162,7 +162,7 @@ llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc)
     result  = crypto->verify(rc->pubkey, buf, sig);
   }
   else
-    llarp::Warn("RC encode failed");
+    llarp::LogWarn("RC encode failed");
   // restore sig
   memcpy(rc->signature, sig, SIGSIZE);
   return result;

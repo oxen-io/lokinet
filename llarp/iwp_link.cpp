@@ -533,7 +533,7 @@ namespace iwp
         nextMsgID = std::max(nextMsgID, front->msgid);
         if(!router->HandleRecvLinkMessage(parent, front->Buffer()))
         {
-          llarp::Warn("failed to process inbound message ", front->msgid);
+          llarp::LogWarn("failed to process inbound message ", front->msgid);
         }
         delete front;
         q.pop();
@@ -564,7 +564,7 @@ namespace iwp
     void
     push_ackfor(uint64_t id, uint32_t bitmask)
     {
-      llarp::Debug("ACK for msgid=", id, " mask=", bitmask);
+      llarp::LogDebug("ACK for msgid=", id, " mask=", bitmask);
       sendqueue.push(new sendbuf_t(12 + 6));
       auto body_ptr = init_sendbuf(sendqueue.back(), eACKS, 12, txflags);
       // TODO: this assumes big endian
@@ -578,7 +578,7 @@ namespace iwp
       if(hdr.size() > sz)
       {
         // overflow
-        llarp::Warn("invalid XMIT frame size ", hdr.size(), " > ", sz);
+        llarp::LogWarn("invalid XMIT frame size ", hdr.size(), " > ", sz);
         return false;
       }
       sz = hdr.size();
@@ -591,8 +591,8 @@ namespace iwp
       if(sz - bufsz < x.lastfrag())
       {
         // bad size of last fragment
-        llarp::Warn("XMIT frag size missmatch ", sz - bufsz, " < ",
-                    x.lastfrag());
+        llarp::LogWarn("XMIT frag size missmatch ", sz - bufsz, " < ",
+                       x.lastfrag());
         return false;
       }
 
@@ -605,8 +605,8 @@ namespace iwp
         {
           auto msg = new transit_message(x);
           rx[id]   = msg;
-          llarp::Debug("got message XMIT with ", (int)x.numfrags(),
-                       " fragments");
+          llarp::LogDebug("got message XMIT with ", (int)x.numfrags(),
+                          " fragments");
           // inserted, put last fragment
           msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
           push_ackfor(id, 0);
@@ -617,10 +617,10 @@ namespace iwp
           return true;
         }
         else
-          llarp::Warn("duplicate XMIT msgid=", x.msgid());
+          llarp::LogWarn("duplicate XMIT msgid=", x.msgid());
       }
       else
-        llarp::Warn("LSB not set on flags");
+        llarp::LogWarn("LSB not set on flags");
       return false;
     }
 
@@ -636,7 +636,7 @@ namespace iwp
       if(hdr.size() > sz)
       {
         // overflow
-        llarp::Warn("invalid FRAG frame size ", hdr.size(), " > ", sz);
+        llarp::LogWarn("invalid FRAG frame size ", hdr.size(), " > ", sz);
         return false;
       }
       sz = hdr.size();
@@ -644,7 +644,7 @@ namespace iwp
       if(sz <= 9)
       {
         // underflow
-        llarp::Warn("invalid FRAG frame size ", sz, " <= 9");
+        llarp::LogWarn("invalid FRAG frame size ", sz, " <= 9");
         return false;
       }
 
@@ -658,20 +658,20 @@ namespace iwp
       auto itr = rx.find(msgid);
       if(itr == rx.end())
       {
-        llarp::Warn("no such RX fragment, msgid=", msgid);
+        llarp::LogWarn("no such RX fragment, msgid=", msgid);
         return true;
       }
       auto fragsize = itr->second->msginfo.fragsize();
       if(fragsize != sz - 9)
       {
-        llarp::Warn("RX fragment size missmatch ", fragsize, " != ", sz - 9);
+        llarp::LogWarn("RX fragment size missmatch ", fragsize, " != ", sz - 9);
         return false;
       }
-      llarp::Debug("RX got fragment ", (int)fragno, " msgid=", msgid);
+      llarp::LogDebug("RX got fragment ", (int)fragno, " msgid=", msgid);
       if(!itr->second->put_frag(fragno, hdr.data() + 9))
       {
-        llarp::Warn("inbound message does not have fragment msgid=", msgid,
-                    " fragno=", (int)fragno);
+        llarp::LogWarn("inbound message does not have fragment msgid=", msgid,
+                       " fragno=", (int)fragno);
         return false;
       }
       auto mask = itr->second->get_bitmask();
@@ -716,7 +716,7 @@ namespace iwp
     next_frame(llarp_buffer_t *buf)
     {
       auto left = sendqueue.size();
-      llarp::Debug("next frame, ", left, " frames left in send queue");
+      llarp::LogDebug("next frame, ", left, " frames left in send queue");
       if(left)
       {
         sendbuf_t *send = sendqueue.front();
@@ -747,23 +747,23 @@ namespace iwp
       switch(hdr.msgtype())
       {
         case eALIV:
-          llarp::Debug("iwp_link::frame_state::process Got alive");
+          llarp::LogDebug("iwp_link::frame_state::process Got alive");
           if(rxflags & eSessionInvalidated)
           {
             txflags |= eSessionInvalidated;
           }
           return true;
         case eXMIT:
-          llarp::Debug("iwp_link::frame_state::process Got xmit");
+          llarp::LogDebug("iwp_link::frame_state::process Got xmit");
           return got_xmit(hdr, sz - 6);
         case eACKS:
-          llarp::Debug("iwp_link::frame_state::process Got ack");
+          llarp::LogDebug("iwp_link::frame_state::process Got ack");
           return got_acks(hdr, sz - 6);
         case eFRAG:
-          llarp::Debug("iwp_link::frame_state::process Got frag");
+          llarp::LogDebug("iwp_link::frame_state::process Got frag");
           return got_frag(hdr, sz - 6);
         default:
-          llarp::Warn(
+          llarp::LogWarn(
               "iwp_link::frame_state::process - unknown header message type: ",
               (int)hdr.msgtype());
           return false;
@@ -870,14 +870,14 @@ namespace iwp
         crypto->encryption_keygen(eph_seckey);
       llarp_rc_clear(&remote_router);
       crypto->randbytes(token, 32);
-      llarp::Info("session created");
+      llarp::LogInfo("session created");
     }
 
     ~session()
     {
       llarp_rc_free(&remote_router);
       frame.clear();
-      llarp::Info("session destroyed");
+      llarp::LogInfo("session destroyed");
     }
 
     static llarp_rc *
@@ -892,7 +892,7 @@ namespace iwp
     {
       session *self = static_cast< session * >(s->impl);
       auto id       = self->frame.txids++;
-      // llarp::Debug("session sending to, number", id);
+      // llarp::LogDebug("session sending to, number", id);
       llarp::ShortHash digest;
       self->crypto->shorthash(digest, msg);
       transit_message *m = new transit_message(msg, digest, id);
@@ -903,10 +903,10 @@ namespace iwp
     void
     add_outbound_message(uint64_t id, transit_message *msg)
     {
-      llarp::Debug("add outbound message ", id, " of size ",
-                   msg->msginfo.totalsize(),
-                   " numfrags=", (int)msg->msginfo.numfrags(),
-                   " lastfrag=", (int)msg->msginfo.lastfrag());
+      llarp::LogDebug("add outbound message ", id, " of size ",
+                      msg->msginfo.totalsize(),
+                      " numfrags=", (int)msg->msginfo.numfrags(),
+                      " lastfrag=", (int)msg->msginfo.lastfrag());
 
       frame.queue_tx(id, msg);
       pump();
@@ -1006,7 +1006,7 @@ namespace iwp
     void
     pump()
     {
-      // llarp::Info("session pump");
+      // llarp::LogInfo("session pump");
       // TODO: in codel the timestamp may cause excssive drop when all the
       // packets have a similar timestamp
       now = llarp_time_now_ms();
@@ -1022,10 +1022,10 @@ namespace iwp
     void
     recv(const void *buf, size_t sz)
     {
-      // llarp::Debug("session recv", state);
+      // llarp::LogDebug("session recv", state);
 
       // frame_header hdr((byte_t *)buf);
-      // llarp::Debug("recv - message header type ", (int)hdr.msgtype());
+      // llarp::LogDebug("recv - message header type ", (int)hdr.msgtype());
 
       now = llarp_time_now_ms();
       switch(state)
@@ -1033,17 +1033,17 @@ namespace iwp
         case eInitial:
         case eIntroRecv:
           // got intro
-          llarp::Debug("session recv - intro");
+          llarp::LogDebug("session recv - intro");
           on_intro(buf, sz);
           break;
         case eIntroSent:
           // got intro ack
-          llarp::Debug("session recv - introack");
+          llarp::LogDebug("session recv - introack");
           on_intro_ack(buf, sz);
           break;
         case eIntroAckSent:
           // probably a session start
-          llarp::Debug("session recv - sessionstart");
+          llarp::LogDebug("session recv - sessionstart");
           on_session_start(buf, sz);
           break;
 
@@ -1051,15 +1051,15 @@ namespace iwp
         case eLIMSent:
         case eEstablished:
           // session is started
-          llarp::Debug("session recv - ",
-                       state == eSessionStartSent ? "startsent" : "",
-                       state == eLIMSent ? "limset" : "",
-                       state == eEstablished ? "established" : "");
+          llarp::LogDebug("session recv - ",
+                          state == eSessionStartSent ? "startsent" : "",
+                          state == eLIMSent ? "limset" : "",
+                          state == eEstablished ? "established" : "");
 
           decrypt_frame(buf, sz);
           break;
         default:
-          llarp::Error("session recv - invalid state");
+          llarp::LogError("session recv - invalid state");
           // invalid state?
           break;
       }
@@ -1071,7 +1071,7 @@ namespace iwp
     void
     send_LIM()
     {
-      llarp::Debug("send LIM");
+      llarp::LogDebug("send LIM");
       llarp::ShortHash digest;
       // 64 bytes overhead for link message
       byte_t tmp[MAX_RC_SIZE + 64];
@@ -1092,7 +1092,7 @@ namespace iwp
         EnterState(eLIMSent);
       }
       else
-        llarp::Error("LIM Encode failed");
+        llarp::LogError("LIM Encode failed");
     }
 
     static void
@@ -1117,10 +1117,10 @@ namespace iwp
     void
     on_session_start(const void *buf, size_t sz)
     {
-      llarp::Info("session start");
+      llarp::LogInfo("session start");
       if(sz > sizeof(workbuf))
       {
-        llarp::Debug("session start too big");
+        llarp::LogDebug("session start too big");
         return;
       }
       // own the buffer
@@ -1193,7 +1193,7 @@ namespace iwp
     void
     session_start()
     {
-      llarp::Info("session gen start");
+      llarp::LogInfo("session gen start");
       size_t w2sz = rand() % MAX_PAD;
       start.buf   = workbuf;
       start.sz    = w2sz + (32 * 3);
@@ -1216,7 +1216,7 @@ namespace iwp
     handle_frame_decrypt(iwp_async_frame *frame)
     {
       session *self = static_cast< session * >(frame->user);
-      llarp::Debug("rx ", frame->sz);
+      llarp::LogDebug("rx ", frame->sz);
       if(frame->success)
       {
         if(self->frame.process(frame->buf + 64, frame->sz - 64))
@@ -1225,10 +1225,10 @@ namespace iwp
           self->pump();
         }
         else
-          llarp::Error("invalid frame from ", self->addr);
+          llarp::LogError("invalid frame from ", self->addr);
       }
       else
-        llarp::Error("decrypt frame fail from ", self->addr);
+        llarp::LogError("decrypt frame fail from ", self->addr);
     }
 
     void
@@ -1252,13 +1252,13 @@ namespace iwp
             ManualPumpInboundCodel();
         }
         else
-          llarp::Warn("decrypt frame fail");
+          llarp::LogWarn("decrypt frame fail");
        */
         f->hook = &handle_frame_decrypt;
         iwp_call_async_frame_decrypt(iwp, f);
       }
       else
-        llarp::Warn("short packet of ", sz, " bytes");
+        llarp::LogWarn("short packet of ", sz, " bytes");
     }
 
     // static void
@@ -1283,7 +1283,7 @@ namespace iwp
         }
         else
         {
-          llarp::Warn("DecryptInboundFrames - cant decrypt frame");
+          llarp::LogWarn("DecryptInboundFrames - cant decrypt frame");
         }
         inq.pop();
       }
@@ -1302,10 +1302,10 @@ namespace iwp
     handle_frame_encrypt(iwp_async_frame *frame)
     {
       session *self = static_cast< session * >(frame->user);
-      llarp::Debug("tx ", frame->sz);
+      llarp::LogDebug("tx ", frame->sz);
       if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz)
          == -1)
-        llarp::Warn("sendto failed");
+        llarp::LogWarn("sendto failed");
     }
 
     iwp_async_frame *
@@ -1314,7 +1314,7 @@ namespace iwp
       // TODO don't hard code 1500
       if(sz > 1500)
       {
-        llarp::Warn("alloc frame - frame too big, >1500");
+        llarp::LogWarn("alloc frame - frame too big, >1500");
         return nullptr;
       }
 
@@ -1327,7 +1327,7 @@ namespace iwp
       frame->sessionkey = sessionkey;
       /// TODO: this could be rather slow
       // frame->created = now;
-      // llarp::Info("alloc_frame putting into q");
+      // llarp::LogInfo("alloc_frame putting into q");
       // q.Put(frame);
       return frame;
     }
@@ -1389,17 +1389,17 @@ namespace iwp
       link->working = false;
       if(i->buf)
       {
-        llarp::Info("send intro to ", link->addr);
+        llarp::LogInfo("send intro to ", link->addr);
         if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)
         {
-          llarp::Warn("send intro failed");
+          llarp::LogWarn("send intro failed");
           return;
         }
         link->EnterState(eIntroSent);
       }
       else
       {
-        llarp::Warn("failed to generate intro");
+        llarp::LogWarn("failed to generate intro");
       }
     }
 
@@ -1409,7 +1409,7 @@ namespace iwp
     void
     introduce(uint8_t *pub)
     {
-      llarp::Debug("session introduce");
+      llarp::LogDebug("session introduce");
       memcpy(remote, pub, 32);
       intro.buf   = workbuf;
       size_t w0sz = (rand() % MAX_PAD);
@@ -1430,8 +1430,8 @@ namespace iwp
       intro.user = this;
       intro.hook = &handle_generated_intro;
       working    = true;
-      llarp::Info("try introduce to transport adddress ",
-                  llarp::RouterID(remote));
+      llarp::LogInfo("try introduce to transport adddress ",
+                     llarp::RouterID(remote));
       iwp_call_async_gen_intro(iwp, &intro);
       // start introduce timer
       establish_job_id = llarp_logic_call_later(
@@ -1446,14 +1446,14 @@ namespace iwp
     void
     EnterState(State st)
     {
-      llarp::Debug("EnterState - entering state: ", st,
-                   state == eLIMSent ? "eLIMSent" : "",
-                   state == eSessionStartSent ? "eSessionStartSent" : "");
+      llarp::LogDebug("EnterState - entering state: ", st,
+                      state == eLIMSent ? "eLIMSent" : "",
+                      state == eSessionStartSent ? "eSessionStartSent" : "");
       frame.alive();
       state = st;
       if(state == eSessionStartSent || state == eIntroAckSent)
       {
-        // llarp::Info("EnterState - ",  state==eLIMSent?"eLIMSent":"",
+        // llarp::LogInfo("EnterState - ",  state==eLIMSent?"eLIMSent":"",
         // state==eSessionStartSent?"eSessionStartSent":""); PumpCodelInbound();
         // PumpCodelOutbound();
         PumpCryptoOutbound();
@@ -1678,7 +1678,7 @@ namespace iwp
       auto itr = m_sessions.find(addr);
       if(itr != m_sessions.end())
       {
-        llarp::Debug("removing session ", addr);
+        llarp::LogDebug("removing session ", addr);
         UnmapAddr(addr);
         session *s = static_cast< session * >(itr->second->impl);
         s->done();
@@ -1697,7 +1697,7 @@ namespace iwp
     bool
     ensure_privkey()
     {
-      llarp::Debug("ensure transport private key at ", keyfile);
+      llarp::LogDebug("ensure transport private key at ", keyfile);
       std::error_code ec;
       if(!fs::exists(keyfile, ec))
       {
@@ -1717,7 +1717,7 @@ namespace iwp
     keygen(const char *fname)
     {
       crypto->encryption_keygen(seckey);
-      llarp::Info("new transport key generated");
+      llarp::LogInfo("new transport key generated");
       std::ofstream f(fname);
       if(f.is_open())
       {
@@ -1785,9 +1785,9 @@ namespace iwp
       router->crypto.shorthash(digest, buf);
       if(memcmp(digest, rxmsg->msginfo.hash(), 32))
       {
-        llarp::Warn("message hash missmatch ",
-                    llarp::AlignedBuffer< 32 >(digest),
-                    " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
+        llarp::LogWarn(
+            "message hash missmatch ", llarp::AlignedBuffer< 32 >(digest),
+            " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
         return false;
       }
       if(id == nextMsgID)
@@ -1809,7 +1809,7 @@ namespace iwp
           else
           {
             llarp::PubKey k = impl->remote_router.pubkey;
-            llarp::Warn("spoofed LIM from ", k);
+            llarp::LogWarn("spoofed LIM from ", k);
             impl->parent->close(impl->parent);
             success = false;
           }
@@ -1822,8 +1822,8 @@ namespace iwp
       }
       else
       {
-        llarp::Warn("out of order message expected ", nextMsgID, " but got ",
-                    id);
+        llarp::LogWarn("out of order message expected ", nextMsgID, " but got ",
+                       id);
         recvqueue.Put(new InboundMessage(id, msg));
         success = true;
       }
@@ -1832,7 +1832,7 @@ namespace iwp
     rx.erase(id);
 
     if(!success)
-      llarp::Warn("Failed to process inbound message ", id);
+      llarp::LogWarn("Failed to process inbound message ", id);
 
     return success;
   }
@@ -1844,8 +1844,8 @@ namespace iwp
     if(!intro->buf)
     {
       self->serv->remove_intro_from(self->addr);
-      llarp::Error("intro verify failed from ", self->addr, " via ",
-                   self->serv->addr);
+      llarp::LogError("intro verify failed from ", self->addr, " via ",
+                      self->serv->addr);
       delete self;
       return;
     }
@@ -1858,7 +1858,7 @@ namespace iwp
     session *link = static_cast< session * >(start->user);
     link->working = false;
     if(llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz) == -1)
-      llarp::Error("sendto failed");
+      llarp::LogError("sendto failed");
     link->EnterState(eSessionStartSent);
     link->serv->remove_intro_from(link->addr);
   }
@@ -1866,17 +1866,17 @@ namespace iwp
   void
   session::on_intro(const void *buf, size_t sz)
   {
-    llarp::Debug("session onintro");
+    llarp::LogDebug("session onintro");
     if(sz >= sizeof(workbuf))
     {
       // too big?
-      llarp::Error("intro too big");
+      llarp::LogError("intro too big");
       delete this;
       return;
     }
     if(serv->has_intro_from(addr))
     {
-      llarp::Error("duplicate intro from ", addr);
+      llarp::LogError("duplicate intro from ", addr);
       delete this;
       return;
     }
@@ -1906,10 +1906,10 @@ namespace iwp
   {
     if(serv->has_session_to(addr))
     {
-      llarp::Warn("won't ack intro for duplicate session from ", addr);
+      llarp::LogWarn("won't ack intro for duplicate session from ", addr);
       return;
     }
-    llarp::Debug("session introack");
+    llarp::LogDebug("session introack");
     uint16_t w1sz = rand() % MAX_PAD;
     introack.buf  = workbuf;
     introack.sz   = (32 * 3) + w1sz;
@@ -1938,7 +1938,7 @@ namespace iwp
   session::session_established()
   {
     llarp::RouterID remote = remote_router.pubkey;
-    llarp::Info("session to ", remote, " established");
+    llarp::LogInfo("session to ", remote, " established");
     EnterState(eEstablished);
     serv->MapAddr(addr, remote_router.pubkey);
     llarp_logic_cancel_call(logic, establish_job_id);
@@ -1970,7 +1970,7 @@ namespace iwp
     if(sz >= sizeof(workbuf))
     {
       // too big?
-      llarp::Error("introack too big");
+      llarp::LogError("introack too big");
       serv->RemoveSessionByAddr(addr);
       return;
     }
@@ -1999,7 +1999,7 @@ namespace iwp
     if(self->is_invalidated())
     {
       // don't send keepalive
-      llarp::Info("session cant send keepalive because were invalid");
+      llarp::LogInfo("session cant send keepalive because were invalid");
       return;
     }
     // all zeros means keepalive
@@ -2022,13 +2022,13 @@ namespace iwp
   {
     if(hdr.size() > sz)
     {
-      llarp::Error("invalid ACKS frame size ", hdr.size(), " > ", sz);
+      llarp::LogError("invalid ACKS frame size ", hdr.size(), " > ", sz);
       return false;
     }
     sz = hdr.size();
     if(sz < 12)
     {
-      llarp::Error("invalid ACKS frame size ", sz, " < 12");
+      llarp::LogError("invalid ACKS frame size ", sz, " < 12");
       return false;
     }
 
@@ -2041,7 +2041,7 @@ namespace iwp
     auto itr = tx.find(msgid);
     if(itr == tx.end())
     {
-      llarp::Debug("ACK for missing TX frame msgid=", msgid);
+      llarp::LogDebug("ACK for missing TX frame msgid=", msgid);
       return true;
     }
 
@@ -2051,13 +2051,13 @@ namespace iwp
 
     if(msg->completed())
     {
-      llarp::Debug("message transmitted msgid=", msgid);
+      llarp::LogDebug("message transmitted msgid=", msgid);
       tx.erase(msgid);
       delete msg;
     }
     else
     {
-      llarp::Debug("message ", msgid, " retransmit fragments");
+      llarp::LogDebug("message ", msgid, " retransmit fragments");
       msg->retransmit_frags(sendqueue, txflags);
     }
 
@@ -2080,7 +2080,7 @@ namespace iwp
     if(introack->buf == nullptr)
     {
       // invalid signature
-      llarp::Error("introack verify failed from ", link->addr);
+      llarp::LogError("introack verify failed from ", link->addr);
       link->serv->remove_intro_from(link->addr);
       link->serv->RemoveSessionByAddr(link->addr);
       return;
@@ -2097,7 +2097,8 @@ namespace iwp
       // we are timed out
       // when we are done doing stuff with all of our frames from the crypto
       // workers we are done
-      llarp::Warn("Tick - ", addr, " timed out with ", frames, " frames left");
+      llarp::LogWarn("Tick - ", addr, " timed out with ", frames,
+                     " frames left");
       return !working;
     }
     if(is_invalidated())
@@ -2105,8 +2106,8 @@ namespace iwp
       // both sides agreeed to session invalidation
       // terminate our session when all of our frames from the crypto workers
       // are done
-      llarp::Warn("Tick - ", addr, " invaldiated session with ", frames,
-                  " frames left");
+      llarp::LogWarn("Tick - ", addr, " invaldiated session with ", frames,
+                     " frames left");
       return !working;
     }
     if(state == eLIMSent || state == eEstablished)
@@ -2118,7 +2119,7 @@ namespace iwp
     // pump frame state
     if(state == eEstablished)
     {
-      // llarp::Debug("Tick - pumping and retransmitting because we're
+      // llarp::LogDebug("Tick - pumping and retransmitting because we're
       // eEstablished");
 
       frame.retransmit(now);
@@ -2153,7 +2154,7 @@ namespace iwp
     {
       // verify fail
       // TODO: remove session?
-      llarp::Warn("session start verify failed from ", self->addr);
+      llarp::LogWarn("session start verify failed from ", self->addr);
       self->serv->RemoveSessionByAddr(self->addr);
       return;
     }
@@ -2201,11 +2202,12 @@ namespace iwp
     server *link = static_cast< server * >(l->impl);
     if(!link->ensure_privkey())
     {
-      llarp::Error("failed to ensure private key");
+      llarp::LogError("failed to ensure private key");
       return false;
     }
 
-    llarp::Debug("configure link ifname=", ifname, " af=", af, " port=", port);
+    llarp::LogDebug("configure link ifname=", ifname, " af=", af,
+                    " port=", port);
     // bind
     sockaddr_in ip4addr;
     sockaddr_in6 ip6addr;
@@ -2222,7 +2224,7 @@ namespace iwp
         break;
         // TODO: AF_PACKET
       default:
-        llarp::Error(__FILE__, "unsupported address family", af);
+        llarp::LogError(__FILE__, "unsupported address family", af);
         return false;
     }
 
@@ -2232,7 +2234,7 @@ namespace iwp
     {
       if(!llarp_getifaddr(ifname, af, addr))
       {
-        llarp::Error("failed to get address of network interface ", ifname);
+        llarp::LogError("failed to get address of network interface ", ifname);
         return false;
       }
     }
@@ -2257,10 +2259,10 @@ namespace iwp
     link->udp.recvfrom = &server::handle_recvfrom;
     link->udp.user     = link;
     link->udp.tick     = nullptr;
-    llarp::Debug("bind IWP link to ", link->addr);
+    llarp::LogDebug("bind IWP link to ", link->addr);
     if(llarp_ev_add_udp(link->netloop, &link->udp, link->addr) == -1)
     {
-      llarp::Error("failed to bind to ", link->addr);
+      llarp::LogError("failed to bind to ", link->addr);
       return false;
     }
     return true;
@@ -2296,7 +2298,7 @@ namespace iwp
     auto sz      = link->m_sessions.size();
     if(sz)
     {
-      llarp::Debug("we have ", sz, "sessions");
+      llarp::LogDebug("we have ", sz, "sessions");
       iter.link = l;
       // TODO: race condition with cleanup timer
       for(auto &item : link->m_sessions)
@@ -2312,7 +2314,7 @@ namespace iwp
     server *link = static_cast< server * >(l->impl);
     {
       llarp::Addr dst(job->ai);
-      llarp::Debug("establish session to ", dst);
+      llarp::LogDebug("establish session to ", dst);
       session *s = link->find_session(dst);
       if(s == nullptr)
       {
@@ -2377,19 +2379,20 @@ namespace iwp
       if(link->serv->has_session_to(link->addr))
       {
         // duplicate session
-        llarp::Warn("duplicate session to ", link->addr);
+        llarp::LogWarn("duplicate session to ", link->addr);
         return;
       }
       link->frame.alive();
       link->EnterState(eIntroAckSent);
       link->serv->put_session(link->addr, link);
-      llarp::Debug("send introack to ", link->addr, " via ", link->serv->addr);
+      llarp::LogDebug("send introack to ", link->addr, " via ",
+                      link->serv->addr);
       llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
     }
     else
     {
       // failed to generate?
-      llarp::Warn("failed to generate introack");
+      llarp::LogWarn("failed to generate introack");
     }
   }
 }  // namespace iwp

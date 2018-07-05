@@ -4,6 +4,6 @@ namespace llarp
 {
   DiscardMessage::~DiscardMessage()
   {
-    llarp::Debug("~DiscardMessage");
+    llarp::LogDebug("~DiscardMessage");
   }
-}
+}  // namespace llarp

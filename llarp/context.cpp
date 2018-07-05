@@ -14,7 +14,7 @@ namespace llarp
   Context::Context(std::ostream &stdout, bool singleThread)
       : singleThreaded(singleThread), out(stdout)
   {
-    llarp::Info(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
+    llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
   }
 
   Context::~Context()
@@ -30,18 +30,18 @@ namespace llarp
   bool
   Context::ReloadConfig()
   {
-    // llarp::Info("loading config at ", configfile);
+    // llarp::LogInfo("loading config at ", configfile);
     if(llarp_load_config(config, configfile.c_str()))
     {
       llarp_free_config(&config);
-      llarp::Error("failed to load config file ", configfile);
+      llarp::LogError("failed to load config file ", configfile);
       return false;
     }
     llarp_config_iterator iter;
     iter.user  = this;
     iter.visit = &iter_config;
     llarp_config_iter(config, &iter);
-    llarp::Info("config [", configfile, "] loaded");
+    llarp::LogInfo("config [", configfile, "] loaded");
     return true;
   }
 
@@ -89,23 +89,24 @@ namespace llarp
     nodedb = llarp_nodedb_new(&crypto);
     if(!nodedb_dir[0])
     {
-      llarp::Error("no nodedb_dir configured");
+      llarp::LogError("no nodedb_dir configured");
       return 0;
     }
 
     nodedb_dir[sizeof(nodedb_dir) - 1] = 0;
     if(!llarp_nodedb_ensure_dir(nodedb_dir))
     {
-      llarp::Error("nodedb_dir is incorrect");
+      llarp::LogError("nodedb_dir is incorrect");
       return 0;
     }
-    // llarp::Info("nodedb_dir [", nodedb_dir, "] configured!");
+    // llarp::LogInfo("nodedb_dir [", nodedb_dir, "] configured!");
     ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir);
-    llarp::Info("nodedb_dir loaded ", loaded, " RCs from [", nodedb_dir, "]");
+    llarp::LogInfo("nodedb_dir loaded ", loaded, " RCs from [", nodedb_dir,
+                   "]");
     if(loaded < 0)
     {
       // shouldn't be possible
-      llarp::Error("nodedb_dir directory doesn't exist");
+      llarp::LogError("nodedb_dir directory doesn't exist");
       return 0;
     }
     return 1;
@@ -132,7 +133,7 @@ namespace llarp
   int
   Context::Setup()
   {
-    llarp::Info("starting up");
+    llarp::LogInfo("starting up");
     this->LoadDatabase();
     llarp_ev_loop_alloc(&mainloop);
 
@@ -141,7 +142,7 @@ namespace llarp
       worker = llarp_init_threadpool(2, "llarp-worker");
     else if(singleThreaded)
     {
-      llarp::Info("running in single threaded mode");
+      llarp::LogInfo("running in single threaded mode");
       worker = llarp_init_same_process_threadpool();
     }
     // ensure netio thread
@@ -156,12 +157,12 @@ namespace llarp
 
     if(!llarp_configure_router(router, config))
     {
-      llarp::Error("Failed to configure router");
+      llarp::LogError("Failed to configure router");
       return 1;
     }
     if(custom_dht_func)
     {
-      llarp::Info("using custom dht function");
+      llarp::LogInfo("using custom dht function");
       llarp_dht_set_msg_handler(router->dht, custom_dht_func);
     }
     // set nodedb, load our RC, establish DHT
@@ -180,7 +181,7 @@ namespace llarp
       // set up all requirements
       if(this->Setup())
       {
-        llarp::Error("Failed to setup router");
+        llarp::LogError("Failed to setup router");
         return 1;
       }
     }
@@ -188,7 +189,7 @@ namespace llarp
     // run net io thread
     if(singleThreaded)
     {
-      llarp::Info("running mainloop");
+      llarp::LogInfo("running mainloop");
       llarp_ev_loop_run_single_process(mainloop, worker, logic);
     }
     else
@@ -206,7 +207,7 @@ namespace llarp
         pthread_setname_np(netio_threads.back().native_handle(), "llarp-netio");
 #endif
       }
-      llarp::Info("running mainloop");
+      llarp::LogInfo("running mainloop");
       llarp_logic_mainloop(logic);
     }
     return 0;
@@ -217,12 +218,12 @@ namespace llarp
   {
     if(sig == SIGINT)
     {
-      llarp::Info("SIGINT");
+      llarp::LogInfo("SIGINT");
       SigINT();
     }
     if(sig == SIGHUP)
     {
-      llarp::Info("SIGHUP");
+      llarp::LogInfo("SIGHUP");
       ReloadConfig();
     }
   }
@@ -236,55 +237,55 @@ namespace llarp
   void
   Context::Close()
   {
-    llarp::Debug("stop router");
+    llarp::LogDebug("stop router");
     if(router)
       llarp_stop_router(router);
 
-    llarp::Debug("stop workers");
+    llarp::LogDebug("stop workers");
     if(worker)
       llarp_threadpool_stop(worker);
 
-    llarp::Debug("join workers");
+    llarp::LogDebug("join workers");
     if(worker)
       llarp_threadpool_join(worker);
 
-    llarp::Debug("stop logic");
+    llarp::LogDebug("stop logic");
 
     if(logic)
       llarp_logic_stop(logic);
 
-    llarp::Debug("free config");
+    llarp::LogDebug("free config");
     llarp_free_config(&config);
 
-    llarp::Debug("free workers");
+    llarp::LogDebug("free workers");
     llarp_free_threadpool(&worker);
 
-    llarp::Debug("free nodedb");
+    llarp::LogDebug("free nodedb");
     llarp_nodedb_free(&nodedb);
 
     for(size_t i = 0; i < netio_threads.size(); ++i)
     {
       if(mainloop)
       {
-        llarp::Debug("stopping event loop thread ", i);
+        llarp::LogDebug("stopping event loop thread ", i);
         llarp_ev_loop_stop(mainloop);
       }
     }
 
-    llarp::Debug("free router");
+    llarp::LogDebug("free router");
     llarp_free_router(&router);
 
-    llarp::Debug("free logic");
+    llarp::LogDebug("free logic");
     llarp_free_logic(&logic);
 
     for(auto &t : netio_threads)
     {
-      llarp::Debug("join netio thread");
+      llarp::LogDebug("join netio thread");
       t.join();
     }
 
     netio_threads.clear();
-    llarp::Debug("free mainloop");
+    llarp::LogDebug("free mainloop");
     llarp_ev_loop_free(&mainloop);
   }
 
@@ -295,7 +296,7 @@ namespace llarp
     configfile = fname;
     return ReloadConfig();
   }
-}
+}  // namespace llarp
 
 extern "C" {
 struct llarp_main
@@ -378,7 +379,7 @@ llarp_main_getLocalRC(struct llarp_main *ptr)
    iter.visit = &iter_config;
    llarp_config_iter(ctx->config, &iter);
    */
-  llarp::Info("Loading ", ptr->ctx->conatctFile);
+  llarp::LogInfo("Loading ", ptr->ctx->conatctFile);
   llarp_rc *rc = llarp_rc_read(ptr->ctx->conatctFile);
   return rc;
 }
@@ -386,19 +387,19 @@ llarp_main_getLocalRC(struct llarp_main *ptr)
 void
 llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
 {
-  // llarp::Info("checkOnline - check ", left);
+  // llarp::LogInfo("checkOnline - check ", left);
   if(left)
     return;
   struct check_online_request *request =
       static_cast< struct check_online_request * >(u);
-  // llarp::Debug("checkOnline - running");
-  // llarp::Info("checkOnline - DHT nodes ",
+  // llarp::LogDebug("checkOnline - running");
+  // llarp::LogInfo("checkOnline - DHT nodes ",
   // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
   request->online = false;
   request->nodes  = request->ptr->ctx->router->dht->impl.nodes->nodes.size();
   if(request->ptr->ctx->router->dht->impl.nodes->nodes.size())
   {
-    // llarp::Info("checkOnline - Going to say we're online");
+    // llarp::LogInfo("checkOnline - Going to say we're online");
     request->online = true;
   }
   request->hook(request);
@@ -414,8 +415,8 @@ llarp_main_queryDHT_online(struct check_online_request *request)
   if(request->online && !request->first)
   {
     request->first = true;
-    llarp::Info("llarp_main_queryDHT_online - We're online");
-    llarp::Info("llarp_main_queryDHT_online - Querying DHT");
+    llarp::LogInfo("llarp_main_queryDHT_online - We're online");
+    llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
     llarp_dht_lookup_router(request->ptr->ctx->router->dht, request->job);
   }
 }
@@ -423,7 +424,7 @@ llarp_main_queryDHT_online(struct check_online_request *request)
 void
 llarp_main_queryDHT(struct check_online_request *request)
 {
-  // llarp::Info("llarp_main_queryDHT - setting up timer");
+  // llarp::LogInfo("llarp_main_queryDHT - setting up timer");
   request->hook = &llarp_main_queryDHT_online;
   llarp_logic_call_later(request->ptr->ctx->router->logic,
                          {1000, request, &llarp_main_checkOnline});
