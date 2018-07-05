@@ -1,5 +1,6 @@
 #include <llarp/bencode.hpp>
 #include <llarp/dht.hpp>
+#include <llarp/messages/dht.hpp>
 #include <llarp/messages/dht_immediate.hpp>
 #include "router.hpp"
 #include "router_contact.hpp"
@@ -74,13 +75,108 @@ namespace llarp
     bool result                = true;
     for(auto &msg : msgs)
     {
-      result &= msg->HandleMessage(router, reply->msgs);
+      result &= msg->HandleMessage(router->dht, reply->msgs);
     }
     return result && router->SendToOrQueue(remote.data(), reply);
   }
 
   namespace dht
   {
+    struct PathLookupInformer
+    {
+      llarp_router *router;
+      PathID_t pathID;
+      uint64_t txid;
+
+      PathLookupInformer(llarp_router *r, const PathID_t &id, uint64_t tx)
+          : router(r), pathID(id), txid(tx)
+      {
+      }
+
+      void
+      SendReply(const llarp::routing::IMessage *msg)
+      {
+        auto path = router->paths.GetByUpstream(router->pubkey(), pathID);
+        if(path == nullptr)
+        {
+          llarp::Warn("Path not found for relayed DHT message txid=", txid,
+                      " pathid=", pathID);
+          return;
+        }
+        if(!path->SendRoutingMessage(msg, router))
+          llarp::Warn("Failed to send reply for relayed DHT message txid=",
+                      txid, "pathid=", pathID);
+      }
+
+      static void
+      InformReply(llarp_router_lookup_job *job)
+      {
+        PathLookupInformer *self =
+            static_cast< PathLookupInformer * >(job->user);
+        llarp::routing::DHTMessage reply;
+        if(job->found)
+        {
+          if(llarp_rc_verify_sig(&self->router->crypto, &job->result))
+          {
+            reply.M.push_back(
+                new GotRouterMessage(job->target, self->txid, &job->result));
+          }
+          llarp_rc_free(&job->result);
+          llarp_rc_clear(&job->result);
+        }
+        else
+        {
+          reply.M.push_back(
+              new GotRouterMessage(job->target, self->txid, nullptr));
+        }
+        self->SendReply(&reply);
+        // TODO: is this okay?
+        delete self;
+        delete job;
+      }
+    };
+
+    /// variant of FindRouterMessage relayed via path
+    struct RelayedFindRouterMessage : public FindRouterMessage
+    {
+      RelayedFindRouterMessage(const Key_t &from) : FindRouterMessage(from)
+      {
+      }
+
+      /// handle a relayed FindRouterMessage, do a lookup on the dht and inform
+      /// the path of the result
+      /// TODO: smart path expiration logic needs to be implemented
+      virtual bool
+      HandleMessage(llarp_dht_context *ctx, std::vector< IMessage * > &replies)
+      {
+        auto &dht = ctx->impl;
+        /// lookup for us, send an immeidate reply
+        if(K == dht.OurKey())
+        {
+          auto path = dht.router->paths.GetByUpstream(K, pathID);
+          if(path)
+          {
+            llarp::routing::DHTMessage reply;
+            reply.M.push_back(new GotRouterMessage(K, txid, &dht.router->rc));
+            return path->SendRoutingMessage(&reply, dht.router);
+          }
+          return false;
+        }
+        llarp_router_lookup_job *job = new llarp_router_lookup_job;
+        PathLookupInformer *informer =
+            new PathLookupInformer(dht.router, pathID, txid);
+        job->user  = informer;
+        job->hook  = &PathLookupInformer::InformReply;
+        job->found = false;
+        job->dht   = ctx;
+        memcpy(job->target, K, sizeof(job->target));
+        Key_t peer;
+        if(dht.nodes->FindClosest(K, peer))
+          dht.LookupRouter(K, dht.OurKey(), txid, peer, job);
+        return false;
+      }
+    };
+
     GotRouterMessage::~GotRouterMessage()
     {
       for(auto &rc : R)
@@ -132,10 +228,10 @@ namespace llarp
     }
 
     bool
-    GotRouterMessage::HandleMessage(llarp_router *router,
+    GotRouterMessage::HandleMessage(llarp_dht_context *ctx,
                                     std::vector< IMessage * > &replies) const
     {
-      auto &dht    = router->dht->impl;
+      auto &dht    = ctx->impl;
       auto pending = dht.FindPendingTX(From, txid);
       if(pending)
       {
@@ -263,10 +359,10 @@ namespace llarp
     }
 
     bool
-    FindRouterMessage::HandleMessage(llarp_router *router,
+    FindRouterMessage::HandleMessage(llarp_dht_context *ctx,
                                      std::vector< IMessage * > &replies) const
     {
-      auto &dht = router->dht->impl;
+      auto &dht = ctx->impl;
       if(!dht.allowTransit)
       {
         llarp::Warn("Got DHT lookup from ", From,
@@ -288,6 +384,7 @@ namespace llarp
       const Key_t &From;
       bool firstKey = true;
       IMessage *msg = nullptr;
+      bool relayed  = false;
 
       MessageDecoder(const Key_t &from) : From(from)
       {
@@ -315,7 +412,10 @@ namespace llarp
           switch(*strbuf.base)
           {
             case 'R':
-              dec->msg = new FindRouterMessage(dec->From);
+              if(dec->relayed)
+                dec->msg = new RelayedFindRouterMessage(dec->From);
+              else
+                dec->msg = new FindRouterMessage(dec->From);
               break;
             case 'S':
               dec->msg = new GotRouterMessage(dec->From);
@@ -334,9 +434,10 @@ namespace llarp
     };
 
     IMessage *
-    DecodeMesssage(const Key_t &from, llarp_buffer_t *buf)
+    DecodeMesssage(const Key_t &from, llarp_buffer_t *buf, bool relayed)
     {
       MessageDecoder dec(from);
+      dec.relayed = relayed;
       dict_reader r;
       r.user   = &dec;
       r.on_key = &MessageDecoder::on_key;
@@ -355,6 +456,7 @@ namespace llarp
       ListDecoder(const Key_t &from, std::vector< IMessage * > &list)
           : From(from), l(list){};
 
+      bool relayed = false;
       const Key_t &From;
       std::vector< IMessage * > &l;
 
@@ -364,7 +466,7 @@ namespace llarp
         ListDecoder *dec = static_cast< ListDecoder * >(r->user);
         if(!has)
           return true;
-        auto msg = DecodeMesssage(dec->From, r->buffer);
+        auto msg = DecodeMesssage(dec->From, r->buffer, dec->relayed);
         if(msg)
         {
           dec->l.push_back(msg);
@@ -377,10 +479,10 @@ namespace llarp
 
     bool
     DecodeMesssageList(const Key_t &from, llarp_buffer_t *buf,
-                       std::vector< IMessage * > &list)
+                       std::vector< IMessage * > &list, bool relayed)
     {
       ListDecoder dec(from, list);
-
+      dec.relayed = relayed;
       list_reader r;
       r.user    = &dec;
       r.on_item = &ListDecoder::on_item;
@@ -569,8 +671,11 @@ namespace llarp
     bool
     Context::RelayRequestForPath(const llarp::PathID_t &id, const IMessage *msg)
     {
-      // TODO: implement me
-      return false;
+      llarp::routing::DHTMessage reply;
+      if(!msg->HandleMessage(router->dht, reply.M))
+        return false;
+      auto path = router->paths.GetByUpstream(router->pubkey(), id);
+      return path && path->SendRoutingMessage(&reply, router);
     }
 
     void

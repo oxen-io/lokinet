@@ -58,6 +58,8 @@
     "strstream": "cpp",
     "numeric": "cpp",
     "valarray": "cpp",
-    "*.ipp": "cpp"
+    "*.ipp": "cpp",
+    "csignal": "cpp",
+    "future": "cpp"
   }
 }
