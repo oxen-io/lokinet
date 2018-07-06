@@ -153,6 +153,8 @@ the "network address" of a hidden service, which is computed as the blake2b
 
 HS(BE(SI))
 
+when in string form it's encoded with z-base32 and uses the .loki tld
+
 introduction (I)
 
 a descriptor annoucing a path to a hidden service

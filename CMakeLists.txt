@@ -201,8 +201,10 @@ set(LIB_SRC
 set(TEST_SRC 
   test/main.cpp
   test/api_unittest.cpp
+  test/base32_unittest.cpp
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
+  test/hiddenservice_unittest.cpp
 )
 set(TEST_EXE testAll)
 set(GTEST_DIR test/gtest)

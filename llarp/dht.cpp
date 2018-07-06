@@ -205,7 +205,12 @@ namespace llarp
     PublishIntroMessage::HandleMessage(llarp_dht_context *ctx,
                                        std::vector< IMessage * > &replies) const
     {
-      // TODO: implement me
+      auto &dht = ctx->impl;
+      if(!I.VerifySignature(&dht.router->crypto))
+      {
+        llarp::LogWarn("invalid introset signature");
+        return false;
+      }
       return false;
     }
 

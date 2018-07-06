@@ -60,6 +60,7 @@
     "valarray": "cpp",
     "*.ipp": "cpp",
     "csignal": "cpp",
-    "future": "cpp"
+    "future": "cpp",
+    "map": "cpp"
   }
 }
