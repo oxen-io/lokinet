@@ -48,6 +48,10 @@ void
 llarp_rc_free(struct llarp_rc *rc);
 
 bool
+llarp_rc_new(struct llarp_rc *rc);
+
+
+bool
 llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc);
 
 void

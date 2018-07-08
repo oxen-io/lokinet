@@ -6,6 +6,16 @@
 #include "logger.hpp"
 
 extern "C" {
+
+bool
+llarp_rc_new(struct llarp_rc *rc)
+{
+  rc->addrs        = llarp_ai_list_new();
+  rc->exits        = llarp_xi_list_new();
+  rc->last_updated = 0;
+  return true;
+}
+
 void
 llarp_rc_free(struct llarp_rc *rc)
 {
