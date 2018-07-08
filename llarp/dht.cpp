@@ -466,7 +466,7 @@ namespace llarp
       std::set< Key_t > excluding = {requester, ourKey};
       if(nodes->FindCloseExcluding(target, next, excluding))
       {
-        llarp::Info("LookupRouterRelayed tick");
+        //llarp::Info("LookupRouterRelayed tick");
         if(next == target)
         {
           // we know it
