@@ -2,22 +2,6 @@
 #include <signal.h>
 #include "logger.hpp"
 
-struct llarp_main *ctx = 0;
-
-llarp_main *sllarp = nullptr;
-
-void
-handle_signal(int sig)
-{
-  printf("rcutil::handle_signal [%x] got [%d]\n", ctx, sig);
-  if(ctx)
-    llarp_main_signal(ctx, sig);
-}
-
-#ifndef TESTNET
-#define TESTNET 0
-#endif
-
 #include <getopt.h>
 #include <llarp/router_contact.h>
 #include <llarp/time.h>
@@ -27,6 +11,23 @@ handle_signal(int sig)
 #include "fs.hpp"
 #include "net.hpp"
 #include "router.hpp"
+#include <algorithm>
+
+struct llarp_main *ctx = 0;
+
+llarp_main *sllarp = nullptr;
+//extern char *optarg;
+
+void
+handle_signal(int sig)
+{
+  if(ctx)
+    llarp_main_signal(ctx, sig);
+}
+
+#ifndef TESTNET
+#define TESTNET 0
+#endif
 
 bool
 printNode(struct llarp_nodedb_iter *iter)
@@ -39,6 +40,29 @@ printNode(struct llarp_nodedb_iter *iter)
   return false;
 }
 
+bool
+aiLister(struct llarp_ai_list_iter *request, struct llarp_ai *addr)
+{
+  static size_t count = 0;
+  count++;
+  llarp::Addr a(*addr);
+  std::cout << "AddressInfo " << count << ": " << a << std::endl;
+  return true;
+}
+
+void displayRC(llarp_rc *rc)
+{
+  char ftmp[68] = {0};
+  const char *hexPubSigKey =
+  llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(rc->pubkey, ftmp);
+  printf("PubSigKey [%s]\n", hexPubSigKey);
+  
+  struct llarp_ai_list_iter iter;
+  // iter.user
+  iter.visit = &aiLister;
+  llarp_ai_list_iterate(rc->addrs, &iter);
+}
+
 // fwd declr
 struct check_online_request;
 
@@ -49,6 +73,7 @@ HandleDHTLocate(llarp_router_lookup_job *job)
   if (job->found)
   {
     // save to nodedb?
+    displayRC(&job->result);
   }
   // shutdown router
   
@@ -63,20 +88,11 @@ HandleDHTLocate(llarp_router_lookup_job *job)
   llarp_main_abort(ctx);
 }
 
-bool
-aiLister(struct llarp_ai_list_iter *request, struct llarp_ai *addr)
-{
-  static size_t count = 0;
-  count++;
-  llarp::Addr a(*addr);
-  std::cout << "AddressInfo " << count << ": " << a << std::endl;
-  return true;
-}
-
 int
 main(int argc, char *argv[])
 {
   // take -c to set location of daemon.ini
+  // take -o to set log level
   // --generate-blank /path/to/file.signed
   // --update-ifs /path/to/file.signed
   // --key /path/to/long_term_identity.key
@@ -125,17 +141,47 @@ main(int argc, char *argv[])
         {"export", required_argument, 0, 'e'},
         {"locate", required_argument, 0, 'q'},
         {"localInfo", no_argument, 0, 'n'},
+        {"logLevel", required_argument, 0, 'o'},
         {0, 0, 0, 0}};
     int option_index = 0;
-    c = getopt_long(argc, argv, "cgluieqn", long_options, &option_index);
+    c = getopt_long(argc, argv, "c:g:lu:i:e:q:no:", long_options, &option_index);
     if(c == -1)
       break;
+    std::string mode;
     switch(c)
     {
       case 0:
         break;
       case 'c':
         conffname = optarg;
+        break;
+      case 'o':
+        //mode = optarg;
+        //llarp::Info("opt[", mode, "]");
+        if (!optarg)
+        {
+          llarp::Info("No parameter given to logLevel");
+          continue;
+        }
+        if (strncmp(optarg, "debug", std::min(strlen(optarg), static_cast<unsigned long>(5)))==0)
+        {
+          llarp::SetLogLevel(llarp::eLogDebug);
+        }
+        else
+        if (strncmp(optarg, "info", std::min(strlen(optarg), static_cast<unsigned long>(4)))==0)
+        {
+            llarp::SetLogLevel(llarp::eLogInfo);
+        }
+        else
+        if (strncmp(optarg, "warn", std::min(strlen(optarg), static_cast<unsigned long>(4)))==0)
+        {
+          llarp::SetLogLevel(llarp::eLogWarn);
+        }
+        else
+        if (strncmp(optarg, "error", std::min(strlen(optarg), static_cast<unsigned long>(5)))==0)
+        {
+          llarp::SetLogLevel(llarp::eLogError);
+        }
         break;
       case 'l':
         haveRequiredOptions = true;
@@ -313,8 +359,10 @@ main(int argc, char *argv[])
 
     llarp::Info("Queueing job");
     llarp_router_lookup_job *job = new llarp_router_lookup_job;
+    job->iterative               = true;
     job->found                   = false;
     job->hook                    = &HandleDHTLocate;
+    llarp_rc_new(&job->result);
     memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
     
     // create query DHT request
@@ -336,15 +384,7 @@ main(int argc, char *argv[])
 
     // llarp_rc *rc = llarp_rc_read("router.signed");
     llarp_rc *rc  = llarp_main_getLocalRC(ctx);
-    char ftmp[68] = {0};
-    const char *hexPubSigKey =
-        llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(rc->pubkey, ftmp);
-    printf("PubSigKey [%s]\n", hexPubSigKey);
-
-    struct llarp_ai_list_iter iter;
-    // iter.user
-    iter.visit = &aiLister;
-    llarp_ai_list_iterate(rc->addrs, &iter);
+    displayRC(rc);
   }
   // it's a unique_ptr, should clean up itself
   //llarp_main_free(ctx);
