@@ -163,49 +163,25 @@ llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
 void
 llarp_router::try_connect(fs::path rcfile)
 {
-  // FIXME: update API
-  byte_t tmp[MAX_RC_SIZE];
-  llarp_rc remote = {0};
-  llarp_buffer_t buf;
-  llarp::StackBuffer< decltype(tmp) >(buf, tmp);
-  // open file
+  llarp_rc *remote = new llarp_rc;
+  llarp_rc_new(remote);
+  remote = llarp_rc_read(rcfile.c_str());
+  if (!remote)
   {
-    std::ifstream f(rcfile, std::ios::binary);
-    if(f.is_open())
-    {
-      f.seekg(0, std::ios::end);
-      size_t sz = f.tellg();
-      f.seekg(0, std::ios::beg);
-      if(sz <= buf.sz)
-      {
-        f.read((char *)buf.base, sz);
-      }
-      else
-        llarp::Error(rcfile, " too large");
-    }
-    else
-    {
-      llarp::Error("failed to open ", rcfile);
-      return;
-    }
+    llarp::Error("aborting verification of remote RC");
+    return;
   }
-  if(llarp_rc_bdecode(&remote, &buf))
+  if(llarp_rc_verify_sig(&crypto, remote))
   {
-    if(llarp_rc_verify_sig(&crypto, &remote))
+    llarp::Debug("verified signature");
+    if(!llarp_router_try_connect(this, remote, 10))
     {
-      llarp::Debug("verified signature");
-      if(!llarp_router_try_connect(this, &remote, 10))
-      {
-        llarp::Warn("session already made");
-      }
+      llarp::Warn("session already made");
     }
-    else
-      llarp::Error("failed to verify signature of RC", rcfile);
   }
   else
-    llarp::Error("failed to decode RC");
-
-  llarp_rc_free(&remote);
+    llarp::Error("failed to verify signature of RC", rcfile);
+  llarp_rc_free(remote);
 }
 
 bool
@@ -265,6 +241,7 @@ llarp_router::SaveRC()
 void
 llarp_router::Close()
 {
+  llarp::Info("Closing ", inboundLinks.size(), " server bindings");
   for(auto link : inboundLinks)
   {
     link->stop_link(link);
@@ -273,6 +250,7 @@ llarp_router::Close()
   }
   inboundLinks.clear();
 
+  llarp::Info("Closing LokiNetwork client");
   outboundLink->stop_link(outboundLink);
   outboundLink->free_impl(outboundLink);
   delete outboundLink;
@@ -642,8 +620,8 @@ llarp_router::Run()
     }
     if(a.isPrivate())
     {
-      llarp::Warn("Skipping private network link: ", a);
-      continue;
+      //llarp::Warn("Skipping private network link: ", a);
+      //continue;
     }
     llarp::Info("Loading Addr: ", a, " into our RC");
 
