@@ -1,5 +1,6 @@
 #include <llarp/bencode.hpp>
 #include <llarp/dht.hpp>
+#include <llarp/messages/dht.hpp>
 #include <llarp/messages/dht_immediate.hpp>
 #include "router.hpp"
 #include "router_contact.hpp"
@@ -74,13 +75,166 @@ namespace llarp
     bool result                = true;
     for(auto &msg : msgs)
     {
-      result &= msg->HandleMessage(router, reply->msgs);
+      result &= msg->HandleMessage(router->dht, reply->msgs);
     }
     return result && router->SendToOrQueue(remote.data(), reply);
   }
 
   namespace dht
   {
+    struct PathLookupInformer
+    {
+      llarp_router *router;
+      PathID_t pathID;
+      uint64_t txid;
+
+      PathLookupInformer(llarp_router *r, const PathID_t &id, uint64_t tx)
+          : router(r), pathID(id), txid(tx)
+      {
+      }
+
+      void
+      SendReply(const llarp::routing::IMessage *msg)
+      {
+        auto path = router->paths.GetByUpstream(router->pubkey(), pathID);
+        if(path == nullptr)
+        {
+          llarp::LogWarn("Path not found for relayed DHT message txid=", txid,
+                         " pathid=", pathID);
+          return;
+        }
+        if(!path->SendRoutingMessage(msg, router))
+          llarp::LogWarn("Failed to send reply for relayed DHT message txid=",
+                         txid, "pathid=", pathID);
+      }
+
+      static void
+      InformReply(llarp_router_lookup_job *job)
+      {
+        PathLookupInformer *self =
+            static_cast< PathLookupInformer * >(job->user);
+        llarp::routing::DHTMessage reply;
+        if(job->found)
+        {
+          if(llarp_rc_verify_sig(&self->router->crypto, &job->result))
+          {
+            reply.M.push_back(
+                new GotRouterMessage(job->target, self->txid, &job->result));
+          }
+          llarp_rc_free(&job->result);
+          llarp_rc_clear(&job->result);
+        }
+        else
+        {
+          reply.M.push_back(
+              new GotRouterMessage(job->target, self->txid, nullptr));
+        }
+        self->SendReply(&reply);
+        // TODO: is this okay?
+        delete self;
+        delete job;
+      }
+    };
+
+    /// variant of FindRouterMessage relayed via path
+    struct RelayedFindRouterMessage : public FindRouterMessage
+    {
+      RelayedFindRouterMessage(const Key_t &from) : FindRouterMessage(from)
+      {
+      }
+
+      /// handle a relayed FindRouterMessage, do a lookup on the dht and inform
+      /// the path of the result
+      /// TODO: smart path expiration logic needs to be implemented
+      virtual bool
+      HandleMessage(llarp_dht_context *ctx, std::vector< IMessage * > &replies)
+      {
+        auto &dht = ctx->impl;
+        /// lookup for us, send an immeidate reply
+        if(K == dht.OurKey())
+        {
+          auto path = dht.router->paths.GetByUpstream(K, pathID);
+          if(path)
+          {
+            llarp::routing::DHTMessage reply;
+            reply.M.push_back(new GotRouterMessage(K, txid, &dht.router->rc));
+            return path->SendRoutingMessage(&reply, dht.router);
+          }
+          return false;
+        }
+        llarp_router_lookup_job *job = new llarp_router_lookup_job;
+        PathLookupInformer *informer =
+            new PathLookupInformer(dht.router, pathID, txid);
+        job->user  = informer;
+        job->hook  = &PathLookupInformer::InformReply;
+        job->found = false;
+        job->dht   = ctx;
+        memcpy(job->target, K, sizeof(job->target));
+        Key_t peer;
+        if(dht.nodes->FindClosest(K, peer))
+          dht.LookupRouter(K, dht.OurKey(), txid, peer, job);
+        return false;
+      }
+    };
+
+    PublishIntroMessage::~PublishIntroMessage()
+    {
+    }
+
+    bool
+    PublishIntroMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
+    {
+      bool read = false;
+      if(!BEncodeMaybeReadDictEntry("I", I, read, key, val))
+        return false;
+      if(!BEncodeMaybeReadDictInt("R", R, read, key, val))
+        return false;
+      if(llarp_buffer_eq(key, "S"))
+      {
+        read = true;
+        hasS = true;
+        if(!bencode_read_integer(val, &S))
+          return false;
+      }
+      if(!BEncodeMaybeReadDictInt("V", V, read, key, val))
+        return false;
+      return read;
+    }
+
+    bool
+    PublishIntroMessage::HandleMessage(llarp_dht_context *ctx,
+                                       std::vector< IMessage * > &replies) const
+    {
+      auto &dht = ctx->impl;
+      if(!I.VerifySignature(&dht.router->crypto))
+      {
+        llarp::LogWarn("invalid introset signature");
+        return false;
+      }
+      return false;
+    }
+
+    bool
+    PublishIntroMessage::BEncode(llarp_buffer_t *buf) const
+    {
+      if(!bencode_start_dict(buf))
+        return false;
+      if(!BEncodeWriteDictMsgType(buf, "A", "I"))
+        return false;
+      if(!BEncodeWriteDictEntry("I", I, buf))
+        return false;
+      if(!BEncodeWriteDictInt(buf, "R", R))
+        return false;
+      if(hasS)
+      {
+        if(!BEncodeWriteDictInt(buf, "S", S))
+          return false;
+      }
+      if(!BEncodeWriteDictInt(buf, "V", LLARP_PROTO_VERSION))
+        return false;
+      return bencode_end(buf);
+    }
+
     GotRouterMessage::~GotRouterMessage()
     {
       for(auto &rc : R)
@@ -132,10 +286,10 @@ namespace llarp
     }
 
     bool
-    GotRouterMessage::HandleMessage(llarp_router *router,
+    GotRouterMessage::HandleMessage(llarp_dht_context *ctx,
                                     std::vector< IMessage * > &replies) const
     {
-      auto &dht    = router->dht->impl;
+      auto &dht    = ctx->impl;
       auto pending = dht.FindPendingTX(From, txid);
       if(pending)
       {
@@ -157,17 +311,18 @@ namespace llarp
              && dht.nodes->FindCloseExcluding(pending->target, nextPeer,
                                               pending->exclude))
           {
-            llarp::Info(pending->target, " was not found via ", From,
-                        " iterating to next peer ", nextPeer, " already asked ",
-                        pending->exclude.size(), " other peers");
+            llarp::LogInfo(pending->target, " was not found via ", From,
+                           " iterating to next peer ", nextPeer,
+                           " already asked ", pending->exclude.size(),
+                           " other peers");
             dht.LookupRouter(pending->target, pending->requester,
                              pending->requesterTX, nextPeer, nullptr, true,
                              pending->exclude);
           }
           else
           {
-            llarp::Info(pending->target, " was not found via ", From,
-                        " and we won't look it up");
+            llarp::LogInfo(pending->target, " was not found via ", From,
+                           " and we won't look it up");
             pending->Completed(nullptr);
             if(pending->requester != dht.OurKey())
             {
@@ -179,8 +334,8 @@ namespace llarp
         dht.RemovePendingLookup(From, txid);
         return true;
       }
-      llarp::Warn("Got response for DHT transaction we are not tracking, txid=",
-                  txid);
+      llarp::LogWarn(
+          "Got response for DHT transaction we are not tracking, txid=", txid);
       return false;
     }
 
@@ -263,20 +418,20 @@ namespace llarp
     }
 
     bool
-    FindRouterMessage::HandleMessage(llarp_router *router,
+    FindRouterMessage::HandleMessage(llarp_dht_context *ctx,
                                      std::vector< IMessage * > &replies) const
     {
-      auto &dht = router->dht->impl;
+      auto &dht = ctx->impl;
       if(!dht.allowTransit)
       {
-        llarp::Warn("Got DHT lookup from ", From,
-                    " when we are not allowing dht transit");
+        llarp::LogWarn("Got DHT lookup from ", From,
+                       " when we are not allowing dht transit");
         return false;
       }
       auto pending = dht.FindPendingTX(From, txid);
       if(pending)
       {
-        llarp::Warn("Got duplicate DHT lookup from ", From, " txid=", txid);
+        llarp::LogWarn("Got duplicate DHT lookup from ", From, " txid=", txid);
         return false;
       }
       dht.LookupRouterRelayed(From, txid, K, !iterative, replies);
@@ -288,6 +443,7 @@ namespace llarp
       const Key_t &From;
       bool firstKey = true;
       IMessage *msg = nullptr;
+      bool relayed  = false;
 
       MessageDecoder(const Key_t &from) : From(from)
       {
@@ -315,18 +471,32 @@ namespace llarp
           switch(*strbuf.base)
           {
             case 'R':
-              dec->msg = new FindRouterMessage(dec->From);
+              if(dec->relayed)
+                dec->msg = new RelayedFindRouterMessage(dec->From);
+              else
+                dec->msg = new FindRouterMessage(dec->From);
               break;
             case 'S':
-              dec->msg = new GotRouterMessage(dec->From);
+              if(dec->relayed)
+              {
+                llarp::LogWarn(
+                    "GotRouterMessage found when parsing relayed DHT "
+                    "message");
+                return false;
+              }
+              else
+                dec->msg = new GotRouterMessage(dec->From);
+              break;
+            case 'I':
+              dec->msg = new PublishIntroMessage();
               break;
             default:
-              llarp::Warn("unknown dht message type: ", (char)*strbuf.base);
+              llarp::LogWarn("unknown dht message type: ", (char)*strbuf.base);
               // bad msg type
               return false;
           }
           dec->firstKey = false;
-          return true;
+          return dec->msg != nullptr;
         }
         else
           return dec->msg->DecodeKey(*key, r->buffer);
@@ -334,9 +504,10 @@ namespace llarp
     };
 
     IMessage *
-    DecodeMesssage(const Key_t &from, llarp_buffer_t *buf)
+    DecodeMesssage(const Key_t &from, llarp_buffer_t *buf, bool relayed)
     {
       MessageDecoder dec(from);
+      dec.relayed = relayed;
       dict_reader r;
       r.user   = &dec;
       r.on_key = &MessageDecoder::on_key;
@@ -355,6 +526,7 @@ namespace llarp
       ListDecoder(const Key_t &from, std::vector< IMessage * > &list)
           : From(from), l(list){};
 
+      bool relayed = false;
       const Key_t &From;
       std::vector< IMessage * > &l;
 
@@ -364,7 +536,7 @@ namespace llarp
         ListDecoder *dec = static_cast< ListDecoder * >(r->user);
         if(!has)
           return true;
-        auto msg = DecodeMesssage(dec->From, r->buffer);
+        auto msg = DecodeMesssage(dec->From, r->buffer, dec->relayed);
         if(msg)
         {
           dec->l.push_back(msg);
@@ -377,10 +549,10 @@ namespace llarp
 
     bool
     DecodeMesssageList(const Key_t &from, llarp_buffer_t *buf,
-                       std::vector< IMessage * > &list)
+                       std::vector< IMessage * > &list, bool relayed)
     {
       ListDecoder dec(from, list);
-
+      dec.relayed = relayed;
       list_reader r;
       r.user    = &dec;
       r.on_item = &ListDecoder::on_item;
@@ -477,8 +649,8 @@ namespace llarp
           {
             // we aren't closer to the target than next hop
             // so we won't ask neighboor recursively, tell them we don't have it
-            llarp::Info("we aren't closer to ", target, " than ", next,
-                        " so we end it here");
+            llarp::LogInfo("we aren't closer to ", target, " than ", next,
+                           " so we end it here");
             replies.push_back(new GotRouterMessage(requester, txid, nullptr));
           }
           else
@@ -489,18 +661,18 @@ namespace llarp
         }
         else  // otherwise tell them we don't have it
         {
-          llarp::Info("we don't have ", target,
-                      " and this was an iterative request so telling ",
-                      requester, " that we don't have it");
+          llarp::LogInfo("we don't have ", target,
+                         " and this was an iterative request so telling ",
+                         requester, " that we don't have it");
           replies.push_back(new GotRouterMessage(requester, txid, nullptr));
         }
       }
       else
       {
         // we don't know it and have no closer peers
-        llarp::Info("we don't have ", target,
-                    " and have no closer peers so telling ", requester,
-                    " that we don't have it");
+        llarp::LogInfo("we don't have ", target,
+                       " and have no closer peers so telling ", requester,
+                       " that we don't have it");
         replies.push_back(new GotRouterMessage(requester, txid, nullptr));
       }
     }
@@ -534,7 +706,7 @@ namespace llarp
     Context::CleanupTX()
     {
       auto now = llarp_time_now_ms();
-      llarp::Debug("DHT tick");
+      llarp::LogDebug("DHT tick");
 
       auto itr = pendingTX.begin();
       while(itr != pendingTX.end())
@@ -556,7 +728,7 @@ namespace llarp
       ourKey   = us;
       nodes    = new Bucket< RCNode >(ourKey);
       services = new Bucket< ISNode >(ourKey);
-      llarp::Debug("intialize dht with key ", ourKey);
+      llarp::LogDebug("intialize dht with key ", ourKey);
     }
 
     void
@@ -569,8 +741,11 @@ namespace llarp
     bool
     Context::RelayRequestForPath(const llarp::PathID_t &id, const IMessage *msg)
     {
-      // TODO: implement me
-      return false;
+      llarp::routing::DHTMessage reply;
+      if(!msg->HandleMessage(router->dht, reply.M))
+        return false;
+      auto path = router->paths.GetByUpstream(router->pubkey(), id);
+      return path && path->SendRoutingMessage(&reply, router);
     }
 
     void
@@ -592,8 +767,8 @@ namespace llarp
 
       pendingTX[ownerKey] = SearchJob(whoasked, txid, target, job, excludes);
 
-      llarp::Info("Asking ", askpeer, " for router ", target, " for ",
-                  whoasked);
+      llarp::LogInfo("Asking ", askpeer, " for router ", target, " for ",
+                     whoasked);
       auto msg          = new llarp::DHTImmeidateMessage(askpeer);
       auto dhtmsg       = new FindRouterMessage(askpeer, target, id);
       dhtmsg->iterative = iterative;
@@ -630,60 +805,61 @@ llarp_dht_context::llarp_dht_context(llarp_router *router)
   parent = router;
 }
 
-extern "C" {
-struct llarp_dht_context *
-llarp_dht_context_new(struct llarp_router *router)
+extern "C"
 {
-  return new llarp_dht_context(router);
-}
+  struct llarp_dht_context *
+  llarp_dht_context_new(struct llarp_router *router)
+  {
+    return new llarp_dht_context(router);
+  }
 
-void
-llarp_dht_context_free(struct llarp_dht_context *ctx)
-{
-  delete ctx;
-}
+  void
+  llarp_dht_context_free(struct llarp_dht_context *ctx)
+  {
+    delete ctx;
+  }
 
-void
-llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
+  void
+  llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
 
-{
-  llarp::dht::RCNode n(rc);
-  ctx->impl.nodes->PutNode(n);
-}
+  {
+    llarp::dht::RCNode n(rc);
+    ctx->impl.nodes->PutNode(n);
+  }
 
-void
-llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
-{
-  llarp::dht::Key_t k = id;
-  ctx->impl.nodes->DelNode(k);
-}
+  void
+  llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
+  {
+    llarp::dht::Key_t k = id;
+    ctx->impl.nodes->DelNode(k);
+  }
 
-void
-llarp_dht_set_msg_handler(struct llarp_dht_context *ctx,
-                          llarp_dht_msg_handler handler)
-{
-  ctx->impl.custom_handler = handler;
-}
+  void
+  llarp_dht_set_msg_handler(struct llarp_dht_context *ctx,
+                            llarp_dht_msg_handler handler)
+  {
+    ctx->impl.custom_handler = handler;
+  }
 
-void
-llarp_dht_allow_transit(llarp_dht_context *ctx)
-{
-  ctx->impl.allowTransit = true;
-}
+  void
+  llarp_dht_allow_transit(llarp_dht_context *ctx)
+  {
+    ctx->impl.allowTransit = true;
+  }
 
-void
-llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
-{
-  ctx->impl.Init(key, ctx->parent);
-}
+  void
+  llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
+  {
+    ctx->impl.Init(key, ctx->parent);
+  }
 
-void
-llarp_dht_lookup_router(struct llarp_dht_context *ctx,
-                        struct llarp_router_lookup_job *job)
-{
-  job->dht   = ctx;
-  job->found = false;
-  llarp_logic_queue_job(ctx->parent->logic,
-                        {job, &llarp::dht::Context::queue_router_lookup});
-}
+  void
+  llarp_dht_lookup_router(struct llarp_dht_context *ctx,
+                          struct llarp_router_lookup_job *job)
+  {
+    job->dht   = ctx;
+    job->found = false;
+    llarp_logic_queue_job(ctx->parent->logic,
+                          {job, &llarp::dht::Context::queue_router_lookup});
+  }
 }

@@ -22,6 +22,5 @@ TEST_F(APITest, TestMessageWellFormed)
   msg.msgID     = 0;
   msg.sessionID = 12345;
   msg.CalculateHash(&crypto, apiPassword);
-  llarp::Info("msghash=", msg.hash);
   ASSERT_TRUE(msg.IsWellFormed(&crypto, apiPassword));
 };

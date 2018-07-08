@@ -63,7 +63,7 @@ namespace llarp
     }
     else
     {
-      llarp::Warn("No such path downstream=", remote, " pathid=", pathid);
+      llarp::LogWarn("No such path downstream=", remote, " pathid=", pathid);
       return false;
     }
   }
@@ -125,7 +125,7 @@ namespace llarp
     }
     else
     {
-      llarp::Warn("No such path upstream=", remote, " pathid=", pathid);
+      llarp::LogWarn("No such path upstream=", remote, " pathid=", pathid);
     }
     return false;
   }

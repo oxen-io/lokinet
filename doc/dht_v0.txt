@@ -108,6 +108,7 @@ R is currently set to 0 by the sender.
 if R is greater than 0, do a random walk, otherwise if we are
 closer to the SA of the IS than anyone else we know in the DHT 
 store the IS for later lookup. 
+As of protocol version 0, R is always 0.
 
 If S is provided store the IS for later lookup unconditionally, 
 decrement S by 1 and forward to dht peer who is next closest to 

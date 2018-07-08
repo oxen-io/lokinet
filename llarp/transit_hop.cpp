@@ -51,7 +51,7 @@ namespace llarp
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
       {
-        llarp::Error("failed to encode routing message");
+        llarp::LogError("failed to encode routing message");
         return false;
       }
       TunnelNonce N;
@@ -72,8 +72,8 @@ namespace llarp
 
       r->crypto.xchacha20(buf, pathKey, Y);
       msg->X = buf;
-      llarp::Debug("relay ", msg->X.size(), " bytes downstream from ",
-                   info.upstream, " to ", info.downstream);
+      llarp::LogDebug("relay ", msg->X.size(), " bytes downstream from ",
+                      info.upstream, " to ", info.downstream);
       return r->SendToOrQueue(info.downstream, msg);
     }
 
@@ -93,8 +93,8 @@ namespace llarp
         msg->Y                    = Y;
 
         msg->X = buf;
-        llarp::Debug("relay ", msg->X.size(), " bytes upstream from ",
-                     info.downstream, " to ", info.upstream);
+        llarp::LogDebug("relay ", msg->X.size(), " bytes upstream from ",
+                        info.downstream, " to ", info.upstream);
         return r->SendToOrQueue(info.upstream, msg);
       }
     }
@@ -103,8 +103,7 @@ namespace llarp
     TransitHop::HandleDHTMessage(const llarp::dht::IMessage* msg,
                                  llarp_router* r)
     {
-      // TODO: implement me
-      return false;
+      return r->dht->impl.RelayRequestForPath(info.rxID, msg);
     }
 
     bool
@@ -120,7 +119,7 @@ namespace llarp
     TransitHop::HandlePathConfirmMessage(
         const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
     {
-      llarp::Warn("unwarrented path confirm message on ", info);
+      llarp::LogWarn("unwarrented path confirm message on ", info);
       return false;
     }
 
@@ -133,14 +132,14 @@ namespace llarp
       {
         return path->HandleDownstream(msg->T.Buffer(), msg->Y, r);
       }
-      llarp::Warn("No such path for path transfer pathid=", msg->P);
+      llarp::LogWarn("No such path for path transfer pathid=", msg->P);
       return false;
     }
 
     bool
     TransitHop::HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r)
     {
-      llarp::Warn("unwarrented hidden service data on ", info);
+      llarp::LogWarn("unwarrented hidden service data on ", info);
       return false;
     }
 

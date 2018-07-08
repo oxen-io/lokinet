@@ -123,6 +123,7 @@ namespace llarp
     {
       virtual ~IMessage(){};
 
+      /// construct
       IMessage(const Key_t& from) : From(from)
       {
       }
@@ -134,18 +135,19 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) = 0;
 
       virtual bool
-      HandleMessage(llarp_router* router,
+      HandleMessage(llarp_dht_context* dht,
                     std::vector< IMessage* >& replies) const = 0;
 
       Key_t From;
+      PathID_t pathID;
     };
 
     IMessage*
-    DecodeMessage(const Key_t& from, llarp_buffer_t* buf);
+    DecodeMessage(const Key_t& from, llarp_buffer_t* buf, bool relayed = false);
 
     bool
     DecodeMesssageList(const Key_t& from, llarp_buffer_t* buf,
-                       std::vector< IMessage* >& dst);
+                       std::vector< IMessage* >& dst, bool relayed = false);
 
     template < typename Val_t >
     struct Bucket
@@ -308,6 +310,30 @@ namespace llarp
       Key_t ourKey;
     };
 
+    struct PublishIntroMessage : public IMessage
+    {
+      llarp::service::IntroSet I;
+      uint64_t R;
+      uint64_t S;
+      bool hasS = false;
+      uint64_t V;
+      PublishIntroMessage() : IMessage({})
+      {
+      }
+
+      ~PublishIntroMessage();
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+
+      virtual bool
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage* >& replies) const;
+    };
+
     struct GotRouterMessage : public IMessage
     {
       GotRouterMessage(const Key_t& from) : IMessage(from)
@@ -332,8 +358,8 @@ namespace llarp
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
 
-      bool
-      HandleMessage(llarp_router* router,
+      virtual bool
+      HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
 
       std::vector< llarp_rc > R;
@@ -360,8 +386,8 @@ namespace llarp
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
 
-      bool
-      HandleMessage(llarp_router* router,
+      virtual bool
+      HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
 
       Key_t K;

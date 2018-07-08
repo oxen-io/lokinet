@@ -71,10 +71,10 @@ namespace llarp
     HandleMessage(llarp_router* router) const
     {
       (void)router;
-      llarp::Info("got discard message of size ", sz, " bytes");
+      llarp::LogInfo("got discard message of size ", sz, " bytes");
       return true;
     }
   };
-}
+}  // namespace llarp
 
 #endif

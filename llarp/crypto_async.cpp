@@ -93,7 +93,7 @@ namespace iwp
     buf.sz   = 32;
     memcpy(intro->remote_pubkey, intro->buf + 64, 32);
     crypto->xchacha20(buf, e_K, intro->nonce);
-    llarp::Info("handshake from ", llarp::RouterID(intro->remote_pubkey));
+    llarp::LogInfo("handshake from ", llarp::RouterID(intro->remote_pubkey));
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_server(sharedkey, intro->remote_pubkey,
                                 intro->secretkey, intro->nonce);

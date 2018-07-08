@@ -43,7 +43,7 @@ namespace llarp
            || ((sockaddr_in*)from)->sin_port != apiAddr.sin_port)
         {
           // address missmatch
-          llarp::Warn("got packet from bad address");
+          llarp::LogWarn("got packet from bad address");
           return;
         }
         llarp_buffer_t buf;
@@ -56,7 +56,7 @@ namespace llarp
           delete msg;
         }
         else
-          llarp::Warn("Got Invalid Message");
+          llarp::LogWarn("Got Invalid Message");
       }
 
       bool

@@ -33,23 +33,23 @@ namespace llarp
       // we are expecting the first key to be 'a'
       if(!llarp_buffer_eq(*key, "a"))
       {
-        llarp::Warn("message has no message type");
+        llarp::LogWarn("message has no message type");
         return false;
       }
 
       if(!bencode_read_string(r->buffer, &strbuf))
       {
-        llarp::Warn("could not read value of message type");
+        llarp::LogWarn("could not read value of message type");
         return false;
       }
       // bad key size
       if(strbuf.sz != 1)
       {
-        llarp::Warn("bad mesage type size: ", strbuf.sz);
+        llarp::LogWarn("bad mesage type size: ", strbuf.sz);
         return false;
       }
       // create the message to parse based off message type
-      llarp::Debug("inbound message ", *strbuf.cur);
+      llarp::LogDebug("inbound message ", *strbuf.cur);
       switch(*strbuf.cur)
       {
         case 'i':
