@@ -136,7 +136,7 @@ namespace llarp
                                     std::vector< IMessage * > &replies) const
     {
       auto &dht    = router->dht->impl;
-      auto pending = dht.FindPendingTX(From, txid);
+      SearchJob *pending = dht.FindPendingTX(From, txid);
       if(pending)
       {
         if(R.size())
@@ -160,8 +160,9 @@ namespace llarp
             llarp::Info(pending->target, " was not found via ", From,
                         " iterating to next peer ", nextPeer, " already asked ",
                         pending->exclude.size(), " other peers");
+            // REVIEW: is this ok to relay the pending->job as the current job (seems to make things work)
             dht.LookupRouter(pending->target, pending->requester,
-                             pending->requesterTX, nextPeer, nullptr, true,
+                             pending->requesterTX, nextPeer, pending->job, true,
                              pending->exclude);
           }
           else
@@ -465,6 +466,7 @@ namespace llarp
       std::set< Key_t > excluding = {requester, ourKey};
       if(nodes->FindCloseExcluding(target, next, excluding))
       {
+        llarp::Info("LookupRouterRelayed tick");
         if(next == target)
         {
           // we know it
@@ -484,6 +486,10 @@ namespace llarp
           else
           {
             // yeah, ask neighboor recursively
+            llarp::Info("asking neighbor recursively");
+            // FIXME: we may need to pass a job here...
+            //auto sj = FindPendingTX(requester, txid);
+            //LookupRouter(target, requester, txid, next, sj->job);
             LookupRouter(target, requester, txid, next);
           }
         }
@@ -605,8 +611,17 @@ namespace llarp
     Context::LookupRouterViaJob(llarp_router_lookup_job *job)
     {
       Key_t peer;
+      /*
+      llarp::Info("LookupRouterViaJob dumping nodes");
+      for(const auto &item : nodes->nodes)
+      {
+        llarp::Info("LookupRouterViaJob dumping node: ", item.first);
+      }
+      */
+      llarp::Info("LookupRouterViaJob node count: ", nodes->nodes.size());
+      llarp::Info("LookupRouterViaJob recursive: ", job->iterative?"yes":"no");
       if(nodes->FindClosest(job->target, peer))
-        LookupRouter(job->target, ourKey, 0, peer, job);
+        LookupRouter(job->target, ourKey, 0, peer, job, job->iterative);
       else if(job->hook)
       {
         job->found = false;
@@ -648,6 +663,7 @@ llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
 
 {
   llarp::dht::RCNode n(rc);
+  llarp::Debug("Adding ", n.ID, " to DHT");
   ctx->impl.nodes->PutNode(n);
 }
 
@@ -655,6 +671,7 @@ void
 llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 {
   llarp::dht::Key_t k = id;
+  llarp::Debug("Removing ", k, " to DHT");
   ctx->impl.nodes->DelNode(k);
 }
 

@@ -53,7 +53,9 @@ struct llarp_router_lookup_job
   struct llarp_dht_context* dht;
   byte_t target[PUBKEYSIZE];
   bool found;
+  // make sure you initialize addr and exits
   struct llarp_rc result;
+  bool iterative;
 };
 
 /// start allowing dht participation on a context
