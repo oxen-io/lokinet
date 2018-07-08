@@ -11,12 +11,10 @@
 #include "fs.hpp"
 #include "net.hpp"
 #include "router.hpp"
-#include <algorithm>
 
 struct llarp_main *ctx = 0;
 
 llarp_main *sllarp = nullptr;
-//extern char *optarg;
 
 void
 handle_signal(int sig)
@@ -147,7 +145,6 @@ main(int argc, char *argv[])
     c = getopt_long(argc, argv, "c:g:lu:i:e:q:no:", long_options, &option_index);
     if(c == -1)
       break;
-    std::string mode;
     switch(c)
     {
       case 0:
@@ -156,13 +153,6 @@ main(int argc, char *argv[])
         conffname = optarg;
         break;
       case 'o':
-        //mode = optarg;
-        //llarp::Info("opt[", mode, "]");
-        if (!optarg)
-        {
-          llarp::Info("No parameter given to logLevel");
-          continue;
-        }
         if (strncmp(optarg, "debug", std::min(strlen(optarg), static_cast<unsigned long>(5)))==0)
         {
           llarp::SetLogLevel(llarp::eLogDebug);
@@ -355,8 +345,6 @@ main(int argc, char *argv[])
     llarp::PubKey binaryPK;
     llarp::HexDecode(rcfname, binaryPK.data());
 
-    //llarp::SetLogLevel(llarp::eLogDebug);
-
     llarp::Info("Queueing job");
     llarp_router_lookup_job *job = new llarp_router_lookup_job;
     job->iterative               = true;
@@ -380,9 +368,6 @@ main(int argc, char *argv[])
   }
   if(localMode)
   {
-    // llarp::Info("find our local rc file");
-
-    // llarp_rc *rc = llarp_rc_read("router.signed");
     llarp_rc *rc  = llarp_main_getLocalRC(ctx);
     displayRC(rc);
   }
