@@ -1,8 +1,5 @@
 
-invisible wire protocol:
-
-as of version 0 dtls is used, future versions will use this encrypted udp
-transport protocol.
+invisible wire protocol version 0:
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
 "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
