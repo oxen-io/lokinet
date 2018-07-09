@@ -64,8 +64,6 @@ struct llarp_link_session
   void
   introduce(uint8_t *pub);
 
-  // void handle_verify_intro(iwp_async_intro *intro);
-  // void handle_verify_introack(iwp_async_introack *introack);
   void
   intro_ack();
   void
@@ -82,11 +80,6 @@ struct llarp_link_session
   Tick(llarp_time_t now);
   void
   PumpCryptoOutbound();
-  // void PumpCodelInbound();
-  // void handle_crypto_outbound();
-  // void handle_verify_session_start(iwp_async_session_start *s);
-  // void handle_establish_timeout(void *user, uint64_t orig, uint64_t
-  // left); void handle_introack_generated(iwp_async_introack *i);
 
   // this is called from net thread
   void
@@ -155,7 +148,6 @@ struct llarp_link_session
   void
   EnterState(State st);
 
-  //  private:
   void
   add_outbound_message(uint64_t id, transit_message *msg);
   void
