@@ -14,9 +14,7 @@ namespace llarp
       ++p;
     }
   }
-}
-
-extern "C" {
+}  // namespace llarp
 
 void
 llarp_mem_slab(struct llarp_alloc *mem, uint32_t *buf, size_t sz)
@@ -36,5 +34,4 @@ llarp_eq(const void *a, const void *b, size_t sz)
     result &= a_ptr[sz] == b_ptr[sz];
   }
   return result;
-}
 }

@@ -16,23 +16,23 @@ namespace llarp
     struct IMessageHandler
     {
       virtual bool
-      HandlePathTransferMessage(const PathTransferMessage* msg,
-                                llarp_router* r) = 0;
+      HandlePathTransferMessage(const PathTransferMessage *msg,
+                                llarp_router *r) = 0;
 
       virtual bool
-      HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r) = 0;
+      HandleHiddenServiceData(llarp_buffer_t buf, llarp_router *r) = 0;
 
       virtual bool
-      HandlePathConfirmMessage(const PathConfirmMessage* msg,
-                               llarp_router* r) = 0;
+      HandlePathConfirmMessage(const PathConfirmMessage *msg,
+                               llarp_router *r) = 0;
 
       virtual bool
-      HandlePathLatencyMessage(const PathLatencyMessage* msg,
-                               llarp_router* r) = 0;
+      HandlePathLatencyMessage(const PathLatencyMessage *msg,
+                               llarp_router *r) = 0;
 
       virtual bool
 
-      HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r) = 0;
+      HandleDHTMessage(const llarp::dht::IMessage *msg, llarp_router *r) = 0;
     };
   }  // namespace routing
 }  // namespace llarp

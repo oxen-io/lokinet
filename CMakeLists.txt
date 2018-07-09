@@ -82,7 +82,7 @@ if(RELEASE_MOTTO)
 endif()
 
 set(EXE llarpd)
-set(EXE_SRC daemon/main.c)
+set(EXE_SRC daemon/main.cpp)
 
 if(SODIUM_INCLUDE_DIR)
   include_directories(${SODIUM_INCLUDE_DIR})
@@ -134,7 +134,7 @@ endif()
 
 set(LIB_SRC
   llarp/address_info.cpp
-  llarp/bencode.c
+  llarp/bencode.cpp
   llarp/buffer.cpp
   llarp/config.cpp
   llarp/context.cpp
@@ -145,10 +145,8 @@ set(LIB_SRC
   llarp/encrypted_frame.cpp
   llarp/ev.cpp
   llarp/exit_info.cpp
-  llarp/exit_route.c
-  llarp/iwp_link.cpp
+  llarp/exit_route.cpp
   llarp/logger.cpp
-  llarp/link.c
   llarp/link_intro.cpp
   llarp/link_message.cpp
   llarp/logic.cpp
@@ -174,6 +172,12 @@ set(LIB_SRC
   llarp/api/client.cpp
   llarp/api/message.cpp
   llarp/api/parser.cpp
+  llarp/iwp/frame_header.cpp
+  llarp/iwp/frame_state.cpp
+  llarp/iwp/session.cpp
+  llarp/iwp/transit_message.cpp
+  llarp/iwp/xmit.cpp
+  llarp/link/encoder.cpp
   llarp/routing/dht_message.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp

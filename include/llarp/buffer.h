@@ -13,10 +13,6 @@
  * generic memory buffer
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 typedef uint8_t byte_t;
 
 /**
@@ -85,9 +81,5 @@ llarp_buffer_read_until(llarp_buffer_t *buff, char delim, byte_t *result,
 /// compare buffers, true if equal else false
 bool
 llarp_buffer_eq(llarp_buffer_t buff, const char *data);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

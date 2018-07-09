@@ -1,9 +1,7 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 #include <llarp/dht.h>
-#include <llarp/link.h>
 #include <llarp/nodedb.h>
-#include <llarp/router.h>
 #include <llarp/router_contact.h>
 #include <llarp/path.hpp>
 
@@ -15,27 +13,31 @@
 #include <llarp/dht.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/routing/handler.hpp>
+#include "llarp/iwp/establish_job.hpp"
 
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
 
-namespace llarp
-{
-  struct try_connect_ctx
-  {
-    llarp_router *router = nullptr;
-    llarp_ai addr;
-  };
+/** 2^15 bytes */
+#define MAX_LINK_MSG_SIZE (32768)
 
-  // forward declare
-  namespace path
-  {
-    struct TransitHop;
-  }
-}  // namespace llarp
+// TODO: unused. remove?
+// struct try_connect_ctx
+// {
+//   llarp_router *router = nullptr;
+//   llarp_ai addr;
+// };
 
-/// c++
+// // forward declare
+// namespace path
+// {
+//   struct TransitHop;
+// }
+
+struct llarp_link;
+struct llarp_link_session_iter;
+
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
                              llarp::SecretKey *encryption);

@@ -13,10 +13,6 @@
  * event handler (cross platform high performance event system for IO)
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 // forward declare
 struct llarp_threadpool;
 struct llarp_logic;
@@ -70,7 +66,4 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,
 int
 llarp_ev_close_udp(struct llarp_udp_io *udp);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

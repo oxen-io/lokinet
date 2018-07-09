@@ -41,6 +41,6 @@ namespace llarp
   typedef AlignedBuffer< 24 > SymmNonce;
 
   typedef AlignedBuffer< 32 > SymmKey;
-}
+}  // namespace llarp
 
 #endif

@@ -12,10 +12,6 @@
  * asynchronous crypto functions
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /// context for doing asynchronous cryptography for iwp
 /// with a worker threadpool
 /// defined in crypto_async.cpp
@@ -182,6 +178,24 @@ struct iwp_async_frame
   byte_t buf[1500];
 };
 
+// TODO: remove
+struct FramePutTime
+{
+  void
+  operator()(iwp_async_frame *frame) const
+  {
+    frame->created = llarp_time_now_ms();
+  }
+};
+struct FrameGetTime
+{
+  llarp_time_t
+  operator()(const iwp_async_frame *frame) const
+  {
+    return frame->created;
+  }
+};
+
 /// synchronously decrypt a frame
 bool
 iwp_decrypt_frame(struct iwp_async_frame *frame);
@@ -200,7 +214,4 @@ void
 iwp_call_async_frame_encrypt(struct llarp_async_iwp *iwp,
                              struct iwp_async_frame *frame);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

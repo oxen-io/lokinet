@@ -109,7 +109,6 @@ struct llarp_threadpool
   }
 };
 
-extern "C" {
 struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name)
 {
@@ -187,5 +186,4 @@ llarp_free_threadpool(struct llarp_threadpool **pool)
     delete *pool;
   }
   *pool = nullptr;
-}
 }

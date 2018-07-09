@@ -166,6 +166,7 @@ x is the timestamp seconds since epoch that this introduction expires at
 
 {
   k: "<32 bytes public identity key of router>",
+  l: advertised_path_latency_ms_uint64, (optional)
   p: "<16 bytes path id>",
   v: 0,
   x: time_expires_seconds_since_epoch_uint64

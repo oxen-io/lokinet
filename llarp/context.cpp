@@ -298,7 +298,6 @@ namespace llarp
   }
 }  // namespace llarp
 
-extern "C" {
 struct llarp_main
 {
   std::unique_ptr< llarp::Context > ctx;
@@ -435,5 +434,4 @@ void
 llarp_main_free(struct llarp_main *ptr)
 {
   delete ptr;
-}
 }

@@ -10,10 +10,6 @@
  * path api functions
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /// forard declare
 struct llarp_router;
 struct llarp_dht_context;
@@ -62,7 +58,4 @@ struct llarp_pathbuild_job
 void
 llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

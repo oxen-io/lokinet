@@ -3,9 +3,6 @@
 #include <llarp/address_info.h>
 #include <llarp/crypto.h>
 #include <llarp/exit_info.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 // forward declare
 struct llarp_alloc;
@@ -29,7 +26,6 @@ struct llarp_rc
   byte_t signature[SIGSIZE];
   uint64_t last_updated;
 
-#ifdef __cplusplus
   bool
   BEncode(llarp_buffer_t *buf) const
   {
@@ -41,7 +37,6 @@ struct llarp_rc
   {
     return llarp_rc_bdecode(this, buf);
   }
-#endif
 };
 
 void
@@ -87,7 +82,4 @@ llarp_rc_read(const char *fpath);
 bool
 llarp_rc_write(struct llarp_rc *rc, const char *our_rc_file);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

@@ -24,4 +24,4 @@ namespace llarp
       src += 2;
     }
   }
-}
+}  // namespace llarp

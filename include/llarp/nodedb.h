@@ -10,10 +10,6 @@
  * persistent storage API for router contacts
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct llarp_nodedb;
 
 /// create an empty nodedb
@@ -139,7 +135,4 @@ struct llarp_async_load_rc
 void
 llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

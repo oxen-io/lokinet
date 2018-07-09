@@ -9,6 +9,6 @@ namespace llarp
     DecryptInPlace(const byte_t* symkey, const byte_t* nonce,
                    llarp_crypto* crypto);
   };
-}
+}  // namespace llarp
 
 #endif

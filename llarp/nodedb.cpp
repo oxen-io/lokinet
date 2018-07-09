@@ -318,7 +318,6 @@ nodedb_async_load_rc(void *user)
   llarp_logic_queue_job(job->logic, {job, &nodedb_inform_load_rc});
 }
 
-extern "C" {
 struct llarp_nodedb *
 llarp_nodedb_new(struct llarp_crypto *crypto)
 {
@@ -460,5 +459,3 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
     llarp_rc_copy(result, &itr->second);
   }
 }
-
-}  // end extern

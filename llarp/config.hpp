@@ -22,11 +22,9 @@ namespace llarp
   };
 }  // namespace llarp
 
-extern "C" {
 struct llarp_config
 {
   llarp::Config impl;
 };
-}
 
 #endif

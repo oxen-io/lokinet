@@ -1,6 +1,8 @@
 #ifndef LLARP_CODEL_QUEUE_HPP
 #define LLARP_CODEL_QUEUE_HPP
 #include <llarp/time.h>
+#include "llarp/logger.hpp"
+
 #include <cmath>
 #include <functional>
 #include <mutex>

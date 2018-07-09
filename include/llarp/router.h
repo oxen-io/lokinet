@@ -2,16 +2,11 @@
 #define LLARP_ROUTER_H_
 #include <llarp/config.h>
 #include <llarp/ev.h>
-#include <llarp/link.h>
 #include <llarp/logic.h>
 #include <llarp/nodedb.h>
 #include <llarp/pathbuilder.h>
 #include <llarp/router_contact.h>
 #include <llarp/threadpool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct llarp_router;
 
@@ -53,9 +48,5 @@ struct llarp_router_link_iter
 void
 llarp_router_iterate_links(struct llarp_router *router,
                            struct llarp_router_link_iter iter);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

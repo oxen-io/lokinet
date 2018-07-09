@@ -15,7 +15,6 @@ namespace llarp
   }
 }  // namespace llarp
 
-extern "C" {
 llarp_time_t
 llarp_time_now_ms()
 {
@@ -26,5 +25,4 @@ llarp_seconds_t
 llarp_time_now_sec()
 {
   return llarp::time_since_epoch< std::chrono::seconds, llarp_seconds_t >();
-}
 }

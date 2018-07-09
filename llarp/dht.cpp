@@ -805,7 +805,6 @@ llarp_dht_context::llarp_dht_context(llarp_router *router)
   parent = router;
 }
 
-extern "C" {
 struct llarp_dht_context *
 llarp_dht_context_new(struct llarp_router *router)
 {
@@ -860,5 +859,4 @@ llarp_dht_lookup_router(struct llarp_dht_context *ctx,
   job->found = false;
   llarp_logic_queue_job(ctx->parent->logic,
                         {job, &llarp::dht::Context::queue_router_lookup});
-}
 }
