@@ -14,7 +14,7 @@ namespace llarp
       ++p;
     }
   }
-}
+}  // namespace llarp
 
 void
 llarp_mem_slab(struct llarp_alloc *mem, uint32_t *buf, size_t sz)

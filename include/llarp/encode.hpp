@@ -32,6 +32,6 @@ namespace llarp
   char2int(char input);
   void
   HexDecode(const char* src, uint8_t* target);
-}
+}  // namespace llarp
 
 #endif

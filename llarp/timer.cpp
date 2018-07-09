@@ -252,4 +252,4 @@ namespace llarp
     }
     done = true;
   }
-}
+}  // namespace llarp

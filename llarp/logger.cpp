@@ -10,7 +10,7 @@ namespace llarp
   {
     _glog.minlevel = lvl;
   }
-}
+}  // namespace llarp
 
 void
 cSetLogLevel(LogLevel lvl)

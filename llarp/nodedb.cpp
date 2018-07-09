@@ -459,4 +459,3 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
     llarp_rc_copy(result, &itr->second);
   }
 }
-

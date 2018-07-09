@@ -75,6 +75,6 @@ namespace llarp
       return true;
     }
   };
-}
+}  // namespace llarp
 
 #endif

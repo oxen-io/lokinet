@@ -73,6 +73,6 @@ namespace llarp
 
     std::ostream &out;
   };
-}
+}  // namespace llarp
 
 #endif

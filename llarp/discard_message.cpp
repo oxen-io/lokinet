@@ -6,4 +6,4 @@ namespace llarp
   {
     llarp::Debug("~DiscardMessage");
   }
-}
+}  // namespace llarp

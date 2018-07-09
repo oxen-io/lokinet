@@ -82,4 +82,4 @@ namespace llarp
     lram->decrypt->AsyncDecrypt(router->tp, &lram->frames[0], lram);
     return true;
   }
-}
+}  // namespace llarp

@@ -295,7 +295,7 @@ namespace llarp
     configfile = fname;
     return ReloadConfig();
   }
-}
+}  // namespace llarp
 
 struct llarp_main
 {
