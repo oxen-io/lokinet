@@ -4,7 +4,11 @@
 #include <llarp/threadpool.h>
 #include <llarp/timer.h>
 
-struct llarp_logic;
+struct llarp_logic
+{
+  struct llarp_threadpool* thread;
+  struct llarp_timer_context* timer;
+};
 
 struct llarp_logic*
 llarp_init_logic();

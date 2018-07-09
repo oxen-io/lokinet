@@ -1,10 +1,11 @@
 #include "router.hpp"
 #include <llarp/iwp.h>
-#include <llarp/link.h>
 #include <llarp/proto.h>
-#include <llarp/router.h>
 #include <llarp/link_message.hpp>
 #include <llarp/messages/discard.hpp>
+#include "llarp/iwp/establish_job.hpp"
+#include "llarp/iwp/server.hpp"
+#include "llarp/iwp/session.hpp"
 
 #include "buffer.hpp"
 #include "encode.hpp"

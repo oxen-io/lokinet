@@ -7,6 +7,10 @@
 #include <queue>
 #include <vector>
 
+struct llarp_router;
+struct llarp_link_session;
+struct llarp_link_session_iter;
+
 namespace llarp
 {
   struct ILinkMessage;
