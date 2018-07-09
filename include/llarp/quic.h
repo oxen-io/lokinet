@@ -1,7 +1,7 @@
 #ifndef LLARP_QUIC_H_
 #define LLARP_QUIC_H_
 
-#include <llarp/link.h>
+#include "llarp/iwp/server.h"
 
 struct llarp_quic_args
 {

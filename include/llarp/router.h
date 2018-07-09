@@ -2,7 +2,6 @@
 #define LLARP_ROUTER_H_
 #include <llarp/config.h>
 #include <llarp/ev.h>
-#include <llarp/link.h>
 #include <llarp/logic.h>
 #include <llarp/nodedb.h>
 #include <llarp/pathbuilder.h>

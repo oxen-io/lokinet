@@ -1,7 +1,6 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 #include <llarp/dht.h>
-#include <llarp/link.h>
 #include <llarp/nodedb.h>
 #include <llarp/router.h>
 #include <llarp/router_contact.h>

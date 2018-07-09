@@ -146,9 +146,7 @@ set(LIB_SRC
   llarp/ev.cpp
   llarp/exit_info.cpp
   llarp/exit_route.cpp
-  llarp/iwp_link.cpp
   llarp/logger.cpp
-  llarp/link.c
   llarp/link_intro.cpp
   llarp/link_message.cpp
   llarp/logic.cpp
@@ -173,6 +171,12 @@ set(LIB_SRC
   llarp/api/client.cpp
   llarp/api/message.cpp
   llarp/api/parser.cpp
+  llarp/iwp/frame_header.cpp
+  llarp/iwp/frame_state.cpp
+  llarp/iwp/session.cpp
+  llarp/iwp/transit_message.cpp
+  llarp/iwp/xmit.cpp
+  llarp/link/encoder.cpp
   llarp/routing/dht_message.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp

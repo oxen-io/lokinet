@@ -1,7 +1,6 @@
 #ifndef LLARP_LINK_MESSAGE_HPP
 #define LLARP_LINK_MESSAGE_HPP
 
-#include <llarp/link.h>
 #include <llarp/bencode.hpp>
 #include <llarp/router_id.hpp>
 
