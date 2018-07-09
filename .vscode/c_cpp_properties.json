@@ -13,6 +13,7 @@
             },
             "includePath": [
                 "${workspaceFolder}/include",
+                "${workspaceFolder}/llarp",
                 "${workspaceFolder}/vendor/cppbackport-master/lib"
             ],
             "defines": [],
