@@ -156,9 +156,8 @@ namespace llarp
           auto path = dht.router->paths.GetByUpstream(K, pathID);
           if(path)
           {
-            llarp::routing::DHTMessage reply;
-            reply.M.push_back(new GotRouterMessage(K, txid, &dht.router->rc));
-            return path->SendRoutingMessage(&reply, dht.router);
+            replies.push_back(new GotRouterMessage(K, txid, &dht.router->rc));
+            return true;
           }
           return false;
         }
@@ -176,6 +175,64 @@ namespace llarp
         return false;
       }
     };
+
+    GotIntroMessage::GotIntroMessage(uint64_t tx,
+                                     const llarp::service::IntroSet *i)
+        : IMessage({}), T(tx)
+    {
+      if(i)
+      {
+        I.push_back(*i);
+      }
+    }
+
+    GotIntroMessage::~GotIntroMessage()
+    {
+    }
+
+    bool
+    GotIntroMessage::HandleMessage(llarp_dht_context *ctx,
+                                   std::vector< IMessage * > &replies) const
+    {
+      // TODO: implement me?
+      auto path = ctx->impl.router->paths.GetLocalPathSet(pathID);
+      if(path)
+      {
+        return path->HandleGotIntroMessage(this);
+      }
+      return false;
+    }
+
+    bool
+    GotIntroMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
+    {
+      if(llarp_buffer_eq(key, "I"))
+      {
+        return BEncodeReadList(I, buf);
+      }
+      bool read = false;
+      if(!BEncodeMaybeReadDictInt("T", T, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("V", version, read, key, buf))
+        return false;
+      return read;
+    }
+
+    bool
+    GotIntroMessage::BEncode(llarp_buffer_t *buf) const
+    {
+      if(!bencode_start_dict(buf))
+        return false;
+      if(!BEncodeWriteDictMsgType(buf, "A", "G"))
+        return false;
+      if(!BEncodeWriteDictList("I", I, buf))
+        return false;
+      if(!BEncodeWriteDictInt(buf, "T", T))
+        return false;
+      if(!BEncodeWriteDictInt(buf, "V", version))
+        return false;
+      return bencode_end(buf);
+    }
 
     PublishIntroMessage::~PublishIntroMessage()
     {
@@ -196,7 +253,7 @@ namespace llarp
         if(!bencode_read_integer(val, &S))
           return false;
       }
-      if(!BEncodeMaybeReadDictInt("V", V, read, key, val))
+      if(!BEncodeMaybeReadDictInt("V", version, read, key, val))
         return false;
       return read;
     }
@@ -211,7 +268,15 @@ namespace llarp
         llarp::LogWarn("invalid introset signature");
         return false;
       }
-      return false;
+      if(I.W && !I.W->IsValid(dht.router->crypto.shorthash))
+      {
+        llarp::LogWarn("proof of work not good enough for IntroSet");
+        return false;
+      }
+      // TODO: make this smarter
+      dht.services->PutNode(I);
+      replies.push_back(new GotIntroMessage(txID, &I));
+      return true;
     }
 
     bool

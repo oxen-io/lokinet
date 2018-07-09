@@ -16,10 +16,12 @@ namespace llarp
     section_t netdb;
     section_t iwp_links;
     section_t connect;
+    section_t services;
 
     bool
     Load(const char *fname);
   };
+
 }  // namespace llarp
 
 struct llarp_config

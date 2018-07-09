@@ -1,8 +1,8 @@
 #include <deque>
 #include <llarp/encrypted_frame.hpp>
 #include <llarp/path.hpp>
+#include <llarp/pathbuilder.hpp>
 #include "buffer.hpp"
-#include "pathbuilder.hpp"
 #include "router.hpp"
 
 namespace llarp
@@ -179,6 +179,19 @@ namespace llarp
                       return hop->info.downstream == remote;
                     },
                     [](TransitHop* h) -> IHopHandler* { return h; });
+    }
+
+    PathSet*
+    PathContext::GetLocalPathSet(const PathID_t& id)
+    {
+      auto& map = m_OurPaths;
+      std::unique_lock< std::mutex > lock(map.first);
+      auto itr = map.second.find(id);
+      if(itr != map.second.end())
+      {
+        return itr->second;
+      }
+      return nullptr;
     }
 
     const byte_t*
@@ -447,5 +460,6 @@ namespace llarp
         delete msg;
       return result;
     }
+
   }  // namespace path
 }  // namespace llarp

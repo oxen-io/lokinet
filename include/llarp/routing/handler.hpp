@@ -29,9 +29,7 @@ namespace llarp
       virtual bool
       HandlePathLatencyMessage(const PathLatencyMessage *msg,
                                llarp_router *r) = 0;
-
       virtual bool
-
       HandleDHTMessage(const llarp::dht::IMessage *msg, llarp_router *r) = 0;
     };
   }  // namespace routing

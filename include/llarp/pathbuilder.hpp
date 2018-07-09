@@ -1,6 +1,8 @@
-#ifndef LLARP_PATHFINDER_HPP_
-#define LLARP_PATHFINDER_HPP_
+#ifndef LLARP_PATHBUILDER_HPP_
+#define LLARP_PATHBUILDER_HPP_
 #include <llarp/pathbuilder.h>
+#include <llarp/router.h>
+#include <llarp/pathset.hpp>
 
 struct llarp_pathbuilder_context : public llarp::path::PathSet
 {

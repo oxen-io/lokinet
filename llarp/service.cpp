@@ -1,5 +1,6 @@
 #include <llarp/service.hpp>
 #include "buffer.hpp"
+#include "router.hpp"
 
 namespace llarp
 {
@@ -75,29 +76,24 @@ namespace llarp
     }
 
     bool
-    IntroSet::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    IntroSet::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
     {
-      // TODO: implement me
-      return false;
-    }
+      bool read = false;
+      if(!BEncodeMaybeReadDictEntry("A", A, read, key, buf))
+        return false;
 
-    bool
-    IntroSetDecodeKey(dict_reader* r, llarp_buffer_t* key)
-    {
-      IntroSet* self = static_cast< IntroSet* >(r->user);
-      if(!key)
-        // TODO: determine if we read anything
-        return true;
-      return self->DecodeKey(*key, r->buffer);
-    }
+      if(llarp_buffer_eq(key, "I"))
+      {
+        return BEncodeReadList(I, buf);
+      }
 
-    bool
-    IntroSet::BDecode(llarp_buffer_t* buf)
-    {
-      dict_reader r;
-      r.user   = this;
-      r.on_key = &IntroSetDecodeKey;
-      return bencode_read_dict(buf, &r);
+      if(!BEncodeMaybeReadDictInt("V", version, read, key, buf))
+        return false;
+
+      if(!BEncodeMaybeReadDictEntry("Z", Z, read, key, buf))
+        return false;
+
+      return read;
     }
 
     bool
@@ -115,7 +111,7 @@ namespace llarp
       // end introduction list
 
       // write version
-      if(!BEncodeWriteDictInt(buf, "v", V))
+      if(!BEncodeWriteDictInt(buf, "v", version))
         return false;
       if(W)
       {
@@ -133,10 +129,20 @@ namespace llarp
     }
 
     bool
-    Introduction::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    Introduction::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
     {
-      // TODO: implement me
-      return false;
+      bool read = false;
+      if(!BEncodeMaybeReadDictEntry("k", router, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("l", latency, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictEntry("p", pathID, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("x", expiresAt, read, key, buf))
+        return false;
+      return read;
     }
 
     bool
@@ -144,8 +150,14 @@ namespace llarp
     {
       if(!bencode_start_dict(buf))
         return false;
+
       if(!BEncodeWriteDictEntry("k", router, buf))
         return false;
+      if(latency)
+      {
+        if(!BEncodeWriteDictInt(buf, "l", latency))
+          return false;
+      }
       if(!BEncodeWriteDictEntry("p", pathID, buf))
         return false;
       if(!BEncodeWriteDictInt(buf, "v", version))
@@ -214,6 +226,43 @@ namespace llarp
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       return crypto->verify(A.signkey, buf, Z);
+    }
+
+    Endpoint::Endpoint(const std::string& name, llarp_router* r)
+        : m_Router(r), m_PathSet(llarp_pathbuilder_context_new(r, r->dht))
+    {
+    }
+
+    bool
+    Endpoint::SetOption(const std::string& k, const std::string& v)
+    {
+      if(k == "keyfile")
+      {
+        m_Keyfile = v;
+        return true;
+      }
+      return false;
+    }
+
+    bool
+    Endpoint::Start()
+    {
+      auto crypto = &m_Router->crypto;
+      if(m_Keyfile.size())
+      {
+        if(!m_Identity.EnsureKeys(m_Keyfile, crypto))
+          return false;
+      }
+      else
+      {
+        m_Identity.RegenerateKeys(crypto);
+      }
+      return true;
+    }
+
+    Endpoint::~Endpoint()
+    {
+      llarp_pathbuilder_context_free(m_PathSet);
     }
 
   }  // namespace service

@@ -1,27 +1,43 @@
+#include <llarp/time.h>
 #include <cmath>
 #include <llarp/pow.hpp>
 #include "buffer.hpp"
 
 namespace llarp
 {
+  PoW::~PoW()
+  {
+  }
+
   bool
   PoW::BDecode(llarp_buffer_t* buf)
   {
+    // TODO: implement me
+    return false;
+  }
+
+  bool
+  PoW::DecodeKey(llarp_buffer_t k, llarp_buffer_t* val)
+  {
+    // TODO: implement me
     return false;
   }
 
   bool
   PoW::BEncode(llarp_buffer_t* buf) const
   {
+    // TODO: implement me
     return false;
   }
 
   bool
-  PoW::IsValid(llarp_shorthash_func hashfunc, const RouterID& us) const
+  PoW::IsValid(llarp_shorthash_func hashfunc) const
   {
-    // is it for us?
-    if(router != us)
+    auto now = llarp_time_now_ms();
+
+    if(now - timestamp > (uint64_t(extendedLifetime) * 1000))
       return false;
+
     byte_t digest[SHORTHASHSIZE];
     byte_t tmp[MaxSize];
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);

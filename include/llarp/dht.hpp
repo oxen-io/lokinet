@@ -67,18 +67,19 @@ namespace llarp
 
     struct ISNode
     {
-      llarp::service::IntroSet* introset;
+      llarp::service::IntroSet introset;
 
       Key_t ID;
 
-      ISNode() : introset(nullptr)
+      ISNode()
       {
         ID.Zero();
       }
 
-      ISNode(llarp::service::IntroSet* other) : introset(other)
+      ISNode(const llarp::service::IntroSet& other)
       {
-        other->A.CalculateAddress(ID);
+        introset = other;
+        other.A.CalculateAddress(ID);
       }
     };
 
@@ -119,7 +120,7 @@ namespace llarp
       };
     };
 
-    struct IMessage
+    struct IMessage : public llarp::IBEncodeMessage
     {
       virtual ~IMessage(){};
 
@@ -127,12 +128,6 @@ namespace llarp
       IMessage(const Key_t& from) : From(from)
       {
       }
-
-      virtual bool
-      BEncode(llarp_buffer_t* buf) const = 0;
-
-      virtual bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) = 0;
 
       virtual bool
       HandleMessage(llarp_dht_context* dht,
@@ -310,13 +305,53 @@ namespace llarp
       Key_t ourKey;
     };
 
+    struct FindIntroMessage : public IMessage
+    {
+      uint64_t R = 0;
+      llarp::service::Address S;
+      uint64_t T = 0;
+
+      ~FindIntroMessage();
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+
+      virtual bool
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage* >& replies) const;
+    };
+
+    /// acknologement to PublishIntroMessage or reply to FinIntroMessage
+    struct GotIntroMessage : public IMessage
+    {
+      std::list< llarp::service::IntroSet > I;
+      uint64_t T;
+
+      GotIntroMessage(uint64_t tx, const llarp::service::IntroSet* i = nullptr);
+
+      ~GotIntroMessage();
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+
+      virtual bool
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage* >& replies) const;
+    };
+
     struct PublishIntroMessage : public IMessage
     {
       llarp::service::IntroSet I;
-      uint64_t R;
-      uint64_t S;
-      bool hasS = false;
-      uint64_t V;
+      uint64_t R    = 0;
+      uint64_t S    = 0;
+      uint64_t txID = 0;
+      bool hasS     = false;
       PublishIntroMessage() : IMessage({})
       {
       }

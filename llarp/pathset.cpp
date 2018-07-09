@@ -86,5 +86,12 @@ namespace llarp
                      " rx=", path->RXID());
     }
 
+    bool
+    PathSet::HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg)
+    {
+      // TODO: implement me
+      return false;
+    }
+
   }  // namespace path
 }  // namespace llarp

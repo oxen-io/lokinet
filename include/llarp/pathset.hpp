@@ -1,12 +1,17 @@
 #ifndef LLARP_PATHSET_HPP
 #define LLARP_PATHSET_HPP
-
+#include <llarp/time.h>
 #include <llarp/path_types.hpp>
 #include <map>
 #include <tuple>
 
 namespace llarp
 {
+  namespace dht
+  {
+    struct GotIntroMessage;
+  }
+
   namespace path
   {
     enum PathStatus
@@ -51,6 +56,13 @@ namespace llarp
       /// return true if we should build another path
       bool
       ShouldBuildMore() const;
+
+      /// return true if we should publish a new hidden service descriptor
+      bool
+      ShouldPublishDescriptors() const;
+
+      bool
+      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
      private:
       typedef std::pair< RouterID, PathID_t > PathInfo_t;

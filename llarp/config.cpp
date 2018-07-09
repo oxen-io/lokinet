@@ -28,6 +28,7 @@ namespace llarp
       connect   = find_section(top, "connect", section_t{});
       netdb     = find_section(top, "netdb", section_t{});
       iwp_links = find_section(top, "bind", section_t{});
+      services  = find_section(top, "services", section_t{});
       return true;
     }
     return false;
@@ -66,7 +67,8 @@ llarp_config_iter(struct llarp_config *conf, struct llarp_config_iterator *iter)
       {"network", conf->impl.network},
       {"connect", conf->impl.connect},
       {"bind", conf->impl.iwp_links},
-      {"netdb", conf->impl.netdb}};
+      {"netdb", conf->impl.netdb},
+      {"services", conf->impl.services}};
 
   for(const auto item : conf->impl.router)
     iter->visit(iter, "router", item.first.c_str(), item.second.c_str());

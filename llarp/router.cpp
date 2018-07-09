@@ -1110,6 +1110,38 @@ llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
   return false;
 }
 
+bool
+llarp_router::LoadHiddenServiceConfig(const char *fname)
+{
+  llarp::LogDebug("opening hidden service config ", fname);
+  llarp::service::Config conf;
+  if(!conf.Load(fname))
+    return false;
+  for(const auto &config : conf.services)
+  {
+    if(!AddHiddenService(config))
+      return false;
+  }
+  return true;
+}
+
+bool
+llarp_router::AddHiddenService(const llarp::service::Config::section_t &config)
+{
+  auto service = new llarp::service::Endpoint(config.first, this);
+  for(const auto &option : config.second)
+  {
+    auto &k = option.first;
+    auto &v = option.second;
+    if(!service->SetOption(k, v))
+    {
+      delete service;
+      return false;
+    }
+  }
+  return service->Start();
+}
+
 namespace llarp
 {
   void
@@ -1183,6 +1215,17 @@ namespace llarp
       llarp::LogError("link ", key,
                       " failed to configure. (Note: We don't support * yet)");
     }
+    else if(StrEq(section, "services"))
+    {
+      if(self->LoadHiddenServiceConfig(val))
+      {
+        llarp::LogInfo("loaded hidden service config for ", key);
+      }
+      else
+      {
+        llarp::LogWarn("failed to load hidden service config for ", key);
+      }
+    }
     else if(StrEq(section, "connect"))
     {
       self->connect[key] = val;
@@ -1230,5 +1273,4 @@ namespace llarp
       }
     }
   }
-
 }  // namespace llarp

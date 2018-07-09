@@ -158,6 +158,9 @@ namespace llarp
                                llarp_router* r);
 
       bool
+      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
+
+      bool
       HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r);
 
       bool
@@ -228,6 +231,9 @@ namespace llarp
       bool
       HandlePathTransferMessage(const llarp::routing::PathTransferMessage* msg,
                                 llarp_router* r);
+
+      bool
+      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
       bool
       HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r);
@@ -319,6 +325,9 @@ namespace llarp
 
       IHopHandler*
       GetByDownstream(const RouterID& id, const PathID_t& path);
+
+      PathSet*
+      GetLocalPathSet(const PathID_t& id);
 
       bool
       ForwardLRCM(const RouterID& nextHop,

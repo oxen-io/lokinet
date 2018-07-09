@@ -102,6 +102,7 @@ R is currently set to 0 by the sender.
   I: IS,
   R: r_counter,
   S: optional member 0 for immediate store otherwise non zero,
+  T: transaction_id_uint64,
   V: 0
 }
 

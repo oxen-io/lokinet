@@ -1,7 +1,7 @@
 #include <llarp/nodedb.h>
 #include <llarp/path.hpp>
 
-#include "pathbuilder.hpp"
+#include <llarp/pathbuilder.hpp>
 #include "router.hpp"
 
 namespace llarp

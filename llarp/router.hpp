@@ -126,6 +126,12 @@ struct llarp_router
   Close();
 
   bool
+  LoadHiddenServiceConfig(const char *fname);
+
+  bool
+  AddHiddenService(const llarp::service::Config::section_t &config);
+
+  bool
   Ready();
 
   void

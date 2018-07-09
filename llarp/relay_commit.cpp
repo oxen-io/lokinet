@@ -247,8 +247,7 @@ namespace llarp
         return;
       }
       if(self->record.work
-         && self->record.work->IsValid(self->context->Crypto()->shorthash,
-                                       self->context->OurRouterID()))
+         && self->record.work->IsValid(self->context->Crypto()->shorthash))
       {
         llarp::LogInfo("LRCM extended lifetime by ",
                        self->record.work->extendedLifetime, " seconds for ",
