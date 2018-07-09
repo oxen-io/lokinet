@@ -11,10 +11,6 @@
  * utilities for handling addresses on the llarp network
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define MAX_AI_DIALECT_SIZE 5
 
 /// address information model
@@ -91,9 +87,5 @@ struct llarp_ai_list_iter
 /// iterator over list and call visit functor
 void
 llarp_ai_list_iterate(struct llarp_ai_list *l, struct llarp_ai_list_iter *iter);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

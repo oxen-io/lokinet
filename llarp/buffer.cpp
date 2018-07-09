@@ -2,8 +2,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-extern "C" {
-
 size_t
 llarp_buffer_size_left(llarp_buffer_t buff)
 {
@@ -77,5 +75,4 @@ llarp_buffer_eq(llarp_buffer_t buf, const char* str)
     str++;
   }
   return *str == 0;
-}
 }

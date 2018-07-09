@@ -35,8 +35,6 @@ namespace llarp
 
 }  // namespace llarp
 
-extern "C" {
-
 void
 llarp_new_config(struct llarp_config **conf)
 {
@@ -77,5 +75,4 @@ llarp_config_iter(struct llarp_config *conf, struct llarp_config_iterator *iter)
     for(const auto item : section.second)
       iter->visit(iter, section.first.c_str(), item.first.c_str(),
                   item.second.c_str());
-}
 }

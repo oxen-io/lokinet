@@ -10,8 +10,6 @@ struct llarp_xi_list
   std::list< llarp_xi > list;
 };
 
-extern "C" {
-
 struct llarp_xi_list *
 llarp_xi_list_new()
 {
@@ -187,5 +185,4 @@ llarp_xi_list_bdecode(struct llarp_xi_list *l, llarp_buffer_t *buff)
 {
   list_reader r = {buff, l, &llarp_xi_list_decode_item};
   return bencode_read_list(buff, &r);
-}
 }

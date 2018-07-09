@@ -816,7 +816,6 @@ llarp_router::HasPendingConnectJob(const llarp::RouterID &remote)
   return pendingEstablishJobs.find(remote) != pendingEstablishJobs.end();
 }
 
-extern "C" {
 struct llarp_router *
 llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
                   struct llarp_logic *logic)
@@ -1081,8 +1080,6 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
   llarp::Info("failed to get identity key");
   return false;
 }
-
-}  // end extern C
 
 // C++ ...
 bool

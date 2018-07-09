@@ -12,10 +12,6 @@
  * potentially allow libssl support in the future
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define PUBKEYSIZE 32
 #define SECKEYSIZE 64
 #define NONCESIZE 24
@@ -109,9 +105,5 @@ llarp_crypto_libsodium_init(struct llarp_crypto *c);
 /// check for initialize crypto
 bool
 llarp_crypto_initialized(struct llarp_crypto *c);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

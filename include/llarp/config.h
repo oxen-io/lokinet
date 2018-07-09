@@ -7,10 +7,6 @@
  * library configuration utilties
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct llarp_config;
 
 /// allocate config
@@ -42,7 +38,4 @@ void
 llarp_config_iter(struct llarp_config *conf,
                   struct llarp_config_iterator *iter);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

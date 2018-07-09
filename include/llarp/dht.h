@@ -10,10 +10,6 @@
  * DHT functions
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct llarp_dht_context;
 
 /// allocator
@@ -72,7 +68,4 @@ void
 llarp_dht_lookup_router(struct llarp_dht_context* ctx,
                         struct llarp_router_lookup_job* job);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

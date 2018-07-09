@@ -5,7 +5,6 @@
 #include "buffer.hpp"
 #include "logger.hpp"
 
-extern "C" {
 void
 llarp_rc_free(struct llarp_rc *rc)
 {
@@ -221,5 +220,4 @@ llarp_rc_bencode(const struct llarp_rc *rc, llarp_buffer_t *buff)
   if(!bencode_write_bytestring(buff, rc->signature, SIGSIZE))
     return false;
   return bencode_end(buff);
-}
 }

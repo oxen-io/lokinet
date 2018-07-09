@@ -345,7 +345,6 @@ namespace iwp
   }
 }  // namespace iwp
 
-extern "C" {
 void
 iwp_call_async_keygen(struct llarp_async_iwp *iwp,
                       struct iwp_async_keygen *keygen)
@@ -489,5 +488,4 @@ void
 llarp_async_iwp_free(struct llarp_async_iwp *iwp)
 {
   delete iwp;
-}
 }

@@ -4,16 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /** constant time memcmp */
 bool
 llarp_eq(const void *a, const void *b, size_t sz);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

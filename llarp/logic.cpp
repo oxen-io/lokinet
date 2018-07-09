@@ -2,14 +2,6 @@
 #include <llarp/mem.h>
 #include "logger.hpp"
 
-struct llarp_logic
-{
-  struct llarp_threadpool* thread;
-  struct llarp_timer_context* timer;
-};
-
-extern "C" {
-
 struct llarp_logic*
 llarp_init_logic()
 {
@@ -102,5 +94,4 @@ void
 llarp_logic_remove_call(struct llarp_logic* logic, uint32_t id)
 {
   llarp_timer_remove_job(logic->timer, id);
-}
 }

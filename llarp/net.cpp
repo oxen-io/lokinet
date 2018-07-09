@@ -37,8 +37,6 @@ operator<(const in6_addr& a, const in6_addr& b)
   return memcmp(&a, &b, sizeof(in6_addr)) < 0;
 }
 
-extern "C" {
-
 bool
 llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
 {
@@ -77,5 +75,4 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
   if(ifa)
     freeifaddrs(ifa);
   return found;
-}
 }

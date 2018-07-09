@@ -7,14 +7,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 bool
 llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

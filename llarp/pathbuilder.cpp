@@ -194,7 +194,6 @@ llarp_pathbuilder_context::BuildOne()
   llarp_pathbuilder_build_path(job);
 }
 
-extern "C" {
 struct llarp_pathbuilder_context*
 llarp_pathbuilder_context_new(struct llarp_router* router,
                               struct llarp_dht_context* dht)
@@ -222,4 +221,3 @@ llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
   llarp_logic_queue_job(job->router->logic,
                         {job, &llarp::pathbuilder_start_build});
 }
-}  // end extern c

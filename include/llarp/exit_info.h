@@ -10,10 +10,6 @@
  * utilities for handling exits on the llarp network
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 /// Exit info model
 struct llarp_xi
 {
@@ -60,7 +56,4 @@ struct llarp_xi_list_iter
 void
 llarp_xi_list_iterate(struct llarp_xi_list *l, struct llarp_xi_list_iter *iter);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

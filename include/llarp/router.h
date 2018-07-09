@@ -9,10 +9,6 @@
 #include <llarp/router_contact.h>
 #include <llarp/threadpool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 struct llarp_router;
 
 bool
@@ -53,9 +49,5 @@ struct llarp_router_link_iter
 void
 llarp_router_iterate_links(struct llarp_router *router,
                            struct llarp_router_link_iter iter);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif
