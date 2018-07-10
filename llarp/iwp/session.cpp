@@ -416,6 +416,7 @@ llarp_link_session::TickLogic()
     delete front;
     q.pop();
   }
+  frame.process_inbound_queue();
 }
 
 bool
@@ -454,7 +455,7 @@ llarp_link_session::Tick(llarp_time_t now)
     pump();
     PumpCryptoOutbound();
   }
-  return !frame.process_inbound_queue();
+  return false;
 }
 
 void

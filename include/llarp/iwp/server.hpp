@@ -218,6 +218,7 @@ struct llarp_link
     while(itr != self->m_sessions.end())
     {
       itr->second->TickLogic();
+      ++itr;
     }
   }
 
@@ -414,7 +415,7 @@ struct llarp_link
     return true;
   }
 
-   bool
+  bool
   start_link(struct llarp_logic *logic)
   {
     // give link implementations

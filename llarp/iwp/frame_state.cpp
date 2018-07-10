@@ -226,7 +226,7 @@ frame_state::inbound_frame_complete(uint64_t id)
       else
       {
         recvqueue.Put(new InboundMessage(id, msg));
-        success = process_inbound_queue();
+        success = true;
       }
     }
     else
