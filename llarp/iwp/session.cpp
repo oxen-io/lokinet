@@ -419,7 +419,6 @@ llarp_link_session::TickLogic()
   frame.process_inbound_queue();
   frame.retransmit(llarp_time_now_ms());
   pump();
-  PumpCryptoOutbound();
 }
 
 bool
@@ -456,7 +455,6 @@ llarp_link_session::Tick(llarp_time_t now)
 
     frame.retransmit(now);
     pump();
-    PumpCryptoOutbound();
   }
   return false;
 }
@@ -585,7 +583,6 @@ llarp_link_session::handle_frame_decrypt(iwp_async_frame *frame)
     if(self->frame.process(frame->buf + 64, frame->sz - 64))
     {
       self->frame.alive();
-      self->pump();
     }
     else
       llarp::LogError("invalid frame from ", self->addr);
@@ -789,11 +786,15 @@ llarp_link_session::pump()
   // llarp::LogInfo("session pump");
   // TODO: in codel the timestamp may cause excssive drop when all the
   // packets have a similar timestamp
-  now = llarp_time_now_ms();
+  bool flush = false;
+  now        = llarp_time_now_ms();
   llarp_buffer_t buf;
   while(frame.next_frame(&buf))
   {
     encrypt_frame_async_send(buf.base, buf.sz);
     frame.pop_next_frame();
+    flush = true;
   }
+  if(flush)
+    PumpCryptoOutbound();
 }
