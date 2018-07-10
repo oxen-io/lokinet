@@ -78,8 +78,13 @@ struct llarp_link_session
   // void send_keepalive(void *user);
   bool
   Tick(llarp_time_t now);
+
   void
   PumpCryptoOutbound();
+
+  // process inbound and outbound queues (logic thread)
+  void
+  TickLogic();
 
   // this is called from net thread
   void
@@ -116,9 +121,9 @@ struct llarp_link_session
   /*
   std::mutex m_EncryptedFramesMutex;
   std::queue< iwp_async_frame > encryptedFrames;
+  */
   llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime >
       decryptedFrames;
-   */
 
   uint32_t pump_send_timer_id = 0;
   uint32_t pump_recv_timer_id = 0;
@@ -158,6 +163,9 @@ struct llarp_link_session
   alloc_frame(const void *buf, size_t sz);
   void
   decrypt_frame(const void *buf, size_t sz);
+
+  static void
+  handle_frame_decrypt(iwp_async_frame *f);
 
   frame_state frame;
 };

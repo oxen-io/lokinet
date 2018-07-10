@@ -195,6 +195,13 @@ namespace llarp
     }
 
     bool
+    Identity::EnsureKeys(const std::string& fname, llarp_crypto* c)
+    {
+      // TODO: implement me
+      return false;
+    }
+
+    bool
     Identity::SignIntroSet(IntroSet& i, llarp_crypto* crypto) const
     {
       if(i.I.size() == 0)
@@ -263,6 +270,13 @@ namespace llarp
     Endpoint::~Endpoint()
     {
       llarp_pathbuilder_context_free(m_PathSet);
+    }
+
+    bool
+    Config::Load(const std::string& fname)
+    {
+      // TODO: implement me
+      return false;
     }
 
   }  // namespace service

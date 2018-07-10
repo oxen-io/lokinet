@@ -209,6 +209,24 @@ struct llarp_link
     }
   }
 
+  static void
+  handle_logic_pump(void *user)
+  {
+    llarp_link *self = static_cast< llarp_link * >(user);
+    lock_t lock(self->m_sessions_Mutex);
+    auto itr = self->m_sessions.begin();
+    while(itr != self->m_sessions.end())
+    {
+      itr->second->TickLogic();
+    }
+  }
+
+  void
+  PumpLogic()
+  {
+    llarp_logic_queue_job(logic, {this, &handle_logic_pump});
+  }
+
   void
   RemoveSessionByAddr(const llarp::Addr &addr)
   {
@@ -317,6 +335,13 @@ struct llarp_link
     addr->port = this->addr.port();
   }
 
+  static void
+  after_recv(llarp_udp_io *udp)
+  {
+    llarp_link *self = static_cast< llarp_link * >(udp->user);
+    self->PumpLogic();
+  }
+
   bool
   configure(struct llarp_ev_loop *netloop, const char *ifname, int af,
             uint16_t port)
@@ -379,7 +404,7 @@ struct llarp_link
     this->netloop = netloop;
     udp.recvfrom  = &llarp_link::handle_recvfrom;
     udp.user      = this;
-    udp.tick      = nullptr;
+    udp.tick      = &llarp_link::after_recv;
     llarp::LogDebug("bind IWP link to ", addr);
     if(llarp_ev_add_udp(netloop, &udp, addr) == -1)
     {
@@ -389,7 +414,7 @@ struct llarp_link
     return true;
   }
 
-  bool
+   bool
   start_link(struct llarp_logic *logic)
   {
     // give link implementations

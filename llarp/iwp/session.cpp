@@ -33,7 +33,7 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
     , logic(l->router->logic)
     , serv(l)
     , outboundFrames("iwp_outbound")
-    //, decryptedFrames("iwp_inbound")
+    , decryptedFrames("iwp_inbound")
     , addr(a)
     , state(eInitial)
     , frame(this)
@@ -404,6 +404,20 @@ llarp_link_session::get_parent()
   return serv;
 }
 
+void
+llarp_link_session::TickLogic()
+{
+  std::queue< iwp_async_frame * > q;
+  decryptedFrames.Process(q);
+  while(q.size())
+  {
+    auto &front = q.front();
+    handle_frame_decrypt(front);
+    delete front;
+    q.pop();
+  }
+}
+
 bool
 llarp_link_session::Tick(llarp_time_t now)
 {
@@ -557,8 +571,8 @@ llarp_link_session::introduce(uint8_t *pub)
       llarp_logic_call_later(logic, {5000, this, &handle_establish_timeout});
 }
 
-static void
-handle_frame_decrypt(iwp_async_frame *frame)
+void
+llarp_link_session::handle_frame_decrypt(iwp_async_frame *frame)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(frame->user);
   llarp::LogDebug("rx ", frame->sz);
@@ -584,23 +598,15 @@ llarp_link_session::decrypt_frame(const void *buf, size_t sz)
     // auto frame = alloc_frame(inboundFrames, buf, sz);
     // inboundFrames.Put(frame);
     auto f = alloc_frame(buf, sz);
-    /*
+
     if(iwp_decrypt_frame(f))
     {
       decryptedFrames.Put(f);
-      if(state == eEstablished)
-      {
-        if(pump_recv_timer_id == 0)
-          PumpCodelInbound();
-      }
-      else
-        ManualPumpInboundCodel();
     }
     else
       llarp::LogWarn("decrypt frame fail");
-   */
-    f->hook = &handle_frame_decrypt;
-    iwp_call_async_frame_decrypt(iwp, f);
+    // f->hook = &handle_frame_decrypt;
+    // iwp_call_async_frame_decrypt(iwp, f);
   }
   else
     llarp::LogWarn("short packet of ", sz, " bytes");
