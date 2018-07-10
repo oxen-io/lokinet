@@ -417,6 +417,9 @@ llarp_link_session::TickLogic()
     q.pop();
   }
   frame.process_inbound_queue();
+  frame.retransmit(llarp_time_now_ms());
+  pump();
+  PumpCryptoOutbound();
 }
 
 bool
