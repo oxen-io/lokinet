@@ -104,12 +104,14 @@ main(int argc, char *argv[])
   {
     printf(
         "please specify: \n"
-        "--generate with a path to a router contact file\n"
-        "--update   with a path to a router contact file\n"
-        "--list     \n"
-        "--import   with a path to a router contact file\n"
-        "--export   a hex formatted public key\n"
-        "--locate   a hex formatted public key"
+        "--generate  with a path to a router contact file\n"
+        "--update    with a path to a router contact file\n"
+        "--list      \n"
+        "--import    with a path to a router contact file\n"
+        "--export    a hex formatted public key\n"
+        "--locate    a hex formatted public key"
+        "--localInfo \n"
+        "--read      with a path to a router contact file\n"
         "\n");
     return 0;
   }
@@ -120,6 +122,7 @@ main(int argc, char *argv[])
   bool exportMode = false;
   bool locateMode = false;
   bool localMode  = false;
+  bool readMode   = false;
   int c;
   char *conffname;
   char defaultConfName[] = "daemon.ini";
@@ -132,6 +135,7 @@ main(int argc, char *argv[])
   {
     static struct option long_options[] = {
         {"config", required_argument, 0, 'c'},
+        {"logLevel", required_argument, 0, 'o'},
         {"generate", required_argument, 0, 'g'},
         {"update", required_argument, 0, 'u'},
         {"list", no_argument, 0, 'l'},
@@ -139,10 +143,10 @@ main(int argc, char *argv[])
         {"export", required_argument, 0, 'e'},
         {"locate", required_argument, 0, 'q'},
         {"localInfo", no_argument, 0, 'n'},
-        {"logLevel", required_argument, 0, 'o'},
+        {"read", required_argument, 0, 'r'},
         {0, 0, 0, 0}};
     int option_index = 0;
-    c = getopt_long(argc, argv, "c:g:lu:i:e:q:no:", long_options, &option_index);
+    c = getopt_long(argc, argv, "c:o:g:lu:i:e:q:nr:", long_options, &option_index);
     if(c == -1)
       break;
     switch(c)
@@ -211,6 +215,11 @@ main(int argc, char *argv[])
         haveRequiredOptions = true;
         localMode           = true;
         break;
+      case 'r':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        readMode            = true;
+        break;
       default:
         abort();
     }
@@ -222,7 +231,7 @@ main(int argc, char *argv[])
   }
   printf("parsed options\n");
   if(!genMode && !updMode && !listMode && !importMode && !exportMode
-     && !locateMode && !localMode)
+     && !locateMode && !localMode && !readMode)
   {
     llarp::Error("I don't know what to do, no generate or update parameter\n");
     return 0;
@@ -369,6 +378,11 @@ main(int argc, char *argv[])
   if(localMode)
   {
     llarp_rc *rc  = llarp_main_getLocalRC(ctx);
+    displayRC(rc);
+  }
+  if(readMode)
+  {
+    llarp_rc *rc = llarp_rc_read(rcfname);
     displayRC(rc);
   }
   // it's a unique_ptr, should clean up itself
