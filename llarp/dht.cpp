@@ -1,14 +1,6 @@
-#include <llarp/bencode.hpp>
-#include <llarp/dht.hpp>
-#include <llarp/messages/dht.hpp>
-#include <llarp/messages/dht_immediate.hpp>
+#include <llarp/dht.h>
 #include "router.hpp"
 #include "router_contact.hpp"
-
-#include <sodium.h>
-
-#include <algorithm>  // std::find
-#include <set>
 
 llarp_dht_context::llarp_dht_context(llarp_router *router)
 {
