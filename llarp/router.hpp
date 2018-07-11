@@ -94,6 +94,8 @@ struct llarp_router
   llarp_pathbuilder_select_hop_func selectHopFunc = nullptr;
   llarp_pathbuilder_context *explorePool          = nullptr;
 
+  llarp::service::Context hiddenServiceContext;
+
   llarp_link *outboundLink = nullptr;
   std::list< llarp_link * > inboundLinks;
 

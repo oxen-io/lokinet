@@ -11,7 +11,11 @@ namespace llarp
     struct GotIntroMessage : public IMessage
     {
       std::list< llarp::service::IntroSet > I;
-      uint64_t T;
+      uint64_t T = 0;
+
+      GotIntroMessage() : IMessage({})
+      {
+      }
 
       GotIntroMessage(uint64_t tx, const llarp::service::IntroSet* i = nullptr);
 
@@ -23,7 +27,7 @@ namespace llarp
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
 
-      virtual bool
+      bool
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
     };

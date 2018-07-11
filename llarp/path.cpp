@@ -292,6 +292,12 @@ namespace llarp
       {
         hops[idx].txID = hops[idx + 1].rxID;
       }
+      // initialize parts of the introduction
+      intro.router = hops[h->numHops - 1].router.pubkey;
+      // TODO: or is it rxid ?
+      intro.pathID = hops[h->numHops - 1].txID;
+
+      m_InboundMessageParser.from = RXID();
     }
 
     void
@@ -310,6 +316,12 @@ namespace llarp
     Path::RXID() const
     {
       return hops[0].rxID;
+    }
+
+    bool
+    Path::IsReady() const
+    {
+      return intro.latency > 0 && status == ePathEstablished;
     }
 
     RouterID
@@ -419,12 +431,15 @@ namespace llarp
     {
       if(status == ePathBuilding)
       {
+        // finish initializing introduction
+        intro.expiresAt = buildStarted + hops[0].lifetime;
         // confirm that we build the path
         status = ePathEstablished;
         llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID());
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
+
         llarp::routing::PathLatencyMessage latency;
         latency.T             = rand();
         m_LastLatencyTestID   = latency.T;
@@ -442,8 +457,8 @@ namespace llarp
     {
       if(msg->L == m_LastLatencyTestID)
       {
-        Latency = llarp_time_now_ms() - m_LastLatencyTestTime;
-        llarp::LogInfo("path latency is ", Latency, " ms for tx=", TXID(),
+        intro.latency = llarp_time_now_ms() - m_LastLatencyTestTime;
+        llarp::LogInfo("path latency is ", intro.latency, " ms for tx=", TXID(),
                        " rx=", RXID());
         m_LastLatencyTestID = 0;
         return true;

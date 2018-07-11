@@ -1,7 +1,10 @@
 #ifndef LLARP_PATHSET_HPP
 #define LLARP_PATHSET_HPP
 #include <llarp/time.h>
+#include <list>
 #include <llarp/path_types.hpp>
+#include <llarp/router_id.hpp>
+#include <llarp/service/IntroSet.hpp>
 #include <map>
 #include <tuple>
 
@@ -61,8 +64,22 @@ namespace llarp
       bool
       ShouldPublishDescriptors() const;
 
+      virtual bool
+      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg)
+      {
+        return false;
+      }
+
+      Path*
+      PickRandomEstablishedPath();
+
       bool
-      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
+      GetCurrentIntroductions(
+          std::list< llarp::service::Introduction >& intros) const;
+
+      bool
+      PublishIntroSet(const llarp::service::IntroSet& introset,
+                      llarp_router* r);
 
      private:
       typedef std::pair< RouterID, PathID_t > PathInfo_t;
@@ -70,6 +87,7 @@ namespace llarp
 
       size_t m_NumPaths;
       PathMap_t m_Paths;
+      uint64_t m_CurrentPublishTX = 0;
     };
 
   }  // namespace path

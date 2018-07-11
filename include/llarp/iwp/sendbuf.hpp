@@ -8,15 +8,15 @@ struct sendbuf_t
 {
   sendbuf_t(size_t s) : sz(s)
   {
-    buf = new byte_t[s];
+    _buf = new byte_t[s];
   }
 
   ~sendbuf_t()
   {
-    delete[] buf;
+    if(_buf)
+      delete[] _buf;
   }
 
-  byte_t *buf;
   size_t sz;
 
   size_t
@@ -28,8 +28,11 @@ struct sendbuf_t
   byte_t *
   data()
   {
-    return buf;
+    return _buf;
   }
+
+ private:
+  byte_t *_buf = nullptr;
 };
 
 typedef std::queue< sendbuf_t * > sendqueue_t;

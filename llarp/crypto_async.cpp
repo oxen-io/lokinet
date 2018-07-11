@@ -208,6 +208,7 @@ namespace iwp
     iwp_async_session_start *session =
         static_cast< iwp_async_session_start * >(user);
     auto crypto = session->iwp->crypto;
+    auto logic  = session->iwp->logic;
 
     auto dh        = crypto->transport_dh_client;
     auto shorthash = crypto->shorthash;
@@ -248,8 +249,8 @@ namespace iwp
     buf.base = (session->buf + 32);
     buf.sz   = session->sz - 32;
     hmac(session->buf, buf, e_K);
-    session->hook(session);
-    // llarp_logic_queue_job(logic, {user, &inform_session_start});
+    // session->hook(session);
+    llarp_logic_queue_job(logic, {user, &inform_session_start});
   }
 
   void
@@ -258,6 +259,7 @@ namespace iwp
     iwp_async_session_start *session =
         static_cast< iwp_async_session_start * >(user);
     auto crypto = session->iwp->crypto;
+    auto logic  = session->iwp->logic;
 
     auto dh        = crypto->transport_dh_server;
     auto shorthash = crypto->shorthash;
@@ -313,8 +315,8 @@ namespace iwp
     }
     else  // hmac fail
       session->buf = nullptr;
-    session->hook(session);
-    // llarp_logic_queue_job(logic, {user, &inform_session_start});
+    // session->hook(session);
+    llarp_logic_queue_job(logic, {user, &inform_session_start});
   }
 
   void

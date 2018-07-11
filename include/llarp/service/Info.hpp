@@ -19,6 +19,13 @@ namespace llarp
 
       ~ServiceInfo();
 
+      bool
+      operator==(const ServiceInfo& other) const
+      {
+        return enckey == other.enckey && signkey == other.signkey
+            && version == other.version && vanity == other.vanity;
+      }
+
       ServiceInfo&
       operator=(const ServiceInfo& other)
       {

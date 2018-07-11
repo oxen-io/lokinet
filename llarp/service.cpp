@@ -1,5 +1,6 @@
 #include <llarp/service.hpp>
 #include "buffer.hpp"
+#include "ini.hpp"
 #include "router.hpp"
 
 namespace llarp
@@ -79,18 +80,18 @@ namespace llarp
     IntroSet::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
     {
       bool read = false;
-      if(!BEncodeMaybeReadDictEntry("A", A, read, key, buf))
+      if(!BEncodeMaybeReadDictEntry("a", A, read, key, buf))
         return false;
 
-      if(llarp_buffer_eq(key, "I"))
+      if(llarp_buffer_eq(key, "i"))
       {
         return BEncodeReadList(I, buf);
       }
 
-      if(!BEncodeMaybeReadDictInt("V", version, read, key, buf))
+      if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
         return false;
 
-      if(!BEncodeMaybeReadDictEntry("Z", Z, read, key, buf))
+      if(!BEncodeMaybeReadDictEntry("z", Z, read, key, buf))
         return false;
 
       return read;
@@ -113,11 +114,13 @@ namespace llarp
       // write version
       if(!BEncodeWriteDictInt(buf, "v", version))
         return false;
+      /*
       if(W)
       {
         if(!BEncodeWriteDictEntry("w", *W, buf))
           return false;
       }
+      */
       if(!BEncodeWriteDictEntry("z", Z, buf))
         return false;
 
@@ -192,6 +195,7 @@ namespace llarp
       crypto->identity_keygen(signkey);
       pub.enckey  = llarp::seckey_topublic(enckey);
       pub.signkey = llarp::seckey_topublic(signkey);
+      pub.vanity.Zero();
     }
 
     bool
@@ -235,48 +239,16 @@ namespace llarp
       return crypto->verify(A.signkey, buf, Z);
     }
 
-    Endpoint::Endpoint(const std::string& name, llarp_router* r)
-        : m_Router(r), m_PathSet(llarp_pathbuilder_context_new(r, r->dht))
-    {
-    }
-
-    bool
-    Endpoint::SetOption(const std::string& k, const std::string& v)
-    {
-      if(k == "keyfile")
-      {
-        m_Keyfile = v;
-        return true;
-      }
-      return false;
-    }
-
-    bool
-    Endpoint::Start()
-    {
-      auto crypto = &m_Router->crypto;
-      if(m_Keyfile.size())
-      {
-        if(!m_Identity.EnsureKeys(m_Keyfile, crypto))
-          return false;
-      }
-      else
-      {
-        m_Identity.RegenerateKeys(crypto);
-      }
-      return true;
-    }
-
-    Endpoint::~Endpoint()
-    {
-      llarp_pathbuilder_context_free(m_PathSet);
-    }
-
     bool
     Config::Load(const std::string& fname)
     {
       // TODO: implement me
-      return false;
+      ini::Parser parser(fname);
+      for(const auto& sec : parser.top().ordered_sections)
+      {
+        services.push_back({sec->first, sec->second.values});
+      }
+      return services.size() > 0;
     }
 
   }  // namespace service

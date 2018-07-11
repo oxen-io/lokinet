@@ -7,7 +7,7 @@ namespace llarp
 {
   namespace service
   {
-    struct Endpoint
+    struct Endpoint : public llarp_pathbuilder_context
     {
       Endpoint(const std::string& nickname, llarp_router* r);
       ~Endpoint();
@@ -15,13 +15,19 @@ namespace llarp
       bool
       SetOption(const std::string& k, const std::string& v);
 
+      void
+      Tick();
+
       bool
       Start();
 
+      bool
+      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
+
      private:
       llarp_router* m_Router;
-      llarp_pathbuilder_context* m_PathSet;
       std::string m_Keyfile;
+      std::string m_Name;
       Identity m_Identity;
     };
   }  // namespace service

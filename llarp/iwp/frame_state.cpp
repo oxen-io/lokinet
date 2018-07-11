@@ -199,44 +199,36 @@ frame_state::inbound_frame_complete(uint64_t id)
                      " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
       return false;
     }
-    if(id == nextMsgID)
-    {
-      llarp_link_session *impl = parent;
 
-      if(id == 0)
+    llarp_link_session *impl = parent;
+
+    if(id == 0)
+    {
+      success = router->HandleRecvLinkMessage(parent, buf);
+      if(impl->CheckRCValid())
       {
-        success = router->HandleRecvLinkMessage(parent, buf);
-        if(impl->CheckRCValid())
+        if(!impl->IsEstablished())
         {
-          if(!impl->IsEstablished())
-          {
-            impl->send_LIM();
-            impl->session_established();
-          }
-          ++nextMsgID;
+          impl->send_LIM();
+          impl->session_established();
         }
-        else
-        {
-          llarp::PubKey k = impl->remote_router.pubkey;
-          llarp::LogWarn("spoofed LIM from ", k);
-          impl->close();
-          success = false;
-        }
+        ++nextMsgID;
       }
       else
       {
-        recvqueue.Put(new InboundMessage(id, msg));
-        success = true;
+        llarp::PubKey k = impl->remote_router.pubkey;
+        llarp::LogWarn("spoofed LIM from ", k);
+        impl->close();
+        success = false;
       }
     }
     else
     {
-      llarp::LogWarn("out of order message expected ", nextMsgID, " but got ",
-                     id);
       recvqueue.Put(new InboundMessage(id, msg));
       success = true;
     }
   }
+
   delete rxmsg;
   rx.erase(id);
 
@@ -334,10 +326,10 @@ frame_state::next_frame(llarp_buffer_t *buf)
   llarp::LogDebug("next frame, ", left, " frames left in send queue");
   if(left)
   {
-    sendbuf_t *send = sendqueue.front();
-    buf->base       = send->data();
-    buf->cur        = send->data();
-    buf->sz         = send->size();
+    auto &send = sendqueue.front();
+    buf->base  = send->data();
+    buf->cur   = send->data();
+    buf->sz    = send->size();
     return true;
   }
   return false;
@@ -346,9 +338,9 @@ frame_state::next_frame(llarp_buffer_t *buf)
 void
 frame_state::pop_next_frame()
 {
-  sendbuf_t *buf = sendqueue.front();
-  sendqueue.pop();
+  auto &buf = sendqueue.front();
   delete buf;
+  sendqueue.pop();
 }
 
 void

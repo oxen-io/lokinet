@@ -57,6 +57,18 @@ namespace llarp
             case 'I':
               dec->msg = new PublishIntroMessage();
               break;
+            case 'G':
+              if(dec->relayed)
+              {
+                dec->msg = new GotIntroMessage();
+                break;
+              }
+              else
+              {
+                llarp::LogWarn(
+                    "GotIntroMessage found when parsing direct DHT message");
+                return false;
+              }
             default:
               llarp::LogWarn("unknown dht message type: ", (char)*strbuf.base);
               // bad msg type

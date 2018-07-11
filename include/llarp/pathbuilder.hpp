@@ -12,6 +12,8 @@ struct llarp_pathbuilder_context : public llarp::path::PathSet
   llarp_pathbuilder_context(llarp_router* p_router,
                             struct llarp_dht_context* p_dht);
 
+  virtual ~llarp_pathbuilder_context(){};
+
   void
   BuildOne();
 };

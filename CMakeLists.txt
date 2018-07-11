@@ -191,6 +191,8 @@ set(LIB_SRC
   llarp/routing/path_confirm.cpp
   llarp/routing/path_latency.cpp
   llarp/routing/path_transfer.cpp
+  llarp/service/context.cpp
+  llarp/service/endpoint.cpp
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
   vendor/cppbackport-master/lib/fs/filetype.cpp

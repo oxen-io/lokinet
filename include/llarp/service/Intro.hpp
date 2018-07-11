@@ -18,6 +18,16 @@ namespace llarp
       uint64_t version = 0;
       uint64_t expiresAt;
 
+      Introduction() = default;
+      Introduction(const Introduction& other)
+      {
+        router    = other.router;
+        pathID    = other.pathID;
+        latency   = other.latency;
+        version   = other.version;
+        expiresAt = other.expiresAt;
+      }
+
       ~Introduction();
 
       friend std::ostream&

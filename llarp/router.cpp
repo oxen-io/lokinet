@@ -35,6 +35,7 @@ llarp_router::llarp_router()
     , dht(llarp_dht_context_new(this))
     , inbound_link_msg_parser(this)
     , explorePool(llarp_pathbuilder_context_new(this, dht))
+    , hiddenServiceContext(this)
 
 {
   // set rational defaults
@@ -379,6 +380,7 @@ void
 llarp_router::Tick()
 {
   llarp::LogDebug("tick router");
+
   paths.ExpirePaths();
   // TODO: don't do this if we have enough paths already
   if(inboundLinks.size() == 0)
@@ -393,15 +395,9 @@ llarp_router::Tick()
       llarp::LogWarn("not enough nodes known to build exploritory paths, have ",
                      N, " nodes, need 3 now (will be 5 later)");
     }
+    hiddenServiceContext.Tick();
   }
   paths.TickPaths();
-  llarp_link_session_iter iter;
-  iter.user  = this;
-  iter.visit = &send_padded_message;
-  if(sendPadding)
-  {
-    outboundLink->iter_sessions(iter);
-  }
 }
 
 bool
@@ -1119,27 +1115,10 @@ llarp_router::LoadHiddenServiceConfig(const char *fname)
     return false;
   for(const auto &config : conf.services)
   {
-    if(!AddHiddenService(config))
+    if(!hiddenServiceContext.AddEndpoint(config))
       return false;
   }
   return true;
-}
-
-bool
-llarp_router::AddHiddenService(const llarp::service::Config::section_t &config)
-{
-  auto service = new llarp::service::Endpoint(config.first, this);
-  for(const auto &option : config.second)
-  {
-    auto &k = option.first;
-    auto &v = option.second;
-    if(!service->SetOption(k, v))
-    {
-      delete service;
-      return false;
-    }
-  }
-  return service->Start();
 }
 
 namespace llarp

@@ -27,6 +27,8 @@ namespace llarp
         if(!bencode_read_integer(val, &S))
           return false;
       }
+      if(!BEncodeMaybeReadDictInt("T", txID, read, key, val))
+        return false;
       if(!BEncodeMaybeReadDictInt("V", version, read, key, val))
         return false;
       return read;
@@ -39,7 +41,7 @@ namespace llarp
       auto &dht = ctx->impl;
       if(!I.VerifySignature(&dht.router->crypto))
       {
-        llarp::LogWarn("invalid introset signature");
+        llarp::LogWarn("invalid introset signature, ", I);
         return false;
       }
       if(I.W && !I.W->IsValid(dht.router->crypto.shorthash))
@@ -69,6 +71,8 @@ namespace llarp
         if(!BEncodeWriteDictInt(buf, "S", S))
           return false;
       }
+      if(!BEncodeWriteDictInt(buf, "T", txID))
+        return false;
       if(!BEncodeWriteDictInt(buf, "V", LLARP_PROTO_VERSION))
         return false;
       return bencode_end(buf);

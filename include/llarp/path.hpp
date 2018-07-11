@@ -14,6 +14,7 @@
 #include <llarp/router_id.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message.hpp>
+#include <llarp/service/Intro.hpp>
 
 #include <functional>
 #include <list>
@@ -204,6 +205,9 @@ namespace llarp
       typedef std::function< void(Path*) > BuildResultHookFunc;
       typedef std::vector< PathHopConfig > HopList;
       HopList hops;
+
+      llarp::service::Introduction intro;
+
       llarp_time_t buildStarted;
       PathStatus status;
 
@@ -253,6 +257,9 @@ namespace llarp
       bool
       HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
 
+      bool
+      IsReady() const;
+
       // Is this deprecated?
       // nope not deprecated :^DDDD
       const PathID_t&
@@ -263,8 +270,6 @@ namespace llarp
 
       RouterID
       Upstream() const;
-
-      llarp_time_t Latency = 0;
 
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;

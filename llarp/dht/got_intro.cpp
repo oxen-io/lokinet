@@ -27,11 +27,12 @@ namespace llarp
                                    std::vector< IMessage * > &replies) const
     {
       // TODO: implement me better?
-      auto path = ctx->impl.router->paths.GetLocalPathSet(pathID);
-      if(path)
+      auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);
+      if(pathset)
       {
-        return path->HandleGotIntroMessage(this);
+        return pathset->HandleGotIntroMessage(this);
       }
+      llarp::LogWarn("No path for got intro message pathid=", pathID);
       return false;
     }
 
