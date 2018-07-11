@@ -13,6 +13,7 @@
 #include <llarp/dht.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/routing/handler.hpp>
+#include <llarp/service.hpp>
 #include "llarp/iwp/establish_job.hpp"
 
 #include "crypto.hpp"

@@ -172,6 +172,14 @@ set(LIB_SRC
   llarp/api/client.cpp
   llarp/api/message.cpp
   llarp/api/parser.cpp
+  llarp/dht/context.cpp
+  llarp/dht/decode.cpp
+  llarp/dht/dht_immediate.cpp
+  llarp/dht/find_router.cpp
+  llarp/dht/got_intro.cpp
+  llarp/dht/got_router.cpp
+  llarp/dht/search_job.cpp
+  llarp/dht/publish_intro.cpp
   llarp/iwp/frame_header.cpp
   llarp/iwp/frame_state.cpp
   llarp/iwp/session.cpp

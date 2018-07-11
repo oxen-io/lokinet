@@ -13,9 +13,6 @@ namespace llarp
 {
   namespace service
   {
-    std::string
-    AddressToString(const Address& addr);
-
     struct Config
     {
       typedef std::list< std::pair< std::string, std::string > >

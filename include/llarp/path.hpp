@@ -15,6 +15,7 @@
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message.hpp>
 
+#include <functional>
 #include <list>
 #include <map>
 #include <mutex>
