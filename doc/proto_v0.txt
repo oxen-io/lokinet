@@ -516,20 +516,43 @@ B is set to a backoff value.
 R contains additional metadata text describing why the exit was rejected.
 
 
+hidden service frame message (HSFM)
 
-hidden service data message (HSDM)
+TODO: document this better
 
-signed data sent anonymously over the network to a recipiant from a sender.
-sent inside a TDFM encrypted to the hidden service's public encryption key.
+intro message (variant 1)
 
 {
   A: "H",
-  H: "<payload bytes>",
-  I: Introducer for reply,
-  R: SA of recipiant,
-  S: SI of sender,
+  D: "<N bytes encrypted HSD>",
+  H: "<32 bytes ephemeral public encryption key>",
+  N: "<32 bytes nonce for key exchange>",
+  S: 0,
   V: 0,
-  Z: "<64 bytes signature from sender of the entire message>"
+  Z: "<64 bytes signature of entire message using sender's signing key>"
+}
+
+ordered data message (variant 2)
+
+{
+  A: "H",
+  D: "<N bytes encrypted HSD>",
+  N: "<32 bytes nonce for symettric cipher>",
+  S: sequence_number_uint64,
+  V: 0,
+  Z: "<64 bytes signature using sender's signing key>"
+}
+
+hidden service data (HSD)
+
+data sent anonymously over the network to a recipiant from a sender.
+sent inside a HSFM encrypted with a shared secret.
+
+{
+  D: "<N bytes payload>",
+  I: Introduction for reply,
+  S: SI of sender,
+  V: 0
 }
 
 transfer data fragment message (TDFM)
@@ -540,11 +563,10 @@ transfer data between paths.
   A: "T",
   P: "<16 bytes path id>",
   T: "<N bytes data>",
-  V: 0, 
-  Y: "<32 bytes nounce>"
+  V: 0
 }
 
-transfer data to another path with id P on the local router place Y and T values
+transfer data to another path with id P on the local router place a random 32 byte and T values
 into y and z values into a LRDM message (respectively) and send it in the
 downstream direction.
 

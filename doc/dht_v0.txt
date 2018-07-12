@@ -11,6 +11,7 @@ recursively find an IS by SA
 
 {
   A: "F",
+  I: 0 or 1 if iterative request,
   R: r_counter,
   S: "<32 bytes SA>",
   T: transaction_id_uint64,
@@ -123,33 +124,13 @@ find a router by long term RC.k public key
 
 {
   A: "R",
+  I: 0 or 1 if iterative lookup
   K: "<32 byte public key of router>",
   T: transaction_id_uint64,
   V: 0
 }
 
-find RC who's RC.k is closest to K:
-
-if A.k is equal to K:
-
-* reply with a GRCM with an R value of just A
-
-if A.k is not equal to K and we are closesr to A.k than anyone we know:
-
-* reply with a GRCM with an empty R value
-
-find a pending transaction id for K, P
-
-if P exists:
-
-* link transaction T to P
-
-if P does not exist:
-
-* generate a new transaction id, U
-* start transaction U for A.k
-* link transaction U to transaction T
-* send FRCM to A.k requesting K
+TODO: document me
 
 got router contact message (GRCM)
 
