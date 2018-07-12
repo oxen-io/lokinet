@@ -26,6 +26,37 @@ namespace llarp
     GotIntroMessage::HandleMessage(llarp_dht_context *ctx,
                                    std::vector< IMessage * > &replies) const
     {
+      auto &dht   = ctx->impl;
+      auto crypto = &dht.router->crypto;
+      if(I.size() == 1)
+      {
+        const auto &introset = I.front();
+        if(!introset.VerifySignature(crypto))
+        {
+          llarp::LogWarn(
+              "Invalid introset signature while handling direct GotIntro from ",
+              From);
+          return false;
+        }
+        llarp::dht::Key_t addr;
+        if(!introset.A.CalculateAddress(addr))
+        {
+          llarp::LogWarn(
+              "failed to calculate hidden service address for direct GotIntro "
+              "message from ",
+              From);
+          return false;
+        }
+        // TODO: inform any pending tx
+        return true;
+      }
+      return false;
+    }
+
+    bool
+    RelayedGotIntroMessage::HandleMessage(
+        llarp_dht_context *ctx, std::vector< IMessage * > &replies) const
+    {
       // TODO: implement me better?
       auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);
       if(pathset)
@@ -66,5 +97,5 @@ namespace llarp
         return false;
       return bencode_end(buf);
     }
-  }
-}
+  }  // namespace dht
+}  // namespace llarp

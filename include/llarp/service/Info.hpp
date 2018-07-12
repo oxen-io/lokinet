@@ -45,7 +45,7 @@ namespace llarp
 
       /// calculate our address
       bool
-      CalculateAddress(Address& addr) const;
+      CalculateAddress(byte_t* buf) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const;

@@ -60,14 +60,13 @@ namespace llarp
             case 'G':
               if(dec->relayed)
               {
-                dec->msg = new GotIntroMessage();
+                dec->msg = new RelayedGotIntroMessage();
                 break;
               }
               else
               {
-                llarp::LogWarn(
-                    "GotIntroMessage found when parsing direct DHT message");
-                return false;
+                dec->msg = new GotIntroMessage(dec->From);
+                break;
               }
             default:
               llarp::LogWarn("unknown dht message type: ", (char)*strbuf.base);
@@ -91,7 +90,9 @@ namespace llarp
       r.user   = &dec;
       r.on_key = &MessageDecoder::on_key;
       if(bencode_read_dict(buf, &r))
+      {
         return dec.msg;
+      }
       else
       {
         if(dec.msg)
@@ -137,5 +138,5 @@ namespace llarp
       r.on_item = &ListDecoder::on_item;
       return bencode_read_list(buf, &r);
     }
-  }
-}
+  }  // namespace dht
+}  // namespace llarp

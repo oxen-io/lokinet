@@ -59,14 +59,14 @@ namespace llarp
     }
 
     bool
-    ServiceInfo::CalculateAddress(Address& addr) const
+    ServiceInfo::CalculateAddress(byte_t* addr) const
     {
       byte_t tmp[128];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!BEncode(&buf))
         return false;
-      return crypto_generichash(addr, addr.size(), buf.base, buf.cur - buf.base,
-                                nullptr, 0)
+      return crypto_generichash(addr, 32, buf.base, buf.cur - buf.base, nullptr,
+                                0)
           != -1;
     }
 

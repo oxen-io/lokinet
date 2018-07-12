@@ -68,6 +68,14 @@ namespace llarp
     {
       result &= msg->HandleMessage(router->dht, reply->msgs);
     }
-    return result && router->SendToOrQueue(remote.data(), reply);
+    if(reply->msgs.size())
+    {
+      return result && router->SendToOrQueue(remote.data(), reply);
+    }
+    else
+    {
+      delete reply;
+      return result;
+    }
   }
 }

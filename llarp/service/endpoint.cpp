@@ -16,9 +16,8 @@ namespace llarp
       if(k == "keyfile")
       {
         m_Keyfile = v;
-        return true;
       }
-      return false;
+      return true;
     }
 
     void

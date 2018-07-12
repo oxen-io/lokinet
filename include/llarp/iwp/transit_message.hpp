@@ -42,6 +42,9 @@ struct transit_message
   should_send_ack(llarp_time_t now) const;
 
   bool
+  should_resend_frags(llarp_time_t now) const;
+
+  bool
   should_resend_xmit(llarp_time_t now) const;
   bool
   completed() const;

@@ -77,6 +77,12 @@ transit_message::should_resend_xmit(llarp_time_t now) const
 }
 
 bool
+transit_message::should_resend_frags(llarp_time_t now) const
+{
+  return now - lastAck > 1000 && !completed();
+}
+
+bool
 transit_message::completed() const
 {
   for(byte_t idx = 0; idx < msginfo.numfrags(); ++idx)

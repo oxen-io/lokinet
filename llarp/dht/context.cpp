@@ -123,7 +123,7 @@ namespace llarp
       {
         if(itr->second.IsExpired(now))
         {
-          itr->second.Completed(nullptr, true);
+          itr->second.Timeout();
           itr = pendingTX.erase(itr);
         }
         else
@@ -174,9 +174,8 @@ namespace llarp
       ownerKey.txid = id;
       if(txid == 0)
         txid = id;
-
-      pendingTX[ownerKey] = SearchJob(whoasked, txid, target, job, excludes);
-
+      SearchJob j(whoasked, txid, target, excludes, job);
+      pendingTX[ownerKey] = j;
       llarp::LogInfo("Asking ", askpeer, " for router ", target, " for ",
                      whoasked);
       auto msg          = new llarp::DHTImmeidateMessage(askpeer);

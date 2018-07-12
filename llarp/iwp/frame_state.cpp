@@ -276,7 +276,7 @@ frame_state::got_acks(frame_header hdr, size_t sz)
     tx.erase(msgid);
     delete msg;
   }
-  else
+  else if(msg->should_resend_frags(llarp_time_now_ms()))
   {
     llarp::LogDebug("message ", msgid, " retransmit fragments");
     msg->retransmit_frags(sendqueue, txflags);
@@ -348,6 +348,7 @@ frame_state::queue_tx(uint64_t id, transit_message *msg)
 {
   tx.insert(std::make_pair(id, msg));
   msg->generate_xmit(sendqueue, txflags);
+  msg->retransmit_frags(sendqueue, txflags);
 }
 
 void

@@ -13,7 +13,7 @@ namespace llarp
       std::list< llarp::service::IntroSet > I;
       uint64_t T = 0;
 
-      GotIntroMessage() : IMessage({})
+      GotIntroMessage(const Key_t& from) : IMessage(from)
       {
       }
 
@@ -27,10 +27,21 @@ namespace llarp
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
 
+      virtual bool
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage* >& replies) const;
+    };
+
+    struct RelayedGotIntroMessage : public GotIntroMessage
+    {
+      RelayedGotIntroMessage() : GotIntroMessage({})
+      {
+      }
+
       bool
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 #endif

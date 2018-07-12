@@ -67,7 +67,7 @@ namespace llarp
       {
         if(R.size())
         {
-          pending->Completed(&R[0]);
+          pending->FoundRouter(&R[0]);
           if(pending->requester != dht.OurKey())
           {
             replies.push_back(new GotRouterMessage(
@@ -95,7 +95,7 @@ namespace llarp
           {
             llarp::LogInfo(pending->target, " was not found via ", From,
                            " and we won't look it up");
-            pending->Completed(nullptr);
+            pending->FoundRouter(nullptr);
             if(pending->requester != dht.OurKey())
             {
               replies.push_back(new GotRouterMessage(
@@ -110,5 +110,5 @@ namespace llarp
           "Got response for DHT transaction we are not tracking, txid=", txid);
       return false;
     }
-  }
-}
+  }  // namespace dht
+}  // namespace llarp

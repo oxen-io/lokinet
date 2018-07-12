@@ -417,7 +417,6 @@ llarp_link_session::TickLogic()
     q.pop();
   }
   frame.process_inbound_queue();
-  frame.retransmit(llarp_time_now_ms());
   pump();
 }
 
@@ -605,7 +604,10 @@ llarp_link_session::decrypt_frame(const void *buf, size_t sz)
       decryptedFrames.Put(f);
     }
     else
+    {
       llarp::LogWarn("decrypt frame fail");
+      delete f;
+    }
     // f->hook = &handle_frame_decrypt;
     // iwp_call_async_frame_decrypt(iwp, f);
   }

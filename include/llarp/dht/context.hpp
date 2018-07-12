@@ -112,8 +112,8 @@ namespace llarp
       std::unordered_map< TXOwner, SearchJob, TXOwnerHash > pendingTX;
       Key_t ourKey;
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 
 struct llarp_dht_context
 {

@@ -14,9 +14,9 @@ namespace llarp
     {
       llarp::PubKey router;
       llarp::PathID_t pathID;
-      uint64_t latency = 0;
-      uint64_t version = 0;
-      uint64_t expiresAt;
+      uint64_t latency   = 0;
+      uint64_t version   = 0;
+      uint64_t expiresAt = 0;
 
       Introduction() = default;
       Introduction(const Introduction& other)

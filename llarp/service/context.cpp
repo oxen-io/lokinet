@@ -13,7 +13,6 @@ namespace llarp
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
-        delete itr->second;
         itr = m_Endpoints.erase(itr);
       }
     }
@@ -46,6 +45,8 @@ namespace llarp
         auto &v = option.second;
         if(!service->SetOption(k, v))
         {
+          llarp::LogError("failed to set ", k, "=", v,
+                          " for hidden service endpoint ", conf.first);
           delete service;
           return false;
         }

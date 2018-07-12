@@ -2,6 +2,7 @@
 #include <llarp/dht/context.hpp>
 #include <llarp/dht/messages/pubintro.hpp>
 #include <llarp/messages/dht.hpp>
+#include <llarp/messages/dht_immediate.hpp>
 #include "router.hpp"
 
 namespace llarp
@@ -49,9 +50,27 @@ namespace llarp
         llarp::LogWarn("proof of work not good enough for IntroSet");
         return false;
       }
-      // TODO: make this smarter (?)
+      llarp::dht::Key_t addr;
+      if(!I.A.CalculateAddress(addr))
+      {
+        llarp::LogWarn(
+            "failed to calculate hidden service address for PubIntro message");
+        return false;
+      }
       dht.services->PutNode(I);
       replies.push_back(new GotIntroMessage(txID, &I));
+      Key_t peer;
+      std::set< Key_t > exclude;
+      exclude.insert(From);
+      if(txID && dht.nodes->FindCloseExcluding(addr, peer, exclude))
+      {
+        // we are not the closest to this address, send it to the closest node
+        llarp::LogInfo("telling closer peer ", peer, " we got an IntroSet for ",
+                       addr);
+        auto msg = new llarp::DHTImmeidateMessage(peer);
+        msg->msgs.push_back(new PublishIntroMessage(I, 0));
+        dht.router->SendToOrQueue(peer, msg);
+      }
       return true;
     }
 
@@ -77,5 +96,5 @@ namespace llarp
         return false;
       return bencode_end(buf);
     }
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
