@@ -516,7 +516,7 @@ B is set to a backoff value.
 R contains additional metadata text describing why the exit was rejected.
 
 
-hidden service frame message (HSFM)
+hidden service frame (HSF)
 
 TODO: document this better
 
@@ -562,7 +562,7 @@ transfer data between paths.
 {
   A: "T",
   P: "<16 bytes path id>",
-  T: "<N bytes data>",
+  T: message_transfered_between_paths,
   V: 0
 }
 

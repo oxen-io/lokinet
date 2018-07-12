@@ -35,13 +35,6 @@ llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 }
 
 void
-llarp_dht_set_msg_handler(struct llarp_dht_context *ctx,
-                          llarp_dht_msg_handler handler)
-{
-  ctx->impl.custom_handler = handler;
-}
-
-void
 llarp_dht_allow_transit(llarp_dht_context *ctx)
 {
   ctx->impl.allowTransit = true;

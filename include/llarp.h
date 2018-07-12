@@ -23,10 +23,6 @@ llarp_main_init(const char *fname, bool multiProcess);
 void
 llarp_main_signal(struct llarp_main *ptr, int sig);
 
-/// set custom dht message handler function
-void
-llarp_main_set_dht_handler(struct llarp_main *ptr, llarp_dht_msg_handler h);
-
 /// setup main context
 int
 llarp_main_setup(struct llarp_main *ptr);

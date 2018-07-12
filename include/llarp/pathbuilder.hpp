@@ -10,7 +10,7 @@ struct llarp_pathbuilder_context : public llarp::path::PathSet
   struct llarp_dht_context* dht;
   /// construct
   llarp_pathbuilder_context(llarp_router* p_router,
-                            struct llarp_dht_context* p_dht);
+                            struct llarp_dht_context* p_dht, size_t numPaths);
 
   virtual ~llarp_pathbuilder_context(){};
 

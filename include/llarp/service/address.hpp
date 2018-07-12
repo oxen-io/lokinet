@@ -20,6 +20,16 @@ namespace llarp
       Address(const byte_t* data) : llarp::AlignedBuffer< 32 >(data)
       {
       }
+      struct Hash
+      {
+        size_t
+        operator()(const Address& addr) const
+        {
+          size_t idx = 0;
+          memcpy(&idx, addr, sizeof(idx));
+          return idx;
+        }
+      };
     };
 
   }  // namespace service

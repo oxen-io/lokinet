@@ -6,7 +6,7 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp_router* r)
-        : llarp_pathbuilder_context(r, r->dht), m_Router(r), m_Name(name)
+        : llarp_pathbuilder_context(r, r->dht, 2), m_Router(r), m_Name(name)
     {
     }
 
@@ -96,5 +96,23 @@ namespace llarp
     Endpoint::~Endpoint()
     {
     }
-  }
-}
+
+    Endpoint::OutboundContext::OutboundContext(Endpoint* parent)
+        : llarp_pathbuilder_context(parent->m_Router, parent->m_Router->dht, 2)
+        , m_Parent(parent)
+    {
+    }
+
+    Endpoint::OutboundContext::~OutboundContext()
+    {
+    }
+
+    bool
+    Endpoint::OutboundContext::HandleGotIntroMessage(
+        const llarp::dht::GotIntroMessage* msg)
+    {
+      // TODO: implement me
+      return false;
+    }
+  }  // namespace service
+}  // namespace llarp

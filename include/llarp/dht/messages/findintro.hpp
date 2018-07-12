@@ -9,7 +9,8 @@ namespace llarp
   {
     struct FindIntroMessage : public IMessage
     {
-      uint64_t R = 0;
+      uint64_t R     = 0;
+      bool iterative = false;
       llarp::service::Address S;
       uint64_t T = 0;
 
@@ -25,6 +26,6 @@ namespace llarp
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 #endif

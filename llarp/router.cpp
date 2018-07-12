@@ -34,7 +34,6 @@ llarp_router::llarp_router()
     , paths(this)
     , dht(llarp_dht_context_new(this))
     , inbound_link_msg_parser(this)
-    , explorePool(llarp_pathbuilder_context_new(this, dht))
     , hiddenServiceContext(this)
 
 {

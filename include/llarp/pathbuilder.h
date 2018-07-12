@@ -20,7 +20,7 @@ struct llarp_pathbuilder_context;
 /// alloc
 struct llarp_pathbuilder_context*
 llarp_pathbuilder_context_new(struct llarp_router* router,
-                              struct llarp_dht_context* dht);
+                              struct llarp_dht_context* dht, size_t numpaths);
 /// dealloc
 void
 llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx);
