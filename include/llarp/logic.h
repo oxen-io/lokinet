@@ -3,11 +3,12 @@
 #include <llarp/mem.h>
 #include <llarp/threadpool.h>
 #include <llarp/timer.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
 
-struct llarp_logic;
+struct llarp_logic
+{
+  struct llarp_threadpool* thread;
+  struct llarp_timer_context* timer;
+};
 
 struct llarp_logic*
 llarp_init_logic();
@@ -43,7 +44,4 @@ llarp_logic_stop(struct llarp_logic* logic);
 void
 llarp_logic_mainloop(struct llarp_logic* logic);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

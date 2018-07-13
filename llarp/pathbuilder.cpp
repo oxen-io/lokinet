@@ -1,7 +1,7 @@
 #include <llarp/nodedb.h>
 #include <llarp/path.hpp>
 
-#include "pathbuilder.hpp"
+#include <llarp/pathbuilder.hpp>
 #include "router.hpp"
 
 namespace llarp
@@ -175,9 +175,8 @@ namespace llarp
 }  // namespace llarp
 
 llarp_pathbuilder_context::llarp_pathbuilder_context(
-    llarp_router* p_router, struct llarp_dht_context* p_dht)
-    // TODO: hardcoded value
-    : llarp::path::PathSet(4), router(p_router), dht(p_dht)
+    llarp_router* p_router, struct llarp_dht_context* p_dht, size_t pathNum)
+    : llarp::path::PathSet(pathNum), router(p_router), dht(p_dht)
 {
   p_router->paths.AddPathBuilder(this);
 }
@@ -194,12 +193,11 @@ llarp_pathbuilder_context::BuildOne()
   llarp_pathbuilder_build_path(job);
 }
 
-extern "C" {
 struct llarp_pathbuilder_context*
 llarp_pathbuilder_context_new(struct llarp_router* router,
-                              struct llarp_dht_context* dht)
+                              struct llarp_dht_context* dht, size_t sz)
 {
-  return new llarp_pathbuilder_context(router, dht);
+  return new llarp_pathbuilder_context(router, dht, sz);
 }
 
 void
@@ -222,4 +220,3 @@ llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
   llarp_logic_queue_job(job->router->logic,
                         {job, &llarp::pathbuilder_start_build});
 }
-}  // end extern c

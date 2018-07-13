@@ -37,6 +37,6 @@ namespace llarp
     buff.sz   = t.size();
     return buff;
   }
-}
+}  // namespace llarp
 
 #endif

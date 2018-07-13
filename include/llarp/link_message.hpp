@@ -1,12 +1,15 @@
 #ifndef LLARP_LINK_MESSAGE_HPP
 #define LLARP_LINK_MESSAGE_HPP
 
-#include <llarp/link.h>
 #include <llarp/bencode.hpp>
 #include <llarp/router_id.hpp>
 
 #include <queue>
 #include <vector>
+
+struct llarp_router;
+struct llarp_link_session;
+struct llarp_link_session_iter;
 
 namespace llarp
 {

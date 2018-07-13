@@ -1,8 +1,5 @@
 #ifndef LLARP_THREADPOOL_H
 #define LLARP_THREADPOOL_H
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 struct llarp_threadpool;
 
@@ -26,8 +23,6 @@ struct llarp_thread_job
   /** called in threadpool worker thread */
   llarp_thread_work_func work;
 
-#ifdef __cplusplus
-
   llarp_thread_job(void *u, llarp_thread_work_func w) : user(u), work(w)
   {
   }
@@ -35,8 +30,6 @@ struct llarp_thread_job
   llarp_thread_job() : user(nullptr), work(nullptr)
   {
   }
-
-#endif
 };
 
 /// for single process mode
@@ -54,9 +47,5 @@ llarp_threadpool_join(struct llarp_threadpool *tp);
 
 void
 llarp_threadpool_wait(struct llarp_threadpool *tp);
-
-#ifdef __cplusplus
-}
-#endif
 
 #endif

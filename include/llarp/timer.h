@@ -2,9 +2,6 @@
 #define LLARP_TIMER_H
 #include <llarp/common.h>
 #include <llarp/threadpool.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /** called with userptr, original timeout, left */
 typedef void (*llarp_timer_handler_func)(void *, uint64_t, uint64_t);
@@ -47,7 +44,4 @@ llarp_timer_tick_all(struct llarp_timer_context *t,
 void
 llarp_free_timer(struct llarp_timer_context **t);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

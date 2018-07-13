@@ -1,9 +1,6 @@
 #ifndef LLARP_STRING_H
 #define LLARP_STRING_H
 #include <llarp/common.h>
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 #ifndef __FreeBSD__
 #if !(__APPLE__ && __MACH__)
@@ -18,7 +15,4 @@ strnlen(const char* str, size_t sz)
 #endif
 #endif
 
-#ifdef __cplusplus
-}
-#endif
 #endif

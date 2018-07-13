@@ -35,11 +35,9 @@ namespace llarp
 
 }  // namespace llarp
 
-extern "C" {
 void
 llarp_mem_stdlib(struct llarp_alloc *mem)
 {
   mem->alloc = llarp::std_malloc;
   mem->free  = llarp::std_free;
-}
 }

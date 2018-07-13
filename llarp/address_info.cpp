@@ -117,8 +117,6 @@ llarp_ai_list_iter_bencode(struct llarp_ai_list_iter *iter, struct llarp_ai *ai)
   return llarp_ai_bencode(ai, static_cast< llarp_buffer_t * >(iter->user));
 }
 
-extern "C" {
-
 bool
 llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t *buff)
 {
@@ -260,5 +258,4 @@ llarp_ai_list_bdecode(struct llarp_ai_list *l, llarp_buffer_t *buff)
   struct list_reader r = {
       .buffer = nullptr, .user = l, .on_item = &llarp_ai_list_bdecode_item};
   return bencode_read_list(buff, &r);
-}
 }

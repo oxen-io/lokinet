@@ -36,10 +36,6 @@ namespace llarp
 
   template < typename Item_t >
   bool
-  BEncodeRead(Item_t& item, llarp_buffer_t* buf);
-
-  template < typename Item_t >
-  bool
   BEncodeMaybeReadDictEntry(const char* k, Item_t& item, bool& read,
                             llarp_buffer_t key, llarp_buffer_t* buf)
   {
@@ -153,6 +149,27 @@ namespace llarp
 
     virtual bool
     BEncode(llarp_buffer_t* buf) const = 0;
+
+    bool
+    BDecode(llarp_buffer_t* buf)
+    {
+      dict_reader r;
+      r.user   = this;
+      r.on_key = &OnKey;
+      return bencode_read_dict(buf, &r);
+    }
+
+    // TODO: check for shadowed values elsewhere
+    uint64_t version = 0;
+
+    static bool
+    OnKey(dict_reader* r, llarp_buffer_t* k)
+    {
+      if(k)
+        return static_cast< IBEncodeMessage* >(r->user)->DecodeKey(*k,
+                                                                   r->buffer);
+      return true;
+    }
   };
 
 }  // namespace llarp

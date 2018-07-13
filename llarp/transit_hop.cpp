@@ -136,12 +136,5 @@ namespace llarp
       return false;
     }
 
-    bool
-    TransitHop::HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r)
-    {
-      llarp::LogWarn("unwarrented hidden service data on ", info);
-      return false;
-    }
-
   }  // namespace path
 }  // namespace llarp

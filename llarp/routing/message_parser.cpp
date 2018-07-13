@@ -73,7 +73,10 @@ namespace llarp
       firstKey    = true;
       if(bencode_read_dict(&buf, &reader))
       {
-        result = msg->HandleMessage(h, r);
+        msg->from = from;
+        result    = msg->HandleMessage(h, r);
+        if(!result)
+          llarp::LogWarn("Failed to handle inbound routing message");
         delete msg;
       }
       else

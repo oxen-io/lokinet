@@ -21,6 +21,10 @@ TESTNET_ROOT=$(REPO)/testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 
+TESTNET_CLIENTS ?= 50
+TESTNET_SERVERS ?= 50
+TESTNET_DEBUG ?= 0
+
 clean:
 	rm -f build.ninja rules.ninja cmake_install.cmake CMakeCache.txt
 	rm -rf CMakeFiles
@@ -70,8 +74,8 @@ testnet-build: testnet-configure
 
 testnet: testnet-build
 	mkdir -p $(TESTNET_ROOT)
-	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=30 --clients=1 --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
-	supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
+	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
+	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 test: debug-configure
 	ninja

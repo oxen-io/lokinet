@@ -132,8 +132,6 @@ struct llarp_timer_context
   }
 };
 
-extern "C" {
-
 struct llarp_timer_context*
 llarp_init_timer()
 {
@@ -234,7 +232,6 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
     }
   }
 }
-}
 
 namespace llarp
 {
@@ -255,4 +252,4 @@ namespace llarp
     }
     done = true;
   }
-}
+}  // namespace llarp

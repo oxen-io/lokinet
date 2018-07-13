@@ -1,10 +1,11 @@
 #include "router.hpp"
 #include <llarp/iwp.h>
-#include <llarp/link.h>
 #include <llarp/proto.h>
-#include <llarp/router.h>
 #include <llarp/link_message.hpp>
 #include <llarp/messages/discard.hpp>
+#include "llarp/iwp/establish_job.hpp"
+#include "llarp/iwp/server.hpp"
+#include "llarp/iwp/session.hpp"
 
 #include "buffer.hpp"
 #include "encode.hpp"
@@ -33,7 +34,7 @@ llarp_router::llarp_router()
     , paths(this)
     , dht(llarp_dht_context_new(this))
     , inbound_link_msg_parser(this)
-    , explorePool(llarp_pathbuilder_context_new(this, dht))
+    , hiddenServiceContext(this)
 
 {
   // set rational defaults
@@ -267,14 +268,12 @@ llarp_router::Close()
 {
   for(auto link : inboundLinks)
   {
-    link->stop_link(link);
-    link->free_impl(link);
+    link->stop_link();
     delete link;
   }
   inboundLinks.clear();
 
-  outboundLink->stop_link(outboundLink);
-  outboundLink->free_impl(outboundLink);
+  outboundLink->stop_link();
   delete outboundLink;
   outboundLink = nullptr;
 }
@@ -290,7 +289,7 @@ llarp_router::connect_job_retry(void *user, uint64_t orig, uint64_t left)
   if(job->link)
   {
     llarp::LogInfo("trying to establish session again with ", remote);
-    job->link->try_establish(job->link, job);
+    job->link->try_establish(job);
   }
   else
   {
@@ -324,7 +323,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
       // was an outbound attempt
       auto session = ctx->establish_job->session;
       if(session)
-        session->close(session);
+        session->close();
     }
     llarp_rc_free(&job->rc);
     router->pendingEstablishJobs.erase(pk);
@@ -351,7 +350,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   if(ctx->establish_job)
   {
     auto session = ctx->establish_job->session;
-    router->FlushOutboundFor(pk, session->get_parent(session));
+    router->FlushOutboundFor(pk, session->get_parent());
     // this frees the job
     router->pendingEstablishJobs.erase(pk);
   }
@@ -380,6 +379,7 @@ void
 llarp_router::Tick()
 {
   llarp::LogDebug("tick router");
+
   paths.ExpirePaths();
   // TODO: don't do this if we have enough paths already
   if(inboundLinks.size() == 0)
@@ -394,15 +394,9 @@ llarp_router::Tick()
       llarp::LogWarn("not enough nodes known to build exploritory paths, have ",
                      N, " nodes, need 3 now (will be 5 later)");
     }
+    hiddenServiceContext.Tick();
   }
   paths.TickPaths();
-  llarp_link_session_iter iter;
-  iter.user  = this;
-  iter.visit = &send_padded_message;
-  if(sendPadding)
-  {
-    outboundLink->iter_sessions(outboundLink, iter);
-  }
 }
 
 bool
@@ -411,7 +405,7 @@ llarp_router::send_padded_message(llarp_link_session_iter *itr,
 {
   llarp_router *self = static_cast< llarp_router * >(itr->user);
   llarp::RouterID remote;
-  remote = &peer->get_remote_router(peer)->pubkey[0];
+  remote = &peer->get_remote_router()->pubkey[0];
   llarp::DiscardMessage msg(2000);
 
   llarp_buffer_t buf =
@@ -425,7 +419,7 @@ llarp_router::send_padded_message(llarp_link_session_iter *itr,
 
   for(size_t idx = 0; idx < 5; ++idx)
   {
-    peer->sendto(peer, buf);
+    peer->sendto(buf);
   }
   return true;
 }
@@ -546,7 +540,7 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   {
     // llarp::LogDebug("try_connect got session");
     auto session = job->session;
-    router->async_verify_RC(session->get_remote_router(session), false, job);
+    router->async_verify_RC(session->get_remote_router(), false, job);
     return;
   }
   // llarp::LogDebug("try_connect no session");
@@ -634,7 +628,7 @@ llarp_router::Run()
   for(auto link : inboundLinks)
   {
     llarp_ai addr;
-    link->get_our_address(link, &addr);
+    link->get_our_address(&addr);
     llarp::Addr a(addr);
     if(this->publicOverride && a.sameAddr(publicAddr))
     {
@@ -686,7 +680,7 @@ llarp_router::Run()
       }
       */
     }
-    link->get_our_address(link, &this->addrInfo);
+    link->get_our_address(&this->addrInfo);
     // override ip and port
     this->addrInfo.ip   = *publicAddr.addr6();
     this->addrInfo.port = publicAddr.port();
@@ -715,7 +709,7 @@ llarp_router::Run()
   }
 
   llarp::LogDebug("starting outbound link");
-  if(!outboundLink->start_link(outboundLink, logic))
+  if(!outboundLink->start_link(logic))
   {
     llarp::LogWarn("outbound link failed to start");
   }
@@ -725,7 +719,7 @@ llarp_router::Run()
   // start links
   for(auto link : inboundLinks)
   {
-    if(link->start_link(link, logic))
+    if(link->start_link(logic))
     {
       llarp::LogDebug("Link ", link->name(), " started");
       IBLinksStarted++;
@@ -781,8 +775,6 @@ llarp_router::InitOutboundLink()
 {
   if(outboundLink)
     return true;
-  auto link = new llarp_link;
-  llarp::Zero(link, sizeof(llarp_link));
 
   llarp_iwp_args args = {
       .crypto       = &crypto,
@@ -791,14 +783,17 @@ llarp_router::InitOutboundLink()
       .router       = this,
       .keyfile      = transport_keyfile.c_str(),
   };
+
+  auto link = new(std::nothrow) llarp_link(args);
+
   auto afs = {AF_INET, AF_INET6};
-  iwp_link_init(link, args);
-  if(llarp_link_initialized(link))
+
+  if(link)
   {
     llarp::LogInfo("outbound link initialized");
     for(auto af : afs)
     {
-      if(link->configure(link, netloop, "*", af, 0))
+      if(link->configure(netloop, "*", af, 0))
       {
         outboundLink = link;
         llarp::LogInfo("outbound link ready");
@@ -817,7 +812,6 @@ llarp_router::HasPendingConnectJob(const llarp::RouterID &remote)
   return pendingEstablishJobs.find(remote) != pendingEstablishJobs.end();
 }
 
-extern "C" {
 struct llarp_router *
 llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
                   struct llarp_logic *logic)
@@ -892,7 +886,7 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
     // give router as user pointer
     job->user = router;
     // try establishing
-    link->try_establish(link, job);
+    link->try_establish(job);
     return true;
   }
   llarp::LogWarn("couldn't get first address for ", hexname);
@@ -1083,8 +1077,6 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
   return false;
 }
 
-}  // end extern C
-
 // C++ ...
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
@@ -1111,6 +1103,21 @@ llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
   }
   llarp::LogInfo("failed to get encryption key");
   return false;
+}
+
+bool
+llarp_router::LoadHiddenServiceConfig(const char *fname)
+{
+  llarp::LogDebug("opening hidden service config ", fname);
+  llarp::service::Config conf;
+  if(!conf.Load(fname))
+    return false;
+  for(const auto &config : conf.services)
+  {
+    if(!hiddenServiceContext.AddEndpoint(config))
+      return false;
+  }
+  return true;
 }
 
 namespace llarp
@@ -1145,9 +1152,6 @@ namespace llarp
       if(!StrEq(key, "*"))
       {
         llarp::LogInfo("interface specific binding activated");
-        link = new llarp_link;
-        llarp::Zero(link, sizeof(llarp_link));
-
         llarp_iwp_args args = {
             .crypto       = &self->crypto,
             .logic        = self->logic,
@@ -1155,11 +1159,13 @@ namespace llarp
             .router       = self,
             .keyfile      = self->transport_keyfile.c_str(),
         };
-        iwp_link_init(link, args);
-        if(llarp_link_initialized(link))
+
+        link = new(std::nothrow) llarp_link(args);
+
+        if(link)
         {
           llarp::LogInfo("link ", key, " initialized");
-          if(link->configure(link, self->netloop, key, af, proto))
+          if(link->configure(self->netloop, key, af, proto))
           {
             self->AddInboundLink(link);
             return;
@@ -1171,7 +1177,7 @@ namespace llarp
             llarp::LogInfo("link ", key,
                            " failed to configure IPv6, trying IPv4");
             af = AF_INET;
-            if(link->configure(link, self->netloop, key, af, proto))
+            if(link->configure(self->netloop, key, af, proto))
             {
               self->AddInboundLink(link);
               return;
@@ -1186,6 +1192,17 @@ namespace llarp
       }
       llarp::LogError("link ", key,
                       " failed to configure. (Note: We don't support * yet)");
+    }
+    else if(StrEq(section, "services"))
+    {
+      if(self->LoadHiddenServiceConfig(val))
+      {
+        llarp::LogInfo("loaded hidden service config for ", key);
+      }
+      else
+      {
+        llarp::LogWarn("failed to load hidden service config for ", key);
+      }
     }
     else if(StrEq(section, "connect"))
     {
@@ -1234,5 +1251,4 @@ namespace llarp
       }
     }
   }
-
 }  // namespace llarp

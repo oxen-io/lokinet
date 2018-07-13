@@ -27,6 +27,7 @@ def main():
     ap.add_argument('--bin', type=str, required=True)
     ap.add_argument('--out', type=str, required=True)
     ap.add_argument('--connect', type=int, default=10)
+    ap.add_argument('--ifname', type=str, default='lo')
 
     args = ap.parse_args()
 
@@ -39,7 +40,7 @@ def main():
             'worker-threads': '4'
         }
         config['bind'] = {
-            'lo': str(args.baseport + nodeid)
+            args.ifname: str(args.baseport + nodeid)
         }
         config['netdb'] = {
             'dir': 'netdb'
@@ -60,6 +61,7 @@ def main():
 
     for nodeid in range(args.clients):
         config = CP()
+
         config['router'] = {
             'net-threads': '1',
             'worker-threads': '2'
@@ -77,8 +79,18 @@ def main():
         d = os.path.join(args.dir, clientNodeName(nodeid))
         if not os.path.exists(d):
             os.mkdir(d)
+        hiddenservice = os.path.join(d, 'service.ini')
+        config['services'] = {
+            'testnet': hiddenservice
+        }
         fp = os.path.join(d, 'daemon.ini')
         with open(fp, 'w') as f:
+            config.write(f)
+        config = CP()
+        config['test-service'] = {
+
+        }
+        with open(hiddenservice, 'w') as f:
             config.write(f)
 
     with open(args.out, 'w') as f:

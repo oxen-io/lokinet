@@ -131,7 +131,6 @@ namespace llarp
 
 }  // namespace llarp
 
-extern "C" {
 const byte_t *
 llarp_seckey_topublic(const byte_t *secret)
 {
@@ -159,5 +158,4 @@ llarp_crypto_libsodium_init(struct llarp_crypto *c)
   int seed;
   c->randbytes(&seed, sizeof(seed));
   srand(seed);
-}
 }

@@ -14,10 +14,6 @@
  * we utilize llarp_buffer which provides memory management
  */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 bool
 bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz);
 
@@ -88,7 +84,4 @@ struct list_reader
 bool
 bencode_read_list(llarp_buffer_t* buff, struct list_reader* r);
 
-#ifdef __cplusplus
-}
-#endif
 #endif

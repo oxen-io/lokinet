@@ -1,6 +1,7 @@
 #include <llarp/router_contact.h>
 #include <llarp/messages.hpp>
 #include "buffer.hpp"
+#include "llarp/iwp/session.hpp"
 #include "logger.hpp"
 #include "router.hpp"
 
@@ -53,8 +54,8 @@ namespace llarp
       switch(*strbuf.cur)
       {
         case 'i':
-          handler->msg = new LinkIntroMessage(
-              handler->from->get_remote_router(handler->from));
+          handler->msg =
+              new LinkIntroMessage(handler->from->get_remote_router());
           break;
         case 'd':
           handler->msg = new RelayDownstreamMessage(handler->GetCurrentFrom());
@@ -90,7 +91,7 @@ namespace llarp
   RouterID
   InboundMessageParser::GetCurrentFrom()
   {
-    auto rc = from->get_remote_router(from);
+    auto rc = from->get_remote_router();
     return rc->pubkey;
   }
 

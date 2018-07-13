@@ -43,13 +43,9 @@ namespace llarp
               job = this->jobs.front();
               this->jobs.pop_front();
             }
-            auto now = llarp_time_now_ms();
             // do work
             job->work(job->user);
-            auto after = llarp_time_now_ms();
-            auto dlt   = after - now;
-            if(dlt > 10)
-              llarp::LogWarn("work took ", dlt, " ms");
+
             delete job;
           }
         });
@@ -109,7 +105,6 @@ struct llarp_threadpool
   }
 };
 
-extern "C" {
 struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name)
 {
@@ -187,5 +182,4 @@ llarp_free_threadpool(struct llarp_threadpool **pool)
     delete *pool;
   }
   *pool = nullptr;
-}
 }

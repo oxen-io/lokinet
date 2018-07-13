@@ -1,5 +1,7 @@
 #include <llarp/service.hpp>
 #include "buffer.hpp"
+#include "ini.hpp"
+#include "router.hpp"
 
 namespace llarp
 {
@@ -57,14 +59,14 @@ namespace llarp
     }
 
     bool
-    ServiceInfo::CalculateAddress(Address& addr) const
+    ServiceInfo::CalculateAddress(byte_t* addr) const
     {
       byte_t tmp[128];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!BEncode(&buf))
         return false;
-      return crypto_generichash(addr, addr.size(), buf.base, buf.cur - buf.base,
-                                nullptr, 0)
+      return crypto_generichash(addr, 32, buf.base, buf.cur - buf.base, nullptr,
+                                0)
           != -1;
     }
 
@@ -75,29 +77,24 @@ namespace llarp
     }
 
     bool
-    IntroSet::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    IntroSet::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
     {
-      // TODO: implement me
-      return false;
-    }
+      bool read = false;
+      if(!BEncodeMaybeReadDictEntry("a", A, read, key, buf))
+        return false;
 
-    bool
-    IntroSetDecodeKey(dict_reader* r, llarp_buffer_t* key)
-    {
-      IntroSet* self = static_cast< IntroSet* >(r->user);
-      if(!key)
-        // TODO: determine if we read anything
-        return true;
-      return self->DecodeKey(*key, r->buffer);
-    }
+      if(llarp_buffer_eq(key, "i"))
+      {
+        return BEncodeReadList(I, buf);
+      }
 
-    bool
-    IntroSet::BDecode(llarp_buffer_t* buf)
-    {
-      dict_reader r;
-      r.user   = this;
-      r.on_key = &IntroSetDecodeKey;
-      return bencode_read_dict(buf, &r);
+      if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
+        return false;
+
+      if(!BEncodeMaybeReadDictEntry("z", Z, read, key, buf))
+        return false;
+
+      return read;
     }
 
     bool
@@ -115,13 +112,15 @@ namespace llarp
       // end introduction list
 
       // write version
-      if(!BEncodeWriteDictInt(buf, "v", V))
+      if(!BEncodeWriteDictInt(buf, "v", version))
         return false;
+      /*
       if(W)
       {
         if(!BEncodeWriteDictEntry("w", *W, buf))
           return false;
       }
+      */
       if(!BEncodeWriteDictEntry("z", Z, buf))
         return false;
 
@@ -133,10 +132,20 @@ namespace llarp
     }
 
     bool
-    Introduction::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    Introduction::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
     {
-      // TODO: implement me
-      return false;
+      bool read = false;
+      if(!BEncodeMaybeReadDictEntry("k", router, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("l", latency, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictEntry("p", pathID, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("x", expiresAt, read, key, buf))
+        return false;
+      return read;
     }
 
     bool
@@ -144,8 +153,14 @@ namespace llarp
     {
       if(!bencode_start_dict(buf))
         return false;
+
       if(!BEncodeWriteDictEntry("k", router, buf))
         return false;
+      if(latency)
+      {
+        if(!BEncodeWriteDictInt(buf, "l", latency))
+          return false;
+      }
       if(!BEncodeWriteDictEntry("p", pathID, buf))
         return false;
       if(!BEncodeWriteDictInt(buf, "v", version))
@@ -180,6 +195,14 @@ namespace llarp
       crypto->identity_keygen(signkey);
       pub.enckey  = llarp::seckey_topublic(enckey);
       pub.signkey = llarp::seckey_topublic(signkey);
+      pub.vanity.Zero();
+    }
+
+    bool
+    Identity::EnsureKeys(const std::string& fname, llarp_crypto* c)
+    {
+      // TODO: implement me
+      return false;
     }
 
     bool
@@ -214,6 +237,18 @@ namespace llarp
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       return crypto->verify(A.signkey, buf, Z);
+    }
+
+    bool
+    Config::Load(const std::string& fname)
+    {
+      // TODO: implement me
+      ini::Parser parser(fname);
+      for(const auto& sec : parser.top().ordered_sections)
+      {
+        services.push_back({sec->first, sec->second.values});
+      }
+      return services.size() > 0;
     }
 
   }  // namespace service

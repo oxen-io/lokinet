@@ -10,12 +10,10 @@ namespace llarp
   {
     _glog.minlevel = lvl;
   }
-}
+}  // namespace llarp
 
-extern "C" {
 void
 cSetLogLevel(LogLevel lvl)
 {
   llarp::SetLogLevel((llarp::LogLevel)lvl);
-}
 }

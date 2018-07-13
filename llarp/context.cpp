@@ -1,4 +1,5 @@
 #include <llarp.h>
+#include <llarp/logger.h>
 #include <signal.h>
 #include <llarp.hpp>
 #include "logger.hpp"
@@ -160,11 +161,6 @@ namespace llarp
       llarp::LogError("Failed to configure router");
       return 1;
     }
-    if(custom_dht_func)
-    {
-      llarp::LogInfo("using custom dht function");
-      llarp_dht_set_msg_handler(router->dht, custom_dht_func);
-    }
     // set nodedb, load our RC, establish DHT
     llarp_run_router(router, nodedb);
 
@@ -298,7 +294,6 @@ namespace llarp
   }
 }  // namespace llarp
 
-extern "C" {
 struct llarp_main
 {
   std::unique_ptr< llarp::Context > ctx;
@@ -309,7 +304,11 @@ llarp_main_init(const char *fname, bool multiProcess)
 {
   if(!fname)
     fname = "daemon.ini";
-
+  char *var = getenv("LLARP_DEBUG");
+  if(var && *var == '1')
+  {
+    cSetLogLevel(eLogDebug);
+  }
   llarp_main *m = new llarp_main;
   m->ctx.reset(new llarp::Context(std::cout, !multiProcess));
   if(!m->ctx->LoadConfig(fname))
@@ -319,12 +318,6 @@ llarp_main_init(const char *fname, bool multiProcess)
     return nullptr;
   }
   return m;
-}
-
-void
-llarp_main_set_dht_handler(struct llarp_main *ptr, llarp_dht_msg_handler func)
-{
-  ptr->ctx->custom_dht_func = func;
 }
 
 void
@@ -441,5 +434,4 @@ void
 llarp_main_free(struct llarp_main *ptr)
 {
   delete ptr;
-}
 }

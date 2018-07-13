@@ -13,6 +13,6 @@ namespace llarp
   {
     virtual ~IRoutingEndpoint(){};
   };
-}
+}  // namespace llarp
 
 #endif

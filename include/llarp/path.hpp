@@ -14,7 +14,9 @@
 #include <llarp/router_id.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message.hpp>
+#include <llarp/service/Intro.hpp>
 
+#include <functional>
 #include <list>
 #include <map>
 #include <mutex>
@@ -158,10 +160,10 @@ namespace llarp
                                llarp_router* r);
 
       bool
-      HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r);
+      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
       bool
-      HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r);
+      HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r);
 
       // handle data in upstream direction
       bool
@@ -200,6 +202,9 @@ namespace llarp
       typedef std::function< void(Path*) > BuildResultHookFunc;
       typedef std::vector< PathHopConfig > HopList;
       HopList hops;
+
+      llarp::service::Introduction intro;
+
       llarp_time_t buildStarted;
       PathStatus status;
 
@@ -230,13 +235,13 @@ namespace llarp
                                 llarp_router* r);
 
       bool
+      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
+
+      bool
       HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r);
 
       bool
       HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r);
-
-      bool
-      HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r);
 
       // handle data in upstream direction
       bool
@@ -245,6 +250,9 @@ namespace llarp
       // handle data in downstream direction
       bool
       HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y, llarp_router* r);
+
+      bool
+      IsReady() const;
 
       // Is this deprecated?
       // nope not deprecated :^DDDD
@@ -256,8 +264,6 @@ namespace llarp
 
       RouterID
       Upstream() const;
-
-      llarp_time_t Latency = 0;
 
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;
@@ -319,6 +325,9 @@ namespace llarp
 
       IHopHandler*
       GetByDownstream(const RouterID& id, const PathID_t& path);
+
+      PathSet*
+      GetLocalPathSet(const PathID_t& id);
 
       bool
       ForwardLRCM(const RouterID& nextHop,

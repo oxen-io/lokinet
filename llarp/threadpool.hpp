@@ -20,8 +20,10 @@ namespace llarp
       Pool(size_t sz, const char* name);
       void
       QueueJob(const llarp_thread_job& job);
+
       void
       Join();
+
       void
       Stop();
       std::vector< std::thread > threads;
