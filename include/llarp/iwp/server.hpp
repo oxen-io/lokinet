@@ -416,12 +416,12 @@ struct llarp_link
   }
 
   bool
-  start_link(struct llarp_logic *logic)
+  start_link(struct llarp_logic *pLogic)
   {
     // give link implementations
     // link->parent         = l;
     timeout_job_id = 0;
-    logic          = logic;
+    this->logic          = pLogic;
     // start cleanup timer
     issue_cleanup_timer(500);
     return true;
