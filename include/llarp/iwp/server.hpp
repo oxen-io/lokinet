@@ -421,7 +421,7 @@ struct llarp_link
     // give link implementations
     // link->parent         = l;
     timeout_job_id = 0;
-    this->logic          = pLogic;
+    this->logic    = pLogic;
     // start cleanup timer
     issue_cleanup_timer(500);
     return true;

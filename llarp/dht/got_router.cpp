@@ -87,10 +87,11 @@ namespace llarp
                            " iterating to next peer ", nextPeer,
                            " already asked ", pending->exclude.size(),
                            " other peers");
-            // REVIEW: is this ok to relay the pending->job as the current job (seems to make things work)
+            // REVIEW: is this ok to relay the pending->job as the current job
+            // (seems to make things work)
             dht.LookupRouter(pending->target, pending->requester,
-                             pending->requesterTX, nextPeer, pending->job,
-                             true, pending->exclude);
+                             pending->requesterTX, nextPeer, pending->job, true,
+                             pending->exclude);
           }
           else
           {

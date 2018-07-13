@@ -177,7 +177,6 @@ set(LIB_SRC
   llarp/address_info.cpp
   llarp/bencode.cpp
   llarp/buffer.cpp
-  llarp/base64.cpp
   llarp/config.cpp
   llarp/context.cpp
   llarp/crypto_async.cpp

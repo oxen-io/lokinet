@@ -167,7 +167,7 @@ llarp_router::try_connect(fs::path rcfile)
   llarp_rc *remote = new llarp_rc;
   llarp_rc_new(remote);
   remote = llarp_rc_read(rcfile.c_str());
-  if (!remote)
+  if(!remote)
   {
     llarp::LogError("failure to decode or verify of remote RC");
     return;
@@ -357,7 +357,7 @@ llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
 void
 llarp_router::Tick()
 {
-  //llarp::LogDebug("tick router");
+  // llarp::LogDebug("tick router");
 
   paths.ExpirePaths();
   // TODO: don't do this if we have enough paths already
@@ -616,7 +616,7 @@ llarp_router::Run()
     }
     if(a.isPrivate())
     {
-      if (!this->publicOverride)
+      if(!this->publicOverride)
       {
         llarp::LogWarn("Skipping private network link: ", a);
         continue;
