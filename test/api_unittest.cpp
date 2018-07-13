@@ -18,9 +18,8 @@ class APITest : public ::testing::Test
 
 TEST_F(APITest, TestMessageWellFormed)
 {
-  llarp::api::CreateSessionMessage msg;
-  msg.msgID     = 0;
-  msg.sessionID = 12345;
+  llarp::api::AckMessage msg;
+  msg.seqno = 1;
   msg.CalculateHash(&crypto, apiPassword);
   ASSERT_TRUE(msg.IsWellFormed(&crypto, apiPassword));
 };

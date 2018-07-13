@@ -205,10 +205,12 @@ set(LIB_SRC
   llarp/testnet.c
   llarp/time.cpp
   llarp/timer.cpp
-  llarp/api/create_session.cpp
   llarp/api/client.cpp
   llarp/api/message.cpp
   llarp/api/parser.cpp
+  llarp/api/messages/ack.cpp
+  llarp/api/messages/keepalive.cpp
+  llarp/api/messages/spawn.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp

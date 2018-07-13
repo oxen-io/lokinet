@@ -5,6 +5,7 @@
 #include <llarp/aligned.hpp>
 #include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
+#include <llarp/service/Info.hpp>
 
 namespace llarp
 {
@@ -17,10 +18,10 @@ namespace llarp
     /// base message
     struct IMessage : public IBEncodeMessage
     {
-      uint64_t sessionID = 0;
-      uint64_t msgID     = 0;
-      uint64_t version   = 0;
+      uint64_t seqno = 0;
       llarp::ShortHash hash;
+
+      virtual ~IMessage(){};
 
       // the function name this message belongs to
       virtual std::string
@@ -29,14 +30,12 @@ namespace llarp
       bool
       BEncode(llarp_buffer_t* buf) const;
 
-      bool
+      virtual bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
 
-      virtual std::list< IBEncodeMessage* >
-      GetParams() const = 0;
-
+      /// encode the dictionary members after the A value and before the Y value
       virtual bool
-      DecodeParams(llarp_buffer_t* buf) = 0;
+      EncodeParams(llarp_buffer_t* buf) const = 0;
 
       bool
       IsWellFormed(llarp_crypto* c, const std::string& password);
@@ -46,32 +45,54 @@ namespace llarp
     };
 
     /// a "yes we got your command" type message
-    struct AcknoledgeMessage : public IMessage
+    struct AckMessage : public IMessage
     {
-    };
-
-    /// start a session with the router
-    struct CreateSessionMessage : public IMessage
-    {
-      std::list< IBEncodeMessage* >
-      GetParams() const
-      {
-        return {};
-      }
+      ~AckMessage();
 
       bool
-      DecodeParams(llarp_buffer_t* buf);
+      EncodeParams(llarp_buffer_t* buf) const;
 
       std::string
       FunctionName() const
       {
-        return "CreateSession";
+        return "ack";
+      }
+    };
+
+    // spawn hidden service message
+    struct SpawnMessage : public IMessage
+    {
+      ~SpawnMessage();
+
+      std::string SessionName;
+      llarp::service::ServiceInfo Info;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+
+      bool
+      EncodeParams(llarp_buffer_t* buf) const;
+
+      std::string
+      FunctionName() const
+      {
+        return "spawn";
       }
     };
 
     /// a keepalive ping
-    struct SessionPingMessage : public IMessage
+    struct KeepAliveMessage : public IMessage
     {
+      ~KeepAliveMessage();
+
+      bool
+      EncodeParams(llarp_buffer_t* buf) const;
+
+      std::string
+      FunctionName() const
+      {
+        return "keepalive";
+      }
     };
 
     /// end a session with the router

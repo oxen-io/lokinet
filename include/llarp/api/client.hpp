@@ -11,7 +11,7 @@ namespace llarp
 
     struct Client
     {
-      Client();
+      Client(const std::string& name);
       ~Client();
 
       bool

@@ -7,8 +7,9 @@ namespace llarp
   namespace api
   {
     std::map< std::string, std::function< IMessage*() > > funcmap = {
-        {"CreateSession", []() { return new CreateSessionMessage; }},
-    };
+        {"ack", []() { return new AckMessage(); }},
+        {"keepalive", []() { return new KeepAliveMessage(); }},
+        {"spawn", []() { return new SpawnMessage(); }}};
 
     MessageParser::MessageParser()
     {
@@ -25,7 +26,7 @@ namespace llarp
       if(self->msg == nullptr && key)
       {
         // first message, function name
-        if(!llarp_buffer_eq(*key, "f"))
+        if(!llarp_buffer_eq(*key, "A"))
           return false;
         llarp_buffer_t strbuf;
         if(!bencode_read_string(r->buffer, &strbuf))
