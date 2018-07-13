@@ -174,7 +174,7 @@ llarp_router::try_connect(fs::path rcfile)
   }
   if(llarp_rc_verify_sig(&crypto, remote))
   {
-    llarp::Debug("verified signature");
+    llarp::LogDebug("verified signature");
     if(!llarp_router_try_connect(this, remote, 10))
     {
       // or error?
@@ -243,7 +243,7 @@ llarp_router::SaveRC()
 void
 llarp_router::Close()
 {
-  llarp::Info("Closing ", inboundLinks.size(), " server bindings");
+  llarp::LogInfo("Closing ", inboundLinks.size(), " server bindings");
   for(auto link : inboundLinks)
   {
     link->stop_link();
@@ -251,7 +251,7 @@ llarp_router::Close()
   }
   inboundLinks.clear();
 
-  llarp::Info("Closing LokiNetwork client");
+  llarp::LogInfo("Closing LokiNetwork client");
   outboundLink->stop_link();
   delete outboundLink;
   outboundLink = nullptr;
