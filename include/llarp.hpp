@@ -18,15 +18,14 @@ namespace llarp
     bool singleThreaded = false;
     std::vector< std::thread > netio_threads;
     llarp_crypto crypto;
-    llarp_router *router                  = nullptr;
-    llarp_threadpool *worker              = nullptr;
-    llarp_logic *logic                    = nullptr;
-    llarp_config *config                  = nullptr;
-    llarp_nodedb *nodedb                  = nullptr;
-    llarp_ev_loop *mainloop               = nullptr;
-    llarp_dht_msg_handler custom_dht_func = nullptr;
-    char nodedb_dir[256]                  = {0};
-    char conatctFile[256]                 = "router.signed";
+    llarp_router *router     = nullptr;
+    llarp_threadpool *worker = nullptr;
+    llarp_logic *logic       = nullptr;
+    llarp_config *config     = nullptr;
+    llarp_nodedb *nodedb     = nullptr;
+    llarp_ev_loop *mainloop  = nullptr;
+    char nodedb_dir[256]     = {0};
+    char conatctFile[256]    = "router.signed";
 
     bool
     LoadConfig(const std::string &fname);

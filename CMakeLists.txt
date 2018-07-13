@@ -175,6 +175,7 @@ set(LIB_SRC
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
+  llarp/dht/find_intro.cpp
   llarp/dht/find_router.cpp
   llarp/dht/got_intro.cpp
   llarp/dht/got_router.cpp

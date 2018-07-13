@@ -20,13 +20,18 @@ namespace llarp
       Context();
       ~Context();
 
-      llarp_dht_msg_handler custom_handler = nullptr;
-
       SearchJob*
       FindPendingTX(const Key_t& owner, uint64_t txid);
 
       void
       RemovePendingLookup(const Key_t& owner, uint64_t txid);
+
+      void
+      LookupServiceDirect(const Key_t& target, const Key_t& whoasked,
+                          uint64_t whoaskedTX, const Key_t& askpeer,
+                          SearchJob::IntroSetHookFunc handler,
+                          bool iterateive            = false,
+                          std::set< Key_t > excludes = {});
 
       void
       LookupRouter(const Key_t& target, const Key_t& whoasked,

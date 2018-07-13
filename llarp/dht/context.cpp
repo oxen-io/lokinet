@@ -66,6 +66,9 @@ namespace llarp
           else
           {
             // yeah, ask neighboor recursively
+            // FIXME: we may need to pass a job here...
+            //auto sj = FindPendingTX(requester, txid);
+            //LookupRouter(target, requester, txid, next, sj->job);
             LookupRouter(target, requester, txid, next);
           }
         }
@@ -189,8 +192,18 @@ namespace llarp
     Context::LookupRouterViaJob(llarp_router_lookup_job *job)
     {
       Key_t peer;
+      /*
+      llarp::LogInfo("LookupRouterViaJob dumping nodes");
+      for(const auto &item : nodes->nodes)
+      {
+        llarp::LogInfo("LookupRouterViaJob dumping node: ", item.first);
+      }
+      */
+      llarp::LogInfo("LookupRouterViaJob node count: ", nodes->nodes.size());
+      llarp::LogInfo("LookupRouterViaJob recursive: ", job->iterative?"yes":"no");
+
       if(nodes->FindClosest(job->target, peer))
-        LookupRouter(job->target, ourKey, 0, peer, job);
+        LookupRouter(job->target, ourKey, 0, peer, job, job->iterative);
       else if(job->hook)
       {
         job->found = false;

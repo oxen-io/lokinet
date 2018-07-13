@@ -24,6 +24,7 @@ llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
 
 {
   llarp::dht::RCNode n(rc);
+  llarp::LogDebug("Adding ", n.ID, " to DHT");
   ctx->impl.nodes->PutNode(n);
 }
 
@@ -31,14 +32,8 @@ void
 llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 {
   llarp::dht::Key_t k = id;
+  llarp::LogDebug("Removing ", k, " to DHT");
   ctx->impl.nodes->DelNode(k);
-}
-
-void
-llarp_dht_set_msg_handler(struct llarp_dht_context *ctx,
-                          llarp_dht_msg_handler handler)
-{
-  ctx->impl.custom_handler = handler;
 }
 
 void

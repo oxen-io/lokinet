@@ -161,11 +161,6 @@ namespace llarp
       llarp::LogError("Failed to configure router");
       return 1;
     }
-    if(custom_dht_func)
-    {
-      llarp::LogInfo("using custom dht function");
-      llarp_dht_set_msg_handler(router->dht, custom_dht_func);
-    }
     // set nodedb, load our RC, establish DHT
     llarp_run_router(router, nodedb);
 
@@ -326,12 +321,6 @@ llarp_main_init(const char *fname, bool multiProcess)
 }
 
 void
-llarp_main_set_dht_handler(struct llarp_main *ptr, llarp_dht_msg_handler func)
-{
-  ptr->ctx->custom_dht_func = func;
-}
-
-void
 llarp_main_signal(struct llarp_main *ptr, int sig)
 {
   ptr->ctx->HandleSignal(sig);
@@ -347,6 +336,12 @@ int
 llarp_main_run(struct llarp_main *ptr)
 {
   return ptr->ctx->Run();
+}
+
+void
+llarp_main_abort(struct llarp_main *ptr)
+{
+  llarp_logic_stop_timer(ptr->ctx->router->logic);
 }
 
 int

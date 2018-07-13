@@ -61,8 +61,8 @@ namespace llarp
     GotRouterMessage::HandleMessage(llarp_dht_context *ctx,
                                     std::vector< IMessage * > &replies) const
     {
-      auto &dht    = ctx->impl;
-      auto pending = dht.FindPendingTX(From, txid);
+      auto &dht          = ctx->impl;
+      SearchJob *pending = dht.FindPendingTX(From, txid);
       if(pending)
       {
         if(R.size())
@@ -87,9 +87,10 @@ namespace llarp
                            " iterating to next peer ", nextPeer,
                            " already asked ", pending->exclude.size(),
                            " other peers");
+            // REVIEW: is this ok to relay the pending->job as the current job (seems to make things work)
             dht.LookupRouter(pending->target, pending->requester,
-                             pending->requesterTX, nextPeer, nullptr, true,
-                             pending->exclude);
+                             pending->requesterTX, nextPeer, pending->job,
+                             true, pending->exclude);
           }
           else
           {

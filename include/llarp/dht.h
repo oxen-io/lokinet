@@ -20,22 +20,9 @@ llarp_dht_context_new(struct llarp_router* parent);
 void
 llarp_dht_context_free(struct llarp_dht_context* dht);
 
-struct llarp_dht_msg;
-
-/// handler function
-/// f(outmsg, inmsg)
-/// returns true if outmsg has been filled otherwise returns false
-typedef bool (*llarp_dht_msg_handler)(struct llarp_dht_msg*,
-                                      struct llarp_dht_msg*);
-
 /// start dht context with our location in keyspace
 void
 llarp_dht_context_start(struct llarp_dht_context* ctx, const byte_t* key);
-
-// override dht message handler with custom handler
-void
-llarp_dht_set_msg_handler(struct llarp_dht_context* ctx,
-                          llarp_dht_msg_handler func);
 
 struct llarp_router_lookup_job;
 
@@ -49,7 +36,9 @@ struct llarp_router_lookup_job
   struct llarp_dht_context* dht;
   byte_t target[PUBKEYSIZE];
   bool found;
+  // make sure you initialize addr and exits
   struct llarp_rc result;
+  bool iterative;
 };
 
 /// start allowing dht participation on a context

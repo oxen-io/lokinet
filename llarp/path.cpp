@@ -382,13 +382,6 @@ namespace llarp
     }
 
     bool
-    Path::HandleHiddenServiceData(llarp_buffer_t buf, llarp_router* r)
-    {
-      // TODO: implement me
-      return false;
-    }
-
-    bool
     Path::HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r)
     {
       if(!m_InboundMessageParser.ParseMessageBuffer(buf, this, r))

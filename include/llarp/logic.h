@@ -36,6 +36,9 @@ void
 llarp_logic_remove_call(struct llarp_logic* logic, uint32_t id);
 
 void
+llarp_logic_stop_timer(struct llarp_logic* logic);
+
+void
 llarp_logic_stop(struct llarp_logic* logic);
 
 void
