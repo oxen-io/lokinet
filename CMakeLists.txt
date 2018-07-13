@@ -84,15 +84,21 @@ endif()
 set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
-if(SODIUM_INCLUDE_DIR)
-  include_directories(${SODIUM_INCLUDE_DIR})
-endif()
+#if(SODIUM_INCLUDE_DIR)
+#  include_directories(${SODIUM_INCLUDE_DIR})
+#endif()
 
-if(SODIUM_LIBRARIES)
-  set(SODIUM_LIB ${SODIUM_LIBRARIES})
-else()
-  set(SODIUM_LIB sodium)
-endif()
+#if(SODIUM_LIBRARIES)
+#  set(SODIUM_LIB ${SODIUM_LIBRARIES})
+#else()
+#  set(SODIUM_LIB sodium)
+#endif()
+
+find_library (
+	SODIUM_LIB
+	NAMES sodium libsodium
+	HINTS "/usr/local/lib"
+)
 
 set(LIBS ${SODIUM_LIB} pthread)
 
@@ -116,7 +122,7 @@ if(UNIX)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
-        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c) 
+        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
     else()
         message(FATAL_ERROR "Your operating system is not supported yet")
     endif()
@@ -132,10 +138,46 @@ else()
 set(LIBTUNTAP_SRC "")
 endif()
 
+#if(BACKPORT)
+#else()
+#set(CPP_BACKPORT_SRC "")
+#endif()
+
+set(CPP_BACKPORT_SRC
+  vendor/cppbackport-master/lib/fs/rename.cpp
+  vendor/cppbackport-master/lib/fs/filestatus.cpp
+  vendor/cppbackport-master/lib/fs/filetype.cpp
+  vendor/cppbackport-master/lib/fs/cleanpath.cpp
+  vendor/cppbackport-master/lib/fs/perms.cpp
+  vendor/cppbackport-master/lib/fs/equivalent.cpp
+  vendor/cppbackport-master/lib/fs/current_path.cpp
+  vendor/cppbackport-master/lib/fs/basename.cpp
+  vendor/cppbackport-master/lib/fs/tempdir.cpp
+  vendor/cppbackport-master/lib/fs/create_directory.cpp
+  vendor/cppbackport-master/lib/fs/path.cpp
+  vendor/cppbackport-master/lib/fs/remove.cpp
+  vendor/cppbackport-master/lib/fs/diriter.cpp
+  vendor/cppbackport-master/lib/fs/copyfile.cpp
+  vendor/cppbackport-master/lib/fs/absolute.cpp
+  vendor/cppbackport-master/lib/fs/direntry.cpp
+)
+
+set(LIB_PLATFORM_SRC
+# for outpug
+  llarp/logger.cpp
+# for zero (for net.hpp stuff for llarp::addr stuff)
+  llarp/mem.cpp
+# for networking
+  llarp/ev.cpp
+# for threading
+  llarp/threadpool.cpp
+)
+
 set(LIB_SRC
   llarp/address_info.cpp
   llarp/bencode.cpp
   llarp/buffer.cpp
+  llarp/base64.cpp
   llarp/config.cpp
   llarp/context.cpp
   llarp/crypto_async.cpp
@@ -143,14 +185,11 @@ set(LIB_SRC
   llarp/dht.cpp
   llarp/encode.cpp
   llarp/encrypted_frame.cpp
-  llarp/ev.cpp
   llarp/exit_info.cpp
   llarp/exit_route.cpp
-  llarp/logger.cpp
   llarp/link_intro.cpp
   llarp/link_message.cpp
   llarp/logic.cpp
-  llarp/mem.cpp
   llarp/net.cpp
   llarp/nodedb.cpp
   llarp/path.cpp
@@ -163,7 +202,6 @@ set(LIB_SRC
   llarp/router_contact.cpp
   llarp/router.cpp
   llarp/service.cpp
-  llarp/threadpool.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
   llarp/time.cpp
@@ -194,26 +232,10 @@ set(LIB_SRC
   llarp/routing/path_transfer.cpp
   llarp/service/context.cpp
   llarp/service/endpoint.cpp
-  vendor/cppbackport-master/lib/fs/rename.cpp
-  vendor/cppbackport-master/lib/fs/filestatus.cpp
-  vendor/cppbackport-master/lib/fs/filetype.cpp
-  vendor/cppbackport-master/lib/fs/cleanpath.cpp
-  vendor/cppbackport-master/lib/fs/perms.cpp
-  vendor/cppbackport-master/lib/fs/equivalent.cpp
-  vendor/cppbackport-master/lib/fs/current_path.cpp
-  vendor/cppbackport-master/lib/fs/basename.cpp
-  vendor/cppbackport-master/lib/fs/tempdir.cpp
-  vendor/cppbackport-master/lib/fs/create_directory.cpp
-  vendor/cppbackport-master/lib/fs/path.cpp
-  vendor/cppbackport-master/lib/fs/remove.cpp
-  vendor/cppbackport-master/lib/fs/diriter.cpp
-  vendor/cppbackport-master/lib/fs/copyfile.cpp
-  vendor/cppbackport-master/lib/fs/absolute.cpp
-  vendor/cppbackport-master/lib/fs/direntry.cpp
   ${LIBTUNTAP_SRC}
 )
 
-set(TEST_SRC 
+set(TEST_SRC
   test/main.cpp
   test/api_unittest.cpp
   test/base32_unittest.cpp
@@ -226,25 +248,32 @@ set(GTEST_DIR test/gtest)
 
 set(CLIENT_EXE llarpc)
 
-set(CLIENT_SRC 
+set(CLIENT_SRC
   client/main.cpp
 )
+
+#set(LIB llarp)
+#set(SHARED_LIB ${LIB})
+#set(STATIC_LIB ${LIB}-static)
 
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
 
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
+include_directories(/usr/local/include)
+include_directories(${sodium_INCLUDE_DIR})
 
 if(SHADOW)
   add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC})
   target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
   install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
-  
+
   add_executable(rcutil daemon/rcutil.cpp)
   add_executable(${EXE} ${EXE_SRC})
-  add_executable(${CLIENT_EXE} ${CLIENT_SRC}) 
+  add_executable(${CLIENT_EXE} ${CLIENT_SRC})
+  add_executable(dns daemon/dns.cpp)
 
   if(WITH_TESTS)
     enable_testing()
@@ -257,20 +286,27 @@ else()
 
   if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-    target_link_libraries(${STATIC_LIB} ${LIBS})
+    add_library(libbackport-static STATIC ${CPP_BACKPORT_SRC})
+    add_library(libllarpplatform-static STATIC ${LIB_PLATFORM_SRC})
+    target_link_libraries(${STATIC_LIB} ${LIBS} libbackport-static libllarpplatform-static)
     if(NOT WITH_SHARED)
-      target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB})
-      target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB})
-      target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB})
+      target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} libbackport-static libllarpplatform-static)
+      target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} libbackport-static libllarpplatform-static)
+      target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB} libbackport-static libllarpplatform-static)
+      target_link_libraries(dns libllarpplatform-static)
     endif()
   endif()
-  
+
   if(WITH_SHARED)
     add_library(${SHARED_LIB} SHARED ${LIB_SRC})
-    target_link_libraries(${SHARED_LIB} ${LIBS})
+    add_library(libbackport SHARED ${CPP_BACKPORT_SRC})
+    add_library(libllarpplatform SHARED ${LIB_PLATFORM_SRC})
+    target_link_libraries(${SHARED_LIB} ${LIBS} libbackport libllarpplatform)
     if(NOT WITH_STATIC)
-      target_link_libraries(rcutil ${SHARED_LIB})
-      target_link_libraries(${EXE} ${SHARED_LIB})
+      target_link_libraries(${EXE} ${SHARED_LIB} libbackport libllarpplatform)
+      target_link_libraries(${CLIENT_EXE} ${SHARED_LIB} libbackport libllarpplatform)
+      target_link_libraries(rcutil ${SHARED_LIB} libbackport libllarpplatform)
+      target_link_libraries(dns libllarpplatform)
     endif()
   endif()
 
