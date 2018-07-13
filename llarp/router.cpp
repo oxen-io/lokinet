@@ -357,7 +357,7 @@ llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
 void
 llarp_router::Tick()
 {
-  llarp::LogDebug("tick router");
+  //llarp::LogDebug("tick router");
 
   paths.ExpirePaths();
   // TODO: don't do this if we have enough paths already
@@ -616,8 +616,11 @@ llarp_router::Run()
     }
     if(a.isPrivate())
     {
-      //llarp::LogWarn("Skipping private network link: ", a);
-      //continue;
+      if (!this->publicOverride)
+      {
+        llarp::LogWarn("Skipping private network link: ", a);
+        continue;
+      }
     }
     llarp::LogInfo("Loading Addr: ", a, " into our RC");
 
