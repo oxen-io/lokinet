@@ -1,3 +1,4 @@
+
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h> /* fprintf, printf */
@@ -305,12 +306,12 @@ decode_hdr(const char *buffer)
 void
 code_domain(char *&buffer, const std::string &domain) throw()
 {
-  int start(0), end;  // indexes
+  std::string::size_type start(0), end;  // indexes
   llarp::LogInfo("domain [", domain, "]");
   while((end = domain.find('.', start)) != std::string::npos)
   {
     *buffer++ = end - start;  // label length octet
-    for(int i = start; i < end; i++)
+    for(std::string::size_type i = start; i < end; i++)
     {
       *buffer++ = domain[i];  // label octets
       llarp::LogInfo("Writing ", domain[i], " at ", i);
@@ -321,7 +322,7 @@ code_domain(char *&buffer, const std::string &domain) throw()
   llarp::LogInfo("start ", start, " domain size ", domain.size());
 
   *buffer++ = domain.size() - start;  // last label length octet
-  for(int i = start; i < domain.size(); i++)
+  for(size_t i = start; i < domain.size(); i++)
   {
     *buffer++ = domain[i];  // last label octets
     llarp::LogInfo("Writing ", domain[i], " at ", i);
@@ -435,14 +436,13 @@ main(int argc, char *argv[])
 
     // code question
     llarp::LogInfo("qName2 ", m_qName);
-    printf("at0 [%d]\n", write_buffer);
+
     // 0123456789
     // 3bob3com1\0
     code_domain(write_buffer, m_qName);
-    printf("at1 [%d]\n", write_buffer);
+
     put16bits(write_buffer, m_qType);
     put16bits(write_buffer, m_qClass);
-    printf("at3 [%d]\n", write_buffer);
 
     // code answer
     std::string resp_str(inet_ntoa(*anIp.addr4()));
