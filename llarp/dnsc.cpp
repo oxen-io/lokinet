@@ -192,8 +192,8 @@ resolveHost(const char *url)
                         buffer[i + 2], buffer[i + 3]);
         struct sockaddr *g_addr = new sockaddr;
         g_addr->sa_family       = AF_INET;
-        g_addr->sa_len          = sizeof(in_addr);
-        struct in_addr *addr    = &((struct sockaddr_in *)g_addr)->sin_addr;
+        // g_addr->sa_len          = sizeof(in_addr);
+        struct in_addr *addr = &((struct sockaddr_in *)g_addr)->sin_addr;
         unsigned char *ip;
 
         // have ip point to s_addr
@@ -336,8 +336,8 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp,
                         buffer[i + 2], buffer[i + 3]);
         struct sockaddr *g_addr = new sockaddr;
         g_addr->sa_family       = AF_INET;
-        g_addr->sa_len          = sizeof(in_addr);
-        struct in_addr *addr    = &((struct sockaddr_in *)g_addr)->sin_addr;
+        // g_addr->sa_len          = sizeof(in_addr);
+        struct in_addr *addr = &((struct sockaddr_in *)g_addr)->sin_addr;
         unsigned char *ip;
 
         // have ip point to s_addr
@@ -429,6 +429,7 @@ llarp_dns_resolve(dns_client_request *request)
 
   llarp_udp_io *udp = (llarp_udp_io *)request->sock;
   // llarp::LogDebug("dns client set to use ");
+  // XXX: udp user pointer should be set before binding to socket and once
   udp->user = request;
 
   // hexdump("sending packet", &dnsQuery.request, dnsQuery.length);

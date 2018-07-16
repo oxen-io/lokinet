@@ -19,6 +19,8 @@ else()
   message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
+set(THREAD_LIB pthread)
+
 if(STATIC_LINK)
   set(STATIC_LINK_LIBS c)
   add_cflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
@@ -101,7 +103,7 @@ else()
   )
 endif()
 
-set(LIBS ${SODIUM_LIB} pthread)
+set(LIBS ${SODIUM_LIB} ${THREAD_LIB})
 
 set(LIB llarp)
 set(SHARED_LIB ${LIB})
@@ -211,7 +213,6 @@ set(LIB_SRC
   llarp/service.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
-  llarp/api/create_session.cpp
   llarp/api/client.cpp
   llarp/api/message.cpp
   llarp/api/parser.cpp
@@ -278,7 +279,7 @@ include_directories(llarp)
 
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
-include_directories(/usr/local/include)
+#include_directories(/usr/local/include)
 include_directories(${sodium_INCLUDE_DIR})
 
 if(SHADOW)
@@ -305,6 +306,7 @@ else()
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
     add_library(libbackport-static STATIC ${CPP_BACKPORT_SRC})
     add_library(libllarpplatform-static STATIC ${LIB_PLATFORM_SRC})
+    target_link_libraries(libllarpplatform-static ${THREAD_LIB})
     target_link_libraries(${STATIC_LIB} ${LIBS} libbackport-static libllarpplatform-static)
     if(NOT WITH_SHARED)
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} libbackport-static libllarpplatform-static)

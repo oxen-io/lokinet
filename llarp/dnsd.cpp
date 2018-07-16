@@ -54,12 +54,12 @@ decode_hdr(const char *buffer)
 void
 code_domain(char *&buffer, const std::string &domain) throw()
 {
-  int start(0), end;  // indexes
+  std::string::size_type start(0), end;  // indexes
   // llarp::LogInfo("domain [", domain, "]");
   while((end = domain.find('.', start)) != std::string::npos)
   {
     *buffer++ = end - start;  // label length octet
-    for(int i = start; i < end; i++)
+    for(auto i = start; i < end; i++)
     {
       *buffer++ = domain[i];  // label octets
       // llarp::LogInfo("Writing ", domain[i], " at ", i);
@@ -70,7 +70,7 @@ code_domain(char *&buffer, const std::string &domain) throw()
   // llarp::LogInfo("start ", start, " domain size ", domain.size());
 
   *buffer++ = domain.size() - start;  // last label length octet
-  for(int i = start; i < domain.size(); i++)
+  for(size_t i = start; i < domain.size(); i++)
   {
     *buffer++ = domain[i];  // last label octets
     // llarp::LogInfo("Writing ", domain[i], " at ", i);
@@ -222,20 +222,19 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   }
   else
   {
-    llarp::Addr anIp;
-    struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
+    // llarp::Addr anIp;
+    // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
     // hostRes = llarp_resolveHost(udp->parent, m_qName.c_str());
-    llarp_resolve_host(udp->parent, m_qName.c_str(), &phase2, (void *)request);
+    // llarp_resolve_host(udp->parent, m_qName.c_str(), &phase2, (void
+    // *)request);
   }
 }
 
-// this is called in net threadpool
 void
-llarp_handle_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *saddr,
-                      const void *buf, ssize_t sz)
+handle_dns_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *saddr,
+                    const void *buf, ssize_t sz)
 {
-  // llarp_link *link = static_cast< llarp_link * >(udp->user);
-  llarp::LogInfo("Received Bytes ", sz);
+  llarp::LogDebug("Received Bytes ", sz);
   dns_request llarp_dns_request;
   llarp_dns_request.from = (struct sockaddr *)saddr;
   llarp_dns_request.user = (void *)udp;
@@ -243,14 +242,35 @@ llarp_handle_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *saddr,
   handle_recvfrom((char *)buf, sz, saddr, &llarp_dns_request);
 }
 
-void
-raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
-                    ssize_t sz)
+extern "C"
 {
-  llarp::LogInfo("Received Bytes ", sz);
-  dns_request llarp_dns_request;
-  llarp_dns_request.from = (struct sockaddr *)saddr;
-  llarp_dns_request.user = (void *)sockfd;
-  llarp_dns_request.hook = &raw_sendto_dns_hook_func;
-  handle_recvfrom((char *)buf, sz, saddr, &llarp_dns_request);
+  bool
+  llarp_dns_init(struct dns_context *dns, struct llarp_ev_loop *mainloop,
+                 const char *bindaddr, uint16_t bindport)
+  {
+    struct sockaddr_in srcaddr;
+    if(inet_pton(AF_INET, bindaddr, &srcaddr.sin_addr.s_addr) == -1)
+      return false;
+    srcaddr.sin_family = AF_INET;
+    srcaddr.sin_port   = htons(bindport);
+    dns->udp.user      = dns;
+    dns->udp.recvfrom  = &handle_dns_recvfrom;
+    dns->udp.tick      = nullptr;
+    return llarp_ev_add_udp(mainloop, &dns->udp, (const sockaddr *)&srcaddr)
+        != -1;
+  }
+
+  // this is called in net threadpool
+
+  void
+  raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
+                      const void *buf, ssize_t sz)
+  {
+    llarp::LogInfo("Received Bytes ", sz);
+    dns_request llarp_dns_request;
+    llarp_dns_request.from = (struct sockaddr *)saddr;
+    llarp_dns_request.user = (void *)sockfd;
+    llarp_dns_request.hook = &raw_sendto_dns_hook_func;
+    handle_recvfrom((char *)buf, sz, saddr, &llarp_dns_request);
+  }
 }
