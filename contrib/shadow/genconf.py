@@ -34,13 +34,13 @@ def addPeer(conf, baseDir, peer):
     conf['connect'][peer] = os.path.join(baseDir, '{}.signed'.format(peer))
 
 
-def createNode(pluginName, root, peer):
+def createNode(pluginName, root, peer, life=600):
     node = etree.SubElement(root, 'node')
     node.attrib['id'] = peer['name']
     node.attrib['interfacebuffer'] = '{}'.format(1024 * 1024 * 100)
     app = etree.SubElement(node, 'process')
     app.attrib['plugin'] = pluginName
-    app.attrib['time'] = '50'
+    app.attrib['time'] = '{}'.format(life)
     app.attrib['arguments'] = peer['configfile']
 
 
@@ -57,6 +57,8 @@ def makeBase(settings, name, id):
 def makeClient(settings, name, id):
     peer = makeBase(settings, name, id)
     nodeconf(peer['config'], getSetting(settings, 'baseDir', 'tmp'), name)
+    peer['config']['services'] = {
+    }
     return peer
 
 
@@ -122,7 +124,8 @@ def genconf(settings, outf):
 
 if __name__ == '__main__':
     settings = {
-        'topology': os.path.join(shadowRoot, 'share', 'topology.graphml.xml')
+        'topology': os.path.join(shadowRoot, 'share', 'topology.graphml.xml'),
+        'runFor': '{}'.format(60 * 10 * 1000)
     }
     with open(sys.argv[1], 'w') as f:
         genconf(settings, f)

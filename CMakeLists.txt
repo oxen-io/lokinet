@@ -87,21 +87,19 @@ endif()
 set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
-#if(SODIUM_INCLUDE_DIR)
-#  include_directories(${SODIUM_INCLUDE_DIR})
-#endif()
+if(SODIUM_INCLUDE_DIR)
+  include_directories(${SODIUM_INCLUDE_DIR})
+endif()
 
-#if(SODIUM_LIBRARIES)
-#  set(SODIUM_LIB ${SODIUM_LIBRARIES})
-#else()
-#  set(SODIUM_LIB sodium)
-#endif()
-
-find_library (
-	SODIUM_LIB
-	NAMES sodium libsodium
-	HINTS "/usr/local/lib"
-)
+if(SODIUM_LIBRARIES)
+  set(SODIUM_LIB ${SODIUM_LIBRARIES})
+else()
+  find_library (
+	  SODIUM_LIB
+	  NAMES sodium libsodium
+	  HINTS "/usr/local/lib"
+  )
+endif()
 
 set(LIBS ${SODIUM_LIB} pthread)
 

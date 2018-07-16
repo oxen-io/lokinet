@@ -26,6 +26,7 @@ struct llarp_rc
   byte_t signature[SIGSIZE];
   uint64_t last_updated;
 
+#ifdef __cplusplus
   bool
   BEncode(llarp_buffer_t *buf) const
   {
@@ -37,6 +38,7 @@ struct llarp_rc
   {
     return llarp_rc_bdecode(this, buf);
   }
+#endif
 };
 
 void

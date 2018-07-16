@@ -22,7 +22,7 @@ struct llarp_thread_job
   void *user;
   /** called in threadpool worker thread */
   llarp_thread_work_func work;
-
+#ifdef __cplusplus
   llarp_thread_job(void *u, llarp_thread_work_func w) : user(u), work(w)
   {
   }
@@ -30,6 +30,7 @@ struct llarp_thread_job
   llarp_thread_job() : user(nullptr), work(nullptr)
   {
   }
+#endif
 };
 
 /// for single process mode
