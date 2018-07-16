@@ -125,7 +125,7 @@ def genconf(settings, outf):
 if __name__ == '__main__':
     settings = {
         'topology': os.path.join(shadowRoot, 'share', 'topology.graphml.xml'),
-        'runFor': '{}'.format(60 * 10 * 1000)
+        'runFor': '{}'.format(60 * 10 * 10)
     }
     with open(sys.argv[1], 'w') as f:
         genconf(settings, f)
