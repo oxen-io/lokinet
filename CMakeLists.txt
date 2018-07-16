@@ -31,6 +31,9 @@ else()
   set(WITH_STATIC ON)
 endif()
 
+add_cflags("-Wall")
+add_cxxflags("-Wall")
+
 set(DEBUG_FLAGS "-g")
 set(OPTIMIZE_FLAGS "-O0")
 
