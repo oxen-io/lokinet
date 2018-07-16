@@ -14,7 +14,11 @@ namespace llarp
       llarp::service::Address S;
       uint64_t T = 0;
 
-      ~FindIntroMessage();
+      FindIntroMessage(const Key_t& from) : IMessage(from)
+      {
+      }
+
+      virtual ~FindIntroMessage();
 
       bool
       BEncode(llarp_buffer_t* buf) const;
@@ -23,6 +27,16 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
 
       virtual bool
+      HandleMessage(llarp_dht_context* ctx,
+                    std::vector< IMessage* >& replies) const;
+    };
+
+    struct RelayedFindIntroMessage : public FindIntroMessage
+    {
+      RelayedFindIntroMessage();
+      ~RelayedFindIntroMessage();
+
+      bool
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
     };

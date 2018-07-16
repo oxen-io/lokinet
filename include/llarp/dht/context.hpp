@@ -54,6 +54,9 @@ namespace llarp
       void
       Init(const Key_t& us, llarp_router* router);
 
+      const llarp::service::IntroSet*
+      GetIntroSetByServiceAddress(const llarp::service::Address& addr) const;
+
       void
       QueueRouterLookup(llarp_router_lookup_job* job);
 

@@ -90,6 +90,16 @@ namespace llarp
       }
     }
 
+    const llarp::service::IntroSet *
+    Context::GetIntroSetByServiceAddress(
+        const llarp::service::Address &addr) const
+    {
+      auto itr = services->nodes.find(addr.data());
+      if(itr == services->nodes.end())
+        return nullptr;
+      return &itr->second.introset;
+    }
+
     void
     Context::RemovePendingLookup(const Key_t &owner, uint64_t id)
     {
