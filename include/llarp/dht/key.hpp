@@ -21,7 +21,7 @@ namespace llarp
       {
         Key_t dist;
         for(size_t idx = 0; idx < 4; ++idx)
-          dist.l[idx] = l[idx] ^ other.l[idx];
+          dist.l[idx]  = l[idx] ^ other.l[idx];
         return dist;
       }
 

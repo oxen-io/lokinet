@@ -93,8 +93,8 @@ frame_state::got_xmit(frame_header hdr, size_t sz)
     {
       auto msg = new transit_message(x);
       rx[id]   = msg;
-      llarp::LogDebug("got message XMIT with ", (int)x.numfrags(),
-                      " fragments");
+      llarp::LogDebug("got message XMIT with ", (int)x.numfrags(), " fragment"
+                                                                   "s");
       // inserted, put last fragment
       msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
       push_ackfor(id, 0);
@@ -195,8 +195,8 @@ frame_state::inbound_frame_complete(uint64_t id)
     if(memcmp(digest, rxmsg->msginfo.hash(), 32))
     {
       llarp::LogWarn("message hash missmatch ",
-                     llarp::AlignedBuffer< 32 >(digest),
-                     " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
+                     llarp::AlignedBuffer< 32 >(digest), " != ",
+                     llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
       return false;
     }
 

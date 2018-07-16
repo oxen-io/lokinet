@@ -353,8 +353,8 @@ struct llarp_link
       return false;
     }
 
-    llarp::LogDebug("configure link ifname=", ifname, " af=", af,
-                    " port=", port);
+    llarp::LogDebug("configure link ifname=", ifname, " af=", af, " port=",
+                    port);
     // bind
     sockaddr_in ip4addr;
     sockaddr_in6 ip6addr;
@@ -369,7 +369,7 @@ struct llarp_link
         addr = (sockaddr *)&ip6addr;
         llarp::Zero(addr, sizeof(ip6addr));
         break;
-        // TODO: AF_PACKET
+      // TODO: AF_PACKET
       default:
         llarp::LogError(__FILE__, "unsupported address family", af);
         return false;
@@ -396,7 +396,7 @@ struct llarp_link
       case AF_INET6:
         ip6addr.sin6_port = htons(port);
         break;
-        // TODO: AF_PACKET
+      // TODO: AF_PACKET
       default:
         return false;
     }

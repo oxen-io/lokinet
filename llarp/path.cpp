@@ -413,8 +413,8 @@ namespace llarp
     Path::HandlePathTransferMessage(
         const llarp::routing::PathTransferMessage* msg, llarp_router* r)
     {
-      llarp::LogWarn("unwarrented path transfer message on tx=", TXID(),
-                     " rx=", RXID());
+      llarp::LogWarn("unwarrented path transfer message on tx=", TXID(), " rx=",
+                     RXID());
       return false;
     }
 

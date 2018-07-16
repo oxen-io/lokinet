@@ -179,7 +179,7 @@ namespace ini
           lp       = l.parent;
           size_t n = l.depth - depth;
           for(size_t i = 0; i < n; ++i)
-            lp = lp->parent;
+            lp   = lp->parent;
           parent = lp;
           lp     = &lp->sections[sname];
         }

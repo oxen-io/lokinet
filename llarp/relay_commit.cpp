@@ -49,8 +49,8 @@ namespace llarp
   {
     if(frames.size() != MAXHOPS)
     {
-      llarp::LogError("LRCM invalid number of records, ", frames.size(),
-                      "!=", MAXHOPS);
+      llarp::LogError("LRCM invalid number of records, ", frames.size(), "!=",
+                      MAXHOPS);
       return false;
     }
     if(!router->paths.AllowingTransit())

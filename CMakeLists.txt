@@ -234,8 +234,10 @@ set(LIB_SRC
   llarp/routing/path_confirm.cpp
   llarp/routing/path_latency.cpp
   llarp/routing/path_transfer.cpp
+  llarp/service/address.cpp
   llarp/service/context.cpp
   llarp/service/endpoint.cpp
+  llarp/service/info.cpp
   ${LIBTUNTAP_SRC}
 )
 

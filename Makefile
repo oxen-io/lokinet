@@ -72,7 +72,10 @@ testnet-configure: clean
 testnet-build: testnet-configure
 	ninja
 
-testnet: testnet-build
+$(TESTNET_ROOT): testnet-build
+
+
+testnet: $(TESTNET_ROOT)
 	mkdir -p $(TESTNET_ROOT)
 	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)

@@ -197,8 +197,8 @@ namespace llarp
 #if(__APPLE__ && __MACH__)
 
 #elif(__FreeBSD__)
-        pthread_set_name_np(netio_threads.back().native_handle(),
-                            "llarp-netio");
+        pthread_set_name_np(netio_threads.back().native_handle(), "llarp-"
+                                                                  "netio");
 #else
         pthread_setname_np(netio_threads.back().native_handle(), "llarp-netio");
 #endif
@@ -303,7 +303,7 @@ struct llarp_main *
 llarp_main_init(const char *fname, bool multiProcess)
 {
   if(!fname)
-    fname = "daemon.ini";
+    fname   = "daemon.ini";
   char *var = getenv("LLARP_DEBUG");
   if(var && *var == '1')
   {

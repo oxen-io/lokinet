@@ -7,69 +7,6 @@ namespace llarp
 {
   namespace service
   {
-    std::string
-    AddressToString(const Address& addr)
-    {
-      char tmp[(1 + 32) * 2] = {0};
-      std::string str        = Base32Encode(addr, tmp);
-      return str + ".loki";
-    }
-
-    ServiceInfo::ServiceInfo()
-    {
-      vanity.Zero();
-    }
-
-    ServiceInfo::~ServiceInfo()
-    {
-    }
-
-    bool
-    ServiceInfo::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
-    {
-      bool read = false;
-      if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, val))
-        return false;
-      if(!BEncodeMaybeReadDictEntry("s", signkey, read, key, val))
-        return false;
-      if(!BEncodeMaybeReadDictInt("v", version, read, key, val))
-        return false;
-      if(!BEncodeMaybeReadDictEntry("x", vanity, read, key, val))
-        return false;
-      return read;
-    }
-
-    bool
-    ServiceInfo::BEncode(llarp_buffer_t* buf) const
-    {
-      if(!bencode_start_dict(buf))
-        return false;
-      if(!BEncodeWriteDictEntry("e", enckey, buf))
-        return false;
-      if(!BEncodeWriteDictEntry("s", signkey, buf))
-        return false;
-      if(!BEncodeWriteDictInt(buf, "v", LLARP_PROTO_VERSION))
-        return false;
-      if(!vanity.IsZero())
-      {
-        if(!BEncodeWriteDictEntry("x", vanity, buf))
-          return false;
-      }
-      return bencode_end(buf);
-    }
-
-    bool
-    ServiceInfo::CalculateAddress(byte_t* addr) const
-    {
-      byte_t tmp[128];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-      if(!BEncode(&buf))
-        return false;
-      return crypto_generichash(addr, 32, buf.base, buf.cur - buf.base, nullptr,
-                                0)
-          != -1;
-    }
-
     IntroSet::~IntroSet()
     {
       if(W)

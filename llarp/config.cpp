@@ -62,7 +62,7 @@ llarp_load_config(struct llarp_config *conf, const char *fname)
 void
 llarp_config_iter(struct llarp_config *conf, struct llarp_config_iterator *iter)
 {
-  iter->conf                                                   = conf;
+  iter->conf = conf;
   std::map< std::string, llarp::Config::section_t & > sections = {
       {"network", conf->impl.network},
       {"connect", conf->impl.connect},

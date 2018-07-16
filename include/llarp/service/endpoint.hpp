@@ -22,6 +22,9 @@ namespace llarp
       bool
       Start();
 
+      std::string
+      Name() const;
+
       bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 

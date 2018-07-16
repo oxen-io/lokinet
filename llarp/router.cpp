@@ -804,7 +804,7 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
     router->netloop = netloop;
     router->tp      = tp;
     router->logic   = logic;
-    // TODO: make disk io threadpool count configurable
+// TODO: make disk io threadpool count configurable
 #ifdef TESTNET
     router->disk = tp;
 #else

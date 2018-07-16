@@ -43,6 +43,10 @@ namespace llarp
                    << " v=" << i.version << " x=" << i.vanity << "]";
       }
 
+      /// compute .loki address
+      std::string
+      Name() const;
+
       /// calculate our address
       bool
       CalculateAddress(byte_t* buf) const;

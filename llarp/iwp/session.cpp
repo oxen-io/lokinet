@@ -141,9 +141,9 @@ void
 llarp_link_session::add_outbound_message(uint64_t id, transit_message *msg)
 {
   llarp::LogDebug("add outbound message ", id, " of size ",
-                  msg->msginfo.totalsize(),
-                  " numfrags=", (int)msg->msginfo.numfrags(),
-                  " lastfrag=", (int)msg->msginfo.lastfrag());
+                  msg->msginfo.totalsize(), " numfrags=",
+                  (int)msg->msginfo.numfrags(), " lastfrag=",
+                  (int)msg->msginfo.lastfrag());
 
   frame.queue_tx(id, msg);
   pump();

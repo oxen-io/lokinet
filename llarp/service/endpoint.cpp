@@ -25,28 +25,33 @@ namespace llarp
     {
       if(ShouldPublishDescriptors())
       {
-        llarp::LogDebug("publish descriptor for endpoint ", m_Name);
         IntroSet introset;
         if(!GetCurrentIntroductions(introset.I))
         {
-          llarp::LogWarn("could not publish descriptors for endpoint ", m_Name,
+          llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
                          " because we couldn't get any introductions");
           return;
         }
         if(!m_Identity.SignIntroSet(introset, &m_Router->crypto))
         {
-          llarp::LogWarn("failed to sign introset for endpoint ", m_Name);
+          llarp::LogWarn("failed to sign introset for endpoint ", Name());
           return;
         }
         if(PublishIntroSet(introset, m_Router))
         {
-          llarp::LogInfo("publishing introset for endpoint ", m_Name);
+          llarp::LogInfo("publishing introset for endpoint ", Name());
         }
         else
         {
-          llarp::LogWarn("failed to publish intro set for endpoint ", m_Name);
+          llarp::LogWarn("failed to publish intro set for endpoint ", Name());
         }
       }
+    }
+
+    std::string
+    Endpoint::Name() const
+    {
+      return m_Name + ":" + m_Identity.pub.Name();
     }
 
     bool
@@ -59,14 +64,14 @@ namespace llarp
         {
           llarp::LogWarn(
               "invalid signature in got intro message for service endpoint ",
-              m_Name);
+              Name());
           return false;
         }
         if(m_Identity.pub == introset.A)
         {
           llarp::LogInfo(
               "got introset publish confirmation for hidden service endpoint ",
-              m_Name);
+              Name());
         }
         else
         {
