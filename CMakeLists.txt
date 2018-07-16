@@ -166,10 +166,16 @@ set(CPP_BACKPORT_SRC
 set(LIB_PLATFORM_SRC
 # for outpug
   llarp/logger.cpp
+# needed for threading
+  llarp/logic.cpp
 # for zero (for net.hpp stuff for llarp::addr stuff)
   llarp/mem.cpp
 # for networking
   llarp/ev.cpp
+# for timer
+  llarp/time.cpp
+# for logic
+  llarp/timer.cpp
 # for threading
   llarp/threadpool.cpp
 )
@@ -183,13 +189,14 @@ set(LIB_SRC
   llarp/crypto_async.cpp
   llarp/crypto_libsodium.cpp
   llarp/dht.cpp
+  llarp/dnsc.cpp
+  llarp/dnsd.cpp
   llarp/encode.cpp
   llarp/encrypted_frame.cpp
   llarp/exit_info.cpp
   llarp/exit_route.cpp
   llarp/link_intro.cpp
   llarp/link_message.cpp
-  llarp/logic.cpp
   llarp/net.cpp
   llarp/nodedb.cpp
   llarp/path.cpp
@@ -204,8 +211,7 @@ set(LIB_SRC
   llarp/service.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
-  llarp/time.cpp
-  llarp/timer.cpp
+  llarp/api/create_session.cpp
   llarp/api/client.cpp
   llarp/api/message.cpp
   llarp/api/parser.cpp
@@ -237,6 +243,13 @@ set(LIB_SRC
   llarp/service/endpoint.cpp
   llarp/service/info.cpp
   ${LIBTUNTAP_SRC}
+)
+
+set(DNS_SRC
+  llarp/dnsc.cpp
+  llarp/dnsd.cpp
+  llarp/net.cpp
+  daemon/dns.cpp
 )
 
 set(TEST_SRC
@@ -277,7 +290,7 @@ else()
   add_executable(rcutil daemon/rcutil.cpp)
   add_executable(${EXE} ${EXE_SRC})
   add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-  add_executable(dns daemon/dns.cpp)
+  add_executable(dns ${DNS_SRC})
 
   if(WITH_TESTS)
     enable_testing()

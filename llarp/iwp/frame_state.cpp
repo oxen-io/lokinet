@@ -93,8 +93,9 @@ frame_state::got_xmit(frame_header hdr, size_t sz)
     {
       auto msg = new transit_message(x);
       rx[id]   = msg;
-      llarp::LogDebug("got message XMIT with ", (int)x.numfrags(), " fragment"
-                                                                   "s");
+      llarp::LogDebug("got message XMIT with ", (int)x.numfrags(),
+                      " fragment"
+                      "s");
       // inserted, put last fragment
       msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
       push_ackfor(id, 0);

@@ -197,8 +197,9 @@ namespace llarp
 #if(__APPLE__ && __MACH__)
 
 #elif(__FreeBSD__)
-        pthread_set_name_np(netio_threads.back().native_handle(), "llarp-"
-                                                                  "netio");
+        pthread_set_name_np(netio_threads.back().native_handle(),
+                            "llarp-"
+                            "netio");
 #else
         pthread_setname_np(netio_threads.back().native_handle(), "llarp-netio");
 #endif
