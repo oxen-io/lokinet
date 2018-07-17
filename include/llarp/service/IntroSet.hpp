@@ -6,6 +6,7 @@
 #include <llarp/pow.hpp>
 #include <llarp/service/Info.hpp>
 #include <llarp/service/Intro.hpp>
+#include <llarp/service/tag.hpp>
 
 #include <list>
 
@@ -19,6 +20,7 @@ namespace llarp
     {
       ServiceInfo A;
       std::list< Introduction > I;
+      Tag topic;
       llarp::PoW* W = nullptr;
       llarp::Signature Z;
 
@@ -45,7 +47,13 @@ namespace llarp
         {
           out << intro << ",";
         }
-        return out << "] V=" << i.version << " Z=" << i.Z;
+        out << "]";
+        auto topic = i.topic.ToString();
+        if(topic.size())
+        {
+          out << " topic=" << topic;
+        }
+        return out << " V=" << i.version << " Z=" << i.Z;
       }
 
       bool

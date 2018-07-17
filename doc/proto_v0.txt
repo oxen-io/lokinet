@@ -178,7 +178,7 @@ a signed set of introductions for a hidden service
 a is the service info
 i is the list of introductions that this service is advertising with
 n is a 16 byte null padded utf-8 encoded string tagging the hidden service in 
-  a topic searchable via a lookup
+  a topic searchable via a lookup (optional)
 v is the protocol version
 w is an optinal proof of work for DoS protection (slot for future)
 z is the signature of the entire IS where z is set to zero signed by the hidden
@@ -187,7 +187,7 @@ service's signing key.
 {
   a: SI,
   i: [ I, I, I, ... ],
-  n: "<16 bytes service topic>", 
+  n: "<16 bytes service topic (optional)>", 
   v: 0,
   w: optional proof of work,
   z: "<64 bytes signature using service info signing key>"

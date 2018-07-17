@@ -21,20 +21,30 @@ variant 2: recursively find many IS in a tag
 
 {
   A: "F",
+  E: "<N*32 bytes optional exclude SA list>",
   I: 0 or 1 if iterative request,
   N: "<16 bytes topic tag>",
   T: transaction_id_uint64,
   V: 0
 }
 
+exclude adding service addresses in E if present
+
+
 got introduction message (GIM)
+
+sent in reply to FIM and PIM
 
 {
   A: "G",
-  I: [IS],
+  I: [IS, IS, IS, ...],
   T: transaction_id_uint64,
   V: 0,
 }
+
+
+The I value MUST NOT contain more than 8 IS.
+The I value is either 1 or 0 IS long for PIM and FIM variant 1.
 
 
 publish introduction message (PIM)

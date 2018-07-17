@@ -25,6 +25,9 @@ namespace llarp
         return BEncodeReadList(I, buf);
       }
 
+      if(!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
+        return false;
+
       if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
         return false;
 
@@ -48,6 +51,12 @@ namespace llarp
         return false;
       // end introduction list
 
+      // topic tag
+      if(topic.ToString().size())
+      {
+        if(!BEncodeWriteDictEntry("n", topic, buf))
+          return false;
+      }
       // write version
       if(!BEncodeWriteDictInt(buf, "v", version))
         return false;
