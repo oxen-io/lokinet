@@ -62,7 +62,7 @@ llarp_link_session::Router()
 bool
 llarp_link_session::sendto(llarp_buffer_t msg)
 {
-  auto id = frame.txids++;
+  auto id = ++frame.txids;
   // llarp::LogDebug("session sending to, number", id);
   llarp::ShortHash digest;
   crypto->shorthash(digest, msg);
