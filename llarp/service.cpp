@@ -64,6 +64,16 @@ namespace llarp
       return bencode_end(buf);
     }
 
+    bool
+    IntroSet::HasExpiredIntros() const
+    {
+      auto now = llarp_time_now_ms();
+      for(const auto& i : I)
+        if(now >= i.expiresAt)
+          return true;
+      return false;
+    }
+
     Introduction::~Introduction()
     {
     }

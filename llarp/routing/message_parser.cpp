@@ -37,7 +37,8 @@ namespace llarp
           return false;
         if(strbuf.sz != 1)
           return false;
-        switch(*strbuf.cur)
+        self->key = *strbuf.cur;
+        switch(self->key)
         {
           case 'L':
             self->msg = new PathLatencyMessage;
@@ -76,7 +77,7 @@ namespace llarp
         msg->from = from;
         result    = msg->HandleMessage(h, r);
         if(!result)
-          llarp::LogWarn("Failed to handle inbound routing message");
+          llarp::LogWarn("Failed to handle inbound routing message ", key);
         delete msg;
       }
       else

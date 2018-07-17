@@ -46,6 +46,7 @@ struct llarp_link
 
   SessionMap_t m_Connected;
   mtx_t m_Connected_Mutex;
+  bool pumpingLogic = false;
 
   typedef std::unordered_map< llarp::Addr, llarp_link_session *,
                               llarp::addrhash >
@@ -234,11 +235,15 @@ struct llarp_link
       s->TickLogic();
       return true;
     });
+    self->pumpingLogic = false;
   }
 
   void
   PumpLogic()
   {
+    if(pumpingLogic)
+      return;
+    pumpingLogic = true;
     llarp_logic_queue_job(logic, {this, &handle_logic_pump});
   }
 

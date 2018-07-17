@@ -45,6 +45,7 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
   crypto->randbytes(token, 32);
   llarp::LogInfo("session created");
   frame.alive();
+  working.store(false);
 }
 
 llarp_link_session::~llarp_link_session()
@@ -62,6 +63,9 @@ llarp_link_session::Router()
 bool
 llarp_link_session::sendto(llarp_buffer_t msg)
 {
+  auto now = llarp_time_now_ms();
+  if(timedout(now))
+    return false;
   auto id = ++frame.txids;
   // llarp::LogDebug("session sending to, number", id);
   llarp::ShortHash digest;
@@ -432,7 +436,8 @@ llarp_link_session::Tick(llarp_time_t now)
     // we are timed out
     // when we are done doing stuff with all of our frames from the crypto
     // workers we are done
-    llarp::LogWarn("Tick - ", addr, " timed out with ", frames, " frames left");
+    llarp::LogWarn("Tick - ", addr, " timed out with ", frames,
+                   " frames left, working=", working);
     return !working;
   }
   if(is_invalidated())
@@ -501,6 +506,7 @@ static void
 handle_introack_generated(iwp_async_introack *i)
 {
   llarp_link_session *link = static_cast< llarp_link_session * >(i->user);
+  link->working            = false;
   if(i->buf && link->serv->has_intro_from(link->addr))
   {
     // track it with the server here

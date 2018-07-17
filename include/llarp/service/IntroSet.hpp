@@ -49,6 +49,9 @@ namespace llarp
       }
 
       bool
+      HasExpiredIntros() const;
+
+      bool
       BEncode(llarp_buffer_t* buf) const;
 
       bool

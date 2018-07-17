@@ -32,6 +32,7 @@ namespace llarp
       static bool
       OnKey(dict_reader* r, llarp_buffer_t* key);
       bool firstKey;
+      char key;
       dict_reader reader;
       IMessage* msg;
     };

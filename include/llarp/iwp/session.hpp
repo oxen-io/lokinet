@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include "codel.hpp"
 #include "frame_state.hpp"
 #include "llarp/buffer.h"
@@ -114,7 +115,7 @@ struct llarp_link_session
   llarp_time_t lastKeepalive = 0;
   uint32_t establish_job_id  = 0;
   uint32_t frames            = 0;
-  bool working               = false;
+  std::atomic< bool > working;
 
   llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime >
       outboundFrames;

@@ -65,6 +65,7 @@ namespace llarp
       bool
       ShouldPublishDescriptors() const;
 
+      /// override me in subtype
       virtual bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg)
       {
@@ -79,8 +80,7 @@ namespace llarp
           std::list< llarp::service::Introduction >& intros) const;
 
       bool
-      PublishIntroSet(const llarp::service::IntroSet& introset,
-                      llarp_router* r);
+      PublishIntroSet(llarp_router* r);
 
       typedef std::function< void(const llarp::service::IntroSet*) >
           ServiceLookupHandler;
@@ -91,13 +91,23 @@ namespace llarp
                     ServiceLookupHandler handler);
 
      protected:
+      /// our introset
+      service::IntroSet m_Introset;
+
+     protected:
       void
       IssueServiceLookup(const llarp::service::Address& addr);
+
+      void
+      IntroSetPublished();
+
+      void
+      IntroSetPublishFail();
 
      private:
       typedef std::pair< RouterID, PathID_t > PathInfo_t;
       typedef std::map< PathInfo_t, Path* > PathMap_t;
-
+      bool m_PublishedIntroSet = false;
       size_t m_NumPaths;
       PathMap_t m_Paths;
       uint64_t m_CurrentPublishTX = 0;
