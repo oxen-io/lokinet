@@ -7,64 +7,25 @@ This document is currently out of date (probably)
 
 find introduction message (FIM)
 
-recursively find an IS by SA
+variant 1: recursively find an IS by SA
 
 {
   A: "F",
   I: 0 or 1 if iterative request,
-  R: r_counter,
   S: "<32 bytes SA>",
   T: transaction_id_uint64,
   V: 0
 }
 
-Transactions will persist until replied to by a GIM or 60 seconds, whichever
-is reached first.
+variant 2: recursively find many IS in a tag
 
-If the timeout is reached before a GIM or the forwarding of the request fails:
-
-* close transaction
-* close linked transactions
-
-if R is non-zero and less or equal to than 5:
-
-* decrement R by 1
-* open a transaction with id T for sender's RC.k
-* pick random dht capable router, F
-* generate new transaction id, U
-* open a transaction with id U for F.k
-* link transaction U to transaction T
-* send FIM with transaction id U to F
-
-if R is greater than 5 or less than 0:
-
-* increment shitlist value of sender's RC.k by 1
-* if the shitlist value for sender's RC.k is less than 10 reply with a GIM with
-  an X
-* if the shitlist value for sender's RC.k is equal to or greater than 10 drop
-  the message
-
-if R is zero and we have 1 or more IS at position S in dht keyspace:
-
-* reply with a GIM holding the IS who contains the introducer with the highest
-  expiration timestamp
- 
-if R is zero and we do not have any IS at position S in dht keyspace:
-
-* find a router who's RC.k is closest to S, N
-
-if N is our router:
-
-* reply with a GIM with an empty X value
-
-if N is not our router:
-
-* open transaction with id T for sender's RC.k
-* generate new transaction id, U
-* open transaction with id U for N.k
-* link transaction U to transaction T
-* forward request to N using transaction id U
-
+{
+  A: "F",
+  I: 0 or 1 if iterative request,
+  N: "<16 bytes topic tag>",
+  T: transaction_id_uint64,
+  V: 0
+}
 
 got introduction message (GIM)
 
@@ -74,16 +35,6 @@ got introduction message (GIM)
   T: transaction_id_uint64,
   V: 0,
 }
-
-if we have a transaction with id T:
-
-* forward the GIM to all linked transactions
-* terminate transaction T
-
-when a linked transaction gets a GIM:
-
-* set T to the current transaction id
-* foward the GIM to the requester of T
 
 
 publish introduction message (PIM)
