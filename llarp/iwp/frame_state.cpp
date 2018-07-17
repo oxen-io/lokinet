@@ -196,8 +196,8 @@ frame_state::inbound_frame_complete(uint64_t id)
     if(memcmp(digest, rxmsg->msginfo.hash(), 32))
     {
       llarp::LogWarn("message hash missmatch ",
-                     llarp::AlignedBuffer< 32 >(digest), " != ",
-                     llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
+                     llarp::AlignedBuffer< 32 >(digest),
+                     " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
       return false;
     }
 

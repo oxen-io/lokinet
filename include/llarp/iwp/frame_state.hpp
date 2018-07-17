@@ -46,10 +46,9 @@ struct frame_state
   std::unordered_map< uint64_t, transit_message * > tx;
 
   typedef std::queue< sendbuf_t * > sendqueue_t;
-  typedef llarp::util::CoDelQueue< InboundMessage *, InboundMessage::GetTime,
-                                   InboundMessage::PutTime,
-                                   llarp::util::DummyMutex,
-                                   llarp::util::DummyLock >
+  typedef llarp::util::CoDelQueue<
+      InboundMessage *, InboundMessage::GetTime, InboundMessage::PutTime,
+      llarp::util::DummyMutex, llarp::util::DummyLock >
       recvqueue_t;
 
   llarp_link_session *parent = nullptr;

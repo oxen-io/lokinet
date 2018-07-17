@@ -56,8 +56,8 @@ namespace llarp
       {
         return path->HandleDownstream(T.Buffer(), Y, r);
       }
-      llarp::LogWarn("No such local path for path transfer src=", from, " dst=",
-                     P);
+      llarp::LogWarn("No such local path for path transfer src=", from,
+                     " dst=", P);
       return false;
     }
   }  // namespace routing

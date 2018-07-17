@@ -22,20 +22,20 @@ namespace llarp
     AlignedBuffer(const AlignedBuffer& other)
     {
       for(size_t idx = 0; idx < (sz / 8); ++idx)
-        l[idx]       = other.l[idx];
+        l[idx] = other.l[idx];
     }
 
     AlignedBuffer(const byte_t* data)
     {
       for(size_t idx = 0; idx < sz; ++idx)
-        b[idx]       = data[idx];
+        b[idx] = data[idx];
     }
 
     AlignedBuffer&
     operator=(const byte_t* data)
     {
       for(size_t idx = 0; idx < sz; ++idx)
-        b[idx]       = data[idx];
+        b[idx] = data[idx];
       return *this;
     }
 
@@ -80,7 +80,7 @@ namespace llarp
     Fill(byte_t f)
     {
       for(size_t idx = 0; idx < sz; ++idx)
-        b[idx]       = f;
+        b[idx] = f;
     }
 
     bool
@@ -95,7 +95,7 @@ namespace llarp
     Zero()
     {
       for(size_t idx = 0; idx * 8 < sz; ++idx)
-        l[idx]       = 0;
+        l[idx] = 0;
     }
 
     void

@@ -112,19 +112,19 @@ struct llarp_link
   TickSessions()
   {
     auto now = llarp_time_now_ms();
+    std::set< llarp::Addr > remove;
     {
       lock_t lock(m_sessions_Mutex);
-      std::set< llarp::Addr > remove;
+
       for(auto &itr : m_sessions)
       {
         llarp_link_session *s = itr.second;
         if(s && s->Tick(now))
           remove.insert(itr.first);
       }
-
-      for(const auto &addr : remove)
-        RemoveSessionByAddr(addr);
     }
+    for(const auto &addr : remove)
+      RemoveSessionByAddr(addr);
   }
 
   static bool
@@ -166,7 +166,7 @@ struct llarp_link
   }
 
   llarp_link_session *
-  create_session(llarp::Addr src)
+  create_session(const llarp::Addr &src)
   {
     return new llarp_link_session(this, seckey, src);
   }
@@ -209,17 +209,31 @@ struct llarp_link
     }
   }
 
+  /// safe iterate sessions
+  void
+  iterate_sessions(std::function< bool(llarp_link_session *) > visitor)
+  {
+    std::list< llarp_link_session * > slist;
+    {
+      lock_t lock(m_sessions_Mutex);
+      for(const auto &itr : m_sessions)
+      {
+        slist.push_back(itr.second);
+      }
+    }
+    for(auto s : slist)
+      if(!visitor(s))
+        return;
+  }
+
   static void
   handle_logic_pump(void *user)
   {
     llarp_link *self = static_cast< llarp_link * >(user);
-    lock_t lock(self->m_sessions_Mutex);
-    auto itr = self->m_sessions.begin();
-    while(itr != self->m_sessions.end())
-    {
-      itr->second->TickLogic();
-      ++itr;
-    }
+    self->iterate_sessions([](llarp_link_session *s) -> bool {
+      s->TickLogic();
+      return true;
+    });
   }
 
   void
@@ -231,6 +245,7 @@ struct llarp_link
   void
   RemoveSessionByAddr(const llarp::Addr &addr)
   {
+    lock_t lock(m_sessions_Mutex);
     auto itr = m_sessions.find(addr);
     if(itr != m_sessions.end())
     {
@@ -353,8 +368,8 @@ struct llarp_link
       return false;
     }
 
-    llarp::LogDebug("configure link ifname=", ifname, " af=", af, " port=",
-                    port);
+    llarp::LogDebug("configure link ifname=", ifname, " af=", af,
+                    " port=", port);
     // bind
     sockaddr_in ip4addr;
     sockaddr_in6 ip6addr;
@@ -434,22 +449,6 @@ struct llarp_link
     llarp_ev_close_udp(&udp);
     clear_sessions();
     return true;
-  }
-
-  void
-  iter_sessions(llarp_link_session_iter iter)
-  {
-    auto sz = m_sessions.size();
-    if(sz)
-    {
-      llarp::LogDebug("we have ", sz, "sessions");
-      iter.link = this;
-      // TODO: race condition with cleanup timer
-      for(auto &item : m_sessions)
-        if(item.second)
-          if(!iter.visit(&iter, item.second))
-            return;
-    }
   }
 
   bool

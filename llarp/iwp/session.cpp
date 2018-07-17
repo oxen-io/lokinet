@@ -30,7 +30,6 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
     : udp(&l->udp)
     , crypto(&l->router->crypto)
     , iwp(l->iwp)
-    , logic(l->router->logic)
     , serv(l)
     , outboundFrames("iwp_outbound")
     , decryptedFrames("iwp_inbound")
@@ -45,6 +44,7 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
   llarp_rc_clear(&remote_router);
   crypto->randbytes(token, 32);
   llarp::LogInfo("session created");
+  frame.alive();
 }
 
 llarp_link_session::~llarp_link_session()
@@ -74,6 +74,8 @@ llarp_link_session::sendto(llarp_buffer_t msg)
 bool
 llarp_link_session::timedout(llarp_time_t now, llarp_time_t timeout)
 {
+  if(now <= frame.lastEvent)
+    return false;
   auto diff = now - frame.lastEvent;
   return diff >= timeout;
 }
@@ -118,7 +120,7 @@ llarp_link_session::close()
   // as session invalidated
   frame.txflags |= eSessionInvalidated;
   // TODO: add timer for session invalidation
-  llarp_logic_queue_job(logic, {this, &send_keepalive});
+  llarp_logic_queue_job(serv->logic, {this, &send_keepalive});
 }
 
 void
@@ -128,7 +130,7 @@ llarp_link_session::session_established()
   llarp::LogInfo("Session to ", remote, " established");
   EnterState(eEstablished);
   serv->MapAddr(addr, remote_router.pubkey);
-  llarp_logic_cancel_call(logic, establish_job_id);
+  llarp_logic_cancel_call(serv->logic, establish_job_id);
 }
 
 llarp_rc *
@@ -141,9 +143,9 @@ void
 llarp_link_session::add_outbound_message(uint64_t id, transit_message *msg)
 {
   llarp::LogDebug("add outbound message ", id, " of size ",
-                  msg->msginfo.totalsize(), " numfrags=",
-                  (int)msg->msginfo.numfrags(), " lastfrag=",
-                  (int)msg->msginfo.lastfrag());
+                  msg->msginfo.totalsize(),
+                  " numfrags=", (int)msg->msginfo.numfrags(),
+                  " lastfrag=", (int)msg->msginfo.lastfrag());
 
   frame.queue_tx(id, msg);
   pump();
@@ -296,6 +298,8 @@ llarp_link_session::done()
 void
 llarp_link_session::PumpCryptoOutbound()
 {
+  if(working)
+    return;
   working = true;
   llarp_threadpool_queue_job(serv->worker, {this, &handle_crypto_outbound});
 }
@@ -568,8 +572,8 @@ llarp_link_session::introduce(uint8_t *pub)
                  llarp::RouterID(remote));
   iwp_call_async_gen_intro(iwp, &intro);
   // start introduce timer
-  establish_job_id =
-      llarp_logic_call_later(logic, {5000, this, &handle_establish_timeout});
+  establish_job_id = llarp_logic_call_later(
+      serv->logic, {5000, this, &handle_establish_timeout});
 }
 
 void

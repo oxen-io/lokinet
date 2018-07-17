@@ -21,7 +21,7 @@ namespace llarp
       {
         Key_t dist;
         for(size_t idx = 0; idx < 4; ++idx)
-          dist.l[idx]  = l[idx] ^ other.l[idx];
+          dist.l[idx] = l[idx] ^ other.l[idx];
         return dist;
       }
 
@@ -31,7 +31,7 @@ namespace llarp
         return memcmp(data_l(), other.data_l(), 32) < 0;
       }
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 
 #endif

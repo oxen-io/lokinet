@@ -26,7 +26,7 @@ extern "C"
 
   struct dns_client_request;
 
-  typedef void (*resolve_dns_hook_func)(dns_client_request *request,
+  typedef void (*resolve_dns_hook_func)(struct dns_client_request *request,
                                         struct sockaddr *);
 
   struct dns_client_request

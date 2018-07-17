@@ -78,4 +78,4 @@ namespace llarp
       return result;
     }
   }
-}
+}  // namespace llarp

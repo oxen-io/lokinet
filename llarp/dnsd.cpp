@@ -211,7 +211,7 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   }
 
   sockaddr *hostRes = nullptr;
-  if(0)
+  if(1)
   {
     hostRes = resolveHost(m_qName.c_str());
     llarp::Addr anIp(*hostRes);

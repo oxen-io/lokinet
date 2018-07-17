@@ -304,7 +304,7 @@ struct llarp_main *
 llarp_main_init(const char *fname, bool multiProcess)
 {
   if(!fname)
-    fname   = "daemon.ini";
+    fname = "daemon.ini";
   char *var = getenv("LLARP_DEBUG");
   if(var && *var == '1')
   {

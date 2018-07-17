@@ -12,9 +12,11 @@ namespace llarp
 {
   namespace dht
   {
+    /// TODO: this should be made into a templated type
     struct SearchJob
     {
       const static uint64_t JobTimeout = 30000;
+
       typedef std::function< void(const llarp::service::IntroSet*) >
           IntroSetHookFunc;
       SearchJob();

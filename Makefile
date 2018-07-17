@@ -21,6 +21,7 @@ TESTNET_ROOT=$(REPO)/testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 
+TESTNET_EXE=$(REPO)/lokinet
 TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
@@ -72,12 +73,12 @@ testnet-configure: clean
 testnet-build: testnet-configure
 	ninja
 
-$(TESTNET_ROOT): testnet-build
+$(TESTNET_EXE): testnet-build
+	cp -f $(REPO)/llarpd $(TESTNET_EXE)
 
-
-testnet: $(TESTNET_ROOT)
+testnet: $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
-	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
+	python3 contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 test: debug-configure
@@ -86,3 +87,14 @@ test: debug-configure
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+
+
+
+fuzz-configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
+
+fuzz-build: fuzz-configure
+	ninja
+
+fuzz: fuzz-build
+	$(EXE)

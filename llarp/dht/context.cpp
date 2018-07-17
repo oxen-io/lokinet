@@ -172,6 +172,14 @@ namespace llarp
     }
 
     void
+    Context::LookupIntroSet(const service::Address &addr, const Key_t &whoasked,
+                            uint64_t txid, const Key_t &askpeer, bool iterative,
+                            std::set< Key_t > excludes)
+    {
+      // TODO: implement
+    }
+
+    void
     Context::LookupRouter(const Key_t &target, const Key_t &whoasked,
                           uint64_t txid, const Key_t &askpeer,
                           llarp_router_lookup_job *job, bool iterative,

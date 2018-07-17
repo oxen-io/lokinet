@@ -72,6 +72,6 @@ namespace llarp
 
       BucketStorage_t nodes;
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 #endif

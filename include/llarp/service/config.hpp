@@ -18,6 +18,6 @@ namespace llarp
       bool
       Load(const std::string& fname);
     };
-  }
-}
+  }  // namespace service
+}  // namespace llarp
 #endif

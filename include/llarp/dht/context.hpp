@@ -40,6 +40,11 @@ namespace llarp
                    bool iterative = false, std::set< Key_t > excludes = {});
 
       void
+      LookupIntroSet(const service::Address& addr, const Key_t& whoasked,
+                     uint64_t whoaskedTX, const Key_t& askpeer,
+                     bool interative = false, std::set< Key_t > excludes = {});
+
+      void
       LookupRouterViaJob(llarp_router_lookup_job* job);
 
       void
@@ -115,12 +120,12 @@ namespace llarp
           memcpy(&sz2, &o.node[0], sizeof(std::size_t));
           return o.txid ^ (sz2 << 1);
         }
-      };
+      };  // namespace dht
 
       std::unordered_map< TXOwner, SearchJob, TXOwnerHash > pendingTX;
       Key_t ourKey;
-    };
-  }  // namespace dht
+    };  // namespace llarp
+  }     // namespace dht
 }  // namespace llarp
 
 struct llarp_dht_context

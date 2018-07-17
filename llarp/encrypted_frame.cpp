@@ -92,8 +92,8 @@ namespace llarp
   {
     if(size() <= size_t(EncryptedFrame::OverheadSize))
     {
-      llarp::LogWarn("encrypted frame too small, ", size(), " <= ",
-                     size_t(EncryptedFrame::OverheadSize));
+      llarp::LogWarn("encrypted frame too small, ", size(),
+                     " <= ", size_t(EncryptedFrame::OverheadSize));
       return false;
     }
     // format of frame is

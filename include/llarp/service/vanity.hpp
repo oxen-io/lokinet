@@ -9,6 +9,6 @@ namespace llarp
     /// hidden service address
 
     typedef llarp::AlignedBuffer< 16 > VanityNonce;
-  }
-}
+  }  // namespace service
+}  // namespace llarp
 #endif

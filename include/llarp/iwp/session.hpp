@@ -34,6 +34,7 @@ struct llarp_link_session
 
   bool
   has_timed_out();
+
   bool
   timedout(llarp_time_t now, llarp_time_t timeout = SESSION_TIMEOUT);
 
@@ -93,10 +94,9 @@ struct llarp_link_session
   llarp_router *
   Router();
 
-  llarp_udp_io *udp;
-  llarp_crypto *crypto;
-  llarp_async_iwp *iwp;
-  llarp_logic *logic;
+  llarp_udp_io *udp    = nullptr;
+  llarp_crypto *crypto = nullptr;
+  llarp_async_iwp *iwp = nullptr;
 
   llarp_link *serv = nullptr;
 

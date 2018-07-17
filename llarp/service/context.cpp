@@ -61,5 +61,5 @@ namespace llarp
       delete service;
       return false;
     }
-  }
-}
+  }  // namespace service
+}  // namespace llarp

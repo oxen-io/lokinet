@@ -19,6 +19,6 @@ namespace llarp
         return (us ^ left) < (us ^ right);
       };
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 #endif

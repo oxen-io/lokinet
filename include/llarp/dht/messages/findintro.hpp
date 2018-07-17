@@ -33,7 +33,10 @@ namespace llarp
 
     struct RelayedFindIntroMessage : public FindIntroMessage
     {
-      RelayedFindIntroMessage();
+      RelayedFindIntroMessage() : FindIntroMessage({})
+      {
+      }
+
       ~RelayedFindIntroMessage();
 
       bool
