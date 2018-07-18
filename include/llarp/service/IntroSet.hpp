@@ -40,6 +40,12 @@ namespace llarp
         return *this;
       }
 
+      bool
+      operator<(const IntroSet& other) const
+      {
+        return A < other.A || topic < other.topic;
+      }
+
       friend std::ostream&
       operator<<(std::ostream& out, const IntroSet& i)
       {

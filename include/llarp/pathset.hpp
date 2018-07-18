@@ -5,7 +5,9 @@
 #include <list>
 #include <llarp/path_types.hpp>
 #include <llarp/router_id.hpp>
+#include <llarp/routing/message.hpp>
 #include <llarp/service/IntroSet.hpp>
+#include <llarp/service/lookup.hpp>
 #include <map>
 #include <tuple>
 
@@ -62,8 +64,11 @@ namespace llarp
       ShouldBuildMore() const;
 
       /// return true if we should publish a new hidden service descriptor
-      bool
-      ShouldPublishDescriptors() const;
+      virtual bool
+      ShouldPublishDescriptors() const
+      {
+        return false;
+      }
 
       /// override me in subtype
       virtual bool
@@ -79,41 +84,17 @@ namespace llarp
       GetCurrentIntroductions(
           std::list< llarp::service::Introduction >& intros) const;
 
-      bool
-      PublishIntroSet(llarp_router* r);
-
-      typedef std::function< void(const llarp::service::IntroSet*) >
-          ServiceLookupHandler;
-
-      /// return false if we are already pending a lookup for this address
-      bool
-      LookupService(const llarp::service::Address& addr,
-                    ServiceLookupHandler handler);
-
-     protected:
-      /// our introset
-      service::IntroSet m_Introset;
-
-     protected:
-      void
-      IssueServiceLookup(const llarp::service::Address& addr);
-
-      void
-      IntroSetPublished();
-
-      void
-      IntroSetPublishFail();
+      virtual bool
+      PublishIntroSet(llarp_router* r)
+      {
+        return false;
+      }
 
      private:
       typedef std::pair< RouterID, PathID_t > PathInfo_t;
       typedef std::map< PathInfo_t, Path* > PathMap_t;
-      bool m_PublishedIntroSet = false;
       size_t m_NumPaths;
       PathMap_t m_Paths;
-      uint64_t m_CurrentPublishTX = 0;
-      std::unordered_map< llarp::service::Address, ServiceLookupHandler,
-                          llarp::service::Address::Hash >
-          m_ServiceLookups;
     };
 
   }  // namespace path

@@ -37,6 +37,9 @@ namespace llarp
       else
         return false;
 
+      if(!BEncodeMaybeReadDictEntry("N", N, read, k, val))
+        return false;
+
       if(!BEncodeMaybeReadDictInt("R", R, read, k, val))
         return false;
 
@@ -65,12 +68,24 @@ namespace llarp
       // iterative
       if(!BEncodeWriteDictInt(buf, "I", iterative ? 1 : 0))
         return false;
-      // r5n counter
-      if(!BEncodeWriteDictInt(buf, "R", R))
+      if(N.IsZero())
+      {
         return false;
-      // service address
-      if(!BEncodeWriteDictEntry("S", S, buf))
-        return false;
+        // r5n counter
+        if(!BEncodeWriteDictInt(buf, "R", R))
+          return false;
+        // service address
+        if(!BEncodeWriteDictEntry("S", S, buf))
+          return false;
+      }
+      else
+      {
+        if(!BEncodeWriteDictEntry("N", N, buf))
+          return false;
+        // r5n counter
+        if(!BEncodeWriteDictInt(buf, "R", R))
+          return false;
+      }
       // txid
       if(!BEncodeWriteDictInt(buf, "T", T))
         return false;
@@ -90,26 +105,47 @@ namespace llarp
       const auto introset = dht.GetIntroSetByServiceAddress(S);
       if(introset)
       {
-        replies.push_back(new GotIntroMessage(T, introset));
+        replies.push_back(new GotIntroMessage({*introset}, T));
+        return true;
+      }
+      else if(iterative)
+      {
+        // we are iterative and don't have it, reply with a direct reply
+        replies.push_back(new GotIntroMessage({}, T));
         return true;
       }
       else
       {
+        // we are recursive
         Key_t peer;
         std::set< Key_t > exclude = {dht.OurKey(), From};
-        if(dht.nodes->FindCloseExcluding(S, peer, exclude))
+
+        if(N.IsZero())
         {
-          dht.LookupIntroSet(S, From, 0, peer);
-          return true;
+          // service address lookup
+          if(dht.nodes->FindCloseExcluding(S, peer, exclude))
+          {
+            dht.LookupIntroSet(S, From, T, peer);
+            return true;
+          }
+          else
+          {
+            llarp::LogError("cannot find closer peers for introset lookup for ",
+                            S);
+          }
         }
         else
         {
-          llarp::LogError("cannot find closer peers for introset lookup for ",
-                          S);
+          // tag lookup
+          if(dht.nodes->FindCloseExcluding(N, peer, exclude))
+          {
+            dht.LookupTag(N, From, T, peer);
+            return true;
+          }
         }
       }
       return false;
-    }
+    }  // namespace dht
 
     RelayedFindIntroMessage::~RelayedFindIntroMessage()
     {
@@ -124,7 +160,7 @@ namespace llarp
       const auto introset = dht.GetIntroSetByServiceAddress(S);
       if(introset)
       {
-        replies.push_back(new GotIntroMessage(T, introset));
+        replies.push_back(new GotIntroMessage({*introset}, T));
         return true;
       }
       else

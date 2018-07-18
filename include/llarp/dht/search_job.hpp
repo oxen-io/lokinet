@@ -17,7 +17,7 @@ namespace llarp
     {
       const static uint64_t JobTimeout = 30000;
 
-      typedef std::function< void(const llarp::service::IntroSet*) >
+      typedef std::function< void(const std::set< llarp::service::IntroSet >&) >
           IntroSetHookFunc;
       SearchJob();
       /// for routers
@@ -33,7 +33,7 @@ namespace llarp
       FoundRouter(const llarp_rc* router) const;
 
       void
-      FoundIntro(const llarp::service::IntroSet* introset) const;
+      FoundIntros(const std::set< llarp::service::IntroSet >& introset) const;
 
       void
       Timeout() const;

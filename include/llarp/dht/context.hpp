@@ -45,6 +45,11 @@ namespace llarp
                      bool interative = false, std::set< Key_t > excludes = {});
 
       void
+      LookupTag(const service::Tag& tag, const Key_t& whoasked,
+                uint64_t whoaskedTX, const Key_t& askpeer,
+                bool iterative = false);
+
+      void
       LookupRouterViaJob(llarp_router_lookup_job* job);
 
       void

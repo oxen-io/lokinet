@@ -35,10 +35,11 @@ namespace llarp
     }
 
     void
-    SearchJob::FoundIntro(const llarp::service::IntroSet *introset) const
+    SearchJob::FoundIntros(
+        const std::set< llarp::service::IntroSet > &introsets) const
     {
       if(foundIntroHook)
-        foundIntroHook(introset);
+        foundIntroHook(introsets);
     }
 
     void
@@ -71,7 +72,7 @@ namespace llarp
       }
       else if(foundIntroHook)
       {
-        foundIntroHook(nullptr);
+        foundIntroHook({});
       }
     }
   }  // namespace dht

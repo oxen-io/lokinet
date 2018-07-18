@@ -9,6 +9,7 @@ namespace llarp
     ServiceInfo::ServiceInfo()
     {
       vanity.Zero();
+      m_CachedAddr.Zero();
     }
 
     ServiceInfo::~ServiceInfo()
@@ -52,10 +53,13 @@ namespace llarp
     std::string
     ServiceInfo::Name() const
     {
-      // TODO: caching addr
-      Address addr;
-      CalculateAddress(addr);
-      return addr.ToString();
+      if(m_CachedAddr.IsZero())
+      {
+        Address addr;
+        CalculateAddress(addr);
+        return addr.ToString();
+      }
+      return m_CachedAddr.ToString();
     }
 
     bool
@@ -68,5 +72,12 @@ namespace llarp
                                 0)
           != -1;
     }
+
+    bool
+    ServiceInfo::UpdateAddr()
+    {
+      return CalculateAddress(m_CachedAddr);
+    }
+
   }  // namespace service
 }  // namespace llarp

@@ -17,7 +17,8 @@ namespace llarp
       {
       }
 
-      GotIntroMessage(uint64_t tx, const llarp::service::IntroSet* i = nullptr);
+      GotIntroMessage(const std::set< llarp::service::IntroSet >& results,
+                      uint64_t txid);
 
       ~GotIntroMessage();
 

@@ -20,6 +20,16 @@ namespace llarp
       {
       }
 
+      FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid)
+          : IMessage({}), N(tag), T(txid)
+      {
+      }
+
+      FindIntroMessage(const llarp::service::Address& addr, uint64_t txid)
+          : IMessage({}), S(addr), T(txid)
+      {
+      }
+
       virtual ~FindIntroMessage();
 
       bool

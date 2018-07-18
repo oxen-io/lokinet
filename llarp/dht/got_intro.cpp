@@ -8,13 +8,13 @@ namespace llarp
 {
   namespace dht
   {
-    GotIntroMessage::GotIntroMessage(uint64_t tx,
-                                     const llarp::service::IntroSet *i)
+    GotIntroMessage::GotIntroMessage(
+        const std::set< llarp::service::IntroSet > &results, uint64_t tx)
         : IMessage({}), T(tx)
     {
-      if(i)
+      for(const auto &i : results)
       {
-        I.push_back(*i);
+        I.push_back(i);
       }
     }
 

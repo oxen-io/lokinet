@@ -45,13 +45,6 @@ namespace llarp
       }
     }
 
-    void
-    PathSet::IntroSetPublished()
-    {
-      m_CurrentPublishTX  = 0;
-      m_PublishedIntroSet = true;
-    }
-
     size_t
     PathSet::NumInStatus(PathStatus st) const
     {
@@ -114,21 +107,6 @@ namespace llarp
       return count > 0;
     }
 
-    bool
-    PathSet::ShouldPublishDescriptors() const
-    {
-      if(m_PublishedIntroSet)
-        return m_Introset.I.size() == 0
-            || (m_Introset.HasExpiredIntros() && m_CurrentPublishTX == 0);
-      return true;
-    }
-
-    void
-    PathSet::IntroSetPublishFail()
-    {
-      m_CurrentPublishTX = 0;
-    }
-
     Path*
     PathSet::PickRandomEstablishedPath()
     {
@@ -147,22 +125,6 @@ namespace llarp
       }
       else
         return nullptr;
-    }
-
-    bool
-    PathSet::PublishIntroSet(llarp_router* r)
-    {
-      auto path = PickRandomEstablishedPath();
-      if(path)
-      {
-        m_CurrentPublishTX = rand();
-        llarp::routing::DHTMessage msg;
-        msg.M.push_back(new llarp::dht::PublishIntroMessage(
-            m_Introset, m_CurrentPublishTX));
-        return path->SendRoutingMessage(&msg, r);
-      }
-      else
-        return false;
     }
 
   }  // namespace path

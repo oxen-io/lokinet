@@ -46,6 +46,13 @@ namespace llarp
     }
 
     void
+    Context::LookupTag(const llarp::service::Tag &tag, const Key_t &whoasked,
+                       uint64_t txid, const Key_t &askpeer, bool iterative)
+    {
+      // TODO: implement me
+    }
+
+    void
     Context::LookupRouterRelayed(const Key_t &requester, uint64_t txid,
                                  const Key_t &target, bool recursive,
                                  std::vector< IMessage * > &replies)
@@ -184,12 +191,52 @@ namespace llarp
       return path && path->SendRoutingMessage(&reply, router);
     }
 
+    /// handles replying with a GIM for a lookup
+    struct IntroSetInformJob
+    {
+      Key_t replyNode;
+      uint64_t txid;
+      llarp_router *m_Router;
+      IntroSetInformJob(llarp_router *r, const Key_t &replyTo, uint64_t id)
+          : replyNode(replyTo), txid(id), m_Router(r)
+      {
+      }
+
+      void
+      OnResult(const std::set< llarp::service::IntroSet > &results)
+      {
+        if(replyNode != m_Router->dht->impl.OurKey())
+        {
+          auto msg = new llarp::DHTImmeidateMessage(replyNode);
+          msg->msgs.push_back(new GotIntroMessage(results, txid));
+          m_Router->SendToOrQueue(replyNode, msg);
+        }
+        delete this;
+      }
+    };
+
     void
     Context::LookupIntroSet(const service::Address &addr, const Key_t &whoasked,
                             uint64_t txid, const Key_t &askpeer, bool iterative,
                             std::set< Key_t > excludes)
     {
-      // TODO: implement
+      auto id = ++ids;
+      if(txid == 0)
+        txid = id;
+
+      TXOwner ownerKey;
+      ownerKey.node        = askpeer;
+      ownerKey.txid        = id;
+      IntroSetInformJob *j = new IntroSetInformJob(router, askpeer, id);
+      SearchJob job(
+          whoasked, txid, addr, excludes,
+          std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1));
+      pendingTX[ownerKey] = job;
+
+      auto msg    = new llarp::DHTImmeidateMessage(askpeer);
+      auto dhtmsg = new FindIntroMessage(addr, id);
+      msg->msgs.push_back(dhtmsg);
+      router->SendToOrQueue(askpeer, msg);
     }
 
     void

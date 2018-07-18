@@ -10,6 +10,12 @@ namespace llarp
   {
     struct Endpoint : public llarp_pathbuilder_context
     {
+      /// minimum interval for publishing introsets
+      static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
+          DEFAULT_PATH_LIFETIME / 4;
+
+      static const llarp_time_t INTROSET_PUBLISH_RETRY_INTERVAL = 5000;
+
       Endpoint(const std::string& nickname, llarp_router* r);
       ~Endpoint();
 
@@ -24,6 +30,12 @@ namespace llarp
 
       std::string
       Name() const;
+
+      bool
+      ShouldPublishDescriptors() const;
+
+      bool
+      PublishIntroSet(llarp_router* r);
 
       bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
@@ -85,6 +97,22 @@ namespace llarp
         return true;
       }
 
+     protected:
+      virtual void
+      IntroSetPublishFail();
+      virtual void
+      IntroSetPublished();
+
+      IServiceLookup*
+      GenerateLookupByTag(const Tag& tag);
+
+      void
+      PrefetchServicesByTag(const Tag& tag);
+
+     private:
+      uint64_t
+      GenTXID();
+
      private:
       llarp_router* m_Router;
       std::string m_Keyfile;
@@ -92,6 +120,48 @@ namespace llarp
       Identity m_Identity;
       std::unordered_map< Address, OutboundContext*, Address::Hash >
           m_RemoteSessions;
+      uint64_t m_CurrentPublishTX       = 0;
+      llarp_time_t m_LastPublish        = 0;
+      llarp_time_t m_LastPublishAttempt = 0;
+      /// our introset
+      service::IntroSet m_IntroSet;
+      /// pending remote service lookups
+      std::unordered_map< uint64_t, service::IServiceLookup* > m_PendingLookups;
+      /// hidden service tag
+      Tag m_Tag;
+      /// prefetch descriptors for these hidden service tags
+      std::set< Tag > m_PrefetchTags;
+
+      struct CachedTagResult : public IServiceLookup
+      {
+        const static llarp_time_t TTL = 5000;
+
+        llarp_time_t lastModified = 0;
+        uint64_t pendingTX        = 0;
+        std::set< IntroSet > result;
+        Tag tag;
+
+        CachedTagResult(const Tag& t) : tag(t)
+        {
+        }
+
+        ~CachedTagResult();
+
+        bool
+        ShouldRefresh(llarp_time_t now) const
+        {
+          return result.size() == 0
+              && (now - lastModified >= TTL && pendingTX == 0);
+        }
+
+        llarp::routing::IMessage*
+        BuildRequestMessage();
+
+        bool
+        HandleResponse(const std::set< IntroSet >& results);
+      };
+
+      std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
     };
   }  // namespace service
 }  // namespace llarp

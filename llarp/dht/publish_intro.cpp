@@ -58,7 +58,7 @@ namespace llarp
         return false;
       }
       dht.services->PutNode(I);
-      replies.push_back(new GotIntroMessage(txID, &I));
+      replies.push_back(new GotIntroMessage({I}, txID));
       Key_t peer;
       std::set< Key_t > exclude;
       exclude.insert(From);
