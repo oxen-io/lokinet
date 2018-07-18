@@ -68,9 +68,10 @@ namespace llarp
       bool
       RelayRequestForPath(const llarp::PathID_t& localPath,
                           const IMessage* msg);
-   
-      void 
-      PropagateIntroSetTo(const service::IntroSet & introset, const Key_t & peer, uint64_t S);
+
+      void
+      PropagateIntroSetTo(const service::IntroSet& introset, const Key_t& peer,
+                          uint64_t S);
 
       void
       Init(const Key_t& us, llarp_router* router);

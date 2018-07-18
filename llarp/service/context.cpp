@@ -29,7 +29,6 @@ namespace llarp
       }
     }
 
-
     bool
     Context::AddEndpoint(const Config::section_t &conf)
     {

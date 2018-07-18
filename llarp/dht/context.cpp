@@ -79,17 +79,17 @@ namespace llarp
         delete this;
       }
     };
-    
-    void 
-    Context::PropagateIntroSetTo(const service::IntroSet & introset, const Key_t & peer, uint64_t S)
+
+    void
+    Context::PropagateIntroSetTo(const service::IntroSet &introset,
+                                 const Key_t &peer, uint64_t S)
     {
       llarp::LogInfo("Propagate Introset for ", introset.A, " to ", peer);
-      auto id = ++ids;
+      auto id  = ++ids;
       auto msg = new llarp::DHTImmeidateMessage(peer);
       msg->msgs.push_back(new PublishIntroMessage(introset, id, S));
       router->SendToOrQueue(peer, msg);
     }
-
 
     void
     Context::LookupTagForPath(const service::Tag &tag, uint64_t txid,
