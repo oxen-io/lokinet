@@ -38,10 +38,8 @@ namespace llarp
           switch(*strbuf.base)
           {
             case 'F':
-              if(dec->relayed)
-                dec->msg = new RelayedFindIntroMessage();
-              else
-                dec->msg = new FindIntroMessage(dec->From);
+              dec->msg = new FindIntroMessage(dec->From, dec->relayed);
+              break;
             case 'R':
               if(dec->relayed)
                 dec->msg = new RelayedFindRouterMessage(dec->From);

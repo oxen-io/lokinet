@@ -61,6 +61,8 @@
     "*.ipp": "cpp",
     "csignal": "cpp",
     "future": "cpp",
-    "map": "cpp"
+    "map": "cpp",
+    "vector": "cpp",
+    "new": "cpp"
   }
 }

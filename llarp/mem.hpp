@@ -22,16 +22,32 @@ namespace llarp
     }
   }
 
-  template < typename T >
+  template < typename T, size_t align = 8 >
   void
-  dumphex_buffer(T buff)
+  DumpBuffer(const T &buff)
   {
     size_t idx = 0;
     printf("buffer of size %ld\n", buff.sz);
     while(idx < buff.sz)
     {
-      printf("%.2x ", buff.base[idx++]);
-      if(idx % 8 == 0)
+      if(buff.base + idx == buff.cur)
+      {
+        printf("%c[1;31m", 27);
+      }
+      else
+      {
+        printf("%c[0m", 27);
+      }
+      if(buff.base[idx])
+      {
+        printf("%c", buff.base[idx]);
+      }
+      else
+      {
+        printf("X");
+      }
+      ++idx;
+      if(idx % align == 0)
         printf("\n");
     }
   }

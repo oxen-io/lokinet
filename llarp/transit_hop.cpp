@@ -84,7 +84,7 @@ namespace llarp
       r->crypto.xchacha20(buf, pathKey, Y);
       if(info.upstream == RouterID(r->pubkey()))
       {
-        return m_MessageParser.ParseMessageBuffer(buf, this, r);
+        return m_MessageParser.ParseMessageBuffer(buf, this, info.rxID, r);
       }
       else
       {

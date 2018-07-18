@@ -22,6 +22,7 @@ namespace llarp
       if(k == "tag")
       {
         m_Tag = v;
+        llarp::LogInfo("Setting tag to ", v);
       }
       if(k == "prefetch-tag")
       {
@@ -73,7 +74,11 @@ namespace llarp
           auto path = PickRandomEstablishedPath();
           if(path)
           {
-            itr->second.SendRequestViaPath(path, m_Router);
+            itr->second.pendingTX = GenTXID();
+            if(itr->second.SendRequestViaPath(path, m_Router))
+            {
+              m_PendingLookups[itr->second.pendingTX] = &itr->second;
+            }
           }
         }
       }
@@ -101,16 +106,17 @@ namespace llarp
       std::set< IntroSet > remote;
       for(const auto& introset : msg->I)
       {
-        if(!introset.VerifySignature(crypto))
-        {
-          llarp::LogWarn(
-              "invalid signature in got intro message for service endpoint ",
-              Name());
-          IntroSetPublishFail();
-          return false;
-        }
         if(m_Identity.pub == introset.A)
         {
+          if(!introset.VerifySignature(crypto))
+          {
+            llarp::LogWarn(
+                "invalid signature in got intro message for service endpoint ",
+                Name());
+
+            IntroSetPublishFail();
+            return false;
+          }
           llarp::LogInfo(
               "got introset publish confirmation for hidden service endpoint ",
               Name());
@@ -163,6 +169,8 @@ namespace llarp
     Endpoint::CachedTagResult::HandleResponse(
         const std::set< IntroSet >& results)
     {
+      llarp::LogInfo("Tag result for ", tag.ToString(), " got ", results.size(),
+                     " results");
       return true;
     }
 
@@ -190,10 +198,9 @@ namespace llarp
           llarp::LogInfo(Name(), " publishing introset");
           return true;
         }
-        return false;
       }
-      else
-        return false;
+      llarp::LogWarn(Name(), " publish introset failed");
+      return false;
     }
 
     void

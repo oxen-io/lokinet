@@ -28,6 +28,9 @@ namespace llarp
       SearchJob(const Key_t& requester, uint64_t requesterTX,
                 const Key_t& target, const std::set< Key_t >& excludes,
                 IntroSetHookFunc found);
+      // for introsets via tag
+      SearchJob(const Key_t& requester, uint64_t requseterTX,
+                IntroSetHookFunc found);
 
       void
       FoundRouter(const llarp_rc* router) const;

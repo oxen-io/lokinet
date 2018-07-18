@@ -22,11 +22,10 @@ namespace llarp
 
     struct InboundMessageParser
     {
-      llarp::PathID_t from;
       InboundMessageParser();
       bool
       ParseMessageBuffer(llarp_buffer_t buf, IMessageHandler* handler,
-                         llarp_router* r);
+                         const PathID_t& from, llarp_router* r);
 
      private:
       static bool

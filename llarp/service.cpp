@@ -60,7 +60,7 @@ namespace llarp
       // end introduction list
 
       // topic tag
-      if(topic.ToString().size())
+      if(!topic.IsZero())
       {
         if(!BEncodeWriteDictEntry("n", topic, buf))
           return false;

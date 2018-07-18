@@ -88,7 +88,8 @@ def main():
             config.write(f)
         config = CP()
         config['test-service'] = {
-
+            'tag': 'test',
+            'prefetch-tag': "test"
         }
         with open(hiddenservice, 'w') as f:
             config.write(f)

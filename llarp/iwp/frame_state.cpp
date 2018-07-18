@@ -324,9 +324,9 @@ bool
 frame_state::next_frame(llarp_buffer_t *buf)
 {
   auto left = sendqueue.size();
-  llarp::LogDebug("next frame, ", left, " frames left in send queue");
   if(left)
   {
+    llarp::LogDebug("next frame, ", left, " frames left in send queue");
     auto &send = sendqueue.front();
     buf->base  = send->data();
     buf->cur   = send->data();

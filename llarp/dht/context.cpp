@@ -45,11 +45,67 @@ namespace llarp
       ctx->ScheduleCleanupTimer();
     }
 
-    void
-    Context::LookupTag(const llarp::service::Tag &tag, const Key_t &whoasked,
-                       uint64_t txid, const Key_t &askpeer, bool iterative)
+    struct PathTagLookupJob
     {
-      // TODO: implement me
+      uint64_t txid;
+      PathID_t pathID;
+      llarp_router *m_router;
+      PathTagLookupJob(llarp_router *r, const PathID_t &localpath, uint64_t tx)
+          : txid(tx), pathID(localpath), m_router(r)
+      {
+      }
+
+      void
+      OnResult(const std::set< service::IntroSet > &results)
+      {
+        auto path =
+            m_router->paths.GetByUpstream(m_router->dht->impl.OurKey(), pathID);
+        if(path)
+        {
+          llarp::routing::DHTMessage msg;
+          msg.M.push_back(new llarp::dht::GotIntroMessage(results, txid));
+          path->SendRoutingMessage(&msg, m_router);
+        }
+        else
+        {
+          llarp::LogWarn("no local path for reply on PathTagLookupJob pathid=",
+                         pathID);
+        }
+        delete this;
+      }
+    };
+
+    void
+    Context::LookupTagForPath(const service::Tag &tag, uint64_t txid,
+                              const llarp::PathID_t &path, const Key_t &askpeer)
+    {
+      auto id = ++ids;
+      TXOwner ownerKey;
+      ownerKey.node       = askpeer;
+      ownerKey.txid       = id;
+      PathTagLookupJob *j = new PathTagLookupJob(router, path, txid);
+      SearchJob job(
+          OurKey(), txid,
+          std::bind(&PathTagLookupJob::OnResult, j, std::placeholders::_1));
+      pendingTX[ownerKey] = job;
+
+      auto msg          = new llarp::DHTImmeidateMessage(askpeer);
+      auto dhtmsg       = new FindIntroMessage(tag, id);
+      dhtmsg->iterative = true;
+      msg->msgs.push_back(dhtmsg);
+      router->SendToOrQueue(askpeer, msg);
+    }
+
+    std::set< service::IntroSet >
+    Context::FindIntroSetsWithTag(const service::Tag &tag)
+    {
+      std::set< service::IntroSet > found;
+      for(const auto &itr : services->nodes)
+      {
+        if(itr.second.introset.topic == tag)
+          found.insert(itr.second.introset);
+      }
+      return found;
     }
 
     void
@@ -214,6 +270,29 @@ namespace llarp
         delete this;
       }
     };
+
+    void
+    Context::LookupTag(const llarp::service::Tag &tag, const Key_t &whoasked,
+                       uint64_t txid, const Key_t &askpeer, bool iterative)
+    {
+      auto id = ++ids;
+      if(txid == 0)
+        txid = id;
+
+      TXOwner ownerKey;
+      ownerKey.node        = askpeer;
+      ownerKey.txid        = id;
+      IntroSetInformJob *j = new IntroSetInformJob(router, askpeer, id);
+      SearchJob job(
+          whoasked, txid,
+          std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1));
+      pendingTX[ownerKey] = job;
+
+      auto msg    = new llarp::DHTImmeidateMessage(askpeer);
+      auto dhtmsg = new FindIntroMessage(tag, id);
+      msg->msgs.push_back(dhtmsg);
+      router->SendToOrQueue(askpeer, msg);
+    }
 
     void
     Context::LookupIntroSet(const service::Address &addr, const Key_t &whoasked,

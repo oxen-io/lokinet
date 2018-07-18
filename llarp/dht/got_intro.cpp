@@ -28,13 +28,15 @@ namespace llarp
     {
       auto &dht   = ctx->impl;
       auto crypto = &dht.router->crypto;
-      if(I.size() == 1)
+      std::set< service::IntroSet > introsets;
+
+      for(const auto &introset : I)
       {
-        const auto &introset = I.front();
         if(!introset.VerifySignature(crypto))
         {
           llarp::LogWarn(
-              "Invalid introset signature while handling direct GotIntro from ",
+              "Invalid introset signature while handling direct GotIntro "
+              "from ",
               From);
           return false;
         }
@@ -42,15 +44,25 @@ namespace llarp
         if(!introset.A.CalculateAddress(addr))
         {
           llarp::LogWarn(
-              "failed to calculate hidden service address for direct GotIntro "
+              "failed to calculate hidden service address for direct "
+              "GotIntro "
               "message from ",
               From);
           return false;
         }
-        // TODO: inform any pending tx
+        introsets.insert(introset);
+      }
+      auto pending = dht.FindPendingTX(From, T);
+      if(pending)
+      {
+        pending->FoundIntros(introsets);
+        dht.RemovePendingLookup(From, T);
         return true;
       }
-      return false;
+      else
+      {
+        return false;
+      }
     }
 
     bool

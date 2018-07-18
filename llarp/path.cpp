@@ -296,8 +296,6 @@ namespace llarp
       intro.router = hops[h->numHops - 1].router.pubkey;
       // TODO: or is it rxid ?
       intro.pathID = hops[h->numHops - 1].txID;
-
-      m_InboundMessageParser.from = RXID();
     }
 
     void
@@ -384,7 +382,7 @@ namespace llarp
     bool
     Path::HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r)
     {
-      if(!m_InboundMessageParser.ParseMessageBuffer(buf, this, r))
+      if(!m_InboundMessageParser.ParseMessageBuffer(buf, this, RXID(), r))
       {
         llarp::LogWarn("Failed to parse inbound routing message");
         return false;

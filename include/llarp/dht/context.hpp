@@ -8,6 +8,7 @@
 #include <llarp/dht/message.hpp>
 #include <llarp/dht/node.hpp>
 #include <llarp/dht/search_job.hpp>
+#include <llarp/service/IntroSet.hpp>
 
 #include <set>
 
@@ -51,6 +52,13 @@ namespace llarp
 
       void
       LookupRouterViaJob(llarp_router_lookup_job* job);
+
+      void
+      LookupTagForPath(const service::Tag& tag, uint64_t txid,
+                       const llarp::PathID_t& path, const Key_t& askpeer);
+
+      std::set< service::IntroSet >
+      FindIntroSetsWithTag(const service::Tag& tag);
 
       void
       LookupRouterRelayed(const Key_t& requester, uint64_t txid,

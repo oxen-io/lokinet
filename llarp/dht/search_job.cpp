@@ -34,6 +34,16 @@ namespace llarp
     {
     }
 
+    SearchJob::SearchJob(const Key_t &asker, uint64_t tx,
+                         IntroSetHookFunc found)
+        : foundIntroHook(found)
+        , started(llarp_time_now_ms())
+        , requester(asker)
+        , requesterTX(tx)
+    {
+      target.Zero();
+    }
+
     void
     SearchJob::FoundIntros(
         const std::set< llarp::service::IntroSet > &introsets) const

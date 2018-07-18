@@ -25,7 +25,8 @@ namespace llarp
         memcpy(data(), str.c_str(), std::min(16UL, str.size()));
       }
 
-      operator llarp::dht::Key_t() const
+      llarp::dht::Key_t
+      Key() const
       {
         llarp::dht::Key_t k;
         crypto_generichash(k, 32, data(), 16, nullptr, 0);

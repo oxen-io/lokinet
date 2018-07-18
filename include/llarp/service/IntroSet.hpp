@@ -33,6 +33,7 @@ namespace llarp
         A       = other.A;
         I       = other.I;
         version = other.version;
+        topic   = other.topic;
         if(W)
           delete W;
         W = other.W;
@@ -59,6 +60,14 @@ namespace llarp
         if(topic.size())
         {
           out << " topic=" << topic;
+        }
+        else
+        {
+          out << " topic=" << i.topic;
+        }
+        if(i.W)
+        {
+          out << " W=" << *i.W;
         }
         return out << " V=" << i.version << " Z=" << i.Z;
       }
