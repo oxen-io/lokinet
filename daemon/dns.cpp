@@ -26,7 +26,7 @@ main(int argc, char *argv[])
   int code = 1;
   llarp::LogInfo("Starting up server");
 
-  //llarp::SetLogLevel(llarp::eLogDebug);
+  //bllarp::SetLogLevel(llarp::eLogDebug);
   
   if (1)
   {
@@ -38,21 +38,23 @@ main(int argc, char *argv[])
     llarp_ev_loop_alloc(&netloop);
     
     // configure main netloop
-    llarp_udp_io udp;
+    llarp_udp_io *udp = new llarp_udp_io;
+
     llarp::Addr p_addr;
     sockaddr_in ip4addr;
     sockaddr *addr = nullptr;
-    addr = (sockaddr *)&ip4addr;
-    llarp::Zero(addr, sizeof(ip4addr));
+    addr = (sockaddr *)&ip4addr; // point addr to ip4addr
+    llarp::Zero(addr, sizeof(sockaddr_in)); // zero out ip4addr
     addr->sa_family = AF_INET;
 
     // FIXME: make configureable
     ip4addr.sin_port = htons(1053);
-    p_addr = *addr;
-    udp.user     = nullptr;
-    udp.recvfrom = &llarp_handle_recvfrom;
+    p_addr = *addr; // copy addr into llarp address
+    udp->user     = nullptr;
+    udp->tick     = nullptr;
+    udp->recvfrom = &llarp_handle_recvfrom;
     llarp::LogDebug("bind DNS Server to ", addr);
-    if(llarp_ev_add_udp(netloop, &udp, p_addr) == -1)
+    if(llarp_ev_add_udp(netloop, udp, p_addr) == -1)
     {
       llarp::LogError("failed to bind to ", addr);
       return false;
