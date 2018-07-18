@@ -27,8 +27,21 @@ namespace llarp
       if(left)
         return;
       Context *ctx = static_cast< Context * >(u);
-
       ctx->CleanupTX();
+      if(ctx->services)
+      {
+        // expire intro sets
+        auto now    = llarp_time_now_ms();
+        auto &nodes = ctx->services->nodes;
+        auto itr    = nodes.begin();
+        while(itr != nodes.end())
+        {
+          if(itr->second.introset.IsExpired(now))
+            itr = nodes.erase(itr);
+          else
+            ++itr;
+        }
+      }
       ctx->ScheduleCleanupTimer();
     }
 

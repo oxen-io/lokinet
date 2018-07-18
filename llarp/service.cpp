@@ -28,6 +28,14 @@ namespace llarp
       if(!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
         return false;
 
+      if(llarp_buffer_eq(key, "w"))
+      {
+        if(W)
+          delete W;
+        W = new PoW();
+        return W->BDecode(buf);
+      }
+
       if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
         return false;
 
@@ -60,13 +68,11 @@ namespace llarp
       // write version
       if(!BEncodeWriteDictInt(buf, "v", version))
         return false;
-      /*
       if(W)
       {
         if(!BEncodeWriteDictEntry("w", *W, buf))
           return false;
       }
-      */
       if(!BEncodeWriteDictEntry("z", Z, buf))
         return false;
 
@@ -81,6 +87,15 @@ namespace llarp
         if(now >= i.expiresAt)
           return true;
       return false;
+    }
+
+    bool
+    IntroSet::IsExpired(llarp_time_t now) const
+    {
+      auto highest = now;
+      for(const auto& i : I)
+        highest = std::max(i.expiresAt, highest);
+      return highest == now;
     }
 
     Introduction::~Introduction()

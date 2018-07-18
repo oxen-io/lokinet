@@ -1,5 +1,6 @@
 #ifndef LLARP_SERVICE_INTROSET_HPP
 #define LLARP_SERVICE_INTROSET_HPP
+#include <llarp/time.h>
 #include <iostream>
 #include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
@@ -58,6 +59,9 @@ namespace llarp
 
       bool
       HasExpiredIntros() const;
+
+      bool
+      IsExpired(llarp_time_t now) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const;

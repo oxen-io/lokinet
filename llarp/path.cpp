@@ -454,9 +454,8 @@ namespace llarp
         llarp::LogInfo("path latency is ", intro.latency, " ms for tx=", TXID(),
                        " rx=", RXID());
         m_LastLatencyTestID = 0;
-        return true;
       }
-      return false;
+      return true;
     }
 
     bool
