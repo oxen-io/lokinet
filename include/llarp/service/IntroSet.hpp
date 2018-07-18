@@ -73,7 +73,7 @@ namespace llarp
       }
 
       bool
-      HasExpiredIntros() const;
+      HasExpiredIntros(llarp_time_t now) const;
 
       bool
       IsExpired(llarp_time_t now) const;

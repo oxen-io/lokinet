@@ -146,29 +146,18 @@ namespace llarp
         }
         else
         {
-          auto introsets = dht.FindIntroSetsWithTag(N);
-          if(introsets.size())
+          if(iterative)
           {
+            auto introsets = dht.FindRandomIntroSetsWithTag(N, 8);
+            // we are iterative and don't have it, reply with a direct reply
             replies.push_back(new GotIntroMessage(introsets, T));
           }
           else
           {
-            if(iterative)
+            // tag lookup
+            if(dht.nodes->FindCloseExcluding(N.Key(), peer, exclude))
             {
-              // we are iterative and don't have it, reply with a direct reply
-              replies.push_back(new GotIntroMessage({}, T));
-            }
-            else
-            {
-              // tag lookup
-              if(dht.nodes->FindCloseExcluding(N.Key(), peer, exclude))
-              {
-                dht.LookupTag(N, From, T, peer);
-              }
-              else
-              {
-                llarp::LogWarn("no closer peers for tag ", N.ToString());
-              }
+              dht.LookupTag(N, From, T, peer, true);
             }
           }
         }

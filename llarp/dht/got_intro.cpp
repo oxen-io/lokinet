@@ -61,6 +61,8 @@ namespace llarp
       }
       else
       {
+        llarp::LogWarn("got GIM from ", From,
+                       " with no previous pending transaction, txid=", T);
         return false;
       }
     }

@@ -67,7 +67,7 @@ transit_message::should_send_ack(llarp_time_t now) const
 {
   if(msginfo.numfrags() == 0)
     return true;
-  return now - lastAck > 250;
+  return now - lastRetransmit > 250;
 }
 
 bool
@@ -123,6 +123,7 @@ transit_message::retransmit_frags(sendqueue_t &queue, byte_t flags)
     body_ptr[8] = frag.first;
     memcpy(body_ptr + 9, frag.second.data(), fragsize);
   }
+  lastRetransmit = llarp_time_now_ms();
 }
 
 bool

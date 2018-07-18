@@ -23,7 +23,7 @@ namespace llarp
       SetOption(const std::string& k, const std::string& v);
 
       void
-      Tick();
+      Tick(llarp_time_t now);
 
       bool
       Start();
@@ -32,7 +32,7 @@ namespace llarp
       Name() const;
 
       bool
-      ShouldPublishDescriptors() const;
+      ShouldPublishDescriptors(llarp_time_t now) const;
 
       bool
       PublishIntroSet(llarp_router* r);
@@ -147,11 +147,14 @@ namespace llarp
 
         ~CachedTagResult();
 
+        void
+        Expire(llarp_time_t now);
+
         bool
         ShouldRefresh(llarp_time_t now) const
         {
           return result.size() == 0
-              && (now - lastModified >= TTL && pendingTX == 0);
+              || (now - lastModified >= TTL && pendingTX == 0);
         }
 
         llarp::routing::IMessage*

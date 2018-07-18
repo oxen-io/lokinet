@@ -58,7 +58,7 @@ namespace llarp
                        const llarp::PathID_t& path, const Key_t& askpeer);
 
       std::set< service::IntroSet >
-      FindIntroSetsWithTag(const service::Tag& tag);
+      FindRandomIntroSetsWithTag(const service::Tag& tag, size_t max = 2);
 
       void
       LookupRouterRelayed(const Key_t& requester, uint64_t txid,
@@ -68,6 +68,9 @@ namespace llarp
       bool
       RelayRequestForPath(const llarp::PathID_t& localPath,
                           const IMessage* msg);
+   
+      void 
+      PropagateIntroSetTo(const service::IntroSet & introset, const Key_t & peer, uint64_t S);
 
       void
       Init(const Key_t& us, llarp_router* router);

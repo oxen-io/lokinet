@@ -10,6 +10,7 @@ namespace llarp
     Endpoint::Endpoint(const std::string& name, llarp_router* r)
         : llarp_pathbuilder_context(r, r->dht, 2), m_Router(r), m_Name(name)
     {
+      m_Tag.Zero();
     }
 
     bool
@@ -32,9 +33,9 @@ namespace llarp
     }
 
     void
-    Endpoint::Tick()
+    Endpoint::Tick(llarp_time_t now)
     {
-      if(ShouldPublishDescriptors())
+      if(ShouldPublishDescriptors(now))
       {
         std::list< Introduction > I;
         if(!GetCurrentIntroductions(I))
@@ -43,9 +44,8 @@ namespace llarp
                          " because we couldn't get any introductions");
           return;
         }
-        m_IntroSet.I = I;
-        if(!m_Tag.IsZero())
-          m_IntroSet.topic = m_Tag;
+        m_IntroSet.I     = I;
+        m_IntroSet.topic = m_Tag;
         if(!m_Identity.SignIntroSet(m_IntroSet, &m_Router->crypto))
         {
           llarp::LogWarn("failed to sign introset for endpoint ", Name());
@@ -60,25 +60,22 @@ namespace llarp
           llarp::LogWarn("failed to publish intro set for endpoint ", Name());
         }
       }
-      auto now = llarp_time_now_ms();
       for(const auto& tag : m_PrefetchTags)
       {
         auto itr = m_PrefetchedTags.find(tag);
         if(itr == m_PrefetchedTags.end())
         {
-          // put cached result will try next iteration
-          m_PrefetchedTags.emplace(tag, tag);
+          itr = m_PrefetchedTags.emplace(tag, tag).first;
         }
-        else if(itr->second.ShouldRefresh(now))
+        itr->second.Expire(now);
+        if(itr->second.ShouldRefresh(now))
         {
           auto path = PickRandomEstablishedPath();
           if(path)
           {
-            itr->second.pendingTX = GenTXID();
-            if(itr->second.SendRequestViaPath(path, m_Router))
-            {
-              m_PendingLookups[itr->second.pendingTX] = &itr->second;
-            }
+            itr->second.pendingTX                   = GenTXID();
+            m_PendingLookups[itr->second.pendingTX] = &itr->second;
+            itr->second.SendRequestViaPath(path, m_Router);
           }
         }
       }
@@ -106,17 +103,18 @@ namespace llarp
       std::set< IntroSet > remote;
       for(const auto& introset : msg->I)
       {
+        if(!introset.VerifySignature(crypto))
+        {
+          llarp::LogInfo("invalid introset signature for ", introset,
+                         " on endpoint ", Name());
+          if(m_Identity.pub == introset.A)
+          {
+            IntroSetPublishFail();
+          }
+          return false;
+        }
         if(m_Identity.pub == introset.A)
         {
-          if(!introset.VerifySignature(crypto))
-          {
-            llarp::LogWarn(
-                "invalid signature in got intro message for service endpoint ",
-                Name());
-
-            IntroSetPublishFail();
-            return false;
-          }
           llarp::LogInfo(
               "got introset publish confirmation for hidden service endpoint ",
               Name());
@@ -167,11 +165,32 @@ namespace llarp
 
     bool
     Endpoint::CachedTagResult::HandleResponse(
-        const std::set< IntroSet >& results)
+        const std::set< IntroSet >& introsets)
     {
-      llarp::LogInfo("Tag result for ", tag.ToString(), " got ", results.size(),
-                     " results");
+      llarp::LogInfo("Tag result for ", tag.ToString(), " got ",
+                     introsets.size(), " results");
+      lastModified = llarp_time_now_ms();
+      pendingTX    = 0;
+      for(const auto& introset : introsets)
+        result.insert(introset);
       return true;
+    }
+
+    void
+    Endpoint::CachedTagResult::Expire(llarp_time_t now)
+    {
+      auto itr = result.begin();
+      while(itr != result.end())
+      {
+        if(itr->HasExpiredIntros(now))
+        {
+          itr = result.erase(itr);
+        }
+        else
+        {
+          ++itr;
+        }
+      }
     }
 
     llarp::routing::IMessage*
@@ -191,7 +210,7 @@ namespace llarp
         m_CurrentPublishTX = rand();
         llarp::routing::DHTMessage msg;
         msg.M.push_back(new llarp::dht::PublishIntroMessage(
-            m_IntroSet, m_CurrentPublishTX));
+            m_IntroSet, m_CurrentPublishTX, 3));
         if(path->SendRoutingMessage(&msg, r))
         {
           m_LastPublishAttempt = llarp_time_now_ms();
@@ -211,10 +230,9 @@ namespace llarp
     }
 
     bool
-    Endpoint::ShouldPublishDescriptors() const
+    Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
-      auto now = llarp_time_now_ms();
-      if(m_IntroSet.HasExpiredIntros())
+      if(m_IntroSet.HasExpiredIntros(now))
         return m_CurrentPublishTX == 0
             && now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
       return m_CurrentPublishTX == 0
@@ -244,6 +262,7 @@ namespace llarp
         const llarp::dht::GotIntroMessage* msg)
     {
       // TODO: implement me
+
       return false;
     }
   }  // namespace service

@@ -20,13 +20,15 @@ namespace llarp
     void
     Context::Tick()
     {
+      auto now = llarp_time_now_ms();
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
-        itr->second->Tick();
+        itr->second->Tick(now);
         ++itr;
       }
     }
+
 
     bool
     Context::AddEndpoint(const Config::section_t &conf)

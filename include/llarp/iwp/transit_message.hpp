@@ -17,7 +17,8 @@ struct transit_message
 
   std::unordered_map< byte_t, fragment_t > frags;
   fragment_t lastfrag;
-  llarp_time_t lastAck = 0;
+  llarp_time_t lastAck        = 0;
+  llarp_time_t lastRetransmit = 0;
   llarp_time_t started;
 
   void

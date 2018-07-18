@@ -80,9 +80,8 @@ namespace llarp
     }
 
     bool
-    IntroSet::HasExpiredIntros() const
+    IntroSet::HasExpiredIntros(llarp_time_t now) const
     {
-      auto now = llarp_time_now_ms();
       for(const auto& i : I)
         if(now >= i.expiresAt)
           return true;

@@ -65,8 +65,9 @@ namespace llarp
 
       /// return true if we should publish a new hidden service descriptor
       virtual bool
-      ShouldPublishDescriptors() const
+      ShouldPublishDescriptors(llarp_time_t now) const
       {
+        (void)now;
         return false;
       }
 

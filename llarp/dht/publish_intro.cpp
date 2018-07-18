@@ -39,6 +39,11 @@ namespace llarp
     PublishIntroMessage::HandleMessage(llarp_dht_context *ctx,
                                        std::vector< IMessage * > &replies) const
     {
+      if(S > 5)
+      {
+        llarp::LogWarn("invalid S value ", S, " > 5");
+        return false;
+      }
       auto &dht = ctx->impl;
       if(!I.VerifySignature(&dht.router->crypto))
       {
@@ -60,16 +65,10 @@ namespace llarp
       dht.services->PutNode(I);
       replies.push_back(new GotIntroMessage({I}, txID));
       Key_t peer;
-      std::set< Key_t > exclude;
-      exclude.insert(From);
-      if(txID && dht.nodes->FindCloseExcluding(addr, peer, exclude))
+      std::set< Key_t > exclude = {dht.OurKey(), From};
+      if(S && dht.nodes->FindCloseExcluding(addr, peer, exclude))
       {
-        // we are not the closest to this address, send it to the closest node
-        llarp::LogInfo("telling closer peer ", peer, " we got an IntroSet for ",
-                       addr);
-        auto msg = new llarp::DHTImmeidateMessage(peer);
-        msg->msgs.push_back(new PublishIntroMessage(I, 0));
-        dht.router->SendToOrQueue(peer, msg);
+        dht.PropagateIntroSetTo(I, peer, S - 1);
       }
       return true;
     }
@@ -85,11 +84,8 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictInt(buf, "R", R))
         return false;
-      if(hasS)
-      {
-        if(!BEncodeWriteDictInt(buf, "S", S))
-          return false;
-      }
+      if(!BEncodeWriteDictInt(buf, "S", S))
+        return false;
       if(!BEncodeWriteDictInt(buf, "T", txID))
         return false;
       if(!BEncodeWriteDictInt(buf, "V", LLARP_PROTO_VERSION))

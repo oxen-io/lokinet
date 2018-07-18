@@ -17,10 +17,11 @@ namespace llarp
       {
       }
 
-      PublishIntroMessage(const llarp::service::IntroSet& i, uint64_t tx)
+      PublishIntroMessage(const llarp::service::IntroSet& i, uint64_t tx, uint64_t s)
           : IMessage({}), txID(tx)
       {
         I = i;
+        S = s;
       }
 
       ~PublishIntroMessage();
