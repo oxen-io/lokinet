@@ -20,7 +20,6 @@ static void
 handle_frame_encrypt(iwp_async_frame *frame)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(frame->user);
-  llarp::LogDebug("tx ", frame->sz);
   if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz) == -1)
     llarp::LogWarn("sendto failed");
 }
@@ -212,18 +211,18 @@ static void
 handle_generated_session_start(iwp_async_session_start *start)
 {
   llarp_link_session *link = static_cast< llarp_link_session * >(start->user);
-  link->working            = false;
+
   if(llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz) == -1)
     llarp::LogError("sendto failed");
   link->EnterState(llarp_link_session::State::eSessionStartSent);
   link->serv->remove_intro_from(link->addr);
+  link->working = false;
 }
 
 static void
 handle_verify_intro(iwp_async_intro *intro)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(intro->user);
-  self->working            = false;
   if(!intro->buf)
   {
     self->serv->remove_intro_from(self->addr);
@@ -490,23 +489,24 @@ handle_verify_session_start(iwp_async_session_start *s)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(s->user);
   self->serv->remove_intro_from(self->addr);
-  self->working = false;
   if(!s->buf)
   {
     // verify fail
     // TODO: remove session?
     llarp::LogWarn("session start verify failed from ", self->addr);
     self->serv->RemoveSessionByAddr(self->addr);
+
     return;
   }
   self->send_LIM();
+  self->working = false;
 }
 
 static void
 handle_introack_generated(iwp_async_introack *i)
 {
   llarp_link_session *link = static_cast< llarp_link_session * >(i->user);
-  link->working            = false;
+
   if(i->buf && link->serv->has_intro_from(link->addr))
   {
     // track it with the server here
@@ -514,6 +514,7 @@ handle_introack_generated(iwp_async_introack *i)
     {
       // duplicate session
       llarp::LogWarn("duplicate session to ", link->addr);
+      link->working = false;
       return;
     }
     link->frame.alive();
@@ -527,6 +528,7 @@ handle_introack_generated(iwp_async_introack *i)
     // failed to generate?
     llarp::LogWarn("failed to generate introack");
   }
+  link->working = false;
 }
 
 static void
@@ -586,7 +588,6 @@ void
 llarp_link_session::handle_frame_decrypt(iwp_async_frame *frame)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(frame->user);
-  llarp::LogDebug("rx ", frame->sz);
   if(frame->success)
   {
     if(self->frame.process(frame->buf + 64, frame->sz - 64))
@@ -701,7 +702,6 @@ llarp_link_session::intro_ack()
   // call
   introack.user = this;
   introack.hook = &handle_introack_generated;
-  working       = true;
   iwp_call_async_gen_introack(iwp, &introack);
 }
 
@@ -738,11 +738,12 @@ llarp_link_session::recv(const void *buf, size_t sz)
     case eLIMSent:
     case eEstablished:
       // session is started
+      /*
       llarp::LogDebug("session recv - ",
                       state == eSessionStartSent ? "startsent" : "",
                       state == eLIMSent ? "limset" : "",
                       state == eEstablished ? "established" : "");
-
+      */
       decrypt_frame(buf, sz);
       break;
     default:

@@ -1,8 +1,10 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
+#include <llarp/codel.hpp>
 #include <llarp/messages/hidden_service.hpp>
 #include <llarp/pathbuilder.hpp>
 #include <llarp/service/Identity.hpp>
+#include <llarp/service/protocol.hpp>
 
 namespace llarp
 {
@@ -24,6 +26,15 @@ namespace llarp
 
       void
       Tick(llarp_time_t now);
+
+      llarp_logic*
+      Logic();
+
+      llarp_crypto*
+      Crypto();
+
+      llarp_threadpool*
+      Worker();
 
       bool
       Start();
@@ -52,6 +63,9 @@ namespace llarp
       bool
       ForgetPathToService(const Address& remote);
 
+      byte_t*
+      GetEncryptionSecretKey();
+
       /// context needed to initiate an outbound hidden service session
       struct OutboundContext : public llarp_pathbuilder_context
       {
@@ -61,12 +75,9 @@ namespace llarp
         /// the remote hidden service's curren intro set
         IntroSet currentIntroSet;
 
-        uint64_t sequenceNo = 0;
-
         /// encrypt asynchronously and send to remote endpoint from us
-        /// returns false if we cannot send yet otherwise returns true
-        bool
-        AsyncEncryptAndSendTo(llarp_buffer_t D);
+        void
+        AsyncEncryptAndSendTo(llarp_buffer_t D, ProtocolType protocol);
 
         /// issues a lookup to find the current intro set of the remote service
         void
@@ -76,7 +87,27 @@ namespace llarp
         HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
        private:
+        void
+        AsyncEncrypt(ProtocolMessage* msg,
+                     std::function< void(ProtocolMessage*) > result);
+        void
+        AsyncGenIntro(ProtocolMessage* msg,
+                      std::function< void(ProtocolMessage*) > result);
+
+        /// handle key exchange done
+        void
+        HandleIntroGen(ProtocolMessage* msg);
+        /// send an encrypted message
+        void
+        SendMessage(ProtocolMessage* msg);
+
+        uint64_t sequenceNo = 0;
         llarp::SharedSecret sharedKey;
+        llarp::util::CoDelQueue< ProtocolMessage*, ProtocolMessage::GetTime,
+                                 ProtocolMessage::PutTime,
+                                 llarp::util::DummyMutex,
+                                 llarp::util::DummyLock >
+            m_SendQueue;
         Endpoint* m_Parent;
       };
 
@@ -134,14 +165,15 @@ namespace llarp
 
       struct CachedTagResult : public IServiceLookup
       {
-        const static llarp_time_t TTL = 5000;
-
-        llarp_time_t lastModified = 0;
-        uint64_t pendingTX        = 0;
+        const static llarp_time_t TTL = 10000;
+        llarp_time_t lastRequest      = 0;
+        llarp_time_t lastModified;
+        uint64_t pendingTX = 0;
         std::set< IntroSet > result;
         Tag tag;
 
-        CachedTagResult(const Tag& t) : tag(t)
+        CachedTagResult(const Tag& t, llarp_time_t now)
+            : lastModified(now), tag(t)
         {
         }
 
@@ -153,8 +185,9 @@ namespace llarp
         bool
         ShouldRefresh(llarp_time_t now) const
         {
-          return result.size() == 0
-              || (now - lastModified >= TTL && pendingTX == 0);
+          if(now <= lastRequest)
+            return false;
+          return (now - lastRequest) > TTL && pendingTX == 0;
         }
 
         llarp::routing::IMessage*

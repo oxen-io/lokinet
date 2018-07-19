@@ -83,7 +83,7 @@ namespace llarp
 
       bool
       GetCurrentIntroductions(
-          std::list< llarp::service::Introduction >& intros) const;
+          std::set< llarp::service::Introduction >& intros) const;
 
       virtual bool
       PublishIntroSet(llarp_router* r)

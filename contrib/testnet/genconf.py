@@ -86,13 +86,12 @@ def main():
         fp = os.path.join(d, 'daemon.ini')
         with open(fp, 'w') as f:
             config.write(f)
-        config = CP()
-        config['test-service'] = {
-            'tag': 'test',
-            'prefetch-tag': "test"
-        }
         with open(hiddenservice, 'w') as f:
-            config.write(f)
+            f.write('''[test-service]
+tag=test
+prefetch-tag=test
+prefetch-tag=nonexist
+''')
 
     with open(args.out, 'w') as f:
         f.write('''[program:svc-node]

@@ -17,6 +17,10 @@ namespace llarp
     PublishIntroMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
     {
       bool read = false;
+      if(llarp_buffer_eq(key, "E"))
+      {
+        return BEncodeReadSet(E, val);
+      }
       if(!BEncodeMaybeReadDictEntry("I", I, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictInt("R", R, read, key, val))
@@ -65,10 +69,11 @@ namespace llarp
       dht.services->PutNode(I);
       replies.push_back(new GotIntroMessage({I}, txID));
       Key_t peer;
-      std::set< Key_t > exclude = {dht.OurKey(), From};
+      std::set< Key_t > exclude = E;
+      exclude.insert(From);
       if(S && dht.nodes->FindCloseExcluding(addr, peer, exclude))
       {
-        dht.PropagateIntroSetTo(I, peer, S - 1);
+        dht.PropagateIntroSetTo(From, txID, I, peer, S - 1);
       }
       return true;
     }
@@ -79,6 +84,8 @@ namespace llarp
       if(!bencode_start_dict(buf))
         return false;
       if(!BEncodeWriteDictMsgType(buf, "A", "I"))
+        return false;
+      if(!BEncodeWriteDictList("E", E, buf))
         return false;
       if(!BEncodeWriteDictEntry("I", I, buf))
         return false;

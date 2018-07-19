@@ -10,7 +10,7 @@ namespace llarp
     /// acknologement to PublishIntroMessage or reply to FinIntroMessage
     struct GotIntroMessage : public IMessage
     {
-      std::list< llarp::service::IntroSet > I;
+      std::set< llarp::service::IntroSet > I;
       uint64_t T = 0;
 
       GotIntroMessage(const Key_t& from) : IMessage(from)

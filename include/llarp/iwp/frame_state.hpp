@@ -1,6 +1,7 @@
 #pragma once
 
-#include "codel.hpp"
+#include <llarp/codel.hpp>
+#include <llarp/crypto.hpp>
 #include "frame_header.hpp"
 #include "inbound_message.hpp"
 #include "llarp/logger.hpp"
@@ -42,7 +43,10 @@ struct frame_state
   uint64_t rxids         = 0;
   uint64_t txids         = 0;
   llarp_time_t lastEvent = 0;
-  std::unordered_map< uint64_t, transit_message * > rx;
+  std::unordered_map< uint64_t, llarp::ShortHash > rxIDs;
+  std::unordered_map< llarp::ShortHash, transit_message *,
+                      llarp::ShortHash::Hash >
+      rx;
   std::unordered_map< uint64_t, transit_message * > tx;
 
   typedef std::queue< sendbuf_t * > sendqueue_t;

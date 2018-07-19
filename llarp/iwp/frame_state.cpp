@@ -5,6 +5,7 @@
 #include "buffer.hpp"
 #include "llarp/crypto.hpp"
 #include "llarp/logger.hpp"
+#include "mem.hpp"
 #include "router.hpp"
 
 llarp_router *
@@ -26,10 +27,12 @@ frame_state::process_inbound_queue()
     // TODO: is this right?
     auto &front = q.top();
     // the items are already sorted anyways so this doesn't really do much
-    nextMsgID = std::max(nextMsgID, front->msgid);
-    if(!Router()->HandleRecvLinkMessage(parent, front->Buffer()))
+    nextMsgID   = std::max(nextMsgID, front->msgid);
+    auto buffer = front->Buffer();
+    if(!Router()->HandleRecvLinkMessage(parent, buffer))
     {
       llarp::LogWarn("failed to process inbound message ", front->msgid);
+      llarp::DumpBuffer< llarp_buffer_t, 128 >(buffer);
     }
     delete front;
     q.pop();
@@ -88,11 +91,13 @@ frame_state::got_xmit(frame_header hdr, size_t sz)
   if(x.flags() & 0x01)
   {
     auto id  = x.msgid();
-    auto itr = rx.find(id);
+    auto h   = x.hash();
+    auto itr = rx.find(h);
     if(itr == rx.end())
     {
-      auto msg = new transit_message(x);
-      rx[id]   = msg;
+      auto msg  = new transit_message(x);
+      rx[h]     = msg;
+      rxIDs[id] = h;
       llarp::LogDebug("got message XMIT with ", (int)x.numfrags(),
                       " fragment"
                       "s");
@@ -106,7 +111,7 @@ frame_state::got_xmit(frame_header hdr, size_t sz)
       return true;
     }
     else
-      llarp::LogWarn("duplicate XMIT msgid=", x.msgid());
+      llarp::LogWarn("duplicate XMIT h=", h);
   }
   else
     llarp::LogWarn("LSB not set on flags");
@@ -137,8 +142,13 @@ frame_state::got_frag(frame_header hdr, size_t sz)
   // TODO: implement little endian
   memcpy(&msgid, hdr.data(), 8);
   memcpy(&fragno, hdr.data() + 8, 1);
-
-  auto itr = rx.find(msgid);
+  auto idItr = rxIDs.find(msgid);
+  if(idItr == rxIDs.end())
+  {
+    llarp::LogWarn("no such RX fragment, msgid=", msgid);
+    return true;
+  }
+  auto itr = rx.find(idItr->second);
   if(itr == rx.end())
   {
     llarp::LogWarn("no such RX fragment, msgid=", msgid);
@@ -186,12 +196,12 @@ frame_state::inbound_frame_complete(uint64_t id)
 {
   bool success = false;
   std::vector< byte_t > msg;
-  auto rxmsg = rx[id];
+  auto rxmsg = rx[rxIDs[id]];
+  llarp::ShortHash digest;
   if(rxmsg->reassemble(msg))
   {
     auto router = Router();
-    llarp::ShortHash digest;
-    auto buf = llarp::Buffer< decltype(msg) >(msg);
+    auto buf    = llarp::Buffer< decltype(msg) >(msg);
     router->crypto.shorthash(digest, buf);
     if(memcmp(digest, rxmsg->msginfo.hash(), 32))
     {
@@ -231,7 +241,8 @@ frame_state::inbound_frame_complete(uint64_t id)
   }
 
   delete rxmsg;
-  rx.erase(id);
+  rxIDs.erase(id);
+  rx.erase(digest);
 
   if(!success)
     llarp::LogWarn("Failed to process inbound message ", id);
@@ -297,7 +308,7 @@ frame_state::process(byte_t *buf, size_t sz)
   switch(hdr.msgtype())
   {
     case eALIV:
-      llarp::LogDebug("iwp_link::frame_state::process Got alive");
+      // llarp::LogDebug("iwp_link::frame_state::process Got alive");
       if(rxflags & eSessionInvalidated)
       {
         txflags |= eSessionInvalidated;

@@ -70,7 +70,8 @@ namespace llarp
                           const IMessage* msg);
 
       void
-      PropagateIntroSetTo(const service::IntroSet& introset, const Key_t& peer,
+      PropagateIntroSetTo(const Key_t& from, uint64_t fromTX,
+                          const service::IntroSet& introset, const Key_t& peer,
                           uint64_t S);
 
       void

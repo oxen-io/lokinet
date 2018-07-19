@@ -90,7 +90,7 @@ namespace llarp
 
     bool
     PathSet::GetCurrentIntroductions(
-        std::list< llarp::service::Introduction >& intros) const
+        std::set< llarp::service::Introduction >& intros) const
     {
       intros.clear();
       size_t count = 0;
@@ -99,7 +99,7 @@ namespace llarp
       {
         if(itr->second->IsReady())
         {
-          intros.push_back(itr->second->intro);
+          intros.insert(itr->second->intro);
           ++count;
         }
         ++itr;

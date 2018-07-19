@@ -4,6 +4,8 @@
 #include <llarp/bencode.h>
 #include <llarp/logger.hpp>
 
+#include <set>
+
 namespace llarp
 {
   inline bool
@@ -131,6 +133,31 @@ namespace llarp
     return true;
   }
 
+  template < typename T >
+  bool
+  BEncodeReadSet(std::set< T >& result, llarp_buffer_t* buf)
+  {
+    if(*buf->cur != 'l')  // ensure is a list
+      return false;
+
+    buf->cur++;
+    while(llarp_buffer_size_left(*buf) && *buf->cur != 'e')
+    {
+      T item;
+      if(!item.BDecode(buf))
+        return false;
+      result.insert(item);
+      /*
+      if(!result.insert(item).second)
+        return false;
+      */
+    }
+    if(*buf->cur != 'e')  // make sure we're at a list end
+      return false;
+    buf->cur++;
+    return true;
+  }
+
   template < typename List_t >
   bool
   BEncodeWriteDictList(const char* k, List_t& list, llarp_buffer_t* buf)
@@ -150,7 +177,7 @@ namespace llarp
     virtual bool
     BEncode(llarp_buffer_t* buf) const = 0;
 
-    bool
+    virtual bool
     BDecode(llarp_buffer_t* buf)
     {
       dict_reader r;

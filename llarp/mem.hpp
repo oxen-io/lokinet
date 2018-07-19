@@ -2,7 +2,8 @@
 #define LLARP_MEM_HPP
 #include <llarp/buffer.h>
 #include <llarp/mem.h>
-#include <stdio.h>
+#include <cctype>
+#include <cstdio>
 
 namespace llarp
 {
@@ -36,9 +37,9 @@ namespace llarp
       }
       else
       {
-        printf("%c[0m", 27);
+        printf("%c[0;0m", 27);
       }
-      if(buff.base[idx])
+      if(std::isprint(buff.base[idx]))
       {
         printf("%c", buff.base[idx]);
       }

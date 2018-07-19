@@ -68,6 +68,14 @@ namespace llarp
       CalculateAddress(byte_t* buf) const;
 
       bool
+      BDecode(llarp_buffer_t* buf)
+      {
+        if(!IBEncodeMessage::BDecode(buf))
+          return false;
+        return CalculateAddress(m_CachedAddr);
+      }
+
+      bool
       BEncode(llarp_buffer_t* buf) const;
 
       bool

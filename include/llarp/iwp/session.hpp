@@ -1,7 +1,7 @@
 #pragma once
 
 #include <atomic>
-#include "codel.hpp"
+#include <llarp/codel.hpp>
 #include "frame_state.hpp"
 #include "llarp/buffer.h"
 #include "llarp/crypto.hpp"

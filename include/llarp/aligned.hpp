@@ -159,6 +159,15 @@ namespace llarp
       return true;
     }
 
+    struct Hash
+    {
+      size_t
+      operator()(const AlignedBuffer< sz >& buf) const
+      {
+        return *buf.data_l();
+      }
+    };
+
    protected:
     union {
       byte_t b[sz];

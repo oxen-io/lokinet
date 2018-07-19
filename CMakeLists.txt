@@ -243,6 +243,7 @@ set(LIB_SRC
   llarp/service/context.cpp
   llarp/service/endpoint.cpp
   llarp/service/lookup.cpp
+  llarp/service/protocol.cpp
   llarp/service/tag.cpp
   llarp/service/info.cpp
   ${LIBTUNTAP_SRC}

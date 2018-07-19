@@ -9,6 +9,7 @@ namespace llarp
     struct PublishIntroMessage : public IMessage
     {
       llarp::service::IntroSet I;
+      std::set< Key_t > E;
       uint64_t R    = 0;
       uint64_t S    = 0;
       uint64_t txID = 0;
@@ -18,8 +19,8 @@ namespace llarp
       }
 
       PublishIntroMessage(const llarp::service::IntroSet& i, uint64_t tx,
-                          uint64_t s)
-          : IMessage({}), txID(tx)
+                          uint64_t s, const std::set< Key_t >& exclude = {})
+          : IMessage({}), E(exclude), txID(tx)
       {
         I = i;
         S = s;

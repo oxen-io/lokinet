@@ -9,7 +9,7 @@
 #include <llarp/service/Intro.hpp>
 #include <llarp/service/tag.hpp>
 
-#include <list>
+#include <set>
 
 namespace llarp
 {
@@ -20,7 +20,7 @@ namespace llarp
     struct IntroSet : public llarp::IBEncodeMessage
     {
       ServiceInfo A;
-      std::list< Introduction > I;
+      std::set< Introduction > I;
       Tag topic;
       llarp::PoW* W = nullptr;
       llarp::Signature Z;
@@ -44,7 +44,7 @@ namespace llarp
       bool
       operator<(const IntroSet& other) const
       {
-        return A < other.A || topic < other.topic;
+        return A < other.A;
       }
 
       friend std::ostream&

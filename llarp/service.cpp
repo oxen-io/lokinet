@@ -22,7 +22,7 @@ namespace llarp
 
       if(llarp_buffer_eq(key, "i"))
       {
-        return BEncodeReadList(I, buf);
+        return BEncodeReadSet(I, buf);
       }
 
       if(!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))

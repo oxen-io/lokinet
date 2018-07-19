@@ -10,12 +10,8 @@ namespace llarp
   {
     GotIntroMessage::GotIntroMessage(
         const std::set< llarp::service::IntroSet > &results, uint64_t tx)
-        : IMessage({}), T(tx)
+        : IMessage({}), I(results), T(tx)
     {
-      for(const auto &i : results)
-      {
-        I.push_back(i);
-      }
     }
 
     GotIntroMessage::~GotIntroMessage()
@@ -86,7 +82,7 @@ namespace llarp
     {
       if(llarp_buffer_eq(key, "I"))
       {
-        return BEncodeReadList(I, buf);
+        return BEncodeReadSet(I, buf);
       }
       bool read = false;
       if(!BEncodeMaybeReadDictInt("T", T, read, key, buf))
