@@ -10,7 +10,7 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp_router* r)
-        : llarp_pathbuilder_context(r, r->dht, 2), m_Router(r), m_Name(name)
+        : llarp_pathbuilder_context(r, r->dht, 2, 4), m_Router(r), m_Name(name)
     {
       m_Tag.Zero();
     }
@@ -55,8 +55,8 @@ namespace llarp
         else
         {
           llarp::LogWarn("PathAlignJob timed out");
-          delete this;
         }
+        delete this;
       }
     };
 
@@ -295,6 +295,29 @@ namespace llarp
       llarp::LogInfo(Name(), " IntroSet publish confirmed");
     }
 
+    struct HiddenServiceAddressLookup : public IServiceLookup
+    {
+      Endpoint* endpoint;
+      HiddenServiceAddressLookup(Endpoint* parent) : endpoint(parent)
+      {
+      }
+
+      bool
+      HandleResponse(const std::set< IntroSet >& results)
+      {
+        if(results.size() == 0)
+        {
+          auto itr = results.begin();
+          endpoint->PutNewOutboundContext(*itr);
+        }
+        else
+        {
+          // TODO: retry request?
+        }
+        return true;
+      }
+    };
+
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
                                   llarp_time_t timeoutMS)
@@ -303,10 +326,14 @@ namespace llarp
       return false;
     }
 
-    Endpoint::OutboundContext::OutboundContext(Endpoint* parent)
-        : llarp_pathbuilder_context(parent->m_Router, parent->m_Router->dht, 2)
+    Endpoint::OutboundContext::OutboundContext(const IntroSet& intro,
+                                               Endpoint* parent)
+        : llarp_pathbuilder_context(parent->m_Router, parent->m_Router->dht, 2,
+                                    4)
+        , currentIntroSet(intro)
         , m_SendQueue(parent->Name() + "::outbound_queue")
         , m_Parent(parent)
+
     {
     }
 
@@ -318,8 +345,23 @@ namespace llarp
     Endpoint::OutboundContext::HandleGotIntroMessage(
         const llarp::dht::GotIntroMessage* msg)
     {
-      // TODO: implement me
-
+      auto crypto = m_Parent->Crypto();
+      if(msg->I.size() == 1)
+      {
+        // found intro set
+        auto itr = msg->I.begin();
+        if(itr->VerifySignature(crypto) && currentIntroSet.A == itr->A)
+        {
+          currentIntroSet = *itr;
+          return true;
+        }
+        else
+        {
+          llarp::LogError("Signature Error for intro set ", *itr);
+          return false;
+        }
+      }
+      llarp::LogError("Bad number of intro sets in response");
       return false;
     }
 
@@ -389,6 +431,43 @@ namespace llarp
     {
       // TODO: delete msg
       // TODO: implement me
+    }
+
+    bool
+    Endpoint::OutboundContext::SelectHop(llarp_nodedb* db, llarp_rc* prev,
+                                         llarp_rc* cur, size_t hop)
+    {
+      // TODO: don't hard code
+      if(hop == 3)
+      {
+        llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
+        Introduction chosen;
+        // pick intro set with lowest latency
+        for(const auto& intro : currentIntroSet.I)
+        {
+          if(intro.latency < lowest)
+          {
+            chosen = intro;
+            lowest = intro.latency;
+          }
+        }
+        auto localcopy = llarp_nodedb_get_rc(db, chosen.router);
+        if(localcopy)
+        {
+          llarp_rc_copy(cur, localcopy);
+          return true;
+        }
+        else
+        {
+          // we don't have it?
+          llarp::LogError(
+              "cannot build aligned path, don't have router for introduction ",
+              chosen);
+          return false;
+        }
+      }
+      else
+        return llarp_pathbuilder_context::SelectHop(db, prev, cur, hop);
     }
 
     void

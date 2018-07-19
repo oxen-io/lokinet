@@ -69,7 +69,7 @@ namespace llarp
       /// context needed to initiate an outbound hidden service session
       struct OutboundContext : public llarp_pathbuilder_context
       {
-        OutboundContext(Endpoint* parent);
+        OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
 
         /// the remote hidden service's curren intro set
@@ -82,6 +82,9 @@ namespace llarp
         /// issues a lookup to find the current intro set of the remote service
         void
         UpdateIntroSet();
+
+        bool
+        SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
 
         bool
         HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
@@ -128,6 +131,9 @@ namespace llarp
         return true;
       }
 
+      void
+      PutNewOutboundContext(const IntroSet& introset);
+
      protected:
       virtual void
       IntroSetPublishFail();
@@ -156,7 +162,7 @@ namespace llarp
       llarp_time_t m_LastPublishAttempt = 0;
       /// our introset
       service::IntroSet m_IntroSet;
-      /// pending remote service lookups
+      /// pending remote service lookups by id
       std::unordered_map< uint64_t, service::IServiceLookup* > m_PendingLookups;
       /// hidden service tag
       Tag m_Tag;

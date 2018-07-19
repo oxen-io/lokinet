@@ -91,6 +91,18 @@ namespace llarp
         return false;
       }
 
+      virtual bool
+      SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur,
+                size_t hop) = 0;
+
+      static void
+      SelectHopCallback(void* user, llarp_nodedb* db, llarp_rc* prev,
+                        llarp_rc* cur, size_t hopno)
+      {
+        PathSet* self = static_cast< PathSet* >(user);
+        self->SelectHop(db, prev, cur, hopno);
+      }
+
      private:
       typedef std::pair< RouterID, PathID_t > PathInfo_t;
       typedef std::map< PathInfo_t, Path* > PathMap_t;

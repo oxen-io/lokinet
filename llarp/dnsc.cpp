@@ -231,7 +231,7 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp,
     return;
   }
   // it's corrupt by here...
-  dns_request *server_request = (dns_request *)request->user;
+  // dns_request *server_request = (dns_request *)request->user;
 
   // unsigned char buffer[DNC_BUF_SIZE];
   unsigned char *buffer = (unsigned char *)buf;
@@ -418,14 +418,14 @@ llarp_dns_resolve(dns_client_request *request)
   struct sockaddr_in addr;
   // int socket;
   ssize_t ret;
-  socklen_t size;
+  // socklen_t size;
   // unsigned char tempBuf[3];
 
   memset(&addr, 0, sizeof(addr));
   addr.sin_family      = AF_INET;
   addr.sin_addr.s_addr = inet_addr(SERVER);
   addr.sin_port        = htons(PORT);
-  size                 = sizeof(addr);
+  // size                 = sizeof(addr);
 
   llarp_udp_io *udp = (llarp_udp_io *)request->sock;
   // llarp::LogDebug("dns client set to use ");
@@ -442,7 +442,7 @@ llarp_dns_resolve(dns_client_request *request)
     llarp::LogWarn("Error Sending Request");
     return false;
   }
-  dns_request *test = (dns_request *)request->user;
+  // dns_request *test = (dns_request *)request->user;
 
   // printf("Sent\n");
   llarp::LogInfo("Request sent, awaiting response");

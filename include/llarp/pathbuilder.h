@@ -20,7 +20,8 @@ struct llarp_pathbuilder_context;
 /// alloc
 struct llarp_pathbuilder_context*
 llarp_pathbuilder_context_new(struct llarp_router* router,
-                              struct llarp_dht_context* dht, size_t numpaths);
+                              struct llarp_dht_context* dht, size_t numpaths,
+                              size_t defaultNumHops);
 /// dealloc
 void
 llarp_pathbuilder_context_free(struct llarp_pathbuilder_context* ctx);
@@ -30,9 +31,9 @@ struct llarp_pathbuild_job;
 
 /// response callback
 typedef void (*llarp_pathbuilder_hook)(struct llarp_pathbuild_job*);
-// select hop function (nodedb, prevhop, result, hopnnumber) called in logic
-// thread
-typedef void (*llarp_pathbuilder_select_hop_func)(struct llarp_nodedb*,
+// select hop function (user, nodedb, prevhop, result, hopnnumber) called in
+// logic thread
+typedef void (*llarp_pathbuilder_select_hop_func)(void*, struct llarp_nodedb*,
                                                   struct llarp_rc*,
                                                   struct llarp_rc*, size_t);
 

@@ -156,7 +156,7 @@ namespace llarp
     {
       llarp_rc* rc = &job->hops.hops[idx].router;
       llarp_rc_clear(rc);
-      job->selectHop(job->router->nodedb, prev, rc, idx);
+      job->selectHop(job->user, job->router->nodedb, prev, rc, idx);
       prev = rc;
       ++idx;
     }
@@ -175,10 +175,19 @@ namespace llarp
 }  // namespace llarp
 
 llarp_pathbuilder_context::llarp_pathbuilder_context(
-    llarp_router* p_router, struct llarp_dht_context* p_dht, size_t pathNum)
-    : llarp::path::PathSet(pathNum), router(p_router), dht(p_dht)
+    llarp_router* p_router, struct llarp_dht_context* p_dht, size_t pathNum,
+    size_t hops)
+    : llarp::path::PathSet(pathNum), router(p_router), dht(p_dht), numHops(hops)
 {
   p_router->paths.AddPathBuilder(this);
+}
+
+bool
+llarp_pathbuilder_context::SelectHop(llarp_nodedb* db, llarp_rc* prev,
+                                     llarp_rc* cur, size_t hop)
+{
+  llarp_nodedb_select_random_hop(db, prev, cur, hop);
+  return true;
 }
 
 void
@@ -186,18 +195,19 @@ llarp_pathbuilder_context::BuildOne()
 {
   llarp_pathbuild_job* job = new llarp_pathbuild_job;
   job->context             = this;
-  job->selectHop           = nullptr;
-  job->hops.numHops        = 4;
-  job->user                = nullptr;
+  job->selectHop           = &PathSet::SelectHopCallback;
+  job->hops.numHops        = numHops;
+  job->user                = this;
   job->pathBuildStarted    = [](llarp_pathbuild_job* j) { delete j; };
   llarp_pathbuilder_build_path(job);
 }
 
 struct llarp_pathbuilder_context*
 llarp_pathbuilder_context_new(struct llarp_router* router,
-                              struct llarp_dht_context* dht, size_t sz)
+                              struct llarp_dht_context* dht, size_t sz,
+                              size_t hops)
 {
-  return new llarp_pathbuilder_context(router, dht, sz);
+  return new llarp_pathbuilder_context(router, dht, sz, hops);
 }
 
 void
@@ -214,9 +224,12 @@ llarp_pathbuilder_build_path(struct llarp_pathbuild_job* job)
     llarp::LogError("failed to build path because no context is set in job");
     return;
   }
-  job->router = job->context->router;
   if(job->selectHop == nullptr)
-    job->selectHop = &llarp_nodedb_select_random_hop;
+  {
+    llarp::LogError("No callback provided for hop selection");
+    return;
+  }
+  job->router = job->context->router;
   llarp_logic_queue_job(job->router->logic,
                         {job, &llarp::pathbuilder_start_build});
 }
