@@ -64,7 +64,7 @@ namespace llarp
     PathContext::ForwardLRCM(const RouterID& nextHop,
                              std::deque< EncryptedFrame >& frames)
     {
-      llarp::LogInfo("fowarding LRCM to ", nextHop);
+      llarp::LogDebug("fowarding LRCM to ", nextHop);
       LR_CommitMessage* msg = new LR_CommitMessage;
       while(frames.size())
       {
@@ -226,7 +226,7 @@ namespace llarp
         if(itr->second->Expired(now))
         {
           TransitHop* path = itr->second;
-          llarp::LogInfo("transit path expired ", path->info);
+          llarp::LogDebug("transit path expired ", path->info);
           removePaths.insert(path);
         }
         ++itr;
@@ -335,7 +335,7 @@ namespace llarp
       if(dlt > 5000 && m_LastLatencyTestID == 0)
       {
         llarp::routing::PathLatencyMessage latency;
-        latency.T             = rand();
+        latency.T             = llarp_randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = now;
         SendRoutingMessage(&latency, r);
@@ -432,7 +432,7 @@ namespace llarp
         m_BuiltHook = nullptr;
 
         llarp::routing::PathLatencyMessage latency;
-        latency.T             = rand();
+        latency.T             = llarp_randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = llarp_time_now_ms();
         return SendRoutingMessage(&latency, r);

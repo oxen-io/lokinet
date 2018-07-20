@@ -106,10 +106,10 @@ namespace llarp
 
         uint64_t sequenceNo = 0;
         llarp::SharedSecret sharedKey;
-        llarp::util::CoDelQueue< ProtocolMessage*, ProtocolMessage::GetTime,
-                                 ProtocolMessage::PutTime,
-                                 llarp::util::DummyMutex,
-                                 llarp::util::DummyLock >
+        llarp::util::CoDelQueue<
+            ProtocolMessage*, ProtocolMessage::GetTime,
+            ProtocolMessage::PutTime, ProtocolMessage::Compare,
+            llarp::util::DummyMutex, llarp::util::DummyLock >
             m_SendQueue;
         Endpoint* m_Parent;
       };

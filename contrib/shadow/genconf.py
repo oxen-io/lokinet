@@ -71,6 +71,7 @@ def makeSVCNode(settings, name, id, port):
 
 def genconf(settings, outf):
     root = etree.Element('shadow')
+    root.attrib["environment"] = 'LLARP_SHADOW=1'
     topology = etree.SubElement(root, 'topology')
     topology.attrib['path'] = getSetting(settings, 'topology', os.path.join(
         shadowRoot, 'share', 'topology.graphml.xml'))

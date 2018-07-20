@@ -159,3 +159,11 @@ llarp_crypto_libsodium_init(struct llarp_crypto *c)
   c->randbytes(&seed, sizeof(seed));
   srand(seed);
 }
+
+uint64_t
+llarp_randint()
+{
+  uint64_t i;
+  randombytes((byte_t *)&i, sizeof(i));
+  return i;
+}

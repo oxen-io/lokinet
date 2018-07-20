@@ -117,13 +117,15 @@ struct llarp_link_session
   uint32_t frames            = 0;
   std::atomic< bool > working;
 
-  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime >
+  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime,
+                           FrameCompareTime >
       outboundFrames;
   /*
   std::mutex m_EncryptedFramesMutex;
   std::queue< iwp_async_frame > encryptedFrames;
   */
-  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime >
+  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime,
+                           FrameCompareTime >
       decryptedFrames;
 
   uint32_t pump_send_timer_id = 0;
@@ -133,8 +135,6 @@ struct llarp_link_session
   iwp_async_intro intro;
   iwp_async_introack introack;
   iwp_async_session_start start;
-  // frame_state frame;
-  bool started_inbound_codel = false;
 
   byte_t token[32];
   byte_t workbuf[MAX_PAD + 128];

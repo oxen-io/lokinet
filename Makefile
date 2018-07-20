@@ -11,13 +11,18 @@ CXX ?= c++
 TARGETS = lokinet
 SIGS = $(TARGETS:=.sig)
 
+
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
 SHADOW_CONFIG=$(REPO)/shadow.config.xml
 SHADOW_PLUGIN=$(REPO)/libshadow-plugin-llarp.so
 SHADOW_LOG=$(REPO)/shadow.log.txt
 
-TESTNET_ROOT=$(REPO)/testnet_tmp
+SHADOW_SRC ?= $(HOME)/git/shadow
+SHADOW_PARSE ?= python $(SHADOW_SRC)/src/tools/parse-shadow.py - -m 0 --packet-data
+SHADOW_PLOT ?= python $(SHADOW_SRC)/src/tools/plot-shadow.py -d $(REPO) LokiNET -c $(SHADOW_CONFIG) -r 10000 -e '.*'
+
+TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 
@@ -63,9 +68,14 @@ shadow-build: shadow-configure
 	ninja clean
 	ninja
 
-shadow: shadow-build
+shadow-run: shadow-build
 	python3 contrib/shadow/genconf.py $(SHADOW_CONFIG)
-	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) &> $(SHADOW_LOG)"
+	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) | $(SHADOW_PARSE)"
+
+shadow-plot: shadow-run
+	$(SHADOW_PLOT)
+
+shadow: shadow-plot
 
 testnet-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)

@@ -249,21 +249,21 @@ namespace llarp
       if(self->record.work
          && self->record.work->IsValid(self->context->Crypto()->shorthash))
       {
-        llarp::LogInfo("LRCM extended lifetime by ",
-                       self->record.work->extendedLifetime, " seconds for ",
-                       info);
+        llarp::LogDebug("LRCM extended lifetime by ",
+                        self->record.work->extendedLifetime, " seconds for ",
+                        info);
         self->hop->lifetime += 1000 * self->record.work->extendedLifetime;
       }
       else if(self->record.lifetime < 600 && self->record.lifetime > 10)
       {
         self->hop->lifetime = self->record.lifetime;
-        llarp::LogInfo("LRCM short lifespan set to ", self->hop->lifetime,
-                       " seconds for ", info);
+        llarp::LogDebug("LRCM short lifespan set to ", self->hop->lifetime,
+                        " seconds for ", info);
       }
 
       // TODO: check if we really want to accept it
       self->hop->started = llarp_time_now_ms();
-      llarp::LogInfo("Accepted ", self->hop->info);
+      llarp::LogDebug("Accepted ", self->hop->info);
       self->context->PutTransitHop(self->hop);
 
       size_t sz = self->frames.front().size();
@@ -277,7 +277,7 @@ namespace llarp
       if(self->context->HopIsUs(info.upstream))
       {
         // we are the farthest hop
-        llarp::LogInfo("We are the farthest hop for ", info);
+        llarp::LogDebug("We are the farthest hop for ", info);
         // send a LRAM down the path
         llarp_logic_queue_job(self->context->Logic(), {self, &SendPathConfirm});
       }

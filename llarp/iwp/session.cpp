@@ -424,6 +424,7 @@ llarp_link_session::TickLogic()
     q.pop();
   }
   frame.process_inbound_queue();
+  frame.retransmit(now);
   pump();
 }
 
@@ -453,15 +454,9 @@ llarp_link_session::Tick(llarp_time_t now)
     if(now - lastKeepalive > KEEP_ALIVE_INTERVAL)
       send_keepalive(this);
   }
-
-  // pump frame state
   if(state == eEstablished)
   {
-    // llarp::LogDebug("Tick - pumping and retransmitting because we're
-    // eEstablished");
-
-    frame.retransmit(now);
-    pump();
+    this->now = now;
   }
   return false;
 }
@@ -558,7 +553,7 @@ llarp_link_session::introduce(uint8_t *pub)
   llarp::LogDebug("session introduce");
   memcpy(remote, pub, PUBKEYSIZE);
   intro.buf   = workbuf;
-  size_t w0sz = (rand() % MAX_PAD);
+  size_t w0sz = (llarp_randint() % MAX_PAD);
   intro.sz    = (32 * 3) + w0sz;
   // randomize w0
   if(w0sz)
@@ -576,8 +571,6 @@ llarp_link_session::introduce(uint8_t *pub)
   intro.user = this;
   intro.hook = &handle_generated_intro;
   working    = true;
-  llarp::LogInfo("try introduce to transport adddress ",
-                 llarp::RouterID(remote));
   iwp_call_async_gen_intro(iwp, &intro);
   // start introduce timer
   establish_job_id = llarp_logic_call_later(
@@ -630,7 +623,7 @@ void
 llarp_link_session::session_start()
 {
   llarp::LogInfo("session gen start");
-  size_t w2sz = rand() % MAX_PAD;
+  size_t w2sz = llarp_randint() % MAX_PAD;
   start.buf   = workbuf;
   start.sz    = w2sz + (32 * 3);
   start.nonce = workbuf + 32;
@@ -682,7 +675,7 @@ llarp_link_session::intro_ack()
     return;
   }
   llarp::LogDebug("session introack");
-  uint16_t w1sz = rand() % MAX_PAD;
+  uint16_t w1sz = llarp_randint() % MAX_PAD;
   introack.buf  = workbuf;
   introack.sz   = (32 * 3) + w1sz;
   // randomize padding
@@ -785,7 +778,7 @@ llarp_link_session::encrypt_frame_async_send(const void *buf, size_t sz)
   iwp_async_frame *frame = alloc_frame(nullptr, sz + 64);
   memcpy(frame->buf + 64, buf, sz);
   // maybe add upto 128 random bytes to the packet
-  auto padding = rand() % MAX_PAD;
+  auto padding = llarp_randint() % MAX_PAD;
   if(padding)
     crypto->randbytes(frame->buf + 64 + sz, padding);
   frame->sz += padding;
@@ -802,10 +795,15 @@ llarp_link_session::pump()
   bool flush = false;
   now        = llarp_time_now_ms();
   llarp_buffer_t buf;
-  while(frame.next_frame(&buf))
+  std::queue< sendbuf_t * > q;
+  frame.sendqueue.Process(q);
+  while(q.size())
   {
+    auto &front = q.front();
+    buf         = front->Buffer();
     encrypt_frame_async_send(buf.base, buf.sz);
-    frame.pop_next_frame();
+    delete front;
+    q.pop();
     flush = true;
   }
   if(flush)

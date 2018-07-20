@@ -121,7 +121,7 @@ namespace llarp
       auto sz = established.size();
       if(sz)
       {
-        return established[rand() % sz];
+        return established[llarp_randint() % sz];
       }
       else
         return nullptr;

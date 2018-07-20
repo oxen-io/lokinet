@@ -2,6 +2,7 @@
 
 #include "llarp/types.h"
 #include "sendbuf.hpp"
+#include "sendqueue.hpp"
 #include "xmit.hpp"
 
 #include <bitset>

@@ -51,6 +51,8 @@ namespace llarp
       if(idx % align == 0)
         printf("\n");
     }
+    printf("\n");
+    fflush(stdout);
   }
 
 }  // namespace llarp

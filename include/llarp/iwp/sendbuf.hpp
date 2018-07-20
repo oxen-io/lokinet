@@ -1,7 +1,7 @@
 #pragma once
 
-#include "llarp/buffer.h"
-
+#include <llarp/buffer.h>
+#include <llarp/time.h>
 #include <queue>
 
 struct sendbuf_t
@@ -19,6 +19,8 @@ struct sendbuf_t
 
   size_t sz;
 
+  byte_t priority = 255;
+
   size_t
   size() const
   {
@@ -31,8 +33,45 @@ struct sendbuf_t
     return _buf;
   }
 
+  llarp_buffer_t
+  Buffer()
+  {
+    llarp_buffer_t buf;
+    buf.base = _buf;
+    buf.sz   = sz;
+    buf.cur  = buf.base;
+    return buf;
+  }
+
+  struct GetTime
+  {
+    llarp_time_t
+    operator()(const sendbuf_t *buf) const
+    {
+      return buf->timestamp;
+    }
+  };
+
+  struct PutTime
+  {
+    void
+    operator()(sendbuf_t *&buf) const
+    {
+      buf->timestamp = llarp_time_now_ms();
+    }
+  };
+
+  struct Compare
+  {
+    bool
+    operator()(const sendbuf_t *left, const sendbuf_t *right) const
+    {
+      return left->priority < right->priority;
+    }
+  };
+
+  llarp_time_t timestamp = 0;
+
  private:
   byte_t *_buf = nullptr;
 };
-
-typedef std::queue< sendbuf_t * > sendqueue_t;

@@ -36,7 +36,7 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
     intro.expiresAt = 1000;
     intro.router.Randomize();
     intro.pathID.Randomize();
-    I.I.insert(intro);
+    I.I.push_back(intro);
   }
   ASSERT_TRUE(ident.SignIntroSet(I, Crypto()));
   ASSERT_TRUE(I.VerifySignature(Crypto()));

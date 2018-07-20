@@ -8,6 +8,7 @@
 #include "llarp/time.h"
 #include "llarp/types.h"
 #include "sendbuf.hpp"
+#include "sendqueue.hpp"
 #include "transit_message.hpp"
 
 #include <queue>
@@ -49,10 +50,12 @@ struct frame_state
       rx;
   std::unordered_map< uint64_t, transit_message * > tx;
 
-  typedef std::queue< sendbuf_t * > sendqueue_t;
+  // typedef std::queue< sendbuf_t * > sendqueue_t;
+
   typedef llarp::util::CoDelQueue<
       InboundMessage *, InboundMessage::GetTime, InboundMessage::PutTime,
-      llarp::util::DummyMutex, llarp::util::DummyLock >
+      InboundMessage::OrderCompare, llarp::util::DummyMutex,
+      llarp::util::DummyLock >
       recvqueue_t;
 
   llarp_link_session *parent = nullptr;
@@ -62,7 +65,9 @@ struct frame_state
   uint64_t nextMsgID = 0;
 
   frame_state(llarp_link_session *session)
-      : parent(session), recvqueue("iwp_inbound_message")
+      : parent(session)
+      , sendqueue("iwp_outbound_message")
+      , recvqueue("iwp_inbound_message")
   {
   }
 

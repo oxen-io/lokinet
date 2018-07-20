@@ -9,7 +9,7 @@ namespace llarp
   namespace dht
   {
     GotIntroMessage::GotIntroMessage(
-        const std::set< llarp::service::IntroSet > &results, uint64_t tx)
+        const std::vector< llarp::service::IntroSet > &results, uint64_t tx)
         : IMessage({}), I(results), T(tx)
     {
     }
@@ -24,7 +24,6 @@ namespace llarp
     {
       auto &dht   = ctx->impl;
       auto crypto = &dht.router->crypto;
-      std::set< service::IntroSet > introsets;
 
       for(const auto &introset : I)
       {
@@ -36,22 +35,11 @@ namespace llarp
               From);
           return false;
         }
-        llarp::dht::Key_t addr;
-        if(!introset.A.CalculateAddress(addr))
-        {
-          llarp::LogWarn(
-              "failed to calculate hidden service address for direct "
-              "GotIntro "
-              "message from ",
-              From);
-          return false;
-        }
-        introsets.insert(introset);
       }
       auto pending = dht.FindPendingTX(From, T);
       if(pending)
       {
-        pending->FoundIntros(introsets);
+        pending->FoundIntros(I);
         dht.RemovePendingLookup(From, T);
         return true;
       }
@@ -82,7 +70,7 @@ namespace llarp
     {
       if(llarp_buffer_eq(key, "I"))
       {
-        return BEncodeReadSet(I, buf);
+        return BEncodeReadList(I, buf);
       }
       bool read = false;
       if(!BEncodeMaybeReadDictInt("T", T, read, key, buf))

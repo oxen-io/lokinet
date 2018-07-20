@@ -46,7 +46,7 @@ namespace llarp
 
     void
     SearchJob::FoundIntros(
-        const std::set< llarp::service::IntroSet > &introsets) const
+        const std::vector< llarp::service::IntroSet > &introsets) const
     {
       if(foundIntroHook)
         foundIntroHook(introsets);

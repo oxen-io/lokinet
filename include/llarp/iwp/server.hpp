@@ -46,7 +46,7 @@ struct llarp_link
 
   SessionMap_t m_Connected;
   mtx_t m_Connected_Mutex;
-  bool pumpingLogic = false;
+  std::atomic< bool > pumpingLogic;
 
   typedef std::unordered_map< llarp::Addr, llarp_link_session *,
                               llarp::addrhash >
@@ -65,6 +65,7 @@ struct llarp_link
   {
     strncpy(keyfile, args.keyfile, sizeof(keyfile));
     iwp = llarp_async_iwp_new(crypto, logic, worker);
+    pumpingLogic.store(false);
   }
 
   ~llarp_link()
@@ -126,6 +127,20 @@ struct llarp_link
     }
     for(const auto &addr : remove)
       RemoveSessionByAddr(addr);
+
+    {
+      lock_t lock(m_PendingSessions_Mutex);
+      auto itr = m_PendingSessions.begin();
+      while(itr != m_PendingSessions.end())
+      {
+        if(itr->second->timedout(now))
+        {
+          itr = m_PendingSessions.erase(itr);
+        }
+        else
+          ++itr;
+      }
+    }
   }
 
   static bool

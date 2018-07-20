@@ -4,7 +4,8 @@ namespace llarp
 {
   namespace service
   {
-    ProtocolMessage::ProtocolMessage(ProtocolType t) : proto(t)
+    ProtocolMessage::ProtocolMessage(ProtocolType t, uint64_t seqno)
+        : proto(t), sequenceNum(seqno)
     {
     }
 

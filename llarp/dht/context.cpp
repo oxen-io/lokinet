@@ -2,6 +2,7 @@
 #include <llarp/dht/messages/gotrouter.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/dht_immediate.hpp>
+#include <vector>
 #include "router.hpp"
 
 namespace llarp
@@ -57,7 +58,7 @@ namespace llarp
       }
 
       void
-      OnResult(const std::set< service::IntroSet > &results)
+      OnResult(const std::vector< service::IntroSet > &results)
       {
         auto path =
             m_router->paths.GetByUpstream(m_router->dht->impl.OurKey(), pathID);
@@ -68,7 +69,13 @@ namespace llarp
             localtags.insert(introset);
           }
           llarp::routing::DHTMessage msg;
-          msg.M.push_back(new llarp::dht::GotIntroMessage(localtags, txid));
+          auto sz = localtags.size();
+          std::vector< service::IntroSet > intros(sz);
+          for(const auto &i : localtags)
+          {
+            intros[--sz] = i;
+          }
+          msg.M.push_back(new llarp::dht::GotIntroMessage(intros, txid));
           path->SendRoutingMessage(&msg, m_router);
         }
         else
@@ -92,7 +99,8 @@ namespace llarp
       TXOwner ownerKey;
       ownerKey.node = peer;
       ownerKey.txid = id;
-      SearchJob job(from, txid, [](const std::set< service::IntroSet > &) {});
+      SearchJob job(from, txid,
+                    [](const std::vector< service::IntroSet > &) {});
       pendingTX[ownerKey] = job;
       auto msg            = new llarp::DHTImmeidateMessage(peer);
       msg->msgs.push_back(new PublishIntroMessage(introset, id, S));
@@ -130,7 +138,7 @@ namespace llarp
 
       auto itr = nodes.begin();
       // start at random middle point
-      auto start = rand() % nodes.size();
+      auto start = llarp_randint() % nodes.size();
       std::advance(itr, start);
       auto end = itr;
       while(itr != nodes.end())
@@ -308,7 +316,7 @@ namespace llarp
       }
 
       void
-      OnResult(const std::set< llarp::service::IntroSet > &results)
+      OnResult(const std::vector< llarp::service::IntroSet > &results)
       {
         if(replyNode != m_Router->dht->impl.OurKey())
         {

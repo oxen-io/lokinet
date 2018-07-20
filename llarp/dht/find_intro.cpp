@@ -148,7 +148,9 @@ namespace llarp
         {
           if(iterative)
           {
-            auto introsets = dht.FindRandomIntroSetsWithTag(N, 8);
+            std::vector< service::IntroSet > introsets;
+            for(const auto& introset : dht.FindRandomIntroSetsWithTag(N, 8))
+              introsets.push_back(introset);
             // we are iterative and don't have it, reply with a direct reply
             replies.push_back(new GotIntroMessage(introsets, T));
           }

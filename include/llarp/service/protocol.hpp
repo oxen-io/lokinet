@@ -17,12 +17,13 @@ namespace llarp
 
     struct ProtocolMessage : public llarp::IBEncodeMessage
     {
-      ProtocolMessage(ProtocolType t);
+      ProtocolMessage(ProtocolType t, uint64_t seqno);
       ~ProtocolMessage();
       ProtocolType proto;
       llarp_time_t queued = 0;
       std::vector< byte_t > payload;
       llarp::KeyExchangeNonce N;
+      uint64_t sequenceNum;
 
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
@@ -31,6 +32,16 @@ namespace llarp
 
       void
       PutBuffer(llarp_buffer_t payload);
+
+      struct Compare
+      {
+        bool
+        operator()(const ProtocolMessage* left,
+                   const ProtocolMessage* right) const
+        {
+          return left->sequenceNum < right->sequenceNum;
+        }
+      };
 
       struct GetTime
       {

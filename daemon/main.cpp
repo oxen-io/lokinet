@@ -3,6 +3,7 @@
 #include <llarp/logger.h>
 #include <signal.h>
 #include <sys/param.h>  // for MIN
+#include <string>
 
 struct llarp_main *ctx = 0;
 
@@ -13,13 +14,15 @@ handle_signal(int sig)
     llarp_main_signal(ctx, sig);
 }
 
-#ifndef TESTNET
-#define TESTNET 0
-#endif
-
 int
 main(int argc, char *argv[])
 {
+  bool multiThreaded          = true;
+  const char *singleThreadVar = getenv("LLARP_SHADOW");
+  if(singleThreadVar && std::string(singleThreadVar) == "1")
+  {
+    multiThreaded = false;
+  }
   const char *conffname = "daemon.ini";
   int c;
   while(1)
@@ -65,13 +68,13 @@ main(int argc, char *argv[])
     }
   }
 
-  ctx      = llarp_main_init(conffname, !TESTNET);
+  ctx      = llarp_main_init(conffname, multiThreaded);
   int code = 1;
   if(ctx)
   {
     signal(SIGINT, handle_signal);
     code = llarp_main_run(ctx);
-    // llarp_main_free(ctx);
+    llarp_main_free(ctx);
   }
   return code;
 }

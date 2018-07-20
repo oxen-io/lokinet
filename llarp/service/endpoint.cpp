@@ -73,7 +73,9 @@ namespace llarp
                          " because we couldn't get any introductions");
           return;
         }
-        m_IntroSet.I     = I;
+        m_IntroSet.I.clear();
+        for(const auto& intro : I)
+          m_IntroSet.I.push_back(intro);
         m_IntroSet.topic = m_Tag;
         if(!m_Identity.SignIntroSet(m_IntroSet, &m_Router->crypto))
         {
@@ -125,7 +127,7 @@ namespace llarp
     uint64_t
     Endpoint::GenTXID()
     {
-      uint64_t txid = rand();
+      uint64_t txid = llarp_randint();
       while(m_PendingLookups.find(txid) != m_PendingLookups.end())
         ++txid;
       return txid;
@@ -172,7 +174,7 @@ namespace llarp
       {
         llarp::LogWarn("invalid lookup response for hidden service endpoint ",
                        Name(), " txid=", msg->T);
-        return false;
+        return true;
       }
       bool result = itr->second->HandleResponse(remote);
       m_PendingLookups.erase(itr);
@@ -255,7 +257,7 @@ namespace llarp
       auto path = PickRandomEstablishedPath();
       if(path)
       {
-        m_CurrentPublishTX = rand();
+        m_CurrentPublishTX = llarp_randint();
         llarp::routing::DHTMessage msg;
         msg.M.push_back(new llarp::dht::PublishIntroMessage(
             m_IntroSet, m_CurrentPublishTX, 3));
@@ -371,7 +373,7 @@ namespace llarp
     {
       auto sendto =
           std::bind(&OutboundContext::SendMessage, this, std::placeholders::_1);
-      ProtocolMessage* msg = new ProtocolMessage(protocol);
+      ProtocolMessage* msg = new ProtocolMessage(protocol, sequenceNo);
       msg->PutBuffer(data);
       if(sequenceNo)
       {

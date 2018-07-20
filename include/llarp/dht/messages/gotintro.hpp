@@ -2,6 +2,7 @@
 #define LLARP_DHT_MESSAGES_GOT_INTRO_HPP
 #include <llarp/dht/message.hpp>
 #include <llarp/service/IntroSet.hpp>
+#include <vector>
 
 namespace llarp
 {
@@ -10,14 +11,14 @@ namespace llarp
     /// acknologement to PublishIntroMessage or reply to FinIntroMessage
     struct GotIntroMessage : public IMessage
     {
-      std::set< llarp::service::IntroSet > I;
+      std::vector< llarp::service::IntroSet > I;
       uint64_t T = 0;
 
       GotIntroMessage(const Key_t& from) : IMessage(from)
       {
       }
 
-      GotIntroMessage(const std::set< llarp::service::IntroSet >& results,
+      GotIntroMessage(const std::vector< llarp::service::IntroSet >& results,
                       uint64_t txid);
 
       ~GotIntroMessage();

@@ -9,7 +9,7 @@
 #include <llarp/service/Intro.hpp>
 #include <llarp/service/tag.hpp>
 
-#include <set>
+#include <vector>
 
 namespace llarp
 {
@@ -20,7 +20,7 @@ namespace llarp
     struct IntroSet : public llarp::IBEncodeMessage
     {
       ServiceInfo A;
-      std::set< Introduction > I;
+      std::vector< Introduction > I;
       Tag topic;
       llarp::PoW* W = nullptr;
       llarp::Signature Z;
