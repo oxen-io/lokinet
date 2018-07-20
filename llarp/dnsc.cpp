@@ -289,7 +289,7 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp, const struct sockaddr 
     for (unsigned int i = 0 ; i < sz ; i++) {
       if (buffer[i] == 0xC0 && buffer[i+3] == 0x01) {
         ip++; i += 12; /* ! += buf[i+1]; */
-        llarp::LogDebug(" %u.%u.%u.%u\n", buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
+        //llarp::LogInfo(" %u.%u.%u.%u\n", buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
         
         /*
         struct sockaddr *g_addr = new sockaddr;
@@ -301,13 +301,19 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp, const struct sockaddr 
         unsigned char * ip;
 
         //have ip point to s_addr
-        //ip = (unsigned char *) &(addr->s_addr);
-        ip = (unsigned char *) &request->result;
+        request->result.sa_family = AF_INET;
+        request->result.sa_len = sizeof(in_addr);
+        struct in_addr *addr = &((struct sockaddr_in *) &request->result)->sin_addr;
+
+        //ip = (unsigned char *) &request->result.sa_data;
+        ip = (unsigned char *) &(addr->s_addr);
 
         ip[0]=buffer[i + 0];
         ip[1]=buffer[i + 1];
         ip[2]=buffer[i + 2];
         ip[3]=buffer[i + 3];
+        llarp::Addr test(request->result);
+        llarp::LogInfo("IP Address ", test);
 
         //return g_addr;
         //request->result = g_addr;
@@ -409,6 +415,7 @@ llarp_dnsc_bind(struct llarp_ev_loop *netloop, struct dns_client_request *reques
   struct sockaddr_in srcaddr;
   srcaddr.sin_addr.s_addr = inet_addr("0.0.0.0");
   srcaddr.sin_family = AF_INET;
+  // we'll need to make sure the port is >1024 if not root
 
   request->udp.user      = request;
   request->udp.recvfrom  = &llarp_handle_dnsclient_recvfrom;
