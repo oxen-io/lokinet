@@ -20,6 +20,10 @@ handle_signal(int sig)
   done = true;
 }
 
+// FIXME: make configurable
+#define SERVER "8.8.8.8"
+#define PORT 53
+
 int
 main(int argc, char *argv[])
 {
@@ -37,6 +41,14 @@ main(int argc, char *argv[])
     
     llarp_ev_loop_alloc(&netloop);
     
+    struct dnsd_context dnsd;
+    if (!llarp_dnsd_init(&dnsd, netloop, "*", 53, SERVER, PORT))
+    {
+      llarp::LogError("Couldnt init dns daemon");
+      return 0;
+    }
+    
+    /*
     // configure main netloop
     llarp_udp_io *udp = new llarp_udp_io;
 
@@ -59,9 +71,13 @@ main(int argc, char *argv[])
       llarp::LogError("failed to bind to ", addr);
       return false;
     }
-
+    */
+    
+    //struct dnsc_context *dns_clinet_context = new dnsc_context;
+    //llarp_dnsc_init(dns_clinet_context, netloop, SERVER, PORT);
+    
     // singlethreaded
-    if (0)
+    if (1)
     {
       llarp::LogInfo("singlethread start");
       worker = llarp_init_same_process_threadpool();
@@ -76,7 +92,7 @@ main(int argc, char *argv[])
       worker = llarp_init_threadpool(2, "llarp-worker");
       logic = llarp_init_logic();
       auto netio = netloop;
-      int num_nethreads   = 1;
+      int num_nethreads   = 2;
       std::vector< std::thread > netio_threads;
       while(num_nethreads--)
       {

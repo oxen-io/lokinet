@@ -1,4 +1,6 @@
+// why dnsd? what do you need from that?
 #include "dnsd.hpp"
+#include "buffer.hpp"
 
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -12,6 +14,7 @@
 
 #include "logger.hpp"
 #include <llarp/dns.h>
+#include "net.hpp" // for llarp::Addr
 #include "net.hpp" // for llarp::Addr
 
 // FIXME: make configurable
@@ -204,33 +207,18 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp, const struct sockaddr 
     // we can't call back the hook
     return;
   }
+  llarp_dnsc_unbind(request);
 
-  /*
-  // it's corrupt by here...
-  dns_request *server_request = (dns_request *)request->user;
-  llarp::LogInfo("server request ", server_request);
-  //llarp::LogInfo("server request hook ", server_request->hook);
-  llarp::Addr testAddr(*server_request->from);
-  llarp::LogInfo("HERE => server request addr ", testAddr, " ", server_request->from);
-
-  llarp::Addr testAddr2(saddr);
-  llarp::LogInfo("HERE => client request addr ", testAddr2, " ", &saddr);
-  */
-
-  //unsigned char buffer[DNC_BUF_SIZE];
-  unsigned char *buffer = (unsigned char *)buf;
-
-  //memset(&buffer, 0, DNC_BUF_SIZE);
-  //ret = recvfrom(sockfd, buffer, BUF_SIZE, 0, (struct sockaddr*)&addr, &size);
   if (sz < 0) {
     llarp::LogWarn("Error Receiving DNS Client Response");
-    request->resolved(request, nullptr);
+    request->resolved(request);
     return;
   }
 
-  //hexdump("received packet", &buffer, ret);
+  unsigned char *castBuf = (unsigned char *)buf;
+  auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
 
-  llarp_ev_close_udp(udp);
+  //hexdump("received packet", &buffer, ret);
 
   uint16_t QDCOUNT; //No. of items in Question Section
   uint16_t ANCOUNT; //No. of items in Answer Section
@@ -246,7 +234,7 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp, const struct sockaddr 
   int length;
 
   struct dns_query *dnsQuery = &request->query;
-
+  
   rcode = (buffer[3] & 0x0F);
 
   //tempBuf[0] = buffer[4];
@@ -280,17 +268,15 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp, const struct sockaddr 
   MSGID = (uint16_t) buffer[0] * 0x100 + buffer[1];
   //llarp::LogDebug("answer msg id: %u\n", MSGID);
 
-
-
   if (rcode == 2) {
     llarp::LogWarn("nameserver %s returned SERVFAIL:\n", SERVER);
     llarp::LogWarn("  the name server was unable to process this query due to a\n  problem with the name server.\n");
-    request->resolved(request, nullptr);
+    request->resolved(request);
     return;
   } else if (rcode == 3) {
     llarp::LogWarn("nameserver %s returned NXDOMAIN for %s:\n", SERVER, dnsQuery->url);
     llarp::LogWarn("  the domain name referenced in the query does not exist\n");
-    request->resolved(request, nullptr);
+    request->resolved(request);
     return;
   }
 
@@ -304,14 +290,19 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp, const struct sockaddr 
       if (buffer[i] == 0xC0 && buffer[i+3] == 0x01) {
         ip++; i += 12; /* ! += buf[i+1]; */
         llarp::LogDebug(" %u.%u.%u.%u\n", buffer[i], buffer[i+1], buffer[i+2], buffer[i+3]);
+        
+        /*
         struct sockaddr *g_addr = new sockaddr;
         g_addr->sa_family = AF_INET;
         g_addr->sa_len = sizeof(in_addr);
         struct in_addr *addr = &((struct sockaddr_in *)g_addr)->sin_addr;
+        */
+
         unsigned char * ip;
 
         //have ip point to s_addr
-        ip = (unsigned char *) &(addr->s_addr);
+        //ip = (unsigned char *) &(addr->s_addr);
+        ip = (unsigned char *) &request->result;
 
         ip[0]=buffer[i + 0];
         ip[1]=buffer[i + 1];
@@ -319,14 +310,16 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp, const struct sockaddr 
         ip[3]=buffer[i + 3];
 
         //return g_addr;
-        request->resolved(request, g_addr);
+        //request->result = g_addr;
+        request->found = true;
+        request->resolved(request);
         return;
       }
     }
 
     if (!ip) {
       llarp::LogWarn("  No IPv4 address found in the DNS response!\n");
-      request->resolved(request, nullptr);
+      request->resolved(request);
       return;
     }
   }
@@ -335,9 +328,7 @@ llarp_handle_dnsclient_recvfrom(struct llarp_udp_io *udp, const struct sockaddr 
 void build_dns_query(struct dns_query *dnsQuery)
 {
   dnsQuery->length  = 12;
-  //dnsQuery->url     = sUrl;
   dnsQuery->reqType = 0x01;
-  // dnsQuery.request  = { 0xDB, 0x42, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
   dnsQuery->request[ 0] = 0xDB;
   dnsQuery->request[ 1] = 0x42;
   dnsQuery->request[ 2] = 0x01;
@@ -372,84 +363,86 @@ void build_dns_query(struct dns_query *dnsQuery)
   dnsQuery->request[dnsQuery->length++] = 0x01;
 }
 
-bool llarp_dns_resolve(dns_client_request *request)
+bool llarp_resolve_host(struct dnsc_context *dnsc, const char *url, resolve_dns_hook_func resolved, void *user)
 {
+  dns_client_request *request = new dns_client_request;
+  request->sock      = (void *)&request->udp;
+  request->user      = user;
+  // configure query
+  request->query.url = strdup(url);
+  request->resolved  = resolved;
+  request->found     = false;
+  
+  // request address holds through the packet recv
+  request->udp.user = request;
+  
+  // finish setting up our query
   struct dns_query *dnsQuery = &request->query;
   build_dns_query(dnsQuery);
-  struct sockaddr_in *addr = new sockaddr_in;
-  //socklen_t size;
-  //unsigned char tempBuf[3];
-
-  memset(addr, 0, sizeof(sockaddr_in));
-  addr->sin_family = AF_INET;
-  addr->sin_addr.s_addr = inet_addr(SERVER);
-  addr->sin_port = htons(PORT);
-  //size = sizeof(addr);
-
-  llarp_udp_io *udp = (llarp_udp_io *)request->sock;
-  //llarp::LogInfo("dns client set to use ");
-
-  //hexdump("sending packet", &dnsQuery.request, dnsQuery.length);
-  //ret = sendto(sockfd, dnsQuery.request, dnsQuery.length, 0, (struct sockaddr*)&addr, size);
-  llarp::LogInfo("sending request");
-  //llarp::LogInfo("client request dest ", addr);
-  ssize_t ret = llarp_ev_udp_sendto(udp, (sockaddr *)addr, dnsQuery->request, dnsQuery->length);
+  
+  // build a socket per request because we're multithreaded and will have many inflight
+  if (!llarp_dnsc_bind(dnsc->netloop, request))
+  {
+    llarp::LogWarn("Error binding");
+    return false;
+  }
+  
+  ssize_t ret = llarp_ev_udp_sendto(&request->udp, dnsc->server, dnsQuery->request, dnsQuery->length);
   if (ret < 0) {
     llarp::LogWarn("Error Sending Request");
     return false;
   }
-  /*
-  dns_request *test = (dns_request *) request->user;
-  llarp::LogInfo("server request from ", test->from);
-  llarp::Addr testAddr(*test->from);
-  llarp::LogInfo("server request addr ", testAddr);
-   */
-
-  //printf("Sent\n");
-  llarp::LogInfo("Request sent, awaiting response");
+  
   return true;
 }
 
-bool llarp_resolve_host(struct llarp_ev_loop *netloop, const char *url, resolve_dns_hook_func resolved, void *user)
+void
+llarp_host_resolved(dns_client_request *request)
 {
-  struct sockaddr_in *s_addr = new sockaddr_in;
-  s_addr->sin_family = AF_INET;
-  s_addr->sin_addr.s_addr = inet_addr("0.0.0.0");
+  delete request;
+}
 
-  llarp_udp_io *udp = new llarp_udp_io;
-  //llarp::LogInfo("creating udp socket ", udp);
-  udp->tick   = nullptr;
-  udp->user   = nullptr;
-  udp->impl   = nullptr;
-  //udp->parent = netloop; // add_udp will do this...
-  //llarp::LogDebug("dns client set to use ");
-  udp->recvfrom = &llarp_handle_dnsclient_recvfrom;
+bool
+llarp_dnsc_bind(struct llarp_ev_loop *netloop, struct dns_client_request *request)
+{
+  // just grab a random open port
+  struct sockaddr_in srcaddr;
+  srcaddr.sin_addr.s_addr = inet_addr("0.0.0.0");
+  srcaddr.sin_family = AF_INET;
 
-  dns_client_request *request = new dns_client_request;
-  //llarp::LogInfo("creating dnsc request ", request);
-  request->sock      = (void *)udp;
-  //llarp::LogInfo("setting server request ", user);
-  //dns_request *server_request = (dns_request *)user;
-  //llarp::LogInfo("server request ", server_request);
-  //llarp::LogInfo("server request hook ", server_request->hook);
-  //llarp::Addr test(*server_request->from);
-  //llarp::LogInfo("server request addr ", test);
-  request->user      = user;
-  request->query.url = strdup(url);
-  request->resolved  = resolved;
-  
-  // request address holds through the packet recv
-  //llarp::LogInfo("setting udp user ", request);
-  udp->user = request;
-  //llarp::LogInfo("client request src  ", s_addr);
+  request->udp.user      = request;
+  request->udp.recvfrom  = &llarp_handle_dnsclient_recvfrom;
+  request->udp.tick      = nullptr;
 
-  llarp::LogInfo("listening for response on ", udp);
-  if(llarp_ev_add_udp(netloop, udp, (sockaddr *)s_addr) == -1)
-  {
-    llarp::LogError("failed to bind resolver to");
-    return false;
-  }
+  // create new listener for this request
+  return llarp_ev_add_udp(netloop, &request->udp, (const sockaddr *)&srcaddr) != -1;
+}
 
-  llarp_dns_resolve(request);
+// FIXME: drop the bool
+bool
+llarp_dnsc_unbind(struct dns_client_request *request)
+{
+  llarp_ev_close_udp(&request->udp); // stop listening
+  return true;
+}
+
+bool
+llarp_dnsc_init(struct dnsc_context *dnsc, struct llarp_ev_loop *netloop,
+               const char *dnsc_hostname, uint16_t dnsc_port)
+{
+  sockaddr_in *trgaddr = new sockaddr_in;
+  trgaddr->sin_addr.s_addr = inet_addr(dnsc_hostname);
+  trgaddr->sin_port = htons(dnsc_port);
+  trgaddr->sin_family = AF_INET;
+  dnsc->server = (sockaddr *)trgaddr;
+  dnsc->netloop = netloop;
+  return true;
+}
+
+bool
+llarp_dnsc_stop(struct dnsc_context *dnsc)
+{
+  //llarp_ev_close_udp(&dnsc->udp); // stop listening
+  delete (sockaddr_in *)dnsc->server; // deallocation
   return true;
 }

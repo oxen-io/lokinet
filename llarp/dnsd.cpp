@@ -162,7 +162,7 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from, d
   request->hook(request->user, from, buf, out_bytes);
 }
 
-void phase2(dns_client_request *client_request, struct sockaddr *result)
+void handle_dnsc_result(dns_client_request *client_request)
 {
   //llarp::LogInfo("phase2 client ", client_request);
   //writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from, dns_request *request)
@@ -170,7 +170,8 @@ void phase2(dns_client_request *client_request, struct sockaddr *result)
   //llarp::Addr test(*server_request->from);
   //llarp::LogInfo("server request sock ", server_request->from, " is ", test);
   //llarp::LogInfo("phase2 server ", server_request);
-  writesend_dnss_response(result, server_request->from, server_request);
+  writesend_dnss_response(client_request->found ? &client_request->result : nullptr, server_request->from, server_request);
+  llarp_host_resolved(client_request);
 }
 
 void
@@ -216,6 +217,8 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   }
 
   sockaddr *hostRes = nullptr;
+  // FIXME: how can we tell the mode?
+  //struct llarp_udp_io *udp = static_cast<struct llarp_udp_io *>(request->user);
   if (0)
   {
     hostRes = resolveHost(m_qName.c_str());
@@ -230,11 +233,12 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
     //llarp::Addr anIp;
     //llarp::LogInfo("Checking server request ", request);
     struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
+    dnsd_context *dnsd = (dnsd_context *)udp->user;
     //llarp::LogInfo("Server request UDP  ", request->user);
     //llarp::LogInfo("server request hook ", request->hook);
     //llarp::LogInfo("UDP ", udp);
     //hostRes = llarp_resolveHost(udp->parent, m_qName.c_str());
-    llarp_resolve_host(udp->parent, m_qName.c_str(), &phase2, (void *)request);
+    llarp_resolve_host(&dnsd->client, m_qName.c_str(), &handle_dnsc_result, (void *)request);
   }
 }
 
@@ -266,4 +270,28 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
   llarp_dns_request->user = (void *)sockfd;
   llarp_dns_request->hook = &raw_sendto_dns_hook_func;
   handle_recvfrom((char *)buf, sz, saddr, llarp_dns_request);
+}
+
+bool
+llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
+                const char *dnsd_ifname, uint16_t dnsd_port,
+                const char *dnsc_hostname, uint16_t dnsc_port)
+{
+  struct sockaddr_in bindaddr;
+  bindaddr.sin_addr.s_addr = inet_addr("0.0.0.0");
+  bindaddr.sin_family  = AF_INET;
+  bindaddr.sin_port   = htons(dnsd_port);
+  
+  dnsd->udp.user      = dnsd;
+  dnsd->udp.recvfrom  = &llarp_handle_recvfrom;
+  dnsd->udp.tick      = nullptr;
+  
+  // configure dns client
+  if (!llarp_dnsc_init(&dnsd->client, netloop, dnsc_hostname, dnsc_port))
+  {
+    llarp::LogError("Couldnt init dns client");
+    return false;
+  }
+
+  return llarp_ev_add_udp(netloop, &dnsd->udp, (const sockaddr *)&bindaddr) != -1;
 }
