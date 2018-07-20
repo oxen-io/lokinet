@@ -10,6 +10,9 @@
  * dns client/server
  */
 
+#include <mutex>
+typedef std::mutex mtx_t;
+typedef std::lock_guard< mtx_t > lock_t;
 
 // fwd declr
 struct dns_query;
