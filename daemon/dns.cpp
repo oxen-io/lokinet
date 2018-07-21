@@ -42,42 +42,14 @@ main(int argc, char *argv[])
     llarp_ev_loop_alloc(&netloop);
     
     struct dnsd_context dnsd;
-    if (!llarp_dnsd_init(&dnsd, netloop, "*", 53, SERVER, PORT))
+    if (!llarp_dnsd_init(&dnsd, netloop, "*", 1053, SERVER, PORT))
     {
       llarp::LogError("Couldnt init dns daemon");
       return 0;
     }
-    
-    /*
-    // configure main netloop
-    llarp_udp_io *udp = new llarp_udp_io;
-
-    llarp::Addr p_addr;
-    sockaddr_in ip4addr;
-    sockaddr *addr = nullptr;
-    addr = (sockaddr *)&ip4addr; // point addr to ip4addr
-    llarp::Zero(addr, sizeof(sockaddr_in)); // zero out ip4addr
-    addr->sa_family = AF_INET;
-
-    // FIXME: make configureable
-    ip4addr.sin_port = htons(1053);
-    p_addr = *addr; // copy addr into llarp address
-    udp->user     = nullptr;
-    udp->tick     = nullptr;
-    udp->recvfrom = &llarp_handle_recvfrom;
-    llarp::LogDebug("bind DNS Server to ", addr);
-    if(llarp_ev_add_udp(netloop, udp, p_addr) == -1)
-    {
-      llarp::LogError("failed to bind to ", addr);
-      return false;
-    }
-    */
-    
-    //struct dnsc_context *dns_clinet_context = new dnsc_context;
-    //llarp_dnsc_init(dns_clinet_context, netloop, SERVER, PORT);
-    
+        
     // singlethreaded
-    if (1)
+    if (0)
     {
       llarp::LogInfo("singlethread start");
       worker = llarp_init_same_process_threadpool();
@@ -87,12 +59,13 @@ main(int argc, char *argv[])
     }
     else
     {
-      llarp::LogInfo("multithreaded start");
-      // create 2 workers
-      worker = llarp_init_threadpool(2, "llarp-worker");
+      uint num_llarpworkers = 2;
+      uint num_nethreads    = 8;
+      llarp::LogInfo("multithreaded start with ", num_llarpworkers, " llarp-workers and ", num_nethreads, " networkers");
+      // create workers
+      worker = llarp_init_threadpool(num_llarpworkers, "llarp-worker");
       logic = llarp_init_logic();
       auto netio = netloop;
-      int num_nethreads   = 2;
       std::vector< std::thread > netio_threads;
       while(num_nethreads--)
       {

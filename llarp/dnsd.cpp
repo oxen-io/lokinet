@@ -4,12 +4,27 @@
 #include "ev.hpp"
 #include <string>
 
+mtx_t m_dnsd_Mutex;
+mtx_t m_dnsd2_Mutex;
+mtx_t m_dnsd3_Mutex;
+
 int get16bits(const char*& buffer) throw ()
 {
   int value = static_cast<unsigned char> (buffer[0]);
   value = value << 8;
   value += static_cast<unsigned char> (buffer[1]);
   buffer += 2;
+  return value;
+}
+
+// uint32_t
+uint32_t get32bits(const char*& buffer) throw ()
+{
+  uint32_t value = uint32_t((unsigned char)(buffer[0]) << 24 |
+              (unsigned char)(buffer[1]) << 16 |
+              (unsigned char)(buffer[2]) << 8 |
+              (unsigned char)(buffer[3]));
+  buffer += 4;
   return value;
 }
 
@@ -29,23 +44,57 @@ void put32bits(char*& buffer, unsigned long value) throw ()
   buffer += 4;
 }
 
-dns_msg *decode_hdr(const char *buffer)
+dns_msg_header *decode_hdr(const char *buffer)
 {
-  dns_msg *hdr = new dns_msg;
-  hdr->id = get16bits(buffer);
-  uint fields = get16bits(buffer);
-  hdr->qr = fields & 0x8000;
-  hdr->opcode = fields & 0x7800;
-  hdr->aa = fields & 0x0400;
-  hdr->tc = fields & 0x0200;
-  hdr->rd = fields & 0x0100;
-  hdr->ra = fields & 0x8000;
-
+  dns_msg_header *hdr = new dns_msg_header;
+  hdr->id      = get16bits(buffer);
+  uint fields  = get16bits(buffer);
+  //hdr->qr      = fields & 0x8000;
+  hdr->qr      = (fields >> 7)& 0x1;
+  hdr->opcode  = fields & 0x7800;
+  hdr->aa      = fields & 0x0400;
+  hdr->tc      = fields & 0x0200;
+  hdr->rd      = fields & 0x0100;
+  
+  hdr->ra      = fields & 0x8000;
+  // z, ad, cd
+  hdr->rcode   = (buffer[3] & 0x0F);
   hdr->qdCount = get16bits(buffer);
   hdr->anCount = get16bits(buffer);
   hdr->nsCount = get16bits(buffer);
   hdr->arCount = get16bits(buffer);
   return hdr;
+}
+
+dns_msg_question *decode_question(const char *buffer)
+{
+  dns_msg_question *question = new dns_msg_question;
+  std::string m_qName = "";
+  int length = *buffer++;
+  //llarp::LogInfo("qNamLen", length);
+  while (length != 0) {
+    for (int i = 0; i < length; i++) {
+      char c = *buffer++;
+      m_qName.append(1, c);
+    }
+    length = *buffer++;
+    if (length != 0) m_qName.append(1,'.');
+  }
+  question->name   = m_qName;
+  question->type   = get16bits(buffer);
+  question->qClass = get16bits(buffer);
+  return question;
+}
+
+dns_msg_answer *decode_answer(const char *buffer)
+{
+  dns_msg_answer *answer = new dns_msg_answer;
+  answer->type   = get16bits(buffer);
+  answer->aClass = get16bits(buffer);
+  answer->ttl    = get32bits(buffer);
+  answer->rdLen  = get16bits(buffer);
+  answer->rData  = get16bits(buffer);
+  return answer;
 }
 
 void code_domain(char*& buffer, const std::string& domain) throw()
@@ -111,6 +160,7 @@ bool forward_dns_request(std::string request)
 void
 writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from, dns_request *request)
 {
+  lock_t lock(m_dnsd2_Mutex);
   if (!hostRes)
   {
     llarp::LogWarn("Failed to resolve");
@@ -174,14 +224,18 @@ void handle_dnsc_result(dns_client_request *client_request)
   llarp_host_resolved(client_request);
 }
 
+// our generic version
 void
 handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from, dns_request *request)
 {
+  lock_t lock(m_dnsd_Mutex);
   const size_t HDR_OFFSET = 12;
   const char* p_buffer = buffer;
-  
 
-  dns_msg *msg = decode_hdr(p_buffer);
+  int rcode = (buffer[3] & 0x0F);
+  llarp::LogInfo("dnsd rcode ", rcode);
+  
+  dns_msg_header *msg = decode_hdr(p_buffer);
   //llarp::LogInfo("DNS_MSG size", sizeof(dns_msg));
   p_buffer += HDR_OFFSET;
   request->id = msg->id;
@@ -233,7 +287,9 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
     //llarp::Addr anIp;
     //llarp::LogInfo("Checking server request ", request);
     struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-    dnsd_context *dnsd = (dnsd_context *)udp->user;
+    struct dns_tracker *tracker = (struct dns_tracker *)udp->user;
+    dnsd_context *dnsd = tracker->dnsd;
+    //dnsd_context *dnsd = (dnsd_context *)udp->user;
     //llarp::LogInfo("Server request UDP  ", request->user);
     //llarp::LogInfo("server request hook ", request->hook);
     //llarp::LogInfo("UDP ", udp);
@@ -247,15 +303,19 @@ void
 llarp_handle_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *paddr,
                 const void *buf, ssize_t sz)
 {
+  lock_t lock(m_dnsd3_Mutex);
   //llarp_link *link = static_cast< llarp_link * >(udp->user);
   llarp::LogInfo("llarp Received Bytes ", sz);
   dns_request *llarp_dns_request = new dns_request;
   //llarp::LogInfo("Creating server request ", &llarp_dns_request);
   //llarp::LogInfo("Server UDP address ", udp);
   
-  llarp_dns_request->from = (struct sockaddr *)new sockaddr(*paddr);
+  // make a copy of the sockaddr
+  llarp_dns_request->from = new sockaddr(*paddr);
   llarp_dns_request->user = (void *)udp;
+  // set sock hook
   llarp_dns_request->hook = &llarp_sendto_dns_hook_func;
+
   //llarp::LogInfo("Server request's UDP ", llarp_dns_request->user);
   handle_recvfrom((char *)buf, sz, llarp_dns_request->from, llarp_dns_request);
 }
@@ -272,6 +332,8 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
   handle_recvfrom((char *)buf, sz, saddr, llarp_dns_request);
 }
 
+dns_tracker dns_udp_tracker;
+
 bool
 llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
                 const char *dnsd_ifname, uint16_t dnsd_port,
@@ -282,12 +344,14 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
   bindaddr.sin_family  = AF_INET;
   bindaddr.sin_port   = htons(dnsd_port);
   
-  dnsd->udp.user      = dnsd;
-  dnsd->udp.recvfrom  = &llarp_handle_recvfrom;
+  dnsd->udp.user      = &dns_udp_tracker;
+  dnsd->udp.recvfrom  = &llarp_handle_dns_recvfrom;
   dnsd->udp.tick      = nullptr;
   
+  dns_udp_tracker.dnsd = dnsd;
+  
   // configure dns client
-  if (!llarp_dnsc_init(&dnsd->client, netloop, dnsc_hostname, dnsc_port))
+  if (!llarp_dnsc_init(&dnsd->client, &dnsd->udp, dnsc_hostname, dnsc_port))
   {
     llarp::LogError("Couldnt init dns client");
     return false;

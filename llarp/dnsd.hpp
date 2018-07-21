@@ -2,24 +2,6 @@
 #define LIBLLARP_DNSD_HPP
 
 #include "dnsc.hpp"
-#include <string>
-
-struct dns_msg
-{
-  uint id;
-  uint qr;
-  uint opcode;
-  uint aa;
-  uint tc;
-  uint rd;
-  uint ra;
-  uint rcode;
-
-  uint qdCount;
-  uint anCount;
-  uint nsCount;
-  uint arCount;
-};
 
 typedef ssize_t (*sendto_dns_hook_func)(void *sock, const struct sockaddr *from, const void *buffer, size_t length);
 
@@ -36,5 +18,8 @@ struct dns_request
   sendto_dns_hook_func hook; // sendto hook tbh
 };
 
+dns_msg_header *decode_hdr(const char *buffer);
+dns_msg_question *decode_question(const char *buffer);
+dns_msg_answer *decode_answer(const char *buffer);
 
 #endif
