@@ -61,8 +61,7 @@ typedef struct llarp_buffer_t
   /// max size of buffer
   size_t sz;
 
-  const byte_t
-  operator[](size_t x)
+  const byte_t operator[](size_t x)
   {
     return *(this->base + x);
   }

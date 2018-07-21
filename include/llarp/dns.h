@@ -1,8 +1,8 @@
 #ifndef LLARP_DNS_H_
 #define LLARP_DNS_H_
 
-#include <sys/types.h> // for uint & ssize_t
 #include <llarp/ev.h>
+#include <sys/types.h>  // for uint & ssize_t
 
 /**
  * dns.h
@@ -70,22 +70,22 @@ struct dns_tracker
 {
   uint c_responses;
   uint c_requests;
-  std::map<uint, dns_client_request *> client_request;
+  std::map< uint, dns_client_request * > client_request;
   dnsd_context *dnsd;
-  std::map<uint, dns_request *> daemon_request;
+  std::map< uint, dns_request * > daemon_request;
 };
 
 struct dnsc_context
 {
   /// DNS server hostname to use
-  //char *server;
+  // char *server;
   /// DNS server port to use
-  //uint port;
+  // uint port;
   /// Target: DNS server hostname/port to use
   // FIXME: ipv6 it
   sockaddr *server;
   // where to create the new sockets
-  //struct llarp_ev_loop *netloop;
+  // struct llarp_ev_loop *netloop;
   // FIXME: UDP socket pooling (or maybe at the libev level)
   struct llarp_udp_io *udp;
 };
@@ -105,7 +105,7 @@ struct dnsd_context
 /// returns true on bind success otherwise returns false
 bool
 llarp_dnsc_init(struct dnsc_context *dnsc, struct llarp_udp_io *udp,
-               const char *dnsc_hostname, uint16_t dnsc_port);
+                const char *dnsc_hostname, uint16_t dnsc_port);
 
 bool
 llarp_dnsc_stop(struct dnsc_context *dnsc);
@@ -128,7 +128,7 @@ llarp_dnsd_init(struct dnsd_context *dns, struct llarp_ev_loop *netloop,
 struct dns_query
 {
   uint16_t length;
-  char * url;
+  char *url;
   unsigned char request[DNC_BUF_SIZE];
   uint16_t reqType;
 };
@@ -137,13 +137,13 @@ struct dns_client_request;
 
 // should we pass by llarp::Addr
 // not as long as we're supporting raw
-typedef void(*resolve_dns_hook_func)(dns_client_request *request);
+typedef void (*resolve_dns_hook_func)(dns_client_request *request);
 
 // FIXME: separate generic from llarp
 struct dns_client_request
 {
   /// sock type
-  void *sock; // pts to udp...
+  void *sock;  // pts to udp...
   /// customizeable (used for outer request)
   void *user;
   /// storage
@@ -163,26 +163,29 @@ bool
 llarp_dnsc_bind(struct llarp_ev_loop *netloop,
                 struct dns_client_request *request);
 
-struct sockaddr *resolveHost(const char *url);
-bool llarp_resolve_host(struct dnsc_context *dns, const char *url,
-                        resolve_dns_hook_func resolved, void *user);
+struct sockaddr *
+resolveHost(const char *url);
+bool
+llarp_resolve_host(struct dnsc_context *dns, const char *url,
+                   resolve_dns_hook_func resolved, void *user);
 void
 llarp_host_resolved(dns_client_request *request);
 
 void
 llarp_handle_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *paddr,
-                const void *buf, ssize_t sz);
+                      const void *buf, ssize_t sz);
 
 void
-llarp_handle_dns_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *saddr,
-                          const void *buf, ssize_t sz);
+llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
+                          const struct sockaddr *saddr, const void *buf,
+                          ssize_t sz);
 
 void
 llarp_handle_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *saddr,
-                const void *buf, ssize_t sz);
+                      const void *buf, ssize_t sz);
 
 void
-raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
-           const void *buf, ssize_t sz);
+raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
+                    ssize_t sz);
 
 #endif
