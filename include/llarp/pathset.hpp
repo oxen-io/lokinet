@@ -81,6 +81,9 @@ namespace llarp
       Path*
       PickRandomEstablishedPath();
 
+      Path*
+      GetPathByRouter(const RouterID& router);
+
       bool
       GetCurrentIntroductions(
           std::set< llarp::service::Introduction >& intros) const;

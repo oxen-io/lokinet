@@ -140,6 +140,15 @@ namespace llarp
       return bencode_end(buf);
     }
 
+    void
+    Introduction::Clear()
+    {
+      router.Zero();
+      pathID.Zero();
+      latency   = 0;
+      expiresAt = 0;
+    }
+
     Identity::~Identity()
     {
     }

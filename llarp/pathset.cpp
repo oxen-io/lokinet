@@ -45,6 +45,19 @@ namespace llarp
       }
     }
 
+    Path*
+    PathSet::GetPathByRouter(const RouterID& id)
+    {
+      auto itr = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->first.first == id)
+          return itr->second;
+        ++itr;
+      }
+      return nullptr;
+    }
+
     size_t
     PathSet::NumInStatus(PathStatus st) const
     {

@@ -525,6 +525,8 @@ TODO: document this better
 
 intro message (variant 1)
 
+start a new session
+
 {
   A: "H",
   D: "<N bytes encrypted HSD>",
@@ -534,6 +536,10 @@ intro message (variant 1)
   V: 0,
   Z: "<64 bytes signature of entire message using sender's signing key>"
 }
+
+D is encrypted with session key K which is derived by
+
+K = PKE(H, SI.enckey, N)
 
 ordered data message (variant 2)
 
@@ -552,6 +558,7 @@ data sent anonymously over the network to a recipiant from a sender.
 sent inside a HSFM encrypted with a shared secret.
 
 {
+  A: protocol_number_uint,
   D: "<N bytes payload>",
   I: Introduction for reply,
   S: SI of sender,

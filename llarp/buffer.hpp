@@ -27,6 +27,18 @@ namespace llarp
     buff.sz   = t.size();
     return buff;
   }
+
+  template < typename T >
+  llarp_buffer_t
+  ConstBuffer(const T& t)
+  {
+    llarp_buffer_t buff;
+    buff.base = (byte_t*)&t[0];
+    buff.cur  = buff.base;
+    buff.sz   = t.size();
+    return buff;
+  }
+
 }  // namespace llarp
 
 #endif

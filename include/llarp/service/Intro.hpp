@@ -43,6 +43,9 @@ namespace llarp
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
 
+      void
+      Clear();
+
       bool
       operator<(const Introduction& other) const
       {

@@ -36,6 +36,12 @@ namespace llarp
       llarp_threadpool*
       Worker();
 
+      llarp_router*
+      Router()
+      {
+        return m_Router;
+      }
+
       bool
       Start();
 
@@ -63,8 +69,11 @@ namespace llarp
       bool
       ForgetPathToService(const Address& remote);
 
-      byte_t*
-      GetEncryptionSecretKey();
+      Identity*
+      GetIdentity()
+      {
+        return &m_Identity;
+      }
 
       /// context needed to initiate an outbound hidden service session
       struct OutboundContext : public llarp_pathbuilder_context
@@ -74,6 +83,12 @@ namespace llarp
 
         /// the remote hidden service's curren intro set
         IntroSet currentIntroSet;
+        /// the current selected intro
+        Introduction selectedIntro;
+
+        /// update the current selected intro to be a new best introduction
+        void
+        ShiftIntroduction();
 
         /// encrypt asynchronously and send to remote endpoint from us
         void
@@ -91,26 +106,17 @@ namespace llarp
 
        private:
         void
-        AsyncEncrypt(ProtocolMessage* msg,
-                     std::function< void(ProtocolMessage*) > result);
-        void
-        AsyncGenIntro(ProtocolMessage* msg,
-                      std::function< void(ProtocolMessage*) > result);
+        AsyncEncrypt(llarp_buffer_t payload);
 
-        /// handle key exchange done
         void
-        HandleIntroGen(ProtocolMessage* msg);
-        /// send an encrypted message
+        AsyncGenIntro(llarp_buffer_t payload);
+
+        /// send a fully encrypted hidden service frame
         void
-        SendMessage(ProtocolMessage* msg);
+        Send(ProtocolFrame& f);
 
         uint64_t sequenceNo = 0;
         llarp::SharedSecret sharedKey;
-        llarp::util::CoDelQueue<
-            ProtocolMessage*, ProtocolMessage::GetTime,
-            ProtocolMessage::PutTime, ProtocolMessage::Compare,
-            llarp::util::DummyMutex, llarp::util::DummyLock >
-            m_SendQueue;
         Endpoint* m_Parent;
       };
 
@@ -157,6 +163,8 @@ namespace llarp
       Identity m_Identity;
       std::unordered_map< Address, OutboundContext*, Address::Hash >
           m_RemoteSessions;
+      std::unordered_map< Address, PathEnsureHook, Address::Hash >
+          m_PendingServiceLookups;
       uint64_t m_CurrentPublishTX       = 0;
       llarp_time_t m_LastPublish        = 0;
       llarp_time_t m_LastPublishAttempt = 0;

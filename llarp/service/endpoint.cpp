@@ -300,32 +300,80 @@ namespace llarp
     struct HiddenServiceAddressLookup : public IServiceLookup
     {
       Endpoint* endpoint;
-      HiddenServiceAddressLookup(Endpoint* parent) : endpoint(parent)
+      Address remote;
+      uint64_t txid;
+      HiddenServiceAddressLookup(Endpoint* parent, const Address& addr,
+                                 uint64_t tx)
+          : endpoint(parent), remote(addr), txid(tx)
       {
       }
 
       bool
       HandleResponse(const std::set< IntroSet >& results)
       {
-        if(results.size() == 0)
+        if(results.size() == 1)
         {
-          auto itr = results.begin();
-          endpoint->PutNewOutboundContext(*itr);
+          endpoint->PutNewOutboundContext(*results.begin());
         }
-        else
-        {
-          // TODO: retry request?
-        }
+        delete this;
         return true;
       }
+
+      llarp::routing::IMessage*
+      BuildRequestMessage()
+      {
+        llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
+        msg->M.push_back(new llarp::dht::FindIntroMessage(remote, txid));
+        return msg;
+      }
     };
+
+    void
+    Endpoint::PutNewOutboundContext(const llarp::service::IntroSet& introset)
+    {
+      Address addr;
+      introset.A.CalculateAddress(addr);
+
+      // only add new session if it's not there
+      if(m_RemoteSessions.find(addr) == m_RemoteSessions.end())
+      {
+        OutboundContext* ctx = new OutboundContext(introset, this);
+        m_RemoteSessions.insert(std::make_pair(addr, ctx));
+        llarp::LogInfo("Created New outbound context for ", addr.ToString());
+      }
+
+      // inform pending
+      auto itr = m_PendingServiceLookups.find(addr);
+      if(itr != m_PendingServiceLookups.end())
+      {
+        itr->second(m_RemoteSessions.at(addr));
+        m_PendingServiceLookups.erase(itr);
+      }
+    }
 
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
                                   llarp_time_t timeoutMS)
     {
-      // TODO: implement me
-      return false;
+      {
+        auto itr = m_RemoteSessions.find(remote);
+        if(itr != m_RemoteSessions.end())
+        {
+          hook(itr->second);
+          return true;
+        }
+      }
+      auto itr = m_PendingServiceLookups.find(remote);
+      if(itr != m_PendingServiceLookups.end())
+      {
+        // duplicate
+        return false;
+      }
+      m_PendingServiceLookups.insert(std::make_pair(remote, hook));
+      HiddenServiceAddressLookup* job =
+          new HiddenServiceAddressLookup(this, remote, GenTXID());
+      m_PendingLookups.insert(std::make_pair(job->txid, job));
+      return true;
     }
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& intro,
@@ -333,14 +381,26 @@ namespace llarp
         : llarp_pathbuilder_context(parent->m_Router, parent->m_Router->dht, 2,
                                     4)
         , currentIntroSet(intro)
-        , m_SendQueue(parent->Name() + "::outbound_queue")
         , m_Parent(parent)
 
     {
+      selectedIntro.Clear();
     }
 
     Endpoint::OutboundContext::~OutboundContext()
     {
+    }
+
+    void
+    Endpoint::OutboundContext::ShiftIntroduction()
+    {
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(intro.expiresAt > selectedIntro.expiresAt)
+        {
+          selectedIntro = intro;
+        }
+      }
     }
 
     bool
@@ -355,6 +415,7 @@ namespace llarp
         if(itr->VerifySignature(crypto) && currentIntroSet.A == itr->A)
         {
           currentIntroSet = *itr;
+          ShiftIntroduction();
           return true;
         }
         else
@@ -371,68 +432,89 @@ namespace llarp
     Endpoint::OutboundContext::AsyncEncryptAndSendTo(llarp_buffer_t data,
                                                      ProtocolType protocol)
     {
-      auto sendto =
-          std::bind(&OutboundContext::SendMessage, this, std::placeholders::_1);
-      ProtocolMessage* msg = new ProtocolMessage(protocol, sequenceNo);
-      msg->PutBuffer(data);
       if(sequenceNo)
       {
-        AsyncEncrypt(msg, sendto);
+        AsyncEncrypt(data);
       }
       else
       {
-        AsyncGenIntro(msg, sendto);
+        AsyncGenIntro(data);
       }
     }
 
-    struct AsyncKeyExchange
+    struct AsyncIntroGen
     {
       llarp_logic* logic;
       llarp_crypto* crypto;
       byte_t* sharedKey;
       byte_t* remotePubkey;
-      byte_t* localSeckey;
-      byte_t* nonce;
-      ProtocolMessage* msg = nullptr;
-      std::function< void(ProtocolMessage*) > hook;
+      Identity* m_LocalIdentity;
+      ProtocolMessage msg;
+      ProtocolFrame frame;
+      std::function< void(ProtocolFrame&) > hook;
 
-      AsyncKeyExchange(llarp_logic* l, llarp_crypto* c, byte_t* key,
-                       byte_t* remote, byte_t* localSecret, byte_t* n)
+      AsyncIntroGen(llarp_logic* l, llarp_crypto* c, byte_t* key,
+                    byte_t* remote, Identity* localident)
           : logic(l)
           , crypto(c)
           , sharedKey(key)
           , remotePubkey(remote)
-          , localSeckey(localSecret)
-          , nonce(n)
+          , m_LocalIdentity(localident)
       {
+      }
+
+      static void
+      Result(void* user)
+      {
+        AsyncIntroGen* self = static_cast< AsyncIntroGen* >(user);
+        self->hook(self->frame);
+        delete self;
       }
 
       static void
       Work(void* user)
       {
-        AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
+        AsyncIntroGen* self = static_cast< AsyncIntroGen* >(user);
+        // randomize Nounce
+        self->frame.N.Randomize();
+        // derive session key
         self->crypto->dh_server(self->sharedKey, self->remotePubkey,
-                                self->localSeckey, self->nonce);
+                                self->m_LocalIdentity->enckey, self->frame.N);
+        // encrypt and sign
+        self->frame.EncryptAndSign(self->crypto, &self->msg, self->sharedKey,
+                                   self->m_LocalIdentity->signkey);
+        // inform result
+        llarp_logic_queue_job(self->logic, {self, &Result});
       }
     };
 
     void
-    Endpoint::OutboundContext::AsyncGenIntro(
-        ProtocolMessage* msg, std::function< void(ProtocolMessage*) > result)
+    Endpoint::OutboundContext::AsyncGenIntro(llarp_buffer_t payload)
     {
-      msg->N.Randomize();
-      AsyncKeyExchange* ex = new AsyncKeyExchange(
-          m_Parent->Logic(), m_Parent->Crypto(), sharedKey,
-          currentIntroSet.A.enckey, m_Parent->GetEncryptionSecretKey(), msg->N);
+      AsyncIntroGen* ex =
+          new AsyncIntroGen(m_Parent->Logic(), m_Parent->Crypto(), sharedKey,
+                            currentIntroSet.A.enckey, m_Parent->GetIdentity());
+      ex->hook = std::bind(&Endpoint::OutboundContext::Send, this,
+                           std::placeholders::_1);
+
+      ex->msg.PutBuffer(payload);
       llarp_threadpool_queue_job(m_Parent->Worker(),
-                                 {ex, &AsyncKeyExchange::Work});
+                                 {ex, &AsyncIntroGen::Work});
     }
 
     void
-    Endpoint::OutboundContext::SendMessage(ProtocolMessage* msg)
+    Endpoint::OutboundContext::Send(ProtocolFrame& msg)
     {
-      // TODO: delete msg
-      // TODO: implement me
+      // in this context we assume the message contents are encrypted
+      auto path = GetPathByRouter(selectedIntro.router);
+      if(path)
+      {
+        routing::PathTransferMessage transfer;
+        transfer.T = &msg;
+        transfer.Y.Randomize();
+        transfer.P = selectedIntro.pathID;
+        path->SendRoutingMessage(&transfer, m_Parent->Router());
+      }
     }
 
     bool
@@ -473,8 +555,7 @@ namespace llarp
     }
 
     void
-    Endpoint::OutboundContext::AsyncEncrypt(
-        ProtocolMessage* msg, std::function< void(ProtocolMessage*) > result)
+    Endpoint::OutboundContext::AsyncEncrypt(llarp_buffer_t payload)
     {
       // TODO: implement me
     }
@@ -495,12 +576,6 @@ namespace llarp
     Endpoint::Worker()
     {
       return m_Router->tp;
-    }
-
-    byte_t*
-    Endpoint::GetEncryptionSecretKey()
-    {
-      return m_Identity.enckey;
     }
 
   }  // namespace service

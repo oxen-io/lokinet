@@ -4,6 +4,7 @@
 #include <llarp/crypto.hpp>
 #include <llarp/encrypted.hpp>
 #include <llarp/routing/message.hpp>
+#include <llarp/service/protocol.hpp>
 
 namespace llarp
 {
@@ -12,8 +13,8 @@ namespace llarp
     struct PathTransferMessage : public IMessage
     {
       PathID_t P;
-      Encrypted T;
-      uint64_t V = 0;
+      service::ProtocolFrame* T = nullptr;
+      uint64_t V                = 0;
       TunnelNonce Y;
 
       PathTransferMessage();

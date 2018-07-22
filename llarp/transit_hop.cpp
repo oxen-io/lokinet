@@ -127,12 +127,6 @@ namespace llarp
     TransitHop::HandlePathTransferMessage(
         const llarp::routing::PathTransferMessage* msg, llarp_router* r)
     {
-      auto path = r->paths.GetByDownstream(r->pubkey(), msg->P);
-      if(path)
-      {
-        return path->HandleDownstream(msg->T.Buffer(), msg->Y, r);
-      }
-      llarp::LogWarn("No such path for path transfer pathid=", msg->P);
       return false;
     }
 

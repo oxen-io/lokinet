@@ -3,27 +3,33 @@
 #include <llarp/time.h>
 #include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
+#include <llarp/encrypted.hpp>
+#include <llarp/service/Info.hpp>
+#include <llarp/service/Intro.hpp>
 #include <vector>
 
 namespace llarp
 {
   namespace service
   {
+    constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048;
+
     enum ProtocolType
     {
       eProtocolText    = 0,
       eProtocolTraffic = 1
     };
 
+    /// inner message
     struct ProtocolMessage : public llarp::IBEncodeMessage
     {
-      ProtocolMessage(ProtocolType t, uint64_t seqno);
+      ProtocolMessage();
       ~ProtocolMessage();
       ProtocolType proto;
       llarp_time_t queued = 0;
       std::vector< byte_t > payload;
-      llarp::KeyExchangeNonce N;
-      uint64_t sequenceNum;
+      Introduction introReply;
+      ServiceInfo sender;
 
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
@@ -32,34 +38,35 @@ namespace llarp
 
       void
       PutBuffer(llarp_buffer_t payload);
+    };
 
-      struct Compare
-      {
-        bool
-        operator()(const ProtocolMessage* left,
-                   const ProtocolMessage* right) const
-        {
-          return left->sequenceNum < right->sequenceNum;
-        }
-      };
+    /// outer message
+    struct ProtocolFrame : public llarp::IBEncodeMessage
+    {
+      llarp::Encrypted D;
+      uint64_t S = 0;
+      llarp::PubKey H;
+      llarp::KeyExchangeNonce N;
+      llarp::Signature Z;
 
-      struct GetTime
-      {
-        llarp_time_t
-        operator()(const ProtocolMessage* msg) const
-        {
-          return msg->queued;
-        }
-      };
+      ~ProtocolFrame();
 
-      struct PutTime
-      {
-        void
-        operator()(ProtocolMessage* msg, llarp_time_t now) const
-        {
-          msg->queued = now;
-        }
-      };
+      bool
+      EncryptAndSign(llarp_crypto* c, const ProtocolMessage* msg,
+                     byte_t* sharedkey, byte_t* signingkey);
+
+      bool
+      DecryptPayloadInto(llarp_crypto* c, byte_t* sharedkey,
+                         ProtocolMessage* into) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+
+      bool
+      BEncode(llarp_buffer_t* buf) const;
+
+      bool
+      Verify(llarp_crypto* c, byte_t* signingkey);
     };
   }  // namespace service
 }  // namespace llarp
