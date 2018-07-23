@@ -339,6 +339,8 @@ namespace llarp
     {
       if(Expired(now))
         return;
+      if(now < m_LastLatencyTestTime)
+        return;
       auto dlt = now - m_LastLatencyTestTime;
       if(dlt > 5000 && m_LastLatencyTestID == 0)
       {
