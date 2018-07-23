@@ -65,10 +65,10 @@ transit_message::ack(uint32_t bitmask)
 bool
 transit_message::should_send_ack(llarp_time_t now) const
 {
-  if(now < started)
-    return false;
   if(msginfo.numfrags() == 0)
     return true;
+  if(now < started)
+    return false;
   if(status.count() == 0)
     return true;
   return now - lastRetransmit > 100;
