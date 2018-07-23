@@ -406,12 +406,18 @@ namespace llarp
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
         return false;
-      // rewind
-      buf.sz  = buf.cur - buf.base;
-      buf.cur = buf.base;
       // make nonce
       TunnelNonce N;
       N.Randomize();
+      buf.sz = buf.cur - buf.base;
+      // pad smaller messages
+      if(buf.sz < MESSAGE_PAD_SIZE)
+      {
+        // randomize padding
+        r->crypto.randbytes(buf.cur, MESSAGE_PAD_SIZE - buf.sz);
+        buf.sz = MESSAGE_PAD_SIZE;
+      }
+      buf.cur = buf.base;
       llarp::LogInfo("send ", buf.sz, " bytes via ", TXID(), " on ", Upstream(),
                      " to ", Endpoint());
       return HandleUpstream(buf, N, r);

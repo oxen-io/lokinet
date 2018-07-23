@@ -56,8 +56,14 @@ namespace llarp
       }
       TunnelNonce N;
       N.Randomize();
-      // rewind
-      buf.sz  = buf.cur - buf.base;
+      buf.sz = buf.cur - buf.base;
+      // pad smaller messages
+      if(buf.sz < MESSAGE_PAD_SIZE)
+      {
+        // randomize padding
+        r->crypto.randbytes(buf.cur, MESSAGE_PAD_SIZE - buf.sz);
+        buf.sz = MESSAGE_PAD_SIZE;
+      }
       buf.cur = buf.base;
       llarp::LogInfo("Send ", buf.sz,
                      " bytes routing message from trasnit hop");

@@ -282,7 +282,6 @@ void
 llarp_link_session::done()
 {
   auto logic = serv->logic;
-  serv->remove_intro_from(addr);
   if(establish_job_id)
   {
     llarp_logic_remove_call(logic, establish_job_id);

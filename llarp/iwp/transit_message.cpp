@@ -65,6 +65,8 @@ transit_message::ack(uint32_t bitmask)
 bool
 transit_message::should_send_ack(llarp_time_t now) const
 {
+  if(now < started)
+    return false;
   if(msginfo.numfrags() == 0)
     return true;
   if(status.count() == 0)
@@ -75,12 +77,16 @@ transit_message::should_send_ack(llarp_time_t now) const
 bool
 transit_message::should_resend_xmit(llarp_time_t now) const
 {
+  if(now < started)
+    return false;
   return lastAck == 0 && now - started > 500;
 }
 
 bool
 transit_message::should_resend_frags(llarp_time_t now) const
 {
+  if(now < started)
+    return false;
   return lastAck > 0 && now - lastAck > 250 && !completed();
 }
 

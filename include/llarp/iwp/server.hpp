@@ -12,8 +12,12 @@
 
 struct llarp_link
 {
+  /*
   typedef std::mutex mtx_t;
   typedef std::lock_guard< mtx_t > lock_t;
+  */
+  typedef llarp::util::DummyMutex mtx_t;
+  typedef llarp::util::DummyLock lock_t;
 
   llarp_router *router;
   llarp_crypto *crypto;
@@ -76,21 +80,21 @@ struct llarp_link
   bool
   has_intro_from(const llarp::Addr &from)
   {
-    std::unique_lock< std::mutex > lock(m_PendingSessions_Mutex);
+    lock_t lock(m_PendingSessions_Mutex);
     return m_PendingSessions.find(from) != m_PendingSessions.end();
   }
 
   void
   put_intro_from(llarp_link_session *s)
   {
-    std::unique_lock< std::mutex > lock(m_PendingSessions_Mutex);
+    lock_t lock(m_PendingSessions_Mutex);
     m_PendingSessions[s->addr] = s;
   }
 
   void
   remove_intro_from(const llarp::Addr &from)
   {
-    std::unique_lock< std::mutex > lock(m_PendingSessions_Mutex);
+    lock_t lock(m_PendingSessions_Mutex);
     m_PendingSessions.erase(from);
   }
 

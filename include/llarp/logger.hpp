@@ -84,9 +84,10 @@ namespace llarp
       tag = tag.substr(pos + 1);
       */
     ss << std::put_time(std::localtime(&t), "%F %T") << " " << tag;
+    /*
     auto sz = tag.size() % 8;
     while(sz--)
-      ss << " ";
+      ss << " "; */
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
     ss << (char)27 << "[0;0m";
