@@ -418,8 +418,6 @@ namespace llarp
         buf.sz = MESSAGE_PAD_SIZE;
       }
       buf.cur = buf.base;
-      llarp::LogInfo("send ", buf.sz, " bytes via ", TXID(), " on ", Upstream(),
-                     " to ", Endpoint());
       return HandleUpstream(buf, N, r);
     }
 
