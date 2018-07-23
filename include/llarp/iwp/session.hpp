@@ -86,7 +86,7 @@ struct llarp_link_session
 
   // process inbound and outbound queues (logic thread)
   void
-  TickLogic();
+  TickLogic(llarp_time_t now);
 
   // this is called from net thread
   void

@@ -1,3 +1,4 @@
+#include <llarp/routing/handler.hpp>
 #include <llarp/service/protocol.hpp>
 #include "buffer.hpp"
 
@@ -130,6 +131,14 @@ namespace llarp
       // restore signature
       Z = sig;
       return result;
+    }
+
+    bool
+    ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
+                                 llarp_router* r) const
+    {
+      llarp::LogInfo("Got hidden service frame");
+      return h->HandleHiddenServiceFrame(this);
     }
 
   }  // namespace service

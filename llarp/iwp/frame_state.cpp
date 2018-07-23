@@ -21,18 +21,15 @@ frame_state::process_inbound_queue()
                        InboundMessage::OrderCompare >
       q;
   recvqueue.Process(q);
-  bool increment = false;
   while(q.size())
   {
     // TODO: is this right?
     auto &front = q.top();
-    // the items are already sorted anyways so this doesn't really do much
 
     if(front->msgid < nextMsgID && nextMsgID - front->msgid > 1)
     {
-      // re queue
+      // re-queue because of an ordering gap
       recvqueue.Put(front);
-      nextMsgID = front->msgid;
     }
     else
     {
@@ -373,7 +370,7 @@ frame_state::queue_tx(uint64_t id, transit_message *msg)
 {
   tx.insert(std::make_pair(id, msg));
   msg->generate_xmit(sendqueue, txflags);
-  msg->retransmit_frags(sendqueue, txflags);
+  // msg->retransmit_frags(sendqueue, txflags);
 }
 
 void

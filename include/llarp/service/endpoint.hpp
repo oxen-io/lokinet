@@ -1,7 +1,6 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
 #include <llarp/codel.hpp>
-#include <llarp/messages/hidden_service.hpp>
 #include <llarp/pathbuilder.hpp>
 #include <llarp/service/Identity.hpp>
 #include <llarp/service/protocol.hpp>
@@ -58,7 +57,7 @@ namespace llarp
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
       bool
-      HandleHiddenServiceFrame(const llarp::routing::HiddenServiceFrame* msg);
+      HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* msg);
 
       /// return true if we have an established path to a hidden service
       bool
@@ -89,6 +88,11 @@ namespace llarp
         /// update the current selected intro to be a new best introduction
         void
         ShiftIntroduction();
+
+        /// tick internal state
+        /// return true to remove otherwise don't remove
+        bool
+        Tick(llarp_time_t now);
 
         /// encrypt asynchronously and send to remote endpoint from us
         void

@@ -61,7 +61,7 @@ namespace llarp
     PathTransferMessage::HandleMessage(IMessageHandler* h,
                                        llarp_router* r) const
     {
-      auto path = r->paths.GetByDownstream(r->pubkey(), P);
+      auto path = r->paths.GetByUpstream(r->pubkey(), P);
       if(!path)
       {
         llarp::LogWarn("No such path for path transfer pathid=", P);
@@ -84,6 +84,7 @@ namespace llarp
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       // send
+      llarp::LogInfo("Transfer ", buf.sz, " bytes", " to ", P);
       return path->HandleDownstream(buf, Y, r);
     }
 

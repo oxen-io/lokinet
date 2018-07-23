@@ -4,6 +4,7 @@
 #include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/encrypted.hpp>
+#include <llarp/routing/message.hpp>
 #include <llarp/service/Info.hpp>
 #include <llarp/service/Intro.hpp>
 #include <vector>
@@ -41,7 +42,7 @@ namespace llarp
     };
 
     /// outer message
-    struct ProtocolFrame : public llarp::IBEncodeMessage
+    struct ProtocolFrame : public llarp::routing::IMessage
     {
       llarp::Encrypted D;
       uint64_t S = 0;
@@ -67,6 +68,9 @@ namespace llarp
 
       bool
       Verify(llarp_crypto* c, byte_t* signingkey);
+
+      bool
+      HandleMessage(llarp::routing::IMessageHandler* h, llarp_router* r) const;
     };
   }  // namespace service
 }  // namespace llarp

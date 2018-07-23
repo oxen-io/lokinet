@@ -78,9 +78,11 @@ namespace llarp
     std::time_t t;
     std::time(&t);
     std::string tag = fname;
+    /*
     auto pos        = tag.rfind('/');
     if(pos != std::string::npos)
       tag = tag.substr(pos + 1);
+      */
     ss << std::put_time(std::localtime(&t), "%F %T") << " " << tag;
     auto sz = tag.size() % 8;
     while(sz--)

@@ -304,6 +304,12 @@ namespace llarp
       m_BuiltHook = func;
     }
 
+    RouterID
+    Path::Endpoint() const
+    {
+      return hops[hops.size() - 1].router.pubkey;
+    }
+
     const PathID_t&
     Path::TXID() const
     {
@@ -331,6 +337,8 @@ namespace llarp
     void
     Path::Tick(llarp_time_t now, llarp_router* r)
     {
+      if(Expired(now))
+        return;
       auto dlt = now - m_LastLatencyTestTime;
       if(dlt > 5000 && m_LastLatencyTestID == 0)
       {
@@ -404,6 +412,8 @@ namespace llarp
       // make nonce
       TunnelNonce N;
       N.Randomize();
+      llarp::LogInfo("send ", buf.sz, " bytes via ", TXID(), " on ", Upstream(),
+                     " to ", Endpoint());
       return HandleUpstream(buf, N, r);
     }
 
@@ -446,14 +456,19 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
-      if(msg->L == m_LastLatencyTestID)
+      if(msg->L == m_LastLatencyTestID && status == ePathEstablished)
       {
         intro.latency = llarp_time_now_ms() - m_LastLatencyTestTime;
         llarp::LogInfo("path latency is ", intro.latency, " ms for tx=", TXID(),
                        " rx=", RXID());
         m_LastLatencyTestID = 0;
+        return true;
       }
-      return true;
+      else
+      {
+        llarp::LogWarn("unwarrented path latency message via ", Upstream());
+        return false;
+      }
     }
 
     bool

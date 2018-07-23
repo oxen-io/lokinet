@@ -18,10 +18,10 @@ struct InboundMessage
   }
 
   bool
-  operator>(const InboundMessage &other) const
+  operator<(const InboundMessage &other) const
   {
     // order in ascending order for codel queue
-    return msgid > other.msgid;
+    return msgid < other.msgid;
   }
 
   llarp_buffer_t
@@ -42,7 +42,7 @@ struct InboundMessage
   struct OrderCompare
   {
     bool
-    operator()(const InboundMessage *left, const InboundMessage *right)
+    operator()(const InboundMessage *left, const InboundMessage *right) const
     {
       return left->msgid < right->msgid;
     }

@@ -51,8 +51,11 @@ namespace llarp
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->first.first == id)
-          return itr->second;
+        if(itr->second->IsReady())
+        {
+          if(itr->second->Endpoint() == id)
+            return itr->second;
+        }
         ++itr;
       }
       return nullptr;

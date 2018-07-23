@@ -91,6 +91,21 @@ namespace llarp
           llarp::LogWarn("failed to publish intro set for endpoint ", Name());
         }
       }
+      // expire pending tx
+      {
+        auto itr = m_PendingLookups.begin();
+        while(itr != m_PendingLookups.end())
+        {
+          if(itr->second->IsTimedOut(now))
+          {
+            itr->second->HandleResponse({});
+            itr = m_PendingLookups.erase(itr);
+          }
+          else
+            ++itr;
+        }
+      }
+
       // prefetch tags
       for(const auto& tag : m_PrefetchTags)
       {
@@ -120,6 +135,21 @@ namespace llarp
             m_PendingLookups[itr->second.pendingTX] = &itr->second;
             itr->second.SendRequestViaPath(path, m_Router);
           }
+        }
+      }
+
+      // tick remote sessions
+      {
+        auto itr = m_RemoteSessions.begin();
+        while(itr != m_RemoteSessions.end())
+        {
+          if(itr->second->Tick(now))
+          {
+            delete itr->second;
+            itr = m_RemoteSessions.erase(itr);
+          }
+          else
+            ++itr;
         }
       }
     }
@@ -306,6 +336,7 @@ namespace llarp
                                  uint64_t tx)
           : endpoint(parent), remote(addr), txid(tx)
       {
+        llarp::LogInfo("New hidden service lookup for ", addr.ToString());
       }
 
       bool
@@ -313,7 +344,14 @@ namespace llarp
       {
         if(results.size() == 1)
         {
+          llarp::LogInfo("hidden service lookup for ", remote.ToString(),
+                         " success");
           endpoint->PutNewOutboundContext(*results.begin());
+        }
+        else
+        {
+          llarp::LogInfo("no response in hidden service lookup for ",
+                         remote.ToString());
         }
         delete this;
         return true;
@@ -355,6 +393,12 @@ namespace llarp
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
                                   llarp_time_t timeoutMS)
     {
+      auto path = PickRandomEstablishedPath();
+      if(!path)
+      {
+        llarp::LogWarn("No outbound path for lookup yet");
+        return false;
+      }
       {
         auto itr = m_RemoteSessions.find(remote);
         if(itr != m_RemoteSessions.end())
@@ -369,11 +413,15 @@ namespace llarp
         // duplicate
         return false;
       }
+      llarp::LogInfo(Name(), " Ensure Path to ", remote.ToString());
+
       m_PendingServiceLookups.insert(std::make_pair(remote, hook));
+
       HiddenServiceAddressLookup* job =
           new HiddenServiceAddressLookup(this, remote, GenTXID());
       m_PendingLookups.insert(std::make_pair(job->txid, job));
-      return true;
+
+      return job->SendRequestViaPath(path, Router());
     }
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& intro,
@@ -385,6 +433,7 @@ namespace llarp
 
     {
       selectedIntro.Clear();
+      ShiftIntroduction();
     }
 
     Endpoint::OutboundContext::~OutboundContext()
@@ -506,6 +555,15 @@ namespace llarp
     Endpoint::OutboundContext::Send(ProtocolFrame& msg)
     {
       // in this context we assume the message contents are encrypted
+      auto now = llarp_time_now_ms();
+      if(currentIntroSet.HasExpiredIntros(now))
+      {
+        UpdateIntroSet();
+      }
+      if(selectedIntro.expiresAt <= now || now - selectedIntro.expiresAt > 1000)
+      {
+        ShiftIntroduction();
+      }
       auto path = GetPathByRouter(selectedIntro.router);
       if(path)
       {
@@ -513,8 +571,45 @@ namespace llarp
         transfer.T = &msg;
         transfer.Y.Randomize();
         transfer.P = selectedIntro.pathID;
+        llarp::LogInfo("sending frame via ", path->Upstream(), " to ",
+                       path->Endpoint());
         path->SendRoutingMessage(&transfer, m_Parent->Router());
       }
+      else
+      {
+        llarp::LogWarn("No path to ", selectedIntro.router);
+      }
+    }
+
+    void
+    Endpoint::OutboundContext::UpdateIntroSet()
+    {
+      auto path = PickRandomEstablishedPath();
+      if(path)
+      {
+        uint64_t txid = llarp_randint();
+        routing::DHTMessage msg;
+        msg.M.push_back(
+            new llarp::dht::FindIntroMessage(currentIntroSet.A.Addr(), txid));
+        path->SendRoutingMessage(&msg, m_Parent->Router());
+      }
+      else
+      {
+        llarp::LogWarn(
+            "Cannot update introset no path for outbound session to ",
+            currentIntroSet.A.Addr().ToString());
+      }
+    }
+
+    bool
+    Endpoint::OutboundContext::Tick(llarp_time_t now)
+    {
+      if(selectedIntro.expiresAt >= now || selectedIntro.expiresAt - now < 5000)
+      {
+        UpdateIntroSet();
+      }
+      // TODO: check for expiration
+      return false;
     }
 
     bool
@@ -522,20 +617,10 @@ namespace llarp
                                          llarp_rc* cur, size_t hop)
     {
       // TODO: don't hard code
+      llarp::LogInfo("Select hop ", hop);
       if(hop == 3)
       {
-        llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
-        Introduction chosen;
-        // pick intro set with lowest latency
-        for(const auto& intro : currentIntroSet.I)
-        {
-          if(intro.latency < lowest)
-          {
-            chosen = intro;
-            lowest = intro.latency;
-          }
-        }
-        auto localcopy = llarp_nodedb_get_rc(db, chosen.router);
+        auto localcopy = llarp_nodedb_get_rc(db, selectedIntro.router);
         if(localcopy)
         {
           llarp_rc_copy(cur, localcopy);
@@ -546,7 +631,7 @@ namespace llarp
           // we don't have it?
           llarp::LogError(
               "cannot build aligned path, don't have router for introduction ",
-              chosen);
+              selectedIntro);
           return false;
         }
       }

@@ -246,7 +246,7 @@ handle_verify_introack(iwp_async_introack *introack)
     // invalid signature
     llarp::LogError("introack verify failed from ", link->addr);
     link->serv->remove_intro_from(link->addr);
-    link->serv->RemoveSessionByAddr(link->addr);
+    link->serv->RemoveSession(link);
     return;
   }
   link->EnterState(llarp_link_session::eIntroAckRecv);
@@ -379,7 +379,7 @@ llarp_link_session::on_intro_ack(const void *buf, size_t sz)
   {
     // too big?
     llarp::LogError("introack too big");
-    serv->RemoveSessionByAddr(addr);
+    serv->RemoveSession(this);
     return;
   }
   serv->put_intro_from(this);
@@ -412,7 +412,7 @@ llarp_link_session::get_parent()
 }
 
 void
-llarp_link_session::TickLogic()
+llarp_link_session::TickLogic(llarp_time_t now)
 {
   std::queue< iwp_async_frame * > q;
   decryptedFrames.Process(q);
@@ -489,8 +489,7 @@ handle_verify_session_start(iwp_async_session_start *s)
     // verify fail
     // TODO: remove session?
     llarp::LogWarn("session start verify failed from ", self->addr);
-    self->serv->RemoveSessionByAddr(self->addr);
-
+    self->serv->RemoveSession(self);
     return;
   }
   self->send_LIM();
