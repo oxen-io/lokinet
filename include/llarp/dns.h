@@ -33,6 +33,7 @@ struct dns_tracker
   //uint c_responses;
   uint c_requests;
   std::map< uint, dnsc_answer_request * > client_request;
+  // FIXME: support multiple dns server contexts
   dnsd_context *dnsd;
   //std::map< uint, dnsd_question_request * > daemon_request;
 };

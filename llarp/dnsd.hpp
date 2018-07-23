@@ -5,6 +5,8 @@
 #include "dnsc.hpp"
 #include <llarp/ev.h> // for sockaadr
 
+struct dnsd_context;
+
 typedef ssize_t (*sendto_dns_hook_func)(void *sock, const struct sockaddr *from,
                                         const void *buffer, size_t length);
 
@@ -22,9 +24,12 @@ struct dnsd_question_request
   struct sockaddr *from;
   sendto_dns_hook_func hook;  // sendto hook tbh
   // maybe a reference to dnsd_context incase of multiple
+  dnsd_context *context; // or you can access it via user (udp)
 };
 
-typedef bool (*intercept_query_hook)(struct dnsc_context *);
+// we could have passed in the source sockaddr in case you wanted to
+// handle the response yourself
+typedef sockaddr *(*intercept_query_hook)(std::string name);
 
 struct dnsd_context
 {

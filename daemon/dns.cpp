@@ -20,6 +20,13 @@ handle_signal(int sig)
   done = true;
 }
 
+sockaddr *
+hookChecker(std::string name)
+{
+  llarp::LogInfo("Hooked ", name);
+  return nullptr;
+}
+
 // FIXME: make configurable
 #define SERVER "8.8.8.8"
 #define PORT 53
@@ -47,6 +54,8 @@ main(int argc, char *argv[])
       llarp::LogError("Couldnt init dns daemon");
       return 0;
     }
+    // Configure intercept
+    dnsd.intercept = &hookChecker;
 
     // singlethreaded
     if(0)

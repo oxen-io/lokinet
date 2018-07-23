@@ -154,16 +154,16 @@ llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
   // auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr = decode_hdr((const char *)castBuf);
   // castBuf += 12;
-  llarp::LogInfo("msg id ", hdr->id);
-  llarp::LogInfo("msg qr ", (uint8_t)hdr->qr);
+  llarp::LogDebug("msg id ", hdr->id);
+  llarp::LogDebug("msg qr ", (uint8_t)hdr->qr);
   if(hdr->qr)
   {
-    llarp::LogInfo("handling as dnsc answer");
+    llarp::LogDebug("handling as dnsc answer");
     llarp_handle_dnsc_recvfrom(udp, saddr, buf, sz);
   }
   else
   {
-    llarp::LogInfo("handling as dnsd question");
+    llarp::LogDebug("handling as dnsd question");
     llarp_handle_dnsd_recvfrom(udp, saddr, buf, sz);
   }
   /*

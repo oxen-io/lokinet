@@ -39,7 +39,7 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
   // ID
   // buffer[0] = (value & 0xFF00) >> 8;
   // buffer[1] = value & 0xFF;
-  llarp::LogInfo("building request ", id);
+  llarp::LogDebug("building request ", id);
   
   dnsQuery->request[0] = (id & 0xFF00) >> 8;
   dnsQuery->request[1] = (id & 0x00FF) >> 0;
@@ -306,7 +306,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr    = decode_hdr((const char *)castBuf);
 
-  llarp::LogInfo("Header got client responses for id: ", hdr->id);
+  llarp::LogDebug("Header got client responses for id: ", hdr->id);
 
   // if we sent this out, then there's an id
   struct dns_tracker *tracker        = (struct dns_tracker *)udp->user;
@@ -354,18 +354,18 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
 
   dns_msg_header *msg = decode_hdr((const char *)castBuf);
   castBuf += 12;
-  llarp::LogInfo("msg id ", msg->id);
+  llarp::LogDebug("msg id ", msg->id);
   uint8_t qr = msg->qr;
-  llarp::LogInfo("msg qr ", qr);
+  llarp::LogDebug("msg qr ", qr);
   uint8_t opcode = msg->opcode;
-  llarp::LogInfo("msg op ", opcode);
+  llarp::LogDebug("msg op ", opcode);
   rcode = msg->rcode;
-  llarp::LogInfo("msg rc ", rcode);
+  llarp::LogDebug("msg rc ", rcode);
 
-  llarp::LogInfo("msg qdc ", msg->qdCount);
-  llarp::LogInfo("msg anc ", msg->anCount);
-  llarp::LogInfo("msg nsc ", msg->nsCount);
-  llarp::LogInfo("msg arc ", msg->arCount);
+  llarp::LogDebug("msg qdc ", msg->qdCount);
+  llarp::LogDebug("msg anc ", msg->anCount);
+  llarp::LogDebug("msg nsc ", msg->nsCount);
+  llarp::LogDebug("msg arc ", msg->arCount);
 
   // we may need to parse question first
   
@@ -384,7 +384,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   for(uint i = 0; i < hdr->qdCount; i++)
   {
     question = decode_question((const char*)castBuf);
-    llarp::LogInfo("Read a question");
+    llarp::LogDebug("Read a question");
     castBuf += question->name.length() + 8;
   }
   
@@ -393,7 +393,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   for(uint i = 0; i < hdr->anCount; i++)
   {
     answer = decode_answer((const char*)castBuf);
-    llarp::LogInfo("Read an answer");
+    llarp::LogDebug("Read an answer");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   }
   // handle authority records (usually no answers with these, so we'll just stomp)
@@ -401,7 +401,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   for(uint i = 0; i < hdr->nsCount; i++)
   {
     answer = decode_answer((const char*)castBuf);
-    llarp::LogInfo("Read an authority");
+    llarp::LogDebug("Read an authority");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   }
   
@@ -437,10 +437,10 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
     return;
   }
   
-  llarp::LogInfo("ans class ", answer->aClass);
-  llarp::LogInfo("ans type  ", answer->type);
-  llarp::LogInfo("ans ttl   ", answer->ttl);
-  llarp::LogInfo("ans rdlen ", answer->rdLen);
+  llarp::LogDebug("ans class ", answer->aClass);
+  llarp::LogDebug("ans type  ", answer->type);
+  llarp::LogDebug("ans ttl   ", answer->ttl);
+  llarp::LogDebug("ans rdlen ", answer->rdLen);
 
   /*
   llarp::LogInfo("ans2 class ", answer2->aClass);
@@ -474,7 +474,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   if(request->question.type == 1)
   {
     //llarp::LogInfo("DNS server's answer is: (type#=", ATYPE, "):");
-    llarp::LogInfo("IPv4 address(es) for ", request->question.name, ":");
+    llarp::LogDebug("IPv4 address(es) for ", request->question.name, ":");
     
     if (answer->rdLen == 4)
     {
@@ -490,7 +490,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
       ip[3] = answer->rData[3];
 
       llarp::Addr test(request->result);
-      llarp::LogInfo(test);
+      llarp::LogDebug(test);
       request->found = true;
       request->resolved(request);
       return;
