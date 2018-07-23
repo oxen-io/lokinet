@@ -22,7 +22,11 @@ namespace llarp
       bool read = false;
       if(!BEncodeMaybeReadDictInt("L", pathLifetime, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("S", pathCreated, read, key, val))
+      if(!BEncodeMaybeReadDictInt("S", S, read, key, val))
+        return false;
+      if(!BEncodeMaybeReadDictInt("T", pathCreated, read, key, val))
+        return false;
+      if(!BEncodeMaybeReadDictInt("V", version, read, key, val))
         return false;
       return read;
     }
@@ -34,9 +38,13 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictMsgType(buf, "A", "P"))
         return false;
-      if(!BEncodeWriteDictInt(buf, "L", pathLifetime))
+      if(!BEncodeWriteDictInt("L", pathLifetime, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "S", pathCreated))
+      if(!BEncodeWriteDictInt("S", S, buf))
+        return false;
+      if(!BEncodeWriteDictInt("T", pathCreated, buf))
+        return false;
+      if(!BEncodeWriteDictInt("V", version, buf))
         return false;
       return bencode_end(buf);
     }

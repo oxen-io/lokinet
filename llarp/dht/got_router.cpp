@@ -28,11 +28,11 @@ namespace llarp
         return false;
 
       // txid
-      if(!BEncodeWriteDictInt(buf, "T", txid))
+      if(!BEncodeWriteDictInt("T", txid, buf))
         return false;
 
       // version
-      if(!BEncodeWriteDictInt(buf, "V", version))
+      if(!BEncodeWriteDictInt("V", version, buf))
         return false;
 
       return bencode_end(buf);

@@ -92,13 +92,13 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictEntry("I", I, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "R", R))
+      if(!BEncodeWriteDictInt("R", R, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "S", S))
+      if(!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "T", txID))
+      if(!BEncodeWriteDictInt("T", txID, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "V", LLARP_PROTO_VERSION))
+      if(!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
         return false;
       return bencode_end(buf);
     }

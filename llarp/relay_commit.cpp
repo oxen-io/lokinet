@@ -74,7 +74,7 @@ namespace llarp
       return false;
     if(lifetime > 10 && lifetime < 600)
     {
-      if(!BEncodeWriteDictInt(buf, "i", lifetime))
+      if(!BEncodeWriteDictInt("i", lifetime, buf))
         return false;
     }
     if(!BEncodeWriteDictEntry("n", tunnelNonce, buf))

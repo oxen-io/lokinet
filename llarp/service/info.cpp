@@ -40,7 +40,7 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictEntry("s", signkey, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "v", LLARP_PROTO_VERSION))
+      if(!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
         return false;
       if(!vanity.IsZero())
       {

@@ -41,7 +41,7 @@ struct llarp_link
   LinkMap_t m_sessions;
   mtx_t m_sessions_Mutex;
 
-  typedef std::unordered_map< llarp::PubKey, llarp::Addr, llarp::PubKeyHash >
+  typedef std::unordered_map< llarp::PubKey, llarp::Addr, llarp::PubKey::Hash >
       SessionMap_t;
 
   SessionMap_t m_Connected;

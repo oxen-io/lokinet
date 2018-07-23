@@ -66,7 +66,7 @@ namespace llarp
           return false;
       }
       // write version
-      if(!BEncodeWriteDictInt(buf, "v", version))
+      if(!BEncodeWriteDictInt("v", version, buf))
         return false;
       if(W)
       {
@@ -128,14 +128,14 @@ namespace llarp
         return false;
       if(latency)
       {
-        if(!BEncodeWriteDictInt(buf, "l", latency))
+        if(!BEncodeWriteDictInt("l", latency, buf))
           return false;
       }
       if(!BEncodeWriteDictEntry("p", pathID, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "v", version))
+      if(!BEncodeWriteDictInt("v", version, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "x", expiresAt))
+      if(!BEncodeWriteDictInt("x", expiresAt, buf))
         return false;
       return bencode_end(buf);
     }

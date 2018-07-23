@@ -118,7 +118,7 @@ frame_state::got_xmit(frame_header hdr, size_t sz)
       return true;
     }
     else
-      llarp::LogWarn("duplicate XMIT h=", h);
+      llarp::LogWarn("duplicate XMIT h=", llarp::ShortHash(h));
   }
   else
     llarp::LogWarn("LSB not set on flags");

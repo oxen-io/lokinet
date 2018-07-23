@@ -31,7 +31,7 @@ namespace llarp
 
   template < typename Int_t >
   bool
-  BEncodeWriteDictInt(llarp_buffer_t* buf, const char* k, const Int_t& i)
+  BEncodeWriteDictInt(const char* k, const Int_t& i, llarp_buffer_t* buf)
   {
     return bencode_write_bytestring(buf, k, 1) && bencode_write_uint64(buf, i);
   }

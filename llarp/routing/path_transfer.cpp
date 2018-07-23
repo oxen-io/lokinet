@@ -20,6 +20,8 @@ namespace llarp
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("P", P, read, key, val))
         return false;
+      if(!BEncodeMaybeReadDictInt("S", S, read, key, val))
+        return false;
       if(llarp_buffer_eq(key, "T"))
       {
         if(T)
@@ -44,12 +46,15 @@ namespace llarp
       if(!BEncodeWriteDictEntry("P", P, buf))
         return false;
 
+      if(!BEncodeWriteDictInt("S", S, buf))
+        return false;
+
       if(!bencode_write_bytestring(buf, "T", 1))
         return false;
       if(!T->BEncode(buf))
         return false;
 
-      if(!BEncodeWriteDictInt(buf, "V", LLARP_PROTO_VERSION))
+      if(!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
         return false;
       if(!BEncodeWriteDictEntry("Y", Y, buf))
         return false;

@@ -66,13 +66,13 @@ namespace llarp
       if(!BEncodeWriteDictMsgType(buf, "A", "F"))
         return false;
       // iterative
-      if(!BEncodeWriteDictInt(buf, "I", iterative ? 1 : 0))
+      if(!BEncodeWriteDictInt("I", iterative ? 1 : 0, buf))
         return false;
       if(N.IsZero())
       {
         return false;
         // r5n counter
-        if(!BEncodeWriteDictInt(buf, "R", R))
+        if(!BEncodeWriteDictInt("R", R, buf))
           return false;
         // service address
         if(!BEncodeWriteDictEntry("S", S, buf))
@@ -83,14 +83,14 @@ namespace llarp
         if(!BEncodeWriteDictEntry("N", N, buf))
           return false;
         // r5n counter
-        if(!BEncodeWriteDictInt(buf, "R", R))
+        if(!BEncodeWriteDictInt("R", R, buf))
           return false;
       }
       // txid
-      if(!BEncodeWriteDictInt(buf, "T", T))
+      if(!BEncodeWriteDictInt("T", T, buf))
         return false;
       // protocol version
-      if(!BEncodeWriteDictInt(buf, "V", LLARP_PROTO_VERSION))
+      if(!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
         return false;
 
       return bencode_end(buf);

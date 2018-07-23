@@ -13,7 +13,7 @@ namespace llarp
         return false;
       if(!EncodeParams(buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "Y", seqno))
+      if(!BEncodeWriteDictInt("Y", seqno, buf))
         return false;
       if(!BEncodeWriteDictEntry("Z", hash, buf))
         return false;

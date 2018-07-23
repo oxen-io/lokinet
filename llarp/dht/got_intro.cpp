@@ -89,9 +89,9 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictList("I", I, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "T", T))
+      if(!BEncodeWriteDictInt("T", T, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "V", version))
+      if(!BEncodeWriteDictInt("V", version, buf))
         return false;
       return bencode_end(buf);
     }

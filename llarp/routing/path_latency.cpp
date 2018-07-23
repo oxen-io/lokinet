@@ -15,6 +15,8 @@ namespace llarp
       bool read = false;
       if(!BEncodeMaybeReadDictInt("L", L, read, key, val))
         return false;
+      if(!BEncodeMaybeReadDictInt("S", S, read, key, val))
+        return false;
       if(!BEncodeMaybeReadDictInt("T", T, read, key, val))
         return false;
       return read;
@@ -29,14 +31,16 @@ namespace llarp
         return false;
       if(L)
       {
-        if(!BEncodeWriteDictInt(buf, "L", L))
+        if(!BEncodeWriteDictInt("L", L, buf))
           return false;
       }
       if(T)
       {
-        if(!BEncodeWriteDictInt(buf, "T", T))
+        if(!BEncodeWriteDictInt("T", T, buf))
           return false;
       }
+      if(!BEncodeWriteDictInt("S", S, buf))
+        return false;
       return bencode_end(buf);
     }
 

@@ -56,9 +56,9 @@ namespace llarp
       }
       if(!BEncodeWriteDictEntry("N", N, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "S", S))
+      if(!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "V", version))
+      if(!BEncodeWriteDictInt("V", version, buf))
         return false;
       if(!BEncodeWriteDictEntry("Z", Z, buf))
         return false;

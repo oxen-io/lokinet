@@ -28,7 +28,7 @@ namespace llarp
 
     if(!BEncodeWriteDictEntry("p", pathid, buf))
       return false;
-    if(!BEncodeWriteDictInt(buf, "v", LLARP_PROTO_VERSION))
+    if(!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
       return false;
     if(!BEncodeWriteDictEntry("x", X, buf))
       return false;
@@ -90,7 +90,7 @@ namespace llarp
 
     if(!BEncodeWriteDictEntry("p", pathid, buf))
       return false;
-    if(!BEncodeWriteDictInt(buf, "v", LLARP_PROTO_VERSION))
+    if(!BEncodeWriteDictInt("v", LLARP_PROTO_VERSION, buf))
       return false;
     if(!BEncodeWriteDictEntry("x", X, buf))
       return false;
