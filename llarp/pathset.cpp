@@ -78,7 +78,8 @@ namespace llarp
     void
     PathSet::AddPath(Path* path)
     {
-      m_Paths.emplace(std::make_pair(path->Upstream(), path->RXID()), path);
+      m_Paths.insert(
+          std::make_pair(std::make_pair(path->Upstream(), path->RXID()), path));
     }
 
     void

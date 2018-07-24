@@ -107,7 +107,7 @@ namespace llarp
     MapPut(Map_t& map, const Key_t& k, const Value_t& v)
     {
       std::unique_lock< std::mutex > lock(map.first);
-      map.second.emplace(k, v);
+      map.second.insert(std::make_pair(k, v));
     }
 
     template < typename Map_t, typename Visit_t >

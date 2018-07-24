@@ -217,7 +217,7 @@ struct llarp_link
   put_session(const llarp::Addr &src, llarp_link_session *impl)
   {
     lock_t lock(m_sessions_Mutex);
-    m_sessions.emplace(src, impl);
+    m_sessions.insert(std::make_pair(src, impl));
     impl->our_router = &router->rc;
   }
 
