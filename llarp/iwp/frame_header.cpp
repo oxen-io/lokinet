@@ -1,4 +1,5 @@
 #include "llarp/iwp/frame_header.hpp"
+#include "llarp/endian.h"
 
 frame_header::frame_header(byte_t *buf) : ptr(buf)
 {
@@ -25,15 +26,13 @@ frame_header::msgtype()
 uint16_t
 frame_header::size() const
 {
-  uint16_t sz;
-  memcpy(&sz, ptr + 2, 2);
-  return sz;
+  return bufbe16toh(ptr + 2);
 }
 
 void
 frame_header::setsize(uint16_t sz)
 {
-  memcpy(ptr + 2, &sz, 2);
+  htobe16buf(ptr + 2, sz);
 }
 
 uint8_t &
