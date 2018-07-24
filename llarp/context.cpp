@@ -12,12 +12,6 @@
 
 namespace llarp
 {
-  Context::Context(bool singleThread)
-  {
-    singleThreaded = singleThread;
-    llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
-  }
-
   Context::~Context()
   {
   }
@@ -134,6 +128,7 @@ namespace llarp
   int
   Context::Setup()
   {
+    llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
     this->LoadDatabase();
     llarp_ev_loop_alloc(&mainloop);
@@ -311,7 +306,8 @@ llarp_main_init(const char *fname, bool multiProcess)
     cSetLogLevel(eLogDebug);
   }
   llarp_main *m = new llarp_main;
-  m->ctx.reset(new llarp::Context(!multiProcess));
+  m->ctx.reset(new llarp::Context());
+  m->ctx->singleThreaded = !multiProcess;
   if(!m->ctx->LoadConfig(fname))
   {
     m->ctx->Close();
