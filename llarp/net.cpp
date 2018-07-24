@@ -1,7 +1,6 @@
 #include "net.hpp"
 #include "str.hpp"
-#ifdef ANRDOID
-#error "fug"
+#ifdef ANDROID
 #include "android/ifaddrs.h"
 #else
 #include <ifaddrs.h>
