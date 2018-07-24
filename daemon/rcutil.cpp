@@ -5,7 +5,7 @@
 #include <getopt.h>
 #include <llarp/router_contact.h>
 #include <llarp/time.h>
-#include <algorithm>
+
 #include <fstream>
 #include "buffer.hpp"
 #include "crypto.hpp"
@@ -151,6 +151,7 @@ main(int argc, char *argv[])
     int option_index = 0;
     c = getopt_long(argc, argv, "c:o:g:lu:i:e:q:nr:", long_options,
                     &option_index);
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
     if(c == -1)
       break;
     switch(c)
@@ -162,28 +163,25 @@ main(int argc, char *argv[])
         break;
       case 'o':
         if(strncmp(optarg, "debug",
-                   std::min(strlen(optarg), static_cast< unsigned long >(5)))
+                   MIN(strlen(optarg), static_cast< unsigned long >(5)))
            == 0)
         {
           llarp::SetLogLevel(llarp::eLogDebug);
         }
-        else if(strncmp(
-                    optarg, "info",
-                    std::min(strlen(optarg), static_cast< unsigned long >(4)))
+        else if(strncmp(optarg, "info",
+                        MIN(strlen(optarg), static_cast< unsigned long >(4)))
                 == 0)
         {
           llarp::SetLogLevel(llarp::eLogInfo);
         }
-        else if(strncmp(
-                    optarg, "warn",
-                    std::min(strlen(optarg), static_cast< unsigned long >(4)))
+        else if(strncmp(optarg, "warn",
+                        MIN(strlen(optarg), static_cast< unsigned long >(4)))
                 == 0)
         {
           llarp::SetLogLevel(llarp::eLogWarn);
         }
-        else if(strncmp(
-                    optarg, "error",
-                    std::min(strlen(optarg), static_cast< unsigned long >(5)))
+        else if(strncmp(optarg, "error",
+                        MIN(strlen(optarg), static_cast< unsigned long >(5)))
                 == 0)
         {
           llarp::SetLogLevel(llarp::eLogError);
@@ -236,6 +234,7 @@ main(int argc, char *argv[])
         abort();
     }
   }
+#undef MIN
   if(!haveRequiredOptions)
   {
     llarp::LogError("Parameters dont all have their required parameters.\n");
