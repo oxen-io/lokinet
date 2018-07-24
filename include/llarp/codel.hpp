@@ -1,7 +1,7 @@
 #ifndef LLARP_CODEL_QUEUE_HPP
 #define LLARP_CODEL_QUEUE_HPP
 #include <llarp/time.h>
-#include "llarp/logger.hpp"
+#include <llarp/logger.hpp>
 
 #include <cmath>
 #include <functional>
@@ -25,25 +25,35 @@ namespace llarp
       {
       }
     };
+    template < typename T, typename GetTime >
+    struct CoDelCompareTime
+    {
+      bool
+      operator()(const T& left, const T& right) const
+      {
+        return GetTime()(left) < GetTime()(right);
+      }
+    };
 
-    template < typename T, typename GetTime, typename PutTime,
+    template < typename T >
+    struct CoDelComparePriority
+    {
+      bool
+      operator()(const T& left, const T& right) const
+      {
+        return left < right;
+      }
+    };
+
+    template < typename T, typename GetTime, typename PutTime, typename Compare,
                typename Mutex_t    = std::mutex,
-               typename Lock_t     = std::unique_lock< Mutex_t >,
-               llarp_time_t dropMs = 20, llarp_time_t initialIntervalMs = 100 >
+               typename Lock_t     = std::lock_guard< std::mutex >,
+               llarp_time_t dropMs = 5, llarp_time_t initialIntervalMs = 100 >
     struct CoDelQueue
     {
       CoDelQueue(const std::string& name) : m_name(name)
       {
       }
-
-      struct CoDelCompare
-      {
-        bool
-        operator()(const T& left, const T& right) const
-        {
-          return GetTime()(left) < GetTime()(right);
-        }
-      };
 
       size_t
       Size()
@@ -53,7 +63,7 @@ namespace llarp
       }
 
       void
-      Put(const T& i)
+      Put(T i)
       {
         Lock_t lock(m_QueueMutex);
         // llarp::LogInfo("CoDelQueue::Put - adding item, queue now has ",
@@ -111,7 +121,7 @@ namespace llarp
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       Mutex_t m_QueueMutex;
-      std::priority_queue< T, std::vector< T >, CoDelCompare > m_Queue;
+      std::priority_queue< T, std::vector< T >, Compare > m_Queue;
       std::string m_name;
     };
   }  // namespace util

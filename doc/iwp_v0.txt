@@ -131,8 +131,8 @@ Decryption:
 
 verify h == MDS(n + x, S)
 D = SD(x, S, n)
-H = D[0:4]
-P = D[4:4+H.s]
+H = D[0:6]
+P = D[6:6+H.s]
 
 message types:
 

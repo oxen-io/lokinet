@@ -20,6 +20,10 @@ namespace llarp
       {
         return llarp::dht::DecodeMesssageList(from, val, M, true);
       }
+      else if(llarp_buffer_eq(key, "S"))
+      {
+        return bencode_read_integer(val, &S);
+      }
       else if(llarp_buffer_eq(key, "V"))
       {
         return bencode_read_integer(val, &V);
@@ -37,7 +41,9 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictBEncodeList("M", M, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "V", LLARP_PROTO_VERSION))
+      if(!BEncodeWriteDictInt("S", S, buf))
+        return false;
+      if(!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
         return false;
 
       return bencode_end(buf);

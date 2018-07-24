@@ -49,6 +49,6 @@ namespace llarp
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 #endif

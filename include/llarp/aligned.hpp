@@ -151,10 +151,22 @@ namespace llarp
       if(!bencode_read_string(buf, &strbuf))
         return false;
       if(strbuf.sz != sz)
+      {
+        llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
         return false;
+      }
       memcpy(b, strbuf.base, sz);
       return true;
     }
+
+    struct Hash
+    {
+      size_t
+      operator()(const AlignedBuffer< sz >& buf) const
+      {
+        return *buf.data_l();
+      }
+    };
 
    protected:
     union {

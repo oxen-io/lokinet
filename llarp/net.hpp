@@ -97,7 +97,7 @@ namespace llarp
                  16);
           *port = ((sockaddr_in6*)(&other))->sin6_port;
           break;
-          // TODO : sockaddr_ll
+        // TODO : sockaddr_ll
         default:
           break;
       }

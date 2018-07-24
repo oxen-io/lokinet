@@ -20,10 +20,11 @@ namespace llarp
     void
     Context::Tick()
     {
+      auto now = llarp_time_now_ms();
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
-        itr->second->Tick();
+        itr->second->Tick(now);
         ++itr;
       }
     }
@@ -61,5 +62,5 @@ namespace llarp
       delete service;
       return false;
     }
-  }
-}
+  }  // namespace service
+}  // namespace llarp

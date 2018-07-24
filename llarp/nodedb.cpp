@@ -439,7 +439,7 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
       auto itr = n->entries.begin();
       if(sz > 1)
       {
-        auto idx = rand() % sz;
+        auto idx = llarp_randint() % sz;
         std::advance(itr, idx);
       }
       if(memcmp(prev->pubkey, itr->second.pubkey, PUBKEYSIZE) == 0)
@@ -453,7 +453,7 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
     auto itr = n->entries.begin();
     if(sz > 1)
     {
-      auto idx = rand() % sz;
+      auto idx = llarp_randint() % sz;
       std::advance(itr, idx);
     }
     llarp_rc_copy(result, &itr->second);

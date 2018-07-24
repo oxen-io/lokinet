@@ -259,6 +259,9 @@ namespace llarp
       const PathID_t&
       TXID() const;
 
+      RouterID
+      Endpoint() const;
+
       const PathID_t&
       RXID() const;
 

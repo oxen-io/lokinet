@@ -11,16 +11,22 @@ CXX ?= c++
 TARGETS = lokinet
 SIGS = $(TARGETS:=.sig)
 
+
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
 SHADOW_CONFIG=$(REPO)/shadow.config.xml
 SHADOW_PLUGIN=$(REPO)/libshadow-plugin-llarp.so
 SHADOW_LOG=$(REPO)/shadow.log.txt
 
-TESTNET_ROOT=$(REPO)/testnet_tmp
+SHADOW_SRC ?= $(HOME)/git/shadow
+SHADOW_PARSE ?= python $(SHADOW_SRC)/src/tools/parse-shadow.py - -m 0 --packet-data
+SHADOW_PLOT ?= python $(SHADOW_SRC)/src/tools/plot-shadow.py -d $(REPO) LokiNET -c $(SHADOW_CONFIG) -r 10000 -e '.*'
+
+TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 
+TESTNET_EXE=$(REPO)/lokinet
 TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
@@ -32,7 +38,7 @@ clean:
 	rm -f $(SHADOW_PLUGIN) $(SHADOW_CONFIG)
 	rm -f *.sig
 
-debug-configure: clean
+debug-configure: 
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 release-configure: clean
@@ -62,9 +68,14 @@ shadow-build: shadow-configure
 	ninja clean
 	ninja
 
-shadow: shadow-build
+shadow-run: shadow-build
 	python3 contrib/shadow/genconf.py $(SHADOW_CONFIG)
-	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) &> $(SHADOW_LOG) || true"
+	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) | $(SHADOW_PARSE)"
+
+shadow-plot: shadow-run
+	$(SHADOW_PLOT)
+
+shadow: shadow-plot
 
 testnet-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
@@ -72,9 +83,12 @@ testnet-configure: clean
 testnet-build: testnet-configure
 	ninja
 
-testnet: testnet-build
+$(TESTNET_EXE): testnet-build
+	cp -f $(REPO)/llarpd $(TESTNET_EXE)
+
+testnet: $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
-	python3 contrib/testnet/genconf.py --bin=$(REPO)/llarpd --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
+	python3 contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 test: debug-configure
@@ -83,3 +97,12 @@ test: debug-configure
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+
+fuzz-configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
+
+fuzz-build: fuzz-configure
+	ninja
+
+fuzz: fuzz-build
+	$(EXE)

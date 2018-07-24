@@ -117,6 +117,7 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   // we don't have the RC locally so do a dht lookup
   llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
   lookup->user                    = this;
+  llarp_rc_clear(&lookup->result);
   memcpy(lookup->target, remote, PUBKEYSIZE);
   lookup->hook = &HandleDHTLookupForSendTo;
   llarp_dht_lookup_router(this->dht, lookup);
@@ -167,7 +168,7 @@ llarp_router::try_connect(fs::path rcfile)
   llarp_rc *remote = new llarp_rc;
   llarp_rc_new(remote);
   remote = llarp_rc_read(rcfile.c_str());
-  if (!remote)
+  if(!remote)
   {
     llarp::LogError("failure to decode or verify of remote RC");
     return;
@@ -357,7 +358,7 @@ llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
 void
 llarp_router::Tick()
 {
-  //llarp::LogDebug("tick router");
+  // llarp::LogDebug("tick router");
 
   paths.ExpirePaths();
   // TODO: don't do this if we have enough paths already
@@ -616,7 +617,7 @@ llarp_router::Run()
     }
     if(a.isPrivate())
     {
-      if (!this->publicOverride)
+      if(!this->publicOverride)
       {
         llarp::LogWarn("Skipping private network link: ", a);
         continue;
@@ -715,13 +716,13 @@ llarp_router::Run()
     // initialize as service node
     InitServiceNode();
     // immediate connect all for service node
-    uint64_t delay = rand() % 100;
+    uint64_t delay = llarp_randint() % 100;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
   }
   else
   {
     // delayed connect all for clients
-    uint64_t delay = ((rand() % 10) * 500) + 1000;
+    uint64_t delay = ((llarp_randint() % 10) * 500) + 500;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
   }
 
@@ -804,7 +805,7 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
     router->netloop = netloop;
     router->tp      = tp;
     router->logic   = logic;
-    // TODO: make disk io threadpool count configurable
+// TODO: make disk io threadpool count configurable
 #ifdef TESTNET
     router->disk = tp;
 #else

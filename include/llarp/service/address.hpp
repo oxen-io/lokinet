@@ -30,6 +30,11 @@ namespace llarp
           return idx;
         }
       };
+
+      operator const dht::Key_t() const
+      {
+        return dht::Key_t(data());
+      }
     };
 
   }  // namespace service

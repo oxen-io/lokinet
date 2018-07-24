@@ -33,8 +33,15 @@ namespace llarp
         signkey = other.signkey;
         version = other.version;
         vanity  = other.vanity;
+        UpdateAddr();
         return *this;
       };
+
+      bool
+      operator<(const ServiceInfo& other) const
+      {
+        return Addr() < other.Addr();
+      }
 
       friend std::ostream&
       operator<<(std::ostream& out, const ServiceInfo& i)
@@ -43,15 +50,39 @@ namespace llarp
                    << " v=" << i.version << " x=" << i.vanity << "]";
       }
 
+      /// compute .loki address
+      std::string
+      Name() const;
+
+      bool
+      UpdateAddr();
+
+      const Address&
+      Addr() const
+      {
+        return m_CachedAddr;
+      }
+
       /// calculate our address
       bool
       CalculateAddress(byte_t* buf) const;
+
+      bool
+      BDecode(llarp_buffer_t* buf)
+      {
+        if(!IBEncodeMessage::BDecode(buf))
+          return false;
+        return CalculateAddress(m_CachedAddr);
+      }
 
       bool
       BEncode(llarp_buffer_t* buf) const;
 
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+
+     private:
+      Address m_CachedAddr;
     };
   }  // namespace service
 }  // namespace llarp

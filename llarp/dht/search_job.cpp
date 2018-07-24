@@ -34,11 +34,22 @@ namespace llarp
     {
     }
 
+    SearchJob::SearchJob(const Key_t &asker, uint64_t tx,
+                         IntroSetHookFunc found)
+        : foundIntroHook(found)
+        , started(llarp_time_now_ms())
+        , requester(asker)
+        , requesterTX(tx)
+    {
+      target.Zero();
+    }
+
     void
-    SearchJob::FoundIntro(const llarp::service::IntroSet *introset) const
+    SearchJob::FoundIntros(
+        const std::vector< llarp::service::IntroSet > &introsets) const
     {
       if(foundIntroHook)
-        foundIntroHook(introset);
+        foundIntroHook(introsets);
     }
 
     void
@@ -71,7 +82,7 @@ namespace llarp
       }
       else if(foundIntroHook)
       {
-        foundIntroHook(nullptr);
+        foundIntroHook({});
       }
     }
   }  // namespace dht

@@ -196,6 +196,15 @@ struct FrameGetTime
   }
 };
 
+struct FrameCompareTime
+{
+  bool
+  operator()(const iwp_async_frame *left, iwp_async_frame *right) const
+  {
+    return left->created < right->created;
+  }
+};
+
 /// synchronously decrypt a frame
 bool
 iwp_decrypt_frame(struct iwp_async_frame *frame);

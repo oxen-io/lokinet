@@ -198,7 +198,8 @@ namespace llarp
 
 #elif(__FreeBSD__)
         pthread_set_name_np(netio_threads.back().native_handle(),
-                            "llarp-netio");
+                            "llarp-"
+                            "netio");
 #else
         pthread_setname_np(netio_threads.back().native_handle(), "llarp-netio");
 #endif

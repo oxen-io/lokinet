@@ -8,14 +8,10 @@ namespace llarp
 {
   namespace dht
   {
-    GotIntroMessage::GotIntroMessage(uint64_t tx,
-                                     const llarp::service::IntroSet *i)
-        : IMessage({}), T(tx)
+    GotIntroMessage::GotIntroMessage(
+        const std::vector< llarp::service::IntroSet > &results, uint64_t tx)
+        : IMessage({}), I(results), T(tx)
     {
-      if(i)
-      {
-        I.push_back(*i);
-      }
     }
 
     GotIntroMessage::~GotIntroMessage()
@@ -28,29 +24,31 @@ namespace llarp
     {
       auto &dht   = ctx->impl;
       auto crypto = &dht.router->crypto;
-      if(I.size() == 1)
+
+      for(const auto &introset : I)
       {
-        const auto &introset = I.front();
         if(!introset.VerifySignature(crypto))
         {
           llarp::LogWarn(
-              "Invalid introset signature while handling direct GotIntro from ",
+              "Invalid introset signature while handling direct GotIntro "
+              "from ",
               From);
           return false;
         }
-        llarp::dht::Key_t addr;
-        if(!introset.A.CalculateAddress(addr))
-        {
-          llarp::LogWarn(
-              "failed to calculate hidden service address for direct GotIntro "
-              "message from ",
-              From);
-          return false;
-        }
-        // TODO: inform any pending tx
+      }
+      auto pending = dht.FindPendingTX(From, T);
+      if(pending)
+      {
+        pending->FoundIntros(I);
+        dht.RemovePendingLookup(From, T);
         return true;
       }
-      return false;
+      else
+      {
+        llarp::LogWarn("got GIM from ", From,
+                       " with no previous pending transaction, txid=", T);
+        return false;
+      }
     }
 
     bool
@@ -91,9 +89,9 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictList("I", I, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "T", T))
+      if(!BEncodeWriteDictInt("T", T, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "V", version))
+      if(!BEncodeWriteDictInt("V", version, buf))
         return false;
       return bencode_end(buf);
     }

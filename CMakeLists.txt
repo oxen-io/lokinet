@@ -19,6 +19,8 @@ else()
   message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
+set(THREAD_LIB pthread)
+
 if(STATIC_LINK)
   set(STATIC_LINK_LIBS c)
   add_cflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
@@ -30,6 +32,9 @@ if(SHADOW)
 else()
   set(WITH_STATIC ON)
 endif()
+
+add_cflags("-Wall")
+add_cxxflags("-Wall")
 
 set(DEBUG_FLAGS "-g")
 set(OPTIMIZE_FLAGS "-O0")
@@ -84,23 +89,21 @@ endif()
 set(EXE llarpd)
 set(EXE_SRC daemon/main.cpp)
 
-#if(SODIUM_INCLUDE_DIR)
-#  include_directories(${SODIUM_INCLUDE_DIR})
-#endif()
+if(SODIUM_INCLUDE_DIR)
+  include_directories(${SODIUM_INCLUDE_DIR})
+endif()
 
-#if(SODIUM_LIBRARIES)
-#  set(SODIUM_LIB ${SODIUM_LIBRARIES})
-#else()
-#  set(SODIUM_LIB sodium)
-#endif()
+if(SODIUM_LIBRARIES)
+  set(SODIUM_LIB ${SODIUM_LIBRARIES})
+else()
+  find_library (
+	  SODIUM_LIB
+	  NAMES sodium libsodium
+	  HINTS "/usr/local/lib"
+  )
+endif()
 
-find_library (
-	SODIUM_LIB
-	NAMES sodium libsodium
-	HINTS "/usr/local/lib"
-)
-
-set(LIBS ${SODIUM_LIB} pthread)
+set(LIBS ${SODIUM_LIB} ${THREAD_LIB})
 
 set(LIB llarp)
 set(SHARED_LIB ${LIB})
@@ -210,10 +213,12 @@ set(LIB_SRC
   llarp/service.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
-  llarp/api/create_session.cpp
   llarp/api/client.cpp
   llarp/api/message.cpp
   llarp/api/parser.cpp
+  llarp/api/messages/ack.cpp
+  llarp/api/messages/keepalive.cpp
+  llarp/api/messages/spawn.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
@@ -234,8 +239,13 @@ set(LIB_SRC
   llarp/routing/path_confirm.cpp
   llarp/routing/path_latency.cpp
   llarp/routing/path_transfer.cpp
+  llarp/service/address.cpp
   llarp/service/context.cpp
   llarp/service/endpoint.cpp
+  llarp/service/lookup.cpp
+  llarp/service/protocol.cpp
+  llarp/service/tag.cpp
+  llarp/service/info.cpp
   ${LIBTUNTAP_SRC}
 )
 
@@ -273,7 +283,7 @@ include_directories(llarp)
 
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
-include_directories(/usr/local/include)
+#include_directories(/usr/local/include)
 include_directories(${sodium_INCLUDE_DIR})
 
 if(SHADOW)
@@ -300,6 +310,7 @@ else()
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
     add_library(libbackport-static STATIC ${CPP_BACKPORT_SRC})
     add_library(libllarpplatform-static STATIC ${LIB_PLATFORM_SRC})
+    target_link_libraries(libllarpplatform-static ${THREAD_LIB})
     target_link_libraries(${STATIC_LIB} ${LIBS} libbackport-static libllarpplatform-static)
     if(NOT WITH_SHARED)
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} libbackport-static libllarpplatform-static)

@@ -15,23 +15,23 @@ namespace llarp
     struct IMessage : public llarp::IBEncodeMessage
     {
       llarp::PathID_t from;
-
+      uint64_t S = 0;
       virtual bool
       HandleMessage(IMessageHandler* h, llarp_router* r) const = 0;
     };
 
     struct InboundMessageParser
     {
-      llarp::PathID_t from;
       InboundMessageParser();
       bool
       ParseMessageBuffer(llarp_buffer_t buf, IMessageHandler* handler,
-                         llarp_router* r);
+                         const PathID_t& from, llarp_router* r);
 
      private:
       static bool
       OnKey(dict_reader* r, llarp_buffer_t* key);
       bool firstKey;
+      char key;
       dict_reader reader;
       IMessage* msg;
     };

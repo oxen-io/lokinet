@@ -9,13 +9,11 @@ namespace llarp
     {
       if(!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictString("F", FunctionName(), buf))
+      if(!BEncodeWriteDictString("A", FunctionName(), buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "I", sessionID))
+      if(!EncodeParams(buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "M", msgID))
-        return false;
-      if(!BEncodeWriteDictBEncodeList("P", GetParams(), buf))
+      if(!BEncodeWriteDictInt("Y", seqno, buf))
         return false;
       if(!BEncodeWriteDictEntry("Z", hash, buf))
         return false;
@@ -25,14 +23,8 @@ namespace llarp
     bool
     IMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
     {
-      if(llarp_buffer_eq(key, "P"))
-      {
-        return DecodeParams(val);
-      }
       bool read = false;
-      if(!BEncodeMaybeReadDictInt("I", sessionID, read, key, val))
-        return false;
-      if(!BEncodeMaybeReadDictInt("M", msgID, read, key, val))
+      if(!BEncodeMaybeReadDictInt("Y", seqno, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictEntry("Z", hash, read, key, val))
         return false;

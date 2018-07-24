@@ -20,7 +20,6 @@ static void
 handle_frame_encrypt(iwp_async_frame *frame)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(frame->user);
-  llarp::LogDebug("tx ", frame->sz);
   if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz) == -1)
     llarp::LogWarn("sendto failed");
 }
@@ -30,7 +29,6 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
     : udp(&l->udp)
     , crypto(&l->router->crypto)
     , iwp(l->iwp)
-    , logic(l->router->logic)
     , serv(l)
     , outboundFrames("iwp_outbound")
     , decryptedFrames("iwp_inbound")
@@ -45,6 +43,8 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
   llarp_rc_clear(&remote_router);
   crypto->randbytes(token, 32);
   llarp::LogInfo("session created");
+  frame.alive();
+  working.store(false);
 }
 
 llarp_link_session::~llarp_link_session()
@@ -62,7 +62,10 @@ llarp_link_session::Router()
 bool
 llarp_link_session::sendto(llarp_buffer_t msg)
 {
-  auto id = frame.txids++;
+  auto now = llarp_time_now_ms();
+  if(timedout(now))
+    return false;
+  auto id = ++frame.txids;
   // llarp::LogDebug("session sending to, number", id);
   llarp::ShortHash digest;
   crypto->shorthash(digest, msg);
@@ -74,6 +77,8 @@ llarp_link_session::sendto(llarp_buffer_t msg)
 bool
 llarp_link_session::timedout(llarp_time_t now, llarp_time_t timeout)
 {
+  if(now <= frame.lastEvent)
+    return false;
   auto diff = now - frame.lastEvent;
   return diff >= timeout;
 }
@@ -118,7 +123,7 @@ llarp_link_session::close()
   // as session invalidated
   frame.txflags |= eSessionInvalidated;
   // TODO: add timer for session invalidation
-  llarp_logic_queue_job(logic, {this, &send_keepalive});
+  llarp_logic_queue_job(serv->logic, {this, &send_keepalive});
 }
 
 void
@@ -128,7 +133,7 @@ llarp_link_session::session_established()
   llarp::LogInfo("Session to ", remote, " established");
   EnterState(eEstablished);
   serv->MapAddr(addr, remote_router.pubkey);
-  llarp_logic_cancel_call(logic, establish_job_id);
+  llarp_logic_cancel_call(serv->logic, establish_job_id);
 }
 
 llarp_rc *
@@ -206,18 +211,18 @@ static void
 handle_generated_session_start(iwp_async_session_start *start)
 {
   llarp_link_session *link = static_cast< llarp_link_session * >(start->user);
-  link->working            = false;
+
   if(llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz) == -1)
     llarp::LogError("sendto failed");
   link->EnterState(llarp_link_session::State::eSessionStartSent);
   link->serv->remove_intro_from(link->addr);
+  link->working = false;
 }
 
 static void
 handle_verify_intro(iwp_async_intro *intro)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(intro->user);
-  self->working            = false;
   if(!intro->buf)
   {
     self->serv->remove_intro_from(self->addr);
@@ -241,7 +246,7 @@ handle_verify_introack(iwp_async_introack *introack)
     // invalid signature
     llarp::LogError("introack verify failed from ", link->addr);
     link->serv->remove_intro_from(link->addr);
-    link->serv->RemoveSessionByAddr(link->addr);
+    link->serv->RemoveSession(link);
     return;
   }
   link->EnterState(llarp_link_session::eIntroAckRecv);
@@ -277,7 +282,6 @@ void
 llarp_link_session::done()
 {
   auto logic = serv->logic;
-  serv->remove_intro_from(addr);
   if(establish_job_id)
   {
     llarp_logic_remove_call(logic, establish_job_id);
@@ -296,6 +300,8 @@ llarp_link_session::done()
 void
 llarp_link_session::PumpCryptoOutbound()
 {
+  if(working)
+    return;
   working = true;
   llarp_threadpool_queue_job(serv->worker, {this, &handle_crypto_outbound});
 }
@@ -372,7 +378,7 @@ llarp_link_session::on_intro_ack(const void *buf, size_t sz)
   {
     // too big?
     llarp::LogError("introack too big");
-    serv->RemoveSessionByAddr(addr);
+    serv->RemoveSession(this);
     return;
   }
   serv->put_intro_from(this);
@@ -405,7 +411,7 @@ llarp_link_session::get_parent()
 }
 
 void
-llarp_link_session::TickLogic()
+llarp_link_session::TickLogic(llarp_time_t now)
 {
   std::queue< iwp_async_frame * > q;
   decryptedFrames.Process(q);
@@ -417,6 +423,7 @@ llarp_link_session::TickLogic()
     q.pop();
   }
   frame.process_inbound_queue();
+  frame.retransmit(now);
   pump();
 }
 
@@ -428,7 +435,8 @@ llarp_link_session::Tick(llarp_time_t now)
     // we are timed out
     // when we are done doing stuff with all of our frames from the crypto
     // workers we are done
-    llarp::LogWarn("Tick - ", addr, " timed out with ", frames, " frames left");
+    llarp::LogWarn("Tick - ", addr, " timed out with ", frames,
+                   " frames left, working=", working);
     return !working;
   }
   if(is_invalidated())
@@ -445,15 +453,9 @@ llarp_link_session::Tick(llarp_time_t now)
     if(now - lastKeepalive > KEEP_ALIVE_INTERVAL)
       send_keepalive(this);
   }
-
-  // pump frame state
   if(state == eEstablished)
   {
-    // llarp::LogDebug("Tick - pumping and retransmitting because we're
-    // eEstablished");
-
-    frame.retransmit(now);
-    pump();
+    this->now = now;
   }
   return false;
 }
@@ -481,22 +483,23 @@ handle_verify_session_start(iwp_async_session_start *s)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(s->user);
   self->serv->remove_intro_from(self->addr);
-  self->working = false;
   if(!s->buf)
   {
     // verify fail
     // TODO: remove session?
     llarp::LogWarn("session start verify failed from ", self->addr);
-    self->serv->RemoveSessionByAddr(self->addr);
+    self->serv->RemoveSession(self);
     return;
   }
   self->send_LIM();
+  self->working = false;
 }
 
 static void
 handle_introack_generated(iwp_async_introack *i)
 {
   llarp_link_session *link = static_cast< llarp_link_session * >(i->user);
+
   if(i->buf && link->serv->has_intro_from(link->addr))
   {
     // track it with the server here
@@ -504,6 +507,7 @@ handle_introack_generated(iwp_async_introack *i)
     {
       // duplicate session
       llarp::LogWarn("duplicate session to ", link->addr);
+      link->working = false;
       return;
     }
     link->frame.alive();
@@ -517,6 +521,7 @@ handle_introack_generated(iwp_async_introack *i)
     // failed to generate?
     llarp::LogWarn("failed to generate introack");
   }
+  link->working = false;
 }
 
 static void
@@ -546,7 +551,7 @@ llarp_link_session::introduce(uint8_t *pub)
   llarp::LogDebug("session introduce");
   memcpy(remote, pub, PUBKEYSIZE);
   intro.buf   = workbuf;
-  size_t w0sz = (rand() % MAX_PAD);
+  size_t w0sz = (llarp_randint() % MAX_PAD);
   intro.sz    = (32 * 3) + w0sz;
   // randomize w0
   if(w0sz)
@@ -564,19 +569,16 @@ llarp_link_session::introduce(uint8_t *pub)
   intro.user = this;
   intro.hook = &handle_generated_intro;
   working    = true;
-  llarp::LogInfo("try introduce to transport adddress ",
-                 llarp::RouterID(remote));
   iwp_call_async_gen_intro(iwp, &intro);
   // start introduce timer
-  establish_job_id =
-      llarp_logic_call_later(logic, {5000, this, &handle_establish_timeout});
+  establish_job_id = llarp_logic_call_later(
+      serv->logic, {5000, this, &handle_establish_timeout});
 }
 
 void
 llarp_link_session::handle_frame_decrypt(iwp_async_frame *frame)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(frame->user);
-  llarp::LogDebug("rx ", frame->sz);
   if(frame->success)
   {
     if(self->frame.process(frame->buf + 64, frame->sz - 64))
@@ -619,7 +621,7 @@ void
 llarp_link_session::session_start()
 {
   llarp::LogInfo("session gen start");
-  size_t w2sz = rand() % MAX_PAD;
+  size_t w2sz = llarp_randint() % MAX_PAD;
   start.buf   = workbuf;
   start.sz    = w2sz + (32 * 3);
   start.nonce = workbuf + 32;
@@ -671,7 +673,7 @@ llarp_link_session::intro_ack()
     return;
   }
   llarp::LogDebug("session introack");
-  uint16_t w1sz = rand() % MAX_PAD;
+  uint16_t w1sz = llarp_randint() % MAX_PAD;
   introack.buf  = workbuf;
   introack.sz   = (32 * 3) + w1sz;
   // randomize padding
@@ -691,7 +693,6 @@ llarp_link_session::intro_ack()
   // call
   introack.user = this;
   introack.hook = &handle_introack_generated;
-  working       = true;
   iwp_call_async_gen_introack(iwp, &introack);
 }
 
@@ -728,11 +729,12 @@ llarp_link_session::recv(const void *buf, size_t sz)
     case eLIMSent:
     case eEstablished:
       // session is started
+      /*
       llarp::LogDebug("session recv - ",
                       state == eSessionStartSent ? "startsent" : "",
                       state == eLIMSent ? "limset" : "",
                       state == eEstablished ? "established" : "");
-
+      */
       decrypt_frame(buf, sz);
       break;
     default:
@@ -774,7 +776,7 @@ llarp_link_session::encrypt_frame_async_send(const void *buf, size_t sz)
   iwp_async_frame *frame = alloc_frame(nullptr, sz + 64);
   memcpy(frame->buf + 64, buf, sz);
   // maybe add upto 128 random bytes to the packet
-  auto padding = rand() % MAX_PAD;
+  auto padding = llarp_randint() % MAX_PAD;
   if(padding)
     crypto->randbytes(frame->buf + 64 + sz, padding);
   frame->sz += padding;
@@ -791,10 +793,15 @@ llarp_link_session::pump()
   bool flush = false;
   now        = llarp_time_now_ms();
   llarp_buffer_t buf;
-  while(frame.next_frame(&buf))
+  std::queue< sendbuf_t * > q;
+  frame.sendqueue.Process(q);
+  while(q.size())
   {
+    auto &front = q.front();
+    buf         = front->Buffer();
     encrypt_frame_async_send(buf.base, buf.sz);
-    frame.pop_next_frame();
+    delete front;
+    q.pop();
     flush = true;
   }
   if(flush)

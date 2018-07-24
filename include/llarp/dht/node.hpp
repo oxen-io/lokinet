@@ -43,7 +43,7 @@ namespace llarp
         other.A.CalculateAddress(ID);
       }
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 
 #endif

@@ -1,13 +1,15 @@
 #ifndef LLARP_SERVICE_INTROSET_HPP
 #define LLARP_SERVICE_INTROSET_HPP
+#include <llarp/time.h>
 #include <iostream>
 #include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/pow.hpp>
 #include <llarp/service/Info.hpp>
 #include <llarp/service/Intro.hpp>
+#include <llarp/service/tag.hpp>
 
-#include <list>
+#include <vector>
 
 namespace llarp
 {
@@ -18,7 +20,8 @@ namespace llarp
     struct IntroSet : public llarp::IBEncodeMessage
     {
       ServiceInfo A;
-      std::list< Introduction > I;
+      std::vector< Introduction > I;
+      Tag topic;
       llarp::PoW* W = nullptr;
       llarp::Signature Z;
 
@@ -30,11 +33,18 @@ namespace llarp
         A       = other.A;
         I       = other.I;
         version = other.version;
+        topic   = other.topic;
         if(W)
           delete W;
         W = other.W;
         Z = other.Z;
         return *this;
+      }
+
+      bool
+      operator<(const IntroSet& other) const
+      {
+        return A < other.A;
       }
 
       friend std::ostream&
@@ -45,8 +55,28 @@ namespace llarp
         {
           out << intro << ",";
         }
-        return out << "] V=" << i.version << " Z=" << i.Z;
+        out << "]";
+        auto topic = i.topic.ToString();
+        if(topic.size())
+        {
+          out << " topic=" << topic;
+        }
+        else
+        {
+          out << " topic=" << i.topic;
+        }
+        if(i.W)
+        {
+          out << " W=" << *i.W;
+        }
+        return out << " V=" << i.version << " Z=" << i.Z;
       }
+
+      bool
+      HasExpiredIntros(llarp_time_t now) const;
+
+      bool
+      IsExpired(llarp_time_t now) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const;

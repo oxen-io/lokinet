@@ -148,7 +148,7 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   request->question.name   = m_qName;
   request->question.type   = get16bits(p_buffer);
   request->question.qClass = get16bits(p_buffer);
-  
+
   //request->m_qName  = m_qName;
   //request->m_qType  = request->question.type;
   //request->m_qClass = request->question.qClass;
@@ -162,7 +162,7 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   llarp::Addr test2(from);
   llarp::LogInfo("DNS request from ", test2);
    */
-  
+
   if (request->context->intercept)
   {
     sockaddr *intercept = request->context->intercept(request->question.name);
@@ -204,7 +204,6 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   }
 }
 
-// this is called in net threadpool
 void
 llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *paddr,
                       const void *buf, ssize_t sz)
@@ -257,7 +256,7 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
   dns_udp_tracker.dnsd = dnsd;
 
   dnsd->intercept    = nullptr;
-  
+
   // configure dns client
   if(!llarp_dnsc_init(&dnsd->client, &dnsd->udp, dnsc_hostname, dnsc_port))
   {

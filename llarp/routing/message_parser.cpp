@@ -3,6 +3,7 @@
 #include <llarp/messages/path_latency.hpp>
 #include <llarp/messages/path_transfer.hpp>
 #include <llarp/routing/message.hpp>
+#include "mem.hpp"
 
 namespace llarp
 {
@@ -37,19 +38,21 @@ namespace llarp
           return false;
         if(strbuf.sz != 1)
           return false;
-        switch(*strbuf.cur)
+        self->key = *strbuf.cur;
+        llarp::LogInfo("handle messgae ", self->key);
+        switch(self->key)
         {
           case 'L':
-            self->msg = new PathLatencyMessage;
+            self->msg = new PathLatencyMessage();
             break;
           case 'M':
-            self->msg = new DHTMessage;
+            self->msg = new DHTMessage();
             break;
           case 'P':
-            self->msg = new PathConfirmMessage;
+            self->msg = new PathConfirmMessage();
             break;
           case 'T':
-            self->msg = new PathTransferMessage;
+            self->msg = new PathTransferMessage();
             break;
           default:
             llarp::LogError("invalid routing message id: ", *strbuf.cur);
@@ -66,6 +69,7 @@ namespace llarp
     bool
     InboundMessageParser::ParseMessageBuffer(llarp_buffer_t buf,
                                              IMessageHandler* h,
+                                             const PathID_t& from,
                                              llarp_router* r)
     {
       bool result = false;
@@ -76,11 +80,14 @@ namespace llarp
         msg->from = from;
         result    = msg->HandleMessage(h, r);
         if(!result)
-          llarp::LogWarn("Failed to handle inbound routing message");
+          llarp::LogWarn("Failed to handle inbound routing message ", key);
         delete msg;
       }
       else
-        llarp::LogError("read dict failed");
+      {
+        llarp::LogError("read dict failed in routing layer");
+        llarp::DumpBuffer< llarp_buffer_t, 128 >(buf);
+      }
       return result;
     }
   }  // namespace routing

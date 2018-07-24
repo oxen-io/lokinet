@@ -25,6 +25,6 @@ namespace llarp
       llarp_router *m_Router;
       std::unordered_map< std::string, Endpoint * > m_Endpoints;
     };
-  }
-}
+  }  // namespace service
+}  // namespace llarp
 #endif

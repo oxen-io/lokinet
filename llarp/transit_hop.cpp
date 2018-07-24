@@ -56,9 +56,17 @@ namespace llarp
       }
       TunnelNonce N;
       N.Randomize();
-      // rewind
-      buf.sz  = buf.cur - buf.base;
+      buf.sz = buf.cur - buf.base;
+      // pad smaller messages
+      if(buf.sz < MESSAGE_PAD_SIZE)
+      {
+        // randomize padding
+        r->crypto.randbytes(buf.cur, MESSAGE_PAD_SIZE - buf.sz);
+        buf.sz = MESSAGE_PAD_SIZE;
+      }
       buf.cur = buf.base;
+      llarp::LogInfo("Send ", buf.sz,
+                     " bytes routing message from trasnit hop");
       return HandleDownstream(buf, N, r);
     }
 
@@ -84,7 +92,7 @@ namespace llarp
       r->crypto.xchacha20(buf, pathKey, Y);
       if(info.upstream == RouterID(r->pubkey()))
       {
-        return m_MessageParser.ParseMessageBuffer(buf, this, r);
+        return m_MessageParser.ParseMessageBuffer(buf, this, info.rxID, r);
       }
       else
       {
@@ -127,12 +135,6 @@ namespace llarp
     TransitHop::HandlePathTransferMessage(
         const llarp::routing::PathTransferMessage* msg, llarp_router* r)
     {
-      auto path = r->paths.GetByDownstream(r->pubkey(), msg->P);
-      if(path)
-      {
-        return path->HandleDownstream(msg->T.Buffer(), msg->Y, r);
-      }
-      llarp::LogWarn("No such path for path transfer pathid=", msg->P);
       return false;
     }
 

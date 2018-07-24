@@ -8,6 +8,7 @@
 #include <llarp/dht/message.hpp>
 #include <llarp/dht/node.hpp>
 #include <llarp/dht/search_job.hpp>
+#include <llarp/service/IntroSet.hpp>
 
 #include <set>
 
@@ -40,7 +41,24 @@ namespace llarp
                    bool iterative = false, std::set< Key_t > excludes = {});
 
       void
+      LookupIntroSet(const service::Address& addr, const Key_t& whoasked,
+                     uint64_t whoaskedTX, const Key_t& askpeer,
+                     bool interative = false, std::set< Key_t > excludes = {});
+
+      void
+      LookupTag(const service::Tag& tag, const Key_t& whoasked,
+                uint64_t whoaskedTX, const Key_t& askpeer,
+                bool iterative = false);
+
+      void
       LookupRouterViaJob(llarp_router_lookup_job* job);
+
+      void
+      LookupTagForPath(const service::Tag& tag, uint64_t txid,
+                       const llarp::PathID_t& path, const Key_t& askpeer);
+
+      std::set< service::IntroSet >
+      FindRandomIntroSetsWithTag(const service::Tag& tag, size_t max = 2);
 
       void
       LookupRouterRelayed(const Key_t& requester, uint64_t txid,
@@ -52,7 +70,15 @@ namespace llarp
                           const IMessage* msg);
 
       void
+      PropagateIntroSetTo(const Key_t& from, uint64_t fromTX,
+                          const service::IntroSet& introset, const Key_t& peer,
+                          uint64_t S);
+
+      void
       Init(const Key_t& us, llarp_router* router);
+
+      const llarp::service::IntroSet*
+      GetIntroSetByServiceAddress(const llarp::service::Address& addr) const;
 
       void
       QueueRouterLookup(llarp_router_lookup_job* job);
@@ -112,12 +138,12 @@ namespace llarp
           memcpy(&sz2, &o.node[0], sizeof(std::size_t));
           return o.txid ^ (sz2 << 1);
         }
-      };
+      };  // namespace dht
 
       std::unordered_map< TXOwner, SearchJob, TXOwnerHash > pendingTX;
       Key_t ourKey;
-    };
-  }  // namespace dht
+    };  // namespace llarp
+  }     // namespace dht
 }  // namespace llarp
 
 struct llarp_dht_context

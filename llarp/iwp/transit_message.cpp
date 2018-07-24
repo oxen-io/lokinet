@@ -67,19 +67,27 @@ transit_message::should_send_ack(llarp_time_t now) const
 {
   if(msginfo.numfrags() == 0)
     return true;
-  return now - lastAck > 250;
+  if(now < started)
+    return false;
+  if(status.count() == 0)
+    return true;
+  return now - lastRetransmit > 100;
 }
 
 bool
 transit_message::should_resend_xmit(llarp_time_t now) const
 {
-  return lastAck == 0 && now - started > 1000;
+  if(now < started)
+    return false;
+  return lastAck == 0 && now - started > 500;
 }
 
 bool
 transit_message::should_resend_frags(llarp_time_t now) const
 {
-  return now - lastAck > 1000 && !completed();
+  if(now < started)
+    return false;
+  return lastAck > 0 && now - lastAck > 250 && !completed();
 }
 
 bool
@@ -97,12 +105,13 @@ transit_message::completed() const
 void
 transit_message::generate_xmit(sendqueue_t &queue, byte_t flags)
 {
-  uint16_t sz = lastfrag.size() + sizeof(msginfo.buffer);
-  queue.push(new sendbuf_t(sz + 6));
-  auto body_ptr = init_sendbuf(queue.back(), eXMIT, sz, flags);
+  uint16_t sz   = lastfrag.size() + sizeof(msginfo.buffer);
+  auto pkt      = new sendbuf_t(sz + 6);
+  auto body_ptr = init_sendbuf(pkt, eXMIT, sz, flags);
   memcpy(body_ptr, msginfo.buffer, sizeof(msginfo.buffer));
   body_ptr += sizeof(msginfo.buffer);
   memcpy(body_ptr, lastfrag.data(), lastfrag.size());
+  queue.Put(pkt);
 }
 
 // template < typename T >
@@ -115,14 +124,16 @@ transit_message::retransmit_frags(sendqueue_t &queue, byte_t flags)
   {
     if(status.test(frag.first))
       continue;
-    uint16_t sz = 9 + fragsize;
-    queue.push(new sendbuf_t(sz + 6));
-    auto body_ptr = init_sendbuf(queue.back(), eFRAG, sz, flags);
+    uint16_t sz   = 9 + fragsize;
+    auto pkt      = new sendbuf_t(sz + 6);
+    auto body_ptr = init_sendbuf(pkt, eFRAG, sz, flags);
     // TODO: assumes big endian
     memcpy(body_ptr, &msgid, 8);
     body_ptr[8] = frag.first;
     memcpy(body_ptr + 9, frag.second.data(), fragsize);
+    queue.Put(pkt);
   }
+  lastRetransmit = llarp_time_now_ms();
 }
 
 bool

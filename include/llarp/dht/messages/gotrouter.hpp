@@ -38,6 +38,6 @@ namespace llarp
       uint64_t txid    = 0;
       uint64_t version = 0;
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 #endif

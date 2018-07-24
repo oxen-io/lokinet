@@ -106,4 +106,8 @@ llarp_crypto_libsodium_init(struct llarp_crypto *c);
 bool
 llarp_crypto_initialized(struct llarp_crypto *c);
 
+/// return random 64bit unsigned interger
+uint64_t
+llarp_randint();
+
 #endif

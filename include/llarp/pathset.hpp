@@ -5,7 +5,9 @@
 #include <list>
 #include <llarp/path_types.hpp>
 #include <llarp/router_id.hpp>
+#include <llarp/routing/message.hpp>
 #include <llarp/service/IntroSet.hpp>
+#include <llarp/service/lookup.hpp>
 #include <map>
 #include <tuple>
 
@@ -62,9 +64,14 @@ namespace llarp
       ShouldBuildMore() const;
 
       /// return true if we should publish a new hidden service descriptor
-      bool
-      ShouldPublishDescriptors() const;
+      virtual bool
+      ShouldPublishDescriptors(llarp_time_t now) const
+      {
+        (void)now;
+        return false;
+      }
 
+      /// override me in subtype
       virtual bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg)
       {
@@ -74,36 +81,36 @@ namespace llarp
       Path*
       PickRandomEstablishedPath();
 
+      Path*
+      GetPathByRouter(const RouterID& router);
+
       bool
       GetCurrentIntroductions(
-          std::list< llarp::service::Introduction >& intros) const;
+          std::set< llarp::service::Introduction >& intros) const;
 
-      bool
-      PublishIntroSet(const llarp::service::IntroSet& introset,
-                      llarp_router* r);
+      virtual bool
+      PublishIntroSet(llarp_router* r)
+      {
+        return false;
+      }
 
-      typedef std::function< void(const llarp::service::IntroSet*) >
-          ServiceLookupHandler;
+      virtual bool
+      SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur,
+                size_t hop) = 0;
 
-      /// return false if we are already pending a lookup for this address
-      bool
-      LookupService(const llarp::service::Address& addr,
-                    ServiceLookupHandler handler);
-
-     protected:
-      void
-      IssueServiceLookup(const llarp::service::Address& addr);
+      static void
+      SelectHopCallback(void* user, llarp_nodedb* db, llarp_rc* prev,
+                        llarp_rc* cur, size_t hopno)
+      {
+        PathSet* self = static_cast< PathSet* >(user);
+        self->SelectHop(db, prev, cur, hopno);
+      }
 
      private:
       typedef std::pair< RouterID, PathID_t > PathInfo_t;
       typedef std::map< PathInfo_t, Path* > PathMap_t;
-
       size_t m_NumPaths;
       PathMap_t m_Paths;
-      uint64_t m_CurrentPublishTX = 0;
-      std::unordered_map< llarp::service::Address, ServiceLookupHandler,
-                          llarp::service::Address::Hash >
-          m_ServiceLookups;
     };
 
   }  // namespace path

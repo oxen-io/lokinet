@@ -17,6 +17,10 @@ namespace llarp
     PublishIntroMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
     {
       bool read = false;
+      if(llarp_buffer_eq(key, "E"))
+      {
+        return BEncodeReadList(E, val);
+      }
       if(!BEncodeMaybeReadDictEntry("I", I, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictInt("R", R, read, key, val))
@@ -39,6 +43,11 @@ namespace llarp
     PublishIntroMessage::HandleMessage(llarp_dht_context *ctx,
                                        std::vector< IMessage * > &replies) const
     {
+      if(S > 5)
+      {
+        llarp::LogWarn("invalid S value ", S, " > 5");
+        return false;
+      }
       auto &dht = ctx->impl;
       if(!I.VerifySignature(&dht.router->crypto))
       {
@@ -58,18 +67,16 @@ namespace llarp
         return false;
       }
       dht.services->PutNode(I);
-      replies.push_back(new GotIntroMessage(txID, &I));
+      replies.push_back(new GotIntroMessage({I}, txID));
       Key_t peer;
       std::set< Key_t > exclude;
+      for(const auto &e : E)
+        exclude.insert(e);
       exclude.insert(From);
-      if(txID && dht.nodes->FindCloseExcluding(addr, peer, exclude))
+      exclude.insert(dht.OurKey());
+      if(S && dht.nodes->FindCloseExcluding(addr, peer, exclude))
       {
-        // we are not the closest to this address, send it to the closest node
-        llarp::LogInfo("telling closer peer ", peer, " we got an IntroSet for ",
-                       addr);
-        auto msg = new llarp::DHTImmeidateMessage(peer);
-        msg->msgs.push_back(new PublishIntroMessage(I, 0));
-        dht.router->SendToOrQueue(peer, msg);
+        dht.PropagateIntroSetTo(From, txID, I, peer, S - 1);
       }
       return true;
     }
@@ -81,18 +88,17 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictMsgType(buf, "A", "I"))
         return false;
+      if(!BEncodeWriteDictList("E", E, buf))
+        return false;
       if(!BEncodeWriteDictEntry("I", I, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "R", R))
+      if(!BEncodeWriteDictInt("R", R, buf))
         return false;
-      if(hasS)
-      {
-        if(!BEncodeWriteDictInt(buf, "S", S))
-          return false;
-      }
-      if(!BEncodeWriteDictInt(buf, "T", txID))
+      if(!BEncodeWriteDictInt("S", S, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "V", LLARP_PROTO_VERSION))
+      if(!BEncodeWriteDictInt("T", txID, buf))
+        return false;
+      if(!BEncodeWriteDictInt("V", LLARP_PROTO_VERSION, buf))
         return false;
       return bencode_end(buf);
     }

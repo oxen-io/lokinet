@@ -8,11 +8,16 @@ struct llarp_pathbuilder_context : public llarp::path::PathSet
 {
   struct llarp_router* router;
   struct llarp_dht_context* dht;
+  size_t numHops;
   /// construct
   llarp_pathbuilder_context(llarp_router* p_router,
-                            struct llarp_dht_context* p_dht, size_t numPaths);
+                            struct llarp_dht_context* p_dht, size_t numPaths,
+                            size_t numHops);
 
   virtual ~llarp_pathbuilder_context(){};
+
+  virtual bool
+  SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
 
   void
   BuildOne();

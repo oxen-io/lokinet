@@ -4,7 +4,7 @@
 #include <llarp/buffer.h>
 #include <llarp/router.h>
 #include <llarp/dht.hpp>
-#include <llarp/messages/hidden_service.hpp>
+
 #include <llarp/messages/path_confirm.hpp>
 #include <llarp/messages/path_latency.hpp>
 #include <llarp/messages/path_transfer.hpp>
@@ -21,7 +21,7 @@ namespace llarp
                                 llarp_router *r) = 0;
 
       virtual bool
-      HandleHiddenServiceFrame(const HiddenServiceFrame *msg)
+      HandleHiddenServiceFrame(const service::ProtocolFrame *msg)
       {
         return false;
       }

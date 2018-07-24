@@ -48,11 +48,12 @@ aiLister(struct llarp_ai_list_iter *request, struct llarp_ai *addr)
   return true;
 }
 
-void displayRC(llarp_rc *rc)
+void
+displayRC(llarp_rc *rc)
 {
   char ftmp[68] = {0};
   const char *hexPubSigKey =
-  llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(rc->pubkey, ftmp);
+      llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(rc->pubkey, ftmp);
   printf("PubSigKey [%s]\n", hexPubSigKey);
 
   struct llarp_ai_list_iter iter;
@@ -68,20 +69,21 @@ void
 HandleDHTLocate(llarp_router_lookup_job *job)
 {
   llarp::LogInfo("DHT result: ", job->found ? "found" : "not found");
-  if (job->found)
+  if(job->found)
   {
     // save to nodedb?
     displayRC(&job->result);
   }
   // shutdown router
 
-  // well because we're in the gotroutermessage, we can't sigint because we'll deadlock because we're session locked
-  //llarp_main_signal(ctx, SIGINT);
+  // well because we're in the gotroutermessage, we can't sigint because we'll
+  // deadlock because we're session locked
+  // llarp_main_signal(ctx, SIGINT);
 
   // llarp_timer_run(logic->timer, logic->thread);
   // we'll we don't want logic thread
   // but we want to switch back to the main thread
-  //llarp_logic_stop();
+  // llarp_logic_stop();
   // still need to exit this logic thread...
   llarp_main_abort(ctx);
 }
@@ -146,7 +148,8 @@ main(int argc, char *argv[])
         {"read", required_argument, 0, 'r'},
         {0, 0, 0, 0}};
     int option_index = 0;
-    c = getopt_long(argc, argv, "c:o:g:lu:i:e:q:nr:", long_options, &option_index);
+    c = getopt_long(argc, argv, "c:o:g:lu:i:e:q:nr:", long_options,
+                    &option_index);
     if(c == -1)
       break;
     switch(c)
@@ -157,22 +160,30 @@ main(int argc, char *argv[])
         conffname = optarg;
         break;
       case 'o':
-        if (strncmp(optarg, "debug", std::min(strlen(optarg), static_cast<unsigned long>(5)))==0)
+        if(strncmp(optarg, "debug",
+                   std::min(strlen(optarg), static_cast< unsigned long >(5)))
+           == 0)
         {
           llarp::SetLogLevel(llarp::eLogDebug);
         }
-        else
-        if (strncmp(optarg, "info", std::min(strlen(optarg), static_cast<unsigned long>(4)))==0)
+        else if(strncmp(
+                    optarg, "info",
+                    std::min(strlen(optarg), static_cast< unsigned long >(4)))
+                == 0)
         {
-            llarp::SetLogLevel(llarp::eLogInfo);
+          llarp::SetLogLevel(llarp::eLogInfo);
         }
-        else
-        if (strncmp(optarg, "warn", std::min(strlen(optarg), static_cast<unsigned long>(4)))==0)
+        else if(strncmp(
+                    optarg, "warn",
+                    std::min(strlen(optarg), static_cast< unsigned long >(4)))
+                == 0)
         {
           llarp::SetLogLevel(llarp::eLogWarn);
         }
-        else
-        if (strncmp(optarg, "error", std::min(strlen(optarg), static_cast<unsigned long>(5)))==0)
+        else if(strncmp(
+                    optarg, "error",
+                    std::min(strlen(optarg), static_cast< unsigned long >(5)))
+                == 0)
         {
           llarp::SetLogLevel(llarp::eLogError);
         }
@@ -378,7 +389,7 @@ main(int argc, char *argv[])
   }
   if(localMode)
   {
-    llarp_rc *rc  = llarp_main_getLocalRC(ctx);
+    llarp_rc *rc = llarp_main_getLocalRC(ctx);
     displayRC(rc);
   }
   if(readMode)
@@ -387,6 +398,6 @@ main(int argc, char *argv[])
     displayRC(rc);
   }
   // it's a unique_ptr, should clean up itself
-  //llarp_main_free(ctx);
+  // llarp_main_free(ctx);
   return 1;  // success
 }

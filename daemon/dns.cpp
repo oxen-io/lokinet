@@ -1,6 +1,7 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h> /* fprintf, printf */
+#include <unistd.h>
 
 #include <llarp/logic.h>
 #include "dnsd.hpp"
@@ -37,7 +38,7 @@ main(int argc, char *argv[])
   int code = 1;
   llarp::LogInfo("Starting up server");
 
-  // bllarp::SetLogLevel(llarp::eLogDebug);
+  // llarp::SetLogLevel(llarp::eLogDebug);
 
   if(1)
   {
@@ -48,9 +49,11 @@ main(int argc, char *argv[])
 
     llarp_ev_loop_alloc(&netloop);
 
+    // configure main netloop
     struct dnsd_context dnsd;
     if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053, SERVER, PORT))
     {
+      //llarp::LogError("failed to initialize dns subsystem");
       llarp::LogError("Couldnt init dns daemon");
       return 0;
     }

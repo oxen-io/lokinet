@@ -4,6 +4,7 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <sstream>
 #include <string>
 
@@ -22,6 +23,7 @@ namespace llarp
   {
     LogLevel minlevel = eLogInfo;
     std::ostream& out = std::cout;
+    std::mutex access;
   };
 
   extern Logger _glog;
@@ -76,20 +78,26 @@ namespace llarp
     std::time_t t;
     std::time(&t);
     std::string tag = fname;
+    /*
     auto pos        = tag.rfind('/');
     if(pos != std::string::npos)
       tag = tag.substr(pos + 1);
+      */
     ss << std::put_time(std::localtime(&t), "%F %T") << " " << tag;
+    /*
     auto sz = tag.size() % 8;
     while(sz--)
-      ss << " ";
+      ss << " "; */
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
     ss << (char)27 << "[0;0m";
-    _glog.out << ss.str() << std::endl;
+    {
+      std::unique_lock< std::mutex > lock(_glog.access);
+      _glog.out << ss.str() << std::endl;
 #ifdef SHADOW_TESTNET
-    _glog.out << "\n" << std::flush;
+      _glog.out << "\n" << std::flush;
 #endif
+    }
   }
 }  // namespace llarp
 

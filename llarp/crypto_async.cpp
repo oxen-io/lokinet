@@ -226,8 +226,7 @@ namespace iwp
     llarp::ShortHash T;
 
     byte_t tmp[64];
-    llarp_buffer_t buf;
-    llarp::StackBuffer< decltype(tmp) >(buf, tmp);
+    llarp_buffer_t buf = llarp::StackBuffer< decltype(tmp) >(tmp);
 
     // T = HS(token + n)
     memcpy(tmp, token, 32);

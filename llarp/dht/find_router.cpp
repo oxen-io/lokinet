@@ -85,7 +85,8 @@ namespace llarp
       job->user  = informer;
       job->hook  = &PathLookupInformer::InformReply;
       job->found = false;
-      job->dht   = ctx;
+      llarp_rc_clear(&job->result);
+      job->dht = ctx;
       memcpy(job->target, K, sizeof(job->target));
       Key_t peer;
       if(dht.nodes->FindClosest(K, peer))
@@ -191,5 +192,5 @@ namespace llarp
       dht.LookupRouterRelayed(From, txid, K, !iterative, replies);
       return true;
     }
-  }
-}
+  }  // namespace dht
+}  // namespace llarp

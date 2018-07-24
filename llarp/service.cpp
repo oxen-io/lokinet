@@ -7,69 +7,6 @@ namespace llarp
 {
   namespace service
   {
-    std::string
-    AddressToString(const Address& addr)
-    {
-      char tmp[(1 + 32) * 2] = {0};
-      std::string str        = Base32Encode(addr, tmp);
-      return str + ".loki";
-    }
-
-    ServiceInfo::ServiceInfo()
-    {
-      vanity.Zero();
-    }
-
-    ServiceInfo::~ServiceInfo()
-    {
-    }
-
-    bool
-    ServiceInfo::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
-    {
-      bool read = false;
-      if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, val))
-        return false;
-      if(!BEncodeMaybeReadDictEntry("s", signkey, read, key, val))
-        return false;
-      if(!BEncodeMaybeReadDictInt("v", version, read, key, val))
-        return false;
-      if(!BEncodeMaybeReadDictEntry("x", vanity, read, key, val))
-        return false;
-      return read;
-    }
-
-    bool
-    ServiceInfo::BEncode(llarp_buffer_t* buf) const
-    {
-      if(!bencode_start_dict(buf))
-        return false;
-      if(!BEncodeWriteDictEntry("e", enckey, buf))
-        return false;
-      if(!BEncodeWriteDictEntry("s", signkey, buf))
-        return false;
-      if(!BEncodeWriteDictInt(buf, "v", LLARP_PROTO_VERSION))
-        return false;
-      if(!vanity.IsZero())
-      {
-        if(!BEncodeWriteDictEntry("x", vanity, buf))
-          return false;
-      }
-      return bencode_end(buf);
-    }
-
-    bool
-    ServiceInfo::CalculateAddress(byte_t* addr) const
-    {
-      byte_t tmp[128];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-      if(!BEncode(&buf))
-        return false;
-      return crypto_generichash(addr, 32, buf.base, buf.cur - buf.base, nullptr,
-                                0)
-          != -1;
-    }
-
     IntroSet::~IntroSet()
     {
       if(W)
@@ -86,6 +23,17 @@ namespace llarp
       if(llarp_buffer_eq(key, "i"))
       {
         return BEncodeReadList(I, buf);
+      }
+
+      if(!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
+        return false;
+
+      if(llarp_buffer_eq(key, "w"))
+      {
+        if(W)
+          delete W;
+        W = new PoW();
+        return W->BDecode(buf);
       }
 
       if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
@@ -111,20 +59,42 @@ namespace llarp
         return false;
       // end introduction list
 
+      // topic tag
+      if(!topic.IsZero())
+      {
+        if(!BEncodeWriteDictEntry("n", topic, buf))
+          return false;
+      }
       // write version
-      if(!BEncodeWriteDictInt(buf, "v", version))
+      if(!BEncodeWriteDictInt("v", version, buf))
         return false;
-      /*
       if(W)
       {
         if(!BEncodeWriteDictEntry("w", *W, buf))
           return false;
       }
-      */
       if(!BEncodeWriteDictEntry("z", Z, buf))
         return false;
 
       return bencode_end(buf);
+    }
+
+    bool
+    IntroSet::HasExpiredIntros(llarp_time_t now) const
+    {
+      for(const auto& i : I)
+        if(now >= i.expiresAt)
+          return true;
+      return false;
+    }
+
+    bool
+    IntroSet::IsExpired(llarp_time_t now) const
+    {
+      auto highest = now;
+      for(const auto& i : I)
+        highest = std::max(i.expiresAt, highest);
+      return highest == now;
     }
 
     Introduction::~Introduction()
@@ -158,16 +128,25 @@ namespace llarp
         return false;
       if(latency)
       {
-        if(!BEncodeWriteDictInt(buf, "l", latency))
+        if(!BEncodeWriteDictInt("l", latency, buf))
           return false;
       }
       if(!BEncodeWriteDictEntry("p", pathID, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "v", version))
+      if(!BEncodeWriteDictInt("v", version, buf))
         return false;
-      if(!BEncodeWriteDictInt(buf, "x", expiresAt))
+      if(!BEncodeWriteDictInt("x", expiresAt, buf))
         return false;
       return bencode_end(buf);
+    }
+
+    void
+    Introduction::Clear()
+    {
+      router.Zero();
+      pathID.Zero();
+      latency   = 0;
+      expiresAt = 0;
     }
 
     Identity::~Identity()

@@ -45,6 +45,22 @@ namespace llarp
       }
     }
 
+    Path*
+    PathSet::GetPathByRouter(const RouterID& id)
+    {
+      auto itr = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->second->IsReady())
+        {
+          if(itr->second->Endpoint() == id)
+            return itr->second;
+        }
+        ++itr;
+      }
+      return nullptr;
+    }
+
     size_t
     PathSet::NumInStatus(PathStatus st) const
     {
@@ -90,27 +106,21 @@ namespace llarp
 
     bool
     PathSet::GetCurrentIntroductions(
-        std::list< llarp::service::Introduction >& intros) const
+        std::set< llarp::service::Introduction >& intros) const
     {
+      intros.clear();
       size_t count = 0;
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
         if(itr->second->IsReady())
         {
-          intros.push_back(itr->second->intro);
+          intros.insert(itr->second->intro);
           ++count;
         }
         ++itr;
       }
       return count > 0;
-    }
-
-    bool
-    PathSet::ShouldPublishDescriptors() const
-    {
-      // TODO: implement me
-      return m_CurrentPublishTX == 0 || true;
     }
 
     Path*
@@ -127,27 +137,10 @@ namespace llarp
       auto sz = established.size();
       if(sz)
       {
-        return established[rand() % sz];
+        return established[llarp_randint() % sz];
       }
       else
         return nullptr;
-    }
-
-    bool
-    PathSet::PublishIntroSet(const llarp::service::IntroSet& introset,
-                             llarp_router* r)
-    {
-      auto path = PickRandomEstablishedPath();
-      if(path)
-      {
-        m_CurrentPublishTX = rand();
-        llarp::routing::DHTMessage msg;
-        msg.M.push_back(
-            new llarp::dht::PublishIntroMessage(introset, m_CurrentPublishTX));
-        return path->SendRoutingMessage(&msg, r);
-      }
-      else
-        return false;
     }
 
   }  // namespace path

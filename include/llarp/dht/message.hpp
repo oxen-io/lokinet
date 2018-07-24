@@ -35,7 +35,7 @@ namespace llarp
     bool
     DecodeMesssageList(const Key_t& from, llarp_buffer_t* buf,
                        std::vector< IMessage* >& dst, bool relayed = false);
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 
 #endif

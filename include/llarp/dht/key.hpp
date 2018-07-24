@@ -31,7 +31,7 @@ namespace llarp
         return memcmp(data_l(), other.data_l(), 32) < 0;
       }
     };
-  }
-}
+  }  // namespace dht
+}  // namespace llarp
 
 #endif

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "codel.hpp"
+#include <atomic>
+#include <llarp/codel.hpp>
 #include "frame_state.hpp"
 #include "llarp/buffer.h"
 #include "llarp/crypto.hpp"
@@ -34,6 +35,7 @@ struct llarp_link_session
 
   bool
   has_timed_out();
+
   bool
   timedout(llarp_time_t now, llarp_time_t timeout = SESSION_TIMEOUT);
 
@@ -84,7 +86,7 @@ struct llarp_link_session
 
   // process inbound and outbound queues (logic thread)
   void
-  TickLogic();
+  TickLogic(llarp_time_t now);
 
   // this is called from net thread
   void
@@ -93,10 +95,9 @@ struct llarp_link_session
   llarp_router *
   Router();
 
-  llarp_udp_io *udp;
-  llarp_crypto *crypto;
-  llarp_async_iwp *iwp;
-  llarp_logic *logic;
+  llarp_udp_io *udp    = nullptr;
+  llarp_crypto *crypto = nullptr;
+  llarp_async_iwp *iwp = nullptr;
 
   llarp_link *serv = nullptr;
 
@@ -114,15 +115,17 @@ struct llarp_link_session
   llarp_time_t lastKeepalive = 0;
   uint32_t establish_job_id  = 0;
   uint32_t frames            = 0;
-  bool working               = false;
+  std::atomic< bool > working;
 
-  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime >
+  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime,
+                           FrameCompareTime >
       outboundFrames;
   /*
   std::mutex m_EncryptedFramesMutex;
   std::queue< iwp_async_frame > encryptedFrames;
   */
-  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime >
+  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime,
+                           FrameCompareTime >
       decryptedFrames;
 
   uint32_t pump_send_timer_id = 0;
@@ -132,8 +135,6 @@ struct llarp_link_session
   iwp_async_intro intro;
   iwp_async_introack introack;
   iwp_async_session_start start;
-  // frame_state frame;
-  bool started_inbound_codel = false;
 
   byte_t token[32];
   byte_t workbuf[MAX_PAD + 128];

@@ -4,6 +4,7 @@
 #include "dns.hpp" // question and dnsc
 #include "dnsc.hpp"
 #include <llarp/ev.h> // for sockaadr
+#include <string>
 
 struct dnsd_context;
 

@@ -12,8 +12,12 @@
 
 struct llarp_link
 {
+  /*
   typedef std::mutex mtx_t;
   typedef std::lock_guard< mtx_t > lock_t;
+  */
+  typedef llarp::util::DummyMutex mtx_t;
+  typedef llarp::util::DummyLock lock_t;
 
   llarp_router *router;
   llarp_crypto *crypto;
@@ -41,11 +45,12 @@ struct llarp_link
   LinkMap_t m_sessions;
   mtx_t m_sessions_Mutex;
 
-  typedef std::unordered_map< llarp::PubKey, llarp::Addr, llarp::PubKeyHash >
+  typedef std::unordered_map< llarp::PubKey, llarp::Addr, llarp::PubKey::Hash >
       SessionMap_t;
 
   SessionMap_t m_Connected;
   mtx_t m_Connected_Mutex;
+  std::atomic< bool > pumpingLogic;
 
   typedef std::unordered_map< llarp::Addr, llarp_link_session *,
                               llarp::addrhash >
@@ -64,6 +69,7 @@ struct llarp_link
   {
     strncpy(keyfile, args.keyfile, sizeof(keyfile));
     iwp = llarp_async_iwp_new(crypto, logic, worker);
+    pumpingLogic.store(false);
   }
 
   ~llarp_link()
@@ -74,21 +80,21 @@ struct llarp_link
   bool
   has_intro_from(const llarp::Addr &from)
   {
-    std::unique_lock< std::mutex > lock(m_PendingSessions_Mutex);
+    lock_t lock(m_PendingSessions_Mutex);
     return m_PendingSessions.find(from) != m_PendingSessions.end();
   }
 
   void
   put_intro_from(llarp_link_session *s)
   {
-    std::unique_lock< std::mutex > lock(m_PendingSessions_Mutex);
+    lock_t lock(m_PendingSessions_Mutex);
     m_PendingSessions[s->addr] = s;
   }
 
   void
   remove_intro_from(const llarp::Addr &from)
   {
-    std::unique_lock< std::mutex > lock(m_PendingSessions_Mutex);
+    lock_t lock(m_PendingSessions_Mutex);
     m_PendingSessions.erase(from);
   }
 
@@ -113,37 +119,55 @@ struct llarp_link
   {
     auto now = llarp_time_now_ms();
     {
-      lock_t lock(m_sessions_Mutex);
-      std::set< llarp::Addr > remove;
-      for(auto &itr : m_sessions)
+      lock_t lock(m_PendingSessions_Mutex);
+      auto itr = m_PendingSessions.begin();
+      while(itr != m_PendingSessions.end())
       {
-        llarp_link_session *s = itr.second;
-        if(s && s->Tick(now))
-          remove.insert(itr.first);
+        if(itr->second->timedout(now))
+        {
+          itr->second->done();
+          delete itr->second;
+          itr = m_PendingSessions.erase(itr);
+        }
+        else
+          ++itr;
       }
-
-      for(const auto &addr : remove)
-        RemoveSessionByAddr(addr);
+    }
+    {
+      lock_t lock(m_sessions_Mutex);
+      auto itr = m_sessions.begin();
+      while(itr != m_sessions.end())
+      {
+        if(itr->second->Tick(now))
+        {
+          itr->second->done();
+          delete itr->second;
+          itr = m_sessions.erase(itr);
+        }
+        else
+          ++itr;
+      }
     }
   }
 
   static bool
   sendto(llarp_link *serv, const byte_t *pubkey, llarp_buffer_t buf)
   {
-    // lock_t lock(serv->m_Connected_Mutex);
-    auto itr = serv->m_Connected.find(pubkey);
-    if(itr != serv->m_Connected.end())
+    llarp_link_session *link = nullptr;
     {
-      // lock_t innerlock(serv->m_sessions_Mutex);
-      auto inner_itr = serv->m_sessions.find(itr->second);
-      if(inner_itr != serv->m_sessions.end())
+      lock_t lock(serv->m_Connected_Mutex);
+      auto itr = serv->m_Connected.find(pubkey);
+      if(itr != serv->m_Connected.end())
       {
-        llarp_link_session *link = inner_itr->second;
-        return link->sendto(buf);
+        lock_t innerlock(serv->m_sessions_Mutex);
+        auto inner_itr = serv->m_sessions.find(itr->second);
+        if(inner_itr != serv->m_sessions.end())
+        {
+          link = inner_itr->second;
+        }
       }
     }
-
-    return false;
+    return link && link->sendto(buf);
   }
 
   void
@@ -166,7 +190,7 @@ struct llarp_link
   }
 
   llarp_link_session *
-  create_session(llarp::Addr src)
+  create_session(const llarp::Addr &src)
   {
     return new llarp_link_session(this, seckey, src);
   }
@@ -209,34 +233,57 @@ struct llarp_link
     }
   }
 
+  /// safe iterate sessions
+  void
+  iterate_sessions(std::function< bool(llarp_link_session *) > visitor)
+  {
+    auto now = llarp_time_now_ms();
+    std::list< llarp_link_session * > slist;
+    {
+      lock_t lock(m_sessions_Mutex);
+      auto itr = m_sessions.begin();
+      while(itr != m_sessions.end())
+      {
+        // if not timing out soon add to list to iterate on
+        if(!itr->second->timedout(now, 11500))
+          slist.push_back(itr->second);
+        ++itr;
+      }
+    }
+    for(auto &s : slist)
+      if(!visitor(s))
+        return;
+  }
+
   static void
   handle_logic_pump(void *user)
   {
     llarp_link *self = static_cast< llarp_link * >(user);
-    lock_t lock(self->m_sessions_Mutex);
-    auto itr = self->m_sessions.begin();
-    while(itr != self->m_sessions.end())
-    {
-      itr->second->TickLogic();
-      ++itr;
-    }
+    auto now         = llarp_time_now_ms();
+    self->iterate_sessions([now](llarp_link_session *s) -> bool {
+      s->TickLogic(now);
+      return true;
+    });
+    // self->pumpingLogic = false;
   }
 
   void
   PumpLogic()
   {
+    // if(pumpingLogic)
+    // return;
+    // pumpingLogic = true;
     llarp_logic_queue_job(logic, {this, &handle_logic_pump});
   }
 
   void
-  RemoveSessionByAddr(const llarp::Addr &addr)
+  RemoveSession(llarp_link_session *s)
   {
-    auto itr = m_sessions.find(addr);
+    lock_t lock(m_sessions_Mutex);
+    auto itr = m_sessions.find(s->addr);
     if(itr != m_sessions.end())
     {
-      llarp::LogDebug("removing session ", addr);
-      UnmapAddr(addr);
-      llarp_link_session *s = itr->second;
+      UnmapAddr(s->addr);
       s->done();
       m_sessions.erase(itr);
       delete s;
@@ -369,7 +416,7 @@ struct llarp_link
         addr = (sockaddr *)&ip6addr;
         llarp::Zero(addr, sizeof(ip6addr));
         break;
-        // TODO: AF_PACKET
+      // TODO: AF_PACKET
       default:
         llarp::LogError(__FILE__, "unsupported address family", af);
         return false;
@@ -396,7 +443,7 @@ struct llarp_link
       case AF_INET6:
         ip6addr.sin6_port = htons(port);
         break;
-        // TODO: AF_PACKET
+      // TODO: AF_PACKET
       default:
         return false;
     }
@@ -421,7 +468,7 @@ struct llarp_link
     // give link implementations
     // link->parent         = l;
     timeout_job_id = 0;
-    this->logic          = pLogic;
+    this->logic    = pLogic;
     // start cleanup timer
     issue_cleanup_timer(500);
     return true;
@@ -434,22 +481,6 @@ struct llarp_link
     llarp_ev_close_udp(&udp);
     clear_sessions();
     return true;
-  }
-
-  void
-  iter_sessions(llarp_link_session_iter iter)
-  {
-    auto sz = m_sessions.size();
-    if(sz)
-    {
-      llarp::LogDebug("we have ", sz, "sessions");
-      iter.link = this;
-      // TODO: race condition with cleanup timer
-      for(auto &item : m_sessions)
-        if(item.second)
-          if(!iter.visit(&iter, item.second))
-            return;
-    }
   }
 
   bool

@@ -64,7 +64,7 @@ namespace llarp
     PathContext::ForwardLRCM(const RouterID& nextHop,
                              std::deque< EncryptedFrame >& frames)
     {
-      llarp::LogInfo("fowarding LRCM to ", nextHop);
+      llarp::LogDebug("fowarding LRCM to ", nextHop);
       LR_CommitMessage* msg = new LR_CommitMessage;
       while(frames.size())
       {
@@ -226,7 +226,7 @@ namespace llarp
         if(itr->second->Expired(now))
         {
           TransitHop* path = itr->second;
-          llarp::LogInfo("transit path expired ", path->info);
+          llarp::LogDebug("transit path expired ", path->info);
           removePaths.insert(path);
         }
         ++itr;
@@ -296,14 +296,18 @@ namespace llarp
       intro.router = hops[h->numHops - 1].router.pubkey;
       // TODO: or is it rxid ?
       intro.pathID = hops[h->numHops - 1].txID;
-
-      m_InboundMessageParser.from = RXID();
     }
 
     void
     Path::SetBuildResultHook(BuildResultHookFunc func)
     {
       m_BuiltHook = func;
+    }
+
+    RouterID
+    Path::Endpoint() const
+    {
+      return hops[hops.size() - 1].router.pubkey;
     }
 
     const PathID_t&
@@ -333,11 +337,15 @@ namespace llarp
     void
     Path::Tick(llarp_time_t now, llarp_router* r)
     {
+      if(Expired(now))
+        return;
+      if(now < m_LastLatencyTestTime)
+        return;
       auto dlt = now - m_LastLatencyTestTime;
       if(dlt > 5000 && m_LastLatencyTestID == 0)
       {
         llarp::routing::PathLatencyMessage latency;
-        latency.T             = rand();
+        latency.T             = llarp_randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = now;
         SendRoutingMessage(&latency, r);
@@ -384,7 +392,7 @@ namespace llarp
     bool
     Path::HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r)
     {
-      if(!m_InboundMessageParser.ParseMessageBuffer(buf, this, r))
+      if(!m_InboundMessageParser.ParseMessageBuffer(buf, this, RXID(), r))
       {
         llarp::LogWarn("Failed to parse inbound routing message");
         return false;
@@ -400,12 +408,18 @@ namespace llarp
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
         return false;
-      // rewind
-      buf.sz  = buf.cur - buf.base;
-      buf.cur = buf.base;
       // make nonce
       TunnelNonce N;
       N.Randomize();
+      buf.sz = buf.cur - buf.base;
+      // pad smaller messages
+      if(buf.sz < MESSAGE_PAD_SIZE)
+      {
+        // randomize padding
+        r->crypto.randbytes(buf.cur, MESSAGE_PAD_SIZE - buf.sz);
+        buf.sz = MESSAGE_PAD_SIZE;
+      }
+      buf.cur = buf.base;
       return HandleUpstream(buf, N, r);
     }
 
@@ -434,7 +448,7 @@ namespace llarp
         m_BuiltHook = nullptr;
 
         llarp::routing::PathLatencyMessage latency;
-        latency.T             = rand();
+        latency.T             = llarp_randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = llarp_time_now_ms();
         return SendRoutingMessage(&latency, r);
@@ -448,7 +462,7 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
-      if(msg->L == m_LastLatencyTestID)
+      if(msg->L == m_LastLatencyTestID && status == ePathEstablished)
       {
         intro.latency = llarp_time_now_ms() - m_LastLatencyTestTime;
         llarp::LogInfo("path latency is ", intro.latency, " ms for tx=", TXID(),
@@ -456,7 +470,11 @@ namespace llarp
         m_LastLatencyTestID = 0;
         return true;
       }
-      return false;
+      else
+      {
+        llarp::LogWarn("unwarrented path latency message via ", Upstream());
+        return false;
+      }
     }
 
     bool
