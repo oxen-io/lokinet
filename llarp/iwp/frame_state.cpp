@@ -1,9 +1,9 @@
 #include "llarp/iwp/frame_state.hpp"
-#include "llarp/iwp/inbound_message.hpp"
-#include "llarp/iwp/session.hpp"
-
 #include "buffer.hpp"
 #include "llarp/crypto.hpp"
+#include "llarp/endian.h"
+#include "llarp/iwp/inbound_message.hpp"
+#include "llarp/iwp/session.hpp"
 #include "llarp/logger.hpp"
 #include "mem.hpp"
 #include "router.hpp"
@@ -145,9 +145,7 @@ frame_state::got_frag(frame_header hdr, size_t sz)
 
   uint64_t msgid;
   byte_t fragno;
-  // assumes big endian
-  // TODO: implement little endian
-  memcpy(&msgid, hdr.data(), 8);
+  msgid = bufbe64toh(hdr.data());
   memcpy(&fragno, hdr.data() + 8, 1);
   auto idItr = rxIDs.find(msgid);
   if(idItr == rxIDs.end())
@@ -194,8 +192,10 @@ frame_state::push_ackfor(uint64_t id, uint32_t bitmask)
   auto pkt      = new sendbuf_t(12 + 6);
   auto body_ptr = init_sendbuf(pkt, eACKS, 12, txflags);
   // TODO: this assumes big endian
-  memcpy(body_ptr, &id, 8);
-  memcpy(body_ptr + 8, &bitmask, 4);
+  // memcpy(body_ptr, &id, 8);
+  // memcpy(body_ptr + 8, &bitmask, 4);
+  htobe64buf(body_ptr, id);
+  htobe32buf(body_ptr + 8, bitmask);
   sendqueue.Put(pkt);
 }
 

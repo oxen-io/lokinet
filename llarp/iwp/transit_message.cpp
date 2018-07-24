@@ -1,4 +1,5 @@
 #include "llarp/iwp/transit_message.hpp"
+#include "llarp/endian.h"
 #include "llarp/iwp/frame_state.hpp"
 #include "llarp/iwp/sendbuf.hpp"
 #include "llarp/time.h"
@@ -127,8 +128,7 @@ transit_message::retransmit_frags(sendqueue_t &queue, byte_t flags)
     uint16_t sz   = 9 + fragsize;
     auto pkt      = new sendbuf_t(sz + 6);
     auto body_ptr = init_sendbuf(pkt, eFRAG, sz, flags);
-    // TODO: assumes big endian
-    memcpy(body_ptr, &msgid, 8);
+    htobe64buf(body_ptr, msgid);
     body_ptr[8] = frag.first;
     memcpy(body_ptr + 9, frag.second.data(), fragsize);
     queue.Put(pkt);
