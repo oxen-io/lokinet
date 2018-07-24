@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include <cstdio>
+
 #include <llarp/dns.h>
 #include "logger.hpp"
 

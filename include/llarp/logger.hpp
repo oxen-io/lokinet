@@ -23,8 +23,14 @@ namespace llarp
   struct Logger
   {
     LogLevel minlevel = eLogInfo;
-    std::ostream& out = std::cout;
+    std::ostream& out;
     std::mutex access;
+    Logger() : Logger(std::cout)
+    {
+    }
+    Logger(std::ostream& o) : out(o)
+    {
+    }
   };
 
   extern Logger _glog;
