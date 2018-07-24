@@ -1,6 +1,7 @@
 #ifndef LLARP_LOGGER_HPP
 #define LLARP_LOGGER_HPP
 
+#include <llarp/time.h>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
@@ -75,15 +76,13 @@ namespace llarp
         ss << "[ERR] ";
         break;
     }
-    std::time_t t;
-    std::time(&t);
     std::string tag = fname;
     /*
     auto pos        = tag.rfind('/');
     if(pos != std::string::npos)
       tag = tag.substr(pos + 1);
       */
-    ss << std::put_time(std::localtime(&t), "%F %T") << " " << tag;
+    ss << llarp_time_now_ms() << " " << tag;
     /*
     auto sz = tag.size() % 8;
     while(sz--)
