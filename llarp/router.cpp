@@ -85,7 +85,7 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   auto itr = outboundMesssageQueue.find(remote);
   if(itr == outboundMesssageQueue.end())
   {
-    outboundMesssageQueue.emplace(std::make_pair(remote, MessageQueue()));
+    outboundMesssageQueue.insert(std::make_pair(remote, MessageQueue()));
   }
   outboundMesssageQueue[remote].push(msg);
 
