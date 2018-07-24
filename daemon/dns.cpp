@@ -1,4 +1,3 @@
-
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h> /* fprintf, printf */
@@ -22,10 +21,20 @@ handle_signal(int sig)
   done = true;
 }
 
+sockaddr *
+hookChecker(std::string name)
+{
+  llarp::LogInfo("Hooked ", name);
+  return nullptr;
+}
+
+// FIXME: make configurable
+#define SERVER "8.8.8.8"
+#define PORT 53
+
 int
 main(int argc, char *argv[])
 {
-  dns_context dns;
   int code = 1;
   llarp::LogInfo("Starting up server");
 
@@ -41,16 +50,51 @@ main(int argc, char *argv[])
     llarp_ev_loop_alloc(&netloop);
 
     // configure main netloop
-    if(!llarp_dns_init(&dns, netloop, "127.0.0.1", 1052))
+    struct dnsd_context dnsd;
+    if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053, SERVER, PORT))
     {
-      llarp::LogError("failed to initialize dns subsystem");
-      return 1;
+      //llarp::LogError("failed to initialize dns subsystem");
+      llarp::LogError("Couldnt init dns daemon");
+      return 0;
     }
+    // Configure intercept
+    dnsd.intercept = &hookChecker;
 
-    worker = llarp_init_same_process_threadpool();
-    logic  = llarp_init_single_process_logic(worker);
-    llarp::LogInfo("running dns mainloop");
-    llarp_ev_loop_run_single_process(netloop, worker, logic);
+    // singlethreaded
+    if(0)
+    {
+      llarp::LogInfo("singlethread start");
+      worker = llarp_init_same_process_threadpool();
+      logic  = llarp_init_single_process_logic(worker);
+      llarp_ev_loop_run_single_process(netloop, worker, logic);
+      llarp::LogInfo("singlethread end");
+    }
+    else
+    {
+      uint num_llarpworkers = 2;
+      uint num_nethreads    = 8;
+      llarp::LogInfo("multithreaded start with ", num_llarpworkers,
+                     " llarp-workers and ", num_nethreads, " networkers");
+      // create workers
+      worker     = llarp_init_threadpool(num_llarpworkers, "llarp-worker");
+      logic      = llarp_init_logic();
+      auto netio = netloop;
+      std::vector< std::thread > netio_threads;
+      while(num_nethreads--)
+      {
+        netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
+#if(__APPLE__ && __MACH__)
+
+#elif(__FreeBSD__)
+        pthread_set_name_np(netio_threads.back().native_handle(),
+                            "llarp-netio");
+#else
+        pthread_setname_np(netio_threads.back().native_handle(), "llarp-netio");
+#endif
+      }
+      llarp_logic_mainloop(logic);
+      llarp::LogInfo("multithreaded end");
+    }
     llarp_ev_loop_free(&netloop);
   }
   else
@@ -94,8 +138,8 @@ main(int argc, char *argv[])
         continue;
       llarp::LogInfo("Received Bytes ", nbytes);
 
-      // raw_handle_recvfrom(&m_sockfd, (const struct sockaddr *)&clientAddress,
-      //                    buffer, nbytes);
+      raw_handle_recvfrom(&m_sockfd, (const struct sockaddr *)&clientAddress,
+                          buffer, nbytes);
     }
   }
 

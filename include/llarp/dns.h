@@ -1,8 +1,9 @@
 #ifndef LLARP_DNS_H_
 #define LLARP_DNS_H_
 
-#include <llarp/ev.h>
+#include <llarp/ev.h> // for sockaadr
 #include <sys/types.h>  // for uint & ssize_t
+#include <map> // for udp DNS tracker
 
 #ifdef __cplusplus
 extern "C"
@@ -14,63 +15,46 @@ extern "C"
    * dns client/server
    */
 
-#define DNC_BUF_SIZE 512
+  //#include <mutex>
+  //typedef std::mutex mtx_t;
+  //typedef std::lock_guard< mtx_t > lock_t;
 
-  struct dns_query
+  // fwd declr
+  //struct dns_query;
+  struct dnsc_context;
+  struct dnsd_context;
+  //struct dnsd_question_request;
+  struct dnsc_answer_request;
+
+  // dnsc can work over any UDP socket
+  // however we can't ignore udp->user
+  // we need to be able to reference the request (being a request or response)
+  // bottom line is we can't use udp->user
+  // so we'll need to track all incoming and outgoing requests
+
+  struct dns_tracker
   {
-    uint16_t length;
-    char *url;
-    unsigned char request[DNC_BUF_SIZE];
-    uint16_t reqType;
+    //uint c_responses;
+    uint c_requests;
+    std::map< uint, dnsc_answer_request * > client_request;
+    // FIXME: support multiple dns server contexts
+    dnsd_context *dnsd;
+    //std::map< uint, dnsd_question_request * > daemon_request;
   };
 
-  struct dns_client_request;
-
-  typedef void (*resolve_dns_hook_func)(struct dns_client_request *request,
-                                        struct sockaddr *);
-
-  struct dns_client_request
-  {
-    /// sock type
-    void *sock;
-    /// customizeable (used for outer request)
-    void *user;
-    /// storage
-    dns_query query;
-    /// hook
-    resolve_dns_hook_func resolved;
-  };
-
-  // forward declare
-  struct dns_context;
-
-  /// returns true if the dns query was intercepted
-  typedef bool (*intercept_query_hook)(struct dns_context *, const dns_query *);
-
-  /// context for dns subsystem
-  struct dns_context
-  {
-    /// populated by llarp_dns_init
-    struct llarp_udp_io udp;
-    /// set by caller
-    void *user;
-    /// hook function for intercepting dns requests
-    intercept_query_hook intercept;
-  };
+  // should we pass by llarp::Addr
+  // not as long as we're supporting raw
+  typedef void (*dnsc_answer_hook_func)(dnsc_answer_request *request);
 
   struct sockaddr *
-  resolveHost(const char *url);
-
-  /// initialize dns subsystem and bind socket
-  /// returns true on bind success otherwise returns false
-  bool
-  llarp_dns_init(struct dns_context *dns, struct llarp_ev_loop *loop,
-                 const char *addr, uint16_t port);
+  raw_resolve_host(const char *url);
 
   /// async resolve hostname
   bool
-  llarp_resolve_host(struct dns_context *dns, const char *url,
-                     resolve_dns_hook_func resolved, void *user);
+  llarp_resolve_host(struct dnsc_context *dns, const char *url,
+                     dnsc_answer_hook_func resolved, void *user);
+  void
+  llarp_host_resolved(dnsc_answer_request *request);
 
   /*
 

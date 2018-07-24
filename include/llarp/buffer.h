@@ -60,6 +60,11 @@ typedef struct llarp_buffer_t
   byte_t *cur;
   /// max size of buffer
   size_t sz;
+
+  const byte_t operator[](size_t x)
+  {
+    return *(this->base + x);
+  }
 } llarp_buffer_t;
 
 /// how much room is left in buffer

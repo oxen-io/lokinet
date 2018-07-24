@@ -250,6 +250,7 @@ set(LIB_SRC
 )
 
 set(DNS_SRC
+  llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
   llarp/net.cpp
@@ -315,7 +316,7 @@ else()
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} libbackport-static libllarpplatform-static)
       target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} libbackport-static libllarpplatform-static)
       target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB} libbackport-static libllarpplatform-static)
-      target_link_libraries(dns libllarpplatform-static)
+      target_link_libraries(dns libllarpplatform-static pthread)
     endif()
   endif()
 
@@ -328,7 +329,7 @@ else()
       target_link_libraries(${EXE} ${SHARED_LIB} libbackport libllarpplatform)
       target_link_libraries(${CLIENT_EXE} ${SHARED_LIB} libbackport libllarpplatform)
       target_link_libraries(rcutil ${SHARED_LIB} libbackport libllarpplatform)
-      target_link_libraries(dns libllarpplatform)
+      target_link_libraries(dns libllarpplatform pthread)
     endif()
   endif()
 
