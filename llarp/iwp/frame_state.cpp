@@ -273,11 +273,9 @@ frame_state::got_acks(frame_header hdr, size_t sz)
     return false;
   }
 
-  auto ptr = hdr.data();
-  uint64_t msgid;
-  uint32_t bitmask;
-  memcpy(&msgid, ptr, 8);
-  memcpy(&bitmask, ptr + 8, 4);
+  auto ptr         = hdr.data();
+  uint64_t msgid   = bufbe64toh(ptr);
+  uint32_t bitmask = bufbe32toh(ptr + 8);
 
   auto itr = tx.find(msgid);
   if(itr == tx.end())

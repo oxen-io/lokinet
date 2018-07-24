@@ -44,9 +44,10 @@ namespace llarp
     }
 
     bool
-    TransitHop::SendRoutingMessage(const llarp::routing::IMessage* msg,
+    TransitHop::SendRoutingMessage(llarp::routing::IMessage* msg,
                                    llarp_router* r)
     {
+      msg->S = m_SequenceNum++;
       byte_t tmp[MAX_LINK_MSG_SIZE / 2];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))

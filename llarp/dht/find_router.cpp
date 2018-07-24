@@ -21,7 +21,7 @@ namespace llarp
       }
 
       void
-      SendReply(const llarp::routing::IMessage *msg)
+      SendReply(llarp::routing::IMessage *msg)
       {
         auto path = router->paths.GetByUpstream(router->pubkey(), pathID);
         if(path == nullptr)

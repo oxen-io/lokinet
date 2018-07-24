@@ -264,15 +264,15 @@ struct llarp_link
       s->TickLogic(now);
       return true;
     });
-    // self->pumpingLogic = false;
+    self->pumpingLogic = false;
   }
 
   void
   PumpLogic()
   {
-    // if(pumpingLogic)
-    // return;
-    // pumpingLogic = true;
+    if(pumpingLogic)
+      return;
+    pumpingLogic = true;
     llarp_logic_queue_job(logic, {this, &handle_logic_pump});
   }
 

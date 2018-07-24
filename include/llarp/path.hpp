@@ -99,9 +99,9 @@ namespace llarp
       virtual bool
       Expired(llarp_time_t now) const = 0;
 
+      /// send routing message and increment sequence number
       virtual bool
-      SendRoutingMessage(const llarp::routing::IMessage* msg,
-                         llarp_router* r) = 0;
+      SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r) = 0;
 
       // handle data in upstream direction
       virtual bool
@@ -112,6 +112,9 @@ namespace llarp
       virtual bool
       HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
                        llarp_router* r) = 0;
+
+     protected:
+      uint64_t m_SequenceNum = 0;
     };
 
     struct TransitHop : public IHopHandler,
@@ -142,7 +145,7 @@ namespace llarp
 
       // send routing message when end of path
       bool
-      SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
+      SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r);
 
       // handle routing message when end of path
       bool
@@ -220,7 +223,7 @@ namespace llarp
       Tick(llarp_time_t now, llarp_router* r);
 
       bool
-      SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
+      SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r);
 
       bool
       HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,

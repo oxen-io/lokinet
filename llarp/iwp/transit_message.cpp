@@ -72,7 +72,7 @@ transit_message::should_send_ack(llarp_time_t now) const
     return false;
   if(status.count() == 0)
     return true;
-  return now - lastRetransmit > 100;
+  return now - lastRetransmit > 200;
 }
 
 bool
@@ -80,7 +80,7 @@ transit_message::should_resend_xmit(llarp_time_t now) const
 {
   if(now < started)
     return false;
-  return lastAck == 0 && now - started > 500;
+  return lastAck == 0 && now - started > 1000;
 }
 
 bool
@@ -88,7 +88,7 @@ transit_message::should_resend_frags(llarp_time_t now) const
 {
   if(now < started)
     return false;
-  return lastAck > 0 && now - lastAck > 250 && !completed();
+  return lastAck > 0 && now - lastAck > 500 && !completed();
 }
 
 bool
