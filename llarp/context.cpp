@@ -12,8 +12,9 @@
 
 namespace llarp
 {
-  Context::Context(bool singleThread) : singleThreaded(singleThread)
+  Context::Context(bool singleThread)
   {
+    singleThreaded = singleThread;
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
   }
 
