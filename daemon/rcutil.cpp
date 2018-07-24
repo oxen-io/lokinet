@@ -5,6 +5,7 @@
 #include <getopt.h>
 #include <llarp/router_contact.h>
 #include <llarp/time.h>
+#include <algorithm>
 #include <fstream>
 #include "buffer.hpp"
 #include "crypto.hpp"
