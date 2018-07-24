@@ -1,11 +1,14 @@
 #include "net.hpp"
 #include "str.hpp"
 #ifdef ANRDOID
+#error "fug"
 #include "android/ifaddrs.h"
+#else
+#include <ifaddrs.h>
 #endif
 
 #include <arpa/inet.h>
-#include <ifaddrs.h>
+
 #include <net/if.h>
 #include <cstdio>
 #include "logger.hpp"
