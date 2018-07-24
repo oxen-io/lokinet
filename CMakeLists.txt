@@ -165,6 +165,10 @@ set(CPP_BACKPORT_SRC
   vendor/cppbackport-master/lib/fs/direntry.cpp
 )
 
+if(ANDROID)
+  set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
+endif()
+
 set(LIB_PLATFORM_SRC
 # for outpug
   llarp/logger.cpp
@@ -180,7 +184,11 @@ set(LIB_PLATFORM_SRC
   llarp/timer.cpp
 # for threading
   llarp/threadpool.cpp
+# for android shim
+  ${ANDROID_PLATFORM_SRC}
 )
+
+
 
 set(LIB_SRC
   llarp/address_info.cpp

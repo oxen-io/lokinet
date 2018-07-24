@@ -1,5 +1,8 @@
 #include "net.hpp"
 #include "str.hpp"
+#ifdef ANRDOID
+#include "android/ifaddrs.h"
+#endif
 
 #include <arpa/inet.h>
 #include <ifaddrs.h>
