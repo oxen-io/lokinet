@@ -2,6 +2,7 @@
 #define LLARP_SERVICE_TAG_HPP
 
 #include <sodium/crypto_generichash.h>
+#include <algorithm>
 #include <llarp/aligned.hpp>
 #include <llarp/dht/key.hpp>
 
