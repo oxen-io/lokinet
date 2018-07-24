@@ -1,5 +1,6 @@
 #include "dnsd.hpp" // for llarp_handle_dnsd_recvfrom, dnsc
 #include "logger.hpp"
+#include <string.h>
 
 uint16_t
 get16bits(const char *&buffer) throw()
@@ -136,7 +137,7 @@ code_domain(char *&buffer, const std::string &domain) throw()
   // llarp::LogInfo("start ", start, " domain size ", domain.size());
 
   *buffer++ = domain.size() - start;  // last label length octet
-  for(int i = start; i < domain.size(); i++)
+  for(uint i = start; i < domain.size(); i++)
   {
     *buffer++ = domain[i];  // last label octets
     // llarp::LogInfo("Writing ", domain[i], " at ", i);
