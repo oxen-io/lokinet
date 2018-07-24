@@ -19,7 +19,7 @@ else()
   message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
-set(THREAD_LIB pthread)
+set(THREAD_LIB "-pthread")
 
 if(STATIC_LINK)
   set(STATIC_LINK_LIBS c)
