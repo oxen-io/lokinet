@@ -40,7 +40,7 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
   // buffer[0] = (value & 0xFF00) >> 8;
   // buffer[1] = value & 0xFF;
   llarp::LogDebug("building request ", id);
-  
+
   dnsQuery->request[0] = (id & 0xFF00) >> 8;
   dnsQuery->request[1] = (id & 0x00FF) >> 0;
   // field
@@ -58,10 +58,10 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
   // ar
   dnsQuery->request[10] = 0x00;
   dnsQuery->request[11] = 0x00;
-  
+
   char *word;
   // llarp::LogDebug("Asking DNS server %s about %s", SERVER, dnsQuery->url);
-  
+
   char *strTemp = strdup(url);
   word          = strtok(strTemp, ".");
   while(word)
@@ -75,7 +75,7 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
     }
     word = strtok(NULL, ".");
   }
-  
+
   dnsQuery->request[dnsQuery->length++] = 0x00;  // End of the host name
   dnsQuery->request[dnsQuery->length++] =
   0x00;  // 0x0001 - Query is a Type A query (host address)
@@ -92,7 +92,7 @@ raw_resolve_host(const char *url)
   //char *sUrl = strdup(url);
   //struct dns_query dnsQuery;
   dns_query *dns_packet = build_dns_packet((char *)url, 0xDB42, 1);
-  
+
   /*
   dnsQuery.length  = 12;
   dnsQuery.url     = sUrl;
@@ -112,7 +112,7 @@ raw_resolve_host(const char *url)
   dnsQuery.request[10] = 0x00;
   dnsQuery.request[11] = 0x00;
   */
-  
+
   char *word;
   unsigned int i;
   llarp::LogDebug("Asking DNS server ", SERVER, " about ", url);
@@ -139,7 +139,7 @@ raw_resolve_host(const char *url)
       0x00;  // 0x0001 - Query is class IN (Internet address)
   dnsQuery.request[dnsQuery.length++] = 0x01;
   */
-  
+
   struct sockaddr_in addr;
   // int socket;
   ssize_t ret;
@@ -217,7 +217,7 @@ raw_resolve_host(const char *url)
   llarp::LogDebug("name server resource record count: %u\n", NSCOUNT);
   ARCOUNT = (uint16_t)buffer[10] * 0x100 + buffer[11];
   llarp::LogDebug("additional records count: %u\n", ARCOUNT);
-  
+
   /*
   llarp::LogDebug("query type: %u\n", dnsQuery.reqType);
   QCLASS = (uint16_t)dnsQuery.request[dnsQuery.length - 2] * 0x100
@@ -269,7 +269,9 @@ raw_resolve_host(const char *url)
                         buffer[i + 2], buffer[i + 3]);
         struct sockaddr *g_addr = new sockaddr;
         g_addr->sa_family       = AF_INET;
+#if ((__APPLE__ && __MACH__) || __FreeBSD__)
         g_addr->sa_len          = sizeof(in_addr);
+#endif
         struct in_addr *addr    = &((struct sockaddr_in *)g_addr)->sin_addr;
         unsigned char *ip;
 
@@ -368,7 +370,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   llarp::LogDebug("msg arc ", msg->arCount);
 
   // we may need to parse question first
-  
+
   /*
   dns_msg_question *question = decode_question((const char *)castBuf);
   llarp::LogInfo("que name  ", question->name);
@@ -378,7 +380,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   */
 
-  
+
   // FIXME: only handling one atm
   dns_msg_question *question = nullptr;
   for(uint i = 0; i < hdr->qdCount; i++)
@@ -387,7 +389,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
     llarp::LogDebug("Read a question");
     castBuf += question->name.length() + 8;
   }
-  
+
   // FIXME: only handling one atm
   dns_msg_answer *answer = nullptr;
   for(uint i = 0; i < hdr->anCount; i++)
@@ -404,7 +406,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
     llarp::LogDebug("Read an authority");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   }
-  
+
   // dns_msg_answer *answer2 = decode_answer((const char*)castBuf);
   // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
 
@@ -436,7 +438,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
     request->resolved(request);
     return;
   }
-  
+
   llarp::LogDebug("ans class ", answer->aClass);
   llarp::LogDebug("ans type  ", answer->type);
   llarp::LogDebug("ans ttl   ", answer->ttl);
@@ -475,11 +477,13 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   {
     //llarp::LogInfo("DNS server's answer is: (type#=", ATYPE, "):");
     llarp::LogDebug("IPv4 address(es) for ", request->question.name, ":");
-    
+
     if (answer->rdLen == 4)
     {
       request->result.sa_family = AF_INET;
+#if ((__APPLE__ && __MACH__) || __FreeBSD__)
       request->result.sa_len    = sizeof(in_addr);
+#endif
       struct in_addr *addr =
       &((struct sockaddr_in *)&request->result)->sin_addr;
 
@@ -547,7 +551,7 @@ llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
 
   uint16_t qLen = request->question.name.length() + 8;
   length += qLen;
-  
+
   unsigned char bytes[length];
   // memcpy isn't going to fix the network endian issue
   // encode header into bytes
@@ -555,7 +559,7 @@ llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
   // encode question into bytes
   memcpy(bytes + 12, &request->question, qLen);
   */
-  
+
   uint16_t id = ++tracker->c_requests;
   tracker->client_request[id] = request;
   //llarp::LogInfo("Sending request #", tracker->c_requests, " ", length, " bytes");
