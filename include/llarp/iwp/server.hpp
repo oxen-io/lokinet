@@ -12,12 +12,12 @@
 
 struct llarp_link
 {
-  /*
   typedef std::mutex mtx_t;
-  typedef std::lock_guard< mtx_t > lock_t;
-  */
+  typedef std::unique_lock< mtx_t > lock_t;
+  /*
   typedef llarp::util::DummyMutex mtx_t;
   typedef llarp::util::DummyLock lock_t;
+  */
 
   llarp_router *router;
   llarp_crypto *crypto;
