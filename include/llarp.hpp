@@ -11,7 +11,7 @@ namespace llarp
 {
   struct Context
   {
-    Context(std::ostream &out, bool signleThread = false);
+    Context(bool signleThread = false);
     ~Context();
 
     int num_nethreads   = 1;
