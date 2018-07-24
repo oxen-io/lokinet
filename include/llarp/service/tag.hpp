@@ -2,7 +2,6 @@
 #define LLARP_SERVICE_TAG_HPP
 
 #include <sodium/crypto_generichash.h>
-#include <algorithm>
 #include <llarp/aligned.hpp>
 #include <llarp/dht/key.hpp>
 
@@ -23,7 +22,7 @@ namespace llarp
 
       Tag(const std::string& str) : Tag()
       {
-        memcpy(data(), str.c_str(), std::min(16UL, str.size()));
+        memcpy(data(), str.c_str(), MIN(16UL, str.size()));
       }
 
       llarp::dht::Key_t
