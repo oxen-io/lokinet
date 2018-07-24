@@ -222,12 +222,6 @@ set(LIB_SRC
   llarp/service.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
-  llarp/api/client.cpp
-  llarp/api/message.cpp
-  llarp/api/parser.cpp
-  llarp/api/messages/ack.cpp
-  llarp/api/messages/keepalive.cpp
-  llarp/api/messages/spawn.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
@@ -267,7 +261,6 @@ set(DNS_SRC
 
 set(TEST_SRC
   test/main.cpp
-  test/api_unittest.cpp
   test/base32_unittest.cpp
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
