@@ -166,6 +166,7 @@ set(CPP_BACKPORT_SRC
 )
 
 if(ANDROID)
+  add_definitions(-DANDROID)
   set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
 endif()
 
