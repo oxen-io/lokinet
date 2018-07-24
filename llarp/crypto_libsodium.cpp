@@ -11,7 +11,7 @@ namespace llarp
     static bool
     xchacha20(llarp_buffer_t buff, const byte_t *k, const byte_t *n)
     {
-      return crypto_stream_chacha20_xor(buff.base, buff.base, buff.sz, n, k)
+      return crypto_stream_xchacha20_xor(buff.base, buff.base, buff.sz, n, k)
           == 0;
     }
 
