@@ -86,7 +86,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
   init()
   {
     if(epollfd == -1)
-      epollfd = epoll_create1(EPOLL_CLOEXEC);
+      epollfd = epoll_create1(0);
     if(epollfd != -1)
     {
       if(pipe(pipefds) == -1)
