@@ -858,7 +858,7 @@ llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
   if(llarp_ai_list_index(remote->addrs, 0, &addr))
   {
     auto link = router->outboundLink;
-    auto itr  = router->pendingEstablishJobs.emplace(
+    auto itr  = router->pendingEstablishJobs.insert(
         std::make_pair(remote->pubkey, llarp_link_establish_job()));
     auto job = &itr.first->second;
     llarp_ai_copy(&job->ai, &addr);
