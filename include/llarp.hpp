@@ -69,8 +69,6 @@ namespace llarp
     progress();
 
     std::string configfile;
-
-    std::ostream &out;
   };
 }  // namespace llarp
 

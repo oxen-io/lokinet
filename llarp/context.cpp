@@ -12,8 +12,7 @@
 
 namespace llarp
 {
-  Context::Context(bool singleThread)
-      : singleThreaded(singleThread), out(std::cout)
+  Context::Context(bool singleThread) : singleThreaded(singleThread)
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
   }
@@ -25,7 +24,7 @@ namespace llarp
   void
   Context::progress()
   {
-    out << "." << std::flush;
+    std::cout << "." << std::flush;
   }
 
   bool
