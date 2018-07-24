@@ -12,8 +12,8 @@
 
 namespace llarp
 {
-  Context::Context(std::ostream &stdout, bool singleThread)
-      : singleThreaded(singleThread), out(stdout)
+  Context::Context(std::ostream &o, bool singleThread)
+      : singleThreaded(singleThread), out(o)
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
   }
