@@ -26,13 +26,15 @@ def genconf(rootdir):
     'dir': os.path.join(rootdir, 'netdb')
   }
   conf['bind'] = {}
+  found = False
   for ifname, ip in yield_public_addresses():
     conf['bind'][ifname] = '1090'
     print("using public address {}".format(ip))
+    found = True
+  if found:
+    return conf
   else:
-    print("we don't have any public addresses on this machine")
-    return
-  return conf
+    print("This machine has no public network addresses")
 
 def main():
   conf = genconf(os.path.realpath('.'))
