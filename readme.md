@@ -11,7 +11,7 @@ You have 2 ways the build this project
 
 ### Recommended Method (for stable builds)
 
-    $ sudo apt install build-essential libtool autoconf cmake git
+    $ sudo apt install build-essential libtool autoconf cmake git python3-venv
     $ git clone --recursive https://github.com/majestrate/llarpd-builder
     $ cd llarpd-builder
     $ make 
