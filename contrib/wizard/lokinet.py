@@ -30,8 +30,6 @@ def genconf(rootdir):
   for ifname, ip in yield_public_addresses():
     conf['bind'][ifname] = '1090'
     print("using public address {}".format(ip))
-    found = True
-  if found:
     return conf
   else:
     print("This machine has no public network addresses")
