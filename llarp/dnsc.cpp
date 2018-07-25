@@ -28,16 +28,16 @@
 struct dns_query
 {
   uint16_t length;
-  //char *url;
+  // char *url;
   unsigned char request[DNC_BUF_SIZE];
-  //uint16_t reqType;
+  // uint16_t reqType;
 };
 
-struct dns_query*
+struct dns_query *
 build_dns_packet(char *url, uint16_t id, uint16_t reqType)
 {
   dns_query *dnsQuery = new dns_query;
-  dnsQuery->length  = 12;
+  dnsQuery->length    = 12;
   // ID
   // buffer[0] = (value & 0xFF00) >> 8;
   // buffer[1] = value & 0xFF;
@@ -80,10 +80,10 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
 
   dnsQuery->request[dnsQuery->length++] = 0x00;  // End of the host name
   dnsQuery->request[dnsQuery->length++] =
-  0x00;  // 0x0001 - Query is a Type A query (host address)
+      0x00;  // 0x0001 - Query is a Type A query (host address)
   dnsQuery->request[dnsQuery->length++] = reqType;
   dnsQuery->request[dnsQuery->length++] =
-  0x00;  // 0x0001 - Query is class IN (Internet address)
+      0x00;  // 0x0001 - Query is class IN (Internet address)
   dnsQuery->request[dnsQuery->length++] = 0x01;
   return dnsQuery;
 }
@@ -91,8 +91,8 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
 struct sockaddr *
 raw_resolve_host(const char *url)
 {
-  //char *sUrl = strdup(url);
-  //struct dns_query dnsQuery;
+  // char *sUrl = strdup(url);
+  // struct dns_query dnsQuery;
   dns_query *dns_packet = build_dns_packet((char *)url, 0xDB42, 1);
 
   /*
@@ -256,8 +256,8 @@ raw_resolve_host(const char *url)
   }
 
   /* search for and print IPv4 addresses */
-  //if(dnsQuery.reqType == 0x01)
-  if (1)
+  // if(dnsQuery.reqType == 0x01)
+  if(1)
   {
     llarp::LogDebug("DNS server's answer is: (type#=%u):", ATYPE);
     // printf("IPv4 address(es) for %s:\n", dnsQuery.url);
@@ -271,10 +271,10 @@ raw_resolve_host(const char *url)
                         buffer[i + 2], buffer[i + 3]);
         struct sockaddr *g_addr = new sockaddr;
         g_addr->sa_family       = AF_INET;
-#if ((__APPLE__ && __MACH__) || __FreeBSD__)
-        g_addr->sa_len          = sizeof(in_addr);
+#if((__APPLE__ && __MACH__) || __FreeBSD__)
+        g_addr->sa_len = sizeof(in_addr);
 #endif
-        struct in_addr *addr    = &((struct sockaddr_in *)g_addr)->sin_addr;
+        struct in_addr *addr = &((struct sockaddr_in *)g_addr)->sin_addr;
         unsigned char *ip;
 
         // have ip point to s_addr
@@ -300,10 +300,10 @@ raw_resolve_host(const char *url)
 
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
-                                const struct sockaddr *saddr, const void *buf,
-                                ssize_t sz)
+                           const struct sockaddr *saddr, const void *buf,
+                           ssize_t sz)
 {
-  //lock_t lock(m_dnsc_Mutex);
+  // lock_t lock(m_dnsc_Mutex);
   // llarp::LogInfo("got a response, udp user is ", udp->user);
 
   unsigned char *castBuf = (unsigned char *)buf;
@@ -313,7 +313,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   llarp::LogDebug("Header got client responses for id: ", hdr->id);
 
   // if we sent this out, then there's an id
-  struct dns_tracker *tracker        = (struct dns_tracker *)udp->user;
+  struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
   struct dnsc_answer_request *request = tracker->client_request[hdr->id];
 
   if(!request)
@@ -349,12 +349,12 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   uint16_t MSGID;
   */
   uint8_t rcode;
-  //int length;
+  // int length;
 
-  //struct dns_query *dnsQuery = &request->query;
+  // struct dns_query *dnsQuery = &request->query;
 
-  //rcode = (buffer[3] & 0x0F);
-  //llarp::LogInfo("dnsc rcode ", rcode);
+  // rcode = (buffer[3] & 0x0F);
+  // llarp::LogInfo("dnsc rcode ", rcode);
 
   dns_msg_header *msg = decode_hdr((const char *)castBuf);
   castBuf += 12;
@@ -382,12 +382,11 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   */
 
-
   // FIXME: only handling one atm
   dns_msg_question *question = nullptr;
   for(uint i = 0; i < hdr->qdCount; i++)
   {
-    question = decode_question((const char*)castBuf);
+    question = decode_question((const char *)castBuf);
     llarp::LogDebug("Read a question");
     castBuf += question->name.length() + 8;
   }
@@ -396,15 +395,15 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   dns_msg_answer *answer = nullptr;
   for(uint i = 0; i < hdr->anCount; i++)
   {
-    answer = decode_answer((const char*)castBuf);
+    answer = decode_answer((const char *)castBuf);
     llarp::LogDebug("Read an answer");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   }
-  // handle authority records (usually no answers with these, so we'll just stomp)
-  // usually NS records tho
+  // handle authority records (usually no answers with these, so we'll just
+  // stomp) usually NS records tho
   for(uint i = 0; i < hdr->nsCount; i++)
   {
-    answer = decode_answer((const char*)castBuf);
+    answer = decode_answer((const char *)castBuf);
     llarp::LogDebug("Read an authority");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   }
@@ -474,26 +473,26 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   int ip = 0;
 
   /* search for and print IPv4 addresses */
-  //if(dnsQuery->reqType == 0x01)
+  // if(dnsQuery->reqType == 0x01)
   if(request->question.type == 1)
   {
-    //llarp::LogInfo("DNS server's answer is: (type#=", ATYPE, "):");
+    // llarp::LogInfo("DNS server's answer is: (type#=", ATYPE, "):");
     llarp::LogDebug("IPv4 address(es) for ", request->question.name, ":");
 
-    if (answer->rdLen == 4)
+    if(answer->rdLen == 4)
     {
       request->result.sa_family = AF_INET;
-#if ((__APPLE__ && __MACH__) || __FreeBSD__)
-      request->result.sa_len    = sizeof(in_addr);
+#if((__APPLE__ && __MACH__) || __FreeBSD__)
+      request->result.sa_len = sizeof(in_addr);
 #endif
       struct in_addr *addr =
-      &((struct sockaddr_in *)&request->result)->sin_addr;
+          &((struct sockaddr_in *)&request->result)->sin_addr;
 
       unsigned char *ip = (unsigned char *)&(addr->s_addr);
-      ip[0] = answer->rData[0];
-      ip[1] = answer->rData[1];
-      ip[2] = answer->rData[2];
-      ip[3] = answer->rData[3];
+      ip[0]             = answer->rData[0];
+      ip[1]             = answer->rData[1];
+      ip[2]             = answer->rData[2];
+      ip[3]             = answer->rData[3];
 
       llarp::Addr test(request->result);
       llarp::LogDebug(test);
@@ -516,19 +515,19 @@ llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
                    dnsc_answer_hook_func resolved, void *user)
 {
   dnsc_answer_request *request = new dnsc_answer_request;
-  request->sock     = (void *)&dnsc->udp;
-  request->user     = user;
-  request->resolved = resolved;
-  request->found    = false;
-  request->context  = dnsc;
+  request->sock                = (void *)&dnsc->udp;
+  request->user                = user;
+  request->resolved            = resolved;
+  request->found               = false;
+  request->context             = dnsc;
 
-  char *sUrl = strdup(url);
+  char *sUrl               = strdup(url);
   request->question.name   = sUrl;
   request->question.type   = 1;
   request->question.qClass = 1;
 
   // register request with udp response tracker
-  dns_tracker *tracker       = (dns_tracker *)dnsc->udp->user;
+  dns_tracker *tracker = (dns_tracker *)dnsc->udp->user;
 
   /*
   uint16_t length = 0;
@@ -562,13 +561,15 @@ llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
   memcpy(bytes + 12, &request->question, qLen);
   */
 
-  uint16_t id = ++tracker->c_requests;
+  uint16_t id                 = ++tracker->c_requests;
   tracker->client_request[id] = request;
-  //llarp::LogInfo("Sending request #", tracker->c_requests, " ", length, " bytes");
+  // llarp::LogInfo("Sending request #", tracker->c_requests, " ", length, "
+  // bytes");
 
   dns_query *dns_packet = build_dns_packet((char *)url, id, 1);
-  //ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, bytes, length);
-  ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, dns_packet->request, dns_packet->length);
+  // ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, bytes, length);
+  ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server,
+                                    dns_packet->request, dns_packet->length);
   delete dns_packet;
   if(ret < 0)
   {

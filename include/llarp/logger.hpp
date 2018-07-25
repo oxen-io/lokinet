@@ -5,7 +5,7 @@
 #include <ctime>
 #include <iomanip>
 #include <iostream>
-#include <mutex>
+#include <llarp/threading.hpp>
 #include <sstream>
 #include <string>
 

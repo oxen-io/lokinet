@@ -53,7 +53,7 @@ main(int argc, char *argv[])
     struct dnsd_context dnsd;
     if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053, SERVER, PORT))
     {
-      //llarp::LogError("failed to initialize dns subsystem");
+      // llarp::LogError("failed to initialize dns subsystem");
       llarp::LogError("Couldnt init dns daemon");
       return 0;
     }

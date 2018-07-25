@@ -1,5 +1,6 @@
 #pragma once
 
+#include <llarp/threading.hpp>
 #include "llarp/iwp.h"
 #include "llarp/iwp/establish_job.hpp"
 #include "router.hpp"
@@ -8,7 +9,6 @@
 
 #include <algorithm>
 #include <fstream>
-#include <mutex>
 
 struct llarp_link
 {

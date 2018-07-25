@@ -1,12 +1,12 @@
-#include "dnsd.hpp" // for llarp_handle_dnsd_recvfrom, dnsc
-#include "logger.hpp"
 #include <string.h>
+#include "dnsd.hpp"  // for llarp_handle_dnsd_recvfrom, dnsc
+#include "logger.hpp"
 
 uint16_t
 get16bits(const char *&buffer) throw()
 {
   uint16_t value = static_cast< unsigned char >(buffer[0]);
-  value     = value << 8;
+  value          = value << 8;
   value += static_cast< unsigned char >(buffer[1]);
   buffer += 2;
   return value;
@@ -29,8 +29,8 @@ decode_hdr(const char *buffer)
   dns_msg_header *hdr = new dns_msg_header;
   hdr->id             = get16bits(buffer);
   uint fields         = get16bits(buffer);
-  uint8_t lFields = (fields & 0x00FF) >> 0;
-  uint8_t hFields = (fields & 0xFF00) >> 8;
+  uint8_t lFields     = (fields & 0x00FF) >> 0;
+  uint8_t hFields     = (fields & 0xFF00) >> 8;
   // hdr->qr      = fields & 0x8000;
   hdr->qr     = (hFields >> 7) & 0x1;
   hdr->opcode = fields & 0x7800;
@@ -38,11 +38,11 @@ decode_hdr(const char *buffer)
   hdr->tc     = fields & 0x0200;
   hdr->rd     = fields & 0x0100;
 
-  hdr->ra     = (lFields >> 7) & 0x1;
-  //hdr->z       = (lFields >> 6) & 0x1;
-  //hdr->ad      = (lFields >> 5) & 0x1;
-  //hdr->cd      = (lFields >> 4) & 0x1;
-  hdr->rcode   = lFields & 0xf;
+  hdr->ra = (lFields >> 7) & 0x1;
+  // hdr->z       = (lFields >> 6) & 0x1;
+  // hdr->ad      = (lFields >> 5) & 0x1;
+  // hdr->cd      = (lFields >> 4) & 0x1;
+  hdr->rcode = lFields & 0xf;
 
   hdr->qdCount = get16bits(buffer);
   hdr->anCount = get16bits(buffer);
@@ -80,17 +80,17 @@ decode_answer(const char *buffer)
 {
   dns_msg_answer *answer = new dns_msg_answer;
   answer->type           = get16bits(buffer);
-  //assert(answer->type < 259);
-  if (answer->type > 259)
+  // assert(answer->type < 259);
+  if(answer->type > 259)
   {
     llarp::LogWarn("Answer type is off the charts");
   }
-  answer->aClass         = get16bits(buffer);
-  answer->ttl            = get32bits(buffer);
-  answer->rdLen          = get16bits(buffer);
-  if (answer->rdLen == 4)
+  answer->aClass = get16bits(buffer);
+  answer->ttl    = get32bits(buffer);
+  answer->rdLen  = get16bits(buffer);
+  if(answer->rdLen == 4)
   {
-    answer->rData          = new uint8_t[answer->rdLen];
+    answer->rData = new uint8_t[answer->rdLen];
     memcpy(answer->rData, buffer, answer->rdLen);
   }
   else

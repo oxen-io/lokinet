@@ -1,24 +1,24 @@
 #ifndef LIBLLARP_DNS_HPP
 #define LIBLLARP_DNS_HPP
 
-#include <string>
 #include <sys/types.h>  // for uint & ssize_t
+#include <string>
 
 // protocol parsing/writing structures & functions
 struct dns_msg_header
 {
   uint16_t id;
-  uint8_t qr:1;
-  uint8_t opcode:4;
-  uint8_t aa:1;
-  uint8_t tc:1;
-  uint8_t rd:1;
+  uint8_t qr : 1;
+  uint8_t opcode : 4;
+  uint8_t aa : 1;
+  uint8_t tc : 1;
+  uint8_t rd : 1;
 
-  uint8_t ra:1;
-  uint8_t z:1;
-  uint8_t ad:1;
-  uint8_t cd:1;
-  uint8_t rcode:4;
+  uint8_t ra : 1;
+  uint8_t z : 1;
+  uint8_t ad : 1;
+  uint8_t cd : 1;
+  uint8_t rcode : 4;
 
   uint16_t qdCount;
   uint16_t anCount;

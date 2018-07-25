@@ -2,10 +2,10 @@
 #define LLARP_THREADPOOL_HPP
 
 #include <llarp/threadpool.h>
+#include <llarp/threading.hpp>
 
-#include <condition_variable>
 #include <deque>
-#include <mutex>
+
 #include <thread>
 #include <vector>
 

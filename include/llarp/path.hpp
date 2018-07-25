@@ -15,11 +15,11 @@
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message.hpp>
 #include <llarp/service/Intro.hpp>
+#include <llarp/threading.hpp>
 
 #include <functional>
 #include <list>
 #include <map>
-#include <mutex>
 #include <unordered_map>
 #include <vector>
 

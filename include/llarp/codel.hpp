@@ -2,10 +2,11 @@
 #define LLARP_CODEL_QUEUE_HPP
 #include <llarp/time.h>
 #include <llarp/logger.hpp>
+#include <llarp/threading.hpp>
 
 #include <cmath>
 #include <functional>
-#include <mutex>
+
 #include <queue>
 #include <string>
 

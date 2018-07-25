@@ -1,10 +1,10 @@
 #ifndef LIBLLARP_DNSD_HPP
 #define LIBLLARP_DNSD_HPP
 
-#include "dns.hpp" // question and dnsc
-#include "dnsc.hpp"
-#include <llarp/ev.h> // for sockaadr
+#include <llarp/ev.h>  // for sockaadr
 #include <string>
+#include "dns.hpp"  // question and dnsc
+#include "dnsc.hpp"
 
 struct dnsd_context;
 
@@ -25,7 +25,7 @@ struct dnsd_question_request
   struct sockaddr *from;
   sendto_dns_hook_func hook;  // sendto hook tbh
   // maybe a reference to dnsd_context incase of multiple
-  dnsd_context *context; // or you can access it via user (udp)
+  dnsd_context *context;  // or you can access it via user (udp)
 };
 
 // we could have passed in the source sockaddr in case you wanted to
@@ -57,6 +57,5 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
 
 bool
 llarp_dnsd_stop(struct dnsd_context *dnsd);
-
 
 #endif

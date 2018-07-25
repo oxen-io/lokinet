@@ -47,7 +47,7 @@ void
 writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
                         dnsd_question_request *request)
 {
-  //lock_t lock(m_dnsd2_Mutex);
+  // lock_t lock(m_dnsd2_Mutex);
   if(!hostRes)
   {
     llarp::LogWarn("Failed to resolve");
@@ -105,7 +105,8 @@ handle_dnsc_result(dnsc_answer_request *client_request)
   // llarp::LogInfo("phase2 client ", client_request);
   // writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr
   // *from, dnsd_question_request *request)
-  dnsd_question_request *server_request = (dnsd_question_request *)client_request->user;
+  dnsd_question_request *server_request =
+      (dnsd_question_request *)client_request->user;
   // llarp::Addr test(*server_request->from);
   // llarp::LogInfo("server request sock ", server_request->from, " is ", test);
   // llarp::LogInfo("phase2 server ", server_request);
@@ -120,7 +121,7 @@ void
 handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
                 dnsd_question_request *request)
 {
-  //lock_t lock(m_dnsd_Mutex);
+  // lock_t lock(m_dnsd_Mutex);
   const size_t HDR_OFFSET = 12;
   const char *p_buffer    = buffer;
 
@@ -149,9 +150,9 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   request->question.type   = get16bits(p_buffer);
   request->question.qClass = get16bits(p_buffer);
 
-  //request->m_qName  = m_qName;
-  //request->m_qType  = request->question.type;
-  //request->m_qClass = request->question.qClass;
+  // request->m_qName  = m_qName;
+  // request->m_qType  = request->question.type;
+  // request->m_qClass = request->question.qClass;
   llarp::LogDebug("qName  ", request->question.name);
   llarp::LogDebug("qType  ", request->question.type);
   llarp::LogDebug("qClass ", request->question.qClass);
@@ -163,11 +164,11 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   llarp::LogInfo("DNS request from ", test2);
    */
 
-  if (request->context->intercept)
+  if(request->context->intercept)
   {
     sockaddr *intercept = request->context->intercept(request->question.name);
-    //if(!forward_dns_request(m_qName))
-    if (intercept != nullptr)
+    // if(!forward_dns_request(m_qName))
+    if(intercept != nullptr)
     {
       // told that hook will handle overrides
       sockaddr *fromCopy = new sockaddr(*from);
@@ -205,10 +206,11 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
 }
 
 void
-llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp, const struct sockaddr *paddr,
-                      const void *buf, ssize_t sz)
+llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
+                           const struct sockaddr *paddr, const void *buf,
+                           ssize_t sz)
 {
-  //lock_t lock(m_dnsd3_Mutex);
+  // lock_t lock(m_dnsd3_Mutex);
   // llarp_link *link = static_cast< llarp_link * >(udp->user);
   llarp::LogDebug("llarp Received Bytes ", sz);
   dnsd_question_request *llarp_dns_request = new dnsd_question_request;
@@ -232,10 +234,10 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
 {
   llarp::LogInfo("raw Received Bytes ", sz);
   dnsd_question_request *llarp_dns_request = new dnsd_question_request;
-  llarp_dns_request->from        = (struct sockaddr *)saddr;
-  llarp_dns_request->user        = (void *)sockfd;
-  llarp_dns_request->llarp       = false;
-  llarp_dns_request->hook        = &raw_sendto_dns_hook_func;
+  llarp_dns_request->from                  = (struct sockaddr *)saddr;
+  llarp_dns_request->user                  = (void *)sockfd;
+  llarp_dns_request->llarp                 = false;
+  llarp_dns_request->hook                  = &raw_sendto_dns_hook_func;
   handle_recvfrom((char *)buf, sz, saddr, llarp_dns_request);
 }
 
@@ -255,7 +257,7 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
 
   dns_udp_tracker.dnsd = dnsd;
 
-  dnsd->intercept    = nullptr;
+  dnsd->intercept = nullptr;
 
   // configure dns client
   if(!llarp_dnsc_init(&dnsd->client, &dnsd->udp, dnsc_hostname, dnsc_port))
