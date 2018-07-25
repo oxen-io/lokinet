@@ -370,14 +370,14 @@ llarp_router::Tick()
   if(inboundLinks.size() == 0)
   {
     auto N = llarp_nodedb_num_loaded(nodedb);
-    if(N > 2)
+    if(N > 3)
     {
       paths.BuildPaths();
     }
     else
     {
-      llarp::LogWarn("not enough nodes known to build exploritory paths, have ",
-                     N, " nodes, need 3 now (will be 5 later)");
+      llarp::LogInfo(
+          "We need more than 3 service nodes to build paths but we have ", N);
     }
     hiddenServiceContext.Tick();
   }
