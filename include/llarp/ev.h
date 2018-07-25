@@ -1,6 +1,6 @@
 #ifndef LLARP_EV_H
 #define LLARP_EV_H
-#if defined(__MINGW__)
+#if defined(__MINGW32__)
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
