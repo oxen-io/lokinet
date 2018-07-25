@@ -1,7 +1,11 @@
 #ifndef LLARP_EV_H
 #define LLARP_EV_H
-
+#if defined(__MINGW__)
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <netinet/in.h>
+#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
