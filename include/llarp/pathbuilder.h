@@ -33,7 +33,7 @@ struct llarp_pathbuild_job;
 typedef void (*llarp_pathbuilder_hook)(struct llarp_pathbuild_job*);
 // select hop function (user, nodedb, prevhop, result, hopnnumber) called in
 // logic thread
-typedef void (*llarp_pathbuilder_select_hop_func)(void*, struct llarp_nodedb*,
+typedef bool (*llarp_pathbuilder_select_hop_func)(void*, struct llarp_nodedb*,
                                                   struct llarp_rc*,
                                                   struct llarp_rc*, size_t);
 

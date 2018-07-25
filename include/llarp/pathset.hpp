@@ -98,12 +98,12 @@ namespace llarp
       SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur,
                 size_t hop) = 0;
 
-      static void
+      static bool
       SelectHopCallback(void* user, llarp_nodedb* db, llarp_rc* prev,
                         llarp_rc* cur, size_t hopno)
       {
         PathSet* self = static_cast< PathSet* >(user);
-        self->SelectHop(db, prev, cur, hopno);
+        return self->SelectHop(db, prev, cur, hopno);
       }
 
      private:

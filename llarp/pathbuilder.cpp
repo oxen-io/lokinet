@@ -156,7 +156,12 @@ namespace llarp
     {
       llarp_rc* rc = &job->hops.hops[idx].router;
       llarp_rc_clear(rc);
-      job->selectHop(job->user, job->router->nodedb, prev, rc, idx);
+      if(!job->selectHop(job->user, job->router->nodedb, prev, rc, idx))
+      {
+        /// TODO: handle this failure properly
+        llarp::LogWarn("Failed to select hop ", idx);
+        return;
+      }
       prev = rc;
       ++idx;
     }
