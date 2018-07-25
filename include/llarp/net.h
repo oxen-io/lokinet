@@ -6,9 +6,9 @@
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/socket.h>
 #endif
 #include <stdbool.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 
 bool
