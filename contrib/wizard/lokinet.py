@@ -30,16 +30,21 @@ def genconf(rootdir):
   for ifname, ip in yield_public_addresses():
     conf['bind'][ifname] = '1090'
     print("using public address {}".format(ip))
-    return conf
+    break
   else:
     print("This machine has no public network addresses")
+  return conf
 
-def main():
+def main(args):
+  fname = 'daemon.ini'
+  if len(args) == 1:
+    fname = args[0]
   conf = genconf(os.path.realpath('.'))
   if conf:
-    with open('daemon.ini', 'w') as f:
+    with open(fname, 'w') as f:
       conf.write(f)
-
+    print("wrote config to {}".format(fname))
 if __name__ == '__main__':
-  main()
+  import sys
+  main(sys.argv[1:])
 
