@@ -204,6 +204,9 @@ struct llarp_router
   llarp_link *
   GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
+  bool
+  GetRandomConnectedRouter(llarp_rc *result) const;
+
   void
   async_verify_RC(llarp_rc *rc, bool isExpectingClient,
                   llarp_link_establish_job *job = nullptr);

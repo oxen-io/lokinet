@@ -186,7 +186,10 @@ bool
 llarp_pathbuilder_context::SelectHop(llarp_nodedb* db, llarp_rc* prev,
                                      llarp_rc* cur, size_t hop)
 {
-  llarp_nodedb_select_random_hop(db, prev, cur, hop);
+  if(hop == 0)
+    return router->GetRandomConnectedRouter(cur);
+  else
+    llarp_nodedb_select_random_hop(db, prev, cur, hop);
   return true;
 }
 

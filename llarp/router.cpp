@@ -562,6 +562,21 @@ llarp_router::DiscardOutboundFor(const llarp::RouterID &remote)
   outboundMesssageQueue.erase(remote);
 }
 
+bool
+llarp_router::GetRandomConnectedRouter(llarp_rc *result) const
+{
+  auto sz = validRouters.size();
+  if(sz)
+  {
+    auto itr = validRouters.begin();
+    if(sz > 1)
+      std::advance(itr, llarp_randint() % sz);
+    llarp_rc_copy(result, &itr->second);
+    return true;
+  }
+  return false;
+}
+
 void
 llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
                               llarp_link_establish_job *establish_job)
