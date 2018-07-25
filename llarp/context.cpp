@@ -375,9 +375,13 @@ llarp_main_getLocalRC(struct llarp_main *ptr)
    iter.visit = &iter_config;
    llarp_config_iter(ctx->config, &iter);
    */
+  llarp_rc *rc = new llarp_rc;
+  llarp_rc_new(rc);
   llarp::LogInfo("Loading ", ptr->ctx->conatctFile);
-  llarp_rc *rc = llarp_rc_read(ptr->ctx->conatctFile);
-  return rc;
+  if(llarp_rc_read(ptr->ctx->conatctFile, rc))
+    return rc;
+  else
+    return nullptr;
 }
 
 void

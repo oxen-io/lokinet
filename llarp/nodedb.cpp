@@ -203,19 +203,20 @@ struct llarp_nodedb
       return false;
     }
 #endif
-    llarp_rc *rc = llarp_rc_read(fpath.c_str());
-    if(!rc)
+    llarp_rc rc;
+    llarp_rc_clear(&rc);
+    if(!llarp_rc_read(fpath.c_str(), &rc))
     {
       llarp::LogError("Signature read failed", fpath);
       return false;
     }
-    if(!llarp_rc_verify_sig(crypto, rc))
+    if(!llarp_rc_verify_sig(crypto, &rc))
     {
       llarp::LogError("Signature verify failed", fpath);
       return false;
     }
-    llarp::PubKey pk(rc->pubkey);
-    entries[pk] = *rc;
+    llarp::PubKey pk(rc.pubkey);
+    entries[pk] = rc;
     return true;
   }
 

@@ -165,18 +165,23 @@ llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
 void
 llarp_router::try_connect(fs::path rcfile)
 {
-  llarp_rc *remote = new llarp_rc;
-  llarp_rc_new(remote);
-  remote = llarp_rc_read(rcfile.c_str());
-  if(!remote)
+  llarp_rc remote;
+  llarp_rc_new(&remote);
+  if(!llarp_rc_read(rcfile.c_str(), &remote))
   {
     llarp::LogError("failure to decode or verify of remote RC");
     return;
   }
-  if(llarp_rc_verify_sig(&crypto, remote))
+  if(llarp_rc_verify_sig(&crypto, &remote))
   {
     llarp::LogDebug("verified signature");
-    if(!llarp_router_try_connect(this, remote, 10))
+    // store into filesystem
+    // TODO: should this be async?
+    if(!llarp_nodedb_put_rc(nodedb, &remote))
+    {
+      llarp::LogWarn("failed to store");
+    }
+    if(!llarp_router_try_connect(this, &remote, 10))
     {
       // or error?
       llarp::LogWarn("session already made");
@@ -184,7 +189,7 @@ llarp_router::try_connect(fs::path rcfile)
   }
   else
     llarp::LogError("failed to verify signature of RC", rcfile);
-  llarp_rc_free(remote);
+  llarp_rc_free(&remote);
 }
 
 bool
@@ -907,21 +912,21 @@ llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubenckey,
   llarp_rc_set_pubsigkey(rc, pubsigkey);
 }
 
-struct llarp_rc *
-llarp_rc_read(const char *fpath)
+bool
+llarp_rc_read(const char *fpath, llarp_rc *result)
 {
   fs::path our_rc_file(fpath);
   std::error_code ec;
   if(!fs::exists(our_rc_file, ec))
   {
     printf("File[%s] not found\n", fpath);
-    return 0;
+    return false;
   }
   std::ifstream f(our_rc_file, std::ios::binary);
   if(!f.is_open())
   {
     printf("Can't open file [%s]\n", fpath);
-    return 0;
+    return false;
   }
   byte_t tmp[MAX_RC_SIZE];
   llarp_buffer_t buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -930,18 +935,17 @@ llarp_rc_read(const char *fpath)
   f.seekg(0, std::ios::beg);
 
   if(sz > buf.sz)
-    return 0;
+    return false;
 
   f.read((char *)buf.base, sz);
   // printf("contents[%s]\n", tmpc);
-  llarp_rc *rc = new llarp_rc;
-  llarp::Zero(rc, sizeof(llarp_rc));
-  if(!llarp_rc_bdecode(rc, &buf))
+  llarp::Zero(result, sizeof(llarp_rc));
+  if(!llarp_rc_bdecode(result, &buf))
   {
     printf("Can't decode [%s]\n", fpath);
-    return 0;
+    return false;
   }
-  return rc;
+  return true;
 }
 
 bool

@@ -300,10 +300,12 @@ main(int argc, char *argv[])
   if(updMode)
   {
     printf("rcutil.cpp - Loading [%s]\n", rcfname);
-    llarp_rc *rc = llarp_rc_read(rcfname);
+    llarp_rc rc;
+    llarp_rc_clear(&rc);
+    llarp_rc_read(rcfname, &rc);
 
     // set updated timestamp
-    rc->last_updated = llarp_time_now_ms();
+    rc.last_updated = llarp_time_now_ms();
     // load longterm identity
     llarp_crypto crypt;
     llarp_crypto_libsodium_init(&crypt);
@@ -312,8 +314,8 @@ main(int argc, char *argv[])
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
     // get identity public key
     uint8_t *pubkey = llarp::seckey_topublic(identity);
-    llarp_rc_set_pubsigkey(rc, pubkey);
-    llarp_rc_sign(&crypt, identity, rc);
+    llarp_rc_set_pubsigkey(&rc, pubkey);
+    llarp_rc_sign(&crypt, identity, &rc);
 
     // set filename
     fs::path our_rc_file_out = "update_debug.rc";
@@ -331,13 +333,14 @@ main(int argc, char *argv[])
   {
     llarp_main_loadDatabase(ctx);
     llarp::LogInfo("Loading ", rcfname);
-    llarp_rc *rc = llarp_rc_read(rcfname);
-    if(!rc)
+    llarp_rc rc;
+    llarp_rc_clear(&rc);
+    if(!llarp_rc_read(rcfname, &rc))
     {
       llarp::LogError("Can't load RC");
       return 0;
     }
-    llarp_main_putDatabase(ctx, rc);
+    llarp_main_putDatabase(ctx, &rc);
   }
   if(exportMode)
   {
@@ -394,8 +397,10 @@ main(int argc, char *argv[])
   }
   if(readMode)
   {
-    llarp_rc *rc = llarp_rc_read(rcfname);
-    displayRC(rc);
+    llarp_rc result;
+    llarp_rc_clear(&result);
+    llarp_rc_read(rcfname, &result);
+    displayRC(&result);
   }
   // it's a unique_ptr, should clean up itself
   // llarp_main_free(ctx);
