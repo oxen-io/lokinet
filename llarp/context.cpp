@@ -5,6 +5,8 @@
 #include "logger.hpp"
 #include "math.h"
 #include "router.hpp"
+#include <getopt.h>
+#include <sys/param.h>  // for MIN
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -435,4 +437,54 @@ void
 llarp_main_free(struct llarp_main *ptr)
 {
   delete ptr;
+}
+
+const char *
+handleBaseCmdLineArgs(int argc, char *argv[])
+{
+  const char *conffname = "daemon.ini";
+  int c;
+  while(1)
+  {
+    static struct option long_options[] = {
+      {"config", required_argument, 0, 'c'},
+      {"logLevel", required_argument, 0, 'o'},
+      {0, 0, 0, 0}};
+    int option_index = 0;
+    c = getopt_long(argc, argv, "c:o:", long_options, &option_index);
+    if(c == -1)
+      break;
+    switch(c)
+    {
+      case 0:
+        break;
+      case 'c':
+        conffname = optarg;
+        break;
+      case 'o':
+        if(strncmp(optarg, "debug", MIN(strlen(optarg), (unsigned long)5)) == 0)
+        {
+          cSetLogLevel(eLogDebug);
+        }
+        else if(strncmp(optarg, "info", MIN(strlen(optarg), (unsigned long)4))
+                == 0)
+        {
+          cSetLogLevel(eLogInfo);
+        }
+        else if(strncmp(optarg, "warn", MIN(strlen(optarg), (unsigned long)4))
+                == 0)
+        {
+          cSetLogLevel(eLogWarn);
+        }
+        else if(strncmp(optarg, "error", MIN(strlen(optarg), (unsigned long)5))
+                == 0)
+        {
+          cSetLogLevel(eLogError);
+        }
+        break;
+      default:
+        abort();
+    }
+  }
+  return conffname;
 }
