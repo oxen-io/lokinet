@@ -78,6 +78,9 @@ extern "C"
   void
   llarp_main_free(struct llarp_main *ptr);
 
+  const char *
+  handleBaseCmdLineArgs(int argc, char *argv[]);
+
 #ifdef __cplusplus
 }
 #endif

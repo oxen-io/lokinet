@@ -367,6 +367,7 @@ llarp_router::Tick()
 
   paths.ExpirePaths();
   // TODO: don't do this if we have enough paths already
+  // FIXME: build paths even if we have inbound links
   if(inboundLinks.size() == 0)
   {
     auto N = llarp_nodedb_num_loaded(nodedb);

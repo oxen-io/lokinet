@@ -27,6 +27,7 @@ namespace llarp
       network   = find_section(top, "network", section_t{});
       connect   = find_section(top, "connect", section_t{});
       netdb     = find_section(top, "netdb", section_t{});
+      dns       = find_section(top, "dns", section_t{});
       iwp_links = find_section(top, "bind", section_t{});
       services  = find_section(top, "services", section_t{});
       dns       = find_section(top, "dns", section_t{});

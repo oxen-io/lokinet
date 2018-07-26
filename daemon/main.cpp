@@ -1,8 +1,6 @@
-#include <getopt.h>
 #include <llarp.h>
 #include <llarp/logger.h>
 #include <signal.h>
-#include <sys/param.h>  // for MIN
 #include <string>
 
 struct llarp_main *ctx = 0;
@@ -23,6 +21,8 @@ main(int argc, char *argv[])
   {
     multiThreaded = false;
   }
+  const char *conffname = handleBaseCmdLineArgs(argc, argv);
+  /*
   const char *conffname = "daemon.ini";
   int c;
   while(1)
@@ -67,6 +67,7 @@ main(int argc, char *argv[])
         abort();
     }
   }
+  */
 
   ctx      = llarp_main_init(conffname, multiThreaded);
   int code = 1;

@@ -8,6 +8,7 @@
 #include "ev.hpp"
 #include "logger.hpp"
 #include "net.hpp"
+#include <llarp.h>
 
 #include <thread>  // for multithreaded version
 #include <vector>
@@ -16,6 +17,7 @@
 #include <pthread_np.h>
 #endif
 
+struct llarp_main *ctx = 0;
 bool done = false;
 
 void
@@ -33,14 +35,59 @@ hookChecker(std::string name)
 }
 
 // FIXME: make configurable
-#define SERVER "1.1.1.1"
+#define SERVER "8.8.8.8"
 #define PORT 53
+
+struct dns_relay_config {
+  std::string upstream_host;
+  uint16_t upstream_port;
+};
+
+void
+dns_iter_config(llarp_config_iterator *itr, const char *section,
+                     const char *key, const char *val)
+{
+  dns_relay_config *config = (dns_relay_config *)itr->user;
+  if(!strcmp(section, "dns"))
+  {
+    if(!strcmp(key, "upstream-server"))
+    {
+      config->upstream_host = strdup(val);
+      llarp::LogDebug("Config file setting dns server to ", config->upstream_host);
+    }
+    if(!strcmp(key, "upstream-port"))
+    {
+      config->upstream_port = atoi(val);
+      llarp::LogDebug("Config file setting dns server port to ", config->upstream_port);
+    }
+  }
+}
 
 int
 main(int argc, char *argv[])
 {
   int code = 1;
   llarp::LogInfo("Starting up server");
+  
+  const char *conffname = handleBaseCmdLineArgs(argc, argv);
+  dns_relay_config dnsr_config;
+  dnsr_config.upstream_host = "8.8.8.8";
+  dnsr_config.upstream_port = 53;
+  llarp_config *config_reader;
+  llarp_new_config(&config_reader);
+  //ctx      = llarp_main_init(conffname, multiThreaded);
+  
+  if(llarp_load_config(config_reader, conffname))
+  {
+    llarp_free_config(&config_reader);
+    llarp::LogError("failed to load config file ", conffname);
+    return false;
+  }
+  llarp_config_iterator iter;
+  iter.user  = &dnsr_config;
+  iter.visit = &dns_iter_config;
+  llarp_config_iter(config_reader, &iter);
+  llarp::LogInfo("config [", conffname, "] loaded");
 
   // llarp::SetLogLevel(llarp::eLogDebug);
 
@@ -55,7 +102,7 @@ main(int argc, char *argv[])
 
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053, SERVER, PORT))
+    if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053, (const char *)dnsr_config.upstream_host.c_str(), dnsr_config.upstream_port))
     {
       // llarp::LogError("failed to initialize dns subsystem");
       llarp::LogError("Couldnt init dns daemon");
