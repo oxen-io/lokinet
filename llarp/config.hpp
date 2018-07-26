@@ -17,6 +17,7 @@ namespace llarp
     section_t iwp_links;
     section_t connect;
     section_t services;
+    section_t dns;
 
     bool
     Load(const char *fname);

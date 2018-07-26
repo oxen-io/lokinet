@@ -1,10 +1,10 @@
+#include <llarp/iwp.h>
 #include <llarp/crypto.hpp>
 #include <llarp/iwp/server.hpp>
 #include <llarp/iwp/session.hpp>
 #include "address_info.hpp"
 #include "buffer.hpp"
 #include "link/encoder.hpp"
-
 #include "llarp/ev.h"  // for handle_frame_encrypt
 
 static void
@@ -45,6 +45,7 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
   llarp::LogInfo("session created");
   frame.alive();
   working.store(false);
+  createdAt = llarp_time_now_ms();
 }
 
 llarp_link_session::~llarp_link_session()
@@ -239,6 +240,7 @@ handle_verify_introack(iwp_async_introack *introack)
 {
   llarp_link_session *link =
       static_cast< llarp_link_session * >(introack->user);
+  auto logic = link->serv->logic;
 
   link->working = false;
   if(introack->buf == nullptr)
@@ -249,6 +251,9 @@ handle_verify_introack(iwp_async_introack *introack)
     link->serv->RemoveSession(link);
     return;
   }
+  // cancel resend
+  llarp_logic_cancel_call(logic, link->intro_resend_job_id);
+
   link->EnterState(llarp_link_session::eIntroAckRecv);
   link->session_start();
 }
@@ -262,9 +267,9 @@ handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
   self->establish_job_id   = 0;
   if(self->establish_job)
   {
-    auto job            = self->establish_job;
-    self->establish_job = nullptr;
-    job->link           = self->serv;
+    llarp_link_establish_job *job = self->establish_job;
+    self->establish_job           = nullptr;
+    job->link                     = self->serv;
     if(self->IsEstablished())
     {
       job->session = self;
@@ -287,13 +292,10 @@ llarp_link_session::done()
     llarp_logic_remove_call(logic, establish_job_id);
     handle_establish_timeout(this, 0, 0);
   }
-  if(pump_recv_timer_id)
+  if(intro_resend_job_id)
   {
-    llarp_logic_remove_call(logic, pump_recv_timer_id);
-  }
-  if(pump_send_timer_id)
-  {
-    llarp_logic_remove_call(logic, pump_send_timer_id);
+    llarp_logic_remove_call(logic, intro_resend_job_id);
+    handle_introack_timeout(this, 0, 0);
   }
 }
 
@@ -538,6 +540,11 @@ handle_generated_intro(iwp_async_intro *i)
       return;
     }
     link->EnterState(llarp_link_session::eIntroSent);
+    link->lastIntroSentAt     = llarp_time_now_ms();
+    auto dlt                  = (link->createdAt - link->lastIntroSentAt);
+    auto logic                = link->serv->logic;
+    link->intro_resend_job_id = llarp_logic_call_later(
+        logic, {dlt, link, &llarp_link_session::handle_introack_timeout});
   }
   else
   {
@@ -546,10 +553,24 @@ handle_generated_intro(iwp_async_intro *i)
 }
 
 void
+llarp_link_session::handle_introack_timeout(void *user, uint64_t timeout,
+                                            uint64_t left)
+{
+  if(timeout && left == 0)
+  {
+    // timeout reached
+    llarp_link_session *self = static_cast< llarp_link_session * >(user);
+    // retry introduce
+    self->introduce(nullptr);
+  }
+}
+
+void
 llarp_link_session::introduce(uint8_t *pub)
 {
   llarp::LogDebug("session introduce");
-  memcpy(remote, pub, PUBKEYSIZE);
+  if(pub)
+    memcpy(remote, pub, PUBKEYSIZE);
   intro.buf   = workbuf;
   size_t w0sz = (llarp_randint() % MAX_PAD);
   intro.sz    = (32 * 3) + w0sz;
@@ -571,8 +592,9 @@ llarp_link_session::introduce(uint8_t *pub)
   working    = true;
   iwp_call_async_gen_intro(iwp, &intro);
   // start introduce timer
-  establish_job_id = llarp_logic_call_later(
-      serv->logic, {5000, this, &handle_establish_timeout});
+  if(pub)
+    establish_job_id = llarp_logic_call_later(
+        serv->logic, {5000, this, &handle_establish_timeout});
 }
 
 void

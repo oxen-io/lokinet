@@ -85,7 +85,8 @@ find a router by long term RC.k public key
 
 {
   A: "R",
-  I: 0 or 1 if iterative lookup
+  E: 0 or 1 if exploritory lookup,
+  I: 0 or 1 if iterative lookup,
   K: "<32 byte public key of router>",
   T: transaction_id_uint64,
   V: 0

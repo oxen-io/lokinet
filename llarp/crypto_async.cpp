@@ -68,8 +68,8 @@ namespace iwp
     buf.sz   = intro->sz - 32;
     crypto->hmac(intro->buf, buf, sharedkey);
     // inform result
-    intro->hook(intro);
-    // llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_intro});
+    // intro->hook(intro);
+    llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_intro});
   }
 
   void
@@ -123,7 +123,7 @@ namespace iwp
   {
     iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
     auto crypto                  = introack->iwp->crypto;
-    // auto logic                   = introack->iwp->logic;
+    auto logic                   = introack->iwp->logic;
 
     llarp::ShortHash digest;
     llarp::SharedSecret sharedkey;
@@ -160,8 +160,8 @@ namespace iwp
       // copy token
       memcpy(introack->token, token, 32);
     }
-    introack->hook(introack);
-    // llarp_logic_queue_job(logic, {introack, &inform_introack});
+    // introack->hook(introack);
+    llarp_logic_queue_job(logic, {introack, &inform_introack});
   }
 
   void
@@ -189,9 +189,8 @@ namespace iwp
     buf.sz   = introack->sz - 32;
     buf.cur  = buf.base;
     crypto->hmac(introack->buf, buf, sharedkey);
-    introack->hook(introack);
-    // llarp_logic_queue_job(introack->iwp->logic, {introack,
-    // &inform_introack});
+    // introack->hook(introack);
+    llarp_logic_queue_job(introack->iwp->logic, {introack, &inform_introack});
   }
 
   void
@@ -265,7 +264,6 @@ namespace iwp
     auto hmac      = crypto->hmac;
     auto decrypt   = crypto->xchacha20;
 
-    // auto logic = session->iwp->logic;
     auto b_sK  = session->secretkey;
     auto a_K   = session->remote_pubkey;
     auto N     = session->nonce;
