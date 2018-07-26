@@ -8,7 +8,7 @@
 #if(__APPLE__ && __MACH__)
 #include "ev_kqueue.hpp"
 #endif
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
 #include "ev_kqueue.hpp"
 #endif
 
@@ -21,7 +21,7 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 #if(__APPLE__ && __MACH__)
   *ev = new llarp_kqueue_loop;
 #endif
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
   *ev = new llarp_kqueue_loop;
 #endif
   (*ev)->init();

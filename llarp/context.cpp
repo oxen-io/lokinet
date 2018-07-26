@@ -6,7 +6,7 @@
 #include "math.h"
 #include "router.hpp"
 
-#if(__FreeBSD__)
+#if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
 #endif
 
@@ -191,7 +191,7 @@ namespace llarp
         netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
 #if(__APPLE__ && __MACH__)
 
-#elif(__FreeBSD__)
+#elif(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
         pthread_set_name_np(netio_threads.back().native_handle(),
                             "llarp-"
                             "netio");
