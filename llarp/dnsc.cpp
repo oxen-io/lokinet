@@ -115,7 +115,7 @@ raw_resolve_host(const char *url)
   dnsQuery.request[11] = 0x00;
   */
 
-  char *word;
+  //char *word;
   unsigned int i;
   llarp::LogDebug("Asking DNS server ", SERVER, " about ", url);
   // dnsQuery.reqType = 0x01;
@@ -148,19 +148,19 @@ raw_resolve_host(const char *url)
   int rcode;
   socklen_t size;
   int ip = 0;
-  int length;
+  //int length;
   unsigned char buffer[DNC_BUF_SIZE];
   // unsigned char tempBuf[3];
   uint16_t QDCOUNT;   // No. of items in Question Section
   uint16_t ANCOUNT;   // No. of items in Answer Section
   uint16_t NSCOUNT;   // No. of items in Authority Section
   uint16_t ARCOUNT;   // No. of items in Additional Section
-  uint16_t QCLASS;    // Specifies the class of the query
+  //uint16_t QCLASS;    // Specifies the class of the query
   uint16_t ATYPE;     // Specifies the meaning of the data in the RDATA field
-  uint16_t ACLASS;    // Specifies the class of the data in the RDATA field
-  uint32_t TTL;       // The number of seconds the results can be cached
-  uint16_t RDLENGTH;  // The length of the RDATA field
-  uint16_t MSGID;
+  //uint16_t ACLASS;    // Specifies the class of the data in the RDATA field
+  //uint32_t TTL;       // The number of seconds the results can be cached
+  //uint16_t RDLENGTH;  // The length of the RDATA field
+  //uint16_t MSGID;
 
   int sockfd;
 
@@ -307,7 +307,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   // llarp::LogInfo("got a response, udp user is ", udp->user);
 
   unsigned char *castBuf = (unsigned char *)buf;
-  auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
+  //auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr    = decode_hdr((const char *)castBuf);
 
   llarp::LogDebug("Header got client responses for id: ", hdr->id);
