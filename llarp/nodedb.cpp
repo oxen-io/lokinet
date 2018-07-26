@@ -182,7 +182,7 @@ struct llarp_nodedb
   {
     ssize_t sz = 0;
     fs::directory_iterator i(dir);
-#if defined(CPP17) && !defined(__OpenBSD__)
+#if __has_include(<filesystem>) && !defined(__OpenBSD__)
     auto itr = fs::begin(i);
     while(itr != fs::end(i))
 #else

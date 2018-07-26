@@ -8,14 +8,15 @@
 #endif
 
 #include "filesystem.h"
-#if !defined(CPP17) || defined(__OpenBSD__)
-namespace fs = cpp17::filesystem;
-#else
-#ifndef __MINGW32__
-namespace fs = std::filesystem;
-#else
-namespace fs = std::experimental::filesystem;
-#endif
-#endif
 
-#endif
+// mingw32 in the only one that doesn't use cpp17::filesystem
+#if defined(__MINGW32__)
+namespace fs = std::experimental::filesystem;
+#else
+// not CPP17 needs this
+// openbsd needs this
+// linux gcc 7.2 needs this
+namespace fs = cpp17::filesystem;
+#endif // end mingw32
+
+#endif // end LLARP_FS_HPP
