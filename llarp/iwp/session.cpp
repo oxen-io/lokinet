@@ -505,7 +505,7 @@ handle_introack_generated(iwp_async_introack *i)
   if(i->buf && link->serv->has_intro_from(link->addr))
   {
     // track it with the server here
-    if(link->serv->has_session_to(link->addr))
+    if(link->serv->has_session_via(link->addr))
     {
       // duplicate session
       llarp::LogWarn("duplicate session to ", link->addr);
@@ -689,7 +689,7 @@ llarp_link_session::on_session_start(const void *buf, size_t sz)
 void
 llarp_link_session::intro_ack()
 {
-  if(serv->has_session_to(addr))
+  if(serv->has_session_via(addr))
   {
     llarp::LogWarn("won't ack intro for duplicate session from ", addr);
     return;
