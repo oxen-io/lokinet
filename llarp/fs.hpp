@@ -8,6 +8,14 @@
 #endif
 
 #include "filesystem.h"
+#if !defined(CPP17) || defined(__OpenBSD__)
 namespace fs = cpp17::filesystem;
+#else
+#ifndef __MINGW32__
+namespace fs = std::filesystem;
+#else
+namespace fs = std::experimental::filesystem;
+#endif
+#endif
 
 #endif

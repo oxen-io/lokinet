@@ -12,6 +12,10 @@
 #include <thread>  // for multithreaded version
 #include <vector>
 
+#if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
+#include <pthread_np.h>
+#endif
+
 bool done = false;
 
 void
@@ -29,7 +33,7 @@ hookChecker(std::string name)
 }
 
 // FIXME: make configurable
-#define SERVER "8.8.8.8"
+#define SERVER "1.1.1.1"
 #define PORT 53
 
 int
@@ -85,7 +89,7 @@ main(int argc, char *argv[])
         netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
 #if(__APPLE__ && __MACH__)
 
-#elif(__FreeBSD__)
+#elif(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
         pthread_set_name_np(netio_threads.back().native_handle(),
                             "llarp-netio");
 #else

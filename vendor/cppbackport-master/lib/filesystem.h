@@ -32,8 +32,12 @@
 
 #include "version.h"
 
-#if defined(CPP17)
+#if defined(CPP17) && !defined(__OpenBSD__)
+#if defined(__MINGW32__)
+#include <experimental/filesystem>
+#else
 #include <filesystem>
+#endif
 #else
 #include "fs/absolute.h"
 #include "fs/basename.h"
