@@ -7,7 +7,7 @@
 
 #include "logger.hpp"
 
-#if(__FreeBSD__)
+#if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
 #endif
 
@@ -25,7 +25,7 @@ namespace llarp
           {
 #if(__APPLE__ && __MACH__)
             pthread_setname_np(name);
-#elif(__FreeBSD__)
+#elif(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
             pthread_set_name_np(pthread_self(), name);
 #else
             pthread_setname_np(pthread_self(), name);

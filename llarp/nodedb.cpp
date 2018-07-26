@@ -182,8 +182,13 @@ struct llarp_nodedb
   {
     ssize_t sz = 0;
     fs::directory_iterator i(dir);
+#if defined(CPP17) && !defined(__OpenBSD__)
+    auto itr = fs::begin(i);
+    while(itr != fs::end(i))
+#else
     auto itr = i.begin();
     while(itr != itr.end())
+#endif
     {
       if(fs::is_regular_file(itr->symlink_status()) && loadfile(*itr))
         sz++;

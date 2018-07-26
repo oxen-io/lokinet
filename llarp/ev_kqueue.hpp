@@ -3,7 +3,7 @@
 #include <llarp/buffer.h>
 #include <llarp/net.h>
 
-#if __FreeBSD__
+#if __FreeBSD__ || __OpenBSD__ || __NetBSD__
 // kqueue / kevent
 #include <sys/event.h>
 #include <sys/time.h>
