@@ -62,9 +62,10 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
       // std::to_string(i->ifa_addr->sa_family));
       if(llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr->sa_family == af)
       {
-        llarp::Addr a(*i->ifa_addr);
-        if(!a.isPrivate())
-        {
+        // can't do this here
+        //llarp::Addr a(*i->ifa_addr);
+        //if(!a.isPrivate())
+        //{
           // llarp::LogInfo(__FILE__, "found ", ifname, " af: ", af);
           memcpy(addr, i->ifa_addr, sl);
           if(af == AF_INET6)
@@ -77,7 +78,7 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
           found = true;
           break;
         }
-      }
+      //}
     }
     i = i->ifa_next;
   }
