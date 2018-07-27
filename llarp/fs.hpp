@@ -17,6 +17,6 @@ namespace fs = std::experimental::filesystem;
 // openbsd needs this
 // linux gcc 7.2 needs this
 namespace fs = cpp17::filesystem;
-#endif // end mingw32
+#endif  // end mingw32
 
-#endif // end LLARP_FS_HPP
+#endif  // end LLARP_FS_HPP

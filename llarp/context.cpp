@@ -1,12 +1,12 @@
+#include <getopt.h>
 #include <llarp.h>
 #include <llarp/logger.h>
 #include <signal.h>
+#include <sys/param.h>  // for MIN
 #include <llarp.hpp>
 #include "logger.hpp"
 #include "math.h"
 #include "router.hpp"
-#include <getopt.h>
-#include <sys/param.h>  // for MIN
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -297,194 +297,199 @@ struct llarp_main
   std::unique_ptr< llarp::Context > ctx;
 };
 
-struct llarp_main *
-llarp_main_init(const char *fname, bool multiProcess)
+extern "C"
 {
-  if(!fname)
-    fname = "daemon.ini";
-  char *var = getenv("LLARP_DEBUG");
-  if(var && *var == '1')
+  struct llarp_main *
+  llarp_main_init(const char *fname, bool multiProcess)
   {
-    cSetLogLevel(eLogDebug);
-  }
-  llarp_main *m = new llarp_main;
-  m->ctx.reset(new llarp::Context());
-  m->ctx->singleThreaded = !multiProcess;
-  if(!m->ctx->LoadConfig(fname))
-  {
-    m->ctx->Close();
-    delete m;
-    return nullptr;
-  }
-  return m;
-}
-
-void
-llarp_main_signal(struct llarp_main *ptr, int sig)
-{
-  ptr->ctx->HandleSignal(sig);
-}
-
-int
-llarp_main_setup(struct llarp_main *ptr)
-{
-  return ptr->ctx->Setup();
-}
-
-int
-llarp_main_run(struct llarp_main *ptr)
-{
-  return ptr->ctx->Run();
-}
-
-void
-llarp_main_abort(struct llarp_main *ptr)
-{
-  llarp_logic_stop_timer(ptr->ctx->router->logic);
-}
-
-int
-llarp_main_loadDatabase(struct llarp_main *ptr)
-{
-  return ptr->ctx->LoadDatabase();
-}
-
-int
-llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i)
-{
-  return ptr->ctx->IterateDatabase(i);
-}
-
-bool
-llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc)
-{
-  return ptr->ctx->PutDatabase(rc);
-}
-
-struct llarp_rc *
-llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
-{
-  return ptr->ctx->GetDatabase(pk);
-}
-
-struct llarp_rc *
-llarp_main_getLocalRC(struct llarp_main *ptr)
-{
-  //
-  /*
-   llarp_config_iterator iter;
-   iter.user  = this;
-   iter.visit = &iter_config;
-   llarp_config_iter(ctx->config, &iter);
-   */
-  llarp_rc *rc = new llarp_rc;
-  llarp_rc_new(rc);
-  llarp::LogInfo("Loading ", ptr->ctx->conatctFile);
-  if(llarp_rc_read(ptr->ctx->conatctFile, rc))
-    return rc;
-  else
-    return nullptr;
-}
-
-void
-llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
-{
-  // llarp::LogInfo("checkOnline - check ", left);
-  if(left)
-    return;
-  struct check_online_request *request =
-      static_cast< struct check_online_request * >(u);
-  // llarp::LogDebug("checkOnline - running");
-  // llarp::LogInfo("checkOnline - DHT nodes ",
-  // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
-  request->online = false;
-  request->nodes  = request->ptr->ctx->router->dht->impl.nodes->nodes.size();
-  if(request->ptr->ctx->router->dht->impl.nodes->nodes.size())
-  {
-    // llarp::LogInfo("checkOnline - Going to say we're online");
-    request->online = true;
-  }
-  request->hook(request);
-  // reschedue our self
-  llarp_main_queryDHT(request);
-}
-
-void
-llarp_main_queryDHT_online(struct check_online_request *request)
-{
-  // Info("llarp_main_queryDHT_online: ", request->online ? "online" :
-  // "offline");
-  if(request->online && !request->first)
-  {
-    request->first = true;
-    llarp::LogInfo("llarp_main_queryDHT_online - We're online");
-    llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
-    llarp_dht_lookup_router(request->ptr->ctx->router->dht, request->job);
-  }
-}
-
-void
-llarp_main_queryDHT(struct check_online_request *request)
-{
-  // llarp::LogInfo("llarp_main_queryDHT - setting up timer");
-  request->hook = &llarp_main_queryDHT_online;
-  llarp_logic_call_later(request->ptr->ctx->router->logic,
-                         {1000, request, &llarp_main_checkOnline});
-  // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
-}
-
-void
-llarp_main_free(struct llarp_main *ptr)
-{
-  delete ptr;
-}
-
-const char *
-handleBaseCmdLineArgs(int argc, char *argv[])
-{
-  const char *conffname = "daemon.ini";
-  int c;
-  while(1)
-  {
-    static struct option long_options[] = {
-      {"config", required_argument, 0, 'c'},
-      {"logLevel", required_argument, 0, 'o'},
-      {0, 0, 0, 0}};
-    int option_index = 0;
-    c = getopt_long(argc, argv, "c:o:", long_options, &option_index);
-    if(c == -1)
-      break;
-    switch(c)
+    if(!fname)
+      fname = "daemon.ini";
+    char *var = getenv("LLARP_DEBUG");
+    if(var && *var == '1')
     {
-      case 0:
-        break;
-      case 'c':
-        conffname = optarg;
-        break;
-      case 'o':
-        if(strncmp(optarg, "debug", MIN(strlen(optarg), (unsigned long)5)) == 0)
-        {
-          cSetLogLevel(eLogDebug);
-        }
-        else if(strncmp(optarg, "info", MIN(strlen(optarg), (unsigned long)4))
-                == 0)
-        {
-          cSetLogLevel(eLogInfo);
-        }
-        else if(strncmp(optarg, "warn", MIN(strlen(optarg), (unsigned long)4))
-                == 0)
-        {
-          cSetLogLevel(eLogWarn);
-        }
-        else if(strncmp(optarg, "error", MIN(strlen(optarg), (unsigned long)5))
-                == 0)
-        {
-          cSetLogLevel(eLogError);
-        }
-        break;
-      default:
-        abort();
+      cSetLogLevel(eLogDebug);
+    }
+    llarp_main *m = new llarp_main;
+    m->ctx.reset(new llarp::Context());
+    m->ctx->singleThreaded = !multiProcess;
+    if(!m->ctx->LoadConfig(fname))
+    {
+      m->ctx->Close();
+      delete m;
+      return nullptr;
+    }
+    return m;
+  }
+
+  void
+  llarp_main_signal(struct llarp_main *ptr, int sig)
+  {
+    ptr->ctx->HandleSignal(sig);
+  }
+
+  int
+  llarp_main_setup(struct llarp_main *ptr)
+  {
+    return ptr->ctx->Setup();
+  }
+
+  int
+  llarp_main_run(struct llarp_main *ptr)
+  {
+    return ptr->ctx->Run();
+  }
+
+  void
+  llarp_main_abort(struct llarp_main *ptr)
+  {
+    llarp_logic_stop_timer(ptr->ctx->router->logic);
+  }
+
+  int
+  llarp_main_loadDatabase(struct llarp_main *ptr)
+  {
+    return ptr->ctx->LoadDatabase();
+  }
+
+  int
+  llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i)
+  {
+    return ptr->ctx->IterateDatabase(i);
+  }
+
+  bool
+  llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc)
+  {
+    return ptr->ctx->PutDatabase(rc);
+  }
+
+  struct llarp_rc *
+  llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
+  {
+    return ptr->ctx->GetDatabase(pk);
+  }
+
+  struct llarp_rc *
+  llarp_main_getLocalRC(struct llarp_main *ptr)
+  {
+    //
+    /*
+     llarp_config_iterator iter;
+     iter.user  = this;
+     iter.visit = &iter_config;
+     llarp_config_iter(ctx->config, &iter);
+     */
+    llarp_rc *rc = new llarp_rc;
+    llarp_rc_new(rc);
+    llarp::LogInfo("Loading ", ptr->ctx->conatctFile);
+    if(llarp_rc_read(ptr->ctx->conatctFile, rc))
+      return rc;
+    else
+      return nullptr;
+  }
+
+  void
+  llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
+  {
+    // llarp::LogInfo("checkOnline - check ", left);
+    if(left)
+      return;
+    struct check_online_request *request =
+        static_cast< struct check_online_request * >(u);
+    // llarp::LogDebug("checkOnline - running");
+    // llarp::LogInfo("checkOnline - DHT nodes ",
+    // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
+    request->online = false;
+    request->nodes  = request->ptr->ctx->router->dht->impl.nodes->nodes.size();
+    if(request->ptr->ctx->router->dht->impl.nodes->nodes.size())
+    {
+      // llarp::LogInfo("checkOnline - Going to say we're online");
+      request->online = true;
+    }
+    request->hook(request);
+    // reschedue our self
+    llarp_main_queryDHT(request);
+  }
+
+  void
+  llarp_main_queryDHT_online(struct check_online_request *request)
+  {
+    // Info("llarp_main_queryDHT_online: ", request->online ? "online" :
+    // "offline");
+    if(request->online && !request->first)
+    {
+      request->first = true;
+      llarp::LogInfo("llarp_main_queryDHT_online - We're online");
+      llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
+      llarp_dht_lookup_router(request->ptr->ctx->router->dht, request->job);
     }
   }
-  return conffname;
+
+  void
+  llarp_main_queryDHT(struct check_online_request *request)
+  {
+    // llarp::LogInfo("llarp_main_queryDHT - setting up timer");
+    request->hook = &llarp_main_queryDHT_online;
+    llarp_logic_call_later(request->ptr->ctx->router->logic,
+                           {1000, request, &llarp_main_checkOnline});
+    // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
+  }
+
+  void
+  llarp_main_free(struct llarp_main *ptr)
+  {
+    delete ptr;
+  }
+
+  const char *
+  handleBaseCmdLineArgs(int argc, char *argv[])
+  {
+    const char *conffname = "daemon.ini";
+    int c;
+    while(1)
+    {
+      static struct option long_options[] = {
+          {"config", required_argument, 0, 'c'},
+          {"logLevel", required_argument, 0, 'o'},
+          {0, 0, 0, 0}};
+      int option_index = 0;
+      c = getopt_long(argc, argv, "c:o:", long_options, &option_index);
+      if(c == -1)
+        break;
+      switch(c)
+      {
+        case 0:
+          break;
+        case 'c':
+          conffname = optarg;
+          break;
+        case 'o':
+          if(strncmp(optarg, "debug", MIN(strlen(optarg), (unsigned long)5))
+             == 0)
+          {
+            cSetLogLevel(eLogDebug);
+          }
+          else if(strncmp(optarg, "info", MIN(strlen(optarg), (unsigned long)4))
+                  == 0)
+          {
+            cSetLogLevel(eLogInfo);
+          }
+          else if(strncmp(optarg, "warn", MIN(strlen(optarg), (unsigned long)4))
+                  == 0)
+          {
+            cSetLogLevel(eLogWarn);
+          }
+          else if(strncmp(optarg, "error",
+                          MIN(strlen(optarg), (unsigned long)5))
+                  == 0)
+          {
+            cSetLogLevel(eLogError);
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    return conffname;
+  }
 }
