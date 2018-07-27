@@ -10,7 +10,7 @@
 #include "buffer.hpp"
 #include "crypto.hpp"
 #include "fs.hpp"
-#include "net.hpp"
+#include "llarp/net.hpp"
 #include "router.hpp"
 
 struct llarp_main *ctx = 0;

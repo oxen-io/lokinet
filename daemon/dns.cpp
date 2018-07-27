@@ -3,12 +3,12 @@
 #include <stdio.h> /* fprintf, printf */
 #include <unistd.h>
 
+#include <llarp.h>
 #include <llarp/logic.h>
 #include "dnsd.hpp"
 #include "ev.hpp"
+#include "llarp/net.hpp"
 #include "logger.hpp"
-#include "net.hpp"
-#include <llarp.h>
 
 #include <thread>  // for multithreaded version
 #include <vector>
@@ -18,7 +18,7 @@
 #endif
 
 struct llarp_main *ctx = 0;
-bool done = false;
+bool done              = false;
 
 void
 handle_signal(int sig)
@@ -38,14 +38,15 @@ hookChecker(std::string name)
 #define SERVER "8.8.8.8"
 #define PORT 53
 
-struct dns_relay_config {
+struct dns_relay_config
+{
   std::string upstream_host;
   uint16_t upstream_port;
 };
 
 void
 dns_iter_config(llarp_config_iterator *itr, const char *section,
-                     const char *key, const char *val)
+                const char *key, const char *val)
 {
   dns_relay_config *config = (dns_relay_config *)itr->user;
   if(!strcmp(section, "dns"))
@@ -53,12 +54,14 @@ dns_iter_config(llarp_config_iterator *itr, const char *section,
     if(!strcmp(key, "upstream-server"))
     {
       config->upstream_host = strdup(val);
-      llarp::LogDebug("Config file setting dns server to ", config->upstream_host);
+      llarp::LogDebug("Config file setting dns server to ",
+                      config->upstream_host);
     }
     if(!strcmp(key, "upstream-port"))
     {
       config->upstream_port = atoi(val);
-      llarp::LogDebug("Config file setting dns server port to ", config->upstream_port);
+      llarp::LogDebug("Config file setting dns server port to ",
+                      config->upstream_port);
     }
   }
 }
@@ -68,15 +71,15 @@ main(int argc, char *argv[])
 {
   int code = 1;
   llarp::LogInfo("Starting up server");
-  
+
   const char *conffname = handleBaseCmdLineArgs(argc, argv);
   dns_relay_config dnsr_config;
   dnsr_config.upstream_host = "8.8.8.8";
   dnsr_config.upstream_port = 53;
   llarp_config *config_reader;
   llarp_new_config(&config_reader);
-  //ctx      = llarp_main_init(conffname, multiThreaded);
-  
+  // ctx      = llarp_main_init(conffname, multiThreaded);
+
   if(llarp_load_config(config_reader, conffname))
   {
     llarp_free_config(&config_reader);
@@ -102,7 +105,9 @@ main(int argc, char *argv[])
 
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053, (const char *)dnsr_config.upstream_host.c_str(), dnsr_config.upstream_port))
+    if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053,
+                        (const char *)dnsr_config.upstream_host.c_str(),
+                        dnsr_config.upstream_port))
     {
       // llarp::LogError("failed to initialize dns subsystem");
       llarp::LogError("Couldnt init dns daemon");

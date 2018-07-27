@@ -40,8 +40,8 @@ namespace llarp
                   lock, [this] { return this->stop || !this->jobs.empty(); });
               if(this->stop && this->jobs.empty())
                 return;
-              job = this->jobs.front();
-              this->jobs.pop_front();
+              job = this->jobs.top().job;
+              this->jobs.pop();
             }
             // do work
             job->work(job->user);
@@ -81,7 +81,7 @@ namespace llarp
         if(stop)
           return;
 
-        jobs.push_back(new llarp_thread_job(job.user, job.work));
+        jobs.emplace(ids++, new llarp_thread_job(job.user, job.work));
       }
       condition.notify_one();
     }

@@ -7,8 +7,8 @@
 #include <unistd.h>
 #include <cstdio>
 #include "ev.hpp"
+#include "llarp/net.hpp"
 #include "logger.hpp"
-#include "net.hpp"
 
 namespace llarp
 {

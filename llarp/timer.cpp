@@ -3,6 +3,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <list>
+#include <queue>
 #include <unordered_map>
 
 #include "logger.hpp"
@@ -44,10 +45,10 @@ namespace llarp
       static_cast< timer* >(user)->exec();
     }
 
-    void
-    send_job(llarp_threadpool* pool)
+    bool
+    operator<(const timer& other) const
     {
-      llarp_threadpool_queue_job(pool, {this, timer::call});
+      return (started + timeout) < (other.started + other.timeout);
     }
   };
 };  // namespace llarp
@@ -176,14 +177,29 @@ llarp_timer_cancel_job(struct llarp_timer_context* t, uint32_t id)
   t->cancel(id);
 }
 
+typedef std::priority_queue< llarp::timer* > timers_t;
+
+static void
+call_timers(void* user)
+{
+  timers_t* t = static_cast< timers_t* >(user);
+  while(t->size())
+  {
+    t->top()->exec();
+    t->pop();
+  }
+  delete t;
+}
+
 void
 llarp_timer_tick_all(struct llarp_timer_context* t,
                      struct llarp_threadpool* pool)
 {
   if(!t->run())
     return;
-  auto now = llarp_time_now_ms();
-  auto itr = t->timers.begin();
+  auto now          = llarp_time_now_ms();
+  auto itr          = t->timers.begin();
+  timers_t* calling = new timers_t();
   while(itr != t->timers.end())
   {
     if(now - itr->second->started >= itr->second->timeout
@@ -193,7 +209,7 @@ llarp_timer_tick_all(struct llarp_timer_context* t,
       {
         // timer hit
         itr->second->called_at = now;
-        itr->second->send_job(pool);
+        calling->push(itr->second);
         ++itr;
       }
       else if(itr->second->done)
@@ -209,6 +225,10 @@ llarp_timer_tick_all(struct llarp_timer_context* t,
     else  // timer not hit yet
       ++itr;
   }
+  if(calling->size())
+    llarp_threadpool_queue_job(pool, {calling, &call_timers});
+  else
+    delete calling;
 }
 
 void

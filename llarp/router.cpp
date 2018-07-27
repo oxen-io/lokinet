@@ -9,8 +9,8 @@
 
 #include "buffer.hpp"
 #include "encode.hpp"
+#include "llarp/net.hpp"
 #include "logger.hpp"
-#include "net.hpp"
 #include "str.hpp"
 
 #include <fstream>

@@ -1,6 +1,9 @@
 #include "config.hpp"
 #include <llarp/config.h>
+#include <llarp/net.hpp>
+#include "fs.hpp"
 #include "ini.hpp"
+#include "logger.hpp"
 #include "mem.hpp"
 
 namespace llarp
@@ -77,4 +80,36 @@ llarp_config_iter(struct llarp_config *conf, struct llarp_config_iterator *iter)
     for(const auto item : section.second)
       iter->visit(iter, section.first.c_str(), item.first.c_str(),
                   item.second.c_str());
+}
+
+bool
+llarp_ensure_config(const char *fname)
+{
+  std::error_code ec;
+  if(fs::exists(fname, ec))
+    return true;
+  if(ec)
+  {
+    llarp::LogError(ec);
+    return false;
+  }
+
+  std::ofstream f(fname);
+  if(!f.is_open())
+  {
+    llarp::LogError("failed to open ", fname, " for writing");
+    return false;
+  }
+
+  f << "[netdb]" << std::endl;
+  f << "dir=netdb" << std::endl;
+  f << "[bind]" << std::endl;
+
+  std::string ifname;
+
+  if(llarp::GetBestNetIF(ifname, AF_INET))
+    f << ifname << "=1090" << std::endl;
+
+  llarp::LogInfo("Generated new config ", fname);
+  return true;
 }

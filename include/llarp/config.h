@@ -38,4 +38,10 @@ void
 llarp_config_iter(struct llarp_config *conf,
                   struct llarp_config_iterator *iter);
 
+/// ensure configuration exists
+/// populate with defaults if it does not exist
+/// return if this succeeded
+bool
+llarp_ensure_config(const char *fname);
+
 #endif

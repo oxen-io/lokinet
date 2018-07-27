@@ -38,7 +38,7 @@ struct llarp_link
   const char *m_name;
 
   typedef std::unordered_map< llarp::Addr, llarp_link_session *,
-                              llarp::addrhash >
+                              llarp::Addr::Hash >
       LinkMap_t;
 
   LinkMap_t m_sessions;
@@ -52,7 +52,7 @@ struct llarp_link
   std::atomic< bool > pumpingLogic;
 
   typedef std::unordered_map< llarp::Addr, llarp_link_session *,
-                              llarp::addrhash >
+                              llarp::Addr::Hash >
       PendingSessionMap_t;
   PendingSessionMap_t m_PendingSessions;
   mtx_t m_PendingSessions_Mutex;

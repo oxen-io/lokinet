@@ -216,7 +216,6 @@ handle_generated_session_start(iwp_async_session_start *start)
   if(llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz) == -1)
     llarp::LogError("sendto failed");
   link->EnterState(llarp_link_session::State::eSessionStartSent);
-  link->serv->remove_intro_from(link->addr);
   link->working = false;
 }
 
@@ -247,8 +246,6 @@ handle_verify_introack(iwp_async_introack *introack)
   {
     // invalid signature
     llarp::LogError("introack verify failed from ", link->addr);
-    link->serv->remove_intro_from(link->addr);
-    link->serv->RemoveSession(link);
     return;
   }
   // cancel resend
@@ -380,10 +377,8 @@ llarp_link_session::on_intro_ack(const void *buf, size_t sz)
   {
     // too big?
     llarp::LogError("introack too big");
-    serv->RemoveSession(this);
     return;
   }
-  serv->put_intro_from(this);
   // copy buffer so we own it
   memcpy(workbuf, buf, sz);
   // set intro ack parameters

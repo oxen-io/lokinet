@@ -225,8 +225,8 @@ llarp_link::RemoveSession(llarp_link_session* s)
     UnmapAddr(s->addr);
     s->done();
     m_sessions.erase(itr);
-    delete s;
   }
+  delete s;
 }
 
 uint8_t*

@@ -63,6 +63,7 @@
     "future": "cpp",
     "map": "cpp",
     "vector": "cpp",
-    "new": "cpp"
+    "new": "cpp",
+    "shared_mutex": "cpp"
   }
 }

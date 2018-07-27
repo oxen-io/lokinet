@@ -1,4 +1,4 @@
-#include "net.hpp"
+#include "llarp/net.hpp"
 #include "str.hpp"
 #ifdef ANDROID
 #include "android/ifaddrs.h"
@@ -63,21 +63,21 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
       if(llarp::StrEq(i->ifa_name, ifname) && i->ifa_addr->sa_family == af)
       {
         // can't do this here
-        //llarp::Addr a(*i->ifa_addr);
-        //if(!a.isPrivate())
+        // llarp::Addr a(*i->ifa_addr);
+        // if(!a.isPrivate())
         //{
-          // llarp::LogInfo(__FILE__, "found ", ifname, " af: ", af);
-          memcpy(addr, i->ifa_addr, sl);
-          if(af == AF_INET6)
-          {
-            // set scope id
-            sockaddr_in6* ip6addr  = (sockaddr_in6*)addr;
-            ip6addr->sin6_scope_id = if_nametoindex(ifname);
-            ip6addr->sin6_flowinfo = 0;
-          }
-          found = true;
-          break;
+        // llarp::LogInfo(__FILE__, "found ", ifname, " af: ", af);
+        memcpy(addr, i->ifa_addr, sl);
+        if(af == AF_INET6)
+        {
+          // set scope id
+          sockaddr_in6* ip6addr  = (sockaddr_in6*)addr;
+          ip6addr->sin6_scope_id = if_nametoindex(ifname);
+          ip6addr->sin6_flowinfo = 0;
         }
+        found = true;
+        break;
+      }
       //}
     }
     i = i->ifa_next;
@@ -86,3 +86,37 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
     freeifaddrs(ifa);
   return found;
 }
+
+namespace llarp
+{
+  bool
+  GetBestNetIF(std::string& ifname, int af)
+  {
+    ifaddrs* ifa = nullptr;
+    bool found   = false;
+
+    if(getifaddrs(&ifa) == -1)
+      return false;
+    ifaddrs* i = ifa;
+    while(i)
+    {
+      if(i->ifa_addr)
+      {
+        if(i->ifa_addr->sa_family == af)
+        {
+          llarp::Addr a(*i->ifa_addr);
+          if(!(a.isPrivate() || a.isLoopback()))
+          {
+            ifname = i->ifa_name;
+            found  = true;
+            break;
+          }
+        }
+      }
+      i = i->ifa_next;
+    }
+    if(ifa)
+      freeifaddrs(ifa);
+    return found;
+  }
+}  // namespace llarp
