@@ -7,16 +7,16 @@ And you can read the LLARP protocol specification [here](doc/proto_v0.txt)
 
 ## Building
 
-You have 2 ways the build this project
-
-### Recommended Method (for stable builds)
-
-    $ sudo apt install build-essential libtool autoconf cmake git python3-venv
+    $ sudo apt install build-essential libtool autoconf cmake git
     $ git clone --recursive https://github.com/majestrate/llarpd-builder
     $ cd llarpd-builder
     $ make 
 
-### Development build method
+## Running
+
+    $ ./lokinet
+
+### Development
 
 Please note development builds are likely to be unstable 
 
@@ -31,17 +31,3 @@ Build requirements:
 Building a debug build:
 
     $ make
-
-
-## Running
-
-Right now the reference daemon connects to nodes you tell it to and that's it.
-
-If you built using the recommended way just run:
-
-    $ ./lokinet
-
-It'll attempt to connect to a test node I run and keep the session alive.
-That's it.
-
-If you built using the dev build you are expected to configure the daemon yourself.
