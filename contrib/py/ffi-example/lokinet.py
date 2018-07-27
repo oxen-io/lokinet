@@ -5,12 +5,21 @@ from ctypes import *
 import signal
 import time
 import threading
+import os
 
+lib_file = os.path.join(os.path.realpath('.'), 'liblokinet.so')
 
-class LLARP(threading.Thread):
+class LokiNET(threading.Thread):
 
     lib = None
     ctx = None
+
+    def load(self, lib, conf):
+        self.lib = CDLL(lib)
+        self.lib.llarp_ensure_config(conf)
+        self.ctx = self.lib.llarp_main_init(conf)
+        return self.ctx != 0
+
 
     def signal(self, sig):
         if self.ctx and self.lib:
@@ -20,21 +29,21 @@ class LLARP(threading.Thread):
         code = self.lib.llarp_main_run(self.ctx)
         print("llarp_main_run exited with status {}".format(code))
 
+    def close(self):
+        if self.lib and self.ctx:
+            self.lib.llarp_main_free(self.ctx)
 
 def main():
-    llarp = LLARP()
-    llarp.lib = CDLL("./libllarp.so")
-    llarp.ctx = llarp.lib.llarp_main_init(b'daemon.ini')
-    if llarp.ctx:
-        llarp.start()
+    loki = LokiNET()
+    if loki.load(lib_file, b'daemon.ini'):
+        loki.start()
         try:
             while True:
-                print("busy loop")
                 time.sleep(1)
         except KeyboardInterrupt:
             llarp.signal(signal.SIGINT)
         finally:
-            llarp.lib.llarp_main_free(llarp.ctx)
+            loki.close()
             return
 
 
