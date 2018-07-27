@@ -8,8 +8,8 @@ And you can read the LLARP protocol specification [here](doc/proto_v0.txt)
 ## Building
 
     $ sudo apt install build-essential libtool autoconf cmake git
-    $ git clone --recursive https://github.com/majestrate/llarpd-builder
-    $ cd llarpd-builder
+    $ git clone --recursive https://github.com/loki-project/lokinet-builder
+    $ cd lokinet-builder
     $ make 
 
 ## Running
