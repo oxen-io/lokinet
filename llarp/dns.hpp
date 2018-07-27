@@ -1,8 +1,20 @@
 #ifndef LIBLLARP_DNS_HPP
 #define LIBLLARP_DNS_HPP
 
+#include <llarp/dns.h>
 #include <sys/types.h>  // for uint & ssize_t
+#include <map>
 #include <string>
+
+struct dns_tracker
+{
+  // uint c_responses;
+  uint c_requests;
+  std::map< uint, dnsc_answer_request * > client_request;
+  // FIXME: support multiple dns server contexts
+  dnsd_context *dnsd;
+  // std::map< uint, dnsd_question_request * > daemon_request;
+};
 
 // protocol parsing/writing structures & functions
 struct dns_msg_header
@@ -43,33 +55,35 @@ struct dns_msg_answer
   uint8_t *rData;
 };
 
-uint16_t
-get16bits(const char *&buffer) throw();
+extern "C"
+{
+  uint16_t
+  get16bits(const char *&buffer) throw();
 
-uint32_t
-get32bits(const char *&buffer) throw();
+  uint32_t
+  get32bits(const char *&buffer) throw();
 
-dns_msg_header *
-decode_hdr(const char *buffer);
+  dns_msg_header *
+  decode_hdr(const char *buffer);
 
-dns_msg_question *
-decode_question(const char *buffer);
+  dns_msg_question *
+  decode_question(const char *buffer);
 
-dns_msg_answer *
-decode_answer(const char *buffer);
+  dns_msg_answer *
+  decode_answer(const char *buffer);
 
-void
-put16bits(char *&buffer, uint16_t value) throw();
+  void
+  put16bits(char *&buffer, uint16_t value) throw();
 
-void
-put32bits(char *&buffer, uint32_t value) throw();
+  void
+  put32bits(char *&buffer, uint32_t value) throw();
 
-void
-code_domain(char *&buffer, const std::string &domain) throw();
+  void
+  code_domain(char *&buffer, const std::string &domain) throw();
 
-void
-llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
-                          const struct sockaddr *saddr, const void *buf,
-                          ssize_t sz);
-
+  void
+  llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
+                            const struct sockaddr *saddr, const void *buf,
+                            ssize_t sz);
+}
 #endif

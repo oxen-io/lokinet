@@ -211,6 +211,7 @@ set(LIB_SRC
   llarp/crypto_async.cpp
   llarp/crypto_libsodium.cpp
   llarp/dht.cpp
+  llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
   llarp/encode.cpp
@@ -288,9 +289,9 @@ set(CLIENT_SRC
   client/main.cpp
 )
 
-#set(LIB llarp)
-#set(SHARED_LIB ${LIB})
-#set(STATIC_LIB ${LIB}-static)
+set(LIB lokinet)
+set(SHARED_LIB ${LIB})
+set(STATIC_LIB ${LIB}-static)
 
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
@@ -305,7 +306,6 @@ if(SHADOW)
   target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
   install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
-
   add_executable(rcutil daemon/rcutil.cpp)
   add_executable(${EXE} ${EXE_SRC})
   add_executable(${CLIENT_EXE} ${CLIENT_SRC})
@@ -370,37 +370,18 @@ else()
   endif(WITH_STATIC)
 
   if(WITH_SHARED)
-    add_library(${SHARED_LIB} SHARED ${LIB_SRC})
     if(COMPILER_SUPPORTS_CXX11 AND NOT COMPILER_SUPPORTS_CXX17 OR ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR NOT HAVE_STD_FS)
-      add_library(backport SHARED ${CPP_BACKPORT_SRC})
+      set(LIB_SRC ${LIB_SRC} ${CPP_BACKPORT_SRC})
     endif(COMPILER_SUPPORTS_CXX11 AND NOT COMPILER_SUPPORTS_CXX17 OR ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR NOT HAVE_STD_FS)
-    add_library(llarpplatform SHARED ${LIB_PLATFORM_SRC})
-    if(COMPILER_SUPPORTS_CXX11 AND NOT COMPILER_SUPPORTS_CXX17 OR ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR NOT HAVE_STD_FS)
-      target_link_libraries(${SHARED_LIB} ${LIBS} backport llarpplatform)
-      if (MINGW)
-        target_link_libraries(${SHARED_LIB} ${LIBS} backport llarpplatform ws2_32 stdc++fs)
-      elseif(WIN32)
-        target_link_libraries(${SHARED_LIB} ${LIBS} backport llarpplatform ws2_32)
-      endif(MINGW)
-    else()
-      target_link_libraries(${SHARED_LIB} ${LIBS} llarpplatform)
-      if (MINGW)
-        target_link_libraries(${SHARED_LIB} ${LIBS} llarpplatform ws2_32 stdc++fs)
-      elseif(WIN32)
-        target_link_libraries(${SHARED_LIB} ${LIBS} llarpplatform ws2_32)
-      endif(MINGW)
-    endif(COMPILER_SUPPORTS_CXX11 AND NOT COMPILER_SUPPORTS_CXX17 OR ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR NOT HAVE_STD_FS)
-    if(NOT WITH_STATIC)
-      if(COMPILER_SUPPORTS_CXX11 AND NOT COMPILER_SUPPORTS_CXX17 OR ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR NOT HAVE_STD_FS)
-        target_link_libraries(${EXE} ${SHARED_LIB} backport llarpplatform)
-        target_link_libraries(${CLIENT_EXE} ${SHARED_LIB} backport llarpplatform)
-        target_link_libraries(rcutil ${SHARED_LIB} backport llarpplatform)
-      else()
-        target_link_libraries(${EXE} ${SHARED_LIB} llarpplatform)
-        target_link_libraries(${CLIENT_EXE} ${SHARED_LIB} llarpplatform)
-        target_link_libraries(rcutil ${SHARED_LIB} llarpplatform)
-      endif(COMPILER_SUPPORTS_CXX11 AND NOT COMPILER_SUPPORTS_CXX17 OR ${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD" OR NOT HAVE_STD_FS)
-    target_link_libraries(dns ${SHARED_LIB} llarpplatform ${THREAD_LIB})
-    endif(NOT WITH_STATIC)
+    add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC})
+    if (MINGW)
+      set(${LIBS} ${LIBS} ws2_32 stdc++fs)
+    elseif(WIN32)
+      set(${LIBS} ${LIBS} ws2_32)
+    endif(MINGW)
+    target_link_libraries(${SHARED_LIB} ${LIBS} ${THREAD_LIB})
+    target_link_libraries(${EXE} ${SHARED_LIB})
+    target_link_libraries(rcutil ${SHARED_LIB})
+    target_link_libraries(dns ${SHARED_LIB} ${THREAD_LIB})
   endif(WITH_SHARED)
 endif(SHADOW)

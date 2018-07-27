@@ -32,15 +32,7 @@ extern "C"
   // bottom line is we can't use udp->user
   // so we'll need to track all incoming and outgoing requests
 
-  struct dns_tracker
-  {
-    // uint c_responses;
-    uint c_requests;
-    std::map< uint, dnsc_answer_request * > client_request;
-    // FIXME: support multiple dns server contexts
-    dnsd_context *dnsd;
-    // std::map< uint, dnsd_question_request * > daemon_request;
-  };
+  struct dns_tracker;
 
   // should we pass by llarp::Addr
   // not as long as we're supporting raw
