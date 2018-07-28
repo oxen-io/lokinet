@@ -11,6 +11,7 @@ You have 2 ways the build this project
 
 ### Recommended Method (for stable builds)
 
+    $ sudo apt install build-essential libtool autoconf cmake git python3-venv
     $ git clone --recursive https://github.com/majestrate/llarpd-builder
     $ cd llarpd-builder
     $ make 
@@ -38,7 +39,7 @@ Right now the reference daemon connects to nodes you tell it to and that's it.
 
 If you built using the recommended way just run:
 
-    $ ./llarpd
+    $ ./lokinet
 
 It'll attempt to connect to a test node I run and keep the session alive.
 That's it.

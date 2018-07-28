@@ -241,6 +241,7 @@ set(LIB_SRC
   llarp/iwp/frame_header.cpp
   llarp/iwp/frame_state.cpp
   llarp/iwp/session.cpp
+  llarp/iwp/server.cpp
   llarp/iwp/transit_message.cpp
   llarp/iwp/xmit.cpp
   llarp/link/encoder.cpp

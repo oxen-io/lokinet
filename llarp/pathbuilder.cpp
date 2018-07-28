@@ -132,7 +132,6 @@ namespace llarp
       AsyncPathKeyExchangeContext< llarp_pathbuild_job >* ctx)
   {
     auto remote = ctx->path->Upstream();
-    llarp::LogInfo("Generated LRCM to ", remote);
     auto router = ctx->user->router;
     if(!router->SendToOrQueue(remote, ctx->LRCM))
     {

@@ -12,12 +12,16 @@
 namespace llarp
 {
   /// aligned buffer, sz must be multiple of 8 bytes
-  template < size_t sz >
+  template < size_t sz, bool randomize = false >
   struct AlignedBuffer
   {
     static_assert(sz % 8 == 0, "aligned buffer size is not a multiple of 8");
 
-    AlignedBuffer() = default;
+    AlignedBuffer()
+    {
+      if(randomize)
+        Randomize();
+    }
 
     AlignedBuffer(const AlignedBuffer& other)
     {
@@ -174,6 +178,7 @@ namespace llarp
       uint64_t l[sz / 8];
     };
   };
+
 }  // namespace llarp
 
 #endif

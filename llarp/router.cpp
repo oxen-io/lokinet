@@ -61,11 +61,11 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             const llarp::ILinkMessage *msg)
 {
   llarp_link *chosen = nullptr;
-  if(!outboundLink->has_session_to(outboundLink, remote))
+  if(!outboundLink->has_session_to(remote))
   {
     for(auto link : inboundLinks)
     {
-      if(link->has_session_to(link, remote))
+      if(link->has_session_to(remote))
       {
         chosen = link;
         break;
@@ -428,17 +428,17 @@ llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
   buf.cur = buf.base;
   if(link)
   {
-    link->sendto(link, remote, buf);
+    link->sendto(remote, buf);
     return;
   }
-  bool sent = outboundLink->sendto(outboundLink, remote, buf);
+  bool sent = outboundLink->sendto(remote, buf);
   if(!sent)
   {
     for(auto link : inboundLinks)
     {
       if(!sent)
       {
-        sent = link->sendto(link, remote, buf);
+        sent = link->sendto(remote, buf);
       }
     }
   }
@@ -469,10 +469,10 @@ llarp_router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
 {
   for(auto &link : inboundLinks)
   {
-    if(link->has_session_to(link, pubkey))
+    if(link->has_session_to(pubkey))
       return link;
   }
-  if(outboundLink->has_session_to(outboundLink, pubkey))
+  if(outboundLink->has_session_to(pubkey))
     return outboundLink;
   return nullptr;
 }
@@ -509,7 +509,7 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
     // set size of message
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    if(!chosen->sendto(chosen, remote, buf))
+    if(!chosen->sendto(remote, buf))
       llarp::LogWarn("failed to send outboud message to ", remote, " via ",
                      chosen->name());
 

@@ -61,19 +61,25 @@ struct llarp_link_session
 
   void
   done();
+
   void
   pump();
+
   void
   introduce(uint8_t *pub);
 
   void
   intro_ack();
+
   void
   on_intro_ack(const void *buf, size_t sz);
+
   void
   on_intro(const void *buf, size_t sz);
+
   void
   on_session_start(const void *buf, size_t sz);
+
   void
   encrypt_frame_async_send(const void *buf, size_t sz);
 
@@ -112,6 +118,7 @@ struct llarp_link_session
 
   /// cached timestamp for frame creation
   llarp_time_t now;
+  llarp_time_t createdAt     = 0;
   llarp_time_t lastKeepalive = 0;
   uint32_t establish_job_id  = 0;
   uint32_t frames            = 0;
@@ -128,13 +135,14 @@ struct llarp_link_session
                            FrameCompareTime >
       decryptedFrames;
 
-  uint32_t pump_send_timer_id = 0;
-  uint32_t pump_recv_timer_id = 0;
-
   llarp::Addr addr;
   iwp_async_intro intro;
   iwp_async_introack introack;
   iwp_async_session_start start;
+
+  /// timestamp last intro packet sent at
+  llarp_time_t lastIntroSentAt = 0;
+  uint32_t intro_resend_job_id = 0;
 
   byte_t token[32];
   byte_t workbuf[MAX_PAD + 128];
@@ -167,6 +175,9 @@ struct llarp_link_session
 
   static void
   handle_frame_decrypt(iwp_async_frame *f);
+
+  static void
+  handle_introack_timeout(void *user, uint64_t timeout, uint64_t left);
 
   frame_state frame;
 };
