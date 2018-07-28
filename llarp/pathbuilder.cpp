@@ -2,6 +2,7 @@
 #include <llarp/path.hpp>
 
 #include <llarp/pathbuilder.hpp>
+#include "buffer.hpp"
 #include "router.hpp"
 
 namespace llarp
@@ -50,6 +51,8 @@ namespace llarp
         abort();
         return;
       }
+      // generate nonceXOR valueself->hop->pathKey
+      ctx->crypto->shorthash(hop.nonceXOR, llarp::Buffer(hop.shared));
       ++ctx->idx;
 
       bool isFarthestHop = ctx->idx == ctx->path->hops.size();

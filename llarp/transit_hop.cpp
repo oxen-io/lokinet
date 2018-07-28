@@ -77,8 +77,7 @@ namespace llarp
     {
       RelayDownstreamMessage* msg = new RelayDownstreamMessage;
       msg->pathid                 = info.rxID;
-      msg->Y                      = Y;
-
+      msg->Y                      = Y ^ nonceXOR;
       r->crypto.xchacha20(buf, pathKey, Y);
       msg->X = buf;
       llarp::LogDebug("relay ", msg->X.size(), " bytes downstream from ",
@@ -99,7 +98,7 @@ namespace llarp
       {
         RelayUpstreamMessage* msg = new RelayUpstreamMessage;
         msg->pathid               = info.txID;
-        msg->Y                    = Y;
+        msg->Y                    = Y ^ nonceXOR;
 
         msg->X = buf;
         llarp::LogDebug("relay ", msg->X.size(), " bytes upstream from ",

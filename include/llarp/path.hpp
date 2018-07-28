@@ -126,6 +126,7 @@ namespace llarp
 
       TransitHopInfo info;
       SharedSecret pathKey;
+      ShortHash nonceXOR;
       llarp_time_t started = 0;
       // 10 minutes default
       llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
@@ -188,6 +189,8 @@ namespace llarp
       SecretKey commkey;
       /// shared secret at this hop
       SharedSecret shared;
+      /// hash of shared secret used for nonce mutation
+      ShortHash nonceXOR;
       /// next hop's router id
       RouterID upstream;
       /// nonce for key exchange

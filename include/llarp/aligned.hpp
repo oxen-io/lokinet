@@ -68,6 +68,23 @@ namespace llarp
       return memcmp(l, other.l, sz) < 0;
     }
 
+    AlignedBuffer
+    operator^(const AlignedBuffer& other) const
+    {
+      AlignedBuffer< sz > ret;
+      for(size_t idx = 0; idx < sz / 8; ++idx)
+        ret.l[idx] = l[idx] ^ other.l[idx];
+      return ret;
+    }
+
+    AlignedBuffer&
+    operator^=(const AlignedBuffer& other)
+    {
+      for(size_t idx = 0; idx < sz / 8; ++idx)
+        l[idx] ^= other.l[idx];
+      return *this;
+    }
+
     size_t
     size() const
     {
