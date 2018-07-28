@@ -166,7 +166,7 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
 
   if(request->context->intercept)
   {
-    sockaddr *intercept = request->context->intercept(request->question.name);
+    sockaddr *intercept = request->context->intercept(request->question.name, request->context);
     // if(!forward_dns_request(m_qName))
     if(intercept != nullptr)
     {

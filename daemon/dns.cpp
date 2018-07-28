@@ -28,9 +28,10 @@ handle_signal(int sig)
 }
 
 sockaddr *
-hookChecker(std::string name)
+hookChecker(std::string name, struct dnsd_context *context)
 {
   llarp::LogInfo("Hooked ", name);
+  // cast your context->user;
   return nullptr;
 }
 
