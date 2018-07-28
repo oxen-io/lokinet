@@ -349,7 +349,7 @@ otherwise transmit a LRUM to the next hop
   p: p,
   v: 0,
   x: x1,
-  y: y
+  y: y ^ HS(k)
 }
 
 link relay downstream message (LRDM)
@@ -377,7 +377,7 @@ x1 = SE(k, y, x)
   p: p,
   v: 0,
   x: x1,
-  y: y
+  y: y ^ HS(k)
 }
 
 link immediate dht message (LIDM):
