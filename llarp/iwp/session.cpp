@@ -42,7 +42,6 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
     crypto->encryption_keygen(eph_seckey);
   llarp_rc_clear(&remote_router);
   crypto->randbytes(token, 32);
-  llarp::LogInfo("session created");
   frame.alive();
   working.store(false);
   createdAt = llarp_time_now_ms();
@@ -283,17 +282,6 @@ handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
 void
 llarp_link_session::done()
 {
-  auto logic = serv->logic;
-  if(establish_job_id)
-  {
-    llarp_logic_remove_call(logic, establish_job_id);
-    handle_establish_timeout(this, 0, 0);
-  }
-  if(intro_resend_job_id)
-  {
-    llarp_logic_remove_call(logic, intro_resend_job_id);
-    handle_introack_timeout(this, 0, 0);
-  }
 }
 
 void
