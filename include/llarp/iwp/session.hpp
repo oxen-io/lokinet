@@ -116,8 +116,6 @@ struct llarp_link_session
 
   llarp_link_establish_job *establish_job = nullptr;
 
-  /// cached timestamp for frame creation
-  llarp_time_t now;
   llarp_time_t createdAt     = 0;
   llarp_time_t lastKeepalive = 0;
   uint32_t establish_job_id  = 0;

@@ -145,8 +145,8 @@ frame_state::got_frag(frame_header hdr, size_t sz)
 
   uint64_t msgid;
   byte_t fragno;
-  msgid = bufbe64toh(hdr.data());
-  memcpy(&fragno, hdr.data() + 8, 1);
+  msgid      = bufbe64toh(hdr.data());
+  fragno     = hdr.data()[8];
   auto idItr = rxIDs.find(msgid);
   if(idItr == rxIDs.end())
   {

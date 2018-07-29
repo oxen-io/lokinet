@@ -194,6 +194,7 @@ namespace llarp
       pub.enckey  = llarp::seckey_topublic(enckey);
       pub.signkey = llarp::seckey_topublic(signkey);
       pub.vanity.Zero();
+      pub.UpdateAddr();
     }
 
     bool
