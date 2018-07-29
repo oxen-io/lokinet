@@ -107,9 +107,13 @@ namespace llarp
     bool
     IsZero() const
     {
-      AlignedBuffer< sz > b;
-      b.Zero();
-      return memcmp(l, b.l, sz) == 0;
+      size_t idx = sz / 8;
+      while(idx)
+      {
+        if(l[idx--])
+          return false;
+      }
+      return true;
     }
 
     void

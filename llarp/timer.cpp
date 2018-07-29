@@ -57,6 +57,7 @@ struct llarp_timer_context
 {
   std::mutex timersMutex;
   std::unordered_map< uint32_t, llarp::timer* > timers;
+  std::priority_queue< llarp::timer* > calling;
   std::mutex tickerMutex;
   std::condition_variable* ticker       = nullptr;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(100);
@@ -182,13 +183,12 @@ typedef std::priority_queue< llarp::timer* > timers_t;
 static void
 call_timers(void* user)
 {
-  timers_t* t = static_cast< timers_t* >(user);
-  while(t->size())
+  llarp_timer_context* t = static_cast< llarp_timer_context* >(user);
+  while(t->calling.size())
   {
-    t->top()->exec();
-    t->pop();
+    t->calling.top()->exec();
+    t->calling.pop();
   }
-  delete t;
 }
 
 void
@@ -197,9 +197,8 @@ llarp_timer_tick_all(struct llarp_timer_context* t,
 {
   if(!t->run())
     return;
-  auto now          = llarp_time_now_ms();
-  auto itr          = t->timers.begin();
-  timers_t* calling = new timers_t();
+  auto now = llarp_time_now_ms();
+  auto itr = t->timers.begin();
   while(itr != t->timers.end())
   {
     if(now - itr->second->started >= itr->second->timeout
@@ -209,26 +208,17 @@ llarp_timer_tick_all(struct llarp_timer_context* t,
       {
         // timer hit
         itr->second->called_at = now;
-        calling->push(itr->second);
-        ++itr;
-      }
-      else if(itr->second->done)
-      {
-        // remove timer
+        itr->second->exec();
         llarp::timer* timer = itr->second;
         itr                 = t->timers.erase(itr);
         delete timer;
+        continue;
       }
-      else
-        ++itr;
     }
-    else  // timer not hit yet
-      ++itr;
+    ++itr;
   }
-  if(calling->size())
-    llarp_threadpool_queue_job(pool, {calling, &call_timers});
-  else
-    delete calling;
+  if(t->calling.size())
+    llarp_threadpool_queue_job(pool, {t, &call_timers});
 }
 
 void

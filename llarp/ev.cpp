@@ -35,9 +35,16 @@ llarp_ev_loop_free(struct llarp_ev_loop **ev)
 }
 
 int
-llarp_ev_loop_run(struct llarp_ev_loop *ev)
+llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
 {
-  return ev->run();
+  while(true)
+  {
+    if(ev->tick(10) == -1)
+      break;
+    llarp_logic_tick(logic);
+    llarp_threadpool_tick(logic->thread);
+  }
+  return 0;
 }
 
 void

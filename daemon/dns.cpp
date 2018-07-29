@@ -116,41 +116,11 @@ main(int argc, char *argv[])
     // Configure intercept
     dnsd.intercept = &hookChecker;
 
-    // singlethreaded
-    if(0)
-    {
-      llarp::LogInfo("singlethread start");
-      worker = llarp_init_same_process_threadpool();
-      logic  = llarp_init_single_process_logic(worker);
-      llarp_ev_loop_run_single_process(netloop, worker, logic);
-      llarp::LogInfo("singlethread end");
-    }
-    else
-    {
-      uint num_llarpworkers = 2;
-      uint num_nethreads    = 8;
-      llarp::LogInfo("multithreaded start with ", num_llarpworkers,
-                     " llarp-workers and ", num_nethreads, " networkers");
-      // create workers
-      worker     = llarp_init_threadpool(num_llarpworkers, "llarp-worker");
-      logic      = llarp_init_logic();
-      auto netio = netloop;
-      std::vector< std::thread > netio_threads;
-      while(num_nethreads--)
-      {
-        netio_threads.emplace_back([netio]() { llarp_ev_loop_run(netio); });
-#if(__APPLE__ && __MACH__)
-
-#elif(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
-        pthread_set_name_np(netio_threads.back().native_handle(),
-                            "llarp-netio");
-#else
-        pthread_setname_np(netio_threads.back().native_handle(), "llarp-netio");
-#endif
-      }
-      llarp_logic_mainloop(logic);
-      llarp::LogInfo("multithreaded end");
-    }
+    llarp::LogInfo("singlethread start");
+    worker = llarp_init_same_process_threadpool();
+    logic  = llarp_init_single_process_logic(worker);
+    llarp_ev_loop_run_single_process(netloop, worker, logic);
+    llarp::LogInfo("singlethread end");
     llarp_ev_loop_free(&netloop);
   }
   else
