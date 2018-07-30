@@ -9,33 +9,9 @@ bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 }
 
 bool
-bencode_write_int(llarp_buffer_t* buff, int i)
-{
-  return llarp_buffer_writef(buff, "i%de", i);
-}
-
-bool
-bencode_write_uint16(llarp_buffer_t* buff, uint16_t i)
-{
-  return llarp_buffer_writef(buff, "i%de", i);
-}
-
-bool
-bencode_write_int64(llarp_buffer_t* buff, int64_t i)
-{
-  return llarp_buffer_writef(buff, "i%lde", i);
-}
-
-bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
-  return llarp_buffer_writef(buff, "i%lde", i);
-}
-
-bool
-bencode_write_sizeint(llarp_buffer_t* buff, size_t i)
-{
-  return llarp_buffer_writef(buff, "i%lde", i);
+  return llarp_buffer_writef(buff, "i%ulde", i);
 }
 
 bool
