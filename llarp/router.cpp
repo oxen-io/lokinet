@@ -644,11 +644,13 @@ llarp_router::Run()
         continue;
       }
     }
-    llarp::LogInfo("Loading Addr: ", a, " into our RC");
-
-    llarp_ai_list_pushback(rc.addrs, &addr);
+    else
+    {
+      llarp::LogInfo("Loading Addr: ", a, " into our RC");
+      llarp_ai_list_pushback(rc.addrs, &addr);
+    }
   };
-  if(this->publicOverride && !publicFound)
+  if(this->publicOverride)
   {
     // llarp::LogWarn("Need to load our public IP into RC!");
 
