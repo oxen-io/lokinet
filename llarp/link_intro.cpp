@@ -4,6 +4,7 @@
 #include "logger.hpp"
 #include "router.hpp"
 
+
 namespace llarp
 {
   LinkIntroMessage::~LinkIntroMessage()

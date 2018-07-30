@@ -97,9 +97,16 @@ namespace llarp
   }
 }  // namespace llarp
 
-#define LogDebug(x, ...) _Log(llarp::eLogDebug, __FILE__, x, ##__VA_ARGS__)
-#define LogInfo(x, ...) _Log(llarp::eLogInfo, __FILE__, x, ##__VA_ARGS__)
-#define LogWarn(x, ...) _Log(llarp::eLogWarn, __FILE__, x, ##__VA_ARGS__)
-#define LogError(x, ...) _Log(llarp::eLogError, __FILE__, x, ##__VA_ARGS__)
+
+#define LogDebug(x, ...) _Log(llarp::eLogDebug, LOG_TAG, x, ##__VA_ARGS__)
+#define LogInfo(x, ...) _Log(llarp::eLogInfo, LOG_TAG, x, ##__VA_ARGS__)
+#define LogWarn(x, ...) _Log(llarp::eLogWarn, LOG_TAG, x, ##__VA_ARGS__)
+#define LogError(x, ...) _Log(llarp::eLogError, LOG_TAG, x, ##__VA_ARGS__)
+
+#define LogDebugTag(tag, x, ...) _Log(llarp::eLogDebug, tag, x, ##__VA_ARGS__)
+#define LogInfoTag(tag, x, ...) _Log(llarp::eLogInfo, tag, x, ##__VA_ARGS__)
+#define LogWarnTag(tag, x, ...) _Log(llarp::eLogWarn, tag, x, ##__VA_ARGS__)
+#define LogErrorTag(tag, x, ...) _Log(llarp::eLogError, tag, x, ##__VA_ARGS__)
+
 
 #endif

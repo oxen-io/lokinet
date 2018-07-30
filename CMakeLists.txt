@@ -280,6 +280,8 @@ set(TEST_SRC
   test/encrypted_frame_unittest.cpp
   test/hiddenservice_unittest.cpp
 )
+
+
 set(TEST_EXE testAll)
 set(GTEST_DIR test/gtest)
 
@@ -288,6 +290,12 @@ set(CLIENT_EXE llarpc)
 set(CLIENT_SRC
   client/main.cpp
 )
+
+set(ALL_SRC ${CLIENT_SRC} daemon/rcutil.cpp ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC} ${CPP_BACKPORT_SRC})
+
+foreach(F ${ALL_SRC})
+set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
+endforeach(F)
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})

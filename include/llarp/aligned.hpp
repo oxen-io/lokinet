@@ -177,7 +177,7 @@ namespace llarp
         return false;
       if(strbuf.sz != sz)
       {
-        llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
+        llarp::LogErrorTag("AlignedBuffer::BDecode", "bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
         return false;
       }
       memcpy(b, strbuf.base, sz);
