@@ -1,8 +1,8 @@
+#include <getopt.h>
 #include <llarp.h>
 #include <signal.h>
 #include "logger.hpp"
 
-#include <getopt.h>
 #include <llarp/router_contact.h>
 #include <llarp/time.h>
 
@@ -278,14 +278,23 @@ main(int argc, char *argv[])
     // "encryption.key")
     fs::path encryption_keyfile = "encryption.key";
     llarp::SecretKey encryption;
-    llarp_findOrCreateEncryption(&crypt, encryption_keyfile.c_str(),
+#ifdef _WIN32
+    llarp_findOrCreateEncryption(&crypt, encryption_keyfile.string().c_str(),
                                  &encryption);
+#else
+	llarp_findOrCreateEncryption(&crypt, encryption_keyfile.c_str(),
+                                      &encryption);
+#endif
     llarp_rc_set_pubenckey(&tmp, llarp::seckey_topublic(encryption));
 
     // get identity public sig key
     fs::path ident_keyfile = "identity.key";
     byte_t identity[SECKEYSIZE];
+#ifdef _WIN32
+    llarp_findOrCreateIdentity(&crypt, ident_keyfile.string().c_str(), identity);
+#else
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
+#endif
     llarp_rc_set_pubsigkey(&tmp, llarp::seckey_topublic(identity));
 
     // this causes a segfault
@@ -293,7 +302,11 @@ main(int argc, char *argv[])
     // set filename
     fs::path our_rc_file = rcfname;
     // write file
+#ifdef _WIN32
+    llarp_rc_write(&tmp, our_rc_file.string().c_str());
+#else
     llarp_rc_write(&tmp, our_rc_file.c_str());
+#endif
     // release memory for tmp lists
     llarp_rc_free(&tmp);
   }
@@ -311,7 +324,11 @@ main(int argc, char *argv[])
     llarp_crypto_libsodium_init(&crypt);
     fs::path ident_keyfile = "identity.key";
     byte_t identity[SECKEYSIZE];
+#ifdef _WIN32
+    llarp_findOrCreateIdentity(&crypt, ident_keyfile.string().c_str(), identity);
+#else
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.c_str(), identity);
+#endif
     // get identity public key
     uint8_t *pubkey = llarp::seckey_topublic(identity);
     llarp_rc_set_pubsigkey(&rc, pubkey);
@@ -320,7 +337,11 @@ main(int argc, char *argv[])
     // set filename
     fs::path our_rc_file_out = "update_debug.rc";
     // write file
+#ifdef _WIN32
+    llarp_rc_write(&tmp, our_rc_file_out.string().c_str());
+#else
     llarp_rc_write(&tmp, our_rc_file_out.c_str());
+#endif
   }
   if(listMode)
   {

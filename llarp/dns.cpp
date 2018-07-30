@@ -2,6 +2,10 @@
 #include "dnsd.hpp"  // for llarp_handle_dnsd_recvfrom, dnsc
 #include "logger.hpp"
 
+#ifdef _WIN32
+#define uint UINT
+#endif
+
 extern "C"
 {
   uint16_t

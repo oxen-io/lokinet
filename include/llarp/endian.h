@@ -6,15 +6,12 @@
 #include <inttypes.h>
 #include <string.h>
 
-#if defined(__FreeBSD__) || defined(__NetBSD__)
+#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
 #include <sys/endian.h>
-#elif defined(__linux__) || defined(__FreeBSD_kernel__) \
-    || defined(__OpenBSD__) || defined(__GLIBC__)
+#elif defined(__linux__) || defined(__FreeBSD_kernel__) || defined(__GLIBC__)
 #include <endian.h>
 #elif defined(__APPLE__) && defined(__MACH__)
-
 #include <libkern/OSByteOrder.h>
-
 #define htobe16(x) OSSwapHostToBigInt16(x)
 #define htole16(x) OSSwapHostToLittleInt16(x)
 #define be16toh(x) OSSwapBigToHostInt16(x)
@@ -29,7 +26,26 @@
 #define htole64(x) OSSwapHostToLittleInt64(x)
 #define be64toh(x) OSSwapBigToHostInt64(x)
 #define le64toh(x) OSSwapLittleToHostInt64(x)
+#elif defined(_WIN32)
+#include <winsock2.h>
+#define htobe16(x) htons(x)
+#define htole16(x) (x)
+#define be16toh(x) ntohs(x)
+#define le16toh(x) (x)
 
+#define htobe32(x) htonl(x)
+#define htole32(x) (x)
+#define be32toh(x) ntohl(x)
+#define le32toh(x) (x)
+
+#define htobe64(x)                                        \
+  (((uint64_t)htonl(((uint32_t)(((uint64_t)(x)) >> 32)))) \
+   | (((uint64_t)htonl(((uint32_t)(x)))) << 32))
+#define htole64(x) (x)
+#define be64toh(x)                                        \
+  (((uint64_t)ntohl(((uint32_t)(((uint64_t)(x)) >> 32)))) \
+   | (((uint64_t)ntohl(((uint32_t)(x)))) << 32))
+#define le64toh(x) (x)
 #else
 #define NEEDS_LOCAL_ENDIAN
 #include <cstdint>

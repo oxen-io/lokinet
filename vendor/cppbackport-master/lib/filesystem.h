@@ -30,18 +30,21 @@
 #ifndef PBL_CPP_FILESYSTEM_H
 #define PBL_CPP_FILESYSTEM_H
 
+#if _MSC_VER >= 1910
+#define CPP17
+#define CPP11
+#define CPP14
+#endif
+
 #include "version.h"
 
-// linux gcc 7.2 has CPP17 but doesn't have filesystem.h
-#if defined(CPP17) && !defined(__OpenBSD__) && __has_include(<filesystem>)
-
-#if defined(__MINGW32__)
-// mingw32 needs experimental
+#if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
+#if defined(__MINGW32__) || defined(_MSC_VER)
+// win32 needs experimental
 #include <experimental/filesystem>
 #else
 #include <filesystem>
 #endif
-
 #else
 // OpenBSD needs this
 // MacOS llvm 3.8 needs this
@@ -61,6 +64,6 @@
 #include "fs/remove.h"
 #include "fs/rename.h"
 #include "fs/tempdir.h"
-#endif // if not cpp17 and not openbsd
+#endif  // if not cpp17 and not openbsd
 
 #endif  // PBL_CPP_FILESYSTEM_H

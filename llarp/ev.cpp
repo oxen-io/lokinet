@@ -5,11 +5,11 @@
 #ifdef __linux__
 #include "ev_epoll.hpp"
 #endif
-#if(__APPLE__ && __MACH__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || (__APPLE__ && __MACH__)
 #include "ev_kqueue.hpp"
 #endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-#include "ev_kqueue.hpp"
+#if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+#include "ev_win32.hpp"
 #endif
 
 void
@@ -18,11 +18,17 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 #ifdef __linux__
   *ev = new llarp_epoll_loop;
 #endif
-#if(__APPLE__ && __MACH__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || (__APPLE__ && __MACH__)
   *ev = new llarp_kqueue_loop;
 #endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
-  *ev = new llarp_kqueue_loop;
+#if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+  *ev = new llarp_win32_loop;
+#endif
+  // a) I assume that the libre fork of Solaris is still
+  // 5.10, and b) the current commercial version is 5.11, naturally.
+  // -despair86
+#if defined(__SunOS_5_10) || defined(__SunOS_5_11)
+  *ev = new llarp_sun_iocp_loop;
 #endif
   (*ev)->init();
 }

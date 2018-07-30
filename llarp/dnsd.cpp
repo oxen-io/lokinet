@@ -5,6 +5,11 @@
 #include "llarp/net.hpp"
 #include "logger.hpp"
 
+#ifdef _WIN32
+#define wmin(x, y) (((x) < (y)) ? (x) : (y))
+#define MIN wmin
+#endif
+
 dns_tracker dns_udp_tracker;
 
 ssize_t
@@ -14,7 +19,11 @@ raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
   int *fd = (int *)sock;
   // how do we get to these??
   socklen_t addrLen = sizeof(struct sockaddr_in);
+#ifdef _WIN32
+  return sendto(*fd, (const char *)buffer, length, 0, from, addrLen);
+#else
   return sendto(*fd, buffer, length, 0, from, addrLen);
+#endif
 }
 
 ssize_t

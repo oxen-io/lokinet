@@ -1,3 +1,7 @@
+#ifdef _MSC_VER
+#define NOMINMAX
+#endif
+
 #include "llarp/iwp/frame_state.hpp"
 #include "buffer.hpp"
 #include "llarp/crypto.hpp"
@@ -7,6 +11,7 @@
 #include "llarp/logger.hpp"
 #include "mem.hpp"
 #include "router.hpp"
+#include <algorithm>
 
 llarp_router *
 frame_state::Router()

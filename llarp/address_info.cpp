@@ -1,5 +1,7 @@
 #include "address_info.hpp"
+#ifndef _WIN32
 #include <arpa/inet.h>
+#endif
 #include <llarp/bencode.h>
 #include <llarp/mem.h>
 #include <llarp/string.h>
@@ -120,8 +122,12 @@ llarp_ai_list_iter_bencode(struct llarp_ai_list_iter *iter, struct llarp_ai *ai)
 bool
 llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t *buff)
 {
+#ifndef _MSC_VER
   struct dict_reader reader = {
       .buffer = nullptr, .user = ai, .on_key = &llarp_ai_decode_key};
+#else
+	struct dict_reader reader = { nullptr, ai, &llarp_ai_decode_key };
+#endif
   return bencode_read_dict(buff, &reader);
 }
 
@@ -174,8 +180,13 @@ llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 {
   if(!bencode_start_list(buff))
     return false;
+#ifndef _MSC_VER
   struct llarp_ai_list_iter ai_itr = {
       .user = buff, .list = nullptr, .visit = &llarp_ai_list_iter_bencode};
+#else
+  struct llarp_ai_list_iter ai_itr = {buff, nullptr,
+                                      &llarp_ai_list_iter_bencode};
+#endif
   llarp_ai_list_iterate(l, &ai_itr);
   return bencode_end(buff);
 }
@@ -255,7 +266,12 @@ llarp_ai_list_index(struct llarp_ai_list *l, ssize_t idx, struct llarp_ai *dst)
 bool
 llarp_ai_list_bdecode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 {
+#ifndef _MSC_VER
   struct list_reader r = {
       .buffer = nullptr, .user = l, .on_item = &llarp_ai_list_bdecode_item};
+#else
+  struct list_reader r = {
+      nullptr, l, &llarp_ai_list_bdecode_item};
+#endif
   return bencode_read_list(buff, &r);
 }

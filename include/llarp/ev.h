@@ -1,8 +1,12 @@
 #ifndef LLARP_EV_H
 #define LLARP_EV_H
-#if defined(__MINGW32__)
+#if defined(__MINGW32__) || defined(_WIN32)
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <wspiapi.h>
+#ifndef ssize_t
+#define ssize_t long
+#endif
 #else
 #include <netinet/in.h>
 #include <sys/socket.h>
@@ -12,10 +16,10 @@
 #include <stdlib.h>
 
 /**
- * ev.h
- *
- * event handler (cross platform high performance event system for IO)
- */
+     * ev.h
+     *
+     * event handler (cross platform high performance event system for IO)
+     */
 
 // forward declare
 struct llarp_threadpool;

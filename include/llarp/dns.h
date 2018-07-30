@@ -5,6 +5,11 @@
 #include <sys/types.h>  // for uint & ssize_t
 #include <map>          // for udp DNS tracker
 
+/* non-cygnus does not have this type */
+#ifdef _WIN32
+#define uint UINT
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {

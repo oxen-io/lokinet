@@ -2,15 +2,19 @@
 #include <llarp/dns.h>
 #include "buffer.hpp"
 
-#include <netdb.h>  /* getaddrinfo, getnameinfo */
+#ifndef _WIN32
+#include <arpa/inet.h>
+#include <netdb.h> /* getaddrinfo, getnameinfo */
+#include <netinet/in.h>
+#include <sys/socket.h>
+#endif
+
 #include <stdlib.h> /* exit */
 #include <string.h> /* memset */
-#include <sys/socket.h>
 #include <sys/types.h>
+#ifndef _MSC_VER
 #include <unistd.h> /* close */
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#endif
 
 #include <cstdio>
 
@@ -75,7 +79,7 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
     {
       dnsQuery->request[dnsQuery->length++] = word[i];
     }
-    word = strtok(NULL, ".");
+    word = strtok(nullptr, ".");
   }
 
   dnsQuery->request[dnsQuery->length++] = 0x00;  // End of the host name
@@ -130,7 +134,7 @@ raw_resolve_host(const char *url)
     {
       dnsQuery.request[dnsQuery.length++] = word[i];
     }
-    word = strtok(NULL, ".");
+    word = strtok(nullptr, ".");
   }
 
   dnsQuery.request[dnsQuery.length++] = 0x00;  // End of the host name
@@ -162,7 +166,11 @@ raw_resolve_host(const char *url)
   // uint16_t RDLENGTH;  // The length of the RDATA field
   // uint16_t MSGID;
 
+#ifndef _WIN32
   int sockfd;
+#else
+  SOCKET sockfd;
+#endif
 
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if(sockfd < 0)
@@ -179,8 +187,13 @@ raw_resolve_host(const char *url)
   size                 = sizeof(addr);
 
   // hexdump("sending packet", &dnsQuery.request, dnsQuery.length);
+#ifdef _WIN32
+  ret = sendto(sockfd, (const char *)dns_packet->request, dns_packet->length, 0,
+               (struct sockaddr *)&addr, size);
+#else
   ret = sendto(sockfd, dns_packet->request, dns_packet->length, 0,
                (struct sockaddr *)&addr, size);
+#endif
   delete dns_packet;
   if(ret < 0)
   {
@@ -190,8 +203,13 @@ raw_resolve_host(const char *url)
   // llarp::LogInfo("Sent\n");
 
   memset(&buffer, 0, DNC_BUF_SIZE);
-  ret = recvfrom(sockfd, buffer, DNC_BUF_SIZE, 0, (struct sockaddr *)&addr,
-                 &size);
+#ifdef _WIN32
+  ret = recvfrom(sockfd, (char *)buffer, DNC_BUF_SIZE, 0,
+                 (struct sockaddr *)&addr, &size);
+#else
+  ret = recvfrom(sockfd, buffer, DNC_BUF_SIZE, 0,
+                 (struct sockaddr *)&addr, &size);
+#endif
   if(ret < 0)
   {
     llarp::LogWarn("Error Receiving Response");
@@ -200,7 +218,11 @@ raw_resolve_host(const char *url)
 
   // hexdump("received packet", &buffer, ret);
 
+#ifndef _WIN32
   close(sockfd);
+#else
+  closesocket(sockfd);
+#endif
 
   rcode = (buffer[3] & 0x0F);
 
@@ -210,7 +232,7 @@ raw_resolve_host(const char *url)
 
   // printf("%0x %0x %0x %0x\n", buffer[4], buffer[5], tempBuf[0], tempBuf[1]);
 
-  // QDCOUNT = (uint16_t) strtol(tempBuf, NULL, 16);
+  // QDCOUNT = (uint16_t) strtol(tempBuf, nullptr, 16);
   QDCOUNT = (uint16_t)buffer[4] * 0x100 + buffer[5];
   llarp::LogDebug("entries in question section: %u\n", QDCOUNT);
   ANCOUNT = (uint16_t)buffer[6] * 0x100 + buffer[7];

@@ -1,7 +1,9 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h> /* fprintf, printf */
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 
 #include <llarp.h>
 #include <llarp/logic.h>
@@ -12,6 +14,16 @@
 
 #include <thread>  // for multithreaded version
 #include <vector>
+
+// keep this once jeff reenables concurrency
+#ifdef _MSC_VER
+extern "C" void
+SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
+#endif
+
+#ifdef _WIN32
+#define uint UINT
+#endif
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -122,6 +134,7 @@ main(int argc, char *argv[])
     logic  = llarp_init_single_process_logic(worker);
     llarp_ev_loop_run_single_process(netloop, worker, logic);
     llarp::LogInfo("singlethread end");
+
     llarp_ev_loop_free(&netloop);
   }
   else
@@ -150,7 +163,11 @@ main(int argc, char *argv[])
     struct timeval tv;
     tv.tv_sec  = 0;
     tv.tv_usec = 100 * 1000;  // 1 sec
+#ifndef _WIN32
     if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+#else
+    if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0)
+#endif
     {
       perror("Error");
     }

@@ -1,9 +1,13 @@
 #ifndef LLARP_CODEL_QUEUE_HPP
 #define LLARP_CODEL_QUEUE_HPP
+#ifdef _MSC_VER
+#define NOMINMAX
+#endif
 #include <llarp/time.h>
 #include <llarp/logger.hpp>
 #include <llarp/threading.hpp>
 
+#include <algorithm>
 #include <cmath>
 #include <functional>
 

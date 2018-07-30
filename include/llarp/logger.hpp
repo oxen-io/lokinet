@@ -1,6 +1,5 @@
 #ifndef LLARP_LOGGER_HPP
 #define LLARP_LOGGER_HPP
-
 #include <llarp/time.h>
 #include <ctime>
 #include <iomanip>
@@ -8,6 +7,11 @@
 #include <llarp/threading.hpp>
 #include <sstream>
 #include <string>
+#ifdef _WIN32
+#define VC_EXTRALEAN
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#endif
 
 namespace llarp
 {
@@ -28,6 +32,14 @@ namespace llarp
     std::mutex access;
     Logger() : Logger(std::cout, "unnamed")
     {
+#ifdef _WIN32
+      DWORD mode_flags;
+      HANDLE fd1 = GetStdHandle(STD_OUTPUT_HANDLE);
+      GetConsoleMode(fd1, &mode_flags);
+      // since release SDKs don't have ANSI escape support yet
+      mode_flags |= 0x0004;
+      SetConsoleMode(fd1, mode_flags);
+#endif
     }
 
     Logger(std::ostream& o, const std::string& name) : nodeName(name), out(o)
@@ -108,7 +120,6 @@ namespace llarp
   _Log(llarp::eLogWarn, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
 #define LogError(x, ...) \
   _Log(llarp::eLogError, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
-
 #define LogDebugTag(tag, x, ...) \
   _Log(llarp::eLogDebug, tag, __LINE__, x, ##__VA_ARGS__)
 #define LogInfoTag(tag, x, ...) \
@@ -121,5 +132,4 @@ namespace llarp
 #ifndef LOG_TAG
 #define LOG_TAG "default"
 #endif
-
 #endif

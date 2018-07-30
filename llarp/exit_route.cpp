@@ -1,4 +1,7 @@
+#ifndef _WIN32
 #include <arpa/inet.h>
+#endif
+
 #include <llarp/bencode.h>
 #include <llarp/exit_route.h>
 #include <llarp/string.h>

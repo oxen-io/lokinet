@@ -1,3 +1,6 @@
+#ifdef _MSC_VER
+#define NOMINMAX
+#endif
 #include <llarp/iwp.h>
 #include <llarp/crypto.hpp>
 #include <llarp/iwp/server.hpp>
@@ -6,6 +9,7 @@
 #include "buffer.hpp"
 #include "link/encoder.hpp"
 #include "llarp/ev.h"  // for handle_frame_encrypt
+#include <algorithm>
 
 static void
 handle_crypto_outbound(void *u)

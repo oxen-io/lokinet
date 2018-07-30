@@ -28,7 +28,7 @@ namespace llarp
   DumpBuffer(const T &buff)
   {
     size_t idx = 0;
-    printf("buffer of size %ld\n", buff.sz);
+    printf("buffer of size %u\n", buff.sz);
     while(idx < buff.sz)
     {
       if(buff.base + idx == buff.cur)

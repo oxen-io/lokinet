@@ -109,7 +109,11 @@ struct llarp_nodedb
     const char *hexname =
         llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pubkey, ftmp);
     std::string hexString(hexname);
+#ifdef _WIN32
+    std::string filepath = nodePath.string();
+#else
     std::string filepath = nodePath;
+#endif
     filepath.append(PATH_SEP);
     filepath.append(&hexString[hexString.length() - 1]);
     filepath.append(PATH_SEP);
@@ -182,7 +186,7 @@ struct llarp_nodedb
   {
     ssize_t sz = 0;
     fs::directory_iterator i(dir);
-#if __has_include(<filesystem>) && !defined(__OpenBSD__)
+#if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
     auto itr = fs::begin(i);
     while(itr != fs::end(i))
 #else
@@ -190,7 +194,7 @@ struct llarp_nodedb
     while(itr != itr.end())
 #endif
     {
-      if(fs::is_regular_file(itr->symlink_status()) && loadfile(*itr))
+      if(fs::is_regular_file(itr->path()) && loadfile(*itr))
         sz++;
 
       ++itr;
@@ -210,7 +214,11 @@ struct llarp_nodedb
 #endif
     llarp_rc rc;
     llarp_rc_clear(&rc);
+#ifdef _WIN32
+    if(!llarp_rc_read(fpath.string().c_str(), &rc))
+#else
     if(!llarp_rc_read(fpath.c_str(), &rc))
+#endif
     {
       llarp::LogError("Signature read failed", fpath);
       return false;
@@ -348,6 +356,7 @@ llarp_nodedb_ensure_dir(const char *dir)
 {
   fs::path path(dir);
   std::error_code ec;
+
   if(!fs::exists(dir, ec))
     fs::create_directories(path, ec);
 
@@ -359,6 +368,11 @@ llarp_nodedb_ensure_dir(const char *dir)
 
   for(const char &ch : skiplist_subdirs)
   {
+    // this seems to be a problem on all targets
+	// perhaps cpp17::fs is just as screwed-up
+    // attempting to create a folder with no name
+    if(!ch)
+      return true;
     std::string p;
     p += ch;
     fs::path sub = path / p;

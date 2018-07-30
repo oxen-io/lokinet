@@ -1,5 +1,7 @@
 #include "threadpool.hpp"
+#ifndef _MSC_VER
 #include <pthread.h>
+#endif
 #include <cstring>
 
 #include <llarp/time.h>
@@ -9,6 +11,12 @@
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
+#endif
+
+#ifdef _MSC_VER
+#include <windows.h>
+extern "C" void
+SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
 #endif
 
 namespace llarp
@@ -27,8 +35,10 @@ namespace llarp
             pthread_setname_np(name);
 #elif(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
             pthread_set_name_np(pthread_self(), name);
-#else
+#elif !defined(_MSC_VER) || !defined(_WIN32)
             pthread_setname_np(pthread_self(), name);
+#else
+            SetThreadName(GetCurrentThreadId(),name);
 #endif
           }
           for(;;)
