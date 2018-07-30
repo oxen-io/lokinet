@@ -220,7 +220,7 @@ namespace llarp
       unsigned byte1 = byte >> 24 & 0xff;
       unsigned byte2 = byte >> 16 & 0xff;
       return (byte1 == 10 || (byte1 == 192 && byte2 == 168)
-              || (byte1 == 172 && (byte2 => 16 || byte2 <= 31));
+              || (byte1 == 172 && (byte2 >= 16 || byte2 <= 31));
     }
 
     bool
