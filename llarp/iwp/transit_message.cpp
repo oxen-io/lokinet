@@ -72,6 +72,8 @@ transit_message::should_send_ack(llarp_time_t now) const
     return true;
   if(status.count() == 0)
     return true;
+  if(now < lastRetransmit)
+    return false;
   return now - lastRetransmit > 200;
 }
 

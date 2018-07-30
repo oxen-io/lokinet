@@ -66,8 +66,6 @@ namespace llarp
         buf.sz = MESSAGE_PAD_SIZE;
       }
       buf.cur = buf.base;
-      llarp::LogInfo("Send ", buf.sz,
-                     " bytes routing message from trasnit hop");
       return HandleDownstream(buf, N, r);
     }
 

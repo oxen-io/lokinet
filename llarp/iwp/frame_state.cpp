@@ -150,13 +150,13 @@ frame_state::got_frag(frame_header hdr, size_t sz)
   auto idItr = rxIDs.find(msgid);
   if(idItr == rxIDs.end())
   {
-    push_ackfor(msgid, 0);
+    push_ackfor(msgid, ~0);
     return true;
   }
   auto itr = rx.find(idItr->second);
   if(itr == rx.end())
   {
-    push_ackfor(msgid, 0);
+    push_ackfor(msgid, ~0);
     return true;
   }
   auto fragsize = itr->second->msginfo.fragsize();
@@ -191,9 +191,6 @@ frame_state::push_ackfor(uint64_t id, uint32_t bitmask)
   llarp::LogDebug("ACK for msgid=", id, " mask=", bitmask);
   auto pkt      = new sendbuf_t(12 + 6);
   auto body_ptr = init_sendbuf(pkt, eACKS, 12, txflags);
-  // TODO: this assumes big endian
-  // memcpy(body_ptr, &id, 8);
-  // memcpy(body_ptr + 8, &bitmask, 4);
   htobe64buf(body_ptr, id);
   htobe32buf(body_ptr + 8, bitmask);
   sendqueue.Put(pkt);
@@ -284,22 +281,31 @@ frame_state::got_acks(frame_header hdr, size_t sz)
     return true;
   }
 
+  auto now = llarp_time_now_ms();
+
   transit_message *msg = itr->second;
 
-  msg->ack(bitmask);
-
-  if(msg->completed())
+  if(bitmask == ~(0U))
   {
-    llarp::LogDebug("message transmitted msgid=", msgid);
     tx.erase(msgid);
     delete msg;
   }
-  else if(msg->should_resend_frags(llarp_time_now_ms()))
+  else
   {
-    llarp::LogDebug("message ", msgid, " retransmit fragments");
-    msg->retransmit_frags(sendqueue, txflags);
-  }
+    msg->ack(bitmask);
 
+    if(msg->completed())
+    {
+      llarp::LogDebug("message transmitted msgid=", msgid);
+      tx.erase(msgid);
+      delete msg;
+    }
+    else if(msg->should_resend_frags(now))
+    {
+      llarp::LogDebug("message ", msgid, " retransmit fragments");
+      msg->retransmit_frags(sendqueue, txflags);
+    }
+  }
   return true;
 }
 

@@ -103,7 +103,6 @@ llarp_link::sendto(const byte_t* pubkey, llarp_buffer_t buf)
       if(inner_itr != m_sessions.end())
       {
         link = inner_itr->second;
-        llarp::LogInfo("send ", buf.sz, " bytes to ", llarp::RouterID(pubkey));
       }
     }
   }

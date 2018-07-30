@@ -39,7 +39,6 @@ namespace llarp
         if(strbuf.sz != 1)
           return false;
         self->key = *strbuf.cur;
-        llarp::LogInfo("handle messgae ", self->key);
         switch(self->key)
         {
           case 'L':
