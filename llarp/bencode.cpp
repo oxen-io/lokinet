@@ -81,10 +81,7 @@ bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
   buffer->cur++;
 
   numbuf[len] = 0;
-  auto num    = atol(numbuf);
-  if(num == -1)
-    return false;
-  *result = num;
+  *result     = strtoul(numbuf, nullptr, 10);
   return true;
 }
 
