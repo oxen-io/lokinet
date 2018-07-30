@@ -11,7 +11,8 @@ bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
-  return llarp_buffer_writef(buff, "i%lue", i);
+  return llarp_buffer_writef(buff, "i%lu", i)
+      && llarp_buffer_write(buff, "e", 1);
 }
 
 bool
