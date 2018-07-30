@@ -93,7 +93,7 @@ struct llarp_threadpool
 {
   llarp::thread::Pool *impl;
 
-  std::queue< llarp_thread_job > jobs;
+  std::queue< llarp_thread_job * > jobs;
 
   llarp_threadpool(int workers, const char *name)
       : impl(new llarp::thread::Pool(workers, name))
@@ -160,7 +160,7 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
   if(pool->impl)
     pool->impl->QueueJob(job);
   else
-    pool->jobs.push(job);
+    pool->jobs.push(new llarp_thread_job(job));
 }
 
 void
@@ -169,7 +169,9 @@ llarp_threadpool_tick(struct llarp_threadpool *pool)
   while(pool->jobs.size())
   {
     auto &job = pool->jobs.front();
-    job.work(job.user);
+    if(job && job->work && job->user)
+      job->work(job->user);
+    delete job;
     pool->jobs.pop();
   }
 }

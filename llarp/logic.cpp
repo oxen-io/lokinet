@@ -30,6 +30,7 @@ void
 llarp_logic_tick(struct llarp_logic* logic)
 {
   llarp_timer_tick_all(logic->timer, logic->thread);
+  llarp_threadpool_tick(logic->thread);
 }
 
 void

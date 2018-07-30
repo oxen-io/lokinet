@@ -178,19 +178,6 @@ llarp_timer_cancel_job(struct llarp_timer_context* t, uint32_t id)
   t->cancel(id);
 }
 
-typedef std::priority_queue< llarp::timer* > timers_t;
-
-static void
-call_timers(void* user)
-{
-  llarp_timer_context* t = static_cast< llarp_timer_context* >(user);
-  while(t->calling.size())
-  {
-    t->calling.top()->exec();
-    t->calling.pop();
-  }
-}
-
 void
 llarp_timer_tick_all(struct llarp_timer_context* t,
                      struct llarp_threadpool* pool)
@@ -217,8 +204,6 @@ llarp_timer_tick_all(struct llarp_timer_context* t,
     }
     ++itr;
   }
-  if(t->calling.size())
-    llarp_threadpool_queue_job(pool, {t, &call_timers});
 }
 
 void

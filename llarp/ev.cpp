@@ -39,10 +39,9 @@ llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
 {
   while(true)
   {
-    if(ev->tick(10) == -1)
+    if(ev->tick(100) == -1)
       break;
     llarp_logic_tick(logic);
-    llarp_threadpool_tick(logic->thread);
   }
   return 0;
 }
