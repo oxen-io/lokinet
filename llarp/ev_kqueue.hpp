@@ -44,7 +44,7 @@ namespace llarp
     read(void* buf, size_t sz)
     {
       sockaddr_in6 src;
-      socklen_t slen = sizeof(sockaddr_in6);
+      socklen_t slen = sizeof(src);
       sockaddr* addr = (sockaddr*)&src;
       ssize_t ret    = ::recvfrom(fd, buf, sz, 0, addr, &slen);
       if(ret == -1)
@@ -67,6 +67,11 @@ namespace llarp
           break;
         default:
           return -1;
+      }
+      if(!fd)
+      {
+        printf("kqueue sendto fd empty\n");
+        return -1;
       }
       ssize_t sent = ::sendto(fd, data, sz, 0, to, slen);
       if(sent == -1)
@@ -116,9 +121,11 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev->read(readbuf, sizeof(readbuf)) == -1)
         {
-          llarp::LogInfo("close ev");
+          llarp::LogInfo("tick close ev");
           close_ev(ev);
+          // ev->fd = 0;
           delete ev;
+          // break;
         }
         ++idx;
       }
@@ -146,18 +153,28 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         while(idx < result)
         {
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
-          if(ev->read(readbuf, sizeof(readbuf)) == -1)
+          if(ev && ev->fd)
           {
-            llarp::LogInfo("close ev");
-            close_ev(ev);
-            delete ev;
+            // printf("reading_ev [%x] fd[%d]\n", ev, ev->fd);
+            if(ev->read(readbuf, sizeof(readbuf)) == -1)
+            {
+              llarp::LogInfo("run error reading, should close ev");
+              close_ev(ev);
+              // ev->fd = 0;
+              //delete ev;
+              // break;
+            }
+          }
+          else
+          {
+            llarp::LogWarn("kqueue event ", idx, " udata wasnt an ev_io");
           }
           ++idx;
         }
-        for(auto& l : udp_listeners)
-          if(l->tick)
-            l->tick(l);
       }
+      for(auto& l : udp_listeners)
+        if(l->tick)
+          l->tick(l);
     } while(result != -1);
     return result;
   }
@@ -224,6 +241,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
+    // printf("closing_ev [%x] fd[%d]\n", ev, ev->fd);
     EV_SET(&change, ev->fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
     return kevent(kqueuefd, &change, 1, NULL, 0, NULL) == -1;
   }
@@ -239,6 +257,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     EV_SET(&change, fd, EVFILT_READ, EV_ADD, 0, 0, listener);
     if(kevent(kqueuefd, &change, 1, NULL, 0, NULL) == -1)
     {
+      l->impl = nullptr;
       delete listener;
       return false;
     }
@@ -254,9 +273,10 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     auto listener = static_cast< llarp::udp_listener* >(l->impl);
     if(listener)
     {
-      ret = close_ev(listener);
-      delete listener;
+      // printf("Calling close_ev for [%x] fd[%d]\n", listener, listener->fd);
+      ret     = close_ev(listener);
       l->impl = nullptr;
+      delete listener;
       udp_listeners.remove(l);
     }
     return ret;
