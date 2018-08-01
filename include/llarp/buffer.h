@@ -87,4 +87,20 @@ llarp_buffer_read_until(llarp_buffer_t *buff, char delim, byte_t *result,
 bool
 llarp_buffer_eq(llarp_buffer_t buff, const char *data);
 
+/// put big endian unsigned 16 bit integer
+bool
+llarp_buffer_put_uint16(llarp_buffer_t *buf, uint16_t i);
+
+/// put big endian unsigned 32 bit integer
+bool
+llarp_buffer_put_uint32(llarp_buffer_t *buf, uint32_t i);
+
+/// read big endian unsigned 16 bit integer
+bool
+llarp_buffer_read_uint16(llarp_buffer_t *buf, uint16_t *i);
+
+/// read big endian unsigned 32 bit integer
+bool
+llarp_buffer_read_uint32(llarp_buffer_t *buf, uint32_t *i);
+
 #endif
