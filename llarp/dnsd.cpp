@@ -5,7 +5,7 @@
 #include "llarp/net.hpp"
 #include "logger.hpp"
 
-dns_tracker dns_udp_tracker;
+extern dns_tracker dns_udp_tracker;
 
 ssize_t
 raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
@@ -35,12 +35,6 @@ llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
   return llarp_ev_udp_sendto(udp, from, buffer, length);
 }
 
-bool
-forward_dns_request(std::string request)
-{
-  return true;
-}
-
 // FIXME: we need an DNS answer not a sockaddr
 // otherwise ttl, type and class can't be relayed correctly
 void
@@ -55,7 +49,7 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
     return;
   }
 
-  const size_t BUFFER_SIZE = 1024;
+  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
   char buf[BUFFER_SIZE];
   memset(buf, 0, BUFFER_SIZE);
   char *write_buffer = buf;
@@ -121,7 +115,6 @@ void
 handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
                 dnsd_question_request *request)
 {
-  // lock_t lock(m_dnsd_Mutex);
   const size_t HDR_OFFSET = 12;
   const char *p_buffer    = buffer;
 
@@ -129,12 +122,10 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   llarp::LogDebug("dnsd rcode ", rcode);
 
   dns_msg_header *msg = decode_hdr(p_buffer);
-  // llarp::LogInfo("DNS_MSG size", sizeof(dns_msg));
   p_buffer += HDR_OFFSET;
   request->id         = msg->id;
   std::string m_qName = "";
   int length          = *p_buffer++;
-  // llarp::LogInfo("qNamLen", length);
   while(length != 0)
   {
     for(int i = 0; i < length; i++)
@@ -150,9 +141,6 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   request->question.type   = get16bits(p_buffer);
   request->question.qClass = get16bits(p_buffer);
 
-  // request->m_qName  = m_qName;
-  // request->m_qType  = request->question.type;
-  // request->m_qClass = request->question.qClass;
   llarp::LogDebug("qName  ", request->question.name);
   llarp::LogDebug("qType  ", request->question.type);
   llarp::LogDebug("qClass ", request->question.qClass);
@@ -167,7 +155,6 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   if(request->context->intercept)
   {
     sockaddr *intercept = request->context->intercept(request->question.name, request->context);
-    // if(!forward_dns_request(m_qName))
     if(intercept != nullptr)
     {
       // told that hook will handle overrides
@@ -177,52 +164,61 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
     }
   }
 
-  sockaddr *hostRes = nullptr;
+  // FIXME: check request's context
+  if (!request->context)
+  {
+    llarp::LogError("dnsd request context was not a dnsd context");
+    sockaddr *fromCopy = new sockaddr(*from);
+    writesend_dnss_response(nullptr, fromCopy, request);
+    return;
+  }
+  struct dns_tracker *tracker = (struct dns_tracker *)request->context->tracker;
+  if (!tracker)
+  {
+    llarp::LogError("dnsd request context tracker was not a dns_tracker");
+    sockaddr *fromCopy = new sockaddr(*from);
+    writesend_dnss_response(nullptr, fromCopy, request);
+    return;
+  }
+  dnsd_context *dnsd          = tracker->dnsd;
+  if (!dnsd)
+  {
+    llarp::LogError("tracker dnsd was not a dnsd context");
+    sockaddr *fromCopy = new sockaddr(*from);
+    writesend_dnss_response(nullptr, fromCopy, request);
+    return;
+  }
   if(request->llarp)
   {
-    // llarp::Addr anIp;
-    // llarp::LogInfo("Checking server request ", request);
-    struct llarp_udp_io *udp    = (struct llarp_udp_io *)request->user;
-    struct dns_tracker *tracker = (struct dns_tracker *)udp->user;
-    dnsd_context *dnsd          = tracker->dnsd;
-    // dnsd_context *dnsd = (dnsd_context *)udp->user;
-    // llarp::LogInfo("Server request UDP  ", request->user);
-    // llarp::LogInfo("server request hook ", request->hook);
-    // llarp::LogInfo("UDP ", udp);
-    // hostRes = llarp_resolveHost(udp->parent, m_qName.c_str());
+    // make async request
     llarp_resolve_host(&dnsd->client, m_qName.c_str(), &handle_dnsc_result,
                        (void *)request);
   }
   else
   {
-    hostRes = raw_resolve_host(m_qName.c_str());
-    llarp::Addr anIp(*hostRes);
-    llarp::LogDebug("DNSc got ", anIp);
-    // writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr
-    // *from, dnsd_question_request *request)
-    sockaddr *fromCopy = new sockaddr(*from);
-    writesend_dnss_response(hostRes, fromCopy, request);
+    // make raw/sync request
+    raw_resolve_host(&dnsd->client, m_qName.c_str(), &handle_dnsc_result,
+                     (void *)request);
   }
 }
 
 void
 llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
-                           const struct sockaddr *paddr, const void *buf,
+                           const struct sockaddr *saddr, const void *buf,
                            ssize_t sz)
 {
-  // lock_t lock(m_dnsd3_Mutex);
-  // llarp_link *link = static_cast< llarp_link * >(udp->user);
-  llarp::LogDebug("llarp Received Bytes ", sz);
+  if (!dns_udp_tracker.dnsd)
+  {
+    llarp::LogError("No tracker set in dnsd context");
+    return;
+  }
+  // create new request
   dnsd_question_request *llarp_dns_request = new dnsd_question_request;
-  // llarp::LogInfo("Creating server request ", &llarp_dns_request);
-  // llarp::LogInfo("Server UDP address ", udp);
-  llarp_dns_request->context = dns_udp_tracker.dnsd;
-  // make a copy of the sockaddr
-  llarp_dns_request->from  = new sockaddr(*paddr);
-  llarp_dns_request->user  = (void *)udp;
-  llarp_dns_request->llarp = true;
-  // set sock hook
-  llarp_dns_request->hook = &llarp_sendto_dns_hook_func;
+  llarp_dns_request->context = dns_udp_tracker.dnsd; // set context
+  llarp_dns_request->from    = new sockaddr(*saddr); // make a copy of the sockaddr
+  llarp_dns_request->user    = (void *)udp;
+  llarp_dns_request->llarp   = true;
+  llarp_dns_request->hook    = &llarp_sendto_dns_hook_func; // set sock hook
 
   // llarp::LogInfo("Server request's UDP ", llarp_dns_request->user);
   handle_recvfrom((char *)buf, sz, llarp_dns_request->from, llarp_dns_request);
@@ -232,13 +228,18 @@ void
 raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
                     ssize_t sz)
 {
-  llarp::LogInfo("raw Received Bytes ", sz);
+  if (!dns_udp_tracker.dnsd)
+  {
+    llarp::LogError("No tracker set in dnsd context");
+    return;
+  }
   dnsd_question_request *llarp_dns_request = new dnsd_question_request;
-  llarp_dns_request->from                  = (struct sockaddr *)saddr;
-  llarp_dns_request->user                  = (void *)sockfd;
-  llarp_dns_request->llarp                 = false;
-  llarp_dns_request->hook                  = &raw_sendto_dns_hook_func;
-  handle_recvfrom((char *)buf, sz, saddr, llarp_dns_request);
+  llarp_dns_request->context = dns_udp_tracker.dnsd; // set context
+  llarp_dns_request->from    = new sockaddr(*saddr); // make a copy of the sockaddr
+  llarp_dns_request->user    = (void *)sockfd;
+  llarp_dns_request->llarp   = false;
+  llarp_dns_request->hook    = &raw_sendto_dns_hook_func;
+  handle_recvfrom((char *)buf, sz, llarp_dns_request->from, llarp_dns_request);
 }
 
 bool
@@ -256,8 +257,9 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
   dnsd->udp.tick     = nullptr;
 
   dns_udp_tracker.dnsd = dnsd;
-
-  dnsd->intercept = nullptr;
+  
+  dnsd->tracker   = &dns_udp_tracker; // register global tracker with context
+  dnsd->intercept = nullptr;          // set default intercepter
 
   // configure dns client
   if(!llarp_dnsc_init(&dnsd->client, &dnsd->udp, dnsc_hostname, dnsc_port))
@@ -265,7 +267,14 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
     llarp::LogError("Couldnt init dns client");
     return false;
   }
-
-  return llarp_ev_add_udp(netloop, &dnsd->udp, (const sockaddr *)&bindaddr)
+  
+  if (netloop)
+  {
+    return llarp_ev_add_udp(netloop, &dnsd->udp, (const sockaddr *)&bindaddr)
       != -1;
+  }
+  else
+  {
+    return true;
+  }
 }

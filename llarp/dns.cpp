@@ -123,12 +123,12 @@ extern "C"
   void
   code_domain(char *&buffer, const std::string &domain) throw()
   {
-    int start(0), end;  // indexes
+    size_t start(0), end;  // indexes
     // llarp::LogInfo("domain [", domain, "]");
     while((end = domain.find('.', start)) != std::string::npos)
     {
       *buffer++ = end - start;  // label length octet
-      for(int i = start; i < end; i++)
+      for(size_t i = start; i < end; i++)
       {
         *buffer++ = domain[i];  // label octets
         // llarp::LogInfo("Writing ", domain[i], " at ", i);

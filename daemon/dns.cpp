@@ -126,6 +126,20 @@ main(int argc, char *argv[])
   }
   else
   {
+    
+    // configure main netloop
+    struct dnsd_context dnsd;
+    if(!llarp_dnsd_init(&dnsd, nullptr, "*", 1053,
+                        (const char *)dnsr_config.upstream_host.c_str(),
+                        dnsr_config.upstream_port))
+    {
+      // llarp::LogError("failed to initialize dns subsystem");
+      llarp::LogError("Couldnt init dns daemon");
+      return 0;
+    }
+    // Configure intercept
+    dnsd.intercept = &hookChecker;
+    
     struct sockaddr_in m_address;
     int m_sockfd;
 

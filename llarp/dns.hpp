@@ -6,10 +6,16 @@
 #include <map>
 #include <string>
 
+// dnsc can work over any UDP socket
+// however we can't ignore udp->user
+// we need to be able to reference the request (being a request or response)
+// bottom line is we can't use udp->user
+// so we'll need to track all incoming and outgoing requests
 struct dns_tracker
 {
   // uint c_responses;
   uint c_requests;
+  // request has to be a pointer
   std::map< uint, dnsc_answer_request * > client_request;
   // FIXME: support multiple dns server contexts
   dnsd_context *dnsd;
