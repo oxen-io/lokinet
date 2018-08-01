@@ -51,7 +51,7 @@ namespace llarp
       AddPath(Path* path);
 
       Path*
-      GetByUpstream(const RouterID& remote, const PathID_t& rxid);
+      GetByUpstream(const RouterID& remote, const PathID_t& rxid) const;
 
       void
       ExpirePaths(llarp_time_t now);
@@ -79,10 +79,13 @@ namespace llarp
       }
 
       Path*
-      PickRandomEstablishedPath();
+      GetEstablishedPathClosestTo(const RouterID& router) const;
 
       Path*
-      GetPathByRouter(const RouterID& router);
+      PickRandomEstablishedPath() const;
+
+      Path*
+      GetPathByRouter(const RouterID& router) const;
 
       bool
       GetCurrentIntroductions(

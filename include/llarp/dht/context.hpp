@@ -72,7 +72,7 @@ namespace llarp
       void
       PropagateIntroSetTo(const Key_t& from, uint64_t fromTX,
                           const service::IntroSet& introset, const Key_t& peer,
-                          uint64_t S);
+                          uint64_t S, const std::set< Key_t >& exclude);
 
       void
       Init(const Key_t& us, llarp_router* router);

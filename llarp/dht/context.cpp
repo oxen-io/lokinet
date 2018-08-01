@@ -90,11 +90,16 @@ namespace llarp
     void
     Context::PropagateIntroSetTo(const Key_t &from, uint64_t txid,
                                  const service::IntroSet &introset,
-                                 const Key_t &peer, uint64_t S)
+                                 const Key_t &peer, uint64_t S,
+                                 const std::set< Key_t > &exclude)
     {
       llarp::LogInfo("Propagate Introset for ", introset.A.Name(), " to ",
                      peer);
       auto id = ++ids;
+
+      std::vector< Key_t > E;
+      for(const auto &ex : exclude)
+        E.push_back(ex);
 
       TXOwner ownerKey;
       ownerKey.node = peer;
@@ -103,7 +108,7 @@ namespace llarp
                     [](const std::vector< service::IntroSet > &) {});
       pendingTX[ownerKey] = job;
       auto msg            = new llarp::DHTImmeidateMessage(peer);
-      msg->msgs.push_back(new PublishIntroMessage(introset, id, S));
+      msg->msgs.push_back(new PublishIntroMessage(introset, id, S, E));
       router->SendToOrQueue(peer, msg);
     }
 

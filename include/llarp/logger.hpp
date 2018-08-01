@@ -97,7 +97,6 @@ namespace llarp
   }
 }  // namespace llarp
 
-
 #define LogDebug(x, ...) _Log(llarp::eLogDebug, LOG_TAG, x, ##__VA_ARGS__)
 #define LogInfo(x, ...) _Log(llarp::eLogInfo, LOG_TAG, x, ##__VA_ARGS__)
 #define LogWarn(x, ...) _Log(llarp::eLogWarn, LOG_TAG, x, ##__VA_ARGS__)
@@ -108,5 +107,8 @@ namespace llarp
 #define LogWarnTag(tag, x, ...) _Log(llarp::eLogWarn, tag, x, ##__VA_ARGS__)
 #define LogErrorTag(tag, x, ...) _Log(llarp::eLogError, tag, x, ##__VA_ARGS__)
 
+#ifndef LOG_TAG
+#define LOG_TAG "default"
+#endif
 
 #endif

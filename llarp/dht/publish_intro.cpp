@@ -76,7 +76,7 @@ namespace llarp
       exclude.insert(dht.OurKey());
       if(S && dht.nodes->FindCloseExcluding(addr, peer, exclude))
       {
-        dht.PropagateIntroSetTo(From, txID, I, peer, S - 1);
+        dht.PropagateIntroSetTo(From, txID, I, peer, S - 1, exclude);
       }
       return true;
     }

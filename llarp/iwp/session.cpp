@@ -520,7 +520,7 @@ handle_generated_intro(iwp_async_intro *i)
     }
     link->EnterState(llarp_link_session::eIntroSent);
     link->lastIntroSentAt     = llarp_time_now_ms();
-    auto dlt                  = (link->createdAt - link->lastIntroSentAt);
+    auto dlt                  = (link->createdAt - link->lastIntroSentAt) + 500;
     auto logic                = link->serv->logic;
     link->intro_resend_job_id = llarp_logic_call_later(
         logic, {dlt, link, &llarp_link_session::handle_introack_timeout});
