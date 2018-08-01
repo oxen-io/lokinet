@@ -33,6 +33,8 @@
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <algorithm>
+#include <vector>
 
 namespace ini
 {
@@ -91,12 +93,52 @@ namespace ini
     {
       dump(s, top(), "");
     }
+    void
+    print()
+    {
+      dump(std::cout, top(), "");
+    }
+
+
+    bool
+    write(const std::string filename)
+    {
+      //this->print();
+      //printf("parser::Write\n");
+      std::ofstream s;
+      s.open(filename);
+      if(!s.is_open())
+      {
+        printf("parser::Write - can't open\n");
+        err("Cant open");
+        return false;
+      }
+      // reset read
+      //printf("parser::Write - committing\n");
+      this->commitStream(s);
+      s.close();
+      return true;
+    }
+
+    void
+    commitStream(std::ostream &s)
+    {
+      //printf("parser::commitStream - seekd\n");
+      this->ln_ = 0;
+      this->f_->clear();
+      this->f_->seekg(0);
+      //printf("parser::commitStream - reading top\n");
+      std::vector<std::string> savedSections;
+      this->commit(s, top_, savedSections, false);
+    }
 
    private:
     void
     dump(std::ostream &s, const Level &l, const std::string &sname);
     void
     parse(Level &l);
+    void
+    commit(std::ostream &s, Level &l, std::vector<std::string> &savedSections, bool disabledSection);
     void
     parseSLine(std::string &sname, size_t &depth);
     void
@@ -168,6 +210,7 @@ namespace ini
         size_t depth;
         std::string sname;
         parseSLine(sname, depth);
+
         Level *lp     = NULL;
         Level *parent = &l;
         if(depth > l.depth + 1)
@@ -203,6 +246,161 @@ namespace ini
             std::make_pair(trim(line_.substr(0, n)),
                            trim(line_.substr(n + 1, line_.length() - n - 1)));
         l.values.push_back(p);
+      }
+    }
+  }
+
+  inline void
+  saveValues(std::ostream &s, std::vector<std::string> excludes, Level &l)
+  {
+    //printf("checking keys[%lu] against [%lu]\n", l.values.size(), excludes.size());
+    for(auto it = l.values.begin(); it != l.values.end(); ++it)
+    {
+      //printf("key[%s]\n", it->first.c_str());
+      auto check = find(excludes.begin(), excludes.end(), it->first);
+      if (check == excludes.end())
+      {
+        //printf("We didnt write it [%s=%s]\n", it->first.c_str(), it->second.c_str());
+        s << it->first + "=" + it->second << "\n"; // commit to stream
+      }
+    }
+  }
+  
+  inline void
+  Parser::commit(std::ostream &s, Level &l, std::vector<std::string> &savedSections, bool disabledSection)
+  {
+    std::vector<std::string> keys;
+    bool keysChecked = false;
+    while(std::getline(*this->f_, line_))
+    {
+      ++ln_;
+      if(line_[0] == '#' || line_[0] == ';')
+      {
+        s << line_ << "\n"; // commit to stream
+        continue;
+      }
+      std::string tline_ = trim(line_);
+      if(tline_.empty())
+      {
+        s << line_ << "\n"; // commit to stream
+        continue;
+      }
+      if(tline_[0] == '[')
+      {
+        bool disableNextSection = false;
+        size_t depth;
+        std::string sname;
+        parseSLine(sname, depth);
+        s << "[" << sname << "]" << "\n"; // commit to stream
+
+        auto test = this->top_.sections.find(sname);
+        if (test == this->top_.sections.end())
+        {
+          // could mean we're done with this section
+          //printf("We dont have section [%s]\n", sname.c_str());
+          // we'll comment out these keys since we've intentionally dropped them
+          disableNextSection = true;
+        }
+
+        Level *lp     = NULL;
+        Level *parent = &l;
+        if(depth > l.depth + 1)
+          err("section with wrong depth");
+
+        // if depth is one level deep
+        if(l.depth == depth - 1)
+        {
+          // make level point to one of our sections
+          lp = &l.sections[sname];
+        }
+        else
+        {
+          // find the parent by depth
+          lp       = l.parent;
+          size_t n = l.depth - depth;
+          for(size_t i = 0; i < n; ++i)
+            lp = lp->parent;
+          parent = lp;
+          lp     = &lp->sections[sname];
+        }
+        /*
+        if(lp->depth != 0)
+        {
+          printf("has depth still, found [%s] at [%zu]\n", sname.c_str(), depth);
+        }
+        */
+        if(!lp->parent)
+        {
+          printf("no parent\n");
+          lp->depth  = depth;
+          lp->parent = parent;
+        }
+
+        // flush remainder of this section
+        saveValues(s, keys, l);
+        keysChecked = true;
+
+        // start next section
+        this->commit(s, *lp, savedSections, disableNextSection);
+        savedSections.push_back(sname);
+      }
+      else
+      {
+        size_t n = line_.find('=');
+        if(n == std::string::npos)
+          err("no '=' found");
+
+        auto key = trim(line_.substr(0, n));
+        keys.push_back(key);
+        auto val = std::find_if(l.values.begin(), l.values.end(),
+                                [&key](const std::pair<std::string, std::string >& element)
+                                {
+                                  return element.first == key;
+                                });
+        if (val != l.values.end())
+        {
+          if (val->second.c_str() == trim(line_.substr(n + 1, line_.length() - n - 1)))
+          {
+            // copying line
+            if (disabledSection) s << "# ";
+            s << line_ << "\n"; // commit to stream
+          }
+          else
+          {
+            // update value
+            if (disabledSection) s << "# ";
+            s << line_.substr(0, n) + "=" + val->second << "\n"; // commit to stream
+          }
+        }/*
+        else
+        {
+          // remove it
+          //printf("kv found [%s] no current\n", key.c_str());
+        } */
+      }
+    }
+
+    // handle last section
+    if (!keysChecked)
+    {
+      saveValues(s, keys, l);
+    }
+
+    // we're at the main level and have the list of sections
+    if(l.sections.size())
+    {
+      // check to make sure we've written out all the sections we need to
+      //printf("sections old[%lu] run[%lu]\n", savedSections.size(), l.sections.size());
+      for(auto it = l.sections.begin(); it != l.sections.end(); ++it)
+      {
+        //printf("sections[%s]\n", it->first.c_str());
+        auto check = find(savedSections.begin(), savedSections.end(), it->first);
+        if (check == savedSections.end())
+        {
+          //printf("Adding section [%s]\n", it->first.c_str());
+          //s << "[" << it->first + "]" << "\n"; // commit to stream
+          dump(s, l.sections[it->first], it->first);
+        }
       }
     }
   }
