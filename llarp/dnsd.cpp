@@ -2,8 +2,8 @@
 #include <llarp/dns.h>
 #include <string>
 #include "ev.hpp"
+#include "llarp/net.hpp"
 #include "logger.hpp"
-#include "net.hpp"
 
 dns_tracker dns_udp_tracker;
 

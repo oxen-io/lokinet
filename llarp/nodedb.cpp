@@ -450,8 +450,11 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
       }
       if(memcmp(prev->pubkey, itr->second.pubkey, PUBKEYSIZE) == 0)
         continue;
-      llarp_rc_copy(result, &itr->second);
-      return;
+      if(itr->second.addrs && llarp_ai_list_size(itr->second.addrs))
+      {
+        llarp_rc_copy(result, &itr->second);
+        return;
+      }
     } while(true);
   }
   else

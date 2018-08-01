@@ -99,8 +99,6 @@ namespace llarp
             {
               // drop
               nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
-              llarp::LogWarn("CoDel queue ", m_name, " drop ", nextTickInterval,
-                             " ms next interval lowest=", lowest);
               delete item;
               m_Queue.pop();
               break;

@@ -35,6 +35,7 @@ namespace llarp
           // bad msg size?
           if(strbuf.sz != 1)
             return false;
+          llarp::LogInfo("Handle DHT message ", *strbuf.base);
           switch(*strbuf.base)
           {
             case 'F':

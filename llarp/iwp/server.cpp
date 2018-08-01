@@ -66,7 +66,6 @@ llarp_link::TickSessions()
       if(itr->second->timedout(now))
       {
         itr->second->done();
-        delete itr->second;
         itr = m_PendingSessions.erase(itr);
       }
       else
@@ -157,8 +156,8 @@ void
 llarp_link::put_session(const llarp::Addr& src, llarp_link_session* impl)
 {
   lock_t lock(m_sessions_Mutex);
-  m_sessions.insert(std::make_pair(src, impl));
   impl->our_router = &router->rc;
+  m_sessions.insert(std::make_pair(src, impl));
 }
 
 void
@@ -195,24 +194,13 @@ llarp_link::iterate_sessions(std::function< bool(llarp_link_session*) > visitor)
 }
 
 void
-llarp_link::handle_logic_pump(void* user)
+llarp_link::PumpLogic()
 {
-  llarp_link* self = static_cast< llarp_link* >(user);
-  auto now         = llarp_time_now_ms();
-  self->iterate_sessions([now](llarp_link_session* s) -> bool {
+  auto now = llarp_time_now_ms();
+  iterate_sessions([now](llarp_link_session* s) -> bool {
     s->TickLogic(now);
     return true;
   });
-  self->pumpingLogic = false;
-}
-
-void
-llarp_link::PumpLogic()
-{
-  if(pumpingLogic)
-    return;
-  pumpingLogic = true;
-  llarp_logic_queue_job(logic, {this, &handle_logic_pump});
 }
 
 void
@@ -225,8 +213,8 @@ llarp_link::RemoveSession(llarp_link_session* s)
     UnmapAddr(s->addr);
     s->done();
     m_sessions.erase(itr);
-    delete s;
   }
+  delete s;
 }
 
 uint8_t*

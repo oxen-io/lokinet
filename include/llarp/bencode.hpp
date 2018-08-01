@@ -45,7 +45,8 @@ namespace llarp
     {
       if(!item.BDecode(buf))
       {
-        llarp::LogWarn("failed to decode key ", k);
+        llarp::LogWarnTag("llarp/BEncode.hpp", "failed to decode key ", k, " for entry in dict");
+        
         return false;
       }
       read = true;
@@ -62,7 +63,7 @@ namespace llarp
     {
       if(!bencode_read_integer(buf, &i))
       {
-        llarp::LogWarn("failed to decode key ", k);
+        llarp::LogWarnTag("llarp/BEncode.hpp", "failed to decode key ", k, " for integer in dict");
         return false;
       }
       read = true;

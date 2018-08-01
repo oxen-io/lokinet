@@ -5,6 +5,7 @@
 #include "buffer.hpp"
 #include "router.hpp"
 
+
 namespace llarp
 {
   namespace path
@@ -356,9 +357,11 @@ namespace llarp
     Path::HandleUpstream(llarp_buffer_t buf, const TunnelNonce& Y,
                          llarp_router* r)
     {
+      TunnelNonce n = Y;
       for(const auto& hop : hops)
       {
-        r->crypto.xchacha20(buf, hop.shared, Y);
+        r->crypto.xchacha20(buf, hop.shared, n);
+        n ^= hop.nonceXOR;
       }
       RelayUpstreamMessage* msg = new RelayUpstreamMessage;
       msg->X                    = buf;
@@ -382,9 +385,11 @@ namespace llarp
     Path::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
                            llarp_router* r)
     {
+      TunnelNonce n = Y;
       for(const auto& hop : hops)
       {
-        r->crypto.xchacha20(buf, hop.shared, Y);
+        n ^= hop.nonceXOR;
+        r->crypto.xchacha20(buf, hop.shared, n);
       }
       return HandleRoutingMessage(buf, r);
     }

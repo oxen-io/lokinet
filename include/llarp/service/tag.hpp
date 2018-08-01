@@ -22,9 +22,11 @@ namespace llarp
 
       Tag(const std::string& str) : Tag()
       {
+#ifndef MIN
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
         memcpy(data(), str.c_str(), MIN(16UL, str.size()));
 #undef MIN
+#endif
       }
 
       llarp::dht::Key_t

@@ -33,7 +33,7 @@ llarp_ev_loop_free(struct llarp_ev_loop **ev);
 
 /// run main loop
 int
-llarp_ev_loop_run(struct llarp_ev_loop *ev);
+llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic);
 
 void
 llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,

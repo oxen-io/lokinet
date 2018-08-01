@@ -42,7 +42,6 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
     crypto->encryption_keygen(eph_seckey);
   llarp_rc_clear(&remote_router);
   crypto->randbytes(token, 32);
-  llarp::LogInfo("session created");
   frame.alive();
   working.store(false);
   createdAt = llarp_time_now_ms();
@@ -110,8 +109,8 @@ send_keepalive(void *user)
 
   // send frame after encrypting
   auto buf            = llarp::StackBuffer< decltype(tmp) >(tmp);
-  self->now           = llarp_time_now_ms();
-  self->lastKeepalive = self->now;
+  self->lastKeepalive = llarp_time_now_ms();
+
   self->encrypt_frame_async_send(buf.base, buf.sz);
   self->pump();
   self->PumpCryptoOutbound();
@@ -216,7 +215,6 @@ handle_generated_session_start(iwp_async_session_start *start)
   if(llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz) == -1)
     llarp::LogError("sendto failed");
   link->EnterState(llarp_link_session::State::eSessionStartSent);
-  link->serv->remove_intro_from(link->addr);
   link->working = false;
 }
 
@@ -247,8 +245,6 @@ handle_verify_introack(iwp_async_introack *introack)
   {
     // invalid signature
     llarp::LogError("introack verify failed from ", link->addr);
-    link->serv->remove_intro_from(link->addr);
-    link->serv->RemoveSession(link);
     return;
   }
   // cancel resend
@@ -286,17 +282,6 @@ handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
 void
 llarp_link_session::done()
 {
-  auto logic = serv->logic;
-  if(establish_job_id)
-  {
-    llarp_logic_remove_call(logic, establish_job_id);
-    handle_establish_timeout(this, 0, 0);
-  }
-  if(intro_resend_job_id)
-  {
-    llarp_logic_remove_call(logic, intro_resend_job_id);
-    handle_introack_timeout(this, 0, 0);
-  }
 }
 
 void
@@ -380,10 +365,8 @@ llarp_link_session::on_intro_ack(const void *buf, size_t sz)
   {
     // too big?
     llarp::LogError("introack too big");
-    serv->RemoveSession(this);
     return;
   }
-  serv->put_intro_from(this);
   // copy buffer so we own it
   memcpy(workbuf, buf, sz);
   // set intro ack parameters
@@ -454,10 +437,6 @@ llarp_link_session::Tick(llarp_time_t now)
   {
     if(now - lastKeepalive > KEEP_ALIVE_INTERVAL)
       send_keepalive(this);
-  }
-  if(state == eEstablished)
-  {
-    this->now = now;
   }
   return false;
 }
@@ -727,7 +706,6 @@ llarp_link_session::recv(const void *buf, size_t sz)
   // frame_header hdr((byte_t *)buf);
   // llarp::LogDebug("recv - message header type ", (int)hdr.msgtype());
 
-  now = llarp_time_now_ms();
   switch(state)
   {
     case eInitial:
@@ -809,11 +787,7 @@ llarp_link_session::encrypt_frame_async_send(const void *buf, size_t sz)
 void
 llarp_link_session::pump()
 {
-  // llarp::LogInfo("session pump");
-  // TODO: in codel the timestamp may cause excssive drop when all the
-  // packets have a similar timestamp
   bool flush = false;
-  now        = llarp_time_now_ms();
   llarp_buffer_t buf;
   std::queue< sendbuf_t * > q;
   frame.sendqueue.Process(q);

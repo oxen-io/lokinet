@@ -86,6 +86,12 @@ testnet-build: testnet-configure
 $(TESTNET_EXE): testnet-build
 	cp -f $(REPO)/llarpd $(TESTNET_EXE)
 
+shared-configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DWITH_SHARED=ON
+
+shared: shared-configure
+	ninja
+
 testnet: $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
 	python3 contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)

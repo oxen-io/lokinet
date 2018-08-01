@@ -3,6 +3,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <list>
+#include <queue>
 #include <unordered_map>
 
 #include "logger.hpp"
@@ -44,10 +45,10 @@ namespace llarp
       static_cast< timer* >(user)->exec();
     }
 
-    void
-    send_job(llarp_threadpool* pool)
+    bool
+    operator<(const timer& other) const
     {
-      llarp_threadpool_queue_job(pool, {this, timer::call});
+      return (started + timeout) < (other.started + other.timeout);
     }
   };
 };  // namespace llarp
@@ -56,6 +57,7 @@ struct llarp_timer_context
 {
   std::mutex timersMutex;
   std::unordered_map< uint32_t, llarp::timer* > timers;
+  std::priority_queue< llarp::timer* > calling;
   std::mutex tickerMutex;
   std::condition_variable* ticker       = nullptr;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(100);
@@ -193,21 +195,14 @@ llarp_timer_tick_all(struct llarp_timer_context* t,
       {
         // timer hit
         itr->second->called_at = now;
-        itr->second->send_job(pool);
-        ++itr;
-      }
-      else if(itr->second->done)
-      {
-        // remove timer
+        itr->second->exec();
         llarp::timer* timer = itr->second;
         itr                 = t->timers.erase(itr);
         delete timer;
+        continue;
       }
-      else
-        ++itr;
     }
-    else  // timer not hit yet
-      ++itr;
+    ++itr;
   }
 }
 

@@ -63,6 +63,9 @@ namespace llarp
     void
     Endpoint::Tick(llarp_time_t now)
     {
+      /// reset tx id for publish
+      if(now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL)
+        m_CurrentPublishTX = 0;
       // publish descriptors
       if(ShouldPublishDescriptors(now))
       {

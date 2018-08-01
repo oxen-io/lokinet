@@ -1,5 +1,6 @@
 #include <llarp/service.hpp>
 #include "buffer.hpp"
+#include "fs.hpp"
 #include "ini.hpp"
 #include "router.hpp"
 
@@ -157,14 +158,32 @@ namespace llarp
     Identity::BEncode(llarp_buffer_t* buf) const
     {
       /// TODO: implement me
-      return false;
+      if(!bencode_start_dict(buf))
+        return false;
+      if(!BEncodeWriteDictEntry("e", enckey, buf))
+        return false;
+      if(!BEncodeWriteDictEntry("s", signkey, buf))
+        return false;
+      if(!BEncodeWriteDictInt("v", version, buf))
+        return false;
+      if(!BEncodeWriteDictEntry("x", vanity, buf))
+        return false;
+      return bencode_end(buf);
     }
 
     bool
     Identity::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
     {
-      /// TODO: implement me
-      return false;
+      bool read = false;
+      if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictEntry("s", signkey, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictEntry("x", vanity, read, key, buf))
+        return false;
+      return read;
     }
 
     void
@@ -175,13 +194,48 @@ namespace llarp
       pub.enckey  = llarp::seckey_topublic(enckey);
       pub.signkey = llarp::seckey_topublic(signkey);
       pub.vanity.Zero();
+      pub.UpdateAddr();
     }
 
     bool
     Identity::EnsureKeys(const std::string& fname, llarp_crypto* c)
     {
-      // TODO: implement me
-      return false;
+      byte_t tmp[256];
+      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::error_code ec;
+      // check for file
+      if(!fs::exists(fname, ec))
+      {
+        if(ec)
+        {
+          llarp::LogError(ec);
+          return false;
+        }
+        // regen and encode
+        RegenerateKeys(c);
+        if(!BEncode(&buf))
+          return false;
+        // rewind
+        buf.sz  = buf.cur - buf.base;
+        buf.cur = buf.base;
+        // write
+        std::ofstream f;
+        f.open(fname, std::ios::binary);
+        if(!f.is_open())
+          return false;
+        f.write((char*)buf.cur, buf.sz);
+      }
+      // read file
+      std::ifstream inf(fname, std::ios::binary);
+      inf.seekg(0, std::ios::end);
+      size_t sz = inf.tellg();
+      inf.seekg(0, std::ios::beg);
+
+      if(sz > sizeof(tmp))
+        return false;
+      // decode
+      inf.read((char*)buf.base, sz);
+      return BDecode(&buf);
     }
 
     bool
@@ -221,7 +275,6 @@ namespace llarp
     bool
     Config::Load(const std::string& fname)
     {
-      // TODO: implement me
       ini::Parser parser(fname);
       for(const auto& sec : parser.top().ordered_sections)
       {

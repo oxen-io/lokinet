@@ -7,8 +7,8 @@
 #include <unistd.h>
 #include <cstdio>
 #include "ev.hpp"
+#include "llarp/net.hpp"
 #include "logger.hpp"
-#include "net.hpp"
 
 namespace llarp
 {
@@ -130,10 +130,10 @@ struct llarp_epoll_loop : public llarp_ev_loop
         }
         ++idx;
       }
-      for(auto& l : udp_listeners)
-        if(l->tick)
-          l->tick(l);
     }
+    for(auto& l : udp_listeners)
+      if(l->tick)
+        l->tick(l);
     return result;
   }
 
@@ -168,11 +168,10 @@ struct llarp_epoll_loop : public llarp_ev_loop
           }
           ++idx;
         }
-        for(auto& l : udp_listeners)
-          if(l->tick)
-            l->tick(l);
       }
-
+      for(auto& l : udp_listeners)
+        if(l->tick)
+          l->tick(l);
     } while(epollfd != -1);
     return result;
   }

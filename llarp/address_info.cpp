@@ -135,7 +135,7 @@ llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff)
   /* rank */
   if(!bencode_write_bytestring(buff, "c", 1))
     return false;
-  if(!bencode_write_uint16(buff, ai->rank))
+  if(!bencode_write_uint64(buff, ai->rank))
     return false;
   /* dialect */
   if(!bencode_write_bytestring(buff, "d", 1))
@@ -159,7 +159,7 @@ llarp_ai_bencode(struct llarp_ai *ai, llarp_buffer_t *buff)
   /** port */
   if(!bencode_write_bytestring(buff, "p", 1))
     return false;
-  if(!bencode_write_uint16(buff, ai->port))
+  if(!bencode_write_uint64(buff, ai->port))
     return false;
 
   /** version */

@@ -2,6 +2,7 @@
 #define LLARP_NET_HPP
 #include <llarp/address_info.h>
 #include <llarp/net.h>
+#include <functional>
 #include <iostream>
 #include "mem.hpp"
 
@@ -217,25 +218,36 @@ namespace llarp
       in_addr_t addr = this->addr4()->s_addr;
       unsigned byte  = ntohl(addr);
       unsigned byte1 = byte >> 24 & 0xff;
-      unsigned byte2 = byte >> 16 & 0xff;
+      unsigned byte2 = (0x00ff0000 & byte >> 16);
       return (byte1 == 10 || (byte1 == 192 && byte2 == 168)
-              || (byte1 == 172 && (byte2 & 0xf0) == 16));
+              || (byte1 == 172 && (byte2 >= 16 || byte2 <= 31)));
     }
+
+    bool
+    isLoopback()
+    {
+      return (ntohl(addr4()->s_addr)) >> 24 == 127;
+    }
+
+    struct Hash
+    {
+      std::size_t
+      operator()(Addr const& a) const noexcept
+      {
+        if(a.af() == AF_INET)
+        {
+          return a.port() + a.addr4()->s_addr;
+        }
+        uint8_t empty[16] = {0};
+        return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();
+      }
+    };
   };
 
-  struct addrhash
-  {
-    std::size_t
-    operator()(Addr const& a) const noexcept
-    {
-      if(a.af() == AF_INET)
-      {
-        return a.port() + a.addr4()->s_addr;
-      }
-      uint8_t empty[16] = {0};
-      return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();
-    }
-  };
+  /// get first network interface with public address
+  bool
+  GetBestNetIF(std::string& ifname, int af = AF_INET);
+
 }  // namespace llarp
 
 #endif

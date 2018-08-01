@@ -9,33 +9,10 @@ bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 }
 
 bool
-bencode_write_int(llarp_buffer_t* buff, int i)
-{
-  return llarp_buffer_writef(buff, "i%de", i);
-}
-
-bool
-bencode_write_uint16(llarp_buffer_t* buff, uint16_t i)
-{
-  return llarp_buffer_writef(buff, "i%de", i);
-}
-
-bool
-bencode_write_int64(llarp_buffer_t* buff, int64_t i)
-{
-  return llarp_buffer_writef(buff, "i%lde", i);
-}
-
-bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
-  return llarp_buffer_writef(buff, "i%lde", i);
-}
-
-bool
-bencode_write_sizeint(llarp_buffer_t* buff, size_t i)
-{
-  return llarp_buffer_writef(buff, "i%lde", i);
+  return llarp_buffer_writef(buff, "i%lu", i)
+      && llarp_buffer_write(buff, "e", 1);
 }
 
 bool
@@ -81,10 +58,7 @@ bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
   buffer->cur++;
 
   numbuf[len] = 0;
-  auto num    = atol(numbuf);
-  if(num == -1)
-    return false;
-  *result = num;
+  *result     = strtoul(numbuf, nullptr, 10);
   return true;
 }
 

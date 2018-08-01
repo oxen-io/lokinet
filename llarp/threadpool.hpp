@@ -4,7 +4,7 @@
 #include <llarp/threadpool.h>
 #include <llarp/threading.hpp>
 
-#include <deque>
+#include <queue>
 
 #include <thread>
 #include <vector>
@@ -27,8 +27,24 @@ namespace llarp
       void
       Stop();
       std::vector< std::thread > threads;
-      std::deque< llarp_thread_job* > jobs;
 
+      struct Job_t
+      {
+        uint32_t id;
+        llarp_thread_job* job;
+        Job_t(uint32_t jobid, llarp_thread_job* j) : id(jobid), job(j)
+        {
+        }
+
+        bool
+        operator<(const Job_t& j) const
+        {
+          return id < j.id;
+        }
+      };
+
+      std::priority_queue< Job_t > jobs;
+      uint32_t ids = 0;
       mtx_t queue_mutex;
       std::condition_variable condition;
       std::condition_variable done;

@@ -8,7 +8,7 @@ llarp_init_logic()
   llarp_logic* logic = new llarp_logic;
   if(logic)
   {
-    logic->thread = llarp_init_threadpool(1, "llarp-logic");
+    logic->thread = llarp_init_same_process_threadpool();
     logic->timer  = llarp_init_timer();
   }
   return logic;
@@ -30,6 +30,7 @@ void
 llarp_logic_tick(struct llarp_logic* logic)
 {
   llarp_timer_tick_all(logic->timer, logic->thread);
+  llarp_threadpool_tick(logic->thread);
 }
 
 void
@@ -75,10 +76,8 @@ llarp_logic_mainloop(struct llarp_logic* logic)
 void
 llarp_logic_queue_job(struct llarp_logic* logic, struct llarp_thread_job job)
 {
-  llarp_thread_job j;
-  j.user = job.user;
-  j.work = job.work;
-  llarp_threadpool_queue_job(logic->thread, j);
+  if(job.user && job.work)
+    llarp_threadpool_queue_job(logic->thread, {job.user, job.work});
 }
 
 uint32_t

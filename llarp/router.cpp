@@ -2,15 +2,14 @@
 #include <llarp/iwp.h>
 #include <llarp/proto.h>
 #include <llarp/link_message.hpp>
-#include <llarp/messages/discard.hpp>
 #include "llarp/iwp/establish_job.hpp"
 #include "llarp/iwp/server.hpp"
 #include "llarp/iwp/session.hpp"
 
 #include "buffer.hpp"
 #include "encode.hpp"
+#include "llarp/net.hpp"
 #include "logger.hpp"
-#include "net.hpp"
 #include "str.hpp"
 
 #include <fstream>
@@ -385,30 +384,6 @@ llarp_router::Tick()
   paths.TickPaths();
 }
 
-bool
-llarp_router::send_padded_message(llarp_link_session_iter *itr,
-                                  llarp_link_session *peer)
-{
-  llarp_router *self = static_cast< llarp_router * >(itr->user);
-  llarp::RouterID remote;
-  remote = &peer->get_remote_router()->pubkey[0];
-  llarp::DiscardMessage msg(2000);
-
-  llarp_buffer_t buf =
-      llarp::StackBuffer< decltype(linkmsg_buffer) >(self->linkmsg_buffer);
-
-  if(!msg.BEncode(&buf))
-    return false;
-
-  buf.sz  = buf.cur - buf.base;
-  buf.cur = buf.base;
-
-  for(size_t idx = 0; idx < 5; ++idx)
-  {
-    peer->sendto(buf);
-  }
-  return true;
-}
 
 void
 llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
@@ -644,11 +619,13 @@ llarp_router::Run()
         continue;
       }
     }
-    llarp::LogInfo("Loading Addr: ", a, " into our RC");
-
-    llarp_ai_list_pushback(rc.addrs, &addr);
+    else
+    {
+      llarp::LogInfo("Loading Addr: ", a, " into our RC");
+      llarp_ai_list_pushback(rc.addrs, &addr);
+    }
   };
-  if(this->publicOverride && !publicFound)
+  if(this->publicOverride)
   {
     // llarp::LogWarn("Need to load our public IP into RC!");
 

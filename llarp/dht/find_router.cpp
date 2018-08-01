@@ -113,7 +113,7 @@ namespace llarp
       // iterative or not?
       if(!bencode_write_bytestring(buf, "I", 1))
         return false;
-      if(!bencode_write_int(buf, iterative ? 1 : 0))
+      if(!bencode_write_uint64(buf, iterative ? 1 : 0))
         return false;
 
       // key

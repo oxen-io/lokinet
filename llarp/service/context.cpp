@@ -48,18 +48,16 @@ namespace llarp
         {
           llarp::LogError("failed to set ", k, "=", v,
                           " for hidden service endpoint ", conf.first);
-          delete service;
           return false;
         }
       }
       if(service->Start())
       {
-        llarp::LogInfo("added hidden service endpoint ", conf.first);
+        llarp::LogInfo("added hidden service endpoint ", service->Name());
         m_Endpoints.insert(std::make_pair(conf.first, service));
         return true;
       }
       llarp::LogError("failed to start hidden service endpoint ", conf.first);
-      delete service;
       return false;
     }
   }  // namespace service

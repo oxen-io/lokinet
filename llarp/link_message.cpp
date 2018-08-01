@@ -72,9 +72,6 @@ namespace llarp
         case 'c':
           handler->msg = new LR_CommitMessage(handler->GetCurrentFrom());
           break;
-        case 'z':
-          handler->msg = new DiscardMessage(handler->GetCurrentFrom());
-          break;
         default:
           return false;
       }

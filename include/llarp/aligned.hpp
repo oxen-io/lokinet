@@ -68,6 +68,23 @@ namespace llarp
       return memcmp(l, other.l, sz) < 0;
     }
 
+    AlignedBuffer
+    operator^(const AlignedBuffer& other) const
+    {
+      AlignedBuffer< sz > ret;
+      for(size_t idx = 0; idx < sz / 8; ++idx)
+        ret.l[idx] = l[idx] ^ other.l[idx];
+      return ret;
+    }
+
+    AlignedBuffer&
+    operator^=(const AlignedBuffer& other)
+    {
+      for(size_t idx = 0; idx < sz / 8; ++idx)
+        l[idx] ^= other.l[idx];
+      return *this;
+    }
+
     size_t
     size() const
     {
@@ -90,9 +107,13 @@ namespace llarp
     bool
     IsZero() const
     {
-      AlignedBuffer< sz > b;
-      b.Zero();
-      return memcmp(l, b.l, sz) == 0;
+      size_t idx = sz / 8;
+      while(idx)
+      {
+        if(l[idx--])
+          return false;
+      }
+      return true;
     }
 
     void
@@ -156,7 +177,7 @@ namespace llarp
         return false;
       if(strbuf.sz != sz)
       {
-        llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
+        llarp::LogErrorTag("AlignedBuffer::BDecode", "bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
         return false;
       }
       memcpy(b, strbuf.base, sz);
