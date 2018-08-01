@@ -26,7 +26,7 @@ struct dnsd_question_request
   dns_msg_question question;
   // request source socket
   struct sockaddr *from;
-  sendto_dns_hook_func hook;  // sendto hook tbh
+  sendto_dns_hook_func sendto_hook;  // sendto hook tbh
   // maybe a reference to dnsd_context incase of multiple
   dnsd_context *context;  // or you can access it via user (udp)
 };

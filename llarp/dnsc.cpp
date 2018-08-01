@@ -429,8 +429,16 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   // if we sent this out, then there's an id
   struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
   struct dnsc_answer_request *request = tracker->client_request[hdr->id];
-  
-  generic_handle_dnsc_recvfrom(request, saddr, buf, sz);
+
+  // sometimes we'll get double responses
+  if (request)
+  {
+    generic_handle_dnsc_recvfrom(request, saddr, buf, sz);
+  }
+  else
+  {
+    llarp::LogWarn("Ignoring multiple responses on ID #", hdr->id);
+  }
 }
 
 bool
@@ -500,6 +508,20 @@ llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
 void
 llarp_host_resolved(dnsc_answer_request *request)
 {
+  dns_tracker *tracker = (dns_tracker *)request->context->tracker;
+  auto val = std::find_if(tracker->client_request.begin(), tracker->client_request.end(),
+                          [request](const std::pair<uint, dnsc_answer_request * >& element)
+                          {
+                            return element.second == request;
+                          });
+  if (val != tracker->client_request.end())
+  {
+    tracker->client_request[val->first] = nullptr;
+  }
+  else
+  {
+    llarp::LogWarn("Couldn't disable ", request);
+  }
   delete request;
 }
 
