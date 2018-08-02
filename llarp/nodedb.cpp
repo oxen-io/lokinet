@@ -85,6 +85,8 @@ struct llarp_nodedb
     llarp::PubKey pk = rc->pubkey;
 
     // TODO: zero out any fields you don't want to compare
+    // XXX: make a copy and then do modifications on the copy
+    //      touching external data in here is HARAM >:[
 
     // serialize both and memcmp
     byte_t nodetmp[MAX_RC_SIZE];
@@ -190,7 +192,7 @@ struct llarp_nodedb
     auto itr = fs::begin(i);
     while(itr != fs::end(i))
 #else
-    auto itr = i.begin();
+    auto itr             = i.begin();
     while(itr != itr.end())
 #endif
     {
@@ -369,7 +371,7 @@ llarp_nodedb_ensure_dir(const char *dir)
   for(const char &ch : skiplist_subdirs)
   {
     // this seems to be a problem on all targets
-	// perhaps cpp17::fs is just as screwed-up
+    // perhaps cpp17::fs is just as screwed-up
     // attempting to create a folder with no name
     if(!ch)
       return true;
@@ -450,7 +452,8 @@ void
 llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
                                struct llarp_rc *result, size_t N)
 {
-  /// TODO: check for "guard" status for N = 0?
+  /// checking for "guard" status for N = 0 is done by caller inside of
+  /// pathbuilder's scope
   auto sz = n->entries.size();
 
   if(prev)
