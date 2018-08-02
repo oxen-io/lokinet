@@ -68,7 +68,7 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
   {
     if(!bencode_read_string(r->buffer, &strbuf))
       return false;
-    if(strbuf.sz < sizeof(rc->nickname))
+    if(strbuf.sz > sizeof(rc->nickname))
       return false;
     llarp::Zero(rc->nickname, sizeof(rc->nickname));
     memcpy(rc->nickname, strbuf.base, strbuf.sz);
