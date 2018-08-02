@@ -92,7 +92,6 @@ def main():
             f.write('''[test-service]
 tag=test
 prefetch-tag=test
-prefetch-tag=nonexist
 ''')
 
     with open(args.out, 'w') as f:
@@ -100,20 +99,22 @@ prefetch-tag=nonexist
 directory = {}
 command = {}
 redirect_stderr=true
-stdout_logfile=/dev/fd/1
+#stdout_logfile=/dev/fd/1
+stdout_logfile={}/svc-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = svc-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), args.bin, args.svc))
+'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), args.bin, args.dir, args.svc))
         f.write('''[program:client-node]
 directory = {}
 command = {}
 redirect_stderr=true
-stdout_logfile=/dev/fd/1
+#stdout_logfile=/dev/fd/1
+stdout_logfile={}/client-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = client-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'client-node-%(process_num)03d'), args.bin, args.clients))
+'''.format(os.path.join(args.dir, 'client-node-%(process_num)03d'),args.bin, args.dir, args.clients))
         f.write('[supervisord]\ndirectory=.\n')
 
 
