@@ -287,7 +287,7 @@ crypto_threadworker_verifyrc(void *user)
   verify_request->valid =
       llarp_rc_verify_sig(verify_request->nodedb->crypto, &verify_request->rc);
   // if it's valid we need to set it
-  if(verify_request->valid)
+  if(verify_request->valid && llarp_rc_is_public_router(&verify_request->rc))
   {
     llarp::LogDebug("RC is valid, saving to disk");
     llarp_threadpool_queue_job(verify_request->diskworker,
@@ -296,7 +296,8 @@ crypto_threadworker_verifyrc(void *user)
   else
   {
     // callback to logic thread
-    llarp::LogWarn("RC is not valid, can't save to disk");
+    if(!verify_request->valid)
+      llarp::LogWarn("RC is not valid, can't save to disk");
     llarp_logic_queue_job(verify_request->logic,
                           {verify_request, &logic_threadworker_callback});
   }
