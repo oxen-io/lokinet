@@ -67,6 +67,7 @@ namespace llarp
         return false;
       }
       dht.services->PutNode(I);
+      llarp::LogInfo("Put Introset for ", I.A.Addr().ToString());
       replies.push_back(new GotIntroMessage({I}, txID));
       Key_t peer;
       std::set< Key_t > exclude;

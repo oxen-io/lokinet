@@ -52,6 +52,11 @@ namespace llarp
       PathID_t pathID;
       llarp_router *m_router;
       std::set< service::IntroSet > localIntroSets;
+      std::set< Key_t > asked;
+
+      service::Tag tag;
+      service::Address addr;
+
       PathLookupJob(llarp_router *r, const PathID_t &localpath, uint64_t tx)
           : txid(tx), pathID(localpath), m_router(r)
       {

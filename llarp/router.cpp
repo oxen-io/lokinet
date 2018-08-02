@@ -499,8 +499,8 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   if(job->session)
   {
     // llarp::LogDebug("try_connect got session");
-    auto session = job->session;
-    router->async_verify_RC(session->get_remote_router(), false, job);
+    // auto session = job->session;
+    // router->async_verify_RC(session->get_remote_router(), false, job);
     return;
   }
   // llarp::LogDebug("try_connect no session");
@@ -573,7 +573,6 @@ llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
     job->hook = &llarp_router::on_verify_client_rc;
   else
     job->hook = &llarp_router::on_verify_server_rc;
-
   llarp_nodedb_async_verify(job);
 }
 

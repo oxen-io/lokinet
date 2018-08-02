@@ -62,6 +62,11 @@ namespace llarp
       LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
                             const llarp::PathID_t& path, const Key_t& askpeer);
 
+      void
+      LookupIntroSetRelayed(const Key_t& requester, uint64_t txid,
+                            const service::Address& addr, bool recursive,
+                            std::vector< IMessage* >& reply);
+
       std::set< service::IntroSet >
       FindRandomIntroSetsWithTag(const service::Tag& tag, size_t max = 2);
 

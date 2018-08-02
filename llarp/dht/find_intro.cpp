@@ -126,8 +126,12 @@ namespace llarp
             {
               if(relayed)
                 dht.LookupIntroSetForPath(S, T, pathID, peer);
-              else
+              else if((peer ^ dht.OurKey())
+                      > (peer
+                         ^ From))  // peer is closer than us, recursive search
                 dht.LookupIntroSet(S, From, T, peer);
+              else  // we are closer than peer so do iterative search
+                dht.LookupIntroSet(S, From, T, peer, true);
             }
             else
             {
