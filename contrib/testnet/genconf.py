@@ -37,7 +37,8 @@ def main():
         config = CP()
         config['router'] = {
             'net-threads': '1',
-            'worker-threads': '4'
+            'worker-threads': '4',
+            'nickname': svcNodeName(nodeid)
         }
         config['bind'] = {
             args.ifname: str(args.baseport + nodeid)
@@ -64,7 +65,8 @@ def main():
 
         config['router'] = {
             'net-threads': '1',
-            'worker-threads': '2'
+            'worker-threads': '2',
+            'nickname': clientNodeName(nodeid)
         }
         config['netdb'] = {
             'dir': 'netdb'
