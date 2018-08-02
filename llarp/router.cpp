@@ -1,10 +1,10 @@
+#include "router.hpp"
 #include <llarp/iwp.h>
 #include <llarp/proto.h>
 #include <llarp/link_message.hpp>
 #include "llarp/iwp/establish_job.hpp"
 #include "llarp/iwp/server.hpp"
 #include "llarp/iwp/session.hpp"
-#include "router.hpp"
 
 #include "buffer.hpp"
 #include "encode.hpp"
@@ -594,16 +594,13 @@ llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
   llarp_nodedb_async_verify(job);
 }
 
-#include <string.h>
-
 void
 llarp_router::Run()
 {
   // zero out router contact
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
-  rc.addrs         = llarp_ai_list_new();
-  bool publicFound = false;
+  rc.addrs = llarp_ai_list_new();
 
   sockaddr *dest = (sockaddr *)&this->ip4addr;
   llarp::Addr publicAddr(*dest);
@@ -612,7 +609,6 @@ llarp_router::Run()
     if(publicAddr)
     {
       llarp::LogInfo("public address:port ", publicAddr);
-      ;
     }
   }
 
@@ -625,17 +621,8 @@ llarp_router::Run()
     if(this->publicOverride && a.sameAddr(publicAddr))
     {
       llarp::LogInfo("Found adapter for public address");
-      publicFound = true;
     }
-    if(a.isPrivate())
-    {
-      if(!this->publicOverride)
-      {
-        llarp::LogWarn("Skipping private network link: ", a);
-        continue;
-      }
-    }
-    else
+    if(!a.isPrivate())
     {
       llarp::LogInfo("Loading Addr: ", a, " into our RC");
       llarp_ai_list_pushback(rc.addrs, &addr);
