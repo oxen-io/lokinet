@@ -116,7 +116,7 @@ struct llarp_nodedb
     std::string skiplistDir;
     skiplistDir += hexString[hexString.length() - 1];
     fs::path filepath = nodePath / skiplistDir / hexString;
-    return filepath;
+    return filepath.string();
   }
 
   bool
