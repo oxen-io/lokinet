@@ -47,7 +47,7 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
 struct dnsc_context
 {
   /// Target: DNS server hostname/port to use
-  // FIXME: ipv6 it
+  // FIXME: ipv6 it & make it a vector
   sockaddr *server;
   /// tracker
   struct dns_tracker *tracker;

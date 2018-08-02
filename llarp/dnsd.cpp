@@ -1,3 +1,5 @@
+#include <llarp/logic.h>
+
 #include "dnsd.hpp"
 #include <llarp/dns.h>
 #include <string>
@@ -33,22 +35,6 @@ llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
   // llarp::ev_io * evio = static_cast< llarp::ev_io * >(udp->impl);
   // printf("ev_io[%x]\n", evio);
   return llarp_ev_udp_sendto(udp, from, buffer, length);
-}
-
-std::string const default_chars =
-"abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
-
-#include <random>
-
-std::string random_string(size_t len = 15, std::string const &allowed_chars = default_chars) {
-  std::mt19937_64 gen { std::random_device()() };
-  
-  std::uniform_int_distribution<size_t> dist { 0, allowed_chars.length()-1 };
-  
-  std::string ret;
-  
-  std::generate_n(std::back_inserter(ret), len, [&] { return allowed_chars[dist(gen)]; });
-  return ret;
 }
 
 void
@@ -87,7 +73,7 @@ write404_dnss_response(const struct sockaddr *from, dnsd_question_request *reque
   *write_buffer++ = 0; // write a null byte
   
   uint out_bytes = write_buffer - bufferBegin;
-  llarp::LogDebug("Sending ", out_bytes, " bytes");
+  llarp::LogDebug("Sending 404, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from, buf, out_bytes);
 }
@@ -152,13 +138,13 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
   put32bits(write_buffer, 1);  // ttl
 
   put16bits(write_buffer, 4);  // rdLength
-  *write_buffer++ = 172;
-  *write_buffer++ = 16;
+  *write_buffer++ = 127;
   *write_buffer++ = 0;
-  *write_buffer++ = 117;
+  *write_buffer++ = 0;
+  *write_buffer++ = 1;
   
   uint out_bytes = write_buffer - bufferBegin;
-  llarp::LogDebug("Sending ", out_bytes, " bytes");
+  llarp::LogDebug("Sending cname, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from, buf, out_bytes);
 }
@@ -169,13 +155,12 @@ void
 writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
                         dnsd_question_request *request)
 {
+  //llarp::Addr test(*from);
+  //llarp::LogInfo("from ", test);
   if(!hostRes)
   {
     llarp::LogWarn("Failed to resolve");
-    // FIXME: actually return correct packet
-    //write404_dnss_response(from, request);
-    usleep(1000*1000);
-    writecname_dnss_response(random_string(32, "abcdefghijklmnopqrstuvwxyz")+"bob.loki", from, request);
+    write404_dnss_response(from, request);
     return;
   }
 
@@ -218,7 +203,7 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
   *write_buffer++ = ip[3];
 
   uint out_bytes = write_buffer - bufferBegin;
-  llarp::LogDebug("Sending ", out_bytes, " bytes");
+  llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from, buf, out_bytes);
 }
@@ -281,26 +266,38 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   llarp::LogInfo("DNS request from ", test2);
    */
 
+  sockaddr *fromCopy = new sockaddr(*from); // make our own sockaddr that won't get cleaned up
   if(request->context->intercept)
   {
-    sockaddr *intercept = request->context->intercept(request->question.name, request->context);
+    //llarp::Addr test(*from);
+    //llarp::LogInfo("from ", test);
+    dnsd_query_hook_response *intercept = request->context->intercept(request->question.name, fromCopy, request);
     if(intercept != nullptr)
     {
-      // told that hook will handle overrides
-      sockaddr *fromCopy = new sockaddr(*from);
-      writesend_dnss_response(intercept, fromCopy, request);
-      return;
+      llarp::LogDebug("hook returned a response");
+      if (intercept->dontSendResponse)
+      {
+        llarp::LogDebug("HOOKED: Not sending a response");
+        return;
+      }
+      if (intercept->dontLookUp == true && intercept->returnThis)
+      {
+        llarp::LogDebug("HOOKED: sending an immediate override");
+        // told that hook will handle overrides
+        writesend_dnss_response(intercept->returnThis, fromCopy, request);
+        return;
+      }
     }
   }
 
-  // FIXME: check request's context
+  // FIXME: check request and context's client
   if (!request->context)
   {
     llarp::LogError("dnsd request context was not a dnsd context");
-    sockaddr *fromCopy = new sockaddr(*from);
     writesend_dnss_response(nullptr, fromCopy, request);
     return;
   }
+  /*
   struct dns_tracker *tracker = (struct dns_tracker *)request->context->tracker;
   if (!tracker)
   {
@@ -317,16 +314,18 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
     writesend_dnss_response(nullptr, fromCopy, request);
     return;
   }
+  */
+  
   if(request->llarp)
   {
     // make async request
-    llarp_resolve_host(&dnsd->client, m_qName.c_str(), &handle_dnsc_result,
+    llarp_resolve_host(&request->context->client, m_qName.c_str(), &handle_dnsc_result,
                        (void *)request);
   }
   else
   {
     // make raw/sync request
-    raw_resolve_host(&dnsd->client, m_qName.c_str(), &handle_dnsc_result,
+    raw_resolve_host(&request->context->client, m_qName.c_str(), &handle_dnsc_result,
                      (void *)request);
   }
 }
@@ -373,6 +372,7 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
 
 bool
 llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
+                struct llarp_logic *logic,
                 const char *dnsd_ifname, uint16_t dnsd_port,
                 const char *dnsc_hostname, uint16_t dnsc_port)
 {
@@ -388,6 +388,7 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
   dns_udp_tracker.dnsd = dnsd;
   
   dnsd->tracker   = &dns_udp_tracker; // register global tracker with context
+  dnsd->logic     = logic;            // set logic worker for timers
   dnsd->intercept = nullptr;          // set default intercepter
 
   // configure dns client

@@ -27,17 +27,85 @@ handle_signal(int sig)
   done = true;
 }
 
-sockaddr *
-hookChecker(std::string name, struct dnsd_context *context)
-{
-  llarp::LogInfo("Hooked ", name);
-  // cast your context->user;
-  return nullptr;
+std::string const default_chars =
+"abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+
+#include <random>
+
+std::string random_string(size_t len = 15, std::string const &allowed_chars = default_chars) {
+  std::mt19937_64 gen { std::random_device()() };
+  
+  std::uniform_int_distribution<size_t> dist { 0, allowed_chars.length()-1 };
+  
+  std::string ret;
+  
+  std::generate_n(std::back_inserter(ret), len, [&] { return allowed_chars[dist(gen)]; });
+  return ret;
 }
 
-// FIXME: make configurable
-#define SERVER "8.8.8.8"
-#define PORT 53
+/*
+ /// check_online_request hook definition
+ typedef void (*check_query_request_hook_func)(struct check_query_request *);
+ 
+ struct check_query_request
+ {
+ bool done;
+ ///hook
+ check_query_request_hook_func hook;
+ };
+ 
+ void
+ llarp_dnsd_checkQuery_resolved(struct check_query_request *request)
+ {
+ }
+ */
+
+struct check_query_simple_request
+{
+  const struct sockaddr *from;
+  dnsd_question_request *request;
+};
+
+void
+llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
+{
+  if(left)
+    return;
+  //struct check_query_request *request = static_cast< struct check_query_request * >(u);
+  struct check_query_simple_request *qr = static_cast< struct check_query_simple_request * >(u);
+  llarp::LogInfo("Sending cname to delay");
+  writecname_dnss_response(random_string(32, "abcdefghijklmnopqrstuvwxyz")+"bob.loki", qr->from, qr->request);
+  delete qr;
+}
+
+dnsd_query_hook_response *
+hookChecker(std::string name, const struct sockaddr *from,
+            struct dnsd_question_request *request)
+{
+  dnsd_query_hook_response *response = new dnsd_query_hook_response;
+  response->dontLookUp       = false;
+  response->dontSendResponse = false;
+  response->returnThis       = nullptr;
+  llarp::LogInfo("Hooked ", name);
+  std::string lName = name;
+  std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
+  // FIXME: probably should just read the last 5 bytes
+  if (lName.find(".loki") != std::string::npos)
+  {
+    llarp::LogInfo("Detect Loki Lookup");
+    //check_query_request *query_request = new check_query_request;
+    //query_request->hook = &llarp_dnsd_checkQuery_resolved;
+    check_query_simple_request *qr = new check_query_simple_request;
+    qr->from    = from;
+    qr->request = request;
+    // nslookup on osx is about 5 sec before a retry
+    llarp_logic_call_later(request->context->logic,
+                           {5000, qr, &llarp_dnsd_checkQuery});
+    response->dontSendResponse = true;
+  }
+  // cast your context->user;
+  return response;
+}
 
 struct dns_relay_config
 {
@@ -92,6 +160,8 @@ main(int argc, char *argv[])
   iter.visit = &dns_iter_config;
   llarp_config_iter(config_reader, &iter);
   llarp::LogInfo("config [", conffname, "] loaded");
+  
+  const uint16_t server_port = 1053;
 
   // llarp::SetLogLevel(llarp::eLogDebug);
 
@@ -101,12 +171,14 @@ main(int argc, char *argv[])
     llarp_ev_loop *netloop   = nullptr;
     llarp_threadpool *worker = nullptr;
     llarp_logic *logic       = nullptr;
-
-    llarp_ev_loop_alloc(&netloop);
+    
+    llarp_ev_loop_alloc(&netloop); // set up netio worker
+    worker = llarp_init_same_process_threadpool();
+    logic  = llarp_init_single_process_logic(worker); // set up logic worker
 
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053,
+    if(!llarp_dnsd_init(&dnsd, netloop, logic, "*", server_port,
                         (const char *)dnsr_config.upstream_host.c_str(),
                         dnsr_config.upstream_port))
     {
@@ -118,18 +190,21 @@ main(int argc, char *argv[])
     dnsd.intercept = &hookChecker;
 
     llarp::LogInfo("singlethread start");
-    worker = llarp_init_same_process_threadpool();
-    logic  = llarp_init_single_process_logic(worker);
     llarp_ev_loop_run_single_process(netloop, worker, logic);
     llarp::LogInfo("singlethread end");
     llarp_ev_loop_free(&netloop);
   }
   else
   {
+    // need this for timer stuff
+    llarp_threadpool *worker = nullptr;
+    llarp_logic *logic       = nullptr;
+    worker = llarp_init_same_process_threadpool();
+    logic  = llarp_init_single_process_logic(worker); // set up logic worker
     
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, nullptr, "*", 1053,
+    if(!llarp_dnsd_init(&dnsd, nullptr, logic, "*", server_port,
                         (const char *)dnsr_config.upstream_host.c_str(),
                         dnsr_config.upstream_port))
     {

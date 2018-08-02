@@ -123,6 +123,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   // register our self with the tracker
   dns_tracker *tracker = request->context->tracker;
   uint16_t id                 = ++tracker->c_requests;
+  if (id == 65535) id = 0;
   tracker->client_request[id] = request;
   
   dns_query *dns_packet = build_dns_packet((char *)request->question.name.c_str(), id, 1);
@@ -215,7 +216,10 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   {
     question = decode_question((const char *)castBuf);
     llarp::LogDebug("Read a question");
-    castBuf += question->name.length() + 8;
+    // 1 dot: 1 byte for length + length
+    // 4 bytes for class/type
+    castBuf += question->name.length() + 1 + 4;
+    castBuf += 2; // skip answer label
   }
   
   // FIXME: only handling one atm
@@ -225,6 +229,11 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     answer = decode_answer((const char *)castBuf);
     llarp::LogDebug("Read an answer");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
+    auto diff = castBuf - (unsigned char *)buf;
+    if (diff > sz)
+    {
+      break;
+    }
   }
   // handle authority records (usually no answers with these, so we'll just
   // stomp) usually NS records tho

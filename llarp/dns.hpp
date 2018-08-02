@@ -5,6 +5,7 @@
 #include <sys/types.h>  // for uint & ssize_t
 #include <map>
 #include <string>
+#include <vector>
 
 // dnsc can work over any UDP socket
 // however we can't ignore udp->user
@@ -59,6 +60,15 @@ struct dns_msg_answer
   uint32_t ttl;
   uint16_t rdLen;
   uint8_t *rData;
+};
+
+struct dns_packet
+{
+  struct dns_msg_header *header;
+  std::vector<dns_msg_question *> questions;
+  std::vector<dns_msg_answer *> answers;
+  std::vector<dns_msg_answer *> auth_rrs;
+  std::vector<dns_msg_answer *> additional_rrs;
 };
 
 extern "C"

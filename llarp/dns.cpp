@@ -2,6 +2,34 @@
 #include "dnsd.hpp"  // for llarp_handle_dnsd_recvfrom, dnsc
 #include "logger.hpp"
 
+/*
+ <domain-name> is a domain name represented as a series of labels, and
+ terminated by a label with zero length.  <character-string> is a single
+ length octet followed by that number of characters.  <character-string>
+ is treated as binary information, and can be up to 256 characters in
+ length (including the length octet).
+ */
+std::string getDNSstring(const char *buffer)
+{
+  std::string str = "";
+  uint8_t length      = *buffer++;
+  //printf("dnsStringLen[%d]\n", length);
+  //llarp::LogInfo("dnsStringLen ", length);
+  if (!length) return str;
+  while(length != 0)
+  {
+    for(int i = 0; i < length; i++)
+    {
+      char c = *buffer++;
+      str.append(1, c);
+    }
+    length = *buffer++;
+    if(length != 0)
+      str.append(1, '.');
+  }
+  return str;
+}
+
 extern "C"
 {
   uint16_t
@@ -14,7 +42,6 @@ extern "C"
     return value;
   }
 
-  // uint32_t
   uint32_t
   get32bits(const char *&buffer) throw()
   {
@@ -52,11 +79,14 @@ extern "C"
     hdr->arCount = get16bits(buffer);
     return hdr;
   }
-
+  
   dns_msg_question *
   decode_question(const char *buffer)
   {
     dns_msg_question *question = new dns_msg_question;
+    std::string m_qName        = getDNSstring(buffer);
+    //buffer += m_qName.size() + 1;
+    /*
     std::string m_qName        = "";
     int length                 = *buffer++;
     // llarp::LogInfo("qNamLen", length);
@@ -71,6 +101,7 @@ extern "C"
       if(length != 0)
         m_qName.append(1, '.');
     }
+    */
     question->name   = m_qName;
     question->type   = get16bits(buffer);
     question->qClass = get16bits(buffer);
@@ -81,6 +112,17 @@ extern "C"
   decode_answer(const char *buffer)
   {
     dns_msg_answer *answer = new dns_msg_answer;
+    // skip for now until we can handle compressed labels
+    /*
+    std::string aName      = getDNSstring((char *)buffer);
+    buffer += aName.size() + 1;
+    */
+    uint8_t first          = *buffer++;
+    // SOA hack
+    if (first != 12)
+    {
+      buffer --; // rewind buffer one byte
+    }
     answer->type           = get16bits(buffer);
     // assert(answer->type < 259);
     if(answer->type > 259)
@@ -97,6 +139,33 @@ extern "C"
     }
     else
     {
+      switch(answer->type)
+      {
+        case 6: // type 6 = SOA
+        {
+          // 2 names, then 4x 32bit
+          std::string mname   = getDNSstring((char *)buffer);
+          std::string rname   = getDNSstring((char *)buffer);
+          uint32_t    serial  = get32bits(buffer);
+          uint32_t    refresh = get32bits(buffer);
+          uint32_t    retry   = get32bits(buffer);
+          uint32_t    expire  = get32bits(buffer);
+          uint32_t    minimum = get32bits(buffer);
+          llarp::LogInfo("mname   : ", mname);
+          llarp::LogInfo("rname   : ", rname);
+          llarp::LogDebug("serial  : ", serial);
+          llarp::LogDebug("refresh : ", refresh);
+          llarp::LogDebug("retry   : ", retry);
+          llarp::LogDebug("expire  : ", expire);
+          llarp::LogDebug("minimum : ", minimum);
+        }
+        break;
+        default:
+        {
+          //llarp::LogWarn("Unknown Type ", answer->type);
+        }
+        break;
+      }
       llarp::LogWarn("Unknown Type ", answer->type);
     }
     return answer;
