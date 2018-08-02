@@ -12,6 +12,7 @@
 #include "mem.hpp"
 
 static const char skiplist_subdirs[] = "0123456789abcdef";
+static const fs::path RC_FILE_EXT    = ".signed";
 
 struct llarp_nodedb
 {
@@ -21,7 +22,7 @@ struct llarp_nodedb
 
   llarp_crypto *crypto;
   // std::map< llarp::pubkey, llarp_rc  > entries;
-  std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKeyHash > entries;
+  std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKey::Hash > entries;
   fs::path nodePath;
 
   void
@@ -38,11 +39,11 @@ struct llarp_nodedb
   llarp_rc *
   getRC(const llarp::PubKey &pk)
   {
-    return &entries[pk];
+    return &entries.at(pk);
   }
 
   bool
-  Has(const llarp::PubKey &pk)
+  Has(const llarp::PubKey &pk) const
   {
     return entries.find(pk) != entries.end();
   }
@@ -66,7 +67,7 @@ struct llarp_nodedb
   */
 
   bool
-  pubKeyExists(llarp_rc *rc)
+  pubKeyExists(llarp_rc *rc) const
   {
     // extract pk from rc
     llarp::PubKey pk = rc->pubkey;
@@ -105,22 +106,16 @@ struct llarp_nodedb
   }
 
   std::string
-  getRCFilePath(const byte_t *pubkey)
+  getRCFilePath(const byte_t *pubkey) const
   {
     char ftmp[68] = {0};
     const char *hexname =
         llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pubkey, ftmp);
     std::string hexString(hexname);
-#ifdef _WIN32
-    std::string filepath = nodePath.string();
-#else
-    std::string filepath = nodePath;
-#endif
-    filepath.append(PATH_SEP);
-    filepath.append(&hexString[hexString.length() - 1]);
-    filepath.append(PATH_SEP);
-    filepath.append(hexname);
-    filepath.append(".signed");
+    hexString += RC_FILE_EXT;
+    std::string skiplistDir;
+    skiplistDir += hexString[hexString.length() - 1];
+    fs::path filepath = nodePath / skiplistDir / hexString;
     return filepath;
   }
 
@@ -172,6 +167,8 @@ struct llarp_nodedb
 
     for(const char &ch : skiplist_subdirs)
     {
+      if(!ch)
+        continue;
       std::string p;
       p += ch;
       fs::path sub = path / p;
@@ -192,7 +189,7 @@ struct llarp_nodedb
     auto itr = fs::begin(i);
     while(itr != fs::end(i))
 #else
-    auto itr             = i.begin();
+    auto itr = i.begin();
     while(itr != itr.end())
 #endif
     {
@@ -207,20 +204,12 @@ struct llarp_nodedb
   bool
   loadfile(const fs::path &fpath)
   {
-#if __APPLE__ && __MACH__
-    // skip .DS_Store files
-    if(strstr(fpath.c_str(), ".DS_Store") != 0)
-    {
+    if(fpath.extension() != RC_FILE_EXT)
       return false;
-    }
-#endif
     llarp_rc rc;
     llarp_rc_clear(&rc);
-#ifdef _WIN32
+
     if(!llarp_rc_read(fpath.string().c_str(), &rc))
-#else
-    if(!llarp_rc_read(fpath.c_str(), &rc))
-#endif
     {
       llarp::LogError("Signature read failed", fpath);
       return false;

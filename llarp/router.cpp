@@ -166,11 +166,7 @@ llarp_router::try_connect(fs::path rcfile)
 {
   llarp_rc remote;
   llarp_rc_new(&remote);
-#ifdef _WIN32
   if(!llarp_rc_read(rcfile.string().c_str(), &remote))
-#else
-  if(!llarp_rc_read(rcfile.c_str(), &remote))
-#endif
   {
     llarp::LogError("failure to decode or verify of remote RC");
     return;
@@ -200,24 +196,15 @@ llarp_router::EnsureIdentity()
 {
   if(!EnsureEncryptionKey())
     return false;
-#ifdef _WIN32
   return llarp_findOrCreateIdentity(&crypto, ident_keyfile.string().c_str(),
                                     identity);
-#else
-  return llarp_findOrCreateIdentity(&crypto, ident_keyfile.c_str(), identity);
-#endif
 }
 
 bool
 llarp_router::EnsureEncryptionKey()
 {
-#ifdef _WIN32
   return llarp_findOrCreateEncryption(
       &crypto, encryption_keyfile.string().c_str(), &this->encryption);
-#else
-  return llarp_findOrCreateEncryption(&crypto, encryption_keyfile.c_str(),
-                                      &this->encryption);
-#endif
 }
 
 void
@@ -247,11 +234,8 @@ llarp_router::SaveRC()
 
   if(llarp_rc_bencode(&rc, &buf))
   {
-#ifdef _WIN32
     std::ofstream f(our_rc_file.string());
-#else
-    std::ofstream f(our_rc_file);
-#endif
+
     if(f.is_open())
     {
       f.write((char *)buf.base, buf.cur - buf.base);
@@ -759,27 +743,10 @@ llarp_router::InitOutboundLink()
 {
   if(outboundLink)
     return true;
-#ifdef __MINGW32__
-  llarp_iwp_args args = {
-      .crypto       = &crypto,
-      .logic        = logic,
-      .cryptoworker = tp,
-      .router       = this,
-      .keyfile      = transport_keyfile.string().c_str(),
-  };
-#elif !defined(_MSC_VER)
-  llarp_iwp_args args = {
-      .crypto       = &crypto,
-      .logic        = logic,
-      .cryptoworker = tp,
-      .router       = this,
-      .keyfile      = transport_keyfile.c_str(),
-  };
-#else
+
   llarp_iwp_args args = {
       &crypto, logic, tp, this, transport_keyfile.string().c_str(),
   };
-#endif
 
   auto link = new(std::nothrow) llarp_link(args);
 
@@ -931,11 +898,9 @@ llarp_rc_read(const char *fpath, llarp_rc *result)
     printf("File[%s] not found\n", fpath);
     return false;
   }
-#ifdef _WIN32
+
   std::ifstream f(our_rc_file.string(), std::ios::binary);
-#else
-  std::ifstream f(our_rc_file, std::ios::binary);
-#endif
+
   if(!f.is_open())
   {
     printf("Can't open file [%s]\n", fpath);
@@ -989,11 +954,7 @@ llarp_rc_write(struct llarp_rc *rc, const char *fpath)
 
   if(llarp_rc_bencode(rc, &buf))
   {
-#ifdef _WIN32
     std::ofstream f(our_rc_file.string(), std::ios::binary);
-#else
-    std::ofstream f(our_rc_file, std::ios::binary);
-#endif
     if(f.is_open())
     {
       f.write((char *)buf.base, buf.cur - buf.base);
@@ -1065,21 +1026,13 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
   {
     llarp::LogInfo("generating new identity key");
     crypto->identity_keygen(secretkey);
-#ifdef _WIN32
     std::ofstream f(path.string(), std::ios::binary);
-#else
-    std::ofstream f(path, std::ios::binary);
-#endif
     if(f.is_open())
     {
       f.write((char *)secretkey, SECKEYSIZE);
     }
   }
-#ifdef _WIN32
   std::ifstream f(path.string(), std::ios::binary);
-#else
-  std::ifstream f(path, std::ios::binary);
-#endif
   if(f.is_open())
   {
     f.read((char *)secretkey, SECKEYSIZE);
@@ -1101,21 +1054,14 @@ llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
   {
     llarp::LogInfo("generating new encryption key");
     crypto->encryption_keygen(*encryption);
-#ifdef _WIN32
     std::ofstream f(path.string(), std::ios::binary);
-#else
-    std::ofstream f(path, std::ios::binary);
-#endif
     if(f.is_open())
     {
       f.write((char *)encryption, SECKEYSIZE);
     }
   }
-#ifdef _WIN32
+
   std::ifstream f(path.string(), std::ios::binary);
-#else
-  std::ifstream f(path, std::ios::binary);
-#endif
   if(f.is_open())
   {
     f.read((char *)encryption, SECKEYSIZE);
@@ -1172,23 +1118,7 @@ namespace llarp
       if(!StrEq(key, "*"))
       {
         llarp::LogInfo("interface specific binding activated");
-#ifdef __MINGW32__
-        llarp_iwp_args args = {
-            .crypto       = &self->crypto,
-            .logic        = self->logic,
-            .cryptoworker = self->tp,
-            .router       = self,
-            .keyfile      = self->transport_keyfile.string().c_str(),
-        };
-#elif !defined(_MSC_VER)
-        llarp_iwp_args args = {
-            .crypto       = &self->crypto,
-            .logic        = self->logic,
-            .cryptoworker = self->tp,
-            .router       = self,
-            .keyfile      = self->transport_keyfile.c_str(),
-        };
-#else
+
         llarp_iwp_args args = {
             &self->crypto,
             self->logic,
@@ -1196,7 +1126,6 @@ namespace llarp
             self,
             self->transport_keyfile.string().c_str(),
         };
-#endif
 
         link = new(std::nothrow) llarp_link(args);
 
