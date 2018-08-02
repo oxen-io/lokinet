@@ -44,7 +44,6 @@ set(THREAD_LIB pthread)
 endif()
 
 if(STATIC_LINK)
-  set(STATIC_LINK_LIBS c)
   add_cflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
   add_cxxflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
 endif()
