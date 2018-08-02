@@ -31,6 +31,12 @@ namespace llarp
       {
         m_PrefetchTags.insert(v);
       }
+      if(k == "prefetch-addr")
+      {
+        Address addr;
+        if(addr.FromString(v))
+          m_PrefetchAddrs.insert(addr);
+      }
       return true;
     }
 
@@ -47,6 +53,7 @@ namespace llarp
       {
         if(context)
         {
+          llarp::LogInfo("BEEP");
           byte_t tmp[128] = {0};
           memcpy(tmp, "BEEP", 4);
           auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -109,6 +116,22 @@ namespace llarp
         }
       }
 
+      for(const auto& addr : m_PrefetchAddrs)
+      {
+        if(!HasPathToService(addr))
+        {
+          PathAlignJob* j = new PathAlignJob(addr);
+          if(!EnsurePathToService(j->remote,
+                                  std::bind(&PathAlignJob::HandleResult, j,
+                                            std::placeholders::_1),
+                                  10000))
+          {
+            llarp::LogWarn("failed to ensure path to ", addr);
+            delete j;
+          }
+        }
+      }
+
       // prefetch tags
       for(const auto& tag : m_PrefetchTags)
       {
@@ -126,7 +149,11 @@ namespace llarp
                                   std::bind(&PathAlignJob::HandleResult, j,
                                             std::placeholders::_1),
                                   10000))
+          {
+            llarp::LogWarn("failed to ensure path to ", introset.A.Addr(),
+                           " for tag");
             delete j;
+          }
         }
         itr->second.Expire(now);
         if(itr->second.ShouldRefresh(now))
@@ -170,6 +197,12 @@ namespace llarp
     Endpoint::Name() const
     {
       return m_Name + ":" + m_Identity.pub.Name();
+    }
+
+    bool
+    Endpoint::HasPathToService(const Address& addr) const
+    {
+      return m_RemoteSessions.find(addr) != m_RemoteSessions.end();
     }
 
     bool
@@ -287,7 +320,7 @@ namespace llarp
     bool
     Endpoint::PublishIntroSet(llarp_router* r)
     {
-      auto path = PickRandomEstablishedPath();
+      auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr());
       if(path)
       {
         m_CurrentPublishTX = llarp_randint();
@@ -392,16 +425,46 @@ namespace llarp
       }
     }
 
+    void
+    Endpoint::HandlePathBuilt(path::Path* p)
+    {
+      p->SetDataHandler(std::bind(&Endpoint::HandleHiddenServiceFrame, this,
+                                  std::placeholders::_1));
+    }
+
+    bool
+    Endpoint::HandleHiddenServiceFrame(const ProtocolFrame* frame)
+    {
+      llarp::LogInfo("handle hidden service frame");
+      return true;
+    }
+
+    void
+    Endpoint::OutboundContext::HandlePathBuilt(path::Path* p)
+    {
+      p->SetDataHandler(
+          std::bind(&Endpoint::OutboundContext::HandleHiddenServiceFrame, this,
+                    std::placeholders::_1));
+    }
+
+    bool
+    Endpoint::OutboundContext::HandleHiddenServiceFrame(
+        const ProtocolFrame* frame)
+    {
+      return m_Parent->HandleHiddenServiceFrame(frame);
+    }
+
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
                                   llarp_time_t timeoutMS)
     {
-      auto path = PickRandomEstablishedPath();
+      auto path = GetEstablishedPathClosestTo(remote);
       if(!path)
       {
         llarp::LogWarn("No outbound path for lookup yet");
         return false;
       }
+      llarp::LogInfo(Name(), " Ensure Path to ", remote.ToString());
       {
         auto itr = m_RemoteSessions.find(remote);
         if(itr != m_RemoteSessions.end())
@@ -414,9 +477,10 @@ namespace llarp
       if(itr != m_PendingServiceLookups.end())
       {
         // duplicate
+        llarp::LogWarn("duplicate pending service lookup to ",
+                       remote.ToString());
         return false;
       }
-      llarp::LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
       m_PendingServiceLookups.insert(std::make_pair(remote, hook));
 

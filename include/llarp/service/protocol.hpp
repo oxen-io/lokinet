@@ -45,7 +45,6 @@ namespace llarp
     struct ProtocolFrame : public llarp::routing::IMessage
     {
       llarp::Encrypted D;
-      uint64_t S = 0;
       llarp::PubKey H;
       llarp::KeyExchangeNonce N;
       llarp::Signature Z;

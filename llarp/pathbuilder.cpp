@@ -119,7 +119,7 @@ namespace llarp
       user   = u;
       result = func;
       worker = pool;
-      LRCM   = new LR_CommitMessage;
+      LRCM   = new LR_CommitMessage();
 
       for(size_t idx = 0; idx < MAXHOPS; ++idx)
       {
@@ -187,6 +187,7 @@ llarp_pathbuilder_context::llarp_pathbuilder_context(
     : llarp::path::PathSet(pathNum), router(p_router), dht(p_dht), numHops(hops)
 {
   p_router->paths.AddPathBuilder(this);
+  p_router->crypto.encryption_keygen(enckey);
 }
 
 bool
@@ -198,6 +199,12 @@ llarp_pathbuilder_context::SelectHop(llarp_nodedb* db, llarp_rc* prev,
   else
     llarp_nodedb_select_random_hop(db, prev, cur, hop);
   return true;
+}
+
+byte_t*
+llarp_pathbuilder_context::GetTunnelEncryptionSecretKey()
+{
+  return enckey;
 }
 
 void

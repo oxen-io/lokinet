@@ -22,13 +22,15 @@ namespace llarp
 
   struct Logger
   {
+    std::string nodeName;
     LogLevel minlevel = eLogInfo;
     std::ostream& out;
     std::mutex access;
-    Logger() : Logger(std::cout)
+    Logger() : Logger(std::cout, "unnamed")
     {
     }
-    Logger(std::ostream& o) : out(o)
+
+    Logger(std::ostream& o, const std::string& name) : nodeName(name), out(o)
     {
     }
   };
@@ -57,7 +59,7 @@ namespace llarp
   /** internal */
   template < typename... TArgs >
   void
-  _Log(LogLevel lvl, const char* fname, TArgs&&... args) noexcept
+  _Log(LogLevel lvl, const char* fname, int lineno, TArgs&&... args) noexcept
   {
     if(_glog.minlevel > lvl)
       return;
@@ -83,7 +85,8 @@ namespace llarp
         break;
     }
     std::string tag = fname;
-    ss << llarp_time_now_ms() << " " << tag;
+    ss << _glog.nodeName << " " << llarp_time_now_ms() << " " << tag << ":"
+       << lineno;
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
     ss << (char)27 << "[0;0m";
@@ -97,15 +100,23 @@ namespace llarp
   }
 }  // namespace llarp
 
-#define LogDebug(x, ...) _Log(llarp::eLogDebug, LOG_TAG, x, ##__VA_ARGS__)
-#define LogInfo(x, ...) _Log(llarp::eLogInfo, LOG_TAG, x, ##__VA_ARGS__)
-#define LogWarn(x, ...) _Log(llarp::eLogWarn, LOG_TAG, x, ##__VA_ARGS__)
-#define LogError(x, ...) _Log(llarp::eLogError, LOG_TAG, x, ##__VA_ARGS__)
+#define LogDebug(x, ...) \
+  _Log(llarp::eLogDebug, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
+#define LogInfo(x, ...) \
+  _Log(llarp::eLogInfo, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
+#define LogWarn(x, ...) \
+  _Log(llarp::eLogWarn, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
+#define LogError(x, ...) \
+  _Log(llarp::eLogError, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
 
-#define LogDebugTag(tag, x, ...) _Log(llarp::eLogDebug, tag, x, ##__VA_ARGS__)
-#define LogInfoTag(tag, x, ...) _Log(llarp::eLogInfo, tag, x, ##__VA_ARGS__)
-#define LogWarnTag(tag, x, ...) _Log(llarp::eLogWarn, tag, x, ##__VA_ARGS__)
-#define LogErrorTag(tag, x, ...) _Log(llarp::eLogError, tag, x, ##__VA_ARGS__)
+#define LogDebugTag(tag, x, ...) \
+  _Log(llarp::eLogDebug, tag, __LINE__, x, ##__VA_ARGS__)
+#define LogInfoTag(tag, x, ...) \
+  _Log(llarp::eLogInfo, tag, __LINE__, x, ##__VA_ARGS__)
+#define LogWarnTag(tag, x, ...) \
+  _Log(llarp::eLogWarn, tag, __LINE__, x, ##__VA_ARGS__)
+#define LogErrorTag(tag, x, ...) \
+  _Log(llarp::eLogError, tag, __LINE__, x, ##__VA_ARGS__)
 
 #ifndef LOG_TAG
 #define LOG_TAG "default"

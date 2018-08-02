@@ -74,6 +74,9 @@ namespace llarp
         return &m_Identity;
       }
 
+      void
+      HandlePathBuilt(path::Path* path);
+
       /// context needed to initiate an outbound hidden service session
       struct OutboundContext : public llarp_pathbuilder_context
       {
@@ -102,11 +105,17 @@ namespace llarp
         void
         UpdateIntroSet();
 
+        void
+        HandlePathBuilt(path::Path* path);
+
         bool
         SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
 
         bool
         HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
+
+        bool
+        HandleHiddenServiceFrame(const ProtocolFrame* frame);
 
        private:
         void
@@ -176,6 +185,8 @@ namespace llarp
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id
       std::unordered_map< uint64_t, service::IServiceLookup* > m_PendingLookups;
+      /// prefetch remote address list
+      std::set< Address > m_PrefetchAddrs;
       /// hidden service tag
       Tag m_Tag;
       /// prefetch descriptors for these hidden service tags

@@ -46,14 +46,16 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetEstablishedPathClosestTo(const RouterID& id) const
+    PathSet::GetEstablishedPathClosestTo(const AlignedBuffer< 32 >& id) const
     {
       Path* path = nullptr;
-      RouterID dist;
+      AlignedBuffer< 32 > dist;
       dist.Fill(0xff);
       for(const auto& item : m_Paths)
       {
-        RouterID localDist = item.second->Endpoint() ^ id;
+        if(!item.second->IsReady())
+          continue;
+        AlignedBuffer< 32 > localDist = item.second->Endpoint() ^ id;
         if(localDist < dist)
         {
           dist = localDist;

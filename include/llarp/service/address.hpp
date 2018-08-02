@@ -13,6 +13,9 @@ namespace llarp
       std::string
       ToString() const;
 
+      bool
+      FromString(const std::string& str);
+
       Address() : llarp::AlignedBuffer< 32 >()
       {
       }

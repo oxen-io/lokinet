@@ -12,8 +12,17 @@ namespace llarp
   }
 }  // namespace llarp
 
-void
-cSetLogLevel(LogLevel lvl)
+extern "C"
 {
-  llarp::SetLogLevel((llarp::LogLevel)lvl);
+  void
+  cSetLogLevel(LogLevel lvl)
+  {
+    llarp::SetLogLevel((llarp::LogLevel)lvl);
+  }
+
+  void
+  cSetLogNodeName(const char* name)
+  {
+    llarp::_glog.nodeName = name;
+  }
 }

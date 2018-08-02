@@ -384,7 +384,6 @@ llarp_router::Tick()
   paths.TickPaths();
 }
 
-
 void
 llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
                      llarp_link *link)
@@ -1190,6 +1189,16 @@ namespace llarp
     }
     else if(StrEq(section, "router"))
     {
+      if(StrEq(key, "nickname"))
+      {
+        if(llarp_rc_set_nickname(&self->rc, val))
+        {
+          // set logger name here
+          _glog.nodeName = self->rc.Nick();
+        }
+        else
+          llarp::LogWarn("failed to set nickname to ", val);
+      }
       if(StrEq(key, "encryption-privkey"))
       {
         self->encryption_keyfile = val;

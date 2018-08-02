@@ -22,6 +22,7 @@ struct HiddenServiceTest : public ::testing::Test
   {
     ident.RegenerateKeys(Crypto());
     ident.pub.vanity.Randomize();
+    ident.pub.UpdateAddr();
   }
 };
 
@@ -41,3 +42,11 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
   ASSERT_TRUE(ident.SignIntroSet(I, Crypto()));
   ASSERT_TRUE(I.VerifySignature(Crypto()));
 };
+
+TEST_F(HiddenServiceTest, TestAddressToFromString)
+{
+  auto str = ident.pub.Addr().ToString();
+  llarp::service::Address addr;
+  ASSERT_TRUE(addr.FromString(str));
+  ASSERT_TRUE(addr == ident.pub.Addr());
+}

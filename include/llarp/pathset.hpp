@@ -44,7 +44,7 @@ namespace llarp
       void
       RemovePath(Path* path);
 
-      void
+      virtual void
       HandlePathBuilt(Path* path);
 
       void

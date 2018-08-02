@@ -5,7 +5,6 @@
 #include "buffer.hpp"
 #include "router.hpp"
 
-
 namespace llarp
 {
   namespace path
@@ -460,6 +459,14 @@ namespace llarp
       }
       llarp::LogWarn("got unwarrented path confirm message on tx=", RXID(),
                      " rx=", RXID());
+      return false;
+    }
+
+    bool
+    Path::HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
+    {
+      if(m_DataHandler)
+        return m_DataHandler(frame);
       return false;
     }
 
