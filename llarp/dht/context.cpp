@@ -46,13 +46,13 @@ namespace llarp
       ctx->ScheduleCleanupTimer();
     }
 
-    struct PathTagLookupJob
+    struct PathLookupJob
     {
       uint64_t txid;
       PathID_t pathID;
       llarp_router *m_router;
-      std::set< service::IntroSet > localtags;
-      PathTagLookupJob(llarp_router *r, const PathID_t &localpath, uint64_t tx)
+      std::set< service::IntroSet > localIntroSets;
+      PathLookupJob(llarp_router *r, const PathID_t &localpath, uint64_t tx)
           : txid(tx), pathID(localpath), m_router(r)
       {
       }
@@ -66,12 +66,12 @@ namespace llarp
         {
           for(const auto &introset : results)
           {
-            localtags.insert(introset);
+            localIntroSets.insert(introset);
           }
           llarp::routing::DHTMessage msg;
-          auto sz = localtags.size();
+          auto sz = localIntroSets.size();
           std::vector< service::IntroSet > intros(sz);
-          for(const auto &i : localtags)
+          for(const auto &i : localIntroSets)
           {
             intros[--sz] = i;
           }
@@ -118,17 +118,38 @@ namespace llarp
     {
       auto id = ++ids;
       TXOwner ownerKey;
-      ownerKey.node       = askpeer;
-      ownerKey.txid       = id;
-      PathTagLookupJob *j = new PathTagLookupJob(router, path, txid);
-      j->localtags        = FindRandomIntroSetsWithTag(tag);
+      ownerKey.node     = askpeer;
+      ownerKey.txid     = id;
+      PathLookupJob *j  = new PathLookupJob(router, path, txid);
+      j->localIntroSets = FindRandomIntroSetsWithTag(tag);
       SearchJob job(
           OurKey(), txid,
-          std::bind(&PathTagLookupJob::OnResult, j, std::placeholders::_1));
+          std::bind(&PathLookupJob::OnResult, j, std::placeholders::_1));
       pendingTX[ownerKey] = job;
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
       auto dhtmsg = new FindIntroMessage(tag, id);
+      msg->msgs.push_back(dhtmsg);
+      router->SendToOrQueue(askpeer, msg);
+    }
+
+    void
+    Context::LookupIntroSetForPath(const service::Address &addr, uint64_t txid,
+                                   const llarp::PathID_t &path,
+                                   const Key_t &askpeer)
+    {
+      auto id = ++ids;
+      TXOwner ownerKey;
+      ownerKey.node    = askpeer;
+      ownerKey.txid    = id;
+      PathLookupJob *j = new PathLookupJob(router, path, txid);
+      SearchJob job(
+          OurKey(), txid,
+          std::bind(&PathLookupJob::OnResult, j, std::placeholders::_1));
+      pendingTX[ownerKey] = job;
+
+      auto msg    = new llarp::DHTImmeidateMessage(askpeer);
+      auto dhtmsg = new FindIntroMessage(addr, id);
       msg->msgs.push_back(dhtmsg);
       router->SendToOrQueue(askpeer, msg);
     }
@@ -312,6 +333,7 @@ namespace llarp
     /// handles replying with a GIM for a lookup
     struct IntroSetInformJob
     {
+      std::set< service::IntroSet > localIntroSets;
       Key_t replyNode;
       uint64_t txid;
       llarp_router *m_Router;
@@ -323,10 +345,19 @@ namespace llarp
       void
       OnResult(const std::vector< llarp::service::IntroSet > &results)
       {
+        for(const auto &introset : results)
+        {
+          localIntroSets.insert(introset);
+        }
         if(replyNode != m_Router->dht->impl.OurKey())
         {
+          std::vector< service::IntroSet > reply;
+          for(const auto &introset : localIntroSets)
+          {
+            reply.push_back(introset);
+          }
           auto msg = new llarp::DHTImmeidateMessage(replyNode);
-          msg->msgs.push_back(new GotIntroMessage(results, txid));
+          msg->msgs.push_back(new GotIntroMessage(reply, txid));
           m_Router->SendToOrQueue(replyNode, msg);
         }
         delete this;
@@ -335,7 +366,9 @@ namespace llarp
 
     void
     Context::LookupTag(const llarp::service::Tag &tag, const Key_t &whoasked,
-                       uint64_t txid, const Key_t &askpeer, bool iterative)
+                       uint64_t txid, const Key_t &askpeer,
+                       const std::set< service::IntroSet > &include,
+                       bool iterative)
     {
       auto id = ++ids;
       if(txid == 0)
@@ -344,6 +377,7 @@ namespace llarp
       ownerKey.node        = askpeer;
       ownerKey.txid        = id;
       IntroSetInformJob *j = new IntroSetInformJob(router, whoasked, txid);
+      j->localIntroSets    = include;
       SearchJob job(
           whoasked, txid,
           std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1));

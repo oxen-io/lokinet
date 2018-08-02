@@ -109,24 +109,31 @@ namespace llarp
         const auto introset = dht.GetIntroSetByServiceAddress(S);
         if(introset)
         {
-          replies.push_back(new GotIntroMessage({*introset}, T));
-        }
-        else if(iterative)
-        {
-          // we are iterative and don't have it, reply with a direct reply
-          replies.push_back(new GotIntroMessage({}, T));
+          service::IntroSet i = *introset;
+          replies.push_back(new GotIntroMessage({i}, T));
         }
         else
         {
-          // we are recursive
-          if(dht.nodes->FindCloseExcluding(S, peer, exclude))
+          if(iterative)
           {
-            dht.LookupIntroSet(S, From, T, peer);
+            // we are iterative and don't have it, reply with a direct reply
+            replies.push_back(new GotIntroMessage({}, T));
           }
           else
           {
-            llarp::LogError("cannot find closer peers for introset lookup for ",
-                            S);
+            // we are recursive
+            if(dht.nodes->FindCloseExcluding(S, peer, exclude))
+            {
+              if(relayed)
+                dht.LookupIntroSetForPath(S, T, pathID, peer);
+              else
+                dht.LookupIntroSet(S, From, T, peer);
+            }
+            else
+            {
+              llarp::LogError(
+                  "cannot find closer peers for introset lookup for ", S);
+            }
           }
         }
       }
@@ -146,20 +153,23 @@ namespace llarp
         }
         else
         {
+          auto introsets = dht.FindRandomIntroSetsWithTag(N);
           if(iterative)
           {
-            std::vector< service::IntroSet > introsets;
-            for(const auto& introset : dht.FindRandomIntroSetsWithTag(N, 8))
-              introsets.push_back(introset);
+            std::vector< service::IntroSet > reply;
+            for(const auto& introset : introsets)
+            {
+              reply.push_back(introset);
+            }
             // we are iterative and don't have it, reply with a direct reply
-            replies.push_back(new GotIntroMessage(introsets, T));
+            replies.push_back(new GotIntroMessage(reply, T));
           }
           else
           {
             // tag lookup
             if(dht.nodes->FindCloseExcluding(N.Key(), peer, exclude))
             {
-              dht.LookupTag(N, From, T, peer, true);
+              dht.LookupTag(N, From, T, peer, introsets, true);
             }
           }
         }
