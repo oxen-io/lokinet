@@ -368,7 +368,7 @@ namespace llarp
       TXOwner ownerKey;
       ownerKey.node        = askpeer;
       ownerKey.txid        = id;
-      IntroSetInformJob *j = new IntroSetInformJob(router, askpeer, txid);
+      IntroSetInformJob *j = new IntroSetInformJob(router, whoasked, txid);
       SearchJob job(
           whoasked, txid, addr, excludes,
           std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1));
