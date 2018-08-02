@@ -12,7 +12,7 @@
 #include "mem.hpp"
 
 static const char skiplist_subdirs[] = "0123456789abcdef";
-static const fs::path RC_FILE_EXT    = ".signed";
+static const std::string RC_FILE_EXT = ".signed";
 
 struct llarp_nodedb
 {
