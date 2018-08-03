@@ -3,7 +3,7 @@
 #include <llarp/buffer.h>
 #include <llarp/net.h>
 
-#if __FreeBSD__ || __OpenBSD__ || __NetBSD__ || (__APPLE && __MACH__)
+#if __FreeBSD__ || __OpenBSD__ || __NetBSD__ || (__APPLE__ && __MACH__)
 // kqueue / kevent
 #include <sys/event.h>
 #include <sys/time.h>
@@ -155,7 +155,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
               llarp::LogInfo("run error reading, should close ev");
               close_ev(ev);
               // ev->fd = 0;
-              //delete ev;
+              // delete ev;
               // break;
             }
           }
