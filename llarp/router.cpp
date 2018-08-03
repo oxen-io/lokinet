@@ -239,11 +239,11 @@ llarp_router::SaveRC()
     if(f.is_open())
     {
       f.write((char *)buf.base, buf.cur - buf.base);
-      llarp::LogInfo("our RC saved to ", our_rc_file.c_str());
+      llarp::LogInfo("our RC saved to ", our_rc_file.string().c_str());
       return true;
     }
   }
-  llarp::LogError("did not save RC to ", our_rc_file.c_str());
+  llarp::LogError("did not save RC to ", our_rc_file.string().c_str());
   return false;
 }
 

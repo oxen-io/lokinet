@@ -23,6 +23,7 @@ namespace llarp
 
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz) = 0;
+
     virtual ~ev_io()
     {
 #ifndef _WIN32
