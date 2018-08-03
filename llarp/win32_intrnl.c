@@ -126,7 +126,7 @@ tdiGetSetOfThings(HANDLE tcpFile, DWORD toiClass, DWORD toiType, DWORD toiId,
     if(!status)
       return 0xc0000001;
 
-	arraySize = allocationSizeForEntityArray;
+    arraySize = allocationSizeForEntityArray;
     entitySet = HeapAlloc(GetProcessHeap(), 0, arraySize);
 
     if(!entitySet)
