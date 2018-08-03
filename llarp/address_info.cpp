@@ -126,7 +126,7 @@ llarp_ai_bdecode(struct llarp_ai *ai, llarp_buffer_t *buff)
   struct dict_reader reader = {
       .buffer = nullptr, .user = ai, .on_key = &llarp_ai_decode_key};
 #else
-	struct dict_reader reader = { nullptr, ai, &llarp_ai_decode_key };
+    struct dict_reader reader = { nullptr, ai, &llarp_ai_decode_key };
 #endif
   return bencode_read_dict(buff, &reader);
 }
