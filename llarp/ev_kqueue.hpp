@@ -101,11 +101,13 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   int
   tick(int ms)
   {
-    (void)ms;
     struct kevent events[1024];
     int result;
     byte_t readbuf[2048];
-    result = kevent(kqueuefd, nullptr, 0, events, 1024, nullptr);
+    timespec t;
+    t.tv_sec  = 0;
+    t.tv_nsec = ms * 1000;
+    result    = kevent(kqueuefd, nullptr, 0, events, 1024, &t);
     // result: 0 is a timeout
     if(result > 0)
     {
