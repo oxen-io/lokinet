@@ -4,9 +4,9 @@
 #include <llarp/net.h>
 #include <windows.h>
 #include <cstdio>
+#include <llarp/net.hpp>
 #include "ev.hpp"
 #include "logger.hpp"
-#include <llarp/net.hpp>
 
 namespace llarp
 {
@@ -14,11 +14,18 @@ namespace llarp
   {
     llarp_udp_io* udp;
 
-	// we receive queued data in the OVERLAPPED data field,
-	// much like the pipefds in the UNIX kqueue and loonix
-	// epoll handles
-	// 0 is the read port, 1 is the write port
+    // we receive queued data in the OVERLAPPED data field,
+    // much like the pipefds in the UNIX kqueue and loonix
+    // epoll handles
+    // 0 is the read port, 1 is the write port
     WSAOVERLAPPED portfds[2] = {0};
+    size_t iosz;
+
+    // the unique completion key that helps us to
+    // identify the object instance for which we receive data
+    // Here, we'll use the address of the udp_listener instance, converted to
+    // its literal int/int64 representation.
+    ULONG_PTR listener_id = 0;
 
     udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
 
@@ -26,19 +33,34 @@ namespace llarp
     {
     }
 
+    int
+    getData(void* buf, size_t sz, size_t ret)
+    {
+      iosz = ret;
+      return read(buf, sz);
+    }
+
     virtual int
     read(void* buf, size_t sz)
     {
       sockaddr_in6 src;
-      socklen_t slen = sizeof(sockaddr_in6);
-      sockaddr* addr = (sockaddr*)&src;
-      WSABUF wbuf    = {sz, static_cast< char* >(buf)};
+      socklen_t slen      = sizeof(src);
+      sockaddr* addr      = (sockaddr*)&src;
+      unsigned long flags = 0;
+      WSABUF wbuf         = {sz, static_cast< char* >(buf)};
       // WSARecvFrom
-      int ret =
-          ::WSARecvFrom(fd, &wbuf, sz, nullptr, 0, addr, &slen, &portfds[0], nullptr);
-      if(ret == -1)
+      int ret = ::WSARecvFrom(fd, &wbuf, 1, nullptr, &flags, addr, &slen,
+                              &portfds[0], nullptr);
+      // 997 is the error code for queued ops
+      int s_errno = ::WSAGetLastError();
+      if(ret && s_errno != 997)
+      {
+        llarp::LogWarn("recv socket error ", s_errno);
         return -1;
-      udp->recvfrom(udp, addr, buf, ret);
+      }
+
+	  // get the _real_ payload size from tick()
+      udp->recvfrom(udp, addr, buf, iosz);
       return 0;
     }
 
@@ -60,12 +82,14 @@ namespace llarp
       }
       // WSASendTo
       ssize_t sent =
-          ::WSASendTo(fd, &wbuf, sz, nullptr, 0, to, slen, &portfds[1], nullptr);
-      if(sent == -1)
+          ::WSASendTo(fd, &wbuf, 1, nullptr, 0, to, slen, &portfds[1], nullptr);
+      int s_errno = ::WSAGetLastError();
+      if(sent && s_errno != 997)
       {
-        llarp::LogWarn(strerror(errno));
+        llarp::LogWarn("send socket error ", s_errno);
+        return -1;
       }
-      return sent;
+      return 0;
     }
   };
 };  // namespace llarp
@@ -106,16 +130,92 @@ struct llarp_win32_loop : public llarp_ev_loop
     return false;
   }
 
+  // it works! -despair86, 3-Aug-18 @0420
   int
   tick(int ms)
   {
-    return 0;
+    // The only field we really care about is
+    // the listener_id, as it contains the address
+    // of the udp_listener instance.
+    DWORD iolen = 0;
+    // ULONG_PTR is guaranteed to be the same size
+    // as an arch-specific pointer value
+    ULONG_PTR ev_id      = 0;
+    WSAOVERLAPPED* qdata = nullptr;
+    int result           = 0;
+    int idx              = 0;
+    byte_t readbuf[2048];
+
+    do
+    {
+      llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
+      if(ev && ev->fd)
+      {
+        if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
+        {
+          llarp::LogInfo("tick close ev");
+          close_ev(ev);
+        }
+      }
+      ++idx;
+    } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms));
+
+    for(auto& l : udp_listeners)
+    {
+      if(l->tick)
+        l->tick(l);
+    }
+
+    if(!idx)
+      return -1;
+    else
+      result = idx;
+
+    return result;
   }
 
+  // ok apparently this isn't being used yet...
   int
   run()
   {
-    return 0;
+    // The only field we really care about is
+    // the listener_id, as it contains the address
+    // of the udp_listener instance.
+    DWORD iolen = 0;
+    // ULONG_PTR is guaranteed to be the same size
+    // as an arch-specific pointer value
+    ULONG_PTR ev_id      = 0;
+    WSAOVERLAPPED* qdata = nullptr;
+    int result           = 0;
+    int idx              = 0;
+    byte_t readbuf[2048];
+
+    do
+    {
+      llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
+      if(ev && ev->fd)
+      {
+        if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
+        {
+          llarp::LogInfo("tick close ev");
+          close_ev(ev);
+        }
+      }
+      ++idx;
+    } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10));
+
+    for(auto& l : udp_listeners)
+    {
+      if(l->tick)
+        l->tick(l);
+    }
+
+    if(!idx)
+      return -1;
+    else
+      result = idx;
+
+    return result;
   }
 
   SOCKET
@@ -138,14 +238,16 @@ struct llarp_win32_loop : public llarp_ev_loop
     if(fd == INVALID_SOCKET)
     {
       perror("WSASocket()");
-      return -1;
+      return INVALID_SOCKET;
     }
 
     if(addr->sa_family == AF_INET6)
     {
       // enable dual stack explicitly
       int dual = 1;
-      if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&dual, sizeof(dual))== -1)
+      if(setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, (const char*)&dual,
+                    sizeof(dual))
+         == -1)
       {
         // failed
         perror("setsockopt()");
@@ -161,6 +263,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       closesocket(fd);
       return INVALID_SOCKET;
     }
+    llarp::LogInfo("socket fd is ", fd);
     return fd;
   }
 
@@ -168,17 +271,22 @@ struct llarp_win32_loop : public llarp_ev_loop
   close_ev(llarp::ev_io* ev)
   {
     // On Windows, just close the socket to decrease the iocp refcount
-    return closesocket(ev->fd) == 0;
+    // and stop any pending I/O
+    BOOL stopped = ::CancelIo(reinterpret_cast< HANDLE >(ev->fd));
+    return closesocket(ev->fd) == 0 && stopped == TRUE;
   }
 
   bool
   udp_listen(llarp_udp_io* l, const sockaddr* src)
   {
     SOCKET fd = udp_bind(src);
+    llarp::LogDebug("new socket fd is ", fd);
     if(fd == INVALID_SOCKET)
       return false;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
-    if(!::CreateIoCompletionPort(reinterpret_cast< HANDLE >(fd), iocpfd, 0, 0))
+    listener->listener_id         = reinterpret_cast< ULONG_PTR >(listener);
+    if(!::CreateIoCompletionPort(reinterpret_cast< HANDLE >(fd), iocpfd,
+                                 listener->listener_id, 0))
     {
       delete listener;
       return false;
@@ -196,7 +304,7 @@ struct llarp_win32_loop : public llarp_ev_loop
         static_cast< llarp::udp_listener* >(l->impl);
     if(listener)
     {
-      ret = close_ev(listener);
+      ret     = close_ev(listener);
       l->impl = nullptr;
       delete listener;
       udp_listeners.remove(l);
@@ -207,7 +315,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   void
   stop()
   {
-    // do nothing, we dispose of the IOCP in destructor
+    // do nothing, cancel io in close_ev()
   }
 };
 
