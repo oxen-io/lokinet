@@ -106,7 +106,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     byte_t readbuf[2048];
     timespec t;
     t.tv_sec  = 0;
-    t.tv_nsec = ms * 1000;
+    t.tv_nsec = ms * 1000UL;
     result    = kevent(kqueuefd, nullptr, 0, events, 1024, &t);
     // result: 0 is a timeout
     if(result > 0)
@@ -137,7 +137,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   {
     timespec t;
     t.tv_sec  = 0;
-    t.tv_nsec = 100000UL;
+    t.tv_nsec = 10000UL;
     struct kevent events[1024];
     int result;
     byte_t readbuf[2048];
