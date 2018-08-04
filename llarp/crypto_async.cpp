@@ -256,6 +256,10 @@ namespace iwp
   {
     iwp_async_session_start *session =
         static_cast< iwp_async_session_start * >(user);
+    // possible repeat job
+    if(session->buf == nullptr)
+      return;
+
     auto crypto = session->iwp->crypto;
     auto logic  = session->iwp->logic;
 

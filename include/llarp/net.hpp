@@ -124,7 +124,7 @@ namespace llarp
 #ifndef _MSC_VER
       if(inet_ntop(a.af(), ptr, tmp, sz))
 #else
-      if(inet_ntop(a.af(), (void*)ptr, tmp,sz))
+      if(inet_ntop(a.af(), (void*)ptr, tmp, sz))
 #endif
       {
         out << tmp;
@@ -152,22 +152,22 @@ namespace llarp
       switch(af())
       {
         case AF_INET:
-          dst = (void*)&((sockaddr_in*)other)->sin_addr.s_addr;
-          src = (void*)&_addr.sin6_addr.s6_addr[12];
-          ptr = &((sockaddr_in*)other)->sin_port;
+          dst  = (void*)&((sockaddr_in*)other)->sin_addr.s_addr;
+          src  = (void*)&_addr.sin6_addr.s6_addr[12];
+          ptr  = &((sockaddr_in*)other)->sin_port;
           slen = sizeof(in_addr);
           break;
         case AF_INET6:
-          dst = (void*)((sockaddr_in6*)other)->sin6_addr.s6_addr;
-          src = (void*)_addr.sin6_addr.s6_addr;
-          ptr = &((sockaddr_in6*)other)->sin6_port;
+          dst  = (void*)((sockaddr_in6*)other)->sin6_addr.s6_addr;
+          src  = (void*)_addr.sin6_addr.s6_addr;
+          ptr  = &((sockaddr_in6*)other)->sin6_port;
           slen = sizeof(in6_addr);
           break;
         default:
           return;
       }
       memcpy(dst, src, slen);
-      *ptr = htons(port());
+      *ptr             = htons(port());
       other->sa_family = af();
     }
 
@@ -220,7 +220,7 @@ namespace llarp
     isPrivate()
     {
       in_addr_t addr = this->addr4()->s_addr;
-      unsigned byte = ntohl(addr);
+      unsigned byte  = ntohl(addr);
       unsigned byte1 = byte >> 24 & 0xff;
       unsigned byte2 = (0x00ff0000 & byte >> 16);
       return (byte1 == 10 || (byte1 == 192 && byte2 == 168)
@@ -240,7 +240,7 @@ namespace llarp
       {
         if(a.af() == AF_INET)
         {
-          return a.port() + a.addr4()->s_addr;
+          return a.port() ^ a.addr4()->s_addr;
         }
         uint8_t empty[16] = {0};
         return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();

@@ -101,6 +101,11 @@ namespace llarp
         llarp_dht_context* ctx,
         std::vector< llarp::dht::IMessage* >& replies) const
     {
+      if(R > 5)
+      {
+        llarp::LogError("R value too big, ", R, "> 5");
+        return false;
+      }
       auto& dht = ctx->impl;
       Key_t peer;
       std::set< Key_t > exclude = {dht.OurKey(), From};
@@ -146,7 +151,7 @@ namespace llarp
         if(relayed)
         {
           // tag lookup
-          if(dht.nodes->FindCloseExcluding(N.Key(), peer, exclude))
+          if(dht.nodes->GetRandomNodeExcluding(peer, exclude))
           {
             dht.LookupTagForPath(N, T, pathID, peer);
           }
@@ -158,7 +163,7 @@ namespace llarp
         else
         {
           auto introsets = dht.FindRandomIntroSetsWithTag(N);
-          if(iterative)
+          if(iterative || R == 0)
           {
             std::vector< service::IntroSet > reply;
             for(const auto& introset : introsets)
@@ -171,9 +176,9 @@ namespace llarp
           else
           {
             // tag lookup
-            if(dht.nodes->FindCloseExcluding(N.Key(), peer, exclude))
+            if(dht.nodes->GetRandomNodeExcluding(peer, exclude))
             {
-              dht.LookupTag(N, From, T, peer, introsets, true);
+              dht.LookupTag(N, From, T, peer, introsets, R - 1);
             }
           }
         }

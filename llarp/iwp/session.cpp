@@ -2,6 +2,7 @@
 #define NOMINMAX
 #endif
 #include <llarp/iwp.h>
+#include <algorithm>
 #include <llarp/crypto.hpp>
 #include <llarp/iwp/server.hpp>
 #include <llarp/iwp/session.hpp>
@@ -9,7 +10,6 @@
 #include "buffer.hpp"
 #include "link/encoder.hpp"
 #include "llarp/ev.h"  // for handle_frame_encrypt
-#include <algorithm>
 
 static void
 handle_crypto_outbound(void *u)
@@ -467,7 +467,6 @@ static void
 handle_verify_session_start(iwp_async_session_start *s)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(s->user);
-  self->serv->remove_intro_from(self->addr);
   if(!s->buf)
   {
     // verify fail
@@ -476,6 +475,7 @@ handle_verify_session_start(iwp_async_session_start *s)
     self->serv->RemoveSession(self);
     return;
   }
+  self->serv->remove_intro_from(self->addr);
   self->send_LIM();
   self->working = false;
 }
@@ -651,6 +651,11 @@ llarp_link_session::on_session_start(const void *buf, size_t sz)
   if(sz > sizeof(workbuf))
   {
     llarp::LogDebug("session start too big");
+    return;
+  }
+  if(working)
+  {
+    llarp::LogError("duplicate session start from ", addr);
     return;
   }
   // own the buffer

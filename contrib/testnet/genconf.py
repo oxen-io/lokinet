@@ -98,6 +98,7 @@ prefetch-tag=test
         f.write('''[program:svc-node]
 directory = {}
 command = {}
+autorestart=true
 redirect_stderr=true
 #stdout_logfile=/dev/fd/1
 stdout_logfile={}/svc-node-%(process_num)03d-log.txt
@@ -108,6 +109,7 @@ numprocs = {}
         f.write('''[program:client-node]
 directory = {}
 command = {}
+autorestart=true
 redirect_stderr=true
 #stdout_logfile=/dev/fd/1
 stdout_logfile={}/client-node-%(process_num)03d-log.txt
