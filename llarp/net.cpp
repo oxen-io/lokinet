@@ -176,7 +176,7 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 #ifdef DEBUG
       fprintf(stderr, "system call failed: %lu\n", GetLastError());
 #endif
-	  if(pAdapterInfo)
+      if(pAdapterInfo)
         _llarp_nt_heap_free(pAdapterInfo);
       return false;
   }
@@ -571,7 +571,7 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
                     "%lu, overriding to 128.\n",
                     adapter->AdapterName, prefixLength);
 #endif
-			prefixLength = 128;
+            prefixLength = 128;
           }
           for(LONG i = prefixLength, j = 0; i > 0; i -= 8, ++j)
           {
@@ -644,7 +644,7 @@ _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
         nullptr, pAdapterAddresses, &dwSize);
 #endif
 
-	if(ERROR_BUFFER_OVERFLOW == dwRet)
+    if(ERROR_BUFFER_OVERFLOW == dwRet)
     {
       _llarp_nt_heap_free(pAdapterAddresses);
       pAdapterAddresses = nullptr;

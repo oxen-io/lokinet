@@ -58,8 +58,7 @@ namespace llarp
         llarp::LogWarn("recv socket error ", s_errno);
         return -1;
       }
-
-	  // get the _real_ payload size from tick()
+      // get the _real_ payload size from tick()
       udp->recvfrom(udp, addr, buf, iosz);
       return 0;
     }
@@ -145,16 +144,20 @@ struct llarp_win32_loop : public llarp_ev_loop
     int result           = 0;
     int idx              = 0;
     byte_t readbuf[2048];
-
+    
     do
     {
-      llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
-      if(ev && ev->fd)
+      if(ev_id && qdata && iolen)
       {
-        if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
+        llarp::udp_listener* ev =
+            reinterpret_cast< llarp::udp_listener* >(ev_id);
+        if(ev && ev->fd)
         {
-          llarp::LogInfo("tick close ev");
-          close_ev(ev);
+          if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
+          {
+            llarp::LogInfo("tick close ev");
+            close_ev(ev);
+          }
         }
       }
       ++idx;
@@ -190,16 +193,21 @@ struct llarp_win32_loop : public llarp_ev_loop
     int idx              = 0;
     byte_t readbuf[2048];
 
+    // unlike epoll and kqueue, we only need to run so long as the
+    // system call returns TRUE
     do
     {
-      llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
-      if(ev && ev->fd)
+      if(ev_id && qdata && iolen)
       {
-        if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
-        {
-          llarp::LogInfo("tick close ev");
-          close_ev(ev);
-        }
+          llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
+          if(ev && ev->fd)
+          {
+              if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
+              {
+                  llarp::LogInfo("close ev");
+                  close_ev(ev);
+              }
+          }
       }
       ++idx;
     } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10));
