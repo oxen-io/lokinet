@@ -8,6 +8,12 @@
 #include <assert.h>
 #include <stdio.h>
 
+// apparently mingw-w64 loses its shit over this
+// but only for 32-bit builds, naturally
+#ifdef WIN32_LEAN_AND_MEAN
+#undef WIN32_LEAN_AND_MEAN
+#endif
+
 #include <windows.h>
 #include <winternl.h>
 #include <tdi.h>
