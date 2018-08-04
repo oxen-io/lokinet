@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace service
   {
-    struct Endpoint : public llarp_pathbuilder_context
+    struct Endpoint : public llarp_pathbuilder_context, public ILookupHolder
     {
       /// minimum interval for publishing introsets
       static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
@@ -75,6 +75,9 @@ namespace llarp
       }
 
       void
+      PutLookup(IServiceLookup* lookup, uint64_t txid);
+
+      void
       HandlePathBuilt(path::Path* path);
 
       /// context needed to initiate an outbound hidden service session
@@ -117,6 +120,12 @@ namespace llarp
         bool
         HandleHiddenServiceFrame(const ProtocolFrame* frame);
 
+        void
+        PutLookup(IServiceLookup* lookup, uint64_t txid);
+
+        std::string
+        Name() const;
+
        private:
         void
         AsyncEncrypt(llarp_buffer_t payload);
@@ -131,6 +140,7 @@ namespace llarp
         uint64_t sequenceNo = 0;
         llarp::SharedSecret sharedKey;
         Endpoint* m_Parent;
+        uint64_t m_UpdateIntrosetTX = 0;
       };
 
       // passed a sendto context when we have a path established otherwise
@@ -196,13 +206,12 @@ namespace llarp
       {
         const static llarp_time_t TTL = 10000;
         llarp_time_t lastRequest      = 0;
-        llarp_time_t lastModified;
-        uint64_t pendingTX = 0;
+        llarp_time_t lastModified     = 0;
         std::set< IntroSet > result;
         Tag tag;
 
-        CachedTagResult(const Tag& t, llarp_time_t now)
-            : lastModified(now), tag(t)
+        CachedTagResult(Endpoint* p, const Tag& t, uint64_t tx)
+            : IServiceLookup(p, tx), tag(t)
         {
         }
 
@@ -216,7 +225,7 @@ namespace llarp
         {
           if(now <= lastRequest)
             return false;
-          return (now - lastRequest) > TTL && pendingTX == 0;
+          return (now - lastRequest) > TTL;
         }
 
         llarp::routing::IMessage*

@@ -5,6 +5,7 @@
 #include <llarp/dht/key.hpp>
 #include <map>
 #include <set>
+#include <vector>
 
 namespace llarp
 {
@@ -16,6 +17,22 @@ namespace llarp
       typedef std::map< Key_t, Val_t, XorMetric > BucketStorage_t;
 
       Bucket(const Key_t& us) : nodes(XorMetric(us)){};
+
+      bool
+      GetRandomNodeExcluding(Key_t& result,
+                             const std::set< Key_t >& exclude) const
+      {
+        std::vector< Key_t > candidates;
+        for(const auto& item : nodes)
+        {
+          if(exclude.find(item.first) == exclude.end())
+            candidates.push_back(item.first);
+        }
+        if(candidates.size() == 0)
+          return false;
+        result = candidates[llarp_randint() % candidates.size()];
+        return true;
+      }
 
       bool
       FindClosest(const Key_t& target, Key_t& result) const

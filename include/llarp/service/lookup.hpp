@@ -16,11 +16,11 @@ namespace llarp
 
   namespace service
   {
+    struct ILookupHolder;
+
     struct IServiceLookup
     {
-      IServiceLookup() : m_created(llarp_time_now_ms())
-      {
-      }
+      IServiceLookup(ILookupHolder* parent, uint64_t tx);
 
       virtual ~IServiceLookup(){};
 
@@ -45,8 +45,17 @@ namespace llarp
       bool
       SendRequestViaPath(llarp::path::Path* p, llarp_router* r);
 
-     private:
+      ILookupHolder* parent;
+      uint64_t txid;
+
+     protected:
       llarp_time_t m_created;
+    };
+
+    struct ILookupHolder
+    {
+      virtual void
+      PutLookup(IServiceLookup* l, uint64_t txid) = 0;
     };
 
   }  // namespace service

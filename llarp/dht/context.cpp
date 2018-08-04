@@ -38,7 +38,10 @@ namespace llarp
         while(itr != nodes.end())
         {
           if(itr->second.introset.IsExpired(now))
+          {
+            llarp::LogInfo("introset expired ", itr->second.introset.A.Addr());
             itr = nodes.erase(itr);
+          }
           else
             ++itr;
         }
@@ -53,9 +56,6 @@ namespace llarp
       llarp_router *m_router;
       std::set< service::IntroSet > localIntroSets;
       std::set< Key_t > asked;
-
-      service::Tag tag;
-      service::Address addr;
 
       PathLookupJob(llarp_router *r, const PathID_t &localpath, uint64_t tx)
           : txid(tx), pathID(localpath), m_router(r)
@@ -80,6 +80,7 @@ namespace llarp
           {
             intros[--sz] = i;
           }
+          llarp::LogInfo("found ", sz, " introsets for txid=", txid);
           msg.M.push_back(new llarp::dht::GotIntroMessage(intros, txid));
           path->SendRoutingMessage(&msg, m_router);
         }
@@ -134,7 +135,10 @@ namespace llarp
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
       auto dhtmsg = new FindIntroMessage(tag, id);
+      dhtmsg->R   = 5;
       msg->msgs.push_back(dhtmsg);
+      llarp::LogInfo("asking ", askpeer, " for tag ", tag.ToString(), " with ",
+                     j->localIntroSets.size(), " local tags txid=", txid);
       router->SendToOrQueue(askpeer, msg);
     }
 
@@ -171,10 +175,11 @@ namespace llarp
       // start at random middle point
       auto start = llarp_randint() % nodes.size();
       std::advance(itr, start);
-      auto end = itr;
+      auto end            = itr;
+      std::string tagname = tag.ToString();
       while(itr != nodes.end())
       {
-        if(itr->second.introset.topic == tag)
+        if(itr->second.introset.topic.ToString() == tagname)
         {
           found.insert(itr->second.introset);
           if(found.size() == max)
@@ -185,7 +190,7 @@ namespace llarp
       itr = nodes.begin();
       while(itr != end)
       {
-        if(itr->second.introset.topic == tag)
+        if(itr->second.introset.topic.ToString() == tagname)
         {
           found.insert(itr->second.introset);
           if(found.size() == max)
@@ -372,8 +377,7 @@ namespace llarp
     void
     Context::LookupTag(const llarp::service::Tag &tag, const Key_t &whoasked,
                        uint64_t txid, const Key_t &askpeer,
-                       const std::set< service::IntroSet > &include,
-                       bool iterative)
+                       const std::set< service::IntroSet > &include, uint64_t R)
     {
       auto id = ++ids;
       if(txid == 0)
@@ -388,9 +392,9 @@ namespace llarp
           std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1));
       pendingTX[ownerKey] = job;
 
-      auto msg          = new llarp::DHTImmeidateMessage(askpeer);
-      auto dhtmsg       = new FindIntroMessage(tag, id);
-      dhtmsg->iterative = iterative;
+      auto msg    = new llarp::DHTImmeidateMessage(askpeer);
+      auto dhtmsg = new FindIntroMessage(tag, id);
+      dhtmsg->R   = R;
       msg->msgs.push_back(dhtmsg);
       router->SendToOrQueue(askpeer, msg);
     }

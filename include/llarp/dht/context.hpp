@@ -49,7 +49,7 @@ namespace llarp
       LookupTag(const service::Tag& tag, const Key_t& whoasked,
                 uint64_t whoaskedTX, const Key_t& askpeer,
                 const std::set< service::IntroSet >& include = {},
-                bool iterative                               = false);
+                uint64_t R                                   = 0);
 
       void
       LookupRouterViaJob(llarp_router_lookup_job* job);
