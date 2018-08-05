@@ -362,6 +362,8 @@ else()
   add_executable(${CLIENT_EXE} ${CLIENT_SRC})
   add_executable(dns ${DNS_SRC})
 
+
+
   if(WITH_TESTS)
     enable_testing()
     add_subdirectory(${GTEST_DIR})
@@ -419,6 +421,10 @@ else()
       target_link_libraries(dns ${STATIC_LIB} llarpplatform-static ${THREAD_LIB})
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)
+  if(ANDROID)
+    add_library(lokinet-android SHARED jni/lokinet-android.cpp)
+    target_link_libraries(lokinet-android ${STATIC_LIB} llarpplatform-static ${THREAD_LIB})
+  endif()
 
   if(WITH_SHARED)
     if(HAVE_CXX17_FILESYSTEM)
