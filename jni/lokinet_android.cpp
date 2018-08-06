@@ -44,8 +44,7 @@ struct AndroidMain
   }
 
   typedef std::unique_ptr< AndroidMain > Ptr;
-
-}
+};
 
 static AndroidMain::Ptr daemon(new AndroidMain());
 
