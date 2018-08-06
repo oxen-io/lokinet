@@ -70,9 +70,9 @@ extern "C"
       return env->NewStringUTF("already running");
     std::string conf;
     {
-      const char* nativeString = env->GetStringChars(configfile, JNI_FALSE);
+      const char* nativeString = env->GetStringUTFChars(configfile, JNI_FALSE);
       conf += std::string(nativeString);
-      env->ReleaseStringChars(configfile, nativeString);
+      env->ReleaseStringUTFChars(configfile, nativeString);
     }
     if(daemon->Start(conf.c_str()))
       return env->NewStringUTF("ok");
