@@ -16,6 +16,7 @@ struct AndroidMain
   {
     if(m_impl || m_thread)
       return true;
+    printf("starting with config file %s", conf);
     m_impl = llarp_main_init(conf, true);
     if(m_impl == nullptr)
       return false;
@@ -32,6 +33,7 @@ struct AndroidMain
   void
   Run()
   {
+    printf("running\n");
     llarp_main_run(m_impl);
   }
 
@@ -68,9 +70,9 @@ extern "C"
       return env->NewStringUTF("already running");
     std::string conf;
     {
-      const char* nativeString = env->GetStringUTFChars(configfile, JNI_FALSE);
+      const char* nativeString = env->GetStringChars(configfile, JNI_TRUE);
       conf                     = nativeString;
-      env->ReleaseStringUTFChars(configfile, nativeString);
+      env->ReleaseStringChars(configfile, nativeString);
     }
     if(daemon->Start(conf.c_str()))
       return env->NewStringUTF("ok");
