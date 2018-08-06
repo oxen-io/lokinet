@@ -26,7 +26,7 @@ namespace llarp
 
       if(crypto_scalarmult_curve25519(shared, usSec, themPub))
         return false;
-      crypto_generichash_init(&h, NULL, 0U, outsz);
+      crypto_generichash_init(&h, nullptr, 0U, outsz);
       crypto_generichash_update(&h, client_pk, 32);
       crypto_generichash_update(&h, server_pk, 32);
       crypto_generichash_update(&h, shared, 32);

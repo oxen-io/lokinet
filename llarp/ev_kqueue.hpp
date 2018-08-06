@@ -3,13 +3,7 @@
 #include <llarp/buffer.h>
 #include <llarp/net.h>
 
-#if __FreeBSD__ || __OpenBSD__ || __NetBSD__
-// kqueue / kevent
-#include <sys/event.h>
-#include <sys/time.h>
-#endif
-
-#if(__APPLE__ && __MACH__)
+#if __FreeBSD__ || __OpenBSD__ || __NetBSD__ || (__APPLE__ && __MACH__)
 // kqueue / kevent
 #include <sys/event.h>
 #include <sys/time.h>
@@ -107,11 +101,13 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   int
   tick(int ms)
   {
-    (void)ms;
     struct kevent events[1024];
     int result;
     byte_t readbuf[2048];
-    result = kevent(kqueuefd, NULL, 0, events, 1024, NULL);
+    timespec t;
+    t.tv_sec  = 0;
+    t.tv_nsec = ms * 1000UL;
+    result    = kevent(kqueuefd, nullptr, 0, events, 1024, &t);
     // result: 0 is a timeout
     if(result > 0)
     {
@@ -129,23 +125,25 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         }
         ++idx;
       }
-
-      for(auto& l : udp_listeners)
-        if(l->tick)
-          l->tick(l);
     }
+    for(auto& l : udp_listeners)
+      if(l->tick)
+        l->tick(l);
     return result;
   }
 
   int
   run()
   {
+    timespec t;
+    t.tv_sec  = 0;
+    t.tv_nsec = 10000UL;
     struct kevent events[1024];
     int result;
     byte_t readbuf[2048];
     do
     {
-      result = kevent(kqueuefd, NULL, 0, events, 1024, NULL);
+      result = kevent(kqueuefd, nullptr, 0, events, 1024, &t);
       // result: 0 is a timeout
       if(result > 0)
       {
@@ -161,7 +159,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
               llarp::LogInfo("run error reading, should close ev");
               close_ev(ev);
               // ev->fd = 0;
-              //delete ev;
+              // delete ev;
               // break;
             }
           }
@@ -241,9 +239,8 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
-    // printf("closing_ev [%x] fd[%d]\n", ev, ev->fd);
-    EV_SET(&change, ev->fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-    return kevent(kqueuefd, &change, 1, NULL, 0, NULL) == -1;
+    EV_SET(&change, ev->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+    return kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1;
   }
 
   bool
@@ -255,7 +252,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
 
     EV_SET(&change, fd, EVFILT_READ, EV_ADD, 0, 0, listener);
-    if(kevent(kqueuefd, &change, 1, NULL, 0, NULL) == -1)
+    if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1)
     {
       l->impl = nullptr;
       delete listener;

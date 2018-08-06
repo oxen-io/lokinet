@@ -1,7 +1,11 @@
 #include <llarp/buffer.h>
+#include <llarp/endian.h>
 #include <stdarg.h>
 #include <stdio.h>
 
+#ifndef ssize_t
+#define ssize_t long
+#endif
 size_t
 llarp_buffer_size_left(llarp_buffer_t buff)
 {
@@ -75,4 +79,43 @@ llarp_buffer_eq(llarp_buffer_t buf, const char* str)
     str++;
   }
   return *str == 0;
+}
+
+bool
+llarp_buffer_put_uint16(llarp_buffer_t* buf, uint16_t i)
+{
+  if(llarp_buffer_size_left(*buf) < sizeof(uint16_t))
+    return false;
+  htobe16buf(buf->cur, i);
+  buf->cur += sizeof(uint16_t);
+  return true;
+}
+
+bool
+llarp_buffer_put_uint32(llarp_buffer_t* buf, uint32_t i)
+{
+  if(llarp_buffer_size_left(*buf) < sizeof(uint32_t))
+    return false;
+  htobe32buf(buf->cur, i);
+  buf->cur += sizeof(uint32_t);
+  return true;
+}
+bool
+llarp_buffer_read_uint16(llarp_buffer_t* buf, uint16_t* i)
+{
+  if(llarp_buffer_size_left(*buf) < sizeof(uint16_t))
+    return false;
+  *i = bufbe16toh(buf->cur);
+  buf->cur += sizeof(uint16_t);
+  return true;
+}
+
+bool
+llarp_buffer_put_uint32(llarp_buffer_t* buf, uint32_t* i)
+{
+  if(llarp_buffer_size_left(*buf) < sizeof(uint32_t))
+    return false;
+  *i = bufbe32toh(buf->cur);
+  buf->cur += sizeof(uint32_t);
+  return true;
 }

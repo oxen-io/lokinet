@@ -1,6 +1,5 @@
 #ifndef LLARP_LOGGER_HPP
 #define LLARP_LOGGER_HPP
-
 #include <llarp/time.h>
 #include <ctime>
 #include <iomanip>
@@ -8,6 +7,13 @@
 #include <llarp/threading.hpp>
 #include <sstream>
 #include <string>
+#ifdef _WIN32
+#define VC_EXTRALEAN
+#include <windows.h>
+#endif
+#ifdef ANDROID
+#include <android/log.h>
+#endif
 
 namespace llarp
 {
@@ -22,13 +28,23 @@ namespace llarp
 
   struct Logger
   {
+    std::string nodeName;
     LogLevel minlevel = eLogInfo;
     std::ostream& out;
     std::mutex access;
-    Logger() : Logger(std::cout)
+    Logger() : Logger(std::cout, "unnamed")
     {
+#ifdef _WIN32
+      DWORD mode_flags;
+      HANDLE fd1 = GetStdHandle(STD_OUTPUT_HANDLE);
+      GetConsoleMode(fd1, &mode_flags);
+      // since release SDKs don't have ANSI escape support yet
+      mode_flags |= 0x0004;
+      SetConsoleMode(fd1, mode_flags);
+#endif
     }
-    Logger(std::ostream& o) : out(o)
+
+    Logger(std::ostream& o, const std::string& name) : nodeName(name), out(o)
     {
     }
   };
@@ -57,12 +73,29 @@ namespace llarp
   /** internal */
   template < typename... TArgs >
   void
-  _Log(LogLevel lvl, const char* fname, TArgs&&... args) noexcept
+  _Log(LogLevel lvl, const char* fname, int lineno, TArgs&&... args) noexcept
   {
     if(_glog.minlevel > lvl)
       return;
 
     std::stringstream ss;
+#ifdef ANDROID
+    switch(lvl)
+    {
+      case eLogDebug:
+        ss << "[DBG] ";
+        break;
+      case eLogInfo:
+        ss << "[NFO] ";
+        break;
+      case eLogWarn:
+        ss << "[WRN] ";
+        break;
+      case eLogError:
+        ss << "[ERR] ";
+        break;
+    }
+#else
     switch(lvl)
     {
       case eLogDebug:
@@ -82,34 +115,45 @@ namespace llarp
         ss << "[ERR] ";
         break;
     }
+#endif
     std::string tag = fname;
-    ss << llarp_time_now_ms() << " " << tag;
+    ss << _glog.nodeName << " " << llarp_time_now_ms() << " " << tag << ":"
+       << lineno;
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
+#ifndef ANDROID
     ss << (char)27 << "[0;0m";
+#else
     {
       std::unique_lock< std::mutex > lock(_glog.access);
-      _glog.out << ss.str() << std::endl;
-#ifdef SHADOW_TESTNET
+      __android_log_write(ANDROID_LOG_INFO, "LOKINET", ss.str().c_str());
       _glog.out << "\n" << std::flush;
-#endif
     }
+#endif
   }
 }  // namespace llarp
+
+
+
+#define LogDebug(x, ...) \
+  _Log(llarp::eLogDebug, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
+#define LogInfo(x, ...) \
+  _Log(llarp::eLogInfo, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
+#define LogWarn(x, ...) \
+  _Log(llarp::eLogWarn, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
+#define LogError(x, ...) \
+  _Log(llarp::eLogError, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
+#define LogDebugTag(tag, x, ...) \
+  _Log(llarp::eLogDebug, tag, __LINE__, x, ##__VA_ARGS__)
+#define LogInfoTag(tag, x, ...) \
+  _Log(llarp::eLogInfo, tag, __LINE__, x, ##__VA_ARGS__)
+#define LogWarnTag(tag, x, ...) \
+  _Log(llarp::eLogWarn, tag, __LINE__, x, ##__VA_ARGS__)
+#define LogErrorTag(tag, x, ...) \
+  _Log(llarp::eLogError, tag, __LINE__, x, ##__VA_ARGS__)
 
 #ifndef LOG_TAG
 #define LOG_TAG "default"
 #endif
-
-#define LogDebug(x, ...) _Log(llarp::eLogDebug, LOG_TAG, x, ##__VA_ARGS__)
-#define LogInfo(x, ...) _Log(llarp::eLogInfo, LOG_TAG, x, ##__VA_ARGS__)
-#define LogWarn(x, ...) _Log(llarp::eLogWarn, LOG_TAG, x, ##__VA_ARGS__)
-#define LogError(x, ...) _Log(llarp::eLogError, LOG_TAG, x, ##__VA_ARGS__)
-
-#define LogDebugTag(tag, x, ...) _Log(llarp::eLogDebug, tag, x, ##__VA_ARGS__)
-#define LogInfoTag(tag, x, ...) _Log(llarp::eLogInfo, tag, x, ##__VA_ARGS__)
-#define LogWarnTag(tag, x, ...) _Log(llarp::eLogWarn, tag, x, ##__VA_ARGS__)
-#define LogErrorTag(tag, x, ...) _Log(llarp::eLogError, tag, x, ##__VA_ARGS__)
-
 
 #endif

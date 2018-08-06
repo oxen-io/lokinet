@@ -64,7 +64,8 @@ namespace
 	{
 		t = file_type::fifo;
 	}
-	else if ( S_ISLNK(m) )
+#ifndef _WIN32  // these only work on cygnus or msys2!
+	else if(S_ISLNK(m))
 	{
 		t = file_type::symlink;
 	}
@@ -72,9 +73,8 @@ namespace
 	{
 		t = file_type::socket;
 	}
-
+#endif
 	return ::cpp17::filesystem::file_status(t, p);
-
 }
 
 }
@@ -156,13 +156,15 @@ file_status symlink_status(const path& path_)
 	if ( !path_.empty() )
 	{
 		struct stat st;
-
-		if ( ::lstat(path_.c_str(), &st) == 0 )
+#ifndef _WIN32
+		if(::lstat(path_.c_str(), &st) == 0)
+#else
+		if(::stat(path_.c_str(), &st) == 0)
+#endif
 		{
 			return from_mode_t(st.st_mode);
 		}
 	}
-
 	return file_status();
 }
 

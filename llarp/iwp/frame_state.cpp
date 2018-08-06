@@ -1,3 +1,7 @@
+#ifdef _MSC_VER
+#define NOMINMAX
+#endif
+
 #include "llarp/iwp/frame_state.hpp"
 #include "buffer.hpp"
 #include "llarp/crypto.hpp"
@@ -7,6 +11,7 @@
 #include "llarp/logger.hpp"
 #include "mem.hpp"
 #include "router.hpp"
+#include <algorithm>
 
 llarp_router *
 frame_state::Router()
@@ -21,17 +26,14 @@ frame_state::process_inbound_queue()
                        InboundMessage::OrderCompare >
       q;
   recvqueue.Process(q);
+
+  uint64_t last = 0;
   while(q.size())
   {
     // TODO: is this right?
     auto &front = q.top();
 
-    if(front->msgid < nextMsgID && nextMsgID - front->msgid > 1)
-    {
-      // re-queue because of an ordering gap
-      recvqueue.Put(front);
-    }
-    else
+    if(last != front->msgid)
     {
       auto buffer = front->Buffer();
       if(!Router()->HandleRecvLinkMessage(parent, buffer))
@@ -39,12 +41,14 @@ frame_state::process_inbound_queue()
         llarp::LogWarn("failed to process inbound message ", front->msgid);
         llarp::DumpBuffer< llarp_buffer_t, 128 >(buffer);
       }
-      else
-      {
-        nextMsgID = std::max(front->msgid, nextMsgID + 1);
-      }
-      delete front;
+      last = front->msgid;
     }
+    else
+    {
+      llarp::LogWarn("duplicate inbound message ", last);
+    }
+    delete front;
+
     q.pop();
   }
   // TODO: this isn't right

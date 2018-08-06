@@ -1,5 +1,7 @@
 #include "threadpool.hpp"
+#ifndef _MSC_VER
 #include <pthread.h>
+#endif
 #include <cstring>
 
 #include <llarp/time.h>
@@ -9,6 +11,12 @@
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
+#endif
+
+#ifdef _MSC_VER
+#include <windows.h>
+extern "C" void
+SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
 #endif
 
 namespace llarp
@@ -27,8 +35,10 @@ namespace llarp
             pthread_setname_np(name);
 #elif(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
             pthread_set_name_np(pthread_self(), name);
-#else
+#elif !defined(_MSC_VER) || !defined(_WIN32)
             pthread_setname_np(pthread_self(), name);
+#else
+            SetThreadName(GetCurrentThreadId(), name);
 #endif
           }
           for(;;)
@@ -93,6 +103,7 @@ struct llarp_threadpool
 {
   llarp::thread::Pool *impl;
 
+  std::mutex m_access;
   std::queue< llarp_thread_job * > jobs;
 
   llarp_threadpool(int workers, const char *name)
@@ -159,8 +170,16 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
 {
   if(pool->impl)
     pool->impl->QueueJob(job);
-  else
-    pool->jobs.push(new llarp_thread_job(job));
+  else if(job.user && job.work)
+  {
+    auto j  = new llarp_thread_job;
+    j->work = job.work;
+    j->user = job.user;
+    {
+      std::unique_lock< std::mutex > lock(pool->m_access);
+      pool->jobs.push(j);
+    }
+  }
 }
 
 void
@@ -168,11 +187,14 @@ llarp_threadpool_tick(struct llarp_threadpool *pool)
 {
   while(pool->jobs.size())
   {
-    auto &job = pool->jobs.front();
-    if(job && job->work && job->user)
-      job->work(job->user);
+    llarp_thread_job *job;
+    {
+      std::unique_lock< std::mutex > lock(pool->m_access);
+      job = pool->jobs.front();
+      pool->jobs.pop();
+    }
+    job->work(job->user);
     delete job;
-    pool->jobs.pop();
   }
 }
 

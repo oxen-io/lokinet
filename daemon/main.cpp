@@ -3,6 +3,11 @@
 #include <signal.h>
 #include <string>
 
+#ifdef _WIN32
+#define wmin(x, y) (((x) < (y)) ? (x) : (y))
+#define MIN wmin
+#endif
+
 struct llarp_main *ctx = 0;
 
 void

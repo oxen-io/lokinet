@@ -121,6 +121,7 @@ router's full identity
 {
   a: [ one, or, many, AI, here ... ],
   k: "<32 bytes public long term identity signing key>",
+  n: "<optional max 32 bytes router nickname>",
   p: "<32 bytes public path encryption key>",   
   u: last_updated_seconds_since_epoch_uint64,
   v: 0,

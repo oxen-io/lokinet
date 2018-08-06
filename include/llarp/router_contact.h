@@ -4,11 +4,16 @@
 #include <llarp/crypto.h>
 #include <llarp/exit_info.h>
 
+#ifdef __cplusplus
+#include <string>
+#endif
+
 // forward declare
 struct llarp_alloc;
 struct llarp_rc;
 
 #define MAX_RC_SIZE (1024)
+#define NICKLEN (32)
 
 bool
 llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buf);
@@ -24,6 +29,9 @@ struct llarp_rc
   byte_t pubkey[PUBKEYSIZE];
   struct llarp_xi_list *exits;
   byte_t signature[SIGSIZE];
+  /// node nickname, yw kee
+  byte_t nickname[NICKLEN];
+
   uint64_t last_updated;
 
 #ifdef __cplusplus
@@ -38,6 +46,14 @@ struct llarp_rc
   {
     return llarp_rc_bdecode(this, buf);
   }
+
+  std::string
+  Nick() const
+  {
+    const char *nick = (const char *)nickname;
+    return std::string(nick, strnlen(nick, sizeof(nickname)));
+  }
+
 #endif
 };
 
@@ -59,6 +75,9 @@ llarp_rc_is_public_router(const struct llarp_rc *const rc);
 void
 llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
                    struct llarp_ai_list *addr);
+
+bool
+llarp_rc_set_nickname(struct llarp_rc *rc, const char *name);
 
 void
 llarp_rc_set_pubenckey(struct llarp_rc *rc, const uint8_t *pubenckey);

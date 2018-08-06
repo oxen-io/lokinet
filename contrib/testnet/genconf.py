@@ -37,7 +37,8 @@ def main():
         config = CP()
         config['router'] = {
             'net-threads': '1',
-            'worker-threads': '4'
+            'worker-threads': '4',
+            'nickname': svcNodeName(nodeid)
         }
         config['bind'] = {
             args.ifname: str(args.baseport + nodeid)
@@ -64,7 +65,8 @@ def main():
 
         config['router'] = {
             'net-threads': '1',
-            'worker-threads': '2'
+            'worker-threads': '2',
+            'nickname': clientNodeName(nodeid)
         }
         config['netdb'] = {
             'dir': 'netdb'
@@ -90,28 +92,31 @@ def main():
             f.write('''[test-service]
 tag=test
 prefetch-tag=test
-prefetch-tag=nonexist
 ''')
 
     with open(args.out, 'w') as f:
         f.write('''[program:svc-node]
 directory = {}
 command = {}
+autorestart=true
 redirect_stderr=true
-stdout_logfile=/dev/fd/1
+#stdout_logfile=/dev/fd/1
+stdout_logfile={}/svc-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = svc-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), args.bin, args.svc))
+'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), args.bin, args.dir, args.svc))
         f.write('''[program:client-node]
 directory = {}
 command = {}
+autorestart=true
 redirect_stderr=true
-stdout_logfile=/dev/fd/1
+#stdout_logfile=/dev/fd/1
+stdout_logfile={}/client-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = client-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'client-node-%(process_num)03d'), args.bin, args.clients))
+'''.format(os.path.join(args.dir, 'client-node-%(process_num)03d'),args.bin, args.dir, args.clients))
         f.write('[supervisord]\ndirectory=.\n')
 
 

@@ -48,7 +48,8 @@ namespace llarp
       void
       LookupTag(const service::Tag& tag, const Key_t& whoasked,
                 uint64_t whoaskedTX, const Key_t& askpeer,
-                bool iterative = false);
+                const std::set< service::IntroSet >& include = {},
+                uint64_t R                                   = 0);
 
       void
       LookupRouterViaJob(llarp_router_lookup_job* job);
@@ -56,6 +57,15 @@ namespace llarp
       void
       LookupTagForPath(const service::Tag& tag, uint64_t txid,
                        const llarp::PathID_t& path, const Key_t& askpeer);
+
+      void
+      LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
+                            const llarp::PathID_t& path, const Key_t& askpeer);
+
+      void
+      LookupIntroSetRelayed(const Key_t& requester, uint64_t txid,
+                            const service::Address& addr, bool recursive,
+                            std::vector< IMessage* >& reply);
 
       std::set< service::IntroSet >
       FindRandomIntroSetsWithTag(const service::Tag& tag, size_t max = 2);
@@ -72,7 +82,7 @@ namespace llarp
       void
       PropagateIntroSetTo(const Key_t& from, uint64_t fromTX,
                           const service::IntroSet& introset, const Key_t& peer,
-                          uint64_t S);
+                          uint64_t S, const std::set< Key_t >& exclude);
 
       void
       Init(const Key_t& us, llarp_router* router);

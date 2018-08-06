@@ -67,6 +67,7 @@ namespace llarp
         return false;
       }
       dht.services->PutNode(I);
+      llarp::LogInfo("Put Introset for ", I.A.Addr().ToString());
       replies.push_back(new GotIntroMessage({I}, txID));
       Key_t peer;
       std::set< Key_t > exclude;
@@ -76,7 +77,7 @@ namespace llarp
       exclude.insert(dht.OurKey());
       if(S && dht.nodes->FindCloseExcluding(addr, peer, exclude))
       {
-        dht.PropagateIntroSetTo(From, txID, I, peer, S - 1);
+        dht.PropagateIntroSetTo(From, txID, I, peer, S - 1, exclude);
       }
       return true;
     }

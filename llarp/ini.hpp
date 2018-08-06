@@ -40,7 +40,7 @@ namespace ini
 {
   struct Level
   {
-    Level() : parent(NULL), depth(0)
+    Level() : parent(nullptr), depth(0)
     {
     }
     Level(Level *p) : parent(p), depth(0)
@@ -156,7 +156,7 @@ namespace ini
   Parser::err(const char *s)
   {
     char buf[256];
-    sprintf(buf, "%s on line #%ld", s, ln_);
+    sprintf(buf, "%s on line #%d", s, ln_);
     throw std::runtime_error(buf);
   }
 
@@ -210,8 +210,7 @@ namespace ini
         size_t depth;
         std::string sname;
         parseSLine(sname, depth);
-
-        Level *lp     = NULL;
+        Level *lp     = nullptr;
         Level *parent = &l;
         if(depth > l.depth + 1)
           err("section with wrong depth");

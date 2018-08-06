@@ -164,6 +164,14 @@ namespace llarp
                                llarp_router* r);
 
       bool
+      HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
+      {
+        /// TODO: implement me
+        llarp::LogWarn("Got hidden service data on transit hop");
+        return false;
+      }
+
+      bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
       bool
@@ -207,6 +215,9 @@ namespace llarp
     {
       typedef std::function< void(Path*) > BuildResultHookFunc;
       typedef std::vector< PathHopConfig > HopList;
+      typedef std::function< bool(const service::ProtocolFrame*) >
+          DataHandlerFunc;
+
       HopList hops;
 
       llarp::service::Introduction intro;
@@ -218,6 +229,12 @@ namespace llarp
 
       void
       SetBuildResultHook(BuildResultHookFunc func);
+
+      void
+      SetDataHandler(DataHandlerFunc func)
+      {
+        m_DataHandler = func;
+      }
 
       bool
       Expired(llarp_time_t now) const;
@@ -239,6 +256,9 @@ namespace llarp
       bool
       HandlePathTransferMessage(const llarp::routing::PathTransferMessage* msg,
                                 llarp_router* r);
+
+      bool
+      HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame);
 
       bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
@@ -279,6 +299,7 @@ namespace llarp
 
      private:
       BuildResultHookFunc m_BuiltHook;
+      DataHandlerFunc m_DataHandler;
       llarp_time_t m_LastLatencyTestTime = 0;
       uint64_t m_LastLatencyTestID       = 0;
     };

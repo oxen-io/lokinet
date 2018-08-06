@@ -46,7 +46,27 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetPathByRouter(const RouterID& id)
+    PathSet::GetEstablishedPathClosestTo(const AlignedBuffer< 32 >& id) const
+    {
+      Path* path = nullptr;
+      AlignedBuffer< 32 > dist;
+      dist.Fill(0xff);
+      for(const auto& item : m_Paths)
+      {
+        if(!item.second->IsReady())
+          continue;
+        AlignedBuffer< 32 > localDist = item.second->Endpoint() ^ id;
+        if(localDist < dist)
+        {
+          dist = localDist;
+          path = item.second;
+        }
+      }
+      return path;
+    }
+
+    Path*
+    PathSet::GetPathByRouter(const RouterID& id) const
     {
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
@@ -89,7 +109,7 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetByUpstream(const RouterID& remote, const PathID_t& rxid)
+    PathSet::GetByUpstream(const RouterID& remote, const PathID_t& rxid) const
     {
       auto itr = m_Paths.find({remote, rxid});
       if(itr == m_Paths.end())
@@ -125,7 +145,7 @@ namespace llarp
     }
 
     Path*
-    PathSet::PickRandomEstablishedPath()
+    PathSet::PickRandomEstablishedPath() const
     {
       std::vector< Path* > established;
       auto itr = m_Paths.begin();

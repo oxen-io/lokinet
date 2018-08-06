@@ -17,8 +17,9 @@ namespace llarp
     bool
     ProtocolMessage::BEncode(llarp_buffer_t* buf) const
     {
-      // TODO: implement me
-      return false;
+      if(!bencode_start_dict(buf))
+        return false;
+      return bencode_end(buf);
     }
 
     bool

@@ -121,7 +121,11 @@ namespace llarp
         sz  = sizeof(sockaddr_in);
         ptr = a.addr4();
       }
+#ifndef _MSC_VER
       if(inet_ntop(a.af(), ptr, tmp, sz))
+#else
+      if(inet_ntop(a.af(), (void*)ptr, tmp, sz))
+#endif
       {
         out << tmp;
         if(a.af() == AF_INET6)
@@ -236,7 +240,7 @@ namespace llarp
       {
         if(a.af() == AF_INET)
         {
-          return a.port() + a.addr4()->s_addr;
+          return a.port() ^ a.addr4()->s_addr;
         }
         uint8_t empty[16] = {0};
         return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();

@@ -3,8 +3,8 @@
 
 #include <llarp.h>
 #include <iostream>
+#include <llarp/threading.hpp>
 #include <string>
-#include <thread>
 #include <vector>
 
 namespace llarp

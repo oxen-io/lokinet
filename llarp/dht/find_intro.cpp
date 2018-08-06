@@ -101,6 +101,11 @@ namespace llarp
         llarp_dht_context* ctx,
         std::vector< llarp::dht::IMessage* >& replies) const
     {
+      if(R > 5)
+      {
+        llarp::LogError("R value too big, ", R, "> 5");
+        return false;
+      }
       auto& dht = ctx->impl;
       Key_t peer;
       std::set< Key_t > exclude = {dht.OurKey(), From};
@@ -109,24 +114,35 @@ namespace llarp
         const auto introset = dht.GetIntroSetByServiceAddress(S);
         if(introset)
         {
-          replies.push_back(new GotIntroMessage({*introset}, T));
-        }
-        else if(iterative)
-        {
-          // we are iterative and don't have it, reply with a direct reply
-          replies.push_back(new GotIntroMessage({}, T));
+          service::IntroSet i = *introset;
+          replies.push_back(new GotIntroMessage({i}, T));
         }
         else
         {
-          // we are recursive
-          if(dht.nodes->FindCloseExcluding(S, peer, exclude))
+          if(iterative)
           {
-            dht.LookupIntroSet(S, From, T, peer);
+            // we are iterative and don't have it, reply with a direct reply
+            replies.push_back(new GotIntroMessage({}, T));
           }
           else
           {
-            llarp::LogError("cannot find closer peers for introset lookup for ",
-                            S);
+            // we are recursive
+            if(dht.nodes->FindCloseExcluding(S, peer, exclude))
+            {
+              if(relayed)
+                dht.LookupIntroSetForPath(S, T, pathID, peer);
+              else if((peer ^ dht.OurKey())
+                      > (peer
+                         ^ From))  // peer is closer than us, recursive search
+                dht.LookupIntroSet(S, From, T, peer);
+              else  // we are closer than peer so do iterative search
+                dht.LookupIntroSet(S, From, T, peer, true);
+            }
+            else
+            {
+              llarp::LogError(
+                  "cannot find closer peers for introset lookup for ", S);
+            }
           }
         }
       }
@@ -135,7 +151,7 @@ namespace llarp
         if(relayed)
         {
           // tag lookup
-          if(dht.nodes->FindCloseExcluding(N.Key(), peer, exclude))
+          if(dht.nodes->GetRandomNodeExcluding(peer, exclude))
           {
             dht.LookupTagForPath(N, T, pathID, peer);
           }
@@ -146,20 +162,23 @@ namespace llarp
         }
         else
         {
-          if(iterative)
+          auto introsets = dht.FindRandomIntroSetsWithTag(N);
+          if(iterative || R == 0)
           {
-            std::vector< service::IntroSet > introsets;
-            for(const auto& introset : dht.FindRandomIntroSetsWithTag(N, 8))
-              introsets.push_back(introset);
+            std::vector< service::IntroSet > reply;
+            for(const auto& introset : introsets)
+            {
+              reply.push_back(introset);
+            }
             // we are iterative and don't have it, reply with a direct reply
-            replies.push_back(new GotIntroMessage(introsets, T));
+            replies.push_back(new GotIntroMessage(reply, T));
           }
           else
           {
             // tag lookup
-            if(dht.nodes->FindCloseExcluding(N.Key(), peer, exclude))
+            if(dht.nodes->GetRandomNodeExcluding(peer, exclude))
             {
-              dht.LookupTag(N, From, T, peer, true);
+              dht.LookupTag(N, From, T, peer, introsets, R - 1);
             }
           }
         }

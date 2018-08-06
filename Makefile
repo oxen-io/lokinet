@@ -34,9 +34,10 @@ TESTNET_DEBUG ?= 0
 clean:
 	rm -f build.ninja rules.ninja cmake_install.cmake CMakeCache.txt
 	rm -rf CMakeFiles
-	rm -f $(TARGETS) llarpd
+	rm -f $(TARGETS) llarpd llarpc dns rcutil testAll
 	rm -f $(SHADOW_PLUGIN) $(SHADOW_CONFIG)
 	rm -f *.sig
+	rm -f *.a *.so
 
 debug-configure: 
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
@@ -77,7 +78,10 @@ shadow-plot: shadow-run
 
 shadow: shadow-plot
 
-testnet-configure: clean
+testnet-clean: clean
+	rm -rf $(TESTNET_ROOT)
+
+testnet-configure: testnet-clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 testnet-build: testnet-configure

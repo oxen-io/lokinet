@@ -2,23 +2,35 @@
 #define LLARP_EV_HPP
 #include <llarp/ev.h>
 
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 #include <list>
 
 namespace llarp
 {
   struct ev_io
   {
+#ifndef _WIN32
     int fd;
     ev_io(int f) : fd(f){};
+#else
+    SOCKET fd;
+    ev_io(SOCKET f) : fd(f){};
+#endif
     virtual int
     read(void* buf, size_t sz) = 0;
 
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz) = 0;
+
     virtual ~ev_io()
     {
+#ifndef _WIN32
       ::close(fd);
+#else
+      closesocket(fd);
+#endif
     };
   };
 };  // namespace llarp

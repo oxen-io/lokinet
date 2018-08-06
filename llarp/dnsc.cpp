@@ -2,21 +2,26 @@
 #include <llarp/dns.h>
 #include "buffer.hpp"
 
-#include <netdb.h>  /* getaddrinfo, getnameinfo */
+#ifndef _WIN32
+#include <arpa/inet.h>
+#include <netdb.h> /* getaddrinfo, getnameinfo */
+#include <netinet/in.h>
+#include <sys/socket.h>
+#endif
+
 #include <stdlib.h> /* exit */
 #include <string.h> /* memset */
-#include <sys/socket.h>
 #include <sys/types.h>
+#ifndef _MSC_VER
 #include <unistd.h> /* close */
-
-#include <arpa/inet.h>
-#include <netinet/in.h>
+#endif
 
 #include <cstdio>
 
 #include <llarp/dns.h>
 #include "llarp/net.hpp"  // for llarp::Addr
 #include "logger.hpp"
+#include <algorithm> // for std::find_if
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
@@ -76,7 +81,7 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
     {
       dnsQuery->request[dnsQuery->length++] = word[i];
     }
-    word = strtok(NULL, ".");
+    word = strtok(nullptr, ".");
   }
 
   dnsQuery->request[dnsQuery->length++] = 0x00;  // End of the host name
@@ -104,11 +109,11 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   request->resolved            = resolved;
   request->found               = false;
   request->context             = dnsc;
-  
-  
+
+
   char *sUrl               = strdup(url);
   request->question.name   = (char *)sUrl;
-  
+
   // leave 256 bytes available
   if (request->question.name.size() > 255)
   {
@@ -119,15 +124,15 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   }
   request->question.type   = 1;
   request->question.qClass = 1;
-  
+
   // register our self with the tracker
   dns_tracker *tracker = request->context->tracker;
   uint16_t id                 = ++tracker->c_requests;
   if (id == 65535) id = 0;
   tracker->client_request[id] = request;
-  
+
   dns_query *dns_packet = build_dns_packet((char *)request->question.name.c_str(), id, 1);
-  
+
   return dns_packet;
 }
 
@@ -138,11 +143,11 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
                              ssize_t sz)
 {
   // llarp::LogInfo("got a response, udp user is ", udp->user);
-  
+
   unsigned char *castBuf = (unsigned char *)buf;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr = decode_hdr((const char *)castBuf);
-  
+
   llarp::LogDebug("Header got client responses for id: ", hdr->id);
   if(!request)
   {
@@ -152,17 +157,17 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     return;
   }
   // llarp_dnsc_unbind(request);
-  
+
   if(sz < 0)
   {
     llarp::LogWarn("Error Receiving DNS Client Response");
     request->resolved(request);
     return;
   }
-  
+
   // unsigned char *castBuf = (unsigned char *)buf;
   // auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
-  
+
   // hexdump("received packet", &buffer, ret);
   /*
    uint16_t QDCOUNT;   // No. of items in Question Section
@@ -178,12 +183,12 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
    */
   uint8_t rcode;
   // int length;
-  
+
   // struct dns_query *dnsQuery = &request->query;
-  
+
   // rcode = (buffer[3] & 0x0F);
   // llarp::LogInfo("dnsc rcode ", rcode);
-  
+
   dns_msg_header *msg = decode_hdr((const char *)castBuf);
   castBuf += 12;
   llarp::LogDebug("msg id ", msg->id);
@@ -193,23 +198,23 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   llarp::LogDebug("msg op ", opcode);
   rcode = msg->rcode;
   llarp::LogDebug("msg rc ", rcode);
-  
+
   llarp::LogDebug("msg qdc ", msg->qdCount);
   llarp::LogDebug("msg anc ", msg->anCount);
   llarp::LogDebug("msg nsc ", msg->nsCount);
   llarp::LogDebug("msg arc ", msg->arCount);
-  
+
   // we may need to parse question first
-  
+
   /*
    dns_msg_question *question = decode_question((const char *)castBuf);
    llarp::LogInfo("que name  ", question->name);
    castBuf += question->name.length() + 8;
-   
+
    dns_msg_answer *answer = decode_answer((const char *)castBuf);
    castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
    */
-  
+
   // FIXME: only handling one atm
   dns_msg_question *question = nullptr;
   for(uint i = 0; i < hdr->qdCount; i++)
@@ -221,7 +226,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     castBuf += question->name.length() + 1 + 4;
     castBuf += 2; // skip answer label
   }
-  
+
   // FIXME: only handling one atm
   dns_msg_answer *answer = nullptr;
   for(uint i = 0; i < hdr->anCount; i++)
@@ -243,16 +248,16 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::LogDebug("Read an authority");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   }
-  
+
   // dns_msg_answer *answer2 = decode_answer((const char*)castBuf);
   // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
-  
+
   // llarp::LogDebug("query type: %u\n", dnsQuery->reqType);
   /*
    QCLASS = (uint16_t)dnsQuery->request[dnsQuery->length - 2] * 0x100
    + dnsQuery->request[dnsQuery->length - 1];
    llarp::LogInfo("query class: ", QCLASS);
-   
+
    length = dnsQuery->length + 1;  // to skip 0xc00c
    // printf("length [%d] from [%d]\n", length, buffer.base);
    ATYPE = (uint16_t)buffer[length + 1] * 0x100 + buffer[length + 2];
@@ -264,31 +269,31 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
    llarp::LogInfo("seconds to cache: ", TTL);
    RDLENGTH = (uint16_t)buffer[length + 9] * 0x100 + buffer[length + 10];
    llarp::LogInfo("bytes in answer: ", RDLENGTH);
-   
+
    MSGID = (uint16_t)buffer[0] * 0x100 + buffer[1];
    // llarp::LogDebug("answer msg id: %u\n", MSGID);
    */
   llarp::Addr upstreamAddr(*request->context->server);
-  
+
   if(answer == nullptr)
   {
     llarp::LogWarn("nameserver ", upstreamAddr, " didnt return any answers:");
     request->resolved(request);
     return;
   }
-  
+
   llarp::LogDebug("ans class ", answer->aClass);
   llarp::LogDebug("ans type  ", answer->type);
   llarp::LogDebug("ans ttl   ", answer->ttl);
   llarp::LogDebug("ans rdlen ", answer->rdLen);
-  
+
   /*
    llarp::LogInfo("ans2 class ", answer2->aClass);
    llarp::LogInfo("ans2 type  ", answer2->type);
    llarp::LogInfo("ans2 ttl   ", answer2->ttl);
    llarp::LogInfo("ans2 rdlen ", answer2->rdLen);
    */
-  
+
   if(rcode == 2)
   {
     llarp::LogWarn("nameserver ", upstreamAddr, " returned SERVFAIL:");
@@ -306,16 +311,16 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     request->resolved(request);
     return;
   }
-  
+
   int ip = 0;
-  
+
   /* search for and print IPv4 addresses */
   // if(dnsQuery->reqType == 0x01)
   if(request->question.type == 1)
   {
     // llarp::LogInfo("DNS server's answer is: (type#=", ATYPE, "):");
     llarp::LogDebug("IPv4 address(es) for ", request->question.name, ":");
-    
+
     if(answer->rdLen == 4)
     {
       request->result.sa_family = AF_INET;
@@ -324,20 +329,20 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 #endif
       struct in_addr *addr =
       &((struct sockaddr_in *)&request->result)->sin_addr;
-      
+
       unsigned char *ip = (unsigned char *)&(addr->s_addr);
       ip[0]             = answer->rData[0];
       ip[1]             = answer->rData[1];
       ip[2]             = answer->rData[2];
       ip[3]             = answer->rData[3];
-      
+
       llarp::Addr test(request->result);
       llarp::LogDebug(test);
       request->found = true;
       request->resolved(request);
       return;
     }
-    
+
     if(!ip)
     {
       llarp::LogWarn("  No IPv4 address found in the DNS answer!");
@@ -351,14 +356,14 @@ void
 raw_resolve_host(struct dnsc_context *dnsc, const char *url,
                  dnsc_answer_hook_func resolved, void *user)
 {
-  
+
   dns_query *dns_packet = answer_request_alloc(dnsc, nullptr, url, resolved, user);
   if (!dns_packet)
   {
     llarp::LogError("Couldn't make dnsc packet");
     return;
   }
-  
+
   // char *word;
   llarp::Addr upstreamAddr(*dnsc->server);
   llarp::LogDebug("Asking DNS server ", upstreamAddr, " about ", url);
@@ -368,7 +373,11 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
   socklen_t size;
   // int length;
   unsigned char buffer[DNC_BUF_SIZE];
+#ifndef _WIN32
   int sockfd;
+#else
+  SOCKET sockfd;
+#endif
 
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
   if(sockfd < 0)
@@ -386,8 +395,15 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
   size                 = sizeof(addr);
 
   //hexdump("sending packet", &dnsQuery.request, dnsQuery.length);
-  ret = sendto(sockfd, dns_packet->request, dns_packet->length, 0,
+
+#ifdef _WIN32
+  ret = sendto(sockfd, (const char *)dns_packet->request, dns_packet->length, 0,
                (struct sockaddr *)&addr, size);
+#else
+  ret = sendto(sockfd, (const char *)dns_packet->request, dns_packet->length, 0,
+               (struct sockaddr *)&addr, size);
+#endif
+
   delete dns_packet;
   if(ret < 0)
   {
@@ -410,7 +426,11 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
 
   // hexdump("received packet", &buffer, ret);
 
+#ifndef _WIN32
   close(sockfd);
+#else
+  closesocket(sockfd);
+#endif
 
   unsigned char *castBuf = (unsigned char *)buffer;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);

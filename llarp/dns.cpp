@@ -30,6 +30,11 @@ std::string getDNSstring(const char *buffer)
   return str;
 }
 
+// lets just remove uint
+#ifdef _WIN32
+#define uint UINT
+#endif
+
 extern "C"
 {
   uint16_t
@@ -57,7 +62,7 @@ extern "C"
   {
     dns_msg_header *hdr = new dns_msg_header;
     hdr->id             = get16bits(buffer);
-    uint fields         = get16bits(buffer);
+    uint16_t fields         = get16bits(buffer);
     uint8_t lFields     = (fields & 0x00FF) >> 0;
     uint8_t hFields     = (fields & 0xFF00) >> 8;
     // hdr->qr      = fields & 0x8000;
@@ -79,7 +84,7 @@ extern "C"
     hdr->arCount = get16bits(buffer);
     return hdr;
   }
-  
+
   dns_msg_question *
   decode_question(const char *buffer)
   {
@@ -208,7 +213,7 @@ extern "C"
     // llarp::LogInfo("start ", start, " domain size ", domain.size());
 
     *buffer++ = domain.size() - start;  // last label length octet
-    for(uint i = start; i < domain.size(); i++)
+    for(size_t i = start; i < domain.size(); i++)
     {
       *buffer++ = domain[i];  // last label octets
       // llarp::LogInfo("Writing ", domain[i], " at ", i);
@@ -242,14 +247,14 @@ extern "C"
      llarp::LogInfo("msg op ", hdr->opcode);
      llarp::LogInfo("msg rc ", hdr->rcode);
 
-     for(uint i = 0; i < hdr->qdCount; i++)
+     for(uint8_t i = 0; i < hdr->qdCount; i++)
      {
      dns_msg_question *question = decode_question((const char*)castBuf);
      llarp::LogInfo("Read a question");
      castBuf += question->name.length() + 8;
      }
 
-     for(uint i = 0; i < hdr->anCount; i++)
+     for(uint8_t i = 0; i < hdr->anCount; i++)
      {
      dns_msg_answer *answer = decode_answer((const char*)castBuf);
      llarp::LogInfo("Read an answer");

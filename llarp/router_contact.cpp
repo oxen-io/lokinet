@@ -4,6 +4,7 @@
 #include <llarp/crypto.hpp>
 #include "buffer.hpp"
 #include "logger.hpp"
+#include "mem.hpp"
 
 bool
 llarp_rc_new(struct llarp_rc *rc)
@@ -11,6 +12,7 @@ llarp_rc_new(struct llarp_rc *rc)
   rc->addrs        = llarp_ai_list_new();
   rc->exits        = llarp_xi_list_new();
   rc->last_updated = 0;
+  llarp::Zero(rc->nickname, sizeof(rc->nickname));
   return true;
 }
 
@@ -59,6 +61,17 @@ llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
     if(strbuf.sz != PUBKEYSIZE)
       return false;
     memcpy(rc->pubkey, strbuf.base, PUBKEYSIZE);
+    return true;
+  }
+
+  if(llarp_buffer_eq(*key, "n"))
+  {
+    if(!bencode_read_string(r->buffer, &strbuf))
+      return false;
+    if(strbuf.sz > sizeof(rc->nickname))
+      return false;
+    llarp::Zero(rc->nickname, sizeof(rc->nickname));
+    memcpy(rc->nickname, strbuf.base, strbuf.sz);
     return true;
   }
 
@@ -115,6 +128,14 @@ llarp_rc_is_public_router(const struct llarp_rc *const rc)
   return rc->addrs && llarp_ai_list_size(rc->addrs) > 0;
 }
 
+bool
+llarp_rc_set_nickname(struct llarp_rc *rc, const char *nick)
+{
+  strncpy((char *)rc->nickname, nick, sizeof(rc->nickname));
+  /// TODO: report nickname truncation
+  return true;
+}
+
 void
 llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src)
 {
@@ -135,6 +156,7 @@ llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src)
     dst->exits = llarp_xi_list_new();
     llarp_xi_list_copy(dst->exits, src->exits);
   }
+  memcpy(dst->nickname, src->nickname, sizeof(dst->nickname));
 }
 
 bool
@@ -196,6 +218,14 @@ llarp_rc_bencode(const struct llarp_rc *rc, llarp_buffer_t *buff)
   if(!bencode_write_bytestring(buff, "k", 1))
     return false;
   if(!bencode_write_bytestring(buff, rc->pubkey, PUBKEYSIZE))
+    return false;
+
+  /* write nickname */
+  if(!bencode_write_bytestring(buff, "n", 1))
+    return false;
+  if(!bencode_write_bytestring(
+         buff, rc->nickname,
+         strnlen((char *)rc->nickname, sizeof(rc->nickname))))
     return false;
 
   /* write encryption pubkey */

@@ -4,6 +4,11 @@
 #include <llarp/ev.h>   // for sockaadr
 #include <sys/types.h>  // for uint & ssize_t
 
+/* non-cygnus does not have this type */
+#ifdef _WIN32
+#define uint UINT
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {

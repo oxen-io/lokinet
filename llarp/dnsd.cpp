@@ -9,6 +9,11 @@
 
 extern dns_tracker dns_udp_tracker;
 
+#ifdef _WIN32
+#define wmin(x, y) (((x) < (y)) ? (x) : (y))
+#define MIN wmin
+#endif
+
 ssize_t
 raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
                          const void *buffer, size_t length)
@@ -16,7 +21,11 @@ raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
   int *fd = (int *)sock;
   // how do we get to these??
   socklen_t addrLen = sizeof(struct sockaddr_in);
-  return sendto(*fd, buffer, length, 0, from, addrLen);
+#ifdef _WIN32
+  return sendto(*fd, (const char *)buffer, length, 0, from, addrLen);
+#else
+  return sendto(*fd, (const char *)buffer, length, 0, from, addrLen);
+#endif
 }
 
 ssize_t
@@ -40,7 +49,7 @@ llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
 void
 write404_dnss_response(const struct sockaddr *from, dnsd_question_request *request)
 {
-  
+
   const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
   char buf[BUFFER_SIZE];
   memset(buf, 0, BUFFER_SIZE);
@@ -52,26 +61,26 @@ write404_dnss_response(const struct sockaddr *from, dnsd_question_request *reque
   fields += (0 << 14);     // I think opcode is always 0
   fields += 3;             // response code (3 => not found, 0 = Ok)
   put16bits(write_buffer, fields);
-  
+
   put16bits(write_buffer, 1);  // QD (number of questions)
   put16bits(write_buffer, 1);  // AN (number of answers)
   put16bits(write_buffer, 0);  // NS (number of auth RRs)
   put16bits(write_buffer, 0);  // AR (number of Additional RRs)
-  
+
   // code question
   code_domain(write_buffer, request->question.name);
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
-  
+
   // code answer
   code_domain(write_buffer, "");  // com, type=6, ttl=0
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
   put32bits(write_buffer, 1);  // ttl
-  
+
   put16bits(write_buffer, 1);  // rdLength
   *write_buffer++ = 0; // write a null byte
-  
+
   uint out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending 404, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
@@ -83,7 +92,7 @@ void
 writecname_dnss_response(std::string cname, const struct sockaddr *from,
                          dnsd_question_request *request)
 {
-  
+
   const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
   char buf[BUFFER_SIZE];
   memset(buf, 0, BUFFER_SIZE);
@@ -98,39 +107,39 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
   //fields |= 1UL << 8; // RD recursion desired
   //fields |= 1UL << 9; // 9 is truncate, forces TCP
   put16bits(write_buffer, fields);
-  
+
   put16bits(write_buffer, 1);  // QD (number of questions)
   put16bits(write_buffer, 1);  // AN (number of answers)
   put16bits(write_buffer, 1);  // NS (number of auth RRs)
   put16bits(write_buffer, 1);  // AR (number of Additional RRs)
-  
+
   // code question
   code_domain(write_buffer, request->question.name);
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
-  
+
   // code answer
   code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
   put16bits(write_buffer, 5); // cname
   put16bits(write_buffer, request->question.qClass);
   put32bits(write_buffer, 1);  // ttl
-  
+
   put16bits(write_buffer, cname.length() + 2);  // rdLength
   code_domain(write_buffer, cname);  // com, type=6, ttl=0
   // location of cname
   //*write_buffer++ = ip[0];
   //*write_buffer++ = ip[1];
-  
+
   // write auth RR
   code_domain(write_buffer, cname);  // com, type=6, ttl=0
   put16bits(write_buffer, 2); // NS
   put16bits(write_buffer, request->question.qClass);
   put32bits(write_buffer, 1);  // ttl
-  
+
   std::string local("ns1.loki");
   put16bits(write_buffer, local.length() + 2);  // rdLength
   code_domain(write_buffer, local);  // com, type=6, ttl=0
-  
+
   // write addl RR
   code_domain(write_buffer, local);  // com, type=6, ttl=0
   put16bits(write_buffer, 1); // A
@@ -142,7 +151,7 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
   *write_buffer++ = 0;
   *write_buffer++ = 0;
   *write_buffer++ = 1;
-  
+
   uint out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending cname, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
@@ -315,7 +324,7 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
     return;
   }
   */
-  
+
   if(request->llarp)
   {
     // make async request
@@ -386,7 +395,7 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
   dnsd->udp.tick     = nullptr;
 
   dns_udp_tracker.dnsd = dnsd;
-  
+
   dnsd->tracker   = &dns_udp_tracker; // register global tracker with context
   dnsd->logic     = logic;            // set logic worker for timers
   dnsd->intercept = nullptr;          // set default intercepter
@@ -397,7 +406,7 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
     llarp::LogError("Couldnt init dns client");
     return false;
   }
-  
+
   if (netloop)
   {
     return llarp_ev_add_udp(netloop, &dnsd->udp, (const sockaddr *)&bindaddr)

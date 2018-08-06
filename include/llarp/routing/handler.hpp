@@ -21,10 +21,7 @@ namespace llarp
                                 llarp_router *r) = 0;
 
       virtual bool
-      HandleHiddenServiceFrame(const service::ProtocolFrame *msg)
-      {
-        return false;
-      }
+      HandleHiddenServiceFrame(const service::ProtocolFrame *msg) = 0;
 
       virtual bool
       HandlePathConfirmMessage(const PathConfirmMessage *msg,

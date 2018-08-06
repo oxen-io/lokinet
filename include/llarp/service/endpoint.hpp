@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace service
   {
-    struct Endpoint : public llarp_pathbuilder_context
+    struct Endpoint : public llarp_pathbuilder_context, public ILookupHolder
     {
       /// minimum interval for publishing introsets
       static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
@@ -74,6 +74,12 @@ namespace llarp
         return &m_Identity;
       }
 
+      void
+      PutLookup(IServiceLookup* lookup, uint64_t txid);
+
+      void
+      HandlePathBuilt(path::Path* path);
+
       /// context needed to initiate an outbound hidden service session
       struct OutboundContext : public llarp_pathbuilder_context
       {
@@ -102,11 +108,23 @@ namespace llarp
         void
         UpdateIntroSet();
 
+        void
+        HandlePathBuilt(path::Path* path);
+
         bool
         SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
 
         bool
         HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
+
+        bool
+        HandleHiddenServiceFrame(const ProtocolFrame* frame);
+
+        void
+        PutLookup(IServiceLookup* lookup, uint64_t txid);
+
+        std::string
+        Name() const;
 
        private:
         void
@@ -122,6 +140,7 @@ namespace llarp
         uint64_t sequenceNo = 0;
         llarp::SharedSecret sharedKey;
         Endpoint* m_Parent;
+        uint64_t m_UpdateIntrosetTX = 0;
       };
 
       // passed a sendto context when we have a path established otherwise
@@ -176,6 +195,8 @@ namespace llarp
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id
       std::unordered_map< uint64_t, service::IServiceLookup* > m_PendingLookups;
+      /// prefetch remote address list
+      std::set< Address > m_PrefetchAddrs;
       /// hidden service tag
       Tag m_Tag;
       /// prefetch descriptors for these hidden service tags
@@ -185,13 +206,12 @@ namespace llarp
       {
         const static llarp_time_t TTL = 10000;
         llarp_time_t lastRequest      = 0;
-        llarp_time_t lastModified;
-        uint64_t pendingTX = 0;
+        llarp_time_t lastModified     = 0;
         std::set< IntroSet > result;
         Tag tag;
 
-        CachedTagResult(const Tag& t, llarp_time_t now)
-            : lastModified(now), tag(t)
+        CachedTagResult(Endpoint* p, const Tag& t, uint64_t tx)
+            : IServiceLookup(p, tx), tag(t)
         {
         }
 
@@ -205,7 +225,7 @@ namespace llarp
         {
           if(now <= lastRequest)
             return false;
-          return (now - lastRequest) > TTL && pendingTX == 0;
+          return (now - lastRequest) > TTL;
         }
 
         llarp::routing::IMessage*

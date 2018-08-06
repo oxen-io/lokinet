@@ -11,5 +11,15 @@ namespace llarp
       std::string str        = Base32Encode(*this, tmp);
       return str + ".loki";
     }
+
+    bool
+    Address::FromString(const std::string& str)
+    {
+      auto pos = str.find(".loki");
+      if(pos == std::string::npos)
+        return false;
+      auto sub = str.substr(0, pos);
+      return Base32Decode(sub, *this);
+    }
   }  // namespace service
 }  // namespace llarp

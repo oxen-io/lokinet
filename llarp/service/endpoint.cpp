@@ -1,3 +1,4 @@
+
 #include <llarp/dht/messages/findintro.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/service/endpoint.hpp>
@@ -31,6 +32,12 @@ namespace llarp
       {
         m_PrefetchTags.insert(v);
       }
+      if(k == "prefetch-addr")
+      {
+        Address addr;
+        if(addr.FromString(v))
+          m_PrefetchAddrs.insert(addr);
+      }
       return true;
     }
 
@@ -47,6 +54,7 @@ namespace llarp
       {
         if(context)
         {
+          llarp::LogInfo("BEEP");
           byte_t tmp[128] = {0};
           memcpy(tmp, "BEEP", 4);
           auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -109,6 +117,22 @@ namespace llarp
         }
       }
 
+      for(const auto& addr : m_PrefetchAddrs)
+      {
+        if(!HasPathToService(addr))
+        {
+          PathAlignJob* j = new PathAlignJob(addr);
+          if(!EnsurePathToService(j->remote,
+                                  std::bind(&PathAlignJob::HandleResult, j,
+                                            std::placeholders::_1),
+                                  10000))
+          {
+            llarp::LogWarn("failed to ensure path to ", addr);
+            delete j;
+          }
+        }
+      }
+
       // prefetch tags
       for(const auto& tag : m_PrefetchTags)
       {
@@ -116,7 +140,8 @@ namespace llarp
         if(itr == m_PrefetchedTags.end())
         {
           itr = m_PrefetchedTags
-                    .insert(std::make_pair(tag, CachedTagResult(tag, now)))
+                    .insert(std::make_pair(
+                        tag, CachedTagResult(this, tag, GenTXID())))
                     .first;
         }
         for(const auto& introset : itr->second.result)
@@ -126,7 +151,11 @@ namespace llarp
                                   std::bind(&PathAlignJob::HandleResult, j,
                                             std::placeholders::_1),
                                   10000))
+          {
+            llarp::LogWarn("failed to ensure path to ", introset.A.Addr(),
+                           " for tag");
             delete j;
+          }
         }
         itr->second.Expire(now);
         if(itr->second.ShouldRefresh(now))
@@ -134,8 +163,7 @@ namespace llarp
           auto path = PickRandomEstablishedPath();
           if(path)
           {
-            itr->second.pendingTX                   = GenTXID();
-            m_PendingLookups[itr->second.pendingTX] = &itr->second;
+            itr->second.txid = GenTXID();
             itr->second.SendRequestViaPath(path, m_Router);
           }
         }
@@ -170,6 +198,18 @@ namespace llarp
     Endpoint::Name() const
     {
       return m_Name + ":" + m_Identity.pub.Name();
+    }
+
+    bool
+    Endpoint::HasPathToService(const Address& addr) const
+    {
+      return m_RemoteSessions.find(addr) != m_RemoteSessions.end();
+    }
+
+    void
+    Endpoint::PutLookup(IServiceLookup* lookup, uint64_t txid)
+    {
+      m_PendingLookups.insert(std::make_pair(txid, lookup));
     }
 
     bool
@@ -245,7 +285,7 @@ namespace llarp
     {
       auto now = llarp_time_now_ms();
 
-      pendingTX = 0;
+      txid = 0;
       for(const auto& introset : introsets)
         if(result.insert(introset).second)
           lastModified = now;
@@ -279,21 +319,22 @@ namespace llarp
     Endpoint::CachedTagResult::BuildRequestMessage()
     {
       llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-      msg->M.push_back(new llarp::dht::FindIntroMessage(tag, pendingTX));
+      msg->M.push_back(new llarp::dht::FindIntroMessage(tag, txid));
       lastRequest = llarp_time_now_ms();
+      parent->PutLookup(this, txid);
       return msg;
     }
 
     bool
     Endpoint::PublishIntroSet(llarp_router* r)
     {
-      auto path = PickRandomEstablishedPath();
+      auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr());
       if(path)
       {
         m_CurrentPublishTX = llarp_randint();
         llarp::routing::DHTMessage msg;
         msg.M.push_back(new llarp::dht::PublishIntroMessage(
-            m_IntroSet, m_CurrentPublishTX, 3));
+            m_IntroSet, m_CurrentPublishTX, 4));
         if(path->SendRoutingMessage(&msg, r))
         {
           m_LastPublishAttempt = llarp_time_now_ms();
@@ -301,7 +342,7 @@ namespace llarp
           return true;
         }
       }
-      llarp::LogWarn(Name(), " publish introset failed");
+      llarp::LogWarn(Name(), " publish introset failed, no path");
       return false;
     }
 
@@ -332,12 +373,11 @@ namespace llarp
 
     struct HiddenServiceAddressLookup : public IServiceLookup
     {
-      Endpoint* endpoint;
       Address remote;
-      uint64_t txid;
-      HiddenServiceAddressLookup(Endpoint* parent, const Address& addr,
-                                 uint64_t tx)
-          : endpoint(parent), remote(addr), txid(tx)
+      Endpoint* endpoint;
+
+      HiddenServiceAddressLookup(Endpoint* p, const Address& addr, uint64_t tx)
+          : IServiceLookup(p, tx), remote(addr), endpoint(p)
       {
         llarp::LogInfo("New hidden service lookup for ", addr.ToString());
       }
@@ -392,16 +432,52 @@ namespace llarp
       }
     }
 
+    void
+    Endpoint::HandlePathBuilt(path::Path* p)
+    {
+      p->SetDataHandler(std::bind(&Endpoint::HandleHiddenServiceFrame, this,
+                                  std::placeholders::_1));
+    }
+
+    bool
+    Endpoint::HandleHiddenServiceFrame(const ProtocolFrame* frame)
+    {
+      llarp::LogInfo("handle hidden service frame");
+      return true;
+    }
+
+    void
+    Endpoint::OutboundContext::HandlePathBuilt(path::Path* p)
+    {
+      p->SetDataHandler(
+          std::bind(&Endpoint::OutboundContext::HandleHiddenServiceFrame, this,
+                    std::placeholders::_1));
+    }
+
+    void
+    Endpoint::OutboundContext::PutLookup(IServiceLookup* lookup, uint64_t txid)
+    {
+      m_Parent->PutLookup(lookup, txid);
+    }
+
+    bool
+    Endpoint::OutboundContext::HandleHiddenServiceFrame(
+        const ProtocolFrame* frame)
+    {
+      return m_Parent->HandleHiddenServiceFrame(frame);
+    }
+
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
                                   llarp_time_t timeoutMS)
     {
-      auto path = PickRandomEstablishedPath();
+      auto path = GetEstablishedPathClosestTo(remote);
       if(!path)
       {
         llarp::LogWarn("No outbound path for lookup yet");
         return false;
       }
+      llarp::LogInfo(Name(), " Ensure Path to ", remote.ToString());
       {
         auto itr = m_RemoteSessions.find(remote);
         if(itr != m_RemoteSessions.end())
@@ -414,15 +490,15 @@ namespace llarp
       if(itr != m_PendingServiceLookups.end())
       {
         // duplicate
+        llarp::LogWarn("duplicate pending service lookup to ",
+                       remote.ToString());
         return false;
       }
-      llarp::LogInfo(Name(), " Ensure Path to ", remote.ToString());
 
       m_PendingServiceLookups.insert(std::make_pair(remote, hook));
 
       HiddenServiceAddressLookup* job =
           new HiddenServiceAddressLookup(this, remote, GenTXID());
-      m_PendingLookups.insert(std::make_pair(job->txid, job));
 
       return job->SendRequestViaPath(path, Router());
     }
@@ -459,20 +535,30 @@ namespace llarp
     Endpoint::OutboundContext::HandleGotIntroMessage(
         const llarp::dht::GotIntroMessage* msg)
     {
+      if(msg->T != m_UpdateIntrosetTX)
+      {
+        llarp::LogError("unwarrented introset message txid=", msg->T);
+        return false;
+      }
       auto crypto = m_Parent->Crypto();
       if(msg->I.size() == 1)
       {
         // found intro set
-        auto itr = msg->I.begin();
-        if(itr->VerifySignature(crypto) && currentIntroSet.A == itr->A)
+        const auto& introset = msg->I[0];
+        if(introset.VerifySignature(crypto) && currentIntroSet.A == introset.A)
         {
-          currentIntroSet = *itr;
+          // update
+          currentIntroSet = introset;
+          // reset tx
+          m_UpdateIntrosetTX = 0;
+          // shift to newest intro
+          // TODO: check timestamp on introset to make sure it's new enough
           ShiftIntroduction();
           return true;
         }
         else
         {
-          llarp::LogError("Signature Error for intro set ", *itr);
+          llarp::LogError("Signature Error for intro set ", introset);
           return false;
         }
       }
@@ -575,7 +661,7 @@ namespace llarp
         transfer.Y.Randomize();
         transfer.P = selectedIntro.pathID;
         llarp::LogInfo("sending frame via ", path->Upstream(), " to ",
-                       path->Endpoint());
+                       path->Endpoint(), " for ", Name());
         path->SendRoutingMessage(&transfer, m_Parent->Router());
       }
       else
@@ -584,17 +670,27 @@ namespace llarp
       }
     }
 
+    std::string
+    Endpoint::OutboundContext::Name() const
+    {
+      return "OBContext:" + m_Parent->Name() + "-"
+          + currentIntroSet.A.Addr().ToString();
+    }
+
     void
     Endpoint::OutboundContext::UpdateIntroSet()
     {
-      auto path = PickRandomEstablishedPath();
+      auto path = GetEstablishedPathClosestTo(currentIntroSet.A.Addr());
       if(path)
       {
-        uint64_t txid = llarp_randint();
-        routing::DHTMessage msg;
-        msg.M.push_back(
-            new llarp::dht::FindIntroMessage(currentIntroSet.A.Addr(), txid));
-        path->SendRoutingMessage(&msg, m_Parent->Router());
+        if(m_UpdateIntrosetTX == 0)
+        {
+          m_UpdateIntrosetTX = llarp_randint();
+          routing::DHTMessage msg;
+          msg.M.push_back(new llarp::dht::FindIntroMessage(
+              currentIntroSet.A.Addr(), m_UpdateIntrosetTX));
+          path->SendRoutingMessage(&msg, m_Parent->Router());
+        }
       }
       else
       {

@@ -1,7 +1,9 @@
 #include <getopt.h>
 #include <signal.h>
 #include <stdio.h> /* fprintf, printf */
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 
 #include <llarp.h>
 #include <llarp/logic.h>
@@ -12,6 +14,17 @@
 
 #include <thread>  // for multithreaded version
 #include <vector>
+#include <algorithm> // for std::generate_n
+
+// keep this once jeff reenables concurrency
+#ifdef _MSC_VER
+extern "C" void
+SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
+#endif
+
+#ifdef _WIN32
+#define uint UINT
+#endif
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -34,11 +47,11 @@ std::string const default_chars =
 
 std::string random_string(size_t len = 15, std::string const &allowed_chars = default_chars) {
   std::mt19937_64 gen { std::random_device()() };
-  
+
   std::uniform_int_distribution<size_t> dist { 0, allowed_chars.length()-1 };
-  
+
   std::string ret;
-  
+
   std::generate_n(std::back_inserter(ret), len, [&] { return allowed_chars[dist(gen)]; });
   return ret;
 }
@@ -46,14 +59,14 @@ std::string random_string(size_t len = 15, std::string const &allowed_chars = de
 /*
  /// check_online_request hook definition
  typedef void (*check_query_request_hook_func)(struct check_query_request *);
- 
+
  struct check_query_request
  {
  bool done;
  ///hook
  check_query_request_hook_func hook;
  };
- 
+
  void
  llarp_dnsd_checkQuery_resolved(struct check_query_request *request)
  {
@@ -160,7 +173,7 @@ main(int argc, char *argv[])
   iter.visit = &dns_iter_config;
   llarp_config_iter(config_reader, &iter);
   llarp::LogInfo("config [", conffname, "] loaded");
-  
+
   const uint16_t server_port = 1053;
 
   // llarp::SetLogLevel(llarp::eLogDebug);
@@ -171,7 +184,7 @@ main(int argc, char *argv[])
     llarp_ev_loop *netloop   = nullptr;
     llarp_threadpool *worker = nullptr;
     llarp_logic *logic       = nullptr;
-    
+
     llarp_ev_loop_alloc(&netloop); // set up netio worker
     worker = llarp_init_same_process_threadpool();
     logic  = llarp_init_single_process_logic(worker); // set up logic worker
@@ -192,6 +205,7 @@ main(int argc, char *argv[])
     llarp::LogInfo("singlethread start");
     llarp_ev_loop_run_single_process(netloop, worker, logic);
     llarp::LogInfo("singlethread end");
+
     llarp_ev_loop_free(&netloop);
   }
   else
@@ -201,7 +215,7 @@ main(int argc, char *argv[])
     llarp_logic *logic       = nullptr;
     worker = llarp_init_same_process_threadpool();
     logic  = llarp_init_single_process_logic(worker); // set up logic worker
-    
+
     // configure main netloop
     struct dnsd_context dnsd;
     if(!llarp_dnsd_init(&dnsd, nullptr, logic, "*", server_port,
@@ -214,7 +228,7 @@ main(int argc, char *argv[])
     }
     // Configure intercept
     dnsd.intercept = &hookChecker;
-    
+
     struct sockaddr_in m_address;
     int m_sockfd;
 
@@ -239,7 +253,11 @@ main(int argc, char *argv[])
     struct timeval tv;
     tv.tv_sec  = 0;
     tv.tv_usec = 100 * 1000;  // 1 sec
+#ifndef _WIN32
     if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
+#else
+    if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0)
+#endif
     {
       perror("Error");
     }

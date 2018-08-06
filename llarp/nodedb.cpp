@@ -12,6 +12,7 @@
 #include "mem.hpp"
 
 static const char skiplist_subdirs[] = "0123456789abcdef";
+static const std::string RC_FILE_EXT = ".signed";
 
 struct llarp_nodedb
 {
@@ -21,7 +22,7 @@ struct llarp_nodedb
 
   llarp_crypto *crypto;
   // std::map< llarp::pubkey, llarp_rc  > entries;
-  std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKeyHash > entries;
+  std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKey::Hash > entries;
   fs::path nodePath;
 
   void
@@ -38,11 +39,11 @@ struct llarp_nodedb
   llarp_rc *
   getRC(const llarp::PubKey &pk)
   {
-    return &entries[pk];
+    return &entries.at(pk);
   }
 
   bool
-  Has(const llarp::PubKey &pk)
+  Has(const llarp::PubKey &pk) const
   {
     return entries.find(pk) != entries.end();
   }
@@ -66,7 +67,7 @@ struct llarp_nodedb
   */
 
   bool
-  pubKeyExists(llarp_rc *rc)
+  pubKeyExists(llarp_rc *rc) const
   {
     // extract pk from rc
     llarp::PubKey pk = rc->pubkey;
@@ -85,6 +86,8 @@ struct llarp_nodedb
     llarp::PubKey pk = rc->pubkey;
 
     // TODO: zero out any fields you don't want to compare
+    // XXX: make a copy and then do modifications on the copy
+    //      touching external data in here is HARAM >:[
 
     // serialize both and memcmp
     byte_t nodetmp[MAX_RC_SIZE];
@@ -103,19 +106,17 @@ struct llarp_nodedb
   }
 
   std::string
-  getRCFilePath(const byte_t *pubkey)
+  getRCFilePath(const byte_t *pubkey) const
   {
     char ftmp[68] = {0};
     const char *hexname =
         llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pubkey, ftmp);
     std::string hexString(hexname);
-    std::string filepath = nodePath;
-    filepath.append(PATH_SEP);
-    filepath.append(&hexString[hexString.length() - 1]);
-    filepath.append(PATH_SEP);
-    filepath.append(hexname);
-    filepath.append(".signed");
-    return filepath;
+    hexString += RC_FILE_EXT;
+    std::string skiplistDir;
+    skiplistDir += hexString[hexString.length() - 1];
+    fs::path filepath = nodePath / skiplistDir / hexString;
+    return filepath.string();
   }
 
   bool
@@ -166,6 +167,8 @@ struct llarp_nodedb
 
     for(const char &ch : skiplist_subdirs)
     {
+      if(!ch)
+        continue;
       std::string p;
       p += ch;
       fs::path sub = path / p;
@@ -182,7 +185,7 @@ struct llarp_nodedb
   {
     ssize_t sz = 0;
     fs::directory_iterator i(dir);
-#if __has_include(<filesystem>) && !defined(__OpenBSD__)
+#if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
     auto itr = fs::begin(i);
     while(itr != fs::end(i))
 #else
@@ -190,7 +193,7 @@ struct llarp_nodedb
     while(itr != itr.end())
 #endif
     {
-      if(fs::is_regular_file(itr->symlink_status()) && loadfile(*itr))
+      if(fs::is_regular_file(itr->path()) && loadfile(*itr))
         sz++;
 
       ++itr;
@@ -201,16 +204,12 @@ struct llarp_nodedb
   bool
   loadfile(const fs::path &fpath)
   {
-#if __APPLE__ && __MACH__
-    // skip .DS_Store files
-    if(strstr(fpath.c_str(), ".DS_Store") != 0)
-    {
+    if(fpath.extension() != RC_FILE_EXT)
       return false;
-    }
-#endif
     llarp_rc rc;
     llarp_rc_clear(&rc);
-    if(!llarp_rc_read(fpath.c_str(), &rc))
+
+    if(!llarp_rc_read(fpath.string().c_str(), &rc))
     {
       llarp::LogError("Signature read failed", fpath);
       return false;
@@ -287,7 +286,7 @@ crypto_threadworker_verifyrc(void *user)
   verify_request->valid =
       llarp_rc_verify_sig(verify_request->nodedb->crypto, &verify_request->rc);
   // if it's valid we need to set it
-  if(verify_request->valid)
+  if(verify_request->valid && llarp_rc_is_public_router(&verify_request->rc))
   {
     llarp::LogDebug("RC is valid, saving to disk");
     llarp_threadpool_queue_job(verify_request->diskworker,
@@ -296,7 +295,8 @@ crypto_threadworker_verifyrc(void *user)
   else
   {
     // callback to logic thread
-    llarp::LogWarn("RC is not valid, can't save to disk");
+    if(!verify_request->valid)
+      llarp::LogWarn("RC is not valid, can't save to disk");
     llarp_logic_queue_job(verify_request->logic,
                           {verify_request, &logic_threadworker_callback});
   }
@@ -347,6 +347,7 @@ llarp_nodedb_ensure_dir(const char *dir)
 {
   fs::path path(dir);
   std::error_code ec;
+
   if(!fs::exists(dir, ec))
     fs::create_directories(path, ec);
 
@@ -358,6 +359,11 @@ llarp_nodedb_ensure_dir(const char *dir)
 
   for(const char &ch : skiplist_subdirs)
   {
+    // this seems to be a problem on all targets
+    // perhaps cpp17::fs is just as screwed-up
+    // attempting to create a folder with no name
+    if(!ch)
+      return true;
     std::string p;
     p += ch;
     fs::path sub = path / p;
@@ -435,7 +441,8 @@ void
 llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
                                struct llarp_rc *result, size_t N)
 {
-  /// TODO: check for "guard" status for N = 0?
+  /// checking for "guard" status for N = 0 is done by caller inside of
+  /// pathbuilder's scope
   auto sz = n->entries.size();
 
   if(prev)

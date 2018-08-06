@@ -1,4 +1,8 @@
+#ifdef _MSC_VER
+#define NOMINMAX
+#endif
 #include <llarp/iwp.h>
+#include <algorithm>
 #include <llarp/crypto.hpp>
 #include <llarp/iwp/server.hpp>
 #include <llarp/iwp/session.hpp>
@@ -463,7 +467,6 @@ static void
 handle_verify_session_start(iwp_async_session_start *s)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(s->user);
-  self->serv->remove_intro_from(self->addr);
   if(!s->buf)
   {
     // verify fail
@@ -472,6 +475,7 @@ handle_verify_session_start(iwp_async_session_start *s)
     self->serv->RemoveSession(self);
     return;
   }
+  self->serv->remove_intro_from(self->addr);
   self->send_LIM();
   self->working = false;
 }
@@ -520,7 +524,7 @@ handle_generated_intro(iwp_async_intro *i)
     }
     link->EnterState(llarp_link_session::eIntroSent);
     link->lastIntroSentAt     = llarp_time_now_ms();
-    auto dlt                  = (link->createdAt - link->lastIntroSentAt);
+    auto dlt                  = (link->createdAt - link->lastIntroSentAt) + 500;
     auto logic                = link->serv->logic;
     link->intro_resend_job_id = llarp_logic_call_later(
         logic, {dlt, link, &llarp_link_session::handle_introack_timeout});
@@ -647,6 +651,11 @@ llarp_link_session::on_session_start(const void *buf, size_t sz)
   if(sz > sizeof(workbuf))
   {
     llarp::LogDebug("session start too big");
+    return;
+  }
+  if(working)
+  {
+    llarp::LogError("duplicate session start from ", addr);
     return;
   }
   // own the buffer

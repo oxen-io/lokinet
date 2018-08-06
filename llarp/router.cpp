@@ -166,7 +166,7 @@ llarp_router::try_connect(fs::path rcfile)
 {
   llarp_rc remote;
   llarp_rc_new(&remote);
-  if(!llarp_rc_read(rcfile.c_str(), &remote))
+  if(!llarp_rc_read(rcfile.string().c_str(), &remote))
   {
     llarp::LogError("failure to decode or verify of remote RC");
     return;
@@ -196,14 +196,15 @@ llarp_router::EnsureIdentity()
 {
   if(!EnsureEncryptionKey())
     return false;
-  return llarp_findOrCreateIdentity(&crypto, ident_keyfile.c_str(), identity);
+  return llarp_findOrCreateIdentity(&crypto, ident_keyfile.string().c_str(),
+                                    identity);
 }
 
 bool
 llarp_router::EnsureEncryptionKey()
 {
-  return llarp_findOrCreateEncryption(&crypto, encryption_keyfile.c_str(),
-                                      &this->encryption);
+  return llarp_findOrCreateEncryption(
+      &crypto, encryption_keyfile.string().c_str(), &this->encryption);
 }
 
 void
@@ -233,15 +234,16 @@ llarp_router::SaveRC()
 
   if(llarp_rc_bencode(&rc, &buf))
   {
-    std::ofstream f(our_rc_file);
+    std::ofstream f(our_rc_file.string());
+
     if(f.is_open())
     {
       f.write((char *)buf.base, buf.cur - buf.base);
-      llarp::LogInfo("our RC saved to ", our_rc_file.c_str());
+      llarp::LogInfo("our RC saved to ", our_rc_file.string().c_str());
       return true;
     }
   }
-  llarp::LogError("did not save RC to ", our_rc_file.c_str());
+  llarp::LogError("did not save RC to ", our_rc_file.string().c_str());
   return false;
 }
 
@@ -384,7 +386,6 @@ llarp_router::Tick()
   paths.TickPaths();
 }
 
-
 void
 llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
                      llarp_link *link)
@@ -500,8 +501,8 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
   if(job->session)
   {
     // llarp::LogDebug("try_connect got session");
-    auto session = job->session;
-    router->async_verify_RC(session->get_remote_router(), false, job);
+    // auto session = job->session;
+    // router->async_verify_RC(session->get_remote_router(), false, job);
     return;
   }
   // llarp::LogDebug("try_connect no session");
@@ -574,11 +575,8 @@ llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
     job->hook = &llarp_router::on_verify_client_rc;
   else
     job->hook = &llarp_router::on_verify_server_rc;
-
   llarp_nodedb_async_verify(job);
 }
-
-#include <string.h>
 
 void
 llarp_router::Run()
@@ -586,8 +584,7 @@ llarp_router::Run()
   // zero out router contact
   llarp::Zero(&rc, sizeof(llarp_rc));
   // fill our address list
-  rc.addrs         = llarp_ai_list_new();
-  bool publicFound = false;
+  rc.addrs = llarp_ai_list_new();
 
   sockaddr *dest = (sockaddr *)&this->ip4addr;
   llarp::Addr publicAddr(*dest);
@@ -596,7 +593,6 @@ llarp_router::Run()
     if(publicAddr)
     {
       llarp::LogInfo("public address:port ", publicAddr);
-      ;
     }
   }
 
@@ -609,17 +605,8 @@ llarp_router::Run()
     if(this->publicOverride && a.sameAddr(publicAddr))
     {
       llarp::LogInfo("Found adapter for public address");
-      publicFound = true;
     }
-    if(a.isPrivate())
-    {
-      if(!this->publicOverride)
-      {
-        llarp::LogWarn("Skipping private network link: ", a);
-        continue;
-      }
-    }
-    else
+    if(!a.isPrivate())
     {
       llarp::LogInfo("Loading Addr: ", a, " into our RC");
       llarp_ai_list_pushback(rc.addrs, &addr);
@@ -758,11 +745,7 @@ llarp_router::InitOutboundLink()
     return true;
 
   llarp_iwp_args args = {
-      .crypto       = &crypto,
-      .logic        = logic,
-      .cryptoworker = tp,
-      .router       = this,
-      .keyfile      = transport_keyfile.c_str(),
+      &crypto, logic, tp, this, transport_keyfile.string().c_str(),
   };
 
   auto link = new(std::nothrow) llarp_link(args);
@@ -915,7 +898,9 @@ llarp_rc_read(const char *fpath, llarp_rc *result)
     printf("File[%s] not found\n", fpath);
     return false;
   }
-  std::ifstream f(our_rc_file, std::ios::binary);
+
+  std::ifstream f(our_rc_file.string(), std::ios::binary);
+
   if(!f.is_open())
   {
     printf("Can't open file [%s]\n", fpath);
@@ -935,7 +920,7 @@ llarp_rc_read(const char *fpath, llarp_rc *result)
   llarp::Zero(result, sizeof(llarp_rc));
   if(!llarp_rc_bdecode(result, &buf))
   {
-    printf("Can't decode [%s]\n", fpath);
+    llarp::LogError("Can't decode ", fpath);
     return false;
   }
   return true;
@@ -969,7 +954,7 @@ llarp_rc_write(struct llarp_rc *rc, const char *fpath)
 
   if(llarp_rc_bencode(rc, &buf))
   {
-    std::ofstream f(our_rc_file, std::ios::binary);
+    std::ofstream f(our_rc_file.string(), std::ios::binary);
     if(f.is_open())
     {
       f.write((char *)buf.base, buf.cur - buf.base);
@@ -1041,13 +1026,13 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
   {
     llarp::LogInfo("generating new identity key");
     crypto->identity_keygen(secretkey);
-    std::ofstream f(path, std::ios::binary);
+    std::ofstream f(path.string(), std::ios::binary);
     if(f.is_open())
     {
       f.write((char *)secretkey, SECKEYSIZE);
     }
   }
-  std::ifstream f(path, std::ios::binary);
+  std::ifstream f(path.string(), std::ios::binary);
   if(f.is_open())
   {
     f.read((char *)secretkey, SECKEYSIZE);
@@ -1069,13 +1054,14 @@ llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
   {
     llarp::LogInfo("generating new encryption key");
     crypto->encryption_keygen(*encryption);
-    std::ofstream f(path, std::ios::binary);
+    std::ofstream f(path.string(), std::ios::binary);
     if(f.is_open())
     {
       f.write((char *)encryption, SECKEYSIZE);
     }
   }
-  std::ifstream f(path, std::ios::binary);
+
+  std::ifstream f(path.string(), std::ios::binary);
   if(f.is_open())
   {
     f.read((char *)encryption, SECKEYSIZE);
@@ -1132,12 +1118,13 @@ namespace llarp
       if(!StrEq(key, "*"))
       {
         llarp::LogInfo("interface specific binding activated");
+
         llarp_iwp_args args = {
-            .crypto       = &self->crypto,
-            .logic        = self->logic,
-            .cryptoworker = self->tp,
-            .router       = self,
-            .keyfile      = self->transport_keyfile.c_str(),
+            &self->crypto,
+            self->logic,
+            self->tp,
+            self,
+            self->transport_keyfile.string().c_str(),
         };
 
         link = new(std::nothrow) llarp_link(args);
@@ -1190,6 +1177,16 @@ namespace llarp
     }
     else if(StrEq(section, "router"))
     {
+      if(StrEq(key, "nickname"))
+      {
+        if(llarp_rc_set_nickname(&self->rc, val))
+        {
+          // set logger name here
+          _glog.nodeName = self->rc.Nick();
+        }
+        else
+          llarp::LogWarn("failed to set nickname to ", val);
+      }
       if(StrEq(key, "encryption-privkey"))
       {
         self->encryption_keyfile = val;
