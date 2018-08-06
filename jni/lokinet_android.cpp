@@ -16,7 +16,8 @@ struct AndroidMain
   {
     if(m_impl || m_thread)
       return true;
-    printf("starting with config file %s", conf);
+    if(!llarp_ensure_config(conf))
+      return false;
     m_impl = llarp_main_init(conf, true);
     if(m_impl == nullptr)
       return false;
