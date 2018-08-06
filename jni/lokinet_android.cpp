@@ -15,7 +15,7 @@ struct AndroidMain
   Start(const char* conf)
   {
     if(m_impl || m_thread)
-      return;
+      return true;
     m_impl = llarp_main_init(conf, true);
     if(m_impl == nullptr)
       return false;
