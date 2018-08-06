@@ -107,10 +107,7 @@ namespace llarp
     {
       std::unique_lock< std::mutex > lock(_glog.access);
 #ifdef ANDROID
-      __android_log_write(ANDROID_LOG_INFO,
-                          "LOKINET"
-                          "%s",
-                          ss.str());
+      __android_log_write(ANDROID_LOG_INFO, "LOKINET" ss.str().c_str());
 #else
       _glog.out << ss.str() << std::endl;
 #ifdef SHADOW_TESTNET
