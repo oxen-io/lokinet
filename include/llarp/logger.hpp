@@ -79,6 +79,23 @@ namespace llarp
       return;
 
     std::stringstream ss;
+#ifdef ANDROID
+    switch(lvl)
+    {
+      case eLogDebug:
+        ss << "[DBG] ";
+        break;
+      case eLogInfo:
+        ss << "[NFO] ";
+        break;
+      case eLogWarn:
+        ss << "[WRN] ";
+        break;
+      case eLogError:
+        ss << "[ERR] ";
+        break;
+    }
+#else
     switch(lvl)
     {
       case eLogDebug:
@@ -98,12 +115,15 @@ namespace llarp
         ss << "[ERR] ";
         break;
     }
+#endif
     std::string tag = fname;
     ss << _glog.nodeName << " " << llarp_time_now_ms() << " " << tag << ":"
        << lineno;
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
+#ifndef ANDROID
     ss << (char)27 << "[0;0m";
+#else
     {
       std::unique_lock< std::mutex > lock(_glog.access);
 #ifdef ANDROID
