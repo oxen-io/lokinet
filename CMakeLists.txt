@@ -423,7 +423,7 @@ else()
   endif(WITH_STATIC)
   if(ANDROID)
     add_library(lokinetandroid SHARED jni/lokinet_android.cpp)
-    target_link_libraries(lokinetandroid ${STATIC_LIB} llarpplatform-static ${THREAD_LIB})
+    target_link_libraries(lokinetandroid ${STATIC_LIB} ${LIBS})
   endif()
 
   if(WITH_SHARED)
