@@ -54,16 +54,16 @@ extern "C"
   Java_network_loki_lokinet_Lokinet_1JNI_getABICompiledWith(JNIEnv* env, jclass)
   {
     // TODO: fixme
-    return env->NewUTFString("android");
+    return env->NewStringUTF("android");
   }
 
   JNIEXPORT jstring JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv* env, jclass jcl)
   {
     if(daemon->Running())
-      return env->NewUTFString("already running");
+      return env->NewStringUTF("already running");
     daemon->Start();
-    return env->NewUTFString("ok");
+    return env->NewStringUTF("ok");
   }
 
   JNIEXPORT void JNICALL
