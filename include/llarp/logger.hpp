@@ -11,6 +11,9 @@
 #define VC_EXTRALEAN
 #include <windows.h>
 #endif
+#ifdef ANDROID
+#include <android/log.h>
+#endif
 
 namespace llarp
 {
@@ -103,9 +106,16 @@ namespace llarp
     ss << (char)27 << "[0;0m";
     {
       std::unique_lock< std::mutex > lock(_glog.access);
+#ifdef ANDROID
+      __android_log_write(ANDROID_LOG_INFO,
+                          "LOKINET"
+                          "%s",
+                          ss.str());
+#else
       _glog.out << ss.str() << std::endl;
 #ifdef SHADOW_TESTNET
       _glog.out << "\n" << std::flush;
+#endif
 #endif
     }
   }
