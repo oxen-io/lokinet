@@ -11,15 +11,6 @@ struct AndroidMain
   llarp_main* m_impl    = nullptr;
   std::thread* m_thread = nullptr;
 
-  ~AndroidMain()
-  {
-    if(m_thread)
-    {
-      m_thread->join();
-      delete m_thread;
-    }
-  }
-
   void
   Start()
   {
@@ -29,50 +20,59 @@ struct AndroidMain
     m_thread = new std::thread(std::bind(&AndroidMain::Run, this));
   }
 
+  bool
+  Running() const
+  {
+    return m_impl != nullptr;
+  }
+
   void
   Run()
   {
     llarp_main_run(m_impl);
-    llarp_main_free(m_impl);
   }
 
   void
   Stop()
   {
     llarp_main_signal(m_impl, SIGINT);
+    m_thread->join();
+    delete m_thread;
+    m_thread = nullptr;
+    llarp_main_free(m_impl);
+    m_impl = nullptr;
   }
 
   typedef std::unique_ptr< AndroidMain > Ptr;
 
-  static std::atomic< Ptr > daemon =
-      std::unique_ptr< AndroidMain >(new AndroidMain());
 }
+
+static AndroidMain::Ptr daemon(new AndroidMain());
 
 extern "C"
 {
   JNIEXPORT jstring JNICALL
-      Java_network_loki_lokinet_Lokinet_1JNI_getABICompiledWith(JNIEnv * env,
-                                                                jclass)
+  Java_network_loki_lokinet_Lokinet_1JNI_getABICompiledWith(JNIEnv* env, jclass)
   {
     // TODO: fixme
     return env->NewUTFString("android");
   }
 
-  JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(
-      JNIEnv * env, jclass jcl)
+  JNIEXPORT jstring JNICALL
+  Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv* env, jclass jcl)
   {
-    if(AndroidMain::daemon->Running())
+    if(daemon->Running())
       return env->NewUTFString("already running");
-    AndroidMain::daemon->Start();
+    daemon->Start();
     return env->NewUTFString("ok");
   }
 
-  JNIEXPORT void JNICALL Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(
-      JNIEnv * env, jclass)
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv* env, jclass)
   {
-    if(AndroidMain::daemon->Running())
+    if(daemon->Running())
     {
-      AndroidMain::daemon->Stop();
+      daemon->Stop();
     }
   }
 
