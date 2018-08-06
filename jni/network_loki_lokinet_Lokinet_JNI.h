@@ -18,10 +18,10 @@ JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_getABICompiledW
 /*
  * Class:     network_loki_lokinet_Lokinet_JNI
  * Method:    startLokinet
- * Signature: ()Ljava/lang/String;
+ * Signature: (Ljava/lang/String;)Ljava/lang/String;
  */
 JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_startLokinet
-  (JNIEnv *, jclass);
+  (JNIEnv *, jclass, jstring);
 
 /*
  * Class:     network_loki_lokinet_Lokinet_JNI

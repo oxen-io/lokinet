@@ -11,13 +11,16 @@ struct AndroidMain
   llarp_main* m_impl    = nullptr;
   std::thread* m_thread = nullptr;
 
-  void
-  Start()
+  bool
+  Start(const char* conf)
   {
     if(m_impl || m_thread)
       return;
-    m_impl   = llarp_main_init("daemon.ini", true);
+    m_impl = llarp_main_init(conf, true);
+    if(m_impl == nullptr)
+      return false;
     m_thread = new std::thread(std::bind(&AndroidMain::Run, this));
+    return true;
   }
 
   bool
@@ -58,26 +61,36 @@ extern "C"
   }
 
   JNIEXPORT jstring JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv* env, jclass jcl)
+  Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv* env, jclass jcl,
+                                                      jstring configfile)
   {
     if(daemon->Running())
       return env->NewStringUTF("already running");
-    daemon->Start();
-    return env->NewStringUTF("ok");
-  }
-
-  JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv* env, jclass)
-  {
-    if(daemon->Running())
+    std::string conf;
     {
-      daemon->Stop();
+      const char* nativeString = env->GetStringUTFChars(configfile, JNI_FALSE);
+      conf                     = nativeString;
+      env->ReleaseStringUTFChars(configfile, nativeString);
     }
+    if(daemon->Start(conf.c_str()))
+      return env->NewStringUTF("ok");
+    else
+      return env->NewStringUTF("failed to start");
   }
+}
 
-  JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(JNIEnv*, jclass,
-                                                               jboolean)
+JNIEXPORT void JNICALL
+Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv* env, jclass)
+{
+  if(daemon->Running())
   {
+    daemon->Stop();
   }
+}
+
+JNIEXPORT void JNICALL
+Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(JNIEnv*, jclass,
+                                                             jboolean)
+{
+}
 }
