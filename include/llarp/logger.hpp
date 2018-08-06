@@ -123,7 +123,7 @@ namespace llarp
     LogAppend(ss, std::forward< TArgs >(args)...);
 #ifndef ANDROID
     ss << (char)27 << "[0;0m";
-#else
+#endif
     {
       std::unique_lock< std::mutex > lock(_glog.access);
 #ifdef ANDROID
