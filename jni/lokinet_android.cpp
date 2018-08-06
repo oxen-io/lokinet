@@ -44,7 +44,8 @@ struct AndroidMain
 
   typedef std::unique_ptr< AndroidMain > Ptr;
 
-  static std::atomic< Ptr > daemon = std::make_unique< AndroidMain >();
+  static std::atomic< Ptr > daemon =
+      std::unique_ptr< AndroidMain >(new AndroidMain());
 }
 
 extern "C"
