@@ -1,6 +1,7 @@
 /**
  * The MIT License (MIT)
  * Copyright (c) <2015> <carriez.md@gmail.com>
+ * Copyright (c) <2018> <rtharp@customwebapps.com>
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to
@@ -156,7 +157,7 @@ namespace ini
   Parser::err(const char *s)
   {
     char buf[256];
-    sprintf(buf, "%s on line #%d", s, ln_);
+    sprintf(buf, "%s on line #%lu", s, ln_);
     throw std::runtime_error(buf);
   }
 
@@ -264,7 +265,7 @@ namespace ini
       }
     }
   }
-  
+
   inline void
   Parser::commit(std::ostream &s, Level &l, std::vector<std::string> &savedSections, bool disabledSection)
   {
