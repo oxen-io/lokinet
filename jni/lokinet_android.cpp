@@ -77,20 +77,19 @@ extern "C"
     else
       return env->NewStringUTF("failed to start");
   }
-}
 
-JNIEXPORT void JNICALL
-Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv* env, jclass)
-{
-  if(daemon->Running())
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv* env, jclass)
   {
-    daemon->Stop();
+    if(daemon->Running())
+    {
+      daemon->Stop();
+    }
   }
-}
 
-JNIEXPORT void JNICALL
-Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(JNIEnv*, jclass,
-                                                             jboolean)
-{
-}
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(JNIEnv*, jclass,
+                                                               jboolean)
+  {
+  }
 }
