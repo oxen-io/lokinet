@@ -25,6 +25,7 @@
 #ifndef INI_HPP
 #define INI_HPP
 
+#include <algorithm>
 #include <cassert>
 #include <cstring>
 #include <fstream>
@@ -33,7 +34,6 @@
 #include <map>
 #include <stdexcept>
 #include <string>
-#include <algorithm>
 #include <vector>
 
 namespace ini
@@ -99,12 +99,11 @@ namespace ini
       dump(std::cout, top(), "");
     }
 
-
     bool
     write(const std::string filename)
     {
-      //this->print();
-      //printf("parser::Write\n");
+      // this->print();
+      // printf("parser::Write\n");
       std::ofstream s;
       s.open(filename);
       if(!s.is_open())
@@ -114,7 +113,7 @@ namespace ini
         return false;
       }
       // reset read
-      //printf("parser::Write - committing\n");
+      // printf("parser::Write - committing\n");
       this->commitStream(s);
       s.close();
       return true;
@@ -123,12 +122,12 @@ namespace ini
     void
     commitStream(std::ostream &s)
     {
-      //printf("parser::commitStream - seekd\n");
+      // printf("parser::commitStream - seekd\n");
       this->ln_ = 0;
       this->f_->clear();
       this->f_->seekg(0);
-      //printf("parser::commitStream - reading top\n");
-      std::vector<std::string> savedSections;
+      // printf("parser::commitStream - reading top\n");
+      std::vector< std::string > savedSections;
       this->commit(s, top_, savedSections, false);
     }
 
@@ -138,7 +137,8 @@ namespace ini
     void
     parse(Level &l);
     void
-    commit(std::ostream &s, Level &l, std::vector<std::string> &savedSections, bool disabledSection);
+    commit(std::ostream &s, Level &l, std::vector< std::string > &savedSections,
+           bool disabledSection);
     void
     parseSLine(std::string &sname, size_t &depth);
     void
@@ -156,7 +156,7 @@ namespace ini
   Parser::err(const char *s)
   {
     char buf[256];
-    sprintf(buf, "%s on line #%d", s, ln_);
+    sprintf(buf, "%s on line #%zu", s, ln_);
     throw std::runtime_error(buf);
   }
 
@@ -250,38 +250,42 @@ namespace ini
   }
 
   inline void
-  saveValues(std::ostream &s, std::vector<std::string> excludes, Level &l)
+  saveValues(std::ostream &s, std::vector< std::string > excludes, Level &l)
   {
-    //printf("checking keys[%lu] against [%lu]\n", l.values.size(), excludes.size());
+    // printf("checking keys[%lu] against [%lu]\n", l.values.size(),
+    // excludes.size());
     for(auto it = l.values.begin(); it != l.values.end(); ++it)
     {
-      //printf("key[%s]\n", it->first.c_str());
+      // printf("key[%s]\n", it->first.c_str());
       auto check = find(excludes.begin(), excludes.end(), it->first);
-      if (check == excludes.end())
+      if(check == excludes.end())
       {
-        //printf("We didnt write it [%s=%s]\n", it->first.c_str(), it->second.c_str());
-        s << it->first + "=" + it->second << "\n"; // commit to stream
+        // printf("We didnt write it [%s=%s]\n", it->first.c_str(),
+        // it->second.c_str());
+        s << it->first + "=" + it->second << "\n";  // commit to stream
       }
     }
   }
-  
+
   inline void
-  Parser::commit(std::ostream &s, Level &l, std::vector<std::string> &savedSections, bool disabledSection)
+  Parser::commit(std::ostream &s, Level &l,
+                 std::vector< std::string > &savedSections,
+                 bool disabledSection)
   {
-    std::vector<std::string> keys;
+    std::vector< std::string > keys;
     bool keysChecked = false;
     while(std::getline(*this->f_, line_))
     {
       ++ln_;
       if(line_[0] == '#' || line_[0] == ';')
       {
-        s << line_ << "\n"; // commit to stream
+        s << line_ << "\n";  // commit to stream
         continue;
       }
       std::string tline_ = trim(line_);
       if(tline_.empty())
       {
-        s << line_ << "\n"; // commit to stream
+        s << line_ << "\n";  // commit to stream
         continue;
       }
       if(tline_[0] == '[')
@@ -290,13 +294,14 @@ namespace ini
         size_t depth;
         std::string sname;
         parseSLine(sname, depth);
-        s << "[" << sname << "]" << "\n"; // commit to stream
+        s << "[" << sname << "]"
+          << "\n";  // commit to stream
 
         auto test = this->top_.sections.find(sname);
-        if (test == this->top_.sections.end())
+        if(test == this->top_.sections.end())
         {
           // could mean we're done with this section
-          //printf("We dont have section [%s]\n", sname.c_str());
+          // printf("We dont have section [%s]\n", sname.c_str());
           // we'll comment out these keys since we've intentionally dropped them
           disableNextSection = true;
         }
@@ -325,7 +330,8 @@ namespace ini
         /*
         if(lp->depth != 0)
         {
-          printf("has depth still, found [%s] at [%zu]\n", sname.c_str(), depth);
+          printf("has depth still, found [%s] at [%zu]\n", sname.c_str(),
+        depth);
         }
         */
         if(!lp->parent)
@@ -351,36 +357,40 @@ namespace ini
 
         auto key = trim(line_.substr(0, n));
         keys.push_back(key);
-        auto val = std::find_if(l.values.begin(), l.values.end(),
-                                [&key](const std::pair<std::string, std::string >& element)
-                                {
-                                  return element.first == key;
-                                });
-        if (val != l.values.end())
+        auto val = std::find_if(
+            l.values.begin(), l.values.end(),
+            [&key](const std::pair< std::string, std::string > &element) {
+              return element.first == key;
+            });
+        if(val != l.values.end())
         {
-          if (val->second.c_str() == trim(line_.substr(n + 1, line_.length() - n - 1)))
+          if(val->second.c_str()
+             == trim(line_.substr(n + 1, line_.length() - n - 1)))
           {
             // copying line
-            if (disabledSection) s << "# ";
-            s << line_ << "\n"; // commit to stream
+            if(disabledSection)
+              s << "# ";
+            s << line_ << "\n";  // commit to stream
           }
           else
           {
             // update value
-            if (disabledSection) s << "# ";
-            s << line_.substr(0, n) + "=" + val->second << "\n"; // commit to stream
+            if(disabledSection)
+              s << "# ";
+            s << line_.substr(0, n) + "=" + val->second
+              << "\n";  // commit to stream
           }
-        }/*
-        else
-        {
-          // remove it
-          //printf("kv found [%s] no current\n", key.c_str());
-        } */
+        } /*
+         else
+         {
+           // remove it
+           //printf("kv found [%s] no current\n", key.c_str());
+         } */
       }
     }
 
     // handle last section
-    if (!keysChecked)
+    if(!keysChecked)
     {
       saveValues(s, keys, l);
     }
@@ -389,15 +399,17 @@ namespace ini
     if(l.sections.size())
     {
       // check to make sure we've written out all the sections we need to
-      //printf("sections old[%lu] run[%lu]\n", savedSections.size(), l.sections.size());
+      // printf("sections old[%lu] run[%lu]\n", savedSections.size(),
+      // l.sections.size());
       for(auto it = l.sections.begin(); it != l.sections.end(); ++it)
       {
-        //printf("sections[%s]\n", it->first.c_str());
-        auto check = find(savedSections.begin(), savedSections.end(), it->first);
-        if (check == savedSections.end())
+        // printf("sections[%s]\n", it->first.c_str());
+        auto check =
+            find(savedSections.begin(), savedSections.end(), it->first);
+        if(check == savedSections.end())
         {
-          //printf("Adding section [%s]\n", it->first.c_str());
-          //s << "[" << it->first + "]" << "\n"; // commit to stream
+          // printf("Adding section [%s]\n", it->first.c_str());
+          // s << "[" << it->first + "]" << "\n"; // commit to stream
           dump(s, l.sections[it->first], it->first);
         }
       }
