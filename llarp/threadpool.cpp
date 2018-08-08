@@ -104,6 +104,11 @@ namespace llarp
     runIsolated(void *arg)
     {
       IsolatedPool *self = static_cast< IsolatedPool * >(arg);
+      if(!self->Isolated())
+      {
+        llarp::LogError("failed to set up isolated environment");
+        return 1;
+      }
       auto func = std::bind(&Pool::Spawn, self, self->m_IsolatedWorkers,
                             self->m_IsolatedName);
       func();
@@ -123,14 +128,14 @@ namespace llarp
         pid_t isolated;
         isolated =
             clone(runIsolated, self->m_childstack + sizeof(self->m_childstack),
-                  CLONE_NEWNET | SIGCHLD, self);
+                  self->m_flags, self);
         if(isolated == -1)
         {
           llarp::LogError("failed to run isolated threadpool, ",
                           strerror(errno));
           return;
         }
-        llarp::LogInfo("Spawned network isolated process");
+        llarp::LogInfo("Spawned isolated process pool");
         if(waitpid(isolated, nullptr, 0) == -1)
         {
           llarp::LogError("failed to wait for pid ", isolated, ", ",
@@ -138,7 +143,7 @@ namespace llarp
         }
       });
 #else
-      llarp::LogError("isolated network not supported on your platform");
+      llarp::LogError("isolated processes not supported on your platform");
       Pool::Spawn(workers, name);
 #endif
     }
@@ -155,6 +160,19 @@ namespace llarp
       }
     }
 
+#ifdef __linux__
+    NetIsolatedPool::NetIsolatedPool(std::function< bool(void) > setupNet)
+        : IsolatedPool(SIGCHLD | CLONE_NEWNET)
+    {
+      m_NetSetup = setupNet;
+    }
+#else
+    NetIsolatedPool::NetIsolatedPool(std::function< bool(void) > setupNet)
+        : IsolatedPool(0)
+    {
+      m_NetSetup = setupNet;
+    }
+#endif
   }  // namespace thread
 }  // namespace llarp
 
@@ -165,10 +183,11 @@ struct llarp_threadpool
   std::mutex m_access;
   std::queue< llarp_thread_job * > jobs;
 
-  llarp_threadpool(int workers, const char *name, bool isolate)
+  llarp_threadpool(int workers, const char *name, bool isolate,
+                   setup_net_func setup = nullptr)
   {
     if(isolate)
-      impl = new llarp::thread::IsolatedPool();
+      impl = new llarp::thread::NetIsolatedPool(setup);
     else
       impl = new llarp::thread::Pool();
     impl->Spawn(workers, name);
@@ -195,9 +214,9 @@ llarp_init_same_process_threadpool()
 }
 
 struct llarp_threadpool *
-llarp_init_isolated_net_threadpool(const char *name)
+llarp_init_isolated_net_threadpool(const char *name, setup_net_func setup)
 {
-  return new llarp_threadpool(1, name, true);
+  return new llarp_threadpool(1, name, true, setup);
 }
 
 void

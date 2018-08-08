@@ -4,6 +4,7 @@
 #include <llarp/threadpool.h>
 #include <llarp/threading.hpp>
 
+#include <functional>
 #include <queue>
 
 #include <thread>
@@ -55,16 +56,42 @@ namespace llarp
 
     struct IsolatedPool : public Pool
     {
+      IsolatedPool(int flags) : Pool(), m_flags(flags)
+      {
+      }
+
       void
       Spawn(int workers, const char* name);
 
       void
       Join();
 
-      std::thread* m_isolated    = nullptr;
+      // override me to do specific setups after isolation
+      // return true for success
+      virtual bool
+      Isolated()
+      {
+        return true;
+      }
+
+      std::thread* m_isolated = nullptr;
+      int m_flags;
       int m_IsolatedWorkers      = 0;
       const char* m_IsolatedName = nullptr;
       char m_childstack[(1024 * 1024 * 8)];
+    };
+
+    struct NetIsolatedPool : public IsolatedPool
+    {
+      NetIsolatedPool(std::function< bool(void) > setupNet);
+
+      bool
+      Isolated()
+      {
+        return m_NetSetup();
+      }
+
+      std::function< bool(void) > m_NetSetup;
     };
 
   }  // namespace thread
