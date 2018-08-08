@@ -84,7 +84,7 @@ struct check_query_simple_request
 };
 
 std::map< std::string, struct dnsd_query_hook_response * >
-loki_tld_lookup_cache;
+    loki_tld_lookup_cache;
 
 void
 llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
