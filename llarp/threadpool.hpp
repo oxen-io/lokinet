@@ -58,6 +58,9 @@ namespace llarp
       void
       Spawn(int workers, const char* name);
 
+      void
+      Join();
+
       std::thread* m_isolated    = nullptr;
       int m_IsolatedWorkers      = 0;
       const char* m_IsolatedName = nullptr;

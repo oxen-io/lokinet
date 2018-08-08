@@ -143,6 +143,18 @@ namespace llarp
 #endif
     }
 
+    void
+    IsolatedPool::Join()
+    {
+      Pool::Join();
+      if(m_isolated)
+      {
+        m_isolated->join();
+        delete m_isolated;
+        m_isolated = nullptr;
+      }
+    }
+
   }  // namespace thread
 }  // namespace llarp
 
