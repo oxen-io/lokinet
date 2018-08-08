@@ -4,7 +4,10 @@
 #include <llarp/net.h>
 #include <functional>
 #include <iostream>
+#include "logger.hpp"
 #include "mem.hpp"
+
+#include <stdlib.h>  // for itoa
 
 bool
 operator==(const sockaddr& a, const sockaddr& b);
@@ -14,6 +17,16 @@ operator<(const sockaddr_in6& a, const sockaddr_in6& b);
 
 bool
 operator<(const in6_addr& a, const in6_addr& b);
+
+struct privatesInUse
+{
+  bool ten;
+  bool oneSeven;
+  bool oneNine;
+};
+
+struct privatesInUse
+llarp_getPrivateIfs();
 
 namespace llarp
 {
@@ -53,6 +66,47 @@ namespace llarp
     addr4() const
     {
       return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
+    }
+
+    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
+         const uint8_t four)
+    {
+      struct in_addr* addr = &((struct sockaddr_in*)&_addr4)->sin_addr;
+      // unsigned char *ip = (unsigned char *)&(addr->s_addr);
+
+      _addr.sin6_family = AF_INET;  // set ipv4 mode
+      _addr4.sin_family = AF_INET;
+      _addr4.sin_port   = htons(0);
+
+#if((__APPLE__ && __MACH__) || __FreeBSD__)
+      _addr4.sin_len = sizeof(in_addr);
+#endif
+      llarp::LogInfo("Creating IP ", (unsigned int)one, ".", (unsigned int)two,
+                     ".", (unsigned int)three, ".", (unsigned int)four);
+      std::string ugh;
+      char buf[5];
+      sprintf(buf, "%u", one);
+      ugh.append(buf);
+      ugh.append(".");
+      sprintf(buf, "%u", two);
+      ugh.append(buf);
+      ugh.append(".");
+      sprintf(buf, "%u", three);
+      ugh.append(buf);
+      ugh.append(".");
+      sprintf(buf, "%u", four);
+      ugh.append(buf);
+      llarp::LogDebug("String debug ", ugh);
+      inet_pton(AF_INET, ugh.c_str(), addr);
+      llarp::Addr test(*(sockaddr*)&this->_addr4);
+      llarp::LogDebug("Addr debug ", test);
+      /*
+      ip[0] = 127;
+      ip[1] = 0;
+      ip[2] = 0;
+      ip[3] = 1;
+      */
+      memcpy(&_addr4.sin_addr.s_addr, test.addr4(), sizeof(in_addr));
     }
 
     Addr(const llarp_ai& other)
@@ -216,15 +270,43 @@ namespace llarp
       return !(*this == other);
     }
 
+    inline uint32_t
+    getHostLong()
+    {
+      in_addr_t addr = this->addr4()->s_addr;
+      uint32_t byte  = ntohl(addr);
+      return byte;
+    };
+
+    bool
+    isTenPrivate(uint32_t byte)
+    {
+      uint8_t byte1 = byte >> 24 & 0xff;
+      return byte1 == 10;
+    }
+
+    bool
+    isOneSevenPrivate(uint32_t byte)
+    {
+      uint8_t byte1 = byte >> 24 & 0xff;
+      uint8_t byte2 = (0x00ff0000 & byte >> 16);
+      return byte1 == 172 && (byte2 >= 16 || byte2 <= 31);
+    }
+
+    bool
+    isOneNinePrivate(uint32_t byte)
+    {
+      uint8_t byte1 = byte >> 24 & 0xff;
+      uint8_t byte2 = (0x00ff0000 & byte >> 16);
+      return byte1 == 192 && byte2 == 168;
+    }
+
     bool
     isPrivate()
     {
-      in_addr_t addr = this->addr4()->s_addr;
-      unsigned byte  = ntohl(addr);
-      unsigned byte1 = byte >> 24 & 0xff;
-      unsigned byte2 = (0x00ff0000 & byte >> 16);
-      return (byte1 == 10 || (byte1 == 192 && byte2 == 168)
-              || (byte1 == 172 && (byte2 >= 16 || byte2 <= 31)));
+      uint32_t byte = getHostLong();
+      return this->isTenPrivate(byte) || this->isOneSevenPrivate(byte)
+          || this->isOneNinePrivate(byte);
     }
 
     bool
