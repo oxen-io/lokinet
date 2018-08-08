@@ -7,17 +7,19 @@ void
 dns_iptracker_init()
 {
   g_dns_iptracker.interfaces    = llarp_getPrivateIfs();
+  llarp::LogInfo("Interface uses 10.x.x.x? ", g_dns_iptracker.interfaces.ten?"Yes":"No");
   g_dns_iptracker.used_privates = g_dns_iptracker.interfaces;
+  llarp::LogInfo("We used 10.x.x.x? ", g_dns_iptracker.used_privates.ten?"Yes":"No");
 }
 
 inline struct dns_pointer *
-dns_iptracker_allocate_range(struct ip_range *range)
+dns_iptracker_allocate_range(struct ip_range *range, uint8_t first)
 {
   // we have an IP
   llarp::LogDebug("Range has ", (unsigned int)range->left, " ips left");
   range->left--;  // use it up
   struct dns_pointer *result = new dns_pointer;
-  llarp::Addr ip(10, range->octet2, range->octet3, range->left + 2);
+  llarp::Addr ip(first, range->octet2, range->octet3, range->left + 2);
   llarp::LogDebug("Allocated ", ip);
   result->hostResult = new sockaddr;
   ip.CopyInto(result->hostResult);
@@ -28,7 +30,7 @@ dns_iptracker_allocate_range(struct ip_range *range)
 }
 
 struct dns_pointer *
-dns_iptracker_check_range(std::vector< ip_range * > &ranges)
+dns_iptracker_check_range(std::vector< ip_range * > &ranges, uint8_t first)
 {
   // tens not all used up
   if(ranges.size())
@@ -39,7 +41,7 @@ dns_iptracker_check_range(std::vector< ip_range * > &ranges)
     {
       if((*it)->left)
       {
-        struct dns_pointer *result = dns_iptracker_allocate_range(*it);
+        struct dns_pointer *result = dns_iptracker_allocate_range(*it, first);
         if(!(*it)->left)
         {
           // all used up
@@ -54,11 +56,25 @@ dns_iptracker_check_range(std::vector< ip_range * > &ranges)
     // create one
     auto new_range    = new ip_range;
     new_range->octet2 = 0;
-    new_range->octet3 = 0;    // FIXME: counter
+    switch(first) {
+      case 172:
+      {
+        // FIXME: goes up to 31...
+        new_range->octet2 = 16;
+        break;
+      }
+      case 192:
+      {
+        new_range->octet2 = 168;
+        break;
+      }
+    }
+    new_range->octet3 = 0;    // FIXME: counter (0-255)
+    // CHECK: planning a /24 but maybe that's too wide for broadcasts
     new_range->left   = 252;  // 0 is net, 1 is gw, 255 is broadcast
     ranges.push_back(new_range);
     // don't need to check if we're out since this is fresh range
-    return dns_iptracker_allocate_range(new_range);
+    return dns_iptracker_allocate_range(new_range, first);
   }
   return nullptr;
 }
@@ -66,28 +82,31 @@ dns_iptracker_check_range(std::vector< ip_range * > &ranges)
 struct dns_pointer *
 dns_iptracker_get_free()
 {
+  llarp::LogInfo("We used 10.x.x.x? ", g_dns_iptracker.used_privates.ten?"Yes":"No");
   if(!g_dns_iptracker.used_privates.ten)
   {
     struct dns_pointer *test =
-        dns_iptracker_check_range(g_dns_iptracker.used_ten_ips);
+        dns_iptracker_check_range(g_dns_iptracker.used_ten_ips, 10);
     if(test)
     {
       return test;
     }
   }
+  llarp::LogInfo("We used 172.16.x.x? ", g_dns_iptracker.used_privates.oneSeven?"Yes":"No");
   if(!g_dns_iptracker.used_privates.oneSeven)
   {
     struct dns_pointer *test =
-        dns_iptracker_check_range(g_dns_iptracker.used_seven_ips);
+        dns_iptracker_check_range(g_dns_iptracker.used_seven_ips, 172);
     if(test)
     {
       return test;
     }
   }
+  llarp::LogInfo("We used 192.168.x.x? ", g_dns_iptracker.used_privates.oneNine?"Yes":"No");
   if(!g_dns_iptracker.used_privates.oneNine)
   {
     struct dns_pointer *test =
-        dns_iptracker_check_range(g_dns_iptracker.used_nine_ips);
+        dns_iptracker_check_range(g_dns_iptracker.used_nine_ips, 192);
     if(test)
     {
       return test;

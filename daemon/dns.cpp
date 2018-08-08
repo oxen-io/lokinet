@@ -110,6 +110,8 @@ llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
     response->returnThis               = free_private->hostResult;
     llarp::LogInfo("Saving ", qr->request->question.name);
     loki_tld_lookup_cache[qr->request->question.name] = response;
+    // FIXME: flush cache to disk
+    // on crash we'll need to bring up all the same IPs we assigned before...
     writesend_dnss_response(free_private->hostResult, qr->from, qr->request);
     return;
   }

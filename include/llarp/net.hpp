@@ -20,9 +20,9 @@ operator<(const in6_addr& a, const in6_addr& b);
 
 struct privatesInUse
 {
-  bool ten;
-  bool oneSeven;
-  bool oneNine;
+  bool ten;      // 16m ips
+  bool oneSeven; // 1m  ips
+  bool oneNine;  // 65k ips
 };
 
 struct privatesInUse
