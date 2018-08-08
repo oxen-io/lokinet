@@ -1,16 +1,16 @@
 #if defined(__MINGW32__) && !defined(_WIN64)
-/* 
- * Contains routines missing from WS2_32.DLL until 2006, if yer using 
- * Microsoft C/C++, then this code is irrelevant, as the official 
+/*
+ * Contains routines missing from WS2_32.DLL until 2006, if yer using
+ * Microsoft C/C++, then this code is irrelevant, as the official
  * Platform SDK already links against these routines in the correct
  * libraries.
  *
  * -despair86 30/07/18
  */
 #include <assert.h>
+#include <iphlpapi.h>
 #include <llarp/net.h>
 #include <windows.h>
-#include <iphlpapi.h>
 #include "win32_intrnl.h"
 
 const char *

@@ -16,10 +16,10 @@
 #include <stdlib.h>
 
 /**
-     * ev.h
-     *
-     * event handler (cross platform high performance event system for IO)
-     */
+ * ev.h
+ *
+ * event handler (cross platform high performance event system for IO)
+ */
 
 // forward declare
 struct llarp_threadpool;

@@ -38,6 +38,10 @@ namespace llarp
         if(addr.FromString(v))
           m_PrefetchAddrs.insert(addr);
       }
+      if(k == "isolate-net")
+      {
+        // TODO: implement me
+      }
       return true;
     }
 

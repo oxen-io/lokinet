@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include <llarp/time.h>
+#include <functional>
 #include <queue>
 
 #include "logger.hpp"
@@ -12,6 +13,8 @@
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
 #endif
+
+#include <sys/wait.h>
 
 #ifdef _MSC_VER
 #include <windows.h>
@@ -23,7 +26,8 @@ namespace llarp
 {
   namespace thread
   {
-    Pool::Pool(size_t workers, const char *name)
+    void
+    Pool::Spawn(size_t workers, const char *name)
     {
       stop = false;
       while(workers--)
@@ -96,6 +100,49 @@ namespace llarp
       condition.notify_one();
     }
 
+    static int
+    runIsolated(void *arg)
+    {
+      IsolatedPool *self = static_cast< IsolatedPool * >(arg);
+      auto func = std::bind(&Pool::Spawn, self, self->m_IsolatedWorkers,
+                            self->m_IsolatedName);
+      func();
+      return 0;
+    }
+
+    void
+    IsolatedPool::Spawn(int workers, const char *name)
+    {
+      if(m_isolated)
+        return;
+#ifdef __linux__
+      IsolatedPool *self      = this;
+      self->m_IsolatedName    = name;
+      self->m_IsolatedWorkers = workers;
+      m_isolated              = new std::thread([self] {
+        pid_t isolated;
+        isolated =
+            clone(runIsolated, self->m_childstack + sizeof(self->m_childstack),
+                  CLONE_NEWNET | SIGCHLD, self);
+        if(isolated == -1)
+        {
+          llarp::LogError("failed to run isolated threadpool, ",
+                          strerror(errno));
+          return;
+        }
+        llarp::LogInfo("Spawned network isolated process");
+        if(waitpid(isolated, nullptr, 0) == -1)
+        {
+          llarp::LogError("failed to wait for pid ", isolated, ", ",
+                          strerror(errno));
+        }
+      });
+#else
+      llarp::LogError("isolated network not supported on your platform");
+      Pool::Spawn(workers, name);
+#endif
+    }
+
   }  // namespace thread
 }  // namespace llarp
 
@@ -106,9 +153,13 @@ struct llarp_threadpool
   std::mutex m_access;
   std::queue< llarp_thread_job * > jobs;
 
-  llarp_threadpool(int workers, const char *name)
-      : impl(new llarp::thread::Pool(workers, name))
+  llarp_threadpool(int workers, const char *name, bool isolate)
   {
+    if(isolate)
+      impl = new llarp::thread::IsolatedPool();
+    else
+      impl = new llarp::thread::Pool();
+    impl->Spawn(workers, name);
   }
 
   llarp_threadpool() : impl(nullptr)
@@ -120,7 +171,7 @@ struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name)
 {
   if(workers > 0)
-    return new llarp_threadpool(workers, name);
+    return new llarp_threadpool(workers, name, false);
   else
     return nullptr;
 }
@@ -129,6 +180,12 @@ struct llarp_threadpool *
 llarp_init_same_process_threadpool()
 {
   return new llarp_threadpool();
+}
+
+struct llarp_threadpool *
+llarp_init_isolated_net_threadpool(const char *name)
+{
+  return new llarp_threadpool(1, name, true);
 }
 
 void

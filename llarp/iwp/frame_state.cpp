@@ -3,6 +3,7 @@
 #endif
 
 #include "llarp/iwp/frame_state.hpp"
+#include <algorithm>
 #include "buffer.hpp"
 #include "llarp/crypto.hpp"
 #include "llarp/endian.h"
@@ -11,7 +12,6 @@
 #include "llarp/logger.hpp"
 #include "mem.hpp"
 #include "router.hpp"
-#include <algorithm>
 
 llarp_router *
 frame_state::Router()

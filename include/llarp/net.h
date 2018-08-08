@@ -7,12 +7,13 @@
 // because this shit is not defined for Windows NT reeeee
 #ifndef _MSC_VER
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
-const char*
-inet_ntop(int af, const void* src, char* dst, size_t size);
-int
-inet_pton(int af, const char* src, void* dst);
+  const char*
+  inet_ntop(int af, const void* src, char* dst, size_t size);
+  int
+  inet_pton(int af, const char* src, void* dst);
 #ifdef __cplusplus
 }
 #endif

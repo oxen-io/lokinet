@@ -10,6 +10,10 @@ llarp_init_threadpool(int workers, const char *name);
 struct llarp_threadpool *
 llarp_init_same_process_threadpool();
 
+/// for network isolation
+struct llarp_threadpool *
+llarp_init_isolated_net_threadpool(const char *name);
+
 void
 llarp_free_threadpool(struct llarp_threadpool **tp);
 

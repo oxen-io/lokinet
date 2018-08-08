@@ -207,8 +207,8 @@ raw_resolve_host(const char *url)
   ret = recvfrom(sockfd, (char *)buffer, DNC_BUF_SIZE, 0,
                  (struct sockaddr *)&addr, &size);
 #else
-  ret = recvfrom(sockfd, buffer, DNC_BUF_SIZE, 0,
-                 (struct sockaddr *)&addr, &size);
+  ret = recvfrom(sockfd, buffer, DNC_BUF_SIZE, 0, (struct sockaddr *)&addr,
+                 &size);
 #endif
   if(ret < 0)
   {

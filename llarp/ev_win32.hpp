@@ -144,7 +144,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     int result           = 0;
     int idx              = 0;
     byte_t readbuf[2048];
-    
+
     do
     {
       if(ev_id && qdata && iolen)
@@ -199,15 +199,16 @@ struct llarp_win32_loop : public llarp_ev_loop
     {
       if(ev_id && qdata && iolen)
       {
-          llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
-          if(ev && ev->fd)
+        llarp::udp_listener* ev =
+            reinterpret_cast< llarp::udp_listener* >(ev_id);
+        if(ev && ev->fd)
+        {
+          if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
           {
-              if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
-              {
-                  llarp::LogInfo("close ev");
-                  close_ev(ev);
-              }
+            llarp::LogInfo("close ev");
+            close_ev(ev);
           }
+        }
       }
       ++idx;
     } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10));

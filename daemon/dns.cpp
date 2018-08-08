@@ -166,7 +166,9 @@ main(int argc, char *argv[])
 #ifndef _WIN32
     if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
 #else
-    if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0)
+    if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv,
+                  sizeof(tv))
+       < 0)
 #endif
     {
       perror("Error");

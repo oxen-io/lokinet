@@ -30,7 +30,8 @@ struct dnsd_question_request
 
 // we could have passed in the source sockaddr in case you wanted to
 // handle the response yourself
-typedef sockaddr *(*intercept_query_hook)(std::string name, struct dnsd_context *context);
+typedef sockaddr *(*intercept_query_hook)(std::string name,
+                                          struct dnsd_context *context);
 
 struct dnsd_context
 {

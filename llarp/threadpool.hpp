@@ -17,11 +17,13 @@ namespace llarp
     typedef std::unique_lock< mtx_t > lock_t;
     struct Pool
     {
-      Pool(size_t sz, const char* name);
+      virtual void
+      Spawn(size_t sz, const char* name);
+
       void
       QueueJob(const llarp_thread_job& job);
 
-      void
+      virtual void
       Join();
 
       void
@@ -49,6 +51,17 @@ namespace llarp
       std::condition_variable condition;
       std::condition_variable done;
       bool stop;
+    };
+
+    struct IsolatedPool : public Pool
+    {
+      void
+      Spawn(int workers, const char* name);
+
+      std::thread* m_isolated    = nullptr;
+      int m_IsolatedWorkers      = 0;
+      const char* m_IsolatedName = nullptr;
+      char m_childstack[(1024 * 1024 * 8)];
     };
 
   }  // namespace thread
