@@ -177,11 +177,15 @@ endif(UNIX)
 if(TUNTAP)
 set(LIBTUNTAP_SRC
   ${TT_ROOT}/tuntap.c
-  ${TT_ROOT}/tuntap_log.c
-  if (UNIX)
-  ${TT_ROOT}/tuntap-unix.c
-  endif()
+  ${TT_ROOT}/tuntap_log.cpp
   ${LIBTUNTAP_IMPL})
+  if (UNIX)
+  set(LIBTUNTAP_SRC 
+    ${TT_ROOT}/tuntap-unix.c
+    ${LIBTUNTAP_SRC}
+  )
+  endif()
+  
 else()
 set(LIBTUNTAP_SRC "")
 endif()
@@ -282,6 +286,7 @@ set(LIB_SRC
   llarp/dht/got_router.cpp
   llarp/dht/search_job.cpp
   llarp/dht/publish_intro.cpp
+  llarp/handlers/tun.cpp
   llarp/iwp/frame_header.cpp
   llarp/iwp/frame_state.cpp
   llarp/iwp/session.cpp

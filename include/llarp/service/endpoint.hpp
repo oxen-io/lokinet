@@ -3,6 +3,7 @@
 #include <llarp/codel.hpp>
 #include <llarp/pathbuilder.hpp>
 #include <llarp/service/Identity.hpp>
+#include <llarp/service/handler.hpp>
 #include <llarp/service/protocol.hpp>
 
 namespace llarp
@@ -19,6 +20,9 @@ namespace llarp
 
       Endpoint(const std::string& nickname, llarp_router* r);
       ~Endpoint();
+
+      void
+      SetHandler(IDataHandler* h);
 
       bool
       SetOption(const std::string& k, const std::string& v);
@@ -178,6 +182,9 @@ namespace llarp
      private:
       uint64_t
       GenTXID();
+
+     protected:
+      IDataHandler* m_DataHandler = nullptr;
 
      private:
       llarp_router* m_Router;

@@ -6,7 +6,6 @@
 #include <llarp/aligned.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/dht.hpp>
-#include <llarp/endpoint.hpp>
 #include <llarp/messages/relay.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/path_types.hpp>
