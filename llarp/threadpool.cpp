@@ -128,7 +128,7 @@ namespace llarp
         pid_t isolated;
         isolated =
             clone(runIsolated, self->m_childstack + sizeof(self->m_childstack),
-                  self->m_flags, self);
+                  self->m_flags | SIGCHLD, self);
         if(isolated == -1)
         {
           llarp::LogError("failed to run isolated threadpool, ",
@@ -162,7 +162,7 @@ namespace llarp
 
 #ifdef __linux__
     NetIsolatedPool::NetIsolatedPool(std::function< bool(void) > setupNet)
-        : IsolatedPool(SIGCHLD | CLONE_NEWNET)
+        : IsolatedPool(CLONE_NEWNET)
     {
       m_NetSetup = setupNet;
     }
