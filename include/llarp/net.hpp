@@ -71,8 +71,8 @@ namespace llarp
     Addr(const uint8_t one, const uint8_t two, const uint8_t three,
          const uint8_t four)
     {
-      struct in_addr* addr = &((struct sockaddr_in*)&_addr4)->sin_addr;
-      // unsigned char *ip = (unsigned char *)&(addr->s_addr);
+      struct in_addr* addr = &_addr4.sin_addr;
+      unsigned char* ip    = (unsigned char*)&(addr->s_addr);
 
       _addr.sin6_family = AF_INET;  // set ipv4 mode
       _addr4.sin_family = AF_INET;
@@ -81,32 +81,10 @@ namespace llarp
 #if((__APPLE__ && __MACH__) || __FreeBSD__)
       _addr4.sin_len = sizeof(in_addr);
 #endif
-      llarp::LogInfo("Creating IP ", (unsigned int)one, ".", (unsigned int)two,
-                     ".", (unsigned int)three, ".", (unsigned int)four);
-      std::string ugh;
-      char buf[5];
-      sprintf(buf, "%u", one);
-      ugh.append(buf);
-      ugh.append(".");
-      sprintf(buf, "%u", two);
-      ugh.append(buf);
-      ugh.append(".");
-      sprintf(buf, "%u", three);
-      ugh.append(buf);
-      ugh.append(".");
-      sprintf(buf, "%u", four);
-      ugh.append(buf);
-      llarp::LogDebug("String debug ", ugh);
-      inet_pton(AF_INET, ugh.c_str(), addr);
-      llarp::Addr test(*(sockaddr*)&this->_addr4);
-      llarp::LogDebug("Addr debug ", test);
-      /*
-      ip[0] = 127;
-      ip[1] = 0;
-      ip[2] = 0;
-      ip[3] = 1;
-      */
-      memcpy(&_addr4.sin_addr.s_addr, test.addr4(), sizeof(in_addr));
+      ip[0] = one;
+      ip[1] = two;
+      ip[2] = three;
+      ip[3] = four;
     }
 
     Addr(const llarp_ai& other)
@@ -206,19 +184,26 @@ namespace llarp
       switch(af())
       {
         case AF_INET:
-          dst  = (void*)&((sockaddr_in*)other)->sin_addr.s_addr;
-          src  = (void*)&_addr.sin6_addr.s6_addr[12];
-          ptr  = &((sockaddr_in*)other)->sin_port;
-          slen = sizeof(in_addr);
+        {
+          sockaddr_in* ipv4_dst = (sockaddr_in*)other;
+          dst                   = (void*)&ipv4_dst->sin_addr.s_addr;
+          src                   = (void*)&_addr4.sin_addr.s_addr;
+          ptr                   = &((sockaddr_in*)other)->sin_port;
+          slen                  = sizeof(in_addr);
           break;
+        }
         case AF_INET6:
+        {
           dst  = (void*)((sockaddr_in6*)other)->sin6_addr.s6_addr;
           src  = (void*)_addr.sin6_addr.s6_addr;
           ptr  = &((sockaddr_in6*)other)->sin6_port;
           slen = sizeof(in6_addr);
           break;
+        }
         default:
+        {
           return;
+        }
       }
       memcpy(dst, src, slen);
       *ptr             = htons(port());
