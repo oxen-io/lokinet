@@ -14,26 +14,14 @@ inline struct dns_pointer *
 dns_iptracker_allocate_range(struct ip_range *range)
 {
   // we have an IP
-  llarp::LogInfo("Range has ", (unsigned int)range->left, " ips left");
+  llarp::LogDebug("Range has ", (unsigned int)range->left, " ips left");
   range->left--;  // use it up
   struct dns_pointer *result = new dns_pointer;
-  // llarp::Addr ip(10, range->octet2, range->octet3, range->left + 2);
-  // llarp::LogInfo("Allocated ", ip);
+  llarp::Addr ip(10, range->octet2, range->octet3, range->left + 2);
+  llarp::LogDebug("Allocated ", ip);
   result->hostResult = new sockaddr;
-  // ip.CopyInto(result->hostResult);
-  result->hostResult->sa_family = AF_INET;
-#if((__APPLE__ && __MACH__) || __FreeBSD__)
-  result->hostResult->sa_len    = sizeof(in_addr);
-#endif
-  struct sockaddr_in *ipv4      = (struct sockaddr_in *)result->hostResult;
-  struct in_addr *addr          = &ipv4->sin_addr;
-  unsigned char *ip2            = (unsigned char *)&(addr->s_addr);
-  ip2[0]                        = 10;
-  ip2[1]                        = range->octet2;
-  ip2[2]                        = range->octet3;
-  ip2[3]                        = range->left + 2;
-  llarp::Addr test(*result->hostResult);
-  llarp::LogInfo("Allocated Test ", test);
+  ip.CopyInto(result->hostResult);
+
   // make an address and place into this sockaddr
   range->used[range->left + 2] = result;
   return result;
