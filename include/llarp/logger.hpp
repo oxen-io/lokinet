@@ -123,12 +123,16 @@ namespace llarp
     LogAppend(ss, std::forward< TArgs >(args)...);
 #ifndef ANDROID
     ss << (char)27 << "[0;0m";
+    _glog.out << ss.str() << std::endl;
 #else
     {
       std::unique_lock< std::mutex > lock(_glog.access);
       __android_log_write(ANDROID_LOG_INFO, "LOKINET", ss.str().c_str());
-      _glog.out << "\n" << std::flush;
+      _glog.out << ss.str() << std::endl;
     }
+#endif
+#ifdef SHADOW_TESTNET
+    _glog.out << "\n" << std::flush;
 #endif
   }
 }  // namespace llarp
