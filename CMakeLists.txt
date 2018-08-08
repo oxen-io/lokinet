@@ -306,6 +306,7 @@ set(LIB_SRC
 
 set(DNS_SRC
   llarp/dns.cpp
+  llarp/dns_iptracker.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
   llarp/net.cpp

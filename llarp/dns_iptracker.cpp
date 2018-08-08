@@ -22,7 +22,9 @@ dns_iptracker_allocate_range(struct ip_range *range)
   result->hostResult = new sockaddr;
   // ip.CopyInto(result->hostResult);
   result->hostResult->sa_family = AF_INET;
+#if((__APPLE__ && __MACH__) || __FreeBSD__)
   result->hostResult->sa_len    = sizeof(in_addr);
+#endif
   struct sockaddr_in *ipv4      = (struct sockaddr_in *)result->hostResult;
   struct in_addr *addr          = &ipv4->sin_addr;
   unsigned char *ip2            = (unsigned char *)&(addr->s_addr);
