@@ -64,6 +64,7 @@
     "map": "cpp",
     "vector": "cpp",
     "new": "cpp",
-    "shared_mutex": "cpp"
+    "shared_mutex": "cpp",
+    "complex": "cpp"
   }
 }
