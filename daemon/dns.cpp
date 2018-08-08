@@ -7,14 +7,15 @@
 
 #include <llarp.h>
 #include <llarp/logic.h>
+#include "dns_iptracker.hpp"
 #include "dnsd.hpp"
 #include "ev.hpp"
 #include "llarp/net.hpp"
 #include "logger.hpp"
 
-#include <thread>  // for multithreaded version
+#include <algorithm>  // for std::generate_n
+#include <thread>     // for multithreaded version
 #include <vector>
-#include <algorithm> // for std::generate_n
 
 // keep this once jeff reenables concurrency
 #ifdef _MSC_VER
@@ -41,18 +42,21 @@ handle_signal(int sig)
 }
 
 std::string const default_chars =
-"abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+    "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
 #include <random>
 
-std::string random_string(size_t len = 15, std::string const &allowed_chars = default_chars) {
-  std::mt19937_64 gen { std::random_device()() };
+std::string
+random_string(size_t len = 15, std::string const &allowed_chars = default_chars)
+{
+  std::mt19937_64 gen{std::random_device()()};
 
-  std::uniform_int_distribution<size_t> dist { 0, allowed_chars.length()-1 };
+  std::uniform_int_distribution< size_t > dist{0, allowed_chars.length() - 1};
 
   std::string ret;
 
-  std::generate_n(std::back_inserter(ret), len, [&] { return allowed_chars[dist(gen)]; });
+  std::generate_n(std::back_inserter(ret), len,
+                  [&] { return allowed_chars[dist(gen)]; });
   return ret;
 }
 
@@ -79,15 +83,41 @@ struct check_query_simple_request
   dnsd_question_request *request;
 };
 
+std::map< std::string, struct dnsd_query_hook_response * >
+loki_tld_lookup_cache;
+
 void
 llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
 {
   if(left)
     return;
-  //struct check_query_request *request = static_cast< struct check_query_request * >(u);
-  struct check_query_simple_request *qr = static_cast< struct check_query_simple_request * >(u);
+  // struct check_query_request *request = static_cast< struct
+  // check_query_request * >(u);
+  struct check_query_simple_request *qr =
+      static_cast< struct check_query_simple_request * >(u);
+
+  // we do have result
+  // if so send that
+  // else
+  // if we have a free private ip, send that
+  struct dns_pointer *free_private = dns_iptracker_get_free();
+  if(free_private)
+  {
+    // make a dnsd_query_hook_response for the cache
+    dnsd_query_hook_response *response = new dnsd_query_hook_response;
+    response->dontLookUp               = true;
+    response->dontSendResponse         = false;
+    response->returnThis               = free_private->hostResult;
+    llarp::LogInfo("Saving ", qr->request->question.name);
+    loki_tld_lookup_cache[qr->request->question.name] = response;
+    writesend_dnss_response(free_private->hostResult, qr->from, qr->request);
+    return;
+  }
+  // else
   llarp::LogInfo("Sending cname to delay");
-  writecname_dnss_response(random_string(32, "abcdefghijklmnopqrstuvwxyz")+"bob.loki", qr->from, qr->request);
+  writecname_dnss_response(
+      random_string(32, "abcdefghijklmnopqrstuvwxyz") + "bob.loki", qr->from,
+      qr->request);
   delete qr;
 }
 
@@ -96,24 +126,34 @@ hookChecker(std::string name, const struct sockaddr *from,
             struct dnsd_question_request *request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
-  response->dontLookUp       = false;
-  response->dontSendResponse = false;
-  response->returnThis       = nullptr;
+  response->dontLookUp               = false;
+  response->dontSendResponse         = false;
+  response->returnThis               = nullptr;
   llarp::LogInfo("Hooked ", name);
   std::string lName = name;
   std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
+
   // FIXME: probably should just read the last 5 bytes
-  if (lName.find(".loki") != std::string::npos)
+  if(lName.find(".loki") != std::string::npos)
   {
     llarp::LogInfo("Detect Loki Lookup");
-    //check_query_request *query_request = new check_query_request;
-    //query_request->hook = &llarp_dnsd_checkQuery_resolved;
+    auto cache_check = loki_tld_lookup_cache.find(lName);
+    if(cache_check != loki_tld_lookup_cache.end())
+    {
+      // was in cache
+      llarp::LogInfo("Could reuse address from LokiLookupCache");
+      // FIXME: avoid the allocation if you could
+      delete response;
+      return cache_check->second;
+    }
+    // check_query_request *query_request = new check_query_request;
+    // query_request->hook = &llarp_dnsd_checkQuery_resolved;
     check_query_simple_request *qr = new check_query_simple_request;
-    qr->from    = from;
-    qr->request = request;
+    qr->from                       = from;
+    qr->request                    = request;
     // nslookup on osx is about 5 sec before a retry
     llarp_logic_call_later(request->context->logic,
-                           {5000, qr, &llarp_dnsd_checkQuery});
+                           {5, qr, &llarp_dnsd_checkQuery});
     response->dontSendResponse = true;
   }
   // cast your context->user;
@@ -176,6 +216,8 @@ main(int argc, char *argv[])
 
   const uint16_t server_port = 1053;
 
+  dns_iptracker_init();
+
   // llarp::SetLogLevel(llarp::eLogDebug);
 
   if(1)
@@ -185,9 +227,9 @@ main(int argc, char *argv[])
     llarp_threadpool *worker = nullptr;
     llarp_logic *logic       = nullptr;
 
-    llarp_ev_loop_alloc(&netloop); // set up netio worker
+    llarp_ev_loop_alloc(&netloop);  // set up netio worker
     worker = llarp_init_same_process_threadpool();
-    logic  = llarp_init_single_process_logic(worker); // set up logic worker
+    logic  = llarp_init_single_process_logic(worker);  // set up logic worker
 
     // configure main netloop
     struct dnsd_context dnsd;
@@ -213,8 +255,8 @@ main(int argc, char *argv[])
     // need this for timer stuff
     llarp_threadpool *worker = nullptr;
     llarp_logic *logic       = nullptr;
-    worker = llarp_init_same_process_threadpool();
-    logic  = llarp_init_single_process_logic(worker); // set up logic worker
+    worker                   = llarp_init_same_process_threadpool();
+    logic = llarp_init_single_process_logic(worker);  // set up logic worker
 
     // configure main netloop
     struct dnsd_context dnsd;
@@ -256,7 +298,9 @@ main(int argc, char *argv[])
 #ifndef _WIN32
     if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0)
 #else
-    if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char*)&tv, sizeof(tv)) < 0)
+    if(setsockopt(m_sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv,
+                  sizeof(tv))
+       < 0)
 #endif
     {
       perror("Error");
