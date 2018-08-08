@@ -30,7 +30,7 @@ extern "C"
   // struct dnsd_question_request;
   struct dnsc_answer_request;
 
-  //struct dns_tracker;
+  // struct dns_tracker;
 
   // should we pass by llarp::Addr
   // not as long as we're supporting raw

@@ -19,9 +19,9 @@
 #include <cstdio>
 
 #include <llarp/dns.h>
+#include <algorithm>      // for std::find_if
 #include "llarp/net.hpp"  // for llarp::Addr
 #include "logger.hpp"
-#include <algorithm> // for std::find_if
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
@@ -99,26 +99,26 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
                      dnsc_answer_hook_func resolved, void *user)
 {
   dnsc_answer_request *request = new dnsc_answer_request;
-  if (!request)
+  if(!request)
   {
     llarp::LogError("Couldn't make dnsc request");
     return nullptr;
   }
-  request->sock                = sock;
-  request->user                = user;
-  request->resolved            = resolved;
-  request->found               = false;
-  request->context             = dnsc;
+  request->sock     = sock;
+  request->user     = user;
+  request->resolved = resolved;
+  request->found    = false;
+  request->context  = dnsc;
 
-
-  char *sUrl               = strdup(url);
-  request->question.name   = (char *)sUrl;
+  char *sUrl             = strdup(url);
+  request->question.name = (char *)sUrl;
 
   // leave 256 bytes available
-  if (request->question.name.size() > 255)
+  if(request->question.name.size() > 255)
   {
-    //size_t diff = request->question.name.size() - 255;
-    //request->question.name = request->question.name.substr(diff); // get the rightmost 255 bytes
+    // size_t diff = request->question.name.size() - 255;
+    // request->question.name = request->question.name.substr(diff); // get the
+    // rightmost 255 bytes
     llarp::LogWarn("dnsc request question too long");
     return nullptr;
   }
@@ -127,11 +127,13 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
 
   // register our self with the tracker
   dns_tracker *tracker = request->context->tracker;
-  uint16_t id                 = ++tracker->c_requests;
-  if (id == 65535) id = 0;
+  uint16_t id          = ++tracker->c_requests;
+  if(id == 65535)
+    id = 0;
   tracker->client_request[id] = request;
 
-  dns_query *dns_packet = build_dns_packet((char *)request->question.name.c_str(), id, 1);
+  dns_query *dns_packet =
+      build_dns_packet((char *)request->question.name.c_str(), id, 1);
 
   return dns_packet;
 }
@@ -152,7 +154,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   if(!request)
   {
     llarp::LogError(
-                    "User data to DNS Client response not a dnsc_answer_request");
+        "User data to DNS Client response not a dnsc_answer_request");
     // we can't call back the hook
     return;
   }
@@ -224,7 +226,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // 1 dot: 1 byte for length + length
     // 4 bytes for class/type
     castBuf += question->name.length() + 1 + 4;
-    castBuf += 2; // skip answer label
+    castBuf += 2;  // skip answer label
   }
 
   // FIXME: only handling one atm
@@ -235,7 +237,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::LogDebug("Read an answer");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
     auto diff = castBuf - (unsigned char *)buf;
-    if (diff > sz)
+    if(diff > sz)
     {
       break;
     }
@@ -298,8 +300,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   {
     llarp::LogWarn("nameserver ", upstreamAddr, " returned SERVFAIL:");
     llarp::LogWarn(
-                   "  the name server was unable to process this query due to a problem "
-                   "with the name server.");
+        "  the name server was unable to process this query due to a problem "
+        "with the name server.");
     request->resolved(request);
     return;
   }
@@ -328,7 +330,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
       request->result.sa_len = sizeof(in_addr);
 #endif
       struct in_addr *addr =
-      &((struct sockaddr_in *)&request->result)->sin_addr;
+          &((struct sockaddr_in *)&request->result)->sin_addr;
 
       unsigned char *ip = (unsigned char *)&(addr->s_addr);
       ip[0]             = answer->rData[0];
@@ -356,9 +358,9 @@ void
 raw_resolve_host(struct dnsc_context *dnsc, const char *url,
                  dnsc_answer_hook_func resolved, void *user)
 {
-
-  dns_query *dns_packet = answer_request_alloc(dnsc, nullptr, url, resolved, user);
-  if (!dns_packet)
+  dns_query *dns_packet =
+      answer_request_alloc(dnsc, nullptr, url, resolved, user);
+  if(!dns_packet)
   {
     llarp::LogError("Couldn't make dnsc packet");
     return;
@@ -394,7 +396,7 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
   addr.sin_port        = dnscSock->sin_port;
   size                 = sizeof(addr);
 
-  //hexdump("sending packet", &dnsQuery.request, dnsQuery.length);
+  // hexdump("sending packet", &dnsQuery.request, dnsQuery.length);
 
 #ifdef _WIN32
   ret = sendto(sockfd, (const char *)dns_packet->request, dns_packet->length, 0,
@@ -460,7 +462,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
   struct dnsc_answer_request *request = tracker->client_request[hdr->id];
 
   // sometimes we'll get double responses
-  if (request)
+  if(request)
   {
     generic_handle_dnsc_recvfrom(request, saddr, buf, sz);
   }
@@ -474,15 +476,16 @@ bool
 llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
                    dnsc_answer_hook_func resolved, void *user)
 {
-  dns_query *dns_packet = answer_request_alloc(dnsc, &dnsc->udp, url, resolved, user);
-  if (!dns_packet)
+  dns_query *dns_packet =
+      answer_request_alloc(dnsc, &dnsc->udp, url, resolved, user);
+  if(!dns_packet)
   {
     llarp::LogError("Couldn't make dnsc packet");
     return false;
   }
 
   // register request with udp response tracker
-  //dns_tracker *tracker = (dns_tracker *)dnsc->udp->user;
+  // dns_tracker *tracker = (dns_tracker *)dnsc->udp->user;
 
   /*
   uint16_t length = 0;
@@ -516,8 +519,8 @@ llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
   memcpy(bytes + 12, &request->question, qLen);
   */
 
-  //uint16_t id                 = ++tracker->c_requests;
-  //tracker->client_request[id] = request;
+  // uint16_t id                 = ++tracker->c_requests;
+  // tracker->client_request[id] = request;
   // llarp::LogInfo("Sending request #", tracker->c_requests, " ", length, "
   // bytes");
 
@@ -538,12 +541,12 @@ void
 llarp_host_resolved(dnsc_answer_request *request)
 {
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
-  auto val = std::find_if(tracker->client_request.begin(), tracker->client_request.end(),
-                          [request](const std::pair<uint, dnsc_answer_request * >& element)
-                          {
-                            return element.second == request;
-                          });
-  if (val != tracker->client_request.end())
+  auto val             = std::find_if(
+      tracker->client_request.begin(), tracker->client_request.end(),
+      [request](const std::pair< uint, dnsc_answer_request * > &element) {
+        return element.second == request;
+      });
+  if(val != tracker->client_request.end())
   {
     tracker->client_request[val->first] = nullptr;
   }

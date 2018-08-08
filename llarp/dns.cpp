@@ -9,13 +9,15 @@
  is treated as binary information, and can be up to 256 characters in
  length (including the length octet).
  */
-std::string getDNSstring(const char *buffer)
+std::string
+getDNSstring(const char *buffer)
 {
   std::string str = "";
-  uint8_t length      = *buffer++;
-  //printf("dnsStringLen[%d]\n", length);
-  //llarp::LogInfo("dnsStringLen ", length);
-  if (!length) return str;
+  uint8_t length  = *buffer++;
+  // printf("dnsStringLen[%d]\n", length);
+  // llarp::LogInfo("dnsStringLen ", length);
+  if(!length)
+    return str;
   while(length != 0)
   {
     for(int i = 0; i < length; i++)
@@ -62,7 +64,7 @@ extern "C"
   {
     dns_msg_header *hdr = new dns_msg_header;
     hdr->id             = get16bits(buffer);
-    uint16_t fields         = get16bits(buffer);
+    uint16_t fields     = get16bits(buffer);
     uint8_t lFields     = (fields & 0x00FF) >> 0;
     uint8_t hFields     = (fields & 0xFF00) >> 8;
     // hdr->qr      = fields & 0x8000;
@@ -90,7 +92,7 @@ extern "C"
   {
     dns_msg_question *question = new dns_msg_question;
     std::string m_qName        = getDNSstring(buffer);
-    //buffer += m_qName.size() + 1;
+    // buffer += m_qName.size() + 1;
     /*
     std::string m_qName        = "";
     int length                 = *buffer++;
@@ -122,13 +124,13 @@ extern "C"
     std::string aName      = getDNSstring((char *)buffer);
     buffer += aName.size() + 1;
     */
-    uint8_t first          = *buffer++;
+    uint8_t first = *buffer++;
     // SOA hack
-    if (first != 12)
+    if(first != 12)
     {
-      buffer --; // rewind buffer one byte
+      buffer--;  // rewind buffer one byte
     }
-    answer->type           = get16bits(buffer);
+    answer->type = get16bits(buffer);
     // assert(answer->type < 259);
     if(answer->type > 259)
     {
@@ -146,16 +148,16 @@ extern "C"
     {
       switch(answer->type)
       {
-        case 6: // type 6 = SOA
+        case 6:  // type 6 = SOA
         {
           // 2 names, then 4x 32bit
-          std::string mname   = getDNSstring((char *)buffer);
-          std::string rname   = getDNSstring((char *)buffer);
-          uint32_t    serial  = get32bits(buffer);
-          uint32_t    refresh = get32bits(buffer);
-          uint32_t    retry   = get32bits(buffer);
-          uint32_t    expire  = get32bits(buffer);
-          uint32_t    minimum = get32bits(buffer);
+          std::string mname = getDNSstring((char *)buffer);
+          std::string rname = getDNSstring((char *)buffer);
+          uint32_t serial   = get32bits(buffer);
+          uint32_t refresh  = get32bits(buffer);
+          uint32_t retry    = get32bits(buffer);
+          uint32_t expire   = get32bits(buffer);
+          uint32_t minimum  = get32bits(buffer);
           llarp::LogInfo("mname   : ", mname);
           llarp::LogInfo("rname   : ", rname);
           llarp::LogDebug("serial  : ", serial);
@@ -167,7 +169,7 @@ extern "C"
         break;
         default:
         {
-          //llarp::LogWarn("Unknown Type ", answer->type);
+          // llarp::LogWarn("Unknown Type ", answer->type);
         }
         break;
       }

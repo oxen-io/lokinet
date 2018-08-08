@@ -65,10 +65,10 @@ struct dns_msg_answer
 struct dns_packet
 {
   struct dns_msg_header *header;
-  std::vector<dns_msg_question *> questions;
-  std::vector<dns_msg_answer *> answers;
-  std::vector<dns_msg_answer *> auth_rrs;
-  std::vector<dns_msg_answer *> additional_rrs;
+  std::vector< dns_msg_question * > questions;
+  std::vector< dns_msg_answer * > answers;
+  std::vector< dns_msg_answer * > auth_rrs;
+  std::vector< dns_msg_answer * > additional_rrs;
 };
 
 extern "C"

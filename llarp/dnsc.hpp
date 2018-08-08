@@ -60,7 +60,7 @@ struct dnsc_context
 /// async resolve a hostname using generic socks
 void
 raw_resolve_host(struct dnsc_context *dnsc, const char *url,
-                   dnsc_answer_hook_func resolved, void *user);
+                 dnsc_answer_hook_func resolved, void *user);
 
 /// async resolve a hostname using llarp platform framework
 bool
