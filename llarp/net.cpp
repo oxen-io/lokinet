@@ -4,8 +4,8 @@
 #include "android/ifaddrs.h"
 #endif
 #ifndef _WIN32
-#include <ifaddrs.h>
 #include <arpa/inet.h>
+#include <ifaddrs.h>
 #include <net/if.h>
 #endif
 #include <cstdio>
@@ -44,8 +44,8 @@ operator<(const in6_addr& a, const in6_addr& b)
 #ifdef _WIN32
 #include <assert.h>
 #include <errno.h>
-#include <strsafe.h>
 #include <iphlpapi.h>
+#include <strsafe.h>
 
 // current strategy: mingw 32-bit builds call an inlined version of the function
 // microsoft c++ and mingw 64-bit builds call the normal function
@@ -102,12 +102,12 @@ _llarp_nt_heap_free(void* mem)
 int
 llarp_nt_sockaddr_pton(const char* src, struct sockaddr* dst)
 {
-  struct addrinfo hints   = {0}, *result = nullptr;
-  hints.ai_family = AF_UNSPEC;
-  hints.ai_socktype    = SOCK_DGRAM;
-  hints.ai_protocol    = IPPROTO_TCP;
-  hints.ai_flags       = AI_NUMERICHOST;
-  const int status        = getaddrinfo(src, nullptr, &hints, &result);
+  struct addrinfo hints = {0}, *result = nullptr;
+  hints.ai_family   = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_protocol = IPPROTO_TCP;
+  hints.ai_flags    = AI_NUMERICHOST;
+  const int status  = getaddrinfo(src, nullptr, &hints, &result);
   if(!status)
   {
     memcpy(dst, result->ai_addr, result->ai_addrlen);
@@ -197,7 +197,7 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 
 #ifdef DEBUG
   fprintf(stderr, "GetAdaptersInfo() discovered %d interfaces.\n", n);
-#endif 
+#endif
 
   /* contiguous block for adapter list */
   struct _llarp_nt_ifaddrs_t* ifa =
@@ -216,7 +216,9 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 
       /* address */
       ift->_ifa.ifa_addr = (struct sockaddr*)&ift->_addr;
-      assert(1 == llarp_nt_sockaddr_pton(pIPAddr->IpAddress.String,ift->_ifa.ifa_addr));
+      assert(1
+             == llarp_nt_sockaddr_pton(pIPAddr->IpAddress.String,
+                                       ift->_ifa.ifa_addr));
 
       /* name */
 #ifdef DEBUG
@@ -233,7 +235,9 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
 
       /* netmask */
       ift->_ifa.ifa_netmask = (sockaddr*)&ift->_netmask;
-      assert(1 == llarp_nt_sockaddr_pton(pIPAddr->IpMask.String, ift->_ifa.ifa_netmask));
+      assert(1
+             == llarp_nt_sockaddr_pton(pIPAddr->IpMask.String,
+                                       ift->_ifa.ifa_netmask));
 
       /* next */
       if(k++ < (n - 1))
@@ -353,7 +357,7 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
   for(adapter = pAdapterAddresses; adapter; adapter = adapter->Next)
   {
     int unicastIndex = 0;
-    for(IP_ADAPTER_UNICAST_ADDRESS *unicast = adapter->FirstUnicastAddress;
+    for(IP_ADAPTER_UNICAST_ADDRESS* unicast = adapter->FirstUnicastAddress;
         unicast; unicast                    = unicast->Next, ++unicastIndex)
     {
       /* ensure IP adapter */
@@ -693,7 +697,8 @@ llarp_nt_getifaddrs(struct llarp_nt_ifaddrs_t** ifap)
 {
   assert(nullptr != ifap);
 #ifdef DEBUG
-  fprintf(stderr, "llarp_nt_getifaddrs (ifap:%p error:%p)\n", (void*)ifap,(void*)errno);
+  fprintf(stderr, "llarp_nt_getifaddrs (ifap:%p error:%p)\n", (void*)ifap,
+          (void*)errno);
 #endif
 #ifdef _MSC_VER
   return _llarp_nt_getadaptersaddresses(ifap);
@@ -775,6 +780,55 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
     freeifaddrs(ifa);
   return found;
 }
+
+struct privatesInUse
+llarp_getPrivateIfs()
+{
+  struct privatesInUse result;
+  result.ten      = false;
+  result.oneSeven = false;
+  result.oneNine  = false;
+
+  ifaddrs* ifa = nullptr;
+
+#ifndef _WIN32
+  if(getifaddrs(&ifa) == -1)
+#else
+  if(!getifaddrs(&ifa))
+#endif
+    return result;
+  ifaddrs* i = ifa;
+  while(i)
+  {
+    if(i->ifa_addr && i->ifa_addr->sa_family == AF_INET)
+    {
+      // llarp::LogInfo("scanning ", i->ifa_name, " af: ",
+      // std::to_string(i->ifa_addr->sa_family));
+      llarp::Addr test(*i->ifa_addr);
+      uint32_t byte = test.getHostLong();
+      if(test.isTenPrivate(byte))
+      {
+        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
+        result.ten = true;
+      }
+      else if(test.isOneSevenPrivate(byte))
+      {
+        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
+        result.oneSeven = true;
+      }
+      else if(test.isOneNinePrivate(byte))
+      {
+        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
+        result.oneNine = true;
+      }
+    }
+    i = i->ifa_next;
+  }
+  if(ifa)
+    freeifaddrs(ifa);
+  return result;
+}
+
 namespace llarp
 {
   bool
