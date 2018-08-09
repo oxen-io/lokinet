@@ -15,8 +15,6 @@
 
 struct llarp_main *ctx = 0;
 
-llarp_main *sllarp = nullptr;
-
 void
 handle_signal(int sig)
 {
