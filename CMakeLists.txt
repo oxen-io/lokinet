@@ -182,10 +182,8 @@ set(LIBTUNTAP_SRC
   if (UNIX)
   set(LIBTUNTAP_SRC 
     ${TT_ROOT}/tuntap-unix.c
-    ${LIBTUNTAP_SRC}
-  )
+    ${LIBTUNTAP_SRC})
   endif()
-  
 else()
 set(LIBTUNTAP_SRC "")
 endif()

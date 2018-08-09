@@ -1,5 +1,6 @@
 #include "config.hpp"
 #include <llarp/config.h>
+#include <llarp/dns.h>
 #include <llarp/net.hpp>
 #include "fs.hpp"
 #include "ini.hpp"
@@ -103,16 +104,50 @@ extern "C"
       llarp::LogError("failed to open ", fname, " for writing");
       return false;
     }
+    f << "# this configuration was auto generated with 'sane' defaults"
+      << std::endl;
+    f << "# change these values as desired" << std::endl;
+    f << std::endl;
+    f << "# configuration for lokinet network interface" << std::endl;
+    f << "[network]" << std::endl;
+    f << "# interface name" << std::endl;
+#ifdef _WIN32
+    // comment out ifname section for windows
+    f << "# ";
+#endif
+    f << "ifname=lokitun0" << std::endl;
+
+    f << "# ip range for interface" << std::endl;
+    f << "addr=10.0.0.1/16" << std::endl;
+    f << std::endl;
+
+    f << "# dns provider configuration section" << std::endl;
+    f << "[dns]" << std::endl;
+    f << "# opennic us resolver" << std::endl;
+    f << "upstream=" << DEFAULT_RESOLVER_US << std::endl;
+    f << "# opennic eu resolver" << std::endl;
+    f << "upstream=" << DEFAULT_RESOLVER_EU << std::endl;
+    f << "# opennic au resolver" << std::endl;
+    f << "upstream=" << DEFAULT_RESOLVER_AU << std::endl;
+    f << "bind=127.3.2.1:53" << std::endl;
+    f << std::endl;
 
     f << "[netdb]" << std::endl;
     f << "dir=netdb" << std::endl;
+    f << std::endl;
+    f << "# publish network interfaces for handling inbound traffic"
+      << std::endl;
     f << "[bind]" << std::endl;
 
     std::string ifname;
 
     if(llarp::GetBestNetIF(ifname, AF_INET))
       f << ifname << "=1090" << std::endl;
+    else
+      f << "# could not autodetect network interface" << std::endl
+        << "# eth0=1090" << std::endl;
 
+    f << std::endl;
     llarp::LogInfo("Generated new config ", fname);
     return true;
   }

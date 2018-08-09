@@ -1175,6 +1175,9 @@ namespace llarp
     {
       self->connect[key] = val;
     }
+    else if(StrEq(section, "network"))
+    {
+    }
     else if(StrEq(section, "router"))
     {
       if(StrEq(key, "nickname"))

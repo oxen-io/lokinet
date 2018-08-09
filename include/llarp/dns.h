@@ -10,6 +10,16 @@
 #define uint UINT
 #endif
 
+#ifndef DEFAULT_RESOLVER_US
+#define DEFAULT_RESOLVER_US "128.52.130.209"
+#endif
+#ifndef DEFAULT_RESOLVER_EU
+#define DEFAULT_RESOLVER_EU "85.208.208.141"
+#endif
+#ifndef DEFAULT_RESOLVER_AU
+#define DEFAULT_RESOLVER_AU "103.236.162.119"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
