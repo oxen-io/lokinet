@@ -34,6 +34,10 @@ else()
   message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 or C++17 support. Please use a different C++ compiler.")
 endif()
 
+if(DEBIAN)
+  add_definitions(-DDEBIAN)
+endif()
+
 if(ANDROID)
 set(THREAD_LIB "-pthread")
 # finally removed pthread dependency for MSC++

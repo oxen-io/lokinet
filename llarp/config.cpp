@@ -1,6 +1,6 @@
 #include "config.hpp"
 #include <llarp/config.h>
-#include <llarp/dns.h>
+#include <llarp/defaults.h>
 #include <llarp/net.hpp>
 #include "fs.hpp"
 #include "ini.hpp"
@@ -35,6 +35,7 @@ namespace llarp
       iwp_links = find_section(top, "bind", section_t{});
       services  = find_section(top, "services", section_t{});
       dns       = find_section(top, "dns", section_t{});
+      system    = find_section(top, "system", section_t{});
       return true;
     }
     return false;
@@ -47,7 +48,7 @@ extern "C"
   void
   llarp_new_config(struct llarp_config **conf)
   {
-    llarp_config *c = new llarp_config;
+    llarp_config *c = new llarp_config();
     *conf           = c;
   }
 
@@ -73,9 +74,10 @@ extern "C"
   {
     iter->conf                                                   = conf;
     std::map< std::string, llarp::Config::section_t & > sections = {
-        {"network", conf->impl.network}, {"connect", conf->impl.connect},
-        {"bind", conf->impl.iwp_links},  {"netdb", conf->impl.netdb},
-        {"dns", conf->impl.dns},         {"services", conf->impl.services}};
+        {"network", conf->impl.network},  {"connect", conf->impl.connect},
+        {"system", conf->impl.system},    {"bind", conf->impl.iwp_links},
+        {"netdb", conf->impl.netdb},      {"dns", conf->impl.dns},
+        {"services", conf->impl.services}};
 
     for(const auto item : conf->impl.router)
       iter->visit(iter, "router", item.first.c_str(), item.second.c_str());
@@ -108,6 +110,18 @@ extern "C"
       << std::endl;
     f << "# change these values as desired" << std::endl;
     f << std::endl;
+
+    f << "# system settings for priviledges and such" << std::endl;
+    f << "[system]" << std::endl;
+#ifdef _WIN32
+    f << "# ";
+#endif
+    f << "user=" << DEFAULT_LOKINET_USER << std::endl;
+#ifdef _WIN32
+    f << "# ";
+#endif
+    f << "group=" << DEFAULT_LOKINET_GROUP << std::endl;
+
     f << "# configuration for lokinet network interface" << std::endl;
     f << "[network]" << std::endl;
     f << "# interface name" << std::endl;
