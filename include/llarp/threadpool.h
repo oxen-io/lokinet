@@ -10,11 +10,12 @@ llarp_init_threadpool(int workers, const char *name);
 struct llarp_threadpool *
 llarp_init_same_process_threadpool();
 
-typedef bool (*setup_net_func)(void);
+typedef bool (*setup_net_func)(void *);
 
 /// for network isolation
 struct llarp_threadpool *
-llarp_init_isolated_net_threadpool(const char *name, setup_net_func setupNet);
+llarp_init_isolated_net_threadpool(const char *name, setup_net_func setupNet,
+                                   void *context);
 
 void
 llarp_free_threadpool(struct llarp_threadpool **tp);

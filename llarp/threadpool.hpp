@@ -83,15 +83,16 @@ namespace llarp
 
     struct NetIsolatedPool : public IsolatedPool
     {
-      NetIsolatedPool(std::function< bool(void) > setupNet);
+      NetIsolatedPool(std::function< bool(void*) > setupNet, void* user);
 
       bool
       Isolated()
       {
-        return m_NetSetup();
+        return m_NetSetup(m_user);
       }
 
-      std::function< bool(void) > m_NetSetup;
+      std::function< bool(void*) > m_NetSetup;
+      void* m_user;
     };
 
   }  // namespace thread

@@ -10,7 +10,9 @@ namespace llarp
 {
   namespace service
   {
-    struct Endpoint : public llarp_pathbuilder_context, public ILookupHolder
+    struct Endpoint : public llarp_pathbuilder_context,
+                      public ILookupHolder,
+                      public IDataHandler
     {
       /// minimum interval for publishing introsets
       static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
@@ -30,8 +32,13 @@ namespace llarp
       void
       Tick(llarp_time_t now);
 
+      /// router's logic
       llarp_logic*
-      Logic();
+      RouterLogic();
+
+      /// endpoint's logic
+      llarp_logic*
+      EndpointLogic();
 
       llarp_crypto*
       Crypto();
@@ -71,6 +78,12 @@ namespace llarp
       /// return true if we did and we removed it
       bool
       ForgetPathToService(const Address& remote);
+
+      virtual void
+      HandleDataMessage(ProtocolMessage* msg)
+      {
+        // override me in subclass
+      }
 
       Identity*
       GetIdentity()
@@ -132,7 +145,7 @@ namespace llarp
 
        private:
         void
-        AsyncEncrypt(llarp_buffer_t payload);
+        EncryptAndSendTo(llarp_buffer_t payload);
 
         void
         AsyncGenIntro(llarp_buffer_t payload);
@@ -165,6 +178,29 @@ namespace llarp
       }
 
       void
+      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info);
+
+      bool
+      GetCachedSessionKeyFor(const ConvoTag& remote,
+                             SharedSecret& secret) const;
+      void
+      PutCachedSessionKeyFor(const ConvoTag& remote,
+                             const SharedSecret& secret);
+
+      bool
+      GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const;
+
+      void
+      PutIntroFor(const ConvoTag& remote, const Introduction& intro);
+
+      bool
+      GetIntroFor(const ConvoTag& remote, Introduction& intro) const;
+
+      bool
+      GetConvoTagsForService(const ServiceInfo& si,
+                             std::set< ConvoTag >& tag) const;
+
+      void
       PutNewOutboundContext(const IntroSet& introset);
 
      protected:
@@ -179,18 +215,34 @@ namespace llarp
       void
       PrefetchServicesByTag(const Tag& tag);
 
+      uint64_t
+      GetSeqNoForConvo(const ConvoTag& tag);
+
+      bool
+      IsolateNetwork();
+
      private:
+      static bool
+      SetupIsolatedNetwork(void* user);
+
+      bool
+      DoNetworkIsolation();
+
       uint64_t
       GenTXID();
 
      protected:
       IDataHandler* m_DataHandler = nullptr;
+      Identity m_Identity;
 
      private:
       llarp_router* m_Router;
+      llarp_threadpool* m_IsolatedWorker = nullptr;
+      llarp_logic* m_IsolatedLogic       = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
-      Identity m_Identity;
+      std::string m_NetNS;
+
       std::unordered_map< Address, OutboundContext*, Address::Hash >
           m_RemoteSessions;
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
@@ -208,6 +260,20 @@ namespace llarp
       Tag m_Tag;
       /// prefetch descriptors for these hidden service tags
       std::set< Tag > m_PrefetchTags;
+      /// on initialize functions
+      std::list< std::function< bool(void) > > m_OnInit;
+
+      struct Session
+      {
+        SharedSecret sharedKey;
+        ServiceInfo remote;
+        Introduction intro;
+        llarp_time_t lastUsed = 0;
+        uint64_t seqno        = 0;
+      };
+
+      /// sessions
+      std::unordered_map< ConvoTag, Session, ConvoTag::Hash > m_Sessions;
 
       struct CachedTagResult : public IServiceLookup
       {

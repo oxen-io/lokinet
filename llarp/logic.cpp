@@ -29,8 +29,14 @@ llarp_init_single_process_logic(struct llarp_threadpool* tp)
 void
 llarp_logic_tick(struct llarp_logic* logic)
 {
-  llarp_timer_tick_all(logic->timer, logic->thread);
+  llarp_timer_tick_all(logic->timer);
   llarp_threadpool_tick(logic->thread);
+}
+
+void
+llarp_logic_tick_async(struct llarp_logic* logic)
+{
+  llarp_timer_tick_all_async(logic->timer, logic->thread);
 }
 
 void

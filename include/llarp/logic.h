@@ -21,6 +21,10 @@ llarp_init_single_process_logic(struct llarp_threadpool* tp);
 void
 llarp_logic_tick(struct llarp_logic* logic);
 
+/// isolated tick
+void
+llarp_logic_tick_async(struct llarp_logic* logic);
+
 void
 llarp_free_logic(struct llarp_logic** logic);
 
@@ -29,6 +33,7 @@ llarp_logic_queue_job(struct llarp_logic* logic, struct llarp_thread_job job);
 
 uint32_t
 llarp_logic_call_later(struct llarp_logic* logic, struct llarp_timeout_job job);
+
 void
 llarp_logic_cancel_call(struct llarp_logic* logic, uint32_t id);
 

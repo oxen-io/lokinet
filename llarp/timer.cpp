@@ -179,8 +179,7 @@ llarp_timer_cancel_job(struct llarp_timer_context* t, uint32_t id)
 }
 
 void
-llarp_timer_tick_all(struct llarp_timer_context* t,
-                     struct llarp_threadpool* pool)
+llarp_timer_tick_all(struct llarp_timer_context* t)
 {
   if(!t->run())
     return;
@@ -206,6 +205,19 @@ llarp_timer_tick_all(struct llarp_timer_context* t,
   }
 }
 
+static void
+llarp_timer_tick_all_job(void* user)
+{
+  llarp_timer_tick_all(static_cast< llarp_timer_context* >(user));
+}
+
+void
+llarp_timer_tick_all_async(struct llarp_timer_context* t,
+                           struct llarp_threadpool* pool)
+{
+  llarp_threadpool_queue_job(pool, {t, llarp_timer_tick_all_job});
+}
+
 void
 llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
 {
@@ -223,7 +235,7 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
     {
       std::unique_lock< std::mutex > lock(t->timersMutex);
       // we woke up
-      llarp_timer_tick_all(t, pool);
+      llarp_timer_tick_all_async(t, pool);
     }
   }
 }

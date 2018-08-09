@@ -38,6 +38,20 @@ namespace llarp
         if(addr.FromString(v))
           m_PrefetchAddrs.insert(addr);
       }
+      if(k == "netns")
+      {
+        m_NetNS = v;
+        m_OnInit.push_back(std::bind(&Endpoint::IsolateNetwork, this));
+      }
+      return true;
+    }
+
+    bool
+    Endpoint::IsolateNetwork()
+    {
+      m_IsolatedWorker = llarp_init_isolated_net_threadpool(
+          m_Name.c_str(), &SetupIsolatedNetwork, this);
+      m_IsolatedLogic = llarp_init_single_process_logic(m_IsolatedWorker);
       return true;
     }
 
@@ -67,6 +81,12 @@ namespace llarp
         delete this;
       }
     };
+
+    bool
+    Endpoint::SetupIsolatedNetwork(void* user)
+    {
+      return static_cast< Endpoint* >(user)->DoNetworkIsolation();
+    }
 
     void
     Endpoint::Tick(llarp_time_t now)
@@ -254,6 +274,89 @@ namespace llarp
       return result;
     }
 
+    void
+    Endpoint::PutSenderFor(const ConvoTag& tag, const ServiceInfo& info)
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+      {
+        itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
+      }
+      itr->second.remote   = info;
+      itr->second.lastUsed = llarp_time_now_ms();
+    }
+
+    bool
+    Endpoint::GetSenderFor(const ConvoTag& tag, ServiceInfo& si) const
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+        return false;
+      si = itr->second.remote;
+      return true;
+    }
+
+    void
+    Endpoint::PutIntroFor(const ConvoTag& tag, const Introduction& intro)
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+      {
+        itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
+      }
+      itr->second.intro    = intro;
+      itr->second.lastUsed = llarp_time_now_ms();
+    }
+
+    bool
+    Endpoint::GetIntroFor(const ConvoTag& tag, Introduction& intro) const
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+        return false;
+      intro = itr->second.intro;
+      return true;
+    }
+
+    bool
+    Endpoint::GetConvoTagsForService(const ServiceInfo& info,
+                                     std::set< ConvoTag >& tags) const
+    {
+      bool inserted = false;
+      auto itr      = m_Sessions.begin();
+      while(itr != m_Sessions.end())
+      {
+        if(itr->second.remote == info)
+        {
+          inserted |= tags.insert(itr->first).second;
+        }
+      }
+      return inserted;
+    }
+
+    bool
+    Endpoint::GetCachedSessionKeyFor(const ConvoTag& tag,
+                                     SharedSecret& secret) const
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+        return false;
+      secret = itr->second.sharedKey;
+      return true;
+    }
+
+    void
+    Endpoint::PutCachedSessionKeyFor(const ConvoTag& tag, const SharedSecret& k)
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+      {
+        itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
+      }
+      itr->second.sharedKey = k;
+      itr->second.lastUsed  = llarp_time_now_ms();
+    }
+
     bool
     Endpoint::Start()
     {
@@ -267,7 +370,17 @@ namespace llarp
       {
         m_Identity.RegenerateKeys(crypto);
       }
-
+      if(!m_DataHandler)
+      {
+        m_DataHandler = this;
+      }
+      while(m_OnInit.size())
+      {
+        if(m_OnInit.front()())
+          m_OnInit.pop_front();
+        else
+          return false;
+      }
       return true;
     }
 
@@ -409,6 +522,13 @@ namespace llarp
       }
     };
 
+    bool
+    Endpoint::DoNetworkIsolation()
+    {
+      /// TODO: implement me
+      return false;
+    }
+
     void
     Endpoint::PutNewOutboundContext(const llarp::service::IntroSet& introset)
     {
@@ -442,8 +562,8 @@ namespace llarp
     bool
     Endpoint::HandleHiddenServiceFrame(const ProtocolFrame* frame)
     {
-      llarp::LogInfo("handle hidden service frame");
-      return true;
+      return frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), Worker(),
+                                          m_Identity.enckey, m_DataHandler);
     }
 
     void
@@ -572,7 +692,7 @@ namespace llarp
     {
       if(sequenceNo)
       {
-        AsyncEncrypt(data);
+        EncryptAndSendTo(data);
       }
       else
       {
@@ -585,19 +705,24 @@ namespace llarp
       llarp_logic* logic;
       llarp_crypto* crypto;
       byte_t* sharedKey;
-      byte_t* remotePubkey;
+      ServiceInfo remote;
       Identity* m_LocalIdentity;
       ProtocolMessage msg;
       ProtocolFrame frame;
+      Introduction intro;
       std::function< void(ProtocolFrame&) > hook;
+      IDataHandler* handler;
 
       AsyncIntroGen(llarp_logic* l, llarp_crypto* c, byte_t* key,
-                    byte_t* remote, Identity* localident)
+                    const ServiceInfo& r, Identity* localident,
+                    const Introduction& us, IDataHandler* h)
           : logic(l)
           , crypto(c)
           , sharedKey(key)
-          , remotePubkey(remote)
+          , remote(r)
           , m_LocalIdentity(localident)
+          , intro(us)
+          , handler(h)
       {
       }
 
@@ -605,6 +730,10 @@ namespace llarp
       Result(void* user)
       {
         AsyncIntroGen* self = static_cast< AsyncIntroGen* >(user);
+        // put values
+        self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
+        self->handler->PutIntroFor(self->msg.tag, self->msg.introReply);
+        self->handler->PutSenderFor(self->msg.tag, self->remote);
         self->hook(self->frame);
         delete self;
       }
@@ -615,9 +744,16 @@ namespace llarp
         AsyncIntroGen* self = static_cast< AsyncIntroGen* >(user);
         // randomize Nounce
         self->frame.N.Randomize();
+        // randomize tag
+        self->msg.tag.Randomize();
+        // set sender
+        self->msg.sender = self->m_LocalIdentity->pub;
+        // set our introduction
+        self->msg.introReply = self->intro;
         // derive session key
-        self->crypto->dh_server(self->sharedKey, self->remotePubkey,
+        self->crypto->dh_server(self->sharedKey, self->remote.enckey,
                                 self->m_LocalIdentity->enckey, self->frame.N);
+
         // encrypt and sign
         self->frame.EncryptAndSign(self->crypto, &self->msg, self->sharedKey,
                                    self->m_LocalIdentity->signkey);
@@ -629,9 +765,10 @@ namespace llarp
     void
     Endpoint::OutboundContext::AsyncGenIntro(llarp_buffer_t payload)
     {
-      AsyncIntroGen* ex =
-          new AsyncIntroGen(m_Parent->Logic(), m_Parent->Crypto(), sharedKey,
-                            currentIntroSet.A.enckey, m_Parent->GetIdentity());
+      AsyncIntroGen* ex = new AsyncIntroGen(
+          m_Parent->RouterLogic(), m_Parent->Crypto(), sharedKey,
+          currentIntroSet.A, m_Parent->GetIdentity(), selectedIntro,
+          m_Parent->m_DataHandler);
       ex->hook = std::bind(&Endpoint::OutboundContext::Send, this,
                            std::placeholders::_1);
 
@@ -703,7 +840,8 @@ namespace llarp
     bool
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
-      if(selectedIntro.expiresAt >= now || selectedIntro.expiresAt - now < 5000)
+      if(selectedIntro.expiresAt >= now
+         || selectedIntro.expiresAt - now < 30000)
       {
         UpdateIntroSet();
       }
@@ -729,7 +867,8 @@ namespace llarp
         {
           // we don't have it?
           llarp::LogError(
-              "cannot build aligned path, don't have router for introduction ",
+              "cannot build aligned path, don't have router for "
+              "introduction ",
               selectedIntro);
           return false;
         }
@@ -738,16 +877,80 @@ namespace llarp
         return llarp_pathbuilder_context::SelectHop(db, prev, cur, hop);
     }
 
-    void
-    Endpoint::OutboundContext::AsyncEncrypt(llarp_buffer_t payload)
+    uint64_t
+    Endpoint::GetSeqNoForConvo(const ConvoTag& tag)
     {
-      // TODO: implement me
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+        return 0;
+      return ++(itr->second.seqno);
+    }
+
+    void
+    Endpoint::OutboundContext::EncryptAndSendTo(llarp_buffer_t payload)
+    {
+      auto path = GetPathByRouter(selectedIntro.router);
+      if(path)
+      {
+        std::set< ConvoTag > tags;
+        if(!m_Parent->m_DataHandler->GetConvoTagsForService(currentIntroSet.A,
+                                                            tags))
+        {
+          llarp::LogError("no open converstations with remote endpoint?");
+          return;
+        }
+        auto crypto = m_Parent->Crypto();
+        SharedSecret shared;
+
+        ProtocolFrame f;
+        f.N.Randomize();
+        f.T = *tags.begin();
+        f.S = m_Parent->GetSeqNoForConvo(f.T);
+
+        if(m_Parent->m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
+        {
+          ProtocolMessage msg;
+          msg.introReply = selectedIntro;
+          msg.sender     = m_Parent->m_Identity.pub;
+          msg.PutBuffer(payload);
+
+          if(!f.EncryptAndSign(crypto, &msg, shared, currentIntroSet.A.signkey))
+          {
+            llarp::LogError("failed to sign");
+            return;
+          }
+        }
+        else
+        {
+          llarp::LogError("No cached session key");
+          return;
+        }
+
+        routing::PathTransferMessage msg;
+        msg.P = selectedIntro.pathID;
+        msg.Y.Randomize();
+        msg.T = &f;
+        if(!path->SendRoutingMessage(&msg, m_Parent->Router()))
+        {
+          llarp::LogWarn("Failed to send routing message for data");
+        }
+      }
+      else
+      {
+        llarp::LogError("no outbound path for sending message");
+      }
     }
 
     llarp_logic*
-    Endpoint::Logic()
+    Endpoint::RouterLogic()
     {
       return m_Router->logic;
+    }
+
+    llarp_logic*
+    Endpoint::EndpointLogic()
+    {
+      return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic;
     }
 
     llarp_crypto*

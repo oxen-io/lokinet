@@ -163,16 +163,20 @@ namespace llarp
     }
 
 #ifdef __linux__
-    NetIsolatedPool::NetIsolatedPool(std::function< bool(void) > setupNet)
+    NetIsolatedPool::NetIsolatedPool(std::function< bool(void *) > setupNet,
+                                     void *user)
         : IsolatedPool(CLONE_NEWNET)
     {
       m_NetSetup = setupNet;
+      m_user     = user;
     }
 #else
-    NetIsolatedPool::NetIsolatedPool(std::function< bool(void) > setupNet)
+    NetIsolatedPool::NetIsolatedPool(std::function< bool(void *) > setupNet,
+                                     void *user)
         : IsolatedPool(0)
     {
       m_NetSetup = setupNet;
+      m_user = user;
     }
 #endif
   }  // namespace thread
@@ -186,10 +190,10 @@ struct llarp_threadpool
   std::queue< llarp_thread_job * > jobs;
 
   llarp_threadpool(int workers, const char *name, bool isolate,
-                   setup_net_func setup = nullptr)
+                   setup_net_func setup = nullptr, void *user = nullptr)
   {
     if(isolate)
-      impl = new llarp::thread::NetIsolatedPool(setup);
+      impl = new llarp::thread::NetIsolatedPool(setup, user);
     else
       impl = new llarp::thread::Pool();
     impl->Spawn(workers, name);
@@ -216,9 +220,10 @@ llarp_init_same_process_threadpool()
 }
 
 struct llarp_threadpool *
-llarp_init_isolated_net_threadpool(const char *name, setup_net_func setup)
+llarp_init_isolated_net_threadpool(const char *name, setup_net_func setup,
+                                   void *context)
 {
-  return new llarp_threadpool(1, name, true, setup);
+  return new llarp_threadpool(1, name, true, setup, context);
 }
 
 void
