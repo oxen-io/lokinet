@@ -68,9 +68,20 @@ extern "C"
     check_online_request_hook_func hook;
   };
 
-  /// get RC from DHT
+  /// get RC from DHT but wait until online
   void
   llarp_main_queryDHT(struct check_online_request *request);
+
+  /// get RC from DHT
+  void
+  llarp_main_queryDHT_RC(struct llarp_main *ptr,
+                         struct llarp_router_lookup_job *job);
+
+  /// set up DNS libs with a context
+  bool
+  llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
+                       uint16_t server_port, const char *upstream_host,
+                       uint16_t upstream_port);
 
   struct llarp_rc *
   llarp_main_getLocalRC(struct llarp_main *ptr);

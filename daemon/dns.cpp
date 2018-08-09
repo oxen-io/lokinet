@@ -13,6 +13,8 @@
 #include "llarp/net.hpp"
 #include "logger.hpp"
 
+#include "crypto.hpp"  // for llarp::pubkey
+
 #include <algorithm>  // for std::generate_n
 #include <thread>     // for multithreaded version
 #include <vector>
@@ -29,6 +31,11 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
+#endif
+
+// CHECK: is multiprocess still a thing?
+#ifndef TESTNET
+#define TESTNET 0
 #endif
 
 struct llarp_main *ctx = 0;
@@ -123,6 +130,20 @@ llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
   delete qr;
 }
 
+void
+HandleDHTLocate(llarp_router_lookup_job *job)
+{
+  llarp::LogInfo("DHT result: ", job->found ? "found" : "not found");
+  if(job->found)
+  {
+    // save to nodedb?
+    char ftmp[68] = {0};
+    const char *hexPubSigKey =
+        llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(job->target, ftmp);
+    llarp::LogInfo("WE FOUND DHT LOOKUP FOR ", hexPubSigKey);
+  }
+}
+
 dnsd_query_hook_response *
 hookChecker(std::string name, const struct sockaddr *from,
             struct dnsd_question_request *request)
@@ -148,6 +169,25 @@ hookChecker(std::string name, const struct sockaddr *from,
       delete response;
       return cache_check->second;
     }
+
+    std::string b32addr = lName.substr(0, lName.size() - 5);
+    b32addr.erase(32, 1);
+    llarp::LogInfo("Hex address: ", b32addr);
+
+    llarp::PubKey binaryPK;
+    llarp::HexDecode(b32addr.c_str(), binaryPK.data());
+
+    llarp::LogInfo("Queueing job");
+    llarp_router_lookup_job *job = new llarp_router_lookup_job;
+    job->iterative               = true;
+    job->found                   = false;
+    job->hook                    = &HandleDHTLocate;
+    llarp_rc_new(&job->result);
+    memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
+
+    // llarp_dht_lookup_router(ctx->router->dht, job);
+    llarp_main_queryDHT_RC(ctx, job);
+
     // check_query_request *query_request = new check_query_request;
     // query_request->hook = &llarp_dnsd_checkQuery_resolved;
     check_query_simple_request *qr = new check_query_simple_request;
@@ -202,7 +242,6 @@ main(int argc, char *argv[])
   dnsr_config.upstream_port = 53;
   llarp_config *config_reader;
   llarp_new_config(&config_reader);
-  // ctx      = llarp_main_init(conffname, multiThreaded);
 
   if(llarp_load_config(config_reader, conffname))
   {
@@ -223,6 +262,32 @@ main(int argc, char *argv[])
   // llarp::SetLogLevel(llarp::eLogDebug);
 
   if(1)
+  {
+    // libev version w/router context
+    ctx = llarp_main_init(conffname, !TESTNET);
+    if(!ctx)
+    {
+      llarp::LogError("Cant set up context");
+      return 0;
+    }
+    llarp_main_setup(ctx);
+    signal(SIGINT, handle_signal);
+
+    struct dnsd_context dnsd;
+    if(!llarp_main_init_dnsd(ctx, &dnsd, server_port,
+                             (const char *)dnsr_config.upstream_host.c_str(),
+                             dnsr_config.upstream_port))
+    {
+      llarp::LogError("Couldnt init dns daemon");
+    }
+    // Configure intercept
+    dnsd.intercept = &hookChecker;
+
+    // run system and wait
+    llarp_main_run(ctx);
+    llarp_main_free(ctx);
+  }
+  else if(0)
   {
     // libev version
     llarp_ev_loop *netloop   = nullptr;
