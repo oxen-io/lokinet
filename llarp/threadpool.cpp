@@ -14,7 +14,9 @@
 #include <pthread_np.h>
 #endif
 
+#ifdef __linux__
 #include <sys/wait.h>
+#endif
 
 #ifdef _MSC_VER
 #include <windows.h>
