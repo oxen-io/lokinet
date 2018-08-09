@@ -5,7 +5,8 @@
 #ifdef __linux__
 #include "ev_epoll.hpp"
 #endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || (__APPLE__ && __MACH__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || (__APPLE__ && __MACH__)
 #include "ev_kqueue.hpp"
 #endif
 #if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
@@ -18,7 +19,8 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 #ifdef __linux__
   *ev = new llarp_epoll_loop;
 #endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) || (__APPLE__ && __MACH__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || (__APPLE__ && __MACH__)
   *ev = new llarp_kqueue_loop;
 #endif
 #if defined(_WIN32) || defined(_WIN64) || defined(__NT__)

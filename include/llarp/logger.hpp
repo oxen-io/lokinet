@@ -137,8 +137,6 @@ namespace llarp
   }
 }  // namespace llarp
 
-
-
 #define LogDebug(x, ...) \
   _Log(llarp::eLogDebug, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
 #define LogInfo(x, ...) \

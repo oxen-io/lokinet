@@ -6,10 +6,12 @@ dns_iptracker g_dns_iptracker;
 void
 dns_iptracker_init()
 {
-  g_dns_iptracker.interfaces    = llarp_getPrivateIfs();
-  llarp::LogInfo("Interface uses 10.x.x.x? ", g_dns_iptracker.interfaces.ten?"Yes":"No");
+  g_dns_iptracker.interfaces = llarp_getPrivateIfs();
+  llarp::LogInfo("Interface uses 10.x.x.x? ",
+                 g_dns_iptracker.interfaces.ten ? "Yes" : "No");
   g_dns_iptracker.used_privates = g_dns_iptracker.interfaces;
-  llarp::LogInfo("We used 10.x.x.x? ", g_dns_iptracker.used_privates.ten?"Yes":"No");
+  llarp::LogInfo("We used 10.x.x.x? ",
+                 g_dns_iptracker.used_privates.ten ? "Yes" : "No");
 }
 
 inline struct dns_pointer *
@@ -56,7 +58,8 @@ dns_iptracker_check_range(std::vector< ip_range * > &ranges, uint8_t first)
     // create one
     auto new_range    = new ip_range;
     new_range->octet2 = 0;
-    switch(first) {
+    switch(first)
+    {
       case 172:
       {
         // FIXME: goes up to 31...
@@ -69,9 +72,9 @@ dns_iptracker_check_range(std::vector< ip_range * > &ranges, uint8_t first)
         break;
       }
     }
-    new_range->octet3 = 0;    // FIXME: counter (0-255)
+    new_range->octet3 = 0;  // FIXME: counter (0-255)
     // CHECK: planning a /24 but maybe that's too wide for broadcasts
-    new_range->left   = 252;  // 0 is net, 1 is gw, 255 is broadcast
+    new_range->left = 252;  // 0 is net, 1 is gw, 255 is broadcast
     ranges.push_back(new_range);
     // don't need to check if we're out since this is fresh range
     return dns_iptracker_allocate_range(new_range, first);
@@ -82,7 +85,8 @@ dns_iptracker_check_range(std::vector< ip_range * > &ranges, uint8_t first)
 struct dns_pointer *
 dns_iptracker_get_free()
 {
-  llarp::LogInfo("We used 10.x.x.x? ", g_dns_iptracker.used_privates.ten?"Yes":"No");
+  llarp::LogInfo("We used 10.x.x.x? ",
+                 g_dns_iptracker.used_privates.ten ? "Yes" : "No");
   if(!g_dns_iptracker.used_privates.ten)
   {
     struct dns_pointer *test =
@@ -92,7 +96,8 @@ dns_iptracker_get_free()
       return test;
     }
   }
-  llarp::LogInfo("We used 172.16.x.x? ", g_dns_iptracker.used_privates.oneSeven?"Yes":"No");
+  llarp::LogInfo("We used 172.16.x.x? ",
+                 g_dns_iptracker.used_privates.oneSeven ? "Yes" : "No");
   if(!g_dns_iptracker.used_privates.oneSeven)
   {
     struct dns_pointer *test =
@@ -102,7 +107,8 @@ dns_iptracker_get_free()
       return test;
     }
   }
-  llarp::LogInfo("We used 192.168.x.x? ", g_dns_iptracker.used_privates.oneNine?"Yes":"No");
+  llarp::LogInfo("We used 192.168.x.x? ",
+                 g_dns_iptracker.used_privates.oneNine ? "Yes" : "No");
   if(!g_dns_iptracker.used_privates.oneNine)
   {
     struct dns_pointer *test =
