@@ -157,7 +157,7 @@ namespace ini
   Parser::err(const char *s)
   {
     char buf[256];
-    sprintf(buf, "%s on line #%lu", s, ln_);
+    sprintf(buf, "%s on line #%zu", s, ln_);
     throw std::runtime_error(buf);
   }
 

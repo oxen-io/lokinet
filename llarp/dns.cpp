@@ -199,12 +199,13 @@ extern "C"
   void
   code_domain(char *&buffer, const std::string &domain) throw()
   {
-    size_t start(0), end;  // indexes
+    std::string::size_type start(0);
+    std::string::size_type end;  // indexes
     // llarp::LogInfo("domain [", domain, "]");
     while((end = domain.find('.', start)) != std::string::npos)
     {
       *buffer++ = end - start;  // label length octet
-      for(size_t i = start; i < end; i++)
+      for(std::string::size_type i = start; i < end; i++)
       {
         *buffer++ = domain[i];  // label octets
         // llarp::LogInfo("Writing ", domain[i], " at ", i);
