@@ -55,6 +55,9 @@ struct llarp_ev_loop
   virtual bool
   close_ev(llarp::ev_io* ev) = 0;
 
+  virtual bool
+  running() const = 0;
+
   virtual ~llarp_ev_loop(){};
 
   std::list< llarp_udp_io* > udp_listeners;

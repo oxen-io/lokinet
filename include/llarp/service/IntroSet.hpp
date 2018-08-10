@@ -36,7 +36,8 @@ namespace llarp
         topic   = other.topic;
         if(W)
           delete W;
-        W = other.W;
+        if(other.W)
+          W = new llarp::PoW(*other.W);
         Z = other.Z;
         return *this;
       }

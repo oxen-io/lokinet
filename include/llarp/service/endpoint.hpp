@@ -74,6 +74,11 @@ namespace llarp
       bool
       HasPathToService(const Address& remote) const;
 
+      /// return true if we have a pending job to build to a hidden service but
+      /// it's not done yet
+      bool
+      HasPendingPathToService(const Address& remote) const;
+
       /// return false if we don't have a path to the service
       /// return true if we did and we removed it
       bool

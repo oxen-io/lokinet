@@ -29,6 +29,13 @@ namespace llarp
 #endif
       }
 
+      Tag&
+      operator=(const Tag& other)
+      {
+        memcpy(data(), other.data(), 16);
+        return *this;
+      }
+
       llarp::dht::Key_t
       Key() const
       {

@@ -28,7 +28,13 @@ namespace llarp
       bool
       operator<(const Key_t& other) const
       {
-        return memcmp(data_l(), other.data_l(), 32) < 0;
+        return memcmp(data(), other.data(), 32) < 0;
+      }
+
+      bool
+      operator>(const Key_t& other) const
+      {
+        return memcmp(data(), other.data(), 32) > 0;
       }
     };
   }  // namespace dht

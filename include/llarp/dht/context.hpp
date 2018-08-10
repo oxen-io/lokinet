@@ -42,8 +42,8 @@ namespace llarp
 
       void
       LookupIntroSet(const service::Address& addr, const Key_t& whoasked,
-                     uint64_t whoaskedTX, const Key_t& askpeer,
-                     bool interative = false, std::set< Key_t > excludes = {});
+                     uint64_t whoaskedTX, const Key_t& askpeer, uint64_t R,
+                     std::set< Key_t > excludes = {});
 
       void
       LookupTag(const service::Tag& tag, const Key_t& whoasked,

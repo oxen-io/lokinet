@@ -40,7 +40,8 @@ namespace llarp
       ISNode(const llarp::service::IntroSet& other)
       {
         introset = other;
-        other.A.CalculateAddress(ID);
+        introset.A.CalculateAddress(ID);
+        llarp::LogInfo("make ISNode with topic ", introset.topic.ToString());
       }
     };
   }  // namespace dht

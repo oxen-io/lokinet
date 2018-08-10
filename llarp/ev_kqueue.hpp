@@ -98,6 +98,12 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     return kqueuefd != -1;
   }
 
+  bool
+  running() const
+  {
+    return kqueuefd != -1;
+  }
+
   int
   tick(int ms)
   {
@@ -115,14 +121,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       while(idx < result)
       {
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
-        if(ev->read(readbuf, sizeof(readbuf)) == -1)
-        {
-          llarp::LogInfo("tick close ev");
-          close_ev(ev);
-          // ev->fd = 0;
-          delete ev;
-          // break;
-        }
+        ev->read(readbuf, sizeof(readbuf));
         ++idx;
       }
     }
@@ -137,7 +136,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   {
     timespec t;
     t.tv_sec  = 0;
-    t.tv_nsec = 10000UL;
+    t.tv_nsec = 1000UL * EV_TICK_INTERVAL;
     struct kevent events[1024];
     int result;
     byte_t readbuf[2048];
@@ -154,14 +153,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           if(ev && ev->fd)
           {
             // printf("reading_ev [%x] fd[%d]\n", ev, ev->fd);
-            if(ev->read(readbuf, sizeof(readbuf)) == -1)
-            {
-              llarp::LogInfo("run error reading, should close ev");
-              close_ev(ev);
-              // ev->fd = 0;
-              // delete ev;
-              // break;
-            }
+            ev->read(readbuf, sizeof(readbuf));
           }
           else
           {

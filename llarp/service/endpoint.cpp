@@ -88,6 +88,13 @@ namespace llarp
       return static_cast< Endpoint* >(user)->DoNetworkIsolation();
     }
 
+    bool
+    Endpoint::HasPendingPathToService(const Address& addr) const
+    {
+      return m_PendingServiceLookups.find(addr)
+          != m_PendingServiceLookups.end();
+    }
+
     void
     Endpoint::Tick(llarp_time_t now)
     {
@@ -166,6 +173,8 @@ namespace llarp
         }
         for(const auto& introset : itr->second.result)
         {
+          if(HasPendingPathToService(introset.A.Addr()))
+            continue;
           PathAlignJob* j = new PathAlignJob(introset.A.Addr());
           if(!EnsurePathToService(j->remote,
                                   std::bind(&PathAlignJob::HandleResult, j,
@@ -173,7 +182,7 @@ namespace llarp
                                   10000))
           {
             llarp::LogWarn("failed to ensure path to ", introset.A.Addr(),
-                           " for tag");
+                           " for tag ", tag.ToString());
             delete j;
           }
         }
@@ -432,7 +441,7 @@ namespace llarp
     Endpoint::CachedTagResult::BuildRequestMessage()
     {
       llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-      msg->M.push_back(new llarp::dht::FindIntroMessage(tag, txid));
+      msg->M.push_back(new llarp::dht::FindIntroMessage({}, tag, txid));
       lastRequest = llarp_time_now_ms();
       parent->PutLookup(this, txid);
       return msg;
@@ -498,6 +507,7 @@ namespace llarp
       bool
       HandleResponse(const std::set< IntroSet >& results)
       {
+        llarp::LogInfo("found ", results.size(), " for ", remote.ToString());
         if(results.size() == 1)
         {
           llarp::LogInfo("hidden service lookup for ", remote.ToString(),

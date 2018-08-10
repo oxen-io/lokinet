@@ -2,6 +2,8 @@
 #include <llarp/logic.h>
 #include "mem.hpp"
 
+#define EV_TICK_INTERVAL 100
+
 #ifdef __linux__
 #include "ev_epoll.hpp"
 #endif
@@ -47,8 +49,8 @@ llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
 {
   while(true)
   {
-    if(ev->tick(100) == -1)
-      break;
+    if(ev->tick(EV_TICK_INTERVAL) == -1)
+      return -1;
     llarp_logic_tick(logic);
   }
   return 0;
@@ -59,10 +61,9 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
                                  struct llarp_threadpool *tp,
                                  struct llarp_logic *logic)
 {
-  while(true)
+  while(ev->running())
   {
-    if(ev->tick(10) == -1)
-      return;
+    ev->tick(EV_TICK_INTERVAL);
     llarp_logic_tick(logic);
     llarp_threadpool_tick(tp);
   }

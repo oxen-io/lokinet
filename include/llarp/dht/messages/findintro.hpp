@@ -10,8 +10,7 @@ namespace llarp
   {
     struct FindIntroMessage : public IMessage
     {
-      uint64_t R     = 0;
-      bool iterative = false;
+      uint64_t R = 0;
       llarp::service::Address S;
       llarp::service::Tag N;
       uint64_t T   = 0;
@@ -22,14 +21,16 @@ namespace llarp
         relayed = relay;
       }
 
-      FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid)
-          : IMessage({}), N(tag), T(txid)
+      FindIntroMessage(const Key_t& from, const llarp::service::Tag& tag,
+                       uint64_t txid)
+          : IMessage(from), N(tag), T(txid)
       {
         S.Zero();
       }
 
-      FindIntroMessage(const llarp::service::Address& addr, uint64_t txid)
-          : IMessage({}), S(addr), T(txid)
+      FindIntroMessage(const Key_t& from, const llarp::service::Address& addr,
+                       uint64_t txid)
+          : IMessage(from), S(addr), T(txid)
       {
         N.Zero();
       }

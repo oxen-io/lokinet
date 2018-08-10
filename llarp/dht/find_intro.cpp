@@ -27,15 +27,7 @@ namespace llarp
     bool
     FindIntroMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* val)
     {
-      uint64_t i = 0;
-      bool read  = false;
-      if(!BEncodeMaybeReadDictInt("I", i, read, k, val))
-        return false;
-      if(read)
-      {
-        iterative = i != 0;
-        return true;
-      }
+      bool read = false;
 
       if(!BEncodeMaybeReadDictEntry("N", N, read, k, val))
         return false;
@@ -64,9 +56,6 @@ namespace llarp
 
       // message id
       if(!BEncodeWriteDictMsgType(buf, "A", "F"))
-        return false;
-      // iterative
-      if(!BEncodeWriteDictInt("I", iterative ? 1 : 0, buf))
         return false;
       if(N.IsZero())
       {
@@ -107,19 +96,25 @@ namespace llarp
         return false;
       }
       auto& dht = ctx->impl;
+      if((!relayed) && dht.FindPendingTX(From, T))
+      {
+        llarp::LogWarn("duplicate FIM from ", From, " txid=", T);
+        return false;
+      }
       Key_t peer;
       std::set< Key_t > exclude = {dht.OurKey(), From};
-      if(N.IsZero())
+      if(N.ToString().empty())
       {
         const auto introset = dht.GetIntroSetByServiceAddress(S);
         if(introset)
         {
+          llarp::LogInfo("introset found locally");
           service::IntroSet i = *introset;
           replies.push_back(new GotIntroMessage({i}, T));
         }
         else
         {
-          if(iterative)
+          if(R == 0 && !relayed)
           {
             // we are iterative and don't have it, reply with a direct reply
             replies.push_back(new GotIntroMessage({}, T));
@@ -131,12 +126,10 @@ namespace llarp
             {
               if(relayed)
                 dht.LookupIntroSetForPath(S, T, pathID, peer);
-              else if((peer ^ dht.OurKey())
-                      > (peer
-                         ^ From))  // peer is closer than us, recursive search
-                dht.LookupIntroSet(S, From, T, peer);
-              else  // we are closer than peer so do iterative search
-                dht.LookupIntroSet(S, From, T, peer, true);
+              else if(R >= 1)
+                dht.LookupIntroSet(S, From, T, peer, R - 1);
+              else
+                dht.LookupIntroSet(S, From, T, peer, 0);
             }
             else
             {
@@ -163,7 +156,7 @@ namespace llarp
         else
         {
           auto introsets = dht.FindRandomIntroSetsWithTag(N);
-          if(iterative || R == 0)
+          if(R == 0)
           {
             std::vector< service::IntroSet > reply;
             for(const auto& introset : introsets)

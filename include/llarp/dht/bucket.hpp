@@ -76,7 +76,7 @@ namespace llarp
       void
       PutNode(const Val_t& val)
       {
-        nodes[val.ID] = val;
+        nodes.insert(std::make_pair(val.ID, val));
       }
 
       void

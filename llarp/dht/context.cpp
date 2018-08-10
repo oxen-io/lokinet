@@ -134,7 +134,7 @@ namespace llarp
       pendingTX[ownerKey] = job;
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
-      auto dhtmsg = new FindIntroMessage(tag, id);
+      auto dhtmsg = new FindIntroMessage({}, tag, id);
       dhtmsg->R   = 5;
       msg->msgs.push_back(dhtmsg);
       llarp::LogInfo("asking ", askpeer, " for tag ", tag.ToString(), " with ",
@@ -159,7 +159,10 @@ namespace llarp
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
       auto dhtmsg = new FindIntroMessage(addr, id);
+      dhtmsg->R   = 5;
       msg->msgs.push_back(dhtmsg);
+      llarp::LogInfo("askng ", askpeer, " for ", addr.ToString(),
+                     " with txid=", id);
       router->SendToOrQueue(askpeer, msg);
     }
 
@@ -169,8 +172,9 @@ namespace llarp
       std::set< service::IntroSet > found;
       auto &nodes = services->nodes;
       if(nodes.size() == 0)
+      {
         return found;
-
+      }
       auto itr = nodes.begin();
       // start at random middle point
       auto start = llarp_randint() % nodes.size();
@@ -336,8 +340,12 @@ namespace llarp
       llarp::routing::DHTMessage reply;
       if(!msg->HandleMessage(router->dht, reply.M))
         return false;
-      auto path = router->paths.GetByUpstream(router->pubkey(), id);
-      return path && path->SendRoutingMessage(&reply, router);
+      if(reply.M.size())
+      {
+        auto path = router->paths.GetByUpstream(router->pubkey(), id);
+        return path && path->SendRoutingMessage(&reply, router);
+      }
+      return true;
     }
 
     /// handles replying with a GIM for a lookup
@@ -393,7 +401,7 @@ namespace llarp
       pendingTX[ownerKey] = job;
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
-      auto dhtmsg = new FindIntroMessage(tag, id);
+      auto dhtmsg = new FindIntroMessage({}, tag, id);
       dhtmsg->R   = R;
       msg->msgs.push_back(dhtmsg);
       router->SendToOrQueue(askpeer, msg);
@@ -401,7 +409,7 @@ namespace llarp
 
     void
     Context::LookupIntroSet(const service::Address &addr, const Key_t &whoasked,
-                            uint64_t txid, const Key_t &askpeer, bool iterative,
+                            uint64_t txid, const Key_t &askpeer, uint64_t R,
                             std::set< Key_t > excludes)
     {
       auto id = ++ids;
@@ -418,7 +426,8 @@ namespace llarp
       pendingTX[ownerKey] = job;
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
-      auto dhtmsg = new FindIntroMessage(addr, id);
+      auto dhtmsg = new FindIntroMessage({}, addr, id);
+      dhtmsg->R   = R;
       msg->msgs.push_back(dhtmsg);
       router->SendToOrQueue(askpeer, msg);
     }
