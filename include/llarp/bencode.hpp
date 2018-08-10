@@ -14,12 +14,13 @@ namespace llarp
     return bencode_write_bytestring(buf, k, 1)
         && bencode_write_bytestring(buf, t, 1);
   }
+
   template < typename Obj_t >
   bool
   BEncodeWriteDictString(const char* k, const Obj_t& str, llarp_buffer_t* buf)
   {
     return bencode_write_bytestring(buf, k, 1)
-        && bencode_write_bytestring(buf, str.c_str(), str.size());
+        && bencode_write_bytestring(buf, str.data(), str.size());
   }
 
   template < typename Obj_t >
@@ -149,11 +150,7 @@ namespace llarp
       T item;
       if(!item.BDecode(buf))
         return false;
-      result.insert(item);
-      /*
-      if(!result.insert(item).second)
-        return false;
-      */
+      return result.insert(item).second;
     }
     if(*buf->cur != 'e')  // make sure we're at a list end
       return false;

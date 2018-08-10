@@ -24,8 +24,9 @@ namespace llarp
 
     SearchJob::SearchJob(const Key_t &asker, uint64_t tx, const Key_t &key,
                          const std::set< Key_t > &excludes,
-                         IntroSetHookFunc foundIntroset)
+                         IntroSetHookFunc foundIntroset, DoneFunc done)
         : foundIntroHook(foundIntroset)
+        , onDone(done)
         , started(llarp_time_now_ms())
         , requester(asker)
         , requesterTX(tx)
@@ -35,8 +36,9 @@ namespace llarp
     }
 
     SearchJob::SearchJob(const Key_t &asker, uint64_t tx,
-                         IntroSetHookFunc found)
+                         IntroSetHookFunc found, DoneFunc done)
         : foundIntroHook(found)
+        , onDone(done)
         , started(llarp_time_now_ms())
         , requester(asker)
         , requesterTX(tx)
@@ -44,12 +46,16 @@ namespace llarp
       target.Zero();
     }
 
-    void
+    bool
     SearchJob::FoundIntros(
         const std::vector< llarp::service::IntroSet > &introsets) const
     {
-      if(foundIntroHook)
-        foundIntroHook(introsets);
+      if(foundIntroHook && foundIntroHook(introsets))
+      {
+        onDone();
+        return true;
+      }
+      return foundIntroHook == nullptr;
     }
 
     void

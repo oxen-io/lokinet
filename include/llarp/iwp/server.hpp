@@ -1,5 +1,5 @@
 #pragma once
-#include <llarp/iwp.h>
+#include <llarp/iwp.hpp>
 #include <llarp/threading.hpp>
 #include "llarp/iwp/establish_job.hpp"
 #include "router.hpp"
@@ -26,7 +26,7 @@ struct llarp_link
   llarp_link *parent = nullptr;
   llarp_udp_io udp;
   llarp::Addr addr;
-  char keyfile[255];
+  std::string keyfile;
   uint32_t timeout_job_id;
 
   const char *

@@ -51,18 +51,52 @@ namespace llarp
 
     struct PathLookupJob
     {
+      Key_t whoasked;
+      service::Address target;
       uint64_t txid;
       PathID_t pathID;
       llarp_router *m_router;
       std::set< service::IntroSet > localIntroSets;
       std::set< Key_t > asked;
+      int m_TriesLeft = 5;
+      uint64_t R      = 0;
 
       PathLookupJob(llarp_router *r, const PathID_t &localpath, uint64_t tx)
           : txid(tx), pathID(localpath), m_router(r)
       {
+        whoasked = r->dht->impl.OurKey();
       }
 
       void
+      TryAgain()
+      {
+        --m_TriesLeft;
+        auto &dht = m_router->dht->impl;
+        llarp::LogInfo("try lookup again");
+        dht.TryLookupAgain(
+            this,
+            std::bind(&PathLookupJob::OnResult, this, std::placeholders::_1),
+            R);
+      }
+
+      void
+      Exausted()
+      {
+        llarp::LogWarn("Exausted peers for lookup");
+        auto path =
+            m_router->paths.GetByUpstream(m_router->dht->impl.OurKey(), pathID);
+        if(path)
+        {
+          llarp::routing::DHTMessage msg;
+          msg.M.push_back(new llarp::dht::GotIntroMessage(
+              std::vector< service::IntroSet >(), txid));
+          path->SendRoutingMessage(&msg, m_router);
+        }
+        else
+          llarp::LogError("no path for lookup pathid=", pathID);
+      }
+
+      bool
       OnResult(const std::vector< service::IntroSet > &results)
       {
         auto path =
@@ -73,23 +107,35 @@ namespace llarp
           {
             localIntroSets.insert(introset);
           }
-          llarp::routing::DHTMessage msg;
           auto sz = localIntroSets.size();
-          std::vector< service::IntroSet > intros(sz);
-          for(const auto &i : localIntroSets)
+          if(sz || target.IsZero() || m_TriesLeft == 0)
           {
-            intros[--sz] = i;
+            llarp::routing::DHTMessage msg;
+
+            std::vector< service::IntroSet > intros(sz);
+            for(const auto &i : localIntroSets)
+            {
+              intros[--sz] = i;
+            }
+            llarp::LogInfo("found ", sz, " introsets for txid=", txid);
+            msg.M.push_back(new llarp::dht::GotIntroMessage(intros, txid));
+            path->SendRoutingMessage(&msg, m_router);
           }
-          llarp::LogInfo("found ", sz, " introsets for txid=", txid);
-          msg.M.push_back(new llarp::dht::GotIntroMessage(intros, txid));
-          path->SendRoutingMessage(&msg, m_router);
+          else if(!target.IsZero())
+          {
+            if(m_TriesLeft)
+            {
+              TryAgain();
+              return false;
+            }
+          }
         }
         else
         {
           llarp::LogWarn("no local path for reply on PathTagLookupJob pathid=",
                          pathID);
         }
-        delete this;
+        return true;
       }
     };
 
@@ -110,8 +156,10 @@ namespace llarp
       TXOwner ownerKey;
       ownerKey.node = peer;
       ownerKey.txid = id;
-      SearchJob job(from, txid,
-                    [](const std::vector< service::IntroSet > &) {});
+      SearchJob job(
+          from, txid,
+          [](const std::vector< service::IntroSet > &) -> bool { return true; },
+          []() {});
       pendingTX[ownerKey] = job;
       auto msg            = new llarp::DHTImmeidateMessage(peer);
       msg->msgs.push_back(new PublishIntroMessage(introset, id, S, E));
@@ -130,12 +178,14 @@ namespace llarp
       j->localIntroSets = FindRandomIntroSetsWithTag(tag);
       SearchJob job(
           OurKey(), txid,
-          std::bind(&PathLookupJob::OnResult, j, std::placeholders::_1));
+          std::bind(&PathLookupJob::OnResult, j, std::placeholders::_1),
+          [j]() { delete j; });
       pendingTX[ownerKey] = job;
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
-      auto dhtmsg = new FindIntroMessage({}, tag, id);
+      auto dhtmsg = new FindIntroMessage(tag, id);
       dhtmsg->R   = 5;
+      j->R        = 5;
       msg->msgs.push_back(dhtmsg);
       llarp::LogInfo("asking ", askpeer, " for tag ", tag.ToString(), " with ",
                      j->localIntroSets.size(), " local tags txid=", txid);
@@ -144,24 +194,29 @@ namespace llarp
 
     void
     Context::LookupIntroSetForPath(const service::Address &addr, uint64_t txid,
-                                   const llarp::PathID_t &path,
-                                   const Key_t &askpeer)
+                                   const llarp::PathID_t &path, Key_t askpeer)
     {
       auto id = ++ids;
       TXOwner ownerKey;
       ownerKey.node    = askpeer;
       ownerKey.txid    = id;
       PathLookupJob *j = new PathLookupJob(router, path, txid);
+      j->target        = addr;
+      j->R             = 5;
+      j->asked.emplace(askpeer);
+      Key_t us = OurKey();
+      j->asked.emplace(us);
       SearchJob job(
           OurKey(), txid,
-          std::bind(&PathLookupJob::OnResult, j, std::placeholders::_1));
+          std::bind(&PathLookupJob::OnResult, j, std::placeholders::_1),
+          [j]() { delete j; });
       pendingTX[ownerKey] = job;
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
-      auto dhtmsg = new FindIntroMessage(addr, id);
+      auto dhtmsg = new FindIntroMessage(id, addr);
       dhtmsg->R   = 5;
       msg->msgs.push_back(dhtmsg);
-      llarp::LogInfo("askng ", askpeer, " for ", addr.ToString(),
+      llarp::LogInfo("asking ", askpeer, " for ", addr.ToString(),
                      " with txid=", id);
       router->SendToOrQueue(askpeer, msg);
     }
@@ -213,7 +268,8 @@ namespace llarp
       if(target == ourKey)
       {
         // we are the target, give them our RC
-        replies.push_back(new GotRouterMessage(requester, txid, &router->rc));
+        replies.push_back(
+            new GotRouterMessage(requester, txid, &router->rc, false));
         return;
       }
       Key_t next;
@@ -223,8 +279,8 @@ namespace llarp
         if(next == target)
         {
           // we know it
-          replies.push_back(
-              new GotRouterMessage(requester, txid, nodes->nodes[target].rc));
+          replies.push_back(new GotRouterMessage(
+              requester, txid, nodes->nodes[target].rc, false));
         }
         else if(recursive)  // are we doing a recursive lookup?
         {
@@ -234,7 +290,8 @@ namespace llarp
             // so we won't ask neighboor recursively, tell them we don't have it
             llarp::LogInfo("we aren't closer to ", target, " than ", next,
                            " so we end it here");
-            replies.push_back(new GotRouterMessage(requester, txid, nullptr));
+            replies.push_back(
+                new GotRouterMessage(requester, txid, nullptr, false));
           }
           else
           {
@@ -250,7 +307,8 @@ namespace llarp
           llarp::LogInfo("we don't have ", target,
                          " and this was an iterative request so telling ",
                          requester, " that we don't have it");
-          replies.push_back(new GotRouterMessage(requester, txid, nullptr));
+          replies.push_back(
+              new GotRouterMessage(requester, txid, nullptr, false));
         }
       }
       else
@@ -259,7 +317,8 @@ namespace llarp
         llarp::LogInfo("we don't have ", target,
                        " and have no closer peers so telling ", requester,
                        " that we don't have it");
-        replies.push_back(new GotRouterMessage(requester, txid, nullptr));
+        replies.push_back(
+            new GotRouterMessage(requester, txid, nullptr, false));
       }
     }
 
@@ -334,6 +393,14 @@ namespace llarp
                              {1000, this, &handle_cleaner_timer});
     }
 
+    void
+    Context::DHTSendTo(const Key_t &peer, IMessage *msg)
+    {
+      auto m = new llarp::DHTImmeidateMessage(peer);
+      m->msgs.push_back(msg);
+      router->SendToOrQueue(peer, m);
+    }
+
     bool
     Context::RelayRequestForPath(const llarp::PathID_t &id, const IMessage *msg)
     {
@@ -351,34 +418,75 @@ namespace llarp
     /// handles replying with a GIM for a lookup
     struct IntroSetInformJob
     {
+      service::Address target;
+      uint64_t R      = 0;
+      int m_TriesLeft = 5;
       std::set< service::IntroSet > localIntroSets;
-      Key_t replyNode;
+      std::set< Key_t > asked;
+      Key_t whoasked;
       uint64_t txid;
       llarp_router *m_Router;
       IntroSetInformJob(llarp_router *r, const Key_t &replyTo, uint64_t id)
-          : replyNode(replyTo), txid(id), m_Router(r)
+          : whoasked(replyTo), txid(id), m_Router(r)
       {
       }
 
       void
+      Exausted()
+      {
+        auto msg = new llarp::DHTImmeidateMessage(whoasked);
+        msg->msgs.push_back(new GotIntroMessage({}, txid));
+        m_Router->SendToOrQueue(whoasked, msg);
+      }
+
+      void
+      TryAgain()
+      {
+        --m_TriesLeft;
+        llarp::LogInfo("try lookup again");
+        auto &dht = m_Router->dht->impl;
+        dht.TryLookupAgain(this,
+                           std::bind(&IntroSetInformJob::OnResult, this,
+                                     std::placeholders::_1),
+                           R);
+      }
+
+      bool
       OnResult(const std::vector< llarp::service::IntroSet > &results)
       {
         for(const auto &introset : results)
         {
-          localIntroSets.insert(introset);
+          localIntroSets.insert(std::move(introset));
         }
-        if(replyNode != m_Router->dht->impl.OurKey())
+        if(whoasked != m_Router->dht->impl.OurKey())
         {
-          std::vector< service::IntroSet > reply;
-          for(const auto &introset : localIntroSets)
+          size_t sz = localIntroSets.size();
+          if(sz || target.IsZero() || m_TriesLeft == 0)
           {
-            reply.push_back(introset);
+            std::vector< service::IntroSet > reply;
+            for(const auto &introset : localIntroSets)
+            {
+              reply.push_back(std::move(introset));
+            }
+            localIntroSets.clear();
+            auto msg = new llarp::DHTImmeidateMessage(whoasked);
+            msg->msgs.push_back(new GotIntroMessage(reply, txid));
+            m_Router->SendToOrQueue(whoasked, msg);
           }
-          auto msg = new llarp::DHTImmeidateMessage(replyNode);
-          msg->msgs.push_back(new GotIntroMessage(reply, txid));
-          m_Router->SendToOrQueue(replyNode, msg);
+          else if(!target.IsZero())
+          {
+            if(m_TriesLeft)
+            {
+              TryAgain();
+              return false;
+            }
+          }
         }
-        delete this;
+        else
+        {
+          llarp::LogWarn("we asked for something without a path?");
+        }
+        return true;
       }
     };
 
@@ -397,11 +505,12 @@ namespace llarp
       j->localIntroSets    = include;
       SearchJob job(
           whoasked, txid,
-          std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1));
+          std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1),
+          [j]() { delete j; });
       pendingTX[ownerKey] = job;
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
-      auto dhtmsg = new FindIntroMessage({}, tag, id);
+      auto dhtmsg = new FindIntroMessage(tag, id);
       dhtmsg->R   = R;
       msg->msgs.push_back(dhtmsg);
       router->SendToOrQueue(askpeer, msg);
@@ -420,15 +529,22 @@ namespace llarp
       ownerKey.node        = askpeer;
       ownerKey.txid        = id;
       IntroSetInformJob *j = new IntroSetInformJob(router, whoasked, txid);
+      j->target            = addr;
+      for(const auto &item : excludes)
+        j->asked.emplace(item);
+      j->R = R;
       SearchJob job(
-          whoasked, txid, addr, excludes,
-          std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1));
+          whoasked, txid, addr.ToKey(), {},
+          std::bind(&IntroSetInformJob::OnResult, j, std::placeholders::_1),
+          [j]() { delete j; });
       pendingTX[ownerKey] = job;
 
       auto msg    = new llarp::DHTImmeidateMessage(askpeer);
-      auto dhtmsg = new FindIntroMessage({}, addr, id);
+      auto dhtmsg = new FindIntroMessage(id, addr);
       dhtmsg->R   = R;
       msg->msgs.push_back(dhtmsg);
+      llarp::LogInfo("asking ", askpeer, " for ", addr.ToString(),
+                     " on request of ", whoasked);
       router->SendToOrQueue(askpeer, msg);
     }
 

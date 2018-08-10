@@ -18,9 +18,11 @@ namespace llarp
     {
       const static uint64_t JobTimeout = 30000;
 
-      typedef std::function< void(
+      typedef std::function< bool(
           const std::vector< llarp::service::IntroSet >&) >
           IntroSetHookFunc;
+
+      typedef std::function< void(void) > DoneFunc;
       SearchJob();
       /// for routers
       SearchJob(const Key_t& requester, uint64_t requesterTX,
@@ -29,15 +31,15 @@ namespace llarp
       /// for introsets
       SearchJob(const Key_t& requester, uint64_t requesterTX,
                 const Key_t& target, const std::set< Key_t >& excludes,
-                IntroSetHookFunc found);
+                IntroSetHookFunc found, DoneFunc done);
       // for introsets via tag
       SearchJob(const Key_t& requester, uint64_t requseterTX,
-                IntroSetHookFunc found);
+                IntroSetHookFunc found, DoneFunc done);
 
       void
       FoundRouter(const llarp_rc* router) const;
 
-      void
+      bool
       FoundIntros(
           const std::vector< llarp::service::IntroSet >& introset) const;
 
@@ -50,6 +52,7 @@ namespace llarp
       // only set if looking up router
       llarp_router_lookup_job* job = nullptr;
       IntroSetHookFunc foundIntroHook;
+      DoneFunc onDone;
       llarp_time_t started;
       Key_t requester;
       uint64_t requesterTX;

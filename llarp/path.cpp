@@ -263,6 +263,29 @@ namespace llarp
         builder->Tick(now, m_Router);
     }
 
+    routing::IMessageHandler*
+    PathContext::GetHandler(const PathID_t& id)
+    {
+      routing::IMessageHandler* h = nullptr;
+      auto pathset                = GetLocalPathSet(id);
+      if(pathset)
+      {
+        h = pathset->GetPathByID(id);
+      }
+      if(h)
+        return h;
+      RouterID us(OurRouterID());
+      auto& map = m_TransitPaths;
+      std::unique_lock< std::mutex > lock(map.first);
+      auto range = map.second.equal_range(id);
+      for(auto i = range.first; i != range.second; ++i)
+      {
+        if(i->second->info.upstream == us)
+          return i->second;
+      }
+      return nullptr;
+    }
+
     void
     PathContext::AddPathBuilder(llarp_pathbuilder_context* ctx)
     {
@@ -366,7 +389,10 @@ namespace llarp
       msg->X                    = buf;
       msg->Y                    = Y;
       msg->pathid               = TXID();
-      return r->SendToOrQueue(Upstream(), msg);
+      if(r->SendToOrQueue(Upstream(), msg))
+        return true;
+      llarp::LogError("send to ", Upstream(), " failed");
+      return false;
     }
 
     bool
@@ -411,7 +437,11 @@ namespace llarp
       byte_t tmp[MAX_LINK_MSG_SIZE / 2];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
+      {
+        llarp::LogError("Bencode failed");
+        llarp::DumpBuffer(buf);
         return false;
+      }
       // make nonce
       TunnelNonce N;
       N.Randomize();

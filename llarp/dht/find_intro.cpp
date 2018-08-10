@@ -57,9 +57,8 @@ namespace llarp
       // message id
       if(!BEncodeWriteDictMsgType(buf, "A", "F"))
         return false;
-      if(N.IsZero())
+      if(N.Empty())
       {
-        return false;
         // r5n counter
         if(!BEncodeWriteDictInt("R", R, buf))
           return false;
@@ -103,8 +102,9 @@ namespace llarp
       }
       Key_t peer;
       std::set< Key_t > exclude = {dht.OurKey(), From};
-      if(N.ToString().empty())
+      if(N.Empty())
       {
+        llarp::LogInfo("lookup ", S.ToString());
         const auto introset = dht.GetIntroSetByServiceAddress(S);
         if(introset)
         {
@@ -114,22 +114,34 @@ namespace llarp
         }
         else
         {
-          if(R == 0 && !relayed)
+          if(R == 0)
           {
-            // we are iterative and don't have it, reply with a direct reply
+            // we don't have it, reply with a direct reply
+            llarp::LogInfo("dont have intro set and no recursion");
             replies.push_back(new GotIntroMessage({}, T));
           }
           else
           {
+            const auto& us = dht.OurKey();
+            auto target    = S.ToKey();
             // we are recursive
-            if(dht.nodes->FindCloseExcluding(S, peer, exclude))
+            if(dht.nodes->FindCloseExcluding(target, peer, exclude))
             {
               if(relayed)
                 dht.LookupIntroSetForPath(S, T, pathID, peer);
-              else if(R >= 1)
-                dht.LookupIntroSet(S, From, T, peer, R - 1);
               else
-                dht.LookupIntroSet(S, From, T, peer, 0);
+              {
+                if((us ^ target) < (peer ^ target))
+                {
+                  // we are not closer than our peer to the target so don't
+                  // revurse
+                  replies.push_back(new GotIntroMessage({}, T));
+                }
+                else if(R >= 1)
+                  dht.LookupIntroSet(S, From, T, peer, R - 1, exclude);
+                else
+                  dht.LookupIntroSet(S, From, T, peer, 0, exclude);
+              }
             }
             else
             {

@@ -358,6 +358,9 @@ namespace llarp
       PathSet*
       GetLocalPathSet(const PathID_t& id);
 
+      routing::IMessageHandler*
+      GetHandler(const PathID_t& id);
+
       bool
       ForwardLRCM(const RouterID& nextHop,
                   std::deque< EncryptedFrame >& frames);

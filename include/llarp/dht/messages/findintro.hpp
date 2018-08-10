@@ -21,16 +21,14 @@ namespace llarp
         relayed = relay;
       }
 
-      FindIntroMessage(const Key_t& from, const llarp::service::Tag& tag,
-                       uint64_t txid)
-          : IMessage(from), N(tag), T(txid)
+      FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid)
+          : IMessage({}), N(tag), T(txid)
       {
         S.Zero();
       }
 
-      FindIntroMessage(const Key_t& from, const llarp::service::Address& addr,
-                       uint64_t txid)
-          : IMessage(from), S(addr), T(txid)
+      FindIntroMessage(uint64_t txid, const llarp::service::Address& addr)
+          : IMessage({}), S(addr), T(txid)
       {
         N.Zero();
       }

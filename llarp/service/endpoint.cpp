@@ -68,7 +68,6 @@ namespace llarp
       {
         if(context)
         {
-          llarp::LogInfo("BEEP");
           byte_t tmp[128] = {0};
           memcpy(tmp, "BEEP", 4);
           auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -441,7 +440,7 @@ namespace llarp
     Endpoint::CachedTagResult::BuildRequestMessage()
     {
       llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-      msg->M.push_back(new llarp::dht::FindIntroMessage({}, tag, txid));
+      msg->M.push_back(new llarp::dht::FindIntroMessage(tag, txid));
       lastRequest = llarp_time_now_ms();
       parent->PutLookup(this, txid);
       return msg;
@@ -450,7 +449,7 @@ namespace llarp
     bool
     Endpoint::PublishIntroSet(llarp_router* r)
     {
-      auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr());
+      auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr().ToRouter());
       if(path)
       {
         m_CurrentPublishTX = llarp_randint();
@@ -496,12 +495,13 @@ namespace llarp
     struct HiddenServiceAddressLookup : public IServiceLookup
     {
       Address remote;
-      Endpoint* endpoint;
+      typedef std::function< bool(const IntroSet*) > HandlerFunc;
+      HandlerFunc handle;
 
-      HiddenServiceAddressLookup(Endpoint* p, const Address& addr, uint64_t tx)
-          : IServiceLookup(p, tx), remote(addr), endpoint(p)
+      HiddenServiceAddressLookup(Endpoint* p, HandlerFunc h,
+                                 const Address& addr, uint64_t tx)
+          : IServiceLookup(p, tx), remote(addr), handle(h)
       {
-        llarp::LogInfo("New hidden service lookup for ", addr.ToString());
       }
 
       bool
@@ -512,12 +512,13 @@ namespace llarp
         {
           llarp::LogInfo("hidden service lookup for ", remote.ToString(),
                          " success");
-          endpoint->PutNewOutboundContext(*results.begin());
+          handle(&*results.begin());
         }
         else
         {
           llarp::LogInfo("no response in hidden service lookup for ",
                          remote.ToString());
+          handle(nullptr);
         }
         delete this;
         return true;
@@ -527,7 +528,10 @@ namespace llarp
       BuildRequestMessage()
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-        msg->M.push_back(new llarp::dht::FindIntroMessage(remote, txid));
+        auto FIM = new llarp::dht::FindIntroMessage(txid, remote);
+        FIM->R   = 5;
+        msg->M.push_back(FIM);
+        llarp::LogInfo("build request for ", remote);
         return msg;
       }
     };
@@ -543,7 +547,7 @@ namespace llarp
     Endpoint::PutNewOutboundContext(const llarp::service::IntroSet& introset)
     {
       Address addr;
-      introset.A.CalculateAddress(addr);
+      introset.A.CalculateAddress(addr.data());
 
       // only add new session if it's not there
       if(m_RemoteSessions.find(addr) == m_RemoteSessions.end())
@@ -559,6 +563,55 @@ namespace llarp
       {
         itr->second(m_RemoteSessions.at(addr));
         m_PendingServiceLookups.erase(itr);
+      }
+    }
+
+    bool
+    Endpoint::HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg)
+    {
+      bool success = false;
+      if(msg->R.size() == 1)
+      {
+        auto itr = m_PendingRouters.find(msg->R[0].pubkey);
+        if(itr == m_PendingRouters.end())
+          return false;
+        llarp_async_verify_rc* job = new llarp_async_verify_rc;
+        job->nodedb                = m_Router->nodedb;
+        job->cryptoworker          = m_Router->tp;
+        job->diskworker            = m_Router->disk;
+        job->logic                 = nullptr;
+        job->hook                  = nullptr;
+        llarp_rc_clear(&job->rc);
+        llarp_rc_copy(&job->rc, &msg->R[0]);
+        llarp_nodedb_async_verify(job);
+        return true;
+      }
+      return success;
+    }
+
+    void
+    Endpoint::EnsureRouterIsKnown(const RouterID& router)
+    {
+      if(!llarp_nodedb_get_rc(m_Router->nodedb, router))
+      {
+        if(m_PendingRouters.find(router) == m_PendingRouters.end())
+        {
+          auto path = GetEstablishedPathClosestTo(router);
+          routing::DHTMessage msg;
+          auto txid = GenTXID();
+          msg.M.push_back(
+              new dht::FindRouterMessage({}, dht::Key_t(router), txid));
+
+          if(path->SendRoutingMessage(&msg, m_Router))
+          {
+            llarp::LogInfo(Name(), " looking up ", router);
+            m_PendingRouters.insert(std::make_pair(router, txid));
+          }
+          else
+          {
+            llarp::LogError("failed to send request for router lookup");
+          }
+        }
       }
     }
 
@@ -598,10 +651,19 @@ namespace llarp
     }
 
     bool
+    Endpoint::OnOutboundLookup(const IntroSet* introset)
+    {
+      if(!introset)
+        return false;
+      PutNewOutboundContext(*introset);
+      return true;
+    }
+
+    bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
                                   llarp_time_t timeoutMS)
     {
-      auto path = GetEstablishedPathClosestTo(remote);
+      auto path = GetEstablishedPathClosestTo(remote.ToRouter());
       if(!path)
       {
         llarp::LogWarn("No outbound path for lookup yet");
@@ -627,10 +689,15 @@ namespace llarp
 
       m_PendingServiceLookups.insert(std::make_pair(remote, hook));
 
-      HiddenServiceAddressLookup* job =
-          new HiddenServiceAddressLookup(this, remote, GenTXID());
+      HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
+          this,
+          std::bind(&Endpoint::OnOutboundLookup, this, std::placeholders::_1),
+          remote, GenTXID());
 
-      return job->SendRequestViaPath(path, Router());
+      if(job->SendRequestViaPath(path, Router()))
+        return true;
+      llarp::LogError("send via path failed");
+      return false;
     }
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& intro,
@@ -649,51 +716,27 @@ namespace llarp
     {
     }
 
+    bool
+    Endpoint::OutboundContext::OnIntroSetUpdate(const IntroSet* i)
+    {
+      if(i && i->IsNewerThan(currentIntroSet))
+      {
+        currentIntroSet = *i;
+      }
+      return true;
+    }
+
     void
     Endpoint::OutboundContext::ShiftIntroduction()
     {
       for(const auto& intro : currentIntroSet.I)
       {
+        m_Parent->EnsureRouterIsKnown(selectedIntro.router);
         if(intro.expiresAt > selectedIntro.expiresAt)
         {
           selectedIntro = intro;
         }
       }
-    }
-
-    bool
-    Endpoint::OutboundContext::HandleGotIntroMessage(
-        const llarp::dht::GotIntroMessage* msg)
-    {
-      if(msg->T != m_UpdateIntrosetTX)
-      {
-        llarp::LogError("unwarrented introset message txid=", msg->T);
-        return false;
-      }
-      auto crypto = m_Parent->Crypto();
-      if(msg->I.size() == 1)
-      {
-        // found intro set
-        const auto& introset = msg->I[0];
-        if(introset.VerifySignature(crypto) && currentIntroSet.A == introset.A)
-        {
-          // update
-          currentIntroSet = introset;
-          // reset tx
-          m_UpdateIntrosetTX = 0;
-          // shift to newest intro
-          // TODO: check timestamp on introset to make sure it's new enough
-          ShiftIntroduction();
-          return true;
-        }
-        else
-        {
-          llarp::LogError("Signature Error for intro set ", introset);
-          return false;
-        }
-      }
-      llarp::LogError("Bad number of intro sets in response");
-      return false;
     }
 
     void
@@ -761,7 +804,8 @@ namespace llarp
         // set our introduction
         self->msg.introReply = self->intro;
         // derive session key
-        self->crypto->dh_server(self->sharedKey, self->remote.enckey,
+        self->crypto->dh_server(self->sharedKey,
+                                self->remote.EncryptionPublicKey(),
                                 self->m_LocalIdentity->enckey, self->frame.N);
 
         // encrypt and sign
@@ -827,17 +871,18 @@ namespace llarp
     void
     Endpoint::OutboundContext::UpdateIntroSet()
     {
-      auto path = GetEstablishedPathClosestTo(currentIntroSet.A.Addr());
+      auto addr = currentIntroSet.A.Addr();
+      auto path = m_Parent->GetEstablishedPathClosestTo(addr.ToRouter());
       if(path)
       {
-        if(m_UpdateIntrosetTX == 0)
-        {
-          m_UpdateIntrosetTX = llarp_randint();
-          routing::DHTMessage msg;
-          msg.M.push_back(new llarp::dht::FindIntroMessage(
-              currentIntroSet.A.Addr(), m_UpdateIntrosetTX));
-          path->SendRoutingMessage(&msg, m_Parent->Router());
-        }
+        HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
+            m_Parent,
+            std::bind(&Endpoint::OutboundContext::OnIntroSetUpdate, this,
+                      std::placeholders::_1),
+            addr, m_Parent->GenTXID());
+
+        if(!job->SendRequestViaPath(path, m_Parent->Router()))
+          llarp::LogError("send via path failed");
       }
       else
       {
@@ -924,7 +969,8 @@ namespace llarp
           msg.sender     = m_Parent->m_Identity.pub;
           msg.PutBuffer(payload);
 
-          if(!f.EncryptAndSign(crypto, &msg, shared, currentIntroSet.A.signkey))
+          if(!f.EncryptAndSign(crypto, &msg, shared,
+                               m_Parent->m_Identity.signkey))
           {
             llarp::LogError("failed to sign");
             return;

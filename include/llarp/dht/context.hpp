@@ -6,6 +6,7 @@
 #include <llarp/dht/bucket.hpp>
 #include <llarp/dht/key.hpp>
 #include <llarp/dht/message.hpp>
+#include <llarp/dht/messages/findintro.hpp>
 #include <llarp/dht/node.hpp>
 #include <llarp/dht/search_job.hpp>
 #include <llarp/service/IntroSet.hpp>
@@ -60,7 +61,43 @@ namespace llarp
 
       void
       LookupIntroSetForPath(const service::Address& addr, uint64_t txid,
-                            const llarp::PathID_t& path, const Key_t& askpeer);
+                            const llarp::PathID_t& path, Key_t askpeer);
+
+      template < typename Job, typename Result >
+      void
+      TryLookupAgain(Job* j, Result r, uint64_t R)
+      {
+        const Key_t targetKey = j->target.ToKey();
+        Key_t askpeer;
+        std::set< Key_t > exclude = j->asked;
+        if(!nodes->FindCloseExcluding(targetKey, askpeer, exclude))
+        {
+          j->Exausted();
+          delete j;
+          return;
+        }
+        if((OurKey() ^ targetKey) < (askpeer ^ targetKey))
+        {
+          j->Exausted();
+          delete j;
+          return;
+        }
+        auto id = ++ids;
+        TXOwner ownerKey;
+        ownerKey.node = askpeer;
+        ownerKey.txid = id;
+        SearchJob job(j->whoasked, j->txid, r, [j]() { delete j; });
+        pendingTX[ownerKey] = job;
+        auto msg            = new FindIntroMessage(id, j->target);
+        msg->R              = R;
+        llarp::LogInfo("asking ", askpeer, " for ", j->target.ToString(),
+                       " with txid=", id);
+        DHTSendTo(askpeer, msg);
+        j->asked.insert(std::move(askpeer));
+      }
+
+      void
+      DHTSendTo(const Key_t& peer, IMessage* msg);
 
       void
       LookupIntroSetRelayed(const Key_t& requester, uint64_t txid,

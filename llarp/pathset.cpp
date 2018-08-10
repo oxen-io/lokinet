@@ -81,6 +81,19 @@ namespace llarp
       return nullptr;
     }
 
+    Path*
+    PathSet::GetPathByID(const PathID_t& id) const
+    {
+      auto itr = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->second->RXID() == id)
+          return itr->second;
+        ++itr;
+      }
+      return nullptr;
+    }
+
     size_t
     PathSet::NumInStatus(PathStatus st) const
     {

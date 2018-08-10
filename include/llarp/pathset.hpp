@@ -78,6 +78,19 @@ namespace llarp
         return false;
       }
 
+      /// override me in subtype
+      virtual bool
+      HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg)
+      {
+        return false;
+      }
+
+      virtual routing::IMessageHandler*
+      GetDHTHandler()
+      {
+        return nullptr;
+      }
+
       Path*
       GetEstablishedPathClosestTo(const RouterID& router) const;
 
@@ -86,6 +99,9 @@ namespace llarp
 
       Path*
       GetPathByRouter(const RouterID& router) const;
+
+      Path*
+      GetPathByID(const PathID_t& id) const;
 
       bool
       GetCurrentIntroductions(

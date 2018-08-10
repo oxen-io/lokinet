@@ -82,7 +82,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const;
 
       bool
-      Verify(llarp_crypto* c, byte_t* signingkey) const;
+      Verify(llarp_crypto* c, const ServiceInfo& from) const;
 
       bool
       HandleMessage(llarp::routing::IMessageHandler* h, llarp_router* r) const;

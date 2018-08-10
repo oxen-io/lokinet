@@ -132,7 +132,7 @@ struct llarp_nodedb
     llarp_rc entry;
     llarp::Zero(&entry, sizeof(entry));
     llarp_rc_copy(&entry, rc);
-    entries[pk] = entry;
+    entries.insert(std::make_pair(pk, entry));
 
     if(llarp_rc_bencode(&entry, &buf))
     {
@@ -273,8 +273,9 @@ disk_threadworker_setRC(void *user)
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
   verify_request->valid = verify_request->nodedb->setRC(&verify_request->rc);
-  llarp_logic_queue_job(verify_request->logic,
-                        {verify_request, &logic_threadworker_callback});
+  if(verify_request->logic)
+    llarp_logic_queue_job(verify_request->logic,
+                          {verify_request, &logic_threadworker_callback});
 }
 
 // we run the crypto verify in the crypto threadpool worker

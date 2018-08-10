@@ -68,6 +68,9 @@ namespace llarp
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
       bool
+      HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg);
+
+      bool
       HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* msg);
 
       /// return true if we have an established path to a hidden service
@@ -89,6 +92,10 @@ namespace llarp
       {
         // override me in subclass
       }
+
+      /// ensure that we know a router, looks up if it doesn't
+      void
+      EnsureRouterIsKnown(const RouterID& router);
 
       Identity*
       GetIdentity()
@@ -137,9 +144,6 @@ namespace llarp
         SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
 
         bool
-        HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
-
-        bool
         HandleHiddenServiceFrame(const ProtocolFrame* frame);
 
         void
@@ -149,6 +153,9 @@ namespace llarp
         Name() const;
 
        private:
+        bool
+        OnIntroSetUpdate(const IntroSet* i);
+
         void
         EncryptAndSendTo(llarp_buffer_t payload);
 
@@ -227,6 +234,9 @@ namespace llarp
       IsolateNetwork();
 
      private:
+      bool
+      OnOutboundLookup(const IntroSet* i); /*  */
+
       static bool
       SetupIsolatedNetwork(void* user);
 
@@ -252,6 +262,9 @@ namespace llarp
           m_RemoteSessions;
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
+
+      std::unordered_map< RouterID, uint64_t, RouterID::Hash > m_PendingRouters;
+
       uint64_t m_CurrentPublishTX       = 0;
       llarp_time_t m_LastPublish        = 0;
       llarp_time_t m_LastPublishAttempt = 0;

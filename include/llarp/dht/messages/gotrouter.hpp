@@ -8,11 +8,13 @@ namespace llarp
   {
     struct GotRouterMessage : public IMessage
     {
-      GotRouterMessage(const Key_t& from) : IMessage(from)
+      GotRouterMessage(const Key_t& from, bool tunneled)
+          : IMessage(from), relayed(tunneled)
       {
       }
-      GotRouterMessage(const Key_t& from, uint64_t id, const llarp_rc* result)
-          : IMessage(from), txid(id)
+      GotRouterMessage(const Key_t& from, uint64_t id, const llarp_rc* result,
+                       bool tunneled)
+          : IMessage(from), txid(id), relayed(tunneled)
       {
         if(result)
         {
@@ -37,6 +39,7 @@ namespace llarp
       std::vector< llarp_rc > R;
       uint64_t txid    = 0;
       uint64_t version = 0;
+      bool relayed     = false;
     };
   }  // namespace dht
 }  // namespace llarp

@@ -94,8 +94,6 @@ namespace llarp
     {
       if(!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "H"))
-        return false;
       if(!BEncodeWriteDictEntry("D", D, buf))
         return false;
       if(S == 0)
@@ -261,7 +259,7 @@ namespace llarp
         llarp::LogError("No sender for T=", T);
         return false;
       }
-      if(!Verify(crypto, si.signkey))
+      if(!Verify(crypto, si))
       {
         llarp::LogError("Signature failure");
         return false;
@@ -289,7 +287,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::Verify(llarp_crypto* crypto, byte_t* signkey) const
+    ProtocolFrame::Verify(llarp_crypto* crypto, const ServiceInfo& from) const
     {
       ProtocolFrame copy(*this);
       // save signature
@@ -305,7 +303,7 @@ namespace llarp
         buf.sz  = buf.cur - buf.base;
         buf.cur = buf.base;
         // verify
-        result = crypto->verify(Z, buf, signkey);
+        result = from.Verify(crypto, buf, Z);
       }
       // restore signature
       return result;

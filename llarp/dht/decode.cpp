@@ -49,15 +49,7 @@ namespace llarp
                 dec->msg = new FindRouterMessage(dec->From);
               break;
             case 'S':
-              if(dec->relayed)
-              {
-                llarp::LogWarn(
-                    "GotRouterMessage found when parsing relayed DHT "
-                    "message");
-                return false;
-              }
-              else
-                dec->msg = new GotRouterMessage(dec->From);
+              dec->msg = new GotRouterMessage(dec->From, dec->relayed);
               break;
             case 'I':
               dec->msg = new PublishIntroMessage();

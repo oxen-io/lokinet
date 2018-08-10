@@ -1,9 +1,9 @@
 #ifdef _MSC_VER
 #define NOMINMAX
 #endif
-#include <llarp/iwp.h>
 #include <algorithm>
 #include <llarp/crypto.hpp>
+#include <llarp/iwp.hpp>
 #include <llarp/iwp/server.hpp>
 #include <llarp/iwp/session.hpp>
 #include "address_info.hpp"

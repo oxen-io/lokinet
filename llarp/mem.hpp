@@ -23,7 +23,7 @@ namespace llarp
     }
   }
 
-  template < typename T, size_t align = 8 >
+  template < typename T, size_t align = 128 >
   void
   DumpBuffer(const T &buff)
   {
