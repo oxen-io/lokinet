@@ -14,9 +14,10 @@
 #undef WIN32_LEAN_AND_MEAN
 #endif
 
-#include <tdi.h>
+// these need to be in a specific order
 #include <windows.h>
 #include <winternl.h>
+#include <tdi.h>
 #include "win32_intrnl.h"
 
 const PWCHAR TcpFileName = L"\\Device\\Tcp";
