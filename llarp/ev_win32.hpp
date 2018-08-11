@@ -97,8 +97,6 @@ struct llarp_win32_loop : public llarp_ev_loop
 {
   HANDLE iocpfd;
 
-  bool _running = false;
-
   llarp_win32_loop() : iocpfd(INVALID_HANDLE_VALUE)
   {
     WSADATA wsockd;
@@ -127,7 +125,7 @@ struct llarp_win32_loop : public llarp_ev_loop
 
     if(iocpfd == INVALID_HANDLE_VALUE)
       return false;
-    _running = true;
+
     return true;
   }
 
@@ -331,13 +329,13 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   running() const
   {
-    return _running;
+    return iocpfd != INVALID_HANDLE_VALUE;
   }
 
   void
   stop()
   {
-    _running = false;
+    // still does nothing
   }
 };
 
