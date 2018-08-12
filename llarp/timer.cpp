@@ -55,11 +55,11 @@ namespace llarp
 
 struct llarp_timer_context
 {
-  std::mutex timersMutex;
+  llarp::util::Mutex timersMutex;
   std::unordered_map< uint32_t, llarp::timer* > timers;
   std::priority_queue< llarp::timer* > calling;
-  std::mutex tickerMutex;
-  std::condition_variable* ticker       = nullptr;
+  llarp::util::Mutex tickerMutex;
+  llarp::util::Condition* ticker        = nullptr;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(100);
 
   uint32_t ids = 0;
@@ -86,7 +86,7 @@ struct llarp_timer_context
   void
   cancel(uint32_t id)
   {
-    std::unique_lock< std::mutex > lock(timersMutex);
+    llarp::util::Lock lock(timersMutex);
     auto itr = timers.find(id);
     if(itr == timers.end())
       return;
@@ -96,7 +96,7 @@ struct llarp_timer_context
   void
   remove(uint32_t id)
   {
-    std::unique_lock< std::mutex > lock(timersMutex);
+    llarp::util::Lock lock(timersMutex);
     auto itr = timers.find(id);
     if(itr == timers.end())
       return;
@@ -107,7 +107,7 @@ struct llarp_timer_context
   uint32_t
   call_later(void* user, llarp_timer_handler_func func, uint64_t timeout_ms)
   {
-    std::unique_lock< std::mutex > lock(timersMutex);
+    llarp::util::Lock lock(timersMutex);
     uint32_t id = ++ids;
     timers[id]  = new llarp::timer(timeout_ms, user, func);
     return id;
@@ -119,7 +119,7 @@ struct llarp_timer_context
     std::list< uint32_t > ids;
 
     {
-      std::unique_lock< std::mutex > lock(timersMutex);
+      llarp::util::Lock lock(timersMutex);
 
       for(auto& item : timers)
       {
@@ -169,7 +169,7 @@ llarp_timer_stop(struct llarp_timer_context* t)
   t->timers.clear();
   t->stop();
   if(t->ticker)
-    t->ticker->notify_all();
+    t->ticker->NotifyAll();
 }
 
 void
@@ -221,19 +221,19 @@ llarp_timer_tick_all_async(struct llarp_timer_context* t,
 void
 llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
 {
-  t->ticker = new std::condition_variable;
+  t->ticker = new llarp::util::Condition();
   while(t->run())
   {
     // wait for timer mutex
     if(t->ticker)
     {
-      std::unique_lock< std::mutex > lock(t->tickerMutex);
-      t->ticker->wait_for(lock, t->nextTickLen);
+      llarp::util::Lock lock(t->tickerMutex);
+      t->ticker->WaitFor(lock, t->nextTickLen);
     }
 
     if(t->run())
     {
-      std::unique_lock< std::mutex > lock(t->timersMutex);
+      llarp::util::Lock lock(t->timersMutex);
       // we woke up
       llarp_timer_tick_all_async(t, pool);
     }

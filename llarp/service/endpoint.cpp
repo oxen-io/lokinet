@@ -737,6 +737,7 @@ namespace llarp
           selectedIntro = intro;
         }
       }
+      ManualRebuild(numHops);
     }
 
     void
@@ -797,6 +798,10 @@ namespace llarp
         AsyncIntroGen* self = static_cast< AsyncIntroGen* >(user);
         // randomize Nounce
         self->frame.N.Randomize();
+        // ephemeral public key
+        SecretKey ephem;
+        self->crypto->encryption_keygen(ephem);
+        self->frame.H = llarp::seckey_topublic(ephem);
         // randomize tag
         self->msg.tag.Randomize();
         // set sender
@@ -805,8 +810,8 @@ namespace llarp
         self->msg.introReply = self->intro;
         // derive session key
         self->crypto->dh_server(self->sharedKey,
-                                self->remote.EncryptionPublicKey(),
-                                self->m_LocalIdentity->enckey, self->frame.N);
+                                self->remote.EncryptionPublicKey(), ephem,
+                                self->frame.N);
 
         // encrypt and sign
         self->frame.EncryptAndSign(self->crypto, &self->msg, self->sharedKey,
@@ -847,10 +852,7 @@ namespace llarp
       auto path = GetPathByRouter(selectedIntro.router);
       if(path)
       {
-        routing::PathTransferMessage transfer;
-        transfer.T = &msg;
-        transfer.Y.Randomize();
-        transfer.P = selectedIntro.pathID;
+        routing::PathTransferMessage transfer(msg, selectedIntro.pathID);
         llarp::LogInfo("sending frame via ", path->Upstream(), " to ",
                        path->Endpoint(), " for ", Name());
         path->SendRoutingMessage(&transfer, m_Parent->Router());
@@ -908,9 +910,7 @@ namespace llarp
     Endpoint::OutboundContext::SelectHop(llarp_nodedb* db, llarp_rc* prev,
                                          llarp_rc* cur, size_t hop)
     {
-      // TODO: don't hard code
-      llarp::LogInfo("Select hop ", hop);
-      if(hop == 3)
+      if(hop == numHops - 1)
       {
         auto localcopy = llarp_nodedb_get_rc(db, selectedIntro.router);
         if(localcopy)
@@ -925,6 +925,7 @@ namespace llarp
               "cannot build aligned path, don't have router for "
               "introduction ",
               selectedIntro);
+          m_Parent->EnsureRouterIsKnown(selectedIntro.router);
           return false;
         }
       }
@@ -956,20 +957,20 @@ namespace llarp
         }
         auto crypto = m_Parent->Crypto();
         SharedSecret shared;
-
-        ProtocolFrame f;
+        routing::PathTransferMessage msg;
+        ProtocolFrame& f = msg.T;
         f.N.Randomize();
         f.T = *tags.begin();
         f.S = m_Parent->GetSeqNoForConvo(f.T);
 
         if(m_Parent->m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
         {
-          ProtocolMessage msg;
-          msg.introReply = selectedIntro;
-          msg.sender     = m_Parent->m_Identity.pub;
-          msg.PutBuffer(payload);
+          ProtocolMessage m;
+          m.introReply = selectedIntro;
+          m.sender     = m_Parent->m_Identity.pub;
+          m.PutBuffer(payload);
 
-          if(!f.EncryptAndSign(crypto, &msg, shared,
+          if(!f.EncryptAndSign(crypto, &m, shared,
                                m_Parent->m_Identity.signkey))
           {
             llarp::LogError("failed to sign");
@@ -982,10 +983,8 @@ namespace llarp
           return;
         }
 
-        routing::PathTransferMessage msg;
         msg.P = selectedIntro.pathID;
         msg.Y.Randomize();
-        msg.T = &f;
         if(!path->SendRoutingMessage(&msg, m_Parent->Router()))
         {
           llarp::LogWarn("Failed to send routing message for data");

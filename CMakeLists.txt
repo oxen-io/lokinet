@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.10)
 
-set(PROJECT_NAME llarpd)
+set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME})
 
 macro(add_cflags)
@@ -122,7 +122,7 @@ if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
 endif()
 
-set(EXE llarpd)
+set(EXE lokinet)
 set(EXE_SRC daemon/main.cpp)
 
 if(SODIUM_INCLUDE_DIR)

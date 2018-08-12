@@ -53,6 +53,9 @@ namespace llarp
           case 'T':
             self->msg = new PathTransferMessage();
             break;
+          case 'H':
+            self->msg = new service::ProtocolFrame();
+            break;
           default:
             llarp::LogError("invalid routing message id: ", *strbuf.cur);
         }

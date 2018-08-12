@@ -379,12 +379,12 @@ namespace llarp
 
       typedef std::multimap< PathID_t, TransitHop* > TransitHopsMap_t;
 
-      typedef std::pair< std::mutex, TransitHopsMap_t > SyncTransitMap_t;
+      typedef std::pair< util::Mutex, TransitHopsMap_t > SyncTransitMap_t;
 
       // maps path id -> pathset owner of path
       typedef std::map< PathID_t, PathSet* > OwnedPathsMap_t;
 
-      typedef std::pair< std::mutex, OwnedPathsMap_t > SyncOwnedPathsMap_t;
+      typedef std::pair< util::Mutex, OwnedPathsMap_t > SyncOwnedPathsMap_t;
 
       llarp_threadpool*
       Worker();

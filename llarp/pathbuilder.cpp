@@ -219,6 +219,13 @@ llarp_pathbuilder_context::BuildOne()
   llarp_pathbuilder_build_path(job);
 }
 
+void
+llarp_pathbuilder_context::ManualRebuild(size_t num)
+{
+  while(num--)
+    BuildOne();
+}
+
 struct llarp_pathbuilder_context*
 llarp_pathbuilder_context_new(struct llarp_router* router,
                               struct llarp_dht_context* dht, size_t sz,

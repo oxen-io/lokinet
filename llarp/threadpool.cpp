@@ -52,10 +52,18 @@ namespace llarp
             llarp_thread_job *job;
             {
               lock_t lock(this->queue_mutex);
-              this->condition.wait(
+              this->condition.WaitUntil(
                   lock, [this] { return this->stop || !this->jobs.empty(); });
-              if(this->stop && this->jobs.empty())
+              if(this->stop)
+              {
+                // discard pending jobs
+                while(this->jobs.size())
+                {
+                  delete this->jobs.top().job;
+                  this->jobs.pop();
+                }
                 return;
+              }
               job = this->jobs.top().job;
               this->jobs.pop();
             }
@@ -75,7 +83,7 @@ namespace llarp
         lock_t lock(queue_mutex);
         stop = true;
       }
-      condition.notify_all();
+      condition.NotifyAll();
     }
 
     void
@@ -84,7 +92,7 @@ namespace llarp
       for(auto &t : threads)
         t.join();
       threads.clear();
-      done.notify_all();
+      done.NotifyAll();
     }
 
     void
@@ -99,7 +107,7 @@ namespace llarp
 
         jobs.emplace(ids++, new llarp_thread_job(job.user, job.work));
       }
-      condition.notify_one();
+      condition.NotifyOne();
     }
 
     static int
@@ -186,7 +194,7 @@ struct llarp_threadpool
 {
   llarp::thread::Pool *impl;
 
-  std::mutex m_access;
+  llarp::util::Mutex m_access;
   std::queue< llarp_thread_job * > jobs;
 
   llarp_threadpool(int workers, const char *name, bool isolate,
@@ -250,12 +258,12 @@ llarp_threadpool_stop(struct llarp_threadpool *pool)
 void
 llarp_threadpool_wait(struct llarp_threadpool *pool)
 {
-  std::mutex mtx;
+  llarp::util::Mutex mtx;
   llarp::LogDebug("threadpool wait");
   if(pool->impl)
   {
-    std::unique_lock< std::mutex > lock(mtx);
-    pool->impl->done.wait(lock);
+    llarp::util::Lock lock(mtx);
+    pool->impl->done.Wait(lock);
   }
 }
 
@@ -271,7 +279,7 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
     j->work = job.work;
     j->user = job.user;
     {
-      std::unique_lock< std::mutex > lock(pool->m_access);
+      llarp::util::Lock lock(pool->m_access);
       pool->jobs.push(j);
     }
   }
@@ -284,7 +292,7 @@ llarp_threadpool_tick(struct llarp_threadpool *pool)
   {
     llarp_thread_job *job;
     {
-      std::unique_lock< std::mutex > lock(pool->m_access);
+      llarp::util::Lock lock(pool->m_access);
       job = pool->jobs.front();
       pool->jobs.pop();
     }

@@ -125,10 +125,7 @@ struct llarp_link_session
   llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime,
                            FrameCompareTime >
       outboundFrames;
-  /*
-  std::mutex m_EncryptedFramesMutex;
-  std::queue< iwp_async_frame > encryptedFrames;
-  */
+
   llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime,
                            FrameCompareTime >
       decryptedFrames;

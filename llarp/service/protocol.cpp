@@ -1,6 +1,7 @@
 #include <llarp/routing/handler.hpp>
 #include <llarp/service/protocol.hpp>
 #include "buffer.hpp"
+#include "mem.hpp"
 
 namespace llarp
 {
@@ -94,6 +95,8 @@ namespace llarp
     {
       if(!bencode_start_dict(buf))
         return false;
+      if(!BEncodeWriteDictMsgType(buf, "A", "H"))
+        return false;
       if(!BEncodeWriteDictEntry("D", D, buf))
         return false;
       if(S == 0)
@@ -121,6 +124,15 @@ namespace llarp
     ProtocolFrame::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
     {
       bool read = false;
+      if(llarp_buffer_eq(key, "A"))
+      {
+        llarp_buffer_t strbuf;
+        if(!bencode_read_string(val, &strbuf))
+          return false;
+        if(strbuf.sz != 1)
+          return false;
+        return *strbuf.cur == 'H';
+      }
       if(!BEncodeMaybeReadDictEntry("D", D, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictEntry("H", H, read, key, val))
@@ -207,7 +219,9 @@ namespace llarp
         SharedSecret shared;
         if(!crypto->dh_client(shared, self->H, self->localSecret, self->N))
         {
-          llarp::LogError("Failed to derive shared secret for initial message");
+          llarp::LogError(
+              "Failed to derive shared secret for initial message H=", self->H,
+              " N=", self->N);
           delete self->msg;
           delete self;
           return;
@@ -217,6 +231,7 @@ namespace llarp
         if(!self->msg->BDecode(buf))
         {
           llarp::LogError("failed to decode inner protocol message");
+          llarp::DumpBuffer(*buf);
           delete self->msg;
           delete self;
           return;

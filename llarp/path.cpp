@@ -78,7 +78,7 @@ namespace llarp
     IHopHandler*
     MapGet(Map_t& map, const Key_t& k, CheckValue_t check, GetFunc_t get)
     {
-      std::unique_lock< std::mutex > lock(map.first);
+      util::Lock lock(map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second; ++i)
       {
@@ -92,7 +92,7 @@ namespace llarp
     bool
     MapHas(Map_t& map, const Key_t& k, CheckValue_t check)
     {
-      std::unique_lock< std::mutex > lock(map.first);
+      util::Lock lock(map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second; ++i)
       {
@@ -106,7 +106,7 @@ namespace llarp
     void
     MapPut(Map_t& map, const Key_t& k, const Value_t& v)
     {
-      std::unique_lock< std::mutex > lock(map.first);
+      util::Lock lock(map.first);
       map.second.insert(std::make_pair(k, v));
     }
 
@@ -114,7 +114,7 @@ namespace llarp
     void
     MapIter(Map_t& map, Visit_t v)
     {
-      std::unique_lock< std::mutex > lock(map.first);
+      util::Lock lock(map.first);
       for(const auto& item : map.second)
         v(item);
     }
@@ -123,7 +123,7 @@ namespace llarp
     void
     MapDel(Map_t& map, const Key_t& k, Check_t check)
     {
-      std::unique_lock< std::mutex > lock(map.first);
+      util::Lock lock(map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second;)
       {
@@ -185,7 +185,7 @@ namespace llarp
     PathContext::GetLocalPathSet(const PathID_t& id)
     {
       auto& map = m_OurPaths;
-      std::unique_lock< std::mutex > lock(map.first);
+      util::Lock lock(map.first);
       auto itr = map.second.find(id);
       if(itr != map.second.end())
       {
@@ -216,7 +216,7 @@ namespace llarp
     void
     PathContext::ExpirePaths()
     {
-      std::unique_lock< std::mutex > lock(m_TransitPaths.first);
+      util::Lock lock(m_TransitPaths.first);
       auto now  = llarp_time_now_ms();
       auto& map = m_TransitPaths.second;
       auto itr  = map.begin();
@@ -276,12 +276,14 @@ namespace llarp
         return h;
       RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
-      std::unique_lock< std::mutex > lock(map.first);
-      auto range = map.second.equal_range(id);
-      for(auto i = range.first; i != range.second; ++i)
       {
-        if(i->second->info.upstream == us)
-          return i->second;
+        util::Lock lock(map.first);
+        auto range = map.second.equal_range(id);
+        for(auto i = range.first; i != range.second; ++i)
+        {
+          if(i->second->info.upstream == us)
+            return i->second;
+        }
       }
       return nullptr;
     }

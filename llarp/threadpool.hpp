@@ -14,8 +14,8 @@ namespace llarp
 {
   namespace thread
   {
-    typedef std::mutex mtx_t;
-    typedef std::unique_lock< mtx_t > lock_t;
+    typedef util::Mutex mtx_t;
+    typedef util::Lock lock_t;
     struct Pool
     {
       virtual void
@@ -49,8 +49,8 @@ namespace llarp
       std::priority_queue< Job_t > jobs;
       uint32_t ids = 0;
       mtx_t queue_mutex;
-      std::condition_variable condition;
-      std::condition_variable done;
+      util::Condition condition;
+      util::Condition done;
       bool stop;
     };
 
