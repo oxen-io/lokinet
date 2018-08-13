@@ -11,7 +11,7 @@ static bool supports_avx2()
   __cpuid(0, cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
   if(cpuinfo[0] < 7)
     return false;
-    __cpuid(0, cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
+    __cpuid(7, cpuinfo[0], cpuinfo[1], cpuinfo[2], cpuinfo[3]);
   return cpuinfo[1] & (1 << 5);
 }
 
