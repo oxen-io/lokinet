@@ -110,6 +110,7 @@ namespace llarp
       condition.NotifyOne();
     }
 
+    /*
     static int
     runIsolated(void *arg)
     {
@@ -124,9 +125,10 @@ namespace llarp
       func();
       return 0;
     }
+    */
 
     void
-    IsolatedPool::Spawn(int workers, const char *name)
+    IsolatedPool::Spawn(size_t workers, const char *name)
     {
       if(m_isolated)
         return;

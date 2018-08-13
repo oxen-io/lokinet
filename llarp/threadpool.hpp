@@ -60,8 +60,8 @@ namespace llarp
       {
       }
 
-      void
-      Spawn(int workers, const char* name);
+      virtual void
+      Spawn(size_t workers, const char* name);
 
       void
       Join();
