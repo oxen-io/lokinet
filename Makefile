@@ -18,7 +18,7 @@ SHADOW_CONFIG=$(REPO)/shadow.config.xml
 SHADOW_PLUGIN=$(REPO)/libshadow-plugin-llarp.so
 SHADOW_LOG=$(REPO)/shadow.log.txt
 
-SHADOW_SRC ?= $(HOME)/git/shadow
+SHADOW_SRC ?= $(HOME)/local/shadow
 SHADOW_PARSE ?= python $(SHADOW_SRC)/src/tools/parse-shadow.py - -m 0 --packet-data
 SHADOW_PLOT ?= python $(SHADOW_SRC)/src/tools/plot-shadow.py -d $(REPO) LokiNET -c $(SHADOW_CONFIG) -r 10000 -e '.*'
 
@@ -26,7 +26,9 @@ TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 
-TESTNET_EXE=$(REPO)/lokinet
+EXE = $(REPO)/lokinet
+
+TESTNET_EXE=$(REPO)/lokinet-testnet
 TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
@@ -40,10 +42,10 @@ clean:
 	rm -f *.a *.so
 
 debug-configure: 
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTUNTAP=ON
 
 release-configure: clean
-	cmake -GNinja -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) 
+	cmake -GNinja -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTUNTAP=ON
 
 debug: debug-configure
 	ninja
@@ -82,21 +84,19 @@ testnet-clean: clean
 	rm -rf $(TESTNET_ROOT)
 
 testnet-configure: testnet-clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTUNTAP=ON 
 
 testnet-build: testnet-configure
 	ninja
 
-$(TESTNET_EXE): testnet-build
-	cp -f $(REPO)/llarpd $(TESTNET_EXE)
-
 shared-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DWITH_SHARED=ON
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DWITH_SHARED=ON -DTUNTAP=ON
 
 shared: shared-configure
 	ninja
 
-testnet: $(TESTNET_EXE)
+testnet: 
+	cp $(EXE) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
 	python3 contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
@@ -107,12 +107,3 @@ test: debug-configure
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
-
-fuzz-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
-
-fuzz-build: fuzz-configure
-	ninja
-
-fuzz: fuzz-build
-	$(EXE)

@@ -1,6 +1,6 @@
 #include "router.hpp"
-#include <llarp/iwp.h>
 #include <llarp/proto.h>
+#include <llarp/iwp.hpp>
 #include <llarp/link_message.hpp>
 #include "llarp/iwp/establish_job.hpp"
 #include "llarp/iwp/server.hpp"
@@ -745,10 +745,10 @@ llarp_router::InitOutboundLink()
     return true;
 
   llarp_iwp_args args = {
-      &crypto, logic, tp, this, transport_keyfile.string().c_str(),
+      &crypto, logic, tp, this, transport_keyfile.string(),
   };
 
-  auto link = new(std::nothrow) llarp_link(args);
+  auto link = new llarp_link(args);
 
   auto afs = {AF_INET, AF_INET6};
 
@@ -1093,6 +1093,7 @@ namespace llarp
                      const char *key, const char *val)
   {
     llarp_router *self = static_cast< llarp_router * >(iter->user);
+
     int af;
     uint16_t proto;
     if(StrEq(val, "eth"))
@@ -1117,17 +1118,15 @@ namespace llarp
     {
       if(!StrEq(key, "*"))
       {
-        llarp::LogInfo("interface specific binding activated");
-
         llarp_iwp_args args = {
             &self->crypto,
             self->logic,
             self->tp,
             self,
-            self->transport_keyfile.string().c_str(),
+            self->transport_keyfile.string(),
         };
-
-        link = new(std::nothrow) llarp_link(args);
+        llarp::LogInfo("interface specific binding activated");
+        link = new llarp_link(args);
 
         if(link)
         {
@@ -1174,6 +1173,9 @@ namespace llarp
     else if(StrEq(section, "connect"))
     {
       self->connect[key] = val;
+    }
+    else if(StrEq(section, "network"))
+    {
     }
     else if(StrEq(section, "router"))
     {

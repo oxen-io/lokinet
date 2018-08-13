@@ -557,6 +557,7 @@ ordered data message (variant 2)
   D: "<N bytes encrypted HSD>",
   N: "<32 bytes nonce for symettric cipher>",
   S: sequence_number_uint64,
+  T: "<16 bytes converstation tag>",
   V: 0,
   Z: "<64 bytes signature using sender's signing key>"
 }
@@ -567,11 +568,12 @@ data sent anonymously over the network to a recipiant from a sender.
 sent inside a HSFM encrypted with a shared secret.
 
 {
-  A: protocol_number_uint,
-  D: "<N bytes payload>",
-  I: Introduction for reply,
-  S: SI of sender,
-  V: 0
+  a: protocol_number_uint,
+  d: "<N bytes payload>",
+  i: Introduction for reply,
+  s: SI of sender,
+  t: "<16 bytes converstation tag present only in message 0>",
+  v: 0
 }
 
 transfer data fragment message (TDFM)

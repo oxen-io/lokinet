@@ -31,7 +31,7 @@ namespace llarp
     std::string nodeName;
     LogLevel minlevel = eLogInfo;
     std::ostream& out;
-    std::mutex access;
+    llarp::util::Mutex access;
     Logger() : Logger(std::cout, "unnamed")
     {
 #ifdef _WIN32
@@ -80,19 +80,24 @@ namespace llarp
 
     std::stringstream ss;
 #ifdef ANDROID
+    int loglev = -1;
     switch(lvl)
     {
       case eLogDebug:
         ss << "[DBG] ";
+        loglev = ANDROID_LOG_DEBUG;
         break;
       case eLogInfo:
         ss << "[NFO] ";
+        loglev = ANDROID_LOG_INFO;
         break;
       case eLogWarn:
         ss << "[WRN] ";
+        loglev = ANDROID_LOG_WARN;
         break;
       case eLogError:
         ss << "[ERR] ";
+        loglev = ANDROID_LOG_ERROR;
         break;
     }
 #else
@@ -127,7 +132,10 @@ namespace llarp
 #else
     {
       std::unique_lock< std::mutex > lock(_glog.access);
-      __android_log_write(ANDROID_LOG_INFO, "LOKINET", ss.str().c_str());
+      tag = "LOKINET|" + tag;
+      __android_log_write(ANDROID_LOG_INFO, tag.c_str(), ss.str().c_str());
+      //__android_log_write(ANDROID_LOG_INFO, "LOKINET", ss.str().c_str());
+      llarp::util::Lock lock(_glog.access);
       _glog.out << ss.str() << std::endl;
     }
 #endif

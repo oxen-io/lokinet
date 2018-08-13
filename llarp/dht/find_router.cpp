@@ -45,8 +45,8 @@ namespace llarp
         {
           if(llarp_rc_verify_sig(&self->router->crypto, &job->result))
           {
-            reply.M.push_back(
-                new GotRouterMessage(job->target, self->txid, &job->result));
+            reply.M.push_back(new GotRouterMessage(job->target, self->txid,
+                                                   &job->result, false));
           }
           llarp_rc_free(&job->result);
           llarp_rc_clear(&job->result);
@@ -54,7 +54,7 @@ namespace llarp
         else
         {
           reply.M.push_back(
-              new GotRouterMessage(job->target, self->txid, nullptr));
+              new GotRouterMessage(job->target, self->txid, nullptr, false));
         }
         self->SendReply(&reply);
         // TODO: is this okay?
@@ -74,7 +74,8 @@ namespace llarp
         auto path = dht.router->paths.GetByUpstream(K, pathID);
         if(path)
         {
-          replies.push_back(new GotRouterMessage(K, txid, &dht.router->rc));
+          replies.push_back(
+              new GotRouterMessage(K, txid, &dht.router->rc, false));
           return true;
         }
         return false;

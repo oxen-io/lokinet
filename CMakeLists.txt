@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.10)
 
-set(PROJECT_NAME llarpd)
+set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME})
 
 macro(add_cflags)
@@ -32,6 +32,10 @@ elseif(COMPILER_SUPPORTS_CXX17 AND HAVE_CXX17_FILESYSTEM)
   add_definitions(-DUSE_CXX17_FILESYSTEM)
 else()
   message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 or C++17 support. Please use a different C++ compiler.")
+endif()
+
+if(DEBIAN)
+  add_definitions(-DDEBIAN)
 endif()
 
 if(ANDROID)
@@ -118,7 +122,7 @@ if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
 endif()
 
-set(EXE llarpd)
+set(EXE lokinet)
 set(EXE_SRC daemon/main.cpp)
 
 if(SODIUM_INCLUDE_DIR)
@@ -177,11 +181,13 @@ endif(UNIX)
 if(TUNTAP)
 set(LIBTUNTAP_SRC
   ${TT_ROOT}/tuntap.c
-  ${TT_ROOT}/tuntap_log.c
-  if (UNIX)
-  ${TT_ROOT}/tuntap-unix.c
-  endif()
+  ${TT_ROOT}/tuntap_log.cpp
   ${LIBTUNTAP_IMPL})
+  if (UNIX)
+  set(LIBTUNTAP_SRC 
+    ${TT_ROOT}/tuntap-unix.c
+    ${LIBTUNTAP_SRC})
+  endif()
 else()
 set(LIBTUNTAP_SRC "")
 endif()
@@ -282,6 +288,7 @@ set(LIB_SRC
   llarp/dht/got_router.cpp
   llarp/dht/search_job.cpp
   llarp/dht/publish_intro.cpp
+  llarp/handlers/tun.cpp
   llarp/iwp/frame_header.cpp
   llarp/iwp/frame_state.cpp
   llarp/iwp/session.cpp

@@ -25,6 +25,29 @@ namespace llarp
       llarp::PoW* W = nullptr;
       llarp::Signature Z;
 
+      IntroSet() = default;
+
+      IntroSet(const IntroSet&& other)
+      {
+        A       = std::move(other.A);
+        I       = std::move(other.I);
+        version = std::move(other.version);
+        topic   = std::move(other.topic);
+        W       = std::move(other.W);
+        Z       = std::move(other.Z);
+      }
+
+      IntroSet(const IntroSet& other)
+      {
+        A       = other.A;
+        I       = other.I;
+        version = other.version;
+        topic   = other.topic;
+        if(other.W)
+          W = new llarp::PoW(*other.W);
+        Z = other.Z;
+      }
+
       ~IntroSet();
 
       IntroSet&
@@ -36,7 +59,8 @@ namespace llarp
         topic   = other.topic;
         if(W)
           delete W;
-        W = other.W;
+        if(other.W)
+          W = new llarp::PoW(*other.W);
         Z = other.Z;
         return *this;
       }
@@ -70,6 +94,23 @@ namespace llarp
           out << " W=" << *i.W;
         }
         return out << " V=" << i.version << " Z=" << i.Z;
+      }
+
+      bool
+      IsNewerThan(const IntroSet& other) const
+      {
+        return GetNewestIntro().expiresAt > other.GetNewestIntro().expiresAt;
+      }
+
+      Introduction
+      GetNewestIntro() const
+      {
+        Introduction i;
+        i.expiresAt = 0;
+        for(const auto& intro : I)
+          if(intro.expiresAt > i.expiresAt)
+            i = intro;
+        return i;
       }
 
       bool

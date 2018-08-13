@@ -24,6 +24,9 @@ struct llarp_pathbuilder_context : public llarp::path::PathSet
   void
   BuildOne();
 
+  void
+  ManualRebuild(size_t N);
+
   virtual byte_t*
   GetTunnelEncryptionSecretKey();
 };

@@ -20,9 +20,6 @@ namespace llarp
     IsValid(llarp_shorthash_func hashfunc) const;
 
     bool
-    BDecode(llarp_buffer_t* buf);
-
-    bool
     DecodeKey(llarp_buffer_t k, llarp_buffer_t* val);
 
     bool

@@ -21,12 +21,8 @@ namespace llarp
     {
       if(randomize)
         Randomize();
-    }
-
-    AlignedBuffer(const AlignedBuffer& other)
-    {
-      for(size_t idx = 0; idx < (sz / 8); ++idx)
-        l[idx] = other.l[idx];
+      else
+        Zero();
     }
 
     AlignedBuffer(const byte_t* data)
@@ -66,6 +62,24 @@ namespace llarp
     operator<(const AlignedBuffer& other) const
     {
       return memcmp(l, other.l, sz) < 0;
+    }
+
+    bool
+    operator>(const AlignedBuffer& other) const
+    {
+      return memcmp(l, other.l, sz) > 0;
+    }
+
+    bool
+    operator<=(const AlignedBuffer& other) const
+    {
+      return memcmp(l, other.l, sz) <= 0;
+    }
+
+    bool
+    operator>=(const AlignedBuffer& other) const
+    {
+      return memcmp(l, other.l, sz) >= 0;
     }
 
     AlignedBuffer
@@ -110,7 +124,7 @@ namespace llarp
       size_t idx = sz / 8;
       while(idx)
       {
-        if(l[idx--])
+        if(l[--idx])
           return false;
       }
       return true;

@@ -18,6 +18,7 @@ namespace llarp
     section_t iwp_links;
     section_t connect;
     section_t services;
+    section_t system;
 
     bool
     Load(const char *fname);

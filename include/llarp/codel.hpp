@@ -51,8 +51,7 @@ namespace llarp
     };
 
     template < typename T, typename GetTime, typename PutTime, typename Compare,
-               typename Mutex_t    = std::mutex,
-               typename Lock_t     = std::lock_guard< std::mutex >,
+               typename Mutex_t = util::Mutex, typename Lock_t = util::Lock,
                llarp_time_t dropMs = 5, llarp_time_t initialIntervalMs = 100 >
     struct CoDelQueue
     {

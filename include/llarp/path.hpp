@@ -6,7 +6,6 @@
 #include <llarp/aligned.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/dht.hpp>
-#include <llarp/endpoint.hpp>
 #include <llarp/messages/relay.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/path_types.hpp>
@@ -359,6 +358,9 @@ namespace llarp
       PathSet*
       GetLocalPathSet(const PathID_t& id);
 
+      routing::IMessageHandler*
+      GetHandler(const PathID_t& id);
+
       bool
       ForwardLRCM(const RouterID& nextHop,
                   std::deque< EncryptedFrame >& frames);
@@ -377,12 +379,12 @@ namespace llarp
 
       typedef std::multimap< PathID_t, TransitHop* > TransitHopsMap_t;
 
-      typedef std::pair< std::mutex, TransitHopsMap_t > SyncTransitMap_t;
+      typedef std::pair< util::Mutex, TransitHopsMap_t > SyncTransitMap_t;
 
       // maps path id -> pathset owner of path
       typedef std::map< PathID_t, PathSet* > OwnedPathsMap_t;
 
-      typedef std::pair< std::mutex, OwnedPathsMap_t > SyncOwnedPathsMap_t;
+      typedef std::pair< util::Mutex, OwnedPathsMap_t > SyncOwnedPathsMap_t;
 
       llarp_threadpool*
       Worker();

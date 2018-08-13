@@ -6,9 +6,9 @@ llarp_link::llarp_link(const llarp_iwp_args& args)
     , crypto(args.crypto)
     , logic(args.logic)
     , worker(args.cryptoworker)
+    , keyfile(args.keyfile)
     , m_name("IWP")
 {
-  strncpy(keyfile, args.keyfile, sizeof(keyfile));
   iwp = llarp_async_iwp_new(crypto, logic, worker);
   pumpingLogic.store(false);
 }
@@ -206,15 +206,23 @@ llarp_link::PumpLogic()
 void
 llarp_link::RemoveSession(llarp_link_session* s)
 {
-  lock_t lock(m_sessions_Mutex);
-  auto itr = m_sessions.find(s->addr);
-  if(itr != m_sessions.end())
   {
-    UnmapAddr(s->addr);
-    s->done();
-    m_sessions.erase(itr);
-    delete s;
+    lock_t lock(m_sessions_Mutex);
+    auto itr = m_sessions.find(s->addr);
+    if(itr != m_sessions.end())
+    {
+      UnmapAddr(s->addr);
+      s->done();
+      m_sessions.erase(itr);
+    }
   }
+  {
+    lock_t lock(m_PendingSessions_Mutex);
+    auto itr = m_PendingSessions.find(s->addr);
+    if(itr != m_PendingSessions.end())
+      m_PendingSessions.erase(itr);
+  }
+  delete s;
 }
 
 uint8_t*
@@ -230,7 +238,7 @@ llarp_link::ensure_privkey()
   std::error_code ec;
   if(!fs::exists(keyfile, ec))
   {
-    if(!keygen(keyfile))
+    if(!keygen(keyfile.c_str()))
       return false;
   }
   std::ifstream f(keyfile);

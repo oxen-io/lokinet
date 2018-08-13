@@ -6,16 +6,6 @@ namespace llarp
 {
   namespace service
   {
-    ServiceInfo::ServiceInfo()
-    {
-      vanity.Zero();
-      m_CachedAddr.Zero();
-    }
-
-    ServiceInfo::~ServiceInfo()
-    {
-    }
-
     bool
     ServiceInfo::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
     {
@@ -56,7 +46,7 @@ namespace llarp
       if(m_CachedAddr.IsZero())
       {
         Address addr;
-        CalculateAddress(addr);
+        CalculateAddress(addr.data());
         return addr.ToString();
       }
       return m_CachedAddr.ToString();
@@ -65,9 +55,10 @@ namespace llarp
     bool
     ServiceInfo::CalculateAddress(byte_t* addr) const
     {
-      byte_t tmp[128];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-      assert(BEncode(&buf));
+      byte_t tmp[256] = {0};
+      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      if(!BEncode(&buf))
+        return false;
       return crypto_generichash(addr, 32, buf.base, buf.cur - buf.base, nullptr,
                                 0)
           != -1;
@@ -76,7 +67,7 @@ namespace llarp
     bool
     ServiceInfo::UpdateAddr()
     {
-      return CalculateAddress(m_CachedAddr);
+      return CalculateAddress(m_CachedAddr.data());
     }
 
   }  // namespace service

@@ -10,13 +10,6 @@ namespace llarp
   }
 
   bool
-  PoW::BDecode(llarp_buffer_t* buf)
-  {
-    // TODO: implement me
-    return false;
-  }
-
-  bool
   PoW::DecodeKey(llarp_buffer_t k, llarp_buffer_t* val)
   {
     // TODO: implement me
@@ -27,7 +20,9 @@ namespace llarp
   PoW::BEncode(llarp_buffer_t* buf) const
   {
     // TODO: implement me
-    return false;
+    if(!bencode_start_dict(buf))
+      return false;
+    return bencode_end(buf);
   }
 
   bool

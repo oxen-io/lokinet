@@ -13,7 +13,6 @@ namespace llarp
     {
       Tag() : llarp::AlignedBuffer< 16 >()
       {
-        Zero();
       }
 
       Tag(const byte_t* d) : llarp::AlignedBuffer< 16 >(d)
@@ -29,16 +28,32 @@ namespace llarp
 #endif
       }
 
-      llarp::dht::Key_t
-      Key() const
+      Tag&
+      operator=(const Tag& other)
       {
-        llarp::dht::Key_t k;
-        crypto_generichash(k, 32, data(), 16, nullptr, 0);
-        return k;
+        memcpy(data(), other.data(), 16);
+        return *this;
+      }
+
+      Tag&
+      operator=(const std::string& str)
+      {
+#ifndef MIN
+#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
+        memcpy(data(), str.data(), MIN(16UL, str.size()));
+#undef MIN
+#endif
+        return *this;
       }
 
       std::string
       ToString() const;
+
+      bool
+      Empty() const
+      {
+        return ToString().empty();
+      }
 
       struct Hash
       {

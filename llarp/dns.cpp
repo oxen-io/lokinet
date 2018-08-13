@@ -1,3 +1,4 @@
+#include <llarp/endian.h>
 #include <string.h>
 #include "dnsd.hpp"  // for llarp_handle_dnsd_recvfrom, dnsc
 #include "logger.hpp"
@@ -42,9 +43,7 @@ extern "C"
   uint16_t
   get16bits(const char *&buffer) throw()
   {
-    uint16_t value = static_cast< unsigned char >(buffer[0]);
-    value          = value << 8;
-    value += static_cast< unsigned char >(buffer[1]);
+    uint16_t value = bufbe16toh(buffer);
     buffer += 2;
     return value;
   }
@@ -52,9 +51,7 @@ extern "C"
   uint32_t
   get32bits(const char *&buffer) throw()
   {
-    uint32_t value = uint32_t(
-        (unsigned char)(buffer[0]) << 24 | (unsigned char)(buffer[1]) << 16
-        | (unsigned char)(buffer[2]) << 8 | (unsigned char)(buffer[3]));
+    uint32_t value = bufbe32toh(buffer);
     buffer += 4;
     return value;
   }
@@ -181,18 +178,14 @@ extern "C"
   void
   put16bits(char *&buffer, uint16_t value) throw()
   {
-    buffer[0] = (value & 0xFF00) >> 8;
-    buffer[1] = value & 0xFF;
+    htobe16buf(buffer, value);
     buffer += 2;
   }
 
   void
   put32bits(char *&buffer, uint32_t value) throw()
   {
-    buffer[0] = (value & 0xFF000000) >> 24;
-    buffer[1] = (value & 0x00FF0000) >> 16;
-    buffer[2] = (value & 0x0000FF00) >> 8;
-    buffer[3] = (value & 0x000000FF) >> 0;
+    htobe32buf(buffer, value);
     buffer += 4;
   }
 

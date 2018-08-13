@@ -65,7 +65,7 @@ namespace llarp
       // end introduction list
 
       // topic tag
-      if(!topic.IsZero())
+      if(topic.ToString().size())
       {
         if(!BEncodeWriteDictEntry("n", topic, buf))
           return false;
@@ -161,7 +161,6 @@ namespace llarp
     bool
     Identity::BEncode(llarp_buffer_t* buf) const
     {
-      /// TODO: implement me
       if(!bencode_start_dict(buf))
         return false;
       if(!BEncodeWriteDictEntry("e", enckey, buf))
@@ -195,10 +194,8 @@ namespace llarp
     {
       crypto->encryption_keygen(enckey);
       crypto->identity_keygen(signkey);
-      pub.enckey  = llarp::seckey_topublic(enckey);
-      pub.signkey = llarp::seckey_topublic(signkey);
-      pub.vanity.Zero();
-      pub.UpdateAddr();
+      pub.Update(llarp::seckey_topublic(enckey),
+                 llarp::seckey_topublic(signkey));
     }
 
     bool
@@ -273,7 +270,7 @@ namespace llarp
       // rewind and resize buffer
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
-      return crypto->verify(A.signkey, buf, Z);
+      return A.Verify(crypto, buf, Z);
     }
 
     bool

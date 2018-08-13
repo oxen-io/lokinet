@@ -4,6 +4,7 @@
 #include <llarp/threadpool.h>
 #include <llarp/threading.hpp>
 
+#include <functional>
 #include <queue>
 
 #include <thread>
@@ -13,15 +14,17 @@ namespace llarp
 {
   namespace thread
   {
-    typedef std::mutex mtx_t;
-    typedef std::unique_lock< mtx_t > lock_t;
+    typedef util::Mutex mtx_t;
+    typedef util::Lock lock_t;
     struct Pool
     {
-      Pool(size_t sz, const char* name);
+      virtual void
+      Spawn(size_t sz, const char* name);
+
       void
       QueueJob(const llarp_thread_job& job);
 
-      void
+      virtual void
       Join();
 
       void
@@ -46,9 +49,50 @@ namespace llarp
       std::priority_queue< Job_t > jobs;
       uint32_t ids = 0;
       mtx_t queue_mutex;
-      std::condition_variable condition;
-      std::condition_variable done;
+      util::Condition condition;
+      util::Condition done;
       bool stop;
+    };
+
+    struct IsolatedPool : public Pool
+    {
+      IsolatedPool(int flags) : Pool(), m_flags(flags)
+      {
+      }
+
+      void
+      Spawn(int workers, const char* name);
+
+      void
+      Join();
+
+      // override me to do specific setups after isolation
+      // return true for success
+      virtual bool
+      Isolated()
+      {
+        return true;
+      }
+
+      std::thread* m_isolated = nullptr;
+      int m_flags;
+      int m_IsolatedWorkers      = 0;
+      const char* m_IsolatedName = nullptr;
+      char m_childstack[(1024 * 1024 * 8)];
+    };
+
+    struct NetIsolatedPool : public IsolatedPool
+    {
+      NetIsolatedPool(std::function< bool(void*) > setupNet, void* user);
+
+      bool
+      Isolated()
+      {
+        return m_NetSetup(m_user);
+      }
+
+      std::function< bool(void*) > m_NetSetup;
+      void* m_user;
     };
 
   }  // namespace thread

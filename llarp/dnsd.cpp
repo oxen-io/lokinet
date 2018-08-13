@@ -281,6 +281,7 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
     // llarp::LogInfo("from ", test);
     dnsd_query_hook_response *intercept =
         request->context->intercept(request->question.name, fromCopy, request);
+    // if(!forward_dns_request(m_qName))
     if(intercept != nullptr)
     {
       llarp::LogDebug("hook returned a response");

@@ -3,13 +3,16 @@
 #include <llarp/codel.hpp>
 #include <llarp/pathbuilder.hpp>
 #include <llarp/service/Identity.hpp>
+#include <llarp/service/handler.hpp>
 #include <llarp/service/protocol.hpp>
 
 namespace llarp
 {
   namespace service
   {
-    struct Endpoint : public llarp_pathbuilder_context, public ILookupHolder
+    struct Endpoint : public llarp_pathbuilder_context,
+                      public ILookupHolder,
+                      public IDataHandler
     {
       /// minimum interval for publishing introsets
       static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
@@ -20,14 +23,22 @@ namespace llarp
       Endpoint(const std::string& nickname, llarp_router* r);
       ~Endpoint();
 
+      void
+      SetHandler(IDataHandler* h);
+
       bool
       SetOption(const std::string& k, const std::string& v);
 
       void
       Tick(llarp_time_t now);
 
+      /// router's logic
       llarp_logic*
-      Logic();
+      RouterLogic();
+
+      /// endpoint's logic
+      llarp_logic*
+      EndpointLogic();
 
       llarp_crypto*
       Crypto();
@@ -57,16 +68,34 @@ namespace llarp
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
       bool
+      HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg);
+
+      bool
       HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* msg);
 
       /// return true if we have an established path to a hidden service
       bool
       HasPathToService(const Address& remote) const;
 
+      /// return true if we have a pending job to build to a hidden service but
+      /// it's not done yet
+      bool
+      HasPendingPathToService(const Address& remote) const;
+
       /// return false if we don't have a path to the service
       /// return true if we did and we removed it
       bool
       ForgetPathToService(const Address& remote);
+
+      virtual void
+      HandleDataMessage(ProtocolMessage* msg)
+      {
+        // override me in subclass
+      }
+
+      /// ensure that we know a router, looks up if it doesn't
+      void
+      EnsureRouterIsKnown(const RouterID& router);
 
       Identity*
       GetIdentity()
@@ -115,9 +144,6 @@ namespace llarp
         SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
 
         bool
-        HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
-
-        bool
         HandleHiddenServiceFrame(const ProtocolFrame* frame);
 
         void
@@ -127,8 +153,11 @@ namespace llarp
         Name() const;
 
        private:
+        bool
+        OnIntroSetUpdate(const IntroSet* i);
+
         void
-        AsyncEncrypt(llarp_buffer_t payload);
+        EncryptAndSendTo(llarp_buffer_t payload);
 
         void
         AsyncGenIntro(llarp_buffer_t payload);
@@ -161,6 +190,29 @@ namespace llarp
       }
 
       void
+      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info);
+
+      bool
+      GetCachedSessionKeyFor(const ConvoTag& remote,
+                             SharedSecret& secret) const;
+      void
+      PutCachedSessionKeyFor(const ConvoTag& remote,
+                             const SharedSecret& secret);
+
+      bool
+      GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const;
+
+      void
+      PutIntroFor(const ConvoTag& remote, const Introduction& intro);
+
+      bool
+      GetIntroFor(const ConvoTag& remote, Introduction& intro) const;
+
+      bool
+      GetConvoTagsForService(const ServiceInfo& si,
+                             std::set< ConvoTag >& tag) const;
+
+      void
       PutNewOutboundContext(const IntroSet& introset);
 
      protected:
@@ -175,19 +227,44 @@ namespace llarp
       void
       PrefetchServicesByTag(const Tag& tag);
 
+      uint64_t
+      GetSeqNoForConvo(const ConvoTag& tag);
+
+      bool
+      IsolateNetwork();
+
      private:
+      bool
+      OnOutboundLookup(const IntroSet* i); /*  */
+
+      static bool
+      SetupIsolatedNetwork(void* user);
+
+      bool
+      DoNetworkIsolation();
+
       uint64_t
       GenTXID();
 
+     protected:
+      IDataHandler* m_DataHandler = nullptr;
+      Identity m_Identity;
+
      private:
       llarp_router* m_Router;
+      llarp_threadpool* m_IsolatedWorker = nullptr;
+      llarp_logic* m_IsolatedLogic       = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
-      Identity m_Identity;
+      std::string m_NetNS;
+
       std::unordered_map< Address, OutboundContext*, Address::Hash >
           m_RemoteSessions;
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
+
+      std::unordered_map< RouterID, uint64_t, RouterID::Hash > m_PendingRouters;
+
       uint64_t m_CurrentPublishTX       = 0;
       llarp_time_t m_LastPublish        = 0;
       llarp_time_t m_LastPublishAttempt = 0;
@@ -201,6 +278,20 @@ namespace llarp
       Tag m_Tag;
       /// prefetch descriptors for these hidden service tags
       std::set< Tag > m_PrefetchTags;
+      /// on initialize functions
+      std::list< std::function< bool(void) > > m_OnInit;
+
+      struct Session
+      {
+        SharedSecret sharedKey;
+        ServiceInfo remote;
+        Introduction intro;
+        llarp_time_t lastUsed = 0;
+        uint64_t seqno        = 0;
+      };
+
+      /// sessions
+      std::unordered_map< ConvoTag, Session, ConvoTag::Hash > m_Sessions;
 
       struct CachedTagResult : public IServiceLookup
       {

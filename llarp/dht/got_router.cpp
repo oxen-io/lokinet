@@ -61,7 +61,15 @@ namespace llarp
     GotRouterMessage::HandleMessage(llarp_dht_context *ctx,
                                     std::vector< IMessage * > &replies) const
     {
-      auto &dht          = ctx->impl;
+      auto &dht = ctx->impl;
+      if(relayed)
+      {
+        auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);
+        if(pathset)
+        {
+          return pathset->HandleGotRouterMessage(this);
+        }
+      }
       SearchJob *pending = dht.FindPendingTX(From, txid);
       if(pending)
       {
@@ -71,7 +79,7 @@ namespace llarp
           if(pending->requester != dht.OurKey())
           {
             replies.push_back(new GotRouterMessage(
-                pending->target, pending->requesterTX, &R[0]));
+                pending->target, pending->requesterTX, &R[0], false));
           }
         }
         else
@@ -101,7 +109,7 @@ namespace llarp
             if(pending->requester != dht.OurKey())
             {
               replies.push_back(new GotRouterMessage(
-                  pending->target, pending->requesterTX, nullptr));
+                  pending->target, pending->requesterTX, nullptr, false));
             }
           }
         }

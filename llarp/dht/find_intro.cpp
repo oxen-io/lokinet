@@ -27,15 +27,7 @@ namespace llarp
     bool
     FindIntroMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* val)
     {
-      uint64_t i = 0;
-      bool read  = false;
-      if(!BEncodeMaybeReadDictInt("I", i, read, k, val))
-        return false;
-      if(read)
-      {
-        iterative = i != 0;
-        return true;
-      }
+      bool read = false;
 
       if(!BEncodeMaybeReadDictEntry("N", N, read, k, val))
         return false;
@@ -65,12 +57,8 @@ namespace llarp
       // message id
       if(!BEncodeWriteDictMsgType(buf, "A", "F"))
         return false;
-      // iterative
-      if(!BEncodeWriteDictInt("I", iterative ? 1 : 0, buf))
-        return false;
-      if(N.IsZero())
+      if(N.Empty())
       {
-        return false;
         // r5n counter
         if(!BEncodeWriteDictInt("R", R, buf))
           return false;
@@ -107,36 +95,53 @@ namespace llarp
         return false;
       }
       auto& dht = ctx->impl;
+      if((!relayed) && dht.FindPendingTX(From, T))
+      {
+        llarp::LogWarn("duplicate FIM from ", From, " txid=", T);
+        return false;
+      }
       Key_t peer;
       std::set< Key_t > exclude = {dht.OurKey(), From};
-      if(N.IsZero())
+      if(N.Empty())
       {
+        llarp::LogInfo("lookup ", S.ToString());
         const auto introset = dht.GetIntroSetByServiceAddress(S);
         if(introset)
         {
+          llarp::LogInfo("introset found locally");
           service::IntroSet i = *introset;
           replies.push_back(new GotIntroMessage({i}, T));
         }
         else
         {
-          if(iterative)
+          if(R == 0)
           {
-            // we are iterative and don't have it, reply with a direct reply
+            // we don't have it, reply with a direct reply
+            llarp::LogInfo("dont have intro set and no recursion");
             replies.push_back(new GotIntroMessage({}, T));
           }
           else
           {
+            const auto& us = dht.OurKey();
+            auto target    = S.ToKey();
             // we are recursive
-            if(dht.nodes->FindCloseExcluding(S, peer, exclude))
+            if(dht.nodes->FindCloseExcluding(target, peer, exclude))
             {
               if(relayed)
                 dht.LookupIntroSetForPath(S, T, pathID, peer);
-              else if((peer ^ dht.OurKey())
-                      > (peer
-                         ^ From))  // peer is closer than us, recursive search
-                dht.LookupIntroSet(S, From, T, peer);
-              else  // we are closer than peer so do iterative search
-                dht.LookupIntroSet(S, From, T, peer, true);
+              else
+              {
+                if((us ^ target) < (peer ^ target))
+                {
+                  // we are not closer than our peer to the target so don't
+                  // revurse
+                  replies.push_back(new GotIntroMessage({}, T));
+                }
+                else if(R >= 1)
+                  dht.LookupIntroSet(S, From, T, peer, R - 1, exclude);
+                else
+                  dht.LookupIntroSet(S, From, T, peer, 0, exclude);
+              }
             }
             else
             {
@@ -163,7 +168,7 @@ namespace llarp
         else
         {
           auto introsets = dht.FindRandomIntroSetsWithTag(N);
-          if(iterative || R == 0)
+          if(R == 0)
           {
             std::vector< service::IntroSet > reply;
             for(const auto& introset : introsets)

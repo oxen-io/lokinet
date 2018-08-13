@@ -13,11 +13,16 @@ namespace llarp
     struct PathTransferMessage : public IMessage
     {
       PathID_t P;
-      service::ProtocolFrame* T = nullptr;
-      uint64_t V                = 0;
+      service::ProtocolFrame T;
+      uint64_t V = 0;
       TunnelNonce Y;
 
       PathTransferMessage();
+      PathTransferMessage(const service::ProtocolFrame& f, const PathID_t& p)
+          : P(p), T(f)
+      {
+        Y.Randomize();
+      }
       ~PathTransferMessage();
 
       bool

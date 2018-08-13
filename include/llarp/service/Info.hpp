@@ -10,20 +10,70 @@ namespace llarp
   {
     struct ServiceInfo : public llarp::IBEncodeMessage
     {
+     private:
       llarp::PubKey enckey;
       llarp::PubKey signkey;
-      uint64_t version = 0;
       VanityNonce vanity;
 
-      ServiceInfo();
+     public:
+      ServiceInfo() = default;
 
-      ~ServiceInfo();
+      ServiceInfo(const ServiceInfo&& other)
+      {
+        enckey       = std::move(other.enckey);
+        signkey      = std::move(other.signkey);
+        version      = std::move(other.version);
+        vanity       = std::move(other.vanity);
+        m_CachedAddr = std::move(other.m_CachedAddr);
+      }
+
+      ServiceInfo(const ServiceInfo& other)
+      {
+        enckey       = other.enckey;
+        signkey      = other.signkey;
+        version      = other.version;
+        vanity       = other.vanity;
+        m_CachedAddr = other.m_CachedAddr;
+      }
+
+      void
+      RandomizeVanity()
+      {
+        vanity.Randomize();
+      }
+
+      bool
+      Verify(llarp_crypto* crypto, llarp_buffer_t payload,
+             const Signature& sig) const
+      {
+        return crypto->verify(signkey, payload, sig);
+      }
+
+      byte_t*
+      EncryptionPublicKey()
+      {
+        return enckey;
+      }
+
+      bool
+      Update(const byte_t* enc, const byte_t* sign)
+      {
+        enckey  = enc;
+        signkey = sign;
+        return UpdateAddr();
+      }
 
       bool
       operator==(const ServiceInfo& other) const
       {
         return enckey == other.enckey && signkey == other.signkey
             && version == other.version && vanity == other.vanity;
+      }
+
+      bool
+      operator!=(const ServiceInfo& other) const
+      {
+        return !(*this == other);
       }
 
       ServiceInfo&
@@ -50,7 +100,7 @@ namespace llarp
                    << " v=" << i.version << " x=" << i.vanity << "]";
       }
 
-      /// compute .loki address
+      /// .loki address
       std::string
       Name() const;
 
@@ -70,9 +120,9 @@ namespace llarp
       bool
       BDecode(llarp_buffer_t* buf)
       {
-        if(!IBEncodeMessage::BDecode(buf))
-          return false;
-        return CalculateAddress(m_CachedAddr);
+        if(IBEncodeMessage::BDecode(buf))
+          return CalculateAddress(m_CachedAddr.data());
+        return false;
       }
 
       bool

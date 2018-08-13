@@ -220,13 +220,15 @@ llarp_rc_bencode(const struct llarp_rc *rc, llarp_buffer_t *buff)
   if(!bencode_write_bytestring(buff, rc->pubkey, PUBKEYSIZE))
     return false;
 
-  /* write nickname */
-  if(!bencode_write_bytestring(buff, "n", 1))
-    return false;
-  if(!bencode_write_bytestring(
-         buff, rc->nickname,
-         strnlen((char *)rc->nickname, sizeof(rc->nickname))))
-    return false;
+  auto nicklen = strnlen((char *)rc->nickname, sizeof(rc->nickname));
+  if(nicklen)
+  {
+    /* write nickname */
+    if(!bencode_write_bytestring(buff, "n", 1))
+      return false;
+    if(!bencode_write_bytestring(buff, rc->nickname, nicklen))
+      return false;
+  }
 
   /* write encryption pubkey */
   if(!bencode_write_bytestring(buff, "p", 1))

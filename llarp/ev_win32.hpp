@@ -97,6 +97,8 @@ struct llarp_win32_loop : public llarp_ev_loop
 {
   HANDLE iocpfd;
 
+  bool _running = false;
+
   llarp_win32_loop() : iocpfd(INVALID_HANDLE_VALUE)
   {
     WSADATA wsockd;
@@ -123,10 +125,10 @@ struct llarp_win32_loop : public llarp_ev_loop
     if(iocpfd == INVALID_HANDLE_VALUE)
       iocpfd = ::CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
 
-    if(iocpfd != INVALID_HANDLE_VALUE)
-      return true;  // we don't have a socket to attach to this IOCP yet
-
-    return false;
+    if(iocpfd == INVALID_HANDLE_VALUE)
+      return false;
+    _running = true;
+    return true;
   }
 
   // it works! -despair86, 3-Aug-18 @0420
@@ -153,11 +155,7 @@ struct llarp_win32_loop : public llarp_ev_loop
             reinterpret_cast< llarp::udp_listener* >(ev_id);
         if(ev && ev->fd)
         {
-          if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
-          {
-            llarp::LogInfo("tick close ev");
-            close_ev(ev);
-          }
+          ev->getData(readbuf, sizeof(readbuf), iolen);
         }
       }
       ++idx;
@@ -203,11 +201,7 @@ struct llarp_win32_loop : public llarp_ev_loop
             reinterpret_cast< llarp::udp_listener* >(ev_id);
         if(ev && ev->fd)
         {
-          if(ev->getData(readbuf, sizeof(readbuf), iolen) == -1)
-          {
-            llarp::LogInfo("close ev");
-            close_ev(ev);
-          }
+          ev->getData(readbuf, sizeof(readbuf), iolen);
         }
       }
       ++idx;
@@ -321,10 +315,16 @@ struct llarp_win32_loop : public llarp_ev_loop
     return ret;
   }
 
+  bool
+  running() const
+  {
+    return _running;
+  }
+
   void
   stop()
   {
-    // do nothing, cancel io in close_ev()
+    _running = false;
   }
 };
 

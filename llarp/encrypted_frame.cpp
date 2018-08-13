@@ -10,6 +10,11 @@ namespace llarp
     UpdateBuffer();
   }
 
+  Encrypted::Encrypted(const Encrypted& other)
+      : Encrypted(other._data, other._sz)
+  {
+  }
+
   Encrypted::Encrypted(const byte_t* buf, size_t sz) : _sz(sz)
   {
     _data = new byte_t[sz];

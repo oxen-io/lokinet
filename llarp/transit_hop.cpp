@@ -133,7 +133,26 @@ namespace llarp
     TransitHop::HandlePathTransferMessage(
         const llarp::routing::PathTransferMessage* msg, llarp_router* r)
     {
-      return false;
+      auto path = r->paths.GetByUpstream(r->pubkey(), msg->P);
+      if(!path)
+      {
+        llarp::LogWarn("No such path for path transfer pathid=", msg->P);
+        return false;
+      }
+
+      byte_t tmp[service::MAX_PROTOCOL_MESSAGE_SIZE];
+      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      if(!msg->T.BEncode(&buf))
+      {
+        llarp::LogWarn("failed to transfer data message, encode failed");
+        return false;
+      }
+      // rewind0
+      buf.sz  = buf.cur - buf.base;
+      buf.cur = buf.base;
+      // send
+      llarp::LogInfo("Transfer ", buf.sz, " bytes", " to ", msg->P);
+      return path->HandleDownstream(buf, msg->Y, r);
     }
 
   }  // namespace path

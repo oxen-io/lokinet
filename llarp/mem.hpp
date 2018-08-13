@@ -23,7 +23,7 @@ namespace llarp
     }
   }
 
-  template < typename T, size_t align = 8 >
+  template < typename T, size_t align = 128 >
   void
   DumpBuffer(const T &buff)
   {
@@ -35,10 +35,6 @@ namespace llarp
       {
         printf("%c[1;31m", 27);
       }
-      else
-      {
-        printf("%c[0;0m", 27);
-      }
       if(std::isprint(buff.base[idx]))
       {
         printf("%c", buff.base[idx]);
@@ -46,6 +42,10 @@ namespace llarp
       else
       {
         printf("X");
+      }
+      if(buff.base + idx == buff.cur)
+      {
+        printf("%c[0;0m", 27);
       }
       ++idx;
       if(idx % align == 0)

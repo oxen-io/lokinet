@@ -10,8 +10,7 @@ namespace llarp
   {
     struct FindIntroMessage : public IMessage
     {
-      uint64_t R     = 0;
-      bool iterative = false;
+      uint64_t R = 0;
       llarp::service::Address S;
       llarp::service::Tag N;
       uint64_t T   = 0;
@@ -28,7 +27,7 @@ namespace llarp
         S.Zero();
       }
 
-      FindIntroMessage(const llarp::service::Address& addr, uint64_t txid)
+      FindIntroMessage(uint64_t txid, const llarp::service::Address& addr)
           : IMessage({}), S(addr), T(txid)
       {
         N.Zero();

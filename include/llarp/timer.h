@@ -38,8 +38,12 @@ llarp_timer_run(struct llarp_timer_context *t, struct llarp_threadpool *pool);
 
 /// single threaded run timer, tick all timers
 void
-llarp_timer_tick_all(struct llarp_timer_context *t,
-                     struct llarp_threadpool *pool);
+llarp_timer_tick_all(struct llarp_timer_context *t);
+
+/// tick all timers into a threadpool asynchronously
+void
+llarp_timer_tick_all_async(struct llarp_timer_context *t,
+                           struct llarp_threadpool *pool);
 
 void
 llarp_free_timer(struct llarp_timer_context **t);

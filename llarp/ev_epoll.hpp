@@ -83,6 +83,12 @@ struct llarp_epoll_loop : public llarp_ev_loop
   }
 
   bool
+  running() const
+  {
+    return epollfd != -1;
+  }
+
+  bool
   init()
   {
     if(epollfd == -1)
@@ -105,7 +111,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     epoll_event events[1024];
     int result;
-    byte_t readbuf[2048];
 
     result = epoll_wait(epollfd, events, 1024, ms);
     if(result > 0)
@@ -122,11 +127,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
         if(events[idx].events & EPOLLIN)
         {
-          if(ev->read(readbuf, sizeof(readbuf)) == -1)
-          {
-            llarp::LogDebug("close ev");
-            close_ev(ev);
-          }
+          ev->read(readbuf, sizeof(readbuf));
         }
         ++idx;
       }
@@ -142,10 +143,9 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     epoll_event events[1024];
     int result;
-    byte_t readbuf[2048];
     do
     {
-      result = epoll_wait(epollfd, events, 1024, 10);
+      result = epoll_wait(epollfd, events, 1024, EV_TICK_INTERVAL);
       if(result > 0)
       {
         int idx = 0;
@@ -160,11 +160,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
           if(events[idx].events & EPOLLIN)
           {
-            if(ev->read(readbuf, sizeof(readbuf)) == -1)
-            {
-              llarp::LogDebug("close ev");
-              close_ev(ev);
-            }
+            ev->read(readbuf, sizeof(readbuf));
           }
           ++idx;
         }
@@ -271,6 +267,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
     auto val = write(pipefds[1], &i, sizeof(i));
     (void)val;
   }
+
+  byte_t readbuf[2048];
 };
 
 #endif

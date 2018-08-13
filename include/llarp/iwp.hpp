@@ -1,7 +1,7 @@
-#ifndef LLARP_IWP_H_
-#define LLARP_IWP_H_
+#ifndef LLARP_IWP_HPP
+#define LLARP_IWP_HPP
 #include <llarp/crypto.h>
-#include "router.hpp"
+#include <string>
 
 struct llarp_iwp_args
 {
@@ -9,7 +9,7 @@ struct llarp_iwp_args
   struct llarp_logic* logic;
   struct llarp_threadpool* cryptoworker;
   struct llarp_router* router;
-  const char* keyfile;
+  std::string keyfile;
 };
 
 #endif

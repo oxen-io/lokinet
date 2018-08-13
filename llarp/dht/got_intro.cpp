@@ -39,8 +39,11 @@ namespace llarp
       auto pending = dht.FindPendingTX(From, T);
       if(pending)
       {
-        pending->FoundIntros(I);
-        dht.RemovePendingLookup(From, T);
+        if(pending->FoundIntros(I))
+        {
+          dht.RemovePendingLookup(From, T);
+          llarp::LogInfo("removed pending tx from ", From, " txid=", T);
+        }
         return true;
       }
       else
