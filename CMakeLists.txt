@@ -47,6 +47,9 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
+add_cflags("-march=native")
+add_cxxflags("-march=native")
+
 if(STATIC_LINK)
   add_cflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
   add_cxxflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
@@ -245,6 +248,55 @@ set(LIB_PLATFORM_SRC
   contrib/msc/getopt1.c
 )
 
+set(NTRU_AVX_SRC
+  crypto/libntrup/src/avx/randomsmall.c
+  crypto/libntrup/src/avx/weight.c
+  crypto/libntrup/src/avx/swap.c
+  crypto/libntrup/src/avx/rq_round3.c
+  crypto/libntrup/src/avx/rq_recip3.c
+  crypto/libntrup/src/avx/small.c
+  crypto/libntrup/src/avx/randomweightw.c
+  crypto/libntrup/src/avx/dec.c
+  crypto/libntrup/src/avx/r3_recip.c
+  crypto/libntrup/src/avx/keypair.c
+  crypto/libntrup/src/avx/rq_rounded.c
+  crypto/libntrup/src/avx/mult.c
+  crypto/libntrup/src/avx/enc.c
+  crypto/libntrup/src/avx/int32_sort.c
+  crypto/libntrup/src/avx/rq.c
+  crypto/libntrup/src/avx/rq_mod3.c
+)
+
+set(NTRU_REF_SRC
+  crypto/libntrup/src/ref/randomsmall.c
+  crypto/libntrup/src/ref/swap.c
+  crypto/libntrup/src/ref/rq_round3.c
+  crypto/libntrup/src/ref/rq_recip3.c
+  crypto/libntrup/src/ref/small.c
+  crypto/libntrup/src/ref/rq_mult.c
+  crypto/libntrup/src/ref/randomweightw.c
+  crypto/libntrup/src/ref/random32.c
+  crypto/libntrup/src/ref/dec.c
+  crypto/libntrup/src/ref/r3_mult.c
+  crypto/libntrup/src/ref/r3_recip.c
+  crypto/libntrup/src/ref/keypair.c
+  crypto/libntrup/src/ref/rq_rounded.c
+  crypto/libntrup/src/ref/enc.c
+  crypto/libntrup/src/ref/int32_sort.c
+  crypto/libntrup/src/ref/rq.c
+)
+
+include_directories(crypto/libntrup/include)
+
+set(NTRU_SRC
+  ${NTRU_AVX_SRC}
+  ${NTRU_REF_SRC}
+  crypto/libntrup/src/ntru.c
+)
+
+set(NTRU_LIB sntrup)
+add_library(${NTRU_LIB} ${NTRU_SRC})
+target_link_libraries(${NTRU_LIB} ${SODIUM_LIB})
 
 
 set(LIB_SRC
