@@ -38,7 +38,7 @@ namespace llarp
     read(void* buf, size_t sz)
     {
       sockaddr_in6 src;
-      socklen_t slen = sizeof(src);
+      socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
       ssize_t ret    = ::recvfrom(fd, buf, sz, 0, addr, &slen);
       if(ret == -1)
