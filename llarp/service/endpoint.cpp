@@ -807,7 +807,7 @@ namespace llarp
         // K
         memcpy(tmp, K, 32);
         // PKE (A, B, N)
-        if(!self->m_LocalIdentity.KeyExchange(self->crypto->dh_client, tmp + 64,
+        if(!self->m_LocalIdentity.KeyExchange(self->crypto->dh_client, tmp + 32,
                                               self->remote, self->frame.N))
           llarp::LogError("failed to derive x25519 shared key component");
         // H (K + PKE(A, B, N))
