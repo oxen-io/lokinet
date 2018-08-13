@@ -18,6 +18,12 @@ int crypto_kem_keypair(unsigned char *pk, unsigned char * sk);
 #define crypto_kem_SECRETKEYBYTES 1600
 #define crypto_kem_PUBLICKEYBYTES 1218
 #define crypto_kem_CIPHERTEXTBYTES 1047
+
+#define NTRU_SECRETKEYBYTES CRYPTO_SECRETKEYBYTES
+#define NTRU_PUBLICKEYBYTES CRYPTO_PUBLICKEYBYTES
+#define NTRU_CIPHERTEXTBYTES CRYPTO_CIPHERTEXTBYTES
+
+
 #define CRYPTO_BYTES 32
 
 #ifdef __cplusplus 

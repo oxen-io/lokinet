@@ -1,9 +1,4 @@
 
-#define NTRU_SECRETKEYBYTES CRYPTO_SECRETKEYBYTES
-#define NTRU_PUBLICKEYBYTES CRYPTO_PUBLICKEYBYTES
-#define NTRU_CIPHERTEXTBYTES CRYPTO_CIPHERTEXTBYTES
-
-
 int crypto_kem_enc_ref(unsigned char *cstr, unsigned char *k, const unsigned char *pk);
   
 int crypto_kem_dec_ref(unsigned char *k, const unsigned char *cstr, const unsigned char *sk);

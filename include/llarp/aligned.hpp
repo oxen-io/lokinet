@@ -11,12 +11,10 @@
 
 namespace llarp
 {
-  /// aligned buffer, sz must be multiple of 8 bytes
+  /// aligned buffer, aligns to the nears 8 bytes
   template < size_t sz, bool randomize = false >
   struct AlignedBuffer
   {
-    static_assert(sz % 8 == 0, "aligned buffer size is not a multiple of 8");
-
     AlignedBuffer()
     {
       if(randomize)
@@ -212,7 +210,7 @@ namespace llarp
    protected:
     union {
       byte_t b[sz];
-      uint64_t l[sz / 8];
+      uint64_t l[(sz / 8) + (sz % 8)];
     };
   };
 

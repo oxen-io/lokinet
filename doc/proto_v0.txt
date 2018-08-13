@@ -176,8 +176,9 @@ x is the timestamp seconds since epoch that this introduction expires at
 introduction set (IS)
 
 a signed set of introductions for a hidden service
-a is the service info
+a is the service info of the publisher
 i is the list of introductions that this service is advertising with
+k is the public key to use when doing encryption to this hidden service
 n is a 16 byte null padded utf-8 encoded string tagging the hidden service in 
   a topic searchable via a lookup (optional)
 v is the protocol version
@@ -188,6 +189,7 @@ service's signing key.
 {
   a: SI,
   i: [ I, I, I, ... ],
+  k: "<1218 bytes sntrup4591761 public key block>",
   n: "<16 bytes service topic (optional)>", 
   v: 0,
   w: optional proof of work,
@@ -528,54 +530,6 @@ B is set to a backoff value.
 R contains additional metadata text describing why the exit was rejected.
 
 
-hidden service frame (HSF)
-
-TODO: document this better
-
-intro message (variant 1)
-
-start a new session
-
-{
-  A: "H",
-  D: "<N bytes encrypted HSD>",
-  H: "<32 bytes ephemeral public encryption key>",
-  N: "<32 bytes nonce for key exchange>",
-  S: 0,
-  V: 0,
-  Z: "<64 bytes signature of entire message using sender's signing key>"
-}
-
-D is encrypted with session key K which is derived by
-
-K = PKE(H, SI.enckey, N)
-
-ordered data message (variant 2)
-
-{
-  A: "H",
-  D: "<N bytes encrypted HSD>",
-  N: "<32 bytes nonce for symettric cipher>",
-  S: sequence_number_uint64,
-  T: "<16 bytes converstation tag>",
-  V: 0,
-  Z: "<64 bytes signature using sender's signing key>"
-}
-
-hidden service data (HSD)
-
-data sent anonymously over the network to a recipiant from a sender.
-sent inside a HSFM encrypted with a shared secret.
-
-{
-  a: protocol_number_uint,
-  d: "<N bytes payload>",
-  i: Introduction for reply,
-  s: SI of sender,
-  t: "<16 bytes converstation tag present only in message 0>",
-  v: 0
-}
-
 transfer data fragment message (TDFM)
 
 transfer data between paths.
@@ -591,6 +545,132 @@ transfer data between paths.
 transfer data to another path with id P on the local router place a random 32 byte and T values
 into y and z values into a LRDM message (respectively) and send it in the
 downstream direction.
+
+
+
+hidden service data (HSD)
+
+data sent anonymously over the network to a recipiant from a sender.
+sent inside a HSFM encrypted with a shared secret.
+
+{
+  a: protocol_number_uint,
+  d: "<N bytes payload>",
+  i: Introduction for reply,
+  n: uint_message_sequence_number,
+  o: N seconds until this converstation plans terminate,
+  s: SI of sender,
+  t: "<16 bytes converstation tag present only when n is 0>",
+  v: 0
+}
+
+
+hidden service frame (HSF)
+
+TODO: document this better
+
+intro message (variant 1)
+
+start a new session
+
+{
+  A: "H",
+  C: "<1048 bytes ciphertext block>",
+  D: "<N bytes encrypted HSD>",
+  N: "<32 bytes nonce for key exchange>",
+  V: 0,
+  Z: "<64 bytes signature of entire message using sender's signing key>"
+}
+
+alice (A) wants to talk to bob (B) over the network, both have hidden services
+set up and are online on the network. 
+
+A and B are both SI.
+A_sk is alice's private signing key.
+
+for alice (A) to send the string "beep" to bob (B), alice picks an introduction
+to use on one of her paths (I_A) such that I_A is aligning with one of bobs's 
+paths (I_B)
+
+alice generates:
+
+T = RAND(16)
+
+m = {
+  a: 0,
+  d: "beep",
+  i: I_A,
+  n: 0,
+  s: A,
+  t: T,
+  v: 0
+}
+
+X = BE(m)
+
+C, K = PQKE_A(I_B.k)
+N = RAND(32)
+D = SE(X, K, N)
+
+M = {
+  A: "T",
+  P: I_B.P,
+  S: uint64_sequence_number,
+  T: {
+    A: "H",
+    C: C,
+    D: D,
+    N: N,
+    V: 0,
+    Z: "\x00" * 32
+  },
+  V: 0
+}
+
+Z = S(A_sk, BE(M))
+
+alice transmits a TDFM to router with public key I_B.K via her path that ends 
+with router with public key I_B.k
+
+{
+  A: "T",
+  P: I_B.P,
+  S: uint64_sequence_number,
+  T: {
+    A: "H",
+    C: C,
+    D: D,
+    N: N,
+    V: 0,
+    Z: Z
+  },
+  V: 0
+}
+
+the shared secret (S) for further message encryption is:
+
+S = HS(K + PKE(A, B, sk, N))
+
+given sk is the local secret encryption key used by the current hidden service
+
+please note:
+signature verification can only be done after decryption
+
+TODO: explain bob's side too (it's invsere of alice's process)
+
+data from a previously made session (variant 2)
+
+transfer data on a session previously made
+
+{
+  A: "H",
+  D: "<N bytes encrypted HSD>",
+  N: "<32 bytes nonce for symettric cipher>",
+  T: "<16 bytes converstation tag>",
+  V: 0,
+  Z: "<64 bytes signature using sender's signing key>"
+}
+
 
 transfer ip traffic message (TITM)
 

@@ -344,12 +344,12 @@ namespace llarp
 
     bool
     Endpoint::GetCachedSessionKeyFor(const ConvoTag& tag,
-                                     SharedSecret& secret) const
+                                     const byte_t*& secret) const
     {
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
         return false;
-      secret = itr->second.sharedKey;
+      secret = itr->second.sharedKey.data();
       return true;
     }
 
@@ -626,7 +626,7 @@ namespace llarp
     Endpoint::HandleHiddenServiceFrame(const ProtocolFrame* frame)
     {
       return frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), Worker(),
-                                          m_Identity.enckey, m_DataHandler);
+                                          m_Identity, m_DataHandler);
     }
 
     void
@@ -760,15 +760,16 @@ namespace llarp
       llarp_crypto* crypto;
       byte_t* sharedKey;
       ServiceInfo remote;
-      Identity* m_LocalIdentity;
+      const Identity& m_LocalIdentity;
       ProtocolMessage msg;
       ProtocolFrame frame;
       Introduction intro;
+      PQPubKey introPubKey;
       std::function< void(ProtocolFrame&) > hook;
       IDataHandler* handler;
 
       AsyncIntroGen(llarp_logic* l, llarp_crypto* c, byte_t* key,
-                    const ServiceInfo& r, Identity* localident,
+                    const ServiceInfo& r, const Identity& localident,
                     const Introduction& us, IDataHandler* h)
           : logic(l)
           , crypto(c)
@@ -796,28 +797,34 @@ namespace llarp
       Work(void* user)
       {
         AsyncIntroGen* self = static_cast< AsyncIntroGen* >(user);
+        // derive ntru session key component
+        SharedSecret K;
+        self->crypto->pqe_encrypt(self->frame.C, K, self->introPubKey);
         // randomize Nounce
         self->frame.N.Randomize();
-        // ephemeral public key
-        SecretKey ephem;
-        self->crypto->encryption_keygen(ephem);
-        self->frame.H = llarp::seckey_topublic(ephem);
+        // compure post handshake session key
+        byte_t tmp[64];
+        // K
+        memcpy(tmp, K, 32);
+        // PKE (A, B, N)
+        if(!self->m_LocalIdentity.KeyExchange(self->crypto->dh_client, tmp + 64,
+                                              self->remote, self->frame.N))
+          llarp::LogError("failed to derive x25519 shared key component");
+        // H (K + PKE(A, B, N))
+        self->crypto->shorthash(self->sharedKey,
+                                llarp::StackBuffer< decltype(tmp) >(tmp));
         // randomize tag
         self->msg.tag.Randomize();
         // set sender
-        self->msg.sender = self->m_LocalIdentity->pub;
+        self->msg.sender = self->m_LocalIdentity.pub;
         // set our introduction
         self->msg.introReply = self->intro;
-        // derive session key
-        self->crypto->dh_server(self->sharedKey,
-                                self->remote.EncryptionPublicKey(), ephem,
-                                self->frame.N);
-
         // encrypt and sign
-        self->frame.EncryptAndSign(self->crypto, &self->msg, self->sharedKey,
-                                   self->m_LocalIdentity->signkey);
-        // inform result
-        llarp_logic_queue_job(self->logic, {self, &Result});
+        if(self->frame.EncryptAndSign(self->crypto, self->msg, K,
+                                      self->m_LocalIdentity))
+          llarp_logic_queue_job(self->logic, {self, &Result});
+        else
+          llarp::LogError("failed to encrypt and sign");
       }
     };
 
@@ -955,8 +962,8 @@ namespace llarp
           llarp::LogError("no open converstations with remote endpoint?");
           return;
         }
-        auto crypto = m_Parent->Crypto();
-        SharedSecret shared;
+        auto crypto          = m_Parent->Crypto();
+        const byte_t* shared = nullptr;
         routing::PathTransferMessage msg;
         ProtocolFrame& f = msg.T;
         f.N.Randomize();
@@ -970,8 +977,7 @@ namespace llarp
           m.sender     = m_Parent->m_Identity.pub;
           m.PutBuffer(payload);
 
-          if(!f.EncryptAndSign(crypto, &m, shared,
-                               m_Parent->m_Identity.signkey))
+          if(!f.EncryptAndSign(crypto, m, shared, m_Parent->m_Identity))
           {
             llarp::LogError("failed to sign");
             return;

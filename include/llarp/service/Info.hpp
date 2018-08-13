@@ -49,8 +49,8 @@ namespace llarp
         return crypto->verify(signkey, payload, sig);
       }
 
-      byte_t*
-      EncryptionPublicKey()
+      const byte_t*
+      EncryptionPublicKey() const
       {
         return enckey;
       }

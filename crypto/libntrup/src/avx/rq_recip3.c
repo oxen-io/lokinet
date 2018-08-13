@@ -1,4 +1,4 @@
-#ifdef __AVX2__
+#if __AVX2__
 #include <immintrin.h>
 #include "params.h"
 #include "swap.h"

@@ -1,5 +1,5 @@
 
-all: debug
+all: test
 
 SIGN = gpg --sign --detach
 
@@ -27,6 +27,7 @@ TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 
 EXE = $(REPO)/lokinet
+TEST_EXE = $(REPO)/testAll
 
 TESTNET_EXE=$(REPO)/lokinet-testnet
 TESTNET_CLIENTS ?= 50
@@ -42,18 +43,16 @@ clean:
 	rm -f *.a *.so
 
 debug-configure: 
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTUNTAP=ON
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTUNTAP=ON
 
 release-configure: clean
 	cmake -GNinja -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTUNTAP=ON
 
 debug: debug-configure
 	ninja
-	ninja test
 
 release-compile: release-configure
 	ninja
-	cp llarpd lokinet
 	strip $(TARGETS)
 
 $(TARGETS): release-compile
@@ -101,9 +100,8 @@ testnet:
 	python3 contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
-test: debug-configure
-	ninja
-	ninja test
+test: debug
+	$(TEST_EXE)
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')

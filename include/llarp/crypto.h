@@ -24,26 +24,22 @@
 #define HMACSIZE 32
 #define PATHIDSIZE 16
 
-/*
-typedef byte_t llarp_pubkey_t[PUBKEYSIZE];
-typedef byte_t llarp_seckey_t[SECKEYSIZE];
-typedef byte_t llarp_nonce_t[NONCESIZE];
-typedef byte_t llarp_sharedkey_t[SHAREDKEYSIZE];
-typedef byte_t llarp_hash_t[HASHSIZE];
-typedef byte_t llarp_shorthash_t[SHORTHASHSIZE];
-typedef byte_t llarp_hmac_t[HMACSIZE];
-typedef byte_t llarp_hmacsec_t[HMACSECSIZE];
-typedef byte_t llarp_sig_t[SIGSIZE];
-typedef byte_t llarp_tunnel_nonce_t[TUNNONCESIZE];
-*/
+#include <libntrup/ntru.h>
+
+#define PQ_CIPHERTEXTSIZE crypto_kem_CIPHERTEXTBYTES
+#define PQ_PUBKEYSIZE crypto_kem_PUBLICKEYBYTES
+#define PQ_SECRETKEYSIZE crypto_kem_SECRETKEYBYTES
+#define PQ_KEYPAIRSIZE (PQ_SECRETKEYSIZE + PQ_SECRETKEYSIZE)
 
 /// label functors
 
 /// PKE(result, publickey, secretkey, nonce)
-typedef bool (*llarp_path_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
+typedef bool (*llarp_path_dh_func)(byte_t *, const byte_t *, const byte_t *,
+                                   const byte_t *);
 
 /// TKE(result, publickey, secretkey, nonce)
-typedef bool (*llarp_transport_dh_func)(byte_t *, byte_t *, byte_t *, byte_t *);
+typedef bool (*llarp_transport_dh_func)(byte_t *, const byte_t *,
+                                        const byte_t *, const byte_t *);
 
 /// SD/SE(buffer, key, nonce)
 typedef bool (*llarp_sym_cipher_func)(llarp_buffer_t, const byte_t *,
@@ -96,6 +92,12 @@ struct llarp_crypto
   void (*identity_keygen)(byte_t *);
   /// generate encryption keypair
   void (*encryption_keygen)(byte_t *);
+  /// generate post quantum encrytion key
+  void (*pqe_keygen)(byte_t *);
+  /// post quantum decrypt (buffer, sharedkey_dst, sec)
+  bool (*pqe_decrypt)(const byte_t *, byte_t *, const byte_t *);
+  /// post quantum encrypt (buffer, sharedkey_dst,  pub)
+  bool (*pqe_encrypt)(byte_t *, byte_t *, const byte_t *);
 };
 
 /// set crypto function pointers to use libsodium

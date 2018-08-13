@@ -2,8 +2,9 @@
 #define LLARP_BENCODE_HPP
 
 #include <llarp/bencode.h>
+#include <llarp/buffer.hpp>
 #include <llarp/logger.hpp>
-
+#include <llarp/mem.hpp>
 #include <set>
 
 namespace llarp
@@ -196,6 +197,16 @@ namespace llarp
         return static_cast< IBEncodeMessage* >(r->user)->DecodeKey(*k,
                                                                    r->buffer);
       return true;
+    }
+
+    template < size_t bufsz, size_t align = 128 >
+    void
+    Dump() const
+    {
+      byte_t tmp[bufsz] = {0};
+      auto buf          = llarp::StackBuffer< decltype(tmp) >(tmp);
+      if(BEncode(&buf))
+        llarp::DumpBuffer< decltype(buf), align >(buf);
     }
   };
 

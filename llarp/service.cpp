@@ -29,6 +29,8 @@ namespace llarp
       {
         return BEncodeReadList(I, buf);
       }
+      if(!BEncodeMaybeReadDictEntry("k", K, read, key, buf))
+        return false;
 
       if(!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
         return false;
@@ -63,6 +65,10 @@ namespace llarp
       if(!BEncodeWriteList(I.begin(), I.end(), buf))
         return false;
       // end introduction list
+
+      // pq pubkey
+      if(!BEncodeWriteDictEntry("k", K, buf))
+        return false;
 
       // topic tag
       if(topic.ToString().size())
@@ -165,6 +171,8 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictEntry("e", enckey, buf))
         return false;
+      if(!BEncodeWriteDictEntry("q", pq, buf))
+        return false;
       if(!BEncodeWriteDictEntry("s", signkey, buf))
         return false;
       if(!BEncodeWriteDictInt("v", version, buf))
@@ -179,6 +187,8 @@ namespace llarp
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictEntry("q", pq, read, key, buf))
         return false;
       if(!BEncodeMaybeReadDictEntry("s", signkey, read, key, buf))
         return false;
@@ -196,12 +206,26 @@ namespace llarp
       crypto->identity_keygen(signkey);
       pub.Update(llarp::seckey_topublic(enckey),
                  llarp::seckey_topublic(signkey));
+      crypto->pqe_keygen(pq);
+    }
+
+    bool
+    Identity::KeyExchange(llarp_path_dh_func dh, byte_t* result,
+                          const ServiceInfo& other, const byte_t* N) const
+    {
+      return dh(result, other.EncryptionPublicKey(), enckey, N);
+    }
+
+    bool
+    Identity::Sign(llarp_crypto* c, byte_t* sig, llarp_buffer_t buf) const
+    {
+      return c->sign(sig, signkey, buf);
     }
 
     bool
     Identity::EnsureKeys(const std::string& fname, llarp_crypto* c)
     {
-      byte_t tmp[256];
+      byte_t tmp[4096];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       std::error_code ec;
       // check for file
@@ -244,7 +268,10 @@ namespace llarp
     {
       if(i.I.size() == 0)
         return false;
+      // set service info
       i.A = pub;
+      // set public encryption key
+      i.K = pq_keypair_to_public(pq);
       // zero out signature for signing process
       i.Z.Zero();
       byte_t tmp[MAX_INTROSET_SIZE];
@@ -254,7 +281,7 @@ namespace llarp
       // rewind and resize buffer
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
-      return crypto->sign(i.Z, signkey, buf);
+      return Sign(crypto, i.Z, buf);
     }
 
     bool

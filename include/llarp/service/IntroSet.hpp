@@ -15,12 +15,13 @@ namespace llarp
 {
   namespace service
   {
-    constexpr std::size_t MAX_INTROSET_SIZE = 1024;
+    constexpr std::size_t MAX_INTROSET_SIZE = 4096;
 
     struct IntroSet : public llarp::IBEncodeMessage
     {
       ServiceInfo A;
       std::vector< Introduction > I;
+      PQPubKey K;
       Tag topic;
       llarp::PoW* W = nullptr;
       llarp::Signature Z;
@@ -31,6 +32,7 @@ namespace llarp
       {
         A       = std::move(other.A);
         I       = std::move(other.I);
+        K       = std::move(other.K);
         version = std::move(other.version);
         topic   = std::move(other.topic);
         W       = std::move(other.W);
@@ -41,6 +43,7 @@ namespace llarp
       {
         A       = other.A;
         I       = other.I;
+        K       = other.K;
         version = other.version;
         topic   = other.topic;
         if(other.W)
@@ -55,6 +58,7 @@ namespace llarp
       {
         A       = other.A;
         I       = other.I;
+        K       = other.K;
         version = other.version;
         topic   = other.topic;
         if(W)
@@ -80,6 +84,7 @@ namespace llarp
           out << intro << ",";
         }
         out << "]";
+        out << "K=" << i.K;
         auto topic = i.topic.ToString();
         if(topic.size())
         {

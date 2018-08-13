@@ -13,7 +13,7 @@
 #error "crypto_kem_SECRETKEYBYTES must match rq_encode_len + 2 * small_encode_len"
 #endif
 
-int crypto_kem_keypair_ax2(unsigned char *pk,unsigned char *sk)
+int crypto_kem_keypair_avx2(unsigned char *pk,unsigned char *sk)
 {
   small g[768];
   small grecip[768];

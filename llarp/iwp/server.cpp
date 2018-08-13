@@ -225,7 +225,7 @@ llarp_link::RemoveSession(llarp_link_session* s)
   delete s;
 }
 
-uint8_t*
+const uint8_t*
 llarp_link::pubkey()
 {
   return llarp::seckey_topublic(seckey);

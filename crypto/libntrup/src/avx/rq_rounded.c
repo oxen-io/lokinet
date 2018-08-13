@@ -1,4 +1,4 @@
-#ifdef __AVX__
+#if __AVX2__
 #include <immintrin.h>
 #include "params.h"
 #include "crypto_uint32.h"

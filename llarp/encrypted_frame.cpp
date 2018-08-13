@@ -35,7 +35,8 @@ namespace llarp
   }
 
   bool
-  EncryptedFrame::EncryptInPlace(byte_t* ourSecretKey, byte_t* otherPubkey,
+  EncryptedFrame::EncryptInPlace(const byte_t* ourSecretKey,
+                                 const byte_t* otherPubkey,
                                  llarp_crypto* crypto)
   {
     // format of frame is
@@ -93,7 +94,8 @@ namespace llarp
   }
 
   bool
-  EncryptedFrame::DecryptInPlace(byte_t* ourSecretKey, llarp_crypto* crypto)
+  EncryptedFrame::DecryptInPlace(const byte_t* ourSecretKey,
+                                 llarp_crypto* crypto)
   {
     if(size() <= size_t(EncryptedFrame::OverheadSize))
     {

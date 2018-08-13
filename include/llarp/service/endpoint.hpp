@@ -97,10 +97,10 @@ namespace llarp
       void
       EnsureRouterIsKnown(const RouterID& router);
 
-      Identity*
+      const Identity&
       GetIdentity()
       {
-        return &m_Identity;
+        return m_Identity;
       }
 
       void
@@ -194,7 +194,7 @@ namespace llarp
 
       bool
       GetCachedSessionKeyFor(const ConvoTag& remote,
-                             SharedSecret& secret) const;
+                             const byte_t*& secret) const;
       void
       PutCachedSessionKeyFor(const ConvoTag& remote,
                              const SharedSecret& secret);

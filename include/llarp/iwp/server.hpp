@@ -112,7 +112,7 @@ struct llarp_link
   void
   RemoveSession(llarp_link_session *s);
 
-  uint8_t *
+  const uint8_t *
   pubkey();
 
   bool

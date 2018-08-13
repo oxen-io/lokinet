@@ -1,4 +1,4 @@
-#ifdef __AVX2__
+#if __AVX2__
 #include <string.h>
 #include <immintrin.h>
 #include "mod3.h"

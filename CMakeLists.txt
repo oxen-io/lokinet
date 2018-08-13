@@ -294,12 +294,8 @@ set(NTRU_SRC
   crypto/libntrup/src/ntru.c
 )
 
-set(NTRU_LIB sntrup)
-add_library(${NTRU_LIB} ${NTRU_SRC})
-target_link_libraries(${NTRU_LIB} ${SODIUM_LIB})
-
-
-set(LIB_SRC
+set(LIB_SRC 
+  ${NTRU_SRC}
   llarp/address_info.cpp
   llarp/bencode.cpp
   llarp/buffer.cpp
@@ -377,6 +373,7 @@ set(TEST_SRC
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
   test/hiddenservice_unittest.cpp
+  test/pq_unittest.cpp
 )
 
 
@@ -423,14 +420,10 @@ else()
 
 
 
-  if(WITH_TESTS)
-    enable_testing()
-    add_subdirectory(${GTEST_DIR})
-    include_directories(${GTEST_DIR}/include ${GTEST_DIR})
-    add_executable(${TEST_EXE} ${TEST_SRC})
-    add_test(runAllTests ${TEST_EXE})
-    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB})
-  endif()
+  add_subdirectory(${GTEST_DIR})
+  include_directories(${GTEST_DIR}/include ${GTEST_DIR})
+  add_executable(${TEST_EXE} ${TEST_SRC})
+  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB})
 
   if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
