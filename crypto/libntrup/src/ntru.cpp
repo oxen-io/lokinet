@@ -41,9 +41,9 @@ int (*__crypto_kem_keypair)(unsigned char *pk, unsigned char *sk);
 extern "C"
 {
   void
-  ntru_init()
+  ntru_init(int force_no_avx2)
   {
-    if(supports_avx2())
+    if(supports_avx2() && !force_no_avx2)
     {
       __crypto_kem_dec     = &crypto_kem_dec_avx2;
       __crypto_kem_enc     = &crypto_kem_enc_avx2;

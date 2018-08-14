@@ -165,7 +165,11 @@ void
 llarp_crypto_libsodium_init(struct llarp_crypto *c)
 {
   assert(sodium_init() != -1);
-  ntru_init();
+  char *avx2 = getenv("AVX2_FORCE_DISABLE");
+  if(avx2 && std::string(avx2) == "1")
+    ntru_init(1);
+  else
+    ntru_init(0);
   c->xchacha20           = llarp::sodium::xchacha20;
   c->dh_client           = llarp::sodium::dh_client;
   c->dh_server           = llarp::sodium::dh_server;
