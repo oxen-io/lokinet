@@ -32,8 +32,15 @@ namespace llarp
     /// a condition variable that does nothing
     struct NullCondition
     {
+      template < typename Lock_t >
       void
-      wait(NullLock& l)
+      wait(Lock_t& l)
+      {
+      }
+
+      template < typename Lock_t, typename Pred >
+      void
+      wait(Lock_t& l, Pred p)
       {
       }
 

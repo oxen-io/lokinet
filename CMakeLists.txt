@@ -409,7 +409,7 @@ link_directories(contrib/msc/lib)
 endif()
 
 if(SHADOW)
-  add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC})
+  add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC})
   target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
   install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()

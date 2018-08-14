@@ -326,11 +326,10 @@ llarp_link_session::EnterState(State st)
 void
 llarp_link_session::on_intro(const void *buf, size_t sz)
 {
-  llarp::LogDebug("session onintro");
   if(sz >= sizeof(workbuf))
   {
     // too big?
-    llarp::LogError("intro too big");
+    llarp::LogError("intro too big from ", addr);
     delete this;
     return;
   }

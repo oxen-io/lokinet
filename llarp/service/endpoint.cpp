@@ -150,7 +150,10 @@ namespace llarp
         while(itr != m_PendingRouters.end())
         {
           if(itr->second.IsExpired(now))
+          {
+            llarp::LogInfo("lookup for ", itr->first, " timed out");
             itr = m_PendingRouters.erase(itr);
+          }
           else
             ++itr;
         }
@@ -603,6 +606,8 @@ namespace llarp
     void
     Endpoint::EnsureRouterIsKnown(const RouterID& router)
     {
+      if(router.IsZero())
+        return;
       if(!llarp_nodedb_get_rc(m_Router->nodedb, router))
       {
         if(m_PendingRouters.find(router) == m_PendingRouters.end())

@@ -92,7 +92,7 @@ namespace llarp
       Key_t peer;
       if(dht.nodes->FindClosest(K, peer))
         dht.LookupRouter(K, dht.OurKey(), txid, peer, job);
-      return false;
+      return true;
     }
 
     FindRouterMessage::~FindRouterMessage()
