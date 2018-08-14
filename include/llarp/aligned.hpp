@@ -119,20 +119,13 @@ namespace llarp
     bool
     IsZero() const
     {
-      size_t idx = sz / 8;
-      while(idx)
-      {
-        if(l[--idx])
-          return false;
-      }
-      return true;
+      return sodium_is_zero(b, sz) != 0;
     }
 
     void
     Zero()
     {
-      for(size_t idx = 0; idx * 8 < sz; ++idx)
-        l[idx] = 0;
+      sodium_memzero(l, sz);
     }
 
     void

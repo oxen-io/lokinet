@@ -111,6 +111,7 @@ namespace llarp
           llarp::LogInfo("introset found locally");
           service::IntroSet i = *introset;
           replies.push_back(new GotIntroMessage({i}, T));
+          return true;
         }
         else
         {
@@ -119,6 +120,7 @@ namespace llarp
             // we don't have it, reply with a direct reply
             llarp::LogInfo("dont have intro set and no recursion");
             replies.push_back(new GotIntroMessage({}, T));
+            return true;
           }
           else
           {
@@ -136,6 +138,7 @@ namespace llarp
                   // we are not closer than our peer to the target so don't
                   // revurse
                   replies.push_back(new GotIntroMessage({}, T));
+                  return true;
                 }
                 else if(R >= 1)
                   dht.LookupIntroSet(S, From, T, peer, R - 1, exclude);
@@ -177,6 +180,7 @@ namespace llarp
             }
             // we are iterative and don't have it, reply with a direct reply
             replies.push_back(new GotIntroMessage(reply, T));
+            return true;
           }
           else
           {

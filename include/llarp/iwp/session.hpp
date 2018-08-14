@@ -88,6 +88,9 @@ struct llarp_link_session
   Tick(llarp_time_t now);
 
   void
+  keepalive();
+
+  void
   PumpCryptoOutbound();
 
   // process inbound and outbound queues (logic thread)

@@ -25,13 +25,23 @@ namespace llarp
     }
 
     Encrypted&
+    operator=(const Encrypted& other)
+    {
+      return (*this) = other.Buffer();
+    }
+
+    Encrypted&
     operator=(llarp_buffer_t buf)
     {
       if(_data)
         delete[] _data;
+      _data = nullptr;
       _sz   = buf.sz;
-      _data = new byte_t[_sz];
-      memcpy(_data, buf.base, _sz);
+      if(_sz)
+      {
+        _data = new byte_t[_sz];
+        memcpy(_data, buf.base, _sz);
+      }
       UpdateBuffer();
       return *this;
     }

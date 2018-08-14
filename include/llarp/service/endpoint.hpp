@@ -146,9 +146,6 @@ namespace llarp
         bool
         HandleHiddenServiceFrame(const ProtocolFrame* frame);
 
-        void
-        PutLookup(IServiceLookup* lookup, uint64_t txid);
-
         std::string
         Name() const;
 
@@ -157,10 +154,10 @@ namespace llarp
         OnIntroSetUpdate(const IntroSet* i);
 
         void
-        EncryptAndSendTo(llarp_buffer_t payload);
+        EncryptAndSendTo(path::Path* p, llarp_buffer_t payload, ProtocolType t);
 
         void
-        AsyncGenIntro(llarp_buffer_t payload);
+        AsyncGenIntro(path::Path* p, llarp_buffer_t payload, ProtocolType t);
 
         /// send a fully encrypted hidden service frame
         void
@@ -263,7 +260,28 @@ namespace llarp
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
 
-      std::unordered_map< RouterID, uint64_t, RouterID::Hash > m_PendingRouters;
+      struct RouterLookupJob
+      {
+        RouterLookupJob(Endpoint* p)
+        {
+          started = llarp_time_now_ms();
+          txid    = p->GenTXID();
+        }
+
+        uint64_t txid;
+        llarp_time_t started;
+
+        bool
+        IsExpired(llarp_time_t now) const
+        {
+          if(now < started)
+            return false;
+          return now - started > 5000;
+        }
+      };
+
+      std::unordered_map< RouterID, RouterLookupJob, RouterID::Hash >
+          m_PendingRouters;
 
       uint64_t m_CurrentPublishTX       = 0;
       llarp_time_t m_LastPublish        = 0;
@@ -271,7 +289,8 @@ namespace llarp
       /// our introset
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id
-      std::unordered_map< uint64_t, service::IServiceLookup* > m_PendingLookups;
+      std::unordered_map< uint64_t, std::unique_ptr< service::IServiceLookup > >
+          m_PendingLookups;
       /// prefetch remote address list
       std::set< Address > m_PrefetchAddrs;
       /// hidden service tag
@@ -293,7 +312,7 @@ namespace llarp
       /// sessions
       std::unordered_map< ConvoTag, Session, ConvoTag::Hash > m_Sessions;
 
-      struct CachedTagResult : public IServiceLookup
+      struct CachedTagResult
       {
         const static llarp_time_t TTL = 10000;
         llarp_time_t lastRequest      = 0;
@@ -301,12 +320,13 @@ namespace llarp
         std::set< IntroSet > result;
         Tag tag;
 
-        CachedTagResult(Endpoint* p, const Tag& t, uint64_t tx)
-            : IServiceLookup(p, tx), tag(t)
+        CachedTagResult(const Tag& t) : tag(t)
         {
         }
 
-        ~CachedTagResult();
+        ~CachedTagResult()
+        {
+        }
 
         void
         Expire(llarp_time_t now);
@@ -320,10 +340,37 @@ namespace llarp
         }
 
         llarp::routing::IMessage*
-        BuildRequestMessage();
+        BuildRequestMessage(uint64_t txid);
 
         bool
         HandleResponse(const std::set< IntroSet >& results);
+      };
+
+      struct TagLookupJob : public IServiceLookup
+      {
+        TagLookupJob(Endpoint* parent, CachedTagResult* result)
+            : IServiceLookup(parent, parent->GenTXID(), "taglookup")
+            , m_result(result)
+        {
+        }
+
+        ~TagLookupJob()
+        {
+        }
+
+        llarp::routing::IMessage*
+        BuildRequestMessage()
+        {
+          return m_result->BuildRequestMessage(txid);
+        }
+
+        bool
+        HandleResponse(const std::set< IntroSet >& results)
+        {
+          return m_result->HandleResponse(results);
+        }
+
+        CachedTagResult* m_result;
       };
 
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;

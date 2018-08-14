@@ -55,6 +55,13 @@ llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
   return inbound_link_msg_parser.ProcessFrom(session, buf);
 }
 
+void
+llarp_router::PersistSessionUntil(const llarp::RouterID &remote,
+                                  llarp_time_t until)
+{
+  m_PersistingSessions[remote] = until;
+}
+
 bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             const llarp::ILinkMessage *msg)
@@ -158,6 +165,7 @@ llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
   {
     self->DiscardOutboundFor(job->target);
   }
+  llarp_rc_free(&job->result);
   delete job;
 }
 
@@ -356,6 +364,39 @@ llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
 }
 
 void
+llarp_router::TryEstablishTo(const llarp::RouterID &remote)
+{
+  auto rc = llarp_nodedb_get_rc(nodedb, remote);
+  if(rc)
+  {
+    // try connecting
+    llarp_router_try_connect(this, rc, 5);
+  }
+  else
+  {
+    // dht lookup as we don't know it
+    llarp_router_lookup_job *lookup = new llarp_router_lookup_job();
+    lookup->user                    = this;
+    llarp_rc_clear(&lookup->result);
+    memcpy(lookup->target, remote, PUBKEYSIZE);
+    lookup->hook = &HandleDHTLookupForTryEstablishTo;
+    llarp_dht_lookup_router(this->dht, lookup);
+  }
+}
+
+void
+llarp_router::HandleDHTLookupForTryEstablishTo(llarp_router_lookup_job *job)
+{
+  if(job->found)
+  {
+    llarp_router_try_connect(static_cast< llarp_router * >(job->user),
+                             &job->result, 5);
+  }
+  llarp_rc_free(&job->result);
+  delete job;
+}
+
+void
 llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
 {
   delete job;
@@ -365,12 +406,38 @@ void
 llarp_router::Tick()
 {
   // llarp::LogDebug("tick router");
-
+  auto now = llarp_time_now_ms();
   paths.ExpirePaths();
   // TODO: don't do this if we have enough paths already
   // FIXME: build paths even if we have inbound links
   if(inboundLinks.size() == 0)
   {
+    {
+      auto itr = m_PersistingSessions.begin();
+      while(itr != m_PersistingSessions.end())
+      {
+        auto link = GetLinkWithSessionByPubkey(itr->first);
+        if(now <= itr->second)
+        {
+          // persisting ended
+          if(link)
+            link->CloseSessionTo(itr->first);
+          itr = m_PersistingSessions.erase(itr);
+        }
+        else
+        {
+          if(link)
+          {
+            link->KeepAliveSessionTo(itr->first);
+          }
+          else
+          {
+            TryEstablishTo(itr->first);
+          }
+          ++itr;
+        }
+      }
+    }
     auto N = llarp_nodedb_num_loaded(nodedb);
     if(N > 3)
     {

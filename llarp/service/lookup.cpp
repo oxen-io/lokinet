@@ -6,9 +6,11 @@ namespace llarp
 {
   namespace service
   {
-    IServiceLookup::IServiceLookup(ILookupHolder *p, uint64_t tx)
-        : parent(p), txid(tx)
+    IServiceLookup::IServiceLookup(ILookupHolder *p, uint64_t tx,
+                                   const std::string &n)
+        : parent(p), txid(tx), name(n)
     {
+      m_created = llarp_time_now_ms();
       p->PutLookup(this, tx);
     }
 

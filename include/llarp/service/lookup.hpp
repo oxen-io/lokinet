@@ -20,13 +20,15 @@ namespace llarp
 
     struct IServiceLookup
     {
-      IServiceLookup(ILookupHolder* parent, uint64_t tx);
-
+      IServiceLookup() = delete;
       virtual ~IServiceLookup(){};
 
       /// handle lookup result
       virtual bool
-      HandleResponse(const std::set< IntroSet >& results) = 0;
+      HandleResponse(const std::set< IntroSet >& results)
+      {
+        return false;
+      }
 
       /// determine if this request has timed out
       bool
@@ -47,8 +49,12 @@ namespace llarp
 
       ILookupHolder* parent;
       uint64_t txid;
+      const std::string name;
 
      protected:
+      IServiceLookup(ILookupHolder* parent, uint64_t tx,
+                     const std::string& name);
+
       llarp_time_t m_created;
     };
 

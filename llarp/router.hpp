@@ -110,7 +110,11 @@ struct llarp_router
   /// loki verified routers
   std::map< llarp::RouterID, llarp_rc > validRouters;
 
+  // pending establishing session with routers
   std::map< llarp::PubKey, llarp_link_establish_job > pendingEstablishJobs;
+
+  // sessions to persist -> timestamp to end persist at
+  std::map< llarp::RouterID, llarp_time_t > m_PersistingSessions;
 
   llarp_router();
   virtual ~llarp_router();
@@ -142,6 +146,9 @@ struct llarp_router
 
   void
   Run();
+
+  void
+  PersistSessionUntil(const llarp::RouterID &remote, llarp_time_t until);
 
   static void
   ConnectAll(void *user, uint64_t orig, uint64_t left);
@@ -187,6 +194,10 @@ struct llarp_router
   /// manually discard all pending messages to remote router
   void
   DiscardOutboundFor(const llarp::RouterID &remote);
+
+  /// try establishing a session to a remote router
+  void
+  TryEstablishTo(const llarp::RouterID &remote);
 
   /// flush outbound message queue
   void
@@ -245,6 +256,9 @@ struct llarp_router
 
   static void
   HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job);
+
+  static void
+  HandleDHTLookupForTryEstablishTo(llarp_router_lookup_job *job);
 };
 
 #endif

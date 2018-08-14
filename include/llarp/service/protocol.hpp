@@ -59,9 +59,11 @@ namespace llarp
       llarp::service::ConvoTag T;
 
       ProtocolFrame();
-      ProtocolFrame(const ProtocolFrame& other);
 
       ~ProtocolFrame();
+
+      ProtocolFrame&
+      operator=(const ProtocolFrame& other);
 
       bool
       EncryptAndSign(llarp_crypto* c, const ProtocolMessage& msg,

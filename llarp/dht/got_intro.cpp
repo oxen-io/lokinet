@@ -41,7 +41,7 @@ namespace llarp
       {
         if(pending->FoundIntros(I))
         {
-          dht.RemovePendingLookup(From, T);
+          dht.RemovePendingTX(From, T);
           llarp::LogInfo("removed pending tx from ", From, " txid=", T);
         }
         return true;
