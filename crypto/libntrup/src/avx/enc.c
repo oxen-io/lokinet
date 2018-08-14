@@ -15,6 +15,7 @@ int crypto_kem_enc_avx2(
   const unsigned char *pk
 )
 {
+#if __AVX2__
   small r[768];
   modq h[768];
   modq c[768];
@@ -45,4 +46,7 @@ int crypto_kem_enc_avx2(
   rq_roundencode(cstr + 32,c);
 
   return 0;
+#else
+  return -1; 
+#endif
 }

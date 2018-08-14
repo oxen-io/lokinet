@@ -291,7 +291,7 @@ include_directories(crypto/libntrup/include)
 set(NTRU_SRC
   ${NTRU_AVX_SRC}
   ${NTRU_REF_SRC}
-  crypto/libntrup/src/ntru.c
+  crypto/libntrup/src/ntru.cpp
 )
 
 set(LIB_SRC 

@@ -15,6 +15,7 @@
 
 int crypto_kem_keypair_avx2(unsigned char *pk,unsigned char *sk)
 {
+#if __AVX2__
   small g[768];
   small grecip[768];
   small f[768];
@@ -36,4 +37,7 @@ int crypto_kem_keypair_avx2(unsigned char *pk,unsigned char *sk)
   memcpy(sk + 2 * small_encode_len,pk,rq_encode_len);
 
   return 0;
+#else
+  return -1;
+#endif
 }

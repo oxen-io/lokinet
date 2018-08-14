@@ -11,12 +11,14 @@
 #include "crypto_verify_32.h"
 #include "crypto_kem.h"
 
+
 int crypto_kem_dec_avx2(
   unsigned char *k,
   const unsigned char *cstr,
   const unsigned char *sk
 )
 {
+  #if __AVX2__
   small f[768];
   modq h[768];
   small grecip[768];
@@ -64,4 +66,7 @@ int crypto_kem_dec_avx2(
 
   for (i = 0;i < 32;++i) k[i] = (hash[32 + i] & ~result);
   return result;
+  #else
+  return -1;
+  #endif
 }
