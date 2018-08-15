@@ -88,6 +88,13 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   {
   }
 
+  llarp::ev_io*
+  create_tun(llarp_tun_io* tun)
+  {
+    // TODO: implement me
+    return nullptr;
+  }
+
   bool
   init()
   {

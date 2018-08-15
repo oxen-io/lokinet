@@ -128,7 +128,7 @@ struct llarp_ev_loop
   virtual void
   stop() = 0;
 
-  virtual bool
+  bool
   udp_listen(llarp_udp_io* l, const sockaddr* src)
   {
     auto ev = create_udp(l, src);
