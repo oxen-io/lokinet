@@ -421,12 +421,12 @@ else()
   add_executable(dns ${DNS_SRC})
 
 
-
-  add_subdirectory(${GTEST_DIR})
-  include_directories(${GTEST_DIR}/include ${GTEST_DIR})
-  add_executable(${TEST_EXE} ${TEST_SRC})
-  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB})
-
+  if(NOT WIN32)
+    add_subdirectory(${GTEST_DIR})
+    include_directories(${GTEST_DIR}/include ${GTEST_DIR})
+    add_executable(${TEST_EXE} ${TEST_SRC})
+    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB})
+  endif()
   if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
     if(NOT HAVE_CXX17_FILESYSTEM)
