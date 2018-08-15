@@ -75,6 +75,10 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,
 int
 llarp_ev_close_udp(struct llarp_udp_io *udp);
 
+#ifdef _WIN32
+#define IFNAMSIZ (16)
+#endif
+
 struct llarp_tun_io
 {
   // TODO: more info?
