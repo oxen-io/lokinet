@@ -85,6 +85,7 @@
  * - t_tun_in6_addr: struct in6_addr/IN6_ADDR
  */
 #if defined Windows
+#include <in6addr.h>
 #include <winsock.h>
 typedef HANDLE t_tun;
 typedef IN_ADDR t_tun_in_addr;
@@ -99,7 +100,6 @@ typedef struct in6_addr t_tun_in6_addr;
  * Windows helpers
  */
 #if defined Windows
-#define snprintf(x, y, z, ...) _snprintf_s((x), (y), (y), (z), __VA_ARGS__);
 #define strncat(x, y, z) strncat_s((x), _countof(x), (y), (z));
 #define strdup(x) _strdup(x)
 #endif
