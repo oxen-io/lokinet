@@ -256,7 +256,6 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     EV_SET(&change, ev->fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, ev);
     if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1)
     {
-      ev->impl = nullptr;
       delete ev;
       return false;
     }
