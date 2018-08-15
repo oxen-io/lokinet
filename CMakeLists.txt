@@ -182,14 +182,14 @@ else()
 endif(UNIX)
 
 if(TUNTAP)
-set(LIBTUNTAP_SRC
+set(LIBTUNTAP_SRC_BASE
   ${TT_ROOT}/tuntap.c
   ${TT_ROOT}/tuntap_log.cpp
   ${LIBTUNTAP_IMPL})
   if (UNIX)
   set(LIBTUNTAP_SRC 
     ${TT_ROOT}/tuntap-unix.c
-    ${LIBTUNTAP_SRC})
+    ${LIBTUNTAP_SRC_BASE})
   endif()
 else()
 set(LIBTUNTAP_SRC "")
@@ -241,6 +241,8 @@ set(LIB_PLATFORM_SRC
   llarp/threadpool.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
+# tun   
+  ${LIBTUNTAP_SRC}
 # win32 inline procs
   llarp/win32_inet.c
   llarp/win32_intrnl.c
@@ -356,7 +358,7 @@ set(LIB_SRC
   llarp/service/protocol.cpp
   llarp/service/tag.cpp
   llarp/service/info.cpp
-  ${LIBTUNTAP_SRC}
+
 )
 
 set(DNS_SRC

@@ -125,9 +125,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         ++idx;
       }
     }
-    for(auto& l : udp_listeners)
-      if(l->tick)
-        l->tick(l);
+    tick_listeners();
     return result;
   }
 
@@ -162,9 +160,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           ++idx;
         }
       }
-      for(auto& l : udp_listeners)
-        if(l->tick)
-          l->tick(l);
+      tick_listeners();
     } while(result != -1);
     return result;
   }
