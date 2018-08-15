@@ -279,23 +279,36 @@ struct llarp_win32_loop : public llarp_ev_loop
     return closesocket(ev->fd) == 0 && stopped == TRUE;
   }
 
-  bool
-  udp_listen(llarp_udp_io* l, const sockaddr* src)
+  llarp::ev_io*
+  create_udp(llarp_udp_io* l, const sockaddr* src)
   {
     SOCKET fd = udp_bind(src);
     llarp::LogDebug("new socket fd is ", fd);
     if(fd == INVALID_SOCKET)
       return false;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
-    listener->listener_id         = reinterpret_cast< ULONG_PTR >(listener);
-    if(!::CreateIoCompletionPort(reinterpret_cast< HANDLE >(fd), iocpfd,
-                                 listener->listener_id, 0))
+    l->impl                       = listener;
+    udp_listeners.push_back(l);
+    return listener;
+  }
+
+  llarp::ev_io*
+  create_tun(llarp_tun_io* tun)
+  {
+    // TODO implement me
+    return nullptr;
+  }
+
+  bool
+  add_ev(llarp::ev_io* ev)
+  {
+    ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
+    if(!::CreateIoCompletionPort(reinterpret_cast< HANDLE >(ev->fd), iocpfd,
+                                 ev->listener_id, 0))
     {
-      delete listener;
+      delete ev;
       return false;
     }
-    l->impl = listener;
-    udp_listeners.push_back(l);
     return true;
   }
 
