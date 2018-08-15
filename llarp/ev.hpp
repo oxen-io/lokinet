@@ -22,6 +22,11 @@ namespace llarp
     ev_io(int f) : fd(f), m_writeq("writequeue"){};
 #else
     SOCKET fd;
+    // the unique completion key that helps us to
+    // identify the object instance for which we receive data
+    // Here, we'll use the address of the udp_listener instance, converted to
+    // its literal int/int64 representation.
+    ULONG_PTR listener_id = 0;
     ev_io(SOCKET f) : fd(f), m_writeq("writequeue"){};
 #endif
     virtual int

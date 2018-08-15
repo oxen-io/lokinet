@@ -285,7 +285,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     SOCKET fd = udp_bind(src);
     llarp::LogDebug("new socket fd is ", fd);
     if(fd == INVALID_SOCKET)
-      return false;
+      return nullptr;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
     l->impl                       = listener;
     udp_listeners.push_back(l);
