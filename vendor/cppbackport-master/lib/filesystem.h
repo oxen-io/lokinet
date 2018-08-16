@@ -39,7 +39,7 @@
 #include "version.h"
 
 #if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
-#if defined(__MINGW32__) || defined(_MSC_VER)
+#if defined(__MINGW32__) || defined(_MSC_VER) || defined(__sun)
 // win32 needs experimental
 #include <experimental/filesystem>
 #else

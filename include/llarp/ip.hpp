@@ -2,8 +2,15 @@
 #define LLARP_IP_HPP
 #include <llarp/buffer.h>
 #include <llarp/time.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <memory>
+#ifdef __sun
+// slightly different type names on sunos
+#define iphdr ip
+#define saddr ip_src.s_addr
+#define daddr ip_dst.s_addr
+#endif
 
 namespace llarp
 {

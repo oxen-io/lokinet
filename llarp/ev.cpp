@@ -5,7 +5,7 @@
 #define EV_TICK_INTERVAL 100
 
 // apparently current Solaris will emulate epoll.
-#if __linux__ || __SunOS_5_11
+#if __linux__ || __sun__
 #include "ev_epoll.hpp"
 #endif
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
@@ -19,7 +19,7 @@
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {
-#if __linux__ || __SunOS_5_11
+#if __linux__ || __sun__
   *ev = new llarp_epoll_loop;
 #endif
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \

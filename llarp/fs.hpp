@@ -12,7 +12,7 @@
 // win32 is the only one that doesn't use cpp17::filesystem
 // because cpp17::filesystem is unimplemented for Windows
 // -despair86
-#if defined(__MINGW32__) || defined(_MSC_VER)
+#if defined(__MINGW32__) || defined(_MSC_VER) || defined(__sun)
 namespace fs = std::experimental::filesystem;
 #else
 namespace fs = std::filesystem;

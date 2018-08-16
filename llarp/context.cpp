@@ -20,7 +20,7 @@ extern "C" void
 SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
 #endif
 
-#ifdef _WIN32
+#if _WIN32 || __sun
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
 #define MIN wmin
 #endif

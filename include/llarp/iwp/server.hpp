@@ -5,6 +5,12 @@
 #include "router.hpp"
 #include "session.hpp"
 
+#ifdef __sun
+#ifdef saddr
+#undef saddr
+#endif
+#endif
+
 #include <algorithm>
 #include <fstream>
 

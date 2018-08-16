@@ -54,6 +54,14 @@ namespace llarp
       m_writeq.Process([this](const std::unique_ptr< WriteBuffer >& buffer) {
         write(fd, buffer->buf, buffer->bufsz);
       });
+        // todo: wtf???
+#ifndef _WIN32
+#else
+#if 0
+        DWORD bytes_written = 0;
+        if(::WriteFile((HANDLE)fd, buffer->payload.data(), buffer->payload.size(), &bytes_written, nullptr))
+#endif
+#endif
       /// reset errno
       errno = 0;
     }

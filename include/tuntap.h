@@ -56,7 +56,7 @@
  */
 #if defined ETH_ALEN /* Linux */
 #define ETHER_ADDR_LEN ETH_ALEN
-#elif defined Windows
+#elif defined Windows || defined __sun__
 #define ETHER_ADDR_LEN 6
 #endif
 
@@ -86,7 +86,7 @@
  */
 #if defined Windows
 #include <in6addr.h>
-#include <winsock.h>
+#include <winsock2.h>
 typedef HANDLE t_tun;
 typedef IN_ADDR t_tun_in_addr;
 typedef IN6_ADDR t_tun_in6_addr;
