@@ -67,13 +67,13 @@ namespace llarp
         whoasked = r->dht->impl.OurKey();
       }
 
-      void
+      bool
       TryAgain()
       {
         --m_TriesLeft;
         auto &dht = m_router->dht->impl;
         llarp::LogInfo("try lookup again");
-        dht.TryLookupAgain(
+        return dht.TryLookupAgain(
             this,
             std::bind(&PathLookupJob::OnResult, this, std::placeholders::_1),
             R);
@@ -94,6 +94,7 @@ namespace llarp
         }
         else
           llarp::LogError("no path for lookup pathid=", pathID);
+        m_router->dht->impl.RemovePendingTX(whoasked, txid);
       }
 
       bool
@@ -120,14 +121,11 @@ namespace llarp
             llarp::LogInfo("found ", sz, " introsets for txid=", txid);
             msg.M.push_back(new llarp::dht::GotIntroMessage(intros, txid));
             path->SendRoutingMessage(&msg, m_router);
+            m_router->dht->impl.RemovePendingTX(whoasked, txid);
           }
           else if(!target.IsZero())
           {
-            if(m_TriesLeft)
-            {
-              TryAgain();
-              return false;
-            }
+            return m_TriesLeft && TryAgain();
           }
         }
         else
@@ -333,7 +331,7 @@ namespace llarp
     }
 
     void
-    Context::RemovePendingLookup(const Key_t &owner, uint64_t id)
+    Context::RemovePendingTX(const Key_t &owner, uint64_t id)
     {
       TXOwner search;
       search.node = owner;
@@ -437,18 +435,19 @@ namespace llarp
         auto msg = new llarp::DHTImmeidateMessage(whoasked);
         msg->msgs.push_back(new GotIntroMessage({}, txid));
         m_Router->SendToOrQueue(whoasked, msg);
+        m_Router->dht->impl.RemovePendingTX(whoasked, txid);
       }
 
-      void
+      bool
       TryAgain()
       {
         --m_TriesLeft;
         llarp::LogInfo("try lookup again");
         auto &dht = m_Router->dht->impl;
-        dht.TryLookupAgain(this,
-                           std::bind(&IntroSetInformJob::OnResult, this,
-                                     std::placeholders::_1),
-                           R);
+        return dht.TryLookupAgain(this,
+                                  std::bind(&IntroSetInformJob::OnResult, this,
+                                            std::placeholders::_1),
+                                  R);
       }
 
       bool
@@ -475,11 +474,7 @@ namespace llarp
           }
           else if(!target.IsZero())
           {
-            if(m_TriesLeft)
-            {
-              TryAgain();
-              return false;
-            }
+            return m_TriesLeft && TryAgain();
           }
         }
         else

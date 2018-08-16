@@ -48,7 +48,7 @@ namespace llarp
                                    llarp_router* r)
     {
       msg->S = m_SequenceNum++;
-      byte_t tmp[MAX_LINK_MSG_SIZE / 2];
+      byte_t tmp[MAX_LINK_MSG_SIZE - 1024];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
       {

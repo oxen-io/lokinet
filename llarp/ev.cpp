@@ -105,3 +105,15 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
   }
   return ret;
 }
+
+bool
+llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
+{
+  return loop->create_tun(tun);
+}
+
+bool
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *pkt, size_t sz)
+{
+  return static_cast< llarp::ev_io * >(tun->impl)->queue_write(pkt, sz);
+}

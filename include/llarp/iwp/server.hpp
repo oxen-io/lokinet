@@ -72,6 +72,14 @@ struct llarp_link
   void
   MapAddr(const llarp::Addr &src, const llarp::PubKey &identity);
 
+  /// does nothing if we have no session already established
+  void
+  KeepAliveSessionTo(const byte_t *pubkey);
+
+  /// does nothing if we have no session already established
+  void
+  CloseSessionTo(const byte_t *pubkey);
+
   bool
   has_session_to(const byte_t *pubkey);
 
@@ -112,7 +120,7 @@ struct llarp_link
   void
   RemoveSession(llarp_link_session *s);
 
-  uint8_t *
+  const uint8_t *
   pubkey();
 
   bool

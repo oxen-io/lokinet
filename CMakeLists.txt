@@ -47,6 +47,9 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
+add_cflags("-march=native")
+add_cxxflags("-march=native")
+
 if(STATIC_LINK)
   add_cflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
   add_cxxflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
@@ -179,14 +182,14 @@ else()
 endif(UNIX)
 
 if(TUNTAP)
-set(LIBTUNTAP_SRC
+set(LIBTUNTAP_SRC_BASE
   ${TT_ROOT}/tuntap.c
   ${TT_ROOT}/tuntap_log.cpp
   ${LIBTUNTAP_IMPL})
   if (UNIX)
   set(LIBTUNTAP_SRC 
     ${TT_ROOT}/tuntap-unix.c
-    ${LIBTUNTAP_SRC})
+    ${LIBTUNTAP_SRC_BASE})
   endif()
 else()
 set(LIBTUNTAP_SRC "")
@@ -238,6 +241,8 @@ set(LIB_PLATFORM_SRC
   llarp/threadpool.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
+# tun   
+  ${LIBTUNTAP_SRC}
 # win32 inline procs
   llarp/win32_inet.c
   llarp/win32_intrnl.c
@@ -245,9 +250,54 @@ set(LIB_PLATFORM_SRC
   contrib/msc/getopt1.c
 )
 
+set(NTRU_AVX_SRC
+  crypto/libntrup/src/avx/randomsmall.c
+  crypto/libntrup/src/avx/weight.c
+  crypto/libntrup/src/avx/swap.c
+  crypto/libntrup/src/avx/rq_round3.c
+  crypto/libntrup/src/avx/rq_recip3.c
+  crypto/libntrup/src/avx/small.c
+  crypto/libntrup/src/avx/randomweightw.c
+  crypto/libntrup/src/avx/dec.c
+  crypto/libntrup/src/avx/r3_recip.c
+  crypto/libntrup/src/avx/keypair.c
+  crypto/libntrup/src/avx/rq_rounded.c
+  crypto/libntrup/src/avx/mult.c
+  crypto/libntrup/src/avx/enc.c
+  crypto/libntrup/src/avx/int32_sort.c
+  crypto/libntrup/src/avx/rq.c
+  crypto/libntrup/src/avx/rq_mod3.c
+)
 
+set(NTRU_REF_SRC
+  crypto/libntrup/src/ref/randomsmall.c
+  crypto/libntrup/src/ref/swap.c
+  crypto/libntrup/src/ref/rq_round3.c
+  crypto/libntrup/src/ref/rq_recip3.c
+  crypto/libntrup/src/ref/small.c
+  crypto/libntrup/src/ref/rq_mult.c
+  crypto/libntrup/src/ref/randomweightw.c
+  crypto/libntrup/src/ref/random32.c
+  crypto/libntrup/src/ref/dec.c
+  crypto/libntrup/src/ref/r3_mult.c
+  crypto/libntrup/src/ref/r3_recip.c
+  crypto/libntrup/src/ref/keypair.c
+  crypto/libntrup/src/ref/rq_rounded.c
+  crypto/libntrup/src/ref/enc.c
+  crypto/libntrup/src/ref/int32_sort.c
+  crypto/libntrup/src/ref/rq.c
+)
 
-set(LIB_SRC
+include_directories(crypto/libntrup/include)
+
+set(NTRU_SRC
+  ${NTRU_AVX_SRC}
+  ${NTRU_REF_SRC}
+  crypto/libntrup/src/ntru.cpp
+)
+
+set(LIB_SRC 
+  ${NTRU_SRC}
   llarp/address_info.cpp
   llarp/bencode.cpp
   llarp/buffer.cpp
@@ -308,7 +358,7 @@ set(LIB_SRC
   llarp/service/protocol.cpp
   llarp/service/tag.cpp
   llarp/service/info.cpp
-  ${LIBTUNTAP_SRC}
+
 )
 
 set(DNS_SRC
@@ -326,6 +376,7 @@ set(TEST_SRC
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
   test/hiddenservice_unittest.cpp
+  test/pq_unittest.cpp
 )
 
 
@@ -361,7 +412,7 @@ link_directories(contrib/msc/lib)
 endif()
 
 if(SHADOW)
-  add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC})
+  add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC})
   target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
   install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
@@ -371,16 +422,12 @@ else()
   add_executable(dns ${DNS_SRC})
 
 
-
-  if(WITH_TESTS)
-    enable_testing()
+  if(NOT WIN32)
     add_subdirectory(${GTEST_DIR})
     include_directories(${GTEST_DIR}/include ${GTEST_DIR})
     add_executable(${TEST_EXE} ${TEST_SRC})
-    add_test(runAllTests ${TEST_EXE})
     target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB})
   endif()
-
   if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
     if(NOT HAVE_CXX17_FILESYSTEM)

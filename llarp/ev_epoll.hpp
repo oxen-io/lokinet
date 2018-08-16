@@ -4,6 +4,7 @@
 #include <llarp/net.h>
 #include <signal.h>
 #include <sys/epoll.h>
+#include <tuntap.h>
 #include <unistd.h>
 #include <cstdio>
 #include "ev.hpp"
@@ -56,6 +57,50 @@ namespace llarp
         llarp::LogWarn(strerror(errno));
       }
       return sent;
+    }
+  };
+
+  struct tun : public ev_io
+  {
+    llarp_tun_io* t;
+    device* tunif;
+    tun(llarp_tun_io* tio)
+        : ev_io(-1)
+        , t(tio)
+        , tunif(tuntap_init())
+
+              {
+
+              };
+
+    int
+    sendto(const sockaddr* to, const void* data, size_t sz)
+    {
+      // TODO: implement me
+      return -1;
+    }
+
+    int
+    read(void* buf, size_t sz)
+    {
+      return tuntap_read(tunif, buf, sz);
+    }
+
+    bool
+    setup()
+    {
+      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, TUNTAP_ID_ANY) == -1)
+        return false;
+      if(tuntap_set_ifname(tunif, t->ifname) == -1)
+        return false;
+      if(tuntap_set_ip(tunif, t->ifaddr, t->netmask) == -1)
+        return false;
+      fd = tunif->tun_fd;
+      return false;
+    }
+
+    ~tun()
+    {
     }
   };
 };  // namespace llarp
@@ -129,12 +174,14 @@ struct llarp_epoll_loop : public llarp_ev_loop
         {
           ev->read(readbuf, sizeof(readbuf));
         }
+        if(events[idx].events & EPOLLOUT)
+        {
+          ev->flush_write();
+        }
         ++idx;
       }
     }
-    for(auto& l : udp_listeners)
-      if(l->tick)
-        l->tick(l);
+    tick_listeners();
     return result;
   }
 
@@ -162,12 +209,14 @@ struct llarp_epoll_loop : public llarp_ev_loop
           {
             ev->read(readbuf, sizeof(readbuf));
           }
+          if(events[idx].events & EPOLLOUT)
+          {
+            ev->flush_write();
+          }
           ++idx;
         }
       }
-      for(auto& l : udp_listeners)
-        if(l->tick)
-          l->tick(l);
+      tick_listeners();
     } while(epollfd != -1);
     return result;
   }
@@ -224,23 +273,39 @@ struct llarp_epoll_loop : public llarp_ev_loop
     return epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) != -1;
   }
 
-  bool
-  udp_listen(llarp_udp_io* l, const sockaddr* src)
+  llarp::ev_io*
+  create_tun(llarp_tun_io* tun)
+  {
+    llarp::tun* t = new llarp::tun(tun);
+    if(t->setup())
+      return t;
+    delete t;
+    return nullptr;
+  }
+
+  llarp::ev_io*
+  create_udp(llarp_udp_io* l, const sockaddr* src)
   {
     int fd = udp_bind(src);
     if(fd == -1)
-      return false;
+      return nullptr;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
+    l->impl                       = listener;
+    udp_listeners.push_back(l);
+    return listener;
+  }
+
+  bool
+  add_ev(llarp::ev_io* e)
+  {
     epoll_event ev;
-    ev.data.ptr = listener;
-    ev.events   = EPOLLIN;
-    if(epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &ev) == -1)
+    ev.data.ptr = e;
+    ev.events   = EPOLLIN | EPOLLOUT;
+    if(epoll_ctl(epollfd, EPOLL_CTL_ADD, e->fd, &ev) == -1)
     {
-      delete listener;
+      delete e;
       return false;
     }
-    l->impl = listener;
-    udp_listeners.push_back(l);
     return true;
   }
 

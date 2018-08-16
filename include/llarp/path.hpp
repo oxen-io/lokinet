@@ -235,6 +235,12 @@ namespace llarp
         m_DataHandler = func;
       }
 
+      llarp_time_t
+      ExpireTime() const
+      {
+        return buildStarted + hops[0].lifetime;
+      }
+
       bool
       Expired(llarp_time_t now) const;
 

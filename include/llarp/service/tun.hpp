@@ -13,6 +13,7 @@ namespace llarp
       ~TunEndpoint();
 
       device* m_tunif;
+      std::string m_IfName;
     };
   }  // namespace service
 }  // namespace llarp

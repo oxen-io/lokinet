@@ -17,8 +17,8 @@ namespace llarp
     }
 
     static bool
-    dh(uint8_t *out, uint8_t *client_pk, uint8_t *server_pk, uint8_t *themPub,
-       uint8_t *usSec)
+    dh(uint8_t *out, const uint8_t *client_pk, const uint8_t *server_pk,
+       const uint8_t *themPub, const uint8_t *usSec)
     {
       llarp::SharedSecret shared;
       crypto_generichash_state h;
@@ -35,7 +35,8 @@ namespace llarp
     }
 
     static bool
-    dh_client(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
+    dh_client(uint8_t *shared, const uint8_t *pk, const uint8_t *sk,
+              const uint8_t *n)
     {
       llarp::SharedSecret dh_result;
       if(dh(dh_result, llarp::seckey_topublic(sk), pk, pk, sk))
@@ -46,7 +47,8 @@ namespace llarp
     }
 
     static bool
-    dh_server(uint8_t *shared, uint8_t *pk, uint8_t *sk, uint8_t *n)
+    dh_server(uint8_t *shared, const uint8_t *pk, const uint8_t *sk,
+              const uint8_t *n)
     {
       llarp::SharedSecret dh_result;
       if(dh(dh_result, pk, llarp::seckey_topublic(sk), pk, sk))
@@ -124,24 +126,50 @@ namespace llarp
     return sec + 32;
   }
 
-  byte_t *
-  seckey_topublic(byte_t *sec)
+  namespace pq
   {
-    return sec + 32;
+    bool
+    encrypt(byte_t *ciphertext, byte_t *sharedkey, const byte_t *pubkey)
+    {
+      return crypto_kem_enc(ciphertext, sharedkey, pubkey) != -1;
+    }
+    bool
+    decrypt(const byte_t *ciphertext, byte_t *sharedkey,
+            const byte_t *secretkey)
+    {
+      return crypto_kem_dec(sharedkey, ciphertext, secretkey) != -1;
+    }
+
+    void
+    keygen(byte_t *keypair)
+    {
+      crypto_kem_keypair(keypair + PQ_SECRETKEYSIZE, keypair);
+    }
+  }  // namespace pq
+
+  const byte_t *
+  pq_keypair_to_public(const byte_t *k)
+  {
+    return k + PQ_SECRETKEYSIZE;
+  }
+
+  const byte_t *
+  pq_keypair_to_secret(const byte_t *k)
+  {
+    return k;
   }
 
 }  // namespace llarp
-
-const byte_t *
-llarp_seckey_topublic(const byte_t *secret)
-{
-  return secret + 32;
-}
 
 void
 llarp_crypto_libsodium_init(struct llarp_crypto *c)
 {
   assert(sodium_init() != -1);
+  char *avx2 = getenv("AVX2_FORCE_DISABLE");
+  if(avx2 && std::string(avx2) == "1")
+    ntru_init(1);
+  else
+    ntru_init(0);
   c->xchacha20           = llarp::sodium::xchacha20;
   c->dh_client           = llarp::sodium::dh_client;
   c->dh_server           = llarp::sodium::dh_server;
@@ -156,6 +184,9 @@ llarp_crypto_libsodium_init(struct llarp_crypto *c)
   c->randbytes           = llarp::sodium::randbytes;
   c->identity_keygen     = llarp::sodium::sigkeygen;
   c->encryption_keygen   = llarp::sodium::enckeygen;
+  c->pqe_encrypt         = llarp::pq::encrypt;
+  c->pqe_decrypt         = llarp::pq::decrypt;
+  c->pqe_keygen          = llarp::pq::keygen;
   int seed;
   c->randbytes(&seed, sizeof(seed));
   srand(seed);

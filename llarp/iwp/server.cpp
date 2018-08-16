@@ -40,6 +40,46 @@ llarp_link::remove_intro_from(const llarp::Addr& from)
 }
 
 void
+llarp_link::CloseSessionTo(const byte_t* pubkey)
+{
+  llarp::Addr addr;
+  llarp::PubKey pk(pubkey);
+  {
+    lock_t lock(m_Connected_Mutex);
+    auto itr = m_Connected.find(pk);
+    if(itr == m_Connected.end())
+      return;
+    addr = itr->second;
+  }
+  {
+    lock_t lock(m_sessions_Mutex);
+    auto itr = m_sessions.find(addr);
+    if(itr != m_sessions.end())
+      itr->second->close();
+  }
+}
+
+void
+llarp_link::KeepAliveSessionTo(const byte_t* pubkey)
+{
+  llarp::Addr addr;
+  llarp::PubKey pk(pubkey);
+  {
+    lock_t lock(m_Connected_Mutex);
+    auto itr = m_Connected.find(pk);
+    if(itr == m_Connected.end())
+      return;
+    addr = itr->second;
+  }
+  {
+    lock_t lock(m_sessions_Mutex);
+    auto itr = m_sessions.find(addr);
+    if(itr != m_sessions.end())
+      itr->second->keepalive();
+  }
+}
+
+void
 llarp_link::MapAddr(const llarp::Addr& src, const llarp::PubKey& identity)
 {
   lock_t lock(m_Connected_Mutex);
@@ -225,7 +265,7 @@ llarp_link::RemoveSession(llarp_link_session* s)
   delete s;
 }
 
-uint8_t*
+const uint8_t*
 llarp_link::pubkey()
 {
   return llarp::seckey_topublic(seckey);

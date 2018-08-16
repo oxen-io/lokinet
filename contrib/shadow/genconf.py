@@ -56,9 +56,14 @@ def makeBase(settings, name, id):
 
 def makeClient(settings, name, id):
     peer = makeBase(settings, name, id)
-    nodeconf(peer['config'], getSetting(settings, 'baseDir', 'tmp'), name)
+    basedir = getSetting(settings, 'baseDir', 'tmp')
+    nodeconf(peer['config'], basedir, name)
+    fname = os.path.join(basedir, "test-service.ini")
     peer['config']['services'] = {
+        'test-service': fname
     }
+    with open(fname, 'w') as f:
+        f.write("[test-service]")
     return peer
 
 
@@ -81,7 +86,8 @@ def genconf(settings, outf):
     kill = etree.SubElement(root, 'kill')
     kill.attrib['time'] = getSetting(settings, 'runFor', '600')
 
-    baseDir = getSetting(settings, 'baseDir', 'tmp')
+    baseDir = getSetting(settings, 'baseDir',
+                         os.path.join('/tmp', 'lokinet-shadow'))
 
     if not os.path.exists(baseDir):
         os.mkdir(baseDir)
@@ -125,6 +131,7 @@ def genconf(settings, outf):
 
 if __name__ == '__main__':
     settings = {
+        'baseDir': os.path.join("/tmp", "lokinet-shadow"),
         'topology': os.path.join(shadowRoot, 'share', 'topology.graphml.xml'),
         'runFor': '{}'.format(60 * 10 * 10)
     }

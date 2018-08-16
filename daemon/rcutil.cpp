@@ -317,7 +317,7 @@ main(int argc, char *argv[])
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.string().c_str(),
                                identity);
     // get identity public key
-    uint8_t *pubkey = llarp::seckey_topublic(identity);
+    const uint8_t *pubkey = llarp::seckey_topublic(identity);
     llarp_rc_set_pubsigkey(&rc, pubkey);
     llarp_rc_sign(&crypt, identity, &rc);
 

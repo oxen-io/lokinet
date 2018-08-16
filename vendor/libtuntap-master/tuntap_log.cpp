@@ -28,6 +28,8 @@
 
 extern "C"
 {
+  t_tuntap_log tuntap_log = &tuntap_log_default;
+
   void
   tuntap_log_set_cb(t_tuntap_log cb)
   {

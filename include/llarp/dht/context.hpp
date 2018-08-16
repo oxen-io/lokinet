@@ -26,7 +26,7 @@ namespace llarp
       FindPendingTX(const Key_t& owner, uint64_t txid);
 
       void
-      RemovePendingLookup(const Key_t& owner, uint64_t txid);
+      RemovePendingTX(const Key_t& owner, uint64_t txid);
 
       void
       LookupServiceDirect(const Key_t& target, const Key_t& whoasked,
@@ -64,7 +64,7 @@ namespace llarp
                             const llarp::PathID_t& path, Key_t askpeer);
 
       template < typename Job, typename Result >
-      void
+      bool
       TryLookupAgain(Job* j, Result r, uint64_t R)
       {
         const Key_t targetKey = j->target.ToKey();
@@ -73,14 +73,12 @@ namespace llarp
         if(!nodes->FindCloseExcluding(targetKey, askpeer, exclude))
         {
           j->Exausted();
-          delete j;
-          return;
+          return true;
         }
         if((OurKey() ^ targetKey) < (askpeer ^ targetKey))
         {
           j->Exausted();
-          delete j;
-          return;
+          return true;
         }
         auto id = ++ids;
         TXOwner ownerKey;
@@ -94,6 +92,7 @@ namespace llarp
                        " with txid=", id);
         DHTSendTo(askpeer, msg);
         j->asked.insert(std::move(askpeer));
+        return false;
       }
 
       void

@@ -88,6 +88,13 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   {
   }
 
+  llarp::ev_io*
+  create_tun(llarp_tun_io* tun)
+  {
+    // TODO: implement me
+    return nullptr;
+  }
+
   bool
   init()
   {
@@ -125,9 +132,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         ++idx;
       }
     }
-    for(auto& l : udp_listeners)
-      if(l->tick)
-        l->tick(l);
+    tick_listeners();
     return result;
   }
 
@@ -162,9 +167,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           ++idx;
         }
       }
-      for(auto& l : udp_listeners)
-        if(l->tick)
-          l->tick(l);
+      tick_listeners();
     } while(result != -1);
     return result;
   }
@@ -235,23 +238,27 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     return kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1;
   }
 
-  bool
-  udp_listen(llarp_udp_io* l, const sockaddr* src)
+  llarp::ev_io*
+  create_udp(llarp_udp_io* l, const sockaddr* src)
   {
     int fd = udp_bind(src);
     if(fd == -1)
-      return false;
+      return nullptr;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
-
-    EV_SET(&change, fd, EVFILT_READ, EV_ADD, 0, 0, listener);
-    if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1)
-    {
-      l->impl = nullptr;
-      delete listener;
-      return false;
-    }
     udp_listeners.push_back(l);
     l->impl = listener;
+    return listener;
+  }
+
+  bool
+  add_ev(llarp::ev_io* ev)
+  {
+    EV_SET(&change, ev->fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, ev);
+    if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1)
+    {
+      delete ev;
+      return false;
+    }
     return true;
   }
 

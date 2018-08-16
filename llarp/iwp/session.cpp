@@ -126,8 +126,7 @@ llarp_link_session::close()
   // set our side invalidated and close async when the other side also marks
   // as session invalidated
   frame.txflags |= eSessionInvalidated;
-  // TODO: add timer for session invalidation
-  llarp_logic_queue_job(serv->logic, {this, &send_keepalive});
+  keepalive();
 }
 
 void
@@ -327,11 +326,10 @@ llarp_link_session::EnterState(State st)
 void
 llarp_link_session::on_intro(const void *buf, size_t sz)
 {
-  llarp::LogDebug("session onintro");
   if(sz >= sizeof(workbuf))
   {
     // too big?
-    llarp::LogError("intro too big");
+    llarp::LogError("intro too big from ", addr);
     delete this;
     return;
   }
@@ -443,6 +441,12 @@ llarp_link_session::Tick(llarp_time_t now)
       send_keepalive(this);
   }
   return false;
+}
+
+void
+llarp_link_session::keepalive()
+{
+  llarp_logic_queue_job(serv->logic, {this, &send_keepalive});
 }
 
 void

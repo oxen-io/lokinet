@@ -15,6 +15,7 @@ namespace llarp
     {
       llarp::SecretKey enckey;
       llarp::SecretKey signkey;
+      llarp::PQKeyPair pq;
       uint64_t version = 0;
       VanityNonce vanity;
 
@@ -38,10 +39,17 @@ namespace llarp
       EnsureKeys(const std::string& fpath, llarp_crypto* c);
 
       bool
+      KeyExchange(llarp_path_dh_func dh, byte_t* sharedkey,
+                  const ServiceInfo& other, const byte_t* N) const;
+
+      bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
 
       bool
       SignIntroSet(IntroSet& i, llarp_crypto* c) const;
+
+      bool
+      Sign(llarp_crypto*, byte_t* sig, llarp_buffer_t buf) const;
     };
   }  // namespace service
 }  // namespace llarp

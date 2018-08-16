@@ -113,7 +113,7 @@ namespace llarp
             }
           }
         }
-        dht.RemovePendingLookup(From, txid);
+        dht.RemovePendingTX(From, txid);
         return true;
       }
       llarp::LogWarn(

@@ -5,6 +5,7 @@
 #include <llarp/crypto.hpp>
 #include <llarp/encrypted.hpp>
 #include <llarp/routing/message.hpp>
+#include <llarp/service/Identity.hpp>
 #include <llarp/service/Info.hpp>
 #include <llarp/service/Intro.hpp>
 #include <llarp/service/handler.hpp>
@@ -51,29 +52,32 @@ namespace llarp
     /// outer message
     struct ProtocolFrame : public llarp::routing::IMessage
     {
+      llarp::PQCipherBlock C;
       llarp::Encrypted D;
-      llarp::PubKey H;
       llarp::KeyExchangeNonce N;
       llarp::Signature Z;
       llarp::service::ConvoTag T;
 
       ProtocolFrame();
-      ProtocolFrame(const ProtocolFrame& other);
 
       ~ProtocolFrame();
 
+      ProtocolFrame&
+      operator=(const ProtocolFrame& other);
+
       bool
-      EncryptAndSign(llarp_crypto* c, const ProtocolMessage* msg,
-                     byte_t* sharedkey, byte_t* signingkey);
+      EncryptAndSign(llarp_crypto* c, const ProtocolMessage& msg,
+                     const byte_t* sharedkey, const Identity& localIdent);
 
       bool
       AsyncDecryptAndVerify(llarp_logic* logic, llarp_crypto* c,
-                            llarp_threadpool* worker, byte_t* localSecret,
+                            llarp_threadpool* worker,
+                            const Identity& localIdent,
                             IDataHandler* handler) const;
 
       bool
-      DecryptPayloadInto(llarp_crypto* c, byte_t* sharedkey,
-                         ProtocolMessage* into) const;
+      DecryptPayloadInto(llarp_crypto* c, const byte_t* sharedkey,
+                         ProtocolMessage& into) const;
 
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);

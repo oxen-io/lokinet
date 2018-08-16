@@ -8,13 +8,14 @@
 #define ssize_t long
 #endif
 #else
+
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-
+#include <tuntap.h>
 /**
  * ev.h
  *
@@ -73,5 +74,34 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,
 /// close UDP handler
 int
 llarp_ev_close_udp(struct llarp_udp_io *udp);
+
+#ifdef _WIN32
+#define IFNAMSIZ (16)
+#endif
+
+struct llarp_tun_io
+{
+  // TODO: more info?
+  char ifaddr[128];
+  int netmask;
+  char ifname[IFNAMSIZ + 1];
+
+  void *user;
+  void *impl;
+  struct llarp_ev_loop *parent;
+  /// called every event loop tick after reads
+  void (*tick)(struct llarp_tun_io *);
+  void (*recvpkt)(struct llarp_tun_io *, const void *, ssize_t);
+};
+
+/// create tun interface with network interface name ifname
+/// returns true on success otherwise returns false
+bool
+llarp_ev_add_tun(struct llarp_ev_loop *ev, struct llarp_tun_io *tun);
+
+/// async write a packet on tun interface
+/// returns true if queued, returns false on drop
+bool
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *pkt, size_t sz);
 
 #endif
