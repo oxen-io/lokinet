@@ -26,10 +26,10 @@ namespace llarp
       void
       SetHandler(IDataHandler* h);
 
-      bool
+      virtual bool
       SetOption(const std::string& k, const std::string& v);
 
-      void
+      virtual void
       Tick(llarp_time_t now);
 
       /// router's logic
@@ -52,8 +52,15 @@ namespace llarp
         return m_Router;
       }
 
-      bool
+      virtual bool
       Start();
+
+      virtual bool
+      Stop()
+      {
+        // TODO: implement me
+        return false;
+      }
 
       std::string
       Name() const;
@@ -230,6 +237,9 @@ namespace llarp
       bool
       IsolateNetwork();
 
+      bool
+      NetworkIsIsolated() const;
+
      private:
       bool
       OnOutboundLookup(const IntroSet* i); /*  */
@@ -239,6 +249,13 @@ namespace llarp
 
       bool
       DoNetworkIsolation();
+
+      virtual bool
+      SetupNetworking()
+      {
+        // XXX: override me
+        return true;
+      }
 
       uint64_t
       GenTXID();
