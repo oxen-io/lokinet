@@ -296,11 +296,13 @@ struct llarp_epoll_loop : public llarp_ev_loop
   }
 
   bool
-  add_ev(llarp::ev_io* e)
+  add_ev(llarp::ev_io* e, bool write)
   {
     epoll_event ev;
     ev.data.ptr = e;
-    ev.events   = EPOLLIN | EPOLLOUT;
+    ev.events   = EPOLLIN;
+    if(write)
+      ev.events |= EPOLLOUT;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, e->fd, &ev) == -1)
     {
       delete e;

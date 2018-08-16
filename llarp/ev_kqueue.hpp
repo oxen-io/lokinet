@@ -251,9 +251,12 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   }
 
   bool
-  add_ev(llarp::ev_io* ev)
+  add_ev(llarp::ev_io* ev, bool write)
   {
-    EV_SET(&change, ev->fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, ev);
+    if(write)
+      EV_SET(&change, ev->fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, ev);
+    else
+      EV_SET(&change, ev->fd, EVFILT_READ, EV_ADD, 0, 0, ev);
     if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1)
     {
       delete ev;
