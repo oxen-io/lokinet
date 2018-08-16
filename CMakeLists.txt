@@ -403,7 +403,7 @@ set(STATIC_LIB ${LIB}-static)
 include_directories(llarp)
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
-#include_directories(/usr/local/include)
+include_directories(/usr/local/include)
 include_directories(${sodium_INCLUDE_DIR})
 
 if (WIN32 AND NOT MINGW)

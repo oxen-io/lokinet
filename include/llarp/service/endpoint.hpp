@@ -166,7 +166,7 @@ namespace llarp
         uint64_t sequenceNo = 0;
         llarp::SharedSecret sharedKey;
         Endpoint* m_Parent;
-        uint64_t m_UpdateIntrosetTX = 0;
+        //uint64_t m_UpdateIntrosetTX = 0;
       };
 
       // passed a sendto context when we have a path established otherwise

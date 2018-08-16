@@ -247,7 +247,7 @@ main(int argc, char *argv[])
   {
     llarp_free_config(&config_reader);
     llarp::LogError("failed to load config file ", conffname);
-    return false;
+    return 0;
   }
   llarp_config_iterator iter;
   iter.user  = &dnsr_config;
