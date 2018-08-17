@@ -152,7 +152,7 @@ hookChecker(std::string name, const struct sockaddr *from,
   response->dontLookUp               = false;
   response->dontSendResponse         = false;
   response->returnThis               = nullptr;
-  llarp::LogInfo("Hooked ", name);
+  llarp::LogDebug("Hooked ", name);
   std::string lName = name;
   std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
 
@@ -170,33 +170,40 @@ hookChecker(std::string name, const struct sockaddr *from,
       return cache_check->second;
     }
 
-    std::string b32addr = lName.substr(0, lName.size() - 5);
-    b32addr.erase(32, 1);
-    llarp::LogInfo("Hex address: ", b32addr);
+    // strip off .loki
+    std::string without_dot_loki = lName.substr(0, lName.size() - 5);
+    if(without_dot_loki.find(".") != std::string::npos)
+    {
+      std::string b32addr = without_dot_loki;
+      b32addr.erase(32, 1);
+      llarp::LogInfo("Hex address: ", b32addr);
 
-    llarp::PubKey binaryPK;
-    llarp::HexDecode(b32addr.c_str(), binaryPK.data());
+      llarp::PubKey binaryPK;
+      llarp::HexDecode(b32addr.c_str(), binaryPK.data());
 
-    llarp::LogInfo("Queueing job");
-    llarp_router_lookup_job *job = new llarp_router_lookup_job;
-    job->iterative               = true;
-    job->found                   = false;
-    job->hook                    = &HandleDHTLocate;
-    llarp_rc_new(&job->result);
-    memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
+      llarp::LogInfo("Queueing job");
+      llarp_router_lookup_job *job = new llarp_router_lookup_job;
+      job->iterative               = true;
+      job->found                   = false;
+      job->hook                    = &HandleDHTLocate;
+      llarp_rc_new(&job->result);
+      memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
 
-    // llarp_dht_lookup_router(ctx->router->dht, job);
-    llarp_main_queryDHT_RC(ctx, job);
+      // llarp_dht_lookup_router(ctx->router->dht, job);
+      llarp_main_queryDHT_RC(ctx, job);
 
-    // check_query_request *query_request = new check_query_request;
-    // query_request->hook = &llarp_dnsd_checkQuery_resolved;
-    check_query_simple_request *qr = new check_query_simple_request;
-    qr->from                       = from;
-    qr->request                    = request;
-    // nslookup on osx is about 5 sec before a retry
-    llarp_logic_call_later(request->context->logic,
-                           {5, qr, &llarp_dnsd_checkQuery});
-    response->dontSendResponse = true;
+      // check_query_request *query_request = new check_query_request;
+      // query_request->hook = &llarp_dnsd_checkQuery_resolved;
+      check_query_simple_request *qr = new check_query_simple_request;
+      qr->from                       = from;
+      qr->request                    = request;
+      // nslookup on osx is about 5 sec before a retry
+      llarp_logic_call_later(request->context->logic,
+                             {5, qr, &llarp_dnsd_checkQuery});
+      response->dontSendResponse = true;
+    }
+    // if not xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+    // format something like bob.loki
   }
   // cast your context->user;
   return response;
