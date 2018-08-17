@@ -1,5 +1,5 @@
-#include <llarp/service/address.hpp>
 #include <algorithm>
+#include <llarp/service/address.hpp>
 
 namespace llarp
 {
@@ -21,10 +21,8 @@ namespace llarp
         return false;
       auto sub = str.substr(0, pos);
       // make sure it's lowercase
-      std::transform(sub.begin(),
-                     sub.end(),
-                     sub.begin(),
-                     ::tolower);;
+      std::transform(sub.begin(), sub.end(), sub.begin(), ::tolower);
+      ;
       return Base32Decode(sub, *this);
     }
   }  // namespace service
