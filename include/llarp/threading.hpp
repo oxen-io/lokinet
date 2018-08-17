@@ -9,7 +9,7 @@
 #include <condition_variable>
 #include <thread>
 #endif
-
+#include <future>
 #include <memory>
 
 namespace llarp

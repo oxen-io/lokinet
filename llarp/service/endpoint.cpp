@@ -55,6 +55,12 @@ namespace llarp
       return true;
     }
 
+    bool
+    Endpoint::NetworkIsIsolated() const
+    {
+      return m_IsolatedLogic && m_IsolatedWorker;
+    }
+
     struct PathAlignJob
     {
       void
@@ -401,6 +407,7 @@ namespace llarp
       {
         m_DataHandler = this;
       }
+      // this does network isolation
       while(m_OnInit.size())
       {
         if(m_OnInit.front()())
