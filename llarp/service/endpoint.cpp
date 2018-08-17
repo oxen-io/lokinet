@@ -253,7 +253,9 @@ namespace llarp
     void
     Endpoint::PutLookup(IServiceLookup* lookup, uint64_t txid)
     {
-      m_PendingLookups.insert(std::make_pair(txid, lookup));
+      std::unique_ptr< service::IServiceLookup > ptr(lookup);
+      // m_PendingLookups.insert(std::make_pair(txid, ptr));
+      m_PendingLookups[txid] = std::move(ptr);
     }
 
     bool
