@@ -23,7 +23,8 @@ namespace llarp
 
      private:
       llarp_router *m_Router;
-      std::unordered_map< std::string, Endpoint * > m_Endpoints;
+      std::unordered_map< std::string, std::unique_ptr< Endpoint > >
+          m_Endpoints;
     };
   }  // namespace service
 }  // namespace llarp

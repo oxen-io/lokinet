@@ -2,6 +2,7 @@
 
 #include <llarp/buffer.h>
 #include <llarp/time.h>
+#include <memory>
 #include <queue>
 
 struct sendbuf_t
@@ -55,7 +56,7 @@ struct sendbuf_t
   struct PutTime
   {
     void
-    operator()(sendbuf_t *&buf) const
+    operator()(sendbuf_t *buf) const
     {
       buf->timestamp = llarp_time_now_ms();
     }
@@ -64,7 +65,8 @@ struct sendbuf_t
   struct Compare
   {
     bool
-    operator()(const sendbuf_t *left, const sendbuf_t *right) const
+    operator()(const std::unique_ptr< sendbuf_t > &left,
+               const std::unique_ptr< sendbuf_t > &right) const
     {
       return left->priority < right->priority;
     }

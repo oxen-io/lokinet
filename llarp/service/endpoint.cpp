@@ -49,10 +49,20 @@ namespace llarp
     bool
     Endpoint::IsolateNetwork()
     {
+      llarp::LogInfo("isolating network to namespace ", m_NetNS);
       m_IsolatedWorker = llarp_init_isolated_net_threadpool(
-          m_Name.c_str(), &SetupIsolatedNetwork, this);
+          m_Name.c_str(), &SetupIsolatedNetwork, &RunIsolatedMainLoop, this);
       m_IsolatedLogic = llarp_init_single_process_logic(m_IsolatedWorker);
       return true;
+    }
+
+    llarp_ev_loop*
+    Endpoint::EndpointNetLoop()
+    {
+      if(m_IsolatedNetLoop)
+        return m_IsolatedNetLoop;
+      else
+        return m_Router->netloop;
     }
 
     bool
@@ -559,8 +569,17 @@ namespace llarp
     bool
     Endpoint::DoNetworkIsolation()
     {
-      /// TODO: implement me
-      return false;
+      llarp_ev_loop_alloc(&m_IsolatedNetLoop);
+      return SetupNetworking();
+    }
+
+    void
+    Endpoint::RunIsolatedMainLoop(void* user)
+    {
+      Endpoint* self = static_cast< Endpoint* >(user);
+      llarp_ev_loop_run_single_process(self->m_IsolatedNetLoop,
+                                       self->m_IsolatedWorker,
+                                       self->m_IsolatedLogic);
     }
 
     void

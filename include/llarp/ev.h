@@ -89,6 +89,9 @@ struct llarp_tun_io
   void *user;
   void *impl;
   struct llarp_ev_loop *parent;
+  /// called when we are able to write right before we write
+  /// this happens after reading packets
+  void (*before_write)(struct llarp_tun_io *);
   /// called every event loop tick after reads
   void (*tick)(struct llarp_tun_io *);
   void (*recvpkt)(struct llarp_tun_io *, const void *, ssize_t);

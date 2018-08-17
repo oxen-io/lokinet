@@ -40,6 +40,10 @@ namespace llarp
       llarp_logic*
       EndpointLogic();
 
+      /// endpoint's net loop for sending data to user
+      llarp_ev_loop*
+      EndpointNetLoop();
+
       llarp_crypto*
       Crypto();
 
@@ -240,6 +244,9 @@ namespace llarp
       bool
       NetworkIsIsolated() const;
 
+      static void
+      RunIsolatedMainLoop(void*);
+
      private:
       bool
       OnOutboundLookup(const IntroSet* i); /*  */
@@ -268,6 +275,7 @@ namespace llarp
       llarp_router* m_Router;
       llarp_threadpool* m_IsolatedWorker = nullptr;
       llarp_logic* m_IsolatedLogic       = nullptr;
+      llarp_ev_loop* m_IsolatedNetLoop   = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;

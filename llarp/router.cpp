@@ -338,7 +338,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   router->validRouters[pk] = job->rc;
 
   // track valid router in dht
-  llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
+  __llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
 
   // this was an outbound establish job
   if(ctx->establish_job)
@@ -379,7 +379,8 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
     lookup->user                    = this;
     llarp_rc_clear(&lookup->result);
     memcpy(lookup->target, remote, PUBKEYSIZE);
-    lookup->hook = &HandleDHTLookupForTryEstablishTo;
+    lookup->hook      = &HandleDHTLookupForTryEstablishTo;
+    lookup->iterative = false;
     llarp_dht_lookup_router(this->dht, lookup);
   }
 }
@@ -408,8 +409,6 @@ llarp_router::Tick()
   // llarp::LogDebug("tick router");
   auto now = llarp_time_now_ms();
   paths.ExpirePaths();
-  // TODO: don't do this if we have enough paths already
-  // FIXME: build paths even if we have inbound links
   if(inboundLinks.size() == 0)
   {
     {
@@ -502,7 +501,7 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
   if(itr == validRouters.end())
     return;
 
-  llarp_dht_remove_peer(dht, remote);
+  __llarp_dht_remove_peer(dht, remote);
   llarp_rc_free(&itr->second);
   validRouters.erase(itr);
 }

@@ -76,14 +76,26 @@ namespace llarp
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
-      // TODO: implement me
       return -1;
+    }
+
+    void
+    flush_write()
+    {
+      if(t->before_write)
+      {
+        t->before_write(t);
+      }
+      ev_io::flush_write();
     }
 
     int
     read(void* buf, size_t sz)
     {
-      return tuntap_read(tunif, buf, sz);
+      ssize_t ret = tuntap_read(tunif, buf, sz);
+      if(ret > 0 && t->recvpkt)
+        t->recvpkt(t, buf, ret);
+      return ret;
     }
 
     bool
@@ -96,7 +108,7 @@ namespace llarp
       if(tuntap_set_ip(tunif, t->ifaddr, t->netmask) == -1)
         return false;
       fd = tunif->tun_fd;
-      return false;
+      return fd != -1;
     }
 
     ~tun()

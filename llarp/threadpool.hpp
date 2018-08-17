@@ -61,7 +61,7 @@ namespace llarp
       }
 
       void
-      Spawn(int workers, const char* name);
+      Spawn(size_t workers, const char* name);
 
       void
       Join();
@@ -78,12 +78,17 @@ namespace llarp
       int m_flags;
       int m_IsolatedWorkers      = 0;
       const char* m_IsolatedName = nullptr;
-      char m_childstack[(1024 * 1024 * 8)];
+
+      virtual void
+      MainLoop()
+      {
+      }
     };
 
     struct NetIsolatedPool : public IsolatedPool
     {
-      NetIsolatedPool(std::function< bool(void*) > setupNet, void* user);
+      NetIsolatedPool(std::function< bool(void*) > setupNet,
+                      std::function< void(void*) > runMain, void* user);
 
       bool
       Isolated()
@@ -91,7 +96,14 @@ namespace llarp
         return m_NetSetup(m_user);
       }
 
+      void
+      MainLoop()
+      {
+        m_RunMain(m_user);
+      }
+
       std::function< bool(void*) > m_NetSetup;
+      std::function< void(void*) > m_RunMain;
       void* m_user;
     };
 

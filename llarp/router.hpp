@@ -97,8 +97,6 @@ struct llarp_router
 
   llarp::service::Context hiddenServiceContext;
 
-  llarp::handlers::TunEndpoint *tunEndpoint = nullptr;
-
   llarp_link *outboundLink = nullptr;
   std::list< llarp_link * > inboundLinks;
 

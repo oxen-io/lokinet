@@ -22,35 +22,23 @@ frame_state::Router()
 bool
 frame_state::process_inbound_queue()
 {
-  std::priority_queue< InboundMessage *, std::vector< InboundMessage * >,
-                       InboundMessage::OrderCompare >
-      q;
-  recvqueue.Process(q);
-
   uint64_t last = 0;
-  while(q.size())
-  {
-    // TODO: is this right?
-    auto &front = q.top();
-
-    if(last != front->msgid)
+  recvqueue.Process([&](const std::unique_ptr< InboundMessage > &msg) {
+    if(last != msg->msgid)
     {
-      auto buffer = front->Buffer();
+      auto buffer = msg->Buffer();
       if(!Router()->HandleRecvLinkMessage(parent, buffer))
       {
-        llarp::LogWarn("failed to process inbound message ", front->msgid);
+        llarp::LogWarn("failed to process inbound message ", msg->msgid);
         llarp::DumpBuffer< llarp_buffer_t, 128 >(buffer);
       }
-      last = front->msgid;
+      last = msg->msgid;
     }
     else
     {
       llarp::LogWarn("duplicate inbound message ", last);
     }
-    delete front;
-
-    q.pop();
-  }
+  });
   // TODO: this isn't right
   return true;
 }
@@ -193,8 +181,8 @@ void
 frame_state::push_ackfor(uint64_t id, uint32_t bitmask)
 {
   llarp::LogDebug("ACK for msgid=", id, " mask=", bitmask);
-  auto pkt      = new sendbuf_t(12 + 6);
-  auto body_ptr = init_sendbuf(pkt, eACKS, 12, txflags);
+  auto pkt      = std::unique_ptr< sendbuf_t >(new sendbuf_t(12 + 6));
+  auto body_ptr = init_sendbuf(pkt.get(), eACKS, 12, txflags);
   htobe64buf(body_ptr, id);
   htobe32buf(body_ptr + 8, bitmask);
   sendqueue.Put(pkt);
@@ -244,7 +232,9 @@ frame_state::inbound_frame_complete(uint64_t id)
     }
     else
     {
-      recvqueue.Put(new InboundMessage(id, msg));
+      std::unique_ptr< InboundMessage > m =
+          std::unique_ptr< InboundMessage >(new InboundMessage(id, msg));
+      recvqueue.Put(m);
       success = true;
     }
   }

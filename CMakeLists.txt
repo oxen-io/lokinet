@@ -313,6 +313,7 @@ set(LIB_SRC
   llarp/encrypted_frame.cpp
   llarp/exit_info.cpp
   llarp/exit_route.cpp
+  llarp/ip.cpp
   llarp/link_intro.cpp
   llarp/link_message.cpp
   llarp/net.cpp

@@ -53,7 +53,7 @@ struct frame_state
   // typedef std::queue< sendbuf_t * > sendqueue_t;
 
   typedef llarp::util::CoDelQueue<
-      InboundMessage *, InboundMessage::GetTime, InboundMessage::PutTime,
+      InboundMessage, InboundMessage::GetTime, InboundMessage::PutTime,
       InboundMessage::OrderCompare, llarp::util::DummyMutex,
       llarp::util::DummyLock >
       recvqueue_t;

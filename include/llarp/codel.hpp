@@ -67,20 +67,18 @@ namespace llarp
       }
 
       void
-      Put(T i)
+      Put(std::unique_ptr< T >& ptr)
       {
         Lock_t lock(m_QueueMutex);
-        // llarp::LogInfo("CoDelQueue::Put - adding item, queue now has ",
-        // m_Queue.size(), " items at ", getTime(*item));
-        PutTime()(i);
-        m_Queue.push(i);
+        PutTime()(ptr.get());
         if(firstPut == 0)
-          firstPut = GetTime()(i);
+          firstPut = GetTime()(ptr.get());
+        m_Queue.push(std::move(ptr));
       }
 
-      template < typename Queue_t >
+      template < typename Func >
       void
-      Process(Queue_t& result)
+      Process(Func visitor)
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
         // auto start          = llarp_time_now_ms();
@@ -90,8 +88,8 @@ namespace llarp
         while(m_Queue.size())
         {
           // llarp::LogInfo("CoDelQueue::Process - queue has ", m_Queue.size());
-          const auto& item = m_Queue.top();
-          auto dlt         = start - GetTime()(item);
+          auto& item = m_Queue.top();
+          auto dlt   = start - GetTime()(item.get());
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
           if(m_Queue.size() == 1)
@@ -100,9 +98,7 @@ namespace llarp
             // lowest, " dropMs: ", dropMs);
             if(lowest > dropMs)
             {
-              // drop
               nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
-              delete item;
               m_Queue.pop();
               break;
             }
@@ -113,7 +109,7 @@ namespace llarp
             }
           }
           // llarp::LogInfo("CoDelQueue::Process - passing");
-          result.push(item);
+          visitor(item);
           m_Queue.pop();
         }
         firstPut = 0;
@@ -123,7 +119,9 @@ namespace llarp
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       Mutex_t m_QueueMutex;
-      std::priority_queue< T, std::vector< T >, Compare > m_Queue;
+      std::priority_queue< std::unique_ptr< T >,
+                           std::vector< std::unique_ptr< T > >, Compare >
+          m_Queue;
       std::string m_name;
     };
   }  // namespace util

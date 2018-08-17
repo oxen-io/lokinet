@@ -7,15 +7,16 @@ namespace llarp
   {
     TunEndpoint::TunEndpoint(const std::string &nickname, llarp_router *r)
         : service::Endpoint(nickname, r)
+        , m_UserToNetworkPktQueue(nickname + "_sendq")
+        , m_NetworkToUserPktQueue(nickname + "_recvq")
     {
       tunif.user    = this;
-      tunif.netmask = TunEndpoint::DefaultNetmask;
-      strncpy(tunif.ifaddr, TunEndpoint::DefaultSrcAddr,
-              sizeof(tunif.ifaddr) - 1);
-      strncpy(tunif.ifname, TunEndpoint::DefaultIfname,
-              sizeof(tunif.ifname) - 1);
-      tunif.tick    = &tunifTick;
-      tunif.recvpkt = &tunifRecvPkt;
+      tunif.netmask = DefaultTunNetmask;
+      strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
+      strncpy(tunif.ifname, DefaultTunIfname, sizeof(tunif.ifname) - 1);
+      tunif.tick         = nullptr;
+      tunif.before_write = &tunifBeforeWrite;
+      tunif.recvpkt      = &tunifRecvPkt;
     }
 
     bool
@@ -76,13 +77,13 @@ namespace llarp
     bool
     TunEndpoint::SetupTun()
     {
-      auto evloop = Router()->netloop;
-      return llarp_ev_add_tun(evloop, &tunif);
+      return llarp_ev_add_tun(EndpointNetLoop(), &tunif);
     }
 
     bool
     TunEndpoint::SetupNetworking()
     {
+      llarp::LogInfo("Set Up networking for ", Name());
       bool result = SetupTun();
       m_TunSetupResult.set_value(result);
       return result;
@@ -102,6 +103,34 @@ namespace llarp
       auto now          = llarp_time_now_ms();
       TunEndpoint *self = static_cast< TunEndpoint * >(u);
       self->TickTun(now);
+    }
+
+    void
+    TunEndpoint::TickTun(llarp_time_t now)
+    {
+      // called in the isolated thread
+    }
+
+    void
+    TunEndpoint::tunifBeforeWrite(llarp_tun_io *tun)
+    {
+      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      self->m_NetworkToUserPktQueue.Process(
+          [tun](const std::unique_ptr< net::IPv4Packet > &pkt) {
+            if(!llarp_ev_tun_async_write(tun, pkt->buf, pkt->sz))
+              llarp::LogWarn("packet dropped");
+          });
+    }
+
+    void
+    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, const void *buf, ssize_t sz)
+    {
+      // called for every packet read from user in isolated network thread
+      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+
+      std::unique_ptr< net::IPv4Packet > pkt = net::ParseIPv4Packet(buf, sz);
+      if(pkt)
+        self->m_UserToNetworkPktQueue.Put(pkt);
     }
 
     TunEndpoint::~TunEndpoint()

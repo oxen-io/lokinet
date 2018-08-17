@@ -32,6 +32,8 @@ namespace llarp
     void
     PathSet::ExpirePaths(llarp_time_t now)
     {
+      if(m_Paths.size() == 0)
+        return;
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {

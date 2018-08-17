@@ -239,7 +239,8 @@ namespace llarp
       }
       for(auto& builder : m_PathBuilders)
       {
-        builder->ExpirePaths(now);
+        if(builder)
+          builder->ExpirePaths(now);
       }
     }
 

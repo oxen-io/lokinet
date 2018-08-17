@@ -400,15 +400,9 @@ llarp_link_session::get_parent()
 void
 llarp_link_session::TickLogic(llarp_time_t now)
 {
-  std::queue< iwp_async_frame * > q;
-  decryptedFrames.Process(q);
-  while(q.size())
-  {
-    auto &front = q.front();
-    handle_frame_decrypt(front);
-    delete front;
-    q.pop();
-  }
+  decryptedFrames.Process([&](const std::unique_ptr< iwp_async_frame > &msg) {
+    handle_frame_decrypt(msg.get());
+  });
   frame.process_inbound_queue();
   frame.retransmit(now);
   pump();
@@ -452,19 +446,10 @@ llarp_link_session::keepalive()
 void
 llarp_link_session::EncryptOutboundFrames()
 {
-  std::queue< iwp_async_frame * > outq;
-  outboundFrames.Process(outq);
-  while(outq.size())
-  {
-    auto &front = outq.front();
-
-    // if(iwp_encrypt_frame(&front))
-    // q.push(front);
-    if(iwp_encrypt_frame(front))
-      handle_frame_encrypt(front);
-    delete front;
-    outq.pop();
-  }
+  outboundFrames.Process([&](const std::unique_ptr< iwp_async_frame > &frame) {
+    if(iwp_encrypt_frame(frame.get()))
+      handle_frame_encrypt(frame.get());
+  });
 }
 
 static void
@@ -610,14 +595,13 @@ llarp_link_session::decrypt_frame(const void *buf, size_t sz)
     // inboundFrames.Put(frame);
     auto f = alloc_frame(buf, sz);
 
-    if(iwp_decrypt_frame(f))
+    if(iwp_decrypt_frame(f.get()))
     {
       decryptedFrames.Put(f);
     }
     else
     {
       llarp::LogWarn("decrypt frame fail");
-      delete f;
     }
     // f->hook = &handle_frame_decrypt;
     // iwp_call_async_frame_decrypt(iwp, f);
@@ -757,8 +741,7 @@ llarp_link_session::recv(const void *buf, size_t sz)
   }
 }
 
-// TODO: fix orphan
-iwp_async_frame *
+std::unique_ptr< iwp_async_frame >
 llarp_link_session::alloc_frame(const void *buf, size_t sz)
 {
   // TODO don't hard code 1500
@@ -779,14 +762,14 @@ llarp_link_session::alloc_frame(const void *buf, size_t sz)
   // frame->created = now;
   // llarp::LogInfo("alloc_frame putting into q");
   // q.Put(frame);
-  return frame;
+  return std::unique_ptr< iwp_async_frame >(frame);
 }
 
 void
 llarp_link_session::encrypt_frame_async_send(const void *buf, size_t sz)
 {
   // 64 bytes frame overhead for nonce and hmac
-  iwp_async_frame *frame = alloc_frame(nullptr, sz + 64);
+  auto frame = alloc_frame(nullptr, sz + 64);
   memcpy(frame->buf + 64, buf, sz);
   // maybe add upto 128 random bytes to the packet
   auto padding = llarp_randint() % MAX_PAD;
@@ -801,18 +784,11 @@ void
 llarp_link_session::pump()
 {
   bool flush = false;
-  llarp_buffer_t buf;
-  std::queue< sendbuf_t * > q;
-  frame.sendqueue.Process(q);
-  while(q.size())
-  {
-    auto &front = q.front();
-    buf         = front->Buffer();
+  frame.sendqueue.Process([&](const std::unique_ptr< sendbuf_t > &msg) {
+    llarp_buffer_t buf = msg->Buffer();
     encrypt_frame_async_send(buf.base, buf.sz);
-    delete front;
-    q.pop();
     flush = true;
-  }
+  });
   if(flush)
     PumpCryptoOutbound();
 }

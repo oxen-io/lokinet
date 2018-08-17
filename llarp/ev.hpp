@@ -39,28 +39,21 @@ namespace llarp
     bool
     queue_write(const void* data, size_t sz)
     {
-      m_writeq.Put(new WriteBuffer(data, sz));
+      std::unique_ptr< WriteBuffer > buf =
+          std::unique_ptr< WriteBuffer >(new WriteBuffer(data, sz));
+      m_writeq.Put(buf);
       return m_writeq.Size() <= MAX_WRITE_QUEUE_SIZE;
     }
 
     /// called in event loop when fd is ready for writing
     /// drops all buffers that cannot be written in this pump
     /// this assumes fd is set to non blocking
-    void
+    virtual void
     flush_write()
     {
-      std::queue< WriteBuffer* > send;
-      m_writeq.Process(send);
-      while(send.size())
-      {
-        auto& buffer = send.front();
-        if(write(fd, buffer->payload.data(), buffer->payload.size()) == -1)
-        {
-          // failed to write
-          // TODO: should we requeue this buffer?
-        }
-        delete buffer;
-      }
+      m_writeq.Process([this](const std::unique_ptr< WriteBuffer >& buffer) {
+        write(fd, buffer->buf, buffer->bufsz);
+      });
       /// reset errno
       errno = 0;
     }
@@ -68,11 +61,18 @@ namespace llarp
     struct WriteBuffer
     {
       llarp_time_t timestamp = 0;
-      std::vector< byte_t > payload;
+      size_t bufsz;
+      byte_t buf[1500];
 
-      WriteBuffer(const void* ptr, size_t sz) : payload(sz)
+      WriteBuffer(const void* ptr, size_t sz)
       {
-        memcpy(payload.data(), ptr, sz);
+        if(sz <= sizeof(buf))
+        {
+          bufsz = sz;
+          memcpy(buf, ptr, bufsz);
+        }
+        else
+          bufsz = 0;
       }
 
       struct GetTime
@@ -87,7 +87,7 @@ namespace llarp
       struct PutTime
       {
         void
-        operator()(WriteBuffer*& w) const
+        operator()(WriteBuffer* w) const
         {
           w->timestamp = llarp_time_now_ms();
         }
@@ -96,14 +96,15 @@ namespace llarp
       struct Compare
       {
         bool
-        operator()(const WriteBuffer* left, const WriteBuffer* right) const
+        operator()(const std::unique_ptr< WriteBuffer >& left,
+                   const std::unique_ptr< WriteBuffer >& right) const
         {
           return left->timestamp < right->timestamp;
         }
       };
     };
 
-    llarp::util::CoDelQueue< WriteBuffer*, WriteBuffer::GetTime,
+    llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
                              WriteBuffer::PutTime, WriteBuffer::Compare,
                              llarp::util::NullMutex, llarp::util::NullLock >
         m_writeq;
@@ -152,7 +153,7 @@ struct llarp_ev_loop
   create_tun(llarp_tun_io* tun) = 0;
 
   virtual bool
-  add_ev(llarp::ev_io* ev, bool write = false) = 0;
+  add_ev(llarp::ev_io* ev, bool write = true) = 0;
 
   virtual bool
   running() const = 0;

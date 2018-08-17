@@ -1,3 +1,4 @@
+#include <llarp/handlers/tun.hpp>
 #include <llarp/service/context.hpp>
 
 namespace llarp
@@ -39,7 +40,9 @@ namespace llarp
                         conf.first);
         return false;
       }
-      auto service = new llarp::service::Endpoint(conf.first, m_Router);
+
+      std::unique_ptr< llarp::service::Endpoint > service(
+          new llarp::handlers::TunEndpoint(conf.first, m_Router));
       for(const auto &option : conf.second)
       {
         auto &k = option.first;
@@ -54,7 +57,7 @@ namespace llarp
       if(service->Start())
       {
         llarp::LogInfo("added hidden service endpoint ", service->Name());
-        m_Endpoints.insert(std::make_pair(conf.first, service));
+        m_Endpoints.insert(std::make_pair(conf.first, std::move(service)));
         return true;
       }
       llarp::LogError("failed to start hidden service endpoint ", conf.first);
