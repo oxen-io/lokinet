@@ -13,6 +13,10 @@
 #include "llarp/net.hpp"
 #include "router.hpp"
 
+#include <llarp/messages/dht.hpp>
+//#include <llarp/dht/messages/findintro.hpp>
+//#include <llarp/routing_endpoint.hpp>
+
 struct llarp_main *ctx = 0;
 
 void
@@ -110,7 +114,10 @@ main(int argc, char *argv[])
         "--list      \n"
         "--import    with a path to a router contact file\n"
         "--export    a hex formatted public key\n"
-        "--locate    a hex formatted public key"
+        "--locate    a hex formatted public key\n"
+        "--find      a base32 formatted service address\n"
+        "--b32       a hex formatted public key\n"
+        "--hex       a base32 formatted public key\n"
         "--localInfo \n"
         "--read      with a path to a router contact file\n"
         "\n");
@@ -122,8 +129,11 @@ main(int argc, char *argv[])
   bool importMode = false;
   bool exportMode = false;
   bool locateMode = false;
+  bool findMode   = false;
   bool localMode  = false;
   bool readMode   = false;
+  bool toHexMode  = false;
+  bool toB32Mode  = false;
   int c;
   char *conffname;
   char defaultConfName[] = "daemon.ini";
@@ -143,11 +153,14 @@ main(int argc, char *argv[])
         {"import", required_argument, 0, 'i'},
         {"export", required_argument, 0, 'e'},
         {"locate", required_argument, 0, 'q'},
+        {"find", required_argument, 0, 'f'},
         {"localInfo", no_argument, 0, 'n'},
         {"read", required_argument, 0, 'r'},
+        {"b32", required_argument, 0, 'b'},
+        {"hex", required_argument, 0, 'h'},
         {0, 0, 0, 0}};
     int option_index = 0;
-    c = getopt_long(argc, argv, "c:o:g:lu:i:e:q:nr:", long_options,
+    c = getopt_long(argc, argv, "c:o:g:lu:i:e:q:f:nr:b:h:", long_options,
                     &option_index);
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
     if(c == -1)
@@ -207,6 +220,11 @@ main(int argc, char *argv[])
         haveRequiredOptions = true;
         locateMode          = true;
         break;
+      case 'f':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        findMode            = true;
+        break;
       case 'g':
         // printf ("option -g with value `%s'\n", optarg);
         rcfname             = optarg;
@@ -228,6 +246,16 @@ main(int argc, char *argv[])
         haveRequiredOptions = true;
         readMode            = true;
         break;
+      case 'b':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        toB32Mode           = true;
+        break;
+      case 'h':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        toHexMode           = true;
+        break;
       default:
         abort();
     }
@@ -240,7 +268,8 @@ main(int argc, char *argv[])
   }
   printf("parsed options\n");
   if(!genMode && !updMode && !listMode && !importMode && !exportMode
-     && !locateMode && !localMode && !readMode)
+     && !locateMode && !localMode && !readMode && !findMode && !toB32Mode
+     && !toHexMode)
   {
     llarp::LogError(
         "I don't know what to do, no generate or update parameter\n");
@@ -394,6 +423,34 @@ main(int argc, char *argv[])
     // run system and wait
     llarp_main_run(ctx);
   }
+  if(findMode)
+  {
+    llarp::LogInfo("Going online");
+    llarp_main_setup(ctx);
+
+    llarp::LogInfo("Please find ", rcfname);
+    std::string str(rcfname);
+
+    llarp::service::Tag tag(rcfname);
+    llarp::LogInfo("Tag ", tag);
+
+    llarp::service::Address addr;
+    str = str.append(".loki");
+    llarp::LogInfo("Prestring ", str);
+    bool res = addr.FromString(str.c_str());
+    llarp::LogInfo(res ? "Success" : "not a base32 string");
+
+    // Base32Decode(rcfname, addr);
+    llarp::LogInfo("Addr ", addr);
+    llarp::routing::DHTMessage *msg = new llarp::routing::DHTMessage();
+    // uint64_t txid, const llarp::service::Address& addr
+    msg->M.push_back(new llarp::dht::FindIntroMessage(tag, 1));
+
+    // I guess we may need a router to get any replies
+    llarp::LogInfo("Processing");
+    // run system and wait
+    llarp_main_run(ctx);
+  }
   if(localMode)
   {
     llarp_rc *rc = llarp_main_getLocalRC(ctx);
@@ -405,6 +462,29 @@ main(int argc, char *argv[])
     llarp_rc_clear(&result);
     llarp_rc_read(rcfname, &result);
     displayRC(&result);
+  }
+  if(toB32Mode)
+  {
+    llarp::LogInfo("Converting hex string ", rcfname);
+    std::string str(rcfname);
+
+    llarp::PubKey binaryPK;
+    llarp::HexDecode(rcfname, binaryPK.data());
+    char tmp[(1 + 32) * 2] = {0};
+    std::string b32        = llarp::Base32Encode(binaryPK, tmp);
+    llarp::LogInfo("to base32 ", b32);
+  }
+  if(toHexMode)
+  {
+    llarp::service::Address addr;
+    llarp::Base32Decode(rcfname, addr);
+    llarp::LogInfo("Converting base32 string ", addr);
+
+    char ftmp[68] = {0};
+    const char *hexname =
+        llarp::HexEncode< llarp::service::Address, decltype(ftmp) >(addr, ftmp);
+
+    llarp::LogInfo("to hex ", hexname);
   }
   // it's a unique_ptr, should clean up itself
   // llarp_main_free(ctx);
