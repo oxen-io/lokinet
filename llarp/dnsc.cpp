@@ -230,26 +230,57 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   }
 
   // FIXME: only handling one atm
+  std::vector< dns_msg_answer * > answers;
   dns_msg_answer *answer = nullptr;
   for(uint i = 0; i < hdr->anCount; i++)
   {
     answer = decode_answer((const char *)castBuf);
-    llarp::LogDebug("Read an answer");
-    castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
+    answers.push_back(answer);
+    llarp::LogInfo("Read an answer");
+    // llarp::LogInfo("Read an answer. Label Len: ", answer->name.length(), "
+    // rdLen: ", answer->rdLen);
+    // name + Type (2) + Class (2) + TTL (4) + rdLen (2) + rdData + skip next
+    // answer label (1) first 2 was answer->name.length() if lbl is ref and type
+    // 1: it should be 16 bytes long l0 + t2 + c2 + t4 + l2 + rd4 (14)   + l2
+    // (2)
+    castBuf += 0 + 2 + 2 + 4 + 2 + answer->rdLen;
+    castBuf += 2;  // skip answer label
+    uint8_t first = *castBuf;
+    if(first != 0)
+    {
+      llarp::LogDebug("next byte isnt 12, skipping ahead one byte. ",
+                      std::to_string(first));
+      castBuf++;
+    }
+    // prevent reading past the end of the packet
     auto diff = castBuf - (unsigned char *)buf;
     if(diff > sz)
     {
+      llarp::LogWarn("Would read past end of dns packet.");
       break;
     }
   }
+
   // handle authority records (usually no answers with these, so we'll just
   // stomp) usually NS records tho
   for(uint i = 0; i < hdr->nsCount; i++)
   {
     answer = decode_answer((const char *)castBuf);
+    // answers.push_back(answer);
     llarp::LogDebug("Read an authority");
     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
   }
+
+  /*
+  size_t i = 0;
+  for(auto it = answers.begin(); it != answers.end(); ++it)
+  {
+    llarp::LogInfo("Answer #", i, " class: [", (*it)->aClass, "] type: [",
+  (*it)->type,
+                   "] rdlen[", (*it)->rdLen, "]");
+    i++;
+  }
+  */
 
   // dns_msg_answer *answer2 = decode_answer((const char*)castBuf);
   // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
@@ -282,6 +313,11 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::LogWarn("nameserver ", upstreamAddr, " didnt return any answers:");
     request->resolved(request);
     return;
+  }
+  if(answer->type == 5)
+  {
+    llarp::LogInfo("Last answer is a cname, advancing to first");
+    answer = answers.front();
   }
 
   llarp::LogDebug("ans class ", answer->aClass);
