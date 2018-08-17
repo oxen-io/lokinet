@@ -25,7 +25,6 @@ supports_avx2()
 bool
 supports_avx2()
 {
-  printf("AVX2 disabled on compile time\n");
   return false;
 }
 

@@ -11,10 +11,10 @@
 #include <unordered_map>
 
 #include <llarp/dht.hpp>
+#include <llarp/handlers/tun.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/service.hpp>
-#include <llarp/service/tun.hpp>
 #include "llarp/iwp/establish_job.hpp"
 
 #include "crypto.hpp"
@@ -97,7 +97,7 @@ struct llarp_router
 
   llarp::service::Context hiddenServiceContext;
 
-  llarp::service::TunEndpoint *tunEndpoint = nullptr;
+  llarp::handlers::TunEndpoint *tunEndpoint = nullptr;
 
   llarp_link *outboundLink = nullptr;
   std::list< llarp_link * > inboundLinks;

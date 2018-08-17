@@ -152,7 +152,7 @@ struct llarp_ev_loop
   create_tun(llarp_tun_io* tun) = 0;
 
   virtual bool
-  add_ev(llarp::ev_io* ev) = 0;
+  add_ev(llarp::ev_io* ev, bool write = false) = 0;
 
   virtual bool
   running() const = 0;
