@@ -52,7 +52,12 @@ namespace llarp
     flush_write()
     {
       m_writeq.Process([this](const std::unique_ptr< WriteBuffer >& buffer) {
+      // todo: wtf???
+#ifndef _WIN32
         write(fd, buffer->buf, buffer->bufsz);
+#else
+        // writefile
+#endif
       });
         // todo: wtf???
 #ifndef _WIN32

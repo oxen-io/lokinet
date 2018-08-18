@@ -47,8 +47,10 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
+if (NOT MSVC)
 add_cflags("-march=native")
 add_cxxflags("-march=native")
+endif(NOT MSVC)
 
 if(STATIC_LINK)
   add_cflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")

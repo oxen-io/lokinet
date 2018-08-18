@@ -292,7 +292,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   }
 
   bool
-  add_ev(llarp::ev_io* ev)
+  add_ev(llarp::ev_io* ev, bool write)
   {
     ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
     if(!::CreateIoCompletionPort(reinterpret_cast< HANDLE >(ev->fd), iocpfd,

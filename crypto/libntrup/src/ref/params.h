@@ -6,6 +6,9 @@
 
 #define qshift 2295
 #define p 761
+#ifdef _MSC_VER
+#define LOOPS 2*p+1
+#endif
 #define w 286
 
 #define rq_encode_len 1218
