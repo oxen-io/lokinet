@@ -41,7 +41,7 @@ namespace llarp
             pthread_setname_np(name);
 #elif(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
             pthread_set_name_np(pthread_self(), name);
-#elif !defined(_MSC_VER) || !defined(_WIN32) || defined(__linux__)
+#elif (__linux__) || (__MINGW32__)
             pthread_setname_np(pthread_self(), name);
 #elif defined(_MSC_VER)
             SetThreadName(GetCurrentThreadId(), name);

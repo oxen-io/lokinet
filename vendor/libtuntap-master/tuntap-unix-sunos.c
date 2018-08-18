@@ -34,6 +34,8 @@
 
 #include "tuntap.h"
 
+/* TODO(despair): port all this shit */
+
 static int
 tuntap_sys_create_dev(struct device *dev, int tun) {
 	return -1;
@@ -46,7 +48,7 @@ tuntap_sys_start(struct device *dev, int mode, int tun) {
 
 void
 tuntap_sys_destroy(struct device *dev) {
-	return -1;
+	return /*-1*/;
 }
 
 int
