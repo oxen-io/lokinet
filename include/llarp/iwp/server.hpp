@@ -5,7 +5,7 @@
 #include "router.hpp"
 #include "session.hpp"
 
-#ifdef __sun
+#ifndef __linux__
 #ifdef saddr
 #undef saddr
 #endif

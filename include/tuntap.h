@@ -37,8 +37,8 @@
 #else
 #include <net/if.h>
 #endif
-#include <netinet/if_ether.h>
 #include <netinet/in.h>
+#include <netinet/if_ether.h>
 #endif
 
 #include <stdint.h>

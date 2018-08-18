@@ -5,7 +5,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <memory>
-#ifdef __sun
+#ifndef __linux__
 // slightly different type names on sunos
 #define iphdr ip
 #define saddr ip_src.s_addr
