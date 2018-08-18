@@ -267,9 +267,12 @@ llarp_router::Close()
   inboundLinks.clear();
 
   llarp::LogInfo("Closing LokiNetwork client");
-  outboundLink->stop_link();
-  delete outboundLink;
-  outboundLink = nullptr;
+  if(outboundLink)
+  {
+    outboundLink->stop_link();
+    delete outboundLink;
+    outboundLink = nullptr;
+  }
 }
 
 void

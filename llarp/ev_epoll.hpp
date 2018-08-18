@@ -193,7 +193,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
         ++idx;
       }
     }
-    tick_listeners();
+    if(result != -1)
+      tick_listeners();
     return result;
   }
 
@@ -228,7 +229,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
           ++idx;
         }
       }
-      tick_listeners();
+      if(result != -1)
+        tick_listeners();
     } while(epollfd != -1);
     return result;
   }

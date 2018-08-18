@@ -70,6 +70,15 @@ namespace llarp
     LogAppend(ss, std::forward< TArgs >(args)...);
   }
 
+  static inline std::string
+  thread_id_string()
+  {
+    auto tid = std::this_thread::get_id();
+    std::hash< std::thread::id > h;
+    uint16_t id = h(tid) % 1000;
+    return std::to_string(id);
+  }
+
   /** internal */
   template < typename... TArgs >
   void
@@ -122,8 +131,8 @@ namespace llarp
     }
 #endif
     std::string tag = fname;
-    ss << _glog.nodeName << " " << llarp_time_now_ms() << " " << tag << ":"
-       << lineno;
+    ss << _glog.nodeName << " (" << thread_id_string() << ") "
+       << llarp_time_now_ms() << " " << tag << ":" << lineno;
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
 #ifndef ANDROID

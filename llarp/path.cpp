@@ -295,6 +295,28 @@ namespace llarp
       m_PathBuilders.push_back(ctx);
     }
 
+    void
+    PathContext::RemovePathSet(PathSet* set)
+    {
+      util::Lock lock(m_OurPaths.first);
+      auto& map = m_OurPaths.second;
+      auto itr  = map.begin();
+      while(itr != map.end())
+      {
+        if(itr->second == set)
+          itr = map.erase(itr);
+        else
+          ++itr;
+      }
+    }
+
+    void
+    PathContext::RemovePathBuilder(llarp_pathbuilder_context* ctx)
+    {
+      m_PathBuilders.remove(ctx);
+      RemovePathSet(ctx);
+    }
+
     PathHopConfig::PathHopConfig()
     {
       llarp_rc_clear(&router);

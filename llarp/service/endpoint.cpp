@@ -93,9 +93,9 @@ namespace llarp
     };
 
     bool
-    Endpoint::SetupIsolatedNetwork(void* user)
+    Endpoint::SetupIsolatedNetwork(void* user, bool failed)
     {
-      return static_cast< Endpoint* >(user)->DoNetworkIsolation();
+      return static_cast< Endpoint* >(user)->DoNetworkIsolation(failed);
     }
 
     bool
@@ -567,8 +567,10 @@ namespace llarp
     };
 
     bool
-    Endpoint::DoNetworkIsolation()
+    Endpoint::DoNetworkIsolation(bool failed)
     {
+      if(failed)
+        return IsolationFailed();
       llarp_ev_loop_alloc(&m_IsolatedNetLoop);
       return SetupNetworking();
     }

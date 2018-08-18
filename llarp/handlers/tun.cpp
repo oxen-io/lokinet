@@ -98,6 +98,12 @@ namespace llarp
     }
 
     void
+    TunEndpoint::HandleDataMessage(service::ProtocolMessage *msg)
+    {
+      // TODO: implement me
+    }
+
+    void
     TunEndpoint::handleTickTun(void *u)
     {
       auto now          = llarp_time_now_ms();

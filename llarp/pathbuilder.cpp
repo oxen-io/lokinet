@@ -194,6 +194,11 @@ llarp_pathbuilder_context::llarp_pathbuilder_context(
   p_router->crypto.encryption_keygen(enckey);
 }
 
+llarp_pathbuilder_context::~llarp_pathbuilder_context()
+{
+  router->paths.RemovePathBuilder(this);
+}
+
 bool
 llarp_pathbuilder_context::SelectHop(llarp_nodedb* db, llarp_rc* prev,
                                      llarp_rc* cur, size_t hop)

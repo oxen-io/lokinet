@@ -383,6 +383,12 @@ namespace llarp
       void
       AddOwnPath(PathSet* set, Path* p);
 
+      void
+      RemovePathBuilder(llarp_pathbuilder_context* ctx);
+
+      void
+      RemovePathSet(PathSet* set);
+
       typedef std::multimap< PathID_t, TransitHop* > TransitHopsMap_t;
 
       typedef std::pair< util::Mutex, TransitHopsMap_t > SyncTransitMap_t;

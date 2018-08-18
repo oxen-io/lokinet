@@ -119,7 +119,10 @@ namespace llarp
       self->m_IsolatedWorkers = workers;
       m_isolated              = new std::thread([self] {
         if(unshare(self->m_flags) == -1)
+        {
           llarp::LogError("unshared failed: ", strerror(errno));
+          self->Fail();
+        }
         else
         {
           llarp::LogInfo("spawning isolated environment");
@@ -149,9 +152,9 @@ namespace llarp
     }
 
 #ifdef __linux__
-    NetIsolatedPool::NetIsolatedPool(std::function< bool(void *) > setupNet,
-                                     std::function< void(void *) > runMain,
-                                     void *user)
+    NetIsolatedPool::NetIsolatedPool(
+        std::function< bool(void *, bool) > setupNet,
+        std::function< void(void *) > runMain, void *user)
         : IsolatedPool(CLONE_NEWNET)
     {
       m_NetSetup = setupNet;
@@ -159,9 +162,9 @@ namespace llarp
       m_user     = user;
     }
 #else
-    NetIsolatedPool::NetIsolatedPool(std::function< bool(void *) > setupNet,
-                                     std::function< void(void *) > runMain,
-                                     void *user)
+    NetIsolatedPool::NetIsolatedPool(
+        std::function< bool(void *, bool) > setupNet,
+        std::function< void(void *) > runMain, void *user)
         : IsolatedPool(0)
     {
       m_NetSetup = setupNet;

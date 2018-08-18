@@ -40,6 +40,18 @@ namespace llarp
       bool
       SetupNetworking();
 
+      /// overrides Endpoint
+      void
+      HandleDataMessage(service::ProtocolMessage* msg);
+
+      /// overrides Endpount
+      bool
+      IsolationFailed()
+      {
+        m_TunSetupResult.set_value(false);
+        return false;
+      }
+
       llarp_tun_io tunif;
 
       static void
