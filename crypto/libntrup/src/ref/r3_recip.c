@@ -2,6 +2,9 @@
 #include "mod3.h"
 #include "swap.h"
 #include "r3.h"
+#ifdef _MSC_VER
+#include <assert.h>
+#endif
 
 /* caller must ensure that x-y does not overflow */
 static int smaller_mask(int x,int y)
@@ -41,6 +44,8 @@ int r3_recip(small *r,const small *s)
   small f[p + 1]; 
   small g[p + 1]; 
 #ifdef _MSC_VER
+  /* TODO(despair): make this a compile-time assertion */
+  assert(LOOPS == loops);
   small u[LOOPS + 1];
   small v[LOOPS + 1];
 #else
