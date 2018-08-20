@@ -524,11 +524,12 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
   /* because loonix is SHIT and limits thread names to 16 bytes */
   wchar_t thr_name_w[16];
   p_SetThreadDescription _SetThreadDescription;
-  
-  /* current win10 flights now have a new named-thread API, let's try to use that first! */
+
+  /* current win10 flights now have a new named-thread API, let's try to use
+   * that first! */
   /* first, dlsym(2) the new call from system library */
-  _SetThreadDescription =
-      (p_SetThreadDescription)GetProcAddress(GetModuleHandle("kernel32"), "SetThreadDescription");
+  _SetThreadDescription = (p_SetThreadDescription)GetProcAddress(
+      GetModuleHandle("kernel32"), "SetThreadDescription");
   if(_SetThreadDescription)
   {
     hThread = OpenThread(THREAD_SET_LIMITED_INFORMATION, FALSE, dwThreadID);
@@ -536,7 +537,8 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
     if(hThread)
       _SetThreadDescription(hThread, thr_name_w);
     else
-      goto old; /* for whatever reason, we couldn't get a handle to the thread. Just use the old method. */
+      goto old; /* for whatever reason, we couldn't get a handle to the thread.
+                   Just use the old method. */
   }
   else
   {

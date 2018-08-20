@@ -56,7 +56,7 @@ namespace llarp
 #ifndef _WIN32
         write(fd, buffer->buf, buffer->bufsz);
 #else
-        // writefile
+      // writefile
 #endif
       });
       /// reset errno

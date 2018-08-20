@@ -21,7 +21,7 @@ namespace llarp
     WSAOVERLAPPED portfds[2] = {0};
     size_t iosz;
 
-	udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
+    udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
 
     ~udp_listener()
     {
