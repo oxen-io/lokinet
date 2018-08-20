@@ -25,6 +25,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifdef __sun
+#define BSD_COMP
+#define TUNSDEBUG _IOW('t', 90, int)
+#endif
+
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>

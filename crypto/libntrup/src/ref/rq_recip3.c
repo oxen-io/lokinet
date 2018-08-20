@@ -39,8 +39,13 @@ int rq_recip3(modq *r,const small *s)
   int loop;
   modq f[p + 1]; 
   modq g[p + 1]; 
+#ifdef _MSC_VER
+  modq u[LOOPS + 1];
+  modq v[LOOPS + 1];
+#else
   modq u[loops + 1];
   modq v[loops + 1];
+#endif
   modq c;
   int i;
   int d = p;

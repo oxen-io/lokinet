@@ -7,10 +7,12 @@
  *
  * -despair86 30/07/18
  */
+
+// these need to be in a specific order
 #include <assert.h>
-#include <iphlpapi.h>
 #include <llarp/net.h>
 #include <windows.h>
+#include <iphlpapi.h>
 #include "win32_intrnl.h"
 
 const char *
