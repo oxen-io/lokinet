@@ -2,8 +2,9 @@
 /*
  * All the user-mode scaffolding necessary to backport GetAdaptersAddresses(2))
  * to the NT 5.x series. See further comments for any limitations.
- *
- * -despair86 30/07/18
+ * NOTE: this is dead code, i haven't had time to debug it yet due to illness.
+ * For now, downlevel platforms use GetAdaptersInfo(2) which is inet4 only.
+ * -despair86 20/08/18
  */
 #include <assert.h>
 #include <stdio.h>
@@ -502,7 +503,10 @@ getInterfaceIndexTable(void)
  */
 #ifdef _MSC_VER
 #include <windows.h>
+
+typedef HRESULT(FAR PASCAL *p_SetThreadDescription)(void *, const wchar_t *);
 #define EXCEPTION_SET_THREAD_NAME ((DWORD)0x406D1388)
+
 typedef struct _THREADNAME_INFO
 {
   DWORD dwType;     /* must be 0x1000 */
@@ -516,20 +520,41 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
 {
   THREADNAME_INFO info;
   DWORD infosize;
-
-  info.dwType     = 0x1000;
-  info.szName     = szThreadName;
-  info.dwThreadID = dwThreadID;
-  info.dwFlags    = 0;
-
-  infosize = sizeof(info) / sizeof(DWORD);
-
-  __try
+  HANDLE hThread;
+  /* because loonix is SHIT and limits thread names to 16 bytes */
+  wchar_t thr_name_w[16];
+  p_SetThreadDescription _SetThreadDescription;
+  
+  /* current win10 flights now have a new named-thread API, let's try to use that first! */
+  /* first, dlsym(2) the new call from system library */
+  _SetThreadDescription =
+      (p_SetThreadDescription)GetProcAddress(GetModuleHandle("kernel32"), "SetThreadDescription");
+  if(_SetThreadDescription)
   {
-    RaiseException(EXCEPTION_SET_THREAD_NAME, 0, infosize, (DWORD *)&info);
+    hThread = OpenThread(THREAD_SET_LIMITED_INFORMATION, FALSE, dwThreadID);
+    MultiByteToWideChar(CP_ACP, 0, szThreadName, -1, thr_name_w, 16);
+    if(hThread)
+      _SetThreadDescription(hThread, thr_name_w);
+    else
+      goto old; /* for whatever reason, we couldn't get a handle to the thread. Just use the old method. */
   }
-  __except(EXCEPTION_EXECUTE_HANDLER)
+  else
   {
+  old:
+    info.dwType     = 0x1000;
+    info.szName     = szThreadName;
+    info.dwThreadID = dwThreadID;
+    info.dwFlags    = 0;
+
+    infosize = sizeof(info) / sizeof(DWORD);
+
+    __try
+    {
+      RaiseException(EXCEPTION_SET_THREAD_NAME, 0, infosize, (DWORD *)&info);
+    }
+    __except(EXCEPTION_EXECUTE_HANDLER)
+    {
+    }
   }
 }
 #endif
