@@ -85,8 +85,8 @@ namespace llarp
       if(t->before_write)
       {
         t->before_write(t);
+        ev_io::flush_write();
       }
-      ev_io::flush_write();
     }
 
     int
@@ -101,11 +101,15 @@ namespace llarp
     bool
     setup()
     {
-      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, TUNTAP_ID_ANY) == -1)
+      llarp::LogDebug("set up tunif");
+      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
         return false;
+      llarp::LogDebug("set ifname to ", t->ifname);
       if(tuntap_set_ifname(tunif, t->ifname) == -1)
         return false;
       if(tuntap_set_ip(tunif, t->ifaddr, t->netmask) == -1)
+        return false;
+      if(tuntap_up(tunif) == -1)
         return false;
       fd = tunif->tun_fd;
       return fd != -1;
@@ -185,10 +189,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
         if(events[idx].events & EPOLLIN)
         {
           ev->read(readbuf, sizeof(readbuf));
-        }
-        if(events[idx].events & EPOLLOUT)
-        {
-          ev->flush_write();
+          if(events[idx].events & EPOLLOUT)
+            ev->flush_write();
         }
         ++idx;
       }
@@ -221,10 +223,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
           if(events[idx].events & EPOLLIN)
           {
             ev->read(readbuf, sizeof(readbuf));
-          }
-          if(events[idx].events & EPOLLOUT)
-          {
-            ev->flush_write();
+            if(events[idx].events & EPOLLOUT)
+              ev->flush_write();
           }
           ++idx;
         }

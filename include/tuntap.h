@@ -37,8 +37,8 @@
 #else
 #include <net/if.h>
 #endif
-#include <netinet/in.h>
 #include <netinet/if_ether.h>
+#include <netinet/in.h>
 #endif
 
 #include <stdint.h>
@@ -154,8 +154,14 @@ extern "C"
   };
 
   /* User definable log callback */
-  typedef void (*t_tuntap_log)(int, const char *);
-  TUNTAP_EXPORT t_tuntap_log tuntap_log;
+  typedef void (*t_tuntap_log)(int, int, const char *, const char *);
+  TUNTAP_EXPORT t_tuntap_log __tuntap_log;
+
+#ifndef LOG_TAG
+#define LOG_TAG "tuntap"
+#endif
+
+#define tuntap_log(lvl, msg) __tuntap_log(lvl, __LINE__, LOG_TAG, msg)
 
   /* Portable "public" functions */
   TUNTAP_EXPORT struct device *
@@ -214,7 +220,7 @@ extern "C"
   TUNTAP_EXPORT void
   tuntap_log_set_cb(t_tuntap_log cb);
   void
-  tuntap_log_default(int, const char *);
+  tuntap_log_default(int, int, const char *, const char *);
   void
   tuntap_log_hexdump(void *, size_t);
   void

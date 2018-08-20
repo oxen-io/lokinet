@@ -74,14 +74,18 @@ namespace llarp
       PacketQueue_t m_NetworkToUserPktQueue;
       /// return true if we have a remote loki address for this ip address
       bool
-      HasRemoteForIP(const uint32_t& ipv4)
-      {
-        return m_IPs.find(ipv4) != m_IPs.end();
-      }
+      HasRemoteForIP(const uint32_t& ipv4) const;
+
+      uint32_t
+      ObtainIPForAddr(const service::Address& addr);
 
      private:
       std::promise< bool > m_TunSetupResult;
-      std::unordered_map< uint32_t, service::Address > m_IPs;
+      std::unordered_map< uint32_t, service::Address > m_IPToAddr;
+      std::unordered_map< service::Address, uint32_t, service::Address::Hash >
+          m_AddrToIP;
+      uint32_t m_OurIP;
+      uint32_t m_NextIP;
     };
   }  // namespace handlers
 }  // namespace llarp

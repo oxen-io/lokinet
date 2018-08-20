@@ -16,6 +16,19 @@ namespace llarp
     return buff;
   }
 
+  /** initialize llarp_buffer_t from raw memory */
+  template < typename T >
+  llarp_buffer_t
+  InitBuffer(T buf, size_t sz)
+  {
+    byte_t* ptr = (byte_t*)buf;
+    llarp_buffer_t ret;
+    ret.cur  = ptr;
+    ret.base = ptr;
+    ret.sz   = sz;
+    return ret;
+  }
+
   /** initialize llarp_buffer_t from container */
   template < typename T >
   llarp_buffer_t

@@ -28,37 +28,37 @@
 
 extern "C"
 {
-  t_tuntap_log tuntap_log = &tuntap_log_default;
+  t_tuntap_log __tuntap_log = &tuntap_log_default;
 
   void
   tuntap_log_set_cb(t_tuntap_log cb)
   {
     if(cb == NULL)
     {
-      tuntap_log = tuntap_log_default;
+      __tuntap_log = tuntap_log_default;
     }
-    tuntap_log = cb;
+    __tuntap_log = cb;
   }
 
   void
-  tuntap_log_default(int level, const char *errmsg)
+  tuntap_log_default(int level, int line, const char *tag, const char *errmsg)
   {
     switch(level)
     {
       case TUNTAP_LOG_DEBUG:
-        llarp::LogDebug(errmsg);
+        llarp::_Log(llarp::eLogDebug, tag, line, errmsg);
         break;
       case TUNTAP_LOG_INFO:
-        llarp::LogInfo(errmsg);
+        llarp::_Log(llarp::eLogInfo, tag, line, errmsg);
         break;
       case TUNTAP_LOG_NOTICE:
-        llarp::LogInfo(errmsg);
+        llarp::_Log(llarp::eLogInfo, tag, line, errmsg);
         break;
       case TUNTAP_LOG_WARN:
-        llarp::LogWarn(errmsg);
+        llarp::_Log(llarp::eLogWarn, tag, line, errmsg);
         break;
       case TUNTAP_LOG_ERR:
-        llarp::LogError(errmsg);
+        llarp::_Log(llarp::eLogError, tag, line, errmsg);
         break;
       case TUNTAP_LOG_NONE:
       default:

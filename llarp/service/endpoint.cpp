@@ -95,7 +95,7 @@ namespace llarp
     bool
     Endpoint::SetupIsolatedNetwork(void* user, bool failed)
     {
-      return static_cast< Endpoint* >(user)->DoNetworkIsolation(failed);
+      return static_cast< Endpoint* >(user)->DoNetworkIsolation(!failed);
     }
 
     bool

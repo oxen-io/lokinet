@@ -185,7 +185,7 @@ endif(UNIX)
 
 if(TUNTAP)
 set(LIBTUNTAP_SRC_BASE
-  ${TT_ROOT}/tuntap.c
+  ${TT_ROOT}/tuntap.cpp
   ${TT_ROOT}/tuntap_log.cpp
   ${LIBTUNTAP_IMPL})
   if (UNIX)

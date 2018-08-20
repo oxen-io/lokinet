@@ -252,7 +252,7 @@ namespace llarp
       OnOutboundLookup(const IntroSet* i); /*  */
 
       static bool
-      SetupIsolatedNetwork(void* user, bool failed);
+      SetupIsolatedNetwork(void* user, bool success);
 
       bool
       DoNetworkIsolation(bool failed);

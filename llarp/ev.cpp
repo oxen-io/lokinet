@@ -104,7 +104,10 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {
-  return loop->create_tun(tun);
+  auto dev = loop->create_tun(tun);
+  if(dev)
+    return loop->add_ev(dev, false);
+  return false;
 }
 
 bool

@@ -39,9 +39,7 @@ namespace llarp
     bool
     queue_write(const void* data, size_t sz)
     {
-      std::unique_ptr< WriteBuffer > buf =
-          std::unique_ptr< WriteBuffer >(new WriteBuffer(data, sz));
-      m_writeq.Put(buf);
+      m_writeq.Emplace(data, sz);
       return m_writeq.Size() <= MAX_WRITE_QUEUE_SIZE;
     }
 
@@ -143,7 +141,7 @@ struct llarp_ev_loop
   udp_listen(llarp_udp_io* l, const sockaddr* src)
   {
     auto ev = create_udp(l, src);
-    return ev && add_ev(ev);
+    return ev && add_ev(ev, false);
   }
 
   virtual llarp::ev_io*
@@ -158,7 +156,7 @@ struct llarp_ev_loop
   create_tun(llarp_tun_io* tun) = 0;
 
   virtual bool
-  add_ev(llarp::ev_io* ev, bool write = true) = 0;
+  add_ev(llarp::ev_io* ev, bool write = false) = 0;
 
   virtual bool
   running() const = 0;

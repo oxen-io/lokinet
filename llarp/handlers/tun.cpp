@@ -77,7 +77,17 @@ namespace llarp
     bool
     TunEndpoint::SetupTun()
     {
-      return llarp_ev_add_tun(EndpointNetLoop(), &tunif);
+      if(!llarp_ev_add_tun(EndpointNetLoop(), &tunif))
+      {
+        llarp::LogError(Name(), " failed to set up tun interface");
+        return false;
+      }
+      m_OurIP       = inet_addr(tunif.ifaddr);
+      m_NextIP      = m_OurIP;
+      char buf[128] = {0};
+      llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ",
+                     inet_ntop(AF_INET, &m_OurIP, buf, sizeof(buf)));
+      return true;
     }
 
     bool
@@ -100,7 +110,48 @@ namespace llarp
     void
     TunEndpoint::HandleDataMessage(service::ProtocolMessage *msg)
     {
-      // TODO: implement me
+      if(msg->proto != service::eProtocolTraffic)
+      {
+        llarp::LogWarn("dropping unwarrented message, not ip traffic, proto=",
+                       msg->proto);
+        return;
+      }
+      uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
+      uint32_t usIP   = m_OurIP;
+      auto buf        = llarp::Buffer(msg->payload);
+      if(!m_NetworkToUserPktQueue.EmplaceIf(
+             [buf, themIP, usIP](net::IPv4Packet *pkt) -> bool {
+               // do packet info rewrite here
+               // TODO: don't truncate packet here
+               memcpy(pkt->buf, buf.base, std::min(buf.sz, sizeof(pkt->buf)));
+               pkt->src(themIP);
+               pkt->dst(usIP);
+               pkt->UpdateChecksum();
+               return true;
+             }))
+      {
+        llarp::LogWarn("failed to parse buffer for ip traffic");
+        llarp::DumpBuffer(buf);
+      }
+    }
+
+    uint32_t
+    TunEndpoint::ObtainIPForAddr(const service::Address &addr)
+    {
+      auto itr = m_AddrToIP.find(addr);
+      if(itr != m_AddrToIP.end())
+        return itr->second;
+
+      uint32_t nextIP = ++m_NextIP;
+      m_AddrToIP.insert(std::make_pair(addr, nextIP));
+      m_IPToAddr.insert(std::make_pair(nextIP, addr));
+      return nextIP;
+    }
+
+    bool
+    TunEndpoint::HasRemoteForIP(const uint32_t &ip) const
+    {
+      return m_IPToAddr.find(ip) != m_IPToAddr.end();
     }
 
     void
@@ -121,6 +172,7 @@ namespace llarp
     TunEndpoint::tunifBeforeWrite(llarp_tun_io *tun)
     {
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      llarp::LogDebug("tunifBeforeWrite");
       self->m_NetworkToUserPktQueue.Process(
           [tun](const std::unique_ptr< net::IPv4Packet > &pkt) {
             if(!llarp_ev_tun_async_write(tun, pkt->buf, pkt->sz))
@@ -133,10 +185,12 @@ namespace llarp
     {
       // called for every packet read from user in isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-
-      std::unique_ptr< net::IPv4Packet > pkt = net::ParseIPv4Packet(buf, sz);
-      if(pkt)
-        self->m_UserToNetworkPktQueue.Put(pkt);
+      llarp::LogDebug("got pkt ", sz, " bytes");
+      if(!self->m_UserToNetworkPktQueue.EmplaceIf(
+             [buf, sz](net::IPv4Packet *pkt) -> bool {
+               return pkt->Load(llarp::InitBuffer(buf, sz));
+             }))
+        llarp::LogError("Failed to parse ipv4 packet");
     }
 
     TunEndpoint::~TunEndpoint()

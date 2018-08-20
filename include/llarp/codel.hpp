@@ -8,6 +8,7 @@
 #endif
 #include <llarp/time.h>
 #include <llarp/logger.hpp>
+#include <llarp/mem.hpp>
 #include <llarp/threading.hpp>
 
 #include <algorithm>
@@ -69,14 +70,47 @@ namespace llarp
         return m_Queue.size();
       }
 
+      template < typename... Args >
+      bool
+      EmplaceIf(std::function< bool(T*) > pred, Args&&... args)
+      {
+        std::unique_ptr< T > ptr = std::make_unique< T >(args...);
+        if(!pred(ptr.get()))
+          return false;
+        PutTime()(ptr.get());
+        {
+          Lock_t lock(m_QueueMutex);
+          if(firstPut == 0)
+            firstPut = GetTime()(ptr.get());
+          m_Queue.push(std::move(ptr));
+        }
+        return true;
+      }
+
+      template < typename... Args >
+      void
+      Emplace(Args&&... args)
+      {
+        std::unique_ptr< T > ptr = std::make_unique< T >(args...);
+        PutTime()(ptr.get());
+        {
+          Lock_t lock(m_QueueMutex);
+          if(firstPut == 0)
+            firstPut = GetTime()(ptr.get());
+          m_Queue.push(std::move(ptr));
+        }
+      }
+
       void
       Put(std::unique_ptr< T >& ptr)
       {
-        Lock_t lock(m_QueueMutex);
         PutTime()(ptr.get());
-        if(firstPut == 0)
-          firstPut = GetTime()(ptr.get());
-        m_Queue.push(std::move(ptr));
+        {
+          Lock_t lock(m_QueueMutex);
+          if(firstPut == 0)
+            firstPut = GetTime()(ptr.get());
+          m_Queue.push(std::move(ptr));
+        }
       }
 
       template < typename Func >
@@ -90,9 +124,9 @@ namespace llarp
         auto start = firstPut;
         while(m_Queue.size())
         {
-          // llarp::LogInfo("CoDelQueue::Process - queue has ", m_Queue.size());
-          auto& item = m_Queue.top();
-          auto dlt   = start - GetTime()(item.get());
+          llarp::LogDebug("CoDelQueue::Process - queue has ", m_Queue.size());
+          const auto& item = m_Queue.top();
+          auto dlt         = start - GetTime()(item.get());
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
           if(m_Queue.size() == 1)

@@ -51,9 +51,12 @@ namespace llarp
     struct IPv4Packet
     {
       static constexpr size_t MaxSize = 1500;
-      llarp_time_t timestamp;
-      size_t sz;
-      byte_t buf[MaxSize];
+      llarp_time_t timestamp          = 0;
+      size_t sz                       = 0;
+      byte_t buf[MaxSize]             = {0};
+
+      bool
+      Load(llarp_buffer_t buf);
 
       struct GetTime
       {
@@ -95,43 +98,34 @@ namespace llarp
         return (iphdr*)buf;
       }
 
-      uint32_t&
+      uint32_t
       src()
       {
-        return Header()->saddr;
+        return ntohs(Header()->saddr);
       }
 
-      uint32_t&
+      uint32_t
       dst()
       {
-        return Header()->daddr;
+        return ntohs(Header()->daddr);
       }
 
-      const uint32_t&
-      src() const
+      void
+      src(uint32_t ip)
       {
-        return Header()->saddr;
+        Header()->saddr = htons(ip);
       }
 
-      const uint32_t&
-      dst() const
+      void
+      dst(uint32_t ip)
       {
-        return Header()->daddr;
+        Header()->daddr = htons(ip);
       }
 
-      /// put the payload of an ip packet
-      /// recalculate all fields
-      /// return true on success
-      /// return false if the payload doesn't fit
-      bool
-      PutPayload(llarp_buffer_t buf);
+      // update ip packet checksum
+      void
+      UpdateChecksum();
     };
-
-    /// parse an ipv4 packet
-    /// returns nullptr if invalid data
-    /// copies buffer into return value
-    std::unique_ptr< IPv4Packet >
-    ParseIPv4Packet(const void* buf, size_t sz);
 
   }  // namespace net
 }  // namespace llarp
