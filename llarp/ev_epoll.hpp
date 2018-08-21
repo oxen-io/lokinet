@@ -1,5 +1,6 @@
 #ifndef EV_EPOLL_HPP
 #define EV_EPOLL_HPP
+#include <fcntl.h>
 #include <llarp/buffer.h>
 #include <llarp/net.h>
 #include <signal.h>
@@ -85,8 +86,8 @@ namespace llarp
       if(t->before_write)
       {
         t->before_write(t);
-        ev_io::flush_write();
       }
+      ev_io::flush_write();
     }
 
     int
@@ -112,7 +113,13 @@ namespace llarp
       if(tuntap_up(tunif) == -1)
         return false;
       fd = tunif->tun_fd;
-      return fd != -1;
+      if(fd == -1)
+        return false;
+      // set non blocking
+      int flags = fcntl(fd, F_GETFL, 0);
+      if(flags == -1)
+        return false;
+      return fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1;
     }
 
     ~tun()
@@ -172,7 +179,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     epoll_event events[1024];
     int result;
-
     result = epoll_wait(epollfd, events, 1024, ms);
     if(result > 0)
     {
@@ -189,14 +195,11 @@ struct llarp_epoll_loop : public llarp_ev_loop
         if(events[idx].events & EPOLLIN)
         {
           ev->read(readbuf, sizeof(readbuf));
-          if(events[idx].events & EPOLLOUT)
-            ev->flush_write();
         }
         ++idx;
       }
     }
-    if(result != -1)
-      tick_listeners();
+    tick_listeners();
     return result;
   }
 
@@ -223,14 +226,11 @@ struct llarp_epoll_loop : public llarp_ev_loop
           if(events[idx].events & EPOLLIN)
           {
             ev->read(readbuf, sizeof(readbuf));
-            if(events[idx].events & EPOLLOUT)
-              ev->flush_write();
           }
           ++idx;
         }
       }
-      if(result != -1)
-        tick_listeners();
+      tick_listeners();
     } while(epollfd != -1);
     return result;
   }
@@ -315,8 +315,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
     epoll_event ev;
     ev.data.ptr = e;
     ev.events   = EPOLLIN;
-    if(write)
-      ev.events |= EPOLLOUT;
+    // if(write)
+    //   ev.events |= EPOLLOUT;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, e->fd, &ev) == -1)
     {
       delete e;

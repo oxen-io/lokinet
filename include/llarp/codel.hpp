@@ -113,20 +113,43 @@ namespace llarp
         }
       }
 
-      template < typename Func >
+      template < typename Q >
       void
-      Process(Func visitor)
+      _sort(Q& queue)
+      {
+        std::vector< std::unique_ptr< T > > q;
+        while(queue.size())
+        {
+          q.push_back(std::move(queue.front()));
+          queue.pop();
+        }
+        std::sort(q.begin(), q.end(), Compare());
+        auto itr = q.begin();
+        while(itr != q.end())
+        {
+          queue.push(std::move(*itr));
+          ++itr;
+        }
+      }
+
+      /// visit returns true to discard entry otherwise the entry is
+      /// re quened
+      template < typename Visit >
+      void
+      ProcessIf(Visit visitor)
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
         // auto start          = llarp_time_now_ms();
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
         Lock_t lock(m_QueueMutex);
+        _sort(m_Queue);
         auto start = firstPut;
+        std::queue< std::unique_ptr< T > > requeue;
         while(m_Queue.size())
         {
           llarp::LogDebug("CoDelQueue::Process - queue has ", m_Queue.size());
-          const auto& item = m_Queue.top();
-          auto dlt         = start - GetTime()(item.get());
+          auto& item = m_Queue.front();
+          auto dlt   = start - GetTime()(item.get());
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
           if(m_Queue.size() == 1)
@@ -146,19 +169,32 @@ namespace llarp
             }
           }
           // llarp::LogInfo("CoDelQueue::Process - passing");
-          visitor(item);
+          if(!visitor(item))
+          {
+            // requeue item as we are not done
+            requeue.push(std::move(item));
+          }
           m_Queue.pop();
         }
+        m_Queue  = std::move(requeue);
         firstPut = 0;
+      }
+
+      template < typename Func >
+      void
+      Process(Func visitor)
+      {
+        ProcessIf([visitor](const std::unique_ptr< T >& t) -> bool {
+          visitor(t);
+          return true;
+        });
       }
 
       llarp_time_t firstPut         = 0;
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       Mutex_t m_QueueMutex;
-      std::priority_queue< std::unique_ptr< T >,
-                           std::vector< std::unique_ptr< T > >, Compare >
-          m_Queue;
+      std::queue< std::unique_ptr< T > > m_Queue;
       std::string m_name;
     };
   }  // namespace util

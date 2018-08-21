@@ -41,6 +41,7 @@ namespace llarp
       SetupNetworking();
 
       /// overrides Endpoint
+      /// handle inbound traffic
       void
       HandleDataMessage(service::ProtocolMessage* msg);
 
@@ -54,12 +55,15 @@ namespace llarp
 
       llarp_tun_io tunif;
 
+      /// called before writing to tun interface
       static void
       tunifBeforeWrite(llarp_tun_io* t);
 
+      /// called every time we wish to read a packet from the tun interface
       static void
       tunifRecvPkt(llarp_tun_io* t, const void* pkt, ssize_t sz);
 
+      /// called in the endpoint logic thread
       static void
       handleTickTun(void* u);
 
@@ -75,17 +79,31 @@ namespace llarp
       /// return true if we have a remote loki address for this ip address
       bool
       HasRemoteForIP(const uint32_t& ipv4) const;
-
+      /// get ip address for service address unconditionally
       uint32_t
       ObtainIPForAddr(const service::Address& addr);
 
+      /// mark this address as active
+      void
+      MarkIPActive(uint32_t ip);
+
      private:
+      /// handles setup, given value true on success and false on failure to set
+      /// up interface
       std::promise< bool > m_TunSetupResult;
+      /// maps ip to service address
       std::unordered_map< uint32_t, service::Address > m_IPToAddr;
+      /// maps service address to ip
       std::unordered_map< service::Address, uint32_t, service::Address::Hash >
           m_AddrToIP;
+      /// maps ip address to timestamp last active
+      std::unordered_map< uint32_t, llarp_time_t > m_IPActivity;
+      /// our ip address
       uint32_t m_OurIP;
+      /// next ip address to allocate
       uint32_t m_NextIP;
+      /// highest ip address to allocate
+      uint32_t m_MaxIP;
     };
   }  // namespace handlers
 }  // namespace llarp

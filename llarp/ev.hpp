@@ -39,24 +39,35 @@ namespace llarp
     bool
     queue_write(const void* data, size_t sz)
     {
-      m_writeq.Emplace(data, sz);
-      return m_writeq.Size() <= MAX_WRITE_QUEUE_SIZE;
+      return m_writeq.EmplaceIf(
+          [&](WriteBuffer* pkt) -> bool {
+            return m_writeq.Size() < MAX_WRITE_QUEUE_SIZE
+                && sz <= sizeof(pkt->buf);
+          },
+          data, sz);
     }
 
     /// called in event loop when fd is ready for writing
-    /// drops all buffers that cannot be written in this pump
+    /// requeues anything not written
     /// this assumes fd is set to non blocking
     virtual void
     flush_write()
     {
-      m_writeq.Process([this](const std::unique_ptr< WriteBuffer >& buffer) {
+      m_writeq.ProcessIf(
+          [&](const std::unique_ptr< WriteBuffer >& buffer) -> bool {
       // todo: wtf???
 #ifndef _WIN32
-        write(fd, buffer->buf, buffer->bufsz);
+            if(write(fd, buffer->buf, buffer->bufsz) == -1)
+            {
+              // if we would block we save the entries for later
+              return errno == EWOULDBLOCK || errno == EAGAIN;
+            }
+            // discard entry
+            return true;
 #else
       // writefile
 #endif
-      });
+          });
       /// reset errno
       errno = 0;
     }
@@ -173,8 +184,13 @@ struct llarp_ev_loop
       if(l->tick)
         l->tick(l);
     for(auto& l : tun_listeners)
+    {
       if(l->tick)
         l->tick(l);
+      if(l->before_write)
+        l->before_write(l);
+      static_cast< llarp::ev_io* >(l->impl)->flush_write();
+    }
   }
 };
 

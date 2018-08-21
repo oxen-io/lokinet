@@ -74,6 +74,14 @@ namespace llarp
       return m_TunSetupResult.get_future().get();
     }
 
+    constexpr uint32_t
+    netmask_ipv4_bits(uint32_t netmask)
+    {
+      return (32 - netmask)
+          ? (1 << (32 - (netmask + 1))) | netmask_ipv4_bits(netmask + 1)
+          : 0;
+    }
+
     bool
     TunEndpoint::SetupTun()
     {
@@ -84,9 +92,16 @@ namespace llarp
       }
       m_OurIP       = inet_addr(tunif.ifaddr);
       m_NextIP      = m_OurIP;
-      char buf[128] = {0};
+      uint32_t mask = tunif.netmask;
+
+      uint32_t baseaddr = (ntohs(m_OurIP) & netmask_ipv4_bits(mask));
+      m_MaxIP           = (ntohs(baseaddr) | ~ntohs(netmask_ipv4_bits(mask)));
+      char buf[128]     = {0};
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ",
                      inet_ntop(AF_INET, &m_OurIP, buf, sizeof(buf)));
+
+      llarp::LogInfo(Name(), " allocated up to ",
+                     inet_ntop(AF_INET, &m_MaxIP, buf, sizeof(buf)));
       return true;
     }
 
@@ -138,13 +153,50 @@ namespace llarp
     uint32_t
     TunEndpoint::ObtainIPForAddr(const service::Address &addr)
     {
-      auto itr = m_AddrToIP.find(addr);
-      if(itr != m_AddrToIP.end())
-        return itr->second;
+      {
+        // previously allocated address
+        auto itr = m_AddrToIP.find(addr);
+        if(itr != m_AddrToIP.end())
+          return itr->second;
+      }
+      llarp_time_t now = llarp_time_now_ms();
+      uint32_t nextIP;
+      if(m_NextIP < m_MaxIP)
+      {
+        nextIP = ++m_NextIP;
+        m_AddrToIP.insert(std::make_pair(addr, nextIP));
+        m_IPToAddr.insert(std::make_pair(nextIP, addr));
+      }
+      else
+      {
+        // we are full
+        // expire least active ip
+        // TODO: prevent DoS
+        std::pair< uint32_t, llarp_time_t > oldest = {0, 0};
 
-      uint32_t nextIP = ++m_NextIP;
-      m_AddrToIP.insert(std::make_pair(addr, nextIP));
-      m_IPToAddr.insert(std::make_pair(nextIP, addr));
+        // find oldest entry
+        auto itr = m_IPActivity.begin();
+        while(itr != m_IPActivity.end())
+        {
+          if(itr->second <= now)
+          {
+            if((now - itr->second) > oldest.second)
+            {
+              oldest.first  = itr->first;
+              oldest.second = itr->second;
+            }
+          }
+          ++itr;
+        }
+        // remap address
+        m_IPToAddr[oldest.first] = addr;
+        m_AddrToIP[addr]         = oldest.first;
+        nextIP                   = oldest.first;
+      }
+
+      // mark ip active
+      m_IPActivity[nextIP] = now;
+
       return nextIP;
     }
 
@@ -152,6 +204,12 @@ namespace llarp
     TunEndpoint::HasRemoteForIP(const uint32_t &ip) const
     {
       return m_IPToAddr.find(ip) != m_IPToAddr.end();
+    }
+
+    void
+    TunEndpoint::MarkIPActive(uint32_t ip)
+    {
+      m_IPActivity[ip] = llarp_time_now_ms();
     }
 
     void
@@ -171,8 +229,8 @@ namespace llarp
     void
     TunEndpoint::tunifBeforeWrite(llarp_tun_io *tun)
     {
+      // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      llarp::LogDebug("tunifBeforeWrite");
       self->m_NetworkToUserPktQueue.Process(
           [tun](const std::unique_ptr< net::IPv4Packet > &pkt) {
             if(!llarp_ev_tun_async_write(tun, pkt->buf, pkt->sz))
