@@ -34,8 +34,8 @@ typedef struct ip_hdr
   unsigned int ip_destaddr;    // Source address
 } IPV4_HDR;
 #define iphdr IPV4_HDR
-#define saddr ip_srcaddr;
-#define daddr ip_destaddr;
+#define saddr ip_srcaddr
+#define daddr ip_destaddr
 #endif
 #include <memory>
 #if !defined(__linux__) && !defined(_WIN32)
