@@ -62,7 +62,9 @@ namespace llarp
       // do network isolation first
       if(!Endpoint::Start())
         return false;
-
+#ifdef _WIN32
+      return SetupNetworking();
+#else
       if(!NetworkIsIsolated())
       {
         // set up networking in currrent thread if we are not isolated
@@ -72,6 +74,7 @@ namespace llarp
       // wait for result for network setup
       llarp::LogInfo("waiting for tun interface...");
       return m_TunSetupResult.get_future().get();
+#endif
     }
 
     constexpr uint32_t
@@ -110,7 +113,9 @@ namespace llarp
     {
       llarp::LogInfo("Set Up networking for ", Name());
       bool result = SetupTun();
+#ifndef _WIN32
       m_TunSetupResult.set_value(result);
+#endif
       return result;
     }
 

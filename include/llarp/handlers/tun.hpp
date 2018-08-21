@@ -88,9 +88,11 @@ namespace llarp
       MarkIPActive(uint32_t ip);
 
      private:
+#ifndef _WIN32
       /// handles setup, given value true on success and false on failure to set
       /// up interface
       std::promise< bool > m_TunSetupResult;
+#endif
       /// maps ip to service address
       std::unordered_map< uint32_t, service::Address > m_IPToAddr;
       /// maps service address to ip
