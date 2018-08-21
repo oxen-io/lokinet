@@ -45,6 +45,7 @@ namespace llarp
       void
       HandleDataMessage(service::ProtocolMessage* msg);
 
+#ifndef _WIN32
       /// overrides Endpount
       bool
       IsolationFailed()
@@ -52,6 +53,7 @@ namespace llarp
         m_TunSetupResult.set_value(false);
         return false;
       }
+#endif
 
       llarp_tun_io tunif;
 
