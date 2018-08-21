@@ -37,6 +37,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #if defined Linux
+#include <linux/if_ether.h>
 #include <linux/if_tun.h>
 #include <netinet/ether.h>
 #else
