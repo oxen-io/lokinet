@@ -37,8 +37,9 @@
 #else
 #include <net/if.h>
 #endif
-#include <netinet/if_ether.h>
+/* Does linux require if_ether.h first? */
 #include <netinet/in.h>
+#include <netinet/if_ether.h>
 #endif
 
 #include <stdint.h>
