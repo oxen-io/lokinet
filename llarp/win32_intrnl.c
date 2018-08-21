@@ -533,7 +533,9 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
       GetModuleHandle("kernel32"), "SetThreadDescription");
   if(_SetThreadDescription)
   {
+    /* grab another reference to the thread */
     hThread = OpenThread(THREAD_SET_LIMITED_INFORMATION, FALSE, dwThreadID);
+    /* windows takes unicode, our input is utf-8 or plain ascii */
     MultiByteToWideChar(CP_ACP, 0, szThreadName, -1, thr_name_w, 16);
     if(hThread)
       _SetThreadDescription(hThread, thr_name_w);
@@ -559,6 +561,7 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
     {
     }
   }
+  /* clean up */
   if(hThread)
     CloseHandle(hThread);
 }
