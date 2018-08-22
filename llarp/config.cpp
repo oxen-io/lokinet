@@ -109,7 +109,33 @@ extern "C"
     f << "# this configuration was auto generated with 'sane' defaults"
       << std::endl;
     f << "# change these values as desired" << std::endl;
+    f << std::endl << std::endl;
+
+    f << "# router settings block" << std::endl;
+    f << "[router]" << std::endl;
+    f << "# uncomment these to manually set public address and port"
+      << std::endl;
+    f << "# this is required on providers like AWS because of their firewall "
+         "rules"
+      << std::endl;
+    f << "# public-address=your.ip.goes.here" << std::endl;
+    f << "# public-port=1090" << std::endl;
     f << std::endl;
+    f << "# number of crypto worker threads " << std::endl;
+    f << "threads=4" << std::endl;
+    f << "# path to store signed RC" << std::endl;
+    f << "contact-file=self.signed" << std::endl;
+    f << "# path to store transport private key" << std::endl;
+    f << "transport-privkey=transport.private" << std::endl;
+    f << "# path to store identity signing key" << std::endl;
+    f << "identity-privkey=identity.private" << std::endl;
+    f << "# path to store signed RC" << std::endl;
+    f << "contact-file=self.signed" << std::endl;
+    f << std::endl;
+    f << "# uncomment following line to set router nickname to 'lokinet'"
+      << std::endl;
+    f << "# nickname=lokinet" << std::endl;
+    f << std::endl << std::endl;
 
     f << "# system settings for priviledges and such" << std::endl;
     f << "[system]" << std::endl;
@@ -121,19 +147,7 @@ extern "C"
     f << "# ";
 #endif
     f << "group=" << DEFAULT_LOKINET_GROUP << std::endl;
-
-    f << "# configuration for lokinet network interface" << std::endl;
-    f << "[network]" << std::endl;
-    f << "# interface name" << std::endl;
-#ifdef _WIN32
-    // comment out ifname section for windows
-    f << "# ";
-#endif
-    f << "ifname=lokitun0" << std::endl;
-
-    f << "# ip range for interface" << std::endl;
-    f << "addr=10.0.0.1/16" << std::endl;
-    f << std::endl;
+    f << std::endl << std::endl;
 
     f << "# dns provider configuration section" << std::endl;
     f << "[dns]" << std::endl;
@@ -144,11 +158,13 @@ extern "C"
     f << "# opennic au resolver" << std::endl;
     f << "upstream=" << DEFAULT_RESOLVER_AU << std::endl;
     f << "bind=127.3.2.1:53" << std::endl;
-    f << std::endl;
+    f << std::endl << std::endl;
 
+    f << "# network database settings block " << std::endl;
     f << "[netdb]" << std::endl;
+    f << "# directory for network database skiplist storage" << std::endl;
     f << "dir=netdb" << std::endl;
-    f << std::endl;
+    f << std::endl << std::endl;
     f << "# publish network interfaces for handling inbound traffic"
       << std::endl;
     f << "[bind]" << std::endl;
