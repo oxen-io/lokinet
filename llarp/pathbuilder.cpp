@@ -204,7 +204,9 @@ llarp_pathbuilder_context::SelectHop(llarp_nodedb* db, llarp_rc* prev,
                                      llarp_rc* cur, size_t hop)
 {
   if(hop == 0)
+  {
     return router->GetRandomConnectedRouter(cur);
+  }
   else
     llarp_nodedb_select_random_hop(db, prev, cur, hop);
   return true;
@@ -231,6 +233,7 @@ llarp_pathbuilder_context::BuildOne()
 void
 llarp_pathbuilder_context::ManualRebuild(size_t num)
 {
+  llarp::LogDebug("manual rebuild ", num);
   while(num--)
     BuildOne();
 }

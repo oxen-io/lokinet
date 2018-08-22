@@ -191,6 +191,10 @@ namespace llarp
     SendLRCM(void* user)
     {
       LRCMFrameDecrypt* self = static_cast< LRCMFrameDecrypt* >(user);
+      self->context->Router()->PersistSessionUntil(self->hop->info.downstream,
+                                                   self->hop->ExpireTime());
+      self->context->Router()->PersistSessionUntil(self->hop->info.upstream,
+                                                   self->hop->ExpireTime());
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames);
       delete self;
     }

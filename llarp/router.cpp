@@ -59,7 +59,14 @@ void
 llarp_router::PersistSessionUntil(const llarp::RouterID &remote,
                                   llarp_time_t until)
 {
-  m_PersistingSessions[remote] = until;
+  llarp::LogDebug("persist session to ", remote, " until ", until);
+  if(m_PersistingSessions.find(remote) == m_PersistingSessions.end())
+    m_PersistingSessions[remote] = until;
+  else
+  {
+    if(m_PersistingSessions[remote] < until)
+      m_PersistingSessions[remote] = until;
+  }
 }
 
 bool
@@ -412,34 +419,37 @@ llarp_router::Tick()
   // llarp::LogDebug("tick router");
   auto now = llarp_time_now_ms();
   paths.ExpirePaths();
-  if(inboundLinks.size() == 0)
   {
+    auto itr = m_PersistingSessions.begin();
+    while(itr != m_PersistingSessions.end())
     {
-      auto itr = m_PersistingSessions.begin();
-      while(itr != m_PersistingSessions.end())
+      auto link = GetLinkWithSessionByPubkey(itr->first);
+      if(now < itr->second)
       {
-        auto link = GetLinkWithSessionByPubkey(itr->first);
-        if(now <= itr->second)
+        // persisting ended
+        if(link)
+          link->CloseSessionTo(itr->first);
+        itr = m_PersistingSessions.erase(itr);
+      }
+      else
+      {
+        if(link)
         {
-          // persisting ended
-          if(link)
-            link->CloseSessionTo(itr->first);
-          itr = m_PersistingSessions.erase(itr);
+          llarp::LogDebug("keepalive to ", itr->first);
+          link->KeepAliveSessionTo(itr->first);
         }
         else
         {
-          if(link)
-          {
-            link->KeepAliveSessionTo(itr->first);
-          }
-          else
-          {
-            TryEstablishTo(itr->first);
-          }
-          ++itr;
+          llarp::LogDebug("establish to ", itr->first);
+          TryEstablishTo(itr->first);
         }
+        ++itr;
       }
     }
+  }
+
+  if(inboundLinks.size() == 0)
+  {
     auto N = llarp_nodedb_num_loaded(nodedb);
     if(N > 3)
     {
