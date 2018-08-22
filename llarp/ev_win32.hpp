@@ -153,6 +153,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       ++idx;
     } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms));
 
+	// tick_listeners inlined since win32 does not
+	// implement ev_tun
     for(auto& l : udp_listeners)
     {
       if(l->tick)

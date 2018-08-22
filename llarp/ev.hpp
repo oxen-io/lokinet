@@ -65,6 +65,7 @@ namespace llarp
         return true;
 #else
       // writefile
+            return false;
 #endif
       });
       /// reset errno
