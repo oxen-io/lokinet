@@ -424,7 +424,7 @@ llarp_router::Tick()
     while(itr != m_PersistingSessions.end())
     {
       auto link = GetLinkWithSessionByPubkey(itr->first);
-      if(now < itr->second)
+      if(now > itr->second)
       {
         // persisting ended
         if(link)

@@ -133,7 +133,6 @@ namespace llarp
 
       llarp_time_t
       ExpireTime() const;
-
       llarp::routing::InboundMessageParser m_MessageParser;
 
       friend std::ostream&
