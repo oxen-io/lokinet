@@ -167,7 +167,7 @@ struct llarp_link_session
   void
   EncryptOutboundFrames();
 
-  std::unique_ptr< iwp_async_frame >
+  iwp_async_frame *
   alloc_frame(const void *buf, size_t sz);
   void
   decrypt_frame(const void *buf, size_t sz);

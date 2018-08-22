@@ -8,9 +8,11 @@
 #include <tuntap.h>
 #include <unistd.h>
 #include <cstdio>
+#include "buffer.hpp"
 #include "ev.hpp"
 #include "llarp/net.hpp"
 #include "logger.hpp"
+#include "mem.hpp"
 
 namespace llarp
 {
@@ -95,23 +97,33 @@ namespace llarp
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 0 && t->recvpkt)
+      {
         t->recvpkt(t, buf, ret);
+      }
       return ret;
     }
 
     bool
     setup()
     {
-      llarp::LogDebug("set up tunif");
-      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
-        return false;
       llarp::LogDebug("set ifname to ", t->ifname);
-      if(tuntap_set_ifname(tunif, t->ifname) == -1)
+      strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
+
+      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
+      {
+        llarp::LogWarn("failed to start interface");
         return false;
-      if(tuntap_set_ip(tunif, t->ifaddr, t->netmask) == -1)
-        return false;
+      }
       if(tuntap_up(tunif) == -1)
+      {
+        llarp::LogWarn("failed to put interface up: ", strerror(errno));
         return false;
+      }
+      if(tuntap_set_ip(tunif, t->ifaddr, t->netmask) == -1)
+      {
+        llarp::LogWarn("failed to set ip");
+        return false;
+      }
       fd = tunif->tun_fd;
       if(fd == -1)
         return false;

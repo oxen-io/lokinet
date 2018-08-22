@@ -53,21 +53,20 @@ namespace llarp
     virtual void
     flush_write()
     {
-      m_writeq.ProcessIf(
-          [&](const std::unique_ptr< WriteBuffer >& buffer) -> bool {
+      m_writeq.ProcessIf([&](WriteBuffer* buffer) -> bool {
       // todo: wtf???
 #ifndef _WIN32
-            if(write(fd, buffer->buf, buffer->bufsz) == -1)
-            {
-              // if we would block we save the entries for later
-              return errno == EWOULDBLOCK || errno == EAGAIN;
-            }
-            // discard entry
-            return true;
+        if(write(fd, buffer->buf, buffer->bufsz) == -1)
+        {
+          // if we would block we save the entries for later
+          return errno == EWOULDBLOCK || errno == EAGAIN;
+        }
+        // discard entry
+        return true;
 #else
       // writefile
 #endif
-          });
+      });
       /// reset errno
       errno = 0;
     }

@@ -53,9 +53,12 @@ namespace llarp
     struct IPv4Packet
     {
       static constexpr size_t MaxSize = 1500;
-      llarp_time_t timestamp          = 0;
-      size_t sz                       = 0;
-      byte_t buf[MaxSize]             = {0};
+      llarp_time_t timestamp;
+      size_t sz;
+      byte_t buf[MaxSize];
+
+      llarp_buffer_t
+      Buffer();
 
       bool
       Load(llarp_buffer_t buf);
@@ -91,25 +94,25 @@ namespace llarp
       iphdr*
       Header()
       {
-        return (iphdr*)buf;
+        return (iphdr*)&buf[0];
       }
 
       const iphdr*
       Header() const
       {
-        return (iphdr*)buf;
+        return (iphdr*)&buf[0];
       }
 
       uint32_t
       src()
       {
-        return ntohs(Header()->saddr);
+        return Header()->saddr;
       }
 
       uint32_t
       dst()
       {
-        return ntohs(Header()->daddr);
+        return Header()->daddr;
       }
 
       void

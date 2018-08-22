@@ -1,5 +1,7 @@
 #include <llarp/endian.h>
 #include <llarp/ip.hpp>
+#include "buffer.hpp"
+#include "mem.hpp"
 
 namespace llarp
 {
@@ -8,8 +10,16 @@ namespace llarp
     bool
     IPv4Packet::Load(llarp_buffer_t pkt)
     {
-      memcpy(buf, pkt.base, std::min(pkt.sz, sizeof(buf)));
+      sz = std::min(pkt.sz, sizeof(buf));
+      memcpy(buf, pkt.base, sz);
+      llarp::DumpBufferHex(pkt);
       return true;
+    }
+
+    llarp_buffer_t
+    IPv4Packet::Buffer()
+    {
+      return llarp::InitBuffer(buf, sz);
     }
 
     void

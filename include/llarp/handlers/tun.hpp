@@ -30,6 +30,9 @@ namespace llarp
       TickTun(llarp_time_t now);
 
       bool
+      MapAddress(const service::Address& remote, uint32_t ip);
+
+      bool
       Start();
 
       /// set up tun interface, blocking
@@ -61,6 +64,11 @@ namespace llarp
       static void
       tunifBeforeWrite(llarp_tun_io* t);
 
+      /// handle user to network send buffer flush
+      /// called in router logic thread
+      static void
+      handleNetSend(void*);
+
       /// called every time we wish to read a packet from the tun interface
       static void
       tunifRecvPkt(llarp_tun_io* t, const void* pkt, ssize_t sz);
@@ -88,6 +96,9 @@ namespace llarp
       /// mark this address as active
       void
       MarkIPActive(uint32_t ip);
+
+      void
+      FlushSend();
 
      private:
 #ifndef _WIN32

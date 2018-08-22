@@ -400,9 +400,8 @@ llarp_link_session::get_parent()
 void
 llarp_link_session::TickLogic(llarp_time_t now)
 {
-  decryptedFrames.Process([&](const std::unique_ptr< iwp_async_frame > &msg) {
-    handle_frame_decrypt(msg.get());
-  });
+  decryptedFrames.Process(
+      [&](iwp_async_frame *msg) { handle_frame_decrypt(msg); });
   frame.process_inbound_queue();
   frame.retransmit(now);
   pump();
@@ -446,9 +445,9 @@ llarp_link_session::keepalive()
 void
 llarp_link_session::EncryptOutboundFrames()
 {
-  outboundFrames.Process([&](const std::unique_ptr< iwp_async_frame > &frame) {
-    if(iwp_encrypt_frame(frame.get()))
-      handle_frame_encrypt(frame.get());
+  outboundFrames.Process([&](iwp_async_frame *frame) {
+    if(iwp_encrypt_frame(frame))
+      handle_frame_encrypt(frame);
   });
 }
 
@@ -595,7 +594,7 @@ llarp_link_session::decrypt_frame(const void *buf, size_t sz)
     // inboundFrames.Put(frame);
     auto f = alloc_frame(buf, sz);
 
-    if(iwp_decrypt_frame(f.get()))
+    if(iwp_decrypt_frame(f))
     {
       decryptedFrames.Put(f);
     }
@@ -741,7 +740,7 @@ llarp_link_session::recv(const void *buf, size_t sz)
   }
 }
 
-std::unique_ptr< iwp_async_frame >
+iwp_async_frame *
 llarp_link_session::alloc_frame(const void *buf, size_t sz)
 {
   // TODO don't hard code 1500
@@ -762,7 +761,7 @@ llarp_link_session::alloc_frame(const void *buf, size_t sz)
   // frame->created = now;
   // llarp::LogInfo("alloc_frame putting into q");
   // q.Put(frame);
-  return std::unique_ptr< iwp_async_frame >(frame);
+  return frame;
 }
 
 void
@@ -784,7 +783,7 @@ void
 llarp_link_session::pump()
 {
   bool flush = false;
-  frame.sendqueue.Process([&](const std::unique_ptr< sendbuf_t > &msg) {
+  frame.sendqueue.Process([&](sendbuf_t *msg) {
     llarp_buffer_t buf = msg->Buffer();
     encrypt_frame_async_send(buf.base, buf.sz);
     flush = true;

@@ -74,15 +74,18 @@ namespace llarp
       bool
       EmplaceIf(std::function< bool(T*) > pred, Args&&... args)
       {
-        std::unique_ptr< T > ptr = std::make_unique< T >(args...);
-        if(!pred(ptr.get()))
+        T* ptr = new T(std::forward< Args >(args)...);
+        if(!pred(ptr))
+        {
+          delete ptr;
           return false;
-        PutTime()(ptr.get());
+        }
+        PutTime()(ptr);
         {
           Lock_t lock(m_QueueMutex);
           if(firstPut == 0)
-            firstPut = GetTime()(ptr.get());
-          m_Queue.push(std::move(ptr));
+            firstPut = GetTime()(ptr);
+          m_Queue.push(ptr);
         }
         return true;
       }
@@ -91,25 +94,25 @@ namespace llarp
       void
       Emplace(Args&&... args)
       {
-        std::unique_ptr< T > ptr = std::make_unique< T >(args...);
-        PutTime()(ptr.get());
+        T* ptr = new T(std::forward< Args >(args)...);
+        PutTime()(ptr);
         {
           Lock_t lock(m_QueueMutex);
           if(firstPut == 0)
-            firstPut = GetTime()(ptr.get());
-          m_Queue.push(std::move(ptr));
+            firstPut = GetTime()(ptr);
+          m_Queue.push(ptr);
         }
       }
 
       void
-      Put(std::unique_ptr< T >& ptr)
+      Put(T* ptr)
       {
-        PutTime()(ptr.get());
+        PutTime()(ptr);
         {
           Lock_t lock(m_QueueMutex);
           if(firstPut == 0)
-            firstPut = GetTime()(ptr.get());
-          m_Queue.push(std::move(ptr));
+            firstPut = GetTime()(ptr);
+          m_Queue.push(ptr);
         }
       }
 
@@ -117,10 +120,11 @@ namespace llarp
       void
       _sort(Q& queue)
       {
+        /*
         std::vector< std::unique_ptr< T > > q;
         while(queue.size())
         {
-          q.push_back(std::move(queue.front()));
+          q.emplace_back(std::move(queue.front()));
           queue.pop();
         }
         std::sort(q.begin(), q.end(), Compare());
@@ -130,6 +134,7 @@ namespace llarp
           queue.push(std::move(*itr));
           ++itr;
         }
+        */
       }
 
       /// visit returns true to discard entry otherwise the entry is
@@ -144,12 +149,12 @@ namespace llarp
         Lock_t lock(m_QueueMutex);
         _sort(m_Queue);
         auto start = firstPut;
-        std::queue< std::unique_ptr< T > > requeue;
+        std::queue< T* > requeue;
         while(m_Queue.size())
         {
           llarp::LogDebug("CoDelQueue::Process - queue has ", m_Queue.size());
-          auto& item = m_Queue.front();
-          auto dlt   = start - GetTime()(item.get());
+          T* item  = m_Queue.front();
+          auto dlt = start - GetTime()(item);
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
           if(m_Queue.size() == 1)
@@ -160,6 +165,7 @@ namespace llarp
             {
               nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
               m_Queue.pop();
+              delete item;
               break;
             }
             else
@@ -172,7 +178,11 @@ namespace llarp
           if(!visitor(item))
           {
             // requeue item as we are not done
-            requeue.push(std::move(item));
+            requeue.push(item);
+          }
+          else
+          {
+            delete item;
           }
           m_Queue.pop();
         }
@@ -184,7 +194,7 @@ namespace llarp
       void
       Process(Func visitor)
       {
-        ProcessIf([visitor](const std::unique_ptr< T >& t) -> bool {
+        ProcessIf([visitor](T* t) -> bool {
           visitor(t);
           return true;
         });
@@ -194,7 +204,7 @@ namespace llarp
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       Mutex_t m_QueueMutex;
-      std::queue< std::unique_ptr< T > > m_Queue;
+      std::queue< T* > m_Queue;
       std::string m_name;
     };
   }  // namespace util

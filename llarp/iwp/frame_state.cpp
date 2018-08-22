@@ -23,7 +23,7 @@ bool
 frame_state::process_inbound_queue()
 {
   uint64_t last = 0;
-  recvqueue.Process([&](const std::unique_ptr< InboundMessage > &msg) {
+  recvqueue.Process([&](InboundMessage *msg) {
     if(last != msg->msgid)
     {
       auto buffer = msg->Buffer();
@@ -181,8 +181,8 @@ void
 frame_state::push_ackfor(uint64_t id, uint32_t bitmask)
 {
   llarp::LogDebug("ACK for msgid=", id, " mask=", bitmask);
-  auto pkt      = std::unique_ptr< sendbuf_t >(new sendbuf_t(12 + 6));
-  auto body_ptr = init_sendbuf(pkt.get(), eACKS, 12, txflags);
+  auto pkt      = new sendbuf_t(12 + 6);
+  auto body_ptr = init_sendbuf(pkt, eACKS, 12, txflags);
   htobe64buf(body_ptr, id);
   htobe32buf(body_ptr + 8, bitmask);
   sendqueue.Put(pkt);
@@ -232,9 +232,7 @@ frame_state::inbound_frame_complete(uint64_t id)
     }
     else
     {
-      std::unique_ptr< InboundMessage > m =
-          std::unique_ptr< InboundMessage >(new InboundMessage(id, msg));
-      recvqueue.Put(m);
+      recvqueue.Emplace(id, msg);
       success = true;
     }
   }

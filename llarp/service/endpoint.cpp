@@ -71,27 +71,6 @@ namespace llarp
       return m_IsolatedLogic && m_IsolatedWorker;
     }
 
-    struct PathAlignJob
-    {
-      void
-      HandleResult(Endpoint::OutboundContext* context)
-      {
-        if(context)
-        {
-          byte_t tmp[128] = {0};
-          memcpy(tmp, "BEEP", 4);
-          auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-          buf.sz   = 4;
-          context->AsyncEncryptAndSendTo(buf, eProtocolText);
-        }
-        else
-        {
-          llarp::LogWarn("PathAlignJob timed out");
-        }
-        delete this;
-      }
-    };
-
     bool
     Endpoint::SetupIsolatedNetwork(void* user, bool failed)
     {
@@ -180,14 +159,10 @@ namespace llarp
       {
         if(!HasPathToService(addr))
         {
-          PathAlignJob* j = new PathAlignJob();
-          if(!EnsurePathToService(addr,
-                                  std::bind(&PathAlignJob::HandleResult, j,
-                                            std::placeholders::_1),
-                                  10000))
+          if(!EnsurePathToService(
+                 addr, [](Address addr, OutboundContext* ctx) {}, 10000))
           {
             llarp::LogWarn("failed to ensure path to ", addr);
-            delete j;
           }
         }
       }
@@ -206,15 +181,12 @@ namespace llarp
         {
           if(HasPendingPathToService(introset.A.Addr()))
             continue;
-          PathAlignJob* j = new PathAlignJob();
           if(!EnsurePathToService(introset.A.Addr(),
-                                  std::bind(&PathAlignJob::HandleResult, j,
-                                            std::placeholders::_1),
+                                  [](Address addr, OutboundContext* ctx) {},
                                   10000))
           {
             llarp::LogWarn("failed to ensure path to ", introset.A.Addr(),
                            " for tag ", tag.ToString());
-            delete j;
           }
         }
         itr->second.Expire(now);
@@ -236,7 +208,6 @@ namespace llarp
         {
           if(itr->second->Tick(now))
           {
-            delete itr->second;
             itr = m_RemoteSessions.erase(itr);
           }
           else
@@ -605,7 +576,7 @@ namespace llarp
       {
         auto f = itr->second;
         m_PendingServiceLookups.erase(itr);
-        f(m_RemoteSessions.at(addr));
+        f(itr->first, m_RemoteSessions.at(addr).get());
       }
     }
 
@@ -714,7 +685,7 @@ namespace llarp
         auto itr = m_RemoteSessions.find(remote);
         if(itr != m_RemoteSessions.end())
         {
-          hook(itr->second);
+          hook(itr->first, itr->second.get());
           return true;
         }
       }
@@ -763,6 +734,44 @@ namespace llarp
       {
         currentIntroSet = *i;
       }
+      return true;
+    }
+
+    bool
+    Endpoint::SendToOrQueue(const Address& remote, llarp_buffer_t data,
+                            ProtocolType t)
+    {
+      if(HasPathToService(remote))
+      {
+        m_RemoteSessions[remote]->AsyncEncryptAndSendTo(data, t);
+        return true;
+      }
+
+      auto itr = m_PendingTraffic.find(remote);
+      if(itr == m_PendingTraffic.end())
+      {
+        m_PendingTraffic.insert(std::make_pair(remote, PendingBufferQueue()));
+        EnsurePathToService(remote,
+                            [&](Address addr, OutboundContext* ctx) {
+                              if(ctx)
+                              {
+                                auto itr = m_PendingTraffic.find(addr);
+                                if(itr != m_PendingTraffic.end())
+                                {
+                                  while(itr->second.size())
+                                  {
+                                    auto& front = itr->second.front();
+                                    ctx->AsyncEncryptAndSendTo(front.Buffer(),
+                                                               front.protocol);
+                                    itr->second.pop();
+                                  }
+                                }
+                              }
+                              m_PendingTraffic.erase(addr);
+                            },
+                            10000);
+      }
+      m_PendingTraffic[remote].emplace(data, t);
       return true;
     }
 

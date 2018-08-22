@@ -16,9 +16,9 @@
 #endif
 
 // these need to be in a specific order
+#include <tdi.h>
 #include <windows.h>
 #include <winternl.h>
-#include <tdi.h>
 #include "win32_intrnl.h"
 
 const PWCHAR TcpFileName = L"\\Device\\Tcp";

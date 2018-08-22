@@ -22,6 +22,32 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "mapaddr")
+      {
+        auto pos = v.find(":");
+        if(pos == std::string::npos)
+        {
+          llarp::LogError("Cannot map address ", v,
+                          " invalid format, expects "
+                          "address.loki:ip.address.goes.here");
+          return false;
+        }
+        service::Address addr;
+        auto addr_str = v.substr(0, pos);
+        if(!addr.FromString(addr_str))
+        {
+          llarp::LogError("cannot map invalid address ", addr_str);
+          return false;
+        }
+        auto ip_str = v.substr(pos + 1);
+        uint32_t ip;
+        if(inet_pton(AF_INET, ip_str.c_str(), &ip) != 1)
+        {
+          llarp::LogError("cannot map to invalid ip ", ip_str);
+          return false;
+        }
+        return MapAddress(addr, ip);
+      }
       if(k == "ifname")
       {
         strncpy(tunif.ifname, v.c_str(), sizeof(tunif.ifname) - 1);
@@ -50,10 +76,30 @@ namespace llarp
           tunif.netmask = 32;
           addr          = v;
         }
+        llarp::LogInfo("set ifaddr to ", addr, " with netmask ", tunif.netmask);
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
         return true;
       }
       return Endpoint::SetOption(k, v);
+    }
+
+    bool
+    TunEndpoint::MapAddress(const service::Address &addr, uint32_t ip)
+    {
+      char buf[32] = {0};
+      inet_ntop(AF_INET, &ip, buf, sizeof(buf));
+      auto itr = m_IPToAddr.find(ip);
+      if(itr != m_IPToAddr.end())
+      {
+        llarp::LogWarn(buf, " already mapped to ", itr->second.ToString());
+        return false;
+      }
+      llarp::LogInfo("map ", addr.ToString(), " to ", buf);
+      m_IPToAddr.insert(std::make_pair(ip, addr));
+      m_AddrToIP.insert(std::make_pair(addr, ip));
+      // TODO: make ip mapping persist forever
+      MarkIPActive(ip);
+      return true;
     }
 
     bool
@@ -124,7 +170,26 @@ namespace llarp
     {
       // call tun code in endpoint logic in case of network isolation
       llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
+      FlushSend();
       Endpoint::Tick(now);
+    }
+
+    void
+    TunEndpoint::FlushSend()
+    {
+      m_UserToNetworkPktQueue.Process([&](net::IPv4Packet *pkt) {
+        auto itr = m_IPToAddr.find(pkt->dst());
+        if(itr == m_IPToAddr.end())
+        {
+          in_addr a;
+          a.s_addr = pkt->dst();
+          llarp::LogWarn("drop packet to ", inet_ntoa(a));
+          llarp::DumpBuffer(pkt->Buffer());
+          return true;
+        }
+        return SendToOrQueue(itr->second, pkt->Buffer(),
+                             service::eProtocolTraffic);
+      });
     }
 
     void
@@ -158,14 +223,18 @@ namespace llarp
     uint32_t
     TunEndpoint::ObtainIPForAddr(const service::Address &addr)
     {
+      llarp_time_t now = llarp_time_now_ms();
+      uint32_t nextIP;
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(addr);
         if(itr != m_AddrToIP.end())
+        {
+          // mark ip active
+          m_IPActivity[itr->second] = now;
           return itr->second;
+        }
       }
-      llarp_time_t now = llarp_time_now_ms();
-      uint32_t nextIP;
       if(m_NextIP < m_MaxIP)
       {
         nextIP = ++m_NextIP;
@@ -236,11 +305,19 @@ namespace llarp
     {
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      self->m_NetworkToUserPktQueue.Process(
-          [tun](const std::unique_ptr< net::IPv4Packet > &pkt) {
-            if(!llarp_ev_tun_async_write(tun, pkt->buf, pkt->sz))
-              llarp::LogWarn("packet dropped");
-          });
+      self->m_NetworkToUserPktQueue.Process([self, tun](net::IPv4Packet *pkt) {
+        if(!llarp_ev_tun_async_write(tun, pkt->buf, pkt->sz))
+          llarp::LogWarn("packet dropped");
+      });
+      if(self->m_UserToNetworkPktQueue.Size())
+        llarp_logic_queue_job(self->RouterLogic(), {self, &handleNetSend});
+    }
+
+    void
+    TunEndpoint::handleNetSend(void *user)
+    {
+      TunEndpoint *self = static_cast< TunEndpoint * >(user);
+      self->FlushSend();
     }
 
     void
@@ -250,8 +327,9 @@ namespace llarp
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
-             [buf, sz](net::IPv4Packet *pkt) -> bool {
-               return pkt->Load(llarp::InitBuffer(buf, sz));
+             [self, buf, sz](net::IPv4Packet *pkt) -> bool {
+               return pkt->Load(llarp::InitBuffer(buf, sz))
+                   && pkt->Header()->version == 4;
              }))
         llarp::LogError("Failed to parse ipv4 packet");
     }

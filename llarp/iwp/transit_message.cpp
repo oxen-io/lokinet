@@ -109,8 +109,8 @@ void
 transit_message::generate_xmit(sendqueue_t &queue, byte_t flags)
 {
   uint16_t sz   = lastfrag.size() + sizeof(msginfo.buffer);
-  auto pkt      = std::unique_ptr< sendbuf_t >(new sendbuf_t(sz + 6));
-  auto body_ptr = init_sendbuf(pkt.get(), eXMIT, sz, flags);
+  auto pkt      = new sendbuf_t(sz + 6);
+  auto body_ptr = init_sendbuf(pkt, eXMIT, sz, flags);
   memcpy(body_ptr, msginfo.buffer, sizeof(msginfo.buffer));
   body_ptr += sizeof(msginfo.buffer);
   memcpy(body_ptr, lastfrag.data(), lastfrag.size());
@@ -128,8 +128,8 @@ transit_message::retransmit_frags(sendqueue_t &queue, byte_t flags)
     if(status.test(frag.first))
       continue;
     uint16_t sz   = 9 + fragsize;
-    auto pkt      = std::unique_ptr< sendbuf_t >(new sendbuf_t(sz + 6));
-    auto body_ptr = init_sendbuf(pkt.get(), eFRAG, sz, flags);
+    auto pkt      = new sendbuf_t(sz + 6);
+    auto body_ptr = init_sendbuf(pkt, eFRAG, sz, flags);
     htobe64buf(body_ptr, msgid);
     body_ptr[8] = frag.first;
     memcpy(body_ptr + 9, frag.second.data(), fragsize);
