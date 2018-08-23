@@ -38,6 +38,7 @@ typedef struct ip_hdr
 #define daddr ip_destaddr
 #define check ip_checksum
 #define ihl ip_header_len
+#define ip_version version
 #endif
 #include <memory>
 #if !defined(__linux__) && !defined(_WIN32)
