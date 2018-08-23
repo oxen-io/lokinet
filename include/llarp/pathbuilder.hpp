@@ -16,10 +16,13 @@ struct llarp_pathbuilder_context : public llarp::path::PathSet
                             struct llarp_dht_context* p_dht, size_t numPaths,
                             size_t numHops);
 
-  virtual ~llarp_pathbuilder_context(){};
+  virtual ~llarp_pathbuilder_context();
 
   virtual bool
   SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
+
+  virtual bool
+  ShouldBuildMore() const;
 
   void
   BuildOne();

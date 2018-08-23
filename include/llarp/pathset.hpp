@@ -60,7 +60,7 @@ namespace llarp
       NumInStatus(PathStatus st) const;
 
       /// return true if we should build another path
-      bool
+      virtual bool
       ShouldBuildMore() const;
 
       /// return true if we should publish a new hidden service descriptor

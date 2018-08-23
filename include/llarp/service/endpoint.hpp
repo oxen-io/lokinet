@@ -40,6 +40,10 @@ namespace llarp
       llarp_logic*
       EndpointLogic();
 
+      /// endpoint's net loop for sending data to user
+      llarp_ev_loop*
+      EndpointNetLoop();
+
       llarp_crypto*
       Crypto();
 
@@ -116,6 +120,30 @@ namespace llarp
       void
       HandlePathBuilt(path::Path* path);
 
+      bool
+      SendToOrQueue(const Address& remote, llarp_buffer_t payload,
+                    ProtocolType t);
+
+      struct PendingBuffer
+      {
+        std::vector< byte_t > payload;
+        ProtocolType protocol;
+
+        PendingBuffer(llarp_buffer_t buf, ProtocolType t)
+            : payload(buf.sz), protocol(t)
+        {
+          memcpy(payload.data(), buf.base, buf.sz);
+        }
+
+        llarp_buffer_t
+        Buffer()
+        {
+          return llarp::InitBuffer(payload.data(), payload.size());
+        }
+      };
+
+      typedef std::queue< PendingBuffer > PendingBufferQueue;
+
       /// context needed to initiate an outbound hidden service session
       struct OutboundContext : public llarp_pathbuilder_context
       {
@@ -178,7 +206,7 @@ namespace llarp
 
       // passed a sendto context when we have a path established otherwise
       // nullptr if the path was not made before the timeout
-      typedef std::function< void(OutboundContext*) > PathEnsureHook;
+      typedef std::function< void(Address, OutboundContext*) > PathEnsureHook;
 
       /// return false if we have already called this function before for this
       /// address
@@ -240,21 +268,31 @@ namespace llarp
       bool
       NetworkIsIsolated() const;
 
+      static void
+      RunIsolatedMainLoop(void*);
+
      private:
       bool
       OnOutboundLookup(const IntroSet* i); /*  */
 
       static bool
-      SetupIsolatedNetwork(void* user);
+      SetupIsolatedNetwork(void* user, bool success);
 
       bool
-      DoNetworkIsolation();
+      DoNetworkIsolation(bool failed);
 
       virtual bool
       SetupNetworking()
       {
         // XXX: override me
         return true;
+      }
+
+      virtual bool
+      IsolationFailed()
+      {
+        // XXX: override me
+        return false;
       }
 
       uint64_t
@@ -268,11 +306,16 @@ namespace llarp
       llarp_router* m_Router;
       llarp_threadpool* m_IsolatedWorker = nullptr;
       llarp_logic* m_IsolatedLogic       = nullptr;
+      llarp_ev_loop* m_IsolatedNetLoop   = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;
 
-      std::unordered_map< Address, OutboundContext*, Address::Hash >
+      std::unordered_map< Address, PendingBufferQueue, Address::Hash >
+          m_PendingTraffic;
+
+      std::unordered_map< Address, std::unique_ptr< OutboundContext >,
+                          Address::Hash >
           m_RemoteSessions;
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;

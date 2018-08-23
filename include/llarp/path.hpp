@@ -131,6 +131,8 @@ namespace llarp
       llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
       llarp_proto_version_t version;
 
+      llarp_time_t
+      ExpireTime() const;
       llarp::routing::InboundMessageParser m_MessageParser;
 
       friend std::ostream&
@@ -382,6 +384,12 @@ namespace llarp
 
       void
       AddOwnPath(PathSet* set, Path* p);
+
+      void
+      RemovePathBuilder(llarp_pathbuilder_context* ctx);
+
+      void
+      RemovePathSet(PathSet* set);
 
       typedef std::multimap< PathID_t, TransitHop* > TransitHopsMap_t;
 

@@ -4,7 +4,5 @@
 
 llarp_time_t
 llarp_time_now_ms();
-llarp_seconds_t
-llarp_time_now_sec();
 
 #endif

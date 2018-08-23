@@ -17,6 +17,12 @@ namespace llarp
       return now - started > lifetime;
     }
 
+    llarp_time_t
+    TransitHop::ExpireTime() const
+    {
+      return started + lifetime;
+    }
+
     TransitHopInfo::TransitHopInfo(const TransitHopInfo& other)
         : txID(other.txID)
         , rxID(other.rxID)

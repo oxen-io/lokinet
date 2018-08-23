@@ -47,8 +47,10 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
+if (NOT MSVC)
 add_cflags("-march=native")
 add_cxxflags("-march=native")
+endif(NOT MSVC)
 
 if(STATIC_LINK)
   add_cflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
@@ -165,12 +167,12 @@ if(UNIX)
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-openbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-netbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-    elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-    elseif (${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR ${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
+    elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+        set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
     else()
         message(FATAL_ERROR "Your operating system is not supported yet")
     endif()
@@ -183,7 +185,7 @@ endif(UNIX)
 
 if(TUNTAP)
 set(LIBTUNTAP_SRC_BASE
-  ${TT_ROOT}/tuntap.c
+  ${TT_ROOT}/tuntap.cpp
   ${TT_ROOT}/tuntap_log.cpp
   ${LIBTUNTAP_IMPL})
   if (UNIX)
@@ -313,6 +315,7 @@ set(LIB_SRC
   llarp/encrypted_frame.cpp
   llarp/exit_info.cpp
   llarp/exit_route.cpp
+  llarp/ip.cpp
   llarp/link_intro.cpp
   llarp/link_message.cpp
   llarp/net.cpp

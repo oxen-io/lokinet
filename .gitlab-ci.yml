@@ -1,0 +1,20 @@
+variables:
+  GIT_STRATEGY: fetch
+
+stages:
+  - build
+  - test
+
+build:linux:
+  image: alpine:latest
+  tags:
+    - linux
+  stage: build
+  before_script:
+    - apk add --update g++ make cmake automake libtool autoconf linux-headers libsodium
+  script:
+    - make clean test
+  artifacts:
+    paths:
+      - "lokinet"
+

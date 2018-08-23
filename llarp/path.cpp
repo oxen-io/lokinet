@@ -65,7 +65,7 @@ namespace llarp
                              std::deque< EncryptedFrame >& frames)
     {
       llarp::LogDebug("fowarding LRCM to ", nextHop);
-      LR_CommitMessage* msg = new LR_CommitMessage;
+      LR_CommitMessage* msg = new LR_CommitMessage();
       while(frames.size())
       {
         msg->frames.push_back(frames.front());
@@ -239,7 +239,8 @@ namespace llarp
       }
       for(auto& builder : m_PathBuilders)
       {
-        builder->ExpirePaths(now);
+        if(builder)
+          builder->ExpirePaths(now);
       }
     }
 
@@ -292,6 +293,28 @@ namespace llarp
     PathContext::AddPathBuilder(llarp_pathbuilder_context* ctx)
     {
       m_PathBuilders.push_back(ctx);
+    }
+
+    void
+    PathContext::RemovePathSet(PathSet* set)
+    {
+      util::Lock lock(m_OurPaths.first);
+      auto& map = m_OurPaths.second;
+      auto itr  = map.begin();
+      while(itr != map.end())
+      {
+        if(itr->second == set)
+          itr = map.erase(itr);
+        else
+          ++itr;
+      }
+    }
+
+    void
+    PathContext::RemovePathBuilder(llarp_pathbuilder_context* ctx)
+    {
+      m_PathBuilders.remove(ctx);
+      RemovePathSet(ctx);
     }
 
     PathHopConfig::PathHopConfig()
@@ -483,6 +506,10 @@ namespace llarp
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
 
+        // persist session with upstream router until the path is done
+        r->PersistSessionUntil(Upstream(), intro.expiresAt);
+
+        // send path latency test
         llarp::routing::PathLatencyMessage latency;
         latency.T             = llarp_randint();
         m_LastLatencyTestID   = latency.T;

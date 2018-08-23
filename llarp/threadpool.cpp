@@ -41,9 +41,9 @@ namespace llarp
             pthread_setname_np(name);
 #elif(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
             pthread_set_name_np(pthread_self(), name);
-#elif !defined(_MSC_VER) || !defined(_WIN32)
+#elif(__linux__) || (__MINGW32__)
             pthread_setname_np(pthread_self(), name);
-#else
+#elif defined(_MSC_VER)
             SetThreadName(GetCurrentThreadId(), name);
 #endif
           }
@@ -110,48 +110,27 @@ namespace llarp
       condition.NotifyOne();
     }
 
-#ifdef __linux__
-    static int
-    runIsolated(void *arg)
-    {
-      IsolatedPool *self = static_cast< IsolatedPool * >(arg);
-      if(!self->Isolated())
-      {
-        llarp::LogError("failed to set up isolated environment");
-        return 1;
-      }
-      auto func = std::bind(&Pool::Spawn, self, self->m_IsolatedWorkers,
-                            self->m_IsolatedName);
-      func();
-      return 0;
-    }
-#endif
-
     void
     IsolatedPool::Spawn(size_t workers, const char *name)
     {
-      if(m_isolated)
-        return;
 #ifdef __linux__
       IsolatedPool *self      = this;
       self->m_IsolatedName    = name;
       self->m_IsolatedWorkers = workers;
       m_isolated              = new std::thread([self] {
-        pid_t isolated;
-        isolated =
-            clone(runIsolated, self->m_childstack + sizeof(self->m_childstack),
-                  self->m_flags | SIGCHLD, self);
-        if(isolated == -1)
+        if(unshare(self->m_flags) == -1)
         {
-          llarp::LogError("failed to run isolated threadpool, ",
-                          strerror(errno));
-          return;
+          llarp::LogError("unshared failed: ", strerror(errno));
+          self->Fail();
         }
-        llarp::LogInfo("Spawned isolated process pool");
-        if(waitpid(isolated, nullptr, 0) == -1)
+        else
         {
-          llarp::LogError("failed to wait for pid ", isolated, ", ",
-                          strerror(errno));
+          llarp::LogInfo("spawning isolated environment");
+          self->Pool::Spawn(self->m_IsolatedWorkers, self->m_IsolatedName);
+          if(self->Isolated())
+          {
+            self->MainLoop();
+          }
         }
       });
 #else
@@ -173,19 +152,23 @@ namespace llarp
     }
 
 #ifdef __linux__
-    NetIsolatedPool::NetIsolatedPool(std::function< bool(void *) > setupNet,
-                                     void *user)
+    NetIsolatedPool::NetIsolatedPool(
+        std::function< bool(void *, bool) > setupNet,
+        std::function< void(void *) > runMain, void *user)
         : IsolatedPool(CLONE_NEWNET)
     {
       m_NetSetup = setupNet;
+      m_RunMain  = runMain;
       m_user     = user;
     }
 #else
-    NetIsolatedPool::NetIsolatedPool(std::function< bool(void *) > setupNet,
-                                     void *user)
+    NetIsolatedPool::NetIsolatedPool(
+        std::function< bool(void *, bool) > setupNet,
+        std::function< void(void *) > runMain, void *user)
         : IsolatedPool(0)
     {
       m_NetSetup = setupNet;
+      m_RunMain = runMain;
       m_user = user;
     }
 #endif
@@ -200,10 +183,11 @@ struct llarp_threadpool
   std::queue< llarp_thread_job * > jobs;
 
   llarp_threadpool(int workers, const char *name, bool isolate,
-                   setup_net_func setup = nullptr, void *user = nullptr)
+                   setup_net_func setup  = nullptr,
+                   run_main_func runmain = nullptr, void *user = nullptr)
   {
     if(isolate)
-      impl = new llarp::thread::NetIsolatedPool(setup, user);
+      impl = new llarp::thread::NetIsolatedPool(setup, runmain, user);
     else
       impl = new llarp::thread::Pool();
     impl->Spawn(workers, name);
@@ -231,9 +215,9 @@ llarp_init_same_process_threadpool()
 
 struct llarp_threadpool *
 llarp_init_isolated_net_threadpool(const char *name, setup_net_func setup,
-                                   void *context)
+                                   run_main_func runmain, void *context)
 {
-  return new llarp_threadpool(1, name, true, setup, context);
+  return new llarp_threadpool(1, name, true, setup, runmain, context);
 }
 
 void

@@ -34,49 +34,64 @@
 
 #include "tuntap.h"
 
+/* TODO(despair): port all this shit */
+
 static int
-tuntap_sys_create_dev(struct device *dev, int tun) {
-	return -1;
+tuntap_sys_create_dev(struct device *dev, int tun)
+{
+  return -1;
 }
 
 int
-tuntap_sys_start(struct device *dev, int mode, int tun) {
-	return -1;
+tuntap_sys_start(struct device *dev, int mode, int tun)
+{
+  return -1;
 }
 
 void
-tuntap_sys_destroy(struct device *dev) {
-	return -1;
+tuntap_sys_destroy(struct device *dev)
+{
+  return /*-1*/;
 }
 
 int
-tuntap_sys_set_hwaddr(struct device *dev, struct ether_addr *eth_addr) {
-	return -1;
+tuntap_sys_set_hwaddr(struct device *dev, struct ether_addr *eth_addr)
+{
+  return -1;
 }
 
 int
-tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t imask) {
-	return -1;
+tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t imask)
+{
+  return -1;
 }
 
 int
-tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s6, uint32_t imask) {
-	return -1;
+tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s6, uint32_t imask)
+{
+  return -1;
 }
 
 int
 tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len) {
-	(void)dev;
-	(void)ifname;
-	(void)len;
-	return -1;
+	struct ifreq ifr;
+
+	(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
+	(void)strncpy(ifr.ifr_newname, ifname, len);
+
+	if (ioctl(dev->ctrl_sock, SIOCSIFNAME, &ifr) == -1) {
+		perror(NULL);
+		tuntap_log(TUNTAP_LOG_ERR, "Can't set interface name");
+		return -1;
+	}
+	return 0;
 }
 
 int
-tuntap_sys_set_descr(struct device *dev, const char *descr, size_t len) {
-	(void)dev;
-	(void)descr;
-	(void)len;
-	return -1;
+tuntap_sys_set_descr(struct device *dev, const char *descr, size_t len)
+{
+  (void)dev;
+  (void)descr;
+  (void)len;
+  return -1;
 }
-

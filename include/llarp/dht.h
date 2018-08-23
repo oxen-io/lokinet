@@ -46,12 +46,14 @@ void
 llarp_dht_allow_transit(struct llarp_dht_context* ctx);
 
 /// put router as a dht peer
+/// internal function do not use
 void
-llarp_dht_put_peer(struct llarp_dht_context* ctx, struct llarp_rc* rc);
+__llarp_dht_put_peer(struct llarp_dht_context* ctx, struct llarp_rc* rc);
 
 /// remove router from tracked dht peer list
+/// internal function do not use
 void
-llarp_dht_remove_peer(struct llarp_dht_context* ctx, const byte_t* id);
+__llarp_dht_remove_peer(struct llarp_dht_context* ctx, const byte_t* id);
 
 void
 llarp_dht_lookup_router(struct llarp_dht_context* ctx,

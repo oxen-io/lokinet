@@ -20,7 +20,7 @@ llarp_dht_context_free(struct llarp_dht_context *ctx)
 }
 
 void
-llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
+__llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
 
 {
   llarp::dht::RCNode n(rc);
@@ -29,7 +29,7 @@ llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
 }
 
 void
-llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
+__llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 {
   llarp::dht::Key_t k = id;
   llarp::LogDebug("Removing ", k, " to DHT");

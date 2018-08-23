@@ -194,12 +194,19 @@ llarp_pathbuilder_context::llarp_pathbuilder_context(
   p_router->crypto.encryption_keygen(enckey);
 }
 
+llarp_pathbuilder_context::~llarp_pathbuilder_context()
+{
+  router->paths.RemovePathBuilder(this);
+}
+
 bool
 llarp_pathbuilder_context::SelectHop(llarp_nodedb* db, llarp_rc* prev,
                                      llarp_rc* cur, size_t hop)
 {
   if(hop == 0)
+  {
     return router->GetRandomConnectedRouter(cur);
+  }
   else
     llarp_nodedb_select_random_hop(db, prev, cur, hop);
   return true;
@@ -209,6 +216,13 @@ byte_t*
 llarp_pathbuilder_context::GetTunnelEncryptionSecretKey()
 {
   return enckey;
+}
+
+bool
+llarp_pathbuilder_context::ShouldBuildMore() const
+{
+  return llarp::path::PathSet::ShouldBuildMore()
+      || router->NumberOfConnectedRouters() == 0;
 }
 
 void
@@ -226,6 +240,7 @@ llarp_pathbuilder_context::BuildOne()
 void
 llarp_pathbuilder_context::ManualRebuild(size_t num)
 {
+  llarp::LogDebug("manual rebuild ", num);
   while(num--)
     BuildOne();
 }

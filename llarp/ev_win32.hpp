@@ -21,12 +21,6 @@ namespace llarp
     WSAOVERLAPPED portfds[2] = {0};
     size_t iosz;
 
-    // the unique completion key that helps us to
-    // identify the object instance for which we receive data
-    // Here, we'll use the address of the udp_listener instance, converted to
-    // its literal int/int64 representation.
-    ULONG_PTR listener_id = 0;
-
     udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
 
     ~udp_listener()
@@ -97,8 +91,6 @@ struct llarp_win32_loop : public llarp_ev_loop
 {
   HANDLE iocpfd;
 
-  bool _running = false;
-
   llarp_win32_loop() : iocpfd(INVALID_HANDLE_VALUE)
   {
     WSADATA wsockd;
@@ -127,7 +119,7 @@ struct llarp_win32_loop : public llarp_ev_loop
 
     if(iocpfd == INVALID_HANDLE_VALUE)
       return false;
-    _running = true;
+
     return true;
   }
 
@@ -161,6 +153,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       ++idx;
     } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms));
 
+	// tick_listeners inlined since win32 does not
+	// implement ev_tun
     for(auto& l : udp_listeners)
     {
       if(l->tick)
@@ -300,7 +294,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   }
 
   bool
-  add_ev(llarp::ev_io* ev)
+  add_ev(llarp::ev_io* ev, bool write)
   {
     ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
     if(!::CreateIoCompletionPort(reinterpret_cast< HANDLE >(ev->fd), iocpfd,
@@ -331,13 +325,13 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   running() const
   {
-    return _running;
+    return iocpfd != INVALID_HANDLE_VALUE;
   }
 
   void
   stop()
   {
-    _running = false;
+    // still does nothing
   }
 };
 

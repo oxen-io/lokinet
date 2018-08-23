@@ -97,8 +97,6 @@ struct llarp_router
 
   llarp::service::Context hiddenServiceContext;
 
-  llarp::handlers::TunEndpoint *tunEndpoint = nullptr;
-
   llarp_link *outboundLink = nullptr;
   std::list< llarp_link * > inboundLinks;
 
@@ -217,6 +215,9 @@ struct llarp_router
 
   llarp_link *
   GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
+
+  size_t
+  NumberOfConnectedRouters() const;
 
   bool
   GetRandomConnectedRouter(llarp_rc *result) const;

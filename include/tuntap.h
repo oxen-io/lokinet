@@ -32,13 +32,18 @@
 #endif
 
 #if !defined Windows /* Unix :) */
+#if !defined Linux
+#include <netinet/in.h>
+#endif
 #if defined Linux
 #include <linux/if.h>
 #else
 #include <net/if.h>
 #endif
 #include <netinet/if_ether.h>
+#if defined Linux
 #include <netinet/in.h>
+#endif
 #endif
 
 #include <stdint.h>
@@ -56,7 +61,7 @@
  */
 #if defined ETH_ALEN /* Linux */
 #define ETHER_ADDR_LEN ETH_ALEN
-#elif defined Windows
+#elif defined Windows || defined __sun__
 #define ETHER_ADDR_LEN 6
 #endif
 
@@ -86,7 +91,7 @@
  */
 #if defined Windows
 #include <in6addr.h>
-#include <winsock.h>
+#include <winsock2.h>
 typedef HANDLE t_tun;
 typedef IN_ADDR t_tun_in_addr;
 typedef IN6_ADDR t_tun_in6_addr;
@@ -154,8 +159,14 @@ extern "C"
   };
 
   /* User definable log callback */
-  typedef void (*t_tuntap_log)(int, const char *);
-  TUNTAP_EXPORT t_tuntap_log tuntap_log;
+  typedef void (*t_tuntap_log)(int, int, const char *, const char *);
+  TUNTAP_EXPORT t_tuntap_log __tuntap_log;
+
+#ifndef LOG_TAG
+#define LOG_TAG "tuntap"
+#endif
+
+#define tuntap_log(lvl, msg) __tuntap_log(lvl, __LINE__, LOG_TAG, msg)
 
   /* Portable "public" functions */
   TUNTAP_EXPORT struct device *
@@ -214,7 +225,7 @@ extern "C"
   TUNTAP_EXPORT void
   tuntap_log_set_cb(t_tuntap_log cb);
   void
-  tuntap_log_default(int, const char *);
+  tuntap_log_default(int, int, const char *, const char *);
   void
   tuntap_log_hexdump(void *, size_t);
   void

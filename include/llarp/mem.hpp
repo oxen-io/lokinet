@@ -4,6 +4,7 @@
 #include <llarp/mem.h>
 #include <cctype>
 #include <cstdio>
+#include <memory>
 
 namespace llarp
 {
@@ -35,13 +36,34 @@ namespace llarp
       {
         printf("%c[1;31m", 27);
       }
+      printf("%.2x", buff.base[idx]);
+      if(buff.base + idx == buff.cur)
+      {
+        printf("%c[0;0m", 27);
+      }
+      ++idx;
+      if(idx % align == 0)
+        printf("\n");
+    }
+    printf("\n");
+    fflush(stdout);
+  }
+
+  template < typename T, size_t align = 128 >
+  void
+  DumpBufferHex(const T &buff)
+  {
+    size_t idx = 0;
+    printf("buffer of size %zu\n", buff.sz);
+    while(idx < buff.sz)
+    {
+      if(buff.base + idx == buff.cur)
+      {
+        printf("%c[1;31m", 27);
+      }
       if(std::isprint(buff.base[idx]))
       {
         printf("%c", buff.base[idx]);
-      }
-      else
-      {
-        printf("X");
       }
       if(buff.base + idx == buff.cur)
       {
@@ -57,4 +79,15 @@ namespace llarp
 
 }  // namespace llarp
 
+#if __cplusplus < 201402L
+namespace std
+{
+  template < typename T, typename... Args >
+  std::unique_ptr< T >
+  make_unique(Args &&... args)
+  {
+    return std::unique_ptr< T >(new T(std::forward< Args >(args)...));
+  }
+}  // namespace std
+#endif
 #endif

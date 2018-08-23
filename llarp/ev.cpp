@@ -4,7 +4,8 @@
 
 #define EV_TICK_INTERVAL 100
 
-#ifdef __linux__
+// apparently current Solaris will emulate epoll.
+#if __linux__ || __sun__
 #include "ev_epoll.hpp"
 #endif
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
@@ -18,7 +19,7 @@
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {
-#ifdef __linux__
+#if __linux__ || __sun__
   *ev = new llarp_epoll_loop;
 #endif
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
@@ -27,12 +28,6 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 #endif
 #if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
   *ev = new llarp_win32_loop;
-#endif
-  // a) I assume that the libre fork of Solaris is still
-  // 5.10, and b) the current commercial version is 5.11, naturally.
-  // -despair86
-#if defined(__SunOS_5_10) || defined(__SunOS_5_11)
-  *ev = new llarp_sun_iocp_loop;
 #endif
   (*ev)->init();
 }
@@ -109,7 +104,14 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {
-  return loop->create_tun(tun);
+  auto dev  = loop->create_tun(tun);
+  tun->impl = dev;
+  if(dev)
+  {
+    loop->tun_listeners.push_back(tun);
+    return loop->add_ev(dev, true);
+  }
+  return false;
 }
 
 bool

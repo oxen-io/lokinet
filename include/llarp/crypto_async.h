@@ -178,7 +178,9 @@ struct iwp_async_frame
   byte_t buf[1500];
 };
 
-// TODO: remove
+#ifdef __cplusplus
+#include <memory>
+
 struct FramePutTime
 {
   void
@@ -199,11 +201,12 @@ struct FrameGetTime
 struct FrameCompareTime
 {
   bool
-  operator()(const iwp_async_frame *left, iwp_async_frame *right) const
+  operator()(const iwp_async_frame *left, const iwp_async_frame *right) const
   {
     return left->created < right->created;
   }
 };
+#endif
 
 /// synchronously decrypt a frame
 bool

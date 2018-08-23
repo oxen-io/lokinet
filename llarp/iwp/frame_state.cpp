@@ -22,35 +22,23 @@ frame_state::Router()
 bool
 frame_state::process_inbound_queue()
 {
-  std::priority_queue< InboundMessage *, std::vector< InboundMessage * >,
-                       InboundMessage::OrderCompare >
-      q;
-  recvqueue.Process(q);
-
   uint64_t last = 0;
-  while(q.size())
-  {
-    // TODO: is this right?
-    auto &front = q.top();
-
-    if(last != front->msgid)
+  recvqueue.Process([&](InboundMessage *msg) {
+    if(last != msg->msgid)
     {
-      auto buffer = front->Buffer();
+      auto buffer = msg->Buffer();
       if(!Router()->HandleRecvLinkMessage(parent, buffer))
       {
-        llarp::LogWarn("failed to process inbound message ", front->msgid);
+        llarp::LogWarn("failed to process inbound message ", msg->msgid);
         llarp::DumpBuffer< llarp_buffer_t, 128 >(buffer);
       }
-      last = front->msgid;
+      last = msg->msgid;
     }
     else
     {
       llarp::LogWarn("duplicate inbound message ", last);
     }
-    delete front;
-
-    q.pop();
-  }
+  });
   // TODO: this isn't right
   return true;
 }
@@ -244,7 +232,7 @@ frame_state::inbound_frame_complete(uint64_t id)
     }
     else
     {
-      recvqueue.Put(new InboundMessage(id, msg));
+      recvqueue.Emplace(id, msg);
       success = true;
     }
   }

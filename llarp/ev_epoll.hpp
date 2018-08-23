@@ -1,5 +1,6 @@
 #ifndef EV_EPOLL_HPP
 #define EV_EPOLL_HPP
+#include <fcntl.h>
 #include <llarp/buffer.h>
 #include <llarp/net.h>
 #include <signal.h>
@@ -7,9 +8,11 @@
 #include <tuntap.h>
 #include <unistd.h>
 #include <cstdio>
+#include "buffer.hpp"
 #include "ev.hpp"
 #include "llarp/net.hpp"
 #include "logger.hpp"
+#include "mem.hpp"
 
 namespace llarp
 {
@@ -76,27 +79,59 @@ namespace llarp
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
-      // TODO: implement me
       return -1;
+    }
+
+    void
+    flush_write()
+    {
+      if(t->before_write)
+      {
+        t->before_write(t);
+      }
+      ev_io::flush_write();
     }
 
     int
     read(void* buf, size_t sz)
     {
-      return tuntap_read(tunif, buf, sz);
+      ssize_t ret = tuntap_read(tunif, buf, sz);
+      if(ret > 0 && t->recvpkt)
+      {
+        t->recvpkt(t, buf, ret);
+      }
+      return ret;
     }
 
     bool
     setup()
     {
-      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, TUNTAP_ID_ANY) == -1)
+      llarp::LogDebug("set ifname to ", t->ifname);
+      strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
+
+      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
+      {
+        llarp::LogWarn("failed to start interface");
         return false;
-      if(tuntap_set_ifname(tunif, t->ifname) == -1)
+      }
+      if(tuntap_up(tunif) == -1)
+      {
+        llarp::LogWarn("failed to put interface up: ", strerror(errno));
         return false;
+      }
       if(tuntap_set_ip(tunif, t->ifaddr, t->netmask) == -1)
+      {
+        llarp::LogWarn("failed to set ip");
         return false;
+      }
       fd = tunif->tun_fd;
-      return false;
+      if(fd == -1)
+        return false;
+      // set non blocking
+      int flags = fcntl(fd, F_GETFL, 0);
+      if(flags == -1)
+        return false;
+      return fcntl(fd, F_SETFL, flags | O_NONBLOCK) != -1;
     }
 
     ~tun()
@@ -156,7 +191,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     epoll_event events[1024];
     int result;
-
     result = epoll_wait(epollfd, events, 1024, ms);
     if(result > 0)
     {
@@ -173,10 +207,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
         if(events[idx].events & EPOLLIN)
         {
           ev->read(readbuf, sizeof(readbuf));
-        }
-        if(events[idx].events & EPOLLOUT)
-        {
-          ev->flush_write();
         }
         ++idx;
       }
@@ -208,10 +238,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
           if(events[idx].events & EPOLLIN)
           {
             ev->read(readbuf, sizeof(readbuf));
-          }
-          if(events[idx].events & EPOLLOUT)
-          {
-            ev->flush_write();
           }
           ++idx;
         }
@@ -301,8 +327,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
     epoll_event ev;
     ev.data.ptr = e;
     ev.events   = EPOLLIN;
-    if(write)
-      ev.events |= EPOLLOUT;
+    // if(write)
+    //   ev.events |= EPOLLOUT;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, e->fd, &ev) == -1)
     {
       delete e;

@@ -125,11 +125,11 @@ struct llarp_link_session
   uint32_t frames            = 0;
   std::atomic< bool > working;
 
-  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime,
+  llarp::util::CoDelQueue< iwp_async_frame, FrameGetTime, FramePutTime,
                            FrameCompareTime >
       outboundFrames;
 
-  llarp::util::CoDelQueue< iwp_async_frame *, FrameGetTime, FramePutTime,
+  llarp::util::CoDelQueue< iwp_async_frame, FrameGetTime, FramePutTime,
                            FrameCompareTime >
       decryptedFrames;
 
@@ -166,6 +166,7 @@ struct llarp_link_session
   add_outbound_message(uint64_t id, transit_message *msg);
   void
   EncryptOutboundFrames();
+
   iwp_async_frame *
   alloc_frame(const void *buf, size_t sz);
   void

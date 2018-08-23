@@ -74,24 +74,48 @@ namespace llarp
         return true;
       }
 
+      /// called when isolation failed
+      virtual void
+      Fail()
+      {
+      }
+
       std::thread* m_isolated = nullptr;
       int m_flags;
       int m_IsolatedWorkers      = 0;
       const char* m_IsolatedName = nullptr;
-      char m_childstack[(1024 * 1024 * 8)];
+
+      virtual void
+      MainLoop()
+      {
+      }
     };
 
     struct NetIsolatedPool : public IsolatedPool
     {
-      NetIsolatedPool(std::function< bool(void*) > setupNet, void* user);
+      NetIsolatedPool(std::function< bool(void*, bool) > setupNet,
+                      std::function< void(void*) > runMain, void* user);
 
       bool
       Isolated()
       {
-        return m_NetSetup(m_user);
+        return m_NetSetup(m_user, true);
       }
 
-      std::function< bool(void*) > m_NetSetup;
+      void
+      Fail()
+      {
+        m_NetSetup(m_user, false);
+      }
+
+      void
+      MainLoop()
+      {
+        m_RunMain(m_user);
+      }
+
+      std::function< bool(void*, bool) > m_NetSetup;
+      std::function< void(void*) > m_RunMain;
       void* m_user;
     };
 

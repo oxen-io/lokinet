@@ -186,19 +186,31 @@ namespace llarp
       delete decrypter;
     }
 
-    /// this must be done from logic thread
+    /// this is done from logic thread
     static void
     SendLRCM(void* user)
     {
       LRCMFrameDecrypt* self = static_cast< LRCMFrameDecrypt* >(user);
+      // persist sessions to upstream and downstream routers until the commit
+      // ends
+      self->context->Router()->PersistSessionUntil(self->hop->info.downstream,
+                                                   self->hop->ExpireTime());
+      self->context->Router()->PersistSessionUntil(self->hop->info.upstream,
+                                                   self->hop->ExpireTime());
+      // forward to next hop
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames);
       delete self;
     }
 
+    // this is called from the logic thread
     static void
     SendPathConfirm(void* user)
     {
       LRCMFrameDecrypt* self = static_cast< LRCMFrameDecrypt* >(user);
+      // persist session to downstream until path expiration
+      self->context->Router()->PersistSessionUntil(self->hop->info.downstream,
+                                                   self->hop->ExpireTime());
+      // send path confirmation
       llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
       if(!self->hop->SendRoutingMessage(&confirm, self->context->Router()))
       {

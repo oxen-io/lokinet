@@ -59,7 +59,14 @@ void
 llarp_router::PersistSessionUntil(const llarp::RouterID &remote,
                                   llarp_time_t until)
 {
-  m_PersistingSessions[remote] = until;
+  llarp::LogDebug("persist session to ", remote, " until ", until);
+  if(m_PersistingSessions.find(remote) == m_PersistingSessions.end())
+    m_PersistingSessions[remote] = until;
+  else
+  {
+    if(m_PersistingSessions[remote] < until)
+      m_PersistingSessions[remote] = until;
+  }
 }
 
 bool
@@ -267,9 +274,12 @@ llarp_router::Close()
   inboundLinks.clear();
 
   llarp::LogInfo("Closing LokiNetwork client");
-  outboundLink->stop_link();
-  delete outboundLink;
-  outboundLink = nullptr;
+  if(outboundLink)
+  {
+    outboundLink->stop_link();
+    delete outboundLink;
+    outboundLink = nullptr;
+  }
 }
 
 void
@@ -338,7 +348,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   router->validRouters[pk] = job->rc;
 
   // track valid router in dht
-  llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
+  __llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
 
   // this was an outbound establish job
   if(ctx->establish_job)
@@ -379,7 +389,8 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
     lookup->user                    = this;
     llarp_rc_clear(&lookup->result);
     memcpy(lookup->target, remote, PUBKEYSIZE);
-    lookup->hook = &HandleDHTLookupForTryEstablishTo;
+    lookup->hook      = &HandleDHTLookupForTryEstablishTo;
+    lookup->iterative = false;
     llarp_dht_lookup_router(this->dht, lookup);
   }
 }
@@ -402,42 +413,49 @@ llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
   delete job;
 }
 
+size_t
+llarp_router::NumberOfConnectedRouters() const
+{
+  return validRouters.size();
+}
+
 void
 llarp_router::Tick()
 {
   // llarp::LogDebug("tick router");
   auto now = llarp_time_now_ms();
   paths.ExpirePaths();
-  // TODO: don't do this if we have enough paths already
-  // FIXME: build paths even if we have inbound links
-  if(inboundLinks.size() == 0)
   {
+    auto itr = m_PersistingSessions.begin();
+    while(itr != m_PersistingSessions.end())
     {
-      auto itr = m_PersistingSessions.begin();
-      while(itr != m_PersistingSessions.end())
+      auto link = GetLinkWithSessionByPubkey(itr->first);
+      if(now > itr->second)
       {
-        auto link = GetLinkWithSessionByPubkey(itr->first);
-        if(now <= itr->second)
+        // persisting ended
+        if(link)
+          link->CloseSessionTo(itr->first);
+        itr = m_PersistingSessions.erase(itr);
+      }
+      else
+      {
+        if(link)
         {
-          // persisting ended
-          if(link)
-            link->CloseSessionTo(itr->first);
-          itr = m_PersistingSessions.erase(itr);
+          llarp::LogDebug("keepalive to ", itr->first);
+          link->KeepAliveSessionTo(itr->first);
         }
         else
         {
-          if(link)
-          {
-            link->KeepAliveSessionTo(itr->first);
-          }
-          else
-          {
-            TryEstablishTo(itr->first);
-          }
-          ++itr;
+          llarp::LogDebug("establish to ", itr->first);
+          TryEstablishTo(itr->first);
         }
+        ++itr;
       }
     }
+  }
+
+  if(inboundLinks.size() == 0)
+  {
     auto N = llarp_nodedb_num_loaded(nodedb);
     if(N > 3)
     {
@@ -502,7 +520,7 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
   if(itr == validRouters.end())
     return;
 
-  llarp_dht_remove_peer(dht, remote);
+  __llarp_dht_remove_peer(dht, remote);
   llarp_rc_free(&itr->second);
   validRouters.erase(itr);
 }

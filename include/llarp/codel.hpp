@@ -2,9 +2,13 @@
 #define LLARP_CODEL_QUEUE_HPP
 #ifdef _MSC_VER
 #define NOMINMAX
+#ifdef min
+#undef min
+#endif
 #endif
 #include <llarp/time.h>
 #include <llarp/logger.hpp>
+#include <llarp/mem.hpp>
 #include <llarp/threading.hpp>
 
 #include <algorithm>
@@ -66,32 +70,69 @@ namespace llarp
         return m_Queue.size();
       }
 
-      void
-      Put(T i)
+      template < typename... Args >
+      bool
+      EmplaceIf(std::function< bool(T*) > pred, Args&&... args)
       {
-        Lock_t lock(m_QueueMutex);
-        // llarp::LogInfo("CoDelQueue::Put - adding item, queue now has ",
-        // m_Queue.size(), " items at ", getTime(*item));
-        PutTime()(i);
-        m_Queue.push(i);
-        if(firstPut == 0)
-          firstPut = GetTime()(i);
+        T* ptr = new T(std::forward< Args >(args)...);
+        if(!pred(ptr))
+        {
+          delete ptr;
+          return false;
+        }
+        PutTime()(ptr);
+        {
+          Lock_t lock(m_QueueMutex);
+          if(firstPut == 0)
+            firstPut = GetTime()(ptr);
+          m_Queue.push(ptr);
+        }
+        return true;
       }
 
-      template < typename Queue_t >
+      template < typename... Args >
       void
-      Process(Queue_t& result)
+      Emplace(Args&&... args)
+      {
+        T* ptr = new T(std::forward< Args >(args)...);
+        PutTime()(ptr);
+        {
+          Lock_t lock(m_QueueMutex);
+          if(firstPut == 0)
+            firstPut = GetTime()(ptr);
+          m_Queue.push(ptr);
+        }
+      }
+
+      void
+      Put(T* ptr)
+      {
+        PutTime()(ptr);
+        {
+          Lock_t lock(m_QueueMutex);
+          if(firstPut == 0)
+            firstPut = GetTime()(ptr);
+          m_Queue.push(ptr);
+        }
+      }
+
+      /// visit returns true to discard entry otherwise the entry is
+      /// re quened
+      template < typename Visit >
+      void
+      ProcessIf(Visit visitor)
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
         // auto start          = llarp_time_now_ms();
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
         Lock_t lock(m_QueueMutex);
         auto start = firstPut;
+        Queue_t requeue;
         while(m_Queue.size())
         {
-          // llarp::LogInfo("CoDelQueue::Process - queue has ", m_Queue.size());
-          const auto& item = m_Queue.top();
-          auto dlt         = start - GetTime()(item);
+          llarp::LogDebug("CoDelQueue::Process - queue has ", m_Queue.size());
+          T* item  = m_Queue.top();
+          auto dlt = start - GetTime()(item);
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
           if(m_Queue.size() == 1)
@@ -100,10 +141,9 @@ namespace llarp
             // lowest, " dropMs: ", dropMs);
             if(lowest > dropMs)
             {
-              // drop
               nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
-              delete item;
               m_Queue.pop();
+              delete item;
               break;
             }
             else
@@ -113,17 +153,36 @@ namespace llarp
             }
           }
           // llarp::LogInfo("CoDelQueue::Process - passing");
-          result.push(item);
+          if(visitor(item))
+          {
+            delete item;
+          }
+          else
+          {
+            requeue.push(item);
+          }
           m_Queue.pop();
         }
+        m_Queue  = std::move(requeue);
         firstPut = 0;
+      }
+
+      template < typename Func >
+      void
+      Process(Func visitor)
+      {
+        ProcessIf([visitor](T* t) -> bool {
+          visitor(t);
+          return true;
+        });
       }
 
       llarp_time_t firstPut         = 0;
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       Mutex_t m_QueueMutex;
-      std::priority_queue< T, std::vector< T >, Compare > m_Queue;
+      typedef std::priority_queue< T*, std::vector< T* >, Compare > Queue_t;
+      Queue_t m_Queue;
       std::string m_name;
     };
   }  // namespace util

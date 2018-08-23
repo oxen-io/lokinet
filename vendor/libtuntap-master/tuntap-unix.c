@@ -25,6 +25,11 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#ifdef __sun
+#define BSD_COMP
+#define TUNSDEBUG _IOW('t', 90, int)
+#endif
+
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <sys/types.h>
@@ -32,6 +37,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #if defined Linux
+#include <linux/if_ether.h>
 #include <linux/if_tun.h>
 #include <netinet/ether.h>
 #else

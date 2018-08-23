@@ -70,7 +70,11 @@ namespace llarp
     }
     if(reply->msgs.size())
     {
-      return result && router->SendToOrQueue(remote.data(), reply);
+      if(result)
+      {
+        result = router->SendToOrQueue(remote.data(), reply);
+      }
+      return result;
     }
     else
     {
