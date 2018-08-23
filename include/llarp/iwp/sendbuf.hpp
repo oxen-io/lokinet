@@ -65,10 +65,9 @@ struct sendbuf_t
   struct Compare
   {
     bool
-    operator()(const std::unique_ptr< sendbuf_t > &left,
-               const std::unique_ptr< sendbuf_t > &right) const
+    operator()(const sendbuf_t *left, const sendbuf_t *right) const
     {
-      return left->priority < right->priority;
+      return left->timestamp < right->timestamp;
     }
   };
 

@@ -92,6 +92,7 @@ def main():
             f.write('''[test-service]
 tag=test
 prefetch-tag=test
+type=null
 ''')
 
     with open(args.out, 'w') as f:

@@ -65,7 +65,7 @@ namespace llarp
                              std::deque< EncryptedFrame >& frames)
     {
       llarp::LogDebug("fowarding LRCM to ", nextHop);
-      LR_CommitMessage* msg = new LR_CommitMessage;
+      LR_CommitMessage* msg = new LR_CommitMessage();
       while(frames.size())
       {
         msg->frames.push_back(frames.front());
@@ -506,6 +506,10 @@ namespace llarp
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
 
+        // persist session with upstream router until the path is done
+        r->PersistSessionUntil(Upstream(), intro.expiresAt);
+
+        // send path latency test
         llarp::routing::PathLatencyMessage latency;
         latency.T             = llarp_randint();
         m_LastLatencyTestID   = latency.T;

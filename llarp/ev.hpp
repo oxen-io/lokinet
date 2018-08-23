@@ -109,8 +109,7 @@ namespace llarp
       struct Compare
       {
         bool
-        operator()(const std::unique_ptr< WriteBuffer >& left,
-                   const std::unique_ptr< WriteBuffer >& right) const
+        operator()(const WriteBuffer* left, const WriteBuffer* right) const
         {
           return left->timestamp < right->timestamp;
         }

@@ -116,27 +116,6 @@ namespace llarp
         }
       }
 
-      template < typename Q >
-      void
-      _sort(Q& queue)
-      {
-        /*
-        std::vector< std::unique_ptr< T > > q;
-        while(queue.size())
-        {
-          q.emplace_back(std::move(queue.front()));
-          queue.pop();
-        }
-        std::sort(q.begin(), q.end(), Compare());
-        auto itr = q.begin();
-        while(itr != q.end())
-        {
-          queue.push(std::move(*itr));
-          ++itr;
-        }
-        */
-      }
-
       /// visit returns true to discard entry otherwise the entry is
       /// re quened
       template < typename Visit >
@@ -147,13 +126,12 @@ namespace llarp
         // auto start          = llarp_time_now_ms();
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
         Lock_t lock(m_QueueMutex);
-        _sort(m_Queue);
         auto start = firstPut;
-        std::queue< T* > requeue;
+        Queue_t requeue;
         while(m_Queue.size())
         {
           llarp::LogDebug("CoDelQueue::Process - queue has ", m_Queue.size());
-          T* item  = m_Queue.front();
+          T* item  = m_Queue.top();
           auto dlt = start - GetTime()(item);
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
@@ -175,14 +153,13 @@ namespace llarp
             }
           }
           // llarp::LogInfo("CoDelQueue::Process - passing");
-          if(!visitor(item))
+          if(visitor(item))
           {
-            // requeue item as we are not done
-            requeue.push(item);
+            delete item;
           }
           else
           {
-            delete item;
+            requeue.push(item);
           }
           m_Queue.pop();
         }
@@ -204,7 +181,8 @@ namespace llarp
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       Mutex_t m_QueueMutex;
-      std::queue< T* > m_Queue;
+      typedef std::priority_queue< T*, std::vector< T* >, Compare > Queue_t;
+      Queue_t m_Queue;
       std::string m_name;
     };
   }  // namespace util

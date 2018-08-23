@@ -42,8 +42,7 @@ struct InboundMessage
   struct OrderCompare
   {
     bool
-    operator()(const std::unique_ptr< InboundMessage > &left,
-               const std::unique_ptr< InboundMessage > &right) const
+    operator()(const InboundMessage *left, const InboundMessage *right) const
     {
       return left->msgid < right->msgid;
     }

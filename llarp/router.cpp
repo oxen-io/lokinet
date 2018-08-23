@@ -413,6 +413,12 @@ llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
   delete job;
 }
 
+size_t
+llarp_router::NumberOfConnectedRouters() const
+{
+  return validRouters.size();
+}
+
 void
 llarp_router::Tick()
 {

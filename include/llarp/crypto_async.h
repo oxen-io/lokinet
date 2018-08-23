@@ -201,8 +201,7 @@ struct FrameGetTime
 struct FrameCompareTime
 {
   bool
-  operator()(const std::unique_ptr< iwp_async_frame > &left,
-             const std::unique_ptr< iwp_async_frame > &right) const
+  operator()(const iwp_async_frame *left, const iwp_async_frame *right) const
   {
     return left->created < right->created;
   }

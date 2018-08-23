@@ -14,7 +14,7 @@ typedef struct ip_hdr
   unsigned char
       ip_header_len : 4;  // 4-bit header length (in 32-bit words) normally=5
                           // (Means 20 Bytes may be 24 also)
-  unsigned char ip_version : 4;    // 4-bit IPv4 version
+  unsigned char version : 4;       // 4-bit IPv4 version
   unsigned char ip_tos;            // IP type of service
   unsigned short ip_total_length;  // Total length
   unsigned short ip_id;            // Unique identifier
@@ -90,8 +90,7 @@ namespace llarp
       struct CompareOrder
       {
         bool
-        operator()(const std::unique_ptr< IPv4Packet >& left,
-                   const std::unique_ptr< IPv4Packet >& right)
+        operator()(const IPv4Packet* left, const IPv4Packet* right)
         {
           return left->timestamp < right->timestamp;
         }
