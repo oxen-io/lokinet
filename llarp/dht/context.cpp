@@ -454,28 +454,22 @@ namespace llarp
         {
           localIntroSets.insert(std::move(introset));
         }
-        if(whoasked != m_Router->dht->impl.OurKey())
+        size_t sz = localIntroSets.size();
+        if(sz || target.IsZero() || m_TriesLeft == 0)
         {
-          size_t sz = localIntroSets.size();
-          if(sz || target.IsZero() || m_TriesLeft == 0)
+          std::vector< service::IntroSet > reply;
+          for(const auto &introset : localIntroSets)
           {
-            std::vector< service::IntroSet > reply;
-            for(const auto &introset : localIntroSets)
-            {
-              reply.push_back(std::move(introset));
-            }
-            localIntroSets.clear();
-            m_Router->dht->impl.DHTSendTo(whoasked,
-                                          new GotIntroMessage(reply, txid));
+            reply.push_back(std::move(introset));
           }
-          else if(!target.IsZero())
-          {
-            return m_TriesLeft && TryAgain();
-          }
+          localIntroSets.clear();
+          m_Router->dht->impl.DHTSendTo(whoasked,
+                                        new GotIntroMessage(reply, txid));
+          m_Router->dht->impl.RemovePendingTX(whoasked, txid);
         }
-        else
+        else if(!target.IsZero())
         {
-          llarp::LogWarn("we asked for something without a path?");
+          return m_TriesLeft && TryAgain();
         }
         return true;
       }
