@@ -32,14 +32,18 @@
 #endif
 
 #if !defined Windows /* Unix :) */
+#if !defined Linux
+#include <netinet/in.h>
+#endif
 #if defined Linux
 #include <linux/if.h>
 #else
 #include <net/if.h>
 #endif
-/* Does linux require if_ether.h first? */
-#include <netinet/in.h>
 #include <netinet/if_ether.h>
+#if defined Linux
+#include <netinet/in.h>
+#endif
 #endif
 
 #include <stdint.h>
