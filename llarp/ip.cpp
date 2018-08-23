@@ -1,6 +1,7 @@
 #include <llarp/endian.h>
-#include <llarp/ip.hpp>
 #include <algorithm>
+#include <llarp/ip.hpp>
+#include "llarp/buffer.hpp"
 #include "mem.hpp"
 
 namespace llarp
