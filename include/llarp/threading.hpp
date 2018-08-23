@@ -2,6 +2,7 @@
 #define LLARP_THREADING_HPP
 #include <mutex>
 #if defined(__MINGW32__) && !defined(_GLIBCXX_HAS_GTHREADS)
+#define _MINGW32_NO_THREADS
 #include <llarp/win32/threads/mingw.condition_variable.h>
 #include <llarp/win32/threads/mingw.mutex.h>
 #include <llarp/win32/threads/mingw.thread.h>

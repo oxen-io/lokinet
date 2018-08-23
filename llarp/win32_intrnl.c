@@ -16,9 +16,9 @@
 #endif
 
 // these need to be in a specific order
-#include <tdi.h>
 #include <windows.h>
 #include <winternl.h>
+#include <tdi.h>
 #include "win32_intrnl.h"
 
 const PWCHAR TcpFileName = L"\\Device\\Tcp";
@@ -528,11 +528,14 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
   /* current win10 flights now have a new named-thread API, let's try to use
    * that first! */
   /* first, dlsym(2) the new call from system library */
+  hThread = NULL;
   _SetThreadDescription = (p_SetThreadDescription)GetProcAddress(
       GetModuleHandle("kernel32"), "SetThreadDescription");
   if(_SetThreadDescription)
   {
+    /* grab another reference to the thread */
     hThread = OpenThread(THREAD_SET_LIMITED_INFORMATION, FALSE, dwThreadID);
+    /* windows takes unicode, our input is utf-8 or plain ascii */
     MultiByteToWideChar(CP_ACP, 0, szThreadName, -1, thr_name_w, 16);
     if(hThread)
       _SetThreadDescription(hThread, thr_name_w);
@@ -558,5 +561,8 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
     {
     }
   }
+  /* clean up */
+  if(hThread)
+    CloseHandle(hThread);
 }
 #endif
