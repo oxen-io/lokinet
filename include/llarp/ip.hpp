@@ -44,6 +44,12 @@ typedef struct ip_hdr
 #define iphdr ip
 #define saddr ip_src.s_addr
 #define daddr ip_dst.s_addr
+#define ip_version ip_v
+#define check ip_sum
+#define ihl ip_hl
+#endif
+#if defined(__linux__)
+#define ip_version version
 #endif
 
 namespace llarp

@@ -566,7 +566,8 @@ namespace llarp
       if(m_RemoteSessions.find(addr) == m_RemoteSessions.end())
       {
         OutboundContext* ctx = new OutboundContext(introset, this);
-        m_RemoteSessions.insert(std::make_pair(addr, ctx));
+        m_RemoteSessions.insert(
+            std::make_pair(addr, std::unique_ptr< OutboundContext >(ctx)));
         llarp::LogInfo("Created New outbound context for ", addr.ToString());
       }
 
