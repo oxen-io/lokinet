@@ -84,8 +84,7 @@ namespace llarp
       struct CompareOrder
       {
         bool
-        operator()(const std::unique_ptr< IPv4Packet >& left,
-                   const std::unique_ptr< IPv4Packet >& right)
+        operator()(const IPv4Packet* left, const IPv4Packet* right)
         {
           return left->timestamp < right->timestamp;
         }

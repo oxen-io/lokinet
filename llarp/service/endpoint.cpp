@@ -98,8 +98,8 @@ namespace llarp
         {
           llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
                          " because we couldn't get any introductions");
-          // if(ShouldBuildMore())
-          ManualRebuild(1);
+          if(ShouldBuildMore())
+            ManualRebuild(1);
           return;
         }
         m_IntroSet.I.clear();
