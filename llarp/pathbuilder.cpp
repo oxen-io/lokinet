@@ -218,6 +218,13 @@ llarp_pathbuilder_context::GetTunnelEncryptionSecretKey()
   return enckey;
 }
 
+bool
+llarp_pathbuilder_context::ShouldBuildMore() const
+{
+  return llarp::path::PathSet::ShouldBuildMore()
+      || router->NumberOfConnectedRouters() == 0;
+}
+
 void
 llarp_pathbuilder_context::BuildOne()
 {

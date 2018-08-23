@@ -216,6 +216,9 @@ struct llarp_router
   llarp_link *
   GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
+  size_t
+  NumberOfConnectedRouters() const;
+
   bool
   GetRandomConnectedRouter(llarp_rc *result) const;
 

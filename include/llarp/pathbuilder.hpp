@@ -21,6 +21,9 @@ struct llarp_pathbuilder_context : public llarp::path::PathSet
   virtual bool
   SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
 
+  virtual bool
+  ShouldBuildMore() const;
+
   void
   BuildOne();
 
