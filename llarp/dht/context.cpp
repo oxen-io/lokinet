@@ -106,7 +106,7 @@ namespace llarp
         {
           for(const auto &introset : results)
           {
-            localIntroSets.insert(introset);
+            localIntroSets.insert(std::move(introset));
           }
           auto sz = localIntroSets.size();
           if(sz || target.IsZero() || m_TriesLeft == 0)
