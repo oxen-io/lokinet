@@ -112,9 +112,9 @@ struct llarp_nodedb
     const char *hexname =
         llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pubkey, ftmp);
     std::string hexString(hexname);
-    hexString += RC_FILE_EXT;
     std::string skiplistDir;
     skiplistDir += hexString[hexString.length() - 1];
+    hexString += RC_FILE_EXT;
     fs::path filepath = nodePath / skiplistDir / hexString;
     return filepath.string();
   }
@@ -375,6 +375,12 @@ llarp_nodedb_ensure_dir(const char *dir)
   return true;
 }
 
+void
+llarp_nodedb_set_dir(struct llarp_nodedb *n, const char *dir)
+{
+  n->nodePath = dir;
+}
+
 ssize_t
 llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
 {
@@ -383,7 +389,7 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
   {
     return -1;
   }
-  n->nodePath = dir;
+  llarp_nodedb_set_dir(n, dir);
   return n->Load(dir);
 }
 
