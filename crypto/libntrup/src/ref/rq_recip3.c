@@ -1,6 +1,9 @@
 #include "params.h"
 #include "swap.h"
 #include "rq.h"
+#ifdef _MSC_VER
+#include <assert.h>
+#endif
 
 /* caller must ensure that x-y does not overflow */
 static int smaller_mask(int x,int y)
