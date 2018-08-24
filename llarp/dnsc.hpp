@@ -35,12 +35,12 @@ struct dnsc_answer_request
 /// event handler for processing DNS responses
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
-                           const struct sockaddr *saddr, const void *buf,
+                           const struct sockaddr *addr, const void *buf,
                            ssize_t sz);
 
 /// generic handler for processing DNS responses
 void
-raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
+raw_handle_recvfrom(int *sockfd, const struct sockaddr *addr, const void *buf,
                     ssize_t sz);
 
 /// DNS client context (one needed per upstream DNS server)
