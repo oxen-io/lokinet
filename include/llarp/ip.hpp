@@ -3,6 +3,7 @@
 #include <llarp/buffer.h>
 #include <llarp/time.h>
 #ifndef _WIN32
+#include <sys/types.h> // FreeBSD needs this for uchar for ip.h
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #else
