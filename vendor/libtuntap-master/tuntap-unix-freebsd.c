@@ -188,7 +188,7 @@ tuntap_sys_set_ipv4_tap(struct device *dev, t_tun_in_addr *s4, uint32_t bits) {
 	struct sockaddr_in addr;
 
 	(void)memset(&ifrq, 0, sizeof(ifrq));
-	(void)strlcpy(ifrq.ifra_name, dev->if_name, sizeof(ifr.ifr_name));
+	(void)strlcpy(ifrq.ifra_name, dev->if_name, sizeof(ifrq.ifra_name));
 
 	/* Delete previously assigned address */
 	(void)ioctl(dev->ctrl_sock, SIOCDIFADDR, &ifrq);
@@ -286,10 +286,15 @@ tuntap_sys_set_descr(struct device *dev, const char *descr, size_t len) {
 int
 tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len) {
 	struct ifreq ifr;
-
+  char *newname;
 	(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
-	(void)strncpy(ifr.ifr_newname, ifname, len);
-
+  newname = strdup(ifname);
+  if(newname == NULL)
+  {
+    tuntap_log(TUNTAP_LOG_ERR, "no memory to set ifname");
+    return -1;
+  }
+  ifr.ifr_data = newname;
 	if (ioctl(dev->ctrl_sock, SIOCSIFNAME, &ifr) == -1) {
 		perror(NULL);
 		tuntap_log(TUNTAP_LOG_ERR, "Can't set interface name");
