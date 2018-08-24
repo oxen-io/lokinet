@@ -2,6 +2,7 @@
 #define LLARP_IP_HPP
 #include <llarp/buffer.h>
 #include <llarp/time.h>
+#include <llarp/net.hpp>
 #ifndef _WIN32
 #include <netinet/in.h>
 #include <netinet/ip.h>

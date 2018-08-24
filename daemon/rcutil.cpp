@@ -102,6 +102,7 @@ main(int argc, char *argv[])
 
   // --generate /path/to/file.signed
   // --update /path/to/file.signed
+  // --verify /path/to/file.signed
   // printf("has [%d]options\n", argc);
   if(argc < 2)
   {
@@ -115,6 +116,7 @@ main(int argc, char *argv[])
         "--locate    a hex formatted public key"
         "--localInfo \n"
         "--read      with a path to a router contact file\n"
+        "--verify    with a path to a router contact file\n"
         "\n");
     return 0;
   }
@@ -125,6 +127,7 @@ main(int argc, char *argv[])
   bool exportMode = false;
   bool locateMode = false;
   bool localMode  = false;
+  bool verifyMode = false;
   bool readMode   = false;
   int c;
   char *conffname;
@@ -147,9 +150,10 @@ main(int argc, char *argv[])
         {"locate", required_argument, 0, 'q'},
         {"localInfo", no_argument, 0, 'n'},
         {"read", required_argument, 0, 'r'},
+        {"verify", required_argument, 0, 'V'},
         {0, 0, 0, 0}};
     int option_index = 0;
-    c = getopt_long(argc, argv, "c:o:g:lu:i:e:q:nr:", long_options,
+    c = getopt_long(argc, argv, "c:o:g:lu:i:e:q:nr:V:", long_options,
                     &option_index);
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
     if(c == -1)
@@ -186,6 +190,11 @@ main(int argc, char *argv[])
         {
           llarp::SetLogLevel(llarp::eLogError);
         }
+        break;
+      case 'V':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        verifyMode          = true;
         break;
       case 'l':
         haveRequiredOptions = true;
@@ -231,7 +240,8 @@ main(int argc, char *argv[])
         readMode            = true;
         break;
       default:
-        abort();
+        printf("Bad option: %c\n", c);
+        return -1;
     }
   }
 #undef MIN
@@ -240,7 +250,69 @@ main(int argc, char *argv[])
     llarp::LogError("Parameters dont all have their required parameters.\n");
     return 0;
   }
-  printf("parsed options\n");
+  if(verifyMode)
+  {
+    llarp_crypto crypto;
+    llarp_crypto_libsodium_init(&crypto);
+    llarp_rc rc;
+    if(!llarp_rc_read(rcfname, &rc))
+    {
+      std::cout << "failed to read " << rcfname << std::endl;
+      return 1;
+    }
+    if(!llarp_rc_verify_sig(&crypto, &rc))
+    {
+      std::cout << rcfname << " has invalid signature" << std::endl;
+      return 1;
+    }
+    if(!llarp_rc_is_public_router(&rc))
+    {
+      std::cout << rcfname << " is not a public router";
+      if(llarp_ai_list_size(rc.addrs) == 0)
+      {
+        std::cout << " because it has no public addresses";
+      }
+      std::cout << std::endl;
+      return 1;
+    }
+    llarp::PubKey pubkey(rc.pubkey);
+    llarp::PubKey enckey(rc.enckey);
+
+    std::cout << "router identity and dht routing key: " << pubkey << std::endl;
+    std::cout << "router encryption key: " << enckey << std::endl;
+
+    if(rc.HasNick())
+      std::cout << "router nickname: " << rc.Nick() << std::endl;
+
+    std::cout << "advertised addresses: ";
+    llarp_ai_list_iter a_itr;
+    a_itr.user  = nullptr;
+    a_itr.visit = [](llarp_ai_list_iter *, llarp_ai *addrInfo) -> bool {
+      llarp::Addr addr(*addrInfo);
+      std::cout << addr << " ";
+      return true;
+    };
+    llarp_ai_list_iterate(rc.addrs, &a_itr);
+    std::cout << std::endl;
+
+    std::cout << "advertised exits: ";
+
+    if(llarp_xi_list_size(rc.exits))
+    {
+      llarp_xi_list_iter e_itr;
+      e_itr.user  = nullptr;
+      e_itr.visit = [](llarp_xi_list_iter *, llarp_xi *xi) -> bool {
+        std::cout << *xi << " ";
+        return true;
+      };
+      llarp_xi_list_iterate(rc.exits, &e_itr);
+    }
+    else
+      std::cout << "none";
+
+    std::cout << std::endl;
+    return 0;
+  }
   if(!genMode && !updMode && !listMode && !importMode && !exportMode
      && !locateMode && !localMode && !readMode)
   {
