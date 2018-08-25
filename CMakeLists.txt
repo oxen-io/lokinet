@@ -49,6 +49,12 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
+if(WOW64_CROSS_COMPILE)
+find_library(PSEH_LIB pseh)
+set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} ${PSEH_LIB}")
+set(CMAKE_C_STANDARD_LIBRARIES "${CMAKE_C_STANDARD_LIBRARIES} ${PSEH_LIB}")
+endif()
+
 else()
 option (BUILD_AVX2 "Enable AVX2 FPU vector instructions." OFF)
 if (BUILD_AVX2)
