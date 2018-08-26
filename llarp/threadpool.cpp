@@ -15,7 +15,7 @@
 #endif
 
 #ifdef __linux__
-#include <sys/wait.h>
+#include <llarp/linux/netns.hpp>
 #endif
 
 #ifdef _MSC_VER
@@ -113,30 +113,23 @@ namespace llarp
     void
     IsolatedPool::Spawn(size_t workers, const char *name)
     {
-#ifdef __linux__
       IsolatedPool *self      = this;
-      self->m_IsolatedName    = name;
+      self->IsolatedName      = name;
       self->m_IsolatedWorkers = workers;
       m_isolated              = new std::thread([self] {
-        if(unshare(self->m_flags) == -1)
+        if(!self->IsolateCurrentProcess())
         {
-          llarp::LogError("unshared failed: ", strerror(errno));
+          llarp::LogError("isolation failed: ", strerror(errno));
           self->Fail();
+          return;
         }
-        else
+        llarp::LogInfo("spawning isolated environment");
+        self->Pool::Spawn(self->m_IsolatedWorkers, self->IsolatedName);
+        if(self->Isolated())
         {
-          llarp::LogInfo("spawning isolated environment");
-          self->Pool::Spawn(self->m_IsolatedWorkers, self->m_IsolatedName);
-          if(self->Isolated())
-          {
-            self->MainLoop();
-          }
+          self->MainLoop();
         }
       });
-#else
-      llarp::LogError("isolated processes not supported on your platform");
-      Pool::Spawn(workers, name);
-#endif
     }
 
     void
@@ -151,27 +144,51 @@ namespace llarp
       }
     }
 
-#ifdef __linux__
-    NetIsolatedPool::NetIsolatedPool(
+    _NetIsolatedPool::_NetIsolatedPool(
         std::function< bool(void *, bool) > setupNet,
         std::function< void(void *) > runMain, void *user)
-        : IsolatedPool(CLONE_NEWNET)
+        : IsolatedPool(0)
+
     {
       m_NetSetup = setupNet;
       m_RunMain  = runMain;
       m_user     = user;
     }
-#else
-    NetIsolatedPool::NetIsolatedPool(
-        std::function< bool(void *, bool) > setupNet,
-        std::function< void(void *) > runMain, void *user)
-        : IsolatedPool(0)
+
+#ifdef __linux__
+    struct LinuxNetNSIsolatedPool : public _NetIsolatedPool
     {
-      m_NetSetup = setupNet;
-      m_RunMain = runMain;
-      m_user = user;
-    }
+      LinuxNetNSIsolatedPool(std::function< bool(void *, bool) > setup,
+                             std::function< void(void *) > run, void *user)
+          : _NetIsolatedPool(setup, run, user)
+      {
+      }
+
+      bool
+      IsolateNetwork()
+      {
+        return llarp::linux::NetNSSwitch(IsolatedName);
+      }
+    };
+
+    typedef LinuxNetNSIsolatedPool NetIsolatedPool;
+#define NET_ISOLATION_SUPPORTED
 #endif
+
+#if defined(__FreeBSD__)
+    struct FreeBSDJailedThreadPool : public _NetIsolatedPool
+    {
+      bool
+      IsolateNetwork()
+      {
+        // TODO: implement me
+        return false;
+      }
+    };
+    typedef FreeBSDJailedThreadPool NetIsolatedPool;
+#define NET_ISOLATION_SUPPORTED
+#endif
+
   }  // namespace thread
 }  // namespace llarp
 
@@ -186,9 +203,17 @@ struct llarp_threadpool
                    setup_net_func setup  = nullptr,
                    run_main_func runmain = nullptr, void *user = nullptr)
   {
+#ifdef NET_ISOLATION_SUPPORTED
     if(isolate)
       impl = new llarp::thread::NetIsolatedPool(setup, runmain, user);
     else
+#else
+    if(isolate)
+    {
+      llarp::LogError("network isolation not supported");
+      return nullptr;
+    }
+#endif
       impl = new llarp::thread::Pool();
     impl->Spawn(workers, name);
   }

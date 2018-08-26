@@ -184,20 +184,11 @@ struct llarp_nodedb
   loadSubdir(const fs::path &dir)
   {
     ssize_t sz = 0;
-    fs::directory_iterator i(dir);
-#if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
-    auto itr = fs::begin(i);
-    while(itr != fs::end(i))
-#else
-    auto itr = i.begin();
-    while(itr != itr.end())
-#endif
-    {
-      if(fs::is_regular_file(itr->path()) && loadfile(*itr))
+    llarp::util::IterDir(dir, [&](const fs::path &f) -> bool {
+      if(fs::is_regular_file(f) && loadfile(f))
         sz++;
-
-      ++itr;
-    }
+      return true;
+    });
     return sz;
   }
 
