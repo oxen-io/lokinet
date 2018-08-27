@@ -47,12 +47,13 @@ def main():
             'dir': 'netdb'
         }
         config['connect'] = {}
-        for otherid in range(args.svc):
-            if otherid != nodeid:
-                name = svcNodeName(otherid)
-                config['connect'][name] = os.path.join(
-                    basedir, name, 'rc.signed')
 
+        for otherid in range(args.connect):
+            otherid = (nodeid + otherid) % args.svc
+            name = svcNodeName(otherid)
+            config['connect'][name] = os.path.join(
+                basedir, name, 'rc.signed')
+        
         d = os.path.join(args.dir, svcNodeName(nodeid))
         if not os.path.exists(d):
             os.mkdir(d)

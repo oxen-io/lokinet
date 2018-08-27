@@ -218,7 +218,7 @@ namespace llarp
     {
       in_addr_t addr = this->addr4()->s_addr;
       unsigned byte  = ntohl(addr);
-      unsigned byte1 = byte >> 24 & 0xff;
+      unsigned byte1 = (byte >> 24) & 0xff;
       unsigned byte2 = (0x00ff0000 & byte) >> 16;
       return (byte1 == 10 || (byte1 == 192 && byte2 == 168)
               || (byte1 == 172 && (byte2 >= 16 || byte2 <= 31)));
@@ -239,7 +239,7 @@ namespace llarp
         {
           return a.port() ^ a.addr4()->s_addr;
         }
-        uint8_t empty[16] = {0};
+        static const uint8_t empty[16] = {0};
         return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();
       }
     };

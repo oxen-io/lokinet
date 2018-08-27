@@ -51,6 +51,24 @@ namespace llarp
       }
 
       bool
+      GetManyNearExcluding(const Key_t& target, std::set< Key_t >& result,
+                           size_t N, const std::set< Key_t >& exclude) const
+      {
+        std::set< Key_t > s;
+        for(const auto& k : exclude)
+          s.insert(k);
+        Key_t peer;
+        while(N--)
+        {
+          if(!FindCloseExcluding(target, peer, s))
+            return false;
+          s.insert(peer);
+          result.insert(peer);
+        }
+        return true;
+      }
+
+      bool
       FindCloseExcluding(const Key_t& target, Key_t& result,
                          std::set< Key_t > exclude) const
       {

@@ -111,6 +111,12 @@ namespace llarp
       if(!bencode_write_bytestring(buf, "R", 1))
         return false;
 
+      // exploritory or not?
+      if(!bencode_write_bytestring(buf, "E", 1))
+        return false;
+      if(!bencode_write_uint64(buf, exploritory ? 1 : 0))
+        return false;
+
       // iterative or not?
       if(!bencode_write_bytestring(buf, "I", 1))
         return false;
@@ -142,6 +148,16 @@ namespace llarp
     FindRouterMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
     {
       llarp_buffer_t strbuf;
+
+      if(llarp_buffer_eq(key, "E"))
+      {
+        uint64_t result;
+        if(!bencode_read_integer(val, &result))
+          return false;
+
+        exploritory = result != 0;
+        return true;
+      }
 
       if(llarp_buffer_eq(key, "I"))
       {
@@ -190,7 +206,10 @@ namespace llarp
         llarp::LogWarn("Got duplicate DHT lookup from ", From, " txid=", txid);
         return false;
       }
-      dht.LookupRouterRelayed(From, txid, K, !iterative, replies);
+      if(exploritory)
+        return dht.LookupRouterExploritory(From, txid, K, replies);
+      else
+        dht.LookupRouterRelayed(From, txid, K, !iterative, replies);
       return true;
     }
   }  // namespace dht

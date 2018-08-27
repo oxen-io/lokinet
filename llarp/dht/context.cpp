@@ -23,12 +23,69 @@ namespace llarp
     }
 
     void
+    Context::HandleExploreResult(const std::vector< RouterID > &result)
+    {
+      llarp::LogInfo("got ", result.size(), " routers from exploration");
+      for(const auto &pk : result)
+      {
+        if(llarp_nodedb_get_rc(router->nodedb, pk) == nullptr)
+        {
+          // try connecting to it we don't know it
+          // this triggers a dht lookup
+          router->TryEstablishTo(pk);
+        }
+      }
+    }
+
+    void
+    Context::Explore()
+    {
+      // ask N random peers for new routers
+      llarp::LogInfo("Exploring network");
+      std::set< Key_t > peers;
+      Key_t peer;
+      size_t N = 5;
+      while(N--)
+      {
+        if(nodes->GetRandomNodeExcluding(peer, peers))
+        {
+          peers.insert(peer);
+          uint64_t txid = ++ids;
+          TXOwner ownerKey;
+          ownerKey.node = peer;
+          ownerKey.txid = txid;
+          pendingTX.insert(
+              std::make_pair(ownerKey,
+                             SearchJob(std::bind(&Context::HandleExploreResult,
+                                                 this, std::placeholders::_1),
+                                       []() {})));
+          DHTSendTo(peer, new FindRouterMessage(ourKey, txid));
+        }
+        else
+          llarp::LogError("failed to select random nodes for exploration");
+      }
+    }
+
+    void
+    Context::handle_explore_timer(void *u, uint64_t orig, uint64_t left)
+    {
+      if(left)
+        return;
+      Context *ctx = static_cast< Context * >(u);
+      ctx->Explore();
+      llarp_logic_call_later(ctx->router->logic,
+                             {orig, ctx, &handle_explore_timer});
+    }
+
+    void
     Context::handle_cleaner_timer(void *u, uint64_t orig, uint64_t left)
     {
       if(left)
         return;
       Context *ctx = static_cast< Context * >(u);
+      // clean up transactions
       ctx->CleanupTX();
+
       if(ctx->services)
       {
         // expire intro sets
@@ -198,9 +255,8 @@ namespace llarp
       PathLookupJob *j = new PathLookupJob(router, path, txid);
       j->target        = addr;
       j->R             = 5;
-      j->asked.emplace(askpeer);
-      Key_t us = OurKey();
-      j->asked.emplace(us);
+      j->asked.insert(askpeer);
+      j->asked.insert(OurKey());
       SearchJob job(
           OurKey(), txid,
           std::bind(&PathLookupJob::OnResult, j, std::placeholders::_1),
@@ -290,10 +346,13 @@ namespace llarp
           else
           {
             // yeah, ask neighboor recursively
-            // FIXME: we may need to pass a job here...
-            // auto sj = FindPendingTX(requester, txid);
-            // LookupRouter(target, requester, txid, next, sj->job);
-            LookupRouter(target, requester, txid, next);
+            // don't request with a new lookup if a pending job exists as this
+            // causes a dht feedback loop
+            auto pending = FindPendingTX(requester, txid);
+            if(pending)
+              LookupRouter(target, requester, txid, next, pending->job);
+            else
+              LookupRouter(target, requester, txid, next);
           }
         }
         else  // otherwise tell them we don't have it
@@ -371,13 +430,18 @@ namespace llarp
     }
 
     void
-    Context::Init(const Key_t &us, llarp_router *r)
+    Context::Init(const Key_t &us, llarp_router *r,
+                  llarp_time_t exploreInterval)
     {
       router   = r;
       ourKey   = us;
       nodes    = new Bucket< RCNode >(ourKey);
       services = new Bucket< ISNode >(ourKey);
       llarp::LogDebug("intialize dht with key ", ourKey);
+      // start exploring
+      llarp_logic_call_later(
+          r->logic,
+          {exploreInterval, this, &llarp::dht::Context::handle_explore_timer});
     }
 
     void
@@ -513,8 +577,8 @@ namespace llarp
       ownerKey.txid        = id;
       IntroSetInformJob *j = new IntroSetInformJob(router, whoasked, txid);
       j->target            = addr;
-      for(const auto &item : excludes)
-        j->asked.emplace(item);
+      for(const auto item : excludes)
+        j->asked.insert(item);
       j->R = R;
       SearchJob job(
           whoasked, txid, addr.ToKey(), {},
@@ -528,6 +592,27 @@ namespace llarp
       llarp::LogInfo("asking ", askpeer, " for ", addr.ToString(),
                      " on request of ", whoasked);
       router->dht->impl.DHTSendTo(askpeer, dhtmsg);
+    }
+
+    bool
+    Context::LookupRouterExploritory(const Key_t &requester, uint64_t txid,
+                                     const RouterID &target,
+                                     std::vector< IMessage * > &reply)
+    {
+      std::vector< RouterID > closer;
+      Key_t t(target.data());
+      std::set< Key_t > found;
+      if(!nodes->GetManyNearExcluding(t, found, 2,
+                                      std::set< Key_t >{ourKey, requester}))
+      {
+        llarp::LogError(
+            "not enough dht nodes to handle exploritory router lookup");
+        return false;
+      }
+      for(const auto &f : found)
+        closer.push_back(f);
+      reply.push_back(new GotRouterMessage(txid, closer, false));
+      return true;
     }
 
     void

@@ -106,6 +106,12 @@ sent in reply to FRCM only
   V: 0
 }
 
-* send a GRCM with R to requesters in all linked transactions
-* terminate transaction with id T
+in response to an exploritory FRCM if the target router is not found the form
 
+{
+  A: "S",
+  N: [list, of, router, publickeys, near, target],
+  R: [],
+  T: transaction_id_uint64,
+  V: 0
+}

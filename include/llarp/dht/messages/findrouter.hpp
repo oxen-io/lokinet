@@ -17,6 +17,13 @@ namespace llarp
       {
       }
 
+      // exploritory
+      FindRouterMessage(const Key_t& from, uint64_t id)
+          : IMessage(from), exploritory(true), txid(id)
+      {
+        K.Randomize();
+      }
+
       ~FindRouterMessage();
 
       bool
@@ -31,6 +38,7 @@ namespace llarp
 
       Key_t K;
       bool iterative   = false;
+      bool exploritory = false;
       uint64_t txid    = 0;
       uint64_t version = 0;
     };

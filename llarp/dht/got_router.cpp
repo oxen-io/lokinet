@@ -24,6 +24,13 @@ namespace llarp
       if(!BEncodeWriteDictMsgType(buf, "A", "S"))
         return false;
 
+      // near
+      if(N.size())
+      {
+        if(!BEncodeWriteDictList("N", N, buf))
+          return false;
+      }
+
       if(!BEncodeWriteDictList("R", R, buf))
         return false;
 
@@ -41,6 +48,10 @@ namespace llarp
     bool
     GotRouterMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
     {
+      if(llarp_buffer_eq(key, "N"))
+      {
+        return BEncodeReadList(N, val);
+      }
       if(llarp_buffer_eq(key, "R"))
       {
         return BEncodeReadList(R, val);
@@ -82,7 +93,7 @@ namespace llarp
                 pending->target, pending->requesterTX, &R[0], false));
           }
         }
-        else
+        else if(N.empty())
         {
           // iterate to next closest peer
           Key_t nextPeer;
@@ -112,6 +123,11 @@ namespace llarp
                   pending->target, pending->requesterTX, nullptr, false));
             }
           }
+        }
+        else if(pending->foundNear)
+        {
+          // near peers provided
+          pending->foundNear(N);
         }
         dht.RemovePendingTX(From, txid);
         return true;

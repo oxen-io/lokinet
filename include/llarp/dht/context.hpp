@@ -51,7 +51,6 @@ namespace llarp
                 uint64_t whoaskedTX, const Key_t& askpeer,
                 const std::set< service::IntroSet >& include = {},
                 uint64_t R                                   = 0);
-
       void
       LookupRouterViaJob(llarp_router_lookup_job* job);
 
@@ -98,6 +97,11 @@ namespace llarp
       void
       DHTSendTo(const Key_t& peer, IMessage* msg);
 
+      bool
+      LookupRouterExploritory(const Key_t& requester, uint64_t txid,
+                              const RouterID& target,
+                              std::vector< IMessage* >& reply);
+
       void
       LookupIntroSetRelayed(const Key_t& requester, uint64_t txid,
                             const service::Address& addr, bool recursive,
@@ -121,7 +125,7 @@ namespace llarp
                           uint64_t S, const std::set< Key_t >& exclude);
 
       void
-      Init(const Key_t& us, llarp_router* router);
+      Init(const Key_t& us, llarp_router* router, llarp_time_t exploreInterval);
 
       const llarp::service::IntroSet*
       GetIntroSetByServiceAddress(const llarp::service::Address& addr) const;
@@ -131,6 +135,13 @@ namespace llarp
 
       static void
       handle_cleaner_timer(void* user, uint64_t orig, uint64_t left);
+
+      static void
+      handle_explore_timer(void* user, uint64_t orig, uint64_t left);
+
+      /// explore dht for new routers
+      void
+      Explore();
 
       static void
       queue_router_lookup(void* user);
@@ -152,6 +163,9 @@ namespace llarp
      private:
       void
       ScheduleCleanupTimer();
+
+      void
+      HandleExploreResult(const std::vector< RouterID >& result);
 
       void
       CleanupTX();

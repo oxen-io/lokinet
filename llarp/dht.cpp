@@ -45,7 +45,7 @@ llarp_dht_allow_transit(llarp_dht_context *ctx)
 void
 llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
 {
-  ctx->impl.Init(key, ctx->parent);
+  ctx->impl.Init(key, ctx->parent, 20000);
 }
 
 void

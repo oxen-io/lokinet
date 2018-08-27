@@ -24,6 +24,12 @@ namespace llarp
         }
       }
 
+      GotRouterMessage(uint64_t id, const std::vector< RouterID >& near,
+                       bool tunneled)
+          : IMessage({}), N(near), txid(id), relayed(tunneled)
+      {
+      }
+
       ~GotRouterMessage();
 
       bool
@@ -37,6 +43,7 @@ namespace llarp
                     std::vector< IMessage* >& replies) const;
 
       std::vector< llarp_rc > R;
+      std::vector< RouterID > N;
       uint64_t txid    = 0;
       uint64_t version = 0;
       bool relayed     = false;

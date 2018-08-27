@@ -76,6 +76,9 @@ struct frame_state
   flags_agree(byte_t flags) const;
 
   bool
+  either_has_flag(byte_t flag) const;
+
+  bool
   process_inbound_queue();
 
   llarp_router *

@@ -46,13 +46,21 @@ namespace llarp
       target.Zero();
     }
 
+    SearchJob::SearchJob(FoundNearFunc near, DoneFunc done)
+        : foundNear(near), onDone(done)
+    {
+      target.Randomize();
+      started = llarp_time_now_ms();
+    }
+
     bool
     SearchJob::FoundIntros(
         const std::vector< llarp::service::IntroSet > &introsets) const
     {
       if(foundIntroHook && foundIntroHook(introsets))
       {
-        onDone();
+        if(onDone)
+          onDone();
         return true;
       }
       return foundIntroHook == nullptr;

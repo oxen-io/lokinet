@@ -49,6 +49,12 @@ frame_state::flags_agree(byte_t flags) const
   return ((rxflags & flags) & (txflags & flags)) == flags;
 }
 
+bool
+frame_state::either_has_flag(byte_t flag) const
+{
+  return (rxflags & flag) == flag || (txflags & flag) == flag;
+}
+
 void
 frame_state::clear()
 {

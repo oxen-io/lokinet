@@ -19,15 +19,6 @@ handle_crypto_outbound(void *u)
   self->working = false;
 }
 
-// TODO: move this orphan function?
-static void
-handle_frame_encrypt(iwp_async_frame *frame)
-{
-  llarp_link_session *self = static_cast< llarp_link_session * >(frame->user);
-  if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz) == -1)
-    llarp::LogWarn("sendto failed");
-}
-
 llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
                                        const llarp::Addr &a)
     : udp(&l->udp)
@@ -98,11 +89,8 @@ static void
 send_keepalive(void *user)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(user);
-  // if both sides agree on invalidation
   if(self->is_invalidated())
   {
-    // don't send keepalive
-    llarp::LogInfo("session cant send keepalive because were invalid");
     return;
   }
   // all zeros means keepalive
@@ -424,8 +412,6 @@ llarp_link_session::Tick(llarp_time_t now)
     // both sides agreeed to session invalidation
     // terminate our session when all of our frames from the crypto workers
     // are done
-    llarp::LogWarn("Tick - ", addr, " invaldiated session with ", frames,
-                   " frames left");
     return !working;
   }
   if(state == eLIMSent || state == eEstablished)
@@ -439,15 +425,18 @@ llarp_link_session::Tick(llarp_time_t now)
 void
 llarp_link_session::keepalive()
 {
-  llarp_logic_queue_job(serv->logic, {this, &send_keepalive});
+  send_keepalive(this);
 }
 
 void
 llarp_link_session::EncryptOutboundFrames()
 {
-  outboundFrames.Process([&](iwp_async_frame *frame) {
+  llarp_link_session *self = this;
+  outboundFrames.Process([self](iwp_async_frame *frame) {
     if(iwp_encrypt_frame(frame))
-      handle_frame_encrypt(frame);
+      if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz)
+         == -1)
+        llarp::LogError("sendto ", self->addr, " failed");
   });
 }
 

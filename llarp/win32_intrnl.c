@@ -528,7 +528,7 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName)
   /* current win10 flights now have a new named-thread API, let's try to use
    * that first! */
   /* first, dlsym(2) the new call from system library */
-  hThread = NULL;
+  hThread               = NULL;
   _SetThreadDescription = (p_SetThreadDescription)GetProcAddress(
       GetModuleHandle("kernel32"), "SetThreadDescription");
   if(_SetThreadDescription)
