@@ -71,8 +71,10 @@ llarp_router::PersistSessionUntil(const llarp::RouterID &remote,
 
 bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
-                            const llarp::ILinkMessage *msg)
+                            const llarp::ILinkMessage *m)
 {
+  std::unique_ptr< const llarp::ILinkMessage > msg =
+      std::unique_ptr< const llarp::ILinkMessage >(m);
   llarp_link *chosen = nullptr;
   if(!outboundLink->has_session_to(remote))
   {
@@ -91,16 +93,15 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   if(chosen)
   {
     SendTo(remote, msg, chosen);
-    delete msg;
     return true;
   }
   // this will create an entry in the obmq if it's not already there
-  auto itr = outboundMesssageQueue.find(remote);
-  if(itr == outboundMesssageQueue.end())
+  auto itr = outboundMessageQueue.find(remote);
+  if(itr == outboundMessageQueue.end())
   {
-    outboundMesssageQueue.insert(std::make_pair(remote, MessageQueue()));
+    outboundMessageQueue.insert(std::make_pair(remote, MessageQueue()));
   }
-  outboundMesssageQueue[remote].push(msg);
+  outboundMessageQueue[remote].push(std::move(msg));
 
   // we don't have an open session to that router right now
   auto rc = llarp_nodedb_get_rc(nodedb, remote);
@@ -111,54 +112,18 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
     return true;
   }
 
-  // this would never be true, as everything is in memory
-  // but we'll keep around if we ever need to swap them out of memory
-  // but it's best to keep the paradigm that everythign is in memory at this
-  // point in development as it will reduce complexity
-  /*
-  // try requesting the rc from the disk
-  llarp_async_load_rc *job = new llarp_async_load_rc;
-  job->diskworker          = disk;
-  job->nodedb              = nodedb;
-  job->logic               = logic;
-  job->user                = this;
-  job->hook                = &HandleAsyncLoadRCForSendTo;
-  memcpy(job->pubkey, remote, PUBKEYSIZE);
-  llarp_nodedb_async_load_rc(job);
-  */
-
   // we don't have the RC locally so do a dht lookup
-  llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
+  llarp_router_lookup_job *lookup = new llarp_router_lookup_job();
   lookup->user                    = this;
+  lookup->iterative               = false;
   llarp_rc_clear(&lookup->result);
   memcpy(lookup->target, remote, PUBKEYSIZE);
-  lookup->hook = &HandleDHTLookupForSendTo;
-  llarp_dht_lookup_router(this->dht, lookup);
+  lookup->hook = &llarp_router::HandleDHTLookupForSendTo;
+  lookup->user = this;
+  llarp_dht_lookup_router(dht, lookup);
 
   return true;
 }
-
-/*
-void
-llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
-{
-  llarp_router *router = static_cast< llarp_router * >(job->user);
-  if(job->loaded)
-  {
-    llarp_router_try_connect(router, &job->rc, 10);
-  }
-  else
-  {
-    // we don't have the RC locally so do a dht lookup
-    llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
-    lookup->user                    = router;
-    memcpy(lookup->target, job->pubkey, PUBKEYSIZE);
-    lookup->hook = &HandleDHTLookupForSendTo;
-    llarp_dht_lookup_router(router->dht, lookup);
-  }
-  delete job;
-}
-*/
 
 void
 llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
@@ -166,13 +131,14 @@ llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
   llarp_router *self = static_cast< llarp_router * >(job->user);
   if(job->found)
   {
+    llarp_nodedb_put_rc(self->nodedb, &job->result);
     llarp_router_try_connect(self, &job->result, 10);
+    llarp_rc_free(&job->result);
   }
   else
   {
     self->DiscardOutboundFor(job->target);
   }
-  llarp_rc_free(&job->result);
   delete job;
 }
 
@@ -385,13 +351,13 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
   else
   {
     // dht lookup as we don't know it
-    llarp_router_lookup_job *lookup = new llarp_router_lookup_job();
-    lookup->user                    = this;
+    llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
     llarp_rc_clear(&lookup->result);
     memcpy(lookup->target, remote, PUBKEYSIZE);
-    lookup->hook      = &HandleDHTLookupForTryEstablishTo;
+    lookup->hook      = &llarp_router::HandleDHTLookupForTryEstablishTo;
     lookup->iterative = false;
-    llarp_dht_lookup_router(this->dht, lookup);
+    lookup->user      = this;
+    llarp_dht_lookup_router(dht, lookup);
   }
 }
 
@@ -400,10 +366,11 @@ llarp_router::HandleDHTLookupForTryEstablishTo(llarp_router_lookup_job *job)
 {
   if(job->found)
   {
-    llarp_router_try_connect(static_cast< llarp_router * >(job->user),
-                             &job->result, 5);
+    llarp_router *self = static_cast< llarp_router * >(job->user);
+    llarp_nodedb_put_rc(self->nodedb, &job->result);
+    llarp_router_try_connect(self, &job->result, 5);
+    llarp_rc_free(&job->result);
   }
-  llarp_rc_free(&job->result);
   delete job;
 }
 
@@ -472,7 +439,8 @@ llarp_router::Tick()
 }
 
 void
-llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
+llarp_router::SendTo(llarp::RouterID remote,
+                     std::unique_ptr< const llarp::ILinkMessage > &msg,
                      llarp_link *link)
 {
   llarp_buffer_t buf =
@@ -543,8 +511,8 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
                                llarp_link *chosen)
 {
   llarp::LogDebug("Flush outbound for ", remote);
-  auto itr = outboundMesssageQueue.find(remote);
-  if(itr == outboundMesssageQueue.end())
+  auto itr = outboundMessageQueue.find(remote);
+  if(itr == outboundMessageQueue.end())
   {
     return;
   }
@@ -557,13 +525,12 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
   {
     auto buf = llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
 
-    auto &msg = itr->second.front();
+    const auto &msg = itr->second.front();
 
     if(!msg->BEncode(&buf))
     {
       llarp::LogWarn("failed to encode outbound message, buffer size left: ",
                      llarp_buffer_size_left(buf));
-      delete msg;
       itr->second.pop();
       continue;
     }
@@ -574,7 +541,6 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
       llarp::LogWarn("failed to send outboud message to ", remote, " via ",
                      chosen->name());
 
-    delete msg;
     itr->second.pop();
   }
 }
@@ -615,13 +581,7 @@ llarp_router::on_try_connect_result(llarp_link_establish_job *job)
 void
 llarp_router::DiscardOutboundFor(const llarp::RouterID &remote)
 {
-  auto &queue = outboundMesssageQueue[remote];
-  while(queue.size())
-  {
-    delete queue.front();
-    queue.pop();
-  }
-  outboundMesssageQueue.erase(remote);
+  outboundMessageQueue.erase(remote);
 }
 
 bool
@@ -643,7 +603,7 @@ void
 llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
                               llarp_link_establish_job *establish_job)
 {
-  llarp_async_verify_rc *job = new llarp_async_verify_rc;
+  llarp_async_verify_rc *job = new llarp_async_verify_rc();
   job->user  = new llarp::async_verify_context{this, establish_job};
   job->rc    = {};
   job->valid = false;

@@ -27,8 +27,9 @@ namespace llarp
         S.Zero();
       }
 
-      FindIntroMessage(uint64_t txid, const llarp::service::Address& addr)
-          : IMessage({}), S(addr), T(txid)
+      FindIntroMessage(uint64_t txid, const llarp::service::Address& addr,
+                       uint64_t r)
+          : IMessage({}), R(r), S(addr), T(txid)
       {
         N.Zero();
       }

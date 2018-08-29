@@ -9,7 +9,7 @@ namespace llarp
   {
     GotRouterMessage::~GotRouterMessage()
     {
-      for(auto &rc : R)
+      for(auto rc : R)
         llarp_rc_free(&rc);
       R.clear();
     }
@@ -81,60 +81,27 @@ namespace llarp
           return pathset->HandleGotRouterMessage(this);
         }
       }
-      SearchJob *pending = dht.FindPendingTX(From, txid);
-      if(pending)
+      TXOwner owner(From, txid);
+
+      if(dht.pendingExploreLookups.HasPendingLookupFrom(owner))
       {
-        if(R.size())
-        {
-          pending->FoundRouter(&R[0]);
-          if(pending->requester != dht.OurKey())
-          {
-            replies.push_back(new GotRouterMessage(
-                pending->target, pending->requesterTX, &R[0], false));
-          }
-        }
-        else if(N.empty())
-        {
-          // iterate to next closest peer
-          Key_t nextPeer;
-          pending->exclude.insert(From);
-          if(pending->exclude.size() < 3
-             && dht.nodes->FindCloseExcluding(pending->target, nextPeer,
-                                              pending->exclude))
-          {
-            llarp::LogInfo(pending->target, " was not found via ", From,
-                           " iterating to next peer ", nextPeer,
-                           " already asked ", pending->exclude.size(),
-                           " other peers");
-            // REVIEW: is this ok to relay the pending->job as the current job
-            // (seems to make things work)
-            dht.LookupRouter(pending->target, pending->requester,
-                             pending->requesterTX, nextPeer, pending->job, true,
-                             pending->exclude);
-          }
-          else
-          {
-            llarp::LogInfo(pending->target, " was not found via ", From,
-                           " and we won't look it up");
-            pending->FoundRouter(nullptr);
-            if(pending->requester != dht.OurKey())
-            {
-              replies.push_back(new GotRouterMessage(
-                  pending->target, pending->requesterTX, nullptr, false));
-            }
-          }
-        }
-        else if(pending->foundNear)
-        {
-          // near peers provided
-          pending->foundNear(N);
-        }
-        dht.RemovePendingTX(From, txid);
+        if(N.size() == 0)
+          dht.pendingExploreLookups.NotFound(owner);
+        else
+          dht.pendingExploreLookups.Found(owner, From, N);
         return true;
       }
-      llarp::LogWarn(
-          "Got response for DHT transaction we are not tracking, txid=", txid);
-      return false;
+
+      if(!dht.pendingRouterLookups.HasPendingLookupFrom(owner))
+      {
+        llarp::LogWarn("Unwarrented GRM from ", From, " txid=", txid);
+        return false;
+      }
+      if(R.size() == 1)
+        dht.pendingRouterLookups.Found(owner, R[0].pubkey, R);
+      else
+        dht.pendingRouterLookups.NotFound(owner);
+      return true;
     }
   }  // namespace dht
 }  // namespace llarp

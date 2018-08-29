@@ -346,7 +346,6 @@ set(LIB_SRC
   llarp/dht/find_router.cpp
   llarp/dht/got_intro.cpp
   llarp/dht/got_router.cpp
-  llarp/dht/search_job.cpp
   llarp/dht/publish_intro.cpp
   llarp/handlers/tun.cpp
   llarp/iwp/frame_header.cpp

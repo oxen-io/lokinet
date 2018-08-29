@@ -18,22 +18,6 @@ struct llarp_async_iwp
 namespace iwp
 {
   void
-  inform_keygen(void *user)
-  {
-    iwp_async_keygen *keygen = static_cast< iwp_async_keygen * >(user);
-    keygen->hook(keygen);
-  }
-
-  void
-  keygen(void *user)
-  {
-    iwp_async_keygen *keygen = static_cast< iwp_async_keygen * >(user);
-    keygen->iwp->crypto->encryption_keygen(keygen->keybuf);
-    keygen->hook(keygen);
-    // llarp_logic_queue_job(keygen->iwp->logic, job);
-  }
-
-  void
   inform_intro(void *user)
   {
     iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
@@ -56,6 +40,8 @@ namespace iwp
     memcpy(tmp, intro->remote_pubkey, 32);
     memcpy(tmp + 32, intro->nonce, 32);
     crypto->shorthash(e_k, buf);
+    // put nonce
+    memcpy(intro->buf + 32, intro->nonce, 32);
     // e = SE(a.k, e_k, n[0:24])
     memcpy(intro->buf + 64, llarp::seckey_topublic(intro->secretkey), 32);
     buf.base = intro->buf + 64;
@@ -91,9 +77,8 @@ namespace iwp
     buf.base = intro->remote_pubkey;
     buf.cur  = buf.base;
     buf.sz   = 32;
-    memcpy(intro->remote_pubkey, intro->buf + 64, 32);
+    memcpy(buf.base, intro->buf + 64, 32);
     crypto->xchacha20(buf, e_K, intro->nonce);
-    llarp::LogInfo("handshake from ", llarp::RouterID(intro->remote_pubkey));
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_server(sharedkey, intro->remote_pubkey,
                                 intro->secretkey, intro->nonce);
@@ -105,6 +90,7 @@ namespace iwp
     if(memcmp(h, intro->buf, 32))
     {
       // hmac fail
+      delete[] intro->buf;
       intro->buf = nullptr;
     }
     // inform result
@@ -347,14 +333,6 @@ namespace iwp
     delete frame;
   }
 }  // namespace iwp
-
-void
-iwp_call_async_keygen(struct llarp_async_iwp *iwp,
-                      struct iwp_async_keygen *keygen)
-{
-  keygen->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {keygen, &iwp::keygen});
-}
 
 bool
 iwp_decrypt_frame(struct iwp_async_frame *frame)

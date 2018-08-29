@@ -25,9 +25,9 @@ struct InboundMessage
   }
 
   llarp_buffer_t
-  Buffer()
+  Buffer() const
   {
-    return llarp::Buffer< decltype(msg) >(msg);
+    return llarp::ConstBuffer< decltype(msg) >(msg);
   }
 
   struct GetTime

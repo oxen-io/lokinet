@@ -45,12 +45,10 @@ struct frame_state
   uint64_t txids         = 0;
   llarp_time_t lastEvent = 0;
   std::unordered_map< uint64_t, llarp::ShortHash > rxIDs;
-  std::unordered_map< llarp::ShortHash, transit_message *,
+  std::unordered_map< llarp::ShortHash, std::unique_ptr< transit_message >,
                       llarp::ShortHash::Hash >
       rx;
-  std::unordered_map< uint64_t, transit_message * > tx;
-
-  // typedef std::queue< sendbuf_t * > sendqueue_t;
+  std::unordered_map< uint64_t, std::unique_ptr< transit_message > > tx;
 
   typedef llarp::util::CoDelQueue<
       InboundMessage, InboundMessage::GetTime, InboundMessage::PutTime,

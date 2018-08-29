@@ -19,7 +19,8 @@ namespace llarp
       Bucket(const Key_t& us) : nodes(XorMetric(us)){};
 
       bool
-      GetRandomNodeExcluding(Key_t& result, std::set< Key_t > exclude) const
+      GetRandomNodeExcluding(Key_t& result,
+                             const std::set< Key_t >& exclude) const
       {
         std::vector< Key_t > candidates;
         for(const auto& item : nodes)
@@ -51,6 +52,31 @@ namespace llarp
       }
 
       bool
+      GetManyRandom(std::set< Key_t >& result, size_t N) const
+      {
+        if(nodes.size() < N)
+          return false;
+        if(nodes.size() == N)
+        {
+          for(const auto& node : nodes)
+          {
+            result.insert(node.first);
+          }
+          return true;
+        }
+        size_t expecting = N;
+        size_t sz        = nodes.size();
+        while(N)
+        {
+          auto itr = nodes.begin();
+          std::advance(itr, llarp_randint() % sz);
+          if(result.insert(itr->first).second)
+            --N;
+        }
+        return result.size() == expecting;
+      }
+
+      bool
       GetManyNearExcluding(const Key_t& target, std::set< Key_t >& result,
                            size_t N, const std::set< Key_t >& exclude) const
       {
@@ -70,7 +96,7 @@ namespace llarp
 
       bool
       FindCloseExcluding(const Key_t& target, Key_t& result,
-                         std::set< Key_t > exclude) const
+                         const std::set< Key_t >& exclude) const
       {
         Key_t maxdist;
         maxdist.Fill(0xff);

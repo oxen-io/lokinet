@@ -23,7 +23,7 @@ bool
 frame_state::process_inbound_queue()
 {
   uint64_t last = 0;
-  recvqueue.Process([&](InboundMessage *msg) {
+  recvqueue.Process([&](const InboundMessage *msg) {
     if(last != msg->msgid)
     {
       auto buffer = msg->Buffer();
@@ -58,12 +58,6 @@ frame_state::either_has_flag(byte_t flag) const
 void
 frame_state::clear()
 {
-  auto _rx = rx;
-  auto _tx = tx;
-  for(auto &item : _rx)
-    delete item.second;
-  for(auto &item : _tx)
-    delete item.second;
   rx.clear();
   tx.clear();
 }
@@ -100,9 +94,11 @@ frame_state::got_xmit(frame_header hdr, size_t sz)
     auto itr = rx.find(h);
     if(itr == rx.end())
     {
-      auto msg  = new transit_message(x);
-      rx[h]     = msg;
-      rxIDs[id] = h;
+      auto msg = rx.insert(std::make_pair(h,
+                                          std::unique_ptr< transit_message >(
+                                              new transit_message(x))))
+                     .first->second.get();
+      rxIDs.insert(std::make_pair(id, h));
       llarp::LogDebug("got message XMIT with ", (int)x.numfrags(),
                       " fragment"
                       "s");
@@ -199,7 +195,9 @@ frame_state::inbound_frame_complete(uint64_t id)
 {
   bool success = false;
   std::vector< byte_t > msg;
-  auto rxmsg = rx[rxIDs[id]];
+  std::unique_ptr< transit_message > rxmsg = std::move(rx[rxIDs[id]]);
+  rx.erase(rxIDs[id]);
+  rxIDs.erase(id);
   llarp::ShortHash digest;
   if(rxmsg->reassemble(msg))
   {
@@ -243,10 +241,6 @@ frame_state::inbound_frame_complete(uint64_t id)
     }
   }
 
-  delete rxmsg;
-  rxIDs.erase(id);
-  rx.erase(digest);
-
   if(!success)
     llarp::LogWarn("Failed to process inbound message ", id);
 
@@ -281,27 +275,23 @@ frame_state::got_acks(frame_header hdr, size_t sz)
 
   auto now = llarp_time_now_ms();
 
-  transit_message *msg = itr->second;
-
   if(bitmask == ~(0U))
   {
     tx.erase(msgid);
-    delete msg;
   }
   else
   {
-    msg->ack(bitmask);
+    itr->second->ack(bitmask);
 
-    if(msg->completed())
+    if(itr->second->completed())
     {
       llarp::LogDebug("message transmitted msgid=", msgid);
-      tx.erase(msgid);
-      delete msg;
+      tx.erase(itr);
     }
-    else if(msg->should_resend_frags(now))
+    else if(itr->second->should_resend_frags(now))
     {
       llarp::LogDebug("message ", msgid, " retransmit fragments");
-      msg->retransmit_frags(sendqueue, txflags);
+      itr->second->retransmit_frags(sendqueue, txflags);
     }
   }
   return true;
@@ -341,36 +331,10 @@ frame_state::process(byte_t *buf, size_t sz)
   }
 }
 
-/*
-bool
-frame_state::next_frame(llarp_buffer_t *buf)
-{
-  auto left = sendqueue.size();
-  if(left)
-  {
-    llarp::LogDebug("next frame, ", left, " frames left in send queue");
-    auto &send = sendqueue.front();
-    buf->base  = send->data();
-    buf->cur   = send->data();
-    buf->sz    = send->size();
-    return true;
-  }
-  return false;
-}
-
-void
-frame_state::pop_next_frame()
-{
-  auto &buf = sendqueue.front();
-  delete buf;
-  sendqueue.pop();
-}
-*/
-
 void
 frame_state::queue_tx(uint64_t id, transit_message *msg)
 {
-  tx.insert(std::make_pair(id, msg));
+  tx.insert(std::make_pair(id, std::unique_ptr< transit_message >(msg)));
   msg->generate_xmit(sendqueue, txflags);
   // msg->retransmit_frags(sendqueue, txflags);
 }

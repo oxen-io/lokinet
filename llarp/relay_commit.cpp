@@ -174,7 +174,7 @@ namespace llarp
 
     LRCMFrameDecrypt(Context* ctx, Decrypter* dec,
                      const LR_CommitMessage* commit)
-        : decrypter(dec), context(ctx), hop(new Hop)
+        : decrypter(dec), context(ctx), hop(new Hop())
     {
       for(const auto& f : commit->frames)
         frames.push_back(f);

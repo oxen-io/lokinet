@@ -194,7 +194,7 @@ llarp_ai_list_bencode(struct llarp_ai_list *l, llarp_buffer_t *buff)
 struct llarp_ai_list *
 llarp_ai_list_new()
 {
-  return new llarp_ai_list;
+  return new llarp_ai_list();
 }
 
 void
@@ -240,10 +240,13 @@ llarp_ai_list_size(struct llarp_ai_list *l)
 void
 llarp_ai_list_iterate(struct llarp_ai_list *l, struct llarp_ai_list_iter *itr)
 {
-  itr->list = l;
-  for(auto &ai : l->list)
-    if(!itr->visit(itr, &ai))
-      return;
+  if(l)
+  {
+    itr->list = l;
+    for(auto &ai : l->list)
+      if(!itr->visit(itr, &ai))
+        return;
+  }
 }
 
 bool

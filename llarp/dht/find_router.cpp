@@ -75,7 +75,7 @@ namespace llarp
         if(path)
         {
           replies.push_back(
-              new GotRouterMessage(K, txid, &dht.router->rc, false));
+              new GotRouterMessage(K.data(), txid, &dht.router->rc, false));
           return true;
         }
         return false;
@@ -90,8 +90,9 @@ namespace llarp
       job->dht = ctx;
       memcpy(job->target, K, sizeof(job->target));
       Key_t peer;
-      if(dht.nodes->FindClosest(K, peer))
-        dht.LookupRouter(K, dht.OurKey(), txid, peer, job);
+      Key_t k = K.data();
+      if(dht.nodes->FindClosest(k, peer))
+        dht.LookupRouterRecursive(K, dht.OurKey(), txid, peer, job);
       return true;
     }
 
@@ -200,16 +201,15 @@ namespace llarp
                        " when we are not allowing dht transit");
         return false;
       }
-      auto pending = dht.FindPendingTX(From, txid);
-      if(pending)
+      if(dht.pendingRouterLookups.HasPendingLookupFrom({From, txid}))
       {
-        llarp::LogWarn("Got duplicate DHT lookup from ", From, " txid=", txid);
+        llarp::LogWarn("Duplicate FRM from ", From, " txid=", txid);
         return false;
       }
       if(exploritory)
-        return dht.LookupRouterExploritory(From, txid, K, replies);
+        return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
       else
-        dht.LookupRouterRelayed(From, txid, K, !iterative, replies);
+        dht.LookupRouterRelayed(From, txid, K.data(), !iterative, replies);
       return true;
     }
   }  // namespace dht

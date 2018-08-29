@@ -42,7 +42,7 @@ llarp_ev_loop_free(struct llarp_ev_loop **ev)
 int
 llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
 {
-  while(true)
+  while(ev->running())
   {
     if(ev->tick(EV_TICK_INTERVAL) == -1)
       return -1;
@@ -59,7 +59,7 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
   while(ev->running())
   {
     ev->tick(EV_TICK_INTERVAL);
-    llarp_logic_tick(logic);
+    llarp_logic_tick_async(logic);
     llarp_threadpool_tick(tp);
   }
 }

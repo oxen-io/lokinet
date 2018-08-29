@@ -100,10 +100,11 @@ struct llarp_router
   llarp_link *outboundLink = nullptr;
   std::list< llarp_link * > inboundLinks;
 
-  typedef std::queue< const llarp::ILinkMessage * > MessageQueue;
+  typedef std::queue< std::unique_ptr< const llarp::ILinkMessage > >
+      MessageQueue;
 
   /// outbound message queue
-  std::map< llarp::RouterID, MessageQueue > outboundMesssageQueue;
+  std::map< llarp::RouterID, MessageQueue > outboundMessageQueue;
 
   /// loki verified routers
   std::map< llarp::RouterID, llarp_rc > validRouters;
@@ -182,7 +183,8 @@ struct llarp_router
 
   /// sendto or drop
   void
-  SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
+  SendTo(llarp::RouterID remote,
+         std::unique_ptr< const llarp::ILinkMessage > &msg,
          llarp_link *chosen = nullptr);
 
   /// manually flush outbound message queue for just 1 router

@@ -174,7 +174,6 @@ llarp_link_session::IsEstablished()
 void
 llarp_link_session::send_LIM()
 {
-  llarp::LogDebug("send LIM");
   llarp::ShortHash digest;
   // 64 bytes overhead for link message
   byte_t tmp[MAX_RC_SIZE + 64];
@@ -204,8 +203,12 @@ handle_generated_session_start(iwp_async_session_start *start)
   llarp_link_session *link = static_cast< llarp_link_session * >(start->user);
 
   if(llarp_ev_udp_sendto(link->udp, link->addr, start->buf, start->sz) == -1)
+  {
     llarp::LogError("sendto failed");
+    return;
+  }
   link->EnterState(llarp_link_session::State::eSessionStartSent);
+  link->serv->pending_session_active(link->addr);
   link->working = false;
 }
 
@@ -213,14 +216,15 @@ static void
 handle_verify_intro(iwp_async_intro *intro)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(intro->user);
+  if(self == nullptr)
+    return;
+  self->working = false;
   if(!intro->buf)
   {
-    self->serv->remove_intro_from(self->addr);
-    llarp::LogError("intro verify failed from ", self->addr, " via ",
-                    self->serv->addr);
-    delete self;
     return;
   }
+  delete[] intro->buf;
+  memcpy(self->remote, intro->remote_pubkey, 32);
   self->intro_ack();
 }
 
@@ -236,6 +240,7 @@ handle_verify_introack(iwp_async_introack *introack)
   {
     // invalid signature
     llarp::LogError("introack verify failed from ", link->addr);
+    link->serv->remove_intro_from(link->addr);
     return;
   }
   // cancel resend
@@ -273,6 +278,10 @@ handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
 void
 llarp_link_session::done()
 {
+  if(intro_resend_job_id)
+    llarp_logic_cancel_call(serv->logic, intro_resend_job_id);
+  if(establish_job_id)
+    llarp_logic_cancel_call(serv->logic, establish_job_id);
 }
 
 void
@@ -314,38 +323,23 @@ llarp_link_session::EnterState(State st)
 void
 llarp_link_session::on_intro(const void *buf, size_t sz)
 {
-  if(sz >= sizeof(workbuf))
-  {
-    // too big?
-    llarp::LogError("intro too big from ", addr);
-    delete this;
+  if(sz < 32 * 3)
     return;
-  }
-  if(serv->has_intro_from(addr))
-  {
-    llarp::LogError("duplicate intro from ", addr);
-    delete this;
-    return;
-  }
-  serv->put_intro_from(this);
-  // copy so we own it
-  memcpy(workbuf, buf, sz);
-  intro.buf = workbuf;
-  intro.sz  = sz;
+  // copy
+  auto intro = new iwp_async_intro;
+  intro->buf = new byte_t[sz];
+  memcpy(intro->buf, buf, sz);
+  memcpy(intro->nonce, intro->buf + 32, 32);
+  intro->sz = sz;
   // give secret key
-  intro.secretkey = eph_seckey;
-  // and nonce
-  intro.nonce = intro.buf + 32;
-  intro.user  = this;
+  memcpy(intro->secretkey, eph_seckey, 64);
+  intro->user = this;
   // set call back hook
-  intro.hook = &handle_verify_intro;
-  // put remote pubkey into this buffer
-  intro.remote_pubkey = remote;
-
+  intro->hook = &handle_verify_intro;
   // call
   EnterState(eIntroRecv);
   working = true;
-  iwp_call_async_verify_intro(iwp, &intro);
+  iwp_call_async_verify_intro(iwp, intro);
 }
 
 void
@@ -355,6 +349,7 @@ llarp_link_session::on_intro_ack(const void *buf, size_t sz)
   {
     // too big?
     llarp::LogError("introack too big");
+    serv->remove_intro_from(addr);
     return;
   }
   // copy buffer so we own it
@@ -388,8 +383,7 @@ llarp_link_session::get_parent()
 void
 llarp_link_session::TickLogic(llarp_time_t now)
 {
-  decryptedFrames.Process(
-      [&](iwp_async_frame *msg) { handle_frame_decrypt(msg); });
+  decryptedFrames.Process([=](iwp_async_frame *f) { handle_frame_decrypt(f); });
   frame.process_inbound_queue();
   frame.retransmit(now);
   pump();
@@ -444,37 +438,37 @@ static void
 handle_verify_session_start(iwp_async_session_start *s)
 {
   llarp_link_session *self = static_cast< llarp_link_session * >(s->user);
+  self->working            = false;
   if(!s->buf)
   {
     // verify fail
-    // TODO: remove session?
     llarp::LogWarn("session start verify failed from ", self->addr);
-    self->serv->RemoveSession(self);
-    return;
+    self->serv->remove_intro_from(self->addr);
   }
-  self->serv->remove_intro_from(self->addr);
-  self->send_LIM();
-  self->working = false;
+  else
+  {
+    self->serv->pending_session_active(self->addr);
+    self->send_LIM();
+  }
 }
 
 static void
 handle_introack_generated(iwp_async_introack *i)
 {
   llarp_link_session *link = static_cast< llarp_link_session * >(i->user);
-
-  if(i->buf && link->serv->has_intro_from(link->addr))
+  link->working            = false;
+  if(i->buf)
   {
     // track it with the server here
     if(link->serv->has_session_via(link->addr))
     {
       // duplicate session
       llarp::LogWarn("duplicate session to ", link->addr);
-      link->working = false;
+      link->serv->remove_intro_from(link->addr);
       return;
     }
     link->frame.alive();
     link->EnterState(llarp_link_session::State::eIntroAckSent);
-    link->serv->put_session(link->addr, link);
     llarp::LogDebug("send introack to ", link->addr, " via ", link->serv->addr);
     llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
   }
@@ -483,7 +477,6 @@ handle_introack_generated(iwp_async_introack *i)
     // failed to generate?
     llarp::LogWarn("failed to generate introack");
   }
-  link->working = false;
 }
 
 static void
@@ -493,12 +486,8 @@ handle_generated_intro(iwp_async_intro *i)
   link->working            = false;
   if(i->buf)
   {
-    llarp::LogInfo("send intro to ", link->addr);
-    if(llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz) == -1)
-    {
-      llarp::LogWarn("send intro failed");
-      return;
-    }
+    llarp_ev_udp_sendto(link->udp, link->addr, i->buf, i->sz);
+    delete[] i->buf;
     link->EnterState(llarp_link_session::eIntroSent);
     link->lastIntroSentAt     = llarp_time_now_ms();
     auto dlt                  = (link->createdAt - link->lastIntroSentAt) + 500;
@@ -509,7 +498,9 @@ handle_generated_intro(iwp_async_intro *i)
   else
   {
     llarp::LogWarn("failed to generate intro");
+    link->serv->remove_intro_from(link->addr);
   }
+  delete i;
 }
 
 void
@@ -531,26 +522,26 @@ llarp_link_session::introduce(uint8_t *pub)
   llarp::LogDebug("session introduce");
   if(pub)
     memcpy(remote, pub, PUBKEYSIZE);
-  intro.buf   = workbuf;
+  auto intro  = new iwp_async_intro;
+  intro->buf  = new byte_t[1500];
   size_t w0sz = (llarp_randint() % MAX_PAD);
-  intro.sz    = (32 * 3) + w0sz;
+  intro->sz   = (32 * 3) + w0sz;
   // randomize w0
   if(w0sz)
   {
-    crypto->randbytes(intro.buf + (32 * 3), w0sz);
+    crypto->randbytes(intro->buf + (32 * 3), w0sz);
   }
 
-  intro.nonce     = intro.buf + 32;
-  intro.secretkey = eph_seckey;
+  memcpy(intro->secretkey, eph_seckey, 64);
   // copy in pubkey
-  intro.remote_pubkey = remote;
+  memcpy(intro->remote_pubkey, remote, 32);
   // randomize nonce
-  crypto->randbytes(intro.nonce, 32);
+  crypto->randbytes(intro->nonce, 32);
   // async generate intro packet
-  intro.user = this;
-  intro.hook = &handle_generated_intro;
-  working    = true;
-  iwp_call_async_gen_intro(iwp, &intro);
+  intro->user = this;
+  intro->hook = &handle_generated_intro;
+  working     = true;
+  iwp_call_async_gen_intro(iwp, intro);
   // start introduce timer
   if(pub)
     establish_job_id = llarp_logic_call_later(
@@ -627,6 +618,8 @@ llarp_link_session::on_session_start(const void *buf, size_t sz)
   if(sz > sizeof(workbuf))
   {
     llarp::LogDebug("session start too big");
+    working = false;
+    serv->remove_intro_from(addr);
     return;
   }
   if(working)
@@ -655,7 +648,9 @@ llarp_link_session::intro_ack()
 {
   if(serv->has_session_via(addr))
   {
+    working = false;
     llarp::LogWarn("won't ack intro for duplicate session from ", addr);
+    serv->remove_intro_from(addr);
     return;
   }
   llarp::LogDebug("session introack");
@@ -772,9 +767,8 @@ void
 llarp_link_session::pump()
 {
   bool flush = false;
-  frame.sendqueue.Process([&](sendbuf_t *msg) {
-    llarp_buffer_t buf = msg->Buffer();
-    encrypt_frame_async_send(buf.base, buf.sz);
+  frame.sendqueue.Process([&, this](sendbuf_t *msg) {
+    encrypt_frame_async_send(msg->data(), msg->size());
     flush = true;
   });
   if(flush)

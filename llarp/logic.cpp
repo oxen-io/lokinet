@@ -37,6 +37,7 @@ void
 llarp_logic_tick_async(struct llarp_logic* logic)
 {
   llarp_timer_tick_all_async(logic->timer, logic->thread);
+  llarp_threadpool_tick(logic->thread);
 }
 
 void

@@ -54,6 +54,17 @@ namespace llarp
       }
     };
 
+    template < typename Compare, typename T >
+    struct CoDelCompare
+    {
+      bool
+      operator()(const std::unique_ptr< T >& left,
+                 const std::unique_ptr< T >& right) const
+      {
+        return Compare()(left.get(), right.get());
+      }
+    };
+
     template < typename T, typename GetTime, typename PutTime, typename Compare,
                typename Mutex_t = util::Mutex, typename Lock_t = util::Lock,
                llarp_time_t dropMs = 5, llarp_time_t initialIntervalMs = 100 >
@@ -85,7 +96,7 @@ namespace llarp
           Lock_t lock(m_QueueMutex);
           if(firstPut == 0)
             firstPut = GetTime()(ptr);
-          m_Queue.push(ptr);
+          m_Queue.push(std::unique_ptr< T >(ptr));
         }
         return true;
       }
@@ -100,7 +111,7 @@ namespace llarp
           Lock_t lock(m_QueueMutex);
           if(firstPut == 0)
             firstPut = GetTime()(ptr);
-          m_Queue.push(ptr);
+          m_Queue.push(std::unique_ptr< T >(ptr));
         }
       }
 
@@ -112,27 +123,23 @@ namespace llarp
           Lock_t lock(m_QueueMutex);
           if(firstPut == 0)
             firstPut = GetTime()(ptr);
-          m_Queue.push(ptr);
+          m_Queue.push(std::unique_ptr< T >(ptr));
         }
       }
-
-      /// visit returns true to discard entry otherwise the entry is
-      /// re quened
       template < typename Visit >
       void
-      ProcessIf(Visit visitor)
+      Process(Visit visitor)
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
         // auto start          = llarp_time_now_ms();
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
         Lock_t lock(m_QueueMutex);
         auto start = firstPut;
-        Queue_t requeue;
         while(m_Queue.size())
         {
           llarp::LogDebug("CoDelQueue::Process - queue has ", m_Queue.size());
-          T* item  = m_Queue.top();
-          auto dlt = start - GetTime()(item);
+          const auto& item = m_Queue.top();
+          auto dlt         = start - GetTime()(item.get());
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
           if(m_Queue.size() == 1)
@@ -143,8 +150,8 @@ namespace llarp
             {
               nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
               m_Queue.pop();
-              delete item;
-              break;
+              firstPut = 0;
+              return;
             }
             else
             {
@@ -153,35 +160,20 @@ namespace llarp
             }
           }
           // llarp::LogInfo("CoDelQueue::Process - passing");
-          if(visitor(item))
-          {
-            delete item;
-          }
-          else
-          {
-            requeue.push(item);
-          }
+          visitor(item.get());
           m_Queue.pop();
         }
-        m_Queue  = std::move(requeue);
         firstPut = 0;
-      }
-
-      template < typename Func >
-      void
-      Process(Func visitor)
-      {
-        ProcessIf([visitor](T* t) -> bool {
-          visitor(t);
-          return true;
-        });
       }
 
       llarp_time_t firstPut         = 0;
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       Mutex_t m_QueueMutex;
-      typedef std::priority_queue< T*, std::vector< T* >, Compare > Queue_t;
+      typedef std::priority_queue< std::unique_ptr< T >,
+                                   std::vector< std::unique_ptr< T > >,
+                                   CoDelCompare< Compare, T > >
+          Queue_t;
       Queue_t m_Queue;
       std::string m_name;
     };

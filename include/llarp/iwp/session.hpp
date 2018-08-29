@@ -134,13 +134,13 @@ struct llarp_link_session
       decryptedFrames;
 
   llarp::Addr addr;
-  iwp_async_intro intro;
-  iwp_async_introack introack;
-  iwp_async_session_start start;
 
   /// timestamp last intro packet sent at
   llarp_time_t lastIntroSentAt = 0;
   uint32_t intro_resend_job_id = 0;
+
+  iwp_async_session_start start;
+  iwp_async_introack introack;
 
   byte_t token[32];
   byte_t workbuf[MAX_PAD + 128];

@@ -26,13 +26,6 @@ llarp_link::has_intro_from(const llarp::Addr& from)
 }
 
 void
-llarp_link::put_intro_from(llarp_link_session* s)
-{
-  lock_t lock(m_PendingSessions_Mutex);
-  m_PendingSessions[s->addr] = s;
-}
-
-void
 llarp_link::remove_intro_from(const llarp::Addr& from)
 {
   lock_t lock(m_PendingSessions_Mutex);
@@ -105,7 +98,6 @@ llarp_link::TickSessions()
     {
       if(itr->second->timedout(now))
       {
-        itr->second->done();
         itr = m_PendingSessions.erase(itr);
       }
       else
@@ -119,8 +111,8 @@ llarp_link::TickSessions()
     {
       if(itr->second->Tick(now))
       {
-        itr->second->done();
-        delete itr->second;
+        if(itr->second->get_remote_router())
+          m_Connected.erase(itr->second->get_remote_router()->pubkey);
         itr = m_sessions.erase(itr);
       }
       else
@@ -142,30 +134,11 @@ llarp_link::sendto(const byte_t* pubkey, llarp_buffer_t buf)
       auto inner_itr = m_sessions.find(itr->second);
       if(inner_itr != m_sessions.end())
       {
-        link = inner_itr->second;
+        link = inner_itr->second.get();
       }
     }
   }
   return link && link->sendto(buf);
-}
-
-void
-llarp_link::UnmapAddr(const llarp::Addr& src)
-{
-  lock_t lock(m_Connected_Mutex);
-  // std::unordered_map< llarp::pubkey, llarp::Addr, llarp::pubkeyhash >
-  auto itr = std::find_if(
-      m_Connected.begin(), m_Connected.end(),
-      [src](const std::pair< llarp::PubKey, llarp::Addr >& item) -> bool {
-        return src == item.second;
-      });
-  if(itr == std::end(m_Connected))
-    return;
-
-  // tell router we are done with this session
-  router->SessionClosed(itr->first);
-
-  m_Connected.erase(itr);
 }
 
 llarp_link_session*
@@ -177,92 +150,38 @@ llarp_link::create_session(const llarp::Addr& src)
 bool
 llarp_link::has_session_via(const llarp::Addr& dst)
 {
-  lock_t lock(m_sessions_Mutex);
   return m_sessions.find(dst) != m_sessions.end();
 }
 
-llarp_link_session*
-llarp_link::find_session(const llarp::Addr& addr)
-{
-  lock_t lock(m_sessions_Mutex);
-  auto itr = m_sessions.find(addr);
-  if(itr == m_sessions.end())
-    return nullptr;
-  else
-    return itr->second;
-}
-
 void
-llarp_link::put_session(const llarp::Addr& src, llarp_link_session* impl)
+llarp_link::pending_session_active(const llarp::Addr& addr)
 {
-  lock_t lock(m_sessions_Mutex);
-  impl->our_router = &router->rc;
-  m_sessions.insert(std::make_pair(src, impl));
+  lock_t lockpending(m_PendingSessions_Mutex);
+  auto itr = m_PendingSessions.find(addr);
+  if(itr == m_PendingSessions.end())
+    return;
+
+  itr->second->our_router = &router->rc;
+  m_sessions.insert(std::make_pair(addr, std::move(itr->second)));
+  m_PendingSessions.erase(itr);
 }
 
 void
 llarp_link::clear_sessions()
 {
-  lock_t lock(m_sessions_Mutex);
-  auto itr = m_sessions.begin();
-  while(itr != m_sessions.end())
-  {
-    delete itr->second;
-    itr = m_sessions.erase(itr);
-  }
-}
-
-void
-llarp_link::iterate_sessions(std::function< bool(llarp_link_session*) > visitor)
-{
-  auto now = llarp_time_now_ms();
-  std::list< llarp_link_session* > slist;
-  {
-    lock_t lock(m_sessions_Mutex);
-    auto itr = m_sessions.begin();
-    while(itr != m_sessions.end())
-    {
-      // if not timing out soon add to list to iterate on
-      if(!itr->second->timedout(now, 11500))
-        slist.push_back(itr->second);
-      ++itr;
-    }
-  }
-  for(auto& s : slist)
-    if(!visitor(s))
-      return;
+  m_sessions.clear();
 }
 
 void
 llarp_link::PumpLogic()
 {
   auto now = llarp_time_now_ms();
-  iterate_sessions([now](llarp_link_session* s) -> bool {
-    s->TickLogic(now);
-    return true;
-  });
-}
-
-void
-llarp_link::RemoveSession(llarp_link_session* s)
-{
+  auto itr = m_sessions.begin();
+  while(itr != m_sessions.end())
   {
-    lock_t lock(m_sessions_Mutex);
-    auto itr = m_sessions.find(s->addr);
-    if(itr != m_sessions.end())
-    {
-      UnmapAddr(s->addr);
-      s->done();
-      m_sessions.erase(itr);
-    }
+    itr->second->TickLogic(now);
+    ++itr;
   }
-  {
-    lock_t lock(m_PendingSessions_Mutex);
-    auto itr = m_PendingSessions.find(s->addr);
-    if(itr != m_PendingSessions.end())
-      m_PendingSessions.erase(itr);
-  }
-  delete s;
 }
 
 const uint8_t*
@@ -316,19 +235,40 @@ llarp_link::handle_cleanup_timer(void* l, uint64_t orig, uint64_t left)
 }
 
 void
+llarp_link::visit_session(
+    const llarp::Addr& fromaddr,
+    std::function< void(const std::unique_ptr< llarp_link_session >&) > visit)
+{
+  {
+    auto itr = m_sessions.find(fromaddr);
+    if(itr == m_sessions.end())
+    {
+      auto pitr = m_PendingSessions.find(fromaddr);
+      if(pitr == m_PendingSessions.end())
+        visit(m_PendingSessions
+                  .insert(std::make_pair(fromaddr,
+                                         std::unique_ptr< llarp_link_session >(
+                                             create_session(fromaddr))))
+                  .first->second);
+      else
+        visit(pitr->second);
+    }
+    else
+      visit(itr->second);
+  }
+}
+
+void
 llarp_link::handle_recvfrom(struct llarp_udp_io* udp,
                             const struct sockaddr* saddr, const void* buf,
                             ssize_t sz)
 {
   llarp_link* link = static_cast< llarp_link* >(udp->user);
 
-  llarp_link_session* s = link->find_session(*saddr);
-  if(s == nullptr)
-  {
-    // new inbound session
-    s = link->create_session(*saddr);
-  }
-  s->recv(buf, sz);
+  link->visit_session(
+      *saddr, [buf, sz](const std::unique_ptr< llarp_link_session >& s) {
+        s->recv(buf, sz);
+      });
 }
 
 void
@@ -362,7 +302,9 @@ void
 llarp_link::after_recv(llarp_udp_io* udp)
 {
   llarp_link* self = static_cast< llarp_link* >(udp->user);
-  self->PumpLogic();
+  llarp_logic_queue_job(
+      self->logic,
+      {self, [](void* u) { static_cast< llarp_link* >(u)->PumpLogic(); }});
 }
 
 bool
@@ -461,18 +403,18 @@ bool
 llarp_link::try_establish(struct llarp_link_establish_job* job)
 {
   llarp::Addr dst(job->ai);
-  llarp::LogDebug("establish session to ", dst);
-  llarp_link_session* s = find_session(dst);
-  if(s == nullptr)
+  if(has_session_via(dst))
+    return false;
+  if(m_PendingSessions.find(dst) == m_PendingSessions.end())
   {
-    s = create_session(dst);
-    put_session(dst, s);
+    llarp::LogDebug("establish session to ", dst);
+    visit_session(dst, [job](const std::unique_ptr< llarp_link_session >& s) {
+      s->establish_job = job;
+      s->frame.alive();  // mark it alive
+      s->introduce(job->ai.enc_key);
+    });
+    return true;
   }
   else
     return false;
-  s->establish_job = job;
-  s->frame.alive();  // mark it alive
-  s->introduce(job->ai.enc_key);
-
-  return true;
 }

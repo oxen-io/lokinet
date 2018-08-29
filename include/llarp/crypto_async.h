@@ -65,11 +65,11 @@ struct iwp_async_intro
   uint8_t *buf;
   size_t sz;
   /// nonce paramter
-  uint8_t *nonce;
+  uint8_t nonce[32];
   /// remote public key
-  uint8_t *remote_pubkey;
+  uint8_t remote_pubkey[32];
   /// local private key
-  uint8_t *secretkey;
+  uint8_t secretkey[64];
   /// callback
   iwp_intro_hook hook;
 };

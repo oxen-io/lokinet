@@ -12,7 +12,7 @@ namespace llarp
       {
       }
 
-      FindRouterMessage(const Key_t& from, const Key_t& target, uint64_t id)
+      FindRouterMessage(const Key_t& from, const RouterID& target, uint64_t id)
           : IMessage(from), K(target), txid(id)
       {
       }
@@ -36,7 +36,7 @@ namespace llarp
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
 
-      Key_t K;
+      RouterID K;
       bool iterative   = false;
       bool exploritory = false;
       uint64_t txid    = 0;

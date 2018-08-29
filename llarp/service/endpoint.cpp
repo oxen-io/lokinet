@@ -530,9 +530,7 @@ namespace llarp
       BuildRequestMessage()
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-        auto FIM = new llarp::dht::FindIntroMessage(txid, remote);
-        FIM->R   = 5;
-        msg->M.push_back(FIM);
+        msg->M.push_back(new llarp::dht::FindIntroMessage(txid, remote, 5));
         llarp::LogInfo("build request for ", remote);
         return msg;
       }

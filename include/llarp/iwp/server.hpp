@@ -16,8 +16,8 @@
 
 struct llarp_link
 {
-  typedef llarp::util::NullMutex mtx_t;
-  typedef llarp::util::NullLock lock_t;
+  typedef llarp::util::Mutex mtx_t;
+  typedef llarp::util::Lock lock_t;
 
   llarp_router *router;
   llarp_crypto *crypto;
@@ -39,8 +39,8 @@ struct llarp_link
 
   const char *m_name;
 
-  typedef std::unordered_map< llarp::Addr, llarp_link_session *,
-                              llarp::Addr::Hash >
+  typedef std::unordered_map<
+      llarp::Addr, std::unique_ptr< llarp_link_session >, llarp::Addr::Hash >
       LinkMap_t;
 
   LinkMap_t m_sessions;
@@ -53,8 +53,8 @@ struct llarp_link
   mtx_t m_Connected_Mutex;
   std::atomic< bool > pumpingLogic;
 
-  typedef std::unordered_map< llarp::Addr, llarp_link_session *,
-                              llarp::Addr::Hash >
+  typedef std::unordered_map<
+      llarp::Addr, std::unique_ptr< llarp_link_session >, llarp::Addr::Hash >
       PendingSessionMap_t;
   PendingSessionMap_t m_PendingSessions;
   mtx_t m_PendingSessions_Mutex;
@@ -69,14 +69,7 @@ struct llarp_link
   has_intro_from(const llarp::Addr &from);
 
   void
-  put_intro_from(llarp_link_session *s);
-
-  void
   remove_intro_from(const llarp::Addr &from);
-
-  // set that src address has identity pubkey
-  void
-  MapAddr(const llarp::Addr &src, const llarp::PubKey &identity);
 
   /// does nothing if we have no session already established
   void
@@ -95,36 +88,32 @@ struct llarp_link
   bool
   sendto(const byte_t *pubkey, llarp_buffer_t buf);
 
-  void
-  UnmapAddr(const llarp::Addr &src);
-
   llarp_link_session *
   create_session(const llarp::Addr &src);
 
   bool
   has_session_via(const llarp::Addr &dst);
 
-  llarp_link_session *
-  find_session(const llarp::Addr &addr);
+  void
+  MapAddr(const llarp::Addr &addr, const llarp::PubKey &pk);
 
   void
-  put_session(const llarp::Addr &src, llarp_link_session *impl);
+  visit_session(
+      const llarp::Addr &addr,
+      std::function< void(const std::unique_ptr< llarp_link_session > &) >
+          visit);
+
+  void
+  pending_session_active(const llarp::Addr &addr);
 
   void
   clear_sessions();
-
-  /// safe iterate sessions
-  void
-  iterate_sessions(std::function< bool(llarp_link_session *) > visitor);
 
   static void
   handle_logic_pump(void *user);
 
   void
   PumpLogic();
-
-  void
-  RemoveSession(llarp_link_session *s);
 
   const uint8_t *
   pubkey();

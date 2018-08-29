@@ -49,7 +49,7 @@ namespace llarp
           }
           for(;;)
           {
-            llarp_thread_job *job;
+            llarp_thread_job job;
             {
               lock_t lock(this->queue_mutex);
               this->condition.WaitUntil(
@@ -64,13 +64,13 @@ namespace llarp
                 }
                 return;
               }
-              job = this->jobs.top().job;
+              job.user = this->jobs.top().job->user;
+              job.work = this->jobs.top().job->work;
+              delete this->jobs.top().job;
               this->jobs.pop();
             }
             // do work
-            job->work(job->user);
-
-            delete job;
+            job.work(job.user);
           }
         });
       }

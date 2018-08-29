@@ -53,19 +53,16 @@ namespace llarp
     virtual void
     flush_write()
     {
-      m_writeq.ProcessIf([&](WriteBuffer* buffer) -> bool {
+      m_writeq.Process([&](WriteBuffer* buffer) {
       // todo: wtf???
 #ifndef _WIN32
-        if(write(fd, buffer->buf, buffer->bufsz) == -1)
-        {
-          // if we would block we save the entries for later
-          return errno == EWOULDBLOCK || errno == EAGAIN;
-        }
+        write(fd, buffer->buf, buffer->bufsz);
+        // if we would block we save the entries for later
+
         // discard entry
-        return true;
 #else
-        // writefile
-        return false;
+      // writefile
+
 #endif
       });
       /// reset errno
