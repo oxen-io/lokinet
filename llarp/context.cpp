@@ -123,24 +123,6 @@ namespace llarp
   }
 
   int
-  Context::IterateDatabase(struct llarp_nodedb_iter i)
-  {
-    return llarp_nodedb_iterate_all(nodedb, i);
-  }
-
-  bool
-  Context::PutDatabase(struct llarp_rc *rc)
-  {
-    return llarp_nodedb_put_rc(nodedb, rc);
-  }
-
-  struct llarp_rc *
-  Context::GetDatabase(const byte_t *pk)
-  {
-    return llarp_nodedb_get_rc(nodedb, pk);
-  }
-
-  int
   Context::Setup()
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
@@ -371,25 +353,6 @@ extern "C"
     return ptr->ctx->GetDatabase(pk);
   }
 
-  struct llarp_rc *
-  llarp_main_getLocalRC(struct llarp_main *ptr)
-  {
-    //
-    /*
-     llarp_config_iterator iter;
-     iter.user  = this;
-     iter.visit = &iter_config;
-     llarp_config_iter(ctx->config, &iter);
-     */
-    llarp_rc *rc = new llarp_rc;
-    llarp_rc_new(rc);
-    llarp::LogInfo("Loading ", ptr->ctx->conatctFile);
-    if(llarp_rc_read(ptr->ctx->conatctFile, rc))
-      return rc;
-    else
-      return nullptr;
-  }
-
   void
   llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
   {
@@ -423,7 +386,6 @@ extern "C"
       request->first = true;
       llarp::LogInfo("llarp_main_queryDHT_online - We're online");
       llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
-      llarp_dht_lookup_router(request->ptr->ctx->router->dht, request->job);
     }
   }
 

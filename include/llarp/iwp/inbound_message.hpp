@@ -9,12 +9,26 @@
 struct InboundMessage
 {
   uint64_t msgid;
-  std::vector< byte_t > msg;
+  byte_t *_buf;
+  size_t sz;
   llarp_time_t queued = 0;
 
-  InboundMessage(uint64_t id, const std::vector< byte_t > &m)
-      : msgid(id), msg(m)
+  InboundMessage(uint64_t id, const std::vector< byte_t > &m) : msgid(id)
   {
+    sz = m.size();
+    if(sz)
+    {
+      _buf = new byte_t[sz];
+      memcpy(_buf, m.data(), sz);
+    }
+    else
+      _buf = nullptr;
+  }
+
+  ~InboundMessage()
+  {
+    if(_buf)
+      delete[] _buf;
   }
 
   bool
@@ -27,7 +41,7 @@ struct InboundMessage
   llarp_buffer_t
   Buffer() const
   {
-    return llarp::ConstBuffer< decltype(msg) >(msg);
+    return llarp::InitBuffer(_buf, sz);
   }
 
   struct GetTime

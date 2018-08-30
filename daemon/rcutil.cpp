@@ -3,7 +3,7 @@
 #include <signal.h>
 #include "logger.hpp"
 
-#include <llarp/router_contact.h>
+#include <llarp/router_contact.hpp>
 #include <llarp/time.h>
 
 #include <fstream>

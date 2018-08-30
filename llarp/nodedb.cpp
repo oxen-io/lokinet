@@ -1,6 +1,6 @@
 #include <llarp/crypto_async.h>
-#include <llarp/nodedb.h>
-#include <llarp/router_contact.h>
+#include <llarp/nodedb.hpp>
+#include <llarp/router_contact.hpp>
 
 #include <fstream>
 #include <llarp/crypto.hpp>
@@ -22,87 +22,34 @@ struct llarp_nodedb
 
   llarp_crypto *crypto;
   // std::map< llarp::pubkey, llarp_rc  > entries;
-  std::unordered_map< llarp::PubKey, llarp_rc, llarp::PubKey::Hash > entries;
+  llarp::util::Mutex access;
+  std::unordered_map< llarp::PubKey, llarp::RouterContact, llarp::PubKey::Hash >
+      entries;
   fs::path nodePath;
 
   void
   Clear()
   {
-    auto itr = entries.begin();
-    while(itr != entries.end())
-    {
-      llarp_rc_clear(&itr->second);
-      itr = entries.erase(itr);
-    }
-  }
-
-  llarp_rc *
-  getRC(const llarp::PubKey &pk)
-  {
-    return &entries.at(pk);
+    llarp::util::Lock lock(access);
+    entries.clear();
   }
 
   bool
-  Has(const llarp::PubKey &pk) const
+  Get(const llarp::PubKey &pk, llarp::RouterContact &result)
   {
-    return entries.find(pk) != entries.end();
-  }
-
-  /*
-    bool
-    Has(const byte_t *pk)
-    {
-      llarp::PubKey test(pk);
-      auto itr = this->entries.begin();
-      while(itr != this->entries.end())
-      {
-        llarp::LogInfo("Has byte_t [", test.size(), "] vs [", itr->first.size(),
-    "]"); if (memcmp(test.data(), itr->first.data(), 32) == 0) {
-          llarp::LogInfo("Match");
-        }
-        itr++;
-      }
-      return entries.find(pk) != entries.end();
-    }
-  */
-
-  bool
-  pubKeyExists(llarp_rc *rc) const
-  {
-    // extract pk from rc
-    llarp::PubKey pk = rc->pubkey;
-    // return true if we found before end
-    return entries.find(pk) != entries.end();
-  }
-
-  bool
-  check(llarp_rc *rc)
-  {
-    if(!pubKeyExists(rc))
-    {
-      // we don't have it
+    llarp::util::Lock lock(access);
+    auto itr = entries.find(pk);
+    if(itr == entries.end())
       return false;
-    }
-    llarp::PubKey pk = rc->pubkey;
+    result = itr->second;
+    return true;
+  }
 
-    // TODO: zero out any fields you don't want to compare
-    // XXX: make a copy and then do modifications on the copy
-    //      touching external data in here is HARAM >:[
-
-    // serialize both and memcmp
-    byte_t nodetmp[MAX_RC_SIZE];
-    auto nodebuf = llarp::StackBuffer< decltype(nodetmp) >(nodetmp);
-    if(llarp_rc_bencode(&entries[pk], &nodebuf))
-    {
-      byte_t paramtmp[MAX_RC_SIZE];
-      auto parambuf = llarp::StackBuffer< decltype(paramtmp) >(paramtmp);
-      if(llarp_rc_bencode(rc, &parambuf))
-      {
-        if(nodebuf.sz == parambuf.sz)
-          return memcmp(&parambuf, &nodebuf, parambuf.sz) == 0;
-      }
-    }
-    return false;
+  bool
+  Has(const llarp::PubKey &pk)
+  {
+    llarp::util::Lock lock(access);
+    return entries.find(pk) != entries.end();
   }
 
   std::string
@@ -119,40 +66,34 @@ struct llarp_nodedb
     return filepath.string();
   }
 
+  /// insert and write to disk
   bool
-  setRC(llarp_rc *rc)
+  Insert(const llarp::RouterContact &rc)
   {
     byte_t tmp[MAX_RC_SIZE];
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-
-    // extract pk from rc
-    llarp::PubKey pk = rc->pubkey;
-
-    // set local db entry to have a copy we own
-    llarp_rc entry;
-    llarp::Zero(&entry, sizeof(entry));
-    llarp_rc_copy(&entry, rc);
-    entries.insert(std::make_pair(pk, entry));
-
-    if(llarp_rc_bencode(&entry, &buf))
     {
-      buf.sz        = buf.cur - buf.base;
-      auto filepath = getRCFilePath(pk);
-      llarp::LogDebug("saving RC.pubkey ", filepath);
-      std::ofstream ofs(
-          filepath,
-          std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
-      ofs.write((char *)buf.base, buf.sz);
-      ofs.close();
-      if(!ofs)
-      {
-        llarp::LogError("Failed to write: ", filepath);
-        return false;
-      }
-      llarp::LogDebug("saved RC.pubkey: ", filepath);
-      return true;
+      llarp::util::Lock lock(access);
+      entries.insert(std::make_pair(rc.pubkey, rc));
     }
-    return false;
+    if(!rc.BEncode(&buf))
+      return false;
+
+    buf.sz        = buf.cur - buf.base;
+    auto filepath = getRCFilePath(rc.pubkey);
+    llarp::LogDebug("saving RC.pubkey ", filepath);
+    std::ofstream ofs(
+        filepath,
+        std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
+    ofs.write((char *)buf.base, buf.sz);
+    ofs.close();
+    if(!ofs)
+    {
+      llarp::LogError("Failed to write: ", filepath);
+      return false;
+    }
+    llarp::LogDebug("saved RC.pubkey: ", filepath);
+    return true;
   }
 
   ssize_t
@@ -197,28 +138,30 @@ struct llarp_nodedb
   {
     if(fpath.extension() != RC_FILE_EXT)
       return false;
-    llarp_rc rc;
-    llarp_rc_clear(&rc);
+    llarp::RouterContact rc;
 
-    if(!llarp_rc_read(fpath.string().c_str(), &rc))
+    if(!rc.Read(fpath.string().c_str()))
     {
-      llarp::LogError("Signature read failed", fpath);
+      llarp::LogError("failed to read file ", fpath);
       return false;
     }
-    if(!llarp_rc_verify_sig(crypto, &rc))
+    if(!rc.VerifySignature(crypto))
     {
       llarp::LogError("Signature verify failed", fpath);
       return false;
     }
-    llarp::PubKey pk(rc.pubkey);
-    entries[pk] = rc;
+    {
+      llarp::util::Lock lock(access);
+      entries.insert(std::make_pair(rc.pubkey, rc));
+    }
     return true;
   }
 
   bool
   iterate(struct llarp_nodedb_iter i)
   {
-    i.index  = 0;
+    i.index = 0;
+    llarp::util::Lock lock(access);
     auto itr = entries.begin();
     while(itr != entries.end())
     {
@@ -263,7 +206,7 @@ disk_threadworker_setRC(void *user)
 {
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
-  verify_request->valid = verify_request->nodedb->setRC(&verify_request->rc);
+  verify_request->valid = verify_request->nodedb->Insert(verify_request->rc);
   if(verify_request->logic)
     llarp_logic_queue_job(verify_request->logic,
                           {verify_request, &logic_threadworker_callback});
@@ -276,9 +219,9 @@ crypto_threadworker_verifyrc(void *user)
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
   verify_request->valid =
-      llarp_rc_verify_sig(verify_request->nodedb->crypto, &verify_request->rc);
+      verify_request->rc.VerifySignature(verify_request->nodedb->crypto);
   // if it's valid we need to set it
-  if(verify_request->valid && llarp_rc_is_public_router(&verify_request->rc))
+  if(verify_request->valid && verify_request->rc.IsPublicRouter())
   {
     llarp::LogDebug("RC is valid, saving to disk");
     llarp_threadpool_queue_job(verify_request->diskworker,
@@ -310,8 +253,7 @@ nodedb_async_load_rc(void *user)
   job->loaded = job->nodedb->loadfile(fpath);
   if(job->loaded)
   {
-    llarp_rc_clear(&job->rc);
-    llarp_rc_copy(&job->rc, job->nodedb->getRC(job->pubkey));
+    job->nodedb->Get(job->pubkey, job->result);
   }
   llarp_logic_queue_job(job->logic, {job, &nodedb_inform_load_rc});
 }
@@ -384,14 +326,6 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
   return n->Load(dir);
 }
 
-/// c api for nodedb::setRC
-/// maybe better to use llarp_nodedb_async_verify
-bool
-llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc)
-{
-  return n->setRC(rc);
-}
-
 int
 llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i)
 {
@@ -419,14 +353,12 @@ llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 }
 */
 
-struct llarp_rc *
-llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk)
+bool
+llarp_nodedb_get_rc(struct llarp_nodedb *n, const llarp::RouterID &pk,
+                    llarp::RouterContact &result)
 {
   // llarp::LogInfo("llarp_nodedb_get_rc [", pk, "]");
-  if(n->Has(pk))
-    return n->getRC(pk);
-  else
-    return nullptr;
+  return n->Get(pk, result);
 }
 
 size_t
@@ -436,14 +368,15 @@ llarp_nodedb_num_loaded(struct llarp_nodedb *n)
 }
 
 void
-llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
-                               struct llarp_rc *result, size_t N)
+llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
+                               const llarp::RouterContact &prev,
+                               llarp::RouterContact &result, size_t N)
 {
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
   auto sz = n->entries.size();
 
-  if(prev)
+  if(N)
   {
     do
     {
@@ -451,13 +384,14 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
       if(sz > 1)
       {
         auto idx = llarp_randint() % sz;
-        std::advance(itr, idx);
+        if(idx)
+          std::advance(itr, idx - 1);
       }
-      if(memcmp(prev->pubkey, itr->second.pubkey, PUBKEYSIZE) == 0)
+      if(prev.pubkey == itr->second.pubkey)
         continue;
-      if(itr->second.addrs && llarp_ai_list_size(itr->second.addrs))
+      if(itr->second.addrs.size())
       {
-        llarp_rc_copy(result, &itr->second);
+        result = itr->second;
         return;
       }
     } while(true);
@@ -468,8 +402,9 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
     if(sz > 1)
     {
       auto idx = llarp_randint() % sz;
-      std::advance(itr, idx);
+      if(idx)
+        std::advance(itr, idx - 1);
     }
-    llarp_rc_copy(result, &itr->second);
+    result = itr->second;
   }
 }

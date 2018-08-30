@@ -38,6 +38,20 @@ namespace llarp
     return bencode_write_bytestring(buf, k, 1) && bencode_write_uint64(buf, i);
   }
 
+  template < typename List_t >
+  bool
+  BEncodeMaybeReadDictList(const char* k, List_t& item, bool& read,
+                           llarp_buffer_t key, llarp_buffer_t* buf)
+  {
+    if(llarp_buffer_eq(key, k))
+    {
+      if(!BEncodeReadList(item, buf))
+        return false;
+      read = true;
+    }
+    return true;
+  }
+
   template < typename Item_t >
   bool
   BEncodeMaybeReadDictEntry(const char* k, Item_t& item, bool& read,
@@ -103,6 +117,43 @@ namespace llarp
       if(!item->BEncode(buf))
         return false;
     return bencode_end(buf);
+  }
+
+  template < typename Array >
+  bool
+  BEncodeWriteDictArray(const char* k, const Array& array, llarp_buffer_t* buf)
+  {
+    if(!bencode_write_bytestring(buf, k, 1))
+      return false;
+    if(!bencode_start_list(buf))
+      return false;
+
+    for(size_t idx = 0; idx < array.size(); ++idx)
+      if(!array[idx].BEncode(buf))
+        return false;
+    return bencode_end(buf);
+  }
+
+  template < typename Array >
+  bool
+  BEncodeReadArray(Array& array, llarp_buffer_t* buf)
+  {
+    if(*buf->cur != 'l')  // ensure is a list
+      return false;
+
+    buf->cur++;
+    size_t idx = 0;
+    while(llarp_buffer_size_left(*buf) && *buf->cur != 'e')
+    {
+      if(idx >= array.size())
+        return false;
+      if(!array[idx++].BDecode(buf))
+        return false;
+    }
+    if(*buf->cur != 'e')  // make sure we're at a list end
+      return false;
+    buf->cur++;
+    return true;
   }
 
   template < typename Iter >

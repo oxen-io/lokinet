@@ -1,6 +1,6 @@
 #ifndef LLARP_NET_HPP
 #define LLARP_NET_HPP
-#include <llarp/address_info.h>
+#include <llarp/address_info.hpp>
 #include <llarp/net.h>
 #include <functional>
 #include <iostream>
@@ -55,7 +55,7 @@ namespace llarp
       return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
     }
 
-    Addr(const llarp_ai& other)
+    Addr(const AddressInfo& other)
     {
       memcpy(addr6(), other.ip.s6_addr, 16);
       _addr.sin6_port = htons(other.port);

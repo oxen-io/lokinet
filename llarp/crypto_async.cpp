@@ -1,6 +1,6 @@
 #include <llarp/crypto_async.h>
 #include <llarp/mem.h>
-#include <llarp/router_contact.h>
+#include <llarp/router_contact.hpp>
 #include <string.h>
 #include <llarp/crypto.hpp>
 #include <llarp/router_id.hpp>

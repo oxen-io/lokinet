@@ -45,7 +45,7 @@ namespace llarp
 
   struct LR_CommitMessage : public ILinkMessage
   {
-    std::vector< EncryptedFrame > frames;
+    std::array< EncryptedFrame, 8 > frames;
     uint64_t version;
 
     LR_CommitMessage() : ILinkMessage()

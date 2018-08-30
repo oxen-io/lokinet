@@ -5,13 +5,17 @@ namespace llarp
 {
   struct LinkIntroMessage : public ILinkMessage
   {
-    LinkIntroMessage(llarp_rc* rc) : ILinkMessage(), RC(rc)
+    LinkIntroMessage(const RouterContact& rc) : ILinkMessage(), RC(rc)
     {
+      hasRC = true;
     }
+
+    LinkIntroMessage();
 
     ~LinkIntroMessage();
 
-    llarp_rc* RC;
+    bool hasRC = false;
+    RouterContact RC;
 
     bool
     DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);

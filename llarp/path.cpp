@@ -62,15 +62,11 @@ namespace llarp
 
     bool
     PathContext::ForwardLRCM(const RouterID& nextHop,
-                             std::deque< EncryptedFrame >& frames)
+                             const std::array< EncryptedFrame, 8 >& frames)
     {
       llarp::LogDebug("fowarding LRCM to ", nextHop);
       LR_CommitMessage* msg = new LR_CommitMessage();
-      while(frames.size())
-      {
-        msg->frames.push_back(frames.front());
-        frames.pop_front();
-      }
+      msg->frames           = frames;
       return m_Router->SendToOrQueue(nextHop, msg);
     }
     template < typename Map_t, typename Key_t, typename CheckValue_t,
@@ -290,7 +286,7 @@ namespace llarp
     }
 
     void
-    PathContext::AddPathBuilder(llarp_pathbuilder_context* ctx)
+    PathContext::AddPathBuilder(Builder* ctx)
     {
       m_PathBuilders.push_back(ctx);
     }
@@ -311,7 +307,7 @@ namespace llarp
     }
 
     void
-    PathContext::RemovePathBuilder(llarp_pathbuilder_context* ctx)
+    PathContext::RemovePathBuilder(Builder* ctx)
     {
       m_PathBuilders.remove(ctx);
       RemovePathSet(ctx);
@@ -319,31 +315,30 @@ namespace llarp
 
     PathHopConfig::PathHopConfig()
     {
-      llarp_rc_clear(&router);
     }
 
     PathHopConfig::~PathHopConfig()
     {
-      llarp_rc_free(&router);
     }
 
-    Path::Path(llarp_path_hops* h) : hops(h->numHops)
+    Path::Path(const std::vector< RouterContact >& h) : hops(h.size())
     {
-      for(size_t idx = 0; idx < h->numHops; ++idx)
+      size_t hsz = h.size();
+      for(size_t idx = 0; idx < hsz; ++idx)
       {
-        llarp_rc_copy(&hops[idx].router, &h->hops[idx].router);
+        hops[idx].rc = h[idx];
         hops[idx].txID.Randomize();
         hops[idx].rxID.Randomize();
       }
 
-      for(size_t idx = 0; idx < h->numHops - 1; ++idx)
+      for(size_t idx = 0; idx < hsz - 1; ++idx)
       {
         hops[idx].txID = hops[idx + 1].rxID;
       }
       // initialize parts of the introduction
-      intro.router = hops[h->numHops - 1].router.pubkey;
+      intro.router = hops[hsz - 1].rc.pubkey;
       // TODO: or is it rxid ?
-      intro.pathID = hops[h->numHops - 1].txID;
+      intro.pathID = hops[hsz - 1].txID;
     }
 
     void
@@ -355,7 +350,7 @@ namespace llarp
     RouterID
     Path::Endpoint() const
     {
-      return hops[hops.size() - 1].router.pubkey;
+      return hops[hops.size() - 1].rc.pubkey;
     }
 
     const PathID_t&
@@ -379,7 +374,7 @@ namespace llarp
     RouterID
     Path::Upstream() const
     {
-      return hops[0].router.pubkey;
+      return hops[0].rc.pubkey;
     }
 
     void

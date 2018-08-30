@@ -86,7 +86,7 @@ struct frame_state
   clear();
 
   bool
-  inbound_frame_complete(uint64_t id);
+  inbound_frame_complete(const std::unique_ptr< transit_message > &msg);
 
   void
   push_ackfor(uint64_t id, uint32_t bitmask);

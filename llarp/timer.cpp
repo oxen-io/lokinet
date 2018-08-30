@@ -56,8 +56,8 @@ namespace llarp
 struct llarp_timer_context
 {
   llarp::util::Mutex timersMutex;
-  std::unordered_map< uint32_t, llarp::timer* > timers;
-  std::priority_queue< llarp::timer* > calling;
+  std::unordered_map< uint32_t, std::unique_ptr< llarp::timer > > timers;
+  std::priority_queue< std::unique_ptr< llarp::timer > > calling;
   llarp::util::Mutex tickerMutex;
   llarp::util::Condition* ticker        = nullptr;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(100);
@@ -87,7 +87,7 @@ struct llarp_timer_context
   cancel(uint32_t id)
   {
     llarp::util::Lock lock(timersMutex);
-    auto itr = timers.find(id);
+    const auto& itr = timers.find(id);
     if(itr == timers.end())
       return;
     itr->second->canceled = true;
@@ -97,7 +97,7 @@ struct llarp_timer_context
   remove(uint32_t id)
   {
     llarp::util::Lock lock(timersMutex);
-    auto itr = timers.find(id);
+    const auto& itr = timers.find(id);
     if(itr == timers.end())
       return;
     itr->second->func     = nullptr;
@@ -109,7 +109,10 @@ struct llarp_timer_context
   {
     llarp::util::Lock lock(timersMutex);
     uint32_t id = ++ids;
-    timers[id]  = new llarp::timer(timeout_ms, user, func);
+    timers.insert(
+        std::make_pair(id,
+                       std::unique_ptr< llarp::timer >(
+                           new llarp::timer(timeout_ms, user, func))));
     return id;
   }
 
@@ -184,24 +187,30 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
   if(!t->run())
     return;
   auto now = llarp_time_now_ms();
-  auto itr = t->timers.begin();
-  while(itr != t->timers.end())
+  std::list< std::unique_ptr< llarp::timer > > hit;
   {
-    if(now - itr->second->started >= itr->second->timeout
-       || itr->second->canceled)
+    llarp::util::Lock lock(t->timersMutex);
+    auto itr = t->timers.begin();
+    while(itr != t->timers.end())
     {
-      if(itr->second->func && itr->second->called_at == 0)
+      if(now - itr->second->started >= itr->second->timeout
+         || itr->second->canceled)
       {
         // timer hit
-        itr->second->called_at = now;
-        itr->second->exec();
-        llarp::timer* timer = itr->second;
-        itr                 = t->timers.erase(itr);
-        delete timer;
-        continue;
+        hit.emplace_back(std::move(itr->second));
+        itr = t->timers.erase(itr);
       }
+      else
+        ++itr;
     }
-    ++itr;
+  }
+  for(const auto& h : hit)
+  {
+    if(h->func)
+    {
+      h->called_at = now;
+      h->exec();
+    }
   }
 }
 

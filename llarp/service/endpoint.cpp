@@ -11,7 +11,7 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp_router* r)
-        : llarp_pathbuilder_context(r, r->dht, 2, 4), m_Router(r), m_Name(name)
+        : path::Builder(r, r->dht, 2, 4), m_Router(r), m_Name(name)
     {
       m_Tag.Zero();
     }
@@ -594,8 +594,7 @@ namespace llarp
         job->diskworker            = m_Router->disk;
         job->logic                 = nullptr;
         job->hook                  = nullptr;
-        llarp_rc_clear(&job->rc);
-        llarp_rc_copy(&job->rc, &msg->R[0]);
+        job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
         return true;
       }
@@ -607,7 +606,8 @@ namespace llarp
     {
       if(router.IsZero())
         return;
-      if(!llarp_nodedb_get_rc(m_Router->nodedb, router))
+      RouterContact rc;
+      if(!llarp_nodedb_get_rc(m_Router->nodedb, router, rc))
       {
         if(m_PendingRouters.find(router) == m_PendingRouters.end())
         {
@@ -712,8 +712,7 @@ namespace llarp
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& intro,
                                                Endpoint* parent)
-        : llarp_pathbuilder_context(parent->m_Router, parent->m_Router->dht, 2,
-                                    4)
+        : path::Builder(parent->m_Router, parent->m_Router->dht, 2, 4)
         , currentIntroSet(intro)
         , m_Parent(parent)
 
@@ -976,15 +975,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::OutboundContext::SelectHop(llarp_nodedb* db, llarp_rc* prev,
-                                         llarp_rc* cur, size_t hop)
+    Endpoint::OutboundContext::SelectHop(llarp_nodedb* db,
+                                         const RouterContact& prev,
+                                         RouterContact& cur, size_t hop)
     {
       if(hop == numHops - 1)
       {
-        auto localcopy = llarp_nodedb_get_rc(db, selectedIntro.router);
-        if(localcopy)
+        if(llarp_nodedb_get_rc(db, selectedIntro.router, cur))
         {
-          llarp_rc_copy(cur, localcopy);
           return true;
         }
         else
@@ -999,7 +997,7 @@ namespace llarp
         }
       }
       else
-        return llarp_pathbuilder_context::SelectHop(db, prev, cur, hop);
+        return path::Builder::SelectHop(db, prev, cur, hop);
     }
 
     uint64_t

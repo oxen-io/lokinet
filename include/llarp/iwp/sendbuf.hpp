@@ -7,25 +7,35 @@
 
 struct sendbuf_t
 {
-  sendbuf_t(size_t s) : sz(s)
+  sendbuf_t()
   {
-    _buf = new byte_t[s];
+    _sz = 0;
+  }
+
+  sendbuf_t(sendbuf_t &&other)
+  {
+    if(other._sz > sizeof(_buf))
+      throw std::logic_error("sendbuf too big");
+    memcpy(_buf, other._buf, other._sz);
+    _sz       = other._sz;
+    other._sz = 0;
+  }
+
+  sendbuf_t(size_t s)
+  {
+    if(s > sizeof(_buf))
+      throw std::logic_error("sendbuf too big");
+    _sz = s;
   }
 
   ~sendbuf_t()
   {
-    if(_buf)
-      delete[] _buf;
   }
-
-  size_t sz;
-
-  byte_t priority = 255;
 
   size_t
   size() const
   {
-    return sz;
+    return _sz;
   }
 
   byte_t *
@@ -39,7 +49,7 @@ struct sendbuf_t
   {
     llarp_buffer_t buf;
     buf.base = _buf;
-    buf.sz   = sz;
+    buf.sz   = _sz;
     buf.cur  = buf.base;
     return buf;
   }
@@ -74,5 +84,6 @@ struct sendbuf_t
   llarp_time_t timestamp = 0;
 
  private:
-  byte_t *_buf = nullptr;
+  size_t _sz;
+  byte_t _buf[1500];
 };

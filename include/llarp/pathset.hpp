@@ -8,6 +8,7 @@
 #include <llarp/routing/message.hpp>
 #include <llarp/service/IntroSet.hpp>
 #include <llarp/service/lookup.hpp>
+#include <llarp/dht/messages/all.hpp>
 #include <map>
 #include <tuple>
 
@@ -114,16 +115,8 @@ namespace llarp
       }
 
       virtual bool
-      SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur,
+      SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop) = 0;
-
-      static bool
-      SelectHopCallback(void* user, llarp_nodedb* db, llarp_rc* prev,
-                        llarp_rc* cur, size_t hopno)
-      {
-        PathSet* self = static_cast< PathSet* >(user);
-        return self->SelectHop(db, prev, cur, hopno);
-      }
 
      private:
       typedef std::pair< RouterID, PathID_t > PathInfo_t;

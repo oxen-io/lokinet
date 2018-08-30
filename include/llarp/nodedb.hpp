@@ -1,11 +1,12 @@
-#ifndef LLARP_NODEDB_H
-#define LLARP_NODEDB_H
+#ifndef LLARP_NODEDB_HPP
+#define LLARP_NODEDB_HPP
 #include <llarp/common.h>
 #include <llarp/crypto.h>
-#include <llarp/router_contact.h>
+#include <llarp/router_contact.hpp>
+#include <llarp/router_id.hpp>
 
 /**
- * nodedb.h
+ * nodedb.hpp
  *
  * persistent storage API for router contacts
  */
@@ -39,7 +40,7 @@ llarp_nodedb_store_dir(struct llarp_nodedb *n, const char *dir);
 struct llarp_nodedb_iter
 {
   void *user;
-  struct llarp_rc *rc;
+  llarp::RouterContact *rc;
   size_t index;
   bool (*visit)(struct llarp_nodedb_iter *);
 };
@@ -47,15 +48,6 @@ struct llarp_nodedb_iter
 /// iterate over all loaded rc with an iterator
 int
 llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
-
-/// get a random rc that is loaded
-void
-llarp_nodedb_get_random_rc(struct llarp_nodedb *n, struct llarp_rc *result);
-
-/// select a random rc at hop number N
-void
-llarp_nodedb_select_random_hop(struct llarp_nodedb *n, struct llarp_rc *prev,
-                               struct llarp_rc *result, size_t N);
 
 /// return number of RC loaded
 size_t
@@ -68,11 +60,11 @@ llarp_nodedb_num_loaded(struct llarp_nodedb *n);
    returns true on success and false on error
  */
 bool
-llarp_nodedb_put_rc(struct llarp_nodedb *n, struct llarp_rc *rc);
+llarp_nodedb_put_rc(struct llarp_nodedb *n, const llarp::RouterContact &rc);
 
-/// return a pointer to an already loaded RC or nullptr if it's not there
-struct llarp_rc *
-llarp_nodedb_get_rc(struct llarp_nodedb *n, const byte_t *pk);
+bool
+llarp_nodedb_get_rc(struct llarp_nodedb *n, const llarp::RouterID &pk,
+                    llarp::RouterContact &result);
 
 /// struct for async rc verification
 struct llarp_async_verify_rc;
@@ -94,7 +86,7 @@ struct llarp_async_verify_rc
   struct llarp_threadpool *diskworker;
 
   /// router contact
-  struct llarp_rc rc;
+  llarp::RouterContact rc;
   /// result
   bool valid;
   /// hook
@@ -125,9 +117,9 @@ struct llarp_async_load_rc
   /// disk worker threadpool
   struct llarp_threadpool *diskworker;
   /// target pubkey
-  byte_t pubkey[PUBKEYSIZE];
+  llarp::PubKey pubkey;
   /// router contact result
-  struct llarp_rc rc;
+  llarp::RouterContact result;
   /// set to true if we loaded the rc
   bool loaded;
   /// hook function called in logic thread
@@ -137,5 +129,10 @@ struct llarp_async_load_rc
 /// asynchronously load an rc from disk
 void
 llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job);
+
+void
+llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
+                               const llarp::RouterContact &prev,
+                               llarp::RouterContact &result, size_t N);
 
 #endif

@@ -5,7 +5,7 @@ namespace llarp
   /// encode Link Introduce Message onto a buffer
   /// if router is nullptr then the LIM's r member is omitted.
   bool
-  EncodeLIM(llarp_buffer_t* buff, llarp_rc* router)
+  EncodeLIM(llarp_buffer_t* buff, const llarp::RouterContact* router)
   {
     if(!bencode_start_dict(buff))
       return false;
@@ -21,7 +21,7 @@ namespace llarp
     {
       if(!bencode_write_bytestring(buff, "r", 1))
         return false;
-      if(!llarp_rc_bencode(router, buff))
+      if(!router->BEncode(buff))
         return false;
     }
 

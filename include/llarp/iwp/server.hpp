@@ -139,7 +139,7 @@ struct llarp_link
   issue_cleanup_timer(uint64_t timeout);
 
   void
-  get_our_address(struct llarp_ai *addr);
+  get_our_address(llarp::AddressInfo &addr);
 
   static void
   after_recv(llarp_udp_io *udp);

@@ -9,9 +9,6 @@ namespace llarp
   {
     GotRouterMessage::~GotRouterMessage()
     {
-      for(auto rc : R)
-        llarp_rc_free(&rc);
-      R.clear();
     }
 
     bool

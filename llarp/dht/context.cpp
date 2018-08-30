@@ -70,7 +70,8 @@ namespace llarp
         llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
         for(const auto &pk : valuesFound)
         {
-          if(llarp_nodedb_get_rc(parent->router->nodedb, pk) == nullptr)
+          RouterContact rc;
+          if(!llarp_nodedb_get_rc(parent->router->nodedb, pk, rc))
           {
             // try connecting to it we don't know it
             // this triggers a dht lookup
@@ -191,7 +192,7 @@ namespace llarp
       {
         // we are the target, give them our RC
         replies.push_back(
-            new GotRouterMessage(requester, txid, &router->rc, false));
+            new GotRouterMessage(requester, txid, {router->rc}, false));
         return;
       }
       Key_t next;
@@ -202,7 +203,7 @@ namespace llarp
         {
           // we know it
           replies.push_back(new GotRouterMessage(
-              requester, txid, nodes->nodes[target].rc, false));
+              requester, txid, {nodes->nodes[target].rc}, false));
         }
         else if(recursive)  // are we doing a recursive lookup?
         {
@@ -216,22 +217,19 @@ namespace llarp
           {
             // no we are closer to the target so tell requester it's not there
             // so they switch to iterative lookup
-            replies.push_back(
-                new GotRouterMessage(requester, txid, nullptr, false));
+            replies.push_back(new GotRouterMessage(requester, txid, {}, false));
           }
         }
         else  // iterative lookup and we don't have it tell them we don't have
               // the target router
         {
-          replies.push_back(
-              new GotRouterMessage(requester, txid, nullptr, false));
+          replies.push_back(new GotRouterMessage(requester, txid, {}, false));
         }
       }
       else
       {
         // we don't know it and have no closer peers to ask
-        replies.push_back(
-            new GotRouterMessage(requester, txid, nullptr, false));
+        replies.push_back(new GotRouterMessage(requester, txid, {}, false));
       }
     }
 
@@ -600,15 +598,15 @@ namespace llarp
       return true;
     }
 
-    struct RecursiveRouterLookup : public TX< RouterID, llarp_rc >
+    struct RecursiveRouterLookup : public TX< RouterID, RouterContact >
     {
-      llarp_router_lookup_job *job;
+      RouterLookupHandler resultHandler;
       RecursiveRouterLookup(const TXOwner &whoasked, const RouterID &target,
-                            Context *ctx, llarp_router_lookup_job *j)
-          : TX< RouterID, llarp_rc >(whoasked, target, ctx)
+                            Context *ctx, RouterLookupHandler result)
+          : TX< RouterID, RouterContact >(whoasked, target, ctx)
+          , resultHandler(result)
 
       {
-        job = j;
         peersAsked.insert(ctx->OurKey());
       }
 
@@ -641,32 +639,16 @@ namespace llarp
       void
       SendReply()
       {
-        if(job)
+        if(resultHandler)
         {
-          job->found = false;
-          if(valuesFound.size())
-          {
-            job->found =
-                memcmp(valuesFound[0].pubkey, job->target, PUBKEYSIZE) == 0;
-            if(job->found)
-              llarp_rc_copy(&job->result, &valuesFound[0]);
-          }
-          if(job->hook)
-            job->hook(job);
-          else
-            delete job;
+          resultHandler(valuesFound);
         }
         else
         {
-          llarp_rc *found = nullptr;
-          if(valuesFound.size())
-            found = &valuesFound[0];
           parent->DHTSendTo(
               whoasked.node,
-              new GotRouterMessage({}, whoasked.txid, found, false));
+              new GotRouterMessage({}, whoasked.txid, valuesFound, false));
         }
-        for(auto rc : valuesFound)
-          llarp_rc_free(&rc);
       }
     };
 
@@ -674,37 +656,14 @@ namespace llarp
     Context::LookupRouterRecursive(const RouterID &target,
                                    const Key_t &whoasked, uint64_t txid,
                                    const Key_t &askpeer,
-                                   llarp_router_lookup_job *job)
+                                   RouterLookupHandler handler)
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
       auto tx = pendingRouterLookups.NewTX(
-          peer, target, new RecursiveRouterLookup(asker, target, this, job));
+          peer, target,
+          new RecursiveRouterLookup(asker, target, this, handler));
       tx->Start(peer);
-    }
-
-    void
-    Context::LookupRouterViaJob(llarp_router_lookup_job *job)
-    {
-      Key_t peer;
-
-      if(nodes->FindClosest(job->target, peer))
-        LookupRouterRecursive(job->target, ourKey, 0, peer, job);
-      else if(job->hook)
-      {
-        job->found = false;
-        job->hook(job);
-      }
-      else
-        delete job;
-    }
-
-    void
-    Context::queue_router_lookup(void *user)
-    {
-      struct llarp_router_lookup_job *job =
-          static_cast< llarp_router_lookup_job * >(user);
-      job->dht->impl.LookupRouterViaJob(job);
     }
 
   }  // namespace dht

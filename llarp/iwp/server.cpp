@@ -111,8 +111,7 @@ llarp_link::TickSessions()
     {
       if(itr->second->Tick(now))
       {
-        if(itr->second->get_remote_router())
-          m_Connected.erase(itr->second->get_remote_router()->pubkey);
+        m_Connected.erase(itr->second->get_remote_router().pubkey);
         itr = m_sessions.erase(itr);
       }
       else
@@ -289,13 +288,13 @@ llarp_link::issue_cleanup_timer(uint64_t timeout)
 }
 
 void
-llarp_link::get_our_address(llarp_ai* addr)
+llarp_link::get_our_address(llarp::AddressInfo& addr)
 {
-  addr->rank = 1;
-  strncpy(addr->dialect, "IWP", sizeof(addr->dialect));
-  memcpy(addr->enc_key, pubkey(), 32);
-  memcpy(addr->ip.s6_addr, this->addr.addr6(), 16);
-  addr->port = this->addr.port();
+  addr.rank    = 1;
+  addr.dialect = "IWP";
+  addr.pubkey  = pubkey();
+  addr.port    = this->addr.port();
+  memcpy(addr.ip.s6_addr, this->addr.addr6(), 16);
 }
 
 void
@@ -411,7 +410,7 @@ llarp_link::try_establish(struct llarp_link_establish_job* job)
     visit_session(dst, [job](const std::unique_ptr< llarp_link_session >& s) {
       s->establish_job = job;
       s->frame.alive();  // mark it alive
-      s->introduce(job->ai.enc_key);
+      s->introduce(job->ai.pubkey);
     });
     return true;
   }

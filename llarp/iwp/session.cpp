@@ -35,7 +35,6 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
     eph_seckey = seckey;
   else
     crypto->encryption_keygen(eph_seckey);
-  llarp_rc_clear(&remote_router);
   crypto->randbytes(token, 32);
   frame.alive();
   working.store(false);
@@ -44,7 +43,6 @@ llarp_link_session::llarp_link_session(llarp_link *l, const byte_t *seckey,
 
 llarp_link_session::~llarp_link_session()
 {
-  llarp_rc_free(&remote_router);
   frame.clear();
 }
 
@@ -72,6 +70,8 @@ llarp_link_session::sendto(llarp_buffer_t msg)
 bool
 llarp_link_session::timedout(llarp_time_t now, llarp_time_t timeout)
 {
+  if(frame.lastEvent == 0)
+    return false;
   if(now <= frame.lastEvent)
     return false;
   auto diff = now - frame.lastEvent;
@@ -127,10 +127,10 @@ llarp_link_session::session_established()
   llarp_logic_cancel_call(serv->logic, establish_job_id);
 }
 
-llarp_rc *
-llarp_link_session::get_remote_router()
+const llarp::RouterContact &
+llarp_link_session::get_remote_router() const
 {
-  return &remote_router;
+  return remote_router;
 }
 
 void
@@ -150,16 +150,16 @@ bool
 llarp_link_session::CheckRCValid()
 {
   // verify signatuire
-  if(!llarp_rc_verify_sig(crypto, &remote_router))
+  if(!remote_router.VerifySignature(crypto))
     return false;
 
-  auto &list = remote_router.addrs->list;
-  if(list.size() == 0)  // the remote node is a client node so accept it
+  if(remote_router.addrs.size()
+     == 0)  // the remote node is a client node so accept it
     return true;
   // check if the RC owns a pubkey that we are using
-  for(auto &ai : list)
+  for(auto &ai : remote_router.addrs)
   {
-    if(memcmp(ai.enc_key, remote, PUBKEYSIZE) == 0)
+    if(ai.pubkey == remote)
       return true;
   }
   return false;
@@ -240,7 +240,6 @@ handle_verify_introack(iwp_async_introack *introack)
   {
     // invalid signature
     llarp::LogError("introack verify failed from ", link->addr);
-    link->serv->remove_intro_from(link->addr);
     return;
   }
   // cancel resend
@@ -271,7 +270,8 @@ handle_establish_timeout(void *user, uint64_t orig, uint64_t left)
       // timer timeout
       job->session = nullptr;
     }
-    job->result(job);
+    if(!self->working)
+      job->result(job);
   }
 }
 
@@ -425,12 +425,10 @@ llarp_link_session::keepalive()
 void
 llarp_link_session::EncryptOutboundFrames()
 {
-  llarp_link_session *self = this;
-  outboundFrames.Process([self](iwp_async_frame *frame) {
+  outboundFrames.Process([&](iwp_async_frame *frame) {
     if(iwp_encrypt_frame(frame))
-      if(llarp_ev_udp_sendto(self->udp, self->addr, frame->buf, frame->sz)
-         == -1)
-        llarp::LogError("sendto ", self->addr, " failed");
+      if(llarp_ev_udp_sendto(udp, addr, frame->buf, frame->sz) == -1)
+        llarp::LogError("sendto ", addr, " failed");
   });
 }
 
@@ -753,6 +751,8 @@ llarp_link_session::encrypt_frame_async_send(const void *buf, size_t sz)
 {
   // 64 bytes frame overhead for nonce and hmac
   auto frame = alloc_frame(nullptr, sz + 64);
+  if(frame == nullptr)
+    return;
   memcpy(frame->buf + 64, buf, sz);
   // maybe add upto 128 random bytes to the packet
   auto padding = llarp_randint() % MAX_PAD;

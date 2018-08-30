@@ -49,7 +49,7 @@ namespace llarp
           }
           for(;;)
           {
-            llarp_thread_job job;
+            Job_t job;
             {
               lock_t lock(this->queue_mutex);
               this->condition.WaitUntil(
@@ -59,18 +59,15 @@ namespace llarp
                 // discard pending jobs
                 while(this->jobs.size())
                 {
-                  delete this->jobs.top().job;
                   this->jobs.pop();
                 }
                 return;
               }
-              job.user = this->jobs.top().job->user;
-              job.work = this->jobs.top().job->work;
-              delete this->jobs.top().job;
+              job = std::move(this->jobs.top());
               this->jobs.pop();
             }
             // do work
-            job.work(job.user);
+            job();
           }
         });
       }
@@ -104,8 +101,7 @@ namespace llarp
         // don't allow enqueueing after stopping the pool
         if(stop)
           return;
-
-        jobs.emplace(ids++, new llarp_thread_job(job.user, job.work));
+        jobs.emplace(ids++, job);
       }
       condition.NotifyOne();
     }
@@ -197,7 +193,8 @@ struct llarp_threadpool
   llarp::thread::Pool *impl;
 
   llarp::util::Mutex m_access;
-  std::queue< llarp_thread_job * > jobs;
+  uint32_t ids = 0;
+  std::queue< llarp::thread::Pool::Job_t > jobs;
 
   llarp_threadpool(int workers, const char *name, bool isolate,
                    setup_net_func setup  = nullptr,
@@ -284,15 +281,11 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
 {
   if(pool->impl)
     pool->impl->QueueJob(job);
-  else if(job.user && job.work)
+  else
   {
-    auto j  = new llarp_thread_job;
-    j->work = job.work;
-    j->user = job.user;
-    {
-      llarp::util::Lock lock(pool->m_access);
-      pool->jobs.push(j);
-    }
+    // single threaded mode
+    llarp::util::Lock lock(pool->m_access);
+    pool->jobs.emplace(++pool->ids, job);
   }
 }
 
@@ -301,14 +294,13 @@ llarp_threadpool_tick(struct llarp_threadpool *pool)
 {
   while(pool->jobs.size())
   {
-    llarp_thread_job *job;
+    llarp::thread::Pool::Job_t job;
     {
       llarp::util::Lock lock(pool->m_access);
-      job = pool->jobs.front();
+      job = std::move(pool->jobs.front());
       pool->jobs.pop();
     }
-    job->work(job->user);
-    delete job;
+    job();
   }
 }
 

@@ -16,7 +16,7 @@ namespace llarp
   {
     if(llarp_buffer_eq(key, "c"))
     {
-      return BEncodeReadList(frames, buf);
+      return BEncodeReadArray(frames, buf);
     }
     bool read = false;
     if(!BEncodeMaybeReadVersion("v", version, LLARP_PROTO_VERSION, read, key,
@@ -35,7 +35,7 @@ namespace llarp
     if(!BEncodeWriteDictMsgType(buf, "a", "c"))
       return false;
     // frames
-    if(!BEncodeWriteDictList("c", frames, buf))
+    if(!BEncodeWriteDictArray("c", frames, buf))
       return false;
     // version
     if(!bencode_write_version_entry(buf))
@@ -165,7 +165,7 @@ namespace llarp
     typedef llarp::path::TransitHop Hop;
     typedef AsyncFrameDecrypter< LRCMFrameDecrypt > Decrypter;
     Decrypter* decrypter;
-    std::deque< EncryptedFrame > frames;
+    std::array< EncryptedFrame, 8 > frames;
     Context* context;
     // decrypted record
     LR_CommitRecord record;
@@ -174,10 +174,8 @@ namespace llarp
 
     LRCMFrameDecrypt(Context* ctx, Decrypter* dec,
                      const LR_CommitMessage* commit)
-        : decrypter(dec), context(ctx), hop(new Hop())
+        : decrypter(dec), frames(commit->frames), context(ctx), hop(new Hop())
     {
-      for(const auto& f : commit->frames)
-        frames.push_back(f);
       hop->info.downstream = commit->remote;
     }
 
@@ -281,14 +279,21 @@ namespace llarp
       llarp::LogDebug("Accepted ", self->hop->info);
       self->context->PutTransitHop(self->hop);
 
-      size_t sz = self->frames.front().size();
-      // we pop the front element it was ours
-      self->frames.pop_front();
+      size_t sz = self->frames[0].size();
+      // shift
+      std::array< EncryptedFrame, 8 > frames;
+      frames[0] = self->frames[1];
+      frames[1] = self->frames[2];
+      frames[2] = self->frames[3];
+      frames[3] = self->frames[4];
+      frames[4] = self->frames[5];
+      frames[5] = self->frames[6];
+      frames[6] = self->frames[7];
       // put our response on the end
-      self->frames.emplace_back(sz - EncryptedFrame::OverheadSize);
+      frames[7] = EncryptedFrame(sz - EncryptedFrame::OverheadSize);
       // random junk for now
-      self->frames.back().Randomize();
-
+      frames[7].Randomize();
+      self->frames = std::move(frames);
       if(self->context->HopIsUs(info.upstream))
       {
         // we are the farthest hop
@@ -315,7 +320,7 @@ namespace llarp
     LRCMFrameDecrypt* frames = new LRCMFrameDecrypt(context, decrypter, this);
 
     // decrypt frames async
-    decrypter->AsyncDecrypt(context->Worker(), &frames->frames.front(), frames);
+    decrypter->AsyncDecrypt(context->Worker(), &frames->frames[0], frames);
     return true;
   }
 }  // namespace llarp

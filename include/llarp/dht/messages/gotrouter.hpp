@@ -1,6 +1,7 @@
 #ifndef LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
 #define LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
 #include <llarp/dht/message.hpp>
+#include <llarp/router_contact.hpp>
 
 namespace llarp
 {
@@ -12,16 +13,11 @@ namespace llarp
           : IMessage(from), relayed(tunneled)
       {
       }
-      GotRouterMessage(const Key_t& from, uint64_t id, const llarp_rc* result,
+      GotRouterMessage(const Key_t& from, uint64_t id,
+                       const std::vector< RouterContact >& results,
                        bool tunneled)
-          : IMessage(from), txid(id), relayed(tunneled)
+          : IMessage(from), R(results), txid(id), relayed(tunneled)
       {
-        if(result)
-        {
-          R.emplace_back();
-          llarp_rc_clear(&R.back());
-          llarp_rc_copy(&R.back(), result);
-        }
       }
 
       GotRouterMessage(uint64_t id, const std::vector< RouterID >& near,
@@ -42,7 +38,7 @@ namespace llarp
       HandleMessage(llarp_dht_context* ctx,
                     std::vector< IMessage* >& replies) const;
 
-      std::vector< llarp_rc > R;
+      std::vector< RouterContact > R;
       std::vector< RouterID > N;
       uint64_t txid    = 0;
       uint64_t version = 0;

@@ -1,5 +1,5 @@
 #include <llarp/bencode.h>
-#include <llarp/router_contact.h>
+#include <llarp/router_contact.hpp>
 #include <llarp/messages/link_intro.hpp>
 #include "logger.hpp"
 #include "router.hpp"
@@ -15,13 +15,9 @@ namespace llarp
   {
     if(llarp_buffer_eq(key, "r"))
     {
-      if(!llarp_rc_bdecode(RC, buf))
-      {
-        llarp::LogWarn("failed to decode RC");
+      if(!RC.BDecode(buf))
         return false;
-      }
-      remote = (byte_t*)RC->pubkey;
-      llarp::LogDebug("decoded RC from ", remote);
+      hasRC = true;
       return true;
     }
     else if(llarp_buffer_eq(key, "v"))
@@ -55,12 +51,11 @@ namespace llarp
     if(!bencode_write_bytestring(buf, "i", 1))
       return false;
 
-    if(RC)
+    if(hasRC)
     {
       if(!bencode_write_bytestring(buf, "r", 1))
         return false;
-      if(!llarp_rc_bencode(RC, buf))
-        return false;
+      return RC.BEncode(buf);
     }
 
     if(!bencode_write_version_entry(buf))
@@ -72,7 +67,7 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
-    router->async_verify_RC(RC, !llarp_rc_is_public_router(RC));
+    router->async_verify_RC(RC, !RC.IsPublicRouter());
     return true;
   }
 }  // namespace llarp

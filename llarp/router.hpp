@@ -1,8 +1,8 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 #include <llarp/dht.h>
-#include <llarp/nodedb.h>
-#include <llarp/router_contact.h>
+#include <llarp/nodedb.hpp>
+#include <llarp/router_contact.hpp>
 #include <llarp/path.hpp>
 
 #include <functional>
@@ -24,25 +24,12 @@
 /** 2^15 bytes */
 #define MAX_LINK_MSG_SIZE (32768)
 
-// TODO: unused. remove?
-// struct try_connect_ctx
-// {
-//   llarp_router *router = nullptr;
-//   llarp_ai addr;
-// };
-
-// // forward declare
-// namespace path
-// {
-//   struct TransitHop;
-// }
-
 struct llarp_link;
 struct llarp_link_session_iter;
 
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
-                             llarp::SecretKey *encryption);
+                             llarp::SecretKey &encryption);
 
 struct llarp_router
 {
@@ -62,12 +49,12 @@ struct llarp_router
   fs::path our_rc_file = "rc.signed";
 
   // our router contact
-  llarp_rc rc;
+  llarp::RouterContact rc;
 
   // our ipv4 public setting
   bool publicOverride = false;
   struct sockaddr_in ip4addr;
-  llarp_ai addrInfo;
+  llarp::AddressInfo addrInfo;
 
   llarp_ev_loop *netloop;
   llarp_threadpool *tp;
@@ -92,9 +79,6 @@ struct llarp_router
   llarp::InboundMessageParser inbound_link_msg_parser;
   llarp::routing::InboundMessageParser inbound_routing_msg_parser;
 
-  llarp_pathbuilder_select_hop_func selectHopFunc = nullptr;
-  llarp_pathbuilder_context *explorePool          = nullptr;
-
   llarp::service::Context hiddenServiceContext;
 
   llarp_link *outboundLink = nullptr;
@@ -107,7 +91,7 @@ struct llarp_router
   std::map< llarp::RouterID, MessageQueue > outboundMessageQueue;
 
   /// loki verified routers
-  std::map< llarp::RouterID, llarp_rc > validRouters;
+  std::map< llarp::RouterID, llarp::RouterContact > validRouters;
 
   // pending establishing session with routers
   std::map< llarp::PubKey, llarp_link_establish_job > pendingEstablishJobs;
@@ -222,11 +206,19 @@ struct llarp_router
   NumberOfConnectedRouters() const;
 
   bool
-  GetRandomConnectedRouter(llarp_rc *result) const;
+  GetRandomConnectedRouter(llarp::RouterContact &result) const;
 
   void
-  async_verify_RC(llarp_rc *rc, bool isExpectingClient,
+  async_verify_RC(const llarp::RouterContact &rc, bool isExpectingClient,
                   llarp_link_establish_job *job = nullptr);
+
+  void
+  HandleDHTLookupForSendTo(llarp::RouterID remote,
+                           const std::vector< llarp::RouterContact > &results);
+
+  void
+  HandleDHTLookupForTryEstablishTo(
+      const std::vector< llarp::RouterContact > &results);
 
   static bool
   iter_try_connect(llarp_router_link_iter *i, llarp_router *router,
@@ -253,15 +245,6 @@ struct llarp_router
 
   static void
   HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
-
-  static void
-  HandleDHTLookupForSendTo(llarp_router_lookup_job *job);
-
-  static void
-  HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job);
-
-  static void
-  HandleDHTLookupForTryEstablishTo(llarp_router_lookup_job *job);
 };
 
 #endif

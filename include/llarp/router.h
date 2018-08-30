@@ -3,11 +3,10 @@
 #include <llarp/config.h>
 #include <llarp/ev.h>
 #include <llarp/logic.h>
-#include <llarp/nodedb.h>
-#include <llarp/pathbuilder.h>
-#include <llarp/router_contact.h>
 #include <llarp/threadpool.h>
+#include <llarp/buffer.h>
 
+struct llarp_nodedb;
 struct llarp_router;
 
 bool
@@ -19,16 +18,6 @@ llarp_init_router(struct llarp_threadpool *worker,
                   struct llarp_ev_loop *netloop, struct llarp_logic *logic);
 void
 llarp_free_router(struct llarp_router **router);
-
-bool
-llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
-                         uint16_t numretries);
-
-/// override default path builder function (FFI)
-void
-llarp_router_override_path_selection(struct llarp_router *router,
-                                     llarp_pathbuilder_select_hop_func func);
-
 bool
 llarp_configure_router(struct llarp_router *router, struct llarp_config *conf);
 

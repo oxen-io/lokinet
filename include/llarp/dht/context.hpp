@@ -106,6 +106,9 @@ namespace llarp
     typedef std::function< void(const std::vector< service::IntroSet >&) >
         IntroSetLookupHandler;
 
+    typedef std::function< void(const std::vector< RouterContact >&) >
+        RouterLookupHandler;
+
     struct Context
     {
       Context();
@@ -130,7 +133,17 @@ namespace llarp
       void
       LookupRouterRecursive(const RouterID& target, const Key_t& whoasked,
                             uint64_t whoaskedTX, const Key_t& askpeer,
-                            llarp_router_lookup_job* job = nullptr);
+                            RouterLookupHandler result = nullptr);
+
+      bool
+      LookupRouter(const RouterID& target, RouterLookupHandler result)
+      {
+        Key_t askpeer;
+        if(!nodes->FindClosest(target.data(), askpeer))
+          return false;
+        LookupRouterRecursive(target, OurKey(), 0, askpeer, result);
+        return true;
+      }
 
       /// on behalf of whoasked request introsets with tag from dht router with
       /// key askpeer with Recursion depth R
@@ -138,13 +151,15 @@ namespace llarp
       LookupTagRecursive(const service::Tag& tag, const Key_t& whoasked,
                          uint64_t whoaskedTX, const Key_t& askpeer, uint64_t R);
 
-      void
-      LookupRouterViaJob(llarp_router_lookup_job* job);
-
       /// issue dht lookup for tag via askpeer and send reply to local path
       void
       LookupTagForPath(const service::Tag& tag, uint64_t txid,
                        const llarp::PathID_t& path, const Key_t& askpeer);
+
+      /// issue dht lookup for router via askpeer and send reply to local path
+      void
+      LookupRouterForPath(const RouterID& target, uint64_t txid,
+                          const llarp::PathID_t& path, const Key_t& askpeer);
 
       /// issue dht lookup for introset for addr via askpeer and send reply to
       /// local path
@@ -193,10 +208,6 @@ namespace llarp
       const llarp::service::IntroSet*
       GetIntroSetByServiceAddress(const llarp::service::Address& addr) const;
 
-      /// queue lookup router via job
-      void
-      QueueRouterLookup(llarp_router_lookup_job* job);
-
       static void
       handle_cleaner_timer(void* user, uint64_t orig, uint64_t left);
 
@@ -206,9 +217,6 @@ namespace llarp
       /// explore dht for new routers
       void
       Explore();
-
-      static void
-      queue_router_lookup(void* user);
 
       llarp_router* router = nullptr;
       // for router contacts
@@ -340,7 +348,7 @@ namespace llarp
       TXHolder< service::Tag, service::IntroSet, service::Tag::Hash >
           pendingTagLookups;
 
-      TXHolder< RouterID, llarp_rc, RouterID::Hash > pendingRouterLookups;
+      TXHolder< RouterID, RouterContact, RouterID::Hash > pendingRouterLookups;
 
       TXHolder< RouterID, RouterID, RouterID::Hash > pendingExploreLookups;
 

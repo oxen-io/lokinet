@@ -9,60 +9,6 @@ namespace llarp
 {
   namespace dht
   {
-    struct PathLookupInformer
-    {
-      llarp_router *router;
-      PathID_t pathID;
-      uint64_t txid;
-
-      PathLookupInformer(llarp_router *r, const PathID_t &id, uint64_t tx)
-          : router(r), pathID(id), txid(tx)
-      {
-      }
-
-      void
-      SendReply(llarp::routing::IMessage *msg)
-      {
-        auto path = router->paths.GetByUpstream(router->pubkey(), pathID);
-        if(path == nullptr)
-        {
-          llarp::LogWarn("Path not found for relayed DHT message txid=", txid,
-                         " pathid=", pathID);
-          return;
-        }
-        if(!path->SendRoutingMessage(msg, router))
-          llarp::LogWarn("Failed to send reply for relayed DHT message txid=",
-                         txid, "pathid=", pathID);
-      }
-
-      static void
-      InformReply(llarp_router_lookup_job *job)
-      {
-        PathLookupInformer *self =
-            static_cast< PathLookupInformer * >(job->user);
-        llarp::routing::DHTMessage reply;
-        if(job->found)
-        {
-          if(llarp_rc_verify_sig(&self->router->crypto, &job->result))
-          {
-            reply.M.push_back(new GotRouterMessage(job->target, self->txid,
-                                                   &job->result, false));
-          }
-          llarp_rc_free(&job->result);
-          llarp_rc_clear(&job->result);
-        }
-        else
-        {
-          reply.M.push_back(
-              new GotRouterMessage(job->target, self->txid, nullptr, false));
-        }
-        self->SendReply(&reply);
-        // TODO: is this okay?
-        delete self;
-        delete job;
-      }
-    };
-
     bool
     RelayedFindRouterMessage::HandleMessage(
         llarp_dht_context *ctx, std::vector< IMessage * > &replies) const
@@ -75,24 +21,16 @@ namespace llarp
         if(path)
         {
           replies.push_back(
-              new GotRouterMessage(K.data(), txid, &dht.router->rc, false));
+              new GotRouterMessage(K.data(), txid, {dht.router->rc}, false));
           return true;
         }
         return false;
       }
-      llarp_router_lookup_job *job = new llarp_router_lookup_job;
-      PathLookupInformer *informer =
-          new PathLookupInformer(dht.router, pathID, txid);
-      job->user  = informer;
-      job->hook  = &PathLookupInformer::InformReply;
-      job->found = false;
-      llarp_rc_clear(&job->result);
-      job->dht = ctx;
-      memcpy(job->target, K, sizeof(job->target));
+
       Key_t peer;
       Key_t k = K.data();
       if(dht.nodes->FindClosest(k, peer))
-        dht.LookupRouterRecursive(K, dht.OurKey(), txid, peer, job);
+        dht.LookupRouterForPath(K, txid, pathID, peer);
       return true;
     }
 

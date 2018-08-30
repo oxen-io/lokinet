@@ -7,7 +7,7 @@
 #include "llarp/crypto.hpp"
 #include "llarp/crypto_async.h"
 #include "llarp/net.hpp"
-#include "llarp/router_contact.h"
+#include "llarp/router_contact.hpp"
 #include "llarp/time.h"
 #include "llarp/types.h"
 
@@ -47,8 +47,9 @@ struct llarp_link_session
 
   llarp_link *
   get_parent();
-  llarp_rc *
-  get_remote_router();
+
+  const llarp::RouterContact &
+  get_remote_router() const;
 
   bool
   CheckRCValid();
@@ -110,8 +111,8 @@ struct llarp_link_session
 
   llarp_link *serv = nullptr;
 
-  llarp_rc *our_router = nullptr;
-  llarp_rc remote_router;
+  llarp::RouterContact *our_router = nullptr;
+  llarp::RouterContact remote_router;
 
   llarp::SecretKey eph_seckey;
   llarp::PubKey remote;

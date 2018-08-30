@@ -94,22 +94,30 @@ frame_state::got_xmit(frame_header hdr, size_t sz)
     auto itr = rx.find(h);
     if(itr == rx.end())
     {
-      auto msg = rx.insert(std::make_pair(h,
-                                          std::unique_ptr< transit_message >(
-                                              new transit_message(x))))
-                     .first->second.get();
-      rxIDs.insert(std::make_pair(id, h));
-      llarp::LogDebug("got message XMIT with ", (int)x.numfrags(),
-                      " fragment"
-                      "s");
-      // inserted, put last fragment
-      msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
-      push_ackfor(id, 0);
-      if(x.numfrags() == 0)
+      if(x.numfrags() > 0)
       {
-        return inbound_frame_complete(id);
+        auto msg = rx.insert(std::make_pair(h,
+                                            std::unique_ptr< transit_message >(
+                                                new transit_message(x))))
+                       .first->second.get();
+        rxIDs.insert(std::make_pair(id, h));
+        llarp::LogDebug("got message XMIT with ", (int)x.numfrags(),
+                        " fragment"
+                        "s");
+        // inserted, put last fragment
+        msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
+        push_ackfor(id, 0);
+        return true;
       }
-      return true;
+      else
+      {
+        // handle zero fragment message immediately
+        std::unique_ptr< transit_message > msg =
+            std::unique_ptr< transit_message >(new transit_message(x));
+        msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
+        push_ackfor(id, 0);
+        return inbound_frame_complete(msg);
+      }
     }
     else
       llarp::LogWarn("duplicate XMIT h=", llarp::ShortHash(h));
@@ -170,7 +178,10 @@ frame_state::got_frag(frame_header hdr, size_t sz)
   if(itr->second->completed())
   {
     push_ackfor(msgid, mask);
-    return inbound_frame_complete(msgid);
+    bool result = inbound_frame_complete(itr->second);
+    rxIDs.erase(idItr);
+    rx.erase(itr);
+    return result;
   }
   else if(itr->second->should_send_ack(llarp_time_now_ms()))
   {
@@ -191,14 +202,15 @@ frame_state::push_ackfor(uint64_t id, uint32_t bitmask)
 }
 
 bool
-frame_state::inbound_frame_complete(uint64_t id)
+frame_state::inbound_frame_complete(
+    const std::unique_ptr< transit_message > &rxmsg)
 {
   bool success = false;
   std::vector< byte_t > msg;
-  std::unique_ptr< transit_message > rxmsg = std::move(rx[rxIDs[id]]);
-  rx.erase(rxIDs[id]);
-  rxIDs.erase(id);
   llarp::ShortHash digest;
+
+  auto id = rxmsg->msginfo.msgid();
+
   if(rxmsg->reassemble(msg))
   {
     auto router = Router();
@@ -334,8 +346,8 @@ frame_state::process(byte_t *buf, size_t sz)
 void
 frame_state::queue_tx(uint64_t id, transit_message *msg)
 {
-  tx.insert(std::make_pair(id, std::unique_ptr< transit_message >(msg)));
   msg->generate_xmit(sendqueue, txflags);
+  tx.insert(std::make_pair(id, std::unique_ptr< transit_message >(msg)));
   // msg->retransmit_frags(sendqueue, txflags);
 }
 

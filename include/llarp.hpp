@@ -6,6 +6,7 @@
 #include <llarp/threading.hpp>
 #include <string>
 #include <vector>
+#include <llarp/crypto.h>
 
 namespace llarp
 {

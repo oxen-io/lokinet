@@ -1,4 +1,4 @@
-#include <llarp/router_contact.h>
+#include <llarp/router_contact.hpp>
 #include <llarp/messages.hpp>
 #include "buffer.hpp"
 #include "llarp/iwp/session.hpp"
@@ -88,8 +88,7 @@ namespace llarp
   RouterID
   InboundMessageParser::GetCurrentFrom()
   {
-    auto rc = from->get_remote_router();
-    return rc->pubkey;
+    return from->get_remote_router().pubkey;
   }
 
   bool
