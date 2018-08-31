@@ -234,7 +234,7 @@ namespace iwp
     buf.sz   = session->sz - 32;
     hmac(session->buf, buf, e_K);
     // session->hook(session);
-    llarp_logic_queue_job(logic, {user, &inform_session_start});
+    llarp_logic_queue_job(logic, {session, &inform_session_start});
   }
 
   void
@@ -303,7 +303,7 @@ namespace iwp
     else  // hmac fail
       session->buf = nullptr;
     // session->hook(session);
-    llarp_logic_queue_job(logic, {user, &inform_session_start});
+    llarp_logic_queue_job(logic, {session, &inform_session_start});
   }
 
   void

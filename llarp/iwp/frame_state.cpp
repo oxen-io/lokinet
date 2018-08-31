@@ -10,6 +10,7 @@
 #include "llarp/iwp/inbound_message.hpp"
 #include "llarp/iwp/session.hpp"
 #include "llarp/logger.hpp"
+#include "llarp/iwp/server.hpp"
 #include "mem.hpp"
 #include "router.hpp"
 
@@ -22,7 +23,7 @@ frame_state::Router()
 bool
 frame_state::process_inbound_queue()
 {
-  uint64_t last = 0;
+  uint64_t last = rxids;
   recvqueue.Process([&](InboundMessage &msg) {
     if(last != msg.msgid)
     {
@@ -96,25 +97,23 @@ frame_state::got_xmit(frame_header hdr, size_t sz)
     {
       if(x.numfrags() > 0)
       {
-        auto msg = rx.insert(std::make_pair(h,
-                                            std::unique_ptr< transit_message >(
-                                                new transit_message(x))))
-                       .first->second.get();
+        auto &msg = rx.insert(std::make_pair(h, transit_message(x)))
+
+                        .first->second;
         rxIDs.insert(std::make_pair(id, h));
         llarp::LogDebug("got message XMIT with ", (int)x.numfrags(),
                         " fragment"
                         "s");
         // inserted, put last fragment
-        msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
+        msg.put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
         push_ackfor(id, 0);
         return true;
       }
       else
       {
         // handle zero fragment message immediately
-        std::unique_ptr< transit_message > msg =
-            std::unique_ptr< transit_message >(new transit_message(x));
-        msg->put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
+        transit_message msg(x);
+        msg.put_lastfrag(hdr.data() + sizeof(x.buffer), x.lastfrag());
         push_ackfor(id, 0);
         return inbound_frame_complete(msg);
       }
@@ -161,21 +160,21 @@ frame_state::got_frag(frame_header hdr, size_t sz)
     push_ackfor(msgid, ~0);
     return true;
   }
-  auto fragsize = itr->second->msginfo.fragsize();
+  auto fragsize = itr->second.msginfo.fragsize();
   if(fragsize != sz - 9)
   {
     llarp::LogWarn("RX fragment size missmatch ", fragsize, " != ", sz - 9);
     return false;
   }
   llarp::LogDebug("RX got fragment ", (int)fragno, " msgid=", msgid);
-  if(!itr->second->put_frag(fragno, hdr.data() + 9))
+  if(!itr->second.put_frag(fragno, hdr.data() + 9))
   {
     llarp::LogWarn("inbound message does not have fragment msgid=", msgid,
                    " fragno=", (int)fragno);
     return false;
   }
-  auto mask = itr->second->get_bitmask();
-  if(itr->second->completed())
+  auto mask = itr->second.get_bitmask();
+  if(itr->second.completed())
   {
     push_ackfor(msgid, mask);
     bool result = inbound_frame_complete(itr->second);
@@ -183,7 +182,7 @@ frame_state::got_frag(frame_header hdr, size_t sz)
     rx.erase(itr);
     return result;
   }
-  else if(itr->second->should_send_ack(llarp_time_now_ms()))
+  else if(itr->second.should_send_ack(llarp_time_now_ms()))
   {
     push_ackfor(msgid, mask);
   }
@@ -194,33 +193,34 @@ void
 frame_state::push_ackfor(uint64_t id, uint32_t bitmask)
 {
   llarp::LogDebug("ACK for msgid=", id, " mask=", bitmask);
-  sendbuf_t pkt(12 + 6);
-  auto body_ptr = init_sendbuf(&pkt, eACKS, 12, txflags);
-  htobe64buf(body_ptr, id);
-  htobe32buf(body_ptr + 8, bitmask);
-  sendqueue.Put(pkt);
+  sendqueue.EmplaceIf(
+      [&](sendbuf_t &pkt) -> bool {
+        auto body_ptr = init_sendbuf(&pkt, eACKS, 12, txflags);
+        htobe64buf(body_ptr, id);
+        htobe32buf(body_ptr + 8, bitmask);
+        return true;
+      },
+      18);
 }
 
 bool
-frame_state::inbound_frame_complete(
-    const std::unique_ptr< transit_message > &rxmsg)
+frame_state::inbound_frame_complete(const transit_message &rxmsg)
 {
   bool success = false;
   std::vector< byte_t > msg;
   llarp::ShortHash digest;
 
-  auto id = rxmsg->msginfo.msgid();
+  auto id = rxmsg.msginfo.msgid();
 
-  if(rxmsg->reassemble(msg))
+  if(rxmsg.reassemble(msg))
   {
     auto router = Router();
     auto buf    = llarp::Buffer< decltype(msg) >(msg);
     router->crypto.shorthash(digest, buf);
-    if(memcmp(digest, rxmsg->msginfo.hash(), 32))
+    if(memcmp(digest, rxmsg.msginfo.hash(), 32))
     {
-      llarp::LogWarn("message hash missmatch ",
-                     llarp::AlignedBuffer< 32 >(digest),
-                     " != ", llarp::AlignedBuffer< 32 >(rxmsg->msginfo.hash()));
+      llarp::LogWarn("message hash missmatch ", digest,
+                     " != ", llarp::AlignedBuffer< 32 >(rxmsg.msginfo.hash()));
       return false;
     }
 
@@ -233,6 +233,7 @@ frame_state::inbound_frame_complete(
       {
         if(!impl->IsEstablished())
         {
+          // client side got server's LIM
           impl->send_LIM();
           impl->session_established();
         }
@@ -293,17 +294,17 @@ frame_state::got_acks(frame_header hdr, size_t sz)
   }
   else
   {
-    itr->second->ack(bitmask);
+    itr->second.ack(bitmask);
 
-    if(itr->second->completed())
+    if(itr->second.completed())
     {
       llarp::LogDebug("message transmitted msgid=", msgid);
       tx.erase(itr);
     }
-    else if(itr->second->should_resend_frags(now))
+    else if(itr->second.should_resend_frags(now))
     {
       llarp::LogDebug("message ", msgid, " retransmit fragments");
-      itr->second->retransmit_frags(sendqueue, txflags);
+      itr->second.retransmit_frags(sendqueue, txflags);
     }
   }
   return true;
@@ -344,23 +345,15 @@ frame_state::process(byte_t *buf, size_t sz)
 }
 
 void
-frame_state::queue_tx(uint64_t id, transit_message *msg)
-{
-  msg->generate_xmit(sendqueue, txflags);
-  tx.insert(std::make_pair(id, std::unique_ptr< transit_message >(msg)));
-  // msg->retransmit_frags(sendqueue, txflags);
-}
-
-void
 frame_state::retransmit(llarp_time_t now)
 {
   for(auto &item : tx)
   {
-    if(item.second->should_resend_xmit(now))
+    if(item.second.should_resend_xmit(now))
     {
-      item.second->generate_xmit(sendqueue, txflags);
+      item.second.generate_xmit(sendqueue, txflags);
     }
-    item.second->retransmit_frags(sendqueue, txflags);
+    item.second.retransmit_frags(sendqueue, txflags);
   }
 }
 

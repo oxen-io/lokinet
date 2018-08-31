@@ -39,8 +39,8 @@ struct llarp_link
 
   const char *m_name;
 
-  typedef std::unordered_map<
-      llarp::Addr, std::unique_ptr< llarp_link_session >, llarp::Addr::Hash >
+  typedef std::unordered_map< llarp::Addr, llarp_link_session,
+                              llarp::Addr::Hash >
       LinkMap_t;
 
   LinkMap_t m_sessions;
@@ -53,12 +53,6 @@ struct llarp_link
   mtx_t m_Connected_Mutex;
   std::atomic< bool > pumpingLogic;
 
-  typedef std::unordered_map<
-      llarp::Addr, std::unique_ptr< llarp_link_session >, llarp::Addr::Hash >
-      PendingSessionMap_t;
-  PendingSessionMap_t m_PendingSessions;
-  mtx_t m_PendingSessions_Mutex;
-
   llarp::SecretKey seckey;
 
   llarp_link(const llarp_iwp_args &args);
@@ -69,7 +63,7 @@ struct llarp_link
   has_intro_from(const llarp::Addr &from);
 
   void
-  remove_intro_from(const llarp::Addr &from);
+  remove_from(const llarp::Addr &from);
 
   /// does nothing if we have no session already established
   void
@@ -88,9 +82,6 @@ struct llarp_link
   bool
   sendto(const byte_t *pubkey, llarp_buffer_t buf);
 
-  llarp_link_session *
-  create_session(const llarp::Addr &src);
-
   bool
   has_session_via(const llarp::Addr &dst);
 
@@ -98,10 +89,8 @@ struct llarp_link
   MapAddr(const llarp::Addr &addr, const llarp::PubKey &pk);
 
   void
-  visit_session(
-      const llarp::Addr &addr,
-      std::function< void(const std::unique_ptr< llarp_link_session > &) >
-          visit);
+  visit_session(const llarp::Addr &addr,
+                std::function< void(llarp_link_session &) > visit);
 
   void
   pending_session_active(const llarp::Addr &addr);

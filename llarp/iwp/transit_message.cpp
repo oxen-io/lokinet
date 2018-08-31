@@ -109,12 +109,15 @@ void
 transit_message::generate_xmit(sendqueue_t &queue, byte_t flags)
 {
   uint16_t sz = lastfrag.size() + sizeof(msginfo.buffer);
-  sendbuf_t pkt(sz + 6);
-  auto body_ptr = init_sendbuf(&pkt, eXMIT, sz, flags);
-  memcpy(body_ptr, msginfo.buffer, sizeof(msginfo.buffer));
-  body_ptr += sizeof(msginfo.buffer);
-  memcpy(body_ptr, lastfrag.data(), lastfrag.size());
-  queue.Put(pkt);
+  queue.EmplaceIf(
+      [&](sendbuf_t &pkt) -> bool {
+        auto body_ptr = init_sendbuf(&pkt, eXMIT, sz, flags);
+        memcpy(body_ptr, msginfo.buffer, sizeof(msginfo.buffer));
+        body_ptr += sizeof(msginfo.buffer);
+        memcpy(body_ptr, lastfrag.data(), lastfrag.size());
+        return true;
+      },
+      sz + 6);
 }
 
 // template < typename T >
@@ -128,18 +131,21 @@ transit_message::retransmit_frags(sendqueue_t &queue, byte_t flags)
     if(status.test(frag.first))
       continue;
     uint16_t sz = 9 + fragsize;
-    sendbuf_t pkt(sz + 6);
-    auto body_ptr = init_sendbuf(&pkt, eFRAG, sz, flags);
-    htobe64buf(body_ptr, msgid);
-    body_ptr[8] = frag.first;
-    memcpy(body_ptr + 9, frag.second.data(), fragsize);
-    queue.Put(pkt);
+    queue.EmplaceIf(
+        [&](sendbuf_t &pkt) -> bool {
+          auto body_ptr = init_sendbuf(&pkt, eFRAG, sz, flags);
+          htobe64buf(body_ptr, msgid);
+          body_ptr[8] = frag.first;
+          memcpy(body_ptr + 9, frag.second.data(), fragsize);
+          return true;
+        },
+        sz + 6);
   }
   lastRetransmit = llarp_time_now_ms();
 }
 
 bool
-transit_message::reassemble(std::vector< byte_t > &buffer)
+transit_message::reassemble(std::vector< byte_t > &buffer) const
 {
   auto total = msginfo.totalsize();
   buffer.resize(total);
@@ -149,7 +155,7 @@ transit_message::reassemble(std::vector< byte_t > &buffer)
   {
     if(!status.test(idx))
       return false;
-    memcpy(ptr, frags[idx].data(), fragsz);
+    memcpy(ptr, frags.at(idx).data(), fragsz);
     ptr += fragsz;
   }
   memcpy(ptr, lastfrag.data(), lastfrag.size());

@@ -15,7 +15,7 @@
 #include <cmath>
 #include <functional>
 
-#include <queue>
+#include <array>
 #include <string>
 
 namespace llarp
@@ -37,7 +37,8 @@ namespace llarp
 
     template < typename T, typename GetTime, typename PutTime, typename Compare,
                typename Mutex_t = util::Mutex, typename Lock_t = util::Lock,
-               llarp_time_t dropMs = 5, llarp_time_t initialIntervalMs = 100 >
+               llarp_time_t dropMs = 5, llarp_time_t initialIntervalMs = 100,
+               size_t MaxSize = 1024 >
     struct CoDelQueue
     {
       CoDelQueue(const std::string& name) : m_name(name)
@@ -48,25 +49,29 @@ namespace llarp
       Size()
       {
         Lock_t lock(m_QueueMutex);
-        return m_Queue.size();
+        return m_QueueIdx;
       }
 
       template < typename... Args >
       bool
       EmplaceIf(std::function< bool(T&) > pred, Args&&... args)
       {
-        T t(std::forward< Args >(args)...);
-        if(!pred(t))
+        Lock_t lock(m_QueueMutex);
+        if(m_QueueIdx == MaxSize)
+          return false;
+        T* t = &m_Queue[m_QueueIdx];
+        new(t) T(std::forward< Args >(args)...);
+        if(!pred(*t))
         {
+          t->~T();
           return false;
         }
-        PutTime()(t);
-        {
-          Lock_t lock(m_QueueMutex);
-          if(firstPut == 0)
-            firstPut = GetTime()(t);
-          m_Queue.push(t);
-        }
+
+        PutTime()(m_Queue[m_QueueIdx]);
+        if(firstPut == 0)
+          firstPut = GetTime()(m_Queue[m_QueueIdx]);
+        ++m_QueueIdx;
+
         return true;
       }
 
@@ -74,26 +79,13 @@ namespace llarp
       void
       Emplace(Args&&... args)
       {
-        T t(std::forward< Args >(args)...);
-        PutTime()(t);
-        {
-          Lock_t lock(m_QueueMutex);
-          if(firstPut == 0)
-            firstPut = GetTime()(t);
-          m_Queue.push(t);
-        }
-      }
-
-      void
-      Put(T& t)
-      {
-        PutTime()(t);
-        {
-          Lock_t lock(m_QueueMutex);
-          if(firstPut == 0)
-            firstPut = GetTime()(t);
-          m_Queue.push(t);
-        }
+        Lock_t lock(m_QueueMutex);
+        T* t = &m_Queue[m_QueueIdx];
+        new(t) T(std::forward< Args >(args)...);
+        PutTime()(m_Queue[m_QueueIdx]);
+        if(firstPut == 0)
+          firstPut = GetTime()(m_Queue[m_QueueIdx]);
+        ++m_QueueIdx;
       }
 
       template < typename Visit >
@@ -105,21 +97,31 @@ namespace llarp
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
         Lock_t lock(m_QueueMutex);
         auto start = firstPut;
-        while(m_Queue.size())
+        if(m_QueueIdx == 1)
         {
-          llarp::LogDebug("CoDelQueue::Process - queue has ", m_Queue.size());
-          auto& item = m_Queue.front();
-          auto dlt   = start - GetTime()(item);
+          visitor(m_Queue[0]);
+          m_QueueIdx = 0;
+          firstPut   = 0;
+          return;
+        }
+        size_t idx = 0;
+        while(m_QueueIdx)
+        {
+          llarp::LogDebug(m_name, " - queue has ", m_QueueIdx);
+          T* item = &m_Queue[idx++];
+          --m_QueueIdx;
+          auto dlt = start - GetTime()(*item);
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
-          if(m_Queue.size() == 1)
+          if(m_QueueIdx == 0)
           {
             // llarp::LogInfo("CoDelQueue::Process - single item: lowest ",
             // lowest, " dropMs: ", dropMs);
             if(lowest > dropMs)
             {
+              llarp::LogInfo(m_name, " dropping");
+              item->~T();
               nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
-              m_Queue.pop();
               firstPut = 0;
               return;
             }
@@ -130,8 +132,8 @@ namespace llarp
             }
           }
           // llarp::LogInfo("CoDelQueue::Process - passing");
-          visitor(item);
-          m_Queue.pop();
+          visitor(*item);
+          item->~T();
         }
         firstPut = 0;
       }
@@ -140,11 +142,11 @@ namespace llarp
       size_t dropNum                = 0;
       llarp_time_t nextTickInterval = initialIntervalMs;
       Mutex_t m_QueueMutex;
-      typedef std::queue< T > Queue_t;
-      Queue_t m_Queue;
+      size_t m_QueueIdx = 0;
+      T m_Queue[MaxSize];
       std::string m_name;
-    };
-  }  // namespace util
+    };  // namespace util
+  }     // namespace util
 }  // namespace llarp
 
 #endif

@@ -24,7 +24,10 @@ struct llarp_link_session
   static constexpr llarp_time_t KEEP_ALIVE_INTERVAL = SESSION_TIMEOUT / 4;
   static constexpr size_t MAX_PAD                   = 128;
 
-  llarp_link_session(llarp_link *l, const byte_t *seckey, const llarp::Addr &a);
+  llarp_link_session();
+
+  void
+  init(llarp_link *l, const byte_t *seckey, const llarp::Addr &a);
 
   ~llarp_link_session();
 
@@ -152,7 +155,6 @@ struct llarp_link_session
     eIntroRecv,
     eIntroSent,
     eIntroAckSent,
-    eIntroAckRecv,
     eSessionStartSent,
     eLIMSent,
     eEstablished,
@@ -164,7 +166,8 @@ struct llarp_link_session
   EnterState(State st);
 
   void
-  add_outbound_message(uint64_t id, transit_message *msg);
+  add_outbound_message(uint64_t id, const llarp::ShortHash &digest,
+                       llarp_buffer_t payload);
   void
   EncryptOutboundFrames();
 

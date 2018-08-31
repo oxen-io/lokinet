@@ -74,7 +74,7 @@ struct sendbuf_t
     bool
     operator()(const sendbuf_t &left, const sendbuf_t &right) const
     {
-      return left.timestamp < right.timestamp;
+      return left.timestamp > right.timestamp;
     }
   };
 

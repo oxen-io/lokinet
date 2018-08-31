@@ -40,7 +40,7 @@ namespace llarp
     queue_write(const void* data, size_t sz)
     {
       return m_writeq.EmplaceIf(
-          [&](const WriteBuffer& pkt) -> bool {
+          [&](WriteBuffer& pkt) -> bool {
             return m_writeq.Size() < MAX_WRITE_QUEUE_SIZE
                 && sz <= sizeof(pkt.buf);
           },
@@ -74,6 +74,8 @@ namespace llarp
       llarp_time_t timestamp = 0;
       size_t bufsz;
       byte_t buf[1500];
+
+      WriteBuffer() = default;
 
       WriteBuffer(const void* ptr, size_t sz)
       {

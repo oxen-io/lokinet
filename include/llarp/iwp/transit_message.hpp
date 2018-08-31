@@ -60,7 +60,7 @@ struct transit_message
   retransmit_frags(sendqueue_t &queue, byte_t flags = 0);
 
   bool
-  reassemble(std::vector< byte_t > &buffer);
+  reassemble(std::vector< byte_t > &buffer) const;
 
   void
   put_message(llarp_buffer_t buf, const byte_t *hash, uint64_t id,
