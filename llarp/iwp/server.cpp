@@ -356,7 +356,7 @@ llarp_link::try_establish(struct llarp_link_establish_job* job)
   if(has_session_via(dst))
     return false;
 
-  llarp::LogDebug("establish session to ", dst);
+  llarp::LogInfo("establish session to ", job->ai.pubkey, " via ", dst);
   visit_session(dst, [job](llarp_link_session& s) {
     s.establish_job = job;
     s.frame.alive();  // mark it alive

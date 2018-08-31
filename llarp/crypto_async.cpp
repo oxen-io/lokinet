@@ -114,13 +114,13 @@ namespace iwp
     llarp::ShortHash digest;
     llarp::SharedSecret sharedkey;
 
-    auto hmac      = introack->buf;
-    auto body      = introack->buf + 32;
-    auto pubkey    = introack->remote_pubkey;
-    auto secretkey = introack->secretkey;
-    auto nonce     = introack->buf + 32;
-    auto token     = introack->buf + 64;
-    size_t bodysz  = introack->sz - 32;
+    auto hmac         = introack->buf;
+    auto body         = introack->buf + 32;
+    const auto pubkey = introack->remote_pubkey;
+    auto secretkey    = introack->secretkey;
+    auto nonce        = introack->buf + 32;
+    auto token        = introack->buf + 64;
+    size_t bodysz     = introack->sz - 32;
     llarp_buffer_t buf;
     buf.base = body;
     buf.cur  = body;
@@ -155,10 +155,10 @@ namespace iwp
   {
     iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
     llarp::SharedSecret sharedkey;
-    auto crypto    = introack->iwp->crypto;
-    auto pubkey    = introack->remote_pubkey;
-    auto secretkey = introack->secretkey;
-    auto nonce     = introack->nonce;
+    auto crypto       = introack->iwp->crypto;
+    const auto pubkey = introack->remote_pubkey;
+    auto secretkey    = introack->secretkey;
+    auto nonce        = introack->nonce;
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_server(sharedkey, pubkey, secretkey, nonce);
 
@@ -201,11 +201,11 @@ namespace iwp
     auto encrypt   = crypto->xchacha20;
 
     // auto logic = session->iwp->logic;
-    auto a_sK  = session->secretkey;
-    auto b_K   = session->remote_pubkey;
-    auto N     = session->nonce;
-    auto token = session->token;
-    auto K     = session->sessionkey;
+    auto a_sK      = session->secretkey;
+    const auto b_K = session->remote_pubkey;
+    auto N         = session->nonce;
+    auto token     = session->token;
+    auto K         = session->sessionkey;
 
     llarp::SharedSecret e_K;
     llarp::ShortHash T;

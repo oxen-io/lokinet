@@ -115,21 +115,13 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   std::unique_ptr< const llarp::ILinkMessage > msg =
       std::unique_ptr< const llarp::ILinkMessage >(m);
   llarp_link *chosen = nullptr;
-  if(!outboundLink->has_session_to(remote))
-  {
-    for(auto link : inboundLinks)
-    {
-      if(link->has_session_to(remote))
-      {
-        chosen = link;
-        break;
-      }
-    }
-  }
-  else
-    chosen = outboundLink;
 
-  if(chosen)
+  if(inboundLinks.size() == 0)
+    chosen = outboundLink;
+  else
+    chosen = inboundLinks.front();
+
+  if(chosen->has_session_to(remote))
   {
     SendTo(remote, msg, chosen);
     return true;
@@ -365,11 +357,8 @@ void
 llarp_router::HandleDHTLookupForTryEstablishTo(
     const std::vector< llarp::RouterContact > &results)
 {
-  if(results.size())
-  {
-    llarp_nodedb_put_rc(nodedb, results[0]);
-    llarp_router_try_connect(this, results[0], 5);
-  }
+  for(const auto &result : results)
+    async_verify_RC(result, false);
 }
 
 size_t

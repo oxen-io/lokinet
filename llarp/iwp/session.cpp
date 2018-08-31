@@ -31,15 +31,12 @@ void
 llarp_link_session::init(llarp_link *l, const byte_t *seckey,
                          const llarp::Addr &a)
 {
-  udp    = &l->udp;
-  crypto = &l->router->crypto;
-  iwp    = l->iwp;
-  serv   = l;
-  addr   = a;
-  if(seckey)
-    eph_seckey = seckey;
-  else
-    crypto->encryption_keygen(eph_seckey);
+  udp        = &l->udp;
+  crypto     = &l->router->crypto;
+  iwp        = l->iwp;
+  serv       = l;
+  addr       = a;
+  eph_seckey = seckey;
   crypto->randbytes(token, 32);
   frame.alive();
   working.store(false);
@@ -154,14 +151,18 @@ llarp_link_session::CheckRCValid()
 {
   // verify signatuire
   if(!remote_router.VerifySignature(crypto))
+  {
+    llarp::LogError("invalid sig on rc");
     return false;
+  }
 
   if(remote_router.addrs.size()
      == 0)  // the remote node is a client node so accept it
     return true;
   // check if the RC owns a pubkey that we are using
-  for(auto &ai : remote_router.addrs)
+  for(const auto &ai : remote_router.addrs)
   {
+    llarp::LogInfo("remote=", remote, " ai=", ai, " addr=", addr);
     if(ai.pubkey == remote)
       return true;
   }
