@@ -100,6 +100,8 @@ namespace llarp
         if(m_QueueIdx == 1)
         {
           visitor(m_Queue[0]);
+          T* t = &m_Queue[0];
+          t->~T();
           m_QueueIdx = 0;
           firstPut   = 0;
           return;
