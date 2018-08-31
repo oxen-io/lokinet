@@ -6,6 +6,8 @@
 #include "logger.hpp"
 #include "mem.hpp"
 
+#include <fstream>
+
 namespace llarp
 {
   bool
@@ -93,6 +95,109 @@ namespace llarp
       return false;
 
     return read;
+  }
+
+  bool
+  RouterContact::IsPublicRouter() const
+  {
+    return addrs.size() > 0;
+  }
+
+  bool
+  RouterContact::HasNick() const
+  {
+    return nickname[0] != 0;
+  }
+
+  void
+  RouterContact::SetNick(const std::string &nick)
+  {
+    nickname.Zero();
+    memcpy(nickname, nick.c_str(), std::min(nick.size(), nickname.size()));
+  }
+
+  std::string
+  RouterContact::Nick() const
+  {
+    const char *n = (const char *)nickname.data();
+    return std::string(n, strnlen(n, nickname.size()));
+  }
+
+  bool
+  RouterContact::Sign(llarp_crypto *crypto, const SecretKey &secretkey)
+  {
+    byte_t tmp[MAX_RC_SIZE] = {0};
+    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    signature.Zero();
+    if(!BEncode(&buf))
+      return false;
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+    return crypto->sign(signature, secretkey, buf);
+  }
+
+  bool
+  RouterContact::VerifySignature(llarp_crypto *crypto) const
+  {
+    RouterContact copy = *this;
+    copy.signature.Zero();
+    byte_t tmp[MAX_RC_SIZE] = {0};
+    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    if(!copy.BEncode(&buf))
+      return false;
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+    return crypto->verify(signature, buf, pubkey);
+  }
+
+  bool
+  RouterContact::Write(const char *fname) const
+  {
+    byte_t tmp[MAX_RC_SIZE] = {0};
+    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    if(!BEncode(&buf))
+      return false;
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+    {
+      std::ofstream f;
+      f.open(fname);
+      if(!f.is_open())
+        return false;
+      f.write((char *)buf.base, buf.sz);
+    }
+    return true;
+  }
+
+  bool
+  RouterContact::Read(const char *fname)
+  {
+    byte_t tmp[MAX_RC_SIZE] = {0};
+    {
+      std::ifstream f;
+      f.open(fname);
+      if(!f.is_open())
+        return false;
+      f.seekg(0, std::ios::end);
+      auto l = f.tellg();
+      f.seekg(0, std::ios::beg);
+      f.read((char *)tmp, l);
+    }
+    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    return BDecode(&buf);
+  }
+
+  RouterContact &
+  RouterContact::operator=(const RouterContact &other)
+  {
+    addrs        = other.addrs;
+    signature    = other.signature;
+    exits        = other.exits;
+    last_updated = other.last_updated;
+    enckey       = other.enckey;
+    pubkey       = other.pubkey;
+    nickname     = other.nickname;
+    return *this;
   }
 
 }  // namespace llarp

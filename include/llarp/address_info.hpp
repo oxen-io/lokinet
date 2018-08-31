@@ -3,6 +3,7 @@
 #include <llarp/mem.h>
 #include <llarp/net.h>
 #include <stdbool.h>
+#include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
 
 #include <string>
@@ -16,7 +17,7 @@
 /// address information model
 namespace llarp
 {
-  struct AddressInfo
+  struct AddressInfo : public IBEncodeMessage
   {
     uint16_t rank;
     std::string dialect;
@@ -24,11 +25,21 @@ namespace llarp
     struct in6_addr ip;
     uint16_t port;
 
-    bool
-    BEncode(llarp_buffer_t *buf) const;
+    ~AddressInfo();
 
     bool
-    BDecode(llarp_buffer_t *buf);
+    BEncode(llarp_buffer_t* buf) const;
+
+    bool
+    DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf);
+
+    friend std::ostream&
+    operator<<(std::ostream& out, const AddressInfo& a)
+    {
+      char tmp[128] = {0};
+      inet_ntop(AF_INET6, &a.ip, tmp, sizeof(tmp));
+      return out << tmp << "." << std::to_string(a.port);
+    }
   };
 
 }  // namespace llarp

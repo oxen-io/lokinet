@@ -1,6 +1,6 @@
 #ifndef LLARP_XI_HPP
 #define LLARP_XI_HPP
-#include <llarp/buffer.h>
+#include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/net.h>
 #include <iostream>
@@ -15,17 +15,19 @@
 /// Exit info model
 namespace llarp
 {
-  struct ExitInfo
+  struct ExitInfo : public IBEncodeMessage
   {
     struct in6_addr address;
     struct in6_addr netmask;
     PubKey pubkey;
 
+    ~ExitInfo();
+
     bool
     BEncode(llarp_buffer_t *buf) const;
 
     bool
-    BDecode(llarp_buffer_t *buf);
+    DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf);
 
     friend std::ostream &
     operator<<(std::ostream &out, const ExitInfo &xi)

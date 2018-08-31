@@ -906,7 +906,7 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
 // C++ ...
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
-                             llarp::SecretKey *encryption)
+                             llarp::SecretKey &encryption)
 {
   llarp::LogDebug("find or create ", fpath);
   fs::path path(fpath);
@@ -914,18 +914,18 @@ llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
   if(!fs::exists(path, ec))
   {
     llarp::LogInfo("generating new encryption key");
-    crypto->encryption_keygen(*encryption);
+    crypto->encryption_keygen(encryption);
     std::ofstream f(path.string(), std::ios::binary);
     if(f.is_open())
     {
-      f.write((char *)encryption, SECKEYSIZE);
+      f.write((char *)encryption.data(), SECKEYSIZE);
     }
   }
 
   std::ifstream f(path.string(), std::ios::binary);
   if(f.is_open())
   {
-    f.read((char *)encryption, SECKEYSIZE);
+    f.read((char *)encryption.data(), SECKEYSIZE);
     return true;
   }
   llarp::LogInfo("failed to get encryption key");

@@ -636,7 +636,7 @@ namespace llarp
         return parent->DHTSendTo(peer, msg);
       }
 
-      void
+      virtual void
       SendReply()
       {
         if(resultHandler)
@@ -651,6 +651,56 @@ namespace llarp
         }
       }
     };
+
+    struct LocalRouterLookup : public RecursiveRouterLookup
+    {
+      PathID_t localPath;
+
+      LocalRouterLookup(const PathID_t &path, uint64_t txid,
+                        const RouterID &target, Context *ctx)
+          : RecursiveRouterLookup(TXOwner{ctx->OurKey(), txid}, target, ctx,
+                                  nullptr)
+          , localPath(path)
+      {
+      }
+
+      void
+      SendReply()
+      {
+        auto path =
+            parent->router->paths.GetByUpstream(parent->OurKey(), localPath);
+        if(!path)
+        {
+          llarp::LogWarn(
+              "did not send reply for relayed dht request, no such local path "
+              "for pathid=",
+              localPath);
+          return;
+        }
+        routing::DHTMessage msg;
+        msg.M.push_back(new GotRouterMessage(parent->OurKey(), whoasked.txid,
+                                             valuesFound, true));
+        if(!path->SendRoutingMessage(&msg, parent->router))
+        {
+          llarp::LogWarn(
+              "failed to send routing message when informing result of dht "
+              "request, pathid=",
+              localPath);
+        }
+      }
+    };
+
+    void
+    Context::LookupRouterForPath(const RouterID &target, uint64_t txid,
+                                 const llarp::PathID_t &path,
+                                 const Key_t &askpeer)
+
+    {
+      TXOwner peer(askpeer, ++ids);
+      auto tx = pendingRouterLookups.NewTX(
+          peer, target, new LocalRouterLookup(path, txid, target, this));
+      tx->Start(peer);
+    }
 
     void
     Context::LookupRouterRecursive(const RouterID &target,

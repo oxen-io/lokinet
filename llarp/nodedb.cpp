@@ -277,6 +277,12 @@ llarp_nodedb_free(struct llarp_nodedb **n)
 }
 
 bool
+llarp_nodedb_put_rc(struct llarp_nodedb *n, const llarp::RouterContact &rc)
+{
+  return n->Insert(rc);
+}
+
+bool
 llarp_nodedb_ensure_dir(const char *dir)
 {
   fs::path path(dir);

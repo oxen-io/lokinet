@@ -28,44 +28,20 @@ handle_signal(int sig)
 #define TESTNET 0
 #endif
 
-bool
-printNode(struct llarp_nodedb_iter *iter)
-{
-  char ftmp[68] = {0};
-  const char *hexname =
-      llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(iter->rc->pubkey, ftmp);
-
-  printf("[%zu]=>[%s]\n", iter->index, hexname);
-  return false;
-}
-
-bool
-aiLister(struct llarp_ai_list_iter *request, struct llarp_ai *addr)
-{
-  static size_t count = 0;
-  count++;
-  llarp::Addr a(*addr);
-  std::cout << "AddressInfo " << count << ": " << a << std::endl;
-  return true;
-}
-
 void
-displayRC(llarp_rc *rc)
+displayRC(const llarp::RouterContact &rc)
 {
-  char ftmp[68] = {0};
-  const char *hexPubSigKey =
-      llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(rc->pubkey, ftmp);
-  printf("PubSigKey [%s]\n", hexPubSigKey);
-
-  struct llarp_ai_list_iter iter;
-  // iter.user
-  iter.visit = &aiLister;
-  llarp_ai_list_iterate(rc->addrs, &iter);
+  std::cout << rc.pubkey << std::endl;
+  for(const auto &addr : rc.addrs)
+  {
+    std::cout << "AddressInfo: " << addr << std::endl;
+  }
 }
 
 // fwd declr
 struct check_online_request;
 
+/*
 void
 HandleDHTLocate(llarp_router_lookup_job *job)
 {
@@ -88,6 +64,7 @@ HandleDHTLocate(llarp_router_lookup_job *job)
   // still need to exit this logic thread...
   llarp_main_abort(ctx);
 }
+*/
 
 int
 main(int argc, char *argv[])
@@ -135,6 +112,8 @@ main(int argc, char *argv[])
   conffname              = defaultConfName;
   char *rcfname          = nullptr;
   char *nodesdir         = nullptr;
+
+  llarp::RouterContact rc;
   while(1)
   {
     static struct option long_options[] = {
@@ -243,62 +222,54 @@ main(int argc, char *argv[])
   {
     llarp_crypto crypto;
     llarp_crypto_libsodium_init(&crypto);
-    llarp_rc rc;
-    if(!llarp_rc_read(rcfname, &rc))
+    if(!rc.Read(rcfname))
     {
       std::cout << "failed to read " << rcfname << std::endl;
       return 1;
     }
-    if(!llarp_rc_verify_sig(&crypto, &rc))
+    if(!rc.VerifySignature(&crypto))
     {
       std::cout << rcfname << " has invalid signature" << std::endl;
       return 1;
     }
-    if(!llarp_rc_is_public_router(&rc))
+    if(!rc.IsPublicRouter())
     {
       std::cout << rcfname << " is not a public router";
-      if(llarp_ai_list_size(rc.addrs) == 0)
+      if(rc.addrs.size() == 0)
       {
         std::cout << " because it has no public addresses";
       }
       std::cout << std::endl;
       return 1;
     }
-    llarp::PubKey pubkey(rc.pubkey);
-    llarp::PubKey enckey(rc.enckey);
 
-    std::cout << "router identity and dht routing key: " << pubkey << std::endl;
-    std::cout << "router encryption key: " << enckey << std::endl;
+    std::cout << "router identity and dht routing key: " << rc.pubkey
+              << std::endl;
+
+    std::cout << "router encryption key: " << rc.enckey << std::endl;
 
     if(rc.HasNick())
       std::cout << "router nickname: " << rc.Nick() << std::endl;
 
-    std::cout << "advertised addresses: ";
-    llarp_ai_list_iter a_itr;
-    a_itr.user  = nullptr;
-    a_itr.visit = [](llarp_ai_list_iter *, llarp_ai *addrInfo) -> bool {
-      llarp::Addr addr(*addrInfo);
-      std::cout << addr << " ";
-      return true;
-    };
-    llarp_ai_list_iterate(rc.addrs, &a_itr);
+    std::cout << "advertised addresses: " << std::endl;
+    for(const auto &addr : rc.addrs)
+    {
+      std::cout << addr << std::endl;
+    }
     std::cout << std::endl;
 
     std::cout << "advertised exits: ";
-
-    if(llarp_xi_list_size(rc.exits))
+    if(rc.exits.size())
     {
-      llarp_xi_list_iter e_itr;
-      e_itr.user  = nullptr;
-      e_itr.visit = [](llarp_xi_list_iter *, llarp_xi *xi) -> bool {
-        std::cout << *xi << " ";
-        return true;
-      };
-      llarp_xi_list_iterate(rc.exits, &e_itr);
+      for(const auto &exit : rc.exits)
+      {
+        std::cout << exit << std::endl;
+      }
     }
     else
+    {
       std::cout << "none";
-
+    }
     std::cout << std::endl;
     return 0;
   }
@@ -310,7 +281,7 @@ main(int argc, char *argv[])
     auto nodedb = llarp_nodedb_new(&crypto);
     llarp_nodedb_iter itr;
     itr.visit = [](llarp_nodedb_iter *i) -> bool {
-      std::cout << llarp::PubKey(i->rc->pubkey) << std::endl;
+      std::cout << i->rc->pubkey << std::endl;
       return true;
     };
     if(llarp_nodedb_load_dir(nodedb, nodesdir) > 0)
@@ -336,27 +307,26 @@ main(int argc, char *argv[])
       return 1;
     }
     llarp_nodedb_set_dir(nodedb, nodesdir);
-    llarp_rc rc;
-    if(!llarp_rc_read(rcfname, &rc))
+    if(!rc.Read(rcfname))
     {
       std::cout << "failed to read " << rcfname << " " << strerror(errno)
                 << std::endl;
       return 1;
     }
 
-    if(!llarp_rc_verify_sig(&crypto, &rc))
+    if(!rc.VerifySignature(&crypto))
     {
       std::cout << rcfname << " has invalid signature" << std::endl;
       return 1;
     }
 
-    if(!llarp_nodedb_put_rc(nodedb, &rc))
+    if(!llarp_nodedb_put_rc(nodedb, rc))
     {
       std::cout << "failed to store " << strerror(errno) << std::endl;
       return 1;
     }
 
-    std::cout << "imported " << llarp::PubKey(rc.pubkey) << std::endl;
+    std::cout << "imported " << rc.pubkey << std::endl;
 
     return 0;
   }
@@ -376,20 +346,12 @@ main(int argc, char *argv[])
     return 0;
   }
   signal(SIGINT, handle_signal);
-
-  llarp_rc tmp;
   if(genMode)
   {
     printf("Creating [%s]\n", rcfname);
-    // Jeff wanted tmp to be stack created
-    // do we still need to zero it out?
-    llarp_rc_clear(&tmp);
     // if we zero it out then
-    // allocate fresh pointers that the bencoder can expect to be ready
-    tmp.addrs = llarp_ai_list_new();
-    tmp.exits = llarp_xi_list_new();
     // set updated timestamp
-    tmp.last_updated = llarp_time_now_ms();
+    rc.last_updated = llarp_time_now_ms();
     // load longterm identity
     llarp_crypto crypt;
     llarp_crypto_libsodium_init(&crypt);
@@ -400,123 +362,32 @@ main(int argc, char *argv[])
     llarp::SecretKey encryption;
 
     llarp_findOrCreateEncryption(&crypt, encryption_keyfile.string().c_str(),
-                                 &encryption);
+                                 encryption);
 
-    llarp_rc_set_pubenckey(&tmp, llarp::seckey_topublic(encryption));
+    rc.enckey = llarp::seckey_topublic(encryption);
 
     // get identity public sig key
     fs::path ident_keyfile = "identity.key";
-    byte_t identity[SECKEYSIZE];
+    llarp::SecretKey identity;
     llarp_findOrCreateIdentity(&crypt, ident_keyfile.string().c_str(),
                                identity);
 
-    llarp_rc_set_pubsigkey(&tmp, llarp::seckey_topublic(identity));
+    rc.pubkey = llarp::seckey_topublic(identity);
 
     // this causes a segfault
-    llarp_rc_sign(&crypt, identity, &tmp);
+    if(!rc.Sign(&crypt, identity))
+    {
+      std::cout << "failed to sign" << std::endl;
+      return 1;
+    }
     // set filename
     fs::path our_rc_file = rcfname;
     // write file
-    llarp_rc_write(&tmp, our_rc_file.string().c_str());
-
-    // release memory for tmp lists
-    llarp_rc_free(&tmp);
+    rc.Write(our_rc_file.string().c_str());
   }
-  if(updMode)
   {
-    printf("rcutil.cpp - Loading [%s]\n", rcfname);
-    llarp_rc rc;
-    llarp_rc_clear(&rc);
-    llarp_rc_read(rcfname, &rc);
-
-    // set updated timestamp
-    rc.last_updated = llarp_time_now_ms();
-    // load longterm identity
-    llarp_crypto crypt;
-    llarp_crypto_libsodium_init(&crypt);
-    fs::path ident_keyfile = "identity.key";
-    byte_t identity[SECKEYSIZE];
-    llarp_findOrCreateIdentity(&crypt, ident_keyfile.string().c_str(),
-                               identity);
-    // get identity public key
-    const uint8_t *pubkey = llarp::seckey_topublic(identity);
-    llarp_rc_set_pubsigkey(&rc, pubkey);
-    llarp_rc_sign(&crypt, identity, &rc);
-
-    // set filename
-    fs::path our_rc_file_out = "update_debug.rc";
-    // write file
-    llarp_rc_write(&tmp, our_rc_file_out.string().c_str());
+    if(rc.Read(rcfname))
+      displayRC(rc);
   }
-  if(listMode)
-  {
-    llarp_main_loadDatabase(ctx);
-    llarp_nodedb_iter iter;
-    iter.visit = printNode;
-    llarp_main_iterateDatabase(ctx, iter);
-  }
-
-  if(exportMode)
-  {
-    llarp_main_loadDatabase(ctx);
-    // llarp::LogInfo("Looking for string: ", rcfname);
-
-    llarp::PubKey binaryPK;
-    llarp::HexDecode(rcfname, binaryPK.data());
-
-    llarp::LogInfo("Looking for binary: ", binaryPK);
-    struct llarp_rc *rc = llarp_main_getDatabase(ctx, binaryPK.data());
-    if(!rc)
-    {
-      llarp::LogError("Can't load RC from database");
-    }
-    std::string filename(rcfname);
-    filename.append(".signed");
-    llarp::LogInfo("Writing out: ", filename);
-    llarp_rc_write(rc, filename.c_str());
-  }
-  if(locateMode)
-  {
-    llarp::LogInfo("Going online");
-    llarp_main_setup(ctx);
-
-    llarp::PubKey binaryPK;
-    llarp::HexDecode(rcfname, binaryPK.data());
-
-    llarp::LogInfo("Queueing job");
-    llarp_router_lookup_job *job = new llarp_router_lookup_job;
-    job->iterative               = true;
-    job->found                   = false;
-    job->hook                    = &HandleDHTLocate;
-    llarp_rc_new(&job->result);
-    memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
-
-    // create query DHT request
-    check_online_request *request = new check_online_request;
-    request->ptr                  = ctx;
-    request->job                  = job;
-    request->online               = false;
-    request->nodes                = 0;
-    request->first                = false;
-    llarp_main_queryDHT(request);
-
-    llarp::LogInfo("Processing");
-    // run system and wait
-    llarp_main_run(ctx);
-  }
-  if(localMode)
-  {
-    llarp_rc *rc = llarp_main_getLocalRC(ctx);
-    displayRC(rc);
-  }
-  if(readMode)
-  {
-    llarp_rc result;
-    llarp_rc_clear(&result);
-    llarp_rc_read(rcfname, &result);
-    displayRC(&result);
-  }
-  // it's a unique_ptr, should clean up itself
-  // llarp_main_free(ctx);
-  return 1;  // success
+  return 0;  // success
 }
