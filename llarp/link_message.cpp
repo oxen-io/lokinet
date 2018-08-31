@@ -88,7 +88,7 @@ namespace llarp
   RouterID
   InboundMessageParser::GetCurrentFrom()
   {
-    return from->get_remote_router().pubkey;
+    return from->get_remote_router()->pubkey;
   }
 
   bool

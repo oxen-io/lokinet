@@ -130,7 +130,7 @@ struct llarp_async_load_rc
 void
 llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job);
 
-void
+bool
 llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
                                const llarp::RouterContact &prev,
                                llarp::RouterContact &result, size_t N);

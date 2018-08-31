@@ -127,10 +127,10 @@ llarp_link_session::session_established()
   llarp_logic_cancel_call(serv->logic, establish_job_id);
 }
 
-const llarp::RouterContact &
-llarp_link_session::get_remote_router() const
+llarp::RouterContact *
+llarp_link_session::get_remote_router()
 {
-  return remote_router;
+  return &remote_router;
 }
 
 void
@@ -179,7 +179,7 @@ llarp_link_session::send_LIM()
   byte_t tmp[MAX_RC_SIZE + 64];
   auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
   // return a llarp_buffer_t of encoded link message
-  if(llarp::EncodeLIM(&buf, our_router))
+  if(llarp::EncodeLIM(&buf, &serv->router->rc))
   {
     // rewind message buffer
     buf.sz  = buf.cur - buf.base;
@@ -383,7 +383,8 @@ llarp_link_session::get_parent()
 void
 llarp_link_session::TickLogic(llarp_time_t now)
 {
-  decryptedFrames.Process([=](iwp_async_frame *f) { handle_frame_decrypt(f); });
+  decryptedFrames.Process(
+      [=](iwp_async_frame &f) { handle_frame_decrypt(&f); });
   frame.process_inbound_queue();
   frame.retransmit(now);
   pump();
@@ -425,9 +426,9 @@ llarp_link_session::keepalive()
 void
 llarp_link_session::EncryptOutboundFrames()
 {
-  outboundFrames.Process([&](iwp_async_frame *frame) {
-    if(iwp_encrypt_frame(frame))
-      if(llarp_ev_udp_sendto(udp, addr, frame->buf, frame->sz) == -1)
+  outboundFrames.Process([&](iwp_async_frame &frame) {
+    if(iwp_encrypt_frame(&frame))
+      if(llarp_ev_udp_sendto(udp, addr, frame.buf, frame.sz) == -1)
         llarp::LogError("sendto ", addr, " failed");
   });
 }
@@ -572,7 +573,7 @@ llarp_link_session::decrypt_frame(const void *buf, size_t sz)
     // inboundFrames.Put(frame);
     auto f = alloc_frame(buf, sz);
 
-    if(iwp_decrypt_frame(f))
+    if(iwp_decrypt_frame(&f))
     {
       decryptedFrames.Put(f);
     }
@@ -722,23 +723,17 @@ llarp_link_session::recv(const void *buf, size_t sz)
   }
 }
 
-iwp_async_frame *
+iwp_async_frame
 llarp_link_session::alloc_frame(const void *buf, size_t sz)
 {
-  // TODO don't hard code 1500
-  if(sz > 1500)
-  {
-    llarp::LogWarn("alloc frame - frame too big, >1500");
-    return nullptr;
-  }
-
-  iwp_async_frame *frame = new iwp_async_frame;
+  iwp_async_frame frame;
+  sz = std::min(sz, sizeof(frame.buf));
   if(buf)
-    memcpy(frame->buf, buf, sz);
-  frame->iwp        = iwp;
-  frame->sz         = sz;
-  frame->user       = this;
-  frame->sessionkey = sessionkey;
+    memcpy(frame.buf, buf, sz);
+  frame.iwp        = iwp;
+  frame.sz         = sz;
+  frame.user       = this;
+  frame.sessionkey = sessionkey;
   /// TODO: this could be rather slow
   // frame->created = now;
   // llarp::LogInfo("alloc_frame putting into q");
@@ -751,14 +746,12 @@ llarp_link_session::encrypt_frame_async_send(const void *buf, size_t sz)
 {
   // 64 bytes frame overhead for nonce and hmac
   auto frame = alloc_frame(nullptr, sz + 64);
-  if(frame == nullptr)
-    return;
-  memcpy(frame->buf + 64, buf, sz);
+  memcpy(frame.buf + 64, buf, sz);
   // maybe add upto 128 random bytes to the packet
   auto padding = llarp_randint() % MAX_PAD;
   if(padding)
-    crypto->randbytes(frame->buf + 64 + sz, padding);
-  frame->sz += padding;
+    crypto->randbytes(frame.buf + 64 + sz, padding);
+  frame.sz += padding;
   // frame is modified, so now we can push it to queue
   outboundFrames.Put(frame);
 }
@@ -767,8 +760,8 @@ void
 llarp_link_session::pump()
 {
   bool flush = false;
-  frame.sendqueue.Process([&, this](sendbuf_t *msg) {
-    encrypt_frame_async_send(msg->data(), msg->size());
+  frame.sendqueue.Process([&, this](sendbuf_t &msg) {
+    encrypt_frame_async_send(msg.data(), msg.size());
     flush = true;
   });
   if(flush)

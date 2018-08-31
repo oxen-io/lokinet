@@ -47,27 +47,27 @@ struct InboundMessage
   struct GetTime
   {
     llarp_time_t
-    operator()(const InboundMessage *msg)
+    operator()(const InboundMessage &msg)
     {
-      return msg->queued;
+      return msg.queued;
     }
   };
 
   struct OrderCompare
   {
     bool
-    operator()(const InboundMessage *left, const InboundMessage *right) const
+    operator()(const InboundMessage &left, const InboundMessage &right) const
     {
-      return left->msgid < right->msgid;
+      return left < right;
     }
   };
 
   struct PutTime
   {
     void
-    operator()(InboundMessage *msg)
+    operator()(InboundMessage &msg)
     {
-      msg->queued = llarp_time_now_ms();
+      msg.queued = llarp_time_now_ms();
     }
   };
 };

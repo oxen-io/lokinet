@@ -15,10 +15,7 @@ namespace llarp
   {
     if(llarp_buffer_eq(key, "r"))
     {
-      if(!RC.BDecode(buf))
-        return false;
-      hasRC = true;
-      return true;
+      return RC->BDecode(buf);
     }
     else if(llarp_buffer_eq(key, "v"))
     {
@@ -51,11 +48,12 @@ namespace llarp
     if(!bencode_write_bytestring(buf, "i", 1))
       return false;
 
-    if(hasRC)
+    if(RC)
     {
       if(!bencode_write_bytestring(buf, "r", 1))
         return false;
-      return RC.BEncode(buf);
+      if(!RC->BEncode(buf))
+        return false;
     }
 
     if(!bencode_write_version_entry(buf))
@@ -67,7 +65,8 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
-    router->async_verify_RC(RC, !RC.IsPublicRouter());
+    RouterContact contact = *RC;
+    router->async_verify_RC(contact, !contact.IsPublicRouter());
     return true;
   }
 }  // namespace llarp

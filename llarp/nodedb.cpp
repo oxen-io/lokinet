@@ -373,7 +373,7 @@ llarp_nodedb_num_loaded(struct llarp_nodedb *n)
   return n->entries.size();
 }
 
-void
+bool
 llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
                                const llarp::RouterContact &prev,
                                llarp::RouterContact &result, size_t N)
@@ -381,7 +381,8 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
   auto sz = n->entries.size();
-
+  if(sz == 0)
+    return false;
   if(N)
   {
     do
@@ -398,7 +399,7 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
       if(itr->second.addrs.size())
       {
         result = itr->second;
-        return;
+        return true;
       }
     } while(true);
   }
@@ -412,5 +413,6 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
         std::advance(itr, idx - 1);
     }
     result = itr->second;
+    return true;
   }
 }

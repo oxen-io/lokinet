@@ -23,16 +23,16 @@ bool
 frame_state::process_inbound_queue()
 {
   uint64_t last = 0;
-  recvqueue.Process([&](const InboundMessage *msg) {
-    if(last != msg->msgid)
+  recvqueue.Process([&](InboundMessage &msg) {
+    if(last != msg.msgid)
     {
-      auto buffer = msg->Buffer();
+      auto buffer = msg.Buffer();
       if(!Router()->HandleRecvLinkMessage(parent, buffer))
       {
-        llarp::LogWarn("failed to process inbound message ", msg->msgid);
+        llarp::LogWarn("failed to process inbound message ", msg.msgid);
         llarp::DumpBuffer< llarp_buffer_t, 128 >(buffer);
       }
-      last = msg->msgid;
+      last = msg.msgid;
     }
     else
     {
@@ -194,8 +194,8 @@ void
 frame_state::push_ackfor(uint64_t id, uint32_t bitmask)
 {
   llarp::LogDebug("ACK for msgid=", id, " mask=", bitmask);
-  auto pkt      = new sendbuf_t(12 + 6);
-  auto body_ptr = init_sendbuf(pkt, eACKS, 12, txflags);
+  sendbuf_t pkt(12 + 6);
+  auto body_ptr = init_sendbuf(&pkt, eACKS, 12, txflags);
   htobe64buf(body_ptr, id);
   htobe32buf(body_ptr + 8, bitmask);
   sendqueue.Put(pkt);

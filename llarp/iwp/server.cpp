@@ -111,7 +111,7 @@ llarp_link::TickSessions()
     {
       if(itr->second->Tick(now))
       {
-        m_Connected.erase(itr->second->get_remote_router().pubkey);
+        m_Connected.erase(itr->second->get_remote_router()->pubkey);
         itr = m_sessions.erase(itr);
       }
       else
@@ -160,7 +160,6 @@ llarp_link::pending_session_active(const llarp::Addr& addr)
   if(itr == m_PendingSessions.end())
     return;
 
-  itr->second->our_router = &router->rc;
   m_sessions.insert(std::make_pair(addr, std::move(itr->second)));
   m_PendingSessions.erase(itr);
 }

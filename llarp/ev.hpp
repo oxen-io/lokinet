@@ -40,9 +40,9 @@ namespace llarp
     queue_write(const void* data, size_t sz)
     {
       return m_writeq.EmplaceIf(
-          [&](WriteBuffer* pkt) -> bool {
+          [&](const WriteBuffer& pkt) -> bool {
             return m_writeq.Size() < MAX_WRITE_QUEUE_SIZE
-                && sz <= sizeof(pkt->buf);
+                && sz <= sizeof(pkt.buf);
           },
           data, sz);
     }
@@ -53,10 +53,10 @@ namespace llarp
     virtual void
     flush_write()
     {
-      m_writeq.Process([&](WriteBuffer* buffer) {
+      m_writeq.Process([&](WriteBuffer& buffer) {
       // todo: wtf???
 #ifndef _WIN32
-        write(fd, buffer->buf, buffer->bufsz);
+        write(fd, buffer.buf, buffer.bufsz);
         // if we would block we save the entries for later
 
         // discard entry
@@ -89,27 +89,27 @@ namespace llarp
       struct GetTime
       {
         llarp_time_t
-        operator()(const WriteBuffer* w) const
+        operator()(const WriteBuffer& w) const
         {
-          return w->timestamp;
+          return w.timestamp;
         }
       };
 
       struct PutTime
       {
         void
-        operator()(WriteBuffer* w) const
+        operator()(WriteBuffer& w) const
         {
-          w->timestamp = llarp_time_now_ms();
+          w.timestamp = llarp_time_now_ms();
         }
       };
 
       struct Compare
       {
         bool
-        operator()(const WriteBuffer* left, const WriteBuffer* right) const
+        operator()(const WriteBuffer& left, const WriteBuffer& right) const
         {
-          return left->timestamp < right->timestamp;
+          return left.timestamp < right.timestamp;
         }
       };
     };

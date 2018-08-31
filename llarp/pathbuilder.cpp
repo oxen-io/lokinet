@@ -175,14 +175,9 @@ namespace llarp
         if(router->NumberOfConnectedRouters())
           return router->GetRandomConnectedRouter(cur);
         else
-        {
-          llarp_nodedb_select_random_hop(db, prev, cur, 0);
-          return true;
-        }
+          return llarp_nodedb_select_random_hop(db, prev, cur, 0);
       }
-      else
-        llarp_nodedb_select_random_hop(db, prev, cur, hop);
-      return true;
+      return llarp_nodedb_select_random_hop(db, prev, cur, hop);
     }
 
     const byte_t*
@@ -202,9 +197,10 @@ namespace llarp
     Builder::BuildOne()
     {
       // select hops
-      std::vector< RouterContact > hops(numHops);
+      std::vector< RouterContact > hops;
+      for(size_t i = 0; i < numHops; ++i)
+        hops.emplace_back();
       size_t idx = 0;
-      RouterContact prev;
       while(idx < numHops)
       {
         if(idx == 0)

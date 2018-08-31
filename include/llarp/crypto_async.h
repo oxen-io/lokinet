@@ -184,26 +184,26 @@ struct iwp_async_frame
 struct FramePutTime
 {
   void
-  operator()(iwp_async_frame *frame) const
+  operator()(iwp_async_frame &frame) const
   {
-    frame->created = llarp_time_now_ms();
+    frame.created = llarp_time_now_ms();
   }
 };
 struct FrameGetTime
 {
   llarp_time_t
-  operator()(const iwp_async_frame *frame) const
+  operator()(const iwp_async_frame &frame) const
   {
-    return frame->created;
+    return frame.created;
   }
 };
 
 struct FrameCompareTime
 {
   bool
-  operator()(const iwp_async_frame *left, const iwp_async_frame *right) const
+  operator()(const iwp_async_frame &left, const iwp_async_frame &right) const
   {
-    return left->created < right->created;
+    return left.created < right.created;
   }
 };
 #endif

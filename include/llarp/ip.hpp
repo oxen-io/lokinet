@@ -73,27 +73,27 @@ namespace llarp
       struct GetTime
       {
         llarp_time_t
-        operator()(const IPv4Packet* pkt) const
+        operator()(const IPv4Packet& pkt) const
         {
-          return pkt->timestamp;
+          return pkt.timestamp;
         }
       };
 
       struct PutTime
       {
         void
-        operator()(IPv4Packet* pkt) const
+        operator()(IPv4Packet& pkt) const
         {
-          pkt->timestamp = llarp_time_now_ms();
+          pkt.timestamp = llarp_time_now_ms();
         }
       };
 
       struct CompareOrder
       {
         bool
-        operator()(const IPv4Packet* left, const IPv4Packet* right)
+        operator()(const IPv4Packet& left, const IPv4Packet& right)
         {
-          return left->timestamp < right->timestamp;
+          return left.timestamp < right.timestamp;
         }
       };
 

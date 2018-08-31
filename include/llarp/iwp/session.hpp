@@ -48,8 +48,8 @@ struct llarp_link_session
   llarp_link *
   get_parent();
 
-  const llarp::RouterContact &
-  get_remote_router() const;
+  llarp::RouterContact *
+  get_remote_router();
 
   bool
   CheckRCValid();
@@ -168,7 +168,7 @@ struct llarp_link_session
   void
   EncryptOutboundFrames();
 
-  iwp_async_frame *
+  iwp_async_frame
   alloc_frame(const void *buf, size_t sz);
   void
   decrypt_frame(const void *buf, size_t sz);
