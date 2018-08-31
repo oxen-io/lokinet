@@ -26,7 +26,7 @@ namespace llarp
 
   template < typename T, size_t align = 128 >
   void
-  DumpBuffer(const T &buff)
+  DumpBufferHex(const T &buff)
   {
     size_t idx = 0;
     printf("buffer of size %zu\n", buff.sz);
@@ -51,7 +51,7 @@ namespace llarp
 
   template < typename T, size_t align = 128 >
   void
-  DumpBufferHex(const T &buff)
+  DumpBuffer(const T &buff)
   {
     size_t idx = 0;
     printf("buffer of size %zu\n", buff.sz);
@@ -64,6 +64,10 @@ namespace llarp
       if(std::isprint(buff.base[idx]))
       {
         printf("%c", buff.base[idx]);
+      }
+      else
+      {
+        printf(".");
       }
       if(buff.base + idx == buff.cur)
       {

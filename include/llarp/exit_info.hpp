@@ -29,6 +29,9 @@ namespace llarp
     bool
     DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf);
 
+    ExitInfo &
+    operator=(const ExitInfo &other);
+
     friend std::ostream &
     operator<<(std::ostream &out, const ExitInfo &xi)
     {

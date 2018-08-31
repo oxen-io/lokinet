@@ -57,7 +57,7 @@ typedef bool (*llarp_hmac_func)(byte_t *, llarp_buffer_t, const byte_t *);
 /// S(sig, secretkey, body)
 typedef bool (*llarp_sign_func)(byte_t *, const byte_t *, llarp_buffer_t);
 
-/// V(sig, body, pubkey)
+/// V(pubkey, body, sig)
 typedef bool (*llarp_verify_func)(const byte_t *, llarp_buffer_t,
                                   const byte_t *);
 

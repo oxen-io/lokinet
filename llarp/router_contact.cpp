@@ -69,6 +69,18 @@ namespace llarp
     return bencode_end(buf);
   }
 
+  void
+  RouterContact::Clear()
+  {
+    addrs.clear();
+    exits.clear();
+    signature.Zero();
+    nickname.Zero();
+    enckey.Zero();
+    pubkey.Zero();
+    last_updated = 0;
+  }
+
   bool
   RouterContact::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
   {
@@ -79,10 +91,22 @@ namespace llarp
     if(!BEncodeMaybeReadDictEntry("k", pubkey, read, key, buf))
       return false;
 
-    if(!BEncodeMaybeReadDictEntry("n", nickname, read, key, buf))
-      return false;
+    if(llarp_buffer_eq(key, "n"))
+    {
+      llarp_buffer_t strbuf;
+      if(!bencode_read_string(buf, &strbuf))
+        return false;
+      if(strbuf.sz > nickname.size())
+        return false;
+      nickname.Zero();
+      memcpy(nickname.data(), strbuf.base, strbuf.sz);
+      return true;
+    }
 
     if(!BEncodeMaybeReadDictEntry("p", enckey, read, key, buf))
+      return false;
+
+    if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
       return false;
 
     if(!BEncodeMaybeReadDictInt("u", last_updated, read, key, buf))
@@ -126,9 +150,11 @@ namespace llarp
   bool
   RouterContact::Sign(llarp_crypto *crypto, const SecretKey &secretkey)
   {
+    pubkey                  = llarp::seckey_topublic(secretkey);
     byte_t tmp[MAX_RC_SIZE] = {0};
     auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
     signature.Zero();
+    last_updated = llarp_time_now_ms();
     if(!BEncode(&buf))
       return false;
     buf.sz  = buf.cur - buf.base;
@@ -139,15 +165,19 @@ namespace llarp
   bool
   RouterContact::VerifySignature(llarp_crypto *crypto) const
   {
-    RouterContact copy = *this;
+    RouterContact copy;
+    copy = *this;
     copy.signature.Zero();
     byte_t tmp[MAX_RC_SIZE] = {0};
     auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
     if(!copy.BEncode(&buf))
+    {
+      llarp::LogError("bencode failed");
       return false;
+    }
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    return crypto->verify(signature, buf, pubkey);
+    return crypto->verify(pubkey, buf, signature);
   }
 
   bool
@@ -161,7 +191,7 @@ namespace llarp
     buf.cur = buf.base;
     {
       std::ofstream f;
-      f.open(fname);
+      f.open(fname, std::ios::binary);
       if(!f.is_open())
         return false;
       f.write((char *)buf.base, buf.sz);
@@ -175,9 +205,12 @@ namespace llarp
     byte_t tmp[MAX_RC_SIZE] = {0};
     {
       std::ifstream f;
-      f.open(fname);
+      f.open(fname, std::ios::binary);
       if(!f.is_open())
+      {
+        llarp::LogError("Failed to open ", fname);
         return false;
+      }
       f.seekg(0, std::ios::end);
       auto l = f.tellg();
       f.seekg(0, std::ios::beg);
@@ -197,6 +230,7 @@ namespace llarp
     enckey       = other.enckey;
     pubkey       = other.pubkey;
     nickname     = other.nickname;
+    version      = other.version;
     return *this;
   }
 

@@ -27,6 +27,9 @@ namespace llarp
 
     ~AddressInfo();
 
+    AddressInfo&
+    operator=(const AddressInfo& other);
+
     bool
     BEncode(llarp_buffer_t* buf) const;
 

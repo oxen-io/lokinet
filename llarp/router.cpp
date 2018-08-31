@@ -233,26 +233,11 @@ llarp_router::SaveRC()
   llarp::LogDebug("verify RC signature");
   if(!rc.VerifySignature(&crypto))
   {
+    rc.Dump< MAX_RC_SIZE >();
     llarp::LogError("RC has bad signature not saving");
     return false;
   }
-
-  byte_t tmp[MAX_RC_SIZE];
-  auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-
-  if(rc.BEncode(&buf))
-  {
-    std::ofstream f(our_rc_file.string());
-
-    if(f.is_open())
-    {
-      f.write((char *)buf.base, buf.cur - buf.base);
-      llarp::LogInfo("our RC saved to ", our_rc_file.string().c_str());
-      return true;
-    }
-  }
-  llarp::LogError("did not save RC to ", our_rc_file.string().c_str());
-  return false;
+  return rc.Write(our_rc_file.string().c_str());
 }
 
 void
@@ -694,6 +679,7 @@ llarp_router::Run()
   rc.pubkey = llarp::seckey_topublic(identity);
   llarp::LogInfo("Your Identity pubkey ", rc.pubkey);
 
+  llarp::LogInfo("Signing rc...");
   if(!rc.Sign(&crypto, identity))
   {
     llarp::LogError("failed to sign rc");

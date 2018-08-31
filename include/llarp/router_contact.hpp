@@ -5,7 +5,7 @@
 #include <llarp/bencode.hpp>
 #include <llarp/exit_info.hpp>
 
-#include <list>
+#include <vector>
 
 #define MAX_RC_SIZE (1024)
 #define NICKLEN (32)
@@ -15,13 +15,13 @@ namespace llarp
   struct RouterContact : public IBEncodeMessage
   {
     // advertised addresses
-    std::list< AddressInfo > addrs;
+    std::vector< AddressInfo > addrs;
     // public encryption public key
     llarp::PubKey enckey;
     // public signing public key
     llarp::PubKey pubkey;
     // advertised exits
-    std::list< ExitInfo > exits;
+    std::vector< ExitInfo > exits;
     // signature
     llarp::Signature signature;
     /// node nickname, yw kee
@@ -31,6 +31,16 @@ namespace llarp
 
     bool
     BEncode(llarp_buffer_t *buf) const;
+
+    void
+    Clear();
+
+    bool
+    BDecode(llarp_buffer_t *buf)
+    {
+      Clear();
+      return IBEncodeMessage::BDecode(buf);
+    }
 
     bool
     DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf);

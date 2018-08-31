@@ -12,6 +12,17 @@ namespace llarp
   {
   }
 
+  AddressInfo &
+  AddressInfo::operator=(const AddressInfo &other)
+  {
+    rank    = other.rank;
+    dialect = other.dialect;
+    pubkey  = other.pubkey;
+    memcpy(ip.s6_addr, other.ip.s6_addr, 16);
+    port = other.port;
+    return *this;
+  }
+
   bool
   AddressInfo::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
   {
