@@ -2,6 +2,7 @@
 #include <llarp/encrypted_frame.hpp>
 #include <llarp/path.hpp>
 #include <llarp/pathbuilder.hpp>
+#include <llarp/messages/dht.hpp>
 #include "buffer.hpp"
 #include "router.hpp"
 
@@ -405,11 +406,11 @@ namespace llarp
         r->crypto.xchacha20(buf, hop.shared, n);
         n ^= hop.nonceXOR;
       }
-      RelayUpstreamMessage* msg = new RelayUpstreamMessage;
-      msg->X                    = buf;
-      msg->Y                    = Y;
-      msg->pathid               = TXID();
-      if(r->SendToOrQueue(Upstream(), msg))
+      RelayUpstreamMessage msg;
+      msg.X      = buf;
+      msg.Y      = Y;
+      msg.pathid = TXID();
+      if(r->SendToOrQueue(Upstream(), &msg))
         return true;
       llarp::LogError("send to ", Upstream(), " failed");
       return false;
@@ -546,11 +547,12 @@ namespace llarp
     bool
     Path::HandleDHTMessage(const llarp::dht::IMessage* msg, llarp_router* r)
     {
-      std::vector< llarp::dht::IMessage* > discard;
-      auto result = msg->HandleMessage(r->dht, discard);
-      for(auto& msg : discard)
-        delete msg;
-      return result;
+      llarp::routing::DHTMessage reply;
+      if(!msg->HandleMessage(r->dht, reply.M))
+        return false;
+      if(reply.M.size())
+        return SendRoutingMessage(&reply, r);
+      return true;
     }
 
   }  // namespace path

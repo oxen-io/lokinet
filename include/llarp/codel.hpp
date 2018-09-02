@@ -121,7 +121,6 @@ namespace llarp
             // lowest, " dropMs: ", dropMs);
             if(lowest > dropMs)
             {
-              llarp::LogInfo(m_name, " dropping");
               item->~T();
               nextTickInterval += initialIntervalMs / std::sqrt(++dropNum);
               firstPut = 0;

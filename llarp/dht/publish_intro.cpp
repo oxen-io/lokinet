@@ -40,8 +40,9 @@ namespace llarp
     }
 
     bool
-    PublishIntroMessage::HandleMessage(llarp_dht_context *ctx,
-                                       std::vector< IMessage * > &replies) const
+    PublishIntroMessage::HandleMessage(
+        llarp_dht_context *ctx,
+        std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       if(S > 5)
       {
@@ -67,7 +68,7 @@ namespace llarp
         return false;
       }
       dht.services->PutNode(I);
-      replies.push_back(new GotIntroMessage({I}, txID));
+      replies.emplace_back(new GotIntroMessage({I}, txID));
       Key_t peer;
       std::set< Key_t > exclude;
       for(const auto &e : E)

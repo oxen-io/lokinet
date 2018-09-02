@@ -221,7 +221,7 @@ main(int argc, char *argv[])
   if(verifyMode)
   {
     llarp_crypto crypto;
-    llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
     if(!rc.Read(rcfname))
     {
       std::cout << "failed to read " << rcfname << std::endl;
@@ -277,7 +277,7 @@ main(int argc, char *argv[])
   if(listMode)
   {
     llarp_crypto crypto;
-    llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
     auto nodedb = llarp_nodedb_new(&crypto);
     llarp_nodedb_iter itr;
     itr.visit = [](llarp_nodedb_iter *i) -> bool {
@@ -298,7 +298,7 @@ main(int argc, char *argv[])
       return 1;
     }
     llarp_crypto crypto;
-    llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
     auto nodedb = llarp_nodedb_new(&crypto);
     if(!llarp_nodedb_ensure_dir(nodesdir))
     {
@@ -354,7 +354,7 @@ main(int argc, char *argv[])
     rc.last_updated = llarp_time_now_ms();
     // load longterm identity
     llarp_crypto crypt;
-    llarp_crypto_libsodium_init(&crypt);
+    llarp_crypto_init(&crypt);
 
     // which is in daemon.ini config: router.encryption-privkey (defaults
     // "encryption.key")

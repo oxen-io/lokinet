@@ -2,9 +2,7 @@
 #include <llarp/proto.h>
 #include <llarp/iwp.hpp>
 #include <llarp/link_message.hpp>
-#include "llarp/iwp/establish_job.hpp"
-#include "llarp/iwp/server.hpp"
-#include "llarp/iwp/session.hpp"
+#include <llarp/link/curvecp.hpp>
 
 #include "buffer.hpp"
 #include "encode.hpp"
@@ -23,10 +21,69 @@ namespace llarp
   struct async_verify_context
   {
     llarp_router *router;
-    llarp_link_establish_job *establish_job;
+    llarp::OutboundLinkEstablishJob *establish_job;
   };
 
 }  // namespace llarp
+
+struct TryConnectJob : public llarp::OutboundLinkEstablishJob
+{
+  llarp::ILinkLayer *link;
+  llarp_router *router;
+  uint16_t triesLeft;
+  TryConnectJob(const llarp::RouterContact &remote, llarp::ILinkLayer *l,
+                uint16_t tries, llarp_router *r)
+      : OutboundLinkEstablishJob(remote), link(l), router(r), triesLeft(tries)
+  {
+  }
+
+  void
+  Failed()
+  {
+    link->CloseSessionTo(rc.pubkey);
+  }
+
+  void
+  Success()
+  {
+    router->FlushOutboundFor(rc.pubkey, link);
+    router->pendingEstablishJobs.erase(rc.pubkey);
+    // we are gone
+  }
+
+  void
+  AttemptTimedout()
+  {
+    --triesLeft;
+    if(!ShouldRetry())
+    {
+      router->pendingEstablishJobs.erase(rc.pubkey);
+      // we are gone after this
+      return;
+    }
+    Attempt();
+  }
+
+  void
+  Attempt()
+  {
+    link->TryEstablishTo(rc);
+  }
+
+  bool
+  ShouldRetry() const
+  {
+    return triesLeft > 0;
+  }
+};
+
+static void
+on_try_connecting(void *u)
+{
+  llarp::OutboundLinkEstablishJob *j =
+      static_cast< llarp::OutboundLinkEstablishJob * >(u);
+  j->Attempt();
+}
 
 bool
 llarp_router_try_connect(struct llarp_router *router,
@@ -39,34 +96,14 @@ llarp_router_try_connect(struct llarp_router *router,
     llarp::LogDebug("We have pending connect jobs to ", remote.pubkey);
     return false;
   }
-  // try first address only
-  if(remote.addrs.size())
 
-  {
-    auto link = router->outboundLink;
-    auto itr  = router->pendingEstablishJobs.insert(
-        std::make_pair(remote.pubkey, llarp_link_establish_job()));
-    auto job     = &itr.first->second;
-    job->ai      = remote.addrs.front();
-    job->pubkey  = remote.pubkey;
-    job->retries = numretries;
-    job->timeout = 10000;
-    job->result  = &llarp_router::on_try_connect_result;
-    // give router as user pointer
-    job->user = router;
-    job->link = link;
-    // try establishing async
-    llarp_logic_queue_job(router->logic,
-                          {job, [](void *u) {
-                             llarp_link_establish_job *j =
-                                 static_cast< llarp_link_establish_job * >(u);
-                             j->link->try_establish(j);
-                             j->link = nullptr;
-                           }});
-    return true;
-  }
-  llarp::LogWarn("couldn't get first address for ", remote.pubkey);
-  return false;
+  auto link = router->outboundLink.get();
+  auto itr  = router->pendingEstablishJobs.insert(std::make_pair(
+      remote.pubkey, new TryConnectJob(remote, link, numretries, router)));
+  llarp::OutboundLinkEstablishJob *job = itr.first->second;
+  // try establishing async
+  llarp_logic_queue_job(router->logic, {job, on_try_connecting});
+  return true;
 }
 
 llarp_router::llarp_router()
@@ -88,8 +125,8 @@ llarp_router::~llarp_router()
 }
 
 bool
-llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
-                                    llarp_buffer_t buf)
+llarp_router::HandleRecvLinkMessageBuffer(llarp::ILinkSession *session,
+                                          llarp_buffer_t buf)
 {
   return inbound_link_msg_parser.ProcessFrom(session, buf);
 }
@@ -114,14 +151,14 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
 {
   std::unique_ptr< const llarp::ILinkMessage > msg =
       std::unique_ptr< const llarp::ILinkMessage >(m);
-  llarp_link *chosen = nullptr;
+  llarp::ILinkLayer *chosen = nullptr;
 
   if(inboundLinks.size() == 0)
-    chosen = outboundLink;
+    chosen = outboundLink.get();
   else
-    chosen = inboundLinks.front();
+    chosen = inboundLinks.front().get();
 
-  if(chosen->has_session_to(remote))
+  if(chosen->HasSessionTo(remote))
   {
     SendTo(remote, msg, chosen);
     return true;
@@ -132,7 +169,16 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   {
     outboundMessageQueue.insert(std::make_pair(remote, MessageQueue()));
   }
-  outboundMessageQueue[remote].push(std::move(msg));
+  // encode
+  llarp_buffer_t buf =
+      llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+  if(!msg->BEncode(&buf))
+    return false;
+  // queue buffer
+  auto &q = outboundMessageQueue[remote];
+  buf.sz  = buf.cur - buf.base;
+  q.emplace(buf.sz);
+  memcpy(q.back().data(), buf.base, buf.sz);
 
   // we don't have an open session to that router right now
   if(llarp_nodedb_get_rc(nodedb, remote, rc))
@@ -208,9 +254,9 @@ llarp_router::EnsureEncryptionKey()
 }
 
 void
-llarp_router::AddInboundLink(struct llarp_link *link)
+llarp_router::AddInboundLink(std::unique_ptr< llarp::ILinkLayer > &link)
 {
-  inboundLinks.push_back(link);
+  inboundLinks.push_back(std::move(link));
 }
 
 bool
@@ -236,38 +282,17 @@ void
 llarp_router::Close()
 {
   llarp::LogInfo("Closing ", inboundLinks.size(), " server bindings");
-  for(auto link : inboundLinks)
+  for(const auto &link : inboundLinks)
   {
-    link->stop_link();
-    delete link;
+    link->Stop();
   }
   inboundLinks.clear();
 
   llarp::LogInfo("Closing LokiNetwork client");
   if(outboundLink)
   {
-    outboundLink->stop_link();
-    delete outboundLink;
-    outboundLink = nullptr;
-  }
-}
-
-void
-llarp_router::connect_job_retry(void *user, uint64_t orig, uint64_t left)
-{
-  if(left)
-    return;
-  llarp_link_establish_job *job =
-      static_cast< llarp_link_establish_job * >(user);
-  llarp::Addr remote = job->ai;
-  if(job->link)
-  {
-    llarp::LogInfo("trying to establish session again with ", remote);
-    job->link->try_establish(job);
-  }
-  else
-  {
-    llarp::LogError("establish session retry failed, no link for ", remote);
+    outboundLink->Stop();
+    outboundLink.reset(nullptr);
   }
 }
 
@@ -293,11 +318,8 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     if(ctx->establish_job)
     {
       // was an outbound attempt
-      auto session = ctx->establish_job->session;
-      if(session)
-        session->close();
+      ctx->establish_job->Failed();
     }
-    router->pendingEstablishJobs.erase(pk);
     router->DiscardOutboundFor(pk);
     return;
   }
@@ -314,10 +336,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   // this was an outbound establish job
   if(ctx->establish_job)
   {
-    auto session = ctx->establish_job->session;
-    router->FlushOutboundFor(pk, session->get_parent());
-    // this frees the job
-    router->pendingEstablishJobs.erase(pk);
+    ctx->establish_job->Success();
   }
   else  // this was an inbound session
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
@@ -422,7 +441,7 @@ llarp_router::Tick()
 void
 llarp_router::SendTo(llarp::RouterID remote,
                      std::unique_ptr< const llarp::ILinkMessage > &msg,
-                     llarp_link *link)
+                     llarp::ILinkLayer *selected)
 {
   llarp_buffer_t buf =
       llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
@@ -436,22 +455,24 @@ llarp_router::SendTo(llarp::RouterID remote,
   // set size of message
   buf.sz  = buf.cur - buf.base;
   buf.cur = buf.base;
-  if(link)
+  if(selected)
   {
-    link->sendto(remote, buf);
+    selected->SendTo(remote, buf);
     return;
   }
-  bool sent = outboundLink->sendto(remote, buf);
+  bool sent = outboundLink->SendTo(remote, buf);
   if(!sent)
   {
-    for(auto link : inboundLinks)
+    for(const auto &link : inboundLinks)
     {
       if(!sent)
       {
-        sent = link->sendto(remote, buf);
+        sent = link->SendTo(remote, buf);
       }
     }
   }
+  if(!sent)
+    llarp::LogWarn("message to ", remote, " was dropped");
 }
 
 void
@@ -472,22 +493,22 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
   validRouters.erase(itr);
 }
 
-llarp_link *
+llarp::ILinkLayer *
 llarp_router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
 {
-  for(auto &link : inboundLinks)
+  if(outboundLink->HasSessionTo(pubkey))
+    return outboundLink.get();
+  for(const auto &link : inboundLinks)
   {
-    if(link->has_session_to(pubkey))
-      return link;
+    if(link->HasSessionTo(pubkey))
+      return link.get();
   }
-  if(outboundLink->has_session_to(pubkey))
-    return outboundLink;
   return nullptr;
 }
 
 void
 llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
-                               llarp_link *chosen)
+                               llarp::ILinkLayer *chosen)
 {
   llarp::LogDebug("Flush outbound for ", remote);
   auto itr = outboundMessageQueue.find(remote);
@@ -502,58 +523,12 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
   }
   while(itr->second.size())
   {
-    auto buf = llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
-
-    const auto &msg = itr->second.front();
-
-    if(!msg->BEncode(&buf))
-    {
-      llarp::LogWarn("failed to encode outbound message, buffer size left: ",
-                     llarp_buffer_size_left(buf));
-      itr->second.pop();
-      continue;
-    }
-    // set size of message
-    buf.sz  = buf.cur - buf.base;
-    buf.cur = buf.base;
-    if(!chosen->sendto(remote, buf))
+    auto buf = llarp::ConstBuffer(itr->second.front());
+    if(!chosen->SendTo(remote, buf))
       llarp::LogWarn("failed to send outboud message to ", remote, " via ",
-                     chosen->name());
+                     chosen->Name());
 
     itr->second.pop();
-  }
-}
-
-void
-llarp_router::on_try_connect_result(llarp_link_establish_job *job)
-{
-  llarp_router *router = static_cast< llarp_router * >(job->user);
-  if(job->session)
-  {
-    // llarp::LogDebug("try_connect got session");
-    // auto session = job->session;
-    // router->async_verify_RC(session->get_remote_router(), false, job);
-    return;
-  }
-  // llarp::LogDebug("try_connect no session");
-  llarp::PubKey pk = job->pubkey;
-  if(job->retries > 0)
-  {
-    job->retries--;
-    job->timeout *= 3;
-    job->timeout /= 2;
-    llarp::LogInfo("session not established with ", pk, " relaxing timeout to ",
-                   job->timeout);
-    // exponential backoff
-    llarp_logic_call_later(
-        router->logic, {job->timeout, job, &llarp_router::connect_job_retry});
-  }
-  else
-  {
-    llarp::LogWarn("failed to connect to ", pk,
-                   " dropping all pending messages");
-    router->DiscardOutboundFor(pk);
-    router->pendingEstablishJobs.erase(pk);
   }
 }
 
@@ -581,7 +556,7 @@ llarp_router::GetRandomConnectedRouter(llarp::RouterContact &result) const
 void
 llarp_router::async_verify_RC(const llarp::RouterContact &rc,
                               bool isExpectingClient,
-                              llarp_link_establish_job *establish_job)
+                              llarp::OutboundLinkEstablishJob *establish_job)
 {
   llarp_async_verify_rc *job       = new llarp_async_verify_rc();
   llarp::async_verify_context *ctx = new llarp::async_verify_context();
@@ -620,10 +595,11 @@ llarp_router::Run()
   }
 
   llarp::LogInfo("You have ", inboundLinks.size(), " inbound links");
-  for(auto link : inboundLinks)
+  for(const auto &link : inboundLinks)
   {
     llarp::AddressInfo addr;
-    link->get_our_address(addr);
+    if(!link->GetOurAddressInfo(addr))
+      continue;
     llarp::Addr a(addr);
     if(this->publicOverride && a.sameAddr(publicAddr))
     {
@@ -637,12 +613,11 @@ llarp_router::Run()
   };
   if(this->publicOverride)
   {
+    llarp::ILinkLayer *link = nullptr;
     // llarp::LogWarn("Need to load our public IP into RC!");
-
-    llarp_link *link = nullptr;
     if(inboundLinks.size() == 1)
     {
-      link = inboundLinks.front();
+      link = inboundLinks.front().get();
     }
     else
     {
@@ -651,15 +626,17 @@ llarp_router::Run()
         llarp::LogError("No inbound links found, aborting");
         return;
       }
-      link = inboundLinks.front();
+      link = inboundLinks.front().get();
     }
-    link->get_our_address(this->addrInfo);
-    // override ip and port
-    this->addrInfo.ip   = *publicAddr.addr6();
-    this->addrInfo.port = publicAddr.port();
-    llarp::LogInfo("Loaded our public ", publicAddr, " override into RC!");
-    // we need the link to set the pubkey
-    rc.addrs.push_back(this->addrInfo);
+    if(link->GetOurAddressInfo(this->addrInfo))
+    {
+      // override ip and port
+      this->addrInfo.ip   = *publicAddr.addr6();
+      this->addrInfo.port = publicAddr.port();
+      llarp::LogInfo("Loaded our public ", publicAddr, " override into RC!");
+      // we need the link to set the pubkey
+      rc.addrs.push_back(this->addrInfo);
+    }
   }
   // set public encryption key
   rc.enckey = llarp::seckey_topublic(encryption);
@@ -681,7 +658,7 @@ llarp_router::Run()
   }
 
   llarp::LogDebug("starting outbound link");
-  if(!outboundLink->start_link(logic))
+  if(!outboundLink->Start(logic))
   {
     llarp::LogWarn("outbound link failed to start");
   }
@@ -689,15 +666,15 @@ llarp_router::Run()
   int IBLinksStarted = 0;
 
   // start links
-  for(auto link : inboundLinks)
+  for(const auto &link : inboundLinks)
   {
-    if(link->start_link(logic))
+    if(link->Start(logic))
     {
-      llarp::LogDebug("Link ", link->name(), " started");
+      llarp::LogDebug("Link ", link->Name(), " started");
       IBLinksStarted++;
     }
     else
-      llarp::LogWarn("Link ", link->name(), " failed to start");
+      llarp::LogWarn("Link ", link->Name(), " failed to start");
   }
 
   if(IBLinksStarted > 0)
@@ -748,29 +725,19 @@ llarp_router::InitOutboundLink()
   if(outboundLink)
     return true;
 
-  llarp_iwp_args args = {
-      &crypto, logic, tp, this, transport_keyfile.string(),
-  };
-
-  auto link = new llarp_link(args);
+  auto link = llarp::curvecp::NewServer(this);
 
   auto afs = {AF_INET, AF_INET6};
 
-  if(link)
+  for(auto af : afs)
   {
-    llarp::LogInfo("outbound link initialized");
-    for(auto af : afs)
+    if(link->Configure(netloop, "*", af, 0))
     {
-      if(link->configure(netloop, "*", af, 0))
-      {
-        outboundLink = link;
-        llarp::LogInfo("outbound link ready");
-        return true;
-      }
+      outboundLink = std::move(link);
+      llarp::LogInfo("outbound link ready");
+      return true;
     }
   }
-  delete link;
-  llarp::LogError("failed to initialize outbound link");
   return false;
 }
 
@@ -796,7 +763,7 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
 #else
     router->disk = llarp_init_threadpool(1, "llarp-diskio");
 #endif
-    llarp_crypto_libsodium_init(&router->crypto);
+    llarp_crypto_init(&router->crypto);
   }
   return router;
 }
@@ -829,16 +796,6 @@ llarp_stop_router(struct llarp_router *router)
 {
   if(router)
     router->Close();
-}
-
-void
-llarp_router_iterate_links(struct llarp_router *router,
-                           struct llarp_router_link_iter i)
-{
-  for(auto link : router->inboundLinks)
-    if(!i.visit(&i, router, link))
-      return;
-  i.visit(&i, router, router->outboundLink);
 }
 
 void
@@ -949,51 +906,31 @@ namespace llarp
       proto = std::atoi(val);
     }
 
-    struct llarp_link *link = nullptr;
     if(StrEq(section, "bind"))
     {
       if(!StrEq(key, "*"))
       {
-        llarp_iwp_args args = {
-            &self->crypto,
-            self->logic,
-            self->tp,
-            self,
-            self->transport_keyfile.string(),
-        };
-        llarp::LogInfo("interface specific binding activated");
-        link = new llarp_link(args);
-
-        if(link)
+        auto server = llarp::curvecp::NewServer(self);
+        if(server->Configure(self->netloop, key, af, proto))
         {
-          llarp::LogInfo("link ", key, " initialized");
-          if(link->configure(self->netloop, key, af, proto))
+          self->AddInboundLink(server);
+          return;
+        }
+        if(af == AF_INET6)
+        {
+          // we failed to configure IPv6
+          // try IPv4
+          llarp::LogInfo("link ", key,
+                         " failed to configure IPv6, trying IPv4");
+          af = AF_INET;
+          if(server->Configure(self->netloop, key, af, proto))
           {
-            self->AddInboundLink(link);
+            self->AddInboundLink(server);
             return;
           }
-          if(af == AF_INET6)
-          {
-            // we failed to configure IPv6
-            // try IPv4
-            llarp::LogInfo("link ", key,
-                           " failed to configure IPv6, trying IPv4");
-            af = AF_INET;
-            if(link->configure(self->netloop, key, af, proto))
-            {
-              self->AddInboundLink(link);
-              return;
-            }
-          }
         }
-        else
-        {
-          llarp::LogError("link ", key, " failed to initialize. Link state",
-                          link);
-        }
+        llarp::LogError("Failed to set up curvecp link");
       }
-      llarp::LogError("link ", key,
-                      " failed to configure. (Note: We don't support * yet)");
     }
     else if(StrEq(section, "services"))
     {
@@ -1061,5 +998,5 @@ namespace llarp
         self->publicOverride   = true;
       }
     }
-  }
+  }  // namespace llarp
 }  // namespace llarp

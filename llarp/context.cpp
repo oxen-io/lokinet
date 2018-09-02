@@ -95,7 +95,7 @@ namespace llarp
   int
   Context::LoadDatabase()
   {
-    llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
     nodedb = llarp_nodedb_new(&crypto);
     if(!nodedb_dir[0])
     {

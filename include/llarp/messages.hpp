@@ -8,9 +8,7 @@
 #include <llarp/messages/dht_immediate.hpp>
 #include <llarp/messages/link_intro.hpp>
 #include <llarp/messages/relay.hpp>
-#include <llarp/messages/relay_ack.hpp>
 #include <llarp/messages/relay_commit.hpp>
-
 #include <llarp/messages/path_confirm.hpp>
 
 #endif

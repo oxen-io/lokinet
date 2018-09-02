@@ -245,9 +245,16 @@ namespace llarp
     };
   };
 
+  Addr
+  AllInterfaces(int af);
+
   /// get first network interface with public address
   bool
   GetBestNetIF(std::string& ifname, int af = AF_INET);
+
+  /// get network interface address for network interface with ifname
+  bool
+  GetIFAddr(const std::string& ifname, Addr& addr, int af = AF_INET);
 
 }  // namespace llarp
 

@@ -8,13 +8,17 @@ namespace llarp
 {
   struct DHTImmeidateMessage : public ILinkMessage
   {
-    DHTImmeidateMessage(const RouterID& from) : ILinkMessage(from)
+    DHTImmeidateMessage(ILinkSession* parent) : ILinkMessage(parent)
+    {
+    }
+
+    DHTImmeidateMessage() : ILinkMessage()
     {
     }
 
     ~DHTImmeidateMessage();
 
-    std::vector< llarp::dht::IMessage* > msgs;
+    std::vector< std::unique_ptr< llarp::dht::IMessage > > msgs;
 
     bool
     DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);

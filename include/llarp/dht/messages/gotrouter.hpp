@@ -36,7 +36,7 @@ namespace llarp
 
       virtual bool
       HandleMessage(llarp_dht_context* ctx,
-                    std::vector< IMessage* >& replies) const;
+                    std::vector< std::unique_ptr< IMessage > >& replies) const;
 
       std::vector< RouterContact > R;
       std::vector< RouterID > N;

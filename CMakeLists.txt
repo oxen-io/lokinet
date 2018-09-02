@@ -144,7 +144,11 @@ else()
   )
 endif()
 
-set(LIBS ${SODIUM_LIB} ${THREAD_LIB})
+find_package(OpenSSL)
+
+include_directories(${OPENSSL_INCLUDE_DIR})
+
+set(LIBS ${SODIUM_LIB} ${THREAD_LIB} ${OPENSSL_LIBRARIES})
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
@@ -331,7 +335,6 @@ set(LIB_SRC
   llarp/pathbuilder.cpp
   llarp/pathset.cpp
   llarp/proofofwork.cpp
-  llarp/relay_ack.cpp
   llarp/relay_commit.cpp
   llarp/relay_up_down.cpp
   llarp/router_contact.cpp
@@ -339,6 +342,8 @@ set(LIB_SRC
   llarp/service.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
+  llarp/curvecp/server.cpp
+  llarp/curvecp/client.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
@@ -348,12 +353,6 @@ set(LIB_SRC
   llarp/dht/got_router.cpp
   llarp/dht/publish_intro.cpp
   llarp/handlers/tun.cpp
-  llarp/iwp/frame_header.cpp
-  llarp/iwp/frame_state.cpp
-  llarp/iwp/session.cpp
-  llarp/iwp/server.cpp
-  llarp/iwp/transit_message.cpp
-  llarp/iwp/xmit.cpp
   llarp/link/encoder.cpp
   llarp/routing/dht_message.cpp
   llarp/routing/message_parser.cpp

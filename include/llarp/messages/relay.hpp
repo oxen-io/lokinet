@@ -16,7 +16,7 @@ namespace llarp
     TunnelNonce Y;
 
     RelayUpstreamMessage();
-    RelayUpstreamMessage(const RouterID& from);
+    RelayUpstreamMessage(ILinkSession* from);
     ~RelayUpstreamMessage();
 
     bool
@@ -35,7 +35,7 @@ namespace llarp
     Encrypted X;
     TunnelNonce Y;
     RelayDownstreamMessage();
-    RelayDownstreamMessage(const RouterID& from);
+    RelayDownstreamMessage(ILinkSession* from);
     ~RelayDownstreamMessage();
 
     bool

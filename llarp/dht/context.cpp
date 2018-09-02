@@ -184,14 +184,14 @@ namespace llarp
     }
 
     void
-    Context::LookupRouterRelayed(const Key_t &requester, uint64_t txid,
-                                 const Key_t &target, bool recursive,
-                                 std::vector< IMessage * > &replies)
+    Context::LookupRouterRelayed(
+        const Key_t &requester, uint64_t txid, const Key_t &target,
+        bool recursive, std::vector< std::unique_ptr< IMessage > > &replies)
     {
       if(target == ourKey)
       {
         // we are the target, give them our RC
-        replies.push_back(
+        replies.emplace_back(
             new GotRouterMessage(requester, txid, {router->rc}, false));
         return;
       }
@@ -202,7 +202,7 @@ namespace llarp
         if(next == target)
         {
           // we know it
-          replies.push_back(new GotRouterMessage(
+          replies.emplace_back(new GotRouterMessage(
               requester, txid, {nodes->nodes[target].rc}, false));
         }
         else if(recursive)  // are we doing a recursive lookup?
@@ -217,19 +217,21 @@ namespace llarp
           {
             // no we are closer to the target so tell requester it's not there
             // so they switch to iterative lookup
-            replies.push_back(new GotRouterMessage(requester, txid, {}, false));
+            replies.emplace_back(
+                new GotRouterMessage(requester, txid, {}, false));
           }
         }
         else  // iterative lookup and we don't have it tell them we don't have
               // the target router
         {
-          replies.push_back(new GotRouterMessage(requester, txid, {}, false));
+          replies.emplace_back(
+              new GotRouterMessage(requester, txid, {}, false));
         }
       }
       else
       {
         // we don't know it and have no closer peers to ask
-        replies.push_back(new GotRouterMessage(requester, txid, {}, false));
+        replies.emplace_back(new GotRouterMessage(requester, txid, {}, false));
       }
     }
 
@@ -280,9 +282,9 @@ namespace llarp
     void
     Context::DHTSendTo(const Key_t &peer, IMessage *msg, bool keepalive)
     {
-      auto m = new llarp::DHTImmeidateMessage(peer);
-      m->msgs.push_back(msg);
-      router->SendToOrQueue(peer, m);
+      llarp::DHTImmeidateMessage m;
+      m.msgs.emplace_back(msg);
+      router->SendToOrQueue(peer, &m);
       if(keepalive)
       {
         auto now = llarp_time_now_ms();
@@ -402,7 +404,7 @@ namespace llarp
           return;
         }
         routing::DHTMessage msg;
-        msg.M.push_back(new GotIntroMessage(valuesFound, whoasked.txid));
+        msg.M.emplace_back(new GotIntroMessage(valuesFound, whoasked.txid));
         if(!path->SendRoutingMessage(&msg, parent->router))
         {
           llarp::LogWarn(
@@ -577,10 +579,9 @@ namespace llarp
     }
 
     bool
-    Context::HandleExploritoryRouterLookup(const Key_t &requester,
-                                           uint64_t txid,
-                                           const RouterID &target,
-                                           std::vector< IMessage * > &reply)
+    Context::HandleExploritoryRouterLookup(
+        const Key_t &requester, uint64_t txid, const RouterID &target,
+        std::vector< std::unique_ptr< IMessage > > &reply)
     {
       std::vector< RouterID > closer;
       Key_t t(target.data());
@@ -594,7 +595,7 @@ namespace llarp
       }
       for(const auto &f : found)
         closer.emplace_back(f.data());
-      reply.push_back(new GotRouterMessage(txid, closer, false));
+      reply.emplace_back(new GotRouterMessage(txid, closer, false));
       return true;
     }
 
@@ -625,9 +626,8 @@ namespace llarp
       void
       Start(const TXOwner &peer)
       {
-        parent->DHTSendTo(
-            peer.node,
-            new FindRouterMessage(parent->OurKey(), target, peer.txid));
+        FindRouterMessage msg(parent->OurKey(), target, peer.txid);
+        parent->DHTSendTo(peer.node, &msg);
       }
 
       void
@@ -645,9 +645,8 @@ namespace llarp
         }
         else
         {
-          parent->DHTSendTo(
-              whoasked.node,
-              new GotRouterMessage({}, whoasked.txid, valuesFound, false));
+          GotRouterMessage msg({}, whoasked.txid, valuesFound, false);
+          parent->DHTSendTo(whoasked.node, &msg);
         }
       }
     };
@@ -678,8 +677,8 @@ namespace llarp
           return;
         }
         routing::DHTMessage msg;
-        msg.M.push_back(new GotRouterMessage(parent->OurKey(), whoasked.txid,
-                                             valuesFound, true));
+        msg.M.emplace_back(new GotRouterMessage(parent->OurKey(), whoasked.txid,
+                                                valuesFound, true));
         if(!path->SendRoutingMessage(&msg, parent->router))
         {
           llarp::LogWarn(

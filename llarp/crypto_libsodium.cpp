@@ -162,7 +162,7 @@ namespace llarp
 }  // namespace llarp
 
 void
-llarp_crypto_libsodium_init(struct llarp_crypto *c)
+llarp_crypto_init(struct llarp_crypto *c)
 {
   assert(sodium_init() != -1);
   char *avx2 = getenv("AVX2_FORCE_DISABLE");

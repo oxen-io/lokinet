@@ -66,8 +66,9 @@ namespace llarp
     }
 
     bool
-    GotRouterMessage::HandleMessage(llarp_dht_context *ctx,
-                                    std::vector< IMessage * > &replies) const
+    GotRouterMessage::HandleMessage(
+        llarp_dht_context *ctx,
+        std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht = ctx->impl;
       if(relayed)

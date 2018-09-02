@@ -174,9 +174,9 @@ namespace llarp
 
       /// get routers closest to target excluding requester
       bool
-      HandleExploritoryRouterLookup(const Key_t& requester, uint64_t txid,
-                                    const RouterID& target,
-                                    std::vector< IMessage* >& reply);
+      HandleExploritoryRouterLookup(
+          const Key_t& requester, uint64_t txid, const RouterID& target,
+          std::vector< std::unique_ptr< IMessage > >& reply);
 
       std::set< service::IntroSet >
       FindRandomIntroSetsWithTagExcluding(
@@ -187,7 +187,7 @@ namespace llarp
       void
       LookupRouterRelayed(const Key_t& requester, uint64_t txid,
                           const Key_t& target, bool recursive,
-                          std::vector< IMessage* >& replies);
+                          std::vector< std::unique_ptr< IMessage > >& replies);
 
       /// relay a dht messeage from a local path to the main network
       bool

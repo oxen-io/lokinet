@@ -22,19 +22,21 @@ namespace llarp
       }
 
       virtual bool
-      HandleMessage(llarp_dht_context* dht,
-                    std::vector< IMessage* >& replies) const = 0;
+      HandleMessage(
+          llarp_dht_context* dht,
+          std::vector< std::unique_ptr< IMessage > >& replies) const = 0;
 
       Key_t From;
       PathID_t pathID;
     };
 
-    IMessage*
+    std::unique_ptr< IMessage >
     DecodeMessage(const Key_t& from, llarp_buffer_t* buf, bool relayed = false);
 
     bool
-    DecodeMesssageList(const Key_t& from, llarp_buffer_t* buf,
-                       std::vector< IMessage* >& dst, bool relayed = false);
+    DecodeMesssageList(Key_t from, llarp_buffer_t* buf,
+                       std::vector< std::unique_ptr< IMessage > >& dst,
+                       bool relayed = false);
   }  // namespace dht
 }  // namespace llarp
 

@@ -1,16 +1,11 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/messages.hpp>
 #include "buffer.hpp"
-#include "llarp/iwp/session.hpp"
 #include "logger.hpp"
 #include "router.hpp"
 
 namespace llarp
 {
-  ILinkMessage::ILinkMessage(const RouterID& id) : remote(id)
-  {
-  }
-
   InboundMessageParser::InboundMessageParser(llarp_router* _router)
       : router(_router)
   {
@@ -54,23 +49,19 @@ namespace llarp
       switch(*strbuf.cur)
       {
         case 'i':
-          handler->msg =
-              new LinkIntroMessage(handler->from->get_remote_router());
+          handler->msg = new LinkIntroMessage(handler->from);
           break;
         case 'd':
-          handler->msg = new RelayDownstreamMessage(handler->GetCurrentFrom());
+          handler->msg = new RelayDownstreamMessage(handler->from);
           break;
         case 'u':
-          handler->msg = new RelayUpstreamMessage(handler->GetCurrentFrom());
+          handler->msg = new RelayUpstreamMessage(handler->from);
           break;
         case 'm':
-          handler->msg = new DHTImmeidateMessage(handler->GetCurrentFrom());
-          break;
-        case 'a':
-          handler->msg = new LR_AckMessage(handler->GetCurrentFrom());
+          handler->msg = new DHTImmeidateMessage(handler->from);
           break;
         case 'c':
-          handler->msg = new LR_CommitMessage(handler->GetCurrentFrom());
+          handler->msg = new LR_CommitMessage(handler->from);
           break;
         default:
           return false;
@@ -83,12 +74,6 @@ namespace llarp
       return handler->MessageDone();
 
     return handler->msg->DecodeKey(*key, r->buffer);
-  }
-
-  RouterID
-  InboundMessageParser::GetCurrentFrom()
-  {
-    return from->get_remote_router()->pubkey;
   }
 
   bool
@@ -105,7 +90,7 @@ namespace llarp
   }
 
   bool
-  InboundMessageParser::ProcessFrom(llarp_link_session* src, llarp_buffer_t buf)
+  InboundMessageParser::ProcessFrom(ILinkSession* src, llarp_buffer_t buf)
   {
     from     = src;
     firstkey = true;

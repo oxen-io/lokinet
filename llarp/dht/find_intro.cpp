@@ -87,7 +87,7 @@ namespace llarp
     bool
     FindIntroMessage::HandleMessage(
         llarp_dht_context* ctx,
-        std::vector< llarp::dht::IMessage* >& replies) const
+        std::vector< std::unique_ptr< IMessage > >& replies) const
     {
       if(R > 5)
       {
@@ -109,7 +109,7 @@ namespace llarp
         if(introset)
         {
           service::IntroSet i = *introset;
-          replies.push_back(new GotIntroMessage({i}, T));
+          replies.emplace_back(new GotIntroMessage({i}, T));
           return true;
         }
         else
@@ -117,7 +117,7 @@ namespace llarp
           if(R == 0)
           {
             // we don't have it, reply with a direct reply
-            replies.push_back(new GotIntroMessage({}, T));
+            replies.emplace_back(new GotIntroMessage({}, T));
             return true;
           }
           else
@@ -135,7 +135,7 @@ namespace llarp
                 {
                   // we are not closer than our peer to the target so don't
                   // recurse farther
-                  replies.push_back(new GotIntroMessage({}, T));
+                  replies.emplace_back(new GotIntroMessage({}, T));
                   return true;
                 }
                 else if(R > 0)
@@ -179,7 +179,7 @@ namespace llarp
             {
               reply.push_back(introset);
             }
-            replies.push_back(new GotIntroMessage(reply, T));
+            replies.emplace_back(new GotIntroMessage(reply, T));
             return true;
           }
           else

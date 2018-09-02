@@ -16,7 +16,7 @@ class FrameTest : public ::testing::Test
 
   FrameTest()
   {
-    llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
   }
 
   ~FrameTest()

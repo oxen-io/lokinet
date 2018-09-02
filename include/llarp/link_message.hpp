@@ -3,29 +3,36 @@
 
 #include <llarp/bencode.hpp>
 #include <llarp/router_id.hpp>
+#include <llarp/link/session.hpp>
 
 #include <queue>
 #include <vector>
 
 struct llarp_router;
-struct llarp_link_session;
-struct llarp_link_session_iter;
 
 namespace llarp
 {
-  struct ILinkMessage;
+  struct ILinkSession;
 
   typedef std::queue< ILinkMessage* > SendQueue;
 
   /// parsed link layer message
   struct ILinkMessage : public IBEncodeMessage
   {
-    /// who did this message come from (rc.k)
-    RouterID remote  = {};
+    /// who did this message come from or is going to
+    ILinkSession* session;
     uint64_t version = 0;
 
-    ILinkMessage() = default;
-    ILinkMessage(const RouterID& id);
+    ILinkMessage() : ILinkMessage(nullptr)
+    {
+    }
+
+    ILinkMessage(ILinkSession* from) : session(from)
+    {
+    }
+    virtual ~ILinkMessage()
+    {
+    }
 
     virtual bool
     HandleMessage(llarp_router* router) const = 0;
@@ -41,7 +48,7 @@ namespace llarp
 
     /// start processig message from a link session
     bool
-    ProcessFrom(llarp_link_session* from, llarp_buffer_t buf);
+    ProcessFrom(ILinkSession* from, llarp_buffer_t buf);
 
     /// called when the message is fully read
     /// return true when the message was accepted otherwise returns false
@@ -55,8 +62,8 @@ namespace llarp
    private:
     bool firstkey;
     llarp_router* router;
-    llarp_link_session* from;
-    ILinkMessage* msg = nullptr;
+    ILinkSession* from = nullptr;
+    ILinkMessage* msg  = nullptr;
   };
 }  // namespace llarp
 

@@ -55,8 +55,6 @@ namespace llarp
     }
     if(!router->paths.AllowingTransit())
     {
-      llarp::LogError("got an LRCM from ", remote,
-                      " when we are not allowing transit");
       return false;
     }
     return AsyncDecrypt(&router->paths);
@@ -132,7 +130,7 @@ namespace llarp
         return false;
       }
 
-      self->work = new PoW;
+      self->work = new PoW();
       return self->work->BDecode(r->buffer);
     }
     return read;
@@ -176,7 +174,7 @@ namespace llarp
                      const LR_CommitMessage* commit)
         : decrypter(dec), frames(commit->frames), context(ctx), hop(new Hop())
     {
-      hop->info.downstream = commit->remote;
+      hop->info.downstream = commit->session->GetPubKey();
     }
 
     ~LRCMFrameDecrypt()

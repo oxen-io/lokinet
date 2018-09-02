@@ -7,8 +7,6 @@ namespace llarp
   {
     DHTMessage::~DHTMessage()
     {
-      for(auto& msg : M)
-        delete msg;
     }
 
     bool
@@ -54,11 +52,11 @@ namespace llarp
     {
       // set source as us
       llarp::dht::Key_t us = r->pubkey();
-      for(auto& msg : M)
+      for(const auto& msg : M)
       {
         msg->From   = us;
         msg->pathID = from;
-        if(!h->HandleDHTMessage(msg, r))
+        if(!h->HandleDHTMessage(msg.get(), r))
           return false;
       }
       return true;

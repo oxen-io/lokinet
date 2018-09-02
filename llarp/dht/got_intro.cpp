@@ -19,8 +19,9 @@ namespace llarp
     }
 
     bool
-    GotIntroMessage::HandleMessage(llarp_dht_context *ctx,
-                                   std::vector< IMessage * > &replies) const
+    GotIntroMessage::HandleMessage(
+        llarp_dht_context *ctx,
+        std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht   = ctx->impl;
       auto crypto = &dht.router->crypto;
@@ -56,7 +57,8 @@ namespace llarp
 
     bool
     RelayedGotIntroMessage::HandleMessage(
-        llarp_dht_context *ctx, std::vector< IMessage * > &replies) const
+        llarp_dht_context *ctx,
+        std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       // TODO: implement me better?
       auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);

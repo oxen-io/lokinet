@@ -4,6 +4,7 @@
 #include <llarp/common.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <openssl/ssl.h>
 
 /**
  * crypto.h
@@ -100,9 +101,9 @@ struct llarp_crypto
   bool (*pqe_encrypt)(byte_t *, byte_t *, const byte_t *);
 };
 
-/// set crypto function pointers to use libsodium
+/// initialize crypto subsystem
 void
-llarp_crypto_libsodium_init(struct llarp_crypto *c);
+llarp_crypto_init(struct llarp_crypto *c);
 
 /// check for initialize crypto
 bool

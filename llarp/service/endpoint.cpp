@@ -440,7 +440,7 @@ namespace llarp
     Endpoint::CachedTagResult::BuildRequestMessage(uint64_t txid)
     {
       llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-      msg->M.push_back(new llarp::dht::FindIntroMessage(tag, txid));
+      msg->M.emplace_back(new llarp::dht::FindIntroMessage(tag, txid));
       lastRequest = llarp_time_now_ms();
       return msg;
     }
@@ -453,7 +453,7 @@ namespace llarp
       {
         m_CurrentPublishTX = llarp_randint();
         llarp::routing::DHTMessage msg;
-        msg.M.push_back(new llarp::dht::PublishIntroMessage(
+        msg.M.emplace_back(new llarp::dht::PublishIntroMessage(
             m_IntroSet, m_CurrentPublishTX, 4));
         if(path->SendRoutingMessage(&msg, r))
         {
@@ -530,7 +530,7 @@ namespace llarp
       BuildRequestMessage()
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-        msg->M.push_back(new llarp::dht::FindIntroMessage(txid, remote, 5));
+        msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 5));
         llarp::LogInfo("build request for ", remote);
         return msg;
       }
@@ -614,7 +614,7 @@ namespace llarp
           auto path = GetEstablishedPathClosestTo(router);
           routing::DHTMessage msg;
           auto txid = GenTXID();
-          msg.M.push_back(
+          msg.M.emplace_back(
               new dht::FindRouterMessage({}, dht::Key_t(router), txid));
 
           if(path && path->SendRoutingMessage(&msg, m_Router))

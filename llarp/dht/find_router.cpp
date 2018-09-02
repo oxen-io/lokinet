@@ -11,7 +11,8 @@ namespace llarp
   {
     bool
     RelayedFindRouterMessage::HandleMessage(
-        llarp_dht_context *ctx, std::vector< IMessage * > &replies) const
+        llarp_dht_context *ctx,
+        std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht = ctx->impl;
       /// lookup for us, send an immeidate reply
@@ -20,7 +21,7 @@ namespace llarp
         auto path = dht.router->paths.GetByUpstream(K, pathID);
         if(path)
         {
-          replies.push_back(
+          replies.emplace_back(
               new GotRouterMessage(K.data(), txid, {dht.router->rc}, false));
           return true;
         }
@@ -129,8 +130,9 @@ namespace llarp
     }
 
     bool
-    FindRouterMessage::HandleMessage(llarp_dht_context *ctx,
-                                     std::vector< IMessage * > &replies) const
+    FindRouterMessage::HandleMessage(
+        llarp_dht_context *ctx,
+        std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht = ctx->impl;
       if(!dht.allowTransit)

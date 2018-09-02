@@ -5,7 +5,7 @@
 
 namespace llarp
 {
-  RelayUpstreamMessage::RelayUpstreamMessage(const RouterID &from)
+  RelayUpstreamMessage::RelayUpstreamMessage(ILinkSession *from)
       : ILinkMessage(from)
   {
   }
@@ -54,21 +54,17 @@ namespace llarp
   }
 
   bool
-  RelayUpstreamMessage::HandleMessage(llarp_router *router) const
+  RelayUpstreamMessage::HandleMessage(llarp_router *r) const
   {
-    auto path = router->paths.GetByDownstream(remote, pathid);
+    auto path = r->paths.GetByDownstream(session->GetPubKey(), pathid);
     if(path)
     {
-      return path->HandleUpstream(X.Buffer(), Y, router);
+      return path->HandleUpstream(X.Buffer(), Y, r);
     }
-    else
-    {
-      llarp::LogWarn("No such path downstream=", remote, " pathid=", pathid);
-      return false;
-    }
+    return false;
   }
 
-  RelayDownstreamMessage::RelayDownstreamMessage(const RouterID &from)
+  RelayDownstreamMessage::RelayDownstreamMessage(ILinkSession *from)
       : ILinkMessage(from)
   {
   }
@@ -116,16 +112,12 @@ namespace llarp
   }
 
   bool
-  RelayDownstreamMessage::HandleMessage(llarp_router *router) const
+  RelayDownstreamMessage::HandleMessage(llarp_router *r) const
   {
-    auto path = router->paths.GetByUpstream(remote, pathid);
+    auto path = r->paths.GetByUpstream(session->GetPubKey(), pathid);
     if(path)
     {
-      return path->HandleDownstream(X.Buffer(), Y, router);
-    }
-    else
-    {
-      llarp::LogWarn("No such path upstream=", remote, " pathid=", pathid);
+      return path->HandleDownstream(X.Buffer(), Y, r);
     }
     return false;
   }

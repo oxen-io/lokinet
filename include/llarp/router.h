@@ -27,15 +27,4 @@ llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb);
 void
 llarp_stop_router(struct llarp_router *router);
 
-struct llarp_router_link_iter
-{
-  void *user;
-  bool (*visit)(struct llarp_router_link_iter *, struct llarp_router *,
-                struct llarp_link *);
-};
-
-void
-llarp_router_iterate_links(struct llarp_router *router,
-                           struct llarp_router_link_iter iter);
-
 #endif
