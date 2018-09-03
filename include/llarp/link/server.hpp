@@ -5,11 +5,13 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/net.hpp>
+#include <llarp/ev.h>
+#include <llarp/link/session.hpp>
+
+struct llarp_router;
 
 namespace llarp
 {
-  struct ILinkSession;
-
   struct ILinkLayer
   {
     ILinkLayer(llarp_router* r) : m_router(r)
