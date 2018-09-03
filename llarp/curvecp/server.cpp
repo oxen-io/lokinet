@@ -1,4 +1,5 @@
 #include <llarp/link/curvecp.hpp>
+#include "router.hpp"
 
 namespace llarp
 {

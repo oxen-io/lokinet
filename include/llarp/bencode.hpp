@@ -6,6 +6,7 @@
 #include <llarp/logger.hpp>
 #include <llarp/mem.hpp>
 #include <set>
+#include <fstream>
 
 namespace llarp
 {
@@ -260,6 +261,50 @@ namespace llarp
         llarp::DumpBuffer< decltype(buf), align >(buf);
     }
   };
+
+  /// read entire file and decode its contents into t
+  template < typename T >
+  bool
+  BDecodeReadFile(const char* fpath, T& t)
+  {
+    byte_t* ptr = nullptr;
+    size_t sz   = 0;
+    {
+      std::ifstream f;
+      f.open(fpath);
+      if(!f.is_open())
+        return false;
+      f.seekg(0, std::ios::end);
+      sz = f.tellg();
+      f.seekg(0, std::ios::end);
+      ptr = new byte_t[sz];
+      f.read((char*)ptr, sz);
+    }
+    llarp_buffer_t buf = InitBuffer(ptr, sz);
+    auto result        = t.BDecode(&buf);
+    delete[] ptr;
+    return result;
+  }
+
+  /// bencode and write to file
+  template < typename T, size_t bufsz >
+  bool
+  BEncodeWriteFile(const char* fpath, const T& t)
+  {
+    uint8_t tmp[bufsz] = {0};
+    auto buf           = StackBuffer< decltype(tmp) >(tmp);
+    if(!t.BEncode(&buf))
+      return false;
+    buf.sz = buf.cur - buf.base;
+    {
+      std::ofstream f;
+      f.open(fpath);
+      if(!f.is_open())
+        return false;
+      f.write((char*)buf.base, buf.sz);
+    }
+    return true;
+  }
 
 }  // namespace llarp
 

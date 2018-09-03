@@ -6,6 +6,7 @@
 #ifndef ssize_t
 #define ssize_t long
 #endif
+
 size_t
 llarp_buffer_size_left(llarp_buffer_t buff)
 {

@@ -727,6 +727,12 @@ llarp_router::InitOutboundLink()
 
   auto link = llarp::curvecp::NewServer(this);
 
+  if(!link->EnsureKeys(transport_keyfile.string().c_str()))
+  {
+    llarp::LogError("failed to load ", transport_keyfile);
+    return false;
+  }
+
   auto afs = {AF_INET, AF_INET6};
 
   for(auto af : afs)
@@ -911,6 +917,11 @@ namespace llarp
       if(!StrEq(key, "*"))
       {
         auto server = llarp::curvecp::NewServer(self);
+        if(!server->EnsureKeys(self->transport_keyfile.string().c_str()))
+        {
+          llarp::LogError("failed to ensure keyfile ", self->transport_keyfile);
+          return;
+        }
         if(server->Configure(self->netloop, key, af, proto))
         {
           self->AddInboundLink(server);

@@ -338,8 +338,7 @@ set(LIB_SRC
   llarp/service.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
-  llarp/curvecp/server.cpp
-  llarp/curvecp/client.cpp
+  llarp/curvecp/impl.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
@@ -350,6 +349,7 @@ set(LIB_SRC
   llarp/dht/publish_intro.cpp
   llarp/handlers/tun.cpp
   llarp/link/encoder.cpp
+  llarp/link/server.cpp
   llarp/routing/dht_message.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp

@@ -13,6 +13,11 @@ namespace llarp
   {
     virtual ~ILinkSession(){};
 
+    /// called every event loop tick
+    virtual void
+    Pump() = 0;
+
+    /// called every timer tick
     virtual void
     Tick(llarp_time_t now) = 0;
 
