@@ -74,6 +74,42 @@ namespace llarp
         _addr.sin6_family = AF_INET6;
     }
 
+    Addr(const sockaddr_in& other)
+    {
+      llarp::Zero(&_addr, sizeof(sockaddr_in6));
+      _addr.sin6_family = AF_INET;
+      uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
+      uint16_t* port    = &_addr.sin6_port;
+      // SIIT
+      memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr,
+             sizeof(in_addr));
+      addrptr[11]       = 0xff;
+      addrptr[10]       = 0xff;
+      *port             = ((sockaddr_in*)(&other))->sin_port;
+      _addr4.sin_family = AF_INET;
+      _addr4.sin_port   = *port;
+      memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
+    }
+
+    Addr(const sockaddr_in6& other)
+    {
+      memcpy(addr6(), other.sin6_addr.s6_addr, 16);
+      _addr.sin6_port = htons(other.sin6_port);
+      auto ptr        = &_addr.sin6_addr.s6_addr[0];
+      // TODO: detect SIIT better
+      if(ptr[11] == 0xff && ptr[10] == 0xff && ptr[9] == 0 && ptr[8] == 0
+         && ptr[7] == 0 && ptr[6] == 0 && ptr[5] == 0 && ptr[4] == 0
+         && ptr[3] == 0 && ptr[2] == 0 && ptr[1] == 0 && ptr[0] == 0)
+      {
+        _addr4.sin_family = AF_INET;
+        _addr4.sin_port   = htons(other.sin6_port);
+        _addr.sin6_family = AF_INET;
+        memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
+      }
+      else
+        _addr.sin6_family = AF_INET6;
+    }
+
     Addr(const sockaddr& other)
     {
       llarp::Zero(&_addr, sizeof(sockaddr_in6));
@@ -201,6 +237,38 @@ namespace llarp
             && port() == other.port();
     }
 
+    Addr&
+    operator=(const sockaddr& other)
+    {
+      llarp::Zero(&_addr, sizeof(sockaddr_in6));
+      _addr.sin6_family = other.sa_family;
+      uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
+      uint16_t* port    = &_addr.sin6_port;
+      switch(other.sa_family)
+      {
+        case AF_INET:
+          // SIIT
+          memcpy(12 + addrptr, &((const sockaddr_in*)(&other))->sin_addr,
+                 sizeof(in_addr));
+          addrptr[11]       = 0xff;
+          addrptr[10]       = 0xff;
+          *port             = ((sockaddr_in*)(&other))->sin_port;
+          _addr4.sin_family = AF_INET;
+          _addr4.sin_port   = *port;
+          memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
+          break;
+        case AF_INET6:
+          memcpy(addrptr, &((const sockaddr_in6*)(&other))->sin6_addr.s6_addr,
+                 16);
+          *port = ((sockaddr_in6*)(&other))->sin6_port;
+          break;
+        // TODO : sockaddr_ll
+        default:
+          break;
+      }
+      return *this;
+    }
+
     bool
     sameAddr(const Addr& other) const
     {
@@ -245,8 +313,8 @@ namespace llarp
     };
   };
 
-  Addr
-  AllInterfaces(int af);
+  bool
+  AllInterfaces(int af, Addr& addr);
 
   /// get first network interface with public address
   bool

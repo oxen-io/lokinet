@@ -52,7 +52,8 @@ namespace llarp
       m_udp.tick     = &ILinkLayer::udp_tick;
       if(ifname == "*")
       {
-        m_ourAddr = AllInterfaces(af);
+        if(!AllInterfaces(af, m_ourAddr))
+          return false;
       }
       else if(!GetIFAddr(ifname, m_ourAddr, af))
         return false;
@@ -187,8 +188,8 @@ namespace llarp
       return result;
     }
 
-    bool
-    GetOurAddressInfo(llarp::AddressInfo& addr) const;
+    virtual bool
+    GetOurAddressInfo(llarp::AddressInfo& addr) const = 0;
 
    protected:
     llarp_router* m_router;

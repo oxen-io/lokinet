@@ -815,4 +815,44 @@ namespace llarp
       freeifaddrs(ifa);
     return found;
   }
+
+  bool
+  GetIFAddr(const std::string& ifname, Addr& addr, int af)
+  {
+    sockaddr_storage s;
+    sockaddr* sptr = (sockaddr*)&s;
+    if(!llarp_getifaddr(ifname.c_str(), af, sptr))
+      return false;
+    addr = *sptr;
+    return true;
+  }
+
+  bool
+  AllInterfaces(int af, Addr& result)
+  {
+    if(af == AF_INET)
+    {
+      sockaddr_in addr;
+      addr.sin_family      = AF_INET;
+      addr.sin_addr.s_addr = htonl(INADDR_ANY);
+      addr.sin_port        = htons(0);
+      result               = addr;
+      return true;
+    }
+    else if(af == AF_INET6)
+    {
+      sockaddr_in6 addr6;
+      addr6.sin6_family = AF_INET6;
+      addr6.sin6_port   = htons(0);
+      addr6.sin6_addr   = IN6ADDR_ANY_INIT;
+      result            = addr6;
+      return true;
+    }
+    else
+    {
+      // TODO: implement sockaddr_ll
+    }
+    return false;
+  }
+
 }  // namespace llarp
