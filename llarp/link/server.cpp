@@ -185,7 +185,13 @@ namespace llarp
   const byte_t*
   ILinkLayer::TransportPubKey() const
   {
-    return llarp::seckey_topublic(m_SecretKey);
+    return llarp::seckey_topublic(TransportSecretKey());
+  }
+
+  const byte_t*
+  ILinkLayer::TransportSecretKey() const
+  {
+    return m_SecretKey;
   }
 
   bool

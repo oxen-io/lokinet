@@ -2,7 +2,7 @@
 #include <llarp/proto.h>
 #include <llarp/iwp.hpp>
 #include <llarp/link_message.hpp>
-#include <llarp/link/curvecp.hpp>
+#include <llarp/link/utp.hpp>
 
 #include "buffer.hpp"
 #include "encode.hpp"
@@ -725,7 +725,7 @@ llarp_router::InitOutboundLink()
   if(outboundLink)
     return true;
 
-  auto link = llarp::curvecp::NewServer(this);
+  auto link = llarp::utp::NewServer(this);
 
   if(!link->EnsureKeys(transport_keyfile.string().c_str()))
   {
@@ -916,7 +916,7 @@ namespace llarp
     {
       if(!StrEq(key, "*"))
       {
-        auto server = llarp::curvecp::NewServer(self);
+        auto server = llarp::utp::NewServer(self);
         if(!server->EnsureKeys(self->transport_keyfile.string().c_str()))
         {
           llarp::LogError("failed to ensure keyfile ", self->transport_keyfile);
