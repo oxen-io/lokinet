@@ -100,10 +100,24 @@ llarp_router_try_connect(struct llarp_router *router,
   auto link = router->outboundLink.get();
   auto itr  = router->pendingEstablishJobs.insert(std::make_pair(
       remote.pubkey, new TryConnectJob(remote, link, numretries, router)));
-  llarp::OutboundLinkEstablishJob *job = itr.first->second;
+  llarp::OutboundLinkEstablishJob *job = itr.first->second.get();
   // try establishing async
   llarp_logic_queue_job(router->logic, {job, on_try_connecting});
   return true;
+}
+
+void
+llarp_router::HandleLinkSessionEstablished(llarp::RouterID k)
+{
+  auto itr = pendingEstablishJobs.find(k);
+  if(itr != pendingEstablishJobs.end())
+  {
+    itr->second->Success();
+  }
+  else
+  {
+    FlushOutboundFor(k);
+  }
 }
 
 llarp_router::llarp_router()

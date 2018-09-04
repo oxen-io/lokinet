@@ -32,8 +32,7 @@ namespace llarp
 
     struct BaseSession : public ILinkSession
     {
-      utp_socket* sock;
-      llarp_router* router;
+      llarp_router* router = nullptr;
       RouterContact remoteRC;
       Addr remoteAddr;
       SharedSecret sessionKey;
@@ -44,6 +43,8 @@ namespace llarp
       size_t recvBufOffset = 0;
       MessageBuffer recvMsg;
       size_t recvMsgOffset = 0;
+
+      std::function< void(utp_socket*) > handleLinkEstablish;
 
       enum State
       {
@@ -57,9 +58,6 @@ namespace llarp
 
       State state;
 
-      virtual void
-      LinkEstablished() = 0;
-
       void
       EnterState(State st)
       {
@@ -67,26 +65,26 @@ namespace llarp
         lastActive = llarp_time_now_ms();
       }
 
-      BaseSession(llarp_router* r, utp_socket* s);
+      BaseSession();
       virtual ~BaseSession();
 
       void
-      Pump()
+      PumpWrite(utp_socket* sock)
       {
         // TODO: use utp_writev
         while(sendq.size())
         {
           auto& front = sendq.front();
-          write_ll(front.data(), front.size());
+          write_ll(sock, front.data(), front.size());
           sendq.pop();
         }
       }
 
       void
-      write_ll(void* buf, size_t sz)
+      write_ll(utp_socket* s, void* buf, size_t sz)
       {
         llarp::LogDebug("utp_write ", sz, " bytes to ", remoteAddr);
-        ssize_t wrote = utp_write(sock, buf, sz);
+        ssize_t wrote = utp_write(s, buf, sz);
         if(wrote < 0)
         {
           llarp::LogWarn("utp_write returned ", wrote);
@@ -166,7 +164,10 @@ namespace llarp
       SendMessageBuffer(llarp_buffer_t buf)
       {
         if(state != eSessionReady)
+        {
+          llarp::LogError("state is ", state);
           return false;
+        }
         size_t sz = buf.sz;
         while(sz)
         {
@@ -180,17 +181,19 @@ namespace llarp
         return true;
       }
 
-      void
-      DoKeyExchange(llarp_transport_dh_func dh, const KeyExchangeNonce& n,
-                    const PubKey& other, const SecretKey& secret)
+      bool
+      DoKeyExchange(utp_socket* sock, llarp_transport_dh_func dh,
+                    const KeyExchangeNonce& n, const PubKey& other,
+                    const SecretKey& secret)
       {
         if(!dh(sessionKey, other, secret, n))
         {
           llarp::LogError("key exchange with ", other, " failed");
-          SendClose();
-          return;
+          Close(sock);
+          return false;
         }
         EnterState(eSessionReady);
+        return true;
       }
 
       void
@@ -205,19 +208,32 @@ namespace llarp
       }
 
       void
+      LinkEstablished(utp_socket* s)
+      {
+        if(handleLinkEstablish)
+          handleLinkEstablish(s);
+      }
+
+      void
       SendClose()
+      {
+      }
+
+      void
+      Close(utp_socket* sock)
       {
         if(state != eClose)
         {
-          utp_set_userdata(sock, nullptr);
+          utp_shutdown(sock, SHUT_RDWR);
           utp_close(sock);
+          utp_set_userdata(sock, nullptr);
         }
         EnterState(eClose);
         sock = nullptr;
       }
 
       bool
-      IsEstablished() const
+      IsEstablished() const override
       {
         return state == eSessionReady;
       }
@@ -247,54 +263,69 @@ namespace llarp
       }
 
       void
-      RecvHandshake(const void* buf, size_t sz, ILinkLayer* parent)
+      RecvHandshake(const void* buf, size_t sz, ILinkLayer* parent,
+                    utp_socket* sock)
       {
-        if((recvBuf.size() - recvBufOffset) < sz)
+        if(parent->HasSessionVia(remoteAddr))
         {
-          llarp::LogInfo("handshake too big");
-          SendClose();
+          Close(sock);
           return;
         }
-        memcpy(recvBuf.data() + recvBufOffset, buf, sz);
-        recvBufOffset += sz;
 
-        if(recvBufOffset > 8)
+        llarp::LogDebug("recv handshake ", sz, " from ", remoteAddr);
+        if((recvBuf.size() - recvBufOffset) < sz)
         {
-          // process handshake header
-          uint8_t* ptr     = recvBuf.data();
-          uint32_t version = bufbe32toh(ptr);
-          if(version != LLARP_PROTO_VERSION)
-          {
-            llarp::LogWarn("protocol version missmatch ", version,
-                           " != ", LLARP_PROTO_VERSION);
-            return;
-          }
-          ptr += sizeof(uint32_t);
-          uint32_t limsz = bufbe32toh(ptr);
-          ptr += sizeof(uint32_t);
-          if(((sizeof(uint32_t) * 2) + limsz) > sz)
-          {
-            // not enough data
-            // TODO: don't bail here, continue reading
-            SendClose();
-          }
-          LinkIntroMessage msg(this);
-          auto mbuf = InitBuffer(ptr, limsz);
-          if(!msg.BDecode(&mbuf))
-          {
-            llarp::LogError("malfromed LIM from ", remoteAddr);
-            return;
-          }
-          if(!msg.HandleMessage(router))
-          {
-            llarp::LogError("failed to handle LIM from ", remoteAddr);
-            SendClose();
-            return;
-          }
-          remoteRC = msg.rc;
-          DoKeyExchange(router->crypto.dh_server, msg.N, msg.rc.enckey,
-                        parent->TransportSecretKey());
+          llarp::LogDebug("handshake too big");
+          Close(sock);
+          return;
         }
+        if(sz <= 8)
+        {
+          llarp::LogDebug("handshake too small");
+          Close(sock);
+          return;
+        }
+        memcpy(recvBuf.data(), buf, sz);
+
+        // process handshake header
+        uint8_t* ptr     = recvBuf.data();
+        uint32_t version = bufbe32toh(ptr);
+        if(version != LLARP_PROTO_VERSION)
+        {
+          llarp::LogWarn("protocol version missmatch ", version,
+                         " != ", LLARP_PROTO_VERSION);
+          return;
+        }
+        ptr += sizeof(uint32_t);
+        uint32_t limsz = bufbe32toh(ptr);
+        ptr += sizeof(uint32_t);
+        if(((sizeof(uint32_t) * 2) + limsz) > sz)
+        {
+          // not enough data
+          // TODO: don't bail here, continue reading
+          Close(sock);
+          return;
+        }
+        LinkIntroMessage msg(this);
+        auto mbuf = InitBuffer(ptr, limsz);
+        if(!msg.BDecode(&mbuf))
+        {
+          llarp::LogError("malfromed LIM from ", remoteAddr);
+          return;
+        }
+        if(!msg.HandleMessage(router))
+        {
+          llarp::LogError("failed to handle LIM from ", remoteAddr);
+          Close(sock);
+          return;
+        }
+        remoteRC = msg.rc;
+        if(!DoKeyExchange(sock, router->crypto.dh_server, msg.N, msg.rc.enckey,
+                          parent->TransportSecretKey()))
+          return;
+        llarp::LogInfo("we got a new session from ", remoteRC.pubkey);
+        parent->MapAddr(remoteAddr, remoteRC.pubkey);
+        router->HandleLinkSessionEstablished(remoteRC.pubkey);
       }
 
       bool
@@ -319,7 +350,7 @@ namespace llarp
 
       void
       MarkEstablished();
-    };
+    };  // namespace utp
 
     struct LinkLayer : public ILinkLayer
     {
@@ -332,13 +363,13 @@ namespace llarp
             static_cast< BaseSession* >(utp_get_userdata(arg->socket));
         if(self)
         {
-          if(self->IsEstablished())
+          if(self->state == BaseSession::eSessionReady)
             self->Recv(arg->buf, arg->len);
           else
           {
             LinkLayer* parent = static_cast< LinkLayer* >(
                 utp_context_get_userdata(arg->context));
-            self->RecvHandshake(arg->buf, arg->len, parent);
+            self->RecvHandshake(arg->buf, arg->len, parent, arg->socket);
           }
           utp_read_drained(arg->socket);
         }
@@ -363,7 +394,7 @@ namespace llarp
       {
         BaseSession* session =
             static_cast< BaseSession* >(utp_get_userdata(arg->socket));
-        session->LinkEstablished();
+        session->LinkEstablished(arg->socket);
         return 0;
       }
 
@@ -372,12 +403,16 @@ namespace llarp
 
       LinkLayer(llarp_router* r) : ILinkLayer(r)
       {
+        m_router = r;
         _utp_ctx = utp_init(2);
         utp_context_set_userdata(_utp_ctx, this);
         utp_set_callback(_utp_ctx, UTP_SENDTO, &LinkLayer::SendTo);
         utp_set_callback(_utp_ctx, UTP_ON_ACCEPT, &LinkLayer::OnAccept);
         utp_set_callback(_utp_ctx, UTP_ON_CONNECT, &LinkLayer::OnConnect);
         utp_set_callback(_utp_ctx, UTP_ON_READ, &LinkLayer::OnRead);
+        utp_context_set_option(_utp_ctx, UTP_LOG_NORMAL, 1);
+        utp_context_set_option(_utp_ctx, UTP_LOG_MTU, 1);
+        utp_context_set_option(_utp_ctx, UTP_LOG_DEBUG, 1);
       }
 
       ~LinkLayer()
@@ -400,9 +435,8 @@ namespace llarp
       void
       Pump()
       {
-        utp_check_timeouts(_utp_ctx);
-        utp_issue_deferred_acks(_utp_ctx);
         ILinkLayer::Pump();
+        utp_issue_deferred_acks(_utp_ctx);
       }
 
       void
@@ -439,47 +473,60 @@ namespace llarp
     std::unique_ptr< ILinkLayer >
     NewServer(llarp_router* r)
     {
-      return std::unique_ptr< ILinkLayer >(new LinkLayer(r));
+      return std::unique_ptr< LinkLayer >(new LinkLayer(r));
     }
 
     struct OutboundSession : public BaseSession
     {
+      utp_socket* sock;
       PubKey remoteTransportPubKey;
-
       OutboundSession(llarp_router* r, utp_socket* s, const RouterContact& rc,
                       const AddressInfo& addr)
-          : BaseSession(r, s)
+          : BaseSession()
       {
+        sock   = s;
+        router = r;
+        utp_set_userdata(s, this);
         remoteRC              = rc;
         remoteAddr            = addr;
         remoteTransportPubKey = addr.pubkey;
+        handleLinkEstablish   = [=](utp_socket* usock) {
+          OutboundEstablish(r, usock);
+        };
       }
 
       void
-      LinkEstablished()
+      OutboundEstablish(llarp_router* r, utp_socket* usock)
       {
+        sock = usock;
         llarp::LogDebug("link established with ", remoteAddr);
         EnterState(eLinkEstablished);
         KeyExchangeNonce nonce;
         nonce.Randomize();
-        SendHandshake(nonce);
+        SendHandshake(nonce, r, usock);
         EnterState(eCryptoHandshake);
-        DoKeyExchange(router->crypto.dh_client, nonce, remoteTransportPubKey,
-                      router->encryption);
+        if(DoKeyExchange(sock, r->crypto.dh_client, nonce,
+                         remoteTransportPubKey, r->encryption))
+        {
+          LinkLayer* parent = static_cast< LinkLayer* >(
+              utp_context_get_userdata(utp_get_context(usock)));
+          parent->MapAddr(remoteAddr, remoteRC.pubkey);
+          r->HandleLinkSessionEstablished(remoteRC.pubkey);
+        }
       }
 
       // send our RC to the remote
       void
-      SendHandshake(const KeyExchangeNonce& n)
+      SendHandshake(const KeyExchangeNonce& n, llarp_router* r, utp_socket* s)
       {
-        byte_t tmp[MAX_RC_SIZE + 128] = {0};
-        auto buf                      = StackBuffer< decltype(tmp) >(tmp);
+        auto buf = InitBuffer(recvBuf.data(), recvBuf.size());
         // fastforward buffer for handshake to fit before
         buf.cur += sizeof(uint32_t) * 2;
 
-        LinkIntroMessage msg(this);
-        msg.rc = router->rc;
-        msg.N  = n;
+        LinkIntroMessage msg;
+        msg.rc = r->rc;
+
+        msg.N = n;
         if(!msg.BEncode(&buf))
           return;
 
@@ -490,7 +537,8 @@ namespace llarp
         llarp_buffer_put_uint32(&buf, LLARP_PROTO_VERSION);
         llarp_buffer_put_uint32(&buf, sz);
         // send it
-        write_ll(buf.base, sz);
+        write_ll(s, recvBuf.data(), sz);
+        sock = s;
       }
 
       void
@@ -503,29 +551,28 @@ namespace llarp
 
     struct InboundSession : public BaseSession
     {
+      utp_socket* sock;
       InboundSession(llarp_router* r, utp_socket* s, const Addr& addr)
-          : BaseSession(r, s)
+          : BaseSession()
       {
-        remoteAddr = addr;
+        sock   = s;
+        router = r;
+        utp_set_userdata(sock, this);
+        remoteAddr          = addr;
+        handleLinkEstablish = [=](utp_socket* usock) {
+          EnterState(eLinkEstablished);
+          sock = usock;
+        };
       }
 
       void
       Start()
       {
       }
-
-      void
-      LinkEstablished()
-      {
-        EnterState(eLinkEstablished);
-      }
     };
 
-    BaseSession::BaseSession(llarp_router* r, utp_socket* s)
+    BaseSession::BaseSession()
     {
-      router = r;
-      sock   = s;
-      utp_set_userdata(sock, this);
       lastActive = llarp_time_now_ms();
     }
 
@@ -537,8 +584,11 @@ namespace llarp
     LinkLayer::NewOutboundSession(const RouterContact& rc,
                                   const AddressInfo& addr)
     {
-      return new OutboundSession(m_router, utp_create_socket(_utp_ctx), rc,
-                                 addr);
+      auto router = m_router;
+      if(router)
+        return new OutboundSession(router, utp_create_socket(_utp_ctx), rc,
+                                   addr);
+      return nullptr;
     }
 
     ILinkSession*
@@ -567,7 +617,7 @@ namespace llarp
       InboundSession* session =
           new InboundSession(self->m_router, arg->socket, remote);
       self->PutSession(remote, session);
-      session->LinkEstablished();
+      session->LinkEstablished(arg->socket);
       return 0;
     }
 

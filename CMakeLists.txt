@@ -47,6 +47,8 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
+add_cxxflags("-fno-rtti -fno-exceptions -fpermissive")
+
 if (NOT MSVC)
 add_cflags("-march=native")
 add_cxxflags("-march=native")
@@ -144,7 +146,7 @@ else()
   )
 endif()
 
-set(LIBS ${SODIUM_LIB} ${THREAD_LIB})
+set(LIBS ${SODIUM_LIB} ${THREAD_LIB} jemalloc)
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})

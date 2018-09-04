@@ -276,12 +276,14 @@ namespace llarp
         return false;
       f.seekg(0, std::ios::end);
       sz = f.tellg();
-      f.seekg(0, std::ios::end);
+      f.seekg(0, std::ios::beg);
       ptr = new byte_t[sz];
       f.read((char*)ptr, sz);
     }
     llarp_buffer_t buf = InitBuffer(ptr, sz);
     auto result        = t.BDecode(&buf);
+    if(!result)
+      DumpBuffer(buf);
     delete[] ptr;
     return result;
   }

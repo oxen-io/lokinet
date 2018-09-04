@@ -8,18 +8,18 @@ namespace llarp
 {
   struct LinkIntroMessage;
   struct ILinkMessage;
-
+  struct ILinkLayer;
   struct ILinkSession
   {
     virtual ~ILinkSession(){};
 
     /// called every event loop tick
     virtual void
-    Pump() = 0;
+    Pump(){};
 
     /// called every timer tick
     virtual void
-    Tick(llarp_time_t now) = 0;
+    Tick(llarp_time_t now){};
 
     /// send a message buffer to the remote endpoint
     virtual bool
@@ -47,7 +47,10 @@ namespace llarp
 
     /// return true if this session has timed out
     virtual bool
-    TimedOut(llarp_time_t now) const = 0;
+    TimedOut(llarp_time_t now) const
+    {
+      return false;
+    };
 
     /// get remote public identity key
     virtual const PubKey&

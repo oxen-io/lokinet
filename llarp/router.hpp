@@ -95,7 +95,8 @@ struct llarp_router
       validRouters;
 
   // pending establishing session with routers
-  std::unordered_map< llarp::RouterID, llarp::OutboundLinkEstablishJob *,
+  std::unordered_map< llarp::RouterID,
+                      std::unique_ptr< llarp::OutboundLinkEstablishJob >,
                       llarp::RouterID::Hash >
       pendingEstablishJobs;
 
@@ -105,6 +106,8 @@ struct llarp_router
 
   llarp_router();
   virtual ~llarp_router();
+
+  void HandleLinkSessionEstablished(llarp::PubKey);
 
   bool
   HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);

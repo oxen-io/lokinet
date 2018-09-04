@@ -17,13 +17,14 @@ namespace llarp
 
   Encrypted::Encrypted(const byte_t* buf, size_t sz) : _sz(sz)
   {
-    if(sz > MAX_SIZE)
-      throw std::logic_error("encrypted frame too big");
-    if(buf)
-      memcpy(data(), buf, sz);
-    else
-      llarp::Zero(data(), sz);
-    UpdateBuffer();
+    if(sz <= MAX_SIZE)
+    {
+      if(buf)
+        memcpy(data(), buf, sz);
+      else
+        llarp::Zero(data(), sz);
+      UpdateBuffer();
+    }
   }
 
   Encrypted::~Encrypted()

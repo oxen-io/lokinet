@@ -8,6 +8,10 @@ namespace llarp
 
   struct LinkIntroMessage : public ILinkMessage
   {
+    LinkIntroMessage() : ILinkMessage()
+    {
+    }
+
     LinkIntroMessage(ILinkSession* s) : ILinkMessage(s)
     {
     }

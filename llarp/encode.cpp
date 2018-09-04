@@ -12,7 +12,7 @@ namespace llarp
       return input - 'A' + 10;
     if(input >= 'a' && input <= 'f')
       return input - 'a' + 10;
-    throw std::invalid_argument("Invalid input string");
+    return 0;
   }
 
   void

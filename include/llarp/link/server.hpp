@@ -95,6 +95,13 @@ namespace llarp
     bool
     EnsureKeys(const char* fpath);
 
+    void
+    MapAddr(const Addr& addr, const PubKey& pk)
+    {
+      util::Lock l(m_LinksMutex);
+      m_Links.insert(std::make_pair(pk, addr));
+    }
+
    private:
     static void
     on_timer_tick(void* user, uint64_t orig, uint64_t left)
@@ -120,13 +127,6 @@ namespace llarp
       util::Lock l(m_SessionsMutex);
       m_Sessions.insert(
           std::make_pair(addr, std::unique_ptr< ILinkSession >(s)));
-    }
-
-    void
-    MapAddr(const Addr& addr, const PubKey& pk)
-    {
-      util::Lock l(m_LinksMutex);
-      m_Links.insert(std::make_pair(pk, addr));
     }
 
     llarp_router* m_router;

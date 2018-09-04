@@ -39,6 +39,7 @@ namespace llarp
     }
     else if(!GetIFAddr(ifname, m_ourAddr, af))
       return false;
+    m_ourAddr.port(port);
     return llarp_ev_add_udp(loop, &m_udp, m_ourAddr) != -1;
   }
 
@@ -210,7 +211,10 @@ namespace llarp
     }
     // load keys
     if(!BDecodeReadFile(f, m_SecretKey))
+    {
+      llarp::LogError("Failed to load keyfile ", f);
       return false;
+    }
     return true;
   }
 

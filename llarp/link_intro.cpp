@@ -13,6 +13,15 @@ namespace llarp
   bool
   LinkIntroMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
   {
+    if(llarp_buffer_eq(key, "a"))
+    {
+      llarp_buffer_t strbuf;
+      if(!bencode_read_string(buf, &strbuf))
+        return false;
+      if(strbuf.sz != 1)
+        return false;
+      return *strbuf.cur == 'i';
+    }
     if(llarp_buffer_eq(key, "r"))
     {
       return rc.BDecode(buf);

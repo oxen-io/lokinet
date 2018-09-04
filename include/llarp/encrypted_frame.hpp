@@ -33,10 +33,11 @@ namespace llarp
     EncryptedFrame&
     operator=(const EncryptedFrame& other)
     {
-      if(other._sz > MAX_SIZE)
-        throw std::logic_error("encrypted frame too big");
-      _sz = other._sz;
-      memcpy(_data, other._data, _sz);
+      if(other._sz <= MAX_SIZE)
+      {
+        _sz = other._sz;
+        memcpy(_data, other._data, _sz);
+      }
       return *this;
     }
 

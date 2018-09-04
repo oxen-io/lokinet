@@ -40,6 +40,16 @@ namespace llarp
       memcpy(&_addr4, &other._addr4, sizeof(sockaddr_in));
     }
 
+    void
+    port(uint16_t port)
+    {
+      if(af() == AF_INET)
+      {
+        _addr4.sin_port = htons(port);
+      }
+      _addr.sin6_port = htons(port);
+    }
+
     in6_addr*
     addr6()
     {
