@@ -42,19 +42,19 @@ namespace llarp
               uint16_t port);
 
     virtual ILinkSession*
-    NewInboundSession(const Addr& from) const = 0;
+    NewInboundSession(const Addr& from) = 0;
 
     virtual ILinkSession*
-    NewOutboundSession(const RouterContact& rc) const = 0;
+    NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
 
-    void
+    virtual void
     Pump();
 
-    void
-    RecvFrom(const Addr& from, const void* buf, size_t sz);
+    virtual void
+    RecvFrom(const Addr& from, const void* buf, size_t sz) = 0;
 
     bool
-    PickAddress(const RouterContact& rc, llarp::Addr& picked) const;
+    PickAddress(const RouterContact& rc, AddressInfo& picked) const;
 
     void
     TryEstablishTo(const RouterContact& rc);
@@ -78,16 +78,19 @@ namespace llarp
     SendTo(const PubKey& remote, llarp_buffer_t buf);
 
     bool
-    GetOurAddressInfo(llarp::AddressInfo& addr) const;
+    GetOurAddressInfo(AddressInfo& addr) const;
 
     virtual uint16_t
     Rank() const = 0;
 
     virtual bool
-    KeyGen(llarp::SecretKey&) = 0;
+    KeyGen(SecretKey&) = 0;
 
     const byte_t*
     TransportPubKey() const;
+
+    const byte_t*
+    TransportSecretKey() const;
 
     bool
     EnsureKeys(const char* fpath);
@@ -111,6 +114,21 @@ namespace llarp
     uint32_t tick_id;
 
    protected:
+    void
+    PutSession(const Addr& addr, ILinkSession* s)
+    {
+      util::Lock l(m_SessionsMutex);
+      m_Sessions.insert(
+          std::make_pair(addr, std::unique_ptr< ILinkSession >(s)));
+    }
+
+    void
+    MapAddr(const Addr& addr, const PubKey& pk)
+    {
+      util::Lock l(m_LinksMutex);
+      m_Links.insert(std::make_pair(pk, addr));
+    }
+
     llarp_router* m_router;
     llarp_logic* m_Logic = nullptr;
     Addr m_ourAddr;

@@ -11,8 +11,8 @@
 
 namespace llarp
 {
-  /// aligned buffer, aligns to the nears 8 bytes
-  template < size_t sz, bool randomize = false >
+  /// aligned buffer, aligns to the nears Long_t
+  template < size_t sz, bool randomize = false, typename Long_t = uint64_t >
   struct AlignedBuffer
   {
     AlignedBuffer()
@@ -84,7 +84,7 @@ namespace llarp
     operator^(const AlignedBuffer& other) const
     {
       AlignedBuffer< sz > ret;
-      for(size_t idx = 0; idx < sz / 8; ++idx)
+      for(size_t idx = 0; idx < sz / sizeof(Long_t); ++idx)
         ret.l[idx] = l[idx] ^ other.l[idx];
       return ret;
     }
@@ -92,7 +92,7 @@ namespace llarp
     AlignedBuffer&
     operator^=(const AlignedBuffer& other)
     {
-      for(size_t idx = 0; idx < sz / 8; ++idx)
+      for(size_t idx = 0; idx < sz / sizeof(Long_t); ++idx)
         l[idx] ^= other.l[idx];
       return *this;
     }
@@ -146,13 +146,13 @@ namespace llarp
       return &b[0];
     }
 
-    uint64_t*
+    Long_t*
     data_l()
     {
       return &l[0];
     }
 
-    const uint64_t*
+    const Long_t*
     data_l() const
     {
       return &l[0];
@@ -194,7 +194,7 @@ namespace llarp
     struct Hash
     {
       size_t
-      operator()(const AlignedBuffer< sz >& buf) const
+      operator()(const AlignedBuffer& buf) const
       {
         return *buf.data_l();
       }
@@ -203,7 +203,7 @@ namespace llarp
    protected:
     union {
       byte_t b[sz];
-      uint64_t l[(sz / 8) + (sz % 8)];
+      Long_t l[(sz / sizeof(Long_t)) + (sz % sizeof(Long_t))];
     };
   };
 

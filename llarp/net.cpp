@@ -14,19 +14,17 @@
 bool
 operator==(const sockaddr& a, const sockaddr& b)
 {
-  socklen_t sz = sizeof(a.sa_data);
+  if(a.sa_family != b.sa_family)
+    return false;
   switch(a.sa_family)
   {
     case AF_INET:
-      sz = sizeof(sockaddr_in);
-      break;
+      return *((const sockaddr_in*)&a) == *((const sockaddr_in*)&b);
     case AF_INET6:
-      sz = sizeof(sockaddr_in6);
-      break;
+      return *((const sockaddr_in6*)&a) == *((const sockaddr_in6*)&b);
     default:
-      break;
+      return false;
   }
-  return a.sa_family == b.sa_family && memcmp(a.sa_data, b.sa_data, sz) == 0;
 }
 
 bool
@@ -39,6 +37,24 @@ bool
 operator<(const in6_addr& a, const in6_addr& b)
 {
   return memcmp(&a, &b, sizeof(in6_addr)) < 0;
+}
+
+bool
+operator==(const in6_addr& a, const in6_addr& b)
+{
+  return memcmp(&a, &b, sizeof(in6_addr)) == 0;
+}
+
+bool
+operator==(const sockaddr_in& a, const sockaddr_in& b)
+{
+  return a.sin_port == b.sin_port && a.sin_addr.s_addr == b.sin_addr.s_addr;
+}
+
+bool
+operator==(const sockaddr_in6& a, const sockaddr_in6& b)
+{
+  return a.sin6_port == b.sin6_port && a.sin6_addr == b.sin6_addr;
 }
 
 #ifdef _WIN32

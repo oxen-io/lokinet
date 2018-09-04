@@ -31,6 +31,12 @@ namespace llarp
     operator=(const AddressInfo& other);
 
     bool
+    operator==(const AddressInfo& other) const;
+
+    bool
+    operator<(const AddressInfo& other) const;
+
+    bool
     BEncode(llarp_buffer_t* buf) const;
 
     bool
@@ -43,6 +49,15 @@ namespace llarp
       inet_ntop(AF_INET6, &a.ip, tmp, sizeof(tmp));
       return out << tmp << "." << std::to_string(a.port);
     }
+
+    struct Hash
+    {
+      size_t
+      operator()(const AddressInfo& addr) const
+      {
+        return *addr.pubkey.data_l();
+      }
+    };
   };
 
 }  // namespace llarp

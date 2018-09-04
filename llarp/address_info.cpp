@@ -5,6 +5,7 @@
 #include <llarp/bencode.h>
 #include <llarp/mem.h>
 #include <llarp/string.h>
+#include <llarp/net.hpp>
 
 namespace llarp
 {
@@ -21,6 +22,20 @@ namespace llarp
     memcpy(ip.s6_addr, other.ip.s6_addr, 16);
     port = other.port;
     return *this;
+  }
+
+  bool
+  AddressInfo::operator==(const AddressInfo &other) const
+  {
+    // we don't care about rank
+    return pubkey == other.pubkey && port == other.port
+        && dialect == other.dialect && ip == other.ip;
+  }
+
+  bool
+  AddressInfo::operator<(const AddressInfo &other) const
+  {
+    return rank < other.rank || ip < other.ip || port < other.port;
   }
 
   bool

@@ -60,22 +60,9 @@ namespace llarp
     }
   }
 
-  void
-  ILinkLayer::RecvFrom(const Addr& from, const void* buf, size_t sz)
-  {
-    util::Lock l(m_SessionsMutex);
-    auto itr = m_Sessions.find(from);
-    if(itr == m_Sessions.end())
-      m_Sessions
-          .insert(std::make_pair(
-              from, std::unique_ptr< ILinkSession >(NewInboundSession(from))))
-          .first->second->Recv(buf, sz);
-    else
-      itr->second->Recv(buf, sz);
-  }
-
   bool
-  ILinkLayer::PickAddress(const RouterContact& rc, llarp::Addr& picked) const
+  ILinkLayer::PickAddress(const RouterContact& rc,
+                          llarp::AddressInfo& picked) const
   {
     std::string OurDialect = Name();
     for(const auto& addr : rc.addrs)
@@ -92,18 +79,18 @@ namespace llarp
   void
   ILinkLayer::TryEstablishTo(const RouterContact& rc)
   {
-    llarp::Addr to;
+    llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return;
     util::Lock l(m_SessionsMutex);
-    auto itr = m_Sessions.find(to);
+    llarp::Addr addr(to);
+    auto itr = m_Sessions.find(addr);
     if(itr == m_Sessions.end())
       m_Sessions
           .insert(std::make_pair(
-              to, std::unique_ptr< ILinkSession >(NewOutboundSession(rc))))
-          .first->second->Handshake();
-    else
-      itr->second->Handshake();
+              addr,
+              std::unique_ptr< ILinkSession >(NewOutboundSession(rc, to))))
+          .first->second->Start();
   }
 
   bool

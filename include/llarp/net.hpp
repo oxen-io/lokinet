@@ -10,10 +10,19 @@ bool
 operator==(const sockaddr& a, const sockaddr& b);
 
 bool
+operator==(const sockaddr_in& a, const sockaddr_in& b);
+
+bool
+operator==(const sockaddr_in6& a, const sockaddr_in6& b);
+
+bool
 operator<(const sockaddr_in6& a, const sockaddr_in6& b);
 
 bool
 operator<(const in6_addr& a, const in6_addr& b);
+
+bool
+operator==(const in6_addr& a, const in6_addr& b);
 
 namespace llarp
 {
@@ -279,6 +288,15 @@ namespace llarp
     operator!=(const Addr& other) const
     {
       return !(*this == other);
+    }
+
+    socklen_t
+    SockLen() const
+    {
+      if(af() == AF_INET)
+        return sizeof(sockaddr_in);
+      else
+        return sizeof(sockaddr_in6);
     }
 
     bool

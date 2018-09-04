@@ -21,10 +21,6 @@ namespace llarp
     virtual void
     Tick(llarp_time_t now) = 0;
 
-    /// handle a link intro message
-    virtual bool
-    HandleLinkIntro(const LinkIntroMessage* msg) = 0;
-
     /// send a message buffer to the remote endpoint
     virtual bool
     SendMessageBuffer(llarp_buffer_t buf) = 0;
@@ -33,9 +29,9 @@ namespace llarp
     virtual bool
     Recv(const void* buf, size_t sz) = 0;
 
-    /// send handshake
+    /// start the connection
     virtual void
-    Handshake() = 0;
+    Start() = 0;
 
     /// send a keepalive to the remote endpoint
     virtual bool

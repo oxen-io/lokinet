@@ -155,7 +155,8 @@ set(TT_ROOT vendor/libtuntap-master)
 add_definitions(-D${CMAKE_SYSTEM_NAME})
 
 if (UNIX)
-add_definitions(-DUNIX)
+  add_definitions(-DUNIX)
+  add_definitions(-DPOSIX)
 endif()
 
 if(UNIX)
@@ -305,7 +306,24 @@ set(NTRU_SRC
   crypto/libntrup/src/ntru.cpp
 )
 
-set(LIB_SRC 
+
+set(UTP_SRC
+  libutp/utp_callbacks.cpp
+  libutp/utp_utils.cpp
+  libutp/utp_internal.cpp
+  libutp/utp_api.cpp
+  libutp/utp_packedsockaddr.cpp
+  libutp/utp_hash.cpp
+)
+
+
+if(WIN32)
+  set(UTP_SRC ${UTP_SRC} libutp/libutp_inet_ntop.cpp)
+endif()
+
+
+set(LIB_SRC
+  ${UTP_SRC}
   ${NTRU_SRC}
   llarp/address_info.cpp
   llarp/bencode.cpp
@@ -338,7 +356,6 @@ set(LIB_SRC
   llarp/service.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
-  llarp/curvecp/impl.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
@@ -348,8 +365,10 @@ set(LIB_SRC
   llarp/dht/got_router.cpp
   llarp/dht/publish_intro.cpp
   llarp/handlers/tun.cpp
+  llarp/link/curvecp.cpp
   llarp/link/encoder.cpp
   llarp/link/server.cpp
+  llarp/link/utp.cpp
   llarp/routing/dht_message.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp

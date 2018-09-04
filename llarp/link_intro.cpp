@@ -48,9 +48,14 @@ namespace llarp
     if(!bencode_write_bytestring(buf, "i", 1))
       return false;
 
+    if(!bencode_write_bytestring(buf, "n", 1))
+      return false;
+    if(!N.BEncode(buf))
+      return false;
+
     if(!bencode_write_bytestring(buf, "r", 1))
       return false;
-    if(rc.BEncode(buf))
+    if(!rc.BEncode(buf))
       return false;
 
     if(!bencode_write_version_entry(buf))
@@ -62,6 +67,8 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
+    if(!rc.VerifySignature(&router->crypto))
+      return false;
     router->async_verify_RC(rc, !rc.IsPublicRouter());
     return true;
   }

@@ -8,15 +8,15 @@ namespace llarp
 
   struct LinkIntroMessage : public ILinkMessage
   {
-    LinkIntroMessage(ILinkSession* s) : ILinkMessage(), from(s)
+    LinkIntroMessage(ILinkSession* s) : ILinkMessage(s)
     {
     }
 
     ~LinkIntroMessage();
 
-    ILinkSession* from;
-
     RouterContact rc;
+
+    KeyExchangeNonce N;
 
     bool
     DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
