@@ -23,9 +23,6 @@
 #include "fs.hpp"
 #include "mem.hpp"
 
-/** 2^15 bytes */
-#define MAX_LINK_MSG_SIZE (32768)
-
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
                              llarp::SecretKey &encryption);

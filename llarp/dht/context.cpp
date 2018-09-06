@@ -24,13 +24,13 @@ namespace llarp
     }
 
     void
-    Context::Explore()
+    Context::Explore(size_t N)
     {
       // ask N random peers for new routers
       llarp::LogInfo("Exploring network");
       std::set< Key_t > peers;
 
-      if(nodes->GetManyRandom(peers, 3))
+      if(nodes->GetManyRandom(peers, N))
       {
         for(const auto &peer : peers)
           ExploreNetworkVia(peer);
@@ -626,8 +626,9 @@ namespace llarp
       void
       Start(const TXOwner &peer)
       {
-        FindRouterMessage msg(parent->OurKey(), target, peer.txid);
-        parent->DHTSendTo(peer.node, &msg);
+        parent->DHTSendTo(
+            peer.node,
+            new FindRouterMessage(parent->OurKey(), target, peer.txid));
       }
 
       void
@@ -645,8 +646,9 @@ namespace llarp
         }
         else
         {
-          GotRouterMessage msg({}, whoasked.txid, valuesFound, false);
-          parent->DHTSendTo(whoasked.node, &msg);
+          parent->DHTSendTo(
+              whoasked.node,
+              new GotRouterMessage({}, whoasked.txid, valuesFound, false));
         }
       }
     };

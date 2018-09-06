@@ -50,21 +50,8 @@ namespace llarp
       if(!itr->second->TimedOut(now))
       {
         itr->second->Pump();
-        ++itr;
       }
-      else
-      {
-        {
-          util::Lock lock(m_LinksMutex);
-          auto i = m_Links.find(itr->second->GetPubKey());
-          if(i != m_Links.end())
-          {
-            m_Links.erase(i);
-          }
-        }
-        delete itr->second;
-        itr = m_Sessions.erase(itr);
-      }
+      ++itr;
     }
   }
 
@@ -85,6 +72,17 @@ namespace llarp
   }
 
   void
+  ILinkLayer::RemoveSessionVia(const Addr& addr)
+  {
+    auto itr = m_Sessions.find(addr);
+    if(itr == m_Sessions.end())
+      return;
+
+    delete itr->second;
+    m_Sessions.erase(itr);
+  }
+
+  void
   ILinkLayer::TryEstablishTo(const RouterContact& rc)
   {
     llarp::AddressInfo to;
@@ -93,12 +91,15 @@ namespace llarp
     util::Lock l(m_SessionsMutex);
     llarp::Addr addr(to);
     auto itr = m_Sessions.find(addr);
-    if(itr == m_Sessions.end())
+    if(itr != m_Sessions.end())
     {
-      auto s = NewOutboundSession(rc, to);
-      s->Start();
-      m_Sessions.emplace(addr, s);
+      itr->second->SendClose();
+      delete itr->second;
+      m_Sessions.erase(itr);
     }
+    auto s = NewOutboundSession(rc, to);
+    s->Start();
+    m_Sessions.emplace(addr, s);
   }
 
   bool
@@ -239,8 +240,9 @@ namespace llarp
   }
 
   void
-  ILinkLayer::Tick(uint64_t interval, llarp_time_t now)
+  ILinkLayer::OnTick(uint64_t interval, llarp_time_t now)
   {
+    Tick(now);
     util::Lock l(m_SessionsMutex);
     auto itr = m_Sessions.begin();
     while(itr != m_Sessions.end())

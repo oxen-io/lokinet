@@ -9,6 +9,7 @@
 #include <llarp/messages/link_intro.hpp>
 #include <llarp/messages/relay.hpp>
 #include <llarp/messages/relay_commit.hpp>
+#include <llarp/messages/discard.hpp>
 #include <llarp/messages/path_confirm.hpp>
 
 #endif

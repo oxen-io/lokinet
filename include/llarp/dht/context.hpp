@@ -218,7 +218,7 @@ namespace llarp
 
       /// explore dht for new routers
       void
-      Explore();
+      Explore(size_t N = 3);
 
       llarp_router* router = nullptr;
       // for router contacts

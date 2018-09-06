@@ -47,22 +47,12 @@ struct TryConnectJob
   void
   Success()
   {
-    router->FlushOutboundFor(rc.pubkey, link);
-    router->pendingEstablishJobs.erase(rc.pubkey);
-    // we are gone
   }
 
   void
   AttemptTimedout()
   {
-    --triesLeft;
-    if(!ShouldRetry())
-    {
-      router->pendingEstablishJobs.erase(rc.pubkey);
-      // we are gone after this
-      return;
-    }
-    Attempt();
+    router->pendingEstablishJobs.erase(rc.pubkey);
   }
 
   void
@@ -349,8 +339,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   {
     ctx->establish_job->Success();
   }
-  else  // this was an inbound session
-    router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
+  router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
 }
 
 void
@@ -443,6 +432,7 @@ llarp_router::Tick()
     {
       llarp::LogInfo(
           "We need more than 3 service nodes to build paths but we have ", N);
+      dht->impl.Explore(N);
     }
     hiddenServiceContext.Tick();
   }
@@ -523,6 +513,7 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
                                llarp::ILinkLayer *chosen)
 {
   llarp::LogDebug("Flush outbound for ", remote);
+  pendingEstablishJobs.erase(remote);
   auto itr = outboundMessageQueue.find(remote);
   if(itr == outboundMessageQueue.end())
   {

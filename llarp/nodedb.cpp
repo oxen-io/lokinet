@@ -381,8 +381,9 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
   auto sz = n->entries.size();
-  if(sz == 0)
+  if(sz < 3)
     return false;
+  size_t tries = 5;
   if(N)
   {
     do
@@ -395,13 +396,18 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
           std::advance(itr, idx - 1);
       }
       if(prev.pubkey == itr->second.pubkey)
-        continue;
+      {
+        if(tries--)
+          continue;
+        return false;
+      }
       if(itr->second.addrs.size())
       {
         result = itr->second;
         return true;
       }
-    } while(true);
+    } while(tries--);
+    return false;
   }
   else
   {

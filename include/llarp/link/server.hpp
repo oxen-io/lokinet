@@ -76,6 +76,9 @@ namespace llarp
     bool
     GetOurAddressInfo(AddressInfo& addr) const;
 
+    void
+    RemoveSessionVia(const Addr& addr);
+
     virtual uint16_t
     Rank() const = 0;
 
@@ -98,6 +101,11 @@ namespace llarp
       m_Links.insert(std::make_pair(pk, addr));
     }
 
+    virtual void
+    Tick(llarp_time_t now)
+    {
+    }
+
    private:
     static void
     on_timer_tick(void* user, uint64_t orig, uint64_t left)
@@ -105,11 +113,11 @@ namespace llarp
       // timer cancelled
       if(left)
         return;
-      static_cast< ILinkLayer* >(user)->Tick(orig, llarp_time_now_ms());
+      static_cast< ILinkLayer* >(user)->OnTick(orig, llarp_time_now_ms());
     }
 
     void
-    Tick(uint64_t interval, llarp_time_t now);
+    OnTick(uint64_t interval, llarp_time_t now);
 
     void
     ScheduleTick(uint64_t interval);

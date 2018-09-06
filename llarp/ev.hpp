@@ -13,6 +13,10 @@
 #define MAX_WRITE_QUEUE_SIZE 1024
 #endif
 
+#ifndef EV_READ_BUF_SZ
+#define EV_READ_BUF_SZ (4 * 1024)
+#endif
+
 namespace llarp
 {
   struct ev_io
@@ -135,6 +139,8 @@ namespace llarp
 
 struct llarp_ev_loop
 {
+  byte_t readbuf[EV_READ_BUF_SZ];
+
   virtual bool
   init() = 0;
   virtual int
@@ -150,6 +156,10 @@ struct llarp_ev_loop
   udp_listen(llarp_udp_io* l, const sockaddr* src)
   {
     auto ev = create_udp(l, src);
+    if(ev)
+    {
+      l->fd = ev->fd;
+    }
     return ev && add_ev(ev, false);
   }
 

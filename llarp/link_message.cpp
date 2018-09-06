@@ -63,6 +63,9 @@ namespace llarp
         case 'c':
           handler->msg = std::make_unique< LR_CommitMessage >(handler->from);
           break;
+        case 'x':
+          handler->msg = std::make_unique< DiscardMessage >(handler->from);
+          break;
         default:
           return false;
       }

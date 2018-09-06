@@ -52,6 +52,8 @@ llarp_ev_loop_stop(struct llarp_ev_loop *ev);
 /// UDP handling configuration
 struct llarp_udp_io
 {
+  /// set after added
+  int fd;
   void *user;
   void *impl;
   struct llarp_ev_loop *parent;
