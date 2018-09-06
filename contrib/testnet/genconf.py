@@ -18,6 +18,7 @@ def clientNodeName(id): return 'client-node-%03d' % id
 
 def main():
     ap = AP()
+    ap.add_argument('--valgrind', type=bool, default=False)
     ap.add_argument('--dir', type=str, default='testnet_tmp')
     ap.add_argument('--svc', type=int, default=20,
                     help='number of service nodes')
@@ -31,6 +32,11 @@ def main():
 
     args = ap.parse_args()
 
+    if args.valgrind:
+        exe = 'valgrind {}'.format(args.bin)
+    else:
+        exe = args.bin
+        
     basedir = os.path.abspath(args.dir)
 
     for nodeid in range(args.svc):
@@ -107,7 +113,7 @@ stdout_logfile={}/svc-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = svc-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), args.bin, args.dir, args.svc))
+'''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), exe, args.dir, args.svc))
         f.write('''[program:client-node]
 directory = {}
 command = {}
@@ -118,7 +124,7 @@ stdout_logfile={}/client-node-%(process_num)03d-log.txt
 stdout_logfile_maxbytes=0
 process_name = client-node-%(process_num)03d
 numprocs = {}
-'''.format(os.path.join(args.dir, 'client-node-%(process_num)03d'),args.bin, args.dir, args.clients))
+'''.format(os.path.join(args.dir, 'client-node-%(process_num)03d'), exe, args.dir, args.clients))
         f.write('[supervisord]\ndirectory=.\n')
 
 

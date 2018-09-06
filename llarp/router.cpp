@@ -108,7 +108,7 @@ llarp_router_try_connect(struct llarp_router *router,
 }
 
 void
-llarp_router::HandleLinkSessionEstablished(const llarp::RouterContact &rc)
+llarp_router::HandleLinkSessionEstablished(llarp::RouterContact rc)
 {
   async_verify_RC(rc);
 }
@@ -154,10 +154,8 @@ llarp_router::PersistSessionUntil(const llarp::RouterID &remote,
 
 bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
-                            const llarp::ILinkMessage *m)
+                            const llarp::ILinkMessage *msg)
 {
-  std::unique_ptr< const llarp::ILinkMessage > msg =
-      std::unique_ptr< const llarp::ILinkMessage >(m);
   llarp::ILinkLayer *chosen = nullptr;
 
   if(inboundLinks.size() == 0)
@@ -338,10 +336,13 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   {
     router->validRouters.erase(pk);
   }
-  router->validRouters.insert(std::make_pair(pk, job->rc));
+
+  llarp::RouterContact rc = job->rc;
+
+  router->validRouters.insert(std::make_pair(pk, rc));
 
   // track valid router in dht
-  router->dht->impl.nodes->PutNode(job->rc);
+  router->dht->impl.nodes->PutNode(rc);
 
   // this was an outbound establish job
   if(ctx->establish_job)
@@ -449,8 +450,7 @@ llarp_router::Tick()
 }
 
 void
-llarp_router::SendTo(llarp::RouterID remote,
-                     std::unique_ptr< const llarp::ILinkMessage > &msg,
+llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
                      llarp::ILinkLayer *selected)
 {
   llarp_buffer_t buf =
@@ -465,9 +465,11 @@ llarp_router::SendTo(llarp::RouterID remote,
   // set size of message
   buf.sz  = buf.cur - buf.base;
   buf.cur = buf.base;
+  llarp::LogDebug("send ", buf.sz, " bytes to ", remote);
   if(selected)
   {
-    selected->SendTo(remote, buf);
+    if(!selected->SendTo(remote, buf))
+      llarp::LogWarn("message to ", remote, " was dropped");
     return;
   }
   bool sent = outboundLink->SendTo(remote, buf);

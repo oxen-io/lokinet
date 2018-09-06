@@ -40,7 +40,7 @@ namespace llarp
     Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
               uint16_t port);
 
-    virtual std::unique_ptr< ILinkSession >
+    virtual ILinkSession*
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
 
     virtual void
@@ -118,12 +118,7 @@ namespace llarp
 
    protected:
     void
-    PutSession(const Addr& addr, ILinkSession* s)
-    {
-      util::Lock l(m_SessionsMutex);
-      m_Sessions.insert(
-          std::make_pair(addr, std::unique_ptr< ILinkSession >(s)));
-    }
+    PutSession(const Addr& addr, ILinkSession* s);
 
     llarp_logic* m_Logic = nullptr;
     Addr m_ourAddr;
@@ -132,8 +127,7 @@ namespace llarp
     util::Mutex m_LinksMutex;
     util::Mutex m_SessionsMutex;
     std::unordered_map< PubKey, Addr, PubKey::Hash > m_Links;
-    std::unordered_map< Addr, std::unique_ptr< ILinkSession >, Addr::Hash >
-        m_Sessions;
+    std::unordered_map< Addr, ILinkSession*, Addr::Hash > m_Sessions;
   };
 }  // namespace llarp
 

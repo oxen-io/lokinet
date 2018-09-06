@@ -108,8 +108,7 @@ struct llarp_router
   llarp_router();
   virtual ~llarp_router();
 
-  void
-  HandleLinkSessionEstablished(const llarp::RouterContact &);
+  void HandleLinkSessionEstablished(llarp::RouterContact);
 
   bool
   HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);
@@ -176,8 +175,7 @@ struct llarp_router
 
   /// sendto or drop
   void
-  SendTo(llarp::RouterID remote,
-         std::unique_ptr< const llarp::ILinkMessage > &msg,
+  SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
          llarp::ILinkLayer *chosen);
 
   /// manually flush outbound message queue for just 1 router

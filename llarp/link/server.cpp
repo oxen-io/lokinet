@@ -53,7 +53,18 @@ namespace llarp
         ++itr;
       }
       else
+      {
+        {
+          util::Lock lock(m_LinksMutex);
+          auto i = m_Links.find(itr->second->GetPubKey());
+          if(i != m_Links.end())
+          {
+            m_Links.erase(i);
+          }
+        }
+        delete itr->second;
         itr = m_Sessions.erase(itr);
+      }
     }
   }
 
@@ -83,9 +94,11 @@ namespace llarp
     llarp::Addr addr(to);
     auto itr = m_Sessions.find(addr);
     if(itr == m_Sessions.end())
-      m_Sessions
-          .insert(std::make_pair(addr, std::move(NewOutboundSession(rc, to))))
-          .first->second->Start();
+    {
+      auto s = NewOutboundSession(rc, to);
+      s->Start();
+      m_Sessions.emplace(addr, s);
+    }
   }
 
   bool
@@ -120,6 +133,7 @@ namespace llarp
       if(itr == m_Sessions.end())
         return;
       itr->second->SendClose();
+      delete itr->second;
       m_Sessions.erase(itr);
     }
   }
@@ -155,12 +169,17 @@ namespace llarp
       if(itr == m_Links.end())
         return false;
       addr = itr->second;
+      llarp::LogDebug("found addr for ", remote, ", ", addr);
     }
     {
       util::Lock l(m_SessionsMutex);
       auto itr = m_Sessions.find(addr);
       if(itr == m_Sessions.end())
+      {
+        llarp::LogWarn("no session to ", addr, " for ", remote);
         return false;
+      }
+      llarp::LogDebug("SendMessageBuffer ", buf.sz, "bytes");
       result = itr->second->SendMessageBuffer(buf);
     }
     return result;
@@ -187,6 +206,13 @@ namespace llarp
   ILinkLayer::TransportSecretKey() const
   {
     return m_SecretKey;
+  }
+
+  void
+  ILinkLayer::PutSession(const Addr& addr, ILinkSession* s)
+  {
+    util::Lock l(m_SessionsMutex);
+    m_Sessions.emplace(addr, s);
   }
 
   bool
@@ -225,7 +251,18 @@ namespace llarp
         ++itr;
       }
       else
+      {
+        {
+          util::Lock lock(m_LinksMutex);
+          auto i = m_Links.find(itr->second->GetPubKey());
+          if(i != m_Links.end())
+          {
+            m_Links.erase(i);
+          }
+        }
+        delete itr->second;
         itr = m_Sessions.erase(itr);
+      }
     }
     ScheduleTick(interval);
   }
