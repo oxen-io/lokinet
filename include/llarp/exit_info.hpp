@@ -21,6 +21,18 @@ namespace llarp
     struct in6_addr netmask;
     PubKey pubkey;
 
+    ExitInfo() : IBEncodeMessage()
+    {
+    }
+
+    ExitInfo(const ExitInfo &other) : IBEncodeMessage()
+    {
+      pubkey = other.pubkey;
+      memcpy(address.s6_addr, other.address.s6_addr, 16);
+      memcpy(netmask.s6_addr, other.netmask.s6_addr, 16);
+      version = other.version;
+    }
+
     ~ExitInfo();
 
     bool

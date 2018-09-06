@@ -1,4 +1,5 @@
 #include <llarp/bencode.h>
+#include <llarp/logger.hpp>
 
 bool
 bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
@@ -113,10 +114,14 @@ bencode_read_dict(llarp_buffer_t* buff, struct dict_reader* r)
       return false;
   }
 
-  if(*r->buffer->cur != 'e')  // make sure we're at dictionary end
+  if(*r->buffer->cur != 'e')
+  {
+    llarp::LogWarn("reading dict not ending on 'e'");
+    // make sure we're at dictionary end
     return false;
+  }
   r->buffer->cur++;
-  return r->on_key(r, 0);
+  return r->on_key(r, nullptr);
 }
 
 bool

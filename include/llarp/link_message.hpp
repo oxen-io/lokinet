@@ -55,6 +55,10 @@ namespace llarp
     bool
     MessageDone();
 
+    /// resets internal state
+    void
+    Reset();
+
    private:
     RouterID
     GetCurrentFrom();
@@ -63,7 +67,7 @@ namespace llarp
     bool firstkey;
     llarp_router* router;
     ILinkSession* from = nullptr;
-    ILinkMessage* msg  = nullptr;
+    std::unique_ptr< ILinkMessage > msg;
   };
 }  // namespace llarp
 

@@ -15,7 +15,6 @@ namespace llarp
 {
   struct ILinkLayer
   {
-    ILinkLayer(llarp_router* r);
     virtual ~ILinkLayer();
 
     bool
@@ -41,10 +40,7 @@ namespace llarp
     Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
               uint16_t port);
 
-    virtual ILinkSession*
-    NewInboundSession(const Addr& from) = 0;
-
-    virtual ILinkSession*
+    virtual std::unique_ptr< ILinkSession >
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
 
     virtual void
@@ -129,7 +125,6 @@ namespace llarp
           std::make_pair(addr, std::unique_ptr< ILinkSession >(s)));
     }
 
-    llarp_router* m_router;
     llarp_logic* m_Logic = nullptr;
     Addr m_ourAddr;
     llarp_udp_io m_udp;

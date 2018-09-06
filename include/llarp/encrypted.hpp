@@ -58,7 +58,7 @@ namespace llarp
     void
     Randomize()
     {
-      if(_data && _sz)
+      if(_sz)
         randombytes(_data, _sz);
     }
 

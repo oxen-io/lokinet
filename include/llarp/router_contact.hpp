@@ -14,14 +14,32 @@ namespace llarp
 {
   struct RouterContact : public IBEncodeMessage
   {
+    RouterContact() : IBEncodeMessage()
+    {
+      Clear();
+    }
+
+    RouterContact(const RouterContact &other)
+        : addrs(other.addrs)
+        , enckey(other.enckey)
+        , pubkey(other.pubkey)
+        , exits(other.exits)
+        , signature(other.signature)
+        , nickname(other.nickname)
+        , last_updated(other.last_updated)
+
+    {
+      version = other.version;
+    }
+
     // advertised addresses
-    std::vector< AddressInfo > addrs;
+    std::vector< AddressInfo > addrs = {};
     // public encryption public key
     llarp::PubKey enckey;
     // public signing public key
     llarp::PubKey pubkey;
     // advertised exits
-    std::vector< ExitInfo > exits;
+    std::vector< ExitInfo > exits = {};
     // signature
     llarp::Signature signature;
     /// node nickname, yw kee

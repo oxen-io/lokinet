@@ -3,10 +3,6 @@
 
 namespace llarp
 {
-  ILinkLayer::ILinkLayer(llarp_router* r) : m_router(r)
-  {
-  }
-
   ILinkLayer::~ILinkLayer()
   {
   }
@@ -88,9 +84,7 @@ namespace llarp
     auto itr = m_Sessions.find(addr);
     if(itr == m_Sessions.end())
       m_Sessions
-          .insert(std::make_pair(
-              addr,
-              std::unique_ptr< ILinkSession >(NewOutboundSession(rc, to))))
+          .insert(std::make_pair(addr, std::move(NewOutboundSession(rc, to))))
           .first->second->Start();
   }
 

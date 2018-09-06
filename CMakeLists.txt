@@ -19,7 +19,7 @@ else()
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
 endif()
 
-option(HAVE_CXX17_FILESYSTEM "Enable if your C++ compiler and runtime library implements std::[experimental::]filesystem" OFF)
+option(HAVE_CXX17_FILESYSTEM "Disable if your C++ compiler and runtime library lacks std::[experimental::]filesystem" ON)
 
 if(COMPILER_SUPPORTS_CXX11 AND NOT HAVE_CXX17_FILESYSTEM)
   add_cxxflags("-std=c++11")
@@ -47,7 +47,7 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
-add_cxxflags("-fno-rtti -fno-exceptions -fpermissive")
+add_cxxflags("-fno-exceptions -fpermissive -fno-rtti")
 
 if (NOT MSVC)
 add_cflags("-march=native")
@@ -146,7 +146,14 @@ else()
   )
 endif()
 
-set(LIBS ${SODIUM_LIB} ${THREAD_LIB} jemalloc)
+if(JEMALLOC)
+  set(MALLOC_LIB jemalloc)
+endif()
+  
+set(LIBS ${SODIUM_LIB} ${THREAD_LIB} ${MALLOC_LIB})
+if(HAVE_CXX17_FILESYSTEM)
+  set(LIBS ${LIBS} stdc++fs)
+endif()
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
@@ -368,7 +375,6 @@ set(LIB_SRC
   llarp/dht/publish_intro.cpp
   llarp/handlers/tun.cpp
   llarp/link/curvecp.cpp
-  llarp/link/encoder.cpp
   llarp/link/server.cpp
   llarp/link/utp.cpp
   llarp/routing/dht_message.cpp

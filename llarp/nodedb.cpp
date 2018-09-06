@@ -218,10 +218,10 @@ crypto_threadworker_verifyrc(void *user)
 {
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
-  verify_request->valid =
-      verify_request->rc.VerifySignature(verify_request->nodedb->crypto);
+  llarp::RouterContact rc = verify_request->rc;
+  verify_request->valid   = rc.VerifySignature(verify_request->nodedb->crypto);
   // if it's valid we need to set it
-  if(verify_request->valid && verify_request->rc.IsPublicRouter())
+  if(verify_request->valid && rc.IsPublicRouter())
   {
     llarp::LogDebug("RC is valid, saving to disk");
     llarp_threadpool_queue_job(verify_request->diskworker,

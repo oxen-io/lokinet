@@ -322,8 +322,9 @@ namespace llarp
     {
     }
 
-    Path::Path(const std::vector< RouterContact >& h) : hops(h.size())
+    Path::Path(const std::vector< RouterContact >& h)
     {
+      hops.resize(h.size());
       size_t hsz = h.size();
       for(size_t idx = 0; idx < hsz; ++idx)
       {

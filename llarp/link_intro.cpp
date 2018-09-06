@@ -22,9 +22,20 @@ namespace llarp
         return false;
       return *strbuf.cur == 'i';
     }
+    if(llarp_buffer_eq(key, "n"))
+    {
+      if(N.BDecode(buf))
+        return true;
+      llarp::LogWarn("failed to decode nonce in LIM");
+      return false;
+    }
     if(llarp_buffer_eq(key, "r"))
     {
-      return rc.BDecode(buf);
+      if(rc.BDecode(buf))
+        return true;
+      llarp::LogWarn("failed to decode RC in LIM");
+      llarp::DumpBuffer(*buf);
+      return false;
     }
     else if(llarp_buffer_eq(key, "v"))
     {
@@ -76,9 +87,6 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
-    if(!rc.VerifySignature(&router->crypto))
-      return false;
-    router->async_verify_RC(rc, !rc.IsPublicRouter());
-    return true;
+    return rc.VerifySignature(&router->crypto);
   }
 }  // namespace llarp

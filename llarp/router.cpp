@@ -21,19 +21,20 @@ namespace llarp
   struct async_verify_context
   {
     llarp_router *router;
-    llarp::OutboundLinkEstablishJob *establish_job;
+    TryConnectJob *establish_job;
   };
 
 }  // namespace llarp
 
-struct TryConnectJob : public llarp::OutboundLinkEstablishJob
+struct TryConnectJob
 {
+  llarp::RouterContact rc;
   llarp::ILinkLayer *link;
   llarp_router *router;
   uint16_t triesLeft;
   TryConnectJob(const llarp::RouterContact &remote, llarp::ILinkLayer *l,
                 uint16_t tries, llarp_router *r)
-      : OutboundLinkEstablishJob(remote), link(l), router(r), triesLeft(tries)
+      : rc(remote), link(l), router(r), triesLeft(tries)
   {
   }
 
@@ -80,8 +81,7 @@ struct TryConnectJob : public llarp::OutboundLinkEstablishJob
 static void
 on_try_connecting(void *u)
 {
-  llarp::OutboundLinkEstablishJob *j =
-      static_cast< llarp::OutboundLinkEstablishJob * >(u);
+  TryConnectJob *j = static_cast< TryConnectJob * >(u);
   j->Attempt();
 }
 
@@ -97,27 +97,20 @@ llarp_router_try_connect(struct llarp_router *router,
     return false;
   }
 
-  auto link = router->outboundLink.get();
-  auto itr  = router->pendingEstablishJobs.insert(std::make_pair(
-      remote.pubkey, new TryConnectJob(remote, link, numretries, router)));
-  llarp::OutboundLinkEstablishJob *job = itr.first->second.get();
+  auto link          = router->outboundLink.get();
+  auto itr           = router->pendingEstablishJobs.insert(std::make_pair(
+      remote.pubkey,
+      std::make_unique< TryConnectJob >(remote, link, numretries, router)));
+  TryConnectJob *job = itr.first->second.get();
   // try establishing async
   llarp_logic_queue_job(router->logic, {job, on_try_connecting});
   return true;
 }
 
 void
-llarp_router::HandleLinkSessionEstablished(llarp::RouterID k)
+llarp_router::HandleLinkSessionEstablished(const llarp::RouterContact &rc)
 {
-  auto itr = pendingEstablishJobs.find(k);
-  if(itr != pendingEstablishJobs.end())
-  {
-    itr->second->Success();
-  }
-  else
-  {
-    FlushOutboundFor(k);
-  }
+  async_verify_RC(rc);
 }
 
 llarp_router::llarp_router()
@@ -341,8 +334,11 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
 
   llarp::LogDebug("rc verified and saved to nodedb");
 
-  // refresh valid routers RC value if it's there
-  router->validRouters[pk] = job->rc;
+  if(router->validRouters.count(pk))
+  {
+    router->validRouters.erase(pk);
+  }
+  router->validRouters.insert(std::make_pair(pk, job->rc));
 
   // track valid router in dht
   router->dht->impl.nodes->PutNode(job->rc);
@@ -391,7 +387,7 @@ llarp_router::HandleDHTLookupForTryEstablishTo(
     const std::vector< llarp::RouterContact > &results)
 {
   for(const auto &result : results)
-    async_verify_RC(result, false);
+    async_verify_RC(result);
 }
 
 size_t
@@ -568,18 +564,21 @@ llarp_router::GetRandomConnectedRouter(llarp::RouterContact &result) const
 }
 
 void
-llarp_router::async_verify_RC(const llarp::RouterContact &rc,
-                              bool isExpectingClient,
-                              llarp::OutboundLinkEstablishJob *establish_job)
+llarp_router::async_verify_RC(const llarp::RouterContact &rc)
 {
   llarp_async_verify_rc *job       = new llarp_async_verify_rc();
   llarp::async_verify_context *ctx = new llarp::async_verify_context();
   ctx->router                      = this;
-  ctx->establish_job               = establish_job;
-  job->user                        = ctx;
-  job->rc                          = rc;
-  job->valid                       = false;
-  job->hook                        = nullptr;
+  ctx->establish_job               = nullptr;
+
+  auto itr = pendingEstablishJobs.find(rc.pubkey);
+  if(itr != pendingEstablishJobs.end())
+    ctx->establish_job = itr->second.get();
+
+  job->user  = ctx;
+  job->rc    = rc;
+  job->valid = false;
+  job->hook  = nullptr;
 
   job->nodedb = nodedb;
   job->logic  = logic;
@@ -587,10 +586,10 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc,
   job->cryptoworker = tp;
   job->diskworker   = disk;
 
-  if(isExpectingClient)
-    job->hook = &llarp_router::on_verify_client_rc;
-  else
+  if(rc.IsPublicRouter())
     job->hook = &llarp_router::on_verify_server_rc;
+  else
+    job->hook = &llarp_router::on_verify_client_rc;
   llarp_nodedb_async_verify(job);
 }
 

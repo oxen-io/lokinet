@@ -25,6 +25,21 @@ namespace llarp
     struct in6_addr ip;
     uint16_t port;
 
+    AddressInfo() : IBEncodeMessage()
+    {
+    }
+
+    AddressInfo(const AddressInfo& other)
+        : IBEncodeMessage()
+        , rank(other.rank)
+        , dialect(other.dialect)
+        , pubkey(other.pubkey)
+    {
+      port    = other.port;
+      version = other.version;
+      memcpy(ip.s6_addr, other.ip.s6_addr, 16);
+    }
+
     ~AddressInfo();
 
     AddressInfo&

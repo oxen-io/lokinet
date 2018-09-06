@@ -61,6 +61,8 @@ namespace llarp
         parent = p;
       }
 
+      virtual ~TX(){};
+
       K target;
       Context* parent;
       std::set< Key_t > peersAsked;

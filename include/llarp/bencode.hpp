@@ -240,15 +240,23 @@ namespace llarp
     }
 
     // TODO: check for shadowed values elsewhere
-    uint64_t version = 0;
+    uint64_t version = LLARP_PROTO_VERSION;
 
     static bool
     OnKey(dict_reader* r, llarp_buffer_t* k)
     {
-      if(k)
-        return static_cast< IBEncodeMessage* >(r->user)->DecodeKey(*k,
-                                                                   r->buffer);
-      return true;
+      return static_cast< IBEncodeMessage* >(r->user)->HandleKey(k, r->buffer);
+    }
+
+    bool
+    HandleKey(llarp_buffer_t* k, llarp_buffer_t* val)
+    {
+      if(k == nullptr)
+        return true;
+      if(DecodeKey(*k, val))
+        return true;
+      llarp::LogError("unhandled key '", *k->cur, "'");
+      return false;
     }
 
     template < size_t bufsz, size_t align = 128 >

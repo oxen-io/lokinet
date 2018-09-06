@@ -30,6 +30,8 @@ bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
                              llarp::SecretKey &encryption);
 
+struct TryConnectJob;
+
 struct llarp_router
 {
   bool ready;
@@ -95,8 +97,7 @@ struct llarp_router
       validRouters;
 
   // pending establishing session with routers
-  std::unordered_map< llarp::RouterID,
-                      std::unique_ptr< llarp::OutboundLinkEstablishJob >,
+  std::unordered_map< llarp::RouterID, std::unique_ptr< TryConnectJob >,
                       llarp::RouterID::Hash >
       pendingEstablishJobs;
 
@@ -107,7 +108,8 @@ struct llarp_router
   llarp_router();
   virtual ~llarp_router();
 
-  void HandleLinkSessionEstablished(llarp::PubKey);
+  void
+  HandleLinkSessionEstablished(const llarp::RouterContact &);
 
   bool
   HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);
@@ -217,8 +219,7 @@ struct llarp_router
   GetRandomConnectedRouter(llarp::RouterContact &result) const;
 
   void
-  async_verify_RC(const llarp::RouterContact &rc, bool isExpectingClient,
-                  llarp::OutboundLinkEstablishJob *job = nullptr);
+  async_verify_RC(const llarp::RouterContact &rc);
 
   void
   HandleDHTLookupForSendTo(llarp::RouterID remote,

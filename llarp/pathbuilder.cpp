@@ -198,8 +198,7 @@ namespace llarp
     {
       // select hops
       std::vector< RouterContact > hops;
-      for(size_t i = 0; i < numHops; ++i)
-        hops.emplace_back();
+      hops.resize(numHops);
       size_t idx = 0;
       while(idx < numHops)
       {

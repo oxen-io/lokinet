@@ -3,6 +3,8 @@
 
 #include <llarp/crypto.hpp>
 #include <llarp/net.hpp>
+#include <llarp/router_contact.hpp>
+#include <functional>
 
 namespace llarp
 {
@@ -14,51 +16,34 @@ namespace llarp
     virtual ~ILinkSession(){};
 
     /// called every event loop tick
-    virtual void
-    Pump(){};
+    std::function< void(void) > Pump;
 
     /// called every timer tick
-    virtual void
-    Tick(llarp_time_t now){};
+    std::function< void(llarp_time_t) > Tick;
 
     /// send a message buffer to the remote endpoint
-    virtual bool
-    SendMessageBuffer(llarp_buffer_t buf) = 0;
-
-    /// handle low level recv of data
-    virtual bool
-    Recv(const void* buf, size_t sz) = 0;
+    std::function< bool(llarp_buffer_t) > SendMessageBuffer;
 
     /// start the connection
-    virtual void
-    Start() = 0;
+    std::function< void(void) > Start;
 
     /// send a keepalive to the remote endpoint
-    virtual bool
-    SendKeepAlive() = 0;
+    std::function< bool(void) > SendKeepAlive;
 
     /// send close message
-    virtual void
-    SendClose() = 0;
+    std::function< void(void) > SendClose;
 
     /// return true if we are established
-    virtual bool
-    IsEstablished() const = 0;
+    std::function< bool(void) > IsEstablished;
 
     /// return true if this session has timed out
-    virtual bool
-    TimedOut(llarp_time_t now) const
-    {
-      return false;
-    };
+    std::function< bool(llarp_time_t) > TimedOut;
 
     /// get remote public identity key
-    virtual const PubKey&
-    GetPubKey() const = 0;
+    std::function< const PubKey&(void) > GetPubKey;
 
-    /// get remote address endpoint
-    virtual const Addr&
-    GetRemoteEndpoint() const = 0;
+    /// handle LIM
+    std::function< bool(const LinkIntroMessage*) > HandleLinkIntroMessage;
   };
 }  // namespace llarp
 
