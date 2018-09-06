@@ -226,6 +226,11 @@ if(ANDROID)
   set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
+endif()
+
+
 set(LIB_PLATFORM_SRC
 # for outpug
   llarp/logger.cpp
@@ -243,6 +248,8 @@ set(LIB_PLATFORM_SRC
   llarp/threadpool.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
+# process isolation implementation
+  ${ISOLATE_PROC_SRC}
 # tun   
   ${LIBTUNTAP_SRC}
 # win32 inline procs
@@ -438,6 +445,9 @@ else()
     endif(NOT HAVE_CXX17_FILESYSTEM)
     add_library(llarpplatform-static STATIC ${LIB_PLATFORM_SRC})
     target_link_libraries(llarpplatform-static ${THREAD_LIB})
+    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+      target_link_libraries(llarpplatform-static -lcap)
+    endif()
     if(NOT HAVE_CXX17_FILESYSTEM)
       target_link_libraries(${STATIC_LIB} ${LIBS} backport-static llarpplatform-static)
     else()

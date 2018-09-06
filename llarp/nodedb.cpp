@@ -112,9 +112,9 @@ struct llarp_nodedb
     const char *hexname =
         llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pubkey, ftmp);
     std::string hexString(hexname);
-    hexString += RC_FILE_EXT;
     std::string skiplistDir;
     skiplistDir += hexString[hexString.length() - 1];
+    hexString += RC_FILE_EXT;
     fs::path filepath = nodePath / skiplistDir / hexString;
     return filepath.string();
   }
@@ -184,20 +184,11 @@ struct llarp_nodedb
   loadSubdir(const fs::path &dir)
   {
     ssize_t sz = 0;
-    fs::directory_iterator i(dir);
-#if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
-    auto itr = fs::begin(i);
-    while(itr != fs::end(i))
-#else
-    auto itr = i.begin();
-    while(itr != itr.end())
-#endif
-    {
-      if(fs::is_regular_file(itr->path()) && loadfile(*itr))
+    llarp::util::IterDir(dir, [&](const fs::path &f) -> bool {
+      if(fs::is_regular_file(f) && loadfile(f))
         sz++;
-
-      ++itr;
-    }
+      return true;
+    });
     return sz;
   }
 
@@ -375,6 +366,12 @@ llarp_nodedb_ensure_dir(const char *dir)
   return true;
 }
 
+void
+llarp_nodedb_set_dir(struct llarp_nodedb *n, const char *dir)
+{
+  n->nodePath = dir;
+}
+
 ssize_t
 llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
 {
@@ -383,7 +380,7 @@ llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
   {
     return -1;
   }
-  n->nodePath = dir;
+  llarp_nodedb_set_dir(n, dir);
   return n->Load(dir);
 }
 

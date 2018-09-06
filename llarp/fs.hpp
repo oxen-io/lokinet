@@ -1,6 +1,6 @@
 #ifndef LLARP_FS_HPP
 #define LLARP_FS_HPP
-
+#include <functional>
 #if defined(WIN32) || defined(_WIN32)
 #define PATH_SEP "\\"
 #else
@@ -24,4 +24,37 @@ namespace fs = std::filesystem;
 namespace fs = cpp17::filesystem;
 #endif
 
+namespace llarp
+{
+  namespace util
+  {
+    typedef std::function< bool(const fs::path &) > PathVisitor;
+    typedef std::function< void(const fs::path &, PathVisitor) > PathIter;
+#if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
+    static PathIter IterDir = [](const fs::path &path, PathVisitor visit) {
+      fs::directory_iterator i(path);
+      auto itr = fs::begin(i);
+      while(itr != fs::end(i))
+      {
+        fs::path p = path / *itr;
+        if(!visit(p))
+          return;
+        ++itr;
+      }
+    };
+#else
+    static PathIter IterDir = [](const fs::path &path, PathVisitor visit) {
+      fs::directory_iterator i(path);
+      auto itr = i.begin();
+      while(itr != itr.end())
+      {
+        fs::path p = path / *itr;
+        if(!visit(p))
+          return;
+        ++itr;
+      }
+    };
+#endif
+  }  // namespace util
+}  // namespace llarp
 #endif  // end LLARP_FS_HPP

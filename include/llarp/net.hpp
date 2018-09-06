@@ -139,24 +139,21 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const Addr& a)
     {
-      char tmp[128] = {0};
-      socklen_t sz;
+      char tmp[128]   = {0};
       const void* ptr = nullptr;
       if(a.af() == AF_INET6)
       {
         out << "[";
-        sz  = sizeof(sockaddr_in6);
         ptr = a.addr6();
       }
       else
       {
-        sz  = sizeof(sockaddr_in);
         ptr = a.addr4();
       }
 #ifndef _MSC_VER
-      if(inet_ntop(a.af(), ptr, tmp, sz))
+      if(inet_ntop(a.af(), ptr, tmp, sizeof(tmp)))
 #else
-      if(inet_ntop(a.af(), (void*)ptr, tmp, sz))
+      if(inet_ntop(a.af(), (void*)ptr, tmp, sizeof(tmp)))
 #endif
       {
         out << tmp;

@@ -51,7 +51,7 @@ namespace llarp
     {
       llarp::LogInfo("isolating network to namespace ", m_NetNS);
       m_IsolatedWorker = llarp_init_isolated_net_threadpool(
-          m_Name.c_str(), &SetupIsolatedNetwork, &RunIsolatedMainLoop, this);
+          m_NetNS.c_str(), &SetupIsolatedNetwork, &RunIsolatedMainLoop, this);
       m_IsolatedLogic = llarp_init_single_process_logic(m_IsolatedWorker);
       return true;
     }

@@ -66,6 +66,17 @@ namespace llarp
       void
       Join();
 
+      /// isolate current thread
+      /// return true for success
+      /// return false for failure
+      /// set errno on fail
+      /// override me in subclass
+      virtual bool
+      IsolateCurrentProcess()
+      {
+        return true;
+      }
+
       // override me to do specific setups after isolation
       // return true for success
       virtual bool
@@ -82,8 +93,8 @@ namespace llarp
 
       std::thread* m_isolated = nullptr;
       int m_flags;
-      int m_IsolatedWorkers      = 0;
-      const char* m_IsolatedName = nullptr;
+      int m_IsolatedWorkers    = 0;
+      const char* IsolatedName = nullptr;
 
       virtual void
       MainLoop()
@@ -91,10 +102,20 @@ namespace llarp
       }
     };
 
-    struct NetIsolatedPool : public IsolatedPool
+    struct _NetIsolatedPool : public IsolatedPool
     {
-      NetIsolatedPool(std::function< bool(void*, bool) > setupNet,
-                      std::function< void(void*) > runMain, void* user);
+      _NetIsolatedPool(std::function< bool(void*, bool) > setupNet,
+                       std::function< void(void*) > runMain, void* user);
+
+      /// implement me per platform
+      virtual bool
+      IsolateNetwork() = 0;
+
+      bool
+      IsolateCurrentProcess()
+      {
+        return IsolateNetwork();
+      }
 
       bool
       Isolated()

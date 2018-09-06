@@ -17,7 +17,6 @@ namespace llarp
 #undef MIN
 #endif
       memcpy(buf, pkt.base, sz);
-      llarp::DumpBufferHex(pkt);
       return true;
     }
 

@@ -25,6 +25,9 @@ llarp_nodedb_free(struct llarp_nodedb **n);
 bool
 llarp_nodedb_ensure_dir(const char *dir);
 
+void
+llarp_nodedb_set_dir(struct llarp_nodedb *n, const char *dir);
+
 /// load entire nodedb from fs skiplist at dir
 ssize_t
 llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir);

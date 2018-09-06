@@ -47,6 +47,12 @@ struct llarp_rc
     return llarp_rc_bdecode(this, buf);
   }
 
+  bool
+  HasNick() const
+  {
+    return nickname[0] != 0;
+  }
+
   std::string
   Nick() const
   {

@@ -53,8 +53,16 @@ llarp_xi_list_iterate(struct llarp_xi_list *l, struct llarp_xi_list_iter *iter)
       return;
 }
 
+size_t
+llarp_xi_list_size(const struct llarp_xi_list *l)
+{
+  if(l)
+    return l->list.size();
+  return 0;
+}
+
 bool
-llarp_xi_bencode(struct llarp_xi *xi, llarp_buffer_t *buff)
+llarp_xi_bencode(const struct llarp_xi *xi, llarp_buffer_t *buff)
 {
   char addr_buff[128] = {0};
   const char *addr;
