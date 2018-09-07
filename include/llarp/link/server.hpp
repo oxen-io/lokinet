@@ -8,6 +8,7 @@
 #include <llarp/ev.h>
 #include <llarp/link/session.hpp>
 #include <llarp/logic.h>
+#include <list>
 
 struct llarp_router;
 
@@ -128,11 +129,13 @@ namespace llarp
     Addr m_ourAddr;
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;
-    util::Mutex m_LinksMutex;
-    std::unordered_map< PubKey, ILinkSession*, PubKey::Hash > m_Links;
-    util::Mutex m_SessionsMutex;
-    std::unordered_multimap< Addr, std::unique_ptr< ILinkSession >, Addr::Hash >
-        m_Sessions;
+
+    util::Mutex m_AuthedLinksMutex;
+    std::unordered_multimap< PubKey, std::unique_ptr< ILinkSession >,
+                             PubKey::Hash >
+        m_AuthedLinks;
+    util::Mutex m_PendingMutex;
+    std::list< std::unique_ptr< ILinkSession > > m_Pending;
   };
 }  // namespace llarp
 

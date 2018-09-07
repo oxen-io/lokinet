@@ -7,7 +7,7 @@
 #include <utp.h>
 #include <cassert>
 #include <tuple>
-#include <llarp/codel.hpp>
+#include <deque>
 
 #ifdef __linux__
 #include <linux/errqueue.h>
@@ -22,7 +22,7 @@ namespace llarp
     constexpr size_t FragmentNonceSize = 24;
     constexpr size_t FragmentOverheadSize =
         FragmentHashSize + FragmentNonceSize;
-    constexpr size_t FragmentBodyPayloadSize = 512;
+    constexpr size_t FragmentBodyPayloadSize = 1024;
     constexpr size_t FragmentBodyOverhead    = sizeof(uint32_t) * 2;
     constexpr size_t FragmentBodySize =
         FragmentBodyOverhead + FragmentBodyPayloadSize;
@@ -47,7 +47,7 @@ namespace llarp
       llarp_time_t lastActive;
       const static llarp_time_t sessionTimeout = 30 * 1000;
 
-      std::queue< FragmentBuffer > sendq;
+      std::deque< FragmentBuffer > sendq;
       size_t sendBufOffset;
 
       FragmentBuffer recvBuf;
@@ -115,7 +115,7 @@ namespace llarp
           else
           {
             sendBufOffset = 0;
-            sendq.pop();
+            sendq.pop_front();
           }
         }
       }
@@ -137,8 +137,7 @@ namespace llarp
       VerifyThenDecrypt(byte_t* buf);
 
       void
-      EncryptThenHash(FragmentBuffer& buf, const byte_t* ptr, uint32_t sz,
-                      bool isLastFragment);
+      EncryptThenHash(const byte_t* ptr, uint32_t sz, bool isLastFragment);
 
       bool
       QueueWriteBuffers(llarp_buffer_t buf)
@@ -152,13 +151,13 @@ namespace llarp
         }
         else
           lastActive = llarp_time_now_ms();
-        size_t sz = buf.sz;
+        size_t sz   = buf.sz;
+        byte_t* ptr = buf.base;
         while(sz)
         {
-          sendq.emplace();
           uint32_t s = std::min(FragmentBodyPayloadSize, sz);
-          EncryptThenHash(sendq.back(), buf.cur, s, ((sz - s) == 0));
-          buf.cur += s;
+          EncryptThenHash(ptr, s, ((sz - s) == 0));
+          ptr += s;
           sz -= s;
         }
         return true;
@@ -239,8 +238,8 @@ namespace llarp
       void
       Close();
 
-      void
-      RecvHandshake(const void* buf, size_t bufsz, LinkLayer* p, utp_socket* s);
+      bool
+      RecvHandshake(const void* buf, size_t bufsz, LinkLayer* p);
 
       bool
       Recv(const void* buf, size_t sz)
@@ -257,30 +256,24 @@ namespace llarp
         // process leftovers
         if(recvBufOffset)
         {
-          auto left = recvBuf.size() - recvBufOffset;
+          auto left = FragmentBufferSize - recvBufOffset;
           if(s >= left)
           {
+            // yes it fills it
             llarp::LogDebug("process leftovers, offset=", recvBufOffset,
                             " sz=", s, " left=", left);
             memcpy(recvBuf.data() + recvBufOffset, ptr, left);
             s -= left;
             recvBufOffset = 0;
             ptr += left;
-            if(!VerifyThenDecrypt(recvBuf))
+            if(!VerifyThenDecrypt(recvBuf.data()))
               return false;
           }
-          else
-          {
-            // short read
-            llarp::LogDebug("short read, offset=", recvBufOffset, " sz=", s);
-            memcpy(recvBuf.data() + recvBufOffset, ptr, s);
-            recvBufOffset += s;
-            return true;
-          }
         }
-        // process full
+        // process full fragments
         while(s >= FragmentBufferSize)
         {
+          recvBufOffset = 0;
           llarp::LogDebug("process full sz=", s);
           if(!VerifyThenDecrypt(ptr))
             return false;
@@ -291,8 +284,8 @@ namespace llarp
         {
           // hold onto leftovers
           llarp::LogDebug("leftovers sz=", s);
-          memcpy(recvBuf.data(), ptr, s);
-          recvBufOffset = s;
+          memcpy(recvBuf.data() + recvBufOffset, ptr, s);
+          recvBufOffset += s;
         }
         return true;
       }
@@ -647,7 +640,12 @@ namespace llarp
         }
         else if(self->state == BaseSession::eLinkEstablished)
         {
-          self->RecvHandshake(arg->buf, arg->len, parent, arg->socket);
+          if(!self->RecvHandshake(arg->buf, arg->len, parent))
+          {
+            llarp::LogDebug("recv handshake failed for ", self->remoteAddr);
+            self->Close();
+            return 0;
+          }
           utp_read_drained(arg->socket);
         }
       }
@@ -707,8 +705,8 @@ namespace llarp
     }
 
     void
-    BaseSession::EncryptThenHash(FragmentBuffer& buf, const byte_t* ptr,
-                                 uint32_t sz, bool isLastFragment)
+    BaseSession::EncryptThenHash(const byte_t* ptr, uint32_t sz,
+                                 bool isLastFragment)
 
     {
       if(state != eSessionReady)
@@ -716,11 +714,12 @@ namespace llarp
         llarp::LogWarn("tried to send to non ready session on ", remoteAddr);
         return;
       }
+      FragmentBuffer buf;
       llarp::LogDebug("encrypt then hash ", sz, " bytes last=", isLastFragment);
       buf.Randomize();
-      const byte_t* nonce = buf.data() + FragmentHashSize;
-      byte_t* body        = buf.data() + FragmentOverheadSize;
-      byte_t* base        = body;
+      byte_t* nonce = buf.data() + FragmentHashSize;
+      byte_t* body  = nonce + FragmentNonceSize;
+      byte_t* base  = body;
       if(isLastFragment)
         htobe32buf(body, 0);
       else
@@ -729,12 +728,20 @@ namespace llarp
       htobe32buf(body, sz);
       body += sizeof(uint32_t);
       memcpy(body, ptr, sz);
-      auto payload = InitBuffer(base, FragmentBodySize);
+
+      auto payload =
+          InitBuffer(base, FragmentBufferSize - FragmentOverheadSize);
+
+      // encrypt
       Router()->crypto.xchacha20(payload, sessionKey, nonce);
-      payload.base = buf.data() + FragmentHashSize;
+
+      payload.base = nonce;
       payload.cur  = payload.base;
-      payload.sz   = buf.size() - FragmentHashSize;
+      payload.sz   = FragmentBufferSize - FragmentHashSize;
+      // key'd hash
       Router()->crypto.hmac(buf.data(), payload, sessionKey);
+      // push back
+      sendq.push_back(std::move(buf));
     }
 
     void
@@ -787,40 +794,35 @@ namespace llarp
         llarp::LogError("Fragment too big: ", lower, " bytes");
         return false;
       }
-      byte_t* ptr = recvMsg.data() + recvMsgOffset;
-      memcpy(ptr, body.cur, lower);
+      memcpy(recvMsg.data() + recvMsgOffset, body.cur, lower);
       recvMsgOffset += lower;
       if(fragmentEnd)
       {
         // got a message
         llarp::LogDebug("end of message from ", remoteAddr);
-        auto mbuf   = InitBuffer(recvMsg.data(), recvMsgOffset);
-        auto result = Router()->HandleRecvLinkMessageBuffer(this, mbuf);
-        if(!result)
+        auto mbuf = InitBuffer(recvMsg.data(), recvMsgOffset);
+        if(!Router()->HandleRecvLinkMessageBuffer(this, mbuf))
         {
           llarp::LogWarn("failed to handle message from ", remoteAddr);
           llarp::DumpBuffer(mbuf);
         }
         recvMsgOffset = 0;
-        return result;
       }
       return true;
     }
 
-    void
-    BaseSession::RecvHandshake(const void* buf, size_t bufsz, LinkLayer* p,
-                               utp_socket* s)
+    bool
+    BaseSession::RecvHandshake(const void* buf, size_t bufsz, LinkLayer* p)
     {
       size_t sz = bufsz;
       parent    = p;
-      sock      = s;
 
       llarp::LogDebug("recv handshake ", sz, " from ", remoteAddr);
       if(sz <= 8)
       {
         llarp::LogDebug("handshake too small from ", remoteAddr);
         Close();
-        return;
+        return false;
       }
 
       // process handshake header
@@ -831,7 +833,7 @@ namespace llarp
         llarp::LogWarn("protocol version missmatch ", version,
                        " != ", LLARP_PROTO_VERSION);
         Close();
-        return;
+        return false;
       }
       ptr += sizeof(uint32_t);
       sz -= sizeof(uint32_t);
@@ -845,9 +847,11 @@ namespace llarp
         llarp::LogDebug("not enough data for handshake, want ", limsz,
                         " bytes but got ", sz);
         Close();
-        return;
+        return false;
       }
-      llarp::LogDebug("read LIM from ", remoteAddr, " of size ", limsz);
+
+      llarp::LogDebug("from ", bufsz, " bytes reading ", limsz, " of ", sz,
+                      " bytes");
 
       // process LIM
       auto mbuf = InitBuffer(ptr, limsz);
@@ -857,26 +861,31 @@ namespace llarp
         llarp::LogError("Failed to parse LIM from ", remoteAddr);
         llarp::DumpBuffer(mbuf);
         Close();
-        return;
+        return false;
       }
       if(!msg.HandleMessage(Router()))
       {
         llarp::LogError("failed to verify signature of rc");
-        return;
+        return false;
       }
+      gotLIM = true;
       sz -= limsz;
       remoteRC = msg.rc;
       if(!DoKeyExchange(Router()->crypto.transport_dh_server, msg.N,
                         remoteRC.enckey, parent->TransportSecretKey()))
-        return;
+        return false;
+      EnterState(eSessionReady);
       if(sz)
       {
         llarp::LogDebug("got ", sz, " leftover from handshake from ",
                         remoteAddr);
-        Recv(ptr + limsz, sz);
+        return Recv(ptr + limsz, sz);
       }
-      gotLIM = true;
-      EnterState(eSessionReady);
+      else
+      {
+        llarp::LogDebug("no leftovers in handshake from ", remoteAddr);
+      }
+      return true;
     }
 
     void
@@ -884,10 +893,13 @@ namespace llarp
     {
       if(state != eClose)
       {
-        utp_shutdown(sock, SHUT_RDWR);
-        utp_close(sock);
-        llarp::LogDebug("utp_close ", remoteAddr);
-        utp_set_userdata(sock, nullptr);
+        if(sock)
+        {
+          utp_shutdown(sock, SHUT_RDWR);
+          utp_close(sock);
+          llarp::LogDebug("utp_close ", remoteAddr);
+          utp_set_userdata(sock, nullptr);
+        }
       }
       EnterState(eClose);
       sock = nullptr;

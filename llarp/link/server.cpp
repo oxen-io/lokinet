@@ -10,8 +10,8 @@ namespace llarp
   bool
   ILinkLayer::HasSessionTo(const PubKey& pk)
   {
-    util::Lock l(m_LinksMutex);
-    return m_Links.find(pk) != m_Links.end();
+    util::Lock l(m_AuthedLinksMutex);
+    return m_AuthedLinks.find(pk) != m_AuthedLinks.end();
   }
 
   bool
@@ -35,23 +35,34 @@ namespace llarp
   void
   ILinkLayer::Pump()
   {
-    util::Lock lock(m_SessionsMutex);
     auto now = llarp_time_now_ms();
-    auto itr = m_Sessions.begin();
-    while(itr != m_Sessions.end())
     {
-      if(itr->second->TimedOut(now))
+      util::Lock lock(m_AuthedLinksMutex);
+      auto itr = m_AuthedLinks.begin();
+      while(itr != m_AuthedLinks.end())
       {
-        util::Lock lock(m_LinksMutex);
-        auto i = m_Links.find(itr->second->GetPubKey());
-        if(i != m_Links.end())
-          m_Links.erase(i);
-        itr = m_Sessions.erase(itr);
+        if(!itr->second->TimedOut(now))
+        {
+          itr->second->Pump();
+          ++itr;
+        }
+        else
+          itr = m_AuthedLinks.erase(itr);
       }
-      else
+    }
+    {
+      util::Lock lock(m_PendingMutex);
+
+      auto itr = m_Pending.begin();
+      while(itr != m_Pending.end())
       {
-        itr->second->Pump();
-        ++itr;
+        if(!(*itr)->TimedOut(now))
+        {
+          (*itr)->Pump();
+          ++itr;
+        }
+        else
+          itr = m_Pending.erase(itr);
       }
     }
   }
@@ -59,17 +70,20 @@ namespace llarp
   void
   ILinkLayer::MapAddr(const PubKey& pk, ILinkSession* s)
   {
-    util::Lock l(m_LinksMutex);
-    auto itr = m_Links.find(pk);
-    // delete old session
-    if(itr != m_Links.end())
+    util::Lock l_authed(m_AuthedLinksMutex);
+    util::Lock l_pending(m_PendingMutex);
+    auto itr = m_Pending.begin();
+    while(itr != m_Pending.end())
     {
-      llarp::LogDebug("close previously authed session to ", pk);
-      itr->second->SendClose();
-      m_Links.erase(itr);
+      if(itr->get() == s)
+      {
+        m_AuthedLinks.insert(std::make_pair(pk, std::move(*itr)));
+        itr = m_Pending.erase(itr);
+        return;
+      }
+      else
+        ++itr;
     }
-    // insert new session
-    m_Links.insert(std::make_pair(pk, s));
   }
 
   bool
@@ -118,32 +132,43 @@ namespace llarp
   void
   ILinkLayer::CloseSessionTo(const PubKey& remote)
   {
-    util::Lock l(m_LinksMutex);
-    auto itr = m_Links.find(remote);
-    if(itr == m_Links.end())
-      return;
-    itr->second->SendClose();
-    m_Links.erase(itr);
+    util::Lock l(m_AuthedLinksMutex);
+    auto range = m_AuthedLinks.equal_range(remote);
+    auto itr   = range.first;
+    while(itr != range.second)
+    {
+      itr->second->SendClose();
+      itr = m_AuthedLinks.erase(itr);
+    }
   }
 
   void
   ILinkLayer::KeepAliveSessionTo(const PubKey& remote)
   {
-    util::Lock l(m_LinksMutex);
-    auto itr = m_Links.find(remote);
-    if(itr == m_Links.end())
-      return;
-    itr->second->SendKeepAlive();
+    util::Lock l(m_AuthedLinksMutex);
+    auto range = m_AuthedLinks.equal_range(remote);
+    auto itr   = range.first;
+    while(itr != range.second)
+    {
+      itr->second->SendKeepAlive();
+      ++itr;
+    }
   }
 
   bool
   ILinkLayer::SendTo(const PubKey& remote, llarp_buffer_t buf)
   {
-    util::Lock l(m_LinksMutex);
-    auto itr = m_Links.find(remote);
-    if(itr == m_Links.end())
-      return false;
-    return itr->second->SendMessageBuffer(buf);
+    util::Lock l(m_AuthedLinksMutex);
+    auto range = m_AuthedLinks.equal_range(remote);
+    auto itr   = range.first;
+    // TODO: random selection
+    while(itr != range.second)
+    {
+      if(itr->second->SendMessageBuffer(buf))
+        return true;
+      ++itr;
+    }
+    return false;
   }
 
   bool
@@ -195,21 +220,14 @@ namespace llarp
   void
   ILinkLayer::PutSession(const Addr& addr, ILinkSession* s)
   {
-    util::Lock lock(m_SessionsMutex);
-    m_Sessions.insert(std::make_pair(addr, s));
+    util::Lock lock(m_PendingMutex);
+    m_Pending.emplace_back(s);
   }
 
   void
   ILinkLayer::OnTick(uint64_t interval, llarp_time_t now)
   {
     Tick(now);
-    util::Lock l(m_SessionsMutex);
-    auto itr = m_Sessions.begin();
-    while(itr != m_Sessions.end())
-    {
-      itr->second->Tick(now);
-      ++itr;
-    }
     ScheduleTick(interval);
   }
 
