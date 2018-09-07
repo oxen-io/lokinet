@@ -47,8 +47,6 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
-add_cxxflags("-fno-exceptions -fpermissive -fno-rtti")
-
 if (NOT MSVC)
 add_cflags("-march=native")
 add_cxxflags("-march=native")
