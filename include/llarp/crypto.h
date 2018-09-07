@@ -4,7 +4,6 @@
 #include <llarp/common.h>
 #include <stdbool.h>
 #include <stdint.h>
-#include <openssl/ssl.h>
 
 /**
  * crypto.h
