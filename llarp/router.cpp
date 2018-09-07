@@ -93,7 +93,7 @@ llarp_router_try_connect(struct llarp_router *router,
       std::make_unique< TryConnectJob >(remote, link, numretries, router)));
   TryConnectJob *job = itr.first->second.get();
   // try establishing async
-  llarp_logic_queue_job(router->logic, {job, on_try_connecting});
+  job->Attempt();
   return true;
 }
 

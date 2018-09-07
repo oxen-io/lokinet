@@ -95,11 +95,7 @@ namespace llarp
     EnsureKeys(const char* fpath);
 
     void
-    MapAddr(const Addr& addr, const PubKey& pk)
-    {
-      util::Lock l(m_LinksMutex);
-      m_Links.insert(std::make_pair(pk, addr));
-    }
+    MapAddr(const PubKey& pk, ILinkSession* s);
 
     virtual void
     Tick(llarp_time_t now)
@@ -133,9 +129,10 @@ namespace llarp
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;
     util::Mutex m_LinksMutex;
+    std::unordered_map< PubKey, ILinkSession*, PubKey::Hash > m_Links;
     util::Mutex m_SessionsMutex;
-    std::unordered_map< PubKey, Addr, PubKey::Hash > m_Links;
-    std::unordered_map< Addr, ILinkSession*, Addr::Hash > m_Sessions;
+    std::unordered_multimap< Addr, std::unique_ptr< ILinkSession >, Addr::Hash >
+        m_Sessions;
   };
 }  // namespace llarp
 

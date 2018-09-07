@@ -80,6 +80,8 @@ namespace llarp
       Emplace(Args&&... args)
       {
         Lock_t lock(m_QueueMutex);
+        if(m_QueueIdx == MaxSize)
+          return;
         T* t = &m_Queue[m_QueueIdx];
         new(t) T(std::forward< Args >(args)...);
         PutTime()(m_Queue[m_QueueIdx]);
@@ -90,7 +92,14 @@ namespace llarp
 
       template < typename Visit >
       void
-      Process(Visit visitor)
+      Process(Visit v)
+      {
+        return Process(v, [](T&) -> bool { return false; });
+      }
+
+      template < typename Visit, typename Filter >
+      void
+      Process(Visit visitor, Filter f)
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
         // auto start          = llarp_time_now_ms();
@@ -111,6 +120,8 @@ namespace llarp
         {
           llarp::LogDebug(m_name, " - queue has ", m_QueueIdx);
           T* item = &m_Queue[idx++];
+          if(f(*item))
+            break;
           --m_QueueIdx;
           auto dlt = start - GetTime()(*item);
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
@@ -132,7 +143,6 @@ namespace llarp
               dropNum          = 0;
             }
           }
-          // llarp::LogInfo("CoDelQueue::Process - passing");
           visitor(*item);
           item->~T();
         }

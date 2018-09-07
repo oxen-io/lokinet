@@ -15,13 +15,6 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::HasSessionVia(const Addr& addr)
-  {
-    util::Lock l(m_SessionsMutex);
-    return m_Sessions.find(addr) != m_Sessions.end();
-  }
-
-  bool
   ILinkLayer::Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
                         uint16_t port)
   {
@@ -42,17 +35,41 @@ namespace llarp
   void
   ILinkLayer::Pump()
   {
+    util::Lock lock(m_SessionsMutex);
     auto now = llarp_time_now_ms();
-    util::Lock l(m_SessionsMutex);
     auto itr = m_Sessions.begin();
     while(itr != m_Sessions.end())
     {
-      if(!itr->second->TimedOut(now))
+      if(itr->second->TimedOut(now))
+      {
+        util::Lock lock(m_LinksMutex);
+        auto i = m_Links.find(itr->second->GetPubKey());
+        if(i != m_Links.end())
+          m_Links.erase(i);
+        itr = m_Sessions.erase(itr);
+      }
+      else
       {
         itr->second->Pump();
+        ++itr;
       }
-      ++itr;
     }
+  }
+
+  void
+  ILinkLayer::MapAddr(const PubKey& pk, ILinkSession* s)
+  {
+    util::Lock l(m_LinksMutex);
+    auto itr = m_Links.find(pk);
+    // delete old session
+    if(itr != m_Links.end())
+    {
+      llarp::LogDebug("close previously authed session to ", pk);
+      itr->second->SendClose();
+      m_Links.erase(itr);
+    }
+    // insert new session
+    m_Links.insert(std::make_pair(pk, s));
   }
 
   bool
@@ -72,41 +89,22 @@ namespace llarp
   }
 
   void
-  ILinkLayer::RemoveSessionVia(const Addr& addr)
-  {
-    auto itr = m_Sessions.find(addr);
-    if(itr == m_Sessions.end())
-      return;
-
-    delete itr->second;
-    m_Sessions.erase(itr);
-  }
-
-  void
   ILinkLayer::TryEstablishTo(const RouterContact& rc)
   {
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return;
-    util::Lock l(m_SessionsMutex);
     llarp::Addr addr(to);
-    auto itr = m_Sessions.find(addr);
-    if(itr != m_Sessions.end())
-    {
-      itr->second->SendClose();
-      delete itr->second;
-      m_Sessions.erase(itr);
-    }
     auto s = NewOutboundSession(rc, to);
     s->Start();
-    m_Sessions.emplace(addr, s);
+    PutSession(addr, s);
   }
 
   bool
   ILinkLayer::Start(llarp_logic* l)
   {
     m_Logic = l;
-    ScheduleTick(500);
+    ScheduleTick(100);
     return true;
   }
 
@@ -120,70 +118,32 @@ namespace llarp
   void
   ILinkLayer::CloseSessionTo(const PubKey& remote)
   {
-    llarp::Addr addr;
-    {
-      util::Lock l(m_LinksMutex);
-      auto itr = m_Links.find(remote);
-      if(itr == m_Links.end())
-        return;
-      addr = itr->second;
-    }
-    {
-      util::Lock l(m_SessionsMutex);
-      auto itr = m_Sessions.find(addr);
-      if(itr == m_Sessions.end())
-        return;
-      itr->second->SendClose();
-      delete itr->second;
-      m_Sessions.erase(itr);
-    }
+    util::Lock l(m_LinksMutex);
+    auto itr = m_Links.find(remote);
+    if(itr == m_Links.end())
+      return;
+    itr->second->SendClose();
+    m_Links.erase(itr);
   }
 
   void
   ILinkLayer::KeepAliveSessionTo(const PubKey& remote)
   {
-    llarp::Addr addr;
-    {
-      util::Lock l(m_LinksMutex);
-      auto itr = m_Links.find(remote);
-      if(itr == m_Links.end())
-        return;
-      addr = itr->second;
-    }
-    {
-      util::Lock l(m_SessionsMutex);
-      auto itr = m_Sessions.find(addr);
-      if(itr == m_Sessions.end())
-        return;
-      itr->second->SendKeepAlive();
-    }
+    util::Lock l(m_LinksMutex);
+    auto itr = m_Links.find(remote);
+    if(itr == m_Links.end())
+      return;
+    itr->second->SendKeepAlive();
   }
 
   bool
   ILinkLayer::SendTo(const PubKey& remote, llarp_buffer_t buf)
   {
-    bool result = false;
-    llarp::Addr addr;
-    {
-      util::Lock l(m_LinksMutex);
-      auto itr = m_Links.find(remote);
-      if(itr == m_Links.end())
-        return false;
-      addr = itr->second;
-      llarp::LogDebug("found addr for ", remote, ", ", addr);
-    }
-    {
-      util::Lock l(m_SessionsMutex);
-      auto itr = m_Sessions.find(addr);
-      if(itr == m_Sessions.end())
-      {
-        llarp::LogWarn("no session to ", addr, " for ", remote);
-        return false;
-      }
-      llarp::LogDebug("SendMessageBuffer ", buf.sz, "bytes");
-      result = itr->second->SendMessageBuffer(buf);
-    }
-    return result;
+    util::Lock l(m_LinksMutex);
+    auto itr = m_Links.find(remote);
+    if(itr == m_Links.end())
+      return false;
+    return itr->second->SendMessageBuffer(buf);
   }
 
   bool
@@ -207,13 +167,6 @@ namespace llarp
   ILinkLayer::TransportSecretKey() const
   {
     return m_SecretKey;
-  }
-
-  void
-  ILinkLayer::PutSession(const Addr& addr, ILinkSession* s)
-  {
-    util::Lock l(m_SessionsMutex);
-    m_Sessions.emplace(addr, s);
   }
 
   bool
@@ -240,6 +193,13 @@ namespace llarp
   }
 
   void
+  ILinkLayer::PutSession(const Addr& addr, ILinkSession* s)
+  {
+    util::Lock lock(m_SessionsMutex);
+    m_Sessions.insert(std::make_pair(addr, s));
+  }
+
+  void
   ILinkLayer::OnTick(uint64_t interval, llarp_time_t now)
   {
     Tick(now);
@@ -247,24 +207,8 @@ namespace llarp
     auto itr = m_Sessions.begin();
     while(itr != m_Sessions.end())
     {
-      if(!itr->second->TimedOut(now))
-      {
-        itr->second->Tick(now);
-        ++itr;
-      }
-      else
-      {
-        {
-          util::Lock lock(m_LinksMutex);
-          auto i = m_Links.find(itr->second->GetPubKey());
-          if(i != m_Links.end())
-          {
-            m_Links.erase(i);
-          }
-        }
-        delete itr->second;
-        itr = m_Sessions.erase(itr);
-      }
+      itr->second->Tick(now);
+      ++itr;
     }
     ScheduleTick(interval);
   }

@@ -55,6 +55,7 @@ namespace llarp
     }
     if(!router->paths.AllowingTransit())
     {
+      llarp::LogError("got LRCM when not permitting transit");
       return false;
     }
     return AsyncDecrypt(&router->paths);
