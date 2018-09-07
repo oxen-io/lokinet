@@ -208,7 +208,6 @@ struct llarp_threadpool
     if(isolate)
     {
       llarp::LogError("network isolation not supported");
-      return nullptr;
     }
 #endif
       impl = new llarp::thread::Pool();
