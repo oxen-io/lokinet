@@ -223,10 +223,9 @@ struct llarp_threadpool
 struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name)
 {
-  if(workers > 0)
-    return new llarp_threadpool(workers, name, false);
-  else
-    return nullptr;
+  if(workers <= 0)
+    workers = 1;
+  return new llarp_threadpool(workers, name, false);
 }
 
 struct llarp_threadpool *
