@@ -96,7 +96,7 @@ namespace llarp
       if(left)
         return;
       Context *ctx = static_cast< Context * >(u);
-      ctx->Explore();
+      ctx->Explore(1);
       llarp_logic_call_later(ctx->router->logic,
                              {orig, ctx, &handle_explore_timer});
     }
