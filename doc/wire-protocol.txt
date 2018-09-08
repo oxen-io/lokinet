@@ -1,0 +1,64 @@
+Wire Protocol (version 0)
+
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119 [RFC2119].
+
+LLARP supports by default an authenticated and framed transport over UTP [1]
+
+1088 byte fragments are sent over UTP in an ordered fashion.
+
+The each fragment has the following structure:
+
+[ 32 bytes blake2 keyed hash of the following 1056 bytes ]
+[ 24 bytes random nonce ]
+[ 1032 bytes encrypted payload ]
+
+the decrypted payload has the following structure:
+
+[ big endian unsigned 32 bit flags (F) ]
+[ big endian unsigned 32 bit fragment length (N) ]
+[ N bytes of plaintext payload ]
+
+if F is non zero then more fragments for the current message being transmitted
+are expected. If F is zero then this fragment is the last in the sequence.
+
+On each fragment append the N bytes of payload to an internal buffer.
+This internal buffer MUST NOT exceed 8192 bytes, the maximum size of an inter
+node message.
+
+When the last fragment in the sequence is reached the internal buffer is
+processed as a link layer message (see proto_v0.txt)
+
+Handshake phase:
+
+Before data flows a protocol handshake must happen.
+
+The first message sent is a LIM (L) (see proto_v0.txt) by the connection initiator, Alice.
+
+The receiving end MUST verify the signatures of the LIM and RC.
+If any verification fails at any phase the underlying UTP session MUST be reset.
+
+Each side re-computes the session key.
+
+the session key kdf for K is:
+
+t_h = HS(K + L.n)
+K = TKE(A.p, B_a.e, sk, t_h)
+
+the initial value of K is HS(B.k)
+
+Periodically the connection initiator MUST renegotiate the session key by
+sending a LIM after L.p milliseconds have elapsed.
+
+If either party's RC changes while a connection is established they MUST
+renegotioate the session keys to ensure the new RC is sent.
+
+
+references:
+
+[1] http://www.bittorrent.org/beps/bep_0029.html
+
+
+

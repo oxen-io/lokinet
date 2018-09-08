@@ -60,14 +60,14 @@ namespace llarp
       Alive();
 
       /// base
-      BaseSession(llarp_router* r);
+      BaseSession(LinkLayer* p);
 
       /// outbound
-      BaseSession(llarp_router* r, utp_socket* s, const RouterContact& rc,
+      BaseSession(LinkLayer* p, utp_socket* s, const RouterContact& rc,
                   const AddressInfo& addr);
 
       /// inbound
-      BaseSession(llarp_router* r, utp_socket* s, const Addr& remote);
+      BaseSession(LinkLayer* p, utp_socket* s, const Addr& remote);
 
       enum State
       {
@@ -143,14 +143,7 @@ namespace llarp
       QueueWriteBuffers(llarp_buffer_t buf)
       {
         llarp::LogDebug("write ", buf.sz, " bytes to ", remoteAddr);
-        if(state != eSessionReady)
-        {
-          llarp::LogWarn("failed to send ", buf.sz,
-                         " bytes on non ready session state=", state);
-          return false;
-        }
-        else
-          lastActive = llarp_time_now_ms();
+        lastActive  = llarp_time_now_ms();
         size_t sz   = buf.sz;
         byte_t* ptr = buf.base;
         while(sz)
@@ -176,57 +169,36 @@ namespace llarp
         OnLinkEstablished(p);
         KeyExchangeNonce nonce;
         nonce.Randomize();
-        gotLIM = true;
-        if(DoKeyExchange(Router()->crypto.transport_dh_client, nonce,
-                         remoteTransportPubKey, Router()->encryption))
-        {
-          SendHandshake(nonce);
-          EnterState(eSessionReady);
-          SendKeepAlive();
-        }
+        OutboundHandshake(nonce);
       }
 
-      // send our RC to the remote
+      // send first message
       void
-      SendHandshake(const KeyExchangeNonce& n)
-      {
-        FragmentBuffer tmp;
-        auto buf = InitBuffer(tmp.data(), tmp.size());
-        // fastforward buffer for handshake to fit before
-        buf.cur += sizeof(uint32_t) * 2;
-        byte_t* begin = buf.cur;
-        LinkIntroMessage msg;
-        msg.rc = Router()->rc;
-        msg.N  = n;
-        if(!msg.BEncode(&buf))
-        {
-          llarp::LogError("failed to encode our RC for handshake");
-          Close();
-          return;
-        }
+      OutboundHandshake(const KeyExchangeNonce& n);
 
-        uint32_t sz = buf.cur - begin;
-        llarp::LogDebug("handshake is of size ", sz, " bytes");
-        // write handshake header
-        buf.cur = buf.base;
-        llarp_buffer_put_uint32(&buf, LLARP_PROTO_VERSION);
-        llarp_buffer_put_uint32(&buf, sz);
-        // send it
-        write_ll(tmp.data(), sz + (sizeof(uint32_t) * 2));
-      }
-
+      // mix keys
       bool
       DoKeyExchange(llarp_transport_dh_func dh, const KeyExchangeNonce& n,
                     const PubKey& other, const SecretKey& secret)
       {
-        PubKey us = llarp::seckey_topublic(secret);
-        llarp::LogDebug("DH us=", us, " them=", other, " n=", n);
-        if(!dh(sessionKey, other, secret, n))
+        ShortHash t_h;
+        AlignedBuffer< 64 > tmp;
+        memcpy(tmp.data(), sessionKey, sessionKey.size());
+        memcpy(tmp.data() + sessionKey.size(), n, n.size());
+        // t_h = HS(K + L.n)
+        if(!Router()->crypto.shorthash(t_h, ConstBuffer(tmp)))
         {
-          llarp::LogError("key exchange with ", other, " failed");
-          Close();
+          llarp::LogError("failed to mix key to ", remoteAddr);
           return false;
         }
+
+        // K = TKE(a.p, B_a.e, sk, t_h)
+        if(!dh(sessionKey, other, secret, t_h))
+        {
+          llarp::LogError("key exchange with ", other, " failed");
+          return false;
+        }
+        llarp::LogDebug("keys mixed with session to ", remoteAddr);
         return true;
       }
 
@@ -239,18 +211,10 @@ namespace llarp
       Close();
 
       bool
-      RecvHandshake(const void* buf, size_t bufsz, LinkLayer* p);
-
-      bool
       Recv(const void* buf, size_t sz)
       {
-        if(state != eSessionReady)
-        {
-          llarp::LogWarn("session not ready via ", remoteAddr);
-          return false;
-        }
         Alive();
-        byte_t* ptr = (const byte_t*)buf;
+        byte_t* ptr = (byte_t*)buf;
         llarp::LogDebug("utp read ", sz, " from ", remoteAddr);
         size_t s = sz;
         // process leftovers
@@ -289,6 +253,12 @@ namespace llarp
         }
         return true;
       }
+
+      bool
+      InboundLIM(const LinkIntroMessage* msg);
+
+      bool
+      OutboundLIM(const LinkIntroMessage* msg);
 
       bool
       IsTimedOut(llarp_time_t now) const
@@ -527,13 +497,15 @@ namespace llarp
       return std::unique_ptr< LinkLayer >(new LinkLayer(r));
     }
 
-    BaseSession::BaseSession(llarp_router* r)
+    BaseSession::BaseSession(LinkLayer* p)
     {
+      parent = p;
       remoteTransportPubKey.Zero();
-      parent        = nullptr;
       recvMsgOffset = 0;
+
       SendKeepAlive = [&]() -> bool {
-        if(false && sendq.size() == 0)
+        /*
+        if(sendq.size() == 0 && state == eSessionReady)
         {
           DiscardMessage msg;
           byte_t tmp[128] = {0};
@@ -545,8 +517,10 @@ namespace llarp
           if(!this->QueueWriteBuffers(buf))
             return false;
         }
+        */
         return true;
       };
+      gotLIM        = false;
       sendBufOffset = 0;
       recvBufOffset = 0;
       TimedOut      = [&](llarp_time_t now) -> bool {
@@ -567,9 +541,9 @@ namespace llarp
       GetRemoteEndpoint = std::bind(&BaseSession::RemoteEndpoint, this);
     }
 
-    BaseSession::BaseSession(llarp_router* r, utp_socket* s,
+    BaseSession::BaseSession(LinkLayer* p, utp_socket* s,
                              const RouterContact& rc, const AddressInfo& addr)
-        : BaseSession(r)
+        : BaseSession(p)
     {
       remoteRC.Clear();
       remoteTransportPubKey = addr.pubkey;
@@ -579,17 +553,99 @@ namespace llarp
       assert(s == sock);
       remoteAddr = addr;
       Start      = std::bind(&BaseSession::Connect, this);
+      GotLIM =
+          std::bind(&BaseSession::OutboundLIM, this, std::placeholders::_1);
     }
 
-    BaseSession::BaseSession(llarp_router* r, utp_socket* s, const Addr& addr)
-        : BaseSession(r)
+    BaseSession::BaseSession(LinkLayer* p, utp_socket* s, const Addr& addr)
+        : BaseSession(p)
     {
+      p->router->crypto.shorthash(sessionKey,
+                                  ConstBuffer(p->router->rc.pubkey));
       remoteRC.Clear();
       sock = s;
       assert(s == sock);
       assert(utp_set_userdata(sock, this) == this);
       remoteAddr = addr;
       Start      = []() {};
+      GotLIM = std::bind(&BaseSession::InboundLIM, this, std::placeholders::_1);
+    }
+
+    bool
+    BaseSession::InboundLIM(const LinkIntroMessage* msg)
+    {
+      if(gotLIM && remoteRC.pubkey != msg->rc.pubkey)
+      {
+        return false;
+      }
+      remoteRC = msg->rc;
+      gotLIM   = true;
+      if(!DoKeyExchange(Router()->crypto.transport_dh_server, msg->N,
+                        remoteRC.enckey, parent->TransportSecretKey()))
+        return false;
+      EnterState(eSessionReady);
+      return true;
+    }
+
+    bool
+    BaseSession::OutboundLIM(const LinkIntroMessage* msg)
+    {
+      if(gotLIM && remoteRC.pubkey != msg->rc.pubkey)
+      {
+        return false;
+      }
+      remoteRC = msg->rc;
+      gotLIM   = true;
+      // TODO: update address info pubkey
+      return DoKeyExchange(Router()->crypto.transport_dh_client, msg->N,
+                           remoteTransportPubKey, Router()->encryption);
+    }
+
+    void
+    BaseSession::OutboundHandshake(const KeyExchangeNonce& n)
+    {
+      Router()->crypto.shorthash(sessionKey, ConstBuffer(remoteRC.pubkey));
+
+      byte_t tmp[LinkIntroMessage::MaxSize];
+      auto buf = StackBuffer< decltype(tmp) >(tmp);
+      LinkIntroMessage msg;
+      msg.rc = Router()->rc;
+      msg.N  = n;
+      msg.P  = DefaultLinkSessionLifetime;
+      if(!msg.Sign(&Router()->crypto, Router()->identity))
+      {
+        llarp::LogError("failed to sign LIM for outbound handshake to ",
+                        remoteAddr);
+        Close();
+        return;
+      }
+      // encode
+      if(!msg.BEncode(&buf))
+      {
+        llarp::LogError("failed to encode LIM for handshake to ", remoteAddr);
+        Close();
+        return;
+      }
+      // rewind
+      buf.sz  = buf.cur - buf.base;
+      buf.cur = buf.base;
+      // send
+      if(!SendMessageBuffer(buf))
+      {
+        llarp::LogError("failed to send handshake to ", remoteAddr);
+        Close();
+        return;
+      }
+      // mix keys
+      if(!DoKeyExchange(Router()->crypto.transport_dh_client, msg.N,
+                        remoteTransportPubKey, Router()->encryption))
+      {
+        llarp::LogError("failed to mix keys for outbound session to ",
+                        remoteAddr);
+        Close();
+      }
+      else
+        EnterState(eSessionReady);
     }
 
     llarp_router*
@@ -611,14 +667,12 @@ namespace llarp
     LinkLayer::NewOutboundSession(const RouterContact& rc,
                                   const AddressInfo& addr)
     {
-      return new BaseSession(router, utp_create_socket(_utp_ctx), rc, addr);
+      return new BaseSession(this, utp_create_socket(_utp_ctx), rc, addr);
     }
 
     uint64
     LinkLayer::OnRead(utp_callback_arguments* arg)
     {
-      LinkLayer* parent =
-          static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
       BaseSession* self =
           static_cast< BaseSession* >(utp_get_userdata(arg->socket));
 
@@ -628,26 +682,13 @@ namespace llarp
         {
           return 0;
         }
-        else if(self->state == BaseSession::eSessionReady)
+        if(!self->Recv(arg->buf, arg->len))
         {
-          if(!self->Recv(arg->buf, arg->len))
-          {
-            llarp::LogDebug("recv fail for ", self->remoteAddr);
-            self->Close();
-            return 0;
-          }
-          utp_read_drained(arg->socket);
+          llarp::LogDebug("recv fail for ", self->remoteAddr);
+          self->Close();
+          return 0;
         }
-        else if(self->state == BaseSession::eLinkEstablished)
-        {
-          if(!self->RecvHandshake(arg->buf, arg->len, parent))
-          {
-            llarp::LogDebug("recv handshake failed for ", self->remoteAddr);
-            self->Close();
-            return 0;
-          }
-          utp_read_drained(arg->socket);
-        }
+        utp_read_drained(arg->socket);
       }
       else
       {
@@ -698,7 +739,7 @@ namespace llarp
           static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
       Addr remote(*arg->address);
       llarp::LogDebug("utp accepted from ", remote);
-      BaseSession* session = new BaseSession(self->router, arg->socket, remote);
+      BaseSession* session = new BaseSession(self, arg->socket, remote);
       self->PutSession(remote, session);
       session->OnLinkEstablished(self);
       return 0;
@@ -709,12 +750,8 @@ namespace llarp
                                  bool isLastFragment)
 
     {
-      if(state != eSessionReady)
-      {
-        llarp::LogWarn("tried to send to non ready session on ", remoteAddr);
-        return;
-      }
-      FragmentBuffer buf;
+      sendq.emplace_back();
+      auto& buf = sendq.back();
       llarp::LogDebug("encrypt then hash ", sz, " bytes last=", isLastFragment);
       buf.Randomize();
       byte_t* nonce = buf.data() + FragmentHashSize;
@@ -740,8 +777,6 @@ namespace llarp
       payload.sz   = FragmentBufferSize - FragmentHashSize;
       // key'd hash
       Router()->crypto.hmac(buf.data(), payload, sessionKey);
-      // push back
-      sendq.push_back(std::move(buf));
     }
 
     void
@@ -807,83 +842,6 @@ namespace llarp
           llarp::DumpBuffer(mbuf);
         }
         recvMsgOffset = 0;
-      }
-      return true;
-    }
-
-    bool
-    BaseSession::RecvHandshake(const void* buf, size_t bufsz, LinkLayer* p)
-    {
-      size_t sz = bufsz;
-      parent    = p;
-
-      llarp::LogDebug("recv handshake ", sz, " from ", remoteAddr);
-      if(sz <= 8)
-      {
-        llarp::LogDebug("handshake too small from ", remoteAddr);
-        Close();
-        return false;
-      }
-
-      // process handshake header
-      byte_t* ptr      = (byte_t*)buf;
-      uint32_t version = bufbe32toh(ptr);
-      if(version != LLARP_PROTO_VERSION)
-      {
-        llarp::LogWarn("protocol version missmatch ", version,
-                       " != ", LLARP_PROTO_VERSION);
-        Close();
-        return false;
-      }
-      ptr += sizeof(uint32_t);
-      sz -= sizeof(uint32_t);
-      uint32_t limsz = bufbe32toh(ptr);
-      ptr += sizeof(uint32_t);
-      sz -= sizeof(uint32_t);
-      if(limsz > sz)
-      {
-        // not enough data
-        // TODO: don't bail here, continue reading
-        llarp::LogDebug("not enough data for handshake, want ", limsz,
-                        " bytes but got ", sz);
-        Close();
-        return false;
-      }
-
-      llarp::LogDebug("from ", bufsz, " bytes reading ", limsz, " of ", sz,
-                      " bytes");
-
-      // process LIM
-      auto mbuf = InitBuffer(ptr, limsz);
-      LinkIntroMessage msg(this);
-      if(!msg.BDecode(&mbuf))
-      {
-        llarp::LogError("Failed to parse LIM from ", remoteAddr);
-        llarp::DumpBuffer(mbuf);
-        Close();
-        return false;
-      }
-      if(!msg.HandleMessage(Router()))
-      {
-        llarp::LogError("failed to verify signature of rc");
-        return false;
-      }
-      gotLIM = true;
-      sz -= limsz;
-      remoteRC = msg.rc;
-      if(!DoKeyExchange(Router()->crypto.transport_dh_server, msg.N,
-                        remoteRC.enckey, parent->TransportSecretKey()))
-        return false;
-      EnterState(eSessionReady);
-      if(sz)
-      {
-        llarp::LogDebug("got ", sz, " leftover from handshake from ",
-                        remoteAddr);
-        return Recv(ptr + limsz, sz);
-      }
-      else
-      {
-        llarp::LogDebug("no leftovers in handshake from ", remoteAddr);
       }
       return true;
     }

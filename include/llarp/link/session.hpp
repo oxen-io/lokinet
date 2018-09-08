@@ -43,6 +43,9 @@ namespace llarp
     std::function< const PubKey &(void) > GetPubKey;
     /// get remote address
     std::function< const Addr &(void) > GetRemoteEndpoint;
+
+    /// handle a valid LIM
+    std::function< bool(const LinkIntroMessage *msg) > GotLIM;
   };
 }  // namespace llarp
 

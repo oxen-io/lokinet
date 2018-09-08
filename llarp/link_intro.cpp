@@ -29,6 +29,10 @@ namespace llarp
       llarp::LogWarn("failed to decode nonce in LIM");
       return false;
     }
+    if(llarp_buffer_eq(key, "p"))
+    {
+      return bencode_read_integer(buf, &P);
+    }
     if(llarp_buffer_eq(key, "r"))
     {
       if(rc.BDecode(buf))
@@ -49,6 +53,10 @@ namespace llarp
       }
       llarp::LogDebug("LIM version ", version);
       return true;
+    }
+    else if(llarp_buffer_eq(key, "z"))
+    {
+      return Z.BDecode(buf);
     }
     else
     {
@@ -73,6 +81,11 @@ namespace llarp
     if(!N.BEncode(buf))
       return false;
 
+    if(!bencode_write_bytestring(buf, "p", 1))
+      return false;
+    if(!bencode_write_uint64(buf, P))
+      return false;
+
     if(!bencode_write_bytestring(buf, "r", 1))
       return false;
     if(!rc.BEncode(buf))
@@ -81,12 +94,71 @@ namespace llarp
     if(!bencode_write_version_entry(buf))
       return false;
 
+    if(!bencode_write_bytestring(buf, "z", 1))
+      return false;
+    if(!Z.BEncode(buf))
+      return false;
+
     return bencode_end(buf);
+  }
+
+  LinkIntroMessage&
+  LinkIntroMessage::operator=(const LinkIntroMessage& msg)
+  {
+    version = msg.version;
+    Z       = msg.Z;
+    rc      = msg.rc;
+    N       = msg.N;
+    P       = msg.P;
+    return *this;
   }
 
   bool
   LinkIntroMessage::HandleMessage(llarp_router* router) const
   {
-    return rc.VerifySignature(&router->crypto);
+    if(!Verify(&router->crypto))
+      return false;
+    return session->GotLIM(this);
   }
+
+  bool
+  LinkIntroMessage::Sign(llarp_crypto* c, const SecretKey& k)
+  {
+    Z.Zero();
+    byte_t tmp[MaxSize] = {0};
+    auto buf            = llarp::StackBuffer< decltype(tmp) >(tmp);
+    if(!BEncode(&buf))
+      return false;
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+    return c->sign(Z, k, buf);
+  }
+
+  bool
+  LinkIntroMessage::Verify(llarp_crypto* c) const
+  {
+    LinkIntroMessage copy;
+    copy = *this;
+    copy.Z.Zero();
+    byte_t tmp[MaxSize] = {0};
+    auto buf            = llarp::StackBuffer< decltype(tmp) >(tmp);
+    if(!copy.BEncode(&buf))
+      return false;
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+    // outer signature
+    if(!c->verify(rc.pubkey, buf, Z))
+    {
+      llarp::LogError("outer signature failure");
+      return false;
+    }
+    // rc signature
+    if(!rc.VerifySignature(c))
+    {
+      llarp::LogError("inner signature failure");
+      return false;
+    }
+    return true;
+  }
+
 }  // namespace llarp
