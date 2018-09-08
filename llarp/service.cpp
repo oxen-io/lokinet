@@ -260,7 +260,12 @@ namespace llarp
         return false;
       // decode
       inf.read((char*)buf.base, sz);
-      return BDecode(&buf);
+      if(!BDecode(&buf))
+        return false;
+      // update pubkey
+      pub.Update(llarp::seckey_topublic(enckey),
+                 llarp::seckey_topublic(pubkey));
+      return true;
     }
 
     bool
