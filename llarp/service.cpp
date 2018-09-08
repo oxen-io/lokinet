@@ -264,7 +264,7 @@ namespace llarp
         return false;
       // update pubkey
       pub.Update(llarp::seckey_topublic(enckey),
-                 llarp::seckey_topublic(pubkey));
+                 llarp::seckey_topublic(signkey));
       return true;
     }
 
