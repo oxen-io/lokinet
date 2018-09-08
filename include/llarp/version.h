@@ -6,11 +6,11 @@
 #endif
 
 #ifndef LLARP_VERSION_MIN
-#define LLARP_VERSION_MIN "1"
+#define LLARP_VERSION_MIN "2"
 #endif
 
 #ifndef LLARP_VERSION_PATCH
-#define LLARP_VERSION_PATCH "0"
+#define LLARP_VERSION_PATCH "1"
 #endif
 
 #ifndef LLARP_VERSION_NUM
