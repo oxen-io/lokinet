@@ -18,6 +18,12 @@ namespace llarp
 
       Bucket(const Key_t& us) : nodes(XorMetric(us)){};
 
+      size_t
+      Size() const
+      {
+        return nodes.size();
+      }
+
       bool
       GetRandomNodeExcluding(Key_t& result,
                              const std::set< Key_t >& exclude) const

@@ -634,11 +634,21 @@ namespace llarp
       std::vector< RouterID > closer;
       Key_t t(target.data());
       std::set< Key_t > found;
-      if(!nodes->GetManyNearExcluding(t, found, 4,
+      size_t nodeCount = nodes->Size();
+      if(nodeCount == 0)
+      {
+        llarp::LogError(
+            "cannot handle exploritory router lookup, no dht peers");
+        return false;
+      }
+      size_t want = std::min(4UL, nodeCount);
+      if(!nodes->GetManyNearExcluding(t, found, want,
                                       std::set< Key_t >{ourKey, requester}))
       {
         llarp::LogError(
-            "not enough dht nodes to handle exploritory router lookup");
+            "not enough dht nodes to handle exploritory router lookup, "
+            "need a minimum of ",
+            want, " dht peers");
         return false;
       }
       for(const auto &f : found)
