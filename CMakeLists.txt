@@ -456,9 +456,8 @@ include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
 include_directories(${sodium_INCLUDE_DIR})
 
-if (MSVC)
+if (WIN32)
 include_directories(contrib/msc/include)
-link_directories(contrib/msc/lib)
 endif()
 
 set(RC_EXE rcutil)

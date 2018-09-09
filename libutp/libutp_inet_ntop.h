@@ -30,11 +30,6 @@
 // ut_utils/src/sockaddr.cpp
 // libutp/win32_inet_ntop.obj
 // 
-// When we drop support for XP we can just #include <ws2tcpip.h>, and use the system functions
-// For now, we will always use our functions on windows, on all builds
-// The reason is: we would like the debug build to behave as much as the release build as possible
-// It is much better to catch a problem in the debug build, than to link the system version
-// in debug, and our version int he wild.
 
 #if defined(_WIN32_WINNT)
 #if _WIN32_WINNT >= 0x600 // Win32, post-XP
