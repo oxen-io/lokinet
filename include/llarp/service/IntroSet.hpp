@@ -28,7 +28,7 @@ namespace llarp
 
       IntroSet() = default;
 
-      IntroSet(const IntroSet&& other)
+      IntroSet(IntroSet&& other)
       {
         A       = std::move(other.A);
         I       = std::move(other.I);

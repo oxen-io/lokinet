@@ -93,7 +93,7 @@ llarp_router_try_connect(struct llarp_router *router,
       std::make_unique< TryConnectJob >(remote, link, numretries, router)));
   TryConnectJob *job = itr.first->second.get();
   // try establishing async
-  job->Attempt();
+  llarp_logic_queue_job(router->logic, {job, &on_try_connecting});
   return true;
 }
 
@@ -175,11 +175,12 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   q.emplace(buf.sz);
   memcpy(q.back().data(), buf.base, buf.sz);
 
+  llarp::RouterContact remoteRC;
   // we don't have an open session to that router right now
-  if(llarp_nodedb_get_rc(nodedb, remote, rc))
+  if(llarp_nodedb_get_rc(nodedb, remote, remoteRC))
   {
     // try connecting directly as the rc is loaded from disk
-    llarp_router_try_connect(this, rc, 10);
+    llarp_router_try_connect(this, remoteRC, 10);
     return true;
   }
 
@@ -264,13 +265,13 @@ bool
 llarp_router::SaveRC()
 {
   llarp::LogDebug("verify RC signature");
-  if(!rc.VerifySignature(&crypto))
+  if(!rc().VerifySignature(&crypto))
   {
-    rc.Dump< MAX_RC_SIZE >();
+    rc().Dump< MAX_RC_SIZE >();
     llarp::LogError("RC has bad signature not saving");
     return false;
   }
-  return rc.Write(our_rc_file.string().c_str());
+  return rc().Write(our_rc_file.string().c_str());
 }
 
 void
@@ -364,6 +365,7 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
   }
   else
   {
+    llarp::LogInfo("looking up router ", remote);
     // dht lookup as we don't know it
     dht->impl.LookupRouter(
         remote,
@@ -377,7 +379,10 @@ llarp_router::HandleDHTLookupForTryEstablishTo(
     const std::vector< llarp::RouterContact > &results)
 {
   for(const auto &result : results)
-    async_verify_RC(result);
+  {
+    llarp_nodedb_put_rc(nodedb, result);
+    llarp_router_try_connect(this, result, 10);
+  }
 }
 
 size_t
@@ -614,7 +619,7 @@ llarp_router::Run()
     if(!a.isPrivate())
     {
       llarp::LogInfo("Loading Addr: ", a, " into our RC");
-      rc.addrs.push_back(addr);
+      _rc.addrs.push_back(addr);
     }
   };
   if(this->publicOverride)
@@ -640,19 +645,18 @@ llarp_router::Run()
       this->addrInfo.ip   = *publicAddr.addr6();
       this->addrInfo.port = publicAddr.port();
       llarp::LogInfo("Loaded our public ", publicAddr, " override into RC!");
-      // we need the link to set the pubkey
-      rc.addrs.push_back(this->addrInfo);
+      _rc.addrs.push_back(this->addrInfo);
     }
   }
   // set public encryption key
-  rc.enckey = llarp::seckey_topublic(encryption);
-  llarp::LogInfo("Your Encryption pubkey ", rc.enckey);
+  _rc.enckey = llarp::seckey_topublic(encryption);
+  llarp::LogInfo("Your Encryption pubkey ", rc().enckey);
   // set public signing key
-  rc.pubkey = llarp::seckey_topublic(identity);
-  llarp::LogInfo("Your Identity pubkey ", rc.pubkey);
+  _rc.pubkey = llarp::seckey_topublic(identity);
+  llarp::LogInfo("Your Identity pubkey ", rc().pubkey);
 
   llarp::LogInfo("Signing rc...");
-  if(!rc.Sign(&crypto, identity))
+  if(!_rc.Sign(&crypto, identity))
   {
     llarp::LogError("failed to sign rc");
     return;
@@ -971,9 +975,9 @@ namespace llarp
     {
       if(StrEq(key, "nickname"))
       {
-        self->rc.SetNick(val);
+        self->_rc.SetNick(val);
         // set logger name here
-        _glog.nodeName = self->rc.Nick();
+        _glog.nodeName = self->rc().Nick();
       }
       if(StrEq(key, "encryption-privkey"))
       {

@@ -69,11 +69,15 @@ namespace llarp
       std::vector< V > valuesFound;
       TXOwner whoasked;
 
+      virtual bool
+      Validate(const V& value) const = 0;
+
       void
       OnFound(const Key_t& askedPeer, const V& value)
       {
         peersAsked.insert(askedPeer);
-        valuesFound.push_back(value);
+        if(Validate(value))
+          valuesFound.push_back(value);
       }
 
       virtual void
@@ -115,6 +119,9 @@ namespace llarp
     {
       Context();
       ~Context();
+
+      llarp_crypto*
+      Crypto();
 
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer

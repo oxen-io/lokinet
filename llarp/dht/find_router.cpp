@@ -22,7 +22,7 @@ namespace llarp
         if(path)
         {
           replies.emplace_back(
-              new GotRouterMessage(K.data(), txid, {dht.router->rc}, false));
+              new GotRouterMessage(K.data(), txid, {dht.router->rc()}, false));
           return true;
         }
         return false;

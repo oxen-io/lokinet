@@ -167,14 +167,12 @@ namespace llarp
       OutboundLinkEstablished(LinkLayer* p)
       {
         OnLinkEstablished(p);
-        KeyExchangeNonce nonce;
-        nonce.Randomize();
-        OutboundHandshake(nonce);
+        OutboundHandshake();
       }
 
       // send first message
       void
-      OutboundHandshake(const KeyExchangeNonce& n);
+      OutboundHandshake();
 
       // mix keys
       bool
@@ -561,7 +559,7 @@ namespace llarp
         : BaseSession(p)
     {
       p->router->crypto.shorthash(sessionKey,
-                                  ConstBuffer(p->router->rc.pubkey));
+                                  InitBuffer(p->router->pubkey(), PUBKEYSIZE));
       remoteRC.Clear();
       sock = s;
       assert(s == sock);
@@ -602,16 +600,24 @@ namespace llarp
     }
 
     void
-    BaseSession::OutboundHandshake(const KeyExchangeNonce& n)
+    BaseSession::OutboundHandshake()
     {
+      // set session key
       Router()->crypto.shorthash(sessionKey, ConstBuffer(remoteRC.pubkey));
 
       byte_t tmp[LinkIntroMessage::MaxSize];
       auto buf = StackBuffer< decltype(tmp) >(tmp);
+      // build our RC
       LinkIntroMessage msg;
-      msg.rc = Router()->rc;
-      msg.N  = n;
-      msg.P  = DefaultLinkSessionLifetime;
+      msg.rc = Router()->rc();
+      if(!msg.rc.VerifySignature(&Router()->crypto))
+      {
+        llarp::LogError("our RC is invalid? closing session to", remoteAddr);
+        Close();
+        return;
+      }
+      msg.N.Randomize();
+      msg.P = DefaultLinkSessionLifetime;
       if(!msg.Sign(&Router()->crypto, Router()->identity))
       {
         llarp::LogError("failed to sign LIM for outbound handshake to ",
@@ -643,9 +649,9 @@ namespace llarp
         llarp::LogError("failed to mix keys for outbound session to ",
                         remoteAddr);
         Close();
+        return;
       }
-      else
-        EnterState(eSessionReady);
+      EnterState(eSessionReady);
     }
 
     llarp_router*

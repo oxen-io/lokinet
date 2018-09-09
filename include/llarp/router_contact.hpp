@@ -33,13 +33,13 @@ namespace llarp
     }
 
     // advertised addresses
-    std::vector< AddressInfo > addrs = {};
+    std::vector< AddressInfo > addrs;
     // public encryption public key
     llarp::PubKey enckey;
     // public signing public key
     llarp::PubKey pubkey;
     // advertised exits
-    std::vector< ExitInfo > exits = {};
+    std::vector< ExitInfo > exits;
     // signature
     llarp::Signature signature;
     /// node nickname, yw kee

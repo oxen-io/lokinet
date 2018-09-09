@@ -46,6 +46,13 @@ namespace llarp
       {
       }
 
+      bool
+      Validate(const RouterID &) const
+      {
+        // TODO: check with lokid
+        return true;
+      }
+
       void
       Start(const TXOwner &peer)
       {
@@ -70,13 +77,9 @@ namespace llarp
         llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
         for(const auto &pk : valuesFound)
         {
-          RouterContact rc;
-          if(!llarp_nodedb_get_rc(parent->router->nodedb, pk, rc))
-          {
-            // try connecting to it we don't know it
-            // this triggers a dht lookup
-            parent->router->TryEstablishTo(pk);
-          }
+          // try connecting to it we don't know it
+          // this triggers a dht lookup
+          parent->router->TryEstablishTo(pk);
         }
       }
     };
@@ -192,7 +195,7 @@ namespace llarp
       {
         // we are the target, give them our RC
         replies.emplace_back(
-            new GotRouterMessage(requester, txid, {router->rc}, false));
+            new GotRouterMessage(requester, txid, {router->rc()}, false));
         return;
       }
       Key_t next;
@@ -322,6 +325,23 @@ namespace llarp
         peersAsked.insert(ctx->OurKey());
       }
 
+      bool
+      Validate(const service::IntroSet &value) const
+      {
+        if(!value.VerifySignature(parent->Crypto()))
+        {
+          llarp::LogWarn(
+              "Got introset with invalid signature from service lookup");
+          return false;
+        }
+        if(value.A.Addr() != target)
+        {
+          llarp::LogWarn("got introset with wrong target from service lookup");
+          return false;
+        }
+        return true;
+      }
+
       void
       DoNextRequest(const Key_t &nextPeer)
       {
@@ -444,6 +464,18 @@ namespace llarp
       {
       }
 
+      bool
+      Validate(const service::IntroSet &introset) const
+      {
+        if(I.A != introset.A)
+        {
+          llarp::LogWarn(
+              "publish introset acknoledgement acked a different service");
+          return false;
+        }
+        return true;
+      }
+
       void
       Start(const TXOwner &peer)
       {
@@ -520,6 +552,22 @@ namespace llarp
                 uint64_t r)
           : TX< service::Tag, service::IntroSet >(asker, tag, ctx), R(r)
       {
+      }
+
+      bool
+      Validate(const service::IntroSet &introset) const
+      {
+        if(!introset.VerifySignature(parent->Crypto()))
+        {
+          llarp::LogWarn("got introset from tag lookup with invalid signature");
+          return false;
+        }
+        if(introset.topic != target)
+        {
+          llarp::LogWarn("got introset with missmatched topic in tag lookup");
+          return false;
+        }
+        return true;
       }
 
       void
@@ -612,6 +660,17 @@ namespace llarp
       }
 
       bool
+      Validate(const RouterContact &rc) const
+      {
+        if(!rc.VerifySignature(parent->Crypto()))
+        {
+          llarp::LogWarn("rc has invalid signature from lookup result");
+          return false;
+        }
+        return true;
+      }
+
+      bool
       GetNextPeer(Key_t &next, const std::set< Key_t > &exclude)
       {
         // TODO: implement iterative (?)
@@ -629,12 +688,6 @@ namespace llarp
         parent->DHTSendTo(
             peer.node,
             new FindRouterMessage(parent->OurKey(), target, peer.txid));
-      }
-
-      void
-      SendTo(const Key_t &peer, IMessage *msg) const
-      {
-        return parent->DHTSendTo(peer, msg);
       }
 
       virtual void
@@ -715,6 +768,12 @@ namespace llarp
           peer, target,
           new RecursiveRouterLookup(asker, target, this, handler));
       tx->Start(peer);
+    }
+
+    llarp_crypto *
+    Context::Crypto()
+    {
+      return &router->crypto;
     }
 
   }  // namespace dht

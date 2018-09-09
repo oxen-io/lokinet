@@ -47,7 +47,13 @@ struct llarp_router
   fs::path our_rc_file = "rc.signed";
 
   // our router contact
-  llarp::RouterContact rc;
+  llarp::RouterContact _rc;
+
+  const llarp::RouterContact &
+  rc() const
+  {
+    return _rc;
+  }
 
   // our ipv4 public setting
   bool publicOverride = false;
