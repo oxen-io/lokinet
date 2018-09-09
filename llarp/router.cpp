@@ -199,6 +199,7 @@ llarp_router::HandleDHTLookupForSendTo(
   {
     llarp_nodedb_put_rc(nodedb, results[0]);
     llarp_router_try_connect(this, results[0], 10);
+    async_verify_RC(results[0]);
   }
   else
   {
@@ -382,6 +383,7 @@ llarp_router::HandleDHTLookupForTryEstablishTo(
   {
     llarp_nodedb_put_rc(nodedb, result);
     llarp_router_try_connect(this, result, 10);
+    async_verify_RC(result);
   }
 }
 
