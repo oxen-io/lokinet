@@ -188,6 +188,8 @@ struct llarp_ev_loop
   void
   tick_listeners()
   {
+    if(!running())
+      return;
     for(auto& l : udp_listeners)
       if(l->tick)
         l->tick(l);
