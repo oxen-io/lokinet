@@ -1,1 +1,1 @@
-probably not backdoored edition
+first mostly working version
