@@ -85,6 +85,12 @@ namespace llarp
     Sign(llarp_crypto *crypto, const llarp::SecretKey &secret);
 
     bool
+    OtherIsNewer(const RouterContact &other) const
+    {
+      return last_updated < other.last_updated;
+    }
+
+    bool
     Read(const char *fname);
 
     bool

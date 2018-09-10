@@ -75,6 +75,12 @@ namespace llarp
         return A < other.A;
       }
 
+      bool
+      OtherIsNewer(const IntroSet& other) const
+      {
+        return GetNewestIntroExpiration() < other.GetNewestIntroExpiration();
+      }
+
       friend std::ostream&
       operator<<(std::ostream& out, const IntroSet& i)
       {
@@ -99,12 +105,6 @@ namespace llarp
           out << " W=" << *i.W;
         }
         return out << " V=" << i.version << " Z=" << i.Z;
-      }
-
-      bool
-      OtherIsNewerThan(const IntroSet& other) const
-      {
-        return GetNewestIntroExpiration() < other.GetNewestIntroExpiration();
       }
 
       llarp_time_t

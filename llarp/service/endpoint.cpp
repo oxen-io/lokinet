@@ -729,7 +729,7 @@ namespace llarp
     Endpoint::OutboundContext::OnIntroSetUpdate(const Address& addr,
                                                 const IntroSet* i)
     {
-      if(i && addr == i->A.Addr() && currentIntroSet.OtherIsNewerThan(*i))
+      if(i && addr == i->A.Addr() && currentIntroSet.OtherIsNewer(*i))
       {
         currentIntroSet = *i;
       }
