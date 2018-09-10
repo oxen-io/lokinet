@@ -10,7 +10,7 @@ namespace llarp
   bool
   ILinkLayer::HasSessionTo(const PubKey& pk)
   {
-    util::Lock l(m_AuthedLinksMutex);
+    Lock l(m_AuthedLinksMutex);
     return m_AuthedLinks.find(pk) != m_AuthedLinks.end();
   }
 
@@ -37,7 +37,7 @@ namespace llarp
   {
     auto now = llarp_time_now_ms();
     {
-      util::Lock lock(m_AuthedLinksMutex);
+      Lock lock(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
@@ -51,7 +51,7 @@ namespace llarp
       }
     }
     {
-      util::Lock lock(m_PendingMutex);
+      Lock lock(m_PendingMutex);
 
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
@@ -70,8 +70,8 @@ namespace llarp
   void
   ILinkLayer::MapAddr(const PubKey& pk, ILinkSession* s)
   {
-    util::Lock l_authed(m_AuthedLinksMutex);
-    util::Lock l_pending(m_PendingMutex);
+    Lock l_authed(m_AuthedLinksMutex);
+    Lock l_pending(m_PendingMutex);
     auto itr = m_Pending.begin();
     while(itr != m_Pending.end())
     {
@@ -111,7 +111,7 @@ namespace llarp
     llarp::Addr addr(to);
     auto s = NewOutboundSession(rc, to);
     s->Start();
-    PutSession(addr, s);
+    PutSession(s);
   }
 
   bool
@@ -132,7 +132,7 @@ namespace llarp
   void
   ILinkLayer::CloseSessionTo(const PubKey& remote)
   {
-    util::Lock l(m_AuthedLinksMutex);
+    Lock l(m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
     auto itr   = range.first;
     while(itr != range.second)
@@ -145,7 +145,7 @@ namespace llarp
   void
   ILinkLayer::KeepAliveSessionTo(const PubKey& remote)
   {
-    util::Lock l(m_AuthedLinksMutex);
+    Lock l(m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
     auto itr   = range.first;
     while(itr != range.second)
@@ -158,7 +158,7 @@ namespace llarp
   bool
   ILinkLayer::SendTo(const PubKey& remote, llarp_buffer_t buf)
   {
-    util::Lock l(m_AuthedLinksMutex);
+    Lock l(m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
     auto itr   = range.first;
     // TODO: random selection
@@ -218,9 +218,9 @@ namespace llarp
   }
 
   void
-  ILinkLayer::PutSession(const Addr& addr, ILinkSession* s)
+  ILinkLayer::PutSession(ILinkSession* s)
   {
-    util::Lock lock(m_PendingMutex);
+    Lock lock(m_PendingMutex);
     m_Pending.emplace_back(s);
   }
 

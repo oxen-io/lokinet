@@ -669,6 +669,8 @@ llarp_router::Run()
     return;
   }
 
+  llarp::LogInfo("have ", llarp_nodedb_num_loaded(nodedb), " routers");
+
   llarp::LogDebug("starting outbound link");
   if(!outboundLink->Start(logic))
   {

@@ -921,8 +921,8 @@ namespace llarp
       if(path)
       {
         routing::PathTransferMessage transfer(msg, selectedIntro.pathID);
-        llarp::LogDebug("sending frame via ", path->Upstream(), " to ",
-                        path->Endpoint(), " for ", Name());
+        llarp::LogInfo("sending frame via ", path->Upstream(), " to ",
+                       path->Endpoint(), " for ", Name());
         if(!path->SendRoutingMessage(&transfer, m_Parent->Router()))
           llarp::LogError("Failed to send frame on path");
       }

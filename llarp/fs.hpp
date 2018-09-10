@@ -36,7 +36,7 @@ namespace llarp
       auto itr = fs::begin(i);
       while(itr != fs::end(i))
       {
-        fs::path p = path / *itr;
+        fs::path p = *itr;
         if(!visit(p))
           return;
         ++itr;
@@ -48,7 +48,7 @@ namespace llarp
       auto itr = i.begin();
       while(itr != itr.end())
       {
-        fs::path p = path / *itr;
+        fs::path p = *itr;
         if(!visit(p))
           return;
         ++itr;

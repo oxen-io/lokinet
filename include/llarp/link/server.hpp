@@ -77,9 +77,6 @@ namespace llarp
     bool
     GetOurAddressInfo(AddressInfo& addr) const;
 
-    void
-    RemoveSessionVia(const Addr& addr);
-
     virtual uint16_t
     Rank() const = 0;
 
@@ -122,19 +119,22 @@ namespace llarp
     uint32_t tick_id;
 
    protected:
+    typedef util::NullLock Lock;
+    typedef util::NullMutex Mutex;
+
     void
-    PutSession(const Addr& addr, ILinkSession* s);
+    PutSession(ILinkSession* s);
 
     llarp_logic* m_Logic = nullptr;
     Addr m_ourAddr;
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;
 
-    util::Mutex m_AuthedLinksMutex;
+    Mutex m_AuthedLinksMutex;
     std::unordered_multimap< PubKey, std::unique_ptr< ILinkSession >,
                              PubKey::Hash >
         m_AuthedLinks;
-    util::Mutex m_PendingMutex;
+    Mutex m_PendingMutex;
     std::list< std::unique_ptr< ILinkSession > > m_Pending;
   };
 }  // namespace llarp

@@ -139,7 +139,6 @@ struct llarp_nodedb
     if(fpath.extension() != RC_FILE_EXT)
       return false;
     llarp::RouterContact rc;
-
     if(!rc.Read(fpath.string().c_str()))
     {
       llarp::LogError("failed to read file ", fpath);

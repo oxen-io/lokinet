@@ -96,7 +96,7 @@ namespace llarp
       EnterState(State st);
 
       BaseSession();
-      virtual ~BaseSession();
+      ~BaseSession();
 
       void
       PumpWrite()
@@ -449,7 +449,28 @@ namespace llarp
 #ifdef __linux__
         ProcessICMP();
 #endif
+        std::set< PubKey > sessions;
+        {
+          Lock l(m_AuthedLinksMutex);
+          auto itr = m_AuthedLinks.begin();
+          while(itr != m_AuthedLinks.end())
+          {
+            sessions.insert(itr->first);
+            ++itr;
+          }
+        }
         ILinkLayer::Pump();
+        {
+          Lock l(m_AuthedLinksMutex);
+          for(const auto& pk : sessions)
+          {
+            if(m_AuthedLinks.find(pk) == m_AuthedLinks.end())
+            {
+              // all sessions were removed
+              router->SessionClosed(pk);
+            }
+          }
+        }
       }
       void
       Stop()
@@ -746,7 +767,7 @@ namespace llarp
       Addr remote(*arg->address);
       llarp::LogDebug("utp accepted from ", remote);
       BaseSession* session = new BaseSession(self, arg->socket, remote);
-      self->PutSession(remote, session);
+      self->PutSession(session);
       session->OnLinkEstablished(self);
       return 0;
     }
