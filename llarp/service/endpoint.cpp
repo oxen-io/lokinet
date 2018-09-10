@@ -661,6 +661,7 @@ namespace llarp
         if(itr != m_PendingServiceLookups.end())
         {
           itr->second(addr, nullptr);
+          m_PendingServiceLookups.erase(itr);
         }
         return false;
       }

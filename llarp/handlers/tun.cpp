@@ -204,6 +204,16 @@ namespace llarp
       uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);
+      net::IPv4Packet pkt;
+      memcpy(pkt.buf, buf.base, std::min(buf.sz, sizeof(pkt.buf)));
+      pkt.src(themIP);
+      pkt.dst(usIP);
+      pkt.UpdateChecksum();
+      llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
+                     " bytes from ", inet_ntoa({themIP}));
+
+      llarp_ev_tun_async_write(&tunif, pkt.buf, pkt.sz);
+      /*
       if(!m_NetworkToUserPktQueue.EmplaceIf(
              [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
                // do packet info rewrite here
@@ -218,6 +228,7 @@ namespace llarp
         llarp::LogWarn("failed to parse buffer for ip traffic");
         llarp::DumpBuffer(buf);
       }
+      */
     }
 
     uint32_t
@@ -237,7 +248,7 @@ namespace llarp
       }
       if(m_NextIP < m_MaxIP)
       {
-        nextIP = ++m_NextIP;
+        nextIP = htonl(++m_NextIP);
         m_AddrToIP.insert(std::make_pair(addr, nextIP));
         m_IPToAddr.insert(std::make_pair(nextIP, addr));
       }
