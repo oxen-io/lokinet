@@ -11,7 +11,7 @@ build:linux:
     - linux
   stage: build
   before_script:
-    - apk add --update g++ make cmake automake libtool autoconf linux-headers libsodium
+    - apk add --update g++ make cmake automake libtool autoconf linux-headers libsodium ninja
   script:
     - make clean test
   artifacts:
