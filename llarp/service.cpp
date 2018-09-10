@@ -105,7 +105,7 @@ namespace llarp
       auto highest = now;
       for(const auto& i : I)
         highest = std::max(i.expiresAt, highest);
-      return highest == now;
+      return highest >= now;
     }
 
     Introduction::~Introduction()

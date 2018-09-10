@@ -123,7 +123,7 @@ namespace llarp
         {
           if(itr->second.introset.IsExpired(now))
           {
-            llarp::LogInfo("introset expired ", itr->second.introset.A.Addr());
+            llarp::LogDebug("introset expired ", itr->second.introset.A.Addr());
             itr = nodes.erase(itr);
           }
           else

@@ -238,7 +238,7 @@ namespace llarp
         if(itr != m_AddrToIP.end())
         {
           // mark ip active
-          m_IPActivity[itr->second] = now;
+          m_IPActivity[itr->second] = std::max(now, m_IPActivity[itr->second]);
           return itr->second;
         }
       }
@@ -276,7 +276,7 @@ namespace llarp
       }
 
       // mark ip active
-      m_IPActivity[nextIP] = now;
+      m_IPActivity[nextIP] = std::max(m_IPActivity[nextIP], now);
 
       return nextIP;
     }
@@ -290,7 +290,7 @@ namespace llarp
     void
     TunEndpoint::MarkIPActive(uint32_t ip)
     {
-      m_IPActivity[ip] = llarp_time_now_ms();
+      m_IPActivity[ip] = std::max(llarp_time_now_ms(), m_IPActivity[ip]);
     }
 
     void

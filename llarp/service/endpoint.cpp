@@ -477,8 +477,7 @@ namespace llarp
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
       if(m_IntroSet.HasExpiredIntros(now))
-        return m_CurrentPublishTX == 0
-            && now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
+        return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
       return m_CurrentPublishTX == 0
           && now - m_LastPublish >= INTROSET_PUBLISH_INTERVAL;
     }
@@ -498,7 +497,8 @@ namespace llarp
       }
 
       Address remote;
-      typedef std::function< bool(const IntroSet*) > HandlerFunc;
+      typedef std::function< bool(const Address&, const IntroSet*) >
+          HandlerFunc;
       HandlerFunc handle;
 
       HiddenServiceAddressLookup(Endpoint* p, HandlerFunc h,
@@ -511,19 +511,11 @@ namespace llarp
       HandleResponse(const std::set< IntroSet >& results)
       {
         llarp::LogInfo("found ", results.size(), " for ", remote.ToString());
-        if(results.size() == 1)
+        if(results.size() > 0)
         {
-          llarp::LogInfo("hidden service lookup for ", remote.ToString(),
-                         " success");
-          handle(&*results.begin());
+          return handle(remote, &*results.begin());
         }
-        else
-        {
-          llarp::LogInfo("no response in hidden service lookup for ",
-                         remote.ToString());
-          handle(nullptr);
-        }
-        return false;
+        return handle(remote, nullptr);
       }
 
       llarp::routing::IMessage*
@@ -661,10 +653,17 @@ namespace llarp
     }
 
     bool
-    Endpoint::OnOutboundLookup(const IntroSet* introset)
+    Endpoint::OnOutboundLookup(const Address& addr, const IntroSet* introset)
     {
       if(!introset)
+      {
+        auto itr = m_PendingServiceLookups.find(addr);
+        if(itr != m_PendingServiceLookups.end())
+        {
+          itr->second(addr, nullptr);
+        }
         return false;
+      }
       PutNewOutboundContext(*introset);
       return true;
     }
@@ -701,7 +700,8 @@ namespace llarp
 
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
           this,
-          std::bind(&Endpoint::OnOutboundLookup, this, std::placeholders::_1),
+          std::bind(&Endpoint::OnOutboundLookup, this, std::placeholders::_1,
+                    std::placeholders::_2),
           remote, GenTXID());
 
       if(job->SendRequestViaPath(path, Router()))
@@ -726,9 +726,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::OutboundContext::OnIntroSetUpdate(const IntroSet* i)
+    Endpoint::OutboundContext::OnIntroSetUpdate(const Address& addr,
+                                                const IntroSet* i)
     {
-      if(i && i->IsNewerThan(currentIntroSet))
+      if(i && addr == i->A.Addr() && currentIntroSet.OtherIsNewerThan(*i))
       {
         currentIntroSet = *i;
       }
@@ -784,7 +785,7 @@ namespace llarp
           selectedIntro = intro;
         }
       }
-      ManualRebuild(2);
+      ManualRebuild(1);
     }
 
     void
@@ -911,7 +912,7 @@ namespace llarp
       {
         UpdateIntroSet();
       }
-      if(selectedIntro.expiresAt <= now || now - selectedIntro.expiresAt > 1000)
+      if(selectedIntro.ExpiresSoon(now, 10000))
       {
         ShiftIntroduction();
       }
@@ -921,7 +922,7 @@ namespace llarp
       if(path)
       {
         routing::PathTransferMessage transfer(msg, selectedIntro.pathID);
-        llarp::LogInfo("sending frame via ", path->Upstream(), " to ",
+        llarp::LogInfo("sending frame via ", selectedIntro.pathID, " to ",
                        path->Endpoint(), " for ", Name());
         if(!path->SendRoutingMessage(&transfer, m_Parent->Router()))
           llarp::LogError("Failed to send frame on path");
@@ -943,13 +944,13 @@ namespace llarp
     Endpoint::OutboundContext::UpdateIntroSet()
     {
       auto addr = currentIntroSet.A.Addr();
-      auto path = m_Parent->GetEstablishedPathClosestTo(addr.ToRouter());
+      auto path = m_Parent->PickRandomEstablishedPath();
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Parent,
             std::bind(&Endpoint::OutboundContext::OnIntroSetUpdate, this,
-                      std::placeholders::_1),
+                      std::placeholders::_1, std::placeholders::_2),
             addr, m_Parent->GenTXID());
 
         if(!job->SendRequestViaPath(path, m_Parent->Router()))

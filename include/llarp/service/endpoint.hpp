@@ -188,7 +188,7 @@ namespace llarp
 
        private:
         bool
-        OnIntroSetUpdate(const IntroSet* i);
+        OnIntroSetUpdate(const Address& addr, const IntroSet* i);
 
         void
         EncryptAndSendTo(path::Path* p, llarp_buffer_t payload, ProtocolType t);
@@ -275,7 +275,7 @@ namespace llarp
 
      private:
       bool
-      OnOutboundLookup(const IntroSet* i); /*  */
+      OnOutboundLookup(const Address&, const IntroSet* i); /*  */
 
       static bool
       SetupIsolatedNetwork(void* user, bool success);

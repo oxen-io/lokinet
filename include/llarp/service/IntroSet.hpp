@@ -102,20 +102,18 @@ namespace llarp
       }
 
       bool
-      IsNewerThan(const IntroSet& other) const
+      OtherIsNewerThan(const IntroSet& other) const
       {
-        return GetNewestIntro().expiresAt > other.GetNewestIntro().expiresAt;
+        return GetNewestIntroExpiration() < other.GetNewestIntroExpiration();
       }
 
-      Introduction
-      GetNewestIntro() const
+      llarp_time_t
+      GetNewestIntroExpiration() const
       {
-        Introduction i;
-        i.expiresAt = 0;
+        llarp_time_t t = 0;
         for(const auto& intro : I)
-          if(intro.expiresAt > i.expiresAt)
-            i = intro;
-        return i;
+          t = std::max(intro.expiresAt, t);
+        return t;
       }
 
       bool
