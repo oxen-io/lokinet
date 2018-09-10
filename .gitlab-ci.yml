@@ -13,7 +13,7 @@ build:linux:
   before_script:
     - apk add --update g++ make cmake automake libtool autoconf linux-headers libsodium ninja
   script:
-    - make clean test
+    - make 
   artifacts:
     paths:
       - "lokinet"
