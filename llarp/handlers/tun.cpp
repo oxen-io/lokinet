@@ -199,13 +199,6 @@ namespace llarp
     void
     TunEndpoint::HandleDataMessage(service::ProtocolMessage *msg)
     {
-      if(msg->proto != service::eProtocolTraffic)
-      {
-        llarp::LogWarn(Name(),
-                       " dropping unwarrented message, not ip traffic, proto=",
-                       msg->proto);
-        return;
-      }
       llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
                      " bytes");
       uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
