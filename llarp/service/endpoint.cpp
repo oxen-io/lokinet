@@ -794,15 +794,17 @@ namespace llarp
       auto path = GetPathByRouter(selectedIntro.router);
       if(!path)
       {
-        llarp::LogError("No Path to ", selectedIntro.router, " yet");
+        llarp::LogError(Name(), " No Path to ", selectedIntro.router, " yet");
         return;
       }
       if(sequenceNo)
       {
+        llarp::LogInfo(Name(), " send packet ", sequenceNo);
         EncryptAndSendTo(path, data, protocol);
       }
       else
       {
+        llarp::LogInfo(Name(), " generate intro");
         AsyncGenIntro(path, data, protocol);
       }
     }

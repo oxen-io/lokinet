@@ -97,6 +97,10 @@ namespace llarp
       void
       MarkIPActive(uint32_t ip);
 
+      /// mark this address as active forever
+      void
+      MarkIPActiveForever(uint32_t ip);
+
       void
       FlushSend();
 

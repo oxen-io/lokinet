@@ -38,7 +38,7 @@ namespace llarp
         auto addr_str = v.substr(0, pos);
         if(!addr.FromString(addr_str))
         {
-          llarp::LogError("cannot map invalid address ", addr_str);
+          llarp::LogError(Name() + " cannot map invalid address ", addr_str);
           return false;
         }
         auto ip_str = v.substr(pos + 1);
@@ -53,6 +53,7 @@ namespace llarp
       if(k == "ifname")
       {
         strncpy(tunif.ifname, v.c_str(), sizeof(tunif.ifname) - 1);
+        llarp::LogInfo(Name() + " setting ifname to ", tunif.ifname);
         return true;
       }
       if(k == "ifaddr")
@@ -78,7 +79,8 @@ namespace llarp
           tunif.netmask = 32;
           addr          = v;
         }
-        llarp::LogInfo("set ifaddr to ", addr, " with netmask ", tunif.netmask);
+        llarp::LogInfo(Name() + " set ifaddr to ", addr, " with netmask ",
+                       tunif.netmask);
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
         return true;
       }
@@ -88,7 +90,7 @@ namespace llarp
     bool
     TunEndpoint::MapAddress(const service::Address &addr, uint32_t ip)
     {
-      char buf[32] = {0};
+      char buf[128] = {0};
       inet_ntop(AF_INET, &ip, buf, sizeof(buf));
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
@@ -96,11 +98,11 @@ namespace llarp
         llarp::LogWarn(buf, " already mapped to ", itr->second.ToString());
         return false;
       }
-      llarp::LogInfo("map ", addr.ToString(), " to ", buf);
+      llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", buf);
       m_IPToAddr.insert(std::make_pair(ip, addr));
       m_AddrToIP.insert(std::make_pair(addr, ip));
       // TODO: make ip mapping persist forever
-      MarkIPActive(ip);
+      MarkIPActiveForever(ip);
       return true;
     }
 
@@ -199,10 +201,13 @@ namespace llarp
     {
       if(msg->proto != service::eProtocolTraffic)
       {
-        llarp::LogWarn("dropping unwarrented message, not ip traffic, proto=",
+        llarp::LogWarn(Name(),
+                       " dropping unwarrented message, not ip traffic, proto=",
                        msg->proto);
         return;
       }
+      llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
+                     " bytes");
       uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);
@@ -286,6 +291,12 @@ namespace llarp
     TunEndpoint::MarkIPActive(uint32_t ip)
     {
       m_IPActivity[ip] = llarp_time_now_ms();
+    }
+
+    void
+    TunEndpoint::MarkIPActiveForever(uint32_t ip)
+    {
+      m_IPActivity[ip] = std::numeric_limits< uint64_t >::max();
     }
 
     void
