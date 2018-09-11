@@ -31,14 +31,14 @@ namespace llarp
       bool
       IsExpired(llarp_time_t now) const
       {
-        return now <= expiresAt;
+        return now >= expiresAt;
       }
 
       bool
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const
       {
         if(dlt)
-          return now <= (expiresAt - (llarp_randint() % dlt));
+          return now >= (expiresAt - (llarp_randint() % dlt));
         return IsExpired(now);
       }
 

@@ -255,6 +255,9 @@ namespace llarp
       virtual void
       IntroSetPublished();
 
+      void
+      RegenAndPublishIntroSet(llarp_time_t now);
+
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);
 

@@ -124,13 +124,13 @@ namespace llarp
       void
       src(uint32_t ip)
       {
-        Header()->saddr = htonl(ip);
+        Header()->saddr = ip;
       }
 
       void
       dst(uint32_t ip)
       {
-        Header()->daddr = htonl(ip);
+        Header()->daddr = ip;
       }
 
       // update ip packet checksum

@@ -248,7 +248,7 @@ namespace llarp
       }
       if(m_NextIP < m_MaxIP)
       {
-        nextIP = htonl(++m_NextIP);
+        nextIP = ++m_NextIP;
         m_AddrToIP.insert(std::make_pair(addr, nextIP));
         m_IPToAddr.insert(std::make_pair(nextIP, addr));
       }

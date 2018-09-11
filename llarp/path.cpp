@@ -498,7 +498,8 @@ namespace llarp
         intro.expiresAt = buildStarted + hops[0].lifetime;
         // confirm that we build the path
         status = ePathEstablished;
-        llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID());
+        llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID(),
+                       " took ", llarp_time_now_ms() - buildStarted, " ms");
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;

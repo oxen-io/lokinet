@@ -85,6 +85,48 @@ namespace llarp
     }
 
     void
+    Endpoint::RegenAndPublishIntroSet(llarp_time_t now)
+    {
+      std::set< Introduction > I;
+      if(!GetCurrentIntroductions(I))
+      {
+        llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
+                       " because we couldn't get any introductions");
+        if(ShouldBuildMore())
+          ManualRebuild(1);
+        return;
+      }
+      IntroSet introset = m_IntroSet;
+      introset.I.clear();
+      for(const auto& intro : I)
+      {
+        llarp::LogInfo(intro);
+        if(!intro.ExpiresSoon(now))
+          introset.I.push_back(intro);
+      }
+      if(introset.I.size() == 0)
+      {
+        llarp::LogWarn("not enough intros to publish introset for ", Name());
+        return;
+      }
+      introset.topic = m_Tag;
+      if(!m_Identity.SignIntroSet(introset, &m_Router->crypto))
+      {
+        llarp::LogWarn("failed to sign introset for endpoint ", Name());
+        return;
+      }
+      m_IntroSet = introset;
+      if(PublishIntroSet(m_Router))
+      {
+        llarp::LogInfo("publishing introset for endpoint ", Name());
+      }
+      else
+      {
+        llarp::LogWarn("failed to publish intro set for endpoint ", Name());
+      }
+    }
+
+    void
     Endpoint::Tick(llarp_time_t now)
     {
       /// reset tx id for publish
@@ -93,32 +135,7 @@ namespace llarp
       // publish descriptors
       if(ShouldPublishDescriptors(now))
       {
-        std::set< Introduction > I;
-        if(!GetCurrentIntroductions(I))
-        {
-          llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
-                         " because we couldn't get any introductions");
-          if(ShouldBuildMore())
-            ManualRebuild(1);
-          return;
-        }
-        m_IntroSet.I.clear();
-        for(const auto& intro : I)
-          m_IntroSet.I.push_back(intro);
-        m_IntroSet.topic = m_Tag;
-        if(!m_Identity.SignIntroSet(m_IntroSet, &m_Router->crypto))
-        {
-          llarp::LogWarn("failed to sign introset for endpoint ", Name());
-          return;
-        }
-        if(PublishIntroSet(m_Router))
-        {
-          llarp::LogInfo("publishing introset for endpoint ", Name());
-        }
-        else
-        {
-          llarp::LogWarn("failed to publish intro set for endpoint ", Name());
-        }
+        RegenAndPublishIntroSet(now);
       }
       // expire pending tx
       {
@@ -448,7 +465,7 @@ namespace llarp
     bool
     Endpoint::PublishIntroSet(llarp_router* r)
     {
-      auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr().ToRouter());
+      auto path = PickRandomEstablishedPath();
       if(path)
       {
         m_CurrentPublishTX = llarp_randint();
@@ -478,8 +495,8 @@ namespace llarp
     {
       if(m_IntroSet.HasExpiredIntros(now))
         return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
-      return m_CurrentPublishTX == 0
-          && now - m_LastPublish >= INTROSET_PUBLISH_INTERVAL;
+      return now - m_LastPublish >= INTROSET_PUBLISH_INTERVAL
+          && m_CurrentPublishTX == 0;
     }
 
     void
@@ -628,6 +645,7 @@ namespace llarp
     {
       p->SetDataHandler(std::bind(&Endpoint::HandleHiddenServiceFrame, this,
                                   std::placeholders::_1));
+      RegenAndPublishIntroSet(llarp_time_now_ms());
     }
 
     bool
