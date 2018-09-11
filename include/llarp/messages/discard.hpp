@@ -58,10 +58,8 @@ namespace llarp
       {
       }
 
-      DataDiscardMessage(const PathID_t& src, const PathID_t& dst, uint64_t s)
-          : P(dst)
+      DataDiscardMessage(const PathID_t& dst, uint64_t s) : P(dst)
       {
-        from    = src;
         S       = s;
         version = LLARP_PROTO_VERSION;
       }
