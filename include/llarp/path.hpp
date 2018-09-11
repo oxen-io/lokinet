@@ -160,6 +160,10 @@ namespace llarp
                            llarp_router* r);
 
       bool
+      HandleDataDiscardMessage(const llarp::routing::DataDiscardMessage* msg,
+                               llarp_router* r);
+
+      bool
       HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,
                                llarp_router* r);
       bool
@@ -220,6 +224,8 @@ namespace llarp
     struct Path : public IHopHandler, public llarp::routing::IMessageHandler
     {
       typedef std::function< void(Path*) > BuildResultHookFunc;
+      typedef std::function< bool(Path*, const PathID_t&, uint64_t) >
+          DropHandlerFunc;
       typedef std::vector< PathHopConfig > HopList;
       typedef std::function< bool(const service::ProtocolFrame*) >
           DataHandlerFunc;
@@ -242,6 +248,12 @@ namespace llarp
         m_DataHandler = func;
       }
 
+      void
+      SetDropHandler(DropHandlerFunc func)
+      {
+        m_DropHandler = func;
+      }
+
       llarp_time_t
       ExpireTime() const
       {
@@ -256,6 +268,10 @@ namespace llarp
 
       bool
       SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r);
+
+      bool
+      HandleDataDiscardMessage(const llarp::routing::DataDiscardMessage* msg,
+                               llarp_router* r);
 
       bool
       HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,
@@ -312,6 +328,7 @@ namespace llarp
      private:
       BuildResultHookFunc m_BuiltHook;
       DataHandlerFunc m_DataHandler;
+      DropHandlerFunc m_DropHandler;
       llarp_time_t m_LastLatencyTestTime = 0;
       uint64_t m_LastLatencyTestID       = 0;
     };

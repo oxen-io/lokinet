@@ -143,6 +143,9 @@ namespace llarp
         }
       };
 
+      bool
+      HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
+
       typedef std::queue< PendingBuffer > PendingBufferQueue;
 
       /// context needed to initiate an outbound hidden service session
@@ -150,6 +153,9 @@ namespace llarp
       {
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
+
+        bool
+        HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
 
         /// the remote hidden service's curren intro set
         IntroSet currentIntroSet;

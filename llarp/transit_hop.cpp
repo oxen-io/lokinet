@@ -1,5 +1,6 @@
 #include <llarp/path.hpp>
 #include <llarp/routing/handler.hpp>
+#include <llarp/messages/discard.hpp>
 #include "buffer.hpp"
 #include "router.hpp"
 
@@ -132,6 +133,14 @@ namespace llarp
         const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
     {
       llarp::LogWarn("unwarrented path confirm message on ", info);
+      return false;
+    }
+
+    bool
+    TransitHop::HandleDataDiscardMessage(
+        const llarp::routing::DataDiscardMessage* msg, llarp_router* r)
+    {
+      llarp::LogWarn("unwarranted path data discard message on ", info);
       return false;
     }
 

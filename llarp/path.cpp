@@ -3,6 +3,7 @@
 #include <llarp/path.hpp>
 #include <llarp/pathbuilder.hpp>
 #include <llarp/messages/dht.hpp>
+#include <llarp/messages/discard.hpp>
 #include "buffer.hpp"
 #include "router.hpp"
 
@@ -486,6 +487,15 @@ namespace llarp
       llarp::LogWarn("unwarrented path transfer message on tx=", TXID(),
                      " rx=", RXID());
       return false;
+    }
+
+    bool
+    Path::HandleDataDiscardMessage(
+        const llarp::routing::DataDiscardMessage* msg, llarp_router* r)
+    {
+      if(m_DropHandler)
+        return m_DropHandler(this, msg->P, msg->S);
+      return true;
     }
 
     bool

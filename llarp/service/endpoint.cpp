@@ -11,7 +11,7 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp_router* r)
-        : path::Builder(r, r->dht, 2, 4), m_Router(r), m_Name(name)
+        : path::Builder(r, r->dht, 4, 4), m_Router(r), m_Name(name)
     {
       m_Tag.Zero();
     }
@@ -645,7 +645,43 @@ namespace llarp
     {
       p->SetDataHandler(std::bind(&Endpoint::HandleHiddenServiceFrame, this,
                                   std::placeholders::_1));
+      p->SetDropHandler(std::bind(&Endpoint::HandleDataDrop, this,
+                                  std::placeholders::_1, std::placeholders::_2,
+                                  std::placeholders::_3));
       RegenAndPublishIntroSet(llarp_time_now_ms());
+    }
+
+    bool
+    Endpoint::HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t seq)
+    {
+      llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
+                     p->Endpoint(), " via ", dst);
+      return true;
+    }
+
+    bool
+    Endpoint::OutboundContext::HandleDataDrop(path::Path* p,
+                                              const PathID_t& dst, uint64_t seq)
+    {
+      llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
+                     p->Endpoint(), " via ", dst);
+      // pick another intro
+      if(selectedIntro.router == p->Endpoint() && selectedIntro.pathID == dst)
+      {
+        auto now = llarp_time_now_ms();
+        for(const auto& intro : currentIntroSet.I)
+        {
+          if(intro.ExpiresSoon(now))
+            continue;
+          if(intro.pathID != dst && intro.router != p->Endpoint())
+          {
+            selectedIntro = intro;
+            return true;
+          }
+        }
+        llarp::LogError(Name(), " has no more usable intros");
+      }
+      return true;
     }
 
     bool
@@ -661,6 +697,9 @@ namespace llarp
       p->SetDataHandler(
           std::bind(&Endpoint::OutboundContext::HandleHiddenServiceFrame, this,
                     std::placeholders::_1));
+      p->SetDropHandler(std::bind(
+          &Endpoint::OutboundContext::HandleDataDrop, this,
+          std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
     }
 
     bool
@@ -751,6 +790,7 @@ namespace llarp
       if(i && addr == i->A.Addr() && currentIntroSet.OtherIsNewer(*i))
       {
         currentIntroSet = *i;
+        ShiftIntroduction();
       }
       return true;
     }
@@ -796,15 +836,18 @@ namespace llarp
     void
     Endpoint::OutboundContext::ShiftIntroduction()
     {
+      bool shifted = false;
       for(const auto& intro : currentIntroSet.I)
       {
         m_Parent->EnsureRouterIsKnown(selectedIntro.router);
         if(intro.expiresAt > selectedIntro.expiresAt)
         {
           selectedIntro = intro;
+          shifted       = true;
         }
       }
-      ManualRebuild(1);
+      if(shifted)
+        ManualRebuild(1);
     }
 
     void

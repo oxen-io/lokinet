@@ -14,7 +14,6 @@ namespace llarp
     {
       PathID_t P;
       service::ProtocolFrame T;
-      uint64_t V = 0;
       TunnelNonce Y;
 
       PathTransferMessage();
