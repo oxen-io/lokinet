@@ -676,6 +676,7 @@ namespace llarp
           if(intro.pathID != dst && intro.router != p->Endpoint())
           {
             selectedIntro = intro;
+            ManualRebuild(1);
             return true;
           }
         }
@@ -1006,7 +1007,7 @@ namespace llarp
     Endpoint::OutboundContext::UpdateIntroSet()
     {
       auto addr = currentIntroSet.A.Addr();
-      auto path = m_Parent->PickRandomEstablishedPath();
+      auto path = PickRandomEstablishedPath();
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(

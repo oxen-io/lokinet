@@ -144,11 +144,11 @@ namespace llarp
         return false;
       }
       m_OurIP       = inet_addr(tunif.ifaddr);
-      m_NextIP      = m_OurIP;
+      m_NextIP      = ntohl(m_OurIP);
       uint32_t mask = tunif.netmask;
 
-      uint32_t baseaddr = (ntohs(m_OurIP) & netmask_ipv4_bits(mask));
-      m_MaxIP           = (ntohs(baseaddr) | ~ntohs(netmask_ipv4_bits(mask)));
+      uint32_t baseaddr = (ntohl(m_OurIP) & netmask_ipv4_bits(mask));
+      m_MaxIP           = (ntohl(baseaddr) | ~ntohl(netmask_ipv4_bits(mask)));
       char buf[128]     = {0};
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ",
                      inet_ntop(AF_INET, &m_OurIP, buf, sizeof(buf)));
