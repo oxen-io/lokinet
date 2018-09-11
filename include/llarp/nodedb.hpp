@@ -49,6 +49,13 @@ struct llarp_nodedb_iter
 int
 llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
 
+/// visit all loaded rc
+/// stop iteration if visit return false
+void
+llarp_nodedb_visit_loaded(
+    struct llarp_nodedb *n,
+    std::function< bool(const llarp::RouterContact &) > visit);
+
 /// return number of RC loaded
 size_t
 llarp_nodedb_num_loaded(struct llarp_nodedb *n);

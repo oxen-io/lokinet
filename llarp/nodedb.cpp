@@ -156,6 +156,19 @@ struct llarp_nodedb
     return true;
   }
 
+  void
+  visit(std::function< bool(const llarp::RouterContact &) > visit)
+  {
+    llarp::util::Lock lock(access);
+    auto itr = entries.begin();
+    while(itr != entries.end())
+    {
+      if(!visit(itr->second))
+        return;
+      ++itr;
+    }
+  }
+
   bool
   iterate(struct llarp_nodedb_iter i)
   {
@@ -336,6 +349,14 @@ llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i)
 {
   n->iterate(i);
   return n->entries.size();
+}
+
+void
+llarp_nodedb_visit_loaded(
+    struct llarp_nodedb *n,
+    std::function< bool(const llarp::RouterContact &) > visit)
+{
+  return n->visit(visit);
 }
 
 /// maybe rename to verify_and_set

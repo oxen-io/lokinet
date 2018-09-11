@@ -727,11 +727,23 @@ llarp_router::ConnectAll(void *user, uint64_t orig, uint64_t left)
   if(left)
     return;
   llarp_router *self = static_cast< llarp_router * >(user);
+  // connect to all explicit connections in connect block
   for(const auto &itr : self->connect)
   {
     llarp::LogInfo("connecting to node ", itr.first);
     self->try_connect(itr.second);
   }
+  // connect to a few random routers
+  size_t want = 10;
+  llarp_nodedb_visit_loaded(
+      self->nodedb, [self, &want](const llarp::RouterContact &other) -> bool {
+        if(llarp_randint() % 2 == 0)
+        {
+          llarp_router_try_connect(self, other, 5);
+          --want;
+        }
+        return want > 0;
+      });
 }
 bool
 llarp_router::InitOutboundLink()
