@@ -1029,7 +1029,7 @@ namespace llarp
     bool
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
-      if(selectedIntro.expiresAt >= now
+      if(selectedIntro.expiresAt <= now
          || selectedIntro.expiresAt - now < 30000)
       {
         UpdateIntroSet();
