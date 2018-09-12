@@ -161,6 +161,8 @@ namespace llarp
         IntroSet currentIntroSet;
         /// the current selected intro
         Introduction selectedIntro;
+        /// set to true if we are updating the remote introset right now
+        bool updatingIntroSet;
 
         /// update the current selected intro to be a new best introduction
         void

@@ -720,8 +720,8 @@ namespace llarp
         auto itr = m_PendingServiceLookups.find(addr);
         if(itr != m_PendingServiceLookups.end())
         {
-          itr->second(addr, nullptr);
           m_PendingServiceLookups.erase(itr);
+          itr->second(addr, nullptr);
         }
         return false;
       }
@@ -778,6 +778,7 @@ namespace llarp
         , m_Parent(parent)
 
     {
+      updatingIntroSet = false;
       selectedIntro.Clear();
       ShiftIntroduction();
     }
@@ -795,6 +796,7 @@ namespace llarp
         currentIntroSet = *i;
         ShiftIntroduction();
       }
+      updatingIntroSet = false;
       return true;
     }
 
@@ -843,7 +845,7 @@ namespace llarp
       for(const auto& intro : currentIntroSet.I)
       {
         m_Parent->EnsureRouterIsKnown(selectedIntro.router);
-        if(intro.expiresAt > selectedIntro.expiresAt)
+        if(selectedIntro < intro)
         {
           selectedIntro = intro;
           shifted       = true;
@@ -1008,6 +1010,8 @@ namespace llarp
     void
     Endpoint::OutboundContext::UpdateIntroSet()
     {
+      if(updatingIntroSet)
+        return;
       auto addr = currentIntroSet.A.Addr();
       auto path = m_Parent->PickRandomEstablishedPath();
       if(path)
@@ -1018,8 +1022,7 @@ namespace llarp
                       std::placeholders::_1, std::placeholders::_2),
             addr, m_Parent->GenTXID());
 
-        if(!job->SendRequestViaPath(path, m_Parent->Router()))
-          llarp::LogError("send via path failed");
+        updatingIntroSet = job->SendRequestViaPath(path, m_Parent->Router());
       }
       else
       {
@@ -1032,10 +1035,9 @@ namespace llarp
     bool
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
-      if(selectedIntro.expiresAt <= now
-         || selectedIntro.expiresAt - now < 30000)
+      if(selectedIntro.ExpiresSoon(now))
       {
-        UpdateIntroSet();
+        ShiftIntroduction();
       }
       m_Parent->EnsureRouterIsKnown(selectedIntro.router);
       // TODO: check for expiration of outbound context

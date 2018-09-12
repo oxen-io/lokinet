@@ -31,6 +31,8 @@ namespace llarp
         FragmentOverheadSize + FragmentBodySize;
     typedef llarp::AlignedBuffer< FragmentBufferSize > FragmentBuffer;
 
+    constexpr size_t MaxSend = 64;
+
     typedef llarp::AlignedBuffer< MAX_LINK_MSG_SIZE > MessageBuffer;
 
     struct LinkLayer;
@@ -47,8 +49,8 @@ namespace llarp
       llarp_time_t lastActive;
       const static llarp_time_t sessionTimeout = 30 * 1000;
 
+      std::deque< utp_iovec > vecq;
       std::deque< FragmentBuffer > sendq;
-      size_t sendBufOffset;
 
       FragmentBuffer recvBuf;
       size_t recvBufOffset;
@@ -101,11 +103,41 @@ namespace llarp
       void
       PumpWrite()
       {
+        if(!sock)
+          return;
+        ssize_t expect = 0;
+        std::vector< utp_iovec > vecs;
+        for(const auto& vec : vecq)
+        {
+          expect += vec.iov_len;
+          vecs.push_back(vec);
+        }
+        if(expect)
+        {
+          ssize_t s = utp_writev(sock, vecs.data(), vecs.size());
+          llarp::LogDebug("utp_writev wrote=", s, " expect=", expect,
+                          " to=", remoteAddr);
+
+          while(s > vecq.front().iov_len)
+          {
+            s -= vecq.front().iov_len;
+            vecq.pop_front();
+            sendq.pop_front();
+          }
+          if(vecq.size())
+          {
+            auto& front = vecq.front();
+            front.iov_len -= s;
+            front.iov_base = ((byte_t*)front.iov_base) + s;
+          }
+        }
+
+        /*
         while(sendq.size() > 0 && !stalled)
         {
           ssize_t expect = FragmentBufferSize - sendBufOffset;
-          ssize_t s = write_ll(sendq.front().data() + sendBufOffset, expect);
-          if(s != expect)
+          ssize_t s      = write_ll(sendq.front().data() + sendBufOffset,
+        expect); if(s != expect)
           {
             llarp::LogDebug("stalled at offset=", sendBufOffset, " sz=", s,
                             " to ", remoteAddr);
@@ -118,6 +150,7 @@ namespace llarp
             sendq.pop_front();
           }
         }
+        */
       }
 
       ssize_t
@@ -540,14 +573,14 @@ namespace llarp
         return true;
       };
       gotLIM        = false;
-      sendBufOffset = 0;
       recvBufOffset = 0;
       TimedOut      = [&](llarp_time_t now) -> bool {
         return this->IsTimedOut(now) || this->state == eClose;
       };
       GetPubKey  = std::bind(&BaseSession::RemotePubKey, this);
       lastActive = llarp_time_now_ms();
-      Pump       = std::bind(&BaseSession::PumpWrite, this);
+      // Pump       = []() {};
+      Pump = std::bind(&BaseSession::PumpWrite, this);
       Tick = std::bind(&BaseSession::TickImpl, this, std::placeholders::_1);
       SendMessageBuffer = std::bind(&BaseSession::QueueWriteBuffers, this,
                                     std::placeholders::_1);
@@ -743,12 +776,7 @@ namespace llarp
         }
         else if(arg->state == UTP_STATE_WRITABLE)
         {
-          if(session->IsEstablished())
-          {
-            llarp::LogDebug("write resumed for ", session->remoteAddr);
-            session->stalled = false;
-            session->PumpWrite();
-          }
+          session->PumpWrite();
         }
         else if(arg->state == UTP_STATE_EOF)
         {
@@ -779,6 +807,10 @@ namespace llarp
     {
       sendq.emplace_back();
       auto& buf = sendq.back();
+      vecq.emplace_back();
+      auto& vec    = vecq.back();
+      vec.iov_base = buf.data();
+      vec.iov_len  = FragmentBufferSize;
       llarp::LogDebug("encrypt then hash ", sz, " bytes last=", isLastFragment);
       buf.Randomize();
       byte_t* nonce = buf.data() + FragmentHashSize;
