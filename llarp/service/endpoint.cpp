@@ -949,7 +949,10 @@ namespace llarp
                                       self->m_LocalIdentity))
           llarp_logic_queue_job(self->logic, {self, &Result});
         else
+        {
           llarp::LogError("failed to encrypt and sign");
+          delete self;
+        }
       }
     };
 
