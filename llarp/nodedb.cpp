@@ -27,6 +27,18 @@ struct llarp_nodedb
       entries;
   fs::path nodePath;
 
+  bool
+  Remove(const llarp::PubKey &pk)
+  {
+    llarp::util::Lock lock(access);
+    auto itr = entries.find(pk);
+    if(itr == entries.end())
+      return false;
+    entries.erase(itr);
+    fs::remove(fs::path(getRCFilePath(pk)));
+    return true;
+  }
+
   void
   Clear()
   {
@@ -391,6 +403,12 @@ size_t
 llarp_nodedb_num_loaded(struct llarp_nodedb *n)
 {
   return n->entries.size();
+}
+
+bool
+llarp_nodedb_del_rc(struct llarp_nodedb *n, const llarp::RouterID &pk)
+{
+  return n->Remove(pk);
 }
 
 bool

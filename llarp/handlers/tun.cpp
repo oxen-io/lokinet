@@ -143,12 +143,12 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up tun interface");
         return false;
       }
-      m_OurIP       = inet_addr(tunif.ifaddr);
-      m_NextIP      = ntohl(m_OurIP);
+      m_OurIP       = ntohl(inet_addr(tunif.ifaddr));
+      m_NextIP      = m_OurIP;
       uint32_t mask = tunif.netmask;
 
-      uint32_t baseaddr = (ntohl(m_OurIP) & netmask_ipv4_bits(mask));
-      m_MaxIP           = (ntohl(baseaddr) | ~ntohl(netmask_ipv4_bits(mask)));
+      uint32_t baseaddr = (htonl(m_OurIP) & netmask_ipv4_bits(mask));
+      m_MaxIP           = (htonl(baseaddr) | ~htonl(netmask_ipv4_bits(mask)));
       char buf[128]     = {0};
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ",
                      inet_ntop(AF_INET, &m_OurIP, buf, sizeof(buf)));
@@ -210,7 +210,7 @@ namespace llarp
       pkt.dst(usIP);
       pkt.UpdateChecksum();
       llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
-                     " bytes from ", inet_ntoa({themIP}));
+                     " bytes from ", inet_ntoa({htonl(themIP)}));
 
       llarp_ev_tun_async_write(&tunif, pkt.buf, pkt.sz);
       /*
@@ -235,7 +235,7 @@ namespace llarp
     TunEndpoint::ObtainIPForAddr(const service::Address &addr)
     {
       llarp_time_t now = llarp_time_now_ms();
-      uint32_t nextIP;
+      uint32_t nextIP  = 0;
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(addr);
@@ -246,11 +246,14 @@ namespace llarp
           return itr->second;
         }
       }
+      // allocate new address
       if(m_NextIP < m_MaxIP)
       {
         nextIP = ++m_NextIP;
         m_AddrToIP.insert(std::make_pair(addr, nextIP));
         m_IPToAddr.insert(std::make_pair(nextIP, addr));
+        llarp::LogInfo(Name(), " mapped ", addr, " to ",
+                       inet_ntoa({htonl(nextIP)}));
       }
       else
       {

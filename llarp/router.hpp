@@ -18,6 +18,7 @@
 #include <llarp/routing/handler.hpp>
 #include <llarp/service.hpp>
 #include <llarp/establish_job.hpp>
+#include <llarp/profiling.hpp>
 
 #include "crypto.hpp"
 #include "fs.hpp"
@@ -93,6 +94,9 @@ struct llarp_router
   std::unique_ptr< llarp::ILinkLayer > outboundLink;
   std::list< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;
 
+  llarp::Profiling routerProfiling;
+  fs::path routerProfilesFile = "profiles.dat";
+
   typedef std::queue< std::vector< byte_t > > MessageQueue;
 
   /// outbound message queue
@@ -166,6 +170,9 @@ struct llarp_router
   {
     return llarp::seckey_topublic(identity);
   }
+
+  void
+  OnConnectTimeout(const llarp::RouterID &remote);
 
   bool
   HasPendingConnectJob(const llarp::RouterID &remote);

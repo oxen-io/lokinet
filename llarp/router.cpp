@@ -376,6 +376,14 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
 }
 
 void
+llarp_router::OnConnectTimeout(const llarp::RouterID &remote)
+{
+  routerProfiling.MarkTimeout(remote);
+  if(routerProfiling.IsBad(remote))
+    llarp_nodedb_del_rc(nodedb, remote);
+}
+
+void
 llarp_router::HandleDHTLookupForTryEstablishTo(
     const std::vector< llarp::RouterContact > &results)
 {
@@ -431,17 +439,14 @@ llarp_router::Tick()
   if(inboundLinks.size() == 0)
   {
     auto N = llarp_nodedb_num_loaded(nodedb);
-    if(N >= 4)
-    {
-      paths.BuildPaths();
-    }
-    else
+    if(N < 4)
     {
       llarp::LogInfo(
           "We need at least 4 service nodes to build paths but we have ", N);
       auto explore = std::max(NumberOfConnectedRouters(), 1UL);
       dht->impl.Explore(explore);
     }
+    paths.BuildPaths();
     hiddenServiceContext.Tick();
   }
   else if(NumberOfConnectedRouters() < minConnectedRouters)
@@ -601,6 +606,7 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
 void
 llarp_router::Run()
 {
+  routerProfiling.Load(routerProfilesFile.string().c_str());
   // zero out router contact
   sockaddr *dest = (sockaddr *)&this->ip4addr;
   llarp::Addr publicAddr(*dest);
@@ -845,7 +851,10 @@ void
 llarp_stop_router(struct llarp_router *router)
 {
   if(router)
+  {
     router->Close();
+    router->routerProfiling.Save(router->routerProfilesFile.string().c_str());
+  }
 }
 
 void
@@ -1004,6 +1013,10 @@ namespace llarp
     }
     else if(StrEq(section, "network"))
     {
+      if(StrEq(key, "profiles"))
+      {
+        self->routerProfilesFile = fs::path(val);
+      }
       if(StrEq(key, "min-connected"))
       {
         self->minConnectedRouters = std::max(atoi(val), 0);

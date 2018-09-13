@@ -143,7 +143,6 @@ namespace llarp
       return;
     }
 
-    ctx->path->EnterState(llarp::path::ePathBuilding);
     // persist session with router until this path is done
     router->PersistSessionUntil(remote, ctx->path->ExpireTime());
     // add own path

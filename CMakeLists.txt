@@ -354,6 +354,7 @@ set(LIB_SRC
   llarp/path.cpp
   llarp/pathbuilder.cpp
   llarp/pathset.cpp
+  llarp/profiling.cpp
   llarp/proofofwork.cpp
   llarp/relay_commit.cpp
   llarp/relay_up_down.cpp

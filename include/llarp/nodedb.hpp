@@ -73,6 +73,13 @@ bool
 llarp_nodedb_get_rc(struct llarp_nodedb *n, const llarp::RouterID &pk,
                     llarp::RouterContact &result);
 
+/**
+   remove rc by public key from nodedb
+   returns true if removed
+ */
+bool
+llarp_nodedb_del_rc(struct llarp_nodedb *n, const llarp::RouterID &pk);
+
 /// struct for async rc verification
 struct llarp_async_verify_rc;
 

@@ -342,6 +342,7 @@ namespace llarp
       intro.router = hops[hsz - 1].rc.pubkey;
       // TODO: or is it rxid ?
       intro.pathID = hops[hsz - 1].txID;
+      EnterState(ePathBuilding);
     }
 
     void
@@ -386,6 +387,19 @@ namespace llarp
       if(Expired(now))
         return;
 
+      if(_status == ePathBuilding)
+      {
+        if(now < buildStarted)
+          return;
+        auto dlt = now - buildStarted;
+        if(dlt >= PATH_BUILD_TIMEOUT)
+        {
+          llarp::LogInfo("timed out with ", dlt, " ms");
+          EnterState(ePathTimeout);
+          return;
+        }
+      }
+
       if(now < m_LastLatencyTestTime)
         return;
       auto dlt = now - m_LastLatencyTestTime;
@@ -398,13 +412,16 @@ namespace llarp
         SendRoutingMessage(&latency, r);
       }
       // check to see if this path is dead
-      if(m_CheckForDead)
+      if(_status == ePathEstablished)
       {
-        if(m_CheckForDead(this, dlt))
+        if(m_CheckForDead)
+        {
+          if(m_CheckForDead(this, dlt))
+            EnterState(ePathTimeout);
+        }
+        else if(dlt >= 10000)
           EnterState(ePathTimeout);
       }
-      else if(dlt >= 10000)
-        EnterState(ePathTimeout);
     }
 
     bool
@@ -433,8 +450,6 @@ namespace llarp
       if(_status == ePathEstablished)
         return now - buildStarted > hops[0].lifetime;
       else if(_status == ePathBuilding)
-        return now - buildStarted > PATH_BUILD_TIMEOUT;
-      else if(_status == ePathTimeout)
         return false;
       else
         return true;
