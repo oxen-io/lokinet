@@ -224,6 +224,7 @@ namespace llarp
     struct Path : public IHopHandler, public llarp::routing::IMessageHandler
     {
       typedef std::function< void(Path*) > BuildResultHookFunc;
+      typedef std::function< bool(Path*, llarp_time_t) > CheckForDeadFunc;
       typedef std::function< bool(Path*, const PathID_t&, uint64_t) >
           DropHandlerFunc;
       typedef std::vector< PathHopConfig > HopList;
@@ -252,6 +253,12 @@ namespace llarp
       SetDropHandler(DropHandlerFunc func)
       {
         m_DropHandler = func;
+      }
+
+      void
+      SetDeadChecker(CheckForDeadFunc func)
+      {
+        m_CheckForDead = func;
       }
 
       llarp_time_t
@@ -329,6 +336,7 @@ namespace llarp
       BuildResultHookFunc m_BuiltHook;
       DataHandlerFunc m_DataHandler;
       DropHandlerFunc m_DropHandler;
+      CheckForDeadFunc m_CheckForDead;
       llarp_time_t m_LastLatencyTestTime = 0;
       uint64_t m_LastLatencyTestID       = 0;
     };

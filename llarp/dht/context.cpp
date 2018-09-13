@@ -27,7 +27,7 @@ namespace llarp
     Context::Explore(size_t N)
     {
       // ask N random peers for new routers
-      llarp::LogInfo("Exploring network");
+      llarp::LogInfo("Exploring network via ", N, " peers");
       std::set< Key_t > peers;
 
       if(nodes->GetManyRandom(peers, N))

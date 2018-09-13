@@ -385,6 +385,7 @@ namespace llarp
     {
       if(Expired(now))
         return;
+
       if(now < m_LastLatencyTestTime)
         return;
       auto dlt = now - m_LastLatencyTestTime;
@@ -396,6 +397,14 @@ namespace llarp
         m_LastLatencyTestTime = now;
         SendRoutingMessage(&latency, r);
       }
+      // check to see if this path is dead
+      if(m_CheckForDead)
+      {
+        if(m_CheckForDead(this, dlt))
+          status = ePathTimeout;
+      }
+      else if(dlt >= 5000)
+        status = ePathTimeout;
     }
 
     bool

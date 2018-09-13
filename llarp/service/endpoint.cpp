@@ -43,6 +43,12 @@ namespace llarp
         m_NetNS = v;
         m_OnInit.push_back(std::bind(&Endpoint::IsolateNetwork, this));
       }
+      if(k == "min-latency")
+      {
+        auto val = atoi(v.c_str());
+        if(val > 0)
+          m_MinPathLatency = val;
+      }
       return true;
     }
 
@@ -648,6 +654,9 @@ namespace llarp
       p->SetDropHandler(std::bind(&Endpoint::HandleDataDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
+      p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, this,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2));
       RegenAndPublishIntroSet(llarp_time_now_ms());
     }
 
@@ -703,6 +712,15 @@ namespace llarp
       p->SetDropHandler(std::bind(
           &Endpoint::OutboundContext::HandleDataDrop, this,
           std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
+      p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, m_Parent,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2));
+    }
+
+    bool
+    Endpoint::CheckPathIsDead(path::Path*, llarp_time_t latency)
+    {
+      return latency >= m_MinPathLatency;
     }
 
     bool

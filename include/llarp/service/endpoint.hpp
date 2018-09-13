@@ -146,6 +146,9 @@ namespace llarp
       bool
       HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
 
+      bool
+      CheckPathIsDead(path::Path* p, llarp_time_t latency);
+
       typedef std::queue< PendingBuffer > PendingBufferQueue;
 
       /// context needed to initiate an outbound hidden service session
@@ -359,6 +362,7 @@ namespace llarp
       uint64_t m_CurrentPublishTX       = 0;
       llarp_time_t m_LastPublish        = 0;
       llarp_time_t m_LastPublishAttempt = 0;
+      llarp_time_t m_MinPathLatency     = 5000;
       /// our introset
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id

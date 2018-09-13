@@ -439,7 +439,8 @@ llarp_router::Tick()
     {
       llarp::LogInfo(
           "We need at least 4 service nodes to build paths but we have ", N);
-      dht->impl.Explore(1);
+      auto explore = std::max(NumberOfConnectedRouters(), 1UL);
+      dht->impl.Explore(explore);
     }
     hiddenServiceContext.Tick();
   }
