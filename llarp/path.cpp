@@ -371,7 +371,7 @@ namespace llarp
     bool
     Path::IsReady() const
     {
-      return intro.latency > 0 && status == ePathEstablished;
+      return intro.latency > 0 && _status == ePathEstablished;
     }
 
     RouterID
@@ -401,10 +401,10 @@ namespace llarp
       if(m_CheckForDead)
       {
         if(m_CheckForDead(this, dlt))
-          status = ePathTimeout;
+          EnterState(ePathTimeout);
       }
       else if(dlt >= 10000)
-        status = ePathTimeout;
+        EnterState(ePathTimeout);
     }
 
     bool
@@ -430,12 +430,22 @@ namespace llarp
     bool
     Path::Expired(llarp_time_t now) const
     {
-      if(status == ePathEstablished)
+      if(_status == ePathEstablished)
         return now - buildStarted > hops[0].lifetime;
-      else if(status == ePathBuilding)
+      else if(_status == ePathBuilding)
         return now - buildStarted > PATH_BUILD_TIMEOUT;
+      else if(_status == ePathTimeout)
+        return false;
       else
         return true;
+    }
+
+    std::string
+    Path::Name() const
+    {
+      std::stringstream ss;
+      ss << "TX=" << TXID() << " RX=" << RXID();
+      return ss.str();
     }
 
     bool
@@ -511,12 +521,12 @@ namespace llarp
     Path::HandlePathConfirmMessage(
         const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
     {
-      if(status == ePathBuilding)
+      if(_status == ePathBuilding)
       {
         // finish initializing introduction
         intro.expiresAt = buildStarted + hops[0].lifetime;
         // confirm that we build the path
-        status = ePathEstablished;
+        EnterState(ePathEstablished);
         llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID(),
                        " took ", llarp_time_now_ms() - buildStarted, " ms");
         if(m_BuiltHook)
@@ -550,7 +560,7 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
-      if(msg->L == m_LastLatencyTestID && status == ePathEstablished)
+      if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
       {
         intro.latency = llarp_time_now_ms() - m_LastLatencyTestTime;
         llarp::LogInfo("path latency is ", intro.latency, " ms for tx=", TXID(),

@@ -22,7 +22,8 @@ namespace llarp
     {
       for(auto& item : m_Paths)
       {
-        if(item.second->status == ePathEstablished)
+        auto st = item.second->_status;
+        if(st == ePathTimeout || st == ePathEstablished)
         {
           item.second->Tick(now, r);
         }
@@ -103,7 +104,7 @@ namespace llarp
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->status == st)
+        if(itr->second->_status == st)
           ++count;
         ++itr;
       }

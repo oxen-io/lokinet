@@ -236,7 +236,7 @@ namespace llarp
       llarp::service::Introduction intro;
 
       llarp_time_t buildStarted;
-      PathStatus status;
+      PathStatus _status;
 
       Path(const std::vector< RouterContact >& routers);
 
@@ -259,6 +259,19 @@ namespace llarp
       SetDeadChecker(CheckForDeadFunc func)
       {
         m_CheckForDead = func;
+      }
+
+      void
+      EnterState(PathStatus st)
+      {
+        if(st == ePathTimeout)
+          llarp::LogInfo("path ", Name(), " has timed out");
+        else if(st == ePathBuilding)
+        {
+          llarp::LogInfo("path ", Name(), " is building");
+          buildStarted = llarp_time_now_ms();
+        }
+        _status = st;
       }
 
       llarp_time_t
@@ -328,6 +341,9 @@ namespace llarp
 
       RouterID
       Upstream() const;
+
+      std::string
+      Name() const;
 
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;

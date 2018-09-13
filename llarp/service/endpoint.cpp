@@ -832,25 +832,30 @@ namespace llarp
       if(itr == m_PendingTraffic.end())
       {
         m_PendingTraffic.insert(std::make_pair(remote, PendingBufferQueue()));
-        EnsurePathToService(remote,
-                            [&](Address addr, OutboundContext* ctx) {
-                              if(ctx)
-                              {
-                                auto itr = m_PendingTraffic.find(addr);
-                                if(itr != m_PendingTraffic.end())
-                                {
-                                  while(itr->second.size())
-                                  {
-                                    auto& front = itr->second.front();
-                                    ctx->AsyncEncryptAndSendTo(front.Buffer(),
-                                                               front.protocol);
-                                    itr->second.pop();
-                                  }
-                                }
-                              }
-                              m_PendingTraffic.erase(addr);
-                            },
-                            10000);
+        EnsurePathToService(
+            remote,
+            [&](Address addr, OutboundContext* ctx) {
+              if(ctx)
+              {
+                auto itr = m_PendingTraffic.find(addr);
+                if(itr != m_PendingTraffic.end())
+                {
+                  while(itr->second.size())
+                  {
+                    auto& front = itr->second.front();
+                    ctx->AsyncEncryptAndSendTo(front.Buffer(), front.protocol);
+                    itr->second.pop();
+                  }
+                }
+              }
+              else
+              {
+                llarp::LogWarn("failed to obtain outbound context to ", addr,
+                               " within timeout");
+              }
+              m_PendingTraffic.erase(addr);
+            },
+            10000);
       }
       m_PendingTraffic[remote].emplace(data, t);
       return true;
@@ -860,9 +865,13 @@ namespace llarp
     Endpoint::OutboundContext::ShiftIntroduction()
     {
       bool shifted = false;
+      auto now     = llarp_time_t();
       for(const auto& intro : currentIntroSet.I)
       {
         m_Parent->EnsureRouterIsKnown(selectedIntro.router);
+        // check for stale intro
+        if(intro.expiresAt < now)
+          continue;
         if(selectedIntro.expiresAt < intro.expiresAt)
         {
           selectedIntro = intro;
@@ -881,6 +890,10 @@ namespace llarp
       if(!path)
       {
         llarp::LogError(Name(), " No Path to ", selectedIntro.router, " yet");
+        if(selectedIntro.ExpiresSoon(llarp_time_now_ms()))
+        {
+          ShiftIntroduction();
+        }
         return;
       }
       if(sequenceNo)
