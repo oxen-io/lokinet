@@ -336,6 +336,9 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   // track valid router in dht
   router->dht->impl.nodes->PutNode(rc);
 
+  // mark success in profile
+  router->routerProfiling.MarkSuccess(pk);
+
   // this was an outbound establish job
   if(ctx->establish_job)
   {
@@ -364,7 +367,7 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
     // try connecting async
     llarp_router_try_connect(this, rc, 5);
   }
-  else
+  else if(!routerProfiling.IsBad(remote))
   {
     llarp::LogInfo("looking up router ", remote);
     // dht lookup as we don't know it
