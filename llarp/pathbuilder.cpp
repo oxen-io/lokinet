@@ -48,7 +48,7 @@ namespace llarp
                                  hop.nonce))
       {
         llarp::LogError("Failed to generate shared key for path build");
-        abort();
+        delete ctx;
         return;
       }
       // generate nonceXOR valueself->hop->pathKey
@@ -82,6 +82,7 @@ namespace llarp
       {
         // failed to encode?
         llarp::LogError("Failed to generate Commit Record");
+        delete ctx;
         return;
       }
       // use ephameral keypair for frame
@@ -90,6 +91,7 @@ namespace llarp
       if(!frame.EncryptInPlace(framekey, hop.rc.enckey, ctx->crypto))
       {
         llarp::LogError("Failed to encrypt LRCR");
+        delete ctx;
         return;
       }
 
@@ -137,6 +139,7 @@ namespace llarp
     if(!router->SendToOrQueue(remote, ctx->LRCM))
     {
       llarp::LogError("failed to send LRCM");
+      delete ctx;
       return;
     }
 
@@ -146,6 +149,7 @@ namespace llarp
     router->PersistSessionUntil(remote, ctx->path->ExpireTime());
     // add own path
     router->paths.AddOwnPath(ctx->pathset, ctx->path);
+    delete ctx;
   }
 
   namespace path

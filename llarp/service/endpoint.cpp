@@ -845,7 +845,7 @@ namespace llarp
       for(const auto& intro : currentIntroSet.I)
       {
         m_Parent->EnsureRouterIsKnown(selectedIntro.router);
-        if(selectedIntro < intro)
+        if(selectedIntro.expiresAt < intro.expiresAt)
         {
           selectedIntro = intro;
           shifted       = true;

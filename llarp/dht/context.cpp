@@ -88,9 +88,8 @@ namespace llarp
     Context::ExploreNetworkVia(const Key_t &askpeer)
     {
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingExploreLookups.NewTX(
-          peer, askpeer, new ExploreNetworkJob(askpeer, this));
-      tx->Start(peer);
+      pendingExploreLookups.NewTX(peer, askpeer,
+                                  new ExploreNetworkJob(askpeer, this));
     }
 
     void
@@ -442,10 +441,9 @@ namespace llarp
     {
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingIntrosetLookups.NewTX(
+      pendingIntrosetLookups.NewTX(
           peer, addr,
           new LocalServiceAddressLookup(path, txid, addr, this, askpeer));
-      tx->Start(peer);
     }
 
     struct PublishServiceJob : public TX< service::Address, service::IntroSet >
@@ -513,10 +511,9 @@ namespace llarp
       TXOwner asker(from, txid);
       TXOwner peer(tellpeer, ++ids);
       service::Address addr = introset.A.Addr();
-      auto tx               = pendingIntrosetLookups.NewTX(
+      pendingIntrosetLookups.NewTX(
           asker, addr,
           new PublishServiceJob(asker, introset, this, S, exclude));
-      tx->Start(peer);
     }
 
     void
@@ -527,9 +524,8 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingIntrosetLookups.NewTX(
+      pendingIntrosetLookups.NewTX(
           peer, addr, new ServiceAddressLookup(asker, addr, this, R, handler));
-      tx->Start(peer);
     }
 
     void
@@ -540,9 +536,8 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingIntrosetLookups.NewTX(
+      pendingIntrosetLookups.NewTX(
           peer, addr, new ServiceAddressLookup(asker, addr, this, 0, handler));
-      tx->Start(peer);
     }
 
     struct TagLookup : public TX< service::Tag, service::IntroSet >
@@ -621,9 +616,7 @@ namespace llarp
     {
       TXOwner asker(whoasked, whoaskedTX);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingTagLookups.NewTX(peer, tag,
-                                        new TagLookup(asker, tag, this, R));
-      tx->Start(peer);
+      pendingTagLookups.NewTX(peer, tag, new TagLookup(asker, tag, this, R));
     }
 
     bool
@@ -761,9 +754,8 @@ namespace llarp
 
     {
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingRouterLookups.NewTX(
+      pendingRouterLookups.NewTX(
           peer, target, new LocalRouterLookup(path, txid, target, this));
-      tx->Start(peer);
     }
 
     void
@@ -774,10 +766,9 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingRouterLookups.NewTX(
+      pendingRouterLookups.NewTX(
           peer, target,
           new RecursiveRouterLookup(asker, target, this, handler));
-      tx->Start(peer);
     }
 
     llarp_crypto *
