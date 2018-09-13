@@ -75,6 +75,11 @@ struct llarp_router
   // buffer for serializing link messages
   byte_t linkmsg_buffer[MAX_LINK_MSG_SIZE];
 
+  /// always maintain this many connections to other routers
+  size_t minConnectedRouters = 5;
+  /// hard upperbound limit on the number of router to router connections
+  size_t maxConnectedRouters = 2000;
+
   // should we be sending padded messages every interval?
   bool sendPadding = false;
 
@@ -213,6 +218,9 @@ struct llarp_router
   llarp::ILinkLayer *
   GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
+  void
+  ConnectToRandomRouters(size_t N);
+
   size_t
   NumberOfConnectedRouters() const;
 
@@ -225,6 +233,9 @@ struct llarp_router
   void
   HandleDHTLookupForSendTo(llarp::RouterID remote,
                            const std::vector< llarp::RouterContact > &results);
+
+  bool
+  HasSessionTo(const llarp::RouterID &remote) const;
 
   void
   HandleDHTLookupForTryEstablishTo(

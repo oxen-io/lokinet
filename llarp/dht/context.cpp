@@ -627,6 +627,7 @@ namespace llarp
       std::vector< RouterID > closer;
       Key_t t(target.data());
       std::set< Key_t > found;
+      // TODO: also load from nodedb
       size_t nodeCount = nodes->Size();
       if(nodeCount == 0)
       {

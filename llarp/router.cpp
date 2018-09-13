@@ -431,17 +431,21 @@ llarp_router::Tick()
   if(inboundLinks.size() == 0)
   {
     auto N = llarp_nodedb_num_loaded(nodedb);
-    if(N > 3)
+    if(N >= 4)
     {
       paths.BuildPaths();
     }
     else
     {
       llarp::LogInfo(
-          "We need more than 3 service nodes to build paths but we have ", N);
-      dht->impl.Explore(N);
+          "We need at least 4 service nodes to build paths but we have ", N);
+      dht->impl.Explore(1);
     }
     hiddenServiceContext.Tick();
+  }
+  else if(NumberOfConnectedRouters() < minConnectedRouters)
+  {
+    ConnectToRandomRouters(minConnectedRouters);
   }
   paths.TickPaths();
 }
@@ -733,11 +737,23 @@ llarp_router::ConnectAll(void *user, uint64_t orig, uint64_t left)
     llarp::LogInfo("connecting to node ", itr.first);
     self->try_connect(itr.second);
   }
-  // connect to a few random routers
-  size_t want = 10;
+}
+
+bool
+llarp_router::HasSessionTo(const llarp::RouterID &remote) const
+{
+  return validRouters.find(remote) != validRouters.end();
+}
+
+void
+llarp_router::ConnectToRandomRouters(size_t want)
+{
+  llarp_router *self = this;
   llarp_nodedb_visit_loaded(
       self->nodedb, [self, &want](const llarp::RouterContact &other) -> bool {
-        if(llarp_randint() % 2 == 0)
+        if(llarp_randint() % 2 == 0
+           && !(self->HasSessionTo(other.pubkey)
+                || self->HasPendingConnectJob(other.pubkey)))
         {
           llarp_router_try_connect(self, other, 5);
           --want;
@@ -745,6 +761,7 @@ llarp_router::ConnectAll(void *user, uint64_t orig, uint64_t left)
         return want > 0;
       });
 }
+
 bool
 llarp_router::InitOutboundLink()
 {
@@ -986,6 +1003,14 @@ namespace llarp
     }
     else if(StrEq(section, "network"))
     {
+      if(StrEq(key, "min-connected"))
+      {
+        self->minConnectedRouters = std::max(atoi(val), 0);
+      }
+      if(StrEq(key, "max-connected"))
+      {
+        self->maxConnectedRouters = std::max(atoi(val), 1);
+      }
     }
     else if(StrEq(section, "router"))
     {
