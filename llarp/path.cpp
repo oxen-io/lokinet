@@ -403,7 +403,7 @@ namespace llarp
         if(m_CheckForDead(this, dlt))
           status = ePathTimeout;
       }
-      else if(dlt >= 5000)
+      else if(dlt >= 10000)
         status = ePathTimeout;
     }
 
