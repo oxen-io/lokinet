@@ -54,8 +54,9 @@ namespace llarp
         ent = readdir(d);
         if(!ent)
           break;
+        if(ent->d_name[0] == '.')
+          continue;
         fs::path p = path / fs::path(ent->d_name);
-        llarp::LogInfo(p);
         if(!visit(p))
           break;
       } while(ent);
