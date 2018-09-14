@@ -349,7 +349,7 @@ namespace llarp
       {
         BaseSession* session =
             static_cast< BaseSession* >(utp_get_userdata(arg->socket));
-        if(arg->error_code == UTP_ETIMEDOUT)
+        if(arg->error_code == UTP_ETIMEDOUT && session)
         {
           session->Router()->OnConnectTimeout(session->GetPubKey());
         }
