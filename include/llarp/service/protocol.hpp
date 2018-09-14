@@ -34,6 +34,8 @@ namespace llarp
       Introduction introReply;
       ServiceInfo sender;
       IDataHandler* handler = nullptr;
+      /// local path we got this message from
+      PathID_t srcPath;
       ConvoTag tag;
 
       bool

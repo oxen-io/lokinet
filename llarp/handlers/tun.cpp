@@ -197,10 +197,14 @@ namespace llarp
     }
 
     void
-    TunEndpoint::HandleDataMessage(service::ProtocolMessage *msg)
+    TunEndpoint::HandleDataMessage(const PathID_t &src,
+                                   service::ProtocolMessage *msg)
     {
       llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
                      " bytes");
+
+      EnsureReplyPath(msg->sender);
+
       uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);

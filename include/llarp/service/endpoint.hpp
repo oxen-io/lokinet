@@ -11,6 +11,9 @@ namespace llarp
 {
   namespace service
   {
+    // foward declare
+    struct AsyncKeyExchange;
+
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler
@@ -73,6 +76,9 @@ namespace llarp
       bool
       ShouldPublishDescriptors(llarp_time_t now) const;
 
+      void
+      EnsureReplyPath(const ServiceInfo& addr);
+
       bool
       PublishIntroSet(llarp_router* r);
 
@@ -100,7 +106,7 @@ namespace llarp
       ForgetPathToService(const Address& remote);
 
       virtual void
-      HandleDataMessage(ProtocolMessage* msg)
+      HandleDataMessage(const PathID_t&, ProtocolMessage* msg)
       {
         // override me in subclass
       }
@@ -151,8 +157,46 @@ namespace llarp
 
       typedef std::queue< PendingBuffer > PendingBufferQueue;
 
+      struct SendContext
+      {
+        SendContext(const ServiceInfo& ident, const Introduction& intro,
+                    PathSet* send, Endpoint* ep);
+
+        void
+        AsyncEncryptAndSendTo(PathID_t pid, llarp_buffer_t payload,
+                              ProtocolType t);
+
+        /// send a fully encrypted hidden service frame
+        /// via a path on our pathset with path id p
+        void
+        Send(PathID_t p, ProtocolFrame& f);
+
+        llarp::SharedSecret sharedKey;
+        ServiceInfo remoteIdent;
+        Introduction remoteIntro;
+        PathSet* m_PathSet;
+        IDataHandler* m_DataHandler;
+        Endpoint* m_Endpoint;
+        uint64_t sequenceNo = 0;
+
+        virtual void
+        ShiftIntroduction(){};
+        virtual void
+        UpdateIntroSet(){};
+
+       private:
+        void
+        EncryptAndSendTo(const PathID_t& p, llarp_buffer_t payload,
+                         ProtocolType t);
+
+        virtual void
+        AsyncGenIntro(PathID_t p, llarp_buffer_t payload, ProtocolType t)
+        {
+        }
+      };
+
       /// context needed to initiate an outbound hidden service session
-      struct OutboundContext : public path::Builder
+      struct OutboundContext : public path::Builder, public SendContext
       {
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
@@ -160,10 +204,6 @@ namespace llarp
         bool
         HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
 
-        /// the remote hidden service's curren intro set
-        IntroSet currentIntroSet;
-        /// the current selected intro
-        Introduction selectedIntro;
         /// set to true if we are updating the remote introset right now
         bool updatingIntroSet;
 
@@ -178,7 +218,14 @@ namespace llarp
 
         /// encrypt asynchronously and send to remote endpoint from us
         void
-        AsyncEncryptAndSendTo(llarp_buffer_t D, ProtocolType protocol);
+        AsyncEncryptAndSendTo(llarp_buffer_t D, ProtocolType protocol)
+        {
+          auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
+          if(path)
+            SendContext::AsyncEncryptAndSendTo(path->RXID(), D, protocol);
+        }
+        void
+        AsyncGenIntro(PathID_t p, llarp_buffer_t payload, ProtocolType t);
 
         /// issues a lookup to find the current intro set of the remote service
         void
@@ -198,23 +245,14 @@ namespace llarp
         Name() const;
 
        private:
+        void
+        OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
+
         bool
         OnIntroSetUpdate(const Address& addr, const IntroSet* i);
 
-        void
-        EncryptAndSendTo(path::Path* p, llarp_buffer_t payload, ProtocolType t);
-
-        void
-        AsyncGenIntro(path::Path* p, llarp_buffer_t payload, ProtocolType t);
-
-        /// send a fully encrypted hidden service frame
-        void
-        Send(ProtocolFrame& f);
-
-        uint64_t sequenceNo = 0;
-        llarp::SharedSecret sharedKey;
-        Endpoint* m_Parent;
         uint64_t m_UpdateIntrosetTX = 0;
+        IntroSet currentIntroSet;
       };
 
       // passed a sendto context when we have a path established otherwise
@@ -333,6 +371,10 @@ namespace llarp
       std::unordered_map< Address, std::unique_ptr< OutboundContext >,
                           Address::Hash >
           m_RemoteSessions;
+
+      std::unordered_map< Address, ServiceInfo, Address::Hash >
+          m_AddressToService;
+
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
 

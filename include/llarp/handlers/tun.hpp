@@ -46,7 +46,7 @@ namespace llarp
       /// overrides Endpoint
       /// handle inbound traffic
       void
-      HandleDataMessage(service::ProtocolMessage* msg);
+      HandleDataMessage(const PathID_t& src, service::ProtocolMessage* msg);
 
 #ifndef _MINGW32_NO_THREADS
       /// overrides Endpount

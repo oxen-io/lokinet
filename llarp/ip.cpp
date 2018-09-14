@@ -38,7 +38,7 @@ namespace llarp
 
       while(count > 1)
       {
-        sum += ntohs(*(uint16_t *)addr);
+        sum += *(uint16_t *)addr;
         count -= sizeof(uint16_t);
         addr += sizeof(uint16_t);
       }
@@ -48,7 +48,7 @@ namespace llarp
       while(sum >> 16)
         sum = (sum & 0xffff) + (sum >> 16);
 
-      hdr->check = htons(~sum);
+      hdr->check = ~sum;
     }
 
   }  // namespace net

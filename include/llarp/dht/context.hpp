@@ -154,6 +154,12 @@ namespace llarp
         return true;
       }
 
+      bool
+      HasRouterLookup(const RouterID& target) const
+      {
+        return pendingRouterLookups.HasLookupFor(target);
+      }
+
       /// on behalf of whoasked request introsets with tag from dht router with
       /// key askpeer with Recursion depth R
       void
@@ -262,6 +268,12 @@ namespace llarp
             return nullptr;
           else
             return itr->second.get();
+        }
+
+        bool
+        HasLookupFor(const K& target) const
+        {
+          return timeouts.find(target) != timeouts.end();
         }
 
         bool

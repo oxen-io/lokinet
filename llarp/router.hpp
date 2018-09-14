@@ -246,6 +246,7 @@ struct llarp_router
 
   void
   HandleDHTLookupForTryEstablishTo(
+      llarp::RouterID remote,
       const std::vector< llarp::RouterContact > &results);
 
   static void

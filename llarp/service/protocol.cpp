@@ -32,7 +32,7 @@ namespace llarp
     ProtocolMessage::ProcessAsync(void* user)
     {
       ProtocolMessage* self = static_cast< ProtocolMessage* >(user);
-      self->handler->HandleDataMessage(self);
+      self->handler->HandleDataMessage(self->srcPath, self);
       delete self;
     }
 
@@ -249,7 +249,6 @@ namespace llarp
         {
           llarp::LogError("intro frame has invalid signature Z=",
                           self->frame->Z, " from ", self->msg->sender);
-          self->frame->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
           return;
@@ -284,11 +283,12 @@ namespace llarp
     ProtocolFrame&
     ProtocolFrame::operator=(const ProtocolFrame& other)
     {
-      C = other.C;
-      D = other.D;
-      N = other.N;
-      Z = other.Z;
-      T = other.T;
+      C       = other.C;
+      D       = other.D;
+      N       = other.N;
+      Z       = other.Z;
+      T       = other.T;
+      version = other.version;
       return *this;
     }
 

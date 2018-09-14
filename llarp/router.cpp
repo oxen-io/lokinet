@@ -369,11 +369,13 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
   }
   else if(!routerProfiling.IsBad(remote))
   {
+    if(dht->impl.HasRouterLookup(remote))
+      return;
     llarp::LogInfo("looking up router ", remote);
     // dht lookup as we don't know it
     dht->impl.LookupRouter(
         remote,
-        std::bind(&llarp_router::HandleDHTLookupForTryEstablishTo, this,
+        std::bind(&llarp_router::HandleDHTLookupForTryEstablishTo, this, remote,
                   std::placeholders::_1));
   }
 }
@@ -388,8 +390,12 @@ llarp_router::OnConnectTimeout(const llarp::RouterID &remote)
 
 void
 llarp_router::HandleDHTLookupForTryEstablishTo(
-    const std::vector< llarp::RouterContact > &results)
+    llarp::RouterID remote, const std::vector< llarp::RouterContact > &results)
 {
+  if(results.size() == 0)
+  {
+    OnConnectTimeout(remote);
+  }
   for(const auto &result : results)
   {
     llarp_nodedb_put_rc(nodedb, result);
