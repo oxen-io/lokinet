@@ -22,6 +22,7 @@ namespace fs = std::experimental::filesystem;
 // openbsd needs this
 // linux gcc 7.2 needs this
 namespace fs = cpp17::filesystem;
+#include <dirent.h>
 #endif
 
 namespace llarp
@@ -30,7 +31,7 @@ namespace llarp
   {
     typedef std::function< bool(const fs::path &) > PathVisitor;
     typedef std::function< void(const fs::path &, PathVisitor) > PathIter;
-#if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
+#if defined(USE_CXX17_FILESYSTEM)
     static PathIter IterDir = [](const fs::path &path, PathVisitor visit) {
       fs::directory_iterator i(path);
       auto itr = fs::begin(i);
@@ -44,15 +45,21 @@ namespace llarp
     };
 #else
     static PathIter IterDir = [](const fs::path &path, PathVisitor visit) {
-      fs::directory_iterator i(path);
-      auto itr = i.begin();
-      while(itr != itr.end())
+      DIR *d = opendir(path.c_str());
+      if(d == nullptr)
+        return;
+      struct dirent *ent = nullptr;
+      do
       {
-        fs::path p = *itr;
+        ent = readdir(d);
+        if(!ent)
+          break;
+        fs::path p = path / fs::path(ent->d_name);
+        llarp::LogInfo(p);
         if(!visit(p))
-          return;
-        ++itr;
-      }
+          break;
+      } while(ent);
+      closedir(d);
     };
 #endif
   }  // namespace util
