@@ -692,6 +692,7 @@ namespace llarp
           }
         }
         llarp::LogError(Name(), " has no more usable intros");
+        UpdateIntroSet();
       }
       return true;
     }

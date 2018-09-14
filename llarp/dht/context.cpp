@@ -512,8 +512,8 @@ namespace llarp
       TXOwner peer(tellpeer, ++ids);
       service::Address addr = introset.A.Addr();
       pendingIntrosetLookups.NewTX(
-          asker, addr,
-          new PublishServiceJob(asker, introset, this, S, exclude));
+          asker, addr, new PublishServiceJob(asker, introset, this, S, exclude),
+          true);
     }
 
     void

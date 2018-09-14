@@ -382,6 +382,21 @@ namespace llarp
     }
 
     void
+    Path::EnterState(PathStatus st)
+    {
+      if(st == ePathTimeout)
+      {
+        llarp::LogInfo("path ", Name(), " has timed out");
+      }
+      else if(st == ePathBuilding)
+      {
+        llarp::LogInfo("path ", Name(), " is building");
+        buildStarted = llarp_time_now_ms();
+      }
+      _status = st;
+    }
+
+    void
     Path::Tick(llarp_time_t now, llarp_router* r)
     {
       if(Expired(now))
@@ -394,7 +409,7 @@ namespace llarp
         auto dlt = now - buildStarted;
         if(dlt >= PATH_BUILD_TIMEOUT)
         {
-          llarp::LogInfo("timed out with ", dlt, " ms");
+          r->routerProfiling.MarkPathFail(this);
           EnterState(ePathTimeout);
           return;
         }
@@ -417,10 +432,16 @@ namespace llarp
         if(m_CheckForDead)
         {
           if(m_CheckForDead(this, dlt))
+          {
+            r->routerProfiling.MarkPathFail(this);
             EnterState(ePathTimeout);
+          }
         }
         else if(dlt >= 10000)
+        {
+          r->routerProfiling.MarkPathFail(this);
           EnterState(ePathTimeout);
+        }
       }
     }
 
@@ -547,6 +568,8 @@ namespace llarp
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
+
+        r->routerProfiling.MarkPathSuccess(this);
 
         // persist session with upstream router until the path is done
         r->PersistSessionUntil(Upstream(), intro.expiresAt);

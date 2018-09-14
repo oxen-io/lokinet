@@ -262,17 +262,7 @@ namespace llarp
       }
 
       void
-      EnterState(PathStatus st)
-      {
-        if(st == ePathTimeout)
-          llarp::LogInfo("path ", Name(), " has timed out");
-        else if(st == ePathBuilding)
-        {
-          llarp::LogInfo("path ", Name(), " is building");
-          buildStarted = llarp_time_now_ms();
-        }
-        _status = st;
-      }
+      EnterState(PathStatus st);
 
       llarp_time_t
       ExpireTime() const

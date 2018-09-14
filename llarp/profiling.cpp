@@ -11,6 +11,10 @@ namespace llarp
 
     if(!BEncodeWriteDictInt("g", connectGoodCount, buf))
       return false;
+    if(!BEncodeWriteDictInt("p", pathSuccessCount, buf))
+      return false;
+    if(!BEncodeWriteDictInt("s", pathFailCount, buf))
+      return false;
     if(!BEncodeWriteDictInt("t", connectTimeoutCount, buf))
       return false;
     if(!BEncodeWriteDictInt("v", version, buf))
@@ -29,23 +33,29 @@ namespace llarp
       return false;
     if(!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
+    if(!BEncodeMaybeReadDictInt("s", pathFailCount, read, k, buf))
+      return false;
+    if(!BEncodeMaybeReadDictInt("p", pathSuccessCount, read, k, buf))
+      return false;
     return read;
   }
 
   bool
-  RouterProfile::IsGood() const
+  RouterProfile::IsGood(uint64_t chances) const
   {
-    return connectTimeoutCount <= connectGoodCount;
+    return connectTimeoutCount <= connectGoodCount
+        /// 4 hops + N chances
+        && (pathSuccessCount * 4 * chances) >= (pathFailCount / chances);
   }
 
   bool
-  Profiling::IsBad(const RouterID& r)
+  Profiling::IsBad(const RouterID& r, uint64_t chances)
   {
     lock_t lock(m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
       return false;
-    return !itr->second.IsGood();
+    return !itr->second.IsGood(chances);
   }
 
   void
@@ -60,6 +70,27 @@ namespace llarp
   {
     lock_t lock(m_ProfilesMutex);
     m_Profiles[r].connectGoodCount += 1;
+  }
+
+  void
+  Profiling::MarkPathFail(path::Path* p)
+  {
+    lock_t lock(m_ProfilesMutex);
+    for(const auto& hop : p->hops)
+    {
+      // TODO: also mark bad?
+      m_Profiles[hop.rc.pubkey].pathFailCount += 1;
+    }
+  }
+
+  void
+  Profiling::MarkPathSuccess(path::Path* p)
+  {
+    lock_t lock(m_ProfilesMutex);
+    for(const auto& hop : p->hops)
+    {
+      m_Profiles[hop.rc.pubkey].pathSuccessCount += 1;
+    }
   }
 
   bool
