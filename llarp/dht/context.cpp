@@ -767,9 +767,12 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      pendingRouterLookups.NewTX(
-          peer, target,
-          new RecursiveRouterLookup(asker, target, this, handler));
+      if(target != askpeer)
+      {
+        pendingRouterLookups.NewTX(
+            peer, target,
+            new RecursiveRouterLookup(asker, target, this, handler));
+      }
     }
 
     llarp_crypto *
