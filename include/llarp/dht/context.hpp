@@ -284,9 +284,10 @@ namespace llarp
 
         void
         NewTX(const TXOwner& owner, const K& k, TX< K, V >* t,
-              bool forceStart = false)
+              bool forceStart = true)
         {
           tx.emplace(owner, std::unique_ptr< TX< K, V > >(t));
+          auto n = waiting.count(k);
           waiting.insert(std::make_pair(k, owner));
 
           auto itr = timeouts.find(k);
@@ -295,7 +296,7 @@ namespace llarp
             timeouts.insert(
                 std::make_pair(k, llarp_time_now_ms() + requestTimeoutMS));
           }
-          if(forceStart)
+          if(forceStart || n == 0)
             t->Start(owner);
         }
 
