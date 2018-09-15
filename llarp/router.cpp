@@ -52,12 +52,22 @@ struct TryConnectJob
   void
   AttemptTimedout()
   {
+    router->routerProfiling.MarkTimeout(rc.pubkey);
+    if(ShouldRetry())
+    {
+      Attempt();
+      return;
+    }
+    if(router->routerProfiling.IsBad(rc.pubkey))
+      llarp_nodedb_del_rc(router->nodedb, rc.pubkey);
+    // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
   }
 
   void
   Attempt()
   {
+    --triesLeft;
     link->TryEstablishTo(rc);
   }
 
@@ -383,9 +393,11 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
 void
 llarp_router::OnConnectTimeout(const llarp::RouterID &remote)
 {
-  routerProfiling.MarkTimeout(remote);
-  if(routerProfiling.IsBad(remote))
-    llarp_nodedb_del_rc(nodedb, remote);
+  auto itr = pendingEstablishJobs.find(remote);
+  if(itr != pendingEstablishJobs.end())
+  {
+    itr->second->AttemptTimedout();
+  }
 }
 
 void
@@ -394,7 +406,7 @@ llarp_router::HandleDHTLookupForTryEstablishTo(
 {
   if(results.size() == 0)
   {
-    OnConnectTimeout(remote);
+    routerProfiling.MarkTimeout(remote);
   }
   for(const auto &result : results)
   {
@@ -448,17 +460,17 @@ llarp_router::Tick()
   if(inboundLinks.size() == 0)
   {
     auto N = llarp_nodedb_num_loaded(nodedb);
-    if(N < 4)
+    if(N < minRequiredRouters)
     {
-      llarp::LogInfo(
-          "We need at least 4 service nodes to build paths but we have ", N);
+      llarp::LogInfo("We need at least ", minRequiredRouters,
+                     " service nodes to build paths but we have ", N);
       auto explore = std::max(NumberOfConnectedRouters(), 1UL);
       dht->impl.Explore(explore);
     }
     paths.BuildPaths();
     hiddenServiceContext.Tick();
   }
-  else if(NumberOfConnectedRouters() < minConnectedRouters)
+  if(NumberOfConnectedRouters() < minConnectedRouters)
   {
     ConnectToRandomRouters(minConnectedRouters);
   }
@@ -762,8 +774,9 @@ llarp_router::HasSessionTo(const llarp::RouterID &remote) const
 }
 
 void
-llarp_router::ConnectToRandomRouters(size_t want)
+llarp_router::ConnectToRandomRouters(int want)
 {
+  int wanted         = want;
   llarp_router *self = this;
   llarp_nodedb_visit_loaded(
       self->nodedb, [self, &want](const llarp::RouterContact &other) -> bool {
@@ -776,6 +789,9 @@ llarp_router::ConnectToRandomRouters(size_t want)
         }
         return want > 0;
       });
+
+  llarp::LogInfo("connecting to ", abs(want - wanted), " out of ", wanted,
+                 " random routers");
 }
 
 bool

@@ -5,6 +5,8 @@ SIGN = gpg --sign --detach
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
+PREFIX ?= /usr/local
+
 CC ?= cc 
 CXX ?= c++
 
@@ -105,3 +107,9 @@ test: debug
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+
+install:
+	rm -f $(PREFIX)/bin/lokinet
+	cp $(EXE) $(PREFIX)/bin/lokinet
+	chmod 755 $(PREFIX)/bin/lokinet
+	setcap cap_net_admin=+eip $(PREFIX)/bin/lokinet

@@ -81,6 +81,8 @@ struct llarp_router
   /// hard upperbound limit on the number of router to router connections
   size_t maxConnectedRouters = 2000;
 
+  int minRequiredRouters = 4;
+
   // should we be sending padded messages every interval?
   bool sendPadding = false;
 
@@ -226,7 +228,7 @@ struct llarp_router
   GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
   void
-  ConnectToRandomRouters(size_t N);
+  ConnectToRandomRouters(int N);
 
   size_t
   NumberOfConnectedRouters() const;

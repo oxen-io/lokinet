@@ -150,7 +150,12 @@ namespace llarp
   {
     lock_t lock(m_ProfilesMutex);
     m_Profiles.clear();
-    return BDecodeReadFile(fname, *this);
+    if(!BDecodeReadFile(fname, *this))
+    {
+      llarp::LogWarn("failed to load router profiles from ", fname);
+      return false;
+    }
+    return true;
   }
 
 }  // namespace llarp
