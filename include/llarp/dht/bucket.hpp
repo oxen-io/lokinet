@@ -126,9 +126,7 @@ namespace llarp
       void
       PutNode(const Val_t& val)
       {
-        auto itr = nodes.find(val.ID);
-        if(itr == nodes.end() || itr->second < val)
-          nodes.insert(std::make_pair(val.ID, val));
+        nodes[val.ID] = val;
       }
 
       void
