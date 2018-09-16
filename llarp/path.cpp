@@ -601,8 +601,8 @@ namespace llarp
       if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
       {
         intro.latency = llarp_time_now_ms() - m_LastLatencyTestTime;
-        llarp::LogInfo("path latency is ", intro.latency, " ms for tx=", TXID(),
-                       " rx=", RXID());
+        llarp::LogDebug("path latency is ", intro.latency,
+                        " ms for tx=", TXID(), " rx=", RXID());
         m_LastLatencyTestID = 0;
         return true;
       }

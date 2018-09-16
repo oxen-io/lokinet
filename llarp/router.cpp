@@ -789,9 +789,9 @@ llarp_router::ConnectToRandomRouters(int want)
         }
         return want > 0;
       });
-
-  llarp::LogInfo("connecting to ", abs(want - wanted), " out of ", wanted,
-                 " random routers");
+  if(wanted != want)
+    llarp::LogInfo("connecting to ", abs(want - wanted), " out of ", wanted,
+                   " random routers");
 }
 
 bool
