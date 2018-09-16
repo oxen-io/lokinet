@@ -42,13 +42,13 @@ namespace llarp
           return false;
         }
         auto ip_str = v.substr(pos + 1);
-        uint32_t ip;
+        in_addr ip;
         if(inet_pton(AF_INET, ip_str.c_str(), &ip) != 1)
         {
           llarp::LogError("cannot map to invalid ip ", ip_str);
           return false;
         }
-        return MapAddress(addr, ip);
+        return MapAddress(addr, ntohl(ip.s_addr));
       }
       if(k == "ifname")
       {
@@ -90,18 +90,16 @@ namespace llarp
     bool
     TunEndpoint::MapAddress(const service::Address &addr, uint32_t ip)
     {
-      char buf[128] = {0};
-      inet_ntop(AF_INET, &ip, buf, sizeof(buf));
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
       {
         llarp::LogWarn(buf, " already mapped to ", itr->second.ToString());
         return false;
       }
-      llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", buf);
+      llarp::LogInfo(Name() + " map ", addr.ToString(), " to ",
+                     inet_ntoa({ip}));
       m_IPToAddr.insert(std::make_pair(ip, addr));
       m_AddrToIP.insert(std::make_pair(addr, ip));
-      // TODO: make ip mapping persist forever
       MarkIPActiveForever(ip);
       return true;
     }
@@ -185,6 +183,8 @@ namespace llarp
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
+          llarp::LogWarn(Name(), " has no endpoint for ",
+                         inet_ntoa({htonl(pkt.dst())}));
           return true;
         }
         return SendToOrQueue(itr->second, pkt.Buffer(),
