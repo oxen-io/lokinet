@@ -185,10 +185,6 @@ namespace llarp
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
-          in_addr a;
-          a.s_addr = pkt.dst();
-          llarp::LogWarn("drop packet to ", inet_ntoa(a));
-          llarp::DumpBuffer(pkt.Buffer());
           return true;
         }
         return SendToOrQueue(itr->second, pkt.Buffer(),
@@ -200,40 +196,27 @@ namespace llarp
     TunEndpoint::HandleDataMessage(const PathID_t &src,
                                    service::ProtocolMessage *msg)
     {
-      llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
-                     " bytes");
-
       EnsureReplyPath(msg->sender);
 
       uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);
-      net::IPv4Packet pkt;
-      pkt.sz = std::min(buf.sz, sizeof(pkt.buf));
-      memcpy(pkt.buf, buf.base, pkt.sz);
-      pkt.src(themIP);
-      pkt.dst(usIP);
-      pkt.UpdateChecksum();
-      llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
-                     " bytes from ", inet_ntoa({htonl(themIP)}));
-      llarp_ev_tun_async_write(&tunif, pkt.buf, pkt.sz);
-
-      /*
-      if(!m_NetworkToUserPktQueue.EmplaceIf(
+      if(m_NetworkToUserPktQueue.EmplaceIf(
              [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
                // do packet info rewrite here
                // TODO: don't truncate packet here
-               memcpy(pkt.buf, buf.base, std::min(buf.sz, sizeof(pkt.buf)));
+               pkt.sz = std::min(buf.sz, sizeof(pkt.buf));
+               memcpy(pkt.buf, buf.base, pkt.sz);
                pkt.src(themIP);
                pkt.dst(usIP);
                pkt.UpdateChecksum();
                return true;
              }))
-      {
-        llarp::LogWarn("failed to parse buffer for ip traffic");
-        llarp::DumpBuffer(buf);
-      }
-      */
+
+        llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
+                       " bytes from ", inet_ntoa({htonl(themIP)}));
+      else
+        llarp::LogWarn(Name(), " dropped packet");
     }
 
     uint32_t
@@ -247,7 +230,7 @@ namespace llarp
         if(itr != m_AddrToIP.end())
         {
           // mark ip active
-          m_IPActivity[itr->second] = std::max(now, m_IPActivity[itr->second]);
+          MarkIPActive(itr->second);
           return itr->second;
         }
       }
@@ -259,6 +242,8 @@ namespace llarp
         m_IPToAddr.insert(std::make_pair(nextIP, addr));
         llarp::LogInfo(Name(), " mapped ", addr, " to ",
                        inet_ntoa({htonl(nextIP)}));
+        MarkIPActive(nextIP);
+        return nextIP;
       }
       else
       {

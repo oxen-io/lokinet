@@ -339,6 +339,7 @@ namespace llarp
     ProtocolFrame::ProtocolFrame()
     {
       T.Zero();
+      C.Zero();
     }
 
     bool

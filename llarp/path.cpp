@@ -598,6 +598,7 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
+      // TODO: reanimate dead paths if they get this message
       if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
       {
         intro.latency = llarp_time_now_ms() - m_LastLatencyTestTime;
