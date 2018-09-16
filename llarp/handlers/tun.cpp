@@ -93,7 +93,8 @@ namespace llarp
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
       {
-        llarp::LogWarn(buf, " already mapped to ", itr->second.ToString());
+        llarp::LogWarn(inet_ntoa({ip}), " already mapped to ",
+                       itr->second.ToString());
         return false;
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ",
