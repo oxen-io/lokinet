@@ -112,13 +112,13 @@ namespace llarp
       uint32_t
       src()
       {
-        return Header()->saddr;
+        return ntohl(Header()->saddr);
       }
 
       uint32_t
       dst()
       {
-        return Header()->daddr;
+        return ntohl(Header()->daddr);
       }
 
       void
