@@ -28,9 +28,12 @@ namespace llarp
       return llarp::InitBuffer(buf, sz);
     }
 
-    /// bytes offset to checksum relative to end of ip header for each protocol
-    static std::map< byte_t, uint16_t > protoChecksumOffsets = {
-        {IPPROTO_TCP, 16}, {IPPROTO_ICMP, 2}, {IPPROTO_UDP, 6}};
+    /// first map entry is bytes offset to checksum relative to end of ip header
+    /// second map entry is offset from beginning of packet for checksum
+    static std::map< byte_t, std::pair< uint16_t, uint16_t > >
+        protoChecksumOffsets = {{IPPROTO_TCP, {16, 12}},
+                                {IPPROTO_ICMP, {2, 0}},
+                                {IPPROTO_UDP, {6, 0}}};
 
     static uint16_t
     ipchksum(const byte_t *buf, size_t sz)
@@ -62,9 +65,10 @@ namespace llarp
       auto itr = protoChecksumOffsets.find(hdr->protocol);
       if(itr != protoChecksumOffsets.end())
       {
-        uint16_t *check = (uint16_t *)(buf + len + itr->second);
+        auto offset     = itr->second.second;
+        uint16_t *check = (uint16_t *)(buf + len + itr->second.first);
         *check          = 0;
-        *check          = ipchksum(buf, sz);
+        *check          = ipchksum(buf + offset, sz - offset);
       }
     }
 
