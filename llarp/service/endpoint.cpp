@@ -820,7 +820,7 @@ namespace llarp
     Endpoint::OutboundContext::OnIntroSetUpdate(const Address& addr,
                                                 const IntroSet* i)
     {
-      if(i && addr == i->A.Addr() && currentIntroSet.OtherIsNewer(*i))
+      if(i)
       {
         currentIntroSet = *i;
         ShiftIntroduction();
@@ -837,8 +837,9 @@ namespace llarp
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
         {
-          ProtocolFrame f;
-          path::Path* p = nullptr;
+          routing::PathTransferMessage transfer;
+          ProtocolFrame& f = transfer.T;
+          path::Path* p    = nullptr;
           std::set< ConvoTag > tags;
           if(!GetConvoTagsForService(itr->second, tags))
           {
@@ -869,18 +870,20 @@ namespace llarp
             return false;
           }
           ProtocolMessage m(f.T);
-          m.PutBuffer(data);
           m.proto      = t;
           m.introReply = p->intro;
           m.sender     = m_Identity.pub;
+          m.PutBuffer(data);
           f.N.Randomize();
+          f.S = GetSeqNoForConvo(f.T);
           f.C.Zero();
+          transfer.Y.Randomize();
+          transfer.P = intro.pathID;
           if(!f.EncryptAndSign(&Router()->crypto, m, K, m_Identity))
           {
             llarp::LogError("failed to encrypt and sign");
             return false;
           }
-          routing::PathTransferMessage transfer(f, intro.pathID);
           return p->SendRoutingMessage(&transfer, Router());
         }
       }

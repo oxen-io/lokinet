@@ -3,6 +3,8 @@
 #include <llarp/ip.hpp>
 #include "llarp/buffer.hpp"
 #include "mem.hpp"
+#include <netinet/in.h>
+#include <map>
 
 namespace llarp
 {
@@ -26,29 +28,44 @@ namespace llarp
       return llarp::InitBuffer(buf, sz);
     }
 
+    /// bytes offset to checksum relative to end of ip header for each protocol
+    static std::map< byte_t, uint16_t > protoChecksumOffsets = {
+        {IPPROTO_TCP, 16}, {IPPROTO_ICMP, 2}, {IPPROTO_UDP, 6}};
+
+    static uint16_t
+    ipchksum(const byte_t *buf, size_t sz)
+    {
+      uint32_t sum = 0;
+      while(sz > 1)
+      {
+        sum += *(const uint16_t *)buf;
+        sz -= sizeof(uint16_t);
+        buf += sizeof(uint16_t);
+      }
+      if(sz > 0)
+        sum += *(const byte_t *)buf;
+
+      while(sum >> 16)
+        sum = (sum & 0xffff) + (sum >> 16);
+
+      return ~sum;
+    }
+
     void
     IPv4Packet::UpdateChecksum()
     {
       auto hdr   = Header();
       hdr->check = 0;
+      auto len   = hdr->ihl * 4;
+      hdr->check = ipchksum(buf, len);
 
-      size_t count = hdr->ihl;
-      uint32_t sum = 0;
-      byte_t *addr = buf;
-
-      while(count > 1)
+      auto itr = protoChecksumOffsets.find(hdr->protocol);
+      if(itr != protoChecksumOffsets.end())
       {
-        sum += *(uint16_t *)addr;
-        count -= sizeof(uint16_t);
-        addr += sizeof(uint16_t);
+        uint16_t *check = (uint16_t *)(buf + len + itr->second);
+        *check          = 0;
+        *check          = ipchksum(buf, sz);
       }
-      if(count > 0)
-        sum += *(byte_t *)addr;
-
-      while(sum >> 16)
-        sum = (sum & 0xffff) + (sum >> 16);
-
-      hdr->check = ~sum;
     }
 
   }  // namespace net

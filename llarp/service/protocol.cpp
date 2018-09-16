@@ -248,7 +248,7 @@ namespace llarp
         if(!self->frame->Verify(crypto, self->msg->sender))
         {
           llarp::LogError("intro frame has invalid signature Z=",
-                          self->frame->Z, " from ", self->msg->sender);
+                          self->frame->Z, " from ", self->msg->sender.Addr());
           delete self->msg;
           delete self;
           return;

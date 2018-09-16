@@ -209,14 +209,15 @@ namespace llarp
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);
       net::IPv4Packet pkt;
-      memcpy(pkt.buf, buf.base, std::min(buf.sz, sizeof(pkt.buf)));
+      pkt.sz = std::min(buf.sz, sizeof(pkt.buf));
+      memcpy(pkt.buf, buf.base, pkt.sz);
       pkt.src(themIP);
       pkt.dst(usIP);
       pkt.UpdateChecksum();
       llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
                      " bytes from ", inet_ntoa({htonl(themIP)}));
-
       llarp_ev_tun_async_write(&tunif, pkt.buf, pkt.sz);
+
       /*
       if(!m_NetworkToUserPktQueue.EmplaceIf(
              [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
