@@ -472,7 +472,7 @@ namespace llarp
     bool
     Endpoint::PublishIntroSet(llarp_router* r)
     {
-      auto path = PickRandomEstablishedPath();
+      auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr().data());
       if(path)
       {
         m_CurrentPublishTX = llarp_randint();
@@ -1098,7 +1098,7 @@ namespace llarp
       if(updatingIntroSet)
         return;
       auto addr = currentIntroSet.A.Addr();
-      auto path = m_Endpoint->PickRandomEstablishedPath();
+      auto path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
