@@ -836,13 +836,8 @@ namespace llarp
     {
       if(i)
       {
-        if(currentIntroSet.OtherIsNewer(*i) || currentIntroSet.I != i->I)
-        {
-          currentIntroSet = *i;
-          ShiftIntroduction();
-        }
-        else
-          llarp::LogInfo("we got a stale introset, dropping it");
+        currentIntroSet = *i;
+        ShiftIntroduction();
       }
       updatingIntroSet = false;
       return true;
@@ -904,6 +899,7 @@ namespace llarp
             llarp::LogError("failed to encrypt and sign");
             return false;
           }
+          llarp::LogInfo(Name(), " send ", data.sz, " via ", intro);
           return p->SendRoutingMessage(&transfer, Router());
         }
       }
@@ -965,7 +961,7 @@ namespace llarp
         remoteIntro.Clear();
         for(const auto& intro : currentIntroSet.I)
         {
-          if(remoteIntro.expiresAt < intro.expiresAt)
+          if(remoteIntro.expiresAt < intro.expiresAt && intro.router == orig)
           {
             shifted     = orig != intro.router;
             remoteIntro = intro;
@@ -1028,7 +1024,7 @@ namespace llarp
         AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
         // put values
         self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
-        self->handler->PutIntroFor(self->msg.tag, self->msg.introReply);
+        self->handler->PutIntroFor(self->msg.tag, self->intro);
         self->handler->PutSenderFor(self->msg.tag, self->remote);
         self->hook(self->frame);
         delete self;

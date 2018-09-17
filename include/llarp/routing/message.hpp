@@ -21,8 +21,7 @@ namespace llarp
       {
       }
 
-      virtual bool
-      BEncode(llarp_buffer_t* buf) const = 0;
+      virtual ~IMessage(){};
 
       virtual bool
       HandleMessage(IMessageHandler* h, llarp_router* r) const = 0;

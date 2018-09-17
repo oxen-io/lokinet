@@ -224,11 +224,22 @@ namespace llarp
   {
     virtual ~IBEncodeMessage(){};
 
-    virtual bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) = 0;
+    IBEncodeMessage(uint64_t v = LLARP_PROTO_VERSION)
+    {
+      version = v;
+    }
 
     virtual bool
-    BEncode(llarp_buffer_t* buf) const = 0;
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    {
+      return false;
+    }
+
+    virtual bool
+    BEncode(llarp_buffer_t* buf) const
+    {
+      return false;
+    }
 
     virtual bool
     BDecode(llarp_buffer_t* buf)
@@ -240,7 +251,7 @@ namespace llarp
     }
 
     // TODO: check for shadowed values elsewhere
-    uint64_t version = LLARP_PROTO_VERSION;
+    uint64_t version = 0;
 
     static bool
     OnKey(dict_reader* r, llarp_buffer_t* k)

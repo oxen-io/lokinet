@@ -199,11 +199,11 @@ namespace llarp
       ProtocolMessage* msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
-      const ProtocolFrame* frame;
+      const ProtocolFrame frame;
 
       AsyncFrameDecrypt(llarp_logic* l, llarp_crypto* c,
                         const Identity& localIdent, IDataHandler* h,
-                        ProtocolMessage* m, const ProtocolFrame* f)
+                        ProtocolMessage* m, const ProtocolFrame& f)
           : crypto(c)
           , logic(l)
           , msg(m)
@@ -221,18 +221,18 @@ namespace llarp
         SharedSecret K;
         SharedSecret sharedKey;
         // copy
-        ProtocolFrame frame(*self->frame);
-        if(!crypto->pqe_decrypt(self->frame->C, K,
+        ProtocolFrame frame(self->frame);
+        if(!crypto->pqe_decrypt(self->frame.C, K,
                                 pq_keypair_to_secret(self->m_LocalIdentity.pq)))
         {
-          llarp::LogError("pqke failed C=", self->frame->C);
+          llarp::LogError("pqke failed C=", self->frame.C);
           delete self->msg;
           delete self;
           return;
         }
         // decrypt
         auto buf = frame.D.Buffer();
-        crypto->xchacha20(*buf, K, self->frame->N);
+        crypto->xchacha20(*buf, K, self->frame.N);
         if(!self->msg->BDecode(buf))
         {
           llarp::LogError("failed to decode inner protocol message");
@@ -242,11 +242,11 @@ namespace llarp
           return;
         }
         // verify signature of outer message after we parsed the inner message
-        if(!self->frame->Verify(crypto, self->msg->sender))
+        if(!self->frame.Verify(crypto, self->msg->sender))
         {
-          llarp::LogError("intro frame has invalid signature Z=",
-                          self->frame->Z, " from ", self->msg->sender.Addr());
-          self->frame->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          llarp::LogError("intro frame has invalid signature Z=", self->frame.Z,
+                          " from ", self->msg->sender.Addr());
+          self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           self->msg->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
@@ -256,11 +256,11 @@ namespace llarp
         // K
         memcpy(tmp, K, 32);
         // PKE (A, B, N)
-        if(!self->m_LocalIdentity.KeyExchange(
-               crypto->dh_server, tmp + 32, self->msg->sender, self->frame->N))
+        if(!self->m_LocalIdentity.KeyExchange(crypto->dh_server, tmp + 32,
+                                              self->msg->sender, self->frame.N))
         {
           llarp::LogError("x25519 key exchange failed");
-          self->frame->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
           return;
@@ -303,7 +303,7 @@ namespace llarp
         ProtocolMessage* msg = new ProtocolMessage();
         // we need to dh
         auto dh =
-            new AsyncFrameDecrypt(logic, c, localIdent, handler, msg, this);
+            new AsyncFrameDecrypt(logic, c, localIdent, handler, msg, *this);
         llarp_threadpool_queue_job(worker, {dh, &AsyncFrameDecrypt::Work});
         return true;
       }
@@ -334,12 +334,6 @@ namespace llarp
       msg->handler = handler;
       llarp_logic_queue_job(logic, {msg, &ProtocolMessage::ProcessAsync});
       return true;
-    }
-
-    ProtocolFrame::ProtocolFrame() : llarp::routing::IMessage()
-    {
-      T.Zero();
-      C.Zero();
     }
 
     bool

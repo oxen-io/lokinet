@@ -72,7 +72,9 @@ namespace llarp
         version = other.version;
       }
 
-      ProtocolFrame();
+      ProtocolFrame() : llarp::routing::IMessage()
+      {
+      }
 
       ~ProtocolFrame();
 
