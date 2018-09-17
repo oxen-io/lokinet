@@ -6,7 +6,7 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #endif
-struct iphdr
+struct ip_header
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
     unsigned int ihl:4;
@@ -72,16 +72,16 @@ namespace llarp
         }
       };
 
-      iphdr*
+      ip_header*
       Header()
       {
-        return (iphdr*)&buf[0];
+        return (ip_header*)&buf[0];
       }
 
-      const iphdr*
+      const ip_header*
       Header() const
       {
-        return (iphdr*)&buf[0];
+        return (ip_header*)&buf[0];
       }
 
       uint32_t
