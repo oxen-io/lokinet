@@ -343,9 +343,9 @@ namespace llarp
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [self, buf, sz](net::IPv4Packet &pkt) -> bool {
                return pkt.Load(llarp::InitBuffer(buf, sz))
-                   && pkt.Header()->ip_version == 4;
+                   && pkt.Header()->version == 4;
              }))
-        llarp::LogError("Failed to parse ipv4 packet");
+        llarp::LogDebug("Failed to parse ipv4 packet");
     }
 
     TunEndpoint::~TunEndpoint()

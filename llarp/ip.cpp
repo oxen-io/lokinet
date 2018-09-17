@@ -61,8 +61,8 @@ namespace llarp
       hdr->check = 0;
       auto len   = hdr->ihl * 4;
       hdr->check = ipchksum(buf, len);
-
-      auto itr = protoChecksumOffsets.find(hdr->protocol);
+      auto proto = hdr->protocol;
+      auto itr = protoChecksumOffsets.find(proto);
       if(itr != protoChecksumOffsets.end())
       {
         auto offset     = itr->second.second;
