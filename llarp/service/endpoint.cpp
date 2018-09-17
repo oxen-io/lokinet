@@ -1001,13 +1001,14 @@ namespace llarp
       ProtocolFrame frame;
       Introduction intro;
       const PQPubKey introPubKey;
+      Introduction remoteIntro;
       std::function< void(ProtocolFrame&) > hook;
       IDataHandler* handler;
 
       AsyncKeyExchange(llarp_logic* l, llarp_crypto* c, const ServiceInfo& r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey, const Introduction& us,
-                       IDataHandler* h)
+                       const Introduction& them, IDataHandler* h)
           : logic(l)
           , crypto(c)
           , remote(r)
@@ -1024,7 +1025,7 @@ namespace llarp
         AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
         // put values
         self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
-        self->handler->PutIntroFor(self->msg.tag, self->intro);
+        self->handler->PutIntroFor(self->msg.tag, self->remoteIntro);
         self->handler->PutSenderFor(self->msg.tag, self->remote);
         self->hook(self->frame);
         delete self;
@@ -1089,10 +1090,10 @@ namespace llarp
       if(path == nullptr)
         return;
 
-      AsyncKeyExchange* ex =
-          new AsyncKeyExchange(m_Endpoint->RouterLogic(), m_Endpoint->Crypto(),
-                               remoteIdent, m_Endpoint->GetIdentity(),
-                               currentIntroSet.K, remoteIntro, m_DataHandler);
+      AsyncKeyExchange* ex = new AsyncKeyExchange(
+          m_Endpoint->RouterLogic(), m_Endpoint->Crypto(), remoteIdent,
+          m_Endpoint->GetIdentity(), currentIntroSet.K, remoteIntro,
+          remoteIntro, m_DataHandler);
       ex->hook = std::bind(&Endpoint::OutboundContext::Send, this, p,
                            std::placeholders::_1);
       ex->msg.PutBuffer(payload);
