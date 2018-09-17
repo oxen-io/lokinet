@@ -6,7 +6,7 @@
 #include <llarp/link_message.hpp>
 #include <llarp/path_types.hpp>
 #include <llarp/pow.hpp>
-#include <vector>
+#include <array>
 
 namespace llarp
 {
