@@ -366,6 +366,7 @@ namespace llarp
         {
           inserted |= tags.insert(itr->first).second;
         }
+        ++itr;
       }
       return inserted;
     }
