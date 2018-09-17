@@ -34,7 +34,6 @@ namespace llarp
       dns       = find_section(top, "dns", section_t{});
       iwp_links = find_section(top, "bind", section_t{});
       services  = find_section(top, "services", section_t{});
-      dns       = find_section(top, "dns", section_t{});
       system    = find_section(top, "system", section_t{});
       return true;
     }
