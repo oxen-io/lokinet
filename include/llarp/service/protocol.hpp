@@ -61,7 +61,12 @@ namespace llarp
       llarp::service::ConvoTag T;
 
       ProtocolFrame(const ProtocolFrame& other)
-          : C(other.C), D(other.D), N(other.N), Z(other.Z), T(other.T)
+          : llarp::routing::IMessage()
+          , C(other.C)
+          , D(other.D)
+          , N(other.N)
+          , Z(other.Z)
+          , T(other.T)
       {
         S       = other.S;
         version = other.version;
@@ -70,6 +75,15 @@ namespace llarp
       ProtocolFrame();
 
       ~ProtocolFrame();
+
+      bool
+      operator==(const ProtocolFrame& other) const;
+
+      bool
+      operator!=(const ProtocolFrame& other) const
+      {
+        return !(*this == other);
+      }
 
       ProtocolFrame&
       operator=(const ProtocolFrame& other);

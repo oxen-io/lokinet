@@ -25,7 +25,6 @@ namespace llarp
     {
       payload.resize(buf.sz);
       memcpy(payload.data(), buf.base, buf.sz);
-      payload.shrink_to_fit();
     }
 
     void
@@ -81,7 +80,7 @@ namespace llarp
         if(!BEncodeWriteDictEntry("t", tag, buf))
           return false;
       }
-      if(!bencode_write_version_entry(buf))
+      if(!BEncodeWriteDictInt("v", version, buf))
         return false;
       return bencode_end(buf);
     }
@@ -247,6 +246,8 @@ namespace llarp
         {
           llarp::LogError("intro frame has invalid signature Z=",
                           self->frame->Z, " from ", self->msg->sender.Addr());
+          self->frame->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          self->msg->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
           return;
@@ -320,7 +321,7 @@ namespace llarp
       }
       if(!Verify(c, si))
       {
-        llarp::LogError("Signature failure");
+        llarp::LogError("Signature failure from ", si.Addr());
         return false;
       }
       ProtocolMessage* msg = new ProtocolMessage();
@@ -335,10 +336,17 @@ namespace llarp
       return true;
     }
 
-    ProtocolFrame::ProtocolFrame()
+    ProtocolFrame::ProtocolFrame() : llarp::routing::IMessage()
     {
       T.Zero();
       C.Zero();
+    }
+
+    bool
+    ProtocolFrame::operator==(const ProtocolFrame& other) const
+    {
+      return C == other.C && D == other.D && N == other.N && Z == other.Z
+          && T == other.T && S == other.S && version == other.version;
     }
 
     bool
@@ -348,27 +356,26 @@ namespace llarp
       // save signature
       // zero out signature for verify
       copy.Z.Zero();
-      bool result = false;
       // serialize
       byte_t tmp[MAX_PROTOCOL_MESSAGE_SIZE];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-      if(copy.BEncode(&buf))
+      if(!copy.BEncode(&buf))
       {
-        // rewind buffer
-        buf.sz  = buf.cur - buf.base;
-        buf.cur = buf.base;
-        // verify
-        result = from.Verify(crypto, buf, Z);
+        llarp::LogError("bencode fail");
+        return false;
       }
-      // restore signature
-      return result;
+
+      // rewind buffer
+      buf.sz  = buf.cur - buf.base;
+      buf.cur = buf.base;
+      // verify
+      return from.Verify(crypto, buf, Z);
     }
 
     bool
     ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
                                  llarp_router* r) const
     {
-      llarp::LogInfo("Got hidden service frame");
       return h->HandleHiddenServiceFrame(this);
     }
 

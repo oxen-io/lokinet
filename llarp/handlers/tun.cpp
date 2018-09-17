@@ -188,8 +188,11 @@ namespace llarp
                          inet_ntoa({htonl(pkt.dst())}));
           return true;
         }
-        return SendToOrQueue(itr->second, pkt.Buffer(),
-                             service::eProtocolTraffic);
+        if(!SendToOrQueue(itr->second, pkt.Buffer(), service::eProtocolTraffic))
+        {
+          llarp::LogWarn(Name(), " did not flush packets");
+        }
+        return true;
       });
     }
 

@@ -124,7 +124,7 @@ namespace llarp
       m_IntroSet = introset;
       if(PublishIntroSet(m_Router))
       {
-        llarp::LogInfo("publishing introset for endpoint ", Name());
+        llarp::LogInfo("(re)publishing introset for endpoint ", Name());
       }
       else
       {
@@ -730,10 +730,23 @@ namespace llarp
                                   std::placeholders::_2));
     }
 
+    void
+    Endpoint::HandlePathDead(void* user)
+    {
+      Endpoint* self = static_cast< Endpoint* >(user);
+      self->RegenAndPublishIntroSet(llarp_time_now_ms());
+    }
+
     bool
     Endpoint::CheckPathIsDead(path::Path*, llarp_time_t latency)
     {
-      return latency >= m_MinPathLatency;
+      if(latency >= m_MinPathLatency)
+      {
+        // rebuild path next tick
+        llarp_logic_queue_job(EndpointLogic(), {this, &HandlePathDead});
+        return true;
+      }
+      return false;
     }
 
     bool
@@ -823,8 +836,13 @@ namespace llarp
     {
       if(i)
       {
-        currentIntroSet = *i;
-        ShiftIntroduction();
+        if(currentIntroSet.OtherIsNewer(*i) || currentIntroSet.I != i->I)
+        {
+          currentIntroSet = *i;
+          ShiftIntroduction();
+        }
+        else
+          llarp::LogInfo("we got a stale introset, dropping it");
       }
       updatingIntroSet = false;
       return true;
@@ -834,6 +852,7 @@ namespace llarp
     Endpoint::SendToOrQueue(const Address& remote, llarp_buffer_t data,
                             ProtocolType t)
     {
+      llarp::LogInfo(Name(), " send ", data.sz, " to ", remote);
       {
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
@@ -931,7 +950,6 @@ namespace llarp
     Endpoint::OutboundContext::ShiftIntroduction()
     {
       bool shifted = false;
-      auto now     = llarp_time_t();
       for(const auto& intro : currentIntroSet.I)
       {
         m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
@@ -941,8 +959,24 @@ namespace llarp
           shifted     = true;
         }
       }
+      if(!shifted)
+      {
+        RouterID orig = remoteIntro.router;
+        remoteIntro.Clear();
+        for(const auto& intro : currentIntroSet.I)
+        {
+          if(remoteIntro.expiresAt < intro.expiresAt)
+          {
+            shifted     = orig != intro.router;
+            remoteIntro = intro;
+          }
+        }
+      }
       if(shifted)
+      {
+        llarp::LogInfo("shifted intro to ", remoteIntro);
         ManualRebuild(1);
+      }
     }
 
     void
@@ -1027,6 +1061,10 @@ namespace llarp
         self->msg.sender = self->m_LocalIdentity.pub;
         // set our introduction
         self->msg.introReply = self->intro;
+        // set version
+        self->msg.version = LLARP_PROTO_VERSION;
+        // set protocol
+        self->msg.proto = eProtocolTraffic;
         // encrypt and sign
         if(self->frame.EncryptAndSign(self->crypto, self->msg, K,
                                       self->m_LocalIdentity))
@@ -1070,12 +1108,6 @@ namespace llarp
     void
     Endpoint::SendContext::Send(PathID_t p, ProtocolFrame& msg)
     {
-      // in this context we assume the message contents are encrypted
-      auto now = llarp_time_now_ms();
-      if(remoteIntro.ExpiresSoon(now, 10000))
-      {
-        ShiftIntroduction();
-      }
       auto path = m_PathSet->GetPathByID(p);
       if(path)
       {
@@ -1083,6 +1115,8 @@ namespace llarp
         if(!path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
           llarp::LogError("Failed to send frame on path");
       }
+      else
+        llarp::LogError("cannot send becuase we have no path ", p);
     }
 
     std::string

@@ -65,6 +65,20 @@ namespace llarp
       {
         return expiresAt < other.expiresAt || pathID < other.pathID;
       }
+
+      bool
+      operator==(const Introduction& other) const
+      {
+        return expiresAt == other.expiresAt && version == other.version
+            && pathID == other.pathID && router == other.router
+            && latency == other.latency;
+      }
+
+      bool
+      operator!=(const Introduction& other) const
+      {
+        return !(*this == other);
+      }
     };
   }  // namespace service
 }  // namespace llarp

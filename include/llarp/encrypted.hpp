@@ -27,6 +27,18 @@ namespace llarp
       return bencode_write_bytestring(buf, _data, _sz);
     }
 
+    bool
+    operator==(const Encrypted& other) const
+    {
+      return _sz == other._sz && memcmp(_data, other._data, _sz) == 0;
+    }
+
+    bool
+    operator!=(const Encrypted& other) const
+    {
+      return !(*this == other);
+    }
+
     Encrypted&
     operator=(const Encrypted& other)
     {

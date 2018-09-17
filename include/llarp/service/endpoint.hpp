@@ -195,6 +195,9 @@ namespace llarp
         }
       };
 
+      static void
+      HandlePathDead(void*);
+
       /// context needed to initiate an outbound hidden service session
       struct OutboundContext : public path::Builder, public SendContext
       {
