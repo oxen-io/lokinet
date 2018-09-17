@@ -182,6 +182,9 @@ struct llarp_router
   void
   try_connect(fs::path rcfile);
 
+  bool
+  ReloadConfig(const llarp_config *conf);
+
   /// send to remote router or queue for sending
   /// returns false on overflow
   /// returns true on successful queue

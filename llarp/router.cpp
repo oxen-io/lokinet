@@ -795,6 +795,12 @@ llarp_router::ConnectToRandomRouters(int want)
 }
 
 bool
+llarp_router::ReloadConfig(const llarp_config *conf)
+{
+  return true;
+}
+
+bool
 llarp_router::InitOutboundLink()
 {
   if(outboundLink)

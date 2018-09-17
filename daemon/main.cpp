@@ -36,6 +36,7 @@ main(int argc, char *argv[])
   if(ctx)
   {
     signal(SIGINT, handle_signal);
+    signal(SIGHUP, handle_signal);
     code = llarp_main_run(ctx);
     llarp_main_free(ctx);
   }

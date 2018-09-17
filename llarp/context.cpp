@@ -47,12 +47,7 @@ namespace llarp
       llarp::LogError("failed to load config file ", configfile);
       return false;
     }
-    llarp_config_iterator iter;
-    iter.user  = this;
-    iter.visit = &iter_config;
-    llarp_config_iter(config, &iter);
-    llarp::LogInfo("config [", configfile, "] loaded");
-    return true;
+    return router->ReloadConfig(config);
   }
 
   void
