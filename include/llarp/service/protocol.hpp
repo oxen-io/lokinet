@@ -60,6 +60,13 @@ namespace llarp
       llarp::Signature Z;
       llarp::service::ConvoTag T;
 
+      ProtocolFrame(const ProtocolFrame& other)
+          : C(other.C), D(other.D), N(other.N), Z(other.Z), T(other.T)
+      {
+        S       = other.S;
+        version = other.version;
+      }
+
       ProtocolFrame();
 
       ~ProtocolFrame();

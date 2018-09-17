@@ -222,13 +222,11 @@ namespace llarp
         SharedSecret K;
         SharedSecret sharedKey;
         // copy
-        ProtocolFrame frame;
-        frame = *self->frame;
+        ProtocolFrame frame(*self->frame);
         if(!crypto->pqe_decrypt(self->frame->C, K,
                                 pq_keypair_to_secret(self->m_LocalIdentity.pq)))
         {
           llarp::LogError("pqke failed C=", self->frame->C);
-          frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
           return;
@@ -288,6 +286,7 @@ namespace llarp
       N       = other.N;
       Z       = other.Z;
       T       = other.T;
+      S       = other.S;
       version = other.version;
       return *this;
     }
@@ -345,8 +344,7 @@ namespace llarp
     bool
     ProtocolFrame::Verify(llarp_crypto* crypto, const ServiceInfo& from) const
     {
-      ProtocolFrame copy;
-      copy = *this;
+      ProtocolFrame copy(*this);
       // save signature
       // zero out signature for verify
       copy.Z.Zero();
