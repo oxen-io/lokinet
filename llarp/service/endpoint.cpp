@@ -1015,6 +1015,7 @@ namespace llarp
           , m_LocalIdentity(localident)
           , intro(us)
           , introPubKey(introsetPubKey)
+          , remoteIntro(them)
           , handler(h)
       {
       }
@@ -1092,7 +1093,7 @@ namespace llarp
 
       AsyncKeyExchange* ex = new AsyncKeyExchange(
           m_Endpoint->RouterLogic(), m_Endpoint->Crypto(), remoteIdent,
-          m_Endpoint->GetIdentity(), currentIntroSet.K, remoteIntro,
+          m_Endpoint->GetIdentity(), currentIntroSet.K, path->intro,
           remoteIntro, m_DataHandler);
       ex->hook = std::bind(&Endpoint::OutboundContext::Send, this, p,
                            std::placeholders::_1);
