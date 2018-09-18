@@ -43,10 +43,10 @@ namespace llarp
       bool
       SetupNetworking();
 
-      /// extends Endpoint
+      /// overrides Endpoint
       /// handle inbound traffic
       bool
-      HandleDataMessage(const PathID_t& src, service::ProtocolMessage* msg);
+      ProcessDataMessage(service::ProtocolMessage* msg);
 
 #ifndef _MINGW32_NO_THREADS
       /// overrides Endpount

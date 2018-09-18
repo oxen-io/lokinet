@@ -135,9 +135,6 @@ namespace llarp
     void
     Endpoint::Tick(llarp_time_t now)
     {
-      /// reset tx id for publish
-      if(now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL)
-        m_CurrentPublishTX = 0;
       // publish descriptors
       if(ShouldPublishDescriptors(now))
       {
@@ -543,8 +540,7 @@ namespace llarp
     void
     Endpoint::IntroSetPublished()
     {
-      m_CurrentPublishTX = 0;
-      m_LastPublish      = llarp_time_now_ms();
+      m_LastPublish = llarp_time_now_ms();
       llarp::LogInfo(Name(), " IntroSet publish confirmed");
     }
 
@@ -712,7 +708,7 @@ namespace llarp
       // pick another intro
       MarkCurrentIntroBad();
       ShiftIntroduction();
-      UpdateIntroSet();
+      // UpdateIntroSet();
       return true;
     }
 
@@ -725,7 +721,7 @@ namespace llarp
         return false;
       PutIntroFor(msg->tag, path->intro);
       EnsureReplyPath(msg->sender);
-      return true;
+      return ProcessDataMessage(msg);
     }
 
     bool
@@ -890,13 +886,13 @@ namespace llarp
             llarp::LogError("no convo tag");
             return false;
           }
-          Introduction intro;
+          Introduction remoteIntro;
           const byte_t* K = nullptr;
           for(const auto& tag : tags)
           {
-            if(p == nullptr && GetIntroFor(tag, intro))
+            if(p == nullptr && GetIntroFor(tag, remoteIntro))
             {
-              p = GetPathByRouter(intro.router);
+              p = GetPathByRouter(remoteIntro.router);
               if(p)
               {
                 f.T = tag;
@@ -922,13 +918,13 @@ namespace llarp
           f.S = GetSeqNoForConvo(f.T);
           f.C.Zero();
           transfer.Y.Randomize();
-          transfer.P = intro.pathID;
+          transfer.P = remoteIntro.pathID;
           if(!f.EncryptAndSign(&Router()->crypto, m, K, m_Identity))
           {
             llarp::LogError("failed to encrypt and sign");
             return false;
           }
-          llarp::LogInfo(Name(), " send ", data.sz, " via ", intro);
+          llarp::LogInfo(Name(), " send ", data.sz, " via ", remoteIntro);
           return p->SendRoutingMessage(&transfer, Router());
         }
       }
@@ -980,11 +976,13 @@ namespace llarp
     void
     Endpoint::OutboundContext::ShiftIntroduction()
     {
+      auto now = llarp_time_now_ms();
+      if(now - lastShift < MIN_SHIFT_INTERVAL)
+        return;
       bool shifted = false;
       for(const auto& intro : currentIntroSet.I)
       {
-        if(!intro.router.IsZero())
-          m_Endpoint->EnsureRouterIsKnown(intro.router);
+        m_Endpoint->EnsureRouterIsKnown(intro.router);
         if(m_BadIntros.count(intro) == 0 && remoteIntro != intro)
         {
           shifted     = intro.router != remoteIntro.router;
@@ -993,21 +991,23 @@ namespace llarp
         }
       }
       if(shifted)
+      {
+        lastShift = now;
         ManualRebuild(1);
+      }
     }
 
     void
-    Endpoint::SendContext::AsyncEncryptAndSendTo(PathID_t path,
-                                                 llarp_buffer_t data,
+    Endpoint::SendContext::AsyncEncryptAndSendTo(llarp_buffer_t data,
                                                  ProtocolType protocol)
     {
       if(sequenceNo)
       {
-        EncryptAndSendTo(path, data, protocol);
+        EncryptAndSendTo(data, protocol);
       }
       else
       {
-        AsyncGenIntro(path, data, protocol);
+        AsyncGenIntro(data, protocol);
       }
     }
 
@@ -1105,10 +1105,10 @@ namespace llarp
     }
 
     void
-    Endpoint::OutboundContext::AsyncGenIntro(PathID_t p, llarp_buffer_t payload,
+    Endpoint::OutboundContext::AsyncGenIntro(llarp_buffer_t payload,
                                              ProtocolType t)
     {
-      auto path = m_PathSet->GetPathByID(p);
+      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if(path == nullptr)
         return;
 
@@ -1116,7 +1116,7 @@ namespace llarp
           m_Endpoint->RouterLogic(), m_Endpoint->Crypto(), remoteIdent,
           m_Endpoint->GetIdentity(), currentIntroSet.K, path->intro,
           remoteIntro, m_DataHandler);
-      ex->hook = std::bind(&Endpoint::OutboundContext::Send, this, p,
+      ex->hook = std::bind(&Endpoint::OutboundContext::Send, this,
                            std::placeholders::_1);
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
@@ -1125,18 +1125,18 @@ namespace llarp
     }
 
     void
-    Endpoint::SendContext::Send(PathID_t p, ProtocolFrame& msg)
+    Endpoint::SendContext::Send(ProtocolFrame& msg)
     {
-      auto path = m_PathSet->GetPathByID(p);
+      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if(path)
       {
-        llarp::LogInfo(m_Endpoint->Name(), " send via ", p);
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(!path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
           llarp::LogError("Failed to send frame on path");
       }
       else
-        llarp::LogError("cannot send becuase we have no path ", p);
+        llarp::LogError("cannot send becuase we have no path to ",
+                        remoteIntro.router);
     }
 
     std::string
@@ -1223,8 +1223,7 @@ namespace llarp
     }
 
     void
-    Endpoint::SendContext::EncryptAndSendTo(const PathID_t& p,
-                                            llarp_buffer_t payload,
+    Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
                                             ProtocolType t)
     {
       std::set< ConvoTag > tags;
@@ -1241,10 +1240,11 @@ namespace llarp
       f.T = *tags.begin();
       f.S = m_Endpoint->GetSeqNoForConvo(f.T);
 
-      auto path = m_PathSet->GetPathByID(p);
+      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if(!path)
       {
-        llarp::LogError("cannot encrypt and send: no path with rxid=", p);
+        llarp::LogError("cannot encrypt and send: no path for intro ",
+                        remoteIntro);
         return;
       }
 

@@ -7,6 +7,11 @@
 #include <llarp/service/protocol.hpp>
 #include <llarp/path.hpp>
 
+// minimum time between interoset shifts
+#ifndef MIN_SHIFT_INTERVAL
+#define MIN_SHIFT_INTERVAL (5 * 1000)
+#endif
+
 namespace llarp
 {
   namespace service
@@ -108,8 +113,14 @@ namespace llarp
       bool
       ForgetPathToService(const Address& remote);
 
-      virtual bool
+      bool
       HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
+
+      virtual bool
+      ProcessDataMessage(ProtocolMessage* msg)
+      {
+        return true;
+      }
 
       /// ensure that we know a router, looks up if it doesn't
       void
@@ -163,13 +174,12 @@ namespace llarp
                     PathSet* send, Endpoint* ep);
 
         void
-        AsyncEncryptAndSendTo(PathID_t pid, llarp_buffer_t payload,
-                              ProtocolType t);
+        AsyncEncryptAndSendTo(llarp_buffer_t payload, ProtocolType t);
 
         /// send a fully encrypted hidden service frame
         /// via a path on our pathset with path id p
         void
-        Send(PathID_t p, ProtocolFrame& f);
+        Send(ProtocolFrame& f);
 
         llarp::SharedSecret sharedKey;
         ServiceInfo remoteIdent;
@@ -186,11 +196,10 @@ namespace llarp
 
        private:
         void
-        EncryptAndSendTo(const PathID_t& p, llarp_buffer_t payload,
-                         ProtocolType t);
+        EncryptAndSendTo(llarp_buffer_t payload, ProtocolType t);
 
         virtual void
-        AsyncGenIntro(PathID_t p, llarp_buffer_t payload, ProtocolType t)
+        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t)
         {
         }
       };
@@ -223,16 +232,8 @@ namespace llarp
         bool
         Tick(llarp_time_t now);
 
-        /// encrypt asynchronously and send to remote endpoint from us
         void
-        AsyncEncryptAndSendTo(llarp_buffer_t D, ProtocolType protocol)
-        {
-          auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
-          if(path)
-            SendContext::AsyncEncryptAndSendTo(path->RXID(), D, protocol);
-        }
-        void
-        AsyncGenIntro(PathID_t p, llarp_buffer_t payload, ProtocolType t);
+        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t);
 
         /// issues a lookup to find the current intro set of the remote service
         void
@@ -261,6 +262,7 @@ namespace llarp
         uint64_t m_UpdateIntrosetTX = 0;
         IntroSet currentIntroSet;
         std::set< Introduction > m_BadIntros;
+        llarp_time_t lastShift = 0;
       };
 
       // passed a sendto context when we have a path established otherwise
