@@ -97,7 +97,8 @@ namespace llarp
       HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg);
 
       bool
-      HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* msg);
+      HandleHiddenServiceFrame(path::Path* p,
+                               const llarp::service::ProtocolFrame* msg);
 
       /// return true if we have an established path to a hidden service
       bool
@@ -247,7 +248,7 @@ namespace llarp
                   RouterContact& cur, size_t hop);
 
         bool
-        HandleHiddenServiceFrame(const ProtocolFrame* frame);
+        HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame* frame);
 
         std::string
         Name() const;

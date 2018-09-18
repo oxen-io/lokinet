@@ -590,7 +590,7 @@ namespace llarp
     Path::HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
     {
       if(m_DataHandler)
-        return m_DataHandler(frame);
+        return m_DataHandler(this, frame);
       return false;
     }
 

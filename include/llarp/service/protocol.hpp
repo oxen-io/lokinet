@@ -96,7 +96,7 @@ namespace llarp
 
       bool
       AsyncDecryptAndVerify(llarp_logic* logic, llarp_crypto* c,
-                            llarp_threadpool* worker,
+                            const PathID_t& srcpath, llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
 

@@ -228,7 +228,7 @@ namespace llarp
       typedef std::function< bool(Path*, const PathID_t&, uint64_t) >
           DropHandlerFunc;
       typedef std::vector< PathHopConfig > HopList;
-      typedef std::function< bool(const service::ProtocolFrame*) >
+      typedef std::function< bool(Path*, const service::ProtocolFrame*) >
           DataHandlerFunc;
 
       HopList hops;

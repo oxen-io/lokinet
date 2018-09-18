@@ -31,7 +31,8 @@ namespace llarp
     ProtocolMessage::ProcessAsync(void* user)
     {
       ProtocolMessage* self = static_cast< ProtocolMessage* >(user);
-      self->handler->HandleDataMessage(self->srcPath, self);
+      if(!self->handler->HandleDataMessage(self->srcPath, self))
+        llarp::LogWarn("failed to handle data message from ", self->srcPath);
       delete self;
     }
 
@@ -295,6 +296,7 @@ namespace llarp
 
     bool
     ProtocolFrame::AsyncDecryptAndVerify(llarp_logic* logic, llarp_crypto* c,
+                                         const PathID_t& srcPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
                                          IDataHandler* handler) const
@@ -302,6 +304,7 @@ namespace llarp
       if(T.IsZero())
       {
         ProtocolMessage* msg = new ProtocolMessage();
+        msg->srcPath         = srcPath;
         // we need to dh
         auto dh =
             new AsyncFrameDecrypt(logic, c, localIdent, handler, msg, *this);
@@ -332,6 +335,7 @@ namespace llarp
         delete msg;
         return false;
       }
+      msg->srcPath = srcPath;
       msg->handler = handler;
       llarp_logic_queue_job(logic, {msg, &ProtocolMessage::ProcessAsync});
       return true;

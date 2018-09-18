@@ -681,7 +681,8 @@ namespace llarp
     Endpoint::HandlePathBuilt(path::Path* p)
     {
       p->SetDataHandler(std::bind(&Endpoint::HandleHiddenServiceFrame, this,
-                                  std::placeholders::_1));
+                                  std::placeholders::_1,
+                                  std::placeholders::_2));
       p->SetDropHandler(std::bind(&Endpoint::HandleDataDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
@@ -728,10 +729,11 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleHiddenServiceFrame(const ProtocolFrame* frame)
+    Endpoint::HandleHiddenServiceFrame(path::Path* p,
+                                       const ProtocolFrame* frame)
     {
-      return frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), Worker(),
-                                          m_Identity, m_DataHandler);
+      return frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p->RXID(),
+                                          Worker(), m_Identity, m_DataHandler);
     }
 
     Endpoint::SendContext::SendContext(const ServiceInfo& ident,
@@ -750,7 +752,7 @@ namespace llarp
     {
       p->SetDataHandler(
           std::bind(&Endpoint::OutboundContext::HandleHiddenServiceFrame, this,
-                    std::placeholders::_1));
+                    std::placeholders::_1, std::placeholders::_2));
       p->SetDropHandler(std::bind(
           &Endpoint::OutboundContext::HandleDataDrop, this,
           std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
@@ -780,9 +782,9 @@ namespace llarp
 
     bool
     Endpoint::OutboundContext::HandleHiddenServiceFrame(
-        const ProtocolFrame* frame)
+        path::Path* p, const ProtocolFrame* frame)
     {
-      return m_Endpoint->HandleHiddenServiceFrame(frame);
+      return m_Endpoint->HandleHiddenServiceFrame(p, frame);
     }
 
     bool
@@ -1158,7 +1160,7 @@ namespace llarp
       if(updatingIntroSet)
         return;
       auto addr = currentIntroSet.A.Addr();
-      auto path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
+      auto path = m_Endpoint->PickRandomEstablishedPath();
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(

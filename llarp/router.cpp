@@ -319,6 +319,9 @@ llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
   llarp::async_verify_context *ctx =
       static_cast< llarp::async_verify_context * >(job->user);
   ctx->router->pendingEstablishJobs.erase(job->rc.pubkey);
+  auto router = ctx->router;
+  llarp::PubKey pk(job->rc.pubkey);
+  router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
   delete ctx;
 }
 
