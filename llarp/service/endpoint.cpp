@@ -949,7 +949,8 @@ namespace llarp
       bool shifted = false;
       for(const auto& intro : currentIntroSet.I)
       {
-        m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
+        if(!intro.router.IsZero())
+          m_Endpoint->EnsureRouterIsKnown(intro.router);
         if(m_BadIntros.count(intro) == 0 && remoteIntro != intro)
         {
           remoteIntro = intro;
