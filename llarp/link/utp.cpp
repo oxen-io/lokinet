@@ -759,6 +759,7 @@ namespace llarp
       else
       {
         llarp::LogWarn("utp_socket got data with no underlying session");
+        utp_close(arg->socket);
       }
       return 0;
     }
