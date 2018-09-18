@@ -211,6 +211,10 @@ namespace llarp
         void
         ShiftIntroduction();
 
+        /// mark the current remote intro as bad
+        void
+        MarkCurrentIntroBad();
+
         /// tick internal state
         /// return true to remove otherwise don't remove
         bool
@@ -253,6 +257,7 @@ namespace llarp
 
         uint64_t m_UpdateIntrosetTX = 0;
         IntroSet currentIntroSet;
+        std::set< Introduction > m_BadIntros;
       };
 
       // passed a sendto context when we have a path established otherwise

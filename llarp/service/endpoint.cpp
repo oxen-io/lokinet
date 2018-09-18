@@ -955,37 +955,27 @@ namespace llarp
     }
 
     void
+    Endpoint::OutboundContext::MarkCurrentIntroBad()
+    {
+      m_BadIntros.insert(remoteIntro);
+    }
+
+    void
     Endpoint::OutboundContext::ShiftIntroduction()
     {
       bool shifted = false;
       for(const auto& intro : currentIntroSet.I)
       {
         m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
-        if(remoteIntro.expiresAt < intro.expiresAt)
+        if(m_BadIntros.count(intro) == 0)
         {
           remoteIntro = intro;
           shifted     = true;
-        }
-      }
-      if(!shifted)
-      {
-        RouterID orig = remoteIntro.router;
-        remoteIntro.Clear();
-        for(const auto& intro : currentIntroSet.I)
-        {
-          if(remoteIntro.expiresAt < intro.expiresAt && intro.router == orig)
-          {
-            remoteIntro = intro;
-            shifted     = true;
-            break;
-          }
+          break;
         }
       }
       if(shifted)
-      {
-        llarp::LogInfo("shifted intro to ", remoteIntro);
         ManualRebuild(1);
-      }
     }
 
     void
@@ -1122,6 +1112,7 @@ namespace llarp
       auto path = m_PathSet->GetPathByID(p);
       if(path)
       {
+        llarp::LogInfo(m_Endpoint->Name(), " send via ", p);
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(!path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
           llarp::LogError("Failed to send frame on path");
@@ -1167,9 +1158,14 @@ namespace llarp
     {
       if(remoteIntro.ExpiresSoon(now))
       {
+        MarkCurrentIntroBad();
         ShiftIntroduction();
       }
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
+      std::remove_if(m_BadIntros.begin(), m_BadIntros.end(),
+                     [now](const Introduction& intro) -> bool {
+                       return intro.IsExpired(now);
+                     });
       // TODO: check for expiration of outbound context
       return false;
     }

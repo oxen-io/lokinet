@@ -562,7 +562,6 @@ namespace llarp
       recvMsgOffset = 0;
 
       SendKeepAlive = [&]() -> bool {
-        /*
         if(sendq.size() == 0 && state == eSessionReady)
         {
           DiscardMessage msg;
@@ -575,7 +574,6 @@ namespace llarp
           if(!this->QueueWriteBuffers(buf))
             return false;
         }
-        */
         return true;
       };
       gotLIM        = false;
