@@ -1225,7 +1225,8 @@ namespace llarp
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
         ProtocolMessage m;
-        m.proto      = t;
+        m.proto = t;
+        m_DataHandler->PutIntroFor(f.T, remoteIntro);
         m.introReply = path->intro;
         m.sender     = m_Endpoint->m_Identity.pub;
         m.PutBuffer(payload);
