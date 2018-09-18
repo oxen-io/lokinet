@@ -4,6 +4,7 @@
 #include "llarp/buffer.hpp"
 #include "mem.hpp"
 #include <netinet/in.h>
+#include <llarp/endian.h>
 #include <map>
 
 namespace llarp
@@ -28,17 +29,9 @@ namespace llarp
       return llarp::InitBuffer(buf, sz);
     }
 
-    /// first map entry is bytes offset to checksum relative to end of ip header
-    /// second map entry is offset from beginning of packet for checksum
-    static std::map< byte_t, std::pair< uint16_t, uint16_t > >
-        protoChecksumOffsets = {{IPPROTO_TCP, {16, 12}},
-                                {IPPROTO_ICMP, {2, 0}},
-                                {IPPROTO_UDP, {6, 0}}};
-
     static uint16_t
-    ipchksum(const byte_t *buf, size_t sz)
+    ipchksum(const byte_t *buf, size_t sz, uint32_t sum = 0)
     {
-      uint32_t sum = 0;
       while(sz > 1)
       {
         sum += *(const uint16_t *)buf;
@@ -54,6 +47,24 @@ namespace llarp
       return ~sum;
     }
 
+    static std::map<
+        byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
+        protoCheckSummer = {
+            {IPPROTO_ICMP,
+             [](const ip_header *hdr, byte_t *buf, size_t sz) {
+               auto len        = hdr->ihl * 4;
+               uint16_t *check = (uint16_t *)buf + len + 2;
+               *check          = 0;
+               *check          = ipchksum(buf, sz);
+             }},
+            {IPPROTO_TCP, [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               auto len        = hdr->ihl * 4;
+               uint16_t *check = (uint16_t *)pkt + 28 + len;
+               *check          = 0;
+               *check =
+                   ipchksum(pkt, sz - len,
+                            hdr->saddr + hdr->daddr + IPPROTO_TCP + (sz - len));
+             }}};
     void
     IPv4Packet::UpdateChecksum()
     {
@@ -62,15 +73,11 @@ namespace llarp
       auto len   = hdr->ihl * 4;
       hdr->check = ipchksum(buf, len);
       auto proto = hdr->protocol;
-      auto itr = protoChecksumOffsets.find(proto);
-      if(itr != protoChecksumOffsets.end())
+      auto itr   = protoCheckSummer.find(proto);
+      if(itr != protoCheckSummer.end())
       {
-        auto offset     = itr->second.second;
-        uint16_t *check = (uint16_t *)(buf + len + itr->second.first);
-        *check          = 0;
-        *check          = ipchksum(buf + offset, sz - offset);
+        itr->second(hdr, buf, sz);
       }
     }
-
   }  // namespace net
 }  // namespace llarp

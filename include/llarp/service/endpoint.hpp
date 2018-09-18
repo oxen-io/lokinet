@@ -105,11 +105,8 @@ namespace llarp
       bool
       ForgetPathToService(const Address& remote);
 
-      virtual void
-      HandleDataMessage(const PathID_t&, ProtocolMessage* msg)
-      {
-        // override me in subclass
-      }
+      virtual bool
+      HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
 
       /// ensure that we know a router, looks up if it doesn't
       void

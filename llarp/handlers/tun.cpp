@@ -196,15 +196,13 @@ namespace llarp
       });
     }
 
-    void
+    bool
     TunEndpoint::HandleDataMessage(const PathID_t &src,
                                    service::ProtocolMessage *msg)
     {
-      PutIntroFor(msg->tag, msg->introReply);
-      EnsureReplyPath(msg->sender);
-      service::Address addr;
-      msg->sender.CalculateAddress(addr.data());
-      uint32_t themIP = ObtainIPForAddr(addr);
+      if(!Endpoint::HandleDataMessage(src, msg))
+        return false;
+      uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);
       if(m_NetworkToUserPktQueue.EmplaceIf(
@@ -223,6 +221,7 @@ namespace llarp
                        " bytes from ", inet_ntoa({htonl(themIP)}));
       else
         llarp::LogWarn(Name(), " dropped packet");
+      return true;
     }
 
     uint32_t

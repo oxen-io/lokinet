@@ -14,7 +14,7 @@ namespace llarp
     struct ProtocolMessage;
     struct IDataHandler
     {
-      virtual void
+      virtual bool
       HandleDataMessage(const PathID_t&, ProtocolMessage* msg) = 0;
 
       virtual bool

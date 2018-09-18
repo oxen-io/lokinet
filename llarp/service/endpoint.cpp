@@ -699,6 +699,18 @@ namespace llarp
     }
 
     bool
+    Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
+    {
+      msg->sender.UpdateAddr();
+      auto path = GetPathByID(src);
+      if(!path)
+        return false;
+      PutIntroFor(msg->tag, path->intro);
+      EnsureReplyPath(msg->sender);
+      return true;
+    }
+
+    bool
     Endpoint::HandleHiddenServiceFrame(const ProtocolFrame* frame)
     {
       return frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), Worker(),
