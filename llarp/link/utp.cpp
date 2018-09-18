@@ -349,11 +349,15 @@ namespace llarp
       {
         BaseSession* session =
             static_cast< BaseSession* >(utp_get_userdata(arg->socket));
-        if(arg->error_code == UTP_ETIMEDOUT && session)
+        if(session)
         {
-          session->Router()->OnConnectTimeout(session->GetPubKey());
+          if(arg->error_code == UTP_ETIMEDOUT)
+          {
+            session->Router()->OnConnectTimeout(session->GetPubKey());
+          }
+          llarp::LogError(utp_error_code_names[arg->error_code], " via ",
+                          session->remoteAddr);
         }
-        llarp::LogError(utp_error_code_names[arg->error_code]);
         return 0;
       }
 

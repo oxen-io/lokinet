@@ -987,8 +987,8 @@ namespace llarp
           m_Endpoint->EnsureRouterIsKnown(intro.router);
         if(m_BadIntros.count(intro) == 0 && remoteIntro != intro)
         {
+          shifted     = intro.router != remoteIntro.router;
           remoteIntro = intro;
-          shifted     = true;
           break;
         }
       }
