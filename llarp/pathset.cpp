@@ -65,6 +65,28 @@ namespace llarp
     }
 
     Path*
+    PathSet::GetNewestPathByRouter(const RouterID& id) const
+    {
+      Path* chosen = nullptr;
+      auto itr     = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->second->IsReady())
+        {
+          if(itr->second->Endpoint() == id)
+          {
+            if(chosen == nullptr)
+              chosen = itr->second;
+            else if(chosen->intro.expiresAt < itr->second->intro.expiresAt)
+              chosen = itr->second;
+          }
+        }
+        ++itr;
+      }
+      return chosen;
+    }
+
+    Path*
     PathSet::GetPathByRouter(const RouterID& id) const
     {
       Path* chosen = nullptr;

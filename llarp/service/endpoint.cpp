@@ -906,29 +906,27 @@ namespace llarp
               }
             }
           }
-          if(p == nullptr)
+          if(p)
           {
-            llarp::LogError("no path found");
-            return false;
+            // TODO: check expiration of our end
+            ProtocolMessage m(f.T);
+            m.proto      = t;
+            m.introReply = p->intro;
+            m.sender     = m_Identity.pub;
+            m.PutBuffer(data);
+            f.N.Randomize();
+            f.S = GetSeqNoForConvo(f.T);
+            f.C.Zero();
+            transfer.Y.Randomize();
+            transfer.P = remoteIntro.pathID;
+            if(!f.EncryptAndSign(&Router()->crypto, m, K, m_Identity))
+            {
+              llarp::LogError("failed to encrypt and sign");
+              return false;
+            }
+            llarp::LogInfo(Name(), " send ", data.sz, " via ", remoteIntro);
+            return p->SendRoutingMessage(&transfer, Router());
           }
-          // TODO: check expiration of our end
-          ProtocolMessage m(f.T);
-          m.proto      = t;
-          m.introReply = p->intro;
-          m.sender     = m_Identity.pub;
-          m.PutBuffer(data);
-          f.N.Randomize();
-          f.S = GetSeqNoForConvo(f.T);
-          f.C.Zero();
-          transfer.Y.Randomize();
-          transfer.P = remoteIntro.pathID;
-          if(!f.EncryptAndSign(&Router()->crypto, m, K, m_Identity))
-          {
-            llarp::LogError("failed to encrypt and sign");
-            return false;
-          }
-          llarp::LogInfo(Name(), " send ", data.sz, " via ", remoteIntro);
-          return p->SendRoutingMessage(&transfer, Router());
         }
       }
       if(HasPathToService(remote))
@@ -1242,7 +1240,7 @@ namespace llarp
       f.T = *tags.begin();
       f.S = m_Endpoint->GetSeqNoForConvo(f.T);
 
-      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
+      auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)
       {
         llarp::LogError("cannot encrypt and send: no path for intro ",

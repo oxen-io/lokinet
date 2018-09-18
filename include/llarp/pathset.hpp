@@ -102,6 +102,9 @@ namespace llarp
       GetPathByRouter(const RouterID& router) const;
 
       Path*
+      GetNewestPathByRouter(const RouterID& router) const;
+
+      Path*
       GetPathByID(const PathID_t& id) const;
 
       bool
