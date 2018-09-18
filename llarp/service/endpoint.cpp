@@ -706,9 +706,12 @@ namespace llarp
       llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
                      p->Endpoint(), " via ", dst);
       // pick another intro
-      MarkCurrentIntroBad();
-      ShiftIntroduction();
-      // UpdateIntroSet();
+      if(dst == remoteIntro.pathID)
+      {
+        MarkCurrentIntroBad();
+        ShiftIntroduction();
+      }
+      UpdateIntroSet();
       return true;
     }
 
