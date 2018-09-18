@@ -720,10 +720,7 @@ namespace llarp
     Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
     {
       msg->sender.UpdateAddr();
-      auto path = GetPathByID(src);
-      if(!path)
-        return false;
-      PutIntroFor(msg->tag, path->intro);
+      PutIntroFor(msg->tag, msg->introReply);
       EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
     }
@@ -1036,15 +1033,14 @@ namespace llarp
 
       AsyncKeyExchange(llarp_logic* l, llarp_crypto* c, const ServiceInfo& r,
                        const Identity& localident,
-                       const PQPubKey& introsetPubKey, const Introduction& us,
-                       const Introduction& them, IDataHandler* h)
+                       const PQPubKey& introsetPubKey,
+                       const Introduction& remote, IDataHandler* h)
           : logic(l)
           , crypto(c)
           , remote(r)
           , m_LocalIdentity(localident)
-          , intro(us)
           , introPubKey(introsetPubKey)
-          , remoteIntro(them)
+          , remoteIntro(remote)
           , handler(h)
       {
       }
@@ -1086,8 +1082,6 @@ namespace llarp
         self->msg.tag.Randomize();
         // set sender
         self->msg.sender = self->m_LocalIdentity.pub;
-        // set our introduction
-        self->msg.introReply = self->intro;
         // set version
         self->msg.version = LLARP_PROTO_VERSION;
         // set protocol
@@ -1120,10 +1114,10 @@ namespace llarp
       if(path == nullptr)
         return;
 
-      AsyncKeyExchange* ex = new AsyncKeyExchange(
-          m_Endpoint->RouterLogic(), m_Endpoint->Crypto(), remoteIdent,
-          m_Endpoint->GetIdentity(), currentIntroSet.K, path->intro,
-          remoteIntro, m_DataHandler);
+      AsyncKeyExchange* ex =
+          new AsyncKeyExchange(m_Endpoint->RouterLogic(), m_Endpoint->Crypto(),
+                               remoteIdent, m_Endpoint->GetIdentity(),
+                               currentIntroSet.K, remoteIntro, m_DataHandler);
       ex->hook = std::bind(&Endpoint::OutboundContext::Send, this,
                            std::placeholders::_1);
       ex->msg.PutBuffer(payload);
