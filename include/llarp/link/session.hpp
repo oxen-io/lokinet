@@ -46,6 +46,9 @@ namespace llarp
 
     /// handle a valid LIM
     std::function< bool(const LinkIntroMessage *msg) > GotLIM;
+
+    /// send queue current blacklog
+    std::function< size_t(void) > SendQueueBacklog;
   };
 }  // namespace llarp
 

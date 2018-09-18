@@ -152,6 +152,8 @@ llarp_router::PersistSessionUntil(const llarp::RouterID &remote,
   }
 }
 
+constexpr size_t MaxPendingSendQueueSize = 8;
+
 bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             const llarp::ILinkMessage *msg)
@@ -181,7 +183,15 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
     return false;
   // queue buffer
   auto &q = outboundMessageQueue[remote];
-  buf.sz  = buf.cur - buf.base;
+
+  if(q.size() >= MaxPendingSendQueueSize)
+  {
+    llarp::LogWarn("tried to queue a message to ", remote,
+                   " but the queue is full so we drop it like it's hawt");
+    return false;
+  }
+
+  buf.sz = buf.cur - buf.base;
   q.emplace(buf.sz);
   memcpy(q.back().data(), buf.base, buf.sz);
 
@@ -726,6 +736,18 @@ llarp_router::Run()
   }
   else
   {
+    // we are a client
+    // regenerate keys and resign rc before everything else
+    crypto.identity_keygen(identity);
+    crypto.encryption_keygen(encryption);
+    _rc.pubkey = llarp::seckey_topublic(identity);
+    _rc.enckey = llarp::seckey_topublic(encryption);
+    if(!_rc.Sign(&crypto, identity))
+    {
+      llarp::LogError("failed to regenerate keys and sign RC");
+      return;
+    }
+
     // delayed connect all for clients
     uint64_t delay = ((llarp_randint() % 10) * 500) + 500;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});

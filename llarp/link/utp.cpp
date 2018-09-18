@@ -33,6 +33,9 @@ namespace llarp
 
     constexpr size_t MaxSend = 64;
 
+    /// maximum size for send queue for a session before we drop
+    constexpr size_t MaxSendQueueSize = 128;
+
     typedef llarp::AlignedBuffer< MAX_LINK_MSG_SIZE > MessageBuffer;
 
     struct LinkLayer;
@@ -175,6 +178,8 @@ namespace llarp
       bool
       QueueWriteBuffers(llarp_buffer_t buf)
       {
+        if(sendq.size() >= MaxSendQueueSize)
+          return false;
         llarp::LogDebug("write ", buf.sz, " bytes to ", remoteAddr);
         lastActive  = llarp_time_now_ms();
         size_t sz   = buf.sz;
@@ -567,6 +572,8 @@ namespace llarp
       parent = p;
       remoteTransportPubKey.Zero();
       recvMsgOffset = 0;
+
+      SendQueueBacklog = [&]() -> size_t { return sendq.size(); };
 
       SendKeepAlive = [&]() -> bool {
         if(sendq.size() == 0 && state == eSessionReady)

@@ -912,6 +912,7 @@ namespace llarp
             llarp::LogError("no path found");
             return false;
           }
+          // TODO: check expiration of our end
           ProtocolMessage m(f.T);
           m.proto      = t;
           m.introReply = p->intro;
@@ -933,6 +934,8 @@ namespace llarp
       }
       if(HasPathToService(remote))
       {
+        llarp::LogDebug(Name(), " has session to ", remote, " sending ",
+                        data.sz, " bytes");
         m_RemoteSessions[remote]->AsyncEncryptAndSendTo(data, t);
         return true;
       }

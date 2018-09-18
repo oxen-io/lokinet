@@ -161,14 +161,20 @@ namespace llarp
     Lock l(m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
     auto itr   = range.first;
-    // TODO: random selection
+    // pick lowest backlog session
+    size_t min      = std::numeric_limits< size_t >::max();
+    ILinkSession* s = nullptr;
     while(itr != range.second)
     {
-      if(itr->second->SendMessageBuffer(buf))
-        return true;
+      auto backlog = itr->second->SendQueueBacklog();
+      if(backlog < min)
+      {
+        s   = itr->second.get();
+        min = backlog;
+      }
       ++itr;
     }
-    return false;
+    return s && s->SendMessageBuffer(buf);
   }
 
   bool
