@@ -433,14 +433,7 @@ llarp_router::Tick()
     while(itr != m_PersistingSessions.end())
     {
       auto link = GetLinkWithSessionByPubkey(itr->first);
-      if(now > itr->second)
-      {
-        // persisting ended
-        if(link)
-          link->CloseSessionTo(itr->first);
-        itr = m_PersistingSessions.erase(itr);
-      }
-      else
+      if(now < itr->second)
       {
         if(link)
         {
@@ -452,8 +445,8 @@ llarp_router::Tick()
           llarp::LogDebug("establish to ", itr->first);
           TryEstablishTo(itr->first);
         }
-        ++itr;
       }
+      ++itr;
     }
   }
 
