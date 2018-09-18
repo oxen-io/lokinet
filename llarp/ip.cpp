@@ -58,12 +58,20 @@ namespace llarp
                *check          = ipchksum(buf, sz);
              }},
             {IPPROTO_TCP, [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               byte_t pktbuf[1500];
                auto len        = hdr->ihl * 4;
-               uint16_t *check = (uint16_t *)pkt + 28 + len;
+               size_t pktsz    = sz - len;
+               uint16_t *check = (uint16_t *)(pkt + len + 16);
                *check          = 0;
-               *check =
-                   ipchksum(pkt, sz - len,
-                            hdr->saddr + hdr->daddr + IPPROTO_TCP + (sz - len));
+               memcpy(pktbuf, &hdr->saddr, 4);
+               memcpy(pktbuf + 4, &hdr->daddr, 4);
+               pktbuf[8] = 0;
+               pktbuf[9] = IPPROTO_TCP;
+               // TODO: endian (?)
+               pktbuf[10] = (pktsz & 0xff00) >> 8;
+               pktbuf[11] = pktsz & 0x00ff;
+               memcpy(pktbuf + 12, pkt + len, pktsz);
+               *check = ipchksum(pktbuf, 12 + pktsz);
              }}};
     void
     IPv4Packet::UpdateChecksum()
