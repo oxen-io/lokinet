@@ -676,25 +676,9 @@ namespace llarp
       llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
                      p->Endpoint(), " via ", dst);
       // pick another intro
-      if(remoteIntro.router == p->Endpoint() && remoteIntro.pathID == dst)
-      {
-        auto now = llarp_time_now_ms();
-        for(const auto& intro : currentIntroSet.I)
-        {
-          if(intro.ExpiresSoon(now))
-            continue;
-          if(intro.pathID != dst)
-          {
-            bool shift  = remoteIntro.router != intro.router;
-            remoteIntro = intro;
-            if(shift)
-              ManualRebuild(1);
-            return true;
-          }
-        }
-        llarp::LogError(Name(), " has no more usable intros");
-        UpdateIntroSet();
-      }
+      MarkCurrentIntroBad();
+      ShiftIntroduction();
+      UpdateIntroSet();
       return true;
     }
 
@@ -859,7 +843,6 @@ namespace llarp
     Endpoint::SendToOrQueue(const Address& remote, llarp_buffer_t data,
                             ProtocolType t)
     {
-      llarp::LogInfo(Name(), " send ", data.sz, " to ", remote);
       {
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
@@ -967,7 +950,7 @@ namespace llarp
       for(const auto& intro : currentIntroSet.I)
       {
         m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
-        if(m_BadIntros.count(intro) == 0)
+        if(m_BadIntros.count(intro) == 0 && remoteIntro != intro)
         {
           remoteIntro = intro;
           shifted     = true;
