@@ -294,6 +294,8 @@ namespace llarp
       bool
       IsTimedOut(llarp_time_t now) const
       {
+        if(state == eClose)
+          return true;
         if(now < lastActive)
           return false;
         auto dlt = now - lastActive;
@@ -357,6 +359,7 @@ namespace llarp
           }
           llarp::LogError(utp_error_code_names[arg->error_code], " via ",
                           session->remoteAddr);
+          session->Close();
         }
         return 0;
       }
