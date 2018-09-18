@@ -155,9 +155,10 @@ namespace llarp
                                       const byte_t* sharedkey,
                                       ProtocolMessage& msg) const
     {
-      msg.PutBuffer(D.Buffer());
-      auto buf = llarp::Buffer(msg.payload);
-      return crypto->xchacha20(buf, sharedkey, N);
+      Encrypted tmp = D;
+      auto buf      = tmp.Buffer();
+      crypto->xchacha20(*buf, sharedkey, N);
+      return msg.BDecode(buf);
     }
 
     bool

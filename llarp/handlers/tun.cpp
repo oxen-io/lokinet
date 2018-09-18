@@ -201,8 +201,9 @@ namespace llarp
                                    service::ProtocolMessage *msg)
     {
       EnsureReplyPath(msg->sender);
-
-      uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
+      service::Address addr;
+      msg->sender.CalculateAddress(addr.data());
+      uint32_t themIP = ObtainIPForAddr(addr);
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);
       if(m_NetworkToUserPktQueue.EmplaceIf(
