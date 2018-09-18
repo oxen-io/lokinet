@@ -200,6 +200,7 @@ namespace llarp
     TunEndpoint::HandleDataMessage(const PathID_t &src,
                                    service::ProtocolMessage *msg)
     {
+      PutIntroFor(msg->tag, msg->introReply);
       EnsureReplyPath(msg->sender);
       service::Address addr;
       msg->sender.CalculateAddress(addr.data());

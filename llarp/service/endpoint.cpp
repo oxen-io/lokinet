@@ -963,8 +963,9 @@ namespace llarp
         {
           if(remoteIntro.expiresAt < intro.expiresAt && intro.router == orig)
           {
-            shifted     = orig != intro.router;
             remoteIntro = intro;
+            shifted     = true;
+            break;
           }
         }
       }
