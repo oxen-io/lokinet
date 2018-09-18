@@ -83,6 +83,9 @@ namespace llarp
       PublishIntroSet(llarp_router* r);
 
       bool
+      PublishIntroSetVia(llarp_router* r, path::Path* p);
+
+      bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
 
       bool
@@ -303,12 +306,12 @@ namespace llarp
       void
       PutNewOutboundContext(const IntroSet& introset);
 
-     protected:
       virtual void
       IntroSetPublishFail();
       virtual void
       IntroSetPublished();
 
+     protected:
       void
       RegenAndPublishIntroSet(llarp_time_t now);
 

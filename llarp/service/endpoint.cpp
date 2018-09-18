@@ -473,28 +473,63 @@ namespace llarp
     Endpoint::PublishIntroSet(llarp_router* r)
     {
       auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr().data());
-      if(path)
+      if(path && PublishIntroSetVia(r, path))
       {
-        m_CurrentPublishTX = llarp_randint();
-        llarp::routing::DHTMessage msg;
-        msg.M.emplace_back(new llarp::dht::PublishIntroMessage(
-            m_IntroSet, m_CurrentPublishTX, 4));
-        if(path->SendRoutingMessage(&msg, r))
-        {
-          m_LastPublishAttempt = llarp_time_now_ms();
-          llarp::LogInfo(Name(), " publishing introset");
-          return true;
-        }
+        path = PickRandomEstablishedPath();
+        return path && PublishIntroSetVia(r, path);
       }
-      llarp::LogWarn(Name(), " publish introset failed, no path");
       return false;
     }
+
+    struct PublishIntroSetJob : public IServiceLookup
+    {
+      IntroSet m_IntroSet;
+      Endpoint* m_Endpoint;
+      PublishIntroSetJob(Endpoint* parent, uint64_t id,
+                         const IntroSet& introset)
+          : IServiceLookup(parent, id, "PublishIntroSet")
+          , m_IntroSet(introset)
+          , m_Endpoint(parent)
+      {
+      }
+
+      llarp::routing::IMessage*
+      BuildRequestMessage()
+      {
+        llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
+        msg->M.emplace_back(
+            new llarp::dht::PublishIntroMessage(m_IntroSet, txid, 4));
+        return msg;
+      }
+
+      bool
+      HandleResponse(const std::set< IntroSet >& response)
+      {
+        if(response.size())
+          m_Endpoint->IntroSetPublished();
+        else
+          m_Endpoint->IntroSetPublishFail();
+
+        return true;
+      }
+    };
 
     void
     Endpoint::IntroSetPublishFail()
     {
-      llarp::LogWarn("failed to publish introset for ", Name());
-      m_CurrentPublishTX = 0;
+      // TODO: linear backoff
+    }
+
+    bool
+    Endpoint::PublishIntroSetVia(llarp_router* r, path::Path* path)
+    {
+      auto job = new PublishIntroSetJob(this, GenTXID(), m_IntroSet);
+      if(job->SendRequestViaPath(path, r))
+      {
+        m_LastPublishAttempt = llarp_time_now_ms();
+        return true;
+      }
+      return false;
     }
 
     bool
@@ -502,8 +537,7 @@ namespace llarp
     {
       if(m_IntroSet.HasExpiredIntros(now))
         return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
-      return now - m_LastPublish >= INTROSET_PUBLISH_INTERVAL
-          && m_CurrentPublishTX == 0;
+      return now - m_LastPublishAttempt >= INTROSET_PUBLISH_INTERVAL;
     }
 
     void
