@@ -3,7 +3,6 @@
 #include <llarp/ip.hpp>
 #include "llarp/buffer.hpp"
 #include "mem.hpp"
-#include <netinet/in.h>
 #include <llarp/endian.h>
 #include <map>
 
@@ -50,14 +49,16 @@ namespace llarp
     static std::map<
         byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
         protoCheckSummer = {
-            {IPPROTO_ICMP,
+            /// ICMP
+            {1,
              [](const ip_header *hdr, byte_t *buf, size_t sz) {
                auto len        = hdr->ihl * 4;
                uint16_t *check = (uint16_t *)buf + len + 2;
                *check          = 0;
                *check          = ipchksum(buf, sz);
              }},
-            {IPPROTO_TCP, [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+            /// TCP
+            {6, [](const ip_header *hdr, byte_t *pkt, size_t sz) {
                byte_t pktbuf[1500];
                auto len        = hdr->ihl * 4;
                size_t pktsz    = sz - len;
@@ -66,7 +67,7 @@ namespace llarp
                memcpy(pktbuf, &hdr->saddr, 4);
                memcpy(pktbuf + 4, &hdr->daddr, 4);
                pktbuf[8] = 0;
-               pktbuf[9] = IPPROTO_TCP;
+               pktbuf[9] = 6;
                // TODO: endian (?)
                pktbuf[10] = (pktsz & 0xff00) >> 8;
                pktbuf[11] = pktsz & 0x00ff;
