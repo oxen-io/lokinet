@@ -79,14 +79,14 @@ namespace llarp
     TransitHop::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
                                  llarp_router* r)
     {
-      RelayDownstreamMessage* msg = new RelayDownstreamMessage;
-      msg->pathid                 = info.rxID;
-      msg->Y                      = Y ^ nonceXOR;
+      RelayDownstreamMessage msg;
+      msg.pathid = info.rxID;
+      msg.Y      = Y ^ nonceXOR;
       r->crypto.xchacha20(buf, pathKey, Y);
-      msg->X = buf;
-      llarp::LogDebug("relay ", msg->X.size(), " bytes downstream from ",
+      msg.X = buf;
+      llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
                       info.upstream, " to ", info.downstream);
-      return r->SendToOrQueue(info.downstream, msg);
+      return r->SendToOrQueue(info.downstream, &msg);
     }
 
     bool
@@ -100,14 +100,14 @@ namespace llarp
       }
       else
       {
-        RelayUpstreamMessage* msg = new RelayUpstreamMessage;
-        msg->pathid               = info.txID;
-        msg->Y                    = Y ^ nonceXOR;
+        RelayUpstreamMessage msg;
+        msg.pathid = info.txID;
+        msg.Y      = Y ^ nonceXOR;
 
-        msg->X = buf;
-        llarp::LogDebug("relay ", msg->X.size(), " bytes upstream from ",
+        msg.X = buf;
+        llarp::LogDebug("relay ", msg.X.size(), " bytes upstream from ",
                         info.downstream, " to ", info.upstream);
-        return r->SendToOrQueue(info.upstream, msg);
+        return r->SendToOrQueue(info.upstream, &msg);
       }
     }
 
