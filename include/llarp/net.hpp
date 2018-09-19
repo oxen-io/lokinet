@@ -310,7 +310,7 @@ namespace llarp
     }
 
     bool
-    isPrivate()
+    isPrivate() const
     {
       in_addr_t addr = this->addr4()->s_addr;
       unsigned byte  = ntohl(addr);
@@ -321,7 +321,7 @@ namespace llarp
     }
 
     bool
-    isLoopback()
+    isLoopback() const
     {
       return (ntohl(addr4()->s_addr)) >> 24 == 127;
     }
