@@ -185,8 +185,8 @@ namespace llarp
       D = buf;
       // zero out signature
       Z.Zero();
-      // reset size
-      buf.sz = sizeof(tmp);
+      // reset buffer
+      buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       // encode frame
       if(!BEncode(&buf))
       {
