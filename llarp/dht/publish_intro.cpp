@@ -67,6 +67,13 @@ namespace llarp
             "failed to calculate hidden service address for PubIntro message");
         return false;
       }
+      auto now = llarp_time_now_ms();
+      if(I.IsExpired(now))
+      {
+        // don't propogate or store expired introsets
+        replies.emplace_back(new GotIntroMessage({}, txID));
+        return true;
+      }
       dht.services->PutNode(I);
       replies.emplace_back(new GotIntroMessage({I}, txID));
       Key_t peer;
