@@ -184,17 +184,17 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   // queue buffer
   auto &q = outboundMessageQueue[remote];
 
-  if(q.size() >= MaxPendingSendQueueSize)
+  if(q.size() < MaxPendingSendQueueSize)
+  {
+    buf.sz = buf.cur - buf.base;
+    q.emplace(buf.sz);
+    memcpy(q.back().data(), buf.base, buf.sz);
+  }
+  else
   {
     llarp::LogWarn("tried to queue a message to ", remote,
                    " but the queue is full so we drop it like it's hawt");
-    return false;
   }
-
-  buf.sz = buf.cur - buf.base;
-  q.emplace(buf.sz);
-  memcpy(q.back().data(), buf.base, buf.sz);
-
   llarp::RouterContact remoteRC;
   // we don't have an open session to that router right now
   if(llarp_nodedb_get_rc(nodedb, remote, remoteRC))
