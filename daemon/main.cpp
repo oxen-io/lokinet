@@ -61,6 +61,7 @@ main(int argc, char *argv[])
     // when we have an explicit filepath
     fs::path fname   = fs::path(argv[optind]);
     fs::path basedir = fname.parent_path();
+    conffname        = fname.string();
     if(basedir.string().empty())
     {
       if(!llarp_ensure_config(fname.string().c_str(), nullptr, genconfigOnly))
@@ -81,7 +82,6 @@ main(int argc, char *argv[])
       if(!llarp_ensure_config(fname.string().c_str(), basedir.string().c_str(),
                               genconfigOnly))
         return 1;
-      conffname = fname.string();
     }
   }
   else
