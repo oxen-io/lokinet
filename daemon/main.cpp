@@ -59,7 +59,20 @@ main(int argc, char *argv[])
   if(optind < argc)
   {
     // when we have an explicit filepath
-    if(!llarp_ensure_config(argv[optind], dirname(argv[optind]), genconfigOnly))
+    fs::path fname   = fs::path(argv[optind]);
+    fs::path basedir = fname.parent_path();
+    std::error_code ec;
+    if(!fs::create_directories(basedir, ec))
+    {
+      if(ec)
+      {
+        llarp::LogError("failed to create '", basedir.string(),
+                        "': ", ec.message());
+        return 1;
+      }
+    }
+    if(!llarp_ensure_config(argv[optind], basedir.string().c_str(),
+                            genconfigOnly))
       return 1;
     conffname = argv[optind];
   }
