@@ -85,6 +85,7 @@ namespace llarp
         signkey = other.signkey;
         version = other.version;
         vanity  = other.vanity;
+        version = other.version;
         UpdateAddr();
         return *this;
       };

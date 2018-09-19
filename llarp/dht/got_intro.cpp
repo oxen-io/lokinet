@@ -36,6 +36,8 @@ namespace llarp
               From);
           return false;
         }
+        else
+          dht.services->PutNode(introset);
       }
       TXOwner owner(From, T);
       auto tagLookup = dht.pendingTagLookups.GetPendingLookupFrom(owner);

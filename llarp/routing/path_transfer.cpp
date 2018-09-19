@@ -24,7 +24,7 @@ namespace llarp
         return false;
       if(!BEncodeMaybeReadDictEntry("T", T, read, key, val))
         return false;
-      if(!BEncodeMaybeReadDictInt("V", V, read, key, val))
+      if(!BEncodeMaybeReadDictInt("V", version, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictEntry("Y", Y, read, key, val))
         return false;

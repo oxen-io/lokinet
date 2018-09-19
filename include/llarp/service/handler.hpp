@@ -3,6 +3,8 @@
 #include <llarp/aligned.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/service/IntroSet.hpp>
+#include <llarp/path_types.hpp>
+
 namespace llarp
 {
   namespace service
@@ -12,8 +14,8 @@ namespace llarp
     struct ProtocolMessage;
     struct IDataHandler
     {
-      virtual void
-      HandleDataMessage(ProtocolMessage* msg) = 0;
+      virtual bool
+      HandleDataMessage(const PathID_t&, ProtocolMessage* msg) = 0;
 
       virtual bool
       GetCachedSessionKeyFor(const ConvoTag& remote,

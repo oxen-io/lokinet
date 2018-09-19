@@ -2,6 +2,7 @@
 #include <llarp/messages/path_confirm.hpp>
 #include <llarp/messages/path_latency.hpp>
 #include <llarp/messages/path_transfer.hpp>
+#include <llarp/messages/discard.hpp>
 #include <llarp/routing/message.hpp>
 #include "mem.hpp"
 
@@ -41,6 +42,9 @@ namespace llarp
         self->key = *strbuf.cur;
         switch(self->key)
         {
+          case 'D':
+            self->msg = new DataDiscardMessage();
+            break;
           case 'L':
             self->msg = new PathLatencyMessage();
             break;

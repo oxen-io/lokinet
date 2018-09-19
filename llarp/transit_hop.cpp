@@ -1,5 +1,6 @@
 #include <llarp/path.hpp>
 #include <llarp/routing/handler.hpp>
+#include <llarp/messages/discard.hpp>
 #include "buffer.hpp"
 #include "router.hpp"
 
@@ -53,7 +54,6 @@ namespace llarp
     TransitHop::SendRoutingMessage(llarp::routing::IMessage* msg,
                                    llarp_router* r)
     {
-      msg->S = m_SequenceNum++;
       byte_t tmp[MAX_LINK_MSG_SIZE - 1024];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
@@ -136,14 +136,23 @@ namespace llarp
     }
 
     bool
+    TransitHop::HandleDataDiscardMessage(
+        const llarp::routing::DataDiscardMessage* msg, llarp_router* r)
+    {
+      llarp::LogWarn("unwarranted path data discard message on ", info);
+      return false;
+    }
+
+    bool
     TransitHop::HandlePathTransferMessage(
         const llarp::routing::PathTransferMessage* msg, llarp_router* r)
     {
       auto path = r->paths.GetByUpstream(r->pubkey(), msg->P);
       if(!path)
       {
-        llarp::LogWarn("No such path for path transfer pathid=", msg->P);
-        return false;
+        llarp::routing::DataDiscardMessage discarded(msg->P, msg->S);
+        path = r->paths.GetByUpstream(r->pubkey(), msg->from);
+        return path && path->SendRoutingMessage(&discarded, r);
       }
 
       byte_t tmp[service::MAX_PROTOCOL_MESSAGE_SIZE];

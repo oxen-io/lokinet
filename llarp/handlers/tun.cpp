@@ -38,21 +38,22 @@ namespace llarp
         auto addr_str = v.substr(0, pos);
         if(!addr.FromString(addr_str))
         {
-          llarp::LogError("cannot map invalid address ", addr_str);
+          llarp::LogError(Name() + " cannot map invalid address ", addr_str);
           return false;
         }
         auto ip_str = v.substr(pos + 1);
-        uint32_t ip;
+        in_addr ip;
         if(inet_pton(AF_INET, ip_str.c_str(), &ip) != 1)
         {
           llarp::LogError("cannot map to invalid ip ", ip_str);
           return false;
         }
-        return MapAddress(addr, ip);
+        return MapAddress(addr, ntohl(ip.s_addr));
       }
       if(k == "ifname")
       {
         strncpy(tunif.ifname, v.c_str(), sizeof(tunif.ifname) - 1);
+        llarp::LogInfo(Name() + " setting ifname to ", tunif.ifname);
         return true;
       }
       if(k == "ifaddr")
@@ -78,7 +79,8 @@ namespace llarp
           tunif.netmask = 32;
           addr          = v;
         }
-        llarp::LogInfo("set ifaddr to ", addr, " with netmask ", tunif.netmask);
+        llarp::LogInfo(Name() + " set ifaddr to ", addr, " with netmask ",
+                       tunif.netmask);
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
         return true;
       }
@@ -88,19 +90,18 @@ namespace llarp
     bool
     TunEndpoint::MapAddress(const service::Address &addr, uint32_t ip)
     {
-      char buf[32] = {0};
-      inet_ntop(AF_INET, &ip, buf, sizeof(buf));
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
       {
-        llarp::LogWarn(buf, " already mapped to ", itr->second.ToString());
+        llarp::LogWarn(inet_ntoa({ip}), " already mapped to ",
+                       itr->second.ToString());
         return false;
       }
-      llarp::LogInfo("map ", addr.ToString(), " to ", buf);
+      llarp::LogInfo(Name() + " map ", addr.ToString(), " to ",
+                     inet_ntoa({ip}));
       m_IPToAddr.insert(std::make_pair(ip, addr));
       m_AddrToIP.insert(std::make_pair(addr, ip));
-      // TODO: make ip mapping persist forever
-      MarkIPActive(ip);
+      MarkIPActiveForever(ip);
       return true;
     }
 
@@ -141,12 +142,12 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up tun interface");
         return false;
       }
-      m_OurIP       = inet_addr(tunif.ifaddr);
+      m_OurIP       = ntohl(inet_addr(tunif.ifaddr));
       m_NextIP      = m_OurIP;
       uint32_t mask = tunif.netmask;
 
-      uint32_t baseaddr = (ntohs(m_OurIP) & netmask_ipv4_bits(mask));
-      m_MaxIP           = (ntohs(baseaddr) | ~ntohs(netmask_ipv4_bits(mask)));
+      uint32_t baseaddr = (htonl(m_OurIP) & netmask_ipv4_bits(mask));
+      m_MaxIP           = (htonl(baseaddr) | ~htonl(netmask_ipv4_bits(mask)));
       char buf[128]     = {0};
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ",
                      inet_ntop(AF_INET, &m_OurIP, buf, sizeof(buf)));
@@ -183,65 +184,68 @@ namespace llarp
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
-          in_addr a;
-          a.s_addr = pkt.dst();
-          llarp::LogWarn("drop packet to ", inet_ntoa(a));
-          llarp::DumpBuffer(pkt.Buffer());
+          llarp::LogWarn(Name(), " has no endpoint for ",
+                         inet_ntoa({htonl(pkt.dst())}));
           return true;
         }
-        return SendToOrQueue(itr->second, pkt.Buffer(),
-                             service::eProtocolTraffic);
+        if(!SendToOrQueue(itr->second, pkt.Buffer(), service::eProtocolTraffic))
+        {
+          llarp::LogWarn(Name(), " did not flush packets");
+        }
+        return true;
       });
     }
 
-    void
-    TunEndpoint::HandleDataMessage(service::ProtocolMessage *msg)
+    bool
+    TunEndpoint::ProcessDataMessage(service::ProtocolMessage *msg)
     {
-      if(msg->proto != service::eProtocolTraffic)
-      {
-        llarp::LogWarn("dropping unwarrented message, not ip traffic, proto=",
-                       msg->proto);
-        return;
-      }
       uint32_t themIP = ObtainIPForAddr(msg->sender.Addr());
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);
-      if(!m_NetworkToUserPktQueue.EmplaceIf(
+      if(m_NetworkToUserPktQueue.EmplaceIf(
              [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
                // do packet info rewrite here
                // TODO: don't truncate packet here
-               memcpy(pkt.buf, buf.base, std::min(buf.sz, sizeof(pkt.buf)));
+               pkt.sz = std::min(buf.sz, sizeof(pkt.buf));
+               memcpy(pkt.buf, buf.base, pkt.sz);
                pkt.src(themIP);
                pkt.dst(usIP);
                pkt.UpdateChecksum();
                return true;
              }))
-      {
-        llarp::LogWarn("failed to parse buffer for ip traffic");
-        llarp::DumpBuffer(buf);
-      }
+
+        llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
+                       " bytes from ", inet_ntoa({htonl(themIP)}));
+      else
+        llarp::LogWarn(Name(), " dropped packet");
+      return true;
     }
 
     uint32_t
     TunEndpoint::ObtainIPForAddr(const service::Address &addr)
     {
       llarp_time_t now = llarp_time_now_ms();
-      uint32_t nextIP;
+      uint32_t nextIP  = 0;
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(addr);
         if(itr != m_AddrToIP.end())
         {
           // mark ip active
-          m_IPActivity[itr->second] = now;
+          MarkIPActive(itr->second);
           return itr->second;
         }
       }
+      // allocate new address
       if(m_NextIP < m_MaxIP)
       {
         nextIP = ++m_NextIP;
         m_AddrToIP.insert(std::make_pair(addr, nextIP));
         m_IPToAddr.insert(std::make_pair(nextIP, addr));
+        llarp::LogInfo(Name(), " mapped ", addr, " to ",
+                       inet_ntoa({htonl(nextIP)}));
+        MarkIPActive(nextIP);
+        return nextIP;
       }
       else
       {
@@ -271,7 +275,7 @@ namespace llarp
       }
 
       // mark ip active
-      m_IPActivity[nextIP] = now;
+      m_IPActivity[nextIP] = std::max(m_IPActivity[nextIP], now);
 
       return nextIP;
     }
@@ -285,7 +289,13 @@ namespace llarp
     void
     TunEndpoint::MarkIPActive(uint32_t ip)
     {
-      m_IPActivity[ip] = llarp_time_now_ms();
+      m_IPActivity[ip] = std::max(llarp_time_now_ms(), m_IPActivity[ip]);
+    }
+
+    void
+    TunEndpoint::MarkIPActiveForever(uint32_t ip)
+    {
+      m_IPActivity[ip] = std::numeric_limits< uint64_t >::max();
     }
 
     void
@@ -331,9 +341,9 @@ namespace llarp
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [self, buf, sz](net::IPv4Packet &pkt) -> bool {
                return pkt.Load(llarp::InitBuffer(buf, sz))
-                   && pkt.Header()->ip_version == 4;
+                   && pkt.Header()->version == 4;
              }))
-        llarp::LogError("Failed to parse ipv4 packet");
+        llarp::LogDebug("Failed to parse ipv4 packet");
     }
 
     TunEndpoint::~TunEndpoint()

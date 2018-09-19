@@ -33,13 +33,13 @@ namespace llarp
     }
 
     // advertised addresses
-    std::vector< AddressInfo > addrs = {};
+    std::vector< AddressInfo > addrs;
     // public encryption public key
     llarp::PubKey enckey;
     // public signing public key
     llarp::PubKey pubkey;
     // advertised exits
-    std::vector< ExitInfo > exits = {};
+    std::vector< ExitInfo > exits;
     // signature
     llarp::Signature signature;
     /// node nickname, yw kee
@@ -83,6 +83,12 @@ namespace llarp
 
     bool
     Sign(llarp_crypto *crypto, const llarp::SecretKey &secret);
+
+    bool
+    OtherIsNewer(const RouterContact &other) const
+    {
+      return last_updated < other.last_updated;
+    }
 
     bool
     Read(const char *fname);

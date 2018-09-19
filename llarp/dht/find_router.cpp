@@ -22,7 +22,7 @@ namespace llarp
         if(path)
         {
           replies.emplace_back(
-              new GotRouterMessage(K.data(), txid, {dht.router->rc}, false));
+              new GotRouterMessage(K.data(), txid, {dht.router->rc()}, false));
           return true;
         }
         return false;
@@ -30,6 +30,15 @@ namespace llarp
 
       Key_t peer;
       Key_t k = K.data();
+      // check if we know this in our nodedb first
+      RouterContact found;
+      if(llarp_nodedb_get_rc(dht.router->nodedb, K, found))
+      {
+        replies.emplace_back(
+            new GotRouterMessage(K.data(), txid, {found}, false));
+        return true;
+      }
+      // lookup if we don't have it in our nodedb
       if(dht.nodes->FindClosest(k, peer))
         dht.LookupRouterForPath(K, txid, pathID, peer);
       return true;
@@ -146,8 +155,15 @@ namespace llarp
         llarp::LogWarn("Duplicate FRM from ", From, " txid=", txid);
         return false;
       }
+      RouterContact found;
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
+      else if(llarp_nodedb_get_rc(dht.router->nodedb, K, found))
+      {
+        replies.emplace_back(
+            new GotRouterMessage(K.data(), txid, {found}, false));
+        return true;
+      }
       else
         dht.LookupRouterRelayed(From, txid, K.data(), !iterative, replies);
       return true;

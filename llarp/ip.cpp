@@ -3,6 +3,8 @@
 #include <llarp/ip.hpp>
 #include "llarp/buffer.hpp"
 #include "mem.hpp"
+#include <llarp/endian.h>
+#include <map>
 
 namespace llarp
 {
@@ -26,30 +28,65 @@ namespace llarp
       return llarp::InitBuffer(buf, sz);
     }
 
+    static uint16_t
+    ipchksum(const byte_t *buf, size_t sz, uint32_t sum = 0)
+    {
+      while(sz > 1)
+      {
+        sum += *(const uint16_t *)buf;
+        sz -= sizeof(uint16_t);
+        buf += sizeof(uint16_t);
+      }
+      if(sz > 0)
+        sum += *(const byte_t *)buf;
+
+      while(sum >> 16)
+        sum = (sum & 0xffff) + (sum >> 16);
+
+      return ~sum;
+    }
+
+    static std::map<
+        byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
+        protoCheckSummer = {
+            /// ICMP
+            {1,
+             [](const ip_header *hdr, byte_t *buf, size_t sz) {
+               auto len        = hdr->ihl * 4;
+               uint16_t *check = (uint16_t *)buf + len + 2;
+               *check          = 0;
+               *check          = ipchksum(buf, sz);
+             }},
+            /// TCP
+            {6, [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               byte_t pktbuf[1500];
+               auto len        = hdr->ihl * 4;
+               size_t pktsz    = sz - len;
+               uint16_t *check = (uint16_t *)(pkt + len + 16);
+               *check          = 0;
+               memcpy(pktbuf, &hdr->saddr, 4);
+               memcpy(pktbuf + 4, &hdr->daddr, 4);
+               pktbuf[8] = 0;
+               pktbuf[9] = 6;
+               // TODO: endian (?)
+               pktbuf[10] = (pktsz & 0xff00) >> 8;
+               pktbuf[11] = pktsz & 0x00ff;
+               memcpy(pktbuf + 12, pkt + len, pktsz);
+               *check = ipchksum(pktbuf, 12 + pktsz);
+             }}};
     void
     IPv4Packet::UpdateChecksum()
     {
       auto hdr   = Header();
       hdr->check = 0;
-
-      size_t count = hdr->ihl;
-      uint32_t sum = 0;
-      byte_t *addr = buf;
-
-      while(count > 1)
+      auto len   = hdr->ihl * 4;
+      hdr->check = ipchksum(buf, len);
+      auto proto = hdr->protocol;
+      auto itr   = protoCheckSummer.find(proto);
+      if(itr != protoCheckSummer.end())
       {
-        sum += ntohs(*(uint16_t *)addr);
-        count -= sizeof(uint16_t);
-        addr += sizeof(uint16_t);
+        itr->second(hdr, buf, sz);
       }
-      if(count > 0)
-        sum += *(byte_t *)addr;
-
-      while(sum >> 16)
-        sum = (sum & 0xffff) + (sum >> 16);
-
-      hdr->check = htons(~sum);
     }
-
   }  // namespace net
 }  // namespace llarp

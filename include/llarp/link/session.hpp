@@ -43,6 +43,12 @@ namespace llarp
     std::function< const PubKey &(void) > GetPubKey;
     /// get remote address
     std::function< const Addr &(void) > GetRemoteEndpoint;
+
+    /// handle a valid LIM
+    std::function< bool(const LinkIntroMessage *msg) > GotLIM;
+
+    /// send queue current blacklog
+    std::function< size_t(void) > SendQueueBacklog;
   };
 }  // namespace llarp
 

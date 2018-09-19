@@ -27,6 +27,18 @@ struct llarp_nodedb
       entries;
   fs::path nodePath;
 
+  bool
+  Remove(const llarp::PubKey &pk)
+  {
+    llarp::util::Lock lock(access);
+    auto itr = entries.find(pk);
+    if(itr == entries.end())
+      return false;
+    entries.erase(itr);
+    fs::remove(fs::path(getRCFilePath(pk)));
+    return true;
+  }
+
   void
   Clear()
   {
@@ -139,7 +151,6 @@ struct llarp_nodedb
     if(fpath.extension() != RC_FILE_EXT)
       return false;
     llarp::RouterContact rc;
-
     if(!rc.Read(fpath.string().c_str()))
     {
       llarp::LogError("failed to read file ", fpath);
@@ -155,6 +166,19 @@ struct llarp_nodedb
       entries.insert(std::make_pair(rc.pubkey, rc));
     }
     return true;
+  }
+
+  void
+  visit(std::function< bool(const llarp::RouterContact &) > visit)
+  {
+    llarp::util::Lock lock(access);
+    auto itr = entries.begin();
+    while(itr != entries.end())
+    {
+      if(!visit(itr->second))
+        return;
+      ++itr;
+    }
   }
 
   bool
@@ -339,6 +363,14 @@ llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i)
   return n->entries.size();
 }
 
+void
+llarp_nodedb_visit_loaded(
+    struct llarp_nodedb *n,
+    std::function< bool(const llarp::RouterContact &) > visit)
+{
+  return n->visit(visit);
+}
+
 /// maybe rename to verify_and_set
 void
 llarp_nodedb_async_verify(struct llarp_async_verify_rc *job)
@@ -371,6 +403,12 @@ size_t
 llarp_nodedb_num_loaded(struct llarp_nodedb *n)
 {
   return n->entries.size();
+}
+
+bool
+llarp_nodedb_del_rc(struct llarp_nodedb *n, const llarp::RouterID &pk)
+{
+  return n->Remove(pk);
 }
 
 bool

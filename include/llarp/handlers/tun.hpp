@@ -45,8 +45,8 @@ namespace llarp
 
       /// overrides Endpoint
       /// handle inbound traffic
-      void
-      HandleDataMessage(service::ProtocolMessage* msg);
+      bool
+      ProcessDataMessage(service::ProtocolMessage* msg);
 
 #ifndef _MINGW32_NO_THREADS
       /// overrides Endpount
@@ -96,6 +96,10 @@ namespace llarp
       /// mark this address as active
       void
       MarkIPActive(uint32_t ip);
+
+      /// mark this address as active forever
+      void
+      MarkIPActiveForever(uint32_t ip);
 
       void
       FlushSend();

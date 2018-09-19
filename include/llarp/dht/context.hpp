@@ -69,11 +69,15 @@ namespace llarp
       std::vector< V > valuesFound;
       TXOwner whoasked;
 
+      virtual bool
+      Validate(const V& value) const = 0;
+
       void
       OnFound(const Key_t& askedPeer, const V& value)
       {
         peersAsked.insert(askedPeer);
-        valuesFound.push_back(value);
+        if(Validate(value))
+          valuesFound.push_back(value);
       }
 
       virtual void
@@ -116,6 +120,9 @@ namespace llarp
       Context();
       ~Context();
 
+      llarp_crypto*
+      Crypto();
+
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
       void
@@ -145,6 +152,12 @@ namespace llarp
           return false;
         LookupRouterRecursive(target, OurKey(), 0, askpeer, result);
         return true;
+      }
+
+      bool
+      HasRouterLookup(const RouterID& target) const
+      {
+        return pendingRouterLookups.HasLookupFor(target);
       }
 
       /// on behalf of whoasked request introsets with tag from dht router with
@@ -258,21 +271,33 @@ namespace llarp
         }
 
         bool
+        HasLookupFor(const K& target) const
+        {
+          return timeouts.find(target) != timeouts.end();
+        }
+
+        bool
         HasPendingLookupFrom(const TXOwner& owner) const
         {
           return GetPendingLookupFrom(owner) != nullptr;
         }
 
-        TX< K, V >*
-        NewTX(const TXOwner& owner, const K& k, TX< K, V >* t)
+        void
+        NewTX(const TXOwner& owner, const K& k, TX< K, V >* t,
+              bool forceStart = true)
         {
           tx.emplace(owner, std::unique_ptr< TX< K, V > >(t));
+          auto n = waiting.count(k);
           waiting.insert(std::make_pair(k, owner));
+
           auto itr = timeouts.find(k);
           if(itr == timeouts.end())
+          {
             timeouts.insert(
                 std::make_pair(k, llarp_time_now_ms() + requestTimeoutMS));
-          return t;
+          }
+          if(forceStart || n == 0)
+            t->Start(owner);
         }
 
         /// mark tx as not fond

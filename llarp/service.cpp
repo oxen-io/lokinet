@@ -105,7 +105,7 @@ namespace llarp
       auto highest = now;
       for(const auto& i : I)
         highest = std::max(i.expiresAt, highest);
-      return highest == now;
+      return highest <= now;
     }
 
     Introduction::~Introduction()
@@ -260,7 +260,12 @@ namespace llarp
         return false;
       // decode
       inf.read((char*)buf.base, sz);
-      return BDecode(&buf);
+      if(!BDecode(&buf))
+        return false;
+      // update pubkey
+      pub.Update(llarp::seckey_topublic(enckey),
+                 llarp::seckey_topublic(signkey));
+      return true;
     }
 
     bool

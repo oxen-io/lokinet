@@ -28,12 +28,14 @@ namespace llarp
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
       ~ProtocolMessage();
-      ProtocolType proto  = eProtocolText;
+      ProtocolType proto  = eProtocolTraffic;
       llarp_time_t queued = 0;
       std::vector< byte_t > payload;
       Introduction introReply;
       ServiceInfo sender;
       IDataHandler* handler = nullptr;
+      /// local path we got this message from
+      PathID_t srcPath;
       ConvoTag tag;
 
       bool
@@ -58,9 +60,32 @@ namespace llarp
       llarp::Signature Z;
       llarp::service::ConvoTag T;
 
-      ProtocolFrame();
+      ProtocolFrame(const ProtocolFrame& other)
+          : llarp::routing::IMessage()
+          , C(other.C)
+          , D(other.D)
+          , N(other.N)
+          , Z(other.Z)
+          , T(other.T)
+      {
+        S       = other.S;
+        version = other.version;
+      }
+
+      ProtocolFrame() : llarp::routing::IMessage()
+      {
+      }
 
       ~ProtocolFrame();
+
+      bool
+      operator==(const ProtocolFrame& other) const;
+
+      bool
+      operator!=(const ProtocolFrame& other) const
+      {
+        return !(*this == other);
+      }
 
       ProtocolFrame&
       operator=(const ProtocolFrame& other);
@@ -71,7 +96,7 @@ namespace llarp
 
       bool
       AsyncDecryptAndVerify(llarp_logic* logic, llarp_crypto* c,
-                            llarp_threadpool* worker,
+                            const PathID_t& srcpath, llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
 

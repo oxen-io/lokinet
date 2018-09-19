@@ -43,12 +43,7 @@ namespace llarp
     bool
     queue_write(const void* data, size_t sz)
     {
-      return m_writeq.EmplaceIf(
-          [&](WriteBuffer& pkt) -> bool {
-            return m_writeq.Size() < MAX_WRITE_QUEUE_SIZE
-                && sz <= sizeof(pkt.buf);
-          },
-          data, sz);
+      return write(fd, data, sz) != -1;
     }
 
     /// called in event loop when fd is ready for writing

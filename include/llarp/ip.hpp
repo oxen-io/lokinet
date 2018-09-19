@@ -51,9 +51,27 @@ typedef struct ip_hdr
 #define check ip_sum
 #define ihl ip_hl
 #endif
-#if defined(__linux__)
-#define ip_version version
+struct ip_header
+{
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+    unsigned int ihl:4;
+    unsigned int version:4;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+    unsigned int version:4;
+    unsigned int ihl:4;
+#else
+# error "Please fix <bits/endian.h>"
 #endif
+    uint8_t tos;
+    uint16_t tot_len;
+    uint16_t id;
+    uint16_t frag_off;
+    uint8_t ttl;
+    uint8_t protocol;
+    uint16_t check;
+    uint32_t saddr;
+    uint32_t daddr;
+};
 
 namespace llarp
 {
@@ -99,40 +117,40 @@ namespace llarp
         }
       };
 
-      iphdr*
+      ip_header*
       Header()
       {
-        return (iphdr*)&buf[0];
+        return (ip_header*)&buf[0];
       }
 
-      const iphdr*
+      const ip_header*
       Header() const
       {
-        return (iphdr*)&buf[0];
+        return (ip_header*)&buf[0];
       }
 
       uint32_t
       src()
       {
-        return Header()->saddr;
+        return ntohl(Header()->saddr);
       }
 
       uint32_t
       dst()
       {
-        return Header()->daddr;
+        return ntohl(Header()->daddr);
       }
 
       void
       src(uint32_t ip)
       {
-        Header()->saddr = htons(ip);
+        Header()->saddr = htonl(ip);
       }
 
       void
       dst(uint32_t ip)
       {
-        Header()->daddr = htons(ip);
+        Header()->daddr = htonl(ip);
       }
 
       // update ip packet checksum

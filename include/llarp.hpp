@@ -24,8 +24,7 @@ namespace llarp
     llarp_config *config     = nullptr;
     llarp_nodedb *nodedb     = nullptr;
     llarp_ev_loop *mainloop  = nullptr;
-    char nodedb_dir[256]     = {0};
-    char conatctFile[256]    = "router.signed";
+    std::string nodedb_dir;
 
     bool
     LoadConfig(const std::string &fname);

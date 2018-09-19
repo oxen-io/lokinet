@@ -7,10 +7,18 @@
 #include <llarp/service/protocol.hpp>
 #include <llarp/path.hpp>
 
+// minimum time between interoset shifts
+#ifndef MIN_SHIFT_INTERVAL
+#define MIN_SHIFT_INTERVAL (5 * 1000)
+#endif
+
 namespace llarp
 {
   namespace service
   {
+    // foward declare
+    struct AsyncKeyExchange;
+
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler
@@ -73,8 +81,14 @@ namespace llarp
       bool
       ShouldPublishDescriptors(llarp_time_t now) const;
 
+      void
+      EnsureReplyPath(const ServiceInfo& addr);
+
       bool
       PublishIntroSet(llarp_router* r);
+
+      bool
+      PublishIntroSetVia(llarp_router* r, path::Path* p);
 
       bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
@@ -83,7 +97,8 @@ namespace llarp
       HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg);
 
       bool
-      HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* msg);
+      HandleHiddenServiceFrame(path::Path* p,
+                               const llarp::service::ProtocolFrame* msg);
 
       /// return true if we have an established path to a hidden service
       bool
@@ -99,10 +114,13 @@ namespace llarp
       bool
       ForgetPathToService(const Address& remote);
 
-      virtual void
-      HandleDataMessage(ProtocolMessage* msg)
+      bool
+      HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
+
+      virtual bool
+      ProcessDataMessage(ProtocolMessage* msg)
       {
-        // override me in subclass
+        return true;
       }
 
       /// ensure that we know a router, looks up if it doesn't
@@ -143,31 +161,82 @@ namespace llarp
         }
       };
 
+      bool
+      HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
+
+      bool
+      CheckPathIsDead(path::Path* p, llarp_time_t latency);
+
       typedef std::queue< PendingBuffer > PendingBufferQueue;
 
+      struct SendContext
+      {
+        SendContext(const ServiceInfo& ident, const Introduction& intro,
+                    PathSet* send, Endpoint* ep);
+
+        void
+        AsyncEncryptAndSendTo(llarp_buffer_t payload, ProtocolType t);
+
+        /// send a fully encrypted hidden service frame
+        /// via a path on our pathset with path id p
+        void
+        Send(ProtocolFrame& f);
+
+        llarp::SharedSecret sharedKey;
+        ServiceInfo remoteIdent;
+        Introduction remoteIntro;
+        PathSet* m_PathSet;
+        IDataHandler* m_DataHandler;
+        Endpoint* m_Endpoint;
+        uint64_t sequenceNo = 0;
+
+        virtual void
+        ShiftIntroduction(){};
+        virtual void
+        UpdateIntroSet(){};
+        virtual void
+        MarkCurrentIntroBad(){};
+
+       private:
+        void
+        EncryptAndSendTo(llarp_buffer_t payload, ProtocolType t);
+
+        virtual void
+        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t)
+        {
+        }
+      };
+
+      static void
+      HandlePathDead(void*);
+
       /// context needed to initiate an outbound hidden service session
-      struct OutboundContext : public path::Builder
+      struct OutboundContext : public path::Builder, public SendContext
       {
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
 
-        /// the remote hidden service's curren intro set
-        IntroSet currentIntroSet;
-        /// the current selected intro
-        Introduction selectedIntro;
+        bool
+        HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
+
+        /// set to true if we are updating the remote introset right now
+        bool updatingIntroSet;
 
         /// update the current selected intro to be a new best introduction
         void
         ShiftIntroduction();
+
+        /// mark the current remote intro as bad
+        void
+        MarkCurrentIntroBad();
 
         /// tick internal state
         /// return true to remove otherwise don't remove
         bool
         Tick(llarp_time_t now);
 
-        /// encrypt asynchronously and send to remote endpoint from us
         void
-        AsyncEncryptAndSendTo(llarp_buffer_t D, ProtocolType protocol);
+        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t);
 
         /// issues a lookup to find the current intro set of the remote service
         void
@@ -181,29 +250,22 @@ namespace llarp
                   RouterContact& cur, size_t hop);
 
         bool
-        HandleHiddenServiceFrame(const ProtocolFrame* frame);
+        HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame* frame);
 
         std::string
         Name() const;
 
        private:
+        void
+        OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
+
         bool
-        OnIntroSetUpdate(const IntroSet* i);
+        OnIntroSetUpdate(const Address& addr, const IntroSet* i);
 
-        void
-        EncryptAndSendTo(path::Path* p, llarp_buffer_t payload, ProtocolType t);
-
-        void
-        AsyncGenIntro(path::Path* p, llarp_buffer_t payload, ProtocolType t);
-
-        /// send a fully encrypted hidden service frame
-        void
-        Send(ProtocolFrame& f);
-
-        uint64_t sequenceNo = 0;
-        llarp::SharedSecret sharedKey;
-        Endpoint* m_Parent;
-        // uint64_t m_UpdateIntrosetTX = 0;
+        uint64_t m_UpdateIntrosetTX = 0;
+        IntroSet currentIntroSet;
+        std::set< Introduction > m_BadIntros;
+        llarp_time_t lastShift = 0;
       };
 
       // passed a sendto context when we have a path established otherwise
@@ -249,11 +311,14 @@ namespace llarp
       void
       PutNewOutboundContext(const IntroSet& introset);
 
-     protected:
       virtual void
       IntroSetPublishFail();
       virtual void
       IntroSetPublished();
+
+     protected:
+      void
+      RegenAndPublishIntroSet(llarp_time_t now);
 
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);
@@ -275,7 +340,7 @@ namespace llarp
 
      private:
       bool
-      OnOutboundLookup(const IntroSet* i); /*  */
+      OnOutboundLookup(const Address&, const IntroSet* i); /*  */
 
       static bool
       SetupIsolatedNetwork(void* user, bool success);
@@ -319,6 +384,10 @@ namespace llarp
       std::unordered_map< Address, std::unique_ptr< OutboundContext >,
                           Address::Hash >
           m_RemoteSessions;
+
+      std::unordered_map< Address, ServiceInfo, Address::Hash >
+          m_AddressToService;
+
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
 
@@ -348,6 +417,7 @@ namespace llarp
       uint64_t m_CurrentPublishTX       = 0;
       llarp_time_t m_LastPublish        = 0;
       llarp_time_t m_LastPublishAttempt = 0;
+      llarp_time_t m_MinPathLatency     = 10000;
       /// our introset
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id

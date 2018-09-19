@@ -24,8 +24,8 @@
 
 #define MAXHOPS (8)
 #define DEFAULT_PATH_LIFETIME (10 * 60 * 1000)
-#define PATH_BUILD_TIMEOUT (10 * 1000)
-#define MESSAGE_PAD_SIZE (1024)
+#define PATH_BUILD_TIMEOUT (15 * 1000)
+#define MESSAGE_PAD_SIZE (512)
 
 namespace llarp
 {
@@ -160,6 +160,10 @@ namespace llarp
                            llarp_router* r);
 
       bool
+      HandleDataDiscardMessage(const llarp::routing::DataDiscardMessage* msg,
+                               llarp_router* r);
+
+      bool
       HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,
                                llarp_router* r);
       bool
@@ -220,8 +224,11 @@ namespace llarp
     struct Path : public IHopHandler, public llarp::routing::IMessageHandler
     {
       typedef std::function< void(Path*) > BuildResultHookFunc;
+      typedef std::function< bool(Path*, llarp_time_t) > CheckForDeadFunc;
+      typedef std::function< bool(Path*, const PathID_t&, uint64_t) >
+          DropHandlerFunc;
       typedef std::vector< PathHopConfig > HopList;
-      typedef std::function< bool(const service::ProtocolFrame*) >
+      typedef std::function< bool(Path*, const service::ProtocolFrame*) >
           DataHandlerFunc;
 
       HopList hops;
@@ -229,7 +236,7 @@ namespace llarp
       llarp::service::Introduction intro;
 
       llarp_time_t buildStarted;
-      PathStatus status;
+      PathStatus _status;
 
       Path(const std::vector< RouterContact >& routers);
 
@@ -241,6 +248,21 @@ namespace llarp
       {
         m_DataHandler = func;
       }
+
+      void
+      SetDropHandler(DropHandlerFunc func)
+      {
+        m_DropHandler = func;
+      }
+
+      void
+      SetDeadChecker(CheckForDeadFunc func)
+      {
+        m_CheckForDead = func;
+      }
+
+      void
+      EnterState(PathStatus st);
 
       llarp_time_t
       ExpireTime() const
@@ -256,6 +278,10 @@ namespace llarp
 
       bool
       SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r);
+
+      bool
+      HandleDataDiscardMessage(const llarp::routing::DataDiscardMessage* msg,
+                               llarp_router* r);
 
       bool
       HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,
@@ -306,12 +332,17 @@ namespace llarp
       RouterID
       Upstream() const;
 
+      std::string
+      Name() const;
+
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;
 
      private:
       BuildResultHookFunc m_BuiltHook;
       DataHandlerFunc m_DataHandler;
+      DropHandlerFunc m_DropHandler;
+      CheckForDeadFunc m_CheckForDead;
       llarp_time_t m_LastLatencyTestTime = 0;
       uint64_t m_LastLatencyTestID       = 0;
     };

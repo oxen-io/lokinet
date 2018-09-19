@@ -195,7 +195,8 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         ++idx;
       }
     }
-    tick_listeners();
+    if(result != -1)
+      tick_listeners();
     return result;
   }
 
@@ -229,7 +230,8 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           ++idx;
         }
       }
-      tick_listeners();
+      if(result != -1)
+        tick_listeners();
     } while(result != -1);
     return result;
   }

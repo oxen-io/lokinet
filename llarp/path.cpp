@@ -3,6 +3,7 @@
 #include <llarp/path.hpp>
 #include <llarp/pathbuilder.hpp>
 #include <llarp/messages/dht.hpp>
+#include <llarp/messages/discard.hpp>
 #include "buffer.hpp"
 #include "router.hpp"
 
@@ -341,6 +342,7 @@ namespace llarp
       intro.router = hops[hsz - 1].rc.pubkey;
       // TODO: or is it rxid ?
       intro.pathID = hops[hsz - 1].txID;
+      EnterState(ePathBuilding);
     }
 
     void
@@ -370,7 +372,7 @@ namespace llarp
     bool
     Path::IsReady() const
     {
-      return intro.latency > 0 && status == ePathEstablished;
+      return intro.latency > 0 && _status == ePathEstablished;
     }
 
     RouterID
@@ -380,10 +382,39 @@ namespace llarp
     }
 
     void
+    Path::EnterState(PathStatus st)
+    {
+      if(st == ePathTimeout)
+      {
+        llarp::LogInfo("path ", Name(), " has timed out");
+      }
+      else if(st == ePathBuilding)
+      {
+        llarp::LogInfo("path ", Name(), " is building");
+        buildStarted = llarp_time_now_ms();
+      }
+      _status = st;
+    }
+
+    void
     Path::Tick(llarp_time_t now, llarp_router* r)
     {
       if(Expired(now))
         return;
+
+      if(_status == ePathBuilding)
+      {
+        if(now < buildStarted)
+          return;
+        auto dlt = now - buildStarted;
+        if(dlt >= PATH_BUILD_TIMEOUT)
+        {
+          r->routerProfiling.MarkPathFail(this);
+          EnterState(ePathTimeout);
+          return;
+        }
+      }
+
       if(now < m_LastLatencyTestTime)
         return;
       auto dlt = now - m_LastLatencyTestTime;
@@ -394,6 +425,23 @@ namespace llarp
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = now;
         SendRoutingMessage(&latency, r);
+      }
+      // check to see if this path is dead
+      if(_status == ePathEstablished)
+      {
+        if(m_CheckForDead)
+        {
+          if(m_CheckForDead(this, dlt))
+          {
+            r->routerProfiling.MarkPathFail(this);
+            EnterState(ePathTimeout);
+          }
+        }
+        else if(dlt >= 10000)
+        {
+          r->routerProfiling.MarkPathFail(this);
+          EnterState(ePathTimeout);
+        }
       }
     }
 
@@ -420,12 +468,20 @@ namespace llarp
     bool
     Path::Expired(llarp_time_t now) const
     {
-      if(status == ePathEstablished)
+      if(_status == ePathEstablished)
         return now - buildStarted > hops[0].lifetime;
-      else if(status == ePathBuilding)
-        return now - buildStarted > PATH_BUILD_TIMEOUT;
+      else if(_status == ePathBuilding)
+        return false;
       else
         return true;
+    }
+
+    std::string
+    Path::Name() const
+    {
+      std::stringstream ss;
+      ss << "TX=" << TXID() << " RX=" << RXID();
+      return ss.str();
     }
 
     bool
@@ -489,19 +545,31 @@ namespace llarp
     }
 
     bool
+    Path::HandleDataDiscardMessage(
+        const llarp::routing::DataDiscardMessage* msg, llarp_router* r)
+    {
+      if(m_DropHandler)
+        return m_DropHandler(this, msg->P, msg->S);
+      return true;
+    }
+
+    bool
     Path::HandlePathConfirmMessage(
         const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
     {
-      if(status == ePathBuilding)
+      if(_status == ePathBuilding)
       {
         // finish initializing introduction
         intro.expiresAt = buildStarted + hops[0].lifetime;
         // confirm that we build the path
-        status = ePathEstablished;
-        llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID());
+        EnterState(ePathEstablished);
+        llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID(),
+                       " took ", llarp_time_now_ms() - buildStarted, " ms");
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
+
+        r->routerProfiling.MarkPathSuccess(this);
 
         // persist session with upstream router until the path is done
         r->PersistSessionUntil(Upstream(), intro.expiresAt);
@@ -522,7 +590,7 @@ namespace llarp
     Path::HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
     {
       if(m_DataHandler)
-        return m_DataHandler(frame);
+        return m_DataHandler(this, frame);
       return false;
     }
 
@@ -530,11 +598,12 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
-      if(msg->L == m_LastLatencyTestID && status == ePathEstablished)
+      // TODO: reanimate dead paths if they get this message
+      if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
       {
         intro.latency = llarp_time_now_ms() - m_LastLatencyTestTime;
-        llarp::LogInfo("path latency is ", intro.latency, " ms for tx=", TXID(),
-                       " rx=", RXID());
+        llarp::LogDebug("path latency is ", intro.latency,
+                        " ms for tx=", TXID(), " rx=", RXID());
         m_LastLatencyTestID = 0;
         return true;
       }

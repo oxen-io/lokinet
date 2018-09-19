@@ -25,14 +25,14 @@ namespace llarp
     {
       payload.resize(buf.sz);
       memcpy(payload.data(), buf.base, buf.sz);
-      payload.shrink_to_fit();
     }
 
     void
     ProtocolMessage::ProcessAsync(void* user)
     {
       ProtocolMessage* self = static_cast< ProtocolMessage* >(user);
-      self->handler->HandleDataMessage(self);
+      if(!self->handler->HandleDataMessage(self->srcPath, self))
+        llarp::LogWarn("failed to handle data message from ", self->srcPath);
       delete self;
     }
 
@@ -81,7 +81,7 @@ namespace llarp
         if(!BEncodeWriteDictEntry("t", tag, buf))
           return false;
       }
-      if(!bencode_write_version_entry(buf))
+      if(!BEncodeWriteDictInt("v", version, buf))
         return false;
       return bencode_end(buf);
     }
@@ -156,9 +156,10 @@ namespace llarp
                                       const byte_t* sharedkey,
                                       ProtocolMessage& msg) const
     {
-      msg.PutBuffer(D.Buffer());
-      auto buf = llarp::Buffer(msg.payload);
-      return crypto->xchacha20(buf, sharedkey, N);
+      Encrypted tmp = D;
+      auto buf      = tmp.Buffer();
+      crypto->xchacha20(*buf, sharedkey, N);
+      return msg.BDecode(buf);
     }
 
     bool
@@ -200,11 +201,11 @@ namespace llarp
       ProtocolMessage* msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
-      const ProtocolFrame* frame;
+      const ProtocolFrame frame;
 
       AsyncFrameDecrypt(llarp_logic* l, llarp_crypto* c,
                         const Identity& localIdent, IDataHandler* h,
-                        ProtocolMessage* m, const ProtocolFrame* f)
+                        ProtocolMessage* m, const ProtocolFrame& f)
           : crypto(c)
           , logic(l)
           , msg(m)
@@ -222,20 +223,18 @@ namespace llarp
         SharedSecret K;
         SharedSecret sharedKey;
         // copy
-        ProtocolFrame frame;
-        frame = *self->frame;
-        if(!crypto->pqe_decrypt(self->frame->C, K,
+        ProtocolFrame frame(self->frame);
+        if(!crypto->pqe_decrypt(self->frame.C, K,
                                 pq_keypair_to_secret(self->m_LocalIdentity.pq)))
         {
-          llarp::LogError("pqke failed C=", self->frame->C);
-          frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          llarp::LogError("pqke failed C=", self->frame.C);
           delete self->msg;
           delete self;
           return;
         }
         // decrypt
         auto buf = frame.D.Buffer();
-        crypto->xchacha20(*buf, K, self->frame->N);
+        crypto->xchacha20(*buf, K, self->frame.N);
         if(!self->msg->BDecode(buf))
         {
           llarp::LogError("failed to decode inner protocol message");
@@ -245,11 +244,12 @@ namespace llarp
           return;
         }
         // verify signature of outer message after we parsed the inner message
-        if(!self->frame->Verify(crypto, self->msg->sender))
+        if(!self->frame.Verify(crypto, self->msg->sender))
         {
-          llarp::LogError("intro frame has invalid signature Z=",
-                          self->frame->Z, " from ", self->msg->sender);
-          self->frame->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          llarp::LogError("intro frame has invalid signature Z=", self->frame.Z,
+                          " from ", self->msg->sender.Addr());
+          self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          self->msg->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
           return;
@@ -258,11 +258,11 @@ namespace llarp
         // K
         memcpy(tmp, K, 32);
         // PKE (A, B, N)
-        if(!self->m_LocalIdentity.KeyExchange(
-               crypto->dh_server, tmp + 32, self->msg->sender, self->frame->N))
+        if(!self->m_LocalIdentity.KeyExchange(crypto->dh_server, tmp + 32,
+                                              self->msg->sender, self->frame.N))
         {
           llarp::LogError("x25519 key exchange failed");
-          self->frame->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
+          self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
           return;
@@ -284,16 +284,19 @@ namespace llarp
     ProtocolFrame&
     ProtocolFrame::operator=(const ProtocolFrame& other)
     {
-      C = other.C;
-      D = other.D;
-      N = other.N;
-      Z = other.Z;
-      T = other.T;
+      C       = other.C;
+      D       = other.D;
+      N       = other.N;
+      Z       = other.Z;
+      T       = other.T;
+      S       = other.S;
+      version = other.version;
       return *this;
     }
 
     bool
     ProtocolFrame::AsyncDecryptAndVerify(llarp_logic* logic, llarp_crypto* c,
+                                         const PathID_t& srcPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
                                          IDataHandler* handler) const
@@ -301,9 +304,10 @@ namespace llarp
       if(T.IsZero())
       {
         ProtocolMessage* msg = new ProtocolMessage();
+        msg->srcPath         = srcPath;
         // we need to dh
         auto dh =
-            new AsyncFrameDecrypt(logic, c, localIdent, handler, msg, this);
+            new AsyncFrameDecrypt(logic, c, localIdent, handler, msg, *this);
         llarp_threadpool_queue_job(worker, {dh, &AsyncFrameDecrypt::Work});
         return true;
       }
@@ -321,7 +325,7 @@ namespace llarp
       }
       if(!Verify(c, si))
       {
-        llarp::LogError("Signature failure");
+        llarp::LogError("Signature failure from ", si.Addr());
         return false;
       }
       ProtocolMessage* msg = new ProtocolMessage();
@@ -331,45 +335,46 @@ namespace llarp
         delete msg;
         return false;
       }
+      msg->srcPath = srcPath;
       msg->handler = handler;
       llarp_logic_queue_job(logic, {msg, &ProtocolMessage::ProcessAsync});
       return true;
     }
 
-    ProtocolFrame::ProtocolFrame()
+    bool
+    ProtocolFrame::operator==(const ProtocolFrame& other) const
     {
-      T.Zero();
+      return C == other.C && D == other.D && N == other.N && Z == other.Z
+          && T == other.T && S == other.S && version == other.version;
     }
 
     bool
     ProtocolFrame::Verify(llarp_crypto* crypto, const ServiceInfo& from) const
     {
-      ProtocolFrame copy;
-      copy = *this;
+      ProtocolFrame copy(*this);
       // save signature
       // zero out signature for verify
       copy.Z.Zero();
-      bool result = false;
       // serialize
       byte_t tmp[MAX_PROTOCOL_MESSAGE_SIZE];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-      if(copy.BEncode(&buf))
+      if(!copy.BEncode(&buf))
       {
-        // rewind buffer
-        buf.sz  = buf.cur - buf.base;
-        buf.cur = buf.base;
-        // verify
-        result = from.Verify(crypto, buf, Z);
+        llarp::LogError("bencode fail");
+        return false;
       }
-      // restore signature
-      return result;
+
+      // rewind buffer
+      buf.sz  = buf.cur - buf.base;
+      buf.cur = buf.base;
+      // verify
+      return from.Verify(crypto, buf, Z);
     }
 
     bool
     ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
                                  llarp_router* r) const
     {
-      llarp::LogInfo("Got hidden service frame");
       return h->HandleHiddenServiceFrame(this);
     }
 

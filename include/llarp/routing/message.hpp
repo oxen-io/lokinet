@@ -16,6 +16,13 @@ namespace llarp
     {
       llarp::PathID_t from;
       uint64_t S = 0;
+
+      IMessage() : llarp::IBEncodeMessage()
+      {
+      }
+
+      virtual ~IMessage(){};
+
       virtual bool
       HandleMessage(IMessageHandler* h, llarp_router* r) const = 0;
     };

@@ -25,6 +25,12 @@ namespace llarp
         rc = other;
         ID = other.pubkey.data();
       }
+
+      bool
+      operator<(const RCNode& other) const
+      {
+        return rc.OtherIsNewer(other.rc);
+      }
     };
 
     struct ISNode
@@ -42,7 +48,12 @@ namespace llarp
       {
         introset = other;
         introset.A.CalculateAddress(ID);
-        llarp::LogInfo("make ISNode with topic ", introset.topic.ToString());
+      }
+
+      bool
+      operator<(const ISNode& other) const
+      {
+        return introset.OtherIsNewer(other.introset);
       }
     };
   }  // namespace dht

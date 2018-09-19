@@ -22,10 +22,7 @@ namespace llarp
     {
       for(auto& item : m_Paths)
       {
-        if(item.second->status == ePathEstablished)
-        {
-          item.second->Tick(now, r);
-        }
+        item.second->Tick(now, r);
       }
     }
 
@@ -68,19 +65,47 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetPathByRouter(const RouterID& id) const
+    PathSet::GetNewestPathByRouter(const RouterID& id) const
     {
-      auto itr = m_Paths.begin();
+      Path* chosen = nullptr;
+      auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
         if(itr->second->IsReady())
         {
           if(itr->second->Endpoint() == id)
-            return itr->second;
+          {
+            if(chosen == nullptr)
+              chosen = itr->second;
+            else if(chosen->intro.expiresAt < itr->second->intro.expiresAt)
+              chosen = itr->second;
+          }
         }
         ++itr;
       }
-      return nullptr;
+      return chosen;
+    }
+
+    Path*
+    PathSet::GetPathByRouter(const RouterID& id) const
+    {
+      Path* chosen = nullptr;
+      auto itr     = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->second->IsReady())
+        {
+          if(itr->second->Endpoint() == id)
+          {
+            if(chosen == nullptr)
+              chosen = itr->second;
+            else if(chosen->intro.latency > itr->second->intro.latency)
+              chosen = itr->second;
+          }
+        }
+        ++itr;
+      }
+      return chosen;
     }
 
     Path*
@@ -103,7 +128,7 @@ namespace llarp
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->status == st)
+        if(itr->second->_status == st)
           ++count;
         ++itr;
       }

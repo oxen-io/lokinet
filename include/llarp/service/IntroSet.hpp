@@ -28,7 +28,7 @@ namespace llarp
 
       IntroSet() = default;
 
-      IntroSet(const IntroSet&& other)
+      IntroSet(IntroSet&& other)
       {
         A       = std::move(other.A);
         I       = std::move(other.I);
@@ -75,6 +75,12 @@ namespace llarp
         return A < other.A;
       }
 
+      bool
+      OtherIsNewer(const IntroSet& other) const
+      {
+        return GetNewestIntroExpiration() < other.GetNewestIntroExpiration();
+      }
+
       friend std::ostream&
       operator<<(std::ostream& out, const IntroSet& i)
       {
@@ -101,21 +107,13 @@ namespace llarp
         return out << " V=" << i.version << " Z=" << i.Z;
       }
 
-      bool
-      IsNewerThan(const IntroSet& other) const
+      llarp_time_t
+      GetNewestIntroExpiration() const
       {
-        return GetNewestIntro().expiresAt > other.GetNewestIntro().expiresAt;
-      }
-
-      Introduction
-      GetNewestIntro() const
-      {
-        Introduction i;
-        i.expiresAt = 0;
+        llarp_time_t t = 0;
         for(const auto& intro : I)
-          if(intro.expiresAt > i.expiresAt)
-            i = intro;
-        return i;
+          t = std::max(intro.expiresAt, t);
+        return t;
       }
 
       bool

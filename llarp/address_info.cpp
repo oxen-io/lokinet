@@ -75,14 +75,7 @@ namespace llarp
     // encryption public key
     if(llarp_buffer_eq(key, "e"))
     {
-      if(!bencode_read_string(buf, &strbuf))
-        return false;
-
-      if(strbuf.sz != PUBKEYSIZE)
-        return false;
-
-      pubkey = strbuf.base;
-      return true;
+      return pubkey.BDecode(buf);
     }
 
     // ip address

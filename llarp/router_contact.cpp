@@ -223,13 +223,9 @@ namespace llarp
   RouterContact &
   RouterContact::operator=(const RouterContact &other)
   {
-    addrs.clear();
-    exits.clear();
-    addrs = other.addrs;
-    exits = other.exits;
-
-    signature = other.signature;
-
+    addrs        = other.addrs;
+    exits        = other.exits;
+    signature    = other.signature;
     last_updated = other.last_updated;
     enckey       = other.enckey;
     pubkey       = other.pubkey;

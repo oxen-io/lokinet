@@ -49,6 +49,13 @@ struct llarp_nodedb_iter
 int
 llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
 
+/// visit all loaded rc
+/// stop iteration if visit return false
+void
+llarp_nodedb_visit_loaded(
+    struct llarp_nodedb *n,
+    std::function< bool(const llarp::RouterContact &) > visit);
+
 /// return number of RC loaded
 size_t
 llarp_nodedb_num_loaded(struct llarp_nodedb *n);
@@ -65,6 +72,13 @@ llarp_nodedb_put_rc(struct llarp_nodedb *n, const llarp::RouterContact &rc);
 bool
 llarp_nodedb_get_rc(struct llarp_nodedb *n, const llarp::RouterID &pk,
                     llarp::RouterContact &result);
+
+/**
+   remove rc by public key from nodedb
+   returns true if removed
+ */
+bool
+llarp_nodedb_del_rc(struct llarp_nodedb *n, const llarp::RouterID &pk);
 
 /// struct for async rc verification
 struct llarp_async_verify_rc;

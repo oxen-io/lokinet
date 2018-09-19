@@ -143,21 +143,12 @@ namespace llarp
 struct llarp_epoll_loop : public llarp_ev_loop
 {
   int epollfd;
-  int pipefds[2];
   llarp_epoll_loop() : epollfd(-1)
   {
-    pipefds[0] = -1;
-    pipefds[1] = -1;
   }
 
   ~llarp_epoll_loop()
   {
-    if(pipefds[0] != -1)
-      close(pipefds[0]);
-
-    if(pipefds[1] != -1)
-      close(pipefds[1]);
-
     if(epollfd != -1)
       close(epollfd);
   }
@@ -173,16 +164,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     if(epollfd == -1)
       epollfd = epoll_create(1);
-    if(epollfd != -1)
-    {
-      if(pipe(pipefds) == -1)
-        return false;
-      epoll_event sig_ev;
-
-      sig_ev.data.fd = pipefds[0];
-      sig_ev.events  = EPOLLIN;
-      return epoll_ctl(epollfd, EPOLL_CTL_ADD, pipefds[0], &sig_ev) != -1;
-    }
     return false;
   }
 
@@ -197,12 +178,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
       int idx = 0;
       while(idx < result)
       {
-        // handle signalfd
-        if(events[idx].data.fd == pipefds[0])
-        {
-          llarp::LogDebug("exiting epoll loop");
-          return 0;
-        }
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
         if(events[idx].events & EPOLLIN)
         {
@@ -211,7 +186,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
         ++idx;
       }
     }
-    tick_listeners();
+    if(result != -1)
+      tick_listeners();
     return result;
   }
 
@@ -228,12 +204,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
         int idx = 0;
         while(idx < result)
         {
-          // handle signalfd
-          if(events[idx].data.fd == pipefds[0])
-          {
-            llarp::LogDebug("exiting epoll loop");
-            return 0;
-          }
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
           if(events[idx].events & EPOLLIN)
           {
@@ -242,7 +212,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
           ++idx;
         }
       }
-      tick_listeners();
+      if(result != -1)
+        tick_listeners();
     } while(epollfd != -1);
     return result;
   }
@@ -356,9 +327,9 @@ struct llarp_epoll_loop : public llarp_ev_loop
   void
   stop()
   {
-    int i    = 1;
-    auto val = write(pipefds[1], &i, sizeof(i));
-    (void)val;
+    if(epollfd != -1)
+      close(epollfd);
+    epollfd = -1;
   }
 };
 

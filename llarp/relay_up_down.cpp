@@ -119,6 +119,7 @@ namespace llarp
     {
       return path->HandleDownstream(X.Buffer(), Y, r);
     }
+    llarp::LogWarn("unhandled downstream message");
     return false;
   }
 }  // namespace llarp

@@ -18,6 +18,7 @@
 #include <llarp/routing/handler.hpp>
 #include <llarp/service.hpp>
 #include <llarp/establish_job.hpp>
+#include <llarp/profiling.hpp>
 
 #include "crypto.hpp"
 #include "fs.hpp"
@@ -47,7 +48,13 @@ struct llarp_router
   fs::path our_rc_file = "rc.signed";
 
   // our router contact
-  llarp::RouterContact rc;
+  llarp::RouterContact _rc;
+
+  const llarp::RouterContact &
+  rc() const
+  {
+    return _rc;
+  }
 
   // our ipv4 public setting
   bool publicOverride = false;
@@ -69,6 +76,13 @@ struct llarp_router
   // buffer for serializing link messages
   byte_t linkmsg_buffer[MAX_LINK_MSG_SIZE];
 
+  /// always maintain this many connections to other routers
+  size_t minConnectedRouters = 5;
+  /// hard upperbound limit on the number of router to router connections
+  size_t maxConnectedRouters = 2000;
+
+  int minRequiredRouters = 4;
+
   // should we be sending padded messages every interval?
   bool sendPadding = false;
 
@@ -81,6 +95,9 @@ struct llarp_router
 
   std::unique_ptr< llarp::ILinkLayer > outboundLink;
   std::list< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;
+
+  llarp::Profiling routerProfiling;
+  fs::path routerProfilesFile = "profiles.dat";
 
   typedef std::queue< std::vector< byte_t > > MessageQueue;
 
@@ -156,11 +173,17 @@ struct llarp_router
     return llarp::seckey_topublic(identity);
   }
 
+  void
+  OnConnectTimeout(const llarp::RouterID &remote);
+
   bool
   HasPendingConnectJob(const llarp::RouterID &remote);
 
   void
   try_connect(fs::path rcfile);
+
+  bool
+  ReloadConfig(const llarp_config *conf);
 
   /// send to remote router or queue for sending
   /// returns false on overflow
@@ -207,6 +230,9 @@ struct llarp_router
   llarp::ILinkLayer *
   GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
+  void
+  ConnectToRandomRouters(int N);
+
   size_t
   NumberOfConnectedRouters() const;
 
@@ -220,8 +246,12 @@ struct llarp_router
   HandleDHTLookupForSendTo(llarp::RouterID remote,
                            const std::vector< llarp::RouterContact > &results);
 
+  bool
+  HasSessionTo(const llarp::RouterID &remote) const;
+
   void
   HandleDHTLookupForTryEstablishTo(
+      llarp::RouterID remote,
       const std::vector< llarp::RouterContact > &results);
 
   static void

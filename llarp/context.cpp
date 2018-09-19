@@ -53,8 +53,7 @@ namespace llarp
     iter.user  = this;
     iter.visit = &iter_config;
     llarp_config_iter(config, &iter);
-    llarp::LogInfo("config [", configfile, "] loaded");
-    return true;
+    return router->ReloadConfig(config);
   }
 
   void
@@ -72,10 +71,6 @@ namespace llarp
           ctx->worker = llarp_init_threadpool(workers, "llarp-worker");
         }
       }
-      else if(!strcmp(key, "contact-file"))
-      {
-        strncpy(ctx->conatctFile, val, fmin(255, strlen(val)));
-      }
       else if(!strcmp(key, "net-threads"))
       {
         ctx->num_nethreads = atoi(val);
@@ -89,7 +84,7 @@ namespace llarp
     {
       if(!strcmp(key, "dir"))
       {
-        strncpy(ctx->nodedb_dir, val, sizeof(ctx->nodedb_dir));
+        ctx->nodedb_dir = val;
       }
     }
   }
@@ -99,20 +94,14 @@ namespace llarp
   {
     llarp_crypto_init(&crypto);
     nodedb = llarp_nodedb_new(&crypto);
-    if(!nodedb_dir[0])
-    {
-      llarp::LogError("no nodedb_dir configured");
-      return 0;
-    }
 
-    nodedb_dir[sizeof(nodedb_dir) - 1] = 0;
-    if(!llarp_nodedb_ensure_dir(nodedb_dir))
+    if(!llarp_nodedb_ensure_dir(nodedb_dir.c_str()))
     {
       llarp::LogError("nodedb_dir is incorrect");
       return 0;
     }
     // llarp::LogInfo("nodedb_dir [", nodedb_dir, "] configured!");
-    ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir);
+    ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir.c_str());
     llarp::LogInfo("nodedb_dir loaded ", loaded, " RCs from [", nodedb_dir,
                    "]");
     if(loaded < 0)
@@ -151,7 +140,8 @@ namespace llarp
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
-    this->LoadDatabase();
+    if(!this->LoadDatabase())
+      return -1;
     llarp_ev_loop_alloc(&mainloop);
 
     // ensure worker thread pool
@@ -412,7 +402,7 @@ llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
     //llarp_rc *rc = new llarp_rc;
     llarp::RouterContact *rc = new llarp::RouterContact;
     //llarp_rc_new(rc);
-    llarp::LogInfo("FIXME: Loading ", ptr->ctx->conatctFile);
+    //llarp::LogInfo("FIXME: Loading ", ptr->ctx->conatctFile);
     // FIXME
     /*
     if(llarp_rc_read(ptr->ctx->conatctFile, rc))

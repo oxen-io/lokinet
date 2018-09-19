@@ -27,7 +27,7 @@ namespace llarp
     Context::Explore(size_t N)
     {
       // ask N random peers for new routers
-      llarp::LogInfo("Exploring network");
+      llarp::LogInfo("Exploring network via ", N, " peers");
       std::set< Key_t > peers;
 
       if(nodes->GetManyRandom(peers, N))
@@ -44,6 +44,13 @@ namespace llarp
       ExploreNetworkJob(const RouterID &peer, Context *ctx)
           : TX< RouterID, RouterID >(TXOwner{}, peer, ctx)
       {
+      }
+
+      bool
+      Validate(const RouterID &) const
+      {
+        // TODO: check with lokid
+        return true;
       }
 
       void
@@ -70,13 +77,9 @@ namespace llarp
         llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
         for(const auto &pk : valuesFound)
         {
-          RouterContact rc;
-          if(!llarp_nodedb_get_rc(parent->router->nodedb, pk, rc))
-          {
-            // try connecting to it we don't know it
-            // this triggers a dht lookup
-            parent->router->TryEstablishTo(pk);
-          }
+          // try connecting to it we don't know it
+          // this triggers a dht lookup
+          parent->router->TryEstablishTo(pk);
         }
       }
     };
@@ -85,9 +88,8 @@ namespace llarp
     Context::ExploreNetworkVia(const Key_t &askpeer)
     {
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingExploreLookups.NewTX(
-          peer, askpeer, new ExploreNetworkJob(askpeer, this));
-      tx->Start(peer);
+      pendingExploreLookups.NewTX(peer, askpeer,
+                                  new ExploreNetworkJob(askpeer, this));
     }
 
     void
@@ -96,7 +98,7 @@ namespace llarp
       if(left)
         return;
       Context *ctx = static_cast< Context * >(u);
-      ctx->Explore();
+      ctx->Explore(1);
       llarp_logic_call_later(ctx->router->logic,
                              {orig, ctx, &handle_explore_timer});
     }
@@ -120,7 +122,7 @@ namespace llarp
         {
           if(itr->second.introset.IsExpired(now))
           {
-            llarp::LogInfo("introset expired ", itr->second.introset.A.Addr());
+            llarp::LogDebug("introset expired ", itr->second.introset.A.Addr());
             itr = nodes.erase(itr);
           }
           else
@@ -192,7 +194,7 @@ namespace llarp
       {
         // we are the target, give them our RC
         replies.emplace_back(
-            new GotRouterMessage(requester, txid, {router->rc}, false));
+            new GotRouterMessage(requester, txid, {router->rc()}, false));
         return;
       }
       Key_t next;
@@ -322,6 +324,23 @@ namespace llarp
         peersAsked.insert(ctx->OurKey());
       }
 
+      bool
+      Validate(const service::IntroSet &value) const
+      {
+        if(!value.VerifySignature(parent->Crypto()))
+        {
+          llarp::LogWarn(
+              "Got introset with invalid signature from service lookup");
+          return false;
+        }
+        if(value.A.Addr() != target)
+        {
+          llarp::LogWarn("got introset with wrong target from service lookup");
+          return false;
+        }
+        return true;
+      }
+
       void
       DoNextRequest(const Key_t &nextPeer)
       {
@@ -422,10 +441,9 @@ namespace llarp
     {
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingIntrosetLookups.NewTX(
+      pendingIntrosetLookups.NewTX(
           peer, addr,
           new LocalServiceAddressLookup(path, txid, addr, this, askpeer));
-      tx->Start(peer);
     }
 
     struct PublishServiceJob : public TX< service::Address, service::IntroSet >
@@ -442,6 +460,18 @@ namespace llarp
           , dontTell(exclude)
           , I(introset)
       {
+      }
+
+      bool
+      Validate(const service::IntroSet &introset) const
+      {
+        if(I.A != introset.A)
+        {
+          llarp::LogWarn(
+              "publish introset acknoledgement acked a different service");
+          return false;
+        }
+        return true;
       }
 
       void
@@ -481,10 +511,9 @@ namespace llarp
       TXOwner asker(from, txid);
       TXOwner peer(tellpeer, ++ids);
       service::Address addr = introset.A.Addr();
-      auto tx               = pendingIntrosetLookups.NewTX(
-          asker, addr,
-          new PublishServiceJob(asker, introset, this, S, exclude));
-      tx->Start(peer);
+      pendingIntrosetLookups.NewTX(
+          asker, addr, new PublishServiceJob(asker, introset, this, S, exclude),
+          true);
     }
 
     void
@@ -495,9 +524,8 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingIntrosetLookups.NewTX(
+      pendingIntrosetLookups.NewTX(
           peer, addr, new ServiceAddressLookup(asker, addr, this, R, handler));
-      tx->Start(peer);
     }
 
     void
@@ -508,9 +536,8 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingIntrosetLookups.NewTX(
+      pendingIntrosetLookups.NewTX(
           peer, addr, new ServiceAddressLookup(asker, addr, this, 0, handler));
-      tx->Start(peer);
     }
 
     struct TagLookup : public TX< service::Tag, service::IntroSet >
@@ -520,6 +547,22 @@ namespace llarp
                 uint64_t r)
           : TX< service::Tag, service::IntroSet >(asker, tag, ctx), R(r)
       {
+      }
+
+      bool
+      Validate(const service::IntroSet &introset) const
+      {
+        if(!introset.VerifySignature(parent->Crypto()))
+        {
+          llarp::LogWarn("got introset from tag lookup with invalid signature");
+          return false;
+        }
+        if(introset.topic != target)
+        {
+          llarp::LogWarn("got introset with missmatched topic in tag lookup");
+          return false;
+        }
+        return true;
       }
 
       void
@@ -573,9 +616,7 @@ namespace llarp
     {
       TXOwner asker(whoasked, whoaskedTX);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingTagLookups.NewTX(peer, tag,
-                                        new TagLookup(asker, tag, this, R));
-      tx->Start(peer);
+      pendingTagLookups.NewTX(peer, tag, new TagLookup(asker, tag, this, R));
     }
 
     bool
@@ -586,11 +627,22 @@ namespace llarp
       std::vector< RouterID > closer;
       Key_t t(target.data());
       std::set< Key_t > found;
-      if(!nodes->GetManyNearExcluding(t, found, 4,
+      // TODO: also load from nodedb
+      size_t nodeCount = nodes->Size();
+      if(nodeCount == 0)
+      {
+        llarp::LogError(
+            "cannot handle exploritory router lookup, no dht peers");
+        return false;
+      }
+      size_t want = std::min(size_t(4), nodeCount);
+      if(!nodes->GetManyNearExcluding(t, found, want,
                                       std::set< Key_t >{ourKey, requester}))
       {
         llarp::LogError(
-            "not enough dht nodes to handle exploritory router lookup");
+            "not enough dht nodes to handle exploritory router lookup, "
+            "need a minimum of ",
+            want, " dht peers");
         return false;
       }
       for(const auto &f : found)
@@ -612,6 +664,17 @@ namespace llarp
       }
 
       bool
+      Validate(const RouterContact &rc) const
+      {
+        if(!rc.VerifySignature(parent->Crypto()))
+        {
+          llarp::LogWarn("rc has invalid signature from lookup result");
+          return false;
+        }
+        return true;
+      }
+
+      bool
       GetNextPeer(Key_t &next, const std::set< Key_t > &exclude)
       {
         // TODO: implement iterative (?)
@@ -629,12 +692,6 @@ namespace llarp
         parent->DHTSendTo(
             peer.node,
             new FindRouterMessage(parent->OurKey(), target, peer.txid));
-      }
-
-      void
-      SendTo(const Key_t &peer, IMessage *msg) const
-      {
-        return parent->DHTSendTo(peer, msg);
       }
 
       virtual void
@@ -698,9 +755,8 @@ namespace llarp
 
     {
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingRouterLookups.NewTX(
+      pendingRouterLookups.NewTX(
           peer, target, new LocalRouterLookup(path, txid, target, this));
-      tx->Start(peer);
     }
 
     void
@@ -711,10 +767,18 @@ namespace llarp
     {
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
-      auto tx = pendingRouterLookups.NewTX(
-          peer, target,
-          new RecursiveRouterLookup(asker, target, this, handler));
-      tx->Start(peer);
+      if(target != askpeer)
+      {
+        pendingRouterLookups.NewTX(
+            peer, target,
+            new RecursiveRouterLookup(asker, target, this, handler));
+      }
+    }
+
+    llarp_crypto *
+    Context::Crypto()
+    {
+      return &router->crypto;
     }
 
   }  // namespace dht
