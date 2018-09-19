@@ -422,6 +422,7 @@ namespace llarp
     Endpoint::~Endpoint()
     {
     }
+
     bool
     Endpoint::CachedTagResult::HandleResponse(
         const std::set< IntroSet >& introsets)
@@ -707,12 +708,12 @@ namespace llarp
       llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
                      p->Endpoint(), " via ", dst);
       // pick another intro
-      if(dst == remoteIntro.pathID)
+      if(dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
       {
         MarkCurrentIntroBad();
         ShiftIntroduction();
+        UpdateIntroSet();
       }
-      UpdateIntroSet();
       return true;
     }
 
@@ -879,6 +880,7 @@ namespace llarp
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
         {
+          auto now = llarp_time_now_ms();
           routing::PathTransferMessage transfer;
           ProtocolFrame& f = transfer.T;
           path::Path* p    = nullptr;
@@ -894,7 +896,8 @@ namespace llarp
           {
             if(p == nullptr && GetIntroFor(tag, remoteIntro))
             {
-              p = GetPathByRouter(remoteIntro.router);
+              if(!remoteIntro.ExpiresSoon(now))
+                p = GetPathByRouter(remoteIntro.router);
               if(p)
               {
                 f.T = tag;
@@ -924,7 +927,7 @@ namespace llarp
               llarp::LogError("failed to encrypt and sign");
               return false;
             }
-            llarp::LogInfo(Name(), " send ", data.sz, " via ", remoteIntro);
+            llarp::LogDebug(Name(), " send ", data.sz, " via ", remoteIntro);
             return p->SendRoutingMessage(&transfer, Router());
           }
         }
@@ -968,7 +971,7 @@ namespace llarp
       }
       m_PendingTraffic[remote].emplace(data, t);
       return true;
-    }
+    }  // namespace service
 
     void
     Endpoint::OutboundContext::MarkCurrentIntroBad()
