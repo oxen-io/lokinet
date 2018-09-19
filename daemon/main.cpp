@@ -98,9 +98,12 @@ main(int argc, char *argv[])
     std::error_code ec;
     if(!fs::create_directories(basepath, ec))
     {
-      llarp::LogError("failed to create '", basepath.string(),
-                      "': ", ec.message());
-      return 1;
+      if(ec)
+      {
+        llarp::LogError("failed to create '", basepath.string(),
+                        "': ", ec.message());
+        return 1;
+      }
     }
 
     if(!llarp_ensure_config(fpath.string().c_str(), basepath.string().c_str(),
