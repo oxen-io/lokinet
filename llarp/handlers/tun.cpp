@@ -237,40 +237,45 @@ namespace llarp
       // allocate new address
       if(m_NextIP < m_MaxIP)
       {
-        nextIP = ++m_NextIP;
-        m_AddrToIP.insert(std::make_pair(addr, nextIP));
-        m_IPToAddr.insert(std::make_pair(nextIP, addr));
-        llarp::LogInfo(Name(), " mapped ", addr, " to ",
-                       inet_ntoa({htonl(nextIP)}));
-        MarkIPActive(nextIP);
-        return nextIP;
-      }
-      else
-      {
-        // we are full
-        // expire least active ip
-        // TODO: prevent DoS
-        std::pair< uint32_t, llarp_time_t > oldest = {0, 0};
-
-        // find oldest entry
-        auto itr = m_IPActivity.begin();
-        while(itr != m_IPActivity.end())
+        do
         {
-          if(itr->second <= now)
-          {
-            if((now - itr->second) > oldest.second)
-            {
-              oldest.first  = itr->first;
-              oldest.second = itr->second;
-            }
-          }
-          ++itr;
+          nextIP = ++m_NextIP;
+        } while(m_IPToAddr.find(nextIP) != m_IPToAddr.end()
+                && m_NextIP < m_MaxIP);
+        if(nextIP < m_MaxIP)
+        {
+          m_AddrToIP.insert(std::make_pair(addr, nextIP));
+          m_IPToAddr.insert(std::make_pair(nextIP, addr));
+          llarp::LogInfo(Name(), " mapped ", addr, " to ",
+                         inet_ntoa({htonl(nextIP)}));
+          MarkIPActive(nextIP);
+          return nextIP;
         }
-        // remap address
-        m_IPToAddr[oldest.first] = addr;
-        m_AddrToIP[addr]         = oldest.first;
-        nextIP                   = oldest.first;
       }
+
+      // we are full
+      // expire least active ip
+      // TODO: prevent DoS
+      std::pair< uint32_t, llarp_time_t > oldest = {0, 0};
+
+      // find oldest entry
+      auto itr = m_IPActivity.begin();
+      while(itr != m_IPActivity.end())
+      {
+        if(itr->second <= now)
+        {
+          if((now - itr->second) > oldest.second)
+          {
+            oldest.first  = itr->first;
+            oldest.second = itr->second;
+          }
+        }
+        ++itr;
+      }
+      // remap address
+      m_IPToAddr[oldest.first] = addr;
+      m_AddrToIP[addr]         = oldest.first;
+      nextIP                   = oldest.first;
 
       // mark ip active
       m_IPActivity[nextIP] = std::max(m_IPActivity[nextIP], now);
