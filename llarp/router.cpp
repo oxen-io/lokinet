@@ -470,7 +470,7 @@ llarp_router::Tick()
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,
                      " service nodes to build paths but we have ", N);
-      auto explore = std::max(NumberOfConnectedRouters(), 1UL);
+      auto explore = std::max(NumberOfConnectedRouters(), size_t(1));
       dht->impl.Explore(explore);
     }
     paths.BuildPaths();
