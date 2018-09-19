@@ -102,10 +102,10 @@ namespace llarp
     bool
     IntroSet::IsExpired(llarp_time_t now) const
     {
-      auto highest = now;
+      auto highest = 0;
       for(const auto& i : I)
         highest = std::max(i.expiresAt, highest);
-      return highest <= now;
+      return highest < now;
     }
 
     Introduction::~Introduction()
