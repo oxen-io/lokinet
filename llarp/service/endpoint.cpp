@@ -1228,6 +1228,7 @@ namespace llarp
       return ++(itr->second.seqno);
     }
 
+    /// send on an established convo tag
     void
     Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
                                             ProtocolType t)
@@ -1245,6 +1246,14 @@ namespace llarp
       f.N.Randomize();
       f.T = *tags.begin();
       f.S = m_Endpoint->GetSeqNoForConvo(f.T);
+
+      auto now = llarp_time_now_ms();
+      if(remoteIntro.ExpiresSoon(now))
+      {
+        // shift intro
+        MarkCurrentIntroBad();
+        ShiftIntroduction();
+      }
 
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)
