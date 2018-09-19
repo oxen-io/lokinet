@@ -251,7 +251,7 @@ llarp_router::try_connect(fs::path rcfile)
     }
   }
   else
-    llarp::LogError("failed to verify signature of RC", rcfile);
+    llarp::LogError("failed to verify signature of RC ", rcfile);
 }
 
 bool

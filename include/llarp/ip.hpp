@@ -3,6 +3,7 @@
 #include <llarp/buffer.h>
 #include <llarp/time.h>
 #include <llarp/net.hpp>
+
 #ifndef _WIN32
 #include <sys/types.h> // FreeBSD needs this for uchar for ip.h
 #include <netinet/in.h>
@@ -42,8 +43,10 @@ typedef struct ip_hdr
 #define ihl ip_header_len
 #define ip_version version
 #endif
+
 #include <memory>
-#if !defined(__linux__) && !defined(_WIN32)
+
+#if !defined(__linux__) && !defined(_WIN32) && !defined(__APPLE__)
 #define iphdr ip
 #define saddr ip_src.s_addr
 #define daddr ip_dst.s_addr
@@ -51,6 +54,7 @@ typedef struct ip_hdr
 #define check ip_sum
 #define ihl ip_hl
 #endif
+
 struct ip_header
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -61,6 +65,10 @@ struct ip_header
     unsigned int ihl:4;
 #else
 # error "Please fix <bits/endian.h>"
+#endif
+
+#if defined(__linux__)
+#define ip_version version
 #endif
     uint8_t tos;
     uint16_t tot_len;
