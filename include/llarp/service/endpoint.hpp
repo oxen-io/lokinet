@@ -194,6 +194,8 @@ namespace llarp
         ShiftIntroduction(){};
         virtual void
         UpdateIntroSet(){};
+        virtual void
+        MarkCurrentIntroBad(){};
 
        private:
         void

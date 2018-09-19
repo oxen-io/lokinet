@@ -1130,6 +1130,12 @@ namespace llarp
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if(path)
       {
+        auto now = llarp_time_now_ms();
+        if(remoteIntro.ExpiresSoon(now))
+        {
+          MarkCurrentIntroBad();
+          ShiftIntroduction();
+        }
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(!path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
           llarp::LogError("Failed to send frame on path");
