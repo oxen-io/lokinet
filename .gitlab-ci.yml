@@ -11,7 +11,7 @@ build:linux:
     - linux
   stage: build
   before_script:
-    - apk add --update g++ make cmake linux-headers libsodium-dev ninja
+    - apk add --update g++ make cmake linux-headers libsodium-dev ninja libcap-dev
   script:
     - make 
   artifacts:
