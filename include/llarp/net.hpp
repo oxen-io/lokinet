@@ -380,7 +380,7 @@ namespace llarp
     }
 
     bool
-    isPrivate()
+    isPrivate() const
     {
       uint32_t byte = getHostLong();
       return this->isTenPrivate(byte) || this->isOneSevenPrivate(byte)
@@ -388,7 +388,7 @@ namespace llarp
     }
 
     bool
-    isLoopback()
+    isLoopback() const
     {
       return (ntohl(addr4()->s_addr)) >> 24 == 127;
     }
