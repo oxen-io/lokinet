@@ -172,7 +172,10 @@ namespace llarp
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       // encode message
       if(!msg.BEncode(&buf))
+      {
+        llarp::LogError("message too big to encode");
         return false;
+      }
       // rewind
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
@@ -186,12 +189,20 @@ namespace llarp
       buf.sz = sizeof(tmp);
       // encode frame
       if(!BEncode(&buf))
+      {
+        llarp::LogError("frame too big to encode");
         return false;
+      }
       // rewind
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       // sign
-      return localIdent.Sign(crypto, Z, buf);
+      if(!localIdent.Sign(crypto, Z, buf))
+      {
+        llarp::LogError("failed to sign? wtf?!");
+        return false;
+      }
+      return true;
     }
 
     struct AsyncFrameDecrypt
