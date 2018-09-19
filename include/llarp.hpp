@@ -6,6 +6,7 @@
 #include <llarp/threading.hpp>
 #include <string>
 #include <vector>
+#include <llarp/crypto.h>
 
 namespace llarp
 {
@@ -39,9 +40,9 @@ namespace llarp
     IterateDatabase(struct llarp_nodedb_iter i);
 
     bool
-    PutDatabase(struct llarp_rc *rc);
+    PutDatabase(struct llarp::RouterContact *rc);
 
-    struct llarp_rc *
+    llarp::RouterContact *
     GetDatabase(const byte_t *pk);
 
     int

@@ -12,9 +12,16 @@ namespace llarp
       {
       }
 
-      FindRouterMessage(const Key_t& from, const Key_t& target, uint64_t id)
+      FindRouterMessage(const Key_t& from, const RouterID& target, uint64_t id)
           : IMessage(from), K(target), txid(id)
       {
+      }
+
+      // exploritory
+      FindRouterMessage(const Key_t& from, uint64_t id)
+          : IMessage(from), exploritory(true), txid(id)
+      {
+        K.Randomize();
       }
 
       ~FindRouterMessage();
@@ -27,10 +34,11 @@ namespace llarp
 
       virtual bool
       HandleMessage(llarp_dht_context* ctx,
-                    std::vector< IMessage* >& replies) const;
+                    std::vector< std::unique_ptr< IMessage > >& replies) const;
 
-      Key_t K;
+      RouterID K;
       bool iterative   = false;
+      bool exploritory = false;
       uint64_t txid    = 0;
       uint64_t version = 0;
     };
@@ -47,7 +55,7 @@ namespace llarp
       /// TODO: smart path expiration logic needs to be implemented
       virtual bool
       HandleMessage(llarp_dht_context* ctx,
-                    std::vector< IMessage* >& replies) const;
+                    std::vector< std::unique_ptr< IMessage > >& replies) const;
     };
   }  // namespace dht
 }  // namespace llarp

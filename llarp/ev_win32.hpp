@@ -137,7 +137,6 @@ struct llarp_win32_loop : public llarp_ev_loop
     WSAOVERLAPPED* qdata = nullptr;
     int result           = 0;
     int idx              = 0;
-    byte_t readbuf[2048];
 
     do
     {
@@ -183,7 +182,6 @@ struct llarp_win32_loop : public llarp_ev_loop
     WSAOVERLAPPED* qdata = nullptr;
     int result           = 0;
     int idx              = 0;
-    byte_t readbuf[2048];
 
     // unlike epoll and kqueue, we only need to run so long as the
     // system call returns TRUE

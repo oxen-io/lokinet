@@ -20,15 +20,6 @@ llarp_dht_context_free(struct llarp_dht_context *ctx)
 }
 
 void
-__llarp_dht_put_peer(struct llarp_dht_context *ctx, struct llarp_rc *rc)
-
-{
-  llarp::dht::RCNode n(rc);
-  llarp::LogDebug("Adding ", n.ID, " to DHT");
-  ctx->impl.nodes->PutNode(n);
-}
-
-void
 __llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 {
   llarp::dht::Key_t k = id;
@@ -45,7 +36,7 @@ llarp_dht_allow_transit(llarp_dht_context *ctx)
 void
 llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
 {
-  ctx->impl.Init(key, ctx->parent);
+  ctx->impl.Init(key, ctx->parent, 20000);
 }
 
 void
@@ -54,8 +45,11 @@ llarp_dht_lookup_router(struct llarp_dht_context *ctx,
 {
   job->dht   = ctx;
   job->found = false;
-  // TODO: check for reuse
-  llarp_rc_clear(&job->result);
+  job->result.Clear();
+  //llarp_rc_clear(&job->result);
+  llarp::LogError("implement me llarp_dht_lookup_router");
+  /*
   llarp_logic_queue_job(ctx->parent->logic,
                         {job, &llarp::dht::Context::queue_router_lookup});
+  */
 }

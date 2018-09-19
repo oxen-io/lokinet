@@ -1,264 +1,241 @@
-#include <llarp/bencode.h>
-#include <llarp/router_contact.h>
+#include <llarp/bencode.hpp>
+#include <llarp/router_contact.hpp>
 #include <llarp/version.h>
 #include <llarp/crypto.hpp>
 #include "buffer.hpp"
 #include "logger.hpp"
 #include "mem.hpp"
 
-bool
-llarp_rc_new(struct llarp_rc *rc)
+#include <fstream>
+
+namespace llarp
 {
-  rc->addrs        = llarp_ai_list_new();
-  rc->exits        = llarp_xi_list_new();
-  rc->last_updated = 0;
-  llarp::Zero(rc->nickname, sizeof(rc->nickname));
-  return true;
-}
-
-void
-llarp_rc_free(struct llarp_rc *rc)
-{
-  if(rc->exits)
-    llarp_xi_list_free(rc->exits);
-  if(rc->addrs)
-    llarp_ai_list_free(rc->addrs);
-
-  rc->exits = 0;
-  rc->addrs = 0;
-}
-
-struct llarp_rc_decoder
-{
-  struct llarp_rc *rc;
-  struct llarp_alloc *mem;
-};
-
-static bool
-llarp_rc_decode_dict(struct dict_reader *r, llarp_buffer_t *key)
-{
-  uint64_t v;
-  llarp_buffer_t strbuf;
-  llarp_rc *rc = static_cast< llarp_rc * >(r->user);
-
-  if(!key)
-    return true;
-
-  if(llarp_buffer_eq(*key, "a"))
+  bool
+  RouterContact::BEncode(llarp_buffer_t *buf) const
   {
-    if(rc->addrs)
+    /* write dict begin */
+    if(!bencode_start_dict(buf))
+      return false;
+
+    /* write ai if they exist */
+    if(!bencode_write_bytestring(buf, "a", 1))
+      return false;
+    if(!BEncodeWriteList(addrs.begin(), addrs.end(), buf))
+      return false;
+
+    /* write signing pubkey */
+    if(!bencode_write_bytestring(buf, "k", 1))
+      return false;
+    if(!pubkey.BEncode(buf))
+      return false;
+
+    std::string nick = Nick();
+    if(nick.size())
     {
-      llarp_ai_list_free(rc->addrs);
+      /* write nickname */
+      if(!bencode_write_bytestring(buf, "n", 1))
+        return false;
+      if(!bencode_write_bytestring(buf, nick.c_str(), nick.size()))
+        return false;
     }
-    rc->addrs = llarp_ai_list_new();
-    return llarp_ai_list_bdecode(rc->addrs, r->buffer);
+
+    /* write encryption pubkey */
+    if(!bencode_write_bytestring(buf, "p", 1))
+      return false;
+    if(!enckey.BEncode(buf))
+      return false;
+
+    /* write last updated */
+    if(!bencode_write_bytestring(buf, "u", 1))
+      return false;
+    if(!bencode_write_uint64(buf, last_updated))
+      return false;
+
+    /* write version */
+    if(!bencode_write_version_entry(buf))
+      return false;
+
+    /* write ai if they exist */
+    if(!bencode_write_bytestring(buf, "x", 1))
+      return false;
+    if(!BEncodeWriteList(exits.begin(), exits.end(), buf))
+      return false;
+
+    /* write signature */
+    if(!bencode_write_bytestring(buf, "z", 1))
+      return false;
+    if(!signature.BEncode(buf))
+      return false;
+    return bencode_end(buf);
   }
 
-  if(llarp_buffer_eq(*key, "k"))
+  void
+  RouterContact::Clear()
   {
-    if(!bencode_read_string(r->buffer, &strbuf))
-      return false;
-    if(strbuf.sz != PUBKEYSIZE)
-      return false;
-    memcpy(rc->pubkey, strbuf.base, PUBKEYSIZE);
-    return true;
+    addrs.clear();
+    exits.clear();
+    signature.Zero();
+    nickname.Zero();
+    enckey.Zero();
+    pubkey.Zero();
+    last_updated = 0;
   }
 
-  if(llarp_buffer_eq(*key, "n"))
+  bool
+  RouterContact::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
   {
-    if(!bencode_read_string(r->buffer, &strbuf))
+    bool read = false;
+    if(!BEncodeMaybeReadDictList("a", addrs, read, key, buf))
       return false;
-    if(strbuf.sz > sizeof(rc->nickname))
-      return false;
-    llarp::Zero(rc->nickname, sizeof(rc->nickname));
-    memcpy(rc->nickname, strbuf.base, strbuf.sz);
-    return true;
-  }
 
-  if(llarp_buffer_eq(*key, "p"))
-  {
-    if(!bencode_read_string(r->buffer, &strbuf))
+    if(!BEncodeMaybeReadDictEntry("k", pubkey, read, key, buf))
       return false;
-    if(strbuf.sz != PUBKEYSIZE)
-      return false;
-    memcpy(rc->enckey, strbuf.base, PUBKEYSIZE);
-    return true;
-  }
 
-  if(llarp_buffer_eq(*key, "u"))
-  {
-    if(!bencode_read_integer(r->buffer, &rc->last_updated))
-      return false;
-    return true;
-  }
-
-  if(llarp_buffer_eq(*key, "v"))
-  {
-    if(!bencode_read_integer(r->buffer, &v))
-      return false;
-    return v == LLARP_PROTO_VERSION;
-  }
-
-  if(llarp_buffer_eq(*key, "x"))
-  {
-    if(rc->exits)
+    if(llarp_buffer_eq(key, "n"))
     {
-      llarp_xi_list_free(rc->exits);
+      llarp_buffer_t strbuf;
+      if(!bencode_read_string(buf, &strbuf))
+        return false;
+      if(strbuf.sz > nickname.size())
+        return false;
+      nickname.Zero();
+      memcpy(nickname.data(), strbuf.base, strbuf.sz);
+      return true;
     }
-    rc->exits = llarp_xi_list_new();
-    return llarp_xi_list_bdecode(rc->exits, r->buffer);
-  }
 
-  if(llarp_buffer_eq(*key, "z"))
-  {
-    if(!bencode_read_string(r->buffer, &strbuf))
+    if(!BEncodeMaybeReadDictEntry("p", enckey, read, key, buf))
       return false;
-    if(strbuf.sz != SIGSIZE)
+
+    if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
       return false;
-    memcpy(rc->signature, strbuf.base, SIGSIZE);
-    return true;
+
+    if(!BEncodeMaybeReadDictInt("u", last_updated, read, key, buf))
+      return false;
+
+    if(!BEncodeMaybeReadDictList("x", exits, read, key, buf))
+      return false;
+
+    if(!BEncodeMaybeReadDictEntry("z", signature, read, key, buf))
+      return false;
+
+    return read;
   }
 
-  return false;
-}
-
-bool
-llarp_rc_is_public_router(const struct llarp_rc *const rc)
-{
-  return rc->addrs && llarp_ai_list_size(rc->addrs) > 0;
-}
-
-bool
-llarp_rc_set_nickname(struct llarp_rc *rc, const char *nick)
-{
-  strncpy((char *)rc->nickname, nick, sizeof(rc->nickname));
-  /// TODO: report nickname truncation
-  return true;
-}
-
-void
-llarp_rc_copy(struct llarp_rc *dst, const struct llarp_rc *src)
-{
-  llarp_rc_free(dst);
-  llarp_rc_clear(dst);
-  memcpy(dst->pubkey, src->pubkey, PUBKEYSIZE);
-  memcpy(dst->enckey, src->enckey, PUBKEYSIZE);
-  memcpy(dst->signature, src->signature, SIGSIZE);
-  dst->last_updated = src->last_updated;
-
-  if(src->addrs)
+  bool
+  RouterContact::IsPublicRouter() const
   {
-    dst->addrs = llarp_ai_list_new();
-    llarp_ai_list_copy(dst->addrs, src->addrs);
+    return addrs.size() > 0;
   }
-  if(src->exits)
+
+  bool
+  RouterContact::HasNick() const
   {
-    dst->exits = llarp_xi_list_new();
-    llarp_xi_list_copy(dst->exits, src->exits);
+    return nickname[0] != 0;
   }
-  memcpy(dst->nickname, src->nickname, sizeof(dst->nickname));
-}
 
-bool
-llarp_rc_bdecode(struct llarp_rc *rc, llarp_buffer_t *buff)
-{
-  dict_reader r = {buff, rc, &llarp_rc_decode_dict};
-  return bencode_read_dict(buff, &r);
-}
-
-bool
-llarp_rc_verify_sig(struct llarp_crypto *crypto, struct llarp_rc *rc)
-{
-  // maybe we should copy rc before modifying it
-  // would that make it more thread safe?
-  // jeff agrees
-  bool result = false;
-  llarp::Signature sig;
-  byte_t tmp[MAX_RC_SIZE];
-
-  auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-  // copy sig
-  memcpy(sig, rc->signature, SIGSIZE);
-  // zero sig
-  size_t sz = 0;
-  while(sz < SIGSIZE)
-    rc->signature[sz++] = 0;
-
-  // bencode
-  if(llarp_rc_bencode(rc, &buf))
+  void
+  RouterContact::SetNick(const std::string &nick)
   {
+    nickname.Zero();
+    memcpy(nickname, nick.c_str(), std::min(nick.size(), nickname.size()));
+  }
+
+  std::string
+  RouterContact::Nick() const
+  {
+    const char *n = (const char *)nickname.data();
+    return std::string(n, strnlen(n, nickname.size()));
+  }
+
+  bool
+  RouterContact::Sign(llarp_crypto *crypto, const SecretKey &secretkey)
+  {
+    pubkey                  = llarp::seckey_topublic(secretkey);
+    byte_t tmp[MAX_RC_SIZE] = {0};
+    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    signature.Zero();
+    last_updated = llarp_time_now_ms();
+    if(!BEncode(&buf))
+      return false;
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    result  = crypto->verify(rc->pubkey, buf, sig);
+    return crypto->sign(signature, secretkey, buf);
   }
-  else
-    llarp::LogWarn("RC encode failed");
-  // restore sig
-  memcpy(rc->signature, sig, SIGSIZE);
-  return result;
-}
 
-bool
-llarp_rc_bencode(const struct llarp_rc *rc, llarp_buffer_t *buff)
-{
-  /* write dict begin */
-  if(!bencode_start_dict(buff))
-    return false;
-
-  if(rc->addrs)
+  bool
+  RouterContact::VerifySignature(llarp_crypto *crypto) const
   {
-    /* write ai if they exist */
-    if(!bencode_write_bytestring(buff, "a", 1))
+    RouterContact copy;
+    copy = *this;
+    copy.signature.Zero();
+    byte_t tmp[MAX_RC_SIZE] = {0};
+    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    if(!copy.BEncode(&buf))
+    {
+      llarp::LogError("bencode failed");
       return false;
-    if(!llarp_ai_list_bencode(rc->addrs, buff))
-      return false;
+    }
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+    return crypto->verify(pubkey, buf, signature);
   }
 
-  /* write signing pubkey */
-  if(!bencode_write_bytestring(buff, "k", 1))
-    return false;
-  if(!bencode_write_bytestring(buff, rc->pubkey, PUBKEYSIZE))
-    return false;
-
-  auto nicklen = strnlen((char *)rc->nickname, sizeof(rc->nickname));
-  if(nicklen)
+  bool
+  RouterContact::Write(const char *fname) const
   {
-    /* write nickname */
-    if(!bencode_write_bytestring(buff, "n", 1))
+    byte_t tmp[MAX_RC_SIZE] = {0};
+    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    if(!BEncode(&buf))
       return false;
-    if(!bencode_write_bytestring(buff, rc->nickname, nicklen))
-      return false;
+    buf.sz  = buf.cur - buf.base;
+    buf.cur = buf.base;
+    {
+      std::ofstream f;
+      f.open(fname, std::ios::binary);
+      if(!f.is_open())
+        return false;
+      f.write((char *)buf.base, buf.sz);
+    }
+    return true;
   }
 
-  /* write encryption pubkey */
-  if(!bencode_write_bytestring(buff, "p", 1))
-    return false;
-  if(!bencode_write_bytestring(buff, rc->enckey, PUBKEYSIZE))
-    return false;
-
-  /* write last updated */
-  if(!bencode_write_bytestring(buff, "u", 1))
-    return false;
-  if(!bencode_write_uint64(buff, rc->last_updated))
-    return false;
-
-  /* write version */
-  if(!bencode_write_version_entry(buff))
-    return false;
-
-  if(rc->exits)
+  bool
+  RouterContact::Read(const char *fname)
   {
-    /* write ai if they exist */
-    if(!bencode_write_bytestring(buff, "x", 1))
-      return false;
-    if(!llarp_xi_list_bencode(rc->exits, buff))
-      return false;
+    byte_t tmp[MAX_RC_SIZE] = {0};
+    {
+      std::ifstream f;
+      f.open(fname, std::ios::binary);
+      if(!f.is_open())
+      {
+        llarp::LogError("Failed to open ", fname);
+        return false;
+      }
+      f.seekg(0, std::ios::end);
+      auto l = f.tellg();
+      f.seekg(0, std::ios::beg);
+      f.read((char *)tmp, l);
+    }
+    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    return BDecode(&buf);
   }
 
-  /* write signature */
-  if(!bencode_write_bytestring(buff, "z", 1))
-    return false;
-  if(!bencode_write_bytestring(buff, rc->signature, SIGSIZE))
-    return false;
-  return bencode_end(buff);
-}
+  RouterContact &
+  RouterContact::operator=(const RouterContact &other)
+  {
+    addrs.clear();
+    exits.clear();
+    addrs = other.addrs;
+    exits = other.exits;
+
+    signature = other.signature;
+
+    last_updated = other.last_updated;
+    enckey       = other.enckey;
+    pubkey       = other.pubkey;
+    nickname     = other.nickname;
+    version      = other.version;
+    return *this;
+  }
+
+}  // namespace llarp

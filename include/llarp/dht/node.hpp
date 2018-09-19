@@ -1,7 +1,7 @@
 #ifndef LLARP_DHT_NODE_HPP
 #define LLARP_DHT_NODE_HPP
 
-#include <llarp/router_contact.h>
+#include <llarp/router_contact.hpp>
 #include <llarp/dht/key.hpp>
 #include <llarp/service/IntroSet.hpp>
 
@@ -11,18 +11,19 @@ namespace llarp
   {
     struct RCNode
     {
-      llarp_rc* rc;
+      llarp::RouterContact rc;
 
       Key_t ID;
 
-      RCNode() : rc(nullptr)
+      RCNode()
       {
         ID.Zero();
       }
 
-      RCNode(llarp_rc* other) : rc(other)
+      RCNode(const llarp::RouterContact& other)
       {
-        ID = other->pubkey;
+        rc = other;
+        ID = other.pubkey.data();
       }
     };
 

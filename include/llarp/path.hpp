@@ -1,6 +1,5 @@
 #ifndef LLARP_PATH_HPP
 #define LLARP_PATH_HPP
-#include <llarp/path.h>
 #include <llarp/router.h>
 #include <llarp/time.h>
 #include <llarp/aligned.hpp>
@@ -10,6 +9,7 @@
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/path_types.hpp>
 #include <llarp/pathset.hpp>
+#include <llarp/pathbuilder.hpp>
 #include <llarp/router_id.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/routing/message.hpp>
@@ -21,6 +21,11 @@
 #include <map>
 #include <unordered_map>
 #include <vector>
+
+#define MAXHOPS (8)
+#define DEFAULT_PATH_LIFETIME (10 * 60 * 1000)
+#define PATH_BUILD_TIMEOUT (10 * 1000)
+#define MESSAGE_PAD_SIZE (1024)
 
 namespace llarp
 {
@@ -193,7 +198,7 @@ namespace llarp
       /// path id
       PathID_t txID, rxID;
       // router contact of router
-      llarp_rc router;
+      RouterContact rc;
       // temp public encryption key
       SecretKey commkey;
       /// shared secret at this hop
@@ -226,7 +231,7 @@ namespace llarp
       llarp_time_t buildStarted;
       PathStatus status;
 
-      Path(llarp_path_hops* path);
+      Path(const std::vector< RouterContact >& routers);
 
       void
       SetBuildResultHook(BuildResultHookFunc func);
@@ -338,7 +343,7 @@ namespace llarp
 
       ///  track a path builder with this context
       void
-      AddPathBuilder(llarp_pathbuilder_context* set);
+      AddPathBuilder(Builder* set);
 
       void
       AllowTransit();
@@ -371,7 +376,7 @@ namespace llarp
 
       bool
       ForwardLRCM(const RouterID& nextHop,
-                  std::deque< EncryptedFrame >& frames);
+                  const std::array< EncryptedFrame, 8 >& frames);
 
       bool
       HopIsUs(const PubKey& k) const;
@@ -386,7 +391,7 @@ namespace llarp
       AddOwnPath(PathSet* set, Path* p);
 
       void
-      RemovePathBuilder(llarp_pathbuilder_context* ctx);
+      RemovePathBuilder(Builder* ctx);
 
       void
       RemovePathSet(PathSet* set);
@@ -423,7 +428,7 @@ namespace llarp
       SyncTransitMap_t m_TransitPaths;
       SyncTransitMap_t m_Paths;
       SyncOwnedPathsMap_t m_OurPaths;
-      std::list< llarp_pathbuilder_context* > m_PathBuilders;
+      std::list< Builder* > m_PathBuilders;
       bool m_AllowTransit;
     };
   }  // namespace path

@@ -360,8 +360,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
     auto val = write(pipefds[1], &i, sizeof(i));
     (void)val;
   }
-
-  byte_t readbuf[2048];
 };
 
 #endif

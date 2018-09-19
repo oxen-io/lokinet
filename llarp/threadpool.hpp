@@ -34,8 +34,13 @@ namespace llarp
       struct Job_t
       {
         uint32_t id;
-        llarp_thread_job* job;
-        Job_t(uint32_t jobid, llarp_thread_job* j) : id(jobid), job(j)
+        void* user;
+        llarp_thread_work_func work;
+
+        Job_t() = default;
+
+        Job_t(uint32_t jobid, const llarp_thread_job& j)
+            : id(jobid), user(j.user), work(j.work)
         {
         }
 
@@ -43,6 +48,12 @@ namespace llarp
         operator<(const Job_t& j) const
         {
           return id < j.id;
+        }
+
+        void
+        operator()() const
+        {
+          work(user);
         }
       };
 

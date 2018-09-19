@@ -186,7 +186,9 @@ hookChecker(std::string name, const struct sockaddr *from,
       job->iterative               = true;
       job->found                   = false;
       job->hook                    = &HandleDHTLocate;
-      llarp_rc_new(&job->result);
+
+      // Disable for RC refactor
+      //llarp_rc_new(&job->result);
       memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
 
       // llarp_dht_lookup_router(ctx->router->dht, job);

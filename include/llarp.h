@@ -4,8 +4,6 @@
 #include <llarp/ev.h>
 #include <llarp/logic.h>
 #include <llarp/mem.h>
-#include <llarp/nodedb.h>
-#include <llarp/router.h>
 #include <llarp/version.h>
 
 #ifdef __cplusplus
@@ -46,10 +44,10 @@ extern "C"
 
   /// put RC into nodeDB
   bool
-  llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc);
+  llarp_main_putDatabase(struct llarp_main *ptr, struct llarp::RouterContact *rc);
 
   /// get RC from nodeDB
-  struct llarp_rc *
+  llarp::RouterContact *
   llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
 
   // fwd declr
@@ -83,7 +81,7 @@ extern "C"
                        uint16_t server_port, const char *upstream_host,
                        uint16_t upstream_port);
 
-  struct llarp_rc *
+  llarp::RouterContact *
   llarp_main_getLocalRC(struct llarp_main *ptr);
 
   void

@@ -97,7 +97,7 @@ namespace llarp
   int
   Context::LoadDatabase()
   {
-    llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
     nodedb = llarp_nodedb_new(&crypto);
     if(!nodedb_dir[0])
     {
@@ -131,15 +131,19 @@ namespace llarp
   }
 
   bool
-  Context::PutDatabase(struct llarp_rc *rc)
+  Context::PutDatabase(struct llarp::RouterContact *rc)
   {
-    return llarp_nodedb_put_rc(nodedb, rc);
+    // FIXME
+    //return llarp_nodedb_put_rc(nodedb, rc);
+    return false;
   }
 
-  struct llarp_rc *
+  llarp::RouterContact *
   Context::GetDatabase(const byte_t *pk)
   {
-    return llarp_nodedb_get_rc(nodedb, pk);
+    // FIXME
+    //return llarp_nodedb_get_rc(nodedb, pk);
+    return nullptr;
   }
 
   int
@@ -349,96 +353,6 @@ extern "C"
     llarp_logic_stop_timer(ptr->ctx->router->logic);
   }
 
-  int
-  llarp_main_loadDatabase(struct llarp_main *ptr)
-  {
-    return ptr->ctx->LoadDatabase();
-  }
-
-  int
-  llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i)
-  {
-    return ptr->ctx->IterateDatabase(i);
-  }
-
-  bool
-  llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc)
-  {
-    return ptr->ctx->PutDatabase(rc);
-  }
-
-  struct llarp_rc *
-  llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
-  {
-    return ptr->ctx->GetDatabase(pk);
-  }
-
-  struct llarp_rc *
-  llarp_main_getLocalRC(struct llarp_main *ptr)
-  {
-    //
-    /*
-     llarp_config_iterator iter;
-     iter.user  = this;
-     iter.visit = &iter_config;
-     llarp_config_iter(ctx->config, &iter);
-     */
-    llarp_rc *rc = new llarp_rc;
-    llarp_rc_new(rc);
-    llarp::LogInfo("Loading ", ptr->ctx->conatctFile);
-    if(llarp_rc_read(ptr->ctx->conatctFile, rc))
-      return rc;
-    else
-      return nullptr;
-  }
-
-  void
-  llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
-  {
-    // llarp::LogInfo("checkOnline - check ", left);
-    if(left)
-      return;
-    struct check_online_request *request =
-        static_cast< struct check_online_request * >(u);
-    // llarp::LogDebug("checkOnline - running");
-    // llarp::LogInfo("checkOnline - DHT nodes ",
-    // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
-    request->online = false;
-    request->nodes  = request->ptr->ctx->router->dht->impl.nodes->nodes.size();
-    if(request->ptr->ctx->router->dht->impl.nodes->nodes.size())
-    {
-      // llarp::LogInfo("checkOnline - Going to say we're online");
-      request->online = true;
-    }
-    request->hook(request);
-    // reschedue our self
-    llarp_main_queryDHT(request);
-  }
-
-  void
-  llarp_main_queryDHT_online(struct check_online_request *request)
-  {
-    // Info("llarp_main_queryDHT_online: ", request->online ? "online" :
-    // "offline");
-    if(request->online && !request->first)
-    {
-      request->first = true;
-      llarp::LogInfo("llarp_main_queryDHT_online - We're online");
-      llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
-      llarp_dht_lookup_router(request->ptr->ctx->router->dht, request->job);
-    }
-  }
-
-  void
-  llarp_main_queryDHT(struct check_online_request *request)
-  {
-    // llarp::LogInfo("llarp_main_queryDHT - setting up timer");
-    request->hook = &llarp_main_queryDHT_online;
-    llarp_logic_call_later(request->ptr->ctx->router->logic,
-                           {1000, request, &llarp_main_checkOnline});
-    // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
-  }
-
   void
   llarp_main_queryDHT_RC(struct llarp_main *ptr,
                          struct llarp_router_lookup_job *job)
@@ -460,6 +374,100 @@ extern "C"
   {
     delete ptr;
   }
+
+int
+llarp_main_loadDatabase(struct llarp_main *ptr)
+{
+  return ptr->ctx->LoadDatabase();
+}
+
+int
+llarp_main_iterateDatabase(struct llarp_main *ptr, struct llarp_nodedb_iter i)
+{
+  return ptr->ctx->IterateDatabase(i);
+}
+
+bool
+llarp_main_putDatabase(struct llarp_main *ptr, llarp::RouterContact *rc)
+{
+  return ptr->ctx->PutDatabase(rc);
+}
+
+llarp::RouterContact *
+llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk)
+{
+  return ptr->ctx->GetDatabase(pk);
+}
+
+  llarp::RouterContact *
+  llarp_main_getLocalRC(struct llarp_main *ptr)
+  {
+    //
+    /*
+     llarp_config_iterator iter;
+     iter.user  = this;
+     iter.visit = &iter_config;
+     llarp_config_iter(ctx->config, &iter);
+     */
+    //llarp_rc *rc = new llarp_rc;
+    llarp::RouterContact *rc = new llarp::RouterContact;
+    //llarp_rc_new(rc);
+    llarp::LogInfo("FIXME: Loading ", ptr->ctx->conatctFile);
+    // FIXME
+    /*
+    if(llarp_rc_read(ptr->ctx->conatctFile, rc))
+      return rc;
+    else
+    */
+      return nullptr;
+  }
+
+void
+llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
+{
+  // llarp::Info("checkOnline - check ", left);
+  if(left)
+    return;
+  struct check_online_request *request =
+      static_cast< struct check_online_request * >(u);
+  // llarp::Debug("checkOnline - running");
+  // llarp::Info("checkOnline - DHT nodes ",
+  // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
+  request->online = false;
+  request->nodes  = request->ptr->ctx->router->dht->impl.nodes->nodes.size();
+  if(request->ptr->ctx->router->dht->impl.nodes->nodes.size())
+  {
+    // llarp::Info("checkOnline - Going to say we're online");
+    request->online = true;
+  }
+  request->hook(request);
+  // reschedue our self
+  llarp_main_queryDHT(request);
+}
+
+void
+llarp_main_queryDHT_online(struct check_online_request *request)
+{
+  // Info("llarp_main_queryDHT_online: ", request->online ? "online" :
+  // "offline");
+  if(request->online && !request->first)
+  {
+    request->first = true;
+    llarp::LogInfo("llarp_main_queryDHT_online - We're online");
+    llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
+    llarp_dht_lookup_router(request->ptr->ctx->router->dht, request->job);
+  }
+}
+
+void
+llarp_main_queryDHT(struct check_online_request *request)
+{
+  // llarp::Info("llarp_main_queryDHT - setting up timer");
+  request->hook = &llarp_main_queryDHT_online;
+  llarp_logic_call_later(request->ptr->ctx->router->logic,
+                         {1000, request, &llarp_main_checkOnline});
+  // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
+}
 
   const char *
   handleBaseCmdLineArgs(int argc, char *argv[])

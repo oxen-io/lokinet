@@ -14,19 +14,17 @@
 bool
 operator==(const sockaddr& a, const sockaddr& b)
 {
-  socklen_t sz = sizeof(a.sa_data);
+  if(a.sa_family != b.sa_family)
+    return false;
   switch(a.sa_family)
   {
     case AF_INET:
-      sz = sizeof(sockaddr_in);
-      break;
+      return *((const sockaddr_in*)&a) == *((const sockaddr_in*)&b);
     case AF_INET6:
-      sz = sizeof(sockaddr_in6);
-      break;
+      return *((const sockaddr_in6*)&a) == *((const sockaddr_in6*)&b);
     default:
-      break;
+      return false;
   }
-  return a.sa_family == b.sa_family && memcmp(a.sa_data, b.sa_data, sz) == 0;
 }
 
 bool
@@ -39,6 +37,24 @@ bool
 operator<(const in6_addr& a, const in6_addr& b)
 {
   return memcmp(&a, &b, sizeof(in6_addr)) < 0;
+}
+
+bool
+operator==(const in6_addr& a, const in6_addr& b)
+{
+  return memcmp(&a, &b, sizeof(in6_addr)) == 0;
+}
+
+bool
+operator==(const sockaddr_in& a, const sockaddr_in& b)
+{
+  return a.sin_port == b.sin_port && a.sin_addr.s_addr == b.sin_addr.s_addr;
+}
+
+bool
+operator==(const sockaddr_in6& a, const sockaddr_in6& b)
+{
+  return a.sin6_port == b.sin6_port && a.sin6_addr == b.sin6_addr;
 }
 
 #ifdef _WIN32
@@ -864,4 +880,44 @@ namespace llarp
       freeifaddrs(ifa);
     return found;
   }
+
+  bool
+  GetIFAddr(const std::string& ifname, Addr& addr, int af)
+  {
+    sockaddr_storage s;
+    sockaddr* sptr = (sockaddr*)&s;
+    if(!llarp_getifaddr(ifname.c_str(), af, sptr))
+      return false;
+    addr = *sptr;
+    return true;
+  }
+
+  bool
+  AllInterfaces(int af, Addr& result)
+  {
+    if(af == AF_INET)
+    {
+      sockaddr_in addr;
+      addr.sin_family      = AF_INET;
+      addr.sin_addr.s_addr = htonl(INADDR_ANY);
+      addr.sin_port        = htons(0);
+      result               = addr;
+      return true;
+    }
+    else if(af == AF_INET6)
+    {
+      sockaddr_in6 addr6;
+      addr6.sin6_family = AF_INET6;
+      addr6.sin6_port   = htons(0);
+      addr6.sin6_addr   = IN6ADDR_ANY_INIT;
+      result            = addr6;
+      return true;
+    }
+    else
+    {
+      // TODO: implement sockaddr_ll
+    }
+    return false;
+  }
+
 }  // namespace llarp

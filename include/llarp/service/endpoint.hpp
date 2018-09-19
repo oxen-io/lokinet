@@ -5,12 +5,13 @@
 #include <llarp/service/Identity.hpp>
 #include <llarp/service/handler.hpp>
 #include <llarp/service/protocol.hpp>
+#include <llarp/path.hpp>
 
 namespace llarp
 {
   namespace service
   {
-    struct Endpoint : public llarp_pathbuilder_context,
+    struct Endpoint : public path::Builder,
                       public ILookupHolder,
                       public IDataHandler
     {
@@ -145,7 +146,7 @@ namespace llarp
       typedef std::queue< PendingBuffer > PendingBufferQueue;
 
       /// context needed to initiate an outbound hidden service session
-      struct OutboundContext : public llarp_pathbuilder_context
+      struct OutboundContext : public path::Builder
       {
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
@@ -176,7 +177,8 @@ namespace llarp
         HandlePathBuilt(path::Path* path);
 
         bool
-        SelectHop(llarp_nodedb* db, llarp_rc* prev, llarp_rc* cur, size_t hop);
+        SelectHop(llarp_nodedb* db, const RouterContact& prev,
+                  RouterContact& cur, size_t hop);
 
         bool
         HandleHiddenServiceFrame(const ProtocolFrame* frame);

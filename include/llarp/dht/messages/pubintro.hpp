@@ -38,7 +38,7 @@ namespace llarp
 
       virtual bool
       HandleMessage(llarp_dht_context* ctx,
-                    std::vector< IMessage* >& replies) const;
+                    std::vector< std::unique_ptr< IMessage > >& replies) const;
     };
   }  // namespace dht
 }  // namespace llarp

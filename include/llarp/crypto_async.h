@@ -65,11 +65,11 @@ struct iwp_async_intro
   uint8_t *buf;
   size_t sz;
   /// nonce paramter
-  uint8_t *nonce;
+  uint8_t nonce[32];
   /// remote public key
-  uint8_t *remote_pubkey;
+  uint8_t remote_pubkey[32];
   /// local private key
-  uint8_t *secretkey;
+  uint8_t secretkey[64];
   /// callback
   iwp_intro_hook hook;
 };
@@ -184,26 +184,26 @@ struct iwp_async_frame
 struct FramePutTime
 {
   void
-  operator()(iwp_async_frame *frame) const
+  operator()(iwp_async_frame &frame) const
   {
-    frame->created = llarp_time_now_ms();
+    frame.created = llarp_time_now_ms();
   }
 };
 struct FrameGetTime
 {
   llarp_time_t
-  operator()(const iwp_async_frame *frame) const
+  operator()(const iwp_async_frame &frame) const
   {
-    return frame->created;
+    return frame.created;
   }
 };
 
 struct FrameCompareTime
 {
   bool
-  operator()(const iwp_async_frame *left, const iwp_async_frame *right) const
+  operator()(const iwp_async_frame &left, const iwp_async_frame &right) const
   {
-    return left->created < right->created;
+    return left.created < right.created;
   }
 };
 #endif

@@ -5,16 +5,14 @@ namespace llarp
 {
   DHTImmeidateMessage::~DHTImmeidateMessage()
   {
-    for(auto &msg : msgs)
-      delete msg;
-    msgs.clear();
   }
 
   bool
   DHTImmeidateMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
   {
     if(llarp_buffer_eq(key, "m"))
-      return llarp::dht::DecodeMesssageList(remote.data(), buf, msgs);
+      return llarp::dht::DecodeMesssageList(session->GetPubKey().data(), buf,
+                                            msgs);
     if(llarp_buffer_eq(key, "v"))
     {
       if(!bencode_read_integer(buf, &version))
@@ -62,24 +60,19 @@ namespace llarp
   bool
   DHTImmeidateMessage::HandleMessage(llarp_router *router) const
   {
-    DHTImmeidateMessage *reply = new DHTImmeidateMessage(remote);
-    bool result                = true;
+    DHTImmeidateMessage reply(session);
+    bool result = true;
     for(auto &msg : msgs)
     {
-      result &= msg->HandleMessage(router->dht, reply->msgs);
+      result &= msg->HandleMessage(router->dht, reply.msgs);
     }
-    if(reply->msgs.size())
+    if(reply.msgs.size())
     {
       if(result)
       {
-        result = router->SendToOrQueue(remote.data(), reply);
+        result = router->SendToOrQueue(session->GetPubKey(), &reply);
       }
-      return result;
     }
-    else
-    {
-      delete reply;
-      return result;
-    }
+    return result;
   }
 }  // namespace llarp

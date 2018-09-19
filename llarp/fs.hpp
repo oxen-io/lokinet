@@ -15,7 +15,7 @@
 #if defined(__MINGW32__) || defined(_MSC_VER) || defined(__sun)
 namespace fs = std::experimental::filesystem;
 #else
-namespace fs = std::filesystem;
+namespace fs = std::experimental::filesystem;
 #endif  // end win32
 #else
 // not CPP17 needs this

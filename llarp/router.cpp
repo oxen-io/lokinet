@@ -2,9 +2,7 @@
 #include <llarp/proto.h>
 #include <llarp/iwp.hpp>
 #include <llarp/link_message.hpp>
-#include "llarp/iwp/establish_job.hpp"
-#include "llarp/iwp/server.hpp"
-#include "llarp/iwp/session.hpp"
+#include <llarp/link/utp.hpp>
 
 #include "buffer.hpp"
 #include "encode.hpp"
@@ -23,10 +21,87 @@ namespace llarp
   struct async_verify_context
   {
     llarp_router *router;
-    llarp_link_establish_job *establish_job;
+    TryConnectJob *establish_job;
   };
 
 }  // namespace llarp
+
+struct TryConnectJob
+{
+  llarp::RouterContact rc;
+  llarp::ILinkLayer *link;
+  llarp_router *router;
+  uint16_t triesLeft;
+  TryConnectJob(const llarp::RouterContact &remote, llarp::ILinkLayer *l,
+                uint16_t tries, llarp_router *r)
+      : rc(remote), link(l), router(r), triesLeft(tries)
+  {
+  }
+
+  void
+  Failed()
+  {
+    link->CloseSessionTo(rc.pubkey);
+  }
+
+  void
+  Success()
+  {
+  }
+
+  void
+  AttemptTimedout()
+  {
+    router->pendingEstablishJobs.erase(rc.pubkey);
+  }
+
+  void
+  Attempt()
+  {
+    link->TryEstablishTo(rc);
+  }
+
+  bool
+  ShouldRetry() const
+  {
+    return triesLeft > 0;
+  }
+};
+
+static void
+on_try_connecting(void *u)
+{
+  TryConnectJob *j = static_cast< TryConnectJob * >(u);
+  j->Attempt();
+}
+
+bool
+llarp_router_try_connect(struct llarp_router *router,
+                         const llarp::RouterContact &remote,
+                         uint16_t numretries)
+{
+  // do we already have a pending job for this remote?
+  if(router->HasPendingConnectJob(remote.pubkey))
+  {
+    llarp::LogDebug("We have pending connect jobs to ", remote.pubkey);
+    return false;
+  }
+
+  auto link          = router->outboundLink.get();
+  auto itr           = router->pendingEstablishJobs.insert(std::make_pair(
+      remote.pubkey,
+      std::make_unique< TryConnectJob >(remote, link, numretries, router)));
+  TryConnectJob *job = itr.first->second.get();
+  // try establishing async
+  job->Attempt();
+  return true;
+}
+
+void
+llarp_router::HandleLinkSessionEstablished(llarp::RouterContact rc)
+{
+  async_verify_RC(rc);
+}
 
 llarp_router::llarp_router()
     : ready(false)
@@ -39,18 +114,16 @@ llarp_router::llarp_router()
   // set rational defaults
   this->ip4addr.sin_family = AF_INET;
   this->ip4addr.sin_port   = htons(1090);
-  llarp_rc_clear(&rc);
 }
 
 llarp_router::~llarp_router()
 {
   llarp_dht_context_free(dht);
-  llarp_rc_free(&rc);
 }
 
 bool
-llarp_router::HandleRecvLinkMessage(llarp_link_session *session,
-                                    llarp_buffer_t buf)
+llarp_router::HandleRecvLinkMessageBuffer(llarp::ILinkSession *session,
+                                          llarp_buffer_t buf)
 {
   return inbound_link_msg_parser.ProcessFrom(session, buf);
 }
@@ -73,129 +146,83 @@ bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             const llarp::ILinkMessage *msg)
 {
-  llarp_link *chosen = nullptr;
-  if(!outboundLink->has_session_to(remote))
-  {
-    for(auto link : inboundLinks)
-    {
-      if(link->has_session_to(remote))
-      {
-        chosen = link;
-        break;
-      }
-    }
-  }
-  else
-    chosen = outboundLink;
+  llarp::ILinkLayer *chosen = nullptr;
 
-  if(chosen)
+  if(inboundLinks.size() == 0)
+    chosen = outboundLink.get();
+  else
+    chosen = inboundLinks.front().get();
+
+  if(chosen->HasSessionTo(remote))
   {
     SendTo(remote, msg, chosen);
-    delete msg;
     return true;
   }
   // this will create an entry in the obmq if it's not already there
-  auto itr = outboundMesssageQueue.find(remote);
-  if(itr == outboundMesssageQueue.end())
+  auto itr = outboundMessageQueue.find(remote);
+  if(itr == outboundMessageQueue.end())
   {
-    outboundMesssageQueue.insert(std::make_pair(remote, MessageQueue()));
+    outboundMessageQueue.insert(std::make_pair(remote, MessageQueue()));
   }
-  outboundMesssageQueue[remote].push(msg);
+  // encode
+  llarp_buffer_t buf =
+      llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+  if(!msg->BEncode(&buf))
+    return false;
+  // queue buffer
+  auto &q = outboundMessageQueue[remote];
+  buf.sz  = buf.cur - buf.base;
+  q.emplace(buf.sz);
+  memcpy(q.back().data(), buf.base, buf.sz);
 
   // we don't have an open session to that router right now
-  auto rc = llarp_nodedb_get_rc(nodedb, remote);
-  if(rc)
+  if(llarp_nodedb_get_rc(nodedb, remote, rc))
   {
     // try connecting directly as the rc is loaded from disk
     llarp_router_try_connect(this, rc, 10);
     return true;
   }
 
-  // this would never be true, as everything is in memory
-  // but we'll keep around if we ever need to swap them out of memory
-  // but it's best to keep the paradigm that everythign is in memory at this
-  // point in development as it will reduce complexity
-  /*
-  // try requesting the rc from the disk
-  llarp_async_load_rc *job = new llarp_async_load_rc;
-  job->diskworker          = disk;
-  job->nodedb              = nodedb;
-  job->logic               = logic;
-  job->user                = this;
-  job->hook                = &HandleAsyncLoadRCForSendTo;
-  memcpy(job->pubkey, remote, PUBKEYSIZE);
-  llarp_nodedb_async_load_rc(job);
-  */
-
   // we don't have the RC locally so do a dht lookup
-  llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
-  lookup->user                    = this;
-  llarp_rc_clear(&lookup->result);
-  memcpy(lookup->target, remote, PUBKEYSIZE);
-  lookup->hook = &HandleDHTLookupForSendTo;
-  llarp_dht_lookup_router(this->dht, lookup);
-
+  dht->impl.LookupRouter(remote,
+                         std::bind(&llarp_router::HandleDHTLookupForSendTo,
+                                   this, remote, std::placeholders::_1));
   return true;
 }
 
-/*
 void
-llarp_router::HandleAsyncLoadRCForSendTo(llarp_async_load_rc *job)
+llarp_router::HandleDHTLookupForSendTo(
+    llarp::RouterID remote, const std::vector< llarp::RouterContact > &results)
 {
-  llarp_router *router = static_cast< llarp_router * >(job->user);
-  if(job->loaded)
+  if(results.size())
   {
-    llarp_router_try_connect(router, &job->rc, 10);
+    llarp_nodedb_put_rc(nodedb, results[0]);
+    llarp_router_try_connect(this, results[0], 10);
   }
   else
   {
-    // we don't have the RC locally so do a dht lookup
-    llarp_router_lookup_job *lookup = new llarp_router_lookup_job;
-    lookup->user                    = router;
-    memcpy(lookup->target, job->pubkey, PUBKEYSIZE);
-    lookup->hook = &HandleDHTLookupForSendTo;
-    llarp_dht_lookup_router(router->dht, lookup);
+    DiscardOutboundFor(remote);
   }
-  delete job;
-}
-*/
-
-void
-llarp_router::HandleDHTLookupForSendTo(llarp_router_lookup_job *job)
-{
-  llarp_router *self = static_cast< llarp_router * >(job->user);
-  if(job->found)
-  {
-    llarp_router_try_connect(self, &job->result, 10);
-  }
-  else
-  {
-    self->DiscardOutboundFor(job->target);
-  }
-  llarp_rc_free(&job->result);
-  delete job;
 }
 
 void
 llarp_router::try_connect(fs::path rcfile)
 {
-  llarp_rc remote;
-  llarp_rc_new(&remote);
-  if(!llarp_rc_read(rcfile.string().c_str(), &remote))
+  llarp::RouterContact remote;
+  if(!remote.Read(rcfile.string().c_str()))
   {
     llarp::LogError("failure to decode or verify of remote RC");
     return;
   }
-  if(llarp_rc_verify_sig(&crypto, &remote))
+  if(remote.VerifySignature(&crypto))
   {
     llarp::LogDebug("verified signature");
     // store into filesystem
-    // TODO: should this be async?
-    if(!llarp_nodedb_put_rc(nodedb, &remote))
+    if(!llarp_nodedb_put_rc(nodedb, remote))
     {
       llarp::LogWarn("failed to store");
     }
-    if(!llarp_router_try_connect(this, &remote, 10))
+    if(!llarp_router_try_connect(this, remote, 10))
     {
       // or error?
       llarp::LogWarn("session already made");
@@ -203,7 +230,6 @@ llarp_router::try_connect(fs::path rcfile)
   }
   else
     llarp::LogError("failed to verify signature of RC", rcfile);
-  llarp_rc_free(&remote);
 }
 
 bool
@@ -219,13 +245,13 @@ bool
 llarp_router::EnsureEncryptionKey()
 {
   return llarp_findOrCreateEncryption(
-      &crypto, encryption_keyfile.string().c_str(), &this->encryption);
+      &crypto, encryption_keyfile.string().c_str(), encryption);
 }
 
 void
-llarp_router::AddInboundLink(struct llarp_link *link)
+llarp_router::AddInboundLink(std::unique_ptr< llarp::ILinkLayer > &link)
 {
-  inboundLinks.push_back(link);
+  inboundLinks.push_back(std::move(link));
 }
 
 bool
@@ -238,66 +264,30 @@ bool
 llarp_router::SaveRC()
 {
   llarp::LogDebug("verify RC signature");
-  if(!llarp_rc_verify_sig(&crypto, &rc))
+  if(!rc.VerifySignature(&crypto))
   {
+    rc.Dump< MAX_RC_SIZE >();
     llarp::LogError("RC has bad signature not saving");
     return false;
   }
-
-  byte_t tmp[MAX_RC_SIZE];
-  auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-
-  if(llarp_rc_bencode(&rc, &buf))
-  {
-    std::ofstream f(our_rc_file.string());
-
-    if(f.is_open())
-    {
-      f.write((char *)buf.base, buf.cur - buf.base);
-      llarp::LogInfo("our RC saved to ", our_rc_file.string().c_str());
-      return true;
-    }
-  }
-  llarp::LogError("did not save RC to ", our_rc_file.string().c_str());
-  return false;
+  return rc.Write(our_rc_file.string().c_str());
 }
 
 void
 llarp_router::Close()
 {
   llarp::LogInfo("Closing ", inboundLinks.size(), " server bindings");
-  for(auto link : inboundLinks)
+  for(const auto &link : inboundLinks)
   {
-    link->stop_link();
-    delete link;
+    link->Stop();
   }
   inboundLinks.clear();
 
   llarp::LogInfo("Closing LokiNetwork client");
   if(outboundLink)
   {
-    outboundLink->stop_link();
-    delete outboundLink;
-    outboundLink = nullptr;
-  }
-}
-
-void
-llarp_router::connect_job_retry(void *user, uint64_t orig, uint64_t left)
-{
-  if(left)
-    return;
-  llarp_link_establish_job *job =
-      static_cast< llarp_link_establish_job * >(user);
-  llarp::Addr remote = job->ai;
-  if(job->link)
-  {
-    llarp::LogInfo("trying to establish session again with ", remote);
-    job->link->try_establish(job);
-  }
-  else
-  {
-    llarp::LogError("establish session retry failed, no link for ", remote);
+    outboundLink->Stop();
+    outboundLink.reset(nullptr);
   }
 }
 
@@ -306,9 +296,7 @@ llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
 {
   llarp::async_verify_context *ctx =
       static_cast< llarp::async_verify_context * >(job->user);
-  llarp::PubKey pk = job->rc.pubkey;
-  llarp_rc_free(&job->rc);
-  ctx->router->pendingEstablishJobs.erase(pk);
+  ctx->router->pendingEstablishJobs.erase(job->rc.pubkey);
   delete ctx;
 }
 
@@ -325,12 +313,8 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     if(ctx->establish_job)
     {
       // was an outbound attempt
-      auto session = ctx->establish_job->session;
-      if(session)
-        session->close();
+      ctx->establish_job->Failed();
     }
-    llarp_rc_free(&job->rc);
-    router->pendingEstablishJobs.erase(pk);
     router->DiscardOutboundFor(pk);
     return;
   }
@@ -338,28 +322,24 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
 
   llarp::LogDebug("rc verified and saved to nodedb");
 
-  // refresh valid routers RC value if it's there
-  auto v = router->validRouters.find(pk);
-  if(v != router->validRouters.end())
+  if(router->validRouters.count(pk))
   {
-    // free previous RC members
-    llarp_rc_free(&v->second);
+    router->validRouters.erase(pk);
   }
-  router->validRouters[pk] = job->rc;
+
+  llarp::RouterContact rc = job->rc;
+
+  router->validRouters.insert(std::make_pair(pk, rc));
 
   // track valid router in dht
-  __llarp_dht_put_peer(router->dht, &router->validRouters[pk]);
+  router->dht->impl.nodes->PutNode(rc);
 
   // this was an outbound establish job
   if(ctx->establish_job)
   {
-    auto session = ctx->establish_job->session;
-    router->FlushOutboundFor(pk, session->get_parent());
-    // this frees the job
-    router->pendingEstablishJobs.erase(pk);
+    ctx->establish_job->Success();
   }
-  else  // this was an inbound session
-    router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
+  router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
 }
 
 void
@@ -376,41 +356,28 @@ llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
 void
 llarp_router::TryEstablishTo(const llarp::RouterID &remote)
 {
-  auto rc = llarp_nodedb_get_rc(nodedb, remote);
-  if(rc)
+  llarp::RouterContact rc;
+  if(llarp_nodedb_get_rc(nodedb, remote, rc))
   {
-    // try connecting
+    // try connecting async
     llarp_router_try_connect(this, rc, 5);
   }
   else
   {
     // dht lookup as we don't know it
-    llarp_router_lookup_job *lookup = new llarp_router_lookup_job();
-    lookup->user                    = this;
-    llarp_rc_clear(&lookup->result);
-    memcpy(lookup->target, remote, PUBKEYSIZE);
-    lookup->hook      = &HandleDHTLookupForTryEstablishTo;
-    lookup->iterative = false;
-    llarp_dht_lookup_router(this->dht, lookup);
+    dht->impl.LookupRouter(
+        remote,
+        std::bind(&llarp_router::HandleDHTLookupForTryEstablishTo, this,
+                  std::placeholders::_1));
   }
 }
 
 void
-llarp_router::HandleDHTLookupForTryEstablishTo(llarp_router_lookup_job *job)
+llarp_router::HandleDHTLookupForTryEstablishTo(
+    const std::vector< llarp::RouterContact > &results)
 {
-  if(job->found)
-  {
-    llarp_router_try_connect(static_cast< llarp_router * >(job->user),
-                             &job->result, 5);
-  }
-  llarp_rc_free(&job->result);
-  delete job;
-}
-
-void
-llarp_router::HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job)
-{
-  delete job;
+  for(const auto &result : results)
+    async_verify_RC(result);
 }
 
 size_t
@@ -465,6 +432,7 @@ llarp_router::Tick()
     {
       llarp::LogInfo(
           "We need more than 3 service nodes to build paths but we have ", N);
+      dht->impl.Explore(N);
     }
     hiddenServiceContext.Tick();
   }
@@ -473,7 +441,7 @@ llarp_router::Tick()
 
 void
 llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
-                     llarp_link *link)
+                     llarp::ILinkLayer *selected)
 {
   llarp_buffer_t buf =
       llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
@@ -487,22 +455,26 @@ llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
   // set size of message
   buf.sz  = buf.cur - buf.base;
   buf.cur = buf.base;
-  if(link)
+  llarp::LogDebug("send ", buf.sz, " bytes to ", remote);
+  if(selected)
   {
-    link->sendto(remote, buf);
+    if(!selected->SendTo(remote, buf))
+      llarp::LogWarn("message to ", remote, " was dropped");
     return;
   }
-  bool sent = outboundLink->sendto(remote, buf);
+  bool sent = outboundLink->SendTo(remote, buf);
   if(!sent)
   {
-    for(auto link : inboundLinks)
+    for(const auto &link : inboundLinks)
     {
       if(!sent)
       {
-        sent = link->sendto(remote, buf);
+        sent = link->SendTo(remote, buf);
       }
     }
   }
+  if(!sent)
+    llarp::LogWarn("message to ", remote, " was dropped");
 }
 
 void
@@ -519,32 +491,31 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
   auto itr = validRouters.find(remote);
   if(itr == validRouters.end())
     return;
-
   __llarp_dht_remove_peer(dht, remote);
-  llarp_rc_free(&itr->second);
   validRouters.erase(itr);
 }
 
-llarp_link *
+llarp::ILinkLayer *
 llarp_router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
 {
-  for(auto &link : inboundLinks)
+  if(outboundLink->HasSessionTo(pubkey))
+    return outboundLink.get();
+  for(const auto &link : inboundLinks)
   {
-    if(link->has_session_to(pubkey))
-      return link;
+    if(link->HasSessionTo(pubkey))
+      return link.get();
   }
-  if(outboundLink->has_session_to(pubkey))
-    return outboundLink;
   return nullptr;
 }
 
 void
 llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
-                               llarp_link *chosen)
+                               llarp::ILinkLayer *chosen)
 {
   llarp::LogDebug("Flush outbound for ", remote);
-  auto itr = outboundMesssageQueue.find(remote);
-  if(itr == outboundMesssageQueue.end())
+  pendingEstablishJobs.erase(remote);
+  auto itr = outboundMessageQueue.find(remote);
+  if(itr == outboundMessageQueue.end())
   {
     return;
   }
@@ -555,77 +526,23 @@ llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
   }
   while(itr->second.size())
   {
-    auto buf = llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
-
-    auto &msg = itr->second.front();
-
-    if(!msg->BEncode(&buf))
-    {
-      llarp::LogWarn("failed to encode outbound message, buffer size left: ",
-                     llarp_buffer_size_left(buf));
-      delete msg;
-      itr->second.pop();
-      continue;
-    }
-    // set size of message
-    buf.sz  = buf.cur - buf.base;
-    buf.cur = buf.base;
-    if(!chosen->sendto(remote, buf))
+    auto buf = llarp::ConstBuffer(itr->second.front());
+    if(!chosen->SendTo(remote, buf))
       llarp::LogWarn("failed to send outboud message to ", remote, " via ",
-                     chosen->name());
+                     chosen->Name());
 
-    delete msg;
     itr->second.pop();
-  }
-}
-
-void
-llarp_router::on_try_connect_result(llarp_link_establish_job *job)
-{
-  llarp_router *router = static_cast< llarp_router * >(job->user);
-  if(job->session)
-  {
-    // llarp::LogDebug("try_connect got session");
-    // auto session = job->session;
-    // router->async_verify_RC(session->get_remote_router(), false, job);
-    return;
-  }
-  // llarp::LogDebug("try_connect no session");
-  llarp::PubKey pk = job->pubkey;
-  if(job->retries > 0)
-  {
-    job->retries--;
-    job->timeout *= 3;
-    job->timeout /= 2;
-    llarp::LogInfo("session not established with ", pk, " relaxing timeout to ",
-                   job->timeout);
-    // exponential backoff
-    llarp_logic_call_later(
-        router->logic, {job->timeout, job, &llarp_router::connect_job_retry});
-  }
-  else
-  {
-    llarp::LogWarn("failed to connect to ", pk,
-                   " dropping all pending messages");
-    router->DiscardOutboundFor(pk);
-    router->pendingEstablishJobs.erase(pk);
   }
 }
 
 void
 llarp_router::DiscardOutboundFor(const llarp::RouterID &remote)
 {
-  auto &queue = outboundMesssageQueue[remote];
-  while(queue.size())
-  {
-    delete queue.front();
-    queue.pop();
-  }
-  outboundMesssageQueue.erase(remote);
+  outboundMessageQueue.erase(remote);
 }
 
 bool
-llarp_router::GetRandomConnectedRouter(llarp_rc *result) const
+llarp_router::GetRandomConnectedRouter(llarp::RouterContact &result) const
 {
   auto sz = validRouters.size();
   if(sz)
@@ -633,19 +550,26 @@ llarp_router::GetRandomConnectedRouter(llarp_rc *result) const
     auto itr = validRouters.begin();
     if(sz > 1)
       std::advance(itr, llarp_randint() % sz);
-    llarp_rc_copy(result, &itr->second);
+    result = itr->second;
     return true;
   }
   return false;
 }
 
 void
-llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
-                              llarp_link_establish_job *establish_job)
+llarp_router::async_verify_RC(const llarp::RouterContact &rc)
 {
-  llarp_async_verify_rc *job = new llarp_async_verify_rc;
-  job->user  = new llarp::async_verify_context{this, establish_job};
-  job->rc    = {};
+  llarp_async_verify_rc *job       = new llarp_async_verify_rc();
+  llarp::async_verify_context *ctx = new llarp::async_verify_context();
+  ctx->router                      = this;
+  ctx->establish_job               = nullptr;
+
+  auto itr = pendingEstablishJobs.find(rc.pubkey);
+  if(itr != pendingEstablishJobs.end())
+    ctx->establish_job = itr->second.get();
+
+  job->user  = ctx;
+  job->rc    = rc;
   job->valid = false;
   job->hook  = nullptr;
 
@@ -655,11 +579,10 @@ llarp_router::async_verify_RC(llarp_rc *rc, bool isExpectingClient,
   job->cryptoworker = tp;
   job->diskworker   = disk;
 
-  llarp_rc_copy(&job->rc, rc);
-  if(isExpectingClient)
-    job->hook = &llarp_router::on_verify_client_rc;
-  else
+  if(rc.IsPublicRouter())
     job->hook = &llarp_router::on_verify_server_rc;
+  else
+    job->hook = &llarp_router::on_verify_client_rc;
   llarp_nodedb_async_verify(job);
 }
 
@@ -667,10 +590,6 @@ void
 llarp_router::Run()
 {
   // zero out router contact
-  llarp::Zero(&rc, sizeof(llarp_rc));
-  // fill our address list
-  rc.addrs = llarp_ai_list_new();
-
   sockaddr *dest = (sockaddr *)&this->ip4addr;
   llarp::Addr publicAddr(*dest);
   if(this->publicOverride)
@@ -682,10 +601,11 @@ llarp_router::Run()
   }
 
   llarp::LogInfo("You have ", inboundLinks.size(), " inbound links");
-  for(auto link : inboundLinks)
+  for(const auto &link : inboundLinks)
   {
-    llarp_ai addr;
-    link->get_our_address(&addr);
+    llarp::AddressInfo addr;
+    if(!link->GetOurAddressInfo(addr))
+      continue;
     llarp::Addr a(addr);
     if(this->publicOverride && a.sameAddr(publicAddr))
     {
@@ -694,17 +614,16 @@ llarp_router::Run()
     if(!a.isPrivate())
     {
       llarp::LogInfo("Loading Addr: ", a, " into our RC");
-      llarp_ai_list_pushback(rc.addrs, &addr);
+      rc.addrs.push_back(addr);
     }
   };
   if(this->publicOverride)
   {
+    llarp::ILinkLayer *link = nullptr;
     // llarp::LogWarn("Need to load our public IP into RC!");
-
-    llarp_link *link = nullptr;
     if(inboundLinks.size() == 1)
     {
-      link = inboundLinks.front();
+      link = inboundLinks.front().get();
     }
     else
     {
@@ -713,48 +632,31 @@ llarp_router::Run()
         llarp::LogError("No inbound links found, aborting");
         return;
       }
-      link = inboundLinks.front();
-      /*
-      // create a new link
-      link = new llarp_link;
-      llarp::Zero(link, sizeof(llarp_link));
-
-      llarp_iwp_args args = {
-        .crypto       = &this->crypto,
-        .logic        = this->logic,
-        .cryptoworker = this->tp,
-        .router       = this,
-        .keyfile      = this->transport_keyfile.c_str(),
-      };
-      iwp_link_init(link, args);
-      if(llarp_link_initialized(link))
-      {
-
-      }
-      */
+      link = inboundLinks.front().get();
     }
-    link->get_our_address(&this->addrInfo);
-    // override ip and port
-    this->addrInfo.ip   = *publicAddr.addr6();
-    this->addrInfo.port = publicAddr.port();
-    llarp::LogInfo("Loaded our public ", publicAddr, " override into RC!");
-    // we need the link to set the pubkey
-    llarp_ai_list_pushback(rc.addrs, &this->addrInfo);
+    if(link->GetOurAddressInfo(this->addrInfo))
+    {
+      // override ip and port
+      this->addrInfo.ip   = *publicAddr.addr6();
+      this->addrInfo.port = publicAddr.port();
+      llarp::LogInfo("Loaded our public ", publicAddr, " override into RC!");
+      // we need the link to set the pubkey
+      rc.addrs.push_back(this->addrInfo);
+    }
   }
   // set public encryption key
-  llarp_rc_set_pubenckey(&rc, llarp::seckey_topublic(encryption));
-
-  char ftmp[68]      = {0};
-  const char *hexKey = llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(
-      llarp::seckey_topublic(encryption), ftmp);
-  llarp::LogInfo("Your Encryption pubkey ", hexKey);
+  rc.enckey = llarp::seckey_topublic(encryption);
+  llarp::LogInfo("Your Encryption pubkey ", rc.enckey);
   // set public signing key
-  llarp_rc_set_pubsigkey(&rc, llarp::seckey_topublic(identity));
-  hexKey = llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(
-      llarp::seckey_topublic(identity), ftmp);
-  llarp::LogInfo("Your Identity pubkey ", hexKey);
+  rc.pubkey = llarp::seckey_topublic(identity);
+  llarp::LogInfo("Your Identity pubkey ", rc.pubkey);
 
-  llarp_rc_sign(&crypto, identity, &rc);
+  llarp::LogInfo("Signing rc...");
+  if(!rc.Sign(&crypto, identity))
+  {
+    llarp::LogError("failed to sign rc");
+    return;
+  }
 
   if(!SaveRC())
   {
@@ -762,7 +664,7 @@ llarp_router::Run()
   }
 
   llarp::LogDebug("starting outbound link");
-  if(!outboundLink->start_link(logic))
+  if(!outboundLink->Start(logic))
   {
     llarp::LogWarn("outbound link failed to start");
   }
@@ -770,15 +672,15 @@ llarp_router::Run()
   int IBLinksStarted = 0;
 
   // start links
-  for(auto link : inboundLinks)
+  for(const auto &link : inboundLinks)
   {
-    if(link->start_link(logic))
+    if(link->Start(logic))
     {
-      llarp::LogDebug("Link ", link->name(), " started");
+      llarp::LogDebug("Link ", link->Name(), " started");
       IBLinksStarted++;
     }
     else
-      llarp::LogWarn("Link ", link->name(), " failed to start");
+      llarp::LogWarn("Link ", link->Name(), " failed to start");
   }
 
   if(IBLinksStarted > 0)
@@ -829,29 +731,25 @@ llarp_router::InitOutboundLink()
   if(outboundLink)
     return true;
 
-  llarp_iwp_args args = {
-      &crypto, logic, tp, this, transport_keyfile.string(),
-  };
+  auto link = llarp::utp::NewServer(this);
 
-  auto link = new llarp_link(args);
+  if(!link->EnsureKeys(transport_keyfile.string().c_str()))
+  {
+    llarp::LogError("failed to load ", transport_keyfile);
+    return false;
+  }
 
   auto afs = {AF_INET, AF_INET6};
 
-  if(link)
+  for(auto af : afs)
   {
-    llarp::LogInfo("outbound link initialized");
-    for(auto af : afs)
+    if(link->Configure(netloop, "*", af, 0))
     {
-      if(link->configure(netloop, "*", af, 0))
-      {
-        outboundLink = link;
-        llarp::LogInfo("outbound link ready");
-        return true;
-      }
+      outboundLink = std::move(link);
+      llarp::LogInfo("outbound link ready");
+      return true;
     }
   }
-  delete link;
-  llarp::LogError("failed to initialize outbound link");
   return false;
 }
 
@@ -877,7 +775,7 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
 #else
     router->disk = llarp_init_threadpool(1, "llarp-diskio");
 #endif
-    llarp_crypto_libsodium_init(&router->crypto);
+    llarp_crypto_init(&router->crypto);
   }
   return router;
 }
@@ -905,181 +803,11 @@ llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb)
   router->Run();
 }
 
-bool
-llarp_router_try_connect(struct llarp_router *router, struct llarp_rc *remote,
-                         uint16_t numretries)
-{
-  char ftmp[68] = {0};
-  const char *hexname =
-      llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(remote->pubkey, ftmp);
-
-  // do we already have a pending job for this remote?
-  if(router->HasPendingConnectJob(remote->pubkey))
-  {
-    llarp::LogDebug("We have pending connect jobs to ", hexname);
-    return false;
-  }
-  // try first address only
-  llarp_ai addr;
-  if(llarp_ai_list_index(remote->addrs, 0, &addr))
-  {
-    auto link = router->outboundLink;
-    auto itr  = router->pendingEstablishJobs.insert(
-        std::make_pair(remote->pubkey, llarp_link_establish_job()));
-    auto job = &itr.first->second;
-    llarp_ai_copy(&job->ai, &addr);
-    memcpy(job->pubkey, remote->pubkey, PUBKEYSIZE);
-    job->retries = numretries;
-    job->timeout = 10000;
-    job->result  = &llarp_router::on_try_connect_result;
-    // give router as user pointer
-    job->user = router;
-    // try establishing
-    link->try_establish(job);
-    return true;
-  }
-  llarp::LogWarn("couldn't get first address for ", hexname);
-  return false;
-}
-
-void
-llarp_rc_clear(struct llarp_rc *rc)
-{
-  // zero out router contact
-  llarp::Zero(rc, sizeof(llarp_rc));
-}
-
-void
-llarp_rc_set_pubenckey(struct llarp_rc *rc, const uint8_t *pubenckey)
-{
-  // set public encryption key
-  memcpy(rc->enckey, pubenckey, PUBKEYSIZE);
-}
-
-void
-llarp_rc_set_pubsigkey(struct llarp_rc *rc, const uint8_t *pubsigkey)
-{
-  // set public signing key
-  memcpy(rc->pubkey, pubsigkey, PUBKEYSIZE);
-}
-
-void
-llarp_rc_set_pubkey(struct llarp_rc *rc, const uint8_t *pubenckey,
-                    const uint8_t *pubsigkey)
-{
-  // set public encryption key
-  llarp_rc_set_pubenckey(rc, pubenckey);
-  // set public signing key
-  llarp_rc_set_pubsigkey(rc, pubsigkey);
-}
-
-bool
-llarp_rc_read(const char *fpath, llarp_rc *result)
-{
-  fs::path our_rc_file(fpath);
-  std::error_code ec;
-  if(!fs::exists(our_rc_file, ec))
-  {
-    printf("File[%s] not found\n", fpath);
-    return false;
-  }
-
-  std::ifstream f(our_rc_file.string(), std::ios::binary);
-
-  if(!f.is_open())
-  {
-    printf("Can't open file [%s]\n", fpath);
-    return false;
-  }
-  byte_t tmp[MAX_RC_SIZE];
-  llarp_buffer_t buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-  f.seekg(0, std::ios::end);
-  size_t sz = f.tellg();
-  f.seekg(0, std::ios::beg);
-
-  if(sz > buf.sz)
-    return false;
-
-  f.read((char *)buf.base, sz);
-  // printf("contents[%s]\n", tmpc);
-  llarp::Zero(result, sizeof(llarp_rc));
-  if(!llarp_rc_bdecode(result, &buf))
-  {
-    llarp::LogError("Can't decode ", fpath);
-    return false;
-  }
-  return true;
-}
-
-bool
-llarp_rc_addr_list_iter(struct llarp_ai_list_iter *iter, struct llarp_ai *ai)
-{
-  struct llarp_rc *rc = (llarp_rc *)iter->user;
-  llarp_ai_list_pushback(rc->addrs, ai);
-  return true;
-}
-
-void
-llarp_rc_set_addrs(struct llarp_rc *rc, struct llarp_alloc *mem,
-                   struct llarp_ai_list *addr)
-{
-  rc->addrs = llarp_ai_list_new();
-  struct llarp_ai_list_iter ai_itr;
-  ai_itr.user  = rc;
-  ai_itr.visit = &llarp_rc_addr_list_iter;
-  llarp_ai_list_iterate(addr, &ai_itr);
-}
-
-bool
-llarp_rc_write(struct llarp_rc *rc, const char *fpath)
-{
-  fs::path our_rc_file(fpath);
-  byte_t tmp[MAX_RC_SIZE];
-  auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-
-  if(llarp_rc_bencode(rc, &buf))
-  {
-    std::ofstream f(our_rc_file.string(), std::ios::binary);
-    if(f.is_open())
-    {
-      f.write((char *)buf.base, buf.cur - buf.base);
-      return true;
-    }
-  }
-  return false;
-}
-
-void
-llarp_rc_sign(llarp_crypto *crypto, const byte_t *seckey, struct llarp_rc *rc)
-{
-  byte_t buf[MAX_RC_SIZE];
-  auto signbuf = llarp::StackBuffer< decltype(buf) >(buf);
-  // zero out previous signature
-  llarp::Zero(rc->signature, sizeof(rc->signature));
-  // encode
-  if(llarp_rc_bencode(rc, &signbuf))
-  {
-    // sign
-    signbuf.sz = signbuf.cur - signbuf.base;
-    crypto->sign(rc->signature, seckey, signbuf);
-  }
-}
-
 void
 llarp_stop_router(struct llarp_router *router)
 {
   if(router)
     router->Close();
-}
-
-void
-llarp_router_iterate_links(struct llarp_router *router,
-                           struct llarp_router_link_iter i)
-{
-  for(auto link : router->inboundLinks)
-    if(!i.visit(&i, router, link))
-      return;
-  i.visit(&i, router, router->outboundLink);
 }
 
 void
@@ -1090,14 +818,6 @@ llarp_free_router(struct llarp_router **router)
     delete *router;
   }
   *router = nullptr;
-}
-
-void
-llarp_router_override_path_selection(struct llarp_router *router,
-                                     llarp_pathbuilder_select_hop_func func)
-{
-  if(func)
-    router->selectHopFunc = func;
 }
 
 bool
@@ -1130,7 +850,7 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
 // C++ ...
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
-                             llarp::SecretKey *encryption)
+                             llarp::SecretKey &encryption)
 {
   llarp::LogDebug("find or create ", fpath);
   fs::path path(fpath);
@@ -1138,18 +858,18 @@ llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
   if(!fs::exists(path, ec))
   {
     llarp::LogInfo("generating new encryption key");
-    crypto->encryption_keygen(*encryption);
+    crypto->encryption_keygen(encryption);
     std::ofstream f(path.string(), std::ios::binary);
     if(f.is_open())
     {
-      f.write((char *)encryption, SECKEYSIZE);
+      f.write((char *)encryption.data(), SECKEYSIZE);
     }
   }
 
   std::ifstream f(path.string(), std::ios::binary);
   if(f.is_open())
   {
-    f.read((char *)encryption, SECKEYSIZE);
+    f.read((char *)encryption.data(), SECKEYSIZE);
     return true;
   }
   llarp::LogInfo("failed to get encryption key");
@@ -1198,51 +918,36 @@ namespace llarp
       proto = std::atoi(val);
     }
 
-    struct llarp_link *link = nullptr;
     if(StrEq(section, "bind"))
     {
       if(!StrEq(key, "*"))
       {
-        llarp_iwp_args args = {
-            &self->crypto,
-            self->logic,
-            self->tp,
-            self,
-            self->transport_keyfile.string(),
-        };
-        llarp::LogInfo("interface specific binding activated");
-        link = new llarp_link(args);
-
-        if(link)
+        auto server = llarp::utp::NewServer(self);
+        if(!server->EnsureKeys(self->transport_keyfile.string().c_str()))
         {
-          llarp::LogInfo("link ", key, " initialized");
-          if(link->configure(self->netloop, key, af, proto))
+          llarp::LogError("failed to ensure keyfile ", self->transport_keyfile);
+          return;
+        }
+        if(server->Configure(self->netloop, key, af, proto))
+        {
+          self->AddInboundLink(server);
+          return;
+        }
+        if(af == AF_INET6)
+        {
+          // we failed to configure IPv6
+          // try IPv4
+          llarp::LogInfo("link ", key,
+                         " failed to configure IPv6, trying IPv4");
+          af = AF_INET;
+          if(server->Configure(self->netloop, key, af, proto))
           {
-            self->AddInboundLink(link);
+            self->AddInboundLink(server);
             return;
           }
-          if(af == AF_INET6)
-          {
-            // we failed to configure IPv6
-            // try IPv4
-            llarp::LogInfo("link ", key,
-                           " failed to configure IPv6, trying IPv4");
-            af = AF_INET;
-            if(link->configure(self->netloop, key, af, proto))
-            {
-              self->AddInboundLink(link);
-              return;
-            }
-          }
         }
-        else
-        {
-          llarp::LogError("link ", key, " failed to initialize. Link state",
-                          link);
-        }
+        llarp::LogError("Failed to set up curvecp link");
       }
-      llarp::LogError("link ", key,
-                      " failed to configure. (Note: We don't support * yet)");
     }
     else if(StrEq(section, "services"))
     {
@@ -1266,13 +971,9 @@ namespace llarp
     {
       if(StrEq(key, "nickname"))
       {
-        if(llarp_rc_set_nickname(&self->rc, val))
-        {
-          // set logger name here
-          _glog.nodeName = self->rc.Nick();
-        }
-        else
-          llarp::LogWarn("failed to set nickname to ", val);
+        self->rc.SetNick(val);
+        // set logger name here
+        _glog.nodeName = self->rc.Nick();
       }
       if(StrEq(key, "encryption-privkey"))
       {
@@ -1314,5 +1015,5 @@ namespace llarp
         self->publicOverride   = true;
       }
     }
-  }
+  }  // namespace llarp
 }  // namespace llarp

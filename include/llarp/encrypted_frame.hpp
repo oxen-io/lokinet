@@ -33,11 +33,11 @@ namespace llarp
     EncryptedFrame&
     operator=(const EncryptedFrame& other)
     {
-      if(_data)
-        delete[] _data;
-      _sz   = other._sz;
-      _data = new byte_t[_sz];
-      memcpy(_data, other._data, _sz);
+      if(other._sz <= MAX_SIZE)
+      {
+        _sz = other._sz;
+        memcpy(_data, other._data, _sz);
+      }
       return *this;
     }
 

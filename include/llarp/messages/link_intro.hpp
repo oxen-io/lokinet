@@ -1,17 +1,26 @@
 #ifndef LLARP_MESSAGES_LINK_INTRO_HPP
 #define LLARP_MESSAGES_LINK_INTRO_HPP
 #include <llarp/link_message.hpp>
+#include <llarp/router_contact.hpp>
 namespace llarp
 {
+  struct ILinkSession;
+
   struct LinkIntroMessage : public ILinkMessage
   {
-    LinkIntroMessage(llarp_rc* rc) : ILinkMessage(), RC(rc)
+    LinkIntroMessage() : ILinkMessage()
+    {
+    }
+
+    LinkIntroMessage(ILinkSession* s) : ILinkMessage(s)
     {
     }
 
     ~LinkIntroMessage();
 
-    llarp_rc* RC;
+    RouterContact rc;
+
+    KeyExchangeNonce N;
 
     bool
     DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);

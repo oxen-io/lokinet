@@ -5,12 +5,15 @@
 #include <llarp/buffer.h>
 #include <sodium.h>
 #include <vector>
+#include <stdexcept>
 
 namespace llarp
 {
   /// encrypted buffer base type
   struct Encrypted
   {
+    static const size_t MAX_SIZE = (1024 * 8);
+
     Encrypted(Encrypted&&) = delete;
     Encrypted(const Encrypted& other);
     Encrypted();
@@ -31,15 +34,13 @@ namespace llarp
     }
 
     Encrypted&
-    operator=(llarp_buffer_t buf)
+    operator=(const llarp_buffer_t& buf)
     {
-      if(_data)
-        delete[] _data;
-      _data = nullptr;
-      _sz   = buf.sz;
+      if(buf.sz > MAX_SIZE)
+        return *this;
+      _sz = buf.sz;
       if(_sz)
       {
-        _data = new byte_t[_sz];
         memcpy(_data, buf.base, _sz);
       }
       UpdateBuffer();
@@ -57,7 +58,7 @@ namespace llarp
     void
     Randomize()
     {
-      if(_data && _sz)
+      if(_sz)
         randombytes(_data, _sz);
     }
 
@@ -69,10 +70,9 @@ namespace llarp
         return false;
       if(strbuf.sz == 0)
         return false;
-      if(_data)
-        delete[] _data;
-      _sz   = strbuf.sz;
-      _data = new byte_t[_sz];
+      if(strbuf.sz > MAX_SIZE)
+        return false;
+      _sz = strbuf.sz;
       memcpy(_data, strbuf.base, _sz);
       UpdateBuffer();
       return true;
@@ -116,8 +116,8 @@ namespace llarp
       m_Buffer.cur  = data();
       m_Buffer.sz   = size();
     }
-    byte_t* _data = nullptr;
-    size_t _sz    = 0;
+    byte_t _data[MAX_SIZE];
+    size_t _sz = 0;
     llarp_buffer_t m_Buffer;
   };
 }  // namespace llarp

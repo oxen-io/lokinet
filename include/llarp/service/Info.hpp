@@ -18,7 +18,8 @@ namespace llarp
      public:
       ServiceInfo() = default;
 
-      ServiceInfo(const ServiceInfo&& other)
+      ServiceInfo(ServiceInfo&& other) = delete;
+      /*
       {
         enckey       = std::move(other.enckey);
         signkey      = std::move(other.signkey);
@@ -26,14 +27,15 @@ namespace llarp
         vanity       = std::move(other.vanity);
         m_CachedAddr = std::move(other.m_CachedAddr);
       }
+      */
 
       ServiceInfo(const ServiceInfo& other)
+          : enckey(other.enckey)
+          , signkey(other.signkey)
+          , vanity(other.vanity)
+          , m_CachedAddr(other.m_CachedAddr)
       {
-        enckey       = other.enckey;
-        signkey      = other.signkey;
-        version      = other.version;
-        vanity       = other.vanity;
-        m_CachedAddr = other.m_CachedAddr;
+        version = other.version;
       }
 
       void

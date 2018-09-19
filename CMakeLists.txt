@@ -19,7 +19,7 @@ else()
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
 endif()
 
-option(HAVE_CXX17_FILESYSTEM "Enable if your C++ compiler and runtime library implements std::[experimental::]filesystem" OFF)
+option(HAVE_CXX17_FILESYSTEM "Disable if your C++ compiler and runtime library lacks std::[experimental::]filesystem" ON)
 
 if(COMPILER_SUPPORTS_CXX11 AND NOT HAVE_CXX17_FILESYSTEM)
   add_cxxflags("-std=c++11")
@@ -33,6 +33,8 @@ elseif(COMPILER_SUPPORTS_CXX17 AND HAVE_CXX17_FILESYSTEM)
 else()
   message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 or C++17 support. Please use a different C++ compiler.")
 endif()
+
+add_cxxflags("-fpermissive")
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
@@ -144,7 +146,14 @@ else()
   )
 endif()
 
-set(LIBS ${SODIUM_LIB} ${THREAD_LIB})
+if(JEMALLOC)
+  set(MALLOC_LIB jemalloc)
+endif()
+
+set(LIBS ${SODIUM_LIB} ${THREAD_LIB} ${MALLOC_LIB})
+if(HAVE_CXX17_FILESYSTEM)
+  set(LIBS ${LIBS} stdc++fs)
+endif()
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
@@ -155,7 +164,8 @@ set(TT_ROOT vendor/libtuntap-master)
 add_definitions(-D${CMAKE_SYSTEM_NAME})
 
 if (UNIX)
-add_definitions(-DUNIX)
+  add_definitions(-DUNIX)
+  add_definitions(-DPOSIX)
 endif()
 
 if(UNIX)
@@ -179,6 +189,7 @@ if(UNIX)
 elseif(WIN32 OR MINGW)
     set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c)
     add_definitions(-DWIN32_LEAN_AND_MEAN)
+    add_definitions(-DWIN32)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif(UNIX)
@@ -189,7 +200,7 @@ set(LIBTUNTAP_SRC_BASE
   ${TT_ROOT}/tuntap_log.cpp
   ${LIBTUNTAP_IMPL})
   if (UNIX)
-  set(LIBTUNTAP_SRC 
+  set(LIBTUNTAP_SRC
     ${TT_ROOT}/tuntap-unix.c
     ${LIBTUNTAP_SRC_BASE})
   endif()
@@ -250,7 +261,7 @@ set(LIB_PLATFORM_SRC
   ${ANDROID_PLATFORM_SRC}
 # process isolation implementation
   ${ISOLATE_PROC_SRC}
-# tun   
+# tun
   ${LIBTUNTAP_SRC}
 # win32 inline procs
   llarp/win32_inet.c
@@ -305,7 +316,24 @@ set(NTRU_SRC
   crypto/libntrup/src/ntru.cpp
 )
 
-set(LIB_SRC 
+
+set(UTP_SRC
+  libutp/utp_callbacks.cpp
+  libutp/utp_utils.cpp
+  libutp/utp_internal.cpp
+  libutp/utp_api.cpp
+  libutp/utp_packedsockaddr.cpp
+  libutp/utp_hash.cpp
+)
+
+
+if(WIN32)
+  set(UTP_SRC ${UTP_SRC} libutp/libutp_inet_ntop.cpp)
+endif()
+
+
+set(LIB_SRC
+  ${UTP_SRC}
   ${NTRU_SRC}
   llarp/address_info.cpp
   llarp/bencode.cpp
@@ -331,7 +359,6 @@ set(LIB_SRC
   llarp/pathbuilder.cpp
   llarp/pathset.cpp
   llarp/proofofwork.cpp
-  llarp/relay_ack.cpp
   llarp/relay_commit.cpp
   llarp/relay_up_down.cpp
   llarp/router_contact.cpp
@@ -346,16 +373,11 @@ set(LIB_SRC
   llarp/dht/find_router.cpp
   llarp/dht/got_intro.cpp
   llarp/dht/got_router.cpp
-  llarp/dht/search_job.cpp
   llarp/dht/publish_intro.cpp
   llarp/handlers/tun.cpp
-  llarp/iwp/frame_header.cpp
-  llarp/iwp/frame_state.cpp
-  llarp/iwp/session.cpp
-  llarp/iwp/server.cpp
-  llarp/iwp/transit_message.cpp
-  llarp/iwp/xmit.cpp
-  llarp/link/encoder.cpp
+  llarp/link/curvecp.cpp
+  llarp/link/server.cpp
+  llarp/link/utp.cpp
   llarp/routing/dht_message.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp
@@ -369,6 +391,10 @@ set(LIB_SRC
   llarp/service/tag.cpp
   llarp/service/info.cpp
 
+)
+
+set(RC_SRC
+  daemon/rcutil.cpp
 )
 
 set(DNS_SRC
@@ -399,7 +425,7 @@ set(CLIENT_SRC
   client/main.cpp
 )
 
-set(ALL_SRC ${CLIENT_SRC} daemon/rcutil.cpp ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC} ${CPP_BACKPORT_SRC})
+set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC} ${CPP_BACKPORT_SRC})
 
 foreach(F ${ALL_SRC})
 set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
@@ -408,11 +434,15 @@ endforeach(F)
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
 set(STATIC_LIB ${LIB}-static)
+set(BACKPORT_LIB ${LIB}-backport)
+set(PLATFORM_LIB ${LIB}-platform)
+set(ANDROID_LIB ${LIB}android)
 
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
+# Neuro Linux box hack:
 include_directories(/usr/local/include)
 include_directories(${sodium_INCLUDE_DIR})
 
@@ -421,15 +451,19 @@ include_directories(contrib/msc/include)
 link_directories(contrib/msc/lib)
 endif()
 
+set(RC_EXE rcutil)
+set(DNS_EXE dns)
+
+
 if(SHADOW)
   add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC})
   target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
   install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
-  add_executable(rcutil daemon/rcutil.cpp)
+  add_executable(${RC_EXE} ${RC_SRC})
   add_executable(${EXE} ${EXE_SRC})
   add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-  add_executable(dns ${DNS_SRC})
+  add_executable(${DNS_EXE} ${DNS_SRC})
 
 
   if(NOT WIN32)
@@ -441,57 +475,57 @@ else()
   if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
     if(NOT HAVE_CXX17_FILESYSTEM)
-      add_library(backport-static STATIC ${CPP_BACKPORT_SRC})
+      add_library(${BACKPORT_LIB} STATIC ${CPP_BACKPORT_SRC})
     endif(NOT HAVE_CXX17_FILESYSTEM)
-    add_library(llarpplatform-static STATIC ${LIB_PLATFORM_SRC})
-    target_link_libraries(llarpplatform-static ${THREAD_LIB})
+    add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
+    target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB})
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-      target_link_libraries(llarpplatform-static -lcap)
+      target_link_libraries(${PLATFORM_LIB} -lcap)
     endif()
     if(NOT HAVE_CXX17_FILESYSTEM)
-      target_link_libraries(${STATIC_LIB} ${LIBS} backport-static llarpplatform-static)
+      target_link_libraries(${STATIC_LIB} ${LIBS} ${PLATFORM_LIB} ${BACKPORT_LIB})
     else()
-      target_link_libraries(${STATIC_LIB} ${LIBS} llarpplatform-static)
+      target_link_libraries(${STATIC_LIB} ${LIBS} ${PLATFORM_LIB})
     endif(NOT HAVE_CXX17_FILESYSTEM)
     if(NOT WITH_SHARED)
       if(NOT HAVE_CXX17_FILESYSTEM)
-        target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static)
-        target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static)
-        target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static)
+        target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
+        target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
+        target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
         if (MINGW)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static ws2_32 stdc++fs iphlpapi)
+          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
+          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
+          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
         elseif(WIN32)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static ws2_32 iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static ws2_32 iphlpapi)
-          target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB} backport-static llarpplatform-static ws2_32 iphlpapi)
+          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         endif(MINGW)
       else()
-        target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static)
-        target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static)
-        target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static)
+        target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
+        target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
+        target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
         if (MINGW)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static ws2_32 stdc++fs iphlpapi)
+          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
+          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
+          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
         elseif(WIN32)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static ws2_32 iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static ws2_32 iphlpapi)
-          target_link_libraries(rcutil ${STATIC_LINK_LIBS} ${STATIC_LIB} llarpplatform-static ws2_32 iphlpapi)
+          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         endif(MINGW)
       endif(NOT HAVE_CXX17_FILESYSTEM)
       if (MINGW)
-        target_link_libraries(dns ${STATIC_LIB} llarpplatform-static ${THREAD_LIB} ws2_32 stdc++fs iphlpapi)
+        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 stdc++fs iphlpapi)
       elseif(WIN32)
-        target_link_libraries(dns ${STATIC_LIB} llarpplatform-static ${THREAD_LIB} ws2_32 iphlpapi)
+        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 iphlpapi)
       endif(MINGW)
-      target_link_libraries(dns ${STATIC_LIB} llarpplatform-static ${THREAD_LIB})
+      target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB})
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)
   if(ANDROID)
-    add_library(lokinetandroid SHARED jni/lokinet_android.cpp)
-    target_link_libraries(lokinetandroid ${STATIC_LIB} ${LIBS} log)
+    add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
+    target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS} log)
   endif()
 
   if(WITH_SHARED)
@@ -506,7 +540,7 @@ else()
     endif(MINGW)
     target_link_libraries(${SHARED_LIB} ${LIBS} ${THREAD_LIB})
     target_link_libraries(${EXE} ${SHARED_LIB})
-    target_link_libraries(rcutil ${SHARED_LIB})
-    target_link_libraries(dns ${SHARED_LIB} ${THREAD_LIB})
+    target_link_libraries(${RC_EXE} ${SHARED_LIB})
+    target_link_libraries(${DNS_EXE} ${SHARED_LIB} ${THREAD_LIB})
   endif(WITH_SHARED)
 endif(SHADOW)

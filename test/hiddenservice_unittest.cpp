@@ -8,7 +8,7 @@ struct HiddenServiceTest : public ::testing::Test
 
   HiddenServiceTest()
   {
-    llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
   }
 
   llarp_crypto*

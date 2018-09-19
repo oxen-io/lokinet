@@ -19,8 +19,9 @@ namespace llarp
     }
 
     bool
-    GotIntroMessage::HandleMessage(llarp_dht_context *ctx,
-                                   std::vector< IMessage * > &replies) const
+    GotIntroMessage::HandleMessage(
+        llarp_dht_context *ctx,
+        std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht   = ctx->impl;
       auto crypto = &dht.router->crypto;
@@ -36,27 +37,28 @@ namespace llarp
           return false;
         }
       }
-      auto pending = dht.FindPendingTX(From, T);
-      if(pending)
+      TXOwner owner(From, T);
+      auto tagLookup = dht.pendingTagLookups.GetPendingLookupFrom(owner);
+      if(tagLookup)
       {
-        if(pending->FoundIntros(I))
-        {
-          dht.RemovePendingTX(From, T);
-          llarp::LogInfo("removed pending tx from ", From, " txid=", T);
-        }
+        dht.pendingTagLookups.Inform(owner, tagLookup->target, I);
         return true;
       }
-      else
+      auto serviceLookup =
+          dht.pendingIntrosetLookups.GetPendingLookupFrom(owner);
+      if(serviceLookup)
       {
-        llarp::LogWarn("got GIM from ", From,
-                       " with no previous pending transaction, txid=", T);
-        return false;
+        dht.pendingIntrosetLookups.Inform(owner, serviceLookup->target, I);
+        return true;
       }
+      llarp::LogError("no pending TX for GIM from ", From, " txid=", T);
+      return false;
     }
 
     bool
     RelayedGotIntroMessage::HandleMessage(
-        llarp_dht_context *ctx, std::vector< IMessage * > &replies) const
+        llarp_dht_context *ctx,
+        std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       // TODO: implement me better?
       auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);

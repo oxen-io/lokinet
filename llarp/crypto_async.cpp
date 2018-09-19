@@ -1,6 +1,6 @@
 #include <llarp/crypto_async.h>
 #include <llarp/mem.h>
-#include <llarp/router_contact.h>
+#include <llarp/router_contact.hpp>
 #include <string.h>
 #include <llarp/crypto.hpp>
 #include <llarp/router_id.hpp>
@@ -17,22 +17,6 @@ struct llarp_async_iwp
 
 namespace iwp
 {
-  void
-  inform_keygen(void *user)
-  {
-    iwp_async_keygen *keygen = static_cast< iwp_async_keygen * >(user);
-    keygen->hook(keygen);
-  }
-
-  void
-  keygen(void *user)
-  {
-    iwp_async_keygen *keygen = static_cast< iwp_async_keygen * >(user);
-    keygen->iwp->crypto->encryption_keygen(keygen->keybuf);
-    keygen->hook(keygen);
-    // llarp_logic_queue_job(keygen->iwp->logic, job);
-  }
-
   void
   inform_intro(void *user)
   {
@@ -67,7 +51,7 @@ namespace iwp
 
     llarp::SymmNonce n;
     // copy nonce
-    memcpy(n, intro->nonce, 24);
+    memcpy(n, intro->nonce, 32); // was 24 bytes
     char ftmpN[68] = {0};
     const char *hexN =
         llarp::HexEncode< llarp::SymmNonce, decltype(ftmpN) >(n, ftmpN);
@@ -84,6 +68,9 @@ namespace iwp
     const char *hexEk =
         llarp::HexEncode< llarp::ShortHash, decltype(ftmpEk) >(e_k, ftmpEk);
     llarp::LogDebug("gen_intro e_k       ", hexEk, " used ", strlen(hexEk));
+
+    // put nonce
+    memcpy(intro->buf + 32, intro->nonce, 32);
 
     // e = SE(a.k, e_k, n[0:24])
     memcpy(intro->buf + 64, llarp::seckey_topublic(intro->secretkey), 32);
@@ -145,7 +132,10 @@ namespace iwp
     buf.base = intro->remote_pubkey;
     buf.cur  = buf.base;
     buf.sz   = 32;
-    memcpy(intro->remote_pubkey, intro->buf + 64, 32);
+
+    // was using remote_pubkey directly (use buffer wrapper? directly?)
+    //memcpy(intro->remote_pubkey, intro->buf + 64, 32);
+    memcpy(buf.base, intro->buf + 64, 32);
 
     crypto->xchacha20(buf, e_K, intro->nonce);
     llarp::LogInfo("handshake from ", llarp::RouterID(intro->remote_pubkey));
@@ -174,6 +164,7 @@ namespace iwp
     {
       llarp::LogWarn("intro HMAC failure");
       // hmac fail
+      delete[] intro->buf;
       intro->buf = nullptr;
     }
     // inform result
@@ -197,13 +188,13 @@ namespace iwp
     llarp::ShortHash digest;
     llarp::SharedSecret sharedkey;
 
-    auto hmac      = introack->buf;
-    auto body      = introack->buf + 32;
-    auto pubkey    = introack->remote_pubkey;
-    auto secretkey = introack->secretkey;
-    auto nonce     = introack->buf + 32;
-    auto token     = introack->buf + 64;
-    size_t bodysz  = introack->sz - 32;
+    auto hmac         = introack->buf;
+    auto body         = introack->buf + 32;
+    const auto pubkey = introack->remote_pubkey;
+    auto secretkey    = introack->secretkey;
+    auto nonce        = introack->buf + 32;
+    auto token        = introack->buf + 64;
+    size_t bodysz     = introack->sz - 32;
     llarp_buffer_t buf;
     buf.base = body;
     buf.cur  = body;
@@ -238,10 +229,10 @@ namespace iwp
   {
     iwp_async_introack *introack = static_cast< iwp_async_introack * >(user);
     llarp::SharedSecret sharedkey;
-    auto crypto    = introack->iwp->crypto;
-    auto pubkey    = introack->remote_pubkey;
-    auto secretkey = introack->secretkey;
-    auto nonce     = introack->nonce;
+    auto crypto       = introack->iwp->crypto;
+    const auto pubkey = introack->remote_pubkey;
+    auto secretkey    = introack->secretkey;
+    auto nonce        = introack->nonce;
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_server(sharedkey, pubkey, secretkey, nonce);
 
@@ -284,11 +275,11 @@ namespace iwp
     auto encrypt   = crypto->xchacha20;
 
     // auto logic = session->iwp->logic;
-    auto a_sK  = session->secretkey;
-    auto b_K   = session->remote_pubkey;
-    auto N     = session->nonce;
-    auto token = session->token;
-    auto K     = session->sessionkey;
+    auto a_sK      = session->secretkey;
+    const auto b_K = session->remote_pubkey;
+    auto N         = session->nonce;
+    auto token     = session->token;
+    auto K         = session->sessionkey;
 
     llarp::SharedSecret e_K;
     llarp::ShortHash T;
@@ -317,7 +308,7 @@ namespace iwp
     buf.sz   = session->sz - 32;
     hmac(session->buf, buf, e_K);
     // session->hook(session);
-    llarp_logic_queue_job(logic, {user, &inform_session_start});
+    llarp_logic_queue_job(logic, {session, &inform_session_start});
   }
 
   void
@@ -386,7 +377,7 @@ namespace iwp
     else  // hmac fail
       session->buf = nullptr;
     // session->hook(session);
-    llarp_logic_queue_job(logic, {user, &inform_session_start});
+    llarp_logic_queue_job(logic, {session, &inform_session_start});
   }
 
   void
@@ -416,14 +407,6 @@ namespace iwp
     delete frame;
   }
 }  // namespace iwp
-
-void
-iwp_call_async_keygen(struct llarp_async_iwp *iwp,
-                      struct iwp_async_keygen *keygen)
-{
-  keygen->iwp = iwp;
-  llarp_threadpool_queue_job(iwp->worker, {keygen, &iwp::keygen});
-}
 
 bool
 iwp_decrypt_frame(struct iwp_async_frame *frame)

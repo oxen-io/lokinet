@@ -158,7 +158,6 @@ namespace ini
   {
     char buf[256];
     sprintf(buf, "%s on line #%zu", s, ln_);
-    throw std::runtime_error(buf);
   }
 
   inline std::string
@@ -178,10 +177,10 @@ namespace ini
 
   inline Parser::Parser(const char *fn) : f0_(fn), f_(&f0_), ln_(0)
   {
-    if(!f0_)
-      throw std::runtime_error(std::string("failed to open file: ") + fn);
-
-    parse(top_);
+    if(f0_)
+    {
+      parse(top_);
+    }
   }
 
   inline void

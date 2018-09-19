@@ -180,7 +180,6 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   {
     struct kevent events[1024];
     int result;
-    byte_t readbuf[2048];
     timespec t;
     t.tv_sec  = 0;
     t.tv_nsec = ms * 1000UL;
@@ -208,7 +207,6 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     t.tv_nsec = 1000UL * EV_TICK_INTERVAL;
     struct kevent events[1024];
     int result;
-    byte_t readbuf[2048];
     do
     {
       result = kevent(kqueuefd, nullptr, 0, events, 1024, &t);

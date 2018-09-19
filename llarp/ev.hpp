@@ -13,6 +13,10 @@
 #define MAX_WRITE_QUEUE_SIZE 1024
 #endif
 
+#ifndef EV_READ_BUF_SZ
+#define EV_READ_BUF_SZ (4 * 1024)
+#endif
+
 namespace llarp
 {
   struct ev_io
@@ -40,9 +44,9 @@ namespace llarp
     queue_write(const void* data, size_t sz)
     {
       return m_writeq.EmplaceIf(
-          [&](WriteBuffer* pkt) -> bool {
+          [&](WriteBuffer& pkt) -> bool {
             return m_writeq.Size() < MAX_WRITE_QUEUE_SIZE
-                && sz <= sizeof(pkt->buf);
+                && sz <= sizeof(pkt.buf);
           },
           data, sz);
     }
@@ -53,19 +57,16 @@ namespace llarp
     virtual void
     flush_write()
     {
-      m_writeq.ProcessIf([&](WriteBuffer* buffer) -> bool {
+      m_writeq.Process([&](WriteBuffer& buffer) {
       // todo: wtf???
 #ifndef _WIN32
-        if(write(fd, buffer->buf, buffer->bufsz) == -1)
-        {
-          // if we would block we save the entries for later
-          return errno == EWOULDBLOCK || errno == EAGAIN;
-        }
+        write(fd, buffer.buf, buffer.bufsz);
+        // if we would block we save the entries for later
+
         // discard entry
-        return true;
 #else
-        // writefile
-        return false;
+      // writefile
+
 #endif
       });
       /// reset errno
@@ -77,6 +78,8 @@ namespace llarp
       llarp_time_t timestamp = 0;
       size_t bufsz;
       byte_t buf[1500];
+
+      WriteBuffer() = default;
 
       WriteBuffer(const void* ptr, size_t sz)
       {
@@ -92,27 +95,27 @@ namespace llarp
       struct GetTime
       {
         llarp_time_t
-        operator()(const WriteBuffer* w) const
+        operator()(const WriteBuffer& w) const
         {
-          return w->timestamp;
+          return w.timestamp;
         }
       };
 
       struct PutTime
       {
         void
-        operator()(WriteBuffer* w) const
+        operator()(WriteBuffer& w) const
         {
-          w->timestamp = llarp_time_now_ms();
+          w.timestamp = llarp_time_now_ms();
         }
       };
 
       struct Compare
       {
         bool
-        operator()(const WriteBuffer* left, const WriteBuffer* right) const
+        operator()(const WriteBuffer& left, const WriteBuffer& right) const
         {
-          return left->timestamp < right->timestamp;
+          return left.timestamp < right.timestamp;
         }
       };
     };
@@ -136,6 +139,8 @@ namespace llarp
 
 struct llarp_ev_loop
 {
+  byte_t readbuf[EV_READ_BUF_SZ];
+
   virtual bool
   init() = 0;
   virtual int
@@ -151,6 +156,10 @@ struct llarp_ev_loop
   udp_listen(llarp_udp_io* l, const sockaddr* src)
   {
     auto ev = create_udp(l, src);
+    if(ev)
+    {
+      l->fd = ev->fd;
+    }
     return ev && add_ev(ev, false);
   }
 

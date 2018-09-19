@@ -9,7 +9,7 @@ struct llarp_iwp_args
   struct llarp_logic* logic;
   struct llarp_threadpool* cryptoworker;
   struct llarp_router* router;
-  std::string keyfile;
+  bool permitInbound;
 };
 
 #endif

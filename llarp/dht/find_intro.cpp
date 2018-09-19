@@ -87,7 +87,7 @@ namespace llarp
     bool
     FindIntroMessage::HandleMessage(
         llarp_dht_context* ctx,
-        std::vector< llarp::dht::IMessage* >& replies) const
+        std::vector< std::unique_ptr< IMessage > >& replies) const
     {
       if(R > 5)
       {
@@ -95,7 +95,7 @@ namespace llarp
         return false;
       }
       auto& dht = ctx->impl;
-      if((!relayed) && dht.FindPendingTX(From, T))
+      if(dht.pendingIntrosetLookups.HasPendingLookupFrom(TXOwner{From, T}))
       {
         llarp::LogWarn("duplicate FIM from ", From, " txid=", T);
         return false;
@@ -108,9 +108,8 @@ namespace llarp
         const auto introset = dht.GetIntroSetByServiceAddress(S);
         if(introset)
         {
-          llarp::LogInfo("introset found locally");
           service::IntroSet i = *introset;
-          replies.push_back(new GotIntroMessage({i}, T));
+          replies.emplace_back(new GotIntroMessage({i}, T));
           return true;
         }
         else
@@ -118,8 +117,7 @@ namespace llarp
           if(R == 0)
           {
             // we don't have it, reply with a direct reply
-            llarp::LogInfo("dont have intro set and no recursion");
-            replies.push_back(new GotIntroMessage({}, T));
+            replies.emplace_back(new GotIntroMessage({}, T));
             return true;
           }
           else
@@ -136,20 +134,22 @@ namespace llarp
                 if((us ^ target) < (peer ^ target))
                 {
                   // we are not closer than our peer to the target so don't
-                  // revurse
-                  replies.push_back(new GotIntroMessage({}, T));
+                  // recurse farther
+                  replies.emplace_back(new GotIntroMessage({}, T));
                   return true;
                 }
-                else if(R >= 1)
-                  dht.LookupIntroSet(S, From, T, peer, R - 1, exclude);
+                else if(R > 0)
+                  dht.LookupIntroSetRecursive(S, From, T, peer, R - 1);
                 else
-                  dht.LookupIntroSet(S, From, T, peer, 0, exclude);
+                  dht.LookupIntroSetIterative(S, From, T, peer);
               }
+              return true;
             }
             else
             {
               llarp::LogError(
                   "cannot find closer peers for introset lookup for ", S);
+              return true;
             }
           }
         }
@@ -170,16 +170,16 @@ namespace llarp
         }
         else
         {
-          auto introsets = dht.FindRandomIntroSetsWithTag(N);
           if(R == 0)
           {
+            // base case
+            auto introsets = dht.FindRandomIntroSetsWithTagExcluding(N, 2, {});
             std::vector< service::IntroSet > reply;
             for(const auto& introset : introsets)
             {
               reply.push_back(introset);
             }
-            // we are iterative and don't have it, reply with a direct reply
-            replies.push_back(new GotIntroMessage(reply, T));
+            replies.emplace_back(new GotIntroMessage(reply, T));
             return true;
           }
           else
@@ -187,7 +187,7 @@ namespace llarp
             // tag lookup
             if(dht.nodes->GetRandomNodeExcluding(peer, exclude))
             {
-              dht.LookupTag(N, From, T, peer, introsets, R - 1);
+              dht.LookupTagRecursive(N, From, T, peer, R - 1);
             }
           }
         }

@@ -11,7 +11,7 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp_router* r)
-        : llarp_pathbuilder_context(r, r->dht, 2, 4), m_Router(r), m_Name(name)
+        : path::Builder(r, r->dht, 2, 4), m_Router(r), m_Name(name)
     {
       m_Tag.Zero();
     }
@@ -443,7 +443,7 @@ namespace llarp
     Endpoint::CachedTagResult::BuildRequestMessage(uint64_t txid)
     {
       llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-      msg->M.push_back(new llarp::dht::FindIntroMessage(tag, txid));
+      msg->M.emplace_back(new llarp::dht::FindIntroMessage(tag, txid));
       lastRequest = llarp_time_now_ms();
       return msg;
     }
@@ -456,7 +456,7 @@ namespace llarp
       {
         m_CurrentPublishTX = llarp_randint();
         llarp::routing::DHTMessage msg;
-        msg.M.push_back(new llarp::dht::PublishIntroMessage(
+        msg.M.emplace_back(new llarp::dht::PublishIntroMessage(
             m_IntroSet, m_CurrentPublishTX, 4));
         if(path->SendRoutingMessage(&msg, r))
         {
@@ -533,9 +533,7 @@ namespace llarp
       BuildRequestMessage()
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-        auto FIM = new llarp::dht::FindIntroMessage(txid, remote);
-        FIM->R   = 5;
-        msg->M.push_back(FIM);
+        msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 5));
         llarp::LogInfo("build request for ", remote);
         return msg;
       }
@@ -599,8 +597,7 @@ namespace llarp
         job->diskworker            = m_Router->disk;
         job->logic                 = nullptr;
         job->hook                  = nullptr;
-        llarp_rc_clear(&job->rc);
-        llarp_rc_copy(&job->rc, &msg->R[0]);
+        job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
         return true;
       }
@@ -612,14 +609,15 @@ namespace llarp
     {
       if(router.IsZero())
         return;
-      if(!llarp_nodedb_get_rc(m_Router->nodedb, router))
+      RouterContact rc;
+      if(!llarp_nodedb_get_rc(m_Router->nodedb, router, rc))
       {
         if(m_PendingRouters.find(router) == m_PendingRouters.end())
         {
           auto path = GetEstablishedPathClosestTo(router);
           routing::DHTMessage msg;
           auto txid = GenTXID();
-          msg.M.push_back(
+          msg.M.emplace_back(
               new dht::FindRouterMessage({}, dht::Key_t(router), txid));
 
           if(path && path->SendRoutingMessage(&msg, m_Router))
@@ -717,8 +715,7 @@ namespace llarp
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& intro,
                                                Endpoint* parent)
-        : llarp_pathbuilder_context(parent->m_Router, parent->m_Router->dht, 2,
-                                    4)
+        : path::Builder(parent->m_Router, parent->m_Router->dht, 2, 4)
         , currentIntroSet(intro)
         , m_Parent(parent)
 
@@ -981,15 +978,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::OutboundContext::SelectHop(llarp_nodedb* db, llarp_rc* prev,
-                                         llarp_rc* cur, size_t hop)
+    Endpoint::OutboundContext::SelectHop(llarp_nodedb* db,
+                                         const RouterContact& prev,
+                                         RouterContact& cur, size_t hop)
     {
       if(hop == numHops - 1)
       {
-        auto localcopy = llarp_nodedb_get_rc(db, selectedIntro.router);
-        if(localcopy)
+        if(llarp_nodedb_get_rc(db, selectedIntro.router, cur))
         {
-          llarp_rc_copy(cur, localcopy);
           return true;
         }
         else
@@ -1004,7 +1000,7 @@ namespace llarp
         }
       }
       else
-        return llarp_pathbuilder_context::SelectHop(db, prev, cur, hop);
+        return path::Builder::SelectHop(db, prev, cur, hop);
     }
 
     uint64_t

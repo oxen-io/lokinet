@@ -45,14 +45,13 @@ namespace llarp
 
   struct LR_CommitMessage : public ILinkMessage
   {
-    std::vector< EncryptedFrame > frames;
-    uint64_t version;
+    std::array< EncryptedFrame, 8 > frames;
 
     LR_CommitMessage() : ILinkMessage()
     {
     }
 
-    LR_CommitMessage(const RouterID &from) : ILinkMessage(from)
+    LR_CommitMessage(ILinkSession *from) : ILinkMessage(from)
     {
     }
 

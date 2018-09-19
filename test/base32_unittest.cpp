@@ -7,7 +7,7 @@ struct Base32Test : public ::testing::Test
 {
   Base32Test()
   {
-    llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
   }
 
   llarp_crypto crypto;

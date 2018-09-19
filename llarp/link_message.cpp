@@ -1,21 +1,14 @@
-#include <llarp/router_contact.h>
+#include <llarp/router_contact.hpp>
 #include <llarp/messages.hpp>
 #include "buffer.hpp"
-#include "llarp/iwp/session.hpp"
 #include "logger.hpp"
 #include "router.hpp"
 
 namespace llarp
 {
-  ILinkMessage::ILinkMessage(const RouterID& id) : remote(id)
-  {
-  }
-
   InboundMessageParser::InboundMessageParser(llarp_router* _router)
       : router(_router)
   {
-    reader.user   = this;
-    reader.on_key = &OnKey;
   }
 
   bool
@@ -23,11 +16,11 @@ namespace llarp
   {
     InboundMessageParser* handler =
         static_cast< InboundMessageParser* >(r->user);
-    llarp_buffer_t strbuf;
 
     // we are reading the first key
     if(handler->firstkey)
     {
+      llarp_buffer_t strbuf;
       // check for empty dict
       if(!key)
         return false;
@@ -54,42 +47,36 @@ namespace llarp
       switch(*strbuf.cur)
       {
         case 'i':
-          handler->msg =
-              new LinkIntroMessage(handler->from->get_remote_router());
+          handler->msg = std::make_unique< LinkIntroMessage >(handler->from);
           break;
         case 'd':
-          handler->msg = new RelayDownstreamMessage(handler->GetCurrentFrom());
+          handler->msg =
+              std::make_unique< RelayDownstreamMessage >(handler->from);
           break;
         case 'u':
-          handler->msg = new RelayUpstreamMessage(handler->GetCurrentFrom());
+          handler->msg =
+              std::make_unique< RelayUpstreamMessage >(handler->from);
           break;
         case 'm':
-          handler->msg = new DHTImmeidateMessage(handler->GetCurrentFrom());
-          break;
-        case 'a':
-          handler->msg = new LR_AckMessage(handler->GetCurrentFrom());
+          handler->msg = std::make_unique< DHTImmeidateMessage >(handler->from);
           break;
         case 'c':
-          handler->msg = new LR_CommitMessage(handler->GetCurrentFrom());
+          handler->msg = std::make_unique< LR_CommitMessage >(handler->from);
+          break;
+        case 'x':
+          handler->msg = std::make_unique< DiscardMessage >(handler->from);
           break;
         default:
           return false;
       }
       handler->firstkey = false;
-      return handler->msg != nullptr;
+      return true;
     }
     // check for last element
     if(!key)
       return handler->MessageDone();
 
     return handler->msg->DecodeKey(*key, r->buffer);
-  }
-
-  RouterID
-  InboundMessageParser::GetCurrentFrom()
-  {
-    auto rc = from->get_remote_router();
-    return rc->pubkey;
   }
 
   bool
@@ -99,17 +86,23 @@ namespace llarp
     if(msg)
     {
       result = msg->HandleMessage(router);
-      delete msg;
-      msg = nullptr;
     }
     return result;
   }
 
   bool
-  InboundMessageParser::ProcessFrom(llarp_link_session* src, llarp_buffer_t buf)
+  InboundMessageParser::ProcessFrom(ILinkSession* src, llarp_buffer_t buf)
   {
-    from     = src;
-    firstkey = true;
+    reader.user   = this;
+    reader.on_key = &OnKey;
+    from          = src;
+    firstkey      = true;
     return bencode_read_dict(&buf, &reader);
+  }
+
+  void
+  InboundMessageParser::Reset()
+  {
+    msg.reset(nullptr);
   }
 }  // namespace llarp

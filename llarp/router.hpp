@@ -1,13 +1,15 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 #include <llarp/dht.h>
-#include <llarp/nodedb.h>
-#include <llarp/router_contact.h>
+#include <llarp/nodedb.hpp>
+#include <llarp/router_contact.hpp>
 #include <llarp/path.hpp>
+#include <llarp/link_layer.hpp>
 
 #include <functional>
 #include <list>
 #include <map>
+#include <vector>
 #include <unordered_map>
 
 #include <llarp/dht.hpp>
@@ -15,34 +17,17 @@
 #include <llarp/link_message.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/service.hpp>
-#include "llarp/iwp/establish_job.hpp"
+#include <llarp/establish_job.hpp>
 
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
 
-/** 2^15 bytes */
-#define MAX_LINK_MSG_SIZE (32768)
-
-// TODO: unused. remove?
-// struct try_connect_ctx
-// {
-//   llarp_router *router = nullptr;
-//   llarp_ai addr;
-// };
-
-// // forward declare
-// namespace path
-// {
-//   struct TransitHop;
-// }
-
-struct llarp_link;
-struct llarp_link_session_iter;
-
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
-                             llarp::SecretKey *encryption);
+                             llarp::SecretKey &encryption);
+
+struct TryConnectJob;
 
 struct llarp_router
 {
@@ -62,12 +47,12 @@ struct llarp_router
   fs::path our_rc_file = "rc.signed";
 
   // our router contact
-  llarp_rc rc;
+  llarp::RouterContact rc;
 
   // our ipv4 public setting
   bool publicOverride = false;
   struct sockaddr_in ip4addr;
-  llarp_ai addrInfo;
+  llarp::AddressInfo addrInfo;
 
   llarp_ev_loop *netloop;
   llarp_threadpool *tp;
@@ -92,36 +77,41 @@ struct llarp_router
   llarp::InboundMessageParser inbound_link_msg_parser;
   llarp::routing::InboundMessageParser inbound_routing_msg_parser;
 
-  llarp_pathbuilder_select_hop_func selectHopFunc = nullptr;
-  llarp_pathbuilder_context *explorePool          = nullptr;
-
   llarp::service::Context hiddenServiceContext;
 
-  llarp_link *outboundLink = nullptr;
-  std::list< llarp_link * > inboundLinks;
+  std::unique_ptr< llarp::ILinkLayer > outboundLink;
+  std::list< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;
 
-  typedef std::queue< const llarp::ILinkMessage * > MessageQueue;
+  typedef std::queue< std::vector< byte_t > > MessageQueue;
 
   /// outbound message queue
-  std::map< llarp::RouterID, MessageQueue > outboundMesssageQueue;
+  std::unordered_map< llarp::RouterID, MessageQueue, llarp::RouterID::Hash >
+      outboundMessageQueue;
 
   /// loki verified routers
-  std::map< llarp::RouterID, llarp_rc > validRouters;
+  std::unordered_map< llarp::RouterID, llarp::RouterContact,
+                      llarp::RouterID::Hash >
+      validRouters;
 
   // pending establishing session with routers
-  std::map< llarp::PubKey, llarp_link_establish_job > pendingEstablishJobs;
+  std::unordered_map< llarp::RouterID, std::unique_ptr< TryConnectJob >,
+                      llarp::RouterID::Hash >
+      pendingEstablishJobs;
 
   // sessions to persist -> timestamp to end persist at
-  std::map< llarp::RouterID, llarp_time_t > m_PersistingSessions;
+  std::unordered_map< llarp::RouterID, llarp_time_t, llarp::RouterID::Hash >
+      m_PersistingSessions;
 
   llarp_router();
   virtual ~llarp_router();
 
+  void HandleLinkSessionEstablished(llarp::RouterContact);
+
   bool
-  HandleRecvLinkMessage(struct llarp_link_session *from, llarp_buffer_t msg);
+  HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);
 
   void
-  AddInboundLink(struct llarp_link *link);
+  AddInboundLink(std::unique_ptr< llarp::ILinkLayer > &link);
 
   bool
   InitOutboundLink();
@@ -183,11 +173,12 @@ struct llarp_router
   /// sendto or drop
   void
   SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
-         llarp_link *chosen = nullptr);
+         llarp::ILinkLayer *chosen);
 
   /// manually flush outbound message queue for just 1 router
   void
-  FlushOutboundFor(const llarp::RouterID &remote, llarp_link *chosen);
+  FlushOutboundFor(const llarp::RouterID &remote,
+                   llarp::ILinkLayer *chosen = nullptr);
 
   /// manually discard all pending messages to remote router
   void
@@ -213,28 +204,25 @@ struct llarp_router
   void
   ScheduleTicker(uint64_t i = 1000);
 
-  llarp_link *
+  llarp::ILinkLayer *
   GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
   size_t
   NumberOfConnectedRouters() const;
 
   bool
-  GetRandomConnectedRouter(llarp_rc *result) const;
+  GetRandomConnectedRouter(llarp::RouterContact &result) const;
 
   void
-  async_verify_RC(llarp_rc *rc, bool isExpectingClient,
-                  llarp_link_establish_job *job = nullptr);
+  async_verify_RC(const llarp::RouterContact &rc);
 
-  static bool
-  iter_try_connect(llarp_router_link_iter *i, llarp_router *router,
-                   llarp_link *l);
+  void
+  HandleDHTLookupForSendTo(llarp::RouterID remote,
+                           const std::vector< llarp::RouterContact > &results);
 
-  static void
-  on_try_connect_result(llarp_link_establish_job *job);
-
-  static void
-  connect_job_retry(void *user, uint64_t orig, uint64_t left);
+  void
+  HandleDHTLookupForTryEstablishTo(
+      const std::vector< llarp::RouterContact > &results);
 
   static void
   on_verify_client_rc(llarp_async_verify_rc *context);
@@ -245,21 +233,8 @@ struct llarp_router
   static void
   handle_router_ticker(void *user, uint64_t orig, uint64_t left);
 
-  static bool
-  send_padded_message(struct llarp_link_session_iter *itr,
-                      struct llarp_link_session *peer);
-
   static void
   HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
-
-  static void
-  HandleDHTLookupForSendTo(llarp_router_lookup_job *job);
-
-  static void
-  HandleExploritoryPathBuildStarted(llarp_pathbuild_job *job);
-
-  static void
-  HandleDHTLookupForTryEstablishTo(llarp_router_lookup_job *job);
 };
 
 #endif

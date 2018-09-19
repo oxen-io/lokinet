@@ -179,17 +179,17 @@ namespace llarp
     void
     TunEndpoint::FlushSend()
     {
-      m_UserToNetworkPktQueue.Process([&](net::IPv4Packet *pkt) {
-        auto itr = m_IPToAddr.find(pkt->dst());
+      m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
+        auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
           in_addr a;
-          a.s_addr = pkt->dst();
+          a.s_addr = pkt.dst();
           llarp::LogWarn("drop packet to ", inet_ntoa(a));
-          llarp::DumpBuffer(pkt->Buffer());
+          llarp::DumpBuffer(pkt.Buffer());
           return true;
         }
-        return SendToOrQueue(itr->second, pkt->Buffer(),
+        return SendToOrQueue(itr->second, pkt.Buffer(),
                              service::eProtocolTraffic);
       });
     }
@@ -207,13 +207,13 @@ namespace llarp
       uint32_t usIP   = m_OurIP;
       auto buf        = llarp::Buffer(msg->payload);
       if(!m_NetworkToUserPktQueue.EmplaceIf(
-             [buf, themIP, usIP](net::IPv4Packet *pkt) -> bool {
+             [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
                // do packet info rewrite here
                // TODO: don't truncate packet here
-               memcpy(pkt->buf, buf.base, std::min(buf.sz, sizeof(pkt->buf)));
-               pkt->src(themIP);
-               pkt->dst(usIP);
-               pkt->UpdateChecksum();
+               memcpy(pkt.buf, buf.base, std::min(buf.sz, sizeof(pkt.buf)));
+               pkt.src(themIP);
+               pkt.dst(usIP);
+               pkt.UpdateChecksum();
                return true;
              }))
       {
@@ -307,8 +307,8 @@ namespace llarp
     {
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      self->m_NetworkToUserPktQueue.Process([self, tun](net::IPv4Packet *pkt) {
-        if(!llarp_ev_tun_async_write(tun, pkt->buf, pkt->sz))
+      self->m_NetworkToUserPktQueue.Process([self, tun](net::IPv4Packet &pkt) {
+        if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
           llarp::LogWarn("packet dropped");
       });
       if(self->m_UserToNetworkPktQueue.Size())
@@ -329,9 +329,9 @@ namespace llarp
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
-             [self, buf, sz](net::IPv4Packet *pkt) -> bool {
-               return pkt->Load(llarp::InitBuffer(buf, sz))
-                   && pkt->Header()->ip_version == 4;
+             [self, buf, sz](net::IPv4Packet &pkt) -> bool {
+               return pkt.Load(llarp::InitBuffer(buf, sz))
+                   && pkt.Header()->ip_version == 4;
              }))
         llarp::LogError("Failed to parse ipv4 packet");
     }
