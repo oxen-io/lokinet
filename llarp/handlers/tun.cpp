@@ -214,10 +214,8 @@ namespace llarp
                return true;
              }))
 
-        llarp::LogInfo(Name(), " handle data message ", msg->payload.size(),
-                       " bytes from ", inet_ntoa({htonl(themIP)}));
-      else
-        llarp::LogWarn(Name(), " dropped packet");
+        llarp::LogDebug(Name(), " handle data message ", msg->payload.size(),
+                        " bytes from ", inet_ntoa({htonl(themIP)}));
       return true;
     }
 
