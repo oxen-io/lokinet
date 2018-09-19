@@ -88,6 +88,5 @@ Alternatively:
 
     # mkdir /usr/local/lokinet
     # cd /usr/local/lokinet
-    # lokinet --genconf daemon.ini
-    # lokinet --check daemon.ini 
+    # lokinet -g /usr/local/lokinet/daemon.ini
     # lokinet /usr/local/lokinet/daemon.ini

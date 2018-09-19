@@ -88,15 +88,21 @@ extern "C"
   }
 
   bool
-  llarp_ensure_config(const char *fname)
+  llarp_ensure_config(const char *fname, const char *basedir, bool overwrite)
   {
     std::error_code ec;
-    if(fs::exists(fname, ec))
+    if(fs::exists(fname, ec) && !overwrite)
       return true;
     if(ec)
     {
       llarp::LogError(ec);
       return false;
+    }
+    std::string basepath = "";
+    if(basedir)
+    {
+      basepath = basedir;
+      basepath += "/";
     }
 
     std::ofstream f(fname);
@@ -123,13 +129,13 @@ extern "C"
     f << "# number of crypto worker threads " << std::endl;
     f << "threads=4" << std::endl;
     f << "# path to store signed RC" << std::endl;
-    f << "contact-file=self.signed" << std::endl;
+    f << "contact-file=" << basepath << "self.signed" << std::endl;
     f << "# path to store transport private key" << std::endl;
-    f << "transport-privkey=transport.private" << std::endl;
+    f << "transport-privkey=" << basepath << "transport.private" << std::endl;
     f << "# path to store identity signing key" << std::endl;
-    f << "identity-privkey=identity.private" << std::endl;
+    f << "identity-privkey=" << basepath << "identity.private" << std::endl;
     f << "# path to store signed RC" << std::endl;
-    f << "contact-file=self.signed" << std::endl;
+    f << "contact-file=" << basepath << "self.signed" << std::endl;
     f << std::endl;
     f << "# uncomment following line to set router nickname to 'lokinet'"
       << std::endl;
@@ -162,7 +168,7 @@ extern "C"
     f << "# network database settings block " << std::endl;
     f << "[netdb]" << std::endl;
     f << "# directory for network database skiplist storage" << std::endl;
-    f << "dir=netdb" << std::endl;
+    f << "dir=" << basepath << "netdb" << std::endl;
     f << std::endl << std::endl;
     f << "# publish network interfaces for handling inbound traffic"
       << std::endl;

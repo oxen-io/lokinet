@@ -1,7 +1,11 @@
 #include <llarp.h>
-#include <llarp/logger.h>
+#include <llarp/logger.hpp>
 #include <signal.h>
+#include <getopt.h>
 #include <string>
+#include <iostream>
+#include <libgen.h>
+#include "fs.hpp"
 
 #ifdef _WIN32
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
@@ -18,6 +22,13 @@ handle_signal(int sig)
 }
 
 int
+printHelp(const char *argv0, int code = 1)
+{
+  std::cout << "usage: " << argv0 << " [-h] [-g] config.ini" << std::endl;
+  return code;
+}
+
+int
 main(int argc, char *argv[])
 {
   bool multiThreaded          = true;
@@ -26,12 +37,82 @@ main(int argc, char *argv[])
   {
     multiThreaded = false;
   }
-  const char *conffname = handleBaseCmdLineArgs(argc, argv);
 
-  if(!llarp_ensure_config(conffname))
-    return 1;
+  int opt            = 0;
+  bool genconfigOnly = false;
+  while((opt = getopt(argc, argv, "hg")) != -1)
+  {
+    switch(opt)
+    {
+      case 'h':
+        return printHelp(argv[0], 0);
+      case 'g':
+        genconfigOnly = true;
+        break;
+      default:
+        return printHelp(argv[0]);
+    }
+  }
 
-  ctx      = llarp_main_init(conffname, multiThreaded);
+  std::string conffname;
+
+  if(optind < argc)
+  {
+    // when we have an explicit filepath
+    fs::path fname   = fs::path(argv[optind]);
+    fs::path basedir = fname.parent_path();
+    conffname        = fname.string();
+    if(basedir.string().empty())
+    {
+      if(!llarp_ensure_config(fname.string().c_str(), nullptr, genconfigOnly))
+        return 1;
+    }
+    else
+    {
+      std::error_code ec;
+      if(!fs::create_directories(basedir, ec))
+      {
+        if(ec)
+        {
+          llarp::LogError("failed to create '", basedir.string(),
+                          "': ", ec.message());
+          return 1;
+        }
+      }
+      if(!llarp_ensure_config(fname.string().c_str(), basedir.string().c_str(),
+                              genconfigOnly))
+        return 1;
+    }
+  }
+  else
+  {
+// no explicit config file provided
+#ifdef _WIN32
+    fs::path homedir = fs::path(getenv("APPDATA"));
+#else
+    fs::path homedir = fs::path(getenv("HOME"));
+#endif
+    fs::path basepath = homedir / fs::path(".lokinet");
+    fs::path fpath    = basepath / "lokinet.ini";
+
+    std::error_code ec;
+    if(!fs::create_directories(basepath, ec))
+    {
+      llarp::LogError("failed to create '", basepath.string(),
+                      "': ", ec.message());
+      return 1;
+    }
+
+    if(!llarp_ensure_config(fpath.string().c_str(), basepath.string().c_str(),
+                            genconfigOnly))
+      return 1;
+    conffname = fpath.string();
+  }
+
+  if(genconfigOnly)
+    return 0;
+
+  ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
   int code = 1;
   if(ctx)
   {

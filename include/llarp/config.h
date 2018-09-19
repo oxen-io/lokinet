@@ -43,10 +43,14 @@ extern "C"
                     struct llarp_config_iterator *iter);
 
   /// ensure configuration exists
-  /// populate with defaults if it does not exist
+  /// populate with defaults
   /// return if this succeeded
+  /// if overwrite is true then overwrite old config file
+  /// if basedir is not nullptr then use basedir as an absolute
+  /// base path for all files in config
   bool
-  llarp_ensure_config(const char *fname);
+  llarp_ensure_config(const char *fname, const char *basedir = nullptr,
+                      bool overwrite = false);
 
 #ifdef __cplusplus
 }
