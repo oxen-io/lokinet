@@ -1186,7 +1186,7 @@ namespace llarp
         ShiftIntroduction();
       }
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
-      std::remove_if(m_BadIntros.begin(), m_BadIntros.end(),
+      std::remove_if(m_BadIntros.cbegin(), m_BadIntros.cend(),
                      [now](const Introduction& intro) -> bool {
                        return intro.IsExpired(now);
                      });
