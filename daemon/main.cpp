@@ -54,27 +54,35 @@ main(int argc, char *argv[])
     }
   }
 
-  const char *conffname = nullptr;
+  std::string conffname;
 
   if(optind < argc)
   {
     // when we have an explicit filepath
     fs::path fname   = fs::path(argv[optind]);
     fs::path basedir = fname.parent_path();
-    std::error_code ec;
-    if(!fs::create_directories(basedir, ec))
+    if(basedir.string().empty())
     {
-      if(ec)
-      {
-        llarp::LogError("failed to create '", basedir.string(),
-                        "': ", ec.message());
+      if(!llarp_ensure_config(fname.string().c_str(), nullptr, genconfigOnly))
         return 1;
-      }
     }
-    if(!llarp_ensure_config(argv[optind], basedir.string().c_str(),
-                            genconfigOnly))
-      return 1;
-    conffname = argv[optind];
+    else
+    {
+      std::error_code ec;
+      if(!fs::create_directories(basedir, ec))
+      {
+        if(ec)
+        {
+          llarp::LogError("failed to create '", basedir.string(),
+                          "': ", ec.message());
+          return 1;
+        }
+      }
+      if(!llarp_ensure_config(fname.string().c_str(), basedir.string().c_str(),
+                              genconfigOnly))
+        return 1;
+      conffname = fname.string();
+    }
   }
   else
   {
@@ -98,13 +106,13 @@ main(int argc, char *argv[])
     if(!llarp_ensure_config(fpath.string().c_str(), basepath.string().c_str(),
                             genconfigOnly))
       return 1;
-    conffname = fpath.string().c_str();
+    conffname = fpath.string();
   }
 
   if(genconfigOnly)
     return 0;
 
-  ctx      = llarp_main_init(conffname, multiThreaded);
+  ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
   int code = 1;
   if(ctx)
   {
