@@ -36,7 +36,9 @@ main(int argc, char *argv[])
   if(ctx)
   {
     signal(SIGINT, handle_signal);
+#ifndef _WIN32
     signal(SIGHUP, handle_signal);
+#endif
     code = llarp_main_run(ctx);
     llarp_main_free(ctx);
   }
