@@ -290,7 +290,7 @@ namespace llarp
     }
 
     bool
-    IntroSet::VerifySignature(llarp_crypto* crypto) const
+    IntroSet::Verify(llarp_crypto* crypto) const
     {
       byte_t tmp[MAX_INTROSET_SIZE];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -302,7 +302,25 @@ namespace llarp
       // rewind and resize buffer
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
-      return A.Verify(crypto, buf, Z);
+      if(!A.Verify(crypto, buf, Z))
+        return false;
+      // validate PoW
+      if(W && !W->IsValid(crypto->shorthash))
+        return false;
+      // valid timestamps
+      auto now = llarp_time_now_ms();
+      for(const auto& intro : I)
+      {
+        if(intro.expiresAt >= now
+           && intro.expiresAt - now > DEFAULT_PATH_LIFETIME)
+        {
+          if(W && intro.expiresAt - W->extendedLifetime > DEFAULT_PATH_LIFETIME)
+            return false;
+          else if(W == nullptr)
+            return false;
+        }
+      }
+      return !IsExpired(now);
     }
 
     bool

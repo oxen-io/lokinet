@@ -28,10 +28,10 @@ namespace llarp
 
       for(const auto &introset : I)
       {
-        if(!introset.VerifySignature(crypto))
+        if(!introset.Verify(crypto))
         {
           llarp::LogWarn(
-              "Invalid introset signature while handling direct GotIntro "
+              "Invalid introset while handling direct GotIntro "
               "from ",
               From);
           return false;

@@ -129,7 +129,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
 
       bool
-      VerifySignature(llarp_crypto* crypto) const;
+      Verify(llarp_crypto* crypto) const;
     };
   }  // namespace service
 }  // namespace llarp

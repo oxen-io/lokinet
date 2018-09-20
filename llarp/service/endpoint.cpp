@@ -271,10 +271,10 @@ namespace llarp
       std::set< IntroSet > remote;
       for(const auto& introset : msg->I)
       {
-        if(!introset.VerifySignature(crypto))
+        if(!introset.Verify(crypto))
         {
-          llarp::LogInfo("invalid introset signature for ", introset,
-                         " on endpoint ", Name());
+          llarp::LogInfo("invalid introset ", introset, " on endpoint ",
+                         Name());
           if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
           {
             IntroSetPublishFail();
@@ -1204,6 +1204,8 @@ namespace llarp
                                          const RouterContact& prev,
                                          RouterContact& cur, size_t hop)
     {
+      if(remoteIntro.router.IsZero())
+        return false;
       if(hop == numHops - 1)
       {
         if(llarp_nodedb_get_rc(db, remoteIntro.router, cur))

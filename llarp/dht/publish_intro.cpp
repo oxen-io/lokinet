@@ -50,9 +50,9 @@ namespace llarp
         return false;
       }
       auto &dht = ctx->impl;
-      if(!I.VerifySignature(&dht.router->crypto))
+      if(!I.Verify(&dht.router->crypto))
       {
-        llarp::LogWarn("invalid introset signature, ", I);
+        llarp::LogWarn("invalid introset: ", I);
         return false;
       }
       if(I.W && !I.W->IsValid(dht.router->crypto.shorthash))
