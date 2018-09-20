@@ -127,7 +127,97 @@ std::string basename_posix(const std::string& s)
 
 	return s.substr(range.first, range.second);
 }
+#ifdef WIN32
+// A surprisingly portable basename(3) and dirname(3)
+std::string basename_win32(const std::string& path)
+{
+	static char bname[MAX_PATH];
+	size_t len;
+	const char *endp, *startp;
+	char tmp[MAX_PATH];
+	strncpy(tmp, path.c_str(), MAX_PATH);
 
+	/* Empty or NULL string gets treated as "." */
+	if (path.empty()) {
+		bname[0] = '.';
+		bname[1] = '\0';
+		return std::string(bname);
+	}
+
+	/* Strip any trailing slashes */
+	endp = tmp + strlen(tmp) - 1;
+	while (endp > tmp && *endp == '/')
+		endp--;
+
+	/* All slashes becomes "/" */
+	if (endp == tmp && *endp == '/') {
+		bname[0] = '/';
+		bname[1] = '\0';
+		return std::string(bname);
+	}
+
+	/* Find the start of the base */
+	startp = endp;
+	while (startp > tmp && *(startp - 1) != '/')
+		startp--;
+
+	len = endp - startp + 1;
+	if (len >= sizeof(bname)) {
+		errno = ENAMETOOLONG;
+		return std::string(nullptr);
+	}
+	memcpy(bname, startp, len);
+	bname[len] = '\0';
+	return std::string(bname);
+}
+
+std::string dirname_win32(const std::string& path)
+{
+	static char dname[MAX_PATH];
+	size_t len;
+	const char *endp;
+	char tmp[MAX_PATH];
+	strncpy(tmp, path.c_str(), MAX_PATH);
+
+
+	/* Empty or NULL string gets treated as "." */
+	if (tmp == NULL || tmp[0] == '\0') {
+		dname[0] = '.';
+		dname[1] = '\0';
+		return std::string(dname);
+	}
+
+	/* Strip any trailing slashes */
+	endp = tmp + strlen(tmp) - 1;
+	while (endp > tmp && *endp == '/')
+		endp--;
+
+	/* Find the start of the dir */
+	while (endp > tmp && *endp != '/')
+		endp--;
+
+	/* Either the dir is "/" or there are no slashes */
+	if (endp == tmp) {
+		dname[0] = *endp == '/' ? '/' : '.';
+		dname[1] = '\0';
+		return std::string(dname);
+	} else {
+		/* Move forward past the separating slashes */
+		do {
+			endp--;
+		} while (endp > tmp && *endp == '/');
+	}
+
+	len = endp - tmp + 1;
+	if (len >= sizeof(dname)) {
+		errno = ENAMETOOLONG;
+		return std::string(nullptr);
+	}
+	memcpy(dname, tmp, len);
+	dname[len] = '\0';
+	return std::string(dname);
+}
+#endif
 std::string dirname_posix(const std::string& s)
 {
 	const std::pair< std::size_t, std::size_t > range = locate_last_path_component(s);
@@ -171,11 +261,9 @@ namespace filesystem
 std::string basename(const std::string& s)
 {
 	#ifdef OS_POSIX
-
 	return basename_posix(s);
-
 	#else
-	#error "No implementation of basename is available for this platform"
+	return basename_win32(s);
 	#endif
 }
 

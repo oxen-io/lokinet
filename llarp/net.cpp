@@ -118,7 +118,9 @@ _llarp_nt_heap_free(void* mem)
 int
 llarp_nt_sockaddr_pton(const char* src, struct sockaddr* dst)
 {
-  struct addrinfo hints = {0}, *result = nullptr;
+  struct addrinfo hints;
+  struct addrinfo* result = nullptr;
+  memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family   = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_TCP;

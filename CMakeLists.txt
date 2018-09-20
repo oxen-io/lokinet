@@ -81,11 +81,11 @@ add_cxxflags("-Wall")
 endif()
 
 if (MSVC)
-set(OPTIMIZE_FLAGS "-Od")
-set(DEBUG_FLAGS "-ZI")
+set(OPTIMIZE_FLAGS "-O2")
+set(DEBUG_FLAGS "-Od -ZI")
 else()
-set(OPTIMIZE_FLAGS "-O0")
-set(DEBUG_FLAGS "-g")
+set(OPTIMIZE_FLAGS "-O3")
+set(DEBUG_FLAGS "-O0 -g")
 endif()
 
 if(ASAN)
@@ -112,17 +112,18 @@ if(SHADOW)
   include_directories(${SHADOW_ROOT}/include)
 endif()
 
+if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
+  set(OPTIMIZE_FLAGS "")
+  add_cflags("${DEBUG_FLAGS}")
+  add_cxxflags("${DEBUG_FLAGS}")
+endif()
+
 if (MSVC)
 add_cflags("-wd4996 -wd4244 -MP ${OPTIMIZE_FLAGS}")
 add_cxxflags("-wd4996 -wd4244 -MP ${OPTIMIZE_FLAGS}")
 else()
 add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
 add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
-endif()
-
-if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
-  add_cflags("${DEBUG_FLAGS}")
-  add_cxxflags("${DEBUG_FLAGS}")
 endif()
 
 if(SHADOW)
@@ -156,12 +157,17 @@ else()
   )
 endif()
 
+# HeapAlloc(2) on Windows was significantly revamped in 2009
+# but the old algorithm isn't too bad either
+# this is _the_ system allocator on BSD UNIX
+# openbsd replaced it with a secure/randomised malloc not too
+# long ago
 if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
 
 set(LIBS ${SODIUM_LIB} ${THREAD_LIB} ${MALLOC_LIB})
-if(HAVE_CXX17_FILESYSTEM)
+if(HAVE_CXX17_FILESYSTEM AND NOT MSVC)
   set(LIBS ${LIBS} stdc++fs)
 endif()
 
@@ -215,11 +221,6 @@ if (UNIX)
     ${LIBTUNTAP_SRC_BASE})
 endif()
 
-#if(BACKPORT)
-#else()
-#set(CPP_BACKPORT_SRC "")
-#endif()
-
 set(CPP_BACKPORT_SRC
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
@@ -248,7 +249,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
 endif()
 
-
 set(LIB_PLATFORM_SRC
 # for outpug
   llarp/logger.cpp
@@ -270,7 +270,7 @@ set(LIB_PLATFORM_SRC
   ${ISOLATE_PROC_SRC}
 # tun
   ${LIBTUNTAP_SRC}
-# win32 inline procs
+# win32 inline procs and getopt(3) for MS C
   llarp/win32_inet.c
   llarp/win32_intrnl.c
   contrib/msc/getopt.c
@@ -331,7 +331,6 @@ set(UTP_SRC
   libutp/utp_packedsockaddr.cpp
   libutp/utp_hash.cpp
 )
-
 
 if(WIN32)
   set(UTP_SRC ${UTP_SRC} libutp/libutp_inet_ntop.cpp)
@@ -477,13 +476,11 @@ add_subdirectory(${GTEST_DIR})
 include_directories(${GTEST_DIR}/include ${GTEST_DIR})
 add_executable(${TEST_EXE} ${TEST_SRC})
 
-if (MSVC)
+if (WIN32)
 target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ws2_32 iphlpapi)
-elseif (MINGW)
-target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} stdc++fs iphlpapi ws2_32)
 else()
 target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB})
-endif(MSVC)
+endif(WIN32)
 
 if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
@@ -505,34 +502,24 @@ if(WITH_STATIC)
         target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
         target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
         target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
-        if (MINGW)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-        elseif(MSVC)
+        if (WIN32)
           target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
           target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
           target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        endif(MINGW)
+        endif(WIN32)
       else()
         target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
         target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
         target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-        if (MINGW)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-        elseif(MSVC)
+        if (WIN32)
           target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
           target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
           target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        endif(MINGW)
+        endif(WIN32)
       endif(NOT HAVE_CXX17_FILESYSTEM)
-      if (MINGW)
-        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 stdc++fs iphlpapi)
-      elseif(WIN32)
+      if (WIN32)
         target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 iphlpapi)
-      endif(MINGW)
+      endif(WIN32)
       target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB})
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)
@@ -546,11 +533,9 @@ if(WITH_STATIC)
       set(LIB_SRC ${LIB_SRC} ${CPP_BACKPORT_SRC})
     endif(HAVE_CXX17_FILESYSTEM)
     add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC})
-    if (MINGW)
-      set(${LIBS} ${LIBS} ws2_32 stdc++fs iphlpapi)
-    elseif(MSVC)
+    if (WIN32)
       set(${LIBS} ${LIBS} ws2_32 iphlpapi)
-    endif(MINGW)
+    endif(WIN32)
     target_link_libraries(${SHARED_LIB} ${LIBS} ${THREAD_LIB})
     target_link_libraries(${EXE} ${SHARED_LIB})
     target_link_libraries(${RC_EXE} ${SHARED_LIB})
