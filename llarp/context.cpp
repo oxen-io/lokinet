@@ -458,7 +458,15 @@ llarp_main_queryDHT(struct check_online_request *request)
                          {1000, request, &llarp_main_checkOnline});
   // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
 }
-
+  
+bool
+main_router_mapAddress(struct llarp_main *ptr, const llarp::service::Address &addr, uint32_t ip)
+{
+  auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
+  return endpoint->MapAddress(addr, ip);
+}
+  
+  
   const char *
   handleBaseCmdLineArgs(int argc, char *argv[])
   {

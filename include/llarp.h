@@ -7,6 +7,8 @@
 #include <llarp/version.h>
 
 #ifdef __cplusplus
+#include "router.hpp" // for service::address
+
 extern "C"
 {
 #endif
@@ -75,6 +77,7 @@ extern "C"
   llarp_main_queryDHT_RC(struct llarp_main *ptr,
                          struct llarp_router_lookup_job *job);
 
+
   /// set up DNS libs with a context
   bool
   llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
@@ -91,6 +94,11 @@ extern "C"
   handleBaseCmdLineArgs(int argc, char *argv[]);
 
 #ifdef __cplusplus
+
+  /// map an ip to a hidden service address
+  bool
+  main_router_mapAddress(struct llarp_main *ptr, const llarp::service::Address &addr, uint32_t ip);
+
 }
 #endif
 #endif

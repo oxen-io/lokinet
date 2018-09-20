@@ -18,6 +18,10 @@ namespace llarp
       void
       Tick();
 
+      /// punch a hole open for DNS to add mappings
+      bool
+      MapAddress(const llarp::service::Address &addr, uint32_t ip);
+
       bool
       AddEndpoint(const Config::section_t &conf);
 

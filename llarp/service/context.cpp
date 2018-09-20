@@ -29,6 +29,26 @@ namespace llarp
         ++itr;
       }
     }
+    
+    bool
+    Context::MapAddress(const llarp::service::Address &addr, uint32_t ip)
+    {
+      if (!m_Endpoints.size())
+      {
+        llarp::LogError("No endpoints found");
+        return false;
+      }
+      auto firstEndpoint = m_Endpoints.begin();
+      auto *uniqueEndpoint = &firstEndpoint->second;
+      llarp::service::Endpoint *endpointer = uniqueEndpoint->get();
+      llarp::handlers::TunEndpoint *tunEndpoint = dynamic_cast<llarp::handlers::TunEndpoint *>(endpointer);
+      if (!tunEndpoint)
+      {
+        llarp::LogError("No tunnel endpoint found");
+        return false;
+      }
+      return tunEndpoint->MapAddress(addr, ip);
+    }
 
     bool
     Context::AddEndpoint(const Config::section_t &conf)
