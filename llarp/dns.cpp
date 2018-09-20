@@ -125,6 +125,7 @@ extern "C"
     // SOA hack
     if(first != 12)
     {
+      llarp::LogDebug("decode - first isnt 12, stepping back");
       buffer--;  // rewind buffer one byte
     }
     answer->type = get16bits(buffer);
@@ -140,11 +141,15 @@ extern "C"
     {
       answer->rData = new uint8_t[answer->rdLen];
       memcpy(answer->rData, buffer, answer->rdLen);
+      buffer += answer->rdLen;  // advance the length
     }
     else
     {
       switch(answer->type)
       {
+        case 5:
+          buffer += answer->rdLen;  // advance the length
+          break;
         case 6:  // type 6 = SOA
         {
           // 2 names, then 4x 32bit
@@ -165,12 +170,10 @@ extern "C"
         }
         break;
         default:
-        {
-          // llarp::LogWarn("Unknown Type ", answer->type);
-        }
-        break;
+          buffer += answer->rdLen;  // advance the length
+          llarp::LogWarn("Unknown Type ", answer->type);
+          break;
       }
-      llarp::LogWarn("Unknown Type ", answer->type);
     }
     return answer;
   }
@@ -220,7 +223,7 @@ extern "C"
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
-                            const struct sockaddr *saddr, const void *buf,
+                            const struct sockaddr *addr, const void *buf,
                             ssize_t sz)
   {
     unsigned char *castBuf = (unsigned char *)buf;
@@ -232,12 +235,12 @@ extern "C"
     if(hdr->qr)
     {
       llarp::LogDebug("handling as dnsc answer");
-      llarp_handle_dnsc_recvfrom(udp, saddr, buf, sz);
+      llarp_handle_dnsc_recvfrom(udp, addr, buf, sz);
     }
     else
     {
       llarp::LogDebug("handling as dnsd question");
-      llarp_handle_dnsd_recvfrom(udp, saddr, buf, sz);
+      llarp_handle_dnsd_recvfrom(udp, addr, buf, sz);
     }
     /*
      llarp::LogInfo("msg op ", hdr->opcode);

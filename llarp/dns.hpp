@@ -7,6 +7,8 @@
 #include <string>
 #include <vector>
 
+#include <sys/socket.h>
+
 // dnsc can work over any UDP socket
 // however we can't ignore udp->user
 // we need to be able to reference the request (being a request or response)
