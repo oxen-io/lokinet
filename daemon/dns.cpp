@@ -122,7 +122,7 @@ llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
       return;
     }
     in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
-    
+
     bool mapResult = main_router_mapAddress(ctx, addr, ntohl(ip_address.s_addr)); // maybe ntohl on the s_addr
     if (!mapResult)
     {
@@ -203,9 +203,9 @@ hookChecker(std::string name, const struct sockaddr *from,
       //llarp::HexDecode(b32addr.c_str(), binaryPK.data());
 
       llarp::LogInfo("Queueing job");
-    
+
       llarp::service::Address addr;
-    
+
       if (!addr.FromString(lName))
       {
         llarp::LogWarn("Could not base32 decode address");
@@ -223,20 +223,20 @@ hookChecker(std::string name, const struct sockaddr *from,
         response->returnThis               = free_private->hostResult;
       }
       */
-    
+
       // where's our router? ctx->router
       // once in our router we need to use front on ctx->router.hiddenServiceContext.m_Endpoints
       // we may need to cast to a TunEndpoint type of handler
       // then we can call MapAddress on it
       //main_router_mapAddress(addr, ip.s_addr); // maybe ntohl on the s_addr
 
-    
-    
+
+
       // we need to locate our tunEndpoint
       //bool res = tun.MapAddress(addr, ntohl(ip.s_addr));
-    
+
       //
-    
+
       // Iservice look up job
       // llarp service endpoint
       // fire off HiddenServiceAddressLookup
@@ -244,7 +244,7 @@ hookChecker(std::string name, const struct sockaddr *from,
       // set cb
       // std::function<bool(const Address &, const IntroSet *)>
       // from a context of an endpoint
-    
+
       /*
       llarp_router_lookup_job *job = new llarp_router_lookup_job;
       job->iterative               = true;
@@ -267,9 +267,9 @@ hookChecker(std::string name, const struct sockaddr *from,
       // nslookup on osx is about 5 sec before a retry
       llarp_logic_call_later(request->context->logic,
                              {5, qr, &llarp_dnsd_checkQuery});
-    
-    
-    
+
+
+
       response->dontSendResponse = true;
     //}
     // if not xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -332,7 +332,7 @@ main(int argc, char *argv[])
   llarp_config_iter(config_reader, &iter);
   llarp::LogInfo("config [", conffname, "] loaded");
 
-  const uint16_t server_port = 1053;
+  const uint16_t server_port = 53;
 
   dns_iptracker_init();
 
@@ -359,6 +359,23 @@ main(int argc, char *argv[])
     }
     // Configure intercept
     dnsd.intercept = &hookChecker;
+
+    // check tun set up
+    llarp_tun_io *tun = main_router_getRange(ctx);
+    llarp::LogDebug("TunNetmask: ", tun->netmask);
+    llarp::LogDebug("TunIfAddr: ", tun->ifaddr);
+
+    // configure dns_ip_tracker to use this
+    // well our routes table should already be set up
+
+    // mark our TunIfAddr as used
+    struct sockaddr_in addr;
+    addr.sin_addr.s_addr = inet_addr(tun->ifaddr);
+    addr.sin_family      = AF_INET;
+
+    llarp::Addr tunIp(addr);
+    llarp::LogDebug("llarp::TunIfAddr: ", tunIp);
+    dns_iptracker_setup(tunIp);
 
     // run system and wait
     llarp_main_run(ctx);
