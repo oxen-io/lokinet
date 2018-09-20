@@ -166,7 +166,7 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
   // llarp::LogInfo("from ", test);
   if(!hostRes)
   {
-    llarp::LogWarn("Failed to resolve");
+    llarp::LogWarn("Failed to resolve ", request->question.name);
     write404_dnss_response(from, request);
     return;
   }

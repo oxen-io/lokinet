@@ -53,7 +53,7 @@ struct dnsd_context
 {
   /// DNS daemon socket to listen on
   struct llarp_udp_io udp;
-  /// for timers (MAYBEFIXME? maybe we decouple this)
+  /// for timers (MAYBEFIXME? maybe we decouple this, yes pls have a generic passed in)
   struct llarp_logic *logic;
   /// tracker
   struct dns_tracker *tracker;
