@@ -33,11 +33,7 @@ namespace llarp
     typedef std::function< void(const fs::path &, PathVisitor) > PathIter;
 
     static PathIter IterDir = [](const fs::path &path, PathVisitor visit) {
-#ifndef WIN32
-      DIR *d = opendir(path.c_str());
-#else
-      DIR *d = opendir(path.u8string().c_str());
-#endif
+      DIR *d = opendir(path.string().c_str());
       if(d == nullptr)
         return;
       struct dirent *ent = nullptr;
