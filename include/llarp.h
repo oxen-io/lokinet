@@ -8,6 +8,7 @@
 
 #ifdef __cplusplus
 #include "router.hpp" // for service::address
+#include <llarp/service/endpoint.hpp>
 
 extern "C"
 {
@@ -94,6 +95,9 @@ extern "C"
   handleBaseCmdLineArgs(int argc, char *argv[]);
 
 #ifdef __cplusplus
+
+  llarp_tun_io *
+  main_router_getRange(struct llarp_main *ptr);
 
   /// map an ip to a hidden service address
   bool
