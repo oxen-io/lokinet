@@ -311,16 +311,24 @@ namespace llarp
       auto now = llarp_time_now_ms();
       for(const auto& intro : I)
       {
-        if(intro.expiresAt >= now
+        if(intro.expiresAt > now
            && intro.expiresAt - now > DEFAULT_PATH_LIFETIME)
         {
           if(W && intro.expiresAt - W->extendedLifetime > DEFAULT_PATH_LIFETIME)
             return false;
           else if(W == nullptr)
+          {
+            llarp::LogWarn("intro has too high expire time");
             return false;
+          }
         }
       }
-      return !IsExpired(now);
+      if(IsExpired(now))
+      {
+        llarp::LogWarn("introset expired");
+        return false;
+      }
+      return true;
     }
 
     bool
