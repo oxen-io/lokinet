@@ -989,6 +989,8 @@ namespace llarp
       for(const auto& intro : currentIntroSet.I)
       {
         m_Endpoint->EnsureRouterIsKnown(intro.router);
+        if(intro.ExpiresSoon(now))
+          continue;
         if(m_BadIntros.count(intro) == 0 && remoteIntro != intro)
         {
           shifted     = intro.router != remoteIntro.router;
@@ -1161,7 +1163,7 @@ namespace llarp
       if(updatingIntroSet)
         return;
       auto addr = currentIntroSet.A.Addr();
-      auto path = m_Endpoint->PickRandomEstablishedPath();
+      auto path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
