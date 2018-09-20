@@ -1194,14 +1194,10 @@ namespace llarp
         ShiftIntroduction();
       }
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
-      // FIXME: LLVM 3.8 can't hang
-      llarp::LogError("FIXME llvm 3.8");
-      /*
       std::remove_if(m_BadIntros.cbegin(), m_BadIntros.cend(),
                      [now](const Introduction& intro) -> bool {
                        return intro.IsExpired(now);
                      });
-      */
       // TODO: check for expiration of outbound context
       return false;
     }
