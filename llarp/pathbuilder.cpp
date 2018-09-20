@@ -21,7 +21,7 @@ namespace llarp
     llarp_threadpool* worker = nullptr;
     llarp_logic* logic       = nullptr;
     llarp_crypto* crypto     = nullptr;
-    LR_CommitMessage* LRCM   = nullptr;
+    LR_CommitMessage LRCM;
 
     static void
     HandleDone(void* u)
@@ -39,7 +39,7 @@ namespace llarp
 
       // current hop
       auto& hop   = ctx->path->hops[ctx->idx];
-      auto& frame = ctx->LRCM->frames[ctx->idx];
+      auto& frame = ctx->LRCM.frames[ctx->idx];
       // generate key
       ctx->crypto->encryption_keygen(hop.commkey);
       hop.nonce.Randomize();
@@ -121,11 +121,10 @@ namespace llarp
       user   = u;
       result = func;
       worker = pool;
-      LRCM   = new LR_CommitMessage();
 
       for(size_t idx = 0; idx < MAXHOPS; ++idx)
       {
-        LRCM->frames[idx].Randomize();
+        LRCM.frames[idx].Randomize();
       }
       llarp_threadpool_queue_job(pool, {this, &GenerateNextKey});
     }
@@ -136,7 +135,7 @@ namespace llarp
   {
     auto remote = ctx->path->Upstream();
     auto router = ctx->user->router;
-    if(!router->SendToOrQueue(remote, ctx->LRCM))
+    if(!router->SendToOrQueue(remote, &ctx->LRCM))
     {
       llarp::LogError("failed to send LRCM");
       delete ctx;

@@ -274,10 +274,10 @@ namespace llarp
       std::set< IntroSet > remote;
       for(const auto& introset : msg->I)
       {
-        if(!introset.VerifySignature(crypto))
+        if(!introset.Verify(crypto))
         {
-          llarp::LogInfo("invalid introset signature for ", introset,
-                         " on endpoint ", Name());
+          llarp::LogInfo("invalid introset ", introset, " on endpoint ",
+                         Name());
           if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
           {
             IntroSetPublishFail();
@@ -425,6 +425,7 @@ namespace llarp
     Endpoint::~Endpoint()
     {
     }
+
     bool
     Endpoint::CachedTagResult::HandleResponse(
         const std::set< IntroSet >& introsets)
@@ -710,12 +711,12 @@ namespace llarp
       llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
                      p->Endpoint(), " via ", dst);
       // pick another intro
-      if(dst == remoteIntro.pathID)
+      if(dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
       {
         MarkCurrentIntroBad();
         ShiftIntroduction();
+        UpdateIntroSet();
       }
-      UpdateIntroSet();
       return true;
     }
 
@@ -882,6 +883,7 @@ namespace llarp
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
         {
+          auto now = llarp_time_now_ms();
           routing::PathTransferMessage transfer;
           ProtocolFrame& f = transfer.T;
           path::Path* p    = nullptr;
@@ -897,7 +899,8 @@ namespace llarp
           {
             if(p == nullptr && GetIntroFor(tag, remoteIntro))
             {
-              p = GetPathByRouter(remoteIntro.router);
+              if(!remoteIntro.ExpiresSoon(now))
+                p = GetPathByRouter(remoteIntro.router);
               if(p)
               {
                 f.T = tag;
@@ -927,7 +930,7 @@ namespace llarp
               llarp::LogError("failed to encrypt and sign");
               return false;
             }
-            llarp::LogInfo(Name(), " send ", data.sz, " via ", remoteIntro);
+            llarp::LogDebug(Name(), " send ", data.sz, " via ", remoteIntro);
             return p->SendRoutingMessage(&transfer, Router());
           }
         }
@@ -971,7 +974,7 @@ namespace llarp
       }
       m_PendingTraffic[remote].emplace(data, t);
       return true;
-    }
+    }  // namespace service
 
     void
     Endpoint::OutboundContext::MarkCurrentIntroBad()
@@ -989,6 +992,8 @@ namespace llarp
       for(const auto& intro : currentIntroSet.I)
       {
         m_Endpoint->EnsureRouterIsKnown(intro.router);
+        if(intro.ExpiresSoon(now))
+          continue;
         if(m_BadIntros.count(intro) == 0 && remoteIntro != intro)
         {
           shifted     = intro.router != remoteIntro.router;
@@ -1161,7 +1166,7 @@ namespace llarp
       if(updatingIntroSet)
         return;
       auto addr = currentIntroSet.A.Addr();
-      auto path = m_Endpoint->PickRandomEstablishedPath();
+      auto path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
@@ -1206,6 +1211,8 @@ namespace llarp
                                          const RouterContact& prev,
                                          RouterContact& cur, size_t hop)
     {
+      if(remoteIntro.router.IsZero())
+        return false;
       if(hop == numHops - 1)
       {
         if(llarp_nodedb_get_rc(db, remoteIntro.router, cur))
@@ -1235,6 +1242,7 @@ namespace llarp
       return ++(itr->second.seqno);
     }
 
+    /// send on an established convo tag
     void
     Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
                                             ProtocolType t)
@@ -1252,6 +1260,14 @@ namespace llarp
       f.N.Randomize();
       f.T = *tags.begin();
       f.S = m_Endpoint->GetSeqNoForConvo(f.T);
+
+      auto now = llarp_time_now_ms();
+      if(remoteIntro.ExpiresSoon(now))
+      {
+        // shift intro
+        MarkCurrentIntroBad();
+        ShiftIntroduction();
+      }
 
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)

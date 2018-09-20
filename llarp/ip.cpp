@@ -3,6 +3,9 @@
 #include <llarp/ip.hpp>
 #include "llarp/buffer.hpp"
 #include "mem.hpp"
+#ifndef _WIN32
+#include <netinet/in.h>
+#endif
 #include <llarp/endian.h>
 #include <map>
 

@@ -327,10 +327,9 @@ namespace llarp
       bool
       Validate(const service::IntroSet &value) const
       {
-        if(!value.VerifySignature(parent->Crypto()))
+        if(!value.Verify(parent->Crypto()))
         {
-          llarp::LogWarn(
-              "Got introset with invalid signature from service lookup");
+          llarp::LogWarn("Got invalid introset from service lookup");
           return false;
         }
         if(value.A.Addr() != target)
@@ -552,9 +551,9 @@ namespace llarp
       bool
       Validate(const service::IntroSet &introset) const
       {
-        if(!introset.VerifySignature(parent->Crypto()))
+        if(!introset.Verify(parent->Crypto()))
         {
-          llarp::LogWarn("got introset from tag lookup with invalid signature");
+          llarp::LogWarn("got invalid introset from tag lookup");
           return false;
         }
         if(introset.topic != target)
