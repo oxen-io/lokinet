@@ -4,6 +4,7 @@
 #include <llarp/service/config.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <unordered_map>
+#include <llarp/handlers/tun.hpp>
 
 namespace llarp
 {
@@ -17,6 +18,14 @@ namespace llarp
 
       void
       Tick();
+
+      /// DRY refactor
+      llarp::handlers::TunEndpoint *
+      getFirstTun();
+
+      /// punch a hole to get ip range from first tun endpoint
+      llarp_tun_io *
+      getRange();
 
       /// punch a hole open for DNS to add mappings
       bool
