@@ -4,11 +4,14 @@
 #include <llarp/net.hpp>
 #include <map>
 #include <vector>
+#include <llarp/service/address.hpp>
 
 // either a request or response?
+// neither, it's a result set row
 struct dns_pointer
 {
   struct sockaddr *hostResult;
+  llarp::service::Address b32addr;
 };
 
 struct ip_range
@@ -31,6 +34,9 @@ struct dns_iptracker
 
 void
 dns_iptracker_init();
+
+bool
+dns_iptracker_setup(llarp::Addr tunGatewayIp);
 
 struct dns_pointer *
 dns_iptracker_get_free();
