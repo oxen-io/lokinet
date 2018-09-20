@@ -1,17 +1,53 @@
 #include "dns_iptracker.hpp"  //
 #include "logger.hpp"
+#include <llarp.h>
 
 dns_iptracker g_dns_iptracker;
 
 void
 dns_iptracker_init()
 {
+  /*
   g_dns_iptracker.interfaces = llarp_getPrivateIfs();
   llarp::LogInfo("Interface uses 10.x.x.x? ",
                  g_dns_iptracker.interfaces.ten ? "Yes" : "No");
   g_dns_iptracker.used_privates = g_dns_iptracker.interfaces;
+  */
+
+  // just for 10.x.x.x for now
+  g_dns_iptracker.used_privates.ten      = false;
+  g_dns_iptracker.used_privates.oneSeven = true;
+  g_dns_iptracker.used_privates.oneNine  = true;
+
+  // nuke anything used on 10.x.x.x
+  g_dns_iptracker.used_ten_ips.clear();
+
+  //
   llarp::LogInfo("We used 10.x.x.x? ",
                  g_dns_iptracker.used_privates.ten ? "Yes" : "No");
+}
+
+bool
+dns_iptracker_setup(llarp::Addr tunGatewayIp)
+{
+
+  struct in_addr *addr = tunGatewayIp.addr4();
+  unsigned char *ip = (unsigned char *)&(addr->s_addr);
+
+  ip_range *range = new ip_range;
+  range->octet2 = ip[1]; // 2nd octet
+  range->octet3 = ip[2]; // 3rd octet
+  // FIXME: look up any static mappings to discount
+  range->left = 252;
+  // 4th octet, probably 1, set it
+  struct dns_pointer *result = new dns_pointer;
+  result->hostResult = new sockaddr;
+  tunGatewayIp.CopyInto(result->hostResult);
+  range->used[range->left + 2] = result;
+
+  // save 10.x.x.x range in tracker
+  g_dns_iptracker.used_ten_ips.push_back(range);
+  return false;
 }
 
 inline struct dns_pointer *
