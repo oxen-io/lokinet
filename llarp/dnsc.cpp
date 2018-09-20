@@ -236,7 +236,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   {
     answer = decode_answer((const char *)castBuf);
     answers.push_back(answer);
-    llarp::LogInfo("Read an answer");
+    llarp::LogDebug("Read an answer ", answer->type, " for ", request->question.name);
     // llarp::LogInfo("Read an answer. Label Len: ", answer->name.length(), "
     // rdLen: ", answer->rdLen);
     // name + Type (2) + Class (2) + TTL (4) + rdLen (2) + rdData + skip next
@@ -256,7 +256,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     auto diff = castBuf - (unsigned char *)buf;
     if(diff > sz)
     {
-      llarp::LogWarn("Would read past end of dns packet.");
+      llarp::LogWarn("Would read past end of dns packet. for ", request->question.name);
       break;
     }
   }
@@ -452,6 +452,8 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
 
   memset(&buffer, 0, DNC_BUF_SIZE);
   llarp::LogInfo("Waiting for recv");
+
+  // Timeout?
   ret = recvfrom(sockfd, buffer, DNC_BUF_SIZE, 0, (struct sockaddr *)&addr,
                  &size);
   llarp::LogInfo("recv done ", size);
