@@ -13,6 +13,9 @@
 #include <llarp/net.h>
 #include <windows.h>
 #include <iphlpapi.h>
+#if WINNT_CROSS_COMPILE && !NTSTATUS
+typedef LONG NTSTATUS;
+#endif
 #include "win32_intrnl.h"
 
 const char *
