@@ -379,10 +379,11 @@ namespace llarp
         return sizeof(sockaddr_in6);
     }
 
+    // Neuro: can't const this, not sure why...
     bool
-    isPrivate() const
+    isPrivate()
     {
-      uint32_t byte = getHostLong();
+      uint32_t byte = this->getHostLong();
       return this->isTenPrivate(byte) || this->isOneSevenPrivate(byte)
           || this->isOneNinePrivate(byte);
     }
