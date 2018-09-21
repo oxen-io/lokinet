@@ -15,7 +15,7 @@ namespace llarp
 {
   namespace service
   {
-    constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048;
+    constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
 
     typedef uint64_t ProtocolType;
 
