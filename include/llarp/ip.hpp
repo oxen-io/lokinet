@@ -5,7 +5,7 @@
 #include <llarp/net.hpp>
 
 #ifndef _WIN32
-#include <sys/types.h> // FreeBSD needs this for uchar for ip.h
+#include <sys/types.h>  // FreeBSD needs this for uchar for ip.h
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #else
@@ -58,27 +58,27 @@ typedef struct ip_hdr
 struct ip_header
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-    unsigned int ihl:4;
-    unsigned int version:4;
+  unsigned int ihl : 4;
+  unsigned int version : 4;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-    unsigned int version:4;
-    unsigned int ihl:4;
+  unsigned int version : 4;
+  unsigned int ihl : 4;
 #else
-# error "Please fix <bits/endian.h>"
+#error "Please fix <bits/endian.h>"
 #endif
 
 #if defined(__linux__)
 #define ip_version version
 #endif
-    uint8_t tos;
-    uint16_t tot_len;
-    uint16_t id;
-    uint16_t frag_off;
-    uint8_t ttl;
-    uint8_t protocol;
-    uint16_t check;
-    uint32_t saddr;
-    uint32_t daddr;
+  uint8_t tos;
+  uint16_t tot_len;
+  uint16_t id;
+  uint16_t frag_off;
+  uint8_t ttl;
+  uint8_t protocol;
+  uint16_t check;
+  uint32_t saddr;
+  uint32_t daddr;
 };
 
 namespace llarp

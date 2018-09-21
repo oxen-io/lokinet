@@ -37,7 +37,7 @@ struct llarp_router_lookup_job
   void* user;
   llarp_router_lookup_handler hook;
   struct llarp_dht_context* dht;
-  //byte_t target[PUBKEYSIZE];
+  // byte_t target[PUBKEYSIZE];
   llarp::PubKey target;
   bool found;
   // make sure you initialize addr and exits

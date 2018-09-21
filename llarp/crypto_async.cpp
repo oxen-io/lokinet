@@ -51,7 +51,7 @@ namespace iwp
 
     llarp::SymmNonce n;
     // copy nonce
-    memcpy(n, intro->nonce, 32); // was 24 bytes
+    memcpy(n, intro->nonce, 32);  // was 24 bytes
     char ftmpN[68] = {0};
     const char *hexN =
         llarp::HexEncode< llarp::SymmNonce, decltype(ftmpN) >(n, ftmpN);
@@ -134,7 +134,7 @@ namespace iwp
     buf.sz   = 32;
 
     // was using remote_pubkey directly (use buffer wrapper? directly?)
-    //memcpy(intro->remote_pubkey, intro->buf + 64, 32);
+    // memcpy(intro->remote_pubkey, intro->buf + 64, 32);
     memcpy(buf.base, intro->buf + 64, 32);
 
     crypto->xchacha20(buf, e_K, intro->nonce);
