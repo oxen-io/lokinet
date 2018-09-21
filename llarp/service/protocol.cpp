@@ -185,19 +185,19 @@ namespace llarp
       D = buf;
       // zero out signature
       Z.Zero();
-      // reset buffer
-      buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      auto buf2 = llarp::StackBuffer< decltype(tmp) >(tmp);
       // encode frame
-      if(!BEncode(&buf))
+      if(!BEncode(&buf2))
       {
         llarp::LogError("frame too big to encode");
+        llarp::DumpBuffer(buf2);
         return false;
       }
       // rewind
-      buf.sz  = buf.cur - buf.base;
-      buf.cur = buf.base;
+      buf2.sz  = buf2.cur - buf2.base;
+      buf2.cur = buf2.base;
       // sign
-      if(!localIdent.Sign(crypto, Z, buf))
+      if(!localIdent.Sign(crypto, Z, buf2))
       {
         llarp::LogError("failed to sign? wtf?!");
         return false;
