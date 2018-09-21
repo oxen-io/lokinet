@@ -12,19 +12,14 @@ dns_iptracker_init()
   llarp::LogInfo("Interface uses 10.x.x.x? ",
                  g_dns_iptracker.interfaces.ten ? "Yes" : "No");
   g_dns_iptracker.used_privates = g_dns_iptracker.interfaces;
-  */
-
-  // just for 10.x.x.x for now
-  g_dns_iptracker.used_privates.ten      = false;
-  g_dns_iptracker.used_privates.oneSeven = true;
-  g_dns_iptracker.used_privates.oneNine  = true;
-
-  // nuke anything used on 10.x.x.x
-  g_dns_iptracker.used_ten_ips.clear();
-
-  //
   llarp::LogInfo("We used 10.x.x.x? ",
                  g_dns_iptracker.used_privates.ten ? "Yes" : "No");
+  */
+
+  // disable all possibilities unless you setup a tunGateway
+  g_dns_iptracker.used_privates.ten      = true;
+  g_dns_iptracker.used_privates.oneSeven = true;
+  g_dns_iptracker.used_privates.oneNine  = true;
 }
 
 bool
@@ -45,9 +40,36 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
   tunGatewayIp.CopyInto(result->hostResult);
   range->used[range->left + 2] = result;
 
-  // save 10.x.x.x range in tracker
-  g_dns_iptracker.used_ten_ips.push_back(range);
-  return false;
+  // save tun range in tracker
+  // FIXME: forcing one and only one range
+  if (ip[0] == 10)
+  {
+    //g_dns_iptracker.used_ten_ips.clear(); // FIXME: can't call this multiple times
+    g_dns_iptracker.used_ten_ips.push_back(range);
+    g_dns_iptracker.used_privates.ten      = false;
+    //g_dns_iptracker.used_privates.oneSeven = true;
+    //g_dns_iptracker.used_privates.oneNine  = true;
+  } else
+  if (ip[0] == 172)
+  {
+    //g_dns_iptracker.used_seven_ips.clear(); // FIXME: can't call this multiple times
+    g_dns_iptracker.used_seven_ips.push_back(range);
+    //g_dns_iptracker.used_privates.ten      = true;
+    g_dns_iptracker.used_privates.oneSeven = false;
+    //g_dns_iptracker.used_privates.oneNine  = true;
+  } else
+  if (ip[0] == 192)
+  {
+    //g_dns_iptracker.used_nine_ips.clear(); // FIXME: can't call this multiple times
+    g_dns_iptracker.used_nine_ips.push_back(range);
+    //g_dns_iptracker.used_privates.ten      = true;
+    //g_dns_iptracker.used_privates.oneSeven = true;
+    g_dns_iptracker.used_privates.oneNine  = false;
+  } else
+  {
+    return false;
+  }
+  return true;
 }
 
 inline struct dns_pointer *
