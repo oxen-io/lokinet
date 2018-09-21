@@ -126,7 +126,9 @@ namespace llarp
       void
       PutNode(const Val_t& val)
       {
-        nodes[val.ID] = val;
+        auto itr = nodes.find(val.ID);
+        if(itr == nodes.end() || itr->second < val)
+          nodes[val.ID] = val;
       }
 
       void
