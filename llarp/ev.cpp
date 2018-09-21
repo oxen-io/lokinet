@@ -44,8 +44,7 @@ llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
 {
   while(ev->running())
   {
-    if(ev->tick(EV_TICK_INTERVAL) == -1)
-      return -1;
+    ev->tick(EV_TICK_INTERVAL);    
     llarp_logic_tick(logic);
   }
   return 0;

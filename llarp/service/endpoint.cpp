@@ -1194,10 +1194,14 @@ namespace llarp
         ShiftIntroduction();
       }
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
-      std::remove_if(m_BadIntros.cbegin(), m_BadIntros.cend(),
-                     [now](const Introduction& intro) -> bool {
-                       return intro.IsExpired(now);
-                     });
+      auto itr = m_BadIntros.begin();
+      while(itr != m_BadIntros.end())
+      {
+        if(itr->IsExpired(now))
+          itr = m_BadIntros.erase(itr);
+        else
+          ++itr;
+      }
       // TODO: check for expiration of outbound context
       return false;
     }

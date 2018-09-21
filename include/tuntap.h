@@ -198,14 +198,11 @@ extern "C"
   TUNTAP_EXPORT int
   tuntap_set_mtu(struct device *, int);
 
-  /*
-   * It's impossible to set single IP for `tun` devices on FreeBSD .
-   * FreeBSD's `tun` interface needs 2 IP addresses.
-   * So a new (and backward compatible) version of tuntap_set_ip() is
-   * implemented.
+  /** set ip address and netmask
+
    */
   TUNTAP_EXPORT int
-  tuntap_set_ip(struct device *, ...);
+  tuntap_set_ip(struct device *, const char * srcaddr, const char *dstaddr, int netmask);
   // TUNTAP_EXPORT int		 tuntap_set_ip_old(struct device *, const char
   // *, int);
   /*TUNTAP_EXPORT int		 tuntap_set_ip_old(struct device *, const char

@@ -119,7 +119,7 @@ namespace llarp
         llarp::LogWarn("failed to put interface up: ", strerror(errno));
         return false;
       }
-      if(tuntap_set_ip(tunif, t->ifaddr, t->netmask) == -1)
+      if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
       {
         llarp::LogWarn("failed to set ip");
         return false;
