@@ -27,6 +27,10 @@ namespace llarp
       llarp_tun_io *
       getRange();
 
+      /// hint at possible path usage and trigger building early
+      bool
+      Prefetch(const llarp::service::Address &addr);
+
       /// punch a hole open for DNS to add mappings
       bool
       MapAddress(const llarp::service::Address &addr, uint32_t ip);

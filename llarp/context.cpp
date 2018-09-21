@@ -451,6 +451,13 @@ main_router_mapAddress(struct llarp_main *ptr, const llarp::service::Address &ad
   return endpoint->MapAddress(addr, ip);
 }
 
+bool
+main_router_prefetch(struct llarp_main *ptr, const llarp::service::Address &addr)
+{
+  auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
+  return endpoint->Prefetch(addr);
+}
+
 llarp_tun_io *
 main_router_getRange(struct llarp_main *ptr)
 {

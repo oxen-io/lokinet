@@ -103,6 +103,10 @@ extern "C"
   bool
   main_router_mapAddress(struct llarp_main *ptr, const llarp::service::Address &addr, uint32_t ip);
 
+  /// info of possible path usage
+  bool
+  main_router_prefetch(struct llarp_main *ptr, const llarp::service::Address &addr);
+
 }
 #endif
 #endif

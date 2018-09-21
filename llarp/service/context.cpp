@@ -1,5 +1,6 @@
 #include <llarp/handlers/tun.hpp>
 #include <llarp/service/context.hpp>
+#include <llarp/service/endpoint.hpp>
 
 namespace llarp
 {
@@ -55,6 +56,19 @@ namespace llarp
         return nullptr;
       }
       return &tunEndpoint->tunif;
+    }
+
+    bool
+    Context::Prefetch(const llarp::service::Address &addr)
+    {
+      llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
+      if (!tunEndpoint)
+      {
+        llarp::LogError("No tunnel endpoint found");
+        return false;
+      }
+      //HiddenServiceAddresslookup *lookup = new HiddenServiceEndpoint(tunEndpoint, callback, addr, tunEndpoint->GenTXID());
+      return tunEndpoint->EnsurePathToService(addr, [](Address addr, void* ctx) {}, 10000);
     }
 
     bool
