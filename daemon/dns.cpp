@@ -136,6 +136,7 @@ llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
     response->returnThis               = free_private->hostResult;
     llarp::LogInfo("Saving ", qr->request->question.name);
     loki_tld_lookup_cache[qr->request->question.name] = response;
+
     // FIXME: flush cache to disk
     // on crash we'll need to bring up all the same IPs we assigned before...
     writesend_dnss_response(free_private->hostResult, qr->from, qr->request);
@@ -145,11 +146,12 @@ llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
   // else
   llarp::LogInfo("Sending cname to delay");
   writecname_dnss_response(
-      random_string(32, "abcdefghijklmnopqrstuvwxyz") + "bob.loki", qr->from,
+      random_string(49, "abcdefghijklmnopqrstuvwxyz") + "bob.loki", qr->from,
       qr->request);
   delete qr;
 }
 
+/*
 void
 HandleDHTLocate(llarp_router_lookup_job *job)
 {
@@ -163,6 +165,7 @@ HandleDHTLocate(llarp_router_lookup_job *job)
     llarp::LogInfo("WE FOUND DHT LOOKUP FOR ", hexPubSigKey);
   }
 }
+*/
 
 dnsd_query_hook_response *
 hookChecker(std::string name, const struct sockaddr *from,
@@ -184,7 +187,7 @@ hookChecker(std::string name, const struct sockaddr *from,
     if(cache_check != loki_tld_lookup_cache.end())
     {
       // was in cache
-      llarp::LogInfo("Could reuse address from LokiLookupCache");
+      llarp::LogInfo("Reused address from LokiLookupCache");
       // FIXME: avoid the allocation if you could
       delete response;
       return cache_check->second;
@@ -203,6 +206,7 @@ hookChecker(std::string name, const struct sockaddr *from,
       //llarp::HexDecode(b32addr.c_str(), binaryPK.data());
 
       llarp::LogInfo("Queueing job");
+      */
 
       llarp::service::Address addr;
 
@@ -213,6 +217,7 @@ hookChecker(std::string name, const struct sockaddr *from,
         return response;
       }
       llarp::LogInfo("Got address", addr);
+      /*
       struct dns_pointer *free_private = dns_iptracker_get_free();
       if(free_private)
       {
@@ -261,12 +266,15 @@ hookChecker(std::string name, const struct sockaddr *from,
       // check_query_request *query_request = new check_query_request;
       // query_request->hook = &llarp_dnsd_checkQuery_resolved;
       */
+
+      main_router_prefetch(ctx, addr);
+
       check_query_simple_request *qr = new check_query_simple_request;
       qr->from                       = from;
       qr->request                    = request;
       // nslookup on osx is about 5 sec before a retry
       llarp_logic_call_later(request->context->logic,
-                             {5, qr, &llarp_dnsd_checkQuery});
+                             {2000, qr, &llarp_dnsd_checkQuery});
 
 
 
