@@ -273,8 +273,6 @@ namespace llarp
       {
         if(!introset.Verify(crypto))
         {
-          llarp::LogInfo("invalid introset ", introset, " on endpoint ",
-                         Name());
           if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
           {
             IntroSetPublishFail();

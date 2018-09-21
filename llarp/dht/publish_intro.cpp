@@ -53,12 +53,16 @@ namespace llarp
       if(!I.Verify(&dht.router->crypto))
       {
         llarp::LogWarn("invalid introset: ", I);
-        return false;
+        // don't propogate or store
+        replies.emplace_back(new GotIntroMessage({}, txID));
+        return true;
       }
       if(I.W && !I.W->IsValid(dht.router->crypto.shorthash))
       {
         llarp::LogWarn("proof of work not good enough for IntroSet");
-        return false;
+        // don't propogate or store
+        replies.emplace_back(new GotIntroMessage({}, txID));
+        return true;
       }
       llarp::dht::Key_t addr;
       if(!I.A.CalculateAddress(addr))
@@ -68,9 +72,10 @@ namespace llarp
         return false;
       }
       auto now = llarp_time_now_ms();
+      now += llarp::service::MAX_INTROSET_TIME_DELTA;
       if(I.IsExpired(now))
       {
-        // don't propogate or store expired introsets
+        // don't propogate or store
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
