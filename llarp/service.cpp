@@ -309,6 +309,8 @@ namespace llarp
         return false;
       // valid timestamps
       auto now = llarp_time_now_ms();
+      // add max clock skew
+      now += MAX_INTROSET_TIME_DELTA;
       for(const auto& intro : I)
       {
         if(intro.expiresAt > now

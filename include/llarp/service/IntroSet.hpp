@@ -16,7 +16,8 @@ namespace llarp
   namespace service
   {
     constexpr std::size_t MAX_INTROSET_SIZE = 4096;
-
+    // 10 seconds clock skew permitted for introset expiration
+    constexpr llarp_time_t MAX_INTROSET_TIME_DELTA = (10 * 1000);
     struct IntroSet : public llarp::IBEncodeMessage
     {
       ServiceInfo A;

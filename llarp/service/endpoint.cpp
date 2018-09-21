@@ -276,13 +276,26 @@ namespace llarp
       {
         if(!introset.Verify(crypto))
         {
-          llarp::LogInfo("invalid introset ", introset, " on endpoint ",
-                         Name());
           if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
           {
             IntroSetPublishFail();
           }
-          return false;
+          else
+          {
+            auto itr = m_PendingLookups.find(msg->T);
+            if(itr == m_PendingLookups.end())
+            {
+              llarp::LogWarn(
+                  "invalid lookup response for hidden service endpoint ",
+                  Name(), " txid=", msg->T);
+              return true;
+            }
+            std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
+            m_PendingLookups.erase(itr);
+            lookup->HandleResponse({});
+            return true;
+          }
+          return true;
         }
         if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
         {
