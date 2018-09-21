@@ -29,6 +29,7 @@ namespace llarp
 {
   Context::~Context()
   {
+    llarp_ev_loop_free(&mainloop);
   }
 
   void
@@ -165,16 +166,8 @@ namespace llarp
     }
 
     // run net io thread
-    if(singleThreaded)
-    {
-      llarp::LogInfo("running mainloop");
-      llarp_ev_loop_run_single_process(mainloop, worker, logic);
-    }
-    else
-    {
-      llarp::LogInfo("running mainloop");
-      return llarp_ev_loop_run(mainloop, logic);
-    }
+    llarp::LogInfo("running mainloop");
+    llarp_ev_loop_run_single_process(mainloop, worker, logic);
     return 0;
   }
 
@@ -231,14 +224,8 @@ namespace llarp
     llarp::LogDebug("free nodedb");
     llarp_nodedb_free(&nodedb);
 
-    for(size_t i = 0; i < netio_threads.size(); ++i)
-    {
-      if(mainloop)
-      {
-        llarp::LogDebug("stopping event loop thread ", i);
-        llarp_ev_loop_stop(mainloop);
-      }
-    }
+    llarp::LogDebug("stopping event loop");
+    llarp_ev_loop_stop(mainloop);
 
     llarp::LogDebug("free router");
     llarp_free_router(&router);
@@ -253,8 +240,6 @@ namespace llarp
     }
 
     netio_threads.clear();
-    llarp::LogDebug("free mainloop");
-    llarp_ev_loop_free(&mainloop);
   }
 
   bool
