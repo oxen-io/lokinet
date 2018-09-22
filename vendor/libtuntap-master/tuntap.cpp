@@ -91,6 +91,7 @@ extern "C"
   tuntap_set_ip(struct device *dev, const char *addr, const char *daddr, int netmask)
   {
     t_tun_in_addr baddr4;
+    t_tun_in_addr daddr4;
     t_tun_in6_addr baddr6;
     uint32_t mask;
     int errval;
@@ -129,7 +130,20 @@ extern "C"
     errval = inet_pton(AF_INET, addr, &(baddr4));
     if(errval == 1)
     {
+#ifdef __FreeBSD__
+      errval = inet_pton(AF_INET, daddr, &(daddr4));
+      if(errval == 1)
+      {
+        return tuntap_sys_set_ipv4_tun(dev, &baddr4, &daddr4, mask);
+      }
+      else
+      {
+        llarp::LogError("invalid s4dest address: ", addr);
+        return -1;
+      }
+#else
       return tuntap_sys_set_ipv4(dev, &baddr4, mask);
+#endif
     }
     else if(errval == 0)
     {

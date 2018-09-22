@@ -290,7 +290,7 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
   struct ifreq ifr;
   char *newname;
 	//(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
-  strlcpy(ifr.ifr_name, dev->ifname, IF_NAMESIZE);
+  strlcpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
 
   newname = strdup(ifname);
   if(newname == NULL)
@@ -307,5 +307,4 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
 		return -1;
 	}
 	return 0;
-}
 }
