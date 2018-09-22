@@ -338,8 +338,8 @@ extern "C"
 
   bool
   llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
-                       struct llarp_logic *logic, uint16_t server_port,
-                       const char *upstream_host, uint16_t upstream_port)
+                       uint16_t server_port, const char *upstream_host,
+                       uint16_t upstream_port)
   {
     return llarp_dnsd_init(dnsd, ptr->ctx->logic, ptr->ctx->mainloop, "*",
                            server_port, upstream_host, upstream_port);

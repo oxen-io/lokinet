@@ -7,7 +7,8 @@
 #include <llarp/version.h>
 
 #ifdef __cplusplus
-#include "router.hpp"  // for service::address
+#include <llarp/service/address.hpp>  // for service::address
+#include <llarp/handlers/tun.hpp>     // for handlers
 #include <llarp/service/endpoint.hpp>
 
 extern "C"
@@ -82,8 +83,8 @@ extern "C"
   /// set up DNS libs with a context
   bool
   llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
-                       struct llarp_logic *logic, uint16_t server_port,
-                       const char *upstream_host, uint16_t upstream_port);
+                       uint16_t server_port, const char *upstream_host,
+                       uint16_t upstream_port);
 
   /// set up dotLokiLookup with logic for setting timers
   bool
