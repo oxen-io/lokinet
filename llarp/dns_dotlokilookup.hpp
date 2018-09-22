@@ -9,7 +9,8 @@
 
 #include "dnsd.hpp"
 
-typedef bool (*map_address_hook_func)(const llarp::service::Address &addr, uint32_t ip);
+typedef bool (*map_address_hook_func)(const llarp::service::Address &addr,
+                                      uint32_t ip);
 
 /// dotLokiLookup
 struct dotLokiLookup
@@ -20,19 +21,20 @@ struct dotLokiLookup
   /// which ip tracker to use
   struct dns_iptracker *ip_tracker;
   /// tunEndpoint
-  //llarp::handlers::TunEndpoint *tunEndpoint; // is this even needed here?
+  // llarp::handlers::TunEndpoint *tunEndpoint; // is this even needed here?
   void *user;
   // pointer to tunendpoint properties?
 
   // need a way to reference
   // 1. mapaddress
   map_address_hook_func map_address_handler;
-  //std::function< bool(const llarp::service::Address &addr, uint32_t ip), llarp::handlers::TunEndpoint * > callback;
+  // std::function< bool(const llarp::service::Address &addr, uint32_t ip),
+  // llarp::handlers::TunEndpoint * > callback;
   // 2. prefetch
 };
 
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
-            struct dnsd_question_request *request);
+                            struct dnsd_question_request *request);
 
 #endif

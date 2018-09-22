@@ -4,9 +4,8 @@
 
 #include <llarp/handlers/tun.hpp>
 
-
 std::string const default_chars =
-"abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+    "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
 
 #include <random>
 
@@ -14,11 +13,11 @@ std::string
 random_string(size_t len = 15, std::string const &allowed_chars = default_chars)
 {
   std::mt19937_64 gen{std::random_device()()};
-  
+
   std::uniform_int_distribution< size_t > dist{0, allowed_chars.length() - 1};
-  
+
   std::string ret;
-  
+
   std::generate_n(std::back_inserter(ret), len,
                   [&] { return allowed_chars[dist(gen)]; });
   return ret;
@@ -31,7 +30,7 @@ struct check_query_simple_request
 };
 
 std::map< std::string, struct dnsd_query_hook_response * >
-loki_tld_lookup_cache;
+    loki_tld_lookup_cache;
 
 void
 llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
@@ -41,9 +40,9 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   // struct check_query_request *request = static_cast< struct
   // check_query_request * >(u);
   struct check_query_simple_request *qr =
-  static_cast< struct check_query_simple_request * >(u);
+      static_cast< struct check_query_simple_request * >(u);
   dotLokiLookup *dll = (dotLokiLookup *)qr->request->context->user;
-  if (!dll)
+  if(!dll)
   {
     llarp::LogError("DNSd dotLokiLookup is not configured");
     return;
@@ -66,12 +65,14 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
       return;
     }
     in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
-    
-    llarp::handlers::TunEndpoint *tunEndpoint = (llarp::handlers::TunEndpoint *)dll->user;
+
+    llarp::handlers::TunEndpoint *tunEndpoint =
+        (llarp::handlers::TunEndpoint *)dll->user;
     bool mapResult = tunEndpoint->MapAddress(addr, ntohl(ip_address.s_addr));
     /*
     bool mapResult = main_router_mapAddress(
-                                            ctx, addr, ntohl(ip_address.s_addr));  // maybe ntohl on the s_addr
+                                            ctx, addr,
+    ntohl(ip_address.s_addr));  // maybe ntohl on the s_addr
     */
     if(!mapResult)
     {
@@ -95,20 +96,21 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   // else
   llarp::LogInfo("Sending cname to delay");
   writecname_dnss_response(
-                           random_string(49, "abcdefghijklmnopqrstuvwxyz") + "bob.loki", qr->from,
-                           qr->request);
+      random_string(49, "abcdefghijklmnopqrstuvwxyz") + "bob.loki", qr->from,
+      qr->request);
   delete qr;
 }
 
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
-            struct dnsd_question_request *request)
+                            struct dnsd_question_request *request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
-  //dotLokiLookup *dll                 = (dotLokiLookup *)request->context->user;
-  response->dontLookUp               = false;
-  response->dontSendResponse         = false;
-  response->returnThis               = nullptr;
+  // dotLokiLookup *dll                 = (dotLokiLookup
+  // *)request->context->user;
+  response->dontLookUp       = false;
+  response->dontSendResponse = false;
+  response->returnThis       = nullptr;
   llarp::LogDebug("Hooked ", name);
   std::string lName = name;
   std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
@@ -139,14 +141,15 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
 
     // start path build early (if you're looking it up, you're probably going to
     // use it)
-    //main_router_prefetch(ctx, addr);
+    // main_router_prefetch(ctx, addr);
 
     // schedule future response
     check_query_simple_request *qr = new check_query_simple_request;
     qr->from                       = from;
     qr->request                    = request;
     // nslookup on osx is about 5 sec before a retry, 2s on linux
-    llarp_logic_call_later(request->context->client.logic, {2000, qr, &llarp_dotlokilookup_checkQuery});
+    llarp_logic_call_later(request->context->client.logic,
+                           {2000, qr, &llarp_dotlokilookup_checkQuery});
 
     response->dontSendResponse = true;
   }
