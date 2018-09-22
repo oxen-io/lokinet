@@ -9,12 +9,12 @@
 #include <llarp/logic.h>
 #include "dns_iptracker.hpp"
 #include "dnsd.hpp"
+#include "dns_dotlokilookup.hpp"
 #include "ev.hpp"
 #include "llarp/net.hpp"
 #include "logger.hpp"
 
-#include "router.hpp" // for service::address
-
+#include "router.hpp"  // for service::address
 
 #include "crypto.hpp"  // for llarp::pubkey
 
@@ -49,6 +49,9 @@ handle_signal(int sig)
 {
   printf("got SIGINT\n");
   done = true;
+  // if using router, signal it
+  if(ctx)
+    llarp_main_signal(ctx, sig);
 }
 
 std::string const default_chars =
@@ -89,7 +92,7 @@ random_string(size_t len = 15, std::string const &allowed_chars = default_chars)
 
 struct check_query_simple_request
 {
-  const struct sockaddr *from; // source
+  const struct sockaddr *from;  // source
   dnsd_question_request *request;
 };
 
@@ -105,26 +108,29 @@ llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
   // check_query_request * >(u);
   struct check_query_simple_request *qr =
       static_cast< struct check_query_simple_request * >(u);
+  dotLokiLookup *dll = (dotLokiLookup *)qr->request->user;
 
   // we do have result
   // if so send that
   // else
   // if we have a free private ip, send that
-  struct dns_pointer *free_private = dns_iptracker_get_free();
+  struct dns_pointer *free_private = dns_iptracker_get_free(dll->ip_tracker);
   if(free_private)
   {
     // do mapping
     llarp::service::Address addr;
-    if (!addr.FromString(qr->request->question.name))
+    if(!addr.FromString(qr->request->question.name))
     {
-      llarp::LogWarn("Could not base32 decode address: ", qr->request->question.name);
+      llarp::LogWarn("Could not base32 decode address: ",
+                     qr->request->question.name);
       delete qr;
       return;
     }
     in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
 
-    bool mapResult = main_router_mapAddress(ctx, addr, ntohl(ip_address.s_addr)); // maybe ntohl on the s_addr
-    if (!mapResult)
+    bool mapResult = main_router_mapAddress(
+        ctx, addr, ntohl(ip_address.s_addr));  // maybe ntohl on the s_addr
+    if(!mapResult)
     {
       delete qr;
       return;
@@ -151,27 +157,12 @@ llarp_dnsd_checkQuery(void *u, uint64_t orig, uint64_t left)
   delete qr;
 }
 
-/*
-void
-HandleDHTLocate(llarp_router_lookup_job *job)
-{
-  llarp::LogInfo("DHT result: ", job->found ? "found" : "not found");
-  if(job->found)
-  {
-    // save to nodedb?
-    char ftmp[68] = {0};
-    const char *hexPubSigKey =
-        llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(job->target, ftmp);
-    llarp::LogInfo("WE FOUND DHT LOOKUP FOR ", hexPubSigKey);
-  }
-}
-*/
-
 dnsd_query_hook_response *
 hookChecker(std::string name, const struct sockaddr *from,
             struct dnsd_question_request *request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
+  dotLokiLookup *dll                 = (dotLokiLookup *)request->context->user;
   response->dontLookUp               = false;
   response->dontSendResponse         = false;
   response->returnThis               = nullptr;
@@ -193,97 +184,29 @@ hookChecker(std::string name, const struct sockaddr *from,
       return cache_check->second;
     }
 
-    // strip off .loki
-    std::string without_dot_loki = lName.substr(0, lName.size() - 5);
-    //if(without_dot_loki.find(".") != std::string::npos)
-    //{
-      /*
-      std::string b32addr = without_dot_loki;
-      b32addr.erase(52, 1);
-      llarp::LogInfo("B32 address: ", b32addr);
-
-      //llarp::PubKey binaryPK;
-      //llarp::HexDecode(b32addr.c_str(), binaryPK.data());
-
-      llarp::LogInfo("Queueing job");
-      */
-
-      llarp::service::Address addr;
-
-      if (!addr.FromString(lName))
-      {
-        llarp::LogWarn("Could not base32 decode address");
-        response->dontSendResponse = true;
-        return response;
-      }
-      llarp::LogInfo("Got address", addr);
-      /*
-      struct dns_pointer *free_private = dns_iptracker_get_free();
-      if(free_private)
-      {
-        llarp::Addr ipOut(*free_private->hostResult);
-        llarp::LogInfo("Generate free private address ", ipOut);
-        response->dontLookUp               = true;
-        response->dontSendResponse         = false;
-        response->returnThis               = free_private->hostResult;
-      }
-      */
-
-      // where's our router? ctx->router
-      // once in our router we need to use front on ctx->router.hiddenServiceContext.m_Endpoints
-      // we may need to cast to a TunEndpoint type of handler
-      // then we can call MapAddress on it
-      //main_router_mapAddress(addr, ip.s_addr); // maybe ntohl on the s_addr
-
-
-
-      // we need to locate our tunEndpoint
-      //bool res = tun.MapAddress(addr, ntohl(ip.s_addr));
-
-      //
-
-      // Iservice look up job
-      // llarp service endpoint
-      // fire off HiddenServiceAddressLookup
-      //HiddenServiceAddresslookup * lookup = new HiddenServiceEndpoint(ep, callback, address, ep->GenTXID());
-      // set cb
-      // std::function<bool(const Address &, const IntroSet *)>
-      // from a context of an endpoint
-
-      /*
-      llarp_router_lookup_job *job = new llarp_router_lookup_job;
-      job->iterative               = true;
-      job->found                   = false;
-      job->hook                    = &HandleDHTLocate;
-
-      // Disable for RC refactor
-      //llarp_rc_new(&job->result);
-      memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
-
-      // llarp_dht_lookup_router(ctx->router->dht, job);
-      llarp_main_queryDHT_RC(ctx, job);
-
-      // check_query_request *query_request = new check_query_request;
-      // query_request->hook = &llarp_dnsd_checkQuery_resolved;
-      */
-
-      main_router_prefetch(ctx, addr);
-
-      check_query_simple_request *qr = new check_query_simple_request;
-      qr->from                       = from;
-      qr->request                    = request;
-      // nslookup on osx is about 5 sec before a retry
-      llarp_logic_call_later(request->context->logic,
-                             {2000, qr, &llarp_dnsd_checkQuery});
-
-
-
+    // decode string into HS addr
+    llarp::service::Address addr;
+    if(!addr.FromString(lName))
+    {
+      llarp::LogWarn("Could not base32 decode address");
       response->dontSendResponse = true;
-    //}
-    // if not xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-    // format something like bob.loki
+      return response;
+    }
+    llarp::LogInfo("Got address", addr);
+
+    // start path build early (if you're looking it up, you're probably going to
+    // use it)
+    main_router_prefetch(ctx, addr);
+
+    // schedule future response
+    check_query_simple_request *qr = new check_query_simple_request;
+    qr->from                       = from;
+    qr->request                    = request;
+    // nslookup on osx is about 5 sec before a retry, 2s on linux
+    llarp_logic_call_later(dll->logic, {2000, qr, &llarp_dnsd_checkQuery});
+
+    response->dontSendResponse = true;
   }
-  // cast your context->user;
   return response;
 }
 
@@ -319,7 +242,9 @@ int
 main(int argc, char *argv[])
 {
   int code = 1;
-  llarp::LogInfo("Starting up server");
+  char cwd[1024];
+  getcwd(cwd, sizeof(cwd));
+  llarp::LogInfo("Starting up server at ", cwd);
 
   const char *conffname = handleBaseCmdLineArgs(argc, argv);
   dns_relay_config dnsr_config;
@@ -367,6 +292,12 @@ main(int argc, char *argv[])
     }
     // Configure intercept
     dnsd.intercept = &hookChecker;
+    dotLokiLookup dll;
+    // should be a function...
+    // dll.tunEndpoint = main_router_getFirstTunEndpoint(ctx);
+    // dll.ip_tracker = &g_dns_iptracker;
+    llarp_main_init_dotLokiLookup(ctx, &dll);
+    dnsd.user = &dll;
 
     // check tun set up
     llarp_tun_io *tun = main_router_getRange(ctx);
@@ -377,13 +308,21 @@ main(int argc, char *argv[])
     // well our routes table should already be set up
 
     // mark our TunIfAddr as used
-    struct sockaddr_in addr;
-    addr.sin_addr.s_addr = inet_addr(tun->ifaddr);
-    addr.sin_family      = AF_INET;
+    if(tun)
+    {
+      struct sockaddr_in addr;
+      addr.sin_addr.s_addr = inet_addr(tun->ifaddr);
+      addr.sin_family      = AF_INET;
 
-    llarp::Addr tunIp(addr);
-    llarp::LogDebug("llarp::TunIfAddr: ", tunIp);
-    dns_iptracker_setup(tunIp);
+      llarp::Addr tunIp(addr);
+      llarp::LogDebug("llarp::TunIfAddr: ", tunIp);
+      dns_iptracker_setup_dotLokiLookup(&dll, tunIp);
+      dns_iptracker_setup(tunIp);
+    }
+    else
+    {
+      llarp::LogWarn("No tun interface, can't look up .loki");
+    }
 
     // run system and wait
     llarp_main_run(ctx);
@@ -402,7 +341,7 @@ main(int argc, char *argv[])
 
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, netloop, logic, "*", server_port,
+    if(!llarp_dnsd_init(&dnsd, netloop, "*", server_port,
                         (const char *)dnsr_config.upstream_host.c_str(),
                         dnsr_config.upstream_port))
     {
@@ -429,7 +368,7 @@ main(int argc, char *argv[])
 
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, nullptr, logic, "*", server_port,
+    if(!llarp_dnsd_init(&dnsd, nullptr, "*", server_port,
                         (const char *)dnsr_config.upstream_host.c_str(),
                         dnsr_config.upstream_port))
     {
