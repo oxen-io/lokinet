@@ -31,18 +31,29 @@ namespace llarp
       }
     }
 
-    llarp::handlers::TunEndpoint *
-    Context::getFirstTun()
+    llarp::service::Endpoint *
+    Context::getFirstEndpoint()
     {
-      if (!m_Endpoints.size())
+      if(!m_Endpoints.size())
       {
         llarp::LogError("No endpoints found");
         return nullptr;
       }
-      auto firstEndpoint = m_Endpoints.begin();
+      auto firstEndpoint   = m_Endpoints.begin();
       auto *uniqueEndpoint = &firstEndpoint->second;
-      llarp::service::Endpoint *endpointer = uniqueEndpoint->get();
-      llarp::handlers::TunEndpoint *tunEndpoint = dynamic_cast<llarp::handlers::TunEndpoint *>(endpointer);
+      return uniqueEndpoint->get();
+    }
+
+    llarp::handlers::TunEndpoint *
+    Context::getFirstTun()
+    {
+      llarp::service::Endpoint *endpointer = this->getFirstEndpoint();
+      if(!endpointer)
+      {
+        return nullptr;
+      }
+      llarp::handlers::TunEndpoint *tunEndpoint =
+          dynamic_cast< llarp::handlers::TunEndpoint * >(endpointer);
       return tunEndpoint;
     }
 
@@ -50,7 +61,7 @@ namespace llarp
     Context::getRange()
     {
       llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
-      if (!tunEndpoint)
+      if(!tunEndpoint)
       {
         llarp::LogError("No tunnel endpoint found");
         return nullptr;
@@ -62,28 +73,32 @@ namespace llarp
     Context::Prefetch(const llarp::service::Address &addr)
     {
       llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
-      if (!tunEndpoint)
+      if(!tunEndpoint)
       {
         llarp::LogError("No tunnel endpoint found");
         return false;
       }
-      //HiddenServiceAddresslookup *lookup = new HiddenServiceEndpoint(tunEndpoint, callback, addr, tunEndpoint->GenTXID());
-      return tunEndpoint->EnsurePathToService(addr, [](Address addr, void* ctx) {}, 10000);
+      // HiddenServiceAddresslookup *lookup = new
+      // HiddenServiceEndpoint(tunEndpoint, callback, addr,
+      // tunEndpoint->GenTXID());
+      return tunEndpoint->EnsurePathToService(
+          addr, [](Address addr, void *ctx) {}, 10000);
     }
 
     bool
     Context::MapAddress(const llarp::service::Address &addr, uint32_t ip)
     {
-      if (!m_Endpoints.size())
+      if(!m_Endpoints.size())
       {
         llarp::LogError("No endpoints found");
         return false;
       }
-      auto firstEndpoint = m_Endpoints.begin();
-      auto *uniqueEndpoint = &firstEndpoint->second;
+      auto firstEndpoint                   = m_Endpoints.begin();
+      auto *uniqueEndpoint                 = &firstEndpoint->second;
       llarp::service::Endpoint *endpointer = uniqueEndpoint->get();
-      llarp::handlers::TunEndpoint *tunEndpoint = dynamic_cast<llarp::handlers::TunEndpoint *>(endpointer);
-      if (!tunEndpoint)
+      llarp::handlers::TunEndpoint *tunEndpoint =
+          dynamic_cast< llarp::handlers::TunEndpoint * >(endpointer);
+      if(!tunEndpoint)
       {
         llarp::LogError("No tunnel endpoint found");
         return false;

@@ -7,7 +7,7 @@
 #include <llarp/version.h>
 
 #ifdef __cplusplus
-#include "router.hpp" // for service::address
+#include "router.hpp"  // for service::address
 #include <llarp/service/endpoint.hpp>
 
 extern "C"
@@ -47,7 +47,8 @@ extern "C"
 
   /// put RC into nodeDB
   bool
-  llarp_main_putDatabase(struct llarp_main *ptr, struct llarp::RouterContact *rc);
+  llarp_main_putDatabase(struct llarp_main *ptr,
+                         struct llarp::RouterContact *rc);
 
   /// get RC from nodeDB
   llarp::RouterContact *
@@ -78,12 +79,16 @@ extern "C"
   llarp_main_queryDHT_RC(struct llarp_main *ptr,
                          struct llarp_router_lookup_job *job);
 
-
   /// set up DNS libs with a context
   bool
   llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
-                       uint16_t server_port, const char *upstream_host,
-                       uint16_t upstream_port);
+                       struct llarp_logic *logic, uint16_t server_port,
+                       const char *upstream_host, uint16_t upstream_port);
+
+  /// set up dotLokiLookup with logic for setting timers
+  bool
+  llarp_main_init_dotLokiLookup(struct llarp_main *ptr,
+                                struct dotLokiLookup *dll);
 
   llarp::RouterContact *
   llarp_main_getLocalRC(struct llarp_main *ptr);
@@ -96,17 +101,21 @@ extern "C"
 
 #ifdef __cplusplus
 
+  llarp::handlers::TunEndpoint *
+  main_router_getFirstTunEndpoint(struct llarp_main *ptr);
+
   llarp_tun_io *
   main_router_getRange(struct llarp_main *ptr);
 
   /// map an ip to a hidden service address
   bool
-  main_router_mapAddress(struct llarp_main *ptr, const llarp::service::Address &addr, uint32_t ip);
+  main_router_mapAddress(struct llarp_main *ptr,
+                         const llarp::service::Address &addr, uint32_t ip);
 
   /// info of possible path usage
   bool
-  main_router_prefetch(struct llarp_main *ptr, const llarp::service::Address &addr);
-
+  main_router_prefetch(struct llarp_main *ptr,
+                       const llarp::service::Address &addr);
 }
 #endif
 #endif

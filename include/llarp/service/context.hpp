@@ -20,6 +20,10 @@ namespace llarp
       Tick();
 
       /// DRY refactor
+      llarp::service::Endpoint *
+      getFirstEndpoint();
+
+      /// DRY refactor
       llarp::handlers::TunEndpoint *
       getFirstTun();
 
