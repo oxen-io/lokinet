@@ -236,7 +236,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   {
     answer = decode_answer((const char *)castBuf);
     answers.push_back(answer);
-    llarp::LogDebug("Read an answer ", answer->type, " for ", request->question.name);
+    llarp::LogDebug("Read an answer ", answer->type, " for ",
+                    request->question.name);
     // llarp::LogInfo("Read an answer. Label Len: ", answer->name.length(), "
     // rdLen: ", answer->rdLen);
     // name + Type (2) + Class (2) + TTL (4) + rdLen (2) + rdData + skip next
@@ -256,7 +257,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     auto diff = castBuf - (unsigned char *)buf;
     if(diff > sz)
     {
-      llarp::LogWarn("Would read past end of dns packet. for ", request->question.name);
+      llarp::LogWarn("Would read past end of dns packet. for ",
+                     request->question.name);
       break;
     }
   }
@@ -596,8 +598,9 @@ llarp_host_resolved(dnsc_answer_request *request)
 }
 
 bool
-llarp_dnsc_init(struct dnsc_context *dnsc, struct llarp_udp_io *udp,
-                const char *dnsc_hostname, uint16_t dnsc_port)
+llarp_dnsc_init(struct dnsc_context *dnsc, struct llarp_logic *logic,
+                struct llarp_udp_io *udp, const char *dnsc_hostname,
+                uint16_t dnsc_port)
 {
   sockaddr_in *trgaddr     = new sockaddr_in;
   trgaddr->sin_addr.s_addr = inet_addr(dnsc_hostname);
@@ -606,6 +609,7 @@ llarp_dnsc_init(struct dnsc_context *dnsc, struct llarp_udp_io *udp,
   dnsc->server             = (sockaddr *)trgaddr;
   dnsc->udp                = udp;
   dnsc->tracker            = &dns_udp_tracker;
+  dnsc->logic              = logic;
   return true;
 }
 
