@@ -46,7 +46,8 @@ typedef struct ip_hdr
 
 #include <memory>
 
-#if !defined(__linux__) && !defined(_WIN32) && !defined(__APPLE__) && !defined(__FreeBSD__)
+#if !defined(__linux__) && !defined(_WIN32) && !defined(__APPLE__) \
+    && !defined(__FreeBSD__)
 #define iphdr ip
 #define saddr ip_src.s_addr
 #define daddr ip_dst.s_addr

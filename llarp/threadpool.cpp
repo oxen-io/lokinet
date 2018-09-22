@@ -175,7 +175,7 @@ namespace llarp
     struct FreeBSDJailedThreadPool : public _NetIsolatedPool
     {
       FreeBSDJailedThreadPool(std::function< bool(void *, bool) > setup,
-                             std::function< void(void *) > run, void *user)
+                              std::function< void(void *) > run, void *user)
           : _NetIsolatedPool(setup, run, user)
       {
       }
