@@ -322,7 +322,6 @@ set(NTRU_SRC
   crypto/libntrup/src/ntru.cpp
 )
 
-
 set(UTP_SRC
   libutp/utp_callbacks.cpp
   libutp/utp_utils.cpp
@@ -352,6 +351,8 @@ set(LIB_SRC
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
+  llarp/dns_iptracker.cpp
+  llarp/dns_dotlokilookup.cpp
   llarp/encode.cpp
   llarp/encrypted_frame.cpp
   llarp/exit_info.cpp
@@ -406,9 +407,10 @@ set(RC_SRC
 
 set(DNS_SRC
   llarp/dns.cpp
-  llarp/dns_iptracker.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
+  llarp/dns_iptracker.cpp
+  llarp/dns_dotlokilookup.cpp
   llarp/net.cpp
   daemon/dns.cpp
 )
