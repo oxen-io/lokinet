@@ -384,8 +384,8 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
 }
 
 bool
-llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
-                struct llarp_logic *logic, const char *dnsd_ifname,
+llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_logic *logic,
+                struct llarp_ev_loop *netloop, const char *dnsd_ifname,
                 uint16_t dnsd_port, const char *dnsc_hostname,
                 uint16_t dnsc_port)
 {
@@ -400,12 +400,13 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
 
   dns_udp_tracker.dnsd = dnsd;
 
-  dnsd->tracker   = &dns_udp_tracker;  // register global tracker with context
-  dnsd->logic     = logic;             // set logic worker for timers
-  dnsd->intercept = nullptr;           // set default intercepter
+  dnsd->tracker = &dns_udp_tracker;  // register global tracker with context
+  // dnsd->logic     = logic;             // set logic worker for timers
+  dnsd->intercept = nullptr;  // set default intercepter
 
   // configure dns client
-  if(!llarp_dnsc_init(&dnsd->client, &dnsd->udp, dnsc_hostname, dnsc_port))
+  if(!llarp_dnsc_init(&dnsd->client, logic, &dnsd->udp, dnsc_hostname,
+                      dnsc_port))
   {
     llarp::LogError("Couldnt init dns client");
     return false;

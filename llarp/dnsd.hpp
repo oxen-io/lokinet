@@ -53,13 +53,11 @@ struct dnsd_context
 {
   /// DNS daemon socket to listen on
   struct llarp_udp_io udp;
-  /// for timers (MAYBEFIXME? maybe we decouple this, yes pls have a generic passed in)
-  struct llarp_logic *logic;
-  /// tracker
+  /// udp tracker
   struct dns_tracker *tracker;
   /// upstream DNS client context to use
   dnsc_context client;
-  /// custom data for intercept query hook
+  /// custom data for intercept query hook (used for configuration of hook)
   void *user;
   /// hook function for intercepting dns requests
   intercept_query_hook intercept;
@@ -83,8 +81,8 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
 /// initialize dns subsystem and bind socket
 /// returns true on bind success otherwise returns false
 bool
-llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_ev_loop *netloop,
-                struct llarp_logic *logic, const char *dnsd_ifname,
+llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_logic *logic,
+                struct llarp_ev_loop *netloop, const char *dnsd_ifname,
                 uint16_t dnsd_port, const char *dnsc_hostname,
                 uint16_t dnsc_port);
 
