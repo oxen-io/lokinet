@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <llarp/service/address.hpp>
+#include "dns_dotlokilookup.hpp"
 
 // either a request or response?
 // neither, it's a result set row
@@ -36,9 +37,15 @@ void
 dns_iptracker_init();
 
 bool
+dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll, llarp::Addr tunGatewayIp);
+
+bool
 dns_iptracker_setup(llarp::Addr tunGatewayIp);
 
 struct dns_pointer *
 dns_iptracker_get_free();
+
+struct dns_pointer *
+dns_iptracker_get_free(dns_iptracker *iptracker);
 
 #endif
