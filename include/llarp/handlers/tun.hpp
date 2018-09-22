@@ -5,6 +5,9 @@
 #include <llarp/ip.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/threading.hpp>
+#include "dnsd.hpp"
+#include "dns_dotlokilookup.hpp"
+#include "dns_iptracker.hpp"
 
 namespace llarp
 {
@@ -110,6 +113,12 @@ namespace llarp
       /// up interface
       std::promise< bool > m_TunSetupResult;
 #endif
+      /// DNS server per tun
+      struct dnsd_context dnsd;
+      /// DNS loki lookup subsystem configuration (also holds optional iptracker
+      /// for netns)
+      struct dotLokiLookup dll;
+
       /// maps ip to service address
       std::unordered_map< uint32_t, service::Address > m_IPToAddr;
       /// maps service address to ip

@@ -2,6 +2,8 @@
 #define __USE_MINGW_ANSI_STDIO 1
 #include <llarp/handlers/tun.hpp>
 #include "router.hpp"
+#include "dns_iptracker.hpp"
+#include "dns_dotlokilookup.hpp"
 
 namespace llarp
 {
@@ -16,9 +18,12 @@ namespace llarp
       tunif.netmask = DefaultTunNetmask;
       strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
       strncpy(tunif.ifname, DefaultTunIfname, sizeof(tunif.ifname) - 1);
-      tunif.tick         = nullptr;
-      tunif.before_write = &tunifBeforeWrite;
-      tunif.recvpkt      = &tunifRecvPkt;
+      tunif.tick           = nullptr;
+      tunif.before_write   = &tunifBeforeWrite;
+      tunif.recvpkt        = &tunifRecvPkt;
+      this->dll.ip_tracker = nullptr;
+      this->dll.user       = this;
+      // this->dll.callback = std::bind(&TunEndpoint::MapAddress, this);
     }
 
     bool
@@ -82,6 +87,10 @@ namespace llarp
         llarp::LogInfo(Name() + " set ifaddr to ", addr, " with netmask ",
                        tunif.netmask);
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
+
+        // set up address in dotLokiLookup
+        // llarp::Addr tunIp;
+        // dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
         return true;
       }
       return Endpoint::SetOption(k, v);
@@ -119,6 +128,15 @@ namespace llarp
         // set up networking in currrent thread if we are not isolated
         if(!SetupNetworking())
           return false;
+
+        llarp::LogInfo("Setting up global DNS IP tracker");
+        llarp::Addr tunIp;
+        dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
+      }
+      else
+      {
+        llarp::LogInfo("Setting up per netns DNS IP tracker");
+        this->dll.ip_tracker = new dns_iptracker;
       }
       // wait for result for network setup
       llarp::LogInfo("waiting for tun interface...");
@@ -165,6 +183,15 @@ namespace llarp
 #ifndef _WIN32
       m_TunSetupResult.set_value(result);
 #endif
+      if(!llarp_dnsd_init(&this->dnsd, EndpointLogic(), EndpointNetLoop(),
+                          tunif.ifname, 53, "8.8.8.8", 53))
+      {
+        llarp::LogError("Couldnt init dns daemon");
+      }
+      // configure hook
+      dnsd.intercept = &llarp_dotlokilookup_handler;
+      // set dotLokiLookup (this->dll)
+      dnsd.user = &this->dll;
       return result;
     }
 
