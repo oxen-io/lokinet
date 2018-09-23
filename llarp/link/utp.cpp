@@ -736,8 +736,9 @@ namespace llarp
     {
       if(sock)
       {
+        utp_shutdown(sock, SHUT_RDWR);
+        utp_close(sock);
         utp_set_userdata(sock, nullptr);
-        sock = nullptr;
       }
     }
 
