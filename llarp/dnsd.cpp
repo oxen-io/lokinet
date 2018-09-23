@@ -73,7 +73,7 @@ write404_dnss_response(const struct sockaddr *from,
   put16bits(write_buffer, request->question.qClass);
 
   // code answer
-  code_domain(write_buffer, "");  // com, type=6, ttl=0
+  code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
   put32bits(write_buffer, 1);  // ttl
@@ -156,6 +156,46 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
   request->sendto_hook(request->user, from, buf, out_bytes);
 }
 
+void
+writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
+                           dnsd_question_request *request)
+{
+  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
+  char buf[BUFFER_SIZE];
+  memset(buf, 0, BUFFER_SIZE);
+  char *write_buffer = buf;
+  char *bufferBegin  = buf;
+  // build header
+  put16bits(write_buffer, request->id);
+  int fields = (1 << 15);  // QR => message type, 1 = response
+  fields += (0 << 14);     // I think opcode is always 0
+  fields += 0;             // response code (3 => not found, 0 = Ok)
+  put16bits(write_buffer, fields);
+
+  put16bits(write_buffer, 1);  // QD (number of questions)
+  put16bits(write_buffer, 1);  // AN (number of answers)
+  put16bits(write_buffer, 0);  // NS (number of auth RRs)
+  put16bits(write_buffer, 0);  // AR (number of Additional RRs)
+
+  // code question
+  code_domain(write_buffer, request->question.name);
+  put16bits(write_buffer, request->question.type);
+  put16bits(write_buffer, request->question.qClass);
+
+  // code answer
+  code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
+  put16bits(write_buffer, request->question.type);
+  put16bits(write_buffer, request->question.qClass);
+  put32bits(write_buffer, 1);  // ttl
+  put16bits(write_buffer, reverse.length() + 2);  // rdLength
+  code_domain(write_buffer, reverse);
+
+  uint out_bytes = write_buffer - bufferBegin;
+  llarp::LogDebug("Sending reverse: ", reverse, " ", out_bytes, " bytes");
+  // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
+  request->sendto_hook(request->user, from, buf, out_bytes);
+}
+
 // FIXME: we need an DNS answer not a sockaddr
 // otherwise ttl, type and class can't be relayed correctly
 void
@@ -194,6 +234,7 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
   put16bits(write_buffer, request->question.qClass);
 
   // code answer
+  llarp::LogDebug("Sending question name: ", request->question.name);
   code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
@@ -204,6 +245,9 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
   unsigned char *ip       = (unsigned char *)&sin->sin_addr.s_addr;
 
   put16bits(write_buffer, 4);  // rdLength
+  llarp::LogDebug("Sending ip: ", std::to_string(ip[0]), '.',
+                 std::to_string(ip[1]), '.', std::to_string(ip[2]), '.',
+                 std::to_string(ip[3]));
   *write_buffer++ = ip[0];
   *write_buffer++ = ip[1];
   *write_buffer++ = ip[2];
@@ -225,9 +269,19 @@ handle_dnsc_result(dnsc_answer_request *client_request)
     llarp::LogError("Couldn't map client requser user to a server request");
     return;
   }
-  writesend_dnss_response(
-      client_request->found ? &client_request->result : nullptr,
-      server_request->from, server_request);
+  // llarp::LogDebug("handle_dnsc_result - client request question type",
+  // std::to_string(client_request->question.type));
+  if(client_request->question.type == 12)
+  {
+    writesend_dnss_revresponse(client_request->revDNS, server_request->from,
+                               server_request);
+  }
+  else
+  {
+    writesend_dnss_response(
+        client_request->found ? &client_request->result : nullptr,
+        server_request->from, server_request);
+  }
   llarp_host_resolved(client_request);
 }
 
@@ -414,6 +468,7 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_logic *logic,
 
   if(netloop)
   {
+    llarp::LogInfo("DNSd binding to port 53");
     return llarp_ev_add_udp(netloop, &dnsd->udp, (const sockaddr *)&bindaddr)
         != -1;
   }
