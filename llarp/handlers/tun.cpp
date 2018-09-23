@@ -4,6 +4,9 @@
 #include "router.hpp"
 #include "dns_iptracker.hpp"
 #include "dns_dotlokilookup.hpp"
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 namespace llarp
 {
@@ -29,6 +32,14 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "nameresolver")
+      {
+        // we probably can set the property since the config will load before
+        // the relay is set up
+        // strncpy(tunif.ifname, v.c_str(), sizeof(tunif.ifname) - 1);
+        llarp::LogInfo(Name() + " would be setting DNS resolver to ", v);
+        return true;
+      }
       if(k == "mapaddr")
       {
         auto pos = v.find(":");
@@ -89,13 +100,19 @@ namespace llarp
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
 
         // set up address in dotLokiLookup
-        // llarp::Addr tunIp;
-        // dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
+        struct sockaddr_in s_addr;
+        s_addr.sin_addr.s_addr = inet_addr(tunif.ifaddr);
+        s_addr.sin_family      = AF_INET;
+
+        llarp::Addr tunIp(s_addr);
+        // related to dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
+        dns_iptracker_setup(tunIp);  // claim GW IP to make sure it's not inuse
         return true;
       }
       return Endpoint::SetOption(k, v);
     }
 
+    /// ip should be in host byte order
     bool
     TunEndpoint::MapAddress(const service::Address &addr, uint32_t ip)
     {
@@ -107,7 +124,7 @@ namespace llarp
         return false;
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ",
-                     inet_ntoa({ip}));
+                     inet_ntoa({htonl(ip)}));
       m_IPToAddr.insert(std::make_pair(ip, addr));
       m_AddrToIP.insert(std::make_pair(addr, ip));
       MarkIPActiveForever(ip);
@@ -160,15 +177,62 @@ namespace llarp
         llarp::LogError(Name(), " failed to set up tun interface");
         return false;
       }
-      m_OurIP       = ntohl(inet_addr(tunif.ifaddr));
+
+      struct addrinfo hint, *res = NULL;
+      int ret;
+
+      memset(&hint, '\0', sizeof hint);
+
+      hint.ai_family = PF_UNSPEC;
+      hint.ai_flags  = AI_NUMERICHOST;
+
+      ret = getaddrinfo(tunif.ifaddr, NULL, &hint, &res);
+      if(ret)
+      {
+        llarp::LogError(Name(),
+                        " failed to set up tun interface, cant determine "
+                        "family from ",
+                        tunif.ifaddr);
+        return false;
+      }
+
+      /*
+      // output is in network byte order
+      unsigned char buf[sizeof(struct in6_addr)];
+      int s = inet_pton(res->ai_family, tunif.ifaddr, buf);
+      if (s <= 0)
+      {
+        llarp::LogError(Name(), " failed to set up tun interface, cant parse ",
+      tunif.ifaddr); return false;
+      }
+      */
+      if(res->ai_family == AF_INET6)
+      {
+        llarp::LogError(Name(),
+                        " failed to set up tun interface, we don't support "
+                        "IPv6 format");
+        return false;
+      }
+      freeaddrinfo(res);
+
+      struct in_addr addr;  // network byte order
+      if(inet_aton(tunif.ifaddr, &addr) == 0)
+      {
+        llarp::LogError(Name(), " failed to set up tun interface, cant parse ",
+                        tunif.ifaddr);
+        return false;
+      }
+
+      llarp::Addr lAddr(tunif.ifaddr);
+
+      m_OurIP       = lAddr.tohl();
       m_NextIP      = m_OurIP;
       uint32_t mask = tunif.netmask;
 
-      uint32_t baseaddr = (htonl(m_OurIP) & netmask_ipv4_bits(mask));
-      m_MaxIP           = (htonl(baseaddr) | ~htonl(netmask_ipv4_bits(mask)));
-      char buf[128]     = {0};
-      llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ",
-                     inet_ntop(AF_INET, &m_OurIP, buf, sizeof(buf)));
+      uint32_t baseaddr = (m_OurIP & netmask_ipv4_bits(mask));
+      m_MaxIP       = htonl(htonl(baseaddr) | ~htonl(netmask_ipv4_bits(mask)));
+      char buf[128] = {0};
+      llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ", lAddr);
 
       llarp::LogInfo(Name(), " allocated up to ",
                      inet_ntop(AF_INET, &m_MaxIP, buf, sizeof(buf)));
@@ -188,9 +252,9 @@ namespace llarp
       {
         llarp::LogError("Couldnt init dns daemon");
       }
-      // configure hook
+      // configure hook for .loki lookup
       dnsd.intercept = &llarp_dotlokilookup_handler;
-      // set dotLokiLookup (this->dll)
+      // set dotLokiLookup (this->dll) configuration
       dnsd.user = &this->dll;
       return result;
     }
