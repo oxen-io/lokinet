@@ -22,6 +22,7 @@
 #include <algorithm>      // for std::find_if
 #include "llarp/net.hpp"  // for llarp::Addr
 #include "logger.hpp"
+#include <stdio.h>  // sprintf
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
@@ -71,7 +72,8 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
   // llarp::LogDebug("Asking DNS server %s about %s", SERVER, dnsQuery->url);
 
   char *strTemp = strdup(url);
-  word          = strtok(strTemp, ".");
+
+  word = strtok(strTemp, ".");
   while(word)
   {
     // llarp::LogDebug("parsing hostname: \"%s\" is %zu characters", word,
@@ -83,7 +85,6 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
     }
     word = strtok(nullptr, ".");
   }
-
   dnsQuery->request[dnsQuery->length++] = 0x00;  // End of the host name
   dnsQuery->request[dnsQuery->length++] =
       0x00;  // 0x0001 - Query is a Type A query (host address)
@@ -122,7 +123,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
     llarp::LogWarn("dnsc request question too long");
     return nullptr;
   }
-  request->question.type   = 1;
+  request->question.type   = strstr(url, "in-addr.arpa") != nullptr ? 12 : 1;
   request->question.qClass = 1;
 
   // register our self with the tracker
@@ -132,8 +133,8 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
     id = 0;
   tracker->client_request[id] = request;
 
-  dns_query *dns_packet =
-      build_dns_packet((char *)request->question.name.c_str(), id, 1);
+  dns_query *dns_packet = build_dns_packet(
+      (char *)request->question.name.c_str(), id, request->question.type);
 
   return dns_packet;
 }
@@ -255,6 +256,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     }
     // prevent reading past the end of the packet
     auto diff = castBuf - (unsigned char *)buf;
+    llarp::LogDebug("Read answer, bytes left ", diff);
     if(diff > sz)
     {
       llarp::LogWarn("Would read past end of dns packet. for ",
@@ -389,6 +391,14 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
       request->resolved(request);
       return;
     }
+  }
+  else if(request->question.type == 12)
+  {
+    llarp::LogInfo("Resolving PTR");
+    request->found  = true;
+    request->revDNS = std::string((char *)answer->rData);
+    request->resolved(request);
+    return;
   }
 }
 
