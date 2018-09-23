@@ -28,6 +28,7 @@ struct dnsc_answer_request
   /// result
   bool found;
   struct sockaddr result;
+  std::string revDNS;
   // a reference to dnsc_context incase of multiple contexts
   struct dnsc_context *context;
 };
