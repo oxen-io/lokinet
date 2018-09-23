@@ -35,6 +35,9 @@ namespace llarp
       if(!BEncodeMaybeReadDictEntry("n", topic, read, key, buf))
         return false;
 
+      if(!BEncodeMaybeReadDictInt("t", T, read, key, buf))
+        return false;
+
       if(llarp_buffer_eq(key, "w"))
       {
         if(W)
@@ -76,6 +79,10 @@ namespace llarp
         if(!BEncodeWriteDictEntry("n", topic, buf))
           return false;
       }
+      // Timestamp published
+      if(!BEncodeWriteDictInt("t", T, buf))
+        return false;
+
       // write version
       if(!BEncodeWriteDictInt("v", version, buf))
         return false;
@@ -273,6 +280,9 @@ namespace llarp
     {
       if(i.I.size() == 0)
         return false;
+      // set timestamp
+      // TODO: round to nearest 1000 ms
+      i.T = llarp_time_now_ms();
       // set service info
       i.A = pub;
       // set public encryption key

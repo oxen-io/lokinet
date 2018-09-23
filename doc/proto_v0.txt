@@ -190,7 +190,8 @@ service's signing key.
   a: SI,
   i: [ I, I, I, ... ],
   k: "<1218 bytes sntrup4591761 public key block>",
-  n: "<16 bytes service topic (optional)>", 
+  n: "<16 bytes service topic (optional)>",
+  t: timestamp_uint64_milliseconds_since_epoch_published_at,
   v: 0,
   w: optional proof of work,
   z: "<64 bytes signature using service info signing key>"

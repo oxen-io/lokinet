@@ -24,7 +24,8 @@ namespace llarp
       std::vector< Introduction > I;
       PQPubKey K;
       Tag topic;
-      llarp::PoW* W = nullptr;
+      llarp_time_t T = 0;
+      llarp::PoW* W  = nullptr;
       llarp::Signature Z;
 
       IntroSet() = default;
@@ -34,6 +35,7 @@ namespace llarp
         A       = std::move(other.A);
         I       = std::move(other.I);
         K       = std::move(other.K);
+        T       = std::move(other.T);
         version = std::move(other.version);
         topic   = std::move(other.topic);
         W       = std::move(other.W);
@@ -45,6 +47,7 @@ namespace llarp
         A       = other.A;
         I       = other.I;
         K       = other.K;
+        T       = other.T;
         version = other.version;
         topic   = other.topic;
         if(other.W)
@@ -60,6 +63,7 @@ namespace llarp
         A       = other.A;
         I       = other.I;
         K       = other.K;
+        T       = other.T;
         version = other.version;
         topic   = other.topic;
         if(W)
@@ -79,7 +83,7 @@ namespace llarp
       bool
       OtherIsNewer(const IntroSet& other) const
       {
-        return GetNewestIntroExpiration() < other.GetNewestIntroExpiration();
+        return T < other.T;
       }
 
       friend std::ostream&
@@ -88,7 +92,7 @@ namespace llarp
         out << "A=[" << i.A << "] I=[";
         for(const auto& intro : i.I)
         {
-          out << intro << ",";
+          out << intro << ", ";
         }
         out << "]";
         out << "K=" << i.K;
@@ -101,6 +105,7 @@ namespace llarp
         {
           out << " topic=" << i.topic;
         }
+        out << " T=" << i.T;
         if(i.W)
         {
           out << " W=" << *i.W;
