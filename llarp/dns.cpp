@@ -2,6 +2,8 @@
 #include <string.h>
 #include "dnsd.hpp"  // for llarp_handle_dnsd_recvfrom, dnsc
 #include "logger.hpp"
+#include "buffer.hpp"
+#include "mem.hpp"
 
 /*
  <domain-name> is a domain name represented as a series of labels, and
@@ -121,9 +123,24 @@ extern "C"
     std::string aName      = getDNSstring((char *)buffer);
     buffer += aName.size() + 1;
     */
+
+    /*
+    llarp_buffer_t bob;
+    bob.base = (unsigned char *)buffer;
+    bob.sz = 12;
+    llarp::DumpBuffer(bob);
+    */
+    
+    char hex_buffer[12 * 3 + 1];
+    hex_buffer[12 * 3] = 0;
+    for(unsigned int j = 0; j < 10; j++)
+      sprintf(&hex_buffer[3 * j], "%02X ", buffer[j]);
+    llarp::LogDebug("First 12 bytes: ", hex_buffer);
+
     uint8_t first = *buffer++;
+    // llarp::LogInfo("decode - first", std::to_string(first));
     // SOA hack
-    if(first != 12)
+    if(first != 12 && first != 14)  // 0x0c (c0 0c) 0
     {
       llarp::LogDebug("decode - first isnt 12, stepping back");
       buffer--;  // rewind buffer one byte
@@ -145,6 +162,7 @@ extern "C"
     }
     else
     {
+      llarp::LogDebug("Got type ", answer->type);
       switch(answer->type)
       {
         case 5:
@@ -167,6 +185,14 @@ extern "C"
           llarp::LogDebug("retry   : ", retry);
           llarp::LogDebug("expire  : ", expire);
           llarp::LogDebug("minimum : ", minimum);
+        }
+        break;
+        case 12:
+        {
+          std::string revname = getDNSstring((char *)buffer);
+          llarp::LogInfo("revDNSname: ", revname);
+          answer->rData = new uint8_t[answer->rdLen + 1];
+          memcpy(answer->rData, revname.c_str(), answer->rdLen);
         }
         break;
         default:
