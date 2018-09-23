@@ -9,6 +9,12 @@
 
 #include <stdlib.h>  // for itoa
 
+// for addrinfo
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+
+
 bool
 operator==(const sockaddr& a, const sockaddr& b);
 
@@ -41,6 +47,7 @@ namespace llarp
 {
   struct Addr
   {
+    // network order
     sockaddr_in6 _addr;
     sockaddr_in _addr4;
     ~Addr(){};
@@ -86,10 +93,61 @@ namespace llarp
     {
       return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
     }
+    
+    Addr(const char *str)
+    {
+      llarp::Zero(&_addr, sizeof(sockaddr_in6));
+      struct addrinfo hint, *res = NULL;
+      int ret;
+      
+      memset(&hint, '\0', sizeof hint);
+      
+      hint.ai_family = PF_UNSPEC;
+      hint.ai_flags = AI_NUMERICHOST;
+      
+      ret = getaddrinfo(str, NULL, &hint, &res);
+      if (ret)
+      {
+        llarp::LogError("failed to determine address family: ", str);
+        return;
+      }
+      
+      if (res->ai_family == AF_INET6)
+      {
+        llarp::LogError("IPv6 address not supported yet", str);
+        return;
+      }
+      else if (res->ai_family != AF_INET)
+      {
+        llarp::LogError("Address family not supported yet", str);
+        return;
+      }
+
+      struct in_addr* addr = &_addr4.sin_addr;
+      if (inet_aton(str, addr) == 0)
+      {
+        llarp::LogError("failed to parse ", str);
+        return;
+      }
+      
+      _addr.sin6_family = res->ai_family;
+      _addr4.sin_family = res->ai_family;
+      _addr4.sin_port   = htons(0);
+#if((__APPLE__ && __MACH__) || __FreeBSD__)
+      _addr4.sin_len = sizeof(in_addr);
+#endif
+      // set up SIIT
+      uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
+      addrptr[11]       = 0xff;
+      addrptr[10]       = 0xff;
+      memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
+      freeaddrinfo(res);
+    }
 
     Addr(const uint8_t one, const uint8_t two, const uint8_t three,
          const uint8_t four)
     {
+      llarp::Zero(&_addr, sizeof(sockaddr_in6));
       struct in_addr* addr = &_addr4.sin_addr;
       unsigned char* ip    = (unsigned char*)&(addr->s_addr);
 
@@ -104,6 +162,11 @@ namespace llarp
       ip[1] = two;
       ip[2] = three;
       ip[3] = four;
+      // set up SIIT
+      uint8_t* addrptr  = _addr.sin6_addr.s6_addr;
+      addrptr[11]       = 0xff;
+      addrptr[10]       = 0xff;
+      memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
     }
 
     Addr(const AddressInfo& other)
@@ -326,7 +389,20 @@ namespace llarp
       }
       return *this;
     }
+    
+    uint32_t
+    tohl()
+    {
+      return ntohl(addr4()->s_addr);
+    }
 
+    uint32_t
+    ton()
+    {
+      return addr4()->s_addr;
+    }
+
+    
     bool
     sameAddr(const Addr& other) const
     {
