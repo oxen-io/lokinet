@@ -105,7 +105,7 @@ type=null
     with open(args.out, 'w') as f:
         f.write('''[program:svc-node]
 directory = {}
-command = {}
+command = {} daemon.ini
 autorestart=true
 redirect_stderr=true
 #stdout_logfile=/dev/fd/1
@@ -116,7 +116,7 @@ numprocs = {}
 '''.format(os.path.join(args.dir, 'svc-node-%(process_num)03d'), exe, args.dir, args.svc))
         f.write('''[program:client-node]
 directory = {}
-command = {}
+command = {} daemon.ini
 autorestart=true
 redirect_stderr=true
 #stdout_logfile=/dev/fd/1
