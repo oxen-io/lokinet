@@ -31,11 +31,16 @@ dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll, llarp::Addr tunGatewayIp)
   return true;
 }
 
+// FIXME: pass in b32addr of client
 bool
 dns_iptracker_setup(llarp::Addr tunGatewayIp)
 {
   struct in_addr *addr = tunGatewayIp.addr4();
   unsigned char *ip    = (unsigned char *)&(addr->s_addr);
+
+  llarp::LogInfo("iptracker setup: (", std::to_string(ip[0]), ").[",
+                 std::to_string(ip[1]), '.', std::to_string(ip[2]), "].",
+                 std::to_string(ip[3]));
 
   ip_range *range = new ip_range;
   range->octet2   = ip[1];  // 2nd octet
@@ -46,35 +51,24 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
   struct dns_pointer *result = new dns_pointer;
   result->hostResult         = new sockaddr;
   tunGatewayIp.CopyInto(result->hostResult);
-  range->used[range->left + 2] = result;
+  // result->b32addr = ; // FIXME: should be our HS addr
+  range->used[ip[3]] = result;  // claim tun IP
 
   // save tun range in tracker
   // FIXME: forcing one and only one range
   if(ip[0] == 10)
   {
-    // g_dns_iptracker.used_ten_ips.clear(); // FIXME: can't call this multiple
-    // times
     g_dns_iptracker.used_ten_ips.push_back(range);
     g_dns_iptracker.used_privates.ten = false;
-    // g_dns_iptracker.used_privates.oneSeven = true;
-    // g_dns_iptracker.used_privates.oneNine  = true;
   }
   else if(ip[0] == 172)
   {
-    // g_dns_iptracker.used_seven_ips.clear(); // FIXME: can't call this
-    // multiple times
     g_dns_iptracker.used_seven_ips.push_back(range);
-    // g_dns_iptracker.used_privates.ten      = true;
     g_dns_iptracker.used_privates.oneSeven = false;
-    // g_dns_iptracker.used_privates.oneNine  = true;
   }
   else if(ip[0] == 192)
   {
-    // g_dns_iptracker.used_nine_ips.clear(); // FIXME: can't call this multiple
-    // times
     g_dns_iptracker.used_nine_ips.push_back(range);
-    // g_dns_iptracker.used_privates.ten      = true;
-    // g_dns_iptracker.used_privates.oneSeven = true;
     g_dns_iptracker.used_privates.oneNine = false;
   }
   else
