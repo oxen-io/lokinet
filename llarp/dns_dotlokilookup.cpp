@@ -137,7 +137,7 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
       response->dontSendResponse = true;
       return response;
     }
-    llarp::LogInfo("Got address", addr);
+    llarp::LogInfo("Got address ", addr);
 
     // start path build early (if you're looking it up, you're probably going to
     // use it)
