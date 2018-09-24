@@ -5,9 +5,9 @@
 #include <llarp/ip.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/threading.hpp>
-#include "dnsd.hpp"
-#include "dns_dotlokilookup.hpp"
-#include "dns_iptracker.hpp"
+#include <llarp/dnsd.hpp>               // for relay
+#include <llarp/dns_dotlokilookup.hpp>  // for lookup
+#include <llarp/dns_iptracker.hpp>      // for tracker
 
 namespace llarp
 {

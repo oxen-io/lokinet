@@ -2,8 +2,6 @@
 #define __USE_MINGW_ANSI_STDIO 1
 #include <llarp/handlers/tun.hpp>
 #include "router.hpp"
-#include "dns_iptracker.hpp"
-#include "dns_dotlokilookup.hpp"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>

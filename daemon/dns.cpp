@@ -1,26 +1,13 @@
-#include <getopt.h>
-#include <signal.h>
-#include <stdio.h> /* fprintf, printf */
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
 
 #include <llarp.h>
-#include <llarp/logic.h>
-#include "dns_iptracker.hpp"
-#include "dnsd.hpp"
-#include "dns_dotlokilookup.hpp"
-#include "ev.hpp"
-#include "llarp/net.hpp"
-#include "logger.hpp"
+#include <llarp/dns_iptracker.hpp>
+#include <llarp/dnsd.hpp>
+#include <llarp/dns_dotlokilookup.hpp>
 
-#include "router.hpp"  // for service::address
-
-#include "crypto.hpp"  // for llarp::pubkey
-
-#include <algorithm>  // for std::generate_n
-#include <thread>     // for multithreaded version
-#include <vector>
+#include <llarp/threading.hpp>  // for multithreaded version (multiplatorm)
 
 // keep this once jeff reenables concurrency
 #ifdef _MSC_VER

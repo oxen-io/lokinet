@@ -1,11 +1,5 @@
-#include <llarp/logic.h>
-
-#include <llarp/dns.h>
-#include <string>
-#include "dnsd.hpp"
-#include "ev.hpp"
-#include "llarp/net.hpp"
-#include "logger.hpp"
+#include <llarp/dnsd.hpp>
+#include <llarp/net.hpp>
 
 extern dns_tracker dns_udp_tracker;
 
@@ -186,7 +180,7 @@ writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
   code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
-  put32bits(write_buffer, 1);  // ttl
+  put32bits(write_buffer, 1);                     // ttl
   put16bits(write_buffer, reverse.length() + 2);  // rdLength
   code_domain(write_buffer, reverse);
 
@@ -246,8 +240,8 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
 
   put16bits(write_buffer, 4);  // rdLength
   llarp::LogDebug("Sending ip: ", std::to_string(ip[0]), '.',
-                 std::to_string(ip[1]), '.', std::to_string(ip[2]), '.',
-                 std::to_string(ip[3]));
+                  std::to_string(ip[1]), '.', std::to_string(ip[2]), '.',
+                  std::to_string(ip[3]));
   *write_buffer++ = ip[0];
   *write_buffer++ = ip[1];
   *write_buffer++ = ip[2];

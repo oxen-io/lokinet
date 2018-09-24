@@ -1,6 +1,4 @@
-#include "dnsc.hpp"
-#include <llarp/dns.h>
-#include "buffer.hpp"
+#include <llarp/dnsc.hpp>
 
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -16,12 +14,9 @@
 #include <unistd.h> /* close */
 #endif
 
-#include <cstdio>
-
-#include <llarp/dns.h>
 #include <algorithm>      // for std::find_if
-#include "llarp/net.hpp"  // for llarp::Addr
-#include "logger.hpp"
+#include <llarp/net.hpp>  // for llarp::Addr
+#include <llarp/logger.hpp>
 #include <stdio.h>  // sprintf
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))

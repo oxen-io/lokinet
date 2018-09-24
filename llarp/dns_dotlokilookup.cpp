@@ -1,7 +1,4 @@
-#include <llarp/logic.h>
-#include "dns_dotlokilookup.hpp"
-#include "dns_iptracker.hpp"
-
+#include <llarp/dns_dotlokilookup.hpp>
 #include <llarp/handlers/tun.hpp>
 
 std::string const default_chars =

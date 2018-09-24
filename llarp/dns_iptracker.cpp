@@ -1,6 +1,4 @@
-#include "dns_iptracker.hpp"  //
-#include "logger.hpp"
-#include <llarp.h>
+#include <llarp/dns_iptracker.hpp>
 
 dns_iptracker g_dns_iptracker;
 

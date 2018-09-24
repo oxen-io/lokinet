@@ -1,9 +1,6 @@
 #include <llarp/endian.h>
-#include <string.h>
-#include "dnsd.hpp"  // for llarp_handle_dnsd_recvfrom, dnsc
-#include "logger.hpp"
-#include "buffer.hpp"
-#include "mem.hpp"
+#include <llarp/dnsd.hpp>  // for llarp_handle_dnsd_recvfrom, dnsc
+#include <llarp/logger.hpp>
 
 /*
  <domain-name> is a domain name represented as a series of labels, and
@@ -130,7 +127,7 @@ extern "C"
     bob.sz = 12;
     llarp::DumpBuffer(bob);
     */
-    
+
     char hex_buffer[12 * 3 + 1];
     hex_buffer[12 * 3] = 0;
     for(unsigned int j = 0; j < 10; j++)
