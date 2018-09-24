@@ -127,6 +127,24 @@ namespace llarp
   {
     if(m_Logic && tick_id)
       llarp_logic_remove_call(m_Logic, tick_id);
+    {
+      Lock l(m_AuthedLinksMutex);
+      auto itr = m_AuthedLinks.begin();
+      while(itr != m_AuthedLinks.end())
+      {
+        itr->second->SendClose();
+        itr = m_AuthedLinks.erase(itr);
+      }
+    }
+    {
+      Lock l(m_PendingMutex);
+      auto itr = m_Pending.begin();
+      while(itr != m_Pending.end())
+      {
+        (*itr)->SendClose();
+        itr = m_Pending.erase(itr);
+      }
+    }
   }
 
   void

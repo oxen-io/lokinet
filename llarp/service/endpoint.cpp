@@ -102,26 +102,23 @@ namespace llarp
           ManualRebuild(1);
         return;
       }
-      IntroSet introset = m_IntroSet;
-      introset.I.clear();
+      m_IntroSet.I.clear();
       for(const auto& intro : I)
       {
-        llarp::LogInfo(intro);
         if(!intro.ExpiresSoon(now))
-          introset.I.push_back(intro);
+          m_IntroSet.I.push_back(intro);
       }
-      if(introset.I.size() == 0)
+      if(m_IntroSet.I.size() == 0)
       {
         llarp::LogWarn("not enough intros to publish introset for ", Name());
         return;
       }
-      introset.topic = m_Tag;
-      if(!m_Identity.SignIntroSet(introset, &m_Router->crypto))
+      m_IntroSet.topic = m_Tag;
+      if(!m_Identity.SignIntroSet(m_IntroSet, &m_Router->crypto))
       {
         llarp::LogWarn("failed to sign introset for endpoint ", Name());
         return;
       }
-      m_IntroSet = introset;
       if(PublishIntroSet(m_Router))
       {
         llarp::LogInfo("(re)publishing introset for endpoint ", Name());
@@ -483,9 +480,11 @@ namespace llarp
     bool
     Endpoint::PublishIntroSet(llarp_router* r)
     {
+      // publish via near router
       auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr().data());
       if(path && PublishIntroSetVia(r, path))
       {
+        // publish via far router
         path = PickRandomEstablishedPath();
         return path && PublishIntroSetVia(r, path);
       }
@@ -718,13 +717,12 @@ namespace llarp
     Endpoint::OutboundContext::HandleDataDrop(path::Path* p,
                                               const PathID_t& dst, uint64_t seq)
     {
-      llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
-                     p->Endpoint(), " via ", dst);
       // pick another intro
       if(dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
       {
+        llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
+                       p->Endpoint(), " via ", dst);
         MarkCurrentIntroBad();
-        ShiftIntroduction();
         UpdateIntroSet();
       }
       return true;
@@ -865,7 +863,8 @@ namespace llarp
 
     {
       updatingIntroSet = false;
-      ShiftIntroduction();
+      if(intro.I.size())
+        remoteIntro = intro.I[0];
     }
 
     Endpoint::OutboundContext::~OutboundContext()
@@ -989,7 +988,29 @@ namespace llarp
     void
     Endpoint::OutboundContext::MarkCurrentIntroBad()
     {
+      auto now     = llarp_time_now_ms();
+      bool shifted = false;
+      // insert bad intro
       m_BadIntros.insert(remoteIntro);
+      // shift off current intro
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(m_BadIntros.count(intro) == 0 && !intro.ExpiresSoon(now))
+        {
+          shifted     = intro.router != remoteIntro.router;
+          remoteIntro = intro;
+          break;
+        }
+      }
+      // don't rebuild paths rapidly
+      if(now - lastShift < MIN_SHIFT_INTERVAL)
+        return;
+      // rebuild path if shifted
+      if(shifted)
+      {
+        lastShift = now;
+        ManualRebuild(1);
+      }
     }
 
     void
@@ -1152,7 +1173,6 @@ namespace llarp
         if(remoteIntro.ExpiresSoon(now))
         {
           MarkCurrentIntroBad();
-          ShiftIntroduction();
         }
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(!path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
@@ -1201,7 +1221,6 @@ namespace llarp
       if(remoteIntro.ExpiresSoon(now))
       {
         MarkCurrentIntroBad();
-        ShiftIntroduction();
       }
       m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
       auto itr = m_BadIntros.begin();
@@ -1276,7 +1295,6 @@ namespace llarp
       {
         // shift intro
         MarkCurrentIntroBad();
-        ShiftIntroduction();
       }
 
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
