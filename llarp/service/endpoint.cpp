@@ -105,7 +105,7 @@ namespace llarp
       m_IntroSet.I.clear();
       for(const auto& intro : I)
       {
-        if(now < intro.expiresAt && intro.expiresAt - now > 10000)
+        if(now < intro.expiresAt && intro.expiresAt - now > 60000)
           m_IntroSet.I.push_back(intro);
       }
       if(m_IntroSet.I.size() == 0)
