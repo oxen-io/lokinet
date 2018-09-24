@@ -3,10 +3,7 @@
 LokiNet is the reference implementation of LLARP (low latency anonymous routing protocol), a layer 3 onion routing protocol.
 
 You can learn more about the high level design of LLARP [here](doc/high-level.txt)
-<<<<<<< Updated upstream
 
-And you can read the LLARP protocol specification [here](doc/proto_v0.txt)
-=======
 And you can read the LLARP protocol specification [here](doc/proto_v0.txt)
 
 ## Building
@@ -18,14 +15,7 @@ And you can read the LLARP protocol specification [here](doc/proto_v0.txt)
 
 ## Running
 
-<<<<<<< Updated upstream
     $ ./lokinet
-=======
-    $ sudo apt install build-essential libtool autoconf cmake git python3-venv
-    $ git clone --recursive https://github.com/majestrate/llarpd-builder
-    $ cd llarpd-builder
-    $ make
->>>>>>> Stashed changes
 
 ### Development
 
@@ -40,7 +30,7 @@ Build requirements:
 
 
 Building a debug build:
->>>>>>> Stashed changes
+
 
 
 ## Building
