@@ -758,6 +758,7 @@ namespace llarp
         , m_DataHandler(ep)
         , m_Endpoint(ep)
     {
+      createdAt = llarp_time_now_ms();
     }
 
     void
@@ -1185,7 +1186,9 @@ namespace llarp
           }
         }
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
-        if(!path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
+        if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
+          lastGoodSend = now;
+        else
           llarp::LogError("Failed to send frame on path");
       }
       else
@@ -1245,8 +1248,9 @@ namespace llarp
         else
           ++itr;
       }
-      // TODO: check for expiration of outbound context
-      return false;
+      return lastGoodSend
+          ? (now >= lastGoodSend && lastGoodSend - now > sendTimeout)
+          : (now >= createdAt && now - createdAt > sendTimeout);
     }
 
     bool

@@ -188,7 +188,10 @@ namespace llarp
         PathSet* m_PathSet;
         IDataHandler* m_DataHandler;
         Endpoint* m_Endpoint;
-        uint64_t sequenceNo = 0;
+        uint64_t sequenceNo       = 0;
+        llarp_time_t lastGoodSend = 0;
+        llarp_time_t createdAt;
+        llarp_time_t sendTimeout = 10 * 1000;
 
         virtual void
         ShiftIntroduction(){};
