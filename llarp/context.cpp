@@ -6,12 +6,10 @@
 #include <sys/param.h>  // for MIN
 #endif
 #include <llarp.hpp>
-#include "logger.hpp"
-#include "math.h"
 #include "router.hpp"
 
-#include "dnsd.hpp"
-#include "dns_dotlokilookup.hpp"
+#include <llarp/dnsd.hpp>
+#include <llarp/dns_dotlokilookup.hpp>
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -122,7 +120,7 @@ namespace llarp
   }
 
   bool
-  Context::PutDatabase(struct llarp::RouterContact *rc)
+  Context::PutDatabase(struct llarp::RouterContact &rc)
   {
     // FIXME
     // return llarp_nodedb_put_rc(nodedb, rc);
@@ -372,7 +370,7 @@ extern "C"
   }
 
   bool
-  llarp_main_putDatabase(struct llarp_main *ptr, llarp::RouterContact *rc)
+  llarp_main_putDatabase(struct llarp_main *ptr, llarp::RouterContact &rc)
   {
     return ptr->ctx->PutDatabase(rc);
   }

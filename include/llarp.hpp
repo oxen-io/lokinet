@@ -39,7 +39,7 @@ namespace llarp
     IterateDatabase(struct llarp_nodedb_iter i);
 
     bool
-    PutDatabase(struct llarp::RouterContact *rc);
+    PutDatabase(struct llarp::RouterContact &rc);
 
     llarp::RouterContact *
     GetDatabase(const byte_t *pk);

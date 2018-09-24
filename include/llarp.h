@@ -49,7 +49,7 @@ extern "C"
   /// put RC into nodeDB
   bool
   llarp_main_putDatabase(struct llarp_main *ptr,
-                         struct llarp::RouterContact *rc);
+                         struct llarp::RouterContact &rc);
 
   /// get RC from nodeDB
   llarp::RouterContact *
