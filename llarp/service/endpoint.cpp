@@ -11,7 +11,7 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp_router* r)
-        : path::Builder(r, r->dht, 4, 4), m_Router(r), m_Name(name)
+        : path::Builder(r, r->dht, 6, 4), m_Router(r), m_Name(name)
     {
       m_Tag.Zero();
     }
