@@ -49,10 +49,10 @@ namespace iwp
         llarp::HexEncode< llarp::SharedSecret, decltype(ftmpShared) >(
             sharedkey, ftmpShared);
     llarp::LogDebug("gen_intro sharedkey ", hexShared);
+#endif
 
     byte_t tmp[64];
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-#endif
 
     llarp::SymmNonce n;
     // copy nonce
