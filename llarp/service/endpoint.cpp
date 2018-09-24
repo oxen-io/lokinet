@@ -786,7 +786,7 @@ namespace llarp
       if(latency >= m_MinPathLatency)
       {
         // rebuild path next tick
-        llarp_logic_queue_job(EndpointLogic(), {this, &HandlePathDead});
+        llarp_logic_queue_job(RouterLogic(), {this, &HandlePathDead});
         return true;
       }
       return false;
