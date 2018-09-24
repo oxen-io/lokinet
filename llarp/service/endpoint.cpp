@@ -225,9 +225,10 @@ namespace llarp
         {
           if(itr->second->Tick(now))
           {
-            m_DeadSessions.insert(
-                std::make_pair(itr->first, std::move(itr->second)));
-            itr = m_RemoteSessions.erase(itr);
+            m_DeadSessions
+                .insert(std::make_pair(itr->first, std::move(itr->second)))
+                ->second->markedBad = true;
+            itr                     = m_RemoteSessions.erase(itr);
           }
           else
             ++itr;
@@ -783,6 +784,9 @@ namespace llarp
     void
     Endpoint::OutboundContext::HandlePathBuilt(path::Path* p)
     {
+      /// don't use it if we are marked bad
+      if(markedBad)
+        return;
       p->SetDataHandler(
           std::bind(&Endpoint::OutboundContext::HandleHiddenServiceFrame, this,
                     std::placeholders::_1, std::placeholders::_2));
@@ -899,7 +903,9 @@ namespace llarp
     Endpoint::OutboundContext::OnIntroSetUpdate(const Address& addr,
                                                 const IntroSet* i)
     {
-      if(i)
+      if(markedBad)
+        return true;
+      if(i && currentIntroSet.T < i->T)
       {
         currentIntroSet = *i;
         ShiftIntroduction();
@@ -1008,7 +1014,7 @@ namespace llarp
       }
       m_PendingTraffic[remote].emplace(data, t);
       return true;
-    }  // namespace service
+    }
 
     bool
     Endpoint::OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
@@ -1226,7 +1232,7 @@ namespace llarp
     void
     Endpoint::OutboundContext::UpdateIntroSet()
     {
-      if(updatingIntroSet)
+      if(updatingIntroSet || markedBad)
         return;
       auto addr = currentIntroSet.A.Addr();
       auto path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
@@ -1307,6 +1313,14 @@ namespace llarp
       if(itr == m_Sessions.end())
         return 0;
       return ++(itr->second.seqno);
+    }
+
+    bool
+    Endpoint::OutboundContext::ShouldBuildMore() const
+    {
+      if(markedBad)
+        return false;
+      return path::Builder::ShouldBuildMore();
     }
 
     /// send on an established convo tag

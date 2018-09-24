@@ -193,6 +193,7 @@ namespace llarp
         llarp_time_t createdAt;
         llarp_time_t sendTimeout    = 20 * 1000;
         llarp_time_t connectTimeout = 30 * 1000;
+        bool markedBad              = false;
 
         virtual void
         ShiftIntroduction(){};
@@ -236,6 +237,9 @@ namespace llarp
         /// mark the current remote intro as bad
         bool
         MarkCurrentIntroBad(llarp_time_t now);
+
+        bool
+        ShouldBuildMore() const;
 
         /// tick internal state
         /// return true to mark as dead
