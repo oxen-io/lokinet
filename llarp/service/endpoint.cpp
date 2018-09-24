@@ -1269,8 +1269,8 @@ namespace llarp
           ++itr;
       }
       return lastGoodSend
-          ? (now >= lastGoodSend && lastGoodSend - now > sendTimeout)
-          : (now >= createdAt && now - createdAt > sendTimeout);
+          ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
+          : (now >= createdAt && now - createdAt > connectTimeout);
     }
 
     bool

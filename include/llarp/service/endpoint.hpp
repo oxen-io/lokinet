@@ -191,7 +191,8 @@ namespace llarp
         uint64_t sequenceNo       = 0;
         llarp_time_t lastGoodSend = 0;
         llarp_time_t createdAt;
-        llarp_time_t sendTimeout = 60 * 1000;
+        llarp_time_t sendTimeout    = 20 * 1000;
+        llarp_time_t connectTimeout = 30 * 1000;
 
         virtual void
         ShiftIntroduction(){};
