@@ -481,11 +481,12 @@ namespace llarp
     Endpoint::PublishIntroSet(llarp_router* r)
     {
       // publish via near router
-      auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr().data());
+      RouterID location = m_Identity.pub.Addr().data();
+      auto path         = GetEstablishedPathClosestTo(location);
       if(path && PublishIntroSetVia(r, path))
       {
         // publish via far router
-        path = PickRandomEstablishedPath();
+        path = GetEstablishedPathClosestTo(~location);
         return path && PublishIntroSetVia(r, path);
       }
       return false;

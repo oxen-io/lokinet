@@ -44,6 +44,20 @@ namespace llarp
       return out << HexEncode(self, tmp);
     }
 
+    /// bitwise NOT
+    AlignedBuffer< sz >
+    operator~() const
+    {
+      AlignedBuffer< sz > ret;
+      size_t idx = 0;
+      while(idx < sz / sizeof(Long_t))
+      {
+        ret.data_l()[idx] = ~data_l()[idx];
+        ++idx;
+      }
+      return ret;
+    }
+
     bool
     operator==(const AlignedBuffer& other) const
     {
