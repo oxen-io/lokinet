@@ -127,20 +127,6 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
 
   /* Save interface name */
   (void)memcpy(dev->if_name, ifr.ifr_name, sizeof ifr.ifr_name);
-
-  /* Save pre-existing MAC address */
-  if(mode == TUNTAP_MODE_ETHERNET)
-  {
-    struct ifreq ifr_hw;
-
-    (void)memcpy(ifr_hw.ifr_name, dev->if_name, sizeof(dev->if_name));
-    if(ioctl(fd, SIOCGIFHWADDR, &ifr_hw) == -1)
-    {
-      tuntap_log(TUNTAP_LOG_WARN, "Can't get link-layer address");
-      return fd;
-    }
-    (void)memcpy(dev->hwaddr, ifr_hw.ifr_hwaddr.sa_data, ETH_ALEN);
-  }
   return fd;
 }
 
@@ -151,26 +137,6 @@ tuntap_sys_destroy(struct device *dev)
   {
     tuntap_log(TUNTAP_LOG_WARN, "Can't destroy the interface");
   }
-}
-
-int
-tuntap_sys_set_hwaddr(struct device *dev, struct ether_addr *eth_addr)
-{
-  struct ifreq ifr;
-
-  (void)memset(&ifr, '\0', sizeof ifr);
-  (void)memcpy(ifr.ifr_name, dev->if_name, sizeof dev->if_name);
-
-  ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
-  (void)memcpy(ifr.ifr_hwaddr.sa_data, eth_addr->ether_addr_octet, 6);
-
-  /* Linux has a special flag for setting the MAC address */
-  if(ioctl(dev->ctrl_sock, SIOCSIFHWADDR, &ifr) == -1)
-  {
-    tuntap_log(TUNTAP_LOG_ERR, "Can't set link-layer address");
-    return -1;
-  }
-  return 0;
 }
 
 int

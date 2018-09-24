@@ -59,7 +59,6 @@ extern "C"
       return NULL;
 
     (void)memset(dev->if_name, '\0', sizeof(dev->if_name));
-    (void)memset(dev->hwaddr, '\0', sizeof(dev->hwaddr));
     dev->tun_fd    = TUNFD_INVALID_VALUE;
     dev->ctrl_sock = -1;
     dev->flags     = 0;
@@ -88,7 +87,8 @@ extern "C"
   }
 
   int
-  tuntap_set_ip(struct device *dev, const char *addr, const char *daddr, int netmask)
+  tuntap_set_ip(struct device *dev, const char *addr, const char *daddr,
+                int netmask)
   {
     t_tun_in_addr baddr4;
     t_tun_in6_addr baddr6;
