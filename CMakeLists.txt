@@ -200,18 +200,15 @@ else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif(UNIX)
 
-if(TUNTAP)
 set(LIBTUNTAP_SRC_BASE
   ${TT_ROOT}/tuntap.cpp
   ${TT_ROOT}/tuntap_log.cpp
   ${LIBTUNTAP_IMPL})
-  if (UNIX)
+
+if (UNIX)
   set(LIBTUNTAP_SRC
     ${TT_ROOT}/tuntap-unix.c
     ${LIBTUNTAP_SRC_BASE})
-  endif()
-else()
-set(LIBTUNTAP_SRC "")
 endif()
 
 #if(BACKPORT)
