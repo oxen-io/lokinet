@@ -22,7 +22,6 @@
 #include <arpa/inet.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
-#include <netinet/if_ether.h>
 #include <net/if_arp.h>
 
 #include <fcntl.h>
