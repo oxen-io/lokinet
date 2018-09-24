@@ -9,6 +9,7 @@
 
 #include <llarp/threading.hpp>  // for multithreaded version (multiplatorm)
 
+#include <signal.h> // Linux needs this for SIGINT
 // keep this once jeff reenables concurrency
 #ifdef _MSC_VER
 extern "C" void
