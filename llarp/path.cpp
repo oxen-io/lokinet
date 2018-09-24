@@ -427,7 +427,8 @@ namespace llarp
         SendRoutingMessage(&latency, r);
       }
       // check to see if this path is dead
-      if(_status == ePathEstablished)
+      if(_status == ePathEstablished
+         && (now > m_LastRecvMessage && now - m_LastRecvMessage > 1000))
       {
         if(m_CheckForDead)
         {
@@ -590,7 +591,13 @@ namespace llarp
     Path::HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
     {
       if(m_DataHandler)
-        return m_DataHandler(this, frame);
+      {
+        if(m_DataHandler(this, frame))
+        {
+          m_LastRecvMessage = llarp_time_now_ms();
+          return true;
+        }
+      }
       return false;
     }
 
@@ -598,10 +605,12 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
+      auto now          = llarp_time_now_ms();
+      m_LastRecvMessage = now;
       // TODO: reanimate dead paths if they get this message
       if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
       {
-        intro.latency = llarp_time_now_ms() - m_LastLatencyTestTime;
+        intro.latency = now - m_LastLatencyTestTime;
         llarp::LogDebug("path latency is ", intro.latency,
                         " ms for tx=", TXID(), " rx=", RXID());
         m_LastLatencyTestID = 0;

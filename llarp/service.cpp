@@ -109,10 +109,9 @@ namespace llarp
     bool
     IntroSet::IsExpired(llarp_time_t now) const
     {
-      llarp_time_t highest = 0;
-      for(const auto& i : I)
-        highest = std::max(i.expiresAt, highest);
-      return highest < now;
+      if(now > T)
+        return false;
+      return now - T > DEFAULT_PATH_LIFETIME;
     }
 
     Introduction::~Introduction()

@@ -326,6 +326,9 @@ namespace llarp
       RouterID
       Endpoint() const;
 
+      bool
+      IsEndpoint(const RouterID& router, const PathID_t& path) const;
+
       const PathID_t&
       RXID() const;
 
@@ -343,6 +346,7 @@ namespace llarp
       DataHandlerFunc m_DataHandler;
       DropHandlerFunc m_DropHandler;
       CheckForDeadFunc m_CheckForDead;
+      llarp_time_t m_LastRecvMessage     = 0;
       llarp_time_t m_LastLatencyTestTime = 0;
       uint64_t m_LastLatencyTestID       = 0;
     };

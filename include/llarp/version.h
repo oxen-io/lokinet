@@ -10,7 +10,7 @@
 #endif
 
 #ifndef LLARP_VERSION_PATCH
-#define LLARP_VERSION_PATCH "2"
+#define LLARP_VERSION_PATCH "3"
 #endif
 
 #ifndef LLARP_VERSION_NUM
@@ -23,7 +23,7 @@
   "-" LLARP_VERSION_MAJ "." LLARP_VERSION_MIN "." LLARP_VERSION_PATCH
 #endif
 #endif
-#define LLARP_VERSION "llarpd" LLARP_VERSION_NUM
+#define LLARP_VERSION "lokinet" LLARP_VERSION_NUM
 
 #ifndef LLARP_RELEASE_MOTTO
 #define LLARP_RELEASE_MOTTO "(dev build)"
