@@ -225,12 +225,31 @@ namespace llarp
         {
           if(itr->second->Tick(now))
           {
+            m_DeadSessions.insert(
+                std::make_pair(itr->first, std::move(itr->second)));
             itr = m_RemoteSessions.erase(itr);
           }
           else
             ++itr;
         }
       }
+      // deregister dead sessions
+      {
+        auto itr = m_DeadSessions.begin();
+        while(itr != m_DeadSessions.end())
+        {
+          if(itr->second->IsDone(now))
+            itr = m_DeadSessions.erase(itr);
+          else
+            ++itr;
+        }
+      }
+    }
+
+    bool
+    Endpoint::OutboundContext::IsDone(llarp_time_t now) const
+    {
+      return now - lastGoodSend > DEFAULT_PATH_LIFETIME;
     }
 
     uint64_t

@@ -191,7 +191,7 @@ namespace llarp
         uint64_t sequenceNo       = 0;
         llarp_time_t lastGoodSend = 0;
         llarp_time_t createdAt;
-        llarp_time_t sendTimeout = 10 * 1000;
+        llarp_time_t sendTimeout = 60 * 1000;
 
         virtual void
         ShiftIntroduction(){};
@@ -237,9 +237,13 @@ namespace llarp
         MarkCurrentIntroBad(llarp_time_t now);
 
         /// tick internal state
-        /// return true to remove otherwise don't remove
+        /// return true to mark as dead
         bool
         Tick(llarp_time_t now);
+
+        /// return true if it's safe to remove ourselves
+        bool
+        IsDone(llarp_time_t now) const;
 
         bool
         CheckPathIsDead(path::Path* p, llarp_time_t dlt);
@@ -394,6 +398,10 @@ namespace llarp
       std::unordered_map< Address, std::unique_ptr< OutboundContext >,
                           Address::Hash >
           m_RemoteSessions;
+
+      std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
+                               Address::Hash >
+          m_DeadSessions;
 
       std::unordered_map< Address, ServiceInfo, Address::Hash >
           m_AddressToService;
