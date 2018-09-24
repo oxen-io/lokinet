@@ -63,7 +63,9 @@ namespace llarp
       bool
       operator<(const Introduction& other) const
       {
-        return expiresAt < other.expiresAt || pathID < other.pathID;
+        return expiresAt < other.expiresAt || pathID < other.pathID
+            || router < other.router || version < other.version
+            || latency < other.latency;
       }
 
       bool
@@ -79,6 +81,15 @@ namespace llarp
       {
         return !(*this == other);
       }
+
+      struct Hash
+      {
+        size_t
+        operator()(const Introduction& i) const
+        {
+          return *i.router.data_l() ^ *i.pathID.data_l();
+        }
+      };
     };
   }  // namespace service
 }  // namespace llarp

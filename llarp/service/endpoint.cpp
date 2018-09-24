@@ -722,8 +722,11 @@ namespace llarp
       {
         llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
                        p->Endpoint(), " via ", dst);
-        MarkCurrentIntroBad();
-        UpdateIntroSet();
+        if(MarkCurrentIntroBad(llarp_time_now_ms()))
+          llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
+                         " via ", remoteIntro.pathID);
+        else
+          UpdateIntroSet();
       }
       return true;
     }
@@ -778,7 +781,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::CheckPathIsDead(path::Path*, llarp_time_t latency)
+    Endpoint::CheckPathIsDead(path::Path* p, llarp_time_t latency)
     {
       if(latency >= m_MinPathLatency)
       {
@@ -985,32 +988,35 @@ namespace llarp
       return true;
     }  // namespace service
 
-    void
-    Endpoint::OutboundContext::MarkCurrentIntroBad()
+    bool
+    Endpoint::OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
     {
-      auto now     = llarp_time_now_ms();
       bool shifted = false;
+      bool success = false;
       // insert bad intro
-      m_BadIntros.insert(remoteIntro);
+      m_BadIntros.insert(std::make_pair(remoteIntro, now));
       // shift off current intro
       for(const auto& intro : currentIntroSet.I)
       {
-        if(m_BadIntros.count(intro) == 0 && !intro.ExpiresSoon(now))
+        if(m_BadIntros.find(intro) == m_BadIntros.end()
+           && !intro.ExpiresSoon(now))
         {
           shifted     = intro.router != remoteIntro.router;
           remoteIntro = intro;
+          success     = true;
           break;
         }
       }
       // don't rebuild paths rapidly
       if(now - lastShift < MIN_SHIFT_INTERVAL)
-        return;
+        return success;
       // rebuild path if shifted
       if(shifted)
       {
         lastShift = now;
         ManualRebuild(1);
       }
+      return success;
     }
 
     void
@@ -1025,7 +1031,7 @@ namespace llarp
         m_Endpoint->EnsureRouterIsKnown(intro.router);
         if(intro.ExpiresSoon(now))
           continue;
-        if(m_BadIntros.count(intro) == 0 && remoteIntro != intro)
+        if(m_BadIntros.find(intro) == m_BadIntros.end() && remoteIntro != intro)
         {
           shifted     = intro.router != remoteIntro.router;
           remoteIntro = intro;
@@ -1172,7 +1178,10 @@ namespace llarp
         auto now = llarp_time_now_ms();
         if(remoteIntro.ExpiresSoon(now))
         {
-          MarkCurrentIntroBad();
+          if(!MarkCurrentIntroBad(now))
+          {
+            llarp::LogWarn("no good path yet, your message may drop");
+          }
         }
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(!path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
@@ -1220,13 +1229,17 @@ namespace llarp
     {
       if(remoteIntro.ExpiresSoon(now))
       {
-        MarkCurrentIntroBad();
+        if(!MarkCurrentIntroBad(now))
+        {
+          // TODO: log?
+        }
       }
-      m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
+      if(!remoteIntro.router.IsZero())
+        m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
       auto itr = m_BadIntros.begin();
       while(itr != m_BadIntros.end())
       {
-        if(itr->IsExpired(now))
+        if(now - itr->second > DEFAULT_PATH_LIFETIME)
           itr = m_BadIntros.erase(itr);
         else
           ++itr;
@@ -1294,7 +1307,11 @@ namespace llarp
       if(remoteIntro.ExpiresSoon(now))
       {
         // shift intro
-        MarkCurrentIntroBad();
+        if(!MarkCurrentIntroBad(now))
+        {
+          llarp::LogError("dropping message, no path after shifting intros");
+          return;
+        }
       }
 
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);

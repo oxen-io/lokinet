@@ -194,8 +194,11 @@ namespace llarp
         ShiftIntroduction(){};
         virtual void
         UpdateIntroSet(){};
-        virtual void
-        MarkCurrentIntroBad(){};
+        virtual bool
+        MarkCurrentIntroBad(llarp_time_t now)
+        {
+          return true;
+        };
 
        private:
         void
@@ -227,13 +230,16 @@ namespace llarp
         ShiftIntroduction();
 
         /// mark the current remote intro as bad
-        void
-        MarkCurrentIntroBad();
+        bool
+        MarkCurrentIntroBad(llarp_time_t now);
 
         /// tick internal state
         /// return true to remove otherwise don't remove
         bool
         Tick(llarp_time_t now);
+
+        bool
+        CheckPathIsDead(path::Path* p, llarp_time_t dlt);
 
         void
         AsyncGenIntro(llarp_buffer_t payload, ProtocolType t);
@@ -264,7 +270,8 @@ namespace llarp
 
         uint64_t m_UpdateIntrosetTX = 0;
         IntroSet currentIntroSet;
-        std::set< Introduction > m_BadIntros;
+        std::unordered_map< Introduction, llarp_time_t, Introduction::Hash >
+            m_BadIntros;
         llarp_time_t lastShift = 0;
       };
 

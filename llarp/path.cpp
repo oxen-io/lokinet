@@ -427,7 +427,8 @@ namespace llarp
         SendRoutingMessage(&latency, r);
       }
       // check to see if this path is dead
-      if(_status == ePathEstablished)
+      if(_status == ePathEstablished
+         && (now > m_LastRecvMessage && now - m_LastRecvMessage > 1000))
       {
         if(m_CheckForDead)
         {
@@ -590,7 +591,13 @@ namespace llarp
     Path::HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
     {
       if(m_DataHandler)
-        return m_DataHandler(this, frame);
+      {
+        if(m_DataHandler(this, frame))
+        {
+          m_LastRecvMessage = llarp_time_now_ms();
+          return true;
+        }
+      }
       return false;
     }
 
