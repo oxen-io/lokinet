@@ -168,52 +168,6 @@ tuntap_set_ifname(struct device *dev, const char *ifname)
   return 0;
 }
 
-char *
-tuntap_get_hwaddr(struct device *dev)
-{
-  struct ether_addr eth_attr;
-
-  (void)memcpy(&eth_attr, dev->hwaddr, sizeof dev->hwaddr);
-  return ether_ntoa(&eth_attr);
-}
-
-int
-tuntap_set_hwaddr(struct device *dev, const char *hwaddr)
-{
-  struct ether_addr *eth_addr, eth_rand;
-
-  if(strcmp(hwaddr, "random") == 0)
-  {
-    unsigned int i;
-    unsigned char *ptr;
-
-    i   = 0;
-    ptr = (unsigned char *)&eth_rand;
-    srandom((unsigned int)time(NULL));
-    for(; i < sizeof eth_rand; ++i)
-    {
-      *ptr = (unsigned char)random();
-      ptr++;
-    }
-    ptr = (unsigned char *)&eth_rand;
-    *ptr &= 0xfc;
-    eth_addr = &eth_rand;
-  }
-  else
-  {
-    eth_addr = ether_aton(hwaddr);
-    if(eth_addr == NULL)
-    {
-      return -1;
-    }
-  }
-  (void)memcpy(dev->hwaddr, eth_addr, ETHER_ADDR_LEN);
-
-  if(tuntap_sys_set_hwaddr(dev, eth_addr) == -1)
-    return -1;
-  return 0;
-}
-
 int
 tuntap_up(struct device *dev)
 {

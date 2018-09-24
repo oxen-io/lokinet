@@ -427,18 +427,21 @@ namespace llarp
         SendRoutingMessage(&latency, r);
       }
       // check to see if this path is dead
-      if(_status == ePathEstablished
-         && (now > m_LastRecvMessage && now - m_LastRecvMessage > 1000))
+      if(_status == ePathEstablished)
       {
-        if(m_CheckForDead)
+        if(m_LastRecvMessage && now > m_LastRecvMessage
+           && now - m_LastRecvMessage > (20 * 1000))
         {
-          if(m_CheckForDead(this, dlt))
+          if(m_CheckForDead)
           {
-            r->routerProfiling.MarkPathFail(this);
-            EnterState(ePathTimeout);
+            if(m_CheckForDead(this, dlt))
+            {
+              r->routerProfiling.MarkPathFail(this);
+              EnterState(ePathTimeout);
+            }
           }
         }
-        else if(dlt >= 10000)
+        else if(dlt >= 10000 && m_LastRecvMessage == 0)
         {
           r->routerProfiling.MarkPathFail(this);
           EnterState(ePathTimeout);
@@ -605,8 +608,7 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
-      auto now          = llarp_time_now_ms();
-      m_LastRecvMessage = now;
+      auto now = llarp_time_now_ms();
       // TODO: reanimate dead paths if they get this message
       if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
       {

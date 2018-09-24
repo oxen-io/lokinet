@@ -40,9 +40,10 @@
 #else
 #include <net/if.h>
 #endif
-#include <netinet/if_ether.h>
 #if defined Linux
 #include <netinet/in.h>
+#else
+#include <netinet/if_ether.h>
 #endif
 #endif
 
@@ -50,20 +51,6 @@
 
 #ifndef LIBTUNTAP_H_
 #define LIBTUNTAP_H_
-
-/*
- * Uniformize macros
- * - ETHER_ADDR_LEN: Magic number from IEEE 802.3
- * - IF_NAMESIZE: Length of interface external name
- * - IF_DESCRSIZE: Length of interface description
- * - TUNSDEBUG: ioctl flag to enable the debug mode of a tun device
- * - TUNFD_INVALID_VALUE: Invalid value for tun_fd
- */
-#if defined ETH_ALEN /* Linux */
-#define ETHER_ADDR_LEN ETH_ALEN
-#elif defined Windows || defined __sun__
-#define ETHER_ADDR_LEN 6
-#endif
 
 #if defined IFNAMSIZ && !defined IF_NAMESIZE
 #define IF_NAMESIZE IFNAMSIZ /* Historical BSD name */
@@ -151,7 +138,6 @@ extern "C"
     t_tun tun_fd;
     int ctrl_sock;
     int flags; /* ifr.ifr_flags on Unix */
-    unsigned char hwaddr[ETHER_ADDR_LEN];
     char if_name[IF_NAMESIZE];
 #if defined(FreeBSD)
     int mode;
@@ -183,10 +169,7 @@ extern "C"
   tuntap_get_ifname(struct device *);
   TUNTAP_EXPORT int
   tuntap_set_ifname(struct device *, const char *);
-  TUNTAP_EXPORT char *
-  tuntap_get_hwaddr(struct device *);
-  TUNTAP_EXPORT int
-  tuntap_set_hwaddr(struct device *, const char *);
+
   TUNTAP_EXPORT int
   tuntap_set_descr(struct device *, const char *);
   TUNTAP_EXPORT int
@@ -234,8 +217,6 @@ extern "C"
   tuntap_sys_start(struct device *, int, int);
   void
   tuntap_sys_destroy(struct device *);
-  int
-  tuntap_sys_set_hwaddr(struct device *, struct ether_addr *);
   int
   tuntap_sys_set_ipv4(struct device *, t_tun_in_addr *, uint32_t);
 
