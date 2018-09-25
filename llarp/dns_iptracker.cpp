@@ -40,7 +40,8 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
                  std::to_string(ip[1]), '.', std::to_string(ip[2]), "].",
                  std::to_string(ip[3]));
 
-  ip_range *range = new ip_range;
+  //ip_range *range = new ip_range;
+  std::unique_ptr<ip_range> range(new ip_range);
   range->octet2   = ip[1];  // 2nd octet
   range->octet3   = ip[2];  // 3rd octet
   // FIXME: look up any static mappings to discount
@@ -56,17 +57,17 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
   // FIXME: forcing one and only one range
   if(ip[0] == 10)
   {
-    g_dns_iptracker.used_ten_ips.push_back(range);
+    g_dns_iptracker.used_ten_ips.push_back(std::move(range));
     g_dns_iptracker.used_privates.ten = false;
   }
   else if(ip[0] == 172)
   {
-    g_dns_iptracker.used_seven_ips.push_back(range);
+    g_dns_iptracker.used_seven_ips.push_back(std::move(range));
     g_dns_iptracker.used_privates.oneSeven = false;
   }
   else if(ip[0] == 192)
   {
-    g_dns_iptracker.used_nine_ips.push_back(range);
+    g_dns_iptracker.used_nine_ips.push_back(std::move(range));
     g_dns_iptracker.used_privates.oneNine = false;
   }
   else
@@ -77,7 +78,7 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
 }
 
 inline struct dns_pointer *
-dns_iptracker_allocate_range(struct ip_range *range, uint8_t first)
+dns_iptracker_allocate_range(std::unique_ptr<ip_range> &range, uint8_t first)
 {
   // we have an IP
   llarp::LogDebug("Range has ", (unsigned int)range->left, " ips left");
@@ -95,7 +96,7 @@ dns_iptracker_allocate_range(struct ip_range *range, uint8_t first)
 }
 
 struct dns_pointer *
-dns_iptracker_check_range(std::vector< ip_range * > &ranges, uint8_t first)
+dns_iptracker_check_range(std::vector< std::unique_ptr<ip_range> > &ranges, uint8_t first)
 {
   // tens not all used up
   if(ranges.size())
@@ -119,7 +120,7 @@ dns_iptracker_check_range(std::vector< ip_range * > &ranges, uint8_t first)
   else
   {
     // create one
-    auto new_range    = new ip_range;
+    std::unique_ptr<ip_range> new_range;
     new_range->octet2 = 0;
     switch(first)
     {
@@ -138,7 +139,7 @@ dns_iptracker_check_range(std::vector< ip_range * > &ranges, uint8_t first)
     new_range->octet3 = 0;  // FIXME: counter (0-255)
     // CHECK: planning a /24 but maybe that's too wide for broadcasts
     new_range->left = 252;  // 0 is net, 1 is gw, 255 is broadcast
-    ranges.push_back(new_range);
+    ranges.push_back(std::move(new_range));
     // don't need to check if we're out since this is fresh range
     return dns_iptracker_allocate_range(new_range, first);
   }

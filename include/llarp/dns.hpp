@@ -9,6 +9,8 @@
 
 #include <sys/socket.h>
 
+#include <llarp/net.hpp> // for llarp::Addr
+
 // dnsc can work over any UDP socket
 // however we can't ignore udp->user
 // we need to be able to reference the request (being a request or response)
@@ -19,9 +21,11 @@ struct dns_tracker
   // uint c_responses;
   uint c_requests;
   // request has to be a pointer
-  std::map< uint, dnsc_answer_request * > client_request;
+  std::unordered_map< uint, std::unique_ptr< dnsc_answer_request > > client_request;
   // FIXME: support multiple dns server contexts
   dnsd_context *dnsd;
+  // rn we need 1 tracker per DNSd and each DNSd needs it's own IP
+  //std::map< llarp::Addr, std::unique_ptr< dnsc_answer_request > > dnsds;
   // std::map< uint, dnsd_question_request * > daemon_request;
 };
 
@@ -67,10 +71,10 @@ struct dns_msg_answer
 struct dns_packet
 {
   struct dns_msg_header *header;
-  std::vector< dns_msg_question * > questions;
-  std::vector< dns_msg_answer * > answers;
-  std::vector< dns_msg_answer * > auth_rrs;
-  std::vector< dns_msg_answer * > additional_rrs;
+  std::vector< std::unique_ptr< dns_msg_question > > questions;
+  std::vector< std::unique_ptr< dns_msg_answer > > answers;
+  std::vector< std::unique_ptr< dns_msg_answer > > auth_rrs;
+  std::vector< std::unique_ptr< dns_msg_answer > > additional_rrs;
 };
 
 extern "C"

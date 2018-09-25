@@ -26,7 +26,7 @@ struct check_query_simple_request
   dnsd_question_request *request;
 };
 
-std::map< std::string, struct dnsd_query_hook_response * >
+std::unordered_map< std::string, struct dnsd_query_hook_response * >
     loki_tld_lookup_cache;
 
 void

@@ -21,16 +21,16 @@ struct ip_range
   uint8_t octet3;
   // FIXME: we're not consecutive
   uint8_t left;
-  std::map< uint8_t, dns_pointer * > used;
+  std::unordered_map< uint8_t, dns_pointer * > used;
 };
 
 struct dns_iptracker
 {
   struct privatesInUse interfaces;
   struct privatesInUse used_privates;
-  std::vector< ip_range * > used_ten_ips;
-  std::vector< ip_range * > used_seven_ips;
-  std::vector< ip_range * > used_nine_ips;
+  std::vector< std::unique_ptr <ip_range> > used_ten_ips;
+  std::vector< std::unique_ptr <ip_range> > used_seven_ips;
+  std::vector< std::unique_ptr <ip_range> > used_nine_ips;
 };
 
 void

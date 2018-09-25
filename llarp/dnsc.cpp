@@ -126,7 +126,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   uint16_t id          = ++tracker->c_requests;
   if(id == 65535)
     id = 0;
-  tracker->client_request[id] = request;
+  tracker->client_request[id] = std::unique_ptr<dnsc_answer_request>(request);
 
   dns_query *dns_packet = build_dns_packet(
       (char *)request->question.name.c_str(), id, request->question.type);
@@ -134,6 +134,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   return dns_packet;
 }
 
+// FIXME: make first a std_unique
 /// generic dnsc handler
 void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
@@ -486,8 +487,7 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
 
   // if we sent this out, then there's an id
   struct dns_tracker *tracker         = (struct dns_tracker *)dnsc->tracker;
-  struct dnsc_answer_request *request = tracker->client_request[hdr->id];
-  generic_handle_dnsc_recvfrom(request, nullptr, castBuf, size);
+  generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(), nullptr, castBuf, size);
 }
 
 /// intermediate udp_io handler
@@ -504,7 +504,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
 
   // if we sent this out, then there's an id
   struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
-  struct dnsc_answer_request *request = tracker->client_request[hdr->id];
+  struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
 
   // sometimes we'll get double responses
   if(request)
@@ -588,18 +588,18 @@ llarp_host_resolved(dnsc_answer_request *request)
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
   auto val             = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
-      [request](const std::pair< uint, dnsc_answer_request * > &element) {
-        return element.second == request;
+                                      [request](std::pair<const uint, std::unique_ptr < dnsc_answer_request > > &element) {
+        return element.second.get() == request;
       });
   if(val != tracker->client_request.end())
   {
-    tracker->client_request[val->first] = nullptr;
+    tracker->client_request[val->first].reset();
   }
   else
   {
     llarp::LogWarn("Couldn't disable ", request);
   }
-  delete request;
+  //delete request;
 }
 
 bool
