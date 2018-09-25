@@ -40,7 +40,6 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
                  std::to_string(ip[1]), '.', std::to_string(ip[2]), "].",
                  std::to_string(ip[3]));
 
-  //ip_range *range = new ip_range;
   std::unique_ptr<ip_range> range(new ip_range);
   range->octet2   = ip[1];  // 2nd octet
   range->octet3   = ip[2];  // 3rd octet
@@ -120,7 +119,7 @@ dns_iptracker_check_range(std::vector< std::unique_ptr<ip_range> > &ranges, uint
   else
   {
     // create one
-    std::unique_ptr<ip_range> new_range;
+    std::unique_ptr<ip_range> new_range(new ip_range);
     new_range->octet2 = 0;
     switch(first)
     {
