@@ -11,7 +11,7 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp_router* r)
-        : path::Builder(r, r->dht, 4, 4), m_Router(r), m_Name(name)
+        : path::Builder(r, r->dht, 6, 4), m_Router(r), m_Name(name)
     {
       m_Tag.Zero();
     }
@@ -105,7 +105,7 @@ namespace llarp
       m_IntroSet.I.clear();
       for(const auto& intro : I)
       {
-        if(!intro.ExpiresSoon(now))
+        if(now < intro.expiresAt && intro.expiresAt - now > 60000)
           m_IntroSet.I.push_back(intro);
       }
       if(m_IntroSet.I.size() == 0)
@@ -225,12 +225,32 @@ namespace llarp
         {
           if(itr->second->Tick(now))
           {
-            itr = m_RemoteSessions.erase(itr);
+            m_DeadSessions
+                .insert(std::make_pair(itr->first, std::move(itr->second)))
+                ->second->markedBad = true;
+            itr                     = m_RemoteSessions.erase(itr);
           }
           else
             ++itr;
         }
       }
+      // deregister dead sessions
+      {
+        auto itr = m_DeadSessions.begin();
+        while(itr != m_DeadSessions.end())
+        {
+          if(itr->second->IsDone(now))
+            itr = m_DeadSessions.erase(itr);
+          else
+            ++itr;
+        }
+      }
+    }
+
+    bool
+    Endpoint::OutboundContext::IsDone(llarp_time_t now) const
+    {
+      return now - lastGoodSend > DEFAULT_PATH_LIFETIME;
     }
 
     uint64_t
@@ -484,11 +504,12 @@ namespace llarp
     Endpoint::PublishIntroSet(llarp_router* r)
     {
       // publish via near router
-      auto path = GetEstablishedPathClosestTo(m_Identity.pub.Addr().data());
+      RouterID location = m_Identity.pub.Addr().data();
+      auto path         = GetEstablishedPathClosestTo(location);
       if(path && PublishIntroSetVia(r, path))
       {
         // publish via far router
-        path = PickRandomEstablishedPath();
+        path = GetEstablishedPathClosestTo(~location);
         return path && PublishIntroSetVia(r, path);
       }
       return false;
@@ -760,11 +781,15 @@ namespace llarp
         , m_DataHandler(ep)
         , m_Endpoint(ep)
     {
+      createdAt = llarp_time_now_ms();
     }
 
     void
     Endpoint::OutboundContext::HandlePathBuilt(path::Path* p)
     {
+      /// don't use it if we are marked bad
+      if(markedBad)
+        return;
       p->SetDataHandler(
           std::bind(&Endpoint::OutboundContext::HandleHiddenServiceFrame, this,
                     std::placeholders::_1, std::placeholders::_2));
@@ -881,7 +906,9 @@ namespace llarp
     Endpoint::OutboundContext::OnIntroSetUpdate(const Address& addr,
                                                 const IntroSet* i)
     {
-      if(i)
+      if(markedBad)
+        return true;
+      if(i && currentIntroSet.T < i->T)
       {
         currentIntroSet = *i;
         ShiftIntroduction();
@@ -954,7 +981,8 @@ namespace llarp
       {
         llarp::LogDebug(Name(), " has session to ", remote, " sending ",
                         data.sz, " bytes");
-        m_RemoteSessions[remote]->AsyncEncryptAndSendTo(data, t);
+        auto itr = m_RemoteSessions.find(remote);
+        itr->second->AsyncEncryptAndSendTo(data, t);
         return true;
       }
 
@@ -989,7 +1017,7 @@ namespace llarp
       }
       m_PendingTraffic[remote].emplace(data, t);
       return true;
-    }  // namespace service
+    }
 
     bool
     Endpoint::OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
@@ -1187,7 +1215,9 @@ namespace llarp
           }
         }
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
-        if(!path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
+        if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
+          lastGoodSend = now;
+        else
           llarp::LogError("Failed to send frame on path");
       }
       else
@@ -1205,7 +1235,7 @@ namespace llarp
     void
     Endpoint::OutboundContext::UpdateIntroSet()
     {
-      if(updatingIntroSet)
+      if(updatingIntroSet || markedBad)
         return;
       auto addr = currentIntroSet.A.Addr();
       auto path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
@@ -1247,8 +1277,9 @@ namespace llarp
         else
           ++itr;
       }
-      // TODO: check for expiration of outbound context
-      return false;
+      return lastGoodSend
+          ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
+          : (now >= createdAt && now - createdAt > connectTimeout);
     }
 
     bool
@@ -1285,6 +1316,14 @@ namespace llarp
       if(itr == m_Sessions.end())
         return 0;
       return ++(itr->second.seqno);
+    }
+
+    bool
+    Endpoint::OutboundContext::ShouldBuildMore() const
+    {
+      if(markedBad)
+        return false;
+      return path::Builder::ShouldBuildMore();
     }
 
     /// send on an established convo tag

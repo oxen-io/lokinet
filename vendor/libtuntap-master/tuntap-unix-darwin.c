@@ -48,55 +48,54 @@ static int
 fucky_tuntap_sys_start(struct device *dev, int mode, int tun)
 {
   uint32_t namesz = IFNAMSIZ;
-  char name[IFNAMSIZ+1];
+  char name[IFNAMSIZ + 1];
   int fd;
   char *ifname;
-  
 
   fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
   if(fd == -1)
     return fd;
-  
+
   snprintf(name, sizeof(name), "utun%i", tun);
 
   struct ctl_info info;
   memset(&info, 0, sizeof(info));
   strncpy(info.ctl_name, APPLE_UTUN, strlen(APPLE_UTUN));
 
-  if (ioctl(fd, CTLIOCGINFO, &info) < 0)
+  if(ioctl(fd, CTLIOCGINFO, &info) < 0)
   {
     tuntap_log(TUNTAP_LOG_ERR, "call to ioctl() failed");
     tuntap_log(TUNTAP_LOG_ERR, strerror(errno));
     close(fd);
     return -1;
   }
-  
+
   struct sockaddr_ctl addr;
   addr.sc_id = info.ctl_id;
-  
-  addr.sc_len = sizeof(addr);
-  addr.sc_family = AF_SYSTEM;
-  addr.ss_sysaddr = AF_SYS_CONTROL;
-  addr.sc_unit = tun + 1;
 
-  if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) < 0)
+  addr.sc_len     = sizeof(addr);
+  addr.sc_family  = AF_SYSTEM;
+  addr.ss_sysaddr = AF_SYS_CONTROL;
+  addr.sc_unit    = tun + 1;
+
+  if(connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
   {
     close(fd);
     return -1;
   }
   ifname = name;
-  if(getsockopt(fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME,
-                   ifname, &namesz) < 0 )
+  if(getsockopt(fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &namesz) < 0)
   {
     close(fd);
     return -1;
   }
   strncpy(dev->if_name, ifname, sizeof(dev->if_name));
-  
+
   return fd;
 }
 
-int tuntap_sys_start(struct device * dev, int mode, int tun)
+int
+tuntap_sys_start(struct device *dev, int mode, int tun)
 {
   int fd = -1;
   while(tun < 128)
@@ -116,25 +115,7 @@ int tuntap_sys_start(struct device * dev, int mode, int tun)
 void
 tuntap_sys_destroy(struct device *dev)
 {
-  (void) dev;
-}
-
-int
-tuntap_sys_set_hwaddr(struct device *dev, struct ether_addr *eth_addr)
-{
-  struct ifreq ifr;
-
-  (void)memset(&ifr, '\0', sizeof ifr);
-  (void)strlcpy(ifr.ifr_name, dev->if_name, sizeof ifr.ifr_name);
-  ifr.ifr_addr.sa_len    = ETHER_ADDR_LEN;
-  ifr.ifr_addr.sa_family = AF_LINK;
-  (void)memcpy(ifr.ifr_addr.sa_data, eth_addr, ETHER_ADDR_LEN);
-  if(ioctl(dev->ctrl_sock, SIOCSIFLLADDR, &ifr) < 0)
-  {
-    tuntap_log(TUNTAP_LOG_ERR, "Can't set link-layer address");
-    return -1;
-  }
-  return 0;
+  (void)dev;
 }
 
 struct tuntap_rtmsg
@@ -149,33 +130,36 @@ int
 tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 {
   struct sockaddr_in mask;
-  mask.sin_family = AF_INET;
+  mask.sin_family      = AF_INET;
   mask.sin_addr.s_addr = bits;
-  mask.sin_len = sizeof(struct sockaddr_in);
+  mask.sin_len         = sizeof(struct sockaddr_in);
   char addrbuf[32];
   inet_ntop(AF_INET, s4, addrbuf, sizeof(struct sockaddr_in));
   char buf[1028];
-  const char * addr = addrbuf;
-  const char * netmask = inet_ntoa(mask.sin_addr);
+  const char *addr    = addrbuf;
+  const char *netmask = inet_ntoa(mask.sin_addr);
   /** because fuck this other stuff */
-  snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask %s up", dev->if_name, addr, addr, netmask);
+  snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask %s up",
+           dev->if_name, addr, addr, netmask);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
-  snprintf(buf, sizeof(buf), "route add -cloning -net %s -netmask %s -interface %s", addr, netmask, dev->if_name);
+  snprintf(buf, sizeof(buf),
+           "route add -cloning -net %s -netmask %s -interface %s", addr,
+           netmask, dev->if_name);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
   /* Simpler than calling SIOCSIFADDR and/or SIOCSIFBRDADDR */
-/*
-  if(ioctl(dev->ctrl_sock, SIOCSIFADDR, &ifa) == -1)
-  {
-    tuntap_log(TUNTAP_LOG_ERR, "Can't set IP");
-    tuntap_log(TUNTAP_LOG_ERR, strerror(errno));
-    return -1;
-  }
-*/
-  
   /*
-  
+    if(ioctl(dev->ctrl_sock, SIOCSIFADDR, &ifa) == -1)
+    {
+      tuntap_log(TUNTAP_LOG_ERR, "Can't set IP");
+      tuntap_log(TUNTAP_LOG_ERR, strerror(errno));
+      return -1;
+    }
+  */
+
+  /*
+
   int fd = socket(PF_ROUTE, SOCK_RAW, AF_INET);
 
   struct tuntap_rtmsg msg;
@@ -199,7 +183,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
   msg.mask.sin_addr.s_addr = bits;
   msg.mask.sin_family = AF_INET;
   msg.mask.sin_len = sizeof(struct sockaddr_in);
-  
+
   int res = write(fd, &msg, sizeof(msg));
   if(res == -1)
   {
