@@ -134,6 +134,8 @@ extern "C"
     f << "transport-privkey=" << basepath << "transport.private" << std::endl;
     f << "# path to store identity signing key" << std::endl;
     f << "identity-privkey=" << basepath << "identity.private" << std::endl;
+    f << "# encryption key for onion routing" << std::endl;
+    f << "encryption-privkey=" << basepath << "encryption.private" << std::endl;
     f << std::endl;
     f << "# uncomment following line to set router nickname to 'lokinet'"
       << std::endl;
