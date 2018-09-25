@@ -170,6 +170,12 @@ extern "C"
     f << "# directory for network database skiplist storage" << std::endl;
     f << "dir=" << basepath << "netdb" << std::endl;
     f << std::endl << std::endl;
+
+    f << "# bootstrap settings " << std::endl;
+    f << "[connect]" << std::endl;
+    f << "bootstrap=" << basepath << "bootstrap.signed" << std::endl;
+    f << std::endl << std::endl;
+
     f << "# publish network interfaces for handling inbound traffic"
       << std::endl;
     f << "[bind]" << std::endl;
