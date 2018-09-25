@@ -14,6 +14,12 @@
 #include <netinet/ip_icmp.h>
 #endif
 
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <wspiapi.h>
+#endif
+
 namespace llarp
 {
   namespace utp
@@ -342,7 +348,7 @@ namespace llarp
             static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
         llarp::LogDebug("utp_sendto ", Addr(*arg->address), " ", arg->len,
                         " bytes");
-        if(sendto(l->m_udp.fd, arg->buf, arg->len, arg->flags, arg->address,
+        if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags, arg->address,
                   arg->address_len)
            == -1)
         {

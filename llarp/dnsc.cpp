@@ -462,7 +462,7 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
   llarp::LogInfo("Waiting for recv");
 
   // Timeout?
-  ret = recvfrom(sockfd, buffer, DNC_BUF_SIZE, 0, (struct sockaddr *)&addr,
+  ret = recvfrom(sockfd, (char*)buffer, DNC_BUF_SIZE, 0, (struct sockaddr *)&addr,
                  &size);
   llarp::LogInfo("recv done ", size);
   if(ret < 0)

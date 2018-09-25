@@ -20,12 +20,11 @@ option(gtest_build_tests "Build all of gtest's own tests." OFF)
 
 option(gtest_build_samples "Build gtest's sample programs." OFF)
 
+if (NOT WIN32)
 option(gtest_disable_pthreads "Disable uses of pthreads in gtest." OFF)
-
-# use native windows nt threading even in gcc or clang
-if (WIN32)
-option(gtest_disable_pthreads ON)
-endif(WIN32)
+else()
+option(gtest_disable_pthreads "Disable uses of pthreads in gtest." ON)
+endif(NOT WIN32)
 
 option(
   gtest_hide_internal_symbols

@@ -7,7 +7,9 @@
 #include <string>
 #include <vector>
 
+#ifndef _WIN32
 #include <sys/socket.h>
+#endif
 
 #include <llarp/net.hpp>  // for llarp::Addr
 
