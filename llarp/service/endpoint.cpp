@@ -788,6 +788,7 @@ namespace llarp
     void
     Endpoint::OutboundContext::HandlePathBuilt(path::Path* p)
     {
+      path::Builder::HandlePathBuilt(p);
       /// don't use it if we are marked bad
       if(markedBad)
         return;
@@ -800,7 +801,6 @@ namespace llarp
       p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, m_Endpoint,
                                   std::placeholders::_1,
                                   std::placeholders::_2));
-      path::Builder::HandlePathBuilt(p);
     }
 
     void
@@ -1194,7 +1194,11 @@ namespace llarp
         // try parent as fallback
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
         if(path == nullptr)
+        {
+          llarp::LogWarn(Name(), " dropping intro frame, no path to ",
+                         remoteIntro.router);
           return;
+        }
       }
 
       AsyncKeyExchange* ex =
@@ -1229,6 +1233,8 @@ namespace llarp
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
         {
+          llarp::LogInfo("sent data to ", remoteIntro.pathID, " on ",
+                         remoteIntro.router);
           lastGoodSend = now;
         }
         else
@@ -1373,9 +1379,13 @@ namespace llarp
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)
       {
-        llarp::LogError("cannot encrypt and send: no path for intro ",
-                        remoteIntro);
-        return;
+        path = m_Endpoint->GetNewestPathByRouter(remoteIntro.router);
+        if(!path)
+        {
+          llarp::LogError("cannot encrypt and send: no path for intro ",
+                          remoteIntro);
+          return;
+        }
       }
 
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
@@ -1402,7 +1412,13 @@ namespace llarp
 
       msg.P = remoteIntro.pathID;
       msg.Y.Randomize();
-      if(!path->SendRoutingMessage(&msg, m_Endpoint->Router()))
+      ++sequenceNo;
+      if(path->SendRoutingMessage(&msg, m_Endpoint->Router()))
+      {
+        llarp::LogInfo("sent message via ", remoteIntro.pathID, " on ",
+                       remoteIntro.router);
+      }
+      else
       {
         llarp::LogWarn("Failed to send routing message for data");
       }
