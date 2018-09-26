@@ -233,12 +233,14 @@ namespace llarp
 
       HopList hops;
 
+      PathSet* m_PathSet;
+
       llarp::service::Introduction intro;
 
       llarp_time_t buildStarted;
       PathStatus _status;
 
-      Path(const std::vector< RouterContact >& routers);
+      Path(const std::vector< RouterContact >& routers, PathSet* parent);
 
       void
       SetBuildResultHook(BuildResultHookFunc func);

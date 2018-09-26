@@ -184,6 +184,12 @@ namespace llarp
       return count > 0;
     }
 
+    void
+    PathSet::HandlePathBuildTimeout(Path* p)
+    {
+      llarp::LogInfo("path ", p->Name(), " has timed out");
+    }
+
     Path*
     PathSet::PickRandomEstablishedPath() const
     {

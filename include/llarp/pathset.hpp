@@ -48,6 +48,9 @@ namespace llarp
       virtual void
       HandlePathBuilt(Path* path);
 
+      virtual void
+      HandlePathBuildTimeout(Path* path);
+
       void
       AddPath(Path* path);
 

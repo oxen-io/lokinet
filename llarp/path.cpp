@@ -323,7 +323,8 @@ namespace llarp
     {
     }
 
-    Path::Path(const std::vector< RouterContact >& h)
+    Path::Path(const std::vector< RouterContact >& h, PathSet* parent)
+        : m_PathSet(parent)
     {
       hops.resize(h.size());
       size_t hsz = h.size();
@@ -386,7 +387,7 @@ namespace llarp
     {
       if(st == ePathTimeout)
       {
-        llarp::LogInfo("path ", Name(), " has timed out");
+        m_PathSet->HandlePathBuildTimeout(this);
       }
       else if(st == ePathBuilding)
       {

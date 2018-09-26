@@ -727,6 +727,7 @@ namespace llarp
                                   std::placeholders::_1,
                                   std::placeholders::_2));
       RegenAndPublishIntroSet(llarp_time_now_ms());
+      path::Builder::HandlePathBuilt(p);
     }
 
     bool
@@ -799,6 +800,7 @@ namespace llarp
       p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, m_Endpoint,
                                   std::placeholders::_1,
                                   std::placeholders::_2));
+      path::Builder::HandlePathBuilt(p);
     }
 
     void
@@ -1211,6 +1213,8 @@ namespace llarp
     Endpoint::SendContext::Send(ProtocolFrame& msg)
     {
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
+      if(path == nullptr)
+        path = m_Endpoint->GetPathByRouter(remoteIntro.router);
       if(path)
       {
         auto now = llarp_time_now_ms();

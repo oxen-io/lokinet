@@ -190,8 +190,9 @@ namespace llarp
     bool
     Builder::ShouldBuildMore() const
     {
-      return llarp::path::PathSet::ShouldBuildMore()
-          || router->NumberOfConnectedRouters() == 0;
+      auto now = llarp_time_now_ms();
+      return llarp::path::PathSet::ShouldBuildMore() && now > lastBuild
+          && now - lastBuild > buildIntervalLimit;
     }
 
     void
@@ -222,15 +223,31 @@ namespace llarp
         }
         ++idx;
       }
+      lastBuild = llarp_time_now_ms();
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
           new AsyncPathKeyExchangeContext< Builder >(&router->crypto);
       ctx->pathset = this;
-      auto path    = new llarp::path::Path(hops);
-      path->SetBuildResultHook(std::bind(&llarp::path::PathSet::HandlePathBuilt,
-                                         ctx->pathset, std::placeholders::_1));
+      auto path    = new llarp::path::Path(hops, this);
+      path->SetBuildResultHook(std::bind(&llarp::path::Builder::HandlePathBuilt,
+                                         this, std::placeholders::_1));
       ctx->AsyncGenerateKeys(path, router->logic, router->tp, this,
                              &pathbuilder_generated_keys);
+    }
+
+    void
+    Builder::HandlePathBuilt(Path* p)
+    {
+      buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+      PathSet::HandlePathBuilt(p);
+    }
+
+    void
+    Builder::HandlePathBuildTimeout(Path* p)
+    {
+      // linear backoff
+      buildIntervalLimit += 1000;
+      PathSet::HandlePathBuildTimeout(p);
     }
 
     void
