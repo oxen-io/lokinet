@@ -40,37 +40,9 @@ namespace llarp
     {
       llarp::SharedSecret dh_result;
 
-      char ftmpPk[68] = {0};
-      const char *hexPk =
-          llarp::HexEncode< llarp::PubKey, decltype(ftmpPk) >(pk, ftmpPk);
-      llarp::LogDebug("PK     :", hexPk);
-
-      char ftmpSk[68] = {0};
-      const char *hexSk =
-          llarp::HexEncode< llarp::PubKey, decltype(ftmpSk) >(sk, ftmpSk);
-      llarp::LogDebug("SK     :", hexSk);
-
-      char ftmpSkPub[68] = {0};
-      const char *hexSkPub =
-          llarp::HexEncode< llarp::PubKey, decltype(ftmpSkPub) >(
-              llarp::seckey_topublic(sk), ftmpSkPub);
-      llarp::LogDebug("SK pub :", hexSkPub);
-
       if(dh(dh_result, llarp::seckey_topublic(sk), pk, pk, sk))
       {
-        char ftmpResult[68] = {0};
-        const char *hexResult =
-            llarp::HexEncode< llarp::SharedSecret, decltype(ftmpResult) >(
-                dh_result, ftmpResult);
-        llarp::LogDebug("Result :", hexResult);
-
-        bool res = crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
-        char ftmpShared[68] = {0};
-        const char *hexShared =
-            llarp::HexEncode< llarp::SharedSecret, decltype(ftmpShared) >(
-                shared, ftmpShared);
-        llarp::LogDebug("Shared :", hexShared);
-        return res;
+        return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
       }
       llarp::LogWarn("crypto::dh_client - dh failed");
       return false;
