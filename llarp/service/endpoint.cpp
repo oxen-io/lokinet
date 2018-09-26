@@ -1185,7 +1185,12 @@ namespace llarp
     {
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
       if(path == nullptr)
-        return;
+      {
+        // try parent as fallback
+        path = m_Endpoint->GetPathByRouter(remoteIntro.router);
+        if(path == nullptr)
+          return;
+      }
 
       AsyncKeyExchange* ex =
           new AsyncKeyExchange(m_Endpoint->RouterLogic(), m_Endpoint->Crypto(),
