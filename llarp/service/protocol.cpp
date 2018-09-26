@@ -314,6 +314,7 @@ namespace llarp
     {
       if(T.IsZero())
       {
+        llarp::LogInfo("Got protocol frame with new convo");
         ProtocolMessage* msg = new ProtocolMessage();
         msg->srcPath         = srcPath;
         // we need to dh

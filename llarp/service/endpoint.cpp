@@ -936,6 +936,8 @@ namespace llarp
           const byte_t* K = nullptr;
           for(const auto& tag : tags)
           {
+            if(tag.IsZero())
+              continue;
             if(p == nullptr && GetIntroFor(tag, remoteIntro))
             {
               if(!remoteIntro.ExpiresSoon(now))
@@ -1211,9 +1213,12 @@ namespace llarp
             llarp::LogWarn("no good path yet, your message may drop");
           }
         }
+        ++sequenceNo;
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
+        {
           lastGoodSend = now;
+        }
         else
           llarp::LogError("Failed to send frame on path");
       }
@@ -1369,6 +1374,7 @@ namespace llarp
         m.introReply = path->intro;
         m.sender     = m_Endpoint->m_Identity.pub;
         m.PutBuffer(payload);
+        m.tag = f.T;
 
         if(!f.EncryptAndSign(&crypto, m, shared, m_Endpoint->m_Identity))
         {
