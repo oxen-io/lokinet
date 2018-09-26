@@ -28,31 +28,94 @@ namespace iwp
   gen_intro(void *user)
   {
     iwp_async_intro *intro = static_cast< iwp_async_intro * >(user);
+
+#ifdef neuroCryptoDebug
+    char ftmp[68]       = {0};
+    const char *hexname = llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(
+        intro->remote_pubkey, ftmp);
+    llarp::LogDebug("gen_intro remote_pubkey: ", hexname);
+#endif
+
     llarp::SharedSecret sharedkey;
-    llarp::ShortHash e_k;
     llarp_crypto *crypto = intro->iwp->crypto;
-    byte_t tmp[64];
+
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_client(sharedkey, intro->remote_pubkey,
                                 intro->secretkey, intro->nonce);
+
+#ifdef neuroCryptoDebug
+    char ftmpShared[68] = {0};
+    const char *hexShared =
+        llarp::HexEncode< llarp::SharedSecret, decltype(ftmpShared) >(
+            sharedkey, ftmpShared);
+    llarp::LogDebug("gen_intro sharedkey ", hexShared);
+#endif
+
+    byte_t tmp[64];
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+
+    llarp::SymmNonce n;
+    // copy nonce
+    memcpy(n, intro->nonce, 32);  // was 24 bytes
+
+    /*
+    char ftmpN[68] = {0};
+    const char *hexN =
+        llarp::HexEncode< llarp::SymmNonce, decltype(ftmpN) >(n, ftmpN);
+    llarp::LogDebug("gen_intro nonce     ", hexN);
+     */
+
     // e_k = HS(b.k + n)
+
+    llarp::ShortHash e_k;
     memcpy(tmp, intro->remote_pubkey, 32);
     memcpy(tmp + 32, intro->nonce, 32);
     crypto->shorthash(e_k, buf);
+
+#ifdef neuroCryptoDebug
+    char ftmpEk[68] = {0};
+    const char *hexEk =
+        llarp::HexEncode< llarp::ShortHash, decltype(ftmpEk) >(e_k, ftmpEk);
+    llarp::LogDebug("gen_intro e_k       ", hexEk, " used ", strlen(hexEk));
+#endif
+
     // put nonce
     memcpy(intro->buf + 32, intro->nonce, 32);
+
     // e = SE(a.k, e_k, n[0:24])
     memcpy(intro->buf + 64, llarp::seckey_topublic(intro->secretkey), 32);
+
+#ifdef neuroCryptoDebug
+    char ftmpSk[68]   = {0};
+    const char *hexSk = llarp::HexEncode< llarp::PubKey, decltype(ftmpSk) >(
+        intro->secretkey, ftmpSk);
+    llarp::LogDebug("gen_intro SK        ", hexSk);
+
+    char ftmpSkPub[68] = {0};
+    const char *hexSkPub =
+        llarp::HexEncode< llarp::PubKey, decltype(ftmpSkPub) >(
+            llarp::seckey_topublic(intro->secretkey), ftmpSkPub);
+    llarp::LogDebug("gen_intro SK pub    ", hexSkPub);
+#endif
+
     buf.base = intro->buf + 64;
     buf.cur  = buf.base;
     buf.sz   = 32;
     crypto->xchacha20(buf, e_k, intro->nonce);
+
     // h = MDS( n + e + w0, S)
     buf.base = intro->buf + 32;
     buf.cur  = buf.base;
     buf.sz   = intro->sz - 32;
     crypto->hmac(intro->buf, buf, sharedkey);
+
+#ifdef neuroCryptoDebug
+    char ftmpHmac[68]   = {0};  // probably could be 65
+    const char *hexHmac = llarp::HexEncode< llarp::PubKey, decltype(ftmpHmac) >(
+        intro->buf, ftmpHmac);
+    llarp::LogDebug("gen_intro Hmac      ", hexHmac);
+#endif
+
     // inform result
     // intro->hook(intro);
     llarp_logic_queue_job(intro->iwp->logic, {intro, &inform_intro});
@@ -68,6 +131,14 @@ namespace iwp
     llarp::SharedSecret h;
     byte_t tmp[64];
     const auto OurPK = llarp::seckey_topublic(intro->secretkey);
+
+#ifdef neuroCryptoDebug
+    char ftmp[68] = {0};
+    const char *hexPk =
+        llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(OurPK, ftmp);
+    llarp::LogDebug("intro OurPK ", hexPk);
+#endif
+
     // e_k = HS(b.k + n)
     memcpy(tmp, OurPK, 32);
     memcpy(tmp + 32, intro->nonce, 32);
@@ -77,11 +148,33 @@ namespace iwp
     buf.base = intro->remote_pubkey;
     buf.cur  = buf.base;
     buf.sz   = 32;
+
+    // was using remote_pubkey directly (use buffer wrapper? directly?)
+    // memcpy(intro->remote_pubkey, intro->buf + 64, 32);
     memcpy(buf.base, intro->buf + 64, 32);
+
     crypto->xchacha20(buf, e_K, intro->nonce);
+#ifdef neuroCryptoDebug
+    llarp::LogInfo("handshake from ", llarp::RouterID(intro->remote_pubkey));
+
+    char ftmp2[68]          = {0};
+    const char *hexRemotePK = llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(
+        intro->remote_pubkey, ftmp2);
+    llarp::LogDebug("intro remote_pubkey ", hexRemotePK);
+#endif
+
     // S = TKE(a.k, b.k, n)
     crypto->transport_dh_server(sharedkey, intro->remote_pubkey,
                                 intro->secretkey, intro->nonce);
+
+#ifdef neuroCryptoDebug
+    char ftmpShared[68] = {0};
+    const char *hexShared =
+        llarp::HexEncode< llarp::PubKey, decltype(ftmpShared) >(sharedkey,
+                                                                ftmpShared);
+    llarp::LogDebug("intro sharedkey ", hexShared);
+#endif
+
     // h = MDS( n + e + w2, S)
     buf.base = intro->buf + 32;
     buf.cur  = buf.base;
@@ -89,6 +182,7 @@ namespace iwp
     crypto->hmac(h, buf, sharedkey);
     if(memcmp(h, intro->buf, 32))
     {
+      llarp::LogWarn("intro HMAC failure");
       // hmac fail
       delete[] intro->buf;
       intro->buf = nullptr;
@@ -353,11 +447,19 @@ iwp_decrypt_frame(struct iwp_async_frame *frame)
   crypto->hmac(digest, buf, frame->sessionkey);
   // check hmac
   frame->success = memcmp(digest, hmac, 32) == 0;
+  if(!frame->success)
+  {
+    // [", digest, "] vs [", hmac, "]
+    llarp::LogWarn("crypto_async::iwp_decrypt_frame failed to decrypt");
+    //} else {
+    // llarp::Debug("crypto_async::iwp_decrypt_frame decrypted");
+  }
   // x = SE(S, p, n[0:24])
   buf.base = body;
   buf.cur  = buf.base;
   buf.sz   = frame->sz - 64;
   crypto->xchacha20(buf, frame->sessionkey, nonce);
+
   return frame->success;
 }
 

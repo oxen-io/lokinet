@@ -155,7 +155,7 @@ endif()
 if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
-  
+
 set(LIBS ${SODIUM_LIB} ${THREAD_LIB} ${MALLOC_LIB})
 if(HAVE_CXX17_FILESYSTEM)
   set(LIBS ${LIBS} stdc++fs)
@@ -319,7 +319,6 @@ set(NTRU_SRC
   crypto/libntrup/src/ntru.cpp
 )
 
-
 set(UTP_SRC
   libutp/utp_callbacks.cpp
   libutp/utp_utils.cpp
@@ -349,6 +348,8 @@ set(LIB_SRC
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
+  llarp/dns_iptracker.cpp
+  llarp/dns_dotlokilookup.cpp
   llarp/encode.cpp
   llarp/encrypted_frame.cpp
   llarp/exit_info.cpp
@@ -405,6 +406,8 @@ set(DNS_SRC
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
+  llarp/dns_iptracker.cpp
+  llarp/dns_dotlokilookup.cpp
   llarp/net.cpp
   daemon/dns.cpp
 )
@@ -445,6 +448,8 @@ set(ANDROID_LIB ${LIB}android)
 include_directories(llarp)
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
+# Neuro Linux box hack:
+include_directories(/usr/local/include)
 include_directories(${sodium_INCLUDE_DIR})
 
 if (MSVC)

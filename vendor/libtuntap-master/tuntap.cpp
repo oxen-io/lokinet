@@ -129,7 +129,21 @@ extern "C"
     errval = inet_pton(AF_INET, addr, &(baddr4));
     if(errval == 1)
     {
+#ifdef __FreeBSD__
+      t_tun_in_addr daddr4;
+      errval = inet_pton(AF_INET, daddr, &(daddr4));
+      if(errval == 1)
+      {
+        return tuntap_sys_set_ipv4_tun(dev, &baddr4, &daddr4, mask);
+      }
+      else
+      {
+        llarp::LogError("invalid s4dest address: ", addr);
+        return -1;
+      }
+#else
       return tuntap_sys_set_ipv4(dev, &baddr4, mask);
+#endif
     }
     else if(errval == 0)
     {

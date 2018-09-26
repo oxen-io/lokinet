@@ -38,3 +38,18 @@ llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
 {
   ctx->impl.Init(key, ctx->parent, 20000);
 }
+
+void
+llarp_dht_lookup_router(struct llarp_dht_context *ctx,
+                        struct llarp_router_lookup_job *job)
+{
+  job->dht   = ctx;
+  job->found = false;
+  job->result.Clear();
+  // llarp_rc_clear(&job->result);
+  llarp::LogError("implement me llarp_dht_lookup_router");
+  /*
+  llarp_logic_queue_job(ctx->parent->logic,
+                        {job, &llarp::dht::Context::queue_router_lookup});
+  */
+}

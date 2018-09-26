@@ -1,20 +1,15 @@
-#include <getopt.h>
-#include <signal.h>
-#include <stdio.h> /* fprintf, printf */
 #ifndef _MSC_VER
 #include <unistd.h>
 #endif
 
 #include <llarp.h>
-#include <llarp/logic.h>
-#include "dnsd.hpp"
-#include "ev.hpp"
-#include "llarp/net.hpp"
-#include "logger.hpp"
+#include <llarp/dns_iptracker.hpp>
+#include <llarp/dnsd.hpp>
+#include <llarp/dns_dotlokilookup.hpp>
 
-#include <thread>  // for multithreaded version
-#include <vector>
+#include <llarp/threading.hpp>  // for multithreaded version (multiplatorm)
 
+#include <signal.h> // Linux needs this for SIGINT
 // keep this once jeff reenables concurrency
 #ifdef _MSC_VER
 extern "C" void
@@ -29,6 +24,11 @@ SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
 #include <pthread_np.h>
 #endif
 
+// CHECK: is multiprocess still a thing?
+#ifndef TESTNET
+#define TESTNET 0
+#endif
+
 struct llarp_main *ctx = 0;
 bool done              = false;
 
@@ -37,19 +37,10 @@ handle_signal(int sig)
 {
   printf("got SIGINT\n");
   done = true;
+  // if using router, signal it
+  if(ctx)
+    llarp_main_signal(ctx, sig);
 }
-
-sockaddr *
-hookChecker(std::string name, struct dnsd_context *context)
-{
-  llarp::LogInfo("Hooked ", name);
-  // cast your context->user;
-  return nullptr;
-}
-
-// FIXME: make configurable
-#define SERVER "8.8.8.8"
-#define PORT 53
 
 struct dns_relay_config
 {
@@ -83,7 +74,9 @@ int
 main(int argc, char *argv[])
 {
   int code = 1;
-  llarp::LogInfo("Starting up server");
+  char cwd[1024];
+  getcwd(cwd, sizeof(cwd));
+  llarp::LogInfo("Starting up server at ", cwd);
 
   const char *conffname = handleBaseCmdLineArgs(argc, argv);
   dns_relay_config dnsr_config;
@@ -91,13 +84,12 @@ main(int argc, char *argv[])
   dnsr_config.upstream_port = 53;
   llarp_config *config_reader;
   llarp_new_config(&config_reader);
-  // ctx      = llarp_main_init(conffname, multiThreaded);
 
   if(llarp_load_config(config_reader, conffname))
   {
     llarp_free_config(&config_reader);
     llarp::LogError("failed to load config file ", conffname);
-    return false;
+    return 0;
   }
   llarp_config_iterator iter;
   iter.user  = &dnsr_config;
@@ -105,20 +97,83 @@ main(int argc, char *argv[])
   llarp_config_iter(config_reader, &iter);
   llarp::LogInfo("config [", conffname, "] loaded");
 
+  const uint16_t server_port = 53;
+
+  dns_iptracker_init();
+
   // llarp::SetLogLevel(llarp::eLogDebug);
 
   if(1)
+  {
+    // libev version w/router context
+    ctx = llarp_main_init(conffname, !TESTNET);
+    if(!ctx)
+    {
+      llarp::LogError("Cant set up context");
+      return 0;
+    }
+    llarp_main_setup(ctx);
+    signal(SIGINT, handle_signal);
+
+    struct dnsd_context dnsd;
+    if(!llarp_main_init_dnsd(ctx, &dnsd, server_port,
+                             (const char *)dnsr_config.upstream_host.c_str(),
+                             dnsr_config.upstream_port))
+    {
+      llarp::LogError("Couldnt init dns daemon");
+    }
+    // Configure intercept
+    dnsd.intercept = &llarp_dotlokilookup_handler;
+    dotLokiLookup dll;
+    // should be a function...
+    // dll.tunEndpoint = main_router_getFirstTunEndpoint(ctx);
+    // dll.ip_tracker = &g_dns_iptracker;
+    llarp_main_init_dotLokiLookup(ctx, &dll);
+    dnsd.user = &dll;
+
+    // check tun set up
+    llarp_tun_io *tun = main_router_getRange(ctx);
+    llarp::LogDebug("TunNetmask: ", tun->netmask);
+    llarp::LogDebug("TunIfAddr: ", tun->ifaddr);
+
+    // configure dns_ip_tracker to use this
+    // well our routes table should already be set up
+
+    // mark our TunIfAddr as used
+    if(tun)
+    {
+      struct sockaddr_in addr;
+      addr.sin_addr.s_addr = inet_addr(tun->ifaddr);
+      addr.sin_family      = AF_INET;
+
+      llarp::Addr tunIp(addr);
+      llarp::LogDebug("llarp::TunIfAddr: ", tunIp);
+      dns_iptracker_setup_dotLokiLookup(&dll, tunIp);
+      dns_iptracker_setup(tunIp);
+    }
+    else
+    {
+      llarp::LogWarn("No tun interface, can't look up .loki");
+    }
+
+    // run system and wait
+    llarp_main_run(ctx);
+    llarp_main_free(ctx);
+  }
+  else if(0)
   {
     // libev version
     llarp_ev_loop *netloop   = nullptr;
     llarp_threadpool *worker = nullptr;
     llarp_logic *logic       = nullptr;
 
-    llarp_ev_loop_alloc(&netloop);
+    llarp_ev_loop_alloc(&netloop);  // set up netio worker
+    worker = llarp_init_same_process_threadpool();
+    logic  = llarp_init_single_process_logic(worker);  // set up logic worker
 
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, netloop, "*", 1053,
+    if(!llarp_dnsd_init(&dnsd, logic, netloop, "*", server_port,
                         (const char *)dnsr_config.upstream_host.c_str(),
                         dnsr_config.upstream_port))
     {
@@ -127,11 +182,9 @@ main(int argc, char *argv[])
       return 0;
     }
     // Configure intercept
-    dnsd.intercept = &hookChecker;
+    dnsd.intercept = &llarp_dotlokilookup_handler;
 
     llarp::LogInfo("singlethread start");
-    worker = llarp_init_same_process_threadpool();
-    logic  = llarp_init_single_process_logic(worker);
     llarp_ev_loop_run_single_process(netloop, worker, logic);
     llarp::LogInfo("singlethread end");
 
@@ -139,13 +192,32 @@ main(int argc, char *argv[])
   }
   else
   {
+    // need this for timer stuff
+    llarp_threadpool *worker = nullptr;
+    llarp_logic *logic       = nullptr;
+    worker                   = llarp_init_same_process_threadpool();
+    logic = llarp_init_single_process_logic(worker);  // set up logic worker
+
+    // configure main netloop
+    struct dnsd_context dnsd;
+    if(!llarp_dnsd_init(&dnsd, logic, nullptr, "*", server_port,
+                        (const char *)dnsr_config.upstream_host.c_str(),
+                        dnsr_config.upstream_port))
+    {
+      // llarp::LogError("failed to initialize dns subsystem");
+      llarp::LogError("Couldnt init dns daemon");
+      return 0;
+    }
+    // Configure intercept
+    dnsd.intercept = &llarp_dotlokilookup_handler;
+
     struct sockaddr_in m_address;
     int m_sockfd;
 
     m_sockfd                  = socket(AF_INET, SOCK_DGRAM, 0);
     m_address.sin_family      = AF_INET;
     m_address.sin_addr.s_addr = INADDR_ANY;
-    m_address.sin_port        = htons(1053);
+    m_address.sin_port        = htons(server_port);
     int rbind                 = bind(m_sockfd, (struct sockaddr *)&m_address,
                      sizeof(struct sockaddr_in));
 

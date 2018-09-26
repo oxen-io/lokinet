@@ -13,9 +13,12 @@
 #include "llarp/net.hpp"
 #include "router.hpp"
 
-struct llarp_main *ctx = 0;
+#include <llarp/messages/dht.hpp>
+//#include <llarp/dht/messages/findintro.hpp>
+//#include <llarp/routing_endpoint.hpp>
+//#include <llarp/crypt.hpp>  // for llarp::pubkey
 
-llarp_main *sllarp = nullptr;
+struct llarp_main *ctx = 0;
 
 void
 handle_signal(int sig)
@@ -41,7 +44,6 @@ displayRC(const llarp::RouterContact &rc)
 // fwd declr
 struct check_online_request;
 
-/*
 void
 HandleDHTLocate(llarp_router_lookup_job *job)
 {
@@ -49,7 +51,7 @@ HandleDHTLocate(llarp_router_lookup_job *job)
   if(job->found)
   {
     // save to nodedb?
-    displayRC(&job->result);
+    displayRC(job->result);
   }
   // shutdown router
 
@@ -64,7 +66,6 @@ HandleDHTLocate(llarp_router_lookup_job *job)
   // still need to exit this logic thread...
   llarp_main_abort(ctx);
 }
-*/
 
 int
 main(int argc, char *argv[])
@@ -90,22 +91,29 @@ main(int argc, char *argv[])
         "--list      path to nodedb skiplist\n"
         "--import    with a path to a router contact file\n"
         "--export    a hex formatted public key\n"
-        "--locate    a hex formatted public key"
+        "--locate    a hex formatted public key\n"
+        "--find      a base32 formatted service address\n"
+        "--b32       a hex formatted public key\n"
+        "--hex       a base32 formatted public key\n"
         "--localInfo \n"
         "--read      with a path to a router contact file\n"
         "--verify    with a path to a router contact file\n"
         "\n");
     return 0;
   }
-  bool genMode    = false;
-  bool updMode    = false;
-  bool listMode   = false;
-  bool importMode = false;
-  bool exportMode = false;
-  bool locateMode = false;
-  bool localMode  = false;
-  bool verifyMode = false;
-  bool readMode   = false;
+  bool haveRequiredOptions = false;
+  bool genMode             = false;
+  bool updMode             = false;
+  bool listMode            = false;
+  bool importMode          = false;
+  bool exportMode          = false;
+  bool locateMode          = false;
+  bool findMode            = false;
+  bool localMode           = false;
+  bool verifyMode          = false;
+  bool readMode            = false;
+  bool toHexMode           = false;
+  bool toB32Mode           = false;
   int c;
   char *conffname;
   char defaultConfName[] = "daemon.ini";
@@ -126,12 +134,15 @@ main(int argc, char *argv[])
         {"import", required_argument, 0, 'i'},
         {"export", required_argument, 0, 'e'},
         {"locate", required_argument, 0, 'q'},
+        {"find", required_argument, 0, 'F'},
         {"localInfo", no_argument, 0, 'n'},
         {"read", required_argument, 0, 'r'},
+        {"b32", required_argument, 0, 'b'},
+        {"hex", required_argument, 0, 'h'},
         {"verify", required_argument, 0, 'V'},
         {0, 0, 0, 0}};
     int option_index = 0;
-    c = getopt_long(argc, argv, "f:c:o:g:lu:i:e:q:nr:V:", long_options,
+    c = getopt_long(argc, argv, "c:f:o:g:lu:i:e:q:F:nr:b:h:V:", long_options,
                     &option_index);
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
     if(c == -1)
@@ -195,6 +206,11 @@ main(int argc, char *argv[])
         rcfname    = optarg;
         locateMode = true;
         break;
+      case 'F':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        findMode            = true;
+        break;
       case 'g':
         // printf ("option -g with value `%s'\n", optarg);
         rcfname = optarg;
@@ -212,12 +228,48 @@ main(int argc, char *argv[])
         rcfname  = optarg;
         readMode = true;
         break;
+      case 'b':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        toB32Mode           = true;
+        break;
+      case 'h':
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        toHexMode           = true;
+        break;
       default:
         printf("Bad option: %c\n", c);
         return -1;
     }
   }
 #undef MIN
+  if(!haveRequiredOptions)
+  {
+    llarp::LogError("Parameters dont all have their required parameters.\n");
+    return 0;
+  }
+  // printf("parsed options\n");
+
+  if(!genMode && !updMode && !listMode && !importMode && !exportMode
+     && !locateMode && !localMode && !readMode && !findMode && !toB32Mode
+     && !toHexMode)
+  {
+    llarp::LogError(
+        "I don't know what to do, no generate or update parameter\n");
+    return 1;
+  }
+
+  ctx = llarp_main_init(conffname, !TESTNET);
+  if(!ctx)
+  {
+    llarp::LogError("Cant set up context");
+    return 1;
+  }
+  signal(SIGINT, handle_signal);
+
+  llarp::RouterContact tmp;
+
   if(verifyMode)
   {
     llarp_crypto crypto;
@@ -274,6 +326,8 @@ main(int argc, char *argv[])
     return 0;
   }
 
+  // is this Neuro or Jeff's?
+  // this is the only one...
   if(listMode)
   {
     llarp_crypto crypto;
@@ -331,21 +385,6 @@ main(int argc, char *argv[])
     return 0;
   }
 
-  if(!genMode && !updMode && !listMode && !importMode && !exportMode
-     && !locateMode && !localMode && !readMode)
-  {
-    llarp::LogError(
-        "I don't know what to do, no generate or update parameter\n");
-    return 0;
-  }
-
-  ctx = llarp_main_init(conffname, !TESTNET);
-  if(!ctx)
-  {
-    llarp::LogError("Cant set up context");
-    return 0;
-  }
-  signal(SIGINT, handle_signal);
   if(genMode)
   {
     printf("Creating [%s]\n", rcfname);
@@ -384,10 +423,185 @@ main(int argc, char *argv[])
     fs::path our_rc_file = rcfname;
     // write file
     rc.Write(our_rc_file.string().c_str());
+
+    // llarp_rc_write(&tmp, our_rc_file.string().c_str());
+
+    // release memory for tmp lists
+    // llarp_rc_free(&tmp);
+  }
+  if(updMode)
+  {
+    printf("rcutil.cpp - Loading [%s]\n", rcfname);
+    llarp::RouterContact tmp;
+    // llarp_rc_clear(&rc);
+    rc.Clear();
+    // FIXME: new rc api
+    // llarp_rc_read(rcfname, &rc);
+
+    // set updated timestamp
+    rc.last_updated = llarp_time_now_ms();
+    // load longterm identity
+    llarp_crypto crypt;
+
+    // no longer used?
+    // llarp_crypto_libsodium_init(&crypt);
+    llarp::SecretKey identityKey;  // FIXME: Jeff requests we use this
+    fs::path ident_keyfile = "identity.key";
+    byte_t identity[SECKEYSIZE];
+    llarp_findOrCreateIdentity(&crypt, ident_keyfile.string().c_str(),
+                               identity);
+
+    // FIXME: update RC API
+    // get identity public key
+    // const uint8_t *pubkey = llarp::seckey_topublic(identity);
+
+    // FIXME: update RC API
+    // llarp_rc_set_pubsigkey(&rc, pubkey);
+    // // FIXME: update RC API
+    // llarp_rc_sign(&crypt, identity, &rc);
+
+    // set filename
+    fs::path our_rc_file_out = "update_debug.rc";
+    // write file
+    // FIXME: update RC API
+    // rc.Write(our_rc_file.string().c_str());
+    // llarp_rc_write(&tmp, our_rc_file_out.string().c_str());
+  }
+
+  if(listMode)
+  {
+    llarp_crypto crypto;
+    // no longer used?
+    // llarp_crypto_libsodium_init(&crypto);
+    llarp_crypto_init(&crypto);
+    auto nodedb = llarp_nodedb_new(&crypto);
+    llarp_nodedb_iter itr;
+    itr.visit = [](llarp_nodedb_iter *i) -> bool {
+      std::cout << llarp::PubKey(i->rc->pubkey) << std::endl;
+      return true;
+    };
+    if(llarp_nodedb_load_dir(nodedb, nodesdir) > 0)
+      llarp_nodedb_iterate_all(nodedb, itr);
+    llarp_nodedb_free(&nodedb);
+    return 0;
+  }
+  if(exportMode)
+  {
+    llarp_main_loadDatabase(ctx);
+    // llarp::LogInfo("Looking for string: ", rcfname);
+
+    llarp::PubKey binaryPK;
+    llarp::HexDecode(rcfname, binaryPK.data());
+
+    llarp::LogInfo("Looking for binary: ", binaryPK);
+    llarp::RouterContact *rc = llarp_main_getDatabase(ctx, binaryPK.data());
+    if(!rc)
+    {
+      llarp::LogError("Can't load RC from database");
+    }
+    std::string filename(rcfname);
+    filename.append(".signed");
+    llarp::LogInfo("Writing out: ", filename);
+    // FIXME: update RC API
+    // rc.Write(our_rc_file.string().c_str());
+    // llarp_rc_write(rc, filename.c_str());
+  }
+  if(locateMode)
+  {
+    llarp::LogInfo("Going online");
+    llarp_main_setup(ctx);
+
+    llarp::PubKey binaryPK;
+    llarp::HexDecode(rcfname, binaryPK.data());
+
+    llarp::LogInfo("Queueing job");
+    llarp_router_lookup_job *job = new llarp_router_lookup_job;
+    job->iterative               = true;
+    job->found                   = false;
+    job->hook                    = &HandleDHTLocate;
+    // llarp_rc_new(&job->result);
+    memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
+
+    // create query DHT request
+    check_online_request *request = new check_online_request;
+    request->ptr                  = ctx;
+    request->job                  = job;
+    request->online               = false;
+    request->nodes                = 0;
+    request->first                = false;
+    llarp_main_queryDHT(request);
+
+    llarp::LogInfo("Processing");
+    // run system and wait
+    llarp_main_run(ctx);
+  }
+  if(findMode)
+  {
+    llarp::LogInfo("Going online");
+    llarp_main_setup(ctx);
+
+    llarp::LogInfo("Please find ", rcfname);
+    std::string str(rcfname);
+
+    llarp::service::Tag tag(rcfname);
+    llarp::LogInfo("Tag ", tag);
+
+    llarp::service::Address addr;
+    str = str.append(".loki");
+    llarp::LogInfo("Prestring ", str);
+    bool res = addr.FromString(str.c_str());
+    llarp::LogInfo(res ? "Success" : "not a base32 string");
+
+    // Base32Decode(rcfname, addr);
+    llarp::LogInfo("Addr ", addr);
+    llarp::routing::DHTMessage *msg = new llarp::routing::DHTMessage();
+    // uint64_t txid, const llarp::service::Address& addr
+    // FIXME: new API?
+    // msg->M.push_back(new llarp::dht::FindIntroMessage(tag, 1));
+
+    // I guess we may need a router to get any replies
+    llarp::LogInfo("Processing");
+    // run system and wait
+    llarp_main_run(ctx);
+  }
+  if(localMode)
+  {
+    // FIXME: update llarp_main_getLocalRC
+    // llarp::RouterContact *rc = llarp_main_getLocalRC(ctx);
+    // displayRC(rc);
+    // delete it
   }
   {
     if(rc.Read(rcfname))
       displayRC(rc);
   }
+
+  if(toB32Mode)
+  {
+    llarp::LogInfo("Converting hex string ", rcfname);
+    std::string str(rcfname);
+
+    llarp::PubKey binaryPK;
+    // llarp::service::Address::FromString
+    llarp::HexDecode(rcfname, binaryPK.data());
+    char tmp[(1 + 32) * 2] = {0};
+    std::string b32        = llarp::Base32Encode(binaryPK, tmp);
+    llarp::LogInfo("to base32 ", b32);
+  }
+  if(toHexMode)
+  {
+    llarp::service::Address addr;
+    llarp::Base32Decode(rcfname, addr);
+    llarp::LogInfo("Converting base32 string ", addr);
+
+    // llarp::service::Address::ToString
+    char ftmp[68] = {0};
+    const char *hexname =
+        llarp::HexEncode< llarp::service::Address, decltype(ftmp) >(addr, ftmp);
+
+    llarp::LogInfo("to hex ", hexname);
+  }
+  // it's a unique_ptr, should clean up itself
+  // llarp_main_free(ctx);
   return 0;  // success
 }

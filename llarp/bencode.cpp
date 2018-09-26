@@ -129,7 +129,11 @@ bencode_read_list(llarp_buffer_t* buff, struct list_reader* r)
 {
   r->buffer = buff;
   if(*r->buffer->cur != 'l')  // ensure is a list
+  {
+    llarp::LogWarn("bencode::bencode_read_list - expecting list got ",
+                   *r->buffer->cur);
     return false;
+  }
 
   r->buffer->cur++;
   while(llarp_buffer_size_left(*r->buffer) && *r->buffer->cur != 'e')

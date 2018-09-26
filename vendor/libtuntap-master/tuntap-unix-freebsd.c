@@ -261,7 +261,8 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
 {
   struct ifreq ifr;
   char *newname;
-  strlcpy(ifr.ifr_name, dev->ifname, IF_NAMESIZE);
+	//(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
+  strlcpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
 
   newname = strdup(ifname);
   if(newname == NULL)
@@ -269,10 +270,10 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
     tuntap_log(TUNTAP_LOG_ERR, "no memory to set ifname");
     return -1;
   }
-
   ifr.ifr_data = newname;
-  if(ioctl(dev->ctrl_sock, SIOCSIFNAME, &ifr) == -1)
-  {
+	if (ioctl(dev->ctrl_sock, SIOCSIFNAME, &ifr) == -1)
+	{
+		perror(NULL);
     free(newname);
     tuntap_log(TUNTAP_LOG_ERR, "Can't set interface name");
     return -1;

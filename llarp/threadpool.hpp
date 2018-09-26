@@ -71,7 +71,7 @@ namespace llarp
       {
       }
 
-      void
+      virtual void
       Spawn(size_t workers, const char* name);
 
       void

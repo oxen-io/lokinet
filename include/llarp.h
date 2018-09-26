@@ -7,6 +7,10 @@
 #include <llarp/version.h>
 
 #ifdef __cplusplus
+#include <llarp/service/address.hpp>  // for service::address
+#include <llarp/handlers/tun.hpp>     // for handlers
+#include <llarp/service/endpoint.hpp>
+
 extern "C"
 {
 #endif
@@ -44,10 +48,11 @@ extern "C"
 
   /// put RC into nodeDB
   bool
-  llarp_main_putDatabase(struct llarp_main *ptr, struct llarp_rc *rc);
+  llarp_main_putDatabase(struct llarp_main *ptr,
+                         struct llarp::RouterContact &rc);
 
   /// get RC from nodeDB
-  struct llarp_rc *
+  llarp::RouterContact *
   llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
 
   // fwd declr
@@ -66,11 +71,27 @@ extern "C"
     check_online_request_hook_func hook;
   };
 
-  /// get RC from DHT
+  /// get RC from DHT but wait until online
   void
   llarp_main_queryDHT(struct check_online_request *request);
 
-  struct llarp_rc *
+  /// get RC from DHT
+  void
+  llarp_main_queryDHT_RC(struct llarp_main *ptr,
+                         struct llarp_router_lookup_job *job);
+
+  /// set up DNS libs with a context
+  bool
+  llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
+                       uint16_t server_port, const char *upstream_host,
+                       uint16_t upstream_port);
+
+  /// set up dotLokiLookup with logic for setting timers
+  bool
+  llarp_main_init_dotLokiLookup(struct llarp_main *ptr,
+                                struct dotLokiLookup *dll);
+
+  llarp::RouterContact *
   llarp_main_getLocalRC(struct llarp_main *ptr);
 
   void
@@ -80,6 +101,22 @@ extern "C"
   handleBaseCmdLineArgs(int argc, char *argv[]);
 
 #ifdef __cplusplus
+
+  llarp::handlers::TunEndpoint *
+  main_router_getFirstTunEndpoint(struct llarp_main *ptr);
+
+  llarp_tun_io *
+  main_router_getRange(struct llarp_main *ptr);
+
+  /// map an ip to a hidden service address
+  bool
+  main_router_mapAddress(struct llarp_main *ptr,
+                         const llarp::service::Address &addr, uint32_t ip);
+
+  /// info of possible path usage
+  bool
+  main_router_prefetch(struct llarp_main *ptr,
+                       const llarp::service::Address &addr);
 }
 #endif
 #endif

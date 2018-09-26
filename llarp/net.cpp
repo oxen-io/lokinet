@@ -796,6 +796,55 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
     freeifaddrs(ifa);
   return found;
 }
+
+struct privatesInUse
+llarp_getPrivateIfs()
+{
+  struct privatesInUse result;
+  result.ten      = false;
+  result.oneSeven = false;
+  result.oneNine  = false;
+
+  ifaddrs* ifa = nullptr;
+
+#ifndef _WIN32
+  if(getifaddrs(&ifa) == -1)
+#else
+  if(!getifaddrs(&ifa))
+#endif
+    return result;
+  ifaddrs* i = ifa;
+  while(i)
+  {
+    if(i->ifa_addr && i->ifa_addr->sa_family == AF_INET)
+    {
+      // llarp::LogInfo("scanning ", i->ifa_name, " af: ",
+      // std::to_string(i->ifa_addr->sa_family));
+      llarp::Addr test(*i->ifa_addr);
+      uint32_t byte = test.getHostLong();
+      if(test.isTenPrivate(byte))
+      {
+        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
+        result.ten = true;
+      }
+      else if(test.isOneSevenPrivate(byte))
+      {
+        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
+        result.oneSeven = true;
+      }
+      else if(test.isOneNinePrivate(byte))
+      {
+        llarp::LogDebug("private interface ", i->ifa_name, " ", test, " found");
+        result.oneNine = true;
+      }
+    }
+    i = i->ifa_next;
+  }
+  if(ifa)
+    freeifaddrs(ifa);
+  return result;
+}
+
 namespace llarp
 {
   bool

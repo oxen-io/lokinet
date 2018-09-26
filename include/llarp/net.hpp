@@ -4,7 +4,15 @@
 #include <llarp/net.h>
 #include <functional>
 #include <iostream>
+#include "logger.hpp"
 #include "mem.hpp"
+
+#include <stdlib.h>  // for itoa
+
+// for addrinfo
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 bool
 operator==(const sockaddr& a, const sockaddr& b);
@@ -24,10 +32,21 @@ operator<(const in6_addr& a, const in6_addr& b);
 bool
 operator==(const in6_addr& a, const in6_addr& b);
 
+struct privatesInUse
+{
+  bool ten;       // 16m ips
+  bool oneSeven;  // 1m  ips
+  bool oneNine;   // 65k ips
+};
+
+struct privatesInUse
+llarp_getPrivateIfs();
+
 namespace llarp
 {
   struct Addr
   {
+    // network order
     sockaddr_in6 _addr;
     sockaddr_in _addr4;
     ~Addr(){};
@@ -72,6 +91,81 @@ namespace llarp
     addr4() const
     {
       return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
+    }
+
+    Addr(const char* str)
+    {
+      llarp::Zero(&_addr, sizeof(sockaddr_in6));
+      struct addrinfo hint, *res = NULL;
+      int ret;
+
+      memset(&hint, '\0', sizeof hint);
+
+      hint.ai_family = PF_UNSPEC;
+      hint.ai_flags  = AI_NUMERICHOST;
+
+      ret = getaddrinfo(str, NULL, &hint, &res);
+      if(ret)
+      {
+        llarp::LogError("failed to determine address family: ", str);
+        return;
+      }
+
+      if(res->ai_family == AF_INET6)
+      {
+        llarp::LogError("IPv6 address not supported yet", str);
+        return;
+      }
+      else if(res->ai_family != AF_INET)
+      {
+        llarp::LogError("Address family not supported yet", str);
+        return;
+      }
+
+      struct in_addr* addr = &_addr4.sin_addr;
+      if(inet_aton(str, addr) == 0)
+      {
+        llarp::LogError("failed to parse ", str);
+        return;
+      }
+
+      _addr.sin6_family = res->ai_family;
+      _addr4.sin_family = res->ai_family;
+      _addr4.sin_port   = htons(0);
+#if((__APPLE__ && __MACH__) || __FreeBSD__)
+      _addr4.sin_len = sizeof(in_addr);
+#endif
+      // set up SIIT
+      uint8_t* addrptr = _addr.sin6_addr.s6_addr;
+      addrptr[11]      = 0xff;
+      addrptr[10]      = 0xff;
+      memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
+      freeaddrinfo(res);
+    }
+
+    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
+         const uint8_t four)
+    {
+      llarp::Zero(&_addr, sizeof(sockaddr_in6));
+      struct in_addr* addr = &_addr4.sin_addr;
+      unsigned char* ip    = (unsigned char*)&(addr->s_addr);
+
+      _addr.sin6_family = AF_INET;  // set ipv4 mode
+      _addr4.sin_family = AF_INET;
+      _addr4.sin_port   = htons(0);
+
+#if((__APPLE__ && __MACH__) || __FreeBSD__)
+      _addr4.sin_len = sizeof(in_addr);
+#endif
+      ip[0] = one;
+      ip[1] = two;
+      ip[2] = three;
+      ip[3] = four;
+      // set up SIIT
+      uint8_t* addrptr = _addr.sin6_addr.s6_addr;
+      addrptr[11]      = 0xff;
+      addrptr[10]      = 0xff;
+      memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
     }
 
     Addr(const AddressInfo& other)
@@ -204,19 +298,26 @@ namespace llarp
       switch(af())
       {
         case AF_INET:
-          dst  = (void*)&((sockaddr_in*)other)->sin_addr.s_addr;
-          src  = (void*)&_addr.sin6_addr.s6_addr[12];
-          ptr  = &((sockaddr_in*)other)->sin_port;
-          slen = sizeof(in_addr);
+        {
+          sockaddr_in* ipv4_dst = (sockaddr_in*)other;
+          dst                   = (void*)&ipv4_dst->sin_addr.s_addr;
+          src                   = (void*)&_addr4.sin_addr.s_addr;
+          ptr                   = &((sockaddr_in*)other)->sin_port;
+          slen                  = sizeof(in_addr);
           break;
+        }
         case AF_INET6:
+        {
           dst  = (void*)((sockaddr_in6*)other)->sin6_addr.s6_addr;
           src  = (void*)_addr.sin6_addr.s6_addr;
           ptr  = &((sockaddr_in6*)other)->sin6_port;
           slen = sizeof(in6_addr);
           break;
+        }
         default:
+        {
           return;
+        }
       }
       memcpy(dst, src, slen);
       *ptr             = htons(port());
@@ -288,6 +389,18 @@ namespace llarp
       return *this;
     }
 
+    uint32_t
+    tohl()
+    {
+      return ntohl(addr4()->s_addr);
+    }
+
+    uint32_t
+    ton()
+    {
+      return addr4()->s_addr;
+    }
+
     bool
     sameAddr(const Addr& other) const
     {
@@ -300,6 +413,37 @@ namespace llarp
       return !(*this == other);
     }
 
+    inline uint32_t
+    getHostLong()
+    {
+      in_addr_t addr = this->addr4()->s_addr;
+      uint32_t byte  = ntohl(addr);
+      return byte;
+    };
+
+    bool
+    isTenPrivate(uint32_t byte)
+    {
+      uint8_t byte1 = byte >> 24 & 0xff;
+      return byte1 == 10;
+    }
+
+    bool
+    isOneSevenPrivate(uint32_t byte)
+    {
+      uint8_t byte1 = byte >> 24 & 0xff;
+      uint8_t byte2 = (0x00ff0000 & byte >> 16);
+      return byte1 == 172 && (byte2 >= 16 || byte2 <= 31);
+    }
+
+    bool
+    isOneNinePrivate(uint32_t byte)
+    {
+      uint8_t byte1 = byte >> 24 & 0xff;
+      uint8_t byte2 = (0x00ff0000 & byte >> 16);
+      return byte1 == 192 && byte2 == 168;
+    }
+
     socklen_t
     SockLen() const
     {
@@ -309,15 +453,13 @@ namespace llarp
         return sizeof(sockaddr_in6);
     }
 
+    // Neuro: can't const this, not sure why...
     bool
-    isPrivate() const
+    isPrivate()
     {
-      in_addr_t addr = this->addr4()->s_addr;
-      unsigned byte  = ntohl(addr);
-      unsigned byte1 = (byte >> 24) & 0xff;
-      unsigned byte2 = (0x00ff0000 & byte) >> 16;
-      return (byte1 == 10 || (byte1 == 192 && byte2 == 168)
-              || (byte1 == 172 && (byte2 >= 16 || byte2 <= 31)));
+      uint32_t byte = this->getHostLong();
+      return this->isTenPrivate(byte) || this->isOneSevenPrivate(byte)
+          || this->isOneNinePrivate(byte);
     }
 
     bool
