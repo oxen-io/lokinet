@@ -49,18 +49,25 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   // if so send that
   // else
   // if we have a free private ip, send that
+  llarp::service::Address addr;
+  if(!addr.FromString(qr->request->question.name))
+  {
+    llarp::LogWarn("Could not base32 decode address: ",
+                   qr->request->question.name);
+    delete qr;
+    return;
+  }
+  // cache hit
+  auto itr = loki_tld_lookup_cache.find(addr.ToString());
+  if(itr != loki_tld_lookup_cache.end())
+  {
+    writesend_dnss_response(itr->second->returnThis, qr->from, qr->request);
+    return;
+  }
+
   struct dns_pointer *free_private = dns_iptracker_get_free(dll->ip_tracker);
   if(free_private)
   {
-    // do mapping
-    llarp::service::Address addr;
-    if(!addr.FromString(qr->request->question.name))
-    {
-      llarp::LogWarn("Could not base32 decode address: ",
-                     qr->request->question.name);
-      delete qr;
-      return;
-    }
     in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
 
     llarp::handlers::TunEndpoint *tunEndpoint =
@@ -76,6 +83,7 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
       delete qr;
       return;
     }
+
     // make a dnsd_query_hook_response for the cache
     dnsd_query_hook_response *response = new dnsd_query_hook_response;
     response->dontLookUp               = true;
