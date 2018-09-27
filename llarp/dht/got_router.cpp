@@ -74,10 +74,7 @@ namespace llarp
       if(relayed)
       {
         auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);
-        if(pathset)
-        {
-          return pathset->HandleGotRouterMessage(this);
-        }
+        return pathset && pathset->HandleGotRouterMessage(this);
       }
       TXOwner owner(From, txid);
 
@@ -86,7 +83,9 @@ namespace llarp
         if(N.size() == 0)
           dht.pendingExploreLookups.NotFound(owner);
         else
+        {
           dht.pendingExploreLookups.Found(owner, From, N);
+        }
         return true;
       }
 
@@ -96,7 +95,7 @@ namespace llarp
         return false;
       }
       if(R.size() == 1)
-        dht.pendingRouterLookups.Found(owner, R[0].pubkey, R);
+        dht.pendingRouterLookups.Found(owner, R[0].pubkey, {R[0]});
       else
         dht.pendingRouterLookups.NotFound(owner);
       return true;

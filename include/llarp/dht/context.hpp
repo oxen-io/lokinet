@@ -323,9 +323,8 @@ namespace llarp
 
         /// inform all watches for key of values found
         void
-        Inform(const TXOwner& from, const K& key,
-               const std::vector< V >& values, bool sendreply = false,
-               bool removeTimeouts = true)
+        Inform(const TXOwner& from, const K& key, std::vector< V > values,
+               bool sendreply = false, bool removeTimeouts = true)
         {
           auto range = waiting.equal_range(key);
           auto itr   = range.first;
