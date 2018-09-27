@@ -193,6 +193,7 @@ namespace llarp
     bool
     PathSet::GetNewestIntro(service::Introduction& intro) const
     {
+      intro.Clear();
       bool found = false;
       auto itr   = m_Paths.begin();
       while(itr != m_Paths.end())
