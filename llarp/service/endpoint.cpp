@@ -1354,10 +1354,11 @@ namespace llarp
       if(now >= intro.expiresAt)
         return should;
       auto dlt = now - intro.expiresAt;
-      return should ||  // try spacing tunnel builds out evenly in time
-          dlt < (DEFAULT_PATH_LIFETIME / 2)
-          && NumInStatus(path::ePathBuilding) < m_NumPaths
-          && dlt > buildIntervalLimit;
+      return should
+          || (  // try spacing tunnel builds out evenly in time
+                 (dlt < (DEFAULT_PATH_LIFETIME / 2))
+                 && (NumInStatus(path::ePathBuilding) < m_NumPaths)
+                 && (dlt > buildIntervalLimit));
     }
 
     /// send on an established convo tag
