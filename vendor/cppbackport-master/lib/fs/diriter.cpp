@@ -34,7 +34,9 @@
 #include <climits>
 
 #include <dirent.h>
+#ifdef _WIN32
 #include <io.h>
+#endif
 
 #include "direntry.h"
 #include "path.h"
