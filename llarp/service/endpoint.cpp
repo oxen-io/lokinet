@@ -750,8 +750,6 @@ namespace llarp
         if(MarkCurrentIntroBad(llarp_time_now_ms()))
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
-        else
-          UpdateIntroSet();
       }
       return true;
     }
@@ -890,7 +888,7 @@ namespace llarp
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& intro,
                                                Endpoint* parent)
-        : path::Builder(parent->m_Router, parent->m_Router->dht, 2, 4)
+        : path::Builder(parent->m_Router, parent->m_Router->dht, 3, 4)
         , SendContext(intro.A, {}, this, parent)
         , currentIntroSet(intro)
 
@@ -1040,6 +1038,18 @@ namespace llarp
       if(now - lastShift < MIN_SHIFT_INTERVAL)
         return false;
       bool shifted = false;
+      // to find a intro on the same router as before
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(intro.ExpiresSoon(now))
+          continue;
+        if(m_BadIntros.find(intro) == m_BadIntros.end()
+           && remoteIntro.router == intro.router)
+        {
+          remoteIntro = intro;
+          return true;
+        }
+      }
       for(const auto& intro : currentIntroSet.I)
       {
         m_Endpoint->EnsureRouterIsKnown(intro.router);
@@ -1369,12 +1379,7 @@ namespace llarp
       if(remoteIntro.ExpiresSoon(now))
       {
         // shift intro
-        if(!MarkCurrentIntroBad(now))
-        {
-          UpdateIntroSet();
-          llarp::LogError("dropping message, no path after shifting intros");
-          return;
-        }
+        MarkCurrentIntroBad(now);
       }
 
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
