@@ -1351,13 +1351,13 @@ namespace llarp
 
       auto now = llarp_time_now_ms();
       // time from now that the newest intro expires at
-      auto dlt = now < intro.expiresAt ? intro.expiresAt - now : 0;
+      if(now >= intro.expiresAt)
+        return should;
+      auto dlt = now - intro.expiresAt;
       return should ||  // try spacing tunnel builds out evenly in time
-          (dlt
-           && (dlt < (DEFAULT_PATH_LIFETIME / 2)
-               && NumInStatus(path::ePathBuilding)
-                   < m_NumPaths)  // try not to overload with builds
-           && dlt > buildIntervalLimit);
+          dlt < (DEFAULT_PATH_LIFETIME / 2)
+          && NumInStatus(path::ePathBuilding) < m_NumPaths
+          && dlt > buildIntervalLimit;
     }
 
     /// send on an established convo tag
