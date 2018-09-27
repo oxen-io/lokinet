@@ -195,8 +195,12 @@ namespace llarp
         llarp_time_t connectTimeout = 30 * 1000;
         bool markedBad              = false;
 
-        virtual void
-        ShiftIntroduction(){};
+        virtual bool
+        ShiftIntroduction()
+        {
+          return true;
+        };
+
         virtual void
         UpdateIntroSet(){};
         virtual bool
@@ -231,7 +235,8 @@ namespace llarp
         bool updatingIntroSet;
 
         /// update the current selected intro to be a new best introduction
-        void
+        /// return true if we have changed intros
+        bool
         ShiftIntroduction();
 
         /// mark the current remote intro as bad

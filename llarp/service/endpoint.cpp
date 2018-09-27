@@ -1026,40 +1026,19 @@ namespace llarp
     bool
     Endpoint::OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
     {
-      bool shifted = false;
-      bool success = false;
       // insert bad intro
       m_BadIntros.insert(std::make_pair(remoteIntro, now));
-      // shift off current intro
-      for(const auto& intro : currentIntroSet.I)
-      {
-        if(m_BadIntros.find(intro) == m_BadIntros.end()
-           && !intro.ExpiresSoon(now))
-        {
-          shifted     = intro.router != remoteIntro.router;
-          remoteIntro = intro;
-          success     = true;
-          break;
-        }
-      }
-      // don't rebuild paths rapidly
-      if(now - lastShift < MIN_SHIFT_INTERVAL)
-        return success;
-      // rebuild path if shifted
-      if(shifted)
-      {
-        lastShift = now;
-        ManualRebuild(1);
-      }
-      return success;
+      // shift
+      return ShiftIntroduction();
     }
 
-    void
+    bool
     Endpoint::OutboundContext::ShiftIntroduction()
     {
-      auto now = llarp_time_now_ms();
+      bool success = false;
+      auto now     = llarp_time_now_ms();
       if(now - lastShift < MIN_SHIFT_INTERVAL)
-        return;
+        return false;
       bool shifted = false;
       for(const auto& intro : currentIntroSet.I)
       {
@@ -1068,8 +1047,12 @@ namespace llarp
           continue;
         if(m_BadIntros.find(intro) == m_BadIntros.end() && remoteIntro != intro)
         {
-          shifted     = intro.router != remoteIntro.router;
+          shifted = intro.router != remoteIntro.router
+              || (now < intro.expiresAt
+                  && intro.expiresAt - now
+                      > 10 * 1000);  // TODO: hardcoded value
           remoteIntro = intro;
+          success     = true;
           break;
         }
       }
@@ -1078,6 +1061,7 @@ namespace llarp
         lastShift = now;
         ManualRebuild(1);
       }
+      return success;
     }
 
     void
@@ -1282,13 +1266,13 @@ namespace llarp
     {
       if(remoteIntro.ExpiresSoon(now))
       {
-        if(!MarkCurrentIntroBad(now))
-        {
-          // TODO: log?
-        }
+        // shift intro if it expires "soon"
+        ShiftIntroduction();
       }
+      // lookup router in intro if set and unknown
       if(!remoteIntro.router.IsZero())
         m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
+      // expire bad intros
       auto itr = m_BadIntros.begin();
       while(itr != m_BadIntros.end())
       {
@@ -1297,6 +1281,7 @@ namespace llarp
         else
           ++itr;
       }
+      // if we are dead return true so we are removed
       return lastGoodSend
           ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
           : (now >= createdAt && now - createdAt > connectTimeout);
