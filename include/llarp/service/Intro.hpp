@@ -71,9 +71,7 @@ namespace llarp
       bool
       operator==(const Introduction& other) const
       {
-        return expiresAt == other.expiresAt && version == other.version
-            && pathID == other.pathID && router == other.router
-            && latency == other.latency;
+        return pathID == other.pathID && router == other.router;
       }
 
       bool
