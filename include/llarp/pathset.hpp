@@ -51,6 +51,9 @@ namespace llarp
       virtual void
       HandlePathBuildTimeout(Path* path);
 
+      bool
+      GetNewestIntro(service::Introduction& intro) const;
+
       void
       AddPath(Path* path);
 
@@ -124,10 +127,12 @@ namespace llarp
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop) = 0;
 
+     protected:
+      size_t m_NumPaths;
+
      private:
       typedef std::pair< RouterID, PathID_t > PathInfo_t;
       typedef std::map< PathInfo_t, Path* > PathMap_t;
-      size_t m_NumPaths;
       PathMap_t m_Paths;
     };
 

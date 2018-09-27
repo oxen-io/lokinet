@@ -190,6 +190,24 @@ namespace llarp
       llarp::LogInfo("path ", p->Name(), " has timed out");
     }
 
+    bool
+    PathSet::GetNewestIntro(service::Introduction& intro) const
+    {
+      bool found = false;
+      auto itr   = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->second->IsReady()
+           && itr->second->intro.expiresAt > intro.expiresAt)
+        {
+          intro = itr->second->intro;
+          found = true;
+        }
+        ++itr;
+      }
+      return found;
+    }
+
     Path*
     PathSet::PickRandomEstablishedPath() const
     {

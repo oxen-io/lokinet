@@ -1343,7 +1343,21 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      return path::Builder::ShouldBuildMore();
+      bool should = path::Builder::ShouldBuildMore();
+      // determinte newest intro
+      Introduction intro;
+      if(!GetNewestIntro(intro))
+        return should;
+
+      auto now = llarp_time_now_ms();
+      // time from now that the newest intro expires at
+      auto dlt = now < intro.expiresAt ? intro.expiresAt - now : 0;
+      return should ||  // try spacing tunnel builds out evenly in time
+          (dlt
+           && (dlt < (DEFAULT_PATH_LIFETIME / 2)
+               && NumInStatus(path::ePathBuilding)
+                   < m_NumPaths)  // try not to overload with builds
+           && dlt > buildIntervalLimit);
     }
 
     /// send on an established convo tag
@@ -1371,6 +1385,7 @@ namespace llarp
         // shift intro
         if(!MarkCurrentIntroBad(now))
         {
+          UpdateIntroSet();
           llarp::LogError("dropping message, no path after shifting intros");
           return;
         }
