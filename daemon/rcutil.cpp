@@ -181,8 +181,9 @@ main(int argc, char *argv[])
         }
         break;
       case 'V':
-        rcfname    = optarg;
-        verifyMode = true;
+        rcfname             = optarg;
+        haveRequiredOptions = true;
+        verifyMode          = true;
         break;
       case 'f':
         rcfname = optarg;
@@ -253,20 +254,12 @@ main(int argc, char *argv[])
 
   if(!genMode && !updMode && !listMode && !importMode && !exportMode
      && !locateMode && !localMode && !readMode && !findMode && !toB32Mode
-     && !toHexMode)
+     && !toHexMode && !verifyMode)
   {
     llarp::LogError(
         "I don't know what to do, no generate or update parameter\n");
     return 1;
   }
-
-  ctx = llarp_main_init(conffname, !TESTNET);
-  if(!ctx)
-  {
-    llarp::LogError("Cant set up context");
-    return 1;
-  }
-  signal(SIGINT, handle_signal);
 
   llarp::RouterContact tmp;
 
@@ -325,6 +318,14 @@ main(int argc, char *argv[])
     std::cout << std::endl;
     return 0;
   }
+
+  ctx = llarp_main_init(conffname, !TESTNET);
+  if(!ctx)
+  {
+    llarp::LogError("Cant set up context");
+    return 1;
+  }
+  signal(SIGINT, handle_signal);
 
   // is this Neuro or Jeff's?
   // this is the only one...
