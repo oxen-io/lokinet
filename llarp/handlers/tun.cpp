@@ -435,7 +435,10 @@ namespace llarp
                return pkt.Load(llarp::InitBuffer(buf, sz))
                    && pkt.Header()->version == 4;
              }))
-        llarp::LogDebug("Failed to parse ipv4 packet");
+      {
+        llarp::LogInfo("Failed to parse ipv4 packet");
+        llarp::DumpBuffer(llarp::InitBuffer(buf,sz));
+      }
     }
 
     TunEndpoint::~TunEndpoint()
