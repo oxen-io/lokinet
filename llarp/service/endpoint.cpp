@@ -643,14 +643,24 @@ namespace llarp
       Address addr;
       introset.A.CalculateAddress(addr.data());
 
-      // only add new session if it's not there
-      if(m_RemoteSessions.find(addr) == m_RemoteSessions.end())
+      if(m_RemoteSessions.count(addr) >= MAX_OUTBOUND_CONTEXT_COUNT)
       {
-        OutboundContext* ctx = new OutboundContext(introset, this);
-        m_RemoteSessions.insert(
-            std::make_pair(addr, std::unique_ptr< OutboundContext >(ctx)));
-        llarp::LogInfo("Created New outbound context for ", addr.ToString());
+        auto itr = m_RemoteSessions.find(addr);
+
+        auto i = m_PendingServiceLookups.find(addr);
+        if(i != m_PendingServiceLookups.end())
+        {
+          auto f = i->second;
+          m_PendingServiceLookups.erase(i);
+          f(addr, itr->second.get());
+        }
+        return;
       }
+
+      OutboundContext* ctx = new OutboundContext(introset, this);
+      m_RemoteSessions.insert(
+          std::make_pair(addr, std::unique_ptr< OutboundContext >(ctx)));
+      llarp::LogInfo("Created New outbound context for ", addr.ToString());
 
       // inform pending
       auto itr = m_PendingServiceLookups.find(addr);
@@ -658,7 +668,7 @@ namespace llarp
       {
         auto f = itr->second;
         m_PendingServiceLookups.erase(itr);
-        f(itr->first, m_RemoteSessions.at(addr).get());
+        f(addr, ctx);
       }
     }
 
@@ -918,9 +928,16 @@ namespace llarp
     }
 
     bool
+    Endpoint::OutboundContext::ReadyToSend() const
+    {
+      return GetPathByRouter(remoteIntro.router) != nullptr;
+    }
+
+    bool
     Endpoint::SendToOrQueue(const Address& remote, llarp_buffer_t data,
                             ProtocolType t)
     {
+      // inbound converstation
       {
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
@@ -974,20 +991,31 @@ namespace llarp
               llarp::LogError("failed to encrypt and sign");
               return false;
             }
-            llarp::LogDebug(Name(), " send ", data.sz, " via ", remoteIntro);
+            llarp::LogDebug(Name(), " send ", data.sz, " via ",
+                            remoteIntro.router);
             return p->SendRoutingMessage(&transfer, Router());
           }
         }
       }
+      // outbound converstation
       if(HasPathToService(remote))
       {
-        llarp::LogDebug(Name(), " has session to ", remote, " sending ",
-                        data.sz, " bytes");
-        auto itr = m_RemoteSessions.find(remote);
-        itr->second->AsyncEncryptAndSendTo(data, t);
-        return true;
+        auto range = m_RemoteSessions.equal_range(remote);
+        auto itr   = range.first;
+        while(itr != range.second)
+        {
+          if(itr->second->ReadyToSend())
+          {
+            itr->second->AsyncEncryptAndSendTo(data, t);
+            return true;
+          }
+          ++itr;
+        }
+        // all paths are not ready?
+        return false;
       }
 
+      // no converstation
       auto itr = m_PendingTraffic.find(remote);
       if(itr == m_PendingTraffic.end())
       {
@@ -1227,8 +1255,8 @@ namespace llarp
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
         {
-          llarp::LogInfo("sent data to ", remoteIntro.pathID, " on ",
-                         remoteIntro.router);
+          llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
+                          remoteIntro.router);
           lastGoodSend = now;
         }
         else
