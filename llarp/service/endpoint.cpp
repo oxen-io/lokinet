@@ -922,6 +922,8 @@ namespace llarp
       {
         currentIntroSet = *i;
         ShiftIntroduction();
+        if(GetPathByRouter(remoteIntro.router) == nullptr)
+          BuildOneAlignedTo(remoteIntro.router);
       }
       updatingIntroSet = false;
       return true;
@@ -1046,6 +1048,41 @@ namespace llarp
             10000);
       }
       m_PendingTraffic[remote].emplace(data, t);
+      return true;
+    }
+
+    bool
+    Endpoint::OutboundContext::BuildOneAlignedTo(const RouterID& remote)
+    {
+      llarp::LogInfo(Name(), " building path to ", remote);
+      auto nodedb = m_Endpoint->Router()->nodedb;
+      std::vector< RouterContact > hops;
+      hops.resize(numHops);
+      for(size_t hop = 0; hop < numHops; ++hop)
+      {
+        if(hop == 0)
+        {
+          // first hop
+          if(router->NumberOfConnectedRouters())
+          {
+            if(!router->GetRandomConnectedRouter(hops[0]))
+              return false;
+          }
+          else if(!llarp_nodedb_select_random_hop(nodedb, hops[0], hops[0], 0))
+            return false;
+        }
+        else if(hop == numHops - 1)
+        {
+          // last hop
+          if(!llarp_nodedb_get_rc(nodedb, remote, hops[hop]))
+            return false;
+        }
+        // middle hop
+        else if(!llarp_nodedb_select_random_hop(nodedb, hops[hop - 1],
+                                                hops[hop], hop))
+          return false;
+      }
+      Build(hops);
       return true;
     }
 

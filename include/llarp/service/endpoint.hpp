@@ -271,6 +271,9 @@ namespace llarp
         void
         UpdateIntroSet();
 
+        bool
+        BuildOneAlignedTo(const RouterID& remote);
+
         void
         HandlePathBuilt(path::Path* path);
 

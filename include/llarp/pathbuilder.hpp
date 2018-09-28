@@ -35,6 +35,12 @@ namespace llarp
       BuildOne();
 
       void
+      Build(const std::vector< RouterContact >& hops);
+
+      bool
+      SelectHops(llarp_nodedb* db, std::vector< RouterContact >& hops);
+
+      void
       ManualRebuild(size_t N);
 
       virtual const byte_t*
