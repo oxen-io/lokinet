@@ -126,7 +126,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   uint16_t id          = ++tracker->c_requests;
   if(id == 65535)
     id = 0;
-  tracker->client_request[id] = std::unique_ptr<dnsc_answer_request>(request);
+  tracker->client_request[id] = std::unique_ptr< dnsc_answer_request >(request);
 
   dns_query *dns_packet = build_dns_packet(
       (char *)request->question.name.c_str(), id, request->question.type);
@@ -486,8 +486,9 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
   llarp::LogInfo("response header says it belongs to id #", hdr->id);
 
   // if we sent this out, then there's an id
-  struct dns_tracker *tracker         = (struct dns_tracker *)dnsc->tracker;
-  generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(), nullptr, castBuf, size);
+  struct dns_tracker *tracker = (struct dns_tracker *)dnsc->tracker;
+  generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(), nullptr,
+                               castBuf, size);
 }
 
 /// intermediate udp_io handler
@@ -588,9 +589,8 @@ llarp_host_resolved(dnsc_answer_request *request)
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
   auto val             = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
-                                      [request](std::pair<const uint, std::unique_ptr < dnsc_answer_request > > &element) {
-        return element.second.get() == request;
-      });
+      [request](std::pair< const uint, std::unique_ptr< dnsc_answer_request > >
+                    &element) { return element.second.get() == request; });
   if(val != tracker->client_request.end())
   {
     tracker->client_request[val->first].reset();
@@ -599,7 +599,7 @@ llarp_host_resolved(dnsc_answer_request *request)
   {
     llarp::LogWarn("Couldn't disable ", request);
   }
-  //delete request;
+  // delete request;
 }
 
 bool

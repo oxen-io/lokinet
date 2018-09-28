@@ -163,7 +163,7 @@ namespace llarp
       bool
       IsolateNetwork()
       {
-        return llarp::linux::NetNSSwitch(IsolatedName);
+        return ::llarp::GNULinux::NetNSSwitch(IsolatedName);
       }
     };
 

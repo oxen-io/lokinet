@@ -3,13 +3,13 @@
 #ifdef __linux__
 namespace llarp
 {
-  namespace linux
+  namespace GNULinux
   {
     /// switch current process to use network namepsace by name
     /// returns true if successfully switched otherwise returns false
     bool
     NetNSSwitch(const char* name);
-  }  // namespace linux
+  }  // namespace GNULinux
 }  // namespace llarp
 #else
 #error "Don't include this file"

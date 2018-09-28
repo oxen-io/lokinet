@@ -9,7 +9,7 @@
 
 #include <sys/socket.h>
 
-#include <llarp/net.hpp> // for llarp::Addr
+#include <llarp/net.hpp>  // for llarp::Addr
 
 // dnsc can work over any UDP socket
 // however we can't ignore udp->user
@@ -21,11 +21,12 @@ struct dns_tracker
   // uint c_responses;
   uint c_requests;
   // request has to be a pointer
-  std::unordered_map< uint, std::unique_ptr< dnsc_answer_request > > client_request;
+  std::unordered_map< uint, std::unique_ptr< dnsc_answer_request > >
+      client_request;
   // FIXME: support multiple dns server contexts
   dnsd_context *dnsd;
   // rn we need 1 tracker per DNSd and each DNSd needs it's own IP
-  //std::map< llarp::Addr, std::unique_ptr< dnsc_answer_request > > dnsds;
+  // std::map< llarp::Addr, std::unique_ptr< dnsc_answer_request > > dnsds;
   // std::map< uint, dnsd_question_request * > daemon_request;
 };
 

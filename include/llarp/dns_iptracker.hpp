@@ -28,9 +28,9 @@ struct dns_iptracker
 {
   struct privatesInUse interfaces;
   struct privatesInUse used_privates;
-  std::vector< std::unique_ptr <ip_range> > used_ten_ips;
-  std::vector< std::unique_ptr <ip_range> > used_seven_ips;
-  std::vector< std::unique_ptr <ip_range> > used_nine_ips;
+  std::vector< std::unique_ptr< ip_range > > used_ten_ips;
+  std::vector< std::unique_ptr< ip_range > > used_seven_ips;
+  std::vector< std::unique_ptr< ip_range > > used_nine_ips;
 };
 
 void
