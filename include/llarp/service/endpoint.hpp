@@ -29,6 +29,8 @@ namespace llarp
 
       static const llarp_time_t INTROSET_PUBLISH_RETRY_INTERVAL = 5000;
 
+      static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
+
       Endpoint(const std::string& nickname, llarp_router* r);
       ~Endpoint();
 
@@ -243,6 +245,10 @@ namespace llarp
         bool
         MarkCurrentIntroBad(llarp_time_t now);
 
+        /// return true if we are ready to send
+        bool
+        ReadyToSend() const;
+
         bool
         ShouldBuildMore() const;
 
@@ -264,6 +270,9 @@ namespace llarp
         /// issues a lookup to find the current intro set of the remote service
         void
         UpdateIntroSet();
+
+        bool
+        BuildOneAlignedTo(const RouterID& remote);
 
         void
         HandlePathBuilt(path::Path* path);
@@ -405,8 +414,8 @@ namespace llarp
       std::unordered_map< Address, PendingBufferQueue, Address::Hash >
           m_PendingTraffic;
 
-      std::unordered_map< Address, std::unique_ptr< OutboundContext >,
-                          Address::Hash >
+      std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
+                               Address::Hash >
           m_RemoteSessions;
 
       std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,

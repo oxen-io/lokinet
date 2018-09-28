@@ -36,6 +36,10 @@ TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
 
+LINT_FILES = $(wildcard llarp/*.cpp)
+
+LINT_CHECK = $(LINT_FILES:.cpp=.cpp-check)
+
 clean:
 	rm -f build.ninja rules.ninja cmake_install.cmake CMakeCache.txt
 	rm -rf CMakeFiles
@@ -107,6 +111,11 @@ test: debug
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+
+lint: $(LINT_CHECK)
+
+%.cpp-check: %.cpp
+	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/vendor/cppbackport-master/lib -I$(REPO)/crypto/libntrup/include -I$(REPO)/llarp
 
 install:
 	rm -f $(PREFIX)/bin/lokinet

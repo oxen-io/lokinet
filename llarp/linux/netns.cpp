@@ -21,7 +21,7 @@
 
 namespace llarp
 {
-  namespace linux
+  namespace GNULinux
   {
     static const char netns_rundir[] = "/var/run/netns";
     static const char netns_etcdir[] = "/etc/netns";
@@ -315,5 +315,5 @@ namespace llarp
       DropCap();
       return true;
     }
-  }  // namespace linux
+  }  // namespace GNULinux
 }  // namespace llarp

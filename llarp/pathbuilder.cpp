@@ -198,31 +198,44 @@ namespace llarp
     void
     Builder::BuildOne()
     {
-      // select hops
       std::vector< RouterContact > hops;
+      if(SelectHops(router->nodedb, hops))
+        Build(hops);
+    }
+
+    bool
+    Builder::SelectHops(llarp_nodedb* nodedb,
+                        std::vector< RouterContact >& hops)
+    {
       hops.resize(numHops);
       size_t idx = 0;
       while(idx < numHops)
       {
         if(idx == 0)
         {
-          if(!SelectHop(router->nodedb, hops[0], hops[0], 0))
+          if(!SelectHop(nodedb, hops[0], hops[0], 0))
           {
             llarp::LogError("failed to select first hop");
-            return;
+            return false;
           }
         }
         else
         {
-          if(!SelectHop(router->nodedb, hops[idx - 1], hops[idx], idx))
+          if(!SelectHop(nodedb, hops[idx - 1], hops[idx], idx))
           {
             /// TODO: handle this failure properly
             llarp::LogWarn("Failed to select hop ", idx);
-            return;
+            return false;
           }
         }
         ++idx;
       }
+      return true;
+    }
+
+    void
+    Builder::Build(const std::vector< RouterContact >& hops)
+    {
       lastBuild = llarp_time_now_ms();
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =

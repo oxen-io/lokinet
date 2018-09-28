@@ -246,7 +246,7 @@ namespace llarp
       m_TunSetupResult.set_value(result);
 #endif
       if(!llarp_dnsd_init(&this->dnsd, EndpointLogic(), EndpointNetLoop(),
-                          tunif.ifname, 53, "8.8.8.8", 53))
+                          tunif.ifname, 1153, "8.8.8.8", 53))
       {
         llarp::LogError("Couldnt init dns daemon");
       }
