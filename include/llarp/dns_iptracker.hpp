@@ -11,8 +11,11 @@
 // neither, it's a result set row
 struct dns_pointer
 {
+  // FIXME change to llarp::Addr
   struct sockaddr *hostResult;
   llarp::service::Address b32addr;
+  // we could store the timeout at which we expect it to be available
+  // or a list of pending requests for it
 };
 
 struct ip_range
@@ -28,9 +31,9 @@ struct dns_iptracker
 {
   struct privatesInUse interfaces;
   struct privatesInUse used_privates;
-  std::vector< std::unique_ptr <ip_range> > used_ten_ips;
-  std::vector< std::unique_ptr <ip_range> > used_seven_ips;
-  std::vector< std::unique_ptr <ip_range> > used_nine_ips;
+  std::vector< std::unique_ptr< ip_range > > used_ten_ips;
+  std::vector< std::unique_ptr< ip_range > > used_seven_ips;
+  std::vector< std::unique_ptr< ip_range > > used_nine_ips;
 };
 
 void
