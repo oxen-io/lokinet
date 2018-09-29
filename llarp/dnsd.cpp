@@ -15,11 +15,7 @@ raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
   int *fd = (int *)sock;
   // how do we get to these??
   socklen_t addrLen = sizeof(struct sockaddr_in);
-#ifdef _WIN32
   return sendto(*fd, (const char *)buffer, length, 0, from, addrLen);
-#else
-  return sendto(*fd, (const char *)buffer, length, 0, from, addrLen);
-#endif
 }
 
 ssize_t
@@ -433,14 +429,26 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
 
 bool
 llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_logic *logic,
-                struct llarp_ev_loop *netloop, const char *dnsd_ifname,
-                uint16_t dnsd_port, const char *dnsc_hostname,
-                uint16_t dnsc_port)
+                struct llarp_ev_loop *netloop, const llarp::Addr &dnsd_sockaddr,
+                const llarp::Addr &dnsc_sockaddr)
 {
-  struct sockaddr_in bindaddr;
-  bindaddr.sin_addr.s_addr = inet_addr("0.0.0.0");
+  // struct sockaddr_in bindaddr;
+  /*
+  llarp::Addr dnsd_addr;
+  bool ifRes = GetIFAddr(std::string(dnsd_ifname), dnsd_addr, AF_INET);
+  if (!ifRes)
+  {
+    llarp::LogError("Couldn't init dns server, can't resolve interface: ",
+  dnsd_ifname); return false;
+  }
+  llarp::LogInfo("DNSd interface ip ", dnsd_addr);
+  */
+
+  /*
+  bindaddr.sin_addr.s_addr = inet_addr("127.0.0.1"); // network byte
   bindaddr.sin_family      = AF_INET;
   bindaddr.sin_port        = htons(dnsd_port);
+  */
 
   dnsd->udp.user     = &dns_udp_tracker;
   dnsd->udp.recvfrom = &llarp_handle_dns_recvfrom;
@@ -448,13 +456,18 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_logic *logic,
 
   dns_udp_tracker.dnsd = dnsd;
 
-  dnsd->tracker = &dns_udp_tracker;  // register global tracker with context
-  // dnsd->logic     = logic;             // set logic worker for timers
-  dnsd->intercept = nullptr;  // set default intercepter
+  dnsd->tracker   = &dns_udp_tracker;  // register global tracker with context
+  dnsd->intercept = nullptr;           // set default intercepter
+
+  // set up fresh socket
+  dnsd->client.udp           = new llarp_udp_io;
+  dnsd->client.udp->user     = &dns_udp_tracker;
+  dnsd->client.udp->recvfrom = &llarp_handle_dns_recvfrom;
+  dnsd->client.udp->tick     = nullptr;
 
   // configure dns client
-  if(!llarp_dnsc_init(&dnsd->client, logic, &dnsd->udp, dnsc_hostname,
-                      dnsc_port))
+  // llarp::LogInfo("DNSd setting relay to ", dnsc_sockaddr);
+  if(!llarp_dnsc_init(&dnsd->client, logic, netloop, dnsc_sockaddr))
   {
     llarp::LogError("Couldnt init dns client");
     return false;
@@ -462,8 +475,9 @@ llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_logic *logic,
 
   if(netloop)
   {
-    llarp::LogInfo("DNSd binding to port 53");
-    return llarp_ev_add_udp(netloop, &dnsd->udp, (const sockaddr *)&bindaddr)
+    llarp::LogInfo("DNSd binding to ", dnsd_sockaddr);
+    return llarp_ev_add_udp(netloop, &dnsd->udp,
+                            (const sockaddr *)dnsd_sockaddr)
         != -1;
   }
   else
