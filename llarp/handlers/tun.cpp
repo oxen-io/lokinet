@@ -245,8 +245,11 @@ namespace llarp
 #ifndef _WIN32
       m_TunSetupResult.set_value(result);
 #endif
+      llarp::Addr dnsd_sockaddr(127, 0, 0, 1, 53);
+      llarp::Addr dnsc_sockaddr(8, 8, 8, 8, 53);
+      llarp::LogInfo("TunDNS set up ", dnsd_sockaddr, " to ", dnsc_sockaddr);
       if(!llarp_dnsd_init(&this->dnsd, EndpointLogic(), EndpointNetLoop(),
-                          tunif.ifname, 53, "8.8.8.8", 53))
+                          dnsd_sockaddr, dnsc_sockaddr))
       {
         llarp::LogError("Couldnt init dns daemon");
       }
