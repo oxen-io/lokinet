@@ -313,7 +313,7 @@ llarp_nodedb_ensure_dir(const char *dir)
   std::error_code ec;
 
   if(!fs::exists(dir, ec))
-    fs::create_directories(path, ec);
+    fs::create_directory(path, ec);
 
   if(ec)
     return false;

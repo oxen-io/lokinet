@@ -102,7 +102,11 @@ extern "C"
     if(basedir)
     {
       basepath = basedir;
+#ifndef _WIN32
       basepath += "/";
+#else
+	  basepath += "\\";
+#endif
     }
 
     std::ofstream f(fname);

@@ -10,6 +10,7 @@
 #include <llarp/service/tag.hpp>
 
 #include <vector>
+#include <algorithm>
 
 namespace llarp
 {

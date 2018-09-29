@@ -61,6 +61,10 @@ else()
 set(THREAD_LIB pthread)
 endif()
 
+# This merely allows the Microsoft C++ compiler
+# to substitute AVX opcodes for SSE or i687 opcodes
+# in the reference implementation, if it chooses to
+# do so in the optimisation pass.
 if(MSVC)
 option (BUILD_AVX2 "Enable AVX2 FPU vector instructions." OFF)
 if (BUILD_AVX2)
@@ -97,7 +101,7 @@ set(OPTIMIZE_FLAGS "-O2")
 set(DEBUG_FLAGS "-Od -ZI")
 else()
 set(OPTIMIZE_FLAGS "-O3")
-set(DEBUG_FLAGS "-O0 -g")
+set(DEBUG_FLAGS "-O0 -g3")
 endif()
 
 if(ASAN)
@@ -228,11 +232,12 @@ set(LIBTUNTAP_SRC_BASE
   ${LIBTUNTAP_IMPL})
 
 if (UNIX)
-  set(LIBTUNTAP_SRC
+set(LIBTUNTAP_SRC
     ${TT_ROOT}/tuntap-unix.c
     ${LIBTUNTAP_SRC_BASE})
-endif()
-
+else()
+set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
+endif(UNIX)
 set(CPP_BACKPORT_SRC
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
@@ -289,6 +294,14 @@ set(LIB_PLATFORM_SRC
   contrib/msc/getopt1.c
 )
 
+# this is written _entirely_ using
+# Unix compiler extensions, normally
+# it should not be possible to use
+# operators on vector types.
+# GCC and Clang do so, and emit the proper
+# opcode to perform the specified operation
+# to each value in parallel.
+if(NOT MSVC)
 set(NTRU_AVX_SRC
   crypto/libntrup/src/avx/randomsmall.c
   crypto/libntrup/src/avx/weight.c
@@ -307,6 +320,7 @@ set(NTRU_AVX_SRC
   crypto/libntrup/src/avx/rq.c
   crypto/libntrup/src/avx/rq_mod3.c
 )
+endif(NOT MSVC)
 
 set(NTRU_REF_SRC
   crypto/libntrup/src/ref/randomsmall.c

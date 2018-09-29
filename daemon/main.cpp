@@ -4,7 +4,9 @@
 #include <getopt.h>
 #include <string>
 #include <iostream>
+#ifndef _MSC_VER
 #include <libgen.h>
+#endif
 #include "fs.hpp"
 
 #ifdef _WIN32
@@ -28,6 +30,25 @@ printHelp(const char *argv0, int code = 1)
   return code;
 }
 
+#ifdef _WIN32
+int
+startWinsock()
+{
+  WSADATA wsockd;
+  int err;
+  // We used to defer starting winsock until
+  // we got to the iocp event loop
+  // but getaddrinfo(3) requires that winsock be in core already
+  err = ::WSAStartup(MAKEWORD(2, 2), &wsockd);
+  if(err)
+  {
+    perror("Failed to start Windows Sockets");
+    return err;
+  }
+  return 0;
+}
+#endif
+
 int
 main(int argc, char *argv[])
 {
@@ -37,6 +58,11 @@ main(int argc, char *argv[])
   {
     multiThreaded = false;
   }
+
+#ifdef _WIN32
+  if(startWinsock())
+    return -1;
+#endif
 
   int opt            = 0;
   bool genconfigOnly = false;
@@ -96,7 +122,9 @@ main(int argc, char *argv[])
     fs::path fpath    = basepath / "lokinet.ini";
 
     std::error_code ec;
-    if(!fs::create_directories(basepath, ec))
+	// These paths are guaranteed to exist - $APPDATA or $HOME
+	// so only create .lokinet/*
+    if(!fs::create_directory(basepath, ec))
     {
       if(ec)
       {
@@ -127,5 +155,8 @@ main(int argc, char *argv[])
     llarp_main_free(ctx);
   }
   exit(code);
+#ifdef _WIN32
+  ::WSACleanup();
+#endif
   return code;
 }

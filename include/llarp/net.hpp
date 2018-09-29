@@ -439,7 +439,7 @@ namespace llarp
     isOneSevenPrivate(uint32_t byte)
     {
       uint8_t byte1 = byte >> 24 & 0xff;
-      uint8_t byte2 = (0x00ff0000 & byte >> 16);
+      uint8_t byte2 = (0x00ff0000 & byte) >> 16;
       return byte1 == 172 && (byte2 >= 16 || byte2 <= 31);
     }
 
@@ -447,7 +447,7 @@ namespace llarp
     isOneNinePrivate(uint32_t byte)
     {
       uint8_t byte1 = byte >> 24 & 0xff;
-      uint8_t byte2 = (0x00ff0000 & byte >> 16);
+      uint8_t byte2 = (0x00ff0000 & byte) >> 16;
       return byte1 == 192 && byte2 == 168;
     }
 
