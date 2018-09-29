@@ -40,9 +40,9 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
                  std::to_string(ip[1]), '.', std::to_string(ip[2]), "].",
                  std::to_string(ip[3]));
 
-  std::unique_ptr<ip_range> range(new ip_range);
-  range->octet2   = ip[1];  // 2nd octet
-  range->octet3   = ip[2];  // 3rd octet
+  std::unique_ptr< ip_range > range(new ip_range);
+  range->octet2 = ip[1];  // 2nd octet
+  range->octet3 = ip[2];  // 3rd octet
   // FIXME: look up any static mappings to discount
   range->left = 252;
   // 4th octet, probably 1, set it
@@ -77,7 +77,7 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
 }
 
 inline struct dns_pointer *
-dns_iptracker_allocate_range(std::unique_ptr<ip_range> &range, uint8_t first)
+dns_iptracker_allocate_range(std::unique_ptr< ip_range > &range, uint8_t first)
 {
   // we have an IP
   llarp::LogDebug("Range has ", (unsigned int)range->left, " ips left");
@@ -95,7 +95,8 @@ dns_iptracker_allocate_range(std::unique_ptr<ip_range> &range, uint8_t first)
 }
 
 struct dns_pointer *
-dns_iptracker_check_range(std::vector< std::unique_ptr<ip_range> > &ranges, uint8_t first)
+dns_iptracker_check_range(std::vector< std::unique_ptr< ip_range > > &ranges,
+                          uint8_t first)
 {
   // tens not all used up
   if(ranges.size())
@@ -119,7 +120,7 @@ dns_iptracker_check_range(std::vector< std::unique_ptr<ip_range> > &ranges, uint
   else
   {
     // create one
-    std::unique_ptr<ip_range> new_range(new ip_range);
+    std::unique_ptr< ip_range > new_range(new ip_range);
     new_range->octet2 = 0;
     switch(first)
     {
