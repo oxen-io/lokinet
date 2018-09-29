@@ -83,8 +83,8 @@ extern "C"
   /// set up DNS libs with a context
   bool
   llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
-                       uint16_t server_port, const char *upstream_host,
-                       uint16_t upstream_port);
+                       const llarp::Addr &dnsd_sockaddr,
+                       const llarp::Addr &dnsc_sockaddr);
 
   /// set up dotLokiLookup with logic for setting timers
   bool
