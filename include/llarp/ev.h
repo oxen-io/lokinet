@@ -59,6 +59,7 @@ struct llarp_udp_io
   struct llarp_ev_loop *parent;
   /// called every event loop tick after reads
   void (*tick)(struct llarp_udp_io *);
+  // sockaddr * is the source
   void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *, const void *,
                    ssize_t);
 };
