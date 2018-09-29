@@ -9,7 +9,7 @@
 
 #include <llarp/threading.hpp>  // for multithreaded version (multiplatorm)
 
-#include <signal.h> // Linux needs this for SIGINT
+#include <signal.h>  // Linux needs this for SIGINT
 // keep this once jeff reenables concurrency
 #ifdef _MSC_VER
 extern "C" void
@@ -103,7 +103,7 @@ main(int argc, char *argv[])
 
   // llarp::SetLogLevel(llarp::eLogDebug);
 
-  if(1)
+  if(0)
   {
     // libev version w/router context
     ctx = llarp_main_init(conffname, !TESTNET);
@@ -116,9 +116,12 @@ main(int argc, char *argv[])
     signal(SIGINT, handle_signal);
 
     struct dnsd_context dnsd;
-    if(!llarp_main_init_dnsd(ctx, &dnsd, server_port,
-                             (const char *)dnsr_config.upstream_host.c_str(),
-                             dnsr_config.upstream_port))
+    llarp::Addr dnsd_sockaddr(127, 0, 0, 1, 53);
+    llarp::Addr dnsc_sockaddr(dnsr_config.upstream_host,
+                              dnsr_config.upstream_port);
+    // server_port, (const char *)dnsr_config.upstream_host.c_str(),
+    // dnsr_config.upstream_port
+    if(!llarp_main_init_dnsd(ctx, &dnsd, dnsd_sockaddr, dnsc_sockaddr))
     {
       llarp::LogError("Couldnt init dns daemon");
     }
@@ -160,7 +163,7 @@ main(int argc, char *argv[])
     llarp_main_run(ctx);
     llarp_main_free(ctx);
   }
-  else if(0)
+  else if(1)
   {
     // libev version
     llarp_ev_loop *netloop   = nullptr;
@@ -173,9 +176,12 @@ main(int argc, char *argv[])
 
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, logic, netloop, "*", server_port,
-                        (const char *)dnsr_config.upstream_host.c_str(),
-                        dnsr_config.upstream_port))
+    llarp::Addr dnsd_sockaddr(127, 0, 0, 1, 53);
+    llarp::Addr dnsc_sockaddr(dnsr_config.upstream_host,
+                              dnsr_config.upstream_port);
+    llarp::LogInfo("dnsd_sockaddr init: ", dnsd_sockaddr);
+    llarp::LogInfo("dnsc_sockaddr init: ", dnsc_sockaddr);
+    if(!llarp_dnsd_init(&dnsd, logic, netloop, dnsd_sockaddr, dnsc_sockaddr))
     {
       // llarp::LogError("failed to initialize dns subsystem");
       llarp::LogError("Couldnt init dns daemon");
@@ -200,9 +206,10 @@ main(int argc, char *argv[])
 
     // configure main netloop
     struct dnsd_context dnsd;
-    if(!llarp_dnsd_init(&dnsd, logic, nullptr, "*", server_port,
-                        (const char *)dnsr_config.upstream_host.c_str(),
-                        dnsr_config.upstream_port))
+    llarp::Addr dnsd_sockaddr(127, 0, 0, 1, 53);
+    llarp::Addr dnsc_sockaddr(dnsr_config.upstream_host,
+                              dnsr_config.upstream_port);
+    if(!llarp_dnsd_init(&dnsd, logic, nullptr, dnsd_sockaddr, dnsc_sockaddr))
     {
       // llarp::LogError("failed to initialize dns subsystem");
       llarp::LogError("Couldnt init dns daemon");
