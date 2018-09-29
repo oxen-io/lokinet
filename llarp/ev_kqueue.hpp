@@ -43,6 +43,7 @@ namespace llarp
       ssize_t ret    = ::recvfrom(fd, buf, sz, 0, addr, &slen);
       if(ret == -1)
         return -1;
+      // Addr is the source
       udp->recvfrom(udp, addr, buf, ret);
       return 0;
     }
