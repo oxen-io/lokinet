@@ -120,5 +120,6 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 bool
 llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *pkt, size_t sz)
 {
-  return static_cast< llarp::ev_io * >(tun->impl)->queue_write(pkt, sz);
+  // TODO: queue write
+  return static_cast< llarp::ev_io * >(tun->impl)->do_write(pkt, sz);
 }

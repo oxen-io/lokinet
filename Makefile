@@ -36,6 +36,8 @@ TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
 
+DNS_PORT ?= 53
+
 LINT_FILES = $(wildcard llarp/*.cpp)
 
 LINT_CHECK = $(LINT_FILES:.cpp=.cpp-check)
@@ -49,7 +51,7 @@ clean:
 	rm -f *.a *.so
 
 debug-configure: 
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DHAVE_CXX17_FILESYSTEM=OFF
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DHAVE_CXX17_FILESYSTEM=OFF -DDNS_PORT=$(DNS_PORT)
 
 release-configure: clean
 	cmake -GNinja -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)

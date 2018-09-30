@@ -158,18 +158,27 @@ bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             const llarp::ILinkMessage *msg)
 {
-  llarp::ILinkLayer *chosen = nullptr;
-
   if(inboundLinks.size() == 0)
-    chosen = outboundLink.get();
-  else
-    chosen = inboundLinks.front().get();
-
-  if(chosen->HasSessionTo(remote))
   {
-    SendTo(remote, msg, chosen);
-    return true;
+    if(outboundLink->HasSessionTo(remote))
+    {
+      SendTo(remote, msg, outboundLink.get());
+      return true;
+    }
   }
+  else
+  {
+    for(const auto &link : inboundLinks)
+    {
+      if(link->HasSessionTo(remote))
+      {
+        SendTo(remote, msg, link.get());
+        return true;
+      }
+    }
+  }
+  // no link available
+
   // this will create an entry in the obmq if it's not already there
   auto itr = outboundMessageQueue.find(remote);
   if(itr == outboundMessageQueue.end())
@@ -668,7 +677,7 @@ llarp_router::Run()
     // llarp::LogWarn("Need to load our public IP into RC!");
     if(inboundLinks.size() == 1)
     {
-      link = inboundLinks.front().get();
+      link = inboundLinks[0].get();
     }
     else
     {
@@ -677,7 +686,7 @@ llarp_router::Run()
         llarp::LogError("No inbound links found, aborting");
         return;
       }
-      link = inboundLinks.front().get();
+      link = inboundLinks[0].get();
     }
     if(link->GetOurAddressInfo(this->addrInfo))
     {

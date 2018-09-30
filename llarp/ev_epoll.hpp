@@ -96,9 +96,10 @@ namespace llarp
     read(void* buf, size_t sz)
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
-      if(ret > 0 && t->recvpkt)
+      if(ret > 4 && t->recvpkt)
       {
-        t->recvpkt(t, buf, ret);
+        // don't include packet info
+        t->recvpkt(t, ((byte_t*)buf) + 4, ret - 4);
       }
       return ret;
     }
