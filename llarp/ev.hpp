@@ -1,6 +1,8 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
 #include <llarp/ev.h>
+// witev
+#include <sys/uio.h>
 
 #ifndef _MSC_VER
 #include <unistd.h>
@@ -41,9 +43,16 @@ namespace llarp
 
     /// used for tun interface
     bool
-    queue_write(const void* data, size_t sz)
+    do_write(void* data, size_t sz)
     {
-      return write(fd, data, sz) != -1;
+      iovec vecs[2];
+      // TODO: IPV6
+      uint32_t t       = htonl(AF_INET);
+      vecs[0].iov_base = &t;
+      vecs[0].iov_len  = sizeof(t);
+      vecs[1].iov_base = data;
+      vecs[1].iov_len  = sz;
+      return writev(fd, vecs, 2) != -1;
     }
 
     /// called in event loop when fd is ready for writing
@@ -55,7 +64,7 @@ namespace llarp
       m_writeq.Process([&](WriteBuffer& buffer) {
       // todo: wtf???
 #ifndef _WIN32
-        write(fd, buffer.buf, buffer.bufsz);
+        do_write(buffer.buf, buffer.bufsz);
         // if we would block we save the entries for later
 
         // discard entry

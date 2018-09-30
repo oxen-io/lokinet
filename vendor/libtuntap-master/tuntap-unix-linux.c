@@ -72,7 +72,7 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
     tuntap_log(TUNTAP_LOG_ERR, "Invalid parameter 'mode'");
     return -1;
   }
-  ifr.ifr_flags |= IFF_NO_PI;
+  // ifr.ifr_flags |= IFF_NO_PI;
 
   if(tun < 0)
   {
