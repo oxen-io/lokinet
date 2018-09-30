@@ -576,7 +576,9 @@ namespace llarp
       SendQueueBacklog = [&]() -> size_t { return sendq.size(); };
 
       SendKeepAlive = [&]() -> bool {
-        if(sendq.size() == 0 && state == eSessionReady)
+        auto now = llarp_time_now_ms();
+        if(sendq.size() == 0 && state == eSessionReady && now > lastActive
+           && now - lastActive > (sessionTimeout / 4))
         {
           DiscardMessage msg;
           byte_t tmp[128] = {0};

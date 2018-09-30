@@ -158,18 +158,27 @@ bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             const llarp::ILinkMessage *msg)
 {
-  llarp::ILinkLayer *chosen = nullptr;
-
   if(inboundLinks.size() == 0)
-    chosen = outboundLink.get();
-  else
-    chosen = inboundLinks[0].get();
-
-  if(chosen->HasSessionTo(remote))
   {
-    SendTo(remote, msg, chosen);
-    return true;
+    if(outboundLink->HasSessionTo(remote))
+    {
+      SendTo(remote, msg, outboundLink.get());
+      return true;
+    }
   }
+  else
+  {
+    for(const auto &link : inboundLinks)
+    {
+      if(link->HasSessionTo(remote))
+      {
+        SendTo(remote, msg, link.get());
+        return true;
+      }
+    }
+  }
+  // no link available
+
   // this will create an entry in the obmq if it's not already there
   auto itr = outboundMessageQueue.find(remote);
   if(itr == outboundMessageQueue.end())
