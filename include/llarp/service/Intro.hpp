@@ -35,10 +35,10 @@ namespace llarp
       }
 
       bool
-      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const
+      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 15000) const
       {
         if(dlt)
-          return now >= (expiresAt - (llarp_randint() % dlt));
+          return now >= (expiresAt - dlt);
         return IsExpired(now);
       }
 

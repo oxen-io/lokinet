@@ -65,6 +65,10 @@ if(STATIC_LINK)
   add_cxxflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
 endif()
 
+if(DNS_PORT)
+  add_definitions(-DDNS_PORT=${DNS_PORT})
+endif()
+
 if(SHADOW)
   set(WITH_STATIC OFF)
 else()
