@@ -94,7 +94,7 @@ struct llarp_router
   llarp::service::Context hiddenServiceContext;
 
   std::unique_ptr< llarp::ILinkLayer > outboundLink;
-  std::list< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;
+  std::vector< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;
 
   llarp::Profiling routerProfiling;
   fs::path routerProfilesFile = "profiles.dat";

@@ -163,7 +163,7 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   if(inboundLinks.size() == 0)
     chosen = outboundLink.get();
   else
-    chosen = inboundLinks.front().get();
+    chosen = inboundLinks[0].get();
 
   if(chosen->HasSessionTo(remote))
   {
@@ -668,7 +668,7 @@ llarp_router::Run()
     // llarp::LogWarn("Need to load our public IP into RC!");
     if(inboundLinks.size() == 1)
     {
-      link = inboundLinks.front().get();
+      link = inboundLinks[0].get();
     }
     else
     {
@@ -677,7 +677,7 @@ llarp_router::Run()
         llarp::LogError("No inbound links found, aborting");
         return;
       }
-      link = inboundLinks.front().get();
+      link = inboundLinks[0].get();
     }
     if(link->GetOurAddressInfo(this->addrInfo))
     {
