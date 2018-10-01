@@ -922,10 +922,18 @@ namespace llarp
     {
       if(markedBad)
         return true;
-      if(i && currentIntroSet.T < i->T)
+      if(i)
       {
+        if(currentIntroSet.T >= i->T)
+        {
+          llarp::LogInfo("introset is old, dropping");
+          return true;
+        }
         currentIntroSet = *i;
-        ShiftIntroduction();
+        if(!ShiftIntroduction())
+        {
+          llarp::LogWarn("failed to pick new intro during introset update");
+        }
         if(GetPathByRouter(remoteIntro.router) == nullptr)
           BuildOneAlignedTo(remoteIntro.router);
       }

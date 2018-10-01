@@ -93,6 +93,19 @@ namespace llarp
       return -1;
     }
 
+    bool
+    do_write(void* buf, size_t sz)
+    {
+      iovec vecs[2];
+      // TODO: IPV6
+      uint32_t t       = htonl(AF_INET);
+      vecs[0].iov_base = &t;
+      vecs[0].iov_len  = sizeof(t);
+      vecs[1].iov_base = data;
+      vecs[1].iov_len  = sz;
+      return writev(fd, vecs, 2) != -1;
+    }
+
     void
     flush_write()
     {
@@ -108,7 +121,7 @@ namespace llarp
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 4 && t->recvpkt)
-        t->recvpkt(t, ((byte_t *)buf) + 4, ret - 4);
+        t->recvpkt(t, ((byte_t*)buf) + 4, ret - 4);
       return ret;
     }
 

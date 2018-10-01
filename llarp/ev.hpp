@@ -42,7 +42,7 @@ namespace llarp
     sendto(const sockaddr* dst, const void* data, size_t sz) = 0;
 
     /// used for tun interface
-    bool
+    virtual bool
     do_write(void* data, size_t sz)
     {
       return write(fd, data, sz) != -1;
