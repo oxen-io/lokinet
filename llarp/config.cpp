@@ -46,7 +46,8 @@ namespace llarp
 }  // namespace llarp
 
 bool
-llarp_ensure_config(const char *fname, const char *basedir, bool overwrite, bool asRouter)
+llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
+                    bool asRouter)
 {
   std::error_code ec;
   if(fs::exists(fname, ec) && !overwrite)
@@ -59,20 +60,21 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite, bool
     llarp::LogError(ec);
     return false;
   }
-  
+
   std::string basepath = "";
   if(basedir)
   {
     basepath = basedir;
     basepath += "/";
   }
-  
+
   // abort if client.ini already exists
-  if (!asRouter)
+  if(!asRouter)
   {
-    if(fs::exists(basepath+"client.ini", ec) && !overwrite)
+    if(fs::exists(basepath + "client.ini", ec) && !overwrite)
     {
-      llarp::LogError(basepath, "client.ini currently exists, please use -f to overwrite");
+      llarp::LogError(
+          basepath, "client.ini currently exists, please use -f to overwrite");
       return true;
     }
     if(ec)
@@ -81,7 +83,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite, bool
       return false;
     }
   }
-  
+
   // write fname ini
   std::ofstream f(fname);
   if(!f.is_open())
@@ -90,7 +92,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite, bool
     return false;
   }
   llarp_generic_ensure_config(f, basepath);
-  if (asRouter)
+  if(asRouter)
   {
     llarp_ensure_router_config(f);
   }
@@ -106,10 +108,10 @@ void
 llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 {
   f << "# this configuration was auto generated with 'sane' defaults"
-  << std::endl;
+    << std::endl;
   f << "# change these values as desired" << std::endl;
   f << std::endl << std::endl;
-  
+
   f << "# number of crypto worker threads " << std::endl;
   f << "threads=4" << std::endl;
   f << "# path to store signed RC" << std::endl;
@@ -122,10 +124,10 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "encryption-privkey=" << basepath << "encryption.private" << std::endl;
   f << std::endl;
   f << "# uncomment following line to set router nickname to 'lokinet'"
-  << std::endl;
+    << std::endl;
   f << "# nickname=lokinet" << std::endl;
   f << std::endl << std::endl;
-  
+
   f << "# system settings for priviledges and such" << std::endl;
   f << "[system]" << std::endl;
 #ifdef _WIN32
@@ -137,7 +139,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 #endif
   f << "group=" << DEFAULT_LOKINET_GROUP << std::endl;
   f << std::endl << std::endl;
-  
+
   f << "# dns provider configuration section" << std::endl;
   f << "[dns]" << std::endl;
   f << "# opennic us resolver" << std::endl;
@@ -148,18 +150,17 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "upstream=" << DEFAULT_RESOLVER_AU << std::endl;
   f << "bind=127.3.2.1:53" << std::endl;
   f << std::endl << std::endl;
-  
+
   f << "# network database settings block " << std::endl;
   f << "[netdb]" << std::endl;
   f << "# directory for network database skiplist storage" << std::endl;
   f << "dir=" << basepath << "netdb" << std::endl;
   f << std::endl << std::endl;
-  
+
   f << "# bootstrap settings " << std::endl;
   f << "[connect]" << std::endl;
   f << "bootstrap=" << basepath << "bootstrap.signed" << std::endl;
   f << std::endl << std::endl;
-  
 }
 
 void
@@ -167,29 +168,27 @@ llarp_ensure_router_config(std::ofstream &f)
 {
   f << "# ROUTERS ONLY: router settings block" << std::endl;
   f << "[router]" << std::endl;
-  f << "# uncomment these to manually set public address and port"
-  << std::endl;
+  f << "# uncomment these to manually set public address and port" << std::endl;
   f << "# this is required on providers like AWS because of their firewall "
-  "rules"
-  << std::endl;
+       "rules"
+    << std::endl;
   f << "# public-address=your.ip.goes.here" << std::endl;
   f << "# public-port=1090" << std::endl;
   f << std::endl;
-  
+
   f << "# ROUTERS ONLY: publish network interfaces for handling inbound traffic"
-  << std::endl;
+    << std::endl;
   f << "[bind]" << std::endl;
-  
+
   std::string ifname;
-  
+
   if(llarp::GetBestNetIF(ifname, AF_INET))
     f << ifname << "=1090" << std::endl;
   else
     f << "# could not autodetect network interface" << std::endl
-    << "# eth0=1090" << std::endl;
-  
+      << "# eth0=1090" << std::endl;
+
   f << std::endl;
-  
 }
 
 bool
@@ -197,31 +196,30 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
 {
   f << "# ROUTERS ONLY: router settings block" << std::endl;
   f << "[router]" << std::endl;
-  f << "# uncomment these to manually set public address and port"
-  << std::endl;
+  f << "# uncomment these to manually set public address and port" << std::endl;
   f << "# this is required on providers like AWS because of their firewall "
-  "rules"
-  << std::endl;
+       "rules"
+    << std::endl;
   f << "# public-address=your.ip.goes.here" << std::endl;
   f << "# public-port=1090" << std::endl;
   f << std::endl;
-  
+
   f << "# ROUTERS ONLY: publish network interfaces for handling inbound traffic"
-  << std::endl;
+    << std::endl;
   f << "[bind]" << std::endl;
   std::string ifname;
-  
+
   if(llarp::GetBestNetIF(ifname, AF_INET))
     f << "# " << ifname << "=1090" << std::endl;
   else
     f << "# could not autodetect network interface" << std::endl
-    << "# eth0=1090" << std::endl;
-  
+      << "# eth0=1090" << std::endl;
+
   f << std::endl;
   f << "[services]" << std::endl;
   f << "client=" << basepath << "client.ini" << std::endl;
   f << std::endl;
-  
+
   // done with fname.ini
   // start client.ini
   // write fname ini
@@ -233,30 +231,30 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   }
   clientini_f << "[client-hidden-service-name]" << std::endl;
   clientini_f << "keyfile=client-keyfile.private" << std::endl;
-  
+
   // pick ip
   struct privatesInUse ifsInUse = llarp_getPrivateIfs();
-  std::string ip = "";
-  if (!ifsInUse.ten)
+  std::string ip                = "";
+  if(!ifsInUse.ten)
   {
     ip = "10.10.0.1/24";
   }
+  else if(!ifsInUse.oneSeven)
+  {
+    ip = "172.16.10.1/24";
+  }
+  else if(!ifsInUse.oneNine)
+  {
+    ip = "192.168.10.1/24";
+  }
   else
-    if (!ifsInUse.oneSeven)
-    {
-      ip = "172.16.10.1/24";
-    }
-    else
-      if (!ifsInUse.oneNine)
-      {
-        ip = "192.168.10.1/24";
-      }
-      else
-      {
-        llarp::LogError("Couldn't easily detect a private range to map lokinet onto");
-        return false;
-      }
-  llarp::LogDebug("Detected "+ip+" is available for use, configuring as such");
+  {
+    llarp::LogError(
+        "Couldn't easily detect a private range to map lokinet onto");
+    return false;
+  }
+  llarp::LogDebug("Detected " + ip
+                  + " is available for use, configuring as such");
   clientini_f << "ifaddr=" << ip << std::endl;
   // pick interface name
   uint8_t num = 0;
@@ -265,14 +263,15 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
     std::string iftestname = "lokitun" + std::to_string(num);
     struct sockaddr addr;
     bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, &addr);
-    if (!found)
+    if(!found)
     {
-      llarp::LogDebug("Detected "+iftestname+" is available for use, configuring as such");
+      llarp::LogDebug("Detected " + iftestname
+                      + " is available for use, configuring as such");
       break;
     }
-    num ++;
+    num++;
   }
-  if (num == 255)
+  if(num == 255)
   {
     llarp::LogError("Could not find any free lokitun interface names");
     return false;
@@ -280,8 +279,9 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   clientini_f << "ifname=lokinum" << std::to_string(num) << std::endl;
   // prefetch-tags=test
   // enable netns?
-  
-  llarp::LogInfo("Generated hidden service client as " + basepath + "client.ini");
+
+  llarp::LogInfo("Generated hidden service client as " + basepath
+                 + "client.ini");
   return true;
 }
 
@@ -329,5 +329,4 @@ extern "C"
         iter->visit(iter, section.first.c_str(), item.first.c_str(),
                     item.second.c_str());
   }
-
 }
