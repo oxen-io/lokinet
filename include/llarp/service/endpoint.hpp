@@ -351,7 +351,7 @@ namespace llarp
 
      protected:
       void
-      RegenAndPublishIntroSet(llarp_time_t now);
+      RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild = false);
 
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);

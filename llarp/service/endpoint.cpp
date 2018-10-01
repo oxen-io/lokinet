@@ -91,22 +91,25 @@ namespace llarp
     }
 
     void
-    Endpoint::RegenAndPublishIntroSet(llarp_time_t now)
+    Endpoint::RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild)
     {
       std::set< Introduction > I;
-      if(!GetCurrentIntroductions(I))
+      if(!GetCurrentIntroductionsWithFilter(
+             I, [now](const service::Introduction& intro) -> bool {
+               return now < intro.expiresAt
+                   && intro.expiresAt - now > (2 * 60 * 1000);
+             }))
       {
         llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
-                       " because we couldn't get any introductions");
-        if(ShouldBuildMore())
+                       " because we couldn't get enough valid introductions");
+        if(ShouldBuildMore() || forceRebuild)
           ManualRebuild(1);
         return;
       }
       m_IntroSet.I.clear();
       for(const auto& intro : I)
       {
-        if(now < intro.expiresAt && intro.expiresAt - now > 60000)
-          m_IntroSet.I.push_back(intro);
+        m_IntroSet.I.push_back(intro);
       }
       if(m_IntroSet.I.size() == 0)
       {
@@ -815,7 +818,7 @@ namespace llarp
     Endpoint::HandlePathDead(void* user)
     {
       Endpoint* self = static_cast< Endpoint* >(user);
-      self->RegenAndPublishIntroSet(llarp_time_now_ms());
+      self->RegenAndPublishIntroSet(llarp_time_now_ms(), true);
     }
 
     bool

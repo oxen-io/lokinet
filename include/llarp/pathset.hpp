@@ -114,6 +114,12 @@ namespace llarp
       GetPathByID(const PathID_t& id) const;
 
       bool
+      GetCurrentIntroductionsWithFilter(
+          std::set< llarp::service::Introduction >& intros,
+          std::function< bool(const llarp::service::Introduction&) > filter)
+          const;
+
+      bool
       GetCurrentIntroductions(
           std::set< llarp::service::Introduction >& intros) const;
 
