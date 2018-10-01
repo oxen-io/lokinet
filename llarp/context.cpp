@@ -336,11 +336,11 @@ extern "C"
 
   bool
   llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
-                       uint16_t server_port, const char *upstream_host,
-                       uint16_t upstream_port)
+                       const llarp::Addr &dnsd_sockaddr,
+                       const llarp::Addr &dnsc_sockaddr)
   {
-    return llarp_dnsd_init(dnsd, ptr->ctx->logic, ptr->ctx->mainloop, "*",
-                           server_port, upstream_host, upstream_port);
+    return llarp_dnsd_init(dnsd, ptr->ctx->logic, ptr->ctx->mainloop,
+                           dnsd_sockaddr, dnsc_sockaddr);
   }
 
   bool
@@ -392,7 +392,7 @@ extern "C"
      llarp_config_iter(ctx->config, &iter);
      */
     // llarp_rc *rc = new llarp_rc;
-    llarp::RouterContact *rc = new llarp::RouterContact;
+    // llarp::RouterContact *rc = new llarp::RouterContact;
     // llarp_rc_new(rc);
     // llarp::LogInfo("FIXME: Loading ", ptr->ctx->conatctFile);
     // FIXME

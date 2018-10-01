@@ -93,7 +93,19 @@ namespace llarp
       return (const in_addr*)&_addr.sin6_addr.s6_addr[12];
     }
 
-    Addr(const char* str)
+    Addr(const std::string str)
+    {
+      this->from_char_array(str.c_str());
+    }
+
+    Addr(const std::string str, const uint16_t p_port)
+    {
+      this->from_char_array(str.c_str());
+      this->port(p_port);
+    }
+
+    bool
+    from_char_array(const char* str)
     {
       llarp::Zero(&_addr, sizeof(sockaddr_in6));
       struct addrinfo hint, *res = NULL;
@@ -108,25 +120,25 @@ namespace llarp
       if(ret)
       {
         llarp::LogError("failed to determine address family: ", str);
-        return;
+        return false;
       }
 
       if(res->ai_family == AF_INET6)
       {
         llarp::LogError("IPv6 address not supported yet", str);
-        return;
+        return false;
       }
       else if(res->ai_family != AF_INET)
       {
         llarp::LogError("Address family not supported yet", str);
-        return;
+        return false;
       }
 
       struct in_addr* addr = &_addr4.sin_addr;
       if(inet_aton(str, addr) == 0)
       {
         llarp::LogError("failed to parse ", str);
-        return;
+        return false;
       }
 
       _addr.sin6_family = res->ai_family;
@@ -141,10 +153,17 @@ namespace llarp
       addrptr[10]      = 0xff;
       memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
       freeaddrinfo(res);
+      return true;
     }
 
-    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
-         const uint8_t four)
+    Addr(const char* str)
+    {
+      this->from_char_array(str);
+    }
+
+    bool
+    from_4int(const uint8_t one, const uint8_t two, const uint8_t three,
+              const uint8_t four)
     {
       llarp::Zero(&_addr, sizeof(sockaddr_in6));
       struct in_addr* addr = &_addr4.sin_addr;
@@ -157,6 +176,7 @@ namespace llarp
 #if((__APPLE__ && __MACH__) || __FreeBSD__)
       _addr4.sin_len = sizeof(in_addr);
 #endif
+      // FIXME: watch endian
       ip[0] = one;
       ip[1] = two;
       ip[2] = three;
@@ -166,6 +186,20 @@ namespace llarp
       addrptr[11]      = 0xff;
       addrptr[10]      = 0xff;
       memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
+      return true;
+    }
+
+    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
+         const uint8_t four)
+    {
+      this->from_4int(one, two, three, four);
+    }
+
+    Addr(const uint8_t one, const uint8_t two, const uint8_t three,
+         const uint8_t four, const uint16_t p_port)
+    {
+      this->from_4int(one, two, three, four);
+      this->port(p_port);
     }
 
     Addr(const AddressInfo& other)

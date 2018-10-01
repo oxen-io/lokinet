@@ -73,11 +73,6 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
     llarp::handlers::TunEndpoint *tunEndpoint =
         (llarp::handlers::TunEndpoint *)dll->user;
     bool mapResult = tunEndpoint->MapAddress(addr, ntohl(ip_address.s_addr));
-    /*
-    bool mapResult = main_router_mapAddress(
-                                            ctx, addr,
-    ntohl(ip_address.s_addr));  // maybe ntohl on the s_addr
-    */
     if(!mapResult)
     {
       delete qr;
@@ -139,10 +134,10 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
     if(!addr.FromString(lName))
     {
       llarp::LogWarn("Could not base32 decode address");
-      response->dontSendResponse = true;
+      response->dontLookUp = true;  // will return nullptr which will give a 404
       return response;
     }
-    llarp::LogInfo("Got address ", addr);
+    llarp::LogDebug("Base32 decoded address ", addr);
 
     // start path build early (if you're looking it up, you're probably going to
     // use it)

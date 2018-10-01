@@ -47,10 +47,9 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *addr, const void *buf,
 /// DNS client context (one needed per upstream DNS server)
 struct dnsc_context
 {
-  /// Target: DNS server hostname/port to use
-  // FIXME: ipv6 it & make it a vector
-  sockaddr *server;
-  /// tracker
+  /// Target: DNS servers to use
+  std::vector< llarp::Addr > resolvers;
+  /// udp tracker
   struct dns_tracker *tracker;
   /// sock type
   void *sock;
@@ -78,8 +77,8 @@ llarp_host_resolved(dnsc_answer_request *request);
 /// returns true on bind success otherwise returns false
 bool
 llarp_dnsc_init(struct dnsc_context *dnsc, struct llarp_logic *logic,
-                struct llarp_udp_io *udp, const char *dnsc_hostname,
-                uint16_t dnsc_port);
+                struct llarp_ev_loop *netloop,
+                const llarp::Addr &dnsc_sockaddr);
 
 /// shutdowns any events, and deallocates for this context
 bool
