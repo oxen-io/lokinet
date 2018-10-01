@@ -1,8 +1,10 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
 #include <llarp/ev.h>
-// witev
+// writev
+#ifndef _WIN32
 #include <sys/uio.h>
+#endif
 
 #ifndef _MSC_VER
 #include <unistd.h>

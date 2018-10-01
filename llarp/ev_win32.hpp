@@ -86,7 +86,7 @@ namespace llarp
     }
   };
 
-    struct tun : public ev_io
+  struct tun : public ev_io
   {
     llarp_tun_io* t;
     device* tunif;
@@ -153,7 +153,7 @@ namespace llarp
 
       // set non blocking
       int on = 1;
-     return ioctlsocket(fd, FIONBIO, (u_long*)&on) != -1;
+      return ioctlsocket(fd, FIONBIO, (u_long*)&on) != -1;
     }
 
     ~tun()
@@ -168,7 +168,6 @@ struct llarp_win32_loop : public llarp_ev_loop
 
   llarp_win32_loop() : iocpfd(INVALID_HANDLE_VALUE)
   {
-
   }
 
   ~llarp_win32_loop()

@@ -348,8 +348,8 @@ namespace llarp
             static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
         llarp::LogDebug("utp_sendto ", Addr(*arg->address), " ", arg->len,
                         " bytes");
-        if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags, arg->address,
-                  arg->address_len)
+        if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
+                    arg->address, arg->address_len)
            == -1)
         {
           llarp::LogError("sendto failed: ", strerror(errno));

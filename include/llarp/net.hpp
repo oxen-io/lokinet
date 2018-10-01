@@ -18,7 +18,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <wspiapi.h>
-#define inet_aton(x,y) inet_pton(AF_INET,x,y)
+#define inet_aton(x, y) inet_pton(AF_INET, x, y)
 #endif
 
 bool

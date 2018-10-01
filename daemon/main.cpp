@@ -122,8 +122,8 @@ main(int argc, char *argv[])
     fs::path fpath    = basepath / "lokinet.ini";
 
     std::error_code ec;
-	// These paths are guaranteed to exist - $APPDATA or $HOME
-	// so only create .lokinet/*
+    // These paths are guaranteed to exist - $APPDATA or $HOME
+    // so only create .lokinet/*
     if(!fs::create_directory(basepath, ec))
     {
       if(ec)

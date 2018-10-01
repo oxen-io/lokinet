@@ -96,7 +96,7 @@ struct llarp_nodedb
     llarp::LogDebug("saving RC.pubkey ", filepath);
     std::ofstream ofs(
         filepath,
-        std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
+        std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
     ofs.write((char *)buf.base, buf.sz);
     ofs.close();
     if(!ofs)
