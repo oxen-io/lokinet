@@ -997,8 +997,8 @@ namespace llarp
               llarp::LogError("failed to encrypt and sign");
               return false;
             }
-            llarp::LogDebug(Name(), " send ", data.sz, " via ",
-                            remoteIntro.router);
+            llarp::LogInfo(Name(), " send ", data.sz, " via ",
+                           remoteIntro.router);
             return p->SendRoutingMessage(&transfer, Router());
           }
         }
@@ -1020,39 +1020,9 @@ namespace llarp
         // all paths are not ready?
         return false;
       }
-
       // no converstation
-      auto itr = m_PendingTraffic.find(remote);
-      if(itr == m_PendingTraffic.end())
-      {
-        m_PendingTraffic.insert(std::make_pair(remote, PendingBufferQueue()));
-        EnsurePathToService(
-            remote,
-            [&](Address addr, OutboundContext* ctx) {
-              if(ctx)
-              {
-                auto itr = m_PendingTraffic.find(addr);
-                if(itr != m_PendingTraffic.end())
-                {
-                  while(itr->second.size())
-                  {
-                    auto& front = itr->second.front();
-                    ctx->AsyncEncryptAndSendTo(front.Buffer(), front.protocol);
-                    itr->second.pop();
-                  }
-                }
-              }
-              else
-              {
-                llarp::LogWarn("failed to obtain outbound context to ", addr,
-                               " within timeout");
-              }
-              m_PendingTraffic.erase(addr);
-            },
-            10000);
-      }
-      m_PendingTraffic[remote].emplace(data, t);
-      return true;
+      EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000);
+      return false;
     }
 
     bool
@@ -1094,9 +1064,44 @@ namespace llarp
     Endpoint::OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
     {
       // insert bad intro
-      m_BadIntros.insert(std::make_pair(remoteIntro, now));
-      // shift
-      return ShiftIntroduction();
+      m_BadIntros[remoteIntro] = now;
+      // unconditional shift
+      bool shiftedRouter = false;
+      bool shiftedIntro  = false;
+      // try same router
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(intro.ExpiresSoon(now))
+          continue;
+        auto itr = m_BadIntros.find(intro);
+        if(itr == m_BadIntros.end() && intro.router == remoteIntro.router)
+        {
+          shiftedIntro = true;
+          remoteIntro  = intro;
+          break;
+        }
+      }
+      // try any router
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(intro.ExpiresSoon(now))
+          continue;
+        auto itr = m_BadIntros.find(intro);
+        if(itr == m_BadIntros.end())
+        {
+          // TODO: this should always be true but idk if it really is
+          shiftedRouter = remoteIntro.router != intro.router;
+          shiftedIntro  = true;
+          remoteIntro   = intro;
+          break;
+        }
+      }
+      if(shiftedRouter)
+      {
+        lastShift = now;
+        ManualRebuild(1);
+      }
+      return shiftedIntro;
     }
 
     bool
@@ -1171,11 +1176,13 @@ namespace llarp
       Introduction remoteIntro;
       std::function< void(ProtocolFrame&) > hook;
       IDataHandler* handler;
+      ConvoTag tag;
 
       AsyncKeyExchange(llarp_logic* l, llarp_crypto* c, const ServiceInfo& r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
-                       const Introduction& remote, IDataHandler* h)
+                       const Introduction& remote, IDataHandler* h,
+                       const ConvoTag& t)
           : logic(l)
           , crypto(c)
           , remote(r)
@@ -1183,6 +1190,7 @@ namespace llarp
           , introPubKey(introsetPubKey)
           , remoteIntro(remote)
           , handler(h)
+          , tag(t)
       {
       }
 
@@ -1219,8 +1227,8 @@ namespace llarp
         // H (K + PKE(A, B, N))
         self->crypto->shorthash(self->sharedKey,
                                 llarp::StackBuffer< decltype(tmp) >(tmp));
-        // randomize tag
-        self->msg.tag.Randomize();
+        // set tag
+        self->msg.tag = self->tag;
         // set sender
         self->msg.sender = self->m_LocalIdentity.pub;
         // set version
@@ -1263,13 +1271,15 @@ namespace llarp
           return;
         }
       }
+      currentConvoTag.Randomize();
+      AsyncKeyExchange* ex = new AsyncKeyExchange(
+          m_Endpoint->RouterLogic(), m_Endpoint->Crypto(), remoteIdent,
+          m_Endpoint->GetIdentity(), currentIntroSet.K, remoteIntro,
+          m_DataHandler, currentConvoTag);
 
-      AsyncKeyExchange* ex =
-          new AsyncKeyExchange(m_Endpoint->RouterLogic(), m_Endpoint->Crypto(),
-                               remoteIdent, m_Endpoint->GetIdentity(),
-                               currentIntroSet.K, remoteIntro, m_DataHandler);
       ex->hook = std::bind(&Endpoint::OutboundContext::Send, this,
                            std::placeholders::_1);
+
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
       llarp_threadpool_queue_job(m_Endpoint->Worker(),
@@ -1430,18 +1440,12 @@ namespace llarp
     Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
                                             ProtocolType t)
     {
-      std::set< ConvoTag > tags;
-      if(!m_DataHandler->GetConvoTagsForService(remoteIdent, tags))
-      {
-        llarp::LogError("no open converstations with remote endpoint?");
-        return;
-      }
       auto crypto          = m_Endpoint->Router()->crypto;
       const byte_t* shared = nullptr;
       routing::PathTransferMessage msg;
       ProtocolFrame& f = msg.T;
       f.N.Randomize();
-      f.T = *tags.begin();
+      f.T = currentConvoTag;
       f.S = m_Endpoint->GetSeqNoForConvo(f.T);
 
       auto now = llarp_time_now_ms();

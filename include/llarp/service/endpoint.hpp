@@ -187,6 +187,7 @@ namespace llarp
         llarp::SharedSecret sharedKey;
         ServiceInfo remoteIdent;
         Introduction remoteIntro;
+        ConvoTag currentConvoTag;
         PathSet* m_PathSet;
         IDataHandler* m_DataHandler;
         Endpoint* m_Endpoint;
