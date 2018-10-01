@@ -1,5 +1,6 @@
 #if __AVX2__
 #include <immintrin.h>
+#include <smmintrin.h>
 #include "mod3.h"
 #include "rq.h"
 
@@ -8,6 +9,12 @@
 #define v2296_16 _mm256_set1_epi16(2296)
 #define v4591_16 _mm256_set1_epi16(4591)
 #define v10923_16 _mm256_set1_epi16(10923)
+
+// 32-bit hosts only
+#ifndef __amd64__
+#define _mm_extract_epi64(X, N) (__extension__ ({ __v2di __a = (__v2di)(X); \
+                                                  __a[N];}))
+#endif
 
 static inline __m256i squeeze(__m256i x)
 {

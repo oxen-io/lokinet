@@ -5,17 +5,44 @@
 #include "rq.h"
 #include "r3.h"
 
+// 32-bit hosts: use compiler builtins and let compiler
+// perform register allocation and/or spilling to core
+#ifndef __amd64__
 #define MULSTEP_gcc(j,h0,h1,h2,h3,h4) \
   gj = g[j]; \
   h0 += f0 * gj; \
-  _mm256_storeu_ps(&h[i + j],h0); \
+  _mm256_storeu_ps((float*)&h[i + j],h0); \
   h1 += f1 * gj; \
   h2 += f2 * gj; \
   h3 += f3 * gj; \
   h4 += f4 * gj; \
-  h0 = _mm256_loadu_ps(&h[i + j + 5]); \
+  h0 = _mm256_loadu_ps((float*)&h[i + j + 5]); \
   h0 += f5 * gj;
 
+#define MULSTEP MULSTEP_gcc
+
+#define MULSTEP_noload(j,h0,h1,h2,h3,h4) \
+  gj = g[j]; \
+  h0 += gj*f0; \
+  _mm256_storeu_ps((float*)&h[i+j], h0); \
+  h1 += gj*f1; \
+  h2 += gj*f2; \
+  h3 += gj*f3; \
+  h4 += gj*f4; \
+  h0 = gj* f5;
+
+#define MULSTEP_fromzero(j,h0,h1,h2,h3,h4) \
+  gj = g[j]; \
+  h0 = gj*f0; \
+  _mm256_storeu_ps((float*)&h[i+j], h0); \
+  h1 = gj*f1; \
+  h2 = gj*f2; \
+  h3 = gj*f3; \
+  h4 = gj*f4; \
+  h0 = gj*f5;
+#else
+// 64-bit hosts: use inline asm as before
+#define MULSTEP MULSTEP_asm
 #define MULSTEP_asm(j,h0,h1,h2,h3,h4) \
   gj = g[j]; \
   __asm__( \
@@ -29,8 +56,6 @@
     "vfmadd231ps %5,%11,%0 \n\t" \
     : "+x"(h0),"+x"(h1),"+x"(h2),"+x"(h3),"+x"(h4) \
     : "x"(gj),"x"(f0),"x"(f1),"x"(f2),"x"(f3),"x"(f4),"x"(f5),"m"(h[i+j]),"m"(h[i+j+5]));
-
-#define MULSTEP MULSTEP_asm
 
 #define MULSTEP_noload(j,h0,h1,h2,h3,h4) \
   gj = g[j]; \
@@ -57,6 +82,7 @@
     "vmulps %5,%11,%0 \n\t" \
     : "=&x"(h0),"=&x"(h1),"=&x"(h2),"=&x"(h3),"=&x"(h4) \
     : "x"(gj),"x"(f0),"x"(f1),"x"(f2),"x"(f3),"x"(f4),"x"(f5),"m"(h[i+j]));
+#endif
 
 static inline __m128i _mm_load_cvtepi8_epi16(const long long *x)
 {
