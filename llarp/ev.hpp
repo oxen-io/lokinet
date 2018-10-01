@@ -45,14 +45,7 @@ namespace llarp
     bool
     do_write(void* data, size_t sz)
     {
-      iovec vecs[2];
-      // TODO: IPV6
-      uint32_t t       = htonl(AF_INET);
-      vecs[0].iov_base = &t;
-      vecs[0].iov_len  = sizeof(t);
-      vecs[1].iov_base = data;
-      vecs[1].iov_len  = sz;
-      return writev(fd, vecs, 2) != -1;
+      return write(fd, data, sz) != -1;
     }
 
     /// called in event loop when fd is ready for writing
