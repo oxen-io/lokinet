@@ -1005,9 +1005,14 @@ namespace llarp
               llarp::LogError("failed to encrypt and sign");
               return false;
             }
-            llarp::LogInfo(Name(), " send ", data.sz, " via ",
-                           remoteIntro.router);
+            llarp::LogDebug(Name(), " send ", data.sz, " via ",
+                            remoteIntro.router);
             return p->SendRoutingMessage(&transfer, Router());
+          }
+          else
+          {
+            // no path?
+            return false;
           }
         }
       }
@@ -1258,9 +1263,7 @@ namespace llarp
     void
     Endpoint::EnsureReplyPath(const ServiceInfo& ident)
     {
-      auto itr = m_AddressToService.find(ident.Addr());
-      if(itr == m_AddressToService.end())
-        m_AddressToService.insert(std::make_pair(ident.Addr(), ident));
+      m_AddressToService[ident.Addr()] = ident;
     }
 
     void
@@ -1502,8 +1505,8 @@ namespace llarp
       ++sequenceNo;
       if(path->SendRoutingMessage(&msg, m_Endpoint->Router()))
       {
-        llarp::LogInfo("sent message via ", remoteIntro.pathID, " on ",
-                       remoteIntro.router);
+        llarp::LogDebug("sent message via ", remoteIntro.pathID, " on ",
+                        remoteIntro.router);
       }
       else
       {
