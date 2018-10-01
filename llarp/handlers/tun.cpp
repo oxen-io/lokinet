@@ -444,7 +444,7 @@ namespace llarp
              }))
       {
         llarp::LogInfo("Failed to parse ipv4 packet");
-        llarp::DumpBuffer(llarp::InitBuffer(buf,sz));
+        llarp::DumpBuffer(llarp::InitBuffer(buf, sz));
       }
     }
 
