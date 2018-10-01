@@ -263,6 +263,10 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
         ift->_ifa.ifa_next = (struct llarp_nt_ifaddrs_t*)(ift + 1);
         ift                = (struct _llarp_nt_ifaddrs_t*)(ift->_ifa.ifa_next);
       }
+      else
+      {
+        ift->_ifa.ifa_next = nullptr;
+      }
     }
   }
 
@@ -868,7 +872,7 @@ namespace llarp
         if(i->ifa_addr->sa_family == af)
         {
           llarp::Addr a(*i->ifa_addr);
-          if(!(a.isPrivate() || a.isLoopback()))
+          if(!(a.isPrivate() || a.isLoopback() || (a.getHostLong() == 0)))
           {
             ifname = i->ifa_name;
             found  = true;
