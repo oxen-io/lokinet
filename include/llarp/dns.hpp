@@ -11,6 +11,8 @@
 
 #include <llarp/net.hpp>  // for llarp::Addr
 
+struct dnsd_context;
+
 // dnsc can work over any UDP socket
 // however we can't ignore udp->user
 // we need to be able to reference the request (being a request or response)
