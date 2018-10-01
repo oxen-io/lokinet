@@ -154,9 +154,9 @@ main(int argc, char *argv[])
     code = llarp_main_run(ctx);
     llarp_main_free(ctx);
   }
-  exit(code);
 #ifdef _WIN32
   ::WSACleanup();
 #endif
+  exit(code);
   return code;
 }

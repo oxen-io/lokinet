@@ -48,11 +48,11 @@ namespace llarp
     do_write(void* data, size_t sz)
     {
 #ifndef _WIN32
-		return write(fd, data, sz) != -1;
+      return write(fd, data, sz) != -1;
 #else
-return WriteFile((void*)fd, data, sz, nullptr, nullptr);
+      return WriteFile((void*)fd, data, sz, nullptr, nullptr);
 #endif
-}
+    }
 
 /// called in event loop when fd is ready for writing
 /// requeues anything not written
@@ -61,14 +61,9 @@ virtual void
 flush_write()
 {
   m_writeq.Process([&](WriteBuffer& buffer) {
-  // todo: wtf???
-#ifndef _WIN32
     do_write(buffer.buf, buffer.bufsz);
     // if we would block we save the entries for later
     // discard entry
-#else
-    WriteFile((void*)fd, buffer.buf, buffer.bufsz, nullptr, nullptr);
-#endif
   });
   /// reset errno
   errno = 0;

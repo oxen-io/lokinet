@@ -119,10 +119,9 @@ namespace llarp
     read(void* buf, size_t sz)
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
-      if(ret > 0 && t->recvpkt)
-      {
-        t->recvpkt(t, buf, ret);
-      }
+      if(ret > 4 && t->recvpkt)
+        // should have pktinfo
+        t->recvpkt(t, ((byte_t*)buf) + 4, ret - 4);
       return ret;
     }
 
