@@ -763,6 +763,7 @@ namespace llarp
         if(MarkCurrentIntroBad(llarp_time_now_ms()))
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
+        UpdateIntroSet();
       }
       return true;
     }
