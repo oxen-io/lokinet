@@ -13,30 +13,20 @@ endmacro(add_cxxflags)
 
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-if (MSVC)
-CHECK_CXX_COMPILER_FLAG("/std:c++17" COMPILER_SUPPORTS_CXX17)
-else()
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
-endif()
 
 option(HAVE_CXX17_FILESYSTEM "Disable if your C++ compiler and runtime library lacks std::[experimental::]filesystem" ON)
 
 if(COMPILER_SUPPORTS_CXX11 AND NOT HAVE_CXX17_FILESYSTEM)
   add_cxxflags("-std=c++11")
 elseif(COMPILER_SUPPORTS_CXX17 AND HAVE_CXX17_FILESYSTEM)
-  if (MSVC)
-  add_cxxflags("/std:c++17")
-  else()
   add_cxxflags("-std=c++17")
-  endif()
   add_definitions(-DUSE_CXX17_FILESYSTEM)
 else()
   message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 or C++17 support. Please use a different C++ compiler.")
 endif()
 
-if (NOT MSVC)
 add_cxxflags("-fpermissive")
-endif (NOT MSVC)
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if (USING_CLANG)
@@ -54,26 +44,8 @@ endif()
 
 if(ANDROID)
 set(THREAD_LIB "-pthread")
-# finally removed pthread dependency for MSC++
-elseif(MSVC)
-set(THREAD_LIB)
 else()
 set(THREAD_LIB pthread)
-endif()
-
-# This merely allows the Microsoft C++ compiler
-# to substitute AVX opcodes for SSE or i687 opcodes
-# in the reference implementation, if it chooses to
-# do so in the optimisation pass.
-if(MSVC)
-option (BUILD_AVX2 "Enable AVX2 FPU vector instructions." OFF)
-if (BUILD_AVX2)
-add_cflags("/arch:AVX2")
-add_cxxflags("/arch:AVX2")
-else()
-add_cflags("/arch:SSE2")
-add_cxxflags("/arch:SSE2")
-endif(BUILD_AVX2)
 endif()
 
 if(STATIC_LINK)
@@ -91,18 +63,11 @@ else()
   set(WITH_STATIC ON)
 endif()
 
-if (NOT MSVC)
 add_cflags("-Wall")
 add_cxxflags("-Wall")
-endif()
 
-if (MSVC)
-set(OPTIMIZE_FLAGS "-O2")
-set(DEBUG_FLAGS "-Od -ZI")
-else()
 set(OPTIMIZE_FLAGS "-O3")
 set(DEBUG_FLAGS "-O0 -g3")
-endif()
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -134,13 +99,8 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_cxxflags("${DEBUG_FLAGS}")
 endif()
 
-if (MSVC)
-add_cflags("-wd4996 -wd4244 -MP ${OPTIMIZE_FLAGS}")
-add_cxxflags("-wd4996 -wd4244 -MP ${OPTIMIZE_FLAGS}")
-else()
 add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
 add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
-endif()
 
 if(SHADOW)
   add_cflags("-fPIC")
@@ -183,7 +143,7 @@ if(JEMALLOC)
 endif()
 
 set(LIBS ${SODIUM_LIB} ${THREAD_LIB} ${MALLOC_LIB})
-if(HAVE_CXX17_FILESYSTEM AND NOT MSVC)
+if(HAVE_CXX17_FILESYSTEM)
   set(LIBS ${LIBS} stdc++fs)
 endif()
 
@@ -287,21 +247,11 @@ set(LIB_PLATFORM_SRC
   ${ISOLATE_PROC_SRC}
 # tun
   ${LIBTUNTAP_SRC}
-# win32 inline procs and getopt(3) for MS C
+# win32 inline code
   llarp/win32_inet.c
   llarp/win32_intrnl.c
-  contrib/msc/getopt.c
-  contrib/msc/getopt1.c
 )
 
-# this is written _entirely_ using
-# Unix compiler extensions, normally
-# it should not be possible to use
-# operators on vector types.
-# GCC and Clang do so, and emit the proper
-# opcode to perform the specified operation
-# to each value in parallel.
-if(NOT MSVC)
 set(NTRU_AVX_SRC
   crypto/libntrup/src/avx/randomsmall.c
   crypto/libntrup/src/avx/weight.c
@@ -320,7 +270,6 @@ set(NTRU_AVX_SRC
   crypto/libntrup/src/avx/rq.c
   crypto/libntrup/src/avx/rq_mod3.c
 )
-endif(NOT MSVC)
 
 set(NTRU_REF_SRC
   crypto/libntrup/src/ref/randomsmall.c
@@ -480,10 +429,6 @@ include_directories(vendor/cppbackport-master/lib)
 # Neuro Linux box hack:
 include_directories(/usr/local/include)
 include_directories(${sodium_INCLUDE_DIR})
-
-if (MSVC)
-include_directories(contrib/msc/include)
-endif()
 
 set(RC_EXE rcutil)
 set(DNS_EXE dns)

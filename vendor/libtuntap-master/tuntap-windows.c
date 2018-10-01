@@ -21,7 +21,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <strsafe.h>
+/*#include <strsafe.h>*/
 #include "tuntap.h"
 
 // DDK macros
@@ -240,7 +240,7 @@ tuntap_get_hwaddr(struct device *dev)
   {
     char buf[128];
 
-    (void)_snprintf_s(buf, sizeof buf, sizeof buf,
+    (void)_snprintf(buf, sizeof buf,
                       "MAC address: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x", hwaddr[0],
                       hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
     tuntap_log(TUNTAP_LOG_DEBUG, buf);
@@ -274,7 +274,7 @@ tuntap_sys_set_updown(struct device *dev, ULONG flag)
   {
     char buf[32];
 
-    (void)_snprintf_s(buf, sizeof buf, sizeof buf, "Status: %s",
+    (void)_snprintf(buf, sizeof buf, "Status: %s",
                       flag ? "Up" : "Down");
     tuntap_log(TUNTAP_LOG_DEBUG, buf);
     return 0;
