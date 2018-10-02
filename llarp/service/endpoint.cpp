@@ -1012,6 +1012,7 @@ namespace llarp
           else
           {
             // no path?
+            llarp::LogError("no path");
             return false;
           }
         }
@@ -1030,6 +1031,7 @@ namespace llarp
           }
           ++itr;
         }
+        llarp::LogWarn("No path ready to send yet");
         // all paths are not ready?
         return false;
       }
