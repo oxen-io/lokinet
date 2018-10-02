@@ -1009,12 +1009,6 @@ namespace llarp
                             remoteIntro.router);
             return p->SendRoutingMessage(&transfer, Router());
           }
-          else
-          {
-            // no path?
-            llarp::LogError("no path");
-            return false;
-          }
         }
       }
       // outbound converstation
