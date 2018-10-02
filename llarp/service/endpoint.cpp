@@ -1084,8 +1084,12 @@ namespace llarp
       // try same router
       for(const auto& intro : currentIntroSet.I)
       {
+        llarp::LogInfo("have intro: ", intro);
         if(intro.ExpiresSoon(now))
+        {
+          llarp::LogInfo("skipping intro, expires soon");
           continue;
+        }
         auto itr = m_BadIntros.find(intro);
         if(itr == m_BadIntros.end() && intro.router == remoteIntro.router)
         {
@@ -1094,19 +1098,22 @@ namespace llarp
           break;
         }
       }
-      // try any router
-      for(const auto& intro : currentIntroSet.I)
+      if(!shiftedIntro)
       {
-        if(intro.ExpiresSoon(now))
-          continue;
-        auto itr = m_BadIntros.find(intro);
-        if(itr == m_BadIntros.end())
+        // try any router
+        for(const auto& intro : currentIntroSet.I)
         {
-          // TODO: this should always be true but idk if it really is
-          shiftedRouter = remoteIntro.router != intro.router;
-          shiftedIntro  = true;
-          remoteIntro   = intro;
-          break;
+          if(intro.ExpiresSoon(now))
+            continue;
+          auto itr = m_BadIntros.find(intro);
+          if(itr == m_BadIntros.end())
+          {
+            // TODO: this should always be true but idk if it really is
+            shiftedRouter = remoteIntro.router != intro.router;
+            shiftedIntro  = true;
+            remoteIntro   = intro;
+            break;
+          }
         }
       }
       if(shiftedRouter)

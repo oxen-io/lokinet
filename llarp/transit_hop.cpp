@@ -15,7 +15,7 @@ namespace llarp
     bool
     TransitHop::Expired(llarp_time_t now) const
     {
-      return now - started > lifetime;
+      return now > ExpireTime();
     }
 
     llarp_time_t
@@ -54,7 +54,9 @@ namespace llarp
     TransitHop::SendRoutingMessage(llarp::routing::IMessage* msg,
                                    llarp_router* r)
     {
-      byte_t tmp[MAX_LINK_MSG_SIZE - 1024];
+      if(!IsEndpoint(r->pubkey()))
+        return false;
+      byte_t tmp[MAX_LINK_MSG_SIZE - 128];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
       {
@@ -64,12 +66,14 @@ namespace llarp
       TunnelNonce N;
       N.Randomize();
       buf.sz = buf.cur - buf.base;
-      // pad smaller messages
-      if(buf.sz < MESSAGE_PAD_SIZE)
+      // pad to nearest MESSAGE_PAD_SIZE bytes
+      auto dlt = buf.sz % MESSAGE_PAD_SIZE;
+      if(dlt)
       {
+        dlt = MESSAGE_PAD_SIZE - dlt;
         // randomize padding
-        r->crypto.randbytes(buf.cur, MESSAGE_PAD_SIZE - buf.sz);
-        buf.sz = MESSAGE_PAD_SIZE;
+        r->crypto.randbytes(buf.cur, dlt);
+        buf.sz += dlt;
       }
       buf.cur = buf.base;
       return HandleDownstream(buf, N, r);
@@ -94,7 +98,7 @@ namespace llarp
                                llarp_router* r)
     {
       r->crypto.xchacha20(buf, pathKey, Y);
-      if(info.upstream == RouterID(r->pubkey()))
+      if(IsEndpoint(r->pubkey()))
       {
         return m_MessageParser.ParseMessageBuffer(buf, this, info.rxID, r);
       }
@@ -166,7 +170,6 @@ namespace llarp
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       // send
-      llarp::LogInfo("Transfer ", buf.sz, " bytes", " to ", msg->P);
       return path->HandleDownstream(buf, msg->Y, r);
     }
 
