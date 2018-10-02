@@ -101,7 +101,7 @@ namespace llarp
       uint32_t t       = htonl(AF_INET);
       vecs[0].iov_base = &t;
       vecs[0].iov_len  = sizeof(t);
-      vecs[1].iov_base = data;
+      vecs[1].iov_base = buf;
       vecs[1].iov_len  = sz;
       return writev(fd, vecs, 2) != -1;
     }
