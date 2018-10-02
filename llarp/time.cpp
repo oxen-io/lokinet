@@ -1,9 +1,6 @@
 #include <llarp/time.h>
-#ifdef __linux__
 #include <time.h>
-#else
 #include <sys/time.h>
-#endif
 
 // these _should_ be 32-bit safe...
 llarp_time_t
