@@ -158,6 +158,15 @@ extern "C"
     f << "group=" << DEFAULT_LOKINET_GROUP << std::endl;
     f << std::endl << std::endl;
 
+    f << "# network settings " << std::endl;
+    f << "[network]" << std::endl;
+#ifndef __linux__
+    f << "# ";
+#endif
+    f << "ifname=lokitun0" << std::endl;
+    f << "ifaddr=10.200.0.1/16" << std::endl;
+    f << std::endl << std::endl;
+    
     f << "# dns provider configuration section" << std::endl;
     f << "[dns]" << std::endl;
     f << "# opennic us resolver" << std::endl;

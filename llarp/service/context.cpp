@@ -107,6 +107,12 @@ namespace llarp
     }
 
     bool
+    Context::AddDefaultEndpoint(const std::string & ifaddr, const std::string & ifname)
+    {
+      return AddEndpoint({ "default", {{"type", "tun"}, {"ifaddr", ifaddr}, {"ifname", ifname}}});
+    }
+    
+    bool
     Context::AddEndpoint(const Config::section_t &conf)
     {
       {

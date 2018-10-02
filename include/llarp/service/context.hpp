@@ -31,6 +31,9 @@ namespace llarp
       llarp_tun_io *
       getRange();
 
+      bool
+      AddDefaultEndpoint(const std::string & ifaddr, const std::string & ifname);
+      
       /// hint at possible path usage and trigger building early
       bool
       Prefetch(const llarp::service::Address &addr);
