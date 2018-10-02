@@ -30,7 +30,7 @@
 #ifndef PBL_CPP_FILESYSTEM_H
 #define PBL_CPP_FILESYSTEM_H
 
-#if _MSC_VER >= 1910
+#if _MSC_VER >= 1900
 #define CPP17
 #define CPP11
 #define CPP14
@@ -39,12 +39,7 @@
 #include "version.h"
 
 #if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
-#if defined(__MINGW32__) || defined(_MSC_VER) || defined(__sun)
-// win32 needs experimental
 #include <experimental/filesystem>
-#else
-#include <experimental/filesystem>
-#endif
 #else
 // OpenBSD needs this
 // MacOS llvm 3.8 needs this

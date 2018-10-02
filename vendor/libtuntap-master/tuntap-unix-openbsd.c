@@ -135,7 +135,6 @@ tuntap_sys_start(struct device *dev, int mode, int tun) {
 			    "Can't get link-layer address");
 			return fd;
 		}
-		(void)memcpy(dev->hwaddr, &addr, ETHER_ADDR_LEN);
 	}
 	return fd;
 }

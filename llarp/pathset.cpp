@@ -166,6 +166,26 @@ namespace llarp
     }
 
     bool
+    PathSet::GetCurrentIntroductionsWithFilter(
+        std::set< llarp::service::Introduction >& intros,
+        std::function< bool(const llarp::service::Introduction&) > filter) const
+    {
+      intros.clear();
+      size_t count = 0;
+      auto itr     = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->second->IsReady() && filter(itr->second->intro))
+        {
+          intros.insert(itr->second->intro);
+          ++count;
+        }
+        ++itr;
+      }
+      return count > 0;
+    }
+
+    bool
     PathSet::GetCurrentIntroductions(
         std::set< llarp::service::Introduction >& intros) const
     {

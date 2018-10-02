@@ -10,6 +10,7 @@
 #include <llarp/service/tag.hpp>
 
 #include <vector>
+#include <algorithm>
 
 namespace llarp
 {
@@ -60,6 +61,7 @@ namespace llarp
       IntroSet&
       operator=(const IntroSet& other)
       {
+        I.clear();
         A       = other.A;
         I       = other.I;
         K       = other.K;

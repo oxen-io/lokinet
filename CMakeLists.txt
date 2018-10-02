@@ -13,22 +13,14 @@ endmacro(add_cxxflags)
 
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-if (MSVC)
-CHECK_CXX_COMPILER_FLAG("/std:c++17" COMPILER_SUPPORTS_CXX17)
-else()
 CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
-endif()
 
 option(HAVE_CXX17_FILESYSTEM "Disable if your C++ compiler and runtime library lacks std::[experimental::]filesystem" ON)
 
 if(COMPILER_SUPPORTS_CXX11 AND NOT HAVE_CXX17_FILESYSTEM)
   add_cxxflags("-std=c++11")
 elseif(COMPILER_SUPPORTS_CXX17 AND HAVE_CXX17_FILESYSTEM)
-  if (MSVC)
-  add_cxxflags("/std:c++17")
-  else()
   add_cxxflags("-std=c++17")
-  endif()
   add_definitions(-DUSE_CXX17_FILESYSTEM)
 else()
   message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 or C++17 support. Please use a different C++ compiler.")
@@ -36,28 +28,24 @@ endif()
 
 add_cxxflags("-fpermissive")
 
+if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
+if (USING_CLANG)
+add_cxxflags("-Wno-unused-command-line-argument -Wno-c++11-narrowing")
+add_cflags("-Wno-unused-command-line-argument")
+# because clang is insane enough to inline whole sections of the C++ library!
+# May have been fixed in llvm-7.
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
+endif(USING_CLANG)
+endif()
+
 if(DEBIAN)
   add_definitions(-DDEBIAN)
 endif()
 
 if(ANDROID)
 set(THREAD_LIB "-pthread")
-# finally removed pthread dependency for MSC++
-elseif(MSVC)
-set(THREAD_LIB)
 else()
 set(THREAD_LIB pthread)
-endif()
-
-if(MSVC)
-option (BUILD_AVX2 "Enable AVX2 FPU vector instructions." OFF)
-if (BUILD_AVX2)
-add_cflags("/arch:AVX2")
-add_cxxflags("/arch:AVX2")
-else()
-add_cflags("/arch:SSE2")
-add_cxxflags("/arch:SSE2")
-endif(BUILD_AVX2)
 endif()
 
 if(STATIC_LINK)
@@ -75,18 +63,11 @@ else()
   set(WITH_STATIC ON)
 endif()
 
-if (NOT MSVC)
 add_cflags("-Wall")
 add_cxxflags("-Wall")
-endif()
 
-if (MSVC)
-set(OPTIMIZE_FLAGS "-Od")
-set(DEBUG_FLAGS "-ZI")
-else()
-set(OPTIMIZE_FLAGS "-O0")
-set(DEBUG_FLAGS "-g")
-endif()
+set(OPTIMIZE_FLAGS "-O3")
+set(DEBUG_FLAGS "-O0 -g3")
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -112,18 +93,14 @@ if(SHADOW)
   include_directories(${SHADOW_ROOT}/include)
 endif()
 
-if (MSVC)
-add_cflags("-wd4996 -wd4244 -MP ${OPTIMIZE_FLAGS}")
-add_cxxflags("-wd4996 -wd4244 -MP ${OPTIMIZE_FLAGS}")
-else()
-add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
-add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
-endif()
-
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
+  set(OPTIMIZE_FLAGS "")
   add_cflags("${DEBUG_FLAGS}")
   add_cxxflags("${DEBUG_FLAGS}")
 endif()
+
+add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
+add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
 
 if(SHADOW)
   add_cflags("-fPIC")
@@ -156,6 +133,11 @@ else()
   )
 endif()
 
+# HeapAlloc(2) on Windows was significantly revamped in 2009
+# but the old algorithm isn't too bad either
+# this is _the_ system allocator on BSD UNIX
+# openbsd replaced it with a secure/randomised malloc not too
+# long ago
 if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
@@ -210,16 +192,12 @@ set(LIBTUNTAP_SRC_BASE
   ${LIBTUNTAP_IMPL})
 
 if (UNIX)
-  set(LIBTUNTAP_SRC
+set(LIBTUNTAP_SRC
     ${TT_ROOT}/tuntap-unix.c
     ${LIBTUNTAP_SRC_BASE})
-endif()
-
-#if(BACKPORT)
-#else()
-#set(CPP_BACKPORT_SRC "")
-#endif()
-
+else()
+set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
+endif(UNIX)
 set(CPP_BACKPORT_SRC
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
@@ -248,7 +226,6 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
 endif()
 
-
 set(LIB_PLATFORM_SRC
 # for outpug
   llarp/logger.cpp
@@ -270,11 +247,9 @@ set(LIB_PLATFORM_SRC
   ${ISOLATE_PROC_SRC}
 # tun
   ${LIBTUNTAP_SRC}
-# win32 inline procs
+# win32 inline code
   llarp/win32_inet.c
   llarp/win32_intrnl.c
-  contrib/msc/getopt.c
-  contrib/msc/getopt1.c
 )
 
 set(NTRU_AVX_SRC
@@ -331,7 +306,6 @@ set(UTP_SRC
   libutp/utp_packedsockaddr.cpp
   libutp/utp_hash.cpp
 )
-
 
 if(WIN32)
   set(UTP_SRC ${UTP_SRC} libutp/libutp_inet_ntop.cpp)
@@ -456,10 +430,6 @@ include_directories(vendor/cppbackport-master/lib)
 include_directories(/usr/local/include)
 include_directories(${sodium_INCLUDE_DIR})
 
-if (MSVC)
-include_directories(contrib/msc/include)
-endif()
-
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
 
@@ -469,21 +439,13 @@ add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFO
 target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
 install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
-  add_executable(${RC_EXE} ${RC_SRC})
+add_executable(${RC_EXE} ${RC_SRC})
 add_executable(${EXE} ${EXE_SRC})
 add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-  add_executable(${DNS_EXE} ${DNS_SRC})
+add_executable(${DNS_EXE} ${DNS_SRC})
 add_subdirectory(${GTEST_DIR})
 include_directories(${GTEST_DIR}/include ${GTEST_DIR})
 add_executable(${TEST_EXE} ${TEST_SRC})
-
-if (MSVC)
-target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ws2_32 iphlpapi)
-elseif (MINGW)
-target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} stdc++fs iphlpapi ws2_32)
-else()
-target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB})
-endif(MSVC)
 
 if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
@@ -505,34 +467,28 @@ if(WITH_STATIC)
         target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
         target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
         target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
-        if (MINGW)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-        elseif(MSVC)
+        target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
+        if (WIN32)
           target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
           target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
           target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        endif(MINGW)
+          target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        endif(WIN32)
       else()
         target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
         target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
         target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-        if (MINGW)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 stdc++fs iphlpapi)
-        elseif(MSVC)
+        target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
+        if (WIN32)
           target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
           target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
           target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        endif(MINGW)
+          target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        endif(WIN32)
       endif(NOT HAVE_CXX17_FILESYSTEM)
-      if (MINGW)
-        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 stdc++fs iphlpapi)
-      elseif(WIN32)
+      if (WIN32)
         target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 iphlpapi)
-      endif(MINGW)
+      endif(WIN32)
       target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB})
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)
@@ -546,11 +502,9 @@ if(WITH_STATIC)
       set(LIB_SRC ${LIB_SRC} ${CPP_BACKPORT_SRC})
     endif(HAVE_CXX17_FILESYSTEM)
     add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC})
-    if (MINGW)
-      set(${LIBS} ${LIBS} ws2_32 stdc++fs iphlpapi)
-    elseif(MSVC)
+    if (WIN32)
       set(${LIBS} ${LIBS} ws2_32 iphlpapi)
-    endif(MINGW)
+    endif(WIN32)
     target_link_libraries(${SHARED_LIB} ${LIBS} ${THREAD_LIB})
     target_link_libraries(${EXE} ${SHARED_LIB})
     target_link_libraries(${RC_EXE} ${SHARED_LIB})

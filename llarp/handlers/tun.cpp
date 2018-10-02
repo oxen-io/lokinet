@@ -3,8 +3,10 @@
 #include <llarp/handlers/tun.hpp>
 #include "router.hpp"
 #include <sys/types.h>
+#ifndef _WIN32
 #include <sys/socket.h>
 #include <netdb.h>
+#endif
 
 #ifndef DNS_PORT
 #define DNS_PORT (53)
@@ -102,11 +104,11 @@ namespace llarp
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
 
         // set up address in dotLokiLookup
-        struct sockaddr_in s_addr;
-        s_addr.sin_addr.s_addr = inet_addr(tunif.ifaddr);
-        s_addr.sin_family      = AF_INET;
+        struct sockaddr_in source_addr;
+        source_addr.sin_addr.s_addr = inet_addr(tunif.ifaddr);
+        source_addr.sin_family      = AF_INET;
 
-        llarp::Addr tunIp(s_addr);
+        llarp::Addr tunIp(source_addr);
         // related to dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
         dns_iptracker_setup(tunIp);  // claim GW IP to make sure it's not inuse
         return true;

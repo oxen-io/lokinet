@@ -118,7 +118,9 @@ _llarp_nt_heap_free(void* mem)
 int
 llarp_nt_sockaddr_pton(const char* src, struct sockaddr* dst)
 {
-  struct addrinfo hints = {0}, *result = nullptr;
+  struct addrinfo hints;
+  struct addrinfo* result = nullptr;
+  memset(&hints, 0, sizeof(struct addrinfo));
   hints.ai_family   = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_TCP;
@@ -260,6 +262,10 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
       {
         ift->_ifa.ifa_next = (struct llarp_nt_ifaddrs_t*)(ift + 1);
         ift                = (struct _llarp_nt_ifaddrs_t*)(ift->_ifa.ifa_next);
+      }
+      else
+      {
+        ift->_ifa.ifa_next = nullptr;
       }
     }
   }
@@ -866,7 +872,7 @@ namespace llarp
         if(i->ifa_addr->sa_family == af)
         {
           llarp::Addr a(*i->ifa_addr);
-          if(!(a.isPrivate() || a.isLoopback()))
+          if(!(a.isPrivate() || a.isLoopback() || (a.getHostLong() == 0)))
           {
             ifname = i->ifa_name;
             found  = true;

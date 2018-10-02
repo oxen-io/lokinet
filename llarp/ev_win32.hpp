@@ -85,6 +85,80 @@ namespace llarp
       return 0;
     }
   };
+
+  struct tun : public ev_io
+  {
+    llarp_tun_io* t;
+    device* tunif;
+    tun(llarp_tun_io* tio)
+        : ev_io(-1)
+        , t(tio)
+        , tunif(tuntap_init())
+
+              {
+
+              };
+
+    int
+    sendto(const sockaddr* to, const void* data, size_t sz)
+    {
+      return -1;
+    }
+
+    void
+    flush_write()
+    {
+      if(t->before_write)
+      {
+        t->before_write(t);
+      }
+      ev_io::flush_write();
+    }
+
+    int
+    read(void* buf, size_t sz)
+    {
+      ssize_t ret = tuntap_read(tunif, buf, sz);
+      if(ret > 4 && t->recvpkt)
+        // should have pktinfo
+        t->recvpkt(t, ((byte_t*)buf) + 4, ret - 4);
+      return ret;
+    }
+
+    bool
+    setup()
+    {
+      llarp::LogDebug("set ifname to ", t->ifname);
+      strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
+
+      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
+      {
+        llarp::LogWarn("failed to start interface");
+        return false;
+      }
+      if(tuntap_up(tunif) == -1)
+      {
+        llarp::LogWarn("failed to put interface up: ", strerror(errno));
+        return false;
+      }
+      if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
+      {
+        llarp::LogWarn("failed to set ip");
+        return false;
+      }
+      fd = (SOCKET)tunif->tun_fd;
+      if(fd == -1)
+        return false;
+
+      // set non blocking
+      int on = 1;
+      return ioctlsocket(fd, FIONBIO, (u_long*)&on) != -1;
+    }
+
+    ~tun()
+    {
+    }
+  };
 };  // namespace llarp
 
 struct llarp_win32_loop : public llarp_ev_loop
@@ -93,22 +167,12 @@ struct llarp_win32_loop : public llarp_ev_loop
 
   llarp_win32_loop() : iocpfd(INVALID_HANDLE_VALUE)
   {
-    WSADATA wsockd;
-    int err;
-    // So, what I was told last time was that we can defer
-    // loading winsock2 up to this point, as we reach this ctor
-    // early on during daemon startup.
-    err = ::WSAStartup(MAKEWORD(2, 2), &wsockd);
-    if(err)
-      perror("Failed to start Windows Sockets");
   }
 
   ~llarp_win32_loop()
   {
     if(iocpfd != INVALID_HANDLE_VALUE)
       ::CloseHandle(iocpfd);
-
-    ::WSACleanup();
   }
 
   bool
@@ -287,7 +351,10 @@ struct llarp_win32_loop : public llarp_ev_loop
   llarp::ev_io*
   create_tun(llarp_tun_io* tun)
   {
-    // TODO implement me
+    llarp::tun* t = new llarp::tun(tun);
+    if(t->setup())
+      return t;
+    delete t;
     return nullptr;
   }
 

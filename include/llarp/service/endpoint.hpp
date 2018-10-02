@@ -187,6 +187,7 @@ namespace llarp
         llarp::SharedSecret sharedKey;
         ServiceInfo remoteIdent;
         Introduction remoteIntro;
+        ConvoTag currentConvoTag;
         PathSet* m_PathSet;
         IDataHandler* m_DataHandler;
         Endpoint* m_Endpoint;
@@ -351,7 +352,7 @@ namespace llarp
 
      protected:
       void
-      RegenAndPublishIntroSet(llarp_time_t now);
+      RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild = false);
 
       IServiceLookup*
       GenerateLookupByTag(const Tag& tag);

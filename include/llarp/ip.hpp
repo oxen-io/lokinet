@@ -5,13 +5,13 @@
 #include <llarp/net.hpp>
 
 #ifndef _WIN32
+// unix, linux
 #include <sys/types.h>  // FreeBSD needs this for uchar for ip.h
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #else
+// windows nt
 #include <winsock2.h>
-// Apparently this does not seem to be located _anywhere_ in the windows sdk???
-// -despair86
 typedef struct ip_hdr
 {
   unsigned char
@@ -46,16 +46,7 @@ typedef struct ip_hdr
 
 #include <memory>
 
-#if !defined(__linux__) && !defined(_WIN32) && !defined(__APPLE__) \
-    && !defined(__FreeBSD__)
-#define iphdr ip
-#define saddr ip_src.s_addr
-#define daddr ip_dst.s_addr
-#define ip_version ip_v
-#define check ip_sum
-#define ihl ip_hl
-#endif
-
+// anything not win32
 struct ip_header
 {
 #if __BYTE_ORDER == __LITTLE_ENDIAN

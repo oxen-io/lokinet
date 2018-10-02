@@ -45,7 +45,7 @@ void
 llarp_generic_ensure_config(std::ofstream &f, std::string basepath);
 
 void
-llarp_ensure_router_config(std::ofstream &f);
+llarp_ensure_router_config(std::ofstream &f, std::string basepath);
 
 bool
 llarp_ensure_client_config(std::ofstream &f, std::string basepath);

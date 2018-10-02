@@ -760,6 +760,9 @@ llarp_router::Run()
       return;
     }
 
+    // generate default hidden service
+    if(!CreateDefaultHiddenService())
+      return;
     // delayed connect all for clients
     uint64_t delay = ((llarp_randint() % 10) * 500) + 500;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
@@ -853,6 +856,12 @@ llarp_router::InitOutboundLink()
     }
   }
   return false;
+}
+
+bool
+llarp_router::CreateDefaultHiddenService()
+{
+  return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName);
 }
 
 bool
@@ -1052,6 +1061,17 @@ namespace llarp
           }
         }
         llarp::LogError("Failed to set up curvecp link");
+      }
+    }
+    else if(StrEq(section, "network"))
+    {
+      if(StrEq(key, "ifaddr"))
+      {
+        self->defaultIfAddr = val;
+      }
+      if(StrEq(key, "ifname"))
+      {
+        self->defaultIfAddr = val;
       }
     }
     else if(StrEq(section, "services"))

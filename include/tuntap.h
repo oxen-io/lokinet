@@ -92,7 +92,7 @@ typedef struct in6_addr t_tun_in6_addr;
  * Windows helpers
  */
 #if defined Windows
-#define strncat(x, y, z) strncat_s((x), _countof(x), (y), (z));
+//#define strncat(x, y, z) strncat_s((x), _countof(x), (y), (z));
 #define strdup(x) _strdup(x)
 #endif
 
@@ -119,10 +119,12 @@ typedef struct in6_addr t_tun_in6_addr;
 
 /* Handle Windows symbols export */
 #if defined Windows
-#if defined(tuntap_EXPORTS) /* CMake generated goo */
+#if defined(tuntap_EXPORTS) && defined(_USRDLL) /* CMake generated goo */
 #define TUNTAP_EXPORT __declspec(dllexport)
-#else
+#elif defined(tuntap_EXPORTS)
 #define TUNTAP_EXPORT __declspec(dllimport)
+#else
+#define TUNTAP_EXPORT extern
 #endif
 #else /* Unix */
 #define TUNTAP_EXPORT extern

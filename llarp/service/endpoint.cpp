@@ -91,22 +91,25 @@ namespace llarp
     }
 
     void
-    Endpoint::RegenAndPublishIntroSet(llarp_time_t now)
+    Endpoint::RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild)
     {
       std::set< Introduction > I;
-      if(!GetCurrentIntroductions(I))
+      if(!GetCurrentIntroductionsWithFilter(
+             I, [now](const service::Introduction& intro) -> bool {
+               return now < intro.expiresAt
+                   && intro.expiresAt - now > (2 * 60 * 1000);
+             }))
       {
         llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
-                       " because we couldn't get any introductions");
-        if(ShouldBuildMore())
+                       " because we couldn't get enough valid introductions");
+        if(ShouldBuildMore() || forceRebuild)
           ManualRebuild(1);
         return;
       }
       m_IntroSet.I.clear();
       for(const auto& intro : I)
       {
-        if(now < intro.expiresAt && intro.expiresAt - now > 60000)
-          m_IntroSet.I.push_back(intro);
+        m_IntroSet.I.push_back(intro);
       }
       if(m_IntroSet.I.size() == 0)
       {
@@ -760,6 +763,7 @@ namespace llarp
         if(MarkCurrentIntroBad(llarp_time_now_ms()))
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
+        UpdateIntroSet();
       }
       return true;
     }
@@ -815,7 +819,7 @@ namespace llarp
     Endpoint::HandlePathDead(void* user)
     {
       Endpoint* self = static_cast< Endpoint* >(user);
-      self->RegenAndPublishIntroSet(llarp_time_now_ms());
+      self->RegenAndPublishIntroSet(llarp_time_now_ms(), true);
     }
 
     bool
@@ -918,10 +922,18 @@ namespace llarp
     {
       if(markedBad)
         return true;
-      if(i && currentIntroSet.T < i->T)
+      if(i)
       {
+        if(currentIntroSet.T >= i->T)
+        {
+          llarp::LogInfo("introset is old, dropping");
+          return true;
+        }
         currentIntroSet = *i;
-        ShiftIntroduction();
+        if(!ShiftIntroduction())
+        {
+          llarp::LogWarn("failed to pick new intro during introset update");
+        }
         if(GetPathByRouter(remoteIntro.router) == nullptr)
           BuildOneAlignedTo(remoteIntro.router);
       }
@@ -1013,42 +1025,13 @@ namespace llarp
           }
           ++itr;
         }
+        llarp::LogWarn("No path ready to send yet");
         // all paths are not ready?
         return false;
       }
-
       // no converstation
-      auto itr = m_PendingTraffic.find(remote);
-      if(itr == m_PendingTraffic.end())
-      {
-        m_PendingTraffic.insert(std::make_pair(remote, PendingBufferQueue()));
-        EnsurePathToService(
-            remote,
-            [&](Address addr, OutboundContext* ctx) {
-              if(ctx)
-              {
-                auto itr = m_PendingTraffic.find(addr);
-                if(itr != m_PendingTraffic.end())
-                {
-                  while(itr->second.size())
-                  {
-                    auto& front = itr->second.front();
-                    ctx->AsyncEncryptAndSendTo(front.Buffer(), front.protocol);
-                    itr->second.pop();
-                  }
-                }
-              }
-              else
-              {
-                llarp::LogWarn("failed to obtain outbound context to ", addr,
-                               " within timeout");
-              }
-              m_PendingTraffic.erase(addr);
-            },
-            10000);
-      }
-      m_PendingTraffic[remote].emplace(data, t);
-      return true;
+      EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000);
+      return false;
     }
 
     bool
@@ -1090,9 +1073,51 @@ namespace llarp
     Endpoint::OutboundContext::MarkCurrentIntroBad(llarp_time_t now)
     {
       // insert bad intro
-      m_BadIntros.insert(std::make_pair(remoteIntro, now));
-      // shift
-      return ShiftIntroduction();
+      m_BadIntros[remoteIntro] = now;
+      // unconditional shift
+      bool shiftedRouter = false;
+      bool shiftedIntro  = false;
+      // try same router
+      for(const auto& intro : currentIntroSet.I)
+      {
+        llarp::LogInfo("have intro: ", intro);
+        if(intro.ExpiresSoon(now))
+        {
+          llarp::LogInfo("skipping intro, expires soon");
+          continue;
+        }
+        auto itr = m_BadIntros.find(intro);
+        if(itr == m_BadIntros.end() && intro.router == remoteIntro.router)
+        {
+          shiftedIntro = true;
+          remoteIntro  = intro;
+          break;
+        }
+      }
+      if(!shiftedIntro)
+      {
+        // try any router
+        for(const auto& intro : currentIntroSet.I)
+        {
+          if(intro.ExpiresSoon(now))
+            continue;
+          auto itr = m_BadIntros.find(intro);
+          if(itr == m_BadIntros.end())
+          {
+            // TODO: this should always be true but idk if it really is
+            shiftedRouter = remoteIntro.router != intro.router;
+            shiftedIntro  = true;
+            remoteIntro   = intro;
+            break;
+          }
+        }
+      }
+      if(shiftedRouter)
+      {
+        lastShift = now;
+        ManualRebuild(1);
+      }
+      return shiftedIntro;
     }
 
     bool
@@ -1167,11 +1192,13 @@ namespace llarp
       Introduction remoteIntro;
       std::function< void(ProtocolFrame&) > hook;
       IDataHandler* handler;
+      ConvoTag tag;
 
       AsyncKeyExchange(llarp_logic* l, llarp_crypto* c, const ServiceInfo& r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
-                       const Introduction& remote, IDataHandler* h)
+                       const Introduction& remote, IDataHandler* h,
+                       const ConvoTag& t)
           : logic(l)
           , crypto(c)
           , remote(r)
@@ -1179,6 +1206,7 @@ namespace llarp
           , introPubKey(introsetPubKey)
           , remoteIntro(remote)
           , handler(h)
+          , tag(t)
       {
       }
 
@@ -1215,8 +1243,8 @@ namespace llarp
         // H (K + PKE(A, B, N))
         self->crypto->shorthash(self->sharedKey,
                                 llarp::StackBuffer< decltype(tmp) >(tmp));
-        // randomize tag
-        self->msg.tag.Randomize();
+        // set tag
+        self->msg.tag = self->tag;
         // set sender
         self->msg.sender = self->m_LocalIdentity.pub;
         // set version
@@ -1238,9 +1266,7 @@ namespace llarp
     void
     Endpoint::EnsureReplyPath(const ServiceInfo& ident)
     {
-      auto itr = m_AddressToService.find(ident.Addr());
-      if(itr == m_AddressToService.end())
-        m_AddressToService.insert(std::make_pair(ident.Addr(), ident));
+      m_AddressToService[ident.Addr()] = ident;
     }
 
     void
@@ -1259,13 +1285,15 @@ namespace llarp
           return;
         }
       }
+      currentConvoTag.Randomize();
+      AsyncKeyExchange* ex = new AsyncKeyExchange(
+          m_Endpoint->RouterLogic(), m_Endpoint->Crypto(), remoteIdent,
+          m_Endpoint->GetIdentity(), currentIntroSet.K, remoteIntro,
+          m_DataHandler, currentConvoTag);
 
-      AsyncKeyExchange* ex =
-          new AsyncKeyExchange(m_Endpoint->RouterLogic(), m_Endpoint->Crypto(),
-                               remoteIdent, m_Endpoint->GetIdentity(),
-                               currentIntroSet.K, remoteIntro, m_DataHandler);
       ex->hook = std::bind(&Endpoint::OutboundContext::Send, this,
                            std::placeholders::_1);
+
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
       llarp_threadpool_queue_job(m_Endpoint->Worker(),
@@ -1426,18 +1454,12 @@ namespace llarp
     Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
                                             ProtocolType t)
     {
-      std::set< ConvoTag > tags;
-      if(!m_DataHandler->GetConvoTagsForService(remoteIdent, tags))
-      {
-        llarp::LogError("no open converstations with remote endpoint?");
-        return;
-      }
       auto crypto          = m_Endpoint->Router()->crypto;
       const byte_t* shared = nullptr;
       routing::PathTransferMessage msg;
       ProtocolFrame& f = msg.T;
       f.N.Randomize();
-      f.T = *tags.begin();
+      f.T = currentConvoTag;
       f.S = m_Endpoint->GetSeqNoForConvo(f.T);
 
       auto now = llarp_time_now_ms();
@@ -1486,8 +1508,8 @@ namespace llarp
       ++sequenceNo;
       if(path->SendRoutingMessage(&msg, m_Endpoint->Router()))
       {
-        llarp::LogInfo("sent message via ", remoteIntro.pathID, " on ",
-                       remoteIntro.router);
+        llarp::LogDebug("sent message via ", remoteIntro.pathID, " on ",
+                        remoteIntro.router);
       }
       else
       {

@@ -96,7 +96,7 @@ struct llarp_nodedb
     llarp::LogDebug("saving RC.pubkey ", filepath);
     std::ofstream ofs(
         filepath,
-        std::ofstream::out & std::ofstream::binary & std::ofstream::trunc);
+        std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
     ofs.write((char *)buf.base, buf.sz);
     ofs.close();
     if(!ofs)
@@ -313,7 +313,7 @@ llarp_nodedb_ensure_dir(const char *dir)
   std::error_code ec;
 
   if(!fs::exists(dir, ec))
-    fs::create_directories(path, ec);
+    fs::create_directory(path, ec);
 
   if(ec)
     return false;
