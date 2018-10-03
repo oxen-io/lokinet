@@ -11,8 +11,7 @@
 // neither, it's a result set row
 struct dns_pointer
 {
-  // FIXME change to llarp::Addr
-  struct sockaddr *hostResult;
+  llarp::Addr hostResult;
   llarp::service::Address b32addr;
   // we could store the timeout at which we expect it to be available
   // or a list of pending requests for it
@@ -22,7 +21,6 @@ struct ip_range
 {
   uint8_t octet2;
   uint8_t octet3;
-  // FIXME: we're not consecutive
   uint8_t left;
   std::unordered_map< uint8_t, dns_pointer * > used;
 };
