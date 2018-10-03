@@ -68,7 +68,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
 #ifndef _WIN32
     basepath += "/";
 #else
-      basepath += "\\";
+    basepath += "\\";
 #endif
   }
 
@@ -173,8 +173,7 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
   f << "# ROUTERS ONLY: router settings block" << std::endl;
   f << "# router settings block" << std::endl;
   f << "[router]" << std::endl;
-  f << "# uncomment these to manually set public address and port"
-    << std::endl;
+  f << "# uncomment these to manually set public address and port" << std::endl;
   f << "# this is required on providers like AWS because of their firewall "
        "rules"
     << std::endl;
@@ -197,7 +196,6 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
   f << "# nickname=lokinet" << std::endl;
   f << std::endl << std::endl;
 
-
   f << "# ROUTERS ONLY: publish network interfaces for handling inbound traffic"
     << std::endl;
   f << "[bind]" << std::endl;
@@ -218,8 +216,7 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   f << "# ROUTERS ONLY: router settings block" << std::endl;
   f << "# router settings block" << std::endl;
   f << "[router]" << std::endl;
-  f << "# uncomment these to manually set public address and port"
-    << std::endl;
+  f << "# uncomment these to manually set public address and port" << std::endl;
   f << "# this is required on providers like AWS because of their firewall "
        "rules"
     << std::endl;
@@ -277,6 +274,8 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   */
 
   // pick ip
+  std::string ip = llarp::findFreePrivateRange();
+  /*
   struct privatesInUse ifsInUse = llarp_getPrivateIfs();
   std::string ip                = "";
   if(!ifsInUse.ten)
@@ -297,25 +296,19 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
         "Couldn't easily detect a private range to map lokinet onto");
     return false;
   }
+  */
+  if(ip == "")
+  {
+    llarp::LogError(
+        "Couldn't easily detect a private range to map lokinet onto");
+    return false;
+  }
   llarp::LogDebug("Detected " + ip
                   + " is available for use, configuring as such");
-  //clientini_f << "ifaddr=" << ip << std::endl;
+  // clientini_f << "ifaddr=" << ip << std::endl;
   // pick interface name
-  uint8_t num = 0;
-  while(num < 255)
-  {
-    std::string iftestname = "lokitun" + std::to_string(num);
-    struct sockaddr addr;
-    bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, &addr);
-    if(!found)
-    {
-      llarp::LogDebug("Detected " + iftestname
-                      + " is available for use, configuring as such");
-      break;
-    }
-    num++;
-  }
-  if(num == 255)
+  std::string ifName = llarp::findFreeLokiTunIfName();
+  if(ifName == "")
   {
     llarp::LogError("Could not find any free lokitun interface names");
     return false;
@@ -329,7 +322,7 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
                  + "client.ini");
   */
 
-  f << "ifname=lokinum" << std::to_string(num) << std::endl;
+  f << "ifname=lokinum" << ifName << std::endl;
   f << "ifaddr=" << ip << std::endl;
 
   return true;
