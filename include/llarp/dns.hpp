@@ -30,6 +30,8 @@ struct dns_tracker
   // FIXME: support multiple dns server contexts
   dnsd_context *dnsd;
   // rn we need 1 tracker per DNSd and each DNSd needs it's own IP
+  // actually we can bind once and use the tracker to sort
+  // but no way to tell what DNSd they want...
   // std::map< llarp::Addr, std::unique_ptr< dnsc_answer_request > > dnsds;
   // std::map< uint, dnsd_question_request * > daemon_request;
 };
