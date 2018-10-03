@@ -31,6 +31,12 @@ namespace llarp
       }
     }
 
+    bool
+    Context::hasEndpoints()
+    {
+      return m_Endpoints.size() ? true : false;
+    }
+
     llarp::service::Endpoint *
     Context::getFirstEndpoint()
     {
@@ -42,6 +48,29 @@ namespace llarp
       auto firstEndpoint   = m_Endpoints.begin();
       auto *uniqueEndpoint = &firstEndpoint->second;
       return uniqueEndpoint->get();
+    }
+
+    bool
+    Context::iterate(struct endpoint_iter &i)
+    {
+      if(!m_Endpoints.size())
+      {
+        llarp::LogError("No endpoints found");
+        return false;
+      }
+      i.index = 0;
+      // llarp::util::Lock lock(access);
+      auto itr = m_Endpoints.begin();
+      while(itr != m_Endpoints.end())
+      {
+        i.endpoint = itr->second.get();
+        i.visit(&i);
+
+        // advance
+        i.index++;
+        itr++;
+      }
+      return true;
     }
 
     llarp::handlers::TunEndpoint *
@@ -107,11 +136,45 @@ namespace llarp
     }
 
     bool
-    Context::AddDefaultEndpoint(const std::string & ifaddr, const std::string & ifname)
+    MappAddressAllIter(struct Context::endpoint_iter *endpointCfg)
     {
-      return AddEndpoint({ "default", {{"type", "tun"}, {"ifaddr", ifaddr}, {"ifname", ifname}}});
+      Context::mapAddressAll_context *context =
+          (Context::mapAddressAll_context *)endpointCfg->user;
+      llarp::handlers::TunEndpoint *tunEndpoint =
+          (llarp::handlers::TunEndpoint *)endpointCfg->endpoint;
+      if(!tunEndpoint)
+      {
+        llarp::LogError("No tunnel endpoint found");
+        return false;
+      }
+      return tunEndpoint->MapAddress(context->serviceAddr,
+                                     context->localPrivateIpAddr.tohl());
     }
-    
+
+    bool
+    Context::MapAddressAll(const llarp::service::Address &addr,
+                           llarp::Addr &localPrivateIpAddr)
+    {
+      struct Context::mapAddressAll_context context;
+      context.serviceAddr        = addr;
+      context.localPrivateIpAddr = localPrivateIpAddr;
+
+      struct Context::endpoint_iter i;
+      i.user  = &context;
+      i.index = 0;
+      i.visit = &MappAddressAllIter;
+      return this->iterate(i);
+    }
+
+    bool
+    Context::AddDefaultEndpoint(const std::string &ifaddr,
+                                const std::string &ifname)
+    {
+      return AddEndpoint(
+          {"default",
+           {{"type", "tun"}, {"ifaddr", ifaddr}, {"ifname", ifname}}});
+    }
+
     bool
     Context::AddEndpoint(const Config::section_t &conf)
     {
