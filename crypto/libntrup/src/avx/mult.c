@@ -7,6 +7,10 @@
 
 // 32-bit hosts: use compiler builtins and let compiler
 // perform register allocation and/or spilling to core
+//
+// Confirmed working 3/10/18 -despair
+// Less than 5% performance hit,
+// all in register loads/stores to/from core
 #ifndef __amd64__
 #define MULSTEP_gcc(j,h0,h1,h2,h3,h4) \
   gj = g[j]; \
