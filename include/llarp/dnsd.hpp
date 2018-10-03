@@ -3,8 +3,8 @@
 
 #include <llarp/ev.h>  // for sockaadr
 #include <string>
-#include "dns.hpp"  // question and dnsc
-#include "dnsc.hpp"
+#include <llarp/dns.hpp>  // question and dnsc
+#include <llarp/dnsc.hpp>
 
 // fwd declaration
 struct dnsd_context;
@@ -85,12 +85,14 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
 /// initialize dns subsystem and bind socket
 /// returns true on bind success otherwise returns false
 bool
-llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_logic *logic,
-                struct llarp_ev_loop *netloop, const llarp::Addr &dnsd_sockaddr,
+llarp_dnsd_init(struct dnsd_context *const dnsd,
+                struct llarp_logic *const logic,
+                struct llarp_ev_loop *const netloop,
+                const llarp::Addr &dnsd_sockaddr,
                 const llarp::Addr &dnsc_sockaddr);
 
 /// shutdowns any events, and deallocates for this context
 bool
-llarp_dnsd_stop(struct dnsd_context *dnsd);
+llarp_dnsd_stop(struct dnsd_context *const dnsd);
 
 #endif

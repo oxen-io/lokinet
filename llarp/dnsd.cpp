@@ -269,7 +269,7 @@ handle_dnsc_result(dnsc_answer_request *client_request)
   else
   {
     writesend_dnss_response(
-        client_request->found ? &client_request->result : nullptr,
+        client_request->found ? client_request->result.getSockAddr() : nullptr,
         server_request->from, server_request);
   }
   llarp_host_resolved(client_request);
@@ -319,6 +319,16 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
 
   sockaddr *fromCopy =
       new sockaddr(*from);  // make our own sockaddr that won't get cleaned up
+  if(!request)
+  {
+    llarp::LogError("request is not configured");
+    return;
+  }
+  if(!request->context)
+  {
+    llarp::LogError("request context is not configured");
+    return;
+  }
   if(request->context->intercept)
   {
     // llarp::Addr test(*from);
@@ -428,8 +438,10 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
 }
 
 bool
-llarp_dnsd_init(struct dnsd_context *dnsd, struct llarp_logic *logic,
-                struct llarp_ev_loop *netloop, const llarp::Addr &dnsd_sockaddr,
+llarp_dnsd_init(struct dnsd_context *const dnsd,
+                struct llarp_logic *const logic,
+                struct llarp_ev_loop *const netloop,
+                const llarp::Addr &dnsd_sockaddr,
                 const llarp::Addr &dnsc_sockaddr)
 {
   // struct sockaddr_in bindaddr;
