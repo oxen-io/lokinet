@@ -93,13 +93,15 @@ struct llarp_router
 
   llarp::service::Context hiddenServiceContext;
 
-  std::string defaultIfAddr = "10.200.0.1/24";
-  std::string defaultIfName = "lokitun0";
+  std::string defaultIfAddr = "auto";
+  std::string defaultIfName = "auto";
 
   bool
   CreateDefaultHiddenService();
-  
-  
+
+  bool
+  ShouldCreateDefaultHiddenService();
+
   std::unique_ptr< llarp::ILinkLayer > outboundLink;
   std::vector< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;
 
