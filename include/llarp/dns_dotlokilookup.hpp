@@ -12,7 +12,7 @@
 typedef bool (*map_address_hook_func)(const llarp::service::Address &addr,
                                       uint32_t ip);
 
-/// dotLokiLookup
+/// dotLokiLookup context/config
 struct dotLokiLookup
 {
   /// for timers (MAYBEFIXME? maybe we decouple this, yes pls have a generic
@@ -20,10 +20,12 @@ struct dotLokiLookup
   struct llarp_logic *logic;
   /// which ip tracker to use
   struct dns_iptracker *ip_tracker;
+
   /// tunEndpoint
   // llarp::handlers::TunEndpoint *tunEndpoint; // is this even needed here?
-  void *user;
+  void *user;  // well dotLokiLookup current uses it to access the tun if
   // pointer to tunendpoint properties?
+  // llarp::service::Context *hiddenServiceContext;
 
   // need a way to reference
   // 1. mapaddress
@@ -35,6 +37,6 @@ struct dotLokiLookup
 
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
-                            struct dnsd_question_request *request);
+                            struct dnsd_question_request *const request);
 
 #endif

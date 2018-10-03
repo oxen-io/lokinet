@@ -1,5 +1,6 @@
 #include <llarp/dns_dotlokilookup.hpp>
 #include <llarp/handlers/tun.hpp>
+#include <llarp/service/context.hpp>
 
 std::string const default_chars =
     "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
@@ -42,6 +43,7 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   if(!dll)
   {
     llarp::LogError("DNSd dotLokiLookup is not configured");
+    // FIXME: send 404
     return;
   }
 
@@ -54,6 +56,7 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   {
     llarp::LogWarn("Could not base32 decode address: ",
                    qr->request->question.name);
+    // FIXME: send 404
     delete qr;
     return;
   }
@@ -68,13 +71,35 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   struct dns_pointer *free_private = dns_iptracker_get_free(dll->ip_tracker);
   if(free_private)
   {
-    in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
+    // in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
 
+    /*
     llarp::handlers::TunEndpoint *tunEndpoint =
         (llarp::handlers::TunEndpoint *)dll->user;
-    bool mapResult = tunEndpoint->MapAddress(addr, ntohl(ip_address.s_addr));
+    if (!tunEndpoint)
+    {
+      llarp::LogWarn("dotLokiLookup user isnt a tunEndpoint: ", dll->user);
+      return;
+    }
+    bool mapResult = tunEndpoint->MapAddress(addr,
+    free_private->hostResult.tohl()); if(!mapResult)
+    {
+      delete qr;
+      return;
+    }
+    */
+    llarp::service::Context *routerHiddenServiceContext =
+        (llarp::service::Context *)dll->user;
+    if(!routerHiddenServiceContext)
+    {
+      llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+      return;
+    }
+    bool mapResult = routerHiddenServiceContext->MapAddressAll(
+        addr, free_private->hostResult);
     if(!mapResult)
     {
+      // FIXME: send 404
       delete qr;
       return;
     }
@@ -83,13 +108,16 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
     dnsd_query_hook_response *response = new dnsd_query_hook_response;
     response->dontLookUp               = true;
     response->dontSendResponse         = false;
-    response->returnThis               = free_private->hostResult;
+    // llarp::Addr test(*free_private->hostResult.getSockAddr());
+    // llarp::LogInfo("IP Test: ", test);
+    response->returnThis = free_private->hostResult.getSockAddr();
     llarp::LogInfo("Saving ", qr->request->question.name);
     loki_tld_lookup_cache[qr->request->question.name] = response;
+    // we can't delete response now...
 
     // FIXME: flush cache to disk
     // on crash we'll need to bring up all the same IPs we assigned before...
-    writesend_dnss_response(free_private->hostResult, qr->from, qr->request);
+    writesend_dnss_response(response->returnThis, qr->from, qr->request);
     delete qr;
     return;
   }
@@ -103,7 +131,7 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
 
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
-                            struct dnsd_question_request *request)
+                            struct dnsd_question_request *const request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
   // dotLokiLookup *dll                 = (dotLokiLookup
@@ -124,7 +152,7 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
     {
       // was in cache
       llarp::LogInfo("Reused address from LokiLookupCache");
-      // FIXME: avoid the allocation if you could
+      // FIXME: avoid the response allocation if you could
       delete response;
       return cache_check->second;
     }
