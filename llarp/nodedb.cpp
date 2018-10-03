@@ -182,7 +182,7 @@ struct llarp_nodedb
   }
 
   bool
-  iterate(struct llarp_nodedb_iter i)
+  iterate(struct llarp_nodedb_iter &i)
   {
     i.index = 0;
     llarp::util::Lock lock(access);
