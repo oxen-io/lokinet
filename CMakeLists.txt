@@ -322,7 +322,6 @@ set(LIB_SRC
   llarp/buffer.cpp
   llarp/config.cpp
   llarp/context.cpp
-  llarp/crypto_async.cpp
   llarp/crypto_libsodium.cpp
   llarp/dht.cpp
   llarp/dns.cpp
