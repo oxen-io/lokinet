@@ -95,6 +95,7 @@ struct llarp_router
 
   std::string defaultIfAddr = "auto";
   std::string defaultIfName = "auto";
+  bool disableDefaultEndpoint = false;
 
   bool
   CreateDefaultHiddenService();

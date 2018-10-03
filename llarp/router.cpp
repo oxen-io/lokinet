@@ -922,7 +922,8 @@ llarp_router::InitOutboundLink()
 bool
 llarp_router::CreateDefaultHiddenService()
 {
-  return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName);
+  return disableDefaultEndpoint
+      || hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName);
 }
 
 bool
@@ -1133,6 +1134,10 @@ namespace llarp
       if(StrEq(key, "ifname"))
       {
         self->defaultIfName = val;
+      }
+      if(StrEq(key, "enabled"))
+      {
+        self->disableDefaultEndpoint = IsFalseValue(val);
       }
     }
     else if(StrEq(section, "services"))
