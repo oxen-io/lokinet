@@ -91,7 +91,7 @@ namespace llarp
     llarp_tun_io* t;
     device* tunif;
     tun(llarp_tun_io* tio)
-        : ev_io(-1)
+        : ev_io(INVALID_SOCKET)
         , t(tio)
         , tunif(tuntap_init())
 
@@ -136,23 +136,23 @@ namespace llarp
         llarp::LogWarn("failed to start interface");
         return false;
       }
-      if(tuntap_up(tunif) == -1)
-      {
-        llarp::LogWarn("failed to put interface up: ", strerror(errno));
-        return false;
-      }
       if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
       {
         llarp::LogWarn("failed to set ip");
         return false;
       }
+      if(tuntap_up(tunif) == -1)
+      {
+        llarp::LogWarn("failed to put interface up: ", strerror(errno));
+        return false;
+      }
+
       fd = (SOCKET)tunif->tun_fd;
       if(fd == -1)
         return false;
 
-      // set non blocking
-      int on = 1;
-      return ioctlsocket(fd, FIONBIO, (u_long*)&on) != -1;
+      // we're already non-blocking
+	  return true;
     }
 
     ~tun()

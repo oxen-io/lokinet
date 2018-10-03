@@ -254,25 +254,7 @@ namespace llarp
     {
       llarp::LogInfo("Set Up networking for ", Name());
       bool result = SetupTun();
-#ifndef _WIN32
-      m_TunSetupResult.set_value(result);
-#endif
-      if(!NetworkIsIsolated())
-      {
-        // need to check to see if we have more than one hidden service
-        // well we'll only use the primary
-        // FIXME: detect number of hidden services
-        llarp::LogWarn(
-            "Only utilizing first hidden service for .loki look ups");
-        // because we can't find to the tun interface because we don't want it
-        // accessible on lokinet we can only bind one to loopback, and we can't
-        // really utilize anything other than port 53 we can't bind to our
-        // public interface, don't want it exploitable maybe we could detect if
-        // you have a private interface
-      }
-      llarp::Addr dnsd_sockaddr(127, 0, 0, 1, DNS_PORT);
-      llarp::Addr dnsc_sockaddr(8, 8, 8, 8, 53);
-      llarp::LogInfo("TunDNS set up ", dnsd_sockaddr, " to ", dnsc_sockaddr);
+      m_TunSetupResult.set_value(result); // now that NT has tun, we don't need the CPP guard
       if(!llarp_dnsd_init(&this->dnsd, EndpointLogic(), EndpointNetLoop(),
                           dnsd_sockaddr, dnsc_sockaddr))
       {
