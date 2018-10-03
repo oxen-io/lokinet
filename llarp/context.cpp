@@ -318,6 +318,11 @@ extern "C"
   int
   llarp_main_run(struct llarp_main *ptr)
   {
+    if(!ptr)
+    {
+      llarp::LogError("No ptr passed in");
+      return 0;
+    }
     return ptr->ctx->Run();
   }
 
@@ -470,15 +475,24 @@ extern "C"
   llarp::handlers::TunEndpoint *
   main_router_getFirstTunEndpoint(struct llarp_main *ptr)
   {
-    auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
-    return endpoint->getFirstTun();
+    auto *context = &ptr->ctx->router->hiddenServiceContext;
+    return context->getFirstTun();
+  }
+
+  //#include <llarp/service/context.hpp>
+  bool
+  main_router_endpoint_iterator(
+      struct llarp_main *ptr, struct llarp::service::Context::endpoint_iter &i)
+  {
+    auto *context = &ptr->ctx->router->hiddenServiceContext;
+    return context->iterate(i);
   }
 
   llarp_tun_io *
   main_router_getRange(struct llarp_main *ptr)
   {
-    auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
-    return endpoint->getRange();
+    auto *context = &ptr->ctx->router->hiddenServiceContext;
+    return context->getRange();
   }
 
   const char *
