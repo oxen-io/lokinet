@@ -103,7 +103,7 @@ main(int argc, char *argv[])
 
   // llarp::SetLogLevel(llarp::eLogDebug);
 
-  if(0)
+  if(1)
   {
     // libev version w/router context
     ctx = llarp_main_init(conffname, !TESTNET);
@@ -115,6 +115,10 @@ main(int argc, char *argv[])
     llarp_main_setup(ctx);
     signal(SIGINT, handle_signal);
 
+    // we can't programmatic force a client
+    // but we'll need to be one...
+
+    /*
     struct dnsd_context dnsd;
     llarp::Addr dnsd_sockaddr(127, 0, 0, 1, 53);
     llarp::Addr dnsc_sockaddr(dnsr_config.upstream_host,
@@ -128,9 +132,11 @@ main(int argc, char *argv[])
     // Configure intercept
     dnsd.intercept = &llarp_dotlokilookup_handler;
     dotLokiLookup dll;
+     */
     // should be a function...
     // dll.tunEndpoint = main_router_getFirstTunEndpoint(ctx);
     // dll.ip_tracker = &g_dns_iptracker;
+    /*
     llarp_main_init_dotLokiLookup(ctx, &dll);
     dnsd.user = &dll;
 
@@ -145,6 +151,7 @@ main(int argc, char *argv[])
     // mark our TunIfAddr as used
     if(tun)
     {
+      dll.user = tun;
       struct sockaddr_in addr;
       addr.sin_addr.s_addr = inet_addr(tun->ifaddr);
       addr.sin_family      = AF_INET;
@@ -158,12 +165,13 @@ main(int argc, char *argv[])
     {
       llarp::LogWarn("No tun interface, can't look up .loki");
     }
+    */
 
     // run system and wait
     llarp_main_run(ctx);
     llarp_main_free(ctx);
   }
-  else if(1)
+  else if(0)
   {
     // libev version
     llarp_ev_loop *netloop   = nullptr;
