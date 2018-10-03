@@ -55,7 +55,7 @@ namespace llarp
   {
     // network order
     sockaddr_in6 _addr;
-    sockaddr_in _addr4;
+    sockaddr_in _addr4;  // why do we even have this?
     ~Addr(){};
 
     Addr(){};
@@ -141,6 +141,7 @@ namespace llarp
         return false;
       }
 
+      // put it in _addr4
       struct in_addr* addr = &_addr4.sin_addr;
       if(inet_aton(str, addr) == 0)
       {
@@ -160,6 +161,7 @@ namespace llarp
       addrptr[10]      = 0xff;
       memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
       freeaddrinfo(res);
+
       return true;
     }
 
@@ -193,6 +195,8 @@ namespace llarp
       addrptr[11]      = 0xff;
       addrptr[10]      = 0xff;
       memcpy(12 + addrptr, &addr->s_addr, sizeof(in_addr));
+      // copy ipv6 SIIT into _addr4
+      memcpy(&_addr4.sin_addr.s_addr, addr4(), sizeof(in_addr));
       return true;
     }
 
@@ -442,6 +446,12 @@ namespace llarp
       return addr4()->s_addr;
     }
 
+    sockaddr*
+    getSockAddr()
+    {
+      return (struct sockaddr*)&_addr4;
+    }
+
     bool
     sameAddr(const Addr& other) const
     {
@@ -530,6 +540,14 @@ namespace llarp
   /// get first network interface with public address
   bool
   GetBestNetIF(std::string& ifname, int af = AF_INET);
+
+  /// look at adapter ranges and find a free one
+  std::string
+  findFreePrivateRange();
+
+  /// look at adapter names and find a free one
+  std::string
+  findFreeLokiTunIfName();
 
   /// get network interface address for network interface with ifname
   bool

@@ -42,7 +42,14 @@ namespace llarp
       sockaddr* addr = (sockaddr*)&src;
       ssize_t ret    = ::recvfrom(fd, buf, sz, 0, addr, &slen);
       if(ret == -1)
+      {
+        llarp::LogWarn("recvfrom failed");
         return -1;
+      }
+      if (addr)
+      {
+        llarp::LogWarn("no source addr");
+      }
       // Addr is the source
       udp->recvfrom(udp, addr, buf, ret);
       return 0;
@@ -203,7 +210,14 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       while(idx < result)
       {
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
-        ev->read(readbuf, sizeof(readbuf));
+        if (ev)
+        {
+          ev->read(readbuf, sizeof(readbuf));
+        }
+        else
+        {
+          llarp::LogWarn("event[", idx,"] udata is not an ev_io");
+        }
         ++idx;
       }
     }
@@ -292,7 +306,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    llarp::LogInfo("bind to ", a);
+    llarp::LogDebug("bind to ", a);
     // FreeBSD handbook said to do this
     if(addr->sa_family == AF_INET && INADDR_ANY)
       a._addr4.sin_addr.s_addr = htonl(INADDR_ANY);
