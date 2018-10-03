@@ -8,7 +8,8 @@ extern "C"
     eLogDebug,
     eLogInfo,
     eLogWarn,
-    eLogError
+    eLogError,
+    eLogNone
   };
 
   void
