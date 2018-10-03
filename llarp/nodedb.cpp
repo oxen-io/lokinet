@@ -1,4 +1,4 @@
-#include <llarp/crypto_async.h>
+#include <llarp/logic.h>
 #include <llarp/nodedb.hpp>
 #include <llarp/router_contact.hpp>
 

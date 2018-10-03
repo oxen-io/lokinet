@@ -165,8 +165,9 @@ extern "C"
 #endif
     f << "ifname=lokitun0" << std::endl;
     f << "ifaddr=10.200.0.1/16" << std::endl;
+    f << "enabled=true" << std::endl;
     f << std::endl << std::endl;
-    
+
     f << "# dns provider configuration section" << std::endl;
     f << "[dns]" << std::endl;
     f << "# opennic us resolver" << std::endl;
