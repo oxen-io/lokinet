@@ -88,6 +88,20 @@ bencoded form:
 
 d1:ci1e1:d3:iwp1:e32:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1:d3:iwp1:i15:123.123.123.1231:pi1234e1:vi0ee
 
+Traffic Policy (TP)
+
+Traffic policy (TP) defines port, protocol and QoS/drop policy.
+
+{
+  a: protocol_integer,
+  b: port_integeger,
+  d: drop_optional_integer,
+  v: 0
+}
+
+drop d is set to 1 to indicate that packets of protocol a with source port b will be dropped.
+if d is 0 or not provided this traffic policy does nothing.
+
 Exit Info (XI)
 
 An exit info (XI) defines a exit address that can relay exit traffic to the 
@@ -97,6 +111,7 @@ internet.
   a: "<net address exit address>",
   b: "<net address exit netmask>",
   k: "<32 bytes public encryption/signing key>",
+  p: [ list, of, traffic, policies],
   v: 0
 }
 
