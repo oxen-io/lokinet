@@ -37,7 +37,6 @@ namespace llarp
       system    = find_section(top, "system", section_t{});
       // std::ofstream ft("config_test.ini");
       // parser.dump(ft);
-      parser.write("config_test.ini");
       return true;
     }
     return false;
@@ -52,7 +51,6 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
   std::error_code ec;
   if(fs::exists(fname, ec) && !overwrite)
   {
-    llarp::LogError(fname, " currently exists, please use -f to overwrite");
     return true;
   }
   if(ec)
@@ -115,7 +113,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
     << std::endl;
   f << "# change these values as desired" << std::endl;
   f << std::endl << std::endl;
-
+  f << "[router]" << std::endl;
   f << "# number of crypto worker threads " << std::endl;
   f << "threads=4" << std::endl;
   f << "# path to store signed RC" << std::endl;
@@ -170,32 +168,6 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 void
 llarp_ensure_router_config(std::ofstream &f, std::string basepath)
 {
-  f << "# ROUTERS ONLY: router settings block" << std::endl;
-  f << "# router settings block" << std::endl;
-  f << "[router]" << std::endl;
-  f << "# uncomment these to manually set public address and port" << std::endl;
-  f << "# this is required on providers like AWS because of their firewall "
-       "rules"
-    << std::endl;
-  f << "# public-address=your.ip.goes.here" << std::endl;
-  f << "# public-port=1090" << std::endl;
-  f << std::endl;
-  f << "# number of crypto worker threads " << std::endl;
-  f << "threads=4" << std::endl;
-  f << "# path to store signed RC" << std::endl;
-  f << "contact-file=" << basepath << "self.signed" << std::endl;
-  f << "# path to store transport private key" << std::endl;
-  f << "transport-privkey=" << basepath << "transport.private" << std::endl;
-  f << "# path to store identity signing key" << std::endl;
-  f << "ident-privkey=" << basepath << "identity.private" << std::endl;
-  f << "# encryption key for onion routing" << std::endl;
-  f << "encryption-privkey=" << basepath << "encryption.private" << std::endl;
-  f << std::endl;
-  f << "# uncomment following line to set router nickname to 'lokinet'"
-    << std::endl;
-  f << "# nickname=lokinet" << std::endl;
-  f << std::endl << std::endl;
-
   f << "# ROUTERS ONLY: publish network interfaces for handling inbound traffic"
     << std::endl;
   f << "[bind]" << std::endl;
@@ -213,44 +185,9 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
 bool
 llarp_ensure_client_config(std::ofstream &f, std::string basepath)
 {
-  f << "# ROUTERS ONLY: router settings block" << std::endl;
-  f << "# router settings block" << std::endl;
-  f << "[router]" << std::endl;
-  f << "# uncomment these to manually set public address and port" << std::endl;
-  f << "# this is required on providers like AWS because of their firewall "
-       "rules"
-    << std::endl;
-  f << "#public-address=your.ip.goes.here" << std::endl;
-  f << "#public-port=1090" << std::endl;
-  f << std::endl;
-  f << "# number of crypto worker threads " << std::endl;
-  f << "#threads=4" << std::endl;
-  f << "# path to store signed RC" << std::endl;
-  f << "#contact-file=" << basepath << "self.signed" << std::endl;
-  f << "# path to store transport private key" << std::endl;
-  f << "#transport-privkey=" << basepath << "transport.private" << std::endl;
-  f << "# path to store identity signing key" << std::endl;
-  f << "#ident-privkey=" << basepath << "identity.private" << std::endl;
-  f << "# encryption key for onion routing" << std::endl;
-  f << "#encryption-privkey=" << basepath << "encryption.private" << std::endl;
-  f << std::endl;
-  f << "# uncomment following line to set router nickname to 'lokinet'"
-    << std::endl;
-  f << "#nickname=lokinet" << std::endl;
-  f << std::endl << std::endl;
-
-  f << "[bind]" << std::endl;
-  std::string ifname;
-
-  if(llarp::GetBestNetIF(ifname, AF_INET))
-    f << "# " << ifname << "=1090" << std::endl;
-  else
-    f << "# could not autodetect network interface" << std::endl
-      << "# eth0=1090" << std::endl;
-
-  f << std::endl;
-  f << "[services]" << std::endl;
-  f << "client=" << basepath << "client.ini" << std::endl;
+  f << "#uncomment for a hidden service" << std::endl;
+  f << "#[services]" << std::endl;
+  f << "#client=" << basepath << "client.ini" << std::endl;
   f << std::endl;
 
   f << "# network settings " << std::endl;
