@@ -1,31 +1,30 @@
 #include <llarp/time.h>
-#include <time.h>
-#include <sys/time.h>
+#include <chrono>
 
-// these _should_ be 32-bit safe...
+namespace llarp
+{
+  typedef std::chrono::steady_clock Clock_t;
+
+  template < typename Res >
+  static llarp_time_t
+  time_since_epoch()
+  {
+    return std::chrono::duration_cast< Res >(
+               llarp::Clock_t::now().time_since_epoch())
+        .count();
+  }
+
+}  // namespace llarp
+
+// use std::chrono because otherwise the network breaks with Daylight Savings
 llarp_time_t
 llarp_time_now_ms()
 {
-  struct timeval tv;
-  struct timezone z;
-  z.tz_minuteswest = 0;
-  time_t t = time(nullptr);
-  z.tz_dsttime = gmtime(&t)->tm_isdst;
-  gettimeofday(&tv, &z);
-  llarp_time_t timeNow =
-      (llarp_time_t)(tv.tv_sec) * 1000 + (llarp_time_t)(tv.tv_usec) / 1000;
-  return timeNow;
+  return llarp::time_since_epoch< std::chrono::milliseconds >();
 }
 
 llarp_seconds_t
 llarp_time_now_sec()
 {
-  struct timeval tv;
-  struct timezone z;
-  z.tz_minuteswest = 0;
-  time_t t = time(nullptr);
-  z.tz_dsttime = gmtime(&t)->tm_isdst;
-  gettimeofday(&tv, &z);
-  llarp_time_t timeNow = tv.tv_sec;
-  return timeNow;
+  return llarp::time_since_epoch< std::chrono::seconds >();
 }
