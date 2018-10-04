@@ -460,7 +460,7 @@ namespace llarp
       uint64_t m_CurrentPublishTX       = 0;
       llarp_time_t m_LastPublish        = 0;
       llarp_time_t m_LastPublishAttempt = 0;
-      llarp_time_t m_MinPathLatency     = 10000;
+      llarp_time_t m_MinPathLatency     = (5 * 1000);
       /// our introset
       service::IntroSet m_IntroSet;
       /// pending remote service lookups by id

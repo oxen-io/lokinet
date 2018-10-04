@@ -168,6 +168,10 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 void
 llarp_ensure_router_config(std::ofstream &f, std::string basepath)
 {
+  f << "# network settings " << std::endl;
+  f << "[network]" << std::endl;
+  f << "profiles=" << basepath << "profiles.dat" << std::endl;
+  f << std::endl;
   f << "# ROUTERS ONLY: publish network interfaces for handling inbound traffic"
     << std::endl;
   f << "[bind]" << std::endl;
@@ -192,6 +196,7 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
 
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;
+  f << "profiles=" << basepath << "profiles.dat" << std::endl;
 #ifndef __linux__
   f << "# ";
 #endif

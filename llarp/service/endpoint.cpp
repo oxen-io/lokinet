@@ -926,6 +926,29 @@ namespace llarp
     Endpoint::OutboundContext::SwapIntros()
     {
       remoteIntro = m_NextIntro;
+      // prepare next intro
+      auto now = llarp_time_now_ms();
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(intro.ExpiresSoon(now))
+          continue;
+        if(m_BadIntros.find(intro) == m_BadIntros.end()
+           && remoteIntro.router == intro.router)
+        {
+          m_NextIntro = intro;
+          return;
+        }
+      }
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(intro.ExpiresSoon(now))
+          continue;
+        if(m_BadIntros.find(intro) == m_BadIntros.end())
+        {
+          m_NextIntro = intro;
+          return;
+        }
+      }
     }
 
     bool

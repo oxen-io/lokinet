@@ -26,6 +26,7 @@
 #define DEFAULT_PATH_LIFETIME (10 * 60 * 1000)
 #define PATH_BUILD_TIMEOUT (30 * 1000)
 #define MESSAGE_PAD_SIZE (512)
+#define PATH_ALIVE_TIMEOUT (10 * 1000)
 
 namespace llarp
 {

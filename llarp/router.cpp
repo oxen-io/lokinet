@@ -135,11 +135,6 @@ bool
 llarp_router::HandleRecvLinkMessageBuffer(llarp::ILinkSession *session,
                                           llarp_buffer_t buf)
 {
-  if(!session)
-  {
-    llarp::LogWarn("no link session");
-    return false;
-  }
   return inbound_link_msg_parser.ProcessFrom(session, buf);
 }
 
@@ -648,7 +643,9 @@ void
 llarp_router::Run()
 {
   routerProfiling.Load(routerProfilesFile.string().c_str());
-  llarp::Addr publicAddr(this->ip4addr);
+  // zero out router contact
+  sockaddr *dest = (sockaddr *)&this->ip4addr;
+  llarp::Addr publicAddr(*dest);
   if(this->publicOverride)
   {
     if(publicAddr)
@@ -684,20 +681,14 @@ llarp_router::Run()
     }
     else
     {
-      if(inboundLinks.size())
+      if(!inboundLinks.size())
       {
-        link = inboundLinks[0].get();
+        llarp::LogError("No inbound links found, aborting");
+        return;
       }
-      else
-      {
-        llarp::LogWarn(
-            "No need to set public ipv4 and port if no external interface "
-            "binds, turning off public override");
-        this->publicOverride = false;
-        link                 = nullptr;
-      }
+      link = inboundLinks[0].get();
     }
-    if(link && link->GetOurAddressInfo(this->addrInfo))
+    if(link->GetOurAddressInfo(this->addrInfo))
     {
       // override ip and port
       this->addrInfo.ip   = *publicAddr.addr6();
@@ -769,13 +760,9 @@ llarp_router::Run()
       return;
     }
 
-    // don't create default if we already have some defined
-    if(this->ShouldCreateDefaultHiddenService())
-    {
-      // generate default hidden service
-      if(!CreateDefaultHiddenService())
-        return;
-    }
+    // generate default hidden service
+    if(!CreateDefaultHiddenService())
+      return;
     // delayed connect all for clients
     uint64_t delay = ((llarp_randint() % 10) * 500) + 500;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
@@ -786,54 +773,6 @@ llarp_router::Run()
   llarp_dht_context_start(dht, ourPubkey);
 
   ScheduleTicker(1000);
-}
-
-bool
-llarp_router::ShouldCreateDefaultHiddenService()
-{
-  // llarp::LogInfo("IfName: ", this->defaultIfName, " defaultIfName: ",
-  // this->defaultIfName);
-  if(this->defaultIfName == "auto" || this->defaultIfName == "auto")
-  {
-    // auto detect if we have any pre-defined endpoints
-    // no if we have a endpoints
-    llarp::LogInfo("Auto mode detected, hasEndpoints: ",
-                   std::to_string(this->hiddenServiceContext.hasEndpoints()));
-    if(this->hiddenServiceContext.hasEndpoints())
-      return false;
-    // we don't have any endpoints, auto configure settings
-
-    // set a default IP range
-    this->defaultIfAddr = llarp::findFreePrivateRange();
-    if(this->defaultIfAddr == "")
-    {
-      llarp::LogError(
-          "Could not find any free lokitun interface names, can't auto set up "
-          "default HS context for client");
-      this->defaultIfAddr = "no";
-      return false;
-    }
-
-    // pick an ifName
-    this->defaultIfName = llarp::findFreeLokiTunIfName();
-    if(this->defaultIfName == "")
-    {
-      llarp::LogError(
-          "Could not find any free private ip ranges, can't auto set up "
-          "default HS context for client");
-      this->defaultIfName = "no";
-      return false;
-    }
-    // auto config'd, go ahead and create it
-    return true;
-  }
-  // not auto mode then just check to make sure it's explicitly disabled
-  if(this->defaultIfAddr != "" && this->defaultIfAddr != "no"
-     && this->defaultIfName != "" && this->defaultIfName != "no")
-  {
-    return true;
-  }
-  return false;
 }
 
 void
@@ -1133,7 +1072,7 @@ namespace llarp
       }
       if(StrEq(key, "ifname"))
       {
-        self->defaultIfName = val;
+        self->defaultIfAddr = val;
       }
       if(StrEq(key, "enabled"))
       {
@@ -1200,10 +1139,10 @@ namespace llarp
         if(strlen(val) < 17)
         {
           // assume IPv4
-          // inet_pton(AF_INET, val, &self->ip4addr.sin_addr);
+          inet_pton(AF_INET, val, &self->ip4addr.sin_addr);
           // struct sockaddr dest;
-          // sockaddr *dest = (sockaddr *)&self->ip4addr;
-          llarp::Addr a(val);
+          sockaddr *dest = (sockaddr *)&self->ip4addr;
+          llarp::Addr a(*dest);
           llarp::LogInfo("setting public ipv4 ", a);
           self->addrInfo.ip    = *a.addr6();
           self->publicOverride = true;

@@ -38,7 +38,7 @@ namespace llarp
     }
 
     bool
-    IsBad(const RouterID& r, uint64_t chances = 8);
+    IsBad(const RouterID& r, uint64_t chances = 2);
 
     void
     MarkSuccess(const RouterID& r);

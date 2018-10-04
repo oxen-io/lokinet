@@ -431,7 +431,7 @@ namespace llarp
       if(_status == ePathEstablished)
       {
         if(m_LastRecvMessage && now > m_LastRecvMessage
-           && now - m_LastRecvMessage > (20 * 1000))
+           && now - m_LastRecvMessage > PATH_ALIVE_TIMEOUT)
         {
           if(m_CheckForDead)
           {
@@ -440,6 +440,11 @@ namespace llarp
               r->routerProfiling.MarkPathFail(this);
               EnterState(ePathTimeout);
             }
+          }
+          else
+          {
+            r->routerProfiling.MarkPathFail(this);
+            EnterState(ePathTimeout);
           }
         }
         else if(dlt >= 10000 && m_LastRecvMessage == 0)
