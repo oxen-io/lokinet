@@ -31,8 +31,10 @@ dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll, llarp::Addr tunGatewayIp)
 
 // FIXME: pass in b32addr of client
 bool
-dns_iptracker_setup(llarp::Addr tunGatewayIp)
+dns_iptracker_setup(dns_iptracker *iptracker, llarp::Addr tunGatewayIp)
 {
+  if (!iptracker)
+    iptracker = &g_dns_iptracker; // FIXME: god forgive I'm tired
   struct in_addr *addr = tunGatewayIp.addr4();
   unsigned char *ip    = (unsigned char *)&(addr->s_addr);
 
@@ -56,18 +58,18 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
   // FIXME: forcing one and only one range
   if(ip[0] == 10)
   {
-    g_dns_iptracker.used_ten_ips.push_back(std::move(range));
-    g_dns_iptracker.used_privates.ten = false;
+    iptracker->used_ten_ips.push_back(std::move(range));
+    iptracker->used_privates.ten = false;
   }
   else if(ip[0] == 172)
   {
-    g_dns_iptracker.used_seven_ips.push_back(std::move(range));
-    g_dns_iptracker.used_privates.oneSeven = false;
+    iptracker->used_seven_ips.push_back(std::move(range));
+    iptracker->used_privates.oneSeven = false;
   }
   else if(ip[0] == 192)
   {
-    g_dns_iptracker.used_nine_ips.push_back(std::move(range));
-    g_dns_iptracker.used_privates.oneNine = false;
+    iptracker->used_nine_ips.push_back(std::move(range));
+    iptracker->used_privates.oneNine = false;
   }
   else
   {
@@ -142,7 +144,7 @@ dns_iptracker_check_range(std::vector< std::unique_ptr< ip_range > > &ranges,
     new_range->left = 252;  // 0 is net, 1 is gw, 255 is broadcast
     ranges.push_back(std::move(new_range));
     // don't need to check if we're out since this is fresh range
-    return dns_iptracker_allocate_range(new_range, first);
+    return dns_iptracker_allocate_range(ranges[0], first);
   }
   return nullptr;
 }
