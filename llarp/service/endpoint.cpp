@@ -761,8 +761,11 @@ namespace llarp
         llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
                        p->Endpoint(), " via ", dst);
         if(MarkCurrentIntroBad(llarp_time_now_ms()))
+        {
+          SwapIntros();
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
+        }
         UpdateIntroSet();
       }
       return true;
@@ -1128,12 +1131,8 @@ namespace llarp
       // try same router
       for(const auto& intro : currentIntroSet.I)
       {
-        llarp::LogInfo("have intro: ", intro);
         if(intro.ExpiresSoon(now))
-        {
-          llarp::LogInfo("skipping intro, expires soon");
           continue;
-        }
         auto itr = m_BadIntros.find(intro);
         if(itr == m_BadIntros.end() && intro.router == m_NextIntro.router)
         {
