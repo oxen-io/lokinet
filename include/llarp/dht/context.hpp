@@ -312,6 +312,7 @@ namespace llarp
           // ask for next peer
           if(txitr->second->AskNextPeer(from.node))
             sendReply = false;
+          llarp::LogWarn("Target key ", txitr->second->target);
           Inform(from, txitr->second->target, {}, sendReply, sendReply);
         }
 
@@ -323,9 +324,10 @@ namespace llarp
 
         /// inform all watches for key of values found
         void
-        Inform(const TXOwner& from, const K& key, std::vector< V > values,
+        Inform(const TXOwner& from, const K key, std::vector< V > values,
                bool sendreply = false, bool removeTimeouts = true)
         {
+          llarp::LogWarn("Our key ", key);
           auto range = waiting.equal_range(key);
           auto itr   = range.first;
           while(itr != range.second)
@@ -343,9 +345,27 @@ namespace llarp
             }
             ++itr;
           }
+          llarp::LogWarn("Our key2 ", key);
 
+          llarp::LogWarn("Waiting items ", waiting.size());
           if(sendreply)
+          {
+            /*
+            // attempt to fix double free
+            for(auto it = begin(waiting); it != end(waiting);)
+            {
+              if(it->first == key)
+              {
+                it = waiting.erase(it);  // previously this was something like
+                                         // m_map.erase(it++);
+                break;
+              }
+              else
+                ++it;
+            }
+            */
             waiting.erase(key);
+          }
 
           if(removeTimeouts)
             timeouts.erase(key);
