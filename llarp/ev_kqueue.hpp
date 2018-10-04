@@ -313,7 +313,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       close(fd);
       return -1;
     }
-
+    llarp::LogInfo("bind to ", a);
     return fd;
   }
 
