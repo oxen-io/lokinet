@@ -57,7 +57,8 @@ namespace llarp
 #ifndef _WIN32
       return write(fd, data, sz) != -1;
 #else
-      return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, nullptr);
+      DWORD w;
+      return WriteFile(std::get< HANDLE >(fd), data, sz, &w, nullptr);
 #endif
     }
 
