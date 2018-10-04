@@ -322,7 +322,7 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
                  + "client.ini");
   */
 
-  f << "ifname=lokinum" << ifName << std::endl;
+  f << "ifname=" << ifName << std::endl;
   f << "ifaddr=" << ip << std::endl;
 
   return true;
