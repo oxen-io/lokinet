@@ -22,12 +22,12 @@ namespace llarp
 
     udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u)
     {
-      portfd = new WSAOVERLAPPED;
+      portfd = new WSAOVERLAPPED[2];
     };
 
     ~udp_listener()
     {
-      delete portfd;
+      delete[] portfd;
     }
 
     int
@@ -49,7 +49,7 @@ namespace llarp
       llarp::LogInfo("read ", sz, " bytes into socket");
       int ret =
           ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags, addr,
-                        &slen, portfd, nullptr);
+                        &slen, &portfd[0], nullptr);
       // 997 is the error code for queued ops
       int s_errno = ::WSAGetLastError();
       if(ret && s_errno != 997)
@@ -81,7 +81,7 @@ namespace llarp
       // WSASendTo
       llarp::LogInfo("write ", sz, " bytes into socket");
       ssize_t sent = ::WSASendTo(std::get< SOCKET >(fd), &wbuf, 1, nullptr, 0,
-                                 to, slen, portfd, nullptr);
+                                 to, slen, &portfd[1], nullptr);
       int s_errno  = ::WSAGetLastError();
       if(sent && s_errno != 997)
       {
