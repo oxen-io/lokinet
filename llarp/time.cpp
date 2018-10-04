@@ -3,7 +3,7 @@
 
 namespace llarp
 {
-  typedef std::chrono::steady_clock Clock_t;
+  typedef std::chrono::system_clock Clock_t;
 
   template < typename Res >
   static llarp_time_t
