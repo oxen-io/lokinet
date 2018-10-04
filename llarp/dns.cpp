@@ -255,6 +255,14 @@ extern "C"
     // castBuf += 12;
     llarp::LogDebug("msg id ", hdr->id);
     llarp::LogDebug("msg qr ", (uint8_t)hdr->qr);
+    if(!udp)
+    {
+      llarp::LogError("no udp passed in to handler");
+    }
+    if(!addr)
+    {
+      llarp::LogError("no source addr passed in to handler");
+    }
     if(hdr->qr)
     {
       llarp::LogDebug("handling as dnsc answer");

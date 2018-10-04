@@ -94,7 +94,7 @@ dns_query *
 answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
                      dnsc_answer_hook_func resolved, void *user)
 {
-  dnsc_answer_request *request = new dnsc_answer_request;
+  std::unique_ptr< dnsc_answer_request > request(new dnsc_answer_request);
   if(!request)
   {
     llarp::LogError("Couldn't make dnsc request");
@@ -123,13 +123,23 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
 
   // register our self with the tracker
   dns_tracker *tracker = request->context->tracker;
-  uint16_t id          = ++tracker->c_requests;
+  if(!tracker)
+  {
+    llarp::LogError("no tracker in DNSc context");
+    return nullptr;
+  }
+
+  uint16_t id = ++tracker->c_requests;
   if(id == 65535)
     id = 0;
-  tracker->client_request[id] = std::unique_ptr< dnsc_answer_request >(request);
+  // conflict: do we need this?
+  // tracker->client_request[id] = std::unique_ptr< dnsc_answer_request
+  // >(request);
 
   dns_query *dns_packet = build_dns_packet(
       (char *)request->question.name.c_str(), id, request->question.type);
+
+  tracker->client_request[id] = std::move(request);
 
   return dns_packet;
 }
@@ -255,8 +265,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::LogDebug("Read answer, bytes left ", diff);
     if(diff > sz)
     {
-      llarp::LogWarn("Would read past end of dns packet. for ",
-                     request->question.name);
+      // llarp::LogWarn("Would read past end of dns packet. for ",
+      //               request->question.name);
       break;
     }
   }
@@ -306,11 +316,12 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
    MSGID = (uint16_t)buffer[0] * 0x100 + buffer[1];
    // llarp::LogDebug("answer msg id: %u\n", MSGID);
    */
-  llarp::Addr upstreamAddr(*request->context->server);
+  llarp::Addr upstreamAddr = request->context->resolvers[0];
 
   if(answer == nullptr)
   {
-    llarp::LogWarn("nameserver ", upstreamAddr, " didnt return any answers:");
+    llarp::LogWarn("nameserver ", upstreamAddr,
+                   " didnt return any answers for ", question->name);
     request->resolved(request);
     return;
   }
@@ -361,6 +372,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 
     if(answer->rdLen == 4)
     {
+      /*
       request->result.sa_family = AF_INET;
 #if((__APPLE__ && __MACH__) || __FreeBSD__)
       request->result.sa_len = sizeof(in_addr);
@@ -373,9 +385,12 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
       ip[1]             = answer->rData[1];
       ip[2]             = answer->rData[2];
       ip[3]             = answer->rData[3];
+      */
+      request->result.from_4int(answer->rData[0], answer->rData[1],
+                                answer->rData[2], answer->rData[3]);
 
-      llarp::Addr test(request->result);
-      llarp::LogDebug(test);
+      // llarp::Addr test(request->result);
+      // llarp::LogDebug(request->result);
       request->found = true;
       request->resolved(request);
       return;
@@ -390,7 +405,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   }
   else if(request->question.type == 12)
   {
-    llarp::LogInfo("Resolving PTR");
+    llarp::LogDebug("Resolving PTR");
     request->found  = true;
     request->revDNS = std::string((char *)answer->rData);
     request->resolved(request);
@@ -399,8 +414,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 }
 
 void
-raw_resolve_host(struct dnsc_context *dnsc, const char *url,
-                 dnsc_answer_hook_func resolved, void *user)
+raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
+                 dnsc_answer_hook_func resolved, void *const user)
 {
   dns_query *dns_packet =
       answer_request_alloc(dnsc, nullptr, url, resolved, user);
@@ -411,7 +426,7 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
   }
 
   // char *word;
-  llarp::Addr upstreamAddr(*dnsc->server);
+  llarp::Addr upstreamAddr = dnsc->resolvers[0];
   llarp::LogDebug("Asking DNS server ", upstreamAddr, " about ", url);
 
   struct sockaddr_in addr;
@@ -432,7 +447,7 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
     return;
   }
   // socket = sockfd;
-  sockaddr_in *dnscSock = ((sockaddr_in *)dnsc->server);
+  sockaddr_in *dnscSock = ((sockaddr_in *)dnsc->resolvers[0].addr4());
 
   memset(&addr, 0, sizeof(addr));
   addr.sin_family      = AF_INET;
@@ -442,13 +457,8 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
 
   // hexdump("sending packet", &dnsQuery.request, dnsQuery.length);
 
-#ifdef _WIN32
   ret = sendto(sockfd, (const char *)dns_packet->request, dns_packet->length, 0,
                (struct sockaddr *)&addr, size);
-#else
-  ret = sendto(sockfd, (const char *)dns_packet->request, dns_packet->length, 0,
-               (struct sockaddr *)&addr, size);
-#endif
 
   delete dns_packet;
   if(ret < 0)
@@ -493,9 +503,9 @@ raw_resolve_host(struct dnsc_context *dnsc, const char *url,
 
 /// intermediate udp_io handler
 void
-llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
+llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
                            const struct sockaddr *saddr, const void *buf,
-                           ssize_t sz)
+                           const ssize_t sz)
 {
   unsigned char *castBuf = (unsigned char *)buf;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
@@ -519,9 +529,10 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *udp,
 }
 
 bool
-llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
-                   dnsc_answer_hook_func resolved, void *user)
+llarp_resolve_host(struct dnsc_context *const dnsc, const char *url,
+                   dnsc_answer_hook_func resolved, void *const user)
 {
+  // FIXME: probably can be stack allocated
   dns_query *dns_packet =
       answer_request_alloc(dnsc, &dnsc->udp, url, resolved, user);
   if(!dns_packet)
@@ -571,7 +582,7 @@ llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
   // bytes");
 
   // ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, bytes, length);
-  ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server,
+  ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->resolvers[0],
                                     dns_packet->request, dns_packet->length);
   delete dns_packet;
   if(ret < 0)
@@ -584,7 +595,7 @@ llarp_resolve_host(struct dnsc_context *dnsc, const char *url,
 }
 
 void
-llarp_host_resolved(dnsc_answer_request *request)
+llarp_host_resolved(dnsc_answer_request *const request)
 {
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
   auto val             = std::find_if(
@@ -599,28 +610,41 @@ llarp_host_resolved(dnsc_answer_request *request)
   {
     llarp::LogWarn("Couldn't disable ", request);
   }
-  // delete request;
 }
 
 bool
-llarp_dnsc_init(struct dnsc_context *dnsc, struct llarp_logic *logic,
-                struct llarp_udp_io *udp, const char *dnsc_hostname,
-                uint16_t dnsc_port)
+llarp_dnsc_init(struct dnsc_context *const dnsc,
+                struct llarp_logic *const logic,
+                struct llarp_ev_loop *const netloop,
+                const llarp::Addr &dnsc_sockaddr)
 {
-  sockaddr_in *trgaddr     = new sockaddr_in;
-  trgaddr->sin_addr.s_addr = inet_addr(dnsc_hostname);
-  trgaddr->sin_port        = htons(dnsc_port);
-  trgaddr->sin_family      = AF_INET;
-  dnsc->server             = (sockaddr *)trgaddr;
-  dnsc->udp                = udp;
-  dnsc->tracker            = &dns_udp_tracker;
-  dnsc->logic              = logic;
+  // create client socket
+  if(netloop)
+  {
+    if(!dnsc->udp)
+    {
+      llarp::LogError("DNSc udp isn't set");
+      return false;
+    }
+    llarp::Addr dnsc_srcsockaddr(0, 0, 0, 0, 0);  // just find a public udp port
+    int bind_res = llarp_ev_add_udp(netloop, dnsc->udp,
+                                    (const sockaddr *)dnsc_srcsockaddr);
+    if(bind_res == -1)
+    {
+      llarp::LogError("Couldn't bind to ", dnsc_srcsockaddr);
+      return false;
+    }
+  }
+  llarp::LogInfo("DNSc adding relay ", dnsc_sockaddr);
+  dnsc->resolvers.push_back(dnsc_sockaddr);
+  dnsc->tracker = &dns_udp_tracker;
+  dnsc->logic   = logic;
   return true;
 }
 
 bool
-llarp_dnsc_stop(struct dnsc_context *dnsc)
+llarp_dnsc_stop(struct dnsc_context *const dnsc)
 {
-  delete(sockaddr_in *)dnsc->server;  // deallocation
+  // delete(sockaddr_in *)dnsc->server;  // deallocation
   return true;
 }

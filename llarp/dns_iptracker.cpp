@@ -47,8 +47,8 @@ dns_iptracker_setup(llarp::Addr tunGatewayIp)
   range->left = 252;
   // 4th octet, probably 1, set it
   struct dns_pointer *result = new dns_pointer;
-  result->hostResult         = new sockaddr;
-  tunGatewayIp.CopyInto(result->hostResult);
+  result->hostResult         = tunGatewayIp;
+  // tunGatewayIp.CopyInto(result->hostResult);
   // result->b32addr = ; // FIXME: should be our HS addr
   range->used[ip[3]] = result;  // claim tun IP
 
@@ -86,8 +86,9 @@ dns_iptracker_allocate_range(std::unique_ptr< ip_range > &range, uint8_t first)
   llarp::Addr ip(first, range->octet2, range->octet3,
                  range->left + 2);  // why plus 2? to start at .2
   llarp::LogDebug("Allocated ", ip);
-  result->hostResult = new sockaddr;
-  ip.CopyInto(result->hostResult);
+  // result->hostResult = new sockaddr;
+  // ip.CopyInto(result->hostResult);
+  result->hostResult = ip;
 
   // make an address and place into this sockaddr
   range->used[range->left + 2] = result;

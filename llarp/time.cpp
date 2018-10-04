@@ -22,9 +22,3 @@ llarp_time_now_ms()
 {
   return llarp::time_since_epoch< std::chrono::milliseconds >();
 }
-
-llarp_seconds_t
-llarp_time_now_sec()
-{
-  return llarp::time_since_epoch< std::chrono::seconds >();
-}

@@ -8,6 +8,7 @@
 #include <libgen.h>
 #endif
 #include "fs.hpp"
+#include "config.hpp"  // for ensure_config
 
 #ifdef _WIN32
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
@@ -26,7 +27,7 @@ handle_signal(int sig)
 int
 printHelp(const char *argv0, int code = 1)
 {
-  std::cout << "usage: " << argv0 << " [-h] [-g] config.ini" << std::endl;
+  std::cout << "usage: " << argv0 << " [-h] [-g|-c] config.ini" << std::endl;
   return code;
 }
 
@@ -66,7 +67,9 @@ main(int argc, char *argv[])
 
   int opt            = 0;
   bool genconfigOnly = false;
-  while((opt = getopt(argc, argv, "hg")) != -1)
+  bool asRouter      = true;
+  bool overWrite     = false;
+  while((opt = getopt(argc, argv, "hgcf")) != -1)
   {
     switch(opt)
     {
@@ -74,6 +77,13 @@ main(int argc, char *argv[])
         return printHelp(argv[0], 0);
       case 'g':
         genconfigOnly = true;
+        break;
+      case 'c':
+        genconfigOnly = true;
+        asRouter      = false;
+        break;
+      case 'f':
+        overWrite = true;
         break;
       default:
         return printHelp(argv[0]);
@@ -90,7 +100,7 @@ main(int argc, char *argv[])
     conffname        = fname.string();
     if(basedir.string().empty())
     {
-      if(!llarp_ensure_config(fname.string().c_str(), nullptr, genconfigOnly))
+      if(!llarp_ensure_config(fname.string().c_str(), nullptr, overWrite, asRouter))
         return 1;
     }
     else
@@ -106,7 +116,7 @@ main(int argc, char *argv[])
         }
       }
       if(!llarp_ensure_config(fname.string().c_str(), basedir.string().c_str(),
-                              genconfigOnly))
+                              overWrite, asRouter))
         return 1;
     }
   }
@@ -135,7 +145,7 @@ main(int argc, char *argv[])
     }
 
     if(!llarp_ensure_config(fpath.string().c_str(), basepath.string().c_str(),
-                            genconfigOnly))
+                            overWrite, asRouter))
       return 1;
     conffname = fpath.string();
   }

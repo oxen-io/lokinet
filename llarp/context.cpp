@@ -318,6 +318,11 @@ extern "C"
   int
   llarp_main_run(struct llarp_main *ptr)
   {
+    if(!ptr)
+    {
+      llarp::LogError("No ptr passed in");
+      return 0;
+    }
     return ptr->ctx->Run();
   }
 
@@ -336,11 +341,11 @@ extern "C"
 
   bool
   llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
-                       uint16_t server_port, const char *upstream_host,
-                       uint16_t upstream_port)
+                       const llarp::Addr &dnsd_sockaddr,
+                       const llarp::Addr &dnsc_sockaddr)
   {
-    return llarp_dnsd_init(dnsd, ptr->ctx->logic, ptr->ctx->mainloop, "*",
-                           server_port, upstream_host, upstream_port);
+    return llarp_dnsd_init(dnsd, ptr->ctx->logic, ptr->ctx->mainloop,
+                           dnsd_sockaddr, dnsc_sockaddr);
   }
 
   bool
@@ -392,7 +397,7 @@ extern "C"
      llarp_config_iter(ctx->config, &iter);
      */
     // llarp_rc *rc = new llarp_rc;
-    llarp::RouterContact *rc = new llarp::RouterContact;
+    // llarp::RouterContact *rc = new llarp::RouterContact;
     // llarp_rc_new(rc);
     // llarp::LogInfo("FIXME: Loading ", ptr->ctx->conatctFile);
     // FIXME
@@ -470,15 +475,24 @@ extern "C"
   llarp::handlers::TunEndpoint *
   main_router_getFirstTunEndpoint(struct llarp_main *ptr)
   {
-    auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
-    return endpoint->getFirstTun();
+    auto *context = &ptr->ctx->router->hiddenServiceContext;
+    return context->getFirstTun();
+  }
+
+  //#include <llarp/service/context.hpp>
+  bool
+  main_router_endpoint_iterator(
+      struct llarp_main *ptr, struct llarp::service::Context::endpoint_iter &i)
+  {
+    auto *context = &ptr->ctx->router->hiddenServiceContext;
+    return context->iterate(i);
   }
 
   llarp_tun_io *
   main_router_getRange(struct llarp_main *ptr)
   {
-    auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
-    return endpoint->getRange();
+    auto *context = &ptr->ctx->router->hiddenServiceContext;
+    return context->getRange();
   }
 
   const char *

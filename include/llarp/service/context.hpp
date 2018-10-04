@@ -19,6 +19,9 @@ namespace llarp
       void
       Tick();
 
+      bool
+      hasEndpoints();
+
       /// DRY refactor
       llarp::service::Endpoint *
       getFirstEndpoint();
@@ -31,16 +34,38 @@ namespace llarp
       llarp_tun_io *
       getRange();
 
+      struct mapAddressAll_context
+      {
+        llarp::service::Address serviceAddr;
+        llarp::Addr localPrivateIpAddr;
+      };
+
+      struct endpoint_iter
+      {
+        void *user;
+        llarp::service::Endpoint *endpoint;
+        size_t index;
+        bool (*visit)(struct endpoint_iter *);
+      };
+
       bool
-      AddDefaultEndpoint(const std::string & ifaddr, const std::string & ifname);
-      
+      iterate(struct endpoint_iter &i);
+
       /// hint at possible path usage and trigger building early
       bool
       Prefetch(const llarp::service::Address &addr);
 
       /// punch a hole open for DNS to add mappings
+      /// ip is in network order
       bool
       MapAddress(const llarp::service::Address &addr, uint32_t ip);
+
+      bool
+      MapAddressAll(const llarp::service::Address &addr,
+                    llarp::Addr &localPrivateIpAddr);
+
+      bool
+      AddDefaultEndpoint(const std::string &ifaddr, const std::string &ifname);
 
       bool
       AddEndpoint(const Config::section_t &conf);

@@ -887,6 +887,61 @@ namespace llarp
     return found;
   }
 
+  std::string
+  findFreePrivateRange()
+  {
+    // pick ip
+    struct privatesInUse ifsInUse = llarp_getPrivateIfs();
+    std::string ip                = "";
+    if(!ifsInUse.ten)
+    {
+      ip = "10.200.0.1/24";
+    }
+    else if(!ifsInUse.oneSeven)
+    {
+      ip = "172.16.10.1/24";
+    }
+    else if(!ifsInUse.oneNine)
+    {
+      ip = "192.168.10.1/24";
+    }
+    else
+    {
+      llarp::LogError(
+          "Couldn't easily detect a private range to map lokinet onto");
+      return "";
+    }
+    llarp::LogDebug("Detected " + ip
+                    + " is available for use, configuring as such");
+    return ip;
+  }
+
+  std::string
+  findFreeLokiTunIfName()
+  {
+    uint8_t num = 0;
+    while(num < 255)
+    {
+      std::string iftestname = "lokitun" + std::to_string(num);
+      struct sockaddr addr;
+      bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, &addr);
+      if(!found)
+      {
+        llarp::LogDebug("Detected " + iftestname
+                        + " is available for use, configuring as such");
+        break;
+      }
+      num++;
+    }
+    if(num == 255)
+    {
+      // llarp::LogError("Could not find any free lokitun interface names");
+      return "";
+    }
+    // include lokitun prefix to communicate result is valid
+    return "lokitun" + std::to_string(num);
+  }
+
   bool
   GetIFAddr(const std::string& ifname, Addr& addr, int af)
   {

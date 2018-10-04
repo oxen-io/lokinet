@@ -29,7 +29,7 @@ namespace llarp
       tunif.before_write   = &tunifBeforeWrite;
       tunif.recvpkt        = &tunifRecvPkt;
       this->dll.ip_tracker = nullptr;
-      this->dll.user       = this;
+      this->dll.user       = &r->hiddenServiceContext;
       // this->dll.callback = std::bind(&TunEndpoint::MapAddress, this);
     }
 
@@ -146,13 +146,14 @@ namespace llarp
 #else
       if(!NetworkIsIsolated())
       {
+        llarp::LogInfo("Setting up global DNS IP tracker");
+        llarp::Addr tunIp(tunif.ifaddr);
+        dns_iptracker_setup_dotLokiLookup(
+            &this->dll, tunIp);  // just set ups dll to use global iptracker
+
         // set up networking in currrent thread if we are not isolated
         if(!SetupNetworking())
           return false;
-
-        llarp::LogInfo("Setting up global DNS IP tracker");
-        llarp::Addr tunIp;
-        dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
       }
       else
       {
@@ -251,8 +252,24 @@ namespace llarp
 #ifndef _WIN32
       m_TunSetupResult.set_value(result);
 #endif
+      if(!NetworkIsIsolated())
+      {
+        // need to check to see if we have more than one hidden service
+        // well we'll only use the primary
+        // FIXME: detect number of hidden services
+        llarp::LogWarn(
+            "Only utilizing first hidden service for .loki look ups");
+        // because we can't find to the tun interface because we don't want it
+        // accessible on lokinet we can only bind one to loopback, and we can't
+        // really utilize anything other than port 53 we can't bind to our
+        // public interface, don't want it exploitable maybe we could detect if
+        // you have a private interface
+      }
+      llarp::Addr dnsd_sockaddr(127, 0, 0, 1, DNS_PORT);
+      llarp::Addr dnsc_sockaddr(8, 8, 8, 8, 53);
+      llarp::LogInfo("TunDNS set up ", dnsd_sockaddr, " to ", dnsc_sockaddr);
       if(!llarp_dnsd_init(&this->dnsd, EndpointLogic(), EndpointNetLoop(),
-                          tunif.ifname, DNS_PORT, "8.8.8.8", 53))
+                          dnsd_sockaddr, dnsc_sockaddr))
       {
         llarp::LogError("Couldnt init dns daemon");
       }

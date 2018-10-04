@@ -54,88 +54,86 @@ namespace llarp
 #endif
     }
 
-/// called in event loop when fd is ready for writing
-/// requeues anything not written
-/// this assumes fd is set to non blocking
-virtual void
-flush_write()
-{
-  m_writeq.Process([&](WriteBuffer& buffer) {
-    do_write(buffer.buf, buffer.bufsz);
-    // if we would block we save the entries for later
-    // discard entry
-  });
-  /// reset errno
-  errno = 0;
+    /// called in event loop when fd is ready for writing
+    /// requeues anything not written
+    /// this assumes fd is set to non blocking
+    virtual void
+    flush_write()
+    {
+      m_writeq.Process([&](WriteBuffer& buffer) {
+        do_write(buffer.buf, buffer.bufsz);
+        // if we would block we save the entries for later
+        // discard entry
+      });
+      /// reset errno
+      errno = 0;
 #if _WIN32
-  SetLastError(0);
+      SetLastError(0);
 #endif
-}
-
-struct WriteBuffer
-{
-  llarp_time_t timestamp = 0;
-  size_t bufsz;
-  byte_t buf[1500];
-
-  WriteBuffer() = default;
-
-  WriteBuffer(const void* ptr, size_t sz)
-  {
-    if(sz <= sizeof(buf))
-    {
-      bufsz = sz;
-      memcpy(buf, ptr, bufsz);
     }
-    else
-      bufsz = 0;
-  }
 
-  struct GetTime
-  {
-    llarp_time_t
-    operator()(const WriteBuffer& w) const
+    struct WriteBuffer
     {
-      return w.timestamp;
-    }
-  };
+      llarp_time_t timestamp = 0;
+      size_t bufsz;
+      byte_t buf[1500];
 
-  struct PutTime
-  {
-    void
-    operator()(WriteBuffer& w) const
+      WriteBuffer() = default;
+
+      WriteBuffer(const void* ptr, size_t sz)
+      {
+        if(sz <= sizeof(buf))
+        {
+          bufsz = sz;
+          memcpy(buf, ptr, bufsz);
+        }
+        else
+          bufsz = 0;
+      }
+
+      struct GetTime
+      {
+        llarp_time_t
+        operator()(const WriteBuffer& w) const
+        {
+          return w.timestamp;
+        }
+      };
+
+      struct PutTime
+      {
+        void
+        operator()(WriteBuffer& w) const
+        {
+          w.timestamp = llarp_time_now_ms();
+        }
+      };
+
+      struct Compare
+      {
+        bool
+        operator()(const WriteBuffer& left, const WriteBuffer& right) const
+        {
+          return left.timestamp < right.timestamp;
+        }
+      };
+    };
+
+    llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
+                             WriteBuffer::PutTime, WriteBuffer::Compare,
+                             llarp::util::NullMutex, llarp::util::NullLock >
+        m_writeq;
+
+    virtual ~ev_io()
     {
-      w.timestamp = llarp_time_now_ms();
-    }
-  };
-
-  struct Compare
-  {
-    bool
-    operator()(const WriteBuffer& left, const WriteBuffer& right) const
-    {
-      return left.timestamp < right.timestamp;
-    }
-  };
-};
-
-llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
-                         WriteBuffer::PutTime, WriteBuffer::Compare,
-                         llarp::util::NullMutex, llarp::util::NullLock >
-    m_writeq;
-
-virtual ~ev_io()
-{
 #ifndef _WIN32
-  ::close(fd);
+      ::close(fd);
 #else
-  closesocket(fd);
+      closesocket(fd);
 #endif
-};
-}
-;
-}
-;  // namespace llarp
+    };
+  };
+};  // namespace llarp
 
 struct llarp_ev_loop
 {

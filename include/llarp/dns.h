@@ -19,21 +19,9 @@ extern "C"
    * dns client/server
    */
 
-  //#include <mutex>
-  // typedef std::mutex mtx_t;
-  // typedef std::lock_guard< mtx_t > lock_t;
-
   // fwd declr
-  // struct dns_query;
-  struct dnsc_context;
-  struct dnsd_context;
-  // struct dnsd_question_request;
   struct dnsc_answer_request;
 
-  // struct dns_tracker;
-
-  // should we pass by llarp::Addr
-  // not as long as we're supporting raw
   typedef void (*dnsc_answer_hook_func)(dnsc_answer_request *request);
 
 #ifdef __cplusplus
