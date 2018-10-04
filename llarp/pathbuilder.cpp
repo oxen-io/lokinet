@@ -133,8 +133,8 @@ namespace llarp
   void
   pathbuilder_generated_keys(AsyncPathKeyExchangeContext< path::Builder >* ctx)
   {
-    auto remote = ctx->path->Upstream();
-    auto router = ctx->user->router;
+    RouterID remote = ctx->path->Upstream();
+    auto router     = ctx->user->router;
     if(!router->SendToOrQueue(remote, &ctx->LRCM))
     {
       llarp::LogError("failed to send LRCM");

@@ -339,12 +339,13 @@ namespace llarp
               {
                 txitr->second->SendReply();
                 tx.erase(txitr);
-                itr = waiting.erase(itr);
-                continue;
               }
             }
             ++itr;
           }
+
+          if(sendreply)
+            waiting.erase(key);
 
           if(removeTimeouts)
             timeouts.erase(key);

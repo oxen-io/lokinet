@@ -900,20 +900,32 @@ namespace llarp
       return false;
     }
 
-    Endpoint::OutboundContext::OutboundContext(const IntroSet& intro,
+    Endpoint::OutboundContext::OutboundContext(const IntroSet& introset,
                                                Endpoint* parent)
         : path::Builder(parent->m_Router, parent->m_Router->dht, 3, 4)
-        , SendContext(intro.A, {}, this, parent)
-        , currentIntroSet(intro)
+        , SendContext(introset.A, {}, this, parent)
+        , currentIntroSet(introset)
 
     {
       updatingIntroSet = false;
-      if(intro.I.size())
-        remoteIntro = intro.I[0];
+      for(const auto intro : introset.I)
+      {
+        if(intro.expiresAt > m_NextIntro.expiresAt)
+        {
+          m_NextIntro = intro;
+          remoteIntro = intro;
+        }
+      }
     }
 
     Endpoint::OutboundContext::~OutboundContext()
     {
+    }
+
+    void
+    Endpoint::OutboundContext::SwapIntros()
+    {
+      remoteIntro = m_NextIntro;
     }
 
     bool
@@ -934,8 +946,10 @@ namespace llarp
         {
           llarp::LogWarn("failed to pick new intro during introset update");
         }
-        if(GetPathByRouter(remoteIntro.router) == nullptr)
-          BuildOneAlignedTo(remoteIntro.router);
+        if(GetPathByRouter(m_NextIntro.router) == nullptr)
+          BuildOneAlignedTo(m_NextIntro.router);
+        else
+          SwapIntros();
       }
       updatingIntroSet = false;
       return true;
@@ -944,7 +958,8 @@ namespace llarp
     bool
     Endpoint::OutboundContext::ReadyToSend() const
     {
-      return GetPathByRouter(remoteIntro.router) != nullptr;
+      return (!remoteIntro.router.IsZero())
+          && GetPathByRouter(remoteIntro.router) != nullptr;
     }
 
     bool
@@ -1087,10 +1102,10 @@ namespace llarp
           continue;
         }
         auto itr = m_BadIntros.find(intro);
-        if(itr == m_BadIntros.end() && intro.router == remoteIntro.router)
+        if(itr == m_BadIntros.end() && intro.router == m_NextIntro.router)
         {
           shiftedIntro = true;
-          remoteIntro  = intro;
+          m_NextIntro  = intro;
           break;
         }
       }
@@ -1105,9 +1120,9 @@ namespace llarp
           if(itr == m_BadIntros.end())
           {
             // TODO: this should always be true but idk if it really is
-            shiftedRouter = remoteIntro.router != intro.router;
+            shiftedRouter = m_NextIntro.router != intro.router;
             shiftedIntro  = true;
-            remoteIntro   = intro;
+            m_NextIntro   = intro;
             break;
           }
         }
@@ -1115,7 +1130,7 @@ namespace llarp
       if(shiftedRouter)
       {
         lastShift = now;
-        ManualRebuild(1);
+        BuildOneAlignedTo(m_NextIntro.router);
       }
       return shiftedIntro;
     }
@@ -1136,7 +1151,7 @@ namespace llarp
         if(m_BadIntros.find(intro) == m_BadIntros.end()
            && remoteIntro.router == intro.router)
         {
-          remoteIntro = intro;
+          m_NextIntro = intro;
           return true;
         }
       }
@@ -1145,13 +1160,13 @@ namespace llarp
         m_Endpoint->EnsureRouterIsKnown(intro.router);
         if(intro.ExpiresSoon(now))
           continue;
-        if(m_BadIntros.find(intro) == m_BadIntros.end() && remoteIntro != intro)
+        if(m_BadIntros.find(intro) == m_BadIntros.end() && m_NextIntro != intro)
         {
-          shifted = intro.router != remoteIntro.router
+          shifted = intro.router != m_NextIntro.router
               || (now < intro.expiresAt
                   && intro.expiresAt - now
                       > 10 * 1000);  // TODO: hardcoded value
-          remoteIntro = intro;
+          m_NextIntro = intro;
           success     = true;
           break;
         }
@@ -1159,7 +1174,7 @@ namespace llarp
       if(shifted)
       {
         lastShift = now;
-        ManualRebuild(1);
+        BuildOneAlignedTo(m_NextIntro.router);
       }
       return success;
     }
@@ -1372,6 +1387,14 @@ namespace llarp
         // shift intro if it expires "soon"
         ShiftIntroduction();
       }
+      if(remoteIntro != m_NextIntro)
+      {
+        if(GetPathByRouter(m_NextIntro.router) != nullptr)
+        {
+          // we can safely set remoteIntro to the next one
+          SwapIntros();
+        }
+      }
       // lookup router in intro if set and unknown
       if(!remoteIntro.router.IsZero())
         m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
@@ -1395,11 +1418,11 @@ namespace llarp
                                          const RouterContact& prev,
                                          RouterContact& cur, size_t hop)
     {
-      if(remoteIntro.router.IsZero())
+      if(m_NextIntro.router.IsZero())
         return false;
       if(hop == numHops - 1)
       {
-        if(llarp_nodedb_get_rc(db, remoteIntro.router, cur))
+        if(llarp_nodedb_get_rc(db, m_NextIntro.router, cur))
         {
           return true;
         }
@@ -1409,8 +1432,8 @@ namespace llarp
           llarp::LogError(
               "cannot build aligned path, don't have router for "
               "introduction ",
-              remoteIntro);
-          m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
+              m_NextIntro);
+          m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
           return false;
         }
       }

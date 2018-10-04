@@ -289,6 +289,10 @@ namespace llarp
         Name() const;
 
        private:
+        /// swap remoteIntro with next intro
+        void
+        SwapIntros();
+
         void
         OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
@@ -297,6 +301,7 @@ namespace llarp
 
         uint64_t m_UpdateIntrosetTX = 0;
         IntroSet currentIntroSet;
+        Introduction m_NextIntro;
         std::unordered_map< Introduction, llarp_time_t, Introduction::Hash >
             m_BadIntros;
         llarp_time_t lastShift = 0;
