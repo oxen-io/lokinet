@@ -93,8 +93,8 @@ struct llarp_router
 
   llarp::service::Context hiddenServiceContext;
 
-  std::string defaultIfAddr = "auto";
-  std::string defaultIfName = "auto";
+  std::string defaultIfAddr   = "auto";
+  std::string defaultIfName   = "auto";
   bool disableDefaultEndpoint = false;
 
   bool
@@ -107,7 +107,7 @@ struct llarp_router
   std::vector< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;
 
   llarp::Profiling routerProfiling;
-  fs::path routerProfilesFile = "profiles.dat";
+  std::string routerProfilesFile = "profiles.dat";
 
   typedef std::queue< std::vector< byte_t > > MessageQueue;
 

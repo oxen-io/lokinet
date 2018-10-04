@@ -642,7 +642,7 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
 void
 llarp_router::Run()
 {
-  routerProfiling.Load(routerProfilesFile.string().c_str());
+  routerProfiling.Load(routerProfilesFile.c_str());
   // zero out router contact
   sockaddr *dest = (sockaddr *)&this->ip4addr;
   llarp::Addr publicAddr(*dest);
@@ -921,7 +921,7 @@ llarp_stop_router(struct llarp_router *router)
   if(router)
   {
     router->Close();
-    router->routerProfiling.Save(router->routerProfilesFile.string().c_str());
+    router->routerProfiling.Save(router->routerProfilesFile.c_str());
   }
 }
 
@@ -1098,7 +1098,9 @@ namespace llarp
     {
       if(StrEq(key, "profiles"))
       {
-        self->routerProfilesFile = fs::path(val);
+        self->routerProfilesFile = val;
+        self->routerProfiling.Load(val);
+        llarp::LogInfo("setting profiles to ", self->routerProfilesFile);
       }
       if(StrEq(key, "min-connected"))
       {
