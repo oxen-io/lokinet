@@ -518,7 +518,7 @@ namespace llarp
           Lock l(m_AuthedLinksMutex);
           for(const auto& pk : sessions)
           {
-            if(m_AuthedLinks.find(pk) == m_AuthedLinks.end())
+            if(m_AuthedLinks.count(pk) == 0)
             {
               // all sessions were removed
               router->SessionClosed(pk);
