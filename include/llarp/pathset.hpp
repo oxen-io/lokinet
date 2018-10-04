@@ -137,8 +137,18 @@ namespace llarp
       size_t m_NumPaths;
 
      private:
+
       typedef std::pair< RouterID, PathID_t > PathInfo_t;
-      typedef std::map< PathInfo_t, Path* > PathMap_t;
+
+      struct PathInfoHash
+      {
+        size_t operator()(const PathInfo_t & i) const
+        {
+          return *i.first.data_l() ^ *i.second.data_l();
+        }
+      };
+
+      typedef std::unordered_map< PathInfo_t, Path* , PathInfoHash> PathMap_t;
       PathMap_t m_Paths;
     };
 

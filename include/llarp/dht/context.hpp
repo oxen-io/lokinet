@@ -324,10 +324,9 @@ namespace llarp
 
         /// inform all watches for key of values found
         void
-        Inform(const TXOwner& from, const K key, std::vector< V > values,
+        Inform(TXOwner from, K key, std::vector< V > values,
                bool sendreply = false, bool removeTimeouts = true)
         {
-          llarp::LogWarn("Our key ", key);
           auto range = waiting.equal_range(key);
           auto itr   = range.first;
           while(itr != range.second)
@@ -341,31 +340,15 @@ namespace llarp
               {
                 txitr->second->SendReply();
                 tx.erase(txitr);
+                itr = waiting.erase(itr);
+                continue;
               }
             }
             ++itr;
           }
-          llarp::LogWarn("Our key2 ", key);
 
-          llarp::LogWarn("Waiting items ", waiting.size());
-          if(sendreply)
-          {
-            /*
-            // attempt to fix double free
-            for(auto it = begin(waiting); it != end(waiting);)
-            {
-              if(it->first == key)
-              {
-                it = waiting.erase(it);  // previously this was something like
-                                         // m_map.erase(it++);
-                break;
-              }
-              else
-                ++it;
-            }
-            */
-            waiting.erase(key);
-          }
+          //if(sendreply)
+            //waiting.erase(key);
 
           if(removeTimeouts)
             timeouts.erase(key);

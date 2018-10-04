@@ -227,6 +227,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 set(LIB_PLATFORM_SRC
+# string stuff
+  llarp/str.cpp
 # for outpug
   llarp/logger.cpp
 # needed for threading
@@ -320,7 +322,6 @@ set(LIB_SRC
   llarp/buffer.cpp
   llarp/config.cpp
   llarp/context.cpp
-  llarp/crypto_async.cpp
   llarp/crypto_libsodium.cpp
   llarp/dht.cpp
   llarp/dns.cpp
