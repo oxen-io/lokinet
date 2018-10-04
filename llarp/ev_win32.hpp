@@ -43,8 +43,8 @@ namespace llarp
       unsigned long flags = 0;
       WSABUF wbuf         = {sz, static_cast< char* >(buf)};
       // WSARecvFrom
-      int ret = ::WSARecvFrom(fd, &wbuf, 1, nullptr, &flags, addr, &slen,
-                              &portfds[0], nullptr);
+      int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
+                              addr, &slen, &portfds[0], nullptr);
       // 997 is the error code for queued ops
       int s_errno = ::WSAGetLastError();
       if(ret && s_errno != 997)
@@ -74,9 +74,9 @@ namespace llarp
           return -1;
       }
       // WSASendTo
-      ssize_t sent =
-          ::WSASendTo(fd, &wbuf, 1, nullptr, 0, to, slen, &portfds[1], nullptr);
-      int s_errno = ::WSAGetLastError();
+      ssize_t sent = ::WSASendTo(std::get< SOCKET >(fd), &wbuf, 1, nullptr, 0,
+                                 to, slen, &portfds[1], nullptr);
+      int s_errno  = ::WSAGetLastError();
       if(sent && s_errno != 997)
       {
         llarp::LogWarn("send socket error ", s_errno);
@@ -91,7 +91,7 @@ namespace llarp
     llarp_tun_io* t;
     device* tunif;
     tun(llarp_tun_io* tio)
-        : ev_io(INVALID_SOCKET)
+        : ev_io(INVALID_HANDLE_VALUE)
         , t(tio)
         , tunif(tuntap_init())
 
@@ -147,12 +147,12 @@ namespace llarp
         return false;
       }
 
-      fd = (SOCKET)tunif->tun_fd;
-      if(fd == -1)
+      fd = tunif->tun_fd;
+      if(std::get< HANDLE >(fd) == INVALID_HANDLE_VALUE)
         return false;
 
       // we're already non-blocking
-	  return true;
+      return true;
     }
 
     ~tun()
@@ -208,7 +208,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       {
         llarp::udp_listener* ev =
             reinterpret_cast< llarp::udp_listener* >(ev_id);
-        if(ev && ev->fd)
+        if(ev && !ev->fd.valueless_by_exception())
         {
           ev->getData(readbuf, sizeof(readbuf), iolen);
         }
@@ -216,18 +216,13 @@ struct llarp_win32_loop : public llarp_ev_loop
       ++idx;
     } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms));
 
-    // tick_listeners inlined since win32 does not
-    // implement ev_tun
-    for(auto& l : udp_listeners)
-    {
-      if(l->tick)
-        l->tick(l);
-    }
-
     if(!idx)
       return -1;
     else
+    {
+      tick_listeners();
       result = idx;
+    }
 
     return result;
   }
@@ -255,7 +250,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       {
         llarp::udp_listener* ev =
             reinterpret_cast< llarp::udp_listener* >(ev_id);
-        if(ev && ev->fd)
+        if(ev && !ev->fd.valueless_by_exception())
         {
           ev->getData(readbuf, sizeof(readbuf), iolen);
         }
@@ -263,16 +258,13 @@ struct llarp_win32_loop : public llarp_ev_loop
       ++idx;
     } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10));
 
-    for(auto& l : udp_listeners)
-    {
-      if(l->tick)
-        l->tick(l);
-    }
-
     if(!idx)
       return -1;
     else
+    {
+      tick_listeners();
       result = idx;
+    }
 
     return result;
   }
@@ -331,8 +323,9 @@ struct llarp_win32_loop : public llarp_ev_loop
   {
     // On Windows, just close the socket to decrease the iocp refcount
     // and stop any pending I/O
-    BOOL stopped = ::CancelIo(reinterpret_cast< HANDLE >(ev->fd));
-    return closesocket(ev->fd) == 0 && stopped == TRUE;
+    BOOL stopped =
+        ::CancelIo(reinterpret_cast< HANDLE >(std::get< SOCKET >(ev->fd)));
+    return closesocket(std::get< SOCKET >(ev->fd)) == 0 && stopped == TRUE;
   }
 
   llarp::ev_io*
@@ -362,11 +355,26 @@ struct llarp_win32_loop : public llarp_ev_loop
   add_ev(llarp::ev_io* ev, bool write)
   {
     ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
-    if(!::CreateIoCompletionPort(reinterpret_cast< HANDLE >(ev->fd), iocpfd,
-                                 ev->listener_id, 0))
+    switch(ev->fd.index())
     {
-      delete ev;
-      return false;
+      case 0:
+        if(!::CreateIoCompletionPort((HANDLE)std::get< 0 >(ev->fd), iocpfd,
+                                     ev->listener_id, 0))
+        {
+          delete ev;
+          return false;
+        }
+        break;
+      case 1:
+        if(!::CreateIoCompletionPort(std::get< 1 >(ev->fd), iocpfd,
+                                     ev->listener_id, 0))
+        {
+          delete ev;
+          return false;
+        }
+        break;
+      default:
+        return false;
     }
     return true;
   }

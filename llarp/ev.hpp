@@ -5,14 +5,16 @@
 #ifndef _WIN32
 #include <sys/uio.h>
 #endif
-
-#ifndef _MSC_VER
 #include <unistd.h>
-#endif
 #include <llarp/buffer.h>
 #include <list>
 #include <llarp/codel.hpp>
 #include <vector>
+
+#ifdef _WIN32
+#include <variant>
+#endif
+
 #ifndef MAX_WRITE_QUEUE_SIZE
 #define MAX_WRITE_QUEUE_SIZE 1024
 #endif
@@ -29,13 +31,18 @@ namespace llarp
     int fd;
     ev_io(int f) : fd(f), m_writeq("writequeue"){};
 #else
-    SOCKET fd;
+    // on windows, udp event loops are socket fds
+    // and TUN device is a plain old fd
+    std::variant< SOCKET, HANDLE > fd;
     // the unique completion key that helps us to
     // identify the object instance for which we receive data
-    // Here, we'll use the address of the udp_listener instance, converted to
-    // its literal int/int64 representation.
+    // Here, we'll use the address of the udp_listener instance, converted
+    // to its literal int/int64 representation.
     ULONG_PTR listener_id = 0;
     ev_io(SOCKET f) : fd(f), m_writeq("writequeue"){};
+    ev_io(HANDLE t)
+        : fd(t), m_writeq("writequeue"){};  // overload for TUN device, which
+                                            // _is_ a regular file descriptor
 #endif
     virtual int
     read(void* buf, size_t sz) = 0;
@@ -50,7 +57,7 @@ namespace llarp
 #ifndef _WIN32
       return write(fd, data, sz) != -1;
 #else
-      return WriteFile((void*)fd, data, sz, nullptr, nullptr);
+      return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, nullptr);
 #endif
     }
 
@@ -129,7 +136,7 @@ namespace llarp
 #ifndef _WIN32
       ::close(fd);
 #else
-      closesocket(fd);
+      closesocket(std::get< SOCKET >(fd));
 #endif
     };
   };
@@ -156,7 +163,11 @@ struct llarp_ev_loop
     auto ev = create_udp(l, src);
     if(ev)
     {
+#ifdef _WIN32
+      l->fd = std::get< SOCKET >(ev->fd);
+#else
       l->fd = ev->fd;
+#endif
     }
     return ev && add_ev(ev, false);
   }
