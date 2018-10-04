@@ -350,7 +350,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   ep[2] = (s->S_un.S_addr | ~mask)
       - (mask + 1); /* For the 10.x.0.y subnet (in a class C config), _should_
                        be 10.x.0.254 i think */
-  ep[3] = 86400;    /* one day */
+  ep[3] = 3153600;    /* one year */
 
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_MASQ, ep, sizeof(ep),
                         ep, sizeof(ep), &len, NULL);
@@ -436,7 +436,7 @@ tuntap_set_nonblocking(struct device *dev, int set)
   (void)dev;
   (void)set;
   tuntap_log(TUNTAP_LOG_NOTICE,
-             "Your system does not support tuntap_set_nonblocking()");
+             "TUN/TAP devices on Windows are non-blocking by default using either overlapped I/O or IOCPs");
   return -1;
 }
 
@@ -463,7 +463,6 @@ tuntap_set_descr(struct device *dev, const char *descr)
 int
 tuntap_set_ifname(struct device *dev, const char *name)
 {
-  /* TODO: Check Windows API to know how to rename an interface */
   (void)dev;
   (void)name;
   tuntap_log(TUNTAP_LOG_NOTICE,
