@@ -140,9 +140,11 @@ dns_iptracker_check_range(std::vector< std::unique_ptr< ip_range > > &ranges,
     new_range->octet3 = 0;  // FIXME: counter (0-255)
     // CHECK: planning a /24 but maybe that's too wide for broadcasts
     new_range->left = 252;  // 0 is net, 1 is gw, 255 is broadcast
-    ranges.push_back(std::move(new_range));
     // don't need to check if we're out since this is fresh range
-    return dns_iptracker_allocate_range(new_range, first);
+    auto result = dns_iptracker_allocate_range(new_range, first);
+    // std::move sets std::unique_ptr to null afterwards
+    ranges.push_back(std::move(new_range));
+    return result;
   }
   return nullptr;
 }
