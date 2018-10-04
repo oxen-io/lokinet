@@ -16,9 +16,9 @@ dns_iptracker_init()
 
   // disable all possibilities unless you setup a tunGateway
 
-  g_dns_iptracker.used_privates.ten      = true;
-  g_dns_iptracker.used_privates.oneSeven = true;
-  g_dns_iptracker.used_privates.oneNine  = true;
+  g_dns_iptracker.used_privates.ten      = false;
+  g_dns_iptracker.used_privates.oneSeven = false;
+  g_dns_iptracker.used_privates.oneNine  = false;
 }
 
 // not sure we want tunGatewayIP... we'll know when we get further
@@ -59,17 +59,17 @@ dns_iptracker_setup(dns_iptracker *iptracker, llarp::Addr tunGatewayIp)
   if(ip[0] == 10)
   {
     iptracker->used_ten_ips.push_back(std::move(range));
-    iptracker->used_privates.ten = false;
+    iptracker->used_privates.ten = true;
   }
   else if(ip[0] == 172)
   {
     iptracker->used_seven_ips.push_back(std::move(range));
-    iptracker->used_privates.oneSeven = false;
+    iptracker->used_privates.oneSeven = true;
   }
   else if(ip[0] == 192)
   {
     iptracker->used_nine_ips.push_back(std::move(range));
-    iptracker->used_privates.oneNine = false;
+    iptracker->used_privates.oneNine = true;
   }
   else
   {
@@ -142,6 +142,7 @@ dns_iptracker_check_range(std::vector< std::unique_ptr< ip_range > > &ranges,
     new_range->octet3 = 0;  // FIXME: counter (0-255)
     // CHECK: planning a /24 but maybe that's too wide for broadcasts
     new_range->left = 252;  // 0 is net, 1 is gw, 255 is broadcast
+    ranges.push_back(std::move(new_range));
     // don't need to check if we're out since this is fresh range
     return dns_iptracker_allocate_range(ranges[0], first);
   }
@@ -159,7 +160,7 @@ dns_iptracker_get_free(dns_iptracker *iptracker)
 {
   llarp::LogInfo("We used 10.x.x.x? ",
                  iptracker->used_privates.ten ? "Yes" : "No");
-  if(!iptracker->used_privates.ten)
+  if(iptracker->used_privates.ten)
   {
     struct dns_pointer *test =
         dns_iptracker_check_range(iptracker->used_ten_ips, 10);
@@ -170,7 +171,7 @@ dns_iptracker_get_free(dns_iptracker *iptracker)
   }
   llarp::LogInfo("We used 172.16.x.x? ",
                  iptracker->used_privates.oneSeven ? "Yes" : "No");
-  if(!iptracker->used_privates.oneSeven)
+  if(iptracker->used_privates.oneSeven)
   {
     struct dns_pointer *test =
         dns_iptracker_check_range(iptracker->used_seven_ips, 172);
@@ -181,7 +182,7 @@ dns_iptracker_get_free(dns_iptracker *iptracker)
   }
   llarp::LogInfo("We used 192.168.x.x? ",
                  iptracker->used_privates.oneNine ? "Yes" : "No");
-  if(!iptracker->used_privates.oneNine)
+  if(iptracker->used_privates.oneNine)
   {
     struct dns_pointer *test =
         dns_iptracker_check_range(iptracker->used_nine_ips, 192);
