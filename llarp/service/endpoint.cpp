@@ -1099,9 +1099,19 @@ namespace llarp
             return false;
         }
         // middle hop
-        else if(!llarp_nodedb_select_random_hop(nodedb, hops[hop - 1],
-                                                hops[hop], hop))
-          return false;
+        else
+        {
+          size_t tries = 5;
+          do
+          {
+            llarp_nodedb_select_random_hop(nodedb, hops[hop - 1], hops[hop],
+                                           hop);
+            --tries;
+          } while(m_Endpoint->Router()->routerProfiling.IsBad(hops[hop].pubkey)
+                  && tries > 0);
+          return tries > 0;
+        }
+        return false;
       }
       Build(hops);
       return true;

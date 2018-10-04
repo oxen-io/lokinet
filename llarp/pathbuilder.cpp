@@ -178,7 +178,13 @@ namespace llarp
         else
           return llarp_nodedb_select_random_hop(db, prev, cur, 0);
       }
-      return llarp_nodedb_select_random_hop(db, prev, cur, hop);
+      size_t tries = 5;
+      do
+      {
+        --tries;
+        llarp_nodedb_select_random_hop(db, prev, cur, hop);
+      } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
+      return tries > 0;
     }
 
     const byte_t*
