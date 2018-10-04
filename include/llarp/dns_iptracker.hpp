@@ -41,7 +41,7 @@ bool
 dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll, llarp::Addr tunGatewayIp);
 
 bool
-dns_iptracker_setup(llarp::Addr tunGatewayIp);
+dns_iptracker_setup(dns_iptracker *iptracker, llarp::Addr tunGatewayIp);
 
 struct dns_pointer *
 dns_iptracker_get_free();
