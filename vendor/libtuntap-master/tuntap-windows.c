@@ -330,6 +330,15 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   IPADDR sock[3];
   DWORD len, ret;
   IPADDR ep[4];
+#pragma pack(push)
+#pragma pack(1)
+  struct
+  {
+    uint8_t dhcp_opt;
+    uint8_t length;
+    uint32_t value[2];
+  } dns;
+#pragma pack(pop)
 
   sock[0] = s->S_un.S_addr;
   sock[2] = mask;
@@ -338,11 +347,25 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
                         &sock, sizeof(sock), &len, NULL);
   ep[0] = s->S_un.S_addr;
   ep[1] = mask;
-  ep[2] = (s->S_un.S_addr | ~mask) - (mask+1);      /* For the 10.x.y.y subnet (in a class C config), _should_ be 10.x.255.254 i think */
-  ep[3] = 8400; /* one day */
+  ep[2] = (s->S_un.S_addr | ~mask)
+      - (mask + 1); /* For the 10.x.0.y subnet (in a class C config), _should_
+                       be 10.x.0.254 i think */
+  ep[3] = 86400;    /* one day */
 
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_MASQ, ep, sizeof(ep),
                         ep, sizeof(ep), &len, NULL);
+
+  /* set DNS address to 127.0.0.1 as lokinet-client runs its own DNS resolver
+   * inline */
+  dns.dhcp_opt = 6;
+  dns.length   = 4;
+  dns.value[0] =
+      htonl(0x7F000001); /* apparently this doesn't show in network properties,
+                            but it works 🤷🏻‍♂️ */
+  dns.value[1] = 0;
+
+  ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &dns,
+                        sizeof(dns), &dns, sizeof(dns), &len, NULL);
 
   if(!ret)
   {
