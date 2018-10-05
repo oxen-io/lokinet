@@ -82,7 +82,7 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
                          dnsd_question_request *request)
 {
   const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
-  char buf[BUFFER_SIZE]; // heh, another UNIX compiler extension: VLAs in C++
+  char buf[BUFFER_SIZE];  // heh, another UNIX compiler extension: VLAs in C++
   memset(buf, 0, BUFFER_SIZE);
   char *write_buffer = buf;
   char *bufferBegin  = buf;

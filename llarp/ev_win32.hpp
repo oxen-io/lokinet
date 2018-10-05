@@ -22,7 +22,7 @@ namespace llarp
 
     udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u)
     {
-    	memset((void*)&portfd, 0, sizeof(WSAOVERLAPPED));
+      memset((void*)&portfd, 0, sizeof(WSAOVERLAPPED));
     };
 
     ~udp_listener()
@@ -46,9 +46,8 @@ namespace llarp
       WSABUF wbuf         = {sz, static_cast< char* >(buf)};
       // WSARecvFrom
       llarp::LogDebug("read ", sz, " bytes into socket");
-      int ret =
-          ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags, addr,
-                        &slen, &portfd, nullptr);
+      int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
+                              addr, &slen, &portfd, nullptr);
       // 997 is the error code for queued ops
       int s_errno = ::WSAGetLastError();
       if(ret && s_errno != 997)
@@ -121,7 +120,7 @@ namespace llarp
       ev_io::flush_write();
     }
 
-	bool
+    bool
     do_write(void* data, size_t sz)
     {
       return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, tun_async);
@@ -212,7 +211,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     // as an arch-specific pointer value
     ULONG_PTR ev_id      = 0;
     WSAOVERLAPPED* qdata = nullptr;
-	int idx = 0;
+    int idx              = 0;
     BOOL result =
         ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms);
 
@@ -221,7 +220,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
       if(ev && !ev->fd.valueless_by_exception())
       {
-        llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
+        llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
+                        "\tqdata: ", qdata);
         ev->getData(readbuf, sizeof(readbuf), iolen);
       }
       ++idx;
@@ -251,22 +251,21 @@ struct llarp_win32_loop : public llarp_ev_loop
     ULONG_PTR ev_id      = 0;
     WSAOVERLAPPED* qdata = nullptr;
     int idx              = 0;
-    int result           = ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10);
+    int result =
+        ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10);
 
     // unlike epoll and kqueue, we only need to run so long as the
     // system call returns TRUE
-      if(result)
+    if(result)
+    {
+      llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
+      if(ev && !ev->fd.valueless_by_exception())
       {
-        llarp::udp_listener* ev =
-            reinterpret_cast< llarp::udp_listener* >(ev_id);
-        if(ev && !ev->fd.valueless_by_exception())
-        {
-          llarp::LogInfo("size: ", iolen, "\tev_id: ", ev_id,
-                         "\tqdata: ", qdata);
-          ev->getData(readbuf, sizeof(readbuf), iolen);
-        }
-        ++idx;
+        llarp::LogInfo("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
+        ev->getData(readbuf, sizeof(readbuf), iolen);
       }
+      ++idx;
+    }
 
     if(!idx)
       return -1;
@@ -294,7 +293,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       default:
         return INVALID_SOCKET;
     }
-    DWORD on = 1;
+    DWORD on  = 1;
     SOCKET fd = ::socket(addr->sa_family, SOCK_DGRAM, 0);
     if(fd == INVALID_SOCKET)
     {
@@ -365,33 +364,34 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   add_ev(llarp::ev_io* ev, bool write)
   {
-  	uint8_t buf[1024];
-  	llarp::udp_listener *udp = nullptr;
-  	llarp::tun *t = nullptr;
-    ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
+    uint8_t buf[1024];
+    llarp::udp_listener* udp = nullptr;
+    llarp::tun* t            = nullptr;
+    ev->listener_id          = reinterpret_cast< ULONG_PTR >(ev);
     memset(&buf, 0, 1024);
 
     switch(ev->fd.index())
     {
       case 0:
-      	udp = dynamic_cast<llarp::udp_listener*>(ev);
+        udp = dynamic_cast< llarp::udp_listener* >(ev);
         if(!::CreateIoCompletionPort((HANDLE)std::get< 0 >(ev->fd), iocpfd,
                                      ev->listener_id, 0))
         {
           delete ev;
           return false;
         }
-        ::ReadFile((HANDLE)std::get<0>(ev->fd), &buf, 1024, nullptr, &udp->portfd);
+        ::ReadFile((HANDLE)std::get< 0 >(ev->fd), &buf, 1024, nullptr,
+                   &udp->portfd);
         break;
       case 1:
-		t = dynamic_cast<llarp::tun*>(ev);
+        t = dynamic_cast< llarp::tun* >(ev);
         if(!::CreateIoCompletionPort(std::get< 1 >(ev->fd), iocpfd,
                                      ev->listener_id, 0))
         {
           delete ev;
           return false;
         }
-        ::ReadFile(std::get<1>(ev->fd), &buf, 1024, nullptr, t->tun_async);
+        ::ReadFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr, t->tun_async);
         break;
       default:
         return false;

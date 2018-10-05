@@ -110,7 +110,8 @@ namespace llarp
 
         llarp::Addr tunIp(source_addr);
         // related to dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
-        dns_iptracker_setup(this->dll.ip_tracker, tunIp);  // claim GW IP to make sure it's not inuse
+        dns_iptracker_setup(this->dll.ip_tracker,
+                            tunIp);  // claim GW IP to make sure it's not inuse
         return true;
       }
       return Endpoint::SetOption(k, v);
@@ -150,7 +151,8 @@ namespace llarp
         llarp::Addr tunIp(tunif.ifaddr);
         dns_iptracker_setup_dotLokiLookup(
             &this->dll, tunIp);  // just set ups dll to use global iptracker
-        dns_iptracker_setup(this->dll.ip_tracker, tunIp);  // claim GW IP to make sure it's not inuse
+        dns_iptracker_setup(this->dll.ip_tracker,
+                            tunIp);  // claim GW IP to make sure it's not inuse
 
         // set up networking in currrent thread if we are not isolated
         if(!SetupNetworking())
@@ -162,8 +164,9 @@ namespace llarp
         llarp::Addr tunIp(tunif.ifaddr);
         this->dll.ip_tracker = new dns_iptracker;
         dns_iptracker_setup_dotLokiLookup(
-                                          &this->dll, tunIp);  // just set ups dll to use global iptracker
-        dns_iptracker_setup(this->dll.ip_tracker, tunIp);  // claim GW IP to make sure it's not inuse
+            &this->dll, tunIp);  // just set ups dll to use global iptracker
+        dns_iptracker_setup(this->dll.ip_tracker,
+                            tunIp);  // claim GW IP to make sure it's not inuse
       }
       // wait for result for network setup
       llarp::LogInfo("waiting for tun interface...");
@@ -254,7 +257,8 @@ namespace llarp
     {
       llarp::LogInfo("Set Up networking for ", Name());
       bool result = SetupTun();
-      m_TunSetupResult.set_value(result); // now that NT has tun, we don't need the CPP guard
+      m_TunSetupResult.set_value(
+          result);  // now that NT has tun, we don't need the CPP guard
       if(!NetworkIsIsolated())
       {
         // need to check to see if we have more than one hidden service
