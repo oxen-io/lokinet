@@ -17,17 +17,16 @@ namespace llarp
     // we receive queued data in the OVERLAPPED data field,
     // much like the pipefds in the UNIX kqueue and loonix
     // epoll handles
-    WSAOVERLAPPED* portfd;
+    WSAOVERLAPPED portfd;
     size_t iosz;
 
     udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u)
     {
-      portfd = new WSAOVERLAPPED[2];
+    	memset((void*)&portfd, 0, sizeof(WSAOVERLAPPED));
     };
 
     ~udp_listener()
     {
-      delete[] portfd;
     }
 
     int
@@ -46,10 +45,10 @@ namespace llarp
       unsigned long flags = 0;
       WSABUF wbuf         = {sz, static_cast< char* >(buf)};
       // WSARecvFrom
-      llarp::LogInfo("read ", sz, " bytes into socket");
+      llarp::LogDebug("read ", sz, " bytes into socket");
       int ret =
           ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags, addr,
-                        &slen, &portfd[0], nullptr);
+                        &slen, &portfd, nullptr);
       // 997 is the error code for queued ops
       int s_errno = ::WSAGetLastError();
       if(ret && s_errno != 997)
@@ -79,9 +78,9 @@ namespace llarp
           return -1;
       }
       // WSASendTo
-      llarp::LogInfo("write ", sz, " bytes into socket");
+      llarp::LogDebug("write ", sz, " bytes into socket");
       ssize_t sent = ::WSASendTo(std::get< SOCKET >(fd), &wbuf, 1, nullptr, 0,
-                                 to, slen, &portfd[1], nullptr);
+                                 to, slen, &portfd, nullptr);
       int s_errno  = ::WSAGetLastError();
       if(sent && s_errno != 997)
       {
@@ -213,15 +212,16 @@ struct llarp_win32_loop : public llarp_ev_loop
     // as an arch-specific pointer value
     ULONG_PTR ev_id      = 0;
     WSAOVERLAPPED* qdata = nullptr;
+	int idx = 0;
     BOOL result =
         ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms);
-    int idx = 0;
-    if(result)
+
+    if(result && qdata)
     {
       llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
       if(ev && !ev->fd.valueless_by_exception())
       {
-        llarp::LogInfo("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
+        llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
         ev->getData(readbuf, sizeof(readbuf), iolen);
       }
       ++idx;
@@ -250,14 +250,12 @@ struct llarp_win32_loop : public llarp_ev_loop
     // as an arch-specific pointer value
     ULONG_PTR ev_id      = 0;
     WSAOVERLAPPED* qdata = nullptr;
-    int result           = 0;
     int idx              = 0;
+    int result           = ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10);
 
     // unlike epoll and kqueue, we only need to run so long as the
     // system call returns TRUE
-    do
-    {
-      if(ev_id && qdata && iolen)
+      if(result)
       {
         llarp::udp_listener* ev =
             reinterpret_cast< llarp::udp_listener* >(ev_id);
@@ -267,9 +265,8 @@ struct llarp_win32_loop : public llarp_ev_loop
                          "\tqdata: ", qdata);
           ev->getData(readbuf, sizeof(readbuf), iolen);
         }
+        ++idx;
       }
-      ++idx;
-    } while(::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10));
 
     if(!idx)
       return -1;
@@ -297,8 +294,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       default:
         return INVALID_SOCKET;
     }
-    SOCKET fd = ::WSASocket(addr->sa_family, SOCK_DGRAM, 0, nullptr, 0,
-                            WSA_FLAG_OVERLAPPED);
+    DWORD on = 1;
+    SOCKET fd = ::socket(addr->sa_family, SOCK_DGRAM, 0);
     if(fd == INVALID_SOCKET)
     {
       perror("WSASocket()");
@@ -320,14 +317,15 @@ struct llarp_win32_loop : public llarp_ev_loop
       }
     }
     llarp::Addr a(*addr);
-    llarp::LogInfo("bind to ", a);
+    llarp::LogDebug("bind to ", a);
     if(bind(fd, addr, slen) == -1)
     {
       perror("bind()");
       closesocket(fd);
       return INVALID_SOCKET;
     }
-    llarp::LogInfo("socket fd is ", fd);
+    llarp::LogDebug("socket fd is ", fd);
+    ioctlsocket(fd, FIONBIO, &on);
     return fd;
   }
 
@@ -367,24 +365,31 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   add_ev(llarp::ev_io* ev, bool write)
   {
+  	uint8_t buf[1024];
     ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
+    memset(&buf, 0, 1024);
+
     switch(ev->fd.index())
     {
       case 0:
+      	llarp::udp_listener* udp = dynamic_cast<llarp::udp_listener*>(ev);
         if(!::CreateIoCompletionPort((HANDLE)std::get< 0 >(ev->fd), iocpfd,
                                      ev->listener_id, 0))
         {
           delete ev;
           return false;
         }
+        ::ReadFile((HANDLE)std::get<0>(ev->fd), &buf, 1024, nullptr, &udp->portfd);
         break;
       case 1:
+		llarp::tun* t = dynamic_cast<llarp::tun*>(ev);
         if(!::CreateIoCompletionPort(std::get< 1 >(ev->fd), iocpfd,
                                      ev->listener_id, 0))
         {
           delete ev;
           return false;
         }
+        ::ReadFile(std::get<1>(ev->fd), &buf, 1024, nullptr, t->tun_async);
         break;
       default:
         return false;
