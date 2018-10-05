@@ -366,13 +366,15 @@ struct llarp_win32_loop : public llarp_ev_loop
   add_ev(llarp::ev_io* ev, bool write)
   {
   	uint8_t buf[1024];
+  	llarp::udp_listener *udp = nullptr;
+  	llarp::tun *t = nullptr;
     ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
     memset(&buf, 0, 1024);
 
     switch(ev->fd.index())
     {
       case 0:
-      	llarp::udp_listener* udp = dynamic_cast<llarp::udp_listener*>(ev);
+      	udp = dynamic_cast<llarp::udp_listener*>(ev);
         if(!::CreateIoCompletionPort((HANDLE)std::get< 0 >(ev->fd), iocpfd,
                                      ev->listener_id, 0))
         {
@@ -382,7 +384,7 @@ struct llarp_win32_loop : public llarp_ev_loop
         ::ReadFile((HANDLE)std::get<0>(ev->fd), &buf, 1024, nullptr, &udp->portfd);
         break;
       case 1:
-		llarp::tun* t = dynamic_cast<llarp::tun*>(ev);
+		t = dynamic_cast<llarp::tun*>(ev);
         if(!::CreateIoCompletionPort(std::get< 1 >(ev->fd), iocpfd,
                                      ev->listener_id, 0))
         {

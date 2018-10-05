@@ -398,8 +398,13 @@ tuntap_read(struct device *dev, void *buf, size_t size)
   {
     int errcode = GetLastError();
 
-    tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
-    return -1;
+    if (errcode != 997)
+	{
+		tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
+		return -1;
+	}
+	else
+		return 0;
   }
 
   return 0;
@@ -412,10 +417,15 @@ tuntap_write(struct device *dev, void *buf, size_t size)
 
   if(WriteFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl) == 0)
   {
-    int errcode = GetLastError();
+  	int errcode = GetLastError();
 
-    tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
-    return -1;
+    if (errcode != 997)
+	{
+		tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
+		return -1;
+	}
+	else
+		return 0;
   }
 
   return 0;
