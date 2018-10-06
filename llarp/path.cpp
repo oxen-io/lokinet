@@ -204,6 +204,23 @@ namespace llarp
       return m_Router;
     }
 
+    IHopHandler *
+    PathContext::GetPathForTransfer(const PathID_t & id)
+    {
+      RouterID us(OurRouterID());
+      auto& map = m_TransitPaths;
+      {
+        util::Lock lock(map.first);
+        auto range = map.second.equal_range(id);
+        for(auto i = range.first; i != range.second; ++i)
+        {
+          if(i->second->info.upstream == us)
+            return i->second;
+        }
+      }
+      return nullptr;
+    }
+    
     void
     PathContext::PutTransitHop(TransitHop* hop)
     {
@@ -341,8 +358,7 @@ namespace llarp
       }
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
-      // TODO: or is it rxid ?
-      intro.pathID = hops[hsz - 1].rxID;
+      intro.pathID = hops[hsz - 1].txID;
       EnterState(ePathBuilding);
     }
 

@@ -151,11 +151,11 @@ namespace llarp
     TransitHop::HandlePathTransferMessage(
         const llarp::routing::PathTransferMessage* msg, llarp_router* r)
     {
-      auto path = r->paths.GetByUpstream(r->pubkey(), msg->P);
+      auto path = r->paths.GetPathForTransfer(msg->P);
       if(!path)
       {
         llarp::routing::DataDiscardMessage discarded(msg->P, msg->S);
-        path = r->paths.GetByUpstream(r->pubkey(), msg->from);
+        path = r->paths.GetPathForTransfer(msg->from);
         return path && path->SendRoutingMessage(&discarded, r);
       }
 
