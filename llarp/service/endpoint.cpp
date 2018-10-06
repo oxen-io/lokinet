@@ -740,7 +740,6 @@ namespace llarp
       p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, this,
                                   std::placeholders::_1,
                                   std::placeholders::_2));
-      RegenAndPublishIntroSet(llarp_time_now_ms());
       path::Builder::HandlePathBuilt(p);
     }
 
