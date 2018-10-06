@@ -342,7 +342,7 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       // TODO: or is it rxid ?
-      intro.pathID = hops[hsz - 1].txID;
+      intro.pathID = hops[hsz - 1].rxID;
       EnterState(ePathBuilding);
     }
 
