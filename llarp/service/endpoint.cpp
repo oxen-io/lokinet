@@ -617,7 +617,6 @@ namespace llarp
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
         msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 5));
-        llarp::LogInfo("build request for ", remote);
         return msg;
       }
     };
@@ -1565,6 +1564,7 @@ namespace llarp
       {
         llarp::LogDebug("sent message via ", remoteIntro.pathID, " on ",
                         remoteIntro.router);
+        lastGoodSend = now;
       }
       else
       {
