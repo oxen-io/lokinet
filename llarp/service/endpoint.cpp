@@ -572,6 +572,8 @@ namespace llarp
     bool
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
+      if(NumInStatus(llarp::path::eEstablished) < 3)
+        return false;
       if(m_IntroSet.HasExpiredIntros(now))
         return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
       return now - m_LastPublishAttempt >= INTROSET_PUBLISH_INTERVAL;
