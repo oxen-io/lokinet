@@ -950,6 +950,9 @@ namespace llarp
       {
         llarp::util::Lock sendlock(send_mtx);
         EncryptThenHashQueue(&Router()->crypto, sessionKey, sendq);
+        vecq.emplace_back();
+        vecq.back().iov_base = sendq.back().data();
+        vecq.back().iov_len  = FragmentBufferSize;
       }
     }
 
