@@ -918,6 +918,7 @@ namespace llarp
       bool encryptImmediate = false;
       if(state == eSessionReady)
       {
+        llarp::util::Lock lock(encryptq_mtx);
         encryptq.emplace_back();
         auto& buf = encryptq.back();
         llarp::LogDebug("encrypt then hash ", sz,
@@ -927,6 +928,7 @@ namespace llarp
       }
       else
       {
+        llarp::util::Lock sendlock(send_mtx);
         sendq.emplace_back();
         auto& buf = sendq.back();
         buf.Randomize();
@@ -946,6 +948,7 @@ namespace llarp
 
       if(encryptImmediate)
       {
+        llarp::util::Lock sendlock(send_mtx);
         EncryptThenHashQueue(&Router()->crypto, sessionKey, sendq);
       }
     }
