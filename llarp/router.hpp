@@ -217,7 +217,8 @@ struct llarp_router
   DiscardOutboundFor(const llarp::RouterID &remote);
 
   /// try establishing a session to a remote router
-  void
+  /// return false if we didn't make a job to do it
+  bool
   TryEstablishTo(const llarp::RouterID &remote);
 
   /// flush outbound message queue
