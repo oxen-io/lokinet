@@ -208,10 +208,21 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
   {
     llarp::LogWarn("tried to queue a message to ", remote,
                    " but the queue is full so we drop it like it's hawt");
-    return false;
+  }
+  llarp::RouterContact remoteRC;
+  // we don't have an open session to that router right now
+  if(llarp_nodedb_get_rc(nodedb, remote, remoteRC))
+  {
+    // try connecting directly as the rc is loaded from disk
+    llarp_router_try_connect(this, remoteRC, 10);
+    return true;
   }
 
-  return TryEstablishTo(remote);
+  // we don't have the RC locally so do a dht lookup
+  dht->impl.LookupRouter(remote,
+                         std::bind(&llarp_router::HandleDHTLookupForSendTo,
+                                   this, remote, std::placeholders::_1));
+  return true;
 }
 
 void
@@ -384,7 +395,7 @@ llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
   self->ScheduleTicker(orig);
 }
 
-bool
+void
 llarp_router::TryEstablishTo(const llarp::RouterID &remote)
 {
   llarp::RouterContact rc;
@@ -392,25 +403,17 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
   {
     // try connecting async
     llarp_router_try_connect(this, rc, 5);
-    return true;
   }
-  else
+  else if(!routerProfiling.IsBad(remote))
   {
-    if(routerProfiling.IsBad(remote))
-    {
-      llarp::LogWarn("won't connect to flakey router ", remote);
-      return false;
-    }
-
     if(dht->impl.HasRouterLookup(remote))
-      return false;
+      return;
     llarp::LogInfo("looking up router ", remote);
     // dht lookup as we don't know it
     dht->impl.LookupRouter(
         remote,
         std::bind(&llarp_router::HandleDHTLookupForTryEstablishTo, this, remote,
                   std::placeholders::_1));
-    return true;
   }
 }
 
@@ -476,7 +479,7 @@ llarp_router::Tick()
 
   if(inboundLinks.size() == 0)
   {
-    ssize_t N = llarp_nodedb_num_loaded(nodedb);
+    auto N = llarp_nodedb_num_loaded(nodedb);
     if(N < minRequiredRouters)
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,
