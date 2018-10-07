@@ -206,13 +206,13 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       while(idx < result)
       {
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
-        if (ev)
+        if(ev)
         {
           ev->read(readbuf, sizeof(readbuf));
         }
         else
         {
-          llarp::LogWarn("event[", idx,"] udata is not an ev_io");
+          llarp::LogWarn("event[", idx, "] udata is not an ev_io");
         }
         ++idx;
       }
@@ -313,7 +313,6 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       close(fd);
       return -1;
     }
-
     return fd;
   }
 

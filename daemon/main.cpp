@@ -100,7 +100,8 @@ main(int argc, char *argv[])
     conffname        = fname.string();
     if(basedir.string().empty())
     {
-      if(!llarp_ensure_config(fname.string().c_str(), nullptr, overWrite, asRouter))
+      if(!llarp_ensure_config(fname.string().c_str(), nullptr, overWrite,
+                              asRouter))
         return 1;
     }
     else

@@ -49,10 +49,4 @@ for a development environment:
 
 ## Usage
 
-### Windows
-
-Windows only supports client mode so you run `lokinet.exe` and that's it.
-
-### Linux
-
 see the [lokinet-builder](https://github.com/loki-project/lokinet-builder)
