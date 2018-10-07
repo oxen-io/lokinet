@@ -71,8 +71,6 @@ namespace llarp
       llarp::util::Mutex recv_mtx;
       std::deque< FragmentBuffer > recvq;
 
-      llarp_affined_caller_context* cryptoCaller;
-
       FragmentBuffer recvBuf;
       size_t recvBufOffset;
       MessageBuffer recvMsg;
