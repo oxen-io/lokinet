@@ -58,14 +58,27 @@ namespace llarp
       llarp_time_t lastActive;
       const static llarp_time_t sessionTimeout = 30 * 1000;
 
+      llarp::util::Mutex encryptq_mtx;
+      std::deque< FragmentBuffer > encryptq;
+
+      llarp::util::Mutex decryptq_mtx;
+      std::deque< FragmentBuffer > decryptq;
+
+      llarp::util::Mutex send_mtx;
       std::deque< utp_iovec > vecq;
       std::deque< FragmentBuffer > sendq;
+
+      llarp::util::Mutex recv_mtx;
+      std::deque< FragmentBuffer > recvq;
+
+      llarp_affined_caller_context* cryptoCaller;
 
       FragmentBuffer recvBuf;
       size_t recvBufOffset;
       MessageBuffer recvMsg;
       size_t recvMsgOffset;
       bool stalled = false;
+      std::atomic< bool > m_working;
 
       void
       Alive();
@@ -109,11 +122,84 @@ namespace llarp
       BaseSession();
       ~BaseSession();
 
+      static void
+      HandleCrypto(void* user);
+
       void
-      PumpWrite()
+      DoPump()
+      {
+        if(!ReadAll())
+        {
+          Close();
+          return;
+        }
+        WriteAll();
+        bool shouldCrypto = encryptq.size() || decryptq.size();
+        shouldCrypto &= !m_working;
+        if(shouldCrypto)
+        {
+          Busy();
+          llarp_threadpool_queue_job(Router()->tp, {this, &HandleCrypto});
+        }
+      }
+
+      void
+      Busy()
+      {
+        m_working.store(true);
+      }
+
+      void
+      NotBusy()
+      {
+        m_working.store(false);
+      }
+
+      bool
+      ReadAll()
+      {
+        llarp::util::Lock lock(recv_mtx);
+        auto itr = recvq.begin();
+        while(itr != recvq.end())
+        {
+          auto body = InitBuffer(itr->data() + FragmentOverheadSize,
+                                 FragmentBufferSize - FragmentOverheadSize);
+          uint32_t upper, lower;
+          if(!(llarp_buffer_read_uint32(&body, &upper)
+               && llarp_buffer_read_uint32(&body, &lower)))
+            return false;
+          bool fragmentEnd = upper == 0;
+          llarp::LogDebug("fragment size ", lower, " from ", remoteAddr);
+          if(lower + recvMsgOffset > recvMsg.size())
+          {
+            llarp::LogError("Fragment too big: ", lower, " bytes");
+            return false;
+          }
+          memcpy(recvMsg.data() + recvMsgOffset, body.cur, lower);
+          recvMsgOffset += lower;
+          if(fragmentEnd)
+          {
+            // got a message
+            llarp::LogDebug("end of message from ", remoteAddr);
+            auto mbuf = InitBuffer(recvMsg.data(), recvMsgOffset);
+            if(!Router()->HandleRecvLinkMessageBuffer(this, mbuf))
+            {
+              llarp::LogWarn("failed to handle message from ", remoteAddr);
+              llarp::DumpBuffer(mbuf);
+            }
+            recvMsgOffset = 0;
+          }
+          itr = recvq.erase(itr);
+        }
+        return true;
+      }
+
+      void
+      WriteAll()
       {
         if(!sock)
           return;
+        llarp::util::Lock lock(send_mtx);
         ssize_t expect = 0;
         std::vector< utp_iovec > vecs;
         for(const auto& vec : vecq)
@@ -127,7 +213,7 @@ namespace llarp
           llarp::LogDebug("utp_writev wrote=", s, " expect=", expect,
                           " to=", remoteAddr);
 
-          while(s > vecq.front().iov_len)
+          while(s > ssize_t(vecq.front().iov_len))
           {
             s -= vecq.front().iov_len;
             vecq.pop_front();
@@ -140,46 +226,16 @@ namespace llarp
             front.iov_base = ((byte_t*)front.iov_base) + s;
           }
         }
-
-        /*
-        while(sendq.size() > 0 && !stalled)
-        {
-          ssize_t expect = FragmentBufferSize - sendBufOffset;
-          ssize_t s      = write_ll(sendq.front().data() + sendBufOffset,
-        expect); if(s != expect)
-          {
-            llarp::LogDebug("stalled at offset=", sendBufOffset, " sz=", s,
-                            " to ", remoteAddr);
-            sendBufOffset += s;
-            stalled = true;
-          }
-          else
-          {
-            sendBufOffset = 0;
-            sendq.pop_front();
-          }
-        }
-        */
-      }
-
-      ssize_t
-      write_ll(byte_t* buf, size_t sz)
-      {
-        if(sock == nullptr)
-        {
-          llarp::LogWarn("write_ll failed: no socket");
-          return 0;
-        }
-        ssize_t s = utp_write(sock, buf, sz);
-        llarp::LogDebug("write_ll ", s, " of ", sz, " bytes to ", remoteAddr);
-        return s;
       }
 
       bool
       VerifyThenDecrypt(byte_t* buf);
 
       void
-      EncryptThenHash(const byte_t* ptr, uint32_t sz, bool isLastFragment);
+      QueueRecvFragment(const byte_t* buf);
+
+      void
+      QueueSendFragment(const byte_t* ptr, uint32_t sz, bool isLastFragment);
 
       bool
       QueueWriteBuffers(llarp_buffer_t buf)
@@ -193,7 +249,7 @@ namespace llarp
         while(sz)
         {
           uint32_t s = std::min(FragmentBodyPayloadSize, sz);
-          EncryptThenHash(ptr, s, ((sz - s) == 0));
+          QueueSendFragment(ptr, s, ((sz - s) == 0));
           ptr += s;
           sz -= s;
         }
@@ -272,8 +328,7 @@ namespace llarp
             s -= left;
             recvBufOffset = 0;
             ptr += left;
-            if(!VerifyThenDecrypt(recvBuf.data()))
-              return false;
+            QueueRecvFragment(recvBuf.data());
           }
         }
         // process full fragments
@@ -281,8 +336,7 @@ namespace llarp
         {
           recvBufOffset = 0;
           llarp::LogDebug("process full sz=", s);
-          if(!VerifyThenDecrypt(ptr))
-            return false;
+          QueueRecvFragment(ptr);
           ptr += FragmentBufferSize;
           s -= FragmentBufferSize;
         }
@@ -305,6 +359,8 @@ namespace llarp
       bool
       IsTimedOut(llarp_time_t now) const
       {
+        if(m_working)
+          return false;
         if(state == eClose)
           return true;
         if(now < lastActive)
@@ -338,6 +394,7 @@ namespace llarp
     {
       utp_context* _utp_ctx = nullptr;
       llarp_router* router  = nullptr;
+
       static uint64
       OnRead(utp_callback_arguments* arg);
 
@@ -526,6 +583,7 @@ namespace llarp
           }
         }
       }
+
       void
       Stop()
       {
@@ -572,6 +630,7 @@ namespace llarp
 
     BaseSession::BaseSession(LinkLayer* p)
     {
+      m_working.store(false);
       parent = p;
       remoteTransportPubKey.Zero();
       recvMsgOffset = 0;
@@ -603,7 +662,7 @@ namespace llarp
       GetPubKey  = std::bind(&BaseSession::RemotePubKey, this);
       lastActive = llarp_time_now_ms();
       // Pump       = []() {};
-      Pump = std::bind(&BaseSession::PumpWrite, this);
+      Pump = std::bind(&BaseSession::DoPump, this);
       Tick = std::bind(&BaseSession::TickImpl, this, std::placeholders::_1);
       SendMessageBuffer = std::bind(&BaseSession::QueueWriteBuffers, this,
                                     std::placeholders::_1);
@@ -801,7 +860,7 @@ namespace llarp
         }
         else if(arg->state == UTP_STATE_WRITABLE)
         {
-          session->PumpWrite();
+          session->WriteAll();
         }
         else if(arg->state == UTP_STATE_EOF)
         {
@@ -825,22 +884,59 @@ namespace llarp
       return 0;
     }
 
+    template < typename Queue_t >
     void
-    BaseSession::EncryptThenHash(const byte_t* ptr, uint32_t sz,
-                                 bool isLastFragment)
-
+    EncryptThenHashQueue(llarp_crypto* crypto, const byte_t* sessionKey,
+                         Queue_t& queue)
     {
-      sendq.emplace_back();
-      auto& buf = sendq.back();
-      vecq.emplace_back();
-      auto& vec    = vecq.back();
-      vec.iov_base = buf.data();
-      vec.iov_len  = FragmentBufferSize;
-      llarp::LogDebug("encrypt then hash ", sz, " bytes last=", isLastFragment);
-      buf.Randomize();
-      byte_t* nonce = buf.data() + FragmentHashSize;
-      byte_t* body  = nonce + FragmentNonceSize;
-      byte_t* base  = body;
+      auto itr = queue.begin();
+      while(itr != queue.end())
+      {
+        byte_t* base  = itr->data();
+        byte_t* nonce = base + FragmentHashSize;
+        byte_t* body  = nonce + FragmentNonceSize;
+        auto payload =
+            InitBuffer(body, FragmentBufferSize - FragmentOverheadSize);
+
+        // encrypt
+        crypto->xchacha20(payload, sessionKey, nonce);
+
+        payload.base = nonce;
+        payload.cur  = payload.base;
+        payload.sz   = FragmentBufferSize - FragmentHashSize;
+        // key'd hash
+        crypto->hmac(base, payload, sessionKey);
+
+        ++itr;
+      }
+    }
+
+    void
+    BaseSession::QueueSendFragment(const byte_t* ptr, uint32_t sz,
+                                   bool isLastFragment)
+    {
+      byte_t* nonce;
+      byte_t* body;
+      bool encryptImmediate = false;
+      if(state == eSessionReady)
+      {
+        encryptq.emplace_back();
+        auto& buf = encryptq.back();
+        llarp::LogDebug("encrypt then hash ", sz,
+                        " bytes last=", isLastFragment);
+        buf.Randomize();
+        nonce = buf.data() + FragmentHashSize;
+      }
+      else
+      {
+        sendq.emplace_back();
+        auto& buf = sendq.back();
+        buf.Randomize();
+        nonce            = buf.data() + FragmentHashSize;
+        encryptImmediate = true;
+      }
+
+      body = nonce + FragmentNonceSize;
       if(isLastFragment)
         htobe32buf(body, 0);
       else
@@ -850,17 +946,84 @@ namespace llarp
       body += sizeof(uint32_t);
       memcpy(body, ptr, sz);
 
-      auto payload =
-          InitBuffer(base, FragmentBufferSize - FragmentOverheadSize);
+      if(encryptImmediate)
+      {
+        EncryptThenHashQueue(&Router()->crypto, sessionKey, sendq);
+      }
+    }
 
+    template < typename Queue_t >
+    bool
+    VerifyThenDecryptQueue(llarp_crypto* crypto, const byte_t* sessionKey,
+                           Queue_t& queue)
+    {
+      ShortHash digest;
+      auto itr = queue.begin();
+      while(itr != queue.end())
+      {
+        byte_t* buf = itr->data();
+        auto hbuf   = InitBuffer(buf + FragmentHashSize,
+                               FragmentBufferSize - FragmentHashSize);
+        if(crypto->hmac(digest.data(), hbuf, sessionKey))
+        {
+          return false;
+        }
+        if(memcmp(digest, buf, FragmentHashSize))
+        {
+          return false;
+        }
+        auto body = InitBuffer(buf + FragmentOverheadSize,
+                               FragmentBufferSize - FragmentOverheadSize);
+        crypto->xchacha20(body, sessionKey, buf + FragmentHashSize);
+        ++itr;
+      }
+      return true;
+    }
+
+    void
+    BaseSession::HandleCrypto(void* user)
+    {
+      BaseSession* self    = static_cast< BaseSession* >(user);
+      llarp_crypto* crypto = &self->Router()->crypto;
       // encrypt
-      Router()->crypto.xchacha20(payload, sessionKey, nonce);
-
-      payload.base = nonce;
-      payload.cur  = payload.base;
-      payload.sz   = FragmentBufferSize - FragmentHashSize;
-      // key'd hash
-      Router()->crypto.hmac(buf.data(), payload, sessionKey);
+      {
+        llarp::util::Lock enclock(self->encryptq_mtx);
+        EncryptThenHashQueue(crypto, self->sessionKey, self->encryptq);
+        {
+          llarp::util::Lock sendlock(self->send_mtx);
+          while(self->encryptq.size())
+          {
+            self->sendq.emplace_back();
+            // uses operator = from aligned buffer
+            self->sendq.back() = self->encryptq.front();
+            self->encryptq.pop_front();
+            self->vecq.emplace_back();
+            self->vecq.back().iov_base = self->sendq.back().data();
+            self->vecq.back().iov_len  = FragmentBufferSize;
+          }
+        }
+      }
+      // decrypt
+      {
+        llarp::util::Lock declock(self->decryptq_mtx);
+        if(VerifyThenDecryptQueue(crypto, self->sessionKey, self->decryptq))
+        {
+          llarp::util::Lock recvlock(self->recv_mtx);
+          while(self->decryptq.size())
+          {
+            self->recvq.emplace_back();
+            // uses operator = from aligned buffer
+            self->recvq.back() = self->decryptq.front();
+            self->decryptq.pop_front();
+          }
+        }
+        else
+        {
+          // TODO: should we post a job instead?
+          self->Close();
+        }
+      }
+      self->NotBusy();
     }
 
     void
@@ -875,61 +1038,25 @@ namespace llarp
       Alive();
     }
 
-    bool
-    BaseSession::VerifyThenDecrypt(byte_t* buf)
+    void
+    BaseSession::QueueRecvFragment(const byte_t* buf)
     {
-      llarp::LogDebug("verify then decrypt ", remoteAddr);
-      ShortHash digest;
-
-      auto hbuf = InitBuffer(buf + FragmentHashSize,
-                             FragmentBufferSize - FragmentHashSize);
-      if(!Router()->crypto.hmac(digest.data(), hbuf, sessionKey))
+      if(state == eSessionReady)
       {
-        llarp::LogError("keyed hash failed");
-        return false;
+        decryptq.emplace_back();
+        memcpy(decryptq.back().data(), buf, FragmentBufferSize);
       }
-      ShortHash expected(buf);
-      if(expected != digest)
+      else if(state == eLinkEstablished)
       {
-        llarp::LogError("Message Integrity Failed: got ", digest, " from ",
-                        remoteAddr, " instead of ", expected);
-        llarp::DumpBuffer(InitBuffer(buf, FragmentBufferSize));
-        return false;
+        // handshake it
+        std::deque< FragmentBuffer > handshakeq;
+        handshakeq.emplace_back(buf);
+        if(VerifyThenDecryptQueue(&Router()->crypto, sessionKey, handshakeq))
+          ReadAll();
+        else
+          Close();
       }
-
-      auto body = InitBuffer(buf + FragmentOverheadSize,
-                             FragmentBufferSize - FragmentOverheadSize);
-
-      Router()->crypto.xchacha20(body, sessionKey, buf + FragmentHashSize);
-
-      uint32_t upper, lower;
-      if(!(llarp_buffer_read_uint32(&body, &upper)
-           && llarp_buffer_read_uint32(&body, &lower)))
-        return false;
-      bool fragmentEnd = upper == 0;
-      llarp::LogDebug("fragment size ", lower, " from ", remoteAddr);
-      if(lower + recvMsgOffset > recvMsg.size())
-      {
-        llarp::LogError("Fragment too big: ", lower, " bytes");
-        return false;
-      }
-      memcpy(recvMsg.data() + recvMsgOffset, body.cur, lower);
-      recvMsgOffset += lower;
-      if(fragmentEnd)
-      {
-        // got a message
-        llarp::LogDebug("end of message from ", remoteAddr);
-        auto mbuf = InitBuffer(recvMsg.data(), recvMsgOffset);
-        if(!Router()->HandleRecvLinkMessageBuffer(this, mbuf))
-        {
-          llarp::LogWarn("failed to handle message from ", remoteAddr);
-          llarp::DumpBuffer(mbuf);
-        }
-        recvMsgOffset = 0;
-      }
-      return true;
     }
-
     void
     BaseSession::Close()
     {
