@@ -15,6 +15,9 @@ namespace llarp
 }  // namespace llarp
 
 // use std::chrono because otherwise the network breaks with Daylight Savings
+// this time, it doesn't get truncated -despair
+// that concern is what drove me back to the POSIX C time functions
+// in the first place
 llarp_time_t
 llarp_time_now_ms()
 {

@@ -68,6 +68,9 @@ extern "C"
     dev->tun_fd    = TUNFD_INVALID_VALUE;
     dev->ctrl_sock = -1;
     dev->flags     = 0;
+	#if defined(Windows)
+	memset(&dev->ovl, 0, sizeof(OVERLAPPED));
+	#endif
 
     __tuntap_log = &tuntap_log_default;
     return dev;
