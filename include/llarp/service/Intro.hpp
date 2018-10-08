@@ -77,7 +77,7 @@ namespace llarp
       bool
       operator!=(const Introduction& other) const
       {
-        return !(*this == other);
+        return pathID != other.pathID || router != other.router;
       }
 
       struct Hash
