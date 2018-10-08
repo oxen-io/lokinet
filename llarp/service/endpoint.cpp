@@ -762,7 +762,6 @@ namespace llarp
                        p->Endpoint(), " via ", dst);
         if(MarkCurrentIntroBad(llarp_time_now_ms()))
         {
-          SwapIntros();
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
         }
@@ -1419,13 +1418,15 @@ namespace llarp
       {
         // shift intro if it expires "soon"
         ShiftIntroduction();
-      }
-      if(remoteIntro != m_NextIntro)
-      {
-        if(GetPathByRouter(m_NextIntro.router) != nullptr)
+      
+        if(remoteIntro != m_NextIntro)
         {
-          // we can safely set remoteIntro to the next one
-          SwapIntros();
+          if(GetPathByRouter(m_NextIntro.router) != nullptr)
+          {
+            // we can safely set remoteIntro to the next one
+            SwapIntros();
+            llarp::LogInfo(Name(), "swapped intro");
+          }
         }
       }
       // lookup router in intro if set and unknown
