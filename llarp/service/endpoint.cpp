@@ -830,8 +830,6 @@ namespace llarp
     {
       if(latency >= m_MinPathLatency)
       {
-        // rebuild path next tick
-        // llarp_logic_queue_job(RouterLogic(), {this, &HandlePathDead});
       }
       return false;
     }
@@ -1162,6 +1160,10 @@ namespace llarp
       {
         lastShift = now;
         BuildOneAlignedTo(m_NextIntro.router);
+      }
+      else if(shiftedIntro)
+      {
+        SwapIntros();
       }
       return shiftedIntro;
     }
