@@ -832,7 +832,6 @@ namespace llarp
       {
         // rebuild path next tick
         llarp_logic_queue_job(RouterLogic(), {this, &HandlePathDead});
-        return true;
       }
       return false;
     }
