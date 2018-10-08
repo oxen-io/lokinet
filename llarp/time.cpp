@@ -1,10 +1,8 @@
 #include <llarp/time.h>
-#include <chrono>
+#include <llarp/time.hpp>
 
 namespace llarp
 {
-  typedef std::chrono::system_clock Clock_t;
-
   template < typename Res >
   static llarp_time_t
   time_since_epoch()

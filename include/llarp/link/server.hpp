@@ -8,6 +8,7 @@
 #include <llarp/ev.h>
 #include <llarp/link/session.hpp>
 #include <llarp/logic.h>
+#include <llarp/time.h>
 #include <list>
 
 struct llarp_router;

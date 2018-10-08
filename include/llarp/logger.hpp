@@ -1,6 +1,6 @@
 #ifndef LLARP_LOGGER_HPP
 #define LLARP_LOGGER_HPP
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <ctime>
 #include <iomanip>
 #include <iostream>
@@ -79,6 +79,17 @@ namespace llarp
     return std::to_string(id);
   }
 
+  struct log_timestamp
+  {
+    std::string format = "%c %Z";
+    friend
+    std::ostream & operator << (std::ostream & out, const log_timestamp & ts)
+    {
+      auto now = llarp::Clock_t::to_time_t(llarp::Clock_t::now());
+      return out << std::put_time(std::localtime(&now), ts.format.c_str());
+    }
+  };
+  
   /** internal */
   template < typename... TArgs >
   void
@@ -132,7 +143,7 @@ namespace llarp
 #endif
     std::string tag = fname;
     ss << _glog.nodeName << " (" << thread_id_string() << ") "
-       << llarp_time_now_ms() << " " << tag << ":" << lineno;
+       << log_timestamp() << " " << tag << ":" << lineno;
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
 #ifndef ANDROID

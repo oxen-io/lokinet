@@ -2,6 +2,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/version.h>
 #include <llarp/crypto.hpp>
+#include <llarp/time.h>
 #include "buffer.hpp"
 #include "logger.hpp"
 #include "mem.hpp"
