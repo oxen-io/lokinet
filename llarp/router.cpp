@@ -1247,8 +1247,9 @@ namespace llarp
       {
         llarp::LogInfo("Setting public port ", val);
         int p = atoi(val);
-        self->ip4addr.sin_port = htons(p);
-        self->addrInfo.port    = htons(p);
+        // Not needed to flip upside-down - this is done in llarp::Addr(const AddressInfo&)
+        self->ip4addr.sin_port = p;
+        self->addrInfo.port    = p;
         self->publicOverride   = true;
       }
     }

@@ -211,7 +211,7 @@ namespace llarp
 
       _addr.sin6_family = res->ai_family;
       _addr4.sin_family = res->ai_family;
-      _addr4.sin_port   = htons(0);
+      _addr4.sin_port   = 0; // save a call, 0 is 0 no matter how u arrange it
 #if((__APPLE__ && __MACH__) || __FreeBSD__)
       _addr4.sin_len = sizeof(in_addr);
 #endif
@@ -240,7 +240,7 @@ namespace llarp
 
       _addr.sin6_family = AF_INET;  // set ipv4 mode
       _addr4.sin_family = AF_INET;
-      _addr4.sin_port   = htons(0);
+      _addr4.sin_port   = 0;
 
 #if((__APPLE__ && __MACH__) || __FreeBSD__)
       _addr4.sin_len = sizeof(in_addr);
@@ -382,8 +382,7 @@ namespace llarp
         if(a.af() == AF_INET6)
           out << "]";
       }
-
-      return out << ":" << ntohs(a.port());
+      return out << ":" << a.port();
     }
 
     operator const sockaddr*() const
