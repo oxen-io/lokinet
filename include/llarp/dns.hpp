@@ -84,6 +84,12 @@ struct dns_packet
   std::vector< std::unique_ptr< dns_msg_answer > > additional_rrs;
 };
 
+std::string
+getDNSstring(const char *buffer);
+
+void
+code_domain(char *&buffer, const std::string &domain) throw();
+
 extern "C"
 {
   uint16_t
@@ -106,9 +112,6 @@ extern "C"
 
   void
   put32bits(char *&buffer, uint32_t value) throw();
-
-  void
-  code_domain(char *&buffer, const std::string &domain) throw();
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
