@@ -95,9 +95,6 @@ namespace llarp
              6,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
                auto hlen = size_t(hdr->ihl * 4);
-               if(hlen + 16 + 2 > sz)
-                 return;
-
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
                *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
              }},
@@ -110,8 +107,7 @@ namespace llarp
       // IPv4 checksum
       auto hlen  = size_t(hdr->ihl * 4);
       hdr->check = 0;
-      if(hlen <= sz)
-        hdr->check = ipchksum(buf, hlen);
+      hdr->check = ipchksum(buf, hlen);
 
       // L4 checksum
       auto proto = hdr->protocol;
@@ -129,9 +125,6 @@ namespace llarp
              6,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
                auto hlen = size_t(hdr->ihl * 4);
-               if(hlen + 16 + 2 > sz)
-                 return;
-
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
                *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
              }},
