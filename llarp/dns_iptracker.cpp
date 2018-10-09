@@ -16,9 +16,9 @@ dns_iptracker_init()
 
   // disable all possibilities unless you setup a tunGateway
 
-  g_dns_iptracker.used_privates.ten      = false;
-  g_dns_iptracker.used_privates.oneSeven = false;
-  g_dns_iptracker.used_privates.oneNine  = false;
+  g_dns_iptracker.used_privates.ten      = true;
+  g_dns_iptracker.used_privates.oneSeven = true;
+  g_dns_iptracker.used_privates.oneNine  = true;
 }
 
 // not sure we want tunGatewayIP... we'll know when we get further
@@ -158,9 +158,9 @@ dns_iptracker_get_free()
 struct dns_pointer *
 dns_iptracker_get_free(dns_iptracker *iptracker)
 {
-  llarp::LogInfo("We used 10.x.x.x? ",
+  llarp::LogInfo("Was 10.x.x.x already in-use on start? ",
                  iptracker->used_privates.ten ? "Yes" : "No");
-  if(iptracker->used_privates.ten)
+  if(!iptracker->used_privates.ten)
   {
     struct dns_pointer *test =
         dns_iptracker_check_range(iptracker->used_ten_ips, 10);
@@ -169,9 +169,9 @@ dns_iptracker_get_free(dns_iptracker *iptracker)
       return test;
     }
   }
-  llarp::LogInfo("We used 172.16.x.x? ",
+  llarp::LogInfo("Was 172.16.x.x  already in-use on start? ",
                  iptracker->used_privates.oneSeven ? "Yes" : "No");
-  if(iptracker->used_privates.oneSeven)
+  if(!iptracker->used_privates.oneSeven)
   {
     struct dns_pointer *test =
         dns_iptracker_check_range(iptracker->used_seven_ips, 172);
@@ -180,9 +180,9 @@ dns_iptracker_get_free(dns_iptracker *iptracker)
       return test;
     }
   }
-  llarp::LogInfo("We used 192.168.x.x? ",
+  llarp::LogInfo("Was 192.168.x.x already in-use on start? ",
                  iptracker->used_privates.oneNine ? "Yes" : "No");
-  if(iptracker->used_privates.oneNine)
+  if(!iptracker->used_privates.oneNine)
   {
     struct dns_pointer *test =
         dns_iptracker_check_range(iptracker->used_nine_ips, 192);
