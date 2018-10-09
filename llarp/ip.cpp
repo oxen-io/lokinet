@@ -16,11 +16,7 @@ namespace llarp
     bool
     IPv4Packet::Load(llarp_buffer_t pkt)
     {
-#ifndef MIN
-#define MIN(a, b) (a < b ? a : b)
-      sz = MIN(pkt.sz, sizeof(buf));
-#undef MIN
-#endif
+      sz = std::min(pkt.sz, sizeof(buf));
       memcpy(buf, pkt.base, sz);
       return true;
     }
