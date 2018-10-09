@@ -6,6 +6,10 @@
 #include <llarp/dns.hpp>  // question and dnsc
 #include <llarp/dnsc.hpp>
 
+//
+// Input structures/functions:
+//
+
 // fwd declaration
 struct dnsd_context;
 
@@ -19,10 +23,10 @@ struct dnsd_question_request
 {
   /// sock type
   void *user;
-  // raw or llarp subsystem
+  // raw or llarp subsystem (is this used? does this matter?)
   bool llarp;
   /// request id
-  int id;
+  unsigned int id;
   /// question being asked
   dns_msg_question question;
   // request source socket
@@ -44,6 +48,47 @@ struct dnsd_query_hook_response
   sockaddr *returnThis;  // FIXME: llarp::Addr
 };
 
+/// builds and fires a request based based on llarp_udp_io udp event
+/// called by the llarp_handle_dns_recvfrom generic (dnsd/dnsc) handler in dns
+void
+llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
+                           const struct sockaddr *addr, const void *buf,
+                           ssize_t sz);
+
+//
+// output structures/functions:
+//
+// we may want to pass dnsd_question_request to these,
+//   incase we need to send an error back up through the pipeline
+
+/// NXDOMAIN not found
+void
+write404_dnss_response(const struct sockaddr *from,
+                       dnsd_question_request *request);
+
+/// for hook functions to use
+void
+writecname_dnss_response(std::string cname, const struct sockaddr *from,
+                         dnsd_question_request *request);
+// FIXME: llarp::Addr
+
+/// send an A record found response
+void
+writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
+                        dnsd_question_request *request);
+// FIXME: llarp::Addr
+
+/// send an PTR record found response
+void
+writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
+                           dnsd_question_request *request);
+// FIXME: llarp::Addr
+
+
+//
+// setup/teardown functions/structure:
+//
+
 /// intercept query hook functor
 typedef dnsd_query_hook_response *(*intercept_query_hook)(
     std::string name, const struct sockaddr *from,
@@ -64,23 +109,6 @@ struct dnsd_context
   /// hook function for intercepting dns requests
   intercept_query_hook intercept;
 };
-
-/// udp event handler
-void
-llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
-                           const struct sockaddr *addr, const void *buf,
-                           ssize_t sz);
-
-/// for hook functions to use
-void
-writecname_dnss_response(std::string cname, const struct sockaddr *from,
-                         dnsd_question_request *request);
-// FIXME: llarp::Addr
-
-void
-writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
-                        dnsd_question_request *request);
-// FIXME: llarp::Addr
 
 /// initialize dns subsystem and bind socket
 /// returns true on bind success otherwise returns false
