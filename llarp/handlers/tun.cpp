@@ -329,7 +329,7 @@ namespace llarp
                memcpy(pkt.buf, buf.base, pkt.sz);
                pkt.src(themIP);
                pkt.dst(usIP);
-               pkt.UpdateChecksum();
+               pkt.UpdateChecksumsOnDst();
                return true;
              }))
 
@@ -440,11 +440,12 @@ namespace llarp
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       self->m_NetworkToUserPktQueue.Process([self, tun](net::IPv4Packet &pkt) {
+        // prepare packet for insertion into network
+        pkg.UpdateChecksumsOnSrc();
         // clear addresses
         pkt.src(0);
         pkt.dst(0);
-        // clear checksum
-        pkt.Header()->check = 0;
+
         if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
           llarp::LogWarn("packet dropped");
       });

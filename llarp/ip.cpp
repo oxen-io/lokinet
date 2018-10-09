@@ -78,18 +78,28 @@ namespace llarp
                *check = ipchksum(pktbuf, 12 + pktsz);
              }}};
     void
-    IPv4Packet::UpdateChecksum()
+    IPv4Packet::UpdateChecksumsOnDst()
     {
+      // IPv4 checksum
       auto hdr   = Header();
       hdr->check = 0;
       auto len   = hdr->ihl * 4;
       hdr->check = ipchksum(buf, len);
+
+      // L4 checksum
       auto proto = hdr->protocol;
       auto itr   = protoCheckSummer.find(proto);
       if(itr != protoCheckSummer.end())
       {
         itr->second(hdr, buf, sz);
       }
+    }
+
+    void
+    IPv4Packet::UpdateChecksumsOnSrc()
+    {
+      // IPv4
+      Header()->check = 0;
     }
   }  // namespace net
 }  // namespace llarp
