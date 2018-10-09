@@ -32,13 +32,13 @@ namespace llarp
     }
 
     static uint32_t
-    ipchksum_pseudoIPv4(uint32_t src_ip_n, uint32_t dst_ip_n,
-                        uint8_t proto, uint16_t innerlen)
+    ipchksum_pseudoIPv4(uint32_t src_ip_n, uint32_t dst_ip_n, uint8_t proto,
+                        uint16_t innerlen)
     {
-      #define IPCS(x) ((x & 0xFFFF) + (x >> 16))
-      uint32_t sum = (uint32_t)IPCS(src_ip_n) + (uint32_t)IPCS(dst_ip_n) +
-        (uint32_t)proto + (uint32_t)htons(innerlen);
-      #undef IPCS
+#define IPCS(x) ((x & 0xFFFF) + (x >> 16))
+      uint32_t sum = (uint32_t)IPCS(src_ip_n) + (uint32_t)IPCS(dst_ip_n)
+          + (uint32_t)proto + (uint32_t)htons(innerlen);
+#undef IPCS
       return sum;
     }
 
@@ -61,15 +61,13 @@ namespace llarp
     }
 
     static uint16_t
-    deltachksum(uint16_t old_sum,
-                uint32_t old_src_ip_n, uint32_t old_dst_ip_n,
+    deltachksum(uint16_t old_sum, uint32_t old_src_ip_n, uint32_t old_dst_ip_n,
                 uint32_t new_src_ip_n, uint32_t new_dst_ip_n)
     {
-      #define IPCS(x) ((x & 0xFFFF) + (x >> 16))
-      uint32_t sum = ~old_sum
-        + IPCS(new_src_ip_n) + IPCS(new_dst_ip_n)
-        - IPCS(old_src_ip_n) - IPCS(old_dst_ip_n);
-      #undef IPCS
+#define IPCS(x) ((x & 0xFFFF) + (x >> 16))
+      uint32_t sum = ~old_sum + IPCS(new_src_ip_n) + IPCS(new_dst_ip_n)
+          - IPCS(old_src_ip_n) - IPCS(old_dst_ip_n);
+#undef IPCS
       while(sum >> 16)
         sum = (sum & 0xffff) + (sum >> 16);
       return ~sum;
@@ -77,11 +75,10 @@ namespace llarp
 
     static std::map<
         byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
-        protoDstCheckSummer =
-    {
-      // is this even correct???
-      // {RFC3022} says that IPv4 hdr isn't included in ICMP checksum calc
-      // and that we don't need to modify it
+        protoDstCheckSummer = {
+    // is this even correct???
+    // {RFC3022} says that IPv4 hdr isn't included in ICMP checksum calc
+    // and that we don't need to modify it
 #if 0
       {
         // ICMP
@@ -98,19 +95,16 @@ namespace llarp
         }
       },
 #endif
-      {
-        // TCP
-        6,
-        [](const ip_header *hdr, byte_t *pkt, size_t sz)
-        {
-          auto hlen = size_t(hdr->ihl * 4);
-          if(hlen + 16 + 2 > sz)
-            return;
+            {// TCP
+             6,
+             [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               auto hlen = size_t(hdr->ihl * 4);
+               if(hlen + 16 + 2 > sz)
+                 return;
 
-          uint16_t *check = (uint16_t *)(pkt + hlen + 16);
-          *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
-        }
-      },
+               uint16_t *check = (uint16_t *)(pkt + hlen + 16);
+               *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
+             }},
     };
     void
     IPv4Packet::UpdateChecksumsOnDst()
@@ -118,7 +112,7 @@ namespace llarp
       auto hdr = Header();
 
       // IPv4 checksum
-      auto hlen = size_t(hdr->ihl * 4);
+      auto hlen  = size_t(hdr->ihl * 4);
       hdr->check = 0;
       if(hlen <= sz)
         hdr->check = ipchksum(buf, hlen);
@@ -133,22 +127,18 @@ namespace llarp
     }
 
     static std::map<
-      byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
-      protoSrcCheckSummer =
-    {
-      {
-        // TCP
-        6,
-        [](const ip_header *hdr, byte_t *pkt, size_t sz)
-        {
-          auto hlen = size_t(hdr->ihl * 4);
-          if(hlen + 16 + 2 > sz)
-            return;
+        byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
+        protoSrcCheckSummer = {
+            {// TCP
+             6,
+             [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               auto hlen = size_t(hdr->ihl * 4);
+               if(hlen + 16 + 2 > sz)
+                 return;
 
-          uint16_t *check = (uint16_t *)(pkt + hlen + 16);
-          *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
-        }
-      },
+               uint16_t *check = (uint16_t *)(pkt + hlen + 16);
+               *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
+             }},
     };
     void
     IPv4Packet::UpdateChecksumsOnSrc()

@@ -8,5 +8,4 @@ namespace llarp
   typedef std::chrono::system_clock Clock_t;
 }
 
-
 #endif
