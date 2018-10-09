@@ -336,6 +336,14 @@ namespace llarp
         return (const sockaddr*)&_addr;
     }
 
+    operator sockaddr*() const
+    {
+      if(af() == AF_INET)
+        return (sockaddr*)&_addr4;
+      else
+        return (sockaddr*)&_addr;
+    }
+    
     void
     CopyInto(sockaddr* other) const
     {
