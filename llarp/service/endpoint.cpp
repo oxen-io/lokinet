@@ -848,8 +848,9 @@ namespace llarp
         auto itr = m_PendingServiceLookups.find(addr);
         if(itr != m_PendingServiceLookups.end())
         {
+          auto func = itr->second;
           m_PendingServiceLookups.erase(itr);
-          itr->second(addr, nullptr);
+          func(addr, nullptr);
         }
         return false;
       }
@@ -1418,7 +1419,7 @@ namespace llarp
       {
         // shift intro if it expires "soon"
         ShiftIntroduction();
-      
+
         if(remoteIntro != m_NextIntro)
         {
           if(GetPathByRouter(m_NextIntro.router) != nullptr)
