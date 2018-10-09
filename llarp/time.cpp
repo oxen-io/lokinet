@@ -1,10 +1,8 @@
 #include <llarp/time.h>
-#include <chrono>
+#include <llarp/time.hpp>
 
 namespace llarp
 {
-  typedef std::chrono::system_clock Clock_t;
-
   template < typename Res >
   static llarp_time_t
   time_since_epoch()
@@ -17,6 +15,9 @@ namespace llarp
 }  // namespace llarp
 
 // use std::chrono because otherwise the network breaks with Daylight Savings
+// this time, it doesn't get truncated -despair
+// that concern is what drove me back to the POSIX C time functions
+// in the first place
 llarp_time_t
 llarp_time_now_ms()
 {

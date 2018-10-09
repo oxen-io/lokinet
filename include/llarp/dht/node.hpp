@@ -29,7 +29,7 @@ namespace llarp
       bool
       operator<(const RCNode& other) const
       {
-        return rc.OtherIsNewer(other.rc);
+        return rc.last_updated < other.rc.last_updated;
       }
     };
 
@@ -53,7 +53,7 @@ namespace llarp
       bool
       operator<(const ISNode& other) const
       {
-        return introset.OtherIsNewer(other.introset);
+        return introset.T < other.introset.T;
       }
     };
   }  // namespace dht

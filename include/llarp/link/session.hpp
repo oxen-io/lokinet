@@ -4,6 +4,7 @@
 #include <llarp/crypto.hpp>
 #include <llarp/net.hpp>
 #include <llarp/router_contact.hpp>
+#include <llarp/types.h>
 #include <functional>
 
 namespace llarp

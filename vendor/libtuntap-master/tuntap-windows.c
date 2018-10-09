@@ -63,7 +63,7 @@ formated_error(LPWSTR pMessage, DWORD m, ...)
   LPWSTR pBuffer = NULL;
 
   va_list args = NULL;
-  va_start(args, pMessage);
+  va_start(args, m);
 
   FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER,
                 pMessage, m, 0, (LPSTR)&pBuffer, 0, &args);
@@ -189,8 +189,11 @@ tuntap_start(struct device *dev, int mode, int tun)
 
   if(mode == TUNTAP_MODE_TUNNEL)
   {
-    tuntap_log(TUNTAP_LOG_NOTICE, "Layer 3 tunneling is not implemented");
-    return -1;
+    deviceid = reg_query(NETWORK_ADAPTERS);
+    snprintf(buf, sizeof buf, "\\\\.\\Global\\%s.tap", deviceid);
+    tun_fd = CreateFile(buf, GENERIC_WRITE | GENERIC_READ,
+                        FILE_SHARE_READ | FILE_SHARE_WRITE, 0, OPEN_EXISTING,
+                        FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0);
   }
   else if(mode != TUNTAP_MODE_ETHERNET)
   {
@@ -198,14 +201,9 @@ tuntap_start(struct device *dev, int mode, int tun)
     return -1;
   }
 
-  deviceid = reg_query(NETWORK_ADAPTERS);
-  snprintf(buf, sizeof buf, "\\\\.\\Global\\%s.tap", deviceid);
-  tun_fd = CreateFile(buf, GENERIC_WRITE | GENERIC_READ, 0, 0, OPEN_EXISTING,
-                      FILE_ATTRIBUTE_SYSTEM | FILE_FLAG_OVERLAPPED, 0);
   if(tun_fd == TUNFD_INVALID_VALUE)
   {
     int errcode = GetLastError();
-
     tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
     return -1;
   }
@@ -241,8 +239,8 @@ tuntap_get_hwaddr(struct device *dev)
     char buf[128];
 
     (void)_snprintf(buf, sizeof buf,
-                      "MAC address: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x", hwaddr[0],
-                      hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
+                    "MAC address: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x", hwaddr[0],
+                    hwaddr[1], hwaddr[2], hwaddr[3], hwaddr[4], hwaddr[5]);
     tuntap_log(TUNTAP_LOG_DEBUG, buf);
   }
   return (char *)hwaddr;
@@ -274,8 +272,7 @@ tuntap_sys_set_updown(struct device *dev, ULONG flag)
   {
     char buf[32];
 
-    (void)_snprintf(buf, sizeof buf, "Status: %s",
-                      flag ? "Up" : "Down");
+    (void)_snprintf(buf, sizeof buf, "Status: %s", flag ? "Up" : "Down");
     tuntap_log(TUNTAP_LOG_DEBUG, buf);
     return 0;
   }
@@ -330,26 +327,54 @@ tuntap_set_mtu(struct device *dev, int mtu)
 int
 tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
 {
-  IPADDR psock[4];
-  DWORD len;
+  IPADDR sock[3];
+  DWORD len, ret;
+  IPADDR ep[4];
+#pragma pack(push)
+#pragma pack(1)
+  struct
+  {
+    uint8_t dhcp_opt;
+    uint8_t length;
+    uint32_t value[2];
+  } dns;
+#pragma pack(pop)
 
-  /* Address + Netmask */
-  psock[0] = s->S_un.S_addr;
-  psock[1] = mask;
-  /* DHCP server address (We don't want it) */
-  psock[2] = 0;
-  /* DHCP lease time */
-  psock[3] = 0;
+  sock[0] = s->S_un.S_addr;
+  sock[2] = mask;
+  sock[1] = sock[0] & sock[2];
+  ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_TUN, &sock, sizeof(sock),
+                        &sock, sizeof(sock), &len, NULL);
+  ep[0] = s->S_un.S_addr;
+  ep[1] = mask;
+  ep[2] = (s->S_un.S_addr | ~mask)
+      - (mask + 1); /* For the 10.x.0.y subnet (in a class C config), _should_
+                       be 10.x.0.254 i think */
+  ep[3] = 3153600;    /* one year */
 
-  if(DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_MASQ, &psock,
-                     sizeof(psock), &psock, sizeof(psock), &len, NULL)
-     == 0)
+  ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_MASQ, ep, sizeof(ep),
+                        ep, sizeof(ep), &len, NULL);
+
+  /* set DNS address to 127.0.0.1 as lokinet-client runs its own DNS resolver
+   * inline */
+  dns.dhcp_opt = 6;
+  dns.length   = 4;
+  dns.value[0] =
+      htonl(0x7F000001); /* apparently this doesn't show in network properties,
+                            but it works 🤷🏻‍♂️ */
+  dns.value[1] = 0;
+
+  ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &dns,
+                        sizeof(dns), &dns, sizeof(dns), &len, NULL);
+
+  if(!ret)
   {
     int errcode = GetLastError();
 
     tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
     return -1;
   }
+
   return 0;
 }
 
@@ -369,12 +394,17 @@ tuntap_read(struct device *dev, void *buf, size_t size)
 {
   DWORD len;
 
-  if(ReadFile(dev->tun_fd, buf, (DWORD)size, &len, NULL) == 0)
+  if(ReadFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl) == 0)
   {
     int errcode = GetLastError();
 
-    tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
-    return -1;
+    if (errcode != 997)
+	{
+		tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
+		return -1;
+	}
+	else
+		return 0;
   }
 
   return 0;
@@ -385,12 +415,17 @@ tuntap_write(struct device *dev, void *buf, size_t size)
 {
   DWORD len;
 
-  if(WriteFile(dev->tun_fd, buf, (DWORD)size, &len, NULL) == 0)
+  if(WriteFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl) == 0)
   {
-    int errcode = GetLastError();
+  	int errcode = GetLastError();
 
-    tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
-    return -1;
+    if (errcode != 997)
+	{
+		tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
+		return -1;
+	}
+	else
+		return 0;
   }
 
   return 0;
@@ -411,7 +446,7 @@ tuntap_set_nonblocking(struct device *dev, int set)
   (void)dev;
   (void)set;
   tuntap_log(TUNTAP_LOG_NOTICE,
-             "Your system does not support tuntap_set_nonblocking()");
+             "TUN/TAP devices on Windows are non-blocking by default using either overlapped I/O or IOCPs");
   return -1;
 }
 
@@ -438,7 +473,6 @@ tuntap_set_descr(struct device *dev, const char *descr)
 int
 tuntap_set_ifname(struct device *dev, const char *name)
 {
-  /* TODO: Check Windows API to know how to rename an interface */
   (void)dev;
   (void)name;
   tuntap_log(TUNTAP_LOG_NOTICE,

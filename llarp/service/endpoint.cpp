@@ -572,6 +572,8 @@ namespace llarp
     bool
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
+      if(NumInStatus(llarp::path::ePathEstablished) < 3)
+        return false;
       if(m_IntroSet.HasExpiredIntros(now))
         return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
       return now - m_LastPublishAttempt >= INTROSET_PUBLISH_INTERVAL;
@@ -617,7 +619,6 @@ namespace llarp
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
         msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 5));
-        llarp::LogInfo("build request for ", remote);
         return msg;
       }
     };
@@ -739,7 +740,6 @@ namespace llarp
       p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, this,
                                   std::placeholders::_1,
                                   std::placeholders::_2));
-      RegenAndPublishIntroSet(llarp_time_now_ms());
       path::Builder::HandlePathBuilt(p);
     }
 
@@ -762,7 +762,6 @@ namespace llarp
                        p->Endpoint(), " via ", dst);
         if(MarkCurrentIntroBad(llarp_time_now_ms()))
         {
-          SwapIntros();
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
         }
@@ -830,9 +829,6 @@ namespace llarp
     {
       if(latency >= m_MinPathLatency)
       {
-        // rebuild path next tick
-        llarp_logic_queue_job(RouterLogic(), {this, &HandlePathDead});
-        return true;
       }
       return false;
     }
@@ -1164,6 +1160,10 @@ namespace llarp
         lastShift = now;
         BuildOneAlignedTo(m_NextIntro.router);
       }
+      else if(shiftedIntro)
+      {
+        SwapIntros();
+      }
       return shiftedIntro;
     }
 
@@ -1418,13 +1418,15 @@ namespace llarp
       {
         // shift intro if it expires "soon"
         ShiftIntroduction();
-      }
-      if(remoteIntro != m_NextIntro)
-      {
-        if(GetPathByRouter(m_NextIntro.router) != nullptr)
+      
+        if(remoteIntro != m_NextIntro)
         {
-          // we can safely set remoteIntro to the next one
-          SwapIntros();
+          if(GetPathByRouter(m_NextIntro.router) != nullptr)
+          {
+            // we can safely set remoteIntro to the next one
+            SwapIntros();
+            llarp::LogInfo(Name(), "swapped intro");
+          }
         }
       }
       // lookup router in intro if set and unknown
@@ -1565,6 +1567,7 @@ namespace llarp
       {
         llarp::LogDebug("sent message via ", remoteIntro.pathID, " on ",
                         remoteIntro.router);
+        lastGoodSend = now;
       }
       else
       {

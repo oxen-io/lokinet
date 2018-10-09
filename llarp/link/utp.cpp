@@ -350,7 +350,8 @@ namespace llarp
                         " bytes");
         if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
                     arg->address, arg->address_len)
-           == -1)
+               == -1
+           && errno)
         {
           llarp::LogError("sendto failed: ", strerror(errno));
         }

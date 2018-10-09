@@ -96,7 +96,7 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
                     const void *buf, size_t sz)
 {
   auto ret = static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf, sz);
-  if(ret == -1)
+  if(ret == -1 && errno)
   {
     llarp::LogWarn("sendto failed ", strerror(errno));
     errno = 0;

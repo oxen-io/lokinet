@@ -2,9 +2,9 @@
 
 LokiNet is the reference implementation of LLARP (low latency anonymous routing protocol), a layer 3 onion routing protocol.
 
-You can learn more about the high level design of LLARP [here](doc/high-level.txt)
+You can learn more about the high level design of LLARP [here](docs/high-level.txt)
 
-And you can read the LLARP protocol specification [here](doc/proto_v0.txt)
+And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
 
 ## Building
 
@@ -48,11 +48,5 @@ for a development environment:
     $ make
 
 ## Usage
-
-### Windows
-
-Windows only supports client mode so you run `lokinet.exe` and that's it.
-
-### Linux
 
 see the [lokinet-builder](https://github.com/loki-project/lokinet-builder)
