@@ -344,12 +344,12 @@ namespace llarp
       static uint64
       SendTo(utp_callback_arguments* arg)
       {
+      	Addr a = Addr(*arg->address);
         LinkLayer* l =
             static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
-        llarp::LogDebug("utp_sendto ", Addr(*arg->address), " ", arg->len,
+        llarp::LogDebug("utp_sendto ", a, " ", arg->len,
                         " bytes");
-        if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
-                    arg->address, arg->address_len)
+        if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags, (const sockaddr*)a, a.SockLen())
                == -1
            && errno)
         {
