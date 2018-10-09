@@ -31,9 +31,9 @@ namespace llarp
     ipchksum_pseudoIPv4(uint32_t src_ip_n, uint32_t dst_ip_n, uint8_t proto,
                         uint16_t innerlen)
     {
-#define IPCS(x) ((x & 0xFFFF) + (x >> 16))
-      uint32_t sum = (uint32_t)IPCS(src_ip_n) + (uint32_t)IPCS(dst_ip_n)
-          + (uint32_t)proto + (uint32_t)htons(innerlen);
+#define IPCS(x) ((uint32_t)(x & 0xFFFF) + (uint32_t)(x >> 16))
+      uint32_t sum = IPCS(src_ip_n) + IPCS(dst_ip_n) + (uint32_t)proto
+          + (uint32_t)htons(innerlen);
 #undef IPCS
       return sum;
     }
@@ -60,10 +60,12 @@ namespace llarp
     deltachksum(uint16_t old_sum, uint32_t old_src_ip_n, uint32_t old_dst_ip_n,
                 uint32_t new_src_ip_n, uint32_t new_dst_ip_n)
     {
-#define IPCS(x) ((x & 0xFFFF) + (x >> 16))
-      uint32_t sum = ~old_sum + IPCS(new_src_ip_n) + IPCS(new_dst_ip_n)
-          - IPCS(old_src_ip_n) - IPCS(old_dst_ip_n);
-#undef IPCS
+#define ADDIPCS(x) ((uint32_t)(x & 0xFFFF) + (uint32_t)(x >> 16))
+#define SUBIPCS(x) ((uint32_t)((~x) & 0xFFFF) + (uint32_t)((~x) >> 16))
+      uint32_t sum = ~old_sum + ADDIPCS(new_src_ip_n) + ADDIPCS(new_dst_ip_n)
+          + SUBIPCS(old_src_ip_n) + SUBIPCS(old_dst_ip_n);
+#undef ADDIPCS
+#undef SUBIPCS
       while(sum >> 16)
         sum = (sum & 0xffff) + (sum >> 16);
       return ~sum;
@@ -94,7 +96,7 @@ namespace llarp
             {// TCP
              6,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
-               auto hlen = size_t(hdr->ihl * 4);
+               auto hlen       = size_t(hdr->ihl * 4);
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
                *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
              }},
@@ -124,7 +126,7 @@ namespace llarp
             {// TCP
              6,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
-               auto hlen = size_t(hdr->ihl * 4);
+               auto hlen       = size_t(hdr->ihl * 4);
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
                *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
              }},
