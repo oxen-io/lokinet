@@ -59,17 +59,17 @@ dns_iptracker_setup(dns_iptracker *iptracker, llarp::Addr tunGatewayIp)
   if(ip[0] == 10)
   {
     iptracker->used_ten_ips.push_back(std::move(range));
-    iptracker->used_privates.ten = true;
+    iptracker->used_privates.ten = false;
   }
   else if(ip[0] == 172)
   {
     iptracker->used_seven_ips.push_back(std::move(range));
-    iptracker->used_privates.oneSeven = true;
+    iptracker->used_privates.oneSeven = false;
   }
   else if(ip[0] == 192)
   {
     iptracker->used_nine_ips.push_back(std::move(range));
-    iptracker->used_privates.oneNine = true;
+    iptracker->used_privates.oneNine = false;
   }
   else
   {

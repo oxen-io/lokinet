@@ -60,6 +60,8 @@ main(int argc, char *argv[])
     multiThreaded = false;
   }
 
+  //SetLogLevel(llarp::eLogDebug);
+
 #ifdef _WIN32
   if(startWinsock())
     return -1;
@@ -100,7 +102,8 @@ main(int argc, char *argv[])
     conffname        = fname.string();
     if(basedir.string().empty())
     {
-      if(!llarp_ensure_config(fname.string().c_str(), nullptr, overWrite, asRouter))
+      if(!llarp_ensure_config(fname.string().c_str(), nullptr, overWrite,
+                              asRouter))
         return 1;
     }
     else
