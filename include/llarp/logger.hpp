@@ -23,7 +23,8 @@ namespace llarp
     eLogDebug,
     eLogInfo,
     eLogWarn,
-    eLogError
+    eLogError,
+    eLogNone
   };
 
   struct Logger
@@ -103,6 +104,8 @@ namespace llarp
     int loglev = -1;
     switch(lvl)
     {
+      case eLogNone:
+        break;
       case eLogDebug:
         ss << "[DBG] ";
         loglev = ANDROID_LOG_DEBUG;
@@ -123,6 +126,8 @@ namespace llarp
 #else
     switch(lvl)
     {
+      case eLogNone:
+        break;
       case eLogDebug:
         ss << (char)27 << "[0m";
         ss << "[DBG] ";
