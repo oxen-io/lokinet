@@ -269,7 +269,7 @@ handle_dnsc_result(dnsc_answer_request *client_request)
   else
   {
     writesend_dnss_response(
-        client_request->found ? client_request->result.getSockAddr() : nullptr,
+        client_request->found ? client_request->result : nullptr,
         server_request->from, server_request);
   }
   llarp_host_resolved(client_request);
