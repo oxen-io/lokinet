@@ -31,6 +31,17 @@ namespace llarp
       return llarp::InitBuffer(buf, sz);
     }
 
+    static uint32_t
+    ipchksum_pseudoIPv4(uint32_t src_ip_n, uint32_t dst_ip_n,
+                        uint8_t proto, uint16_t innerlen)
+    {
+      #define IPCS(x) ((x & 0xFFFF) + (x >> 16))
+      uint32_t sum = (uint32_t)IPCS(src_ip_n) + (uint32_t)IPCS(dst_ip_n) +
+        (uint32_t)proto + (uint32_t)htons(innerlen);
+      #undef IPCS
+      return sum;
+    }
+
     static uint16_t
     ipchksum(const byte_t *buf, size_t sz, uint32_t sum = 0)
     {
@@ -49,57 +60,111 @@ namespace llarp
       return ~sum;
     }
 
+    static uint16_t
+    deltachksum(uint16_t old_sum,
+                uint32_t old_src_ip_n, uint32_t old_dst_ip_n,
+                uint32_t new_src_ip_n, uint32_t new_dst_ip_n)
+    {
+      #define IPCS(x) ((x & 0xFFFF) + (x >> 16))
+      uint32_t sum = ~old_sum
+        + IPCS(new_src_ip_n) + IPCS(new_dst_ip_n)
+        - IPCS(old_src_ip_n) - IPCS(old_dst_ip_n);
+      #undef IPCS
+      while(sum >> 16)
+        sum = (sum & 0xffff) + (sum >> 16);
+      return ~sum;
+    }
+
     static std::map<
         byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
-        protoCheckSummer = {
-            /// ICMP
-            {1,
-             [](const ip_header *hdr, byte_t *buf, size_t sz) {
-               auto len        = hdr->ihl * 4;
-               uint16_t *check = (uint16_t *)buf + len + 2;
-               *check          = 0;
-               *check          = ipchksum(buf, sz);
-             }},
-            /// TCP
-            {6, [](const ip_header *hdr, byte_t *pkt, size_t sz) {
-               byte_t pktbuf[1500];
-               auto len        = hdr->ihl * 4;
-               size_t pktsz    = sz - len;
-               uint16_t *check = (uint16_t *)(pkt + len + 16);
-               *check          = 0;
-               memcpy(pktbuf, &hdr->saddr, 4);
-               memcpy(pktbuf + 4, &hdr->daddr, 4);
-               pktbuf[8] = 0;
-               pktbuf[9] = 6;
-               // TODO: endian (?)
-               pktbuf[10] = (pktsz & 0xff00) >> 8;
-               pktbuf[11] = pktsz & 0x00ff;
-               memcpy(pktbuf + 12, pkt + len, pktsz);
-               *check = ipchksum(pktbuf, 12 + pktsz);
-             }}};
+        protoDstCheckSummer =
+    {
+      // is this even correct???
+      // {RFC3022} says that IPv4 hdr isn't included in ICMP checksum calc
+      // and that we don't need to modify it
+#if 0
+      {
+        // ICMP
+        1,
+        [](const ip_header *hdr, byte_t *buf, size_t sz)
+        {
+          auto len = hdr->ihl * 4;
+          if(len + 2 + 2 > sz)
+            return;
+          uint16_t *check = (uint16_t *)(buf + len + 2);
+
+          *check = 0;
+          *check = ipchksum(buf, sz);
+        }
+      },
+#endif
+      {
+        // TCP
+        6,
+        [](const ip_header *hdr, byte_t *pkt, size_t sz)
+        {
+          auto hlen = size_t(hdr->ihl * 4);
+          if(hlen + 16 + 2 > sz)
+            return;
+
+          uint16_t *check = (uint16_t *)(pkt + hlen + 16);
+          *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
+        }
+      },
+    };
     void
     IPv4Packet::UpdateChecksumsOnDst()
     {
+      auto hdr = Header();
+
       // IPv4 checksum
-      auto hdr   = Header();
+      auto hlen = size_t(hdr->ihl * 4);
       hdr->check = 0;
-      auto len   = hdr->ihl * 4;
-      hdr->check = ipchksum(buf, len);
+      if(hlen <= sz)
+        hdr->check = ipchksum(buf, hlen);
 
       // L4 checksum
       auto proto = hdr->protocol;
-      auto itr   = protoCheckSummer.find(proto);
-      if(itr != protoCheckSummer.end())
+      auto itr   = protoDstCheckSummer.find(proto);
+      if(itr != protoDstCheckSummer.end())
       {
         itr->second(hdr, buf, sz);
       }
     }
 
+    static std::map<
+      byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
+      protoSrcCheckSummer =
+    {
+      {
+        // TCP
+        6,
+        [](const ip_header *hdr, byte_t *pkt, size_t sz)
+        {
+          auto hlen = size_t(hdr->ihl * 4);
+          if(hlen + 16 + 2 > sz)
+            return;
+
+          uint16_t *check = (uint16_t *)(pkt + hlen + 16);
+          *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
+        }
+      },
+    };
     void
     IPv4Packet::UpdateChecksumsOnSrc()
     {
+      auto hdr = Header();
+
+      // L4
+      auto proto = hdr->protocol;
+      auto itr   = protoSrcCheckSummer.find(proto);
+      if(itr != protoSrcCheckSummer.end())
+      {
+        itr->second(hdr, buf, sz);
+      }
+
       // IPv4
-      Header()->check = 0;
+      hdr->check = 0;
     }
   }  // namespace net
 }  // namespace llarp

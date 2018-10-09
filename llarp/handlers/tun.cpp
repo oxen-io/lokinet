@@ -441,7 +441,7 @@ namespace llarp
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       self->m_NetworkToUserPktQueue.Process([self, tun](net::IPv4Packet &pkt) {
         // prepare packet for insertion into network
-        pkg.UpdateChecksumsOnSrc();
+        pkt.UpdateChecksumsOnSrc();
         // clear addresses
         pkt.src(0);
         pkt.dst(0);
