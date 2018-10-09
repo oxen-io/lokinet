@@ -318,6 +318,7 @@ set(LIB_SRC
   ${UTP_SRC}
   ${NTRU_SRC}
   llarp/address_info.cpp
+  llarp/arpc.cpp
   llarp/bencode.cpp
   llarp/buffer.cpp
   llarp/config.cpp

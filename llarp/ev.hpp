@@ -50,7 +50,7 @@ namespace llarp
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz) = 0;
 
-    /// used for tun interface
+    /// used for tun interface and tcp conn
     virtual bool
     do_write(void* data, size_t sz)
     {

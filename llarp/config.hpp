@@ -19,6 +19,7 @@ namespace llarp
     section_t connect;
     section_t services;
     section_t system;
+    section_t api;
 
     bool
     Load(const char *fname);

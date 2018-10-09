@@ -2,6 +2,8 @@
 #include <llarp/path.hpp>
 
 #include <llarp/pathbuilder.hpp>
+#include <functional>
+
 #include "buffer.hpp"
 #include "router.hpp"
 
@@ -14,9 +16,10 @@ namespace llarp
     typedef llarp::path::PathSet PathSet_t;
     PathSet_t* pathset = nullptr;
     Path_t* path       = nullptr;
-    typedef void (*Handler)(AsyncPathKeyExchangeContext< User >*);
-    User* user               = nullptr;
-    Handler result           = nullptr;
+    typedef std::function< void(AsyncPathKeyExchangeContext< User >*) > Handler;
+    User* user = nullptr;
+
+    Handler result;
     size_t idx               = 0;
     llarp_threadpool* worker = nullptr;
     llarp_logic* logic       = nullptr;
@@ -29,6 +32,7 @@ namespace llarp
       AsyncPathKeyExchangeContext< User >* ctx =
           static_cast< AsyncPathKeyExchangeContext< User >* >(u);
       ctx->result(ctx);
+      delete ctx;
     }
 
     static void
@@ -138,7 +142,6 @@ namespace llarp
     if(!router->SendToOrQueue(remote, &ctx->LRCM))
     {
       llarp::LogError("failed to send LRCM");
-      delete ctx;
       return;
     }
 
@@ -146,7 +149,6 @@ namespace llarp
     router->PersistSessionUntil(remote, ctx->path->ExpireTime());
     // add own path
     router->paths.AddOwnPath(ctx->pathset, ctx->path);
-    delete ctx;
   }
 
   namespace path

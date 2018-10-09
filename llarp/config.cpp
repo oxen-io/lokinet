@@ -35,8 +35,7 @@ namespace llarp
       iwp_links = find_section(top, "bind", section_t{});
       services  = find_section(top, "services", section_t{});
       system    = find_section(top, "system", section_t{});
-      // std::ofstream ft("config_test.ini");
-      // parser.dump(ft);
+      api       = find_section(top, "api", section_t{});
       return true;
     }
     return false;
@@ -128,6 +127,19 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "# uncomment following line to set router nickname to 'lokinet'"
     << std::endl;
   f << "# nickname=lokinet" << std::endl;
+  f << std::endl << std::endl;
+
+  f << "# admin api (disabled by default)" << std::endl;
+  f << "[api]" << std::endl;
+  f << "enabled=false" << std::endl;
+  f << "# authkey=insertpubkey1here" << std::endl;
+  f << "# authkey=insertpubkey2here" << std::endl;
+  f << "# authkey=insertpubkey3here" << std::endl;
+#ifdef _WIN32
+  f << "bind=127.0.0.1:1190" << std::endl;
+#else
+  f << "bind=unix:" << basepath << "api.socket" << std::endl;
+#endif
   f << std::endl << std::endl;
 
   f << "# system settings for priviledges and such" << std::endl;
@@ -302,10 +314,10 @@ extern "C"
   {
     iter->conf                                                   = conf;
     std::map< std::string, llarp::Config::section_t & > sections = {
-        {"network", conf->impl.network},  {"connect", conf->impl.connect},
-        {"system", conf->impl.system},    {"bind", conf->impl.iwp_links},
-        {"netdb", conf->impl.netdb},      {"dns", conf->impl.dns},
-        {"services", conf->impl.services}};
+        {"network", conf->impl.network}, {"connect", conf->impl.connect},
+        {"system", conf->impl.system},   {"bind", conf->impl.iwp_links},
+        {"netdb", conf->impl.netdb},     {"dns", conf->impl.dns},
+        {"api", conf->impl.api},         {"services", conf->impl.services}};
 
     for(const auto item : conf->impl.router)
       iter->visit(iter, "router", item.first.c_str(), item.second.c_str());

@@ -3,6 +3,7 @@
 #include <llarp/iwp.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/link/utp.hpp>
+#include <llarp/arpc.hpp>
 
 #include "buffer.hpp"
 #include "encode.hpp"
@@ -647,6 +648,22 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
 void
 llarp_router::Run()
 {
+  if(enableRPCServer)
+  {
+    if(rpcBindAddr.empty())
+    {
+      rpcBindAddr = DefaultRPCBindAddr;
+    }
+    rpcServer = std::make_unique< llarp::arpc::Server >(this);
+    if(!rpcServer->Start(rpcBindAddr))
+    {
+      llarp::LogError("Binding rpc server to ", rpcBindAddr, " failed");
+      rpcServer.reset();
+    }
+    else
+      llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
+  }
+
   routerProfiling.Load(routerProfilesFile.c_str());
   // zero out router contact
   sockaddr *dest = (sockaddr *)&this->ip4addr;
@@ -1138,6 +1155,21 @@ namespace llarp
         self->defaultIfName = val;
       }
     }
+    else if(StrEq(section, "api"))
+    {
+      if(StrEq(key, "enabled"))
+      {
+        self->enableRPCServer = IsTrueValue(val);
+      }
+      if(StrEq(key, "bind"))
+      {
+        self->rpcBindAddr = val;
+      }
+      if(StrEq(key, "authkey"))
+      {
+        // TODO: add pubkey to whitelist
+      }
+    }
     else if(StrEq(section, "services"))
     {
       if(self->LoadHiddenServiceConfig(val))
@@ -1218,5 +1250,20 @@ namespace llarp
         self->publicOverride   = true;
       }
     }
-  }  // namespace llarp
+  }
+
+  namespace arpc
+  {
+    const byte_t *
+    Server::SigningPrivateKey() const
+    {
+      return router->identity;
+    }
+
+    const llarp_crypto *
+    Server::Crypto() const
+    {
+      return &router->crypto;
+    }
+  }  // namespace arpc
 }  // namespace llarp
