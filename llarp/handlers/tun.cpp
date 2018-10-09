@@ -440,6 +440,11 @@ namespace llarp
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       self->m_NetworkToUserPktQueue.Process([self, tun](net::IPv4Packet &pkt) {
+        // clear addresses
+        pkt.src(0);
+        pkt.dst(0);
+        // clear checksum
+        pkt.hdr()->check = 0;
         if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
           llarp::LogWarn("packet dropped");
       });
