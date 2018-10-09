@@ -12,6 +12,7 @@
 #include "str.hpp"
 
 #include <fstream>
+#include <cstdlib>
 
 namespace llarp
 {
@@ -666,8 +667,8 @@ llarp_router::Run()
 
   routerProfiling.Load(routerProfilesFile.c_str());
   // zero out router contact
-  sockaddr *dest = (sockaddr *)&this->ip4addr;
-  llarp::Addr publicAddr(*dest);
+  //sockaddr *dest = (sockaddr *)&this->ip4addr;
+  llarp::Addr publicAddr(this->addrInfo);
 
   if(this->publicOverride)
   {
@@ -1245,8 +1246,9 @@ namespace llarp
       if(StrEq(key, "public-port"))
       {
         llarp::LogInfo("Setting public port ", val);
-        self->ip4addr.sin_port = htons(atoi(val));
-        self->addrInfo.port    = htons(atoi(val));
+        int p = atoi(val);
+        self->ip4addr.sin_port = htons(p);
+        self->addrInfo.port    = htons(p);
         self->publicOverride   = true;
       }
     }

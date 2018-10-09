@@ -383,7 +383,7 @@ namespace llarp
           out << "]";
       }
 
-      return out << ":" << a.port();
+      return out << ":" << ntohs(a.port());
     }
 
     operator const sockaddr*() const
