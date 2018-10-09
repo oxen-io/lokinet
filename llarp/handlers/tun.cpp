@@ -444,7 +444,7 @@ namespace llarp
         pkt.src(0);
         pkt.dst(0);
         // clear checksum
-        pkt.hdr()->check = 0;
+        pkt.Header()->check = 0;
         if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
           llarp::LogWarn("packet dropped");
       });
