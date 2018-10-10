@@ -60,13 +60,17 @@ namespace llarp
     deltachksum(uint16_t old_sum, uint32_t old_src_ip_n, uint32_t old_dst_ip_n,
                 uint32_t new_src_ip_n, uint32_t new_dst_ip_n)
     {
-#define ADDIPCS(x) ((uint32_t)ntohs(x & 0xFFFF) + (uint32_t)ntohs(x >> 16))
-#define SUBIPCS(x) \
-  ((uint32_t)ntohs((~x) & 0xFFFF) + (uint32_t)ntohs((~x) >> 16))
+      uint32_t old_src_ip_h = htonl(old_src_ip_n);
+      uint32_t old_dst_ip_h = htonl(old_dst_ip_n);
+      uint32_t new_src_ip_h = htonl(new_src_ip_n);
+      uint32_t new_dst_ip_h = htonl(new_dst_ip_n);
 
-      uint32_t sum = ntohs(old_sum) + ADDIPCS(old_src_ip_n)
-          + ADDIPCS(old_dst_ip_n) + SUBIPCS(new_src_ip_n)
-          + SUBIPCS(new_dst_ip_n);
+#define ADDIPCS(x) ((uint32_t)(x & 0xFFFF) + (uint32_t)(x >> 16))
+#define SUBIPCS(x) ((uint32_t)((~x) & 0xFFFF) + (uint32_t)((~x) >> 16))
+
+      uint32_t sum = ntohs(old_sum) + ADDIPCS(old_src_ip_h)
+          + ADDIPCS(old_dst_ip_h) + SUBIPCS(new_src_ip_h)
+          + SUBIPCS(new_dst_ip_h);
 
 #undef ADDIPCS
 #undef SUBIPCS
@@ -113,9 +117,7 @@ namespace llarp
       auto hdr = Header();
 
       // IPv4 checksum
-      auto hlen  = size_t(hdr->ihl * 4);
-      hdr->check = 0;
-      hdr->check = ipchksum(buf, hlen);
+      hdr->check = deltachksum(hdr->check, 0, 0, hdr->saddr, hdr->daddr);
 
       // L4 checksum
       auto proto = hdr->protocol;
@@ -151,7 +153,7 @@ namespace llarp
       }
 
       // IPv4
-      hdr->check = 0;
+      hdr->check = deltachksum(hdr->check, hdr->saddr, hdr->daddr, 0, 0);
     }
   }  // namespace net
 }  // namespace llarp
