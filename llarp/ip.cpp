@@ -84,25 +84,8 @@ namespace llarp
     static std::map<
         byte_t, std::function< void(const ip_header *, byte_t *, size_t) > >
         protoDstCheckSummer = {
-    // is this even correct???
-    // {RFC3022} says that IPv4 hdr isn't included in ICMP checksum calc
-    // and that we don't need to modify it
-#if 0
-      {
-        // ICMP
-        1,
-        [](const ip_header *hdr, byte_t *buf, size_t sz)
-        {
-          auto len = hdr->ihl * 4;
-          if(len + 2 + 2 > sz)
-            return;
-          uint16_t *check = (uint16_t *)(buf + len + 2);
-
-          *check = 0;
-          *check = ipchksum(buf, sz);
-        }
-      },
-#endif
+            // {RFC3022} says that IPv4 hdr isn't included in ICMP checksum calc
+            // and that we don't need to modify it
             {// TCP
              6,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
@@ -110,6 +93,45 @@ namespace llarp
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
                *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
              }},
+            {// UDP
+             17,
+             [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               uint16_t *check = (uint16_t *)(pkt + hlen + 16);
+               if(*check != 0xFFff)
+               {
+                 if(*check == 0x0000)
+                   return;  // don't change zero
+
+                 *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
+                 if(*check == 0x0000)
+                   *check = 0xFFff;
+               }
+               else
+               {
+                 // such checksum can mean 2 things: 0x0000 or 0xFFff
+                 // we can only know by looking at data :<
+                 auto hlen = size_t(hdr->ihl * 4);
+                 if(hlen > sz)
+                   return;  // malformed, bail out
+
+                 auto cs = ipchksum(pkt + hlen, sz - hlen,
+                                    ipchksum_pseudoIPv4(0, 0, 17, sz - hlen));
+
+                 auto mod_cs = deltachksum(cs, 0, 0, hdr->saddr, hdr->daddr);
+
+                 if(cs != 0x0000 && cs != 0xFFff)
+                 {
+                   // packet was bad - sabotage new checksum
+                   mod_cs += cs - *check;
+                 }
+                 // 0x0000 is reserved for no checksum
+                 if(mod_cs == 0x0000)
+                   mod_cs = 0xFFff;
+                 // put it in
+                 *check = mod_cs;
+               }
+             }},
+
     };
     void
     IPv4Packet::UpdateChecksumsOnDst()
@@ -134,9 +156,49 @@ namespace llarp
             {// TCP
              6,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
-               auto hlen       = size_t(hdr->ihl * 4);
+               auto hlen = size_t(hdr->ihl * 4);
+
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
                *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
+             }},
+            {// UDP
+             17,
+             [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               uint16_t *check = (uint16_t *)(pkt + hlen + 16);
+               if(*check != 0xFFff)
+               {
+                 if(*check == 0x0000)
+                   return;  // don't change zero
+
+                 *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
+                 if(*check == 0x0000)
+                   *check = 0xFFff;
+               }
+               else
+               {
+                 // such checksum can mean 2 things: 0x0000 or 0xFFff
+                 // we can only know by looking at data :<
+                 auto hlen = size_t(hdr->ihl * 4);
+                 if(hlen > sz)
+                   return;  // malformed, bail out
+
+                 auto cs = ipchksum(pkt + hlen, sz - hlen,
+                                    ipchksum_pseudoIPv4(hdr->saddr, hdr->daddr,
+                                                        17, sz - hlen));
+
+                 auto mod_cs = deltachksum(cs, hdr->saddr, hdr->daddr, 0, 0);
+
+                 if(cs != 0x0000 && cs != 0xFFff)
+                 {
+                   // packet was bad - sabotage new checksum
+                   mod_cs += cs - *check;
+                 }
+                 // 0x0000 is reserved for no checksum
+                 if(mod_cs == 0x0000)
+                   mod_cs = 0xFFff;
+                 // put it in
+                 *check = mod_cs;
+               }
              }},
     };
     void
