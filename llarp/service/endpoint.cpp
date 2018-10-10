@@ -644,6 +644,7 @@ namespace llarp
     void
     Endpoint::PutNewOutboundContext(const llarp::service::IntroSet& introset)
     {
+      
       Address addr;
       introset.A.CalculateAddress(addr.data());
 
@@ -843,7 +844,8 @@ namespace llarp
     bool
     Endpoint::OnOutboundLookup(const Address& addr, const IntroSet* introset)
     {
-      if(!introset)
+      auto now = llarp_time_now_ms();
+      if(introset == nullptr || introset->IsExpired(now))
       {
         auto itr = m_PendingServiceLookups.find(addr);
         if(itr != m_PendingServiceLookups.end())
@@ -962,6 +964,12 @@ namespace llarp
         if(currentIntroSet.T >= i->T)
         {
           llarp::LogInfo("introset is old, dropping");
+          return true;
+        }
+        auto now = llarp_time_now_ms();
+        if(i->IsExpired(now))
+        {
+          llarp::LogError("got expired introset from lookup");
           return true;
         }
         currentIntroSet = *i;

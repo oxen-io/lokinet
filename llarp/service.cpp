@@ -109,8 +109,6 @@ namespace llarp
     bool
     IntroSet::IsExpired(llarp_time_t now) const
     {
-      if(now > T)
-        return false;
       return now - T > DEFAULT_PATH_LIFETIME;
     }
 
