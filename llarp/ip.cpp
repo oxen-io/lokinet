@@ -8,6 +8,7 @@
 #endif
 #include <llarp/endian.h>
 #include <map>
+#include <algorithm>
 
 namespace llarp
 {
@@ -57,14 +58,9 @@ namespace llarp
     }
 
     static uint16_t
-    deltachksum(uint16_t old_sum, uint32_t old_src_ip_n, uint32_t old_dst_ip_n,
-                uint32_t new_src_ip_n, uint32_t new_dst_ip_n)
+    deltachksum(uint16_t old_sum, uint32_t old_src_ip_h, uint32_t old_dst_ip_h,
+                uint32_t new_src_ip_h, uint32_t new_dst_ip_h)
     {
-      uint32_t old_src_ip_h = htonl(old_src_ip_n);
-      uint32_t old_dst_ip_h = htonl(old_dst_ip_n);
-      uint32_t new_src_ip_h = htonl(new_src_ip_n);
-      uint32_t new_dst_ip_h = htonl(new_dst_ip_n);
-
 #define ADDIPCS(x) ((uint32_t)(x & 0xFFFF) + (uint32_t)(x >> 16))
 #define SUBIPCS(x) ((uint32_t)((~x) & 0xFFFF) + (uint32_t)((~x) >> 16))
 
@@ -89,20 +85,26 @@ namespace llarp
             {// TCP
              6,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
-               auto hlen       = size_t(hdr->ihl * 4);
+               auto hlen = size_t(hdr->ihl * 4);
+
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
-               *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
+
+               *check = deltachksum(*check, 0, 0, ntohl(hdr->saddr),
+                                    ntohl(hdr->daddr));
              }},
             {// UDP
              17,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               auto hlen = size_t(hdr->ihl * 4);
+
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
                if(*check != 0xFFff)
                {
                  if(*check == 0x0000)
                    return;  // don't change zero
 
-                 *check = deltachksum(*check, 0, 0, hdr->saddr, hdr->daddr);
+                 *check = deltachksum(*check, 0, 0, ntohl(hdr->saddr),
+                                      ntohl(hdr->daddr));
                  if(*check == 0x0000)
                    *check = 0xFFff;
                }
@@ -110,19 +112,23 @@ namespace llarp
                {
                  // such checksum can mean 2 things: 0x0000 or 0xFFff
                  // we can only know by looking at data :<
-                 auto hlen = size_t(hdr->ihl * 4);
                  if(hlen > sz)
                    return;  // malformed, bail out
+
+                 auto oldcs = *check;
+
+                 *check = 0;  // zero checksum before calculation
 
                  auto cs = ipchksum(pkt + hlen, sz - hlen,
                                     ipchksum_pseudoIPv4(0, 0, 17, sz - hlen));
 
-                 auto mod_cs = deltachksum(cs, 0, 0, hdr->saddr, hdr->daddr);
+                 auto mod_cs = deltachksum(cs, 0, 0, ntohl(hdr->saddr),
+                                           ntohl(hdr->daddr));
 
                  if(cs != 0x0000 && cs != 0xFFff)
                  {
                    // packet was bad - sabotage new checksum
-                   mod_cs += cs - *check;
+                   mod_cs += cs - oldcs;
                  }
                  // 0x0000 is reserved for no checksum
                  if(mod_cs == 0x0000)
@@ -139,7 +145,8 @@ namespace llarp
       auto hdr = Header();
 
       // IPv4 checksum
-      hdr->check = deltachksum(hdr->check, 0, 0, hdr->saddr, hdr->daddr);
+      hdr->check =
+          deltachksum(hdr->check, 0, 0, ntohl(hdr->saddr), ntohl(hdr->daddr));
 
       // L4 checksum
       auto proto = hdr->protocol;
@@ -159,18 +166,23 @@ namespace llarp
                auto hlen = size_t(hdr->ihl * 4);
 
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
-               *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
+
+               *check = deltachksum(*check, ntohl(hdr->saddr),
+                                    ntohl(hdr->daddr), 0, 0);
              }},
             {// UDP
              17,
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
+               auto hlen = size_t(hdr->ihl * 4);
+
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
                if(*check != 0xFFff)
                {
                  if(*check == 0x0000)
                    return;  // don't change zero
 
-                 *check = deltachksum(*check, hdr->saddr, hdr->daddr, 0, 0);
+                 *check = deltachksum(*check, ntohl(hdr->saddr),
+                                      ntohl(hdr->daddr), 0, 0);
                  if(*check == 0x0000)
                    *check = 0xFFff;
                }
@@ -178,20 +190,24 @@ namespace llarp
                {
                  // such checksum can mean 2 things: 0x0000 or 0xFFff
                  // we can only know by looking at data :<
-                 auto hlen = size_t(hdr->ihl * 4);
                  if(hlen > sz)
                    return;  // malformed, bail out
+
+                 auto oldcs = *check;
+
+                 *check = 0;  // zero checksum before calculation
 
                  auto cs = ipchksum(pkt + hlen, sz - hlen,
                                     ipchksum_pseudoIPv4(hdr->saddr, hdr->daddr,
                                                         17, sz - hlen));
 
-                 auto mod_cs = deltachksum(cs, hdr->saddr, hdr->daddr, 0, 0);
+                 auto mod_cs = deltachksum(cs, ntohl(hdr->saddr),
+                                           ntohl(hdr->daddr), 0, 0);
 
                  if(cs != 0x0000 && cs != 0xFFff)
                  {
                    // packet was bad - sabotage new checksum
-                   mod_cs += cs - *check;
+                   mod_cs += cs - oldcs;
                  }
                  // 0x0000 is reserved for no checksum
                  if(mod_cs == 0x0000)
@@ -215,7 +231,8 @@ namespace llarp
       }
 
       // IPv4
-      hdr->check = deltachksum(hdr->check, hdr->saddr, hdr->daddr, 0, 0);
+      hdr->check =
+          deltachksum(hdr->check, ntohl(hdr->saddr), ntohl(hdr->daddr), 0, 0);
     }
   }  // namespace net
 }  // namespace llarp

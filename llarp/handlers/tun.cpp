@@ -1,3 +1,4 @@
+#include <algorithm>
 // harmless on other platforms
 #define __USE_MINGW_ANSI_STDIO 1
 #include <llarp/handlers/tun.hpp>

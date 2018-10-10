@@ -117,37 +117,37 @@ namespace llarp
         }
       };
 
-      ip_header*
+      inline ip_header*
       Header()
       {
         return (ip_header*)&buf[0];
       }
 
-      const ip_header*
+      inline const ip_header*
       Header() const
       {
         return (ip_header*)&buf[0];
       }
 
-      uint32_t
+      inline uint32_t
       src()
       {
         return ntohl(Header()->saddr);
       }
 
-      uint32_t
+      inline uint32_t
       dst()
       {
         return ntohl(Header()->daddr);
       }
 
-      void
+      inline void
       src(uint32_t ip)
       {
         Header()->saddr = htonl(ip);
       }
 
-      void
+      inline void
       dst(uint32_t ip)
       {
         Header()->daddr = htonl(ip);
