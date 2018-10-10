@@ -7,7 +7,6 @@
 #endif
 #include <unistd.h>
 #include <llarp/buffer.h>
-#include <list>
 #include <llarp/codel.hpp>
 #include <vector>
 
@@ -192,8 +191,8 @@ struct llarp_ev_loop
 
   virtual ~llarp_ev_loop(){};
 
-  std::list< llarp_udp_io* > udp_listeners;
-  std::list< llarp_tun_io* > tun_listeners;
+  std::vector< llarp_udp_io* > udp_listeners;
+  std::vector< llarp_tun_io* > tun_listeners;
 
   void
   tick_listeners()

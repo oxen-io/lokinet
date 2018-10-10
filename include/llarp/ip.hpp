@@ -153,9 +153,13 @@ namespace llarp
         Header()->daddr = htonl(ip);
       }
 
-      // update ip packet checksum
+      // update ip packet checksum (after packet gets out of network)
       void
-      UpdateChecksum();
+      UpdateChecksumsOnDst();
+
+      // update ip packet checksum (before packet gets inserted into network)
+      void
+      UpdateChecksumsOnSrc();
     };
 
   }  // namespace net

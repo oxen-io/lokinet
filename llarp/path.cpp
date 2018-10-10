@@ -204,8 +204,8 @@ namespace llarp
       return m_Router;
     }
 
-    IHopHandler *
-    PathContext::GetPathForTransfer(const PathID_t & id)
+    IHopHandler*
+    PathContext::GetPathForTransfer(const PathID_t& id)
     {
       RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
@@ -220,7 +220,7 @@ namespace llarp
       }
       return nullptr;
     }
-    
+
     void
     PathContext::PutTransitHop(TransitHop* hop)
     {

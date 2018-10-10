@@ -361,7 +361,15 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       ret     = close_ev(listener);
       l->impl = nullptr;
       delete listener;
-      udp_listeners.remove(l);
+      // std::remove_if
+      auto itr = udp_listeners.begin();
+      while(itr != udp_listeners.end())
+      {
+        if((*itr) == l)
+          itr = udp_listeners.remove(itr);
+        else
+          ++itr;
+      }
     }
     return ret;
   }

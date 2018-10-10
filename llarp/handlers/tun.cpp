@@ -307,6 +307,13 @@ namespace llarp
                          inet_ntoa({htonl(pkt.dst())}));
           return true;
         }
+
+        // prepare packet for insertion into network
+        pkt.UpdateChecksumsOnSrc();
+        // clear addresses
+        pkt.src(0);
+        pkt.dst(0);
+
         if(!SendToOrQueue(itr->second, pkt.Buffer(), service::eProtocolTraffic))
         {
           llarp::LogWarn(Name(), " did not flush packets");
@@ -329,7 +336,7 @@ namespace llarp
                memcpy(pkt.buf, buf.base, pkt.sz);
                pkt.src(themIP);
                pkt.dst(usIP);
-               pkt.UpdateChecksum();
+               pkt.UpdateChecksumsOnDst();
                return true;
              }))
 

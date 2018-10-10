@@ -69,7 +69,10 @@ namespace llarp
         version = other.version;
         topic   = other.topic;
         if(W)
+        {
           delete W;
+          W = nullptr;
+        }
         if(other.W)
           W = new llarp::PoW(*other.W);
         Z = other.Z;

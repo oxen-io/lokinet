@@ -3,7 +3,6 @@
 
 #include <llarp/pathbuilder.hpp>
 #include <functional>
-
 #include "buffer.hpp"
 #include "router.hpp"
 
@@ -173,20 +172,16 @@ namespace llarp
     Builder::SelectHop(llarp_nodedb* db, const RouterContact& prev,
                        RouterContact& cur, size_t hop)
     {
-      if(hop == 0)
-      {
-        if(router->NumberOfConnectedRouters())
-          return router->GetRandomConnectedRouter(cur);
-        else
-          return llarp_nodedb_select_random_hop(db, prev, cur, 0);
-      }
+      if(hop == 0 && router->NumberOfConnectedRouters())
+        return router->GetRandomConnectedRouter(cur);
+
       size_t tries = 5;
       do
       {
         --tries;
         llarp_nodedb_select_random_hop(db, prev, cur, hop);
       } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
-      return tries > 0;
+      return !router->routerProfiling.IsBad(cur.pubkey);
     }
 
     const byte_t*
