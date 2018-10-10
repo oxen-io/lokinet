@@ -307,6 +307,13 @@ namespace llarp
                          inet_ntoa({htonl(pkt.dst())}));
           return true;
         }
+
+        // prepare packet for insertion into network
+        pkt.UpdateChecksumsOnSrc();
+        // clear addresses
+        pkt.src(0);
+        pkt.dst(0);
+
         if(!SendToOrQueue(itr->second, pkt.Buffer(), service::eProtocolTraffic))
         {
           llarp::LogWarn(Name(), " did not flush packets");
@@ -462,15 +469,8 @@ namespace llarp
       llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [self, buf, sz](net::IPv4Packet &pkt) -> bool {
-               if(!pkt.Load(llarp::InitBuffer(buf, sz))
-                  || pkt.Header()->version != 4)
-                 return false;
-               // prepare packet for insertion into network
-               pkt.UpdateChecksumsOnSrc();
-               // clear addresses
-               pkt.src(0);
-               pkt.dst(0);
-               return true;
+               return pkt.Load(llarp::InitBuffer(buf, sz))
+                   && pkt.Header()->version == 4;
              }))
       {
         llarp::LogInfo("Failed to parse ipv4 packet");
