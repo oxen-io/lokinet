@@ -97,7 +97,7 @@ namespace llarp
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
                auto hlen = size_t(hdr->ihl * 4);
 
-               uint16_t *check = (uint16_t *)(pkt + hlen + 16);
+               uint16_t *check = (uint16_t *)(pkt + hlen + 6);
                if(*check != 0xFFff)
                {
                  if(*check == 0x0000)
@@ -181,7 +181,7 @@ namespace llarp
              [](const ip_header *hdr, byte_t *pkt, size_t sz) {
                auto hlen = size_t(hdr->ihl * 4);
 
-               uint16_t *check = (uint16_t *)(pkt + hlen + 16);
+               uint16_t *check = (uint16_t *)(pkt + hlen + 6);
                if(*check != 0xFFff)
                {
                  if(*check == 0x0000)
