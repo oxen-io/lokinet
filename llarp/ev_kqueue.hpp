@@ -366,7 +366,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       while(itr != udp_listeners.end())
       {
         if((*itr) == l)
-          itr = udp_listeners.remove(itr);
+          itr = udp_listeners.erase(itr);
         else
           ++itr;
       }
