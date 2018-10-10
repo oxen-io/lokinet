@@ -81,15 +81,20 @@ namespace llarp
 
   struct log_timestamp
   {
-    std::string format = "%c %Z";
-    friend
-    std::ostream & operator << (std::ostream & out, const log_timestamp & ts)
+    const char* format;
+
+    log_timestamp(const char* fmt = "%c %Z") : format(fmt)
+    {
+    }
+
+    friend std::ostream&
+    operator<<(std::ostream& out, const log_timestamp& ts)
     {
       auto now = llarp::Clock_t::to_time_t(llarp::Clock_t::now());
-      return out << std::put_time(std::localtime(&now), ts.format.c_str());
+      return out << std::put_time(std::localtime(&now), ts.format);
     }
   };
-  
+
   /** internal */
   template < typename... TArgs >
   void
