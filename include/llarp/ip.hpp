@@ -129,28 +129,28 @@ namespace llarp
         return (ip_header*)&buf[0];
       }
 
-      inline uint32_t
+      inline huint32_t
       src()
       {
-        return ntohl(Header()->saddr);
+        return huint32_t{ntohl(Header()->saddr)};
       }
 
-      inline uint32_t
+      inline huint32_t
       dst()
       {
-        return ntohl(Header()->daddr);
+        return huint32_t{ntohl(Header()->daddr)};
       }
 
       inline void
-      src(uint32_t ip)
+      src(huint32_t ip)
       {
-        Header()->saddr = htonl(ip);
+        Header()->saddr = htonl(ip.h);
       }
 
       inline void
-      dst(uint32_t ip)
+      dst(huint32_t ip)
       {
-        Header()->daddr = htonl(ip);
+        Header()->daddr = htonl(ip.h);
       }
 
       // update ip packet checksum (after packet gets out of network)

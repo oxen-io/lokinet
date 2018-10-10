@@ -29,11 +29,11 @@ namespace llarp
     }
 
     static uint32_t
-    ipchksum_pseudoIPv4(uint32_t src_ip_n, uint32_t dst_ip_n, uint8_t proto,
+    ipchksum_pseudoIPv4(nuint32_t src_ip, nuint32_t dst_ip, uint8_t proto,
                         uint16_t innerlen)
     {
 #define IPCS(x) ((uint32_t)(x & 0xFFFF) + (uint32_t)(x >> 16))
-      uint32_t sum = IPCS(src_ip_n) + IPCS(dst_ip_n) + (uint32_t)proto
+      uint32_t sum = IPCS(src_ip.n) + IPCS(dst_ip.n) + (uint32_t)proto
           + (uint32_t)htons(innerlen);
 #undef IPCS
       return sum;
@@ -58,15 +58,14 @@ namespace llarp
     }
 
     static uint16_t
-    deltachksum(uint16_t old_sum, uint32_t old_src_ip_h, uint32_t old_dst_ip_h,
-                uint32_t new_src_ip_h, uint32_t new_dst_ip_h)
+    deltachksum(uint16_t old_sum, huint32_t old_src_ip, huint32_t old_dst_ip,
+                huint32_t new_src_ip, huint32_t new_dst_ip)
     {
-#define ADDIPCS(x) ((uint32_t)(x & 0xFFFF) + (uint32_t)(x >> 16))
-#define SUBIPCS(x) ((uint32_t)((~x) & 0xFFFF) + (uint32_t)((~x) >> 16))
+#define ADDIPCS(x) ((uint32_t)(x.h & 0xFFFF) + (uint32_t)(x.h >> 16))
+#define SUBIPCS(x) ((uint32_t)((~x.h) & 0xFFFF) + (uint32_t)((~x.h) >> 16))
 
-      uint32_t sum = ntohs(old_sum) + ADDIPCS(old_src_ip_h)
-          + ADDIPCS(old_dst_ip_h) + SUBIPCS(new_src_ip_h)
-          + SUBIPCS(new_dst_ip_h);
+      uint32_t sum = ntohs(old_sum) + ADDIPCS(old_src_ip) + ADDIPCS(old_dst_ip)
+          + SUBIPCS(new_src_ip) + SUBIPCS(new_dst_ip);
 
 #undef ADDIPCS
 #undef SUBIPCS
@@ -89,8 +88,9 @@ namespace llarp
 
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
 
-               *check = deltachksum(*check, 0, 0, ntohl(hdr->saddr),
-                                    ntohl(hdr->daddr));
+               *check = deltachksum(*check, huint32_t{0}, huint32_t{0},
+                                    xntohl(nuint32_t{hdr->saddr}),
+                                    xntohl(nuint32_t{hdr->daddr}));
              }},
             {// UDP
              17,
@@ -103,8 +103,9 @@ namespace llarp
                  if(*check == 0x0000)
                    return;  // don't change zero
 
-                 *check = deltachksum(*check, 0, 0, ntohl(hdr->saddr),
-                                      ntohl(hdr->daddr));
+                 *check = deltachksum(*check, huint32_t{0}, huint32_t{0},
+                                      xntohl(nuint32_t{hdr->saddr}),
+                                      xntohl(nuint32_t{hdr->daddr}));
                  if(*check == 0x0000)
                    *check = 0xFFff;
                }
@@ -119,11 +120,14 @@ namespace llarp
 
                  *check = 0;  // zero checksum before calculation
 
-                 auto cs = ipchksum(pkt + hlen, sz - hlen,
-                                    ipchksum_pseudoIPv4(0, 0, 17, sz - hlen));
+                 auto cs =
+                     ipchksum(pkt + hlen, sz - hlen,
+                              ipchksum_pseudoIPv4(nuint32_t{0}, nuint32_t{0},
+                                                  17, sz - hlen));
 
-                 auto mod_cs = deltachksum(cs, 0, 0, ntohl(hdr->saddr),
-                                           ntohl(hdr->daddr));
+                 auto mod_cs = deltachksum(cs, huint32_t{0}, huint32_t{0},
+                                           xntohl(nuint32_t{hdr->saddr}),
+                                           xntohl(nuint32_t{hdr->daddr}));
 
                  if(cs != 0x0000 && cs != 0xFFff)
                  {
@@ -145,8 +149,9 @@ namespace llarp
       auto hdr = Header();
 
       // IPv4 checksum
-      hdr->check =
-          deltachksum(hdr->check, 0, 0, ntohl(hdr->saddr), ntohl(hdr->daddr));
+      hdr->check = deltachksum(hdr->check, huint32_t{0}, huint32_t{0},
+                               xntohl(nuint32_t{hdr->saddr}),
+                               xntohl(nuint32_t{hdr->daddr}));
 
       // L4 checksum
       auto proto = hdr->protocol;
@@ -167,8 +172,9 @@ namespace llarp
 
                uint16_t *check = (uint16_t *)(pkt + hlen + 16);
 
-               *check = deltachksum(*check, ntohl(hdr->saddr),
-                                    ntohl(hdr->daddr), 0, 0);
+               *check = deltachksum(*check, xntohl(nuint32_t{hdr->saddr}),
+                                    xntohl(nuint32_t{hdr->daddr}), huint32_t{0},
+                                    huint32_t{0});
              }},
             {// UDP
              17,
@@ -181,8 +187,9 @@ namespace llarp
                  if(*check == 0x0000)
                    return;  // don't change zero
 
-                 *check = deltachksum(*check, ntohl(hdr->saddr),
-                                      ntohl(hdr->daddr), 0, 0);
+                 *check = deltachksum(*check, xntohl(nuint32_t{hdr->saddr}),
+                                      xntohl(nuint32_t{hdr->daddr}),
+                                      huint32_t{0}, huint32_t{0});
                  if(*check == 0x0000)
                    *check = 0xFFff;
                }
@@ -197,12 +204,14 @@ namespace llarp
 
                  *check = 0;  // zero checksum before calculation
 
-                 auto cs = ipchksum(pkt + hlen, sz - hlen,
-                                    ipchksum_pseudoIPv4(hdr->saddr, hdr->daddr,
-                                                        17, sz - hlen));
+                 auto cs = ipchksum(
+                     pkt + hlen, sz - hlen,
+                     ipchksum_pseudoIPv4(nuint32_t{hdr->saddr},
+                                         nuint32_t{hdr->daddr}, 17, sz - hlen));
 
-                 auto mod_cs = deltachksum(cs, ntohl(hdr->saddr),
-                                           ntohl(hdr->daddr), 0, 0);
+                 auto mod_cs = deltachksum(cs, xntohl(nuint32_t{hdr->saddr}),
+                                           xntohl(nuint32_t{hdr->daddr}),
+                                           huint32_t{0}, huint32_t{0});
 
                  if(cs != 0x0000 && cs != 0xFFff)
                  {
@@ -231,8 +240,9 @@ namespace llarp
       }
 
       // IPv4
-      hdr->check =
-          deltachksum(hdr->check, ntohl(hdr->saddr), ntohl(hdr->daddr), 0, 0);
+      hdr->check = deltachksum(hdr->check, xntohl(nuint32_t{hdr->saddr}),
+                               xntohl(nuint32_t{hdr->daddr}), huint32_t{0},
+                               huint32_t{0});
     }
   }  // namespace net
 }  // namespace llarp

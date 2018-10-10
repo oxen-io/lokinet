@@ -108,7 +108,7 @@ extern "C"
   llarp_tun_io *
   main_router_getRange(struct llarp_main *ptr);
 
-  /// map an ip to a hidden service address
+  /// map an (host byte order) ip to a hidden service address
   bool
   main_router_mapAddress(struct llarp_main *ptr,
                          const llarp::service::Address &addr, uint32_t ip);

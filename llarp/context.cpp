@@ -461,7 +461,7 @@ extern "C"
                          const llarp::service::Address &addr, uint32_t ip)
   {
     auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
-    return endpoint->MapAddress(addr, ip);
+    return endpoint->MapAddress(addr, llarp::huint32_t{ip});
   }
 
   bool
