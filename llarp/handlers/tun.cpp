@@ -313,10 +313,8 @@ namespace llarp
         }
 
         // prepare packet for insertion into network
-        pkt.UpdateChecksumsOnSrc();
-        // clear addresses
-        pkt.src(huint32_t{0});
-        pkt.dst(huint32_t{0});
+        // this includes clearing IP addresses, recalculating checksums, etc
+        pkt.UpdatePacketOnSrc();
 
         if(!SendToOrQueue(itr->second, pkt.Buffer(), service::eProtocolTraffic))
         {
@@ -338,9 +336,8 @@ namespace llarp
                // TODO: don't truncate packet here
                pkt.sz = std::min(buf.sz, sizeof(pkt.buf));
                memcpy(pkt.buf, buf.base, pkt.sz);
-               pkt.src(themIP);
-               pkt.dst(usIP);
-               pkt.UpdateChecksumsOnDst();
+               // update packet to use proper addresses, recalc checksums
+               pkt.UpdatePacketOnDst(themIP, usIP);
                return true;
              }))
 
