@@ -120,12 +120,14 @@ namespace llarp
       struct dotLokiLookup dll;
 
       /// maps ip to service address (host byte order)
-      std::unordered_map< huint32_t, service::Address > m_IPToAddr;
+      std::unordered_map< huint32_t, service::Address, huint32_t::Hash >
+          m_IPToAddr;
       /// maps service address to ip (host byte order)
       std::unordered_map< service::Address, huint32_t, service::Address::Hash >
           m_AddrToIP;
       /// maps ip address to timestamp last active
-      std::unordered_map< huint32_t, llarp_time_t > m_IPActivity;
+      std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >
+          m_IPActivity;
       /// our ip address (host byte order)
       huint32_t m_OurIP;
       /// next ip address to allocate (host byte order)

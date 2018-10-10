@@ -51,16 +51,12 @@ llarp_getPrivateIfs();
 
 namespace llarp
 {
-  struct huint32_t;
-  struct nuint32_t;
-
   // clang-format off
 
   struct huint32_t
   {
     uint32_t h;
 
-    //inline operator nuint32_t() const { return xhtonl(*this); }
     constexpr huint32_t operator &(huint32_t x) const { return huint32_t{h & x.h}; }
     constexpr huint32_t operator |(huint32_t x) const { return huint32_t{h | x.h}; }
     constexpr huint32_t operator ~() const { return huint32_t{~h}; }
@@ -68,13 +64,21 @@ namespace llarp
     inline huint32_t operator --() { --h; return *this; }
     constexpr bool operator <(huint32_t x) const { return h < x.h; }
     constexpr bool operator ==(huint32_t x) const { return h == x.h; }
+
+    struct Hash
+    {
+      inline size_t
+      operator()(huint32_t x) const
+      {
+        return std::hash< uint32_t >{}(x.h);
+      }
+    };
   };
 
   struct nuint32_t
   {
     uint32_t n;
 
-    //inline operator huint32_t() const { return xntohl(*this); }
     constexpr nuint32_t operator &(nuint32_t x) const { return nuint32_t{n & x.n}; }
     constexpr nuint32_t operator |(nuint32_t x) const { return nuint32_t{n | x.n}; }
     constexpr nuint32_t operator ~() const { return nuint32_t{~n}; }
@@ -82,6 +86,15 @@ namespace llarp
     inline nuint32_t operator --() { --n; return *this; }
     constexpr bool operator <(nuint32_t x) const { return n < x.n; }
     constexpr bool operator ==(nuint32_t x) const { return n == x.n; }
+
+    struct Hash
+    {
+      inline size_t
+      operator()(nuint32_t x) const
+      {
+        return std::hash< uint32_t >{}(x.n);
+      }
+    };
   };
 
   // clang-format on
@@ -97,33 +110,7 @@ namespace llarp
   {
     return nuint32_t{htonl(x.h)};
   }
-}  // namespace llarp
 
-namespace std
-{
-  template <>
-  struct hash< llarp::huint32_t >
-  {
-    inline size_t
-    operator()(llarp::huint32_t x) const
-    {
-      return hash< uint32_t >{}(x.h);
-    }
-  };
-
-  template <>
-  struct hash< llarp::nuint32_t >
-  {
-    inline size_t
-    operator()(llarp::nuint32_t x) const
-    {
-      return hash< uint32_t >{}(x.n);
-    }
-  };
-}  // namespace std
-
-namespace llarp
-{
   struct Addr
   {
     // network order

@@ -474,17 +474,8 @@ namespace llarp
       llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [self, buf, sz](net::IPv4Packet &pkt) -> bool {
-               if(pkt.Load(llarp::InitBuffer(buf, sz))
-                  && pkt.Header()->version == 4)
-               {
-                 // clear addresses
-                 pkt.src(0);
-                 pkt.dst(0);
-                 // clear checksum
-                 pkt.Header()->check = 0;
-                 return true;
-               }
-               return false;
+               return pkt.Load(llarp::InitBuffer(buf, sz))
+                   && pkt.Header()->version == 4;
              }))
       {
         llarp::LogInfo("Failed to parse ipv4 packet");
