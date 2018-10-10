@@ -109,7 +109,7 @@ namespace llarp
     bool
     IntroSet::IsExpired(llarp_time_t now) const
     {
-      return now - T > DEFAULT_PATH_LIFETIME;
+      return GetNewestIntroExpiration() < now;
     }
 
     Introduction::~Introduction()
