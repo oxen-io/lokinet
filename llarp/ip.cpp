@@ -60,15 +60,21 @@ namespace llarp
     deltachksum(uint16_t old_sum, uint32_t old_src_ip_n, uint32_t old_dst_ip_n,
                 uint32_t new_src_ip_n, uint32_t new_dst_ip_n)
     {
-#define ADDIPCS(x) ((uint32_t)(x & 0xFFFF) + (uint32_t)(x >> 16))
-#define SUBIPCS(x) ((uint32_t)((~x) & 0xFFFF) + (uint32_t)((~x) >> 16))
-      uint32_t sum = ~old_sum + ADDIPCS(new_src_ip_n) + ADDIPCS(new_dst_ip_n)
-          + SUBIPCS(old_src_ip_n) + SUBIPCS(old_dst_ip_n);
+#define ADDIPCS(x) ((uint32_t)ntohs(x & 0xFFFF) + (uint32_t)ntohs(x >> 16))
+#define SUBIPCS(x) \
+  ((uint32_t)ntohs((~x) & 0xFFFF) + (uint32_t)ntohs((~x) >> 16))
+
+      uint32_t sum = ntohs(old_sum) + ADDIPCS(old_src_ip_n)
+          + ADDIPCS(old_dst_ip_n) + SUBIPCS(new_src_ip_n)
+          + SUBIPCS(new_dst_ip_n);
+
 #undef ADDIPCS
 #undef SUBIPCS
+
       while(sum >> 16)
         sum = (sum & 0xffff) + (sum >> 16);
-      return ~sum;
+
+      return htons(sum);
     }
 
     static std::map<
