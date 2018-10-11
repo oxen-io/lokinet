@@ -48,16 +48,16 @@ code_domain(char *&buffer, const std::string &domain) throw()
     }
     start = end + 1;  // Skip '.'
   }
-  
+
   // llarp::LogInfo("start ", start, " domain size ", domain.size());
-  
+
   *buffer++ = domain.size() - start;  // last label length octet
   for(size_t i = start; i < domain.size(); i++)
   {
     *buffer++ = domain[i];  // last label octets
     // llarp::LogInfo("Writing ", domain[i], " at ", i);
   }
-  
+
   *buffer++ = 0;
 }
 
@@ -100,9 +100,9 @@ extern "C"
     hdr->rd     = fields & 0x0100;
 
     hdr->ra = (lFields >> 7) & 0x1;
-    // hdr->z       = (lFields >> 6) & 0x1;
-    // hdr->ad      = (lFields >> 5) & 0x1;
-    // hdr->cd      = (lFields >> 4) & 0x1;
+    hdr->z       = (lFields >> 6) & 0x1;
+    hdr->ad      = (lFields >> 5) & 0x1;
+    hdr->cd      = (lFields >> 4) & 0x1;
     hdr->rcode = lFields & 0xf;
 
     hdr->qdCount = get16bits(buffer);

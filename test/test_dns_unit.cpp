@@ -7,7 +7,7 @@
 
 struct DNSTest : public ::testing::Test
 {
-  
+
   unsigned char buf[47] = {
     0x00,0x01,        // first short
       0x01,0x00,0x00, // combined fields
@@ -32,9 +32,9 @@ struct DNSTest : public ::testing::Test
 
   DNSTest()
   {
-    
+
   }
-  
+
   void
   SetUp()
   {
@@ -42,7 +42,7 @@ struct DNSTest : public ::testing::Test
     /*
      const char *url = "loki.network";
      struct dns_query *packet = build_dns_packet((char *)url, 1, 1); // id 1, type 1 (A)
-     
+
      unsigned int length = packet->length;
      char *buffer = (char *)packet->request;
      char hex_buffer[length * 5 + 1];
@@ -52,7 +52,7 @@ struct DNSTest : public ::testing::Test
      printf("Generated [%u] bytes: [%s]\n", length, hex_buffer);
      */
   }
-  
+
 };
 
 // test puts/gets
@@ -78,7 +78,7 @@ TEST_F(DNSTest, TestCodeDomain)
   for(unsigned int j = 0; j < 16; j++)
     sprintf(&hex_buffer[3 * j], "%02X ", ((const char *)buffer)[j]);
   //printf("first 16 [%s]", hex_buffer);
-  
+
   std::string expected_result = "03 62 6F 62 03 63 6F 6D 00 00 00 00 00 00 00 00 ";
   ASSERT_TRUE(hex_buffer == expected_result);
 }
@@ -97,7 +97,7 @@ TEST_F(DNSTest, TestDecodeHdr)
   printf("ra[%d]", hdr->ra);
   printf("z [%d]", hdr->z);
   printf("ad[%d]", hdr->ad);
-  printf("rd[%d]", hdr->cd);
+  printf("cd[%d]", hdr->cd);
   printf("rc[%d]", hdr->rcode);
   printf("qd[%d]", hdr->qdCount);
   printf("an[%d]", hdr->anCount);
@@ -188,5 +188,5 @@ TEST_F(DNSTest, handleDNSrecvFrom)
   llarp_handle_dns_recvfrom((llarp_udp_io *)&udp, &addr, buffer, sz);
   // llarp_handle_dnsc_recvfrom
   // llarp_handle_dnsd_recvfrom
-  
+
 }
