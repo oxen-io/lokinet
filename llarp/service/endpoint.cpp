@@ -644,7 +644,6 @@ namespace llarp
     void
     Endpoint::PutNewOutboundContext(const llarp::service::IntroSet& introset)
     {
-      
       Address addr;
       introset.A.CalculateAddress(addr.data());
 

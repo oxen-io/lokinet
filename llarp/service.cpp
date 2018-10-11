@@ -340,6 +340,15 @@ namespace llarp
       return true;
     }
 
+    llarp_time_t
+    IntroSet::GetNewestIntroExpiration() const
+    {
+      llarp_time_t t = 0;
+      for(const auto& intro : I)
+        t = std::max(intro.expiresAt, t);
+      return t;
+    }
+
     bool
     Config::Load(const std::string& fname)
     {
