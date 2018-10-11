@@ -123,3 +123,28 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *pkt, size_t sz)
   // TODO: queue write
   return static_cast< llarp::ev_io * >(tun->impl)->do_write((void *)pkt, sz);
 }
+
+bool
+llarp_tcp_serve(struct llarp_tcp_acceptor *tcp, const struct sockaddr *bindaddr)
+{
+  // TODO: implement me
+  return false;
+}
+
+void
+llarp_tcp_conn_close(struct llarp_tcp_conn *conn)
+{
+  if(!conn)
+    return;
+  llarp::ev_io *impl = static_cast< llarp::ev_io * >(conn->impl);
+  conn->impl         = nullptr;
+  // deregister
+  conn->loop->close_ev(impl);
+  // close fd and delete impl
+  delete impl;
+  // call hook if needed
+  if(conn->closed)
+    conn->closed(conn);
+  // delete
+  delete conn;
+}

@@ -410,8 +410,8 @@ namespace llarp
       GetByUpstream(const RouterID& id, const PathID_t& path);
 
       IHopHandler*
-      GetPathForTransfer(const PathID_t & topath);
-      
+      GetPathForTransfer(const PathID_t& topath);
+
       IHopHandler*
       GetByDownstream(const RouterID& id, const PathID_t& path);
 

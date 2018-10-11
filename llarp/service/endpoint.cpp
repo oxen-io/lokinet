@@ -843,13 +843,15 @@ namespace llarp
     bool
     Endpoint::OnOutboundLookup(const Address& addr, const IntroSet* introset)
     {
-      if(!introset)
+      auto now = llarp_time_now_ms();
+      if(introset == nullptr || introset->IsExpired(now))
       {
         auto itr = m_PendingServiceLookups.find(addr);
         if(itr != m_PendingServiceLookups.end())
         {
+          auto func = itr->second;
           m_PendingServiceLookups.erase(itr);
-          itr->second(addr, nullptr);
+          func(addr, nullptr);
         }
         return false;
       }
@@ -961,6 +963,12 @@ namespace llarp
         if(currentIntroSet.T >= i->T)
         {
           llarp::LogInfo("introset is old, dropping");
+          return true;
+        }
+        auto now = llarp_time_now_ms();
+        if(i->IsExpired(now))
+        {
+          llarp::LogError("got expired introset from lookup");
           return true;
         }
         currentIntroSet = *i;
@@ -1418,7 +1426,7 @@ namespace llarp
       {
         // shift intro if it expires "soon"
         ShiftIntroduction();
-      
+
         if(remoteIntro != m_NextIntro)
         {
           if(GetPathByRouter(m_NextIntro.router) != nullptr)

@@ -320,7 +320,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
       close_ev(listener);
       l->impl = nullptr;
       delete listener;
-      udp_listeners.remove(l);
+      std::remove_if(udp_listeners.begin(), udp_listeners.end(),
+                     [l](llarp_udp_io* i) -> bool { return i == l; });
     }
     return ret;
   }

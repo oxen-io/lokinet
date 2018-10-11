@@ -69,7 +69,10 @@ namespace llarp
         version = other.version;
         topic   = other.topic;
         if(W)
+        {
           delete W;
+          W = nullptr;
+        }
         if(other.W)
           W = new llarp::PoW(*other.W);
         Z = other.Z;
@@ -80,6 +83,20 @@ namespace llarp
       operator<(const IntroSet& other) const
       {
         return A < other.A;
+      }
+
+      bool
+      operator==(const IntroSet& other) const
+      {
+        return A == other.A && I == other.I && K == other.K && T == other.T
+            && version == other.version && topic == other.topic && W == other.W
+            && Z == other.Z;
+      }
+
+      bool
+      operator!=(const IntroSet& other) const
+      {
+        return !(*this == other);
       }
 
       bool
@@ -116,13 +133,7 @@ namespace llarp
       }
 
       llarp_time_t
-      GetNewestIntroExpiration() const
-      {
-        llarp_time_t t = 0;
-        for(const auto& intro : I)
-          t = std::max(intro.expiresAt, t);
-        return t;
-      }
+      GetNewestIntroExpiration() const;
 
       bool
       HasExpiredIntros(llarp_time_t now) const;

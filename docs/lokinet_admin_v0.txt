@@ -1,0 +1,154 @@
+LokiNET admin api
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this
+document are to be interpreted as described in RFC 2119 [RFC2119].
+
+
+
+message format is jsonrpc 2.0 like api serialized with bittorrent encoding (BEncode) over
+TCP
+
+messages are prefixed with big endian 16 bit length field indicating how many bytes the next
+message is.
+
+a version 1 aRPC message is structured as the following message:
+
+{
+   "aRPC-method": "llarp",
+   "id" : "some-id-here",
+   "params": {
+      "key1": "val1",
+      "key2": "val2"
+   },
+   "v" : version_integer,
+   "z-key" : "<optional 32 bytes public key>",
+   "z-sig" : "<64 bytes siganture of the entire message requried if z-key is provided>"
+}
+
+serialzied it would be:
+
+d13:aRPC-method5:llarp2:id12:some-id-here6:paramsd4:key14:val14:key24:val2e5:z-key32:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA5:z-sig64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAe
+
+given the signature is 64 bytes of 'A' and the public key is 32 bytes of 'A'
+
+responses are signed by the identity key and MUST be verified by the caller.
+
+an example of a call to llarp.nodedb.getrc:
+
+{
+   "aRPC-method": "llarp.nodedb.rc.getbykey",
+   "id" : "<12 bytes random>",
+   "params": {
+      "key" : "<32 bytes identity key>"
+   }
+}
+
+the reply MUST be signed by the router's identity key
+
+{
+  "aRPC-method" : "llarp.nodedb.rc.getbykey",
+  "id" : "<12 bytes from before>",
+  "return": {
+     "value" : [RC, RC, RC]
+  }
+  "time": uint64_milliseconds_since_epoch_timestamp_now,
+  "z-key": "<32 bytes identity public key>",
+  "z-sig": "<64 bytes sig>"
+}
+
+and on error:
+
+{
+  "aRPC-method" : "llarp.nodedb.rc.getbykey",
+  "id" : "<12 bytes from before>",
+  "return": {
+     "error": "error message goes here"
+  },
+  "time": uint64_milliseconds_since_epoch_timestamp_now,
+  "z-key": "<32 bytes identity public key>",
+  "z-sig": "<64 bytes sig>"
+}
+
+if requests are signed then they are authenticated by the signer's public key
+requesters can be granted access based on their public key, some methods MAY
+require this in order to be called.
+
+
+
+------
+
+
+the methods currently provided are:
+
+
+llarp.rpc.ping
+
+  get a pong back
+
+  required parameters:
+  
+    ping: integer
+
+  returns:
+
+    ping
+
+llarp.nodedb.rc.getbykey
+
+  get rc by public identity key
+
+  required parameters:
+
+    key: 32 bytes public identity key
+
+  returns:
+
+    a list of RCs (see protocol v0 spec) that have this public identity key
+    usually 0 or 1 RCs
+
+
+llarp.nodedb.rc.getbycidr
+
+  get a list of RCs in an address range
+
+  required parameters:
+
+    cidr: ipv6 network cidr string, i.e. "::ffff.21.0.0.0/8" or "fc00::/7"
+    limit: integer max number of items to fetch, zero or positive integer,
+           if zero no limit.
+
+  returns:
+
+    a list of 0 to limit RCs that advertise themselves as being reachble via an
+    address in the given CIDR.
+
+
+llarp.admin.sys.uptime (authentication required)
+
+  required paramters:
+
+    (none)
+
+  returns:
+
+    an integer milliseconds since unix epoch we've been online
+
+llarp.admin.link.neighboors (authentication required)
+
+  get a list of connected service nodes on all links
+
+  required parameters:
+
+    (none)
+
+  returns:
+
+    list of 0 to N dicts in the following format:
+
+    {
+      "connected" : uint64_milliseconds_timestamp_connected_at
+      "ident" : "<32 bytes public identity key>",
+      "laddr" : "local address",
+      "raddr" : "remote address"
+    }

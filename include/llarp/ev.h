@@ -78,6 +78,54 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,
 int
 llarp_ev_close_udp(struct llarp_udp_io *udp);
 
+// forward declare
+struct llarp_tcp_acceptor;
+
+/// a single tcp connection
+struct llarp_tcp_conn
+{
+  /// user data
+  void *user;
+  /// private implementation
+  void *impl;
+  /// parent loop (dont set me)
+  struct llarp_ev_loop *loop;
+  /// handle read event
+  void (*read)(struct llarp_tcp_conn *, const void *, size_t);
+  /// handle close event (free-ing is handled by event loop)
+  void (*closed)(struct llarp_tcp_conn *);
+};
+
+/// queue async write a buffer in full
+void
+llarp_tcp_conn_async_write(struct llarp_tcp_conn *, const void *, size_t);
+
+/// close a tcp connection
+void
+llarp_tcp_conn_close(struct llarp_tcp_conn *);
+
+struct llarp_tcp_acceptor
+{
+  /// userdata pointer
+  void *user;
+  /// internal implementation
+  void *impl;
+  /// parent event loop (dont set me)
+  struct llarp_ev_loop *loop;
+  /// handle inbound connection
+  void (*accepted)(struct llarp_tcp_acceptor *, struct llarp_tcp_conn *);
+};
+
+/// bind to an address and start serving async
+/// return false if failed to bind
+/// return true on successs
+bool
+llarp_tcp_serve(struct llarp_tcp_acceptor *t, const sockaddr *bindaddr);
+
+/// close and stop accepting connections
+void
+llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *);
+
 #ifdef _WIN32
 #define IFNAMSIZ (16)
 #endif

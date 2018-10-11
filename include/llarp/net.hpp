@@ -53,6 +53,66 @@ llarp_getPrivateIfs();
 
 namespace llarp
 {
+  // clang-format off
+
+  struct huint32_t
+  {
+    uint32_t h;
+
+    constexpr huint32_t operator &(huint32_t x) const { return huint32_t{h & x.h}; }
+    constexpr huint32_t operator |(huint32_t x) const { return huint32_t{h | x.h}; }
+    constexpr huint32_t operator ~() const { return huint32_t{~h}; }
+    inline huint32_t operator ++() { ++h; return *this; }
+    inline huint32_t operator --() { --h; return *this; }
+    constexpr bool operator <(huint32_t x) const { return h < x.h; }
+    constexpr bool operator ==(huint32_t x) const { return h == x.h; }
+
+    struct Hash
+    {
+      inline size_t
+      operator()(huint32_t x) const
+      {
+        return std::hash< uint32_t >{}(x.h);
+      }
+    };
+  };
+
+  struct nuint32_t
+  {
+    uint32_t n;
+
+    constexpr nuint32_t operator &(nuint32_t x) const { return nuint32_t{n & x.n}; }
+    constexpr nuint32_t operator |(nuint32_t x) const { return nuint32_t{n | x.n}; }
+    constexpr nuint32_t operator ~() const { return nuint32_t{~n}; }
+    inline nuint32_t operator ++() { ++n; return *this; }
+    inline nuint32_t operator --() { --n; return *this; }
+    constexpr bool operator <(nuint32_t x) const { return n < x.n; }
+    constexpr bool operator ==(nuint32_t x) const { return n == x.n; }
+
+    struct Hash
+    {
+      inline size_t
+      operator()(nuint32_t x) const
+      {
+        return std::hash< uint32_t >{}(x.n);
+      }
+    };
+  };
+
+  // clang-format on
+
+  static inline huint32_t
+  xntohl(nuint32_t x)
+  {
+    return huint32_t{ntohl(x.n)};
+  }
+
+  static inline nuint32_t
+  xhtonl(huint32_t x)
+  {
+    return nuint32_t{htonl(x.h)};
+  }
+
   struct Addr
   {
     // network order
@@ -444,16 +504,28 @@ namespace llarp
       return *this;
     }
 
-    uint32_t
-    tohl()
+    inline uint32_t
+    tohl() const
     {
       return ntohl(addr4()->s_addr);
     }
 
-    uint32_t
-    ton()
+    inline huint32_t
+    xtohl() const
+    {
+      return huint32_t{ntohl(addr4()->s_addr)};
+    }
+
+    inline uint32_t
+    ton() const
     {
       return addr4()->s_addr;
+    }
+
+    inline nuint32_t
+    xtonl() const
+    {
+      return nuint32_t{addr4()->s_addr};
     }
 
     bool

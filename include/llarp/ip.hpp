@@ -117,45 +117,49 @@ namespace llarp
         }
       };
 
-      ip_header*
+      inline ip_header*
       Header()
       {
         return (ip_header*)&buf[0];
       }
 
-      const ip_header*
+      inline const ip_header*
       Header() const
       {
         return (ip_header*)&buf[0];
       }
 
-      uint32_t
+      inline huint32_t
       src()
       {
-        return ntohl(Header()->saddr);
+        return huint32_t{ntohl(Header()->saddr)};
       }
 
-      uint32_t
+      inline huint32_t
       dst()
       {
-        return ntohl(Header()->daddr);
+        return huint32_t{ntohl(Header()->daddr)};
       }
 
-      void
-      src(uint32_t ip)
+      inline void
+      src(huint32_t ip)
       {
-        Header()->saddr = htonl(ip);
+        Header()->saddr = htonl(ip.h);
       }
 
-      void
-      dst(uint32_t ip)
+      inline void
+      dst(huint32_t ip)
       {
-        Header()->daddr = htonl(ip);
+        Header()->daddr = htonl(ip.h);
       }
 
-      // update ip packet checksum
+      // update ip packet (after packet gets out of network)
       void
-      UpdateChecksum();
+      UpdatePacketOnDst(huint32_t nsrcIP, huint32_t ndstIP);
+
+      // update ip packet (before packet gets inserted into network)
+      void
+      UpdatePacketOnSrc();
     };
 
   }  // namespace net

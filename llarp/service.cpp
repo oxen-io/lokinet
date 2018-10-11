@@ -109,9 +109,7 @@ namespace llarp
     bool
     IntroSet::IsExpired(llarp_time_t now) const
     {
-      if(now > T)
-        return false;
-      return now - T > DEFAULT_PATH_LIFETIME;
+      return GetNewestIntroExpiration() < now;
     }
 
     Introduction::~Introduction()
@@ -340,6 +338,15 @@ namespace llarp
         return false;
       }
       return true;
+    }
+
+    llarp_time_t
+    IntroSet::GetNewestIntroExpiration() const
+    {
+      llarp_time_t t = 0;
+      for(const auto& intro : I)
+        t = std::max(intro.expiresAt, t);
+      return t;
     }
 
     bool

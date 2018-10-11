@@ -33,7 +33,7 @@ namespace llarp
       TickTun(llarp_time_t now);
 
       bool
-      MapAddress(const service::Address& remote, uint32_t ip);
+      MapAddress(const service::Address& remote, huint32_t ip);
 
       bool
       Start();
@@ -91,18 +91,18 @@ namespace llarp
       PacketQueue_t m_NetworkToUserPktQueue;
       /// return true if we have a remote loki address for this ip address
       bool
-      HasRemoteForIP(const uint32_t& ipv4) const;
+      HasRemoteForIP(huint32_t ipv4) const;
       /// get ip address for service address unconditionally
-      uint32_t
+      huint32_t
       ObtainIPForAddr(const service::Address& addr);
 
       /// mark this address as active
       void
-      MarkIPActive(uint32_t ip);
+      MarkIPActive(huint32_t ip);
 
       /// mark this address as active forever
       void
-      MarkIPActiveForever(uint32_t ip);
+      MarkIPActiveForever(huint32_t ip);
 
       void
       FlushSend();
@@ -120,18 +120,20 @@ namespace llarp
       struct dotLokiLookup dll;
 
       /// maps ip to service address (host byte order)
-      std::unordered_map< uint32_t, service::Address > m_IPToAddr;
+      std::unordered_map< huint32_t, service::Address, huint32_t::Hash >
+          m_IPToAddr;
       /// maps service address to ip (host byte order)
-      std::unordered_map< service::Address, uint32_t, service::Address::Hash >
+      std::unordered_map< service::Address, huint32_t, service::Address::Hash >
           m_AddrToIP;
       /// maps ip address to timestamp last active
-      std::unordered_map< uint32_t, llarp_time_t > m_IPActivity;
+      std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >
+          m_IPActivity;
       /// our ip address (host byte order)
-      uint32_t m_OurIP;
+      huint32_t m_OurIP;
       /// next ip address to allocate (host byte order)
-      uint32_t m_NextIP;
-      /// highest ip address to allocate
-      uint32_t m_MaxIP;
+      huint32_t m_NextIP;
+      /// highest ip address to allocate (host byte order)
+      huint32_t m_MaxIP;
     };
   }  // namespace handlers
 }  // namespace llarp

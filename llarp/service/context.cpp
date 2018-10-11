@@ -115,7 +115,7 @@ namespace llarp
     }
 
     bool
-    Context::MapAddress(const llarp::service::Address &addr, uint32_t ip)
+    Context::MapAddress(const llarp::service::Address &addr, huint32_t ip)
     {
       if(!m_Endpoints.size())
       {
@@ -148,7 +148,7 @@ namespace llarp
         return false;
       }
       return tunEndpoint->MapAddress(context->serviceAddr,
-                                     context->localPrivateIpAddr.tohl());
+                                     context->localPrivateIpAddr.xtohl());
     }
 
     bool
