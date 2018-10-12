@@ -57,18 +57,23 @@ namespace llarp
   {
     uint32_t h;
 
-    constexpr huint32_t operator &(huint32_t x) const { return huint32_t{h & x.h}; }
-    constexpr huint32_t operator |(huint32_t x) const { return huint32_t{h | x.h}; }
-    constexpr huint32_t operator ~() const { return huint32_t{~h}; }
+    constexpr huint32_t
+    operator &(huint32_t x) const { return huint32_t{uint32_t(h & x.h)}; }
+    constexpr huint32_t
+    operator |(huint32_t x) const { return huint32_t{uint32_t(h | x.h)}; }
+    constexpr huint32_t
+    operator ~() const { return huint32_t{uint32_t(~h)}; }
+
     inline huint32_t operator ++() { ++h; return *this; }
     inline huint32_t operator --() { --h; return *this; }
+
     constexpr bool operator <(huint32_t x) const { return h < x.h; }
     constexpr bool operator ==(huint32_t x) const { return h == x.h; }
 
     struct Hash
     {
       inline size_t
-      operator()(huint32_t x) const
+      operator ()(huint32_t x) const
       {
         return std::hash< uint32_t >{}(x.h);
       }
@@ -79,25 +84,90 @@ namespace llarp
   {
     uint32_t n;
 
-    constexpr nuint32_t operator &(nuint32_t x) const { return nuint32_t{n & x.n}; }
-    constexpr nuint32_t operator |(nuint32_t x) const { return nuint32_t{n | x.n}; }
-    constexpr nuint32_t operator ~() const { return nuint32_t{~n}; }
+    constexpr nuint32_t
+    operator &(nuint32_t x) const { return nuint32_t{uint32_t(n & x.n)}; }
+    constexpr nuint32_t
+    operator |(nuint32_t x) const { return nuint32_t{uint32_t(n | x.n)}; }
+    constexpr nuint32_t
+    operator ~() const { return nuint32_t{uint32_t(~n)}; }
+
     inline nuint32_t operator ++() { ++n; return *this; }
     inline nuint32_t operator --() { --n; return *this; }
+
     constexpr bool operator <(nuint32_t x) const { return n < x.n; }
     constexpr bool operator ==(nuint32_t x) const { return n == x.n; }
 
     struct Hash
     {
       inline size_t
-      operator()(nuint32_t x) const
+      operator ()(nuint32_t x) const
       {
         return std::hash< uint32_t >{}(x.n);
       }
     };
   };
 
+  struct huint16_t
+  {
+    uint16_t h;
+
+    constexpr huint16_t
+    operator &(huint16_t x) const { return huint16_t{uint16_t(h & x.h)}; }
+    constexpr huint16_t
+    operator |(huint16_t x) const { return huint16_t{uint16_t(h | x.h)}; }
+    constexpr huint16_t
+    operator ~() const { return huint16_t{uint16_t(~h)}; }
+
+    inline huint16_t operator ++() { ++h; return *this; }
+    inline huint16_t operator --() { --h; return *this; }
+
+    constexpr bool operator <(huint16_t x) const { return h < x.h; }
+    constexpr bool operator ==(huint16_t x) const { return h == x.h; }
+
+    struct Hash
+    {
+      inline size_t
+      operator ()(huint16_t x) const
+      {
+        return std::hash< uint16_t >{}(x.h);
+      }
+    };
+  };
+
+  struct nuint16_t
+  {
+    uint16_t n;
+
+    constexpr nuint16_t
+    operator &(nuint16_t x) const { return nuint16_t{uint16_t(n & x.n)}; }
+    constexpr nuint16_t
+    operator |(nuint16_t x) const { return nuint16_t{uint16_t(n | x.n)}; }
+    constexpr nuint16_t
+    operator ~() const { return nuint16_t{uint16_t(~n)}; }
+
+    inline nuint16_t operator ++() { ++n; return *this; }
+    inline nuint16_t operator --() { --n; return *this; }
+
+    constexpr bool operator <(nuint16_t x) const { return n < x.n; }
+    constexpr bool operator ==(nuint16_t x) const { return n == x.n; }
+
+    struct Hash
+    {
+      inline size_t
+      operator ()(nuint16_t x) const
+      {
+        return std::hash< uint16_t >{}(x.n);
+      }
+    };
+  };
+
   // clang-format on
+
+  static inline nuint32_t
+  xhtonl(huint32_t x)
+  {
+    return nuint32_t{htonl(x.h)};
+  }
 
   static inline huint32_t
   xntohl(nuint32_t x)
@@ -105,10 +175,16 @@ namespace llarp
     return huint32_t{ntohl(x.n)};
   }
 
-  static inline nuint32_t
-  xhtonl(huint32_t x)
+  static inline nuint16_t
+  xhtons(huint16_t x)
   {
-    return nuint32_t{htonl(x.h)};
+    return nuint16_t{htons(x.h)};
+  }
+
+  static inline huint16_t
+  xntohs(nuint16_t x)
+  {
+    return huint16_t{ntohs(x.n)};
   }
 
   struct Addr
