@@ -76,68 +76,59 @@ namespace llarp
       return htons(sum);
     }
 
-    static std::map<
-        byte_t,
-        std::function< void(const ip_header *ohdr, byte_t *pld, size_t psz,
-                            huint32_t oSrcIP, huint32_t oDstIP,
-                            huint32_t nSrcIP, huint32_t nDstIP) > >
-        protoDstCheckSummer = {
-            // {RFC3022} says that IPv4 hdr isn't included in ICMP checksum calc
-            // and that we don't need to modify it
-            {// TCP
-             6,
-             [](const ip_header *ohdr, byte_t *pld, size_t psz,
-                huint32_t oSrcIP, huint32_t oDstIP, huint32_t nSrcIP,
-                huint32_t nDstIP) {
-               uint16_t *check = (uint16_t *)(pld + 16);
+    static void
+    checksumDstTCP(byte_t *pld, size_t psz, huint32_t oSrcIP, huint32_t oDstIP,
+                   huint32_t nSrcIP, huint32_t nDstIP)
+    {
+      uint16_t *check = (uint16_t *)(pld + 16);
 
-               *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
-             }},
-            {// UDP
-             17,
-             [](const ip_header *ohdr, byte_t *pld, size_t psz,
-                huint32_t oSrcIP, huint32_t oDstIP, huint32_t nSrcIP,
-                huint32_t nDstIP) {
-               uint16_t *check = (uint16_t *)(pld + 6);
-               if(*check != 0xFFff)
-               {
-                 if(*check == 0x0000)
-                   return;  // don't change zero
+      *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
+    }
 
-                 *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
-                 if(*check == 0x0000)
-                   *check = 0xFFff;
-               }
-               else
-               {
-                 // such checksum can mean 2 things: 0x0000 or 0xFFff
-                 // we can only know by looking at data :<
+    static void
+    checksumDstUDP(const ip_header *ohdr, byte_t *pld, size_t psz,
+                   huint32_t oSrcIP, huint32_t oDstIP, huint32_t nSrcIP,
+                   huint32_t nDstIP)
+    {
+      uint16_t *check = (uint16_t *)(pld + 6);
+      if(*check != 0xFFff)
+      {
+        if(*check == 0x0000)
+          return;  // don't change zero
 
-                 auto pakcs = *check;  // save
+        *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
+        if(*check == 0x0000)
+          *check = 0xFFff;
+      }
+      else
+      {
+        // such checksum can mean 2 things: 0x0000 or 0xFFff
+        // we can only know by looking at data :<
 
-                 *check = 0;  // zero checksum before calculation
+        auto pakcs = *check;  // save
 
-                 auto cs = ipchksum(
-                     pld, psz,
+        *check = 0;  // zero checksum before calculation
+
+        auto cs =
+            ipchksum(pld, psz,
                      ipchksum_pseudoIPv4(nuint32_t{ohdr->saddr},
                                          nuint32_t{ohdr->daddr}, 17, psz));
 
-                 auto new_cs = deltachksum(cs, oSrcIP, oDstIP, nSrcIP, nDstIP);
+        auto new_cs = deltachksum(cs, oSrcIP, oDstIP, nSrcIP, nDstIP);
 
-                 if(cs != 0x0000 && cs != 0xFFff)
-                 {
-                   // packet was bad - sabotage new checksum
-                   new_cs += pakcs - cs;
-                 }
-                 // 0x0000 is reserved for no checksum
-                 if(new_cs == 0x0000)
-                   new_cs = 0xFFff;
-                 // put it in
-                 *check = new_cs;
-               }
-             }},
+        if(cs != 0x0000 && cs != 0xFFff)
+        {
+          // packet was bad - sabotage new checksum
+          new_cs += pakcs - cs;
+        }
+        // 0x0000 is reserved for no checksum
+        if(new_cs == 0x0000)
+          new_cs = 0xFFff;
+        // put it in
+        *check = new_cs;
+      }
+    }
 
-    };
     void
     IPv4Packet::UpdatePacketOnDst(huint32_t nSrcIP, huint32_t nDstIP)
     {
@@ -151,11 +142,17 @@ namespace llarp
 
       // L4 checksum
       auto proto = hdr->protocol;
-      auto itr   = protoDstCheckSummer.find(proto);
-      size_t ihs;
-      if(itr != protoDstCheckSummer.end() && (ihs = size_t(hdr->ihl * 4)) <= sz)
+      auto ihs   = size_t(hdr->ihl * 4);
+      auto pld   = buf + ihs;
+      auto psz   = sz - ihs;
+      switch(proto)
       {
-        itr->second(hdr, buf + ihs, sz - ihs, oSrcIP, oDstIP, nSrcIP, nDstIP);
+        case 6:
+          checksumDstTCP(pld, psz, oSrcIP, oDstIP, nSrcIP, nDstIP);
+          break;
+        case 17:
+          checksumDstUDP(hdr, pld, psz, oSrcIP, oDstIP, nSrcIP, nDstIP);
+          break;
       }
 
       // write new IP addresses
@@ -163,65 +160,59 @@ namespace llarp
       hdr->daddr = xhtonl(nDstIP).n;
     }
 
-    static std::map<
-        byte_t,
-        std::function< void(const ip_header *ohdr, byte_t *pld, size_t psz,
-                            huint32_t oSrcIP, huint32_t oDstIP) > >
-        protoSrcCheckSummer = {
-            {// TCP
-             6,
-             [](const ip_header *ohdr, byte_t *pld, size_t psz,
-                huint32_t oSrcIP, huint32_t oDstIP) {
-               uint16_t *check = (uint16_t *)(pld + 16);
+    static void
+    checksumSrcTCP(byte_t *pld, size_t psz, huint32_t oSrcIP, huint32_t oDstIP)
+    {
+      uint16_t *check = (uint16_t *)(pld + 16);
 
-               *check = deltachksum(*check, oSrcIP, oDstIP, huint32_t{0},
-                                    huint32_t{0});
-             }},
-            {// UDP
-             17,
-             [](const ip_header *ohdr, byte_t *pld, size_t psz,
-                huint32_t oSrcIP, huint32_t oDstIP) {
-               uint16_t *check = (uint16_t *)(pld + 6);
-               if(*check != 0xFFff)
-               {
-                 if(*check == 0x0000)
-                   return;  // don't change zero
+      *check = deltachksum(*check, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
+    }
 
-                 *check = deltachksum(*check, oSrcIP, oDstIP, huint32_t{0},
-                                      huint32_t{0});
-                 if(*check == 0x0000)
-                   *check = 0xFFff;
-               }
-               else
-               {
-                 // such checksum can mean 2 things: 0x0000 or 0xFFff
-                 // we can only know by looking at data :<
+    static void
+    checksumSrcUDP(const ip_header *ohdr, byte_t *pld, size_t psz,
+                   huint32_t oSrcIP, huint32_t oDstIP)
+    {
+      uint16_t *check = (uint16_t *)(pld + 6);
+      if(*check != 0xFFff)
+      {
+        if(*check == 0x0000)
+          return;  // don't change zero
 
-                 auto pakcs = *check; // save
+        *check =
+            deltachksum(*check, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
+        if(*check == 0x0000)
+          *check = 0xFFff;
+      }
+      else
+      {
+        // such checksum can mean 2 things: 0x0000 or 0xFFff
+        // we can only know by looking at data :<
 
-                 *check = 0;  // zero checksum before calculation
+        auto pakcs = *check;  // save
 
-                 auto cs = ipchksum(
-                     pld, psz,
+        *check = 0;  // zero checksum before calculation
+
+        auto cs =
+            ipchksum(pld, psz,
                      ipchksum_pseudoIPv4(nuint32_t{ohdr->saddr},
                                          nuint32_t{ohdr->daddr}, 17, psz));
 
-                 auto new_cs = deltachksum(cs, oSrcIP, oDstIP, huint32_t{0},
-                                           huint32_t{0});
+        auto new_cs =
+            deltachksum(cs, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
 
-                 if(cs != 0x0000 && cs != 0xFFff)
-                 {
-                   // packet was bad - sabotage new checksum
-                   new_cs += pakcs - cs;
-                 }
-                 // 0x0000 is reserved for no checksum
-                 if(new_cs == 0x0000)
-                   new_cs = 0xFFff;
-                 // put it in
-                 *check = new_cs;
-               }
-             }},
-    };
+        if(cs != 0x0000 && cs != 0xFFff)
+        {
+          // packet was bad - sabotage new checksum
+          new_cs += pakcs - cs;
+        }
+        // 0x0000 is reserved for no checksum
+        if(new_cs == 0x0000)
+          new_cs = 0xFFff;
+        // put it in
+        *check = new_cs;
+      }
+    }
+
     void
     IPv4Packet::UpdatePacketOnSrc()
     {
@@ -232,11 +223,17 @@ namespace llarp
 
       // L4
       auto proto = hdr->protocol;
-      auto itr   = protoSrcCheckSummer.find(proto);
-      size_t ihs;
-      if(itr != protoSrcCheckSummer.end() && (ihs = size_t(hdr->ihl * 4)) <= sz)
+      auto ihs   = size_t(hdr->ihl * 4);
+      auto pld   = buf + ihs;
+      auto psz   = sz - ihs;
+      switch(proto)
       {
-        itr->second(hdr, buf + ihs, sz - ihs, oSrcIP, oDstIP);
+        case 6:
+          checksumSrcTCP(pld, psz, oSrcIP, oDstIP);
+          break;
+        case 17:
+          checksumSrcUDP(hdr, pld, psz, oSrcIP, oDstIP);
+          break;
       }
 
       // IPv4

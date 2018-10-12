@@ -155,7 +155,7 @@ namespace llarp
 
       // update ip packet (after packet gets out of network)
       void
-      UpdatePacketOnDst(huint32_t nsrcIP, huint32_t ndstIP);
+      UpdatePacketOnDst(huint32_t nSrcIP, huint32_t nDstIP);
 
       // update ip packet (before packet gets inserted into network)
       void
