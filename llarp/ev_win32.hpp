@@ -231,8 +231,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       return -1;
     else
     {
-      tick_listeners();
       result = idx;
+      tick_listeners();
     }
 
     return result;
