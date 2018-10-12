@@ -110,7 +110,7 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
     response->dontSendResponse         = false;
     // llarp::Addr test(*free_private->hostResult.getSockAddr());
     // llarp::LogInfo("IP Test: ", test);
-    response->returnThis = free_private->hostResult.getSockAddr();
+    response->returnThis = free_private->hostResult;
     llarp::LogInfo("Saving ", qr->request->question.name);
     loki_tld_lookup_cache[qr->request->question.name] = response;
     // we can't delete response now...

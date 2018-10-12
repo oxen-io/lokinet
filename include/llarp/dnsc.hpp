@@ -9,6 +9,20 @@
 
 struct dnsc_answer_request;
 
+#define DNC_BUF_SIZE 512
+/// a question to be asked remotely (the actual bytes to send on the wire)
+// header, question
+struct dns_query
+{
+  uint16_t length;
+  // char *url;
+  unsigned char request[DNC_BUF_SIZE];
+  // uint16_t reqType;
+};
+
+struct dns_query *
+build_dns_packet(char *url, uint16_t id, uint16_t reqType);
+
 /// hook function to handle an dns client request
 // should we pass by llarp::Addr
 // not as long as we're supporting raw

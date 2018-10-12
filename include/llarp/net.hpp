@@ -41,6 +41,8 @@ operator==(const in6_addr& a, const in6_addr& b);
 
 struct privatesInUse
 {
+  // true if used by real NICs on start
+  // false if not used, and means we could potentially use it if needed
   bool ten;       // 16m ips
   bool oneSeven;  // 1m  ips
   bool oneNine;   // 65k ips
@@ -469,6 +471,14 @@ namespace llarp
         return (const sockaddr*)&_addr;
     }
 
+    operator sockaddr*() const
+    {
+      if(af() == AF_INET)
+        return (sockaddr*)&_addr4;
+      else
+        return (sockaddr*)&_addr;
+    }
+    
     void
     CopyInto(sockaddr* other) const
     {
@@ -591,12 +601,6 @@ namespace llarp
     xtonl() const
     {
       return nuint32_t{addr4()->s_addr};
-    }
-
-    sockaddr*
-    getSockAddr()
-    {
-      return (struct sockaddr*)&_addr4;
     }
 
     bool

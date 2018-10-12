@@ -666,16 +666,12 @@ llarp_router::Run()
   }
 
   routerProfiling.Load(routerProfilesFile.c_str());
-  // zero out router contact
-  //sockaddr *dest = (sockaddr *)&this->ip4addr;
+
   llarp::Addr publicAddr(this->addrInfo);
 
   if(this->publicOverride)
   {
-    if(publicAddr)
-    {
-      llarp::LogInfo("public address:port ", publicAddr);
-    }
+    llarp::LogDebug("public address:port ", publicAddr);
   }
 
   llarp::LogInfo("You have ", inboundLinks.size(), " inbound links");
@@ -727,6 +723,7 @@ llarp_router::Run()
       _rc.addrs.push_back(this->addrInfo);
     }
   }
+
   // set public encryption key
   _rc.enckey = llarp::seckey_topublic(encryption);
   llarp::LogInfo("Your Encryption pubkey ", rc().enckey);
@@ -1247,7 +1244,8 @@ namespace llarp
       {
         llarp::LogInfo("Setting public port ", val);
         int p = atoi(val);
-        // Not needed to flip upside-down - this is done in llarp::Addr(const AddressInfo&)
+        // Not needed to flip upside-down - this is done in llarp::Addr(const
+        // AddressInfo&)
         self->ip4addr.sin_port = p;
         self->addrInfo.port    = p;
         self->publicOverride   = true;

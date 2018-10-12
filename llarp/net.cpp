@@ -807,6 +807,7 @@ struct privatesInUse
 llarp_getPrivateIfs()
 {
   struct privatesInUse result;
+  // mark all available for use
   result.ten      = false;
   result.oneSeven = false;
   result.oneNine  = false;

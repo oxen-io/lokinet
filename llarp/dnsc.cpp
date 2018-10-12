@@ -23,6 +23,8 @@
 
 dns_tracker dns_udp_tracker;
 
+
+/*
 #define DNC_BUF_SIZE 512
 /// a question to be asked remotely (the actual bytes to send on the wire)
 // header, question
@@ -33,6 +35,7 @@ struct dns_query
   unsigned char request[DNC_BUF_SIZE];
   // uint16_t reqType;
 };
+*/
 
 /// build a DNS question packet
 struct dns_query *

@@ -312,6 +312,7 @@ namespace llarp
           // ask for next peer
           if(txitr->second->AskNextPeer(from.node))
             sendReply = false;
+          llarp::LogWarn("Target key ", txitr->second->target);
           Inform(from, txitr->second->target, {}, sendReply, sendReply);
         }
 

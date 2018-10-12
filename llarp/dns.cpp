@@ -32,6 +32,35 @@ getDNSstring(const char *buffer)
   return str;
 }
 
+void
+code_domain(char *&buffer, const std::string &domain) throw()
+{
+  std::string::size_type start(0);
+  std::string::size_type end;  // indexes
+  // llarp::LogInfo("domain [", domain, "]");
+  while((end = domain.find('.', start)) != std::string::npos)
+  {
+    *buffer++ = end - start;  // label length octet
+    for(std::string::size_type i = start; i < end; i++)
+    {
+      *buffer++ = domain[i];  // label octets
+      // llarp::LogInfo("Writing ", domain[i], " at ", i);
+    }
+    start = end + 1;  // Skip '.'
+  }
+
+  // llarp::LogInfo("start ", start, " domain size ", domain.size());
+
+  *buffer++ = domain.size() - start;  // last label length octet
+  for(size_t i = start; i < domain.size(); i++)
+  {
+    *buffer++ = domain[i];  // last label octets
+    // llarp::LogInfo("Writing ", domain[i], " at ", i);
+  }
+
+  *buffer++ = 0;
+}
+
 // lets just remove uint
 #ifdef _WIN32
 #define uint UINT
@@ -71,9 +100,9 @@ extern "C"
     hdr->rd     = fields & 0x0100;
 
     hdr->ra = (lFields >> 7) & 0x1;
-    // hdr->z       = (lFields >> 6) & 0x1;
-    // hdr->ad      = (lFields >> 5) & 0x1;
-    // hdr->cd      = (lFields >> 4) & 0x1;
+    hdr->z       = (lFields >> 6) & 0x1;
+    hdr->ad      = (lFields >> 5) & 0x1;
+    hdr->cd      = (lFields >> 4) & 0x1;
     hdr->rcode = lFields & 0xf;
 
     hdr->qdCount = get16bits(buffer);
@@ -86,8 +115,11 @@ extern "C"
   dns_msg_question *
   decode_question(const char *buffer)
   {
+    //char *start = (char *)buffer;
     dns_msg_question *question = new dns_msg_question;
     std::string m_qName        = getDNSstring(buffer);
+    buffer += m_qName.length() + 2; // + length byte & ending terminator
+    //printf("Now0 at [%d]\n", buffer - start);
     // buffer += m_qName.size() + 1;
     /*
     std::string m_qName        = "";
@@ -107,7 +139,9 @@ extern "C"
     */
     question->name   = m_qName;
     question->type   = get16bits(buffer);
+    //printf("Now1 at [%d]\n", buffer - start);
     question->qClass = get16bits(buffer);
+    //printf("Now2 at [%d]\n", buffer - start);
     return question;
   }
 
@@ -168,6 +202,12 @@ extern "C"
         case 6:  // type 6 = SOA
         {
           // 2 names, then 4x 32bit
+          // why risk any crashes
+          if (answer->rdLen < 24)
+          {
+            llarp::LogWarn("Weird SOA is less than 24 bytes: ", answer->rdLen);
+          }
+          /*
           std::string mname = getDNSstring((char *)buffer);
           std::string rname = getDNSstring((char *)buffer);
           uint32_t serial   = get32bits(buffer);
@@ -182,6 +222,7 @@ extern "C"
           llarp::LogDebug("retry   : ", retry);
           llarp::LogDebug("expire  : ", expire);
           llarp::LogDebug("minimum : ", minimum);
+          */
         }
         break;
         case 12:
@@ -213,35 +254,6 @@ extern "C"
   {
     htobe32buf(buffer, value);
     buffer += 4;
-  }
-
-  void
-  code_domain(char *&buffer, const std::string &domain) throw()
-  {
-    std::string::size_type start(0);
-    std::string::size_type end;  // indexes
-    // llarp::LogInfo("domain [", domain, "]");
-    while((end = domain.find('.', start)) != std::string::npos)
-    {
-      *buffer++ = end - start;  // label length octet
-      for(std::string::size_type i = start; i < end; i++)
-      {
-        *buffer++ = domain[i];  // label octets
-        // llarp::LogInfo("Writing ", domain[i], " at ", i);
-      }
-      start = end + 1;  // Skip '.'
-    }
-
-    // llarp::LogInfo("start ", start, " domain size ", domain.size());
-
-    *buffer++ = domain.size() - start;  // last label length octet
-    for(size_t i = start; i < domain.size(); i++)
-    {
-      *buffer++ = domain[i];  // last label octets
-      // llarp::LogInfo("Writing ", domain[i], " at ", i);
-    }
-
-    *buffer++ = 0;
   }
 
   void
