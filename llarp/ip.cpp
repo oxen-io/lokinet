@@ -17,7 +17,9 @@ namespace llarp
     bool
     IPv4Packet::Load(llarp_buffer_t pkt)
     {
-      sz = std::min(pkt.sz, sizeof(buf));
+      if(pkt.sz > sizeof(buf))
+        return false;
+      sz = pkt.sz;
       memcpy(buf, pkt.base, sz);
       return true;
     }

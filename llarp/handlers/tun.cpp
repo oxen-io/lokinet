@@ -332,10 +332,21 @@ namespace llarp
       auto buf    = llarp::Buffer(msg->payload);
       if(m_NetworkToUserPktQueue.EmplaceIf(
              [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
-               // do packet info rewrite here
-               // TODO: don't truncate packet here
-               pkt.sz = std::min(buf.sz, sizeof(pkt.buf));
-               memcpy(pkt.buf, buf.base, pkt.sz);
+               // load
+               if(!pkt.Load(buf))
+                 return false;
+               // filter out:
+               // - packets smaller than minimal IPv4 header
+               // - non-IPv4 packets
+               // - packets with weird src/dst addresses
+               //   (0.0.0.0/8 but not 0.0.0.0)
+               auto hdr = pkt.Header();
+               if(pkt.sz < sizeof(*hdr) || hdr->version != 4
+                  || (hdr->saddr && *(byte_t *)&(hdr->saddr) == 0)
+                  || (hdr->daddr && *(byte_t *)&(hdr->daddr) == 0))
+               {
+                 return false;
+               }
                // update packet to use proper addresses, recalc checksums
                pkt.UpdatePacketOnDst(themIP, usIP);
                return true;
