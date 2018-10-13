@@ -23,7 +23,6 @@
 
 dns_tracker dns_udp_tracker;
 
-
 /*
 #define DNC_BUF_SIZE 512
 /// a question to be asked remotely (the actual bytes to send on the wire)

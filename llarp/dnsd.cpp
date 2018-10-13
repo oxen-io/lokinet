@@ -269,7 +269,7 @@ handle_dnsc_result(dnsc_answer_request *client_request)
   else
   {
     struct sockaddr *useHostRes = nullptr;
-    if (client_request->found)
+    if(client_request->found)
       useHostRes = client_request->result;
     writesend_dnss_response(useHostRes, server_request->from, server_request);
   }

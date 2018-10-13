@@ -334,7 +334,7 @@ namespace llarp
         std::string host = bindaddr.substr(0, idx);
         uint16_t port    = std::stoi(bindaddr.substr(idx + 1));
         addr             = llarp::Addr(host, port);
-        saddr            = (sockaddr *)addr;
+        saddr            = (sockaddr*)addr;
       }
       return llarp_tcp_serve(&m_acceptor, saddr);
     }

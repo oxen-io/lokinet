@@ -289,7 +289,7 @@ namespace llarp
 
       _addr.sin6_family = res->ai_family;
       _addr4.sin_family = res->ai_family;
-      _addr4.sin_port   = 0; // save a call, 0 is 0 no matter how u arrange it
+      _addr4.sin_port   = 0;  // save a call, 0 is 0 no matter how u arrange it
 #if((__APPLE__ && __MACH__) || __FreeBSD__)
       _addr4.sin_len = sizeof(in_addr);
 #endif
@@ -478,7 +478,7 @@ namespace llarp
       else
         return (sockaddr*)&_addr;
     }
-    
+
     void
     CopyInto(sockaddr* other) const
     {

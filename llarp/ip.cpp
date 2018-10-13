@@ -28,11 +28,12 @@ namespace llarp
       return llarp::InitBuffer(buf, sz);
     }
 
+#if 0
     static uint32_t
     ipchksum_pseudoIPv4(nuint32_t src_ip, nuint32_t dst_ip, uint8_t proto,
                         uint16_t innerlen)
     {
-#define IPCS(x) ((uint32_t)(x & 0xFFFF) + (uint32_t)(x >> 16))
+#define IPCS(x) ((uint32_t)(x & 0xFFff) + (uint32_t)(x >> 16))
       uint32_t sum = IPCS(src_ip.n) + IPCS(dst_ip.n) + (uint32_t)proto
           + (uint32_t)htons(innerlen);
 #undef IPCS
@@ -48,21 +49,26 @@ namespace llarp
         sz -= sizeof(uint16_t);
         buf += sizeof(uint16_t);
       }
-      if(sz > 0)
-        sum += *(const byte_t *)buf;
+      if(sz != 0)
+      {
+        uint16_t x    = 0;
+        *(byte_t *)&x = *(const byte_t *)buf;
+        sum += x;
+      }
 
       while(sum >> 16)
-        sum = (sum & 0xffff) + (sum >> 16);
+        sum = (sum & 0xFFff) + (sum >> 16);
 
       return ~sum;
     }
+#endif
 
     static uint16_t
     deltachksum(uint16_t old_sum, huint32_t old_src_ip, huint32_t old_dst_ip,
                 huint32_t new_src_ip, huint32_t new_dst_ip)
     {
-#define ADDIPCS(x) ((uint32_t)(x.h & 0xFFFF) + (uint32_t)(x.h >> 16))
-#define SUBIPCS(x) ((uint32_t)((~x.h) & 0xFFFF) + (uint32_t)((~x.h) >> 16))
+#define ADDIPCS(x) ((uint32_t)(x.h & 0xFFff) + (uint32_t)(x.h >> 16))
+#define SUBIPCS(x) ((uint32_t)((~x.h) & 0xFFff) + (uint32_t)((~x.h) >> 16))
 
       uint32_t sum = ntohs(old_sum) + ADDIPCS(old_src_ip) + ADDIPCS(old_dst_ip)
           + SUBIPCS(new_src_ip) + SUBIPCS(new_dst_ip);
@@ -71,62 +77,46 @@ namespace llarp
 #undef SUBIPCS
 
       while(sum >> 16)
-        sum = (sum & 0xffff) + (sum >> 16);
+        sum = (sum & 0xFFff) + (sum >> 16);
 
       return htons(sum);
     }
 
     static void
-    checksumDstTCP(byte_t *pld, size_t psz, huint32_t oSrcIP, huint32_t oDstIP,
-                   huint32_t nSrcIP, huint32_t nDstIP)
+    checksumDstTCP(byte_t *pld, size_t psz, size_t fragoff, huint32_t oSrcIP,
+                   huint32_t oDstIP, huint32_t nSrcIP, huint32_t nDstIP)
     {
-      uint16_t *check = (uint16_t *)(pld + 16);
+      if(fragoff > 16)
+        return;
+
+      uint16_t *check = (uint16_t *)(pld + 16 - fragoff);
 
       *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
     }
 
     static void
     checksumDstUDP(const ip_header *ohdr, byte_t *pld, size_t psz,
-                   huint32_t oSrcIP, huint32_t oDstIP, huint32_t nSrcIP,
-                   huint32_t nDstIP)
+                   size_t fragoff, huint32_t oSrcIP, huint32_t oDstIP,
+                   huint32_t nSrcIP, huint32_t nDstIP)
     {
+      if(fragoff > 6)
+        return;
+
       uint16_t *check = (uint16_t *)(pld + 6);
-      if(*check != 0xFFff)
-      {
-        if(*check == 0x0000)
-          return;  // don't change zero
+      if(*check == 0x0000)
+        return;  // 0 is used to indicate "no checksum", don't change
 
-        *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
-        if(*check == 0x0000)
-          *check = 0xFFff;
-      }
-      else
-      {
-        // such checksum can mean 2 things: 0x0000 or 0xFFff
-        // we can only know by looking at data :<
+      *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
 
-        auto pakcs = *check;  // save
-
-        *check = 0;  // zero checksum before calculation
-
-        auto cs =
-            ipchksum(pld, psz,
-                     ipchksum_pseudoIPv4(nuint32_t{ohdr->saddr},
-                                         nuint32_t{ohdr->daddr}, 17, psz));
-
-        auto new_cs = deltachksum(cs, oSrcIP, oDstIP, nSrcIP, nDstIP);
-
-        if(cs != 0x0000 && cs != 0xFFff)
-        {
-          // packet was bad - sabotage new checksum
-          new_cs += pakcs - cs;
-        }
-        // 0x0000 is reserved for no checksum
-        if(new_cs == 0x0000)
-          new_cs = 0xFFff;
-        // put it in
-        *check = new_cs;
-      }
+      // 0 is used to indicate "no checksum"
+      // 0xFFff and 0 are equivalent in one's complement math
+      // 0xFFff + 1 = 0x10000 -> 0x0001 (same as 0 + 1)
+      // infact it's impossible to get 0 with such addition
+      // when starting from non-0 value
+      // but it's possible to get 0xFFff and we invert after that
+      // so we still need this fixup check
+      if(*check == 0x0000)
+        *check = 0xFFff;
     }
 
     void
@@ -141,18 +131,24 @@ namespace llarp
       hdr->check = deltachksum(hdr->check, oSrcIP, oDstIP, nSrcIP, nDstIP);
 
       // L4 checksum
-      auto proto = hdr->protocol;
-      auto ihs   = size_t(hdr->ihl * 4);
-      auto pld   = buf + ihs;
-      auto psz   = sz - ihs;
-      switch(proto)
+      auto ihs = size_t(hdr->ihl * 4);
+      if(ihs <= sz)
       {
-        case 6:
-          checksumDstTCP(pld, psz, oSrcIP, oDstIP, nSrcIP, nDstIP);
-          break;
-        case 17:
-          checksumDstUDP(hdr, pld, psz, oSrcIP, oDstIP, nSrcIP, nDstIP);
-          break;
+        auto pld = buf + ihs;
+        auto psz = sz - ihs;
+
+        auto fragoff = size_t((ntohs(hdr->frag_off) & 0x1Fff) * 8);
+
+        switch(hdr->protocol)
+        {
+          case 6:
+            checksumDstTCP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP, nDstIP);
+            break;
+          case 17:
+            checksumDstUDP(hdr, pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP,
+                           nDstIP);
+            break;
+        }
       }
 
       // write new IP addresses
@@ -161,56 +157,39 @@ namespace llarp
     }
 
     static void
-    checksumSrcTCP(byte_t *pld, size_t psz, huint32_t oSrcIP, huint32_t oDstIP)
+    checksumSrcTCP(byte_t *pld, size_t psz, size_t fragoff, huint32_t oSrcIP,
+                   huint32_t oDstIP)
     {
-      uint16_t *check = (uint16_t *)(pld + 16);
+      if(fragoff > 16)
+        return;
+
+      uint16_t *check = (uint16_t *)(pld + 16 - fragoff);
 
       *check = deltachksum(*check, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
     }
 
     static void
     checksumSrcUDP(const ip_header *ohdr, byte_t *pld, size_t psz,
-                   huint32_t oSrcIP, huint32_t oDstIP)
+                   size_t fragoff, huint32_t oSrcIP, huint32_t oDstIP)
     {
+      if(fragoff > 6)
+        return;
+
       uint16_t *check = (uint16_t *)(pld + 6);
-      if(*check != 0xFFff)
-      {
-        if(*check == 0x0000)
-          return;  // don't change zero
+      if(*check == 0x0000)
+        return;  // 0 is used to indicate "no checksum", don't change
 
-        *check =
-            deltachksum(*check, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
-        if(*check == 0x0000)
-          *check = 0xFFff;
-      }
-      else
-      {
-        // such checksum can mean 2 things: 0x0000 or 0xFFff
-        // we can only know by looking at data :<
+      *check = deltachksum(*check, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
 
-        auto pakcs = *check;  // save
-
-        *check = 0;  // zero checksum before calculation
-
-        auto cs =
-            ipchksum(pld, psz,
-                     ipchksum_pseudoIPv4(nuint32_t{ohdr->saddr},
-                                         nuint32_t{ohdr->daddr}, 17, psz));
-
-        auto new_cs =
-            deltachksum(cs, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
-
-        if(cs != 0x0000 && cs != 0xFFff)
-        {
-          // packet was bad - sabotage new checksum
-          new_cs += pakcs - cs;
-        }
-        // 0x0000 is reserved for no checksum
-        if(new_cs == 0x0000)
-          new_cs = 0xFFff;
-        // put it in
-        *check = new_cs;
-      }
+      // 0 is used to indicate "no checksum"
+      // 0xFFff and 0 are equivalent in one's complement math
+      // 0xFFff + 1 = 0x10000 -> 0x0001 (same as 0 + 1)
+      // infact it's impossible to get 0 with such addition
+      // when starting from non-0 value
+      // but it's possible to get 0xFFff and we invert after that
+      // so we still need this fixup check
+      if(*check == 0x0000)
+        *check = 0xFFff;
     }
 
     void
@@ -222,18 +201,23 @@ namespace llarp
       auto oDstIP = xntohl(nuint32_t{hdr->daddr});
 
       // L4
-      auto proto = hdr->protocol;
-      auto ihs   = size_t(hdr->ihl * 4);
-      auto pld   = buf + ihs;
-      auto psz   = sz - ihs;
-      switch(proto)
+      auto ihs = size_t(hdr->ihl * 4);
+      if(ihs <= sz)
       {
-        case 6:
-          checksumSrcTCP(pld, psz, oSrcIP, oDstIP);
-          break;
-        case 17:
-          checksumSrcUDP(hdr, pld, psz, oSrcIP, oDstIP);
-          break;
+        auto pld = buf + ihs;
+        auto psz = sz - ihs;
+
+        auto fragoff = size_t((ntohs(hdr->frag_off) & 0x1Fff) * 8);
+
+        switch(hdr->protocol)
+        {
+          case 6:
+            checksumSrcTCP(pld, psz, fragoff, oSrcIP, oDstIP);
+            break;
+          case 17:
+            checksumSrcUDP(hdr, pld, psz, fragoff, oSrcIP, oDstIP);
+            break;
+        }
       }
 
       // IPv4

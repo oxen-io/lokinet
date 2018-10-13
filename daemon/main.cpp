@@ -60,7 +60,7 @@ main(int argc, char *argv[])
     multiThreaded = false;
   }
 
-  //SetLogLevel(llarp::eLogDebug);
+  // SetLogLevel(llarp::eLogDebug);
 
 #ifdef _WIN32
   if(startWinsock())

@@ -84,7 +84,6 @@ writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
                            dnsd_question_request *request);
 // FIXME: llarp::Addr
 
-
 //
 // setup/teardown functions/structure:
 //

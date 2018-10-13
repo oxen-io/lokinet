@@ -99,10 +99,10 @@ extern "C"
     hdr->tc     = fields & 0x0200;
     hdr->rd     = fields & 0x0100;
 
-    hdr->ra = (lFields >> 7) & 0x1;
-    hdr->z       = (lFields >> 6) & 0x1;
-    hdr->ad      = (lFields >> 5) & 0x1;
-    hdr->cd      = (lFields >> 4) & 0x1;
+    hdr->ra    = (lFields >> 7) & 0x1;
+    hdr->z     = (lFields >> 6) & 0x1;
+    hdr->ad    = (lFields >> 5) & 0x1;
+    hdr->cd    = (lFields >> 4) & 0x1;
     hdr->rcode = lFields & 0xf;
 
     hdr->qdCount = get16bits(buffer);
@@ -115,11 +115,11 @@ extern "C"
   dns_msg_question *
   decode_question(const char *buffer)
   {
-    //char *start = (char *)buffer;
+    // char *start = (char *)buffer;
     dns_msg_question *question = new dns_msg_question;
     std::string m_qName        = getDNSstring(buffer);
-    buffer += m_qName.length() + 2; // + length byte & ending terminator
-    //printf("Now0 at [%d]\n", buffer - start);
+    buffer += m_qName.length() + 2;  // + length byte & ending terminator
+    // printf("Now0 at [%d]\n", buffer - start);
     // buffer += m_qName.size() + 1;
     /*
     std::string m_qName        = "";
@@ -137,11 +137,11 @@ extern "C"
         m_qName.append(1, '.');
     }
     */
-    question->name   = m_qName;
-    question->type   = get16bits(buffer);
-    //printf("Now1 at [%d]\n", buffer - start);
+    question->name = m_qName;
+    question->type = get16bits(buffer);
+    // printf("Now1 at [%d]\n", buffer - start);
     question->qClass = get16bits(buffer);
-    //printf("Now2 at [%d]\n", buffer - start);
+    // printf("Now2 at [%d]\n", buffer - start);
     return question;
   }
 
@@ -203,7 +203,7 @@ extern "C"
         {
           // 2 names, then 4x 32bit
           // why risk any crashes
-          if (answer->rdLen < 24)
+          if(answer->rdLen < 24)
           {
             llarp::LogWarn("Weird SOA is less than 24 bytes: ", answer->rdLen);
           }
