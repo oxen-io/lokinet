@@ -51,15 +51,18 @@ namespace llarp
       }
       if(sz != 0)
       {
-        uint16_t x    = 0;
+        uint16_t x = 0;
+
         *(byte_t *)&x = *(const byte_t *)buf;
         sum += x;
       }
 
-      while(sum >> 16)
-        sum = (sum & 0xFFff) + (sum >> 16);
+      // only need to do it 2 times to be sure
+      // proof: 0xFFff + 0xFFff = 0x1FFfe -> 0xFFff
+      sum = (sum & 0xFFff) + (sum >> 16);
+      sum += sum >> 16;
 
-      return ~sum;
+      return uint16_t((~sum) & 0xFFff);
     }
 #endif
 
@@ -76,10 +79,12 @@ namespace llarp
 #undef ADDIPCS
 #undef SUBIPCS
 
-      while(sum >> 16)
-        sum = (sum & 0xFFff) + (sum >> 16);
+      // only need to do it 2 times to be sure
+      // proof: 0xFFff + 0xFFff = 0x1FFfe -> 0xFFff
+      sum = (sum & 0xFFff) + (sum >> 16);
+      sum += sum >> 16;
 
-      return htons(sum);
+      return htons(uint16_t(sum & 0xFFff));
     }
 
     static void
@@ -111,12 +116,11 @@ namespace llarp
       // 0 is used to indicate "no checksum"
       // 0xFFff and 0 are equivalent in one's complement math
       // 0xFFff + 1 = 0x10000 -> 0x0001 (same as 0 + 1)
-      // infact it's impossible to get 0 with such addition
-      // when starting from non-0 value
-      // but it's possible to get 0xFFff and we invert after that
-      // so we still need this fixup check
-      if(*check == 0x0000)
-        *check = 0xFFff;
+      // infact it's impossible to get 0 with such addition,
+      // when starting from non-0 value.
+      // inside deltachksum we don't invert so it's safe to skip check there
+      // if(*check == 0x0000)
+      //   *check = 0xFFff;
     }
 
     void
@@ -184,12 +188,11 @@ namespace llarp
       // 0 is used to indicate "no checksum"
       // 0xFFff and 0 are equivalent in one's complement math
       // 0xFFff + 1 = 0x10000 -> 0x0001 (same as 0 + 1)
-      // infact it's impossible to get 0 with such addition
-      // when starting from non-0 value
-      // but it's possible to get 0xFFff and we invert after that
-      // so we still need this fixup check
-      if(*check == 0x0000)
-        *check = 0xFFff;
+      // infact it's impossible to get 0 with such addition,
+      // when starting from non-0 value.
+      // inside deltachksum we don't invert so it's safe to skip check there
+      // if(*check == 0x0000)
+      //   *check = 0xFFff;
     }
 
     void
