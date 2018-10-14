@@ -340,10 +340,12 @@ namespace llarp
                // - non-IPv4 packets
                // - packets with weird src/dst addresses
                //   (0.0.0.0/8 but not 0.0.0.0)
+               // - packets with 0 src but non-0 dst and oposite
                auto hdr = pkt.Header();
                if(pkt.sz < sizeof(*hdr) || hdr->version != 4
-                  || (hdr->saddr && *(byte_t *)&(hdr->saddr) == 0)
-                  || (hdr->daddr && *(byte_t *)&(hdr->daddr) == 0))
+                  || (hdr->saddr != 0 && *(byte_t *)&(hdr->saddr) == 0)
+                  || (hdr->daddr != 0 && *(byte_t *)&(hdr->daddr) == 0)
+                  || ((hdr->saddr == 0) != (hdr->daddr == 0)))
                {
                  return false;
                }

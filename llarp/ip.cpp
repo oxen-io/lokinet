@@ -90,15 +90,22 @@ namespace llarp
     }
 
     static void
-    checksumDstTCP(byte_t *pld, size_t psz, size_t fragoff, huint32_t oSrcIP,
-                   huint32_t oDstIP, huint32_t nSrcIP, huint32_t nDstIP)
+    checksumDstTCP(byte_t *pld, size_t psz, size_t fragoff, size_t chksumoff,
+                   huint32_t oSrcIP, huint32_t oDstIP, huint32_t nSrcIP,
+                   huint32_t nDstIP)
     {
-      if(fragoff > 16)
+      if(fragoff > chksumoff)
         return;
 
-      uint16_t *check = (uint16_t *)(pld + 16 - fragoff);
+      uint16_t *check = (uint16_t *)(pld + chksumoff - fragoff);
 
       *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
+      // usually, TCP checksum field cannot be 0xFFff,
+      // because one's complement addition cannot result in 0x0000,
+      // and there's inversion in the end;
+      // emulate that.
+      if(*check == 0xFFff)
+        *check = 0x0000;
     }
 
     static void
@@ -114,7 +121,6 @@ namespace llarp
         return;  // 0 is used to indicate "no checksum", don't change
 
       *check = deltachksum(*check, oSrcIP, oDstIP, nSrcIP, nDstIP);
-
       // 0 is used to indicate "no checksum"
       // 0xFFff and 0 are equivalent in one's complement math
       // 0xFFff + 1 = 0x10000 -> 0x0001 (same as 0 + 1)
@@ -147,11 +153,17 @@ namespace llarp
 
         switch(hdr->protocol)
         {
-          case 6:
-            checksumDstTCP(pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP, nDstIP);
+          case 6:  // TCP
+            checksumDstTCP(pld, psz, fragoff, 16, oSrcIP, oDstIP, nSrcIP,
+                           nDstIP);
             break;
-          case 17:
+          case 17:   // UDP
+          case 136:  // UDP-Lite - same checksum place, same 0->0xFFff condition
             checksumDstUDP(hdr, pld, psz, fragoff, oSrcIP, oDstIP, nSrcIP,
+                           nDstIP);
+            break;
+          case 33:  // DCCP
+            checksumDstTCP(pld, psz, fragoff, 6, oSrcIP, oDstIP, nSrcIP,
                            nDstIP);
             break;
         }
@@ -163,15 +175,21 @@ namespace llarp
     }
 
     static void
-    checksumSrcTCP(byte_t *pld, size_t psz, size_t fragoff, huint32_t oSrcIP,
-                   huint32_t oDstIP)
+    checksumSrcTCP(byte_t *pld, size_t psz, size_t fragoff, size_t chksumoff,
+                   huint32_t oSrcIP, huint32_t oDstIP)
     {
-      if(fragoff > 16)
+      if(fragoff > chksumoff)
         return;
 
-      uint16_t *check = (uint16_t *)(pld + 16 - fragoff);
+      uint16_t *check = (uint16_t *)(pld + chksumoff - fragoff);
 
       *check = deltachksum(*check, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
+      // usually, TCP checksum field cannot be 0xFFff,
+      // because one's complement addition cannot result in 0x0000,
+      // and there's inversion in the end;
+      // emulate that.
+      if(*check == 0xFFff)
+        *check = 0x0000;
     }
 
     static void
@@ -186,7 +204,6 @@ namespace llarp
         return;  // 0 is used to indicate "no checksum", don't change
 
       *check = deltachksum(*check, oSrcIP, oDstIP, huint32_t{0}, huint32_t{0});
-
       // 0 is used to indicate "no checksum"
       // 0xFFff and 0 are equivalent in one's complement math
       // 0xFFff + 1 = 0x10000 -> 0x0001 (same as 0 + 1)
@@ -216,11 +233,15 @@ namespace llarp
 
         switch(hdr->protocol)
         {
-          case 6:
-            checksumSrcTCP(pld, psz, fragoff, oSrcIP, oDstIP);
+          case 6:  // TCP
+            checksumSrcTCP(pld, psz, fragoff, 16, oSrcIP, oDstIP);
             break;
-          case 17:
+          case 17:   // UDP
+          case 136:  // UDP-Lite
             checksumSrcUDP(hdr, pld, psz, fragoff, oSrcIP, oDstIP);
+            break;
+          case 33:  // DCCP
+            checksumSrcTCP(pld, psz, fragoff, 6, oSrcIP, oDstIP);
             break;
         }
       }
