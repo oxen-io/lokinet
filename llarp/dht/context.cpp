@@ -665,9 +665,9 @@ namespace llarp
       bool
       Validate(const RouterContact &rc) const
       {
-        if(!rc.VerifySignature(parent->Crypto()))
+        if(!rc.Verify(parent->Crypto()))
         {
-          llarp::LogWarn("rc has invalid signature from lookup result");
+          llarp::LogWarn("rc from lookup result is invalid");
           return false;
         }
         return true;

@@ -152,10 +152,10 @@ namespace llarp
       llarp::LogError("outer signature failure");
       return false;
     }
-    // rc signature
-    if(!rc.VerifySignature(c))
+    // verify RC
+    if(!rc.Verify(c))
     {
-      llarp::LogError("inner signature failure");
+      llarp::LogError("invalid RC in link intro");
       return false;
     }
     return true;

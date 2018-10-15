@@ -178,14 +178,6 @@ namespace llarp
 #endif
     }
 
-    constexpr huint32_t
-    netmask_ipv4_bits(uint32_t netmask)
-    {
-      return (32 - netmask) ? (huint32_t{((uint32_t)1 << (32 - (netmask + 1)))}
-                               | netmask_ipv4_bits(netmask + 1))
-                            : huint32_t{0};
-    }
-
     bool
     TunEndpoint::SetupTun()
     {

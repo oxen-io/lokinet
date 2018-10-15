@@ -3,6 +3,7 @@
 #include <llarp/version.h>
 #include <llarp/crypto.hpp>
 #include <llarp/time.h>
+#include <llarp/net.hpp>
 #include "buffer.hpp"
 #include "logger.hpp"
 #include "mem.hpp"
@@ -161,6 +162,25 @@ namespace llarp
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
     return crypto->sign(signature, secretkey, buf);
+  }
+
+  bool
+  RouterContact::Verify(llarp_crypto *crypto) const
+  {
+    for(const auto &a : addrs)
+    {
+      if(IsBogon(a.ip))
+      {
+        llarp::LogError("invalid address info: ", a);
+        return false;
+      }
+    }
+    for(const auto &exit : exits)
+    {
+      if(IsBogonRange(exit.address, exit.netmask))
+        return false;
+    }
+    return VerifySignature(crypto);
   }
 
   bool

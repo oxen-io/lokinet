@@ -7,6 +7,8 @@
 #include "logger.hpp"
 #include "mem.hpp"
 
+#include <vector>
+
 #include <stdlib.h>  // for itoa
 
 // for addrinfo
@@ -64,6 +66,9 @@ namespace llarp
     constexpr huint32_t
     operator |(huint32_t x) const { return huint32_t{uint32_t(h | x.h)}; }
     constexpr huint32_t
+    operator ^(huint32_t x) const { return huint32_t{uint32_t(h ^ x.h)}; }
+
+    constexpr huint32_t
     operator ~() const { return huint32_t{uint32_t(~h)}; }
 
     inline huint32_t operator ++() { ++h; return *this; }
@@ -71,7 +76,7 @@ namespace llarp
 
     constexpr bool operator <(huint32_t x) const { return h < x.h; }
     constexpr bool operator ==(huint32_t x) const { return h == x.h; }
-
+    
     struct Hash
     {
       inline size_t
@@ -90,6 +95,9 @@ namespace llarp
     operator &(nuint32_t x) const { return nuint32_t{uint32_t(n & x.n)}; }
     constexpr nuint32_t
     operator |(nuint32_t x) const { return nuint32_t{uint32_t(n | x.n)}; }
+    constexpr nuint32_t
+    operator ^(nuint32_t x) const { return nuint32_t{uint32_t(n ^ x.n)}; }
+
     constexpr nuint32_t
     operator ~() const { return nuint32_t{uint32_t(~n)}; }
 
@@ -188,6 +196,69 @@ namespace llarp
   {
     return huint16_t{ntohs(x.n)};
   }
+
+  struct IPRange
+  {
+    huint32_t addr;
+    huint32_t netmask_bits;
+
+    /// return true if ip is contained in this ip range
+    bool
+    Contains(const huint32_t& ip) const
+    {
+      // TODO: do this "better"
+      return ((addr & netmask_bits) ^ ip) == (ip & (~netmask_bits));
+    }
+
+    std::string
+    ToString() const
+    {
+      char strbuf[32] = {0};
+      char netbuf[32] = {0};
+      inet_ntop(AF_INET, &addr, strbuf, sizeof(strbuf));
+      inet_ntop(AF_INET, &netmask_bits, netbuf, sizeof(netbuf));
+      return std::string(strbuf) + "/" + std::string(netbuf);
+    }
+  };
+
+  constexpr huint32_t
+  netmask_ipv4_bits(byte_t netmask)
+  {
+    return (32 - netmask) ? (huint32_t{((uint32_t)1 << (32 - (netmask + 1)))}
+                             | netmask_ipv4_bits(netmask + 1))
+                          : huint32_t{0};
+  }
+
+  constexpr huint32_t
+  ipaddr_ipv4_bits(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
+  {
+    return huint32_t{(a << 24) | (b << 16) | (c << 8) | d};
+  }
+
+  constexpr IPRange
+  iprange_ipv4(byte_t a, byte_t b, byte_t c, byte_t d, byte_t mask)
+  {
+    return IPRange{ipaddr_ipv4_bits(a, b, c, d), netmask_ipv4_bits(mask)};
+  }
+
+  bool
+  IsIPv4Bogon(const huint32_t& addr);
+
+  constexpr bool
+  ipv6_is_siit(const in6_addr& addr)
+  {
+    return addr.s6_addr[11] == 0xff && addr.s6_addr[10] == 0xff
+        && addr.s6_addr[9] == 0 && addr.s6_addr[8] == 0 && addr.s6_addr[7] == 0
+        && addr.s6_addr[6] == 0 && addr.s6_addr[5] == 0 && addr.s6_addr[4] == 0
+        && addr.s6_addr[3] == 0 && addr.s6_addr[2] == 0 && addr.s6_addr[1] == 0
+        && addr.s6_addr[0] == 0;
+  }
+
+  bool
+  IsBogon(const in6_addr& addr);
+
+  bool
+  IsBogonRange(const in6_addr& host, const in6_addr& mask);
 
   struct Addr
   {
@@ -355,11 +426,7 @@ namespace llarp
     {
       memcpy(addr6(), other.ip.s6_addr, 16);
       _addr.sin6_port = htons(other.port);
-      auto ptr        = &_addr.sin6_addr.s6_addr[0];
-      // TODO: detect SIIT better
-      if(ptr[11] == 0xff && ptr[10] == 0xff && ptr[9] == 0 && ptr[8] == 0
-         && ptr[7] == 0 && ptr[6] == 0 && ptr[5] == 0 && ptr[4] == 0
-         && ptr[3] == 0 && ptr[2] == 0 && ptr[1] == 0 && ptr[0] == 0)
+      if(ipv6_is_siit(other.ip))
       {
         _addr4.sin_family = AF_INET;
         _addr4.sin_port   = htons(other.port);
@@ -646,6 +713,14 @@ namespace llarp
       return byte1 == 192 && byte2 == 168;
     }
 
+    /// return true if our ipv4 address is a bogon
+    /// TODO: ipv6
+    bool
+    IsBogon() const
+    {
+      return IsIPv4Bogon(xtohl());
+    }
+
     socklen_t
     SockLen() const
     {
@@ -655,13 +730,10 @@ namespace llarp
         return sizeof(sockaddr_in6);
     }
 
-    // Neuro: can't const this, not sure why...
     bool
-    isPrivate()
+    isPrivate() const
     {
-      uint32_t byte = this->getHostLong();
-      return this->isTenPrivate(byte) || this->isOneSevenPrivate(byte)
-          || this->isOneNinePrivate(byte);
+      return IsBogon();
     }
 
     bool
@@ -683,7 +755,7 @@ namespace llarp
         return (a.af() + memcmp(a.addr6(), empty, 16)) ^ a.port();
       }
     };
-  };
+  };  // namespace llarp
 
   bool
   AllInterfaces(int af, Addr& addr);

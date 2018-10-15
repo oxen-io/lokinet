@@ -252,7 +252,7 @@ llarp_router::try_connect(fs::path rcfile)
     llarp::LogError("failure to decode or verify of remote RC");
     return;
   }
-  if(remote.VerifySignature(&crypto))
+  if(remote.Verify(&crypto))
   {
     llarp::LogDebug("verified signature");
     // store into filesystem
@@ -267,7 +267,7 @@ llarp_router::try_connect(fs::path rcfile)
     }
   }
   else
-    llarp::LogError("failed to verify signature of RC ", rcfile);
+    llarp::LogError(rcfile, " contains invalid RC");
 }
 
 bool
@@ -302,10 +302,10 @@ bool
 llarp_router::SaveRC()
 {
   llarp::LogDebug("verify RC signature");
-  if(!rc().VerifySignature(&crypto))
+  if(!rc().Verify(&crypto))
   {
     rc().Dump< MAX_RC_SIZE >();
-    llarp::LogError("RC has bad signature not saving");
+    llarp::LogError("RC is invalid, not saving");
     return false;
   }
   return rc().Write(our_rc_file.string().c_str());

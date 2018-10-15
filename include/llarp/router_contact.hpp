@@ -79,7 +79,7 @@ namespace llarp
     SetNick(const std::string &nick);
 
     bool
-    VerifySignature(llarp_crypto *crypto) const;
+    Verify(llarp_crypto *crypto) const;
 
     bool
     Sign(llarp_crypto *crypto, const llarp::SecretKey &secret);
@@ -95,6 +95,10 @@ namespace llarp
 
     bool
     Write(const char *fname) const;
+
+   private:
+    bool
+    VerifySignature(llarp_crypto *crypto) const;
   };
 }  // namespace llarp
 

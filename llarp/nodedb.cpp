@@ -156,9 +156,9 @@ struct llarp_nodedb
       llarp::LogError("failed to read file ", fpath);
       return false;
     }
-    if(!rc.VerifySignature(crypto))
+    if(!rc.Verify(crypto))
     {
-      llarp::LogError("Signature verify failed", fpath);
+      llarp::LogError(fpath, " contains invalid RC");
       return false;
     }
     {
@@ -243,7 +243,7 @@ crypto_threadworker_verifyrc(void *user)
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
   llarp::RouterContact rc = verify_request->rc;
-  verify_request->valid   = rc.VerifySignature(verify_request->nodedb->crypto);
+  verify_request->valid   = rc.Verify(verify_request->nodedb->crypto);
   // if it's valid we need to set it
   if(verify_request->valid && rc.IsPublicRouter())
   {

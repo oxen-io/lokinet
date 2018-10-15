@@ -272,9 +272,9 @@ main(int argc, char *argv[])
       std::cout << "failed to read " << rcfname << std::endl;
       return 1;
     }
-    if(!rc.VerifySignature(&crypto))
+    if(!rc.Verify(&crypto))
     {
-      std::cout << rcfname << " has invalid signature" << std::endl;
+      std::cout << rcfname << " is invalid" << std::endl;
       return 1;
     }
     if(!rc.IsPublicRouter())
@@ -369,9 +369,9 @@ main(int argc, char *argv[])
       return 1;
     }
 
-    if(!rc.VerifySignature(&crypto))
+    if(!rc.Verify(&crypto))
     {
-      std::cout << rcfname << " has invalid signature" << std::endl;
+      std::cout << rcfname << " is invalid" << std::endl;
       return 1;
     }
 

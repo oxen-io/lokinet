@@ -688,7 +688,7 @@ namespace llarp
       // build our RC
       LinkIntroMessage msg;
       msg.rc = Router()->rc();
-      if(!msg.rc.VerifySignature(&Router()->crypto))
+      if(!msg.rc.Verify(&Router()->crypto))
       {
         llarp::LogError("our RC is invalid? closing session to", remoteAddr);
         Close();

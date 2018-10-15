@@ -982,4 +982,45 @@ namespace llarp
     return false;
   }
 
+  bool
+  IsBogon(const in6_addr& addr)
+  {
+    if(!ipv6_is_siit(addr))
+      return false;
+    return IsIPv4Bogon(ipaddr_ipv4_bits(addr.s6_addr[12], addr.s6_addr[13],
+                                        addr.s6_addr[14], addr.s6_addr[15]));
+  }
+
+  bool
+  IsBogonRange(const in6_addr& host, const in6_addr& netmask)
+  {
+    // TODO: implement me
+    return true;
+  }
+
+  bool
+  IsIPv4Bogon(const huint32_t& addr)
+  {
+    static std::vector< IPRange > bogonRanges = {
+        iprange_ipv4(0, 0, 0, 0, 8),       iprange_ipv4(10, 0, 0, 0, 8),
+        iprange_ipv4(21, 0, 0, 0, 8),      iprange_ipv4(100, 64, 0, 0, 10),
+        iprange_ipv4(127, 0, 0, 0, 8),     iprange_ipv4(169, 254, 0, 0, 8),
+        iprange_ipv4(172, 16, 0, 0, 12),   iprange_ipv4(192, 0, 0, 0, 24),
+        iprange_ipv4(192, 0, 2, 0, 24),    iprange_ipv4(192, 88, 99, 0, 24),
+        iprange_ipv4(192, 168, 0, 0, 16),  iprange_ipv4(198, 18, 0, 0, 15),
+        iprange_ipv4(198, 51, 100, 0, 24), iprange_ipv4(203, 0, 113, 0, 24),
+        iprange_ipv4(224, 0, 0, 0, 4),     iprange_ipv4(240, 0, 0, 0, 4)};
+
+    for(const auto& bogon : bogonRanges)
+    {
+      if(bogon.Contains(addr))
+      {
+        char strbuf[32] = {0};
+        inet_ntop(AF_INET, &addr, strbuf, sizeof(strbuf));
+        llarp::LogError("bogon: ", strbuf, " in ", bogon.ToString());
+        return true;
+      }
+    }
+    return false;
+  }
 }  // namespace llarp
