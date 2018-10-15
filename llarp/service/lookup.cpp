@@ -21,6 +21,7 @@ namespace llarp
       if(!msg)
         return false;
       auto result = path->SendRoutingMessage(msg, r);
+      endpoint    = path->Endpoint();
       delete msg;
       return result;
     }

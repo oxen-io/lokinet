@@ -50,6 +50,7 @@ namespace llarp
       ILookupHolder* parent;
       uint64_t txid;
       const std::string name;
+      RouterID endpoint;
 
      protected:
       IServiceLookup(ILookupHolder* parent, uint64_t tx,

@@ -297,7 +297,8 @@ namespace llarp
         OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
         bool
-        OnIntroSetUpdate(const Address& addr, const IntroSet* i);
+        OnIntroSetUpdate(const Address& addr, const IntroSet* i,
+                         const RouterID& endpoint);
 
         uint64_t m_UpdateIntrosetTX = 0;
         IntroSet currentIntroSet;
@@ -379,7 +380,8 @@ namespace llarp
 
      private:
       bool
-      OnOutboundLookup(const Address&, const IntroSet* i); /*  */
+      OnLookup(const service::Address& addr, const IntroSet* i,
+               const RouterID& endpoint); /*  */
 
       static bool
       SetupIsolatedNetwork(void* user, bool success);
