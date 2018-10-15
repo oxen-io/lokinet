@@ -1223,6 +1223,14 @@ namespace llarp
     Endpoint::SendContext::AsyncEncryptAndSendTo(llarp_buffer_t data,
                                                  ProtocolType protocol)
     {
+      auto now = llarp_time_now_ms();
+      if(remoteIntro.ExpiresSoon(now))
+      {
+        if(!MarkCurrentIntroBad(now))
+        {
+          llarp::LogWarn("no good path yet, your message may drop");
+        }
+      }
       if(sequenceNo)
       {
         EncryptAndSendTo(data, protocol);
@@ -1363,21 +1371,13 @@ namespace llarp
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
       if(path)
       {
-        auto now = llarp_time_now_ms();
-        if(remoteIntro.ExpiresSoon(now))
-        {
-          if(!MarkCurrentIntroBad(now))
-          {
-            llarp::LogWarn("no good path yet, your message may drop");
-          }
-        }
         ++sequenceNo;
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
         {
           llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
                           remoteIntro.router);
-          lastGoodSend = now;
+          lastGoodSend = llarp_time_now_ms();
         }
         else
           llarp::LogError("Failed to send frame on path");
