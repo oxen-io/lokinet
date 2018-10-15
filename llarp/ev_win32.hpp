@@ -32,9 +32,6 @@ namespace llarp
     int
     getData(void* buf, size_t sz, size_t ret)
     {
-      // make sure it's not too big
-      if(sz < ret)
-        return -1;
       iosz = ret;
       return read(buf, sz);
     }

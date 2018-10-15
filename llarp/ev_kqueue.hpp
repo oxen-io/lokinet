@@ -46,8 +46,6 @@ namespace llarp
         llarp::LogWarn("recvfrom failed");
         return -1;
       }
-      if(sz < ret)
-        return -1;
       // Addr is the source
       udp->recvfrom(udp, addr, buf, ret);
       return 0;
