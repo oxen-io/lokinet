@@ -766,7 +766,7 @@ namespace llarp
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
         }
-        UpdateIntroSet();
+        UpdateIntroSet(true);
       }
       return true;
     }
@@ -857,6 +857,7 @@ namespace llarp
           m_PendingServiceLookups.erase(itr);
           func(addr, nullptr);
         }
+        m_ServiceLookupFails[endpoint] += 1;
         return false;
       }
       PutNewOutboundContext(*introset);
@@ -865,9 +866,13 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
-                                  llarp_time_t timeoutMS)
+                                  llarp_time_t timeoutMS, bool randomPath)
     {
-      auto path = GetEstablishedPathClosestTo(remote.ToRouter());
+      path::Path * path = nullptr;
+      if(randomPath)
+        path = PickRandomEstablishedPath();
+      else
+        path = GetEstablishedPathClosestTo(remote.ToRouter());
       if(!path)
       {
         llarp::LogWarn("No outbound path for lookup yet");
@@ -882,18 +887,34 @@ namespace llarp
           return true;
         }
       }
-
-      auto itr = m_PendingServiceLookups.find(remote);
-      if(itr != m_PendingServiceLookups.end())
       {
-        // duplicate
-        llarp::LogWarn("duplicate pending service lookup to ",
-                       remote.ToString());
-        return false;
+        auto itr = m_PendingServiceLookups.find(remote);
+        if(itr != m_PendingServiceLookups.end())
+        {
+          // duplicate
+          llarp::LogWarn("duplicate pending service lookup to ",
+                         remote.ToString());
+          return false;
+        }
       }
-
       m_PendingServiceLookups.insert(std::make_pair(remote, hook));
-
+      {
+        RouterID endpoint = path->Endpoint();
+        auto itr = m_ServiceLookupFails.find(endpoint);
+        if(itr != m_ServiceLookupFails.end())
+        {
+          if(itr->second % 2)
+          {
+            // get far router
+            path = GetEstablishedPathClosestTo(~endpoint);
+          }
+          else
+          {
+            path = PickRandomEstablishedPath();
+          }
+        }
+      }
+      
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
           this,
           std::bind(&Endpoint::OnLookup, this, std::placeholders::_1,
@@ -1081,7 +1102,7 @@ namespace llarp
         return false;
       }
       // no converstation
-      EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000);
+      EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000, false);
       return false;
     }
 
@@ -1401,12 +1422,18 @@ namespace llarp
     }
 
     void
-    Endpoint::OutboundContext::UpdateIntroSet()
+    Endpoint::OutboundContext::UpdateIntroSet(bool randomizePath)
     {
       if(updatingIntroSet || markedBad)
         return;
       auto addr = currentIntroSet.A.Addr();
-      auto path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
+        
+      path::Path * path = nullptr;
+      if(randomizePath)
+        path = m_Endpoint->PickRandomEstablishedPath();
+      else
+        path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
+      
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
