@@ -18,7 +18,6 @@ namespace llarp
     // much like the pipefds in the UNIX kqueue and loonix
     // epoll handles
     WSAOVERLAPPED portfd;
-    size_t iosz;
 
     udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u)
     {
@@ -27,13 +26,6 @@ namespace llarp
 
     ~udp_listener()
     {
-    }
-
-    int
-    getData(void* buf, size_t sz, size_t ret)
-    {
-      iosz = ret;
-      return read(buf, sz);
     }
 
     virtual int
@@ -55,8 +47,10 @@ namespace llarp
         llarp::LogWarn("recv socket error ", s_errno);
         return -1;
       }
-      // get the _real_ payload size from tick()
-      udp->recvfrom(udp, addr, buf, iosz);
+      if (sz > EV_READ_BUF_SZ)
+		return -1;
+
+      udp->recvfrom(udp, addr, buf, sz);
       return 0;
     }
 
@@ -222,7 +216,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       {
         llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
                         "\tqdata: ", qdata);
-        ev->getData(readbuf, sizeof(readbuf), iolen);
+        ev->read(readbuf, iolen);
       }
       ++idx;
     }
@@ -262,7 +256,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       if(ev && !ev->fd.valueless_by_exception())
       {
         llarp::LogInfo("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
-        ev->getData(readbuf, sizeof(readbuf), iolen);
+        ev->read(readbuf, sizeof(readbuf));
       }
       ++idx;
     }
