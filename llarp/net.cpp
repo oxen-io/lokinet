@@ -1015,9 +1015,6 @@ namespace llarp
     {
       if(bogon.Contains(addr))
       {
-        char strbuf[32] = {0};
-        inet_ntop(AF_INET, &addr, strbuf, sizeof(strbuf));
-        llarp::LogError("bogon: ", strbuf, " in ", bogon.ToString());
         return true;
       }
     }
