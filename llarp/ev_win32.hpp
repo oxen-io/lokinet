@@ -47,8 +47,8 @@ namespace llarp
         llarp::LogWarn("recv socket error ", s_errno);
         return -1;
       }
-      if (sz > EV_READ_BUF_SZ)
-		return -1;
+      /*if (sz > EV_READ_BUF_SZ)
+		return -1;*/
 
       udp->recvfrom(udp, addr, buf, sz);
       return 0;
