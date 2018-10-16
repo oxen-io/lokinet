@@ -18,12 +18,6 @@
 #include <llarp/linux/netns.hpp>
 #endif
 
-#ifdef _MSC_VER
-#include <windows.h>
-extern "C" void
-SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
-#endif
-
 namespace llarp
 {
   namespace thread
@@ -43,8 +37,6 @@ namespace llarp
             pthread_set_name_np(pthread_self(), name);
 #elif(__linux__) || (__MINGW32__)
             pthread_setname_np(pthread_self(), name);
-#elif defined(_MSC_VER)
-            SetThreadName(GetCurrentThreadId(), name);
 #endif
           }
           for(;;)

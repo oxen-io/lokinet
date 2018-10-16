@@ -71,7 +71,7 @@ write404_dnss_response(const struct sockaddr *from,
   put16bits(write_buffer, 1);  // rdLength
   *write_buffer++ = 0;         // write a null byte
 
-  uint out_bytes = write_buffer - bufferBegin;
+  uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending 404, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from, buf, out_bytes);
@@ -140,7 +140,7 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
   *write_buffer++ = 0;
   *write_buffer++ = 1;
 
-  uint out_bytes = write_buffer - bufferBegin;
+  uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending cname, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from, buf, out_bytes);
@@ -180,7 +180,7 @@ writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
   put16bits(write_buffer, reverse.length() + 2);  // rdLength
   code_domain(write_buffer, reverse);
 
-  uint out_bytes = write_buffer - bufferBegin;
+  uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending reverse: ", reverse, " ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from, buf, out_bytes);
@@ -243,7 +243,7 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
   *write_buffer++ = ip[2];
   *write_buffer++ = ip[3];
 
-  uint out_bytes = write_buffer - bufferBegin;
+  uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from, buf, out_bytes);
