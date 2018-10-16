@@ -916,8 +916,12 @@ namespace llarp
       }
       if(!path)
       {
-        llarp::LogError("no backup path");
-        return false;
+        path = PickRandomEstablishedPath();
+        if(!path)
+        {
+          hook(remote, nullptr);
+          return false;
+        }
       }
 
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
