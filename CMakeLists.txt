@@ -439,15 +439,21 @@ include_directories(${sodium_INCLUDE_DIR})
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
 
+add_subdirectory(${CMAKE_SOURCE_DIR}/libabyss)
+
 
 if(SHADOW)
-add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC})
+add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC})
 target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
 install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
 add_executable(${RC_EXE} ${RC_SRC})
 add_executable(${EXE} ${EXE_SRC})
 add_executable(${CLIENT_EXE} ${CLIENT_SRC})
+
+target_link_libraries(${CLIENT_EXE} ${ABYSS_LIB})
+target_link_libraries(${EXE} ${ABYSS_LIB})
+
 add_executable(${DNS_EXE} ${DNS_SRC})
 add_subdirectory(${GTEST_DIR})
 include_directories(${GTEST_DIR}/include ${GTEST_DIR})
