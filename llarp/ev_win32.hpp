@@ -29,13 +29,6 @@ namespace llarp
     {
     }
 
-    int
-    getData(void* buf, size_t sz, size_t ret)
-    {
-      iosz = ret;
-      return read(buf, sz);
-    }
-
     virtual int
     read(void* buf, size_t sz)
     {
@@ -56,7 +49,7 @@ namespace llarp
         return -1;
       }
       // get the _real_ payload size from tick()
-      udp->recvfrom(udp, addr, buf, iosz);
+      udp->recvfrom(udp, addr, buf, sz);
       return 0;
     }
 
@@ -222,7 +215,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       {
         llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
                         "\tqdata: ", qdata);
-        ev->getData(readbuf, sizeof(readbuf), iolen);
+        if(iolen <= sizeof(readbuf))
+          ev->read(readbuf, iolen);
       }
       ++idx;
     }
@@ -262,7 +256,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       if(ev && !ev->fd.valueless_by_exception())
       {
         llarp::LogInfo("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
-        ev->getData(readbuf, sizeof(readbuf), iolen);
+        if(iolen <= sizeof(readbuf))
+          ev->read(readbuf, iolen);
       }
       ++idx;
     }
