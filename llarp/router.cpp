@@ -685,7 +685,7 @@ llarp_router::Run()
     {
       llarp::LogInfo("Found adapter for public address");
     }
-    if(!a.isPrivate())
+    if(!llarp::IsBogon(*a.addr6()))
     {
       llarp::LogInfo("Loading Addr: ", a, " into our RC");
       _rc.addrs.push_back(addr);
