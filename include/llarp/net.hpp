@@ -207,7 +207,7 @@ namespace llarp
     Contains(const huint32_t& ip) const
     {
       // TODO: do this "better"
-      return ((addr & netmask_bits) ^ ip) == (ip & (~netmask_bits));
+      return (addr & netmask_bits) == (ip & netmask_bits);
     }
 
     std::string
