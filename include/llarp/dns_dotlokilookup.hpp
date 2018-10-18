@@ -17,7 +17,9 @@ struct dotLokiLookup
 {
   /// for timers (MAYBEFIXME? maybe we decouple this, yes pls have a generic
   /// passed in)
+  // we can use DNSc for access to the logic
   struct llarp_logic *logic;
+
   /// which ip tracker to use
   struct dns_iptracker *ip_tracker;
 
