@@ -129,22 +129,120 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   delete qr;
 }
 
+std::vector< std::string >
+split(std::string str)
+{
+  size_t pos = 0;
+  std::string token;
+  std::string s(str);
+  std::vector< std::string > tokens;
+  while((pos = s.find(".")) != std::string::npos)
+  {
+    token = s.substr(0, pos);
+    llarp::LogInfo("token [", token, "]");
+    tokens.push_back(token);
+    s.erase(0, pos + 1);
+  }
+  token = s.substr(0, pos);
+  tokens.push_back(token);
+  llarp::LogInfo("token [", token, "]");
+  return tokens;
+}
+
+struct reverse_handler_iter_context
+{
+  std::string lName;
+  const struct sockaddr *from;
+  const struct dnsd_question_request *request;
+};
+
+bool
+ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
+{
+  reverse_handler_iter_context *context =
+      (reverse_handler_iter_context *)endpointCfg->user;
+  // llarp::LogInfo("context ", context->request->question.name);
+  // llarp::LogInfo("Checking ", lName);
+  llarp::handlers::TunEndpoint *tunEndpoint =
+      (llarp::handlers::TunEndpoint *)endpointCfg->endpoint;
+  if(!tunEndpoint)
+  {
+    llarp::LogError("No tunnel endpoint found");
+    return true;  // still continue
+  }
+  // llarp::LogInfo("for ", tunEndpoint->tunif.ifaddr);
+  std::string checkStr(tunEndpoint->tunif.ifaddr);
+  std::vector< std::string > tokensSearch = split(context->lName);
+  std::vector< std::string > tokensCheck  = split(checkStr);
+
+  // well the tunif is just one ip on a network range...
+  std::string searchIp = tokensSearch[3] + "." + tokensSearch[2] + "."
+      + tokensSearch[1] + "." + tokensSearch[0];
+  std::string checkIp = tokensCheck[0] + "." + tokensCheck[1] + "."
+      + tokensCheck[2] + "." + tokensCheck[3];
+  // llarp::LogInfo(searchIp, " vs ", checkIp);
+  // just assume /24 for now
+  if(tokensSearch[3] == tokensCheck[0] && tokensSearch[2] == tokensCheck[1]
+     && tokensSearch[1] == tokensCheck[2])
+  {
+    llarp::LogInfo("Yes, that shit is for us");
+    writesend_dnss_revresponse("loki.network", context->from,
+                               (dnsd_question_request *)context->request);
+    return false;
+  }
+  return true;  // we don't do anything with the result yet
+}
+
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
                             struct dnsd_question_request *const request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
-  // dotLokiLookup *dll                 = (dotLokiLookup
-  // *)request->context->user;
-  response->dontLookUp       = false;
-  response->dontSendResponse = false;
-  response->returnThis       = nullptr;
+  response->dontLookUp               = false;
+  response->dontSendResponse         = false;
+  response->returnThis               = nullptr;
   llarp::LogDebug("Hooked ", name);
   std::string lName = name;
   std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
+  // llarp::LogDebug("Transformed ", lName);
 
-  // FIXME: probably should just read the last 5 bytes
-  if(lName.find(".loki") != std::string::npos)
+  // 253.0.200.10.in-addr.arpa
+  if(lName.find(".in-addr.arpa") != std::string::npos)
+  {
+    // llarp::LogDebug("Checking ", lName);
+    dotLokiLookup *dll = (dotLokiLookup *)request->context->user;
+    llarp::service::Context *routerHiddenServiceContext =
+        (llarp::service::Context *)dll->user;
+    if(!routerHiddenServiceContext)
+    {
+      llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+      return response;
+    }
+    // llarp::LogDebug("Starting rev iter for ", lName);
+    // which range?
+    // for each tun interface
+    struct reverse_handler_iter_context context;
+    context.lName   = lName;
+    context.from    = from;
+    context.request = request;
+
+    struct llarp::service::Context::endpoint_iter i;
+    i.user   = &context;
+    i.index  = 0;
+    i.visit  = &ReverseHandlerIter;
+    bool res = routerHiddenServiceContext->iterate(i);
+    if(!res)
+    {
+      llarp::LogInfo("Reverse is ours");
+      response->dontSendResponse = true;  // should have already sent it
+    }
+    else
+    {
+      llarp::LogInfo("Reverse is not ours");
+    }
+  }
+  if(lName.substr(lName.length() - 5, 5) == ".loki"
+     || lName.substr(lName.length() - 6, 6) == ".loki.")
   {
     llarp::LogInfo("Detect Loki Lookup for ", lName);
     auto cache_check = loki_tld_lookup_cache.find(lName);
@@ -179,7 +277,7 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
     llarp_logic_call_later(request->context->client.logic,
                            {2000, qr, &llarp_dotlokilookup_checkQuery});
 
-    response->dontSendResponse = true;
+    response->dontSendResponse = true;  // will send it shortly
   }
   return response;
 }
