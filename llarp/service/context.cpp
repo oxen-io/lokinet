@@ -64,8 +64,8 @@ namespace llarp
       while(itr != m_Endpoints.end())
       {
         i.endpoint = itr->second.get();
-        i.visit(&i);
-
+        if(!i.visit(&i))
+          return false;
         // advance
         i.index++;
         itr++;
@@ -136,7 +136,7 @@ namespace llarp
     }
 
     bool
-    MappAddressAllIter(struct Context::endpoint_iter *endpointCfg)
+    MapAddressAllIter(struct Context::endpoint_iter *endpointCfg)
     {
       Context::mapAddressAll_context *context =
           (Context::mapAddressAll_context *)endpointCfg->user;
@@ -145,7 +145,7 @@ namespace llarp
       if(!tunEndpoint)
       {
         llarp::LogError("No tunnel endpoint found");
-        return false;
+        return true;  // still continue
       }
       return tunEndpoint->MapAddress(context->serviceAddr,
                                      context->localPrivateIpAddr.xtohl());
@@ -162,7 +162,7 @@ namespace llarp
       struct Context::endpoint_iter i;
       i.user  = &context;
       i.index = 0;
-      i.visit = &MappAddressAllIter;
+      i.visit = &MapAddressAllIter;
       return this->iterate(i);
     }
 
