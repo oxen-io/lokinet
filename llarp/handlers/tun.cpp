@@ -147,7 +147,7 @@ namespace llarp
       // do network isolation first
       if(!Endpoint::Start())
         return false;
-#ifdef _WIN32
+#ifdef WIN32
       return SetupNetworking();
 #else
       if(!NetworkIsIsolated())
