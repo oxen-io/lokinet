@@ -1,6 +1,7 @@
 #include <llarp/dns_dotlokilookup.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/service/context.hpp>
+#include <llarp/net.hpp>
 
 std::string const default_chars =
     "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
@@ -43,7 +44,8 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   if(!dll)
   {
     llarp::LogError("DNSd dotLokiLookup is not configured");
-    // FIXME: send 404
+    write404_dnss_response(qr->from, qr->request);
+    delete qr;
     return;
   }
 
@@ -56,7 +58,7 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   {
     llarp::LogWarn("Could not base32 decode address: ",
                    qr->request->question.name);
-    // FIXME: send 404
+    write404_dnss_response(qr->from, qr->request);
     delete qr;
     return;
   }
@@ -64,7 +66,9 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   auto itr = loki_tld_lookup_cache.find(addr.ToString());
   if(itr != loki_tld_lookup_cache.end())
   {
+    llarp::LogDebug("Found in .loki lookup cache");
     writesend_dnss_response(itr->second->returnThis, qr->from, qr->request);
+    delete qr;
     return;
   }
 
@@ -93,13 +97,16 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
     if(!routerHiddenServiceContext)
     {
       llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+      write404_dnss_response(qr->from, qr->request);
+      delete qr;
       return;
     }
     bool mapResult = routerHiddenServiceContext->MapAddressAll(
         addr, free_private->hostResult);
     if(!mapResult)
     {
-      // FIXME: send 404
+      llarp::LogWarn("dotLokiLookup failed to map address");
+      write404_dnss_response(qr->from, qr->request);
       delete qr;
       return;
     }
@@ -139,13 +146,13 @@ split(std::string str)
   while((pos = s.find(".")) != std::string::npos)
   {
     token = s.substr(0, pos);
-    llarp::LogInfo("token [", token, "]");
+    //llarp::LogInfo("token [", token, "]");
     tokens.push_back(token);
     s.erase(0, pos + 1);
   }
   token = s.substr(0, pos);
   tokens.push_back(token);
-  llarp::LogInfo("token [", token, "]");
+  //llarp::LogInfo("token [", token, "]");
   return tokens;
 }
 
@@ -174,20 +181,41 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
   std::string checkStr(tunEndpoint->tunif.ifaddr);
   std::vector< std::string > tokensSearch = split(context->lName);
   std::vector< std::string > tokensCheck  = split(checkStr);
-
+  
   // well the tunif is just one ip on a network range...
-  std::string searchIp = tokensSearch[3] + "." + tokensSearch[2] + "."
-      + tokensSearch[1] + "." + tokensSearch[0];
+  // support "b._dns-sd._udp.0.0.200.10.in-addr.arpa"	
+  size_t searchTokens = tokensSearch.size();
+  std::string searchIp = tokensSearch[searchTokens - 3] + "." + tokensSearch[searchTokens - 4] + "."
+      + tokensSearch[searchTokens - 5] + "." + tokensSearch[searchTokens - 6];
   std::string checkIp = tokensCheck[0] + "." + tokensCheck[1] + "."
       + tokensCheck[2] + "." + tokensCheck[3];
-  // llarp::LogInfo(searchIp, " vs ", checkIp);
-  // just assume /24 for now
-  if(tokensSearch[3] == tokensCheck[0] && tokensSearch[2] == tokensCheck[1]
-     && tokensSearch[1] == tokensCheck[2])
+  llarp::LogDebug(searchIp, " vs ", checkIp);
+  
+  llarp::IPRange range = llarp::iprange_ipv4(stoi(tokensCheck[0]), stoi(tokensCheck[1]), stoi(tokensCheck[2]), stoi(tokensCheck[3]), tunEndpoint->tunif.netmask); // create range
+  // hack atm to work around limitations in ipaddr_ipv4_bits and llarp::IPRange
+  llarp::huint32_t searchIPv4_fixed = llarp::ipaddr_ipv4_bits(stoi(tokensSearch[searchTokens - 6]), stoi(tokensSearch[searchTokens - 5]), stoi(tokensSearch[searchTokens - 4]), stoi(tokensSearch[searchTokens - 3])); // create ip (llarp::Addr is untrustworthy atm)
+  llarp::huint32_t searchIPv4_search = llarp::ipaddr_ipv4_bits(stoi(tokensSearch[searchTokens - 3]), stoi(tokensSearch[searchTokens - 4]), stoi(tokensSearch[searchTokens - 5]), stoi(tokensSearch[searchTokens - 6])); // create ip (llarp::Addr is untrustworthy atm)
+
+  //bool inRange = range.Contains(searchAddr.xtohl());
+  bool inRange = range.Contains(searchIPv4_search);
+
+  llarp::Addr searchAddr(searchIp);
+  llarp::Addr checkAddr(checkIp);
+  llarp::LogDebug(searchAddr, " vs ", range.ToString(), " = ", inRange?"inRange":"not match");
+  
+  if (inRange)
   {
-    llarp::LogInfo("Yes, that shit is for us");
-    writesend_dnss_revresponse("loki.network", context->from,
+    llarp::service::Address addr = tunEndpoint->ObtainAddrForIP(searchIPv4_fixed);
+    if (addr.ToString() == "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.loki")
+    {
+      write404_dnss_response(context->from,
+                             (dnsd_question_request *)context->request);
+    }
+    else
+    {
+      writesend_dnss_revresponse(addr.ToString(), context->from,
                                (dnsd_question_request *)context->request);
+    }
     return false;
   }
   return true;  // we don't do anything with the result yet
@@ -240,9 +268,9 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
     {
       llarp::LogInfo("Reverse is not ours");
     }
-  }
-  if(lName.substr(lName.length() - 5, 5) == ".loki"
-     || lName.substr(lName.length() - 6, 6) == ".loki.")
+  } else
+  if((lName.length() > 5 && lName.substr(lName.length() - 5, 5) == ".loki")
+     || (lName.length() > 6 && lName.substr(lName.length() - 6, 6) == ".loki."))
   {
     llarp::LogInfo("Detect Loki Lookup for ", lName);
     auto cache_check = loki_tld_lookup_cache.find(lName);

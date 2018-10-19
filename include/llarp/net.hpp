@@ -76,7 +76,7 @@ namespace llarp
 
     constexpr bool operator <(huint32_t x) const { return h < x.h; }
     constexpr bool operator ==(huint32_t x) const { return h == x.h; }
-    
+
     struct Hash
     {
       inline size_t
@@ -272,7 +272,7 @@ namespace llarp
   {
     // network order
     sockaddr_in6 _addr;
-    sockaddr_in _addr4;  // why do we even have this?
+    sockaddr_in _addr4;  // why do we even have this? favor cpu over memory
     ~Addr(){};
 
     Addr(){};
