@@ -43,22 +43,22 @@ namespace llarp
         switch(self->key)
         {
           case 'D':
-            self->msg = new DataDiscardMessage();
+            self->msg.reset(new DataDiscardMessage());
             break;
           case 'L':
-            self->msg = new PathLatencyMessage();
+            self->msg.reset(new PathLatencyMessage());
             break;
           case 'M':
-            self->msg = new DHTMessage();
+            self->msg.reset(new DHTMessage());
             break;
           case 'P':
-            self->msg = new PathConfirmMessage();
+            self->msg.reset(new PathConfirmMessage());
             break;
           case 'T':
-            self->msg = new PathTransferMessage();
+            self->msg.reset(new PathTransferMessage());
             break;
           case 'H':
-            self->msg = new service::ProtocolFrame();
+            self->msg.reset(new service::ProtocolFrame());
             break;
           default:
             llarp::LogError("invalid routing message id: ", *strbuf.cur);
@@ -87,13 +87,13 @@ namespace llarp
         result    = msg->HandleMessage(h, r);
         if(!result)
           llarp::LogWarn("Failed to handle inbound routing message ", key);
-        delete msg;
       }
       else
       {
         llarp::LogError("read dict failed in routing layer");
         llarp::DumpBuffer< llarp_buffer_t, 128 >(buf);
       }
+      msg.reset();
       return result;
     }
   }  // namespace routing

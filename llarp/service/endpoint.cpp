@@ -903,7 +903,7 @@ namespace llarp
         auto itr          = m_ServiceLookupFails.find(endpoint);
         if(itr != m_ServiceLookupFails.end())
         {
-          if(itr->second % 2)
+          if(itr->second % 2 == 0)
           {
             // get far router
             path = GetEstablishedPathClosestTo(~endpoint);
@@ -919,6 +919,7 @@ namespace llarp
         path = PickRandomEstablishedPath();
         if(!path)
         {
+          llarp::LogError(Name(), "no working paths for lookup");
           hook(remote, nullptr);
           return false;
         }
