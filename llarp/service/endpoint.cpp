@@ -593,7 +593,8 @@ namespace llarp
       }
 
       Address remote;
-      typedef std::function< bool(const Address&, const IntroSet*) >
+      typedef std::function< bool(const Address&, const IntroSet*,
+                                  const RouterID&) >
           HandlerFunc;
       HandlerFunc handle;
 
@@ -609,9 +610,9 @@ namespace llarp
         llarp::LogInfo("found ", results.size(), " for ", remote.ToString());
         if(results.size() > 0)
         {
-          return handle(remote, &*results.begin());
+          return handle(remote, &*results.begin(), endpoint);
         }
-        return handle(remote, nullptr);
+        return handle(remote, nullptr, endpoint);
       }
 
       llarp::routing::IMessage*
@@ -765,7 +766,7 @@ namespace llarp
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
         }
-        UpdateIntroSet();
+        UpdateIntroSet(true);
       }
       return true;
     }
@@ -841,11 +842,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::OnOutboundLookup(const Address& addr, const IntroSet* introset)
+    Endpoint::OnLookup(const Address& addr, const IntroSet* introset,
+                       const RouterID& endpoint)
     {
       auto now = llarp_time_now_ms();
       if(introset == nullptr || introset->IsExpired(now))
       {
+        llarp::LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
+                        endpoint);
         auto itr = m_PendingServiceLookups.find(addr);
         if(itr != m_PendingServiceLookups.end())
         {
@@ -853,6 +857,7 @@ namespace llarp
           m_PendingServiceLookups.erase(itr);
           func(addr, nullptr);
         }
+        m_ServiceLookupFails[endpoint] += 1;
         return false;
       }
       PutNewOutboundContext(*introset);
@@ -861,9 +866,13 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
-                                  llarp_time_t timeoutMS)
+                                  llarp_time_t timeoutMS, bool randomPath)
     {
-      auto path = GetEstablishedPathClosestTo(remote.ToRouter());
+      path::Path* path = nullptr;
+      if(randomPath)
+        path = PickRandomEstablishedPath();
+      else
+        path = GetEstablishedPathClosestTo(remote.ToRouter());
       if(!path)
       {
         llarp::LogWarn("No outbound path for lookup yet");
@@ -878,21 +887,48 @@ namespace llarp
           return true;
         }
       }
-      auto itr = m_PendingServiceLookups.find(remote);
-      if(itr != m_PendingServiceLookups.end())
       {
-        // duplicate
-        llarp::LogWarn("duplicate pending service lookup to ",
-                       remote.ToString());
-        return false;
+        auto itr = m_PendingServiceLookups.find(remote);
+        if(itr != m_PendingServiceLookups.end())
+        {
+          // duplicate
+          llarp::LogWarn("duplicate pending service lookup to ",
+                         remote.ToString());
+          return false;
+        }
       }
-
       m_PendingServiceLookups.insert(std::make_pair(remote, hook));
+      {
+        RouterID endpoint = path->Endpoint();
+        auto itr          = m_ServiceLookupFails.find(endpoint);
+        if(itr != m_ServiceLookupFails.end())
+        {
+          if(itr->second % 2 == 0)
+          {
+            // get far router
+            path = GetEstablishedPathClosestTo(~endpoint);
+          }
+          else
+          {
+            path = PickRandomEstablishedPath();
+          }
+        }
+      }
+      if(!path)
+      {
+        path = PickRandomEstablishedPath();
+        if(!path)
+        {
+          llarp::LogError(Name(), "no working paths for lookup");
+          hook(remote, nullptr);
+          return false;
+        }
+      }
 
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
           this,
-          std::bind(&Endpoint::OnOutboundLookup, this, std::placeholders::_1,
-                    std::placeholders::_2),
+          std::bind(&Endpoint::OnLookup, this, std::placeholders::_1,
+                    std::placeholders::_2, std::placeholders::_3),
           remote, GenTXID());
 
       if(job->SendRequestViaPath(path, Router()))
@@ -954,7 +990,8 @@ namespace llarp
 
     bool
     Endpoint::OutboundContext::OnIntroSetUpdate(const Address& addr,
-                                                const IntroSet* i)
+                                                const IntroSet* i,
+                                                const RouterID& endpoint)
     {
       if(markedBad)
         return true;
@@ -968,7 +1005,7 @@ namespace llarp
         auto now = llarp_time_now_ms();
         if(i->IsExpired(now))
         {
-          llarp::LogError("got expired introset from lookup");
+          llarp::LogError("got expired introset from lookup from ", endpoint);
           return true;
         }
         currentIntroSet = *i;
@@ -1075,7 +1112,8 @@ namespace llarp
         return false;
       }
       // no converstation
-      EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000);
+      EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000,
+                          false);
       return false;
     }
 
@@ -1223,6 +1261,14 @@ namespace llarp
     Endpoint::SendContext::AsyncEncryptAndSendTo(llarp_buffer_t data,
                                                  ProtocolType protocol)
     {
+      auto now = llarp_time_now_ms();
+      if(remoteIntro.ExpiresSoon(now))
+      {
+        if(!MarkCurrentIntroBad(now))
+        {
+          llarp::LogWarn("no good path yet, your message may drop");
+        }
+      }
       if(sequenceNo)
       {
         EncryptAndSendTo(data, protocol);
@@ -1363,21 +1409,13 @@ namespace llarp
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
       if(path)
       {
-        auto now = llarp_time_now_ms();
-        if(remoteIntro.ExpiresSoon(now))
-        {
-          if(!MarkCurrentIntroBad(now))
-          {
-            llarp::LogWarn("no good path yet, your message may drop");
-          }
-        }
         ++sequenceNo;
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
         {
           llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
                           remoteIntro.router);
-          lastGoodSend = now;
+          lastGoodSend = llarp_time_now_ms();
         }
         else
           llarp::LogError("Failed to send frame on path");
@@ -1395,18 +1433,25 @@ namespace llarp
     }
 
     void
-    Endpoint::OutboundContext::UpdateIntroSet()
+    Endpoint::OutboundContext::UpdateIntroSet(bool randomizePath)
     {
       if(updatingIntroSet || markedBad)
         return;
       auto addr = currentIntroSet.A.Addr();
-      auto path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
+
+      path::Path* path = nullptr;
+      if(randomizePath)
+        path = m_Endpoint->PickRandomEstablishedPath();
+      else
+        path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
+
       if(path)
       {
         HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
             m_Endpoint,
             std::bind(&Endpoint::OutboundContext::OnIntroSetUpdate, this,
-                      std::placeholders::_1, std::placeholders::_2),
+                      std::placeholders::_1, std::placeholders::_2,
+                      std::placeholders::_3),
             addr, m_Endpoint->GenTXID());
 
         updatingIntroSet = job->SendRequestViaPath(path, m_Endpoint->Router());

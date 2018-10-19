@@ -18,7 +18,7 @@ namespace llarp
     }
 
     EncryptedFrame(const EncryptedFrame& other)
-        : EncryptedFrame(other._data, other._sz)
+      : EncryptedFrame(other.data(), other.size())
     {
     }
 
@@ -33,11 +33,8 @@ namespace llarp
     EncryptedFrame&
     operator=(const EncryptedFrame& other)
     {
-      if(other._sz <= MAX_SIZE)
-      {
-        _sz = other._sz;
-        memcpy(_data, other._data, _sz);
-      }
+      _data.resize(other.size());
+      memcpy(data(), other.data(), size());
       return *this;
     }
 

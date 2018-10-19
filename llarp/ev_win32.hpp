@@ -17,23 +17,15 @@ namespace llarp
     // we receive queued data in the OVERLAPPED data field,
     // much like the pipefds in the UNIX kqueue and loonix
     // epoll handles
-    WSAOVERLAPPED portfd;
-    size_t iosz;
+    WSAOVERLAPPED portfd[2];
 
     udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u)
     {
-      memset((void*)&portfd, 0, sizeof(WSAOVERLAPPED));
+      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED)*2);
     };
 
     ~udp_listener()
     {
-    }
-
-    int
-    getData(void* buf, size_t sz, size_t ret)
-    {
-      iosz = ret;
-      return read(buf, sz);
     }
 
     virtual int
@@ -47,7 +39,7 @@ namespace llarp
       // WSARecvFrom
       llarp::LogDebug("read ", sz, " bytes into socket");
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
-                              addr, &slen, &portfd, nullptr);
+                              addr, &slen, &portfd[0], nullptr);
       // 997 is the error code for queued ops
       int s_errno = ::WSAGetLastError();
       if(ret && s_errno != 997)
@@ -56,7 +48,7 @@ namespace llarp
         return -1;
       }
       // get the _real_ payload size from tick()
-      udp->recvfrom(udp, addr, buf, iosz);
+      udp->recvfrom(udp, addr, buf, sz);
       return 0;
     }
 
@@ -79,7 +71,7 @@ namespace llarp
       // WSASendTo
       llarp::LogDebug("write ", sz, " bytes into socket");
       ssize_t sent = ::WSASendTo(std::get< SOCKET >(fd), &wbuf, 1, nullptr, 0,
-                                 to, slen, &portfd, nullptr);
+                                 to, slen, &portfd[1], nullptr);
       int s_errno  = ::WSAGetLastError();
       if(sent && s_errno != 997)
       {
@@ -94,7 +86,7 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
-    OVERLAPPED* tun_async;
+    OVERLAPPED* tun_async[2];
     tun(llarp_tun_io* tio)
         : ev_io(INVALID_HANDLE_VALUE)
         , t(tio)
@@ -123,7 +115,7 @@ namespace llarp
     bool
     do_write(void* data, size_t sz)
     {
-      return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, tun_async);
+      return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, tun_async[1]);
     }
 
     int
@@ -159,7 +151,8 @@ namespace llarp
       }
 
       fd        = tunif->tun_fd;
-      tun_async = &tunif->ovl;
+      tun_async[0] = &tunif->ovl[0];
+      tun_async[1] = &tunif->ovl[1];
       if(std::get< HANDLE >(fd) == INVALID_HANDLE_VALUE)
         return false;
 
@@ -222,7 +215,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       {
         llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
                         "\tqdata: ", qdata);
-        ev->getData(readbuf, sizeof(readbuf), iolen);
+        if(iolen <= sizeof(readbuf))
+          ev->read(readbuf, iolen);
       }
       ++idx;
     }
@@ -262,7 +256,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       if(ev && !ev->fd.valueless_by_exception())
       {
         llarp::LogInfo("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
-        ev->getData(readbuf, sizeof(readbuf), iolen);
+        if(iolen <= sizeof(readbuf))
+          ev->read(readbuf, iolen);
       }
       ++idx;
     }
@@ -381,7 +376,7 @@ struct llarp_win32_loop : public llarp_ev_loop
           return false;
         }
         ::ReadFile((HANDLE)std::get< 0 >(ev->fd), &buf, 1024, nullptr,
-                   &udp->portfd);
+                   &udp->portfd[0]);
         break;
       case 1:
         t = dynamic_cast< llarp::tun* >(ev);
@@ -391,7 +386,7 @@ struct llarp_win32_loop : public llarp_ev_loop
           delete ev;
           return false;
         }
-        ::ReadFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr, t->tun_async);
+        ::ReadFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr, t->tun_async[0]);
         break;
       default:
         return false;

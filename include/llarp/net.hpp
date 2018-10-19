@@ -207,7 +207,7 @@ namespace llarp
     Contains(const huint32_t& ip) const
     {
       // TODO: do this "better"
-      return ((addr & netmask_bits) ^ ip) == (ip & (~netmask_bits));
+      return (addr & netmask_bits) == (ip & netmask_bits);
     }
 
     std::string
@@ -221,18 +221,26 @@ namespace llarp
     }
   };
 
-  constexpr huint32_t
-  netmask_ipv4_bits(byte_t netmask)
+  /// get a netmask with the higest numset bits set
+  constexpr uint32_t
+  __netmask_ipv4_bits(uint32_t numset)
   {
-    return (32 - netmask) ? (huint32_t{((uint32_t)1 << (32 - (netmask + 1)))}
-                             | netmask_ipv4_bits(netmask + 1))
-                          : huint32_t{0};
+    return (32 - numset)
+        ? (1 << (32 - (numset + 1))) | __netmask_ipv4_bits(numset + 1)
+        : 0;
+  }
+
+  /// get an ipv4 netmask given some /N range
+  constexpr huint32_t
+  netmask_ipv4_bits(uint32_t num)
+  {
+    return huint32_t{__netmask_ipv4_bits(32 - num)};
   }
 
   constexpr huint32_t
   ipaddr_ipv4_bits(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
   {
-    return huint32_t{(a << 24) | (b << 16) | (c << 8) | d};
+    return huint32_t{(a) | (b << 8) | (c << 16) | (d << 24)};
   }
 
   constexpr IPRange

@@ -228,7 +228,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 
   // FIXME: only handling one atm
   dns_msg_question *question = nullptr;
-  for(uint i = 0; i < hdr->qdCount; i++)
+  for(uint32_t i = 0; i < hdr->qdCount; i++)
   {
     question = decode_question((const char *)castBuf);
     llarp::LogDebug("Read a question");
@@ -241,7 +241,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   // FIXME: only handling one atm
   std::vector< dns_msg_answer * > answers;
   dns_msg_answer *answer = nullptr;
-  for(uint i = 0; i < hdr->anCount; i++)
+  for(uint32_t i = 0; i < hdr->anCount; i++)
   {
     answer = decode_answer((const char *)castBuf);
     answers.push_back(answer);
@@ -275,7 +275,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 
   // handle authority records (usually no answers with these, so we'll just
   // stomp) usually NS records tho
-  for(uint i = 0; i < hdr->nsCount; i++)
+  for(uint32_t i = 0; i < hdr->nsCount; i++)
   {
     answer = decode_answer((const char *)castBuf);
     // answers.push_back(answer);
@@ -602,7 +602,7 @@ llarp_host_resolved(dnsc_answer_request *const request)
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
   auto val             = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
-      [request](std::pair< const uint, std::unique_ptr< dnsc_answer_request > >
+      [request](std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >
                     &element) { return element.second.get() == request; });
   if(val != tracker->client_request.end())
   {

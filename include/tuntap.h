@@ -145,7 +145,7 @@ extern "C"
     int mode;
 #endif
 #if defined(Windows)
-    OVERLAPPED ovl;
+    OVERLAPPED ovl[2];
 #endif
   };
 

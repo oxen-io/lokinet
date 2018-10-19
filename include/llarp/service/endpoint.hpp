@@ -205,7 +205,8 @@ namespace llarp
         };
 
         virtual void
-        UpdateIntroSet(){};
+        UpdateIntroSet(bool randomizePath=false){};
+        
         virtual bool
         MarkCurrentIntroBad(llarp_time_t now)
         {
@@ -270,7 +271,7 @@ namespace llarp
 
         /// issues a lookup to find the current intro set of the remote service
         void
-        UpdateIntroSet();
+        UpdateIntroSet(bool randomizePath);
 
         bool
         BuildOneAlignedTo(const RouterID& remote);
@@ -297,7 +298,8 @@ namespace llarp
         OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
 
         bool
-        OnIntroSetUpdate(const Address& addr, const IntroSet* i);
+        OnIntroSetUpdate(const Address& addr, const IntroSet* i,
+                         const RouterID& endpoint);
 
         uint64_t m_UpdateIntrosetTX = 0;
         IntroSet currentIntroSet;
@@ -315,7 +317,7 @@ namespace llarp
       /// address
       bool
       EnsurePathToService(const Address& remote, PathEnsureHook h,
-                          uint64_t timeoutMS);
+                          uint64_t timeoutMS, bool lookupOnRandomPath=false);
 
       virtual bool
       HandleAuthenticatedDataFrom(const Address& remote, llarp_buffer_t data)
@@ -379,7 +381,8 @@ namespace llarp
 
      private:
       bool
-      OnOutboundLookup(const Address&, const IntroSet* i); /*  */
+      OnLookup(const service::Address& addr, const IntroSet* i,
+               const RouterID& endpoint); /*  */
 
       static bool
       SetupIsolatedNetwork(void* user, bool success);
@@ -434,6 +437,8 @@ namespace llarp
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
 
+      std::unordered_map<RouterID, uint32_t, RouterID::Hash> m_ServiceLookupFails;
+      
       struct RouterLookupJob
       {
         RouterLookupJob(Endpoint* p)

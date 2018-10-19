@@ -399,6 +399,7 @@ set(TEST_SRC
   test/encrypted_frame_unittest.cpp
   test/hiddenservice_unittest.cpp
   test/pq_unittest.cpp
+  test/net_unittest.cpp
   test/test_dns_unit.cpp
   test/test_dnsc_unit.cpp
   test/test_dnsd_unit.cpp
