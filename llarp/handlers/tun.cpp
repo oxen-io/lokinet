@@ -134,7 +134,7 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ",
                      inet_ntoa({nip.n}));
-      
+
       m_IPToAddr.insert(std::make_pair(ip, addr));
       m_AddrToIP.insert(std::make_pair(addr, ip));
       MarkIPActiveForever(ip);
@@ -351,7 +351,7 @@ namespace llarp
                         " bytes from ", inet_ntoa({xhtonl(themIP).n}));
       return true;
     }
-    
+
     service::Address
     TunEndpoint::ObtainAddrForIP(huint32_t ip)
     {
@@ -359,7 +359,7 @@ namespace llarp
       if(itr == m_IPToAddr.end())
       {
         // not found
-        //llarp::Addr test(ip); // "/", test,
+        // llarp::Addr test(ip); // "/", test,
         service::Address addr;
         llarp::LogWarn(" not found in tun map. Sending ", addr.ToString());
         return addr;
