@@ -40,7 +40,7 @@ namespace llarp
       bool firstKey;
       char key;
       dict_reader reader;
-      IMessage* msg;
+      std::unique_ptr<IMessage> msg;
     };
   }  // namespace routing
 }  // namespace llarp
