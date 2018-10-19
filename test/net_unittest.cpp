@@ -5,11 +5,24 @@ struct NetTest : public ::testing::Test
 {
 };
 
-TEST_F(NetTest, TestRangeContains)
+TEST_F(NetTest, TestRangeContains8)
 {
   ASSERT_TRUE(llarp::iprange_ipv4(10, 0, 0, 0, 8)
                   .Contains(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
 }
+
+TEST_F(NetTest, TestRangeContains24)
+{
+  ASSERT_TRUE(llarp::iprange_ipv4(10, 200, 0, 1, 24)
+                  .Contains(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
+}
+
+TEST_F(NetTest, TestRangeContainsFail)
+{
+  ASSERT_TRUE(!llarp::iprange_ipv4(192, 168, 0, 1, 24)
+                  .Contains(llarp::ipaddr_ipv4_bits(10, 200, 0, 253)));
+}
+
 
 TEST_F(NetTest, TestIPv4Netmask)
 {
