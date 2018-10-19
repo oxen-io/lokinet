@@ -47,9 +47,7 @@ namespace llarp
         llarp::LogWarn("recv socket error ", s_errno);
         return -1;
       }
-      /*if (sz > EV_READ_BUF_SZ)
-		return -1;*/
-
+      // get the _real_ payload size from tick()
       udp->recvfrom(udp, addr, buf, sz);
       return 0;
     }
@@ -217,7 +215,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       {
         llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
                         "\tqdata: ", qdata);
-        ev->read(readbuf, iolen);
+        if(iolen <= sizeof(readbuf))
+          ev->read(readbuf, iolen);
       }
       ++idx;
     }
@@ -257,7 +256,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       if(ev && !ev->fd.valueless_by_exception())
       {
         llarp::LogInfo("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
-        ev->read(readbuf, sizeof(readbuf));
+        if(iolen <= sizeof(readbuf))
+          ev->read(readbuf, iolen);
       }
       ++idx;
     }
