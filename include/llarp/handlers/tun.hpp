@@ -51,8 +51,8 @@ namespace llarp
       bool
       ProcessDataMessage(service::ProtocolMessage* msg);
 
-#ifndef _MINGW32_NO_THREADS
-      /// overrides Endpount
+#ifndef WIN32
+      /// overrides Endpoint
       bool
       IsolationFailed()
       {
@@ -113,7 +113,7 @@ namespace llarp
       FlushSend();
 
      private:
-#ifndef _MINGW32_NO_THREADS
+#ifndef WIN32
       /// handles setup, given value true on success and false on failure to set
       /// up interface
       std::promise< bool > m_TunSetupResult;

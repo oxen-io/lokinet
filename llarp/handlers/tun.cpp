@@ -254,8 +254,10 @@ namespace llarp
     {
       llarp::LogInfo("Set Up networking for ", Name());
       bool result = SetupTun();
+#ifndef WIN32
       m_TunSetupResult.set_value(
           result);  // now that NT has tun, we don't need the CPP guard
+#endif
       if(!NetworkIsIsolated())
       {
         // need to check to see if we have more than one hidden service
