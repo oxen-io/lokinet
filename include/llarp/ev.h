@@ -94,6 +94,8 @@ struct llarp_tcp_conn
   void (*read)(struct llarp_tcp_conn *, const void *, size_t);
   /// handle close event (free-ing is handled by event loop)
   void (*closed)(struct llarp_tcp_conn *);
+  /// handle event loop tick
+  void (*tick)(struct llarp_tcp_conn *);
 };
 
 /// queue async write a buffer in full
@@ -120,7 +122,8 @@ struct llarp_tcp_acceptor
 /// return false if failed to bind
 /// return true on successs
 bool
-llarp_tcp_serve(struct llarp_tcp_acceptor *t, const sockaddr *bindaddr);
+llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *t,
+                const sockaddr *bindaddr);
 
 /// close and stop accepting connections
 void

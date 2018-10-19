@@ -49,6 +49,9 @@ namespace llarp
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz) = 0;
 
+    virtual void
+    tick(){};
+
     /// used for tun interface and tcp conn
     virtual bool
     do_write(void* data, size_t sz)
@@ -191,23 +194,13 @@ struct llarp_ev_loop
 
   virtual ~llarp_ev_loop(){};
 
-  std::vector< llarp_udp_io* > udp_listeners;
-  std::vector< llarp_tun_io* > tun_listeners;
+  std::vector< std::unique_ptr< llarp::ev_io > > handlers;
 
   void
   tick_listeners()
   {
-    for(auto& l : udp_listeners)
-      if(l->tick)
-        l->tick(l);
-    for(auto& l : tun_listeners)
-    {
-      if(l->tick)
-        l->tick(l);
-      if(l->before_write)
-        l->before_write(l);
-      static_cast< llarp::ev_io* >(l->impl)->flush_write();
-    }
+    for(const auto& h : handlers)
+      h->tick();
   }
 };
 

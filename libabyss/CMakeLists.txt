@@ -1,4 +1,3 @@
-project(abyss)
 
 set(ABYSS src)
 

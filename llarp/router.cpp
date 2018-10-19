@@ -3,7 +3,7 @@
 #include <llarp/iwp.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/link/utp.hpp>
-#include <llarp/arpc.hpp>
+#include <llarp/rpc.hpp>
 
 #include "buffer.hpp"
 #include "encode.hpp"
@@ -655,7 +655,7 @@ llarp_router::Run()
     {
       rpcBindAddr = DefaultRPCBindAddr;
     }
-    rpcServer = std::make_unique< llarp::arpc::Server >(this);
+    rpcServer = std::make_unique< llarp::rpc::Server >(this);
     if(!rpcServer->Start(rpcBindAddr))
     {
       llarp::LogError("Binding rpc server to ", rpcBindAddr, " failed");
@@ -1252,19 +1252,4 @@ namespace llarp
       }
     }
   }
-
-  namespace arpc
-  {
-    const byte_t *
-    Server::SigningPrivateKey() const
-    {
-      return router->identity;
-    }
-
-    const llarp_crypto *
-    Server::Crypto() const
-    {
-      return &router->crypto;
-    }
-  }  // namespace arpc
 }  // namespace llarp
