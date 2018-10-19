@@ -11,20 +11,17 @@ namespace llarp
   }
 
   Encrypted::Encrypted(const Encrypted& other)
-      : Encrypted(other._data, other._sz)
+    : Encrypted(other.data(), other.size())
   {
   }
 
-  Encrypted::Encrypted(const byte_t* buf, size_t sz) : _sz(sz)
+  Encrypted::Encrypted(const byte_t* buf, size_t sz) : _data(sz)
   {
-    if(sz <= MAX_SIZE)
-    {
-      if(buf)
-        memcpy(data(), buf, sz);
-      else
-        llarp::Zero(data(), sz);
-      UpdateBuffer();
-    }
+    if(buf)
+      memcpy(data(), buf, sz);
+    else
+      llarp::Zero(data(), sz);
+    UpdateBuffer();
   }
 
   Encrypted::~Encrypted()

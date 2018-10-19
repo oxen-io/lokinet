@@ -334,7 +334,7 @@ namespace llarp
       }
       if(IsExpired(now))
       {
-        llarp::LogWarn("introset expired");
+        llarp::LogWarn("introset expired: ", *this);
         return false;
       }
       return true;

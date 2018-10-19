@@ -12,7 +12,6 @@ namespace llarp
   /// encrypted buffer base type
   struct Encrypted
   {
-    static const size_t MAX_SIZE = (1024 * 8);
 
     Encrypted(Encrypted&&) = delete;
     Encrypted(const Encrypted& other);
@@ -24,13 +23,13 @@ namespace llarp
     bool
     BEncode(llarp_buffer_t* buf) const
     {
-      return bencode_write_bytestring(buf, _data, _sz);
+      return bencode_write_bytestring(buf, data(), size());
     }
 
     bool
     operator==(const Encrypted& other) const
     {
-      return _sz == other._sz && memcmp(_data, other._data, _sz) == 0;
+      return size() == other.size() && memcmp(data(), other.data(), size()) == 0;
     }
 
     bool
@@ -48,12 +47,10 @@ namespace llarp
     Encrypted&
     operator=(const llarp_buffer_t& buf)
     {
-      if(buf.sz > MAX_SIZE)
-        return *this;
-      _sz = buf.sz;
-      if(_sz)
+       _data.resize(buf.sz);
+      if(buf.sz)
       {
-        memcpy(_data, buf.base, _sz);
+        memcpy(data(), buf.base, buf.sz);
       }
       UpdateBuffer();
       return *this;
@@ -62,6 +59,7 @@ namespace llarp
     void
     Fill(byte_t fill)
     {
+      size_t _sz = size();
       size_t idx = 0;
       while(idx < _sz)
         _data[idx++] = fill;
@@ -70,8 +68,9 @@ namespace llarp
     void
     Randomize()
     {
+      size_t _sz = size();
       if(_sz)
-        randombytes(_data, _sz);
+        randombytes(data(), _sz);
     }
 
     bool
@@ -82,10 +81,8 @@ namespace llarp
         return false;
       if(strbuf.sz == 0)
         return false;
-      if(strbuf.sz > MAX_SIZE)
-        return false;
-      _sz = strbuf.sz;
-      memcpy(_data, strbuf.base, _sz);
+      _data.resize(strbuf.sz);
+      memcpy(data(), strbuf.base, size());
       UpdateBuffer();
       return true;
     }
@@ -105,21 +102,27 @@ namespace llarp
     size_t
     size()
     {
-      return _sz;
+      return _data.size();
     }
 
     size_t
     size() const
     {
-      return _sz;
+      return _data.size();
     }
 
     byte_t*
     data()
     {
-      return _data;
+      return _data.data();
     }
 
+    const byte_t *
+    data() const
+    {
+      return _data.data();
+    }
+    
    protected:
     void
     UpdateBuffer()
@@ -128,8 +131,7 @@ namespace llarp
       m_Buffer.cur  = data();
       m_Buffer.sz   = size();
     }
-    byte_t _data[MAX_SIZE];
-    size_t _sz = 0;
+    std::vector<byte_t> _data;
     llarp_buffer_t m_Buffer;
   };
 }  // namespace llarp
