@@ -180,6 +180,8 @@ namespace llarp
 
     ~LRCMFrameDecrypt()
     {
+      if(hop) delete hop;
+         
       delete decrypter;
     }
 
@@ -196,6 +198,7 @@ namespace llarp
                                                    self->hop->ExpireTime());
       // forward to next hop
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames);
+      self->hop = nullptr;
       delete self;
     }
 
@@ -214,6 +217,7 @@ namespace llarp
         llarp::LogError("failed to send path confirmation for ",
                         self->hop->info);
       }
+      self->hop = nullptr;
       delete self;
     }
 

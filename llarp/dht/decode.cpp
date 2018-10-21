@@ -37,33 +37,32 @@ namespace llarp
             return false;
           llarp::LogInfo("Handle DHT message ", *strbuf.base,
                          " relayed=", dec->relayed);
-          IMessage *msg;
           switch(*strbuf.base)
           {
             case 'F':
-              msg = new FindIntroMessage(dec->From, dec->relayed);
+              dec->msg.reset(new FindIntroMessage(dec->From, dec->relayed));
               break;
             case 'R':
               if(dec->relayed)
-                msg = new RelayedFindRouterMessage(dec->From);
+                dec->msg.reset(new RelayedFindRouterMessage(dec->From));
               else
-                msg = new FindRouterMessage(dec->From);
+                dec->msg.reset(new FindRouterMessage(dec->From));
               break;
             case 'S':
-              msg = new GotRouterMessage(dec->From, dec->relayed);
+              dec->msg.reset(new GotRouterMessage(dec->From, dec->relayed));
               break;
             case 'I':
-              msg = new PublishIntroMessage();
+              dec->msg.reset( new PublishIntroMessage());
               break;
             case 'G':
               if(dec->relayed)
               {
-                msg = new RelayedGotIntroMessage();
+                dec->msg.reset(new RelayedGotIntroMessage());
                 break;
               }
               else
               {
-                msg = new GotIntroMessage(dec->From);
+                dec->msg.reset(new GotIntroMessage(dec->From));
                 break;
               }
             default:
@@ -71,7 +70,6 @@ namespace llarp
               // bad msg type
               return false;
           }
-          dec->msg      = std::unique_ptr< IMessage >(msg);
           dec->firstKey = false;
           return dec->msg != nullptr;
         }
@@ -90,6 +88,7 @@ namespace llarp
       r.on_key = &MessageDecoder::on_key;
       if(!bencode_read_dict(buf, &r))
         return nullptr;
+      
       return std::unique_ptr< IMessage >(std::move(dec.msg));
     }
 
