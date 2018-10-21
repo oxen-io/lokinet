@@ -21,11 +21,7 @@ namespace llarp
 
       Tag(const std::string& str) : Tag()
       {
-#ifndef MIN
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-        memcpy(data(), str.c_str(), MIN(16UL, str.size()));
-#undef MIN
-#endif
+        memcpy(data(), str.c_str(), std::min(16UL, str.size()));
       }
 
       Tag&
@@ -38,11 +34,7 @@ namespace llarp
       Tag&
       operator=(const std::string& str)
       {
-#ifndef MIN
-#define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
-        memcpy(data(), str.data(), MIN(16UL, str.size()));
-#undef MIN
-#endif
+        memcpy(data(), str.data(), std::min(16UL, str.size()));
         return *this;
       }
 

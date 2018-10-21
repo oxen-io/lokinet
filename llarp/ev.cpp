@@ -111,7 +111,6 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   tun->impl = dev;
   if(dev)
   {
-    loop->tun_listeners.push_back(tun);
     return loop->add_ev(dev, true);
   }
   return false;
@@ -129,6 +128,12 @@ llarp_tcp_serve(struct llarp_tcp_acceptor *tcp, const struct sockaddr *bindaddr)
 {
   // TODO: implement me
   return false;
+}
+
+void
+llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *tcp)
+{
+  // TODO: implement me
 }
 
 void

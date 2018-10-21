@@ -63,6 +63,10 @@ else()
   set(WITH_STATIC ON)
 endif()
 
+if(TESTNET)
+  add_definitions(-DTESTNET=1)
+endif()
+
 add_cflags("-Wall")
 add_cxxflags("-Wall")
 
@@ -318,7 +322,6 @@ set(LIB_SRC
   ${UTP_SRC}
   ${NTRU_SRC}
   llarp/address_info.cpp
-  llarp/arpc.cpp
   llarp/bencode.cpp
   llarp/buffer.cpp
   llarp/config.cpp
@@ -348,6 +351,7 @@ set(LIB_SRC
   llarp/relay_up_down.cpp
   llarp/router_contact.cpp
   llarp/router.cpp
+  llarp/rpc.cpp
   llarp/service.cpp
   llarp/transit_hop.cpp
   llarp/testnet.c
@@ -439,19 +443,34 @@ include_directories(${sodium_INCLUDE_DIR})
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
 
+set(ABYSS ${CMAKE_SOURCE_DIR}/libabyss)
+
+set(ABYSS_LIB abyss)
+
+include_directories(${ABYSS}/include)
+
+set(ABYSS_SRC
+  ${ABYSS}/src/http.cpp
+  ${ABYSS}/src/client.cpp
+  ${ABYSS}/src/server.cpp
+  ${ABYSS}/src/lib.cpp)
+
+add_library(${ABYSS_LIB} ${ABYSS_SRC})
 
 if(SHADOW)
-add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC})
+add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC})
 target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
 install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
 add_executable(${RC_EXE} ${RC_SRC})
 add_executable(${EXE} ${EXE_SRC})
 add_executable(${CLIENT_EXE} ${CLIENT_SRC})
+
 add_executable(${DNS_EXE} ${DNS_SRC})
 add_subdirectory(${GTEST_DIR})
 include_directories(${GTEST_DIR}/include ${GTEST_DIR})
 add_executable(${TEST_EXE} ${TEST_SRC})
+
 
 if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
@@ -459,7 +478,7 @@ if(WITH_STATIC)
       add_library(${BACKPORT_LIB} STATIC ${CPP_BACKPORT_SRC})
     endif(NOT HAVE_CXX17_FILESYSTEM)
     add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
-    target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB})
+    target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB} ${ABYSS_LIB})
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       target_link_libraries(${PLATFORM_LIB} -lcap)
     endif()

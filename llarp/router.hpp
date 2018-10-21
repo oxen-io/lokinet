@@ -5,7 +5,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/path.hpp>
 #include <llarp/link_layer.hpp>
-#include <llarp/arpc.hpp>
+#include <llarp/rpc.hpp>
 
 #include <functional>
 #include <list>
@@ -105,7 +105,7 @@ struct llarp_router
 
   std::string DefaultRPCBindAddr = "127.0.0.1:1190";
   bool enableRPCServer           = false;
-  std::unique_ptr< llarp::arpc::Server > rpcServer;
+  std::unique_ptr< llarp::rpc::Server > rpcServer;
   std::string rpcBindAddr = DefaultRPCBindAddr;
 
   std::unique_ptr< llarp::ILinkLayer > outboundLink;

@@ -16,6 +16,14 @@
 
 namespace llarp
 {
+  struct tcp_serv : public ev_io
+  {
+  };
+
+  struct tcp_conn : public ev_io
+  {
+  };
+
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
@@ -24,6 +32,13 @@ namespace llarp
 
     ~udp_listener()
     {
+    }
+
+    virtual void
+    tick()
+    {
+      if(udp->tick)
+        udp->tick(udp);
     }
 
     virtual int
@@ -82,6 +97,14 @@ namespace llarp
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       return -1;
+    }
+
+    virtual void
+    tick()
+    {
+      if(t->tick)
+        t->tick(t);
+      flush_write();
     }
 
     void
@@ -270,7 +293,14 @@ struct llarp_epoll_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
-    return epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) != -1;
+    if(epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) == -1)
+      return false;
+    // deallocate
+    std::remove_if(handlers.begin(), handlers.end(),
+                   [ev](const std::unique_ptr< llarp::ev_io >& i) -> bool {
+                     return i.get() == ev;
+                   });
+    return true;
   }
 
   llarp::ev_io*
@@ -278,7 +308,10 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     llarp::tun* t = new llarp::tun(tun);
     if(t->setup())
+    {
+      handlers.emplace_back(t);
       return t;
+    }
     delete t;
     return nullptr;
   }
@@ -289,9 +322,9 @@ struct llarp_epoll_loop : public llarp_ev_loop
     int fd = udp_bind(src);
     if(fd == -1)
       return nullptr;
-    llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
-    l->impl                       = listener;
-    udp_listeners.push_back(l);
+    handlers.emplace_back(new llarp::udp_listener(fd, l));
+    llarp::ev_io* listener = handlers.back().get();
+    l->impl                = listener;
     return listener;
   }
 
@@ -321,9 +354,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
     {
       close_ev(listener);
       l->impl = nullptr;
-      delete listener;
-      std::remove_if(udp_listeners.begin(), udp_listeners.end(),
-                     [l](llarp_udp_io* i) -> bool { return i == l; });
+      ret     = true;
     }
     return ret;
   }
