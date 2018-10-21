@@ -169,7 +169,7 @@ namespace llarp
     // decrypted record
     LR_CommitRecord record;
     // the actual hop
-    Hop* hop;
+    std::shared_ptr< Hop > hop;
 
     LRCMFrameDecrypt(Context* ctx, Decrypter* dec,
                      const LR_CommitMessage* commit)
@@ -194,6 +194,8 @@ namespace llarp
                                                    self->hop->ExpireTime());
       self->context->Router()->PersistSessionUntil(self->hop->info.upstream,
                                                    self->hop->ExpireTime());
+      // put hop
+      self->context->PutTransitHop(self->hop);
       // forward to next hop
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames);
       delete self;
@@ -207,6 +209,8 @@ namespace llarp
       // persist session to downstream until path expiration
       self->context->Router()->PersistSessionUntil(self->hop->info.downstream,
                                                    self->hop->ExpireTime());
+      // put hop
+      self->context->PutTransitHop(self->hop);
       // send path confirmation
       llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
       if(!self->hop->SendRoutingMessage(&confirm, self->context->Router()))
@@ -275,8 +279,6 @@ namespace llarp
 
       // TODO: check if we really want to accept it
       self->hop->started = llarp_time_now_ms();
-      llarp::LogDebug("Accepted ", self->hop->info);
-      self->context->PutTransitHop(self->hop);
 
       size_t sz = self->frames[0].size();
       // shift

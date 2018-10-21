@@ -143,9 +143,10 @@ namespace llarp
     bool
     PathContext::HasTransitHop(const TransitHopInfo& info)
     {
-      return MapHas(m_TransitPaths, info.txID, [info](TransitHop* hop) -> bool {
-        return info == hop->info;
-      });
+      return MapHas(m_TransitPaths, info.txID,
+                    [info](const std::shared_ptr< TransitHop >& hop) -> bool {
+                      return info == hop->info;
+                    });
     }
 
     IHopHandler*
@@ -163,20 +164,24 @@ namespace llarp
         return own;
 
       return MapGet(m_TransitPaths, id,
-                    [remote](const TransitHop* hop) -> bool {
+                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
                       return hop->info.upstream == remote;
                     },
-                    [](TransitHop* h) -> IHopHandler* { return h; });
+                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+                      return h.get();
+                    });
     }
 
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
       return MapGet(m_TransitPaths, id,
-                    [remote](const TransitHop* hop) -> bool {
+                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
                       return hop->info.downstream == remote;
                     },
-                    [](TransitHop* h) -> IHopHandler* { return h; });
+                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+                      return h.get();
+                    });
     }
 
     PathSet*
@@ -215,14 +220,14 @@ namespace llarp
         for(auto i = range.first; i != range.second; ++i)
         {
           if(i->second->info.upstream == us)
-            return i->second;
+            return i->second.get();
         }
       }
       return nullptr;
     }
 
     void
-    PathContext::PutTransitHop(TransitHop* hop)
+    PathContext::PutTransitHop(std::shared_ptr< TransitHop > hop)
     {
       MapPut(m_TransitPaths, hop->info.txID, hop);
       MapPut(m_TransitPaths, hop->info.rxID, hop);
@@ -235,23 +240,16 @@ namespace llarp
       auto now  = llarp_time_now_ms();
       auto& map = m_TransitPaths.second;
       auto itr  = map.begin();
-      std::set< TransitHop* > removePaths;
       while(itr != map.end())
       {
         if(itr->second->Expired(now))
         {
-          TransitHop* path = itr->second;
-          llarp::LogDebug("transit path expired ", path->info);
-          removePaths.insert(path);
+          itr = map.erase(itr);
         }
-        ++itr;
+        else
+          ++itr;
       }
-      for(auto& p : removePaths)
-      {
-        map.erase(p->info.txID);
-        map.erase(p->info.rxID);
-        delete p;
-      }
+
       for(auto& builder : m_PathBuilders)
       {
         if(builder)
@@ -298,7 +296,7 @@ namespace llarp
         for(auto i = range.first; i != range.second; ++i)
         {
           if(i->second->info.upstream == us)
-            return i->second;
+            return i->second.get();
         }
       }
       return nullptr;
