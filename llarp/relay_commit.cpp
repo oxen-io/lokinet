@@ -179,9 +179,7 @@ namespace llarp
     }
 
     ~LRCMFrameDecrypt()
-    {
-      if(hop) delete hop;
-         
+    {         
       delete decrypter;
     }
 

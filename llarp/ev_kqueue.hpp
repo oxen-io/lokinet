@@ -322,7 +322,15 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   close_ev(llarp::ev_io* ev)
   {
     EV_SET(&change, ev->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-    return kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1;
+    if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) != -1)
+    {
+      std::remove_if(handlers.begin(), handlers.end(),
+                     [ev](const std::unique_ptr<llarp::ev_io> & i) -> bool {
+                       return i.get() == ev;
+                     });
+      return true;
+    }
+    return false;
   }
 
   llarp::ev_io*
@@ -332,7 +340,6 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     if(fd == -1)
       return nullptr;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
-    udp_listeners.push_back(l);
     l->impl = listener;
     return listener;
   }
@@ -349,6 +356,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       delete ev;
       return false;
     }
+    handlers.emplace_back(ev);
     return true;
   }
 
@@ -362,16 +370,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       // printf("Calling close_ev for [%x] fd[%d]\n", listener, listener->fd);
       ret     = close_ev(listener);
       l->impl = nullptr;
-      delete listener;
-      // std::remove_if
-      auto itr = udp_listeners.begin();
-      while(itr != udp_listeners.end())
-      {
-        if((*itr) == l)
-          itr = udp_listeners.erase(itr);
-        else
-          ++itr;
-      }
+      ret = true;
     }
     return ret;
   }
