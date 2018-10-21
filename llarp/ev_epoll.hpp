@@ -309,7 +309,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
     llarp::tun* t = new llarp::tun(tun);
     if(t->setup())
     {
-      handlers.emplace_back(t);
       return t;
     }
     delete t;
@@ -322,8 +321,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
     int fd = udp_bind(src);
     if(fd == -1)
       return nullptr;
-    handlers.emplace_back(new llarp::udp_listener(fd, l));
-    llarp::ev_io* listener = handlers.back().get();
+    llarp::ev_io* listener = new llarp::udp_listener(fd, l);
     l->impl                = listener;
     return listener;
   }
@@ -341,6 +339,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
       delete e;
       return false;
     }
+    handlers.emplace_back(e);
     return true;
   }
 

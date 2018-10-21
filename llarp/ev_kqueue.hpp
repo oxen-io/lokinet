@@ -34,6 +34,11 @@ namespace llarp
     {
     }
 
+    void tick()
+    {
+      if(udp->tick)
+        udp->tick(udp);
+    }
     virtual int
     read(void* buf, size_t sz)
     {
@@ -74,8 +79,11 @@ namespace llarp
         return -1;
       }
       ssize_t sent = ::sendto(fd, data, sz, 0, to, slen);
-      if(sent == -1)
-        perror("kqueue sendto()");
+      if(sent == -1 || errno)
+      {
+        llarp::LogError("failed to send udp: ",strerror(errno));
+        errno = 0;
+      }
       return sent;
     }
   };
@@ -122,6 +130,12 @@ namespace llarp
       }
     }
 
+    void tick()
+    {
+      if(t->tick)
+        t->tick(t);
+    }
+    
     int
     read(void* buf, size_t sz)
     {
@@ -242,7 +256,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         while(idx < result)
         {
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
-          if(ev && ev->fd)
+          if(ev)
           {
             // printf("reading_ev [%x] fd[%d]\n", ev, ev->fd);
             ev->read(readbuf, sizeof(readbuf));
