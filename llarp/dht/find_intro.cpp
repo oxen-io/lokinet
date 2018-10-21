@@ -182,13 +182,22 @@ namespace llarp
             replies.emplace_back(new GotIntroMessage(reply, T));
             return true;
           }
-          else
+          else if(R < 5)
           {
             // tag lookup
             if(dht.nodes->GetRandomNodeExcluding(peer, exclude))
             {
               dht.LookupTagRecursive(N, From, T, peer, R - 1);
             }
+            else
+            {
+              replies.emplace_back(new GotIntroMessage({}, T));
+            }
+          }
+          else
+          {
+            // too big R value
+            replies.emplace_back(new GotIntroMessage({}, T));
           }
         }
       }

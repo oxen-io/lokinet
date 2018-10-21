@@ -41,14 +41,14 @@ namespace llarp
       auto tagLookup = dht.pendingTagLookups.GetPendingLookupFrom(owner);
       if(tagLookup)
       {
-        dht.pendingTagLookups.Inform(owner, tagLookup->target, I);
+        dht.pendingTagLookups.Found(owner, tagLookup->target, I);
         return true;
       }
       auto serviceLookup =
           dht.pendingIntrosetLookups.GetPendingLookupFrom(owner);
       if(serviceLookup)
       {
-        dht.pendingIntrosetLookups.Inform(owner, serviceLookup->target, I);
+        dht.pendingIntrosetLookups.Found(owner, serviceLookup->target, I);
         return true;
       }
       llarp::LogError("no pending TX for GIM from ", From, " txid=", T);

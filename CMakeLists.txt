@@ -63,6 +63,10 @@ else()
   set(WITH_STATIC ON)
 endif()
 
+if(TESTNET)
+  add_definitions(-DTESTNET=1)
+endif()
+
 add_cflags("-Wall")
 add_cxxflags("-Wall")
 

@@ -186,7 +186,7 @@ namespace llarp
           }
         }
       }
-
+#ifdef TESTNET
       // prefetch tags
       for(const auto& tag : m_PrefetchTags)
       {
@@ -201,12 +201,12 @@ namespace llarp
         {
           if(HasPendingPathToService(introset.A.Addr()))
             continue;
-          if(!EnsurePathToService(introset.A.Addr(),
-                                  [](Address addr, OutboundContext* ctx) {},
-                                  10000))
+          byte_t tmp[1024] = {0};
+          auto buf         = StackBuffer< decltype(tmp) >(tmp);
+          if(!SendToOrQueue(introset.A.Addr(), buf, eProtocolText))
           {
-            llarp::LogWarn("failed to ensure path to ", introset.A.Addr(),
-                           " for tag ", tag.ToString());
+            llarp::LogWarn(Name(), " failed to send/queue data to ",
+                           introset.A.Addr(), " for tag ", tag.ToString());
           }
         }
         itr->second.Expire(now);
@@ -216,10 +216,16 @@ namespace llarp
           if(path)
           {
             auto job = new TagLookupJob(this, &itr->second);
-            job->SendRequestViaPath(path, Router());
+            if(!job->SendRequestViaPath(path, Router()))
+              llarp::LogError(Name(), " failed to send tag lookup");
+          }
+          else
+          {
+            llarp::LogError(Name(), " has no paths for tag lookup");
           }
         }
       }
+#endif
 
       // tick remote sessions
       {
