@@ -23,9 +23,9 @@ struct dnsd_context;
 struct dns_tracker
 {
   // uint c_responses;
-  uint c_requests;
+  uint32_t c_requests;
   // request has to be a pointer
-  std::unordered_map< uint, std::unique_ptr< dnsc_answer_request > >
+  std::unordered_map< uint32_t, std::unique_ptr< dnsc_answer_request > >
       client_request;
   // FIXME: support multiple dns server contexts
   dnsd_context *dnsd;

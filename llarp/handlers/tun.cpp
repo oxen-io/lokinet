@@ -134,6 +134,7 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ",
                      inet_ntoa({nip.n}));
+
       m_IPToAddr.insert(std::make_pair(ip, addr));
       m_AddrToIP.insert(std::make_pair(addr, ip));
       MarkIPActiveForever(ip);
@@ -146,7 +147,7 @@ namespace llarp
       // do network isolation first
       if(!Endpoint::Start())
         return false;
-#ifdef _MINGW32_NO_THREADS
+#ifdef WIN32
       return SetupNetworking();
 #else
       if(!NetworkIsIsolated())
@@ -253,8 +254,10 @@ namespace llarp
     {
       llarp::LogInfo("Set Up networking for ", Name());
       bool result = SetupTun();
+#ifndef WIN32
       m_TunSetupResult.set_value(
           result);  // now that NT has tun, we don't need the CPP guard
+#endif
       if(!NetworkIsIsolated())
       {
         // need to check to see if we have more than one hidden service
@@ -349,6 +352,22 @@ namespace llarp
         llarp::LogDebug(Name(), " handle data message ", msg->payload.size(),
                         " bytes from ", inet_ntoa({xhtonl(themIP).n}));
       return true;
+    }
+
+    service::Address
+    TunEndpoint::ObtainAddrForIP(huint32_t ip)
+    {
+      auto itr = m_IPToAddr.find(ip);
+      if(itr == m_IPToAddr.end())
+      {
+        // not found
+        // llarp::Addr test(ip); // "/", test,
+        service::Address addr;
+        llarp::LogWarn(" not found in tun map. Sending ", addr.ToString());
+        return addr;
+      }
+      // found
+      return itr->second;
     }
 
     huint32_t

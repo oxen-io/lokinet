@@ -37,10 +37,8 @@ namespace llarp
         FragmentOverheadSize + FragmentBodySize;
     typedef llarp::AlignedBuffer< FragmentBufferSize > FragmentBuffer;
 
-    constexpr size_t MaxSend = 64;
-
     /// maximum size for send queue for a session before we drop
-    constexpr size_t MaxSendQueueSize = 128;
+    constexpr size_t MaxSendQueueSize = 1024;
 
     typedef llarp::AlignedBuffer< MAX_LINK_MSG_SIZE > MessageBuffer;
 

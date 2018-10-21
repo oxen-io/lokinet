@@ -51,8 +51,8 @@ namespace llarp
       bool
       ProcessDataMessage(service::ProtocolMessage* msg);
 
-#ifndef _MINGW32_NO_THREADS
-      /// overrides Endpount
+#ifndef WIN32
+      /// overrides Endpoint
       bool
       IsolationFailed()
       {
@@ -80,6 +80,10 @@ namespace llarp
       static void
       handleTickTun(void* u);
 
+      /// get a service address for ip address
+      service::Address
+      ObtainAddrForIP(huint32_t ip);
+
      protected:
       typedef llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
@@ -92,6 +96,7 @@ namespace llarp
       /// return true if we have a remote loki address for this ip address
       bool
       HasRemoteForIP(huint32_t ipv4) const;
+
       /// get ip address for service address unconditionally
       huint32_t
       ObtainIPForAddr(const service::Address& addr);
@@ -108,7 +113,7 @@ namespace llarp
       FlushSend();
 
      private:
-#ifndef _MINGW32_NO_THREADS
+#ifndef WIN32
       /// handles setup, given value true on success and false on failure to set
       /// up interface
       std::promise< bool > m_TunSetupResult;

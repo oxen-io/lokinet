@@ -394,7 +394,7 @@ tuntap_read(struct device *dev, void *buf, size_t size)
 {
   DWORD len;
 
-  if(ReadFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl) == 0)
+  if(ReadFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl[0]) == 0)
   {
     int errcode = GetLastError();
 
@@ -415,7 +415,7 @@ tuntap_write(struct device *dev, void *buf, size_t size)
 {
   DWORD len;
 
-  if(WriteFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl) == 0)
+  if(WriteFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl[1]) == 0)
   {
   	int errcode = GetLastError();
 

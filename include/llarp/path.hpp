@@ -404,7 +404,7 @@ namespace llarp
       HandleRelayCommit(const LR_CommitMessage* msg);
 
       void
-      PutTransitHop(TransitHop* hop);
+      PutTransitHop(std::shared_ptr< TransitHop > hop);
 
       IHopHandler*
       GetByUpstream(const RouterID& id, const PathID_t& path);
@@ -443,7 +443,8 @@ namespace llarp
       void
       RemovePathSet(PathSet* set);
 
-      typedef std::multimap< PathID_t, TransitHop* > TransitHopsMap_t;
+      typedef std::multimap< PathID_t, std::shared_ptr< TransitHop > >
+          TransitHopsMap_t;
 
       typedef std::pair< util::Mutex, TransitHopsMap_t > SyncTransitMap_t;
 
