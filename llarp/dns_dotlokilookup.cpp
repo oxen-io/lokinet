@@ -61,6 +61,7 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
     delete qr;
     return;
   }
+  /*
   // cache hit
   auto itr = loki_tld_lookup_cache.find(addr.ToString());
   if(itr != loki_tld_lookup_cache.end())
@@ -74,65 +75,47 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   struct dns_pointer *free_private = dns_iptracker_get_free(dll->ip_tracker);
   if(free_private)
   {
-    // in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
-
-    /*
-    llarp::handlers::TunEndpoint *tunEndpoint =
-        (llarp::handlers::TunEndpoint *)dll->user;
-    if (!tunEndpoint)
-    {
-      llarp::LogWarn("dotLokiLookup user isnt a tunEndpoint: ", dll->user);
-      return;
-    }
-    bool mapResult = tunEndpoint->MapAddress(addr,
-    free_private->hostResult.tohl()); if(!mapResult)
-    {
-      delete qr;
-      return;
-    }
     */
-    llarp::service::Context *routerHiddenServiceContext =
-        (llarp::service::Context *)dll->user;
-    if(!routerHiddenServiceContext)
-    {
-      llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
-      write404_dnss_response(qr->from, qr->request);
-      delete qr;
-      return;
-    }
-    bool mapResult = routerHiddenServiceContext->MapAddressAll(
-        addr, free_private->hostResult);
-    if(!mapResult)
-    {
-      llarp::LogWarn("dotLokiLookup failed to map address");
-      write404_dnss_response(qr->from, qr->request);
-      delete qr;
-      return;
-    }
 
-    // make a dnsd_query_hook_response for the cache
-    dnsd_query_hook_response *response = new dnsd_query_hook_response;
-    response->dontLookUp               = true;
-    response->dontSendResponse         = false;
-    // llarp::Addr test(*free_private->hostResult.getSockAddr());
-    // llarp::LogInfo("IP Test: ", test);
-    response->returnThis = free_private->hostResult;
-    llarp::LogInfo("Saving ", qr->request->question.name);
-    loki_tld_lookup_cache[qr->request->question.name] = response;
-    // we can't delete response now...
+  // in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
 
-    // FIXME: flush cache to disk
-    // on crash we'll need to bring up all the same IPs we assigned before...
-    writesend_dnss_response(response->returnThis, qr->from, qr->request);
+  /*
+  llarp::handlers::TunEndpoint *tunEndpoint =
+      (llarp::handlers::TunEndpoint *)dll->user;
+  if (!tunEndpoint)
+  {
+    llarp::LogWarn("dotLokiLookup user isnt a tunEndpoint: ", dll->user);
+    return;
+  }
+  bool mapResult = tunEndpoint->MapAddress(addr,
+  free_private->hostResult.tohl()); if(!mapResult)
+  {
     delete qr;
     return;
   }
-  // else
-  llarp::LogInfo("Sending cname to delay");
-  writecname_dnss_response(
-      random_string(49, "abcdefghijklmnopqrstuvwxyz") + "bob.loki", qr->from,
-      qr->request);
+  */
+  llarp::service::Context *routerHiddenServiceContext =
+      (llarp::service::Context *)dll->user;
+  llarp::huint32_t foundAddr =
+      routerHiddenServiceContext->FindBestAddressFor(addr);
+
+  // make a dnsd_query_hook_response for the cache
+  dnsd_query_hook_response *response = new dnsd_query_hook_response;
+  response->dontLookUp               = true;
+  response->dontSendResponse         = false;
+  // llarp::Addr test(*free_private->hostResult.getSockAddr());
+  // llarp::LogInfo("IP Test: ", test);
+
+  llarp::LogInfo("Saving ", qr->request->question.name);
+  loki_tld_lookup_cache[qr->request->question.name] = response;
+  // we can't delete response now...
+  sockaddr_in saddr;
+  saddr.sin_addr.s_addr = llarp::xhtonl(foundAddr).n;
+  // FIXME: flush cache to disk
+  // on crash we'll need to bring up all the same IPs we assigned before...
+  writesend_dnss_response((sockaddr *)&saddr, qr->from, qr->request);
   delete qr;
+  return;
 }
 
 std::vector< std::string >

@@ -98,6 +98,21 @@ namespace llarp
       return &tunEndpoint->tunif;
     }
 
+    huint32_t
+    Context::FindBestAddressFor(const llarp::service::Address &addr)
+    {
+      auto itr = m_Endpoints.begin();
+      while(itr != m_Endpoints.end())
+      {
+        if(itr->second->HasPathToService(addr))
+        {
+          return itr->second->ObtainIPForAddr(addr);
+        }
+        ++itr;
+      }
+      return getFirstEndpoint()->ObtainIPForAddr(addr);
+    }
+
     bool
     Context::Prefetch(const llarp::service::Address &addr)
     {
