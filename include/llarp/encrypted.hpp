@@ -3,7 +3,7 @@
 
 #include <llarp/bencode.h>
 #include <llarp/buffer.h>
-#include <sodium.h>
+#include <llarp/aligned.hpp>
 #include <vector>
 #include <stdexcept>
 
@@ -12,7 +12,6 @@ namespace llarp
   /// encrypted buffer base type
   struct Encrypted
   {
-
     Encrypted(Encrypted&&) = delete;
     Encrypted(const Encrypted& other);
     Encrypted();
@@ -29,7 +28,8 @@ namespace llarp
     bool
     operator==(const Encrypted& other) const
     {
-      return size() == other.size() && memcmp(data(), other.data(), size()) == 0;
+      return size() == other.size()
+          && memcmp(data(), other.data(), size()) == 0;
     }
 
     bool
@@ -47,7 +47,7 @@ namespace llarp
     Encrypted&
     operator=(const llarp_buffer_t& buf)
     {
-       _data.resize(buf.sz);
+      _data.resize(buf.sz);
       if(buf.sz)
       {
         memcpy(data(), buf.base, buf.sz);
@@ -117,12 +117,12 @@ namespace llarp
       return _data.data();
     }
 
-    const byte_t *
+    const byte_t*
     data() const
     {
       return _data.data();
     }
-    
+
    protected:
     void
     UpdateBuffer()
@@ -131,7 +131,7 @@ namespace llarp
       m_Buffer.cur  = data();
       m_Buffer.sz   = size();
     }
-    std::vector<byte_t> _data;
+    std::vector< byte_t > _data;
     llarp_buffer_t m_Buffer;
   };
 }  // namespace llarp
