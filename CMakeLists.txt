@@ -301,6 +301,7 @@ set(CHACHA_SRC
   crypto/chacha20/dolbeau/chacha20_dolbeau-avx2.c
   crypto/chacha20/stream_chacha20.c
   crypto/salsa20/ref/salsa20_ref.c
+  crypto/salsa20/core_salsa_ref.c
   crypto/salsa20/stream_salsa20.c
   crypto/salsa20/xmm6/salsa20_xmm6-asm.S
   crypto/salsa20/xmm6/salsa20_xmm6.c
