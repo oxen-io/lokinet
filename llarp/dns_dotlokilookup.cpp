@@ -220,8 +220,7 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
   {
     llarp::service::Address addr =
         tunEndpoint->ObtainAddrForIP(searchIPv4_fixed);
-    if(addr.ToString()
-       == "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy.loki")
+    if(addr.IsZero())
     {
       write404_dnss_response(context->from,
                              (dnsd_question_request *)context->request);
@@ -249,7 +248,7 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
   std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
   // llarp::LogDebug("Transformed ", lName);
 
-  // 253.0.200.10.in-addr.arpa
+  // 253.0.200.10.in-addr.arpa
   if(lName.find(".in-addr.arpa") != std::string::npos)
   {
     // llarp::LogDebug("Checking ", lName);
