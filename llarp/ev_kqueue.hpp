@@ -134,6 +134,7 @@ namespace llarp
     {
       if(t->tick)
         t->tick(t);
+      flush_write();
     }
     
     int
