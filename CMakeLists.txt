@@ -134,6 +134,9 @@ set(LIBS ${THREAD_LIB} ${MALLOC_LIB} ${FS_LIB})
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
 set(STATIC_LIB ${LIB}-static)
+set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
+set(PLATFORM_LIB ${LIB}-platform)
+set(ANDROID_LIB ${LIB}android)
 
 set(TT_ROOT vendor/libtuntap-master)
 
@@ -192,6 +195,26 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
 endif()
 
+
+set(CXX_COMPAT_SRC
+  vendor/cppbackport-master/lib/fs/rename.cpp
+  vendor/cppbackport-master/lib/fs/filestatus.cpp
+  vendor/cppbackport-master/lib/fs/filetype.cpp
+  vendor/cppbackport-master/lib/fs/cleanpath.cpp
+  vendor/cppbackport-master/lib/fs/perms.cpp
+  vendor/cppbackport-master/lib/fs/equivalent.cpp
+  vendor/cppbackport-master/lib/fs/current_path.cpp
+  vendor/cppbackport-master/lib/fs/basename.cpp
+  vendor/cppbackport-master/lib/fs/tempdir.cpp
+  vendor/cppbackport-master/lib/fs/create_directory.cpp
+  vendor/cppbackport-master/lib/fs/path.cpp
+  vendor/cppbackport-master/lib/fs/remove.cpp
+  vendor/cppbackport-master/lib/fs/diriter.cpp
+  vendor/cppbackport-master/lib/fs/copyfile.cpp
+  vendor/cppbackport-master/lib/fs/absolute.cpp
+  vendor/cppbackport-master/lib/fs/direntry.cpp
+)
+
 set(LIB_PLATFORM_SRC
 # string stuff
   llarp/str.cpp
@@ -218,6 +241,8 @@ set(LIB_PLATFORM_SRC
 # win32 inline code
   llarp/win32_inet.c
   llarp/win32_intrnl.c
+# c++17 compat code
+  ${CXX_COMPAT_SRC}
 )
 
 set(NTRU_AVX_SRC
@@ -331,9 +356,10 @@ set(CRYPTOGRAPHY_SRC
   ${CHACHA_SRC}
   ${ED25519_SRC}
   ${X25519_SRC}
-  ${SHA512_SRC})
+  ${SHA512_SRC}
+  ${NTRU_SRC})
 
-
+add_library(${CRYPTOGRAPHY_LIB} ${CRYPTOGRAPHY_SRC})
 
 
 set(UTP_SRC
@@ -352,8 +378,6 @@ endif()
 
 set(LIB_SRC
   ${UTP_SRC}
-  ${NTRU_SRC}
-  ${CRYPTOGRAPHY_SRC}
   llarp/address_info.cpp
   llarp/bencode.cpp
   llarp/buffer.cpp
@@ -458,18 +482,9 @@ foreach(F ${ALL_SRC})
 set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
 endforeach(F)
 
-set(LIB lokinet)
-set(SHARED_LIB ${LIB})
-set(STATIC_LIB ${LIB}-static)
-set(PLATFORM_LIB ${LIB}-platform)
-set(ANDROID_LIB ${LIB}android)
-
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
 include_directories(include)
-# Neuro Linux box hack:
-include_directories(/usr/local/include)
-include_directories(${sodium_INCLUDE_DIR})
 
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
@@ -489,7 +504,7 @@ set(ABYSS_SRC
 add_library(${ABYSS_LIB} ${ABYSS_SRC})
 
 if(SHADOW)
-add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC})
+add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
 target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
 install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
@@ -510,7 +525,7 @@ if(WITH_STATIC)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       target_link_libraries(${PLATFORM_LIB} -lcap)
     endif()
-    target_link_libraries(${STATIC_LIB} ${LIBS} ${PLATFORM_LIB})
+    target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB})
     if(NOT WITH_SHARED)
 
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
@@ -535,7 +550,7 @@ if(WITH_STATIC)
   endif()
 
   if(WITH_SHARED)
-    add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC})
+    add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CRYPTOGRAPHY_SRC})
     if (WIN32)
       set(${LIBS} ${LIBS} ws2_32 iphlpapi)
     endif(WIN32)

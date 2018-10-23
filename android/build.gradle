@@ -1,0 +1,75 @@
+buildscript {
+    repositories {
+        mavenCentral()
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.3.3'
+    }
+}
+
+apply plugin: 'com.android.application'
+
+
+repositories {
+    jcenter()
+    maven {
+        url 'https://maven.google.com'
+    }
+}
+
+android {
+    compileSdkVersion 28
+    buildToolsVersion "28.0.1"
+    defaultConfig {
+        applicationId "network.loki.lokinet"
+        targetSdkVersion 28
+        minSdkVersion 14
+        versionCode 1
+        versionName "0.3.1"
+        ndk {
+            abiFilters 'x86'
+        }
+        externalNativeBuild {
+            cmake {
+                targets "lokinetandroid"
+                arguments "-DANDROID=ON"
+            }
+        }
+        packagingOptions{
+            doNotStrip "*/armeabi/*.so"
+            doNotStrip "*/armeabi-v7a/*.so"
+            doNotStrip "*/x86/*.so"
+        }
+    }
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src']
+            res.srcDirs = ['res']
+            jniLibs.srcDirs = ['libs']
+            assets.srcDirs = ['assets']
+        }
+    }
+    signingConfigs {
+        jeff {
+            storeFile file("jeff-apk.jks")
+            keyAlias "jeff-apk"
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            //signingConfig signingConfigs.jeff
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-project.txt'
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path lokinetCMake
+            
+        }
+    }
+}
+
+
