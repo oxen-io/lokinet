@@ -2,6 +2,8 @@
 #include <llarp/service/Info.hpp>
 #include <llarp/service/address.hpp>
 #include "buffer.hpp"
+
+#include <sodium/crypto_generichash.h>
 namespace llarp
 {
   namespace service

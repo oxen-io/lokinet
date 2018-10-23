@@ -856,6 +856,7 @@ namespace llarp
       {
         llarp::LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
                         endpoint);
+        m_ServiceLookupFails[endpoint] += 1;
         auto itr = m_PendingServiceLookups.find(addr);
         if(itr != m_PendingServiceLookups.end())
         {
@@ -863,7 +864,6 @@ namespace llarp
           m_PendingServiceLookups.erase(itr);
           func(addr, nullptr);
         }
-        m_ServiceLookupFails[endpoint] += 1;
         return false;
       }
       PutNewOutboundContext(*introset);
@@ -903,6 +903,7 @@ namespace llarp
           return false;
         }
       }
+
       m_PendingServiceLookups.insert(std::make_pair(remote, hook));
       {
         RouterID endpoint = path->Endpoint();
