@@ -541,7 +541,7 @@ namespace llarp
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
         msg->M.emplace_back(
-            new llarp::dht::PublishIntroMessage(m_IntroSet, txid, 4));
+            new llarp::dht::PublishIntroMessage(m_IntroSet, txid, 1));
         return msg;
       }
 
@@ -856,8 +856,8 @@ namespace llarp
       {
         llarp::LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
                         endpoint);
-        m_ServiceLookupFails[endpoint] += 1;
-        auto itr = m_PendingServiceLookups.find(addr);
+        m_ServiceLookupFails[endpoint] = m_ServiceLookupFails[endpoint] + 1;
+        auto itr                       = m_PendingServiceLookups.find(addr);
         if(itr != m_PendingServiceLookups.end())
         {
           auto func = itr->second;
@@ -910,15 +910,7 @@ namespace llarp
         auto itr          = m_ServiceLookupFails.find(endpoint);
         if(itr != m_ServiceLookupFails.end())
         {
-          if(itr->second % 2 == 0)
-          {
-            // get far router
-            path = GetEstablishedPathClosestTo(~endpoint);
-          }
-          else
-          {
-            path = PickRandomEstablishedPath();
-          }
+          path = PickRandomEstablishedPath();
         }
       }
       if(!path)
@@ -966,6 +958,7 @@ namespace llarp
     {
     }
 
+    /// actually swap intros
     void
     Endpoint::OutboundContext::SwapIntros()
     {
@@ -1474,19 +1467,20 @@ namespace llarp
     bool
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
+      // check for expiration
       if(remoteIntro.ExpiresSoon(now))
       {
         // shift intro if it expires "soon"
         ShiftIntroduction();
-
-        if(remoteIntro != m_NextIntro)
+      }
+      // swap if we can
+      if(remoteIntro != m_NextIntro)
+      {
+        if(GetPathByRouter(m_NextIntro.router) != nullptr)
         {
-          if(GetPathByRouter(m_NextIntro.router) != nullptr)
-          {
-            // we can safely set remoteIntro to the next one
-            SwapIntros();
-            llarp::LogInfo(Name(), "swapped intro");
-          }
+          // we can safely set remoteIntro to the next one
+          SwapIntros();
+          llarp::LogInfo(Name(), "swapped intro");
         }
       }
       // lookup router in intro if set and unknown
