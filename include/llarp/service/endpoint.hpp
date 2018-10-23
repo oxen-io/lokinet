@@ -112,6 +112,11 @@ namespace llarp
         return {0};
       }
 
+      virtual bool
+      HasAddress(const Address& remote) const
+      {
+        return false;
+      }
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
       bool

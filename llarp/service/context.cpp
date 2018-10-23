@@ -104,7 +104,7 @@ namespace llarp
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
-        if(itr->second->HasPathToService(addr))
+        if(itr->second->HasAddress(addr))
         {
           return itr->second->ObtainIPForAddr(addr);
         }

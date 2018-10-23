@@ -84,6 +84,12 @@ namespace llarp
       service::Address
       ObtainAddrForIP(huint32_t ip);
 
+      bool
+      HasAddress(const Address& remote)
+      {
+        return m_AddrToIP.find(remote) != m_AddrToIP.end();
+      }
+
      protected:
       typedef llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
