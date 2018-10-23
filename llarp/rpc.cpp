@@ -1,23 +1,64 @@
 #include <llarp/rpc.hpp>
 #include <libabyss.hpp>
 
+#include "router.hpp"
+
 namespace llarp
 {
   namespace rpc
   {
-    struct ServerImpl : public ::abyss::http::BaseReqHandler
+    struct Handler : public ::abyss::http::IRPCHandler
     {
       llarp_router* router;
+      Handler(::abyss::http::ConnImpl* conn, llarp_router* r)
+          : ::abyss::http::IRPCHandler(conn), router(r)
+      {
+      }
 
-      ServerImpl(llarp_router* r)
-          : ::abyss::http::BaseReqHandler(2000), router(r)
+      ~Handler()
+      {
+      }
+
+      bool
+      HandleJSONRPC(const Method_t& method, const Params& params,
+                    Response& response)
+      {
+        return false;
+      }
+    };
+
+    struct ReqHandlerImpl : public ::abyss::http::BaseReqHandler
+    {
+      ReqHandlerImpl(llarp_router* r, llarp_time_t reqtimeout)
+          : ::abyss::http::BaseReqHandler(reqtimeout), router(r)
+      {
+      }
+      llarp_router* router;
+      ::abyss::http::IRPCHandler*
+      CreateHandler(::abyss::http::ConnImpl* conn) const
+      {
+        return new Handler(conn, router);
+      }
+    };
+
+    struct ServerImpl
+    {
+      llarp_router* router;
+      ReqHandlerImpl _handler;
+
+      ServerImpl(llarp_router* r) : router(r), _handler(r, 2000)
+      {
+      }
+
+      ~ServerImpl()
       {
       }
 
       bool
       Start(const std::string& addr)
       {
-        return false;
+        llarp::Addr bindaddr(addr);
+        return _handler.ServeAsync(router->netloop, router->logic, bindaddr);
       }
     };
 

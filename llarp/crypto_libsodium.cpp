@@ -26,11 +26,11 @@ namespace llarp
 
       if(crypto_scalarmult_curve25519(shared, usSec, themPub))
         return false;
-      crypto_generichash_init(&h, nullptr, 0U, outsz);
-      crypto_generichash_update(&h, client_pk, 32);
-      crypto_generichash_update(&h, server_pk, 32);
-      crypto_generichash_update(&h, shared, 32);
-      crypto_generichash_final(&h, out, outsz);
+      crypto_generichash_blake2b_init(&h, nullptr, 0U, outsz);
+      crypto_generichash_blake2b_update(&h, client_pk, 32);
+      crypto_generichash_blake2b_update(&h, server_pk, 32);
+      crypto_generichash_blake2b_update(&h, shared, 32);
+      crypto_generichash_blake2b_final(&h, out, outsz);
       return true;
     }
 
@@ -42,7 +42,8 @@ namespace llarp
 
       if(dh(dh_result, llarp::seckey_topublic(sk), pk, pk, sk))
       {
-        return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
+        return crypto_generichash_blake2b(shared, 32, n, 32, dh_result, 32)
+            != -1;
       }
       llarp::LogWarn("crypto::dh_client - dh failed");
       return false;
@@ -55,7 +56,8 @@ namespace llarp
       llarp::SharedSecret dh_result;
       if(dh(dh_result, pk, llarp::seckey_topublic(sk), pk, sk))
       {
-        return crypto_generichash(shared, 32, n, 32, dh_result, 32) != -1;
+        return crypto_generichash_blake2b(shared, 32, n, 32, dh_result, 32)
+            != -1;
       }
       llarp::LogWarn("crypto::dh_server - dh failed");
       return false;
@@ -64,24 +66,24 @@ namespace llarp
     static bool
     hash(uint8_t *result, llarp_buffer_t buff)
     {
-      return crypto_generichash(result, HASHSIZE, buff.base, buff.sz, nullptr,
-                                0)
+      return crypto_generichash_blake2b(result, HASHSIZE, buff.base, buff.sz,
+                                        nullptr, 0)
           != -1;
     }
 
     static bool
     shorthash(uint8_t *result, llarp_buffer_t buff)
     {
-      return crypto_generichash(result, SHORTHASHSIZE, buff.base, buff.sz,
-                                nullptr, 0)
+      return crypto_generichash_blake2b(result, SHORTHASHSIZE, buff.base,
+                                        buff.sz, nullptr, 0)
           != -1;
     }
 
     static bool
     hmac(uint8_t *result, llarp_buffer_t buff, const uint8_t *secret)
     {
-      return crypto_generichash(result, HMACSIZE, buff.base, buff.sz, secret,
-                                HMACSECSIZE)
+      return crypto_generichash_blake2b(result, HMACSIZE, buff.base, buff.sz,
+                                        secret, HMACSECSIZE)
           != -1;
     }
 
@@ -119,7 +121,8 @@ namespace llarp
     static void
     enckeygen(uint8_t *keys)
     {
-      crypto_box_keypair(keys + 32, keys);
+      randombytes(keys, 32);
+      crypto_scalarmult_curve25519_base(keys + 32, keys);
     }
   }  // namespace sodium
 

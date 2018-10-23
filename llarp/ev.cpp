@@ -124,8 +124,10 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *pkt, size_t sz)
 }
 
 bool
-llarp_tcp_serve(struct llarp_tcp_acceptor *tcp, const struct sockaddr *bindaddr)
+llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *tcp,
+                const struct sockaddr *bindaddr)
 {
+  tcp->loop = loop;
   // TODO: implement me
   return false;
 }

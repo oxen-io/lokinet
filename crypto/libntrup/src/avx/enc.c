@@ -6,14 +6,12 @@
 #include "params.h"
 #include "small.h"
 #include "rq.h"
-#include "crypto_hash_sha512.h"
-#include "crypto_kem.h"
+#include <sodium/crypto_hash_sha512.h>
+#include <sodium/crypto_kem.h>
 
-int crypto_kem_enc_avx2(
-  unsigned char *cstr,
-  unsigned char *k,
-  const unsigned char *pk
-)
+int
+crypto_kem_enc_avx2(unsigned char *cstr, unsigned char *k,
+                    const unsigned char *pk)
 {
 #if __AVX2__
   small r[768];
@@ -28,25 +26,27 @@ int crypto_kem_enc_avx2(
   {
     int i;
     printf("encrypt r:");
-    for (i = 0;i < p;++i)
-      if (r[i] == 1) printf(" +%d",i);
-      else if (r[i] == -1) printf(" -%d",i);
+    for(i = 0; i < p; ++i)
+      if(r[i] == 1)
+        printf(" +%d", i);
+      else if(r[i] == -1)
+        printf(" -%d", i);
     printf("\n");
   }
 #endif
 
-  small_encode(rstr,r);
-  crypto_hash_sha512(hash,rstr,sizeof rstr);
+  small_encode(rstr, r);
+  crypto_hash_sha512(hash, rstr, sizeof rstr);
 
-  rq_decode(h,pk);
-  rq_mult(c,h,r);
+  rq_decode(h, pk);
+  rq_mult(c, h, r);
 
-  memcpy(k,hash + 32,32);
-  memcpy(cstr,hash,32);
-  rq_roundencode(cstr + 32,c);
+  memcpy(k, hash + 32, 32);
+  memcpy(cstr, hash, 32);
+  rq_roundencode(cstr + 32, c);
 
   return 0;
 #else
-  return -1; 
+  return -1;
 #endif
 }

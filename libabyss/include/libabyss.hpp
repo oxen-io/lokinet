@@ -4,15 +4,46 @@
 #include <llarp/ev.h>
 #include <llarp/logic.h>
 #include <llarp/time.h>
-#include <vector>
+#include <list>
 #include <memory>
+#include <string>
+
+#ifdef USE_RAPIDJSON
+#include <rapidjson/document.h>
+namespace json = rapidjson;
+#else
+namespace json
+{
+  struct Document;
+}
+#endif
 
 namespace abyss
 {
   namespace http
   {
-    // forward declare
-    struct ConnHandler;
+    struct ConnImpl;
+
+    struct IRPCHandler
+    {
+      typedef std::string Method_t;
+      typedef ::json::Document Params;
+      typedef ::json::Document Response;
+
+      IRPCHandler(ConnImpl* impl);
+
+      virtual bool
+      HandleJSONRPC(const Method_t& method, const Params& params,
+                    Response& response) = 0;
+
+      ~IRPCHandler();
+
+      bool
+      ShouldClose(llarp_time_t now) const;
+
+     private:
+      ConnImpl* m_Impl;
+    };
 
     struct BaseReqHandler
     {
@@ -23,14 +54,30 @@ namespace abyss
       ServeAsync(llarp_ev_loop* loop, llarp_logic* logic,
                  const sockaddr* bindaddr);
 
+      void
+      RemoveConn(IRPCHandler* handler);
+
+     protected:
+      virtual IRPCHandler*
+      CreateHandler(ConnImpl* connimpl) const = 0;
+
      private:
+      void
+      ScheduleTick(llarp_time_t ms);
+
+      static void
+      OnTick(void* user, llarp_time_t orig, llarp_time_t left);
+
+      void
+      Tick();
+
       static void
       OnAccept(struct llarp_tcp_acceptor*, struct llarp_tcp_conn*);
 
       llarp_ev_loop* m_loop;
       llarp_logic* m_Logic;
       llarp_tcp_acceptor m_acceptor;
-      std::vector< std::unique_ptr< ConnHandler > > m_Conns;
+      std::list< std::unique_ptr< IRPCHandler > > m_Conns;
       llarp_time_t m_ReqTimeout;
     };
   }  // namespace http

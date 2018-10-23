@@ -23,30 +23,28 @@ Please note development builds are likely to be unstable
 
 Build requirements:
 
+* GNU Make
 * CMake
-* ninja
 * libsodium >= 1.0.14
-* c++ 11 capable C++ compiler (gcc 7.x+, llvm 3.8+)
-
+* C++ 17 capable C++ compiler
 
 Building a debug build:
-
-
 
 ## Building
 
 ![build status](https://gitlab.com/lokiproject/loki-network/badges/master/pipeline.svg "build status")
 
-
 use the [lokinet builder](https://github.com/loki-project/lokinet-builder) repo.
+
+## Development 
 
 for a development environment:
 
     $ sudo apt install git libcap-dev build-essential ninja-build cmake libsodium-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ make
-
+    $ make -j $(cat /proc/cpuinfo | grep processors | wc -l) # use all the cores lmao
+    
 ## Usage
 
 see the [lokinet-builder](https://github.com/loki-project/lokinet-builder)
