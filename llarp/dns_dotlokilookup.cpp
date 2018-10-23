@@ -96,8 +96,13 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   */
   llarp::service::Context *routerHiddenServiceContext =
       (llarp::service::Context *)dll->user;
-  llarp::huint32_t foundAddr =
-      routerHiddenServiceContext->FindBestAddressFor(addr);
+  llarp::huint32_t foundAddr;
+  if(!routerHiddenServiceContext->FindBestAddressFor(addr, foundAddr))
+  {
+    write404_dnss_response(qr->from, qr->request);
+    delete qr;
+    return;
+  }
 
   // make a dnsd_query_hook_response for the cache
   dnsd_query_hook_response *response = new dnsd_query_hook_response;

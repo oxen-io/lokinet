@@ -98,19 +98,27 @@ namespace llarp
       return &tunEndpoint->tunif;
     }
 
-    huint32_t
-    Context::FindBestAddressFor(const llarp::service::Address &addr)
+    bool
+    Context::FindBestAddressFor(const llarp::service::Address &addr,
+                                huint32_t &ip)
     {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
         if(itr->second->HasAddress(addr))
         {
-          return itr->second->ObtainIPForAddr(addr);
+          ip = itr->second->ObtainIPForAddr(addr);
+          return true;
         }
         ++itr;
       }
-      return getFirstEndpoint()->ObtainIPForAddr(addr);
+      itr = m_Endpoints.find("default");
+      if(itr != m_Endpoints.end())
+      {
+        ip = itr->second->ObtainIPForAddr(addr);
+        return true;
+      }
+      return false;
     }
 
     bool
