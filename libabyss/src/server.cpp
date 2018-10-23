@@ -2,7 +2,8 @@
 #include <llarp/time.h>
 #include <sstream>
 #include <unordered_map>
-#include <string_view>
+
+// #include <string_view>
 
 namespace abyss
 {
@@ -69,7 +70,7 @@ namespace abyss
         if(m_Bad)
           return false;
 
-        m_ReadBuf << std::string_view(buf, sz);
+        m_ReadBuf << std::string(buf, sz);
         return true;
       }
 
