@@ -98,8 +98,8 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_cxxflags("${DEBUG_FLAGS}")
 endif()
 
-set(CRYPTO_FLAGS "-march=native")
-set(CMAKE_ASM_FLAGS "-march=native")
+set(CRYPTO_FLAGS "-march=native $ENV{CFLAGS}")
+set(CMAKE_ASM_FLAGS "-march=native $ENV{CFLAGS}")
 
 add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS}")
 add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS}")
@@ -130,7 +130,11 @@ if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
 
-#set(FS_LIB stdc++fs)
+if (WIN32)
+add_cxxflags("-std=c++17")
+set(FS_LIB stdc++fs)
+endif(WIN32)
+
 set(LIBS ${THREAD_LIB} ${MALLOC_LIB} ${FS_LIB})
 
 set(LIB lokinet)
@@ -197,7 +201,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
 endif()
 
-
+if(NOT WIN32)
 set(CXX_COMPAT_SRC
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
@@ -217,6 +221,7 @@ set(CXX_COMPAT_SRC
   vendor/cppbackport-master/lib/fs/direntry.cpp
 )
 include_directories(vendor/cppbackport-master/lib)
+endif(NOT WIN32)
 
 set(LIB_PLATFORM_SRC
 # string stuff
@@ -541,21 +546,18 @@ if(WITH_STATIC)
     endif()
     target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB})
     if(NOT WITH_SHARED)
-
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
+      target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB})
       if (WIN32)
         target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-      endif(WIN32)
-      if (WIN32)
         target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 iphlpapi)
       endif(WIN32)
-      target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB})
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)
   if(ANDROID)

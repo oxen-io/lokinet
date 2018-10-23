@@ -8,9 +8,8 @@
 #define PATH_SEP "/"
 #endif
 
-#if 0
+#ifdef _WIN32
 #include <experimental/filesystem>
-
 namespace fs = std::experimental::filesystem;
 #else
 #include "filesystem.h"
