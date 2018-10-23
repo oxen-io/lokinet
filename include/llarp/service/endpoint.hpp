@@ -107,7 +107,7 @@ namespace llarp
       HasPathToService(const Address& remote) const;
 
       virtual huint32_t
-      ObtainIPForAddr(const Address& remote)
+      ObtainIPForAddr(const llarp::service::Address& remote)
       {
         return {0};
       }
