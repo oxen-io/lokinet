@@ -12,11 +12,11 @@ macro(add_cxxflags)
 endmacro(add_cxxflags)
 
 include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
-if(COMPILER_SUPPORTS_CXX17)
-  add_cxxflags("-std=c++17")
+CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
+if(COMPILER_SUPPORTS_CXX11)
+  add_cxxflags("-std=c++11")
 else()
-  message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler.")
+  message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
 add_cxxflags("-fpermissive")
@@ -214,6 +214,7 @@ set(CXX_COMPAT_SRC
   vendor/cppbackport-master/lib/fs/absolute.cpp
   vendor/cppbackport-master/lib/fs/direntry.cpp
 )
+include_directories(vendor/cppbackport-master/lib)
 
 set(LIB_PLATFORM_SRC
 # string stuff
