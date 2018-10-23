@@ -128,7 +128,7 @@ if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
 
-set(FS_LIB stdc++fs)
+#set(FS_LIB stdc++fs)
 set(LIBS ${THREAD_LIB} ${MALLOC_LIB} ${FS_LIB})
 
 set(LIB lokinet)
