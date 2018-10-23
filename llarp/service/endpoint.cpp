@@ -515,13 +515,7 @@ namespace llarp
       // publish via near router
       RouterID location = m_Identity.pub.Addr().data();
       auto path         = GetEstablishedPathClosestTo(location);
-      if(path && PublishIntroSetVia(r, path))
-      {
-        // publish via far router
-        path = GetEstablishedPathClosestTo(~location);
-        return path && PublishIntroSetVia(r, path);
-      }
-      return false;
+      return path && PublishIntroSetVia(r, path);
     }
 
     struct PublishIntroSetJob : public IServiceLookup
