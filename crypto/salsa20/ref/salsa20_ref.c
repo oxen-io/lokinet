@@ -13,7 +13,6 @@ Public domain.
 #include "../stream_salsa20.h"
 #include "salsa20_ref.h"
 
-#if(!__AVX__)
 
 static int
 stream_ref(unsigned char *c, unsigned long long clen, const unsigned char *n,
@@ -134,4 +133,3 @@ struct crypto_stream_salsa20_implementation
         SODIUM_C99(.stream_xor_ic =) stream_ref_xor_ic,
 };
 
-#endif
