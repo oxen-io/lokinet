@@ -85,7 +85,7 @@ namespace llarp
       ObtainAddrForIP(huint32_t ip);
 
       bool
-      HasAddress(const service::Address& remote)
+      HasAddress(const service::Address& remote) const
       {
         return m_AddrToIP.find(remote) != m_AddrToIP.end();
       }
