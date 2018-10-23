@@ -2,7 +2,7 @@
 #include <stdint.h>
 
 #include <sodium/utils.h>
-
+#ifdef __amd64__
 #include "../stream_salsa20.h"
 #include "salsa20_xmm6.h"
 
@@ -27,3 +27,4 @@ struct crypto_stream_salsa20_implementation
         SODIUM_C99(.stream =) stream_salsa20_xmm6,
         SODIUM_C99(.stream_xor_ic =) stream_salsa20_xmm6_xor_ic,
 };
+#endif

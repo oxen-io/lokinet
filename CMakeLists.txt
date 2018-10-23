@@ -368,7 +368,7 @@ set(CRYPTOGRAPHY_SRC
   ${SHA512_SRC}
   ${NTRU_SRC})
 
-add_library(${CRYPTOGRAPHY_LIB} ${CRYPTOGRAPHY_SRC})
+add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
 
 
 set(UTP_SRC
@@ -511,7 +511,7 @@ if(USE_LIBABYSS)
     ${ABYSS}/src/server.cpp
     ${ABYSS}/src/json.cpp)
 
-  add_library(${ABYSS_LIB} ${ABYSS_SRC})
+  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
   set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
 endif()
 

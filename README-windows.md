@@ -8,12 +8,12 @@
     $ git clone https://github.com/loki-project/loki-network.git
     $ cd loki-network
     $ mkdir -p build; cd build
-    $ cmake .. -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DDNS_PORT=53
+    $ cmake .. -DCMAKE_BUILD_TYPE=Debug -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DDNS_PORT=53
 
     # if cross-compiling do
     $ mkdir -p build; cd build
     $ export COMPILER=clang # if using clang for windows
-    $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DCMAKE_C_COMPILER=$ARCH-w64-mingw32-[gcc|clang] -DCMAKE_CXX_COMPILER=$ARCH-w64-mingw32-[g|clang]++ -DDNS_PORT=53 -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake
+    $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK=ON -DCMAKE_CROSSCOMPILING=ON -DCMAKE_C_COMPILER=$ARCH-w64-mingw32-[gcc|clang] -DCMAKE_CXX_COMPILER=$ARCH-w64-mingw32-[g|clang]++ -DDNS_PORT=53 -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake
 
 ## running
 
