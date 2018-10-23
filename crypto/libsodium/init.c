@@ -11,7 +11,6 @@
 
 #include <sodium/core.h>
 #include <sodium/crypto_generichash.h>
-#include <sodium/crypto_onetimeauth.h>
 #include <sodium/crypto_scalarmult.h>
 #include <sodium/crypto_stream_chacha20.h>
 #include <sodium/crypto_stream_salsa20.h>
