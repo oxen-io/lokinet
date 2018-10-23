@@ -1,9 +1,17 @@
 #include <assert.h>
 #include <llarp/crypto.h>
-#include <sodium.h>
+#include <sodium/crypto_generichash.h>
+#include <sodium/crypto_sign.h>
+#include <sodium/crypto_scalarmult.h>
 #include <sodium/crypto_stream_xchacha20.h>
 #include <llarp/crypto.hpp>
 #include "mem.hpp"
+
+extern "C"
+{
+  extern int
+  sodium_init(void);
+}
 
 namespace llarp
 {
