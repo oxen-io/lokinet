@@ -31,7 +31,7 @@ TESTNET_DEBUG ?= 0
 
 BUILD_ROOT = $(REPO)/build
 
-CONFIG_CMD = $(shell echo -n "cd '$(BUILD_ROOT)' && " ; echo -n "cmake '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake '$(REPO)'")
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
