@@ -106,6 +106,12 @@ namespace llarp
       bool
       HasPathToService(const Address& remote) const;
 
+      virtual huint32_t
+      ObtainIPForAddr(const Address& remote)
+      {
+        return {0};
+      }
+
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
       bool
@@ -205,8 +211,8 @@ namespace llarp
         };
 
         virtual void
-        UpdateIntroSet(bool randomizePath=false){};
-        
+        UpdateIntroSet(bool randomizePath = false){};
+
         virtual bool
         MarkCurrentIntroBad(llarp_time_t now)
         {
@@ -317,7 +323,7 @@ namespace llarp
       /// address
       bool
       EnsurePathToService(const Address& remote, PathEnsureHook h,
-                          uint64_t timeoutMS, bool lookupOnRandomPath=false);
+                          uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
       virtual bool
       HandleAuthenticatedDataFrom(const Address& remote, llarp_buffer_t data)
@@ -437,8 +443,9 @@ namespace llarp
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
 
-      std::unordered_map<RouterID, uint32_t, RouterID::Hash> m_ServiceLookupFails;
-      
+      std::unordered_map< RouterID, uint32_t, RouterID::Hash >
+          m_ServiceLookupFails;
+
       struct RouterLookupJob
       {
         RouterLookupJob(Endpoint* p)
