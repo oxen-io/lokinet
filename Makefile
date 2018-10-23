@@ -60,10 +60,11 @@ debug-configure:
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'	
-	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=ecc -DCMAKE_CXX_COMPILER=ecc++
+	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
+	cp $(EXE) lokinet
 
 release-compile: release-configure
 	$(MAKE) -C $(BUILD_ROOT)
