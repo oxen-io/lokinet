@@ -108,13 +108,9 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
   response->dontLookUp               = true;
   response->dontSendResponse         = false;
-  // llarp::Addr test(*free_private->hostResult.getSockAddr());
-  // llarp::LogInfo("IP Test: ", test);
-
-  llarp::LogInfo("Saving ", qr->request->question.name);
-  loki_tld_lookup_cache[qr->request->question.name] = response;
   // we can't delete response now...
   sockaddr_in saddr;
+  saddr.sin_family      = AF_INET;
   saddr.sin_addr.s_addr = llarp::xhtonl(foundAddr).n;
   // FIXME: flush cache to disk
   // on crash we'll need to bring up all the same IPs we assigned before...
