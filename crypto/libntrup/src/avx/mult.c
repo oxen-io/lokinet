@@ -190,18 +190,24 @@ mult24x8_float(__m256 h[48], const __m256 f[24], const __m256 g[24])
   f3 = f[i + 3];
   f4 = f[i + 4];
   f5 = f[i + 5];
-  MULSTEP_fromzero(0, h0, h1, h2, h3, h4) for(j = 0; j < 20; j += 5){
-      MULSTEP_noload(j + 1, h1, h2, h3, h4, h0) MULSTEP_noload(
-          j + 2, h2, h3, h4, h0, h1) MULSTEP_noload(j + 3, h3, h4, h0, h1, h2)
-          MULSTEP_noload(j + 4, h4, h0, h1, h2, h3)
-              MULSTEP_noload(j + 5, h0, h1, h2, h3,
-                             h4)} MULSTEP_noload(j + 1, h1, h2, h3, h4, h0)
-      MULSTEP_noload(j + 2, h2, h3, h4, h0, h1)
-          MULSTEP_noload(j + 3, h3, h4, h0, h1, h2) h[i + j + 4] = h4;
-  h[i + j + 5]                                                   = h0;
-  h[i + j + 6]                                                   = h1;
-  h[i + j + 7]                                                   = h2;
-  h[i + j + 8]                                                   = h3;
+  MULSTEP_fromzero(0, h0, h1, h2, h3, h4);
+  for(j = 0; j < 20; j += 5)
+  {
+    MULSTEP_noload(j + 1, h1, h2, h3, h4, h0);
+    MULSTEP_noload(j + 2, h2, h3, h4, h0, h1);
+    MULSTEP_noload(j + 3, h3, h4, h0, h1, h2);
+    MULSTEP_noload(j + 4, h4, h0, h1, h2, h3);
+    MULSTEP_noload(j + 5, h0, h1, h2, h3, h4);
+  }
+  MULSTEP_noload(j + 1, h1, h2, h3, h4, h0);
+  MULSTEP_noload(j + 2, h2, h3, h4, h0, h1);
+  MULSTEP_noload(j + 3, h3, h4, h0, h1, h2);
+
+  h[i + j + 4] = h4;
+  h[i + j + 5] = h0;
+  h[i + j + 6] = h1;
+  h[i + j + 7] = h2;
+  h[i + j + 8] = h3;
 
   for(i = 6; i < 24; i += 6)
   {
@@ -218,24 +224,26 @@ mult24x8_float(__m256 h[48], const __m256 f[24], const __m256 g[24])
     h4 = h[i + 4];
     for(j = 0; j < 15; j += 5)
     {
-      MULSTEP(j + 0, h0, h1, h2, h3, h4)
-      MULSTEP(j + 1, h1, h2, h3, h4, h0)
-      MULSTEP(j + 2, h2, h3, h4, h0, h1)
-      MULSTEP(j + 3, h3, h4, h0, h1, h2)
-      MULSTEP(j + 4, h4, h0, h1, h2, h3)
+      MULSTEP(j + 0, h0, h1, h2, h3, h4);
+      MULSTEP(j + 1, h1, h2, h3, h4, h0);
+      MULSTEP(j + 2, h2, h3, h4, h0, h1);
+      MULSTEP(j + 3, h3, h4, h0, h1, h2);
+      MULSTEP(j + 4, h4, h0, h1, h2, h3);
     }
-    MULSTEP(j + 0, h0, h1, h2, h3, h4)
-    MULSTEP(j + 1, h1, h2, h3, h4, h0)
-    MULSTEP(j + 2, h2, h3, h4, h0, h1)
-    MULSTEP_noload(j + 3, h3, h4, h0, h1, h2) MULSTEP_noload(
-        j + 4, h4, h0, h1, h2, h3) MULSTEP_noload(j + 5, h0, h1, h2, h3, h4)
-        MULSTEP_noload(j + 6, h1, h2, h3, h4, h0)
-            MULSTEP_noload(j + 7, h2, h3, h4, h0, h1)
-                MULSTEP_noload(j + 8, h3, h4, h0, h1, h2) h[i + j + 9] = h4;
-    h[i + j + 10]                                                      = h0;
-    h[i + j + 11]                                                      = h1;
-    h[i + j + 12]                                                      = h2;
-    h[i + j + 13]                                                      = h3;
+    MULSTEP(j + 0, h0, h1, h2, h3, h4);
+    MULSTEP(j + 1, h1, h2, h3, h4, h0);
+    MULSTEP(j + 2, h2, h3, h4, h0, h1);
+    MULSTEP_noload(j + 3, h3, h4, h0, h1, h2);
+    MULSTEP_noload(j + 4, h4, h0, h1, h2, h3);
+    MULSTEP_noload(j + 5, h0, h1, h2, h3, h4);
+    MULSTEP_noload(j + 6, h1, h2, h3, h4, h0);
+    MULSTEP_noload(j + 7, h2, h3, h4, h0, h1);
+    MULSTEP_noload(j + 8, h3, h4, h0, h1, h2);
+    h[i + j + 9]  = h4;
+    h[i + j + 10] = h0;
+    h[i + j + 11] = h1;
+    h[i + j + 12] = h2;
+    h[i + j + 13] = h3;
   }
 
   h[47] = v0_float;
