@@ -18,16 +18,18 @@ Build requirements:
 
 To build:
 
-    $ sudo apt install build-essential cmake git libcap-dev
+    $ sudo apt install build-essential cmake git libcap-dev wget
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ make -j8
+    $ sudo make install
 
 ## Running
 
-    $ ./lokinet -g
-    $ ./lokinet-bootstrap
-    $ ./lokinet
+
+    $ lokinet -g
+    $ lokinet-bootstrap
+    $ lokinet
 
 ## Usage
 

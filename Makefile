@@ -131,3 +131,6 @@ install:
 	cp $(EXE) $(PREFIX)/bin/lokinet
 	chmod 755 $(PREFIX)/bin/lokinet
 	setcap cap_net_admin=+eip $(PREFIX)/bin/lokinet
+	rm -f $(PREFIX)/bin/lokinet-bootstrap
+	cp $(REPO)/lokinet-bootstrap $(PREFIX)/bin/lokinet-bootstrap
+	chmod 755 $(PREFIX)/bin/lokinet-bootstrap
