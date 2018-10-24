@@ -25,6 +25,7 @@ To build:
 
 ## Running
 
+    $ ./lokinet -g
     $ ./lokinet-bootstrap
     $ ./lokinet
 
