@@ -34,7 +34,8 @@ namespace llarp
     {
     }
 
-    void tick()
+    void
+    tick()
     {
       if(udp->tick)
         udp->tick(udp);
@@ -81,7 +82,7 @@ namespace llarp
       ssize_t sent = ::sendto(fd, data, sz, 0, to, slen);
       if(sent == -1 || errno)
       {
-        llarp::LogError("failed to send udp: ",strerror(errno));
+        llarp::LogError("failed to send udp: ", strerror(errno));
         errno = 0;
       }
       return sent;
@@ -130,13 +131,14 @@ namespace llarp
       }
     }
 
-    void tick()
+    void
+    tick()
     {
       if(t->tick)
         t->tick(t);
       flush_write();
     }
-    
+
     int
     read(void* buf, size_t sz)
     {
@@ -339,10 +341,11 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     EV_SET(&change, ev->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
     if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) != -1)
     {
-      std::remove_if(handlers.begin(), handlers.end(),
-                     [ev](const std::unique_ptr<llarp::ev_io> & i) -> bool {
-                       return i.get() == ev;
-                     });
+      handlers.erase(std::remove_if(
+          handlers.begin(), handlers.end(),
+          [ev](const std::unique_ptr< llarp::ev_io >& i) -> bool {
+            return i.get() == ev;
+          }));
       return true;
     }
     return false;
@@ -355,7 +358,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     if(fd == -1)
       return nullptr;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
-    l->impl = listener;
+    l->impl                       = listener;
     return listener;
   }
 
@@ -385,7 +388,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       // printf("Calling close_ev for [%x] fd[%d]\n", listener, listener->fd);
       ret     = close_ev(listener);
       l->impl = nullptr;
-      ret = true;
+      ret     = true;
     }
     return ret;
   }

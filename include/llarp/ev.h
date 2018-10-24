@@ -99,7 +99,8 @@ struct llarp_tcp_conn
 };
 
 /// queue async write a buffer in full
-void
+/// return if we queueed it or not
+bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *, const void *, size_t);
 
 /// close a tcp connection
@@ -114,8 +115,12 @@ struct llarp_tcp_acceptor
   void *impl;
   /// parent event loop (dont set me)
   struct llarp_ev_loop *loop;
+  /// handle tick
+  void (*tick)(struct llarp_tcp_acceptor *);
   /// handle inbound connection
   void (*accepted)(struct llarp_tcp_acceptor *, struct llarp_tcp_conn *);
+  /// handle after server socket closed (free-ing is handled by event loop)
+  void (*closed)(struct llarp_tcp_acceptor *);
 };
 
 /// bind to an address and start serving async

@@ -5,6 +5,7 @@
 #include <llarp/net.h>
 #include <signal.h>
 #include <sys/epoll.h>
+#include <sys/un.h>
 #include <tuntap.h>
 #include <unistd.h>
 #include <cstdio>
@@ -13,15 +14,106 @@
 #include "llarp/net.hpp"
 #include "logger.hpp"
 #include "mem.hpp"
+#include <cassert>
 
 namespace llarp
 {
-  struct tcp_serv : public ev_io
-  {
-  };
-
   struct tcp_conn : public ev_io
   {
+    llarp_tcp_conn* tcp;
+    tcp_conn(int fd, llarp_tcp_conn* conn)
+        : ev_io(fd, new LosslessWriteQueue_t()), tcp(conn)
+    {
+    }
+
+    virtual int
+    do_write(const void* buf, size_t sz)
+    {
+      return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
+    }
+
+    int
+    read(void* buf, size_t sz)
+    {
+      ssize_t amount = ::read(fd, buf, sz);
+      if(amount > 0)
+      {
+        if(tcp->read)
+          tcp->read(tcp, buf, amount);
+      }
+      else
+      {
+        // error
+        llarp_tcp_conn_close(tcp);
+        return -1;
+      }
+      return 0;
+    }
+
+    void
+    tick()
+    {
+      if(tcp->tick)
+        tcp->tick(tcp);
+    }
+
+    int
+    sendto(const sockaddr*, const void*, size_t)
+    {
+      return -1;
+    }
+  };
+
+  struct tcp_serv : public ev_io
+  {
+    llarp_ev_loop* loop;
+    llarp_tcp_acceptor* tcp;
+    tcp_serv(llarp_ev_loop* l, int fd, llarp_tcp_acceptor* t)
+        : ev_io(fd), loop(l), tcp(t)
+    {
+      // TODO: handle fail
+      assert(listen(fd, 5) != -1);
+    }
+
+    void
+    tick()
+    {
+      if(tcp->tick)
+        tcp->tick(tcp);
+    }
+
+    /// actually does accept() :^)
+    int
+    read(void*, size_t)
+    {
+      int new_fd = ::accept(fd, nullptr, nullptr);
+      if(new_fd == -1)
+      {
+        llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
+        return -1;
+      }
+
+      llarp_tcp_conn* conn = new llarp_tcp_conn;
+      // zero out callbacks
+      conn->tick   = nullptr;
+      conn->closed = nullptr;
+      conn->read   = nullptr;
+      // build handler
+      llarp::tcp_conn* connimpl = new tcp_conn(new_fd, conn);
+      conn->impl                = connimpl;
+      conn->loop                = loop;
+      if(loop->add_ev(connimpl, true))
+      {
+        // call callback
+        if(tcp->accepted)
+          tcp->accepted(tcp, conn);
+        return 0;
+      }
+      // cleanup error
+      delete conn;
+      delete connimpl;
+      return -1;
+    }
   };
 
   struct udp_listener : public ev_io
@@ -34,14 +126,14 @@ namespace llarp
     {
     }
 
-    virtual void
+    void
     tick()
     {
       if(udp->tick)
         udp->tick(udp);
     }
 
-    virtual int
+    int
     read(void* buf, size_t sz)
     {
       sockaddr_in6 src;
@@ -56,7 +148,7 @@ namespace llarp
       return 0;
     }
 
-    virtual int
+    int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       socklen_t slen;
@@ -85,7 +177,7 @@ namespace llarp
     llarp_tun_io* t;
     device* tunif;
     tun(llarp_tun_io* tio)
-        : ev_io(-1)
+        : ev_io(-1, new LossyWriteQueue_t("tun_write_queue"))
         , t(tio)
         , tunif(tuntap_init())
 
@@ -99,7 +191,7 @@ namespace llarp
       return -1;
     }
 
-    virtual void
+    void
     tick()
     {
       if(t->tick)
@@ -205,9 +297,16 @@ struct llarp_epoll_loop : public llarp_ev_loop
       while(idx < result)
       {
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
-        if(events[idx].events & EPOLLIN)
+        if(ev)
         {
-          ev->read(readbuf, sizeof(readbuf));
+          if(events[idx].events & EPOLLOUT)
+          {
+            ev->flush_write();
+          }
+          if(events[idx].events & EPOLLIN)
+          {
+            ev->read(readbuf, sizeof(readbuf));
+          }
         }
         ++idx;
       }
@@ -231,9 +330,16 @@ struct llarp_epoll_loop : public llarp_ev_loop
         while(idx < result)
         {
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
-          if(events[idx].events & EPOLLIN)
+          if(ev)
           {
-            ev->read(readbuf, sizeof(readbuf));
+            if(events[idx].events & EPOLLOUT)
+            {
+              ev->flush_write();
+            }
+            if(events[idx].events & EPOLLIN)
+            {
+              ev->read(readbuf, sizeof(readbuf));
+            }
           }
           ++idx;
         }
@@ -296,11 +402,37 @@ struct llarp_epoll_loop : public llarp_ev_loop
     if(epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) == -1)
       return false;
     // deallocate
-    std::remove_if(handlers.begin(), handlers.end(),
-                   [ev](const std::unique_ptr< llarp::ev_io >& i) -> bool {
-                     return i.get() == ev;
-                   });
+    handlers.erase(
+        std::remove_if(handlers.begin(), handlers.end(),
+                       [ev](const std::unique_ptr< llarp::ev_io >& i) -> bool {
+                         return i.get() == ev;
+                       }));
     return true;
+  }
+
+  llarp::ev_io*
+  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
+  {
+    int fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
+    if(fd == -1)
+      return nullptr;
+    socklen_t sz = sizeof(sockaddr_in);
+    if(bindaddr->sa_family == AF_INET6)
+    {
+      sz = sizeof(sockaddr_in6);
+    }
+    else if(bindaddr->sa_family == AF_UNIX)
+    {
+      sz = sizeof(sockaddr_un);
+    }
+    if(bind(fd, bindaddr, sz) == -1)
+    {
+      ::close(fd);
+      return nullptr;
+    }
+    llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
+    tcp->impl          = serv;
+    return serv;
   }
 
   llarp::ev_io*
@@ -332,8 +464,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
     epoll_event ev;
     ev.data.ptr = e;
     ev.events   = EPOLLIN;
-    // if(write)
-    //   ev.events |= EPOLLOUT;
+    if(write)
+      ev.events |= EPOLLOUT;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, e->fd, &ev) == -1)
     {
       delete e;

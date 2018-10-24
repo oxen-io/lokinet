@@ -478,11 +478,6 @@ set(CLIENT_SRC
   client/main.cpp
 )
 
-set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC})
-
-foreach(F ${ALL_SRC})
-set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
-endforeach(F)
 
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
@@ -491,9 +486,11 @@ include_directories(include)
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
 
-set(ABYSS ${CMAKE_SOURCE_DIR}/libabyss)
+set(ABYSS libabyss)
 
 set(ABYSS_LIB abyss)
+
+set(ABYSS_EXE ${ABYSS_LIB}-main)
 
 include_directories(${ABYSS}/include)
 
@@ -505,6 +502,13 @@ set(ABYSS_SRC
 
 add_library(${ABYSS_LIB} ${ABYSS_SRC})
 
+
+set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+
+foreach(F ${ALL_SRC})
+set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
+endforeach(F)
+
 if(SHADOW)
 add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
 target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
@@ -513,6 +517,7 @@ else()
 add_executable(${RC_EXE} ${RC_SRC})
 add_executable(${EXE} ${EXE_SRC})
 add_executable(${CLIENT_EXE} ${CLIENT_SRC})
+add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
 
 add_executable(${DNS_EXE} ${DNS_SRC})
 add_subdirectory(${GTEST_DIR})
@@ -528,6 +533,7 @@ if(WITH_STATIC)
       target_link_libraries(${PLATFORM_LIB} -lcap)
     endif()
     target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB})
+    target_link_libraries(${ABYSS_EXE} ${STATIC_LIB})
     if(NOT WITH_SHARED)
 
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})

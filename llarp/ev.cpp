@@ -119,23 +119,41 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 bool
 llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *pkt, size_t sz)
 {
-  // TODO: queue write
-  return static_cast< llarp::ev_io * >(tun->impl)->do_write((void *)pkt, sz);
+  return static_cast< llarp::ev_io * >(tun->impl)->queue_write(
+      (const byte_t *)pkt, sz);
 }
 
 bool
 llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *tcp,
                 const struct sockaddr *bindaddr)
 {
-  tcp->loop = loop;
-  // TODO: implement me
+  tcp->loop          = loop;
+  llarp::ev_io *impl = loop->bind_tcp(tcp, bindaddr);
+  if(impl)
+  {
+    tcp->impl = impl;
+    return loop->add_ev(impl);
+  }
   return false;
 }
 
 void
 llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *tcp)
 {
-  // TODO: implement me
+  llarp::ev_io *impl = static_cast< llarp::ev_io * >(tcp->user);
+  tcp->impl          = nullptr;
+  tcp->loop->close_ev(impl);
+  if(tcp->closed)
+    tcp->closed(tcp);
+  // dont free acceptor because it may be stack allocated
+}
+
+bool
+llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const void *buf,
+                           size_t sz)
+{
+  return static_cast< llarp::ev_io * >(conn->impl)
+      ->queue_write((const byte_t *)buf, sz);
 }
 
 void
@@ -143,15 +161,17 @@ llarp_tcp_conn_close(struct llarp_tcp_conn *conn)
 {
   if(!conn)
     return;
-  llarp::ev_io *impl = static_cast< llarp::ev_io * >(conn->impl);
-  conn->impl         = nullptr;
-  // deregister
-  conn->loop->close_ev(impl);
-  // close fd and delete impl
-  delete impl;
+  if(conn->impl)
+  {
+    llarp::ev_io *impl = static_cast< llarp::ev_io * >(conn->impl);
+    // deregister and dealloc
+    conn->loop->close_ev(impl);
+    conn->impl = nullptr;
+  }
   // call hook if needed
   if(conn->closed)
     conn->closed(conn);
-  // delete
+
+  // delete conn
   delete conn;
 }

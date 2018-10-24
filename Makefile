@@ -37,7 +37,7 @@ TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
 EXE = $(BUILD_ROOT)/lokinet
 TEST_EXE = $(BUILD_ROOT)/testAll
-
+ABYSS_EXE = $(BUILD_ROOT)/abyss-main
 
 DNS_PORT ?= 53
 
@@ -117,6 +117,9 @@ testnet:
 
 test: debug
 	$(TEST_EXE)
+
+abyss: debug
+	$(ABYSS_EXE)
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
