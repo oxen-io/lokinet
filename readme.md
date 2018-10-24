@@ -26,6 +26,7 @@ To build:
 
 ## Running
 
+DO NOT RUN AS ROOT, run as normal user.
 
     $ lokinet -g
     $ lokinet-bootstrap
