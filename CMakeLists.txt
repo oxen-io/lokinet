@@ -436,8 +436,6 @@ set(ANDROID_LIB ${LIB}android)
 include_directories(llarp)
 include_directories(include)
 include_directories(vendor/cppbackport-master/lib)
-# Neuro Linux box hack:
-include_directories(/usr/local/include)
 include_directories(${sodium_INCLUDE_DIR})
 
 set(RC_EXE rcutil)
