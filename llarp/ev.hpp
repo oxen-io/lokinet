@@ -29,13 +29,14 @@ namespace llarp
   {
     struct WriteBuffer
     {
-      llarp_time_t timestamp = 0;
+      static constexpr size_t BufferSize = 2048;
+      llarp_time_t timestamp             = 0;
       size_t bufsz;
-      byte_t buf[1500];
+      byte_t buf[BufferSize];
 
       WriteBuffer() = default;
 
-      WriteBuffer(const void* ptr, size_t sz)
+      WriteBuffer(const byte_t* ptr, size_t sz)
       {
         if(sz <= sizeof(buf))
         {

@@ -117,10 +117,20 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 }
 
 bool
-llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *pkt, size_t sz)
+llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const void *pkt,
+                           size_t sz)
 {
-  return static_cast< llarp::ev_io * >(tun->impl)->queue_write(
-      (const byte_t *)pkt, sz);
+  constexpr size_t buffsz = llarp::ev_io::WriteBuffer::BufferSize;
+  const byte_t *ptr       = (const byte_t *)pkt;
+  llarp::ev_io *impl      = static_cast< llarp::ev_io * >(conn->impl);
+  while(sz > buffsz)
+  {
+    if(!impl->queue_write((const byte_t *)ptr, buffsz))
+      return false;
+    ptr += buffsz;
+    sz -= buffsz;
+  }
+  return impl->queue_write(ptr, sz);
 }
 
 bool
@@ -149,11 +159,12 @@ llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *tcp)
 }
 
 bool
-llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const void *buf,
-                           size_t sz)
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *buf, size_t sz)
 {
-  return static_cast< llarp::ev_io * >(conn->impl)
-      ->queue_write((const byte_t *)buf, sz);
+  if(sz > llarp::ev_io::WriteBuffer::BufferSize)
+    return false;
+  return static_cast< llarp::ev_io * >(tun->impl)->queue_write(
+      (const byte_t *)buf, sz);
 }
 
 void
