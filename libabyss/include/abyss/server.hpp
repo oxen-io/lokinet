@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <abyss/json.hpp>
+#include <unordered_map>
 
 namespace abyss
 {
@@ -18,13 +19,13 @@ namespace abyss
     struct IRPCHandler
     {
       typedef std::string Method_t;
-      typedef abyss::json::Object Params;
-      typedef abyss::json::Object Response;
+      typedef json::Value Params;
+      typedef json::Document Response;
 
       IRPCHandler(ConnImpl* impl);
 
       virtual bool
-      HandleJSONRPC(const Method_t& method, const Params& params,
+      HandleJSONRPC(const Method_t& method, Params params,
                     Response& response) = 0;
 
       ~IRPCHandler();

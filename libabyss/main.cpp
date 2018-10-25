@@ -9,9 +9,11 @@ struct DemoHandler : public abyss::http::IRPCHandler
   }
 
   bool
-  HandleJSONRPC(const Method_t& method, const Params& params, Response& resp)
+  HandleJSONRPC(const Method_t& method, Params params, Response& resp)
   {
-    resp.SetObject().AddMember("test", "value", resp.GetAllocator());
+    llarp::LogInfo("method: ", method);
+    resp.AddMember("jsonrpc", abyss::json::Value().SetString("2.0"),
+                   resp.GetAllocator());
     return true;
   }
 };
@@ -43,10 +45,19 @@ main(int argc, char* argv[])
   addr.sin_family      = AF_INET;
   DemoServer serv;
   llarp::Addr a(addr);
-  llarp::LogInfo("bind to ", a);
-  if(serv.ServeAsync(loop, logic, a))
-    llarp_ev_loop_run_single_process(loop, threadpool, logic);
-  else
-    llarp::LogError("Failed to serve: ", strerror(errno));
+  while(true)
+  {
+    llarp::LogInfo("bind to ", a);
+    if(serv.ServeAsync(loop, logic, a))
+    {
+      llarp_ev_loop_run_single_process(loop, threadpool, logic);
+      return 0;
+    }
+    else
+    {
+      llarp::LogError("Failed to serve: ", strerror(errno));
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+  }
   return 0;
 }

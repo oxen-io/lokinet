@@ -20,8 +20,7 @@ namespace llarp
       }
 
       bool
-      HandleJSONRPC(const Method_t& method, const Params& params,
-                    Response& response)
+      HandleJSONRPC(const Method_t& method, Params params, Response& response)
       {
         return false;
       }

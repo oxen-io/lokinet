@@ -32,7 +32,9 @@ namespace abyss
       llarp_time_t m_ReadTimeout;
       bool m_Bad;
       RequestHeader m_Header;
-      std::stringstream m_ReadBuf;
+      std::unique_ptr< abyss::json::IParser > m_BodyParser;
+      json::Document m_Request;
+      json::Document m_Response;
 
       enum HTTPState
       {
@@ -83,7 +85,6 @@ namespace abyss
       bool
       ProcessMethodLine(string_view line)
       {
-        // TODO: implement me
         auto idx = line.find_first_of(' ');
         if(idx == string_view::npos)
           return false;
@@ -101,7 +102,7 @@ namespace abyss
       ShouldProcessHeader(const string_view& name) const
       {
         // TODO: header whitelist
-        return true;
+        return name == "content-type" || name == "content-length";
       }
 
       bool
@@ -117,7 +118,7 @@ namespace abyss
         if(idx == string_view::npos)
           return false;
         string_view header = line.substr(0, idx);
-        string_view val    = line.substr(idx);
+        string_view val    = line.substr(1 + idx);
         // to lowercase
         std::transform(header.begin(), header.end(), header.begin(),
                        [](char ch) -> char { return ::tolower(ch); });
@@ -172,15 +173,86 @@ namespace abyss
       bool
       FeedBody(const char* buf, size_t sz)
       {
-        if(sz == 0)
-        {
-          return WriteResponseSimple(400, "Bad Request", "text/plain", "nope");
-        }
         if(m_Header.Method != "POST")
         {
-          return WriteResponseSimple(400, "Bad Request", "text/plain", "nope");
+          return WriteResponseSimple(405, "Method Not Allowed", "text/plain",
+                                     "nope");
         }
-        return WriteResponseSimple(200, "OK", "text/json", "{}");
+        {
+          auto itr = m_Header.Headers.find("content-type");
+          if(itr == m_Header.Headers.end())
+          {
+            return WriteResponseSimple(415, "Unsupported Media Type",
+                                       "text/plain",
+                                       "no content type provided");
+          }
+          else if(itr->second != "application/json")
+          {
+            return WriteResponseSimple(415, "Unsupported Media Type",
+                                       "text/plain",
+                                       "this does not look like jsonrpc 2.0");
+          }
+        }
+        // initialize body parser
+        if(m_BodyParser == nullptr)
+        {
+          ssize_t contentLength = 0;
+          auto itr              = m_Header.Headers.find("content-length");
+          if(itr == m_Header.Headers.end())
+          {
+            return WriteResponseSimple(400, "Bad Request", "text/plain",
+                                       "no content length");
+          }
+          contentLength = std::stoll(itr->second);
+          if(contentLength <= 0)
+          {
+            return WriteResponseSimple(400, "Bad Request", "text/plain",
+                                       "bad content length");
+          }
+          else
+          {
+            m_BodyParser.reset(abyss::json::MakeParser(contentLength));
+          }
+        }
+        if(!m_BodyParser->FeedData(buf, sz))
+        {
+          return WriteResponseSimple(400, "Bad Request", "text/plain",
+                                     "invalid body size");
+        }
+        switch(m_BodyParser->Parse(m_Request))
+        {
+          case json::IParser::eNeedData:
+            return true;
+          case json::IParser::eParseError:
+            return WriteResponseSimple(400, "Bad Request", "text/plain",
+                                       "bad json object");
+          case json::IParser::eDone:
+            if(m_Request.IsObject() && m_Request.HasMember("params")
+               && m_Request.HasMember("method")
+               && m_Request["method"].IsString()
+               && m_Request["params"].IsObject())
+            {
+              m_Response.SetObject();
+
+              if(handler->HandleJSONRPC(m_Request["method"].GetString(),
+                                        m_Request["params"].GetObject(),
+                                        m_Response))
+                return WriteResponseJSON();
+            }
+            return WriteResponseSimple(500, "internal error", "text/plain",
+                                       "nope");
+          default:
+            return false;
+        }
+      }
+
+      bool
+      WriteResponseJSON()
+      {
+        std::string response;
+        json::ToString(m_Response, response);
+        return WriteResponseSimple(200, "OK", "application/json",
+                                   response.c_str());
       }
 
       bool
@@ -188,7 +260,6 @@ namespace abyss
       {
         if(m_Bad)
         {
-          llarp::LogInfo("we bad");
           return false;
         }
 
@@ -204,22 +275,18 @@ namespace abyss
               case eReadHTTPMethodLine:
                 if(!ProcessMethodLine(line))
                   return false;
-                sz -= line.size();
+                sz -= line.size() + (2 * sizeof(char));
                 break;
               case eReadHTTPHeaders:
                 if(!ProcessHeaderLine(line))
                   return false;
-                sz -= line.size();
+                sz -= line.size() + (2 * sizeof(char));
                 break;
               default:
-                end = nullptr;
                 break;
             }
-            if(end)
-            {
-              buf = end + (2 * sizeof(char));
-              end = strstr(buf, "\r\n");
-            }
+            buf = end + (2 * sizeof(char));
+            end = strstr(buf, "\r\n");
           }
         }
         if(m_State == eReadHTTPBody)

@@ -498,7 +498,7 @@ set(ABYSS_SRC
   ${ABYSS}/src/http.cpp
   ${ABYSS}/src/client.cpp
   ${ABYSS}/src/server.cpp
-  ${ABYSS}/src/lib.cpp)
+  ${ABYSS}/src/json.cpp)
 
 add_library(${ABYSS_LIB} ${ABYSS_SRC})
 
