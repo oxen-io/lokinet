@@ -212,6 +212,74 @@ namespace llarp
 #endif
     };
   };
+
+  struct tcp_conn : public ev_io
+  {
+    llarp_tcp_conn* tcp;
+    tcp_conn(int fd, llarp_tcp_conn* conn)
+        : ev_io(fd, new LosslessWriteQueue_t()), tcp(conn)
+    {
+    }
+
+    virtual int
+    do_write(const void* buf, size_t sz)
+    {
+      return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
+    }
+
+    int
+    read(void* buf, size_t sz)
+    {
+      ssize_t amount = ::read(fd, buf, sz);
+      if(amount > 0)
+      {
+        if(tcp->read)
+          tcp->read(tcp, buf, amount);
+      }
+      else
+      {
+        // error
+        llarp_tcp_conn_close(tcp);
+        return -1;
+      }
+      return 0;
+    }
+
+    void
+    tick()
+    {
+      if(tcp->tick)
+        tcp->tick(tcp);
+    }
+
+    int
+    sendto(const sockaddr*, const void*, size_t)
+    {
+      return -1;
+    }
+  };
+
+  struct tcp_serv : public ev_io
+  {
+    llarp_ev_loop* loop;
+    llarp_tcp_acceptor* tcp;
+    tcp_serv(llarp_ev_loop* l, int fd, llarp_tcp_acceptor* t)
+        : ev_io(fd), loop(l), tcp(t)
+    {
+    }
+
+    void
+    tick()
+    {
+      if(tcp->tick)
+        tcp->tick(tcp);
+    }
+
+    /// actually does accept() :^)
+    virtual int
+    read(void*, size_t);
+  };
+
 };  // namespace llarp
 
 struct llarp_ev_loop

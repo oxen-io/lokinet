@@ -175,3 +175,38 @@ llarp_tcp_conn_close(struct llarp_tcp_conn *conn)
   // delete conn
   delete conn;
 }
+
+namespace llarp
+{
+  int
+  tcp_serv::read(void *, size_t)
+  {
+    int new_fd = ::accept(fd, nullptr, nullptr);
+    if(new_fd == -1)
+    {
+      llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
+      return -1;
+    }
+
+    llarp_tcp_conn *conn = new llarp_tcp_conn;
+    // zero out callbacks
+    conn->tick   = nullptr;
+    conn->closed = nullptr;
+    conn->read   = nullptr;
+    // build handler
+    llarp::tcp_conn *connimpl = new tcp_conn(new_fd, conn);
+    conn->impl                = connimpl;
+    conn->loop                = loop;
+    if(loop->add_ev(connimpl, true))
+    {
+      // call callback
+      if(tcp->accepted)
+        tcp->accepted(tcp, conn);
+      return 0;
+    }
+    // cleanup error
+    delete conn;
+    delete connimpl;
+    return -1;
+  }
+}  // namespace llarp

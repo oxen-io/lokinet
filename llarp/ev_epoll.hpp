@@ -18,104 +18,6 @@
 
 namespace llarp
 {
-  struct tcp_conn : public ev_io
-  {
-    llarp_tcp_conn* tcp;
-    tcp_conn(int fd, llarp_tcp_conn* conn)
-        : ev_io(fd, new LosslessWriteQueue_t()), tcp(conn)
-    {
-    }
-
-    virtual int
-    do_write(const void* buf, size_t sz)
-    {
-      return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
-    }
-
-    int
-    read(void* buf, size_t sz)
-    {
-      ssize_t amount = ::read(fd, buf, sz);
-      if(amount > 0)
-      {
-        if(tcp->read)
-          tcp->read(tcp, buf, amount);
-      }
-      else
-      {
-        // error
-        llarp_tcp_conn_close(tcp);
-        return -1;
-      }
-      return 0;
-    }
-
-    void
-    tick()
-    {
-      if(tcp->tick)
-        tcp->tick(tcp);
-    }
-
-    int
-    sendto(const sockaddr*, const void*, size_t)
-    {
-      return -1;
-    }
-  };
-
-  struct tcp_serv : public ev_io
-  {
-    llarp_ev_loop* loop;
-    llarp_tcp_acceptor* tcp;
-    tcp_serv(llarp_ev_loop* l, int fd, llarp_tcp_acceptor* t)
-        : ev_io(fd), loop(l), tcp(t)
-    {
-      // TODO: handle fail
-      assert(listen(fd, 5) != -1);
-    }
-
-    void
-    tick()
-    {
-      if(tcp->tick)
-        tcp->tick(tcp);
-    }
-
-    /// actually does accept() :^)
-    int
-    read(void*, size_t)
-    {
-      int new_fd = ::accept(fd, nullptr, nullptr);
-      if(new_fd == -1)
-      {
-        llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
-        return -1;
-      }
-
-      llarp_tcp_conn* conn = new llarp_tcp_conn;
-      // zero out callbacks
-      conn->tick   = nullptr;
-      conn->closed = nullptr;
-      conn->read   = nullptr;
-      // build handler
-      llarp::tcp_conn* connimpl = new tcp_conn(new_fd, conn);
-      conn->impl                = connimpl;
-      conn->loop                = loop;
-      if(loop->add_ev(connimpl, true))
-      {
-        // call callback
-        if(tcp->accepted)
-          tcp->accepted(tcp, conn);
-        return 0;
-      }
-      // cleanup error
-      delete conn;
-      delete connimpl;
-      return -1;
-    }
-  };
-
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
@@ -425,7 +327,12 @@ struct llarp_epoll_loop : public llarp_ev_loop
     {
       sz = sizeof(sockaddr_un);
     }
-    if(bind(fd, bindaddr, sz) == -1)
+    if(::bind(fd, bindaddr, sz) == -1)
+    {
+      ::close(fd);
+      return nullptr;
+    }
+    if(::listen(fd, 5) == -1)
     {
       ::close(fd);
       return nullptr;
