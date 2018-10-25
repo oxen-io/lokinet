@@ -182,9 +182,8 @@ namespace llarp
   {
     if(_shouldClose)
     {
-      if(tcp->closed)
+      if(tcp && tcp->closed)
         tcp->closed(tcp);
-      delete tcp;
       return false;
     }
     else if(tcp->tick)

@@ -91,8 +91,7 @@ namespace llarp
     }
 
     /// for tun
-    ev_io(int f, LossyWriteQueue_t* lossyqueue)
-        : fd(f), m_LossyWriteQueue(lossyqueue)
+    ev_io(int f, LossyWriteQueue_t* q) : fd(f), m_LossyWriteQueue(q)
     {
     }
 
@@ -223,19 +222,28 @@ namespace llarp
     bool _shouldClose = false;
     llarp_tcp_conn* tcp;
     tcp_conn(int fd, llarp_tcp_conn* conn)
-        : ev_io(fd, new LosslessWriteQueue_t()), tcp(conn)
+        : ev_io(fd, new LosslessWriteQueue_t{}), tcp(conn)
     {
+    }
+
+    virtual ~tcp_conn()
+    {
+      delete tcp;
     }
 
     virtual int
     do_write(const void* buf, size_t sz)
     {
+      if(_shouldClose)
+        return -1;
       return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
     }
 
     int
     read(void* buf, size_t sz)
     {
+      if(_shouldClose)
+        return -1;
       ssize_t amount = ::read(fd, buf, sz);
       if(amount > 0)
       {
@@ -245,7 +253,7 @@ namespace llarp
       else
       {
         // error
-        llarp_tcp_conn_close(tcp);
+        _shouldClose = true;
         return -1;
       }
       return 0;
@@ -344,8 +352,8 @@ struct llarp_ev_loop
   void
   tick_listeners()
   {
-    auto itr = handlers.begin();
-    while(itr != handlers.end())
+    auto itr = handlers.cbegin();
+    while(itr != handlers.cend())
     {
       if((*itr)->tick())
         ++itr;
