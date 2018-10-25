@@ -228,16 +228,23 @@ namespace abyss
                                        "bad json object");
           case json::IParser::eDone:
             if(m_Request.IsObject() && m_Request.HasMember("params")
-               && m_Request.HasMember("method")
+               && m_Request.HasMember("method") && m_Request.HasMember("id")
+               && (m_Request["id"].IsString() || m_Request["id"].IsNumber())
                && m_Request["method"].IsString()
                && m_Request["params"].IsObject())
             {
               m_Response.SetObject();
-
+              m_Response.AddMember("jsonrpc",
+                                   abyss::json::Value().SetString("2.0"),
+                                   m_Response.GetAllocator());
+              m_Response.AddMember("id", m_Request["id"],
+                                   m_Response.GetAllocator());
               if(handler->HandleJSONRPC(m_Request["method"].GetString(),
                                         m_Request["params"].GetObject(),
                                         m_Response))
+              {
                 return WriteResponseJSON();
+              }
             }
             return WriteResponseSimple(500, "internal error", "text/plain",
                                        "nope");

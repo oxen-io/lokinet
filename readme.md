@@ -15,10 +15,11 @@ Build requirements:
 * GNU Make
 * CMake
 * C++ 17 capable C++ compiler
+* rapidjson
 
 To build:
 
-    $ sudo apt install build-essential cmake git libcap-dev wget
+    $ sudo apt install build-essential cmake git libcap-dev wget rapidjson-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ make -j8

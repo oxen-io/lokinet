@@ -478,10 +478,10 @@ set(CLIENT_SRC
   client/main.cpp
 )
 
-
+include_directories(include)
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
-include_directories(include)
+
 
 set(RC_EXE rcutil)
 set(DNS_EXE dns)

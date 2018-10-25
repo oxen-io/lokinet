@@ -9,10 +9,10 @@ struct DemoHandler : public abyss::http::IRPCHandler
   }
 
   bool
-  HandleJSONRPC(const Method_t& method, Params params, Response& resp)
+  HandleJSONRPC(Method_t method, Params params, Response& resp)
   {
     llarp::LogInfo("method: ", method);
-    resp.AddMember("jsonrpc", abyss::json::Value().SetString("2.0"),
+    resp.AddMember("result", abyss::json::Value().SetInt(1),
                    resp.GetAllocator());
     return true;
   }
