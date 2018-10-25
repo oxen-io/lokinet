@@ -605,8 +605,9 @@ llarp_host_resolved(dnsc_answer_request *const request)
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
   auto val             = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
-      [request](std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >
-                    &element) { return element.second.get() == request; });
+      [request](
+          std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >
+              &element) { return element.second.get() == request; });
   if(val != tracker->client_request.end())
   {
     tracker->client_request[val->first].reset();

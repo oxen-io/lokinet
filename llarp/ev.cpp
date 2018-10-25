@@ -205,13 +205,22 @@ namespace llarp
   int
   tcp_serv::read(void *, size_t)
   {
+#ifndef _WIN32
     int new_fd = ::accept(fd, nullptr, nullptr);
     if(new_fd == -1)
     {
       llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
       return -1;
     }
-
+#else
+    SOCKET new_fd = ::accept(std::get< SOCKET >(fd), nullptr, nullptr);
+    if(new_fd == INVALID_SOCKET)
+    {
+      llarp::LogError("failed to accept on ", std::get< SOCKET >(fd), ":",
+                      strerror(errno));
+      return -1;
+    }
+#endif
     llarp_tcp_conn *conn = new llarp_tcp_conn;
     // zero out callbacks
     conn->tick   = nullptr;

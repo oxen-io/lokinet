@@ -52,7 +52,7 @@ namespace llarp
               dec->msg.reset(new GotRouterMessage(dec->From, dec->relayed));
               break;
             case 'I':
-              dec->msg.reset( new PublishIntroMessage());
+              dec->msg.reset(new PublishIntroMessage());
               break;
             case 'G':
               if(dec->relayed)
@@ -88,7 +88,7 @@ namespace llarp
       r.on_key = &MessageDecoder::on_key;
       if(!bencode_read_dict(buf, &r))
         return nullptr;
-      
+
       return std::unique_ptr< IMessage >(std::move(dec.msg));
     }
 

@@ -102,18 +102,34 @@ namespace llarp
     {
     }
 #else
-    // on windows, udp event loops are socket fds
+    // on windows, tcp/udp event loops are socket fds
     // and TUN device is a plain old fd
     std::variant< SOCKET, HANDLE > fd;
-    // the unique completion key that helps us to
-    // identify the object instance for which we receive data
-    // Here, we'll use the address of the udp_listener instance, converted
-    // to its literal int/int64 representation.
+
+    // These....shouldn't be here, but because of the distinction,
+    // coupled with the async events api, we have to add our file
+    // descriptors to the event queue at object construction,
+    // unlike UNIX where these can be separated
     ULONG_PTR listener_id = 0;
-    ev_io(SOCKET f) : fd(f), m_writeq("writequeue"){};
-    ev_io(HANDLE t)
-        : fd(t), m_writeq("writequeue"){};  // overload for TUN device, which
-                                            // _is_ a regular file descriptor
+    bool isTCP            = false;
+    bool write            = false;
+    WSAOVERLAPPED portfd[2];
+
+    // for udp?
+    ev_io(SOCKET f) : fd(f)
+    {
+      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
+    };
+    // for tun
+    ev_io(HANDLE t, LossyWriteQueue_t* q) : fd(t), m_LossyWriteQueue(q)
+    {
+    }
+    // for tcp
+    ev_io(SOCKET f, LosslessWriteQueue_t* q) : fd(f), m_BlockingWriteQueue(q)
+    {
+      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
+      isTCP = true;
+    }
 #endif
     virtual int
     read(void* buf, size_t sz) = 0;
@@ -139,7 +155,8 @@ namespace llarp
       return write(fd, data, sz);
 #else
       DWORD w;
-      WriteFile(std::get< HANDLE >(fd), data, sz, &w, nullptr);
+      WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, &portfd[1]);
+      GetOverlappedResult(std::get< HANDLE >(fd), &portfd[1], &w, TRUE);
       return w;
 #endif
     }
@@ -241,7 +258,8 @@ namespace llarp
 #ifdef __linux__
       return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
 #else
-      return ::send(fd, buf, sz, 0);
+      // TODO: make async
+      return ::send(std::get< SOCKET >(fd), (char*)buf, sz, 0);
 #endif
     }
 
@@ -250,7 +268,12 @@ namespace llarp
     {
       if(_shouldClose)
         return -1;
+#ifndef _WIN32
       ssize_t amount = ::read(fd, buf, sz);
+#else
+      // TODO: make async
+      ssize_t amount = ::recv(std::get< SOCKET >(fd), (char*)buf, sz, 0);
+#endif
       if(amount > 0)
       {
         if(tcp->read)
@@ -323,7 +346,7 @@ struct llarp_ev_loop
 #ifdef _WIN32
       l->fd = std::get< SOCKET >(ev->fd);
 #else
-      l->fd = ev->fd;
+      l->fd          = ev->fd;
 #endif
     }
     return ev && add_ev(ev, false);

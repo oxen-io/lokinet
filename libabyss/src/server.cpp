@@ -271,7 +271,7 @@ namespace abyss
           const char* end = strstr(buf, "\r\n");
           while(end)
           {
-            string_view line(buf, end);
+            string_view line(buf, *end);
             switch(m_State)
             {
               case eReadHTTPMethodLine:

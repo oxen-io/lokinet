@@ -129,7 +129,7 @@ abyss: debug
 	$(ABYSS_EXE)
 
 format:
-	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+	clang-format -i $$(find daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
 
 analyze: clean
 	mkdir -p '$(BUILD_ROOT)'

@@ -41,6 +41,15 @@ main(int argc, char* argv[])
   // Microsoft libc only covers six signals
 #ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
+#else
+  WSADATA wsockd;
+  int err;
+  err = ::WSAStartup(MAKEWORD(2, 2), &wsockd);
+  if(err)
+  {
+    perror("Failed to start Windows Sockets");
+    return err;
+  }
 #endif
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
   llarp_ev_loop* loop          = nullptr;
