@@ -23,21 +23,25 @@ namespace llarp
       ListNeighboors(Response& resp) const
       {
         auto& alloc = resp.GetAllocator();
-        auto& peers = abyss::json::Value().SetArray();
-        router->ForEachPeer([&](const llarp::ILinkSession* session,
-                                bool outbound) {
-          auto& peer = abyss::json::Value().SetObject();
-          auto ident = session->GetPubKey().ToHex();
-          auto addr  = session->GetRemoteEndpoint().ToString();
-          peer.AddMember("addr",
-                         abyss::json::Value(addr.data(), addr.size(), alloc),
-                         alloc);
-          peer.AddMember("ident",
-                         abyss::json::Value(ident.data(), ident.size(), alloc),
-                         alloc);
-          peer.AddMember("outbound", abyss::json::Value(outbound), alloc);
-          peers.PushBack(peer, alloc);
-        });
+        abyss::json::Value peers;
+        peers.SetArray();
+        router->ForEachPeer(
+            [&](const llarp::ILinkSession* session, bool outbound) {
+              abyss::json::Value peer;
+              peer.SetObject();
+              abyss::json::Value ident_val, addr_val;
+
+              auto ident = session->GetPubKey().ToHex();
+              ident_val.SetString(ident.c_str(), alloc);
+
+              auto addr = session->GetRemoteEndpoint().ToString();
+              addr_val.SetString(addr.c_str(), alloc);
+
+              peer.AddMember("addr", addr_val, alloc);
+              peer.AddMember("ident", ident_val, alloc);
+              peer.AddMember("outbound", abyss::json::Value(outbound), alloc);
+              peers.PushBack(peer, alloc);
+            });
         resp.AddMember("result", peers, alloc);
         return true;
       }
@@ -83,8 +87,20 @@ namespace llarp
       bool
       Start(const std::string& addr)
       {
-        llarp::Addr bindaddr(addr);
-        return _handler.ServeAsync(router->netloop, router->logic, bindaddr);
+        uint16_t port = 0;
+        auto idx      = addr.find_first_of(':');
+        llarp::Addr netaddr;
+        if(idx != std::string::npos)
+        {
+          port    = std::stoi(addr.substr(1 + idx));
+          netaddr = llarp::Addr(addr.substr(0, idx));
+        }
+        sockaddr_in saddr;
+        saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        saddr.sin_family      = AF_INET;
+        saddr.sin_port        = htons(port);
+        return _handler.ServeAsync(router->netloop, router->logic,
+                                   (const sockaddr*)&saddr);
       }
     };
 

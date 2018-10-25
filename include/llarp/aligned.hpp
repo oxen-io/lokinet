@@ -215,7 +215,7 @@ namespace llarp
     ToHex() const
     {
       char strbuf[(1 + sz) * 2] = {0};
-      return HexEncode(*this, strbuf);
+      return std::string(HexEncode(*this, strbuf));
     }
 
     struct Hash

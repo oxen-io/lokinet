@@ -111,7 +111,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   tun->impl = dev;
   if(dev)
   {
-    return loop->add_ev(dev, true);
+    return loop->add_ev(dev);
   }
   return false;
 }

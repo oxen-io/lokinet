@@ -515,8 +515,8 @@ namespace llarp
     ToString() const
     {
       std::stringstream ss;
-      ss << *this;
-      return ss.str();
+      ss << (*this);
+      return std::string(ss.str().c_str());
     }
 
     friend std::ostream&
