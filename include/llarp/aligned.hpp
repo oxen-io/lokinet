@@ -211,6 +211,13 @@ namespace llarp
       return true;
     }
 
+    std::string
+    ToHex() const
+    {
+      char strbuf[(1 + sz) * 2] = {0};
+      return HexEncode(*this, strbuf);
+    }
+
     struct Hash
     {
       size_t

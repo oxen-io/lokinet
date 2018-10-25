@@ -20,8 +20,35 @@ namespace llarp
       }
 
       bool
+      ListNeighboors(Response& resp) const
+      {
+        auto& alloc = resp.GetAllocator();
+        auto& peers = abyss::json::Value().SetArray();
+        router->ForEachPeer([&](const llarp::ILinkSession* session,
+                                bool outbound) {
+          auto& peer = abyss::json::Value().SetObject();
+          auto ident = session->GetPubKey().ToHex();
+          auto addr  = session->GetRemoteEndpoint().ToString();
+          peer.AddMember("addr",
+                         abyss::json::Value(addr.data(), addr.size(), alloc),
+                         alloc);
+          peer.AddMember("ident",
+                         abyss::json::Value(ident.data(), ident.size(), alloc),
+                         alloc);
+          peer.AddMember("outbound", abyss::json::Value(outbound), alloc);
+          peers.PushBack(peer, alloc);
+        });
+        resp.AddMember("result", peers, alloc);
+        return true;
+      }
+
+      bool
       HandleJSONRPC(Method_t method, Params params, Response& response)
       {
+        if(method == "llarp.admin.link.neighboors")
+        {
+          return ListNeighboors(response);
+        }
         return false;
       }
     };

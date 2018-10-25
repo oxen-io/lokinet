@@ -25,6 +25,9 @@ namespace llarp
     bool
     HasSessionVia(const Addr& addr);
 
+    void
+    ForEachSession(std::function< void(const ILinkSession*) > visit) const;
+
     static void
     udp_tick(llarp_udp_io* udp)
     {

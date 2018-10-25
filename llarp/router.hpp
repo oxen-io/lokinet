@@ -226,6 +226,10 @@ struct llarp_router
   void
   TryEstablishTo(const llarp::RouterID &remote);
 
+  void
+  ForEachPeer(
+      std::function< void(const llarp::ILinkSession *, bool) > visit) const;
+
   /// flush outbound message queue
   void
   FlushOutbound();

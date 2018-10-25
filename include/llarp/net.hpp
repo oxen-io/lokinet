@@ -511,6 +511,14 @@ namespace llarp
       }
     }
 
+    std::string
+    ToString() const
+    {
+      std::stringstream ss;
+      ss << *this;
+      return ss.str();
+    }
+
     friend std::ostream&
     operator<<(std::ostream& out, const Addr& a)
     {

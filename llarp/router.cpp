@@ -244,6 +244,19 @@ llarp_router::HandleDHTLookupForSendTo(
 }
 
 void
+llarp_router::ForEachPeer(
+    std::function< void(const llarp::ILinkSession *, bool) > visit) const
+{
+  outboundLink->ForEachSession(
+      [visit](const llarp::ILinkSession *peer) { visit(peer, true); });
+  for(const auto &link : inboundLinks)
+  {
+    link->ForEachSession(
+        [visit](const llarp::ILinkSession *peer) { visit(peer, false); });
+  }
+}
+
+void
 llarp_router::try_connect(fs::path rcfile)
 {
   llarp::RouterContact remote;
