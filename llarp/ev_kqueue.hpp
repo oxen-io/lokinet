@@ -34,12 +34,14 @@ namespace llarp
     {
     }
 
-    void
+    bool
     tick()
     {
       if(udp->tick)
         udp->tick(udp);
+      return true;
     }
+
     virtual int
     read(void* buf, size_t sz)
     {
@@ -131,12 +133,12 @@ namespace llarp
       }
     }
 
-    void
+    bool
     tick()
     {
       if(t->tick)
         t->tick(t);
-      flush_write();
+      return true;
     }
 
     int
@@ -227,11 +229,10 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev)
         {
-          ev->read(readbuf, sizeof(readbuf));
-        }
-        else
-        {
-          llarp::LogWarn("event[", idx, "] udata is not an ev_io");
+          if(events[idx].filter & EVFILT_READ)
+            ev->read(readbuf, sizeof(readbuf));
+          if(events[idx].filter & EVFILT_WRITE)
+            ev->flush_write();
         }
         ++idx;
       }
@@ -261,8 +262,10 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
           if(ev)
           {
-            // printf("reading_ev [%x] fd[%d]\n", ev, ev->fd);
-            ev->read(readbuf, sizeof(readbuf));
+            if(events[idx].filter & EVFILT_READ)
+              ev->read(readbuf, sizeof(readbuf));
+            if(events[idx].filter & EVFILT_WRITE)
+              ev->flush_write();
           }
           else
           {
@@ -338,17 +341,8 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
-    EV_SET(&change, ev->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-    if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) != -1)
-    {
-      handlers.erase(std::remove_if(
-          handlers.begin(), handlers.end(),
-          [ev](const std::unique_ptr< llarp::ev_io >& i) -> bool {
-            return i.get() == ev;
-          }));
-      return true;
-    }
-    return false;
+    EV_SET(&change, ev->fd, ev->flags, EV_DELETE, 0, 0, nullptr);
+    return kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) != -1;
   }
 
   llarp::ev_io*
@@ -365,10 +359,11 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   bool
   add_ev(llarp::ev_io* ev, bool write)
   {
+    ev->flags = EVFILT_READ;
     if(write)
-      EV_SET(&change, ev->fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, ev);
-    else
-      EV_SET(&change, ev->fd, EVFILT_READ, EV_ADD, 0, 0, ev);
+      ev->flags |= EVFILT_WRITE;
+
+    EV_SET(&change, ev->fd, ev->flags, EV_ADD, 0, 0, ev);
     if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1)
     {
       delete ev;
@@ -386,9 +381,20 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     if(listener)
     {
       // printf("Calling close_ev for [%x] fd[%d]\n", listener, listener->fd);
-      ret     = close_ev(listener);
+      ret = close_ev(listener);
+      // remove handler
+      auto itr = handlers.begin();
+      while(itr != handlers.end())
+      {
+        if(itr->get() == listener)
+        {
+          itr = handlers.erase(itr);
+          ret = true;
+        }
+        else
+          ++itr;
+      }
       l->impl = nullptr;
-      ret     = true;
     }
     return ret;
   }

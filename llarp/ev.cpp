@@ -122,7 +122,9 @@ llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const void *pkt,
 {
   constexpr size_t buffsz = llarp::ev_io::WriteBuffer::BufferSize;
   const byte_t *ptr       = (const byte_t *)pkt;
-  llarp::ev_io *impl      = static_cast< llarp::ev_io * >(conn->impl);
+  llarp::tcp_conn *impl   = static_cast< llarp::tcp_conn * >(conn->impl);
+  if(impl->_shouldClose)
+    return false;
   while(sz > buffsz)
   {
     if(!impl->queue_write((const byte_t *)ptr, buffsz))
@@ -170,25 +172,26 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *buf, size_t sz)
 void
 llarp_tcp_conn_close(struct llarp_tcp_conn *conn)
 {
-  if(!conn)
-    return;
-  if(conn->impl)
-  {
-    llarp::ev_io *impl = static_cast< llarp::ev_io * >(conn->impl);
-    // deregister and dealloc
-    conn->loop->close_ev(impl);
-    conn->impl = nullptr;
-  }
-  // call hook if needed
-  if(conn->closed)
-    conn->closed(conn);
-
-  // delete conn
-  delete conn;
+  static_cast< llarp::tcp_conn * >(conn->impl)->_shouldClose = true;
 }
 
 namespace llarp
 {
+  bool
+  tcp_conn::tick()
+  {
+    if(_shouldClose)
+    {
+      if(tcp->closed)
+        tcp->closed(tcp);
+      delete tcp;
+      return false;
+    }
+    else if(tcp->tick)
+      tcp->tick(tcp);
+    return true;
+  }
+
   int
   tcp_serv::read(void *, size_t)
   {

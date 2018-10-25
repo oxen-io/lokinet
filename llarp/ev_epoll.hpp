@@ -28,11 +28,12 @@ namespace llarp
     {
     }
 
-    void
+    bool
     tick()
     {
       if(udp->tick)
         udp->tick(udp);
+      return true;
     }
 
     int
@@ -93,12 +94,12 @@ namespace llarp
       return -1;
     }
 
-    void
+    bool
     tick()
     {
       if(t->tick)
         t->tick(t);
-      flush_write();
+      return true;
     }
 
     void
@@ -201,13 +202,13 @@ struct llarp_epoll_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
         if(ev)
         {
-          if(events[idx].events & EPOLLOUT)
-          {
-            ev->flush_write();
-          }
           if(events[idx].events & EPOLLIN)
           {
             ev->read(readbuf, sizeof(readbuf));
+          }
+          if(events[idx].events & EPOLLOUT)
+          {
+            ev->flush_write();
           }
         }
         ++idx;
@@ -234,13 +235,13 @@ struct llarp_epoll_loop : public llarp_ev_loop
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
           if(ev)
           {
-            if(events[idx].events & EPOLLOUT)
-            {
-              ev->flush_write();
-            }
             if(events[idx].events & EPOLLIN)
             {
               ev->read(readbuf, sizeof(readbuf));
+            }
+            if(events[idx].events & EPOLLOUT)
+            {
+              ev->flush_write();
             }
           }
           ++idx;
@@ -301,15 +302,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
-    if(epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) == -1)
-      return false;
-    // deallocate
-    handlers.erase(
-        std::remove_if(handlers.begin(), handlers.end(),
-                       [ev](const std::unique_ptr< llarp::ev_io >& i) -> bool {
-                         return i.get() == ev;
-                       }));
-    return true;
+    return epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) != -1;
   }
 
   llarp::ev_io*
@@ -391,6 +384,15 @@ struct llarp_epoll_loop : public llarp_ev_loop
     if(listener)
     {
       close_ev(listener);
+      // remove handler
+      auto itr = handlers.begin();
+      while(itr != handlers.end())
+      {
+        if(itr->get() == listener)
+          itr = handlers.erase(itr);
+        else
+          ++itr;
+      }
       l->impl = nullptr;
       ret     = true;
     }

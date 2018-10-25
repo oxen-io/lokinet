@@ -85,7 +85,7 @@ namespace llarp
 
 #ifndef _WIN32
     int fd;
-
+    int flags = 0;
     ev_io(int f) : fd(f)
     {
     }
@@ -123,8 +123,12 @@ namespace llarp
       return -1;
     };
 
-    virtual void
-    tick(){};
+    /// return false if we want to deregister and remove ourselves
+    virtual bool
+    tick()
+    {
+      return true;
+    };
 
     /// used for tun interface and tcp conn
     ssize_t
@@ -216,6 +220,7 @@ namespace llarp
 
   struct tcp_conn : public ev_io
   {
+    bool _shouldClose = false;
     llarp_tcp_conn* tcp;
     tcp_conn(int fd, llarp_tcp_conn* conn)
         : ev_io(fd, new LosslessWriteQueue_t()), tcp(conn)
@@ -246,12 +251,8 @@ namespace llarp
       return 0;
     }
 
-    void
-    tick()
-    {
-      if(tcp->tick)
-        tcp->tick(tcp);
-    }
+    bool
+    tick();
 
     int
     sendto(const sockaddr*, const void*, size_t)
@@ -269,11 +270,12 @@ namespace llarp
     {
     }
 
-    void
+    bool
     tick()
     {
       if(tcp->tick)
         tcp->tick(tcp);
+      return true;
     }
 
     /// actually does accept() :^)
@@ -318,6 +320,7 @@ struct llarp_ev_loop
 
   virtual bool
   udp_close(llarp_udp_io* l) = 0;
+  /// deregister event listener
   virtual bool
   close_ev(llarp::ev_io* ev) = 0;
 
@@ -327,6 +330,7 @@ struct llarp_ev_loop
   virtual llarp::ev_io*
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
 
+  /// register event listener
   virtual bool
   add_ev(llarp::ev_io* ev, bool write = false) = 0;
 
@@ -340,8 +344,17 @@ struct llarp_ev_loop
   void
   tick_listeners()
   {
-    for(const auto& h : handlers)
-      h->tick();
+    auto itr = handlers.begin();
+    while(itr != handlers.end())
+    {
+      if((*itr)->tick())
+        ++itr;
+      else
+      {
+        close_ev(itr->get());
+        itr = handlers.erase(itr);
+      }
+    }
   }
 };
 
