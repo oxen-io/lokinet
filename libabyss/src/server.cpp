@@ -10,11 +10,6 @@ namespace abyss
 {
   namespace http
   {
-#if __cplusplus >= 201703L
-    typedef std::string_view string_view;
-#else
-    typedef std::string string_view;
-#endif
     struct RequestHeader
     {
       typedef std::unordered_multimap< std::string, std::string > Headers_t;
@@ -219,6 +214,7 @@ namespace abyss
           return WriteResponseSimple(400, "Bad Request", "text/plain",
                                      "invalid body size");
         }
+
         switch(m_BodyParser->Parse(m_Request))
         {
           case json::IParser::eNeedData:
@@ -240,8 +236,7 @@ namespace abyss
               m_Response.AddMember("id", m_Request["id"],
                                    m_Response.GetAllocator());
               if(handler->HandleJSONRPC(m_Request["method"].GetString(),
-                                        m_Request["params"].GetObject(),
-                                        m_Response))
+                                        m_Request["params"], m_Response))
               {
                 return WriteResponseJSON();
               }

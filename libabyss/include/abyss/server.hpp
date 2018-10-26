@@ -25,7 +25,8 @@ namespace abyss
       IRPCHandler(ConnImpl* impl);
 
       virtual bool
-      HandleJSONRPC(Method_t method, Params params, Response& response) = 0;
+      HandleJSONRPC(Method_t method, const Params& params,
+                    Response& response) = 0;
 
       ~IRPCHandler();
 

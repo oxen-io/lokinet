@@ -47,7 +47,7 @@ namespace llarp
       }
 
       bool
-      HandleJSONRPC(Method_t method, Params params, Response& response)
+      HandleJSONRPC(Method_t method, const Params& params, Response& response)
       {
         if(method == "llarp.admin.link.neighboors")
         {

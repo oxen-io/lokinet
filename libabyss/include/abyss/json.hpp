@@ -26,6 +26,11 @@ namespace abyss
 #endif
 namespace abyss
 {
+#if __cplusplus >= 201703L
+  typedef std::string_view string_view;
+#else
+  typedef std::string string_view;
+#endif
   namespace json
   {
     struct IParser
