@@ -542,9 +542,9 @@ struct llarp_win32_loop : public llarp_ev_loop
     // Are we leaking any file descriptors?
     // This was part of the reason I had this
     // in the destructor.
-    if(iocpfd != INVALID_HANDLE_VALUE)
+    /*if(iocpfd != INVALID_HANDLE_VALUE)
       ::CloseHandle(iocpfd);
-    iocpfd = INVALID_HANDLE_VALUE;
+    iocpfd = INVALID_HANDLE_VALUE;*/
   }
 };
 

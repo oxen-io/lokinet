@@ -10,9 +10,7 @@
 #include <stdlib.h> /* exit */
 #include <string.h> /* memset */
 #include <sys/types.h>
-#ifndef _MSC_VER
 #include <unistd.h> /* close */
-#endif
 
 #include <algorithm>      // for std::find_if
 #include <llarp/net.hpp>  // for llarp::Addr
