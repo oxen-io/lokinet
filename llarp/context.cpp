@@ -2,9 +2,7 @@
 #include <llarp.h>
 #include <llarp/logger.h>
 #include <signal.h>
-#ifndef _MSC_VER
 #include <sys/param.h>  // for MIN
-#endif
 #include <llarp.hpp>
 #include "router.hpp"
 
@@ -15,16 +13,10 @@
 #include <pthread_np.h>
 #endif
 
-// keep this once jeff reenables concurrency
-#ifdef _MSC_VER
-extern "C" void
-SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
-#endif
-
-#if _WIN32 || __sun
+/*#if _WIN32 || __sun
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
 #define MIN wmin
-#endif
+#endif*/
 
 namespace llarp
 {

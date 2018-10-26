@@ -1,7 +1,5 @@
 #include "threadpool.hpp"
-#ifndef _MSC_VER
 #include <pthread.h>
-#endif
 #include <cstring>
 
 #include <llarp/time.h>

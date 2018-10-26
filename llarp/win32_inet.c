@@ -311,7 +311,4 @@ _GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved,
 
   return NO_ERROR;
 }
-#elif _MSC_VER
-/* just a comment */
-static void* unused;
 #endif

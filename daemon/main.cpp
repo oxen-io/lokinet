@@ -4,9 +4,7 @@
 #include <getopt.h>
 #include <string>
 #include <iostream>
-#ifndef _MSC_VER
 #include <libgen.h>
-#endif
 #include "fs.hpp"
 #include "config.hpp"  // for ensure_config
 

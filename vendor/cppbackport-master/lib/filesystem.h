@@ -30,12 +30,6 @@
 #ifndef PBL_CPP_FILESYSTEM_H
 #define PBL_CPP_FILESYSTEM_H
 
-#if _MSC_VER >= 1900
-#define CPP17
-#define CPP11
-#define CPP14
-#endif
-
 #include "version.h"
 
 #if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)

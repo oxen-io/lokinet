@@ -1,7 +1,3 @@
-#ifdef _MSC_VER
-#define NOMINMAX
-#endif
-
 #include <llarp/service.hpp>
 #include "buffer.hpp"
 #include "fs.hpp"

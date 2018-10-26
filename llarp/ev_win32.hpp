@@ -392,13 +392,13 @@ struct llarp_win32_loop : public llarp_ev_loop
         close_fd = closesocket(std::get< SOCKET >(ev->fd));
         break;
       case 1:
-              stopped = ::CancelIo(std::get< HANDLE >(ev->fd));
-              close_fd = CloseHandle(std::get< HANDLE >(ev->fd));
-              if(close_fd)
-                close_fd = 0;  // must be zero
-              else
-                close_fd = 1;
-              break;
+        stopped  = ::CancelIo(std::get< HANDLE >(ev->fd));
+        close_fd = CloseHandle(std::get< HANDLE >(ev->fd));
+        if(close_fd)
+          close_fd = 0;  // must be zero
+        else
+          close_fd = 1;
+        break;
       default:
         return false;
     }
