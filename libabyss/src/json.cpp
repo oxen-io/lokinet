@@ -20,7 +20,7 @@ namespace abyss
       bool
       FeedData(const char* buf, size_t sz)
       {
-        if(m_Offset + sz > m_Buf.size())
+        if(m_Offset + sz > m_Buf.size() - 1)
           return false;
         memcpy(m_Buf.data() + m_Offset, buf, sz);
         m_Offset += sz;
