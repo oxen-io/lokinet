@@ -8,11 +8,12 @@
 #define PATH_SEP "/"
 #endif
 
-#include "filesystem.h"
+#if 0
+#include <experimental/filesystem>
 
-#if defined(CPP17) && defined(USE_CXX17_FILESYSTEM)
 namespace fs = std::experimental::filesystem;
 #else
+#include "filesystem.h"
 namespace fs = cpp17::filesystem;
 #endif
 

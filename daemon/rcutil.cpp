@@ -555,7 +555,7 @@ main(int argc, char *argv[])
 
     // Base32Decode(rcfname, addr);
     llarp::LogInfo("Addr ", addr);
-    llarp::routing::DHTMessage *msg = new llarp::routing::DHTMessage();
+
     // uint64_t txid, const llarp::service::Address& addr
     // FIXME: new API?
     // msg->M.push_back(new llarp::dht::FindIntroMessage(tag, 1));

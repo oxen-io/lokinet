@@ -1,0 +1,3 @@
+#!/bin/sh -e
+setcap cap_net_admin,cap_net_bind_service=+eip /usr/sbin/lokinet || echo "failed to setcap lokinet"
+adduser --quiet --system --home /var/lib/lokinet debian-lokinet

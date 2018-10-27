@@ -99,6 +99,29 @@ namespace llarp
     }
 
     bool
+    Context::FindBestAddressFor(const llarp::service::Address &addr,
+                                huint32_t &ip)
+    {
+      auto itr = m_Endpoints.begin();
+      while(itr != m_Endpoints.end())
+      {
+        if(itr->second->HasAddress(addr))
+        {
+          ip = itr->second->ObtainIPForAddr(addr);
+          return true;
+        }
+        ++itr;
+      }
+      itr = m_Endpoints.find("default");
+      if(itr != m_Endpoints.end())
+      {
+        ip = itr->second->ObtainIPForAddr(addr);
+        return true;
+      }
+      return false;
+    }
+
+    bool
     Context::Prefetch(const llarp::service::Address &addr)
     {
       llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();

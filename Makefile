@@ -10,10 +10,6 @@ PREFIX ?= /usr/local
 CC ?= cc 
 CXX ?= c++
 
-TARGETS = lokinet
-SIGS = $(TARGETS:=.sig)
-
-
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
 SHADOW_CONFIG=$(REPO)/shadow.config.xml
@@ -28,43 +24,59 @@ TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
 TESTNET_LOG=$(TESTNET_ROOT)/testnet.log
 
-EXE = $(REPO)/lokinet
-TEST_EXE = $(REPO)/testAll
-
 TESTNET_EXE=$(REPO)/lokinet-testnet
 TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
 
+JSONRPC = OFF
+
+BUILD_ROOT = $(REPO)/build
+
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
+
+SCAN_BUILD ?= scan-build
+ANALYZE_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)' && cd '$(BUILD_ROOT)' && $(SCAN_BUILD) $(MAKE)")
+
+TARGETS = $(REPO)/lokinet
+SIGS = $(TARGETS:=.sig)
+EXE = $(BUILD_ROOT)/lokinet
+TEST_EXE = $(BUILD_ROOT)/testAll
+ABYSS_EXE = $(BUILD_ROOT)/abyss-main
+
 DNS_PORT ?= 53
+
+# PROCS ?= $(shell cat /proc/cpuinfo | grep processor | wc -l)
+
 
 LINT_FILES = $(wildcard llarp/*.cpp)
 
 LINT_CHECK = $(LINT_FILES:.cpp=.cpp-check)
 
 clean:
-	rm -f build.ninja rules.ninja cmake_install.cmake CMakeCache.txt
-	rm -rf CMakeFiles
-	rm -f $(TARGETS) llarpd llarpc dns rcutil testAll
+	rm -rf $(BUILD_ROOT)
 	rm -f $(SHADOW_PLUGIN) $(SHADOW_CONFIG)
 	rm -f *.sig
 	rm -f *.a *.so
 
-debug-configure: 
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DHAVE_CXX17_FILESYSTEM=OFF -DDNS_PORT=$(DNS_PORT)
+debug-configure:
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DDNS_PORT=$(DNS_PORT)
 
 release-configure: clean
-	cmake -GNinja -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
+	mkdir -p '$(BUILD_ROOT)'	
+	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 debug: debug-configure
-	ninja
+	$(MAKE) -C $(BUILD_ROOT)
+	cp $(EXE) lokinet
 
 release-compile: release-configure
-	ninja
+	$(MAKE) -C $(BUILD_ROOT)
+	cp $(EXE) lokinet
 	strip $(TARGETS)
 
 $(TARGETS): release-compile
-
 
 %.sig: $(TARGETS)
 	$(SIGN) $*
@@ -72,11 +84,11 @@ $(TARGETS): release-compile
 release: $(SIGS)
 
 shadow-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 shadow-build: shadow-configure
-	ninja clean
-	ninja
+	$(MAKE) -C $(BUILD_ROOT) clean
+	$(MAKE) -C $(BUILD_ROOT)
 
 shadow-run: shadow-build
 	python3 contrib/shadow/genconf.py $(SHADOW_CONFIG)
@@ -91,16 +103,16 @@ testnet-clean: clean
 	rm -rf $(TESTNET_ROOT)
 
 testnet-configure: testnet-clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTESTNET=1
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTESTNET=1
 
 testnet-build: testnet-configure
-	ninja
+	$(MAKE) -C $(BUILD_ROOT)
 
 shared-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DWITH_SHARED=ON
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DWITH_SHARED=ON
 
 shared: shared-configure
-	ninja
+	$(MAKE) -C $(BUILD_ROOT)
 
 testnet: 
 	cp $(EXE) $(TESTNET_EXE)
@@ -111,16 +123,26 @@ testnet:
 test: debug
 	$(TEST_EXE)
 
+abyss: debug
+	$(ABYSS_EXE)
+
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+
+analyze: clean
+	mkdir -p '$(BUILD_ROOT)'
+	$(ANALYZE_CMD)
 
 lint: $(LINT_CHECK)
 
 %.cpp-check: %.cpp
-	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/vendor/cppbackport-master/lib -I$(REPO)/crypto/libntrup/include -I$(REPO)/llarp
+	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/crypto/libntrup/include -I$(REPO)/llarp
 
 install:
 	rm -f $(PREFIX)/bin/lokinet
 	cp $(EXE) $(PREFIX)/bin/lokinet
 	chmod 755 $(PREFIX)/bin/lokinet
 	setcap cap_net_admin=+eip $(PREFIX)/bin/lokinet
+	rm -f $(PREFIX)/bin/lokinet-bootstrap
+	cp $(REPO)/lokinet-bootstrap $(PREFIX)/bin/lokinet-bootstrap
+	chmod 755 $(PREFIX)/bin/lokinet-bootstrap

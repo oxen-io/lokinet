@@ -2,6 +2,8 @@
 #include <llarp/service/Info.hpp>
 #include <llarp/service/address.hpp>
 #include "buffer.hpp"
+
+#include <sodium/crypto_generichash.h>
 namespace llarp
 {
   namespace service
@@ -59,8 +61,8 @@ namespace llarp
       auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!BEncode(&buf))
         return false;
-      return crypto_generichash(addr, 32, buf.base, buf.cur - buf.base, nullptr,
-                                0)
+      return crypto_generichash_blake2b(addr, 32, buf.base, buf.cur - buf.base,
+                                        nullptr, 0)
           != -1;
     }
 

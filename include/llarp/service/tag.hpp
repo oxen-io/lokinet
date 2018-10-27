@@ -5,6 +5,10 @@
 #include <llarp/aligned.hpp>
 #include <llarp/dht/key.hpp>
 
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+
 namespace llarp
 {
   namespace service
@@ -21,7 +25,9 @@ namespace llarp
 
       Tag(const std::string& str) : Tag()
       {
-        memcpy(data(), str.c_str(), std::min(16UL, str.size()));
+        // evidently, does nothing on LP64 systems (where size_t is *already*
+        // unsigned long but zero-extends this on LLP64 systems
+        memcpy(data(), str.c_str(), std::min(16UL, (unsigned long)str.size()));
       }
 
       Tag&
@@ -34,7 +40,7 @@ namespace llarp
       Tag&
       operator=(const std::string& str)
       {
-        memcpy(data(), str.data(), std::min(16UL, str.size()));
+        memcpy(data(), str.data(), std::min(16UL, (unsigned long)str.size()));
         return *this;
       }
 

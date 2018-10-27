@@ -1,0 +1,58 @@
+lokinet (0.2.3) UNRELEASED; urgency=medium
+
+  [ Jeff Becker (probably not evil) ]
+  * MANDITORY UPGRADE FOR TOYNET
+
+  * remove iwp and replace with utp
+
+  * use sntrup for introset public key (backwards incompatable)
+
+  * hidden service tags (backwards incompatable)
+
+  * add nicknames to RC (backwards incompatable)
+
+  * change kdf for path keys (backwards incompatable)
+
+  * various dht fixes
+
+  * various dns fixes (still unused in lokinet executable)
+
+  * hidden services should sorta work (no client interfacing code yet)
+
+  * initial win32 port (may sorta work)
+
+  * initial android point (should compile)
+
+  * fix shadow testnet
+
+  * moved netloop and logic into same thread
+
+  * update motto
+
+  * debian packaging
+
+  * windows port
+
+  * cross compile targets
+
+  * continous integration
+
+  * android port
+
+  * android glue code ( will be moved later ) 
+
+  * snap network namespace isolation, untested
+
+  [ jeff ]
+
+  * bump versions
+
+  * add lokinet-bootstrap script
+
+  * dns automapping
+
+  * hidden serivce junk
+ 
+  * systemd unit
+
+ -- jeff <jeff@i2p.rocks>  Tue, 25 Sep 2018 09:17:17 -0400

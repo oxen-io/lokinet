@@ -379,7 +379,7 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
     return;
   }
   */
-
+  delete fromCopy;
   if(request->llarp)
   {
     // make async request

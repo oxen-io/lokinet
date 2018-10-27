@@ -266,6 +266,8 @@ namespace llarp
       llarp_logic_call_later(
           r->logic,
           {exploreInterval, this, &llarp::dht::Context::handle_explore_timer});
+      // start cleanup timer
+      ScheduleCleanupTimer();
     }
 
     void

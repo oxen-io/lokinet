@@ -104,7 +104,7 @@ struct llarp_router
   ShouldCreateDefaultHiddenService();
 
   std::string DefaultRPCBindAddr = "127.0.0.1:1190";
-  bool enableRPCServer           = false;
+  bool enableRPCServer           = true;
   std::unique_ptr< llarp::rpc::Server > rpcServer;
   std::string rpcBindAddr = DefaultRPCBindAddr;
 
@@ -225,6 +225,10 @@ struct llarp_router
   /// try establishing a session to a remote router
   void
   TryEstablishTo(const llarp::RouterID &remote);
+
+  void
+  ForEachPeer(
+      std::function< void(const llarp::ILinkSession *, bool) > visit) const;
 
   /// flush outbound message queue
   void

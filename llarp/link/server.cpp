@@ -14,6 +14,18 @@ namespace llarp
     return m_AuthedLinks.find(pk) != m_AuthedLinks.end();
   }
 
+  void
+  ILinkLayer::ForEachSession(
+      std::function< void(const ILinkSession*) > visit) const
+  {
+    auto itr = m_AuthedLinks.begin();
+    while(itr != m_AuthedLinks.end())
+    {
+      visit(itr->second.get());
+      ++itr;
+    }
+  }
+
   bool
   ILinkLayer::Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
                         uint16_t port)

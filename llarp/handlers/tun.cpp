@@ -105,11 +105,7 @@ namespace llarp
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
 
         // set up address in dotLokiLookup
-        struct sockaddr_in source_addr;
-        source_addr.sin_addr.s_addr = inet_addr(tunif.ifaddr);
-        source_addr.sin_family      = AF_INET;
-
-        llarp::Addr tunIp(source_addr);
+        llarp::Addr tunIp(tunif.ifaddr);
         // related to dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
         dns_iptracker_setup(this->dll.ip_tracker,
                             tunIp);  // claim GW IP to make sure it's not inuse

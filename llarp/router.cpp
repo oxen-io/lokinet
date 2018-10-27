@@ -244,6 +244,19 @@ llarp_router::HandleDHTLookupForSendTo(
 }
 
 void
+llarp_router::ForEachPeer(
+    std::function< void(const llarp::ILinkSession *, bool) > visit) const
+{
+  outboundLink->ForEachSession(
+      [visit](const llarp::ILinkSession *peer) { visit(peer, true); });
+  for(const auto &link : inboundLinks)
+  {
+    link->ForEachSession(
+        [visit](const llarp::ILinkSession *peer) { visit(peer, false); });
+  }
+}
+
+void
 llarp_router::try_connect(fs::path rcfile)
 {
   llarp::RouterContact remote;
@@ -656,13 +669,12 @@ llarp_router::Run()
       rpcBindAddr = DefaultRPCBindAddr;
     }
     rpcServer = std::make_unique< llarp::rpc::Server >(this);
-    if(!rpcServer->Start(rpcBindAddr))
+    while(!rpcServer->Start(rpcBindAddr))
     {
-      llarp::LogError("Binding rpc server to ", rpcBindAddr, " failed");
-      rpcServer.reset();
+      llarp::LogError("failed to bind jsonrpc to ", rpcBindAddr);
+      std::this_thread::sleep_for(std::chrono::seconds(1));
     }
-    else
-      llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
+    llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
   }
 
   routerProfiling.Load(routerProfilesFile.c_str());

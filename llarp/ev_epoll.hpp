@@ -5,6 +5,7 @@
 #include <llarp/net.h>
 #include <signal.h>
 #include <sys/epoll.h>
+#include <sys/un.h>
 #include <tuntap.h>
 #include <unistd.h>
 #include <cstdio>
@@ -13,17 +14,10 @@
 #include "llarp/net.hpp"
 #include "logger.hpp"
 #include "mem.hpp"
+#include <cassert>
 
 namespace llarp
 {
-  struct tcp_serv : public ev_io
-  {
-  };
-
-  struct tcp_conn : public ev_io
-  {
-  };
-
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
@@ -34,14 +28,15 @@ namespace llarp
     {
     }
 
-    virtual void
+    bool
     tick()
     {
       if(udp->tick)
         udp->tick(udp);
+      return true;
     }
 
-    virtual int
+    int
     read(void* buf, size_t sz)
     {
       sockaddr_in6 src;
@@ -56,7 +51,7 @@ namespace llarp
       return 0;
     }
 
-    virtual int
+    int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       socklen_t slen;
@@ -85,7 +80,7 @@ namespace llarp
     llarp_tun_io* t;
     device* tunif;
     tun(llarp_tun_io* tio)
-        : ev_io(-1)
+        : ev_io(-1, new LossyWriteQueue_t("tun_write_queue"))
         , t(tio)
         , tunif(tuntap_init())
 
@@ -99,12 +94,13 @@ namespace llarp
       return -1;
     }
 
-    virtual void
+    bool
     tick()
     {
       if(t->tick)
         t->tick(t);
       flush_write();
+      return true;
     }
 
     void
@@ -205,9 +201,16 @@ struct llarp_epoll_loop : public llarp_ev_loop
       while(idx < result)
       {
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
-        if(events[idx].events & EPOLLIN)
+        if(ev)
         {
-          ev->read(readbuf, sizeof(readbuf));
+          if(events[idx].events & EPOLLIN)
+          {
+            ev->read(readbuf, sizeof(readbuf));
+          }
+          if(events[idx].events & EPOLLOUT)
+          {
+            ev->flush_write();
+          }
         }
         ++idx;
       }
@@ -231,9 +234,16 @@ struct llarp_epoll_loop : public llarp_ev_loop
         while(idx < result)
         {
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
-          if(events[idx].events & EPOLLIN)
+          if(ev)
           {
-            ev->read(readbuf, sizeof(readbuf));
+            if(events[idx].events & EPOLLIN)
+            {
+              ev->read(readbuf, sizeof(readbuf));
+            }
+            if(events[idx].events & EPOLLOUT)
+            {
+              ev->flush_write();
+            }
           }
           ++idx;
         }
@@ -293,14 +303,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
-    if(epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) == -1)
-      return false;
-    // deallocate
-    std::remove_if(handlers.begin(), handlers.end(),
-                   [ev](const std::unique_ptr< llarp::ev_io >& i) -> bool {
-                     return i.get() == ev;
-                   });
-    return true;
+    return epoll_ctl(epollfd, EPOLL_CTL_DEL, ev->fd, nullptr) != -1;
   }
 
   llarp::ev_io*
@@ -332,8 +335,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
     epoll_event ev;
     ev.data.ptr = e;
     ev.events   = EPOLLIN;
-    // if(write)
-    //   ev.events |= EPOLLOUT;
+    if(write)
+      ev.events |= EPOLLOUT;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, e->fd, &ev) == -1)
     {
       delete e;
@@ -352,6 +355,15 @@ struct llarp_epoll_loop : public llarp_ev_loop
     if(listener)
     {
       close_ev(listener);
+      // remove handler
+      auto itr = handlers.begin();
+      while(itr != handlers.end())
+      {
+        if(itr->get() == listener)
+          itr = handlers.erase(itr);
+        else
+          ++itr;
+      }
       l->impl = nullptr;
       ret     = true;
     }

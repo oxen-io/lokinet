@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 2.8.10)
 
 set(PROJECT_NAME lokinet)
-project(${PROJECT_NAME})
+project(${PROJECT_NAME} C CXX ASM)
+
+option(USE_LIBABYSS "enable libabyss" OFF)
 
 macro(add_cflags)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARGN}")
@@ -13,17 +15,10 @@ endmacro(add_cxxflags)
 
 include(CheckCXXCompilerFlag)
 CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
-
-option(HAVE_CXX17_FILESYSTEM "Disable if your C++ compiler and runtime library lacks std::[experimental::]filesystem" ON)
-
-if(COMPILER_SUPPORTS_CXX11 AND NOT HAVE_CXX17_FILESYSTEM)
+if(COMPILER_SUPPORTS_CXX11)
   add_cxxflags("-std=c++11")
-elseif(COMPILER_SUPPORTS_CXX17 AND HAVE_CXX17_FILESYSTEM)
-  add_cxxflags("-std=c++17")
-  add_definitions(-DUSE_CXX17_FILESYSTEM)
 else()
-  message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 or C++17 support. Please use a different C++ compiler.")
+  message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
 endif()
 
 add_cxxflags("-fpermissive")
@@ -103,8 +98,11 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_cxxflags("${DEBUG_FLAGS}")
 endif()
 
-add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
-add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS}")
+set(CRYPTO_FLAGS "-march=native")
+set(CMAKE_ASM_FLAGS "-march=native")
+
+add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS}")
+add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS}")
 
 if(SHADOW)
   add_cflags("-fPIC")
@@ -123,20 +121,6 @@ endif()
 set(EXE lokinet)
 set(EXE_SRC daemon/main.cpp)
 
-if(SODIUM_INCLUDE_DIR)
-  include_directories(${SODIUM_INCLUDE_DIR})
-endif()
-
-if(SODIUM_LIBRARIES)
-  set(SODIUM_LIB ${SODIUM_LIBRARIES})
-else()
-  find_library (
-          SODIUM_LIB
-          NAMES sodium libsodium
-          HINTS "/usr/local/lib"
-  )
-endif()
-
 # HeapAlloc(2) on Windows was significantly revamped in 2009
 # but the old algorithm isn't too bad either
 # this is _the_ system allocator on BSD UNIX
@@ -146,14 +130,15 @@ if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
 
-set(LIBS ${SODIUM_LIB} ${THREAD_LIB} ${MALLOC_LIB})
-if(HAVE_CXX17_FILESYSTEM)
-  set(LIBS ${LIBS} stdc++fs)
-endif()
+#set(FS_LIB stdc++fs)
+set(LIBS ${THREAD_LIB} ${MALLOC_LIB} ${FS_LIB})
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
 set(STATIC_LIB ${LIB}-static)
+set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
+set(PLATFORM_LIB ${LIB}-platform)
+set(ANDROID_LIB ${LIB}android)
 
 set(TT_ROOT vendor/libtuntap-master)
 
@@ -202,7 +187,18 @@ set(LIBTUNTAP_SRC
 else()
 set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
 endif(UNIX)
-set(CPP_BACKPORT_SRC
+
+if(ANDROID)
+  add_definitions(-DANDROID)
+  set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
+endif()
+
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
+endif()
+
+
+set(CXX_COMPAT_SRC
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
   vendor/cppbackport-master/lib/fs/filetype.cpp
@@ -220,15 +216,7 @@ set(CPP_BACKPORT_SRC
   vendor/cppbackport-master/lib/fs/absolute.cpp
   vendor/cppbackport-master/lib/fs/direntry.cpp
 )
-
-if(ANDROID)
-  add_definitions(-DANDROID)
-  set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
-endif()
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
-endif()
+include_directories(vendor/cppbackport-master/lib)
 
 set(LIB_PLATFORM_SRC
 # string stuff
@@ -256,6 +244,8 @@ set(LIB_PLATFORM_SRC
 # win32 inline code
   llarp/win32_inet.c
   llarp/win32_intrnl.c
+# c++17 compat code
+  ${CXX_COMPAT_SRC}
 )
 
 set(NTRU_AVX_SRC
@@ -296,13 +286,85 @@ set(NTRU_REF_SRC
   crypto/libntrup/src/ref/rq.c
 )
 
-include_directories(crypto/libntrup/include)
+include_directories(crypto/include)
 
 set(NTRU_SRC
   ${NTRU_AVX_SRC}
   ${NTRU_REF_SRC}
   crypto/libntrup/src/ntru.cpp
-)
+  )
+
+set(SHA512_SRC
+  crypto/sha512/sha512.c)
+
+set(CHACHA_SRC
+  crypto/chacha20/ref/chacha20_ref.c
+  crypto/chacha20/dolbeau/chacha20_dolbeau-ssse3.c
+  crypto/chacha20/dolbeau/chacha20_dolbeau-avx2.c
+  crypto/chacha20/stream_chacha20.c
+  crypto/salsa20/ref/salsa20_ref.c
+  crypto/salsa20/core_salsa_ref.c
+  crypto/salsa20/stream_salsa20.c
+  crypto/salsa20/xmm6/salsa20_xmm6-asm.S
+  crypto/salsa20/xmm6/salsa20_xmm6.c
+  crypto/salsa20/xmm6int/salsa20_xmm6int-avx2.c
+  crypto/salsa20/xmm6int/salsa20_xmm6int-sse2.c
+  crypto/xchacha20/hchacha.c
+  crypto/xchacha20/stream_xchacha20.c)
+ 
+set(CSRNG_SRC
+  crypto/csrng/randombytes_salsa20_random.c
+  crypto/csrng/randombytes.c)
+
+set(CRYPTO_MEM_SRC
+  crypto/secmem/secmem.c)
+
+set(BLAKE2B_SRC
+    crypto/blake2b/blake2b-compress-avx2.c
+    crypto/blake2b/blake2b-compress-ref.c
+    crypto/blake2b/blake2b-compress-sse41.c
+    crypto/blake2b/blake2b-compress-ssse3.c
+    crypto/blake2b/blake2b-ref.c
+    crypto/blake2b/generichash_blake2b.c)
+
+set(X25519_SRC    
+  crypto/curve25519/crypto_scalarmult.c
+  crypto/curve25519/ref10/x25519_ref10.c
+  crypto/curve25519/ref10/ed25519_ref10.c
+  crypto/curve25519/sandy2x/fe51_invert.c
+  crypto/curve25519/sandy2x/ladder_base.S
+  crypto/curve25519/sandy2x/curve25519_sandy2x.c
+  crypto/curve25519/sandy2x/consts.S
+  crypto/curve25519/sandy2x/fe51_nsquare.S
+  crypto/curve25519/sandy2x/fe51_mul.S
+  crypto/curve25519/sandy2x/fe51_pack.S
+  crypto/curve25519/sandy2x/fe_frombytes_sandy2x.c
+  crypto/curve25519/sandy2x/sandy2x.S
+  crypto/curve25519/sandy2x/ladder.S
+  crypto/curve25519/scalarmult_curve25519.c
+  crypto/ed25519/crypto_box.c
+  crypto/ed25519/crypto_sign.c
+  crypto/ed25519/ref10/open.c
+  crypto/ed25519/ref10/obsolete.c
+  crypto/ed25519/ref10/keypair.c
+  crypto/ed25519/ref10/sign.c
+  crypto/ed25519/sign_ed25519.c)
+
+set(CRYPTOGRAPHY_SRC
+  crypto/libsodium/init.c
+  crypto/libsodium/runtime.c
+  crypto/verify/crypto_verify.c
+  ${CRYPTO_MEM_SRC}
+  ${CSRNG_SRC}
+  ${BLAKE2B_SRC}
+  ${CHACHA_SRC}
+  ${ED25519_SRC}
+  ${X25519_SRC}
+  ${SHA512_SRC}
+  ${NTRU_SRC})
+
+add_library(${CRYPTOGRAPHY_LIB} ${CRYPTOGRAPHY_SRC})
+
 
 set(UTP_SRC
   libutp/utp_callbacks.cpp
@@ -320,7 +382,6 @@ endif()
 
 set(LIB_SRC
   ${UTP_SRC}
-  ${NTRU_SRC}
   llarp/address_info.cpp
   llarp/bencode.cpp
   llarp/buffer.cpp
@@ -419,51 +480,50 @@ set(CLIENT_SRC
   client/main.cpp
 )
 
-set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC} ${CPP_BACKPORT_SRC})
+include_directories(include)
+# TODO: exclude this from includes and expose stuff properly for rcutil
+include_directories(llarp)
+#include_directories(include)
+#include_directories(vendor/cppbackport-master/lib)
+#include_directories(${sodium_INCLUDE_DIR})
+
+set(RC_EXE rcutil)
+set(DNS_EXE dns)
+
+
+set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC})
+
+if(USE_LIBABYSS)
+  set(ABYSS libabyss)
+
+  set(ABYSS_LIB abyss)
+
+  set(ABYSS_EXE ${ABYSS_LIB}-main)
+
+  include_directories(${ABYSS}/include)
+
+  set(ABYSS_SRC
+    ${ABYSS}/src/http.cpp
+    ${ABYSS}/src/client.cpp
+    ${ABYSS}/src/server.cpp
+    ${ABYSS}/src/json.cpp)
+
+  add_library(${ABYSS_LIB} ${ABYSS_SRC})
+  set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+endif()
 
 foreach(F ${ALL_SRC})
 set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
 endforeach(F)
 
-set(LIB lokinet)
-set(SHARED_LIB ${LIB})
-set(STATIC_LIB ${LIB}-static)
-set(BACKPORT_LIB ${LIB}-backport)
-set(PLATFORM_LIB ${LIB}-platform)
-set(ANDROID_LIB ${LIB}android)
-
-# TODO: exclude this from includes and expose stuff properly for rcutil
-include_directories(llarp)
-include_directories(include)
-include_directories(vendor/cppbackport-master/lib)
-include_directories(${sodium_INCLUDE_DIR})
-
-set(RC_EXE rcutil)
-set(DNS_EXE dns)
-
-set(ABYSS ${CMAKE_SOURCE_DIR}/libabyss)
-
-set(ABYSS_LIB abyss)
-
-include_directories(${ABYSS}/include)
-
-set(ABYSS_SRC
-  ${ABYSS}/src/http.cpp
-  ${ABYSS}/src/client.cpp
-  ${ABYSS}/src/server.cpp
-  ${ABYSS}/src/lib.cpp)
-
-add_library(${ABYSS_LIB} ${ABYSS_SRC})
-
 if(SHADOW)
-add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC})
+add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
 target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
 install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
 add_executable(${RC_EXE} ${RC_SRC})
 add_executable(${EXE} ${EXE_SRC})
 add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-
 add_executable(${DNS_EXE} ${DNS_SRC})
 add_subdirectory(${GTEST_DIR})
 include_directories(${GTEST_DIR}/include ${GTEST_DIR})
@@ -472,43 +532,28 @@ add_executable(${TEST_EXE} ${TEST_SRC})
 
 if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-    if(NOT HAVE_CXX17_FILESYSTEM)
-      add_library(${BACKPORT_LIB} STATIC ${CPP_BACKPORT_SRC})
-    endif(NOT HAVE_CXX17_FILESYSTEM)
     add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
-    target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB} ${ABYSS_LIB})
+    if(USE_LIBABYSS)
+      target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB} ${ABYSS_LIB})
+    else()
+      target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB})
+    endif()
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       target_link_libraries(${PLATFORM_LIB} -lcap)
     endif()
-    if(NOT HAVE_CXX17_FILESYSTEM)
-      target_link_libraries(${STATIC_LIB} ${LIBS} ${PLATFORM_LIB} ${BACKPORT_LIB})
-    else()
-      target_link_libraries(${STATIC_LIB} ${LIBS} ${PLATFORM_LIB})
-    endif(NOT HAVE_CXX17_FILESYSTEM)
+    target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB})
     if(NOT WITH_SHARED)
-      if(NOT HAVE_CXX17_FILESYSTEM)
-        target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
-        target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
-        target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
-        target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB})
-        if (WIN32)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-          target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${BACKPORT_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        endif(WIN32)
-      else()
-        target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-        target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-        target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-        target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
-        if (WIN32)
-          target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-          target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-          target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-          target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        endif(WIN32)
-      endif(NOT HAVE_CXX17_FILESYSTEM)
+
+      target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
+      target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
+      target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
+      target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
+      if (WIN32)
+        target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+      endif(WIN32)
       if (WIN32)
         target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 iphlpapi)
       endif(WIN32)
@@ -521,10 +566,7 @@ if(WITH_STATIC)
   endif()
 
   if(WITH_SHARED)
-    if(HAVE_CXX17_FILESYSTEM)
-      set(LIB_SRC ${LIB_SRC} ${CPP_BACKPORT_SRC})
-    endif(HAVE_CXX17_FILESYSTEM)
-    add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC})
+    add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CRYPTOGRAPHY_SRC})
     if (WIN32)
       set(${LIBS} ${LIBS} ws2_32 iphlpapi)
     endif(WIN32)

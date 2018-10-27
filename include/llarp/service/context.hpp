@@ -27,6 +27,9 @@ namespace llarp
       llarp::service::Endpoint *
       getFirstEndpoint();
 
+      bool
+      FindBestAddressFor(const llarp::service::Address &, huint32_t &);
+
       /// DRY refactor
       llarp::handlers::TunEndpoint *
       getFirstTun();

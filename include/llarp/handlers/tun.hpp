@@ -84,6 +84,16 @@ namespace llarp
       service::Address
       ObtainAddrForIP(huint32_t ip);
 
+      bool
+      HasAddress(const service::Address& remote) const
+      {
+        return m_AddrToIP.find(remote) != m_AddrToIP.end();
+      }
+
+      /// get ip address for service address unconditionally
+      huint32_t
+      ObtainIPForAddr(const service::Address& addr);
+
      protected:
       typedef llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
@@ -96,10 +106,6 @@ namespace llarp
       /// return true if we have a remote loki address for this ip address
       bool
       HasRemoteForIP(huint32_t ipv4) const;
-
-      /// get ip address for service address unconditionally
-      huint32_t
-      ObtainIPForAddr(const service::Address& addr);
 
       /// mark this address as active
       void
