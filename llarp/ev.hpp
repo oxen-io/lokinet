@@ -22,17 +22,20 @@
 #ifndef EV_READ_BUF_SZ
 #define EV_READ_BUF_SZ (4 * 1024)
 #endif
+#ifndef EV_WRITE_BUF_SZ
+#define EV_WRITE_BUF_SZ (2 * 1024)
+#endif
 
 namespace llarp
 {
   struct ev_io
-  {
+  { 
     struct WriteBuffer
     {
-      static constexpr size_t BufferSize = 2048;
+      
       llarp_time_t timestamp             = 0;
       size_t bufsz;
-      byte_t buf[BufferSize];
+      byte_t buf[EV_WRITE_BUF_SZ];
 
       WriteBuffer() = default;
 

@@ -35,6 +35,9 @@ BUILD_ROOT = $(REPO)/build
 
 CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
 
+SCAN_BUILD ?= scan-build
+ANALYZE_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)' && cd '$(BUILD_ROOT)' && $(SCAN_BUILD) $(MAKE)")
+
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
 EXE = $(BUILD_ROOT)/lokinet
@@ -125,6 +128,9 @@ abyss: debug
 
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+
+analyze:
+	$(ANALYZE_CMD)
 
 lint: $(LINT_CHECK)
 
