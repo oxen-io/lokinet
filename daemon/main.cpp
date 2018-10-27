@@ -69,9 +69,9 @@ main(int argc, char *argv[])
 
   int opt            = 0;
   bool genconfigOnly = false;
-  bool asRouter      = true;
+  bool asRouter      = false;
   bool overWrite     = false;
-  while((opt = getopt(argc, argv, "hgcf")) != -1)
+  while((opt = getopt(argc, argv, "hgcfr")) != -1)
   {
     switch(opt)
     {
@@ -82,7 +82,13 @@ main(int argc, char *argv[])
         break;
       case 'c':
         genconfigOnly = true;
-        asRouter      = false;
+        break;
+      case 'r':
+#ifdef _WIN32
+        llarp::LogError("we will not run as relay because you're running windows, install a real operating system please");
+        return 1;
+#endif
+        asRouter = true;
         break;
       case 'f':
         overWrite = true;

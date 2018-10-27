@@ -3,6 +3,8 @@
 #include <llarp/buffer.h>
 #include <llarp/net.h>
 
+#include <sys/un.h>
+
 #if __FreeBSD__ || __OpenBSD__ || __NetBSD__ || (__APPLE__ && __MACH__)
 // kqueue / kevent
 #include <sys/event.h>

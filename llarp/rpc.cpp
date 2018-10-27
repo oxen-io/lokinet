@@ -1,12 +1,14 @@
 #include <llarp/rpc.hpp>
-#include <libabyss.hpp>
 
 #include "router.hpp"
-
+#ifdef USE_ABYSS
+#include <libabyss.hpp>
+#endif
 namespace llarp
 {
   namespace rpc
   {
+#ifdef USE_ABYSS
     struct Handler : public ::abyss::http::IRPCHandler
     {
       llarp_router* router;
@@ -103,7 +105,18 @@ namespace llarp
                                    (const sockaddr*)&saddr);
       }
     };
+#else
+    struct ServerImpl
+    {
+      ServerImpl(llarp_router * r) {};
+      bool Start(const std::string & addr)
+      {
+        return true;
+      }
+    };
+#endif
 
+    
     Server::Server(llarp_router* r) : m_Impl(new ServerImpl(r))
     {
     }

@@ -222,4 +222,36 @@ namespace llarp
     delete connimpl;
     return -1;
   }
+
 }  // namespace llarp
+
+  
+llarp::ev_io*
+llarp_ev_loop::bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
+{
+  int fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
+  if(fd == -1)
+    return nullptr;
+  socklen_t sz = sizeof(sockaddr_in);
+  if(bindaddr->sa_family == AF_INET6)
+  {
+      sz = sizeof(sockaddr_in6);
+  }
+  else if(bindaddr->sa_family == AF_UNIX)
+  {
+    sz = sizeof(sockaddr_un);
+  }
+  if(::bind(fd, bindaddr, sz) == -1)
+  {
+    ::close(fd);
+    return nullptr;
+  }
+  if(::listen(fd, 5) == -1)
+  {
+    ::close(fd);
+    return nullptr;
+  }
+  llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
+  tcp->impl          = serv;
+  return serv;
+}

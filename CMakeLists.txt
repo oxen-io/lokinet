@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 2.8.10)
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
+option(USE_LIBABYSS "enable libabyss" OFF)
+
 macro(add_cflags)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARGN}")
 endmacro(add_cflags)
@@ -486,24 +488,27 @@ include_directories(llarp)
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
 
-set(ABYSS libabyss)
 
-set(ABYSS_LIB abyss)
+set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC})
 
-set(ABYSS_EXE ${ABYSS_LIB}-main)
+if(USE_LIBABYSS)
+  set(ABYSS libabyss)
 
-include_directories(${ABYSS}/include)
+  set(ABYSS_LIB abyss)
 
-set(ABYSS_SRC
-  ${ABYSS}/src/http.cpp
-  ${ABYSS}/src/client.cpp
-  ${ABYSS}/src/server.cpp
-  ${ABYSS}/src/json.cpp)
+  set(ABYSS_EXE ${ABYSS_LIB}-main)
 
-add_library(${ABYSS_LIB} ${ABYSS_SRC})
+  include_directories(${ABYSS}/include)
 
+  set(ABYSS_SRC
+    ${ABYSS}/src/http.cpp
+    ${ABYSS}/src/client.cpp
+    ${ABYSS}/src/server.cpp
+    ${ABYSS}/src/json.cpp)
 
-set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+  add_library(${ABYSS_LIB} ${ABYSS_SRC})
+  set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+endif()
 
 foreach(F ${ALL_SRC})
 set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
@@ -517,8 +522,6 @@ else()
 add_executable(${RC_EXE} ${RC_SRC})
 add_executable(${EXE} ${EXE_SRC})
 add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-
 add_executable(${DNS_EXE} ${DNS_SRC})
 add_subdirectory(${GTEST_DIR})
 include_directories(${GTEST_DIR}/include ${GTEST_DIR})
@@ -528,12 +531,15 @@ add_executable(${TEST_EXE} ${TEST_SRC})
 if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
     add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
-    target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB} ${ABYSS_LIB})
+    if(USE_LIBABYSS)
+      target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB} ${ABYSS_LIB})
+    else()
+      target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB})
+    endif()
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       target_link_libraries(${PLATFORM_LIB} -lcap)
     endif()
     target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB})
-    target_link_libraries(${ABYSS_EXE} ${STATIC_LIB})
     if(NOT WITH_SHARED)
 
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})

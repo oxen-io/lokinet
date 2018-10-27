@@ -236,7 +236,11 @@ namespace llarp
     {
       if(_shouldClose)
         return -1;
+      #ifdef __linux__
       return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
+      #else
+      return ::send(fd, buf, sz, 0 );
+      #endif
     }
 
     int
@@ -335,8 +339,8 @@ struct llarp_ev_loop
   virtual llarp::ev_io*
   create_tun(llarp_tun_io* tun) = 0;
 
-  virtual llarp::ev_io*
-  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
+  llarp::ev_io*
+  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr);
 
   /// register event listener
   virtual bool
