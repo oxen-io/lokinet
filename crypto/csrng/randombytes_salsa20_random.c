@@ -389,6 +389,7 @@ randombytes_salsa20_random_stir(void)
   CNGAPI_DRBG getrandom;
   HCRYPTPROV hProv;
   /* load bcrypt dynamically, see if we're already loaded */
+  rtld    = FALSE;
   hCAPINg = GetModuleHandle("bcrypt.dll");
   /* otherwise, load CNG manually */
   if (!hCAPINg)

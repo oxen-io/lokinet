@@ -175,6 +175,10 @@ tuntap_start(struct device *dev, int mode, int tun)
   char *deviceid;
   char buf[60];
 
+  /* put something in there to avoid problems (uninitialised field access) */
+  tun_fd = TUNFD_INVALID_VALUE;
+  deviceid = NULL;
+
   /* Don't re-initialise a previously started device */
   if(dev->tun_fd != TUNFD_INVALID_VALUE)
   {
@@ -198,6 +202,7 @@ tuntap_start(struct device *dev, int mode, int tun)
   else if(mode != TUNTAP_MODE_ETHERNET)
   {
     tuntap_log(TUNTAP_LOG_ERR, "Invalid parameter 'mode'");
+    free(deviceid);
     return -1;
   }
 
@@ -205,10 +210,12 @@ tuntap_start(struct device *dev, int mode, int tun)
   {
     int errcode = GetLastError();
     tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
+    free(deviceid);
     return -1;
   }
 
   dev->tun_fd = tun_fd;
+  free(deviceid);
   return 0;
 }
 
@@ -345,6 +352,13 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   sock[1] = sock[0] & sock[2];
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_TUN, &sock, sizeof(sock),
                         &sock, sizeof(sock), &len, NULL);
+  if(!ret)
+  {
+    int errcode = GetLastError();
+    tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
+    return -1;
+  }
+
   ep[0] = s->S_un.S_addr;
   ep[1] = mask;
   ep[2] = (s->S_un.S_addr | ~mask)
@@ -355,6 +369,13 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_MASQ, ep, sizeof(ep),
                         ep, sizeof(ep), &len, NULL);
 
+  if(!ret)
+  {
+    int errcode = GetLastError();
+    tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
+    return -1;
+  }
+  
   /* set DNS address to 127.0.0.1 as lokinet-client runs its own DNS resolver
    * inline */
   dns.dhcp_opt = 6;
@@ -370,7 +391,6 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   if(!ret)
   {
     int errcode = GetLastError();
-
     tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
     return -1;
   }

@@ -121,7 +121,7 @@ namespace llarp
       return true;
     }
 
-    bool
+    ssize_t
     do_write(void* data, size_t sz)
     {
       return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, tun_async[1]);

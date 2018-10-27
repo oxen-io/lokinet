@@ -1,8 +1,3 @@
-// saves us some calculation in the sodium bits
-#if defined(_WIN32) || defined(_M_IX86) || defined(_M_X64) \
-    || defined(__i386__) || defined(__amd64__)
-#define NATIVE_LITTLE_ENDIAN 1
-#endif
 #include <assert.h>
 #include <llarp/crypto.h>
 #include <sodium/crypto_generichash.h>

@@ -175,8 +175,10 @@ tdiGetIpAddrsForIpEntity(HANDLE tcpFile, TDIEntityID *ent, IPAddrEntry **addrs,
 {
   NTSTATUS status;
 
+#ifdef DEBUG
   fprintf(stderr, "TdiGetIpAddrsForIpEntity(tcpFile 0x%p, entityId 0x%lx)\n",
           tcpFile, ent->tei_instance);
+#endif
 
   status = tdiGetSetOfThings(tcpFile, INFO_CLASS_PROTOCOL, INFO_TYPE_PROVIDER,
                              0x102, CL_NL_ENTITY, ent->tei_instance, 0,
@@ -447,6 +449,8 @@ getInterfaceIndexTableInt(BOOL nonLoopbackOnly)
   InterfaceIndexTable *ret = 0;
   HANDLE tcpFile;
   NTSTATUS status = openTcpFile(&tcpFile, FILE_READ_DATA);
+
+  ifInfo = NULL;
 
   if(NT_SUCCESS(status))
   {
