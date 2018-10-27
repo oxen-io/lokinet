@@ -285,6 +285,7 @@ extern "C"
       llarp::LogDebug("handling as dnsd question");
       llarp_handle_dnsd_recvfrom(udp, addr, buf, sz);
     }
+    delete hdr;
     /*
      llarp::LogInfo("msg op ", hdr->opcode);
      llarp::LogInfo("msg rc ", hdr->rcode);

@@ -82,6 +82,7 @@ build_dns_packet(char *url, uint16_t id, uint16_t reqType)
     }
     word = strtok(nullptr, ".");
   }
+  free(strTemp);
   dnsQuery->request[dnsQuery->length++] = 0x00;  // End of the host name
   dnsQuery->request[dnsQuery->length++] =
       0x00;  // 0x0001 - Query is a Type A query (host address)
@@ -109,7 +110,9 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   request->context  = dnsc;
 
   char *sUrl             = strdup(url);
-  request->question.name = (char *)sUrl;
+  request->question.name = (char *)sUrl; // since it's a std::String
+  // we can nuke sUrl now
+  free(sUrl);
 
   // leave 256 bytes available
   if(request->question.name.size() > 255)
@@ -323,7 +326,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   if(answer == nullptr)
   {
     llarp::LogWarn("nameserver ", upstreamAddr,
-                   " didnt return any answers for ", question->name);
+                   " didnt return any answers for ", question?question->name:"null question");
     request->resolved(request);
     return;
   }
