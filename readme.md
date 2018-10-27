@@ -15,23 +15,31 @@ Build requirements:
 * GNU Make
 * CMake
 * C++ 17 capable C++ compiler
-* rapidjson
+* rapidjson (if enabling jsonrpc server)
 
 To build:
 
     $ sudo apt install build-essential cmake git libcap-dev wget rapidjson-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ make -j8
+    $ make -j8 JSONRPC=ON
     $ sudo make install
 
 ## Running
 
 **DO NOT RUN AS ROOT**, run as normal user.
 
+to run as client:
+
     $ lokinet -g
     $ lokinet-bootstrap
     $ lokinet
+
+to run as relay:
+
+   $ lokinet -r -g
+   $ lokinet-bootstrap
+   $ lokinet
 
 ## Usage
 
