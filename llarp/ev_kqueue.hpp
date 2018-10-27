@@ -98,13 +98,11 @@ namespace llarp
     llarp_tun_io* t;
     device* tunif;
     tun(llarp_tun_io* tio)
-        : ev_io(-1)
-        , t(tio)
-        , tunif(tuntap_init())
-
-              {
-
-              };
+      : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write"))
+      , t(tio)
+      , tunif(tuntap_init())   
+    {  
+    };
 
     int
     sendto(const sockaddr* to, const void* data, size_t sz)

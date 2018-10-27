@@ -129,7 +129,8 @@ abyss: debug
 format:
 	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
 
-analyze:
+analyze: clean
+	mkdir -p '$(BUILD_ROOT)'
 	$(ANALYZE_CMD)
 
 lint: $(LINT_CHECK)

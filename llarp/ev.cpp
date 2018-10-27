@@ -167,7 +167,7 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *buf, size_t sz)
     llarp::LogWarn("packet too big, ", sz, " > ", EV_WRITE_BUF_SZ);
     return false;
   }
-  return static_cast< llarp::ev_io * >(tun->impl)->queue_write(
+  return static_cast< llarp::tun * >(tun->impl)->queue_write(
       (const byte_t *)buf, sz);
 }
 
