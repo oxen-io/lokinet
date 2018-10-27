@@ -110,7 +110,7 @@ namespace llarp
       return -1;
     }
 
-    bool
+    virtual ssize_t
     do_write(void* buf, size_t sz)
     {
       iovec vecs[2];
@@ -120,7 +120,7 @@ namespace llarp
       vecs[0].iov_len  = sizeof(t);
       vecs[1].iov_base = buf;
       vecs[1].iov_len  = sz;
-      return writev(fd, vecs, 2) != -1;
+      return writev(fd, vecs, 2);
     }
 
     void

@@ -133,7 +133,7 @@ namespace llarp
     };
 
     /// used for tun interface and tcp conn
-    ssize_t
+    virtual ssize_t
     do_write(void* data, size_t sz)
     {
 #ifndef _WIN32
@@ -234,8 +234,8 @@ namespace llarp
       delete tcp;
     }
 
-    virtual int
-    do_write(const void* buf, size_t sz)
+    virtual ssize_t
+    do_write(void* buf, size_t sz)
     {
       if(_shouldClose)
         return -1;
