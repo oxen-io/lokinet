@@ -289,44 +289,6 @@ struct llarp_win32_loop : public llarp_ev_loop
     return result;
   }
 
-  llarp::ev_io*
-  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
-  {
-    DWORD on  = 1;
-    SOCKET fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
-    if(fd == INVALID_SOCKET)
-      return nullptr;
-    socklen_t sz = sizeof(sockaddr_in);
-    if(bindaddr->sa_family == AF_INET6)
-    {
-      sz = sizeof(sockaddr_in6);
-    }
-    // keep. inexplicably, windows now has unix domain sockets
-    // for now, use the ID numbers directly until this comes out of
-    // beta
-    else if(bindaddr->sa_family == AF_UNIX)
-    {
-      sz = 110;  // current size in 10.0.17763, verify each time the beta PSDK
-                 // is updated
-    }
-    if(::bind(fd, bindaddr, sz) == SOCKET_ERROR)
-    {
-      ::closesocket(fd);
-      return nullptr;
-    }
-    if(::listen(fd, 5) == SOCKET_ERROR)
-    {
-      ::closesocket(fd);
-      return nullptr;
-    }
-    llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
-    tcp->impl          = serv;
-    // We're non-blocking now, but can't really make use of it
-    // until we cut over to WSA* functions
-    ioctlsocket(fd, FIONBIO, &on);
-    return serv;
-  }
-
   SOCKET
   udp_bind(const sockaddr* addr)
   {

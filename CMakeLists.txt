@@ -500,22 +500,17 @@ set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${
 
 if(USE_LIBABYSS)
   set(ABYSS libabyss)
-
   set(ABYSS_LIB abyss)
-
   set(ABYSS_EXE ${ABYSS_LIB}-main)
-
   include_directories(${ABYSS}/include)
-
   set(ABYSS_SRC
     ${ABYSS}/src/http.cpp
     ${ABYSS}/src/client.cpp
     ${ABYSS}/src/server.cpp
     ${ABYSS}/src/json.cpp)
-
-add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
-
-set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
+  set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+endif()
 
 foreach(F ${ALL_SRC})
 set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
@@ -553,14 +548,12 @@ if(WITH_STATIC)
       target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB})
-      target_link_libraries(${ABYSS_EXE} ${STATIC_LIB})
       if (WIN32)
         target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 iphlpapi)
-        target_link_libraries(${ABYSS_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
       endif(WIN32)
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)

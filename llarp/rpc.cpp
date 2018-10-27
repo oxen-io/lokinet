@@ -108,15 +108,15 @@ namespace llarp
 #else
     struct ServerImpl
     {
-      ServerImpl(llarp_router * r) {};
-      bool Start(const std::string & addr)
+      ServerImpl(llarp_router* r){};
+      bool
+      Start(const std::string& addr)
       {
         return true;
       }
     };
 #endif
 
-    
     Server::Server(llarp_router* r) : m_Impl(new ServerImpl(r))
     {
     }

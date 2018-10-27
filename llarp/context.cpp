@@ -13,10 +13,10 @@
 #include <pthread_np.h>
 #endif
 
-/*#if _WIN32 || __sun
+#if _WIN32 || __sun
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
 #define MIN wmin
-#endif*/
+#endif
 
 namespace llarp
 {
