@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env sh
 #
 # this shell script will be replaced by a proper program in the future (probably)
 #
