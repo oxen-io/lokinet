@@ -186,6 +186,33 @@ tuntap_sys_set_ipv4_tap(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
   return 0;
 }
 
+static int
+tuntap_sys_add_route(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
+{
+  struct sockaddr_in mask;
+  mask.sin_family      = AF_INET;
+  mask.sin_addr.s_addr = bits;
+  mask.sin_len         = sizeof(struct sockaddr_in);
+  char addrbuf[32]     = {0};
+  char buf[1028]       = {0};
+
+  inet_ntop(AF_INET, s4, addrbuf, sizeof(struct sockaddr_in));
+
+  const char *addr    = addrbuf;
+  const char *netmask = inet_ntoa(mask.sin_addr);
+  /** because fuck this other stuff */
+  snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask %s up",
+           dev->if_name, addr, addr, netmask);
+  tuntap_log(TUNTAP_LOG_INFO, buf);
+  system(buf);
+  snprintf(buf, sizeof(buf),
+           "route add -cloning -net %s -netmask %s -interface %s", addr,
+           netmask, dev->if_name);
+  tuntap_log(TUNTAP_LOG_INFO, buf);
+  system(buf);
+  return 0;
+}
+
 int
 tuntap_sys_set_ipv4_tun(struct device *dev, t_tun_in_addr *s4,
                         t_tun_in_addr *s4dest, uint32_t bits)
@@ -226,7 +253,7 @@ tuntap_sys_set_ipv4_tun(struct device *dev, t_tun_in_addr *s4,
     tuntap_log(TUNTAP_LOG_ERR, "Can't set IP address");
     return -1;
   }
-  return 0;
+  return tuntap_sys_set_route(dev, s4, bits);
 }
 
 int
@@ -261,7 +288,7 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
 {
   struct ifreq ifr;
   char *newname;
-	//(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
+  //(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
   strlcpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
 
   newname = strdup(ifname);
@@ -271,9 +298,9 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
     return -1;
   }
   ifr.ifr_data = newname;
-	if (ioctl(dev->ctrl_sock, SIOCSIFNAME, &ifr) == -1)
-	{
-		perror(NULL);
+  if(ioctl(dev->ctrl_sock, SIOCSIFNAME, &ifr) == -1)
+  {
+    perror(NULL);
     free(newname);
     tuntap_log(TUNTAP_LOG_ERR, "Can't set interface name");
     return -1;
