@@ -105,9 +105,12 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   }
 
   // make a dnsd_query_hook_response for the cache
+  /*
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
   response->dontLookUp               = true;
   response->dontSendResponse         = false;
+  loki_tld_lookup_cache[addr.ToString()]=response;
+   */
   // we can't delete response now...
   sockaddr_in saddr;
   saddr.sin_family      = AF_INET;
