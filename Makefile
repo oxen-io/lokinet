@@ -10,6 +10,8 @@ PREFIX ?= /usr/local
 CC ?= cc 
 CXX ?= c++
 
+SETCAP ?= which setcap && setcap cap_net_admin=+eip
+
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
 SHADOW_CONFIG=$(REPO)/shadow.config.xml
@@ -142,7 +144,7 @@ install:
 	rm -f $(PREFIX)/bin/lokinet
 	cp $(EXE) $(PREFIX)/bin/lokinet
 	chmod 755 $(PREFIX)/bin/lokinet
-	setcap cap_net_admin=+eip $(PREFIX)/bin/lokinet
+	$(SETCAP) $(PREFIX)/bin/lokinet
 	rm -f $(PREFIX)/bin/lokinet-bootstrap
 	cp $(REPO)/lokinet-bootstrap $(PREFIX)/bin/lokinet-bootstrap
 	chmod 755 $(PREFIX)/bin/lokinet-bootstrap
