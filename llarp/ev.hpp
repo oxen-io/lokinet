@@ -255,11 +255,17 @@ namespace llarp
     {
       if(_shouldClose)
         return -1;
-#ifdef __linux__
+#if defined(__linux__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || defined(__FreeBSD__) || defined(__sun)
+      // pretty much every UNIX system still extant, plus linux _and_ solaris
+      // (on both sides of the fork) can ignore SIGPIPE....except Macintosh,
+      // and the other vendored systems... -rick
       return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
-#else
+#elif defined(_WIN32)
       // TODO: make async
       return ::send(std::get< SOCKET >(fd), (char*)buf, sz, 0);
+#else
+      return ::send(fd, buf, sz, 0);
 #endif
     }
 
