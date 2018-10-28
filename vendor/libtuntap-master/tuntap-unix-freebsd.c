@@ -253,7 +253,7 @@ tuntap_sys_set_ipv4_tun(struct device *dev, t_tun_in_addr *s4,
     tuntap_log(TUNTAP_LOG_ERR, "Can't set IP address");
     return -1;
   }
-  return tuntap_sys_set_route(dev, s4, bits);
+  return tuntap_sys_add_route(dev, s4, bits);
 }
 
 int
