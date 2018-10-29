@@ -8,7 +8,7 @@ syscall:::entry
 
 profile:::tick-1sec
 {
-  printa("%@8u %a\n", @syscalls);
+  printa(@syscalls);
 }
 
 
