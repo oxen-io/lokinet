@@ -1,9 +1,9 @@
 #!/usr/sbin/dtrace -s
 
 syscall:::entry
-/pid == $1/
+/pid == $target/
 {
-  @calls[probefunc] = count();
+  @calls[ustack(10), probefunc] = count();
 }
 
 profile:::tick-1sec
@@ -11,7 +11,8 @@ profile:::tick-1sec
   /** print */
   printa(@calls);
   /** clear */
-  trunc(@calls);
+  clear(@calls);
+  trunc(@calls, 15);
 }
 
 
