@@ -1,5 +1,9 @@
 #!/usr/sbin/dtrace -s
 
+dtrace::BEGIN
+{
+}
+
 syscall:::entry
 /pid == $1/
 {
@@ -9,7 +13,7 @@ syscall:::entry
 profile:::tick-1sec
 {
   printa(@syscalls);
-  foreach(k, _; @syscalls)
+  foreach(k; @syscalls.keys.sort)
   {
     @syscalls[k] = 0;
   }
