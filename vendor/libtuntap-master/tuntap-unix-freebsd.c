@@ -188,7 +188,7 @@ tuntap_sys_set_ipv4_tap(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 
 static int
 tuntap_sys_add_route(struct device *dev, t_tun_in_addr *s4, uint32_t bits,
-                     uint32_t netmask)
+                     int netmask)
 {
   struct sockaddr_in mask;
   mask.sin_family      = AF_INET;
@@ -199,11 +199,11 @@ tuntap_sys_add_route(struct device *dev, t_tun_in_addr *s4, uint32_t bits,
 
   inet_ntop(AF_INET, s4, addrbuf, sizeof(struct sockaddr_in));
 
-  const char *addr    = addrbuf;
-  const char *netmask = inet_ntoa(mask.sin_addr);
+  const char *addr        = addrbuf;
+  const char *netmask_str = inet_ntoa(mask.sin_addr);
   /** because fuck this other stuff */
   snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask %s up",
-           dev->if_name, addr, addr, netmask);
+           dev->if_name, addr, addr, netmask_str);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
   snprintf(buf, sizeof(buf), "route add %s/%d -interface %s", addr, netmask,
@@ -215,7 +215,7 @@ tuntap_sys_add_route(struct device *dev, t_tun_in_addr *s4, uint32_t bits,
 
 int
 tuntap_sys_set_ipv4_tun(struct device *dev, t_tun_in_addr *s4,
-                        t_tun_in_addr *s4dest, uint32_t bits, uint32_t netmask)
+                        t_tun_in_addr *s4dest, uint32_t bits, int netmask)
 {
   struct ifaliasreq ifrq;
   struct sockaddr_in mask;
