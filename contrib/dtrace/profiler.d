@@ -1,7 +1,7 @@
 #!/usr/sbin/dtrace -s
 
 
-ulong[string] calls;
+ulong calls[string] ;
 
 dtrace::BEGIN
 {
