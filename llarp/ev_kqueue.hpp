@@ -145,9 +145,14 @@ namespace llarp
     int
     read(void* buf, size_t sz)
     {
+#ifdef __APPLE__
+      const size_t offset = 4;
+#else
+      const size_t offset = 0;
+#endif
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 4 && t->recvpkt)
-        t->recvpkt(t, ((byte_t*)buf) + 4, ret - 4);
+        t->recvpkt(t, ((byte_t*)buf) + offset, ret - offset);
       return ret;
     }
 
