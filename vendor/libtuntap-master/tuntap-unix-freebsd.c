@@ -205,9 +205,8 @@ tuntap_sys_add_route(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
            dev->if_name, addr, addr, netmask);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
-  snprintf(buf, sizeof(buf),
-           "route add -cloning -net %s -netmask %s -interface %s", addr,
-           netmask, dev->if_name);
+  snprintf(buf, sizeof(buf), "route add %s/%d -interface %s", addr,
+           dev->netmask, dev->if_name);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
   return 0;
