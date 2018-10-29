@@ -48,7 +48,7 @@ namespace abyss
           : _conn(c), _parent(p)
       {
         handler       = nullptr;
-        m_LastActive  = llarp_time_now_ms();
+        m_LastActive  = p->now();
         m_ReadTimeout = readtimeout;
         // set up tcp members
         _conn->user   = this;
@@ -265,7 +265,7 @@ namespace abyss
           return false;
         }
 
-        m_LastActive = llarp_time_now_ms();
+        m_LastActive = _parent->now();
         if(m_State < eReadHTTPBody)
         {
           const char* end = strstr(buf, "\r\n");
@@ -395,11 +395,11 @@ namespace abyss
     void
     BaseReqHandler::Tick()
     {
-      auto now = llarp_time_now_ms();
-      auto itr = m_Conns.begin();
+      auto _now = now();
+      auto itr  = m_Conns.begin();
       while(itr != m_Conns.end())
       {
-        if((*itr)->ShouldClose(now))
+        if((*itr)->ShouldClose(_now)
           itr = m_Conns.erase(itr);
         else
           ++itr;

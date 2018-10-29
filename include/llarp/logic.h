@@ -19,11 +19,11 @@ llarp_init_single_process_logic(struct llarp_threadpool* tp);
 
 /// single threaded tick
 void
-llarp_logic_tick(struct llarp_logic* logic);
+llarp_logic_tick(struct llarp_logic* logic, llarp_time_t now);
 
 /// isolated tick
 void
-llarp_logic_tick_async(struct llarp_logic* logic);
+llarp_logic_tick_async(struct llarp_logic* logic, llarp_time_t now);
 
 void
 llarp_free_logic(struct llarp_logic** logic);

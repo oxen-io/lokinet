@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <tuntap.h>
+#include <llarp/time.h>
 /**
  * ev.h
  *
@@ -45,6 +46,10 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
                                  struct llarp_threadpool *tp,
                                  struct llarp_logic *logic);
 
+/// get the current time on the event loop
+llarp_time_t
+llarp_ev_loop_time_now_ms(struct llarp_ev_loop *ev);
+
 /// stop event loop and wait for it to complete all jobs
 void
 llarp_ev_loop_stop(struct llarp_ev_loop *ev);
@@ -57,6 +62,7 @@ struct llarp_udp_io
   void *user;
   void *impl;
   struct llarp_ev_loop *parent;
+
   /// called every event loop tick after reads
   void (*tick)(struct llarp_udp_io *);
   // sockaddr * is the source

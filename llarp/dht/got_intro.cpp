@@ -28,7 +28,7 @@ namespace llarp
 
       for(const auto &introset : I)
       {
-        if(!introset.Verify(crypto))
+        if(!introset.Verify(crypto, dht.Now()))
         {
           llarp::LogWarn(
               "Invalid introset while handling direct GotIntro "

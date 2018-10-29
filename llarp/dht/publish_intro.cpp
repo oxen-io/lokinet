@@ -44,20 +44,21 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
+      auto now = ctx->impl.Now();
       if(S > 5)
       {
         llarp::LogWarn("invalid S value ", S, " > 5");
         return false;
       }
       auto &dht = ctx->impl;
-      if(!I.Verify(&dht.router->crypto))
+      if(!I.Verify(&dht.router->crypto, now))
       {
         llarp::LogWarn("invalid introset: ", I);
         // don't propogate or store
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
-      if(I.W && !I.W->IsValid(dht.router->crypto.shorthash))
+      if(I.W && !I.W->IsValid(dht.router->crypto.shorthash, now))
       {
         llarp::LogWarn("proof of work not good enough for IntroSet");
         // don't propogate or store
@@ -71,7 +72,7 @@ namespace llarp
             "failed to calculate hidden service address for PubIntro message");
         return false;
       }
-      auto now = llarp_time_now_ms();
+
       now += llarp::service::MAX_INTROSET_TIME_DELTA;
       if(I.IsExpired(now))
       {

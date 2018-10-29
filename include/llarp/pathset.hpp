@@ -66,9 +66,13 @@ namespace llarp
       size_t
       NumInStatus(PathStatus st) const;
 
+      /// get time from event loop
+      virtual llarp_time_t
+      Now() const = 0;
+
       /// return true if we should build another path
       virtual bool
-      ShouldBuildMore() const;
+      ShouldBuildMore(llarp_time_t now) const;
 
       /// return true if we should publish a new hidden service descriptor
       virtual bool

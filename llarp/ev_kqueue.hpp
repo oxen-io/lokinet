@@ -97,12 +97,10 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
-    tun(llarp_tun_io* tio)
-      : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write"))
-      , t(tio)
-      , tunif(tuntap_init())   
-    {  
-    };
+    tun(llarp_tun_io* tio, llarp_ev_loop* l)
+        : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write", l))
+        , t(tio)
+        , tunif(tuntap_init()){};
 
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
@@ -189,7 +187,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   llarp::ev_io*
   create_tun(llarp_tun_io* tun)
   {
-    llarp::tun* t = new llarp::tun(tun);
+    llarp::tun* t = new llarp::tun(tun, this);
     if(t->setup())
       return t;
     delete t;

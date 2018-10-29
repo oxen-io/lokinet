@@ -102,7 +102,7 @@ namespace llarp
       {
         llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
                        " because we couldn't get enough valid introductions");
-        if(ShouldBuildMore() || forceRebuild)
+        if(ShouldBuildMore(now) || forceRebuild)
           ManualRebuild(1);
         return;
       }
@@ -117,7 +117,7 @@ namespace llarp
         return;
       }
       m_IntroSet.topic = m_Tag;
-      if(!m_Identity.SignIntroSet(m_IntroSet, &m_Router->crypto))
+      if(!m_Identity.SignIntroSet(m_IntroSet, &m_Router->crypto, now))
       {
         llarp::LogWarn("failed to sign introset for endpoint ", Name());
         return;
@@ -300,7 +300,7 @@ namespace llarp
       std::set< IntroSet > remote;
       for(const auto& introset : msg->I)
       {
-        if(!introset.Verify(crypto))
+        if(!introset.Verify(crypto, Now()))
         {
           if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
           {
@@ -358,7 +358,7 @@ namespace llarp
         itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
       }
       itr->second.remote   = info;
-      itr->second.lastUsed = llarp_time_now_ms();
+      itr->second.lastUsed = Now();
     }
 
     bool
@@ -380,7 +380,7 @@ namespace llarp
         itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
       }
       itr->second.intro    = intro;
-      itr->second.lastUsed = llarp_time_now_ms();
+      itr->second.lastUsed = Now();
     }
 
     bool
@@ -430,7 +430,7 @@ namespace llarp
         itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
       }
       itr->second.sharedKey = k;
-      itr->second.lastUsed  = llarp_time_now_ms();
+      itr->second.lastUsed  = Now();
     }
 
     bool
@@ -469,7 +469,7 @@ namespace llarp
     Endpoint::CachedTagResult::HandleResponse(
         const std::set< IntroSet >& introsets)
     {
-      auto now = llarp_time_now_ms();
+      auto now = parent->Now();
 
       for(const auto& introset : introsets)
         if(result.insert(introset).second)
@@ -505,7 +505,7 @@ namespace llarp
     {
       llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
       msg->M.emplace_back(new llarp::dht::FindIntroMessage(tag, txid));
-      lastRequest = llarp_time_now_ms();
+      lastRequest = parent->Now();
       return msg;
     }
 
@@ -563,7 +563,7 @@ namespace llarp
       auto job = new PublishIntroSetJob(this, GenTXID(), m_IntroSet);
       if(job->SendRequestViaPath(path, r))
       {
-        m_LastPublishAttempt = llarp_time_now_ms();
+        m_LastPublishAttempt = Now();
         return true;
       }
       return false;
@@ -582,7 +582,7 @@ namespace llarp
     void
     Endpoint::IntroSetPublished()
     {
-      m_LastPublish = llarp_time_now_ms();
+      m_LastPublish = Now();
       llarp::LogInfo(Name(), " IntroSet publish confirmed");
     }
 
@@ -761,7 +761,7 @@ namespace llarp
       {
         llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
                        p->Endpoint(), " via ", dst);
-        if(MarkCurrentIntroBad(llarp_time_now_ms()))
+        if(MarkCurrentIntroBad(Now()))
         {
           llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
                          " via ", remoteIntro.pathID);
@@ -797,7 +797,7 @@ namespace llarp
         , m_DataHandler(ep)
         , m_Endpoint(ep)
     {
-      createdAt = llarp_time_now_ms();
+      createdAt = ep->Now();
     }
 
     void
@@ -822,7 +822,7 @@ namespace llarp
     Endpoint::HandlePathDead(void* user)
     {
       Endpoint* self = static_cast< Endpoint* >(user);
-      self->RegenAndPublishIntroSet(llarp_time_now_ms(), true);
+      self->RegenAndPublishIntroSet(self->Now(), true);
     }
 
     bool
@@ -845,7 +845,7 @@ namespace llarp
     Endpoint::OnLookup(const Address& addr, const IntroSet* introset,
                        const RouterID& endpoint)
     {
-      auto now = llarp_time_now_ms();
+      auto now = Now();
       if(introset == nullptr || introset->IsExpired(now))
       {
         llarp::LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
@@ -958,7 +958,7 @@ namespace llarp
     {
       remoteIntro = m_NextIntro;
       // prepare next intro
-      auto now = llarp_time_now_ms();
+      auto now = Now();
       for(const auto& intro : currentIntroSet.I)
       {
         if(intro.ExpiresSoon(now))
@@ -996,7 +996,7 @@ namespace llarp
           llarp::LogInfo("introset is old, dropping");
           return true;
         }
-        auto now = llarp_time_now_ms();
+        auto now = Now();
         if(i->IsExpired(now))
         {
           llarp::LogError("got expired introset from lookup from ", endpoint);
@@ -1028,11 +1028,11 @@ namespace llarp
                             ProtocolType t)
     {
       // inbound converstation
+      auto now = Now();
       {
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
         {
-          auto now = llarp_time_now_ms();
           routing::PathTransferMessage transfer;
           ProtocolFrame& f = transfer.T;
           path::Path* p    = nullptr;
@@ -1211,7 +1211,7 @@ namespace llarp
     Endpoint::OutboundContext::ShiftIntroduction()
     {
       bool success = false;
-      auto now     = llarp_time_now_ms();
+      auto now     = Now();
       if(now - lastShift < MIN_SHIFT_INTERVAL)
         return false;
       bool shifted = false;
@@ -1255,7 +1255,7 @@ namespace llarp
     Endpoint::SendContext::AsyncEncryptAndSendTo(llarp_buffer_t data,
                                                  ProtocolType protocol)
     {
-      auto now = llarp_time_now_ms();
+      auto now = m_Endpoint->Now();
       if(remoteIntro.ExpiresSoon(now))
       {
         if(!MarkCurrentIntroBad(now))
@@ -1409,7 +1409,7 @@ namespace llarp
         {
           llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
                           remoteIntro.router);
-          lastGoodSend = llarp_time_now_ms();
+          lastGoodSend = m_Endpoint->Now();
         }
         else
           llarp::LogError("Failed to send frame on path");
@@ -1532,17 +1532,15 @@ namespace llarp
     }
 
     bool
-    Endpoint::OutboundContext::ShouldBuildMore() const
+    Endpoint::OutboundContext::ShouldBuildMore(llarp_time_t now) const
     {
       if(markedBad)
         return false;
-      bool should = path::Builder::ShouldBuildMore();
+      bool should = path::Builder::ShouldBuildMore(now);
       // determinte newest intro
       Introduction intro;
       if(!GetNewestIntro(intro))
         return should;
-
-      auto now = llarp_time_now_ms();
       // time from now that the newest intro expires at
       if(now >= intro.expiresAt)
         return should;
@@ -1567,7 +1565,7 @@ namespace llarp
       f.T = currentConvoTag;
       f.S = m_Endpoint->GetSeqNoForConvo(f.T);
 
-      auto now = llarp_time_now_ms();
+      auto now = m_Endpoint->Now();
       if(remoteIntro.ExpiresSoon(now))
       {
         // shift intro

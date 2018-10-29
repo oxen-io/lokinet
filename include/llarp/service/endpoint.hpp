@@ -6,6 +6,7 @@
 #include <llarp/service/handler.hpp>
 #include <llarp/service/protocol.hpp>
 #include <llarp/path.hpp>
+#include <llarp/ev.h>
 
 // minimum time between interoset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -42,6 +43,13 @@ namespace llarp
 
       virtual void
       Tick(llarp_time_t now);
+
+      /// get time via event loop
+      llarp_time_t
+      Now()
+      {
+        return llarp_ev_loop_time_now_ms(EndpointNetLoop());
+      }
 
       /// router's logic
       llarp_logic*
@@ -263,7 +271,7 @@ namespace llarp
         ReadyToSend() const;
 
         bool
-        ShouldBuildMore() const;
+        ShouldBuildMore(llarp_time_t now) const;
 
         /// tick internal state
         /// return true to mark as dead
@@ -455,7 +463,7 @@ namespace llarp
       {
         RouterLookupJob(Endpoint* p)
         {
-          started = llarp_time_now_ms();
+          started = p->Now();
           txid    = p->GenTXID();
         }
 
@@ -511,8 +519,9 @@ namespace llarp
         llarp_time_t lastModified     = 0;
         std::set< IntroSet > result;
         Tag tag;
+        Endpoint * parent;
 
-        CachedTagResult(const Tag& t) : tag(t)
+        CachedTagResult(const Tag& t, Endpoint * p) : tag(t), parent(p)
         {
         }
 

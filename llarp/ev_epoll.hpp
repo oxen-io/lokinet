@@ -79,8 +79,8 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
-    tun(llarp_tun_io* tio)
-        : ev_io(-1, new LossyWriteQueue_t("tun_write_queue"))
+    tun(llarp_tun_io* tio, llarp_ev_loop* l)
+        : ev_io(-1, new LossyWriteQueue_t("tun_write_queue", l))
         , t(tio)
         , tunif(tuntap_init())
 
@@ -309,7 +309,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
   llarp::ev_io*
   create_tun(llarp_tun_io* tun)
   {
-    llarp::tun* t = new llarp::tun(tun);
+    llarp::tun* t = new llarp::tun(tun, this);
     if(t->setup())
     {
       return t;

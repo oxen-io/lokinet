@@ -115,7 +115,7 @@ namespace llarp
       if(ctx->services)
       {
         // expire intro sets
-        auto now    = llarp_time_now_ms();
+        auto now    = ctx->Now();
         auto &nodes = ctx->services->nodes;
         auto itr    = nodes.begin();
         while(itr != nodes.end())
@@ -244,7 +244,7 @@ namespace llarp
     void
     Context::CleanupTX()
     {
-      auto now = llarp_time_now_ms();
+      auto now = Now();
       llarp::LogDebug("DHT tick");
 
       pendingRouterLookups.Expire(now);
@@ -285,7 +285,7 @@ namespace llarp
       router->SendToOrQueue(peer, &m);
       if(keepalive)
       {
-        auto now = llarp_time_now_ms();
+        auto now = Now();
         router->PersistSessionUntil(peer, now + 10000);
       }
     }
@@ -323,7 +323,7 @@ namespace llarp
       bool
       Validate(const service::IntroSet &value) const
       {
-        if(!value.Verify(parent->Crypto()))
+        if(!value.Verify(parent->Crypto(), parent->Now()))
         {
           llarp::LogWarn("Got invalid introset from service lookup");
           return false;
@@ -547,7 +547,7 @@ namespace llarp
       bool
       Validate(const service::IntroSet &introset) const
       {
-        if(!introset.Verify(parent->Crypto()))
+        if(!introset.Verify(parent->Crypto(), parent->Now()))
         {
           llarp::LogWarn("got invalid introset from tag lookup");
           return false;
@@ -822,6 +822,12 @@ namespace llarp
     Context::Crypto()
     {
       return &router->crypto;
+    }
+
+    llarp_time_t
+    Context::Now()
+    {
+      return llarp_ev_loop_time_now_ms(router->netloop);
     }
 
   }  // namespace dht
