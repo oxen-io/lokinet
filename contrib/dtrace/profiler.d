@@ -1,4 +1,4 @@
-#!/usr/bin/dtrace -s
+#!/usr/sbin/dtrace -s
 // lokinet dtrace profiler
 
 dtrace::BEGIN
