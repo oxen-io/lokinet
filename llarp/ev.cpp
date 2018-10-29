@@ -7,13 +7,13 @@
 // apparently current Solaris will emulate epoll.
 #if __linux__ || __sun__
 #include "ev_epoll.hpp"
-#endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
 #include "ev_kqueue.hpp"
-#endif
-#if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+#elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
 #include "ev_win32.hpp"
+#else
+#error No async event loop for your platform, subclass llarp_ev_loop
 #endif
 
 void
@@ -21,13 +21,13 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {
 #if __linux__ || __sun__
   *ev = new llarp_epoll_loop;
-#endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
   *ev = new llarp_kqueue_loop;
-#endif
-#if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+#elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
   *ev = new llarp_win32_loop;
+#else
+#error no event loop subclass
 #endif
   (*ev)->init();
   (*ev)->_now = llarp_time_now_ms();
@@ -202,117 +202,4 @@ namespace llarp
     return true;
   }
 
-  int
-  tcp_serv::read(void *, size_t)
-  {
-#ifndef _WIN32
-    int new_fd = ::accept(fd, nullptr, nullptr);
-    if(new_fd == -1)
-    {
-      llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
-      return -1;
-    }
-#else
-    SOCKET new_fd = ::accept(std::get< SOCKET >(fd), nullptr, nullptr);
-    if(new_fd == INVALID_SOCKET)
-    {
-      llarp::LogError("failed to accept on ", std::get< SOCKET >(fd), ":",
-                      strerror(errno));
-      return -1;
-    }
-#endif
-    llarp_tcp_conn *conn = new llarp_tcp_conn;
-    // zero out callbacks
-    conn->tick   = nullptr;
-    conn->closed = nullptr;
-    conn->read   = nullptr;
-    // build handler
-    llarp::tcp_conn *connimpl = new tcp_conn(new_fd, conn);
-    conn->impl                = connimpl;
-    conn->loop                = loop;
-    if(loop->add_ev(connimpl, true))
-    {
-      // call callback
-      if(tcp->accepted)
-        tcp->accepted(tcp, conn);
-      return 0;
-    }
-    // cleanup error
-    delete conn;
-    delete connimpl;
-    return -1;
-  }
-
 }  // namespace llarp
-
-// they're effectively alike, save for the fact that we must not
-// get file descriptors below zero
-#ifndef _WIN32
-llarp::ev_io *
-llarp_ev_loop::bind_tcp(llarp_tcp_acceptor *tcp, const sockaddr *bindaddr)
-{
-  int fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
-  if(fd == -1)
-    return nullptr;
-  socklen_t sz = sizeof(sockaddr_in);
-  if(bindaddr->sa_family == AF_INET6)
-  {
-    sz = sizeof(sockaddr_in6);
-  }
-  else if(bindaddr->sa_family == AF_UNIX)
-  {
-    sz = sizeof(sockaddr_un);
-  }
-  if(::bind(fd, bindaddr, sz) == -1)
-  {
-    ::close(fd);
-    return nullptr;
-  }
-  if(::listen(fd, 5) == -1)
-  {
-    ::close(fd);
-    return nullptr;
-  }
-  llarp::ev_io *serv = new llarp::tcp_serv(this, fd, tcp);
-  tcp->impl          = serv;
-  return serv;
-}
-#else
-llarp::ev_io *
-llarp_ev_loop::bind_tcp(llarp_tcp_acceptor *tcp, const sockaddr *bindaddr)
-{
-  DWORD on = 1;
-  SOCKET fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
-  if(fd == INVALID_SOCKET)
-    return nullptr;
-  socklen_t sz = sizeof(sockaddr_in);
-  if(bindaddr->sa_family == AF_INET6)
-  {
-    sz = sizeof(sockaddr_in6);
-  }
-  // keep. inexplicably, windows now has unix domain sockets
-  // for now, use the ID numbers directly until this comes out of
-  // beta
-  else if(bindaddr->sa_family == AF_UNIX)
-  {
-    sz = 110;  // current size in 10.0.17763, verify each time the beta PSDK
-               // is updated
-  }
-  if(::bind(fd, bindaddr, sz) == SOCKET_ERROR)
-  {
-    ::closesocket(fd);
-    return nullptr;
-  }
-  if(::listen(fd, 5) == SOCKET_ERROR)
-  {
-    ::closesocket(fd);
-    return nullptr;
-  }
-  llarp::ev_io *serv = new llarp::tcp_serv(this, fd, tcp);
-  tcp->impl = serv;
-  // We're non-blocking now, but can't really make use of it
-  // until we cut over to WSA* functions
-  ioctlsocket(fd, FIONBIO, &on);
-  return serv;
-}
-#endif

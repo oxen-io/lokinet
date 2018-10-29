@@ -1,6 +1,6 @@
 #ifndef LLARP_EV_H
 #define LLARP_EV_H
-#if defined(__MINGW32__) || defined(_WIN32)
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <wspiapi.h>
@@ -8,7 +8,6 @@
 #define ssize_t long
 #endif
 #else
-
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
@@ -17,6 +16,7 @@
 #include <stdlib.h>
 #include <tuntap.h>
 #include <llarp/time.h>
+
 /**
  * ev.h
  *

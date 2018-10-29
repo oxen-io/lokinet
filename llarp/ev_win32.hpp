@@ -10,6 +10,68 @@
 
 namespace llarp
 {
+  int
+  tcp_conn::read(void* buf, size_t sz)
+  {
+    if(_shouldClose)
+      return -1;
+    // TODO: make async
+    ssize_t amount = ::recv(std::get< SOCKET >(fd), (char*)buf, sz, 0);
+    if(amount > 0)
+    {
+      if(tcp->read)
+        tcp->read(tcp, buf, amount);
+    }
+    else
+    {
+      // error
+      _shouldClose = true;
+      return -1;
+    }
+    return 0;
+  }
+
+  ssize_t
+  tcp_conn::do_write(void* buf, size_t sz)
+  {
+    if(_shouldClose)
+      return -1;
+    // TODO: make async
+    return ::send(std::get< SOCKET >(fd), (char*)buf, sz, 0);
+  }
+
+  int
+  tcp_serv::read(void*, size_t)
+  {
+    SOCKET new_fd = ::accept(std::get< SOCKET >(fd), nullptr, nullptr);
+    if(new_fd == INVALID_SOCKET)
+    {
+      llarp::LogError("failed to accept on ", std::get< SOCKET >(fd), ":",
+                      strerror(errno));
+      return -1;
+    }
+    llarp_tcp_conn* conn = new llarp_tcp_conn;
+    // zero out callbacks
+    conn->tick   = nullptr;
+    conn->closed = nullptr;
+    conn->read   = nullptr;
+    // build handler
+    llarp::tcp_conn* connimpl = new tcp_conn(new_fd, conn);
+    conn->impl                = connimpl;
+    conn->loop                = loop;
+    if(loop->add_ev(connimpl, true))
+    {
+      // call callback
+      if(tcp->accepted)
+        tcp->accepted(tcp, conn);
+      return 0;
+    }
+    // cleanup error
+    delete conn;
+    delete connimpl;
+    return -1;
+  }
+
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
@@ -87,14 +149,11 @@ namespace llarp
     llarp_tun_io* t;
     device* tunif;
     OVERLAPPED* tun_async[2];
-    tun(llarp_tun_io* tio)
-        : ev_io(INVALID_HANDLE_VALUE, new LossyWriteQueue_t("tun_write_queue"))
+    tun(llarp_tun_io* tio, llarp_ev_loop* l)
+        : ev_io(INVALID_HANDLE_VALUE,
+                new LossyWriteQueue_t("win32_tun_write", l))
         , t(tio)
-        , tunif(tuntap_init())
-
-              {
-
-              };
+        , tunif(tuntap_init()){};
 
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
@@ -174,6 +233,7 @@ namespace llarp
     {
     }
   };
+
 };  // namespace llarp
 
 struct llarp_win32_loop : public llarp_ev_loop
@@ -189,6 +249,44 @@ struct llarp_win32_loop : public llarp_ev_loop
     if(iocpfd != INVALID_HANDLE_VALUE)
       ::CloseHandle(iocpfd);
     iocpfd = INVALID_HANDLE_VALUE;
+  }
+
+  llarp::ev_io*
+  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
+  {
+    DWORD on  = 1;
+    SOCKET fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
+    if(fd == INVALID_SOCKET)
+      return nullptr;
+    socklen_t sz = sizeof(sockaddr_in);
+    if(bindaddr->sa_family == AF_INET6)
+    {
+      sz = sizeof(sockaddr_in6);
+    }
+    // keep. inexplicably, windows now has unix domain sockets
+    // for now, use the ID numbers directly until this comes out of
+    // beta
+    else if(bindaddr->sa_family == AF_UNIX)
+    {
+      sz = 110;  // current size in 10.0.17763, verify each time the beta PSDK
+                 // is updated
+    }
+    if(::bind(fd, bindaddr, sz) == SOCKET_ERROR)
+    {
+      ::closesocket(fd);
+      return nullptr;
+    }
+    if(::listen(fd, 5) == SOCKET_ERROR)
+    {
+      ::closesocket(fd);
+      return nullptr;
+    }
+    llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
+    tcp->impl          = serv;
+    // We're non-blocking now, but can't really make use of it
+    // until we cut over to WSA* functions
+    ioctlsocket(fd, FIONBIO, &on);
+    return serv;
   }
 
   bool
@@ -227,13 +325,9 @@ struct llarp_win32_loop : public llarp_ev_loop
         llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
                         "\tqdata: ", qdata);
         if(ev->write)
-        {
           ev->flush_write();
-        }
         else
-        {
           ev->read(readbuf, iolen);
-        }
       }
       ++idx;
     }
@@ -346,23 +440,21 @@ struct llarp_win32_loop : public llarp_ev_loop
     // and stop any pending I/O
     BOOL stopped;
     int close_fd;
-    switch(ev->fd.index())
+
+    if(std::holds_alternative< SOCKET >(ev->fd))
     {
-      case 0:
-        stopped =
-            ::CancelIo(reinterpret_cast< HANDLE >(std::get< SOCKET >(ev->fd)));
-        close_fd = closesocket(std::get< SOCKET >(ev->fd));
-        break;
-      case 1:
-        stopped  = ::CancelIo(std::get< HANDLE >(ev->fd));
-        close_fd = CloseHandle(std::get< HANDLE >(ev->fd));
-        if(close_fd)
-          close_fd = 0;  // must be zero
-        else
-          close_fd = 1;
-        break;
-      default:
-        return false;
+      stopped =
+          ::CancelIo(reinterpret_cast< HANDLE >(std::get< SOCKET >(ev->fd)));
+      close_fd = closesocket(std::get< SOCKET >(ev->fd));
+    }
+    else
+    {
+      stopped  = ::CancelIo(std::get< HANDLE >(ev->fd));
+      close_fd = CloseHandle(std::get< HANDLE >(ev->fd));
+      if(close_fd)
+        close_fd = 0;  // must be zero
+      else
+        close_fd = 1;
     }
     return close_fd == 0 && stopped == TRUE;
   }
@@ -382,7 +474,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   llarp::ev_io*
   create_tun(llarp_tun_io* tun)
   {
-    llarp::tun* t = new llarp::tun(tun);
+    llarp::tun* t = new llarp::tun(tun, this);
     if(t->setup())
       return t;
     delete t;
@@ -396,6 +488,11 @@ struct llarp_win32_loop : public llarp_ev_loop
     llarp::tun* t   = nullptr;
     ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
     memset(&buf, 0, 1024);
+
+    // if the write flag was set earlier,
+    // clear it on demand
+    if(ev->write && !write)
+      ev->write = false;
 
     if(ev->isTCP)
     {
@@ -412,58 +509,49 @@ struct llarp_win32_loop : public llarp_ev_loop
         ev->write = true;
       }
       else
-      {
         ::ReadFile((HANDLE)std::get< SOCKET >(ev->fd), &buf, 1024, nullptr,
                    &ev->portfd[0]);
-      }
       handlers.emplace_back(ev);
       return true;
     }
 
-    switch(ev->fd.index())
+    if(std::holds_alternative< SOCKET >(ev->fd))
     {
-      case 0:
-        if(!::CreateIoCompletionPort((HANDLE)std::get< 0 >(ev->fd), iocpfd,
-                                     ev->listener_id, 0))
-        {
-          delete ev;
-          return false;
-        }
-        if(write)
-        {
-          ::WriteFile((HANDLE)std::get< 0 >(ev->fd), &buf, 1024, nullptr,
-                      &ev->portfd[1]);
-          ev->write = true;
-        }
-        else
-        {
-          ::ReadFile((HANDLE)std::get< 0 >(ev->fd), &buf, 1024, nullptr,
-                     &ev->portfd[0]);
-        }
-        break;
-      case 1:
-        t = dynamic_cast< llarp::tun* >(ev);
-        if(!::CreateIoCompletionPort(std::get< 1 >(ev->fd), iocpfd,
-                                     ev->listener_id, 0))
-        {
-          delete ev;
-          return false;
-        }
-        if(write)
-        {
-          ::WriteFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr,
-                      t->tun_async[1]);
-          ev->write = true;
-        }
-        else
-        {
-          ::ReadFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr,
-                     t->tun_async[0]);
-        }
-        break;
-      default:
+      if(!::CreateIoCompletionPort((HANDLE)std::get< 0 >(ev->fd), iocpfd,
+                                   ev->listener_id, 0))
+      {
+        delete ev;
         return false;
+      }
+      if(write)
+      {
+        ::WriteFile((HANDLE)std::get< 0 >(ev->fd), &buf, 1024, nullptr,
+                    &ev->portfd[1]);
+        ev->write = true;
+      }
+      else
+        ::ReadFile((HANDLE)std::get< 0 >(ev->fd), &buf, 1024, nullptr,
+                   &ev->portfd[0]);
     }
+    else
+    {
+      t = dynamic_cast< llarp::tun* >(ev);
+      if(!::CreateIoCompletionPort(std::get< 1 >(ev->fd), iocpfd,
+                                   ev->listener_id, 0))
+      {
+        delete ev;
+        return false;
+      }
+      if(write)
+      {
+        ::WriteFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr,
+                    t->tun_async[1]);
+        ev->write = true;
+      }
+      else
+        ::ReadFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr, t->tun_async[0]);
+    }
+
     handlers.emplace_back(ev);
     return true;
   }
@@ -496,6 +584,15 @@ struct llarp_win32_loop : public llarp_ev_loop
   running() const
   {
     return iocpfd != INVALID_HANDLE_VALUE;
+  }
+
+  bool
+  udp_listen(llarp_udp_io* l, const sockaddr* src)
+  {
+    auto ev = create_udp(l, src);
+    if(ev)
+      l->fd = std::get< SOCKET >(ev->fd);
+    return ev && add_ev(ev, false);
   }
 
   void

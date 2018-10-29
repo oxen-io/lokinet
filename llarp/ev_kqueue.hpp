@@ -26,6 +26,73 @@
 
 namespace llarp
 {
+  int
+  tcp_conn::read(void* buf, size_t sz)
+  {
+    if(_shouldClose)
+      return -1;
+
+    ssize_t amount = ::read(fd, buf, sz);
+
+    if(amount > 0)
+    {
+      if(tcp->read)
+        tcp->read(tcp, buf, amount);
+    }
+    else
+    {
+      // error
+      _shouldClose = true;
+      return -1;
+    }
+    return 0;
+  }
+
+  ssize_t
+  tcp_conn::do_write(void* buf, size_t sz)
+  {
+    if(_shouldClose)
+      return -1;
+
+#if defined(__OpenBSD__) || defined(__NetBSD__) || defined(__FreeBSD__)
+    // macintosh uses a weird sockopt
+    return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
+#else
+    return ::send(fd, buf, sz, 0);
+#endif
+  }
+
+  int
+  tcp_serv::read(void*, size_t)
+  {
+    int new_fd = ::accept(fd, nullptr, nullptr);
+    if(new_fd == -1)
+    {
+      llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
+      return -1;
+    }
+    llarp_tcp_conn* conn = new llarp_tcp_conn;
+    // zero out callbacks
+    conn->tick   = nullptr;
+    conn->closed = nullptr;
+    conn->read   = nullptr;
+    // build handler
+    llarp::tcp_conn* connimpl = new tcp_conn(new_fd, conn);
+    conn->impl                = connimpl;
+    conn->loop                = loop;
+    if(loop->add_ev(connimpl, true))
+    {
+      // call callback
+      if(tcp->accepted)
+        tcp->accepted(tcp, conn);
+      return 0;
+    }
+    // cleanup error
+    delete conn;
+    delete connimpl;
+    return -1;
+  }
+
   struct udp_listener : public ev_io
   {
     llarp_udp_io* udp;
@@ -187,6 +254,36 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   {
   }
 
+  llarp::ev_io*
+  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
+  {
+    int fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
+    if(fd == -1)
+      return nullptr;
+    socklen_t sz = sizeof(sockaddr_in);
+    if(bindaddr->sa_family == AF_INET6)
+    {
+      sz = sizeof(sockaddr_in6);
+    }
+    else if(bindaddr->sa_family == AF_UNIX)
+    {
+      sz = sizeof(sockaddr_un);
+    }
+    if(::bind(fd, bindaddr, sz) == -1)
+    {
+      ::close(fd);
+      return nullptr;
+    }
+    if(::listen(fd, 5) == -1)
+    {
+      ::close(fd);
+      return nullptr;
+    }
+    llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
+    tcp->impl          = serv;
+    return serv;
+  }
+
   ~llarp_kqueue_loop()
   {
   }
@@ -342,6 +439,15 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       return -1;
     }
     return fd;
+  }
+
+  virtual bool
+  udp_listen(llarp_udp_io* l, const sockaddr* src)
+  {
+    auto ev = create_udp(l, src);
+    if(ev)
+      l->fd = ev->fd;
+    return ev && add_ev(ev, false);
   }
 
   bool

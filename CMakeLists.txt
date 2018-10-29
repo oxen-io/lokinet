@@ -94,8 +94,6 @@ endif()
 
 add_compile_options(-Wall -Wno-deprecated-declarations -march=native)
 add_compile_options(${OPTIMIZE_FLAGS})
-add_compile_options($ENV{CFLAGS})
-add_compile_options($<$<COMPILE_LANGUAGE:CXX>:$ENV{CXXFLAGS}>)
 
 if(SHADOW)
   add_compile_options(-fPIC)
