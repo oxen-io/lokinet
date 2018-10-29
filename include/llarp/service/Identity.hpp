@@ -46,7 +46,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
 
       bool
-      SignIntroSet(IntroSet& i, llarp_crypto* c) const;
+      SignIntroSet(IntroSet& i, llarp_crypto* c, llarp_time_t now) const;
 
       bool
       Sign(llarp_crypto*, byte_t* sig, llarp_buffer_t buf) const;

@@ -34,7 +34,7 @@
 #ifndef _MSC_VER
 extern "C" int
 inet_pton(int af, const char *src, void *dst);
-extern "C"  const char *
+extern "C" const char *
 inet_ntop(int af, const void *src, char *dst, size_t size);
 #endif
 #else
@@ -68,9 +68,9 @@ extern "C"
     dev->tun_fd    = TUNFD_INVALID_VALUE;
     dev->ctrl_sock = -1;
     dev->flags     = 0;
-	#if defined(Windows)
-	memset(&dev->ovl[0], 0, sizeof(OVERLAPPED)*2);
-	#endif
+#if defined(Windows)
+    memset(&dev->ovl[0], 0, sizeof(OVERLAPPED) * 2);
+#endif
 
     __tuntap_log = &tuntap_log_default;
     return dev;
@@ -143,7 +143,7 @@ extern "C"
       errval = inet_pton(AF_INET, daddr, &(daddr4));
       if(errval == 1)
       {
-        return tuntap_sys_set_ipv4_tun(dev, &baddr4, &daddr4, mask);
+        return tuntap_sys_set_ipv4_tun(dev, &baddr4, &daddr4, mask, netmask);
       }
       else
       {

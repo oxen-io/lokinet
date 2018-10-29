@@ -3,6 +3,7 @@
 #include <llarp/buffer.h>
 #include <llarp/time.h>
 #include <llarp/net.hpp>
+#include <llarp/ev.h>
 
 #ifndef _WIN32
 // unix, linux
@@ -101,10 +102,14 @@ namespace llarp
 
       struct PutTime
       {
+        llarp_ev_loop* loop;
+        PutTime(llarp_ev_loop* evloop) : loop(evloop)
+        {
+        }
         void
         operator()(IPv4Packet& pkt) const
         {
-          pkt.timestamp = llarp_time_now_ms();
+          pkt.timestamp = llarp_ev_loop_time_now_ms(loop);
         }
       };
 

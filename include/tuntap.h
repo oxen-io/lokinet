@@ -230,7 +230,7 @@ extern "C"
   tuntap_sys_set_ipv4_tap(struct device *, t_tun_in_addr *, uint32_t);
   int
   tuntap_sys_set_ipv4_tun(struct device *dev, t_tun_in_addr *s4,
-                          t_tun_in_addr *s4dest, uint32_t bits);
+                          t_tun_in_addr *s4dest, uint32_t bits, int netmask);
 #endif
 
   int

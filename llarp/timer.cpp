@@ -20,11 +20,11 @@ namespace llarp
     bool done;
     bool canceled;
 
-    timer(uint64_t ms = 0, void* _user = nullptr,
+    timer(llarp_time_t now, uint64_t ms = 0, void* _user = nullptr,
           llarp_timer_handler_func _func = nullptr)
         : user(_user)
         , called_at(0)
-        , started(llarp_time_now_ms())
+        , started(now)
         , timeout(ms)
         , func(_func)
         , done(false)
@@ -61,6 +61,13 @@ struct llarp_timer_context
   llarp::util::Mutex tickerMutex;
   llarp::util::Condition* ticker        = nullptr;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(100);
+
+  llarp_time_t m_Now;
+
+  llarp_timer_context()
+  {
+    m_Now = llarp_time_now_ms();
+  }
 
   uint32_t ids = 0;
   bool _run    = true;
@@ -108,11 +115,12 @@ struct llarp_timer_context
   call_later(void* user, llarp_timer_handler_func func, uint64_t timeout_ms)
   {
     llarp::util::Lock lock(timersMutex);
+
     uint32_t id = ++ids;
     timers.insert(
         std::make_pair(id,
                        std::unique_ptr< llarp::timer >(
-                           new llarp::timer(timeout_ms, user, func))));
+                           new llarp::timer(m_Now, timeout_ms, user, func))));
     return id;
   }
 
@@ -182,18 +190,26 @@ llarp_timer_cancel_job(struct llarp_timer_context* t, uint32_t id)
 }
 
 void
+llarp_timer_set_time(struct llarp_timer_context* t, llarp_time_t now)
+{
+  if(now == 0)
+    now = llarp_time_now_ms();
+  t->m_Now = now;
+}
+
+void
 llarp_timer_tick_all(struct llarp_timer_context* t)
 {
   if(!t->run())
     return;
-  auto now = llarp_time_now_ms();
+
   std::list< std::unique_ptr< llarp::timer > > hit;
   {
     llarp::util::Lock lock(t->timersMutex);
     auto itr = t->timers.begin();
     while(itr != t->timers.end())
     {
-      if(now - itr->second->started >= itr->second->timeout
+      if(t->m_Now - itr->second->started >= itr->second->timeout
          || itr->second->canceled)
       {
         // timer hit
@@ -208,7 +224,7 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
   {
     if(h->func)
     {
-      h->called_at = now;
+      h->called_at = t->m_Now;
       h->exec();
     }
   }
@@ -222,8 +238,9 @@ llarp_timer_tick_all_job(void* user)
 
 void
 llarp_timer_tick_all_async(struct llarp_timer_context* t,
-                           struct llarp_threadpool* pool)
+                           struct llarp_threadpool* pool, llarp_time_t now)
 {
+  t->m_Now = now;
   llarp_threadpool_queue_job(pool, {t, llarp_timer_tick_all_job});
 }
 
@@ -244,7 +261,7 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
     {
       llarp::util::Lock lock(t->timersMutex);
       // we woke up
-      llarp_timer_tick_all_async(t, pool);
+      llarp_timer_tick_all_async(t, pool, llarp_time_now_ms());
     }
   }
 }

@@ -12,8 +12,9 @@ namespace llarp
     }
 
     bool
-    PathSet::ShouldBuildMore() const
+    PathSet::ShouldBuildMore(llarp_time_t now) const
     {
+      (void)now;
       return m_Paths.size() < m_NumPaths;
     }
 
@@ -160,7 +161,7 @@ namespace llarp
     void
     PathSet::HandlePathBuilt(Path* path)
     {
-      auto dlt = llarp_time_now_ms() - path->buildStarted;
+      auto dlt = Now() - path->buildStarted;
       llarp::LogInfo("Path build took ", dlt, "ms for tx=", path->TXID(),
                      " rx=", path->RXID());
     }

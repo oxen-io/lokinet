@@ -179,7 +179,7 @@ namespace llarp
     }
 
     ~LRCMFrameDecrypt()
-    {         
+    {
       delete decrypter;
     }
 
@@ -226,6 +226,7 @@ namespace llarp
     static void
     HandleDecrypted(llarp_buffer_t* buf, LRCMFrameDecrypt* self)
     {
+      auto now   = self->context->Router()->Now();
       auto& info = self->hop->info;
       if(!buf)
       {
@@ -265,7 +266,7 @@ namespace llarp
       self->context->Crypto()->shorthash(self->hop->nonceXOR,
                                          llarp::Buffer(self->hop->pathKey));
       if(self->record.work
-         && self->record.work->IsValid(self->context->Crypto()->shorthash))
+         && self->record.work->IsValid(self->context->Crypto()->shorthash, now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",
@@ -280,7 +281,7 @@ namespace llarp
       }
 
       // TODO: check if we really want to accept it
-      self->hop->started = llarp_time_now_ms();
+      self->hop->started = now;
 
       size_t sz = self->frames[0].size();
       // shift

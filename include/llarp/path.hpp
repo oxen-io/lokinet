@@ -271,7 +271,7 @@ namespace llarp
       }
 
       void
-      EnterState(PathStatus st);
+      EnterState(PathStatus st, llarp_time_t now);
 
       llarp_time_t
       ExpireTime() const
@@ -374,16 +374,16 @@ namespace llarp
 
       /// called from router tick function
       void
-      ExpirePaths();
+      ExpirePaths(llarp_time_t now);
 
       /// called from router tick function
       /// builds all paths we need to build at current tick
       void
-      BuildPaths();
+      BuildPaths(llarp_time_t now);
 
       /// called from router tick function
       void
-      TickPaths();
+      TickPaths(llarp_time_t now);
 
       ///  track a path builder with this context
       void

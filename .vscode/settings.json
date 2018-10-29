@@ -67,6 +67,7 @@
     "shared_mutex": "cpp",
     "complex": "cpp",
     "variant": "cpp",
-    "any": "cpp"
+    "any": "cpp",
+    "tuntap.h": "c"
   }
 }
