@@ -9,7 +9,7 @@ syscall:::entry
 profile:::tick-1sec
 {
   printa(@syscalls);
-  foreach(k ; @syscalls.keys)
+  foreach(k, _; @syscalls)
   {
     @syscalls[k] = 0;
   }
