@@ -1,8 +1,4 @@
 #!/usr/sbin/dtrace -s
-dtrace::BEGIN
-{
-
-}
 
 syscall:::entry
 /pid == $1/
