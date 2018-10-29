@@ -1,8 +1,5 @@
 #!/usr/sbin/dtrace -s
 
-
-ulong calls[string] ;
-
 dtrace::BEGIN
 {
 }
@@ -10,16 +7,15 @@ dtrace::BEGIN
 syscall:::entry
 /pid == $1/
 {
-  calls[probefunc] = count();
+  @calls[probefunc] = count();
 }
 
 profile:::tick-1sec
 {
-  printa(calls);
-  foreach(k, _; calls)
-  {
-    @syscalls[k] = 0;
-  }
+  /** print */
+  printa(@calls);
+  /** clear */
+  trunc(@calls);
 }
 
 
