@@ -49,6 +49,12 @@ namespace abyss
       void
       RemoveConn(IRPCHandler* handler);
 
+      llarp_time_t
+      now() const
+      {
+        return llarp_ev_loop_time_now_ms(m_loop);
+      }
+
      protected:
       virtual IRPCHandler*
       CreateHandler(ConnImpl* connimpl) const = 0;

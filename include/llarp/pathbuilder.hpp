@@ -29,7 +29,10 @@ namespace llarp
                 size_t hop);
 
       virtual bool
-      ShouldBuildMore() const;
+      ShouldBuildMore(llarp_time_t now) const;
+
+      llarp_time_t
+      Now() const;
 
       void
       BuildOne();

@@ -242,6 +242,13 @@ struct llarp_router
   void
   Tick();
 
+  /// get time from event loop
+  llarp_time_t
+  Now() const
+  {
+    return llarp_ev_loop_time_now_ms(netloop);
+  }
+
   /// schedule ticker to call i ms from now
   void
   ScheduleTicker(uint64_t i = 1000);

@@ -97,12 +97,10 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
-    tun(llarp_tun_io* tio)
-      : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write"))
-      , t(tio)
-      , tunif(tuntap_init())   
-    {  
-    };
+    tun(llarp_tun_io* tio, llarp_ev_loop* l)
+        : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write", l))
+        , t(tio)
+        , tunif(tuntap_init()){};
 
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
@@ -110,6 +108,7 @@ namespace llarp
       return -1;
     }
 
+#ifdef __APPLE__
     virtual ssize_t
     do_write(void* buf, size_t sz)
     {
@@ -122,6 +121,7 @@ namespace llarp
       vecs[1].iov_len  = sz;
       return writev(fd, vecs, 2);
     }
+#endif
 
     void
     flush_write()
@@ -145,9 +145,14 @@ namespace llarp
     int
     read(void* buf, size_t sz)
     {
+#ifdef __APPLE__
+      const size_t offset = 4;
+#else
+      const size_t offset = 0;
+#endif
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 4 && t->recvpkt)
-        t->recvpkt(t, ((byte_t*)buf) + 4, ret - 4);
+        t->recvpkt(t, ((byte_t*)buf) + offset, ret - offset);
       return ret;
     }
 
@@ -189,7 +194,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   llarp::ev_io*
   create_tun(llarp_tun_io* tun)
   {
-    llarp::tun* t = new llarp::tun(tun);
+    llarp::tun* t = new llarp::tun(tun, this);
     if(t->setup())
       return t;
     delete t;
@@ -219,7 +224,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     int result;
     timespec t;
     t.tv_sec  = 0;
-    t.tv_nsec = ms * 1000UL;
+    t.tv_nsec = ms * 1000000UL;
     result    = kevent(kqueuefd, nullptr, 0, events, 1024, &t);
     // result: 0 is a timeout
     if(result > 0)

@@ -29,11 +29,10 @@
 namespace llarp
 {
   struct ev_io
-  { 
+  {
     struct WriteBuffer
     {
-      
-      llarp_time_t timestamp             = 0;
+      llarp_time_t timestamp = 0;
       size_t bufsz;
       byte_t buf[EV_WRITE_BUF_SZ];
 
@@ -52,19 +51,19 @@ namespace llarp
 
       struct GetTime
       {
-        llarp_time_t
-        operator()(const WriteBuffer& w) const
+        llarp_time_t operator()(const WriteBuffer & buf) const
         {
-          return w.timestamp;
+          return buf.timestamp;
         }
       };
 
       struct PutTime
       {
-        void
-        operator()(WriteBuffer& w) const
+        llarp_ev_loop * loop;
+        PutTime(llarp_ev_loop * l ) : loop(l) {}
+        void operator()(WriteBuffer & buf)
         {
-          w.timestamp = llarp_time_now_ms();
+          buf.timestamp = llarp_ev_loop_time_now_ms(loop);
         }
       };
 
@@ -239,11 +238,11 @@ namespace llarp
     {
       if(_shouldClose)
         return -1;
-      #ifdef __linux__
+#ifdef __linux__
       return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
-      #else
-      return ::send(fd, buf, sz, 0 );
-      #endif
+#else
+      return ::send(fd, buf, sz, 0);
+#endif
     }
 
     int
@@ -303,7 +302,7 @@ namespace llarp
 struct llarp_ev_loop
 {
   byte_t readbuf[EV_READ_BUF_SZ];
-
+  llarp_time_t _now = 0;
   virtual bool
   init() = 0;
   virtual int

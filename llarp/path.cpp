@@ -234,10 +234,9 @@ namespace llarp
     }
 
     void
-    PathContext::ExpirePaths()
+    PathContext::ExpirePaths(llarp_time_t now)
     {
       util::Lock lock(m_TransitPaths.first);
-      auto now  = llarp_time_now_ms();
       auto& map = m_TransitPaths.second;
       auto itr  = map.begin();
       while(itr != map.end())
@@ -258,11 +257,11 @@ namespace llarp
     }
 
     void
-    PathContext::BuildPaths()
+    PathContext::BuildPaths(llarp_time_t now)
     {
       for(auto& builder : m_PathBuilders)
       {
-        if(builder->ShouldBuildMore())
+        if(builder->ShouldBuildMore(now))
         {
           builder->BuildOne();
         }
@@ -270,9 +269,8 @@ namespace llarp
     }
 
     void
-    PathContext::TickPaths()
+    PathContext::TickPaths(llarp_time_t now)
     {
-      auto now = llarp_time_now_ms();
       for(auto& builder : m_PathBuilders)
         builder->Tick(now, m_Router);
     }
@@ -357,7 +355,7 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
-      EnterState(ePathBuilding);
+      EnterState(ePathBuilding, parent->Now());
     }
 
     void
@@ -397,7 +395,7 @@ namespace llarp
     }
 
     void
-    Path::EnterState(PathStatus st)
+    Path::EnterState(PathStatus st, llarp_time_t now)
     {
       if(st == ePathTimeout)
       {
@@ -406,7 +404,7 @@ namespace llarp
       else if(st == ePathBuilding)
       {
         llarp::LogInfo("path ", Name(), " is building");
-        buildStarted = llarp_time_now_ms();
+        buildStarted = now;
       }
       _status = st;
     }
@@ -425,7 +423,7 @@ namespace llarp
         if(dlt >= PATH_BUILD_TIMEOUT)
         {
           r->routerProfiling.MarkPathFail(this);
-          EnterState(ePathTimeout);
+          EnterState(ePathTimeout, now);
           return;
         }
       }
@@ -452,19 +450,19 @@ namespace llarp
             if(m_CheckForDead(this, dlt))
             {
               r->routerProfiling.MarkPathFail(this);
-              EnterState(ePathTimeout);
+              EnterState(ePathTimeout, now);
             }
           }
           else
           {
             r->routerProfiling.MarkPathFail(this);
-            EnterState(ePathTimeout);
+            EnterState(ePathTimeout, now);
           }
         }
         else if(dlt >= 10000 && m_LastRecvMessage == 0)
         {
           r->routerProfiling.MarkPathFail(this);
-          EnterState(ePathTimeout);
+          EnterState(ePathTimeout, now);
         }
       }
     }
@@ -581,14 +579,15 @@ namespace llarp
     Path::HandlePathConfirmMessage(
         const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
     {
+      auto now = r->Now();
       if(_status == ePathBuilding)
       {
         // finish initializing introduction
         intro.expiresAt = buildStarted + hops[0].lifetime;
         // confirm that we build the path
-        EnterState(ePathEstablished);
+        EnterState(ePathEstablished, now);
         llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID(),
-                       " took ", llarp_time_now_ms() - buildStarted, " ms");
+                       " took ", now - buildStarted, " ms");
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
@@ -602,7 +601,7 @@ namespace llarp
         llarp::routing::PathLatencyMessage latency;
         latency.T             = llarp_randint();
         m_LastLatencyTestID   = latency.T;
-        m_LastLatencyTestTime = llarp_time_now_ms();
+        m_LastLatencyTestTime = now;
         return SendRoutingMessage(&latency, r);
       }
       llarp::LogWarn("got unwarrented path confirm message on tx=", RXID(),
@@ -617,7 +616,7 @@ namespace llarp
       {
         if(m_DataHandler(this, frame))
         {
-          m_LastRecvMessage = llarp_time_now_ms();
+          m_LastRecvMessage = m_PathSet->Now();
           return true;
         }
       }
@@ -628,7 +627,7 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
-      auto now = llarp_time_now_ms();
+      auto now = r->Now();
       // TODO: reanimate dead paths if they get this message
       if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
       {

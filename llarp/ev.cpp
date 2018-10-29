@@ -30,6 +30,7 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
   *ev = new llarp_win32_loop;
 #endif
   (*ev)->init();
+  (*ev)->_now = llarp_time_now_ms();
 }
 
 void
@@ -44,9 +45,10 @@ llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
 {
   while(ev->running())
   {
+    ev->_now = llarp_time_now_ms();
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
-      llarp_logic_tick(logic);
+      llarp_logic_tick(logic, ev->_now);
   }
   return 0;
 }
@@ -58,10 +60,11 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
 {
   while(ev->running())
   {
+    ev->_now = llarp_time_now_ms();
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
     {
-      llarp_logic_tick_async(logic);
+      llarp_logic_tick_async(logic, ev->_now);
       llarp_threadpool_tick(tp);
     }
   }
@@ -83,6 +86,12 @@ llarp_ev_close_udp(struct llarp_udp_io *udp)
   if(udp->parent->udp_close(udp))
     return 0;
   return -1;
+}
+
+llarp_time_t
+llarp_ev_loop_time_now_ms(struct llarp_ev_loop *loop)
+{
+  return loop->_now;
 }
 
 void
@@ -120,8 +129,8 @@ bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const void *pkt,
                            size_t sz)
 {
-  const byte_t *ptr       = (const byte_t *)pkt;
-  llarp::tcp_conn *impl   = static_cast< llarp::tcp_conn * >(conn->impl);
+  const byte_t *ptr     = (const byte_t *)pkt;
+  llarp::tcp_conn *impl = static_cast< llarp::tcp_conn * >(conn->impl);
   if(impl->_shouldClose)
     return false;
   while(sz > EV_WRITE_BUF_SZ)
@@ -227,9 +236,8 @@ namespace llarp
 
 }  // namespace llarp
 
-  
-llarp::ev_io*
-llarp_ev_loop::bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
+llarp::ev_io *
+llarp_ev_loop::bind_tcp(llarp_tcp_acceptor *tcp, const sockaddr *bindaddr)
 {
   int fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
   if(fd == -1)
@@ -237,7 +245,7 @@ llarp_ev_loop::bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
   socklen_t sz = sizeof(sockaddr_in);
   if(bindaddr->sa_family == AF_INET6)
   {
-      sz = sizeof(sockaddr_in6);
+    sz = sizeof(sockaddr_in6);
   }
   else if(bindaddr->sa_family == AF_UNIX)
   {
@@ -253,7 +261,7 @@ llarp_ev_loop::bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
     ::close(fd);
     return nullptr;
   }
-  llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
+  llarp::ev_io *serv = new llarp::tcp_serv(this, fd, tcp);
   tcp->impl          = serv;
   return serv;
 }

@@ -273,13 +273,13 @@ namespace llarp
     }
 
     bool
-    Identity::SignIntroSet(IntroSet& i, llarp_crypto* crypto) const
+    Identity::SignIntroSet(IntroSet& i, llarp_crypto* crypto, llarp_time_t now) const
     {
       if(i.I.size() == 0)
         return false;
       // set timestamp
       // TODO: round to nearest 1000 ms
-      i.T = llarp_time_now_ms();
+      i.T = now;
       // set service info
       i.A = pub;
       // set public encryption key
@@ -297,7 +297,7 @@ namespace llarp
     }
 
     bool
-    IntroSet::Verify(llarp_crypto* crypto) const
+    IntroSet::Verify(llarp_crypto* crypto, llarp_time_t now) const
     {
       byte_t tmp[MAX_INTROSET_SIZE];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -312,10 +312,9 @@ namespace llarp
       if(!A.Verify(crypto, buf, Z))
         return false;
       // validate PoW
-      if(W && !W->IsValid(crypto->shorthash))
+      if(W && !W->IsValid(crypto->shorthash, now))
         return false;
       // valid timestamps
-      auto now = llarp_time_now_ms();
       // add max clock skew
       now += MAX_INTROSET_TIME_DELTA;
       for(const auto& intro : I)

@@ -1,6 +1,7 @@
 #include <llarp/handlers/tun.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/endpoint.hpp>
+#include "router.hpp"
 
 namespace llarp
 {
@@ -22,7 +23,7 @@ namespace llarp
     void
     Context::Tick()
     {
-      auto now = llarp_time_now_ms();
+      auto now = m_Router->Now();
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {

@@ -2,6 +2,7 @@
 #define LLARP_TIMER_H
 #include <llarp/common.h>
 #include <llarp/threadpool.h>
+#include <llarp/time.h>
 
 /** called with userptr, original timeout, left */
 typedef void (*llarp_timer_handler_func)(void *, uint64_t, uint64_t);
@@ -32,6 +33,11 @@ llarp_timer_remove_job(struct llarp_timer_context *t, uint32_t id);
 void
 llarp_timer_stop(struct llarp_timer_context *t);
 
+/// set timer's timestamp, if now is 0 use the current time from system clock,
+/// llarp_time_t now
+void
+llarp_timer_set_time(struct llarp_timer_context *t, llarp_time_t now);
+
 // blocking run timer and send events to thread pool
 void
 llarp_timer_run(struct llarp_timer_context *t, struct llarp_threadpool *pool);
@@ -43,7 +49,7 @@ llarp_timer_tick_all(struct llarp_timer_context *t);
 /// tick all timers into a threadpool asynchronously
 void
 llarp_timer_tick_all_async(struct llarp_timer_context *t,
-                           struct llarp_threadpool *pool);
+                           struct llarp_threadpool *pool, llarp_time_t now);
 
 void
 llarp_free_timer(struct llarp_timer_context **t);

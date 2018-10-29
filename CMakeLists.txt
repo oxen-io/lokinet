@@ -1,32 +1,21 @@
-cmake_minimum_required(VERSION 2.8.10)
+# Lowest version - debian stable is 3.7.2
+cmake_minimum_required(VERSION 3.7.0)
 
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" OFF)
 
-macro(add_cflags)
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${ARGN}")
-endmacro(add_cflags)
+# Require C++11
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 
-macro(add_cxxflags)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${ARGN}")
-endmacro(add_cxxflags)
-
-include(CheckCXXCompilerFlag)
-CHECK_CXX_COMPILER_FLAG("-std=c++11" COMPILER_SUPPORTS_CXX11)
-if(COMPILER_SUPPORTS_CXX11)
-  add_cxxflags("-std=c++11")
-else()
-  message(ERROR "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
-endif()
-
-add_cxxflags("-fpermissive")
+add_compile_options( -fpermissive )
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if (USING_CLANG)
-add_cxxflags("-Wno-unused-command-line-argument -Wno-c++11-narrowing")
-add_cflags("-Wno-unused-command-line-argument")
+add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
 # because clang is insane enough to inline whole sections of the C++ library!
 # May have been fixed in llvm-7.
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
@@ -37,15 +26,12 @@ if(DEBIAN)
   add_definitions(-DDEBIAN)
 endif()
 
-if(ANDROID)
-set(THREAD_LIB "-pthread")
-else()
-set(THREAD_LIB pthread)
-endif()
+set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
 
 if(STATIC_LINK)
-  add_cflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
-  add_cxxflags("-static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive")
+  add_compile_options( -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive )
 endif()
 
 if(DNS_PORT)
@@ -62,11 +48,10 @@ if(TESTNET)
   add_definitions(-DTESTNET=1)
 endif()
 
-add_cflags("-Wall")
-add_cxxflags("-Wall")
+add_compile_options( -Wall )
 
-set(OPTIMIZE_FLAGS "-O3")
-set(DEBUG_FLAGS "-O0 -g3")
+set(OPTIMIZE_FLAGS -O3 )
+set(DEBUG_FLAGS -O0 -g3 )
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -85,8 +70,7 @@ if(SHADOW)
   set(CMAKE_MODULE_PATH "${SHADOW_ROOT}/share/cmake/Modules")
   include_directories(${CMAKE_MODULE_PATH})
   include(ShadowTools)
-  add_cxxflags("-fno-inline -fno-strict-aliasing")
-  add_cflags("-fno-inline -fno-strict-aliasing")
+  add_compile_options( -fno-inline -fno-strict-aliasing )
   add_definitions(-DTESTNET=true)
   add_definitions(-DSHADOW_TESTNET)
   include_directories(${SHADOW_ROOT}/include)
@@ -94,19 +78,16 @@ endif()
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
-  add_cflags("${DEBUG_FLAGS}")
-  add_cxxflags("${DEBUG_FLAGS}")
+  add_compile_options( ${DEBUG_FLAGS} )
 endif()
 
 set(CRYPTO_FLAGS "-march=native")
 set(CMAKE_ASM_FLAGS "-march=native")
 
-add_cflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS}")
-add_cxxflags("-Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS}")
+add_compile_options( -Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS} )
 
 if(SHADOW)
-  add_cflags("-fPIC")
-  add_cxxflags("-fPIC")
+  add_compile_options( -fPIC)
 endif()
 
 if(NOT GIT_VERSION)
@@ -131,7 +112,7 @@ if(JEMALLOC)
 endif()
 
 #set(FS_LIB stdc++fs)
-set(LIBS ${THREAD_LIB} ${MALLOC_LIB} ${FS_LIB})
+set(LIBS Threads::Threads ${MALLOC_LIB} ${FS_LIB})
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
@@ -311,7 +292,7 @@ set(CHACHA_SRC
   crypto/salsa20/xmm6int/salsa20_xmm6int-sse2.c
   crypto/xchacha20/hchacha.c
   crypto/xchacha20/stream_xchacha20.c)
- 
+
 set(CSRNG_SRC
   crypto/csrng/randombytes_salsa20_random.c
   crypto/csrng/randombytes.c)
@@ -327,7 +308,7 @@ set(BLAKE2B_SRC
     crypto/blake2b/blake2b-ref.c
     crypto/blake2b/generichash_blake2b.c)
 
-set(X25519_SRC    
+set(X25519_SRC
   crypto/curve25519/crypto_scalarmult.c
   crypto/curve25519/ref10/x25519_ref10.c
   crypto/curve25519/ref10/ed25519_ref10.c
@@ -534,9 +515,9 @@ if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
     add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
     if(USE_LIBABYSS)
-      target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB} ${ABYSS_LIB})
+      target_link_libraries(${PLATFORM_LIB} Threads::Threads ${ABYSS_LIB})
     else()
-      target_link_libraries(${PLATFORM_LIB} ${THREAD_LIB})
+      target_link_libraries(${PLATFORM_LIB} Threads::Threads)
     endif()
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       target_link_libraries(${PLATFORM_LIB} -lcap)
@@ -555,9 +536,9 @@ if(WITH_STATIC)
         target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
       endif(WIN32)
       if (WIN32)
-        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB} ws2_32 iphlpapi)
+        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} Threads::Threads ws2_32 iphlpapi)
       endif(WIN32)
-      target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ${THREAD_LIB})
+      target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} Threads::Threads)
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)
   if(ANDROID)
@@ -570,9 +551,9 @@ if(WITH_STATIC)
     if (WIN32)
       set(${LIBS} ${LIBS} ws2_32 iphlpapi)
     endif(WIN32)
-    target_link_libraries(${SHARED_LIB} ${LIBS} ${THREAD_LIB})
+    target_link_libraries(${SHARED_LIB} ${LIBS} Threads::Threads)
     target_link_libraries(${EXE} ${SHARED_LIB})
     target_link_libraries(${RC_EXE} ${SHARED_LIB})
-    target_link_libraries(${DNS_EXE} ${SHARED_LIB} ${THREAD_LIB})
+    target_link_libraries(${DNS_EXE} ${SHARED_LIB} Threads::Threads)
   endif(WITH_SHARED)
 endif(SHADOW)

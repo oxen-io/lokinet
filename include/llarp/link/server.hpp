@@ -18,7 +18,12 @@ namespace llarp
   struct ILinkLayer
   {
     virtual ~ILinkLayer();
-
+    /// get current time via event loop
+    llarp_time_t
+    now() const
+    {
+      return llarp_ev_loop_time_now_ms(m_Loop);
+    }
     bool
     HasSessionTo(const PubKey& pk);
 
@@ -111,11 +116,11 @@ namespace llarp
       // timer cancelled
       if(left)
         return;
-      static_cast< ILinkLayer* >(user)->OnTick(orig, llarp_time_now_ms());
+      static_cast< ILinkLayer* >(user)->OnTick(orig);
     }
 
     void
-    OnTick(uint64_t interval, llarp_time_t now);
+    OnTick(uint64_t interval);
 
     void
     ScheduleTick(uint64_t interval);
@@ -129,7 +134,8 @@ namespace llarp
     void
     PutSession(ILinkSession* s);
 
-    llarp_logic* m_Logic = nullptr;
+    llarp_logic* m_Logic  = nullptr;
+    llarp_ev_loop* m_Loop = nullptr;
     Addr m_ourAddr;
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;

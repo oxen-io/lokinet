@@ -26,10 +26,8 @@ namespace llarp
   }
 
   bool
-  PoW::IsValid(llarp_shorthash_func hashfunc) const
+  PoW::IsValid(llarp_shorthash_func hashfunc, llarp_time_t now) const
   {
-    auto now = llarp_time_now_ms();
-
     if(now - timestamp > (uint64_t(extendedLifetime) * 1000))
       return false;
 

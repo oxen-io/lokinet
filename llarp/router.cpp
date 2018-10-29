@@ -468,8 +468,8 @@ void
 llarp_router::Tick()
 {
   // llarp::LogDebug("tick router");
-  auto now = llarp_time_now_ms();
-  paths.ExpirePaths();
+  auto now = llarp_ev_loop_time_now_ms(netloop);
+  paths.ExpirePaths(now);
   {
     auto itr = m_PersistingSessions.begin();
     while(itr != m_PersistingSessions.end())
@@ -502,14 +502,14 @@ llarp_router::Tick()
       auto explore = std::max(NumberOfConnectedRouters(), size_t(1));
       dht->impl.Explore(explore);
     }
-    paths.BuildPaths();
+    paths.BuildPaths(now);
     hiddenServiceContext.Tick();
   }
   if(NumberOfConnectedRouters() < minConnectedRouters)
   {
     ConnectToRandomRouters(minConnectedRouters);
   }
-  paths.TickPaths();
+  paths.TickPaths(now);
 }
 
 void

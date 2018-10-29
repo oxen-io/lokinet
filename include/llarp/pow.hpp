@@ -17,7 +17,7 @@ namespace llarp
     ~PoW();
 
     bool
-    IsValid(llarp_shorthash_func hashfunc) const;
+    IsValid(llarp_shorthash_func hashfunc, llarp_time_t now) const;
 
     bool
     DecodeKey(llarp_buffer_t k, llarp_buffer_t* val);

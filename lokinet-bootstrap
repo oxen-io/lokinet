@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env sh
 #
 # this shell script will be replaced by a proper program in the future (probably)
 #
 
 if [ "X$1" = "X" ] ; then url="https://i2p.rocks/i2procks.signed" ; else url="$1" ; fi
 echo "downloading $url"
-wget -O $HOME/.lokinet/bootstrap.signed "$url" &> /dev/null || echo "failed to download bootstrap from $url"
+wget -O $HOME/.lokinet/bootstrap.signed "$url" || echo "failed to download bootstrap from $url"
