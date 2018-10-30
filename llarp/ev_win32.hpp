@@ -484,16 +484,18 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   add_ev(llarp::ev_io* ev, bool write)
   {
-    uint8_t buf[1024];
-    llarp::tun* t   = nullptr;
     ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
-    memset(&buf, 0, 1024);
 
     // if the write flag was set earlier,
     // clear it on demand
     if(ev->write && !write)
       ev->write = false;
 
+    if(write)
+      ev->write = true;
+
+    // now write a blank packet containing nothing but the address of
+    // the event listener
     if(ev->isTCP)
     {
       if(!::CreateIoCompletionPort((HANDLE)std::get< SOCKET >(ev->fd), iocpfd,
@@ -502,56 +504,31 @@ struct llarp_win32_loop : public llarp_ev_loop
         delete ev;
         return false;
       }
-      if(write)
-      {
-        ::WriteFile((HANDLE)std::get< SOCKET >(ev->fd), &buf, 1024, nullptr,
-                    &ev->portfd[1]);
-        ev->write = true;
-      }
       else
-        ::ReadFile((HANDLE)std::get< SOCKET >(ev->fd), &buf, 1024, nullptr,
-                   &ev->portfd[0]);
-      handlers.emplace_back(ev);
-      return true;
+        goto start_loop;
     }
 
     if(std::holds_alternative< SOCKET >(ev->fd))
     {
-      if(!::CreateIoCompletionPort((HANDLE)std::get< 0 >(ev->fd), iocpfd,
+      if(!::CreateIoCompletionPort((HANDLE)std::get< SOCKET >(ev->fd), iocpfd,
                                    ev->listener_id, 0))
       {
         delete ev;
         return false;
       }
-      if(write)
-      {
-        ::WriteFile((HANDLE)std::get< 0 >(ev->fd), &buf, 1024, nullptr,
-                    &ev->portfd[1]);
-        ev->write = true;
-      }
-      else
-        ::ReadFile((HANDLE)std::get< 0 >(ev->fd), &buf, 1024, nullptr,
-                   &ev->portfd[0]);
     }
     else
     {
-      t = dynamic_cast< llarp::tun* >(ev);
-      if(!::CreateIoCompletionPort(std::get< 1 >(ev->fd), iocpfd,
+      if(!::CreateIoCompletionPort(std::get< HANDLE >(ev->fd), iocpfd,
                                    ev->listener_id, 0))
       {
         delete ev;
         return false;
       }
-      if(write)
-      {
-        ::WriteFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr,
-                    t->tun_async[1]);
-        ev->write = true;
-      }
-      else
-        ::ReadFile(std::get< 1 >(ev->fd), &buf, 1024, nullptr, t->tun_async[0]);
     }
 
+  start_loop:
+    PostQueuedCompletionStatus(iocpfd, 0, ev->listener_id, nullptr);
     handlers.emplace_back(ev);
     return true;
   }

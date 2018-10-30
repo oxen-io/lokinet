@@ -7,14 +7,10 @@
 #define MyAppURL "https://loki.network"
 #define MyAppExeName "lokinet.exe"
 ; change this to avoid compiler errors  -despair
-#define DevPath "D:\dev\external\llarpd-builder\"
+#define DevPath "D:\dev\external\llarp\"
 #include <idp.iss>
 
-; inno setup script ©2018 rick v for loki project
-; all rights reserved? not sure which licence we're 
-; under. lokinet appears to be under the zlib licence
-; unless we've pivoted to the GPL for whatever reason.
-; -despair
+; see ../LICENSE
 
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application.
@@ -31,22 +27,21 @@ AppUpdatesURL={#MyAppURL}
 DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 AllowNoIcons=yes
-LicenseFile={#DevPath}deps\llarp\LICENSE
+LicenseFile={#DevPath}LICENSE
 OutputDir={#DevPath}win32-setup
 OutputBaseFilename=lokinet-win32
 Compression=lzma
 SolidCompression=yes
-VersionInfoVersion=0.0.3
+VersionInfoVersion=0.3.0
 VersionInfoCompany=Loki Project
 VersionInfoDescription=lokinet installer for win32
-VersionInfoTextVersion=0.0.3
+VersionInfoTextVersion=0.3.0
 VersionInfoProductName=loki-network
-VersionInfoProductVersion=0.0.3
-VersionInfoProductTextVersion=0.0.3
+VersionInfoProductVersion=0.3.0
+VersionInfoProductTextVersion=0.3.0
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
-; uncomment if you are shipping the 64-bit build
-;ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64
 VersionInfoCopyright=Copyright ©2018 Loki Project
 
 [Languages]
@@ -58,7 +53,9 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; we're grabbing the builds from jenkins-ci now, which are fully linked
-Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit
+Source: "{#DevPath}build\lokinet64.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit
+; eh, might as well ship the 32-bit port of everything else
 Source: "{#DevPath}build\dns.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}build\llarpc.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}build\rcutil.exe"; DestDir: "{app}"; Flags: ignoreversion
@@ -66,6 +63,7 @@ Source: "{#DevPath}build\rcutil.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; and download an initial RC
 Source: "{#DevPath}lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "{#DevPath}win32-setup\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "{tmp}\inet6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall; MinVersion: 0,5.0; OnlyBelowVersion: 0, 6.0
 ; Copy the correct tuntap driver for the selected platform
 Source: "{tmp}\tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion external; OnlyBelowVersion: 0, 6.0
 Source: "{tmp}\tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion external; MinVersion: 0,6.0
@@ -87,8 +85,7 @@ var
 begin
   GetWindowsVersionEx(Version);
   if Version.NTPlatform and
-     (Version.Major < 6) and
-     (Version.Minor = 0) then
+     (Version.Major < 6) then
   begin
     // Windows 2000, XP, .NET Svr 2003
     // these have a horribly crippled WinInet that issues Triple-DES as its most secure
@@ -98,7 +95,7 @@ begin
   else
   begin
     // current versions of windows :-)
-    idpAddFile('https://github.com/despair86/lokinet-builder/raw/master/contrib/tuntapv9-ndis/tap-windows-9.21.2.7z', ExpandConstant('{tmp}\tuntapv9_n6.7z'));
+    idpAddFile('https://github.com/despair86/loki-network/raw/master/contrib/tuntapv9-ndis/tap-windows-9.21.2.7z', ExpandConstant('{tmp}\tuntapv9_n6.7z'));
   end;
     idpDownloadAfter(wpReady);
 end;
