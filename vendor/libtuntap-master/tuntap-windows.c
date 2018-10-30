@@ -176,7 +176,7 @@ tuntap_start(struct device *dev, int mode, int tun)
   char buf[60];
 
   /* put something in there to avoid problems (uninitialised field access) */
-  tun_fd = TUNFD_INVALID_VALUE;
+  tun_fd   = TUNFD_INVALID_VALUE;
   deviceid = NULL;
 
   /* Don't re-initialise a previously started device */
@@ -364,7 +364,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   ep[2] = (s->S_un.S_addr | ~mask)
       - (mask + 1); /* For the 10.x.0.y subnet (in a class C config), _should_
                        be 10.x.0.254 i think */
-  ep[3] = 3153600;    /* one year */
+  ep[3] = 3153600;  /* one year */
 
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_MASQ, ep, sizeof(ep),
                         ep, sizeof(ep), &len, NULL);
@@ -375,7 +375,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
     tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
     return -1;
   }
-  
+
   /* set DNS address to 127.0.0.1 as lokinet-client runs its own DNS resolver
    * inline */
   dns.dhcp_opt = 6;
@@ -412,42 +412,37 @@ tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
 int
 tuntap_read(struct device *dev, void *buf, size_t size)
 {
-  DWORD len;
-
-  if(ReadFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl[0]) == 0)
+  if(size)
   {
+    ReadFile(dev->tun_fd, buf, (DWORD)size, NULL, &dev->ovl[0]);
+
     int errcode = GetLastError();
 
-    if (errcode != 997)
-	{
-		tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
-		return -1;
-	}
-	else
-		return 0;
+    if(errcode != 997)
+    {
+      tuntap_log(TUNTAP_LOG_ERR,
+                 (const char *)formated_error(L"%1%0", errcode));
+      return -1;
+    }
   }
-
   return 0;
 }
 
 int
 tuntap_write(struct device *dev, void *buf, size_t size)
 {
-  DWORD len;
-
-  if(WriteFile(dev->tun_fd, buf, (DWORD)size, &len, &dev->ovl[1]) == 0)
+  if(size)
   {
-  	int errcode = GetLastError();
+    WriteFile(dev->tun_fd, buf, (DWORD)size, NULL, &dev->ovl[1]);
+    int errcode = GetLastError();
 
-    if (errcode != 997)
-	{
-		tuntap_log(TUNTAP_LOG_ERR, (const char *)formated_error(L"%1%0", errcode));
-		return -1;
-	}
-	else
-		return 0;
+    if(errcode != 997)
+    {
+      tuntap_log(TUNTAP_LOG_ERR,
+                 (const char *)formated_error(L"%1%0", errcode));
+      return -1;
+    }
   }
-
   return 0;
 }
 
@@ -466,7 +461,8 @@ tuntap_set_nonblocking(struct device *dev, int set)
   (void)dev;
   (void)set;
   tuntap_log(TUNTAP_LOG_NOTICE,
-             "TUN/TAP devices on Windows are non-blocking by default using either overlapped I/O or IOCPs");
+             "TUN/TAP devices on Windows are non-blocking by default using "
+             "either overlapped I/O or IOCPs");
   return -1;
 }
 

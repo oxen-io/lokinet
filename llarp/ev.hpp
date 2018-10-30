@@ -457,7 +457,7 @@ namespace llarp
 // is overriden for each platform
 struct llarp_ev_loop
 {
-  byte_t readbuf[EV_READ_BUF_SZ];
+  byte_t readbuf[EV_READ_BUF_SZ] = {0};
   llarp_time_t _now = 0;
   virtual bool
   init() = 0;

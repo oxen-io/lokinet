@@ -271,7 +271,7 @@ namespace abyss
           const char* end = strstr(buf, "\r\n");
           while(end)
           {
-            string_view line(buf, *end);
+            string_view line(buf, end);
             switch(m_State)
             {
               case eReadHTTPMethodLine:
@@ -399,7 +399,7 @@ namespace abyss
       auto itr  = m_Conns.begin();
       while(itr != m_Conns.end())
       {
-        if((*itr)->ShouldClose(_now)
+        if((*itr)->ShouldClose(_now))
           itr = m_Conns.erase(itr);
         else
           ++itr;

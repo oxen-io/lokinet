@@ -15,8 +15,13 @@ namespace llarp
   {
     if(_shouldClose)
       return -1;
-    // TODO: make async
-    ssize_t amount = ::recv(std::get< SOCKET >(fd), (char*)buf, sz, 0);
+
+    WSABUF r_buf = {sz, buf};
+    DWORD amount = 0;
+
+    WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, &portfd[0], nullptr);
+    GetOverlappedResult((HANDLE)std::get< SOCKET >(fd), &portfd[0], &amount,
+                        TRUE);
     if(amount > 0)
     {
       if(tcp->read)
@@ -34,10 +39,16 @@ namespace llarp
   ssize_t
   tcp_conn::do_write(void* buf, size_t sz)
   {
+    WSABUF s_buf = {sz, buf};
+    DWORD sent   = 0;
+
     if(_shouldClose)
       return -1;
-    // TODO: make async
-    return ::send(std::get< SOCKET >(fd), (char*)buf, sz, 0);
+
+    WSASend(std::get< SOCKET >(fd), &s_buf, 1, nullptr, 0, &portfd[1], nullptr);
+    GetOverlappedResult((HANDLE)std::get< SOCKET >(fd), &portfd[1], &sent,
+                        TRUE);
+    return sent;
   }
 
   int
@@ -109,7 +120,6 @@ namespace llarp
         llarp::LogWarn("recv socket error ", s_errno);
         return -1;
       }
-      // get the _real_ payload size from tick()
       udp->recvfrom(udp, addr, buf, sz);
       return 0;
     }
@@ -283,8 +293,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     }
     llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
     tcp->impl          = serv;
-    // We're non-blocking now, but can't really make use of it
-    // until we cut over to WSA* functions
+
     ioctlsocket(fd, FIONBIO, &on);
     return serv;
   }
@@ -317,18 +326,14 @@ struct llarp_win32_loop : public llarp_ev_loop
     BOOL result =
         ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms);
 
-    if(result && qdata)
+    llarp::ev_io* ev = reinterpret_cast< llarp::ev_io* >(ev_id);
+    if(ev)
     {
-      llarp::ev_io* ev = reinterpret_cast< llarp::ev_io* >(ev_id);
-      if(ev)
-      {
-        llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
-                        "\tqdata: ", qdata);
-        if(ev->write)
-          ev->flush_write();
-        else
-          ev->read(readbuf, iolen);
-      }
+      llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
+      if(ev->write)
+        ev->flush_write();
+      else
+        ev->read(readbuf, iolen);
       ++idx;
     }
 
