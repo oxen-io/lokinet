@@ -151,9 +151,9 @@ writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
                            dnsd_question_request *request)
 {
   const size_t BUFFER_SIZE = 1500;
-  char buf[BUFFER_SIZE] = {0};
-  char *write_buffer = buf;
-  char *bufferBegin  = buf;
+  char buf[BUFFER_SIZE]    = {0};
+  char *write_buffer       = buf;
+  char *bufferBegin        = buf;
   // build header
   put16bits(write_buffer, request->id);
   int fields = (1 << 15);  // QR => message type, 1 = response

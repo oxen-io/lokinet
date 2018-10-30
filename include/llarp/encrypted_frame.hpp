@@ -18,7 +18,7 @@ namespace llarp
     }
 
     EncryptedFrame(const EncryptedFrame& other)
-      : EncryptedFrame(other.data(), other.size())
+        : EncryptedFrame(other.data(), other.size())
     {
     }
 

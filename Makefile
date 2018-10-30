@@ -63,11 +63,11 @@ clean:
 
 debug-configure:
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DDNS_PORT=$(DNS_PORT)
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DDNS_PORT=$(DNS_PORT) -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'	
-	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
+	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
@@ -129,7 +129,7 @@ abyss: debug
 	$(ABYSS_EXE)
 
 format:
-	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+	clang-format -i $$(find daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
 
 analyze: clean
 	mkdir -p '$(BUILD_ROOT)'

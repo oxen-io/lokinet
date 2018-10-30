@@ -7,13 +7,13 @@
 // apparently current Solaris will emulate epoll.
 #if __linux__ || __sun__
 #include "ev_epoll.hpp"
-#endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
 #include "ev_kqueue.hpp"
-#endif
-#if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+#elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
 #include "ev_win32.hpp"
+#else
+#error No async event loop for your platform, subclass llarp_ev_loop
 #endif
 
 void
@@ -21,13 +21,13 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {
 #if __linux__ || __sun__
   *ev = new llarp_epoll_loop;
-#endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
   *ev = new llarp_kqueue_loop;
-#endif
-#if defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+#elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
   *ev = new llarp_win32_loop;
+#else
+#error no event loop subclass
 #endif
   (*ev)->init();
   (*ev)->_now = llarp_time_now_ms();
@@ -105,7 +105,7 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
                     const void *buf, size_t sz)
 {
   auto ret = static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf, sz);
-  if(ret == -1 || errno)
+  if(ret == -1 && errno != 0)
   {
     llarp::LogWarn("sendto failed ", strerror(errno));
     errno = 0;
@@ -202,66 +202,4 @@ namespace llarp
     return true;
   }
 
-  int
-  tcp_serv::read(void *, size_t)
-  {
-    int new_fd = ::accept(fd, nullptr, nullptr);
-    if(new_fd == -1)
-    {
-      llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
-      return -1;
-    }
-
-    llarp_tcp_conn *conn = new llarp_tcp_conn;
-    // zero out callbacks
-    conn->tick   = nullptr;
-    conn->closed = nullptr;
-    conn->read   = nullptr;
-    // build handler
-    llarp::tcp_conn *connimpl = new tcp_conn(new_fd, conn);
-    conn->impl                = connimpl;
-    conn->loop                = loop;
-    if(loop->add_ev(connimpl, true))
-    {
-      // call callback
-      if(tcp->accepted)
-        tcp->accepted(tcp, conn);
-      return 0;
-    }
-    // cleanup error
-    delete conn;
-    delete connimpl;
-    return -1;
-  }
-
 }  // namespace llarp
-
-llarp::ev_io *
-llarp_ev_loop::bind_tcp(llarp_tcp_acceptor *tcp, const sockaddr *bindaddr)
-{
-  int fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
-  if(fd == -1)
-    return nullptr;
-  socklen_t sz = sizeof(sockaddr_in);
-  if(bindaddr->sa_family == AF_INET6)
-  {
-    sz = sizeof(sockaddr_in6);
-  }
-  else if(bindaddr->sa_family == AF_UNIX)
-  {
-    sz = sizeof(sockaddr_un);
-  }
-  if(::bind(fd, bindaddr, sz) == -1)
-  {
-    ::close(fd);
-    return nullptr;
-  }
-  if(::listen(fd, 5) == -1)
-  {
-    ::close(fd);
-    return nullptr;
-  }
-  llarp::ev_io *serv = new llarp::tcp_serv(this, fd, tcp);
-  tcp->impl          = serv;
-  return serv;
-}

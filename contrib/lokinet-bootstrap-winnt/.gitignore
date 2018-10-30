@@ -1,0 +1,4 @@
+*.o
+mbedtls/
+*.a
+*.exe

@@ -4,9 +4,7 @@
 #include <getopt.h>
 #include <string>
 #include <iostream>
-#ifndef _MSC_VER
 #include <libgen.h>
-#endif
 #include "fs.hpp"
 #include "config.hpp"  // for ensure_config
 
@@ -37,9 +35,6 @@ startWinsock()
 {
   WSADATA wsockd;
   int err;
-  // We used to defer starting winsock until
-  // we got to the iocp event loop
-  // but getaddrinfo(3) requires that winsock be in core already
   err = ::WSAStartup(MAKEWORD(2, 2), &wsockd);
   if(err)
   {
@@ -85,7 +80,9 @@ main(int argc, char *argv[])
         break;
       case 'r':
 #ifdef _WIN32
-        llarp::LogError("we will not run as relay because you're running windows, install a real operating system please");
+        llarp::LogError(
+            "please don't try this at home, the relay feature is untested on "
+            "windows server --R.");
         return 1;
 #endif
         asRouter = true;

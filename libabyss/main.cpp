@@ -1,6 +1,8 @@
 #include <libabyss.hpp>
 #include <llarp/net.hpp>
+#ifndef _WIN32
 #include <sys/signal.h>
+#endif
 
 struct DemoHandler : public abyss::http::IRPCHandler
 {
@@ -34,7 +36,21 @@ struct DemoServer : public abyss::http::BaseReqHandler
 int
 main(int argc, char* argv[])
 {
+  // Ignore on Windows, we don't even get SIGPIPE (even though native *and*
+  // emulated UNIX pipes exist - CreatePipe(2), pipe(3))
+  // Microsoft libc only covers six signals
+#ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
+#else
+  WSADATA wsockd;
+  int err;
+  err = ::WSAStartup(MAKEWORD(2, 2), &wsockd);
+  if(err)
+  {
+    perror("Failed to start Windows Sockets");
+    return err;
+  }
+#endif
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
   llarp_ev_loop* loop          = nullptr;
   llarp_ev_loop_alloc(&loop);

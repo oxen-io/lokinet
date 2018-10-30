@@ -399,7 +399,7 @@ namespace abyss
       auto itr  = m_Conns.begin();
       while(itr != m_Conns.end())
       {
-        if((*itr)->ShouldClose(_now)
+        if((*itr)->ShouldClose(_now))
           itr = m_Conns.erase(itr);
         else
           ++itr;

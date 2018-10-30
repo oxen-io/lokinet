@@ -1,3 +1,7 @@
+/* [Rtl]SecureZeroMemory is an inline procedure in the windows headers */
+#ifdef _WIN32
+#include <windows.h>
+#endif
 #include <sodium/utils.h>
 
 void

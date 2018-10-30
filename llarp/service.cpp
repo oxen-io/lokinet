@@ -1,7 +1,3 @@
-#ifdef _MSC_VER
-#define NOMINMAX
-#endif
-
 #include <llarp/service.hpp>
 #include "buffer.hpp"
 #include "fs.hpp"
@@ -273,7 +269,8 @@ namespace llarp
     }
 
     bool
-    Identity::SignIntroSet(IntroSet& i, llarp_crypto* crypto, llarp_time_t now) const
+    Identity::SignIntroSet(IntroSet& i, llarp_crypto* crypto,
+                           llarp_time_t now) const
     {
       if(i.I.size() == 0)
         return false;

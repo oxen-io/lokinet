@@ -533,11 +533,7 @@ namespace llarp
       {
         ptr = a.addr4();
       }
-#ifndef _MSC_VER
       if(inet_ntop(a.af(), ptr, tmp, sizeof(tmp)))
-#else
-      if(inet_ntop(a.af(), (void*)ptr, tmp, sizeof(tmp)))
-#endif
       {
         out << tmp;
         if(a.af() == AF_INET6)

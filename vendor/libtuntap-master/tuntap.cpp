@@ -31,12 +31,10 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <wspiapi.h>
-#ifndef _MSC_VER
 extern "C" int
 inet_pton(int af, const char *src, void *dst);
 extern "C" const char *
 inet_ntop(int af, const void *src, char *dst, size_t size);
-#endif
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>

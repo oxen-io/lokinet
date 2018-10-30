@@ -5,7 +5,6 @@
 #include <ws2tcpip.h>
 #include <wspiapi.h>
 // because this shit is not defined for Windows NT reeeee
-#ifndef _MSC_VER
 #ifdef __cplusplus
 extern "C"
 {
@@ -16,7 +15,6 @@ extern "C"
   inet_pton(int af, const char* src, void* dst);
 #ifdef __cplusplus
 }
-#endif
 #endif
 #ifndef ssize_t
 #define ssize_t long

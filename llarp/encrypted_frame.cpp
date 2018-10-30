@@ -11,7 +11,7 @@ namespace llarp
   }
 
   Encrypted::Encrypted(const Encrypted& other)
-    : Encrypted(other.data(), other.size())
+      : Encrypted(other.data(), other.size())
   {
   }
 

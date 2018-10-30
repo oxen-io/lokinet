@@ -1,4 +1,4 @@
-#if __AVX2__
+#if __AVX2__ && __amd64__
 
 .text
 .p2align 5

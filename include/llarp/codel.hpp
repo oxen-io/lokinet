@@ -1,11 +1,5 @@
 #ifndef LLARP_CODEL_QUEUE_HPP
 #define LLARP_CODEL_QUEUE_HPP
-#ifdef _MSC_VER
-#define NOMINMAX
-#ifdef min
-#undef min
-#endif
-#endif
 #include <llarp/time.h>
 #include <llarp/logger.hpp>
 #include <llarp/mem.hpp>

@@ -10,9 +10,7 @@
 #include <stdlib.h> /* exit */
 #include <string.h> /* memset */
 #include <sys/types.h>
-#ifndef _MSC_VER
 #include <unistd.h> /* close */
-#endif
 
 #include <algorithm>      // for std::find_if
 #include <llarp/net.hpp>  // for llarp::Addr
@@ -110,7 +108,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   request->context  = dnsc;
 
   char *sUrl             = strdup(url);
-  request->question.name = (char *)sUrl; // since it's a std::String
+  request->question.name = (char *)sUrl;  // since it's a std::String
   // we can nuke sUrl now
   free(sUrl);
 
@@ -326,7 +324,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   if(answer == nullptr)
   {
     llarp::LogWarn("nameserver ", upstreamAddr,
-                   " didnt return any answers for ", question?question->name:"null question");
+                   " didnt return any answers for ",
+                   question ? question->name : "null question");
     request->resolved(request);
     return;
   }
@@ -605,8 +604,9 @@ llarp_host_resolved(dnsc_answer_request *const request)
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
   auto val             = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
-      [request](std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >
-                    &element) { return element.second.get() == request; });
+      [request](
+          std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >
+              &element) { return element.second.get() == request; });
   if(val != tracker->client_request.end())
   {
     tracker->client_request[val->first].reset();

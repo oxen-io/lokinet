@@ -41,13 +41,9 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <sys/timeb.h>
-#define RtlGenRandom SystemFunction036
-#if defined(__cplusplus)
-extern "C"
-#endif
-    BOOLEAN NTAPI
-    RtlGenRandom(PVOID RandomBuffer, ULONG RandomBufferLength);
-#pragma comment(lib, "advapi32.lib")
+#include <wincrypt.h>
+#include <bcrypt.h>
+typedef NTSTATUS (FAR PASCAL* CNGAPI_DRBG)(BCRYPT_ALG_HANDLE, UCHAR*, ULONG, ULONG);
 #ifdef __BORLANDC__
 #define _ftime ftime
 #define _timeb timeb
@@ -73,7 +69,7 @@ extern "C"
 
 #ifndef TLS
 #ifdef _WIN32
-#define TLS __declspec(thread)
+#define TLS __thread
 #else
 #define TLS
 #endif
@@ -114,10 +110,7 @@ static uint64_t
 sodium_hrtime(void)
 {
   struct _timeb tb;
-#pragma warning(push)
-#pragma warning(disable : 4996)
   _ftime(&tb);
-#pragma warning(pop)
   return ((uint64_t)tb.time) * 1000000U + ((uint64_t)tb.millitm) * 1000U;
 }
 
@@ -391,9 +384,40 @@ randombytes_salsa20_random_stir(void)
 #endif
 
 #else /* _WIN32 */
-  if(!RtlGenRandom((PVOID)m0, (ULONG)sizeof m0))
+  HANDLE hCAPINg;
+  BOOL rtld;
+  CNGAPI_DRBG getrandom;
+  HCRYPTPROV hProv;
+  /* load bcrypt dynamically, see if we're already loaded */
+  rtld    = FALSE;
+  hCAPINg = GetModuleHandle("bcrypt.dll");
+  /* otherwise, load CNG manually */
+  if (!hCAPINg)
   {
-    sodium_misuse(); /* LCOV_EXCL_LINE */
+	 hCAPINg = LoadLibraryEx("bcrypt.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32); 
+	 rtld = TRUE;
+  }
+  if (hCAPINg)
+  {
+	 /* call BCryptGenRandom(2) */
+	 getrandom = GetProcAddress(hCAPINg, "BCryptGenRandom");
+	 if(!BCRYPT_SUCCESS(getrandom(NULL, m0, sizeof m0,BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
+	 {
+		 sodium_misuse();
+	 }
+	 /* don't leak lib refs */
+	 if (rtld)
+		 FreeLibrary(hCAPINg);
+  }
+  /* if that fails use the regular ARC4-SHA1 RNG (!!!) *cringes* */
+  else
+  {
+	 CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
+	 if (!CryptGenRandom(hProv, sizeof m0, m0)) 
+	 {
+		 sodium_misuse(); /* LCOV_EXCL_LINE */
+	 }
+	CryptReleaseContext(hProv, 0);
   }
 #endif
 
