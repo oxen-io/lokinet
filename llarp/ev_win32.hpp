@@ -16,7 +16,7 @@ namespace llarp
     if(_shouldClose)
       return -1;
 
-    WSABUF r_buf = {sz, buf};
+    WSABUF r_buf = {sz, (char*)buf};
     DWORD amount = 0;
 
     WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, &portfd[0], nullptr);
@@ -39,7 +39,7 @@ namespace llarp
   ssize_t
   tcp_conn::do_write(void* buf, size_t sz)
   {
-    WSABUF s_buf = {sz, buf};
+    WSABUF s_buf = {sz, (char*)buf};
     DWORD sent   = 0;
 
     if(_shouldClose)
