@@ -1,4 +1,5 @@
 #include <abyss/server.hpp>
+#include <abyss/http.hpp>
 #include <llarp/time.h>
 #include <sstream>
 #include <unordered_map>
@@ -8,17 +9,9 @@
 
 namespace abyss
 {
-  namespace http
+  namespace httpd
   {
-    struct RequestHeader
-    {
-      typedef std::unordered_multimap< std::string, std::string > Headers_t;
-      Headers_t Headers;
-      std::string Method;
-      std::string Path;
-    };
-
-    struct ConnImpl
+    struct ConnImpl : abyss::http::HeaderReader
     {
       llarp_tcp_conn* _conn;
       IRPCHandler* handler;
@@ -26,7 +19,6 @@ namespace abyss
       llarp_time_t m_LastActive;
       llarp_time_t m_ReadTimeout;
       bool m_Bad;
-      RequestHeader m_Header;
       std::unique_ptr< abyss::json::IParser > m_BodyParser;
       json::Document m_Request;
       json::Document m_Response;
@@ -66,12 +58,17 @@ namespace abyss
       bool
       FeedLine(std::string& line)
       {
+        bool done = false;
         switch(m_State)
         {
           case eReadHTTPMethodLine:
             return ProcessMethodLine(line);
           case eReadHTTPHeaders:
-            return ProcessHeaderLine(line);
+            if(!ProcessHeaderLine(line, done))
+              return false;
+            if(done)
+              m_State = eReadHTTPBody;
+            return true;
           default:
             return false;
         }
@@ -83,13 +80,13 @@ namespace abyss
         auto idx = line.find_first_of(' ');
         if(idx == string_view::npos)
           return false;
-        m_Header.Method = line.substr(0, idx);
-        line            = line.substr(idx + 1);
-        idx             = line.find_first_of(' ');
+        Header.Method = line.substr(0, idx);
+        line          = line.substr(idx + 1);
+        idx           = line.find_first_of(' ');
         if(idx == string_view::npos)
           return false;
-        m_Header.Path = line.substr(0, idx);
-        m_State       = eReadHTTPHeaders;
+        Header.Path = line.substr(0, idx);
+        m_State     = eReadHTTPHeaders;
         return true;
       }
 
@@ -98,31 +95,6 @@ namespace abyss
       {
         // TODO: header whitelist
         return name == "content-type" || name == "content-length";
-      }
-
-      bool
-      ProcessHeaderLine(string_view line)
-      {
-        if(line.size() == 0)
-        {
-          // end of headers
-          m_State = eReadHTTPBody;
-          return true;
-        }
-        auto idx = line.find_first_of(':');
-        if(idx == string_view::npos)
-          return false;
-        string_view header = line.substr(0, idx);
-        string_view val    = line.substr(1 + idx);
-        // to lowercase
-        std::transform(header.begin(), header.end(), header.begin(),
-                       [](char ch) -> char { return ::tolower(ch); });
-        if(ShouldProcessHeader(header))
-        {
-          val = val.substr(val.find_first_not_of(' '));
-          m_Header.Headers.insert(std::make_pair(header, val));
-        }
-        return true;
       }
 
       bool
@@ -168,14 +140,14 @@ namespace abyss
       bool
       FeedBody(const char* buf, size_t sz)
       {
-        if(m_Header.Method != "POST")
+        if(Header.Method != "POST")
         {
           return WriteResponseSimple(405, "Method Not Allowed", "text/plain",
                                      "nope");
         }
         {
-          auto itr = m_Header.Headers.find("content-type");
-          if(itr == m_Header.Headers.end())
+          auto itr = Header.Headers.find("content-type");
+          if(itr == Header.Headers.end())
           {
             return WriteResponseSimple(415, "Unsupported Media Type",
                                        "text/plain",
@@ -192,8 +164,8 @@ namespace abyss
         if(m_BodyParser == nullptr)
         {
           ssize_t contentLength = 0;
-          auto itr              = m_Header.Headers.find("content-length");
-          if(itr == m_Header.Headers.end())
+          auto itr              = Header.Headers.find("content-length");
+          if(itr == Header.Headers.end())
           {
             return WriteResponseSimple(400, "Bad Request", "text/plain",
                                        "no content length");
@@ -264,14 +236,14 @@ namespace abyss
         {
           return false;
         }
-
+        bool done    = false;
         m_LastActive = _parent->now();
         if(m_State < eReadHTTPBody)
         {
           const char* end = strstr(buf, "\r\n");
           while(end)
           {
-            string_view line(buf, end);
+            string_view line(buf, end - buf);
             switch(m_State)
             {
               case eReadHTTPMethodLine:
@@ -280,9 +252,11 @@ namespace abyss
                 sz -= line.size() + (2 * sizeof(char));
                 break;
               case eReadHTTPHeaders:
-                if(!ProcessHeaderLine(line))
+                if(!ProcessHeaderLine(line, done))
                   return false;
                 sz -= line.size() + (2 * sizeof(char));
+                if(done)
+                  m_State = eReadHTTPBody;
                 break;
               default:
                 break;
@@ -426,5 +400,5 @@ namespace abyss
       connimpl->handler = rpcHandler;
       self->m_Conns.emplace_back(rpcHandler);
     }
-  }  // namespace http
+  }  // namespace httpd
 }  // namespace abyss

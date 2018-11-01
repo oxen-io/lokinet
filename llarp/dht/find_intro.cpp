@@ -147,8 +147,8 @@ namespace llarp
             }
             else
             {
-              llarp::LogError(
-                  "cannot find closer peers for introset lookup for ", S);
+              // no more closer peers
+              replies.emplace_back(new GotIntroMessage({}, T));
               return true;
             }
           }
@@ -165,7 +165,9 @@ namespace llarp
           }
           else
           {
-            llarp::LogWarn("no closer peers for tag ", N.ToString());
+            // no more closer peers
+            replies.emplace_back(new GotIntroMessage({}, T));
+            return true;
           }
         }
         else

@@ -301,6 +301,12 @@ namespace llarp
     {
     }
 
+    virtual void
+    error()
+    {
+      llarp::LogError(strerror(errno));
+    }
+
     virtual int
     read(void* buf, size_t sz) = 0;
 
@@ -406,17 +412,70 @@ namespace llarp
   // on sockets
   struct tcp_conn : public ev_io
   {
-    bool _shouldClose = false;
-    llarp_tcp_conn* tcp;
-    tcp_conn(int fd, llarp_tcp_conn* conn)
-        : ev_io(fd, new LosslessWriteQueue_t{}), tcp(conn)
+    sockaddr_storage _addr;
+    bool _shouldClose     = false;
+    bool _calledConnected = false;
+    llarp_tcp_conn tcp;
+    // null if inbound otherwise outbound
+    llarp_tcp_connecter* _conn;
+
+    /// inbound
+    tcp_conn(llarp_ev_loop* loop, int fd)
+        : ev_io(fd, new LosslessWriteQueue_t{}), _conn(nullptr)
     {
+      tcp.impl   = this;
+      tcp.loop   = loop;
+      tcp.closed = nullptr;
+      tcp.user   = nullptr;
+      tcp.read   = nullptr;
+      tcp.tick   = nullptr;
+    }
+
+    /// outbound
+    tcp_conn(llarp_ev_loop* loop, int fd, const sockaddr* addr,
+             llarp_tcp_connecter* conn)
+        : ev_io(fd, new LosslessWriteQueue_t{}), _conn(conn)
+    {
+      socklen_t slen = sizeof(sockaddr_in);
+      if(addr->sa_family == AF_INET6)
+        slen = sizeof(sockaddr_in6);
+      else if(addr->sa_family == AF_UNIX)
+        slen = sizeof(sockaddr_un);
+      memcpy(&_addr, addr, slen);
+      tcp.impl   = this;
+      tcp.loop   = loop;
+      tcp.closed = nullptr;
+      tcp.user   = nullptr;
+      tcp.read   = nullptr;
+      tcp.tick   = nullptr;
     }
 
     virtual ~tcp_conn()
     {
-      delete tcp;
     }
+
+    /// start connecting
+    void
+    connect();
+
+    /// calls connected hooks
+    void
+    connected()
+    {
+      // we are connected yeh boi
+      if(_conn)
+      {
+        if(_conn->connected && !_calledConnected)
+          _conn->connected(_conn, &tcp);
+      }
+      _calledConnected = true;
+    }
+
+    void
+    flush_write();
+
+    void
+    error();
 
     virtual ssize_t
     do_write(void* buf, size_t sz);
@@ -426,7 +485,6 @@ namespace llarp
 
     bool
     tick();
-
   };
 
   struct tcp_serv : public ev_io
@@ -436,6 +494,7 @@ namespace llarp
     tcp_serv(llarp_ev_loop* l, int fd, llarp_tcp_acceptor* t)
         : ev_io(fd), loop(l), tcp(t)
     {
+      tcp->impl = this;
     }
 
     bool
@@ -458,7 +517,8 @@ namespace llarp
 struct llarp_ev_loop
 {
   byte_t readbuf[EV_READ_BUF_SZ] = {0};
-  llarp_time_t _now = 0;
+  llarp_time_t _now              = 0;
+
   virtual bool
   init() = 0;
   virtual int
@@ -487,6 +547,9 @@ struct llarp_ev_loop
 
   virtual llarp::ev_io*
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
+
+  virtual llarp::ev_io*
+  tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) = 0;
 
   /// register event listener
   virtual bool

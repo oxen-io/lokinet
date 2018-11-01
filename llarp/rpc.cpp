@@ -9,11 +9,101 @@ namespace llarp
   namespace rpc
   {
 #ifdef USE_ABYSS
-    struct Handler : public ::abyss::http::IRPCHandler
+
+    struct CallerHandler : public ::abyss::http::IRPCClientHandler
+    {
+      CallerHandler(::abyss::http::ConnImpl* impl)
+          : ::abyss::http::IRPCClientHandler(impl)
+      {
+      }
+
+      ~CallerHandler()
+      {
+      }
+
+      void
+      PopulateReqHeaders(abyss::http::Headers_t& hdr)
+      {
+      }
+    };
+
+    struct VerifyRouterHandler : public CallerHandler
+    {
+      llarp::PubKey pk;
+      std::function< void(llarp::PubKey, bool) > handler;
+
+      ~VerifyRouterHandler()
+      {
+      }
+
+      VerifyRouterHandler(::abyss::http::ConnImpl* impl, const llarp::PubKey& k,
+                          std::function< void(llarp::PubKey, bool) > h)
+          : CallerHandler(impl), pk(k), handler(h)
+      {
+      }
+
+      bool
+      HandleResponse(const ::abyss::http::RPC_Response& response)
+      {
+        handler(pk, true);
+        return true;
+      }
+
+      void
+      HandleError()
+      {
+        llarp::LogInfo("failed to verify router ", pk);
+        handler(pk, false);
+      }
+    };
+
+    struct CallerImpl : public ::abyss::http::JSONRPC
     {
       llarp_router* router;
-      Handler(::abyss::http::ConnImpl* conn, llarp_router* r)
-          : ::abyss::http::IRPCHandler(conn), router(r)
+      CallerImpl(llarp_router* r) : ::abyss::http::JSONRPC(), router(r)
+      {
+      }
+
+      void
+      Tick()
+      {
+        Flush();
+      }
+
+      bool
+      Start(const std::string& remote)
+      {
+        return RunAsync(router->netloop, remote);
+      }
+
+      abyss::http::IRPCClientHandler*
+      NewConn(PubKey k, std::function< void(llarp::PubKey, bool) > handler,
+              abyss::http::ConnImpl* impl)
+      {
+        return new VerifyRouterHandler(impl, k, handler);
+      }
+
+      void
+      AsyncVerifyRouter(llarp::PubKey pk,
+                        std::function< void(llarp::PubKey, bool) > handler)
+      {
+        abyss::json::Value params;
+        params.SetObject();
+        QueueRPC("get_service_node", std::move(params),
+                 std::bind(&CallerImpl::NewConn, this, pk, handler,
+                           std::placeholders::_1));
+      }
+
+      ~CallerImpl()
+      {
+      }
+    };
+
+    struct Handler : public ::abyss::httpd::IRPCHandler
+    {
+      llarp_router* router;
+      Handler(::abyss::httpd::ConnImpl* conn, llarp_router* r)
+          : ::abyss::httpd::IRPCHandler(conn), router(r)
       {
       }
 
@@ -59,15 +149,15 @@ namespace llarp
       }
     };
 
-    struct ReqHandlerImpl : public ::abyss::http::BaseReqHandler
+    struct ReqHandlerImpl : public ::abyss::httpd::BaseReqHandler
     {
       ReqHandlerImpl(llarp_router* r, llarp_time_t reqtimeout)
-          : ::abyss::http::BaseReqHandler(reqtimeout), router(r)
+          : ::abyss::httpd::BaseReqHandler(reqtimeout), router(r)
       {
       }
       llarp_router* router;
-      ::abyss::http::IRPCHandler*
-      CreateHandler(::abyss::http::ConnImpl* conn) const
+      ::abyss::httpd::IRPCHandler*
+      CreateHandler(::abyss::httpd::ConnImpl* conn) const
       {
         return new Handler(conn, router);
       }
@@ -115,7 +205,60 @@ namespace llarp
         return true;
       }
     };
+
+    struct CallerImpl
+    {
+      CallerImpl(llarp_router* r)
+      {
+      }
+
+      ~CallerImpl()
+      {
+      }
+
+      bool
+      Start(const std::string&)
+      {
+        return true;
+      }
+
+      void
+      Tick()
+      {
+      }
+
+      void
+      AsyncVerifyRouter(llarp::PubKey pk,
+                        std::function< void(llarp::PubKey, bool) > result)
+      {
+        // always allow routers when not using libabyss
+        result(pk, true);
+      }
+    };
+
 #endif
+
+    Caller::Caller(llarp_router* r) : m_Impl(new CallerImpl(r))
+    {
+    }
+
+    Caller::~Caller()
+    {
+      delete m_Impl;
+    }
+
+    bool
+    Caller::Start(const std::string& addr)
+    {
+      return m_Impl->Start(addr);
+    }
+
+    void
+    Caller::AsyncVerifyRouter(
+        llarp::PubKey pk, std::function< void(llarp::PubKey, bool) > handler)
+    {
+      m_Impl->AsyncVerifyRouter(pk, handler);
+    }
 
     Server::Server(llarp_router* r) : m_Impl(new ServerImpl(r))
     {

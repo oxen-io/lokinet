@@ -385,9 +385,9 @@ namespace llarp
       {
         if(handleResult)
           handleResult(valuesFound);
-        else
-          parent->DHTSendTo(whoasked.node,
-                            new GotIntroMessage(valuesFound, whoasked.txid));
+
+        parent->DHTSendTo(whoasked.node,
+                          new GotIntroMessage(valuesFound, whoasked.txid));
       }
     };
 
@@ -398,7 +398,7 @@ namespace llarp
       LocalServiceAddressLookup(const PathID_t &pathid, uint64_t txid,
                                 const service::Address &addr, Context *ctx,
                                 const Key_t &askpeer)
-          : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, 4,
+          : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, 5,
                                  nullptr)
           , localPath(pathid)
       {

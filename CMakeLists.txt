@@ -5,13 +5,17 @@ set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" OFF)
-
+option(USE_CXX17 "enable c++17 features" OFF)
 # Require C++11
 # or C++17 on win32
 if (NOT WIN32)
-set(CMAKE_CXX_STANDARD 11)
+  if(USE_CXX17)
+    set(CMAKE_CXX_STANDARD 17)
+  else()
+    set(CMAKE_CXX_STANDARD 11)
+  endif()
 else()
-set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 17)
 endif(NOT WIN32)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -492,6 +496,7 @@ set(DNS_EXE dns)
 set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC})
 
 if(USE_LIBABYSS)
+  add_definitions(-DUSE_ABYSS=1)
   set(ABYSS libabyss)
   set(ABYSS_LIB abyss)
   set(ABYSS_EXE ${ABYSS_LIB}-main)
@@ -503,6 +508,8 @@ if(USE_LIBABYSS)
     ${ABYSS}/src/json.cpp)
   add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
   set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
+  target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB})
 endif()
 
 foreach(F ${ALL_SRC})

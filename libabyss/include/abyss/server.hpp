@@ -12,7 +12,7 @@
 
 namespace abyss
 {
-  namespace http
+  namespace httpd
   {
     struct ConnImpl;
 
@@ -75,7 +75,7 @@ namespace abyss
       std::list< std::unique_ptr< IRPCHandler > > m_Conns;
       llarp_time_t m_ReqTimeout;
     };
-  }  // namespace http
+  }  // namespace httpd
 }  // namespace abyss
 
 #endif

@@ -218,7 +218,7 @@ namespace llarp
       const size_t offset = 0;
 #endif
       ssize_t ret = tuntap_read(tunif, buf, sz);
-      if(ret > 4 && t->recvpkt)
+      if(ret > offset && t->recvpkt)
         t->recvpkt(t, ((byte_t*)buf) + offset, ret - offset);
       return ret;
     }

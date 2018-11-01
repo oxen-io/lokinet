@@ -26,6 +26,18 @@ namespace llarp
       }
 
       bool
+      operator==(const Key_t& other) const
+      {
+        return memcmp(data(), other.data(), 32) == 0;
+      }
+
+      bool
+      operator!=(const Key_t& other) const
+      {
+        return memcmp(data(), other.data(), 32) != 0;
+      }
+
+      bool
       operator<(const Key_t& other) const
       {
         return memcmp(data(), other.data(), 32) < 0;

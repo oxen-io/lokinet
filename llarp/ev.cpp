@@ -1,5 +1,6 @@
 #include <llarp/ev.h>
 #include <llarp/logic.h>
+#include <llarp/string_view.hpp>
 #include "mem.hpp"
 
 #define EV_TICK_INTERVAL 100
@@ -143,6 +144,46 @@ llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const void *pkt,
   return impl->queue_write(ptr, sz);
 }
 
+void
+llarp_tcp_async_try_connect(struct llarp_ev_loop *loop,
+                            struct llarp_tcp_connecter *tcp)
+{
+  tcp->loop = loop;
+  llarp::string_view addr_str, port_str;
+  // try parsing address
+  const char *begin = tcp->remote;
+  const char *ptr   = strstr(tcp->remote, ":");
+  // get end of address
+
+  if(ptr == nullptr)
+  {
+    llarp::LogError("bad address: ", tcp->remote);
+    if(tcp->error)
+      tcp->error(tcp);
+    return;
+  }
+  const char *end = ptr;
+  while(*end && (end - begin) < sizeof(tcp->remote))
+  {
+    ++end;
+  }
+  addr_str = llarp::string_view(begin, ptr - begin);
+  ++ptr;
+  port_str = llarp::string_view(ptr, end - ptr);
+  // actually parse address
+  llarp::Addr addr(addr_str, port_str);
+
+  llarp::ev_io *conn = loop->tcp_connect(tcp, addr);
+  if(conn && loop->add_ev(conn, true))
+  {
+    llarp::LogDebug("async connect to ", addr);
+    return;
+  }
+  llarp::LogError("async connect failed");
+  if(tcp->error)
+    tcp->error(tcp);
+}
+
 bool
 llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *tcp,
                 const struct sockaddr *bindaddr)
@@ -151,7 +192,6 @@ llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *tcp,
   llarp::ev_io *impl = loop->bind_tcp(tcp, bindaddr);
   if(impl)
   {
-    tcp->impl = impl;
     return loop->add_ev(impl);
   }
   return false;
@@ -193,12 +233,12 @@ namespace llarp
   {
     if(_shouldClose)
     {
-      if(tcp && tcp->closed)
-        tcp->closed(tcp);
+      if(tcp.closed)
+        tcp.closed(&tcp);
       return false;
     }
-    else if(tcp->tick)
-      tcp->tick(tcp);
+    else if(tcp.tick)
+      tcp.tick(&tcp);
     return true;
   }
 
