@@ -305,7 +305,7 @@ namespace llarp
 
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
-        pkt.UpdatePacketOnSrc();
+        pkt.UpdateIPv4PacketOnSrc();
 
         if(!SendToOrQueue(itr->second, pkt.Buffer(), service::eProtocolTraffic))
         {
@@ -341,7 +341,7 @@ namespace llarp
                  return false;
                }
                // update packet to use proper addresses, recalc checksums
-               pkt.UpdatePacketOnDst(themIP, usIP);
+               pkt.UpdateIPv4PacketOnDst(themIP, usIP);
                return true;
              }))
 

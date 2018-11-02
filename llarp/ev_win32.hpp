@@ -16,7 +16,7 @@ namespace llarp
     if(_shouldClose)
       return -1;
 
-    WSABUF r_buf = {sz, buf};
+    WSABUF r_buf = {sz, (char*)buf};
     DWORD amount = 0;
 
     WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, &portfd[0], nullptr);
@@ -39,7 +39,7 @@ namespace llarp
   ssize_t
   tcp_conn::do_write(void* buf, size_t sz)
   {
-    WSABUF s_buf = {sz, buf};
+    WSABUF s_buf = {sz, (char*)buf};
     DWORD sent   = 0;
 
     if(_shouldClose)
@@ -327,7 +327,7 @@ struct llarp_win32_loop : public llarp_ev_loop
         ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms);
 
     llarp::ev_io* ev = reinterpret_cast< llarp::ev_io* >(ev_id);
-    if(ev)
+    if(ev && qdata)
     {
       llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
       if(ev->write)

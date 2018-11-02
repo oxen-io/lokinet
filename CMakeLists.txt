@@ -5,13 +5,18 @@ set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" OFF)
-
+option(USE_CXX17 "enable c++17 features" OFF)
+option(USE_AVX2 "enable avx2 code" OFF)
 # Require C++11
 # or C++17 on win32
 if (NOT WIN32)
-set(CMAKE_CXX_STANDARD 11)
+  if(USE_CXX17)
+    set(CMAKE_CXX_STANDARD 17)
+  else()
+    set(CMAKE_CXX_STANDARD 11)
+  endif()
 else()
-set(CMAKE_CXX_STANDARD 17)
+  set(CMAKE_CXX_STANDARD 17)
 endif(NOT WIN32)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,7 +27,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # applicable to the host's FPU -rick
 add_compile_options(-Wall)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
-add_compile_options(-Wno-unused-function)
+add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if (USING_CLANG)
@@ -41,10 +46,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
-# hmm if I allow ld/lld to pick and choose what parts of
-# pthread to link in, does it break anything?
 if(STATIC_LINK)
-  add_compile_options( -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive )
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static" )
 endif()
 
@@ -62,10 +64,8 @@ if(TESTNET)
   add_definitions(-DTESTNET=1)
 endif()
 
-add_compile_options( -Wall )
-
-set(OPTIMIZE_FLAGS -O3 )
-set(DEBUG_FLAGS -O0 -g3 )
+set(OPTIMIZE_FLAGS -O3)
+set(DEBUG_FLAGS -O0 -g3)
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -95,13 +95,18 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_compile_options( ${DEBUG_FLAGS} )
 endif()
 
-set(CRYPTO_FLAGS "-march=native")
-set(CMAKE_ASM_FLAGS "-march=native")
+if (NOT USE_AVX2)
+set(CRYPTO_FLAGS -march=native)
+set(CMAKE_ASM_FLAGS "-march=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+else()
+set(CRYPTO_FLAGS -march=haswell -mtune=native)
+set(CMAKE_ASM_FLAGS "-march=haswell -mtune=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+endif(NOT USE_AVX2)
 
-add_compile_options( -Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS} )
+add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
 if(SHADOW)
-  add_compile_options( -fPIC)
+  add_compile_options(-fPIC)
 endif()
 
 if(NOT GIT_VERSION)
@@ -492,6 +497,7 @@ set(DNS_EXE dns)
 set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC})
 
 if(USE_LIBABYSS)
+  add_definitions(-DUSE_ABYSS=1)
   set(ABYSS libabyss)
   set(ABYSS_LIB abyss)
   set(ABYSS_EXE ${ABYSS_LIB}-main)
@@ -503,6 +509,13 @@ if(USE_LIBABYSS)
     ${ABYSS}/src/json.cpp)
   add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
   set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
+  target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB})
+  set(TEST_SRC ${TEST_SRC} test/jsonrpc_unittest.cpp)
+  # for freebsd
+  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    include_directories(/usr/local/include)
+  endif()
 endif()
 
 foreach(F ${ALL_SRC})

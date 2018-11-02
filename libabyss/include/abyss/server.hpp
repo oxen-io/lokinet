@@ -7,12 +7,13 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <llarp/string_view.hpp>
 #include <abyss/json.hpp>
 #include <unordered_map>
 
 namespace abyss
 {
-  namespace http
+  namespace httpd
   {
     struct ConnImpl;
 
@@ -49,6 +50,10 @@ namespace abyss
       void
       RemoveConn(IRPCHandler* handler);
 
+      /// close the handler and acceptor
+      void
+      Close();
+
       llarp_time_t
       now() const
       {
@@ -57,7 +62,7 @@ namespace abyss
 
      protected:
       virtual IRPCHandler*
-      CreateHandler(ConnImpl* connimpl) const = 0;
+      CreateHandler(ConnImpl* connimpl) = 0;
 
      private:
       static void
@@ -75,7 +80,7 @@ namespace abyss
       std::list< std::unique_ptr< IRPCHandler > > m_Conns;
       llarp_time_t m_ReqTimeout;
     };
-  }  // namespace http
+  }  // namespace httpd
 }  // namespace abyss
 
 #endif

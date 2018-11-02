@@ -28,8 +28,8 @@ namespace llarp
 
     if(amount > 0)
     {
-      if(tcp->read)
-        tcp->read(tcp, buf, amount);
+      if(tcp.read)
+        tcp.read(&tcp, buf, amount);
     }
     else
     {
@@ -38,6 +38,13 @@ namespace llarp
       return -1;
     }
     return 0;
+  }
+
+  void
+  tcp_conn::flush_write()
+  {
+    connected();
+    ev_io::flush_write();
   }
 
   ssize_t
@@ -51,6 +58,35 @@ namespace llarp
     return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
   }
 
+  void
+  tcp_conn::connect()
+  {
+    socklen_t slen = sizeof(sockaddr_in);
+    if(_addr.ss_family == AF_UNIX)
+      slen = sizeof(sockaddr_un);
+    else if(_addr.ss_family == AF_INET6)
+      slen = sizeof(sockaddr_in6);
+    int result = ::connect(fd, (const sockaddr*)&_addr, slen);
+    if(result == 0)
+    {
+      llarp::LogDebug("connected immedidately");
+      connected();
+    }
+    else if(errno == EINPROGRESS)
+    {
+      // in progress
+      llarp::LogDebug("connect in progress");
+      errno = 0;
+      return;
+    }
+    else if(_conn->error)
+    {
+      // wtf?
+      llarp::LogError("error connecting ", strerror(errno));
+      _conn->error(_conn);
+    }
+  }
+
   int
   tcp_serv::read(void*, size_t)
   {
@@ -60,24 +96,16 @@ namespace llarp
       llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
       return -1;
     }
-    llarp_tcp_conn* conn = new llarp_tcp_conn;
-    // zero out callbacks
-    conn->tick   = nullptr;
-    conn->closed = nullptr;
-    conn->read   = nullptr;
     // build handler
-    llarp::tcp_conn* connimpl = new tcp_conn(new_fd, conn);
-    conn->impl                = connimpl;
-    conn->loop                = loop;
+    llarp::tcp_conn* connimpl = new tcp_conn(loop, new_fd);
     if(loop->add_ev(connimpl, true))
     {
       // call callback
       if(tcp->accepted)
-        tcp->accepted(tcp, conn);
+        tcp->accepted(tcp, &connimpl->tcp);
       return 0;
     }
     // cleanup error
-    delete conn;
     delete connimpl;
     return -1;
   }
@@ -233,6 +261,31 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
   }
 
+  bool
+  tcp_connect(struct llarp_tcp_connecter* tcp, const sockaddr* remoteaddr)
+  {
+    // create socket
+    int fd = ::socket(remoteaddr->sa_family, SOCK_STREAM, 0);
+    if(fd == -1)
+      return false;
+    // set non blocking
+    int flags = fcntl(fd, F_GETFL, 0);
+    if(flags == -1)
+    {
+      ::close(fd);
+      return false;
+    }
+    if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+      ::close(fd);
+      return false;
+    }
+    llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
+    add_ev(conn, true);
+    conn->connect();
+    return true;
+  }
+
   llarp::ev_io*
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
   {
@@ -258,9 +311,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
       ::close(fd);
       return nullptr;
     }
-    llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
-    tcp->impl          = serv;
-    return serv;
+    return new llarp::tcp_serv(this, fd, tcp);
   }
 
   virtual bool
@@ -306,13 +357,20 @@ struct llarp_epoll_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
         if(ev)
         {
-          if(events[idx].events & EPOLLIN)
+          if(events[idx].events & EPOLLERR)
           {
-            ev->read(readbuf, sizeof(readbuf));
+            ev->error();
           }
-          if(events[idx].events & EPOLLOUT)
+          else
           {
-            ev->flush_write();
+            if(events[idx].events & EPOLLIN)
+            {
+              ev->read(readbuf, sizeof(readbuf));
+            }
+            if(events[idx].events & EPOLLOUT)
+            {
+              ev->flush_write();
+            }
           }
         }
         ++idx;
@@ -339,13 +397,20 @@ struct llarp_epoll_loop : public llarp_ev_loop
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
           if(ev)
           {
-            if(events[idx].events & EPOLLIN)
+            if(events[idx].events & EPOLLERR)
             {
-              ev->read(readbuf, sizeof(readbuf));
+              ev->error();
             }
-            if(events[idx].events & EPOLLOUT)
+            else
             {
-              ev->flush_write();
+              if(events[idx].events & EPOLLIN)
+              {
+                ev->read(readbuf, sizeof(readbuf));
+              }
+              if(events[idx].events & EPOLLOUT)
+              {
+                ev->flush_write();
+              }
             }
           }
           ++idx;
@@ -437,7 +502,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     epoll_event ev;
     ev.data.ptr = e;
-    ev.events   = EPOLLIN;
+    ev.events   = EPOLLIN | EPOLLERR;
     if(write)
       ev.events |= EPOLLOUT;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, e->fd, &ev) == -1)

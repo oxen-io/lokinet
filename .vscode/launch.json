@@ -8,7 +8,7 @@
       "name": "(gdb) Launch",
       "type": "cppdbg",
       "request": "launch",
-      "program": "enter program name, for example ${workspaceFolder}/a.out",
+      "program": "${workspaceFolder}/lokinet",
       "args": [],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",

@@ -9,11 +9,11 @@
 // kqueue / kevent
 #include <sys/event.h>
 #include <sys/time.h>
+#include <fcntl.h>
 #endif
 
 // MacOS needs this
 #ifndef SOCK_NONBLOCK
-#include <fcntl.h>
 #define SOCK_NONBLOCK O_NONBLOCK
 #endif
 
@@ -29,23 +29,40 @@ namespace llarp
   int
   tcp_conn::read(void* buf, size_t sz)
   {
+    if(sz == 0)
+    {
+      if(tcp.read)
+        tcp.read(&tcp, 0, 0);
+      return 0;
+    }
     if(_shouldClose)
       return -1;
 
     ssize_t amount = ::read(fd, buf, sz);
 
-    if(amount > 0)
+    if(amount >= 0)
     {
-      if(tcp->read)
-        tcp->read(tcp, buf, amount);
+      if(tcp.read)
+        tcp.read(&tcp, buf, amount);
     }
     else
     {
-      // error
+      if(errno == EAGAIN || errno == EWOULDBLOCK)
+      {
+        errno = 0;
+        return 0;
+      }
       _shouldClose = true;
       return -1;
     }
     return 0;
+  }
+
+  void
+  tcp_conn::flush_write()
+  {
+    connected();
+    ev_io::flush_write();
   }
 
   ssize_t
@@ -62,33 +79,65 @@ namespace llarp
 #endif
   }
 
+  void
+  tcp_conn::connect()
+  {
+    socklen_t slen = sizeof(sockaddr_in);
+    if(_addr.ss_family == AF_UNIX)
+      slen = sizeof(sockaddr_un);
+    else if(_addr.ss_family == AF_INET6)
+      slen = sizeof(sockaddr_in6);
+    int result = ::connect(fd, (const sockaddr*)&_addr, slen);
+    if(result == 0)
+    {
+      llarp::LogDebug("Connected");
+      connected();
+    }
+    else if(errno == EINPROGRESS)
+    {
+      llarp::LogDebug("connect in progress");
+      errno = 0;
+      return;
+    }
+    else if(_conn)
+    {
+      _conn->error(_conn);
+    }
+  }
+
   int
   tcp_serv::read(void*, size_t)
   {
     int new_fd = ::accept(fd, nullptr, nullptr);
     if(new_fd == -1)
     {
-      llarp::LogError("failed to accept on ", fd, ":", strerror(errno));
+      llarp::LogError("failed to accept on ", fd, ": ", strerror(errno));
       return -1;
     }
-    llarp_tcp_conn* conn = new llarp_tcp_conn;
-    // zero out callbacks
-    conn->tick   = nullptr;
-    conn->closed = nullptr;
-    conn->read   = nullptr;
+    // get flags
+    int flags = fcntl(new_fd, F_GETFL, 0);
+    if(flags == -1)
+    {
+      ::close(new_fd);
+      return -1;
+    }
+    // set flags
+    if(fcntl(new_fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+      llarp::LogError("Failed to set non block on ", fd, ": ", strerror(errno));
+      ::close(new_fd);
+      return -1;
+    }
     // build handler
-    llarp::tcp_conn* connimpl = new tcp_conn(new_fd, conn);
-    conn->impl                = connimpl;
-    conn->loop                = loop;
+    llarp::tcp_conn* connimpl = new llarp::tcp_conn(loop, new_fd);
     if(loop->add_ev(connimpl, true))
     {
       // call callback
       if(tcp->accepted)
-        tcp->accepted(tcp, conn);
+        tcp->accepted(tcp, &connimpl->tcp);
       return 0;
     }
     // cleanup error
-    delete conn;
     delete connimpl;
     return -1;
   }
@@ -218,7 +267,7 @@ namespace llarp
       const size_t offset = 0;
 #endif
       ssize_t ret = tuntap_read(tunif, buf, sz);
-      if(ret > 4 && t->recvpkt)
+      if(ret > offset && t->recvpkt)
         t->recvpkt(t, ((byte_t*)buf) + offset, ret - offset);
       return ret;
     }
@@ -248,7 +297,6 @@ namespace llarp
 struct llarp_kqueue_loop : public llarp_ev_loop
 {
   int kqueuefd;
-  struct kevent change; /* event we want to monitor */
 
   llarp_kqueue_loop() : kqueuefd(-1)
   {
@@ -275,6 +323,18 @@ struct llarp_kqueue_loop : public llarp_ev_loop
       return nullptr;
     }
     if(::listen(fd, 5) == -1)
+    {
+      ::close(fd);
+      return nullptr;
+    }
+    // set non blocking
+    int flags = fcntl(fd, F_GETFL, 0);
+    if(flags == -1)
+    {
+      ::close(fd);
+      return nullptr;
+    }
+    if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
     {
       ::close(fd);
       return nullptr;
@@ -314,6 +374,30 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     return kqueuefd != -1;
   }
 
+  bool
+  tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr)
+  {
+    int fd = ::socket(addr->sa_family, SOCK_STREAM, 0);
+    if(fd == -1)
+      return false;
+    int flags = fcntl(fd, F_GETFL, 0);
+    if(flags == -1)
+    {
+      ::close(fd);
+      return false;
+    }
+    if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
+    {
+      ::close(fd);
+      return false;
+    }
+
+    llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, addr, tcp);
+    add_ev(conn, true);
+    conn->connect();
+    return true;
+  }
+
   int
   tick(int ms)
   {
@@ -333,9 +417,10 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         if(ev)
         {
           if(events[idx].filter & EVFILT_READ)
-            ev->read(readbuf, sizeof(readbuf));
+            ev->read(readbuf,
+                     std::min(sizeof(readbuf), size_t(events[idx].data)));
           if(events[idx].filter & EVFILT_WRITE)
-            ev->flush_write();
+            ev->flush_write_buffers(events[idx].data);
         }
         ++idx;
       }
@@ -350,7 +435,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   {
     timespec t;
     t.tv_sec  = 0;
-    t.tv_nsec = 1000UL * EV_TICK_INTERVAL;
+    t.tv_nsec = 1000000UL * EV_TICK_INTERVAL;
     struct kevent events[1024];
     int result;
     do
@@ -366,9 +451,10 @@ struct llarp_kqueue_loop : public llarp_ev_loop
           if(ev)
           {
             if(events[idx].filter & EVFILT_READ)
-              ev->read(readbuf, sizeof(readbuf));
+              ev->read(readbuf,
+                       std::min(sizeof(readbuf), size_t(events[idx].data)));
             if(events[idx].filter & EVFILT_WRITE)
-              ev->flush_write();
+              ev->flush_write_buffers(events[idx].data);
           }
           else
           {
@@ -453,8 +539,8 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
-    EV_SET(&change, ev->fd, ev->flags, EV_DELETE, 0, 0, nullptr);
-    return kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) != -1;
+    EV_SET(&ev->change, ev->fd, ev->flags, EV_DELETE, 0, 0, nullptr);
+    return kevent(kqueuefd, &ev->change, 1, nullptr, 0, nullptr) != -1;
   }
 
   llarp::ev_io*
@@ -469,17 +555,26 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   }
 
   bool
-  add_ev(llarp::ev_io* ev, bool write)
+  add_ev(llarp::ev_io* ev, bool w)
   {
     ev->flags = EVFILT_READ;
-    if(write)
-      ev->flags |= EVFILT_WRITE;
-
-    EV_SET(&change, ev->fd, ev->flags, EV_ADD, 0, 0, ev);
-    if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1)
+    EV_SET(&ev->change, ev->fd, EVFILT_READ, EV_ADD, 0, 0, ev);
+    if(kevent(kqueuefd, &ev->change, 1, nullptr, 0, nullptr) == -1)
     {
+      llarp::LogError("Failed to add event: ", strerror(errno));
       delete ev;
       return false;
+    }
+    if(w)
+    {
+      ev->flags |= EVFILT_WRITE;
+      EV_SET(&ev->change, ev->fd, EVFILT_WRITE, EV_ADD, 0, 0, ev);
+      if(kevent(kqueuefd, &ev->change, 1, nullptr, 0, nullptr) == -1)
+      {
+        llarp::LogError("Failed to add event: ", strerror(errno));
+        delete ev;
+        return false;
+      }
     }
     handlers.emplace_back(ev);
     return true;

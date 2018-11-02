@@ -6,7 +6,7 @@
 #include <iostream>
 #include "logger.hpp"
 #include "mem.hpp"
-
+#include <llarp/string_view.hpp>
 #include <vector>
 
 #include <stdlib.h>  // for itoa
@@ -326,6 +326,12 @@ namespace llarp
     {
       this->from_char_array(str.c_str());
       this->port(p_port);
+    }
+
+    Addr(string_view addr_str, string_view port_str)
+    {
+      this->from_char_array(llarp::string_view_string(addr_str).c_str());
+      this->port(std::stoi(llarp::string_view_string(port_str)));
     }
 
     bool
