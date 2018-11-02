@@ -98,43 +98,23 @@ namespace abyss
       }
 
       bool
-      WriteStatusLine(int code, const std::string& message)
-      {
-        char buf[128] = {0};
-        int sz        = snprintf(buf, sizeof(buf), "HTTP/1.0 %d %s\r\n", code,
-                          message.c_str());
-        if(sz > 0)
-        {
-          return llarp_tcp_conn_async_write(_conn, buf, sz);
-        }
-        else
-          return false;
-      }
-
-      bool
       WriteResponseSimple(int code, const std::string& msg,
                           const char* contentType, const char* content)
       {
-        if(!WriteStatusLine(code, msg))
-          return false;
-        char buf[128] = {0};
-        int sz =
-            snprintf(buf, sizeof(buf), "Content-Type: %s\r\n", contentType);
-        if(sz <= 0)
-          return false;
-        if(!llarp_tcp_conn_async_write(_conn, buf, sz))
-          return false;
+        char buf[512]        = {0};
         size_t contentLength = strlen(content);
-        sz = snprintf(buf, sizeof(buf), "Content-Length: %zu\r\n\r\n",
-                      contentLength);
+        int sz               = snprintf(buf, sizeof(buf),
+                          "HTTP/1.0 %d %s\r\nContent-Type: "
+                          "%s\r\nContent-Length: %zu\r\n\r\n",
+                          code, msg.c_str(), contentType, contentLength);
         if(sz <= 0)
           return false;
         if(!llarp_tcp_conn_async_write(_conn, buf, sz))
           return false;
-        if(!llarp_tcp_conn_async_write(_conn, content, contentLength))
-          return false;
+
         m_State = eWriteHTTPBody;
-        return true;
+
+        return llarp_tcp_conn_async_write(_conn, content, contentLength);
       }
 
       bool
@@ -236,8 +216,13 @@ namespace abyss
         {
           return false;
         }
+
+        if(sz == 0)
+          return true;
+
         bool done    = false;
         m_LastActive = _parent->now();
+
         if(m_State < eReadHTTPBody)
         {
           const char* end = strstr(buf, "\r\n");

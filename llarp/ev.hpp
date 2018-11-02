@@ -10,6 +10,7 @@
 #include <llarp/codel.hpp>
 #include <list>
 #include <deque>
+#include <algorithm>
 
 #ifdef _WIN32
 #include <variant>
@@ -287,6 +288,11 @@ namespace llarp
 
     int fd;
     int flags = 0;
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || (__APPLE__ && __MACH__)
+    struct kevent change;
+#endif
+
     posix_ev_io(int f) : fd(f)
     {
     }
@@ -347,11 +353,17 @@ namespace llarp
         return false;
     }
 
+    virtual void
+    flush_write()
+    {
+      flush_write_buffers(0);
+    }
+
     /// called in event loop when fd is ready for writing
     /// requeues anything not written
     /// this assumes fd is set to non blocking
     virtual void
-    flush_write()
+    flush_write_buffers(size_t amount)
     {
       if(m_LossyWriteQueue)
         m_LossyWriteQueue->Process([&](WriteBuffer& buffer) {
@@ -361,28 +373,53 @@ namespace llarp
         });
       else if(m_BlockingWriteQueue)
       {
-        // write buffers
-        while(m_BlockingWriteQueue->size())
+        if(amount)
         {
-          auto& itr      = m_BlockingWriteQueue->front();
-          ssize_t result = do_write(itr.buf, itr.bufsz);
-          if(result == -1)
-            return;
-          ssize_t dlt = itr.bufsz - result;
-          if(dlt > 0)
+          while(amount && m_BlockingWriteQueue->size())
           {
-            // queue remaining to front of queue
-            WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
+            auto& itr      = m_BlockingWriteQueue->front();
+            ssize_t result = do_write(itr.buf, std::min(amount, itr.bufsz));
+            if(result == -1)
+              return;
+            ssize_t dlt = itr.bufsz - result;
+            if(dlt > 0)
+            {
+              // queue remaining to front of queue
+              WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
+              m_BlockingWriteQueue->pop_front();
+              m_BlockingWriteQueue->push_front(buff);
+              // TODO: errno?
+              return;
+            }
             m_BlockingWriteQueue->pop_front();
-            m_BlockingWriteQueue->push_front(buff);
-            // TODO: errno?
-            return;
+            amount -= result;
           }
-          m_BlockingWriteQueue->pop_front();
-          if(errno == EAGAIN || errno == EWOULDBLOCK)
+        }
+        else
+        {
+          // write buffers
+          while(m_BlockingWriteQueue->size())
           {
-            errno = 0;
-            return;
+            auto& itr      = m_BlockingWriteQueue->front();
+            ssize_t result = do_write(itr.buf, itr.bufsz);
+            if(result == -1)
+              return;
+            ssize_t dlt = itr.bufsz - result;
+            if(dlt > 0)
+            {
+              // queue remaining to front of queue
+              WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
+              m_BlockingWriteQueue->pop_front();
+              m_BlockingWriteQueue->push_front(buff);
+              // TODO: errno?
+              return;
+            }
+            m_BlockingWriteQueue->pop_front();
+            if(errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+              errno = 0;
+              return;
+            }
           }
         }
       }
@@ -475,7 +512,22 @@ namespace llarp
     flush_write();
 
     void
-    error();
+    flush_write_buffers(size_t a)
+    {
+      connected();
+      ev_io::flush_write_buffers(a);
+    }
+
+    void
+    error()
+    {
+      if(_conn)
+      {
+        llarp::LogError("tcp_conn error: ", strerror(errno));
+        if(_conn->error)
+          _conn->error(_conn);
+      }
+    }
 
     virtual ssize_t
     do_write(void* buf, size_t sz);
@@ -548,12 +600,13 @@ struct llarp_ev_loop
   virtual llarp::ev_io*
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
 
-  virtual llarp::ev_io*
+  /// return false on socket error (non blocking)
+  virtual bool
   tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) = 0;
 
   /// register event listener
   virtual bool
-  add_ev(llarp::ev_io* ev, bool write = false) = 0;
+  add_ev(llarp::ev_io* ev, bool write) = 0;
 
   virtual bool
   running() const = 0;

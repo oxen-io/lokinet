@@ -137,7 +137,7 @@ namespace abyss
       ProcessRead(const char* buf, size_t sz)
       {
         if(state == eInitial)
-          return false;
+          return true;
         bool done = false;
         while(state < eReadResponseBody)
         {
@@ -202,13 +202,16 @@ namespace abyss
         json::ToString(m_RequestBody, body);
         // request base
         char buf[512] = {0};
-        snprintf(buf, sizeof(buf),
-                 "POST /rpc HTTP/1.0\r\nContent-Type: "
-                 "application/json\r\nContent-Length: %lu\r\nAccept: "
-                 "application/json\r\n",
-                 body.size());
-        if(!llarp_tcp_conn_async_write(m_Conn, buf, strnlen(buf, sizeof(buf))))
+        int sz        = snprintf(buf, sizeof(buf),
+                          "POST /rpc HTTP/1.0\r\nContent-Type: "
+                          "application/json\r\nContent-Length: %lu\r\nAccept: "
+                          "application/json\r\n",
+                          body.size());
+        if(sz <= 0)
+          return;
+        if(!llarp_tcp_conn_async_write(m_Conn, buf, sz))
         {
+          llarp::LogError("failed to write first part of request");
           CloseError();
           return;
         }

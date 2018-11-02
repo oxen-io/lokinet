@@ -87,17 +87,6 @@ namespace llarp
     }
   }
 
-  void
-  tcp_conn::error()
-  {
-    if(_conn)
-    {
-      llarp::LogError("tcp_conn error: ", strerror(errno));
-      if(_conn->error)
-        _conn->error(_conn);
-    }
-  }
-
   int
   tcp_serv::read(void*, size_t)
   {
@@ -272,28 +261,29 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
   }
 
-  llarp::ev_io*
+  bool
   tcp_connect(struct llarp_tcp_connecter* tcp, const sockaddr* remoteaddr)
   {
     // create socket
     int fd = ::socket(remoteaddr->sa_family, SOCK_STREAM, 0);
     if(fd == -1)
-      return nullptr;
+      return false;
     // set non blocking
     int flags = fcntl(fd, F_GETFL, 0);
     if(flags == -1)
     {
       ::close(fd);
-      return nullptr;
+      return false;
     }
     if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
     {
       ::close(fd);
-      return nullptr;
+      return false;
     }
     llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
+    add_ev(conn, true);
     conn->connect();
-    return conn;
+    return true;
   }
 
   llarp::ev_io*

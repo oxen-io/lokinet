@@ -245,8 +245,7 @@ namespace llarp
         }
 
         // construct
-        service = std::unique_ptr< llarp::service::Endpoint >(
-            itr->second(conf.first, m_Router));
+        service.reset(itr->second(conf.first, m_Router));
       }
       // configure
       for(const auto &option : conf.second)

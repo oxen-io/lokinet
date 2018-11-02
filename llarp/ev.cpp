@@ -121,7 +121,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   tun->impl = dev;
   if(dev)
   {
-    return loop->add_ev(dev);
+    return loop->add_ev(dev, false);
   }
   return false;
 }
@@ -133,7 +133,10 @@ llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const void *pkt,
   const byte_t *ptr     = (const byte_t *)pkt;
   llarp::tcp_conn *impl = static_cast< llarp::tcp_conn * >(conn->impl);
   if(impl->_shouldClose)
+  {
+    llarp::LogError("write on closed connection");
     return false;
+  }
   while(sz > EV_WRITE_BUF_SZ)
   {
     if(!impl->queue_write((const byte_t *)ptr, EV_WRITE_BUF_SZ))
@@ -173,15 +176,12 @@ llarp_tcp_async_try_connect(struct llarp_ev_loop *loop,
   // actually parse address
   llarp::Addr addr(addr_str, port_str);
 
-  llarp::ev_io *conn = loop->tcp_connect(tcp, addr);
-  if(conn && loop->add_ev(conn, true))
+  if(!loop->tcp_connect(tcp, addr))
   {
-    llarp::LogDebug("async connect to ", addr);
-    return;
+    llarp::LogError("async connect failed");
+    if(tcp->error)
+      tcp->error(tcp);
   }
-  llarp::LogError("async connect failed");
-  if(tcp->error)
-    tcp->error(tcp);
 }
 
 bool
@@ -192,7 +192,7 @@ llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *tcp,
   llarp::ev_io *impl = loop->bind_tcp(tcp, bindaddr);
   if(impl)
   {
-    return loop->add_ev(impl);
+    return loop->add_ev(impl, false);
   }
   return false;
 }
