@@ -6,6 +6,7 @@ project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" OFF)
 option(USE_CXX17 "enable c++17 features" OFF)
+option(USE_AVX2 "enable avx2 code" OFF)
 # Require C++11
 # or C++17 on win32
 if (NOT WIN32)
@@ -26,7 +27,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # applicable to the host's FPU -rick
 add_compile_options(-Wall)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
-add_compile_options(-Wno-unused-function)
+add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if (USING_CLANG)
@@ -45,10 +46,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
-# hmm if I allow ld/lld to pick and choose what parts of
-# pthread to link in, does it break anything?
 if(STATIC_LINK)
-  add_compile_options( -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive )
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static" )
 endif()
 
@@ -66,10 +64,8 @@ if(TESTNET)
   add_definitions(-DTESTNET=1)
 endif()
 
-add_compile_options( -Wall )
-
-set(OPTIMIZE_FLAGS -O3 )
-set(DEBUG_FLAGS -O0 -g3 )
+set(OPTIMIZE_FLAGS -O3)
+set(DEBUG_FLAGS -O0 -g3)
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -99,13 +95,18 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_compile_options( ${DEBUG_FLAGS} )
 endif()
 
-set(CRYPTO_FLAGS "-march=native")
-set(CMAKE_ASM_FLAGS "-march=native")
+if (NOT USE_AVX2)
+set(CRYPTO_FLAGS -march=native)
+set(CMAKE_ASM_FLAGS "-march=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+else()
+set(CRYPTO_FLAGS -march=haswell -mtune=native)
+set(CMAKE_ASM_FLAGS "-march=haswell -mtune=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+endif(NOT USE_AVX2)
 
-add_compile_options( -Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS} )
+add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
 if(SHADOW)
-  add_compile_options( -fPIC)
+  add_compile_options(-fPIC)
 endif()
 
 if(NOT GIT_VERSION)

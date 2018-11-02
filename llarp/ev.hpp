@@ -36,7 +36,7 @@ namespace llarp
     {
       llarp_time_t timestamp = 0;
       size_t bufsz;
-      byte_t buf[EV_WRITE_BUF_SZ];
+      byte_t buf[EV_WRITE_BUF_SZ] = {0};
 
       WriteBuffer() = default;
 
@@ -569,7 +569,7 @@ namespace llarp
 struct llarp_ev_loop
 {
   byte_t readbuf[EV_READ_BUF_SZ] = {0};
-  llarp_time_t _now              = 0;
+  llarp_time_t _now = 0;
 
   virtual bool
   init() = 0;
