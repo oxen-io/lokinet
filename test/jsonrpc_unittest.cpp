@@ -13,6 +13,7 @@ struct AbyssTestBase : public ::testing::Test
   abyss::httpd::BaseReqHandler* server = nullptr;
   abyss::http::JSONRPC* client         = nullptr;
   const std::string method             = "test.method";
+  bool called                          = false;
 
   void
   AssertMethod(const std::string& meth) const
@@ -32,15 +33,7 @@ struct AbyssTestBase : public ::testing::Test
   {
     if(left)
       return;
-    static_cast< AbyssTestBase* >(u)->Cancel();
-  }
-
-  /// cancel test because of timeout
-  void
-  Cancel()
-  {
-    Stop();
-    ASSERT_TRUE(false);
+    static_cast< AbyssTestBase* >(u)->Stop();
   }
 
   void
@@ -118,8 +111,8 @@ struct ClientHandler : public abyss::http::IRPCClientHandler
 
 struct ServerHandler : public abyss::httpd::IRPCHandler
 {
-  const AbyssTestBase* test;
-  ServerHandler(abyss::httpd::ConnImpl* impl, const AbyssTestBase* parent)
+  AbyssTestBase* test;
+  ServerHandler(abyss::httpd::ConnImpl* impl, AbyssTestBase* parent)
       : abyss::httpd::IRPCHandler(impl), test(parent)
   {
   }
@@ -128,6 +121,7 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   HandleJSONRPC(Method_t method, const Params& params, Response& response)
   {
     test->AssertMethod(method);
+    test->called = true;
     return true;
   }
 };
@@ -151,7 +145,7 @@ struct AbyssTest : public AbyssTestBase,
   }
 
   abyss::httpd::IRPCHandler*
-  CreateHandler(abyss::httpd::ConnImpl* impl) const
+  CreateHandler(abyss::httpd::ConnImpl* impl)
   {
     return new ServerHandler(impl, this);
   }
@@ -192,4 +186,5 @@ TEST_F(AbyssTest, TestClientAndServer)
            std::bind(&AbyssTest::NewConn, this, std::placeholders::_1));
   AsyncFlush();
   RunLoop();
+  ASSERT_TRUE(called);
 };

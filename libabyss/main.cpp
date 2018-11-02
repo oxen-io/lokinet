@@ -74,7 +74,7 @@ struct DemoServer : public abyss::httpd::BaseReqHandler
   }
 
   abyss::httpd::IRPCHandler*
-  CreateHandler(abyss::httpd::ConnImpl* impl) const
+  CreateHandler(abyss::httpd::ConnImpl* impl)
   {
     return new DemoHandler(impl);
   }

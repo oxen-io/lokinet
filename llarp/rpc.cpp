@@ -157,7 +157,7 @@ namespace llarp
       }
       llarp_router* router;
       ::abyss::httpd::IRPCHandler*
-      CreateHandler(::abyss::httpd::ConnImpl* conn) const
+      CreateHandler(::abyss::httpd::ConnImpl* conn)
       {
         return new Handler(conn, router);
       }

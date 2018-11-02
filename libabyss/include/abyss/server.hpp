@@ -62,7 +62,7 @@ namespace abyss
 
      protected:
       virtual IRPCHandler*
-      CreateHandler(ConnImpl* connimpl) const = 0;
+      CreateHandler(ConnImpl* connimpl) = 0;
 
      private:
       static void
