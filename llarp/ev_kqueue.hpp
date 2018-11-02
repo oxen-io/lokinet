@@ -9,11 +9,11 @@
 // kqueue / kevent
 #include <sys/event.h>
 #include <sys/time.h>
+#include <fcntl.h>
 #endif
 
 // MacOS needs this
 #ifndef SOCK_NONBLOCK
-#include <fcntl.h>
 #define SOCK_NONBLOCK O_NONBLOCK
 #endif
 
