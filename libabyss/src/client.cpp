@@ -144,10 +144,14 @@ namespace abyss
       {
         if(state == eInitial)
           return true;
+        if(sz == 0)
+          return true;
         bool done = false;
         while(state < eReadResponseBody)
         {
           const char* end = strstr(buf, "\r\n");
+          if(end == nullptr)
+            return false;
           string_view line(buf, end - buf);
           switch(state)
           {
