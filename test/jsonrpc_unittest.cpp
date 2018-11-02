@@ -27,6 +27,22 @@ struct AbyssTestBase : public ::testing::Test
     llarp_crypto_init(&crypto);
   }
 
+  static void
+  CancelIt(void* u, uint64_t orig, uint64_t left)
+  {
+    if(left)
+      return;
+    static_cast< AbyssTestBase* >(u)->Cancel();
+  }
+
+  /// cancel test because of timeout
+  void
+  Cancel()
+  {
+    Stop();
+    ASSERT_TRUE(false);
+  }
+
   void
   Start()
   {
@@ -44,6 +60,7 @@ struct AbyssTestBase : public ::testing::Test
       if(server->ServeAsync(loop, logic, a))
       {
         client->RunAsync(loop, a.ToString());
+        llarp_logic_call_later(logic, {1000, this, &CancelIt});
         return;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
