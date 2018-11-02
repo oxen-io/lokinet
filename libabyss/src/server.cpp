@@ -365,9 +365,14 @@ namespace abyss
       }
     }
 
-    BaseReqHandler::~BaseReqHandler()
+    void
+    BaseReqHandler::Close()
     {
       llarp_tcp_acceptor_close(&m_acceptor);
+    }
+
+    BaseReqHandler::~BaseReqHandler()
+    {
     }
 
     void

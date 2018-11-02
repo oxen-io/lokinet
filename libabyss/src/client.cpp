@@ -86,6 +86,12 @@ namespace abyss
         return HandleStatusCode(codePart.substr(0, idx));
       }
 
+      bool
+      ShouldProcessHeader(const abyss::string_view& name) const
+      {
+        return name == "content-length" || name == "content-type";
+      }
+
       /// return true if we get a 200 status code
       bool
       HandleStatusCode(string_view code) const

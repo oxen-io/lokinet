@@ -77,7 +77,7 @@ TEST_F(KademliaDHTTest, TestBucketOperators)
   ASSERT_TRUE((one ^ three) == (three ^ one));
 };
 
-TEST_F(KademliaDHTTest, TestBucketRandomzied)
+TEST_F(KademliaDHTTest, TestBucketRandomzied_1000)
 {
   size_t moreNodes = 100;
   while(moreNodes--)
@@ -86,13 +86,35 @@ TEST_F(KademliaDHTTest, TestBucketRandomzied)
     n.ID.Randomize();
     nodes->PutNode(n);
   }
-  llarp::dht::Key_t result;
-  llarp::dht::Key_t target;
-  llarp::dht::Key_t oldResult;
-  target.Randomize();
-  oldResult = result;
-  ASSERT_TRUE(nodes->FindClosest(target, result));
-  ASSERT_TRUE((result ^ target) < (oldResult ^ target));
-  ASSERT_TRUE((result ^ target) != (oldResult ^ target));
-  ASSERT_FALSE((result ^ target) == (oldResult ^ target));
+  const size_t count = 1000;
+  size_t left        = count;
+  while(left--)
+  {
+    llarp::dht::Key_t result;
+    llarp::dht::Key_t target;
+    llarp::dht::Key_t expect;
+    target.Randomize();
+    expect = target;
+    ASSERT_TRUE(nodes->FindClosest(target, result));
+    if(target == result)
+    {
+      ASSERT_FALSE((result ^ target) < (expect ^ target));
+      ASSERT_FALSE((result ^ target) != (expect ^ target));
+      ASSERT_TRUE((result ^ target) == (expect ^ target));
+    }
+    else
+    {
+      Key_t dist    = result ^ target;
+      Key_t oldDist = expect ^ target;
+      ASSERT_TRUE((result ^ target) != (expect ^ target));
+      if((result ^ target) < (expect ^ target))
+      {
+        std::cout << "result=" << result << "expect=" << expect << std::endl;
+        std::cout << dist << ">=" << oldDist << "iteration=" << (count - left)
+                  << std::endl;
+        ASSERT_TRUE(false);
+      }
+      ASSERT_FALSE((result ^ target) == (expect ^ target));
+    }
+  }
 };

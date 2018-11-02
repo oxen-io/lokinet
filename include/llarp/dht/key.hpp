@@ -20,7 +20,7 @@ namespace llarp
       operator^(const Key_t& other) const
       {
         Key_t dist;
-        for(size_t idx = 0; idx < 4; ++idx)
+        for(size_t idx = 0; idx < (size() / sizeof(l[0])); ++idx)
           dist.l[idx] = l[idx] ^ other.l[idx];
         return dist;
       }

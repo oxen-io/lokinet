@@ -50,6 +50,10 @@ namespace abyss
       void
       RemoveConn(IRPCHandler* handler);
 
+      /// close the handler and acceptor
+      void
+      Close();
+
       llarp_time_t
       now() const
       {

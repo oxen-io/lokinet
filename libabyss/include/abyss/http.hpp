@@ -28,10 +28,7 @@ namespace abyss
       ProcessHeaderLine(abyss::string_view line, bool& done);
 
       virtual bool
-      ShouldProcessHeader(const abyss::string_view& line) const
-      {
-        return true;
-      }
+      ShouldProcessHeader(const abyss::string_view& line) const = 0;
     };
 
   }  // namespace http

@@ -511,6 +511,7 @@ if(USE_LIBABYSS)
   set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
   target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB})
+  set(TEST_SRC ${TEST_SRC} test/jsonrpc_unittest.cpp)
 endif()
 
 foreach(F ${ALL_SRC})
