@@ -25,9 +25,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
 add_compile_options(-Wall)
-set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
-add_compile_options(-Wno-unused-function)
+add_compile_options(-Wno-unused-function -Wno-deprecated-declarations)
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if (USING_CLANG)
@@ -46,10 +45,7 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
-# hmm if I allow ld/lld to pick and choose what parts of
-# pthread to link in, does it break anything?
 if(STATIC_LINK)
-  add_compile_options( -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive )
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static" )
 endif()
 
@@ -100,13 +96,13 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_compile_options( ${DEBUG_FLAGS} )
 endif()
 
-set(CRYPTO_FLAGS "-march=native")
-set(CMAKE_ASM_FLAGS "-march=native")
+set(CRYPTO_FLAGS -march=native)
+set(CMAKE_ASM_FLAGS "-march=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
 
-add_compile_options( -Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS} )
+add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
 if(SHADOW)
-  add_compile_options( -fPIC)
+  add_compile_options(-fPIC)
 endif()
 
 if(NOT GIT_VERSION)
