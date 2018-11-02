@@ -7,6 +7,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <llarp/string_view.hpp>
 #include <abyss/json.hpp>
 #include <unordered_map>
 

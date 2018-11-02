@@ -6,6 +6,7 @@
 #include <deque>
 #include <unordered_map>
 #include <functional>
+#include <llarp/string_view.hpp>
 #include <abyss/json.hpp>
 #include <llarp/ev.h>
 
