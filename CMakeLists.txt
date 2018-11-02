@@ -512,6 +512,10 @@ if(USE_LIBABYSS)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
   target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB})
   set(TEST_SRC ${TEST_SRC} test/jsonrpc_unittest.cpp)
+  # for freebsd
+  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    include_directories(/usr/local/include)
+  endif()
 endif()
 
 foreach(F ${ALL_SRC})
