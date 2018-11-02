@@ -6,6 +6,7 @@ project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" OFF)
 option(USE_CXX17 "enable c++17 features" OFF)
+option(USE_AVX2 "enable avx2 code" OFF)
 # Require C++11
 # or C++17 on win32
 if (NOT WIN32)
@@ -26,7 +27,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # applicable to the host's FPU -rick
 add_compile_options(-Wall)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
-add_compile_options(-Wno-unused-function -Wno-deprecated-declarations)
+add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if (USING_CLANG)
@@ -63,10 +64,8 @@ if(TESTNET)
   add_definitions(-DTESTNET=1)
 endif()
 
-add_compile_options( -Wall )
-
-set(OPTIMIZE_FLAGS -O3 )
-set(DEBUG_FLAGS -O0 -g3 )
+set(OPTIMIZE_FLAGS -O3)
+set(DEBUG_FLAGS -O0 -g3)
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -96,8 +95,13 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_compile_options( ${DEBUG_FLAGS} )
 endif()
 
+if (NOT USE_AVX2)
 set(CRYPTO_FLAGS -march=native)
 set(CMAKE_ASM_FLAGS "-march=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+else()
+set(CRYPTO_FLAGS -march=haswell -mtune=native)
+set(CMAKE_ASM_FLAGS "-march=haswell -mtune=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+endif(NOT USE_AVX2)
 
 add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
