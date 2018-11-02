@@ -9,15 +9,14 @@
 extern "C"
 {
 #endif
+#if _WIN32_WINNT < 0x600
   const char*
   inet_ntop(int af, const void* src, char* dst, size_t size);
   int
   inet_pton(int af, const char* src, void* dst);
+#endif
 #ifdef __cplusplus
 }
-#endif
-#ifndef ssize_t
-#define ssize_t long
 #endif
 typedef unsigned short in_port_t;
 typedef unsigned int in_addr_t;

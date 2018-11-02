@@ -12,11 +12,6 @@
 #include <fcntl.h>
 #endif
 
-// MacOS needs this
-#ifndef SOCK_NONBLOCK
-#define SOCK_NONBLOCK O_NONBLOCK
-#endif
-
 // original upstream
 #include <unistd.h>
 #include <cstdio>
