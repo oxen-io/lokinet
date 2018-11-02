@@ -6,6 +6,7 @@
 
 struct AbyssTestBase : public ::testing::Test
 {
+  llarp_crypto crypto;
   llarp_threadpool* threadpool         = nullptr;
   llarp_ev_loop* loop                  = nullptr;
   llarp_logic* logic                   = nullptr;
@@ -17,6 +18,13 @@ struct AbyssTestBase : public ::testing::Test
   AssertMethod(const std::string& meth) const
   {
     ASSERT_TRUE(meth == method);
+  }
+
+  void
+  SetUp()
+  {
+    // for llarp_randint
+    llarp_crypto_init(&crypto);
   }
 
   void
@@ -134,6 +142,7 @@ struct AbyssTest : public AbyssTestBase,
   void
   SetUp()
   {
+    AbyssTestBase::SetUp();
     client = this;
     server = this;
   }
