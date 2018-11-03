@@ -179,7 +179,7 @@ extern "C"
 
     // uint32_t start = *pos;
     std::string m_qName = getDNSstring(buffer, pos);
-    llarp::LogInfo("Got question name: ", m_qName);
+    llarp::LogDebug("Got question name: ", m_qName);
     // llarp::LogInfo("Started at ", std::to_string(start), " ended at: ",
     // std::to_string(*pos)); llarp::LogInfo("Advancing question buffer by ",
     // std::to_string(*pos)); buffer += (*pos) - start; buffer +=
@@ -214,8 +214,8 @@ extern "C"
     question->qClass = get16bits(moveable);
     (*pos) += 2;
     // printf("Now2 at [%d]\n", buffer - start);
-    llarp::LogInfo("Type ", std::to_string(question->type), " Class ",
-                   std::to_string(question->qClass));
+    llarp::LogDebug("Type ", std::to_string(question->type), " Class ",
+                    std::to_string(question->qClass));
     // hexDump(moveable, 4);
     return question;
   }
@@ -256,7 +256,7 @@ extern "C"
       (*pos)++;
       uint8_t readAt    = *moveable;
       uint32_t readAt32 = readAt;
-      llarp::LogInfo("Ref, skip. Read ", readAt32);
+      // llarp::LogInfo("Ref, skip. Read ", readAt32);
       // hexDumpAt(buffer, readAt, 2);
       answer->name = getDNSstring(buffer, &readAt32);
       moveable++;
