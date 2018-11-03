@@ -1,7 +1,4 @@
-#ifndef _MSC_VER
 #include <unistd.h>
-#endif
-
 #include <llarp.h>
 #include <llarp/dns_iptracker.hpp>
 #include <llarp/dnsd.hpp>
@@ -10,11 +7,6 @@
 #include <llarp/threading.hpp>  // for multithreaded version (multiplatorm)
 
 #include <signal.h>  // Linux needs this for SIGINT
-// keep this once jeff reenables concurrency
-#ifdef _MSC_VER
-extern "C" void
-SetThreadName(DWORD dwThreadID, LPCSTR szThreadName);
-#endif
 
 #ifdef _WIN32
 #define uint UINT

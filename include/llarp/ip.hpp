@@ -160,11 +160,11 @@ namespace llarp
 
       // update ip packet (after packet gets out of network)
       void
-      UpdatePacketOnDst(huint32_t nSrcIP, huint32_t nDstIP);
+      UpdateIPv4PacketOnDst(huint32_t newSrcIP, huint32_t newDstIP);
 
       // update ip packet (before packet gets inserted into network)
       void
-      UpdatePacketOnSrc();
+      UpdateIPv4PacketOnSrc();
     };
 
   }  // namespace net

@@ -32,10 +32,12 @@ TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
 
 JSONRPC = OFF
+CXX17 = ON
+
 
 BUILD_ROOT = $(REPO)/build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
 
 SCAN_BUILD ?= scan-build
 ANALYZE_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)' && cd '$(BUILD_ROOT)' && $(SCAN_BUILD) $(MAKE)")
@@ -63,11 +65,11 @@ clean:
 
 debug-configure:
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DDNS_PORT=$(DNS_PORT)
+	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DDNS_PORT=$(DNS_PORT) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
+	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
@@ -129,7 +131,7 @@ abyss: debug
 	$(ABYSS_EXE)
 
 format:
-	clang-format -i $$(find daemon llarp include | grep -E '\.[h,c](pp)?$$')
+	clang-format -i $$(find daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
 
 analyze: clean
 	mkdir -p '$(BUILD_ROOT)'
@@ -139,6 +141,12 @@ lint: $(LINT_CHECK)
 
 %.cpp-check: %.cpp
 	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/crypto/libntrup/include -I$(REPO)/llarp
+
+docker-debian:
+	docker build -f docker/debian.Dockerfile .
+
+docker-fedora:
+	docker build -f docker/fedora.Dockerfile .
 
 install:
 	rm -f $(PREFIX)/bin/lokinet

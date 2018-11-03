@@ -279,6 +279,7 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
   return true;
 }
 
+#if 0
 /* Supports both IPv4 and IPv6 addressing.  The size of IP_ADAPTER_ADDRESSES
  * changes between Windows XP, XP SP1, and Vista with additional members.
  *
@@ -296,7 +297,6 @@ _llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
  * NOTE(despair): an inline implementation is provided, much like
  * getaddrinfo(3) for old hosts. See "win32_intrnl.*"
  */
-#ifdef _MSC_VER
 static bool
 _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
 {
@@ -312,22 +312,12 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
     fprintf(stderr, "IP_ADAPTER_ADDRESSES buffer length %lu bytes.\n", dwSize);
 #endif
     pAdapterAddresses = (IP_ADAPTER_ADDRESSES*)_llarp_nt_heap_alloc(dwSize);
-#if defined(_MSC_VER) || defined(_WIN64)
-    dwRet = GetAdaptersAddresses(AF_UNSPEC,
-                                 /* requires Windows XP SP1 */
-                                 GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_ANYCAST
-                                     | GAA_FLAG_SKIP_DNS_SERVER
-                                     | GAA_FLAG_SKIP_FRIENDLY_NAME
-                                     | GAA_FLAG_SKIP_MULTICAST,
-                                 nullptr, pAdapterAddresses, &dwSize);
-#else
     dwRet = _GetAdaptersAddresses(
         AF_UNSPEC,
         GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_ANYCAST
             | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME
             | GAA_FLAG_SKIP_MULTICAST,
         nullptr, pAdapterAddresses, &dwSize);
-#endif
     if(ERROR_BUFFER_OVERFLOW == dwRet)
     {
       _llarp_nt_heap_free(pAdapterAddresses);
@@ -659,19 +649,11 @@ _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
   for(unsigned i = 3; i; i--)
   {
     pAdapterAddresses = (IP_ADAPTER_ADDRESSES*)_llarp_nt_heap_alloc(dwSize);
-#ifdef _MSC_VER
-    dwRet = GetAdaptersAddresses(
-        AF_UNSPEC,
-        GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER
-            | GAA_FLAG_SKIP_FRIENDLY_NAME | GAA_FLAG_SKIP_MULTICAST,
-        nullptr, pAdapterAddresses, &dwSize);
-#else
     dwRet = _GetAdaptersAddresses(
         AF_UNSPEC,
         GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER
             | GAA_FLAG_SKIP_FRIENDLY_NAME | GAA_FLAG_SKIP_MULTICAST,
         nullptr, pAdapterAddresses, &dwSize);
-#endif
 
     if(ERROR_BUFFER_OVERFLOW == dwRet)
     {
@@ -725,11 +707,7 @@ llarp_nt_getifaddrs(struct llarp_nt_ifaddrs_t** ifap)
   fprintf(stderr, "llarp_nt_getifaddrs (ifap:%p error:%p)\n", (void*)ifap,
           (void*)errno);
 #endif
-#ifdef _MSC_VER
-  return _llarp_nt_getadaptersaddresses(ifap);
-#else
   return _llarp_nt_getadaptersinfo(ifap);
-#endif
 }
 
 static void

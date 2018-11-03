@@ -5,13 +5,29 @@ set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" OFF)
-
+option(USE_CXX17 "enable c++17 features" OFF)
+option(USE_AVX2 "enable avx2 code" OFF)
 # Require C++11
-set(CMAKE_CXX_STANDARD 11)
+# or C++17 on win32
+if (NOT WIN32)
+  if(USE_CXX17)
+    set(CMAKE_CXX_STANDARD 17)
+  else()
+    set(CMAKE_CXX_STANDARD 11)
+  endif()
+else()
+  set(CMAKE_CXX_STANDARD 17)
+endif(NOT WIN32)
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_compile_options( -fpermissive )
+# turns off those annoying warnings for
+# target-specific crypto code paths not
+# applicable to the host's FPU -rick
+add_compile_options(-Wall)
+add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
+add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if (USING_CLANG)
@@ -31,7 +47,7 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
 if(STATIC_LINK)
-  add_compile_options( -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive )
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static" )
 endif()
 
 if(DNS_PORT)
@@ -48,10 +64,8 @@ if(TESTNET)
   add_definitions(-DTESTNET=1)
 endif()
 
-add_compile_options( -Wall )
-
-set(OPTIMIZE_FLAGS -O3 )
-set(DEBUG_FLAGS -O0 -g3 )
+set(OPTIMIZE_FLAGS -O3)
+set(DEBUG_FLAGS -O0 -g3)
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -81,13 +95,18 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_compile_options( ${DEBUG_FLAGS} )
 endif()
 
-set(CRYPTO_FLAGS "-march=native")
-set(CMAKE_ASM_FLAGS "-march=native")
+if (NOT USE_AVX2)
+set(CRYPTO_FLAGS -march=native)
+set(CMAKE_ASM_FLAGS "-march=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+else()
+set(CRYPTO_FLAGS -march=haswell -mtune=native)
+set(CMAKE_ASM_FLAGS "-march=haswell -mtune=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+endif(NOT USE_AVX2)
 
-add_compile_options( -Wall -Wno-deprecated-declarations ${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS} )
+add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
 if(SHADOW)
-  add_compile_options( -fPIC)
+  add_compile_options(-fPIC)
 endif()
 
 if(NOT GIT_VERSION)
@@ -111,7 +130,12 @@ if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
 
-#set(FS_LIB stdc++fs)
+if (WIN32)
+set(FS_LIB stdc++fs)
+endif(WIN32)
+
+# FS_LIB should resolve to nothing on all other platforms
+# it is only required on win32 -rick
 set(LIBS Threads::Threads ${MALLOC_LIB} ${FS_LIB})
 
 set(LIB lokinet)
@@ -143,6 +167,7 @@ if(UNIX)
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
+# TODO: _actually_ port to solaris/illumos (it's fairly complete...except for TUN) -rick
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
     else()
@@ -178,7 +203,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
 endif()
 
-
+if(NOT WIN32)
 set(CXX_COMPAT_SRC
   vendor/cppbackport-master/lib/fs/rename.cpp
   vendor/cppbackport-master/lib/fs/filestatus.cpp
@@ -198,6 +223,7 @@ set(CXX_COMPAT_SRC
   vendor/cppbackport-master/lib/fs/direntry.cpp
 )
 include_directories(vendor/cppbackport-master/lib)
+endif(NOT WIN32)
 
 set(LIB_PLATFORM_SRC
 # string stuff
@@ -347,7 +373,7 @@ set(CRYPTOGRAPHY_SRC
   ${SHA512_SRC}
   ${NTRU_SRC})
 
-add_library(${CRYPTOGRAPHY_LIB} ${CRYPTOGRAPHY_SRC})
+add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
 
 
 set(UTP_SRC
@@ -466,33 +492,38 @@ set(CLIENT_SRC
 include_directories(include)
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
+<<<<<<< HEAD
 #include_directories(include)
 #include_directories(vendor/cppbackport-master/lib)
 #include_directories(${sodium_INCLUDE_DIR})
+=======
+>>>>>>> 2fb8d734613b5665d789c99afd06e7223b073c2c
 
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
 
-
 set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC})
 
 if(USE_LIBABYSS)
+  add_definitions(-DUSE_ABYSS=1)
   set(ABYSS libabyss)
-
   set(ABYSS_LIB abyss)
-
   set(ABYSS_EXE ${ABYSS_LIB}-main)
-
   include_directories(${ABYSS}/include)
-
   set(ABYSS_SRC
     ${ABYSS}/src/http.cpp
     ${ABYSS}/src/client.cpp
     ${ABYSS}/src/server.cpp
     ${ABYSS}/src/json.cpp)
-
-  add_library(${ABYSS_LIB} ${ABYSS_SRC})
+  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
   set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
+  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
+  target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB})
+  set(TEST_SRC ${TEST_SRC} test/jsonrpc_unittest.cpp)
+  # for freebsd
+  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    include_directories(/usr/local/include)
+  endif()
 endif()
 
 foreach(F ${ALL_SRC})
@@ -526,16 +557,17 @@ if(WITH_STATIC)
     endif()
     target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB})
     if(NOT WITH_SHARED)
-
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
+      target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB})
       if (WIN32)
         target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
       endif(WIN32)
       if (WIN32)
         target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} Threads::Threads ws2_32 iphlpapi)

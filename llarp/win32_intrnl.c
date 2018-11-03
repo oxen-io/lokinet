@@ -175,8 +175,10 @@ tdiGetIpAddrsForIpEntity(HANDLE tcpFile, TDIEntityID *ent, IPAddrEntry **addrs,
 {
   NTSTATUS status;
 
+#ifdef DEBUG
   fprintf(stderr, "TdiGetIpAddrsForIpEntity(tcpFile 0x%p, entityId 0x%lx)\n",
           tcpFile, ent->tei_instance);
+#endif
 
   status = tdiGetSetOfThings(tcpFile, INFO_CLASS_PROTOCOL, INFO_TYPE_PROVIDER,
                              0x102, CL_NL_ENTITY, ent->tei_instance, 0,
@@ -448,6 +450,8 @@ getInterfaceIndexTableInt(BOOL nonLoopbackOnly)
   HANDLE tcpFile;
   NTSTATUS status = openTcpFile(&tcpFile, FILE_READ_DATA);
 
+  ifInfo = NULL;
+
   if(NT_SUCCESS(status))
   {
     status = getInterfaceInfoSet(tcpFile, &ifInfo, &numInterfaces);
@@ -494,14 +498,10 @@ getInterfaceIndexTable(void)
 
 #endif
 
-/*
- * We need this in the Microsoft C/C++ port, as we're not using Pthreads, and
- * jeff insists on naming the threads at runtime. Apparently throwing exception
- * 1080890248 is only visible when running under a machine code monitor.
- *
- * -despair86 30/07/18
- */
-#ifdef _MSC_VER
+// there's probably an use case for a _newer_ implementation
+// of pthread_setname_np(3), in fact, I may just merge _this_
+// upstream...
+#if 0
 #include <windows.h>
 
 typedef HRESULT(FAR PASCAL *p_SetThreadDescription)(void *, const wchar_t *);

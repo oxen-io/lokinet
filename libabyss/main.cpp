@@ -1,10 +1,12 @@
 #include <libabyss.hpp>
 #include <llarp/net.hpp>
+#ifndef _WIN32
 #include <sys/signal.h>
+#endif
 
-struct DemoHandler : public abyss::http::IRPCHandler
+struct DemoHandler : public abyss::httpd::IRPCHandler
 {
-  DemoHandler(abyss::http::ConnImpl* impl) : abyss::http::IRPCHandler(impl)
+  DemoHandler(abyss::httpd::ConnImpl* impl) : abyss::httpd::IRPCHandler(impl)
   {
   }
 
@@ -18,14 +20,61 @@ struct DemoHandler : public abyss::http::IRPCHandler
   }
 };
 
-struct DemoServer : public abyss::http::BaseReqHandler
+struct DemoCall : public abyss::http::IRPCClientHandler
 {
-  DemoServer() : abyss::http::BaseReqHandler(1000)
+  DemoCall(abyss::http::ConnImpl* impl) : abyss::http::IRPCClientHandler(impl)
+  {
+    llarp::LogInfo("new call");
+  }
+
+  bool
+  HandleResponse(const abyss::http::RPC_Response& resp)
+  {
+    std::string body;
+    abyss::json::ToString(resp, body);
+    llarp::LogInfo("got response body: ", body);
+    return true;
+  }
+
+  void
+  PopulateReqHeaders(abyss::http::Headers_t& hdr)
   {
   }
 
-  abyss::http::IRPCHandler*
-  CreateHandler(abyss::http::ConnImpl* impl) const
+  void
+  HandleError()
+  {
+    llarp::LogError("error while handling call: ", strerror(errno));
+  }
+};
+
+struct DemoClient : public abyss::http::JSONRPC
+{
+  abyss::http::IRPCClientHandler*
+  NewConn(abyss::http::ConnImpl* impl)
+  {
+    return new DemoCall(impl);
+  }
+
+  void
+  DoDemoRequest()
+  {
+    abyss::json::Value params;
+    params.SetObject();
+    QueueRPC("test", std::move(params),
+             std::bind(&DemoClient::NewConn, this, std::placeholders::_1));
+    Flush();
+  };
+};
+
+struct DemoServer : public abyss::httpd::BaseReqHandler
+{
+  DemoServer() : abyss::httpd::BaseReqHandler(1000)
+  {
+  }
+
+  abyss::httpd::IRPCHandler*
+  CreateHandler(abyss::httpd::ConnImpl* impl)
   {
     return new DemoHandler(impl);
   }
@@ -34,7 +83,22 @@ struct DemoServer : public abyss::http::BaseReqHandler
 int
 main(int argc, char* argv[])
 {
+  // Ignore on Windows, we don't even get SIGPIPE (even though native *and*
+  // emulated UNIX pipes exist - CreatePipe(2), pipe(3))
+  // Microsoft libc only covers six signals
+#ifndef _WIN32
   signal(SIGPIPE, SIG_IGN);
+#else
+  WSADATA wsockd;
+  int err;
+  err = ::WSAStartup(MAKEWORD(2, 2), &wsockd);
+  if(err)
+  {
+    perror("Failed to start Windows Sockets");
+    return err;
+  }
+#endif
+  llarp::SetLogLevel(llarp::eLogDebug);
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
   llarp_ev_loop* loop          = nullptr;
   llarp_ev_loop_alloc(&loop);
@@ -44,12 +108,15 @@ main(int argc, char* argv[])
   addr.sin_port        = htons(1222);
   addr.sin_family      = AF_INET;
   DemoServer serv;
+  DemoClient client;
   llarp::Addr a(addr);
   while(true)
   {
     llarp::LogInfo("bind to ", a);
     if(serv.ServeAsync(loop, logic, a))
     {
+      client.RunAsync(loop, a.ToString());
+      client.DoDemoRequest();
       llarp_ev_loop_run_single_process(loop, threadpool, logic);
       return 0;
     }

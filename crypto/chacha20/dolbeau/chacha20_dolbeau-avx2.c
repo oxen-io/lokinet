@@ -22,6 +22,15 @@
 #include <smmintrin.h>
 #include <tmmintrin.h>
 
+#ifndef __amd64__
+#define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, __nodebug__, __target__("sse2")))
+static __inline__ __m128i __DEFAULT_FN_ATTRS
+_mm_cvtsi64_si128(long long __a)
+{
+  return (__m128i){ __a, 0 };
+}
+#endif
+
 #include "../stream_chacha20.h"
 #include "chacha20_dolbeau-avx2.h"
 

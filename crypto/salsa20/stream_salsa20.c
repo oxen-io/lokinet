@@ -61,7 +61,7 @@ crypto_stream_salsa20_keygen(unsigned char k[crypto_stream_salsa20_KEYBYTES])
 int
 _crypto_stream_salsa20_pick_best_implementation(void)
 {
-#if __AVX2__
+#if __AVX2__ && __amd64__
   implementation = &crypto_stream_salsa20_xmm6_implementation;
 #else
   implementation = &crypto_stream_salsa20_ref_implementation;

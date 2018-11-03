@@ -1,6 +1,6 @@
 #ifndef LLARP_EV_H
 #define LLARP_EV_H
-#if defined(__MINGW32__) || defined(_WIN32)
+#ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <wspiapi.h>
@@ -8,7 +8,6 @@
 #define ssize_t long
 #endif
 #else
-
 #include <netinet/in.h>
 #include <sys/socket.h>
 #endif
@@ -17,6 +16,7 @@
 #include <stdlib.h>
 #include <tuntap.h>
 #include <llarp/time.h>
+
 /**
  * ev.h
  *
@@ -113,6 +113,29 @@ llarp_tcp_conn_async_write(struct llarp_tcp_conn *, const void *, size_t);
 void
 llarp_tcp_conn_close(struct llarp_tcp_conn *);
 
+/// handles outbound connections to 1 endpoint
+struct llarp_tcp_connecter
+{
+  /// remote address family
+  int af;
+  /// remote address string
+  char remote[512];
+  /// userdata pointer
+  void *user;
+  /// parent event loop (dont set me)
+  struct llarp_ev_loop *loop;
+  /// handle outbound connection made
+  void (*connected)(struct llarp_tcp_connecter *, struct llarp_tcp_conn *);
+  /// handle outbound connection error
+  void (*error)(struct llarp_tcp_connecter *);
+};
+
+/// async try connecting to a remote connection 1 time
+void
+llarp_tcp_async_try_connect(struct llarp_ev_loop *l,
+                            struct llarp_tcp_connecter *tcp);
+
+/// handles inbound connections
 struct llarp_tcp_acceptor
 {
   /// userdata pointer
@@ -121,7 +144,7 @@ struct llarp_tcp_acceptor
   void *impl;
   /// parent event loop (dont set me)
   struct llarp_ev_loop *loop;
-  /// handle tick
+  /// handle event loop tick
   void (*tick)(struct llarp_tcp_acceptor *);
   /// handle inbound connection
   void (*accepted)(struct llarp_tcp_acceptor *, struct llarp_tcp_conn *);

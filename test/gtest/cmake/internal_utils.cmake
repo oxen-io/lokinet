@@ -123,7 +123,7 @@ macro(config_compiler_and_linker)
     set(cxx_no_rtti_flags "")
   endif()
 
-  if (CMAKE_USE_PTHREADS_INIT)  # The pthreads library is available and allowed.
+  if (CMAKE_USE_PTHREADS_INIT AND NOT WIN32)  # The pthreads library is available and allowed.
     set(cxx_base_flags "${cxx_base_flags} -DGTEST_HAS_PTHREAD=1")
   else()
     set(cxx_base_flags "${cxx_base_flags} -DGTEST_HAS_PTHREAD=0")

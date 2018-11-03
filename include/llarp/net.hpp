@@ -6,7 +6,7 @@
 #include <iostream>
 #include "logger.hpp"
 #include "mem.hpp"
-
+#include <llarp/string_view.hpp>
 #include <vector>
 
 #include <stdlib.h>  // for itoa

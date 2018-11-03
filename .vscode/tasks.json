@@ -6,7 +6,7 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "make",
+            "command": "make -j8 JSONRPC=ON",
             "group": "build",
             "problemMatcher": [
                 "$gcc"

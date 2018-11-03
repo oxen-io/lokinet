@@ -3,6 +3,8 @@
 #include <llarp/time.h>
 #include <llarp/ev.h>
 #include <string>
+#include <functional>
+#include <llarp/crypto.hpp>
 
 // forward declare
 struct llarp_router;
@@ -13,6 +15,7 @@ namespace llarp
   {
     struct ServerImpl;
 
+    /// jsonrpc server
     struct Server
     {
       Server(llarp_router* r);
@@ -23,6 +26,27 @@ namespace llarp
 
      private:
       ServerImpl* m_Impl;
+    };
+
+    struct CallerImpl;
+
+    /// jsonrpc caller
+    struct Caller
+    {
+      Caller(llarp_router* r);
+      ~Caller();
+
+      /// start with jsonrpc endpoint address
+      bool
+      Start(const std::string& remote);
+
+      /// async test if a router is valid via jsonrpc
+      void
+      AsyncVerifyRouter(llarp::PubKey pkey,
+                        std::function< void(llarp::PubKey, bool) > handler);
+
+     private:
+      CallerImpl* m_Impl;
     };
 
   }  // namespace rpc

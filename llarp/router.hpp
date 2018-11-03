@@ -103,10 +103,15 @@ struct llarp_router
   bool
   ShouldCreateDefaultHiddenService();
 
-  std::string DefaultRPCBindAddr = "127.0.0.1:1190";
-  bool enableRPCServer           = true;
+  const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
+  bool enableRPCServer                 = true;
   std::unique_ptr< llarp::rpc::Server > rpcServer;
   std::string rpcBindAddr = DefaultRPCBindAddr;
+
+  /// lokid caller
+  const std::string DefaultLokidRPCAddr = "127.0.0.1:22023";
+  std::unique_ptr< llarp::rpc::Caller > rpcCaller;
+  std::string lokidRPCAddr = DefaultLokidRPCAddr;
 
   std::unique_ptr< llarp::ILinkLayer > outboundLink;
   std::vector< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;

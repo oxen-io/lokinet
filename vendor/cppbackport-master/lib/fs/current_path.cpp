@@ -31,11 +31,7 @@
 
 #include <cerrno>
 
-#ifndef _MSC_VER
 #include <unistd.h>
-#else
-#include <direct.h>
-#endif
 
 namespace cpp17
 {

@@ -1,3 +1,4 @@
+#include <llarp/string_view.hpp>
 #include <abyss/json.hpp>
 #include <vector>
 #include <cstring>
