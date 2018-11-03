@@ -105,7 +105,7 @@ namespace llarp
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
 
         // set up address in dotLokiLookup
-        //llarp::Addr tunIp(tunif.ifaddr);
+        // llarp::Addr tunIp(tunif.ifaddr);
         llarp::huint32_t tunIpV4;
         tunIpV4.h = inet_addr(tunif.ifaddr);
         // related to dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);

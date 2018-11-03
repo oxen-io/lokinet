@@ -80,48 +80,48 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   // in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
 
   llarp::service::Context *routerHiddenServiceContext =
-        (llarp::service::Context *)dll->user;
-    if(!routerHiddenServiceContext)
-    {
-      llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
-      write404_dnss_response(qr->from, qr->request);
-      delete qr;
-      return;
-    }
+      (llarp::service::Context *)dll->user;
+  if(!routerHiddenServiceContext)
+  {
+    llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+    write404_dnss_response(qr->from, qr->request);
+    delete qr;
+    return;
+  }
 
-    llarp::huint32_t *tunIp =
-        new llarp::huint32_t(routerHiddenServiceContext->GetIpForAddr(addr));
-    if(!tunIp->h)
-    {
-      llarp::LogWarn("dotLokiLookup failed to map address");
-      write404_dnss_response(qr->from, qr->request);
-      delete qr;
-      return;
-    }
+  llarp::huint32_t *tunIp =
+      new llarp::huint32_t(routerHiddenServiceContext->GetIpForAddr(addr));
+  if(!tunIp->h)
+  {
+    llarp::LogWarn("dotLokiLookup failed to map address");
+    write404_dnss_response(qr->from, qr->request);
+    delete qr;
+    return;
+  }
 
-    /*
-    bool mapResult = routerHiddenServiceContext->MapAddressAll(
-        addr, free_private->hostResult);
-    if(!mapResult)
-    {
-      llarp::LogWarn("dotLokiLookup failed to map address");
-      write404_dnss_response(qr->from, qr->request);
-      delete qr;
-      return;
-    }
-    */
+  /*
+  bool mapResult = routerHiddenServiceContext->MapAddressAll(
+      addr, free_private->hostResult);
+  if(!mapResult)
+  {
+    llarp::LogWarn("dotLokiLookup failed to map address");
+    write404_dnss_response(qr->from, qr->request);
+    delete qr;
+    return;
+  }
+  */
 
-    // make a dnsd_query_hook_response for the cache
-    dnsd_query_hook_response *response = new dnsd_query_hook_response;
-    response->dontLookUp               = true;
-    response->dontSendResponse         = false;
-    // llarp::Addr test(*free_private->hostResult.getSockAddr());
-    // llarp::LogInfo("IP Test: ", test);
-    // response->returnThis = &free_private->hostResult;
-    response->returnThis = tunIp;
-    llarp::LogInfo("Saving ", qr->request->question.name);
-    loki_tld_lookup_cache[qr->request->question.name] = response;
-    // we can't delete response now...
+  // make a dnsd_query_hook_response for the cache
+  dnsd_query_hook_response *response = new dnsd_query_hook_response;
+  response->dontLookUp               = true;
+  response->dontSendResponse         = false;
+  // llarp::Addr test(*free_private->hostResult.getSockAddr());
+  // llarp::LogInfo("IP Test: ", test);
+  // response->returnThis = &free_private->hostResult;
+  response->returnThis = tunIp;
+  llarp::LogInfo("Saving ", qr->request->question.name);
+  loki_tld_lookup_cache[qr->request->question.name] = response;
+  // we can't delete response now...
 
   /*
   llarp::handlers::TunEndpoint *tunEndpoint =
