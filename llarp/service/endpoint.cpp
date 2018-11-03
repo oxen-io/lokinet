@@ -1569,19 +1569,18 @@ namespace llarp
       if(remoteIntro.ExpiresSoon(now))
       {
         // shift intro
-        MarkCurrentIntroBad(now);
+        if(MarkCurrentIntroBad(now))
+        {
+          llarp::LogInfo("intro shifted");
+        }
       }
-
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)
       {
-        path = m_Endpoint->GetNewestPathByRouter(remoteIntro.router);
-        if(!path)
-        {
-          llarp::LogError("cannot encrypt and send: no path for intro ",
-                          remoteIntro);
-          return;
-        }
+        llarp::LogError("cannot encrypt and send: no path for intro ",
+                        remoteIntro);
+
+        return;
       }
 
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
