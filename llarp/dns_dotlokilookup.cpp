@@ -336,6 +336,15 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
     }
     llarp::LogDebug("Base32 decoded address ", addr);
 
+    dotLokiLookup *dll = (dotLokiLookup *)request->context->user;
+    llarp::service::Context *routerHiddenServiceContext =
+        (llarp::service::Context *)dll->user;
+    if(!routerHiddenServiceContext)
+    {
+      llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+      return response;
+    }
+
     // start path build early (if you're looking it up, you're probably going to
     // use it)
     // main_router_prefetch(ctx, addr);
@@ -344,6 +353,15 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
     check_query_simple_request *qr = new check_query_simple_request;
     qr->from                       = from;
     qr->request                    = request;
+
+    auto tun = routerHiddenServiceContext->getFirstTun();
+    if(tun->HasPathToService(addr))
+    {
+      llarp_dotlokilookup_checkQuery(qr, 0, 0);
+      response->dontSendResponse = true;  // will send it shortly
+      return response;
+    }
+
     // nslookup on osx is about 5 sec before a retry, 2s on linux
     llarp_logic_call_later(request->context->client.logic,
                            {2000, qr, &llarp_dotlokilookup_checkQuery});
