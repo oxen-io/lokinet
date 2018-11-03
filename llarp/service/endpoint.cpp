@@ -280,7 +280,15 @@ namespace llarp
     bool
     Endpoint::HasPathToService(const Address& addr) const
     {
-      return m_RemoteSessions.find(addr) != m_RemoteSessions.end();
+      auto range = m_RemoteSessions.equal_range(addr);
+      auto itr   = range.first;
+      while(itr != range.second)
+      {
+        if(itr->ReadyToSend())
+          return true;
+        ++itr;
+      }
+      return false;
     }
 
     void
@@ -1101,9 +1109,6 @@ namespace llarp
           }
           ++itr;
         }
-        llarp::LogWarn("No path ready to send yet");
-        // all paths are not ready?
-        return false;
       }
       // no converstation
       EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000,
