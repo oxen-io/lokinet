@@ -432,16 +432,17 @@ namespace llarp
       std::string m_Name;
       std::string m_NetNS;
 
-      std::unordered_map< Address, PendingBufferQueue, Address::Hash >
-          m_PendingTraffic;
+      using PendingTraffic =
+          std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
 
-      std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
-                               Address::Hash >
-          m_RemoteSessions;
+      PendingTraffic m_PendingTraffic;
 
-      std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
-                               Address::Hash >
-          m_DeadSessions;
+      using Sessions =
+          std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
+                                   Address::Hash >;
+      Sessions m_RemoteSessions;
+
+      Sessions m_DeadSessions;
 
       std::unordered_map< Address, ServiceInfo, Address::Hash >
           m_AddressToService;

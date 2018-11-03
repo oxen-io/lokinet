@@ -280,8 +280,8 @@ namespace llarp
     bool
     Endpoint::HasPathToService(const Address& addr) const
     {
-      auto range = m_RemoteSessions.equal_range(addr);
-      auto itr   = range.first;
+      auto range                   = m_RemoteSessions.equal_range(addr);
+      Sessions::const_iterator itr = range.first;
       while(itr != range.second)
       {
         if(itr->second->ReadyToSend())
