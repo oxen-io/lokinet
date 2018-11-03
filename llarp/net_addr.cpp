@@ -1,6 +1,7 @@
 #include <llarp/net_addr.hpp>
 
 #include <llarp/net.hpp>
+#include <llarp/string_view.hpp>
 
 // for addrinfo
 #ifndef _WIN32
@@ -104,6 +105,12 @@ namespace llarp
   {
     this->from_char_array(str.c_str());
     this->port(p_port);
+  }
+
+  Addr::Addr(string_view addr_str, string_view port_str)
+  {
+    this->from_char_array(llarp::string_view_string(addr_str).c_str());
+    this->port(std::stoi(llarp::string_view_string(port_str)));
   }
 
   bool

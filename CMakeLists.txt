@@ -492,12 +492,9 @@ set(CLIENT_SRC
 include_directories(include)
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
-<<<<<<< HEAD
 #include_directories(include)
 #include_directories(vendor/cppbackport-master/lib)
 #include_directories(${sodium_INCLUDE_DIR})
-=======
->>>>>>> 2fb8d734613b5665d789c99afd06e7223b073c2c
 
 set(RC_EXE rcutil)
 set(DNS_EXE dns)

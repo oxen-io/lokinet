@@ -3,6 +3,7 @@
 #include <string>
 #include <llarp/net.h>
 #include <llarp/address_info.hpp>
+#include <llarp/string_view.hpp>
 
 #include <llarp/net.hpp>
 
@@ -42,6 +43,8 @@ namespace llarp
     Addr(const std::string str);
 
     Addr(const std::string str, const uint16_t p_port);
+
+    Addr(string_view addr_str, string_view port_str);
 
     bool
     from_char_array(const char* str);
