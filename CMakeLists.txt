@@ -237,6 +237,9 @@ set(LIB_PLATFORM_SRC
   llarp/mem.cpp
 # for networking
   llarp/ev.cpp
+  llarp/net.cpp
+  llarp/net_addr.cpp
+  llarp/net_inaddr.cpp
 # for timer
   llarp/time.cpp
 # for logic
@@ -337,7 +340,6 @@ set(LIB_SRC
   llarp/ip.cpp
   llarp/link_intro.cpp
   llarp/link_message.cpp
-  llarp/net.cpp
   llarp/nodedb.cpp
   llarp/path.cpp
   llarp/pathbuilder.cpp
