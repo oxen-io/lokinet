@@ -7,7 +7,7 @@ REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
 PREFIX ?= /usr/local
 
-CC ?= cc 
+CC ?= cc
 CXX ?= c++
 
 SETCAP ?= which setcap && setcap cap_net_admin=+eip
@@ -66,7 +66,7 @@ debug-configure:
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DDNS_PORT=$(DNS_PORT)
 
 release-configure: clean
-	mkdir -p '$(BUILD_ROOT)'	
+	mkdir -p '$(BUILD_ROOT)'
 	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 debug: debug-configure
@@ -116,7 +116,7 @@ shared-configure: clean
 shared: shared-configure
 	$(MAKE) -C $(BUILD_ROOT)
 
-testnet: 
+testnet:
 	cp $(EXE) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
 	python3 contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4
@@ -148,3 +148,13 @@ install:
 	rm -f $(PREFIX)/bin/lokinet-bootstrap
 	cp $(REPO)/lokinet-bootstrap $(PREFIX)/bin/lokinet-bootstrap
 	chmod 755 $(PREFIX)/bin/lokinet-bootstrap
+	setcap cap_net_admin=+eip $(PREFIX)/bin/lokinet
+
+fuzz-configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
+
+fuzz-build: fuzz-configure
+	ninja
+
+fuzz: fuzz-build
+	$(EXE)

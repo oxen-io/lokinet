@@ -43,6 +43,12 @@ namespace llarp
     udp_recv_from(llarp_udp_io* udp, const sockaddr* from, const void* buf,
                   const ssize_t sz)
     {
+      if(!udp)
+      {
+        llarp::LogWarn("no udp set");
+        return;
+      }
+      // maybe chekc from too?
       static_cast< ILinkLayer* >(udp->user)->RecvFrom(*from, buf, sz);
     }
 

@@ -138,6 +138,20 @@ namespace llarp
           addr, [](Address addr, void *ctx) {}, 10000);
     }
 
+    huint32_t
+    Context::GetIpForAddr(const llarp::service::Address &addr)
+    {
+      llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
+      if(!tunEndpoint)
+      {
+        huint32_t zero;
+        zero.h = 0;
+        llarp::LogError("No tunnel endpoint found");
+        return zero;
+      }
+      return tunEndpoint->ObtainIPForAddr(addr);
+    }
+
     bool
     Context::MapAddress(const llarp::service::Address &addr, huint32_t ip)
     {

@@ -94,6 +94,11 @@ namespace llarp
   bool
   InboundMessageParser::ProcessFrom(ILinkSession* src, llarp_buffer_t buf)
   {
+    if(!src)
+    {
+      llarp::LogWarn("no link session");
+      return false;
+    }
     reader.user   = this;
     reader.on_key = &OnKey;
     from          = src;

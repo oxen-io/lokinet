@@ -76,6 +76,7 @@ namespace llarp
         auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);
         return pathset && pathset->HandleGotRouterMessage(this);
       }
+      // not relayed
       TXOwner owner(From, txid);
 
       if(dht.pendingExploreLookups.HasPendingLookupFrom(owner))
@@ -88,12 +89,16 @@ namespace llarp
         }
         return true;
       }
+      // not explore lookup
 
       if(!dht.pendingRouterLookups.HasPendingLookupFrom(owner))
       {
         llarp::LogWarn("Unwarrented GRM from ", From, " txid=", txid);
         return false;
       }
+      // no pending lookup
+
+      llarp::LogInfo("DHT no pending lookup");
       if(R.size() == 1)
         dht.pendingRouterLookups.Found(owner, R[0].pubkey, {R[0]});
       else

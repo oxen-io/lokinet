@@ -139,8 +139,9 @@ namespace llarp
     void
     PathSet::AddPath(Path* path)
     {
-      m_Paths.insert(
-          std::make_pair(std::make_pair(path->Upstream(), path->RXID()), path));
+      auto upstream = path->Upstream();  // RouterID
+      auto RXID     = path->RXID();      // PathID
+      m_Paths.insert(std::make_pair(std::make_pair(upstream, RXID), path));
     }
 
     void

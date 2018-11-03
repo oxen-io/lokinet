@@ -55,6 +55,9 @@ namespace llarp
       bool
       iterate(struct endpoint_iter &i);
 
+      huint32_t
+      GetIpForAddr(const llarp::service::Address &addr);
+
       /// hint at possible path usage and trigger building early
       bool
       Prefetch(const llarp::service::Address &addr);

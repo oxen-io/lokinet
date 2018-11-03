@@ -188,7 +188,7 @@ writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
 // FIXME: we need an DNS answer not a sockaddr
 // otherwise ttl, type and class can't be relayed correctly
 void
-writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
+writesend_dnss_response(llarp::huint32_t *hostRes, const struct sockaddr *from,
                         dnsd_question_request *request)
 {
   // llarp::Addr test(*from);
@@ -229,7 +229,12 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
   put16bits(write_buffer, request->question.qClass);
   put32bits(write_buffer, 1);  // ttl
 
+  put16bits(write_buffer, 4);  // rdLength
+  // put32bits(write_buffer, xhtonl(*hostRes).n);
+  put32bits(write_buffer, hostRes->h);
+
   // has to be a string of 4 bytes
+  /*
   struct sockaddr_in *sin = (struct sockaddr_in *)hostRes;
   unsigned char *ip       = (unsigned char *)&sin->sin_addr.s_addr;
 
@@ -241,6 +246,95 @@ writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
   *write_buffer++ = ip[1];
   *write_buffer++ = ip[2];
   *write_buffer++ = ip[3];
+  */
+
+  uint32_t out_bytes = write_buffer - bufferBegin;
+  llarp::LogDebug("Sending found, ", out_bytes, " bytes");
+  // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
+  request->sendto_hook(request->user, from, buf, out_bytes);
+}
+
+void
+writesend_dnss_mxresponse(uint16_t priority, std::string mx,
+                          const struct sockaddr *from,
+                          dnsd_question_request *request)
+{
+  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
+  char buf[BUFFER_SIZE];
+  memset(buf, 0, BUFFER_SIZE);
+  char *write_buffer = buf;
+  char *bufferBegin  = buf;
+  // build header
+  put16bits(write_buffer, request->id);
+  int fields = (1 << 15);  // QR => message type, 1 = response
+  fields += (0 << 14);     // I think opcode is always 0
+  fields += 0;             // response code (3 => not found, 0 = Ok)
+  put16bits(write_buffer, fields);
+
+  put16bits(write_buffer, 1);  // QD (number of questions)
+  put16bits(write_buffer, 1);  // AN (number of answers)
+  put16bits(write_buffer, 0);  // NS (number of auth RRs)
+  put16bits(write_buffer, 0);  // AR (number of Additional RRs)
+
+  // code question
+  code_domain(write_buffer, request->question.name);
+  put16bits(write_buffer, request->question.type);
+  put16bits(write_buffer, request->question.qClass);
+
+  // code answer
+  llarp::LogDebug("Sending question name: ", request->question.name);
+  code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
+  put16bits(write_buffer, request->question.type);
+  put16bits(write_buffer, request->question.qClass);
+  put32bits(write_buffer, 1);  // ttl
+
+  put16bits(write_buffer, 2 + (mx.size() + 2));  // rdLength
+  put16bits(write_buffer, priority);             // priority
+  code_domain(write_buffer, mx);                 //
+
+  uint32_t out_bytes = write_buffer - bufferBegin;
+  llarp::LogDebug("Sending found, ", out_bytes, " bytes");
+  // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
+  request->sendto_hook(request->user, from, buf, out_bytes);
+}
+
+void
+writesend_dnss_txtresponse(std::string txt, const struct sockaddr *from,
+                           dnsd_question_request *request)
+{
+  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
+  char buf[BUFFER_SIZE];
+  memset(buf, 0, BUFFER_SIZE);
+  char *write_buffer = buf;
+  char *bufferBegin  = buf;
+  // build header
+  put16bits(write_buffer, request->id);
+  int fields = (1 << 15);  // QR => message type, 1 = response
+  fields += (0 << 14);     // I think opcode is always 0
+  fields += 0;             // response code (3 => not found, 0 = Ok)
+  put16bits(write_buffer, fields);
+
+  put16bits(write_buffer, 1);  // QD (number of questions)
+  put16bits(write_buffer, 1);  // AN (number of answers)
+  put16bits(write_buffer, 0);  // NS (number of auth RRs)
+  put16bits(write_buffer, 0);  // AR (number of Additional RRs)
+
+  // code question
+  code_domain(write_buffer, request->question.name);
+  put16bits(write_buffer, request->question.type);
+  put16bits(write_buffer, request->question.qClass);
+
+  // code answer
+  llarp::LogDebug("Sending question name: ", request->question.name);
+  code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
+  put16bits(write_buffer, request->question.type);
+  put16bits(write_buffer, request->question.qClass);
+  put32bits(write_buffer, 1);  // ttl
+
+  put16bits(write_buffer, txt.size() + 2);  // rdLength
+  *write_buffer = txt.size();               // write size
+  write_buffer++;
+  code_domain(write_buffer, txt);  //
 
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
@@ -265,11 +359,27 @@ handle_dnsc_result(dnsc_answer_request *client_request)
     writesend_dnss_revresponse(client_request->revDNS, server_request->from,
                                server_request);
   }
+  else if(client_request->question.type == 15)
+  {
+    writesend_dnss_mxresponse(client_request->result.h, client_request->revDNS,
+                              server_request->from, server_request);
+  }
+  else if(client_request->question.type == 16)
+  {
+    llarp::LogInfo("Writing TXT ", client_request->revDNS);
+    writesend_dnss_txtresponse(client_request->revDNS, server_request->from,
+                               server_request);
+  }
   else
   {
-    struct sockaddr *useHostRes = nullptr;
+    if(client_request->question.type != 1)
+    {
+      llarp::LogInfo("Returning type ", client_request->question.type,
+                     " as standard");
+    }
+    llarp::huint32_t *useHostRes = nullptr;
     if(client_request->found)
-      useHostRes = client_request->result;
+      useHostRes = &client_request->result;
     writesend_dnss_response(useHostRes, server_request->from, server_request);
   }
   llarp_host_resolved(client_request);
@@ -384,13 +494,15 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
   {
     // make async request
     llarp_resolve_host(&request->context->client, m_qName.c_str(),
-                       &handle_dnsc_result, (void *)request);
+                       &handle_dnsc_result, (void *)request,
+                       request->question.type);
   }
   else
   {
     // make raw/sync request
     raw_resolve_host(&request->context->client, m_qName.c_str(),
-                     &handle_dnsc_result, (void *)request);
+                     &handle_dnsc_result, (void *)request,
+                     request->question.type);
   }
 }
 

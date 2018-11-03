@@ -55,8 +55,10 @@ TEST_F(llarpDNSdTest, TestNxDomain)
 
 TEST_F(llarpDNSdTest, TestAResponse)
 {
-  sockaddr hostRes;
-  llarp::Zero(&hostRes, sizeof(sockaddr));
+  llarp::huint32_t hostRes;
+  llarp::Zero(&hostRes.h, sizeof(uint32_t));
+  //sockaddr hostRes;
+  //llarp::Zero(&hostRes, sizeof(sockaddr));
   writesend_dnss_response(&hostRes, nullptr, &test_request);
   ASSERT_TRUE(g_length == 58);
   std::string expected_output = "00 00 FFF00 00 01 00 01 00 00 00 00 04 6C 6F 6B 69 07 6E 65 74 77 6F 72 6B 00 00 01 00 01 04 6C 6F 6B 69 07 6E 65 74 77 6F 72 6B 00 00 01 00 01 00 00 00 01 00 04 00 00 00 00 ";

@@ -61,7 +61,8 @@ TEST_F(DNSTest, TestDecodeDNSstring)
 {
   char *buffer = (char *)this->buf;
   buffer += 12; // skip header
-  std::string res = getDNSstring(buffer);
+  uint32_t pos = 0;
+  std::string res = getDNSstring(buffer, &pos);
   ASSERT_TRUE(res == "loki.network");
 }
 
@@ -125,7 +126,8 @@ TEST_F(DNSTest, TestDecodeQuestion)
 {
   char *buffer = (char *)this->buf;
   buffer += 12; // skip header
-  dns_msg_question *question = decode_question(buffer);
+  uint32_t pos = 0;
+  dns_msg_question *question = decode_question(buffer, &pos);
   //printf("name[%s]", question->name.c_str());
   //printf("type[%d]", question->type);
   //printf("qClass[%d]", question->qClass);
@@ -137,19 +139,20 @@ TEST_F(DNSTest, TestDecodeQuestion)
 
 TEST_F(DNSTest, TestDecodeAnswer)
 {
-  char *buffer = (char *)this->buf;
-  buffer += 12; // skip header
+  const char * const buffer = (const char * const)this->buf;
+  uint32_t pos = 12;
   std::string url = "loki.network";
-  buffer += url.length() + 1 + 4;
-  buffer += 2; // FIXME: skip answer label
-  dns_msg_answer *answer = decode_answer(buffer);
+  pos += url.length() + 2 + 4; // skip question (string + 2 shorts)
+
+  dns_msg_answer *answer = decode_answer(buffer, &pos);
   /*
   printf("type[%d]", answer->type);
   printf("aClass[%d]", answer->aClass);
   printf("ttl[%d]", answer->ttl);
   printf("rdLen[%d]", answer->rdLen);
-  printf("[%zu].[%zu].[%zu].[%zu]", answer->rData[0], answer->rData[1], answer->rData[2], answer->rData[3]);
+  printf("[%hhu].[%hhu].[%hhu].[%hhu]", answer->rData[0], answer->rData[1], answer->rData[2], answer->rData[3]);
   */
+  ASSERT_TRUE(answer->name == url);
   ASSERT_TRUE(answer->type == 1);
   ASSERT_TRUE(answer->aClass == 1);
   ASSERT_TRUE(answer->ttl == 2123);

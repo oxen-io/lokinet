@@ -79,6 +79,50 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
 
   // in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
 
+  llarp::service::Context *routerHiddenServiceContext =
+        (llarp::service::Context *)dll->user;
+    if(!routerHiddenServiceContext)
+    {
+      llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+      write404_dnss_response(qr->from, qr->request);
+      delete qr;
+      return;
+    }
+
+    llarp::huint32_t *tunIp =
+        new llarp::huint32_t(routerHiddenServiceContext->GetIpForAddr(addr));
+    if(!tunIp->h)
+    {
+      llarp::LogWarn("dotLokiLookup failed to map address");
+      write404_dnss_response(qr->from, qr->request);
+      delete qr;
+      return;
+    }
+
+    /*
+    bool mapResult = routerHiddenServiceContext->MapAddressAll(
+        addr, free_private->hostResult);
+    if(!mapResult)
+    {
+      llarp::LogWarn("dotLokiLookup failed to map address");
+      write404_dnss_response(qr->from, qr->request);
+      delete qr;
+      return;
+    }
+    */
+
+    // make a dnsd_query_hook_response for the cache
+    dnsd_query_hook_response *response = new dnsd_query_hook_response;
+    response->dontLookUp               = true;
+    response->dontSendResponse         = false;
+    // llarp::Addr test(*free_private->hostResult.getSockAddr());
+    // llarp::LogInfo("IP Test: ", test);
+    // response->returnThis = &free_private->hostResult;
+    response->returnThis = tunIp;
+    llarp::LogInfo("Saving ", qr->request->question.name);
+    loki_tld_lookup_cache[qr->request->question.name] = response;
+    // we can't delete response now...
+
   /*
   llarp::handlers::TunEndpoint *tunEndpoint =
       (llarp::handlers::TunEndpoint *)dll->user;
@@ -186,21 +230,19 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
       stoi(tokensSearch[searchTokens - 6]),
       stoi(tokensSearch[searchTokens - 5]),
       stoi(tokensSearch[searchTokens - 4]),
-      stoi(tokensSearch[searchTokens
-                        - 3]));  // create ip (llarp::Addr is untrustworthy atm)
+      stoi(tokensSearch[searchTokens - 3]));  // create ip
   llarp::huint32_t searchIPv4_search = llarp::ipaddr_ipv4_bits(
       stoi(tokensSearch[searchTokens - 3]),
       stoi(tokensSearch[searchTokens - 4]),
       stoi(tokensSearch[searchTokens - 5]),
-      stoi(tokensSearch[searchTokens
-                        - 6]));  // create ip (llarp::Addr is untrustworthy atm)
+      stoi(tokensSearch[searchTokens - 6]));  // create ip
 
   // bool inRange = range.Contains(searchAddr.xtohl());
   bool inRange = range.Contains(searchIPv4_search);
 
   llarp::Addr searchAddr(searchIp);
   llarp::Addr checkAddr(checkIp);
-  llarp::LogDebug(searchAddr, " vs ", range.ToString(), " = ",
+  llarp::LogDebug(searchAddr, " vs ", range, " = ",
                   inRange ? "inRange" : "not match");
 
   if(inRange)
@@ -214,6 +256,7 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
     }
     else
     {
+      // llarp::LogInfo("Returning [", addr.ToString(), "]");
       writesend_dnss_revresponse(addr.ToString(), context->from,
                                  (dnsd_question_request *)context->request);
     }
@@ -262,7 +305,7 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
     bool res = routerHiddenServiceContext->iterate(i);
     if(!res)
     {
-      llarp::LogInfo("Reverse is ours");
+      llarp::LogDebug("Reverse is ours");
       response->dontSendResponse = true;  // should have already sent it
     }
     else

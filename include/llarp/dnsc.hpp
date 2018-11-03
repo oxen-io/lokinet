@@ -41,7 +41,7 @@ struct dnsc_answer_request
   dnsc_answer_hook_func resolved;
   /// result
   bool found;
-  llarp::Addr result;
+  llarp::huint32_t result;
   std::string revDNS;
   // a reference to dnsc_context incase of multiple contexts
   struct dnsc_context *context;
@@ -81,12 +81,14 @@ struct dnsc_context
 /// async resolve a hostname using generic socks
 void
 raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
-                 dnsc_answer_hook_func resolved, void *const user);
+                 dnsc_answer_hook_func resolved, void *const user,
+                 uint16_t type);
 
 /// async resolve a hostname using llarp platform framework
 bool
 llarp_resolve_host(struct dnsc_context *const dns, const char *url,
-                   dnsc_answer_hook_func resolved, void *const user);
+                   dnsc_answer_hook_func resolved, void *const user,
+                   uint16_t type);
 
 /// cleans up request structure allocations
 void
