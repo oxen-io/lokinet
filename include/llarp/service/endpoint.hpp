@@ -6,6 +6,7 @@
 #include <llarp/service/handler.hpp>
 #include <llarp/service/protocol.hpp>
 #include <llarp/path.hpp>
+#include <llarp/ev.h>
 
 // minimum time between interoset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -106,6 +107,17 @@ namespace llarp
       bool
       HasPathToService(const Address& remote) const;
 
+      virtual huint32_t
+      ObtainIPForAddr(const llarp::service::Address& remote)
+      {
+        return {0};
+      }
+
+      virtual bool
+      HasAddress(const Address& remote) const
+      {
+        return false;
+      }
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
       bool
@@ -205,8 +217,8 @@ namespace llarp
         };
 
         virtual void
-        UpdateIntroSet(bool randomizePath=false){};
-        
+        UpdateIntroSet(bool randomizePath = false){};
+
         virtual bool
         MarkCurrentIntroBad(llarp_time_t now)
         {
@@ -252,7 +264,7 @@ namespace llarp
         ReadyToSend() const;
 
         bool
-        ShouldBuildMore() const;
+        ShouldBuildMore(llarp_time_t now) const;
 
         /// tick internal state
         /// return true to mark as dead
@@ -317,7 +329,7 @@ namespace llarp
       /// address
       bool
       EnsurePathToService(const Address& remote, PathEnsureHook h,
-                          uint64_t timeoutMS, bool lookupOnRandomPath=false);
+                          uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
       virtual bool
       HandleAuthenticatedDataFrom(const Address& remote, llarp_buffer_t data)
@@ -437,13 +449,14 @@ namespace llarp
       std::unordered_map< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
 
-      std::unordered_map<RouterID, uint32_t, RouterID::Hash> m_ServiceLookupFails;
-      
+      std::unordered_map< RouterID, uint32_t, RouterID::Hash >
+          m_ServiceLookupFails;
+
       struct RouterLookupJob
       {
         RouterLookupJob(Endpoint* p)
         {
-          started = llarp_time_now_ms();
+          started = p->Now();
           txid    = p->GenTXID();
         }
 
@@ -499,8 +512,9 @@ namespace llarp
         llarp_time_t lastModified     = 0;
         std::set< IntroSet > result;
         Tag tag;
+        Endpoint* parent;
 
-        CachedTagResult(const Tag& t) : tag(t)
+        CachedTagResult(const Tag& t, Endpoint* p) : tag(t), parent(p)
         {
         }
 

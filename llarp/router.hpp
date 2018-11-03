@@ -5,7 +5,7 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/path.hpp>
 #include <llarp/link_layer.hpp>
-#include <llarp/arpc.hpp>
+#include <llarp/rpc.hpp>
 
 #include <functional>
 #include <list>
@@ -104,8 +104,8 @@ struct llarp_router
   ShouldCreateDefaultHiddenService();
 
   std::string DefaultRPCBindAddr = "127.0.0.1:1190";
-  bool enableRPCServer           = false;
-  std::unique_ptr< llarp::arpc::Server > rpcServer;
+  bool enableRPCServer           = true;
+  std::unique_ptr< llarp::rpc::Server > rpcServer;
   std::string rpcBindAddr = DefaultRPCBindAddr;
 
   std::unique_ptr< llarp::ILinkLayer > outboundLink;
@@ -226,6 +226,10 @@ struct llarp_router
   void
   TryEstablishTo(const llarp::RouterID &remote);
 
+  void
+  ForEachPeer(
+      std::function< void(const llarp::ILinkSession *, bool) > visit) const;
+
   /// flush outbound message queue
   void
   FlushOutbound();
@@ -237,6 +241,13 @@ struct llarp_router
   /// call internal router ticker
   void
   Tick();
+
+  /// get time from event loop
+  llarp_time_t
+  Now() const
+  {
+    return llarp_ev_loop_time_now_ms(netloop);
+  }
 
   /// schedule ticker to call i ms from now
   void

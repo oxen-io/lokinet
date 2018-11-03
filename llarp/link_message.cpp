@@ -87,6 +87,7 @@ namespace llarp
     {
       result = msg->HandleMessage(router);
     }
+    Reset();
     return result;
   }
 

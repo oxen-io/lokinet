@@ -41,7 +41,8 @@ namespace llarp
                size_t MaxSize = 1024 >
     struct CoDelQueue
     {
-      CoDelQueue(const std::string& name) : m_name(name)
+      CoDelQueue(const std::string& name, const PutTime& put)
+          : m_name(name), _putTime(put)
       {
       }
 
@@ -67,9 +68,9 @@ namespace llarp
           return false;
         }
 
-        PutTime()(m_Queue[m_QueueIdx]);
+        _putTime(m_Queue[m_QueueIdx]);
         if(firstPut == 0)
-          firstPut = GetTime()(m_Queue[m_QueueIdx]);
+          firstPut = _getTime(m_Queue[m_QueueIdx]);
         ++m_QueueIdx;
 
         return true;
@@ -84,9 +85,9 @@ namespace llarp
           return;
         T* t = &m_Queue[m_QueueIdx];
         new(t) T(std::forward< Args >(args)...);
-        PutTime()(m_Queue[m_QueueIdx]);
+        _putTime(m_Queue[m_QueueIdx]);
         if(firstPut == 0)
-          firstPut = GetTime()(m_Queue[m_QueueIdx]);
+          firstPut = _getTime(m_Queue[m_QueueIdx]);
         ++m_QueueIdx;
       }
 
@@ -123,7 +124,7 @@ namespace llarp
           if(f(*item))
             break;
           --m_QueueIdx;
-          auto dlt = start - GetTime()(*item);
+          auto dlt = start - _getTime(*item);
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
           if(m_QueueIdx == 0)
@@ -156,6 +157,8 @@ namespace llarp
       size_t m_QueueIdx = 0;
       T m_Queue[MaxSize];
       std::string m_name;
+      GetTime _getTime;
+      PutTime _putTime;
     };  // namespace util
   }     // namespace util
 }  // namespace llarp

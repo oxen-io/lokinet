@@ -51,8 +51,8 @@ namespace llarp
       bool
       ProcessDataMessage(service::ProtocolMessage* msg);
 
-#ifndef _MINGW32_NO_THREADS
-      /// overrides Endpount
+#ifndef WIN32
+      /// overrides Endpoint
       bool
       IsolationFailed()
       {
@@ -84,6 +84,16 @@ namespace llarp
       service::Address
       ObtainAddrForIP(huint32_t ip);
 
+      bool
+      HasAddress(const service::Address& remote) const
+      {
+        return m_AddrToIP.find(remote) != m_AddrToIP.end();
+      }
+
+      /// get ip address for service address unconditionally
+      huint32_t
+      ObtainIPForAddr(const service::Address& addr);
+
      protected:
       typedef llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
@@ -97,10 +107,6 @@ namespace llarp
       bool
       HasRemoteForIP(huint32_t ipv4) const;
 
-      /// get ip address for service address unconditionally
-      huint32_t
-      ObtainIPForAddr(const service::Address& addr);
-
       /// mark this address as active
       void
       MarkIPActive(huint32_t ip);
@@ -113,7 +119,7 @@ namespace llarp
       FlushSend();
 
      private:
-#ifndef _MINGW32_NO_THREADS
+#ifndef WIN32
       /// handles setup, given value true on success and false on failure to set
       /// up interface
       std::promise< bool > m_TunSetupResult;

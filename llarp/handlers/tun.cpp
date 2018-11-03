@@ -19,8 +19,8 @@ namespace llarp
   {
     TunEndpoint::TunEndpoint(const std::string &nickname, llarp_router *r)
         : service::Endpoint(nickname, r)
-        , m_UserToNetworkPktQueue(nickname + "_sendq")
-        , m_NetworkToUserPktQueue(nickname + "_recvq")
+        , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop)
+        , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop)
     {
       tunif.user    = this;
       tunif.netmask = DefaultTunNetmask;
@@ -105,11 +105,7 @@ namespace llarp
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
 
         // set up address in dotLokiLookup
-        struct sockaddr_in source_addr;
-        source_addr.sin_addr.s_addr = inet_addr(tunif.ifaddr);
-        source_addr.sin_family      = AF_INET;
-
-        llarp::Addr tunIp(source_addr);
+        llarp::Addr tunIp(tunif.ifaddr);
         // related to dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
         dns_iptracker_setup(this->dll.ip_tracker,
                             tunIp);  // claim GW IP to make sure it's not inuse
@@ -147,7 +143,7 @@ namespace llarp
       // do network isolation first
       if(!Endpoint::Start())
         return false;
-#ifdef _MINGW32_NO_THREADS
+#ifdef WIN32
       return SetupNetworking();
 #else
       if(!NetworkIsIsolated())
@@ -254,8 +250,10 @@ namespace llarp
     {
       llarp::LogInfo("Set Up networking for ", Name());
       bool result = SetupTun();
+#ifndef WIN32
       m_TunSetupResult.set_value(
           result);  // now that NT has tun, we don't need the CPP guard
+#endif
       if(!NetworkIsIsolated())
       {
         // need to check to see if we have more than one hidden service
@@ -371,7 +369,7 @@ namespace llarp
     huint32_t
     TunEndpoint::ObtainIPForAddr(const service::Address &addr)
     {
-      llarp_time_t now = llarp_time_now_ms();
+      llarp_time_t now = Now();
       huint32_t nextIP = {0};
 
       {
@@ -442,7 +440,7 @@ namespace llarp
     void
     TunEndpoint::MarkIPActive(huint32_t ip)
     {
-      m_IPActivity[ip] = std::max(llarp_time_now_ms(), m_IPActivity[ip]);
+      m_IPActivity[ip] = std::max(Now(), m_IPActivity[ip]);
     }
 
     void
@@ -454,9 +452,8 @@ namespace llarp
     void
     TunEndpoint::handleTickTun(void *u)
     {
-      auto now          = llarp_time_now_ms();
       TunEndpoint *self = static_cast< TunEndpoint * >(u);
-      self->TickTun(now);
+      self->TickTun(self->Now());
     }
 
     void

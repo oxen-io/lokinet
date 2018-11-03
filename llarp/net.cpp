@@ -985,10 +985,14 @@ namespace llarp
   bool
   IsBogon(const in6_addr& addr)
   {
+#ifdef TESTNET
+    return false;
+#else
     if(!ipv6_is_siit(addr))
       return false;
     return IsIPv4Bogon(ipaddr_ipv4_bits(addr.s6_addr[12], addr.s6_addr[13],
                                         addr.s6_addr[14], addr.s6_addr[15]));
+#endif
   }
 
   bool

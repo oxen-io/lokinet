@@ -3,6 +3,8 @@
 #include <llarp/buffer.h>
 #include <llarp/net.h>
 
+#include <sys/un.h>
+
 #if __FreeBSD__ || __OpenBSD__ || __NetBSD__ || (__APPLE__ && __MACH__)
 // kqueue / kevent
 #include <sys/event.h>
@@ -32,6 +34,14 @@ namespace llarp
 
     ~udp_listener()
     {
+    }
+
+    bool
+    tick()
+    {
+      if(udp->tick)
+        udp->tick(udp);
+      return true;
     }
 
     virtual int
@@ -74,8 +84,11 @@ namespace llarp
         return -1;
       }
       ssize_t sent = ::sendto(fd, data, sz, 0, to, slen);
-      if(sent == -1)
-        perror("kqueue sendto()");
+      if(sent == -1 || errno)
+      {
+        llarp::LogError("failed to send udp: ", strerror(errno));
+        errno = 0;
+      }
       return sent;
     }
   };
@@ -84,14 +97,10 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
-    tun(llarp_tun_io* tio)
-        : ev_io(-1)
+    tun(llarp_tun_io* tio, llarp_ev_loop* l)
+        : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write", l))
         , t(tio)
-        , tunif(tuntap_init())
-
-              {
-
-              };
+        , tunif(tuntap_init()){};
 
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
@@ -99,7 +108,8 @@ namespace llarp
       return -1;
     }
 
-    bool
+#ifdef __APPLE__
+    virtual ssize_t
     do_write(void* buf, size_t sz)
     {
       iovec vecs[2];
@@ -109,8 +119,9 @@ namespace llarp
       vecs[0].iov_len  = sizeof(t);
       vecs[1].iov_base = buf;
       vecs[1].iov_len  = sz;
-      return writev(fd, vecs, 2) != -1;
+      return writev(fd, vecs, 2);
     }
+#endif
 
     void
     flush_write()
@@ -122,12 +133,26 @@ namespace llarp
       }
     }
 
+    bool
+    tick()
+    {
+      if(t->tick)
+        t->tick(t);
+      flush_write();
+      return true;
+    }
+
     int
     read(void* buf, size_t sz)
     {
+#ifdef __APPLE__
+      const size_t offset = 4;
+#else
+      const size_t offset = 0;
+#endif
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 4 && t->recvpkt)
-        t->recvpkt(t, ((byte_t*)buf) + 4, ret - 4);
+        t->recvpkt(t, ((byte_t*)buf) + offset, ret - offset);
       return ret;
     }
 
@@ -169,7 +194,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   llarp::ev_io*
   create_tun(llarp_tun_io* tun)
   {
-    llarp::tun* t = new llarp::tun(tun);
+    llarp::tun* t = new llarp::tun(tun, this);
     if(t->setup())
       return t;
     delete t;
@@ -199,7 +224,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     int result;
     timespec t;
     t.tv_sec  = 0;
-    t.tv_nsec = ms * 1000UL;
+    t.tv_nsec = ms * 1000000UL;
     result    = kevent(kqueuefd, nullptr, 0, events, 1024, &t);
     // result: 0 is a timeout
     if(result > 0)
@@ -210,11 +235,10 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev)
         {
-          ev->read(readbuf, sizeof(readbuf));
-        }
-        else
-        {
-          llarp::LogWarn("event[", idx, "] udata is not an ev_io");
+          if(events[idx].filter & EVFILT_READ)
+            ev->read(readbuf, sizeof(readbuf));
+          if(events[idx].filter & EVFILT_WRITE)
+            ev->flush_write();
         }
         ++idx;
       }
@@ -242,10 +266,12 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         while(idx < result)
         {
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
-          if(ev && ev->fd)
+          if(ev)
           {
-            // printf("reading_ev [%x] fd[%d]\n", ev, ev->fd);
-            ev->read(readbuf, sizeof(readbuf));
+            if(events[idx].filter & EVFILT_READ)
+              ev->read(readbuf, sizeof(readbuf));
+            if(events[idx].filter & EVFILT_WRITE)
+              ev->flush_write();
           }
           else
           {
@@ -321,8 +347,8 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
-    EV_SET(&change, ev->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-    return kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1;
+    EV_SET(&change, ev->fd, ev->flags, EV_DELETE, 0, 0, nullptr);
+    return kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) != -1;
   }
 
   llarp::ev_io*
@@ -332,23 +358,24 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     if(fd == -1)
       return nullptr;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
-    udp_listeners.push_back(l);
-    l->impl = listener;
+    l->impl                       = listener;
     return listener;
   }
 
   bool
   add_ev(llarp::ev_io* ev, bool write)
   {
+    ev->flags = EVFILT_READ;
     if(write)
-      EV_SET(&change, ev->fd, EVFILT_READ | EVFILT_WRITE, EV_ADD, 0, 0, ev);
-    else
-      EV_SET(&change, ev->fd, EVFILT_READ, EV_ADD, 0, 0, ev);
+      ev->flags |= EVFILT_WRITE;
+
+    EV_SET(&change, ev->fd, ev->flags, EV_ADD, 0, 0, ev);
     if(kevent(kqueuefd, &change, 1, nullptr, 0, nullptr) == -1)
     {
       delete ev;
       return false;
     }
+    handlers.emplace_back(ev);
     return true;
   }
 
@@ -360,18 +387,20 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     if(listener)
     {
       // printf("Calling close_ev for [%x] fd[%d]\n", listener, listener->fd);
-      ret     = close_ev(listener);
-      l->impl = nullptr;
-      delete listener;
-      // std::remove_if
-      auto itr = udp_listeners.begin();
-      while(itr != udp_listeners.end())
+      ret = close_ev(listener);
+      // remove handler
+      auto itr = handlers.begin();
+      while(itr != handlers.end())
       {
-        if((*itr) == l)
-          itr = udp_listeners.erase(itr);
+        if(itr->get() == listener)
+        {
+          itr = handlers.erase(itr);
+          ret = true;
+        }
         else
           ++itr;
       }
+      l->impl = nullptr;
     }
     return ret;
   }

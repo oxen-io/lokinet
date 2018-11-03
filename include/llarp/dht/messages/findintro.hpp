@@ -21,8 +21,9 @@ namespace llarp
         relayed = relay;
       }
 
-      FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid)
-          : IMessage({}), N(tag), T(txid)
+      FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid,
+                       uint64_t r = 3)
+          : IMessage({}), R(r), N(tag), T(txid)
       {
         S.Zero();
       }

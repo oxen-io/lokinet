@@ -32,7 +32,7 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
   ASSERT_TRUE(ident.pub.CalculateAddress(addr.data()));
   llarp::service::IntroSet I;
   auto now = llarp_time_now_ms();
-  I.T = now;
+  I.T      = now;
   while(I.I.size() < 10)
   {
     llarp::service::Introduction intro;
@@ -41,8 +41,8 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
     intro.pathID.Randomize();
     I.I.push_back(intro);
   }
-  ASSERT_TRUE(ident.SignIntroSet(I, Crypto()));
-  ASSERT_TRUE(I.Verify(Crypto()));
+  ASSERT_TRUE(ident.SignIntroSet(I, Crypto(), now));
+  ASSERT_TRUE(I.Verify(Crypto(), now));
 };
 
 TEST_F(HiddenServiceTest, TestAddressToFromString)

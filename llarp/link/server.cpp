@@ -14,10 +14,23 @@ namespace llarp
     return m_AuthedLinks.find(pk) != m_AuthedLinks.end();
   }
 
+  void
+  ILinkLayer::ForEachSession(
+      std::function< void(const ILinkSession*) > visit) const
+  {
+    auto itr = m_AuthedLinks.begin();
+    while(itr != m_AuthedLinks.end())
+    {
+      visit(itr->second.get());
+      ++itr;
+    }
+  }
+
   bool
   ILinkLayer::Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
                         uint16_t port)
   {
+    m_Loop         = loop;
     m_udp.user     = this;
     m_udp.recvfrom = &ILinkLayer::udp_recv_from;
     m_udp.tick     = &ILinkLayer::udp_tick;
@@ -35,13 +48,13 @@ namespace llarp
   void
   ILinkLayer::Pump()
   {
-    auto now = llarp_time_now_ms();
+    auto _now = now();
     {
       Lock lock(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
-        if(!itr->second->TimedOut(now))
+        if(!itr->second->TimedOut(_now))
         {
           itr->second->Pump();
           ++itr;
@@ -56,7 +69,7 @@ namespace llarp
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
-        if(!(*itr)->TimedOut(now))
+        if(!(*itr)->TimedOut(_now))
         {
           (*itr)->Pump();
           ++itr;
@@ -249,9 +262,9 @@ namespace llarp
   }
 
   void
-  ILinkLayer::OnTick(uint64_t interval, llarp_time_t now)
+  ILinkLayer::OnTick(uint64_t interval)
   {
-    Tick(now);
+    Tick(now());
     ScheduleTick(interval);
   }
 

@@ -143,9 +143,10 @@ namespace llarp
     bool
     PathContext::HasTransitHop(const TransitHopInfo& info)
     {
-      return MapHas(m_TransitPaths, info.txID, [info](TransitHop* hop) -> bool {
-        return info == hop->info;
-      });
+      return MapHas(m_TransitPaths, info.txID,
+                    [info](const std::shared_ptr< TransitHop >& hop) -> bool {
+                      return info == hop->info;
+                    });
     }
 
     IHopHandler*
@@ -163,20 +164,24 @@ namespace llarp
         return own;
 
       return MapGet(m_TransitPaths, id,
-                    [remote](const TransitHop* hop) -> bool {
+                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
                       return hop->info.upstream == remote;
                     },
-                    [](TransitHop* h) -> IHopHandler* { return h; });
+                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+                      return h.get();
+                    });
     }
 
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
       return MapGet(m_TransitPaths, id,
-                    [remote](const TransitHop* hop) -> bool {
+                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
                       return hop->info.downstream == remote;
                     },
-                    [](TransitHop* h) -> IHopHandler* { return h; });
+                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+                      return h.get();
+                    });
     }
 
     PathSet*
@@ -215,43 +220,35 @@ namespace llarp
         for(auto i = range.first; i != range.second; ++i)
         {
           if(i->second->info.upstream == us)
-            return i->second;
+            return i->second.get();
         }
       }
       return nullptr;
     }
 
     void
-    PathContext::PutTransitHop(TransitHop* hop)
+    PathContext::PutTransitHop(std::shared_ptr< TransitHop > hop)
     {
       MapPut(m_TransitPaths, hop->info.txID, hop);
       MapPut(m_TransitPaths, hop->info.rxID, hop);
     }
 
     void
-    PathContext::ExpirePaths()
+    PathContext::ExpirePaths(llarp_time_t now)
     {
       util::Lock lock(m_TransitPaths.first);
-      auto now  = llarp_time_now_ms();
       auto& map = m_TransitPaths.second;
       auto itr  = map.begin();
-      std::set< TransitHop* > removePaths;
       while(itr != map.end())
       {
         if(itr->second->Expired(now))
         {
-          TransitHop* path = itr->second;
-          llarp::LogDebug("transit path expired ", path->info);
-          removePaths.insert(path);
+          itr = map.erase(itr);
         }
-        ++itr;
+        else
+          ++itr;
       }
-      for(auto& p : removePaths)
-      {
-        map.erase(p->info.txID);
-        map.erase(p->info.rxID);
-        delete p;
-      }
+
       for(auto& builder : m_PathBuilders)
       {
         if(builder)
@@ -260,11 +257,11 @@ namespace llarp
     }
 
     void
-    PathContext::BuildPaths()
+    PathContext::BuildPaths(llarp_time_t now)
     {
       for(auto& builder : m_PathBuilders)
       {
-        if(builder->ShouldBuildMore())
+        if(builder->ShouldBuildMore(now))
         {
           builder->BuildOne();
         }
@@ -272,9 +269,8 @@ namespace llarp
     }
 
     void
-    PathContext::TickPaths()
+    PathContext::TickPaths(llarp_time_t now)
     {
-      auto now = llarp_time_now_ms();
       for(auto& builder : m_PathBuilders)
         builder->Tick(now, m_Router);
     }
@@ -298,7 +294,7 @@ namespace llarp
         for(auto i = range.first; i != range.second; ++i)
         {
           if(i->second->info.upstream == us)
-            return i->second;
+            return i->second.get();
         }
       }
       return nullptr;
@@ -359,7 +355,7 @@ namespace llarp
       // initialize parts of the introduction
       intro.router = hops[hsz - 1].rc.pubkey;
       intro.pathID = hops[hsz - 1].txID;
-      EnterState(ePathBuilding);
+      EnterState(ePathBuilding, parent->Now());
     }
 
     void
@@ -399,7 +395,7 @@ namespace llarp
     }
 
     void
-    Path::EnterState(PathStatus st)
+    Path::EnterState(PathStatus st, llarp_time_t now)
     {
       if(st == ePathTimeout)
       {
@@ -408,7 +404,7 @@ namespace llarp
       else if(st == ePathBuilding)
       {
         llarp::LogInfo("path ", Name(), " is building");
-        buildStarted = llarp_time_now_ms();
+        buildStarted = now;
       }
       _status = st;
     }
@@ -427,7 +423,7 @@ namespace llarp
         if(dlt >= PATH_BUILD_TIMEOUT)
         {
           r->routerProfiling.MarkPathFail(this);
-          EnterState(ePathTimeout);
+          EnterState(ePathTimeout, now);
           return;
         }
       }
@@ -454,19 +450,19 @@ namespace llarp
             if(m_CheckForDead(this, dlt))
             {
               r->routerProfiling.MarkPathFail(this);
-              EnterState(ePathTimeout);
+              EnterState(ePathTimeout, now);
             }
           }
           else
           {
             r->routerProfiling.MarkPathFail(this);
-            EnterState(ePathTimeout);
+            EnterState(ePathTimeout, now);
           }
         }
         else if(dlt >= 10000 && m_LastRecvMessage == 0)
         {
           r->routerProfiling.MarkPathFail(this);
-          EnterState(ePathTimeout);
+          EnterState(ePathTimeout, now);
         }
       }
     }
@@ -583,14 +579,15 @@ namespace llarp
     Path::HandlePathConfirmMessage(
         const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
     {
+      auto now = r->Now();
       if(_status == ePathBuilding)
       {
         // finish initializing introduction
         intro.expiresAt = buildStarted + hops[0].lifetime;
         // confirm that we build the path
-        EnterState(ePathEstablished);
+        EnterState(ePathEstablished, now);
         llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID(),
-                       " took ", llarp_time_now_ms() - buildStarted, " ms");
+                       " took ", now - buildStarted, " ms");
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
@@ -604,7 +601,7 @@ namespace llarp
         llarp::routing::PathLatencyMessage latency;
         latency.T             = llarp_randint();
         m_LastLatencyTestID   = latency.T;
-        m_LastLatencyTestTime = llarp_time_now_ms();
+        m_LastLatencyTestTime = now;
         return SendRoutingMessage(&latency, r);
       }
       llarp::LogWarn("got unwarrented path confirm message on tx=", RXID(),
@@ -619,7 +616,7 @@ namespace llarp
       {
         if(m_DataHandler(this, frame))
         {
-          m_LastRecvMessage = llarp_time_now_ms();
+          m_LastRecvMessage = m_PathSet->Now();
           return true;
         }
       }
@@ -630,7 +627,7 @@ namespace llarp
     Path::HandlePathLatencyMessage(
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
-      auto now = llarp_time_now_ms();
+      auto now = r->Now();
       // TODO: reanimate dead paths if they get this message
       if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
       {

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">lokinet</string>
+    <string name="action_stop">Stop</string>
+    <string name="already_stopped">Already stopped</string>
+    <string name="uninitialized">lokinet initializing</string>
+    <string name="starting">lokinet is starting</string>
+    <string name="jniLibraryLoaded">lokinet: loaded JNI libraries</string>
+    <string name="startedOkay">lokinet started</string>
+    <string name="startFailed">lokinet start failed</string>
+    <string name="stopped">lokinet has stopped</string>
+    <string name="remaining">remaining</string>
+    <string name="title_activity_perms_asker_prompt">Prompt</string>
+</resources>

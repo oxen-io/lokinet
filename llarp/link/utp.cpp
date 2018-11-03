@@ -37,10 +37,8 @@ namespace llarp
         FragmentOverheadSize + FragmentBodySize;
     typedef llarp::AlignedBuffer< FragmentBufferSize > FragmentBuffer;
 
-    constexpr size_t MaxSend = 64;
-
     /// maximum size for send queue for a session before we drop
-    constexpr size_t MaxSendQueueSize = 128;
+    constexpr size_t MaxSendQueueSize = 1024;
 
     typedef llarp::AlignedBuffer< MAX_LINK_MSG_SIZE > MessageBuffer;
 
@@ -182,23 +180,7 @@ namespace llarp
       EncryptThenHash(const byte_t* ptr, uint32_t sz, bool isLastFragment);
 
       bool
-      QueueWriteBuffers(llarp_buffer_t buf)
-      {
-        if(sendq.size() >= MaxSendQueueSize)
-          return false;
-        llarp::LogDebug("write ", buf.sz, " bytes to ", remoteAddr);
-        lastActive  = llarp_time_now_ms();
-        size_t sz   = buf.sz;
-        byte_t* ptr = buf.base;
-        while(sz)
-        {
-          uint32_t s = std::min(FragmentBodyPayloadSize, sz);
-          EncryptThenHash(ptr, s, ((sz - s) == 0));
-          ptr += s;
-          sz -= s;
-        }
-        return true;
-      }
+      QueueWriteBuffers(llarp_buffer_t buf);
 
       void
       Connect()
@@ -580,7 +562,7 @@ namespace llarp
       SendQueueBacklog = [&]() -> size_t { return sendq.size(); };
 
       SendKeepAlive = [&]() -> bool {
-        auto now = llarp_time_now_ms();
+        auto now = parent->now();
         if(sendq.size() == 0 && state == eSessionReady && now > lastActive
            && now - lastActive > (sessionTimeout / 4))
         {
@@ -602,7 +584,7 @@ namespace llarp
         return this->IsTimedOut(now) || this->state == eClose;
       };
       GetPubKey  = std::bind(&BaseSession::RemotePubKey, this);
-      lastActive = llarp_time_now_ms();
+      lastActive = parent->now();
       // Pump       = []() {};
       Pump = std::bind(&BaseSession::PumpWrite, this);
       Tick = std::bind(&BaseSession::TickImpl, this, std::placeholders::_1);
@@ -660,6 +642,25 @@ namespace llarp
                         remoteRC.enckey, parent->TransportSecretKey()))
         return false;
       EnterState(eSessionReady);
+      return true;
+    }
+
+    bool
+    BaseSession::QueueWriteBuffers(llarp_buffer_t buf)
+    {
+      if(sendq.size() >= MaxSendQueueSize)
+        return false;
+      llarp::LogDebug("write ", buf.sz, " bytes to ", remoteAddr);
+      lastActive  = parent->now();
+      size_t sz   = buf.sz;
+      byte_t* ptr = buf.base;
+      while(sz)
+      {
+        uint32_t s = std::min(FragmentBodyPayloadSize, sz);
+        EncryptThenHash(ptr, s, ((sz - s) == 0));
+        ptr += s;
+        sz -= s;
+      }
       return true;
     }
 
@@ -951,7 +952,7 @@ namespace llarp
     void
     BaseSession::Alive()
     {
-      lastActive = llarp_time_now_ms();
+      lastActive = parent->now();
     }
 
   }  // namespace utp

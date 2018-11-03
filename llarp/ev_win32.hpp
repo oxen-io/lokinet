@@ -21,11 +21,18 @@ namespace llarp
 
     udp_listener(SOCKET fd, llarp_udp_io* u) : ev_io(fd), udp(u)
     {
-      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED)*2);
+      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
     };
 
     ~udp_listener()
     {
+    }
+
+    virtual void
+    tick()
+    {
+      if(udp->tick)
+        udp->tick(udp);
     }
 
     virtual int
@@ -112,6 +119,13 @@ namespace llarp
       ev_io::flush_write();
     }
 
+    void
+    tick()
+    {
+      if(t->tick)
+        t->tick(t);
+    }
+
     bool
     do_write(void* data, size_t sz)
     {
@@ -150,7 +164,7 @@ namespace llarp
         return false;
       }
 
-      fd        = tunif->tun_fd;
+      fd           = tunif->tun_fd;
       tun_async[0] = &tunif->ovl[0];
       tun_async[1] = &tunif->ovl[1];
       if(std::get< HANDLE >(fd) == INVALID_HANDLE_VALUE)
@@ -211,7 +225,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     if(result && qdata)
     {
       llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
-      if(ev && !ev->fd.valueless_by_exception())
+      if(ev)
       {
         llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
                         "\tqdata: ", qdata);
@@ -245,17 +259,16 @@ struct llarp_win32_loop : public llarp_ev_loop
     ULONG_PTR ev_id      = 0;
     WSAOVERLAPPED* qdata = nullptr;
     int idx              = 0;
-    int result =
+    BOOL result =
         ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, 10);
 
-    // unlike epoll and kqueue, we only need to run so long as the
-    // system call returns TRUE
-    if(result)
+    if(result && qdata)
     {
       llarp::udp_listener* ev = reinterpret_cast< llarp::udp_listener* >(ev_id);
-      if(ev && !ev->fd.valueless_by_exception())
+      if(ev)
       {
-        llarp::LogInfo("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
+        llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id,
+                        "\tqdata: ", qdata);
         if(iolen <= sizeof(readbuf))
           ev->read(readbuf, iolen);
       }
@@ -266,8 +279,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       return -1;
     else
     {
-      tick_listeners();
       result = idx;
+      tick_listeners();
     }
 
     return result;
@@ -342,7 +355,6 @@ struct llarp_win32_loop : public llarp_ev_loop
       return nullptr;
     llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
     l->impl                       = listener;
-    udp_listeners.push_back(l);
     return listener;
   }
 
@@ -391,6 +403,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       default:
         return false;
     }
+    handlers.emplace_back(ev);
     return true;
   }
 
@@ -405,15 +418,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       ret     = close_ev(listener);
       l->impl = nullptr;
       delete listener;
-      // std::remove_if
-      auto itr = udp_listeners.begin();
-      while(itr != udp_listeners.end())
-      {
-        if((*itr) == l)
-          itr = udp_listeners.erase(itr);
-        else
-          ++itr;
-      }
+      ret = true;
     }
     return ret;
   }

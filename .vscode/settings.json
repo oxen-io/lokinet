@@ -65,6 +65,9 @@
     "vector": "cpp",
     "new": "cpp",
     "shared_mutex": "cpp",
-    "complex": "cpp"
+    "complex": "cpp",
+    "variant": "cpp",
+    "any": "cpp",
+    "tuntap.h": "c"
   }
 }

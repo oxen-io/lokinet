@@ -115,7 +115,7 @@ namespace llarp
       if(ctx->services)
       {
         // expire intro sets
-        auto now    = llarp_time_now_ms();
+        auto now    = ctx->Now();
         auto &nodes = ctx->services->nodes;
         auto itr    = nodes.begin();
         while(itr != nodes.end())
@@ -130,12 +130,6 @@ namespace llarp
         }
       }
       ctx->ScheduleCleanupTimer();
-    }
-
-    void
-    Context::LookupTagForPath(const service::Tag &tag, uint64_t txid,
-                              const llarp::PathID_t &path, const Key_t &askpeer)
-    {
     }
 
     std::set< service::IntroSet >
@@ -250,7 +244,7 @@ namespace llarp
     void
     Context::CleanupTX()
     {
-      auto now = llarp_time_now_ms();
+      auto now = Now();
       llarp::LogDebug("DHT tick");
 
       pendingRouterLookups.Expire(now);
@@ -272,6 +266,8 @@ namespace llarp
       llarp_logic_call_later(
           r->logic,
           {exploreInterval, this, &llarp::dht::Context::handle_explore_timer});
+      // start cleanup timer
+      ScheduleCleanupTimer();
     }
 
     void
@@ -289,7 +285,7 @@ namespace llarp
       router->SendToOrQueue(peer, &m);
       if(keepalive)
       {
-        auto now = llarp_time_now_ms();
+        auto now = Now();
         router->PersistSessionUntil(peer, now + 10000);
       }
     }
@@ -327,7 +323,7 @@ namespace llarp
       bool
       Validate(const service::IntroSet &value) const
       {
-        if(!value.Verify(parent->Crypto()))
+        if(!value.Verify(parent->Crypto(), parent->Now()))
         {
           llarp::LogWarn("Got invalid introset from service lookup");
           return false;
@@ -551,7 +547,7 @@ namespace llarp
       bool
       Validate(const service::IntroSet &introset) const
       {
-        if(!introset.Verify(parent->Crypto()))
+        if(!introset.Verify(parent->Crypto(), parent->Now()))
         {
           llarp::LogWarn("got invalid introset from tag lookup");
           return false;
@@ -567,7 +563,8 @@ namespace llarp
       void
       Start(const TXOwner &peer)
       {
-        parent->DHTSendTo(peer.node, new FindIntroMessage(target, peer.txid));
+        parent->DHTSendTo(peer.node,
+                          new FindIntroMessage(target, peer.txid, R));
       }
 
       bool
@@ -590,10 +587,10 @@ namespace llarp
           found.insert(remoteTag);
         }
         // collect our local values if we haven't hit a limit
-        if(found.size() < 8)
+        if(found.size() < 3)
         {
           for(const auto &localTag :
-              parent->FindRandomIntroSetsWithTagExcluding(target, 2, found))
+              parent->FindRandomIntroSetsWithTagExcluding(target, 1, found))
           {
             found.insert(localTag);
           }
@@ -616,6 +613,53 @@ namespace llarp
       TXOwner asker(whoasked, whoaskedTX);
       TXOwner peer(askpeer, ++ids);
       pendingTagLookups.NewTX(peer, tag, new TagLookup(asker, tag, this, R));
+      llarp::LogInfo("ask ", askpeer, " for ", tag, " on behalf of ", whoasked,
+                     " R=", R);
+    }
+
+    struct LocalTagLookup : public TagLookup
+    {
+      PathID_t localPath;
+
+      LocalTagLookup(const PathID_t &path, uint64_t txid,
+                     const service::Tag &target, Context *ctx)
+          : TagLookup(TXOwner{ctx->OurKey(), txid}, target, ctx, 3)
+          , localPath(path)
+      {
+      }
+
+      void
+      SendReply()
+      {
+        auto path =
+            parent->router->paths.GetByUpstream(parent->OurKey(), localPath);
+        if(!path)
+        {
+          llarp::LogWarn(
+              "did not send reply for relayed dht request, no such local path "
+              "for pathid=",
+              localPath);
+          return;
+        }
+        routing::DHTMessage msg;
+        msg.M.emplace_back(new GotIntroMessage(valuesFound, whoasked.txid));
+        if(!path->SendRoutingMessage(&msg, parent->router))
+        {
+          llarp::LogWarn(
+              "failed to send routing message when informing result of dht "
+              "request, pathid=",
+              localPath);
+        }
+      }
+    };
+
+    void
+    Context::LookupTagForPath(const service::Tag &tag, uint64_t txid,
+                              const llarp::PathID_t &path, const Key_t &askpeer)
+    {
+      TXOwner peer(askpeer, ++ids);
+      pendingTagLookups.NewTX(peer, tag,
+                              new LocalTagLookup(path, txid, tag, this));
     }
 
     bool
@@ -778,6 +822,12 @@ namespace llarp
     Context::Crypto()
     {
       return &router->crypto;
+    }
+
+    llarp_time_t
+    Context::Now()
+    {
+      return llarp_ev_loop_time_now_ms(router->netloop);
     }
 
   }  // namespace dht

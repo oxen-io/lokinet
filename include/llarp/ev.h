@@ -16,6 +16,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <tuntap.h>
+#include <llarp/time.h>
 /**
  * ev.h
  *
@@ -45,6 +46,10 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
                                  struct llarp_threadpool *tp,
                                  struct llarp_logic *logic);
 
+/// get the current time on the event loop
+llarp_time_t
+llarp_ev_loop_time_now_ms(struct llarp_ev_loop *ev);
+
 /// stop event loop and wait for it to complete all jobs
 void
 llarp_ev_loop_stop(struct llarp_ev_loop *ev);
@@ -57,6 +62,7 @@ struct llarp_udp_io
   void *user;
   void *impl;
   struct llarp_ev_loop *parent;
+
   /// called every event loop tick after reads
   void (*tick)(struct llarp_udp_io *);
   // sockaddr * is the source
@@ -94,10 +100,13 @@ struct llarp_tcp_conn
   void (*read)(struct llarp_tcp_conn *, const void *, size_t);
   /// handle close event (free-ing is handled by event loop)
   void (*closed)(struct llarp_tcp_conn *);
+  /// handle event loop tick
+  void (*tick)(struct llarp_tcp_conn *);
 };
 
 /// queue async write a buffer in full
-void
+/// return if we queueed it or not
+bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *, const void *, size_t);
 
 /// close a tcp connection
@@ -112,15 +121,20 @@ struct llarp_tcp_acceptor
   void *impl;
   /// parent event loop (dont set me)
   struct llarp_ev_loop *loop;
+  /// handle tick
+  void (*tick)(struct llarp_tcp_acceptor *);
   /// handle inbound connection
   void (*accepted)(struct llarp_tcp_acceptor *, struct llarp_tcp_conn *);
+  /// handle after server socket closed (free-ing is handled by event loop)
+  void (*closed)(struct llarp_tcp_acceptor *);
 };
 
 /// bind to an address and start serving async
 /// return false if failed to bind
 /// return true on successs
 bool
-llarp_tcp_serve(struct llarp_tcp_acceptor *t, const sockaddr *bindaddr);
+llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *t,
+                const sockaddr *bindaddr);
 
 /// close and stop accepting connections
 void

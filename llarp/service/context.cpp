@@ -1,6 +1,7 @@
 #include <llarp/handlers/tun.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/endpoint.hpp>
+#include "router.hpp"
 
 namespace llarp
 {
@@ -22,7 +23,7 @@ namespace llarp
     void
     Context::Tick()
     {
-      auto now = llarp_time_now_ms();
+      auto now = m_Router->Now();
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
@@ -96,6 +97,29 @@ namespace llarp
         return nullptr;
       }
       return &tunEndpoint->tunif;
+    }
+
+    bool
+    Context::FindBestAddressFor(const llarp::service::Address &addr,
+                                huint32_t &ip)
+    {
+      auto itr = m_Endpoints.begin();
+      while(itr != m_Endpoints.end())
+      {
+        if(itr->second->HasAddress(addr))
+        {
+          ip = itr->second->ObtainIPForAddr(addr);
+          return true;
+        }
+        ++itr;
+      }
+      itr = m_Endpoints.find("default");
+      if(itr != m_Endpoints.end())
+      {
+        ip = itr->second->ObtainIPForAddr(addr);
+        return true;
+      }
+      return false;
     }
 
     bool

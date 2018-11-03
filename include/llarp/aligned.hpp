@@ -3,12 +3,20 @@
 
 #include <llarp/bencode.h>
 #include <llarp/crypto.h>
-#include <sodium.h>
 #include <iomanip>
 #include <iostream>
 #include <llarp/encode.hpp>
 #include <llarp/logger.hpp>
 
+extern "C"
+{
+  extern void
+  randombytes(unsigned char* const ptr, unsigned long long sz);
+  extern void
+  sodium_memzero(void* const ptr, const size_t sz);
+  extern int
+  sodium_is_zero(const unsigned char* ptr, size_t sz);
+}
 namespace llarp
 {
   /// aligned buffer, aligns to the nears Long_t
@@ -201,6 +209,13 @@ namespace llarp
       }
       memcpy(b, strbuf.base, sz);
       return true;
+    }
+
+    std::string
+    ToHex() const
+    {
+      char strbuf[(1 + sz) * 2] = {0};
+      return std::string(HexEncode(*this, strbuf));
     }
 
     struct Hash

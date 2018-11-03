@@ -150,9 +150,8 @@ void
 writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
                            dnsd_question_request *request)
 {
-  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
-  char buf[BUFFER_SIZE];
-  memset(buf, 0, BUFFER_SIZE);
+  const size_t BUFFER_SIZE = 1500;
+  char buf[BUFFER_SIZE] = {0};
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
@@ -380,7 +379,7 @@ handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
     return;
   }
   */
-
+  delete fromCopy;
   if(request->llarp)
   {
     // make async request

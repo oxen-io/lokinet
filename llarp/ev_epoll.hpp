@@ -5,6 +5,7 @@
 #include <llarp/net.h>
 #include <signal.h>
 #include <sys/epoll.h>
+#include <sys/un.h>
 #include <tuntap.h>
 #include <unistd.h>
 #include <cstdio>
@@ -13,6 +14,7 @@
 #include "llarp/net.hpp"
 #include "logger.hpp"
 #include "mem.hpp"
+#include <cassert>
 
 namespace llarp
 {
@@ -26,7 +28,15 @@ namespace llarp
     {
     }
 
-    virtual int
+    bool
+    tick()
+    {
+      if(udp->tick)
+        udp->tick(udp);
+      return true;
+    }
+
+    int
     read(void* buf, size_t sz)
     {
       sockaddr_in6 src;
@@ -41,7 +51,7 @@ namespace llarp
       return 0;
     }
 
-    virtual int
+    int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       socklen_t slen;
@@ -69,8 +79,8 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
-    tun(llarp_tun_io* tio)
-        : ev_io(-1)
+    tun(llarp_tun_io* tio, llarp_ev_loop* l)
+        : ev_io(-1, new LossyWriteQueue_t("tun_write_queue", l))
         , t(tio)
         , tunif(tuntap_init())
 
@@ -82,6 +92,15 @@ namespace llarp
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       return -1;
+    }
+
+    bool
+    tick()
+    {
+      if(t->tick)
+        t->tick(t);
+      flush_write();
+      return true;
     }
 
     void
@@ -182,9 +201,16 @@ struct llarp_epoll_loop : public llarp_ev_loop
       while(idx < result)
       {
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
-        if(events[idx].events & EPOLLIN)
+        if(ev)
         {
-          ev->read(readbuf, sizeof(readbuf));
+          if(events[idx].events & EPOLLIN)
+          {
+            ev->read(readbuf, sizeof(readbuf));
+          }
+          if(events[idx].events & EPOLLOUT)
+          {
+            ev->flush_write();
+          }
         }
         ++idx;
       }
@@ -208,9 +234,16 @@ struct llarp_epoll_loop : public llarp_ev_loop
         while(idx < result)
         {
           llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
-          if(events[idx].events & EPOLLIN)
+          if(ev)
           {
-            ev->read(readbuf, sizeof(readbuf));
+            if(events[idx].events & EPOLLIN)
+            {
+              ev->read(readbuf, sizeof(readbuf));
+            }
+            if(events[idx].events & EPOLLOUT)
+            {
+              ev->flush_write();
+            }
           }
           ++idx;
         }
@@ -276,9 +309,11 @@ struct llarp_epoll_loop : public llarp_ev_loop
   llarp::ev_io*
   create_tun(llarp_tun_io* tun)
   {
-    llarp::tun* t = new llarp::tun(tun);
+    llarp::tun* t = new llarp::tun(tun, this);
     if(t->setup())
+    {
       return t;
+    }
     delete t;
     return nullptr;
   }
@@ -289,9 +324,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
     int fd = udp_bind(src);
     if(fd == -1)
       return nullptr;
-    llarp::udp_listener* listener = new llarp::udp_listener(fd, l);
-    l->impl                       = listener;
-    udp_listeners.push_back(l);
+    llarp::ev_io* listener = new llarp::udp_listener(fd, l);
+    l->impl                = listener;
     return listener;
   }
 
@@ -301,13 +335,14 @@ struct llarp_epoll_loop : public llarp_ev_loop
     epoll_event ev;
     ev.data.ptr = e;
     ev.events   = EPOLLIN;
-    // if(write)
-    //   ev.events |= EPOLLOUT;
+    if(write)
+      ev.events |= EPOLLOUT;
     if(epoll_ctl(epollfd, EPOLL_CTL_ADD, e->fd, &ev) == -1)
     {
       delete e;
       return false;
     }
+    handlers.emplace_back(e);
     return true;
   }
 
@@ -320,10 +355,17 @@ struct llarp_epoll_loop : public llarp_ev_loop
     if(listener)
     {
       close_ev(listener);
+      // remove handler
+      auto itr = handlers.begin();
+      while(itr != handlers.end())
+      {
+        if(itr->get() == listener)
+          itr = handlers.erase(itr);
+        else
+          ++itr;
+      }
       l->impl = nullptr;
-      delete listener;
-      std::remove_if(udp_listeners.begin(), udp_listeners.end(),
-                     [l](llarp_udp_io* i) -> bool { return i == l; });
+      ret     = true;
     }
     return ret;
   }

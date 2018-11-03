@@ -191,10 +191,9 @@ namespace llarp
     }
 
     bool
-    Builder::ShouldBuildMore() const
+    Builder::ShouldBuildMore(llarp_time_t now) const
     {
-      auto now = llarp_time_now_ms();
-      return llarp::path::PathSet::ShouldBuildMore() && now > lastBuild
+      return llarp::path::PathSet::ShouldBuildMore(now) && now > lastBuild
           && now - lastBuild > buildIntervalLimit;
     }
 
@@ -236,10 +235,16 @@ namespace llarp
       return true;
     }
 
+    llarp_time_t
+    Builder::Now() const
+    {
+      return router->Now();
+    }
+
     void
     Builder::Build(const std::vector< RouterContact >& hops)
     {
-      lastBuild = llarp_time_now_ms();
+      lastBuild = Now();
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
           new AsyncPathKeyExchangeContext< Builder >(&router->crypto);
