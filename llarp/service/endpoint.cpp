@@ -284,7 +284,7 @@ namespace llarp
       auto itr   = range.first;
       while(itr != range.second)
       {
-        if(itr->ReadyToSend())
+        if(itr->second->ReadyToSend())
           return true;
         ++itr;
       }
