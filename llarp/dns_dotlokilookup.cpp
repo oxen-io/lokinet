@@ -138,8 +138,6 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
     return;
   }
   */
-  llarp::service::Context *routerHiddenServiceContext =
-      (llarp::service::Context *)dll->user;
   llarp::huint32_t foundAddr;
   if(!routerHiddenServiceContext->FindBestAddressFor(addr, foundAddr))
   {
@@ -156,12 +154,12 @@ llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
   loki_tld_lookup_cache[addr.ToString()]=response;
    */
   // we can't delete response now...
-  sockaddr_in saddr;
-  saddr.sin_family      = AF_INET;
-  saddr.sin_addr.s_addr = llarp::xhtonl(foundAddr).n;
+  // sockaddr_in saddr;
+  // saddr.sin_family      = AF_INET;
+  // saddr.sin_addr.s_addr = llarp::xhtonl(foundAddr).n;
   // FIXME: flush cache to disk
   // on crash we'll need to bring up all the same IPs we assigned before...
-  writesend_dnss_response((sockaddr *)&saddr, qr->from, qr->request);
+  writesend_dnss_response(&foundAddr, qr->from, qr->request);
   delete qr;
   return;
 }
