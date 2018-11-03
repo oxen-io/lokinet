@@ -110,7 +110,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   request->context  = dnsc;
 
   char *sUrl             = strdup(url);
-  request->question.name = (char *)sUrl; // since it's a std::String
+  request->question.name = (char *)sUrl;  // since it's a std::String
   // we can nuke sUrl now
   free(sUrl);
 
@@ -349,7 +349,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   if(answer == nullptr)
   {
     llarp::LogWarn("nameserver ", upstreamAddr,
-                   " didnt return any answers for ", question?question->name:"null question");
+                   " didnt return any answers for ",
+                   question ? question->name : "null question");
     request->resolved(request);
     return;
   }
@@ -426,7 +427,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
                                 answer->rData[2], answer->rData[3]);
       */
       // llarp::LogDebug("Passing back IPv4: ",
-      // std::to_string(answer->rData[3]), ".", std::to_string(answer->rData[2]),
+      // std::to_string(answer->rData[3]), ".",
+      // std::to_string(answer->rData[2]),
       // ".", std::to_string(answer->rData[1]), ".",
       // std::to_string(answer->rData[0]));
       request->result =

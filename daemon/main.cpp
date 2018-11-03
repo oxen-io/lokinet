@@ -85,7 +85,9 @@ main(int argc, char *argv[])
         break;
       case 'r':
 #ifdef _WIN32
-        llarp::LogError("we will not run as relay because you're running windows, install a real operating system please");
+        llarp::LogError(
+            "we will not run as relay because you're running windows, install "
+            "a real operating system please");
         return 1;
 #endif
         asRouter = true;

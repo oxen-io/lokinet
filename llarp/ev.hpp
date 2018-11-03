@@ -51,7 +51,8 @@ namespace llarp
 
       struct GetTime
       {
-        llarp_time_t operator()(const WriteBuffer & buf) const
+        llarp_time_t
+        operator()(const WriteBuffer& buf) const
         {
           return buf.timestamp;
         }
@@ -59,9 +60,12 @@ namespace llarp
 
       struct PutTime
       {
-        llarp_ev_loop * loop;
-        PutTime(llarp_ev_loop * l ) : loop(l) {}
-        void operator()(WriteBuffer & buf)
+        llarp_ev_loop* loop;
+        PutTime(llarp_ev_loop* l) : loop(l)
+        {
+        }
+        void
+        operator()(WriteBuffer& buf)
         {
           buf.timestamp = llarp_ev_loop_time_now_ms(loop);
         }
