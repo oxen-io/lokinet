@@ -201,32 +201,47 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
 bool
 llarp_ensure_client_config(std::ofstream &f, std::string basepath)
 {
-  f << "#uncomment for a hidden service" << std::endl;
-  f << "#[services]" << std::endl;
-  f << "#client=" << basepath << "client.ini" << std::endl;
-  f << std::endl;
-
+#ifndef _WIN32
+  const std::string snappExample_fpath = basepath + "snapp-example.ini";
+  // done with fname.ini
+  // start client.ini
+  // write fname ini
+  {
+    std::ofstream clientini_f(snappExample_fpath);
+    if(f.is_open())
+    {
+      clientini_f << "# this is an example configuration for a snapp";
+      clientini_f << "[example-snapp]" << std::endl;
+      clientini_f << "# keyfile is the path to the private key of the snapp"
+                  << std::endl;
+      clientini_f << "keyfile=" << basepath << "example-snap-keyfile.private"
+                  << std::endl;
+      clientini_f << "# ifaddr is the ip range to allocate to this snapp"
+                  << std::endl;
+      clientini_f << "ifaddr=10.55.0.0/16" << std::endl;
+      clientini_f << "# ifname is the name to try and give to the network "
+                     "interface this snap owns"
+                  << std::endl;
+      clientini_f << "ifname=snapp-tun0" << std::endl;
+    }
+    else
+    {
+      llarp::LogError("failed to write ", snappExample_fpath);
+    }
+  }
+  f << std::endl << std::endl;
+  f << "# snapps configuration section" << std::endl;
+  f << "[services]";
+  f << "# uncomment next line to enable persistant snapp" << std::endl;
+  f << "#example-snapp=" << snappExample_fpath << std::endl;
+  f << std::endl << std::endl;
+#endif
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;
   f << "profiles=" << basepath << "profiles.dat" << std::endl;
 #ifndef __linux__
   f << "# ";
 #endif
-
-  /*
-  // done with fname.ini
-  // start client.ini
-  // write fname ini
-  std::ofstream clientini_f(basepath + "client.ini");
-  if(!f.is_open())
-  {
-    llarp::LogError("failed to open ", basepath, "client.ini for writing");
-    return false;
-  }
-  clientini_f << "[client-hidden-service-name]" << std::endl;
-  clientini_f << "keyfile=client-keyfile.private" << std::endl;
-  */
-
   // pick ip
   std::string ip = llarp::findFreePrivateRange();
   /*
