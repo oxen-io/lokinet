@@ -160,7 +160,7 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const huint16_t& a)
     {
-      return out<< a.h;
+      return out << a.h;
     }
 
     struct Hash
