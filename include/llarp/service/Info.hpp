@@ -8,7 +8,7 @@ namespace llarp
 {
   namespace service
   {
-    struct ServiceInfo : public llarp::IBEncodeMessage
+    struct ServiceInfo final : public llarp::IBEncodeMessage
     {
      private:
       llarp::PubKey enckey;
@@ -121,7 +121,7 @@ namespace llarp
       CalculateAddress(byte_t* buf) const;
 
       bool
-      BDecode(llarp_buffer_t* buf)
+      BDecode(llarp_buffer_t* buf) override
       {
         if(IBEncodeMessage::BDecode(buf))
           return CalculateAddress(m_CachedAddr.data());
@@ -129,10 +129,10 @@ namespace llarp
       }
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
      private:
       Address m_CachedAddr;

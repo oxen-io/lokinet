@@ -17,7 +17,7 @@
 /// address information model
 namespace llarp
 {
-  struct AddressInfo : public IBEncodeMessage
+  struct AddressInfo final : public IBEncodeMessage
   {
     uint16_t rank;
     std::string dialect;
@@ -52,10 +52,10 @@ namespace llarp
     operator<(const AddressInfo& other) const;
 
     bool
-    BEncode(llarp_buffer_t* buf) const;
+    BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf);
+    DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf) override;
 
     friend std::ostream&
     operator<<(std::ostream& out, const AddressInfo& a)

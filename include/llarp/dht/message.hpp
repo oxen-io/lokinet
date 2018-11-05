@@ -1,5 +1,6 @@
 #ifndef LLARP_DHT_MESSAGE_HPP
 #define LLARP_DHT_MESSAGE_HPP
+
 #include <llarp/dht.h>
 #include <llarp/bencode.hpp>
 #include <llarp/dht/key.hpp>

@@ -7,7 +7,7 @@ namespace llarp
 {
   namespace dht
   {
-    struct GotRouterMessage : public IMessage
+    struct GotRouterMessage final : public IMessage
     {
       GotRouterMessage(const Key_t& from, bool tunneled)
           : IMessage(from), relayed(tunneled)
@@ -29,14 +29,15 @@ namespace llarp
       ~GotRouterMessage();
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       virtual bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< std::unique_ptr< IMessage > >& replies) const;
+      HandleMessage(
+          llarp_dht_context* ctx,
+          std::vector< std::unique_ptr< IMessage > >& replies) const override;
 
       std::vector< RouterContact > R;
       std::vector< RouterID > N;

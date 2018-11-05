@@ -8,7 +8,7 @@ namespace llarp
 {
   namespace dht
   {
-    struct FindIntroMessage : public IMessage
+    struct FindIntroMessage final : public IMessage
     {
       uint64_t R = 0;
       llarp::service::Address S;
@@ -38,14 +38,15 @@ namespace llarp
       ~FindIntroMessage();
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< std::unique_ptr< IMessage > >& replies) const;
+      HandleMessage(
+          llarp_dht_context* ctx,
+          std::vector< std::unique_ptr< IMessage > >& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

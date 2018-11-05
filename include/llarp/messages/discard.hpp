@@ -7,7 +7,7 @@
 
 namespace llarp
 {
-  struct DiscardMessage : public ILinkMessage
+  struct DiscardMessage final : public ILinkMessage
   {
     /// who did this message come from or is going to
 
@@ -24,7 +24,7 @@ namespace llarp
     }
 
     bool
-    BEncode(llarp_buffer_t* buf) const
+    BEncode(llarp_buffer_t* buf) const override
     {
       if(!bencode_start_dict(buf))
         return false;
@@ -36,13 +36,13 @@ namespace llarp
     }
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override
     {
       return false;
     }
 
     bool
-    HandleMessage(llarp_router* router) const
+    HandleMessage(llarp_router* router) const override
     {
       return true;
     }
@@ -50,7 +50,7 @@ namespace llarp
 
   namespace routing
   {
-    struct DataDiscardMessage : public IMessage
+    struct DataDiscardMessage final : public IMessage
     {
       PathID_t P;
 
@@ -65,13 +65,13 @@ namespace llarp
       }
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const
+      HandleMessage(IMessageHandler* h, llarp_router* r) const override
       {
         return h->HandleDataDiscardMessage(this, r);
       }
 
       bool
-      DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+      DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf) override
       {
         bool read = false;
         if(!BEncodeMaybeReadDictEntry("P", P, read, k, buf))
@@ -84,7 +84,7 @@ namespace llarp
       }
 
       bool
-      BEncode(llarp_buffer_t* buf) const
+      BEncode(llarp_buffer_t* buf) const override
       {
         if(!bencode_start_dict(buf))
           return false;

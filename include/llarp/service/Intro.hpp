@@ -10,7 +10,7 @@ namespace llarp
 {
   namespace service
   {
-    struct Introduction : public llarp::IBEncodeMessage
+    struct Introduction final : public llarp::IBEncodeMessage
     {
       llarp::PubKey router;
       llarp::PathID_t pathID;
@@ -52,10 +52,10 @@ namespace llarp
       }
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       void
       Clear();
