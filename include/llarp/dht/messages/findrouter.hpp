@@ -27,14 +27,15 @@ namespace llarp
       ~FindRouterMessage();
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       virtual bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< std::unique_ptr< IMessage > >& replies) const;
+      HandleMessage(
+          llarp_dht_context* ctx,
+          std::vector< std::unique_ptr< IMessage > >& replies) const override;
 
       RouterID K;
       bool iterative   = false;
@@ -44,7 +45,7 @@ namespace llarp
     };
 
     /// variant of FindRouterMessage relayed via path
-    struct RelayedFindRouterMessage : public FindRouterMessage
+    struct RelayedFindRouterMessage final : public FindRouterMessage
     {
       RelayedFindRouterMessage(const Key_t& from) : FindRouterMessage(from)
       {
@@ -54,8 +55,9 @@ namespace llarp
       /// the path of the result
       /// TODO: smart path expiration logic needs to be implemented
       virtual bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< std::unique_ptr< IMessage > >& replies) const;
+      HandleMessage(
+          llarp_dht_context* ctx,
+          std::vector< std::unique_ptr< IMessage > >& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

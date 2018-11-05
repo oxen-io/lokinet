@@ -15,7 +15,7 @@
 /// Exit info model
 namespace llarp
 {
-  struct ExitInfo : public IBEncodeMessage
+  struct ExitInfo final : public IBEncodeMessage
   {
     struct in6_addr address;
     struct in6_addr netmask;
@@ -36,10 +36,10 @@ namespace llarp
     ~ExitInfo();
 
     bool
-    BEncode(llarp_buffer_t *buf) const;
+    BEncode(llarp_buffer_t *buf) const override;
 
     bool
-    DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf);
+    DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf) override;
 
     ExitInfo &
     operator=(const ExitInfo &other);

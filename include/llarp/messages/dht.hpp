@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace routing
   {
-    struct DHTMessage : public IMessage
+    struct DHTMessage final : public IMessage
     {
       std::vector< std::unique_ptr< llarp::dht::IMessage > > M;
       uint64_t V = 0;
@@ -17,13 +17,13 @@ namespace llarp
       ~DHTMessage();
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const;
+      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
     };
   }  // namespace routing
 }  // namespace llarp

@@ -230,16 +230,10 @@ namespace llarp
     }
 
     virtual bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
-    {
-      return false;
-    }
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) = 0;
 
     virtual bool
-    BEncode(llarp_buffer_t* buf) const
-    {
-      return false;
-    }
+    BEncode(llarp_buffer_t* buf) const = 0;
 
     virtual bool
     BDecode(llarp_buffer_t* buf)

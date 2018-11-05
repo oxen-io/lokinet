@@ -8,7 +8,7 @@ namespace llarp
 {
   namespace dht
   {
-    /// acknologement to PublishIntroMessage or reply to FinIntroMessage
+    /// acknowledgement to PublishIntroMessage or reply to FinIntroMessage
     struct GotIntroMessage : public IMessage
     {
       std::vector< llarp::service::IntroSet > I;
@@ -24,25 +24,27 @@ namespace llarp
       ~GotIntroMessage();
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       virtual bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< std::unique_ptr< IMessage > >& replies) const;
+      HandleMessage(
+          llarp_dht_context* ctx,
+          std::vector< std::unique_ptr< IMessage > >& replies) const override;
     };
 
-    struct RelayedGotIntroMessage : public GotIntroMessage
+    struct RelayedGotIntroMessage final : public GotIntroMessage
     {
       RelayedGotIntroMessage() : GotIntroMessage({})
       {
       }
 
       bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< std::unique_ptr< IMessage > >& replies) const;
+      HandleMessage(
+          llarp_dht_context* ctx,
+          std::vector< std::unique_ptr< IMessage > >& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

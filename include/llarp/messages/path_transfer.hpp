@@ -10,7 +10,7 @@ namespace llarp
 {
   namespace routing
   {
-    struct PathTransferMessage : public IMessage
+    struct PathTransferMessage final : public IMessage
     {
       PathID_t P;
       service::ProtocolFrame T;
@@ -25,13 +25,13 @@ namespace llarp
       ~PathTransferMessage();
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      HandleMessage(IMessageHandler*, llarp_router* r) const;
+      HandleMessage(IMessageHandler*, llarp_router* r) const override;
     };
 
   }  // namespace routing
