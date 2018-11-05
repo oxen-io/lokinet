@@ -40,7 +40,7 @@ BUILD_ROOT = $(REPO)/build
 CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
 
 SCAN_BUILD ?= scan-build
-ANALYZE_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)' && cd '$(BUILD_ROOT)' && $(SCAN_BUILD) $(MAKE)")
+ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
@@ -133,14 +133,18 @@ abyss: debug
 format:
 	clang-format -i $$(find daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
 
-analyze: clean
+analyze-config: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(ANALYZE_CMD)
+	$(ANALYZE_CONFIG_CMD)
+
+analyze: analyze-config
+	cd '$(BUILD_ROOT)'
+	$(SCAN_BUILD) $(MAKE)
 
 lint: $(LINT_CHECK)
 
 %.cpp-check: %.cpp
-	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/crypto/libntrup/include -I$(REPO)/llarp
+	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/crypto/include -I$(REPO)/llarp -I$(REPO)/vendor/cppbackport-master/lib
 
 docker-debian:
 	docker build -f docker/debian.Dockerfile .

@@ -295,7 +295,7 @@ namespace llarp
         break;
     }
   }
-  
+
   std::string
   Addr::ToString() const
   {
