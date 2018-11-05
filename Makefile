@@ -156,7 +156,6 @@ install:
 	rm -f $(PREFIX)/bin/lokinet-bootstrap
 	cp $(REPO)/lokinet-bootstrap $(PREFIX)/bin/lokinet-bootstrap
 	chmod 755 $(PREFIX)/bin/lokinet-bootstrap
-	setcap cap_net_admin=+eip $(PREFIX)/bin/lokinet
 
 fuzz-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
