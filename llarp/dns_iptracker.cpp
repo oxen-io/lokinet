@@ -23,7 +23,8 @@ dns_iptracker_init()
 
 // not sure we want tunGatewayIP... we'll know when we get further
 bool
-dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll, llarp::Addr tunGatewayIp)
+dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll,
+                                  llarp::huint32_t tunGatewayIp)
 {
   dll->ip_tracker = &g_dns_iptracker;
   return true;
@@ -31,12 +32,13 @@ dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll, llarp::Addr tunGatewayIp)
 
 // FIXME: pass in b32addr of client
 bool
-dns_iptracker_setup(dns_iptracker *iptracker, llarp::Addr tunGatewayIp)
+dns_iptracker_setup(dns_iptracker *iptracker, llarp::huint32_t tunGatewayIp)
 {
   if(!iptracker)
     iptracker = &g_dns_iptracker;  // FIXME: god forgive I'm tired
-  struct in_addr *addr = tunGatewayIp.addr4();
-  unsigned char *ip    = (unsigned char *)&(addr->s_addr);
+  // struct in_addr *addr = tunGatewayIp.addr4();
+  // unsigned char *ip    = (unsigned char *)&(addr->s_addr);
+  unsigned char *ip = (unsigned char *)&(tunGatewayIp.h);
 
   llarp::LogInfo("iptracker setup: (", std::to_string(ip[0]), ").[",
                  std::to_string(ip[1]), '.', std::to_string(ip[2]), "].",
@@ -90,7 +92,7 @@ dns_iptracker_allocate_range(std::unique_ptr< ip_range > &range, uint8_t first)
   llarp::LogDebug("Allocated ", ip);
   // result->hostResult = new sockaddr;
   // ip.CopyInto(result->hostResult);
-  result->hostResult = ip;
+  result->hostResult = ip.xtohl();
 
   // make an address and place into this sockaddr
   range->used[range->left + 2] = result;

@@ -2,6 +2,28 @@
 #include <llarp/dnsd.hpp>  // for llarp_handle_dnsd_recvfrom, dnsc
 #include <llarp/logger.hpp>
 
+void
+hexDump(const char *buffer, uint16_t size)
+{
+  char hex_buffer[size * 3 + 1];
+  hex_buffer[size * 3] = 0;
+  for(unsigned int j = 0; j < size; j++)
+    sprintf(&hex_buffer[3 * j], "%02X ", buffer[j]);
+  std::string str(hex_buffer);
+  llarp::LogInfo("First ", size, " bytes: ", str);
+}
+
+void
+hexDumpAt(const char *const buffer, uint32_t pos, uint16_t size)
+{
+  char hex_buffer[size * 3 + 1];
+  hex_buffer[size * 3] = 0;
+  for(unsigned int j = 0; j < size; j++)
+    sprintf(&hex_buffer[3 * j], "%02X ", buffer[pos + j]);
+  std::string str(hex_buffer);
+  llarp::LogInfo(pos, " ", size, " bytes: ", str);
+}
+
 /*
  <domain-name> is a domain name represented as a series of labels, and
  terminated by a label with zero length.  <character-string> is a single
@@ -10,25 +32,62 @@
  length (including the length octet).
  */
 std::string
-getDNSstring(const char *buffer)
+getDNSstring(const char *const buffer, uint32_t *pos)
 {
-  std::string str = "";
-  uint8_t length  = *buffer++;
+  std::string str      = "";
+  const char *moveable = buffer;
+  moveable += *pos;
+  uint8_t length = *moveable++;
+  (*pos)++;
+  if(length == 0xc0)
+  {
+    uint8_t cPos = *moveable++;
+    (*pos)++;
+    uint32_t cPos32 = cPos;
+    // llarp::LogInfo("Found reference at ", std::to_string(cPos));
+    return getDNSstring(buffer, &cPos32);
+  }
+  // hexDump(moveable, length);
+  // hexDump(buffer, length);
   // printf("dnsStringLen[%d]\n", length);
-  // llarp::LogInfo("dnsStringLen ", length);
+  // llarp::LogInfo("dnsStringLen ", std::to_string(length));
   if(!length)
     return str;
   while(length != 0)
   {
+    // llarp::LogInfo("Reading ", std::to_string(length));
     for(int i = 0; i < length; i++)
     {
-      char c = *buffer++;
+      char c = *moveable++;
+      (*pos)++;
       str.append(1, c);
     }
-    length = *buffer++;
+    if(*moveable == '\xc0')
+    {
+      moveable++;
+      (*pos)++;                     // forward one char
+      uint8_t cPos    = *moveable;  // read char
+      uint32_t cPos32 = cPos;
+      // llarp::LogInfo("Remaining [", str, "] is an reference at ", (int)cPos);
+      std::string addl = getDNSstring(buffer, &cPos32);
+      // llarp::LogInfo("Addl str [", addl, "]");
+      str += "." + addl;
+      // llarp::LogInfo("Final str [", str, "]");
+      (*pos)++;  // move past reference
+
+      return str;
+    }
+    length = *moveable++;
+    (*pos)++;
+    if(length > 64)
+      llarp::LogError("bug detected");
+    // else
+    // hexDump(buffer, length);
+    // llarp::LogInfo("NextLen ", std::to_string(length));
     if(length != 0)
       str.append(1, '.');
   }
+  // llarp::LogInfo("Returning ", str);
   return str;
 }
 
@@ -113,12 +172,23 @@ extern "C"
   }
 
   dns_msg_question *
-  decode_question(const char *buffer)
+  decode_question(const char *buffer, uint32_t *pos)
   {
     // char *start = (char *)buffer;
     dns_msg_question *question = new dns_msg_question;
-    std::string m_qName        = getDNSstring(buffer);
-    buffer += m_qName.length() + 2;  // + length byte & ending terminator
+
+    // uint32_t start = *pos;
+    std::string m_qName = getDNSstring(buffer, pos);
+    llarp::LogDebug("Got question name: ", m_qName);
+    // llarp::LogInfo("Started at ", std::to_string(start), " ended at: ",
+    // std::to_string(*pos)); llarp::LogInfo("Advancing question buffer by ",
+    // std::to_string(*pos)); buffer += (*pos) - start; buffer +=
+    // m_qName.length() + 2;  // + length byte & ending terminator
+
+    const char *moveable = buffer;
+    moveable += *pos;  // advance to position
+    // hexDump(moveable, 4);
+
     // printf("Now0 at [%d]\n", buffer - start);
     // buffer += m_qName.size() + 1;
     /*
@@ -138,15 +208,20 @@ extern "C"
     }
     */
     question->name = m_qName;
-    question->type = get16bits(buffer);
+    question->type = get16bits(moveable);
+    (*pos) += 2;
     // printf("Now1 at [%d]\n", buffer - start);
-    question->qClass = get16bits(buffer);
+    question->qClass = get16bits(moveable);
+    (*pos) += 2;
     // printf("Now2 at [%d]\n", buffer - start);
+    llarp::LogDebug("Type ", std::to_string(question->type), " Class ",
+                    std::to_string(question->qClass));
+    // hexDump(moveable, 4);
     return question;
   }
 
   dns_msg_answer *
-  decode_answer(const char *buffer)
+  decode_answer(const char *const buffer, uint32_t *pos)
   {
     dns_msg_answer *answer = new dns_msg_answer;
     // skip for now until we can handle compressed labels
@@ -162,42 +237,95 @@ extern "C"
     llarp::DumpBuffer(bob);
     */
 
-    char hex_buffer[12 * 3 + 1];
-    hex_buffer[12 * 3] = 0;
-    for(unsigned int j = 0; j < 10; j++)
-      sprintf(&hex_buffer[3 * j], "%02X ", buffer[j]);
-    llarp::LogDebug("First 12 bytes: ", hex_buffer);
+    // hexDump(buffer, 10);
 
-    uint8_t first = *buffer++;
-    // llarp::LogInfo("decode - first", std::to_string(first));
+    const char *moveable = buffer;
+    // llarp::LogDebug("Advancing to pos ", std::to_string(*pos));
+    moveable += (*pos);  // advance to position
+
+    // hexDumpAt(buffer, (*pos) - 2, 12);
+    // hexDump(moveable, 12);
+    if(*moveable == '\xc0')
+    {
+      // hexDump(moveable, 12);
+      // hexDumpAt(buffer, *pos, 12);
+
+      // hexDump(moveable, 2);
+
+      moveable++;
+      (*pos)++;
+      uint8_t readAt    = *moveable;
+      uint32_t readAt32 = readAt;
+      // llarp::LogInfo("Ref, skip. Read ", readAt32);
+      // hexDumpAt(buffer, readAt, 2);
+      answer->name = getDNSstring(buffer, &readAt32);
+      moveable++;
+      (*pos)++;
+      // hexDump(moveable, 10);
+      // hexDumpAt(buffer, *pos, 10);
+    }
+    else
+    {
+      // get DNSString?
+      llarp::LogWarn("Need to parse string");
+    }
+    /*
+    hexDump(moveable, 10);
+    uint8_t first = *moveable++; (*pos)++;
+    llarp::LogInfo("decode - first", std::to_string(first));
     // SOA hack
     if(first != 12 && first != 14)  // 0x0c (c0 0c) 0
     {
       llarp::LogDebug("decode - first isnt 12, stepping back");
-      buffer--;  // rewind buffer one byte
+      moveable--; (*pos)--; // rewind buffer one byte
     }
-    answer->type = get16bits(buffer);
+    */
+    // hexDump(moveable, 10);
+
+    answer->type = get16bits(moveable);
+    (*pos) += 2;
+    llarp::LogDebug("Answer Type: ", answer->type);
     // assert(answer->type < 259);
     if(answer->type > 259)
     {
       llarp::LogWarn("Answer type is off the charts");
     }
-    answer->aClass = get16bits(buffer);
-    answer->ttl    = get32bits(buffer);
-    answer->rdLen  = get16bits(buffer);
+    answer->aClass = get16bits(moveable);
+    (*pos) += 2;
+    llarp::LogDebug("Answer Class: ", answer->aClass);
+    answer->ttl = get32bits(moveable);
+    (*pos) += 4;
+    llarp::LogDebug("Answer TTL: ", answer->ttl);
+    answer->rdLen = get16bits(moveable);
+    (*pos) += 2;
+    llarp::LogDebug("Answer rdL: ", answer->rdLen, " at ",
+                    std::to_string(*pos));
+    // uint32_t cPos = moveable - buffer;
+    // llarp::LogInfo("pos at ", std::to_string(*pos), " calculated: ",
+    // std::to_string(cPos));
+
+    // hexDump(moveable, answer->rdLen);
+    // hexDumpAt(buffer, *pos, answer->rdLen);
     if(answer->rdLen == 4)
     {
       answer->rData = new uint8_t[answer->rdLen];
-      memcpy(answer->rData, buffer, answer->rdLen);
-      buffer += answer->rdLen;  // advance the length
+      memcpy(answer->rData, moveable, answer->rdLen);
+      llarp::LogDebug("Read ", std::to_string(answer->rData[0]), ".",
+                      std::to_string(answer->rData[1]), ".",
+                      std::to_string(answer->rData[2]), ".",
+                      std::to_string(answer->rData[3]));
+      moveable += answer->rdLen;
+      (*pos) += answer->rdLen;  // advance the length
     }
     else
     {
       llarp::LogDebug("Got type ", answer->type);
+      // FIXME: move this out of here, this shouldn't be responsible for decode
       switch(answer->type)
       {
         case 5:
-          buffer += answer->rdLen;  // advance the length
+          moveable += answer->rdLen;
+          (*pos) += answer->rdLen;  // advance the length
           break;
         case 6:  // type 6 = SOA
         {
@@ -223,18 +351,51 @@ extern "C"
           llarp::LogDebug("expire  : ", expire);
           llarp::LogDebug("minimum : ", minimum);
           */
+          moveable += answer->rdLen;
+          (*pos) += answer->rdLen;  // advance the length
         }
         break;
         case 12:
         {
-          std::string revname = getDNSstring((char *)buffer);
+          std::string revname = getDNSstring(buffer, pos);
           llarp::LogInfo("revDNSname: ", revname);
           answer->rData = new uint8_t[answer->rdLen + 1];
           memcpy(answer->rData, revname.c_str(), answer->rdLen);
+          moveable += answer->rdLen;
+          (*pos) += answer->rdLen;  // advance the length
         }
         break;
+        case 15:
+        {
+          uint16_t priority = get16bits(moveable);
+          (*pos) += 2;
+          std::string revname = getDNSstring(buffer, pos);
+          llarp::LogInfo("MX: ", revname, " @ ", priority);
+          // answer->rData = new uint8_t[revname.length() + 1];
+          // memcpy(answer->rData, revname.c_str(), answer->rdLen);
+          answer->rData = (uint8_t *)strdup(revname.c_str());
+          moveable += answer->rdLen - 2;  // advance the length
+          // llarp::LogInfo("leaving at ", std::to_string(*pos));
+          // hexDumpAt(buffer, *pos, 5);
+          // hexDump(moveable, 5);
+        }
+        break;
+        case 16:
+        {
+          // hexDump(buffer, 5);
+          // std::string revname = getDNSstring((char *)buffer);
+          llarp::LogInfo("TXT: size: ", answer->rdLen);
+          answer->rData = new uint8_t[answer->rdLen + 1];
+          memcpy(answer->rData, moveable + 1, answer->rdLen - 1);
+          answer->rData[answer->rdLen - 1] = 0;  // terminate string
+          moveable += answer->rdLen;
+          (*pos) += answer->rdLen;  // advance the length
+        }
+        break;
+        // type 28 AAAA
         default:
-          buffer += answer->rdLen;  // advance the length
+          moveable += answer->rdLen;
+          (*pos) += answer->rdLen;  // advance the length
           llarp::LogWarn("Unknown Type ", answer->type);
           break;
       }

@@ -173,7 +173,14 @@ namespace llarp
         return -1;
       }
       if(ret > sz)
+      {
+        llarp::LogWarn("ret > sz");
         return -1;
+      }
+      if(!addr)
+      {
+        llarp::LogWarn("no source addr");
+      }
       // Addr is the source
       udp->recvfrom(udp, addr, buf, ret);
       return 0;

@@ -11,6 +11,9 @@
 #include <cstdio>
 #include "logger.hpp"
 
+//#include <llarp/net_inaddr.hpp>
+#include <llarp/net_addr.hpp>
+
 bool
 operator==(const sockaddr& a, const sockaddr& b)
 {

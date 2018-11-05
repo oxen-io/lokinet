@@ -71,7 +71,6 @@ release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
 	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
-
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
 	cp $(EXE) lokinet
@@ -157,3 +156,13 @@ install:
 	rm -f $(PREFIX)/bin/lokinet-bootstrap
 	cp $(REPO)/lokinet-bootstrap $(PREFIX)/bin/lokinet-bootstrap
 	chmod 755 $(PREFIX)/bin/lokinet-bootstrap
+	setcap cap_net_admin=+eip $(PREFIX)/bin/lokinet
+
+fuzz-configure: clean
+	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
+
+fuzz-build: fuzz-configure
+	ninja
+
+fuzz: fuzz-build
+	$(EXE)

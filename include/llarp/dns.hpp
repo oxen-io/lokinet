@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #endif
 
-#include <llarp/net.hpp>  // for llarp::Addr
+#include <llarp/net.hpp>  // for llarp::Addr , llarp::huint32_t
 
 struct dnsd_context;
 
@@ -85,7 +85,7 @@ struct dns_packet
 };
 
 std::string
-getDNSstring(const char *buffer);
+getDNSstring(const char *const buffer, uint32_t *pos);
 
 void
 code_domain(char *&buffer, const std::string &domain) throw();
@@ -102,10 +102,10 @@ extern "C"
   decode_hdr(const char *buffer);
 
   dns_msg_question *
-  decode_question(const char *buffer);
+  decode_question(const char *buffer, uint32_t *pos);
 
   dns_msg_answer *
-  decode_answer(const char *buffer);
+  decode_answer(const char *const buffer, uint32_t *pos);
 
   void
   put16bits(char *&buffer, uint16_t value) throw();

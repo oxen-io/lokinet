@@ -138,6 +138,11 @@ namespace llarp
   {
     RouterID remote = ctx->path->Upstream();
     auto router     = ctx->user->router;
+    if(!router)
+    {
+      llarp::LogError("null router");
+      return;
+    }
     if(!router->SendToOrQueue(remote, &ctx->LRCM))
     {
       llarp::LogError("failed to send LRCM");

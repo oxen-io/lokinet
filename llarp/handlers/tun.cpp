@@ -51,7 +51,7 @@ namespace llarp
         if(pos == std::string::npos)
         {
           llarp::LogError("Cannot map address ", v,
-                          " invalid format, expects "
+                          " invalid format, missing colon (:), expects "
                           "address.loki:ip.address.goes.here");
           return false;
         }
@@ -105,31 +105,29 @@ namespace llarp
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
 
         // set up address in dotLokiLookup
-        llarp::Addr tunIp(tunif.ifaddr);
+        // llarp::Addr tunIp(tunif.ifaddr);
+        llarp::huint32_t tunIpV4;
+        tunIpV4.h = inet_addr(tunif.ifaddr);
         // related to dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
-        dns_iptracker_setup(this->dll.ip_tracker,
-                            tunIp);  // claim GW IP to make sure it's not inuse
+        dns_iptracker_setup(
+            this->dll.ip_tracker,
+            tunIpV4);  // claim GW IP to make sure it's not inuse
         return true;
       }
       return Endpoint::SetOption(k, v);
     }
 
-    /// ip should be in host byte order
     bool
     TunEndpoint::MapAddress(const service::Address &addr, huint32_t ip)
     {
-      nuint32_t nip = xhtonl(ip);
-
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
       {
         // XXX is calling inet_ntoa safe in this context? it's MP-unsafe
-        llarp::LogWarn(inet_ntoa({nip.n}), " already mapped to ",
-                       itr->second.ToString());
+        llarp::LogWarn(ip, " already mapped to ", itr->second.ToString());
         return false;
       }
-      llarp::LogInfo(Name() + " map ", addr.ToString(), " to ",
-                     inet_ntoa({nip.n}));
+      llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
       m_IPToAddr.insert(std::make_pair(ip, addr));
       m_AddrToIP.insert(std::make_pair(addr, ip));
@@ -149,11 +147,13 @@ namespace llarp
       if(!NetworkIsIsolated())
       {
         llarp::LogInfo("Setting up global DNS IP tracker");
-        llarp::Addr tunIp(tunif.ifaddr);
+        llarp::huint32_t tunIpV4;
+        tunIpV4.h = inet_addr(tunif.ifaddr);
         dns_iptracker_setup_dotLokiLookup(
-            &this->dll, tunIp);  // just set ups dll to use global iptracker
-        dns_iptracker_setup(this->dll.ip_tracker,
-                            tunIp);  // claim GW IP to make sure it's not inuse
+            &this->dll, tunIpV4);  // just set ups dll to use global iptracker
+        dns_iptracker_setup(
+            this->dll.ip_tracker,
+            tunIpV4);  // claim GW IP to make sure it's not inuse
 
         // set up networking in currrent thread if we are not isolated
         if(!SetupNetworking())
@@ -162,12 +162,15 @@ namespace llarp
       else
       {
         llarp::LogInfo("Setting up per netns DNS IP tracker");
+        llarp::huint32_t tunIpV4;
+        tunIpV4.h = inet_addr(tunif.ifaddr);
         llarp::Addr tunIp(tunif.ifaddr);
         this->dll.ip_tracker = new dns_iptracker;
         dns_iptracker_setup_dotLokiLookup(
-            &this->dll, tunIp);  // just set ups dll to use global iptracker
-        dns_iptracker_setup(this->dll.ip_tracker,
-                            tunIp);  // claim GW IP to make sure it's not inuse
+            &this->dll, tunIpV4);  // just set ups dll to use global iptracker
+        dns_iptracker_setup(
+            this->dll.ip_tracker,
+            tunIpV4);  // claim GW IP to make sure it's not inuse
       }
       // wait for result for network setup
       llarp::LogInfo("waiting for tun interface...");
@@ -237,11 +240,9 @@ namespace llarp
 
       auto baseaddr = m_OurIP & xmask;
       m_MaxIP       = baseaddr | ~xmask;
-      char buf[128] = {0};
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ", lAddr);
 
-      llarp::LogInfo(Name(), " allocated up to ",
-                     inet_ntop(AF_INET, &m_MaxIP, buf, sizeof(buf)));
+      llarp::LogInfo(Name(), " allocated up to ", m_MaxIP);
       return true;
     }
 
@@ -298,8 +299,7 @@ namespace llarp
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
-          llarp::LogWarn(Name(), " has no endpoint for ",
-                         inet_ntoa({xhtonl(pkt.dst()).n}));
+          llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
           return true;
         }
 
@@ -318,9 +318,11 @@ namespace llarp
     bool
     TunEndpoint::ProcessDataMessage(service::ProtocolMessage *msg)
     {
+      // llarp::LogInfo("got packet from ", msg->sender.Addr());
       auto themIP = ObtainIPForAddr(msg->sender.Addr());
-      auto usIP   = m_OurIP;
-      auto buf    = llarp::Buffer(msg->payload);
+      // llarp::LogInfo("themIP ", themIP);
+      auto usIP = m_OurIP;
+      auto buf  = llarp::Buffer(msg->payload);
       if(m_NetworkToUserPktQueue.EmplaceIf(
              [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
                // load
@@ -346,7 +348,7 @@ namespace llarp
              }))
 
         llarp::LogDebug(Name(), " handle data message ", msg->payload.size(),
-                        " bytes from ", inet_ntoa({xhtonl(themIP).n}));
+                        " bytes from ", themIP);
       return true;
     }
 
@@ -357,9 +359,8 @@ namespace llarp
       if(itr == m_IPToAddr.end())
       {
         // not found
-        // llarp::Addr test(ip); // "/", test,
         service::Address addr;
-        llarp::LogWarn(" not found in tun map. Sending ", addr.ToString());
+        llarp::LogWarn(ip, " not found in tun map. Sending ", addr.ToString());
         return addr;
       }
       // found
@@ -394,8 +395,7 @@ namespace llarp
         {
           m_AddrToIP.insert(std::make_pair(addr, nextIP));
           m_IPToAddr.insert(std::make_pair(nextIP, addr));
-          llarp::LogInfo(Name(), " mapped ", addr, " to ",
-                         inet_ntoa({xhtonl(nextIP).n}));
+          llarp::LogInfo(Name(), " mapped ", addr, " to ", nextIP);
           MarkIPActive(nextIP);
           return nextIP;
         }

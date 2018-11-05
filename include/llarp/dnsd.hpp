@@ -45,7 +45,7 @@ struct dnsd_query_hook_response
   /// turn off recursion
   bool dontLookUp;
   /// potential address
-  sockaddr *returnThis;  // FIXME: llarp::Addr
+  llarp::huint32_t *returnThis;
 };
 
 /// builds and fires a request based based on llarp_udp_io udp event
@@ -74,7 +74,7 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
 
 /// send an A record found response
 void
-writesend_dnss_response(struct sockaddr *hostRes, const struct sockaddr *from,
+writesend_dnss_response(llarp::huint32_t *hostRes, const struct sockaddr *from,
                         dnsd_question_request *request);
 // FIXME: llarp::Addr
 

@@ -236,6 +236,9 @@ set(LIB_PLATFORM_SRC
   llarp/mem.cpp
 # for networking
   llarp/ev.cpp
+  llarp/net.cpp
+  llarp/net_addr.cpp
+  llarp/net_inaddr.cpp
 # for timer
   llarp/time.cpp
 # for logic
@@ -408,7 +411,6 @@ set(LIB_SRC
   llarp/ip.cpp
   llarp/link_intro.cpp
   llarp/link_message.cpp
-  llarp/net.cpp
   llarp/nodedb.cpp
   llarp/path.cpp
   llarp/pathbuilder.cpp
@@ -490,6 +492,9 @@ set(CLIENT_SRC
 include_directories(include)
 # TODO: exclude this from includes and expose stuff properly for rcutil
 include_directories(llarp)
+#include_directories(include)
+#include_directories(vendor/cppbackport-master/lib)
+#include_directories(${sodium_INCLUDE_DIR})
 
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
