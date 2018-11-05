@@ -80,8 +80,9 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const huint32_t& a)
     {
+      uint32_t n = htonl(a.h);
       char tmp[INET_ADDRSTRLEN]   = {0};
-      if(inet_ntop(AF_INET, (void*)&a.h, tmp, INET_ADDRSTRLEN))
+      if(inet_ntop(AF_INET, (void*)&n, tmp, sizeof(tmp)))
       {
         out << tmp;
       }
@@ -122,7 +123,7 @@ namespace llarp
     operator<<(std::ostream& out, const nuint32_t& a)
     {
       char tmp[INET_ADDRSTRLEN]   = {0};
-      if(inet_ntop(AF_INET, (void*)&a.n, tmp, INET_ADDRSTRLEN))
+      if(inet_ntop(AF_INET, (void*)&a.n, tmp, sizeof(tmp)))
       {
         out << tmp;
       }
@@ -159,12 +160,7 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const huint16_t& a)
     {
-      char tmp[INET_ADDRSTRLEN]   = {0};
-      if(inet_ntop(AF_INET, (void*)&a.h, tmp, INET_ADDRSTRLEN))
-      {
-        out << tmp;
-      }
-      return out;
+      return out<< a.h;
     }
 
     struct Hash
@@ -197,12 +193,7 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const nuint16_t& a)
     {
-      char tmp[INET_ADDRSTRLEN]   = {0};
-      if(inet_ntop(AF_INET, (void*)&a.n, tmp, INET_ADDRSTRLEN))
-      {
-        out << tmp;
-      }
-      return out;
+      return out << ntohs(a.n);
     }
 
     struct Hash
