@@ -509,6 +509,7 @@ namespace llarp
           }
         }
       }
+
       void
       Stop()
       {

@@ -22,9 +22,7 @@ llarp_dht_context_free(struct llarp_dht_context *ctx)
 void
 __llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 {
-  llarp::dht::Key_t k = id;
-  llarp::LogDebug("Removing ", k, " to DHT");
-  ctx->impl.nodes->DelNode(k);
+  ctx->impl.nodes->DelNode(id);
 }
 
 void

@@ -140,7 +140,7 @@ struct llarp_router
       m_PersistingSessions;
 
   llarp_router();
-  virtual ~llarp_router();
+  ~llarp_router();
 
   void HandleLinkSessionEstablished(llarp::RouterContact);
 

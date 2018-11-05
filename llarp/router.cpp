@@ -560,11 +560,11 @@ llarp_router::ScheduleTicker(uint64_t ms)
 void
 llarp_router::SessionClosed(const llarp::RouterID &remote)
 {
-  // remove from valid routers and dht if it's a valid router
+  __llarp_dht_remove_peer(dht, remote);
+  // remove from valid routers if it's a valid router
   auto itr = validRouters.find(remote);
   if(itr == validRouters.end())
     return;
-  __llarp_dht_remove_peer(dht, remote);
   validRouters.erase(itr);
 }
 
