@@ -65,6 +65,9 @@ namespace llarp
     Addr(const sockaddr_in& other);
     Addr(const sockaddr_in6& other);
     Addr(const sockaddr& other);
+    
+    std::string
+    ToString() const;
 
     friend std::ostream&
     operator<<(std::ostream& out, const Addr& a);

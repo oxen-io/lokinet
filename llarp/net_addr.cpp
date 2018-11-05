@@ -295,6 +295,14 @@ namespace llarp
         break;
     }
   }
+  
+  std::string
+  Addr::ToString() const
+  {
+    std::stringstream ss;
+    ss << (*this);
+    return std::string(ss.str().c_str());
+  }
 
   std::ostream&
   operator<<(std::ostream& out, const Addr& a)
@@ -310,11 +318,7 @@ namespace llarp
     {
       ptr = a.addr4();
     }
-#ifndef _MSC_VER
-    if(inet_ntop(a.af(), ptr, tmp, sizeof(tmp)))
-#else
     if(inet_ntop(a.af(), (void*)ptr, tmp, sizeof(tmp)))
-#endif
     {
       out << tmp;
       if(a.af() == AF_INET6)
