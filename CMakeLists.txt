@@ -145,6 +145,7 @@ set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
 set(PLATFORM_LIB ${LIB}-platform)
 set(ANDROID_LIB ${LIB}android)
 
+set(LIBUV_DIR vendor/libuv)
 set(TT_ROOT vendor/libtuntap-master)
 
 add_definitions(-D${CMAKE_SYSTEM_NAME})
@@ -537,6 +538,7 @@ add_executable(${EXE} ${EXE_SRC})
 add_executable(${CLIENT_EXE} ${CLIENT_SRC})
 add_executable(${DNS_EXE} ${DNS_SRC})
 add_subdirectory(${GTEST_DIR})
+add_subdirectory(${LIBUV_DIR})
 include_directories(${GTEST_DIR}/include ${GTEST_DIR})
 add_executable(${TEST_EXE} ${TEST_SRC})
 
