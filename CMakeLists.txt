@@ -4,9 +4,9 @@ cmake_minimum_required(VERSION 3.7.0)
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
-option(USE_LIBABYSS "enable libabyss" OFF)
-option(USE_CXX17 "enable c++17 features" OFF)
-option(USE_AVX2 "enable avx2 code" OFF)
+option(USE_LIBABYSS "enable libabyss" )
+option(USE_CXX17 "enable c++17 features" )
+option(USE_AVX2 "enable avx2 code" )
 # Require C++11
 # or C++17 on win32
 if (NOT WIN32)
@@ -25,7 +25,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
-add_compile_options(-Wall)
+add_compile_options(-Wall -Werror -Wno-unknown-pragmas)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 

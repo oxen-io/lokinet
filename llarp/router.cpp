@@ -494,7 +494,7 @@ llarp_router::Tick()
 
   if(inboundLinks.size() == 0)
   {
-    auto N = llarp_nodedb_num_loaded(nodedb);
+    size_t N = llarp_nodedb_num_loaded(nodedb);
     if(N < minRequiredRouters)
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,

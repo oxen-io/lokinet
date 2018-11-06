@@ -1,6 +1,9 @@
 #include <llarp/ev.h>
 #include <llarp/logic.h>
 #include <llarp/string_view.hpp>
+
+#include <stddef.h>
+
 #include "mem.hpp"
 
 #define EV_TICK_INTERVAL 100
@@ -166,7 +169,7 @@ llarp_tcp_async_try_connect(struct llarp_ev_loop *loop,
     return;
   }
   const char *end = ptr;
-  while(*end && (end - begin) < sizeof(tcp->remote))
+  while(*end && ((end - begin) < static_cast<ptrdiff_t>(sizeof tcp->remote)))
   {
     ++end;
   }
