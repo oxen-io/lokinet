@@ -21,7 +21,6 @@
 #include <sodium/private/mutex.h>
 
 static volatile int initialized;
-static volatile int locked;
 
 int
 sodium_init(void)
@@ -56,6 +55,7 @@ sodium_init(void)
 
 static CRITICAL_SECTION _sodium_lock;
 static volatile LONG _sodium_lock_initialized;
+static volatile int locked;
 
 int
 _sodium_crit_init(void)
@@ -113,6 +113,7 @@ sodium_crit_leave(void)
 #elif defined(HAVE_PTHREAD) && !defined(__EMSCRIPTEN__)
 
 static pthread_mutex_t _sodium_lock = PTHREAD_MUTEX_INITIALIZER;
+static volatile int locked;
 
 int
 sodium_crit_enter(void)

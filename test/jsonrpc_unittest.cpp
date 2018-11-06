@@ -184,6 +184,7 @@ TEST_F(AbyssTest, TestClientAndServer)
   params.SetObject();
   QueueRPC(method, std::move(params),
            std::bind(&AbyssTest::NewConn, this, std::placeholders::_1));
+
   AsyncFlush();
   RunLoop();
   ASSERT_TRUE(called);
