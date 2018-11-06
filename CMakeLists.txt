@@ -1,5 +1,5 @@
-# Lowest version - debian stable is 3.7.2
-cmake_minimum_required(VERSION 3.7.0)
+# Lowest version - android ndk 3.6.0
+cmake_minimum_required(VERSION 3.6.0)
 
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
@@ -13,7 +13,11 @@ if (NOT WIN32)
   if(USE_CXX17)
     set(CMAKE_CXX_STANDARD 17)
   else()
-    set(CMAKE_CXX_STANDARD 11)
+    if(ANDROID)
+      set(CMAKE_CXX_STANDARD 17)
+    else()
+      set(CMAKE_CXX_STANDARD 11)
+    endif()
   endif()
 else()
   set(CMAKE_CXX_STANDARD 17)

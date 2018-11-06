@@ -83,7 +83,7 @@ namespace llarp
         return nullptr;
       }
       llarp::handlers::TunEndpoint *tunEndpoint =
-          dynamic_cast< llarp::handlers::TunEndpoint * >(endpointer);
+          static_cast< llarp::handlers::TunEndpoint * >(endpointer);
       return tunEndpoint;
     }
 
@@ -164,7 +164,7 @@ namespace llarp
       auto *uniqueEndpoint                 = &firstEndpoint->second;
       llarp::service::Endpoint *endpointer = uniqueEndpoint->get();
       llarp::handlers::TunEndpoint *tunEndpoint =
-          dynamic_cast< llarp::handlers::TunEndpoint * >(endpointer);
+          static_cast< llarp::handlers::TunEndpoint * >(endpointer);
       if(!tunEndpoint)
       {
         llarp::LogError("No tunnel endpoint found");

@@ -36,6 +36,15 @@ ANDROID_SDK ?= $(HOME)/Android/Sdk
 ANDROID_ABI ?= armeabi-v7a
 ANDROID_API_LEVEL ?= 18
 
+ANDROID_DIR=$(REPO)/android
+JNI_DIR=$(ANDROID_DIR)/jni
+ANDROID_MK=$(JNI_DIR)/Android.mk
+ANDROID_PROPS=$(ANDROID_DIR)/gradle.properties
+ANDROID_LOCAL_PROPS=$(ANDROID_DIR)/local.properties
+
+GRADLE ?= gradle
+JAVA_HOME ?= /usr/lib/jvm/default-java
+
 JSONRPC = OFF
 CXX17 = ON
 
@@ -139,7 +148,20 @@ android-configure: clean
 android-build: android-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
 
-android: andorid-build
+android-gradle-prepare:
+	rm -f $(ANDROID_PROPS)
+	rm -f $(ANDROID_LOCAL_PROPS)
+	echo "#auto generated don't modify kthnx" >> $(ANDROID_PROPS)
+	echo "lokinetCMake=$(REPO)/CMakeLists.txt" >> $(ANDROID_PROPS)
+	echo "org.gradle.parallel=true" >> $(ANDROID_PROPS)
+	echo "#auto generated don't modify kthnx" >> $(ANDROID_LOCAL_PROPS)
+	echo "sdk.dir=$(ANDROID_SDK)" >> $(ANDROID_LOCAL_PROPS)
+	echo "ndk.dir=$(ANDROID_NDK)" >> $(ANDROID_LOCAL_PROPS)
+
+android-gradle: android-gradle-prepare
+	cd $(ANDROID_DIR) && JAVA_HOME=$(JAVA_HOME) $(GRADLE) assemble
+	
+android: android-gradle
 
 abyss: debug
 	$(ABYSS_EXE)
