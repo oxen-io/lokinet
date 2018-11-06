@@ -40,3 +40,6 @@ daemon.ini
 lokinet-win32.exe
 lokinet
 rapidjson/
+
+
+.gradle/
