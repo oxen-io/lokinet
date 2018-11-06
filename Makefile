@@ -31,6 +31,9 @@ TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
 
+ANDROID_NDK ?= $(HOME)/Android/Ndk
+ANDROID_SDK ?= $(HOME)/Android/Sdk
+
 JSONRPC = OFF
 CXX17 = ON
 
@@ -126,6 +129,13 @@ testnet:
 
 test: debug
 	$(TEST_EXE)
+
+android-configure: clean
+	mkdir -p '$(BUILD_ROOT)'
+	cd '$(BUILD_ROOT)' && cmake -DANDROID=ON -DANDROID_NDK='$(ANDROID_NDK)' -DANDROID_ABI='$(ANDROID_ABI)' -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/android.toolchain.cmake' '$(REPO)'
+
+android: android-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
 
 abyss: debug
 	$(ABYSS_EXE)
