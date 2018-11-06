@@ -77,7 +77,13 @@ namespace llarp
     auto tid = std::this_thread::get_id();
     std::hash< std::thread::id > h;
     uint16_t id = h(tid) % 1000;
+#ifdef ANDROID
+    char buff[8] = {0};
+    snprintf(buff, sizeof(buff), "%u", id);
+    return buff;
+#else
     return std::to_string(id);
+#endif
   }
 
   struct log_timestamp
@@ -91,8 +97,12 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const log_timestamp& ts)
     {
+#ifdef ANDROID
+      return out;
+#else
       auto now = llarp::Clock_t::to_time_t(llarp::Clock_t::now());
       return out << std::put_time(std::localtime(&now), ts.format);
+#endif
     }
   };
 
@@ -161,12 +171,8 @@ namespace llarp
     _glog.out << ss.str() << std::endl;
 #else
     {
-      std::unique_lock< std::mutex > lock(_glog.access);
       tag = "LOKINET|" + tag;
-      __android_log_write(ANDROID_LOG_INFO, tag.c_str(), ss.str().c_str());
-      //__android_log_write(ANDROID_LOG_INFO, "LOKINET", ss.str().c_str());
-      llarp::util::Lock lock(_glog.access);
-      _glog.out << ss.str() << std::endl;
+      __android_log_write(loglev, tag.c_str(), ss.str().c_str());
     }
 #endif
 #ifdef SHADOW_TESTNET

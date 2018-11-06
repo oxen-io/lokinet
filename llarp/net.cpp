@@ -5,7 +5,9 @@
 #endif
 #ifndef _WIN32
 #include <arpa/inet.h>
+#ifndef ANDROID
 #include <ifaddrs.h>
+#endif
 #include <net/if.h>
 #endif
 #include <cstdio>
@@ -904,7 +906,9 @@ namespace llarp
     uint8_t num = 0;
     while(num < 255)
     {
-      std::string iftestname = "lokitun" + std::to_string(num);
+      std::stringstream ifname_ss;
+      ifname_ss << "lokitun" << num;
+      std::string iftestname = ifname_ss.str();
       struct sockaddr addr;
       bool found = llarp_getifaddr(iftestname.c_str(), AF_INET, &addr);
       if(!found)
@@ -920,8 +924,14 @@ namespace llarp
       // llarp::LogError("Could not find any free lokitun interface names");
       return "";
     }
-    // include lokitun prefix to communicate result is valid
+// include lokitun prefix to communicate result is valid
+#ifdef ANDROID
+    char buff[IFNAMSIZ + 1] = {0};
+    snprintf(buff, sizeof(buff), "lokitun%u", num);
+    return buff;
+#else
     return "lokitun" + std::to_string(num);
+#endif
   }
 
   bool

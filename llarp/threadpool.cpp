@@ -13,7 +13,9 @@
 #endif
 
 #ifdef __linux__
+#ifndef ANDROID
 #include <llarp/linux/netns.hpp>
+#endif
 #endif
 
 namespace llarp
@@ -142,6 +144,7 @@ namespace llarp
     }
 
 #ifdef __linux__
+#ifndef ANDROID
     struct LinuxNetNSIsolatedPool : public _NetIsolatedPool
     {
       LinuxNetNSIsolatedPool(std::function< bool(void *, bool) > setup,
@@ -159,6 +162,7 @@ namespace llarp
 
     typedef LinuxNetNSIsolatedPool NetIsolatedPool;
 #define NET_ISOLATION_SUPPORTED
+#endif
 #endif
 
 #if defined(__FreeBSD__)

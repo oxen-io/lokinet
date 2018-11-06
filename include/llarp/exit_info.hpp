@@ -53,8 +53,14 @@ namespace llarp
       else
         return out;
       out << std::string("/");
+#ifdef ANDROID
+      snprintf(tmp, sizeof(tmp), "%u",
+               llarp::bits::count_array_bits(xi.netmask.s6_addr));
+      return out << tmp;
+#else
       return out << std::to_string(
                  llarp::bits::count_array_bits(xi.netmask.s6_addr));
+#endif
     }
   };
 }  // namespace llarp

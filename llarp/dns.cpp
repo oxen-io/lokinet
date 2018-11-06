@@ -214,8 +214,10 @@ extern "C"
     question->qClass = get16bits(moveable);
     (*pos) += 2;
     // printf("Now2 at [%d]\n", buffer - start);
+    /*
     llarp::LogDebug("Type ", std::to_string(question->type), " Class ",
                     std::to_string(question->qClass));
+                    */
     // hexDump(moveable, 4);
     return question;
   }
@@ -298,8 +300,10 @@ extern "C"
     llarp::LogDebug("Answer TTL: ", answer->ttl);
     answer->rdLen = get16bits(moveable);
     (*pos) += 2;
+    /*
     llarp::LogDebug("Answer rdL: ", answer->rdLen, " at ",
                     std::to_string(*pos));
+                    */
     // uint32_t cPos = moveable - buffer;
     // llarp::LogInfo("pos at ", std::to_string(*pos), " calculated: ",
     // std::to_string(cPos));
@@ -310,10 +314,12 @@ extern "C"
     {
       answer->rData = new uint8_t[answer->rdLen];
       memcpy(answer->rData, moveable, answer->rdLen);
+      /*
       llarp::LogDebug("Read ", std::to_string(answer->rData[0]), ".",
                       std::to_string(answer->rData[1]), ".",
                       std::to_string(answer->rData[2]), ".",
                       std::to_string(answer->rData[3]));
+                      */
       moveable += answer->rdLen;
       (*pos) += answer->rdLen;  // advance the length
     }

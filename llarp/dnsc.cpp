@@ -234,7 +234,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   for(uint32_t i = 0; i < hdr->qdCount; i++)
   {
     question = decode_question(castBufc, &pos);
-    llarp::LogDebug("Read a question, now at ", std::to_string(pos));
+    // llarp::LogDebug("Read a question, now at ", std::to_string(pos));
     // 1 dot: 1 byte for length + length
     // 4 bytes for class/type
     // castBuf += question->name.length() + 1 + 4;
@@ -249,8 +249,10 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // pos = 0; // reset pos
     answer = decode_answer(castBufc, &pos);
     answers.push_back(answer);
+    /*
     llarp::LogDebug("Read an answer ", answer->type, " for ",
                     request->question.name, ", now at ", std::to_string(pos));
+                    */
     // llarp::LogInfo("Read an answer. Label Len: ", answer->name.length(), "
     // rdLen: ", answer->rdLen);
     // name + Type (2) + Class (2) + TTL (4) + rdLen (2) + rdData + skip next
@@ -372,7 +374,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
    llarp::LogInfo("ans2 rdlen ", answer2->rdLen);
    */
 
-  llarp::LogDebug("rcode ", std::to_string(rcode));
+  // llarp::LogDebug("rcode ", std::to_string(rcode));
   if(rcode == 2)
   {
     llarp::LogWarn("nameserver ", upstreamAddr, " returned SERVFAIL:");
@@ -395,8 +397,10 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 
   /* search for and print IPv4 addresses */
   // if(dnsQuery->reqType == 0x01)
+  /*
   llarp::LogDebug("request question type: ",
                   std::to_string(request->question.type));
+                  */
   if(request->question.type == 1)
   {
     // llarp::LogInfo("DNS server's answer is: (type#=", ATYPE, "):");

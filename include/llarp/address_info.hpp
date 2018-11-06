@@ -62,7 +62,13 @@ namespace llarp
     {
       char tmp[128] = {0};
       inet_ntop(AF_INET6, &a.ip, tmp, sizeof(tmp));
-      return out << tmp << "." << std::to_string(a.port);
+      out << tmp << ".";
+#ifdef ANDROID
+      snprintf(tmp, sizeof(tmp), "%u", a.port);
+      return out << tmp;
+#else
+      return out << std::to_string(a.port);
+#endif
     }
 
     struct Hash

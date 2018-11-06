@@ -1,4 +1,4 @@
-
+#ifndef ANDROID
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -118,3 +118,4 @@ struct crypto_stream_salsa20_implementation
     crypto_stream_salsa20_xmm6int_sse2_implementation = {
         SODIUM_C99(.stream =) stream_sse2,
         SODIUM_C99(.stream_xor_ic =) stream_sse2_xor_ic};
+#endif

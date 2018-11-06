@@ -83,7 +83,13 @@ namespace llarp
         auto pos = v.find("/");
         if(pos != std::string::npos)
         {
-          auto num = std::stoi(v.substr(pos + 1));
+          int num;
+          std::string part = v.substr(pos + 1);
+#ifdef ANDROID
+          num = atoi(part.c_str());
+#else
+          num = std::stoi(part);
+#endif
           if(num > 0)
           {
             tunif.netmask = num;

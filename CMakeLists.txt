@@ -95,6 +95,7 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_compile_options( ${DEBUG_FLAGS} )
 endif()
 
+if(NOT ANDROID)
 if (NOT USE_AVX2)
 set(CRYPTO_FLAGS -march=native)
 set(CMAKE_ASM_FLAGS "-march=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
@@ -102,6 +103,7 @@ else()
 set(CRYPTO_FLAGS -march=haswell -mtune=native)
 set(CMAKE_ASM_FLAGS "-march=haswell -mtune=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
 endif(NOT USE_AVX2)
+endif()
 
 add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
@@ -137,6 +139,10 @@ endif(WIN32)
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
 set(LIBS Threads::Threads ${MALLOC_LIB} ${FS_LIB})
+
+if(ANDROID)
+  set(LIBS ${LIBS} log)
+endif()
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
@@ -574,7 +580,7 @@ if(WITH_STATIC)
   endif(WITH_STATIC)
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
-    target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS} log)
+    target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
   endif()
 
   if(WITH_SHARED)

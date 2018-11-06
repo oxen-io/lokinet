@@ -191,6 +191,14 @@ struct reverse_handler_iter_context
   const struct dnsd_question_request *request;
 };
 
+#ifdef ANDROID
+static int
+stoi(const std::string &s)
+{
+  return atoi(s.c_str());
+}
+#endif
+
 bool
 ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
 {

@@ -13,11 +13,6 @@
 #include <pthread_np.h>
 #endif
 
-#if _WIN32 || __sun
-#define wmin(x, y) (((x) < (y)) ? (x) : (y))
-#define MIN wmin
-#endif
-
 namespace llarp
 {
   Context::~Context()
@@ -510,23 +505,21 @@ extern "C"
           conffname = optarg;
           break;
         case 'o':
-          if(strncmp(optarg, "debug", MIN(strlen(optarg), (unsigned long)5))
-             == 0)
+          if(strncmp(optarg, "debug", std::min(strlen(optarg), size_t(5))) == 0)
           {
             cSetLogLevel(eLogDebug);
           }
-          else if(strncmp(optarg, "info", MIN(strlen(optarg), (unsigned long)4))
+          else if(strncmp(optarg, "info", std::min(strlen(optarg), size_t(4)))
                   == 0)
           {
             cSetLogLevel(eLogInfo);
           }
-          else if(strncmp(optarg, "warn", MIN(strlen(optarg), (unsigned long)4))
+          else if(strncmp(optarg, "warn", std::min(strlen(optarg), size_t(4)))
                   == 0)
           {
             cSetLogLevel(eLogWarn);
           }
-          else if(strncmp(optarg, "error",
-                          MIN(strlen(optarg), (unsigned long)5))
+          else if(strncmp(optarg, "error", std::min(strlen(optarg), size_t(5)))
                   == 0)
           {
             cSetLogLevel(eLogError);

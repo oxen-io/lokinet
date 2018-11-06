@@ -16,6 +16,11 @@
 #include "mem.hpp"
 #include <cassert>
 
+#ifdef ANDROID
+/** TODO: correct this value */
+#define SOCK_NONBLOCK (0)
+#endif
+
 namespace llarp
 {
   int

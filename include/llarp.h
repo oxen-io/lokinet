@@ -15,6 +15,15 @@ extern "C"
 {
 #endif
 
+  /// ensure configuration exists
+  /// populate with defaults
+  /// return if this succeeded
+  /// if overwrite is true then overwrite old config file
+  /// if basedir is not nullptr then use basedir as an absolute
+  /// base path for all files in config
+  bool
+  llarp_ensure_config(const char *, const char *, bool, bool);
+
   /// llarp application context for C api
   struct llarp_main;
 

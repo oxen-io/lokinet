@@ -34,7 +34,7 @@ TESTNET_DEBUG ?= 0
 ANDROID_NDK ?= $(HOME)/Android/Ndk
 ANDROID_SDK ?= $(HOME)/Android/Sdk
 ANDROID_ABI ?= armeabi-v7a
-ANDROID_API_LEVEL ?= android-18
+ANDROID_API_LEVEL ?= 18
 
 JSONRPC = OFF
 CXX17 = ON
@@ -134,10 +134,12 @@ test: debug
 
 android-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	cd '$(BUILD_ROOT)' && cmake -DANDROID_NATIVE_API_LEVEL='$(ANDROID_API_LEVEL)' -DANDROID_NDK='$(ANDROID_NDK)' -DANDROID_ABI='$(ANDROID_ABI)' -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/android.toolchain.cmake' '$(REPO)'
+	cd '$(BUILD_ROOT)' && cmake -DANDROID_API='$(ANDROID_API_LEVEL)' -DANDROID_NDK='$(ANDROID_NDK)' -DANDROID_ARCH_ABI='$(ANDROID_ABI)' -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/android.toolchain.cmake' '$(REPO)'
 
-android: android-configure
+android-build: android-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
+
+android: andorid-build
 
 abyss: debug
 	$(ABYSS_EXE)

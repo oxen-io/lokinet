@@ -827,10 +827,11 @@ llarp_router::ShouldCreateDefaultHiddenService()
   {
     // auto detect if we have any pre-defined endpoints
     // no if we have a endpoints
-    llarp::LogInfo("Auto mode detected, hasEndpoints: ",
-                   std::to_string(this->hiddenServiceContext.hasEndpoints()));
-    if(this->hiddenServiceContext.hasEndpoints())
+    if(hiddenServiceContext.hasEndpoints())
+    {
+      llarp::LogInfo("Auto mode detected and we have endpoints");
       return false;
+    }
     // we don't have any endpoints, auto configure settings
 
     // set a default IP range
