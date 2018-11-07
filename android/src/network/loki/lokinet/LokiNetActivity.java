@@ -1,61 +1,107 @@
 package network.loki.lokinet;
 
+
+import java.io.File;
+import java.io.InputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.net.URL;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.StringWriter;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.Path;
-import java.util.Timer;
-import java.util.TimerTask;
-
 
 import android.app.Activity;
-import android.content.ComponentName;
+
 import android.content.Context;
-import android.content.Intent;
+
+import android.content.ComponentName;
 import android.content.ServiceConnection;
-import android.content.res.AssetManager;
+
+import android.os.AsyncTask;
+import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
+
 import android.os.IBinder;
-import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.TextView;
-import android.widget.Toast;
+
 
 public class LokiNetActivity extends Activity {
 	private static final String TAG = "lokinet-activity";
 	private TextView textView;
-	
-	
+	private static final String DefaultBootstrapURL = "https://i2p.rocks/bootstrap.signed";
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		
+
 		// copy assets
-		String conf = copyFileAsset("daemon.ini");
-		
+		//String conf = copyFileAsset("daemon.ini");
 		textView = new TextView(this);
 		setContentView(textView);
-		if(conf == null)
-		{
-			Log.e(TAG, "failed to get config");
-			return;
-		}
+
 		Lokinet_JNI.loadLibraries();
-		Lokinet_JNI.startLokinet(conf);
 	}
-	
+
+
+	private static void writeFile(File out, InputStream instream) throws IOException {
+		OutputStream outstream = new FileOutputStream(out);
+		byte[] buffer = new byte[512];
+		int len;
+		try {
+			do {
+				len = instream.read(buffer);
+				if (len > 0) {
+					outstream.write(buffer, 0, len);
+				}
+			}
+			while (len != -1);
+		} finally {
+			outstream.close();
+		}
+	}
+
+	public void startLokinet() {
+
+	}
+
+	public void runLokinetService()
+	{
+		bindService(new Intent(LokiNetActivity.this,
+				ForegroundService.class), mConnection, Context.BIND_AUTO_CREATE);
+	}
+
 	@Override
 	protected void onDestroy() {
 		super.onDestroy();
 		textView = null;
+	}
+
+	private class AsyncBootstrap extends AsyncTask<String, String, String>
+	{
+		public String doInBackground(String ... urls) {
+			try
+			{
+				File bootstrapFile = new File(getCacheDir(), "bootstrap.signed");
+				URL bootstrapURL = new URL(urls[0]);
+				InputStream instream = bootstrapURL.openStream();
+				writeFile(bootstrapFile, instream);
+				instream.close();
+				return "downloaded";
+			}
+			catch(Exception thrown)
+			{
+				return thrown.getLocalizedMessage();
+			}
+		}
+		public void onPostExecute(String val) {
+			final File configFile = new File(getCacheDir(), "daemon.ini");
+			runLokinetService();
+		}
 	}
 
 	private CharSequence throwableToString(Throwable tr) {
@@ -65,7 +111,8 @@ public class LokiNetActivity extends Activity {
 		pw.close();
 		return sw.toString();
 	}
-	
+
+	private ForegroundService boundService;
 	// private LocalService mBoundService;
 	
 	private ServiceConnection mConnection = new ServiceConnection() {
@@ -75,8 +122,8 @@ public class LokiNetActivity extends Activity {
 			// interact with the service.  Because we have bound to a explicit
 			// service that we know is running in our own process, we can
 			// cast its IBinder to a concrete class and directly access it.
-			//		mBoundService = ((LocalService.LocalBinder)service).getService();
-			
+			boundService = ((ForegroundService.LocalBinder)service).getService();
+			textView.setText(R.id.loaded);
 			// Tell the user about this for our demo.
 			//		Toast.makeText(Binding.this, R.string.local_service_connected,
 			//		Toast.LENGTH_SHORT).show();
@@ -109,74 +156,15 @@ public class LokiNetActivity extends Activity {
 		int id = item.getItemId();
 		
 		switch(id){
+			case R.id.action_start:
+				startLokinet();
+				return true;
 			case R.id.action_stop:
-			Lokinet_JNI.stopLokinet();
-			return true;
+				Lokinet_JNI.stopLokinet();
+				return true;
 		}
 		
 		return super.onOptionsItemSelected(item);
 	}
 	
-	/**
-		* Copy the asset at the specified path to this app's data directory. If the
-		* asset is a directory, its contents are also copied.
-		* 
-		* @param path
-		* Path to asset, relative to app's assets directory.
-	*/
-	private void copyAsset(String path) {
-		AssetManager manager = getAssets();
-		Path dir = Paths.get(Environment.getExternalStorageDirectory().getAbsolutePath(), "lokinet", path);
-		try {
-			String[] contents = manager.list(path);
-			
-			// The documentation suggests that list throws an IOException, but doesn't
-			// say under what conditions. It'd be nice if it did so when the path was
-			// to a file. That doesn't appear to be the case. If the returned array is
-			// null or has 0 length, we assume the path is to a file. This means empty
-			// directories will get turned into files.
-			if (contents == null || contents.length == 0)
-				return;
-			
-			// Make the directory.
-			dir.toFile().mkdirs();
-			
-				// Recurse on the contents.
-			for (String entry : contents) {
-				copyFileAsset(Paths.get(dir.toString(), entry).toString());
-			}
-		}
-		catch(IOException ex)
-		{
-			copyFileAsset(path);
-		}
-	}
-	
-	/**
-		* Copy the asset file specified by path to app's data directory. Assumes
-		* parent directories have already been created.
-		* 
-		* @param path
-		* Path to asset, relative to app's assets directory.
-	*/
-	private String copyFileAsset(String path) {
-		Path p = Paths.get(Environment.getExternalStorageDirectory().getAbsolutePath(), "lokinet", path);
-		try {
-			p.getParent().toFile().mkdirs();
-      InputStream in = getAssets().open(path);
-			OutputStream out = new FileOutputStream(p.toFile());
-			byte[] buffer = new byte[1024];
-      int read = in.read(buffer);
-      while (read != -1) {
-      	out.write(buffer, 0, read);
-        read = in.read(buffer);
-      }
-      out.close();
-      in.close();
-    } catch (IOException e) {
-     	Log.e(TAG, "", e);
-			return null;
-    }
-		return p.toString();
-	}
 }

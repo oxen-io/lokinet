@@ -141,13 +141,6 @@ testnet:
 test: debug
 	$(TEST_EXE)
 
-android-configure: clean
-	mkdir -p '$(BUILD_ROOT)'
-	cd '$(BUILD_ROOT)' && cmake -DANDROID_API='$(ANDROID_API_LEVEL)' -DANDROID_NDK='$(ANDROID_NDK)' -DANDROID_ARCH_ABI='$(ANDROID_ABI)' -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/android.toolchain.cmake' '$(REPO)'
-
-android-build: android-configure
-	$(MAKE) -C '$(BUILD_ROOT)'
-
 android-gradle-prepare:
 	rm -f $(ANDROID_PROPS)
 	rm -f $(ANDROID_LOCAL_PROPS)
@@ -159,7 +152,7 @@ android-gradle-prepare:
 	echo "ndk.dir=$(ANDROID_NDK)" >> $(ANDROID_LOCAL_PROPS)
 
 android-gradle: android-gradle-prepare
-	cd $(ANDROID_DIR) && JAVA_HOME=$(JAVA_HOME) $(GRADLE) assemble
+	cd $(ANDROID_DIR) && JAVA_HOME=$(JAVA_HOME) $(GRADLE) clean assemble
 	
 android: android-gradle
 
