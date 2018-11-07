@@ -135,7 +135,10 @@ namespace llarp
       // HiddenServiceEndpoint(tunEndpoint, callback, addr,
       // tunEndpoint->GenTXID());
       return tunEndpoint->EnsurePathToService(
-          addr, [](Address addr, void *ctx) {}, 10000);
+          addr,
+          [](__attribute__((unused)) Address addr,
+             __attribute__((unused)) void *ctx) {},
+          10000);
     }
 
     huint32_t

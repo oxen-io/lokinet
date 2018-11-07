@@ -457,7 +457,7 @@ namespace llarp
     }
 
     void
-    TunEndpoint::TickTun(llarp_time_t now)
+    TunEndpoint::TickTun(__attribute__((unused)) llarp_time_t now)
     {
       // called in the isolated thread
     }

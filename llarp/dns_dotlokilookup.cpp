@@ -31,7 +31,8 @@ std::unordered_map< std::string, struct dnsd_query_hook_response * >
     loki_tld_lookup_cache;
 
 void
-llarp_dotlokilookup_checkQuery(void *u, uint64_t orig, uint64_t left)
+llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
+                               uint64_t left)
 {
   if(left)
     return;

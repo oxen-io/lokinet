@@ -977,7 +977,8 @@ namespace llarp
   }
 
   bool
-  IsBogonRange(const in6_addr& host, const in6_addr& netmask)
+  IsBogonRange(__attribute__((unused)) const in6_addr& host,
+               __attribute__((unused)) const in6_addr& netmask)
   {
     // TODO: implement me
     return true;

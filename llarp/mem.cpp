@@ -17,7 +17,9 @@ namespace llarp
 }  // namespace llarp
 
 void
-llarp_mem_slab(struct llarp_alloc *mem, uint32_t *buf, size_t sz)
+llarp_mem_slab(__attribute__((unused)) struct llarp_alloc *mem,
+               __attribute__((unused)) uint32_t *buf,
+               __attribute__((unused)) size_t sz)
 {
   // not implemented
   abort();

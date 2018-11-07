@@ -387,8 +387,8 @@ handle_dnsc_result(dnsc_answer_request *client_request)
 
 // our generic version
 void
-handle_recvfrom(const char *buffer, ssize_t nbytes, const struct sockaddr *from,
-                dnsd_question_request *request)
+handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
+                const struct sockaddr *from, dnsd_question_request *request)
 {
   const size_t HDR_OFFSET = 12;
   const char *p_buffer    = buffer;

@@ -25,7 +25,7 @@ namespace llarp
     /// a lock that does nothing
     struct NullLock
     {
-      NullLock(NullMutex& mtx)
+      NullLock(__attribute__((unused)) NullMutex& mtx)
       {
       }
     };

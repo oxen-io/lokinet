@@ -149,6 +149,7 @@ extern "C"
         return -1;
       }
 #else
+      (void)daddr;
       return tuntap_sys_set_ipv4(dev, &baddr4, mask);
 #endif
     }

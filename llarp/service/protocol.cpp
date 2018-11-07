@@ -385,7 +385,7 @@ namespace llarp
 
     bool
     ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
-                                 llarp_router* r) const
+                                 __attribute__((unused)) llarp_router* r) const
     {
       return h->HandleHiddenServiceFrame(this);
     }

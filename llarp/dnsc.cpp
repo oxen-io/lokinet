@@ -151,13 +151,14 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
 /// generic dnsc handler
 void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
-                             const struct sockaddr *saddr, const void *buf,
-                             ssize_t sz)
+                             __attribute__((unused))
+                             const struct sockaddr *saddr,
+                             const void *buf, ssize_t sz)
 {
   // llarp::LogInfo("got a response, udp user is ", udp->user);
 
-  unsigned char *castBuf = (unsigned char *)buf;
-  char *const castBufc   = (char *const)buf;
+  unsigned char *castBuf     = (unsigned char *)buf;
+  const char *const castBufc = (const char *)buf;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr = decode_hdr((const char *)castBuf);
 
@@ -728,7 +729,7 @@ llarp_dnsc_init(struct dnsc_context *const dnsc,
 }
 
 bool
-llarp_dnsc_stop(struct dnsc_context *const dnsc)
+llarp_dnsc_stop(__attribute__((unused)) struct dnsc_context *const dnsc)
 {
   // delete(sockaddr_in *)dnsc->server;  // deallocation
   return true;

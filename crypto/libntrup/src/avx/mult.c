@@ -400,7 +400,7 @@ mult96x16(__m256i h[192], const __m256i f[96], const __m256i g[96])
 static void
 transpose16(__m256i x[16])
 {
-  const static int rev[4] = {0, 4, 2, 6};
+  static const int rev[4] = {0, 4, 2, 6};
   int i;
   __m256i y[16];
 
@@ -449,7 +449,7 @@ transpose16(__m256i x[16])
 static void
 transpose32(__m256i x[32])
 {
-  const static int rev[4] = {0, 8, 4, 12};
+  static const int rev[4] = {0, 8, 4, 12};
   int i;
   __m256i y[32];
 

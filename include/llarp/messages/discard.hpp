@@ -36,13 +36,14 @@ namespace llarp
     }
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override
+    DecodeKey(__attribute__((unused)) llarp_buffer_t key,
+              __attribute__((unused)) llarp_buffer_t* buf) override
     {
       return false;
     }
 
     bool
-    HandleMessage(llarp_router* router) const override
+    HandleMessage(__attribute__((unused)) llarp_router* router) const override
     {
       return true;
     }

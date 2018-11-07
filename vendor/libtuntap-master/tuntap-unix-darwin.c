@@ -45,7 +45,8 @@
 #define UTUN_OPT_IFNAME 2
 
 static int
-fucky_tuntap_sys_start(struct device *dev, int mode, int tun)
+fucky_tuntap_sys_start(struct device *dev, __attribute__((unused)) int mode,
+                       int tun)
 {
   uint32_t namesz = IFNAMSIZ;
   char name[IFNAMSIZ + 1];
@@ -197,7 +198,9 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 }
 
 int
-tuntap_sys_set_descr(struct device *dev, const char *descr, size_t len)
+tuntap_sys_set_descr(__attribute__((unused)) struct device *dev,
+                     __attribute__((unused)) const char *descr,
+                     __attribute__((unused)) size_t len)
 {
   tuntap_log(TUNTAP_LOG_NOTICE,
              "Your system does not support tuntap_set_descr()");

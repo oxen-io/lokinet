@@ -3487,6 +3487,7 @@ utp_socket_stats* utp_get_stats(utp_socket *socket)
 		socket->_stats.mtu_guess = socket->mtu_last ? socket->mtu_last : socket->mtu_ceiling;
 		return &socket->_stats;
 	#else
+		(void)socket;
 		return NULL;
 	#endif
 }

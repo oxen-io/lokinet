@@ -10,7 +10,8 @@ namespace llarp
   }
 
   bool
-  PoW::DecodeKey(llarp_buffer_t k, llarp_buffer_t* val)
+  PoW::DecodeKey(__attribute__((unused)) llarp_buffer_t k,
+                 __attribute__((unused)) llarp_buffer_t* val)
   {
     // TODO: implement me
     return false;

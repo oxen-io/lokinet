@@ -227,7 +227,7 @@ namespace llarp
       }
 
       void
-      TickImpl(llarp_time_t now)
+      TickImpl(__attribute__((unused)) llarp_time_t now)
       {
       }
 
