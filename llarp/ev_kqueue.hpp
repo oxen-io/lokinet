@@ -167,12 +167,12 @@ namespace llarp
       socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
       ssize_t ret    = ::recvfrom(fd, buf, sz, 0, addr, &slen);
-      if(ret == -1)
+      if(ret < 0)
       {
         llarp::LogWarn("recvfrom failed");
         return -1;
       }
-      if(ret > sz)
+      if(static_cast< size_t >(ret) > sz)
       {
         llarp::LogWarn("ret > sz");
         return -1;
@@ -226,7 +226,9 @@ namespace llarp
         , tunif(tuntap_init()){};
 
     int
-    sendto(const sockaddr* to, const void* data, size_t sz)
+    sendto(__attribute__((unused)) const sockaddr* to,
+           __attribute__((unused)) const void* data,
+           __attribute__((unused)) size_t sz)
     {
       return -1;
     }
@@ -269,9 +271,9 @@ namespace llarp
     read(void* buf, size_t sz)
     {
 #ifdef __APPLE__
-      const size_t offset = 4;
+      const ssize_t offset = 4;
 #else
-      const size_t offset = 0;
+      const ssize_t offset = 0;
 #endif
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)

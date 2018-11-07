@@ -494,7 +494,7 @@ llarp_router::Tick()
 
   if(inboundLinks.size() == 0)
   {
-    auto N = llarp_nodedb_num_loaded(nodedb);
+    size_t N = llarp_nodedb_num_loaded(nodedb);
     if(N < minRequiredRouters)
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,
@@ -876,7 +876,8 @@ llarp_router::InitServiceNode()
 }
 
 void
-llarp_router::ConnectAll(void *user, uint64_t orig, uint64_t left)
+llarp_router::ConnectAll(void *user, __attribute__((unused)) uint64_t orig,
+                         uint64_t left)
 {
   if(left)
     return;
@@ -917,7 +918,7 @@ llarp_router::ConnectToRandomRouters(int want)
 }
 
 bool
-llarp_router::ReloadConfig(const llarp_config *conf)
+llarp_router::ReloadConfig(__attribute__((unused)) const llarp_config *conf)
 {
   return true;
 }

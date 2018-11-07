@@ -180,7 +180,10 @@ namespace llarp
         if(!HasPathToService(addr))
         {
           if(!EnsurePathToService(
-                 addr, [](Address addr, OutboundContext* ctx) {}, 10000))
+                 addr,
+                 [](__attribute__((unused)) Address addr,
+                    __attribute__((unused)) OutboundContext* ctx) {},
+                 10000))
           {
             llarp::LogWarn("failed to ensure path to ", addr);
           }
@@ -780,7 +783,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
+    Endpoint::HandleDataMessage(__attribute__((unused)) const PathID_t& src,
+                                ProtocolMessage* msg)
     {
       msg->sender.UpdateAddr();
       PutIntroFor(msg->tag, msg->introReply);
@@ -834,7 +838,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::CheckPathIsDead(path::Path* p, llarp_time_t latency)
+    Endpoint::CheckPathIsDead(__attribute__((unused)) path::Path* p,
+                              llarp_time_t latency)
     {
       if(latency >= m_MinPathLatency)
       {
@@ -874,7 +879,9 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
-                                  llarp_time_t timeoutMS, bool randomPath)
+                                  __attribute__((unused))
+                                  llarp_time_t timeoutMS,
+                                  bool randomPath)
     {
       path::Path* path = nullptr;
       if(randomPath)
@@ -991,7 +998,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::OutboundContext::OnIntroSetUpdate(const Address& addr,
+    Endpoint::OutboundContext::OnIntroSetUpdate(__attribute__((unused))
+                                                const Address& addr,
                                                 const IntroSet* i,
                                                 const RouterID& endpoint)
     {
@@ -1371,6 +1379,7 @@ namespace llarp
 
     void
     Endpoint::OutboundContext::AsyncGenIntro(llarp_buffer_t payload,
+                                             __attribute__((unused))
                                              ProtocolType t)
     {
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);

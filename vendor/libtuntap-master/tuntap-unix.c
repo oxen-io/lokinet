@@ -362,6 +362,7 @@ tuntap_set_debug(struct device *dev, int set)
   }
   return 0;
 #else
+  (void)set;
   tuntap_log(TUNTAP_LOG_NOTICE,
              "Your system does not support tuntap_set_debug()");
   return -1;

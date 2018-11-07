@@ -51,7 +51,8 @@ namespace llarp
   }
 
   bool
-  ExitInfo::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+  ExitInfo::DecodeKey(__attribute__((unused)) llarp_buffer_t k,
+                      __attribute__((unused)) llarp_buffer_t* buf)
   {
     bool read = false;
     // TODO: implement me

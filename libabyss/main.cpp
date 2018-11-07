@@ -11,7 +11,8 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
   }
 
   bool
-  HandleJSONRPC(Method_t method, const Params& params, Response& resp)
+  HandleJSONRPC(Method_t method, __attribute__((unused)) const Params& params,
+                Response& resp) override
   {
     llarp::LogInfo("method: ", method);
     resp.AddMember("result", abyss::json::Value().SetInt(1),
@@ -28,7 +29,7 @@ struct DemoCall : public abyss::http::IRPCClientHandler
   }
 
   bool
-  HandleResponse(const abyss::http::RPC_Response& resp)
+  HandleResponse(const abyss::http::RPC_Response& resp) override
   {
     std::string body;
     abyss::json::ToString(resp, body);
@@ -37,12 +38,13 @@ struct DemoCall : public abyss::http::IRPCClientHandler
   }
 
   void
-  PopulateReqHeaders(abyss::http::Headers_t& hdr)
+  PopulateReqHeaders(__attribute__((unused))
+                     abyss::http::Headers_t& hdr) override
   {
   }
 
   void
-  HandleError()
+  HandleError() override
   {
     llarp::LogError("error while handling call: ", strerror(errno));
   }
@@ -81,7 +83,7 @@ struct DemoServer : public abyss::httpd::BaseReqHandler
 };
 
 int
-main(int argc, char* argv[])
+main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 {
   // Ignore on Windows, we don't even get SIGPIPE (even though native *and*
   // emulated UNIX pipes exist - CreatePipe(2), pipe(3))

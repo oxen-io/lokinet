@@ -31,7 +31,7 @@ namespace llarp
 
       IntroSet() = default;
 
-      IntroSet(IntroSet&& other)
+      IntroSet(IntroSet&& other) : IBEncodeMessage(other.version)
       {
         A       = std::move(other.A);
         I       = std::move(other.I);
@@ -43,7 +43,7 @@ namespace llarp
         Z       = std::move(other.Z);
       }
 
-      IntroSet(const IntroSet& other)
+      IntroSet(const IntroSet& other) : IBEncodeMessage(other.version)
       {
         A       = other.A;
         I       = other.I;

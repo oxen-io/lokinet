@@ -29,7 +29,7 @@ struct AbyssTestBase : public ::testing::Test
   }
 
   static void
-  CancelIt(void* u, uint64_t orig, uint64_t left)
+  CancelIt(void* u, __attribute__((unused)) uint64_t orig, uint64_t left)
   {
     if(left)
       return;
@@ -97,12 +97,13 @@ struct ClientHandler : public abyss::http::IRPCClientHandler
   }
 
   void
-  PopulateReqHeaders(abyss::http::Headers_t& hdr)
+  PopulateReqHeaders(__attribute__((unused)) abyss::http::Headers_t& hdr)
   {
   }
 
   bool
-  HandleResponse(const abyss::http::RPC_Response& response)
+  HandleResponse(__attribute__((unused))
+                 const abyss::http::RPC_Response& response)
   {
     test->Stop();
     return true;
@@ -118,7 +119,8 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   }
 
   bool
-  HandleJSONRPC(Method_t method, const Params& params, Response& response)
+  HandleJSONRPC(Method_t method, __attribute__((unused)) const Params& params,
+                __attribute__((unused)) Response& response)
   {
     test->AssertMethod(method);
     test->called = true;
@@ -184,6 +186,7 @@ TEST_F(AbyssTest, TestClientAndServer)
   params.SetObject();
   QueueRPC(method, std::move(params),
            std::bind(&AbyssTest::NewConn, this, std::placeholders::_1));
+
   AsyncFlush();
   RunLoop();
   ASSERT_TRUE(called);

@@ -24,6 +24,7 @@ dns_iptracker_init()
 // not sure we want tunGatewayIP... we'll know when we get further
 bool
 dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll,
+                                  __attribute__((unused))
                                   llarp::huint32_t tunGatewayIp)
 {
   dll->ip_tracker = &g_dns_iptracker;

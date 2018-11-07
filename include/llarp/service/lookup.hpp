@@ -25,7 +25,8 @@ namespace llarp
 
       /// handle lookup result
       virtual bool
-      HandleResponse(const std::set< IntroSet >& results)
+      HandleResponse(__attribute__((unused))
+                     const std::set< IntroSet >& results)
       {
         return false;
       }

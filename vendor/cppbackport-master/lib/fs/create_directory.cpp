@@ -44,7 +44,7 @@ namespace cpp17
   namespace filesystem
   {
     bool
-    create_directory(const path& s, std::error_code& ec)
+    create_directory(const path& s, __attribute__((unused)) std::error_code& ec)
     {
       if(s.empty())
       {
@@ -55,7 +55,8 @@ namespace cpp17
     }
 
     bool
-    create_directories(const path& s, std::error_code& ec)
+    create_directories(const path& s,
+                       __attribute__((unused)) std::error_code& ec)
     {
       path p = s.parent_path();
 

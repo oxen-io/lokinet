@@ -45,8 +45,8 @@ ANDROID_LOCAL_PROPS=$(ANDROID_DIR)/local.properties
 GRADLE ?= gradle
 JAVA_HOME ?= /usr/lib/jvm/default-java
 
-JSONRPC = OFF
-CXX17 = ON
+JSONRPC ?= OFF
+CXX17 ?= ON
 
 
 BUILD_ROOT = $(REPO)/build

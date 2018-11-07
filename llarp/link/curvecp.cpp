@@ -7,7 +7,7 @@ namespace llarp
   namespace curvecp
   {
     std::unique_ptr< ILinkLayer >
-    NewServer(llarp_router* r)
+    NewServer(__attribute__((unused)) llarp_router* r)
     {
       return nullptr;
     }

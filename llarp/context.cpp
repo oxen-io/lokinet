@@ -107,7 +107,7 @@ namespace llarp
   }
 
   bool
-  Context::PutDatabase(struct llarp::RouterContact &rc)
+  Context::PutDatabase(__attribute__((unused)) struct llarp::RouterContact &rc)
   {
     // FIXME
     // return llarp_nodedb_put_rc(nodedb, rc);
@@ -115,7 +115,7 @@ namespace llarp
   }
 
   llarp::RouterContact *
-  Context::GetDatabase(const byte_t *pk)
+  Context::GetDatabase(__attribute__((unused)) const byte_t *pk)
   {
     // FIXME
     // return llarp_nodedb_get_rc(nodedb, pk);
@@ -374,7 +374,7 @@ extern "C"
   }
 
   llarp::RouterContact *
-  llarp_main_getLocalRC(struct llarp_main *ptr)
+  llarp_main_getLocalRC(__attribute__((unused)) struct llarp_main *ptr)
   {
     //
     /*
@@ -397,7 +397,8 @@ extern "C"
   }
 
   void
-  llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
+  llarp_main_checkOnline(void *u, __attribute__((unused)) uint64_t orig,
+                         uint64_t left)
   {
     // llarp::Info("checkOnline - check ", left);
     if(left)

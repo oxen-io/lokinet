@@ -91,9 +91,9 @@ namespace llarp
     }
 
     static void
-    checksumDstIPv4TCP(byte_t *pld, size_t psz, size_t fragoff,
-                       size_t chksumoff, nuint32_t oSrcIP, nuint32_t oDstIP,
-                       nuint32_t nSrcIP, nuint32_t nDstIP)
+    checksumDstIPv4TCP(byte_t *pld, __attribute__((unused)) size_t psz,
+                       size_t fragoff, size_t chksumoff, nuint32_t oSrcIP,
+                       nuint32_t oDstIP, nuint32_t nSrcIP, nuint32_t nDstIP)
     {
       if(fragoff > chksumoff)
         return;
@@ -110,9 +110,9 @@ namespace llarp
     }
 
     static void
-    checksumDstIPv4UDP(byte_t *pld, size_t psz, size_t fragoff,
-                       nuint32_t oSrcIP, nuint32_t oDstIP, nuint32_t nSrcIP,
-                       nuint32_t nDstIP)
+    checksumDstIPv4UDP(byte_t *pld, __attribute__((unused)) size_t psz,
+                       size_t fragoff, nuint32_t oSrcIP, nuint32_t oDstIP,
+                       nuint32_t nSrcIP, nuint32_t nDstIP)
     {
       if(fragoff > 6)
         return;
@@ -179,8 +179,9 @@ namespace llarp
     }
 
     static void
-    checksumSrcIPv4TCP(byte_t *pld, size_t psz, size_t fragoff,
-                       size_t chksumoff, nuint32_t oSrcIP, nuint32_t oDstIP)
+    checksumSrcIPv4TCP(byte_t *pld, __attribute__((unused)) size_t psz,
+                       size_t fragoff, size_t chksumoff, nuint32_t oSrcIP,
+                       nuint32_t oDstIP)
     {
       if(fragoff > chksumoff)
         return;
@@ -198,8 +199,8 @@ namespace llarp
     }
 
     static void
-    checksumSrcIPv4UDP(byte_t *pld, size_t psz, size_t fragoff,
-                       nuint32_t oSrcIP, nuint32_t oDstIP)
+    checksumSrcIPv4UDP(byte_t *pld, __attribute__((unused)) size_t psz,
+                       size_t fragoff, nuint32_t oSrcIP, nuint32_t oDstIP)
     {
       if(fragoff > 6)
         return;

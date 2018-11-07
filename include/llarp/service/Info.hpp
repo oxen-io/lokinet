@@ -30,7 +30,8 @@ namespace llarp
       */
 
       ServiceInfo(const ServiceInfo& other)
-          : enckey(other.enckey)
+          : IBEncodeMessage(other.version)
+          , enckey(other.enckey)
           , signkey(other.signkey)
           , vanity(other.vanity)
           , m_CachedAddr(other.m_CachedAddr)

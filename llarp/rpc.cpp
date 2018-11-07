@@ -22,7 +22,7 @@ namespace llarp
       }
 
       void
-      PopulateReqHeaders(abyss::http::Headers_t& hdr)
+      PopulateReqHeaders(__attribute__((unused)) abyss::http::Headers_t& hdr)
       {
       }
     };
@@ -43,7 +43,8 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const ::abyss::http::RPC_Response& response)
+      HandleResponse(__attribute__((unused))
+                     const ::abyss::http::RPC_Response& response)
       {
         handler(pk, true);
         return true;
@@ -139,7 +140,9 @@ namespace llarp
       }
 
       bool
-      HandleJSONRPC(Method_t method, const Params& params, Response& response)
+      HandleJSONRPC(Method_t method,
+                    __attribute__((unused)) const Params& params,
+                    Response& response)
       {
         if(method == "llarp.admin.link.neighboors")
         {
@@ -198,9 +201,10 @@ namespace llarp
 #else
     struct ServerImpl
     {
-      ServerImpl(llarp_router* r){};
+      ServerImpl(__attribute__((unused)) llarp_router* r){};
+
       bool
-      Start(const std::string& addr)
+      Start(__attribute__((unused)) const std::string& addr)
       {
         return true;
       }
@@ -208,7 +212,7 @@ namespace llarp
 
     struct CallerImpl
     {
-      CallerImpl(llarp_router* r)
+      CallerImpl(__attribute__((unused)) llarp_router* r)
       {
       }
 

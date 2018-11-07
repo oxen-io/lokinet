@@ -21,6 +21,7 @@ namespace llarp
     bool
     GotIntroMessage::HandleMessage(
         llarp_dht_context *ctx,
+        __attribute__((unused))
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht   = ctx->impl;
@@ -58,6 +59,7 @@ namespace llarp
     bool
     RelayedGotIntroMessage::HandleMessage(
         llarp_dht_context *ctx,
+        __attribute__((unused))
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       // TODO: implement me better?

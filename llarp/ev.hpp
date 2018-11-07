@@ -317,7 +317,9 @@ namespace llarp
     read(void* buf, size_t sz) = 0;
 
     virtual int
-    sendto(const sockaddr* dst, const void* data, size_t sz)
+    sendto(__attribute__((unused)) const sockaddr* dst,
+           __attribute__((unused)) const void* data,
+           __attribute__((unused)) size_t sz)
     {
       return -1;
     };

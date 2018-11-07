@@ -19,7 +19,7 @@ namespace llarp
       uint64_t expiresAt = 0;
 
       Introduction() = default;
-      Introduction(const Introduction& other)
+      Introduction(const Introduction& other) : IBEncodeMessage(other.version)
       {
         router    = other.router;
         pathID    = other.pathID;

@@ -104,7 +104,9 @@ namespace llarp
     }
 
     void
-    Context::handle_cleaner_timer(void *u, uint64_t orig, uint64_t left)
+    Context::handle_cleaner_timer(void *u,
+                                  __attribute__((unused)) uint64_t orig,
+                                  uint64_t left)
     {
       if(left)
         return;
@@ -397,7 +399,7 @@ namespace llarp
 
       LocalServiceAddressLookup(const PathID_t &pathid, uint64_t txid,
                                 const service::Address &addr, Context *ctx,
-                                const Key_t &askpeer)
+                                __attribute__((unused)) const Key_t &askpeer)
           : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, 5,
                                  nullptr)
           , localPath(pathid)
@@ -568,13 +570,14 @@ namespace llarp
       }
 
       bool
-      GetNextPeer(Key_t &nextpeer, const std::set< Key_t > &exclude)
+      GetNextPeer(__attribute__((unused)) Key_t &nextpeer,
+                  __attribute__((unused)) const std::set< Key_t > &exclude)
       {
         return false;
       }
 
       void
-      DoNextRequest(const Key_t &nextPeer)
+      DoNextRequest(__attribute__((unused)) const Key_t &nextPeer)
       {
       }
 
@@ -718,14 +721,15 @@ namespace llarp
       }
 
       bool
-      GetNextPeer(Key_t &next, const std::set< Key_t > &exclude)
+      GetNextPeer(__attribute__((unused)) Key_t &next,
+                  __attribute__((unused)) const std::set< Key_t > &exclude)
       {
         // TODO: implement iterative (?)
         return false;
       }
 
       void
-      DoNextRequest(const Key_t &next)
+      DoNextRequest(__attribute__((unused)) const Key_t &next)
       {
       }
 

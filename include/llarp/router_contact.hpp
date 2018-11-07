@@ -20,14 +20,14 @@ namespace llarp
     }
 
     RouterContact(const RouterContact &other)
-        : addrs(other.addrs)
+        : IBEncodeMessage()
+        , addrs(other.addrs)
         , enckey(other.enckey)
         , pubkey(other.pubkey)
         , exits(other.exits)
         , signature(other.signature)
         , nickname(other.nickname)
         , last_updated(other.last_updated)
-
     {
       version = other.version;
     }

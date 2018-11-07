@@ -463,7 +463,7 @@ namespace llarp
     }
 
     void
-    TunEndpoint::TickTun(llarp_time_t now)
+    TunEndpoint::TickTun(__attribute__((unused)) llarp_time_t now)
     {
       // called in the isolated thread
     }
@@ -473,7 +473,7 @@ namespace llarp
     {
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      self->m_NetworkToUserPktQueue.Process([self, tun](net::IPv4Packet &pkt) {
+      self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
           llarp::LogWarn("packet dropped");
       });
@@ -495,7 +495,7 @@ namespace llarp
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
-             [self, buf, sz](net::IPv4Packet &pkt) -> bool {
+             [buf, sz](net::IPv4Packet &pkt) -> bool {
                return pkt.Load(llarp::InitBuffer(buf, sz))
                    && pkt.Header()->version == 4;
              }))

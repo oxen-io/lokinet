@@ -111,7 +111,7 @@ namespace llarp
     MapAddr(const PubKey& pk, ILinkSession* s);
 
     virtual void
-    Tick(llarp_time_t now)
+    Tick(__attribute__((unused)) llarp_time_t now)
     {
     }
 

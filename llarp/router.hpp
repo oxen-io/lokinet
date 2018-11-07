@@ -82,7 +82,7 @@ struct llarp_router
   /// hard upperbound limit on the number of router to router connections
   size_t maxConnectedRouters = 2000;
 
-  int minRequiredRouters = 4;
+  size_t minRequiredRouters = 4;
 
   // should we be sending padded messages every interval?
   bool sendPadding = false;
