@@ -8,14 +8,13 @@
 #include "ev.hpp"
 #include "logger.hpp"
 
+// TODO: convert all socket errno calls to WSAGetLastError(3),
+// don't think winsock sets regular errno to this day
 namespace llarp
 {
   int
   tcp_conn::read(void* buf, size_t sz)
   {
-    if(_shouldClose)
-      return -1;
-
     WSABUF r_buf = {sz, (char*)buf};
     DWORD amount = 0;
 
@@ -24,8 +23,8 @@ namespace llarp
                         TRUE);
     if(amount > 0)
     {
-      if(tcp->read)
-        tcp->read(tcp, buf, amount);
+      if(tcp.read)
+        tcp.read(&tcp, buf, amount);
     }
     else
     {
@@ -51,6 +50,43 @@ namespace llarp
     return sent;
   }
 
+  void
+  tcp_conn::flush_write()
+  {
+    connected();
+    ev_io::flush_write();
+  }
+
+  void
+  tcp_conn::connect()
+  {
+    socklen_t slen = sizeof(sockaddr_in);
+    if(_addr.ss_family == AF_UNIX)
+      slen = sizeof(sockaddr_un);
+    else if(_addr.ss_family == AF_INET6)
+      slen = sizeof(sockaddr_in6);
+    int result =
+        ::connect(std::get< SOCKET >(fd), (const sockaddr*)&_addr, slen);
+    if(result == 0)
+    {
+      llarp::LogDebug("connected immedidately");
+      connected();
+    }
+    else if(errno == EINPROGRESS)
+    {
+      // in progress
+      llarp::LogDebug("connect in progress");
+      errno = 0;
+      return;
+    }
+    else if(_conn->error)
+    {
+      // wtf?
+      llarp::LogError("error connecting ", strerror(errno));
+      _conn->error(_conn);
+    }
+  }
+
   int
   tcp_serv::read(void*, size_t)
   {
@@ -61,24 +97,16 @@ namespace llarp
                       strerror(errno));
       return -1;
     }
-    llarp_tcp_conn* conn = new llarp_tcp_conn;
-    // zero out callbacks
-    conn->tick   = nullptr;
-    conn->closed = nullptr;
-    conn->read   = nullptr;
     // build handler
-    llarp::tcp_conn* connimpl = new tcp_conn(new_fd, conn);
-    conn->impl                = connimpl;
-    conn->loop                = loop;
+    llarp::tcp_conn* connimpl = new tcp_conn(loop, new_fd);
     if(loop->add_ev(connimpl, true))
     {
       // call callback
       if(tcp->accepted)
-        tcp->accepted(tcp, conn);
+        tcp->accepted(tcp, &connimpl->tcp);
       return 0;
     }
     // cleanup error
-    delete conn;
     delete connimpl;
     return -1;
   }
@@ -252,6 +280,26 @@ struct llarp_win32_loop : public llarp_ev_loop
 
   llarp_win32_loop() : iocpfd(INVALID_HANDLE_VALUE)
   {
+  }
+
+  bool
+  tcp_connect(struct llarp_tcp_connecter* tcp, const sockaddr* remoteaddr)
+  {
+    // create socket
+    DWORD on  = 1;
+    SOCKET fd = ::socket(remoteaddr->sa_family, SOCK_STREAM, 0);
+    if(fd == INVALID_SOCKET)
+      return false;
+    // set non blocking
+    if(ioctlsocket(fd, FIONBIO, &on) == SOCKET_ERROR)
+    {
+      ::closesocket(fd);
+      return false;
+    }
+    llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
+    add_ev(conn, true);
+    conn->connect();
+    return true;
   }
 
   ~llarp_win32_loop()

@@ -400,7 +400,7 @@ randombytes_salsa20_random_stir(void)
   if (hCAPINg)
   {
 	 /* call BCryptGenRandom(2) */
-	 getrandom = GetProcAddress(hCAPINg, "BCryptGenRandom");
+	 getrandom = (CNGAPI_DRBG)GetProcAddress(hCAPINg, "BCryptGenRandom");
 	 if(!BCRYPT_SUCCESS(getrandom(NULL, m0, sizeof m0,BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
 	 {
 		 sodium_misuse();
