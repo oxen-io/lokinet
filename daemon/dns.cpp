@@ -67,7 +67,7 @@ main(int argc, char *argv[])
 {
   int code = 1;
   char cwd[1024];
-  getcwd(cwd, sizeof(cwd));
+  (void)getcwd(cwd, sizeof(cwd));
   llarp::LogInfo("Starting up server at ", cwd);
 
   const char *conffname = handleBaseCmdLineArgs(argc, argv);
