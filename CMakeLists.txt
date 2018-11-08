@@ -7,6 +7,8 @@ project(${PROJECT_NAME} C CXX ASM)
 option(USE_LIBABYSS "enable libabyss" )
 option(USE_CXX17 "enable c++17 features" )
 option(USE_AVX2 "enable avx2 code" )
+option(WARNINGS_AS_ERRORS "Use -Werror. Not recommended for end-users" ON)
+
 # Require C++11
 # or C++17 on win32
 if (NOT WIN32)
@@ -41,12 +43,20 @@ if(CMAKE_HOST_WIN32)
 add_compile_options(-Wno-cast-function-type)
 endif()
 if (USING_CLANG)
-add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
+add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing -Wno-bad-function-cast)
 # because clang is insane enough to inline whole sections of the C++ library!
 # May have been fixed in llvm-7.
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
+else()
+add_compile_options(-Wno-cast-function-type -Wno-narrowing)
 endif(USING_CLANG)
 endif()
+
+if(WIN32)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+add_compile_options(-Wno-stringop-overflow)
+set(FS_LIB stdc++fs)
+endif(WIN32)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
@@ -107,14 +117,12 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 endif()
 
 if(NOT ANDROID)
-if (USE_AVX2)
-set(CRYPTO_FLAGS -march=native)
-set(CMAKE_ASM_FLAGS "-march=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
-else()
-if(WIN32)
+if (NOT USE_AVX2)
 set(CRYPTO_FLAGS -march=core2)
-set(CMAKE_ASM_FLAGS "-march=core2 ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
-endif()
+set(CMAKE_ASM_FLAGS "-march=core2")
+else()
+set(CRYPTO_FLAGS -march=haswell -mtune=native)
+set(CMAKE_ASM_FLAGS "-march=haswell -mtune=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
 endif()
 endif()
 if(RPI)
@@ -148,10 +156,6 @@ set(EXE_SRC daemon/main.cpp)
 if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
-
-if (WIN32)
-set(FS_LIB stdc++fs)
-endif(WIN32)
 
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
