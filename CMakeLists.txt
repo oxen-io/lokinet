@@ -41,10 +41,12 @@ if(CMAKE_HOST_WIN32)
 add_compile_options(-Wno-cast-function-type)
 endif()
 if (USING_CLANG)
-add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
+add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing -Wno-bad-function-cast)
 # because clang is insane enough to inline whole sections of the C++ library!
 # May have been fixed in llvm-7.
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
+else()
+add_compile_options(-Wno-cast-function-type -Wno-narrowing)
 endif(USING_CLANG)
 endif()
 
