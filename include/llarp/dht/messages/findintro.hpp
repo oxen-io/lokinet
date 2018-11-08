@@ -22,17 +22,25 @@ namespace llarp
       }
 
       FindIntroMessage(const llarp::service::Tag& tag, uint64_t txid,
-                       uint64_t r = 3)
-          : IMessage({}), R(r), N(tag), T(txid)
+                       bool iterate = true)
+          : IMessage({}), N(tag), T(txid)
       {
         S.Zero();
+        if(iterate)
+          R = 0;
+        else
+          R = 1;
       }
 
       FindIntroMessage(uint64_t txid, const llarp::service::Address& addr,
-                       uint64_t r)
-          : IMessage({}), R(r), S(addr), T(txid)
+                       bool iterate = true)
+          : IMessage({}), S(addr), T(txid)
       {
         N.Zero();
+        if(iterate)
+          R = 0;
+        else
+          R = 1;
       }
 
       ~FindIntroMessage();

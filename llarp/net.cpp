@@ -977,6 +977,7 @@ namespace llarp
   IsBogon(const in6_addr& addr)
   {
 #ifdef TESTNET
+    (void)addr;
     return false;
 #else
     if(!ipv6_is_siit(addr))

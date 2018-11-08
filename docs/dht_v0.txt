@@ -2,16 +2,18 @@ DHT messages
 
 these messages can be either wrapped in a LIDM message or sent anonymously over a path
 
+The distance function is distance = A ^ B
+
 This document is currently out of date (probably)
 
 
 find introduction message (FIM)
 
-variant 1: recursively find an IS by SA
+variant 1: find an IS by SA
 
 {
   A: "F",
-  I: 0 or 1 if iterative request,
+  R: 0 or 1 if recurisve request,
   S: "<32 bytes SA>",
   T: transaction_id_uint64,
   V: 0
@@ -21,8 +23,8 @@ variant 2: recursively find many IS in a tag
 
 {
   A: "F",
-  E: "<N*32 bytes optional exclude SA list>",
-  I: 0 or 1 if iterative request,
+  E: [list, of, excluded, SA],
+  R: 0 or 1 if recurisve request,
   N: "<16 bytes topic tag>",
   T: transaction_id_uint64,
   V: 0
@@ -38,13 +40,13 @@ sent in reply to FIM and PIM
 {
   A: "G",
   I: [IS, IS, IS, ...],
+  K: "<32 bytes public key of router who is closer, provided ONLY if FIM.R is 0>",
   T: transaction_id_uint64,
   V: 0,
 }
 
-
-The I value MUST NOT contain more than 8 IS.
-The I value is either 1 or 0 IS long for PIM and FIM variant 1.
+The I value MUST NOT contain more than 4 IS.
+The I value contain either 1 or 0 IS for PIM and FIM variant 1.
 
 
 publish introduction message (PIM)
@@ -101,6 +103,7 @@ sent in reply to FRCM only
 
 {
   A: "S",
+  K: "<32 bytes public identity key of router closer, provided ONLY if FRCM.I is 1>",
   R: [RC],
   T: transaction_id_uint64,
   V: 0

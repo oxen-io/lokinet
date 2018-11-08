@@ -20,6 +20,12 @@ namespace llarp
       {
       }
 
+      GotRouterMessage(const Key_t& from, const Key_t& closer, uint64_t id,
+                       bool tunneled)
+          : IMessage(from), K(new Key_t(closer)), txid(id), relayed(tunneled)
+      {
+      }
+
       GotRouterMessage(uint64_t id, const std::vector< RouterID >& near,
                        bool tunneled)
           : IMessage({}), N(near), txid(id), relayed(tunneled)
@@ -41,6 +47,7 @@ namespace llarp
 
       std::vector< RouterContact > R;
       std::vector< RouterID > N;
+      std::unique_ptr< Key_t > K;
       uint64_t txid    = 0;
       uint64_t version = 0;
       bool relayed     = false;

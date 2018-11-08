@@ -88,7 +88,8 @@ namespace llarp
     Context::ExploreNetworkVia(const Key_t &askpeer)
     {
       TXOwner peer(askpeer, ++ids);
-      pendingExploreLookups.NewTX(peer, askpeer,
+      TXOwner whoasked(OurKey(), 0);
+      pendingExploreLookups.NewTX(peer, whoasked, askpeer,
                                   new ExploreNetworkJob(askpeer, this));
     }
 
@@ -219,11 +220,11 @@ namespace llarp
                 new GotRouterMessage(requester, txid, {}, false));
           }
         }
-        else  // iterative lookup and we don't have it tell them we don't have
-              // the target router
+        else
         {
+          // iterative lookup and we don't have it tell them who is closer
           replies.emplace_back(
-              new GotRouterMessage(requester, txid, {}, false));
+              new GotRouterMessage(requester, next, txid, false));
         }
       }
       else
@@ -439,7 +440,7 @@ namespace llarp
       TXOwner asker(OurKey(), txid);
       TXOwner peer(askpeer, ++ids);
       pendingIntrosetLookups.NewTX(
-          peer, addr,
+          peer, asker, addr,
           new LocalServiceAddressLookup(path, txid, addr, this, askpeer));
     }
 
@@ -509,8 +510,8 @@ namespace llarp
       TXOwner peer(tellpeer, ++ids);
       service::Address addr = introset.A.Addr();
       pendingIntrosetLookups.NewTX(
-          asker, addr, new PublishServiceJob(asker, introset, this, S, exclude),
-          true);
+          peer, asker, addr,
+          new PublishServiceJob(asker, introset, this, S, exclude));
     }
 
     void
@@ -522,7 +523,8 @@ namespace llarp
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
       pendingIntrosetLookups.NewTX(
-          peer, addr, new ServiceAddressLookup(asker, addr, this, R, handler));
+          peer, asker, addr,
+          new ServiceAddressLookup(asker, addr, this, R, handler));
     }
 
     void
@@ -534,7 +536,8 @@ namespace llarp
       TXOwner asker(whoasked, txid);
       TXOwner peer(askpeer, ++ids);
       pendingIntrosetLookups.NewTX(
-          peer, addr, new ServiceAddressLookup(asker, addr, this, 0, handler));
+          peer, asker, addr,
+          new ServiceAddressLookup(asker, addr, this, 0, handler));
     }
 
     struct TagLookup : public TX< service::Tag, service::IntroSet >
@@ -615,7 +618,8 @@ namespace llarp
     {
       TXOwner asker(whoasked, whoaskedTX);
       TXOwner peer(askpeer, ++ids);
-      pendingTagLookups.NewTX(peer, tag, new TagLookup(asker, tag, this, R));
+      pendingTagLookups.NewTX(peer, asker, tag,
+                              new TagLookup(asker, tag, this, R));
       llarp::LogInfo("ask ", askpeer, " for ", tag, " on behalf of ", whoasked,
                      " R=", R);
     }
@@ -661,8 +665,9 @@ namespace llarp
                               const llarp::PathID_t &path, const Key_t &askpeer)
     {
       TXOwner peer(askpeer, ++ids);
-      pendingTagLookups.NewTX(peer, tag,
-                              new LocalTagLookup(path, txid, tag, this));
+      TXOwner whoasked(OurKey(), 0);
+      pendingTagLookups.NewTX(peer, whoasked, tag,
+                              new LocalTagLookup(path, txid, tag, this), true);
     }
 
     bool
@@ -802,8 +807,10 @@ namespace llarp
 
     {
       TXOwner peer(askpeer, ++ids);
+      TXOwner whoasked(OurKey(), txid);
       pendingRouterLookups.NewTX(
-          peer, target, new LocalRouterLookup(path, txid, target, this));
+          peer, whoasked, target,
+          new LocalRouterLookup(path, txid, target, this));
     }
 
     void
@@ -817,7 +824,7 @@ namespace llarp
       if(target != askpeer)
       {
         pendingRouterLookups.NewTX(
-            peer, target,
+            peer, asker, target,
             new RecursiveRouterLookup(asker, target, this, handler));
       }
     }

@@ -105,6 +105,7 @@ $(TARGETS): release-compile
 release: $(SIGS)
 
 shadow-configure: clean
+	mkdir -p $(BUILD_ROOT)
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 shadow-build: shadow-configure
@@ -124,6 +125,7 @@ testnet-clean: clean
 	rm -rf $(TESTNET_ROOT)
 
 testnet-configure: testnet-clean
+	mkdir -p $(BUILD_ROOT)
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTESTNET=1
 
 testnet-build: testnet-configure

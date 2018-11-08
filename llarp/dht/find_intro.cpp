@@ -59,7 +59,7 @@ namespace llarp
         return false;
       if(N.Empty())
       {
-        // r5n counter
+        // recursion
         if(!BEncodeWriteDictInt("R", R, buf))
           return false;
         // service address
@@ -70,7 +70,7 @@ namespace llarp
       {
         if(!BEncodeWriteDictEntry("N", N, buf))
           return false;
-        // r5n counter
+        // recursion
         if(!BEncodeWriteDictInt("R", R, buf))
           return false;
       }
@@ -116,8 +116,16 @@ namespace llarp
         {
           if(R == 0)
           {
-            // we don't have it, reply with a direct reply
-            replies.emplace_back(new GotIntroMessage({}, T));
+            // we don't have it
+            Key_t target = S.data();
+            Key_t closer;
+            // find closer peer
+            if(!dht.nodes->FindClosest(target, closer))
+              return false;
+            if(relayed)
+              dht.LookupIntroSetForPath(S, T, pathID, closer);
+            else
+              replies.emplace_back(new GotIntroMessage(From, closer, T));
             return true;
           }
           else

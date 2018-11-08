@@ -21,6 +21,12 @@ namespace llarp
       if(!BEncodeWriteDictMsgType(buf, "A", "S"))
         return false;
 
+      if(K)
+      {
+        if(!BEncodeWriteDictEntry("K", *K.get(), buf))
+          return false;
+      }
+
       // near
       if(N.size())
       {
@@ -45,6 +51,13 @@ namespace llarp
     bool
     GotRouterMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
     {
+      if(llarp_buffer_eq(key, "K"))
+      {
+        if(K)  // duplicate key?
+          return false;
+        K.reset(new dht::Key_t());
+        return K->BDecode(val);
+      }
       if(llarp_buffer_eq(key, "N"))
       {
         return BEncodeReadList(N, val);
@@ -83,7 +96,7 @@ namespace llarp
       if(dht.pendingExploreLookups.HasPendingLookupFrom(owner))
       {
         if(N.size() == 0)
-          dht.pendingExploreLookups.NotFound(owner);
+          dht.pendingExploreLookups.NotFound(owner, K);
         else
         {
           dht.pendingExploreLookups.Found(owner, From, N);
@@ -103,7 +116,7 @@ namespace llarp
       if(R.size() == 1)
         dht.pendingRouterLookups.Found(owner, R[0].pubkey, {R[0]});
       else
-        dht.pendingRouterLookups.NotFound(owner);
+        dht.pendingRouterLookups.NotFound(owner, K);
       return true;
     }
   }  // namespace dht

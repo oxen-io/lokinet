@@ -8,16 +8,27 @@ namespace llarp
 {
   namespace dht
   {
-    /// acknowledgement to PublishIntroMessage or reply to FinIntroMessage
+    /// acknowledgement to PublishIntroMessage or reply to FindIntroMessage
     struct GotIntroMessage : public IMessage
     {
+      /// the found introsets
       std::vector< llarp::service::IntroSet > I;
+      /// txid
       uint64_t T = 0;
+      /// the key of a router closer in keyspace if iterative lookup
+      std::unique_ptr< Key_t > K;
 
       GotIntroMessage(const Key_t& from) : IMessage(from)
       {
       }
 
+      /// for iterative reply
+      GotIntroMessage(const Key_t& from, const Key_t& closer, uint64_t txid)
+          : IMessage(from), T(txid), K(new Key_t(closer))
+      {
+      }
+
+      /// for recursive reply
       GotIntroMessage(const std::vector< llarp::service::IntroSet >& results,
                       uint64_t txid);
 

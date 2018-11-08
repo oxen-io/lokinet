@@ -196,9 +196,9 @@ namespace llarp
         auto itr = m_PrefetchedTags.find(tag);
         if(itr == m_PrefetchedTags.end())
         {
-          itr =
-              m_PrefetchedTags.insert(std::make_pair(tag, CachedTagResult(tag)))
-                  .first;
+          itr = m_PrefetchedTags
+                    .insert(std::make_pair(tag, CachedTagResult(tag, this)))
+                    .first;
         }
         for(const auto& introset : itr->second.result)
         {
@@ -630,7 +630,7 @@ namespace llarp
       BuildRequestMessage()
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-        msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 5));
+        msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 0));
         return msg;
       }
     };
