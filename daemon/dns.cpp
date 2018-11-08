@@ -67,8 +67,8 @@ main(int argc, char *argv[])
 {
   int code = 1;
   char cwd[1024];
-  (void)getcwd(cwd, sizeof(cwd));
-  llarp::LogInfo("Starting up server at ", cwd);
+  char *ptr = getcwd(cwd, sizeof(cwd));
+  llarp::LogInfo("Starting up server at ", ptr);
 
   const char *conffname = handleBaseCmdLineArgs(argc, argv);
   dns_relay_config dnsr_config;
