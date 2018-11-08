@@ -47,11 +47,14 @@ JAVA_HOME ?= /usr/lib/jvm/default-java
 
 JSONRPC ?= OFF
 CXX17 ?= ON
+AVX2 ?= ON
+RPI ?= OFF
+STATIC_LINK ?= OFF
 
 
 BUILD_ROOT = $(REPO)/build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DSTATIC_LINK=$(STATIC_LINK) -DUSE_AVX2=$(AVX2) -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
 
 SCAN_BUILD ?= scan-build
 ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")

@@ -650,8 +650,8 @@ struct llarp_ev_loop
   void
   tick_listeners()
   {
-    auto itr = handlers.cbegin();
-    while(itr != handlers.cend())
+    auto itr = handlers.begin();
+    while(itr != handlers.end())
     {
       if((*itr)->tick())
         ++itr;

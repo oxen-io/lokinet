@@ -63,7 +63,7 @@ namespace llarp
       char tmp[128] = {0};
       inet_ntop(AF_INET6, &a.ip, tmp, sizeof(tmp));
       out << tmp << ".";
-#ifdef ANDROID
+#if defined(ANDROID) || defined(RPI)
       snprintf(tmp, sizeof(tmp), "%u", a.port);
       return out << tmp;
 #else

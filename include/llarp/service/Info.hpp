@@ -18,8 +18,7 @@ namespace llarp
      public:
       ServiceInfo() = default;
 
-      ServiceInfo(ServiceInfo&& other) = delete;
-      /*
+      ServiceInfo(ServiceInfo&& other)
       {
         enckey       = std::move(other.enckey);
         signkey      = std::move(other.signkey);
@@ -27,7 +26,6 @@ namespace llarp
         vanity       = std::move(other.vanity);
         m_CachedAddr = std::move(other.m_CachedAddr);
       }
-      */
 
       ServiceInfo(const ServiceInfo& other)
           : IBEncodeMessage(other.version)

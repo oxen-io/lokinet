@@ -83,7 +83,7 @@ extern "C"
       if(n % 16 == 1)
       {
         /* store address for this line */
-        snprintf(addrstr, sizeof(addrstr), "%.4lx",
+        snprintf(addrstr, sizeof(addrstr), "%.4zu",
                  ((uintptr_t)p - (uintptr_t)data));
       }
 

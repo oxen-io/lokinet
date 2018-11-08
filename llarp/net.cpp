@@ -925,7 +925,7 @@ namespace llarp
       return "";
     }
 // include lokitun prefix to communicate result is valid
-#ifdef ANDROID
+#if defined(ANDROID) || defined(RPI)
     char buff[IFNAMSIZ + 1] = {0};
     snprintf(buff, sizeof(buff), "lokitun%u", num);
     return buff;

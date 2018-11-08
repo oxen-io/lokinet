@@ -1,4 +1,6 @@
-#ifndef ANDROID
+#if defined(ANDROID) || defined(RPI)
+
+#else
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>

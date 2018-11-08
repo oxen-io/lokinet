@@ -144,7 +144,8 @@ namespace llarp
     }
 
 #ifdef __linux__
-#ifndef ANDROID
+#if defined(ANDROID) || defined(RPI)
+#else
     struct LinuxNetNSIsolatedPool : public _NetIsolatedPool
     {
       LinuxNetNSIsolatedPool(std::function< bool(void *, bool) > setup,

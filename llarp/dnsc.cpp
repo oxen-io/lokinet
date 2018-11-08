@@ -282,7 +282,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
       break;
     }
     */
-    if(pos > sz)
+    if(ssize_t(pos) > sz)
     {
       llarp::LogWarn("Would read past end of dns packet. for ",
                      request->question.name);

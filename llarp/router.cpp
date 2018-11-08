@@ -13,6 +13,9 @@
 
 #include <fstream>
 #include <cstdlib>
+#if defined(RPI) || defined(ANDROID)
+#include <unistd.h>
+#endif
 
 namespace llarp
 {
@@ -672,7 +675,11 @@ llarp_router::Run()
     while(!rpcServer->Start(rpcBindAddr))
     {
       llarp::LogError("failed to bind jsonrpc to ", rpcBindAddr);
+#if defined(ANDROID) || defined(RPI)
+      sleep(1);
+#else
       std::this_thread::sleep_for(std::chrono::seconds(1));
+#endif
     }
     llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
   }

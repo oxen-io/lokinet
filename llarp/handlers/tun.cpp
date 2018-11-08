@@ -85,7 +85,7 @@ namespace llarp
         {
           int num;
           std::string part = v.substr(pos + 1);
-#ifdef ANDROID
+#if defined(ANDROID) || defined(RPI)
           num = atoi(part.c_str());
 #else
           num = std::stoi(part);
