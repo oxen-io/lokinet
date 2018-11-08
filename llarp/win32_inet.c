@@ -119,6 +119,7 @@ _GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved,
   PUCHAR currentLocation;
   HANDLE tcpFile;
 
+  (void)(Family);
   if(!pOutBufLen)
     return ERROR_INVALID_PARAMETER;
   if(Reserved)

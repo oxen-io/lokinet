@@ -62,8 +62,9 @@ uint32 PackedSockAddr::compute_hash() const {
 
 void PackedSockAddr::set(const SOCKADDR_STORAGE* sa, socklen_t len)
 {
+	// on unix, the cast does nothing, socklen_t is _already_ unsigned
 	if (sa->ss_family == AF_INET) {
-		assert(len >= sizeof(sockaddr_in));
+		assert((unsigned)len >= sizeof(sockaddr_in));
 		const sockaddr_in *sin = (sockaddr_in*)sa;
 		_sin6w[0] = 0;
 		_sin6w[1] = 0;
@@ -74,7 +75,7 @@ void PackedSockAddr::set(const SOCKADDR_STORAGE* sa, socklen_t len)
 		_sin4 = sin->sin_addr.s_addr;
 		_port = ntohs(sin->sin_port);
 	} else {
-		assert(len >= sizeof(sockaddr_in6));
+		assert((unsigned)len >= sizeof(sockaddr_in6));
 		const sockaddr_in6 *sin6 = (sockaddr_in6*)sa;
 		_in._in6addr = sin6->sin6_addr;
 		_port = ntohs(sin6->sin6_port);

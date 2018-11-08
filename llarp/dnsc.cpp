@@ -282,7 +282,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
       break;
     }
     */
-    if(pos > sz)
+    if(pos > (size_t)sz)
     {
       llarp::LogWarn("Would read past end of dns packet. for ",
                      request->question.name);
@@ -519,7 +519,7 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
 #endif
 
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-  if(sockfd < 0)
+  if(!(sockfd > 0))
   {
     llarp::LogWarn("Error creating socket!\n");
     return;

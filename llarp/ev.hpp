@@ -124,6 +124,9 @@ namespace llarp
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz)
     {
+      (void)(dst);
+      (void)(data);
+      (void)(sz);
       return -1;
     };
 
