@@ -68,9 +68,9 @@ crypto_kem_dec_avx2(unsigned char *k, const unsigned char *cstr,
     k[i] = (hash[32 + i] & ~result);
   return result;
 #else
-  (void)k;
-  (void)cstr;
-  (void)sk;
+  (void)(k);
+  (void)(sk);
+  (void)(cstr);
   return -1;
 #endif
 }

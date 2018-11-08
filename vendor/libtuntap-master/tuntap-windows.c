@@ -174,6 +174,7 @@ tuntap_start(struct device *dev, int mode, int tun)
   HANDLE tun_fd;
   char *deviceid;
   char buf[60];
+  (void)(tun);
 
   /* put something in there to avoid problems (uninitialised field access) */
   tun_fd   = TUNFD_INVALID_VALUE;
@@ -256,6 +257,8 @@ tuntap_get_hwaddr(struct device *dev)
 int
 tuntap_set_hwaddr(struct device *dev, const char *hwaddr)
 {
+  (void)(hwaddr);
+  (void)(dev);
   tuntap_log(TUNTAP_LOG_NOTICE,
              "Your system does not support tuntap_set_hwaddr()");
   return -1;

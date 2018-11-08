@@ -166,8 +166,12 @@ __GetMicroseconds()
 
 #else  // !__APPLE__
 
-#if !(defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0 && defined(CLOCK_MONOTONIC))
+// While _POSIX_TIMERS == -1 in openbsd, clock_gettime(2) _does_ support monotonic.
+// this is true for all the BSDs
+#if !(__OpenBSD__ || __NetBSD__ || __FreeBSD__)
+#if !(defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0 && defined(CLOCK_MONOTONIC)) 
 #warning "Using non-monotonic function gettimeofday() in UTP_GetMicroseconds()"
+#endif
 #endif
 
 /* Unfortunately, #ifdef CLOCK_MONOTONIC is not enough to make sure that
@@ -179,7 +183,7 @@ __GetMicroseconds()
 {
   struct timeval tv;
 
-#if defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0 && defined(CLOCK_MONOTONIC)
+#if defined(CLOCK_MONOTONIC)
   static int have_posix_clocks = -1;
   int rc;
 

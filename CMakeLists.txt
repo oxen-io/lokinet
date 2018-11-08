@@ -34,6 +34,8 @@ add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
+# dynamic linking does this all the time
+add_compile_options(-Wno-cast-function-type)
 if (USING_CLANG)
 add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
 # because clang is insane enough to inline whole sections of the C++ library!

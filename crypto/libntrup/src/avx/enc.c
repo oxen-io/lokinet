@@ -47,9 +47,9 @@ crypto_kem_enc_avx2(unsigned char *cstr, unsigned char *k,
 
   return 0;
 #else
-  (void)pk;
-  (void)k;
-  (void)cstr;
+  (void)(cstr);
+  (void)(k);
+  (void)(pk);
   return -1;
 #endif
 }

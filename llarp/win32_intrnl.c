@@ -49,7 +49,7 @@ NTSTATUS
 tdiGetMibForIfEntity(HANDLE tcpFile, TDIEntityID *ent,
                      IFEntrySafelySized *entry)
 {
-  TCP_REQUEST_QUERY_INFORMATION_EX req = {{{0}}};
+  TCP_REQUEST_QUERY_INFORMATION_EX req;
   NTSTATUS status                      = 0;
   DWORD returnSize;
 
@@ -58,6 +58,7 @@ tdiGetMibForIfEntity(HANDLE tcpFile, TDIEntityID *ent,
           (int)tcpFile, (int)ent->tei_instance);
 #endif
 
+  memset(&req, 0, sizeof(req));
   req.ID.toi_class  = INFO_CLASS_PROTOCOL;
   req.ID.toi_type   = INFO_TYPE_PROVIDER;
   req.ID.toi_id     = 1;
@@ -99,12 +100,13 @@ tdiGetSetOfThings(HANDLE tcpFile, DWORD toiClass, DWORD toiType, DWORD toiId,
                   DWORD teiEntity, DWORD teiInstance, DWORD fixedPart,
                   DWORD entrySize, PVOID *tdiEntitySet, PDWORD numEntries)
 {
-  TCP_REQUEST_QUERY_INFORMATION_EX req = {{{0}}};
+  TCP_REQUEST_QUERY_INFORMATION_EX req;
   PVOID entitySet                      = 0;
   NTSTATUS status                      = 0;
   DWORD allocationSizeForEntityArray   = entrySize * MAX_TDI_ENTITIES,
         arraySize                      = entrySize * MAX_TDI_ENTITIES;
 
+  memset(&req, 0, sizeof(req));
   req.ID.toi_class               = toiClass;
   req.ID.toi_type                = toiType;
   req.ID.toi_id                  = toiId;
@@ -245,6 +247,7 @@ isLoopback(HANDLE tcpFile, TDIEntityID *loop_maybe)
 BOOL
 isIpEntity(HANDLE tcpFile, TDIEntityID *ent)
 {
+  UNREFERENCED_PARAMETER(tcpFile);
   return (ent->tei_entity == CL_NL_ENTITY || ent->tei_entity == CO_NL_ENTITY);
 }
 
@@ -255,7 +258,7 @@ getNthIpEntity(HANDLE tcpFile, DWORD index, TDIEntityID *ent)
   DWORD numRoutes        = 0;
   TDIEntityID *entitySet = 0;
   NTSTATUS status        = tdiGetEntityIDSet(tcpFile, &entitySet, &numEntities);
-  int i;
+  unsigned i;
 
   if(!NT_SUCCESS(status))
     return status;
@@ -300,7 +303,8 @@ getInterfaceInfoSet(HANDLE tcpFile, IFInfo **infoSet, PDWORD numInterfaces)
   TDIEntityID *entIDSet = NULL;
   NTSTATUS status       = tdiGetEntityIDSet(tcpFile, &entIDSet, &numEntities);
   IFInfo *infoSetInt    = 0;
-  int curInterf         = 0, i;
+  int curInterf         = 0;
+  unsigned i;
 
   if(!NT_SUCCESS(status))
   {
@@ -326,7 +330,7 @@ getInterfaceInfoSet(HANDLE tcpFile, IFInfo **infoSet, PDWORD numInterfaces)
           DWORD numAddrs;
           IPAddrEntry *addrs;
           TDIEntityID ip_ent;
-          int j;
+          unsigned j;
 
           status = getNthIpEntity(tcpFile, curInterf, &ip_ent);
           if(NT_SUCCESS(status))
@@ -377,7 +381,7 @@ getInterfaceInfoByName(HANDLE tcpFile, char *name, IFInfo *info)
 {
   IFInfo *ifInfo;
   DWORD numInterfaces;
-  int i;
+  unsigned i;
   NTSTATUS status = getInterfaceInfoSet(tcpFile, &ifInfo, &numInterfaces);
 
   if(NT_SUCCESS(status))
@@ -405,7 +409,7 @@ getInterfaceInfoByIndex(HANDLE tcpFile, DWORD index, IFInfo *info)
   IFInfo *ifInfo;
   DWORD numInterfaces;
   NTSTATUS status = getInterfaceInfoSet(tcpFile, &ifInfo, &numInterfaces);
-  int i;
+  unsigned i;
 
   if(NT_SUCCESS(status))
   {
@@ -444,7 +448,7 @@ InterfaceIndexTable *
 getInterfaceIndexTableInt(BOOL nonLoopbackOnly)
 {
   DWORD numInterfaces, curInterface = 0;
-  int i;
+  unsigned i;
   IFInfo *ifInfo;
   InterfaceIndexTable *ret = 0;
   HANDLE tcpFile;

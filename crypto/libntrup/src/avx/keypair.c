@@ -40,8 +40,8 @@ crypto_kem_keypair_avx2(unsigned char *pk, unsigned char *sk)
 
   return 0;
 #else
-  (void)pk;
-  (void)sk;
+  (void)(pk);
+  (void)(sk);
   return -1;
 #endif
 }
