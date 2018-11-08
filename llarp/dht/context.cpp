@@ -593,7 +593,7 @@ namespace llarp
           found.insert(remoteTag);
         }
         // collect our local values if we haven't hit a limit
-        if(found.size() < 3)
+        if(found.size() < 2)
         {
           for(const auto &localTag :
               parent->FindRandomIntroSetsWithTagExcluding(target, 1, found))
@@ -630,7 +630,7 @@ namespace llarp
 
       LocalTagLookup(const PathID_t &path, uint64_t txid,
                      const service::Tag &target, Context *ctx)
-          : TagLookup(TXOwner{ctx->OurKey(), txid}, target, ctx, 3)
+          : TagLookup(TXOwner{ctx->OurKey(), txid}, target, ctx, 0)
           , localPath(path)
       {
       }
@@ -665,9 +665,9 @@ namespace llarp
                               const llarp::PathID_t &path, const Key_t &askpeer)
     {
       TXOwner peer(askpeer, ++ids);
-      TXOwner whoasked(OurKey(), 0);
+      TXOwner whoasked(OurKey(), txid);
       pendingTagLookups.NewTX(peer, whoasked, tag,
-                              new LocalTagLookup(path, txid, tag, this), true);
+                              new LocalTagLookup(path, txid, tag, this));
     }
 
     bool

@@ -292,11 +292,11 @@ namespace llarp
 
         void
         NewTX(const TXOwner& askpeer, const TXOwner& whoasked, const K& k,
-              TX< K, V >* t, bool forceSend = false)
+              TX< K, V >* t)
         {
+          (void)whoasked;
           tx.emplace(askpeer, std::unique_ptr< TX< K, V > >(t));
-          bool send = waiting.count(k) == 0;
-          waiting.insert(std::make_pair(k, whoasked));
+          waiting.insert(std::make_pair(k, askpeer));
 
           auto itr = timeouts.find(k);
           if(itr == timeouts.end())
@@ -304,8 +304,7 @@ namespace llarp
             timeouts.insert(
                 std::make_pair(k, llarp_time_now_ms() + requestTimeoutMS));
           }
-          if(send || forceSend)
-            t->Start(askpeer);
+          t->Start(askpeer);
         }
 
         /// mark tx as not fond
