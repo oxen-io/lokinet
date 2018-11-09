@@ -158,7 +158,6 @@ namespace llarp
     virtual int
     read(void* buf, size_t sz)
     {
-      printf("read");
       sockaddr_in6 src;
       socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
@@ -185,7 +184,6 @@ namespace llarp
     virtual int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
-      printf("sendto");
       socklen_t slen;
       switch(to->sa_family)
       {

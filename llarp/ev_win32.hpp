@@ -136,6 +136,7 @@ namespace llarp
     virtual int
     read(void* buf, size_t sz)
     {
+      printf("read\n");
       sockaddr_in6 src;
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
@@ -160,6 +161,7 @@ namespace llarp
     virtual int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
+      printf("sendto\n");
       socklen_t slen;
       WSABUF wbuf = {(u_long)sz, (char*)data};
       switch(to->sa_family)
@@ -385,11 +387,8 @@ struct llarp_win32_loop : public llarp_ev_loop
         {
           auto amount =
               std::min(EV_READ_BUF_SZ, events[idx].dwNumberOfBytesTransferred);
-          if(events[idx].lpOverlapped)
-          {
             memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
             ev->read(readbuf, amount);
-          }
         }
       }
     }
@@ -585,7 +584,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     }
 
   start_loop:
-    PostQueuedCompletionStatus(iocpfd, 0, ev->listener_id, nullptr);
+    //PostQueuedCompletionStatus(iocpfd, 0, ev->listener_id, nullptr);
     handlers.emplace_back(ev);
     return true;
   }
