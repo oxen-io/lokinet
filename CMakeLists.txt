@@ -37,7 +37,9 @@ add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unkno
 
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 # dynamic linking does this all the time
+if(CMAKE_HOST_WIN32)
 add_compile_options(-Wno-cast-function-type)
+endif()
 if (USING_CLANG)
 add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
 # because clang is insane enough to inline whole sections of the C++ library!

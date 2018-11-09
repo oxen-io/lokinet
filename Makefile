@@ -159,6 +159,14 @@ android-gradle: android-gradle-prepare
 	
 android: android-gradle
 
+windows-configure: clean
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc-win32 -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++-win32 -DDNS_PORT=$(DNS_PORT) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+
+windows: windows-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
+
 abyss: debug
 	$(ABYSS_EXE)
 
