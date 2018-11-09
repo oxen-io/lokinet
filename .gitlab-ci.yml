@@ -19,14 +19,11 @@ build:linux:
       - "lokinet"
 
 build:windows:
-  image: ubuntu:latest
   tags:
     - windows
   stage: build
-  before_script:
-    - apt update && apt install build-essential cmake mingw-w64 mingw-w64-tools
   script:
-    - make windows STATIC_LINK=ON AVX2=OFF JSONRPC=OFF
+    - make STATIC_LINK=ON AVX2=OFF JSONRPC=OFF
   artifacts:
     paths:
       - "lokinet.exe"
