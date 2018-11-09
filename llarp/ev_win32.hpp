@@ -8,6 +8,10 @@
 #include "ev.hpp"
 #include "logger.hpp"
 
+#ifdef sizeof
+#undef sizeof
+#endif
+
 // TODO: convert all socket errno calls to WSAGetLastError(3),
 // don't think winsock sets regular errno to this day
 namespace llarp
@@ -62,7 +66,7 @@ namespace llarp
   {
     socklen_t slen = sizeof(sockaddr_in);
     if(_addr.ss_family == AF_UNIX)
-      slen = sizeof(sockaddr_un);
+      slen = 115;
     else if(_addr.ss_family == AF_INET6)
       slen = sizeof(sockaddr_in6);
     int result =
@@ -132,13 +136,15 @@ namespace llarp
     virtual int
     read(void* buf, size_t sz)
     {
+      printf("read\n");
       sockaddr_in6 src;
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
       unsigned long flags = 0;
       WSABUF wbuf         = {(u_long)sz, static_cast< char* >(buf)};
       // WSARecvFrom
-      llarp::LogDebug("read ", sz, " bytes into socket");
+      llarp::LogDebug("read ", sz, " bytes from socket");
+      this->write = false;
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
                               addr, &slen, &portfd[0], nullptr);
       // 997 is the error code for queued ops
@@ -155,6 +161,7 @@ namespace llarp
     virtual int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
+      printf("sendto\n");
       socklen_t slen;
       WSABUF wbuf = {(u_long)sz, (char*)data};
       switch(to->sa_family)
@@ -170,6 +177,7 @@ namespace llarp
       }
       // WSASendTo
       llarp::LogDebug("write ", sz, " bytes into socket");
+      this->write  = true;
       ssize_t sent = ::WSASendTo(std::get< SOCKET >(fd), &wbuf, 1, nullptr, 0,
                                  to, slen, &portfd[1], nullptr);
       int s_errno  = ::WSAGetLastError();
@@ -366,6 +374,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   tick(int ms)
   {
     OVERLAPPED_ENTRY events[1024];
+    memset(&events, 0, sizeof(OVERLAPPED_ENTRY) * 1024);
     ULONG numEvents = 0;
     if(::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &numEvents, ms,
                                      false))
@@ -376,17 +385,18 @@ struct llarp_win32_loop : public llarp_ev_loop
             reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
         if(ev)
         {
-          if(ev->write)
-            ev->flush_write();
           auto amount =
               std::min(EV_READ_BUF_SZ, events[idx].dwNumberOfBytesTransferred);
-          memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
-          ev->read(readbuf, amount);
+            memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
+            ev->read(readbuf, amount);
         }
       }
     }
     tick_listeners();
-    return 0;
+    if(numEvents)
+      return numEvents;
+    else
+      return -1;
   }
 
   // ok apparently this isn't being used yet...
@@ -574,7 +584,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     }
 
   start_loop:
-    PostQueuedCompletionStatus(iocpfd, 0, ev->listener_id, nullptr);
+    //PostQueuedCompletionStatus(iocpfd, 0, ev->listener_id, nullptr);
     handlers.emplace_back(ev);
     return true;
   }
