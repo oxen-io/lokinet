@@ -7,6 +7,8 @@ project(${PROJECT_NAME} C CXX ASM)
 option(USE_LIBABYSS "enable libabyss" )
 option(USE_CXX17 "enable c++17 features" )
 option(USE_AVX2 "enable avx2 code" )
+option(WARNINGS_AS_ERRORS "Use -Werror. Not recommended for end-users" ON)
+
 # Require C++11
 # or C++17 on win32
 if (NOT WIN32)
@@ -49,6 +51,12 @@ else()
 add_compile_options(-Wno-cast-function-type -Wno-narrowing)
 endif(USING_CLANG)
 endif()
+
+if(WIN32)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+add_compile_options(-Wno-stringop-overflow)
+set(FS_LIB stdc++fs)
+endif(WIN32)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
@@ -148,10 +156,6 @@ set(EXE_SRC daemon/main.cpp)
 if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
-
-if (WIN32)
-set(FS_LIB stdc++fs)
-endif(WIN32)
 
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
