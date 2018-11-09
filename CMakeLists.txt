@@ -7,7 +7,6 @@ project(${PROJECT_NAME} C CXX ASM)
 option(USE_LIBABYSS "enable libabyss" )
 option(USE_CXX17 "enable c++17 features" )
 option(USE_AVX2 "enable avx2 code" )
-option(WARNINGS_AS_ERRORS "Use -Werror. Not recommended for end-users" ON)
 
 # Require C++11
 # or C++17 on win32
@@ -37,24 +36,8 @@ add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
-if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
-# dynamic linking does this all the time
-if(CMAKE_HOST_WIN32)
-add_compile_options(-Wno-cast-function-type)
-endif()
-if (USING_CLANG)
-add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing -Wno-bad-function-cast)
-# because clang is insane enough to inline whole sections of the C++ library!
-# May have been fixed in llvm-7.
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
-else()
-add_compile_options(-Wno-cast-function-type -Wno-narrowing)
-endif(USING_CLANG)
-endif()
-
 if(WIN32)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-add_compile_options(-Wno-stringop-overflow)
 set(FS_LIB stdc++fs)
 endif(WIN32)
 
@@ -277,9 +260,6 @@ set(LIB_PLATFORM_SRC
   ${ISOLATE_PROC_SRC}
 # tun
   ${LIBTUNTAP_SRC}
-# win32 inline code
-  llarp/win32_inet.c
-  llarp/win32_intrnl.c
 # c++17 compat code
   ${CXX_COMPAT_SRC}
 )
