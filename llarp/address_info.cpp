@@ -140,7 +140,7 @@ namespace llarp
     if(!bencode_write_bytestring(buff, pubkey, PUBKEYSIZE))
       return false;
     /** ip */
-    ipstr = inet_ntop(AF_INET6, &ip, ipbuff, sizeof(ipbuff));
+    ipstr = inet_ntop(AF_INET6, (void *)&ip, ipbuff, sizeof(ipbuff));
     if(!ipstr)
       return false;
     if(!bencode_write_bytestring(buff, "i", 1))

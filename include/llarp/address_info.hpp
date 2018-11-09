@@ -61,7 +61,7 @@ namespace llarp
     operator<<(std::ostream& out, const AddressInfo& a)
     {
       char tmp[128] = {0};
-      inet_ntop(AF_INET6, &a.ip, tmp, sizeof(tmp));
+      inet_ntop(AF_INET6, (void*)&a.ip, tmp, sizeof(tmp));
       out << tmp << ".";
 #if defined(ANDROID) || defined(RPI)
       snprintf(tmp, sizeof(tmp), "%u", a.port);

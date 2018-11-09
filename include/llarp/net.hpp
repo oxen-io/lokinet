@@ -250,8 +250,8 @@ namespace llarp
     {
       char strbuf[32] = {0};
       char netbuf[32] = {0};
-      inet_ntop(AF_INET, &a.addr, strbuf, sizeof(strbuf));
-      inet_ntop(AF_INET, &a.netmask_bits, netbuf, sizeof(netbuf));
+      inet_ntop(AF_INET, (void*)&a.addr, strbuf, sizeof(strbuf));
+      inet_ntop(AF_INET, (void*)&a.netmask_bits, netbuf, sizeof(netbuf));
       out << std::string(strbuf) + "/" + std::string(netbuf);
       return out;
     }

@@ -17,14 +17,14 @@
 #endif
 
 #ifndef MAX_WRITE_QUEUE_SIZE
-#define MAX_WRITE_QUEUE_SIZE 1024
+#define MAX_WRITE_QUEUE_SIZE (1024UL)
 #endif
 
 #ifndef EV_READ_BUF_SZ
-#define EV_READ_BUF_SZ (4 * 1024)
+#define EV_READ_BUF_SZ (4 * 1024UL)
 #endif
 #ifndef EV_WRITE_BUF_SZ
-#define EV_WRITE_BUF_SZ (2 * 1024)
+#define EV_WRITE_BUF_SZ (2 * 1024UL)
 #endif
 
 namespace llarp

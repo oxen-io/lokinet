@@ -48,7 +48,7 @@ namespace llarp
     operator<<(std::ostream &out, const ExitInfo &xi)
     {
       char tmp[128] = {0};
-      if(inet_ntop(AF_INET6, &xi.address, tmp, sizeof(tmp)))
+      if(inet_ntop(AF_INET6, (void *)&xi.address, tmp, sizeof(tmp)))
         out << std::string(tmp);
       else
         return out;
