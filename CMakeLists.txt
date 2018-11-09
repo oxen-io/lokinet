@@ -30,6 +30,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
 add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas)
+# vla are evil
+add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
