@@ -15,7 +15,7 @@ namespace llarp
   int
   tcp_conn::read(void* buf, size_t sz)
   {
-    WSABUF r_buf = {sz, (char*)buf};
+    WSABUF r_buf = {(u_long)sz, (char*)buf};
     DWORD amount = 0;
 
     WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, &portfd[0], nullptr);
@@ -38,7 +38,7 @@ namespace llarp
   ssize_t
   tcp_conn::do_write(void* buf, size_t sz)
   {
-    WSABUF s_buf = {sz, (char*)buf};
+    WSABUF s_buf = {(u_long)sz, (char*)buf};
     DWORD sent   = 0;
 
     if(_shouldClose)
@@ -136,7 +136,7 @@ namespace llarp
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
       unsigned long flags = 0;
-      WSABUF wbuf         = {sz, static_cast< char* >(buf)};
+      WSABUF wbuf         = {(u_long)sz, static_cast< char* >(buf)};
       // WSARecvFrom
       llarp::LogDebug("read ", sz, " bytes into socket");
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
@@ -156,7 +156,7 @@ namespace llarp
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       socklen_t slen;
-      WSABUF wbuf = {sz, (char*)data};
+      WSABUF wbuf = {(u_long)sz, (char*)data};
       switch(to->sa_family)
       {
         case AF_INET:
@@ -242,7 +242,7 @@ namespace llarp
     setup()
     {
       llarp::LogDebug("set ifname to ", t->ifname);
-      strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
+      strncpy(tunif->if_name, t->ifname, IFNAMSIZ);
 
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
