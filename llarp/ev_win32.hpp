@@ -142,7 +142,8 @@ namespace llarp
       unsigned long flags = 0;
       WSABUF wbuf         = {(u_long)sz, static_cast< char* >(buf)};
       // WSARecvFrom
-      llarp::LogDebug("read ", sz, " bytes into socket");
+      llarp::LogDebug("read ", sz, " bytes from socket");
+      this->write = false;
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
                               addr, &slen, &portfd[0], nullptr);
       // 997 is the error code for queued ops
@@ -174,6 +175,7 @@ namespace llarp
       }
       // WSASendTo
       llarp::LogDebug("write ", sz, " bytes into socket");
+      this->write  = true;
       ssize_t sent = ::WSASendTo(std::get< SOCKET >(fd), &wbuf, 1, nullptr, 0,
                                  to, slen, &portfd[1], nullptr);
       int s_errno  = ::WSAGetLastError();
@@ -381,8 +383,6 @@ struct llarp_win32_loop : public llarp_ev_loop
             reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
         if(ev)
         {
-          if(ev->write)
-            ev->flush_write();
           auto amount =
               std::min(EV_READ_BUF_SZ, events[idx].dwNumberOfBytesTransferred);
           if(events[idx].lpOverlapped)

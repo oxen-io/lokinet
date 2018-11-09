@@ -141,20 +141,13 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      DWORD w;
+      //DWORD w;
       if(std::holds_alternative< HANDLE >(fd))
-      {
         WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, &portfd[1]);
-        GetOverlappedResult(std::get< HANDLE >(fd), &portfd[1], &w, TRUE);
-      }
       else
-      {
         WriteFile((HANDLE)std::get< SOCKET >(fd), data, sz, nullptr,
                   &portfd[1]);
-        GetOverlappedResult((HANDLE)std::get< SOCKET >(fd), &portfd[1], &w,
-                            TRUE);
-      }
-      return w;
+      return sz;
     }
 
     bool
