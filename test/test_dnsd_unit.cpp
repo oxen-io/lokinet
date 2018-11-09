@@ -12,13 +12,14 @@ test_sendto_dns_hook(__attribute__((unused)) void *sock,
                      __attribute__((unused)) const struct sockaddr *from,
                      const void *buffer, size_t length)
 {
-  char hex_buffer[length * 3 + 1];
+  char *hex_buffer       = new char[length * 3 + 1];
   hex_buffer[length * 3] = 0;
   for(unsigned int j = 0; j < length; j++)
     sprintf(&hex_buffer[3 * j], "%02X ", ((const char *)buffer)[j]);
   // printf("Got [%zu] bytes: [%s]\n", length, hex_buffer);
   g_result = hex_buffer;
   g_length = length;
+  delete[] hex_buffer;
   return length;
 }
 

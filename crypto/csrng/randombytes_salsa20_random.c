@@ -582,6 +582,7 @@ randombytes_salsa20_random_buf(void *const buf, const size_t size)
   stream.nonce++;
   crypto_stream_salsa20_xor(stream.key, stream.key, sizeof stream.key,
                             (unsigned char *)&stream.nonce, stream.key);
+  (void)ret;
 }
 
 /*
@@ -616,7 +617,7 @@ randombytes_salsa20_random(void)
   stream.rnd32_outleft -= sizeof val;
   memcpy(&val, &stream.rnd32[stream.rnd32_outleft], sizeof val);
   memset(&stream.rnd32[stream.rnd32_outleft], 0, sizeof val);
-
+  (void)ret;
   return val;
 }
 

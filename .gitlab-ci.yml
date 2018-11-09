@@ -18,3 +18,12 @@ build:linux:
     paths:
       - "lokinet"
 
+#build:windows:
+#  tags:
+#    - windows
+#  stage: build
+#  script:
+#    - make STATIC_LINK=ON AVX2=OFF JSONRPC=OFF CC=gcc CXX=g++
+#  artifacts:
+#    paths:
+#      - "lokinet.exe"

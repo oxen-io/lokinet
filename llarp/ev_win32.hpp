@@ -15,7 +15,7 @@ namespace llarp
   int
   tcp_conn::read(void* buf, size_t sz)
   {
-    WSABUF r_buf = {sz, (char*)buf};
+    WSABUF r_buf = {(u_long)sz, (char*)buf};
     DWORD amount = 0;
 
     WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, &portfd[0], nullptr);
@@ -38,7 +38,7 @@ namespace llarp
   ssize_t
   tcp_conn::do_write(void* buf, size_t sz)
   {
-    WSABUF s_buf = {sz, (char*)buf};
+    WSABUF s_buf = {(u_long)sz, (char*)buf};
     DWORD sent   = 0;
 
     if(_shouldClose)
@@ -136,7 +136,7 @@ namespace llarp
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
       unsigned long flags = 0;
-      WSABUF wbuf         = {sz, static_cast< char* >(buf)};
+      WSABUF wbuf         = {(u_long)sz, static_cast< char* >(buf)};
       // WSARecvFrom
       llarp::LogDebug("read ", sz, " bytes into socket");
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
@@ -156,7 +156,7 @@ namespace llarp
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       socklen_t slen;
-      WSABUF wbuf = {sz, (char*)data};
+      WSABUF wbuf = {(u_long)sz, (char*)data};
       switch(to->sa_family)
       {
         case AF_INET:
@@ -242,7 +242,7 @@ namespace llarp
     setup()
     {
       llarp::LogDebug("set ifname to ", t->ifname);
-      strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
+      strncpy(tunif->if_name, t->ifname, IFNAMSIZ);
 
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
@@ -365,38 +365,28 @@ struct llarp_win32_loop : public llarp_ev_loop
   int
   tick(int ms)
   {
-    // The only field we really care about is
-    // the listener_id, as it contains the address
-    // of the ev_io instance.
-    DWORD iolen = 0;
-    // ULONG_PTR is guaranteed to be the same size
-    // as an arch-specific pointer value
-    ULONG_PTR ev_id      = 0;
-    WSAOVERLAPPED* qdata = nullptr;
-    int idx              = 0;
-    BOOL result =
-        ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms);
-
-    llarp::ev_io* ev = reinterpret_cast< llarp::ev_io* >(ev_id);
-    if(ev && qdata)
+    OVERLAPPED_ENTRY events[1024];
+    ULONG numEvents = 0;
+    if(::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &numEvents, ms,
+                                     false))
     {
-      llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
-      if(ev->write)
-        ev->flush_write();
-      else
-        ev->read(readbuf, iolen);
-      ++idx;
+      for(ULONG idx = 0; idx < numEvents; ++idx)
+      {
+        llarp::ev_io* ev =
+            reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
+        if(ev)
+        {
+          if(ev->write)
+            ev->flush_write();
+          auto amount =
+              std::min(EV_READ_BUF_SZ, events[idx].dwNumberOfBytesTransferred);
+          memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
+          ev->read(readbuf, amount);
+        }
+      }
     }
-
-    if(!idx)
-      return -1;
-    else
-    {
-      result = idx;
-      tick_listeners();
-    }
-
-    return result;
+    tick_listeners();
+    return 0;
   }
 
   // ok apparently this isn't being used yet...

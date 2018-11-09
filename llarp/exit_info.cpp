@@ -31,12 +31,12 @@ namespace llarp
     if(!bencode_start_dict(buf))
       return false;
 
-    if(!inet_ntop(AF_INET6, &address, tmp, sizeof(tmp)))
+    if(!inet_ntop(AF_INET6, (void*)&address, tmp, sizeof(tmp)))
       return false;
     if(!BEncodeWriteDictString("a", std::string(tmp), buf))
       return false;
 
-    if(!inet_ntop(AF_INET6, &netmask, tmp, sizeof(tmp)))
+    if(!inet_ntop(AF_INET6, (void*)&netmask, tmp, sizeof(tmp)))
       return false;
     if(!BEncodeWriteDictString("b", std::string(tmp), buf))
       return false;

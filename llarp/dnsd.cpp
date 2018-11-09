@@ -8,6 +8,8 @@ extern dns_tracker dns_udp_tracker;
 #define MIN wmin
 #endif
 
+constexpr size_t BUFFER_SIZE = 1500;
+
 ssize_t
 raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
                          const void *buffer, size_t length)
@@ -40,9 +42,8 @@ void
 write404_dnss_response(const struct sockaddr *from,
                        dnsd_question_request *request)
 {
-  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
-  char buf[BUFFER_SIZE];
-  memset(buf, 0, BUFFER_SIZE);
+  char buf[BUFFER_SIZE] = {0};
+
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
@@ -81,9 +82,8 @@ void
 writecname_dnss_response(std::string cname, const struct sockaddr *from,
                          dnsd_question_request *request)
 {
-  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
-  char buf[BUFFER_SIZE];  // heh, another UNIX compiler extension: VLAs in C++
-  memset(buf, 0, BUFFER_SIZE);
+  char buf[BUFFER_SIZE] = {0};
+
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
@@ -150,10 +150,10 @@ void
 writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
                            dnsd_question_request *request)
 {
-  const size_t BUFFER_SIZE = 1500;
-  char buf[BUFFER_SIZE]    = {0};
-  char *write_buffer       = buf;
-  char *bufferBegin        = buf;
+  char buf[BUFFER_SIZE] = {0};
+
+  char *write_buffer = buf;
+  char *bufferBegin  = buf;
   // build header
   put16bits(write_buffer, request->id);
   int fields = (1 << 15);  // QR => message type, 1 = response
@@ -200,9 +200,8 @@ writesend_dnss_response(llarp::huint32_t *hostRes, const struct sockaddr *from,
     return;
   }
 
-  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
-  char buf[BUFFER_SIZE];
-  memset(buf, 0, BUFFER_SIZE);
+  char buf[BUFFER_SIZE] = {0};
+
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
@@ -259,9 +258,8 @@ writesend_dnss_mxresponse(uint16_t priority, std::string mx,
                           const struct sockaddr *from,
                           dnsd_question_request *request)
 {
-  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
-  char buf[BUFFER_SIZE];
-  memset(buf, 0, BUFFER_SIZE);
+  char buf[BUFFER_SIZE] = {0};
+
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
@@ -302,9 +300,8 @@ void
 writesend_dnss_txtresponse(std::string txt, const struct sockaddr *from,
                            dnsd_question_request *request)
 {
-  const size_t BUFFER_SIZE = 1024 + (request->question.name.size() * 2);
-  char buf[BUFFER_SIZE];
-  memset(buf, 0, BUFFER_SIZE);
+  char buf[BUFFER_SIZE] = {0};
+
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header

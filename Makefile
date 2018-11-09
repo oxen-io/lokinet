@@ -50,11 +50,12 @@ CXX17 ?= ON
 AVX2 ?= ON
 RPI ?= OFF
 STATIC_LINK ?= OFF
+CMAKE_GEN ?= Unix Makefiles
 
 
 BUILD_ROOT = $(REPO)/build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DSTATIC_LINK=$(STATIC_LINK) -DUSE_AVX2=$(AVX2) -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DSTATIC_LINK=$(STATIC_LINK) -DUSE_AVX2=$(AVX2) -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
 
 SCAN_BUILD ?= scan-build
 ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
@@ -160,6 +161,14 @@ android-gradle: android-gradle-prepare
 	cd $(ANDROID_DIR) && JAVA_HOME=$(JAVA_HOME) $(GRADLE) clean assemble
 	
 android: android-gradle
+
+windows-configure: clean
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc-win32 -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++-win32 -DDNS_PORT=$(DNS_PORT) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+
+windows: windows-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
 
 abyss: debug
 	$(ABYSS_EXE)
