@@ -239,6 +239,7 @@ namespace llarp
       }
       /// reset errno
       errno = 0;
+      SetLastError(0);
     }
 
     std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;

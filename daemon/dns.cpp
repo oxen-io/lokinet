@@ -221,7 +221,12 @@ main(int argc, char *argv[])
     struct sockaddr_in m_address;
     int m_sockfd;
 
-    m_sockfd                  = socket(AF_INET, SOCK_DGRAM, 0);
+#ifndef _WIN32
+    m_sockfd = socket(AF_INET, SOCK_DGRAM, 0);
+#else
+    m_sockfd =
+        WSASocket(AF_INET, SOCK_DGRAM, 0, nullptr, 0, WSA_FLAG_OVERLAPPED);
+#endif
     m_address.sin_family      = AF_INET;
     m_address.sin_addr.s_addr = INADDR_ANY;
     m_address.sin_port        = htons(server_port);
