@@ -72,7 +72,7 @@ struct dns_msg_answer
   uint16_t aClass;
   uint32_t ttl;
   uint16_t rdLen;
-  uint8_t *rData;
+  std::vector< byte_t > rData;
 };
 
 struct dns_packet

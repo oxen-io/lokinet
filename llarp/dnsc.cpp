@@ -455,8 +455,9 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   else if(request->question.type == 12)
   {
     llarp::LogDebug("Resolving PTR");
-    request->found  = true;
-    request->revDNS = std::string((char *)answer->rData);
+    request->found = true;
+    request->revDNS =
+        std::string((char *)answer->rData.data(), answer->rData.size());
     request->resolved(request);
     return;
   }
@@ -465,16 +466,17 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::LogDebug("Resolving MX");
     request->found    = true;
     request->result.h = 99;
-    request->revDNS   = std::string((char *)answer->rData);
-    delete answer->rData;
+    request->revDNS =
+        std::string((char *)answer->rData.data(), answer->rData.size());
     request->resolved(request);
     return;
   }
   else if(request->question.type == 16)
   {
     llarp::LogDebug("Resolving TXT");
-    request->found  = true;
-    request->revDNS = std::string((char *)answer->rData);
+    request->found = true;
+    request->revDNS =
+        std::string((char *)answer->rData.data(), answer->rData.size());
     request->resolved(request);
     return;
   }

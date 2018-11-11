@@ -316,8 +316,8 @@ extern "C"
     // hexDumpAt(buffer, *pos, answer->rdLen);
     if(answer->rdLen == 4)
     {
-      answer->rData = new uint8_t[answer->rdLen];
-      memcpy(answer->rData, moveable, answer->rdLen);
+      answer->rData.resize(answer->rdLen);
+      memcpy(answer->rData.data(), moveable, answer->rdLen);
       /*
       llarp::LogDebug("Read ", std::to_string(answer->rData[0]), ".",
                       std::to_string(answer->rData[1]), ".",
@@ -369,8 +369,8 @@ extern "C"
         {
           std::string revname = getDNSstring(buffer, pos);
           llarp::LogInfo("revDNSname: ", revname);
-          answer->rData = new uint8_t[answer->rdLen + 1];
-          memcpy(answer->rData, revname.c_str(), answer->rdLen);
+          answer->rData.resize(answer->rdLen);
+          memcpy(answer->rData.data(), revname.c_str(), answer->rdLen);
           moveable += answer->rdLen;
           (*pos) += answer->rdLen;  // advance the length
         }
@@ -383,7 +383,8 @@ extern "C"
           llarp::LogInfo("MX: ", revname, " @ ", priority);
           // answer->rData = new uint8_t[revname.length() + 1];
           // memcpy(answer->rData, revname.c_str(), answer->rdLen);
-          answer->rData = (uint8_t *)strdup(revname.c_str());
+          answer->rData.resize(revname.size());
+          memcpy(answer->rData.data(), revname.c_str(), revname.size());
           moveable += answer->rdLen - 2;  // advance the length
           // llarp::LogInfo("leaving at ", std::to_string(*pos));
           // hexDumpAt(buffer, *pos, 5);
@@ -395,9 +396,8 @@ extern "C"
           // hexDump(buffer, 5);
           // std::string revname = getDNSstring((char *)buffer);
           llarp::LogInfo("TXT: size: ", answer->rdLen);
-          answer->rData = new uint8_t[answer->rdLen + 1];
-          memcpy(answer->rData, moveable + 1, answer->rdLen - 1);
-          answer->rData[answer->rdLen - 1] = 0;  // terminate string
+          answer->rData.resize(answer->rdLen);
+          memcpy(answer->rData.data(), moveable + 1, answer->rdLen);
           moveable += answer->rdLen;
           (*pos) += answer->rdLen;  // advance the length
         }
