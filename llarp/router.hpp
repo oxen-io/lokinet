@@ -139,6 +139,8 @@ struct llarp_router
   std::unordered_map< llarp::RouterID, llarp_time_t, llarp::RouterID::Hash >
       m_PersistingSessions;
 
+  // TODO: change me if needed
+  const std::string defaultUpstreamResolver = "1.1.1.1:53";
   std::list< std::string > upstreamResolvers;
   std::string resolverBindAddr = "127.0.0.1:53";
 

@@ -72,7 +72,9 @@ namespace llarp
                     llarp::Addr &localPrivateIpAddr);
 
       bool
-      AddDefaultEndpoint(const std::string &ifaddr, const std::string &ifname);
+      AddDefaultEndpoint(const std::string &ifaddr, const std::string &ifname,
+                         const std::string &remoteResovler,
+                         const std::string &localResolver);
 
       bool
       AddEndpoint(const Config::section_t &conf, bool autostart = false);

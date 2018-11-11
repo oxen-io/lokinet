@@ -209,12 +209,17 @@ namespace llarp
 
     bool
     Context::AddDefaultEndpoint(const std::string &ifaddr,
-                                const std::string &ifname)
+                                const std::string &ifname,
+                                const std::string &remoteResolver,
+                                const std::string &localResolver)
     {
-      return AddEndpoint(
-          {"default",
-           {{"type", "tun"}, {"ifaddr", ifaddr}, {"ifname", ifname}}},
-          true);
+      return AddEndpoint({"default",
+                          {{"type", "tun"},
+                           {"ifaddr", ifaddr},
+                           {"ifname", ifname},
+                           {"local-dns", localResolver},
+                           {"upstream-dns", remoteResolver}}},
+                         true);
     }
 
     bool

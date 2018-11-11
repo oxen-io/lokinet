@@ -968,7 +968,14 @@ llarp_router::InitOutboundLink()
 bool
 llarp_router::CreateDefaultHiddenService()
 {
-  return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName);
+  if(upstreamResolvers.size())
+    return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName,
+                                                   upstreamResolvers.front(),
+                                                   resolverBindAddr);
+  else
+    return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName,
+                                                   defaultUpstreamResolver,
+                                                   resolverBindAddr);
 }
 
 bool
