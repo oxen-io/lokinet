@@ -784,6 +784,13 @@ llarp_router::Run()
       llarp::LogWarn("Link ", link->Name(), " failed to start");
   }
 
+  llarp::LogInfo("starting hidden service context...");
+  if(!hiddenServiceContext.StartAll())
+  {
+    llarp::LogError("Failed to start hidden service context");
+    return;
+  }
+
   if(IBLinksStarted > 0)
   {
     // initialize as service node
@@ -1099,7 +1106,10 @@ llarp_router::LoadHiddenServiceConfig(const char *fname)
     return false;
   for(const auto &config : conf.services)
   {
-    if(!hiddenServiceContext.AddEndpoint(config))
+    llarp::service::Config::section_t filteredConfig;
+    mergeHiddenServiceConfig(config.second, filteredConfig.second);
+    filteredConfig.first = config.first;
+    if(!hiddenServiceContext.AddEndpoint(filteredConfig))
       return false;
   }
   return true;
@@ -1198,6 +1208,17 @@ namespace llarp
       else
       {
         llarp::LogWarn("failed to load hidden service config for ", key);
+      }
+    }
+    else if(StrEq(section, "dns"))
+    {
+      if(StrEq(key, "upstream"))
+      {
+        self->upstreamResolvers.push_back(val);
+      }
+      if(StrEq(key, "bind"))
+      {
+        self->resolverBindAddr = val;
       }
     }
     else if(StrEq(section, "connect"))

@@ -329,13 +329,16 @@ extern "C"
   {
     iter->conf                                                   = conf;
     std::map< std::string, llarp::Config::section_t & > sections = {
-        {"network", conf->impl.network}, {"connect", conf->impl.connect},
-        {"system", conf->impl.system},   {"bind", conf->impl.iwp_links},
-        {"netdb", conf->impl.netdb},     {"dns", conf->impl.dns},
-        {"api", conf->impl.api},         {"services", conf->impl.services}};
+        {"network", conf->impl.network},  {"connect", conf->impl.connect},
+        {"system", conf->impl.system},    {"bind", conf->impl.iwp_links},
+        {"netdb", conf->impl.netdb},      {"api", conf->impl.api},
+        {"services", conf->impl.services}};
 
     for(const auto item : conf->impl.router)
       iter->visit(iter, "router", item.first.c_str(), item.second.c_str());
+
+    for(const auto item : conf->impl.dns)
+      iter->visit(iter, "dns", item.first.c_str(), item.second.c_str());
 
     for(const auto &section : sections)
       for(const auto &item : section.second)

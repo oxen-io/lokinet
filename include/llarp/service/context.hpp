@@ -75,7 +75,10 @@ namespace llarp
       AddDefaultEndpoint(const std::string &ifaddr, const std::string &ifname);
 
       bool
-      AddEndpoint(const Config::section_t &conf);
+      AddEndpoint(const Config::section_t &conf, bool autostart = false);
+
+      bool
+      StartAll();
 
      private:
       llarp_router *m_Router;

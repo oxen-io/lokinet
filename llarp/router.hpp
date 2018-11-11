@@ -139,6 +139,9 @@ struct llarp_router
   std::unordered_map< llarp::RouterID, llarp_time_t, llarp::RouterID::Hash >
       m_PersistingSessions;
 
+  std::list< std::string > upstreamResolvers;
+  std::string resolverBindAddr = "127.0.0.1:53";
+
   llarp_router();
   ~llarp_router();
 
@@ -296,6 +299,19 @@ struct llarp_router
 
   static void
   HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
+
+ private:
+  template < typename Config >
+  void
+  mergeHiddenServiceConfig(const Config &in, Config &out)
+  {
+    for(const auto &resolver : upstreamResolvers)
+      out.push_back({"upstream-dns", resolver});
+    out.push_back({"local-dns", resolverBindAddr});
+
+    for(const auto &item : in)
+      out.push_back({item.first, item.second});
+  }
 };
 
 #endif

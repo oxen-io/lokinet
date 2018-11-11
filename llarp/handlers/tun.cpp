@@ -45,6 +45,30 @@ namespace llarp
         llarp::LogInfo(Name() + " would be setting DNS resolver to ", v);
         return true;
       }
+      if(k == "local-dns")
+      {
+        std::string resolverAddr = v;
+        uint16_t dnsport         = DNS_PORT;
+        auto pos                 = v.find(":");
+        if(pos != std::string::npos)
+        {
+          resolverAddr = v.substr(0, pos);
+        }
+        m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
+        llarp::LogInfo(Name(), " local dns set to ", m_LocalResolverAddr);
+      }
+      if(k == "upstream-dns")
+      {
+        std::string resolverAddr = v;
+        uint16_t dnsport         = DNS_PORT;
+        auto pos                 = v.find(":");
+        if(pos != std::string::npos)
+        {
+          resolverAddr = v.substr(0, pos);
+        }
+        m_UpstreamDNSAddr = llarp::Addr(resolverAddr, dnsport);
+        llarp::LogInfo(Name(), " upstream dns set to ", m_UpstreamDNSAddr);
+      }
       if(k == "mapaddr")
       {
         auto pos = v.find(":");
@@ -274,11 +298,11 @@ namespace llarp
         // public interface, don't want it exploitable maybe we could detect if
         // you have a private interface
       }
-      llarp::Addr dnsd_sockaddr(127, 0, 0, 1, DNS_PORT);
-      llarp::Addr dnsc_sockaddr(8, 8, 8, 8, 53);
-      llarp::LogInfo("TunDNS set up ", dnsd_sockaddr, " to ", dnsc_sockaddr);
+
+      llarp::LogInfo("TunDNS set up ", m_LocalResolverAddr, " to ",
+                     m_UpstreamDNSAddr);
       if(!llarp_dnsd_init(&this->dnsd, EndpointLogic(), EndpointNetLoop(),
-                          dnsd_sockaddr, dnsc_sockaddr))
+                          m_LocalResolverAddr, m_UpstreamDNSAddr))
       {
         llarp::LogError("Couldnt init dns daemon");
       }

@@ -145,6 +145,10 @@ namespace llarp
       huint32_t m_NextIP;
       /// highest ip address to allocate (host byte order)
       huint32_t m_MaxIP;
+      /// upstream dns
+      llarp::Addr m_UpstreamDNSAddr;
+      /// local dns
+      llarp::Addr m_LocalResolverAddr;
     };
   }  // namespace handlers
 }  // namespace llarp
