@@ -53,6 +53,7 @@ namespace llarp
         if(pos != std::string::npos)
         {
           resolverAddr = v.substr(0, pos);
+          dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
         llarp::LogInfo(Name(), " local dns set to ", m_LocalResolverAddr);
@@ -65,6 +66,7 @@ namespace llarp
         if(pos != std::string::npos)
         {
           resolverAddr = v.substr(0, pos);
+          dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_UpstreamDNSAddr = llarp::Addr(resolverAddr, dnsport);
         llarp::LogInfo(Name(), " upstream dns set to ", m_UpstreamDNSAddr);

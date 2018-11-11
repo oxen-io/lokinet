@@ -1221,10 +1221,12 @@ namespace llarp
     {
       if(StrEq(key, "upstream"))
       {
+        llarp::LogInfo("add upstream resolver ", val);
         self->upstreamResolvers.push_back(val);
       }
       if(StrEq(key, "bind"))
       {
+        llarp::LogInfo("set local dns to ", val);
         self->resolverBindAddr = val;
       }
     }
