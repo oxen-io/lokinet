@@ -1,7 +1,7 @@
 LLARP v0
 
 LLARP (Low Latency Anon Routing Protocol) is a protocol for anonymizing senders and
-recipiants of encrypted messages sent over the internet without a centralied
+recipiants of encrypted messages sent over the internet without a centralised
 trusted party.
 
 The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
