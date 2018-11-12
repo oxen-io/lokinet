@@ -455,6 +455,17 @@ set(LIB_SRC
   llarp/dht/got_intro.cpp
   llarp/dht/got_router.cpp
   llarp/dht/publish_intro.cpp
+  llarp/exit/close_exit.cpp
+  llarp/exit/context.cpp
+  llarp/exit/endpoint.cpp
+  llarp/exit/grant_exit.cpp
+  llarp/exit/update_exit.cpp
+  llarp/exit/obtain_exit.cpp
+  llarp/exit/policy.cpp
+  llarp/exit/reject_exit.cpp
+  llarp/exit/session.cpp
+  llarp/exit/transfer_traffic.cpp
+  llarp/handlers/exit.cpp
   llarp/handlers/tun.cpp
   llarp/link/curvecp.cpp
   llarp/link/server.cpp
@@ -494,6 +505,8 @@ set(TEST_SRC
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
   test/hiddenservice_unittest.cpp
+  test/traffic_transfer_unittest.cpp
+  test/obtain_exit_unittest.cpp
   test/pq_unittest.cpp
   test/net_unittest.cpp
   test/test_dns_unit.cpp

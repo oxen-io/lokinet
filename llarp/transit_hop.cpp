@@ -51,7 +51,7 @@ namespace llarp
     }
 
     bool
-    TransitHop::SendRoutingMessage(llarp::routing::IMessage* msg,
+    TransitHop::SendRoutingMessage(const llarp::routing::IMessage* msg,
                                    llarp_router* r)
     {
       if(!IsEndpoint(r->pubkey()))
@@ -146,6 +146,66 @@ namespace llarp
         __attribute__((unused)) llarp_router* r)
     {
       llarp::LogWarn("unwarranted path data discard message on ", info);
+      return false;
+    }
+
+    bool
+    TransitHop::HandleObtainExitMessage(
+        const llarp::routing::ObtainExitMessage* msg, llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    TransitHop::HandleCloseExitMessage(
+        const llarp::routing::CloseExitMessage* msg, llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    TransitHop::HandleUpdateExitMessage(
+        const llarp::routing::UpdateExitMessage* msg, llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    TransitHop::HandleRejectExitMessage(
+        const llarp::routing::RejectExitMessage* msg, llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    TransitHop::HandleGrantExitMessage(
+        const llarp::routing::GrantExitMessage* msg, llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    TransitHop::HandleTransferTrafficMessage(
+        const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
       return false;
     }
 

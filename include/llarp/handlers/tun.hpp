@@ -23,10 +23,10 @@ namespace llarp
       TunEndpoint(const std::string& nickname, llarp_router* r);
       ~TunEndpoint();
 
-      bool
+      virtual bool
       SetOption(const std::string& k, const std::string& v);
 
-      void
+      virtual void
       Tick(llarp_time_t now);
 
       void
@@ -115,7 +115,8 @@ namespace llarp
       void
       MarkIPActiveForever(huint32_t ip);
 
-      void
+      /// flush ip packets
+      virtual void
       FlushSend();
 
      private:

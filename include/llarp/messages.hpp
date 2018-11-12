@@ -11,5 +11,7 @@
 #include <llarp/messages/relay_commit.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/messages/path_confirm.hpp>
+#include <llarp/messages/exit.hpp>
+#include <llarp/messages/transfer_traffic.hpp>
 
 #endif

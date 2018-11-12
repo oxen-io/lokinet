@@ -106,7 +106,8 @@ namespace llarp
 
       /// send routing message and increment sequence number
       virtual bool
-      SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r) = 0;
+      SendRoutingMessage(const llarp::routing::IMessage* msg,
+                         llarp_router* r) = 0;
 
       // handle data in upstream direction
       virtual bool
@@ -117,6 +118,12 @@ namespace llarp
       virtual bool
       HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
                        llarp_router* r) = 0;
+
+      uint64_t
+      NextSeqNo()
+      {
+        return m_SequenceNum++;
+      }
 
      protected:
       uint64_t m_SequenceNum = 0;
@@ -159,7 +166,7 @@ namespace llarp
 
       // send routing message when end of path
       bool
-      SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r);
+      SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
 
       // handle routing message when end of path
       bool
@@ -179,6 +186,29 @@ namespace llarp
       bool
       HandlePathLatencyMessage(const llarp::routing::PathLatencyMessage* msg,
                                llarp_router* r);
+
+      bool
+      HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
+                              llarp_router* r);
+
+      bool
+      HandleTransferTrafficMessage(
+          const llarp::routing::TransferTrafficMessage* msg, llarp_router* r);
+
+      bool
+      HandleUpdateExitMessage(const llarp::routing::UpdateExitMessage* msg,
+                              llarp_router* r);
+
+      bool
+      HandleGrantExitMessage(const llarp::routing::GrantExitMessage* msg,
+                             llarp_router* r);
+      bool
+      HandleRejectExitMessage(const llarp::routing::RejectExitMessage* msg,
+                              llarp_router* r);
+
+      bool
+      HandleCloseExitMessage(const llarp::routing::CloseExitMessage* msg,
+                             llarp_router* r);
 
       bool
       HandleHiddenServiceFrame(__attribute__((unused))
@@ -287,7 +317,33 @@ namespace llarp
       Tick(llarp_time_t now, llarp_router* r);
 
       bool
-      SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r);
+      SendRoutingMessage(const llarp::routing::IMessage* msg, llarp_router* r);
+
+      bool
+      HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
+                              llarp_router* r);
+
+      bool
+      HandleTransferTrafficMessage(
+          const llarp::routing::TransferTrafficMessage* msg, llarp_router* r);
+
+      bool
+      HandleUpdateExitMessage(const llarp::routing::UpdateExitMessage* msg,
+                              llarp_router* r);
+
+      bool
+      HandleCloseExitMessage(const llarp::routing::CloseExitMessage* msg,
+                             llarp_router* r);
+      bool
+      HandleRejectExitMessagge(const llarp::routing::RejectExitMessage* msg,
+                               llarp_router* r);
+
+      bool
+      HandleGrantExitMessage(const llarp::routing::GrantExitMessage* msg,
+                             llarp_router* r);
+      bool
+      HandleRejectExitMessage(const llarp::routing::RejectExitMessage* msg,
+                              llarp_router* r);
 
       bool
       HandleDataDiscardMessage(const llarp::routing::DataDiscardMessage* msg,
@@ -392,6 +448,7 @@ namespace llarp
 
       void
       AllowTransit();
+
       void
       RejectTransit();
 

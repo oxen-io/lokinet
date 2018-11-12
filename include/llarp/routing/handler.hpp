@@ -7,8 +7,9 @@
 
 #include <llarp/messages/path_confirm.hpp>
 #include <llarp/messages/path_latency.hpp>
-
 #include <llarp/messages/path_transfer.hpp>
+#include <llarp/messages/exit.hpp>
+#include <llarp/messages/transfer_traffic.hpp>
 
 namespace llarp
 {
@@ -19,6 +20,28 @@ namespace llarp
     // handles messages on the routing level
     struct IMessageHandler
     {
+      virtual bool
+      HandleObtainExitMessage(const ObtainExitMessage *msg,
+                              llarp_router *r) = 0;
+
+      virtual bool
+      HandleGrantExitMessage(const GrantExitMessage *msg, llarp_router *r) = 0;
+
+      virtual bool
+      HandleRejectExitMessage(const RejectExitMessage *msg,
+                              llarp_router *r) = 0;
+
+      virtual bool
+      HandleTransferTrafficMessage(const TransferTrafficMessage *msg,
+                                   llarp_router *r) = 0;
+
+      virtual bool
+      HandleUpdateExitMessage(const UpdateExitMessage *msg,
+                              llarp_router *r) = 0;
+
+      virtual bool
+      HandleCloseExitMessage(const CloseExitMessage *msg, llarp_router *r) = 0;
+
       virtual bool
       HandleDataDiscardMessage(const DataDiscardMessage *msg,
                                llarp_router *r) = 0;

@@ -78,7 +78,7 @@ namespace llarp
         return false;
       }
 
-      std::string
+      virtual std::string
       Name() const;
 
       bool
@@ -138,6 +138,9 @@ namespace llarp
       {
         return true;
       }
+
+      bool
+      HandleDataMessage(const PathID_t&);
 
       /// ensure that we know a router, looks up if it doesn't
       void

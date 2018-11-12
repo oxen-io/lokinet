@@ -531,9 +531,9 @@ namespace llarp
     }
 
     bool
-    Path::SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r)
+    Path::SendRoutingMessage(const llarp::routing::IMessage* msg,
+                             llarp_router* r)
     {
-      msg->S = m_SequenceNum++;
       byte_t tmp[MAX_LINK_MSG_SIZE / 2];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
@@ -656,6 +656,66 @@ namespace llarp
       if(reply.M.size())
         return SendRoutingMessage(&reply, r);
       return true;
+    }
+
+    bool
+    Path::HandleCloseExitMessage(const llarp::routing::CloseExitMessage* msg,
+                                 llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    Path::HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
+                                  llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    Path::HandleUpdateExitMessage(const llarp::routing::UpdateExitMessage* msg,
+                                  llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    Path::HandleRejectExitMessage(const llarp::routing::RejectExitMessage* msg,
+                                  llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    Path::HandleGrantExitMessage(const llarp::routing::GrantExitMessage* msg,
+                                 llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
+    }
+
+    bool
+    Path::HandleTransferTrafficMessage(
+        const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
+    {
+      // TODO: implement me
+      (void)msg;
+      (void)r;
+      return false;
     }
 
   }  // namespace path

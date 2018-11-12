@@ -20,6 +20,7 @@
 #include <llarp/service.hpp>
 #include <llarp/establish_job.hpp>
 #include <llarp/profiling.hpp>
+#include <llarp/exit.hpp>
 
 #include "crypto.hpp"
 #include "fs.hpp"
@@ -67,6 +68,7 @@ struct llarp_router
   llarp_logic *logic;
   llarp_crypto crypto;
   llarp::path::PathContext paths;
+  llarp::exit::Context exitContext;
   llarp::SecretKey identity;
   llarp::SecretKey encryption;
   llarp_threadpool *disk;
@@ -96,6 +98,9 @@ struct llarp_router
 
   std::string defaultIfAddr = "auto";
   std::string defaultIfName = "auto";
+
+  /// default exit config
+  llarp::exit::Context::Config_t exitConf;
 
   bool
   CreateDefaultHiddenService();
@@ -159,7 +164,8 @@ struct llarp_router
   InitOutboundLink();
 
   /// initialize us as a service node
-  void
+  /// return true on success
+  bool
   InitServiceNode();
 
   void

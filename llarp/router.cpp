@@ -121,6 +121,7 @@ llarp_router::HandleLinkSessionEstablished(llarp::RouterContact rc)
 llarp_router::llarp_router()
     : ready(false)
     , paths(this)
+    , exitContext(this)
     , dht(llarp_dht_context_new(this))
     , inbound_link_msg_parser(this)
     , hiddenServiceContext(this)
@@ -506,13 +507,14 @@ llarp_router::Tick()
       dht->impl.Explore(explore);
     }
     paths.BuildPaths(now);
-    hiddenServiceContext.Tick();
+    hiddenServiceContext.Tick(now);
   }
   if(NumberOfConnectedRouters() < minConnectedRouters)
   {
     ConnectToRandomRouters(minConnectedRouters);
   }
   paths.TickPaths(now);
+  exitContext.Tick(now);
 }
 
 void
@@ -794,7 +796,11 @@ llarp_router::Run()
   if(IBLinksStarted > 0)
   {
     // initialize as service node
-    InitServiceNode();
+    if(!InitServiceNode())
+    {
+      llarp::LogError("Failed to initialize service node");
+      return;
+    }
     // immediate connect all for service node
     uint64_t delay = llarp_randint() % 100;
     llarp_logic_call_later(logic, {delay, this, &ConnectAll});
@@ -881,12 +887,13 @@ llarp_router::ShouldCreateDefaultHiddenService()
   return false;
 }
 
-void
+bool
 llarp_router::InitServiceNode()
 {
   llarp::LogInfo("accepting transit traffic");
   paths.AllowTransit();
   llarp_dht_allow_transit(dht);
+  return exitContext.AddExitEndpoint("default-connectivity", exitConf);
 }
 
 void
@@ -1189,6 +1196,10 @@ namespace llarp
       if(StrEq(key, "ifname"))
       {
         self->defaultIfName = val;
+      }
+      if(!StrEq(key, "profiles"))
+      {
+        self->exitConf.insert(std::make_pair(key, val));
       }
     }
     else if(StrEq(section, "api"))

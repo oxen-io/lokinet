@@ -21,9 +21,8 @@ namespace llarp
     }
 
     void
-    Context::Tick()
+    Context::Tick(llarp_time_t now)
     {
-      auto now = m_Router->Now();
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {

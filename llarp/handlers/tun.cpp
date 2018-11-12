@@ -37,14 +37,6 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
-      if(k == "nameresolver")
-      {
-        // we probably can set the property since the config will load before
-        // the relay is set up
-        // strncpy(tunif.ifname, v.c_str(), sizeof(tunif.ifname) - 1);
-        llarp::LogInfo(Name() + " would be setting DNS resolver to ", v);
-        return true;
-      }
       if(k == "local-dns")
       {
         std::string resolverAddr = v;
