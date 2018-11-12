@@ -83,10 +83,9 @@ main(int argc, char *argv[])
         break;
       case 'r':
 #ifdef _WIN32
-        llarp::LogError(
+        llarp::LogWarn(
             "please don't try this at home, the relay feature is untested on "
             "windows server --R.");
-        return 1;
 #endif
         asRouter = true;
         break;
