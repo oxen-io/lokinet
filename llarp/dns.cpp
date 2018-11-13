@@ -366,7 +366,8 @@ extern "C"
         {
           std::string revname = getDNSstring(buffer, pos);
           llarp::LogInfo("revDNSname: ", revname);
-          answer->rData = new uint8_t[answer->rdLen + 1];
+          //answer->rData = new uint8_t[answer->rdLen + 1];
+          answer->rData.resize(answer->rdLen);
           memcpy(answer->rData.data(), revname.c_str(), answer->rdLen);
           //answer->rData = (uint8_t *)strdup(revname.c_str()); // safer? nope
           moveable += answer->rdLen;
