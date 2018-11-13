@@ -52,6 +52,7 @@ endif()
 
 if(WIN32)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+add_compile_options(-Wno-cast-function-type)
 set(FS_LIB stdc++fs)
 endif(WIN32)
 
