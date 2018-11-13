@@ -36,6 +36,20 @@ add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
+# gah, can't recall which -Wno flag is exclusive to clang
+# -Wno-cast-function-type is GNU exclusive..i think
+if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
+# dynamic linking does this all the time
+add_compile_options(-Wno-cast-function-type)
+if (USING_CLANG)
+add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+# because clang is insane enough to inline whole sections of the C++ library!
+# May have been fixed in llvm-7.
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
+endif(USING_CLANG)
+endif()
+
 if(WIN32)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
 set(FS_LIB stdc++fs)
