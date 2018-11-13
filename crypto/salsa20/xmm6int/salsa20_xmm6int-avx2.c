@@ -8,7 +8,7 @@
 #include <sodium/private/sse2_64_32.h>
 #include <sodium/utils.h>
 
-#if __AVX2__
+#if __AVX2__ && __amd64__
 
 #ifdef __GNUC__
 #pragma GCC target("sse2")
@@ -24,15 +24,17 @@
 
 #ifndef __amd64__
 #ifdef __clang__
-#define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, __nodebug__, __target__("sse2")))
+#define __DEFAULT_FN_ATTRS \
+  __attribute__((__always_inline__, __nodebug__, __target__("sse2")))
 #else
-#define __DEFAULT_FN_ATTRS __attribute__((__always_inline__, __target__("sse2")))
+#define __DEFAULT_FN_ATTRS \
+  __attribute__((__always_inline__, __target__("sse2")))
 #endif
 
 static __inline__ __m128i __DEFAULT_FN_ATTRS
 _mm_cvtsi64_si128(long long __a)
 {
-  return (__m128i){ __a, 0 };
+  return (__m128i){__a, 0};
 }
 #endif
 

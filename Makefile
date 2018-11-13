@@ -5,8 +5,7 @@ SIGN = gpg --sign --detach
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-DESTDIR ?= /usr/local
-PREFIX = $(DESTDIR)
+prefix = $(DESTDIR)/usr/local
 
 CC ?= cc
 CXX ?= c++
@@ -52,8 +51,6 @@ AVX2 ?= ON
 RPI ?= OFF
 STATIC_LINK ?= OFF
 CMAKE_GEN ?= Unix Makefiles
-
-INSTALL = install -m 755
 
 BUILD_ROOT = $(REPO)/build
 
@@ -206,15 +203,20 @@ debian-configure:
 
 debian: debian-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
-	cp $(BUILD_ROOT)/lokinet lokinet
+	cp $(EXE) lokinet 
 	cp $(BUILD_ROOT)/rcutil lokinet-rcutil
 
-install:
-	$(INSTALL) $(EXE) $(PREFIX)
-	$(INSTALL) $(REPO)/lokinet-bootstrap $(PREFIX)
+debian-test:
+	$(TEST_EXE)
 
-setcap:
-	$(SETCAP) $(PREFIX)/bin/lokinet || true
+install-bins:
+	install -T $(EXE) $(prefix)/bin/lokinet
+	install -T $(REPO)/lokinet-bootstrap $(prefix)/bin/lokinet-bootstrap
+
+install-setcap: install-bins
+	$(SETCAP) $(prefix)/bin/lokinet || true
+
+install: install-setcap
 
 fuzz-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
@@ -224,3 +226,5 @@ fuzz-build: fuzz-configure
 
 fuzz: fuzz-build
 	$(EXE)
+
+.PHONY: debian-install

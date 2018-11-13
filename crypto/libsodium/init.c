@@ -48,7 +48,7 @@ sodium_init(void)
   {
     return -1; /* LCOV_EXCL_LINE */
   }
-  return 0;
+  return initialized ? 0 : -1;
 }
 
 #ifdef _WIN32

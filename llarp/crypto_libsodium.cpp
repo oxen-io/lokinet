@@ -178,7 +178,7 @@ namespace llarp
 void
 llarp_crypto_init(struct llarp_crypto *c)
 {
-  assert(sodium_init() != -1);
+  assert(sodium_init() == 0);
   char *avx2 = getenv("AVX2_FORCE_DISABLE");
   if(avx2 && std::string(avx2) == "1")
     ntru_init(1);
