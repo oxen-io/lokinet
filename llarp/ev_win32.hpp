@@ -8,15 +8,14 @@
 #include "ev.hpp"
 #include "logger.hpp"
 
+// TODO: convert all socket errno calls to WSAGetLastError(3),
+// don't think winsock sets regular errno to this day
 namespace llarp
 {
   int
   tcp_conn::read(void* buf, size_t sz)
   {
-    if(_shouldClose)
-      return -1;
-
-    WSABUF r_buf = {sz, (char*)buf};
+    WSABUF r_buf = {(u_long)sz, (char*)buf};
     DWORD amount = 0;
 
     WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, &portfd[0], nullptr);
@@ -24,8 +23,8 @@ namespace llarp
                         TRUE);
     if(amount > 0)
     {
-      if(tcp->read)
-        tcp->read(tcp, buf, amount);
+      if(tcp.read)
+        tcp.read(&tcp, buf, amount);
     }
     else
     {
@@ -39,7 +38,7 @@ namespace llarp
   ssize_t
   tcp_conn::do_write(void* buf, size_t sz)
   {
-    WSABUF s_buf = {sz, (char*)buf};
+    WSABUF s_buf = {(u_long)sz, (char*)buf};
     DWORD sent   = 0;
 
     if(_shouldClose)
@@ -49,6 +48,43 @@ namespace llarp
     GetOverlappedResult((HANDLE)std::get< SOCKET >(fd), &portfd[1], &sent,
                         TRUE);
     return sent;
+  }
+
+  void
+  tcp_conn::flush_write()
+  {
+    connected();
+    ev_io::flush_write();
+  }
+
+  void
+  tcp_conn::connect()
+  {
+    socklen_t slen = sizeof(sockaddr_in);
+    if(_addr.ss_family == AF_UNIX)
+      slen = sizeof(sockaddr_un);
+    else if(_addr.ss_family == AF_INET6)
+      slen = sizeof(sockaddr_in6);
+    int result =
+        ::connect(std::get< SOCKET >(fd), (const sockaddr*)&_addr, slen);
+    if(result == 0)
+    {
+      llarp::LogDebug("connected immedidately");
+      connected();
+    }
+    else if(errno == EINPROGRESS)
+    {
+      // in progress
+      llarp::LogDebug("connect in progress");
+      errno = 0;
+      return;
+    }
+    else if(_conn->error)
+    {
+      // wtf?
+      llarp::LogError("error connecting ", strerror(errno));
+      _conn->error(_conn);
+    }
   }
 
   int
@@ -61,24 +97,16 @@ namespace llarp
                       strerror(errno));
       return -1;
     }
-    llarp_tcp_conn* conn = new llarp_tcp_conn;
-    // zero out callbacks
-    conn->tick   = nullptr;
-    conn->closed = nullptr;
-    conn->read   = nullptr;
     // build handler
-    llarp::tcp_conn* connimpl = new tcp_conn(new_fd, conn);
-    conn->impl                = connimpl;
-    conn->loop                = loop;
+    llarp::tcp_conn* connimpl = new tcp_conn(loop, new_fd);
     if(loop->add_ev(connimpl, true))
     {
       // call callback
       if(tcp->accepted)
-        tcp->accepted(tcp, conn);
+        tcp->accepted(tcp, &connimpl->tcp);
       return 0;
     }
     // cleanup error
-    delete conn;
     delete connimpl;
     return -1;
   }
@@ -108,7 +136,7 @@ namespace llarp
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
       unsigned long flags = 0;
-      WSABUF wbuf         = {sz, static_cast< char* >(buf)};
+      WSABUF wbuf         = {(u_long)sz, static_cast< char* >(buf)};
       // WSARecvFrom
       llarp::LogDebug("read ", sz, " bytes into socket");
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
@@ -128,7 +156,7 @@ namespace llarp
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       socklen_t slen;
-      WSABUF wbuf = {sz, (char*)data};
+      WSABUF wbuf = {(u_long)sz, (char*)data};
       switch(to->sa_family)
       {
         case AF_INET:
@@ -168,6 +196,9 @@ namespace llarp
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
+      (void)(to);
+      (void)(data);
+      (void)(sz);
       return -1;
     }
 
@@ -211,7 +242,7 @@ namespace llarp
     setup()
     {
       llarp::LogDebug("set ifname to ", t->ifname);
-      strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
+      strncpy(tunif->if_name, t->ifname, IFNAMSIZ);
 
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
@@ -252,6 +283,26 @@ struct llarp_win32_loop : public llarp_ev_loop
 
   llarp_win32_loop() : iocpfd(INVALID_HANDLE_VALUE)
   {
+  }
+
+  bool
+  tcp_connect(struct llarp_tcp_connecter* tcp, const sockaddr* remoteaddr)
+  {
+    // create socket
+    DWORD on  = 1;
+    SOCKET fd = ::socket(remoteaddr->sa_family, SOCK_STREAM, 0);
+    if(fd == INVALID_SOCKET)
+      return false;
+    // set non blocking
+    if(ioctlsocket(fd, FIONBIO, &on) == SOCKET_ERROR)
+    {
+      ::closesocket(fd);
+      return false;
+    }
+    llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
+    add_ev(conn, true);
+    conn->connect();
+    return true;
   }
 
   ~llarp_win32_loop()
@@ -314,38 +365,28 @@ struct llarp_win32_loop : public llarp_ev_loop
   int
   tick(int ms)
   {
-    // The only field we really care about is
-    // the listener_id, as it contains the address
-    // of the ev_io instance.
-    DWORD iolen = 0;
-    // ULONG_PTR is guaranteed to be the same size
-    // as an arch-specific pointer value
-    ULONG_PTR ev_id      = 0;
-    WSAOVERLAPPED* qdata = nullptr;
-    int idx              = 0;
-    BOOL result =
-        ::GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms);
-
-    llarp::ev_io* ev = reinterpret_cast< llarp::ev_io* >(ev_id);
-    if(ev && qdata)
+    OVERLAPPED_ENTRY events[1024];
+    ULONG numEvents = 0;
+    if(::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &numEvents, ms,
+                                     false))
     {
-      llarp::LogDebug("size: ", iolen, "\tev_id: ", ev_id, "\tqdata: ", qdata);
-      if(ev->write)
-        ev->flush_write();
-      else
-        ev->read(readbuf, iolen);
-      ++idx;
+      for(ULONG idx = 0; idx < numEvents; ++idx)
+      {
+        llarp::ev_io* ev =
+            reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
+        if(ev)
+        {
+          if(ev->write)
+            ev->flush_write();
+          auto amount =
+              std::min(EV_READ_BUF_SZ, events[idx].dwNumberOfBytesTransferred);
+          memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
+          ev->read(readbuf, amount);
+        }
+      }
     }
-
-    if(!idx)
-      return -1;
-    else
-    {
-      result = idx;
-      tick_listeners();
-    }
-
-    return result;
+    tick_listeners();
+    return 0;
   }
 
   // ok apparently this isn't being used yet...

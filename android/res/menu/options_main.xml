@@ -4,6 +4,11 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context=".LokiNetActivity">
     <item
+    android:id="@+id/action_start"
+    android:title="@string/action_start"
+    android:orderInCategory="98"
+    />
+    <item
         android:id="@+id/action_stop"
         android:title="@string/action_stop"
         android:orderInCategory="99"

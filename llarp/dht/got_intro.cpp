@@ -21,6 +21,7 @@ namespace llarp
     bool
     GotIntroMessage::HandleMessage(
         llarp_dht_context *ctx,
+        __attribute__((unused))
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht   = ctx->impl;
@@ -48,7 +49,14 @@ namespace llarp
           dht.pendingIntrosetLookups.GetPendingLookupFrom(owner);
       if(serviceLookup)
       {
-        dht.pendingIntrosetLookups.Found(owner, serviceLookup->target, I);
+        if(I.size())
+        {
+          dht.pendingIntrosetLookups.Found(owner, serviceLookup->target, I);
+        }
+        else
+        {
+          dht.pendingIntrosetLookups.NotFound(owner, K);
+        }
         return true;
       }
       llarp::LogError("no pending TX for GIM from ", From, " txid=", T);
@@ -58,6 +66,7 @@ namespace llarp
     bool
     RelayedGotIntroMessage::HandleMessage(
         llarp_dht_context *ctx,
+        __attribute__((unused))
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       // TODO: implement me better?
@@ -77,6 +86,13 @@ namespace llarp
       {
         return BEncodeReadList(I, buf);
       }
+      if(llarp_buffer_eq(key, "K"))
+      {
+        if(K)  // duplicate key?
+          return false;
+        K.reset(new dht::Key_t());
+        return K->BDecode(buf);
+      }
       bool read = false;
       if(!BEncodeMaybeReadDictInt("T", T, read, key, buf))
         return false;
@@ -94,6 +110,11 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictList("I", I, buf))
         return false;
+      if(K)
+      {
+        if(!BEncodeWriteDictEntry("K", *K.get(), buf))
+          return false;
+      }
       if(!BEncodeWriteDictInt("T", T, buf))
         return false;
       if(!BEncodeWriteDictInt("V", version, buf))

@@ -29,7 +29,7 @@ namespace abyss
       HandleJSONRPC(Method_t method, const Params& params,
                     Response& response) = 0;
 
-      ~IRPCHandler();
+      virtual ~IRPCHandler();
 
       bool
       ShouldClose(llarp_time_t now) const;

@@ -180,7 +180,10 @@ namespace llarp
         if(!HasPathToService(addr))
         {
           if(!EnsurePathToService(
-                 addr, [](Address addr, OutboundContext* ctx) {}, 10000))
+                 addr,
+                 [](__attribute__((unused)) Address addr,
+                    __attribute__((unused)) OutboundContext* ctx) {},
+                 10000))
           {
             llarp::LogWarn("failed to ensure path to ", addr);
           }
@@ -193,9 +196,9 @@ namespace llarp
         auto itr = m_PrefetchedTags.find(tag);
         if(itr == m_PrefetchedTags.end())
         {
-          itr =
-              m_PrefetchedTags.insert(std::make_pair(tag, CachedTagResult(tag)))
-                  .first;
+          itr = m_PrefetchedTags
+                    .insert(std::make_pair(tag, CachedTagResult(tag, this)))
+                    .first;
         }
         for(const auto& introset : itr->second.result)
         {
@@ -280,7 +283,15 @@ namespace llarp
     bool
     Endpoint::HasPathToService(const Address& addr) const
     {
-      return m_RemoteSessions.find(addr) != m_RemoteSessions.end();
+      auto range                   = m_RemoteSessions.equal_range(addr);
+      Sessions::const_iterator itr = range.first;
+      while(itr != range.second)
+      {
+        if(itr->second->ReadyToSend())
+          return true;
+        ++itr;
+      }
+      return false;
     }
 
     void
@@ -619,7 +630,7 @@ namespace llarp
       BuildRequestMessage()
       {
         llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-        msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 5));
+        msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 0));
         return msg;
       }
     };
@@ -772,7 +783,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
+    Endpoint::HandleDataMessage(__attribute__((unused)) const PathID_t& src,
+                                ProtocolMessage* msg)
     {
       msg->sender.UpdateAddr();
       PutIntroFor(msg->tag, msg->introReply);
@@ -826,7 +838,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::CheckPathIsDead(path::Path* p, llarp_time_t latency)
+    Endpoint::CheckPathIsDead(__attribute__((unused)) path::Path* p,
+                              llarp_time_t latency)
     {
       if(latency >= m_MinPathLatency)
       {
@@ -866,7 +879,9 @@ namespace llarp
 
     bool
     Endpoint::EnsurePathToService(const Address& remote, PathEnsureHook hook,
-                                  llarp_time_t timeoutMS, bool randomPath)
+                                  __attribute__((unused))
+                                  llarp_time_t timeoutMS,
+                                  bool randomPath)
     {
       path::Path* path = nullptr;
       if(randomPath)
@@ -983,7 +998,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::OutboundContext::OnIntroSetUpdate(const Address& addr,
+    Endpoint::OutboundContext::OnIntroSetUpdate(__attribute__((unused))
+                                                const Address& addr,
                                                 const IntroSet* i,
                                                 const RouterID& endpoint)
     {
@@ -1101,9 +1117,6 @@ namespace llarp
           }
           ++itr;
         }
-        llarp::LogWarn("No path ready to send yet");
-        // all paths are not ready?
-        return false;
       }
       // no converstation
       EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000,
@@ -1366,6 +1379,7 @@ namespace llarp
 
     void
     Endpoint::OutboundContext::AsyncGenIntro(llarp_buffer_t payload,
+                                             __attribute__((unused))
                                              ProtocolType t)
     {
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
@@ -1569,19 +1583,18 @@ namespace llarp
       if(remoteIntro.ExpiresSoon(now))
       {
         // shift intro
-        MarkCurrentIntroBad(now);
+        if(MarkCurrentIntroBad(now))
+        {
+          llarp::LogInfo("intro shifted");
+        }
       }
-
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)
       {
-        path = m_Endpoint->GetNewestPathByRouter(remoteIntro.router);
-        if(!path)
-        {
-          llarp::LogError("cannot encrypt and send: no path for intro ",
-                          remoteIntro);
-          return;
-        }
+        llarp::LogError("cannot encrypt and send: no path for intro ",
+                        remoteIntro);
+
+        return;
       }
 
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))

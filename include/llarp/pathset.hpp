@@ -46,10 +46,10 @@ namespace llarp
       RemovePath(Path* path);
 
       virtual void
-      HandlePathBuilt(Path* path);
+      HandlePathBuilt(__attribute__((unused)) Path* path);
 
       virtual void
-      HandlePathBuildTimeout(Path* path);
+      HandlePathBuildTimeout(__attribute__((unused)) Path* path);
 
       bool
       GetNewestIntro(service::Introduction& intro) const;
@@ -76,22 +76,23 @@ namespace llarp
 
       /// return true if we should publish a new hidden service descriptor
       virtual bool
-      ShouldPublishDescriptors(llarp_time_t now) const
-      {
-        (void)now;
-        return false;
-      }
-
-      /// override me in subtype
-      virtual bool
-      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg)
+      ShouldPublishDescriptors(__attribute__((unused)) llarp_time_t now) const
       {
         return false;
       }
 
       /// override me in subtype
       virtual bool
-      HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg)
+      HandleGotIntroMessage(__attribute__((unused))
+                            const llarp::dht::GotIntroMessage* msg)
+      {
+        return false;
+      }
+
+      /// override me in subtype
+      virtual bool
+      HandleGotRouterMessage(__attribute__((unused))
+                             const llarp::dht::GotRouterMessage* msg)
       {
         return false;
       }
@@ -128,7 +129,7 @@ namespace llarp
           std::set< llarp::service::Introduction >& intros) const;
 
       virtual bool
-      PublishIntroSet(llarp_router* r)
+      PublishIntroSet(__attribute__((unused)) llarp_router* r)
       {
         return false;
       }

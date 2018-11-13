@@ -133,15 +133,17 @@ namespace llarp
 
     bool
     TransitHop::HandlePathConfirmMessage(
-        const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
+        __attribute__((unused)) const llarp::routing::PathConfirmMessage* msg,
+        __attribute__((unused)) llarp_router* r)
     {
-      llarp::LogWarn("unwarrented path confirm message on ", info);
+      llarp::LogWarn("unwarranted path confirm message on ", info);
       return false;
     }
 
     bool
     TransitHop::HandleDataDiscardMessage(
-        const llarp::routing::DataDiscardMessage* msg, llarp_router* r)
+        __attribute__((unused)) const llarp::routing::DataDiscardMessage* msg,
+        __attribute__((unused)) llarp_router* r)
     {
       llarp::LogWarn("unwarranted path data discard message on ", info);
       return false;

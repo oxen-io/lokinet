@@ -17,7 +17,7 @@
 /// address information model
 namespace llarp
 {
-  struct AddressInfo : public IBEncodeMessage
+  struct AddressInfo final : public IBEncodeMessage
   {
     uint16_t rank;
     std::string dialect;
@@ -52,17 +52,23 @@ namespace llarp
     operator<(const AddressInfo& other) const;
 
     bool
-    BEncode(llarp_buffer_t* buf) const;
+    BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf);
+    DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf) override;
 
     friend std::ostream&
     operator<<(std::ostream& out, const AddressInfo& a)
     {
       char tmp[128] = {0};
-      inet_ntop(AF_INET6, &a.ip, tmp, sizeof(tmp));
-      return out << tmp << "." << std::to_string(a.port);
+      inet_ntop(AF_INET6, (void*)&a.ip, tmp, sizeof(tmp));
+      out << tmp << ".";
+#if defined(ANDROID) || defined(RPI)
+      snprintf(tmp, sizeof(tmp), "%u", a.port);
+      return out << tmp;
+#else
+      return out << std::to_string(a.port);
+#endif
     }
 
     struct Hash

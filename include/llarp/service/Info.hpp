@@ -8,7 +8,7 @@ namespace llarp
 {
   namespace service
   {
-    struct ServiceInfo : public llarp::IBEncodeMessage
+    struct ServiceInfo final : public llarp::IBEncodeMessage
     {
      private:
       llarp::PubKey enckey;
@@ -18,8 +18,7 @@ namespace llarp
      public:
       ServiceInfo() = default;
 
-      ServiceInfo(ServiceInfo&& other) = delete;
-      /*
+      ServiceInfo(ServiceInfo&& other)
       {
         enckey       = std::move(other.enckey);
         signkey      = std::move(other.signkey);
@@ -27,10 +26,10 @@ namespace llarp
         vanity       = std::move(other.vanity);
         m_CachedAddr = std::move(other.m_CachedAddr);
       }
-      */
 
       ServiceInfo(const ServiceInfo& other)
-          : enckey(other.enckey)
+          : IBEncodeMessage(other.version)
+          , enckey(other.enckey)
           , signkey(other.signkey)
           , vanity(other.vanity)
           , m_CachedAddr(other.m_CachedAddr)
@@ -121,7 +120,7 @@ namespace llarp
       CalculateAddress(byte_t* buf) const;
 
       bool
-      BDecode(llarp_buffer_t* buf)
+      BDecode(llarp_buffer_t* buf) override
       {
         if(IBEncodeMessage::BDecode(buf))
           return CalculateAddress(m_CachedAddr.data());
@@ -129,10 +128,10 @@ namespace llarp
       }
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
      private:
       Address m_CachedAddr;

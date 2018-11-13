@@ -24,6 +24,7 @@ dns_iptracker_init()
 // not sure we want tunGatewayIP... we'll know when we get further
 bool
 dns_iptracker_setup_dotLokiLookup(dotLokiLookup *dll,
+                                  __attribute__((unused))
                                   llarp::huint32_t tunGatewayIp)
 {
   dll->ip_tracker = &g_dns_iptracker;
@@ -39,11 +40,11 @@ dns_iptracker_setup(dns_iptracker *iptracker, llarp::huint32_t tunGatewayIp)
   // struct in_addr *addr = tunGatewayIp.addr4();
   // unsigned char *ip    = (unsigned char *)&(addr->s_addr);
   unsigned char *ip = (unsigned char *)&(tunGatewayIp.h);
-
-  llarp::LogInfo("iptracker setup: (", std::to_string(ip[0]), ").[",
-                 std::to_string(ip[1]), '.', std::to_string(ip[2]), "].",
-                 std::to_string(ip[3]));
-
+  /*
+    llarp::LogInfo("iptracker setup: (", std::to_string(ip[0]), ").[",
+                   std::to_string(ip[1]), '.', std::to_string(ip[2]), "].",
+                   std::to_string(ip[3]));
+  */
   std::unique_ptr< ip_range > range(new ip_range);
   range->octet2 = ip[1];  // 2nd octet
   range->octet3 = ip[2];  // 3rd octet

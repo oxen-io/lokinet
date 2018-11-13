@@ -13,6 +13,9 @@
 
 #include <fstream>
 #include <cstdlib>
+#if defined(RPI) || defined(ANDROID)
+#include <unistd.h>
+#endif
 
 namespace llarp
 {
@@ -494,7 +497,7 @@ llarp_router::Tick()
 
   if(inboundLinks.size() == 0)
   {
-    auto N = llarp_nodedb_num_loaded(nodedb);
+    size_t N = llarp_nodedb_num_loaded(nodedb);
     if(N < minRequiredRouters)
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,
@@ -560,11 +563,11 @@ llarp_router::ScheduleTicker(uint64_t ms)
 void
 llarp_router::SessionClosed(const llarp::RouterID &remote)
 {
-  // remove from valid routers and dht if it's a valid router
+  __llarp_dht_remove_peer(dht, remote);
+  // remove from valid routers if it's a valid router
   auto itr = validRouters.find(remote);
   if(itr == validRouters.end())
     return;
-  __llarp_dht_remove_peer(dht, remote);
   validRouters.erase(itr);
 }
 
@@ -672,7 +675,11 @@ llarp_router::Run()
     while(!rpcServer->Start(rpcBindAddr))
     {
       llarp::LogError("failed to bind jsonrpc to ", rpcBindAddr);
+#if defined(ANDROID) || defined(RPI)
+      sleep(1);
+#else
       std::this_thread::sleep_for(std::chrono::seconds(1));
+#endif
     }
     llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
   }
@@ -777,6 +784,13 @@ llarp_router::Run()
       llarp::LogWarn("Link ", link->Name(), " failed to start");
   }
 
+  llarp::LogInfo("starting hidden service context...");
+  if(!hiddenServiceContext.StartAll())
+  {
+    llarp::LogError("Failed to start hidden service context");
+    return;
+  }
+
   if(IBLinksStarted > 0)
   {
     // initialize as service node
@@ -827,10 +841,11 @@ llarp_router::ShouldCreateDefaultHiddenService()
   {
     // auto detect if we have any pre-defined endpoints
     // no if we have a endpoints
-    llarp::LogInfo("Auto mode detected, hasEndpoints: ",
-                   std::to_string(this->hiddenServiceContext.hasEndpoints()));
-    if(this->hiddenServiceContext.hasEndpoints())
+    if(hiddenServiceContext.hasEndpoints())
+    {
+      llarp::LogInfo("Auto mode detected and we have endpoints");
       return false;
+    }
     // we don't have any endpoints, auto configure settings
 
     // set a default IP range
@@ -875,7 +890,8 @@ llarp_router::InitServiceNode()
 }
 
 void
-llarp_router::ConnectAll(void *user, uint64_t orig, uint64_t left)
+llarp_router::ConnectAll(void *user, __attribute__((unused)) uint64_t orig,
+                         uint64_t left)
 {
   if(left)
     return;
@@ -916,7 +932,7 @@ llarp_router::ConnectToRandomRouters(int want)
 }
 
 bool
-llarp_router::ReloadConfig(const llarp_config *conf)
+llarp_router::ReloadConfig(__attribute__((unused)) const llarp_config *conf)
 {
   return true;
 }
@@ -952,7 +968,14 @@ llarp_router::InitOutboundLink()
 bool
 llarp_router::CreateDefaultHiddenService()
 {
-  return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName);
+  if(upstreamResolvers.size())
+    return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName,
+                                                   upstreamResolvers.front(),
+                                                   resolverBindAddr);
+  else
+    return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName,
+                                                   defaultUpstreamResolver,
+                                                   resolverBindAddr);
 }
 
 bool
@@ -1090,7 +1113,10 @@ llarp_router::LoadHiddenServiceConfig(const char *fname)
     return false;
   for(const auto &config : conf.services)
   {
-    if(!hiddenServiceContext.AddEndpoint(config))
+    llarp::service::Config::section_t filteredConfig;
+    mergeHiddenServiceConfig(config.second, filteredConfig.second);
+    filteredConfig.first = config.first;
+    if(!hiddenServiceContext.AddEndpoint(filteredConfig))
       return false;
   }
   return true;
@@ -1189,6 +1215,19 @@ namespace llarp
       else
       {
         llarp::LogWarn("failed to load hidden service config for ", key);
+      }
+    }
+    else if(StrEq(section, "dns"))
+    {
+      if(StrEq(key, "upstream"))
+      {
+        llarp::LogInfo("add upstream resolver ", val);
+        self->upstreamResolvers.push_back(val);
+      }
+      if(StrEq(key, "bind"))
+      {
+        llarp::LogInfo("set local dns to ", val);
+        self->resolverBindAddr = val;
       }
     }
     else if(StrEq(section, "connect"))

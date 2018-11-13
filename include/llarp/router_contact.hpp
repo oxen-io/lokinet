@@ -12,7 +12,7 @@
 
 namespace llarp
 {
-  struct RouterContact : public IBEncodeMessage
+  struct RouterContact final : public IBEncodeMessage
   {
     RouterContact() : IBEncodeMessage()
     {
@@ -20,14 +20,14 @@ namespace llarp
     }
 
     RouterContact(const RouterContact &other)
-        : addrs(other.addrs)
+        : IBEncodeMessage()
+        , addrs(other.addrs)
         , enckey(other.enckey)
         , pubkey(other.pubkey)
         , exits(other.exits)
         , signature(other.signature)
         , nickname(other.nickname)
         , last_updated(other.last_updated)
-
     {
       version = other.version;
     }
@@ -48,20 +48,20 @@ namespace llarp
     uint64_t last_updated;
 
     bool
-    BEncode(llarp_buffer_t *buf) const;
+    BEncode(llarp_buffer_t *buf) const override;
 
     void
     Clear();
 
     bool
-    BDecode(llarp_buffer_t *buf)
+    BDecode(llarp_buffer_t *buf) override
     {
       Clear();
       return IBEncodeMessage::BDecode(buf);
     }
 
     bool
-    DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf);
+    DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf) override;
 
     RouterContact &
     operator=(const RouterContact &other);

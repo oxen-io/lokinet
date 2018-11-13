@@ -39,4 +39,8 @@ vsproject/
 daemon.ini
 lokinet-win32.exe
 lokinet
+lokinet.exe
 rapidjson/
+
+
+.gradle/

@@ -30,21 +30,28 @@
 
 // we already have our own definition of these
 // -despair
-namespace {
-extern "C" {
-const char* inet_ntop(int af, const void *src, char *dst, size_t size);
-int inet_pton(int af, const char *src, void *dst);
-}
+#ifndef inet_ntop
+namespace
+{
+  extern "C"
+  {
+    const char *
+    inet_ntop(int af, const void *src, char *dst, size_t size);
+    int
+    inet_pton(int af, const char *src, void *dst);
+  }
+}  // namespace
+#endif
+//######################################################################
+const char *
+libutp::inet_ntop(int af, const void *src, char *dest, size_t length)
+{
+  return ::inet_ntop(af, (void *)src, dest, length);
 }
 
 //######################################################################
-const char *libutp::inet_ntop(int af, const void *src, char *dest, size_t length)
+int
+libutp::inet_pton(int af, const char *src, void *dest)
 {
-	return ::inet_ntop(af, src, dest, length);
-}
-
-//######################################################################
-int libutp::inet_pton(int af, const char* src, void* dest)
-{
-	return ::inet_pton(af, src, dest);
+  return ::inet_pton(af, src, dest);
 }

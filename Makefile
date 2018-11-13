@@ -31,16 +31,34 @@ TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
 
-JSONRPC = OFF
-CXX17 = ON
+ANDROID_NDK ?= $(HOME)/Android/Ndk
+ANDROID_SDK ?= $(HOME)/Android/Sdk
+ANDROID_ABI ?= armeabi-v7a
+ANDROID_API_LEVEL ?= 18
+
+ANDROID_DIR=$(REPO)/android
+JNI_DIR=$(ANDROID_DIR)/jni
+ANDROID_MK=$(JNI_DIR)/Android.mk
+ANDROID_PROPS=$(ANDROID_DIR)/gradle.properties
+ANDROID_LOCAL_PROPS=$(ANDROID_DIR)/local.properties
+
+GRADLE ?= gradle
+JAVA_HOME ?= /usr/lib/jvm/default-java
+
+JSONRPC ?= OFF
+CXX17 ?= ON
+AVX2 ?= ON
+RPI ?= OFF
+STATIC_LINK ?= OFF
+CMAKE_GEN ?= Unix Makefiles
 
 
 BUILD_ROOT = $(REPO)/build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DSTATIC_LINK=$(STATIC_LINK) -DUSE_AVX2=$(AVX2) -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
 
 SCAN_BUILD ?= scan-build
-ANALYZE_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)' && cd '$(BUILD_ROOT)' && $(SCAN_BUILD) $(MAKE)")
+ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
@@ -88,6 +106,7 @@ $(TARGETS): release-compile
 release: $(SIGS)
 
 shadow-configure: clean
+	mkdir -p $(BUILD_ROOT)
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 shadow-build: shadow-configure
@@ -107,6 +126,7 @@ testnet-clean: clean
 	rm -rf $(TESTNET_ROOT)
 
 testnet-configure: testnet-clean
+	mkdir -p $(BUILD_ROOT)
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTESTNET=1
 
 testnet-build: testnet-configure
@@ -127,20 +147,47 @@ testnet:
 test: debug
 	$(TEST_EXE)
 
+android-gradle-prepare:
+	rm -f $(ANDROID_PROPS)
+	rm -f $(ANDROID_LOCAL_PROPS)
+	echo "#auto generated don't modify kthnx" >> $(ANDROID_PROPS)
+	echo "lokinetCMake=$(REPO)/CMakeLists.txt" >> $(ANDROID_PROPS)
+	echo "org.gradle.parallel=true" >> $(ANDROID_PROPS)
+	echo "#auto generated don't modify kthnx" >> $(ANDROID_LOCAL_PROPS)
+	echo "sdk.dir=$(ANDROID_SDK)" >> $(ANDROID_LOCAL_PROPS)
+	echo "ndk.dir=$(ANDROID_NDK)" >> $(ANDROID_LOCAL_PROPS)
+
+android-gradle: android-gradle-prepare
+	cd $(ANDROID_DIR) && JAVA_HOME=$(JAVA_HOME) $(GRADLE) clean assemble
+	
+android: android-gradle
+
+windows-configure: clean
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc-win32 -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++-win32 -DDNS_PORT=$(DNS_PORT) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+
+windows: windows-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
+
 abyss: debug
 	$(ABYSS_EXE)
 
 format:
 	clang-format -i $$(find daemon llarp include libabyss | grep -E '\.[h,c](pp)?$$')
 
-analyze: clean
+analyze-config: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(ANALYZE_CMD)
+	$(ANALYZE_CONFIG_CMD)
+
+analyze: analyze-config
+	cd '$(BUILD_ROOT)'
+	$(SCAN_BUILD) $(MAKE)
 
 lint: $(LINT_CHECK)
 
 %.cpp-check: %.cpp
-	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/crypto/libntrup/include -I$(REPO)/llarp
+	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/crypto/include -I$(REPO)/llarp -I$(REPO)/vendor/cppbackport-master/lib
 
 docker-debian:
 	docker build -f docker/debian.Dockerfile .
@@ -156,7 +203,6 @@ install:
 	rm -f $(PREFIX)/bin/lokinet-bootstrap
 	cp $(REPO)/lokinet-bootstrap $(PREFIX)/bin/lokinet-bootstrap
 	chmod 755 $(PREFIX)/bin/lokinet-bootstrap
-	setcap cap_net_admin=+eip $(PREFIX)/bin/lokinet
 
 fuzz-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++

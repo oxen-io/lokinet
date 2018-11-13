@@ -119,6 +119,7 @@ _GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved,
   PUCHAR currentLocation;
   HANDLE tcpFile;
 
+  (void)(Family);
   if(!pOutBufLen)
     return ERROR_INVALID_PARAMETER;
   if(Reserved)
@@ -258,7 +259,7 @@ _GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved,
         currentAddress->FirstUnicastAddress->PrefixOrigin =
             IpPrefixOriginOther;  // FIXME
         currentAddress->FirstUnicastAddress->SuffixOrigin =
-            IpPrefixOriginOther;  // FIXME
+            IpSuffixOriginOther;  // FIXME
         currentAddress->FirstUnicastAddress->DadState =
             IpDadStatePreferred;  // FIXME
         currentAddress->FirstUnicastAddress->ValidLifetime =

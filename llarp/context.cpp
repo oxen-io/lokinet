@@ -13,11 +13,6 @@
 #include <pthread_np.h>
 #endif
 
-#if _WIN32 || __sun
-#define wmin(x, y) (((x) < (y)) ? (x) : (y))
-#define MIN wmin
-#endif
-
 namespace llarp
 {
   Context::~Context()
@@ -112,7 +107,7 @@ namespace llarp
   }
 
   bool
-  Context::PutDatabase(struct llarp::RouterContact &rc)
+  Context::PutDatabase(__attribute__((unused)) struct llarp::RouterContact &rc)
   {
     // FIXME
     // return llarp_nodedb_put_rc(nodedb, rc);
@@ -120,7 +115,7 @@ namespace llarp
   }
 
   llarp::RouterContact *
-  Context::GetDatabase(const byte_t *pk)
+  Context::GetDatabase(__attribute__((unused)) const byte_t *pk)
   {
     // FIXME
     // return llarp_nodedb_get_rc(nodedb, pk);
@@ -379,7 +374,7 @@ extern "C"
   }
 
   llarp::RouterContact *
-  llarp_main_getLocalRC(struct llarp_main *ptr)
+  llarp_main_getLocalRC(__attribute__((unused)) struct llarp_main *ptr)
   {
     //
     /*
@@ -402,7 +397,8 @@ extern "C"
   }
 
   void
-  llarp_main_checkOnline(void *u, uint64_t orig, uint64_t left)
+  llarp_main_checkOnline(void *u, __attribute__((unused)) uint64_t orig,
+                         uint64_t left)
   {
     // llarp::Info("checkOnline - check ", left);
     if(left)
@@ -510,23 +506,21 @@ extern "C"
           conffname = optarg;
           break;
         case 'o':
-          if(strncmp(optarg, "debug", MIN(strlen(optarg), (unsigned long)5))
-             == 0)
+          if(strncmp(optarg, "debug", std::min(strlen(optarg), size_t(5))) == 0)
           {
             cSetLogLevel(eLogDebug);
           }
-          else if(strncmp(optarg, "info", MIN(strlen(optarg), (unsigned long)4))
+          else if(strncmp(optarg, "info", std::min(strlen(optarg), size_t(4)))
                   == 0)
           {
             cSetLogLevel(eLogInfo);
           }
-          else if(strncmp(optarg, "warn", MIN(strlen(optarg), (unsigned long)4))
+          else if(strncmp(optarg, "warn", std::min(strlen(optarg), size_t(4)))
                   == 0)
           {
             cSetLogLevel(eLogWarn);
           }
-          else if(strncmp(optarg, "error",
-                          MIN(strlen(optarg), (unsigned long)5))
+          else if(strncmp(optarg, "error", std::min(strlen(optarg), size_t(5)))
                   == 0)
           {
             cSetLogLevel(eLogError);

@@ -19,6 +19,9 @@
 
 #ifndef WIN32STDMUTEX_H
 #define WIN32STDMUTEX_H
+#if defined(RPI)
+#error this should not be set
+#endif
 
 #if !defined(__cplusplus) || (__cplusplus < 201103L)
 #error A C++11 compiler is required!

@@ -13,7 +13,9 @@
 #endif
 
 #ifdef __linux__
+#ifndef ANDROID
 #include <llarp/linux/netns.hpp>
+#endif
 #endif
 
 namespace llarp
@@ -142,6 +144,8 @@ namespace llarp
     }
 
 #ifdef __linux__
+#if defined(ANDROID) || defined(RPI)
+#else
     struct LinuxNetNSIsolatedPool : public _NetIsolatedPool
     {
       LinuxNetNSIsolatedPool(std::function< bool(void *, bool) > setup,
@@ -159,6 +163,7 @@ namespace llarp
 
     typedef LinuxNetNSIsolatedPool NetIsolatedPool;
 #define NET_ISOLATION_SUPPORTED
+#endif
 #endif
 
 #if defined(__FreeBSD__)
@@ -193,8 +198,9 @@ struct llarp_threadpool
   std::queue< llarp::thread::Pool::Job_t > jobs;
 
   llarp_threadpool(int workers, const char *name, bool isolate,
-                   setup_net_func setup  = nullptr,
-                   run_main_func runmain = nullptr, void *user = nullptr)
+                   __attribute__((unused)) setup_net_func setup  = nullptr,
+                   __attribute__((unused)) run_main_func runmain = nullptr,
+                   __attribute__((unused)) void *user            = nullptr)
   {
 #ifdef NET_ISOLATION_SUPPORTED
     if(isolate)
@@ -245,7 +251,7 @@ llarp_threadpool_join(struct llarp_threadpool *pool)
 }
 
 void
-llarp_threadpool_start(struct llarp_threadpool *pool)
+llarp_threadpool_start(__attribute__((unused)) struct llarp_threadpool *pool)
 { /** no op */
 }
 

@@ -62,7 +62,7 @@ typedef struct llarp_buffer_t
   size_t sz;
 
 #ifdef __cplusplus
-  const byte_t operator[](size_t x)
+  byte_t operator[](size_t x)
   {
     return *(this->base + x);
   }

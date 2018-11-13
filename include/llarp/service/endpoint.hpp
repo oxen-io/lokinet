@@ -108,16 +108,18 @@ namespace llarp
       HasPathToService(const Address& remote) const;
 
       virtual huint32_t
-      ObtainIPForAddr(const llarp::service::Address& remote)
+      ObtainIPForAddr(__attribute__((unused))
+                      const llarp::service::Address& remote)
       {
         return {0};
       }
 
       virtual bool
-      HasAddress(const Address& remote) const
+      HasAddress(__attribute__((unused)) const Address& remote) const
       {
         return false;
       }
+
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
       bool
@@ -132,7 +134,7 @@ namespace llarp
       HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
 
       virtual bool
-      ProcessDataMessage(ProtocolMessage* msg)
+      ProcessDataMessage(__attribute__((unused)) ProtocolMessage* msg)
       {
         return true;
       }
@@ -217,22 +219,17 @@ namespace llarp
         };
 
         virtual void
-        UpdateIntroSet(bool randomizePath = false){};
+        UpdateIntroSet(bool randomizePath = false) = 0;
 
         virtual bool
-        MarkCurrentIntroBad(llarp_time_t now)
-        {
-          return true;
-        };
+        MarkCurrentIntroBad(llarp_time_t now) = 0;
 
        private:
         void
         EncryptAndSendTo(llarp_buffer_t payload, ProtocolType t);
 
         virtual void
-        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t)
-        {
-        }
+        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t) = 0;
       };
 
       static void
@@ -332,7 +329,8 @@ namespace llarp
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
       virtual bool
-      HandleAuthenticatedDataFrom(const Address& remote, llarp_buffer_t data)
+      HandleAuthenticatedDataFrom(__attribute__((unused)) const Address& remote,
+                                  __attribute__((unused)) llarp_buffer_t data)
       {
         /// TODO: imlement me
         return true;
@@ -432,16 +430,17 @@ namespace llarp
       std::string m_Name;
       std::string m_NetNS;
 
-      std::unordered_map< Address, PendingBufferQueue, Address::Hash >
-          m_PendingTraffic;
+      using PendingTraffic =
+          std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
 
-      std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
-                               Address::Hash >
-          m_RemoteSessions;
+      PendingTraffic m_PendingTraffic;
 
-      std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
-                               Address::Hash >
-          m_DeadSessions;
+      using Sessions =
+          std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
+                                   Address::Hash >;
+      Sessions m_RemoteSessions;
+
+      Sessions m_DeadSessions;
 
       std::unordered_map< Address, ServiceInfo, Address::Hash >
           m_AddressToService;

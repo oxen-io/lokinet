@@ -1,0 +1,19 @@
+<component name="ArtifactManager">
+  <artifact type="apk" name="loki-network">
+    <output-path>$PROJECT_DIR$/android/build/artifacts/loki_network</output-path>
+    <properties id="android-properties">
+      <options>
+        <option name="keyStoreUrl" value="file://" />
+        <option name="proGuardCfgFiles">
+          <list>
+            <option value="file://%MODULE_SDK_HOME%/tools/proguard/proguard-android.txt" />
+          </list>
+        </option>
+        <option name="signingMode" value="DEBUG" />
+      </options>
+    </properties>
+    <root id="archive" name="loki-network.apk">
+      <element id="file-copy" path="$PROJECT_DIR$/android/build/outputs/apk/lokinet-debug.apk" />
+    </root>
+  </artifact>
+</component>

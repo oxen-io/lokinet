@@ -17,14 +17,14 @@
 #endif
 
 #ifndef MAX_WRITE_QUEUE_SIZE
-#define MAX_WRITE_QUEUE_SIZE 1024
+#define MAX_WRITE_QUEUE_SIZE (1024UL)
 #endif
 
 #ifndef EV_READ_BUF_SZ
-#define EV_READ_BUF_SZ (4 * 1024)
+#define EV_READ_BUF_SZ (4 * 1024UL)
 #endif
 #ifndef EV_WRITE_BUF_SZ
-#define EV_WRITE_BUF_SZ (2 * 1024)
+#define EV_WRITE_BUF_SZ (2 * 1024UL)
 #endif
 
 namespace llarp
@@ -124,6 +124,9 @@ namespace llarp
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz)
     {
+      (void)(dst);
+      (void)(data);
+      (void)(sz);
       return -1;
     };
 
@@ -171,11 +174,17 @@ namespace llarp
         return false;
     }
 
+    virtual void
+    flush_write()
+    {
+      flush_write_buffers(0);
+    }
+
     /// called in event loop when fd is ready for writing
     /// requeues anything not written
     /// this assumes fd is set to non blocking
     virtual void
-    flush_write()
+    flush_write_buffers(size_t amount)
     {
       if(m_LossyWriteQueue)
         m_LossyWriteQueue->Process([&](WriteBuffer& buffer) {
@@ -185,34 +194,58 @@ namespace llarp
         });
       else if(m_BlockingWriteQueue)
       {
-        // write buffers
-        while(m_BlockingWriteQueue->size())
+        if(amount)
         {
-          auto& itr      = m_BlockingWriteQueue->front();
-          ssize_t result = do_write(itr.buf, itr.bufsz);
-          if(result == -1)
-            return;
-          ssize_t dlt = itr.bufsz - result;
-          if(dlt > 0)
+          while(amount && m_BlockingWriteQueue->size())
           {
-            // queue remaining to front of queue
-            WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
+            auto& itr      = m_BlockingWriteQueue->front();
+            ssize_t result = do_write(itr.buf, std::min(amount, itr.bufsz));
+            if(result == -1)
+              return;
+            ssize_t dlt = itr.bufsz - result;
+            if(dlt > 0)
+            {
+              // queue remaining to front of queue
+              WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
+              m_BlockingWriteQueue->pop_front();
+              m_BlockingWriteQueue->push_front(buff);
+              // TODO: errno?
+              return;
+            }
             m_BlockingWriteQueue->pop_front();
-            m_BlockingWriteQueue->push_front(buff);
-            // TODO: errno?
-            return;
+            amount -= result;
           }
-          m_BlockingWriteQueue->pop_front();
-          if(errno == EAGAIN || errno == EWOULDBLOCK)
+        }
+        else
+        {
+          // write buffers
+          while(m_BlockingWriteQueue->size())
           {
-            errno = 0;
-            return;
+            auto& itr      = m_BlockingWriteQueue->front();
+            ssize_t result = do_write(itr.buf, itr.bufsz);
+            if(result == -1)
+              return;
+            ssize_t dlt = itr.bufsz - result;
+            if(dlt > 0)
+            {
+              // queue remaining to front of queue
+              WriteBuffer buff(itr.buf + dlt, itr.bufsz - dlt);
+              m_BlockingWriteQueue->pop_front();
+              m_BlockingWriteQueue->push_front(buff);
+              // TODO: errno?
+              return;
+            }
+            m_BlockingWriteQueue->pop_front();
+            if(errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+              errno = 0;
+              return;
+            }
           }
         }
       }
       /// reset errno
       errno = 0;
-      SetLastError(0);
     }
 
     std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;
@@ -317,7 +350,9 @@ namespace llarp
     read(void* buf, size_t sz) = 0;
 
     virtual int
-    sendto(const sockaddr* dst, const void* data, size_t sz)
+    sendto(__attribute__((unused)) const sockaddr* dst,
+           __attribute__((unused)) const void* data,
+           __attribute__((unused)) size_t sz)
     {
       return -1;
     };
@@ -439,6 +474,7 @@ namespace llarp
 // finally create aliases by platform
 #ifdef _WIN32
   using ev_io = win32_ev_io;
+#define sizeof(sockaddr_un) 115
 #else
   using ev_io = posix_ev_io;
 #endif
@@ -617,8 +653,8 @@ struct llarp_ev_loop
   void
   tick_listeners()
   {
-    auto itr = handlers.cbegin();
-    while(itr != handlers.cend())
+    auto itr = handlers.begin();
+    while(itr != handlers.end())
     {
       if((*itr)->tick())
         ++itr;

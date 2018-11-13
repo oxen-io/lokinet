@@ -189,21 +189,24 @@ namespace llarp
   bool
   ILinkLayer::SendTo(const PubKey& remote, llarp_buffer_t buf)
   {
-    Lock l(m_AuthedLinksMutex);
-    auto range = m_AuthedLinks.equal_range(remote);
-    auto itr   = range.first;
-    // pick lowest backlog session
-    size_t min      = std::numeric_limits< size_t >::max();
     ILinkSession* s = nullptr;
-    while(itr != range.second)
     {
-      auto backlog = itr->second->SendQueueBacklog();
-      if(backlog < min)
+      Lock l(m_AuthedLinksMutex);
+      auto range = m_AuthedLinks.equal_range(remote);
+      auto itr   = range.first;
+      // pick lowest backlog session
+      size_t min = std::numeric_limits< size_t >::max();
+
+      while(itr != range.second)
       {
-        s   = itr->second.get();
-        min = backlog;
+        auto backlog = itr->second->SendQueueBacklog();
+        if(backlog < min)
+        {
+          s   = itr->second.get();
+          min = backlog;
+        }
+        ++itr;
       }
-      ++itr;
     }
     return s && s->SendMessageBuffer(buf);
   }

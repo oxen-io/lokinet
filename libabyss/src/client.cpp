@@ -67,7 +67,7 @@ namespace abyss
       }
 
       static void
-      OnTick(llarp_tcp_conn* conn)
+      OnTick(__attribute__((unused)) llarp_tcp_conn* conn)
       {
       }
 
@@ -144,13 +144,13 @@ namespace abyss
       {
         if(state == eInitial)
           return true;
-        if(sz == 0)
+        if(!sz)
           return true;
         bool done = false;
         while(state < eReadResponseBody)
         {
           const char* end = strstr(buf, "\r\n");
-          if(end == nullptr)
+          if(!end)
             return false;
           string_view line(buf, end - buf);
           switch(state)
@@ -214,7 +214,7 @@ namespace abyss
         char buf[512] = {0};
         int sz        = snprintf(buf, sizeof(buf),
                           "POST /rpc HTTP/1.0\r\nContent-Type: "
-                          "application/json\r\nContent-Length: %lu\r\nAccept: "
+                          "application/json\r\nContent-Length: %zu\r\nAccept: "
                           "application/json\r\n",
                           body.size());
         if(sz <= 0)
@@ -294,7 +294,7 @@ namespace abyss
           ++itr;
       }
       // open at most 10 connections
-      size_t numCalls = std::min(m_PendingCalls.size(), 10UL);
+      size_t numCalls = std::min(m_PendingCalls.size(), (size_t)10UL);
       llarp::LogDebug("tick connect to rpc ", numCalls, " times");
       while(numCalls--)
       {

@@ -181,7 +181,8 @@ namespace llarp
                                llarp_router* r);
 
       bool
-      HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
+      HandleHiddenServiceFrame(__attribute__((unused))
+                               const llarp::service::ProtocolFrame* frame)
       {
         /// TODO: implement me
         llarp::LogWarn("Got hidden service data on transit hop");

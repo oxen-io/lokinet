@@ -110,7 +110,8 @@ namespace llarp
   Addr::Addr(string_view addr_str, string_view port_str)
   {
     this->from_char_array(llarp::string_view_string(addr_str).c_str());
-    this->port(std::stoi(llarp::string_view_string(port_str)));
+    this->port(
+        std::strtoul(llarp::string_view_string(port_str).c_str(), nullptr, 10));
   }
 
   bool
@@ -295,7 +296,7 @@ namespace llarp
         break;
     }
   }
-  
+
   std::string
   Addr::ToString() const
   {
@@ -331,7 +332,7 @@ namespace llarp
   Addr::CopyInto(sockaddr* other) const
   {
     void *dst, *src;
-    in_port_t* ptr;
+    uint16_t* ptr;
     size_t slen;
     switch(af())
     {

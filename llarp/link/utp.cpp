@@ -125,7 +125,7 @@ namespace llarp
           llarp::LogDebug("utp_writev wrote=", s, " expect=", expect,
                           " to=", remoteAddr);
 
-          while(s > vecq.front().iov_len)
+          while(s > static_cast< ssize_t >(vecq.front().iov_len))
           {
             s -= vecq.front().iov_len;
             vecq.pop_front();
@@ -227,7 +227,7 @@ namespace llarp
       }
 
       void
-      TickImpl(llarp_time_t now)
+      TickImpl(__attribute__((unused)) llarp_time_t now)
       {
       }
 
@@ -509,6 +509,7 @@ namespace llarp
           }
         }
       }
+
       void
       Stop()
       {

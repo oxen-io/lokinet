@@ -1,4 +1,6 @@
+#if defined(RPI) || defined(ANDROID)
 
+#else
 #include <asm/types.h>
 #include <fcntl.h>
 #include <limits.h>
@@ -317,3 +319,5 @@ namespace llarp
     }
   }  // namespace GNULinux
 }  // namespace llarp
+
+#endif

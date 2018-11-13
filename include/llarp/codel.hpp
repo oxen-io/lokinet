@@ -22,7 +22,7 @@ namespace llarp
 
     struct DummyLock
     {
-      DummyLock(const DummyMutex& mtx){};
+      DummyLock(__attribute__((unused)) const DummyMutex& mtx){};
 
       ~DummyLock()
       {

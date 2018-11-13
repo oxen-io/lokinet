@@ -153,7 +153,7 @@ namespace llarp
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
       auto own = MapGet(m_OurPaths, id,
-                        [](const PathSet* s) -> bool {
+                        [](__attribute__((unused)) const PathSet* s) -> bool {
                           // TODO: is this right?
                           return true;
                         },
@@ -559,16 +559,18 @@ namespace llarp
 
     bool
     Path::HandlePathTransferMessage(
-        const llarp::routing::PathTransferMessage* msg, llarp_router* r)
+        __attribute__((unused)) const llarp::routing::PathTransferMessage* msg,
+        __attribute__((unused)) llarp_router* r)
     {
-      llarp::LogWarn("unwarrented path transfer message on tx=", TXID(),
+      llarp::LogWarn("unwarranted path transfer message on tx=", TXID(),
                      " rx=", RXID());
       return false;
     }
 
     bool
     Path::HandleDataDiscardMessage(
-        const llarp::routing::DataDiscardMessage* msg, llarp_router* r)
+        const llarp::routing::DataDiscardMessage* msg,
+        __attribute__((unused)) llarp_router* r)
     {
       if(m_DropHandler)
         return m_DropHandler(this, msg->P, msg->S);
@@ -577,7 +579,8 @@ namespace llarp
 
     bool
     Path::HandlePathConfirmMessage(
-        const llarp::routing::PathConfirmMessage* msg, llarp_router* r)
+        __attribute__((unused)) const llarp::routing::PathConfirmMessage* msg,
+        llarp_router* r)
     {
       auto now = r->Now();
       if(_status == ePathBuilding)

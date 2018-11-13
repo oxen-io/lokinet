@@ -151,13 +151,14 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
 /// generic dnsc handler
 void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
-                             const struct sockaddr *saddr, const void *buf,
-                             ssize_t sz)
+                             __attribute__((unused))
+                             const struct sockaddr *saddr,
+                             const void *buf, ssize_t sz)
 {
   // llarp::LogInfo("got a response, udp user is ", udp->user);
 
-  unsigned char *castBuf = (unsigned char *)buf;
-  char *const castBufc   = (char *const)buf;
+  unsigned char *castBuf     = (unsigned char *)buf;
+  const char *const castBufc = (const char *)buf;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr = decode_hdr((const char *)castBuf);
 
@@ -223,7 +224,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   for(uint32_t i = 0; i < hdr->qdCount; i++)
   {
     question = decode_question(castBufc, &pos);
-    llarp::LogDebug("Read a question, now at ", std::to_string(pos));
+    // llarp::LogDebug("Read a question, now at ", std::to_string(pos));
     // 1 dot: 1 byte for length + length
     // 4 bytes for class/type
     // castBuf += question->name.length() + 1 + 4;
@@ -239,8 +240,10 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // pos = 0; // reset pos
     answer = decode_answer(castBufc, &pos);
     answers.push_back(answer);
+    /*
     llarp::LogDebug("Read an answer ", answer->type, " for ",
                     request->question.name, ", now at ", std::to_string(pos));
+                    */
     // llarp::LogInfo("Read an answer. Label Len: ", answer->name.length(), "
     // rdLen: ", answer->rdLen);
     // name + Type (2) + Class (2) + TTL (4) + rdLen (2) + rdData + skip next
@@ -269,7 +272,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
       break;
     }
     */
-    if(pos > sz)
+    if(pos > (size_t)sz)
     {
       llarp::LogWarn("Would read past end of dns packet. for ",
                      request->question.name);
@@ -369,7 +372,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
    llarp::LogInfo("ans2 rdlen ", answer2->rdLen);
    */
 
-  llarp::LogDebug("rcode ", std::to_string(rcode));
+  // llarp::LogDebug("rcode ", std::to_string(rcode));
   if(rcode == 2)
   {
     llarp::LogWarn("nameserver ", upstreamAddr, " returned SERVFAIL:");
@@ -400,8 +403,10 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     
   /* search for and print IPv4 addresses */
   // if(dnsQuery->reqType == 0x01)
+  /*
   llarp::LogDebug("request question type: ",
                   std::to_string(request->question.type));
+                  */
   if(request->question.type == 1)
   {
     // llarp::LogInfo("DNS server's answer is: (type#=", ATYPE, "):");
@@ -455,8 +460,9 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   else if(answer->type == 12)
   {
     llarp::LogDebug("Resolving PTR");
-    request->found  = true;
-    request->revDNS = std::string((char *)answer->rData);
+    request->found = true;
+    request->revDNS =
+        std::string((char *)answer->rData.data(), answer->rData.size());
     request->resolved(request);
     return;
   }
@@ -465,16 +471,17 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::LogDebug("Resolving MX");
     request->found    = true;
     request->result.h = 99;
-    request->revDNS   = std::string((char *)answer->rData);
-    delete answer->rData;
+    request->revDNS =
+        std::string((char *)answer->rData.data(), answer->rData.size());
     request->resolved(request);
     return;
   }
   else if(request->question.type == 16)
   {
     llarp::LogDebug("Resolving TXT");
-    request->found  = true;
-    request->revDNS = std::string((char *)answer->rData);
+    request->found = true;
+    request->revDNS =
+        std::string((char *)answer->rData.data(), answer->rData.size());
     request->resolved(request);
     return;
   }
@@ -519,7 +526,7 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
 #endif
 
   sockfd = socket(AF_INET, SOCK_DGRAM, 0);
-  if(sockfd < 0)
+  if(!(sockfd > 0))
   {
     llarp::LogWarn("Error creating socket!\n");
     return;
@@ -733,7 +740,7 @@ llarp_dnsc_init(struct dnsc_context *const dnsc,
 }
 
 bool
-llarp_dnsc_stop(struct dnsc_context *const dnsc)
+llarp_dnsc_stop(__attribute__((unused)) struct dnsc_context *const dnsc)
 {
   // delete(sockaddr_in *)dnsc->server;  // deallocation
   return true;

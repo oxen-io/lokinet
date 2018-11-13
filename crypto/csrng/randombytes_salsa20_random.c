@@ -43,7 +43,8 @@
 #include <sys/timeb.h>
 #include <wincrypt.h>
 #include <bcrypt.h>
-typedef NTSTATUS (FAR PASCAL* CNGAPI_DRBG)(BCRYPT_ALG_HANDLE, UCHAR*, ULONG, ULONG);
+typedef NTSTATUS(FAR PASCAL *CNGAPI_DRBG)(BCRYPT_ALG_HANDLE, UCHAR *, ULONG,
+                                          ULONG);
 #ifdef __BORLANDC__
 #define _ftime ftime
 #define _timeb timeb
@@ -95,11 +96,19 @@ typedef struct Salsa20Random_
   uint64_t nonce;
 } Salsa20Random;
 
-static Salsa20RandomGlobal global = {SODIUM_C99(.initialized =) 0,
-                                     SODIUM_C99(.random_data_source_fd =) - 1};
+static Salsa20RandomGlobal global = {
+    SODIUM_C99(.initialized =) 0,
+    SODIUM_C99(.random_data_source_fd =) - 1,
+    SODIUM_C99(.getrandom_available =) 0,
+    SODIUM_C99(.rdrand_available =) 0,
 
-static TLS Salsa20Random stream = {SODIUM_C99(.initialized =) 0,
-                                   SODIUM_C99(.rnd32_outleft =)(size_t) 0U};
+};
+
+static TLS Salsa20Random stream = {
+    SODIUM_C99(.initialized =) 0, SODIUM_C99(.rnd32_outleft =)(size_t) 0U,
+    SODIUM_C99(.key =){0},        SODIUM_C99(.rnd32 =){0},
+    SODIUM_C99(.nonce =) 1,
+};
 
 /*
  * Get a high-resolution timestamp, as a uint64_t value
@@ -392,32 +401,34 @@ randombytes_salsa20_random_stir(void)
   rtld    = FALSE;
   hCAPINg = GetModuleHandle("bcrypt.dll");
   /* otherwise, load CNG manually */
-  if (!hCAPINg)
+  if(!hCAPINg)
   {
-	 hCAPINg = LoadLibraryEx("bcrypt.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32); 
-	 rtld = TRUE;
+    hCAPINg = LoadLibraryEx("bcrypt.dll", NULL, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    rtld    = TRUE;
   }
-  if (hCAPINg)
+  if(hCAPINg)
   {
-	 /* call BCryptGenRandom(2) */
-	 getrandom = GetProcAddress(hCAPINg, "BCryptGenRandom");
-	 if(!BCRYPT_SUCCESS(getrandom(NULL, m0, sizeof m0,BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
-	 {
-		 sodium_misuse();
-	 }
-	 /* don't leak lib refs */
-	 if (rtld)
-		 FreeLibrary(hCAPINg);
+    /* call BCryptGenRandom(2) */
+    getrandom = (CNGAPI_DRBG)GetProcAddress(hCAPINg, "BCryptGenRandom");
+    if(!BCRYPT_SUCCESS(
+           getrandom(NULL, m0, sizeof m0, BCRYPT_USE_SYSTEM_PREFERRED_RNG)))
+    {
+      sodium_misuse();
+    }
+    /* don't leak lib refs */
+    if(rtld)
+      FreeLibrary(hCAPINg);
   }
   /* if that fails use the regular ARC4-SHA1 RNG (!!!) *cringes* */
   else
   {
-	 CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
-	 if (!CryptGenRandom(hProv, sizeof m0, m0)) 
-	 {
-		 sodium_misuse(); /* LCOV_EXCL_LINE */
-	 }
-	CryptReleaseContext(hProv, 0);
+    CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL,
+                        CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
+    if(!CryptGenRandom(hProv, sizeof m0, m0))
+    {
+      sodium_misuse(); /* LCOV_EXCL_LINE */
+    }
+    CryptReleaseContext(hProv, 0);
   }
 #endif
 
@@ -571,6 +582,7 @@ randombytes_salsa20_random_buf(void *const buf, const size_t size)
   stream.nonce++;
   crypto_stream_salsa20_xor(stream.key, stream.key, sizeof stream.key,
                             (unsigned char *)&stream.nonce, stream.key);
+  (void)ret;
 }
 
 /*
@@ -605,7 +617,7 @@ randombytes_salsa20_random(void)
   stream.rnd32_outleft -= sizeof val;
   memcpy(&val, &stream.rnd32[stream.rnd32_outleft], sizeof val);
   memset(&stream.rnd32[stream.rnd32_outleft], 0, sizeof val);
-
+  (void)ret;
   return val;
 }
 

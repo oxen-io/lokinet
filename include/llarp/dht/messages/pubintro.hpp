@@ -8,7 +8,7 @@ namespace llarp
 {
   namespace dht
   {
-    struct PublishIntroMessage : public IMessage
+    struct PublishIntroMessage final : public IMessage
     {
       llarp::service::IntroSet I;
       std::vector< Key_t > E;
@@ -31,14 +31,15 @@ namespace llarp
       ~PublishIntroMessage();
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       virtual bool
-      HandleMessage(llarp_dht_context* ctx,
-                    std::vector< std::unique_ptr< IMessage > >& replies) const;
+      HandleMessage(
+          llarp_dht_context* ctx,
+          std::vector< std::unique_ptr< IMessage > >& replies) const override;
     };
   }  // namespace dht
 }  // namespace llarp

@@ -292,14 +292,8 @@ namespace cpp17
 
     // is this right
     directory_iterator::directory_iterator(directory_iterator const& src)
+        : pimpl(new impl(src.pimpl->p.c_str()))
     {
-      // printf("directory_iterator::directory_iterator copy - pimpl[%x]
-      // from[%s]\n", pimpl, src->path().c_str());
-      if(pimpl)
-      {
-        // delete pimpl;
-      }
-      pimpl = new impl(src.pimpl->p.c_str());
       pimpl->seek(src.pimpl->pos);
     }
 

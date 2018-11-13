@@ -11,7 +11,7 @@ namespace llarp
   namespace service
   {
     // private keys
-    struct Identity : public llarp::IBEncodeMessage
+    struct Identity final : public llarp::IBEncodeMessage
     {
       llarp::SecretKey enckey;
       llarp::SecretKey signkey;
@@ -33,7 +33,7 @@ namespace llarp
       LoadFromFile(const std::string& fpath);
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
       EnsureKeys(const std::string& fpath, llarp_crypto* c);
@@ -43,7 +43,7 @@ namespace llarp
                   const ServiceInfo& other, const byte_t* N) const;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       bool
       SignIntroSet(IntroSet& i, llarp_crypto* c, llarp_time_t now) const;

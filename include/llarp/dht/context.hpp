@@ -91,16 +91,24 @@ namespace llarp
 
       /// return true if we want to persist this tx
       bool
-      AskNextPeer(const Key_t& prevPeer)
+      AskNextPeer(const Key_t& prevPeer, const std::unique_ptr< Key_t >& next)
       {
         peersAsked.insert(prevPeer);
         Key_t peer;
-        if(!GetNextPeer(peer, peersAsked))
+        if(next)
         {
-          // no more peers
-          SendReply();
-          return false;
+          peer = *next.get();
         }
+        else
+        {
+          if(!GetNextPeer(peer, peersAsked))
+          {
+            // no more peers
+            SendReply();
+            return false;
+          }
+        }
+
         DoNextRequest(peer);
         return true;
       }
@@ -283,12 +291,12 @@ namespace llarp
         }
 
         void
-        NewTX(const TXOwner& owner, const K& k, TX< K, V >* t,
-              bool forceStart = true)
+        NewTX(const TXOwner& askpeer, const TXOwner& whoasked, const K& k,
+              TX< K, V >* t)
         {
-          tx.emplace(owner, std::unique_ptr< TX< K, V > >(t));
-          auto n = waiting.count(k);
-          waiting.insert(std::make_pair(k, owner));
+          (void)whoasked;
+          tx.emplace(askpeer, std::unique_ptr< TX< K, V > >(t));
+          waiting.insert(std::make_pair(k, askpeer));
 
           auto itr = timeouts.find(k);
           if(itr == timeouts.end())
@@ -296,22 +304,23 @@ namespace llarp
             timeouts.insert(
                 std::make_pair(k, llarp_time_now_ms() + requestTimeoutMS));
           }
-          if(forceStart || n == 0)
-            t->Start(owner);
+          t->Start(askpeer);
         }
 
         /// mark tx as not fond
         void
-        NotFound(const TXOwner& from)
+        NotFound(const TXOwner& from, const std::unique_ptr< Key_t >& next)
         {
           bool sendReply = true;
           auto txitr     = tx.find(from);
           if(txitr == tx.end())
             return;
-
-          // ask for next peer
-          if(txitr->second->AskNextPeer(from.node))
-            sendReply = false;
+          if(next)
+          {
+            // ask for next peer
+            if(txitr->second->AskNextPeer(from.node, next))
+              sendReply = false;
+          }
           llarp::LogWarn("Target key ", txitr->second->target);
           Inform(from, txitr->second->target, {}, sendReply, sendReply);
         }

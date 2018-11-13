@@ -2,9 +2,11 @@
 //#include <string.h>
 #include <jni.h>
 #include <llarp.h>
+#include <llarp/config.h>
 #include <signal.h>
 #include <memory>
 #include <thread>
+#include "fs.hpp"
 
 struct AndroidMain
 {
@@ -12,11 +14,11 @@ struct AndroidMain
   std::thread* m_thread = nullptr;
 
   bool
-  Start(const char* conf)
+  Start(const char* conf, const char* basedir)
   {
     if(m_impl || m_thread)
       return true;
-    if(!llarp_ensure_config(conf))
+    if(!llarp_ensure_config(conf, basedir, false, false))
       return false;
     m_impl = llarp_main_init(conf, true);
     if(m_impl == nullptr)
@@ -70,15 +72,16 @@ extern "C"
     if(daemon->Running())
       return env->NewStringUTF("already running");
     std::string conf;
+    fs::path basepath;
     {
       const char* nativeString = env->GetStringUTFChars(configfile, JNI_FALSE);
       conf += std::string(nativeString);
       env->ReleaseStringUTFChars(configfile, nativeString);
+      basepath = fs::path(conf).parent_path();
     }
-    if(daemon->Start(conf.c_str()))
+    if(daemon->Start(conf.c_str(), basepath.string().c_str()))
       return env->NewStringUTF("ok");
-    else
-      return env->NewStringUTF("failed to start");
+    return env->NewStringUTF("failed to start");
   }
 
   JNIEXPORT void JNICALL

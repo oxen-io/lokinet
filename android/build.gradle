@@ -28,12 +28,12 @@ android {
         versionCode 1
         versionName "0.3.1"
         ndk {
-            abiFilters 'x86'
+            abiFilters 'armeabi'
         }
         externalNativeBuild {
             cmake {
                 targets "lokinetandroid"
-                arguments "-DANDROID=ON"
+                arguments "-DANDROID=ON", "-DANDROID_STL=c++_static"
             }
         }
         packagingOptions{

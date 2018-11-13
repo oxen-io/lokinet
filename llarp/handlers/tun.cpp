@@ -45,6 +45,32 @@ namespace llarp
         llarp::LogInfo(Name() + " would be setting DNS resolver to ", v);
         return true;
       }
+      if(k == "local-dns")
+      {
+        std::string resolverAddr = v;
+        uint16_t dnsport         = DNS_PORT;
+        auto pos                 = v.find(":");
+        if(pos != std::string::npos)
+        {
+          resolverAddr = v.substr(0, pos);
+          dnsport      = std::atoi(v.substr(pos + 1).c_str());
+        }
+        m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
+        llarp::LogInfo(Name(), " local dns set to ", m_LocalResolverAddr);
+      }
+      if(k == "upstream-dns")
+      {
+        std::string resolverAddr = v;
+        uint16_t dnsport         = DNS_PORT;
+        auto pos                 = v.find(":");
+        if(pos != std::string::npos)
+        {
+          resolverAddr = v.substr(0, pos);
+          dnsport      = std::atoi(v.substr(pos + 1).c_str());
+        }
+        m_UpstreamDNSAddr = llarp::Addr(resolverAddr, dnsport);
+        llarp::LogInfo(Name(), " upstream dns set to ", m_UpstreamDNSAddr);
+      }
       if(k == "mapaddr")
       {
         auto pos = v.find(":");
@@ -83,7 +109,13 @@ namespace llarp
         auto pos = v.find("/");
         if(pos != std::string::npos)
         {
-          auto num = std::stoi(v.substr(pos + 1));
+          int num;
+          std::string part = v.substr(pos + 1);
+#if defined(ANDROID) || defined(RPI)
+          num = atoi(part.c_str());
+#else
+          num = std::stoi(part);
+#endif
           if(num > 0)
           {
             tunif.netmask = num;
@@ -268,11 +300,11 @@ namespace llarp
         // public interface, don't want it exploitable maybe we could detect if
         // you have a private interface
       }
-      llarp::Addr dnsd_sockaddr(127, 0, 0, 1, DNS_PORT);
-      llarp::Addr dnsc_sockaddr(8, 8, 8, 8, 53);
-      llarp::LogInfo("TunDNS set up ", dnsd_sockaddr, " to ", dnsc_sockaddr);
+
+      llarp::LogInfo("TunDNS set up ", m_LocalResolverAddr, " to ",
+                     m_UpstreamDNSAddr);
       if(!llarp_dnsd_init(&this->dnsd, EndpointLogic(), EndpointNetLoop(),
-                          dnsd_sockaddr, dnsc_sockaddr))
+                          m_LocalResolverAddr, m_UpstreamDNSAddr))
       {
         llarp::LogError("Couldnt init dns daemon");
       }
@@ -457,7 +489,7 @@ namespace llarp
     }
 
     void
-    TunEndpoint::TickTun(llarp_time_t now)
+    TunEndpoint::TickTun(__attribute__((unused)) llarp_time_t now)
     {
       // called in the isolated thread
     }
@@ -467,7 +499,7 @@ namespace llarp
     {
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      self->m_NetworkToUserPktQueue.Process([self, tun](net::IPv4Packet &pkt) {
+      self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
           llarp::LogWarn("packet dropped");
       });
@@ -489,7 +521,7 @@ namespace llarp
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
-             [self, buf, sz](net::IPv4Packet &pkt) -> bool {
+             [buf, sz](net::IPv4Packet &pkt) -> bool {
                return pkt.Load(llarp::InitBuffer(buf, sz))
                    && pkt.Header()->version == 4;
              }))

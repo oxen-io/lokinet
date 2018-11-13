@@ -2,6 +2,9 @@
 #define LLARP_THREADING_HPP
 #include <mutex>
 #if defined(__MINGW32__) && !defined(_GLIBCXX_HAS_GTHREADS)
+#if defined(RPI)
+#error this should not be set
+#endif
 #define _MINGW32_NO_THREADS
 #include <llarp/win32/threads/mingw.condition_variable.h>
 #include <llarp/win32/threads/mingw.mutex.h>
@@ -25,7 +28,7 @@ namespace llarp
     /// a lock that does nothing
     struct NullLock
     {
-      NullLock(NullMutex& mtx)
+      NullLock(__attribute__((unused)) NullMutex& mtx)
       {
       }
     };

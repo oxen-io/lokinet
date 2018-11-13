@@ -25,7 +25,8 @@ handle_signal(int sig)
 int
 printHelp(const char *argv0, int code = 1)
 {
-  std::cout << "usage: " << argv0 << " [-h] [-g|-c] config.ini" << std::endl;
+  std::cout << "usage: " << argv0 << " [-h] [-v] [-g|-c] config.ini"
+            << std::endl;
   return code;
 }
 
@@ -55,8 +56,6 @@ main(int argc, char *argv[])
     multiThreaded = false;
   }
 
-  // SetLogLevel(llarp::eLogDebug);
-
 #ifdef _WIN32
   if(startWinsock())
     return -1;
@@ -66,10 +65,14 @@ main(int argc, char *argv[])
   bool genconfigOnly = false;
   bool asRouter      = false;
   bool overWrite     = false;
-  while((opt = getopt(argc, argv, "hgcfr")) != -1)
+  while((opt = getopt(argc, argv, "hgcfrv")) != -1)
   {
     switch(opt)
     {
+      case 'v':
+        SetLogLevel(llarp::eLogDebug);
+        llarp::LogDebug("debug logging activated");
+        break;
       case 'h':
         return printHelp(argv[0], 0);
       case 'g':
@@ -80,10 +83,9 @@ main(int argc, char *argv[])
         break;
       case 'r':
 #ifdef _WIN32
-        llarp::LogError(
+        llarp::LogWarn(
             "please don't try this at home, the relay feature is untested on "
             "windows server --R.");
-        return 1;
 #endif
         asRouter = true;
         break;

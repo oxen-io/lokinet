@@ -5,23 +5,27 @@
 void
 hexDump(const char *buffer, uint16_t size)
 {
-  char hex_buffer[size * 3 + 1];
+  // would rather heap allocate than use VLA
+  char *hex_buffer     = new char[size * 3 + 1];
   hex_buffer[size * 3] = 0;
   for(unsigned int j = 0; j < size; j++)
     sprintf(&hex_buffer[3 * j], "%02X ", buffer[j]);
   std::string str(hex_buffer);
   llarp::LogInfo("First ", size, " bytes: ", str);
+  delete[] hex_buffer;
 }
 
 void
 hexDumpAt(const char *const buffer, uint32_t pos, uint16_t size)
 {
-  char hex_buffer[size * 3 + 1];
+  // would rather heap allocate than use VLA
+  char *hex_buffer     = new char[size * 3 + 1];
   hex_buffer[size * 3] = 0;
   for(unsigned int j = 0; j < size; j++)
     sprintf(&hex_buffer[3 * j], "%02X ", buffer[pos + j]);
   std::string str(hex_buffer);
   llarp::LogInfo(pos, " ", size, " bytes: ", str);
+  delete[] hex_buffer;
 }
 
 /*
@@ -214,8 +218,10 @@ extern "C"
     question->qClass = get16bits(moveable);
     (*pos) += 2;
     // printf("Now2 at [%d]\n", buffer - start);
+    /*
     llarp::LogDebug("Type ", std::to_string(question->type), " Class ",
                     std::to_string(question->qClass));
+                    */
     // hexDump(moveable, 4);
     return question;
   }
@@ -295,8 +301,10 @@ extern "C"
     llarp::LogDebug("Answer TTL: ", answer->ttl);
     answer->rdLen = get16bits(moveable);
     (*pos) += 2;
+    /*
     llarp::LogDebug("Answer rdL: ", answer->rdLen, " at ",
                     std::to_string(*pos));
+                    */
     // uint32_t cPos = moveable - buffer;
     // llarp::LogInfo("pos at ", std::to_string(*pos), " calculated: ",
     // std::to_string(cPos));
@@ -305,12 +313,14 @@ extern "C"
     // hexDumpAt(buffer, *pos, answer->rdLen);
     if(answer->rdLen == 4)
     {
-      answer->rData = new uint8_t[answer->rdLen];
-      memcpy(answer->rData, moveable, answer->rdLen);
+      answer->rData.resize(answer->rdLen);
+      memcpy(answer->rData.data(), moveable, answer->rdLen);
+      /*
       llarp::LogDebug("Read ", std::to_string(answer->rData[0]), ".",
                       std::to_string(answer->rData[1]), ".",
                       std::to_string(answer->rData[2]), ".",
                       std::to_string(answer->rData[3]));
+                      */
       moveable += answer->rdLen;
       (*pos) += answer->rdLen;  // advance the length
     }
@@ -357,7 +367,7 @@ extern "C"
           std::string revname = getDNSstring(buffer, pos);
           llarp::LogInfo("revDNSname: ", revname);
           answer->rData = new uint8_t[answer->rdLen + 1];
-          memcpy(answer->rData, revname.c_str(), answer->rdLen);
+          memcpy(answer->rData.data(), revname.c_str(), answer->rdLen);
           //answer->rData = (uint8_t *)strdup(revname.c_str()); // safer? nope
           moveable += answer->rdLen;
           //(*pos) += answer->rdLen;  // advance the length
@@ -371,7 +381,8 @@ extern "C"
           llarp::LogInfo("MX: ", revname, " @ ", priority);
           // answer->rData = new uint8_t[revname.length() + 1];
           // memcpy(answer->rData, revname.c_str(), answer->rdLen);
-          answer->rData = (uint8_t *)strdup(revname.c_str());
+          answer->rData.resize(revname.size());
+          memcpy(answer->rData.data(), revname.c_str(), revname.size());
           moveable += answer->rdLen - 2;  // advance the length
           // llarp::LogInfo("leaving at ", std::to_string(*pos));
           // hexDumpAt(buffer, *pos, 5);
@@ -383,9 +394,8 @@ extern "C"
           // hexDump(buffer, 5);
           // std::string revname = getDNSstring((char *)buffer);
           llarp::LogInfo("TXT: size: ", answer->rdLen);
-          answer->rData = new uint8_t[answer->rdLen + 1];
-          memcpy(answer->rData, moveable + 1, answer->rdLen - 1);
-          answer->rData[answer->rdLen - 1] = 0;  // terminate string
+          answer->rData.resize(answer->rdLen);
+          memcpy(answer->rData.data(), moveable + 1, answer->rdLen);
           moveable += answer->rdLen;
           (*pos) += answer->rdLen;  // advance the length
         }

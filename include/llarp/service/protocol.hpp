@@ -23,7 +23,7 @@ namespace llarp
     constexpr ProtocolType eProtocolTraffic = 1UL;
 
     /// inner message
-    struct ProtocolMessage : public IBEncodeMessage
+    struct ProtocolMessage final : public IBEncodeMessage
     {
       ProtocolMessage(const ConvoTag& tag);
       ProtocolMessage();
@@ -39,10 +39,10 @@ namespace llarp
       ConvoTag tag;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       void
       PutBuffer(llarp_buffer_t payload);
@@ -52,7 +52,7 @@ namespace llarp
     };
 
     /// outer message
-    struct ProtocolFrame : public llarp::routing::IMessage
+    struct ProtocolFrame final : public llarp::routing::IMessage
     {
       llarp::PQCipherBlock C;
       llarp::Encrypted D;
@@ -105,16 +105,17 @@ namespace llarp
                          ProtocolMessage& into) const;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
       Verify(llarp_crypto* c, const ServiceInfo& from) const;
 
       bool
-      HandleMessage(llarp::routing::IMessageHandler* h, llarp_router* r) const;
+      HandleMessage(llarp::routing::IMessageHandler* h,
+                    llarp_router* r) const override;
     };
   }  // namespace service
 }  // namespace llarp

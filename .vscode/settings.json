@@ -68,6 +68,7 @@
     "complex": "cpp",
     "variant": "cpp",
     "any": "cpp",
-    "tuntap.h": "c"
+    "tuntap.h": "c",
+    "hashtable": "cpp"
   }
 }

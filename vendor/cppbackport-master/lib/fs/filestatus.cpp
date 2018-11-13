@@ -43,7 +43,7 @@ namespace
   from_mode_t(mode_t m)
   {
     ::cpp17::filesystem::perms p =
-        static_cast<::cpp17::filesystem::perms >(m & 0xFFF);
+        static_cast< cpp17::filesystem::perms >(m & 0xFFF);
 
     ::cpp17::filesystem::file_type t = file_type::unknown;
 
@@ -182,7 +182,7 @@ namespace cpp17
     }
 
     bool
-    exists(const path& p, std::error_code& ec)
+    exists(const path& p, __attribute__((unused)) std::error_code& ec)
     {
       return exists(status(p));
     }

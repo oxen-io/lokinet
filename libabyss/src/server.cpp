@@ -217,7 +217,7 @@ namespace abyss
           return false;
         }
 
-        if(sz == 0)
+        if(!sz)
           return true;
 
         bool done    = false;

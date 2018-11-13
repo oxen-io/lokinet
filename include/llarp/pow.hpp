@@ -7,7 +7,7 @@
 namespace llarp
 {
   /// proof of work
-  struct PoW : public IBEncodeMessage
+  struct PoW final : public IBEncodeMessage
   {
     static constexpr size_t MaxSize = 128;
     uint64_t timestamp              = 0;
@@ -20,10 +20,10 @@ namespace llarp
     IsValid(llarp_shorthash_func hashfunc, llarp_time_t now) const;
 
     bool
-    DecodeKey(llarp_buffer_t k, llarp_buffer_t* val);
+    DecodeKey(llarp_buffer_t k, llarp_buffer_t* val) override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const;
+    BEncode(llarp_buffer_t* buf) const override;
 
     bool
     operator==(const PoW& other) const

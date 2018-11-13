@@ -143,7 +143,8 @@ namespace llarp
       llarp::LogError("null router");
       return;
     }
-    if(!router->SendToOrQueue(remote, &ctx->LRCM))
+    const ILinkMessage* msg = &ctx->LRCM;
+    if(!router->SendToOrQueue(remote, msg))
     {
       llarp::LogError("failed to send LRCM");
       return;

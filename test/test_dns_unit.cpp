@@ -1,47 +1,47 @@
 #include <gtest/gtest.h>
-#include <llarp.h> // for llarp_main_init
-#include <llarp/logic.h> // for threadpool/llarp_logic
+#include <llarp.h>        // for llarp_main_init
+#include <llarp/logic.h>  // for threadpool/llarp_logic
 #include "llarp/net.hpp"  // for llarp::Addr
 #include "llarp/dns.hpp"
 #include "llarp/dnsc.hpp"
 
 struct DNSTest : public ::testing::Test
 {
-
   unsigned char buf[47] = {
-    0x00,0x01,        // first short
-      0x01,0x00,0x00, // combined fields
-      0x01,0x00,0x01,0x00,0x00,0x00,0x00, // last 4 shorts
-    // question (is 18 bytes long)
-    0x04, // 4 letters
-      0x6C,0x6F,0x6B,0x69, // loki
-      0x07, // 7 letters
-      0x6E,0x65,0x74,0x77,0x6F,0x72,0x6B, // network
-      0x00, // end
-      0x00,0x01, // type (a 1/ptr 12)
-      0x00,0x01, // class (1 = internet)
-    // 30th byte
-    // Answer (is 16 bytes long)
-      0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01, // name, type, class
-      0x00, 0x00, 0x08, 0x4b, // ttl 2123
-      0x00, 0x04, // rdLen
-      0x45, 0x10, 0xd1, 0x02, // an ip address
-    // extra
-    0x00 // null terminator (probably don't need this, just added it)
+      0x00, 0x01,                                // first short
+      0x01, 0x00, 0x00,                          // combined fields
+      0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00,  // last 4 shorts
+      // question (is 18 bytes long)
+      0x04,                                      // 4 letters
+      0x6C, 0x6F, 0x6B, 0x69,                    // loki
+      0x07,                                      // 7 letters
+      0x6E, 0x65, 0x74, 0x77, 0x6F, 0x72, 0x6B,  // network
+      0x00,                                      // end
+      0x00, 0x01,                                // type (a 1/ptr 12)
+      0x00, 0x01,                                // class (1 = internet)
+                                                 // 30th byte
+                                                 // Answer (is 16 bytes long)
+      0xc0, 0x0c, 0x00, 0x01, 0x00, 0x01,        // name, type, class
+      0x00, 0x00, 0x08, 0x4b,                    // ttl 2123
+      0x00, 0x04,                                // rdLen
+      0x45, 0x10, 0xd1, 0x02,                    // an ip address
+      // extra
+      0x00  // null terminator (probably don't need this, just added it)
   };
 
   DNSTest()
   {
-
   }
 
   void
   SetUp()
   {
-    llarp::SetLogLevel(llarp::eLogNone); // turn off logging to keep gtest output pretty
+    llarp::SetLogLevel(
+        llarp::eLogNone);  // turn off logging to keep gtest output pretty
     /*
      const char *url = "loki.network";
-     struct dns_query *packet = build_dns_packet((char *)url, 1, 1); // id 1, type 1 (A)
+     struct dns_query *packet = build_dns_packet((char *)url, 1, 1); // id 1,
+     type 1 (A)
 
      unsigned int length = packet->length;
      char *buffer = (char *)packet->request;
@@ -52,7 +52,6 @@ struct DNSTest : public ::testing::Test
      printf("Generated [%u] bytes: [%s]\n", length, hex_buffer);
      */
   }
-
 };
 
 // test puts/gets
@@ -60,8 +59,8 @@ struct DNSTest : public ::testing::Test
 TEST_F(DNSTest, TestDecodeDNSstring)
 {
   char *buffer = (char *)this->buf;
-  buffer += 12; // skip header
-  uint32_t pos = 0;
+  buffer += 12;  // skip header
+  uint32_t pos    = 0;
   std::string res = getDNSstring(buffer, &pos);
   ASSERT_TRUE(res == "loki.network");
 }
@@ -71,16 +70,17 @@ TEST_F(DNSTest, TestCodeDomain)
   char buffer[16];
   llarp::Zero(buffer, 16);
   char *write_buffer = buffer;
-  std::string url = "bob.com";
+  std::string url    = "bob.com";
   code_domain(write_buffer, url);
 
   char hex_buffer[16 * 3 + 1];
   hex_buffer[16 * 3] = 0;
   for(unsigned int j = 0; j < 16; j++)
     sprintf(&hex_buffer[3 * j], "%02X ", ((const char *)buffer)[j]);
-  //printf("first 16 [%s]", hex_buffer);
+  // printf("first 16 [%s]", hex_buffer);
 
-  std::string expected_result = "03 62 6F 62 03 63 6F 6D 00 00 00 00 00 00 00 00 ";
+  std::string expected_result =
+      "03 62 6F 62 03 63 6F 6D 00 00 00 00 00 00 00 00 ";
   ASSERT_TRUE(hex_buffer == expected_result);
 }
 
@@ -125,12 +125,12 @@ TEST_F(DNSTest, TestDecodeHdr)
 TEST_F(DNSTest, TestDecodeQuestion)
 {
   char *buffer = (char *)this->buf;
-  buffer += 12; // skip header
-  uint32_t pos = 0;
+  buffer += 12;  // skip header
+  uint32_t pos               = 0;
   dns_msg_question *question = decode_question(buffer, &pos);
-  //printf("name[%s]", question->name.c_str());
-  //printf("type[%d]", question->type);
-  //printf("qClass[%d]", question->qClass);
+  // printf("name[%s]", question->name.c_str());
+  // printf("type[%d]", question->type);
+  // printf("qClass[%d]", question->qClass);
   std::string url = "loki.network";
   ASSERT_TRUE(question->name == url);
   ASSERT_TRUE(question->type == 1);
@@ -139,10 +139,10 @@ TEST_F(DNSTest, TestDecodeQuestion)
 
 TEST_F(DNSTest, TestDecodeAnswer)
 {
-  const char * const buffer = (const char * const)this->buf;
-  uint32_t pos = 12;
-  std::string url = "loki.network";
-  pos += url.length() + 2 + 4; // skip question (string + 2 shorts)
+  const char *const buffer = (const char *)this->buf;
+  uint32_t pos             = 12;
+  std::string url          = "loki.network";
+  pos += url.length() + 2 + 4;  // skip question (string + 2 shorts)
 
   dns_msg_answer *answer = decode_answer(buffer, &pos);
   /*
@@ -150,7 +150,8 @@ TEST_F(DNSTest, TestDecodeAnswer)
   printf("aClass[%d]", answer->aClass);
   printf("ttl[%d]", answer->ttl);
   printf("rdLen[%d]", answer->rdLen);
-  printf("[%hhu].[%hhu].[%hhu].[%hhu]", answer->rData[0], answer->rData[1], answer->rData[2], answer->rData[3]);
+  printf("[%hhu].[%hhu].[%hhu].[%hhu]", answer->rData[0], answer->rData[1],
+  answer->rData[2], answer->rData[3]);
   */
   ASSERT_TRUE(answer->name == url);
   ASSERT_TRUE(answer->type == 1);
@@ -191,5 +192,4 @@ TEST_F(DNSTest, handleDNSrecvFrom)
   llarp_handle_dns_recvfrom((llarp_udp_io *)&udp, &addr, buffer, sz);
   // llarp_handle_dnsc_recvfrom
   // llarp_handle_dnsd_recvfrom
-
 }

@@ -7,7 +7,7 @@ namespace llarp
 {
   namespace routing
   {
-    struct PathConfirmMessage : public IMessage
+    struct PathConfirmMessage final : public IMessage
     {
       uint64_t pathLifetime;
       uint64_t pathCreated;
@@ -16,13 +16,13 @@ namespace llarp
       ~PathConfirmMessage(){};
 
       bool
-      BEncode(llarp_buffer_t* buf) const;
+      BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val);
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const;
+      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
     };
   }  // namespace routing
 }  // namespace llarp

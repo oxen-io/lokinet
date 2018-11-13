@@ -16,6 +16,11 @@
 #include "mem.hpp"
 #include <cassert>
 
+#ifdef ANDROID
+/** TODO: correct this value */
+#define SOCK_NONBLOCK (0)
+#endif
+
 namespace llarp
 {
   int
@@ -135,9 +140,9 @@ namespace llarp
       socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
       ssize_t ret    = ::recvfrom(fd, buf, sz, 0, addr, &slen);
-      if(ret == -1)
+      if(ret < 0)
         return -1;
-      if(ret > sz)
+      if(static_cast< size_t >(ret) > sz)
         return -1;
       udp->recvfrom(udp, addr, buf, ret);
       return 0;
@@ -181,7 +186,9 @@ namespace llarp
               };
 
     int
-    sendto(const sockaddr* to, const void* data, size_t sz)
+    sendto(__attribute__((unused)) const sockaddr* to,
+           __attribute__((unused)) const void* data,
+           __attribute__((unused)) size_t sz)
     {
       return -1;
     }

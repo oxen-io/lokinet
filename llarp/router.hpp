@@ -82,7 +82,7 @@ struct llarp_router
   /// hard upperbound limit on the number of router to router connections
   size_t maxConnectedRouters = 2000;
 
-  int minRequiredRouters = 4;
+  size_t minRequiredRouters = 4;
 
   // should we be sending padded messages every interval?
   bool sendPadding = false;
@@ -139,8 +139,13 @@ struct llarp_router
   std::unordered_map< llarp::RouterID, llarp_time_t, llarp::RouterID::Hash >
       m_PersistingSessions;
 
+  // TODO: change me if needed
+  const std::string defaultUpstreamResolver = "1.1.1.1:53";
+  std::list< std::string > upstreamResolvers;
+  std::string resolverBindAddr = "127.0.0.1:53";
+
   llarp_router();
-  virtual ~llarp_router();
+  ~llarp_router();
 
   void HandleLinkSessionEstablished(llarp::RouterContact);
 
@@ -296,6 +301,19 @@ struct llarp_router
 
   static void
   HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
+
+ private:
+  template < typename Config >
+  void
+  mergeHiddenServiceConfig(const Config &in, Config &out)
+  {
+    for(const auto &resolver : upstreamResolvers)
+      out.push_back({"upstream-dns", resolver});
+    out.push_back({"local-dns", resolverBindAddr});
+
+    for(const auto &item : in)
+      out.push_back({item.first, item.second});
+  }
 };
 
 #endif

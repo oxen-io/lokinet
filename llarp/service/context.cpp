@@ -83,7 +83,7 @@ namespace llarp
         return nullptr;
       }
       llarp::handlers::TunEndpoint *tunEndpoint =
-          dynamic_cast< llarp::handlers::TunEndpoint * >(endpointer);
+          static_cast< llarp::handlers::TunEndpoint * >(endpointer);
       return tunEndpoint;
     }
 
@@ -135,7 +135,10 @@ namespace llarp
       // HiddenServiceEndpoint(tunEndpoint, callback, addr,
       // tunEndpoint->GenTXID());
       return tunEndpoint->EnsurePathToService(
-          addr, [](Address addr, void *ctx) {}, 10000);
+          addr,
+          [](__attribute__((unused)) Address addr,
+             __attribute__((unused)) void *ctx) {},
+          10000);
     }
 
     huint32_t
@@ -164,7 +167,7 @@ namespace llarp
       auto *uniqueEndpoint                 = &firstEndpoint->second;
       llarp::service::Endpoint *endpointer = uniqueEndpoint->get();
       llarp::handlers::TunEndpoint *tunEndpoint =
-          dynamic_cast< llarp::handlers::TunEndpoint * >(endpointer);
+          static_cast< llarp::handlers::TunEndpoint * >(endpointer);
       if(!tunEndpoint)
       {
         llarp::LogError("No tunnel endpoint found");
@@ -206,15 +209,38 @@ namespace llarp
 
     bool
     Context::AddDefaultEndpoint(const std::string &ifaddr,
-                                const std::string &ifname)
+                                const std::string &ifname,
+                                const std::string &remoteResolver,
+                                const std::string &localResolver)
     {
-      return AddEndpoint(
-          {"default",
-           {{"type", "tun"}, {"ifaddr", ifaddr}, {"ifname", ifname}}});
+      return AddEndpoint({"default",
+                          {{"type", "tun"},
+                           {"ifaddr", ifaddr},
+                           {"ifname", ifname},
+                           {"local-dns", localResolver},
+                           {"upstream-dns", remoteResolver}}},
+                         true);
     }
 
     bool
-    Context::AddEndpoint(const Config::section_t &conf)
+    Context::StartAll()
+    {
+      auto itr = m_Endpoints.begin();
+      while(itr != m_Endpoints.end())
+      {
+        if(!itr->second->Start())
+        {
+          llarp::LogError(itr->first, " failed to start");
+          return false;
+        }
+        llarp::LogInfo(itr->first, " started");
+        ++itr;
+      }
+      return true;
+    }
+
+    bool
+    Context::AddEndpoint(const Config::section_t &conf, bool autostart)
     {
       {
         auto itr = m_Endpoints.find(conf.first);
@@ -275,15 +301,25 @@ namespace llarp
           return false;
         }
       }
-      // start
-      if(service->Start())
+      if(autostart)
+      {
+        // start
+        if(service->Start())
+        {
+          llarp::LogInfo("autostarting hidden service endpoint ",
+                         service->Name());
+          m_Endpoints.insert(std::make_pair(conf.first, std::move(service)));
+          return true;
+        }
+        llarp::LogError("failed to start hidden service endpoint ", conf.first);
+        return false;
+      }
+      else
       {
         llarp::LogInfo("added hidden service endpoint ", service->Name());
         m_Endpoints.insert(std::make_pair(conf.first, std::move(service)));
         return true;
       }
-      llarp::LogError("failed to start hidden service endpoint ", conf.first);
-      return false;
     }
   }  // namespace service
 }  // namespace llarp

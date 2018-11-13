@@ -7,4 +7,4 @@ WORKDIR /src/
 
 COPY . /src/
 
-RUN make -j 8 JSONRPC=ON
+RUN make -j 8 JSONRPC=ON CXX17=OFF
