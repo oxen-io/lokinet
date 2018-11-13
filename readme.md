@@ -46,9 +46,9 @@ install (root):
 
 ## Windows
 
-build:
+build (where `$ARCH` is your platform - `i686` or `x86_64`):
 
-    $ pacman -Sy base-devel mingw-w64-$ARCH-toolchain git libtool autoconf cmake
+    $ pacman -Sy base-devel mingw-w64-$ARCH-toolchain git libtool autoconf mingw-w64-$ARCH-cmake
     $ git clone https://github.com/loki-project/loki-network.git
     $ cd loki-network
     $ mkdir -p build; cd build
