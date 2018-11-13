@@ -224,12 +224,6 @@ extern "C"
   decode_answer(const char *const buffer, uint32_t *pos)
   {
     dns_msg_answer *answer = new dns_msg_answer;
-    // skip for now until we can handle compressed labels
-    /*
-    std::string aName      = getDNSstring((char *)buffer);
-    buffer += aName.size() + 1;
-    */
-
     /*
     llarp_buffer_t bob;
     bob.base = (unsigned char *)buffer;
@@ -237,14 +231,10 @@ extern "C"
     llarp::DumpBuffer(bob);
     */
 
-    // hexDump(buffer, 10);
-
     const char *moveable = buffer;
     // llarp::LogDebug("Advancing to pos ", std::to_string(*pos));
     moveable += (*pos);  // advance to position
 
-    // hexDumpAt(buffer, (*pos) - 2, 12);
-    // hexDump(moveable, 12);
     if(*moveable == '\xc0')
     {
       // hexDump(moveable, 12);
@@ -267,7 +257,14 @@ extern "C"
     else
     {
       // get DNSString?
-      llarp::LogWarn("Need to parse string");
+      llarp::LogWarn("Need to parse string, implement me");
+      /*
+      uint32_t readAt32 = *pos;
+      answer->name = getDNSstring(buffer, &readAt32);
+        llarp::LogInfo("Parsed string ", answer->name, " read ", std::to_string(readAt32));
+        moveable += readAt32; (*pos) += readAt32;
+      */
+      //moveable++; (*pos)++;
     }
     /*
     hexDump(moveable, 10);
@@ -361,8 +358,9 @@ extern "C"
           llarp::LogInfo("revDNSname: ", revname);
           answer->rData = new uint8_t[answer->rdLen + 1];
           memcpy(answer->rData, revname.c_str(), answer->rdLen);
+          //answer->rData = (uint8_t *)strdup(revname.c_str()); // safer? nope
           moveable += answer->rdLen;
-          (*pos) += answer->rdLen;  // advance the length
+          //(*pos) += answer->rdLen;  // advance the length
         }
         break;
         case 15:

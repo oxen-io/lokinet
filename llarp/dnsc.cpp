@@ -217,17 +217,6 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   llarp::LogDebug("msg nsc ", msg->nsCount);
   llarp::LogDebug("msg arc ", msg->arCount);
 
-  // we may need to parse question first
-
-  /*
-   dns_msg_question *question = decode_question((const char *)castBuf);
-   llarp::LogInfo("que name  ", question->name);
-   castBuf += question->name.length() + 8;
-
-   dns_msg_answer *answer = decode_answer((const char *)castBuf);
-   castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
-   */
-
   // FIXME: only handling one atm
   uint32_t pos               = 12;  // just set after header
   dns_msg_question *question = nullptr;
@@ -240,6 +229,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // castBuf += question->name.length() + 1 + 4;
     // castBuf += 2;  // skip answer label
   }
+  llarp::LogInfo("Question ", std::to_string(question->type), " ", question->name);
 
   // FIXME: only handling one atm
   std::vector< dns_msg_answer * > answers;
@@ -303,8 +293,15 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // pos = 0; // reset pos
     answer = decode_answer(castBufc, &pos);
     // answers.push_back(answer);
-    llarp::LogDebug("Read an authority");
+      llarp::LogDebug("Read an authority for ",
+                     request->question.name, " at ", std::to_string(pos));
     // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
+      if(pos > sz)
+      {
+          llarp::LogWarn("Would read past end of dns packet. for ",
+                         request->question.name);
+          break;
+      }
   }
 
   /*
@@ -393,6 +390,14 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 
   int ip = 0;
 
+    // if no answer, just bail now
+    if (!answer)
+    {
+        request->found  = false;
+        request->resolved(request);
+        return;
+    }
+    
   /* search for and print IPv4 addresses */
   // if(dnsQuery->reqType == 0x01)
   llarp::LogDebug("request question type: ",
@@ -447,7 +452,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
       return;
     }
   }
-  else if(request->question.type == 12)
+  else if(answer->type == 12)
   {
     llarp::LogDebug("Resolving PTR");
     request->found  = true;
