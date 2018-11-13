@@ -162,7 +162,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "upstream=" << DEFAULT_RESOLVER_EU << std::endl;
   f << "# opennic au resolver" << std::endl;
   f << "upstream=" << DEFAULT_RESOLVER_AU << std::endl;
-  f << "bind=127.3.2.1:53" << std::endl;
+  f << "bind=127.0.0.1:53" << std::endl;
   f << std::endl << std::endl;
 
   f << "# network database settings block " << std::endl;
