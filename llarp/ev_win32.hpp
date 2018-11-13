@@ -248,7 +248,6 @@ namespace llarp
     setup()
     {
       llarp::LogDebug("set ifname to ", t->ifname);
-      strncpy(tunif->if_name, t->ifname, IFNAMSIZ);
 
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
