@@ -706,6 +706,7 @@ namespace llarp
     Path::SendExitRequest(const llarp::routing::ObtainExitMessage* msg,
                           llarp_router* r)
     {
+      llarp::LogInfo(Name(), " sending exit request to ", Endpoint());
       m_ExitObtainTX = msg->T;
       return SendRoutingMessage(msg, r);
     }
@@ -741,6 +742,7 @@ namespace llarp
           llarp::LogError(Name(), "RXM invalid signature");
           return false;
         }
+        llarp::LogInfo(Name(), " ", Endpoint(), " Rejected exit");
         return InformExitResult(msg->B);
       }
       llarp::LogError(Name(), " got unwarrented RXM");
@@ -760,6 +762,7 @@ namespace llarp
         }
         // we now can send exit traffic
         _role |= ePathRoleExit;
+        llarp::LogInfo(Name(), " ", Endpoint(), " Granted exit");
         return InformExitResult(0);
       }
       llarp::LogError(Name(), " got unwarrented GXM");

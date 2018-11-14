@@ -46,6 +46,7 @@ namespace llarp
       obtain.S = p->NextSeqNo();
       obtain.T = llarp_randint();
       obtain.X = 0;
+      obtain.E = 1;
       if(!obtain.Sign(&router->crypto, m_ExitIdentity))
       {
         llarp::LogError("Failed to sign exit request");
