@@ -159,35 +159,35 @@ namespace llarp
     byte_t*
     data()
     {
-      return &b[0];
+      return b;
     }
 
     const byte_t*
     data() const
     {
-      return &b[0];
+      return b;
     }
 
     Long_t*
     data_l()
     {
-      return &l[0];
+      return l;
     }
 
     const Long_t*
     data_l() const
     {
-      return &l[0];
+      return l;
     }
 
     operator const byte_t*() const
     {
-      return &b[0];
+      return b;
     }
 
     operator byte_t*()
     {
-      return &b[0];
+      return b;
     }
 
     bool

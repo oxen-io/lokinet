@@ -41,7 +41,7 @@ namespace llarp
     bool
     CloseExitMessage::Verify(llarp_crypto* c, const llarp::PubKey& pk) const
     {
-      byte_t tmp[128] = {0};
+      byte_t tmp[512] = {0};
       auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
       CloseExitMessage copy;
       copy = *this;
@@ -55,7 +55,7 @@ namespace llarp
     bool
     CloseExitMessage::Sign(llarp_crypto* c, const llarp::SecretKey& sk)
     {
-      byte_t tmp[128] = {0};
+      byte_t tmp[512] = {0};
       auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
       Z.Zero();
       Y.Randomize();

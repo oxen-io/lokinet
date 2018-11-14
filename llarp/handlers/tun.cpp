@@ -424,7 +424,7 @@ namespace llarp
     {
       llarp_time_t now = Now();
       huint32_t nextIP = {0};
-      RouterID ident(addr);
+      AlignedBuffer< 32 > ident(addr);
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(ident);
