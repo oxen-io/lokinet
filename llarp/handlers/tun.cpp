@@ -424,10 +424,10 @@ namespace llarp
     {
       llarp_time_t now = Now();
       huint32_t nextIP = {0};
-
+      RouterID ident(addr);
       {
         // previously allocated address
-        auto itr = m_AddrToIP.find(addr);
+        auto itr = m_AddrToIP.find(ident);
         if(itr != m_AddrToIP.end())
         {
           // mark ip active
@@ -445,9 +445,9 @@ namespace llarp
                 && m_NextIP < m_MaxIP);
         if(nextIP < m_MaxIP)
         {
-          m_AddrToIP.insert(std::make_pair(addr, nextIP));
-          m_IPToAddr.insert(std::make_pair(nextIP, addr));
-          llarp::LogInfo(Name(), " mapped ", RouterID(addr), " to ", nextIP);
+          m_AddrToIP.insert(std::make_pair(ident, nextIP));
+          m_IPToAddr.insert(std::make_pair(nextIP, ident));
+          llarp::LogInfo(Name(), " mapped ", ident, " to ", nextIP);
           MarkIPActive(nextIP);
           return nextIP;
         }
