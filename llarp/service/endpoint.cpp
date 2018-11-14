@@ -1536,7 +1536,8 @@ namespace llarp
           return false;
         }
       }
-      return path::Builder::SelectHop(db, prev, cur, hop);
+      return path::Builder::SelectHop(db, prev, cur, hop,
+                                      llarp::path::ePathRoleOutboundHS);
     }
 
     uint64_t
@@ -1553,7 +1554,8 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      bool should = path::Builder::ShouldBuildMore(now);
+      bool should = path::Builder::ShouldBuildMoreForRoles(
+          now, llarp::path::ePathRoleOutboundHS);
       // determinte newest intro
       Introduction intro;
       if(!GetNewestIntro(intro))

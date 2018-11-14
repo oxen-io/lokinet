@@ -64,6 +64,7 @@ namespace llarp
       S       = other.S;
       T       = other.T;
       version = other.version;
+      Y       = other.Y;
       Z       = other.Z;
       return *this;
     }
@@ -73,6 +74,7 @@ namespace llarp
     {
       byte_t tmp[128] = {0};
       auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      Y.Randomize();
       if(!BEncode(&buf))
         return false;
       buf.sz = buf.cur - buf.base;

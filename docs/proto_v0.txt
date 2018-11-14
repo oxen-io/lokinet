@@ -553,7 +553,9 @@ ip address used for exit traffic.
   A: "G",
   S: uint64_sequence_number,
   T: transaction_id_uint64,
-  V: 0
+  Y: "<16 byte nonce>",
+  V: 0,
+  Z: "<64 bytes signature>"
 }
 
 any TITM recieved on the same path will be forwarded out to the internet if 
@@ -571,14 +573,16 @@ was denied.
   R: [list, of, rejected, traffic, policies],
   S: uint64_sequence_number,
   T: transaction_id_uint64,
-  V: 0
+  V: 0,
+  Y: "<16 byte nonce>",
+  Z: "<64 bytes signature>"
 }
 
 
 discarded data fragment message (DDFM)
 
 sent in reply to TDFM when we don't have a path locally or are doing network
-congestion control. indcates a TDFM was discarded.
+congestion control from a TITM.
 
 {
   A: "D",
@@ -732,24 +736,25 @@ transfer data on a session previously made
 
 transfer ip traffic message (TITM)
 
-transfer ip traffic for exit
+transfer ip traffic
 
 {
   A: "I",
   S: uint64_sequence_number,
   V: 0,
   X: "<N bytes ip packet>",
+  Y: "<16 bytes nonce>",
   Z: "<64 bytes signature using previously provided signing key>"
 }
 
 X is parsed as an IP packet and the source addresss is extracted.
-Next we find the corrisponding signing key for a previously granted exit address
+Next we find the corrisponding signing key for a previously granted address
 and use it to validate the siganture of the entire message. If the signing key
 cannot be found or the signature is invalid this message is dropped, otherwise
-the X value is sent on the appropriate exit network interface.
+the X value is sent on the appropriate network interface.
 
 When we recieve an ip packet from the internet to an exit address, we put it
-into a TITM, signed with the exit info's signing key and send it downstream the
+into a TITM, signed with the router's signing key and send it downstream the
 corrisponding path in an LRDM.
 
 update exit path message (UXPM)
@@ -763,31 +768,35 @@ should use the new path that this message came from.
   S: uint64_sequence_number,
   T: uint64_txid,
   V: 0,
+  Y: "<16 bytes nonce>",
   Z: "<64 bytes signature using previously provided signing key>"
 }
 
 close exit path message (CXPM)
 
-client sends a CXPM when the exit is no longer needed.
+client sends a CXPM when the exit is no longer needed or by the exit if the 
+exit wants to close prematurely.
+also sent by exit in reply to a CXPM to confirm close.
 
 {
   A: "C",
   S: uint64_sequence_number,
-  T: transaction_id_uint64,
   V: 0,
-  Z: "<64 bytes signagure using previously provided signing key>"
+  Y: "<16 bytes nonce>",
+  Z: "<64 bytes signature>"
 }
 
 update exit verify message (EXVM)
 
 sent in reply to a UXPM to verify that the path handover was accepted
-sent in reply to a CXPM to verify that the exit was closed
 
 {
   A: "V",
   S: uint64_sequence_number,
   T: uint64_txid,
-  V: 0
+  V: 0,
+  Y: "<16 bytes nonce>",
+  Z: "<64 bytes signature>"
 }
 
 

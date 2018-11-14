@@ -16,7 +16,7 @@ namespace llarp
 
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop) override;
+                size_t hop, llarp::path::PathRole roles) override;
 
      protected:
       llarp::RouterID m_ExitRouter;

@@ -145,6 +145,10 @@ void
 llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job);
 
 bool
+llarp_nodedb_select_random_exit(struct llarp_nodedb *n,
+                                llarp::RouterContact &rc);
+
+bool
 llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
                                const llarp::RouterContact &prev,
                                llarp::RouterContact &result, size_t N);

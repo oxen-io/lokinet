@@ -104,6 +104,9 @@ namespace llarp
       virtual bool
       Expired(llarp_time_t now) const = 0;
 
+      virtual bool
+      ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const = 0;
+
       /// send routing message and increment sequence number
       virtual bool
       SendRoutingMessage(const llarp::routing::IMessage* msg,
@@ -162,7 +165,13 @@ namespace llarp
       }
 
       bool
-      Expired(llarp_time_t now) const;
+      Expired(llarp_time_t now) const override;
+
+      bool
+      ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const override
+      {
+        return now >= ExpireTime() - dlt;
+      }
 
       // send routing message when end of path
       bool
@@ -274,6 +283,10 @@ namespace llarp
           DataHandlerFunc;
       typedef std::function< bool(Path*) > ExitUpdatedFunc;
       typedef std::function< bool(Path*) > ExitClosedFunc;
+      typedef std::function< bool(Path*, llarp_buffer_t) >
+          ExitTrafficHandlerFunc;
+      /// (path, backoff) backoff is 0 on success
+      typedef std::function< bool(Path*, llarp_time_t) > ObtainedExitHandler;
 
       HopList hops;
 
@@ -282,12 +295,36 @@ namespace llarp
       llarp::service::Introduction intro;
 
       llarp_time_t buildStarted;
-      PathStatus _status;
 
-      Path(const std::vector< RouterContact >& routers, PathSet* parent);
+      Path(const std::vector< RouterContact >& routers, PathSet* parent,
+           PathRole startingRoles);
+
+      PathRole
+      Role() const
+      {
+        return _role;
+      }
+
+      bool
+      SupportsRoles(PathRole roles) const
+      {
+        return (_role & roles) == roles;
+      }
+
+      PathStatus
+      Status() const
+      {
+        return _status;
+      }
 
       void
       SetBuildResultHook(BuildResultHookFunc func);
+
+      void
+      SetExitTrafficHandler(ExitTrafficHandlerFunc handler)
+      {
+        m_ExitTrafficHandler = handler;
+      }
 
       void
       SetCloseExitFunc(ExitClosedFunc handler)
@@ -326,6 +363,12 @@ namespace llarp
       ExpireTime() const
       {
         return buildStarted + hops[0].lifetime;
+      }
+
+      bool
+      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const
+      {
+        return now >= (ExpireTime() - dlt);
       }
 
       bool
@@ -426,21 +469,36 @@ namespace llarp
       std::string
       Name() const;
 
+      /// ask endpoint for exit
+      /// call handler with result when we get it
+      /// returns false if we failed to send the OXM
+      bool
+      ObtainExit(llarp_router* r, ObtainedExitHandler handler) const;
+
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;
 
      private:
+      /// call obtained exit hooks
+      bool
+      InformExitResult(llarp_time_t b);
+
       BuildResultHookFunc m_BuiltHook;
       DataHandlerFunc m_DataHandler;
       DropHandlerFunc m_DropHandler;
       CheckForDeadFunc m_CheckForDead;
       ExitUpdatedFunc m_ExitUpdated;
       ExitClosedFunc m_ExitClosed;
+      ExitTrafficHandlerFunc m_ExitTrafficHandler;
+      std::vector< ObtainedExitHandler > m_ObtainedExitHooks;
       llarp_time_t m_LastRecvMessage     = 0;
       llarp_time_t m_LastLatencyTestTime = 0;
       uint64_t m_LastLatencyTestID       = 0;
       uint64_t m_UpdateExitTX            = 0;
       uint64_t m_CloseExitTX             = 0;
+      uint64_t m_ExitObtainTX            = 0;
+      PathStatus _status;
+      PathRole _role;
     };
 
     enum PathBuildStatus

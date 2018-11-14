@@ -88,11 +88,7 @@ namespace llarp
       AsyncVerifyRouter(llarp::PubKey pk,
                         std::function< void(llarp::PubKey, bool) > handler)
       {
-        abyss::json::Value params;
-        params.SetObject();
-        QueueRPC("get_service_node", std::move(params),
-                 std::bind(&CallerImpl::NewConn, this, pk, handler,
-                           std::placeholders::_1));
+        handler(pk, true);
       }
 
       ~CallerImpl()
@@ -110,6 +106,30 @@ namespace llarp
 
       ~Handler()
       {
+      }
+
+      bool
+      ListExitLevels(Response& resp) const
+      {
+        llarp::exit::Context::TrafficStats stats;
+        router->exitContext.CalculateExitTraffic(stats);
+        auto& alloc = resp.GetAllocator();
+        abyss::json::Value exits;
+        exits.SetArray();
+        auto itr = stats.begin();
+        while(itr != stats.end())
+        {
+          abyss::json::Value info, ident;
+          info.SetObject();
+          ident.SetString(itr->first.ToHex().c_str(), alloc);
+          info.AddMember("ident", ident, alloc);
+          info.AddMember("tx", abyss::json::Value(itr->second.first), alloc);
+          info.AddMember("rx", abyss::json::Value(itr->second.second), alloc);
+          exits.PushBack(info, alloc);
+          ++itr;
+        }
+        resp.AddMember("result", exits, alloc);
+        return true;
       }
 
       bool
@@ -147,6 +167,10 @@ namespace llarp
         if(method == "llarp.admin.link.neighboors")
         {
           return ListNeighboors(response);
+        }
+        else if(method == "llarp.admin.exit.list")
+        {
+          return ListExitLevels(response);
         }
         return false;
       }

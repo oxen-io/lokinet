@@ -11,7 +11,10 @@ namespace llarp
     constexpr size_t MaxExitMTU = 1500;
     struct TransferTrafficMessage final : public IMessage
     {
+      using Nonce_t = AlignedBuffer< 16 >;
+
       std::vector< byte_t > X;
+      Nonce_t Y;
       llarp::Signature Z;
 
       TransferTrafficMessage&

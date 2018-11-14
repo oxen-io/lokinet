@@ -21,6 +21,12 @@ namespace llarp
       m_Parent->DelEndpointInfo(m_CurrentPath, m_IP, m_remoteSignKey);
     }
 
+    void
+    Endpoint::Close()
+    {
+      m_Parent->RemoveExit(this);
+    }
+
     bool
     Endpoint::UpdateLocalPath(const llarp::PathID_t& nextPath)
     {
@@ -28,6 +34,14 @@ namespace llarp
         return false;
       m_CurrentPath = nextPath;
       return true;
+    }
+
+    void
+    Endpoint::Tick(llarp_time_t now)
+    {
+      (void)now;
+      m_RxRate = 0;
+      m_TxRate = 0;
     }
 
     bool
@@ -43,6 +57,15 @@ namespace llarp
     }
 
     bool
+    Endpoint::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
+    {
+      auto path = GetCurrentPath();
+      if(path)
+        return path->ExpiresSoon(now, dlt);
+      return true;
+    }
+
+    bool
     Endpoint::SendOutboundTraffic(llarp_buffer_t buf)
     {
       llarp::net::IPv4Packet pkt;
@@ -54,7 +77,10 @@ namespace llarp
       else
         dst = pkt.dst();
       pkt.UpdateIPv4PacketOnDst(m_IP, dst);
-      return m_Parent->QueueOutboundTraffic(std::move(pkt));
+      if(!m_Parent->QueueOutboundTraffic(std::move(pkt)))
+        return false;
+      m_TxRate += buf.sz;
+      return true;
     }
 
     bool
@@ -69,7 +95,10 @@ namespace llarp
         msg.S = path->NextSeqNo();
         if(!msg.Sign(m_Parent->Crypto(), m_Parent->Router()->identity))
           return false;
-        return path->SendRoutingMessage(&msg, m_Parent->Router());
+        if(!path->SendRoutingMessage(&msg, m_Parent->Router()))
+          return false;
+        m_RxRate += buf.sz;
+        return true;
       }
       return false;
     }

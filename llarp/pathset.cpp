@@ -18,6 +18,31 @@ namespace llarp
       return m_Paths.size() < m_NumPaths;
     }
 
+    bool
+    PathSet::ShouldBuildMoreForRoles(llarp_time_t now, PathRole roles) const
+    {
+      const size_t required = MinRequiredForRoles(roles);
+      size_t has            = 0;
+      for(const auto& item : m_Paths)
+      {
+        if(item.second->SupportsRoles(roles))
+        {
+          if(!item.second->ExpiresSoon(now))
+            ++has;
+        }
+      }
+      return has < required;
+    }
+
+    size_t
+    PathSet::MinRequiredForRoles(PathRole roles) const
+    {
+      size_t require = m_NumPaths > 1 ? m_NumPaths / 2 : m_NumPaths;
+      if(roles & ePathRoleInboundHS || roles & ePathRoleOutboundHS)
+        require += 2;
+      return require;
+    }
+
     void
     PathSet::Tick(llarp_time_t now, llarp_router* r)
     {
@@ -46,7 +71,8 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetEstablishedPathClosestTo(const AlignedBuffer< 32 >& id) const
+    PathSet::GetEstablishedPathClosestTo(const AlignedBuffer< 32 >& id,
+                                         PathRole roles) const
     {
       Path* path = nullptr;
       AlignedBuffer< 32 > dist;
@@ -54,6 +80,8 @@ namespace llarp
       for(const auto& item : m_Paths)
       {
         if(!item.second->IsReady())
+          continue;
+        if(!item.second->SupportsRoles(roles))
           continue;
         AlignedBuffer< 32 > localDist = item.second->Endpoint() ^ id;
         if(localDist < dist)
@@ -66,13 +94,13 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetNewestPathByRouter(const RouterID& id) const
+    PathSet::GetNewestPathByRouter(const RouterID& id, PathRole roles) const
     {
       Path* chosen = nullptr;
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->IsReady())
+        if(itr->second->IsReady() && itr->second->SupportsRoles(roles))
         {
           if(itr->second->Endpoint() == id)
           {
@@ -88,13 +116,13 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetPathByRouter(const RouterID& id) const
+    PathSet::GetPathByRouter(const RouterID& id, PathRole roles) const
     {
       Path* chosen = nullptr;
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->IsReady())
+        if(itr->second->IsReady() && itr->second->SupportsRoles(roles))
         {
           if(itr->second->Endpoint() == id)
           {
@@ -129,7 +157,7 @@ namespace llarp
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->_status == st)
+        if(itr->second->Status() == st)
           ++count;
         ++itr;
       }
@@ -232,13 +260,13 @@ namespace llarp
     }
 
     Path*
-    PathSet::PickRandomEstablishedPath() const
+    PathSet::PickRandomEstablishedPath(PathRole roles) const
     {
       std::vector< Path* > established;
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->IsReady())
+        if(itr->second->IsReady() && itr->second->SupportsRoles(roles))
           established.push_back(itr->second);
         ++itr;
       }

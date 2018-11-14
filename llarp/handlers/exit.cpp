@@ -85,6 +85,7 @@ namespace llarp
     void
     ExitEndpoint::FlushSend()
     {
+      auto now = Now();
       m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
         // find pubkey for addr
         if(!HasLocalIP(pkt.dst()))
@@ -94,16 +95,24 @@ namespace llarp
         }
         llarp::PubKey pk = ObtainAddrForIP< llarp::PubKey >(pkt.dst());
         pkt.UpdateIPv4PacketOnDst(pkt.src(), {0});
-        auto range    = m_ActiveExits.equal_range(pk);
-        auto exit_itr = range.first;
-        while(exit_itr != range.second)
+        llarp::exit::Endpoint *ep = nullptr;
+        auto range                = m_ActiveExits.equal_range(pk);
+        auto itr                  = range.first;
+        uint64_t min              = std::numeric_limits< uint64_t >::max();
+        /// pick path with lowest rx rate
+        while(itr != range.second)
         {
-          if(exit_itr->second.SendInboundTraffic(pkt.Buffer()))
-            return true;
-          ++exit_itr;
+          if(ep == nullptr)
+            ep = &itr->second;
+          else if(itr->second.RxRate() < min && !itr->second.ExpiresSoon(now))
+          {
+            min = ep->RxRate();
+            ep  = &itr->second;
+          }
+          ++itr;
         }
-        // dropped
-        llarp::LogWarn(Name(), " dropped traffic to ", pk);
+        if(!ep->SendInboundTraffic(pkt.Buffer()))
+          llarp::LogWarn(Name(), " dropped traffic to ", pk);
         return true;
       });
     }
@@ -124,6 +133,23 @@ namespace llarp
     }
 
     void
+    ExitEndpoint::RemoveExit(const llarp::exit::Endpoint *ep)
+    {
+      auto range = m_ActiveExits.equal_range(ep->PubKey());
+      auto itr   = range.first;
+      while(itr != range.second)
+      {
+        if(itr->second.LocalPath() == ep->LocalPath())
+        {
+          itr = m_ActiveExits.erase(itr);
+          // now ep is gone af
+          return;
+        }
+        ++itr;
+      }
+    }
+
+    void
     ExitEndpoint::Tick(llarp_time_t now)
     {
       auto itr = m_ActiveExits.begin();
@@ -134,7 +160,10 @@ namespace llarp
           itr = m_ActiveExits.erase(itr);
         }
         else
+        {
+          itr->second.Tick(now);
           ++itr;
+        }
       }
       // call parent
       TunEndpoint::Tick(now);

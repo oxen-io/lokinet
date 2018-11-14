@@ -15,7 +15,7 @@ namespace llarp
     bool
     TransitHop::Expired(llarp_time_t now) const
     {
-      return now > ExpireTime();
+      return now >= ExpireTime();
     }
 
     llarp_time_t
@@ -159,6 +159,8 @@ namespace llarp
         llarp::routing::GrantExitMessage grant;
         grant.S = NextSeqNo();
         grant.T = msg->T;
+        if(!grant.Sign(&r->crypto, r->identity))
+          return false;
         return SendRoutingMessage(&grant, r);
       }
       // TODO: exponential backoff
@@ -166,6 +168,8 @@ namespace llarp
       llarp::routing::RejectExitMessage reject;
       reject.S = NextSeqNo();
       reject.T = msg->T;
+      if(!reject.Sign(&r->crypto, r->identity))
+        return false;
       return SendRoutingMessage(&reject, r);
     }
 
@@ -173,10 +177,18 @@ namespace llarp
     TransitHop::HandleCloseExitMessage(
         const llarp::routing::CloseExitMessage* msg, llarp_router* r)
     {
-      // TODO: implement me
-      (void)msg;
-      (void)r;
-      return false;
+      llarp::routing::DataDiscardMessage discard(info.txID, msg->S);
+      auto ep = r->exitContext.FindEndpointForPath(info.txID);
+      if(ep && msg->Verify(&r->crypto, ep->PubKey()))
+      {
+        ep->Close();
+        // ep is now gone af
+        llarp::routing::CloseExitMessage reply;
+        reply.S = NextSeqNo();
+        if(reply.Sign(&r->crypto, r->identity))
+          return SendRoutingMessage(&reply, r);
+      }
+      return SendRoutingMessage(&discard, r);
     }
 
     bool
@@ -196,15 +208,15 @@ namespace llarp
       auto ep = r->exitContext.FindEndpointForPath(msg->P);
       if(ep)
       {
-        if(msg->Verify(&r->crypto, ep->PubKey()))
+        if(!msg->Verify(&r->crypto, ep->PubKey()))
+          return false;
+
+        if(ep->UpdateLocalPath(info.txID))
         {
-          if(ep->UpdateLocalPath(info.txID))
-          {
-            llarp::routing::UpdateExitVerifyMessage reply;
-            reply.T = msg->T;
-            reply.S = NextSeqNo();
-            return SendRoutingMessage(&reply, r);
-          }
+          llarp::routing::UpdateExitVerifyMessage reply;
+          reply.T = msg->T;
+          reply.S = NextSeqNo();
+          return SendRoutingMessage(&reply, r);
         }
       }
       // on fail tell message was discarded
@@ -216,9 +228,9 @@ namespace llarp
     TransitHop::HandleRejectExitMessage(
         const llarp::routing::RejectExitMessage* msg, llarp_router* r)
     {
-      // TODO: implement me
       (void)msg;
       (void)r;
+      llarp::LogError(info, " got unwarrented RXM");
       return false;
     }
 
@@ -226,9 +238,9 @@ namespace llarp
     TransitHop::HandleGrantExitMessage(
         const llarp::routing::GrantExitMessage* msg, llarp_router* r)
     {
-      // TODO: implement me
       (void)msg;
       (void)r;
+      llarp::LogError(info, " got unwarrented GXM");
       return false;
     }
 
@@ -237,11 +249,14 @@ namespace llarp
         const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
     {
       auto endpoint = r->exitContext.FindEndpointForPath(info.txID);
-      if(endpoint == nullptr)
-        return false;
-      if(!msg->Verify(&r->crypto, endpoint->PubKey()))
-        return false;
-      return endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X));
+      if(endpoint && msg->Verify(&r->crypto, endpoint->PubKey()))
+      {
+        if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
+          return true;
+      }
+      // discarded
+      llarp::routing::DataDiscardMessage discard(info.txID, msg->S);
+      return SendRoutingMessage(&discard, r);
     }
 
     bool
@@ -249,25 +264,26 @@ namespace llarp
         const llarp::routing::PathTransferMessage* msg, llarp_router* r)
     {
       auto path = r->paths.GetPathForTransfer(msg->P);
+      llarp::routing::DataDiscardMessage discarded(msg->P, msg->S);
       if(!path)
       {
-        llarp::routing::DataDiscardMessage discarded(msg->P, msg->S);
-        path = r->paths.GetPathForTransfer(msg->from);
-        return path && path->SendRoutingMessage(&discarded, r);
+        return SendRoutingMessage(&discarded, r);
       }
 
       byte_t tmp[service::MAX_PROTOCOL_MESSAGE_SIZE];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->T.BEncode(&buf))
       {
-        llarp::LogWarn("failed to transfer data message, encode failed");
-        return false;
+        llarp::LogWarn(info, " failed to transfer data message, encode failed");
+        return SendRoutingMessage(&discarded, r);
       }
       // rewind0
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       // send
-      return path->HandleDownstream(buf, msg->Y, r);
+      if(path->HandleDownstream(buf, msg->Y, r))
+        return true;
+      return SendRoutingMessage(&discarded, r);
     }
 
   }  // namespace path

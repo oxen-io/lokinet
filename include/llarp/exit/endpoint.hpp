@@ -24,9 +24,20 @@ namespace llarp
 
       ~Endpoint();
 
+      /// close ourselves
+      void
+      Close();
+
       /// return true if we are expired right now
       bool
       IsExpired(llarp_time_t now) const;
+
+      bool
+      ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const;
+
+      /// tick ourself, reset tx/rx rates
+      void
+      Tick(llarp_time_t now);
 
       /// handle traffic from service node / internet
       bool
@@ -57,11 +68,24 @@ namespace llarp
         return m_CurrentPath;
       }
 
+      uint64_t
+      TxRate() const
+      {
+        return m_TxRate;
+      }
+
+      uint64_t
+      RxRate() const
+      {
+        return m_RxRate;
+      }
+
      private:
       llarp::handlers::ExitEndpoint* m_Parent;
       llarp::PubKey m_remoteSignKey;
       llarp::PathID_t m_CurrentPath;
       llarp::huint32_t m_IP;
+      uint64_t m_TxRate, m_RxRate;
       bool m_RewriteSource;
     };
   }  // namespace exit

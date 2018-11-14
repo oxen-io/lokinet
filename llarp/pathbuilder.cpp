@@ -176,7 +176,7 @@ namespace llarp
 
     bool
     Builder::SelectHop(llarp_nodedb* db, const RouterContact& prev,
-                       RouterContact& cur, size_t hop)
+                       RouterContact& cur, size_t hop, PathRole roles)
     {
       if(hop == 0 && router->NumberOfConnectedRouters())
         return router->GetRandomConnectedRouter(cur);
@@ -185,7 +185,10 @@ namespace llarp
       do
       {
         --tries;
-        llarp_nodedb_select_random_hop(db, prev, cur, hop);
+        if(hop == numHops - 1 && roles & ePathRoleExit)
+          llarp_nodedb_select_random_exit(db, cur);
+        else
+          llarp_nodedb_select_random_hop(db, prev, cur, hop);
       } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
       return !router->routerProfiling.IsBad(cur.pubkey);
     }
@@ -204,16 +207,16 @@ namespace llarp
     }
 
     void
-    Builder::BuildOne()
+    Builder::BuildOne(PathRole roles)
     {
       std::vector< RouterContact > hops;
-      if(SelectHops(router->nodedb, hops))
-        Build(hops);
+      if(SelectHops(router->nodedb, hops, roles))
+        Build(hops, roles);
     }
 
     bool
     Builder::SelectHops(llarp_nodedb* nodedb,
-                        std::vector< RouterContact >& hops)
+                        std::vector< RouterContact >& hops, PathRole roles)
     {
       hops.resize(numHops);
       size_t idx = 0;
@@ -221,7 +224,7 @@ namespace llarp
       {
         if(idx == 0)
         {
-          if(!SelectHop(nodedb, hops[0], hops[0], 0))
+          if(!SelectHop(nodedb, hops[0], hops[0], 0, roles))
           {
             llarp::LogError("failed to select first hop");
             return false;
@@ -229,7 +232,7 @@ namespace llarp
         }
         else
         {
-          if(!SelectHop(nodedb, hops[idx - 1], hops[idx], idx))
+          if(!SelectHop(nodedb, hops[idx - 1], hops[idx], idx, roles))
           {
             /// TODO: handle this failure properly
             llarp::LogWarn("Failed to select hop ", idx);
@@ -248,14 +251,14 @@ namespace llarp
     }
 
     void
-    Builder::Build(const std::vector< RouterContact >& hops)
+    Builder::Build(const std::vector< RouterContact >& hops, PathRole roles)
     {
       lastBuild = Now();
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
           new AsyncPathKeyExchangeContext< Builder >(&router->crypto);
       ctx->pathset = this;
-      auto path    = new llarp::path::Path(hops, this);
+      auto path    = new llarp::path::Path(hops, this, roles);
       path->SetBuildResultHook(std::bind(&llarp::path::Builder::HandlePathBuilt,
                                          this, std::placeholders::_1));
       ctx->AsyncGenerateKeys(path, router->logic, router->tp, this,
@@ -278,11 +281,11 @@ namespace llarp
     }
 
     void
-    Builder::ManualRebuild(size_t num)
+    Builder::ManualRebuild(size_t num, PathRole roles)
     {
       llarp::LogDebug("manual rebuild ", num);
       while(num--)
-        BuildOne();
+        BuildOne(roles);
     }
 
   }  // namespace path

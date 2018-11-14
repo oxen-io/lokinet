@@ -21,6 +21,7 @@ namespace llarp
 
   namespace path
   {
+    /// status of a path
     enum PathStatus
     {
       ePathBuilding,
@@ -28,6 +29,21 @@ namespace llarp
       ePathTimeout,
       ePathExpired
     };
+
+    /// the role of this path can fuffill
+    using PathRole = int;
+
+    /// capable of any role
+    constexpr PathRole ePathRoleAny = 0;
+    /// outbound hs traffic capabale
+    constexpr PathRole ePathRoleOutboundHS = (1 << 0);
+    /// inbound hs traffic capable
+    constexpr PathRole ePathRoleInboundHS = (1 << 1);
+    /// exit traffic capable
+    constexpr PathRole ePathRoleExit = (1 << 2);
+    /// dht message capable
+    constexpr PathRole ePathRoleDHT = (1 << 3);
+
     // forward declare
     struct Path;
 
@@ -63,8 +79,13 @@ namespace llarp
       void
       ExpirePaths(llarp_time_t now);
 
+      /// get the number of paths in this status
       size_t
       NumInStatus(PathStatus st) const;
+
+      /// get the number of paths that match the role that are available
+      size_t
+      AvailablePaths(PathRole role) const;
 
       /// get time from event loop
       virtual llarp_time_t
@@ -73,6 +94,14 @@ namespace llarp
       /// return true if we should build another path
       virtual bool
       ShouldBuildMore(llarp_time_t now) const;
+
+      /// return true if we need another path with the given path roles
+      virtual bool
+      ShouldBuildMoreForRoles(llarp_time_t now, PathRole roles) const;
+
+      /// return the minimum number of paths we want for given roles
+      virtual size_t
+      MinRequiredForRoles(PathRole roles) const;
 
       /// return true if we should publish a new hidden service descriptor
       virtual bool
@@ -104,16 +133,19 @@ namespace llarp
       }
 
       Path*
-      GetEstablishedPathClosestTo(const RouterID& router) const;
+      GetEstablishedPathClosestTo(const RouterID& router,
+                                  PathRole roles = ePathRoleAny) const;
 
       Path*
-      PickRandomEstablishedPath() const;
+      PickRandomEstablishedPath(PathRole roles = ePathRoleAny) const;
 
       Path*
-      GetPathByRouter(const RouterID& router) const;
+      GetPathByRouter(const RouterID& router,
+                      PathRole roles = ePathRoleAny) const;
 
       Path*
-      GetNewestPathByRouter(const RouterID& router) const;
+      GetNewestPathByRouter(const RouterID& router,
+                            PathRole roles = ePathRoleAny) const;
 
       Path*
       GetPathByID(const PathID_t& id) const;
@@ -136,7 +168,7 @@ namespace llarp
 
       virtual bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop) = 0;
+                size_t hop, PathRole roles) = 0;
 
      protected:
       size_t m_NumPaths;

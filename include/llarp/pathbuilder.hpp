@@ -26,7 +26,7 @@ namespace llarp
 
       virtual bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop);
+                size_t hop, PathRole roles);
 
       virtual bool
       ShouldBuildMore(llarp_time_t now) const;
@@ -35,16 +35,18 @@ namespace llarp
       Now() const;
 
       void
-      BuildOne();
+      BuildOne(PathRole roles = ePathRoleAny);
 
       void
-      Build(const std::vector< RouterContact >& hops);
+      Build(const std::vector< RouterContact >& hops,
+            PathRole roles = ePathRoleAny);
 
       bool
-      SelectHops(llarp_nodedb* db, std::vector< RouterContact >& hops);
+      SelectHops(llarp_nodedb* db, std::vector< RouterContact >& hops,
+                 PathRole roles = ePathRoleAny);
 
       void
-      ManualRebuild(size_t N);
+      ManualRebuild(size_t N, PathRole roles = ePathRoleAny);
 
       virtual const byte_t*
       GetTunnelEncryptionSecretKey() const;

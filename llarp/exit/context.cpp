@@ -22,6 +22,17 @@ namespace llarp
       }
     }
 
+    void
+    Context::CalculateExitTraffic(TrafficStats& stats)
+    {
+      auto itr = m_Exits.begin();
+      while(itr != m_Exits.end())
+      {
+        itr->second->CalculateTrafficStats(stats);
+        ++itr;
+      }
+    }
+
     llarp::exit::Endpoint*
     Context::FindEndpointForPath(const llarp::PathID_t& path) const
     {

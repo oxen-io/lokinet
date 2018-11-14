@@ -330,14 +330,6 @@ namespace llarp
       EnsurePathToService(const Address& remote, PathEnsureHook h,
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
-      virtual bool
-      HandleAuthenticatedDataFrom(__attribute__((unused)) const Address& remote,
-                                  __attribute__((unused)) llarp_buffer_t data)
-      {
-        /// TODO: imlement me
-        return true;
-      }
-
       void
       PutSenderFor(const ConvoTag& tag, const ServiceInfo& info);
 

@@ -34,9 +34,27 @@ namespace llarp
       UpdateEndpointPath(const llarp::PubKey& remote,
                          const llarp::PathID_t& next);
 
+      template < typename Stats >
+      void
+      CalculateTrafficStats(Stats& stats)
+      {
+        auto itr = m_ActiveExits.begin();
+        while(itr != m_ActiveExits.end())
+        {
+          stats[itr->first].first += itr->second.TxRate();
+          stats[itr->first].second += itr->second.RxRate();
+          ++itr;
+        }
+      }
+
+      /// DO NOT CALL ME IF YOU DONT KNOW WHAT THIS DOES
       void
       DelEndpointInfo(const llarp::PathID_t& path, const huint32_t& ip,
                       const llarp::PubKey& pk);
+
+      /// DO NOT CALL ME IF YOU DONT KNOW WHAT THIS DOES
+      void
+      RemoveExit(const llarp::exit::Endpoint* ep);
 
      protected:
       void

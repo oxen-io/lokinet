@@ -1197,7 +1197,13 @@ namespace llarp
       {
         self->defaultIfName = val;
       }
-      if(!StrEq(key, "profiles"))
+      if(StrEq(key, "profiles"))
+      {
+        self->routerProfilesFile = val;
+        self->routerProfiling.Load(val);
+        llarp::LogInfo("setting profiles to ", self->routerProfilesFile);
+      }
+      else
       {
         self->exitConf.insert(std::make_pair(key, val));
       }
@@ -1244,23 +1250,6 @@ namespace llarp
     else if(StrEq(section, "connect"))
     {
       self->connect[key] = val;
-    }
-    else if(StrEq(section, "network"))
-    {
-      if(StrEq(key, "profiles"))
-      {
-        self->routerProfilesFile = val;
-        self->routerProfiling.Load(val);
-        llarp::LogInfo("setting profiles to ", self->routerProfilesFile);
-      }
-      if(StrEq(key, "min-connected"))
-      {
-        self->minConnectedRouters = std::max(atoi(val), 0);
-      }
-      if(StrEq(key, "max-connected"))
-      {
-        self->maxConnectedRouters = std::max(atoi(val), 1);
-      }
     }
     else if(StrEq(section, "router"))
     {
@@ -1313,5 +1302,5 @@ namespace llarp
         self->publicOverride   = true;
       }
     }
-  }
+  }  // namespace llarp
 }  // namespace llarp
