@@ -23,8 +23,7 @@ namespace llarp
       virtual std::string
       Name() const override;
 
-      bool
-      ShouldBuildMore(llarp_time_t now) const
+      bool ShouldBuildMore(llarp_time_t) const
       {
         return false;
       }
