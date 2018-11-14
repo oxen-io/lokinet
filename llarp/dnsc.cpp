@@ -224,13 +224,13 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   for(uint32_t i = 0; i < hdr->qdCount; i++)
   {
     question = decode_question(castBufc, &pos);
-    // llarp::LogDebug("Read a question, now at ", std::to_string(pos));
+    //llarp::LogDebug("Read a question, now at ", std::to_string(pos));
     // 1 dot: 1 byte for length + length
     // 4 bytes for class/type
     // castBuf += question->name.length() + 1 + 4;
     // castBuf += 2;  // skip answer label
   }
-  llarp::LogInfo("Question ", std::to_string(question->type), " ", question->name);
+  llarp::LogDebug("Question ", std::to_string(question->type), " ", question->name);
 
   // FIXME: only handling one atm
   std::vector< dns_msg_answer * > answers;
@@ -243,7 +243,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     /*
     llarp::LogDebug("Read an answer ", answer->type, " for ",
                     request->question.name, ", now at ", std::to_string(pos));
-                    */
+    */
     // llarp::LogInfo("Read an answer. Label Len: ", answer->name.length(), "
     // rdLen: ", answer->rdLen);
     // name + Type (2) + Class (2) + TTL (4) + rdLen (2) + rdData + skip next
@@ -296,7 +296,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // pos = 0; // reset pos
     answer = decode_answer(castBufc, &pos);
     // answers.push_back(answer);
-      llarp::LogDebug("Read an authority for ",
+    llarp::LogDebug("Read an authority for ",
                      request->question.name, " at ", std::to_string(pos));
     // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
       if(pos > sz)
@@ -352,9 +352,9 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     request->resolved(request);
     return;
   }
-  if(answer->type == 5)
+  if(answer->type == 5 || answer->type == 2)
   {
-    llarp::LogInfo("Last answer is a cname, advancing to first");
+    llarp::LogDebug("Last answer is a cname/NS, reverting to first");
     answer = answers.front();
   }
 
