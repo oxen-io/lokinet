@@ -157,6 +157,7 @@ namespace llarp
       {
         if(itr->second.IsExpired(now))
         {
+          llarp::LogInfo("Exit expired for ", itr->first);
           itr = m_ActiveExits.erase(itr);
         }
         else
