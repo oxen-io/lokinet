@@ -212,6 +212,7 @@ extern "C"
     }
     */
     question->name = m_qName;
+  
     question->type = get16bits(moveable);
     (*pos) += 2;
     // printf("Now1 at [%d]\n", buffer - start);
@@ -241,13 +242,12 @@ extern "C"
     // llarp::LogDebug("Advancing to pos ", std::to_string(*pos));
     moveable += (*pos);  // advance to position
 
+    //hexDump(moveable, 12);
+    //hexDumpAt(buffer, *pos, 12);
+      
     if(*moveable == '\xc0')
     {
-      // hexDump(moveable, 12);
-      // hexDumpAt(buffer, *pos, 12);
-
       // hexDump(moveable, 2);
-
       moveable++;
       (*pos)++;
       uint8_t readAt    = *moveable;
@@ -330,7 +330,12 @@ extern "C"
       // FIXME: move this out of here, this shouldn't be responsible for decode
       switch(answer->type)
       {
-        case 5:
+        case 2: // NS
+          // don't really need to do anything here
+          moveable += answer->rdLen;
+          (*pos) += answer->rdLen;  // advance the length
+        break;
+          case 5:
           moveable += answer->rdLen;
           (*pos) += answer->rdLen;  // advance the length
           break;
