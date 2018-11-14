@@ -78,7 +78,10 @@ namespace llarp
         dst = pkt.dst();
       pkt.UpdateIPv4PacketOnDst(m_IP, dst);
       if(!m_Parent->QueueOutboundTraffic(std::move(pkt)))
+      {
+        llarp::LogError("failed to queue outbound traffic");
         return false;
+      }
       m_TxRate += buf.sz;
       return true;
     }
