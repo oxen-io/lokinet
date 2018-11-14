@@ -22,6 +22,34 @@ namespace llarp
       }
     }
 
+    llarp::exit::Endpoint*
+    Context::FindEndpointForPath(const llarp::PathID_t& path) const
+    {
+      auto itr = m_Exits.begin();
+      while(itr != m_Exits.end())
+      {
+        auto ep = itr->second->FindEndpointByPath(path);
+        if(ep)
+          return ep;
+        ++itr;
+      }
+      return nullptr;
+    }
+
+    bool
+    Context::ObtainNewExit(const llarp::PubKey& pk, const llarp::PathID_t& path,
+                           bool permitInternet)
+    {
+      auto itr = m_Exits.begin();
+      while(itr != m_Exits.end())
+      {
+        if(itr->second->AllocateNewExit(pk, path, permitInternet))
+          return true;
+        ++itr;
+      }
+      return false;
+    }
+
     bool
     Context::AddExitEndpoint(const std::string& name, const Config_t& conf)
     {

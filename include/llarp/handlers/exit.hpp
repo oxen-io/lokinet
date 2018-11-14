@@ -23,21 +23,34 @@ namespace llarp
       virtual std::string
       Name() const override;
 
+      bool
+      AllocateNewExit(const llarp::PubKey& pk, const llarp::PathID_t& path,
+                      bool permitInternet);
+
+      llarp::exit::Endpoint*
+      FindEndpointByPath(const llarp::PathID_t& path);
+
+      bool
+      UpdateEndpointPath(const llarp::PubKey& remote,
+                         const llarp::PathID_t& next);
+
+      void
+      DelEndpointInfo(const llarp::PathID_t& path, const huint32_t& ip,
+                      const llarp::PubKey& pk);
+
      protected:
       void
       FlushSend();
 
      private:
-     
       std::string m_Name;
-
+      bool m_PermitExit;
+      std::unordered_map< llarp::PathID_t, llarp::PubKey,
+                          llarp::PathID_t::Hash >
+          m_Paths;
       std::unordered_multimap< llarp::PubKey, llarp::exit::Endpoint,
                                llarp::PubKey::Hash >
           m_ActiveExits;
-
-      std::unordered_map< llarp::huint32_t, llarp::PubKey,
-                          llarp::huint32_t::Hash >
-          m_AddrsToPubKey;
     };
   }  // namespace handlers
 }  // namespace llarp

@@ -553,8 +553,7 @@ ip address used for exit traffic.
   A: "G",
   S: uint64_sequence_number,
   T: transaction_id_uint64,
-  V: 0,
-  Z: "<64 bytes signature using router identity signing key>"
+  V: 0
 }
 
 any TITM recieved on the same path will be forwarded out to the internet if 
@@ -572,8 +571,7 @@ was denied.
   R: [list, of, rejected, traffic, policies],
   S: uint64_sequence_number,
   T: transaction_id_uint64,
-  V: 0,
-  Z: "<64 bytes signature signed by router's signing key>"
+  V: 0
 }
 
 
@@ -761,23 +759,11 @@ should use the new path that this message came from.
 
 {
   A: "U",
-  R: "<16 bytes previous rx path id>",
+  P: "<16 bytes previous tx path id>",
   S: uint64_sequence_number,
-  T: "<16 bytes previous tx path id>",
-  U: uint64_unique_id,
+  T: uint64_txid,
   V: 0,
   Z: "<64 bytes signature using previously provided signing key>"
-}
-
-update exit verify message (EXVM)
-
-sent in reply to a UXPM to verify that the path handover was accepted
-
-{
-  A: "V",
-  U: uint64_unique_id,
-  V: 0,
-  Z: "<64 bytes signature from router's signing key>"
 }
 
 close exit path message (CXPM)
@@ -791,6 +777,19 @@ client sends a CXPM when the exit is no longer needed.
   V: 0,
   Z: "<64 bytes signagure using previously provided signing key>"
 }
+
+update exit verify message (EXVM)
+
+sent in reply to a UXPM to verify that the path handover was accepted
+sent in reply to a CXPM to verify that the exit was closed
+
+{
+  A: "V",
+  S: uint64_sequence_number,
+  T: uint64_txid,
+  V: 0
+}
+
 
 DHT message holder message:
 

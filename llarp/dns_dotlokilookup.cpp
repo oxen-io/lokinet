@@ -255,7 +255,8 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
   if(inRange)
   {
     llarp::service::Address addr =
-        tunEndpoint->ObtainAddrForIP(searchIPv4_fixed);
+        tunEndpoint->ObtainAddrForIP< llarp::service::Address >(
+            searchIPv4_fixed);
     if(addr.IsZero())
     {
       write404_dnss_response(context->from,

@@ -5,8 +5,29 @@ namespace llarp
 {
   namespace exit
   {
+    Endpoint::Endpoint(const llarp::PubKey& remoteIdent,
+                       const llarp::PathID_t& beginPath, bool rewriteIP,
+                       llarp::handlers::ExitEndpoint* parent)
+        : m_Parent(parent)
+        , m_remoteSignKey(remoteIdent)
+        , m_CurrentPath(beginPath)
+        , m_IP(parent->ObtainIPForAddr(remoteIdent))
+        , m_RewriteSource(rewriteIP)
+    {
+    }
+
     Endpoint::~Endpoint()
     {
+      m_Parent->DelEndpointInfo(m_CurrentPath, m_IP, m_remoteSignKey);
+    }
+
+    bool
+    Endpoint::UpdateLocalPath(const llarp::PathID_t& nextPath)
+    {
+      if(!m_Parent->UpdateEndpointPath(m_remoteSignKey, nextPath))
+        return false;
+      m_CurrentPath = nextPath;
+      return true;
     }
 
     bool
@@ -19,6 +40,21 @@ namespace llarp
       }
       // if we don't have an underlying path we are considered expired
       return true;
+    }
+
+    bool
+    Endpoint::SendOutboundTraffic(llarp_buffer_t buf)
+    {
+      llarp::net::IPv4Packet pkt;
+      if(!pkt.Load(buf))
+        return false;
+      huint32_t dst;
+      if(m_RewriteSource)
+        dst = m_Parent->GetIfAddr();
+      else
+        dst = pkt.dst();
+      pkt.UpdateIPv4PacketOnDst(m_IP, dst);
+      return m_Parent->QueueOutboundTraffic(std::move(pkt));
     }
 
     bool

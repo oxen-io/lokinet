@@ -40,6 +40,10 @@ namespace llarp
                               llarp_router *r) = 0;
 
       virtual bool
+      HandleUpdateExitVerifyMessage(const UpdateExitVerifyMessage *msg,
+                                    llarp_router *r) = 0;
+
+      virtual bool
       HandleCloseExitMessage(const CloseExitMessage *msg, llarp_router *r) = 0;
 
       virtual bool

@@ -151,7 +151,7 @@ namespace llarp
         llarp::LogError("No tunnel endpoint found");
         return zero;
       }
-      return tunEndpoint->ObtainIPForAddr(addr);
+      return tunEndpoint->ObtainIPForAddr(addr.data());
     }
 
     bool

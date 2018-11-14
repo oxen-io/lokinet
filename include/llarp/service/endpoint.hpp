@@ -159,8 +159,7 @@ namespace llarp
       HandlePathBuilt(path::Path* path);
 
       bool
-      SendToOrQueue(const Address& remote, llarp_buffer_t payload,
-                    ProtocolType t);
+      SendToOrQueue(const byte_t* addr, llarp_buffer_t payload, ProtocolType t);
 
       struct PendingBuffer
       {

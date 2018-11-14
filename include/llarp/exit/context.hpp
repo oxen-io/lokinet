@@ -24,6 +24,13 @@ namespace llarp
       bool
       AddExitEndpoint(const std::string &name, const Config_t &config);
 
+      bool
+      ObtainNewExit(const llarp::PubKey &remote, const llarp::PathID_t &path,
+                    bool permitInternet);
+
+      llarp::exit::Endpoint *
+      FindEndpointForPath(const llarp::PathID_t &path) const;
+
      private:
       llarp_router *m_Router;
       std::unordered_map< std::string,

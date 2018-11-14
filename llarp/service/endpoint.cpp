@@ -1040,11 +1040,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToOrQueue(const Address& remote, llarp_buffer_t data,
+    Endpoint::SendToOrQueue(const byte_t* addr, llarp_buffer_t data,
                             ProtocolType t)
     {
+      service::Address remote(addr);
+
       // inbound converstation
       auto now = Now();
+
       {
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())

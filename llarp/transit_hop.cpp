@@ -153,10 +153,20 @@ namespace llarp
     TransitHop::HandleObtainExitMessage(
         const llarp::routing::ObtainExitMessage* msg, llarp_router* r)
     {
-      // TODO: implement me
-      (void)msg;
-      (void)r;
-      return false;
+      if(msg->Verify(&r->crypto)
+         && r->exitContext.ObtainNewExit(msg->I, info.txID, msg->E != 0))
+      {
+        llarp::routing::GrantExitMessage grant;
+        grant.S = NextSeqNo();
+        grant.T = msg->T;
+        return SendRoutingMessage(&grant, r);
+      }
+      // TODO: exponential backoff
+      // TODO: rejected policies
+      llarp::routing::RejectExitMessage reject;
+      reject.S = NextSeqNo();
+      reject.T = msg->T;
+      return SendRoutingMessage(&reject, r);
     }
 
     bool
@@ -170,13 +180,36 @@ namespace llarp
     }
 
     bool
+    TransitHop::HandleUpdateExitVerifyMessage(
+        const llarp::routing::UpdateExitVerifyMessage* msg, llarp_router* r)
+    {
+      (void)msg;
+      (void)r;
+      llarp::LogError("unwarranted exit verify on ", info);
+      return false;
+    }
+
+    bool
     TransitHop::HandleUpdateExitMessage(
         const llarp::routing::UpdateExitMessage* msg, llarp_router* r)
     {
-      // TODO: implement me
-      (void)msg;
-      (void)r;
-      return false;
+      auto ep = r->exitContext.FindEndpointForPath(msg->P);
+      if(ep)
+      {
+        if(msg->Verify(&r->crypto, ep->PubKey()))
+        {
+          if(ep->UpdateLocalPath(info.txID))
+          {
+            llarp::routing::UpdateExitVerifyMessage reply;
+            reply.T = msg->T;
+            reply.S = NextSeqNo();
+            return SendRoutingMessage(&reply, r);
+          }
+        }
+      }
+      // on fail tell message was discarded
+      llarp::routing::DataDiscardMessage discard(info.txID, msg->S);
+      return SendRoutingMessage(&discard, r);
     }
 
     bool
@@ -203,10 +236,12 @@ namespace llarp
     TransitHop::HandleTransferTrafficMessage(
         const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
     {
-      // TODO: implement me
-      (void)msg;
-      (void)r;
-      return false;
+      auto endpoint = r->exitContext.FindEndpointForPath(info.txID);
+      if(endpoint == nullptr)
+        return false;
+      if(!msg->Verify(&r->crypto, endpoint->PubKey()))
+        return false;
+      return endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X));
     }
 
     bool

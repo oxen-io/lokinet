@@ -8,18 +8,30 @@ namespace llarp
     bool
     GrantExitMessage::BEncode(llarp_buffer_t* buf) const
     {
-      (void)buf;
-      // TODO: implement me
-      return false;
+      if(!bencode_start_dict(buf))
+        return false;
+      if(!BEncodeWriteDictMsgType(buf, "A", "G"))
+        return false;
+      if(!BEncodeWriteDictInt("S", S, buf))
+        return false;
+      if(!BEncodeWriteDictInt("T", T, buf))
+        return false;
+      if(!BEncodeWriteDictInt("V", version, buf))
+        return false;
+      return bencode_end(buf);
     }
 
     bool
     GrantExitMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
     {
-      (void)k;
-      (void)buf;
-      // TODO: implement me
-      return false;
+      bool read = false;
+      if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("T", T, read, k, buf))
+        return false;
+      if(!BEncodeMaybeReadDictInt("V", version, read, k, buf))
+        return false;
+      return read;
     }
 
     bool

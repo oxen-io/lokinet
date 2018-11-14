@@ -142,19 +142,34 @@ namespace llarp
     }
 
     bool
+    TunEndpoint::HasLocalIP(const huint32_t &ip) const
+    {
+      return m_IPToAddr.find(ip) != m_IPToAddr.end();
+    }
+
+    bool
+    TunEndpoint::QueueOutboundTraffic(llarp::net::IPv4Packet &&pkt)
+    {
+      return m_NetworkToUserPktQueue.EmplaceIf(
+          [](llarp::net::IPv4Packet &) -> bool { return true; },
+          std::move(pkt));
+    }
+
+    bool
     TunEndpoint::MapAddress(const service::Address &addr, huint32_t ip)
     {
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
       {
         // XXX is calling inet_ntoa safe in this context? it's MP-unsafe
-        llarp::LogWarn(ip, " already mapped to ", itr->second.ToString());
+        llarp::LogWarn(ip, " already mapped to ",
+                       service::Address(itr->second).ToString());
         return false;
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr.insert(std::make_pair(ip, addr));
-      m_AddrToIP.insert(std::make_pair(addr, ip));
+      m_IPToAddr.insert(std::make_pair(ip, addr.data()));
+      m_AddrToIP.insert(std::make_pair(addr.data(), ip));
       MarkIPActiveForever(ip);
       return true;
     }
@@ -331,7 +346,8 @@ namespace llarp
         // this includes clearing IP addresses, recalculating checksums, etc
         pkt.UpdateIPv4PacketOnSrc();
 
-        if(!SendToOrQueue(itr->second, pkt.Buffer(), service::eProtocolTraffic))
+        if(!SendToOrQueue(itr->second.data(), pkt.Buffer(),
+                          service::eProtocolTraffic))
         {
           llarp::LogWarn(Name(), " did not flush packets");
         }
@@ -343,7 +359,7 @@ namespace llarp
     TunEndpoint::ProcessDataMessage(service::ProtocolMessage *msg)
     {
       // llarp::LogInfo("got packet from ", msg->sender.Addr());
-      auto themIP = ObtainIPForAddr(msg->sender.Addr());
+      auto themIP = ObtainIPForAddr(msg->sender.Addr().data());
       // llarp::LogInfo("themIP ", themIP);
       auto usIP = m_OurIP;
       auto buf  = llarp::Buffer(msg->payload);
@@ -376,23 +392,14 @@ namespace llarp
       return true;
     }
 
-    service::Address
-    TunEndpoint::ObtainAddrForIP(huint32_t ip)
+    huint32_t
+    TunEndpoint::GetIfAddr() const
     {
-      auto itr = m_IPToAddr.find(ip);
-      if(itr == m_IPToAddr.end())
-      {
-        // not found
-        service::Address addr;
-        llarp::LogWarn(ip, " not found in tun map. Sending ", addr.ToString());
-        return addr;
-      }
-      // found
-      return itr->second;
+      return m_OurIP;
     }
 
     huint32_t
-    TunEndpoint::ObtainIPForAddr(const service::Address &addr)
+    TunEndpoint::ObtainIPForAddr(const byte_t *addr)
     {
       llarp_time_t now = Now();
       huint32_t nextIP = {0};

@@ -19,7 +19,7 @@ namespace llarp
     struct Endpoint
     {
       Endpoint(const llarp::PubKey& remoteIdent,
-               const llarp::PathID_t& beginPath,
+               const llarp::PathID_t& beginPath, bool rewriteIP,
                llarp::handlers::ExitEndpoint* parent);
 
       ~Endpoint();
@@ -33,20 +33,36 @@ namespace llarp
       SendInboundTraffic(llarp_buffer_t buff);
 
       /// send traffic to service node / internet
-      /// does ip rewrite
+      /// does ip rewrite here
       bool
       SendOutboundTraffic(llarp_buffer_t buf);
 
-      void
+      /// update local path id and cascade information to parent
+      /// return true if success
+      bool
       UpdateLocalPath(const llarp::PathID_t& nextPath);
 
       llarp::path::IHopHandler*
       GetCurrentPath() const;
 
+      const llarp::PubKey&
+      PubKey() const
+      {
+        return m_remoteSignKey;
+      }
+
+      const llarp::PathID_t&
+      LocalPath() const
+      {
+        return m_CurrentPath;
+      }
+
      private:
       llarp::handlers::ExitEndpoint* m_Parent;
       llarp::PubKey m_remoteSignKey;
       llarp::PathID_t m_CurrentPath;
+      llarp::huint32_t m_IP;
+      bool m_RewriteSource;
     };
   }  // namespace exit
 }  // namespace llarp

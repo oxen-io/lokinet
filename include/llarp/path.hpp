@@ -192,6 +192,10 @@ namespace llarp
                               llarp_router* r);
 
       bool
+      HandleUpdateExitVerifyMessage(
+          const llarp::routing::UpdateExitVerifyMessage* msg, llarp_router* r);
+
+      bool
       HandleTransferTrafficMessage(
           const llarp::routing::TransferTrafficMessage* msg, llarp_router* r);
 
@@ -268,6 +272,8 @@ namespace llarp
       typedef std::vector< PathHopConfig > HopList;
       typedef std::function< bool(Path*, const service::ProtocolFrame*) >
           DataHandlerFunc;
+      typedef std::function< bool(Path*) > ExitUpdatedFunc;
+      typedef std::function< bool(Path*) > ExitClosedFunc;
 
       HopList hops;
 
@@ -282,6 +288,18 @@ namespace llarp
 
       void
       SetBuildResultHook(BuildResultHookFunc func);
+
+      void
+      SetCloseExitFunc(ExitClosedFunc handler)
+      {
+        m_ExitClosed = handler;
+      }
+
+      void
+      SetUpdateExitFunc(ExitUpdatedFunc handler)
+      {
+        m_ExitUpdated = handler;
+      }
 
       void
       SetDataHandler(DataHandlerFunc func)
@@ -322,6 +340,10 @@ namespace llarp
       bool
       HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
                               llarp_router* r);
+
+      bool
+      HandleUpdateExitVerifyMessage(
+          const llarp::routing::UpdateExitVerifyMessage* msg, llarp_router* r);
 
       bool
       HandleTransferTrafficMessage(
@@ -412,9 +434,13 @@ namespace llarp
       DataHandlerFunc m_DataHandler;
       DropHandlerFunc m_DropHandler;
       CheckForDeadFunc m_CheckForDead;
+      ExitUpdatedFunc m_ExitUpdated;
+      ExitClosedFunc m_ExitClosed;
       llarp_time_t m_LastRecvMessage     = 0;
       llarp_time_t m_LastLatencyTestTime = 0;
       uint64_t m_LastLatencyTestID       = 0;
+      uint64_t m_UpdateExitTX            = 0;
+      uint64_t m_CloseExitTX             = 0;
     };
 
     enum PathBuildStatus

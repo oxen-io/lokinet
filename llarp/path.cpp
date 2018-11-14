@@ -531,6 +531,24 @@ namespace llarp
     }
 
     bool
+    Path::HandleUpdateExitVerifyMessage(
+        const llarp::routing::UpdateExitVerifyMessage* msg, llarp_router* r)
+    {
+      (void)r;
+      if(m_UpdateExitTX && msg->T == m_UpdateExitTX)
+      {
+        if(m_ExitUpdated)
+          return m_ExitUpdated(this);
+      }
+      if(m_CloseExitTX && msg->T == m_CloseExitTX)
+      {
+        if(m_ExitClosed)
+          return m_ExitClosed(this);
+      }
+      return false;
+    }
+
+    bool
     Path::SendRoutingMessage(const llarp::routing::IMessage* msg,
                              llarp_router* r)
     {
