@@ -420,11 +420,11 @@ namespace llarp
     }
 
     huint32_t
-    TunEndpoint::ObtainIPForAddr(const byte_t *addr)
+    TunEndpoint::ObtainIPForAddr(const byte_t *a)
     {
       llarp_time_t now = Now();
       huint32_t nextIP = {0};
-      AlignedBuffer< 32 > ident(addr);
+      AlignedBuffer< 32 > ident(a);
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(ident);
@@ -473,8 +473,8 @@ namespace llarp
         ++itr;
       }
       // remap address
-      m_IPToAddr[oldest.first] = addr;
-      m_AddrToIP[addr]         = oldest.first;
+      m_IPToAddr[oldest.first] = ident;
+      m_AddrToIP[ident]        = oldest.first;
       nextIP                   = oldest.first;
 
       // mark ip active
