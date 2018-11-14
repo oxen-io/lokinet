@@ -152,6 +152,18 @@ namespace llarp
           m_AddrToIP;
 
      private:
+      bool
+      QueueInboundPacketForExit(llarp_buffer_t buf)
+      {
+        return m_NetworkToUserPktQueue.EmplaceIf(
+            [&](llarp::net::IPv4Packet& pkt) -> bool {
+              if(!pkt.Load(buf))
+                return false;
+              pkt.UpdateIPv4PacketOnDst(pkt.src(), m_OurIP);
+              return true;
+            });
+      }
+
 #ifndef WIN32
       /// handles setup, given value true on success and false on failure to set
       /// up interface

@@ -25,6 +25,7 @@
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
+#include "str.hpp"
 
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
@@ -101,6 +102,15 @@ struct llarp_router
 
   /// default exit config
   llarp::exit::Context::Config_t exitConf;
+
+  bool
+  ExitEnabled() const
+  {
+    auto itr = exitConf.find("exit");
+    if(itr == exitConf.end())
+      return false;
+    return llarp::IsTrueValue(itr->second.c_str());
+  }
 
   bool
   CreateDefaultHiddenService();

@@ -7,6 +7,8 @@
 #include <llarp/service/protocol.hpp>
 #include <llarp/path.hpp>
 #include <llarp/ev.h>
+#include <llarp/net.hpp>
+#include <llarp/exit/session.hpp>
 
 // minimum time between interoset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -414,6 +416,7 @@ namespace llarp
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
+      std::unique_ptr< llarp::exit::BaseSession > m_Exit;
 
      private:
       llarp_router* m_Router;

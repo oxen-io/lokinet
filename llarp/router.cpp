@@ -751,7 +751,16 @@ llarp_router::Run()
   // set public signing key
   _rc.pubkey = llarp::seckey_topublic(identity);
   llarp::LogInfo("Your Identity pubkey ", rc().pubkey);
-
+  if(ExitEnabled())
+  {
+    llarp::nuint32_t a = publicAddr.xtonl();
+    // TODO: enable this once the network can serialize xi
+    //_rc.exits.emplace_back(_rc.pubkey, a);
+    llarp::LogInfo(
+        "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your exit "
+        "is advertised as exiting at ",
+        a);
+  }
   llarp::LogInfo("Signing rc...");
   if(!_rc.Sign(&crypto, identity))
   {

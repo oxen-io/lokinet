@@ -703,6 +703,14 @@ namespace llarp
     }
 
     bool
+    Path::SendExitRequest(const llarp::routing::ObtainExitMessage* msg,
+                          llarp_router* r)
+    {
+      m_ExitObtainTX = msg->T;
+      return SendRoutingMessage(msg, r);
+    }
+
+    bool
     Path::HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
                                   llarp_router* r)
     {

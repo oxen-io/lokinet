@@ -37,6 +37,21 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "exit-node")
+      {
+        llarp::RouterID exitRouter;
+        if(!HexDecode(v.c_str(), exitRouter, exitRouter.size()))
+        {
+          llarp::LogError(Name(), " bad exit router key: ", v);
+          return false;
+        }
+        m_Exit.reset(new llarp::exit::BaseSession(
+            exitRouter,
+            std::bind(&TunEndpoint::QueueInboundPacketForExit, this,
+                      std::placeholders::_1),
+            router, m_NumPaths, numHops));
+        llarp::LogInfo(Name(), " using exit at ", exitRouter);
+      }
       if(k == "local-dns")
       {
         std::string resolverAddr = v;
@@ -338,7 +353,13 @@ namespace llarp
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
-          llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
+          if(m_Exit)
+          {
+            pkt.UpdateIPv4PacketOnDst({0}, pkt.dst());
+            m_Exit->SendUpstreamTraffic(std::move(pkt));
+          }
+          else
+            llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
           return true;
         }
 

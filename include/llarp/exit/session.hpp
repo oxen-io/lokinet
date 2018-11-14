@@ -1,6 +1,7 @@
 #ifndef LLARP_EXIT_SESSION_HPP
 #define LLARP_EXIT_SESSION_HPP
 #include <llarp/pathbuilder.hpp>
+#include <llarp/ip.hpp>
 
 namespace llarp
 {
@@ -9,8 +10,9 @@ namespace llarp
     /// a persisiting exit session with an exit router
     struct BaseSession : public llarp::path::Builder
     {
-      BaseSession(const llarp::RouterID& exitRouter, llarp_router* r,
-                  size_t numpaths, size_t hoplen);
+      BaseSession(const llarp::RouterID& exitRouter,
+                  std::function< bool(llarp_buffer_t) > writepkt,
+                  llarp_router* r, size_t numpaths, size_t hoplen);
 
       ~BaseSession();
 
@@ -18,18 +20,28 @@ namespace llarp
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop, llarp::path::PathRole roles) override;
 
+      void
+      HandlePathBuilt(llarp::path::Path* p) override;
+
+      bool
+      SendUpstreamTraffic(llarp::net::IPv4Packet pkt);
+
      protected:
       llarp::RouterID m_ExitRouter;
-    };
+      std::function< bool(llarp_buffer_t) > m_WritePacket;
 
-    /// a N-hop exit sesssion form a client
-    struct ClientSesssion final : public BaseSession
-    {
-    };
+      bool
+      HandleTrafficDrop(llarp::path::Path* p, const llarp::PathID_t& path,
+                        uint64_t s);
 
-    /// a "direct" session between service nodes
-    struct DirectSession final : public BaseSession
-    {
+      bool
+      HandleGotExit(llarp::path::Path* p, llarp_time_t b);
+
+      bool
+      HandleTraffic(llarp::path::Path* p, llarp_buffer_t buf);
+
+     private:
+      llarp::SecretKey m_ExitIdentity;
     };
 
   }  // namespace exit

@@ -469,11 +469,15 @@ namespace llarp
       std::string
       Name() const;
 
-      /// ask endpoint for exit
-      /// call handler with result when we get it
-      /// returns false if we failed to send the OXM
+      void
+      AddObtainExitHandler(ObtainedExitHandler handler)
+      {
+        m_ObtainedExitHooks.push_back(handler);
+      }
+
       bool
-      ObtainExit(llarp_router* r, ObtainedExitHandler handler) const;
+      SendExitRequest(const llarp::routing::ObtainExitMessage* msg,
+                      llarp_router* r);
 
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;
