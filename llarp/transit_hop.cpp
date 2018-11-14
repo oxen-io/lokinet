@@ -160,7 +160,10 @@ namespace llarp
         grant.S = NextSeqNo();
         grant.T = msg->T;
         if(!grant.Sign(&r->crypto, r->identity))
+        {
+          llarp::LogError("Failed to sign grant exit message");
           return false;
+        }
         return SendRoutingMessage(&grant, r);
       }
       // TODO: exponential backoff
@@ -169,7 +172,10 @@ namespace llarp
       reject.S = NextSeqNo();
       reject.T = msg->T;
       if(!reject.Sign(&r->crypto, r->identity))
+      {
+        llarp::LogError("Failed to sign reject exit message");
         return false;
+      }
       return SendRoutingMessage(&reject, r);
     }
 
