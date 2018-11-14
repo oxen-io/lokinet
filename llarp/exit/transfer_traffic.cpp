@@ -78,7 +78,8 @@ namespace llarp
         return false;
       if(!bencode_write_bytestring(buf, X.data(), X.size()))
         return false;
-
+      if(!BEncodeWriteDictEntry("Y", Y, buf))
+        return false;
       if(!BEncodeWriteDictEntry("Z", Z, buf))
         return false;
       return bencode_end(buf);
@@ -89,6 +90,8 @@ namespace llarp
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("Z", Z, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictEntry("Y", Y, read, key, buf))
         return false;
       if(!BEncodeMaybeReadDictInt("S", S, read, key, buf))
         return false;
