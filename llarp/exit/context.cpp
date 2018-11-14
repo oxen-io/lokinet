@@ -87,6 +87,8 @@ namespace llarp
         }
       }
       // add endpoint
+      if(!endpoint->Start())
+        return false;
       m_Exits.emplace(name, std::move(endpoint));
       return true;
     }
