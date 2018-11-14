@@ -154,7 +154,7 @@ namespace llarp
         const llarp::routing::ObtainExitMessage* msg, llarp_router* r)
     {
       if(msg->Verify(&r->crypto)
-         && r->exitContext.ObtainNewExit(msg->I, info.txID, msg->E != 0))
+         && r->exitContext.ObtainNewExit(msg->I, info.rxID, msg->E != 0))
       {
         llarp::routing::GrantExitMessage grant;
         grant.S = NextSeqNo();
@@ -177,8 +177,8 @@ namespace llarp
     TransitHop::HandleCloseExitMessage(
         const llarp::routing::CloseExitMessage* msg, llarp_router* r)
     {
-      llarp::routing::DataDiscardMessage discard(info.txID, msg->S);
-      auto ep = r->exitContext.FindEndpointForPath(info.txID);
+      llarp::routing::DataDiscardMessage discard(info.rxID, msg->S);
+      auto ep = r->exitContext.FindEndpointForPath(info.rxID);
       if(ep && msg->Verify(&r->crypto, ep->PubKey()))
       {
         ep->Close();
@@ -211,7 +211,7 @@ namespace llarp
         if(!msg->Verify(&r->crypto, ep->PubKey()))
           return false;
 
-        if(ep->UpdateLocalPath(info.txID))
+        if(ep->UpdateLocalPath(info.rxID))
         {
           llarp::routing::UpdateExitVerifyMessage reply;
           reply.T = msg->T;
@@ -220,7 +220,7 @@ namespace llarp
         }
       }
       // on fail tell message was discarded
-      llarp::routing::DataDiscardMessage discard(info.txID, msg->S);
+      llarp::routing::DataDiscardMessage discard(info.rxID, msg->S);
       return SendRoutingMessage(&discard, r);
     }
 
@@ -248,14 +248,14 @@ namespace llarp
     TransitHop::HandleTransferTrafficMessage(
         const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
     {
-      auto endpoint = r->exitContext.FindEndpointForPath(info.txID);
+      auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
       if(endpoint && msg->Verify(&r->crypto, endpoint->PubKey()))
       {
         if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
           return true;
       }
       // discarded
-      llarp::routing::DataDiscardMessage discard(info.txID, msg->S);
+      llarp::routing::DataDiscardMessage discard(info.rxID, msg->S);
       return SendRoutingMessage(&discard, r);
     }
 
