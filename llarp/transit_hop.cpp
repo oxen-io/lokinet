@@ -257,6 +257,7 @@ namespace llarp
       auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
       if(endpoint && msg->Verify(&r->crypto, endpoint->PubKey()))
       {
+        llarp::LogInfo("exit traffic");
         if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
           return true;
       }
