@@ -24,6 +24,12 @@ namespace llarp
       Name() const override;
 
       bool
+      ShouldBuildMore(llarp_time_t now) const
+      {
+        return false;
+      }
+
+      bool
       AllocateNewExit(const llarp::PubKey& pk, const llarp::PathID_t& path,
                       bool permitInternet);
 
