@@ -54,7 +54,7 @@ namespace llarp
     {
       if(!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "X"))
+      if(!BEncodeWriteDictMsgType(buf, "A", "O"))
         return false;
       if(!BEncodeWriteDictArray("B", B, buf))
         return false;
