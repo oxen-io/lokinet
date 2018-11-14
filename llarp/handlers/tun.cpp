@@ -447,7 +447,7 @@ namespace llarp
         {
           m_AddrToIP.insert(std::make_pair(addr, nextIP));
           m_IPToAddr.insert(std::make_pair(nextIP, addr));
-          llarp::LogInfo(Name(), " mapped ", addr, " to ", nextIP);
+          llarp::LogInfo(Name(), " mapped ", RouterID(addr), " to ", nextIP);
           MarkIPActive(nextIP);
           return nextIP;
         }
