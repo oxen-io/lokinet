@@ -7,11 +7,11 @@ namespace llarp
   {
     Endpoint::Endpoint(const llarp::PubKey& remoteIdent,
                        const llarp::PathID_t& beginPath, bool rewriteIP,
-                       llarp::handlers::ExitEndpoint* parent)
+                       huint32_t ip, llarp::handlers::ExitEndpoint* parent)
         : m_Parent(parent)
         , m_remoteSignKey(remoteIdent)
         , m_CurrentPath(beginPath)
-        , m_IP(parent->ObtainIPForAddr(remoteIdent))
+        , m_IP(ip)
         , m_RewriteSource(rewriteIP)
     {
     }
@@ -77,7 +77,7 @@ namespace llarp
       else
         dst = pkt.dst();
       pkt.UpdateIPv4PacketOnDst(m_IP, dst);
-      if(!m_Parent->QueueOutboundTraffic(std::move(pkt)))
+      if(!m_Parent->QueueOutboundTraffic(pkt.Buffer()))
       {
         llarp::LogError("failed to queue outbound traffic");
         return false;
@@ -92,8 +92,19 @@ namespace llarp
       auto path = GetCurrentPath();
       if(path)
       {
+        llarp::net::IPv4Packet pkt;
+        if(!pkt.Load(buf))
+          return false;
+
+        huint32_t src;
+        if(m_RewriteSource)
+          src = m_Parent->GetIfAddr();
+        else
+          src = pkt.src();
+        pkt.UpdateIPv4PacketOnDst(src, m_IP);
+
         llarp::routing::TransferTrafficMessage msg;
-        if(!msg.PutBuffer(buf))
+        if(!msg.PutBuffer(pkt.Buffer()))
           return false;
         msg.S = path->NextSeqNo();
         if(!msg.Sign(m_Parent->Crypto(), m_Parent->Router()->identity))

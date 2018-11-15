@@ -121,7 +121,7 @@ namespace llarp
      protected:
       typedef llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
-          net::IPv4Packet::CompareOrder >
+          net::IPv4Packet::CompareOrder, net::IPv4Packet::GetNow >
           PacketQueue_t;
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;

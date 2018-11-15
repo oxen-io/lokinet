@@ -19,7 +19,7 @@ namespace llarp
     struct Endpoint
     {
       Endpoint(const llarp::PubKey& remoteIdent,
-               const llarp::PathID_t& beginPath, bool rewriteIP,
+               const llarp::PathID_t& beginPath, bool rewriteDst, huint32_t ip,
                llarp::handlers::ExitEndpoint* parent);
 
       ~Endpoint();

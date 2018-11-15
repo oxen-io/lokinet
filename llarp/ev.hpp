@@ -141,7 +141,7 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      //DWORD w;
+      // DWORD w;
       if(std::holds_alternative< HANDLE >(fd))
         WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, &portfd[1]);
       else
@@ -282,6 +282,20 @@ namespace llarp
         }
       };
 
+      struct GetNow
+      {
+        llarp_ev_loop* loop;
+        GetNow(llarp_ev_loop* l) : loop(l)
+        {
+        }
+
+        llarp_time_t
+        operator()() const
+        {
+          return llarp_ev_loop_time_now_ms(loop);
+        }
+      };
+
       struct PutTime
       {
         llarp_ev_loop* loop;
@@ -305,10 +319,10 @@ namespace llarp
       };
     };
 
-    typedef llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
-                                     WriteBuffer::PutTime, WriteBuffer::Compare,
-                                     llarp::util::NullMutex,
-                                     llarp::util::NullLock, 5, 100, 128 >
+    typedef llarp::util::CoDelQueue<
+        WriteBuffer, WriteBuffer::GetTime, WriteBuffer::PutTime,
+        WriteBuffer::Compare, WriteBuffer::GetNow, llarp::util::NullMutex,
+        llarp::util::NullLock, 5, 100, 1024 >
         LossyWriteQueue_t;
 
     typedef std::deque< WriteBuffer > LosslessWriteQueue_t;

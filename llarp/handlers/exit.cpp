@@ -1,17 +1,180 @@
 #include <llarp/handlers/exit.hpp>
 #include "../str.hpp"
+#include "../router.hpp"
 
 namespace llarp
 {
   namespace handlers
   {
-    ExitEndpoint::ExitEndpoint(const std::string &name, llarp_router *r)
-        : TunEndpoint(name, r), m_Name(name)
+    static void
+    ExitHandlerRecvPkt(llarp_tun_io *tun, const void *pkt, ssize_t sz)
     {
+      static_cast< ExitEndpoint * >(tun->user)->OnInetPacket(
+          llarp::InitBuffer(pkt, sz));
+    }
+    static void
+    ExitHandlerFlushInbound(llarp_tun_io *tun)
+    {
+      static_cast< ExitEndpoint * >(tun->user)->FlushInbound();
+    }
+
+    ExitEndpoint::ExitEndpoint(const std::string &name, llarp_router *r)
+        : m_Router(r)
+        , m_Name(name)
+        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0}
+        , m_InetToNetwork(name + "_exit_rx", r->netloop, r->netloop)
+
+    {
+      m_Tun.user    = this;
+      m_Tun.recvpkt = &ExitHandlerRecvPkt;
+      m_Tun.tick    = &ExitHandlerFlushInbound;
     }
 
     ExitEndpoint::~ExitEndpoint()
     {
+    }
+
+    void
+    ExitEndpoint::FlushInbound()
+    {
+      auto now = Router()->Now();
+      m_InetToNetwork.ProcessN(256, [&](Pkt_t &pkt) {
+        llarp::PubKey pk;
+        {
+          auto itr = m_IPToKey.find(pkt.dst());
+          if(itr == m_IPToKey.end())
+          {
+            // drop
+            llarp::LogWarn(Name(), " dropping packet, has no session at ",
+                           pkt.dst());
+            return;
+          }
+          pk = itr->second;
+        }
+        llarp::exit::Endpoint *ep = nullptr;
+        auto range                = m_ActiveExits.equal_range(pk);
+        auto itr                  = range.first;
+        uint64_t min              = std::numeric_limits< uint64_t >::max();
+        /// pick path with lowest rx rate
+        while(itr != range.second)
+        {
+          if(ep == nullptr)
+            ep = &itr->second;
+          else if(itr->second.RxRate() < min && !itr->second.ExpiresSoon(now))
+          {
+            min = ep->RxRate();
+            ep  = &itr->second;
+          }
+          ++itr;
+        }
+        if(!ep->SendInboundTraffic(pkt.Buffer()))
+        {
+          llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk);
+        }
+      });
+    }
+
+    bool
+    ExitEndpoint::Start()
+    {
+      return llarp_ev_add_tun(Router()->netloop, &m_Tun);
+    }
+
+    llarp_router *
+    ExitEndpoint::Router()
+    {
+      return m_Router;
+    }
+
+    llarp_crypto *
+    ExitEndpoint::Crypto()
+    {
+      return &m_Router->crypto;
+    }
+
+    huint32_t
+    ExitEndpoint::GetIfAddr() const
+    {
+      return m_IfAddr;
+    }
+
+    huint32_t
+    ExitEndpoint::GetIPForIdent(const llarp::PubKey &pk)
+    {
+      huint32_t found = {0};
+      const auto itr  = m_KeyToIP.find(pk);
+      if(itr == m_KeyToIP.end())
+      {
+        // allocate and map
+        found = AllocateNewAddress();
+        m_KeyToIP.insert(std::make_pair(pk, found));
+        m_IPToKey.insert(std::make_pair(found, pk));
+      }
+      else
+        found = itr->second;
+
+      MarkIPActive(found);
+
+      return found;
+    }
+
+    huint32_t
+    ExitEndpoint::AllocateNewAddress()
+    {
+      if(m_NextAddr < m_HigestAddr)
+        return ++m_NextAddr;
+
+      // find oldest activity ip address
+      huint32_t found  = {0};
+      llarp_time_t min = std::numeric_limits< llarp_time_t >::max();
+      auto itr         = m_IPActivity.begin();
+      while(itr != m_IPActivity.end())
+      {
+        if(itr->second < min)
+        {
+          found = itr->first;
+          min   = itr->second;
+        }
+        ++itr;
+      }
+      // kick old ident off exit
+      // TODO: DoS
+      llarp::PubKey pk = m_IPToKey[found];
+      KickIdentOffExit(pk);
+
+      return found;
+    }
+
+    bool
+    ExitEndpoint::QueueOutboundTraffic(llarp_buffer_t buf)
+    {
+      return llarp_ev_tun_async_write(&m_Tun, buf.base, buf.sz);
+    }
+
+    void
+    ExitEndpoint::KickIdentOffExit(const llarp::PubKey &pk)
+    {
+      llarp::LogInfo(Name(), " kicking ", pk, " off exit");
+      huint32_t ip = m_KeyToIP[pk];
+      m_KeyToIP.erase(pk);
+      m_IPToKey.erase(ip);
+      auto range    = m_ActiveExits.equal_range(pk);
+      auto exit_itr = range.first;
+      while(exit_itr != range.second)
+        exit_itr = m_ActiveExits.erase(exit_itr);
+    }
+
+    void
+    ExitEndpoint::MarkIPActive(llarp::huint32_t ip)
+    {
+      m_IPActivity[ip] = Router()->Now();
+    }
+
+    void
+    ExitEndpoint::OnInetPacket(llarp_buffer_t buf)
+    {
+      m_InetToNetwork.EmplaceIf(
+          [buf](Pkt_t &pkt) -> bool { return pkt.Load(buf); });
     }
 
     llarp::exit::Endpoint *
@@ -54,8 +217,27 @@ namespace llarp
       if(k == "exit")
       {
         m_PermitExit = IsTrueValue(v.c_str());
-        // TODO: implement me
         return true;
+      }
+      if(k == "ifaddr")
+      {
+        auto pos = v.find("/");
+        if(pos == std::string::npos)
+        {
+          llarp::LogError(Name(), " ifaddr is not a cidr: ", v);
+          return false;
+        }
+        std::string nmask_str = v.substr(1 + pos);
+        std::string host_str  = v.substr(0, pos);
+        strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr));
+        m_Tun.netmask = std::atoi(nmask_str.c_str());
+        llarp::LogInfo(Name(), " set ifaddr range to ", m_Tun.ifaddr, "/",
+                       m_Tun.netmask);
+      }
+      if(k == "ifname")
+      {
+        strncpy(m_Tun.ifname, v.c_str(), sizeof(m_Tun.ifname));
+        llarp::LogInfo(Name(), " set ifname to ", m_Tun.ifname);
       }
       if(k == "exit-whitelist")
       {
@@ -69,53 +251,44 @@ namespace llarp
         // TODO: implement me
         return true;
       }
-      return TunEndpoint::SetOption(k, v);
+
+      return true;
     }
 
     bool
     ExitEndpoint::AllocateNewExit(const llarp::PubKey &pk,
                                   const llarp::PathID_t &path,
-                                  bool permitInternet)
+                                  bool wantInternet)
     {
+      if(wantInternet && !m_PermitExit)
+        return false;
+      huint32_t ip = GetIPForIdent(pk);
       m_ActiveExits.insert(std::make_pair(
-          pk, llarp::exit::Endpoint(pk, path, !permitInternet, this)));
+          pk, llarp::exit::Endpoint(pk, path, !wantInternet, ip, this)));
       return true;
     }
 
-    void
-    ExitEndpoint::FlushSend()
-    {
-      auto now = Now();
-      m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
-        // find pubkey for addr
-        if(!HasLocalIP(pkt.dst()))
+    /*
+        void
+        ExitEndpoint::FlushSend()
         {
-          llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
-          return true;
+          auto now = Now();
+          m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
+            // find pubkey for addr
+            if(!HasLocalIP(pkt.dst()))
+            {
+              llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
+              return true;
+            }
+            llarp::PubKey pk = ObtainAddrForIP< llarp::PubKey >(pkt.dst());
+            pkt.UpdateIPv4PacketOnDst(pkt.src(), {0});
+
+            if(!ep->SendInboundTraffic(pkt.Buffer()))
+              llarp::LogWarn(Name(), " dropped traffic to ", pk);
+            return true;
+          });
         }
-        llarp::PubKey pk = ObtainAddrForIP< llarp::PubKey >(pkt.dst());
-        pkt.UpdateIPv4PacketOnDst(pkt.src(), {0});
-        llarp::exit::Endpoint *ep = nullptr;
-        auto range                = m_ActiveExits.equal_range(pk);
-        auto itr                  = range.first;
-        uint64_t min              = std::numeric_limits< uint64_t >::max();
-        /// pick path with lowest rx rate
-        while(itr != range.second)
-        {
-          if(ep == nullptr)
-            ep = &itr->second;
-          else if(itr->second.RxRate() < min && !itr->second.ExpiresSoon(now))
-          {
-            min = ep->RxRate();
-            ep  = &itr->second;
-          }
-          ++itr;
-        }
-        if(!ep->SendInboundTraffic(pkt.Buffer()))
-          llarp::LogWarn(Name(), " dropped traffic to ", pk);
-        return true;
-      });
-    }
+        */
 
     std::string
     ExitEndpoint::Name() const
@@ -128,8 +301,8 @@ namespace llarp
                                   const huint32_t &ip, const llarp::PubKey &pk)
     {
       m_Paths.erase(path);
-      m_IPToAddr.erase(ip);
-      m_AddrToIP.erase(pk);
+      m_IPToKey.erase(ip);
+      m_KeyToIP.erase(pk);
     }
 
     void
@@ -157,7 +330,6 @@ namespace llarp
       {
         if(itr->second.IsExpired(now))
         {
-          llarp::LogInfo("Exit expired for ", itr->first);
           itr = m_ActiveExits.erase(itr);
         }
         else
@@ -166,8 +338,6 @@ namespace llarp
           ++itr;
         }
       }
-      // call parent
-      TunEndpoint::Tick(now);
     }
   }  // namespace handlers
 }  // namespace llarp

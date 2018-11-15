@@ -19,8 +19,8 @@ namespace llarp
   {
     TunEndpoint::TunEndpoint(const std::string &nickname, llarp_router *r)
         : service::Endpoint(nickname, r)
-        , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop)
-        , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop)
+        , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
+        , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop, r->netloop)
     {
       tunif.user    = this;
       tunif.netmask = DefaultTunNetmask;
@@ -291,9 +291,7 @@ namespace llarp
       m_OurIP    = lAddr.xtohl();
       m_NextIP   = m_OurIP;
       auto xmask = netmask_ipv4_bits(tunif.netmask);
-
-      auto baseaddr = m_OurIP & xmask;
-      m_MaxIP       = baseaddr | ~xmask;
+      m_MaxIP    = m_OurIP ^ (~xmask);
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ", lAddr);
 
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP);
