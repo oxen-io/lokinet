@@ -104,7 +104,7 @@ namespace llarp
     {
       huint32_t found = {0};
       const auto itr  = m_KeyToIP.find(pk);
-      if(itr != m_KeyToIP.end())
+      if(itr != m_KeyToIP.cend())
       {
         found = itr->second;
       }
