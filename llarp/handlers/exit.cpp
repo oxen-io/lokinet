@@ -107,9 +107,10 @@ namespace llarp
       if(itr == m_KeyToIP.end())
       {
         // allocate and map
-        found = AllocateNewAddress();
-        m_KeyToIP.insert(std::make_pair(pk, found));
-        m_IPToKey.insert(std::make_pair(found, pk));
+        found            = AllocateNewAddress();
+        m_KeyToIP[pk]    = found;
+        m_IPToKey[found] = pk;
+        llarp::LogInfo(Name(), "mapping ", pk, " to ", found);
       }
       else
         found = itr->second;
@@ -271,7 +272,8 @@ namespace llarp
       huint32_t ip = GetIPForIdent(pk);
       m_ActiveExits.insert(std::make_pair(
           pk, llarp::exit::Endpoint(pk, path, !wantInternet, ip, this)));
-      m_Paths.insert(std::make_pair(path, pk));
+      m_Paths[path] = pk;
+      llarp::LogInfo(Name(), " exit for ", pk, " has address ", ip);
       return true;
     }
 
