@@ -63,7 +63,7 @@ namespace llarp
 
      protected:
       void
-      FlushSend();
+      FlushSend() override;
 
      private:
       std::string m_Name;
