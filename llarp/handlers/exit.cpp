@@ -102,9 +102,8 @@ namespace llarp
     huint32_t
     ExitEndpoint::GetIPForIdent(const llarp::PubKey pk)
     {
-      huint32_t found        = {0};
-      KeyMap_t::iterator itr = m_KeyToIP.find(pk);
-      if(itr == m_KeyToIP.end())
+      huint32_t found = {0};
+      if(m_KeyToIP.count(pk) == 0)
       {
         // allocate and map
         found = AllocateNewAddress();
@@ -124,7 +123,7 @@ namespace llarp
           llarp::LogError(Name(), "failed to map ", pk, " to ", found);
       }
       else
-        found.h = itr->second.h;
+        found.h = m_KeyToIP[pk].h;
 
       MarkIPActive(found);
 
