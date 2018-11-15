@@ -271,6 +271,7 @@ namespace llarp
       huint32_t ip = GetIPForIdent(pk);
       m_ActiveExits.insert(std::make_pair(
           pk, llarp::exit::Endpoint(pk, path, !wantInternet, ip, this)));
+      m_Paths.insert(std::make_pair(path, pk));
       return true;
     }
 
