@@ -70,9 +70,12 @@ namespace llarp
           }
           ++itr;
         }
-        if(!ep->SendInboundTraffic(pkt.Buffer()))
+        if(ep)
         {
-          llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk);
+          if(!ep->SendInboundTraffic(pkt.Buffer()))
+          {
+            llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk);
+          }
         }
       });
     }
