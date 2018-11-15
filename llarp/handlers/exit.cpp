@@ -102,7 +102,7 @@ namespace llarp
     bool
     ExitEndpoint::HasLocalMappedAddrFor(const llarp::PubKey &pk) const
     {
-      return m_KeyToIP.find(pk) != m_KeyToIP.end();
+      return m_KeyToIP.count(pk) > 0;
     }
 
     huint32_t
@@ -150,8 +150,8 @@ namespace llarp
       {
         if(itr->second < min)
         {
-          found = itr->first;
-          min   = itr->second;
+          found.h = itr->first.h;
+          min     = itr->second;
         }
         ++itr;
       }
