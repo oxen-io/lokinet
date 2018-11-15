@@ -25,7 +25,7 @@ namespace llarp
 
      protected:
       void
-      FlushSend();
+      FlushSend() override;
 
      private:
      
