@@ -309,12 +309,9 @@ namespace llarp
     }
 
     void
-    ExitEndpoint::DelEndpointInfo(const llarp::PathID_t &path,
-                                  const huint32_t &ip, const llarp::PubKey &pk)
+    ExitEndpoint::DelEndpointInfo(const llarp::PathID_t &path)
     {
       m_Paths.erase(path);
-      m_IPToKey.erase(ip);
-      m_KeyToIP.erase(pk);
     }
 
     void

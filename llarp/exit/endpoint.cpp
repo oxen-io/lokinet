@@ -18,7 +18,7 @@ namespace llarp
 
     Endpoint::~Endpoint()
     {
-      m_Parent->DelEndpointInfo(m_CurrentPath, m_IP, m_remoteSignKey);
+      m_Parent->DelEndpointInfo(m_CurrentPath);
     }
 
     void

@@ -62,8 +62,7 @@ namespace llarp
 
       /// DO NOT CALL ME
       void
-      DelEndpointInfo(const llarp::PathID_t& path, const huint32_t& ip,
-                      const llarp::PubKey& pk);
+      DelEndpointInfo(const llarp::PathID_t& path);
 
       /// DO NOT CALL ME
       void
