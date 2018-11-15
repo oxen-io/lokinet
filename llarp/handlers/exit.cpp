@@ -1,6 +1,7 @@
 #include <llarp/handlers/exit.hpp>
 #include "../str.hpp"
 #include "../router.hpp"
+#include <llarp/net.hpp>
 
 namespace llarp
 {
@@ -231,8 +232,13 @@ namespace llarp
         std::string host_str  = v.substr(0, pos);
         strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr));
         m_Tun.netmask = std::atoi(nmask_str.c_str());
+
+        llarp::Addr ifaddr(host_str);
+        m_IfAddr     = ifaddr.xtohl();
+        m_NextAddr   = m_IfAddr;
+        m_HigestAddr = m_IfAddr ^ (~llarp::netmask_ipv4_bits(m_Tun.netmask));
         llarp::LogInfo(Name(), " set ifaddr range to ", m_Tun.ifaddr, "/",
-                       m_Tun.netmask);
+                       m_Tun.netmask, " lo=", m_IfAddr, " hi=", m_HigestAddr);
       }
       if(k == "ifname")
       {
@@ -267,28 +273,6 @@ namespace llarp
           pk, llarp::exit::Endpoint(pk, path, !wantInternet, ip, this)));
       return true;
     }
-
-    /*
-        void
-        ExitEndpoint::FlushSend()
-        {
-          auto now = Now();
-          m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
-            // find pubkey for addr
-            if(!HasLocalIP(pkt.dst()))
-            {
-              llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
-              return true;
-            }
-            llarp::PubKey pk = ObtainAddrForIP< llarp::PubKey >(pkt.dst());
-            pkt.UpdateIPv4PacketOnDst(pkt.src(), {0});
-
-            if(!ep->SendInboundTraffic(pkt.Buffer()))
-              llarp::LogWarn(Name(), " dropped traffic to ", pk);
-            return true;
-          });
-        }
-        */
 
     std::string
     ExitEndpoint::Name() const

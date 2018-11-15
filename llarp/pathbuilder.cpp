@@ -178,6 +178,7 @@ namespace llarp
     Builder::SelectHop(llarp_nodedb* db, const RouterContact& prev,
                        RouterContact& cur, size_t hop, PathRole roles)
     {
+      (void)roles;
       if(hop == 0 && router->NumberOfConnectedRouters())
         return router->GetRandomConnectedRouter(cur);
 
@@ -185,10 +186,8 @@ namespace llarp
       do
       {
         --tries;
-        if(hop == numHops - 1 && roles & ePathRoleExit)
-          llarp_nodedb_select_random_exit(db, cur);
-        else
-          llarp_nodedb_select_random_hop(db, prev, cur, hop);
+        if(llarp_nodedb_select_random_hop(db, prev, cur, hop))
+          break;
       } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
       return !router->routerProfiling.IsBad(cur.pubkey);
     }
