@@ -223,7 +223,7 @@ namespace llarp
       size_t
       operator()(const AlignedBuffer& buf) const
       {
-        return *buf.data_l();
+        return buf.l[0];
       }
     };
 
