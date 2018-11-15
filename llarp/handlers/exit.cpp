@@ -106,14 +106,22 @@ namespace llarp
       const auto itr  = m_KeyToIP.find(pk);
       if(itr != m_KeyToIP.cend())
       {
-        found = itr->second;
+        found.h = itr->second.h;
       }
       else
       {
         // allocate and map
-        found            = AllocateNewAddress();
-        m_KeyToIP[pk]    = found;
-        m_IPToKey[found] = pk;
+        found = AllocateNewAddress();
+        if(!m_KeyToIP.emplace(pk, found).second)
+        {
+          llarp::LogError(Name(), "failed to map ", pk, " to ", found);
+          return found;
+        }
+        if(!m_IPToKey.emplace(found, pk).second)
+        {
+          llarp::LogError(Name(), "failed to map ", found, " to ", pk);
+          return found;
+        }
         if(m_KeyToIP.find(pk) != m_KeyToIP.end())
           llarp::LogInfo(Name(), " mapping ", pk, " to ", found);
         else
