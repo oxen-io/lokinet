@@ -107,14 +107,13 @@ namespace llarp
       if(itr != m_KeyToIP.end())
       {
         found = itr->second;
-        llarp::LogInfo(Name(), pk, " has address ", found);
       }
       else
       {
         // allocate and map
-        found            = AllocateNewAddress();
-        m_KeyToIP[pk]    = found;
-        m_IPToKey[found] = pk;
+        found = AllocateNewAddress();
+        m_KeyToIP.emplace(std::make_pair(pk, found));
+        m_IPToKey.emplace(std::make_pair(found, pk));
         llarp::LogInfo(Name(), "mapping ", pk, " to ", found);
       }
 
