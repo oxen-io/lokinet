@@ -255,12 +255,23 @@ namespace llarp
         const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
     {
       auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
-      if(endpoint && msg->Verify(&r->crypto, endpoint->PubKey()))
+      if(endpoint)
       {
-        llarp::LogInfo("exit traffic");
-        if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
-          return true;
+        if(msg->Verify(&r->crypto, endpoint->PubKey()))
+        {
+          if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
+            return true;
+          else
+            llarp::LogError("failed to send outbound traffic for exit on ",
+                            info);
+        }
+        else
+        {
+          llarp::LogError("bad signature on exit traffic on ", info);
+        }
       }
+      else
+        llarp::LogError("No exit endpoint on ", info);
       // discarded
       llarp::routing::DataDiscardMessage discard(info.rxID, msg->S);
       return SendRoutingMessage(&discard, r);
