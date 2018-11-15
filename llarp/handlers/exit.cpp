@@ -114,7 +114,10 @@ namespace llarp
         found            = AllocateNewAddress();
         m_KeyToIP[pk]    = found;
         m_IPToKey[found] = pk;
-        llarp::LogInfo(Name(), "mapping ", pk, " to ", found);
+        if(m_KeyToIP.find(pk) != m_KeyToIP.end())
+          llarp::LogInfo(Name(), " mapping ", pk, " to ", found);
+        else
+          llarp::LogError(Name(), "failed to map ", pk, " to ", found);
       }
 
       MarkIPActive(found);
