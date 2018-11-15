@@ -102,9 +102,9 @@ namespace llarp
     huint32_t
     ExitEndpoint::GetIPForIdent(const llarp::PubKey pk)
     {
-      huint32_t found = {0};
-      const auto itr  = m_KeyToIP.find(pk);
-      if(itr != m_KeyToIP.cend())
+      huint32_t found        = {0};
+      KeyMap_t::iterator itr = m_KeyToIP.find(pk);
+      if(itr != m_KeyToIP.end())
       {
         found.h = itr->second.h;
       }
