@@ -103,8 +103,11 @@ namespace llarp
     ExitEndpoint::GetIPForIdent(const llarp::PubKey &pk)
     {
       huint32_t found = {0};
-      const auto itr  = m_KeyToIP.find(pk);
-      if(itr == m_KeyToIP.end())
+      if(m_KeyToIP.count(pk))
+      {
+        found = m_KeyToIP[pk];
+      }
+      else
       {
         // allocate and map
         found            = AllocateNewAddress();
@@ -112,8 +115,6 @@ namespace llarp
         m_IPToKey[found] = pk;
         llarp::LogInfo(Name(), "mapping ", pk, " to ", found);
       }
-      else
-        found = itr->second;
 
       MarkIPActive(found);
 
