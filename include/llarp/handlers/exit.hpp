@@ -24,7 +24,7 @@ namespace llarp
       Name() const;
 
       bool
-      AllocateNewExit(const llarp::PubKey& pk, const llarp::PathID_t& path,
+      AllocateNewExit(const llarp::PubKey pk, const llarp::PathID_t& path,
                       bool permitInternet);
 
       llarp::exit::Endpoint*

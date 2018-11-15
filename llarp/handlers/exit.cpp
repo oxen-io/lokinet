@@ -268,7 +268,7 @@ namespace llarp
     }
 
     bool
-    ExitEndpoint::AllocateNewExit(const llarp::PubKey &pk,
+    ExitEndpoint::AllocateNewExit(const llarp::PubKey pk,
                                   const llarp::PathID_t &path,
                                   bool wantInternet)
     {
