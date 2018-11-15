@@ -21,6 +21,9 @@ namespace llarp
       void
       Tick(llarp_time_t now);
 
+      void
+      ClearAllEndpoints();
+
       bool
       AddExitEndpoint(const std::string &name, const Config_t &config);
 

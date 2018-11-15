@@ -2,6 +2,7 @@
 #include "../str.hpp"
 #include "../router.hpp"
 #include <llarp/net.hpp>
+#include <cassert>
 
 namespace llarp
 {
@@ -26,9 +27,10 @@ namespace llarp
         , m_InetToNetwork(name + "_exit_rx", r->netloop, r->netloop)
 
     {
-      m_Tun.user    = this;
-      m_Tun.recvpkt = &ExitHandlerRecvPkt;
-      m_Tun.tick    = &ExitHandlerFlushInbound;
+      m_Tun.user      = this;
+      m_Tun.recvpkt   = &ExitHandlerRecvPkt;
+      m_Tun.tick      = &ExitHandlerFlushInbound;
+      m_ShouldInitTun = true;
     }
 
     ExitEndpoint::~ExitEndpoint()
@@ -60,11 +62,11 @@ namespace llarp
         while(itr != range.second)
         {
           if(ep == nullptr)
-            ep = &itr->second;
-          else if(itr->second.RxRate() < min && !itr->second.ExpiresSoon(now))
+            ep = itr->second.get();
+          else if(itr->second->RxRate() < min && !itr->second->ExpiresSoon(now))
           {
             min = ep->RxRate();
-            ep  = &itr->second;
+            ep  = itr->second.get();
           }
           ++itr;
         }
@@ -78,7 +80,9 @@ namespace llarp
     bool
     ExitEndpoint::Start()
     {
-      return llarp_ev_add_tun(Router()->netloop, &m_Tun);
+      if(m_ShouldInitTun)
+        return llarp_ev_add_tun(Router()->netloop, &m_Tun);
+      return true;
     }
 
     llarp_router *
@@ -102,7 +106,7 @@ namespace llarp
     bool
     ExitEndpoint::HasLocalMappedAddrFor(const llarp::PubKey &pk) const
     {
-      return m_KeyToIP.count(pk) > 0;
+      return m_KeyToIP.find(pk) != m_KeyToIP.end();
     }
 
     huint32_t
@@ -112,7 +116,7 @@ namespace llarp
       if(!HasLocalMappedAddrFor(pk))
       {
         // allocate and map
-        found = AllocateNewAddress();
+        found.h = AllocateNewAddress().h;
         if(!m_KeyToIP.emplace(pk, found).second)
         {
           llarp::LogError(Name(), "failed to map ", pk, " to ", found);
@@ -132,7 +136,8 @@ namespace llarp
         found.h = m_KeyToIP[pk].h;
 
       MarkIPActive(found);
-
+      m_KeyToIP.rehash(0);
+      assert(HasLocalMappedAddrFor(pk));
       return found;
     }
 
@@ -210,8 +215,8 @@ namespace llarp
         auto itr = m_ActiveExits.find(pk);
         if(itr != m_ActiveExits.end())
         {
-          if(itr->second.PubKey() == pk)
-            endpoint = &itr->second;
+          if(itr->second->PubKey() == pk)
+            endpoint = itr->second.get();
         }
       }
       return endpoint;
@@ -232,6 +237,11 @@ namespace llarp
     bool
     ExitEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      if(k == "type" && v == "null")
+      {
+        m_ShouldInitTun = false;
+        return true;
+      }
       if(k == "exit")
       {
         m_PermitExit = IsTrueValue(v.c_str());
@@ -287,10 +297,9 @@ namespace llarp
         return false;
       huint32_t ip = GetIPForIdent(pk);
       m_ActiveExits.insert(std::make_pair(
-          pk, llarp::exit::Endpoint(pk, path, !wantInternet, ip, this)));
+          pk, new llarp::exit::Endpoint(pk, path, !wantInternet, ip, this)));
       m_Paths[path] = pk;
-      llarp::LogInfo(Name(), " exit for ", pk, " has address ", ip);
-      return true;
+      return HasLocalMappedAddrFor(pk);
     }
 
     std::string
@@ -315,7 +324,7 @@ namespace llarp
       auto itr   = range.first;
       while(itr != range.second)
       {
-        if(itr->second.LocalPath() == ep->LocalPath())
+        if(itr->second->LocalPath() == ep->LocalPath())
         {
           itr = m_ActiveExits.erase(itr);
           // now ep is gone af
@@ -331,13 +340,13 @@ namespace llarp
       auto itr = m_ActiveExits.begin();
       while(itr != m_ActiveExits.end())
       {
-        if(itr->second.IsExpired(now))
+        if(itr->second->IsExpired(now))
         {
           itr = m_ActiveExits.erase(itr);
         }
         else
         {
-          itr->second.Tick(now);
+          itr->second->Tick(now);
           ++itr;
         }
       }

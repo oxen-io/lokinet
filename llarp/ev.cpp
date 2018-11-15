@@ -95,7 +95,9 @@ llarp_ev_close_udp(struct llarp_udp_io *udp)
 llarp_time_t
 llarp_ev_loop_time_now_ms(struct llarp_ev_loop *loop)
 {
-  return loop->_now;
+  if(loop)
+    return loop->_now;
+  return llarp_time_now_ms();
 }
 
 void

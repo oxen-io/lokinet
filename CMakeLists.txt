@@ -505,9 +505,11 @@ set(DNS_SRC
 
 set(TEST_SRC
   test/main.cpp
+  test/alignedbuffer_unittest.cpp
   test/base32_unittest.cpp
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
+  test/exit_unittest.cpp
   test/hiddenservice_unittest.cpp
   test/traffic_transfer_unittest.cpp
   test/obtain_exit_unittest.cpp

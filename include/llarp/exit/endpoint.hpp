@@ -80,6 +80,12 @@ namespace llarp
         return m_RxRate;
       }
 
+      huint32_t
+      LocalIP() const
+      {
+        return m_IP;
+      }
+
      private:
       llarp::handlers::ExitEndpoint* m_Parent;
       llarp::PubKey m_remoteSignKey;

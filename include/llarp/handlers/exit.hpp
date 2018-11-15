@@ -54,8 +54,8 @@ namespace llarp
         auto itr = m_ActiveExits.begin();
         while(itr != m_ActiveExits.end())
         {
-          stats[itr->first].first += itr->second.TxRate();
-          stats[itr->first].second += itr->second.RxRate();
+          stats[itr->first].first += itr->second->TxRate();
+          stats[itr->first].second += itr->second->RxRate();
           ++itr;
         }
       }
@@ -99,16 +99,19 @@ namespace llarp
       KickIdentOffExit(const llarp::PubKey& pk);
 
       llarp_router* m_Router;
+      bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;
       std::unordered_map< llarp::PathID_t, llarp::PubKey,
                           llarp::PathID_t::Hash >
           m_Paths;
-      std::unordered_multimap< llarp::PubKey, llarp::exit::Endpoint,
+      std::unordered_multimap< llarp::PubKey,
+                               std::unique_ptr< llarp::exit::Endpoint >,
                                llarp::PubKey::Hash >
           m_ActiveExits;
 
-      using KeyMap_t = std::map< llarp::PubKey, llarp::huint32_t >;
+      using KeyMap_t = std::unordered_map< llarp::PubKey, llarp::huint32_t,
+                                           llarp::PubKey::Hash >;
 
       KeyMap_t m_KeyToIP;
 
