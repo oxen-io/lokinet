@@ -108,8 +108,7 @@ namespace llarp
                                llarp::PubKey::Hash >
           m_ActiveExits;
 
-      using KeyMap_t = std::unordered_map< llarp::PubKey, llarp::huint32_t,
-                                           llarp::PubKey::Hash >;
+      using KeyMap_t = std::map< llarp::PubKey, llarp::huint32_t >;
 
       KeyMap_t m_KeyToIP;
 
