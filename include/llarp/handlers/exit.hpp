@@ -76,6 +76,9 @@ namespace llarp
       bool
       Start();
 
+      bool
+      HasLocalMappedAddrFor(const llarp::PubKey& pk) const;
+
       huint32_t
       GetIfAddr() const;
 

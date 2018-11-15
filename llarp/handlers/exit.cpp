@@ -99,11 +99,17 @@ namespace llarp
       return m_IfAddr;
     }
 
+    bool
+    ExitEndpoint::HasLocalMappedAddrFor(const llarp::PubKey &pk) const
+    {
+      return m_KeyToIP.find(pk) != m_KeyToIP.end();
+    }
+
     huint32_t
     ExitEndpoint::GetIPForIdent(const llarp::PubKey pk)
     {
       huint32_t found = {0};
-      if(m_KeyToIP.count(pk) == 0)
+      if(!HasLocalMappedAddrFor(pk))
       {
         // allocate and map
         found = AllocateNewAddress();
@@ -117,7 +123,7 @@ namespace llarp
           llarp::LogError(Name(), "failed to map ", found, " to ", pk);
           return found;
         }
-        if(m_KeyToIP.count(pk))
+        if(HasLocalMappedAddrFor(pk))
           llarp::LogInfo(Name(), " mapping ", pk, " to ", found);
         else
           llarp::LogError(Name(), "failed to map ", pk, " to ", found);
