@@ -103,9 +103,11 @@ namespace llarp
     ExitEndpoint::GetIPForIdent(const llarp::PubKey &pk)
     {
       huint32_t found = {0};
-      if(m_KeyToIP.count(pk))
+      auto itr        = m_KeyToIP.find(pk);
+      if(itr != m_KeyToIP.end())
       {
-        found = m_KeyToIP[pk];
+        found = itr->second;
+        llarp::LogInfo(Name(), pk, " has address ", found);
       }
       else
       {
