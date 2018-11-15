@@ -100,7 +100,7 @@ namespace llarp
     }
 
     huint32_t
-    ExitEndpoint::GetIPForIdent(const llarp::PubKey &pk)
+    ExitEndpoint::GetIPForIdent(const llarp::PubKey pk)
     {
       huint32_t found = {0};
       auto itr        = m_KeyToIP.find(pk);
@@ -111,9 +111,9 @@ namespace llarp
       else
       {
         // allocate and map
-        found = AllocateNewAddress();
-        m_KeyToIP.emplace(std::make_pair(pk, found));
-        m_IPToKey.emplace(std::make_pair(found, pk));
+        found            = AllocateNewAddress();
+        m_KeyToIP[pk]    = found;
+        m_IPToKey[found] = pk;
         llarp::LogInfo(Name(), "mapping ", pk, " to ", found);
       }
 

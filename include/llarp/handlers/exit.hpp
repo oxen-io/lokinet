@@ -84,7 +84,7 @@ namespace llarp
 
      private:
       huint32_t
-      GetIPForIdent(const llarp::PubKey& pk);
+      GetIPForIdent(const llarp::PubKey pk);
 
       huint32_t
       AllocateNewAddress();
