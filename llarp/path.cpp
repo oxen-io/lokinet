@@ -639,7 +639,7 @@ namespace llarp
     Path::HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
     {
       MarkActive(m_PathSet->Now());
-      if(m_DataHandler &&m_DataHandler(this, frame);
+      return m_DataHandler && m_DataHandler(this, frame);
     }
 
     bool
