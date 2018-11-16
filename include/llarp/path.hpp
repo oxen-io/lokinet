@@ -305,7 +305,7 @@ namespace llarp
         return _role;
       }
 
-      bool
+      void
       MarkActive(llarp_time_t now)
       {
         m_LastRecvMessage = now;
