@@ -19,13 +19,12 @@ namespace llarp
   int
   tcp_conn::read(void* buf, size_t sz)
   {
-    WSABUF r_buf = {(u_long)sz, (char*)buf};
-    DWORD amount = 0;
+    WSABUF r_buf          = {(u_long)sz, (char*)buf};
+    WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
 
-    WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, &portfd[0], nullptr);
-    GetOverlappedResult((HANDLE)std::get< SOCKET >(fd), &portfd[0], &amount,
-                        TRUE);
-    if(amount > 0)
+    WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, portfd, nullptr);
+
+    if(WSAGetLastError() == 997)
     {
       if(tcp.read)
         tcp.read(&tcp, buf, amount);
@@ -34,6 +33,7 @@ namespace llarp
     {
       // error
       _shouldClose = true;
+      delete portfd;
       return -1;
     }
     return 0;
@@ -42,16 +42,18 @@ namespace llarp
   ssize_t
   tcp_conn::do_write(void* buf, size_t sz)
   {
-    WSABUF s_buf = {(u_long)sz, (char*)buf};
-    DWORD sent   = 0;
+    WSABUF s_buf          = {(u_long)sz, (char*)buf};
+    WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
 
     if(_shouldClose)
+    {
+      delete portfd;
       return -1;
+    }
 
-    WSASend(std::get< SOCKET >(fd), &s_buf, 1, nullptr, 0, &portfd[1], nullptr);
-    GetOverlappedResult((HANDLE)std::get< SOCKET >(fd), &portfd[1], &sent,
-                        TRUE);
-    return sent;
+    WSASend(std::get< SOCKET >(fd), &s_buf, 1, nullptr, 0, portfd, nullptr);
+
+    return sz;
   }
 
   void
@@ -137,6 +139,7 @@ namespace llarp
     read(void* buf, size_t sz)
     {
       printf("read\n");
+      WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
       sockaddr_in6 src;
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
@@ -145,12 +148,13 @@ namespace llarp
       // WSARecvFrom
       llarp::LogDebug("read ", sz, " bytes from socket");
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
-                              addr, &slen, &portfd[0], nullptr);
+                              addr, &slen, portfd, nullptr);
       // 997 is the error code for queued ops
       int s_errno = ::WSAGetLastError();
       if(ret && s_errno != 997)
       {
         llarp::LogWarn("recv socket error ", s_errno);
+        delete portfd;
         return -1;
       }
       udp->recvfrom(udp, addr, buf, sz);
@@ -161,6 +165,7 @@ namespace llarp
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
       printf("sendto\n");
+      WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
       socklen_t slen;
       WSABUF wbuf = {(u_long)sz, (char*)data};
       switch(to->sa_family)
@@ -177,11 +182,12 @@ namespace llarp
       // WSASendTo
       llarp::LogDebug("write ", sz, " bytes into socket");
       ssize_t sent = ::WSASendTo(std::get< SOCKET >(fd), &wbuf, 1, nullptr, 0,
-                                 to, slen, &portfd[1], nullptr);
+                                 to, slen, portfd, nullptr);
       int s_errno  = ::WSAGetLastError();
       if(sent && s_errno != 997)
       {
         llarp::LogWarn("send socket error ", s_errno);
+        delete portfd;
         return -1;
       }
       return 0;
@@ -192,10 +198,9 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
-    OVERLAPPED* tun_async[2];
     tun(llarp_tun_io* tio, llarp_ev_loop* l)
         : ev_io(INVALID_HANDLE_VALUE,
-                new LossyWriteQueue_t("win32_tun_write", l))
+                new LossyWriteQueue_t("win32_tun_write_queue", l, l))
         , t(tio)
         , tunif(tuntap_init()){};
 
@@ -230,7 +235,8 @@ namespace llarp
     ssize_t
     do_write(void* data, size_t sz)
     {
-      return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, tun_async[1]);
+      OVERLAPPED* tun_async = new OVERLAPPED;
+      return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, tun_async);
     }
 
     int
@@ -247,8 +253,6 @@ namespace llarp
     bool
     setup()
     {
-      llarp::LogDebug("set ifname to ", t->ifname);
-
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
         llarp::LogWarn("failed to start interface");
@@ -265,9 +269,7 @@ namespace llarp
         return false;
       }
 
-      fd           = tunif->tun_fd;
-      tun_async[0] = &tunif->ovl[0];
-      tun_async[1] = &tunif->ovl[1];
+      fd = tunif->tun_fd;
       if(std::get< HANDLE >(fd) == INVALID_HANDLE_VALUE)
         return false;
 
@@ -360,47 +362,72 @@ struct llarp_win32_loop : public llarp_ev_loop
   }
 
   // it works! -despair86, 3-Aug-18 @0420
+  // if this works, may consider digging up the other code
+  // from the grave...
   int
   tick(int ms)
   {
-    OVERLAPPED_ENTRY events[1024];
-    memset(&events, 0, sizeof(OVERLAPPED_ENTRY) * 1024);
-    ULONG result = 0;
-    ::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &result, ms, false);
-    ULONG idx = 0;
-    while(idx < result)
+    DWORD iolen          = 0;
+    ULONG_PTR ev_id      = 0;
+    WSAOVERLAPPED* qdata = nullptr;
+    int idx              = 0;
+
+    while(GetQueuedCompletionStatus(iocpfd, &iolen, &ev_id, &qdata, ms))
     {
-      llarp::ev_io* ev =
-          reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
-      if(ev && events[idx].lpOverlapped)
+      llarp::ev_io* ev = reinterpret_cast< llarp::ev_io* >(ev_id);
+      if(ev)
       {
-        auto amount =
-            std::min(EV_READ_BUF_SZ, events[idx].dwNumberOfBytesTransferred);
         if(ev->write)
-          ev->flush_write_buffers(amount);
+          ev->flush_write_buffers(iolen);
         else
         {
-          memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
-          ev->read(readbuf, amount);
+          memcpy(readbuf, qdata->Pointer, iolen);
+          ev->read(readbuf, iolen);
         }
       }
       ++idx;
+      delete qdata;
     }
     tick_listeners();
-
-    return result;
+	if (!idx)
+		idx--;
+    return idx;
+    // shelve this for a bit...
+    /*
+        OVERLAPPED_ENTRY events[1024];
+        memset(&events, 0, sizeof(OVERLAPPED_ENTRY) * 1024);
+        ULONG result = 0;
+        ::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &result, ms, false);
+        ULONG idx = 0;
+        while(idx < result)
+        {
+          llarp::ev_io* ev =
+              reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
+          if(ev && events[idx].lpOverlapped)
+          {
+            auto amount =
+                std::min(EV_READ_BUF_SZ,
+      events[idx].dwNumberOfBytesTransferred); if(ev->write)
+              ev->flush_write_buffers(amount);
+            else
+            {
+              memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
+              ev->read(readbuf, amount);
+            }
+            delete events[idx].lpOverlapped;
+          }
+          ++idx;
+        }
+        tick_listeners();
+        return idx;
+*/
   }
 
   // ok apparently this isn't being used yet...
   int
   run()
   {
-    // The only field we really care about is
-    // the listener_id, as it contains the address
-    // of the udp_listener instance.
-    DWORD iolen = 0;
-    // ULONG_PTR is guaranteed to be the same size
-    // as an arch-specific pointer value
+    DWORD iolen          = 0;
     ULONG_PTR ev_id      = 0;
     WSAOVERLAPPED* qdata = nullptr;
     int idx              = 0;
@@ -630,5 +657,18 @@ struct llarp_win32_loop : public llarp_ev_loop
     iocpfd = INVALID_HANDLE_VALUE;*/
   }
 };
+
+// This hands us a new event port for the tun
+// read/write functions that can later be freed with
+// operator delete in the event loop tick
+extern "C"
+{
+  OVERLAPPED*
+  getTunEvPort()
+  {
+    OVERLAPPED* newport = new OVERLAPPED;
+    return newport;
+  }
+}
 
 #endif

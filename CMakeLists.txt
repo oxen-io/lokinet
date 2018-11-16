@@ -48,12 +48,12 @@ else()
 # found it. this is GNU only
 add_compile_options(-Wno-cast-function-type)
 endif(USING_CLANG)
-else()
-add_compile_options(-Wno-cast-function-type)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
 endif()
 
 if(WIN32)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
 set(FS_LIB stdc++fs)
 endif(WIN32)
 

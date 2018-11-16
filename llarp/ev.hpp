@@ -36,7 +36,7 @@ namespace llarp
     {
       llarp_time_t timestamp = 0;
       size_t bufsz;
-      byte_t buf[EV_WRITE_BUF_SZ] = {0};
+      byte_t buf[EV_WRITE_BUF_SZ];
 
       WriteBuffer() = default;
 
@@ -57,6 +57,20 @@ namespace llarp
         operator()(const WriteBuffer& buf) const
         {
           return buf.timestamp;
+        }
+      };
+
+      struct GetNow
+      {
+        llarp_ev_loop* loop;
+        GetNow(llarp_ev_loop* l) : loop(l)
+        {
+        }
+
+        llarp_time_t
+        operator()() const
+        {
+          return llarp_ev_loop_time_now_ms(loop);
         }
       };
 
@@ -83,10 +97,10 @@ namespace llarp
       };
     };
 
-    typedef llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
-                                     WriteBuffer::PutTime, WriteBuffer::Compare,
-                                     llarp::util::NullMutex,
-                                     llarp::util::NullLock, 5, 100, 128 >
+    typedef llarp::util::CoDelQueue<
+        WriteBuffer, WriteBuffer::GetTime, WriteBuffer::PutTime,
+        WriteBuffer::Compare, WriteBuffer::GetNow, llarp::util::NullMutex,
+        llarp::util::NullLock, 5, 100, 1024 >
         LossyWriteQueue_t;
 
     typedef std::deque< WriteBuffer > LosslessWriteQueue_t;
@@ -97,24 +111,16 @@ namespace llarp
     ULONG_PTR listener_id = 0;
     bool isTCP            = false;
     bool write            = false;
-    WSAOVERLAPPED portfd[2];
 
     // constructors
     // for udp
-    win32_ev_io(SOCKET f) : fd(f)
-    {
-      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
-    };
+    win32_ev_io(SOCKET f) : fd(f){};
     // for tun
-    win32_ev_io(HANDLE t, LossyWriteQueue_t* q) : fd(t), m_LossyWriteQueue(q)
-    {
-      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
-    }
+    win32_ev_io(HANDLE t, LossyWriteQueue_t* q) : fd(t), m_LossyWriteQueue(q){}
     // for tcp
     win32_ev_io(SOCKET f, LosslessWriteQueue_t* q)
         : fd(f), m_BlockingWriteQueue(q)
     {
-      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
       isTCP = true;
     }
 
@@ -141,13 +147,14 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      // DWORD w;
+      // hmm, think we should deallocate event ports in the loop itself
+      WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
       if(std::holds_alternative< HANDLE >(fd))
-        WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, &portfd[1]);
+        WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, portfd);
       else
         WriteFile((HANDLE)std::get< SOCKET >(fd), data, sz, nullptr,
-                  &portfd[1]);
-      return sz;
+                  portfd);
+      return sz; // we grab the error in the event loop
     }
 
     bool
