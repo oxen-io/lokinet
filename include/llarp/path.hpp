@@ -306,6 +306,12 @@ namespace llarp
       }
 
       bool
+      MarkActive(llarp_time_t now)
+      {
+        m_LastRecvMessage = now
+      }
+
+      bool
       SupportsRoles(PathRole roles) const
       {
         return (_role & roles) == roles;
