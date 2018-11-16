@@ -22,7 +22,8 @@ namespace llarp
     bool
     BaseSession::ShouldBuildMore(llarp_time_t now) const
     {
-      return AvailablePaths(llarp::path::ePathRoleExit) == 0;
+      return AvailablePaths(llarp::path::ePathRoleExit) == 0
+          || path::Builder::ShouldBuildMore(now);
     }
 
     bool

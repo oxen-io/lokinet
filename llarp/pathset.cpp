@@ -151,6 +151,21 @@ namespace llarp
     }
 
     size_t
+    PathSet::AvailablePaths(PathRole roles) const
+    {
+      size_t count = 0;
+      auto itr     = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->second->Status() == ePathEstablished
+           && itr->second->SupportsRoles(roles))
+          ++count;
+        ++itr;
+      }
+      return count;
+    }
+
+    size_t
     PathSet::NumInStatus(PathStatus st) const
     {
       size_t count = 0;
