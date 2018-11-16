@@ -308,7 +308,7 @@ namespace llarp
       bool
       MarkActive(llarp_time_t now)
       {
-        m_LastRecvMessage = now
+        m_LastRecvMessage = now;
       }
 
       bool
