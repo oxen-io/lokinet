@@ -20,6 +20,12 @@ namespace llarp
     }
 
     bool
+    BaseSession::ShouldBuildMore(llarp_time_t now) const
+    {
+      return AvailablePaths(llarp::path::ePathRoleExit) == 0;
+    }
+
+    bool
     BaseSession::SelectHop(llarp_nodedb* db, const RouterContact& prev,
                            RouterContact& cur, size_t hop,
                            llarp::path::PathRole roles)
