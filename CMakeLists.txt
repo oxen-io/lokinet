@@ -267,6 +267,7 @@ set(LIB_PLATFORM_SRC
   llarp/timer.cpp
 # for threading
   llarp/queue_manager.cpp
+  llarp/thread_pool.cpp
   llarp/threadpool.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
@@ -515,6 +516,7 @@ set(TEST_SRC
   test/test_dnsd_unit.cpp
   test/test_llarp_queue.cpp
   test/test_llarp_queue_manager.cpp
+  test/test_llarp_thread_pool.cpp
 )
 
 
