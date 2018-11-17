@@ -8,7 +8,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/testAll",
-      "args": ["--gtest_shuffle", "--gtest_filter=TestQueue*:-TestQueueManager*"],
+      "args": ["--gtest_shuffle", "--gtest_filter=TestThreadPool*"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],

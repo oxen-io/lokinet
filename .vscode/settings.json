@@ -70,6 +70,7 @@
     "any": "cpp",
     "tuntap.h": "c",
     "hashtable": "cpp",
-    "__mutex_base": "cpp"
+    "__mutex_base": "cpp",
+    "iterator": "cpp"
   }
 }
