@@ -447,6 +447,17 @@ namespace llarp
       // check to see if this path is dead
       if(_status == ePathEstablished)
       {
+        if(SupportsRoles(ePathRoleExit))
+        {
+          if(m_LastRecvMessage && now > m_LastRecvMessage
+             && now - m_LastRecvMessage > PATH_ALIVE_TIMEOUT)
+          {
+            // TODO: send close message
+            // r->routerProfiling.MarkPathFail(this);
+            // EnterState(ePathTimeout, now);
+            return;
+          }
+        }
         if(m_LastRecvMessage && now > m_LastRecvMessage
            && now - m_LastRecvMessage > PATH_ALIVE_TIMEOUT)
         {

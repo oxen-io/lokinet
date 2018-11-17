@@ -41,7 +41,7 @@ namespace llarp
     ExitEndpoint::FlushInbound()
     {
       auto now = Router()->Now();
-      m_InetToNetwork.ProcessN(256, [&](Pkt_t &pkt) {
+      m_InetToNetwork.Process([&](Pkt_t &pkt) {
         llarp::PubKey pk;
         {
           auto itr = m_IPToKey.find(pkt.dst());

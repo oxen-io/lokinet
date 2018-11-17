@@ -101,16 +101,9 @@ namespace llarp
         return Process(v, [](T&) -> bool { return false; });
       }
 
-      template < typename Visit >
-      void
-      ProcessN(size_t N, Visit v)
-      {
-        Process(v, [](T&) -> bool { return false; }, N);
-      }
-
       template < typename Visit, typename Filter >
       void
-      Process(Visit visitor, Filter f, size_t N = MaxSize)
+      Process(Visit visitor, Filter f)
       {
         llarp_time_t lowest = std::numeric_limits< llarp_time_t >::max();
         if(_getNow() < nextTickAt)
@@ -131,8 +124,6 @@ namespace llarp
         size_t idx = 0;
         while(m_QueueIdx)
         {
-          --N;
-
           llarp::LogDebug(m_name, " - queue has ", m_QueueIdx);
           T* item = &m_Queue[idx++];
           if(f(*item))
@@ -141,7 +132,7 @@ namespace llarp
           auto dlt = start - _getTime(*item);
           // llarp::LogInfo("CoDelQueue::Process - dlt ", dlt);
           lowest = std::min(dlt, lowest);
-          if(m_QueueIdx == 0 || N == 0)
+          if(m_QueueIdx == 0)
           {
             // llarp::LogInfo("CoDelQueue::Process - single item: lowest ",
             // lowest, " dropMs: ", dropMs);
