@@ -8,7 +8,7 @@
       "type": "cppdbg",
       "request": "launch",
       "program": "${workspaceFolder}/build/testAll",
-      "args": ["--gtest_shuffle", "--gtest_filter=-AbyssTest.TestClientAndServer"],
+      "args": ["--gtest_shuffle", "--gtest_filter=TestQueue*:-TestQueueManager*"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [],

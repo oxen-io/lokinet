@@ -69,6 +69,7 @@
     "variant": "cpp",
     "any": "cpp",
     "tuntap.h": "c",
-    "hashtable": "cpp"
+    "hashtable": "cpp",
+    "__mutex_base": "cpp"
   }
 }

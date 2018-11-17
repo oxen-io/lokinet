@@ -513,6 +513,7 @@ set(TEST_SRC
   test/test_dns_unit.cpp
   test/test_dnsc_unit.cpp
   test/test_dnsd_unit.cpp
+  test/test_llarp_queue.cpp
   test/test_llarp_queue_manager.cpp
 )
 
