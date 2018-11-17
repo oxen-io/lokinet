@@ -87,6 +87,115 @@ namespace llarp
       }
     };
 
+    class Semaphore
+    {
+     private:
+      std::mutex m_mutex;
+      std::condition_variable m_cv;
+      size_t m_count;
+
+     public:
+      Semaphore(size_t count) : m_count(count)
+      {
+      }
+
+      void
+      notify()
+      {
+        std::unique_lock< std::mutex > lock(m_mutex);
+        m_count++;
+
+        m_cv.notify_one();
+      }
+
+      void
+      wait()
+      {
+        std::unique_lock< std::mutex > lock(m_mutex);
+        m_cv.wait(lock, [this]() { return this->m_count > 0; });
+
+        m_count--;
+      }
+
+      template < typename Rep, typename Period >
+      bool
+      waitFor(const std::chrono::duration< Rep, Period >& period)
+      {
+        std::unique_lock< std::mutex > lock(m_mutex);
+
+        if(m_cv.wait_for(lock, period, [this]() { return this->m_count > 0; }))
+        {
+          m_count--;
+          return true;
+        }
+
+        return false;
+      }
+    };
+
+    class Barrier
+    {
+     private:
+      std::mutex mutex;
+      std::condition_variable cv;
+
+      const size_t numThreads;
+      size_t numThreadsWaiting;  // number of threads to be woken
+      size_t sigCount;    // number of times the barrier has been signalled
+      size_t numPending;  // number of threads that have been signalled, but
+                          // haven't woken.
+
+     public:
+      Barrier(size_t threadCount)
+          : numThreads(threadCount)
+          , numThreadsWaiting(0)
+          , sigCount(0)
+          , numPending(0)
+      {
+      }
+
+      ~Barrier()
+      {
+        for(;;)
+        {
+          {
+            std::unique_lock< std::mutex > lock(mutex);
+            if(numPending == 0)
+            {
+              break;
+            }
+          }
+
+          std::this_thread::yield();
+        }
+
+        assert(numThreadsWaiting == 0);
+      }
+
+      void
+      wait()
+      {
+        std::unique_lock< std::mutex > lock(mutex);
+        size_t signalCount = sigCount;
+
+        if(++numThreadsWaiting == numThreads)
+        {
+          ++sigCount;
+          numPending += numThreads - 1;
+          numThreadsWaiting = 0;
+          cv.notify_all();
+        }
+        else
+        {
+          cv.wait(lock, [this, signalCount]() {
+            return this->sigCount != signalCount;
+          });
+
+          --numPending;
+        }
+      }
+    };
+
   }  // namespace util
 }  // namespace llarp
 
