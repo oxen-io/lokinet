@@ -329,13 +329,29 @@ namespace llarp
             static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
         llarp::LogDebug("utp_sendto ", Addr(*arg->address), " ", arg->len,
                         " bytes");
-        if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
-                    arg->address, arg->address_len)
-               == -1
-           && errno)
+#ifdef _WIN32
+        WSABUF s;
+        int i,x;
+        WSAOVERLAPPED* o = new WSAOVERLAPPED;
+        memset(o, 0, sizeof(WSAOVERLAPPED));
+        s.buf = (char*)arg->buf;
+        s.len = arg->len;
+        i = WSASendTo(l->m_udp.fd, &s, 1, nullptr, arg->flags, arg->address,
+                  arg->address_len, o, nullptr);
+        x     = WSAGetLastError();
+        if((i && x == 997) || (!i))
+          return 0;
+        else
+          llarp::LogError("sendto failed: ", strerror(WSAGetLastError()));
+#else
+            if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
+                        arg->address, arg->address_len)
+                   == -1
+               && errno)
         {
           llarp::LogError("sendto failed: ", strerror(errno));
         }
+#endif
         return 0;
       }
 

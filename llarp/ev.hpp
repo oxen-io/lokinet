@@ -149,6 +149,7 @@ namespace llarp
     {
       // hmm, think we should deallocate event ports in the loop itself
       WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
+      memset(portfd, 0, sizeof(WSAOVERLAPPED));
       if(std::holds_alternative< HANDLE >(fd))
         WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, portfd);
       else

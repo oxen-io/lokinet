@@ -12,6 +12,20 @@
 #undef sizeof
 #endif
 
+struct sock_visitor
+{
+  int
+  operator()(SOCKET a)
+  {
+    return a;
+  }
+  ULONG_PTR
+  operator()(HANDLE a)
+  {
+    return (ULONG_PTR)a;
+  }
+};
+
 // TODO: convert all socket errno calls to WSAGetLastError(3),
 // don't think winsock sets regular errno to this day
 namespace llarp
@@ -21,13 +35,14 @@ namespace llarp
   {
     WSABUF r_buf          = {(u_long)sz, (char*)buf};
     WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
+    memset(portfd, 0, sizeof(WSAOVERLAPPED));
 
     WSARecv(std::get< SOCKET >(fd), &r_buf, 1, nullptr, 0, portfd, nullptr);
 
     if(WSAGetLastError() == 997)
     {
       if(tcp.read)
-        tcp.read(&tcp, buf, amount);
+        tcp.read(&tcp, buf, sz);
     }
     else
     {
@@ -44,6 +59,7 @@ namespace llarp
   {
     WSABUF s_buf          = {(u_long)sz, (char*)buf};
     WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
+    memset(portfd, 0, sizeof(WSAOVERLAPPED));
 
     if(_shouldClose)
     {
@@ -140,6 +156,7 @@ namespace llarp
     {
       printf("read\n");
       WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
+      memset(portfd, 0, sizeof(WSAOVERLAPPED));
       sockaddr_in6 src;
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
@@ -164,8 +181,9 @@ namespace llarp
     virtual int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
-      printf("sendto\n");
+      printf("write\n");
       WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
+      memset(portfd, 0, sizeof(WSAOVERLAPPED));
       socklen_t slen;
       WSABUF wbuf = {(u_long)sz, (char*)data};
       switch(to->sa_family)
@@ -236,6 +254,7 @@ namespace llarp
     do_write(void* data, size_t sz)
     {
       OVERLAPPED* tun_async = new OVERLAPPED;
+      memset(tun_async, 0, sizeof(WSAOVERLAPPED));
       return WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, tun_async);
     }
 
@@ -362,7 +381,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   }
 
   // it works! -despair86, 3-Aug-18 @0420
-  // if this works, may consider digging up the other code
+  // if this new stuff works, may consider digging up the other code
   // from the grave...
   int
   tick(int ms)
@@ -381,46 +400,50 @@ struct llarp_win32_loop : public llarp_ev_loop
           ev->flush_write_buffers(iolen);
         else
         {
-          memcpy(readbuf, qdata->Pointer, iolen);
-          ev->read(readbuf, iolen);
+          if(qdata->Pointer)  // the start packet is empty
+          {
+            memcpy(readbuf, qdata->Pointer, iolen);
+            ev->read(readbuf, iolen);
+          }
         }
       }
       ++idx;
       delete qdata;
     }
     tick_listeners();
-	if (!idx)
-		idx--;
+    if(!idx)
+      idx--;
     return idx;
-    // shelve this for a bit...
+
     /*
-        OVERLAPPED_ENTRY events[1024];
-        memset(&events, 0, sizeof(OVERLAPPED_ENTRY) * 1024);
-        ULONG result = 0;
-        ::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &result, ms, false);
-        ULONG idx = 0;
-        while(idx < result)
-        {
-          llarp::ev_io* ev =
-              reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
-          if(ev && events[idx].lpOverlapped)
-          {
-            auto amount =
-                std::min(EV_READ_BUF_SZ,
-      events[idx].dwNumberOfBytesTransferred); if(ev->write)
-              ev->flush_write_buffers(amount);
-            else
+              OVERLAPPED_ENTRY events[1024];
+            memset(&events, 0, sizeof(OVERLAPPED_ENTRY) * 1024);
+            ULONG result = 0;
+            ::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &result, ms,
+       false); ULONG idx = 0; while(idx < result)
             {
-              memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
-              ev->read(readbuf, amount);
+              llarp::ev_io* ev =
+                  reinterpret_cast< llarp::ev_io*
+       >(events[idx].lpCompletionKey); if(ev && events[idx].lpOverlapped &&
+       events[idx].lpOverlapped->Pointer)
+              {
+                auto amount =
+                    std::min(EV_READ_BUF_SZ,events[idx].dwNumberOfBytesTransferred);
+                            if(ev->write)
+                  ev->flush_write_buffers(amount);
+                else
+                {
+                  memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
+                  ev->read(readbuf, amount);
+                }
+                delete events[idx].lpOverlapped;
+              }
+              ++idx;
             }
-            delete events[idx].lpOverlapped;
-          }
-          ++idx;
-        }
-        tick_listeners();
-        return idx;
-*/
+            tick_listeners();
+            printf("exit loop: %lu\n", idx);
+            return idx;
+    */
   }
 
   // ok apparently this isn't being used yet...
@@ -559,6 +582,8 @@ struct llarp_win32_loop : public llarp_ev_loop
   add_ev(llarp::ev_io* ev, bool write)
   {
     ev->listener_id = reinterpret_cast< ULONG_PTR >(ev);
+    OVERLAPPED* o   = new OVERLAPPED;
+    memset(o, 0, sizeof(OVERLAPPED));
 
     // if the write flag was set earlier,
     // clear it on demand
@@ -602,8 +627,9 @@ struct llarp_win32_loop : public llarp_ev_loop
     }
 
   start_loop:
-    PostQueuedCompletionStatus(iocpfd, 0, ev->listener_id, nullptr);
     handlers.emplace_back(ev);
+    delete o;
+    llarp::LogInfo("added fd ", std::visit(sock_visitor{}, ev->fd), " to event queue");
     return true;
   }
 
