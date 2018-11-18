@@ -3,6 +3,7 @@
 
 #include <array>
 #include <thread>
+#include <functional>
 
 #include <gtest/gtest.h>
 
