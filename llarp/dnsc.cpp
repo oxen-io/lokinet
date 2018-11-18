@@ -235,9 +235,11 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // castBuf += question->name.length() + 1 + 4;
     // castBuf += 2;  // skip answer label
   }
-  llarp::LogDebug("Question ", std::to_string(question->type), " ",
-                  question->name);
-
+  if(question)
+  {
+    llarp::LogDebug("Question ", std::to_string(question->type), " ",
+                    question->name);
+  }
   // FIXME: only handling one atm
   std::vector< dns_msg_answer * > answers;
   dns_msg_answer *answer = nullptr;
@@ -381,7 +383,10 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     answer = answers.front();
   }
 
-  llarp::LogDebug("qus type  ", question->type);
+  if(question)
+  {
+    llarp::LogDebug("qus type  ", question->type);
+  }
 
   llarp::LogDebug("ans class ", answer->aClass);
   llarp::LogDebug("ans type  ", answer->type);
@@ -576,6 +581,7 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
   if(!(sockfd > 0))
   {
     llarp::LogWarn("Error creating socket!\n");
+    delete dns_packet;
     return;
   }
   // socket = sockfd;
