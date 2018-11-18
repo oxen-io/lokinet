@@ -105,7 +105,7 @@ namespace llarp
     type_12ptr::parse(std::vector< byte_t > bytes)
     {
       // trim last 2 bytes... probably the size
-      this->revname = std::string((char *)bytes.data(), bytes.size() - 2);
+      this->revname = std::string((char *)bytes.data(), bytes.size());
       return bytes.size() ? true : false;
     };
 
