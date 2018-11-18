@@ -162,7 +162,14 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "upstream=" << DEFAULT_RESOLVER_EU << std::endl;
   f << "# opennic au resolver" << std::endl;
   f << "upstream=" << DEFAULT_RESOLVER_AU << std::endl;
+
+// Make auto-config smarter
+// will this break reproducibility rules?
+#ifdef __linux__
+  f << "bind=127.3.2.1:53" << std::endl;
+#else
   f << "bind=127.0.0.1:53" << std::endl;
+#endif
   f << std::endl << std::endl;
 
   f << "# network database settings block " << std::endl;
@@ -239,6 +246,8 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;
   f << "profiles=" << basepath << "profiles.dat" << std::endl;
+
+// WHAT? Why this ifndef?
 #ifndef __linux__
   f << "# ";
 #endif
