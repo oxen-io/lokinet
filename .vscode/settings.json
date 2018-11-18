@@ -70,11 +70,8 @@
     "any": "cpp",
     "tuntap.h": "c",
     "hashtable": "cpp",
-    "crypto_stream_salsa20.h": "c",
-    "implementations.h": "c",
-    "stream_salsa20.h": "c",
-    "salsa20_xmm6int-sse2.h": "c",
-    "salsa20_ref.h": "c",
-    "salsa20_xmm6int-avx2.h": "c"
-  }
+    "__mutex_base": "cpp",
+    "iterator": "cpp"
+  },
+  "python.pythonPath": "/usr/local/bin/python3"
 }

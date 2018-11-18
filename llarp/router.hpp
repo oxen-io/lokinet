@@ -100,8 +100,8 @@ struct llarp_router
   std::string defaultIfAddr = "auto";
   std::string defaultIfName = "auto";
 
-  /// default exit config
-  llarp::exit::Context::Config_t exitConf;
+  /// default network config
+  std::unordered_multimap< std::string, std::string > netConf;
 
   bool
   ExitEnabled() const

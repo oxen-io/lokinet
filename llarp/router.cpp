@@ -902,7 +902,7 @@ llarp_router::InitServiceNode()
   llarp::LogInfo("accepting transit traffic");
   paths.AllowTransit();
   llarp_dht_allow_transit(dht);
-  return exitContext.AddExitEndpoint("default-connectivity", exitConf);
+  return exitContext.AddExitEndpoint("default-connectivity", netConf);
 }
 
 void
@@ -984,14 +984,7 @@ llarp_router::InitOutboundLink()
 bool
 llarp_router::CreateDefaultHiddenService()
 {
-  if(upstreamResolvers.size())
-    return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName,
-                                                   upstreamResolvers.front(),
-                                                   resolverBindAddr);
-  else
-    return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName,
-                                                   defaultUpstreamResolver,
-                                                   resolverBindAddr);
+  return hiddenServiceContext.AddDefaultEndpoint(netConf);
 }
 
 bool
@@ -1214,7 +1207,7 @@ namespace llarp
       }
       else
       {
-        self->exitConf.insert(std::make_pair(key, val));
+        self->netConf.emplace(key, val);
       }
     }
     else if(StrEq(section, "api"))

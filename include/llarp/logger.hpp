@@ -36,6 +36,9 @@ namespace llarp
     std::string nodeName;
     LogLevel minlevel = eLogInfo;
     std::ostream& out;
+
+    std::function< void(const std::string&) > customLog;
+
     llarp::util::Mutex access;
     Logger() : Logger(std::cout, "unnamed")
     {
@@ -173,15 +176,15 @@ namespace llarp
     LogAppend(ss, std::forward< TArgs >(args)...);
 #ifndef ANDROID
     ss << (char)27 << "[0;0m";
-    _glog.out << ss.str() << std::endl;
+    if(_glog.customLog)
+      _glog.customLog(ss.str());
+    else
+      _glog.out << ss.str() << std::endl;
 #else
     {
       tag = "LOKINET|" + tag;
       __android_log_write(loglev, tag.c_str(), ss.str().c_str());
     }
-#endif
-#ifdef SHADOW_TESTNET
-    _glog.out << "\n" << std::flush;
 #endif
   }
 }  // namespace llarp
