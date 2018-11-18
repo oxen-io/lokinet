@@ -113,7 +113,7 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
   put32bits(write_buffer, 1);  // ttl
 
   put16bits(write_buffer, cname.length() + 2);  // rdLength
-  code_domain(write_buffer, cname);             // com, type=6, ttl=0
+  code_domain(write_buffer, cname);             //
   // location of cname
   //*write_buffer++ = ip[0];
   //*write_buffer++ = ip[1];
@@ -248,7 +248,7 @@ writesend_dnss_response(llarp::huint32_t *hostRes, const struct sockaddr *from,
   */
 
   uint32_t out_bytes = write_buffer - bufferBegin;
-  llarp::LogDebug("Sending found, ", out_bytes, " bytes");
+  llarp::LogInfo("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from, buf, out_bytes);
 }
@@ -349,6 +349,18 @@ handle_dnsc_result(dnsc_answer_request *client_request)
     llarp::LogError("Couldn't map client requser user to a server request");
     return;
   }
+
+  client_request->packet.header->id = server_request->id;
+  std::vector< byte_t > test        = packet2bytes(client_request->packet);
+  // llarp::LogInfo("packet2bytes figures we should send ", test.size(), "
+  // bytes");
+
+  server_request->sendto_hook(server_request->user, server_request->from,
+                              test.data(), test.size());
+
+  llarp_host_resolved(client_request);
+  return;
+
   // llarp::LogDebug("handle_dnsc_result - client request question type",
   // std::to_string(client_request->question.type));
   if(client_request->question.type == 12)
@@ -487,6 +499,7 @@ handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
   }
   */
   delete fromCopy;
+  // call DNSc
   if(request->llarp)
   {
     // make async request

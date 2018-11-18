@@ -124,10 +124,180 @@ code_domain(char *&buffer, const std::string &domain) throw()
   *buffer++ = 0;
 }
 
-// lets just remove uint
-#ifdef _WIN32
-#define uint UINT
-#endif
+void
+vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) throw()
+{
+  std::string::size_type start(0);
+  std::string::size_type end;  // indexes
+  // llarp::LogInfo("domain [", domain, "]");
+  while((end = domain.find('.', start)) != std::string::npos)
+  {
+    bytes.push_back(end - start);  // label length octet
+    for(std::string::size_type i = start; i < end; i++)
+    {
+      bytes.push_back(domain[i]);  // label octets
+      // llarp::LogInfo("Writing ", domain[i], " at ", i);
+    }
+    start = end + 1;  // Skip '.'
+  }
+
+  // llarp::LogInfo("start ", start, " domain size ", domain.size());
+
+  bytes.push_back(domain.size() - start);  // last label length octet
+  for(size_t i = start; i < domain.size(); i++)
+  {
+    bytes.push_back(domain[i]);  // last label octets
+    // llarp::LogInfo("Writing ", domain[i], " at ", i);
+  }
+  bytes.push_back(0);  // end it
+}
+
+// expects host order
+void
+vput16bits(std::vector< byte_t > &bytes, uint16_t value) throw()
+{
+  char buf[2]        = {0};
+  char *write_buffer = buf;
+  htobe16buf(write_buffer, value);
+  bytes.push_back(buf[0]);
+  bytes.push_back(buf[1]);
+}
+
+// expects host order
+void
+vput32bits(std::vector< byte_t > &bytes, uint32_t value) throw()
+{
+  char buf[4]        = {0};
+  char *write_buffer = buf;
+  htobe32buf(write_buffer, value);
+  bytes.push_back(buf[0]);
+  bytes.push_back(buf[1]);
+  bytes.push_back(buf[2]);
+  bytes.push_back(buf[3]);
+}
+
+void
+dns_writeType(std::vector< byte_t > &bytes, llarp::dns::record *record)
+{
+  llarp::dns::type_1a *type1a = dynamic_cast< llarp::dns::type_1a * >(record);
+  if(type1a)
+  {
+    std::vector< byte_t > more_bytes = type1a->to_bytes();
+    llarp::LogDebug("[1]Adding ", more_bytes.size());
+    bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
+  }
+
+  llarp::dns::type_2ns *type2ns =
+      dynamic_cast< llarp::dns::type_2ns * >(record);
+  if(type2ns)
+  {
+    std::vector< byte_t > more_bytes = type2ns->to_bytes();
+    llarp::LogDebug("[2]Adding ", more_bytes.size());
+    bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
+  }
+
+  llarp::dns::type_5cname *type5cname =
+      dynamic_cast< llarp::dns::type_5cname * >(record);
+  if(type5cname)
+  {
+    std::vector< byte_t > more_bytes = type5cname->to_bytes();
+    llarp::LogDebug("[5]Adding ", more_bytes.size());
+    bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
+  }
+
+  llarp::dns::type_12ptr *type12ptr =
+      dynamic_cast< llarp::dns::type_12ptr * >(record);
+  if(type12ptr)
+  {
+    std::vector< byte_t > more_bytes = type12ptr->to_bytes();
+    llarp::LogDebug("[12]Adding ", more_bytes.size());
+    bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
+  }
+  llarp::dns::type_15mx *type15mx =
+      dynamic_cast< llarp::dns::type_15mx * >(record);
+  if(type15mx)
+  {
+    std::vector< byte_t > more_bytes = type15mx->to_bytes();
+    llarp::LogDebug("[15]Adding ", more_bytes.size());
+    bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
+  }
+  llarp::dns::type_16txt *type16txt =
+      dynamic_cast< llarp::dns::type_16txt * >(record);
+  if(type16txt)
+  {
+    std::vector< byte_t > more_bytes = type16txt->to_bytes();
+    llarp::LogDebug("[15]Adding ", more_bytes.size());
+    bytes.insert(bytes.end(), more_bytes.begin(), more_bytes.end());
+  }
+}
+
+std::vector< byte_t >
+packet2bytes(dns_packet &in)
+{
+  std::vector< byte_t > write_buffer;
+  vput16bits(write_buffer, in.header->id);
+
+  int fields = (in.header->qr << 15);   // QR => message type, 1 = response
+  fields += (in.header->opcode << 14);  // I think opcode is always 0
+  fields += in.header->rcode;  // response code (3 => not found, 0 = Ok)
+  vput16bits(write_buffer, fields);
+
+  // don't pull these from the header, trust what we actually have more
+  vput16bits(write_buffer, in.questions.size());  // QD (number of questions)
+  vput16bits(write_buffer, in.answers.size());    // AN (number of answers)
+  // be lazy for now
+  // vput16bits(write_buffer, 0);  // NS (number of auth RRs)
+  // vput16bits(write_buffer, 0);  // AR (number of Additional
+  vput16bits(write_buffer, in.auth_rrs.size());  // NS (number of auth RRs)
+  vput16bits(write_buffer,
+             in.additional_rrs.size());  // AR (number of Additional RRs)
+
+  // llarp::LogInfo("Header took ", write_buffer.size());
+
+  for(auto &it : in.questions)
+  {
+    // code question
+    vcode_domain(write_buffer, it->name);
+    vput16bits(write_buffer, it->type);
+    vput16bits(write_buffer, it->qClass);
+  }
+  // llarp::LogInfo("Questions finished at ", write_buffer.size());
+
+  // llarp::LogDebug("Starting answers for ", in.questions[0]->name);
+  for(auto &it : in.answers)
+  {
+    // code answers
+    vcode_domain(write_buffer, it->name);
+    vput16bits(write_buffer, it->type);
+    vput16bits(write_buffer, it->aClass);
+    vput32bits(write_buffer, 1);  // ttl
+    dns_writeType(write_buffer, it->record.get());
+  }
+  // llarp::LogDebug("Done with answers");
+  // llarp::LogInfo("Answers finished at ", write_buffer.size());
+
+  for(auto &it : in.auth_rrs)
+  {
+    // code answers
+    vcode_domain(write_buffer, it->name);
+    vput16bits(write_buffer, it->type);
+    vput16bits(write_buffer, it->aClass);
+    vput32bits(write_buffer, 1);  // ttl
+    dns_writeType(write_buffer, it->record.get());
+  }
+
+  for(auto &it : in.additional_rrs)
+  {
+    // code answers
+    vcode_domain(write_buffer, it->name);
+    vput16bits(write_buffer, it->type);
+    vput16bits(write_buffer, it->aClass);
+    vput32bits(write_buffer, 1);  // ttl
+    dns_writeType(write_buffer, it->record.get());
+  }
+
+  return write_buffer;
+}
 
 extern "C"
 {
@@ -212,7 +382,7 @@ extern "C"
     }
     */
     question->name = m_qName;
-  
+
     question->type = get16bits(moveable);
     (*pos) += 2;
     // printf("Now1 at [%d]\n", buffer - start);
@@ -242,9 +412,9 @@ extern "C"
     // llarp::LogDebug("Advancing to pos ", std::to_string(*pos));
     moveable += (*pos);  // advance to position
 
-    //hexDump(moveable, 12);
-    //hexDumpAt(buffer, *pos, 12);
-      
+    // hexDump(moveable, 12);
+    // hexDumpAt(buffer, *pos, 12);
+
     if(*moveable == '\xc0')
     {
       // hexDump(moveable, 2);
@@ -267,10 +437,10 @@ extern "C"
       /*
       uint32_t readAt32 = *pos;
       answer->name = getDNSstring(buffer, &readAt32);
-        llarp::LogInfo("Parsed string ", answer->name, " read ", std::to_string(readAt32));
-        moveable += readAt32; (*pos) += readAt32;
+        llarp::LogInfo("Parsed string ", answer->name, " read ",
+      std::to_string(readAt32)); moveable += readAt32; (*pos) += readAt32;
       */
-      //moveable++; (*pos)++;
+      // moveable++; (*pos)++;
     }
     /*
     hexDump(moveable, 10);
@@ -323,6 +493,9 @@ extern "C"
                       */
       moveable += answer->rdLen;
       (*pos) += answer->rdLen;  // advance the length
+
+      answer->record.reset(new llarp::dns::type_1a());
+      answer->record->parse(answer->rData);
     }
     else
     {
@@ -330,15 +503,35 @@ extern "C"
       // FIXME: move this out of here, this shouldn't be responsible for decode
       switch(answer->type)
       {
-        case 2: // NS
+        case 2:  // NS
+        {
+          std::string ns = getDNSstring(buffer, pos);
+          answer->rData.resize(ns.size());
+          memcpy(answer->rData.data(), ns.c_str(),
+                 ns.size());  // raw copy rData
+
           // don't really need to do anything here
           moveable += answer->rdLen;
-          (*pos) += answer->rdLen;  // advance the length
+          //(*pos) += answer->rdLen;  // advance the length
+
+          answer->record.reset(new llarp::dns::type_2ns());
+          answer->record->parse(answer->rData);
+        }
         break;
-          case 5:
+        case 5:  // CNAME
+        {
+          std::string cname = getDNSstring(buffer, pos);
+          llarp::LogDebug("CNAME ", cname);
+          answer->rData.resize(cname.size());
+          memcpy(answer->rData.data(), cname.c_str(), cname.size());
+
           moveable += answer->rdLen;
-          (*pos) += answer->rdLen;  // advance the length
-          break;
+          //(*pos) += answer->rdLen;  // advance the length
+
+          answer->record.reset(new llarp::dns::type_5cname());
+          answer->record->parse(answer->rData);
+        }
+        break;
         case 6:  // type 6 = SOA
         {
           // 2 names, then 4x 32bit
@@ -371,12 +564,15 @@ extern "C"
         {
           std::string revname = getDNSstring(buffer, pos);
           llarp::LogInfo("revDNSname: ", revname);
-          //answer->rData = new uint8_t[answer->rdLen + 1];
-          answer->rData.resize(answer->rdLen);
-          memcpy(answer->rData.data(), revname.c_str(), answer->rdLen);
-          //answer->rData = (uint8_t *)strdup(revname.c_str()); // safer? nope
+          // answer->rData = new uint8_t[answer->rdLen + 1];
+          answer->rData.resize(revname.size());
+          memcpy(answer->rData.data(), revname.c_str(), revname.size());
+          // answer->rData = (uint8_t *)strdup(revname.c_str()); // safer? nope
           moveable += answer->rdLen;
           //(*pos) += answer->rdLen;  // advance the length
+
+          answer->record.reset(new llarp::dns::type_12ptr());
+          answer->record->parse(answer->rData);
         }
         break;
         case 15:
@@ -393,6 +589,9 @@ extern "C"
           // llarp::LogInfo("leaving at ", std::to_string(*pos));
           // hexDumpAt(buffer, *pos, 5);
           // hexDump(moveable, 5);
+
+          answer->record.reset(new llarp::dns::type_15mx());
+          answer->record->parse(answer->rData);
         }
         break;
         case 16:
@@ -404,6 +603,9 @@ extern "C"
           memcpy(answer->rData.data(), moveable + 1, answer->rdLen);
           moveable += answer->rdLen;
           (*pos) += answer->rdLen;  // advance the length
+
+          answer->record.reset(new llarp::dns::type_16txt());
+          answer->record->parse(answer->rData);
         }
         break;
         // type 28 AAAA

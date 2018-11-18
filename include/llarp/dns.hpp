@@ -12,6 +12,7 @@
 #endif
 
 #include <llarp/net.hpp>  // for llarp::Addr , llarp::huint32_t
+#include <llarp/dns_rectypes.hpp>
 
 struct dnsd_context;
 
@@ -73,6 +74,7 @@ struct dns_msg_answer
   uint32_t ttl;
   uint16_t rdLen;
   std::vector< byte_t > rData;
+  std::unique_ptr< llarp::dns::record > record;
 };
 
 struct dns_packet
@@ -84,11 +86,23 @@ struct dns_packet
   std::vector< std::unique_ptr< dns_msg_answer > > additional_rrs;
 };
 
+std::vector< byte_t >
+packet2bytes(dns_packet &in);
+
 std::string
 getDNSstring(const char *const buffer, uint32_t *pos);
 
 void
 code_domain(char *&buffer, const std::string &domain) throw();
+
+void
+vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) throw();
+
+void
+vput16bits(std::vector< byte_t > &bytes, uint16_t value) throw();
+
+void
+vput32bits(std::vector< byte_t > &bytes, uint32_t value) throw();
 
 extern "C"
 {

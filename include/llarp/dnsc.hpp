@@ -15,8 +15,8 @@ struct dnsc_answer_request;
 struct dns_query
 {
   uint16_t length;
-  // char *url;
   unsigned char request[DNC_BUF_SIZE];
+  // char *url;
   // uint16_t reqType;
 };
 
@@ -32,15 +32,18 @@ typedef void (*dnsc_answer_hook_func)(dnsc_answer_request *request);
 struct dnsc_answer_request
 {
   /// sock type
-  void *sock;  // pts to udp...
+  void *sock;  // points to udp that sent the request to DNSc...
   /// customizable (used for hook (outer request))
   void *user;
-  /// storage
+  /// request storage
   dns_msg_question question;
+  /// response storage
+  dns_packet packet;
   /// hook
   dnsc_answer_hook_func resolved;
   /// result
   bool found;
+
   llarp::huint32_t result;
   std::string revDNS;
   // a reference to dnsc_context incase of multiple contexts

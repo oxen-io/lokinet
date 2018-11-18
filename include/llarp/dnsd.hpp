@@ -61,6 +61,8 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
 // we may want to pass dnsd_question_request to these,
 //   incase we need to send an error back up through the pipeline
 
+// FIXME: just use the from in the request
+
 /// NXDOMAIN not found
 void
 write404_dnss_response(const struct sockaddr *from,

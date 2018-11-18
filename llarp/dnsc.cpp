@@ -124,6 +124,8 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   request->question.type   = type;
   request->question.qClass = 1;
 
+  request->packet.header = nullptr;
+
   // register our self with the tracker
   dns_tracker *tracker = request->context->tracker;
   if(!tracker)
@@ -155,14 +157,6 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
                              const struct sockaddr *saddr,
                              const void *buf, ssize_t sz)
 {
-  // llarp::LogInfo("got a response, udp user is ", udp->user);
-
-  unsigned char *castBuf     = (unsigned char *)buf;
-  const char *const castBufc = (const char *)buf;
-  // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
-  dns_msg_header *hdr = decode_hdr((const char *)castBuf);
-
-  llarp::LogDebug("Header got client responses for id: ", hdr->id);
   if(!request)
   {
     llarp::LogError(
@@ -170,6 +164,15 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // we can't call back the hook
     return;
   }
+  // llarp::LogInfo("got a response, udp user is ", udp->user);
+
+  unsigned char *castBuf     = (unsigned char *)buf;
+  const char *const castBufc = (const char *)buf;
+  // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
+  dns_msg_header *hdr    = decode_hdr((const char *)castBuf);
+  request->packet.header = hdr;
+
+  llarp::LogDebug("Header got client responses for id: ", hdr->id);
   // llarp_dnsc_unbind(request);
 
   if(sz < 0)
@@ -224,13 +227,16 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   for(uint32_t i = 0; i < hdr->qdCount; i++)
   {
     question = decode_question(castBufc, &pos);
-    //llarp::LogDebug("Read a question, now at ", std::to_string(pos));
+    std::unique_ptr< dns_msg_question > unique(question);
+    request->packet.questions.push_back(std::move(unique));
+    // llarp::LogDebug("Read a question, now at ", std::to_string(pos));
     // 1 dot: 1 byte for length + length
     // 4 bytes for class/type
     // castBuf += question->name.length() + 1 + 4;
     // castBuf += 2;  // skip answer label
   }
-  llarp::LogDebug("Question ", std::to_string(question->type), " ", question->name);
+  llarp::LogDebug("Question ", std::to_string(question->type), " ",
+                  question->name);
 
   // FIXME: only handling one atm
   std::vector< dns_msg_answer * > answers;
@@ -240,6 +246,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // pos = 0; // reset pos
     answer = decode_answer(castBufc, &pos);
     answers.push_back(answer);
+    std::unique_ptr< dns_msg_answer > unique(answer);
+    request->packet.answers.push_back(std::move(unique));
     /*
     llarp::LogDebug("Read an answer ", answer->type, " for ",
                     request->question.name, ", now at ", std::to_string(pos));
@@ -295,16 +303,31 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   {
     // pos = 0; // reset pos
     answer = decode_answer(castBufc, &pos);
+    std::unique_ptr< dns_msg_answer > unique(answer);
+    request->packet.auth_rrs.push_back(std::move(unique));
     // answers.push_back(answer);
+    /*
     llarp::LogDebug("Read an authority for ",
                      request->question.name, " at ", std::to_string(pos));
+    */
     // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
-      if(pos > sz)
-      {
-          llarp::LogWarn("Would read past end of dns packet. for ",
-                         request->question.name);
-          break;
-      }
+    if(pos > sz)
+    {
+      llarp::LogWarn("Would read past end of dns packet. for ",
+                     request->question.name);
+      break;
+    }
+  }
+
+  for(uint32_t i = 0; i < hdr->arCount; i++)
+  {
+    answer = decode_answer(castBufc, &pos);
+    std::unique_ptr< dns_msg_answer > unique(answer);
+    request->packet.additional_rrs.push_back(std::move(unique));
+    /*
+    llarp::LogDebug("Read an addl RR for ",
+                   request->question.name, " at ", std::to_string(pos));
+    */
   }
 
   /*
@@ -393,21 +416,35 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 
   int ip = 0;
 
-    // if no answer, just bail now
-    if (!answer)
-    {
-        request->found  = false;
-        request->resolved(request);
-        return;
-    }
-    
+  // if no answer, just bail now
+  if(!answer)
+  {
+    request->found = false;
+    request->resolved(request);
+    return;
+  }
+
   /* search for and print IPv4 addresses */
   // if(dnsQuery->reqType == 0x01)
   /*
   llarp::LogDebug("request question type: ",
                   std::to_string(request->question.type));
                   */
-  if(request->question.type == 1)
+  // lets detect this for a bit
+  if(answer->type != question->type)
+  {
+    llarp::LogWarn("Answer type [", std::to_string(answer->type),
+                   "] doesn't match question type[",
+                   std::to_string(question->type), "]");
+  }
+  // check this assumption
+  if(request->question.type != question->type)
+  {
+    llarp::LogWarn("Request qtype [", std::to_string(request->question.type),
+                   "] doesn't match response qtype[",
+                   std::to_string(question->type), "]");
+  }
+  if(answer->type == 1)
   {
     // llarp::LogInfo("DNS server's answer is: (type#=", ATYPE, "):");
     llarp::LogDebug("IPv4 address(es) for ", request->question.name, ":");
@@ -460,23 +497,29 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   else if(answer->type == 12)
   {
     llarp::LogDebug("Resolving PTR");
+    llarp::dns::type_12ptr *record =
+        dynamic_cast< llarp::dns::type_12ptr * >(answer->record.get());
     request->found = true;
-    request->revDNS =
-        std::string((char *)answer->rData.data(), answer->rData.size());
+    // request->revDNS = std::string((char *)answer->rData.data(),
+    // answer->rData.size());
+    request->revDNS = record->revname;
     request->resolved(request);
     return;
   }
-  else if(request->question.type == 15)
+  else if(answer->type == 15)
   {
-    llarp::LogDebug("Resolving MX");
+    llarp::dns::type_15mx *record =
+        dynamic_cast< llarp::dns::type_15mx * >(answer->record.get());
+    llarp::LogDebug("Resolving MX ", record->mx, "@", record->priority);
     request->found    = true;
-    request->result.h = 99;
-    request->revDNS =
-        std::string((char *)answer->rData.data(), answer->rData.size());
+    request->result.h = record->priority;
+    // request->revDNS = std::string((char *)answer->rData.data(),
+    // answer->rData.size());
+    request->revDNS = record->mx;
     request->resolved(request);
     return;
   }
-  else if(request->question.type == 16)
+  else if(answer->type == 16)
   {
     llarp::LogDebug("Resolving TXT");
     request->found = true;
@@ -485,12 +528,14 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     request->resolved(request);
     return;
   }
-  else if(request->question.type == 28)
+  else if(answer->type == 28)
   {
     llarp::LogDebug("Resolving AAAA");
     return;
   }
   llarp::LogWarn("Unhandled question type ", request->question.type);
+  // should we let it timeout? lets try sending 404 asap
+  request->resolved(request);
 }
 
 void
