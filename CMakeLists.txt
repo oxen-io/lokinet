@@ -5,24 +5,10 @@ set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" )
-option(USE_CXX17 "enable c++17 features" )
 option(USE_AVX2 "enable avx2 code" )
-# Require C++11
-# or C++17 on win32
-if (NOT WIN32)
-  if(USE_CXX17)
-    set(CMAKE_CXX_STANDARD 17)
-  else()
-    if(ANDROID)
-      set(CMAKE_CXX_STANDARD 17)
-    else()
-      set(CMAKE_CXX_STANDARD 11)
-    endif()
-  endif()
-else()
-  set(CMAKE_CXX_STANDARD 17)
-endif(NOT WIN32)
 
+# Require C++17
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
