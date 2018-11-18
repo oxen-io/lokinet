@@ -476,9 +476,11 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
       // std::to_string(answer->rData[2]),
       // ".", std::to_string(answer->rData[1]), ".",
       // std::to_string(answer->rData[0]));
+      /*
       request->result =
           llarp::ipaddr_ipv4_bits(answer->rData[3], answer->rData[2],
                                   answer->rData[1], answer->rData[0]);
+      */
 
       // llarp::Addr test(request->result);
       // llarp::LogDebug(request->result);
@@ -497,12 +499,12 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   else if(answer->type == 12)
   {
     llarp::LogDebug("Resolving PTR");
-    llarp::dns::type_12ptr *record =
-        dynamic_cast< llarp::dns::type_12ptr * >(answer->record.get());
+    // llarp::dns::type_12ptr *record = dynamic_cast< llarp::dns::type_12ptr *
+    // >(answer->record.get());
     request->found = true;
     // request->revDNS = std::string((char *)answer->rData.data(),
     // answer->rData.size());
-    request->revDNS = record->revname;
+    // request->revDNS = record->revname;
     request->resolved(request);
     return;
   }
@@ -511,11 +513,11 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::dns::type_15mx *record =
         dynamic_cast< llarp::dns::type_15mx * >(answer->record.get());
     llarp::LogDebug("Resolving MX ", record->mx, "@", record->priority);
-    request->found    = true;
-    request->result.h = record->priority;
+    request->found = true;
+    // request->result.h = record->priority;
     // request->revDNS = std::string((char *)answer->rData.data(),
     // answer->rData.size());
-    request->revDNS = record->mx;
+    // request->revDNS = record->mx;
     request->resolved(request);
     return;
   }
@@ -523,8 +525,8 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   {
     llarp::LogDebug("Resolving TXT");
     request->found = true;
-    request->revDNS =
-        std::string((char *)answer->rData.data(), answer->rData.size());
+    // request->revDNS = std::string((char *)answer->rData.data(),
+    // answer->rData.size());
     request->resolved(request);
     return;
   }

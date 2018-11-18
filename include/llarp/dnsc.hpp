@@ -44,8 +44,9 @@ struct dnsc_answer_request
   /// result
   bool found;
 
-  llarp::huint32_t result;
-  std::string revDNS;
+  // llarp::huint32_t result;
+  // std::string revDNS;
+
   // a reference to dnsc_context incase of multiple contexts
   struct dnsc_context *context;
 };
