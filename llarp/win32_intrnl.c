@@ -50,7 +50,7 @@ tdiGetMibForIfEntity(HANDLE tcpFile, TDIEntityID *ent,
                      IFEntrySafelySized *entry)
 {
   TCP_REQUEST_QUERY_INFORMATION_EX req;
-  NTSTATUS status                      = 0;
+  NTSTATUS status = 0;
   DWORD returnSize;
 
 #ifdef DEBUG
@@ -101,10 +101,10 @@ tdiGetSetOfThings(HANDLE tcpFile, DWORD toiClass, DWORD toiType, DWORD toiId,
                   DWORD entrySize, PVOID *tdiEntitySet, PDWORD numEntries)
 {
   TCP_REQUEST_QUERY_INFORMATION_EX req;
-  PVOID entitySet                      = 0;
-  NTSTATUS status                      = 0;
-  DWORD allocationSizeForEntityArray   = entrySize * MAX_TDI_ENTITIES,
-        arraySize                      = entrySize * MAX_TDI_ENTITIES;
+  PVOID entitySet                    = 0;
+  NTSTATUS status                    = 0;
+  DWORD allocationSizeForEntityArray = entrySize * MAX_TDI_ENTITIES,
+        arraySize                    = entrySize * MAX_TDI_ENTITIES;
 
   memset(&req, 0, sizeof(req));
   req.ID.toi_class               = toiClass;
