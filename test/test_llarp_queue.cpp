@@ -163,7 +163,7 @@ struct ExceptionTester
   }
 };
 
-std::atomic< std::thread::id > ExceptionTester::throwFrom = std::thread::id();
+std::atomic< std::thread::id > ExceptionTester::throwFrom = {std::thread::id()};
 
 void
 sleepNWait(size_t microseconds, util::Barrier& barrier)
@@ -211,7 +211,7 @@ struct MoveTester
   MoveTester&
   operator=(const MoveTester& rhs) = delete;
 
-  explicit MoveTester(MoveTester&& rhs)
+  MoveTester(MoveTester&& rhs)
       : moved(false), moveCounter(rhs.moveCounter), value(rhs.value)
   {
     rhs.moved = true;
@@ -495,10 +495,10 @@ TEST(TestQueue, exceptionSafety)
 
   util::Semaphore semaphore{0};
 
-  std::atomic_size_t caught = 0;
+  std::atomic_size_t caught = {0};
 
-  std::thread producer{std::bind(&exceptionProducer, std::ref(queue),
-                                 std::ref(semaphore), std::ref(caught))};
+  std::thread producer(std::bind(&exceptionProducer, std::ref(queue),
+                                 std::ref(semaphore), std::ref(caught)));
 
   ExceptionTester::throwFrom = std::this_thread::get_id();
 
@@ -572,8 +572,13 @@ TEST(TestQueue, moveIt)
   (void)popped;
 
   ASSERT_EQ(5u, counter);
+#if __cplusplus >= 201703L
+  std::optional< MoveTester >
+#else
+  tl::optional< MoveTester >
+#endif
+      optPopped = queue.tryPopFront();
 
-  std::optional< MoveTester > optPopped = queue.tryPopFront();
   ASSERT_TRUE(optPopped.has_value());
 
   // Moved twice here to construct the optional.

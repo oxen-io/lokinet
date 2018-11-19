@@ -1,6 +1,9 @@
 #include <queue_manager.hpp>
-
+#if __cplusplus >= 201703L
 #include <optional>
+#else
+#include <tl/optional.hpp>
+#endif
 #include <vector>
 #include <gtest/gtest.h>
 
@@ -74,8 +77,11 @@ class IntQueue
       return false;
     }
   }
-
+#if __cplusplus >= 201703L
   std::optional< int >
+#else
+  tl::optional< int >
+#endif
   tryPopFront()
   {
     uint32_t gen   = 0;
