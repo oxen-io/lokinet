@@ -38,11 +38,6 @@ namespace llarp
         if(addr.FromString(v))
           m_PrefetchAddrs.insert(addr);
       }
-      if(k == "netns")
-      {
-        m_NetNS = v;
-        m_OnInit.push_back(std::bind(&Endpoint::IsolateNetwork, this));
-      }
       if(k == "min-latency")
       {
         auto val = atoi(v.c_str());
@@ -55,11 +50,7 @@ namespace llarp
     bool
     Endpoint::IsolateNetwork()
     {
-      llarp::LogInfo("isolating network to namespace ", m_NetNS);
-      m_IsolatedWorker = llarp_init_isolated_net_threadpool(
-          m_NetNS.c_str(), &SetupIsolatedNetwork, &RunIsolatedMainLoop, this);
-      m_IsolatedLogic = llarp_init_single_process_logic(m_IsolatedWorker);
-      return true;
+      return false;
     }
 
     llarp_ev_loop*

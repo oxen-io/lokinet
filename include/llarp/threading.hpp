@@ -15,6 +15,7 @@
 #endif
 #include <future>
 #include <memory>
+#include <cassert>
 
 namespace llarp
 {
