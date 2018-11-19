@@ -159,7 +159,7 @@ namespace llarp
       (void)m_pushPadding;
       (void)m_popPadding;
 
-      m_states = new std::atomic<std::uint32_t>[capacity];
+      m_states = new std::atomic< std::uint32_t >[capacity];
 
       for(size_t i = 0; i < capacity; ++i)
       {
@@ -435,7 +435,7 @@ namespace llarp
 
       for(;;)
       {
-        u_int32_t endCombinedIndex =
+        uint32_t endCombinedIndex =
             (endGeneration * static_cast< uint32_t >(m_capacity)) + endIndex;
 
         if(circularDifference(endCombinedIndex, loadedCombinedIndex,
@@ -448,9 +448,9 @@ namespace llarp
         assert(0 < circularDifference(endCombinedIndex, loadedCombinedIndex,
                                       m_maxCombinedIndex + 1));
 
-        u_int32_t currIdx =
+        uint32_t currIdx =
             static_cast< uint32_t >(loadedCombinedIndex % m_capacity);
-        u_int32_t currGen =
+        uint32_t currGen =
             static_cast< uint32_t >(loadedCombinedIndex / m_capacity);
 
         // Try to swap this cell from Full to Reading.

@@ -20,7 +20,7 @@ namespace llarp
       bool
       SetOption(const std::string& k, const std::string& v);
 
-      virtual std::string
+      std::string
       Name() const;
 
       bool

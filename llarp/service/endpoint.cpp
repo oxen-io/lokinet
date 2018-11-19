@@ -1506,7 +1506,8 @@ namespace llarp
     bool
     Endpoint::OutboundContext::SelectHop(llarp_nodedb* db,
                                          const RouterContact& prev,
-                                         RouterContact& cur, size_t hop)
+                                         RouterContact& cur, size_t hop,
+                                         llarp::path::PathRole roles)
     {
       if(m_NextIntro.router.IsZero())
         return false;
@@ -1527,8 +1528,7 @@ namespace llarp
           return false;
         }
       }
-      return path::Builder::SelectHop(db, prev, cur, hop,
-                                      llarp::path::ePathRoleOutboundHS);
+      return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
 
     uint64_t

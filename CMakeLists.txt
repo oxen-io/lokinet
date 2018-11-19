@@ -6,6 +6,7 @@ project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" )
 option(USE_AVX2 "enable avx2 code" )
+option(USE_NETNS "enable networking namespace support" )
 
 # Require C++17
 set(CMAKE_CXX_STANDARD 17)
@@ -35,6 +36,9 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-defin
 endif(USING_CLANG)
 endif()
 
+
+
+
 if(WIN32)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
 add_compile_options(-Wno-cast-function-type)
@@ -51,13 +55,18 @@ find_package(Threads REQUIRED)
 
 if(STATIC_LINK)
   add_compile_options(-static)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static" )
+  if(USING_CLANG)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+  else()
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static" )
+  endif()
 endif()
 
-# This is now configurable in ini
-#if(DNS_PORT)
-#  add_definitions(-DDNS_PORT=${DNS_PORT})
-#endif()
+if(USE_NETNS)
+  add_definitions(-DNETNS=1)
+else()
+  add_definitions(-DNETNS=0)
+endif()
 
 if(SHADOW)
   set(WITH_STATIC OFF)
@@ -148,10 +157,14 @@ endif()
 
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
-set(LIBS Threads::Threads ${MALLOC_LIB} ${FS_LIB})
+set(LIBS ${LIBS} ${MALLOC_LIB} ${FS_LIB})
 
 if(ANDROID)
   set(LIBS ${LIBS} log)
+endif()
+
+if(NOT USING_CLANG)
+  set(LIBS ${LIBS} Threads::Threads)
 endif()
 
 set(LIB lokinet)

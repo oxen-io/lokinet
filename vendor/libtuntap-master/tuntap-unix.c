@@ -36,16 +36,17 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
-#if defined Linux
-#include <netinet/ether.h>
+#if defined(Linux)
 #include <linux/if_tun.h>
+#include <linux/if_ether.h>
 #else
+
 #include <net/if.h>
-#if defined DragonFly
+#if defined(DragonFly)
 #include <net/tun/if_tun.h>
-#elif defined ANDROID
+#elif defined(ANDROID)
 #include <linux/if_tun.h>
-#elif !defined Darwin
+#elif !defined(Darwin)
 #include <net/if_tun.h>
 #endif
 #include <netinet/if_ether.h>

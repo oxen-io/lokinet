@@ -66,7 +66,6 @@ llarp_threadpool_stop(struct llarp_threadpool *pool)
 void
 llarp_threadpool_wait(struct llarp_threadpool *pool)
 {
-  llarp::util::Mutex mtx;
   llarp::LogDebug("threadpool wait");
   if(pool->impl)
   {

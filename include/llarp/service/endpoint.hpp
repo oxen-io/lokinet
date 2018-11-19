@@ -110,15 +110,16 @@ namespace llarp
       HasPathToService(const Address& remote) const;
 
       virtual huint32_t
-      ObtainIPForAddr(__attribute__((unused))
-                      const llarp::service::Address& remote)
+      ObtainIPForAddr(const byte_t * addr)
       {
+        (void) addr;
         return {0};
       }
 
       virtual bool
-      HasAddress(__attribute__((unused)) const Address& remote) const
+      HasAddress(const byte_t* addr) const
       {
+        (void)addr;
         return false;
       }
 
@@ -254,18 +255,18 @@ namespace llarp
         /// update the current selected intro to be a new best introduction
         /// return true if we have changed intros
         bool
-        ShiftIntroduction();
+        ShiftIntroduction() override;
 
         /// mark the current remote intro as bad
         bool
-        MarkCurrentIntroBad(llarp_time_t now);
+        MarkCurrentIntroBad(llarp_time_t now) override;
 
         /// return true if we are ready to send
         bool
         ReadyToSend() const;
 
         bool
-        ShouldBuildMore(llarp_time_t now) const;
+        ShouldBuildMore(llarp_time_t now) const override;
 
         /// tick internal state
         /// return true to mark as dead
@@ -280,21 +281,22 @@ namespace llarp
         CheckPathIsDead(path::Path* p, llarp_time_t dlt);
 
         void
-        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t);
+        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t) override;
 
         /// issues a lookup to find the current intro set of the remote service
         void
-        UpdateIntroSet(bool randomizePath);
+        UpdateIntroSet(bool randomizePath) override;
 
         bool
         BuildOneAlignedTo(const RouterID& remote);
 
         void
-        HandlePathBuilt(path::Path* path);
+        HandlePathBuilt(path::Path* path) override;
 
         bool
         SelectHop(llarp_nodedb* db, const RouterContact& prev,
-                  RouterContact& cur, size_t hop);
+                  RouterContact& cur, size_t hop,
+                  llarp::path::PathRole roles) override;
 
         bool
         HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame* frame);

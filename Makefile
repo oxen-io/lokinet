@@ -49,11 +49,13 @@ JSONRPC ?= OFF
 AVX2 ?= ON
 RPI ?= OFF
 STATIC_LINK ?= OFF
+NETNS ?= OFF
+CLANG ?= OFF
 CMAKE_GEN ?= Unix Makefiles
 
 BUILD_ROOT = $(REPO)/build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DSTATIC_LINK=$(STATIC_LINK) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
 
 SCAN_BUILD ?= scan-build
 ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
