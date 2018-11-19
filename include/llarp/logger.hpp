@@ -16,7 +16,6 @@
 #endif
 #ifdef RPI
 #include <cstdio>
-#include <llarp/time.h>
 #endif
 
 namespace llarp

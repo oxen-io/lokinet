@@ -1,6 +1,6 @@
 #ifndef LLARP_RPC_HPP
 #define LLARP_RPC_HPP
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <llarp/ev.h>
 #include <string>
 #include <functional>

@@ -15,7 +15,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <tuntap.h>
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 
 /**
  * ev.h
