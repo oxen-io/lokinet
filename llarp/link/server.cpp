@@ -121,6 +121,7 @@ namespace llarp
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return;
+    llarp::LogInfo("Try establish to ", rc.pubkey);
     llarp::Addr addr(to);
     auto s = NewOutboundSession(rc, to);
     s->Start();
@@ -164,6 +165,7 @@ namespace llarp
   ILinkLayer::CloseSessionTo(const PubKey& remote)
   {
     Lock l(m_AuthedLinksMutex);
+    llarp::LogInfo("Closing all to ", remote);
     auto range = m_AuthedLinks.equal_range(remote);
     auto itr   = range.first;
     while(itr != range.second)
