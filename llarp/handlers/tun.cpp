@@ -9,10 +9,6 @@
 #include <netdb.h>
 #endif
 
-#ifndef DNS_PORT
-#define DNS_PORT (53)
-#endif
-
 namespace llarp
 {
   namespace handlers
@@ -40,7 +36,7 @@ namespace llarp
       if(k == "local-dns")
       {
         std::string resolverAddr = v;
-        uint16_t dnsport         = DNS_PORT;
+        uint16_t dnsport         = 53;
         auto pos                 = v.find(":");
         if(pos != std::string::npos)
         {
@@ -53,7 +49,7 @@ namespace llarp
       if(k == "upstream-dns")
       {
         std::string resolverAddr = v;
-        uint16_t dnsport         = DNS_PORT;
+        uint16_t dnsport         = 53;
         auto pos                 = v.find(":");
         if(pos != std::string::npos)
         {
@@ -384,7 +380,7 @@ namespace llarp
       {
         // not found
         service::Address addr;
-        llarp::LogWarn(ip, " not found in tun map. Sending ", addr.ToString());
+        llarp::LogWarn(ip, " not found in tun map.");
         return addr;
       }
       // found
