@@ -564,7 +564,7 @@ namespace llarp
       SendKeepAlive = [&]() -> bool {
         auto now = parent->now();
         if(sendq.size() == 0 && state == eSessionReady && now > lastActive
-           && now - lastActive > (sessionTimeout / 4))
+           && now - lastActive > 5000)
         {
           DiscardMessage msg;
           byte_t tmp[128] = {0};
