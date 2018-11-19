@@ -1,7 +1,7 @@
 #ifndef LLARP_CRYPTO_H_
 #define LLARP_CRYPTO_H_
 #include <llarp/buffer.h>
-#include <llarp/common.h>
+#include <llarp/common.hpp>
 #include <stdbool.h>
 #include <stdint.h>
 
