@@ -2,7 +2,7 @@
 #define LLARP_BENCODE_H
 #include <llarp/buffer.h>
 #include <llarp/common.hpp>
-#include <llarp/proto.h>
+#include <llarp/proto.hpp>
 #include <stdbool.h>
 #include <stdint.h>
 
