@@ -70,7 +70,7 @@ namespace llarp
      public:
       static constexpr size_t Alignment = 64;
 
-      using AtomicIndex = std::atomic_uint32_t;
+      using AtomicIndex = std::atomic<std::uint32_t>;
 
      private:
       AtomicIndex m_pushIndex;  // Index in the buffer that the next
@@ -90,7 +90,7 @@ namespace llarp
       const uint32_t m_maxCombinedIndex;  // Maximum combined value of index and
                                           // generation for this object.
 
-      std::atomic_uint32_t* m_states;  // Array of index states.
+      std::atomic<std::uint32_t>* m_states;  // Array of index states.
 
       AtomicIndex&
       pushIndex();

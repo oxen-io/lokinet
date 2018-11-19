@@ -159,7 +159,7 @@ namespace llarp
       (void)m_pushPadding;
       (void)m_popPadding;
 
-      m_states = new std::atomic_uint32_t[capacity];
+      m_states = new std::atomic<std::uint32_t>[capacity];
 
       for(size_t i = 0; i < capacity; ++i)
       {
