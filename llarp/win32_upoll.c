@@ -109,8 +109,8 @@ upoll_destroy(upoll_t* upq)
 {
   assert(upq != NULL);
   uhash_destroy(upq->table);
-  ulist_t* q;
-  unote_t* n;
+  ulist_t* q = NULL;
+  unote_t* n = NULL;
   while(!ulist_empty(&upq->alive))
   {
     q = ulist_next(&upq->alive);

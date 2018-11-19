@@ -103,73 +103,6 @@ namespace llarp
     return -1;
   }
 
-  struct udp_listener : public ev_io
-  {
-    llarp_udp_io* udp;
-
-    udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
-
-    ~udp_listener()
-    {
-    }
-
-    bool
-    tick()
-    {
-      if(udp->tick)
-        udp->tick(udp);
-      return true;
-    }
-
-    int
-    read(void* buf, size_t sz)
-    {
-      if(this->is_tun)
-      {
-        llarp::tun* t = (llarp::tun*)this;
-        ssize_t ret   = tuntap_read(t->tunif, buf, sz);
-        goto next;
-      }
-      sockaddr_in6 src;
-      socklen_t slen = sizeof(sockaddr_in6);
-      sockaddr* addr = (sockaddr*)&src;
-      ssize_t ret    = ::recvfrom(fd.socket, (char*)buf, sz, 0, addr, &slen);
-    next:
-      if(ret < 0)
-        return -1;
-      if(static_cast< size_t >(ret) > sz)
-        return -1;
-      udp->recvfrom(udp, addr, buf, ret);
-      return 0;
-    }
-
-    int
-    sendto(const sockaddr* to, const void* data, size_t sz)
-    {
-      if(this->is_tun)
-      {
-      }
-      socklen_t slen;
-      switch(to->sa_family)
-      {
-        case AF_INET:
-          slen = sizeof(struct sockaddr_in);
-          break;
-        case AF_INET6:
-          slen = sizeof(struct sockaddr_in6);
-          break;
-        default:
-          return -1;
-      }
-      ssize_t sent = ::sendto(fd.socket, (char*)data, sz, 0, to, slen);
-      if(sent == -1)
-      {
-        llarp::LogWarn(strerror(errno));
-      }
-      return sent;
-    }
-  };
-
   struct tun : public ev_io
   {
     llarp_tun_io* t;
@@ -186,9 +119,9 @@ namespace llarp
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
-      (void)(to);
-      (void)(data);
-      (void)(sz);
+      UNREFERENCED_PARAMETER(to);
+      UNREFERENCED_PARAMETER(data);
+      UNREFERENCED_PARAMETER(sz);
       return -1;
     }
 
@@ -209,12 +142,6 @@ namespace llarp
         t->tick(t);
       flush_write();
       return true;
-    }
-
-    ssize_t
-    do_write(void* data, size_t sz)
-    {
-      return tuntap_write(tunif, data, sz);
     }
 
     int
@@ -257,6 +184,63 @@ namespace llarp
 
     ~tun()
     {
+    }
+  };
+
+  struct udp_listener : public ev_io
+  {
+    llarp_udp_io* udp;
+
+    udp_listener(int fd, llarp_udp_io* u) : ev_io(fd), udp(u){};
+
+    ~udp_listener()
+    {
+    }
+
+    bool
+    tick()
+    {
+      if(udp->tick)
+        udp->tick(udp);
+      return true;
+    }
+
+    int
+    read(void* buf, size_t sz)
+    {
+      sockaddr_in6 src;
+      socklen_t slen = sizeof(sockaddr_in6);
+      sockaddr* addr = (sockaddr*)&src;
+      ssize_t ret    = ::recvfrom(fd.socket, (char*)buf, sz, 0, addr, &slen);
+      if(ret < 0)
+        return -1;
+      if(static_cast< size_t >(ret) > sz)
+        return -1;
+      udp->recvfrom(udp, addr, buf, ret);
+      return 0;
+    }
+
+    int
+    sendto(const sockaddr* to, const void* data, size_t sz)
+    {
+      socklen_t slen;
+      switch(to->sa_family)
+      {
+        case AF_INET:
+          slen = sizeof(struct sockaddr_in);
+          break;
+        case AF_INET6:
+          slen = sizeof(struct sockaddr_in6);
+          break;
+        default:
+          return -1;
+      }
+      ssize_t sent = ::sendto(fd.socket, (char*)data, sz, 0, to, slen);
+      if(sent == -1)
+      {
+        llarp::LogWarn(strerror(errno));
+      }
+      return sent;
     }
   };
 
@@ -501,9 +485,13 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   add_ev(llarp::ev_io* e, bool write)
   {
-	// if tun, add to vector without adding to
-	// the epollfd - epollfds on windows only take
-	// real sockets
+    // if tun, add to vector without adding to
+    // the epollfd - epollfds on windows only take
+    // real sockets
+    if(write)
+      e->flags = 1;
+    if(e->is_tun)
+      goto add;
     upoll_event_t ev;
     ev.data.ptr = e;
     ev.events   = UPOLLIN | UPOLLERR;
@@ -514,6 +502,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       delete e;
       return false;
     }
+  add:
     handlers.emplace_back(e);
     return true;
   }
