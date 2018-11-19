@@ -60,7 +60,10 @@ namespace llarp
           ++itr;
         }
         else
+        {
+          llarp::LogInfo("session to ", itr->second->GetPubKey(), " timed out");
           itr = m_AuthedLinks.erase(itr);
+        }
       }
     }
     {
