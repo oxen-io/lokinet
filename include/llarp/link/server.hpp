@@ -7,7 +7,7 @@
 #include <llarp/net.hpp>
 #include <llarp/ev.h>
 #include <llarp/link/session.hpp>
-#include <llarp/logic.h>
+#include <llarp/logic.hpp>
 #include <list>
 
 struct llarp_router;

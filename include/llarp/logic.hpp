@@ -1,5 +1,5 @@
-#ifndef LLARP_LOGIC_H
-#define LLARP_LOGIC_H
+#ifndef LLARP_LOGIC_HPP
+#define LLARP_LOGIC_HPP
 #include <llarp/mem.h>
 #include <llarp/threadpool.h>
 #include <llarp/timer.hpp>

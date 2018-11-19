@@ -2,7 +2,7 @@
 #define LLARP_H_
 #include <llarp/dht.h>
 #include <llarp/ev.h>
-#include <llarp/logic.h>
+#include <llarp/logic.hpp>
 #include <llarp/mem.h>
 #include <llarp/version.hpp>
 

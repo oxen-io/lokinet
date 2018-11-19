@@ -1,5 +1,5 @@
 #include <llarp/ev.h>
-#include <llarp/logic.h>
+#include <llarp/logic.hpp>
 #include <llarp/string_view.hpp>
 
 #include <stddef.h>
