@@ -30,7 +30,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
-add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas)
+add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unknown-warning-option)
 # vla are evil
 add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
@@ -48,7 +48,6 @@ else()
 # found it. this is GNU only
 add_compile_options(-Wno-cast-function-type)
 endif(USING_CLANG)
-add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
 endif()
 
 if(WIN32)

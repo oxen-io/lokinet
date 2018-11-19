@@ -1,4 +1,5 @@
 #ifdef _WIN32
+/* wake me up inside */
 #pragma GCC diagnostic ignored "-Wvla"
 /* emulated epoll, because the native async event system does not do
  * particularly well with notification
@@ -286,13 +287,13 @@ upoll_wait_select(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
     nvec[nfds] = n;
     if(n->event.events & UPOLLIN)
     {
-      FD_SET(n->fd, &pollin);
+      FD_SET((SOCKET)n->fd, &pollin);
     }
     if(n->event.events & UPOLLOUT)
     {
-      FD_SET(n->fd, &pollout);
+      FD_SET((SOCKET)n->fd, &pollout);
     }
-    FD_SET(n->fd, &pollerr);
+    FD_SET((SOCKET)n->fd, &pollerr);
     if(maxfd < n->fd)
       maxfd = n->fd;
     nfds++;

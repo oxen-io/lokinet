@@ -429,7 +429,7 @@ tuntap_read(struct device *dev, void *buf, size_t size)
       return -1;
     }
   }
-  return 0;
+  return x;
 }
 
 int
@@ -448,7 +448,7 @@ tuntap_write(struct device *dev, void *buf, size_t size)
       return -1;
     }
   }
-  return 0;
+  return x;
 }
 
 int

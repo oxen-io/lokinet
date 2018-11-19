@@ -11,6 +11,7 @@
 #ifdef sizeof
 #undef sizeof
 #endif
+
 namespace llarp
 {
   int
@@ -203,9 +204,7 @@ namespace llarp
     ssize_t
     do_write(void* data, size_t sz)
     {
-      DWORD x;
-      WriteFile(fd.tun, data, sz, &x, nullptr);
-      return x;
+      return tuntap_write(tunif, data, sz);
     }
 
     int
@@ -337,7 +336,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   int
   tick(int ms)
   {
-    upoll_event events[1024];
+    upoll_event_t events[1024];
     int result;
     result = upoll_wait(upollfd, events, 1024, ms);
     if(result > 0)
@@ -375,7 +374,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   int
   run()
   {
-    upoll_event events[1024];
+    upoll_event_t events[1024];
     int result;
     do
     {
@@ -492,7 +491,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   add_ev(llarp::ev_io* e, bool write)
   {
-    upoll_event ev;
+    upoll_event_t ev;
     ev.data.ptr = e;
     ev.events   = UPOLLIN | UPOLLERR;
     if(write)
