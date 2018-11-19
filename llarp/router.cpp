@@ -1,6 +1,6 @@
 #include "router.hpp"
 #include <llarp/proto.h>
-#include <llarp/iwp.hpp>
+#include <llarp/threadpool.h>
 #include <llarp/link_message.hpp>
 #include <llarp/link/utp.hpp>
 #include <llarp/rpc.hpp>
@@ -680,6 +680,8 @@ llarp_router::Run()
     }
     llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
   }
+
+  llarp_threadpool_start(tp);
 
   routerProfiling.Load(routerProfilesFile.c_str());
 
