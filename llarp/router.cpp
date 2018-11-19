@@ -899,7 +899,8 @@ llarp_router::InitServiceNode()
   llarp::LogInfo("accepting transit traffic");
   paths.AllowTransit();
   llarp_dht_allow_transit(dht);
-  return exitContext.AddExitEndpoint("default-connectivity", exitConf);
+  exitContext.AddExitEndpoint("default-connectivity", exitConf);
+  return true;
 }
 
 void
