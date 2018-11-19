@@ -124,10 +124,17 @@ namespace llarp
     int
     read(void* buf, size_t sz)
     {
+      if(this->is_tun)
+      {
+        llarp::tun* t = (llarp::tun*)this;
+        ssize_t ret   = tuntap_read(t->tunif, buf, sz);
+        goto next;
+      }
       sockaddr_in6 src;
       socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
       ssize_t ret    = ::recvfrom(fd.socket, (char*)buf, sz, 0, addr, &slen);
+    next:
       if(ret < 0)
         return -1;
       if(static_cast< size_t >(ret) > sz)
@@ -139,6 +146,9 @@ namespace llarp
     int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
+      if(this->is_tun)
+      {
+      }
       socklen_t slen;
       switch(to->sa_family)
       {
@@ -491,6 +501,9 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   add_ev(llarp::ev_io* e, bool write)
   {
+	// if tun, add to vector without adding to
+	// the epollfd - epollfds on windows only take
+	// real sockets
     upoll_event_t ev;
     ev.data.ptr = e;
     ev.events   = UPOLLIN | UPOLLERR;
