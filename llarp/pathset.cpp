@@ -37,10 +37,8 @@ namespace llarp
     size_t
     PathSet::MinRequiredForRoles(PathRole roles) const
     {
-      size_t require = m_NumPaths > 1 ? m_NumPaths / 2 : m_NumPaths;
-      if(roles & ePathRoleInboundHS || roles & ePathRoleOutboundHS)
-        require += 2;
-      return require;
+      (void)roles;
+      return 0;
     }
 
     void
