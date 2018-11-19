@@ -31,14 +31,6 @@
 #define FILE_ANY_ACCESS 0x00000000
 #define METHOD_BUFFERED 0
 
-// from ev_win32.hpp
-// gives us a fresh OVERLAPPED port
-// from the C++ arena
-// that can later be destructed with
-// operator delete at the end of the event loop
-OVERLAPPED *
-getTunEvPort();
-
 /* From OpenVPN tap driver, common.h */
 #define TAP_CONTROL_CODE(request, method) \
   CTL_CODE(FILE_DEVICE_UNKNOWN, request, method, FILE_ANY_ACCESS)
@@ -423,19 +415,17 @@ tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
 int
 tuntap_read(struct device *dev, void *buf, size_t size)
 {
-  /* free this somewhere! */
-  OVERLAPPED *ovl = getTunEvPort();
+  DWORD x;
   if(size)
   {
-    ReadFile(dev->tun_fd, buf, (DWORD)size, NULL, ovl);
+    ReadFile(dev->tun_fd, buf, (DWORD)size, &x, NULL);
 
     int errcode = GetLastError();
 
-    if(errcode != 997)
+    if(errcode)
     {
       tuntap_log(TUNTAP_LOG_ERR,
                  (const char *)formated_error(L"%1%0", errcode));
-      free(ovl);
       return -1;
     }
   }
@@ -445,17 +435,16 @@ tuntap_read(struct device *dev, void *buf, size_t size)
 int
 tuntap_write(struct device *dev, void *buf, size_t size)
 {
-  OVERLAPPED *ovl = getTunEvPort();
+  DWORD x;
   if(size)
   {
-    WriteFile(dev->tun_fd, buf, (DWORD)size, NULL, ovl);
+    WriteFile(dev->tun_fd, buf, (DWORD)size, &x, NULL);
     int errcode = GetLastError();
 
-    if(errcode != 997)
+    if(errcode)
     {
       tuntap_log(TUNTAP_LOG_ERR,
                  (const char *)formated_error(L"%1%0", errcode));
-      free(ovl);
       return -1;
     }
   }

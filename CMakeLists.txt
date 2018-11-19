@@ -206,7 +206,7 @@ if(UNIX)
     endif()
 elseif(WIN32)
     set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x600 -D_WIN32_WINNT=0x600)
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif(UNIX)
@@ -283,6 +283,10 @@ set(LIB_PLATFORM_SRC
   ${LIBTUNTAP_SRC}
 # c++17 compat code
   ${CXX_COMPAT_SRC}
+# win32 inline code
+  llarp/win32_inet.c
+  llarp/win32_intrnl.c
+  llarp/win32_upoll.c
 )
 
 set(NTRU_AVX_SRC
@@ -487,7 +491,6 @@ set(LIB_SRC
   llarp/service/protocol.cpp
   llarp/service/tag.cpp
   llarp/service/info.cpp
-
 )
 
 set(RC_SRC

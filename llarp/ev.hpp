@@ -13,7 +13,8 @@
 #include <algorithm>
 
 #ifdef _WIN32
-#include <variant>
+#include <win32_up.h>
+#include <win32_upoll.h>
 #endif
 
 #ifndef MAX_WRITE_QUEUE_SIZE
@@ -105,23 +106,35 @@ namespace llarp
 
     typedef std::deque< WriteBuffer > LosslessWriteQueue_t;
 
-    // on windows, tcp/udp event loops are socket fds
-    // and TUN device is a plain old fd
-    std::variant< SOCKET, HANDLE > fd;
-    ULONG_PTR listener_id = 0;
-    bool isTCP            = false;
-    bool write            = false;
+    union {
+      intptr_t socket;
+      HANDLE tun;
+    } fd;
 
-    // constructors
-    // for udp
-    win32_ev_io(SOCKET f) : fd(f){};
-    // for tun
-    win32_ev_io(HANDLE t, LossyWriteQueue_t* q) : fd(t), m_LossyWriteQueue(q){}
-    // for tcp
-    win32_ev_io(SOCKET f, LosslessWriteQueue_t* q)
-        : fd(f), m_BlockingWriteQueue(q)
+    int flags   = 0;
+    bool is_tun = false;
+
+    win32_ev_io(intptr_t f)
     {
-      isTCP = true;
+      fd.socket = f;
+    }
+
+    /// for tun
+    win32_ev_io(HANDLE f, LossyWriteQueue_t* q) : m_LossyWriteQueue(q)
+    {
+      fd.tun = f;
+    }
+
+    /// for tcp
+    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q) : m_BlockingWriteQueue(q)
+    {
+      fd.socket = f;
+    }
+
+    virtual void
+    error()
+    {
+      llarp::LogError(strerror(errno));
     }
 
     virtual int
@@ -147,15 +160,13 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      // hmm, think we should deallocate event ports in the loop itself
-      WSAOVERLAPPED* portfd = new WSAOVERLAPPED;
-      memset(portfd, 0, sizeof(WSAOVERLAPPED));
-      if(std::holds_alternative< HANDLE >(fd))
-        WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, portfd);
-      else
-        WriteFile((HANDLE)std::get< SOCKET >(fd), data, sz, nullptr,
-                  portfd);
-      return sz; // we grab the error in the event loop
+      DWORD x;
+      if(this->is_tun)
+      {
+        WriteFile(fd.tun, data, sz, &x, nullptr);
+        return x;
+      }
+      return uwrite(fd.socket, (char*)data, sz);
     }
 
     bool
@@ -255,7 +266,7 @@ namespace llarp
 
     virtual ~win32_ev_io()
     {
-      closesocket(std::get< SOCKET >(fd));
+      uclose(fd.socket);
     };
   };
 #endif
