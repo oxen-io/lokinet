@@ -54,9 +54,10 @@ if(STATIC_LINK)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static" )
 endif()
 
-if(DNS_PORT)
-  add_definitions(-DDNS_PORT=${DNS_PORT})
-endif()
+# This is now configurable in ini
+#if(DNS_PORT)
+#  add_definitions(-DDNS_PORT=${DNS_PORT})
+#endif()
 
 if(SHADOW)
   set(WITH_STATIC OFF)

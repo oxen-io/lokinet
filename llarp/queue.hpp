@@ -30,12 +30,12 @@ namespace llarp
 
       QueueManager m_manager;
 
-      std::atomic_uint32_t m_waitingPoppers;
+      std::atomic<std::uint32_t> m_waitingPoppers;
       util::Semaphore m_popSemaphore;
       const char
           m_popSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
 
-      std::atomic_uint32_t m_waitingPushers;
+      std::atomic<std::uint32_t> m_waitingPushers;
       util::Semaphore m_pushSemaphore;
       const char
           m_pushSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
