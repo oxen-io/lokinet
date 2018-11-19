@@ -83,6 +83,9 @@ Filename: "{app}\tap-windows-9.21.2\remove.bat"; WorkingDir: "{app}\tap-windows-
 Filename: "{app}\tap-windows-9.9.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.9.2"; OnlyBelowVersion: 0,6.0; Flags: runascurrentuser
  
 
+[Dirs]
+Name: "{userappdata}\.lokinet"
+
 [Code]
 procedure CurStepChanged(CurStep: TSetupStep);
 var
