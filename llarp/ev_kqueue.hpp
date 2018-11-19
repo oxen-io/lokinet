@@ -8,7 +8,6 @@
 #if __FreeBSD__ || __OpenBSD__ || __NetBSD__ || (__APPLE__ && __MACH__)
 // kqueue / kevent
 #include <sys/event.h>
-#include <sys/time.h>
 #include <fcntl.h>
 #endif
 

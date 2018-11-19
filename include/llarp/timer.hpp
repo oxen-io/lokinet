@@ -1,8 +1,9 @@
-#ifndef LLARP_TIMER_H
-#define LLARP_TIMER_H
+#ifndef LLARP_TIMER_HPP
+#define LLARP_TIMER_HPP
+
 #include <llarp/common.h>
 #include <llarp/threadpool.h>
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 
 /** called with userptr, original timeout, left */
 typedef void (*llarp_timer_handler_func)(void *, uint64_t, uint64_t);

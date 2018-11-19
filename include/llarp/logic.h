@@ -2,7 +2,7 @@
 #define LLARP_LOGIC_H
 #include <llarp/mem.h>
 #include <llarp/threadpool.h>
-#include <llarp/timer.h>
+#include <llarp/timer.hpp>
 
 struct llarp_logic
 {

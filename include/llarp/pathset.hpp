@@ -1,6 +1,6 @@
 #ifndef LLARP_PATHSET_HPP
 #define LLARP_PATHSET_HPP
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <functional>
 #include <list>
 #include <llarp/path_types.hpp>
