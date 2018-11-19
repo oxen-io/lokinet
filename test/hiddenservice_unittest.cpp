@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
+
 #include <llarp/service.hpp>
+#include <llarp/time.hpp>
 
 struct HiddenServiceTest : public ::testing::Test
 {
@@ -31,7 +33,7 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
   llarp::service::Address addr;
   ASSERT_TRUE(ident.pub.CalculateAddress(addr.data()));
   llarp::service::IntroSet I;
-  auto now = llarp_time_now_ms();
+  auto now = llarp::time_now_ms();
   I.T      = now;
   while(I.I.size() < 10)
   {

@@ -1,9 +1,9 @@
 #include <llarp/bencode.hpp>
-#include <llarp/router_contact.hpp>
-#include <llarp/version.h>
 #include <llarp/crypto.hpp>
-#include <llarp/time.h>
 #include <llarp/net.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/time.hpp>
+#include <llarp/version.h>
 #include "buffer.hpp"
 #include "logger.hpp"
 #include "mem.hpp"
@@ -156,7 +156,7 @@ namespace llarp
     byte_t tmp[MAX_RC_SIZE] = {0};
     auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
     signature.Zero();
-    last_updated = llarp_time_now_ms();
+    last_updated = time_now_ms();
     if(!BEncode(&buf))
       return false;
     buf.sz  = buf.cur - buf.base;
