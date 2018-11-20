@@ -1,5 +1,5 @@
-#ifndef LLARP_VERSION_H
-#define LLARP_VERSION_H
+#ifndef LLARP_VERSION_HPP
+#define LLARP_VERSION_HPP
 
 #ifndef LLARP_VERSION_MAJ
 #define LLARP_VERSION_MAJ "0"
@@ -28,4 +28,5 @@
 #ifndef LLARP_RELEASE_MOTTO
 #define LLARP_RELEASE_MOTTO "(dev build)"
 #endif
+
 #endif

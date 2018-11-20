@@ -1,6 +1,6 @@
 #ifndef LLARP_SERVICE_PROTOCOL_HPP
 #define LLARP_SERVICE_PROTOCOL_HPP
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/encrypted.hpp>

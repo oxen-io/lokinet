@@ -1,7 +1,7 @@
 #ifndef LLARP_IP_HPP
 #define LLARP_IP_HPP
 #include <llarp/buffer.h>
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <llarp/net.hpp>
 #include <llarp/ev.h>
 
@@ -110,6 +110,19 @@ namespace llarp
         operator()(IPv4Packet& pkt) const
         {
           pkt.timestamp = llarp_ev_loop_time_now_ms(loop);
+        }
+      };
+
+      struct GetNow
+      {
+        llarp_ev_loop* loop;
+        GetNow(llarp_ev_loop* evloop) : loop(evloop)
+        {
+        }
+        llarp_time_t
+        operator()() const
+        {
+          return llarp_ev_loop_time_now_ms(loop);
         }
       };
 

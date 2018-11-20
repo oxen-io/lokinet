@@ -18,7 +18,7 @@ namespace llarp
       ~Context();
 
       void
-      Tick();
+      Tick(llarp_time_t now);
 
       bool
       hasEndpoints();

@@ -1,4 +1,4 @@
-#include <llarp/logic.h>
+#include <llarp/logic.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/router_contact.hpp>
 
@@ -409,6 +409,40 @@ bool
 llarp_nodedb_del_rc(struct llarp_nodedb *n, const llarp::RouterID &pk)
 {
   return n->Remove(pk);
+}
+
+bool
+llarp_nodedb_select_random_exit(struct llarp_nodedb *n,
+                                llarp::RouterContact &result)
+{
+  const auto sz = n->entries.size();
+  auto itr      = n->entries.begin();
+  if(sz < 3)
+    return false;
+  auto idx = llarp_randint() % sz;
+  if(idx)
+    std::advance(itr, idx - 1);
+  while(itr != n->entries.end())
+  {
+    if(itr->second.IsExit())
+    {
+      result = itr->second;
+      return true;
+    }
+    ++itr;
+  }
+  // wrap arround
+  itr = n->entries.begin();
+  while(idx--)
+  {
+    if(itr->second.IsExit())
+    {
+      result = itr->second;
+      return true;
+    }
+    ++itr;
+  }
+  return false;
 }
 
 bool

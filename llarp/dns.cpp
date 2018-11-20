@@ -1,4 +1,4 @@
-#include <llarp/endian.h>
+#include <llarp/endian.hpp>
 #include <llarp/dnsd.hpp>  // for llarp_handle_dnsd_recvfrom, dnsc
 #include <llarp/logger.hpp>
 

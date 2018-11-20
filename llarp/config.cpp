@@ -1,6 +1,6 @@
 #include "config.hpp"
 #include <llarp/config.h>
-#include <llarp/defaults.h>
+#include <llarp/defaults.hpp>
 #include <llarp/net.hpp>
 #include "fs.hpp"
 #include "ini.hpp"
@@ -190,6 +190,13 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;
   f << "profiles=" << basepath << "profiles.dat" << std::endl;
+  f << "ifaddr=10.105.0.1/16" << std::endl;
+  f << "ifname=lokitun0" << std::endl;
+  f << "enabled=true" << std::endl;
+  f << "exit=false" << std::endl;
+  f << "# exit-blacklist=tcp:25" << std::endl;
+  f << "# exit-whitelist=tcp:*" << std::endl;
+  f << "# exit-whitelist=udp:*" << std::endl;
   f << std::endl;
   f << "# ROUTERS ONLY: publish network interfaces for handling inbound traffic"
     << std::endl;

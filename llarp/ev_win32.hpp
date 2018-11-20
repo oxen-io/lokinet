@@ -8,6 +8,10 @@
 #include "ev.hpp"
 #include "logger.hpp"
 
+#ifdef sizeof
+#undef sizeof
+#endif
+
 // TODO: convert all socket errno calls to WSAGetLastError(3),
 // don't think winsock sets regular errno to this day
 namespace llarp
@@ -62,7 +66,7 @@ namespace llarp
   {
     socklen_t slen = sizeof(sockaddr_in);
     if(_addr.ss_family == AF_UNIX)
-      slen = sizeof(sockaddr_un);
+      slen = 115;
     else if(_addr.ss_family == AF_INET6)
       slen = sizeof(sockaddr_in6);
     int result =
@@ -132,13 +136,14 @@ namespace llarp
     virtual int
     read(void* buf, size_t sz)
     {
+      printf("read\n");
       sockaddr_in6 src;
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
       unsigned long flags = 0;
       WSABUF wbuf         = {(u_long)sz, static_cast< char* >(buf)};
       // WSARecvFrom
-      llarp::LogDebug("read ", sz, " bytes into socket");
+      llarp::LogDebug("read ", sz, " bytes from socket");
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
                               addr, &slen, &portfd[0], nullptr);
       // 997 is the error code for queued ops
@@ -155,6 +160,7 @@ namespace llarp
     virtual int
     sendto(const sockaddr* to, const void* data, size_t sz)
     {
+      printf("sendto\n");
       socklen_t slen;
       WSABUF wbuf = {(u_long)sz, (char*)data};
       switch(to->sa_family)
@@ -242,7 +248,6 @@ namespace llarp
     setup()
     {
       llarp::LogDebug("set ifname to ", t->ifname);
-      strncpy(tunif->if_name, t->ifname, IFNAMSIZ);
 
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
@@ -289,16 +294,10 @@ struct llarp_win32_loop : public llarp_ev_loop
   tcp_connect(struct llarp_tcp_connecter* tcp, const sockaddr* remoteaddr)
   {
     // create socket
-    DWORD on  = 1;
-    SOCKET fd = ::socket(remoteaddr->sa_family, SOCK_STREAM, 0);
+    SOCKET fd = WSASocket(remoteaddr->sa_family, SOCK_STREAM, 0, nullptr, 0,
+                          WSA_FLAG_OVERLAPPED);
     if(fd == INVALID_SOCKET)
       return false;
-    // set non blocking
-    if(ioctlsocket(fd, FIONBIO, &on) == SOCKET_ERROR)
-    {
-      ::closesocket(fd);
-      return false;
-    }
     llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, remoteaddr, tcp);
     add_ev(conn, true);
     conn->connect();
@@ -315,8 +314,8 @@ struct llarp_win32_loop : public llarp_ev_loop
   llarp::ev_io*
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
   {
-    DWORD on  = 1;
-    SOCKET fd = ::socket(bindaddr->sa_family, SOCK_STREAM, 0);
+    SOCKET fd = WSASocket(bindaddr->sa_family, SOCK_STREAM, 0, nullptr, 0,
+                          WSA_FLAG_OVERLAPPED);
     if(fd == INVALID_SOCKET)
       return nullptr;
     socklen_t sz = sizeof(sockaddr_in);
@@ -345,7 +344,6 @@ struct llarp_win32_loop : public llarp_ev_loop
     llarp::ev_io* serv = new llarp::tcp_serv(this, fd, tcp);
     tcp->impl          = serv;
 
-    ioctlsocket(fd, FIONBIO, &on);
     return serv;
   }
 
@@ -366,27 +364,31 @@ struct llarp_win32_loop : public llarp_ev_loop
   tick(int ms)
   {
     OVERLAPPED_ENTRY events[1024];
-    ULONG numEvents = 0;
-    if(::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &numEvents, ms,
-                                     false))
+    memset(&events, 0, sizeof(OVERLAPPED_ENTRY) * 1024);
+    ULONG result = 0;
+    ::GetQueuedCompletionStatusEx(iocpfd, events, 1024, &result, ms, false);
+    ULONG idx = 0;
+    while(idx < result)
     {
-      for(ULONG idx = 0; idx < numEvents; ++idx)
+      llarp::ev_io* ev =
+          reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
+      if(ev && events[idx].lpOverlapped)
       {
-        llarp::ev_io* ev =
-            reinterpret_cast< llarp::ev_io* >(events[idx].lpCompletionKey);
-        if(ev)
+        auto amount =
+            std::min(EV_READ_BUF_SZ, events[idx].dwNumberOfBytesTransferred);
+        if(ev->write)
+          ev->flush_write_buffers(amount);
+        else
         {
-          if(ev->write)
-            ev->flush_write();
-          auto amount =
-              std::min(EV_READ_BUF_SZ, events[idx].dwNumberOfBytesTransferred);
           memcpy(readbuf, events[idx].lpOverlapped->Pointer, amount);
           ev->read(readbuf, amount);
         }
       }
+      ++idx;
     }
     tick_listeners();
-    return 0;
+
+    return result;
   }
 
   // ok apparently this isn't being used yet...
@@ -444,8 +446,8 @@ struct llarp_win32_loop : public llarp_ev_loop
       default:
         return INVALID_SOCKET;
     }
-    DWORD on  = 1;
-    SOCKET fd = ::socket(addr->sa_family, SOCK_DGRAM, 0);
+    SOCKET fd = WSASocket(addr->sa_family, SOCK_DGRAM, 0, nullptr, 0,
+                          WSA_FLAG_OVERLAPPED);
     if(fd == INVALID_SOCKET)
     {
       perror("WSASocket()");
@@ -475,7 +477,6 @@ struct llarp_win32_loop : public llarp_ev_loop
       return INVALID_SOCKET;
     }
     llarp::LogDebug("socket fd is ", fd);
-    ioctlsocket(fd, FIONBIO, &on);
     return fd;
   }
 

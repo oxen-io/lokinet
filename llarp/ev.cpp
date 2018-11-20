@@ -1,5 +1,5 @@
 #include <llarp/ev.h>
-#include <llarp/logic.h>
+#include <llarp/logic.hpp>
 #include <llarp/string_view.hpp>
 
 #include <stddef.h>
@@ -34,7 +34,7 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 #error no event loop subclass
 #endif
   (*ev)->init();
-  (*ev)->_now = llarp_time_now_ms();
+  (*ev)->_now = llarp::time_now_ms();
 }
 
 void
@@ -49,7 +49,7 @@ llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
 {
   while(ev->running())
   {
-    ev->_now = llarp_time_now_ms();
+    ev->_now = llarp::time_now_ms();
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
       llarp_logic_tick(logic, ev->_now);
@@ -64,7 +64,7 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
 {
   while(ev->running())
   {
-    ev->_now = llarp_time_now_ms();
+    ev->_now = llarp::time_now_ms();
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
     {
@@ -95,7 +95,9 @@ llarp_ev_close_udp(struct llarp_udp_io *udp)
 llarp_time_t
 llarp_ev_loop_time_now_ms(struct llarp_ev_loop *loop)
 {
-  return loop->_now;
+  if(loop)
+    return loop->_now;
+  return llarp::time_now_ms();
 }
 
 void

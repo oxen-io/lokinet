@@ -9,7 +9,7 @@
 #include "xmm6int/salsa20_xmm6int-sse2.h"
 #include "xmm6int/salsa20_xmm6int-avx2.h"
 
-static const crypto_stream_salsa20_implementation *implementation;
+static crypto_stream_salsa20_implementation *implementation = NULL;
 
 size_t
 crypto_stream_salsa20_keybytes(void)
@@ -33,6 +33,7 @@ int
 crypto_stream_salsa20(unsigned char *c, unsigned long long clen,
                       const unsigned char *n, const unsigned char *k)
 {
+  _crypto_stream_salsa20_pick_best_implementation();
   return implementation->stream(c, clen, n, k);
 }
 
@@ -41,6 +42,7 @@ crypto_stream_salsa20_xor_ic(unsigned char *c, const unsigned char *m,
                              unsigned long long mlen, const unsigned char *n,
                              uint64_t ic, const unsigned char *k)
 {
+  _crypto_stream_salsa20_pick_best_implementation();
   return implementation->stream_xor_ic(c, m, mlen, n, ic, k);
 }
 
@@ -49,6 +51,7 @@ crypto_stream_salsa20_xor(unsigned char *c, const unsigned char *m,
                           unsigned long long mlen, const unsigned char *n,
                           const unsigned char *k)
 {
+  _crypto_stream_salsa20_pick_best_implementation();
   return implementation->stream_xor_ic(c, m, mlen, n, 0U, k);
 }
 
@@ -61,12 +64,8 @@ crypto_stream_salsa20_keygen(unsigned char k[crypto_stream_salsa20_KEYBYTES])
 int
 _crypto_stream_salsa20_pick_best_implementation(void)
 {
-#if __AVX2__ && __amd64__
-  implementation = &crypto_stream_salsa20_xmm6_implementation;
-#else
-  implementation = &crypto_stream_salsa20_ref_implementation;
-#endif
-
+  if(implementation)
+    return 0;
 #if __AVX2__
   if(sodium_runtime_has_avx2())
   {
@@ -81,5 +80,7 @@ _crypto_stream_salsa20_pick_best_implementation(void)
     return 0;
   }
 #endif
+  if(implementation == NULL)
+    implementation = &crypto_stream_salsa20_ref_implementation;
   return 0; /* LCOV_EXCL_LINE */
 }

@@ -60,6 +60,24 @@ namespace llarp
           case 'H':
             self->msg.reset(new service::ProtocolFrame());
             break;
+          case 'I':
+            self->msg.reset(new TransferTrafficMessage());
+            break;
+          case 'G':
+            self->msg.reset(new GrantExitMessage());
+            break;
+          case 'J':
+            self->msg.reset(new RejectExitMessage());
+            break;
+          case 'O':
+            self->msg.reset(new ObtainExitMessage());
+            break;
+          case 'U':
+            self->msg.reset(new UpdateExitMessage());
+            break;
+          case 'C':
+            self->msg.reset(new CloseExitMessage());
+            break;
           default:
             llarp::LogError("invalid routing message id: ", *strbuf.cur);
         }

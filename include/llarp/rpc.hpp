@@ -1,6 +1,6 @@
 #ifndef LLARP_RPC_HPP
 #define LLARP_RPC_HPP
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <llarp/ev.h>
 #include <string>
 #include <functional>
@@ -40,10 +40,10 @@ namespace llarp
       bool
       Start(const std::string& remote);
 
-      /// async test if a router is valid via jsonrpc
+      /// test if a router is valid
       void
-      AsyncVerifyRouter(llarp::PubKey pkey,
-                        std::function< void(llarp::PubKey, bool) > handler);
+      VerifyRouter(llarp::PubKey pkey,
+                   std::function< void(llarp::PubKey, bool) > handler);
 
      private:
       CallerImpl* m_Impl;

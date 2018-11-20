@@ -2,7 +2,7 @@
 #define LLARP_ROUTER_H_
 #include <llarp/config.h>
 #include <llarp/ev.h>
-#include <llarp/logic.h>
+#include <llarp/logic.hpp>
 #include <llarp/threadpool.h>
 #include <llarp/buffer.h>
 

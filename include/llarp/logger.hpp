@@ -16,7 +16,6 @@
 #endif
 #ifdef RPI
 #include <cstdio>
-#include <llarp/time.h>
 #endif
 
 namespace llarp
@@ -103,7 +102,7 @@ namespace llarp
     {
 #if defined(ANDROID) || defined(RPI)
       (void)ts;
-      return out << llarp_time_now_ms();
+      return out << time_now_ms();
 #else
       auto now = llarp::Clock_t::to_time_t(llarp::Clock_t::now());
       return out << std::put_time(std::localtime(&now), ts.format);

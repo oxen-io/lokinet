@@ -3,7 +3,6 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <wspiapi.h>
 #ifndef ssize_t
 #define ssize_t long
 #endif
@@ -15,7 +14,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <tuntap.h>
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 
 /**
  * ev.h

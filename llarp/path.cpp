@@ -263,7 +263,11 @@ namespace llarp
       {
         if(builder->ShouldBuildMore(now))
         {
-          builder->BuildOne();
+          builder->BuildOne(ePathRoleAny);
+        }
+        if(builder->ShouldBuildMoreForRoles(now, ePathRoleExit))
+        {
+          builder->BuildOne(ePathRoleExit);
         }
       }
     }
@@ -336,8 +340,9 @@ namespace llarp
     {
     }
 
-    Path::Path(const std::vector< RouterContact >& h, PathSet* parent)
-        : m_PathSet(parent)
+    Path::Path(const std::vector< RouterContact >& h, PathSet* parent,
+               PathRole startingRoles)
+        : m_PathSet(parent), _role(startingRoles)
     {
       hops.resize(h.size());
       size_t hsz = h.size();
@@ -442,6 +447,17 @@ namespace llarp
       // check to see if this path is dead
       if(_status == ePathEstablished)
       {
+        if(SupportsRoles(ePathRoleExit))
+        {
+          if(m_LastRecvMessage && now > m_LastRecvMessage
+             && now - m_LastRecvMessage > PATH_ALIVE_TIMEOUT)
+          {
+            // TODO: send close message
+            // r->routerProfiling.MarkPathFail(this);
+            // EnterState(ePathTimeout, now);
+            return;
+          }
+        }
         if(m_LastRecvMessage && now > m_LastRecvMessage
            && now - m_LastRecvMessage > PATH_ALIVE_TIMEOUT)
         {
@@ -531,9 +547,27 @@ namespace llarp
     }
 
     bool
-    Path::SendRoutingMessage(llarp::routing::IMessage* msg, llarp_router* r)
+    Path::HandleUpdateExitVerifyMessage(
+        const llarp::routing::UpdateExitVerifyMessage* msg, llarp_router* r)
     {
-      msg->S = m_SequenceNum++;
+      (void)r;
+      if(m_UpdateExitTX && msg->T == m_UpdateExitTX)
+      {
+        if(m_ExitUpdated)
+          return m_ExitUpdated(this);
+      }
+      if(m_CloseExitTX && msg->T == m_CloseExitTX)
+      {
+        if(m_ExitClosed)
+          return m_ExitClosed(this);
+      }
+      return false;
+    }
+
+    bool
+    Path::SendRoutingMessage(const llarp::routing::IMessage* msg,
+                             llarp_router* r)
+    {
       byte_t tmp[MAX_LINK_MSG_SIZE / 2];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!msg->BEncode(&buf))
@@ -569,9 +603,9 @@ namespace llarp
 
     bool
     Path::HandleDataDiscardMessage(
-        const llarp::routing::DataDiscardMessage* msg,
-        __attribute__((unused)) llarp_router* r)
+        const llarp::routing::DataDiscardMessage* msg, llarp_router* r)
     {
+      MarkActive(r->Now());
       if(m_DropHandler)
         return m_DropHandler(this, msg->P, msg->S);
       return true;
@@ -599,7 +633,7 @@ namespace llarp
 
         // persist session with upstream router until the path is done
         r->PersistSessionUntil(Upstream(), intro.expiresAt);
-
+        MarkActive(now);
         // send path latency test
         llarp::routing::PathLatencyMessage latency;
         latency.T             = llarp_randint();
@@ -615,15 +649,8 @@ namespace llarp
     bool
     Path::HandleHiddenServiceFrame(const llarp::service::ProtocolFrame* frame)
     {
-      if(m_DataHandler)
-      {
-        if(m_DataHandler(this, frame))
-        {
-          m_LastRecvMessage = m_PathSet->Now();
-          return true;
-        }
-      }
-      return false;
+      MarkActive(m_PathSet->Now());
+      return m_DataHandler && m_DataHandler(this, frame);
     }
 
     bool
@@ -631,13 +658,15 @@ namespace llarp
         const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
     {
       auto now = r->Now();
-      // TODO: reanimate dead paths if they get this message
-      if(msg->L == m_LastLatencyTestID && _status == ePathEstablished)
+      MarkActive(now);
+      if(msg->L == m_LastLatencyTestID)
       {
         intro.latency = now - m_LastLatencyTestTime;
         llarp::LogDebug("path latency is ", intro.latency,
                         " ms for tx=", TXID(), " rx=", RXID());
         m_LastLatencyTestID = 0;
+        _status             = ePathEstablished;
+
         return true;
       }
       else
@@ -653,9 +682,129 @@ namespace llarp
       llarp::routing::DHTMessage reply;
       if(!msg->HandleMessage(r->dht, reply.M))
         return false;
+      MarkActive(r->Now());
       if(reply.M.size())
         return SendRoutingMessage(&reply, r);
       return true;
+    }
+
+    bool
+    Path::HandleCloseExitMessage(const llarp::routing::CloseExitMessage* msg,
+                                 llarp_router* r)
+    {
+      /// allows exits to close from their end
+      if(SupportsRoles(ePathRoleExit))
+      {
+        if(msg->Verify(&r->crypto, Endpoint()))
+        {
+          llarp::LogInfo(Name(), " had its exit closed");
+          _role &= ~ePathRoleExit;
+          return true;
+        }
+        else
+          llarp::LogError(Name(), " CXM from exit with bad signature");
+      }
+      else
+        llarp::LogError(Name(), " unwarrented CXM");
+      return false;
+    }
+
+    bool
+    Path::SendExitRequest(const llarp::routing::ObtainExitMessage* msg,
+                          llarp_router* r)
+    {
+      llarp::LogInfo(Name(), " sending exit request to ", Endpoint());
+      m_ExitObtainTX = msg->T;
+      return SendRoutingMessage(msg, r);
+    }
+
+    bool
+    Path::HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
+                                  llarp_router* r)
+    {
+      (void)msg;
+      (void)r;
+      llarp::LogError(Name(), " got unwarrented OXM");
+      return false;
+    }
+
+    bool
+    Path::HandleUpdateExitMessage(const llarp::routing::UpdateExitMessage* msg,
+                                  llarp_router* r)
+    {
+      (void)msg;
+      (void)r;
+      llarp::LogError(Name(), " got unwarrented UXM");
+      return false;
+    }
+
+    bool
+    Path::HandleRejectExitMessage(const llarp::routing::RejectExitMessage* msg,
+                                  llarp_router* r)
+    {
+      if(m_ExitObtainTX && msg->T == m_ExitObtainTX)
+      {
+        if(!msg->Verify(&r->crypto, Endpoint()))
+        {
+          llarp::LogError(Name(), "RXM invalid signature");
+          return false;
+        }
+        llarp::LogInfo(Name(), " ", Endpoint(), " Rejected exit");
+        MarkActive(r->Now());
+        return InformExitResult(msg->B);
+      }
+      llarp::LogError(Name(), " got unwarrented RXM");
+      return false;
+    }
+
+    bool
+    Path::HandleGrantExitMessage(const llarp::routing::GrantExitMessage* msg,
+                                 llarp_router* r)
+    {
+      if(m_ExitObtainTX && msg->T == m_ExitObtainTX)
+      {
+        if(!msg->Verify(&r->crypto, Endpoint()))
+        {
+          llarp::LogError(Name(), " GXM signature failed");
+          return false;
+        }
+        // we now can send exit traffic
+        _role |= ePathRoleExit;
+        llarp::LogInfo(Name(), " ", Endpoint(), " Granted exit");
+        MarkActive(r->Now());
+        return InformExitResult(0);
+      }
+      llarp::LogError(Name(), " got unwarrented GXM");
+      return false;
+    }
+
+    bool
+    Path::InformExitResult(llarp_time_t B)
+    {
+      bool result = true;
+      for(const auto& hook : m_ObtainedExitHooks)
+        result &= hook(this, B);
+      m_ObtainedExitHooks.clear();
+      return result;
+    }
+
+    bool
+    Path::HandleTransferTrafficMessage(
+        const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
+    {
+      // check if we can handle exit data
+      if(!SupportsRoles(ePathRoleExit))
+        return false;
+      // verify sig
+      if(!msg->Verify(&r->crypto, Endpoint()))
+      {
+        llarp::LogError(Name(), " bad signature on inbound traffic");
+        return false;
+      }
+      MarkActive(r->Now());
+      // handle traffic if we have a handler
+      return m_ExitTrafficHandler
+          && m_ExitTrafficHandler(this, llarp::ConstBuffer(msg->X));
     }
 
   }  // namespace path
