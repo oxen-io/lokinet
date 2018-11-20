@@ -1,6 +1,6 @@
 #include "config.hpp"
 #include <llarp/config.h>
-#include <llarp/defaults.h>
+#include <llarp/defaults.hpp>
 #include <llarp/net.hpp>
 #include "fs.hpp"
 #include "ini.hpp"

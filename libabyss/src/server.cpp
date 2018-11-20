@@ -1,6 +1,6 @@
 #include <abyss/server.hpp>
 #include <abyss/http.hpp>
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <sstream>
 #include <unordered_map>
 #include <string>

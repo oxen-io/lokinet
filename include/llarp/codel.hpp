@@ -1,6 +1,6 @@
 #ifndef LLARP_CODEL_QUEUE_HPP
 #define LLARP_CODEL_QUEUE_HPP
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <llarp/logger.hpp>
 #include <llarp/mem.hpp>
 #include <llarp/threading.hpp>
@@ -97,7 +97,7 @@ namespace llarp
       Process(Visit visitor, Filter f)
       {
         llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
-        // auto start          = llarp_time_now_ms();
+        // auto start          = time_now_ms();
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
         Lock_t lock(m_QueueMutex);
         auto start = firstPut;

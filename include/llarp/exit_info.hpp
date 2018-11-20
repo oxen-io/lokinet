@@ -54,7 +54,7 @@ namespace llarp
         return out;
       out << std::string("/");
 #if defined(ANDROID) || defined(RPI)
-      snprintf(tmp, sizeof(tmp), "%u",
+      snprintf(tmp, sizeof(tmp), "%lu",
                llarp::bits::count_array_bits(xi.netmask.s6_addr));
       return out << tmp;
 #else

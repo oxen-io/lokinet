@@ -1,6 +1,7 @@
 #include <llarp/path.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/service/lookup.hpp>
+#include <llarp/time.hpp>
 
 namespace llarp
 {
@@ -10,7 +11,7 @@ namespace llarp
                                    const std::string &n)
         : parent(p), txid(tx), name(n)
     {
-      m_created = llarp_time_now_ms();
+      m_created = time_now_ms();
       p->PutLookup(this, tx);
     }
 

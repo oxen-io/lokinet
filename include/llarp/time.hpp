@@ -1,11 +1,16 @@
 #ifndef LLARP_TIME_HPP
 #define LLARP_TIME_HPP
 
+#include <llarp/types.hpp>
+
 #include <chrono>
 
 namespace llarp
 {
-  typedef std::chrono::system_clock Clock_t;
-}
+  using Clock_t = std::chrono::system_clock;
+
+  llarp_time_t
+  time_now_ms();
+}  // namespace llarp
 
 #endif

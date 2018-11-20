@@ -1,5 +1,5 @@
-#include <llarp/time.h>
-#include <llarp/timer.h>
+#include <llarp/time.hpp>
+#include <llarp/timer.hpp>
 #include <atomic>
 #include <condition_variable>
 #include <list>
@@ -66,7 +66,7 @@ struct llarp_timer_context
 
   llarp_timer_context()
   {
-    m_Now = llarp_time_now_ms();
+    m_Now = llarp::time_now_ms();
   }
 
   uint32_t ids = 0;
@@ -193,7 +193,7 @@ void
 llarp_timer_set_time(struct llarp_timer_context* t, llarp_time_t now)
 {
   if(now == 0)
-    now = llarp_time_now_ms();
+    now = llarp::time_now_ms();
   t->m_Now = now;
 }
 
@@ -261,7 +261,7 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
     {
       llarp::util::Lock lock(t->timersMutex);
       // we woke up
-      llarp_timer_tick_all_async(t, pool, llarp_time_now_ms());
+      llarp_timer_tick_all_async(t, pool, llarp::time_now_ms());
     }
   }
 }
