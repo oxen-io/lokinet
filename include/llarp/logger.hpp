@@ -200,7 +200,8 @@ namespace llarp
           ss << "[DBG] ";
           break;
         case eLogInfo:
-          SetConsoleTextAttribute(_glog.fd1,
+          SetConsoleTextAttribute(
+              _glog.fd1,
               FOREGROUND_INTENSITY | FOREGROUND_RED | FOREGROUND_GREEN
                   | FOREGROUND_BLUE);  // high white on black
           ss << "[NFO] ";
@@ -231,18 +232,17 @@ namespace llarp
     {
 #endif
       ss << (char)27 << "[0;0m";
-      glog.out << ss.str() << std::endl;
+      _glog.out << ss.str() << std::endl;
 #ifdef _WIN32
     }
-	else
-	{
-          glog.out << ss.str() << std::endl;
-          SetConsoleTextAttribute(
-              _glog.fd1, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
-	}
-      
+    else
+    {
+      _glog.out << ss.str() << std::endl;
+      SetConsoleTextAttribute(
+          _glog.fd1, FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE);
+    }
+
 #endif
-    _
 #else
     {
       tag = "LOKINET|" + tag;
