@@ -392,11 +392,15 @@ namespace llarp
            == -1)
 #endif
         {
+#ifdef _WIN32
           char buf[1024];
           int err = WSAGetLastError();
           FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
                         buf, 1024, nullptr);
           llarp::LogError("sendto failed: ", buf);
+#else
+          llarp::LogError("sendto failed: ", strerror(errno));
+#endif
         }
         return 0;
       }
@@ -431,7 +435,7 @@ namespace llarp
 
       LinkLayer(llarp_router* r) : ILinkLayer()
       {
-        router   = r;
+        router = r;
         _utp_ctx = utp_init(2);
         utp_context_set_userdata(_utp_ctx, this);
         utp_set_callback(_utp_ctx, UTP_SENDTO, &LinkLayer::SendTo);
@@ -483,12 +487,12 @@ namespace llarp
 
           memset(&msg, 0, sizeof(msg));
 
-          msg.msg_name       = &remote;
-          msg.msg_namelen    = sizeof(remote);
-          msg.msg_iov        = &iov;
-          msg.msg_iovlen     = 1;
-          msg.msg_flags      = 0;
-          msg.msg_control    = ancillary_buf;
+          msg.msg_name = &remote;
+          msg.msg_namelen = sizeof(remote);
+          msg.msg_iov = &iov;
+          msg.msg_iovlen = 1;
+          msg.msg_flags = 0;
+          msg.msg_control = ancillary_buf;
           msg.msg_controllen = sizeof(ancillary_buf);
 
           len = recvmsg(m_udp.fd, &msg, MSG_ERRQUEUE | MSG_DONTWAIT);
@@ -519,7 +523,7 @@ namespace llarp
               continue;
             }
             icmp_addr = (struct sockaddr*)SO_EE_OFFENDER(e);
-            icmp_sin  = (struct sockaddr_in*)icmp_addr;
+            icmp_sin = (struct sockaddr_in*)icmp_addr;
             if(icmp_sin->sin_port != 0)
             {
               continue;
@@ -630,22 +634,22 @@ namespace llarp
         {
           DiscardMessage msg;
           byte_t tmp[128] = {0};
-          auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+          auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
           if(!msg.BEncode(&buf))
             return false;
-          buf.sz  = buf.cur - buf.base;
+          buf.sz = buf.cur - buf.base;
           buf.cur = buf.base;
           if(!this->QueueWriteBuffers(buf))
             return false;
         }
         return true;
       };
-      gotLIM        = false;
+      gotLIM = false;
       recvBufOffset = 0;
-      TimedOut      = [&](llarp_time_t now) -> bool {
+      TimedOut = [&](llarp_time_t now) -> bool {
         return this->IsTimedOut(now) || this->state == eClose;
       };
-      GetPubKey  = std::bind(&BaseSession::RemotePubKey, this);
+      GetPubKey = std::bind(&BaseSession::RemotePubKey, this);
       lastActive = parent->now();
       // Pump       = []() {};
       Pump = std::bind(&BaseSession::PumpWrite, this);
@@ -657,7 +661,7 @@ namespace llarp
         return this->state == eSessionReady || this->state == eLinkEstablished;
       };
 
-      SendClose         = std::bind(&BaseSession::Close, this);
+      SendClose = std::bind(&BaseSession::Close, this);
       GetRemoteEndpoint = std::bind(&BaseSession::RemoteEndpoint, this);
     }
 
@@ -667,12 +671,12 @@ namespace llarp
     {
       remoteRC.Clear();
       remoteTransportPubKey = addr.pubkey;
-      remoteRC              = rc;
-      sock                  = s;
+      remoteRC = rc;
+      sock = s;
       assert(utp_set_userdata(sock, this) == this);
       assert(s == sock);
       remoteAddr = addr;
-      Start      = std::bind(&BaseSession::Connect, this);
+      Start = std::bind(&BaseSession::Connect, this);
       GotLIM =
           std::bind(&BaseSession::OutboundLIM, this, std::placeholders::_1);
     }
@@ -687,7 +691,7 @@ namespace llarp
       assert(s == sock);
       assert(utp_set_userdata(sock, this) == this);
       remoteAddr = addr;
-      Start      = []() {};
+      Start = []() {};
       GotLIM = std::bind(&BaseSession::InboundLIM, this, std::placeholders::_1);
     }
 
@@ -699,7 +703,7 @@ namespace llarp
         return false;
       }
       remoteRC = msg->rc;
-      gotLIM   = true;
+      gotLIM = true;
       if(!DoKeyExchange(Router()->crypto.transport_dh_server, msg->N,
                         remoteRC.enckey, parent->TransportSecretKey()))
         return false;
@@ -713,8 +717,8 @@ namespace llarp
       if(sendq.size() >= MaxSendQueueSize)
         return false;
       llarp::LogDebug("write ", buf.sz, " bytes to ", remoteAddr);
-      lastActive  = parent->now();
-      size_t sz   = buf.sz;
+      lastActive = parent->now();
+      size_t sz = buf.sz;
       byte_t* ptr = buf.base;
       while(sz)
       {
@@ -734,7 +738,7 @@ namespace llarp
         return false;
       }
       remoteRC = msg->rc;
-      gotLIM   = true;
+      gotLIM = true;
       // TODO: update address info pubkey
       return DoKeyExchange(Router()->crypto.transport_dh_client, msg->N,
                            remoteTransportPubKey, Router()->encryption);
@@ -774,7 +778,7 @@ namespace llarp
         return;
       }
       // rewind
-      buf.sz  = buf.cur - buf.base;
+      buf.sz = buf.cur - buf.base;
       buf.cur = buf.base;
       // send
       if(!SendMessageBuffer(buf))
@@ -897,14 +901,14 @@ namespace llarp
       sendq.emplace_back();
       auto& buf = sendq.back();
       vecq.emplace_back();
-      auto& vec    = vecq.back();
+      auto& vec = vecq.back();
       vec.iov_base = buf.data();
-      vec.iov_len  = FragmentBufferSize;
+      vec.iov_len = FragmentBufferSize;
       llarp::LogDebug("encrypt then hash ", sz, " bytes last=", isLastFragment);
       buf.Randomize();
       byte_t* nonce = buf.data() + FragmentHashSize;
-      byte_t* body  = nonce + FragmentNonceSize;
-      byte_t* base  = body;
+      byte_t* body = nonce + FragmentNonceSize;
+      byte_t* base = body;
       if(isLastFragment)
         htobe32buf(body, 0);
       else
@@ -921,8 +925,8 @@ namespace llarp
       Router()->crypto.xchacha20(payload, sessionKey, nonce);
 
       payload.base = nonce;
-      payload.cur  = payload.base;
-      payload.sz   = FragmentBufferSize - FragmentHashSize;
+      payload.cur = payload.base;
+      payload.sz = FragmentBufferSize - FragmentHashSize;
       // key'd hash
       Router()->crypto.hmac(buf.data(), payload, sessionKey);
     }
