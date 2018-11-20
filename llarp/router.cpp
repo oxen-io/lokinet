@@ -54,6 +54,7 @@ struct TryConnectJob
   Success()
   {
     llarp::LogInfo("established session with ", rc.pubkey);
+    router->FlushOutboundFor(rc.pubkey, link);
   }
 
   void
@@ -328,14 +329,11 @@ llarp_router::SaveRC()
 void
 llarp_router::Close()
 {
-  llarp::LogInfo("Closing ", inboundLinks.size(), " server bindings");
   for(const auto &link : inboundLinks)
   {
     link->Stop();
   }
   inboundLinks.clear();
-
-  llarp::LogInfo("Closing LokiNetwork client");
   if(outboundLink)
   {
     outboundLink->Stop();
@@ -353,6 +351,7 @@ llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
   llarp::PubKey pk(job->rc.pubkey);
   router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
   delete ctx;
+  delete job;
 }
 
 void
@@ -370,6 +369,8 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
       // was an outbound attempt
       ctx->establish_job->Failed();
     }
+    delete ctx;
+    delete job;
     router->DiscardOutboundFor(pk);
     return;
   }
@@ -397,7 +398,10 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   {
     ctx->establish_job->Success();
   }
-  router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
+  else
+    router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
+  delete ctx;
+  delete job;
 }
 
 void
@@ -659,12 +663,26 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
   // job->crypto = &crypto; // we already have this
   job->cryptoworker = tp;
   job->diskworker   = disk;
-
-  if(rc.IsPublicRouter())
-    job->hook = &llarp_router::on_verify_server_rc;
+  if(rpcCaller && rc.IsPublicRouter())
+  {
+    rpcCaller->VerifyRouter(rc.pubkey, [job, ctx](llarp::PubKey, bool valid) {
+      if(valid)
+        llarp_nodedb_async_verify(job);
+      else
+      {
+        delete job;
+        delete ctx;
+      }
+    });
+  }
   else
-    job->hook = &llarp_router::on_verify_client_rc;
-  llarp_nodedb_async_verify(job);
+  {
+    if(rc.IsPublicRouter())
+      job->hook = &llarp_router::on_verify_server_rc;
+    else
+      job->hook = &llarp_router::on_verify_client_rc;
+    llarp_nodedb_async_verify(job);
+  }
 }
 
 void
