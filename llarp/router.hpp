@@ -53,6 +53,9 @@ struct llarp_router
   // our router contact
   llarp::RouterContact _rc;
 
+  /// should we obey the service node whitelist?
+  bool whitelistRouters = false;
+
   const llarp::RouterContact &
   rc() const
   {
@@ -153,6 +156,11 @@ struct llarp_router
   // sessions to persist -> timestamp to end persist at
   std::unordered_map< llarp::RouterID, llarp_time_t, llarp::RouterID::Hash >
       m_PersistingSessions;
+
+  // lokinet routers from lokid, maps pubkey to when we think it will expire,
+  // set to max value right now
+  std::unordered_map< llarp::PubKey, llarp_time_t, llarp::PubKey::Hash >
+      lokinetRouters;
 
   // TODO: change me if needed
   const std::string defaultUpstreamResolver = "1.1.1.1:53";
