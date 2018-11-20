@@ -5,7 +5,7 @@ SIGN = gpg --sign --detach
 
 REPO := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-PREFIX ?= /usr/local
+prefix = $(DESTDIR)/usr/local
 
 CC ?= cc
 CXX ?= c++
@@ -46,16 +46,16 @@ GRADLE ?= gradle
 JAVA_HOME ?= /usr/lib/jvm/default-java
 
 JSONRPC ?= OFF
-CXX17 ?= ON
 AVX2 ?= ON
 RPI ?= OFF
 STATIC_LINK ?= OFF
+NETNS ?= OFF
+CLANG ?= OFF
 CMAKE_GEN ?= Unix Makefiles
-
 
 BUILD_ROOT = $(REPO)/build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DSTATIC_LINK=$(STATIC_LINK) -DUSE_AVX2=$(AVX2) -DUSE_CXX17=$(CXX17) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
 
 SCAN_BUILD ?= scan-build
 ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
@@ -74,6 +74,7 @@ LINT_FILES = $(wildcard llarp/*.cpp)
 LINT_CHECK = $(LINT_FILES:.cpp=.cpp-check)
 
 clean:
+	rm -f $(TARGETS)
 	rm -rf $(BUILD_ROOT)
 	rm -f $(SHADOW_PLUGIN) $(SHADOW_CONFIG)
 	rm -f *.sig
@@ -142,7 +143,9 @@ testnet:
 	python3 contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
-test: debug
+$(TEST_EXE): debug
+
+test: $(TEST_EXE)
 	$(TEST_EXE)
 
 android-gradle-prepare:
@@ -193,14 +196,26 @@ docker-debian:
 docker-fedora:
 	docker build -f docker/fedora.Dockerfile .
 
-install:
-	rm -f $(PREFIX)/bin/lokinet
-	cp $(EXE) $(PREFIX)/bin/lokinet
-	chmod 755 $(PREFIX)/bin/lokinet
-	$(SETCAP) $(PREFIX)/bin/lokinet || true
-	rm -f $(PREFIX)/bin/lokinet-bootstrap
-	cp $(REPO)/lokinet-bootstrap $(PREFIX)/bin/lokinet-bootstrap
-	chmod 755 $(PREFIX)/bin/lokinet-bootstrap
+debian-configure:
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)" -DCMAKE_BUILD_TYPE=Release
+
+debian: debian-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cp $(EXE) lokinet 
+	cp $(BUILD_ROOT)/rcutil lokinet-rcutil
+
+debian-test:
+	$(TEST_EXE)
+
+install-bins:
+	install -T $(EXE) $(prefix)/bin/lokinet
+	install -T $(REPO)/lokinet-bootstrap $(prefix)/bin/lokinet-bootstrap
+
+install-setcap: install-bins
+	$(SETCAP) $(prefix)/bin/lokinet || true
+
+install: install-setcap
 
 fuzz-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
@@ -210,3 +225,5 @@ fuzz-build: fuzz-configure
 
 fuzz: fuzz-build
 	$(EXE)
+
+.PHONY: debian-install

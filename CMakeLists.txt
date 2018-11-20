@@ -5,24 +5,11 @@ set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
 option(USE_LIBABYSS "enable libabyss" )
-option(USE_CXX17 "enable c++17 features" )
 option(USE_AVX2 "enable avx2 code" )
-# Require C++11
-# or C++17 on win32
-if (NOT WIN32)
-  if(USE_CXX17)
-    set(CMAKE_CXX_STANDARD 17)
-  else()
-    if(ANDROID)
-      set(CMAKE_CXX_STANDARD 17)
-    else()
-      set(CMAKE_CXX_STANDARD 11)
-    endif()
-  endif()
-else()
-  set(CMAKE_CXX_STANDARD 17)
-endif(NOT WIN32)
+option(USE_NETNS "enable networking namespace support" )
 
+# Require C++11
+set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
@@ -35,18 +22,28 @@ add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
+# gah, can't recall which -Wno flag is exclusive to clang
+# -Wno-cast-function-type is GNU exclusive..i think
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 # dynamic linking does this all the time
-if(CMAKE_HOST_WIN32)
 add_compile_options(-Wno-cast-function-type)
-endif()
 if (USING_CLANG)
 add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
 # because clang is insane enough to inline whole sections of the C++ library!
 # May have been fixed in llvm-7.
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
 endif(USING_CLANG)
 endif()
+
+
+
+
+if(WIN32)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+add_compile_options(-Wno-cast-function-type)
+set(FS_LIB stdc++fs)
+endif(WIN32)
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
@@ -58,13 +55,19 @@ find_package(Threads REQUIRED)
 
 if(STATIC_LINK)
   add_compile_options(-static)
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static" )
+  if(USING_CLANG)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+  else()
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -static-libgcc -static -Wl,--whole-archive -Wl,--no-whole-archive")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" )
+  endif()
 endif()
 
-# This is now configurable in ini
-#if(DNS_PORT)
-#  add_definitions(-DDNS_PORT=${DNS_PORT})
-#endif()
+if(USE_NETNS)
+  add_definitions(-DNETNS=1)
+else()
+  add_definitions(-DNETNS=0)
+endif()
 
 if(SHADOW)
   set(WITH_STATIC OFF)
@@ -76,8 +79,10 @@ if(TESTNET)
   add_definitions(-DTESTNET=1)
 endif()
 
+if(NOT DEBIAN)
 set(OPTIMIZE_FLAGS -O3)
 set(DEBUG_FLAGS -O0 -g3)
+endif()
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -107,17 +112,18 @@ if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   add_compile_options( ${DEBUG_FLAGS} )
 endif()
 
+if(NOT DEBIAN)
 if(NOT ANDROID)
-if (USE_AVX2)
-set(CRYPTO_FLAGS -march=native)
-set(CMAKE_ASM_FLAGS "-march=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+if (NOT USE_AVX2)
+set(CRYPTO_FLAGS -march=core2 -mtune=native)
+set(CMAKE_ASM_FLAGS "-march=core2")
 else()
-if(WIN32)
-set(CRYPTO_FLAGS -march=core2)
-set(CMAKE_ASM_FLAGS "-march=core2 ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
+set(CRYPTO_FLAGS -march=haswell -mtune=native)
+set(CMAKE_ASM_FLAGS "-march=haswell -mtune=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
 endif()
 endif()
 endif()
+
 if(RPI)
   add_definitions(-DRPI)
   set(WITH_STATIC ON)
@@ -150,16 +156,16 @@ if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif()
 
-if (WIN32)
-set(FS_LIB stdc++fs)
-endif(WIN32)
-
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
-set(LIBS Threads::Threads ${MALLOC_LIB} ${FS_LIB})
+set(LIBS ${LIBS} ${MALLOC_LIB} ${FS_LIB})
 
 if(ANDROID)
   set(LIBS ${LIBS} log)
+endif()
+
+if(NOT USING_CLANG)
+  set(LIBS ${LIBS} Threads::Threads)
 endif()
 
 set(LIB lokinet)
@@ -267,6 +273,8 @@ set(LIB_PLATFORM_SRC
 # for logic
   llarp/timer.cpp
 # for threading
+  llarp/queue_manager.cpp
+  llarp/thread_pool.cpp
   llarp/threadpool.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
@@ -274,9 +282,6 @@ set(LIB_PLATFORM_SRC
   ${ISOLATE_PROC_SRC}
 # tun
   ${LIBTUNTAP_SRC}
-# win32 inline code
-  llarp/win32_inet.c
-  llarp/win32_intrnl.c
 # c++17 compat code
   ${CXX_COMPAT_SRC}
 )
@@ -457,6 +462,17 @@ set(LIB_SRC
   llarp/dht/got_intro.cpp
   llarp/dht/got_router.cpp
   llarp/dht/publish_intro.cpp
+  llarp/exit/close_exit.cpp
+  llarp/exit/context.cpp
+  llarp/exit/endpoint.cpp
+  llarp/exit/grant_exit.cpp
+  llarp/exit/update_exit.cpp
+  llarp/exit/obtain_exit.cpp
+  llarp/exit/policy.cpp
+  llarp/exit/reject_exit.cpp
+  llarp/exit/session.cpp
+  llarp/exit/transfer_traffic.cpp
+  llarp/handlers/exit.cpp
   llarp/handlers/tun.cpp
   llarp/link/curvecp.cpp
   llarp/link/server.cpp
@@ -493,15 +509,22 @@ set(DNS_SRC
 
 set(TEST_SRC
   test/main.cpp
+  test/alignedbuffer_unittest.cpp
   test/base32_unittest.cpp
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
+  test/exit_unittest.cpp
   test/hiddenservice_unittest.cpp
+  test/traffic_transfer_unittest.cpp
+  test/obtain_exit_unittest.cpp
   test/pq_unittest.cpp
   test/net_unittest.cpp
   test/test_dns_unit.cpp
   test/test_dnsc_unit.cpp
   test/test_dnsd_unit.cpp
+  test/test_llarp_queue.cpp
+  test/test_llarp_queue_manager.cpp
+  test/test_llarp_thread_pool.cpp
 )
 
 

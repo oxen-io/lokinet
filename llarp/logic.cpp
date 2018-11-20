@@ -1,4 +1,4 @@
-#include <llarp/logic.h>
+#include <llarp/logic.hpp>
 #include <llarp/mem.h>
 #include "logger.hpp"
 

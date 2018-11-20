@@ -1,6 +1,6 @@
 #ifndef LLARP_NODEDB_HPP
 #define LLARP_NODEDB_HPP
-#include <llarp/common.h>
+#include <llarp/common.hpp>
 #include <llarp/crypto.h>
 #include <llarp/router_contact.hpp>
 #include <llarp/router_id.hpp>
@@ -143,6 +143,10 @@ struct llarp_async_load_rc
 /// asynchronously load an rc from disk
 void
 llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job);
+
+bool
+llarp_nodedb_select_random_exit(struct llarp_nodedb *n,
+                                llarp::RouterContact &rc);
 
 bool
 llarp_nodedb_select_random_hop(struct llarp_nodedb *n,

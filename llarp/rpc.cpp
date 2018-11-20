@@ -22,45 +22,52 @@ namespace llarp
       }
 
       void
-      PopulateReqHeaders(__attribute__((unused)) abyss::http::Headers_t& hdr)
+      PopulateReqHeaders(abyss::http::Headers_t& hdr)
       {
+        (void)hdr;
+        // TODO: add http auth
       }
     };
 
-    struct VerifyRouterHandler : public CallerHandler
+    struct GetServiceNodeListHandler final : public CallerHandler
     {
-      llarp::PubKey pk;
-      std::function< void(llarp::PubKey, bool) > handler;
+      using PubkeyList_t = std::vector< llarp::PubKey >;
+      using Callback_t   = std::function< void(const PubkeyList_t&, bool) >;
 
-      ~VerifyRouterHandler()
+      ~GetServiceNodeListHandler()
       {
       }
+      Callback_t handler;
 
-      VerifyRouterHandler(::abyss::http::ConnImpl* impl, const llarp::PubKey& k,
-                          std::function< void(llarp::PubKey, bool) > h)
-          : CallerHandler(impl), pk(k), handler(h)
+      GetServiceNodeListHandler(::abyss::http::ConnImpl* impl, Callback_t h)
+          : CallerHandler(impl), handler(h)
       {
       }
 
       bool
-      HandleResponse(__attribute__((unused))
-                     const ::abyss::http::RPC_Response& response)
+      HandleResponse(const ::abyss::http::RPC_Response& response)
       {
-        handler(pk, true);
+        (void)response;
+        // TODO: get keys from response
+        PubkeyList_t keys;
+        handler(keys, true);
         return true;
       }
 
       void
       HandleError()
       {
-        llarp::LogInfo("failed to verify router ", pk);
-        handler(pk, false);
+        handler({}, false);
       }
     };
 
     struct CallerImpl : public ::abyss::http::JSONRPC
     {
       llarp_router* router;
+      llarp_time_t m_NextKeyUpdate;
+      const llarp_time_t KeyUpdateInterval = 1000 * 60 * 2;
+      using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
+
       CallerImpl(llarp_router* r) : ::abyss::http::JSONRPC(), router(r)
       {
       }
@@ -68,7 +75,24 @@ namespace llarp
       void
       Tick()
       {
+        llarp_time_t now = router->Now();
+        if(now >= m_NextKeyUpdate)
+        {
+          AsyncUpdatePubkeyList();
+          m_NextKeyUpdate = now + KeyUpdateInterval;
+        }
         Flush();
+      }
+
+      void
+      AsyncUpdatePubkeyList()
+      {
+        llarp::LogInfo("Updating service node list");
+        ::abyss::json::Value params;
+        params.SetObject();
+        QueueRPC("get_all_service_node_keys", std::move(params),
+                 std::bind(&CallerImpl::NewAsyncUpdatePubkeyListConn, this,
+                           std::placeholders::_1));
       }
 
       bool
@@ -78,21 +102,43 @@ namespace llarp
       }
 
       abyss::http::IRPCClientHandler*
-      NewConn(PubKey k, std::function< void(llarp::PubKey, bool) > handler,
-              abyss::http::ConnImpl* impl)
+      NewAsyncUpdatePubkeyListConn(abyss::http::ConnImpl* impl)
       {
-        return new VerifyRouterHandler(impl, k, handler);
+        return new GetServiceNodeListHandler(
+            impl,
+            std::bind(&CallerImpl::HandleServiceNodeListUpdated, this,
+                      std::placeholders::_1, std::placeholders::_2));
       }
 
       void
-      AsyncVerifyRouter(llarp::PubKey pk,
-                        std::function< void(llarp::PubKey, bool) > handler)
+      VerifyRouter(llarp::PubKey pk,
+                   std::function< void(llarp::PubKey, bool) > handler)
       {
-        abyss::json::Value params;
-        params.SetObject();
-        QueueRPC("get_service_node", std::move(params),
-                 std::bind(&CallerImpl::NewConn, this, pk, handler,
-                           std::placeholders::_1));
+        if(router->whitelistRouters)
+        {
+          auto itr = router->lokinetRouters.find(pk);
+          handler(pk, itr != router->lokinetRouters.end());
+        }
+        else
+        {
+          handler(pk, true);
+        }
+      }
+
+      void
+      HandleServiceNodeListUpdated(const PubkeyList_t& list, bool updated)
+      {
+        if(updated)
+        {
+          router->lokinetRouters.clear();
+          for(const auto& pk : list)
+            router->lokinetRouters.emplace(
+                std::make_pair(pk, std::numeric_limits< llarp_time_t >::max()));
+          llarp::LogInfo("updated service node list, we have ",
+                         router->lokinetRouters.size(), " authorized routers");
+        }
+        else
+          llarp::LogError("service node list not updated");
       }
 
       ~CallerImpl()
@@ -110,6 +156,30 @@ namespace llarp
 
       ~Handler()
       {
+      }
+
+      bool
+      ListExitLevels(Response& resp) const
+      {
+        llarp::exit::Context::TrafficStats stats;
+        router->exitContext.CalculateExitTraffic(stats);
+        auto& alloc = resp.GetAllocator();
+        abyss::json::Value exits;
+        exits.SetArray();
+        auto itr = stats.begin();
+        while(itr != stats.end())
+        {
+          abyss::json::Value info, ident;
+          info.SetObject();
+          ident.SetString(itr->first.ToHex().c_str(), alloc);
+          info.AddMember("ident", ident, alloc);
+          info.AddMember("tx", abyss::json::Value(itr->second.first), alloc);
+          info.AddMember("rx", abyss::json::Value(itr->second.second), alloc);
+          exits.PushBack(info, alloc);
+          ++itr;
+        }
+        resp.AddMember("result", exits, alloc);
+        return true;
       }
 
       bool
@@ -147,6 +217,10 @@ namespace llarp
         if(method == "llarp.admin.link.neighboors")
         {
           return ListNeighboors(response);
+        }
+        else if(method == "llarp.admin.exit.list")
+        {
+          return ListExitLevels(response);
         }
         return false;
       }
@@ -232,8 +306,8 @@ namespace llarp
       }
 
       void
-      AsyncVerifyRouter(llarp::PubKey pk,
-                        std::function< void(llarp::PubKey, bool) > result)
+      VerifyRouter(llarp::PubKey pk,
+                   std::function< void(llarp::PubKey, bool) > result)
       {
         // always allow routers when not using libabyss
         result(pk, true);
@@ -258,10 +332,10 @@ namespace llarp
     }
 
     void
-    Caller::AsyncVerifyRouter(
-        llarp::PubKey pk, std::function< void(llarp::PubKey, bool) > handler)
+    Caller::VerifyRouter(llarp::PubKey pk,
+                         std::function< void(llarp::PubKey, bool) > handler)
     {
-      m_Impl->AsyncVerifyRouter(pk, handler);
+      m_Impl->VerifyRouter(pk, handler);
     }
 
     Server::Server(llarp_router* r) : m_Impl(new ServerImpl(r))

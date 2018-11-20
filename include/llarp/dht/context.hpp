@@ -2,13 +2,14 @@
 #define LLARP_DHT_CONTEXT_HPP
 
 #include <llarp/dht.h>
-#include <llarp/router.h>
 #include <llarp/dht/bucket.hpp>
 #include <llarp/dht/key.hpp>
 #include <llarp/dht/message.hpp>
 #include <llarp/dht/messages/findintro.hpp>
 #include <llarp/dht/node.hpp>
+#include <llarp/router.h>
 #include <llarp/service/IntroSet.hpp>
+#include <llarp/time.hpp>
 
 #include <set>
 
@@ -302,7 +303,7 @@ namespace llarp
           if(itr == timeouts.end())
           {
             timeouts.insert(
-                std::make_pair(k, llarp_time_now_ms() + requestTimeoutMS));
+                std::make_pair(k, time_now_ms() + requestTimeoutMS));
           }
           t->Start(askpeer);
         }

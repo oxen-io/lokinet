@@ -1,4 +1,4 @@
-#include <llarp/endian.h>
+#include <llarp/endian.hpp>
 #include <algorithm>
 #include <llarp/ip.hpp>
 #include "llarp/buffer.hpp"
@@ -6,7 +6,6 @@
 #ifndef _WIN32
 #include <netinet/in.h>
 #endif
-#include <llarp/endian.h>
 #include <map>
 #include <algorithm>
 

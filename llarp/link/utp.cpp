@@ -3,7 +3,7 @@
 #include <llarp/messages/link_intro.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/buffer.hpp>
-#include <llarp/endian.h>
+#include <llarp/endian.hpp>
 #include <utp.h>
 #include <cassert>
 #include <tuple>
@@ -17,7 +17,6 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <wspiapi.h>
 #endif
 
 namespace llarp
@@ -565,7 +564,7 @@ namespace llarp
       SendKeepAlive = [&]() -> bool {
         auto now = parent->now();
         if(sendq.size() == 0 && state == eSessionReady && now > lastActive
-           && now - lastActive > (sessionTimeout / 4))
+           && now - lastActive > 5000)
         {
           DiscardMessage msg;
           byte_t tmp[128] = {0};

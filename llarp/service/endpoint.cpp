@@ -38,11 +38,6 @@ namespace llarp
         if(addr.FromString(v))
           m_PrefetchAddrs.insert(addr);
       }
-      if(k == "netns")
-      {
-        m_NetNS = v;
-        m_OnInit.push_back(std::bind(&Endpoint::IsolateNetwork, this));
-      }
       if(k == "min-latency")
       {
         auto val = atoi(v.c_str());
@@ -55,11 +50,7 @@ namespace llarp
     bool
     Endpoint::IsolateNetwork()
     {
-      llarp::LogInfo("isolating network to namespace ", m_NetNS);
-      m_IsolatedWorker = llarp_init_isolated_net_threadpool(
-          m_NetNS.c_str(), &SetupIsolatedNetwork, &RunIsolatedMainLoop, this);
-      m_IsolatedLogic = llarp_init_single_process_logic(m_IsolatedWorker);
-      return true;
+      return false;
     }
 
     llarp_ev_loop*
@@ -1040,11 +1031,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToOrQueue(const Address& remote, llarp_buffer_t data,
+    Endpoint::SendToOrQueue(const byte_t* addr, llarp_buffer_t data,
                             ProtocolType t)
     {
+      service::Address remote(addr);
+
       // inbound converstation
       auto now = Now();
+
       {
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
@@ -1512,7 +1506,8 @@ namespace llarp
     bool
     Endpoint::OutboundContext::SelectHop(llarp_nodedb* db,
                                          const RouterContact& prev,
-                                         RouterContact& cur, size_t hop)
+                                         RouterContact& cur, size_t hop,
+                                         llarp::path::PathRole roles)
     {
       if(m_NextIntro.router.IsZero())
         return false;
@@ -1533,7 +1528,7 @@ namespace llarp
           return false;
         }
       }
-      return path::Builder::SelectHop(db, prev, cur, hop);
+      return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
 
     uint64_t
@@ -1550,7 +1545,8 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      bool should = path::Builder::ShouldBuildMore(now);
+      bool should = path::Builder::ShouldBuildMoreForRoles(
+          now, llarp::path::ePathRoleOutboundHS);
       // determinte newest intro
       Introduction intro;
       if(!GetNewestIntro(intro))
