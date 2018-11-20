@@ -1,5 +1,5 @@
-#ifndef LLARP_PROTO_H
-#define LLARP_PROTO_H
+#ifndef LLARP_PROTO_HPP
+#define LLARP_PROTO_HPP
 
 #ifndef LLARP_PROTO_VERSION
 #define LLARP_PROTO_VERSION (0)

@@ -1,5 +1,5 @@
-#ifndef LLARP_ENDIAN_H
-#define LLARP_ENDIAN_H
+#ifndef LLARP_ENDIAN_HPP
+#define LLARP_ENDIAN_HPP
 
 // adapted from libi2pd
 

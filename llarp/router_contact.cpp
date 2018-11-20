@@ -3,7 +3,7 @@
 #include <llarp/net.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/time.hpp>
-#include <llarp/version.h>
+#include <llarp/version.hpp>
 #include "buffer.hpp"
 #include "logger.hpp"
 #include "mem.hpp"

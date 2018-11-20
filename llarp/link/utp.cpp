@@ -3,7 +3,7 @@
 #include <llarp/messages/link_intro.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/buffer.hpp>
-#include <llarp/endian.h>
+#include <llarp/endian.hpp>
 #include <utp.h>
 #include <cassert>
 #include <tuple>

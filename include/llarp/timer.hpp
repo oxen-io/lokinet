@@ -1,7 +1,7 @@
 #ifndef LLARP_TIMER_HPP
 #define LLARP_TIMER_HPP
 
-#include <llarp/common.h>
+#include <llarp/common.hpp>
 #include <llarp/threadpool.h>
 #include <llarp/time.hpp>
 
