@@ -61,7 +61,11 @@ namespace llarp
       GetManyRandom(std::set< Key_t >& result, size_t N) const
       {
         if(nodes.size() < N)
+        {
+          llarp::LogWarn("Not enough dht nodes, have ", nodes.size(), " want ",
+                         N);
           return false;
+        }
         if(nodes.size() == N)
         {
           for(const auto& node : nodes)

@@ -663,11 +663,17 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
   // job->crypto = &crypto; // we already have this
   job->cryptoworker = tp;
   job->diskworker   = disk;
+  if(rc.IsPublicRouter())
+    job->hook = &llarp_router::on_verify_server_rc;
+  else
+    job->hook = &llarp_router::on_verify_client_rc;
   if(rpcCaller && rc.IsPublicRouter())
   {
     rpcCaller->VerifyRouter(rc.pubkey, [job, ctx](llarp::PubKey, bool valid) {
       if(valid)
+      {
         llarp_nodedb_async_verify(job);
+      }
       else
       {
         delete job;
@@ -677,10 +683,6 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
   }
   else
   {
-    if(rc.IsPublicRouter())
-      job->hook = &llarp_router::on_verify_server_rc;
-    else
-      job->hook = &llarp_router::on_verify_client_rc;
     llarp_nodedb_async_verify(job);
   }
 }
