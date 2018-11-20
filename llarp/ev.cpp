@@ -97,7 +97,7 @@ llarp_ev_loop_time_now_ms(struct llarp_ev_loop *loop)
 {
   if(loop)
     return loop->_now;
-  return llarp_time_now_ms();
+  return llarp::time_now_ms();
 }
 
 void

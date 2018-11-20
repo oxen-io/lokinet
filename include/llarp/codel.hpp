@@ -34,7 +34,7 @@ namespace llarp
       llarp_time_t
       operator()() const
       {
-        return llarp_time_now_ms();
+        return llarp::time_now_ms();
       }
     };
 
@@ -105,14 +105,9 @@ namespace llarp
       void
       Process(Visit visitor, Filter f)
       {
-<<<<<<< HEAD
         llarp_time_t lowest = std::numeric_limits< llarp_time_t >::max();
         if(_getNow() < nextTickAt)
           return;
-=======
-        llarp_time_t lowest = 0xFFFFFFFFFFFFFFFFUL;
-        // auto start          = time_now_ms();
->>>>>>> master
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
         Lock_t lock(m_QueueMutex);
         auto start = firstPut;
