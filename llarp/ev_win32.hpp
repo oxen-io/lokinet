@@ -65,17 +65,21 @@ namespace llarp
       llarp::LogDebug("connected immedidately");
       connected();
     }
-    else if(errno == EINPROGRESS)
+    else if(WSAGetLastError() == WSAEINPROGRESS)
     {
       // in progress
       llarp::LogDebug("connect in progress");
-      errno = 0;
+      WSASetLastError(0);
       return;
     }
     else if(_conn->error)
     {
       // wtf?
-      llarp::LogError("error connecting ", strerror(errno));
+      char ebuf[1024];
+      int err = WSAGetLastError();
+      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                    ebuf, 1024, nullptr);
+      llarp::LogError("error connecting: ", ebuf);
       _conn->error(_conn);
     }
   }
@@ -86,7 +90,11 @@ namespace llarp
     int new_fd = ::accept(fd.socket, nullptr, nullptr);
     if(new_fd == -1)
     {
-      llarp::LogError("failed to accept on ", fd.socket, ":", strerror(errno));
+      char ebuf[1024];
+      int err = WSAGetLastError();
+      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                    ebuf, 1024, nullptr);
+      llarp::LogError("failed to accept on ", fd.socket, ":", ebuf);
       return -1;
     }
     // build handler
@@ -170,7 +178,11 @@ namespace llarp
       }
       if(tuntap_up(tunif) == -1)
       {
-        llarp::LogWarn("failed to put interface up: ", strerror(errno));
+        char ebuf[1024];
+        int err = GetLastError();
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                      ebuf, 1024, nullptr);
+        llarp::LogWarn("failed to put interface up: ", ebuf);
         return false;
       }
 
@@ -238,7 +250,11 @@ namespace llarp
       ssize_t sent = ::sendto(fd.socket, (char*)data, sz, 0, to, slen);
       if(sent == -1)
       {
-        llarp::LogWarn(strerror(errno));
+        char ebuf[1024];
+        int err = WSAGetLastError();
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                      ebuf, 1024, nullptr);
+        llarp::LogWarn(ebuf);
       }
       return sent;
     }

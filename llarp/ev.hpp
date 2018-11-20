@@ -248,17 +248,21 @@ namespace llarp
               return;
             }
             m_BlockingWriteQueue->pop_front();
-            if(errno == EAGAIN || errno == EWOULDBLOCK)
+            int wsaerr = WSAGetLastError();
+            int syserr = GetLastError();
+            if(wsaerr == WSA_IO_PENDING || wsaerr == WSAEWOULDBLOCK
+               || syserr == 997 || syserr == 21)
             {
-              errno = 0;
+              SetLastError(0);
+              WSASetLastError(0);
               return;
             }
           }
         }
       }
       /// reset errno
-      errno = 0;
       SetLastError(0);
+      WSASetLastError(0);
     }
 
     std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;
@@ -586,7 +590,15 @@ namespace llarp
     {
       if(_conn)
       {
+#ifndef _WIN32
         llarp::LogError("tcp_conn error: ", strerror(errno));
+#else
+        char ebuf[1024];
+        int err = WSAGetLastError();
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                      ebuf, 1024, nullptr);
+        llarp::LogError("tcp_conn error: ", ebuf);
+#endif
         if(_conn->error)
           _conn->error(_conn);
       }
@@ -632,7 +644,7 @@ namespace llarp
 struct llarp_ev_loop
 {
   byte_t readbuf[EV_READ_BUF_SZ] = {0};
-  llarp_time_t _now              = 0;
+  llarp_time_t _now = 0;
   virtual bool
   init() = 0;
   virtual int

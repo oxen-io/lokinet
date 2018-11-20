@@ -330,12 +330,24 @@ namespace llarp
             static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
         llarp::LogDebug("utp_sendto ", Addr(*arg->address), " ", arg->len,
                         " bytes");
+#ifndef _WIN32
         if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
                     arg->address, arg->address_len)
                == -1
            && errno)
+#else
+        WSASetLastError(0);
+        if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
+                    arg->address, arg->address_len)
+           == -1)
+#endif
         {
-          llarp::LogError("sendto failed: ", strerror(errno));
+          char buf[1024];
+          int err = WSAGetLastError();
+          FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                        buf, 1024, nullptr);
+          llarp::LogError("sendto failed: ", buf);
+          llarp::LogInfo("flags: ", arg->flags);
         }
         return 0;
       }
