@@ -35,8 +35,8 @@ def main():
         except:
             pass
 
-        print("lokinet.peers.outboud {}".format(outbound))
-        print("lokinet.peers.inboud {}".format(inbound))
+        print("lokinet.peers.outbound {}".format(outbound))
+        print("lokinet.peers.inbound {}".format(inbound))
 
 
 if __name__ == '__main__':
