@@ -669,15 +669,16 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
     job->hook = &llarp_router::on_verify_client_rc;
   if(rpcCaller && rc.IsPublicRouter())
   {
-    rpcCaller->VerifyRouter(rc.pubkey, [job, ctx](llarp::PubKey, bool valid) {
+    rpcCaller->VerifyRouter(rc.pubkey, [job](llarp::PubKey pk, bool valid) {
       if(valid)
       {
+        llarp::LogDebug("lokid says ", pk, " is valid");
         llarp_nodedb_async_verify(job);
       }
       else
       {
-        delete job;
-        delete ctx;
+        llarp::LogDebug("lokid says ", pk, " is NOT valid");
+        job->hook(job);
       }
     });
   }
@@ -710,6 +711,7 @@ llarp_router::Run()
   }
 
   llarp_threadpool_start(tp);
+  llarp_threadpool_start(disk);
 
   routerProfiling.Load(routerProfilesFile.c_str());
 
