@@ -96,6 +96,41 @@ namespace llarp
       return retval;
     };
 
+    type_6soa::type_6soa() : record()
+    {
+      this->mname   = "";
+      this->rname   = "";
+      this->serial  = 0;
+      this->refresh = 0;
+      this->retry   = 0;
+      this->expire  = 0;
+      this->minimum = 0;
+    }
+    
+    bool
+    type_6soa::parse(std::vector< byte_t > bytes)
+    {
+      // FIXME: implmement me
+      //this->cname = std::string((char *)bytes.data(), bytes.size());
+      return bytes.size()?true:false;
+    };
+
+    std::vector< byte_t >
+    type_6soa::to_bytes()
+    {
+      std::vector< byte_t > retval;
+      vput16bits(retval, 4 + this->mname.length() + this->rname.length() + 20);  // rdLength
+      vcode_domain(retval, this->mname);
+      vcode_domain(retval, this->rname);
+      vput32bits(retval, this->serial);
+      vput32bits(retval, this->refresh);
+      vput32bits(retval, this->retry);
+      vput32bits(retval, this->expire);
+      vput32bits(retval, this->minimum);
+
+      return retval;
+    };
+    
     type_12ptr::type_12ptr() : record()
     {
       this->revname = "";
@@ -104,7 +139,6 @@ namespace llarp
     bool
     type_12ptr::parse(std::vector< byte_t > bytes)
     {
-      // trim last 2 bytes... probably the size
       this->revname = std::string((char *)bytes.data(), bytes.size());
       return bytes.size() ? true : false;
     };
