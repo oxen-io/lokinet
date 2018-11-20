@@ -5,7 +5,11 @@
 #include <queue_manager.hpp>
 
 #include <atomic>
+#if __cplusplus >= 201703L
 #include <optional>
+#else
+#include <tl/optional.hpp>
+#endif
 #include <tuple>
 
 namespace llarp
@@ -30,12 +34,12 @@ namespace llarp
 
       QueueManager m_manager;
 
-      std::atomic<std::uint32_t> m_waitingPoppers;
+      std::atomic< std::uint32_t > m_waitingPoppers;
       util::Semaphore m_popSemaphore;
       const char
           m_popSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
 
-      std::atomic<std::uint32_t> m_waitingPushers;
+      std::atomic< std::uint32_t > m_waitingPushers;
       util::Semaphore m_pushSemaphore;
       const char
           m_pushSemaphorePadding[(2u * Alignment) - sizeof(util::Semaphore)];
@@ -72,8 +76,11 @@ namespace llarp
       // Remove an element from the queue. Block until an element is available
       Type
       popFront();
-
+#if __cplusplus >= 201703L
       std::optional< Type >
+#else
+      tl::optional< Type >
+#endif
       tryPopFront();
 
       // Remove all elements from the queue. Note this is not atomic, and if
@@ -260,7 +267,11 @@ namespace llarp
     }
 
     template < typename Type >
+#if __cplusplus >= 201703L
     std::optional< Type >
+#else
+    tl::optional< Type >
+#endif
     Queue< Type >::tryPopFront()
     {
       uint32_t generation;
@@ -284,9 +295,12 @@ namespace llarp
       // - update the queue
       // - notify any waiting pushers
 
-      QueuePopGuard popGuard(*this, generation, index);
-
+      QueuePopGuard< Type > popGuard(*this, generation, index);
+#if __cplusplus >= 201703L
       return std::optional< Type >(std::move(m_data[index]));
+#else
+      return tl::optional< Type >(std::move(m_data[index]));
+#endif
     }
 
     template < typename Type >
@@ -382,8 +396,7 @@ namespace llarp
         m_waitingPoppers.fetch_sub(1, std::memory_order_relaxed);
       }
 
-      QueuePopGuard popGuard(*this, generation, index);
-
+      QueuePopGuard< Type > popGuard(*this, generation, index);
       return Type(std::move(m_data[index]));
     }
 

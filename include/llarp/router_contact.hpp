@@ -54,6 +54,12 @@ namespace llarp
     Clear();
 
     bool
+    IsExit() const
+    {
+      return exits.size() > 0;
+    }
+
+    bool
     BDecode(llarp_buffer_t *buf) override
     {
       Clear();

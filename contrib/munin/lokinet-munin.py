@@ -15,8 +15,13 @@ def jsonrpc(method, **args):
 def main():
     if len(sys.argv) == 2 and sys.argv[1] == 'config':
         print("graph_title lokinet peers")
-        print("lokinet.peers.outbound Number of outbound lokinet peers")
-        print("lokinet.peers.inbound Number of inbound lokinet peers")
+        print("graph_vlabel peers")
+        print("graph_category network")
+        print("graph_info This graph shows the number of node to node sessions of this lokinet router")
+        print("lokinet.peers.outbound.info Number of outbound lokinet peers")
+        print("lokinet.peers.inbound.info Number of inbound lokinet peers")
+        print("lokinet.peers.outbound.label outbound peers")
+        print("lokinet.peers.inbound.label inbound peers")
     else:
         inbound = 0
         outbound = 0
@@ -30,8 +35,8 @@ def main():
         except:
             pass
 
-        print("lokinet.peers.outboud {}".format(outbound))
-        print("lokinet.peers.inboud {}".format(inbound))
+        print("lokinet.peers.outbound {}".format(outbound))
+        print("lokinet.peers.inbound {}".format(inbound))
 
 
 if __name__ == '__main__':

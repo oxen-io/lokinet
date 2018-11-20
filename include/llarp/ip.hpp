@@ -113,6 +113,19 @@ namespace llarp
         }
       };
 
+      struct GetNow
+      {
+        llarp_ev_loop* loop;
+        GetNow(llarp_ev_loop* evloop) : loop(evloop)
+        {
+        }
+        llarp_time_t
+        operator()() const
+        {
+          return llarp_ev_loop_time_now_ms(loop);
+        }
+      };
+
       struct CompareOrder
       {
         bool

@@ -370,7 +370,7 @@ TEST_P(TryAdd, noblocking)
   util::Barrier startBarrier(d.threads + 1);
   util::Barrier stopBarrier(d.threads + 1);
 
-  BarrierArgs args{startBarrier, stopBarrier, 0};
+  BarrierArgs args{startBarrier, stopBarrier, {0}};
 
   auto simpleJob = std::bind(barrierFunction, std::ref(args));
 
@@ -389,7 +389,7 @@ TEST_P(TryAdd, noblocking)
   // and that we emptied the queue.
   ASSERT_EQ(0u, pool.jobCount());
 
-  BasicWorkArgs basicWorkArgs = {0};
+  BasicWorkArgs basicWorkArgs = {{0}};
 
   auto workJob = std::bind(basicWork, std::ref(basicWorkArgs));
 
@@ -417,7 +417,7 @@ TEST(TestThreadPool, recurseJob)
   ThreadPool pool(threads, capacity);
 
   util::Barrier barrier(threads + 1);
-  std::atomic_size_t counter = 0;
+  std::atomic_size_t counter{0};
 
   pool.start();
 

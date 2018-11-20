@@ -6,6 +6,7 @@ namespace llarp
 {
   namespace thread
   {
+#if __cplusplus >= 201703L
     // Turn an enum into its underlying value.
     template < typename E >
     constexpr auto
@@ -13,7 +14,14 @@ namespace llarp
     {
       return static_cast< std::underlying_type_t< E > >(e);
     }
-
+#else
+    template < typename E >
+    constexpr uint32_t
+    to_underlying(E e) noexcept
+    {
+      return static_cast< uint32_t >(e);
+    }
+#endif
     static constexpr uint32_t GENERATION_COUNT_SHIFT = 0x2;
 
     // Max number of generations which can be held in an uint32_t.
@@ -159,7 +167,7 @@ namespace llarp
       (void)m_pushPadding;
       (void)m_popPadding;
 
-      m_states = new std::atomic<std::uint32_t>[capacity];
+      m_states = new std::atomic< std::uint32_t >[capacity];
 
       for(size_t i = 0; i < capacity; ++i)
       {
@@ -435,7 +443,7 @@ namespace llarp
 
       for(;;)
       {
-        u_int32_t endCombinedIndex =
+        uint32_t endCombinedIndex =
             (endGeneration * static_cast< uint32_t >(m_capacity)) + endIndex;
 
         if(circularDifference(endCombinedIndex, loadedCombinedIndex,
@@ -448,9 +456,9 @@ namespace llarp
         assert(0 < circularDifference(endCombinedIndex, loadedCombinedIndex,
                                       m_maxCombinedIndex + 1));
 
-        u_int32_t currIdx =
+        uint32_t currIdx =
             static_cast< uint32_t >(loadedCombinedIndex % m_capacity);
-        u_int32_t currGen =
+        uint32_t currGen =
             static_cast< uint32_t >(loadedCombinedIndex / m_capacity);
 
         // Try to swap this cell from Full to Reading.

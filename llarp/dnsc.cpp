@@ -299,7 +299,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::LogDebug("Read an authority for ",
                      request->question.name, " at ", std::to_string(pos));
     // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
-      if(pos > sz)
+      if((ssize_t)pos > sz)
       {
           llarp::LogWarn("Would read past end of dns packet. for ",
                          request->question.name);
@@ -603,7 +603,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
   llarp::LogDebug("Header got client responses for id: ", hdr->id);
 
   // if we sent this out, then there's an id
-  struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
+  struct dns_tracker *tracker = (struct dns_tracker *)udp->user;
   struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
 
   // sometimes we'll get double responses
@@ -694,7 +694,7 @@ void
 llarp_host_resolved(dnsc_answer_request *const request)
 {
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
-  auto val             = std::find_if(
+  auto val = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
       [request](
           std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >
@@ -735,7 +735,7 @@ llarp_dnsc_init(struct dnsc_context *const dnsc,
   llarp::LogInfo("DNSc adding relay ", dnsc_sockaddr);
   dnsc->resolvers.push_back(dnsc_sockaddr);
   dnsc->tracker = &dns_udp_tracker;
-  dnsc->logic   = logic;
+  dnsc->logic = logic;
   return true;
 }
 

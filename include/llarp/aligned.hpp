@@ -69,7 +69,7 @@ namespace llarp
     bool
     operator==(const AlignedBuffer& other) const
     {
-      return memcmp(data(), other.data(), sz) == 0;
+      return memcmp(b, other.b, sz) == 0;
     }
 
     bool
@@ -159,35 +159,35 @@ namespace llarp
     byte_t*
     data()
     {
-      return &b[0];
+      return b;
     }
 
     const byte_t*
     data() const
     {
-      return &b[0];
+      return b;
     }
 
     Long_t*
     data_l()
     {
-      return &l[0];
+      return l;
     }
 
     const Long_t*
     data_l() const
     {
-      return &l[0];
+      return l;
     }
 
     operator const byte_t*() const
     {
-      return &b[0];
+      return b;
     }
 
     operator byte_t*()
     {
-      return &b[0];
+      return b;
     }
 
     bool
@@ -221,9 +221,9 @@ namespace llarp
     struct Hash
     {
       size_t
-      operator()(const AlignedBuffer& buf) const
+      operator()(const AlignedBuffer< sz, randomize, Long_t >& buf) const
       {
-        return *buf.data_l();
+        return buf.l[0];
       }
     };
 

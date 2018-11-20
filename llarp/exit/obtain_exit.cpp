@@ -24,9 +24,9 @@ namespace llarp
     bool
     ObtainExitMessage::Sign(llarp_crypto* c, const llarp::SecretKey& sk)
     {
-      byte_t tmp[MAX_LINK_MSG_SIZE - 128] = {0};
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-      I        = llarp::seckey_topublic(sk);
+      byte_t tmp[1024] = {0};
+      auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);
+      I                = llarp::seckey_topublic(sk);
       Z.Zero();
       if(!BEncode(&buf))
         return false;
@@ -37,8 +37,8 @@ namespace llarp
     bool
     ObtainExitMessage::Verify(llarp_crypto* c) const
     {
-      byte_t tmp[MAX_LINK_MSG_SIZE - 128] = {0};
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      byte_t tmp[1024] = {0};
+      auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);
       ObtainExitMessage copy;
       copy = *this;
       copy.Z.Zero();
@@ -54,7 +54,7 @@ namespace llarp
     {
       if(!bencode_start_dict(buf))
         return false;
-      if(!BEncodeWriteDictMsgType(buf, "A", "X"))
+      if(!BEncodeWriteDictMsgType(buf, "A", "O"))
         return false;
       if(!BEncodeWriteDictArray("B", B, buf))
         return false;

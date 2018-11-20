@@ -105,9 +105,9 @@ namespace llarp
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
-        if(itr->second->HasAddress(addr))
+        if(itr->second->HasAddress(addr.data()))
         {
-          ip = itr->second->ObtainIPForAddr(addr);
+          ip = itr->second->ObtainIPForAddr(addr.data());
           return true;
         }
         ++itr;
@@ -115,7 +115,7 @@ namespace llarp
       itr = m_Endpoints.find("default");
       if(itr != m_Endpoints.end())
       {
-        ip = itr->second->ObtainIPForAddr(addr);
+        ip = itr->second->ObtainIPForAddr(addr.data());
         return true;
       }
       return false;
@@ -151,7 +151,7 @@ namespace llarp
         llarp::LogError("No tunnel endpoint found");
         return zero;
       }
-      return tunEndpoint->ObtainIPForAddr(addr);
+      return tunEndpoint->ObtainIPForAddr(addr.data());
     }
 
     bool

@@ -25,6 +25,7 @@
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "mem.hpp"
+#include "str.hpp"
 
 bool
 llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
@@ -51,6 +52,9 @@ struct llarp_router
 
   // our router contact
   llarp::RouterContact _rc;
+
+  /// should we obey the service node whitelist?
+  bool whitelistRouters = false;
 
   const llarp::RouterContact &
   rc() const
@@ -103,6 +107,15 @@ struct llarp_router
   llarp::exit::Context::Config_t exitConf;
 
   bool
+  ExitEnabled() const
+  {
+    auto itr = exitConf.find("exit");
+    if(itr == exitConf.end())
+      return false;
+    return llarp::IsTrueValue(itr->second.c_str());
+  }
+
+  bool
   CreateDefaultHiddenService();
 
   bool
@@ -143,6 +156,11 @@ struct llarp_router
   // sessions to persist -> timestamp to end persist at
   std::unordered_map< llarp::RouterID, llarp_time_t, llarp::RouterID::Hash >
       m_PersistingSessions;
+
+  // lokinet routers from lokid, maps pubkey to when we think it will expire,
+  // set to max value right now
+  std::unordered_map< llarp::PubKey, llarp_time_t, llarp::PubKey::Hash >
+      lokinetRouters;
 
   // TODO: change me if needed
   const std::string defaultUpstreamResolver = "1.1.1.1:53";

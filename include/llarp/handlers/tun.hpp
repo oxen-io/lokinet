@@ -51,6 +51,17 @@ namespace llarp
       bool
       ProcessDataMessage(service::ProtocolMessage* msg);
 
+      /// queue outbound packet to the world
+      bool
+      QueueOutboundTraffic(llarp::net::IPv4Packet&& pkt);
+
+      /// get the local interface's address
+      huint32_t
+      GetIfAddr() const;
+
+      bool
+      HasLocalIP(const huint32_t& ip) const;
+
 #ifndef WIN32
       /// overrides Endpoint
       bool
@@ -80,24 +91,37 @@ namespace llarp
       static void
       handleTickTun(void* u);
 
-      /// get a service address for ip address
-      service::Address
-      ObtainAddrForIP(huint32_t ip);
-
-      bool
-      HasAddress(const service::Address& remote) const
+      /// get a key for ip address
+      template < typename Addr >
+      Addr
+      ObtainAddrForIP(huint32_t ip)
       {
-        return m_AddrToIP.find(remote) != m_AddrToIP.end();
+        auto itr = m_IPToAddr.find(ip);
+        if(itr == m_IPToAddr.end())
+        {
+          // not found
+          Addr addr;
+          addr.Zero();
+          return addr;
+        }
+        // found
+        return itr->second.data();
       }
 
-      /// get ip address for service address unconditionally
+      bool
+      HasAddress(const byte_t* addr) const
+      {
+        return m_AddrToIP.find(addr) != m_AddrToIP.end();
+      }
+
+      /// get ip address for key unconditionally
       huint32_t
-      ObtainIPForAddr(const service::Address& addr);
+      ObtainIPForAddr(const byte_t* addr);
 
      protected:
       typedef llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
-          net::IPv4Packet::CompareOrder >
+          net::IPv4Packet::CompareOrder, net::IPv4Packet::GetNow >
           PacketQueue_t;
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;
@@ -119,7 +143,27 @@ namespace llarp
       virtual void
       FlushSend();
 
+      /// maps ip to key (host byte order)
+      std::unordered_map< huint32_t, AlignedBuffer< 32 >, huint32_t::Hash >
+          m_IPToAddr;
+      /// maps key to ip (host byte order)
+      std::unordered_map< AlignedBuffer< 32 >, huint32_t,
+                          AlignedBuffer< 32 >::Hash >
+          m_AddrToIP;
+
      private:
+      bool
+      QueueInboundPacketForExit(llarp_buffer_t buf)
+      {
+        return m_NetworkToUserPktQueue.EmplaceIf(
+            [&](llarp::net::IPv4Packet& pkt) -> bool {
+              if(!pkt.Load(buf))
+                return false;
+              pkt.UpdateIPv4PacketOnDst(pkt.src(), m_OurIP);
+              return true;
+            });
+      }
+
 #ifndef WIN32
       /// handles setup, given value true on success and false on failure to set
       /// up interface
@@ -131,12 +175,6 @@ namespace llarp
       /// for netns)
       struct dotLokiLookup dll;
 
-      /// maps ip to service address (host byte order)
-      std::unordered_map< huint32_t, service::Address, huint32_t::Hash >
-          m_IPToAddr;
-      /// maps service address to ip (host byte order)
-      std::unordered_map< service::Address, huint32_t, service::Address::Hash >
-          m_AddrToIP;
       /// maps ip address to timestamp last active
       std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >
           m_IPActivity;

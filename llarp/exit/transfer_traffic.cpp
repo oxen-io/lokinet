@@ -10,23 +10,22 @@ namespace llarp
     {
       byte_t tmp[MaxExitMTU + 512] = {0};
       auto buf                     = llarp::StackBuffer< decltype(tmp) >(tmp);
-      llarp::Signature sig;
       // zero out sig
       Z.Zero();
+      // randomize nonce
+      Y.Randomize();
       if(!BEncode(&buf))
         return false;
       // rewind buffer
       buf.sz = buf.cur - buf.base;
-      if(!c->sign(sig, k, buf))
-        return false;
-      Z = sig;
-      return true;
+      return c->sign(Z, k, buf);
     }
 
     TransferTrafficMessage&
     TransferTrafficMessage::operator=(const TransferTrafficMessage& other)
     {
       Z       = other.Z;
+      Y       = other.Y;
       S       = other.S;
       version = other.version;
       X       = other.X;
@@ -39,7 +38,6 @@ namespace llarp
     {
       byte_t tmp[MaxExitMTU + 512] = {0};
       auto buf                     = llarp::StackBuffer< decltype(tmp) >(tmp);
-      llarp::Signature sig;
       // make copy
       TransferTrafficMessage copy;
       copy = *this;
@@ -80,7 +78,8 @@ namespace llarp
         return false;
       if(!bencode_write_bytestring(buf, X.data(), X.size()))
         return false;
-
+      if(!BEncodeWriteDictEntry("Y", Y, buf))
+        return false;
       if(!BEncodeWriteDictEntry("Z", Z, buf))
         return false;
       return bencode_end(buf);
@@ -91,6 +90,8 @@ namespace llarp
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("Z", Z, read, key, buf))
+        return false;
+      if(!BEncodeMaybeReadDictEntry("Y", Y, read, key, buf))
         return false;
       if(!BEncodeMaybeReadDictInt("S", S, read, key, buf))
         return false;

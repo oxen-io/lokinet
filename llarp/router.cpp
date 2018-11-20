@@ -46,12 +46,15 @@ struct TryConnectJob
   void
   Failed()
   {
+    llarp::LogInfo("session to ", rc.pubkey, " closed");
     link->CloseSessionTo(rc.pubkey);
   }
 
   void
   Success()
   {
+    llarp::LogInfo("established session with ", rc.pubkey);
+    router->FlushOutboundFor(rc.pubkey, link);
   }
 
   void
@@ -169,25 +172,20 @@ bool
 llarp_router::SendToOrQueue(const llarp::RouterID &remote,
                             const llarp::ILinkMessage *msg)
 {
-  if(inboundLinks.size() == 0)
+  for(const auto &link : inboundLinks)
   {
-    if(outboundLink->HasSessionTo(remote))
+    if(link->HasSessionTo(remote))
     {
-      SendTo(remote, msg, outboundLink.get());
+      SendTo(remote, msg, link.get());
       return true;
     }
   }
-  else
+  if(outboundLink && outboundLink->HasSessionTo(remote))
   {
-    for(const auto &link : inboundLinks)
-    {
-      if(link->HasSessionTo(remote))
-      {
-        SendTo(remote, msg, link.get());
-        return true;
-      }
-    }
+    SendTo(remote, msg, outboundLink.get());
+    return true;
   }
+
   // no link available
 
   // this will create an entry in the obmq if it's not already there
@@ -331,14 +329,11 @@ llarp_router::SaveRC()
 void
 llarp_router::Close()
 {
-  llarp::LogInfo("Closing ", inboundLinks.size(), " server bindings");
   for(const auto &link : inboundLinks)
   {
     link->Stop();
   }
   inboundLinks.clear();
-
-  llarp::LogInfo("Closing LokiNetwork client");
   if(outboundLink)
   {
     outboundLink->Stop();
@@ -356,6 +351,7 @@ llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
   llarp::PubKey pk(job->rc.pubkey);
   router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
   delete ctx;
+  delete job;
 }
 
 void
@@ -373,6 +369,8 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
       // was an outbound attempt
       ctx->establish_job->Failed();
     }
+    delete ctx;
+    delete job;
     router->DiscardOutboundFor(pk);
     return;
   }
@@ -400,7 +398,10 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   {
     ctx->establish_job->Success();
   }
-  router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
+  else
+    router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
+  delete ctx;
+  delete job;
 }
 
 void
@@ -433,6 +434,10 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
         remote,
         std::bind(&llarp_router::HandleDHTLookupForTryEstablishTo, this, remote,
                   std::placeholders::_1));
+  }
+  else
+  {
+    llarp::LogWarn("not connecting to ", remote, " as it's unreliable");
   }
 }
 
@@ -491,8 +496,13 @@ llarp_router::Tick()
           llarp::LogDebug("establish to ", itr->first);
           TryEstablishTo(itr->first);
         }
+        ++itr;
       }
-      ++itr;
+      else
+      {
+        llarp::LogInfo("commit to ", itr->first, " expired");
+        itr = m_PersistingSessions.erase(itr);
+      }
     }
   }
 
@@ -536,9 +546,8 @@ llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
   llarp::LogDebug("send ", buf.sz, " bytes to ", remote);
   if(selected)
   {
-    if(!selected->SendTo(remote, buf))
-      llarp::LogWarn("message to ", remote, " was dropped");
-    return;
+    if(selected->SendTo(remote, buf))
+      return;
   }
   bool sent = outboundLink->SendTo(remote, buf);
   if(!sent)
@@ -567,10 +576,8 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
 {
   __llarp_dht_remove_peer(dht, remote);
   // remove from valid routers if it's a valid router
-  auto itr = validRouters.find(remote);
-  if(itr == validRouters.end())
-    return;
-  validRouters.erase(itr);
+  validRouters.erase(remote);
+  llarp::LogInfo("Session to ", remote, " fully closed");
 }
 
 llarp::ILinkLayer *
@@ -656,12 +663,26 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
   // job->crypto = &crypto; // we already have this
   job->cryptoworker = tp;
   job->diskworker   = disk;
-
-  if(rc.IsPublicRouter())
-    job->hook = &llarp_router::on_verify_server_rc;
+  if(rpcCaller && rc.IsPublicRouter())
+  {
+    rpcCaller->VerifyRouter(rc.pubkey, [job, ctx](llarp::PubKey, bool valid) {
+      if(valid)
+        llarp_nodedb_async_verify(job);
+      else
+      {
+        delete job;
+        delete ctx;
+      }
+    });
+  }
   else
-    job->hook = &llarp_router::on_verify_client_rc;
-  llarp_nodedb_async_verify(job);
+  {
+    if(rc.IsPublicRouter())
+      job->hook = &llarp_router::on_verify_server_rc;
+    else
+      job->hook = &llarp_router::on_verify_client_rc;
+    llarp_nodedb_async_verify(job);
+  }
 }
 
 void
@@ -685,6 +706,8 @@ llarp_router::Run()
     }
     llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
   }
+
+  llarp_threadpool_start(tp);
 
   routerProfiling.Load(routerProfilesFile.c_str());
 
@@ -751,7 +774,16 @@ llarp_router::Run()
   // set public signing key
   _rc.pubkey = llarp::seckey_topublic(identity);
   llarp::LogInfo("Your Identity pubkey ", rc().pubkey);
-
+  if(ExitEnabled())
+  {
+    llarp::nuint32_t a = publicAddr.xtonl();
+    // TODO: enable this once the network can serialize xi
+    //_rc.exits.emplace_back(_rc.pubkey, a);
+    llarp::LogInfo(
+        "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your exit "
+        "is advertised as exiting at ",
+        a);
+  }
   llarp::LogInfo("Signing rc...");
   if(!_rc.Sign(&crypto, identity))
   {
@@ -893,7 +925,8 @@ llarp_router::InitServiceNode()
   llarp::LogInfo("accepting transit traffic");
   paths.AllowTransit();
   llarp_dht_allow_transit(dht);
-  return exitContext.AddExitEndpoint("default-connectivity", exitConf);
+  exitContext.AddExitEndpoint("default-connectivity", exitConf);
+  return true;
 }
 
 void
@@ -1197,7 +1230,13 @@ namespace llarp
       {
         self->defaultIfName = val;
       }
-      if(!StrEq(key, "profiles"))
+      if(StrEq(key, "profiles"))
+      {
+        self->routerProfilesFile = val;
+        self->routerProfiling.Load(val);
+        llarp::LogInfo("setting profiles to ", self->routerProfilesFile);
+      }
+      else
       {
         self->exitConf.insert(std::make_pair(key, val));
       }
@@ -1244,23 +1283,6 @@ namespace llarp
     else if(StrEq(section, "connect"))
     {
       self->connect[key] = val;
-    }
-    else if(StrEq(section, "network"))
-    {
-      if(StrEq(key, "profiles"))
-      {
-        self->routerProfilesFile = val;
-        self->routerProfiling.Load(val);
-        llarp::LogInfo("setting profiles to ", self->routerProfilesFile);
-      }
-      if(StrEq(key, "min-connected"))
-      {
-        self->minConnectedRouters = std::max(atoi(val), 0);
-      }
-      if(StrEq(key, "max-connected"))
-      {
-        self->maxConnectedRouters = std::max(atoi(val), 1);
-      }
     }
     else if(StrEq(section, "router"))
     {
@@ -1313,5 +1335,5 @@ namespace llarp
         self->publicOverride   = true;
       }
     }
-  }
+  }  // namespace llarp
 }  // namespace llarp

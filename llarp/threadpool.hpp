@@ -4,11 +4,7 @@
 #include <llarp/threadpool.h>
 #include <llarp/threading.hpp>
 
-#include <functional>
-#include <queue>
-
-#include <thread>
-#include <vector>
+#include "thread_pool.hpp"
 
 namespace llarp
 {
@@ -16,63 +12,15 @@ namespace llarp
   {
     typedef util::Mutex mtx_t;
     typedef util::Lock lock_t;
-    struct Pool
-    {
-      virtual void
-      Spawn(size_t sz, const char* name);
 
-      void
-      QueueJob(const llarp_thread_job& job);
-
-      virtual void
-      Join();
-
-      void
-      Stop();
-      std::vector< std::thread > threads;
-
-      struct Job_t
-      {
-        uint32_t id;
-        void* user;
-        llarp_thread_work_func work;
-
-        Job_t() = default;
-
-        Job_t(uint32_t jobid, const llarp_thread_job& j)
-            : id(jobid), user(j.user), work(j.work)
-        {
-        }
-
-        bool
-        operator<(const Job_t& j) const
-        {
-          return id < j.id;
-        }
-
-        void
-        operator()() const
-        {
-          work(user);
-        }
-      };
-
-      std::priority_queue< Job_t > jobs;
-      uint32_t ids = 0;
-      mtx_t queue_mutex;
-      util::Condition condition;
-      util::Condition done;
-      bool stop;
-    };
+    using Pool = ThreadPool;
 
     struct IsolatedPool : public Pool
     {
-      IsolatedPool(int flags) : Pool(), m_flags(flags)
+      IsolatedPool(size_t workers, int flags)
+          : Pool(workers, workers * 128), m_flags(flags)
       {
       }
-
-      virtual void
-      Spawn(size_t workers, const char* name);
 
       void
       Join();

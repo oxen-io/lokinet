@@ -5,8 +5,43 @@ namespace llarp
 {
   namespace exit
   {
+    Endpoint::Endpoint(const llarp::PubKey& remoteIdent,
+                       const llarp::PathID_t& beginPath, bool rewriteIP,
+                       huint32_t ip, llarp::handlers::ExitEndpoint* parent)
+        : m_Parent(parent)
+        , m_remoteSignKey(remoteIdent)
+        , m_CurrentPath(beginPath)
+        , m_IP(ip)
+        , m_RewriteSource(rewriteIP)
+    {
+    }
+
     Endpoint::~Endpoint()
     {
+      m_Parent->DelEndpointInfo(m_CurrentPath);
+    }
+
+    void
+    Endpoint::Close()
+    {
+      m_Parent->RemoveExit(this);
+    }
+
+    bool
+    Endpoint::UpdateLocalPath(const llarp::PathID_t& nextPath)
+    {
+      if(!m_Parent->UpdateEndpointPath(m_remoteSignKey, nextPath))
+        return false;
+      m_CurrentPath = nextPath;
+      return true;
+    }
+
+    void
+    Endpoint::Tick(llarp_time_t now)
+    {
+      (void)now;
+      m_RxRate = 0;
+      m_TxRate = 0;
     }
 
     bool
@@ -22,18 +57,62 @@ namespace llarp
     }
 
     bool
+    Endpoint::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
+    {
+      auto path = GetCurrentPath();
+      if(path)
+        return path->ExpiresSoon(now, dlt);
+      return true;
+    }
+
+    bool
+    Endpoint::SendOutboundTraffic(llarp_buffer_t buf)
+    {
+      llarp::net::IPv4Packet pkt;
+      if(!pkt.Load(buf))
+        return false;
+      huint32_t dst;
+      if(m_RewriteSource)
+        dst = m_Parent->GetIfAddr();
+      else
+        dst = pkt.dst();
+      pkt.UpdateIPv4PacketOnDst(m_IP, dst);
+      if(!m_Parent->QueueOutboundTraffic(pkt.Buffer()))
+      {
+        llarp::LogError("failed to queue outbound traffic");
+        return false;
+      }
+      m_TxRate += buf.sz;
+      return true;
+    }
+
+    bool
     Endpoint::SendInboundTraffic(llarp_buffer_t buf)
     {
       auto path = GetCurrentPath();
       if(path)
       {
+        llarp::net::IPv4Packet pkt;
+        if(!pkt.Load(buf))
+          return false;
+
+        huint32_t src;
+        if(m_RewriteSource)
+          src = m_Parent->GetIfAddr();
+        else
+          src = pkt.src();
+        pkt.UpdateIPv4PacketOnDst(src, m_IP);
+
         llarp::routing::TransferTrafficMessage msg;
-        if(!msg.PutBuffer(buf))
+        if(!msg.PutBuffer(pkt.Buffer()))
           return false;
         msg.S = path->NextSeqNo();
         if(!msg.Sign(m_Parent->Crypto(), m_Parent->Router()->identity))
           return false;
-        return path->SendRoutingMessage(&msg, m_Parent->Router());
+        if(!path->SendRoutingMessage(&msg, m_Parent->Router()))
+          return false;
+        m_RxRate += buf.sz;
+        return true;
       }
       return false;
     }

@@ -22,6 +22,11 @@ namespace llarp
         Zero();
       }
 
+      Address(const byte_t* buf)
+      {
+        memcpy(b, buf, 32);
+      }
+
       Address(const Address& other)
       {
         memcpy(b, other.b, 32);

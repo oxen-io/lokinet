@@ -49,6 +49,10 @@ namespace llarp
 
     struct GrantExitMessage final : public IMessage
     {
+      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      uint64_t T;
+      Nonce_t Y;
+      llarp::Signature Z;
       GrantExitMessage() : IMessage()
       {
       }
@@ -56,6 +60,51 @@ namespace llarp
       ~GrantExitMessage()
       {
       }
+
+      GrantExitMessage&
+      operator=(const GrantExitMessage& other);
+
+      bool
+      BEncode(llarp_buffer_t* buf) const override;
+
+      bool
+      Sign(llarp_crypto* c, const llarp::SecretKey& sk);
+
+      bool
+      Verify(llarp_crypto* c, const llarp::PubKey& pk) const;
+
+      bool
+      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
+
+      bool
+      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+    };
+
+    struct RejectExitMessage final : public IMessage
+    {
+      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      uint64_t B;
+      std::vector< llarp::exit::Policy > R;
+      uint64_t T;
+      Nonce_t Y;
+      llarp::Signature Z;
+
+      RejectExitMessage() : IMessage()
+      {
+      }
+
+      ~RejectExitMessage()
+      {
+      }
+
+      RejectExitMessage&
+      operator=(const RejectExitMessage& other);
+
+      bool
+      Sign(llarp_crypto* c, const llarp::SecretKey& sk);
+
+      bool
+      Verify(llarp_crypto* c, const llarp::PubKey& pk) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -67,15 +116,29 @@ namespace llarp
       HandleMessage(IMessageHandler* h, llarp_router* r) const override;
     };
 
-    struct RejectExitMessage final : public IMessage
+    struct UpdateExitVerifyMessage final : public IMessage
     {
-      RejectExitMessage() : IMessage()
+      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      uint64_t T;
+      Nonce_t Y;
+      llarp::Signature Z;
+
+      UpdateExitVerifyMessage() : IMessage()
       {
       }
 
-      ~RejectExitMessage()
+      ~UpdateExitVerifyMessage()
       {
       }
+
+      UpdateExitVerifyMessage&
+      operator=(const UpdateExitVerifyMessage& other);
+
+      bool
+      Sign(llarp_crypto* c, const llarp::SecretKey& sk);
+
+      bool
+      Verify(llarp_crypto* c, const llarp::PubKey& pk) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -89,6 +152,12 @@ namespace llarp
 
     struct UpdateExitMessage final : public IMessage
     {
+      using Nonce_t = llarp::AlignedBuffer< 16 >;
+      llarp::PathID_t P;
+      uint64_t T;
+      Nonce_t Y;
+      llarp::Signature Z;
+
       UpdateExitMessage() : IMessage()
       {
       }
@@ -96,6 +165,15 @@ namespace llarp
       ~UpdateExitMessage()
       {
       }
+
+      UpdateExitMessage&
+      operator=(const UpdateExitMessage& other);
+
+      bool
+      Sign(llarp_crypto* c, const llarp::SecretKey& sk);
+
+      bool
+      Verify(llarp_crypto* c, const llarp::PubKey& pk) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -109,6 +187,11 @@ namespace llarp
 
     struct CloseExitMessage final : public IMessage
     {
+      using Nonce_t = llarp::AlignedBuffer< 16 >;
+
+      Nonce_t Y;
+      llarp::Signature Z;
+
       CloseExitMessage() : IMessage()
       {
       }
@@ -116,6 +199,9 @@ namespace llarp
       ~CloseExitMessage()
       {
       }
+
+      CloseExitMessage&
+      operator=(const CloseExitMessage& other);
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -125,6 +211,12 @@ namespace llarp
 
       bool
       HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+
+      bool
+      Sign(llarp_crypto* c, const llarp::SecretKey& sk);
+
+      bool
+      Verify(llarp_crypto* c, const llarp::PubKey& pk) const;
     };
 
   }  // namespace routing

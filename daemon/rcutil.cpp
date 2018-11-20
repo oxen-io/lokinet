@@ -489,7 +489,7 @@ main(int argc, char *argv[])
     // llarp::LogInfo("Looking for string: ", rcfname);
 
     llarp::PubKey binaryPK;
-    llarp::HexDecode(rcfname, binaryPK.data());
+    llarp::HexDecode(rcfname, binaryPK.data(), binaryPK.size());
 
     llarp::LogInfo("Looking for binary: ", binaryPK);
     llarp::RouterContact *rc = llarp_main_getDatabase(ctx, binaryPK.data());
@@ -510,7 +510,7 @@ main(int argc, char *argv[])
     llarp_main_setup(ctx);
 
     llarp::PubKey binaryPK;
-    llarp::HexDecode(rcfname, binaryPK.data());
+    llarp::HexDecode(rcfname, binaryPK.data(), binaryPK.size());
 
     llarp::LogInfo("Queueing job");
     llarp_router_lookup_job *job = new llarp_router_lookup_job;
@@ -581,7 +581,7 @@ main(int argc, char *argv[])
 
     llarp::PubKey binaryPK;
     // llarp::service::Address::FromString
-    llarp::HexDecode(rcfname, binaryPK.data());
+    llarp::HexDecode(rcfname, binaryPK.data(), binaryPK.size());
     char tmp[(1 + 32) * 2] = {0};
     std::string b32        = llarp::Base32Encode(binaryPK, tmp);
     llarp::LogInfo("to base32 ", b32);

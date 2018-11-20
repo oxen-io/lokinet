@@ -40,10 +40,10 @@ namespace llarp
       bool
       Start(const std::string& remote);
 
-      /// async test if a router is valid via jsonrpc
+      /// test if a router is valid
       void
-      AsyncVerifyRouter(llarp::PubKey pkey,
-                        std::function< void(llarp::PubKey, bool) > handler);
+      VerifyRouter(llarp::PubKey pkey,
+                   std::function< void(llarp::PubKey, bool) > handler);
 
      private:
       CallerImpl* m_Impl;

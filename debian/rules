@@ -19,3 +19,9 @@ endif
 
 override_dh_auto_build:
 	$(MAKE) debian
+
+override_dh_auto_test:
+	$(MAKE) debian-test
+
+override_dh_auto_install:
+	$(MAKE) debian-install
