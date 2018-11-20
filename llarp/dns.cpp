@@ -1,4 +1,4 @@
-#include <llarp/endian.h>
+#include <llarp/endian.hpp>
 #include <llarp/dnsd.hpp>  // for llarp_handle_dnsd_recvfrom, dnsc
 #include <llarp/logger.hpp>
 
@@ -212,7 +212,7 @@ extern "C"
     }
     */
     question->name = m_qName;
-  
+
     question->type = get16bits(moveable);
     (*pos) += 2;
     // printf("Now1 at [%d]\n", buffer - start);
@@ -244,7 +244,7 @@ extern "C"
 
     //hexDump(moveable, 12);
     //hexDumpAt(buffer, *pos, 12);
-      
+
     if(*moveable == '\xc0')
     {
       // hexDump(moveable, 2);

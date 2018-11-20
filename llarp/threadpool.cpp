@@ -1,7 +1,7 @@
 #include "threadpool.hpp"
 #include <cstring>
 
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <functional>
 #include <queue>
 

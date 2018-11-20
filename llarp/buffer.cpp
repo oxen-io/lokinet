@@ -1,5 +1,5 @@
 #include <llarp/buffer.h>
-#include <llarp/endian.h>
+#include <llarp/endian.hpp>
 #include <stdarg.h>
 #include <stdio.h>
 

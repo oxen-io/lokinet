@@ -1,8 +1,8 @@
 #ifndef LLARP_BENCODE_H
 #define LLARP_BENCODE_H
 #include <llarp/buffer.h>
-#include <llarp/common.h>
-#include <llarp/proto.h>
+#include <llarp/common.hpp>
+#include <llarp/proto.hpp>
 #include <stdbool.h>
 #include <stdint.h>
 

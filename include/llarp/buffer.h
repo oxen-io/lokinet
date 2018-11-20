@@ -1,6 +1,6 @@
 #ifndef LLARP_BUFFER_H_
 #define LLARP_BUFFER_H_
-#include <llarp/common.h>
+#include <llarp/common.hpp>
 #include <llarp/mem.h>
 #include <stdbool.h>
 #include <stdio.h>

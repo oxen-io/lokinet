@@ -230,19 +230,19 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
   llarp::LogDebug(searchIp, " vs ", checkIp);
 
   llarp::IPRange range = llarp::iprange_ipv4(
-      stoi(tokensCheck[0]), stoi(tokensCheck[1]), stoi(tokensCheck[2]),
-      stoi(tokensCheck[3]), tunEndpoint->tunif.netmask);  // create range
+      std::stoi(tokensCheck[0]), std::stoi(tokensCheck[1]), std::stoi(tokensCheck[2]),
+      std::stoi(tokensCheck[3]), tunEndpoint->tunif.netmask);  // create range
   // hack atm to work around limitations in ipaddr_ipv4_bits and llarp::IPRange
   llarp::huint32_t searchIPv4_fixed = llarp::ipaddr_ipv4_bits(
-      stoi(tokensSearch[searchTokens - 6]),
-      stoi(tokensSearch[searchTokens - 5]),
-      stoi(tokensSearch[searchTokens - 4]),
-      stoi(tokensSearch[searchTokens - 3]));  // create ip
+      std::stoi(tokensSearch[searchTokens - 6]),
+      std::stoi(tokensSearch[searchTokens - 5]),
+      std::stoi(tokensSearch[searchTokens - 4]),
+      std::stoi(tokensSearch[searchTokens - 3]));  // create ip
   llarp::huint32_t searchIPv4_search = llarp::ipaddr_ipv4_bits(
-      stoi(tokensSearch[searchTokens - 3]),
-      stoi(tokensSearch[searchTokens - 4]),
-      stoi(tokensSearch[searchTokens - 5]),
-      stoi(tokensSearch[searchTokens - 6]));  // create ip
+      std::stoi(tokensSearch[searchTokens - 3]),
+      std::stoi(tokensSearch[searchTokens - 4]),
+      std::stoi(tokensSearch[searchTokens - 5]),
+      std::stoi(tokensSearch[searchTokens - 6]));  // create ip
 
   // bool inRange = range.Contains(searchAddr.xtohl());
   bool inRange = range.Contains(searchIPv4_search);

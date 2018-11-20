@@ -1,6 +1,6 @@
 #include "router.hpp"
-#include <llarp/proto.h>
-#include <llarp/threadpool.h>
+#include <llarp/proto.hpp>
+#include <llarp/iwp.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/link/utp.hpp>
 #include <llarp/rpc.hpp>

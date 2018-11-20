@@ -1,6 +1,7 @@
-#include <llarp/time.h>
-#include <llarp/bencode.hpp>
 #include <llarp/messages/path_confirm.hpp>
+
+#include <llarp/time.hpp>
+#include <llarp/bencode.hpp>
 #include <llarp/routing/handler.hpp>
 
 namespace llarp
@@ -12,7 +13,7 @@ namespace llarp
     }
 
     PathConfirmMessage::PathConfirmMessage(uint64_t lifetime)
-        : pathLifetime(lifetime), pathCreated(llarp_time_now_ms())
+        : pathLifetime(lifetime), pathCreated(time_now_ms())
     {
     }
 

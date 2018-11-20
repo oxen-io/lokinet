@@ -4,7 +4,7 @@
 #include "logger.hpp"
 
 #include <llarp/router_contact.hpp>
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 
 #include <fstream>
 #include "buffer.hpp"
@@ -14,9 +14,6 @@
 #include "router.hpp"
 
 #include <llarp/messages/dht.hpp>
-//#include <llarp/dht/messages/findintro.hpp>
-//#include <llarp/routing_endpoint.hpp>
-//#include <llarp/crypt.hpp>  // for llarp::pubkey
 
 struct llarp_main *ctx = 0;
 
@@ -391,7 +388,7 @@ main(int argc, char *argv[])
     printf("Creating [%s]\n", rcfname);
     // if we zero it out then
     // set updated timestamp
-    rc.last_updated = llarp_time_now_ms();
+    rc.last_updated = llarp::time_now_ms();
     // load longterm identity
     llarp_crypto crypt;
     llarp_crypto_init(&crypt);
@@ -440,7 +437,7 @@ main(int argc, char *argv[])
     // llarp_rc_read(rcfname, &rc);
 
     // set updated timestamp
-    rc.last_updated = llarp_time_now_ms();
+    rc.last_updated = llarp::time_now_ms();
     // load longterm identity
     llarp_crypto crypt;
 

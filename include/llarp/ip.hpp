@@ -1,7 +1,7 @@
 #ifndef LLARP_IP_HPP
 #define LLARP_IP_HPP
 #include <llarp/buffer.h>
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <llarp/net.hpp>
 #include <llarp/ev.h>
 

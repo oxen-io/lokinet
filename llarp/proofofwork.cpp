@@ -1,4 +1,3 @@
-#include <llarp/time.h>
 #include <cmath>
 #include <llarp/pow.hpp>
 #include "buffer.hpp"

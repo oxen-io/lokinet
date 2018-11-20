@@ -1,4 +1,4 @@
-#include <llarp/logic.h>
+#include <llarp/logic.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/router_contact.hpp>
 

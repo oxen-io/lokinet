@@ -1,6 +1,6 @@
 #ifndef LLARP_EXIT_ENDPOINT_HPP
 #define LLARP_EXIT_ENDPOINT_HPP
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/router.h>
 #include <llarp/path.hpp>

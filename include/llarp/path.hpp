@@ -1,7 +1,7 @@
 #ifndef LLARP_PATH_HPP
 #define LLARP_PATH_HPP
 #include <llarp/router.h>
-#include <llarp/time.h>
+#include <llarp/time.hpp>
 #include <llarp/aligned.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/dht.hpp>
