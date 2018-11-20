@@ -124,13 +124,13 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
     errno = 0;
   }
 #else
-  char ebuf[1024];
-  int err = WSAGetLastError();
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf,
-                1024, nullptr);
-  llarp::LogWarn("sendto failed: ", buf, ":", err);
+    char ebuf[1024];
+    int err = WSAGetLastError();
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf,
+                  1024, nullptr);
+    llarp::LogWarn("sendto failed: ", buf);
     WSASetLastError(0);
-	}
+  }
 #endif
   return ret;
 }
