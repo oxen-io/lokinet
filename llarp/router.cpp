@@ -46,12 +46,14 @@ struct TryConnectJob
   void
   Failed()
   {
+    llarp::LogInfo("session to ", rc.pubkey, " closed");
     link->CloseSessionTo(rc.pubkey);
   }
 
   void
   Success()
   {
+    llarp::LogInfo("established session with ", rc.pubkey);
   }
 
   void
@@ -429,6 +431,10 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
         std::bind(&llarp_router::HandleDHTLookupForTryEstablishTo, this, remote,
                   std::placeholders::_1));
   }
+  else
+  {
+    llarp::LogWarn("not connecting to ", remote, " as it's unreliable");
+  }
 }
 
 void
@@ -486,8 +492,13 @@ llarp_router::Tick()
           llarp::LogDebug("establish to ", itr->first);
           TryEstablishTo(itr->first);
         }
+        ++itr;
       }
-      ++itr;
+      else
+      {
+        llarp::LogInfo("commit to ", itr->first, " expired");
+        itr = m_PersistingSessions.erase(itr);
+      }
     }
   }
 
@@ -531,9 +542,8 @@ llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
   llarp::LogDebug("send ", buf.sz, " bytes to ", remote);
   if(selected)
   {
-    if(!selected->SendTo(remote, buf))
-      llarp::LogWarn("message to ", remote, " was dropped");
-    return;
+    if(selected->SendTo(remote, buf))
+      return;
   }
   bool sent = outboundLink->SendTo(remote, buf);
   if(!sent)
@@ -562,10 +572,8 @@ llarp_router::SessionClosed(const llarp::RouterID &remote)
 {
   __llarp_dht_remove_peer(dht, remote);
   // remove from valid routers if it's a valid router
-  auto itr = validRouters.find(remote);
-  if(itr == validRouters.end())
-    return;
-  validRouters.erase(itr);
+  validRouters.erase(remote);
+  llarp::LogInfo("Session to ", remote, " fully closed");
 }
 
 llarp::ILinkLayer *
