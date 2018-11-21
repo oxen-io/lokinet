@@ -317,10 +317,18 @@ namespace llarp
         m_LastRecvMessage = now;
       }
 
+      /// return true if ALL of the specified roles are supported
       bool
-      SupportsRoles(PathRole roles) const
+      SupportsAllRoles(PathRole roles) const
       {
         return (_role & roles) == roles;
+      }
+
+      /// return true if ANY of the specified roles are supported
+      bool
+      SupportsAnyRoles(PathRole roles) const
+      {
+        return (_role & roles) != 0;
       }
 
       PathStatus

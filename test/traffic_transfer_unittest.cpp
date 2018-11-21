@@ -5,35 +5,6 @@ using TransferTrafficMessage = llarp::routing::TransferTrafficMessage;
 
 class TransferTrafficTest : public ::testing::Test
 {
- public:
-  llarp_crypto crypto;
-  llarp::SecretKey alice;
-
-  TransferTrafficTest()
-  {
-    llarp_crypto_init(&crypto);
-  }
-
-  ~TransferTrafficTest()
-  {
-  }
-
-  void
-  SetUp()
-  {
-    crypto.identity_keygen(alice);
-  }
-};
-
-TEST_F(TransferTrafficTest, TestSignVerify)
-{
-  TransferTrafficMessage msg;
-  msg.X.resize(1024);
-  msg.S = 100;
-  crypto.randbytes(msg.X.data(), 1024);
-  ASSERT_TRUE(msg.Sign(&crypto, alice));
-  ASSERT_FALSE(msg.Z.IsZero());
-  ASSERT_TRUE(msg.Verify(&crypto, llarp::seckey_topublic(alice)));
 };
 
 TEST_F(TransferTrafficTest, TestPutBufferOverflow)

@@ -107,8 +107,6 @@ namespace llarp
         if(!msg.PutBuffer(pkt.Buffer()))
           return false;
         msg.S = path->NextSeqNo();
-        if(!msg.Sign(m_Parent->Crypto(), m_Parent->Router()->identity))
-          return false;
         if(!path->SendRoutingMessage(&msg, m_Parent->Router()))
           return false;
         m_RxRate += buf.sz;
