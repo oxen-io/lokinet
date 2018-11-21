@@ -245,14 +245,9 @@ packet2bytes(dns_packet &in)
   // don't pull these from the header, trust what we actually have more
   vput16bits(write_buffer, in.questions.size());  // QD (number of questions)
   vput16bits(write_buffer, in.answers.size());    // AN (number of answers)
-  // be lazy for now
-  // vput16bits(write_buffer, 0);  // NS (number of auth RRs)
-  // vput16bits(write_buffer, 0);  // AR (number of Additional
   vput16bits(write_buffer, in.auth_rrs.size());  // NS (number of auth RRs)
   vput16bits(write_buffer,
              in.additional_rrs.size());  // AR (number of Additional RRs)
-
-  // llarp::LogInfo("Header took ", write_buffer.size());
 
   for(auto &it : in.questions)
   {
@@ -261,9 +256,7 @@ packet2bytes(dns_packet &in)
     vput16bits(write_buffer, it->type);
     vput16bits(write_buffer, it->qClass);
   }
-  // llarp::LogInfo("Questions finished at ", write_buffer.size());
 
-  // llarp::LogDebug("Starting answers for ", in.questions[0]->name);
   for(auto &it : in.answers)
   {
     // code answers
@@ -273,8 +266,6 @@ packet2bytes(dns_packet &in)
     vput32bits(write_buffer, 1);  // ttl
     dns_writeType(write_buffer, it->record.get());
   }
-  // llarp::LogDebug("Done with answers");
-  // llarp::LogInfo("Answers finished at ", write_buffer.size());
 
   for(auto &it : in.auth_rrs)
   {
@@ -318,13 +309,24 @@ extern "C"
   }
 
   dns_msg_header *
-  decode_hdr(const char *buffer)
+  decode_hdr(llarp_buffer_t &buffer)
   {
     dns_msg_header *hdr = new dns_msg_header;
-    hdr->id             = get16bits(buffer);
-    uint16_t fields     = get16bits(buffer);
+    uint16_t fields;
+
+    // reads as network byte order
+    llarp_buffer_read_uint16(&buffer, &hdr->id);
+    llarp_buffer_read_uint16(&buffer, &fields);
+    llarp_buffer_read_uint16(&buffer, &hdr->qdCount);
+    llarp_buffer_read_uint16(&buffer, &hdr->anCount);
+    llarp_buffer_read_uint16(&buffer, &hdr->nsCount);
+    llarp_buffer_read_uint16(&buffer, &hdr->arCount);
+    
+    // decode fields into hdr
     uint8_t lFields     = (fields & 0x00FF) >> 0;
     uint8_t hFields     = (fields & 0xFF00) >> 8;
+    
+    // process high byte
     // hdr->qr      = fields & 0x8000;
     hdr->qr     = (hFields >> 7) & 0x1;
     hdr->opcode = fields & 0x7800;
@@ -332,68 +334,32 @@ extern "C"
     hdr->tc     = fields & 0x0200;
     hdr->rd     = fields & 0x0100;
 
+    // process low byte
     hdr->ra    = (lFields >> 7) & 0x1;
     hdr->z     = (lFields >> 6) & 0x1;
     hdr->ad    = (lFields >> 5) & 0x1;
     hdr->cd    = (lFields >> 4) & 0x1;
     hdr->rcode = lFields & 0xf;
 
-    hdr->qdCount = get16bits(buffer);
-    hdr->anCount = get16bits(buffer);
-    hdr->nsCount = get16bits(buffer);
-    hdr->arCount = get16bits(buffer);
     return hdr;
   }
 
   dns_msg_question *
   decode_question(const char *buffer, uint32_t *pos)
   {
-    // char *start = (char *)buffer;
     dns_msg_question *question = new dns_msg_question;
 
-    // uint32_t start = *pos;
     std::string m_qName = getDNSstring(buffer, pos);
     llarp::LogDebug("Got question name: ", m_qName);
-    // llarp::LogInfo("Started at ", std::to_string(start), " ended at: ",
-    // std::to_string(*pos)); llarp::LogInfo("Advancing question buffer by ",
-    // std::to_string(*pos)); buffer += (*pos) - start; buffer +=
-    // m_qName.length() + 2;  // + length byte & ending terminator
 
     const char *moveable = buffer;
     moveable += *pos;  // advance to position
-    // hexDump(moveable, 4);
-
-    // printf("Now0 at [%d]\n", buffer - start);
-    // buffer += m_qName.size() + 1;
-    /*
-    std::string m_qName        = "";
-    int length                 = *buffer++;
-    // llarp::LogInfo("qNamLen", length);
-    while(length != 0)
-    {
-      for(int i = 0; i < length; i++)
-      {
-        char c = *buffer++;
-        m_qName.append(1, c);
-      }
-      length = *buffer++;
-      if(length != 0)
-        m_qName.append(1, '.');
-    }
-    */
     question->name = m_qName;
 
     question->type = get16bits(moveable);
     (*pos) += 2;
-    // printf("Now1 at [%d]\n", buffer - start);
     question->qClass = get16bits(moveable);
     (*pos) += 2;
-    // printf("Now2 at [%d]\n", buffer - start);
-    /*
-    llarp::LogDebug("Type ", std::to_string(question->type), " Class ",
-                    std::to_string(question->qClass));
-                    */
-    // hexDump(moveable, 4);
     return question;
   }
 
@@ -493,8 +459,8 @@ extern "C"
                       */
       moveable += answer->rdLen;
       (*pos) += answer->rdLen;  // advance the length
-
-      answer->record.reset(new llarp::dns::type_1a());
+      
+      answer->record = std::make_unique< llarp::dns::type_1a >();
       answer->record->parse(answer->rData);
     }
     else
@@ -503,7 +469,7 @@ extern "C"
       // FIXME: move this out of here, this shouldn't be responsible for decode
       switch(answer->type)
       {
-        case 2:  // NS
+        case LLARP_DNS_RECTYPE_NS:  // NS
         {
           std::string ns = getDNSstring(buffer, pos);
           answer->rData.resize(ns.size());
@@ -513,12 +479,12 @@ extern "C"
           // don't really need to do anything here
           moveable += answer->rdLen;
           //(*pos) += answer->rdLen;  // advance the length
-
-          answer->record.reset(new llarp::dns::type_2ns());
+          
+          answer->record = std::make_unique< llarp::dns::type_2ns >();
           answer->record->parse(answer->rData);
         }
         break;
-        case 5:  // CNAME
+        case LLARP_DNS_RECTYPE_CNAME:  // CNAME
         {
           std::string cname = getDNSstring(buffer, pos);
           llarp::LogDebug("CNAME ", cname);
@@ -527,12 +493,12 @@ extern "C"
 
           moveable += answer->rdLen;
           //(*pos) += answer->rdLen;  // advance the length
-
-          answer->record.reset(new llarp::dns::type_5cname());
+          
+          answer->record = std::make_unique< llarp::dns::type_5cname >();
           answer->record->parse(answer->rData);
         }
         break;
-        case 6:  // type 6 = SOA
+        case LLARP_DNS_RECTYPE_SOA:  // type 6 = SOA
         {
           // 2 names, then 4x 32bit
           // why risk any crashes
@@ -560,7 +526,7 @@ extern "C"
           (*pos) += answer->rdLen;  // advance the length
         }
         break;
-        case 12:
+        case LLARP_DNS_RECTYPE_PTR:
         {
           std::string revname = getDNSstring(buffer, pos);
           llarp::LogInfo("revDNSname: ", revname);
@@ -571,11 +537,11 @@ extern "C"
           moveable += answer->rdLen;
           //(*pos) += answer->rdLen;  // advance the length
 
-          answer->record.reset(new llarp::dns::type_12ptr());
+          answer->record = std::make_unique< llarp::dns::type_12ptr >();
           answer->record->parse(answer->rData);
         }
         break;
-        case 15:
+        case LLARP_DNS_RECTYPE_MX:
         {
           uint16_t priority = get16bits(moveable);
           (*pos) += 2;
@@ -590,11 +556,11 @@ extern "C"
           // hexDumpAt(buffer, *pos, 5);
           // hexDump(moveable, 5);
 
-          answer->record.reset(new llarp::dns::type_15mx());
+          answer->record = std::make_unique< llarp::dns::type_15mx >();
           answer->record->parse(answer->rData);
         }
         break;
-        case 16:
+        case LLARP_DNS_RECTYPE_TXT:
         {
           // hexDump(buffer, 5);
           // std::string revname = getDNSstring((char *)buffer);
@@ -604,7 +570,7 @@ extern "C"
           moveable += answer->rdLen;
           (*pos) += answer->rdLen;  // advance the length
 
-          answer->record.reset(new llarp::dns::type_16txt());
+          answer->record = std::make_unique< llarp::dns::type_16txt >();
           answer->record->parse(answer->rData);
         }
         break;
@@ -638,10 +604,14 @@ extern "C"
                             const struct sockaddr *addr, const void *buf,
                             ssize_t sz)
   {
-    unsigned char *castBuf = (unsigned char *)buf;
-    // auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
-    dns_msg_header *hdr = decode_hdr((const char *)castBuf);
-    // castBuf += 12;
+    //auto abuffer = llarp::StackBuffer< decltype(buf) >(buf);
+    
+    llarp_buffer_t buffer;
+    buffer.base = (byte_t *)buf;
+    buffer.cur  = buffer.base;
+    buffer.sz   = sz;
+    
+    dns_msg_header *hdr = decode_hdr(buffer);
     llarp::LogDebug("msg id ", hdr->id);
     llarp::LogDebug("msg qr ", (uint8_t)hdr->qr);
     if(!udp)
@@ -663,23 +633,5 @@ extern "C"
       llarp_handle_dnsd_recvfrom(udp, addr, buf, sz);
     }
     delete hdr;
-    /*
-     llarp::LogInfo("msg op ", hdr->opcode);
-     llarp::LogInfo("msg rc ", hdr->rcode);
-
-     for(uint8_t i = 0; i < hdr->qdCount; i++)
-     {
-     dns_msg_question *question = decode_question((const char*)castBuf);
-     llarp::LogInfo("Read a question");
-     castBuf += question->name.length() + 8;
-     }
-
-     for(uint8_t i = 0; i < hdr->anCount; i++)
-     {
-     dns_msg_answer *answer = decode_answer((const char*)castBuf);
-     llarp::LogInfo("Read an answer");
-     castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
-     }
-     */
   }
 }
