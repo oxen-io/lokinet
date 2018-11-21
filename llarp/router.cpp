@@ -66,8 +66,11 @@ struct TryConnectJob
       Attempt();
       return;
     }
-    if(router->routerProfiling.IsBad(rc.pubkey))
-      llarp_nodedb_del_rc(router->nodedb, rc.pubkey);
+    if(!router->IsServiceNode())
+    {
+      if(router->routerProfiling.IsBad(rc.pubkey))
+        llarp_nodedb_del_rc(router->nodedb, rc.pubkey);
+    }
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
   }
@@ -326,6 +329,12 @@ llarp_router::SaveRC()
   return rc().Write(our_rc_file.string().c_str());
 }
 
+bool
+llarp_router::IsServiceNode() const
+{
+  return inboundLinks.size() > 0;
+}
+
 void
 llarp_router::Close()
 {
@@ -424,7 +433,7 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
     // try connecting async
     llarp_router_try_connect(this, rc, 5);
   }
-  else if(!routerProfiling.IsBad(remote))
+  else if(IsServiceNode() || !routerProfiling.IsBad(remote))
   {
     if(dht->impl.HasRouterLookup(remote))
       return;
@@ -457,7 +466,8 @@ llarp_router::HandleDHTLookupForTryEstablishTo(
 {
   if(results.size() == 0)
   {
-    routerProfiling.MarkTimeout(remote);
+    if(!IsServiceNode())
+      routerProfiling.MarkTimeout(remote);
   }
   for(const auto &result : results)
   {

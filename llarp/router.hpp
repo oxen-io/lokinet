@@ -186,6 +186,10 @@ struct llarp_router
   bool
   InitServiceNode();
 
+  /// return true if we are running in service node mode
+  bool
+  IsServiceNode() const;
+
   void
   Close();
 
