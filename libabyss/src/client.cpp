@@ -125,7 +125,7 @@ namespace abyss
             case json::IParser::eNeedData:
               return true;
             case json::IParser::eDone:
-              handler->HandleResponse(m_Response);
+              handler->HandleResponse(std::move(m_Response));
               Close();
               return true;
             case json::IParser::eParseError:

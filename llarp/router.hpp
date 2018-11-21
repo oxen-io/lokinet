@@ -170,7 +170,8 @@ struct llarp_router
   llarp_router();
   ~llarp_router();
 
-  void HandleLinkSessionEstablished(llarp::RouterContact);
+  void
+  HandleLinkSessionEstablished(llarp::RouterContact, llarp::ILinkLayer *);
 
   bool
   HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);
@@ -304,7 +305,7 @@ struct llarp_router
   GetRandomConnectedRouter(llarp::RouterContact &result) const;
 
   void
-  async_verify_RC(const llarp::RouterContact &rc);
+  async_verify_RC(const llarp::RouterContact &rc, llarp::ILinkLayer *link);
 
   void
   HandleDHTLookupForSendTo(llarp::RouterID remote,
