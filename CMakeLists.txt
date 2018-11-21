@@ -8,8 +8,8 @@ option(USE_LIBABYSS "enable libabyss" )
 option(USE_AVX2 "enable avx2 code" )
 option(USE_NETNS "enable networking namespace support" )
 
-# Require C++11
-set(CMAKE_CXX_STANDARD 11)
+# Require C++17
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
