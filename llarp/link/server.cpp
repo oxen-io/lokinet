@@ -118,17 +118,18 @@ namespace llarp
     return false;
   }
 
-  void
+  bool
   ILinkLayer::TryEstablishTo(const RouterContact& rc)
   {
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
-      return;
+      return false;
     llarp::LogInfo("Try establish to ", rc.pubkey);
     llarp::Addr addr(to);
     auto s = NewOutboundSession(rc, to);
     s->Start();
     PutSession(s);
+    return true;
   }
 
   bool

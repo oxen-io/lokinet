@@ -79,7 +79,9 @@ struct TryConnectJob
   Attempt()
   {
     --triesLeft;
-    link->TryEstablishTo(rc);
+    if(!link->TryEstablishTo(rc))
+      llarp::LogError("did not attempt connection to ", rc.pubkey,
+                      " and it has ", rc.addrs.size(), " advertised addresses");
   }
 
   bool
