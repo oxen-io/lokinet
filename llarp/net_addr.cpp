@@ -114,8 +114,26 @@ namespace llarp
   }
 
   bool
-  Addr::from_char_array(const char* str)
+  Addr::from_char_array(const char* in)
   {
+    char *str = (char *)in;
+    char *pPosition = strchr(str, ':');
+    bool freeStr = false;
+    if (pPosition)
+    {
+      // parse port
+      char buf[6];
+      snprintf(buf, 6, "%s", pPosition + 1);
+      uint16_t port = std::atoi(buf);
+      llarp::LogDebug("Setting port ", std::to_string(port));
+      this->port(port);
+      // trim str
+      // can't VLA
+      str = strdup(in); // copy it
+      str[pPosition - in] = '\0'; // nul terminate it early
+      llarp::LogDebug("Truncating to ", str);
+      freeStr = true;
+    }
     llarp::Zero(&_addr, sizeof(sockaddr_in6));
     struct addrinfo hint, *res = NULL;
     int ret;
@@ -129,17 +147,20 @@ namespace llarp
     if(ret)
     {
       llarp::LogError("failed to determine address family: ", str);
+      if (freeStr) free(str);
       return false;
     }
 
     if(res->ai_family == AF_INET6)
     {
       llarp::LogError("IPv6 address not supported yet", str);
+      if (freeStr) free(str);
       return false;
     }
     else if(res->ai_family != AF_INET)
     {
       llarp::LogError("Address family not supported yet", str);
+      if (freeStr) free(str);
       return false;
     }
 
@@ -148,8 +169,10 @@ namespace llarp
     if(inet_aton(str, addr) == 0)
     {
       llarp::LogError("failed to parse ", str);
+      if (freeStr) free(str);
       return false;
     }
+    if (freeStr) free(str);
 
     _addr.sin6_family = res->ai_family;
     _addr4.sin_family = res->ai_family;
