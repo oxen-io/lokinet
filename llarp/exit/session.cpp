@@ -52,7 +52,9 @@ namespace llarp
       llarp::routing::ObtainExitMessage obtain;
       obtain.S = p->NextSeqNo();
       obtain.T = llarp_randint();
+      // TODO: set expiratation
       obtain.X = 0;
+      // TODO: distinguish between service node traffic
       obtain.E = 1;
       if(!obtain.Sign(&router->crypto, m_ExitIdentity))
       {
@@ -102,9 +104,7 @@ namespace llarp
         return false;
       llarp::routing::TransferTrafficMessage transfer;
       transfer.S = path->NextSeqNo();
-      transfer.X.resize(pkt.sz);
-      memcpy(transfer.X.data(), pkt.buf, pkt.sz);
-      if(!transfer.Sign(&router->crypto, m_ExitIdentity))
+      if(!transfer.PutBuffer(pkt.Buffer()))
         return false;
       return path->SendRoutingMessage(&transfer, router);
     }

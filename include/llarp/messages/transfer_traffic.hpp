@@ -11,23 +11,13 @@ namespace llarp
     constexpr size_t MaxExitMTU = 1500;
     struct TransferTrafficMessage final : public IMessage
     {
-      using Nonce_t = AlignedBuffer< 16 >;
-
       std::vector< byte_t > X;
-      Nonce_t Y;
-      llarp::Signature Z;
 
       TransferTrafficMessage&
       operator=(const TransferTrafficMessage& other);
 
       bool
       PutBuffer(llarp_buffer_t buf);
-
-      bool
-      Sign(llarp_crypto* c, const llarp::SecretKey& sk);
-
-      bool
-      Verify(llarp_crypto* c, const llarp::PubKey& pk) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

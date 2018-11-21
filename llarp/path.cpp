@@ -447,12 +447,12 @@ namespace llarp
       // check to see if this path is dead
       if(_status == ePathEstablished)
       {
-        if(SupportsRoles(ePathRoleExit))
+        if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
         {
           if(m_LastRecvMessage && now > m_LastRecvMessage
              && now - m_LastRecvMessage > PATH_ALIVE_TIMEOUT)
           {
-            // TODO: send close message
+            // TODO: send close exit message
             // r->routerProfiling.MarkPathFail(this);
             // EnterState(ePathTimeout, now);
             return;
@@ -693,7 +693,7 @@ namespace llarp
                                  llarp_router* r)
     {
       /// allows exits to close from their end
-      if(SupportsRoles(ePathRoleExit))
+      if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
       {
         if(msg->Verify(&r->crypto, Endpoint()))
         {
@@ -793,14 +793,8 @@ namespace llarp
         const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
     {
       // check if we can handle exit data
-      if(!SupportsRoles(ePathRoleExit))
+      if(!SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
         return false;
-      // verify sig
-      if(!msg->Verify(&r->crypto, Endpoint()))
-      {
-        llarp::LogError(Name(), " bad signature on inbound traffic");
-        return false;
-      }
       MarkActive(r->Now());
       // handle traffic if we have a handler
       return m_ExitTrafficHandler
