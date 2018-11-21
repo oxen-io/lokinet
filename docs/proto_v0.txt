@@ -742,20 +742,14 @@ transfer ip traffic
   A: "I",
   S: uint64_sequence_number,
   V: 0,
-  X: "<N bytes ip packet>",
-  Y: "<16 bytes nonce>",
-  Z: "<64 bytes signature using previously provided signing key>"
+  X: "<N bytes ip packet>"
 }
 
-X is parsed as an IP packet and the source addresss is extracted.
-Next we find the corrisponding signing key for a previously granted address
-and use it to validate the siganture of the entire message. If the signing key
-cannot be found or the signature is invalid this message is dropped, otherwise
-the X value is sent on the appropriate network interface.
+X is parsed as an IP packet and the source addresss is extracted and sent on the 
+appropriate network interface.
 
 When we recieve an ip packet from the internet to an exit address, we put it
-into a TITM, signed with the router's signing key and send it downstream the
-corrisponding path in an LRDM.
+into a TITM, and send it downstream the corrisponding path in an LRDM.
 
 update exit path message (UXPM)
 
