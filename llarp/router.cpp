@@ -79,7 +79,9 @@ struct TryConnectJob
   Attempt()
   {
     --triesLeft;
-    link->TryEstablishTo(rc);
+    if(!link->TryEstablishTo(rc))
+      llarp::LogError("did not attempt connection to ", rc.pubkey,
+                      " and it has ", rc.addrs.size(), " advertised addresses");
   }
 
   bool
@@ -119,9 +121,10 @@ llarp_router_try_connect(struct llarp_router *router,
 }
 
 void
-llarp_router::HandleLinkSessionEstablished(llarp::RouterContact rc)
+llarp_router::HandleLinkSessionEstablished(llarp::RouterContact rc,
+                                           llarp::ILinkLayer *link)
 {
-  async_verify_RC(rc);
+  async_verify_RC(rc, link);
 }
 
 llarp_router::llarp_router()
@@ -238,9 +241,15 @@ llarp_router::HandleDHTLookupForSendTo(
 {
   if(results.size())
   {
-    llarp_nodedb_put_rc(nodedb, results[0]);
-    llarp_router_try_connect(this, results[0], 10);
-    async_verify_RC(results[0]);
+    if(whitelistRouters && lokinetRouters.find(remote) == lokinetRouters.end())
+    {
+      return;
+    }
+    if(results[0].Verify(&crypto))
+    {
+      llarp_nodedb_put_rc(nodedb, results[0]);
+      llarp_router_try_connect(this, results[0], 10);
+    }
   }
   else
   {
@@ -372,7 +381,6 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp::PubKey pk(job->rc.pubkey);
   if(!job->valid)
   {
-    llarp::LogWarn("invalid server RC");
     if(ctx->establish_job)
     {
       // was an outbound attempt
@@ -471,9 +479,11 @@ llarp_router::HandleDHTLookupForTryEstablishTo(
   }
   for(const auto &result : results)
   {
+    if(whitelistRouters
+       && lokinetRouters.find(result.pubkey) == lokinetRouters.end())
+      continue;
     llarp_nodedb_put_rc(nodedb, result);
     llarp_router_try_connect(this, result, 10);
-    async_verify_RC(result);
   }
 }
 
@@ -535,6 +545,8 @@ llarp_router::Tick()
   }
   paths.TickPaths(now);
   exitContext.Tick(now);
+  if(rpcCaller)
+    rpcCaller->Tick(now);
 }
 
 void
@@ -652,7 +664,8 @@ llarp_router::GetRandomConnectedRouter(llarp::RouterContact &result) const
 }
 
 void
-llarp_router::async_verify_RC(const llarp::RouterContact &rc)
+llarp_router::async_verify_RC(const llarp::RouterContact &rc,
+                              llarp::ILinkLayer *link)
 {
   llarp_async_verify_rc *job       = new llarp_async_verify_rc();
   llarp::async_verify_context *ctx = new llarp::async_verify_context();
@@ -677,25 +690,18 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
     job->hook = &llarp_router::on_verify_server_rc;
   else
     job->hook = &llarp_router::on_verify_client_rc;
-  if(rpcCaller && rc.IsPublicRouter())
+  if(rc.IsPublicRouter() && whitelistRouters)
   {
-    rpcCaller->VerifyRouter(rc.pubkey, [job](llarp::PubKey pk, bool valid) {
-      if(valid)
-      {
-        llarp::LogDebug("lokid says ", pk, " is valid");
-        llarp_nodedb_async_verify(job);
-      }
-      else
-      {
-        llarp::LogDebug("lokid says ", pk, " is NOT valid");
-        job->hook(job);
-      }
-    });
+    if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
+    {
+      llarp::LogInfo(rc.pubkey, " is NOT a valid service node, rejecting");
+      link->CloseSessionTo(rc.pubkey);
+      job->valid = false;
+      job->hook(job);
+      return;
+    }
   }
-  else
-  {
-    llarp_nodedb_async_verify(job);
-  }
+  llarp_nodedb_async_verify(job);
 }
 
 void
@@ -1279,6 +1285,17 @@ namespace llarp
       else
       {
         llarp::LogWarn("failed to load hidden service config for ", key);
+      }
+    }
+    else if(StrEq(section, "lokid"))
+    {
+      if(StrEq(key, "enabled"))
+      {
+        self->whitelistRouters = IsTrueValue(val);
+      }
+      if(StrEq(key, "jsonrpc"))
+      {
+        self->lokidRPCAddr = val;
       }
     }
     else if(StrEq(section, "dns"))

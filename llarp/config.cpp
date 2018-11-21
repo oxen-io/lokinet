@@ -36,6 +36,7 @@ namespace llarp
       services  = find_section(top, "services", section_t{});
       system    = find_section(top, "system", section_t{});
       api       = find_section(top, "api", section_t{});
+      lokid     = find_section(top, "lokid", section_t{});
       return true;
     }
     return false;
@@ -135,11 +136,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "# authkey=insertpubkey1here" << std::endl;
   f << "# authkey=insertpubkey2here" << std::endl;
   f << "# authkey=insertpubkey3here" << std::endl;
-#ifdef _WIN32
   f << "bind=127.0.0.1:1190" << std::endl;
-#else
-  f << "bind=unix:" << basepath << "api.socket" << std::endl;
-#endif
   f << std::endl << std::endl;
 
   f << "# system settings for priviledges and such" << std::endl;
@@ -165,6 +162,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 
 // Make auto-config smarter
 // will this break reproducibility rules?
+// (probably)
 #ifdef __linux__
   f << "bind=127.3.2.1:53" << std::endl;
 #else
@@ -187,6 +185,11 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 void
 llarp_ensure_router_config(std::ofstream &f, std::string basepath)
 {
+  f << "# lokid settings (disabled by default)" << std::endl;
+  f << "[lokid]" << std::endl;
+  f << "enabled=false" << std::endl;
+  f << "jsonrpc=127.0.0.1:22023" << std::endl;
+  f << std::endl;
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;
   f << "profiles=" << basepath << "profiles.dat" << std::endl;

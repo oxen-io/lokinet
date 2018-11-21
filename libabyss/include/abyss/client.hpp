@@ -30,7 +30,7 @@ namespace abyss
       /// return true on successful handling
       /// return false on errors while handling
       virtual bool
-      HandleResponse(const RPC_Response& response) = 0;
+      HandleResponse(RPC_Response response) = 0;
 
       /// populate http request headers
       virtual void

@@ -20,6 +20,7 @@ namespace llarp
     section_t services;
     section_t system;
     section_t api;
+    section_t lokid;
 
     bool
     Load(const char *fname);
