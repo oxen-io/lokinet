@@ -41,9 +41,12 @@ namespace llarp
       Start(const std::string& remote);
 
       /// test if a router is valid
+      bool
+      VerifyRouter(const llarp::PubKey& pk);
+
+      /// do per second tick
       void
-      VerifyRouter(llarp::PubKey pkey,
-                   std::function< void(llarp::PubKey, bool) > handler);
+      Tick(llarp_time_t now);
 
      private:
       CallerImpl* m_Impl;

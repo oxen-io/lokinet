@@ -29,7 +29,7 @@ struct DemoCall : public abyss::http::IRPCClientHandler
   }
 
   bool
-  HandleResponse(const abyss::http::RPC_Response& resp) override
+  HandleResponse(abyss::http::RPC_Response resp) override
   {
     std::string body;
     abyss::json::ToString(resp, body);

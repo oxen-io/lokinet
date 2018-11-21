@@ -67,7 +67,7 @@ namespace llarp
     bool
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;
 
-    void
+    bool
     TryEstablishTo(const RouterContact& rc);
 
     bool
