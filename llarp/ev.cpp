@@ -111,11 +111,27 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
                     const void *buf, size_t sz)
 {
   auto ret = static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf, sz);
+#ifndef _WIN32
   if(ret == -1 && errno != 0)
   {
+#else
+  if(ret == -1 && WSAGetLastError())
+  {
+#endif
+
+#ifndef _WIN32
     llarp::LogWarn("sendto failed ", strerror(errno));
     errno = 0;
   }
+#else
+    char ebuf[1024];
+    int err = WSAGetLastError();
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf,
+                  1024, nullptr);
+    llarp::LogWarn("sendto failed: ", buf);
+    WSASetLastError(0);
+  }
+#endif
   return ret;
 }
 

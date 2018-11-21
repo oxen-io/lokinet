@@ -25,8 +25,23 @@
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <wspiapi.h>
 #include "libutp_inet_ntop.h"
 
+// we already have our own definition of these
+// -despair
+#if _WIN32_WINNT < 0x600
+namespace
+{
+  extern "C"
+  {
+    const char *
+    inet_ntop(int af, const void *src, char *dst, size_t size);
+    int
+    inet_pton(int af, const char *src, void *dst);
+  }
+}  // namespace
+#endif
 //######################################################################
 const char *
 libutp::inet_ntop(int af, const void *src, char *dest, size_t length)
