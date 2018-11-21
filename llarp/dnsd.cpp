@@ -396,16 +396,16 @@ handle_dnsc_result(dnsc_answer_request *client_request)
 
 // our generic version
 void
-handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
+handle_recvfrom(llarp_buffer_t buffer,
                 dnsd_question_request *request)
 {
   const size_t HDR_OFFSET = 12;
-  const char *p_buffer    = buffer;
+  const char *p_buffer    = (const char *)buffer.base;
 
   int rcode = (buffer[3] & 0x0F);
   llarp::LogDebug("dnsd rcode ", rcode);
 
-  dns_msg_header *msg = decode_hdr(p_buffer);
+  dns_msg_header *msg = decode_hdr(buffer);
   p_buffer += HDR_OFFSET;
   request->id         = msg->id;
   std::string m_qName = "";
@@ -537,12 +537,16 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
       &llarp_sendto_dns_hook_func;  // set sock hook
 
   // llarp::LogInfo("Server request's UDP ", llarp_dns_request->user);
-  handle_recvfrom((char *)buf, sz, llarp_dns_request);
+  llarp_buffer_t buffer;
+  buffer.base = (byte_t *)buf;
+  buffer.cur  = buffer.base;
+  buffer.sz   = sz;
+
+  handle_recvfrom(buffer, llarp_dns_request);
 }
 
 void
-raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
-                    ssize_t sz)
+raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, llarp_buffer_t buffer)
 {
   if(!dns_udp_tracker.dnsd)
   {
@@ -556,7 +560,8 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
   llarp_dns_request->user        = (void *)sockfd;
   llarp_dns_request->llarp       = false;
   llarp_dns_request->sendto_hook = &raw_sendto_dns_hook_func;
-  handle_recvfrom((char *)buf, sz, llarp_dns_request);
+
+  handle_recvfrom(buffer, llarp_dns_request);
 }
 
 bool
