@@ -110,9 +110,9 @@ namespace llarp
       HasPathToService(const Address& remote) const;
 
       virtual huint32_t
-      ObtainIPForAddr(const byte_t * addr)
+      ObtainIPForAddr(const byte_t* addr)
       {
-        (void) addr;
+        (void)addr;
         return {0};
       }
 
@@ -150,7 +150,7 @@ namespace llarp
       EnsureRouterIsKnown(const RouterID& router);
 
       const Identity&
-      GetIdentity()
+      GetIdentity() const
       {
         return m_Identity;
       }

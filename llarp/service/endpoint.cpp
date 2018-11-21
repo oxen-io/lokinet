@@ -94,7 +94,7 @@ namespace llarp
         llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
                        " because we couldn't get enough valid introductions");
         if(ShouldBuildMore(now) || forceRebuild)
-          ManualRebuild(1);
+          ManualRebuild(1, llarp::path::ePathRoleInboundHS);
         return;
       }
       m_IntroSet.I.clear();
@@ -1159,7 +1159,7 @@ namespace llarp
         }
         return false;
       }
-      Build(hops);
+      Build(hops, llarp::path::ePathRoleOutboundHS);
       return true;
     }
 

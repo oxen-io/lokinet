@@ -328,7 +328,7 @@ namespace llarp
       bool
       SupportsAnyRoles(PathRole roles) const
       {
-        return (_role & roles) != 0;
+        return roles == ePathRoleAny || (_role & roles) != 0;
       }
 
       PathStatus
