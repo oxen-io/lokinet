@@ -1528,7 +1528,9 @@ namespace llarp
           return false;
         }
       }
-      return path::Builder::SelectHop(db, prev, cur, hop, roles);
+      (void)roles;
+      return path::Builder::SelectHop(db, prev, cur, hop,
+                                      llarp::path::ePathRoleOutboundHS);
     }
 
     uint64_t
