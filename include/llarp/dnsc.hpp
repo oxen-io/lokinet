@@ -82,13 +82,13 @@ struct dnsc_context
   struct llarp_logic *logic;
 };
 
-/// async resolve a hostname using generic socks
+/// async (blocking w/callback) resolve a hostname using generic socks
 void
 raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
                  dnsc_answer_hook_func resolved, void *const user,
                  uint16_t type);
 
-/// async resolve a hostname using llarp platform framework
+/// async (non blocking w/callback) resolve a hostname using llarp platform framework
 bool
 llarp_resolve_host(struct dnsc_context *const dns, const char *url,
                    dnsc_answer_hook_func resolved, void *const user,
