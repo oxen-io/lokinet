@@ -82,7 +82,7 @@ popFrontTester(Args& args)
 
     args.startCond.notify_one();
 
-    args.runCond.wait(guard, [&args]() { return args.runSignal; });
+    args.runCond.wait(guard, [&args]() { return !!args.runSignal; });
   }
 
   for(;;)
@@ -104,7 +104,7 @@ pushBackTester(Args& args)
 
     args.startCond.notify_one();
 
-    args.runCond.wait(guard, [&args]() { return args.runSignal; });
+    args.runCond.wait(guard, [&args]() { return !!args.runSignal; });
   }
 
   for(size_t i = 0; i < args.iterations; ++i)
@@ -322,7 +322,7 @@ TEST(TestQueue, manyProducerManyConsumer)
   {
     threads[i] = std::thread(std::bind(&popFrontTester, std::ref(args)));
 
-    args.startCond.wait(lock, [&args, i]() { return args.count == (i + 1); });
+    args.startCond.wait(lock, [&]() { return args.count == (i + 1); });
   }
 
   for(size_t i = 0; i < numThreads; ++i)
@@ -330,8 +330,8 @@ TEST(TestQueue, manyProducerManyConsumer)
     threads[i + numThreads] =
         std::thread(std::bind(&pushBackTester, std::ref(args)));
 
-    args.startCond.wait(
-        lock, [&args, i]() { return args.count == (numThreads + i + 1); });
+    args.startCond.wait(lock,
+                        [&]() { return args.count == (numThreads + i + 1); });
   }
 
   args.runSignal++;

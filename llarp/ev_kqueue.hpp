@@ -215,7 +215,7 @@ namespace llarp
     llarp_tun_io* t;
     device* tunif;
     tun(llarp_tun_io* tio, llarp_ev_loop* l)
-        : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write", l))
+        : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write", l, l))
         , t(tio)
         , tunif(tuntap_init()){};
 

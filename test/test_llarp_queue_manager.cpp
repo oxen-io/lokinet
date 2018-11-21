@@ -139,7 +139,8 @@ struct QueueData
   std::uint32_t* m_states;  // Array of index states.
 };
 
-static_assert(sizeof(QueueData) == sizeof(QueueManager));
+static_assert(sizeof(QueueData) == sizeof(QueueManager),
+              "QueueData not updated");
 
 static constexpr uint32_t GENERATION_COUNT_SHIFT = 0x2;
 static constexpr uint32_t ELEMENT_STATE_MASK     = 0x3;
