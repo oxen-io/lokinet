@@ -257,18 +257,10 @@ namespace llarp
       auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
       if(endpoint)
       {
-        if(msg->Verify(&r->crypto, endpoint->PubKey()))
-        {
-          if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
-            return true;
-          else
-            llarp::LogError("failed to send outbound traffic for exit on ",
-                            info);
-        }
+        if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
+          return true;
         else
-        {
-          llarp::LogError("bad signature on exit traffic on ", info);
-        }
+          llarp::LogError("failed to send outbound traffic for exit on ", info);
       }
       else
         llarp::LogError("No exit endpoint on ", info);

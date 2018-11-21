@@ -25,7 +25,7 @@ namespace llarp
       size_t has            = 0;
       for(const auto& item : m_Paths)
       {
-        if(item.second->SupportsRoles(roles))
+        if(item.second->SupportsAnyRoles(roles))
         {
           if(!item.second->ExpiresSoon(now))
             ++has;
@@ -79,7 +79,7 @@ namespace llarp
       {
         if(!item.second->IsReady())
           continue;
-        if(!item.second->SupportsRoles(roles))
+        if(!item.second->SupportsAnyRoles(roles))
           continue;
         AlignedBuffer< 32 > localDist = item.second->Endpoint() ^ id;
         if(localDist < dist)
@@ -98,7 +98,7 @@ namespace llarp
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->IsReady() && itr->second->SupportsRoles(roles))
+        if(itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
         {
           if(itr->second->Endpoint() == id)
           {
@@ -120,7 +120,7 @@ namespace llarp
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->IsReady() && itr->second->SupportsRoles(roles))
+        if(itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
         {
           if(itr->second->Endpoint() == id)
           {
@@ -156,7 +156,7 @@ namespace llarp
       while(itr != m_Paths.end())
       {
         if(itr->second->Status() == ePathEstablished
-           && itr->second->SupportsRoles(roles))
+           && itr->second->SupportsAnyRoles(roles))
           ++count;
         ++itr;
       }
@@ -279,7 +279,7 @@ namespace llarp
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
-        if(itr->second->IsReady() && itr->second->SupportsRoles(roles))
+        if(itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
           established.push_back(itr->second);
         ++itr;
       }

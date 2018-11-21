@@ -594,7 +594,7 @@ llarp_router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
 }
 
 void
-llarp_router::FlushOutboundFor(const llarp::RouterID &remote,
+llarp_router::FlushOutboundFor(const llarp::RouterID remote,
                                llarp::ILinkLayer *chosen)
 {
   llarp::LogDebug("Flush outbound for ", remote);

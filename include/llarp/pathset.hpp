@@ -41,8 +41,10 @@ namespace llarp
     constexpr PathRole ePathRoleInboundHS = (1 << 1);
     /// exit traffic capable
     constexpr PathRole ePathRoleExit = (1 << 2);
+    /// service node capable
+    constexpr PathRole ePathRoleSVC = (1 << 3);
     /// dht message capable
-    constexpr PathRole ePathRoleDHT = (1 << 3);
+    constexpr PathRole ePathRoleDHT = (1 << 4);
 
     // forward declare
     struct Path;

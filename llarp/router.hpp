@@ -249,7 +249,7 @@ struct llarp_router
 
   /// manually flush outbound message queue for just 1 router
   void
-  FlushOutboundFor(const llarp::RouterID &remote,
+  FlushOutboundFor(const llarp::RouterID remote,
                    llarp::ILinkLayer *chosen = nullptr);
 
   /// manually discard all pending messages to remote router
