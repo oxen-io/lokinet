@@ -5,6 +5,10 @@ namespace llarp
 {
   namespace dns
   {
+    record::~record() {
+      
+    };
+    
     bool
     record::parse(std::vector< byte_t > bytes)
     {
@@ -60,7 +64,7 @@ namespace llarp
     type_2ns::parse(std::vector< byte_t > bytes)
     {
       // trim last 2 bytes... probably the size
-      this->ns = std::string((char *)bytes.data(), bytes.size() - 2);
+      this->ns = std::string(reinterpret_cast<char *>(bytes.data()), bytes.size() - 2);
       return true;
     };
 
@@ -82,7 +86,7 @@ namespace llarp
     type_5cname::parse(std::vector< byte_t > bytes)
     {
       // trim last 2 bytes... probably the size
-      this->cname = std::string((char *)bytes.data(), bytes.size());
+      this->cname = std::string(reinterpret_cast<char *>(bytes.data()), bytes.size());
       // LogDebug("type5 parsed ", this->cname);
       return true;
     };
@@ -111,7 +115,7 @@ namespace llarp
     type_6soa::parse(std::vector< byte_t > bytes)
     {
       // FIXME: implmement me
-      //this->cname = std::string((char *)bytes.data(), bytes.size());
+      //this->cname = std::string(reinterpret_cast<char *>(bytes.data()), bytes.size());
       return bytes.size()?true:false;
     };
 
@@ -139,7 +143,7 @@ namespace llarp
     bool
     type_12ptr::parse(std::vector< byte_t > bytes)
     {
-      this->revname = std::string((char *)bytes.data(), bytes.size());
+      this->revname = std::string(reinterpret_cast<char *>(bytes.data()), bytes.size());
       return bytes.size() ? true : false;
     };
 
@@ -165,7 +169,7 @@ namespace llarp
     bool
     type_15mx::parse(std::vector< byte_t > bytes)
     {
-      this->mx = std::string((char *)bytes.data(), bytes.size());
+      this->mx = std::string(reinterpret_cast<char *>(bytes.data()), bytes.size());
       // LogInfo("parsed ", this->mx);
       return true;
     };
@@ -188,7 +192,7 @@ namespace llarp
     bool
     type_16txt::parse(std::vector< byte_t > bytes)
     {
-      this->txt = std::string((char *)bytes.data(), bytes.size() - 1);
+      this->txt = std::string(reinterpret_cast<char *>(bytes.data()), bytes.size() - 1);
       return true;
     };
 

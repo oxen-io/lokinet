@@ -11,16 +11,16 @@ namespace llarp
   {
     struct record
     {
-      virtual ~record(){};
+      virtual ~record() = 0;
       record()
       {
       }
 
       virtual bool
-      parse(std::vector< byte_t > bytes);
+      parse(std::vector< byte_t > bytes) = 0;
 
       virtual std::vector< byte_t >
-      to_bytes();
+      to_bytes() = 0;
     };
 
     struct type_1a : public record
@@ -31,10 +31,10 @@ namespace llarp
       type_1a();
 
       bool
-      parse(std::vector< byte_t > bytes);
+      parse(std::vector< byte_t > bytes) override;
 
       std::vector< byte_t >
-      to_bytes();
+      to_bytes() override;
     };
 
     struct type_2ns : public record
@@ -45,10 +45,30 @@ namespace llarp
       type_2ns();
 
       bool
-      parse(std::vector< byte_t > bytes);
+      parse(std::vector< byte_t > bytes) override;
 
       std::vector< byte_t >
-      to_bytes();
+      to_bytes() override;
+    };
+
+    struct type_6soa : public record
+    {
+      std::string mname;
+      std::string rname;
+      uint32_t serial;
+      uint32_t refresh;
+      uint32_t retry;
+      uint32_t expire;
+      uint32_t minimum;
+
+      virtual ~type_6soa(){};
+      type_6soa();
+
+      bool
+      parse(std::vector< byte_t > bytes) override;
+
+      std::vector< byte_t >
+      to_bytes() override;
     };
 
     struct type_5cname : public record
@@ -59,10 +79,10 @@ namespace llarp
       type_5cname();
 
       bool
-      parse(std::vector< byte_t > bytes);
+      parse(std::vector< byte_t > bytes) override;
 
       std::vector< byte_t >
-      to_bytes();
+      to_bytes() override;
     };
 
     struct type_12ptr : public record
@@ -73,10 +93,10 @@ namespace llarp
       type_12ptr();
 
       bool
-      parse(std::vector< byte_t > bytes);
+      parse(std::vector< byte_t > bytes) override;
 
       std::vector< byte_t >
-      to_bytes();
+      to_bytes() override;
     };
 
     struct type_15mx : public record
@@ -88,10 +108,10 @@ namespace llarp
       type_15mx();
 
       bool
-      parse(std::vector< byte_t > bytes);
+      parse(std::vector< byte_t > bytes) override;
 
       std::vector< byte_t >
-      to_bytes();
+      to_bytes() override;
     };
 
     struct type_16txt : public record
@@ -102,10 +122,10 @@ namespace llarp
       type_16txt();
 
       bool
-      parse(std::vector< byte_t > bytes);
+      parse(std::vector< byte_t > bytes) override;
 
       std::vector< byte_t >
-      to_bytes();
+      to_bytes() override;
     };
 
   }  // namespace dns
