@@ -4,4 +4,7 @@
 
 if [ "X$1" = "X" ] ; then url="https://i2p.rocks/i2procks.signed" ; else url="$1" ; fi
 echo "downloading $url"
+if [ ! -d $HOME/.lokinet/]; then
+  mkdir $HOME/.lokinet
+fi
 wget -O $HOME/.lokinet/bootstrap.signed "$url" || echo "failed to download bootstrap from $url"
