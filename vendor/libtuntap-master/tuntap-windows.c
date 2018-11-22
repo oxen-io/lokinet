@@ -415,38 +415,40 @@ tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
 int
 tuntap_read(struct device *dev, void *buf, size_t size)
 {
+  DWORD x;
   if(size)
   {
-    ReadFile(dev->tun_fd, buf, (DWORD)size, NULL, &dev->ovl[0]);
+    ReadFile(dev->tun_fd, buf, (DWORD)size, &x, NULL);
 
     int errcode = GetLastError();
 
-    if(errcode != 997)
+    if(errcode)
     {
       tuntap_log(TUNTAP_LOG_ERR,
                  (const char *)formated_error(L"%1%0", errcode));
       return -1;
     }
   }
-  return 0;
+  return x;
 }
 
 int
 tuntap_write(struct device *dev, void *buf, size_t size)
 {
+  DWORD x;
   if(size)
   {
-    WriteFile(dev->tun_fd, buf, (DWORD)size, NULL, &dev->ovl[1]);
+    WriteFile(dev->tun_fd, buf, (DWORD)size, &x, NULL);
     int errcode = GetLastError();
 
-    if(errcode != 997)
+    if(errcode)
     {
       tuntap_log(TUNTAP_LOG_ERR,
                  (const char *)formated_error(L"%1%0", errcode));
       return -1;
     }
   }
-  return 0;
+  return x;
 }
 
 int

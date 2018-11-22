@@ -30,6 +30,13 @@
 #if defined Windows
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <wspiapi.h>
+#if _WIN32_WINNT < 0x0600
+extern "C" int
+inet_pton(int af, const char *src, void *dst);
+extern "C" const char *
+inet_ntop(int af, const void *src, char *dst, size_t size);
+#endif
 #else
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -61,11 +68,8 @@ extern "C"
     dev->tun_fd    = TUNFD_INVALID_VALUE;
     dev->ctrl_sock = -1;
     dev->flags     = 0;
-#if defined(Windows)
-    memset(&dev->ovl[0], 0, sizeof(OVERLAPPED) * 2);
-#endif
 
-    __tuntap_log = &tuntap_log_default;
+	__tuntap_log = &tuntap_log_default;
     return dev;
   }
 

@@ -44,3 +44,4 @@ rapidjson/
 
 
 .gradle/
+build64/

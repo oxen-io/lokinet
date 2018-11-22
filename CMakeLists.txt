@@ -30,29 +30,29 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
-add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas)
+add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unknown-warning-option)
 # vla are evil
 add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
-# gah, can't recall which -Wno flag is exclusive to clang
-# -Wno-cast-function-type is GNU exclusive..i think
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 # dynamic linking does this all the time
-add_compile_options(-Wno-cast-function-type)
 if (USING_CLANG)
 add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
 # because clang is insane enough to inline whole sections of the C++ library!
 # May have been fixed in llvm-7.
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
+else()
+# found it. this is GNU only
+add_compile_options(-Wno-cast-function-type)
 endif(USING_CLANG)
 endif()
 
 if(WIN32)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-add_compile_options(-Wno-cast-function-type)
+add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
 set(FS_LIB stdc++fs)
 endif(WIN32)
 
@@ -205,7 +205,7 @@ if(UNIX)
     endif()
 elseif(WIN32)
     set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x600 -D_WIN32_WINNT=0x600)
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif(UNIX)
@@ -282,6 +282,10 @@ set(LIB_PLATFORM_SRC
   ${LIBTUNTAP_SRC}
 # c++17 compat code
   ${CXX_COMPAT_SRC}
+# win32 inline code
+  llarp/win32_inet.c
+  llarp/win32_intrnl.c
+  llarp/win32_upoll.c
 )
 
 set(NTRU_AVX_SRC
@@ -486,7 +490,6 @@ set(LIB_SRC
   llarp/service/protocol.cpp
   llarp/service/tag.cpp
   llarp/service/info.cpp
-
 )
 
 set(RC_SRC

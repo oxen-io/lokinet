@@ -144,9 +144,6 @@ extern "C"
 #if defined(FreeBSD)
     int mode;
 #endif
-#if defined(Windows)
-    OVERLAPPED ovl[2];
-#endif
   };
 
   /* User definable log callback */

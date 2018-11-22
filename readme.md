@@ -64,7 +64,7 @@ if cross-compiling, install mingw-w64 from your distro's package manager, or [bu
     $ export COMPILER=clang # if using clang for windows
     $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK=ON -DCMAKE_CROSSCOMPILING=ON -DDNS_PORT=53 -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake
 
-this will create a static binary that can be installed anywhere, with no other dependency other than libc (7.0)
+this will create a static binary that can be installed anywhere, with no other dependency other than libc (minimum v6.1)
 
 ## Running on Linux/UNIX/BSD
 
