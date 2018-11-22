@@ -245,7 +245,7 @@ writesend_dnss_response(llarp::huint32_t *hostRes,
   */
 
   uint32_t out_bytes = write_buffer - bufferBegin;
-  llarp::LogInfo("Sending found, ", out_bytes, " bytes");
+  llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from, buf, out_bytes);
 }
