@@ -102,7 +102,7 @@ namespace llarp
       }
 
       void
-      HandleError()
+      HandleError() override
       {
         handler({}, false);
       }

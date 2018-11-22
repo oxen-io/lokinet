@@ -335,7 +335,7 @@ namespace llarp
           // Queue is full.
           assert(state == ElementState::Reading);
           assert(
-              1 == (circularDifference(currGen, elemGen, m_maxGeneration) + 1));
+              1 == (circularDifference(currGen, elemGen, m_maxGeneration + 1)));
 
           return QueueReturn::QueueEmpty;
         }
