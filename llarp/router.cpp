@@ -163,13 +163,7 @@ llarp_router::PersistSessionUntil(const llarp::RouterID &remote,
                                   llarp_time_t until)
 {
   llarp::LogDebug("persist session to ", remote, " until ", until);
-  if(m_PersistingSessions.find(remote) == m_PersistingSessions.end())
-    m_PersistingSessions[remote] = until;
-  else
-  {
-    if(m_PersistingSessions[remote] < until)
-      m_PersistingSessions[remote] = until;
-  }
+  m_PersistingSessions[remote] = std::max(until, m_PersistingSessions[remote]);
 }
 
 constexpr size_t MaxPendingSendQueueSize = 8;

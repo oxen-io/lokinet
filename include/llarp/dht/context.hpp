@@ -104,6 +104,7 @@ namespace llarp
         else if(!GetNextPeer(peer, peersAsked))
         {
           // no more peers
+          llarp::LogInfo("no more peers for request asking for", target);
           return false;
         }
 
@@ -111,6 +112,7 @@ namespace llarp
         if((prevPeer ^ targetKey) < (peer ^ targetKey))
         {
           // next peer is not closer
+          llarp::LogInfo("next peer ", peer, " is not closer to ", target, " than ", prevPeer);
           return false;
         }
         else
@@ -302,6 +304,7 @@ namespace llarp
         {
           (void)whoasked;
           tx.emplace(askpeer, std::unique_ptr< TX< K, V > >(t));
+          auto count = waiting.count(k);
           waiting.insert(std::make_pair(k, askpeer));
 
           auto itr = timeouts.find(k);
@@ -310,6 +313,7 @@ namespace llarp
             timeouts.insert(
                 std::make_pair(k, time_now_ms() + requestTimeoutMS));
           }
+          if(count == 0)
           t->Start(askpeer);
         }
 

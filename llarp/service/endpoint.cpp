@@ -94,7 +94,7 @@ namespace llarp
         llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
                        " because we couldn't get enough valid introductions");
         if(ShouldBuildMore(now) || forceRebuild)
-          ManualRebuild(1, llarp::path::ePathRoleInboundHS);
+          ManualRebuild(1);
         return;
       }
       m_IntroSet.I.clear();
@@ -1113,9 +1113,9 @@ namespace llarp
         }
       }
       // no converstation
-      EnsurePathToService(remote, [](Address, OutboundContext*) {}, 5000,
-                          false);
-      return false;
+      return EnsurePathToService(remote, [](Address, OutboundContext* c) {
+        if(c) c->UpdateIntroSet(true);
+      }, 5000, false);
     }
 
     bool
@@ -1159,7 +1159,7 @@ namespace llarp
         }
         return false;
       }
-      Build(hops, llarp::path::ePathRoleOutboundHS);
+      Build(hops);
       return true;
     }
 
@@ -1529,8 +1529,7 @@ namespace llarp
         }
       }
       (void)roles;
-      return path::Builder::SelectHop(db, prev, cur, hop,
-                                      llarp::path::ePathRoleOutboundHS);
+      return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
 
     uint64_t
@@ -1547,8 +1546,7 @@ namespace llarp
     {
       if(markedBad)
         return false;
-      bool should = path::Builder::ShouldBuildMoreForRoles(
-          now, llarp::path::ePathRoleOutboundHS);
+      bool should = path::Builder::ShouldBuildMore(now);
       // determinte newest intro
       Introduction intro;
       if(!GetNewestIntro(intro))
