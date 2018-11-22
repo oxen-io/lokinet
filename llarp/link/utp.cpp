@@ -341,6 +341,9 @@ namespace llarp
         // way. Naturally, Linux has its own special procedure.
         // Of course, the flag itself is cleared. -rick
 #ifndef _WIN32
+        // No practical method of doing this on NetBSD or Darwin
+        // without resorting to raw sockets
+#if !(__NetBSD__ || __OpenBSD__ || (__APPLE__ && __MACH__))
 #ifndef __linux__
         if(arg->flags == 2)
         {
@@ -367,6 +370,7 @@ namespace llarp
           setsockopt(l->m_udp.fd, IPPROTO_IP, IP_MTU_DISCOVER, &val,
                      sizeof(val));
         }
+#endif
 #endif
         arg->flags = 0;
         if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
