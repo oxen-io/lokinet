@@ -369,7 +369,7 @@ llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
   llarp::PubKey pk(job->rc.pubkey);
   router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
   delete ctx;
-  delete job;
+  router->pendingVerifyRC.erase(pk);
 }
 
 void
@@ -387,8 +387,9 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
       ctx->establish_job->Failed();
     }
     delete ctx;
-    delete job;
     router->DiscardOutboundFor(pk);
+    router->pendingVerifyRC.erase(pk);
+   
     return;
   }
   // we're valid, which means it's already been committed to the nodedb
@@ -418,7 +419,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   else
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
   delete ctx;
-  delete job;
+  router->pendingVerifyRC.erase(pk);
 }
 
 void
@@ -616,19 +617,21 @@ llarp_router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
 }
 
 void
-llarp_router::FlushOutboundFor(const llarp::RouterID remote,
+llarp_router::FlushOutboundFor(llarp::RouterID remote,
                                llarp::ILinkLayer *chosen)
 {
   llarp::LogDebug("Flush outbound for ", remote);
-  pendingEstablishJobs.erase(remote);
+  
   auto itr = outboundMessageQueue.find(remote);
   if(itr == outboundMessageQueue.end())
   {
+    pendingEstablishJobs.erase(remote);
     return;
   }
   if(!chosen)
   {
     DiscardOutboundFor(remote);
+    pendingEstablishJobs.erase(remote);
     return;
   }
   while(itr->second.size())
@@ -640,6 +643,7 @@ llarp_router::FlushOutboundFor(const llarp::RouterID remote,
 
     itr->second.pop();
   }
+  pendingEstablishJobs.erase(remote);
 }
 
 void
@@ -667,7 +671,18 @@ void
 llarp_router::async_verify_RC(const llarp::RouterContact &rc,
                               llarp::ILinkLayer *link)
 {
-  llarp_async_verify_rc *job       = new llarp_async_verify_rc();
+  if(pendingVerifyRC.count(rc.pubkey))
+    return;
+  if(rc.IsPublicRouter() && whitelistRouters)
+  {
+    if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
+    {
+      llarp::LogInfo(rc.pubkey, " is NOT a valid service node, rejecting");
+      link->CloseSessionTo(rc.pubkey);
+      return;
+    }
+  }
+  llarp_async_verify_rc *job       = &pendingVerifyRC[rc.pubkey];
   llarp::async_verify_context *ctx = new llarp::async_verify_context();
   ctx->router                      = this;
   ctx->establish_job               = nullptr;
@@ -690,17 +705,7 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc,
     job->hook = &llarp_router::on_verify_server_rc;
   else
     job->hook = &llarp_router::on_verify_client_rc;
-  if(rc.IsPublicRouter() && whitelistRouters)
-  {
-    if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
-    {
-      llarp::LogInfo(rc.pubkey, " is NOT a valid service node, rejecting");
-      link->CloseSessionTo(rc.pubkey);
-      job->valid = false;
-      job->hook(job);
-      return;
-    }
-  }
+  
   llarp_nodedb_async_verify(job);
 }
 
