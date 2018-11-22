@@ -22,8 +22,8 @@ namespace llarp
 {
   namespace util
   {
-    typedef std::function< bool(const fs::path &) > PathVisitor;
-    typedef std::function< void(const fs::path &, PathVisitor) > PathIter;
+    using PathVisitor = std::function< bool(const fs::path &) >;
+    using PathIter    = std::function< void(const fs::path &, PathVisitor) >;
 
     static PathIter IterDir = [](const fs::path &path, PathVisitor visit) {
       DIR *d = opendir(path.string().c_str());

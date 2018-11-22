@@ -5,8 +5,11 @@
 #include <llarp/threadpool.h>
 #include <llarp/time.hpp>
 
+#include <functional>
+
 /** called with userptr, original timeout, left */
-typedef void (*llarp_timer_handler_func)(void *, uint64_t, uint64_t);
+using llarp_timer_handler_func =
+    std::function< void(void *, uint64_t, uint64_t) >;
 
 struct llarp_timeout_job
 {

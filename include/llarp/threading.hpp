@@ -34,9 +34,9 @@ namespace llarp
       }
     };
 
-    typedef std::mutex mtx_t;
-    typedef std::unique_lock< std::mutex > lock_t;
-    typedef std::condition_variable cond_t;
+    using mtx_t  = std::mutex;
+    using lock_t = std::unique_lock< std::mutex >;
+    using cond_t = std::condition_variable;
 
     struct Mutex
     {

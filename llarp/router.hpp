@@ -137,7 +137,7 @@ struct llarp_router
   llarp::Profiling routerProfiling;
   std::string routerProfilesFile = "profiles.dat";
 
-  typedef std::queue< std::vector< byte_t > > MessageQueue;
+  using MessageQueue = std::queue< std::vector< byte_t > >;
 
   /// outbound message queue
   std::unordered_map< llarp::RouterID, MessageQueue, llarp::RouterID::Hash >

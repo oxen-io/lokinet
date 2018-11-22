@@ -6,7 +6,7 @@
 
 namespace llarp
 {
-  typedef AlignedBuffer< 32 > RoutingEndpoint_t;
+  using RoutingEndpoint_t = AlignedBuffer< 32 >;
 
   /// Interface for end to end crypto between endpoints
   struct IRoutingEndpoint

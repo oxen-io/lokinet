@@ -9,7 +9,7 @@ namespace llarp
 {
   struct Config
   {
-    typedef std::list< std::pair< std::string, std::string > > section_t;
+    using section_t = std::list< std::pair< std::string, std::string > >;
 
     section_t router;
     section_t network;

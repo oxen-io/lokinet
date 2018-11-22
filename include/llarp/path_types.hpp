@@ -6,7 +6,7 @@
 
 namespace llarp
 {
-  typedef AlignedBuffer< PATHIDSIZE > PathID_t;
+  using PathID_t = AlignedBuffer< PATHIDSIZE >;
 }
 
 #endif

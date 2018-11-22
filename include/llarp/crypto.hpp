@@ -17,19 +17,19 @@ namespace llarp
   const byte_t*
   pq_keypair_to_secret(const byte_t* keypair);
 
-  typedef AlignedBuffer< SHAREDKEYSIZE > SharedSecret;
-  typedef AlignedBuffer< 32 > KeyExchangeNonce;
-  typedef AlignedBuffer< PUBKEYSIZE > PubKey;
-  typedef AlignedBuffer< SECKEYSIZE > SecretKey;
-  typedef AlignedBuffer< SHORTHASHSIZE > ShortHash;
-  typedef AlignedBuffer< SIGSIZE > Signature;
-  typedef AlignedBuffer< TUNNONCESIZE > TunnelNonce;
-  typedef AlignedBuffer< NONCESIZE > SymmNonce;
-  typedef AlignedBuffer< 32 > SymmKey;
+  using SharedSecret     = AlignedBuffer< SHAREDKEYSIZE >;
+  using KeyExchangeNonce = AlignedBuffer< 32 >;
+  using PubKey           = AlignedBuffer< PUBKEYSIZE >;
+  using SecretKey        = AlignedBuffer< SECKEYSIZE >;
+  using ShortHash        = AlignedBuffer< SHORTHASHSIZE >;
+  using Signature        = AlignedBuffer< SIGSIZE >;
+  using TunnelNonce      = AlignedBuffer< TUNNONCESIZE >;
+  using SymmNonce        = AlignedBuffer< NONCESIZE >;
+  using SymmKey          = AlignedBuffer< 32 >;
 
-  typedef AlignedBuffer< PQ_CIPHERTEXTSIZE + 1 > PQCipherBlock;
-  typedef AlignedBuffer< PQ_PUBKEYSIZE > PQPubKey;
-  typedef AlignedBuffer< PQ_KEYPAIRSIZE > PQKeyPair;
+  using PQCipherBlock = AlignedBuffer< PQ_CIPHERTEXTSIZE + 1 >;
+  using PQPubKey      = AlignedBuffer< PQ_PUBKEYSIZE >;
+  using PQKeyPair     = AlignedBuffer< PQ_KEYPAIRSIZE >;
 
 }  // namespace llarp
 

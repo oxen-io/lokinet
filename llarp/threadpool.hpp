@@ -10,8 +10,8 @@ namespace llarp
 {
   namespace thread
   {
-    typedef util::Mutex mtx_t;
-    typedef util::Lock lock_t;
+    using mtx_t  = util::Mutex;
+    using lock_t = util::Lock;
 
     using Pool = ThreadPool;
 

@@ -9,8 +9,8 @@
 
 #include "dnsd.hpp"
 
-typedef bool (*map_address_hook_func)(const llarp::service::Address &addr,
-                                      uint32_t ip);
+using map_address_hook_func =
+    std::function< bool(const llarp::service::Address &addr, uint32_t ip) >;
 
 /// dotLokiLookup context/config
 struct dotLokiLookup

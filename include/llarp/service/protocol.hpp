@@ -17,7 +17,7 @@ namespace llarp
   {
     constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
 
-    typedef uint64_t ProtocolType;
+    using ProtocolType = uint64_t;
 
     constexpr ProtocolType eProtocolText    = 0UL;
     constexpr ProtocolType eProtocolTraffic = 1UL;

@@ -8,7 +8,7 @@ namespace llarp
   {
     /// hidden service address
 
-    typedef llarp::AlignedBuffer< 16 > VanityNonce;
+    using VanityNonce = llarp::AlignedBuffer< 16 >;
   }  // namespace service
 }  // namespace llarp
 #endif
