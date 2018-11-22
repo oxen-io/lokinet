@@ -45,8 +45,12 @@ add_compile_options(-Wno-cast-function-type)
 set(FS_LIB stdc++fs)
 endif(WIN32)
 
+
+
 if(DEBIAN)
   add_definitions(-DDEBIAN)
+else()
+  set(CRYPTO_FLAGS -march=native)
 endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -110,20 +114,6 @@ endif()
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
   add_compile_options( ${DEBUG_FLAGS} )
-endif()
-
-if(NOT DEBIAN)
-if(NOT ANDROID)
-if(NOT RPI)
-if (NOT USE_AVX2)
-set(CRYPTO_FLAGS -march=core2 -mtune=native)
-set(CMAKE_ASM_FLAGS "-march=core2")
-else()
-set(CRYPTO_FLAGS -march=haswell -mtune=native)
-set(CMAKE_ASM_FLAGS "-march=haswell -mtune=native ${CMAKE_ASM_FLAGS} $ENV{ASFLAGS}")
-endif()
-endif()
-endif()
 endif()
 
 if(RPI)

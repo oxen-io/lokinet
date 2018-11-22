@@ -229,9 +229,10 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
       + tokensCheck[2] + "." + tokensCheck[3];
   llarp::LogDebug(searchIp, " vs ", checkIp);
 
-  llarp::IPRange range = llarp::iprange_ipv4(
-      std::stoi(tokensCheck[0]), std::stoi(tokensCheck[1]), std::stoi(tokensCheck[2]),
-      std::stoi(tokensCheck[3]), tunEndpoint->tunif.netmask);  // create range
+  llarp::IPRange range =
+      llarp::iprange_ipv4(std::stoi(tokensCheck[0]), std::stoi(tokensCheck[1]),
+                          std::stoi(tokensCheck[2]), std::stoi(tokensCheck[3]),
+                          tunEndpoint->tunif.netmask);  // create range
   // hack atm to work around limitations in ipaddr_ipv4_bits and llarp::IPRange
   llarp::huint32_t searchIPv4_fixed = llarp::ipaddr_ipv4_bits(
       std::stoi(tokensSearch[searchTokens - 6]),

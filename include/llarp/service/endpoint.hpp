@@ -137,8 +137,13 @@ namespace llarp
       HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
 
       virtual bool
-      ProcessDataMessage(__attribute__((unused)) ProtocolMessage* msg)
+      ProcessDataMessage(ProtocolMessage* msg)
       {
+#ifdef TESTNET
+        llarp::LogInfo("Got message from ", msg->sender.Addr());
+#else
+        (void)msg;
+#endif
         return true;
       }
 

@@ -339,36 +339,6 @@ namespace llarp
         return true;
       }
 
-      void
-      DoNextRequest(const Key_t &nextPeer)
-      {
-        // iterate to next peer
-        parent->LookupIntroSetIterative(
-            target, whoasked.node, whoasked.txid, nextPeer,
-            std::bind(&ServiceAddressLookup::HandleNextRequestResult, this,
-                      std::placeholders::_1));
-      }
-
-      void
-      HandleNextRequestResult(const std::vector< service::IntroSet > &results)
-      {
-        // merge results
-        std::set< service::IntroSet > found;
-
-        for(const auto &introset : valuesFound)
-          found.insert(introset);
-
-        for(const auto &introset : results)
-          found.insert(introset);
-
-        valuesFound.clear();
-        for(const auto &introset : found)
-          valuesFound.push_back(introset);
-
-        // send reply
-        SendReply();
-      }
-
       bool
       GetNextPeer(Key_t &next, const std::set< Key_t > &exclude)
       {
@@ -381,6 +351,17 @@ namespace llarp
       {
         parent->DHTSendTo(peer.node,
                           new FindIntroMessage(peer.txid, target, R));
+      }
+
+      void
+      DoNextRequest(const Key_t &ask) override
+      {
+        if(R)
+          parent->LookupIntroSetRecursive(target, whoasked.node, whoasked.txid,
+                                          ask, R - 1);
+        else
+          parent->LookupIntroSetIterative(target, whoasked.node, whoasked.txid,
+                                          ask);
       }
 
       virtual void
@@ -408,7 +389,7 @@ namespace llarp
       }
 
       void
-      SendReply()
+      SendReply() override
       {
         auto path =
             parent->router->paths.GetByUpstream(parent->OurKey(), localPath);
