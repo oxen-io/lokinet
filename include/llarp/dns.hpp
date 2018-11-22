@@ -14,13 +14,13 @@
 #include <llarp/net.hpp>  // for llarp::Addr , llarp::huint32_t
 #include <llarp/dns_rectypes.hpp>
 
-#define LLARP_DNS_RECTYPE_A      1
-#define LLARP_DNS_RECTYPE_NS     2
-#define LLARP_DNS_RECTYPE_CNAME  5
-#define LLARP_DNS_RECTYPE_SOA    6
-#define LLARP_DNS_RECTYPE_PTR    12
-#define LLARP_DNS_RECTYPE_MX     15
-#define LLARP_DNS_RECTYPE_TXT    16
+#define LLARP_DNS_RECTYPE_A 1
+#define LLARP_DNS_RECTYPE_NS 2
+#define LLARP_DNS_RECTYPE_CNAME 5
+#define LLARP_DNS_RECTYPE_SOA 6
+#define LLARP_DNS_RECTYPE_PTR 12
+#define LLARP_DNS_RECTYPE_MX 15
+#define LLARP_DNS_RECTYPE_TXT 16
 
 struct dnsd_context;
 

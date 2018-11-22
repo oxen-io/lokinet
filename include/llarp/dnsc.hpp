@@ -74,7 +74,6 @@ void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
                              llarp_buffer_t buffer, dns_msg_header *hdr);
 
-
 /// DNS client context (one needed per upstream DNS server)
 struct dnsc_context
 {
@@ -96,7 +95,8 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
                  dnsc_answer_hook_func resolved, void *const user,
                  uint16_t type);
 
-/// async (non blocking w/callback) resolve a hostname using llarp platform framework
+/// async (non blocking w/callback) resolve a hostname using llarp platform
+/// framework
 bool
 llarp_resolve_host(struct dnsc_context *const dns, const char *url,
                    dnsc_answer_hook_func resolved, void *const user,

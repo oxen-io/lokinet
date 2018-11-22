@@ -299,8 +299,10 @@ namespace llarp
       if(wantInternet && !m_PermitExit)
         return false;
       huint32_t ip = GetIPForIdent(pk);
-      m_ActiveExits.insert(std::make_pair(
-                                          (llarp::PubKey)pk, std::make_unique<llarp::exit::Endpoint>(pk, path, !wantInternet, ip, this)));
+      m_ActiveExits.insert(
+          std::make_pair((llarp::PubKey)pk,
+                         std::make_unique< llarp::exit::Endpoint >(
+                             pk, path, !wantInternet, ip, this)));
       m_Paths[path] = pk;
       return HasLocalMappedAddrFor(pk);
     }

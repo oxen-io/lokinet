@@ -396,8 +396,7 @@ handle_dnsc_result(dnsc_answer_request *client_request)
 
 // our generic version
 void
-handle_recvfrom(llarp_buffer_t buffer,
-                dnsd_question_request *request)
+handle_recvfrom(llarp_buffer_t buffer, dnsd_question_request *request)
 {
   const size_t HDR_OFFSET = 12;
   const char *p_buffer    = (const char *)buffer.base;
@@ -546,7 +545,8 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
 }
 
 void
-raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, llarp_buffer_t buffer)
+raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
+                    llarp_buffer_t buffer)
 {
   if(!dns_udp_tracker.dnsd)
   {

@@ -163,15 +163,15 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     return;
   }
   // llarp::LogInfo("got a response, udp user is ", udp->user);
-  
-  //unsigned char *castBuf     = (unsigned char *)buf;
-  //const char *const castBufc = (const char *)buf;
+
+  // unsigned char *castBuf     = (unsigned char *)buf;
+  // const char *const castBufc = (const char *)buf;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   size_t sz = buffer.sz;
 
   llarp::LogDebug("Header got client responses for id: ", hdr->id);
   // llarp_dnsc_unbind(request);
-  
+
   // unsigned char *castBuf = (unsigned char *)buf;
   // auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
 
@@ -196,9 +196,9 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   // rcode = (buffer[3] & 0x0F);
   // llarp::LogInfo("dnsc rcode ", rcode);
 
-  //dns_msg_header *msg = decode_hdr((const char *)castBuf);
-  //dns_msg_header *msg = hdr;
-  //castBuf += 12;
+  // dns_msg_header *msg = decode_hdr((const char *)castBuf);
+  // dns_msg_header *msg = hdr;
+  // castBuf += 12;
   llarp::LogDebug("msg id ", hdr->id);
   uint8_t qr = hdr->qr;
   llarp::LogDebug("msg qr ", qr);
@@ -319,9 +319,9 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     */
     if((size_t)pos > sz)
     {
-        llarp::LogWarn("Would read past end of dns packet. for ",
-                       request->question.name);
-        break;
+      llarp::LogWarn("Would read past end of dns packet. for ",
+                     request->question.name);
+      break;
     }
   }
 
@@ -629,20 +629,21 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
   lbuffer.base = (byte_t *)buffer;
   lbuffer.cur  = lbuffer.base;
   lbuffer.sz   = size;
-  
-  //unsigned char *castBuf = (unsigned char *)buffer;
+
+  // unsigned char *castBuf = (unsigned char *)buffer;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr = decode_hdr(lbuffer);
   llarp::LogInfo("response header says it belongs to id #", hdr->id);
 
   // if we sent this out, then there's an id
-  struct dns_tracker *tracker = (struct dns_tracker *)dnsc->tracker;
+  struct dns_tracker *tracker         = (struct dns_tracker *)dnsc->tracker;
   struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
-  
-  if (request)
+
+  if(request)
   {
     request->packet.header = hdr;
-    generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(), lbuffer, hdr);
+    generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(),
+                                 lbuffer, hdr);
   }
   else
   {
@@ -665,21 +666,21 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
     llarp::LogWarn("Error Receiving DNS Client Response");
     return;
   }
-  
+
   llarp_buffer_t buffer;
-  buffer.base = (byte_t *) buf;
+  buffer.base = (byte_t *)buf;
   buffer.cur  = buffer.base;
   buffer.sz   = sz;
-  
-  //unsigned char *castBuf = (unsigned char *)buf;
+
+  // unsigned char *castBuf = (unsigned char *)buf;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr = decode_hdr(buffer);
-  buffer.cur = buffer.base; // reset cursor to beginning
+  buffer.cur          = buffer.base;  // reset cursor to beginning
 
   llarp::LogDebug("Header got client responses for id: ", hdr->id);
 
   // if we sent this out, then there's an id
-  struct dns_tracker *tracker = (struct dns_tracker *)udp->user;
+  struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
   struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
 
   // sometimes we'll get double responses
@@ -771,7 +772,7 @@ void
 llarp_host_resolved(dnsc_answer_request *const request)
 {
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
-  auto val = std::find_if(
+  auto val             = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
       [request](
           std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >
@@ -812,7 +813,7 @@ llarp_dnsc_init(struct dnsc_context *const dnsc,
   llarp::LogInfo("DNSc adding relay ", dnsc_sockaddr);
   dnsc->resolvers.push_back(dnsc_sockaddr);
   dnsc->tracker = &dns_udp_tracker;
-  dnsc->logic = logic;
+  dnsc->logic   = logic;
   return true;
 }
 

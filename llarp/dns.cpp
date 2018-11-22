@@ -245,7 +245,7 @@ packet2bytes(dns_packet &in)
   // don't pull these from the header, trust what we actually have more
   vput16bits(write_buffer, in.questions.size());  // QD (number of questions)
   vput16bits(write_buffer, in.answers.size());    // AN (number of answers)
-  vput16bits(write_buffer, in.auth_rrs.size());  // NS (number of auth RRs)
+  vput16bits(write_buffer, in.auth_rrs.size());   // NS (number of auth RRs)
   vput16bits(write_buffer,
              in.additional_rrs.size());  // AR (number of Additional RRs)
 
@@ -321,11 +321,11 @@ extern "C"
     llarp_buffer_read_uint16(&buffer, &hdr->anCount);
     llarp_buffer_read_uint16(&buffer, &hdr->nsCount);
     llarp_buffer_read_uint16(&buffer, &hdr->arCount);
-    
+
     // decode fields into hdr
-    uint8_t lFields     = (fields & 0x00FF) >> 0;
-    uint8_t hFields     = (fields & 0xFF00) >> 8;
-    
+    uint8_t lFields = (fields & 0x00FF) >> 0;
+    uint8_t hFields = (fields & 0xFF00) >> 8;
+
     // process high byte
     // hdr->qr      = fields & 0x8000;
     hdr->qr     = (hFields >> 7) & 0x1;
@@ -459,7 +459,7 @@ extern "C"
                       */
       moveable += answer->rdLen;
       (*pos) += answer->rdLen;  // advance the length
-      
+
       answer->record = std::make_unique< llarp::dns::type_1a >();
       answer->record->parse(answer->rData);
     }
@@ -479,7 +479,7 @@ extern "C"
           // don't really need to do anything here
           moveable += answer->rdLen;
           //(*pos) += answer->rdLen;  // advance the length
-          
+
           answer->record = std::make_unique< llarp::dns::type_2ns >();
           answer->record->parse(answer->rData);
         }
@@ -493,7 +493,7 @@ extern "C"
 
           moveable += answer->rdLen;
           //(*pos) += answer->rdLen;  // advance the length
-          
+
           answer->record = std::make_unique< llarp::dns::type_5cname >();
           answer->record->parse(answer->rData);
         }
@@ -604,13 +604,13 @@ extern "C"
                             const struct sockaddr *addr, const void *buf,
                             ssize_t sz)
   {
-    //auto abuffer = llarp::StackBuffer< decltype(buf) >(buf);
-    
+    // auto abuffer = llarp::StackBuffer< decltype(buf) >(buf);
+
     llarp_buffer_t buffer;
     buffer.base = (byte_t *)buf;
     buffer.cur  = buffer.base;
     buffer.sz   = sz;
-    
+
     dns_msg_header *hdr = decode_hdr(buffer);
     llarp::LogDebug("msg id ", hdr->id);
     llarp::LogDebug("msg qr ", (uint8_t)hdr->qr);
