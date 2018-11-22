@@ -378,7 +378,7 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
         /* default IPv6 route */
         if(AF_INET6 == lpSockaddr->sa_family && 0 == prefix->PrefixLength
            && IN6_IS_ADDR_UNSPECIFIED(
-                  &((struct sockaddr_in6*)(lpSockaddr))->sin6_addr))
+               &((struct sockaddr_in6*)(lpSockaddr))->sin6_addr))
         {
 #ifdef DEBUG
           fprintf(stderr,
