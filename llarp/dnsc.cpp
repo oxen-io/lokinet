@@ -153,8 +153,6 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
 /// generic dnsc handler
 void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
-                             __attribute__((unused))
-                             const struct sockaddr *saddr,
                              llarp_buffer_t buffer, dns_msg_header *hdr)
 {
   if(!request)
@@ -644,8 +642,7 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
   if (request)
   {
     request->packet.header = hdr;
-    generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(), nullptr,
-                               lbuffer, hdr);
+    generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(), lbuffer, hdr);
   }
   else
   {
@@ -689,7 +686,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
   if(request)
   {
     request->packet.header = hdr;
-    generic_handle_dnsc_recvfrom(request, saddr, buffer, hdr);
+    generic_handle_dnsc_recvfrom(request, buffer, hdr);
   }
   else
   {

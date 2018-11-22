@@ -63,9 +63,17 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
 /// because we don't need a callback like recvfrom
 /// because we're not evented
 /// however daemon/dns expects this
+/*
 void
 raw_handle_recvfrom(int *sockfd, const struct sockaddr *addr, const void *buf,
                     const ssize_t sz);
+*/
+
+// removed saddr, if needed get through request
+void
+generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
+                             llarp_buffer_t buffer, dns_msg_header *hdr);
+
 
 /// DNS client context (one needed per upstream DNS server)
 struct dnsc_context
