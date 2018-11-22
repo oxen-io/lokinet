@@ -74,7 +74,7 @@ namespace llarp
       Validate(const V& value) const = 0;
 
       void
-      OnFound(const Key_t& askedPeer, const V& value)
+      OnFound(const Key_t askedPeer, const V& value)
       {
         peersAsked.insert(askedPeer);
         if(Validate(value))
@@ -98,18 +98,23 @@ namespace llarp
         Key_t peer;
         if(next)
         {
-          peer = *next.get();
+          // explicit next peer provided
+          peer = next->data();
         }
-        else
+        else if(!GetNextPeer(peer, peersAsked))
         {
-          if(!GetNextPeer(peer, peersAsked))
-          {
-            // no more peers
-            SendReply();
-            return false;
-          }
+          // no more peers
+          return false;
         }
 
+        const Key_t targetKey = target.data();
+        if((prevPeer ^ targetKey) < (peer ^ targetKey))
+        {
+          // next peer is not closer
+          return false;
+        }
+        else
+          peersAsked.insert(peer);
         DoNextRequest(peer);
         return true;
       }
@@ -316,12 +321,11 @@ namespace llarp
           auto txitr     = tx.find(from);
           if(txitr == tx.end())
             return;
-          if(next)
-          {
-            // ask for next peer
-            if(txitr->second->AskNextPeer(from.node, next))
-              sendReply = false;
-          }
+
+          // ask for next peer
+          if(txitr->second->AskNextPeer(from.node, next))
+            sendReply = false;
+
           llarp::LogWarn("Target key ", txitr->second->target);
           Inform(from, txitr->second->target, {}, sendReply, sendReply);
         }
