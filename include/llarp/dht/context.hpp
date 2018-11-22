@@ -112,7 +112,8 @@ namespace llarp
         if((prevPeer ^ targetKey) < (peer ^ targetKey))
         {
           // next peer is not closer
-          llarp::LogInfo("next peer ", peer, " is not closer to ", target, " than ", prevPeer);
+          llarp::LogInfo("next peer ", peer, " is not closer to ", target,
+                         " than ", prevPeer);
           return false;
         }
         else
@@ -314,7 +315,7 @@ namespace llarp
                 std::make_pair(k, time_now_ms() + requestTimeoutMS));
           }
           if(count == 0)
-          t->Start(askpeer);
+            t->Start(askpeer);
         }
 
         /// mark tx as not fond

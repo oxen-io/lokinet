@@ -154,7 +154,8 @@ struct llarp_router
       pendingEstablishJobs;
 
   // pending RCs to be verified by pubkey
-  std::unordered_map<llarp::RouterID, llarp_async_verify_rc, llarp::RouterID::Hash> 
+  std::unordered_map< llarp::RouterID, llarp_async_verify_rc,
+                      llarp::RouterID::Hash >
       pendingVerifyRC;
 
   // sessions to persist -> timestamp to end persist at
@@ -258,8 +259,7 @@ struct llarp_router
 
   /// manually flush outbound message queue for just 1 router
   void
-  FlushOutboundFor(llarp::RouterID remote,
-                   llarp::ILinkLayer *chosen = nullptr);
+  FlushOutboundFor(llarp::RouterID remote, llarp::ILinkLayer *chosen = nullptr);
 
   /// manually discard all pending messages to remote router
   void

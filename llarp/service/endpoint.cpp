@@ -1113,9 +1113,12 @@ namespace llarp
         }
       }
       // no converstation
-      return EnsurePathToService(remote, [](Address, OutboundContext* c) {
-        if(c) c->UpdateIntroSet(true);
-      }, 5000, false);
+      return EnsurePathToService(remote,
+                                 [](Address, OutboundContext* c) {
+                                   if(c)
+                                     c->UpdateIntroSet(true);
+                                 },
+                                 5000, false);
     }
 
     bool

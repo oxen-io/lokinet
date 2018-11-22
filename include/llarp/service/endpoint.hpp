@@ -142,7 +142,7 @@ namespace llarp
 #ifdef TESTNET
         llarp::LogInfo("Got message from ", msg->sender.Addr());
 #else
-        (void) msg;
+        (void)msg;
 #endif
         return true;
       }

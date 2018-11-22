@@ -242,8 +242,8 @@ extern "C"
     // llarp::LogDebug("Advancing to pos ", std::to_string(*pos));
     moveable += (*pos);  // advance to position
 
-    //hexDump(moveable, 12);
-    //hexDumpAt(buffer, *pos, 12);
+    // hexDump(moveable, 12);
+    // hexDumpAt(buffer, *pos, 12);
 
     if(*moveable == '\xc0')
     {
@@ -267,10 +267,10 @@ extern "C"
       /*
       uint32_t readAt32 = *pos;
       answer->name = getDNSstring(buffer, &readAt32);
-        llarp::LogInfo("Parsed string ", answer->name, " read ", std::to_string(readAt32));
-        moveable += readAt32; (*pos) += readAt32;
+        llarp::LogInfo("Parsed string ", answer->name, " read ",
+      std::to_string(readAt32)); moveable += readAt32; (*pos) += readAt32;
       */
-      //moveable++; (*pos)++;
+      // moveable++; (*pos)++;
     }
     /*
     hexDump(moveable, 10);
@@ -330,12 +330,12 @@ extern "C"
       // FIXME: move this out of here, this shouldn't be responsible for decode
       switch(answer->type)
       {
-        case 2: // NS
+        case 2:  // NS
           // don't really need to do anything here
           moveable += answer->rdLen;
           (*pos) += answer->rdLen;  // advance the length
-        break;
-          case 5:
+          break;
+        case 5:
           moveable += answer->rdLen;
           (*pos) += answer->rdLen;  // advance the length
           break;
@@ -371,10 +371,10 @@ extern "C"
         {
           std::string revname = getDNSstring(buffer, pos);
           llarp::LogInfo("revDNSname: ", revname);
-          //answer->rData = new uint8_t[answer->rdLen + 1];
+          // answer->rData = new uint8_t[answer->rdLen + 1];
           answer->rData.resize(answer->rdLen);
           memcpy(answer->rData.data(), revname.c_str(), answer->rdLen);
-          //answer->rData = (uint8_t *)strdup(revname.c_str()); // safer? nope
+          // answer->rData = (uint8_t *)strdup(revname.c_str()); // safer? nope
           moveable += answer->rdLen;
           //(*pos) += answer->rdLen;  // advance the length
         }

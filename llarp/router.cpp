@@ -383,7 +383,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
     delete ctx;
     router->DiscardOutboundFor(pk);
     router->pendingVerifyRC.erase(pk);
-   
+
     return;
   }
   // we're valid, which means it's already been committed to the nodedb
@@ -615,7 +615,7 @@ llarp_router::FlushOutboundFor(llarp::RouterID remote,
                                llarp::ILinkLayer *chosen)
 {
   llarp::LogDebug("Flush outbound for ", remote);
-  
+
   auto itr = outboundMessageQueue.find(remote);
   if(itr == outboundMessageQueue.end())
   {
@@ -699,7 +699,7 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc,
     job->hook = &llarp_router::on_verify_server_rc;
   else
     job->hook = &llarp_router::on_verify_client_rc;
-  
+
   llarp_nodedb_async_verify(job);
 }
 
