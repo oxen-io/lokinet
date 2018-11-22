@@ -197,7 +197,7 @@ namespace llarp
             continue;
           byte_t tmp[1024] = {0};
           auto buf         = StackBuffer< decltype(tmp) >(tmp);
-          if(!SendToOrQueue(introset.A.Addr(), buf, eProtocolText))
+          if(!SendToOrQueue(introset.A.Addr().data(), buf, eProtocolText))
           {
             llarp::LogWarn(Name(), " failed to send/queue data to ",
                            introset.A.Addr(), " for tag ", tag.ToString());
