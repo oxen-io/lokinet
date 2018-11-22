@@ -56,15 +56,13 @@ namespace llarp
       return retval;
     };
 
-    type_2ns::type_2ns() : record()
-    {
-      this->ns = "";
-    }
+    type_2ns::type_2ns() : record(){};
+
     bool
     type_2ns::parse(std::vector< byte_t > bytes)
     {
       // trim last 2 bytes... probably the size
-      this->ns = std::string(reinterpret_cast< char * >(bytes.data()),
+      this->ns = std::string(reinterpret_cast< char* >(bytes.data()),
                              bytes.size() - 2);
       return true;
     };
@@ -78,17 +76,14 @@ namespace llarp
       return retval;
     };
 
-    type_5cname::type_5cname() : record()
-    {
-      this->cname = "";
-    }
+    type_5cname::type_5cname() : record(){};
 
     bool
     type_5cname::parse(std::vector< byte_t > bytes)
     {
       // trim last 2 bytes... probably the size
       this->cname =
-          std::string(reinterpret_cast< char * >(bytes.data()), bytes.size());
+          std::string(reinterpret_cast< char* >(bytes.data()), bytes.size());
       // LogDebug("type5 parsed ", this->cname);
       return true;
     };
@@ -104,8 +99,6 @@ namespace llarp
 
     type_6soa::type_6soa() : record()
     {
-      this->mname   = "";
-      this->rname   = "";
       this->serial  = 0;
       this->refresh = 0;
       this->retry   = 0;
@@ -140,16 +133,13 @@ namespace llarp
       return retval;
     };
 
-    type_12ptr::type_12ptr() : record()
-    {
-      this->revname = "";
-    }
+    type_12ptr::type_12ptr() : record(){};
 
     bool
     type_12ptr::parse(std::vector< byte_t > bytes)
     {
       this->revname =
-          std::string(reinterpret_cast< char * >(bytes.data()), bytes.size());
+          std::string(reinterpret_cast< char* >(bytes.data()), bytes.size());
       return bytes.size() ? true : false;
     };
 
@@ -169,14 +159,13 @@ namespace llarp
     type_15mx::type_15mx() : record()
     {
       this->priority = 99;
-      this->mx       = "";
     }
 
     bool
     type_15mx::parse(std::vector< byte_t > bytes)
     {
       this->mx =
-          std::string(reinterpret_cast< char * >(bytes.data()), bytes.size());
+          std::string(reinterpret_cast< char* >(bytes.data()), bytes.size());
       // LogInfo("parsed ", this->mx);
       return true;
     };
@@ -191,15 +180,12 @@ namespace llarp
       return retval;
     };
 
-    type_16txt::type_16txt() : record()
-    {
-      this->txt = "";
-    }
+    type_16txt::type_16txt() : record(){};
 
     bool
     type_16txt::parse(std::vector< byte_t > bytes)
     {
-      this->txt = std::string(reinterpret_cast< char * >(bytes.data()),
+      this->txt = std::string(reinterpret_cast< char* >(bytes.data()),
                               bytes.size() - 1);
       return true;
     };
