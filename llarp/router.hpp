@@ -106,8 +106,8 @@ struct llarp_router
   bool
   ExitEnabled() const
   {
-    auto itr = exitConf.find("exit");
-    if(itr == exitConf.end())
+    auto itr = netConf.find("exit");
+    if(itr == netConf.end())
       return false;
     return llarp::IsTrueValue(itr->second.c_str());
   }
