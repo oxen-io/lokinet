@@ -19,9 +19,9 @@ namespace abyss
 
     struct IRPCHandler
     {
-      typedef std::string Method_t;
-      typedef json::Value Params;
-      typedef json::Document Response;
+      using Method_t = std::string;
+      using Params   = json::Value;
+      using Response = json::Document;
 
       IRPCHandler(ConnImpl* impl);
 

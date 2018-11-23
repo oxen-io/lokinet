@@ -83,13 +83,13 @@ namespace llarp
       };
     };
 
-    typedef llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
-                                     WriteBuffer::PutTime, WriteBuffer::Compare,
-                                     llarp::util::NullMutex,
-                                     llarp::util::NullLock, 5, 100, 128 >
-        LossyWriteQueue_t;
+    using LossyWriteQueue_t =
+        llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
+                                 WriteBuffer::PutTime, WriteBuffer::Compare,
+                                 llarp::util::NullMutex, llarp::util::NullLock,
+                                 5, 100, 128 >;
 
-    typedef std::deque< WriteBuffer > LosslessWriteQueue_t;
+    using LosslessWriteQueue_t = std::deque< WriteBuffer >;
 
     // on windows, tcp/udp event loops are socket fds
     // and TUN device is a plain old fd
@@ -319,13 +319,13 @@ namespace llarp
       };
     };
 
-    typedef llarp::util::CoDelQueue<
-        WriteBuffer, WriteBuffer::GetTime, WriteBuffer::PutTime,
-        WriteBuffer::Compare, WriteBuffer::GetNow, llarp::util::NullMutex,
-        llarp::util::NullLock, 5, 100, 1024 >
-        LossyWriteQueue_t;
+    using LossyWriteQueue_t =
+        llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
+                                 WriteBuffer::PutTime, WriteBuffer::Compare,
+                                 WriteBuffer::GetNow, llarp::util::NullMutex,
+                                 llarp::util::NullLock, 5, 100, 1024 >;
 
-    typedef std::deque< WriteBuffer > LosslessWriteQueue_t;
+    using LosslessWriteQueue_t = std::deque< WriteBuffer >;
 
     int fd;
     int flags = 0;

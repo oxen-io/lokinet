@@ -6,7 +6,7 @@
 #include <string>
 namespace llarp
 {
-  typedef std::string_view string_view;
+  using string_view = std::string_view;
   static std::string
   string_view_string(const string_view& v)
   {
@@ -17,7 +17,7 @@ namespace llarp
 #include <string>
 namespace llarp
 {
-  typedef std::string string_view;
+  using string_view = std::string;
 
   static std::string
   string_view_string(const string_view& v)

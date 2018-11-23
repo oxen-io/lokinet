@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace service
   {
-    typedef llarp::AlignedBuffer< 16 > ConvoTag;
+    using ConvoTag = llarp::AlignedBuffer< 16 >;
 
     struct ProtocolMessage;
     struct IDataHandler

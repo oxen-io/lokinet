@@ -50,7 +50,7 @@ namespace llarp
   template < typename User >
   struct AsyncFrameEncrypter
   {
-    typedef void (*EncryptHandler)(EncryptedFrame*, User*);
+    using EncryptHandler = std::function< void(EncryptedFrame*, User*) >;
 
     static void
     Encrypt(void* user)
@@ -96,7 +96,7 @@ namespace llarp
   template < typename User >
   struct AsyncFrameDecrypter
   {
-    typedef void (*DecryptHandler)(llarp_buffer_t*, User*);
+    using DecryptHandler = std::function< void(llarp_buffer_t*, User*) >;
 
     static void
     Decrypt(void* user)

@@ -280,19 +280,19 @@ namespace llarp
     /// A path we made
     struct Path : public IHopHandler, public llarp::routing::IMessageHandler
     {
-      typedef std::function< void(Path*) > BuildResultHookFunc;
-      typedef std::function< bool(Path*, llarp_time_t) > CheckForDeadFunc;
-      typedef std::function< bool(Path*, const PathID_t&, uint64_t) >
-          DropHandlerFunc;
-      typedef std::vector< PathHopConfig > HopList;
-      typedef std::function< bool(Path*, const service::ProtocolFrame*) >
-          DataHandlerFunc;
-      typedef std::function< bool(Path*) > ExitUpdatedFunc;
-      typedef std::function< bool(Path*) > ExitClosedFunc;
-      typedef std::function< bool(Path*, llarp_buffer_t) >
-          ExitTrafficHandlerFunc;
+      using BuildResultHookFunc = std::function< void(Path*) >;
+      using CheckForDeadFunc    = std::function< bool(Path*, llarp_time_t) >;
+      using DropHandlerFunc =
+          std::function< bool(Path*, const PathID_t&, uint64_t) >;
+      using HopList = std::vector< PathHopConfig >;
+      using DataHandlerFunc =
+          std::function< bool(Path*, const service::ProtocolFrame*) >;
+      using ExitUpdatedFunc = std::function< bool(Path*) >;
+      using ExitClosedFunc  = std::function< bool(Path*) >;
+      using ExitTrafficHandlerFunc =
+          std::function< bool(Path*, llarp_buffer_t) >;
       /// (path, backoff) backoff is 0 on success
-      typedef std::function< bool(Path*, llarp_time_t) > ObtainedExitHandler;
+      using ObtainedExitHandler = std::function< bool(Path*, llarp_time_t) >;
 
       HopList hops;
 
@@ -612,15 +612,15 @@ namespace llarp
       void
       RemovePathSet(PathSet* set);
 
-      typedef std::multimap< PathID_t, std::shared_ptr< TransitHop > >
-          TransitHopsMap_t;
+      using TransitHopsMap_t =
+          std::multimap< PathID_t, std::shared_ptr< TransitHop > >;
 
-      typedef std::pair< util::Mutex, TransitHopsMap_t > SyncTransitMap_t;
+      using SyncTransitMap_t = std::pair< util::Mutex, TransitHopsMap_t >;
 
       // maps path id -> pathset owner of path
-      typedef std::map< PathID_t, PathSet* > OwnedPathsMap_t;
+      using OwnedPathsMap_t = std::map< PathID_t, PathSet* >;
 
-      typedef std::pair< util::Mutex, OwnedPathsMap_t > SyncOwnedPathsMap_t;
+      using SyncOwnedPathsMap_t = std::pair< util::Mutex, OwnedPathsMap_t >;
 
       llarp_threadpool*
       Worker();

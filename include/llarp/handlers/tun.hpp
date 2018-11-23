@@ -119,10 +119,9 @@ namespace llarp
       ObtainIPForAddr(const byte_t* addr);
 
      protected:
-      typedef llarp::util::CoDelQueue<
+      using PacketQueue_t = llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,
-          net::IPv4Packet::CompareOrder, net::IPv4Packet::GetNow >
-          PacketQueue_t;
+          net::IPv4Packet::CompareOrder, net::IPv4Packet::GetNow >;
       /// queue for sending packets over the network from us
       PacketQueue_t m_UserToNetworkPktQueue;
       /// queue for sending packets to user from network

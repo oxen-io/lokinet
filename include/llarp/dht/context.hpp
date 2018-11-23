@@ -126,11 +126,11 @@ namespace llarp
       SendReply() = 0;
     };
 
-    typedef std::function< void(const std::vector< service::IntroSet >&) >
-        IntroSetLookupHandler;
+    using IntroSetLookupHandler =
+        std::function< void(const std::vector< service::IntroSet >&) >;
 
-    typedef std::function< void(const std::vector< RouterContact >&) >
-        RouterLookupHandler;
+    using RouterLookupHandler =
+        std::function< void(const std::vector< RouterContact >&) >;
 
     struct Context
     {
