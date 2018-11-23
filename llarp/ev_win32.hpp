@@ -28,7 +28,7 @@ namespace llarp
     if(amount > 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, buf, amount);
+        tcp.read(&tcp, llarp::InitBuffer(buf, amount);
     }
     else
     {
@@ -153,7 +153,7 @@ namespace llarp
         llarp::LogWarn("recv socket error ", s_errno);
         return -1;
       }
-      udp->recvfrom(udp, addr, buf, sz);
+      udp->recvfrom(udp, addr, llarp::InitBuffer(buf, sz));
       return 0;
     }
 
@@ -195,7 +195,7 @@ namespace llarp
     OVERLAPPED* tun_async[2];
     tun(llarp_tun_io* tio, llarp_ev_loop* l)
         : ev_io(INVALID_HANDLE_VALUE,
-                new LossyWriteQueue_t("win32_tun_write", l))
+                new LossyWriteQueue_t("win32_tun_write", l, l))
         , t(tio)
         , tunif(tuntap_init()){};
 
@@ -240,7 +240,7 @@ namespace llarp
       if(ret > 0 && t->recvpkt)
         // should have pktinfo
         // I have no idea...
-        t->recvpkt(t, (byte_t*)buf, ret);
+        t->recvpkt(t, llarp::InitBuffer(buf, ret));
       return ret;
     }
 

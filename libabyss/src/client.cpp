@@ -2,6 +2,7 @@
 #include <abyss/http.hpp>
 #include <llarp/logger.hpp>
 #include <llarp/crypto.hpp>
+#include <llarp/buffer.hpp>
 
 namespace abyss
 {
@@ -59,10 +60,10 @@ namespace abyss
       }
 
       static void
-      OnRead(llarp_tcp_conn* conn, const void* buf, size_t sz)
+      OnRead(llarp_tcp_conn* conn, llarp_buffer_t buf)
       {
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
-        if(!self->ProcessRead((const char*)buf, sz))
+        if(!self->ProcessRead((const char*)buf.base, buf.sz))
           self->CloseError();
       }
 
@@ -219,7 +220,7 @@ namespace abyss
                           body.size());
         if(sz <= 0)
           return;
-        if(!llarp_tcp_conn_async_write(m_Conn, buf, sz))
+        if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(buf, sz)))
         {
           llarp::LogError("failed to write first part of request");
           CloseError();
@@ -235,40 +236,40 @@ namespace abyss
         for(const auto& item : m_SendHeaders)
         {
           // header name
-          if(!llarp_tcp_conn_async_write(m_Conn, item.first.c_str(),
-                                         item.first.size()))
+          if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(item.first.c_str(),
+                                         item.first.size())))
           {
             CloseError();
             return;
           }
           // header delimiter
-          if(!llarp_tcp_conn_async_write(m_Conn, buf, 2 * sizeof(char)))
+          if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(buf, 2 * sizeof(char))))
           {
             CloseError();
             return;
           }
           // header value
-          if(!llarp_tcp_conn_async_write(m_Conn, item.second.c_str(),
-                                         item.second.size()))
+          if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(item.second.c_str(),
+                                         item.second.size())))
           {
             CloseError();
             return;
           }
           // CRLF
-          if(!llarp_tcp_conn_async_write(m_Conn, buf + 2, 2 * sizeof(char)))
+          if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(buf + 2, 2 * sizeof(char))))
           {
             CloseError();
             return;
           }
         }
         // CRLF
-        if(!llarp_tcp_conn_async_write(m_Conn, buf + 2, 2 * sizeof(char)))
+        if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(buf + 2, 2 * sizeof(char))))
         {
           CloseError();
           return;
         }
         // request body
-        if(!llarp_tcp_conn_async_write(m_Conn, body.c_str(), body.size()))
+        if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(body.c_str(), body.size())))
         {
           CloseError();
           return;

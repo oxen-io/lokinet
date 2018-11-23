@@ -9,6 +9,7 @@ namespace llarp
 {
   namespace service
   {
+    /// Snapp Address
     struct Address
     {
       std::string

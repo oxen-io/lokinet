@@ -590,14 +590,13 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
 /// intermediate udp_io handler
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
-                           const struct sockaddr *saddr, const void *buf,
-                           const ssize_t sz)
+                           const struct sockaddr *saddr, llarp_buffer_t buf)
 {
   if(!saddr)
   {
     llarp::LogWarn("saddr isnt set");
   }
-  unsigned char *castBuf = (unsigned char *)buf;
+  unsigned char *castBuf = buf.base;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header *hdr = decode_hdr((const char *)castBuf);
 
@@ -610,7 +609,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
   // sometimes we'll get double responses
   if(request)
   {
-    generic_handle_dnsc_recvfrom(request, saddr, buf, sz);
+    generic_handle_dnsc_recvfrom(request, saddr, buf.base, buf.sz);
   }
   else
   {
@@ -680,7 +679,7 @@ llarp_resolve_host(struct dnsc_context *const dnsc, const char *url,
 
   // ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, bytes, length);
   ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->resolvers[0],
-                                    dns_packet->request, dns_packet->length);
+                                    llarp::InitBuffer(dns_packet->request, dns_packet->length));
   delete dns_packet;
   if(ret < 0)
   {

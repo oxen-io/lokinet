@@ -433,10 +433,9 @@ extern "C"
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
-                            const struct sockaddr *addr, const void *buf,
-                            ssize_t sz)
+                            const struct sockaddr *addr, llarp_buffer_t buf)
   {
-    unsigned char *castBuf = (unsigned char *)buf;
+    unsigned char *castBuf = buf.base;
     // auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
     dns_msg_header *hdr = decode_hdr((const char *)castBuf);
     // castBuf += 12;
@@ -453,12 +452,12 @@ extern "C"
     if(hdr->qr)
     {
       llarp::LogDebug("handling as dnsc answer");
-      llarp_handle_dnsc_recvfrom(udp, addr, buf, sz);
+      llarp_handle_dnsc_recvfrom(udp, addr, buf);
     }
     else
     {
       llarp::LogDebug("handling as dnsd question");
-      llarp_handle_dnsd_recvfrom(udp, addr, buf, sz);
+      llarp_handle_dnsd_recvfrom(udp, addr, buf);
     }
     delete hdr;
     /*

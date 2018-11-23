@@ -514,7 +514,7 @@ namespace llarp
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
-        if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
+        if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
           llarp::LogWarn("packet dropped");
       });
       if(self->m_UserToNetworkPktQueue.Size())
@@ -529,19 +529,18 @@ namespace llarp
     }
 
     void
-    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, const void *buf, ssize_t sz)
+    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, llarp_buffer_t buf)
     {
       // called for every packet read from user in isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
-             [buf, sz](net::IPv4Packet &pkt) -> bool {
-               return pkt.Load(llarp::InitBuffer(buf, sz))
+             [buf](net::IPv4Packet &pkt) -> bool {
+               return pkt.Load(buf)
                    && pkt.Header()->version == 4;
              }))
       {
         llarp::LogInfo("Failed to parse ipv4 packet");
-        llarp::DumpBuffer(llarp::InitBuffer(buf, sz));
+        llarp::DumpBuffer(buf);
       }
     }
 

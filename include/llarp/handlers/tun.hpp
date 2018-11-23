@@ -85,7 +85,7 @@ namespace llarp
 
       /// called every time we wish to read a packet from the tun interface
       static void
-      tunifRecvPkt(llarp_tun_io* t, const void* pkt, ssize_t sz);
+      tunifRecvPkt(llarp_tun_io* t, llarp_buffer_t buf);
 
       /// called in the endpoint logic thread
       static void

@@ -10,17 +10,17 @@ std::string g_result  = "";
 ssize_t
 test_sendto_dns_hook(__attribute__((unused)) void *sock,
                      __attribute__((unused)) const struct sockaddr *from,
-                     const void *buffer, size_t length)
+                     llarp_buffer_t buf)
 {
-  char *hex_buffer       = new char[length * 3 + 1];
-  hex_buffer[length * 3] = 0;
-  for(unsigned int j = 0; j < length; j++)
-    sprintf(&hex_buffer[3 * j], "%02X ", ((const char *)buffer)[j]);
+  char *hex_buffer       = new char[buf.sz * 3 + 1];
+  hex_buffer[buf.sz* 3] = 0;
+  for(unsigned int j = 0; j < buf.sz; j++)
+    sprintf(&hex_buffer[3 * j], "%02X ", ((char*)buf.base)[j]);
   // printf("Got [%zu] bytes: [%s]\n", length, hex_buffer);
   g_result = hex_buffer;
-  g_length = length;
+  g_length = buf.sz;
   delete[] hex_buffer;
-  return length;
+  return buf.sz;
 }
 
 struct llarpDNSdTest : public ::testing::Test
