@@ -141,9 +141,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   auto dev  = loop->create_tun(tun);
   tun->impl = dev;
   if(dev)
-  {
     return loop->add_ev(dev, false);
-  }
   return false;
 }
 

@@ -39,11 +39,14 @@ add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unkno
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 # dynamic linking does this all the time
 if (USING_CLANG)
+option(NO_LIBGCC "use compiler-rt instead" OFF)
 add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
 add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-# because clang is insane enough to inline whole sections of the C++ library!
-# May have been fixed in llvm-7.
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+if (NO_LIBGCC)
+set(CMAKE_CXX_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_CXX_STANDARD_LIBRARIES}")
+set(CMAKE_C_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_C_STANDARD_LIBRARIES}")
+endif()
 else()
 # found it. this is GNU only
 add_compile_options(-Wno-cast-function-type)
