@@ -133,7 +133,7 @@ namespace llarp
       }
       if(m_Exit)
       {
-        m_Exit->Tick(now);
+        m_Exit->Tick(now, m_Router);
       }
       // expire pending tx
       {
