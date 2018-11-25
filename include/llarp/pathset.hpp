@@ -60,6 +60,10 @@ namespace llarp
       void
       Tick(llarp_time_t now, llarp_router* r);
 
+      /// count the number of paths that will exist at this timestamp in future
+      size_t
+      NumPathsExistingAt(llarp_time_t futureTime) const;
+
       void
       RemovePath(Path* path);
 
