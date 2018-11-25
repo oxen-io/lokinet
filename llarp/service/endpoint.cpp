@@ -131,6 +131,10 @@ namespace llarp
       {
         RegenAndPublishIntroSet(now);
       }
+      if(m_Exit)
+      {
+        m_Exit->Tick(now);
+      }
       // expire pending tx
       {
         std::set< service::IntroSet > empty;
