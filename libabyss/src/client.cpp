@@ -236,40 +236,46 @@ namespace abyss
         for(const auto& item : m_SendHeaders)
         {
           // header name
-          if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(item.first.c_str(),
-                                         item.first.size())))
+          if(!llarp_tcp_conn_async_write(
+                 m_Conn,
+                 llarp::InitBuffer(item.first.c_str(), item.first.size())))
           {
             CloseError();
             return;
           }
           // header delimiter
-          if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(buf, 2 * sizeof(char))))
+          if(!llarp_tcp_conn_async_write(
+                 m_Conn, llarp::InitBuffer(buf, 2 * sizeof(char))))
           {
             CloseError();
             return;
           }
           // header value
-          if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(item.second.c_str(),
-                                         item.second.size())))
+          if(!llarp_tcp_conn_async_write(
+                 m_Conn,
+                 llarp::InitBuffer(item.second.c_str(), item.second.size())))
           {
             CloseError();
             return;
           }
           // CRLF
-          if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(buf + 2, 2 * sizeof(char))))
+          if(!llarp_tcp_conn_async_write(
+                 m_Conn, llarp::InitBuffer(buf + 2, 2 * sizeof(char))))
           {
             CloseError();
             return;
           }
         }
         // CRLF
-        if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(buf + 2, 2 * sizeof(char))))
+        if(!llarp_tcp_conn_async_write(
+               m_Conn, llarp::InitBuffer(buf + 2, 2 * sizeof(char))))
         {
           CloseError();
           return;
         }
         // request body
-        if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(body.c_str(), body.size())))
+        if(!llarp_tcp_conn_async_write(
+               m_Conn, llarp::InitBuffer(body.c_str(), body.size())))
         {
           CloseError();
           return;

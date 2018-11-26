@@ -219,7 +219,7 @@ namespace llarp
       if(ret > 0 && t->recvpkt)
       {
         // does not have pktinfo
-        t->recvpkt(t, llarp::InitBuffer(buf,ret));
+        t->recvpkt(t, llarp::InitBuffer(buf, ret));
       }
       return ret;
     }

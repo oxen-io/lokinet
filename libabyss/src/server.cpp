@@ -115,7 +115,8 @@ namespace abyss
 
         m_State = eWriteHTTPBody;
 
-        return llarp_tcp_conn_async_write(_conn, llarp::InitBuffer(content,  contentLength));
+        return llarp_tcp_conn_async_write(
+            _conn, llarp::InitBuffer(content, contentLength));
       }
 
       bool
@@ -260,7 +261,7 @@ namespace abyss
       OnRead(llarp_tcp_conn* conn, llarp_buffer_t buf)
       {
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
-        if(!self->ProcessRead((const char *)buf.base, buf.sz))
+        if(!self->ProcessRead((const char*)buf.base, buf.sz))
           self->MarkBad();
       }
 

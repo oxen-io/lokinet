@@ -110,7 +110,8 @@ int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
                     llarp_buffer_t buf)
 {
-  auto ret = static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf.base, buf.sz);
+  auto ret =
+      static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf.base, buf.sz);
   if(ret == -1 && errno != 0)
   {
     llarp::LogWarn("sendto failed ", strerror(errno));
@@ -141,7 +142,7 @@ llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, llarp_buffer_t buf)
     return false;
   }
   size_t sz = buf.sz;
-  buf.cur = buf.base;
+  buf.cur   = buf.base;
   while(sz > EV_WRITE_BUF_SZ)
   {
     if(!impl->queue_write(buf.cur, EV_WRITE_BUF_SZ))
@@ -221,8 +222,7 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
     llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
     return false;
   }
-  return static_cast< llarp::tun * >(tun->impl)->queue_write(
-     buf.base, buf.sz);
+  return static_cast< llarp::tun * >(tun->impl)->queue_write(buf.base, buf.sz);
 }
 
 void

@@ -26,7 +26,7 @@ namespace llarp
     if(sz == 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, llarp::InitBuffer(nullptr,0));
+        tcp.read(&tcp, llarp::InitBuffer(nullptr, 0));
       return 0;
     }
     if(_shouldClose)
@@ -272,7 +272,7 @@ namespace llarp
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)
       {
-        byte_t * ptr = ((byte_t*)buf) + offset;
+        byte_t* ptr = ((byte_t*)buf) + offset;
         ret -= offset;
         t->recvpkt(t, llarp::InitBuffer(ptr, ret));
       }

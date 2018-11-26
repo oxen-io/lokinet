@@ -66,7 +66,8 @@ struct llarp_udp_io
   /// called every event loop tick after reads
   void (*tick)(struct llarp_udp_io *);
   /// sockaddr * is the source address
-  void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *,llarp_buffer_t);
+  void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *,
+                   llarp_buffer_t);
 };
 
 /// add UDP handler

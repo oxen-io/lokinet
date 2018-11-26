@@ -678,8 +678,9 @@ llarp_resolve_host(struct dnsc_context *const dnsc, const char *url,
   // bytes");
 
   // ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, bytes, length);
-  ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->resolvers[0],
-                                    llarp::InitBuffer(dns_packet->request, dns_packet->length));
+  ssize_t ret = llarp_ev_udp_sendto(
+      dnsc->udp, dnsc->resolvers[0],
+      llarp::InitBuffer(dns_packet->request, dns_packet->length));
   delete dns_packet;
   if(ret < 0)
   {

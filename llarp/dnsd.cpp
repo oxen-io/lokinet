@@ -12,7 +12,7 @@ constexpr size_t BUFFER_SIZE = 1500;
 
 ssize_t
 raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
-                        llarp_buffer_t buf)
+                         llarp_buffer_t buf)
 {
   int *fd = (int *)sock;
   // how do we get to these??
@@ -523,7 +523,8 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
       &llarp_sendto_dns_hook_func;  // set sock hook
 
   // llarp::LogInfo("Server request's UDP ", llarp_dns_request->user);
-  handle_recvfrom((const char*)buf.base, buf.sz, llarp_dns_request->from, llarp_dns_request);
+  handle_recvfrom((const char *)buf.base, buf.sz, llarp_dns_request->from,
+                  llarp_dns_request);
 }
 
 void

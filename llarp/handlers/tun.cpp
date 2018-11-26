@@ -335,7 +335,7 @@ namespace llarp
     TunEndpoint::Tick(llarp_time_t now)
     {
       // call tun code in endpoint logic in case of network isolation
-      //llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
+      // llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
       FlushSend();
       Endpoint::Tick(now);
     }
@@ -535,8 +535,7 @@ namespace llarp
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [buf](net::IPv4Packet &pkt) -> bool {
-               return pkt.Load(buf)
-                   && pkt.Header()->version == 4;
+               return pkt.Load(buf) && pkt.Header()->version == 4;
              }))
       {
         llarp::LogInfo("Failed to parse ipv4 packet");
