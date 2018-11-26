@@ -335,7 +335,7 @@ namespace llarp
     TunEndpoint::Tick(llarp_time_t now)
     {
       // call tun code in endpoint logic in case of network isolation
-      llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
+      //llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
       FlushSend();
       Endpoint::Tick(now);
     }

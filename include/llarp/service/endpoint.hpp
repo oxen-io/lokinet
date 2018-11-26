@@ -137,8 +137,13 @@ namespace llarp
       HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
 
       virtual bool
-      ProcessDataMessage(__attribute__((unused)) ProtocolMessage* msg)
+      ProcessDataMessage(ProtocolMessage* msg)
       {
+#ifdef TESTNET
+        llarp::LogInfo("Got message from ", msg->sender.Addr());
+#else
+        (void)msg;
+#endif
         return true;
       }
 
@@ -188,7 +193,7 @@ namespace llarp
       bool
       CheckPathIsDead(path::Path* p, llarp_time_t latency);
 
-      typedef std::queue< PendingBuffer > PendingBufferQueue;
+      using PendingBufferQueue = std::queue< PendingBuffer >;
 
       struct SendContext
       {
@@ -326,7 +331,7 @@ namespace llarp
 
       // passed a sendto context when we have a path established otherwise
       // nullptr if the path was not made before the timeout
-      typedef std::function< void(Address, OutboundContext*) > PathEnsureHook;
+      using PathEnsureHook = std::function< void(Address, OutboundContext*) >;
 
       /// return false if we have already called this function before for this
       /// address

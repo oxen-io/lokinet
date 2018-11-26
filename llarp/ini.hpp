@@ -48,9 +48,9 @@ namespace ini
     {
     }
 
-    typedef std::list< std::pair< std::string, std::string > > value_map_t;
-    typedef std::map< std::string, Level > section_map_t;
-    typedef std::list< section_map_t::const_iterator > sections_t;
+    using value_map_t   = std::list< std::pair< std::string, std::string > >;
+    using section_map_t = std::map< std::string, Level >;
+    using sections_t    = std::list< section_map_t::const_iterator >;
     value_map_t values;
     section_map_t sections;
     sections_t ordered_sections;

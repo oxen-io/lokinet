@@ -60,6 +60,10 @@ namespace llarp
       void
       Tick(llarp_time_t now, llarp_router* r);
 
+      /// count the number of paths that will exist at this timestamp in future
+      size_t
+      NumPathsExistingAt(llarp_time_t futureTime) const;
+
       void
       RemovePath(Path* path);
 
@@ -176,7 +180,7 @@ namespace llarp
       size_t m_NumPaths;
 
      private:
-      typedef std::pair< RouterID, PathID_t > PathInfo_t;
+      using PathInfo_t = std::pair< RouterID, PathID_t >;
 
       struct PathInfoHash
       {
@@ -187,7 +191,7 @@ namespace llarp
         }
       };
 
-      typedef std::unordered_map< PathInfo_t, Path*, PathInfoHash > PathMap_t;
+      using PathMap_t = std::unordered_map< PathInfo_t, Path*, PathInfoHash >;
       PathMap_t m_Paths;
     };
 

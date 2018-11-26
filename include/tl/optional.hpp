@@ -478,7 +478,8 @@ namespace tl
     struct optional_storage_base
     {
       TL_OPTIONAL_11_CONSTEXPR
-      optional_storage_base() noexcept : m_dummy(), m_has_value(false)
+      optional_storage_base() noexcept
+          : m_dummy(), m_has_value(false)
       {
       }
 
@@ -514,7 +515,8 @@ namespace tl
     struct optional_storage_base< T, true >
     {
       TL_OPTIONAL_11_CONSTEXPR
-      optional_storage_base() noexcept : m_dummy(), m_has_value(false)
+      optional_storage_base() noexcept
+          : m_dummy(), m_has_value(false)
       {
       }
 

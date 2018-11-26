@@ -133,8 +133,8 @@ namespace llarp
     uint32_t tick_id;
 
    protected:
-    typedef util::NullLock Lock;
-    typedef util::NullMutex Mutex;
+    using Lock  = util::NullLock;
+    using Mutex = util::NullMutex;
 
     void
     PutSession(ILinkSession* s);

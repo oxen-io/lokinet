@@ -74,7 +74,7 @@ namespace llarp
       Validate(const V& value) const = 0;
 
       void
-      OnFound(const Key_t& askedPeer, const V& value)
+      OnFound(const Key_t askedPeer, const V& value)
       {
         peersAsked.insert(askedPeer);
         if(Validate(value))
@@ -98,18 +98,26 @@ namespace llarp
         Key_t peer;
         if(next)
         {
-          peer = *next.get();
+          // explicit next peer provided
+          peer = next->data();
         }
-        else
+        else if(!GetNextPeer(peer, peersAsked))
         {
-          if(!GetNextPeer(peer, peersAsked))
-          {
-            // no more peers
-            SendReply();
-            return false;
-          }
+          // no more peers
+          llarp::LogInfo("no more peers for request asking for", target);
+          return false;
         }
 
+        const Key_t targetKey = target.data();
+        if((prevPeer ^ targetKey) < (peer ^ targetKey))
+        {
+          // next peer is not closer
+          llarp::LogInfo("next peer ", peer, " is not closer to ", target,
+                         " than ", prevPeer);
+          return false;
+        }
+        else
+          peersAsked.insert(peer);
         DoNextRequest(peer);
         return true;
       }
@@ -118,11 +126,11 @@ namespace llarp
       SendReply() = 0;
     };
 
-    typedef std::function< void(const std::vector< service::IntroSet >&) >
-        IntroSetLookupHandler;
+    using IntroSetLookupHandler =
+        std::function< void(const std::vector< service::IntroSet >&) >;
 
-    typedef std::function< void(const std::vector< RouterContact >&) >
-        RouterLookupHandler;
+    using RouterLookupHandler =
+        std::function< void(const std::vector< RouterContact >&) >;
 
     struct Context
     {
@@ -297,6 +305,7 @@ namespace llarp
         {
           (void)whoasked;
           tx.emplace(askpeer, std::unique_ptr< TX< K, V > >(t));
+          auto count = waiting.count(k);
           waiting.insert(std::make_pair(k, askpeer));
 
           auto itr = timeouts.find(k);
@@ -305,7 +314,8 @@ namespace llarp
             timeouts.insert(
                 std::make_pair(k, time_now_ms() + requestTimeoutMS));
           }
-          t->Start(askpeer);
+          if(count == 0)
+            t->Start(askpeer);
         }
 
         /// mark tx as not fond
@@ -316,12 +326,11 @@ namespace llarp
           auto txitr     = tx.find(from);
           if(txitr == tx.end())
             return;
-          if(next)
-          {
-            // ask for next peer
-            if(txitr->second->AskNextPeer(from.node, next))
-              sendReply = false;
-          }
+
+          // ask for next peer
+          if(txitr->second->AskNextPeer(from.node, next))
+            sendReply = false;
+
           llarp::LogWarn("Target key ", txitr->second->target);
           Inform(from, txitr->second->target, {}, sendReply, sendReply);
         }

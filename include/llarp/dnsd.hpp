@@ -14,8 +14,9 @@
 struct dnsd_context;
 
 /// sendto hook functor
-typedef ssize_t (*sendto_dns_hook_func)(void *sock, const struct sockaddr *from,
-                                        const void *buffer, size_t length);
+using sendto_dns_hook_func =
+    std::function< ssize_t(void *sock, const struct sockaddr *from,
+                           const void *buffer, size_t length) >;
 // FIXME: llarp::Addr
 
 /// DNS server query request
@@ -88,8 +89,8 @@ writesend_dnss_revresponse(std::string reverse, dnsd_question_request *request);
 //
 
 /// intercept query hook functor
-typedef dnsd_query_hook_response *(*intercept_query_hook)(
-    std::string name, struct dnsd_question_request *request);
+using intercept_query_hook = std::function< dnsd_query_hook_response *(
+    std::string name, struct dnsd_question_request *request) >;
 // FIXME: llarp::Addr
 
 /// DNS Server context

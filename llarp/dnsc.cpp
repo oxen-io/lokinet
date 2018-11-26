@@ -317,6 +317,7 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     llarp::LogDebug("Read an addl RR for ",
                    request->question.name, " at ", std::to_string(pos));
     */
+    // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
     if((size_t)pos > sz)
     {
       llarp::LogWarn("Would read past end of dns packet. for ",
