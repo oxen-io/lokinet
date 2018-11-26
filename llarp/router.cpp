@@ -834,24 +834,17 @@ llarp_router::Run()
       llarp::LogWarn("Link ", link->Name(), " failed to start");
   }
 
-  llarp::LogInfo("starting hidden service context...");
-  if(!hiddenServiceContext.StartAll())
-  {
-    llarp::LogError("Failed to start hidden service context");
-    return;
-  }
-
+  uint64_t delay = ((llarp_randint() % 10) * 500) + 500;
   if(IBLinksStarted > 0)
   {
     // initialize as service node
     if(!InitServiceNode())
     {
       llarp::LogError("Failed to initialize service node");
+      Close();
       return;
     }
-    // immediate connect all for service node
-    uint64_t delay = llarp_randint() % 100;
-    llarp_logic_call_later(logic, {delay, this, &ConnectAll});
+    delay = llarp_randint() % 50;
   }
   else
   {
@@ -864,75 +857,32 @@ llarp_router::Run()
     if(!_rc.Sign(&crypto, identity))
     {
       llarp::LogError("failed to regenerate keys and sign RC");
+      Close();
       return;
     }
-
-    // don't create default if we already have some defined
-    if(this->ShouldCreateDefaultHiddenService())
+    // generate default hidden service
+    llarp::LogInfo("setting up default network endpoint");
+    if(!CreateDefaultHiddenService())
     {
-      // generate default hidden service
-      if(!CreateDefaultHiddenService())
-        return;
+      llarp::LogError("failed to set up default network endpoint");
+      Close();
+      return;
     }
-    // delayed connect all for clients
-    uint64_t delay = ((llarp_randint() % 10) * 500) + 500;
-    llarp_logic_call_later(logic, {delay, this, &ConnectAll});
   }
 
+  llarp::LogInfo("starting hidden service context...");
+  if(!hiddenServiceContext.StartAll())
+  {
+    llarp::LogError("Failed to start hidden service context");
+    Close();
+    return;
+  }
   llarp::PubKey ourPubkey = pubkey();
   llarp::LogInfo("starting dht context as ", ourPubkey);
   llarp_dht_context_start(dht, ourPubkey);
-
   ScheduleTicker(1000);
-}
-
-bool
-llarp_router::ShouldCreateDefaultHiddenService()
-{
-  // llarp::LogInfo("IfName: ", this->defaultIfName, " defaultIfName: ",
-  // this->defaultIfName);
-  if(this->defaultIfName == "auto" || this->defaultIfName == "auto")
-  {
-    // auto detect if we have any pre-defined endpoints
-    // no if we have a endpoints
-    if(hiddenServiceContext.hasEndpoints())
-    {
-      llarp::LogInfo("Auto mode detected and we have endpoints");
-      return false;
-    }
-    // we don't have any endpoints, auto configure settings
-
-    // set a default IP range
-    this->defaultIfAddr = llarp::findFreePrivateRange();
-    if(this->defaultIfAddr == "")
-    {
-      llarp::LogError(
-          "Could not find any free lokitun interface names, can't auto set up "
-          "default HS context for client");
-      this->defaultIfAddr = "no";
-      return false;
-    }
-
-    // pick an ifName
-    this->defaultIfName = llarp::findFreeLokiTunIfName();
-    if(this->defaultIfName == "")
-    {
-      llarp::LogError(
-          "Could not find any free private ip ranges, can't auto set up "
-          "default HS context for client");
-      this->defaultIfName = "no";
-      return false;
-    }
-    // auto config'd, go ahead and create it
-    return true;
-  }
-  // not auto mode then just check to make sure it's explicitly disabled
-  if(this->defaultIfAddr != "" && this->defaultIfAddr != "no"
-     && this->defaultIfName != "" && this->defaultIfName != "no")
-  {
-    return true;
-  }
-  return false;
+  // delayed connect all
+  llarp_logic_call_later(logic, {delay, this, &ConnectAll});
 }
 
 bool
@@ -941,8 +891,7 @@ llarp_router::InitServiceNode()
   llarp::LogInfo("accepting transit traffic");
   paths.AllowTransit();
   llarp_dht_allow_transit(dht);
-  exitContext.AddExitEndpoint("default-connectivity", exitConf);
-  return true;
+  return exitContext.AddExitEndpoint("default-connectivity", netConfig);
 }
 
 void
@@ -1024,14 +973,26 @@ llarp_router::InitOutboundLink()
 bool
 llarp_router::CreateDefaultHiddenService()
 {
-  if(upstreamResolvers.size())
-    return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName,
-                                                   upstreamResolvers.front(),
-                                                   resolverBindAddr);
-  else
-    return hiddenServiceContext.AddDefaultEndpoint(defaultIfAddr, defaultIfName,
-                                                   defaultUpstreamResolver,
-                                                   resolverBindAddr);
+  // fallback defaults
+  static const std::unordered_map< std::string,
+                                   std::function< std::string(void) > >
+      netConfigDefaults = {
+          {"ifname", llarp::findFreeLokiTunIfName},
+          {"ifaddr", llarp::findFreePrivateRange},
+          {"local-dns", []() -> std::string { return "127.0.0.1:53"; }},
+          {"upstream-dns", []() -> std::string { return "1.1.1.1:53"; }}};
+  // populate with fallback defaults if values not present
+  auto itr = netConfigDefaults.begin();
+  while(itr != netConfigDefaults.end())
+  {
+    if(netConfig.count(itr->first) == 0)
+    {
+      netConfig.emplace(std::make_pair(itr->first, itr->second()));
+    }
+    ++itr;
+  }
+  // add endpoint
+  return hiddenServiceContext.AddDefaultEndpoint(netConfig);
 }
 
 bool
@@ -1238,14 +1199,6 @@ namespace llarp
     }
     else if(StrEq(section, "network"))
     {
-      if(StrEq(key, "ifaddr"))
-      {
-        self->defaultIfAddr = val;
-      }
-      if(StrEq(key, "ifname"))
-      {
-        self->defaultIfName = val;
-      }
       if(StrEq(key, "profiles"))
       {
         self->routerProfilesFile = val;
@@ -1254,7 +1207,7 @@ namespace llarp
       }
       else
       {
-        self->exitConf.insert(std::make_pair(key, val));
+        self->netConfig.insert(std::make_pair(key, val));
       }
     }
     else if(StrEq(section, "api"))
@@ -1288,12 +1241,12 @@ namespace llarp
       if(StrEq(key, "upstream"))
       {
         llarp::LogInfo("add upstream resolver ", val);
-        self->upstreamResolvers.push_back(val);
+        self->netConfig.emplace(std::make_pair("upstream-dns", val));
       }
       if(StrEq(key, "bind"))
       {
         llarp::LogInfo("set local dns to ", val);
-        self->resolverBindAddr = val;
+        self->netConfig.emplace(std::make_pair("local-dns", val));
       }
     }
     else if(StrEq(section, "connect"))
