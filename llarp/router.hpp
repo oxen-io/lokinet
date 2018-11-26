@@ -100,26 +100,23 @@ struct llarp_router
 
   llarp::service::Context hiddenServiceContext;
 
-  std::string defaultIfAddr = "auto";
-  std::string defaultIfName = "auto";
+  using NetConfig_t = std::unordered_multimap< std::string, std::string >;
 
-  /// default exit config
-  llarp::exit::Context::Config_t exitConf;
+  /// default network config for default network interface
+  NetConfig_t netConfig;
 
   bool
   ExitEnabled() const
   {
-    auto itr = exitConf.find("exit");
-    if(itr == exitConf.end())
+    // TODO: use equal_range ?
+    auto itr = netConfig.find("exit");
+    if(itr == netConfig.end())
       return false;
     return llarp::IsTrueValue(itr->second.c_str());
   }
 
   bool
   CreateDefaultHiddenService();
-
-  bool
-  ShouldCreateDefaultHiddenService();
 
   const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
   bool enableRPCServer                 = true;
@@ -166,11 +163,6 @@ struct llarp_router
   // set to max value right now
   std::unordered_map< llarp::PubKey, llarp_time_t, llarp::PubKey::Hash >
       lokinetRouters;
-
-  // TODO: change me if needed
-  const std::string defaultUpstreamResolver = "1.1.1.1:53";
-  std::list< std::string > upstreamResolvers;
-  std::string resolverBindAddr = "127.0.0.1:53";
 
   llarp_router();
   ~llarp_router();
@@ -340,10 +332,8 @@ struct llarp_router
   void
   mergeHiddenServiceConfig(const Config &in, Config &out)
   {
-    for(const auto &resolver : upstreamResolvers)
-      out.push_back({"upstream-dns", resolver});
-    out.push_back({"local-dns", resolverBindAddr});
-
+    for(const auto &item : netConfig)
+      out.push_back({item.first, item.second});
     for(const auto &item : in)
       out.push_back({item.first, item.second});
   }

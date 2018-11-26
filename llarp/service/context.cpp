@@ -207,18 +207,20 @@ namespace llarp
     }
 
     bool
-    Context::AddDefaultEndpoint(const std::string &ifaddr,
-                                const std::string &ifname,
-                                const std::string &remoteResolver,
-                                const std::string &localResolver)
+    Context::AddDefaultEndpoint(
+        const std::unordered_multimap< std::string, std::string > &opts)
     {
-      return AddEndpoint({"default",
-                          {{"type", "tun"},
-                           {"ifaddr", ifaddr},
-                           {"ifname", ifname},
-                           {"local-dns", localResolver},
-                           {"upstream-dns", remoteResolver}}},
-                         true);
+      Config::section_values_t configOpts;
+      configOpts.push_back({"type", "tun"});
+      {
+        auto itr = opts.begin();
+        while(itr != opts.end())
+        {
+          configOpts.push_back({itr->first, itr->second});
+          ++itr;
+        }
+      }
+      return AddEndpoint({"default", configOpts});
     }
 
     bool
