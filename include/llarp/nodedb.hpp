@@ -83,7 +83,8 @@ llarp_nodedb_del_rc(struct llarp_nodedb *n, const llarp::RouterID &pk);
 /// struct for async rc verification
 struct llarp_async_verify_rc;
 
-typedef void (*llarp_async_verify_rc_hook_func)(struct llarp_async_verify_rc *);
+using llarp_async_verify_rc_hook_func =
+    std::function< void(struct llarp_async_verify_rc *) >;
 
 /// verify rc request
 struct llarp_async_verify_rc
@@ -118,7 +119,8 @@ llarp_nodedb_async_verify(struct llarp_async_verify_rc *job);
 
 struct llarp_async_load_rc;
 
-typedef void (*llarp_async_load_rc_hook_func)(struct llarp_async_load_rc *);
+using llarp_async_load_rc_hook_func =
+    std::function< void(struct llarp_async_load_rc *) >;
 
 struct llarp_async_load_rc
 {

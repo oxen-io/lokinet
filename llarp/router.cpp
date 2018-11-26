@@ -121,9 +121,10 @@ llarp_router_try_connect(struct llarp_router *router,
 }
 
 void
-llarp_router::HandleLinkSessionEstablished(llarp::RouterContact rc)
+llarp_router::HandleLinkSessionEstablished(llarp::RouterContact rc,
+                                           llarp::ILinkLayer *link)
 {
-  async_verify_RC(rc);
+  async_verify_RC(rc, link);
 }
 
 llarp_router::llarp_router()
@@ -162,13 +163,7 @@ llarp_router::PersistSessionUntil(const llarp::RouterID &remote,
                                   llarp_time_t until)
 {
   llarp::LogDebug("persist session to ", remote, " until ", until);
-  if(m_PersistingSessions.find(remote) == m_PersistingSessions.end())
-    m_PersistingSessions[remote] = until;
-  else
-  {
-    if(m_PersistingSessions[remote] < until)
-      m_PersistingSessions[remote] = until;
-  }
+  m_PersistingSessions[remote] = std::max(until, m_PersistingSessions[remote]);
 }
 
 constexpr size_t MaxPendingSendQueueSize = 8;
@@ -240,9 +235,15 @@ llarp_router::HandleDHTLookupForSendTo(
 {
   if(results.size())
   {
-    llarp_nodedb_put_rc(nodedb, results[0]);
-    llarp_router_try_connect(this, results[0], 10);
-    async_verify_RC(results[0]);
+    if(whitelistRouters && lokinetRouters.find(remote) == lokinetRouters.end())
+    {
+      return;
+    }
+    if(results[0].Verify(&crypto))
+    {
+      llarp_nodedb_put_rc(nodedb, results[0]);
+      llarp_router_try_connect(this, results[0], 10);
+    }
   }
   else
   {
@@ -362,7 +363,7 @@ llarp_router::on_verify_client_rc(llarp_async_verify_rc *job)
   llarp::PubKey pk(job->rc.pubkey);
   router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
   delete ctx;
-  delete job;
+  router->pendingVerifyRC.erase(pk);
 }
 
 void
@@ -374,15 +375,15 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   llarp::PubKey pk(job->rc.pubkey);
   if(!job->valid)
   {
-    llarp::LogWarn("invalid server RC");
     if(ctx->establish_job)
     {
       // was an outbound attempt
       ctx->establish_job->Failed();
     }
     delete ctx;
-    delete job;
     router->DiscardOutboundFor(pk);
+    router->pendingVerifyRC.erase(pk);
+
     return;
   }
   // we're valid, which means it's already been committed to the nodedb
@@ -412,7 +413,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
   else
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
   delete ctx;
-  delete job;
+  router->pendingVerifyRC.erase(pk);
 }
 
 void
@@ -473,9 +474,11 @@ llarp_router::HandleDHTLookupForTryEstablishTo(
   }
   for(const auto &result : results)
   {
+    if(whitelistRouters
+       && lokinetRouters.find(result.pubkey) == lokinetRouters.end())
+      continue;
     llarp_nodedb_put_rc(nodedb, result);
     llarp_router_try_connect(this, result, 10);
-    async_verify_RC(result);
   }
 }
 
@@ -537,6 +540,8 @@ llarp_router::Tick()
   }
   paths.TickPaths(now);
   exitContext.Tick(now);
+  if(rpcCaller)
+    rpcCaller->Tick(now);
 }
 
 void
@@ -606,19 +611,21 @@ llarp_router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
 }
 
 void
-llarp_router::FlushOutboundFor(const llarp::RouterID remote,
+llarp_router::FlushOutboundFor(llarp::RouterID remote,
                                llarp::ILinkLayer *chosen)
 {
   llarp::LogDebug("Flush outbound for ", remote);
-  pendingEstablishJobs.erase(remote);
+
   auto itr = outboundMessageQueue.find(remote);
   if(itr == outboundMessageQueue.end())
   {
+    pendingEstablishJobs.erase(remote);
     return;
   }
   if(!chosen)
   {
     DiscardOutboundFor(remote);
+    pendingEstablishJobs.erase(remote);
     return;
   }
   while(itr->second.size())
@@ -630,6 +637,7 @@ llarp_router::FlushOutboundFor(const llarp::RouterID remote,
 
     itr->second.pop();
   }
+  pendingEstablishJobs.erase(remote);
 }
 
 void
@@ -654,9 +662,21 @@ llarp_router::GetRandomConnectedRouter(llarp::RouterContact &result) const
 }
 
 void
-llarp_router::async_verify_RC(const llarp::RouterContact &rc)
+llarp_router::async_verify_RC(const llarp::RouterContact &rc,
+                              llarp::ILinkLayer *link)
 {
-  llarp_async_verify_rc *job       = new llarp_async_verify_rc();
+  if(pendingVerifyRC.count(rc.pubkey))
+    return;
+  if(rc.IsPublicRouter() && whitelistRouters)
+  {
+    if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
+    {
+      llarp::LogInfo(rc.pubkey, " is NOT a valid service node, rejecting");
+      link->CloseSessionTo(rc.pubkey);
+      return;
+    }
+  }
+  llarp_async_verify_rc *job       = &pendingVerifyRC[rc.pubkey];
   llarp::async_verify_context *ctx = new llarp::async_verify_context();
   ctx->router                      = this;
   ctx->establish_job               = nullptr;
@@ -679,25 +699,8 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc)
     job->hook = &llarp_router::on_verify_server_rc;
   else
     job->hook = &llarp_router::on_verify_client_rc;
-  if(rpcCaller && rc.IsPublicRouter())
-  {
-    rpcCaller->VerifyRouter(rc.pubkey, [job](llarp::PubKey pk, bool valid) {
-      if(valid)
-      {
-        llarp::LogDebug("lokid says ", pk, " is valid");
-        llarp_nodedb_async_verify(job);
-      }
-      else
-      {
-        llarp::LogDebug("lokid says ", pk, " is NOT valid");
-        job->hook(job);
-      }
-    });
-  }
-  else
-  {
-    llarp_nodedb_async_verify(job);
-  }
+
+  llarp_nodedb_async_verify(job);
 }
 
 void
@@ -1234,6 +1237,17 @@ namespace llarp
       else
       {
         llarp::LogWarn("failed to load hidden service config for ", key);
+      }
+    }
+    else if(StrEq(section, "lokid"))
+    {
+      if(StrEq(key, "enabled"))
+      {
+        self->whitelistRouters = IsTrueValue(val);
+      }
+      if(StrEq(key, "jsonrpc"))
+      {
+        self->lokidRPCAddr = val;
       }
     }
     else if(StrEq(section, "dns"))

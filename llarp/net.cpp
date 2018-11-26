@@ -152,12 +152,12 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
     fprintf(stderr, "IP_ADAPTER_ADDRESSES buffer length %lu bytes.\n", dwSize);
 #endif
     pAdapterAddresses = (IP_ADAPTER_ADDRESSES*)_llarp_nt_heap_alloc(dwSize);
-    dwRet = GetAdaptersAddresses(
-        AF_UNSPEC,
-        GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_ANYCAST
-            | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME
-            | GAA_FLAG_SKIP_MULTICAST,
-        nullptr, pAdapterAddresses, &dwSize);
+    dwRet             = GetAdaptersAddresses(AF_UNSPEC,
+                                 GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_ANYCAST
+                                     | GAA_FLAG_SKIP_DNS_SERVER
+                                     | GAA_FLAG_SKIP_FRIENDLY_NAME
+                                     | GAA_FLAG_SKIP_MULTICAST,
+                                 nullptr, pAdapterAddresses, &dwSize);
     if(ERROR_BUFFER_OVERFLOW == dwRet)
     {
       _llarp_nt_heap_free(pAdapterAddresses);
@@ -378,7 +378,7 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
         /* default IPv6 route */
         if(AF_INET6 == lpSockaddr->sa_family && 0 == prefix->PrefixLength
            && IN6_IS_ADDR_UNSPECIFIED(
-                  &((struct sockaddr_in6*)(lpSockaddr))->sin6_addr))
+               &((struct sockaddr_in6*)(lpSockaddr))->sin6_addr))
         {
 #ifdef DEBUG
           fprintf(stderr,
@@ -447,10 +447,10 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
         ift->_ifa.ifa_next = (struct llarp_nt_ifaddrs_t*)(ift + 1);
         ift                = (struct _llarp_nt_ifaddrs_t*)(ift->_ifa.ifa_next);
       }
-	  else
+      else
       {
-            ift->_ifa.ifa_next = nullptr;
-	  }
+        ift->_ifa.ifa_next = nullptr;
+      }
     }
   }
 
@@ -464,7 +464,7 @@ static unsigned
 _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
 {
   ULONG ifIndex;
-  DWORD dwSize = 4096, dwRet;
+  DWORD dwSize                            = 4096, dwRet;
   IP_ADAPTER_ADDRESSES *pAdapterAddresses = nullptr, *adapter;
   char szAdapterName[256];
 
@@ -487,7 +487,7 @@ _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
   for(unsigned i = 3; i; i--)
   {
     pAdapterAddresses = (IP_ADAPTER_ADDRESSES*)_llarp_nt_heap_alloc(dwSize);
-    dwRet = GetAdaptersAddresses(
+    dwRet             = GetAdaptersAddresses(
         AF_UNSPEC,
         GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER
             | GAA_FLAG_SKIP_FRIENDLY_NAME | GAA_FLAG_SKIP_MULTICAST,
@@ -524,7 +524,8 @@ _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
   {
     if(0 == strcmp(szAdapterName, adapter->AdapterName))
     {
-      //ifIndex = AF_INET6 == iffamily ? adapter->Ipv6IfIndex : adapter->IfIndex;
+      // ifIndex = AF_INET6 == iffamily ? adapter->Ipv6IfIndex :
+      // adapter->IfIndex;
       _llarp_nt_heap_free(pAdapterAddresses);
       return ifIndex;
     }

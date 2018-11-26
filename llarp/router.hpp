@@ -134,7 +134,7 @@ struct llarp_router
   llarp::Profiling routerProfiling;
   std::string routerProfilesFile = "profiles.dat";
 
-  typedef std::queue< std::vector< byte_t > > MessageQueue;
+  using MessageQueue = std::queue< std::vector< byte_t > >;
 
   /// outbound message queue
   std::unordered_map< llarp::RouterID, MessageQueue, llarp::RouterID::Hash >
@@ -150,6 +150,11 @@ struct llarp_router
                       llarp::RouterID::Hash >
       pendingEstablishJobs;
 
+  // pending RCs to be verified by pubkey
+  std::unordered_map< llarp::RouterID, llarp_async_verify_rc,
+                      llarp::RouterID::Hash >
+      pendingVerifyRC;
+
   // sessions to persist -> timestamp to end persist at
   std::unordered_map< llarp::RouterID, llarp_time_t, llarp::RouterID::Hash >
       m_PersistingSessions;
@@ -162,7 +167,8 @@ struct llarp_router
   llarp_router();
   ~llarp_router();
 
-  void HandleLinkSessionEstablished(llarp::RouterContact);
+  void
+  HandleLinkSessionEstablished(llarp::RouterContact, llarp::ILinkLayer *);
 
   bool
   HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);
@@ -245,8 +251,7 @@ struct llarp_router
 
   /// manually flush outbound message queue for just 1 router
   void
-  FlushOutboundFor(const llarp::RouterID remote,
-                   llarp::ILinkLayer *chosen = nullptr);
+  FlushOutboundFor(llarp::RouterID remote, llarp::ILinkLayer *chosen = nullptr);
 
   /// manually discard all pending messages to remote router
   void
@@ -296,7 +301,7 @@ struct llarp_router
   GetRandomConnectedRouter(llarp::RouterContact &result) const;
 
   void
-  async_verify_RC(const llarp::RouterContact &rc);
+  async_verify_RC(const llarp::RouterContact &rc, llarp::ILinkLayer *link);
 
   void
   HandleDHTLookupForSendTo(llarp::RouterID remote,

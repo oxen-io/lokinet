@@ -69,8 +69,8 @@ namespace llarp
     MarkPathSuccess(path::Path* p);
 
    private:
-    typedef llarp::util::Lock lock_t;
-    typedef llarp::util::Mutex mtx_t;
+    using lock_t = llarp::util::Lock;
+    using mtx_t  = llarp::util::Mutex;
     mtx_t m_ProfilesMutex;
     std::map< RouterID, RouterProfile > m_Profiles;
   };

@@ -869,12 +869,12 @@ namespace llarp
     BaseSession::EnterState(State st)
     {
       state = st;
+      Alive();
       if(st == eSessionReady)
       {
         parent->MapAddr(remoteRC.pubkey, this);
-        Router()->HandleLinkSessionEstablished(remoteRC);
+        Router()->HandleLinkSessionEstablished(remoteRC, parent);
       }
-      Alive();
     }
 
     bool

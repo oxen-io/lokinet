@@ -300,7 +300,9 @@ namespace llarp
         return false;
       huint32_t ip = GetIPForIdent(pk);
       m_ActiveExits.insert(std::make_pair(
-          pk, new llarp::exit::Endpoint(pk, path, !wantInternet, ip, this)));
+          pk,
+          std::unique_ptr< llarp::exit::Endpoint >(
+              new llarp::exit::Endpoint(pk, path, !wantInternet, ip, this))));
       m_Paths[path] = pk;
       return HasLocalMappedAddrFor(pk);
     }

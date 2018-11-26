@@ -14,7 +14,7 @@ namespace llarp
 {
   struct ILinkSession;
 
-  typedef std::queue< ILinkMessage* > SendQueue;
+  using SendQueue = std::queue< ILinkMessage* >;
 
   /// parsed link layer message
   struct ILinkMessage : public IBEncodeMessage

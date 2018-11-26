@@ -102,8 +102,7 @@ struct ClientHandler : public abyss::http::IRPCClientHandler
   }
 
   bool
-  HandleResponse(__attribute__((unused))
-                 const abyss::http::RPC_Response& response)
+  HandleResponse(__attribute__((unused)) abyss::http::RPC_Response response)
   {
     test->Stop();
     return true;

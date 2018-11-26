@@ -14,7 +14,7 @@ namespace llarp
     template < typename Val_t >
     struct Bucket
     {
-      typedef std::map< Key_t, Val_t, XorMetric > BucketStorage_t;
+      using BucketStorage_t = std::map< Key_t, Val_t, XorMetric >;
 
       Bucket(const Key_t& us) : nodes(XorMetric(us)){};
 

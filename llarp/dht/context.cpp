@@ -47,32 +47,32 @@ namespace llarp
       }
 
       bool
-      Validate(const RouterID &) const
+      Validate(const RouterID &) const override
       {
         // TODO: check with lokid
         return true;
       }
 
       void
-      Start(const TXOwner &peer)
+      Start(const TXOwner &peer) override
       {
         parent->DHTSendTo(peer.node,
                           new FindRouterMessage(parent->OurKey(), peer.txid));
       }
 
       bool
-      GetNextPeer(Key_t &, const std::set< Key_t > &)
+      GetNextPeer(Key_t &, const std::set< Key_t > &) override
       {
         return false;
       }
 
       void
-      DoNextRequest(const Key_t &)
+      DoNextRequest(const Key_t &) override
       {
       }
 
       void
-      SendReply()
+      SendReply() override
       {
         llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
         for(const auto &pk : valuesFound)
@@ -324,7 +324,7 @@ namespace llarp
       }
 
       bool
-      Validate(const service::IntroSet &value) const
+      Validate(const service::IntroSet &value) const override
       {
         if(!value.Verify(parent->Crypto(), parent->Now()))
         {
@@ -339,52 +339,33 @@ namespace llarp
         return true;
       }
 
-      void
-      DoNextRequest(const Key_t &nextPeer)
-      {
-        // iterate to next peer
-        parent->LookupIntroSetIterative(
-            target, whoasked.node, whoasked.txid, nextPeer,
-            std::bind(&ServiceAddressLookup::HandleNextRequestResult, this,
-                      std::placeholders::_1));
-      }
-
-      void
-      HandleNextRequestResult(const std::vector< service::IntroSet > &results)
-      {
-        // merge results
-        std::set< service::IntroSet > found;
-
-        for(const auto &introset : valuesFound)
-          found.insert(introset);
-
-        for(const auto &introset : results)
-          found.insert(introset);
-
-        valuesFound.clear();
-        for(const auto &introset : found)
-          valuesFound.push_back(introset);
-
-        // send reply
-        SendReply();
-      }
-
       bool
-      GetNextPeer(Key_t &next, const std::set< Key_t > &exclude)
+      GetNextPeer(Key_t &next, const std::set< Key_t > &exclude) override
       {
         Key_t k = target.data();
         return parent->nodes->FindCloseExcluding(k, next, exclude);
       }
 
       void
-      Start(const TXOwner &peer)
+      Start(const TXOwner &peer) override
       {
         parent->DHTSendTo(peer.node,
                           new FindIntroMessage(peer.txid, target, R));
       }
 
+      void
+      DoNextRequest(const Key_t &ask) override
+      {
+        if(R)
+          parent->LookupIntroSetRecursive(target, whoasked.node, whoasked.txid,
+                                          ask, R - 1);
+        else
+          parent->LookupIntroSetIterative(target, whoasked.node, whoasked.txid,
+                                          ask);
+      }
+
       virtual void
-      SendReply()
+      SendReply() override
       {
         if(handleResult)
           handleResult(valuesFound);
@@ -408,7 +389,7 @@ namespace llarp
       }
 
       void
-      SendReply()
+      SendReply() override
       {
         auto path =
             parent->router->paths.GetByUpstream(parent->OurKey(), localPath);
@@ -461,7 +442,7 @@ namespace llarp
       }
 
       bool
-      Validate(const service::IntroSet &introset) const
+      Validate(const service::IntroSet &introset) const override
       {
         if(I.A != introset.A)
         {
@@ -473,7 +454,7 @@ namespace llarp
       }
 
       void
-      Start(const TXOwner &peer)
+      Start(const TXOwner &peer) override
       {
         std::vector< Key_t > exclude;
         for(const auto &router : dontTell)
@@ -483,18 +464,18 @@ namespace llarp
       }
 
       bool
-      GetNextPeer(Key_t &, const std::set< Key_t > &)
+      GetNextPeer(Key_t &, const std::set< Key_t > &) override
       {
         return false;
       }
 
       void
-      DoNextRequest(const Key_t &)
+      DoNextRequest(const Key_t &) override
       {
       }
 
       void
-      SendReply()
+      SendReply() override
       {
         // don't need this
       }
@@ -550,7 +531,7 @@ namespace llarp
       }
 
       bool
-      Validate(const service::IntroSet &introset) const
+      Validate(const service::IntroSet &introset) const override
       {
         if(!introset.Verify(parent->Crypto(), parent->Now()))
         {
@@ -566,26 +547,25 @@ namespace llarp
       }
 
       void
-      Start(const TXOwner &peer)
+      Start(const TXOwner &peer) override
       {
         parent->DHTSendTo(peer.node,
                           new FindIntroMessage(target, peer.txid, R));
       }
 
       bool
-      GetNextPeer(__attribute__((unused)) Key_t &nextpeer,
-                  __attribute__((unused)) const std::set< Key_t > &exclude)
+      GetNextPeer(Key_t &, const std::set< Key_t > &) override
       {
         return false;
       }
 
       void
-      DoNextRequest(__attribute__((unused)) const Key_t &nextPeer)
+      DoNextRequest(const Key_t &) override
       {
       }
 
       void
-      SendReply()
+      SendReply() override
       {
         std::set< service::IntroSet > found;
         for(const auto &remoteTag : valuesFound)
@@ -636,7 +616,7 @@ namespace llarp
       }
 
       void
-      SendReply()
+      SendReply() override
       {
         auto path =
             parent->router->paths.GetByUpstream(parent->OurKey(), localPath);
@@ -717,7 +697,7 @@ namespace llarp
       }
 
       bool
-      Validate(const RouterContact &rc) const
+      Validate(const RouterContact &rc) const override
       {
         if(!rc.Verify(parent->Crypto()))
         {
@@ -728,20 +708,18 @@ namespace llarp
       }
 
       bool
-      GetNextPeer(__attribute__((unused)) Key_t &next,
-                  __attribute__((unused)) const std::set< Key_t > &exclude)
+      GetNextPeer(Key_t &, const std::set< Key_t > &) override
       {
-        // TODO: implement iterative (?)
         return false;
       }
 
       void
-      DoNextRequest(__attribute__((unused)) const Key_t &next)
+      DoNextRequest(const Key_t &) override
       {
       }
 
       void
-      Start(const TXOwner &peer)
+      Start(const TXOwner &peer) override
       {
         parent->DHTSendTo(
             peer.node,
@@ -749,7 +727,7 @@ namespace llarp
       }
 
       virtual void
-      SendReply()
+      SendReply() override
       {
         if(resultHandler)
         {
@@ -777,7 +755,7 @@ namespace llarp
       }
 
       void
-      SendReply()
+      SendReply() override
       {
         auto path =
             parent->router->paths.GetByUpstream(parent->OurKey(), localPath);

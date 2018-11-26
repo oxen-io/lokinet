@@ -41,6 +41,18 @@ namespace llarp
       return 0;
     }
 
+    size_t 
+    PathSet::NumPathsExistingAt(llarp_time_t futureTime) const 
+    {
+      size_t num = 0;
+      for(const auto & item : m_Paths)
+      {
+        if(!item.second->Expired(futureTime))
+          ++num;
+      }
+      return num;
+    }
+
     void
     PathSet::Tick(llarp_time_t now, llarp_router* r)
     {

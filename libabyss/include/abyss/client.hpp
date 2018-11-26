@@ -14,10 +14,10 @@ namespace abyss
 {
   namespace http
   {
-    typedef std::string RPC_Method_t;
-    typedef json::Value RPC_Params;
-    typedef json::Document RPC_Response;
-    typedef std::unordered_multimap< std::string, std::string > Headers_t;
+    using RPC_Method_t = std::string;
+    using RPC_Params   = json::Value;
+    using RPC_Response = json::Document;
+    using Headers_t    = std::unordered_multimap< std::string, std::string >;
     struct ConnImpl;
 
     /// jsonrpc response handler for client
@@ -30,7 +30,7 @@ namespace abyss
       /// return true on successful handling
       /// return false on errors while handling
       virtual bool
-      HandleResponse(const RPC_Response& response) = 0;
+      HandleResponse(RPC_Response response) = 0;
 
       /// populate http request headers
       virtual void
@@ -55,7 +55,7 @@ namespace abyss
     /// jsonrpc client
     struct JSONRPC
     {
-      typedef std::function< IRPCClientHandler*(ConnImpl*) > HandlerFactory;
+      using HandlerFactory = std::function< IRPCClientHandler*(ConnImpl*) >;
 
       JSONRPC();
       ~JSONRPC();

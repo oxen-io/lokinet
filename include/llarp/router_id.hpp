@@ -5,7 +5,7 @@
 
 namespace llarp
 {
-  typedef AlignedBuffer< 32 > RouterID;
+  using RouterID = AlignedBuffer< 32 >;
 }
 
 #endif

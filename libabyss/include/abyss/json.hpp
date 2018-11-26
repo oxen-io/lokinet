@@ -10,7 +10,7 @@ namespace abyss
 {
   namespace json
   {
-    typedef std::unordered_map< std::string, std::any > Object;
+    using Object = std::unordered_map< std::string, std::any >;
   }
 }  // namespace abyss
 #else
@@ -19,17 +19,17 @@ namespace abyss
 {
   namespace json
   {
-    typedef rapidjson::Document Document;
-    typedef rapidjson::Value Value;
+    using Document = rapidjson::Document;
+    using Value    = rapidjson::Value;
   }  // namespace json
 }  // namespace abyss
 #endif
 namespace abyss
 {
 #if __cplusplus >= 201703L
-  typedef std::string_view string_view;
+  using string_view = std::string_view;
 #else
-  typedef std::string string_view;
+  using string_view = std::string;
 #endif
   namespace json
   {

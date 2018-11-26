@@ -21,11 +21,31 @@ namespace llarp
       {
       }
 
+      virtual bool
+      HandleJSONResult(const ::abyss::json::Value& val) = 0;
+
+      bool
+      HandleResponse(::abyss::http::RPC_Response response)
+      {
+        if(!response.IsObject())
+        {
+          return HandleJSONResult({});
+        }
+        const auto itr = response.FindMember("result");
+        if(itr == response.MemberEnd())
+        {
+          return HandleJSONResult({});
+        }
+        if(itr->value.IsObject())
+          return HandleJSONResult(itr->value);
+        return false;
+      }
+
       void
       PopulateReqHeaders(abyss::http::Headers_t& hdr)
       {
         (void)hdr;
-        // TODO: add http auth
+        // TODO: add http auth (?)
       }
     };
 
@@ -45,17 +65,44 @@ namespace llarp
       }
 
       bool
-      HandleResponse(const ::abyss::http::RPC_Response& response)
+      HandleJSONResult(const ::abyss::json::Value& result) override
       {
-        (void)response;
-        // TODO: get keys from response
         PubkeyList_t keys;
+        if(!result.IsObject())
+        {
+          handler({}, false);
+          return false;
+        }
+        const auto itr = result.FindMember("keys");
+        if(itr == result.MemberEnd())
+        {
+          handler({}, false);
+          return false;
+        }
+        if(!itr->value.IsArray())
+        {
+          handler({}, false);
+          return false;
+        }
+        auto key_itr = itr->value.Begin();
+        while(key_itr != itr->value.End())
+        {
+          if(key_itr->IsString())
+          {
+            keys.emplace_back();
+            if(!HexDecode(key_itr->GetString(), keys.back(), PUBKEYSIZE))
+            {
+              keys.pop_back();
+            }
+          }
+          ++key_itr;
+        }
         handler(keys, true);
         return true;
       }
 
       void
-      HandleError()
+      HandleError() override
       {
         handler({}, false);
       }
@@ -73,9 +120,8 @@ namespace llarp
       }
 
       void
-      Tick()
+      Tick(llarp_time_t now)
       {
-        llarp_time_t now = router->Now();
         if(now >= m_NextKeyUpdate)
         {
           AsyncUpdatePubkeyList();
@@ -90,7 +136,7 @@ namespace llarp
         llarp::LogInfo("Updating service node list");
         ::abyss::json::Value params;
         params.SetObject();
-        QueueRPC("get_all_service_node_keys", std::move(params),
+        QueueRPC("/get_all_service_node_keys", std::move(params),
                  std::bind(&CallerImpl::NewAsyncUpdatePubkeyListConn, this,
                            std::placeholders::_1));
       }
@@ -111,28 +157,13 @@ namespace llarp
       }
 
       void
-      VerifyRouter(llarp::PubKey pk,
-                   std::function< void(llarp::PubKey, bool) > handler)
-      {
-        if(router->whitelistRouters)
-        {
-          auto itr = router->lokinetRouters.find(pk);
-          handler(pk, itr != router->lokinetRouters.end());
-        }
-        else
-        {
-          handler(pk, true);
-        }
-      }
-
-      void
       HandleServiceNodeListUpdated(const PubkeyList_t& list, bool updated)
       {
         if(updated)
         {
           router->lokinetRouters.clear();
           for(const auto& pk : list)
-            router->lokinetRouters.emplace(
+            router->lokinetRouters.insert(
                 std::make_pair(pk, std::numeric_limits< llarp_time_t >::max()));
           llarp::LogInfo("updated service node list, we have ",
                          router->lokinetRouters.size(), " authorized routers");
@@ -301,16 +332,9 @@ namespace llarp
       }
 
       void
-      Tick()
+      Tick(llarp_time_t now)
       {
-      }
-
-      void
-      VerifyRouter(llarp::PubKey pk,
-                   std::function< void(llarp::PubKey, bool) > result)
-      {
-        // always allow routers when not using libabyss
-        result(pk, true);
+        (void)now;
       }
     };
 
@@ -332,10 +356,9 @@ namespace llarp
     }
 
     void
-    Caller::VerifyRouter(llarp::PubKey pk,
-                         std::function< void(llarp::PubKey, bool) > handler)
+    Caller::Tick(llarp_time_t now)
     {
-      m_Impl->VerifyRouter(pk, handler);
+      m_Impl->Tick(now);
     }
 
     Server::Server(llarp_router* r) : m_Impl(new ServerImpl(r))

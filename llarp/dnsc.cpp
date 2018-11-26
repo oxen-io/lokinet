@@ -224,13 +224,14 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
   for(uint32_t i = 0; i < hdr->qdCount; i++)
   {
     question = decode_question(castBufc, &pos);
-    //llarp::LogDebug("Read a question, now at ", std::to_string(pos));
+    // llarp::LogDebug("Read a question, now at ", std::to_string(pos));
     // 1 dot: 1 byte for length + length
     // 4 bytes for class/type
     // castBuf += question->name.length() + 1 + 4;
     // castBuf += 2;  // skip answer label
   }
-  llarp::LogDebug("Question ", std::to_string(question->type), " ", question->name);
+  llarp::LogDebug("Question ", std::to_string(question->type), " ",
+                  question->name);
 
   // FIXME: only handling one atm
   std::vector< dns_msg_answer * > answers;
@@ -296,15 +297,15 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
     // pos = 0; // reset pos
     answer = decode_answer(castBufc, &pos);
     // answers.push_back(answer);
-    llarp::LogDebug("Read an authority for ",
-                     request->question.name, " at ", std::to_string(pos));
+    llarp::LogDebug("Read an authority for ", request->question.name, " at ",
+                    std::to_string(pos));
     // castBuf += answer->name.length() + 4 + 4 + 4 + answer->rdLen;
-      if((ssize_t)pos > sz)
-      {
-          llarp::LogWarn("Would read past end of dns packet. for ",
-                         request->question.name);
-          break;
-      }
+    if((ssize_t)pos > sz)
+    {
+      llarp::LogWarn("Would read past end of dns packet. for ",
+                     request->question.name);
+      break;
+    }
   }
 
   /*
@@ -393,14 +394,14 @@ generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
 
   int ip = 0;
 
-    // if no answer, just bail now
-    if (!answer)
-    {
-        request->found  = false;
-        request->resolved(request);
-        return;
-    }
-    
+  // if no answer, just bail now
+  if(!answer)
+  {
+    request->found = false;
+    request->resolved(request);
+    return;
+  }
+
   /* search for and print IPv4 addresses */
   // if(dnsQuery->reqType == 0x01)
   /*
@@ -603,7 +604,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
   llarp::LogDebug("Header got client responses for id: ", hdr->id);
 
   // if we sent this out, then there's an id
-  struct dns_tracker *tracker = (struct dns_tracker *)udp->user;
+  struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
   struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
 
   // sometimes we'll get double responses
@@ -694,7 +695,7 @@ void
 llarp_host_resolved(dnsc_answer_request *const request)
 {
   dns_tracker *tracker = (dns_tracker *)request->context->tracker;
-  auto val = std::find_if(
+  auto val             = std::find_if(
       tracker->client_request.begin(), tracker->client_request.end(),
       [request](
           std::pair< const uint32_t, std::unique_ptr< dnsc_answer_request > >
@@ -735,7 +736,7 @@ llarp_dnsc_init(struct dnsc_context *const dnsc,
   llarp::LogInfo("DNSc adding relay ", dnsc_sockaddr);
   dnsc->resolvers.push_back(dnsc_sockaddr);
   dnsc->tracker = &dns_udp_tracker;
-  dnsc->logic = logic;
+  dnsc->logic   = logic;
   return true;
 }
 

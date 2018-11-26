@@ -9,9 +9,9 @@ namespace llarp
   {
     struct Config
     {
-      typedef std::list< std::pair< std::string, std::string > >
-          section_values_t;
-      typedef std::pair< std::string, section_values_t > section_t;
+      using section_values_t =
+          std::list< std::pair< std::string, std::string > >;
+      using section_t = std::pair< std::string, section_values_t >;
 
       std::list< section_t > services;
 
