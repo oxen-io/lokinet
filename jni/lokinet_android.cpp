@@ -12,34 +12,54 @@ struct AndroidMain
 {
   llarp_main* m_impl    = nullptr;
   std::thread* m_thread = nullptr;
+  std::string configFile;
 
+  /// set configuration and ensure files
+  bool 
+  Configure(const char * conf, const char * basedir)
+  {
+    configFile = conf;
+    return llarp_ensure_config(conf, basedir, false, false);
+  }
+
+  /// reload config on runtime
   bool
-  Start(const char* conf, const char* basedir)
+  ReloadConfig()
+  {
+    if(!m_Impl)
+      return false;
+    llarp_main_signal(m_impl, SIGHUP);
+    return true;
+  }
+
+  /// start daemon thread
+  bool
+  Start()
   {
     if(m_impl || m_thread)
       return true;
-    if(!llarp_ensure_config(conf, basedir, false, false))
-      return false;
-    m_impl = llarp_main_init(conf, true);
+    m_impl = llarp_main_init(configFile.c_str(), true);
     if(m_impl == nullptr)
       return false;
     m_thread = new std::thread(std::bind(&AndroidMain::Run, this));
     return true;
   }
 
+  /// return true if we are running
   bool
   Running() const
   {
-    return m_impl != nullptr;
+    return m_impl != nullptr && m_thread != nullptr;
   }
 
+  /// blocking run
   void
   Run()
   {
-    printf("running\n");
     llarp_main_run(m_impl);
   }
 
+  /// stop daemon thread
   void
   Stop()
   {
@@ -79,9 +99,15 @@ extern "C"
       env->ReleaseStringUTFChars(configfile, nativeString);
       basepath = fs::path(conf).parent_path();
     }
-    if(daemon->Start(conf.c_str(), basepath.string().c_str()))
-      return env->NewStringUTF("ok");
-    return env->NewStringUTF("failed to start");
+    if(daemon->Configure(conf.c_str(), basepath.string().c_str()))
+    {
+      if(daemon->Start())
+        return env->NewStringUTF("ok");
+      else 
+        return env->NewStringUTF("failed to start daemon");
+    }
+    else
+      return ev->NewStringUTF("failed to configure daemon");
   }
 
   JNIEXPORT void JNICALL
@@ -95,7 +121,21 @@ extern "C"
 
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(JNIEnv*, jclass,
-                                                               jboolean)
+                                                               jboolean isConnected)
   {
+    if(isConnected)
+    {
+      if(!daemon->Running())
+      {
+        if(!daemon->Start())
+        {
+          // TODO: do some kind of callback here
+        }
+      }
+    }
+    else if(daemon->Running())
+    {
+      daemon->Stop();
+    }
   }
 }
