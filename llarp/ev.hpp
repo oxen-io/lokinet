@@ -174,11 +174,12 @@ namespace llarp
         asio_evt_pkt* pkt = new asio_evt_pkt;
         pkt->sz           = sz;
         pkt->write        = true;
-        _doserrno = 0;
+        int e             = 0;
         r = WriteFile(fd.tun, data, sz, &x, &pkt->pkt);
         if(r)  // we returned immediately
           return x;
-        else if(_doserrno == ERROR_IO_PENDING)
+        e = GetLastError();
+        if(e == ERROR_IO_PENDING)
           return sz;
         else
           return -1;

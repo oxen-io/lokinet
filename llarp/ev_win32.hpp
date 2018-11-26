@@ -139,8 +139,8 @@ namespace llarp
       if(t->before_write)
       {
         t->before_write(t);
+        ev_io::flush_write();
       }
-      ev_io::flush_write();
     }
 
     bool
@@ -397,11 +397,14 @@ struct llarp_win32_loop : public llarp_ev_loop
         llarp::LogWarn("incomplete async io operation: got ", size,
                        " bytes, expected ", pkt->sz, " bytes");*/
       if(!pkt->write)
-        ev->read(readbuf, sizeof(readbuf));
+        ev->read(readbuf, size);
       else
+      {
         ev->flush_write();
+        printf("write tun\n");
+      }
       ++result;
-	  delete pkt;
+      delete pkt;
     }
 
     if(result != -1)
