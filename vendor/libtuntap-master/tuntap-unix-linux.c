@@ -36,6 +36,7 @@
 int
 tuntap_sys_start(struct device *dev, int mode, int tun)
 {
+  
   int fd;
   int persist;
   char *ifname;
@@ -79,15 +80,27 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
     tuntap_log(TUNTAP_LOG_ERR, "Invalid parameter 'tun'");
     return -1;
   }
-
-  /* Open the clonable interface */
   fd = -1;
-  if((fd = open("/dev/net/tun", O_RDWR)) == -1)
+  if(dev->obtain_fd)
   {
-    tuntap_log(TUNTAP_LOG_ERR, "Can't open /dev/net/tun");
-    return -1;
+    // for android
+    fd = dev->obtain_fd(dev);
+    if(fd == -1)
+    {
+      tuntap_log(TUNTAP_LOG_ERR, "failed to get network interface");
+      return -1;
+    }
+    return fd;
   }
-
+  else 
+  {
+    /* Open the clonable interface */
+    if((fd = open("/dev/net/tun", O_RDWR)) == -1)
+    {
+      tuntap_log(TUNTAP_LOG_ERR, "Can't open /dev/net/tun");
+      return -1;
+    }
+  }
   /* Set the interface name, if any */
 
   if(fd > TUNTAP_ID_MAX)

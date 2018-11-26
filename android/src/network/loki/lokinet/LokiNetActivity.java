@@ -35,6 +35,8 @@ public class LokiNetActivity extends Activity {
 	private TextView textView;
 	private static final String DefaultBootstrapURL = "https://i2p.rocks/bootstrap.signed";
 
+	private AsyncBootstrap bootstrapper;
+
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -65,14 +67,18 @@ public class LokiNetActivity extends Activity {
 		}
 	}
 
-	public void startLokinet() {
-
+	public void startLokinet()
+	{
+		if(bootstrapper != null)
+			return;
+		bootstrapper = new AsyncBootstrap();
+		bootstrapper.execute(DefaultBootstrapURL);
 	}
 
 	public void runLokinetService()
 	{
-		bindService(new Intent(LokiNetActivity.this,
-				ForegroundService.class), mConnection, Context.BIND_AUTO_CREATE);
+		startService(new Intent(LokiNetActivity.this,
+				LokinetService.class));
 	}
 
 	@Override
@@ -81,27 +87,39 @@ public class LokiNetActivity extends Activity {
 		textView = null;
 	}
 
+	public File getRootDir()
+	{
+		return getFilesDir();
+	}
+
 	private class AsyncBootstrap extends AsyncTask<String, String, String>
 	{
 		public String doInBackground(String ... urls) {
 			try
 			{
-				File bootstrapFile = new File(getCacheDir(), "bootstrap.signed");
+				File bootstrapFile = new File(getRootDir(), "bootstrap.signed");
 				URL bootstrapURL = new URL(urls[0]);
 				InputStream instream = bootstrapURL.openStream();
 				writeFile(bootstrapFile, instream);
 				instream.close();
-				return "downloaded";
+				return getString(R.string.bootstrap_ok);
 			}
 			catch(Exception thrown)
 			{
-				return thrown.getLocalizedMessage();
+				return getString(R.string.bootstrap_fail) + ": " + throwableToString(thrown);
 			}
 		}
 		public void onPostExecute(String val) {
-			final File configFile = new File(getCacheDir(), "daemon.ini");
-			runLokinetService();
+			textView.setText(val);
+			if(val.equals(getString(R.string.bootstrap_ok)))
+				runLokinetService();
+			bootstrapDone();
 		}
+	}
+
+	private void bootstrapDone()
+	{
+		bootstrapper = null;
 	}
 
 	private CharSequence throwableToString(Throwable tr) {
@@ -112,33 +130,6 @@ public class LokiNetActivity extends Activity {
 		return sw.toString();
 	}
 
-	private ForegroundService boundService;
-	// private LocalService mBoundService;
-	
-	private ServiceConnection mConnection = new ServiceConnection() {
-		public void onServiceConnected(ComponentName className, IBinder service) {
-			// This is called when the connection with the service has been
-			// established, giving us the service object we can use to
-			// interact with the service.  Because we have bound to a explicit
-			// service that we know is running in our own process, we can
-			// cast its IBinder to a concrete class and directly access it.
-			boundService = ((ForegroundService.LocalBinder)service).getService();
-			textView.setText(R.id.loaded);
-			// Tell the user about this for our demo.
-			//		Toast.makeText(Binding.this, R.string.local_service_connected,
-			//		Toast.LENGTH_SHORT).show();
-		}
-		
-		public void onServiceDisconnected(ComponentName className) {
-			// This is called when the connection with the service has been
-			// unexpectedly disconnected -- that is, its process crashed.
-			// Because it is running in our same process, we should never
-			// see this happen.
-			//		mBoundService = null;
-			//		Toast.makeText(Binding.this, R.string.local_service_disconnected,
-			//		Toast.LENGTH_SHORT).show();
-		}
-	};
 	
 	
 	@Override
@@ -160,7 +151,6 @@ public class LokiNetActivity extends Activity {
 				startLokinet();
 				return true;
 			case R.id.action_stop:
-				Lokinet_JNI.stopLokinet();
 				return true;
 		}
 		

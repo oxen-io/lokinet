@@ -45,13 +45,15 @@ ANDROID_LOCAL_PROPS=$(ANDROID_DIR)/local.properties
 GRADLE ?= gradle
 JAVA_HOME ?= /usr/lib/jvm/default-java
 
+# features enabled
 JSONRPC ?= OFF
-AVX2 ?= ON
+AVX2 ?= OFF
 RPI ?= OFF
 STATIC_LINK ?= OFF
 NETNS ?= OFF
 CLANG ?= OFF
 CROSS ?= OFF
+
 CMAKE_GEN ?= Unix Makefiles
 
 BUILD_ROOT = $(REPO)/build
@@ -163,6 +165,7 @@ android-gradle: android-gradle-prepare
 	cd $(ANDROID_DIR) && JAVA_HOME=$(JAVA_HOME) $(GRADLE) clean assemble
 
 android: android-gradle
+	cp -f $(ANDROID_DIR)/build/outputs/apk/*.apk $(REPO)
 
 windows-configure: clean
 	mkdir -p '$(BUILD_ROOT)'

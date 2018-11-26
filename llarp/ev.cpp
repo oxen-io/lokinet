@@ -20,6 +20,7 @@
 #error No async event loop for your platform, subclass llarp_ev_loop
 #endif
 
+
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {
@@ -55,6 +56,11 @@ llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
       llarp_logic_tick(logic, ev->_now);
   }
   return 0;
+}
+
+int llarp_fd_promise_wait_for_value(struct llarp_fd_promise * p)
+{
+  return p->Get();
 }
 
 void

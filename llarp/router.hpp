@@ -200,7 +200,7 @@ struct llarp_router
   bool
   Ready();
 
-  void
+  bool
   Run();
 
   void

@@ -224,26 +224,46 @@ namespace llarp
       return ret;
     }
 
+    static int wait_for_fd_promise(struct device * dev)
+    {
+      llarp::tun *t = static_cast<llarp::tun *>(dev->user);
+      if(t->t->get_fd_promise)
+      {
+        struct llarp_fd_promise * promise = t->t->get_fd_promise(t->t);
+        if(promise)
+          return llarp_fd_promise_wait_for_value(promise);
+      }
+      return -1;
+    }
+
     bool
     setup()
     {
+      // for android
+      if(t->get_fd_promise)
+      {
+        tunif->obtain_fd = &wait_for_fd_promise;
+        tunif->user = this;
+      }
       llarp::LogDebug("set ifname to ", t->ifname);
       strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
-
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
         llarp::LogWarn("failed to start interface");
         return false;
       }
-      if(tuntap_up(tunif) == -1)
+      if(t->get_fd_promise == nullptr)
       {
-        llarp::LogWarn("failed to put interface up: ", strerror(errno));
-        return false;
-      }
-      if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
-      {
-        llarp::LogWarn("failed to set ip");
-        return false;
+        if(tuntap_up(tunif) == -1)
+        {
+          llarp::LogWarn("failed to put interface up: ", strerror(errno));
+          return false;
+        }
+        if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
+        {
+          llarp::LogWarn("failed to set ip");
+          return false;
+        }
       }
       fd = tunif->tun_fd;
       if(fd == -1)
@@ -257,6 +277,8 @@ namespace llarp
 
     ~tun()
     {
+      if(tunif)
+        tuntap_destroy(tunif);
     }
   };
 };  // namespace llarp
@@ -485,7 +507,10 @@ struct llarp_epoll_loop : public llarp_ev_loop
   create_tun(llarp_tun_io* tun)
   {
     llarp::tun* t = new llarp::tun(tun, this);
-    if(t->setup())
+    if(tun->get_fd_promise)
+    {
+
+    } else if(t->setup())
     {
       return t;
     }
