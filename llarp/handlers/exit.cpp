@@ -58,14 +58,14 @@ namespace llarp
         auto range                = m_ActiveExits.equal_range(pk);
         auto itr                  = range.first;
         uint64_t min              = std::numeric_limits< uint64_t >::max();
-        /// pick path with lowest rx rate
+        /// pick path with lowest tx rate
         while(itr != range.second)
         {
           if(ep == nullptr)
             ep = itr->second.get();
           else if(itr->second->RxRate() < min && !itr->second->ExpiresSoon(now))
           {
-            min = ep->RxRate();
+            min = ep->TxRate();
             ep  = itr->second.get();
           }
           ++itr;
