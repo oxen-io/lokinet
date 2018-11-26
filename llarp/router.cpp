@@ -703,7 +703,7 @@ llarp_router::async_verify_RC(const llarp::RouterContact &rc,
   llarp_nodedb_async_verify(job);
 }
 
-void
+bool
 llarp_router::Run()
 {
   if(enableRPCServer)
@@ -807,12 +807,12 @@ llarp_router::Run()
   if(!_rc.Sign(&crypto, identity))
   {
     llarp::LogError("failed to sign rc");
-    return;
+    return false;
   }
 
   if(!SaveRC())
   {
-    return;
+    return false;
   }
 
   llarp::LogInfo("have ", llarp_nodedb_num_loaded(nodedb), " routers");
@@ -821,6 +821,7 @@ llarp_router::Run()
   if(!outboundLink->Start(logic))
   {
     llarp::LogWarn("outbound link failed to start");
+    return false;
   }
 
   int IBLinksStarted = 0;
@@ -844,8 +845,7 @@ llarp_router::Run()
     if(!InitServiceNode())
     {
       llarp::LogError("Failed to initialize service node");
-      Close();
-      return;
+      return false;
     }
     delay = llarp_randint() % 50;
   }
@@ -860,16 +860,14 @@ llarp_router::Run()
     if(!_rc.Sign(&crypto, identity))
     {
       llarp::LogError("failed to regenerate keys and sign RC");
-      Close();
-      return;
+      return false;
     }
     // generate default hidden service
     llarp::LogInfo("setting up default network endpoint");
     if(!CreateDefaultHiddenService())
     {
       llarp::LogError("failed to set up default network endpoint");
-      Close();
-      return;
+      return false;
     }
   }
 
@@ -877,8 +875,7 @@ llarp_router::Run()
   if(!hiddenServiceContext.StartAll())
   {
     llarp::LogError("Failed to start hidden service context");
-    Close();
-    return;
+    return false;
   }
   llarp::PubKey ourPubkey = pubkey();
   llarp::LogInfo("starting dht context as ", ourPubkey);
@@ -886,6 +883,7 @@ llarp_router::Run()
   ScheduleTicker(1000);
   // delayed connect all
   llarp_logic_call_later(logic, {delay, this, &ConnectAll});
+  return true;
 }
 
 bool
@@ -1041,11 +1039,11 @@ llarp_configure_router(struct llarp_router *router, struct llarp_config *conf)
   return router->EnsureIdentity();
 }
 
-void
+bool
 llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb)
 {
   router->nodedb = nodedb;
-  router->Run();
+  return router->Run();
 }
 
 void

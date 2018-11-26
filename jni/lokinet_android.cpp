@@ -26,7 +26,7 @@ struct AndroidMain
   bool
   ReloadConfig()
   {
-    if(!m_Impl)
+    if(!m_impl)
       return false;
     llarp_main_signal(m_impl, SIGHUP);
     return true;
@@ -41,6 +41,12 @@ struct AndroidMain
     m_impl = llarp_main_init(configFile.c_str(), true);
     if(m_impl == nullptr)
       return false;
+    if(llarp_main_setup(m_impl))
+    {
+      llarp_main_free(m_impl);
+      m_impl = nullptr;
+      return false;
+    }
     m_thread = new std::thread(std::bind(&AndroidMain::Run, this));
     return true;
   }
@@ -56,18 +62,57 @@ struct AndroidMain
   void
   Run()
   {
-    llarp_main_run(m_impl);
+    if(llarp_main_run(m_impl))
+    {
+      // on error
+      llarp::LogError("daemon run fail");
+      llarp_main * ptr = m_impl;
+      m_impl = nullptr;
+      llarp_main_signal(ptr, SIGINT);
+      llarp_main_free(ptr);
+    }
+  }
+
+  const char * GetIfAddr()
+  {
+    if(m_impl)
+    {
+      auto tun = main_router_getFirstTunEndpoint(m_impl);
+      if(tun)
+        return tun->tunif.ifaddr;
+    }
+     return "";
+  }
+
+  int GetIfRange() const 
+  {
+    if(m_impl)
+    {
+      auto tun = main_router_getFirstTunEndpoint(m_impl);
+      if(tun)
+        return tun->tunif.netmask;
+    }
+    return -1;
+  }
+
+  void 
+  SetVPN_FD(int fd)
+  {
+    if(m_impl)
+      llarp_main_inject_vpn_fd(m_impl, fd);
   }
 
   /// stop daemon thread
   void
   Stop()
   {
-    llarp_main_signal(m_impl, SIGINT);
+    if(m_impl)
+      llarp_main_signal(m_impl, SIGINT);
     m_thread->join();
     delete m_thread;
     m_thread = nullptr;
-    llarp_main_free(m_impl);
+    if(m_impl)
+      llarp_main_free(m_impl);
     m_impl = nullptr;
   }
 
@@ -86,7 +131,7 @@ extern "C"
   }
 
   JNIEXPORT jstring JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv* env, jclass jcl,
+  Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv* env, jclass,
                                                       jstring configfile)
   {
     if(daemon->Running())
@@ -107,16 +152,40 @@ extern "C"
         return env->NewStringUTF("failed to start daemon");
     }
     else
-      return ev->NewStringUTF("failed to configure daemon");
+      return env->NewStringUTF("failed to configure daemon");
   }
 
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv* env, jclass)
+  Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv*, jclass)
   {
     if(daemon->Running())
     {
       daemon->Stop();
     }
+  }
+ 
+  JNIEXPORT void JNICALL
+  Java_network_loki_lokinet_Lokinet_1JNI_setVPNFileDescriptor(JNIEnv*, jclass, jint fd)
+  {
+    daemon->SetVPN_FD(fd);
+  }
+
+  JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_getIfAddr
+  (JNIEnv * env, jclass)
+  {
+    if(daemon)
+      return env->NewStringUTF(daemon->GetIfAddr());
+    else
+      return env->NewStringUTF("");
+  }
+
+  JNIEXPORT jint JNICALL Java_network_loki_lokinet_Lokinet_1JNI_getIfRange
+  (JNIEnv *, jclass)
+  {
+   if(daemon)
+      return daemon->GetIfRange();
+    else
+      return -1;
   }
 
   JNIEXPORT void JNICALL

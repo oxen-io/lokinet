@@ -56,7 +56,8 @@ extern "C"
 
     if((dev = (struct device *)malloc(sizeof(*dev))) == NULL)
       return NULL;
-
+    dev->obtain_fd = nullptr;
+    dev->user = nullptr;
     (void)memset(dev->if_name, '\0', sizeof(dev->if_name));
     dev->tun_fd    = TUNFD_INVALID_VALUE;
     dev->ctrl_sock = -1;

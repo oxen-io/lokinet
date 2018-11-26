@@ -23,7 +23,7 @@ namespace llarp
     ExitEndpoint::ExitEndpoint(const std::string &name, llarp_router *r)
         : m_Router(r)
         , m_Name(name)
-        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0}
+        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0}
         , m_InetToNetwork(name + "_exit_rx", r->netloop, r->netloop)
 
     {

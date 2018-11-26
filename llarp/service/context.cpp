@@ -45,9 +45,10 @@ namespace llarp
         llarp::LogError("No endpoints found");
         return nullptr;
       }
-      auto firstEndpoint   = m_Endpoints.begin();
-      auto *uniqueEndpoint = &firstEndpoint->second;
-      return uniqueEndpoint->get();
+      auto itr  = m_Endpoints.begin();
+      if(itr == m_Endpoints.end())
+        return nullptr;
+      return itr->second.get();
     }
 
     bool

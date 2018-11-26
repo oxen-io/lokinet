@@ -137,6 +137,10 @@ extern "C"
 
   struct device
   {
+    /** set me on ios and android to block on a promise for the fd */
+    int (*obtain_fd)(struct device *);
+    /** user data */
+    void * user;
     t_tun tun_fd;
     int ctrl_sock;
     int flags; /* ifr.ifr_flags on Unix */

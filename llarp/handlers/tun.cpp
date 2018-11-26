@@ -8,16 +8,29 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #endif
+#include "ev.hpp"
 
 namespace llarp
 {
   namespace handlers
   {
+
+    static llarp_fd_promise * get_tun_fd_promise(llarp_tun_io * tun)
+    {
+      return static_cast<TunEndpoint *>(tun->user)->Promise.get();
+    }
+
     TunEndpoint::TunEndpoint(const std::string &nickname, llarp_router *r)
         : service::Endpoint(nickname, r)
         , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop, r->netloop)
     {
+#ifdef ANDROID      
+      tunif.get_fd_promise = &get_tun_fd_promise;
+      Promise.reset(new llarp_fd_promise(&m_VPNPromise));
+#else 
+      tunif.get_fd_promise = nullptr;
+#endif
       tunif.user    = this;
       tunif.netmask = DefaultTunNetmask;
       strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
