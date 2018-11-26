@@ -24,6 +24,20 @@
 /*#include <strsafe.h>*/
 #include "tuntap.h"
 
+// io packet for TUN read/write
+// this _should_ be the same size as
+// the corresponding C++ struct
+struct asio_evt_pkt
+{
+  OVERLAPPED pkt;  // must be first, since this is part of the IO call
+  _Bool write;      // true, or false if read pkt
+  size_t sz;  // if this doesn't match what is in the packet, note the error
+};
+
+// function from c++
+struct asio_evt_pkt *
+getTunEventPkt();
+
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \
   (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
@@ -416,22 +430,27 @@ int
 tuntap_read(struct device *dev, void *buf, size_t size)
 {
   DWORD x;
+  BOOL r;
+  _doserrno = 0;
+  struct asio_evt_pkt *pkt = getTunEventPkt();
+  pkt->write               = FALSE;
+  pkt->sz                  = size;
   if(size)
   {
-    ReadFile(dev->tun_fd, buf, (DWORD)size, &x, NULL);
+    r = ReadFile(dev->tun_fd, buf, (DWORD)size, &x, &pkt->pkt);
+    if(r)
+      return x;
 
-    int errcode = GetLastError();
-
-    if(errcode)
+    if(_doserrno && _doserrno != 997)
     {
       tuntap_log(TUNTAP_LOG_ERR,
-                 (const char *)formated_error(L"%1%0", errcode));
+                 (const char *)formated_error(L"%1%0", _doserrno));
       return -1;
     }
   }
   else
-    return -1;
-  return x;
+    return size;
+  return -1; // unreachable
 }
 
 int

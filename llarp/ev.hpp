@@ -15,6 +15,13 @@
 #ifdef _WIN32
 #include <win32_up.h>
 #include <win32_upoll.h>
+// io packet for TUN read/write
+struct asio_evt_pkt
+{
+  OVERLAPPED pkt = {0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
+  bool write = false;            // true, or false if read pkt
+  size_t sz;  // if this doesn't match what is in the packet, note the error
+};
 #endif
 
 #ifndef MAX_WRITE_QUEUE_SIZE
@@ -160,11 +167,21 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      DWORD x;
       if(this->is_tun)
       {
-        WriteFile(fd.tun, data, sz, &x, nullptr);
-        return x;
+        DWORD x;
+        bool r;
+        asio_evt_pkt* pkt = new asio_evt_pkt;
+        pkt->sz           = sz;
+        pkt->write        = true;
+        _doserrno = 0;
+        r = WriteFile(fd.tun, data, sz, &x, &pkt->pkt);
+        if(r)  // we returned immediately
+          return x;
+        else if(_doserrno == ERROR_IO_PENDING)
+          return sz;
+        else
+          return -1;
       }
       return uwrite(fd.socket, (char*)data, sz);
     }

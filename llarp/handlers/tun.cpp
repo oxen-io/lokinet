@@ -244,7 +244,7 @@ namespace llarp
       struct addrinfo hint, *res = NULL;
       int ret;
 
-      memset(&hint, '\0', sizeof hint);
+      memset(&hint, 0, sizeof hint);
 
       hint.ai_family = PF_UNSPEC;
       hint.ai_flags  = AI_NUMERICHOST;

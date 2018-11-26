@@ -265,7 +265,9 @@ namespace llarp
 struct llarp_win32_loop : public llarp_ev_loop
 {
   upoll_t* upollfd;
-  llarp_win32_loop() : upollfd(nullptr)
+  HANDLE tun_event_queue;
+
+  llarp_win32_loop() : upollfd(nullptr), tun_event_queue(INVALID_HANDLE_VALUE)
   {
   }
 
@@ -327,12 +329,14 @@ struct llarp_win32_loop : public llarp_ev_loop
   {
     if(upollfd)
       upoll_destroy(upollfd);
+    if(tun_event_queue != INVALID_HANDLE_VALUE)
+      CloseHandle(tun_event_queue);
   }
 
   bool
   running() const
   {
-    return upollfd != nullptr;
+    return (upollfd != nullptr) && (tun_event_queue != INVALID_HANDLE_VALUE);
   }
 
   bool
@@ -340,7 +344,10 @@ struct llarp_win32_loop : public llarp_ev_loop
   {
     if(!upollfd)
       upollfd = upoll_create(1);
-    return false;
+    if(tun_event_queue == INVALID_HANDLE_VALUE)
+      tun_event_queue =
+          CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1024);
+    return upollfd && (tun_event_queue != INVALID_HANDLE_VALUE);
   }
 
   int
@@ -376,6 +383,27 @@ struct llarp_win32_loop : public llarp_ev_loop
         ++idx;
       }
     }
+
+    DWORD size         = 0;
+    OVERLAPPED* ovl    = nullptr;
+    ULONG_PTR listener = 0;
+    asio_evt_pkt* pkt;
+    while(
+        GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl, ms))
+    {
+      pkt              = (asio_evt_pkt*)ovl;
+      llarp::ev_io* ev = reinterpret_cast< llarp::ev_io* >(listener);
+      /*if(size != pkt->sz)
+        llarp::LogWarn("incomplete async io operation: got ", size,
+                       " bytes, expected ", pkt->sz, " bytes");*/
+      if(!pkt->write)
+        ev->read(readbuf, sizeof(readbuf));
+      else
+        ev->flush_write();
+      ++result;
+	  delete pkt;
+    }
+
     if(result != -1)
       tick_listeners();
     return result;
@@ -472,6 +500,12 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   close_ev(llarp::ev_io* ev)
   {
+    if(ev->is_tun)
+    {
+      CancelIo(ev->fd.tun);
+      CloseHandle(ev->fd.tun);
+      return true;
+    }
     return upoll_ctl(upollfd, UPOLL_CTL_DEL, ev->fd.socket, nullptr) != -1;
   }
 
@@ -501,13 +535,16 @@ struct llarp_win32_loop : public llarp_ev_loop
   bool
   add_ev(llarp::ev_io* e, bool write)
   {
-    // if tun, add to vector without adding to
-    // the epollfd - epollfds on windows only take
-    // real sockets
-    if(write)
-      e->flags = 1;
     if(e->is_tun)
+    {
+      asio_evt_pkt* pkt = new asio_evt_pkt;
+      pkt->write        = false;
+      pkt->sz           = sizeof(readbuf);
+      CreateIoCompletionPort(e->fd.tun, tun_event_queue, (ULONG_PTR)e, 1024);
+      // queue an initial read
+      ReadFile(e->fd.tun, readbuf, sizeof(readbuf), nullptr, &pkt->pkt);
       goto add;
+    }
     upoll_event_t ev;
     ev.data.ptr = e;
     ev.events   = UPOLLIN | UPOLLERR;
@@ -553,7 +590,18 @@ struct llarp_win32_loop : public llarp_ev_loop
     if(upollfd)
       upoll_destroy(upollfd);
     upollfd = nullptr;
+    if(tun_event_queue != INVALID_HANDLE_VALUE)
+    {
+      CloseHandle(tun_event_queue);
+      tun_event_queue = INVALID_HANDLE_VALUE;
+    }
   }
 };
+
+extern "C" asio_evt_pkt*
+getTunEventPkt()
+{
+  return new asio_evt_pkt;
+}
 
 #endif
