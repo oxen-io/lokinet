@@ -45,12 +45,14 @@ ANDROID_LOCAL_PROPS=$(ANDROID_DIR)/local.properties
 GRADLE ?= gradle
 JAVA_HOME ?= /usr/lib/jvm/default-java
 
+# features enabled
 JSONRPC ?= OFF
-AVX2 ?= ON
+AVX2 ?= OFF
 RPI ?= OFF
 STATIC_LINK ?= OFF
 NETNS ?= OFF
 CLANG ?= OFF
+
 CMAKE_GEN ?= Unix Makefiles
 
 BUILD_ROOT = $(REPO)/build
