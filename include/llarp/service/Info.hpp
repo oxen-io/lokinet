@@ -58,10 +58,12 @@ namespace llarp
       }
 
       bool
-      Update(const byte_t* enc, const byte_t* sign)
+      Update(const byte_t* enc, const byte_t* sign, const byte_t * nonce=nullptr)
       {
         enckey  = enc;
         signkey = sign;
+        if(nonce)
+          vanity = nonce;
         return UpdateAddr();
       }
 
