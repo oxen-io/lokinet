@@ -400,7 +400,7 @@ struct llarp_win32_loop : public llarp_ev_loop
         ev->read(readbuf, size);
       else
       {
-        ev->flush_write();
+        ev->flush_write_buffers(pkt->sz);
         printf("write tun\n");
       }
       ++result;
