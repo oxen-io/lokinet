@@ -83,7 +83,6 @@ class AddrGen:
       pub = bytes(fd.getbuffer())
       addr = zb32_encode(libnacl.crypto_generichash(pub))
       if addr.startswith(prefix):
-        print(addr)
         self.sync[2] = 1 
         self.sync[0] = hi
         self.sync[1] = lo
