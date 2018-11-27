@@ -58,17 +58,21 @@ class AddrGen:
     self.prefix = prefix
 
   def runit(self):
+    for ch in self.prefix:
+      if ch not in _zalpha:
+        print("invalid prefix, {} not a valid character".format(ch))
+        return None, None
+    print("find ^{}.loki".format(self.prefix))
     i = self._inc
-    hi = abs(libnacl.randombytes_random())
-    lo = abs(libnacl.randombytes_random())
     while i > 0:
-      p = Process(target=self._gen_addr_tick, args=(lo+i, hi+i, _gen_si(self._keys)))
+      p = Process(target=self._gen_addr_tick, args=(self.prefix, abs(libnacl.randombytes_random()), abs(libnacl.randombytes_random()), _gen_si(self._keys)))
       p.start()
       self._procs.append(p)
       i -=1
     return self._runner()
 
-  def _gen_addr_tick(self, lo, hi, si):
+  def _gen_addr_tick(self, prefix, lo, hi, si):
+    print(prefix)
     fd = BytesIO()
     addr = ''
     enc = bencode.BCodec(fd)
@@ -78,7 +82,8 @@ class AddrGen:
       enc.encode(si)
       pub = bytes(fd.getbuffer())
       addr = zb32_encode(libnacl.crypto_generichash(pub))
-      if addr.startswith(self.prefix):
+      if addr.startswith(prefix):
+        print(addr)
         self.sync[2] = 1 
         self.sync[0] = hi
         self.sync[1] = lo
@@ -122,10 +127,11 @@ def main(args):
     keys = dec.decode()
   runner = AddrGen(int(args[2]), keys, args[1])
   keys[b'x'], addr = runner.runit()
-  print("found {}.loki".format(addr))
-  with open(args[0], 'wb') as fd:
-    enc = bencode.BCodec(fd)
-    enc.encode(keys)
+  if addr:
+    print("found {}.loki".format(addr))
+    with open(args[0], 'wb') as fd:
+      enc = bencode.BCodec(fd)
+      enc.encode(keys)
 
 if __name__ == '__main__':
   main(sys.argv[1:])
