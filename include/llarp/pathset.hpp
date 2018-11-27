@@ -190,8 +190,10 @@ namespace llarp
           return *i.first.data_l() ^ *i.second.data_l();
         }
       };
-
+      using Mtx_t = llarp::util::Mutex;
+      using Lock_t = llarp::util::Lock;
       using PathMap_t = std::unordered_map< PathInfo_t, Path*, PathInfoHash >;
+      mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;
     };
 
