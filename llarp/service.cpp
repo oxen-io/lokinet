@@ -262,9 +262,11 @@ namespace llarp
       inf.read((char*)buf.base, sz);
       if(!BDecode(&buf))
         return false;
-      // update pubkey
+      // update pubkeys
       pub.Update(llarp::seckey_topublic(enckey),
                  llarp::seckey_topublic(signkey));
+      // update vanity nonce
+      pub.vanity = vanity;
       return true;
     }
 

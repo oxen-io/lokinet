@@ -13,9 +13,10 @@ namespace llarp
      private:
       llarp::PubKey enckey;
       llarp::PubKey signkey;
-      VanityNonce vanity;
-
+    
      public:
+      VanityNonce vanity;
+      
       ServiceInfo() = default;
 
       ServiceInfo(ServiceInfo&& other)
