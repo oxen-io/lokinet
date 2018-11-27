@@ -424,7 +424,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
             ev->read(readbuf,
                      std::min(sizeof(readbuf), size_t(events[idx].data)));
           if(events[idx].filter & EVFILT_WRITE)
-            ev->flush_write_buffers(events[idx].data);
+            ev->flush_write_buffers(size_t(events[idx].data));
         }
         ++idx;
       }
