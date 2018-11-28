@@ -35,6 +35,10 @@ namespace llarp
       bool
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const;
 
+      /// return true if this endpoint looks dead right now
+      bool 
+      LooksDead(llarp_time_t now, llarp_time_t timeout = 10000) const;
+
       /// tick ourself, reset tx/rx rates
       void
       Tick(llarp_time_t now);
@@ -92,6 +96,7 @@ namespace llarp
       llarp::PathID_t m_CurrentPath;
       llarp::huint32_t m_IP;
       uint64_t m_TxRate, m_RxRate;
+      llarp_time_t m_LastActive;
       bool m_RewriteSource;
     };
   }  // namespace exit
