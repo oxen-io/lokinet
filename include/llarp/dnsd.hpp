@@ -62,27 +62,26 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
 // we may want to pass dnsd_question_request to these,
 //   incase we need to send an error back up through the pipeline
 
+// FIXME: just use the from in the request
+
 /// NXDOMAIN not found
 void
-write404_dnss_response(const struct sockaddr *from,
-                       dnsd_question_request *request);
+write404_dnss_response(dnsd_question_request *request);
 
 /// for hook functions to use
 void
-writecname_dnss_response(std::string cname, const struct sockaddr *from,
-                         dnsd_question_request *request);
+writecname_dnss_response(std::string cname, dnsd_question_request *request);
 // FIXME: llarp::Addr
 
 /// send an A record found response
 void
-writesend_dnss_response(llarp::huint32_t *hostRes, const struct sockaddr *from,
+writesend_dnss_response(llarp::huint32_t *hostRes,
                         dnsd_question_request *request);
 // FIXME: llarp::Addr
 
 /// send an PTR record found response
 void
-writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
-                           dnsd_question_request *request);
+writesend_dnss_revresponse(std::string reverse, dnsd_question_request *request);
 // FIXME: llarp::Addr
 
 //
@@ -91,8 +90,7 @@ writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
 
 /// intercept query hook functor
 using intercept_query_hook = std::function< dnsd_query_hook_response *(
-    std::string name, const struct sockaddr *from,
-    struct dnsd_question_request *request) >;
+    std::string name, struct dnsd_question_request *request) >;
 // FIXME: llarp::Addr
 
 /// DNS Server context

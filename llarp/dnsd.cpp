@@ -39,8 +39,7 @@ llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
 }
 
 void
-write404_dnss_response(const struct sockaddr *from,
-                       dnsd_question_request *request)
+write404_dnss_response(dnsd_question_request *request)
 {
   char buf[BUFFER_SIZE] = {0};
 
@@ -75,12 +74,11 @@ write404_dnss_response(const struct sockaddr *from,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending 404, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, from, buf, out_bytes);
+  request->sendto_hook(request->user, request->from, buf, out_bytes);
 }
 
 void
-writecname_dnss_response(std::string cname, const struct sockaddr *from,
-                         dnsd_question_request *request)
+writecname_dnss_response(std::string cname, dnsd_question_request *request)
 {
   char buf[BUFFER_SIZE] = {0};
 
@@ -113,7 +111,7 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
   put32bits(write_buffer, 1);  // ttl
 
   put16bits(write_buffer, cname.length() + 2);  // rdLength
-  code_domain(write_buffer, cname);             // com, type=6, ttl=0
+  code_domain(write_buffer, cname);             //
   // location of cname
   //*write_buffer++ = ip[0];
   //*write_buffer++ = ip[1];
@@ -143,12 +141,11 @@ writecname_dnss_response(std::string cname, const struct sockaddr *from,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending cname, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, from, buf, out_bytes);
+  request->sendto_hook(request->user, request->from, buf, out_bytes);
 }
 
 void
-writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
-                           dnsd_question_request *request)
+writesend_dnss_revresponse(std::string reverse, dnsd_question_request *request)
 {
   char buf[BUFFER_SIZE] = {0};
 
@@ -182,13 +179,13 @@ writesend_dnss_revresponse(std::string reverse, const struct sockaddr *from,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending reverse: ", reverse, " ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, from, buf, out_bytes);
+  request->sendto_hook(request->user, request->from, buf, out_bytes);
 }
 
 // FIXME: we need an DNS answer not a sockaddr
 // otherwise ttl, type and class can't be relayed correctly
 void
-writesend_dnss_response(llarp::huint32_t *hostRes, const struct sockaddr *from,
+writesend_dnss_response(llarp::huint32_t *hostRes,
                         dnsd_question_request *request)
 {
   // llarp::Addr test(*from);
@@ -196,7 +193,7 @@ writesend_dnss_response(llarp::huint32_t *hostRes, const struct sockaddr *from,
   if(!hostRes)
   {
     llarp::LogWarn("Failed to resolve ", request->question.name);
-    write404_dnss_response(from, request);
+    write404_dnss_response(request);
     return;
   }
 
@@ -250,7 +247,7 @@ writesend_dnss_response(llarp::huint32_t *hostRes, const struct sockaddr *from,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, from, buf, out_bytes);
+  request->sendto_hook(request->user, request->from, buf, out_bytes);
 }
 
 void
@@ -349,8 +346,22 @@ handle_dnsc_result(dnsc_answer_request *client_request)
     llarp::LogError("Couldn't map client requser user to a server request");
     return;
   }
+
+  client_request->packet.header->id = server_request->id;  // stomp ID
+  std::vector< byte_t > test        = packet2bytes(client_request->packet);
+  // llarp::LogInfo("packet2bytes figures we should send ", test.size(), "
+  // bytes");
+
+  server_request->sendto_hook(server_request->user, server_request->from,
+                              test.data(), test.size());
+
+  llarp_host_resolved(client_request);
+  return;
+
   // llarp::LogDebug("handle_dnsc_result - client request question type",
   // std::to_string(client_request->question.type));
+
+  /*
   if(client_request->question.type == 12)
   {
     writesend_dnss_revresponse(client_request->revDNS, server_request->from,
@@ -380,20 +391,20 @@ handle_dnsc_result(dnsc_answer_request *client_request)
     writesend_dnss_response(useHostRes, server_request->from, server_request);
   }
   llarp_host_resolved(client_request);
+  */
 }
 
 // our generic version
 void
-handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
-                const struct sockaddr *from, dnsd_question_request *request)
+handle_recvfrom(llarp_buffer_t buffer, dnsd_question_request *request)
 {
   const size_t HDR_OFFSET = 12;
-  const char *p_buffer    = buffer;
+  const char *p_buffer    = (const char *)buffer.base;
 
   int rcode = (buffer[3] & 0x0F);
   llarp::LogDebug("dnsd rcode ", rcode);
 
-  dns_msg_header *msg = decode_hdr(p_buffer);
+  dns_msg_header *msg = decode_hdr(buffer);
   p_buffer += HDR_OFFSET;
   request->id         = msg->id;
   std::string m_qName = "";
@@ -424,8 +435,8 @@ handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
   llarp::LogInfo("DNS request from ", test2);
    */
 
-  sockaddr *fromCopy =
-      new sockaddr(*from);  // make our own sockaddr that won't get cleaned up
+  // sockaddr *fromCopy = new sockaddr(*from);  // make our own sockaddr that
+  // won't get cleaned up
   if(!request)
   {
     llarp::LogError("request is not configured");
@@ -441,7 +452,7 @@ handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
     // llarp::Addr test(*from);
     // llarp::LogInfo("from ", test);
     dnsd_query_hook_response *intercept =
-        request->context->intercept(request->question.name, fromCopy, request);
+        request->context->intercept(request->question.name, request);
     // if(!forward_dns_request(m_qName))
     if(intercept != nullptr)
     {
@@ -455,7 +466,7 @@ handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
       {
         llarp::LogDebug("HOOKED: sending an immediate override");
         // told that hook will handle overrides
-        writesend_dnss_response(intercept->returnThis, fromCopy, request);
+        writesend_dnss_response(intercept->returnThis, request);
         return;
       }
     }
@@ -465,7 +476,7 @@ handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
   if(!request->context)
   {
     llarp::LogError("dnsd request context was not a dnsd context");
-    writesend_dnss_response(nullptr, fromCopy, request);
+    writesend_dnss_response(nullptr, request);
     return;
   }
   /*
@@ -486,7 +497,8 @@ handle_recvfrom(const char *buffer, __attribute__((unused)) ssize_t nbytes,
     return;
   }
   */
-  delete fromCopy;
+  // delete fromCopy;
+  // call DNSc
   if(request->llarp)
   {
     // make async request
@@ -524,12 +536,17 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
       &llarp_sendto_dns_hook_func;  // set sock hook
 
   // llarp::LogInfo("Server request's UDP ", llarp_dns_request->user);
-  handle_recvfrom((char *)buf, sz, llarp_dns_request->from, llarp_dns_request);
+  llarp_buffer_t buffer;
+  buffer.base = (byte_t *)buf;
+  buffer.cur  = buffer.base;
+  buffer.sz   = sz;
+
+  handle_recvfrom(buffer, llarp_dns_request);
 }
 
 void
-raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
-                    ssize_t sz)
+raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
+                    llarp_buffer_t buffer)
 {
   if(!dns_udp_tracker.dnsd)
   {
@@ -543,7 +560,8 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr, const void *buf,
   llarp_dns_request->user        = (void *)sockfd;
   llarp_dns_request->llarp       = false;
   llarp_dns_request->sendto_hook = &raw_sendto_dns_hook_func;
-  handle_recvfrom((char *)buf, sz, llarp_dns_request->from, llarp_dns_request);
+
+  handle_recvfrom(buffer, llarp_dns_request);
 }
 
 bool
