@@ -127,7 +127,7 @@ namespace llarp
     bool Endpoint::FlushInboundTraffic()
     {
       auto path = GetCurrentPath();
-      bool sent = false;
+      bool sent = m_DownstreamQueue.size() == 0;
       if(path)
       {
         for(auto & msg : m_DownstreamQueue)
