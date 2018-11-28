@@ -1222,6 +1222,11 @@ namespace llarp
       }
       else if(StrEq(key, "strict-connect"))
       {
+        if(self->IsServiceNode())
+        {
+          llarp::LogError("cannot use strict-connect option as service node");
+          return;
+        }
         llarp::PubKey pk;
         if(llarp::HexDecode(val, pk.data(), pk.size()))
         {
