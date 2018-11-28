@@ -86,8 +86,9 @@ namespace llarp
     void
     Context::ExploreNetworkVia(const Key_t &askpeer)
     {
-      TXOwner peer(askpeer, ++ids);
-      TXOwner whoasked(OurKey(), 0);
+      uint64_t txid = ++ids;
+      TXOwner peer(askpeer, txid);
+      TXOwner whoasked(OurKey(), txid);
       pendingExploreLookups.NewTX(peer, whoasked, askpeer,
                                   new ExploreNetworkJob(askpeer, this));
     }
@@ -799,7 +800,7 @@ namespace llarp
                                    RouterLookupHandler handler)
     {
       TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, ++ids);
+      TXOwner peer(askpeer, txid);
       if(target != askpeer)
       {
         pendingRouterLookups.NewTX(

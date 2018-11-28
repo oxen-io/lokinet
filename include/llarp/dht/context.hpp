@@ -167,7 +167,7 @@ namespace llarp
         Key_t askpeer;
         if(!nodes->FindClosest(target.data(), askpeer))
           return false;
-        LookupRouterRecursive(target, OurKey(), 0, askpeer, result);
+        LookupRouterRecursive(target, OurKey(), ++ids, askpeer, result);
         return true;
       }
 
@@ -410,7 +410,7 @@ namespace llarp
      
       void
       ExploreNetworkVia(const Key_t& peer);
-      
+
     private:
       void
       ScheduleCleanupTimer();
