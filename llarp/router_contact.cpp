@@ -57,7 +57,7 @@ namespace llarp
     if(!bencode_write_version_entry(buf))
       return false;
 
-    /* write ai if they exist */
+    /* write xi if they exist */
     if(!bencode_write_bytestring(buf, "x", 1))
       return false;
     if(!BEncodeWriteList(exits.begin(), exits.end(), buf))

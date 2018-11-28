@@ -427,9 +427,26 @@ llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
   self->ScheduleTicker(orig);
 }
 
+bool 
+llarp_router::ConnectionToRouterAllowed(const llarp::RouterID & router) const 
+{
+  if(strictConnectPubkeys.size() && strictConnectPubkeys.count(router) == 0)
+    return false;
+  else if(IsServiceNode() && whitelistRouters)
+    return lokinetRouters.count(router) != 0;
+  else
+    return true;
+}
+
 void
 llarp_router::TryEstablishTo(const llarp::RouterID &remote)
 {
+  if(!ConnectionToRouterAllowed(remote))
+  {
+    llarp::LogWarn("not connecting to ", remote, " as it's not permitted by config");
+    return;
+  }
+
   llarp::RouterContact rc;
   if(llarp_nodedb_get_rc(nodedb, remote, rc))
   {
@@ -528,8 +545,17 @@ llarp_router::Tick()
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,
                      " service nodes to build paths but we have ", N);
-      auto explore = std::max(NumberOfConnectedRouters(), size_t(1));
-      dht->impl.Explore(explore);
+      // TODO: only connect to random subset
+      if(bootstrapRCList.size())
+      {
+        for(const auto & rc : bootstrapRCList)
+        {
+          llarp_router_try_connect(this, rc, 4);
+          dht->impl.ExploreNetworkVia(rc.pubkey.data());
+        }
+      }
+      else
+        llarp::LogError("we have no bootstrap nodes specified");
     }
     paths.BuildPaths(now);
     hiddenServiceContext.Tick(now);
@@ -837,7 +863,6 @@ llarp_router::Run()
       llarp::LogWarn("Link ", link->Name(), " failed to start");
   }
 
-  uint64_t delay = ((llarp_randint() % 10) * 500) + 500;
   if(IBLinksStarted > 0)
   {
     // initialize as service node
@@ -847,7 +872,6 @@ llarp_router::Run()
       Close();
       return;
     }
-    delay = llarp_randint() % 50;
   }
   else
   {
@@ -884,8 +908,6 @@ llarp_router::Run()
   llarp::LogInfo("starting dht context as ", ourPubkey);
   llarp_dht_context_start(dht, ourPubkey);
   ScheduleTicker(1000);
-  // delayed connect all
-  llarp_logic_call_later(logic, {delay, this, &ConnectAll});
 }
 
 bool
@@ -897,20 +919,6 @@ llarp_router::InitServiceNode()
   return exitContext.AddExitEndpoint("default-connectivity", netConfig);
 }
 
-void
-llarp_router::ConnectAll(void *user, __attribute__((unused)) uint64_t orig,
-                         uint64_t left)
-{
-  if(left)
-    return;
-  llarp_router *self = static_cast< llarp_router * >(user);
-  // connect to all explicit connections in connect block
-  for(const auto &itr : self->connect)
-  {
-    llarp::LogInfo("connecting to node ", itr.first);
-    self->try_connect(itr.second);
-  }
-}
 
 bool
 llarp_router::HasSessionTo(const llarp::RouterID &remote) const
@@ -925,6 +933,9 @@ llarp_router::ConnectToRandomRouters(int want)
   llarp_router *self = this;
   llarp_nodedb_visit_loaded(
       self->nodedb, [self, &want](const llarp::RouterContact &other) -> bool {
+        // check if we really want to
+        if(!self->ConnectionToRouterAllowed(other.pubkey))
+          return want > 0;
         if(llarp_randint() % 2 == 0
            && !(self->HasSessionTo(other.pubkey)
                 || self->HasPendingConnectJob(other.pubkey)))
@@ -942,6 +953,7 @@ llarp_router::ConnectToRandomRouters(int want)
 bool
 llarp_router::ReloadConfig(__attribute__((unused)) const llarp_config *conf)
 {
+  // TODO: implement me
   return true;
 }
 
@@ -1014,7 +1026,7 @@ llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
     router->netloop = netloop;
     router->tp      = tp;
     router->logic   = logic;
-// TODO: make disk io threadpool count configurable
+// TODO: make disk io threadpool count configurable (?)
 #ifdef TESTNET
     router->disk = tp;
 #else
@@ -1208,6 +1220,19 @@ namespace llarp
         self->routerProfiling.Load(val);
         llarp::LogInfo("setting profiles to ", self->routerProfilesFile);
       }
+      else if(StrEq(key, "strict-connect"))
+      {
+        llarp::PubKey pk;
+        if(llarp::HexDecode(val, pk.data(), pk.size()))
+        {
+          if(self->strictConnectPubkeys.insert(pk).second)
+            llarp::LogInfo("added ", pk, " to strict connect list");
+          else
+            llarp::LogWarn("duplicate key for strict connect: ", pk);
+        }
+        else
+          llarp::LogError("invalid key for strict-connect: ", val);
+      }
       else
       {
         self->netConfig.insert(std::make_pair(key, val));
@@ -1263,9 +1288,19 @@ namespace llarp
         self->netConfig.emplace(std::make_pair("local-dns", val));
       }
     }
-    else if(StrEq(section, "connect"))
+    else if(StrEq(section, "connect") || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
     {
-      self->connect[key] = val;
+      self->bootstrapRCList.emplace_back();
+      auto & rc = self->bootstrapRCList.back();
+      if(rc.Read(val) && rc.Verify(&self->crypto))
+      {
+        llarp::LogInfo("Added bootstrap node ", rc.pubkey);
+      }
+      else
+      {
+        llarp::LogError("malformed rc file: ", val);
+        self->bootstrapRCList.pop_back();
+      }
     }
     else if(StrEq(section, "router"))
     {

@@ -176,9 +176,13 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "dir=" << basepath << "netdb" << std::endl;
   f << std::endl << std::endl;
 
-  f << "# bootstrap settings " << std::endl;
-  f << "[connect]" << std::endl;
-  f << "bootstrap=" << basepath << "bootstrap.signed" << std::endl;
+  f << "# bootstrap settings" << std::endl;
+  f << "[bootstrap]" << std::endl;
+  f << "# add a bootstrap node's signed identity to the list of nodes we want to bootstrap from" << std::endl;
+  f << "# if we don't have any peers we connect to this router" << std::endl;
+  f << "add-node=" << basepath << "bootstrap.signed" << std::endl;
+  f << "# add another bootstrap node" << std::endl;
+  f << "#add-node=/path/to/alternative/self.signed" << std::endl;
   f << std::endl << std::endl;
 }
 
@@ -253,14 +257,14 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   f << "#example-snapp=" << snappExample_fpath << std::endl;
   f << std::endl << std::endl;
 #endif
+
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;
   f << "profiles=" << basepath << "profiles.dat" << std::endl;
-
-// WHAT? Why this ifndef?
-#ifndef __linux__
-  f << "# ";
-#endif
+  f << "# uncomment next line to add router with pubkey to list of routers we connect directly to" << std::endl;
+  f << "#strict-connect=pubkey" << std::endl;
+  f << "# uncomment next line to use router with pubkey as an exit node" << std::endl;
+  f << "#exit-node=pubkey" << std::endl;
   // pick ip
   std::string ip = llarp::findFreePrivateRange();
   /*
@@ -313,7 +317,6 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   f << "ifname=" << ifName << std::endl;
   f << "ifaddr=" << ip << std::endl;
   f << "enabled=true" << std::endl;
-
   return true;
 }
 
@@ -349,7 +352,7 @@ extern "C"
     iter->conf                                                   = conf;
     std::map< std::string, llarp::Config::section_t & > sections = {
         {"network", conf->impl.network},  {"connect", conf->impl.connect},
-        {"system", conf->impl.system},    {"bind", conf->impl.iwp_links},
+        {"bootstrap", conf->impl.bootstrap}, {"system", conf->impl.system},
         {"netdb", conf->impl.netdb},      {"api", conf->impl.api},
         {"services", conf->impl.services}};
 
@@ -358,6 +361,9 @@ extern "C"
 
     for(const auto item : conf->impl.dns)
       iter->visit(iter, "dns", item.first.c_str(), item.second.c_str());
+
+    for(const auto item : conf->impl.iwp_links)
+      iter->visit(iter, "bind", item.first.c_str(), item.second.c_str());
 
     for(const auto &section : sections)
       for(const auto &item : section.second)

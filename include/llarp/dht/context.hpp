@@ -407,10 +407,11 @@ namespace llarp
       llarp_time_t
       Now();
 
-     private:
+     
       void
       ExploreNetworkVia(const Key_t& peer);
-
+      
+    private:
       void
       ScheduleCleanupTimer();
 

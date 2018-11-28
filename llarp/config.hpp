@@ -21,6 +21,7 @@ namespace llarp
     section_t system;
     section_t api;
     section_t lokid;
+    section_t bootstrap;
 
     bool
     Load(const char *fname);

@@ -40,7 +40,8 @@ struct llarp_router
   fs::path transport_keyfile = "transport.key";
 
   // nodes to connect to on startup
-  std::map< std::string, fs::path > connect;
+  // DEPRECATED
+  // std::map< std::string, fs::path > connect;
 
   // long term identity key
   fs::path ident_keyfile = "identity.key";
@@ -84,7 +85,7 @@ struct llarp_router
   byte_t linkmsg_buffer[MAX_LINK_MSG_SIZE];
 
   /// always maintain this many connections to other routers
-  size_t minConnectedRouters = 5;
+  size_t minConnectedRouters = 1;
   /// hard upperbound limit on the number of router to router connections
   size_t maxConnectedRouters = 2000;
 
@@ -104,6 +105,12 @@ struct llarp_router
 
   /// default network config for default network interface
   NetConfig_t netConfig;
+
+  /// identity keys whitelist of routers we will connect to directly (not for service nodes)
+  std::set<llarp::PubKey> strictConnectPubkeys;
+
+  /// bootstrap RCs
+  std::list<llarp::RouterContact> bootstrapRCList;
 
   bool
   ExitEnabled() const
@@ -206,14 +213,15 @@ struct llarp_router
   void
   PersistSessionUntil(const llarp::RouterID &remote, llarp_time_t until);
 
-  static void
-  ConnectAll(void *user, uint64_t orig, uint64_t left);
-
   bool
   EnsureIdentity();
 
   bool
   EnsureEncryptionKey();
+
+  bool 
+  ConnectionToRouterAllowed(const llarp::RouterID & router) const;
+
 
   bool
   SaveRC();
