@@ -44,6 +44,9 @@ namespace llarp
       llarp_router*
       Router();
 
+      llarp_time_t
+      Now() const;
+
       llarp_crypto*
       Crypto();
 
