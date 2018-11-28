@@ -37,10 +37,16 @@ namespace llarp
     {
     }
 
+    llarp_time_t 
+    ExitEndpoint::Now() const
+    {
+      return m_Router->Now();
+    }
+
     void
     ExitEndpoint::FlushInbound()
     {
-      auto now = Router()->Now();
+      auto now = Now();
       m_InetToNetwork.Process([&](Pkt_t &pkt) {
         llarp::PubKey pk;
         {
@@ -58,23 +64,27 @@ namespace llarp
         auto range                = m_ActiveExits.equal_range(pk);
         auto itr                  = range.first;
         uint64_t min              = std::numeric_limits< uint64_t >::max();
-        /// pick path with lowest tx rate
+        /// pick non dead looking path with lowest tx rate
         while(itr != range.second)
         {
-          if(ep == nullptr)
-            ep = itr->second.get();
-          else if(itr->second->RxRate() < min && !itr->second->ExpiresSoon(now))
+          if(itr->second->TxRate() < min && !itr->second->LooksDead(now))
           {
-            min = ep->TxRate();
             ep  = itr->second.get();
+            min = ep->TxRate();
           }
           ++itr;
         }
-        if(ep)
+        
+        if(ep == nullptr)
+        {
+          // we may have all dead sessions, wtf now?
+          llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we have no working endpoints");
+        }
+        else
         {
           if(!ep->SendInboundTraffic(pkt.Buffer()))
           {
-            llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk);
+            llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we are overloaded (probably)");
           }
         }
       });
@@ -299,10 +309,10 @@ namespace llarp
       if(wantInternet && !m_PermitExit)
         return false;
       huint32_t ip = GetIPForIdent(pk);
-      m_ActiveExits.insert(std::make_pair(
-          pk,
-          std::unique_ptr< llarp::exit::Endpoint >(
-              new llarp::exit::Endpoint(pk, path, !wantInternet, ip, this))));
+      m_ActiveExits.insert(
+          std::make_pair(pk,
+                         std::make_unique< llarp::exit::Endpoint >(
+                             pk, path, !wantInternet, ip, this)));
       m_Paths[path] = pk;
       return HasLocalMappedAddrFor(pk);
     }

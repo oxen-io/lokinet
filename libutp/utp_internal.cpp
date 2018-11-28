@@ -1233,6 +1233,7 @@ UTPSocket::write_outgoing_packet(size_t payload, uint flags,
     last_rcv_win = get_rcv_window();
 
     PacketFormatV1 *p1 = (PacketFormatV1 *)pkt->data;
+    // p1->ver_type; needs to be set!!
     p1->set_version(1);
     p1->set_type(flags);
     p1->ext        = 0;

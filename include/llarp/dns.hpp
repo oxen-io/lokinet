@@ -12,6 +12,15 @@
 #endif
 
 #include <llarp/net.hpp>  // for llarp::Addr , llarp::huint32_t
+#include <llarp/dns_rectypes.hpp>
+
+#define LLARP_DNS_RECTYPE_A 1
+#define LLARP_DNS_RECTYPE_NS 2
+#define LLARP_DNS_RECTYPE_CNAME 5
+#define LLARP_DNS_RECTYPE_SOA 6
+#define LLARP_DNS_RECTYPE_PTR 12
+#define LLARP_DNS_RECTYPE_MX 15
+#define LLARP_DNS_RECTYPE_TXT 16
 
 struct dnsd_context;
 
@@ -73,6 +82,7 @@ struct dns_msg_answer
   uint32_t ttl;
   uint16_t rdLen;
   std::vector< byte_t > rData;
+  std::unique_ptr< llarp::dns::record > record;
 };
 
 struct dns_packet
@@ -84,11 +94,23 @@ struct dns_packet
   std::vector< std::unique_ptr< dns_msg_answer > > additional_rrs;
 };
 
+std::vector< byte_t >
+packet2bytes(dns_packet &in);
+
 std::string
 getDNSstring(const char *const buffer, uint32_t *pos);
 
 void
 code_domain(char *&buffer, const std::string &domain) throw();
+
+void
+vcode_domain(std::vector< byte_t > &bytes, const std::string &domain) throw();
+
+void
+vput16bits(std::vector< byte_t > &bytes, uint16_t value) throw();
+
+void
+vput32bits(std::vector< byte_t > &bytes, uint32_t value) throw();
 
 extern "C"
 {
@@ -99,7 +121,7 @@ extern "C"
   get32bits(const char *&buffer) throw();
 
   dns_msg_header *
-  decode_hdr(const char *buffer);
+  decode_hdr(llarp_buffer_t &buffer);
 
   dns_msg_question *
   decode_question(const char *buffer, uint32_t *pos);

@@ -23,7 +23,8 @@ random_string(size_t len = 15, std::string const &allowed_chars = default_chars)
 
 struct check_query_simple_request
 {
-  const struct sockaddr *from;  // source
+  // already inside request
+  // const struct sockaddr *from;  // source
   dnsd_question_request *request;
 };
 
@@ -44,7 +45,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   if(!dll)
   {
     llarp::LogError("DNSd dotLokiLookup is not configured");
-    write404_dnss_response(qr->from, qr->request);
+    write404_dnss_response(qr->request);
     delete qr;
     return;
   }
@@ -58,7 +59,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   {
     llarp::LogWarn("Could not base32 decode address: ",
                    qr->request->question.name);
-    write404_dnss_response(qr->from, qr->request);
+    write404_dnss_response(qr->request);
     delete qr;
     return;
   }
@@ -85,7 +86,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   if(!routerHiddenServiceContext)
   {
     llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
-    write404_dnss_response(qr->from, qr->request);
+    write404_dnss_response(qr->request);
     delete qr;
     return;
   }
@@ -95,7 +96,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   if(!tunIp->h)
   {
     llarp::LogWarn("dotLokiLookup failed to map address");
-    write404_dnss_response(qr->from, qr->request);
+    write404_dnss_response(qr->request);
     delete qr;
     return;
   }
@@ -142,7 +143,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   llarp::huint32_t foundAddr;
   if(!routerHiddenServiceContext->FindBestAddressFor(addr, foundAddr))
   {
-    write404_dnss_response(qr->from, qr->request);
+    write404_dnss_response(qr->request);
     delete qr;
     return;
   }
@@ -160,7 +161,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   // saddr.sin_addr.s_addr = llarp::xhtonl(foundAddr).n;
   // FIXME: flush cache to disk
   // on crash we'll need to bring up all the same IPs we assigned before...
-  writesend_dnss_response(&foundAddr, qr->from, qr->request);
+  writesend_dnss_response(&foundAddr, qr->request);
   delete qr;
   return;
 }
@@ -188,7 +189,7 @@ split(std::string str)
 struct reverse_handler_iter_context
 {
   std::string lName;
-  const struct sockaddr *from;
+  // const struct sockaddr *from; // aready inside dnsd_question_request
   const struct dnsd_question_request *request;
 };
 
@@ -260,13 +261,12 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
             searchIPv4_fixed);
     if(addr.IsZero())
     {
-      write404_dnss_response(context->from,
-                             (dnsd_question_request *)context->request);
+      write404_dnss_response((dnsd_question_request *)context->request);
     }
     else
     {
       // llarp::LogInfo("Returning [", addr.ToString(), "]");
-      writesend_dnss_revresponse(addr.ToString(), context->from,
+      writesend_dnss_revresponse(addr.ToString(),
                                  (dnsd_question_request *)context->request);
     }
     return false;
@@ -275,7 +275,7 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
 }
 
 dnsd_query_hook_response *
-llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
+llarp_dotlokilookup_handler(std::string name,
                             struct dnsd_question_request *const request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
@@ -303,8 +303,8 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
     // which range?
     // for each tun interface
     struct reverse_handler_iter_context context;
-    context.lName   = lName;
-    context.from    = from;
+    context.lName = lName;
+    // context.from    = request->from;
     context.request = request;
 
     struct llarp::service::Context::endpoint_iter i;
@@ -362,8 +362,8 @@ llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
 
     // schedule future response
     check_query_simple_request *qr = new check_query_simple_request;
-    qr->from                       = from;
-    qr->request                    = request;
+    // qr->from                       = request->from;
+    qr->request = request;
 
     auto tun = routerHiddenServiceContext->getFirstTun();
     if(tun->HasPathToService(addr))

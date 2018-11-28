@@ -19,7 +19,7 @@ extern "C"
 }
 namespace llarp
 {
-  /// aligned buffer, aligns to the nears Long_t
+  /// aligned buffer that is sz bytes long and aligns to the nears Long_t
   template < size_t sz, bool randomize = false, typename Long_t = uint64_t >
   struct AlignedBuffer
   {

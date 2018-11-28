@@ -50,7 +50,7 @@ struct llarpDNSdTest : public ::testing::Test
 
 TEST_F(llarpDNSdTest, TestNxDomain)
 {
-  write404_dnss_response(nullptr, &test_request);
+  write404_dnss_response(&test_request);
   ASSERT_TRUE(g_length == 55);
   std::string expected_output =
       "00 00 FFF03 00 01 00 01 00 00 00 00 04 6C 6F 6B 69 07 6E 65 74 77 6F 72 "
@@ -65,7 +65,7 @@ TEST_F(llarpDNSdTest, TestAResponse)
   llarp::Zero(&hostRes.h, sizeof(uint32_t));
   // sockaddr hostRes;
   // llarp::Zero(&hostRes, sizeof(sockaddr));
-  writesend_dnss_response(&hostRes, nullptr, &test_request);
+  writesend_dnss_response(&hostRes, &test_request);
   ASSERT_TRUE(g_length == 58);
   std::string expected_output =
       "00 00 FFF00 00 01 00 01 00 00 00 00 04 6C 6F 6B 69 07 6E 65 74 77 6F 72 "
@@ -76,7 +76,7 @@ TEST_F(llarpDNSdTest, TestAResponse)
 
 TEST_F(llarpDNSdTest, TestPTRResponse)
 {
-  writesend_dnss_revresponse("loki.network", nullptr, &test_request);
+  writesend_dnss_revresponse("loki.network", &test_request);
   ASSERT_TRUE(g_length == 68);
   std::string expected_output =
       "00 00 FFF00 00 01 00 01 00 00 00 00 04 6C 6F 6B 69 07 6E 65 74 77 6F 72 "
@@ -87,7 +87,7 @@ TEST_F(llarpDNSdTest, TestPTRResponse)
 
 TEST_F(llarpDNSdTest, TestCname)
 {
-  writecname_dnss_response("test.cname", nullptr, &test_request);
+  writecname_dnss_response("test.cname", &test_request);
   ASSERT_TRUE(g_length == 122);
   std::string expected_output =
       "00 00 FFF00 00 01 00 01 00 01 00 01 04 6C 6F 6B 69 07 6E 65 74 77 6F 72 "

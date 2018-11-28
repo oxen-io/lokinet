@@ -14,6 +14,7 @@ namespace llarp
         , m_IP(ip)
         , m_RewriteSource(rewriteIP)
     {
+      m_LastActive = parent->Now();
     }
 
     Endpoint::~Endpoint()
@@ -65,6 +66,15 @@ namespace llarp
       return true;
     }
 
+    bool Endpoint::LooksDead(llarp_time_t now, llarp_time_t timeout) const 
+    {
+      if(ExpiresSoon(now, timeout))
+        return true;
+      if (now > m_LastActive)
+        return now - m_LastActive > timeout;
+      return true;
+    }
+
     bool
     Endpoint::SendOutboundTraffic(llarp_buffer_t buf)
     {
@@ -83,6 +93,7 @@ namespace llarp
         return false;
       }
       m_TxRate += buf.sz;
+      m_LastActive = m_Parent->Now();
       return true;
     }
 

@@ -95,7 +95,10 @@ main(int argc, char *argv[])
 
   // llarp::SetLogLevel(llarp::eLogDebug);
 
-  if(1)
+  bool enableDLL = false;
+  bool useLlarp  = true;
+
+  if(enableDLL)
   {
     // libev version w/router context
     ctx = llarp_main_init(conffname, !TESTNET);
@@ -163,7 +166,7 @@ main(int argc, char *argv[])
     llarp_main_run(ctx);
     llarp_main_free(ctx);
   }
-  else if(0)
+  else if(useLlarp)
   {
     // libev version
     llarp_ev_loop *netloop   = nullptr;
@@ -268,8 +271,31 @@ main(int argc, char *argv[])
         continue;
       llarp::LogInfo("Received Bytes ", nbytes);
 
-      raw_handle_recvfrom(&m_sockfd, (const struct sockaddr *)&clientAddress,
-                          buffer, nbytes);
+      llarp_buffer_t lbuffer;
+      lbuffer.base = (byte_t *)buffer;
+      lbuffer.cur  = lbuffer.base;
+      lbuffer.sz   = nbytes;
+
+      dns_msg_header *hdr = decode_hdr(lbuffer);
+
+      // if we sent this out, then there's an id
+      struct dns_tracker *tracker = (struct dns_tracker *)dnsd.client.tracker;
+      struct dnsc_answer_request *request =
+          tracker->client_request[hdr->id].get();
+
+      if(request)
+      {
+        request->packet.header = hdr;
+        generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(),
+                                     lbuffer, hdr);
+      }
+      else
+      {
+        llarp::LogWarn("Ignoring multiple responses on ID #", hdr->id);
+      }
+
+      // raw_handle_recvfrom(&m_sockfd, (const struct sockaddr *)&clientAddress,
+      //                    buffer, nbytes);
     }
   }
 

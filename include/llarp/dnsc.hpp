@@ -15,8 +15,8 @@ struct dnsc_answer_request;
 struct dns_query
 {
   uint16_t length;
-  // char *url;
   unsigned char request[DNC_BUF_SIZE];
+  // char *url;
   // uint16_t reqType;
 };
 
@@ -32,17 +32,21 @@ typedef void (*dnsc_answer_hook_func)(dnsc_answer_request *request);
 struct dnsc_answer_request
 {
   /// sock type
-  void *sock;  // pts to udp...
+  void *sock;  // points to udp that sent the request to DNSc...
   /// customizable (used for hook (outer request))
   void *user;
-  /// storage
+  /// request storage
   dns_msg_question question;
+  /// response storage
+  dns_packet packet;
   /// hook
   dnsc_answer_hook_func resolved;
   /// result
   bool found;
-  llarp::huint32_t result;
-  std::string revDNS;
+
+  // llarp::huint32_t result;
+  // std::string revDNS;
+
   // a reference to dnsc_context incase of multiple contexts
   struct dnsc_context *context;
 };
@@ -59,9 +63,16 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
 /// because we don't need a callback like recvfrom
 /// because we're not evented
 /// however daemon/dns expects this
+/*
 void
 raw_handle_recvfrom(int *sockfd, const struct sockaddr *addr, const void *buf,
                     const ssize_t sz);
+*/
+
+// removed saddr, if needed get through request
+void
+generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
+                             llarp_buffer_t buffer, dns_msg_header *hdr);
 
 /// DNS client context (one needed per upstream DNS server)
 struct dnsc_context
@@ -78,13 +89,14 @@ struct dnsc_context
   struct llarp_logic *logic;
 };
 
-/// async resolve a hostname using generic socks
+/// async (blocking w/callback) resolve a hostname using generic socks
 void
 raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
                  dnsc_answer_hook_func resolved, void *const user,
                  uint16_t type);
 
-/// async resolve a hostname using llarp platform framework
+/// async (non blocking w/callback) resolve a hostname using llarp platform
+/// framework
 bool
 llarp_resolve_host(struct dnsc_context *const dns, const char *url,
                    dnsc_answer_hook_func resolved, void *const user,

@@ -2,10 +2,6 @@
 #define LIBLLARP_DNS_DOTLOKILOOKUP_HPP
 
 #include <llarp/service/address.hpp>
-//#include <llarp/service.hpp>
-//#include <llarp/service/endpoint.hpp>
-//#include <llarp/handlers/tun.hpp>
-//#include <llarp/handlers/tun.hpp>
 
 #include "dnsd.hpp"
 
@@ -38,7 +34,7 @@ struct dotLokiLookup
 };
 
 dnsd_query_hook_response *
-llarp_dotlokilookup_handler(std::string name, const struct sockaddr *from,
+llarp_dotlokilookup_handler(std::string name,
                             struct dnsd_question_request *const request);
 
 #endif

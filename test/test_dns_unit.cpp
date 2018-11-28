@@ -28,9 +28,13 @@ struct DNSTest : public ::testing::Test
       // extra
       0x00  // null terminator (probably don't need this, just added it)
   };
+  llarp_buffer_t buffer_t;
 
   DNSTest()
   {
+    this->buffer_t.base = (byte_t *)this->buf;
+    this->buffer_t.cur  = buffer_t.base;
+    this->buffer_t.sz   = 47;
   }
 
   void
@@ -87,7 +91,8 @@ TEST_F(DNSTest, TestCodeDomain)
 // test decoders
 TEST_F(DNSTest, TestDecodeHdr)
 {
-  dns_msg_header *hdr = decode_hdr((char *)this->buf);
+
+  dns_msg_header *hdr = decode_hdr(this->buffer_t);
   /*
   printf("id[%d]", hdr->id);
   printf("qr[%d]", hdr->qr);

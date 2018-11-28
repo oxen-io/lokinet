@@ -421,6 +421,7 @@ set(LIB_SRC
   llarp/context.cpp
   llarp/crypto_libsodium.cpp
   llarp/dht.cpp
+  llarp/dns_rectypes.cpp
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
@@ -495,6 +496,7 @@ set(DNS_SRC
   llarp/dnsd.cpp
   llarp/dns_iptracker.cpp
   llarp/dns_dotlokilookup.cpp
+  llarp/dns_rectypes.cpp
   llarp/net.cpp
   daemon/dns.cpp
 )
