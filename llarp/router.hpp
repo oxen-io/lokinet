@@ -213,6 +213,8 @@ struct llarp_router
   void
   PersistSessionUntil(const llarp::RouterID &remote, llarp_time_t until);
 
+
+
   bool
   EnsureIdentity();
 
@@ -268,6 +270,9 @@ struct llarp_router
   /// try establishing a session to a remote router
   void
   TryEstablishTo(const llarp::RouterID &remote);
+
+  void 
+  HandleDHTLookupForExplore(llarp::RouterID remote, const std::vector< llarp::RouterContact > &results);
 
   void
   ForEachPeer(

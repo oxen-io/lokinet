@@ -438,6 +438,24 @@ llarp_router::ConnectionToRouterAllowed(const llarp::RouterID & router) const
     return true;
 }
 
+void 
+llarp_router::HandleDHTLookupForExplore(llarp::RouterID remote, const std::vector< llarp::RouterContact > &results)
+{
+  if(results.size() == 0)
+    return;
+  for(const auto & rc: results)
+  {
+    if(rc.Verify(&crypto))
+      llarp_nodedb_put_rc(nodedb, rc);
+    else
+      return;
+  }
+  if(ConnectionToRouterAllowed(remote))
+  {
+    TryEstablishTo(remote);
+  }
+}
+
 void
 llarp_router::TryEstablishTo(const llarp::RouterID &remote)
 {

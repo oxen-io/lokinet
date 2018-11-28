@@ -77,9 +77,8 @@ namespace llarp
         llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
         for(const auto &pk : valuesFound)
         {
-          // try connecting to it we don't know it
-          // this triggers a dht lookup
-          parent->router->TryEstablishTo(pk);
+          // lookup router
+          parent->LookupRouter(pk, std::bind(&llarp_router::HandleDHTLookupForExplore, parent->router, pk, std::placeholders::_1));
         }
       }
     };
