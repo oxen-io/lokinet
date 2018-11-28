@@ -257,8 +257,10 @@ namespace llarp
       auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
       if(endpoint)
       {
+        bool sent = true;
         for(const auto & pkt : msg->X)
-          endpoint->SendOutboundTraffic(pkt.Buffer());;
+          sent &= endpoint->SendOutboundTraffic(pkt.Buffer());
+        return sent;
       }
       else
         llarp::LogError("No exit endpoint on ", info);
