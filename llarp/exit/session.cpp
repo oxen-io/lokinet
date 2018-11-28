@@ -117,7 +117,8 @@ namespace llarp
         return back.PutBuffer(buf);
     }
 
-    bool BaseSession::FlushUpstreamTraffic()
+    bool 
+    BaseSession::FlushUpstreamTraffic()
     {
       auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
       if(!path)

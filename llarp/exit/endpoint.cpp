@@ -124,7 +124,8 @@ namespace llarp
           return msg.PutBuffer(pktbuf);
     }
 
-    bool Endpoint::FlushInboundTraffic()
+    bool 
+    Endpoint::FlushInboundTraffic()
     {
       auto path = GetCurrentPath();
       bool sent = m_DownstreamQueue.size() == 0;

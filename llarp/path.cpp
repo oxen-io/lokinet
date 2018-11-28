@@ -797,8 +797,12 @@ namespace llarp
         return false;
       MarkActive(r->Now());
       // handle traffic if we have a handler
-      return m_ExitTrafficHandler
-          && m_ExitTrafficHandler(this, llarp::ConstBuffer(msg->X));
+      if(!m_ExitTrafficHandler)
+        return false;
+      bool sent = msg->X.size() > 0;
+      for(const auto & pkt : msg->X)
+        m_ExitTrafficHandler(this, pkt.Buffer());
+      return sent;
     }
 
   }  // namespace path
