@@ -257,10 +257,8 @@ namespace llarp
       auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
       if(endpoint)
       {
-        if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
-          return true;
-        else
-          llarp::LogError("failed to send outbound traffic for exit on ", info);
+        for(const auto & pkt : msg->X)
+          endpoint->SendOutboundTraffic(pkt.Buffer());;
       }
       else
         llarp::LogError("No exit endpoint on ", info);
