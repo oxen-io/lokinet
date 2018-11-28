@@ -115,7 +115,7 @@ namespace llarp
           m_DownstreamQueue.emplace_back();
         auto pktbuf = pkt.Buffer();
         auto & msg = m_DownstreamQueue.back();
-        if(msg.Size() + pktbuf.sz > 1024)
+        if(msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
         {
           m_DownstreamQueue.emplace_back();
           return m_DownstreamQueue.back().PutBuffer(pktbuf);
