@@ -742,10 +742,11 @@ transfer ip traffic
   A: "I",
   S: uint64_sequence_number,
   V: 0,
-  X: "<N bytes ip packet>"
+  X: "<list of ip packet buffers>",
 }
 
-X is parsed as an IP packet and the source addresss is extracted and sent on the 
+X is parsed as a alist of IP packet buffers.
+for each ip packet the source addresss is extracted and sent on the 
 appropriate network interface.
 
 When we recieve an ip packet from the internet to an exit address, we put it

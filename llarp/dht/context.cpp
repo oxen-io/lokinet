@@ -800,7 +800,7 @@ namespace llarp
                                    RouterLookupHandler handler)
     {
       TXOwner asker(whoasked, txid);
-      TXOwner peer(askpeer, txid);
+      TXOwner peer(askpeer, ++ids);
       if(target != askpeer)
       {
         pendingRouterLookups.NewTX(

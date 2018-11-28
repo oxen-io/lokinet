@@ -12,7 +12,7 @@ namespace llarp
   /// encrypted buffer base type
   struct Encrypted
   {
-    Encrypted(Encrypted&&) = delete;
+    Encrypted(Encrypted&& other);
     Encrypted(const Encrypted& other);
     Encrypted();
     Encrypted(const byte_t* buf, size_t sz);

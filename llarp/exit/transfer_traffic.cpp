@@ -19,8 +19,10 @@ namespace llarp
     {
       if(buf.sz > MaxExitMTU)
         return false;
-      X.resize(buf.sz);
-      memcpy(X.data(), buf.base, buf.sz);
+      X.emplace_back(buf.sz);
+      memcpy(X.back().data(), buf.base, buf.sz);
+      // 8 bytes encoding overhead
+      _size += buf.sz + 8;
       return true;
     }
 
@@ -35,10 +37,7 @@ namespace llarp
         return false;
       if(!BEncodeWriteDictInt("V", version, buf))
         return false;
-
-      if(!bencode_write_bytestring(buf, "X", 1))
-        return false;
-      if(!bencode_write_bytestring(buf, X.data(), X.size()))
+      if(!BEncodeWriteDictList("X", X, buf))
         return false;
       return bencode_end(buf);
     }
@@ -51,13 +50,8 @@ namespace llarp
         return false;
       if(!BEncodeMaybeReadDictInt("V", version, read, key, buf))
         return false;
-      if(llarp_buffer_eq(key, "X"))
-      {
-        llarp_buffer_t strbuf;
-        if(!bencode_read_string(buf, &strbuf))
-          return false;
-        return PutBuffer(strbuf);
-      }
+      if(!BEncodeMaybeReadDictList("X", X, read, key, buf))
+        return false;
       return read;
     }
 

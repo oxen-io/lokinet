@@ -350,7 +350,7 @@ namespace llarp
           if(m_Exit)
           {
             pkt.UpdateIPv4PacketOnDst({0}, pkt.dst());
-            m_Exit->SendUpstreamTraffic(std::move(pkt));
+            m_Exit->QueueUpstreamTraffic(std::move(pkt), 1024);
           }
           else
             llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
@@ -368,6 +368,8 @@ namespace llarp
         }
         return true;
       });
+      if(m_Exit)
+        m_Exit->FlushUpstreamTraffic();
     }
 
     bool

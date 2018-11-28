@@ -101,16 +101,39 @@ namespace llarp
     }
 
     bool
-    BaseSession::SendUpstreamTraffic(llarp::net::IPv4Packet pkt)
+    BaseSession::QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t N)
+    {
+      if(m_UpstreamQueue.size() == 0)
+        m_UpstreamQueue.emplace_back();
+      auto & back = m_UpstreamQueue.back();
+      auto buf = pkt.Buffer();
+      // pack to nearest N
+      if(back.Size() + buf.sz > N)
+      {
+         m_UpstreamQueue.emplace_back();
+         return m_UpstreamQueue.back().PutBuffer(buf);
+      }
+      else
+        return back.PutBuffer(buf);
+    }
+
+    bool BaseSession::FlushUpstreamTraffic()
     {
       auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
       if(!path)
+      {
+        // discard
+        m_UpstreamQueue.clear();
         return false;
-      llarp::routing::TransferTrafficMessage transfer;
-      transfer.S = path->NextSeqNo();
-      if(!transfer.PutBuffer(pkt.Buffer()))
-        return false;
-      return path->SendRoutingMessage(&transfer, router);
+      }
+      while(m_UpstreamQueue.size())
+      {
+        auto & msg = m_UpstreamQueue.front();
+        msg.S = path->NextSeqNo();
+        path->SendRoutingMessage(&msg, router);
+        m_UpstreamQueue.pop_front();
+      }
+      return true;
     }
 
   }  // namespace exit

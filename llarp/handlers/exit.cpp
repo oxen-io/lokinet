@@ -15,9 +15,9 @@ namespace llarp
           llarp::InitBuffer(pkt, sz));
     }
     static void
-    ExitHandlerFlushInbound(llarp_tun_io *tun)
+    ExitHandlerFlush(llarp_tun_io *tun)
     {
-      static_cast< ExitEndpoint * >(tun->user)->FlushInbound();
+      static_cast< ExitEndpoint * >(tun->user)->Flush();
     }
 
     ExitEndpoint::ExitEndpoint(const std::string &name, llarp_router *r)
@@ -29,7 +29,7 @@ namespace llarp
     {
       m_Tun.user      = this;
       m_Tun.recvpkt   = &ExitHandlerRecvPkt;
-      m_Tun.tick      = &ExitHandlerFlushInbound;
+      m_Tun.tick      = &ExitHandlerFlush;
       m_ShouldInitTun = true;
     }
 
@@ -44,7 +44,7 @@ namespace llarp
     }
 
     void
-    ExitEndpoint::FlushInbound()
+    ExitEndpoint::Flush()
     {
       auto now = Now();
       m_InetToNetwork.Process([&](Pkt_t &pkt) {
@@ -82,12 +82,21 @@ namespace llarp
         }
         else
         {
-          if(!ep->SendInboundTraffic(pkt.Buffer()))
+          if(!ep->QueueInboundTraffic(pkt.Buffer()))
           {
             llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we are overloaded (probably)");
           }
         }
       });
+      auto itr = m_ActiveExits.begin();
+      while(itr != m_ActiveExits.end())
+      {
+        if(!itr->second->FlushInboundTraffic())
+        {
+          llarp::LogWarn("exit session with ", itr->first, " dropped packets");
+        }
+        ++itr;
+      }
     }
 
     bool

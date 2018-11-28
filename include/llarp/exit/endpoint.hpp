@@ -43,9 +43,13 @@ namespace llarp
       void
       Tick(llarp_time_t now);
 
-      /// handle traffic from service node / internet
+      /// queue traffic from service node / internet to be transmitted
       bool
-      SendInboundTraffic(llarp_buffer_t buff);
+      QueueInboundTraffic(llarp_buffer_t buff);
+
+      /// flush inbound traffic queue
+      bool
+      FlushInboundTraffic();
 
       /// send traffic to service node / internet
       /// does ip rewrite here
@@ -98,6 +102,8 @@ namespace llarp
       uint64_t m_TxRate, m_RxRate;
       llarp_time_t m_LastActive;
       bool m_RewriteSource;
+      using InboundTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
+      InboundTrafficQueue_t m_DownstreamQueue;
     };
   }  // namespace exit
 }  // namespace llarp

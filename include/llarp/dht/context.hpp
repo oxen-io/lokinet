@@ -167,7 +167,7 @@ namespace llarp
         Key_t askpeer;
         if(!nodes->FindClosest(target.data(), askpeer))
           return false;
-        LookupRouterRecursive(target, OurKey(), ++ids, askpeer, result);
+        LookupRouterRecursive(target, OurKey(), 0, askpeer, result);
         return true;
       }
 

@@ -2,6 +2,8 @@
 #define LLARP_EXIT_SESSION_HPP
 #include <llarp/pathbuilder.hpp>
 #include <llarp/ip.hpp>
+#include <llarp/messages/transfer_traffic.hpp>
+#include <deque>
 
 namespace llarp
 {
@@ -27,7 +29,11 @@ namespace llarp
       HandlePathBuilt(llarp::path::Path* p) override;
 
       bool
-      SendUpstreamTraffic(llarp::net::IPv4Packet pkt);
+      QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t packSize);
+
+      bool
+      FlushUpstreamTraffic();
+
 
      protected:
       llarp::RouterID m_ExitRouter;
@@ -43,7 +49,9 @@ namespace llarp
       bool
       HandleTraffic(llarp::path::Path* p, llarp_buffer_t buf);
 
-     private:
+    private:
+      using UpstreamTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
+      UpstreamTrafficQueue_t m_UpstreamQueue;
       llarp::SecretKey m_ExitIdentity;
     };
 

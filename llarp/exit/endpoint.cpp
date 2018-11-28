@@ -98,12 +98,9 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendInboundTraffic(llarp_buffer_t buf)
+    Endpoint::QueueInboundTraffic(llarp_buffer_t buf)
     {
-      auto path = GetCurrentPath();
-      if(path)
-      {
-        llarp::net::IPv4Packet pkt;
+      llarp::net::IPv4Packet pkt;
         if(!pkt.Load(buf))
           return false;
 
@@ -114,16 +111,37 @@ namespace llarp
           src = pkt.src();
         pkt.UpdateIPv4PacketOnDst(src, m_IP);
 
-        llarp::routing::TransferTrafficMessage msg;
-        if(!msg.PutBuffer(pkt.Buffer()))
-          return false;
-        msg.S = path->NextSeqNo();
-        if(!path->SendRoutingMessage(&msg, m_Parent->Router()))
-          return false;
-        m_RxRate += buf.sz;
-        return true;
+        if(m_DownstreamQueue.size() == 0)
+          m_DownstreamQueue.emplace_back();
+        auto pktbuf = pkt.Buffer();
+        auto & msg = m_DownstreamQueue.back();
+        if(msg.Size() + pktbuf.sz > 1024)
+        {
+          m_DownstreamQueue.emplace_back();
+          return m_DownstreamQueue.back().PutBuffer(pktbuf);
+        }
+        else
+          return msg.PutBuffer(pktbuf);
+    }
+
+    bool Endpoint::FlushInboundTraffic()
+    {
+      auto path = GetCurrentPath();
+      bool sent = false;
+      if(path)
+      {
+        for(auto & msg : m_DownstreamQueue)
+        {
+          msg.S = path->NextSeqNo();
+          if(path->SendRoutingMessage(&msg, m_Parent->Router()))
+          {
+            m_RxRate += msg.Size();
+            sent = true;
+          }
+        }
       }
-      return false;
+      m_DownstreamQueue.clear();
+      return sent;
     }
 
     llarp::path::IHopHandler*
