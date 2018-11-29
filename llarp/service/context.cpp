@@ -100,15 +100,15 @@ namespace llarp
     }
 
     bool
-    Context::FindBestAddressFor(const llarp::service::Address &addr,
+    Context::FindBestAddressFor(const byte_t * addr, bool isSNode,
                                 huint32_t &ip)
     {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
-        if(itr->second->HasAddress(addr.data()))
+        if(itr->second->HasAddress(addr))
         {
-          ip = itr->second->ObtainIPForAddr(addr.data(), false);
+          ip = itr->second->ObtainIPForAddr(addr, isSNode);
           return true;
         }
         ++itr;
@@ -116,7 +116,7 @@ namespace llarp
       itr = m_Endpoints.find("default");
       if(itr != m_Endpoints.end())
       {
-        ip = itr->second->ObtainIPForAddr(addr.data(), false);
+        ip = itr->second->ObtainIPForAddr(addr, isSNode);
         return true;
       }
       return false;
@@ -139,20 +139,6 @@ namespace llarp
           [](__attribute__((unused)) Address addr,
              __attribute__((unused)) void *ctx) {},
           10000);
-    }
-
-    huint32_t
-    Context::GetIpForAddr(const llarp::service::Address &addr)
-    {
-      llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
-      if(!tunEndpoint)
-      {
-        huint32_t zero;
-        zero.h = 0;
-        llarp::LogError("No tunnel endpoint found");
-        return zero;
-      }
-      return tunEndpoint->ObtainIPForAddr(addr.data(), false);
     }
 
     bool

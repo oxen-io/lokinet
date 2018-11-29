@@ -46,7 +46,7 @@ struct dnsd_query_hook_response
   /// turn off recursion
   bool dontLookUp;
   /// potential address
-  llarp::huint32_t *returnThis;
+  llarp::huint32_t returnThis;
 };
 
 /// builds and fires a request based based on llarp_udp_io udp event

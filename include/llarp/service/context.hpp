@@ -28,7 +28,7 @@ namespace llarp
       getFirstEndpoint();
 
       bool
-      FindBestAddressFor(const llarp::service::Address &, huint32_t &);
+      FindBestAddressFor(const byte_t* addr, bool isSNode, huint32_t &);
 
       /// DRY refactor
       llarp::handlers::TunEndpoint *
@@ -54,9 +54,6 @@ namespace llarp
 
       bool
       iterate(struct endpoint_iter &i);
-
-      huint32_t
-      GetIpForAddr(const llarp::service::Address &addr);
 
       /// hint at possible path usage and trigger building early
       bool

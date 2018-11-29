@@ -784,6 +784,22 @@ namespace llarp
     }
 
     bool
+    Endpoint::HasPathToSNode(const llarp::RouterID & ident) const
+    {
+      auto range = m_SNodeSessions.equal_range(ident);
+      auto itr = range.first;
+      while(itr != range.second)
+      { 
+        if(itr->second->IsReady())
+        {
+          return true;
+        }
+        ++itr;
+      }
+      return false;
+    }
+
+    bool
     Endpoint::ProcessDataMessage(ProtocolMessage *msg)
     {
       if(msg->proto == eProtocolTraffic)

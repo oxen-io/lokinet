@@ -462,11 +462,11 @@ handle_recvfrom(llarp_buffer_t buffer, dnsd_question_request *request)
         llarp::LogDebug("HOOKED: Not sending a response");
         return;
       }
-      if(intercept->dontLookUp == true && intercept->returnThis)
+      if(intercept->dontLookUp == true && intercept->returnThis.h)
       {
         llarp::LogDebug("HOOKED: sending an immediate override");
         // told that hook will handle overrides
-        writesend_dnss_response(intercept->returnThis, request);
+        writesend_dnss_response(&intercept->returnThis, request);
         return;
       }
     }

@@ -94,10 +94,10 @@ namespace llarp
       /// get a key for ip address
       template < typename Addr >
       Addr
-      ObtainAddrForIP(huint32_t ip)
+      ObtainAddrForIP(huint32_t ip, bool isSNode)
       {
         auto itr = m_IPToAddr.find(ip);
-        if(itr == m_IPToAddr.end())
+        if(itr == m_IPToAddr.end() || m_SNodes[itr->second] != isSNode)
         {
           // not found
           Addr addr;

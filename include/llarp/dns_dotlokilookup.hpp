@@ -6,7 +6,7 @@
 #include "dnsd.hpp"
 
 using map_address_hook_func =
-    std::function< bool(const llarp::service::Address &addr, uint32_t ip) >;
+    std::function< bool(const byte_t* addr,bool isSNode, uint32_t ip) >;
 
 /// dotLokiLookup context/config
 struct dotLokiLookup
