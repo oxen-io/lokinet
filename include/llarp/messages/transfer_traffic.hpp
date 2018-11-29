@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace routing
   {
-    constexpr size_t ExitPadSize = 768;
+    constexpr size_t ExitPadSize = 512 * 3;
     constexpr size_t MaxExitMTU = 1500;
     struct TransferTrafficMessage final : public IMessage
     {

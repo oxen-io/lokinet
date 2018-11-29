@@ -103,7 +103,9 @@ namespace llarp
       llarp_time_t m_LastActive;
       bool m_RewriteSource;
       using InboundTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
-      InboundTrafficQueue_t m_DownstreamQueue;
+      using TieredQueue = std::map<uint8_t, InboundTrafficQueue_t>;
+      // maps number of fragments the message will fit in to the queue for it
+      TieredQueue m_DownstreamQueues;
     };
   }  // namespace exit
 }  // namespace llarp

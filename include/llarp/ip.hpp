@@ -126,6 +126,15 @@ namespace llarp
         }
       };
 
+      struct CompareSize
+      {
+        bool
+        operator()(const IPv4Packet& left, const IPv4Packet& right)
+        {
+          return left.sz < right.sz;
+        }
+      };
+
       struct CompareOrder
       {
         bool

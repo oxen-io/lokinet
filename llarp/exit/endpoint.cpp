@@ -110,15 +110,19 @@ namespace llarp
       else
         src = pkt.src();
       pkt.UpdateIPv4PacketOnDst(src, m_IP);
-
-      if(m_DownstreamQueue.size() == 0)
-        m_DownstreamQueue.emplace_back();
       auto pktbuf = pkt.Buffer();
-      auto & msg = m_DownstreamQueue.back();
+      uint8_t queue_idx = pktbuf.sz / llarp::routing::ExitPadSize;
+      auto & queue = m_DownstreamQueues[queue_idx];
+      if(queue.size() == 0)
+      {
+        queue.emplace_back();
+        return queue.back().PutBuffer(buf);
+      }
+      auto & msg = queue.back();
       if(msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
       {
-        m_DownstreamQueue.emplace_back();
-        return m_DownstreamQueue.back().PutBuffer(pktbuf);
+        queue.emplace_back();
+        return queue.back().PutBuffer(pktbuf);
       }
       else
         return msg.PutBuffer(pktbuf);
@@ -128,20 +132,27 @@ namespace llarp
     Endpoint::FlushInboundTraffic()
     {
       auto path = GetCurrentPath();
-      bool sent = m_DownstreamQueue.size() == 0 && path;
+      bool sent = path != nullptr;
       if(path)
       {
-        for(auto & msg : m_DownstreamQueue)
+        for(auto & item : m_DownstreamQueues)
         {
-          msg.S = path->NextSeqNo();
-          if(path->SendRoutingMessage(&msg, m_Parent->Router()))
+          auto & queue = item.second;
+          while(queue.size())
           {
-            m_RxRate += msg.Size();
-            sent = true;
+            auto & msg = queue.front();
+            msg.S = path->NextSeqNo();
+            if(path->SendRoutingMessage(&msg, m_Parent->Router()))
+            {
+              m_RxRate += msg.Size();
+              sent = true;
+            }
+            queue.pop_front();
           }
         }
       }
-      m_DownstreamQueue.clear();
+      for(auto & item : m_DownstreamQueues)
+        item.second.clear();
       return sent;
     }
 
