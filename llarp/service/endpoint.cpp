@@ -1203,7 +1203,7 @@ namespace llarp
             if(!router->GetRandomConnectedRouter(hops[0]))
               return false;
           }
-          else if(!llarp_nodedb_select_random_hop(nodedb, hops[0], hops[0], 0))
+          else
             return false;
         }
         else if(hop == numHops - 1)
