@@ -63,6 +63,7 @@ namespace llarp
       using UpstreamTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
       using TieredQueue_t = std::map<uint8_t, UpstreamTrafficQueue_t>;
       TieredQueue_t m_Upstream;
+      uint64_t m_Counter;
       llarp::SecretKey m_ExitIdentity;
     };
 

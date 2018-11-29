@@ -13,6 +13,7 @@ namespace llarp
         , m_CurrentPath(beginPath)
         , m_IP(ip)
         , m_RewriteSource(rewriteIP)
+        , m_Counter(0)
     {
       m_LastActive = parent->Now();
     }
@@ -76,22 +77,23 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendOutboundTraffic(llarp_buffer_t buf)
+    Endpoint::QueueOutboundTraffic(llarp_buffer_t buf, uint64_t counter)
     {
+      // queue overflow
+      if(m_UpstreamQueue.size() > MaxUpstreamQueueSize)
+        return false;
+      
       llarp::net::IPv4Packet pkt;
       if(!pkt.Load(buf))
         return false;
+        
       huint32_t dst;
       if(m_RewriteSource)
         dst = m_Parent->GetIfAddr();
       else
         dst = pkt.dst();
       pkt.UpdateIPv4PacketOnDst(m_IP, dst);
-      if(!m_Parent->QueueOutboundTraffic(pkt.Buffer()))
-      {
-        llarp::LogError("failed to queue outbound traffic");
-        return false;
-      }
+      m_UpstreamQueue.emplace(pkt, counter);
       m_TxRate += buf.sz;
       m_LastActive = m_Parent->Now();
       return true;
@@ -116,21 +118,28 @@ namespace llarp
       if(queue.size() == 0)
       {
         queue.emplace_back();
-        return queue.back().PutBuffer(buf);
+        return queue.back().PutBuffer(buf, m_Counter++);
       }
       auto & msg = queue.back();
       if(msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
       {
         queue.emplace_back();
-        return queue.back().PutBuffer(pktbuf);
+        return queue.back().PutBuffer(pktbuf, m_Counter++);
       }
       else
-        return msg.PutBuffer(pktbuf);
+        return msg.PutBuffer(pktbuf, m_Counter++);
     }
 
     bool 
-    Endpoint::FlushInboundTraffic()
+    Endpoint::Flush()
     {
+      // flush upstream queue
+      while(m_UpstreamQueue.size())
+      {
+        m_Parent->QueueOutboundTraffic(m_UpstreamQueue.top().pkt.ConstBuffer());
+        m_UpstreamQueue.pop();
+      }
+      // flush downstream queue
       auto path = GetCurrentPath();
       bool sent = path != nullptr;
       if(path)

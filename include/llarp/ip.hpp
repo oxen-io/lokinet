@@ -88,6 +88,9 @@ namespace llarp
       llarp_buffer_t
       Buffer();
 
+      llarp_buffer_t
+      ConstBuffer() const;
+
       bool
       Load(llarp_buffer_t buf);
 

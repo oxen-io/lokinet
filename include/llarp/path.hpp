@@ -290,7 +290,7 @@ namespace llarp
       using ExitUpdatedFunc = std::function< bool(Path*) >;
       using ExitClosedFunc  = std::function< bool(Path*) >;
       using ExitTrafficHandlerFunc =
-          std::function< bool(Path*, llarp_buffer_t) >;
+          std::function< bool(Path*, llarp_buffer_t, uint64_t) >;
       /// (path, backoff) backoff is 0 on success
       using ObtainedExitHandler = std::function< bool(Path*, llarp_time_t) >;
 

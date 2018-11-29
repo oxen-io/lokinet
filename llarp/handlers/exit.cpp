@@ -90,7 +90,7 @@ namespace llarp
       auto itr = m_ActiveExits.begin();
       while(itr != m_ActiveExits.end())
       {
-        if(!itr->second->FlushInboundTraffic())
+        if(!itr->second->Flush())
         {
           llarp::LogWarn("exit session with ", itr->first, " dropped packets");
         }

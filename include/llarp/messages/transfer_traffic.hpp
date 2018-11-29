@@ -26,7 +26,7 @@ namespace llarp
 
       /// append buffer to X
       bool
-      PutBuffer(llarp_buffer_t buf);
+      PutBuffer(llarp_buffer_t buf, uint64_t counter);
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

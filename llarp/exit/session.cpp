@@ -11,6 +11,7 @@ namespace llarp
         : llarp::path::Builder(r, r->dht, numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
+        , m_Counter(0)
     {
       r->crypto.identity_keygen(m_ExitIdentity);
     }
@@ -108,17 +109,17 @@ namespace llarp
       if(queue.size() == 0)
       {
         queue.emplace_back();
-        return queue.back().PutBuffer(buf);
+        return queue.back().PutBuffer(buf, m_Counter++);
       }
       auto & back = queue.back();
       // pack to nearest N
       if(back.Size() + buf.sz > N)
       {
          queue.emplace_back();
-         return queue.back().PutBuffer(buf);
+         return queue.back().PutBuffer(buf, m_Counter++);
       }
       else
-        return back.PutBuffer(buf);
+        return back.PutBuffer(buf, m_Counter++);
     }
 
     bool

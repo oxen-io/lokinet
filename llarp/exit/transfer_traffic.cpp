@@ -1,5 +1,6 @@
 #include <llarp/messages/transfer_traffic.hpp>
 #include <llarp/routing/handler.hpp>
+#include <llarp/endian.hpp>
 
 namespace llarp
 {
@@ -15,14 +16,17 @@ namespace llarp
     }
 
     bool
-    TransferTrafficMessage::PutBuffer(llarp_buffer_t buf)
+    TransferTrafficMessage::PutBuffer(llarp_buffer_t buf, uint64_t counter)
     {
       if(buf.sz > MaxExitMTU)
         return false;
-      X.emplace_back(buf.sz);
-      memcpy(X.back().data(), buf.base, buf.sz);
-      // 8 bytes encoding overhead
-      _size += buf.sz + 8;
+      X.emplace_back(buf.sz + 8);
+      byte_t * ptr = X.back().data();
+      htobe64buf(ptr, counter);
+      ptr += 8;
+      memcpy(ptr, buf.base, buf.sz);
+      // 8 bytes encoding overhead and 8 bytes counter
+      _size += buf.sz + 16;
       return true;
     }
 

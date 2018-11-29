@@ -4,6 +4,7 @@
 #include <llarp/crypto.hpp>
 #include <llarp/router.h>
 #include <llarp/path.hpp>
+#include <llarp/ip.hpp>
 
 namespace llarp
 {
@@ -18,6 +19,8 @@ namespace llarp
     /// persistant exit state for 1 identity on the exit node
     struct Endpoint
     {
+      static constexpr size_t MaxUpstreamQueueSize = 256;
+
       Endpoint(const llarp::PubKey& remoteIdent,
                const llarp::PathID_t& beginPath, bool rewriteIP, huint32_t ip,
                llarp::handlers::ExitEndpoint* parent);
@@ -47,14 +50,14 @@ namespace llarp
       bool
       QueueInboundTraffic(llarp_buffer_t buff);
 
-      /// flush inbound traffic queue
+      /// flush inbound and outbound traffic queues
       bool
-      FlushInboundTraffic();
+      Flush();
 
-      /// send traffic to service node / internet
+      /// queue outbound traffic
       /// does ip rewrite here
       bool
-      SendOutboundTraffic(llarp_buffer_t buf);
+      QueueOutboundTraffic(llarp_buffer_t pkt, uint64_t counter);
 
       /// update local path id and cascade information to parent
       /// return true if success
@@ -106,6 +109,25 @@ namespace llarp
       using TieredQueue = std::map<uint8_t, InboundTrafficQueue_t>;
       // maps number of fragments the message will fit in to the queue for it
       TieredQueue m_DownstreamQueues;
+
+      struct UpstreamBuffer
+      {
+        UpstreamBuffer(const llarp::net::IPv4Packet & p, uint64_t c) : pkt(p), counter(c) 
+        {
+        }
+
+        llarp::net::IPv4Packet pkt;
+        uint64_t counter;
+
+        bool operator<(const UpstreamBuffer & other) const
+        {
+          return counter < other.counter;
+        }
+      };
+
+      using UpstreamQueue_t = std::priority_queue<UpstreamBuffer>;
+      UpstreamQueue_t m_UpstreamQueue;
+      uint64_t m_Counter;
     };
   }  // namespace exit
 }  // namespace llarp
