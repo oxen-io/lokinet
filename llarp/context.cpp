@@ -184,9 +184,8 @@ namespace llarp
   void
   Context::HandleSignal(int sig)
   {
-    if(sig == SIGINT)
+    if(sig == SIGINT || sig == SIGTERM)
     {
-      llarp::LogInfo("SIGINT");
       SigINT();
     }
     // TODO(despair): implement hot-reloading config on NT
