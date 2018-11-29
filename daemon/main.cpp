@@ -166,6 +166,7 @@ main(int argc, char *argv[])
   if(ctx)
   {
     signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
 #endif
