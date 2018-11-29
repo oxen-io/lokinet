@@ -23,6 +23,12 @@ JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_getABICompiledW
 JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_startLokinet
   (JNIEnv *, jclass, jstring);
 
+JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_getIfAddr
+  (JNIEnv *, jclass);
+
+JNIEXPORT jint JNICALL Java_network_loki_lokinet_Lokinet_1JNI_getIfRange
+  (JNIEnv *, jclass);
+
 /*
  * Class:     network_loki_lokinet_Lokinet_JNI
  * Method:    stopLokinet
@@ -30,6 +36,9 @@ JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_startLokinet
  */
 JNIEXPORT void JNICALL Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet
   (JNIEnv *, jclass);
+
+JNIEXPORT void JNICALL Java_network_loki_lokinet_Lokinet_1JNI_setVPNFileDescriptor
+  (JNIEnv *, jclass, jint);
 
 /*
  * Class:     network_loki_lokinet_Lokinet_JNI

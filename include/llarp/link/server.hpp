@@ -39,8 +39,7 @@ namespace llarp
     }
 
     static void
-    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, const void* buf,
-                  const ssize_t sz)
+    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, llarp_buffer_t buf)
     {
       if(!udp)
       {
@@ -48,7 +47,8 @@ namespace llarp
         return;
       }
       // maybe chekc from too?
-      static_cast< ILinkLayer* >(udp->user)->RecvFrom(*from, buf, sz);
+      // no it's never null
+      static_cast< ILinkLayer* >(udp->user)->RecvFrom(*from, buf.base, buf.sz);
     }
 
     bool

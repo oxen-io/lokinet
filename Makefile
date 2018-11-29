@@ -165,6 +165,7 @@ android-gradle: android-gradle-prepare
 	cd $(ANDROID_DIR) && JAVA_HOME=$(JAVA_HOME) $(GRADLE) clean assemble
 
 android: android-gradle
+	cp -f $(ANDROID_DIR)/build/outputs/apk/*.apk $(REPO)
 
 windows-configure: clean
 	mkdir -p '$(BUILD_ROOT)'

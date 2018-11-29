@@ -15,20 +15,21 @@ import java.lang.reflect.Method;
 //android.permission.WRITE_EXTERNAL_STORAGE
 public class PermsAskerActivity extends Activity {
 
-    private static final int PERMISSION_WRITE_EXTERNAL_STORAGE = 0;
+    private static final int PERMISSION_VPN = 0;
 
     private Button button_request_write_ext_storage_perms;
     private TextView textview_retry;
-
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        startMainActivity();
+        /*
         //if less than Android 6, no runtime perms req system present
         if (android.os.Build.VERSION.SDK_INT < 23) {
-            startMainActivity();
+            
             return;
         }
-
 
         setContentView(R.layout.activity_perms_asker);
         button_request_write_ext_storage_perms = (Button) findViewById(R.id.button_request_write_ext_storage_perms);
@@ -41,6 +42,7 @@ public class PermsAskerActivity extends Activity {
             }
         });
         request_write_ext_storage_perms();
+        */
     }
 
     private void request_write_ext_storage_perms() {
@@ -63,7 +65,7 @@ public class PermsAskerActivity extends Activity {
         Integer resultObj;
         try {
             resultObj = (Integer) methodCheckPermission.invoke(
-                    this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                    this, Manifest.permission.BIND_VPN_SERVICE);
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
@@ -74,7 +76,7 @@ public class PermsAskerActivity extends Activity {
             Boolean aBoolean;
             try {
                 aBoolean = (Boolean) method_shouldShowRequestPermissionRationale.invoke(this,
-                        Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                        Manifest.permission.BIND_VPN_SERVICE);
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }
@@ -92,8 +94,8 @@ public class PermsAskerActivity extends Activity {
 
                 try {
                     method_requestPermissions.invoke(this,
-                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            PERMISSION_WRITE_EXTERNAL_STORAGE);
+                            new String[]{Manifest.permission.BIND_VPN_SERVICE},
+                            PERMISSION_VPN);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
@@ -105,7 +107,7 @@ public class PermsAskerActivity extends Activity {
     public void onRequestPermissionsResult(int requestCode,
                                            String permissions[], int[] grantResults) {
         switch (requestCode) {
-            case PERMISSION_WRITE_EXTERNAL_STORAGE: {
+            case PERMISSION_VPN: {
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
@@ -119,7 +121,7 @@ public class PermsAskerActivity extends Activity {
 
                     // permission denied, boo! Disable the
                     // functionality that depends on this permission.
-                    textview_retry.setText("SD card write permission denied, you need to allow this to continue");
+                    textview_retry.setText("you need to allow this to continue");
                     textview_retry.setVisibility(TextView.VISIBLE);
                     button_request_write_ext_storage_perms.setVisibility(Button.VISIBLE);
                 }
@@ -158,8 +160,8 @@ public class PermsAskerActivity extends Activity {
                 }
                 try {
                     method_requestPermissions.invoke(this,
-                            new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},
-                            PERMISSION_WRITE_EXTERNAL_STORAGE);
+                            new String[]{Manifest.permission.BIND_VPN_SERVICE},
+                            PERMISSION_VPN);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }

@@ -655,28 +655,15 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
 /// intermediate udp_io handler
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
-                           const struct sockaddr *saddr, const void *buf,
-                           const ssize_t sz)
+                           const struct sockaddr *saddr, llarp_buffer_t buf)
 {
   if(!saddr)
   {
     llarp::LogWarn("saddr isnt set");
   }
-  if(sz < 0)
-  {
-    llarp::LogWarn("Error Receiving DNS Client Response");
-    return;
-  }
-
-  llarp_buffer_t buffer;
-  buffer.base = (byte_t *)buf;
-  buffer.cur  = buffer.base;
-  buffer.sz   = sz;
-
-  // unsigned char *castBuf = (unsigned char *)buf;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
-  dns_msg_header *hdr = decode_hdr(buffer);
-  buffer.cur          = buffer.base;  // reset cursor to beginning
+  dns_msg_header *hdr = decode_hdr(buf);
+  buf.cur          = buf.base;  // reset cursor to beginning
 
   llarp::LogDebug("Header got client responses for id: ", hdr->id);
 
@@ -687,8 +674,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
   // sometimes we'll get double responses
   if(request)
   {
-    request->packet.header = hdr;
-    generic_handle_dnsc_recvfrom(request, buffer, hdr);
+    generic_handle_dnsc_recvfrom(request, buf, hdr);
   }
   else
   {
@@ -757,8 +743,9 @@ llarp_resolve_host(struct dnsc_context *const dnsc, const char *url,
   // bytes");
 
   // ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, bytes, length);
-  ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->resolvers[0],
-                                    dns_packet->request, dns_packet->length);
+  ssize_t ret = llarp_ev_udp_sendto(
+      dnsc->udp, dnsc->resolvers[0],
+      llarp::InitBuffer(dns_packet->request, dns_packet->length));
   delete dns_packet;
   if(ret < 0)
   {

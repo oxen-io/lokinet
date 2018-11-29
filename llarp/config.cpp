@@ -164,7 +164,11 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 // will this break reproducibility rules?
 // (probably)
 #ifdef __linux__
+#ifdef ANDROID
+  f << "bind=127.0.0.1:1153" << std::endl;
+#else
   f << "bind=127.3.2.1:53" << std::endl;
+#endif
 #else
   f << "bind=127.0.0.1:53" << std::endl;
 #endif

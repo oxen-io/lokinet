@@ -14,6 +14,8 @@
 
 #ifdef _WIN32
 #include <variant>
+#else
+#include <sys/un.h>
 #endif
 
 #ifndef MAX_WRITE_QUEUE_SIZE
@@ -607,6 +609,24 @@ namespace llarp
   };
 
 };  // namespace llarp
+
+struct llarp_fd_promise
+{
+  llarp_fd_promise(std::promise<int> * p) : _impl(p) {}
+  std::promise<int> * _impl;
+  
+  void Set(int fd)
+  {
+    _impl->set_value(fd);
+  }
+
+  int Get()
+  {
+    auto future = _impl->get_future();
+    future.wait();
+    return future.get();
+  }
+};
 
 // this (nearly!) abstract base class
 // is overriden for each platform

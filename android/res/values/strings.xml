@@ -12,4 +12,8 @@
     <string name="stopped">lokinet has stopped</string>
     <string name="remaining">remaining</string>
     <string name="title_activity_perms_asker_prompt">Prompt</string>
+    <string name="bootstrap_ok">got bootstrap node info</string>
+    <string name="bootstrap_fail">failed to bootstrap</string>
+    <string name="netdb_create_fail">failed to create netdb directory</string>
+    <string name="vpn_setup_fail">failed to set up vpn tunnel</string>
 </resources>

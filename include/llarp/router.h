@@ -21,7 +21,7 @@ llarp_free_router(struct llarp_router **router);
 bool
 llarp_configure_router(struct llarp_router *router, struct llarp_config *conf);
 
-void
+bool
 llarp_run_router(struct llarp_router *router, struct llarp_nodedb *nodedb);
 
 void

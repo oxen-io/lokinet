@@ -13,6 +13,7 @@ namespace llarp
 {
   namespace handlers
   {
+
     static const int DefaultTunNetmask    = 16;
     static const char DefaultTunIfname[]  = "lokinet0";
     static const char DefaultTunDstAddr[] = "10.10.0.1";
@@ -73,6 +74,7 @@ namespace llarp
 #endif
 
       llarp_tun_io tunif;
+      std::unique_ptr<llarp_fd_promise> Promise;
 
       /// called before writing to tun interface
       static void
@@ -85,7 +87,7 @@ namespace llarp
 
       /// called every time we wish to read a packet from the tun interface
       static void
-      tunifRecvPkt(llarp_tun_io* t, const void* pkt, ssize_t sz);
+      tunifRecvPkt(llarp_tun_io* t, llarp_buffer_t buf);
 
       /// called in the endpoint logic thread
       static void
@@ -171,6 +173,9 @@ namespace llarp
       /// up interface
       std::promise< bool > m_TunSetupResult;
 #endif
+
+      std::promise<int> m_VPNPromise;
+
       /// DNS server per tun
       struct dnsd_context dnsd;
       /// DNS loki lookup subsystem configuration (also holds optional iptracker

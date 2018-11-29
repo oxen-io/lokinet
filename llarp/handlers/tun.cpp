@@ -8,16 +8,29 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #endif
+#include "ev.hpp"
 
 namespace llarp
 {
   namespace handlers
   {
+
+    static llarp_fd_promise * get_tun_fd_promise(llarp_tun_io * tun)
+    {
+      return static_cast<TunEndpoint *>(tun->user)->Promise.get();
+    }
+
     TunEndpoint::TunEndpoint(const std::string &nickname, llarp_router *r)
         : service::Endpoint(nickname, r)
         , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop, r->netloop)
     {
+#ifdef ANDROID      
+      tunif.get_fd_promise = &get_tun_fd_promise;
+      Promise.reset(new llarp_fd_promise(&m_VPNPromise));
+#else 
+      tunif.get_fd_promise = nullptr;
+#endif
       tunif.user    = this;
       tunif.netmask = DefaultTunNetmask;
       strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
@@ -335,7 +348,7 @@ namespace llarp
     TunEndpoint::Tick(llarp_time_t now)
     {
       // call tun code in endpoint logic in case of network isolation
-      //llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
+      // llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
       FlushSend();
       Endpoint::Tick(now);
     }
@@ -523,7 +536,7 @@ namespace llarp
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
-        if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
+        if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
           llarp::LogWarn("packet dropped");
       });
       if(self->m_UserToNetworkPktQueue.Size())
@@ -538,19 +551,17 @@ namespace llarp
     }
 
     void
-    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, const void *buf, ssize_t sz)
+    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, llarp_buffer_t buf)
     {
       // called for every packet read from user in isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
-             [buf, sz](net::IPv4Packet &pkt) -> bool {
-               return pkt.Load(llarp::InitBuffer(buf, sz))
-                   && pkt.Header()->version == 4;
+             [buf](net::IPv4Packet &pkt) -> bool {
+               return pkt.Load(buf) && pkt.Header()->version == 4;
              }))
       {
         llarp::LogInfo("Failed to parse ipv4 packet");
-        llarp::DumpBuffer(llarp::InitBuffer(buf, sz));
+        llarp::DumpBuffer(buf);
       }
     }
 

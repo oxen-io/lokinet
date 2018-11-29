@@ -26,7 +26,7 @@ namespace llarp
     if(sz == 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, 0, 0);
+        tcp.read(&tcp, llarp::InitBuffer(nullptr, 0));
       return 0;
     }
     if(_shouldClose)
@@ -37,7 +37,7 @@ namespace llarp
     if(amount >= 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, buf, amount);
+        tcp.read(&tcp, llarp::InitBuffer(buf, amount));
     }
     else
     {
@@ -176,7 +176,7 @@ namespace llarp
         llarp::LogWarn("no source addr");
       }
       // Addr is the source
-      udp->recvfrom(udp, addr, buf, ret);
+      udp->recvfrom(udp, addr, llarp::InitBuffer(buf, ret));
       return 0;
     }
 
@@ -271,7 +271,11 @@ namespace llarp
 #endif
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)
-        t->recvpkt(t, ((byte_t*)buf) + offset, ret - offset);
+      {
+        byte_t* ptr = ((byte_t*)buf) + offset;
+        ret -= offset;
+        t->recvpkt(t, llarp::InitBuffer(ptr, ret));
+      }
       return ret;
     }
 

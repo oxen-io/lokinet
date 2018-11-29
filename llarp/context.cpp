@@ -13,6 +13,8 @@
 #include <pthread_np.h>
 #endif
 
+#include "ev.hpp"
+
 namespace llarp
 {
   Context::~Context()
@@ -154,10 +156,7 @@ namespace llarp
       llarp::LogError("Failed to configure router");
       return 1;
     }
-    // set nodedb, load our RC, establish DHT
-    llarp_run_router(router, nodedb);
-
-    return 0;  // success
+    return 0;
   }
 
   int
@@ -174,7 +173,9 @@ namespace llarp
         return 1;
       }
     }
-
+    // run
+    if(!llarp_run_router(router, nodedb))
+      return 1;   // success
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, worker, logic);
@@ -295,6 +296,17 @@ extern "C"
     ptr->ctx->HandleSignal(sig);
   }
 
+  void 
+  llarp_main_inject_vpn_fd(struct llarp_main * ptr, int fd)
+  {
+    llarp::handlers::TunEndpoint * tun =  ptr->ctx->router->hiddenServiceContext.getFirstTun();
+    if(!tun)
+      return;
+    if(!tun->Promise)
+      return;
+    tun->Promise->Set(fd);
+  }
+
   int
   llarp_main_setup(struct llarp_main *ptr)
   {
@@ -307,7 +319,7 @@ extern "C"
     if(!ptr)
     {
       llarp::LogError("No ptr passed in");
-      return 0;
+      return 1;
     }
     return ptr->ctx->Run();
   }
@@ -447,8 +459,8 @@ extern "C"
   main_router_mapAddress(struct llarp_main *ptr,
                          const llarp::service::Address &addr, uint32_t ip)
   {
-    auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
-    return endpoint->MapAddress(addr, llarp::huint32_t{ip});
+    auto &endpoint = ptr->ctx->router->hiddenServiceContext;
+    return endpoint.MapAddress(addr, llarp::huint32_t{ip});
   }
 
   bool
@@ -462,8 +474,9 @@ extern "C"
   llarp::handlers::TunEndpoint *
   main_router_getFirstTunEndpoint(struct llarp_main *ptr)
   {
-    auto *context = &ptr->ctx->router->hiddenServiceContext;
-    return context->getFirstTun();
+    if(ptr && ptr->ctx && ptr->ctx->router)
+      return ptr->ctx->router->hiddenServiceContext.getFirstTun();
+    return nullptr;
   }
 
   //#include <llarp/service/context.hpp>

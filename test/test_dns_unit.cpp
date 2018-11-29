@@ -194,7 +194,7 @@ TEST_F(DNSTest, handleDNSrecvFrom)
   llarp::Zero(&buffer, 15);
   ssize_t sz = 0;
   // hdr->qr decides dnsc (1) or dnsd (0)
-  llarp_handle_dns_recvfrom((llarp_udp_io *)&udp, &addr, buffer, sz);
+  llarp_handle_dns_recvfrom((llarp_udp_io *)&udp, &addr, llarp::InitBuffer(buffer, sz));
   // llarp_handle_dnsc_recvfrom
   // llarp_handle_dnsd_recvfrom
 }

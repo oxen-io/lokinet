@@ -14,9 +14,8 @@
 struct dnsd_context;
 
 /// sendto hook functor
-using sendto_dns_hook_func =
-    std::function< ssize_t(void *sock, const struct sockaddr *from,
-                           const void *buffer, size_t length) >;
+using sendto_dns_hook_func = std::function< ssize_t(
+    void *sock, const struct sockaddr *from, llarp_buffer_t) >;
 // FIXME: llarp::Addr
 
 /// DNS server query request
@@ -53,8 +52,7 @@ struct dnsd_query_hook_response
 /// called by the llarp_handle_dns_recvfrom generic (dnsd/dnsc) handler in dns
 void
 llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
-                           const struct sockaddr *addr, const void *buf,
-                           ssize_t sz);
+                           const struct sockaddr *addr, llarp_buffer_t buf);
 
 //
 // output structures/functions:
