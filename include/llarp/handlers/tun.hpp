@@ -49,7 +49,7 @@ namespace llarp
       /// overrides Endpoint
       /// handle inbound traffic
       bool
-      ProcessDataMessage(service::ProtocolMessage* msg);
+      HandleWriteIPPacket(llarp_buffer_t buf, std::function<huint32_t(void)> getFromIP) override;
 
       /// queue outbound packet to the world
       bool
@@ -109,14 +109,14 @@ namespace llarp
       }
 
       bool
-      HasAddress(const byte_t* addr) const
+      HasAddress(const byte_t* addr) const override
       {
         return m_AddrToIP.find(addr) != m_AddrToIP.end();
       }
 
       /// get ip address for key unconditionally
       huint32_t
-      ObtainIPForAddr(const byte_t* addr);
+      ObtainIPForAddr(const byte_t* addr, bool serviceNode) override;
 
      protected:
       using PacketQueue_t = llarp::util::CoDelQueue<
@@ -149,6 +149,9 @@ namespace llarp
       std::unordered_map< AlignedBuffer< 32 >, huint32_t,
                           AlignedBuffer< 32 >::Hash >
           m_AddrToIP;
+
+      /// maps key to true if key is a service node, maps key to false if key is a hidden service
+      std::unordered_map<AlignedBuffer<32>, bool, AlignedBuffer<32>::Hash> m_SNodes;
 
      private:
       bool

@@ -104,31 +104,31 @@ namespace llarp
         if(!pkt.Load(buf))
           return false;
 
-        huint32_t src;
-        if(m_RewriteSource)
-          src = m_Parent->GetIfAddr();
-        else
-          src = pkt.src();
-        pkt.UpdateIPv4PacketOnDst(src, m_IP);
+      huint32_t src;
+      if(m_RewriteSource)
+        src = m_Parent->GetIfAddr();
+      else
+        src = pkt.src();
+      pkt.UpdateIPv4PacketOnDst(src, m_IP);
 
-        if(m_DownstreamQueue.size() == 0)
-          m_DownstreamQueue.emplace_back();
-        auto pktbuf = pkt.Buffer();
-        auto & msg = m_DownstreamQueue.back();
-        if(msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
-        {
-          m_DownstreamQueue.emplace_back();
-          return m_DownstreamQueue.back().PutBuffer(pktbuf);
-        }
-        else
-          return msg.PutBuffer(pktbuf);
+      if(m_DownstreamQueue.size() == 0)
+        m_DownstreamQueue.emplace_back();
+      auto pktbuf = pkt.Buffer();
+      auto & msg = m_DownstreamQueue.back();
+      if(msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
+      {
+        m_DownstreamQueue.emplace_back();
+        return m_DownstreamQueue.back().PutBuffer(pktbuf);
+      }
+      else
+        return msg.PutBuffer(pktbuf);
     }
 
     bool 
     Endpoint::FlushInboundTraffic()
     {
       auto path = GetCurrentPath();
-      bool sent = m_DownstreamQueue.size() == 0;
+      bool sent = m_DownstreamQueue.size() == 0 && path;
       if(path)
       {
         for(auto & msg : m_DownstreamQueue)

@@ -1,4 +1,5 @@
 #include <llarp/handlers/tun.hpp>
+#include <llarp/handlers/null.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/endpoint.hpp>
 #include "router.hpp"
@@ -107,7 +108,7 @@ namespace llarp
       {
         if(itr->second->HasAddress(addr.data()))
         {
-          ip = itr->second->ObtainIPForAddr(addr.data());
+          ip = itr->second->ObtainIPForAddr(addr.data(), false);
           return true;
         }
         ++itr;
@@ -115,7 +116,7 @@ namespace llarp
       itr = m_Endpoints.find("default");
       if(itr != m_Endpoints.end())
       {
-        ip = itr->second->ObtainIPForAddr(addr.data());
+        ip = itr->second->ObtainIPForAddr(addr.data(), false);
         return true;
       }
       return false;
@@ -151,7 +152,7 @@ namespace llarp
         llarp::LogError("No tunnel endpoint found");
         return zero;
       }
-      return tunEndpoint->ObtainIPForAddr(addr.data());
+      return tunEndpoint->ObtainIPForAddr(addr.data(), false);
     }
 
     bool
@@ -273,7 +274,7 @@ namespace llarp
               {"null",
                [](const std::string &nick,
                   llarp_router *r) -> llarp::service::Endpoint * {
-                 return new llarp::service::Endpoint(nick, r);
+                 return new llarp::handlers::NullEndpoint(nick, r);
                }}};
 
       {

@@ -197,7 +197,7 @@ namespace llarp
             continue;
           byte_t tmp[1024] = {0};
           auto buf         = StackBuffer< decltype(tmp) >(tmp);
-          if(!SendToOrQueue(introset.A.Addr().data(), buf, eProtocolText))
+          if(!SendToServiceOrQueue(introset.A.Addr().data(), buf, eProtocolText))
           {
             llarp::LogWarn(Name(), " failed to send/queue data to ",
                            introset.A.Addr(), " for tag ", tag.ToString());
@@ -784,6 +784,22 @@ namespace llarp
     }
 
     bool
+    Endpoint::ProcessDataMessage(ProtocolMessage *msg)
+    {
+      if(msg->proto == eProtocolTraffic)
+      {
+        auto buf  = llarp::Buffer(msg->payload);
+        return HandleWriteIPPacket(buf, std::bind(&Endpoint::ObtainIPForAddr, this, msg->sender.Addr().data(), false));
+      }
+      else if (msg->proto == eProtocolText)
+      {
+        // TODO: implement me (?)
+        return true;
+      }
+      return false;
+    }
+
+    bool
     Endpoint::HandleHiddenServiceFrame(path::Path* p,
                                        const ProtocolFrame* frame)
     {
@@ -1030,8 +1046,41 @@ namespace llarp
           && GetPathByRouter(remoteIntro.router) != nullptr;
     }
 
+    void
+    Endpoint::EnsurePathToSNode(const RouterID & snode)
+    {
+      auto range = m_SNodeSessions.equal_range(snode);
+      if(range.first == range.second)
+      {
+        auto themIP = ObtainIPForAddr(snode, true);
+        m_SNodeSessions.emplace(std::make_pair(snode, std::unique_ptr<llarp::exit::BaseSession>(new llarp::exit::SNodeSession(snode, std::bind(&Endpoint::HandleWriteIPPacket, this, std::placeholders::_1, [themIP]() -> huint32_t {return themIP;}), m_Router, 2, numHops))));
+      }
+    }
+
     bool
-    Endpoint::SendToOrQueue(const byte_t* addr, llarp_buffer_t data,
+    Endpoint::SendToSNodeOrQueue(const byte_t * addr, llarp_buffer_t buf)
+    {
+      llarp::net::IPv4Packet pkt;
+      if(!pkt.Load(buf))
+        return false;
+      auto range = m_SNodeSessions.equal_range(addr);
+      auto itr = range.first;
+      while(itr != range.second)
+      {
+        if(itr->second->IsReady())
+        {
+          if(itr->second->QueueUpstreamTraffic(pkt, llarp::routing::ExitPadSize))
+          {
+            return true;
+          }
+        }
+        ++itr;
+      }
+      return false;
+    }
+
+    bool
+    Endpoint::SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t data,
                             ProtocolType t)
     {
       service::Address remote(addr);

@@ -56,10 +56,7 @@ namespace llarp
       llarp::routing::ObtainExitMessage obtain;
       obtain.S = p->NextSeqNo();
       obtain.T = llarp_randint();
-      // TODO: set expiratation
-      obtain.X = 0;
-      // TODO: distinguish between service node traffic
-      obtain.E = 1;
+      PopulateRequest(obtain);
       if(!obtain.Sign(&router->crypto, m_ExitIdentity))
       {
         llarp::LogError("Failed to sign exit request");
@@ -103,6 +100,9 @@ namespace llarp
     bool
     BaseSession::QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t N)
     {
+      // queue overflow
+      if(m_UpstreamQueue.size() >= MaxUpstreamQueueLength)
+        return false;
       if(m_UpstreamQueue.size() == 0)
         m_UpstreamQueue.emplace_back();
       auto & back = m_UpstreamQueue.back();
@@ -115,6 +115,12 @@ namespace llarp
       }
       else
         return back.PutBuffer(buf);
+    }
+
+    bool
+    BaseSession::IsReady() const 
+    {
+      return AvailablePaths(llarp::path::ePathRoleExit) > 0;
     }
 
     bool 
