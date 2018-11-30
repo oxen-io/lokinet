@@ -104,7 +104,7 @@ TEST_F(NetTest, TestinAddrH32)
 
 TEST_F(NetTest, TestRangeContains8)
 {
-  ASSERT_TRUE(llarp::iprange_ipv4(10, 0, 0, 0, 8)
+  ASSERT_TRUE(llarp::iprange_ipv4(10, 0, 0, 1, 8)
                   .Contains(llarp::ipaddr_ipv4_bits(10, 40, 11, 6)));
 }
 
@@ -123,8 +123,10 @@ TEST_F(NetTest, TestRangeContainsFail)
 
 TEST_F(NetTest, TestIPv4Netmask)
 {
-  ASSERT_TRUE(llarp::xhtonl(llarp::netmask_ipv4_bits(8))
-              == llarp::nuint32_t{0xFF000000});
+  ASSERT_TRUE(llarp::netmask_ipv4_bits(8)
+              == llarp::huint32_t{0xFF000000});
+  ASSERT_TRUE(llarp::netmask_ipv4_bits(24)
+              == llarp::huint32_t{0xFFFFFF00});
 };
 
 TEST_F(NetTest, TestBogon_10_8)

@@ -240,19 +240,13 @@ namespace llarp
     bool
     Contains(const huint32_t& ip) const
     {
-      // TODO: do this "better"
       return (addr & netmask_bits) == (ip & netmask_bits);
     }
 
     friend std::ostream&
     operator<<(std::ostream& out, const IPRange& a)
     {
-      char strbuf[32] = {0};
-      char netbuf[32] = {0};
-      inet_ntop(AF_INET, (void*)&a.addr, strbuf, sizeof(strbuf));
-      inet_ntop(AF_INET, (void*)&a.netmask_bits, netbuf, sizeof(netbuf));
-      out << std::string(strbuf) + "/" + std::string(netbuf);
-      return out;
+      return out << a.addr << "/" << a.netmask_bits;
     }
   };
 
@@ -261,7 +255,7 @@ namespace llarp
   __netmask_ipv4_bits(uint32_t numset)
   {
     return (32 - numset)
-        ? (1 << (32 - (numset + 1))) | __netmask_ipv4_bits(numset + 1)
+        ? (1 << numset) | __netmask_ipv4_bits(numset + 1)
         : 0;
   }
 
@@ -275,7 +269,11 @@ namespace llarp
   constexpr huint32_t
   ipaddr_ipv4_bits(uint32_t a, uint32_t b, uint32_t c, uint32_t d)
   {
+#if __BYTE_ORDER == __ORDER_BIG_ENDIAN__
     return huint32_t{(a) | (b << 8) | (c << 16) | (d << 24)};
+#else
+    return huint32_t{(d) | (c << 8) | (b << 16) | (a << 24)};
+#endif
   }
 
   constexpr IPRange
