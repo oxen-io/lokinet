@@ -142,26 +142,6 @@ namespace llarp
           10000);
     }
 
-    bool
-    Context::MapAddress(const llarp::service::Address &addr, huint32_t ip)
-    {
-      if(!m_Endpoints.size())
-      {
-        llarp::LogError("No endpoints found");
-        return false;
-      }
-      auto firstEndpoint                   = m_Endpoints.begin();
-      auto *uniqueEndpoint                 = &firstEndpoint->second;
-      llarp::service::Endpoint *endpointer = uniqueEndpoint->get();
-      llarp::handlers::TunEndpoint *tunEndpoint =
-          static_cast< llarp::handlers::TunEndpoint * >(endpointer);
-      if(!tunEndpoint)
-      {
-        llarp::LogError("No tunnel endpoint found");
-        return false;
-      }
-      return tunEndpoint->MapAddress(addr, ip);
-    }
 
     bool
     MapAddressAllIter(struct Context::endpoint_iter *endpointCfg)
@@ -176,7 +156,7 @@ namespace llarp
         return true;  // still continue
       }
       return tunEndpoint->MapAddress(context->serviceAddr,
-                                     context->localPrivateIpAddr.xtohl());
+                                     context->localPrivateIpAddr.xtohl(), false);
     }
 
     bool

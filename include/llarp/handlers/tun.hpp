@@ -34,10 +34,13 @@ namespace llarp
       TickTun(llarp_time_t now);
 
       bool
-      MapAddress(const service::Address& remote, huint32_t ip);
+      MapAddress(const service::Address& remote, huint32_t ip, bool SNode);
 
       bool
       Start();
+
+      bool 
+      IsSNode() const;
 
       /// set up tun interface, blocking
       bool

@@ -59,11 +59,6 @@ namespace llarp
       bool
       Prefetch(const llarp::service::Address &addr);
 
-      /// punch a hole open for DNS to add mappings
-      /// ip is in network order
-      bool
-      MapAddress(const llarp::service::Address &addr, huint32_t ip);
-
       bool
       MapAddressAll(const llarp::service::Address &addr,
                     llarp::Addr &localPrivateIpAddr);

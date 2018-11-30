@@ -111,7 +111,7 @@ namespace llarp
           llarp::LogError("cannot map to invalid ip ", ip_str);
           return false;
         }
-        return MapAddress(addr, huint32_t{ntohl(ip.s_addr)});
+        return MapAddress(addr, huint32_t{ntohl(ip.s_addr)}, false);
       }
       if(k == "ifname")
       {
@@ -180,7 +180,7 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::MapAddress(const service::Address &addr, huint32_t ip)
+    TunEndpoint::MapAddress(const service::Address &addr, huint32_t ip, bool SNode)
     {
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
@@ -192,8 +192,9 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr.insert(std::make_pair(ip, addr.data()));
-      m_AddrToIP.insert(std::make_pair(addr.data(), ip));
+      m_IPToAddr[ip] = addr.data();
+      m_AddrToIP[addr.data()] = ip;
+      m_SNodes[addr.data()] = SNode;
       MarkIPActiveForever(ip);
       return true;
     }
@@ -239,6 +240,12 @@ namespace llarp
       llarp::LogInfo("waiting for tun interface...");
       return m_TunSetupResult.get_future().get();
 #endif
+    }
+
+    bool TunEndpoint::IsSNode() const 
+    {
+      // TODO : implement me
+      return false;
     }
 
     bool
@@ -304,7 +311,7 @@ namespace llarp
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ", lAddr);
 
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP);
-      MapAddress(m_Identity.pub.Addr(), m_OurIP);
+      MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());
       return true;
     }
 

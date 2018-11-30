@@ -456,14 +456,6 @@ extern "C"
   }
 
   bool
-  main_router_mapAddress(struct llarp_main *ptr,
-                         const llarp::service::Address &addr, uint32_t ip)
-  {
-    auto &endpoint = ptr->ctx->router->hiddenServiceContext;
-    return endpoint.MapAddress(addr, llarp::huint32_t{ip});
-  }
-
-  bool
   main_router_prefetch(struct llarp_main *ptr,
                        const llarp::service::Address &addr)
   {
