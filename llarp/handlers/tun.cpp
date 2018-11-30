@@ -304,6 +304,7 @@ namespace llarp
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ", lAddr);
 
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP);
+      MapAddress(m_Identity.pub.Addr(), m_OurIP);
       return true;
     }
 
