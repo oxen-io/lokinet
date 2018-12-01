@@ -25,7 +25,7 @@ struct check_query_simple_request
 {
   // already inside request
   // const struct sockaddr *from;  // source
-  dnsd_question_request *request;
+  const dnsd_question_request *request;
 };
 
 std::unordered_map< std::string, struct dnsd_query_hook_response * >
@@ -216,7 +216,7 @@ struct reverse_handler_iter_context
 {
   std::string lName;
   // const struct sockaddr *from; // aready inside dnsd_question_request
-  const struct dnsd_question_request *request;
+  const dnsd_question_request *request;
 };
 
 #if defined(ANDROID) || defined(RPI)
@@ -260,53 +260,46 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
       llarp::iprange_ipv4(std::stoi(tokensCheck[0]), std::stoi(tokensCheck[1]),
                           std::stoi(tokensCheck[2]), std::stoi(tokensCheck[3]),
                           tunEndpoint->tunif.netmask);  // create range
-  // hack atm to work around limitations in ipaddr_ipv4_bits and llarp::IPRange
-  llarp::huint32_t searchIPv4_fixed = llarp::ipaddr_ipv4_bits(
-      std::stoi(tokensSearch[searchTokens - 6]),
-      std::stoi(tokensSearch[searchTokens - 5]),
-      std::stoi(tokensSearch[searchTokens - 4]),
-      std::stoi(tokensSearch[searchTokens - 3]));  // create ip
-  llarp::huint32_t searchIPv4_search = llarp::ipaddr_ipv4_bits(
+  
+  llarp::huint32_t searchIPv4 = llarp::ipaddr_ipv4_bits(
       std::stoi(tokensSearch[searchTokens - 3]),
       std::stoi(tokensSearch[searchTokens - 4]),
       std::stoi(tokensSearch[searchTokens - 5]),
       std::stoi(tokensSearch[searchTokens - 6]));  // create ip
 
   // bool inRange = range.Contains(searchAddr.xtohl());
-  bool inRange = range.Contains(searchIPv4_search);
+  bool inRange = range.Contains(searchIPv4);
 
   llarp::Addr searchAddr(searchIp);
   llarp::Addr checkAddr(checkIp);
-  llarp::LogDebug(searchAddr, " vs ", range, " = ",
+  llarp::LogInfo(searchIPv4, " vs ", range, " = ",
                   inRange ? "inRange" : "not match");
 
   if(inRange)
   {
     llarp::AlignedBuffer<32> addr =
         tunEndpoint->ObtainAddrForIP< llarp::AlignedBuffer<32> >(
-            searchIPv4_fixed, false);
+            searchIPv4, false);
     if(addr.IsZero())
     {
       addr =
         tunEndpoint->ObtainAddrForIP< llarp::AlignedBuffer<32> >(
-            searchIPv4_fixed, true);
+            searchIPv4, true);
       if(!addr.IsZero())
       {
         char stack[128] = {0};
         std::string saddr = llarp::HexEncode(addr, stack);
         saddr += ".snode";
-        writesend_dnss_revresponse(saddr,
-                                 (dnsd_question_request *)context->request);
+        writesend_dnss_revresponse(saddr, context->request);
       }
       else 
-        write404_dnss_response((dnsd_question_request *)context->request);
+        write404_dnss_response(context->request);
     }
     else
     {
-      // llarp::LogInfo("Returning [", addr.ToString(), "]");
       llarp::service::Address saddr = addr.data();
-      writesend_dnss_revresponse(saddr.ToString(),
-                                 (dnsd_question_request *)context->request);
+      // llarp::LogInfo("Returning [", saddr.ToString(), "]");
+      writesend_dnss_revresponse(saddr.ToString(), context->request);
     }
     return false;
   }
@@ -330,7 +323,7 @@ static bool should_intercept_query_with_name(const std::string & lName)
 
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name,
-                            struct dnsd_question_request *const request)
+                            const dnsd_question_request * request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
   response->dontLookUp               = false;
@@ -369,6 +362,7 @@ llarp_dotlokilookup_handler(std::string name,
     if(!res)
     {
       llarp::LogDebug("Reverse is ours");
+      response->dontLookUp =  true;
       response->dontSendResponse = true;  // should have already sent it
     }
     else

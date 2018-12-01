@@ -92,7 +92,10 @@ TEST_F(DNSTest, TestCodeDomain)
 TEST_F(DNSTest, TestDecodeHdr)
 {
 
-  dns_msg_header *hdr = decode_hdr(this->buffer_t);
+  dns_msg_header hdr;
+  ASSERT_TRUE(decode_hdr(&this->buffer_t, &hdr));
+  // rewind
+  buffer_t.cur = buffer_t.base;
   /*
   printf("id[%d]", hdr->id);
   printf("qr[%d]", hdr->qr);
@@ -110,21 +113,21 @@ TEST_F(DNSTest, TestDecodeHdr)
   printf("ns[%d]", hdr->nsCount);
   printf("ar[%d]", hdr->arCount);
   */
-  ASSERT_TRUE(hdr->id == 1);
-  ASSERT_TRUE(hdr->qr == 0);
-  ASSERT_TRUE(hdr->opcode == 0);
-  ASSERT_TRUE(hdr->aa == 0);
-  ASSERT_TRUE(hdr->tc == 0);
-  ASSERT_TRUE(hdr->rd == 0);
-  ASSERT_TRUE(hdr->ra == 0);
-  ASSERT_TRUE(hdr->z == 0);
-  ASSERT_TRUE(hdr->ad == 0);
-  ASSERT_TRUE(hdr->cd == 0);
-  ASSERT_TRUE(hdr->rcode == 0);
-  ASSERT_TRUE(hdr->qdCount == 1);
-  ASSERT_TRUE(hdr->anCount == 1);
-  ASSERT_TRUE(hdr->nsCount == 0);
-  ASSERT_TRUE(hdr->arCount == 0);
+  ASSERT_TRUE(hdr.id == 1);
+  ASSERT_TRUE(hdr.qr == 0);
+  ASSERT_TRUE(hdr.opcode == 0);
+  ASSERT_TRUE(hdr.aa == 0);
+  ASSERT_TRUE(hdr.tc == 0);
+  ASSERT_TRUE(hdr.rd == 0);
+  ASSERT_TRUE(hdr.ra == 0);
+  ASSERT_TRUE(hdr.z == 0);
+  ASSERT_TRUE(hdr.ad == 0);
+  ASSERT_TRUE(hdr.cd == 0);
+  ASSERT_TRUE(hdr.rcode == 0);
+  ASSERT_TRUE(hdr.qdCount == 1);
+  ASSERT_TRUE(hdr.anCount == 1);
+  ASSERT_TRUE(hdr.nsCount == 0);
+  ASSERT_TRUE(hdr.arCount == 0);
 }
 
 TEST_F(DNSTest, TestDecodeQuestion)

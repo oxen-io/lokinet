@@ -33,7 +33,7 @@ struct llarpDNSdTest : public ::testing::Test
   void
   SetUp()
   {
-    test_request.id              = 0;
+    test_request.hdr.id              = 0;
     test_request.llarp           = true;  // we don't care about raw atm
     test_request.from            = nullptr;
     test_request.context         = nullptr;

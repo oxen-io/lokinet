@@ -357,7 +357,7 @@ namespace llarp
     }
 
     virtual int
-    read(void* buf, size_t sz) = 0;
+    read(byte_t* buf, size_t sz) = 0;
 
     virtual int
     sendto(__attribute__((unused)) const sockaddr* dst,
@@ -579,7 +579,7 @@ namespace llarp
     do_write(void* buf, size_t sz);
 
     virtual int
-    read(void* buf, size_t sz);
+    read(byte_t* buf, size_t sz);
 
     bool
     tick();
@@ -605,7 +605,7 @@ namespace llarp
 
     /// actually does accept() :^)
     virtual int
-    read(void*, size_t);
+    read(byte_t*, size_t);
   };
 
 };  // namespace llarp

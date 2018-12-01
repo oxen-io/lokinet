@@ -124,8 +124,6 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   request->question.type   = type;
   request->question.qClass = 1;
 
-  request->packet.header = nullptr;
-
   // register our self with the tracker
   dns_tracker *tracker = request->context->tracker;
   if(!tracker)
@@ -633,22 +631,28 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
 
   // unsigned char *castBuf = (unsigned char *)buffer;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
-  dns_msg_header *hdr = decode_hdr(lbuffer);
-  llarp::LogInfo("response header says it belongs to id #", hdr->id);
+  dns_msg_header hdr;
+  if(!decode_hdr(&lbuffer, &hdr))
+  {
+    llarp::LogError("failed to decode dns header");
+    return;
+  }
+
+  llarp::LogInfo("response header says it belongs to id #", hdr.id);
 
   // if we sent this out, then there's an id
   struct dns_tracker *tracker         = (struct dns_tracker *)dnsc->tracker;
-  struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
+  struct dnsc_answer_request *request = tracker->client_request[hdr.id].get();
 
   if(request)
   {
     request->packet.header = hdr;
-    generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(),
-                                 lbuffer, hdr);
+    generic_handle_dnsc_recvfrom(tracker->client_request[hdr.id].get(),
+                                 lbuffer, &hdr);
   }
   else
   {
-    llarp::LogWarn("Ignoring multiple responses on ID #", hdr->id);
+    llarp::LogWarn("Ignoring multiple responses on ID #", hdr.id);
   }
 }
 
@@ -662,23 +666,28 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
     llarp::LogWarn("saddr isnt set");
   }
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
-  dns_msg_header *hdr = decode_hdr(buf);
+  dns_msg_header hdr;
+  if(!decode_hdr(&buf, &hdr))
+  {
+    llarp::LogError("failed to decode dns header");
+    return;
+  }
   buf.cur          = buf.base;  // reset cursor to beginning
 
-  llarp::LogDebug("Header got client responses for id: ", hdr->id);
+  llarp::LogDebug("Header got client responses for id: ", hdr.id);
 
   // if we sent this out, then there's an id
   struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
-  struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
+  struct dnsc_answer_request *request = tracker->client_request[hdr.id].get();
 
   // sometimes we'll get double responses
   if(request)
   {
-    generic_handle_dnsc_recvfrom(request, buf, hdr);
+    generic_handle_dnsc_recvfrom(request, buf, &hdr);
   }
   else
   {
-    llarp::LogWarn("Ignoring multiple responses on ID #", hdr->id);
+    llarp::LogWarn("Ignoring multiple responses on ID #", hdr.id);
   }
 }
 

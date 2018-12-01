@@ -25,8 +25,8 @@ struct dnsd_question_request
   void *user;
   // raw or llarp subsystem (is this used? does this matter?)
   bool llarp;
-  /// request id
-  unsigned int id;
+  /// request header
+  dns_msg_header hdr;
   /// question being asked
   dns_msg_question question;
   // request source socket
@@ -64,22 +64,22 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
 
 /// NXDOMAIN not found
 void
-write404_dnss_response(dnsd_question_request *request);
+write404_dnss_response(const dnsd_question_request *request);
 
 /// for hook functions to use
 void
-writecname_dnss_response(std::string cname, dnsd_question_request *request);
+writecname_dnss_response(std::string cname, const dnsd_question_request *request);
 // FIXME: llarp::Addr
 
 /// send an A record found response
 void
 writesend_dnss_response(llarp::huint32_t *hostRes,
-                        dnsd_question_request *request);
+                        const dnsd_question_request *request);
 // FIXME: llarp::Addr
 
 /// send an PTR record found response
 void
-writesend_dnss_revresponse(std::string reverse, dnsd_question_request *request);
+writesend_dnss_revresponse(std::string reverse, const dnsd_question_request *request);
 // FIXME: llarp::Addr
 
 //
@@ -88,7 +88,7 @@ writesend_dnss_revresponse(std::string reverse, dnsd_question_request *request);
 
 /// intercept query hook functor
 using intercept_query_hook = std::function< dnsd_query_hook_response *(
-    std::string name, struct dnsd_question_request *request) >;
+    std::string name, const dnsd_question_request *request) >;
 // FIXME: llarp::Addr
 
 /// DNS Server context

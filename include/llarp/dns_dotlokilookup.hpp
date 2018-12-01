@@ -35,6 +35,6 @@ struct dotLokiLookup
 
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name,
-                            struct dnsd_question_request *const request);
+                            const dnsd_question_request * request);
 
 #endif

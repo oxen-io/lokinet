@@ -24,7 +24,7 @@
 namespace llarp
 {
   int
-  tcp_conn::read(void* buf, size_t sz)
+  tcp_conn::read(byte_t* buf, size_t sz)
   {
     if(_shouldClose)
       return -1;
@@ -93,7 +93,7 @@ namespace llarp
   }
 
   int
-  tcp_serv::read(void*, size_t)
+  tcp_serv::read(byte_t*, size_t)
   {
     int new_fd = ::accept(fd, nullptr, nullptr);
     if(new_fd == -1)
@@ -134,17 +134,21 @@ namespace llarp
     }
 
     int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
+      llarp_buffer_t b;
+      b.base = buf;
+      b.cur = b.base;
       sockaddr_in6 src;
       socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
-      ssize_t ret    = ::recvfrom(fd, buf, sz, 0, addr, &slen);
+      ssize_t ret    = ::recvfrom(fd, b.base, sz, 0, addr, &slen);
       if(ret < 0)
         return -1;
       if(static_cast< size_t >(ret) > sz)
         return -1;
-      udp->recvfrom(udp, addr, llarp::InitBuffer(buf, ret));
+      b.sz = ret;
+      udp->recvfrom(udp, addr, b);
       return 0;
     }
 
@@ -213,7 +217,7 @@ namespace llarp
     }
 
     int
-    read(void* buf, size_t sz)
+    read(byte_t * buf, size_t sz)
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 0 && t->recvpkt)
