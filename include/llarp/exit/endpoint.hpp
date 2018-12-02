@@ -39,7 +39,7 @@ namespace llarp
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const;
 
       /// return true if this endpoint looks dead right now
-      bool 
+      bool
       LooksDead(llarp_time_t now, llarp_time_t timeout = 10000) const;
 
       /// tick ourself, reset tx/rx rates
@@ -105,27 +105,30 @@ namespace llarp
       uint64_t m_TxRate, m_RxRate;
       llarp_time_t m_LastActive;
       bool m_RewriteSource;
-      using InboundTrafficQueue_t = std::deque<llarp::routing::TransferTrafficMessage>;
-      using TieredQueue = std::map<uint8_t, InboundTrafficQueue_t>;
+      using InboundTrafficQueue_t =
+          std::deque< llarp::routing::TransferTrafficMessage >;
+      using TieredQueue = std::map< uint8_t, InboundTrafficQueue_t >;
       // maps number of fragments the message will fit in to the queue for it
       TieredQueue m_DownstreamQueues;
 
       struct UpstreamBuffer
       {
-        UpstreamBuffer(const llarp::net::IPv4Packet & p, uint64_t c) : pkt(p), counter(c) 
+        UpstreamBuffer(const llarp::net::IPv4Packet& p, uint64_t c)
+            : pkt(p), counter(c)
         {
         }
 
         llarp::net::IPv4Packet pkt;
         uint64_t counter;
 
-        bool operator<(const UpstreamBuffer & other) const
+        bool
+        operator<(const UpstreamBuffer& other) const
         {
           return counter < other.counter;
         }
       };
 
-      using UpstreamQueue_t = std::priority_queue<UpstreamBuffer>;
+      using UpstreamQueue_t = std::priority_queue< UpstreamBuffer >;
       UpstreamQueue_t m_UpstreamQueue;
       uint64_t m_Counter;
     };

@@ -46,7 +46,7 @@ namespace llarp
         llarp::LogError("No endpoints found");
         return nullptr;
       }
-      auto itr  = m_Endpoints.begin();
+      auto itr = m_Endpoints.begin();
       if(itr == m_Endpoints.end())
         return nullptr;
       return itr->second.get();
@@ -101,8 +101,7 @@ namespace llarp
     }
 
     bool
-    Context::FindBestAddressFor(const byte_t * addr, bool isSNode,
-                                huint32_t &ip)
+    Context::FindBestAddressFor(const byte_t *addr, bool isSNode, huint32_t &ip)
     {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
@@ -142,7 +141,6 @@ namespace llarp
           10000);
     }
 
-
     bool
     MapAddressAllIter(struct Context::endpoint_iter *endpointCfg)
     {
@@ -155,8 +153,8 @@ namespace llarp
         llarp::LogError("No tunnel endpoint found");
         return true;  // still continue
       }
-      return tunEndpoint->MapAddress(context->serviceAddr,
-                                     context->localPrivateIpAddr.xtohl(), false);
+      return tunEndpoint->MapAddress(
+          context->serviceAddr, context->localPrivateIpAddr.xtohl(), false);
     }
 
     bool

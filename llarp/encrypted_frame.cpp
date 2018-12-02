@@ -10,7 +10,7 @@ namespace llarp
     UpdateBuffer();
   }
 
-  Encrypted::Encrypted(Encrypted && other)
+  Encrypted::Encrypted(Encrypted&& other)
   {
     _data = std::move(other._data);
     UpdateBuffer();

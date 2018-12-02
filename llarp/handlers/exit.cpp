@@ -36,7 +36,7 @@ namespace llarp
     {
     }
 
-    llarp_time_t 
+    llarp_time_t
     ExitEndpoint::Now() const
     {
       return m_Router->Now();
@@ -73,17 +73,19 @@ namespace llarp
           }
           ++itr;
         }
-        
+
         if(ep == nullptr)
         {
           // we may have all dead sessions, wtf now?
-          llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we have no working endpoints");
+          llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk,
+                         " as we have no working endpoints");
         }
         else
         {
           if(!ep->QueueInboundTraffic(pkt.Buffer()))
           {
-            llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we are overloaded (probably)");
+            llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk,
+                           " as we are overloaded (probably)");
           }
         }
       });

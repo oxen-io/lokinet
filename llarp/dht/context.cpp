@@ -78,7 +78,10 @@ namespace llarp
         for(const auto &pk : valuesFound)
         {
           // lookup router
-          parent->LookupRouter(pk, std::bind(&llarp_router::HandleDHTLookupForExplore, parent->router, pk, std::placeholders::_1));
+          parent->LookupRouter(
+              pk,
+              std::bind(&llarp_router::HandleDHTLookupForExplore,
+                        parent->router, pk, std::placeholders::_1));
         }
       }
     };

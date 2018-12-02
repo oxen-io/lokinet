@@ -167,13 +167,11 @@ llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *);
 #define IFNAMSIZ (16)
 #endif
 
-
 struct llarp_fd_promise;
 
 /// wait until the fd promise is set
 int
-llarp_fd_promise_wait_for_value(struct llarp_fd_promise * promise);
-
+llarp_fd_promise_wait_for_value(struct llarp_fd_promise *promise);
 
 struct llarp_tun_io
 {
@@ -185,9 +183,9 @@ struct llarp_tun_io
   void *user;
   void *impl;
 
-  /// functor for getting a promise that returns the vpn fd 
+  /// functor for getting a promise that returns the vpn fd
   /// dont set me if you don't know how to use this
-  struct llarp_fd_promise * (*get_fd_promise)(struct llarp_tun_io *);
+  struct llarp_fd_promise *(*get_fd_promise)(struct llarp_tun_io *);
 
   struct llarp_ev_loop *parent;
   /// called when we are able to write right before we write
@@ -202,7 +200,6 @@ struct llarp_tun_io
 /// returns true on success otherwise returns false
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *ev, struct llarp_tun_io *tun);
-
 
 /// async write a packet on tun interface
 /// returns true if queued, returns false on drop

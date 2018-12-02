@@ -10,13 +10,14 @@ namespace llarp
   namespace routing
   {
     constexpr size_t ExitPadSize = 512 - 48;
-    constexpr size_t MaxExitMTU = 1500;
+    constexpr size_t MaxExitMTU  = 1500;
     struct TransferTrafficMessage final : public IMessage
     {
-      std::vector<llarp::Encrypted> X;
+      std::vector< llarp::Encrypted > X;
       size_t _size = 0;
 
-      size_t Size() const
+      size_t
+      Size() const
       {
         return _size;
       }

@@ -67,11 +67,12 @@ namespace llarp
       return true;
     }
 
-    bool Endpoint::LooksDead(llarp_time_t now, llarp_time_t timeout) const 
+    bool
+    Endpoint::LooksDead(llarp_time_t now, llarp_time_t timeout) const
     {
       if(ExpiresSoon(now, timeout))
         return true;
-      if (now > m_LastActive)
+      if(now > m_LastActive)
         return now - m_LastActive > timeout;
       return true;
     }
@@ -82,11 +83,11 @@ namespace llarp
       // queue overflow
       if(m_UpstreamQueue.size() > MaxUpstreamQueueSize)
         return false;
-      
+
       llarp::net::IPv4Packet pkt;
       if(!pkt.Load(buf))
         return false;
-        
+
       huint32_t dst;
       if(m_RewriteSource)
         dst = m_Parent->GetIfAddr();
@@ -103,8 +104,8 @@ namespace llarp
     Endpoint::QueueInboundTraffic(llarp_buffer_t buf)
     {
       llarp::net::IPv4Packet pkt;
-        if(!pkt.Load(buf))
-          return false;
+      if(!pkt.Load(buf))
+        return false;
 
       huint32_t src;
       if(m_RewriteSource)
@@ -112,15 +113,15 @@ namespace llarp
       else
         src = pkt.src();
       pkt.UpdateIPv4PacketOnDst(src, m_IP);
-      auto pktbuf = pkt.Buffer();
+      auto pktbuf       = pkt.Buffer();
       uint8_t queue_idx = pktbuf.sz / llarp::routing::ExitPadSize;
-      auto & queue = m_DownstreamQueues[queue_idx];
+      auto& queue       = m_DownstreamQueues[queue_idx];
       if(queue.size() == 0)
       {
         queue.emplace_back();
         return queue.back().PutBuffer(buf, m_Counter++);
       }
-      auto & msg = queue.back();
+      auto& msg = queue.back();
       if(msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)
       {
         queue.emplace_back();
@@ -130,7 +131,7 @@ namespace llarp
         return msg.PutBuffer(pktbuf, m_Counter++);
     }
 
-    bool 
+    bool
     Endpoint::Flush()
     {
       // flush upstream queue
@@ -144,13 +145,13 @@ namespace llarp
       bool sent = path != nullptr;
       if(path)
       {
-        for(auto & item : m_DownstreamQueues)
+        for(auto& item : m_DownstreamQueues)
         {
-          auto & queue = item.second;
+          auto& queue = item.second;
           while(queue.size())
           {
-            auto & msg = queue.front();
-            msg.S = path->NextSeqNo();
+            auto& msg = queue.front();
+            msg.S     = path->NextSeqNo();
             if(path->SendRoutingMessage(&msg, m_Parent->Router()))
             {
               m_RxRate += msg.Size();
@@ -160,7 +161,7 @@ namespace llarp
           }
         }
       }
-      for(auto & item : m_DownstreamQueues)
+      for(auto& item : m_DownstreamQueues)
         item.second.clear();
       return sent;
     }

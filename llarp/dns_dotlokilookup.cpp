@@ -31,27 +31,30 @@ struct check_query_simple_request
 std::unordered_map< std::string, struct dnsd_query_hook_response * >
     loki_tld_lookup_cache;
 
-static bool decode_request_name(const std::string & name, llarp::AlignedBuffer<32> & addr, bool &isSNode)
+static bool
+decode_request_name(const std::string &name, llarp::AlignedBuffer< 32 > &addr,
+                    bool &isSNode)
 {
   llarp::service::Address serviceAddr;
   llarp::RouterID snodeAddr;
   auto pos = name.find(".snode");
   if(pos != std::string::npos)
   {
-    if(!llarp::HexDecode(name.substr(0, pos).c_str(), serviceAddr.data(), serviceAddr.size()))
+    if(!llarp::HexDecode(name.substr(0, pos).c_str(), serviceAddr.data(),
+                         serviceAddr.size()))
     {
       return false;
     }
-    addr = snodeAddr.data();
+    addr    = snodeAddr.data();
     isSNode = true;
   }
-  else 
+  else
   {
     if(!serviceAddr.FromString(name))
     {
       return false;
     }
-    addr = serviceAddr.data();
+    addr    = serviceAddr.data();
     isSNode = false;
   }
   return true;
@@ -80,7 +83,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   // if so send that
   // else
   // if we have a free private ip, send that
- 
+
   /*
   // cache hit
   auto itr = loki_tld_lookup_cache.find(addr.ToString());
@@ -109,7 +112,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
     return;
   }
   llarp::huint32_t serviceIP;
-  llarp::AlignedBuffer<32> addr;
+  llarp::AlignedBuffer< 32 > addr;
   bool isSNode = false;
   if(!decode_request_name(qr->request->question.name, addr, isSNode))
   {
@@ -125,7 +128,6 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
     delete qr;
     return;
   }
-  
 
   /*
   bool mapResult = routerHiddenServiceContext->MapAddressAll(
@@ -260,7 +262,7 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
       llarp::iprange_ipv4(std::stoi(tokensCheck[0]), std::stoi(tokensCheck[1]),
                           std::stoi(tokensCheck[2]), std::stoi(tokensCheck[3]),
                           tunEndpoint->tunif.netmask);  // create range
-  
+
   llarp::huint32_t searchIPv4 = llarp::ipaddr_ipv4_bits(
       std::stoi(tokensSearch[searchTokens - 3]),
       std::stoi(tokensSearch[searchTokens - 4]),
@@ -273,26 +275,25 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
   llarp::Addr searchAddr(searchIp);
   llarp::Addr checkAddr(checkIp);
   llarp::LogInfo(searchIPv4, " vs ", range, " = ",
-                  inRange ? "inRange" : "not match");
+                 inRange ? "inRange" : "not match");
 
   if(inRange)
   {
-    llarp::AlignedBuffer<32> addr =
-        tunEndpoint->ObtainAddrForIP< llarp::AlignedBuffer<32> >(
-            searchIPv4, false);
+    llarp::AlignedBuffer< 32 > addr =
+        tunEndpoint->ObtainAddrForIP< llarp::AlignedBuffer< 32 > >(searchIPv4,
+                                                                   false);
     if(addr.IsZero())
     {
-      addr =
-        tunEndpoint->ObtainAddrForIP< llarp::AlignedBuffer<32> >(
-            searchIPv4, true);
+      addr = tunEndpoint->ObtainAddrForIP< llarp::AlignedBuffer< 32 > >(
+          searchIPv4, true);
       if(!addr.IsZero())
       {
-        char stack[128] = {0};
+        char stack[128]   = {0};
         std::string saddr = llarp::HexEncode(addr, stack);
         saddr += ".snode";
         writesend_dnss_revresponse(saddr, context->request);
       }
-      else 
+      else
         write404_dnss_response(context->request);
     }
     else
@@ -306,11 +307,13 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
   return true;  // we don't do anything with the result yet
 }
 
-static bool should_intercept_query_with_name(const std::string & lName) 
+static bool
+should_intercept_query_with_name(const std::string &lName)
 {
   // null terminated list
-  static const char * const matches[] = { ".loki", ".snode", ".loki.", ".snode.", 0};
-  size_t idx = 0;
+  static const char *const matches[] = {".loki", ".snode", ".loki.", ".snode.",
+                                        0};
+  size_t idx                         = 0;
   while(matches[idx])
   {
     std::string match_str(matches[idx]);
@@ -323,7 +326,7 @@ static bool should_intercept_query_with_name(const std::string & lName)
 
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name,
-                            const dnsd_question_request * request)
+                            const dnsd_question_request *request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
   response->dontLookUp               = false;
@@ -362,7 +365,7 @@ llarp_dotlokilookup_handler(std::string name,
     if(!res)
     {
       llarp::LogDebug("Reverse is ours");
-      response->dontLookUp =  true;
+      response->dontLookUp       = true;
       response->dontSendResponse = true;  // should have already sent it
     }
     else
@@ -384,11 +387,11 @@ llarp_dotlokilookup_handler(std::string name,
     }
 
     // decode address
-    llarp::AlignedBuffer<32> addr;
+    llarp::AlignedBuffer< 32 > addr;
     bool isSNode = false;
     if(!decode_request_name(lName, addr, isSNode))
     {
-      response->dontLookUp = true; 
+      response->dontLookUp = true;
       return response;
     }
 

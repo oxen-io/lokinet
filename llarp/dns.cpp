@@ -238,7 +238,7 @@ packet2bytes(dns_packet &in)
 
   int fields = (in.header.qr << 15);   // QR => message type, 1 = response
   fields += (in.header.opcode << 14);  // I think opcode is always 0
-  fields += in.header.rcode;  // response code (3 => not found, 0 = Ok)
+  fields += in.header.rcode;           // response code (3 => not found, 0 = Ok)
   vput16bits(write_buffer, fields);
 
   // don't pull these from the header, trust what we actually have more
@@ -308,14 +308,14 @@ extern "C"
   }
 
   bool
-  decode_hdr(llarp_buffer_t * buffer, dns_msg_header * hdr)
+  decode_hdr(llarp_buffer_t *buffer, dns_msg_header *hdr)
   {
     uint16_t fields;
 
     // reads as HOST byte order
     if(!llarp_buffer_read_uint16(buffer, &hdr->id))
       return false;
-    if(!llarp_buffer_read_uint16(buffer, &fields))  
+    if(!llarp_buffer_read_uint16(buffer, &fields))
       return false;
     if(!llarp_buffer_read_uint16(buffer, &hdr->qdCount))
       return false;

@@ -21,7 +21,7 @@ namespace llarp
       if(buf.sz > MaxExitMTU)
         return false;
       X.emplace_back(buf.sz + 8);
-      byte_t * ptr = X.back().data();
+      byte_t* ptr = X.back().data();
       htobe64buf(ptr, counter);
       ptr += 8;
       memcpy(ptr, buf.base, buf.sz);

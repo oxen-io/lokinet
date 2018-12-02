@@ -14,10 +14,10 @@ namespace llarp
 {
   namespace handlers
   {
-
-    static llarp_fd_promise * get_tun_fd_promise(llarp_tun_io * tun)
+    static llarp_fd_promise *
+    get_tun_fd_promise(llarp_tun_io *tun)
     {
-      return static_cast<TunEndpoint *>(tun->user)->Promise.get();
+      return static_cast< TunEndpoint * >(tun->user)->Promise.get();
     }
 
     TunEndpoint::TunEndpoint(const std::string &nickname, llarp_router *r)
@@ -25,10 +25,10 @@ namespace llarp
         , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop, r->netloop)
     {
-#ifdef ANDROID      
+#ifdef ANDROID
       tunif.get_fd_promise = &get_tun_fd_promise;
       Promise.reset(new llarp_fd_promise(&m_VPNPromise));
-#else 
+#else
       tunif.get_fd_promise = nullptr;
 #endif
       tunif.user    = this;
@@ -180,7 +180,8 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::MapAddress(const service::Address &addr, huint32_t ip, bool SNode)
+    TunEndpoint::MapAddress(const service::Address &addr, huint32_t ip,
+                            bool SNode)
     {
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
@@ -192,9 +193,9 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr[ip] = addr.data();
+      m_IPToAddr[ip]          = addr.data();
       m_AddrToIP[addr.data()] = ip;
-      m_SNodes[addr.data()] = SNode;
+      m_SNodes[addr.data()]   = SNode;
       MarkIPActiveForever(ip);
       return true;
     }
@@ -242,7 +243,8 @@ namespace llarp
 #endif
     }
 
-    bool TunEndpoint::IsSNode() const 
+    bool
+    TunEndpoint::IsSNode() const
     {
       // TODO : implement me
       return false;
@@ -365,30 +367,34 @@ namespace llarp
     TunEndpoint::FlushSend()
     {
       m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
-        std::function<bool(llarp_buffer_t)> sendFunc;
+        std::function< bool(llarp_buffer_t) > sendFunc;
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
           if(m_Exit)
           {
             pkt.UpdateIPv4PacketOnDst({0}, pkt.dst());
-            m_Exit->QueueUpstreamTraffic(std::move(pkt), llarp::routing::ExitPadSize);
+            m_Exit->QueueUpstreamTraffic(std::move(pkt),
+                                         llarp::routing::ExitPadSize);
             return true;
           }
           else
           {
             llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
-            return true; 
+            return true;
           }
         }
 
         if(m_SNodes.at(itr->second))
         {
-          sendFunc = std::bind(&TunEndpoint::SendToSNodeOrQueue, this, itr->second.data(), std::placeholders::_1);
+          sendFunc = std::bind(&TunEndpoint::SendToSNodeOrQueue, this,
+                               itr->second.data(), std::placeholders::_1);
         }
-        else 
+        else
         {
-          sendFunc = std::bind(&TunEndpoint::SendToServiceOrQueue, this, itr->second.data(), std::placeholders::_1, service::eProtocolTraffic);
+          sendFunc = std::bind(&TunEndpoint::SendToServiceOrQueue, this,
+                               itr->second.data(), std::placeholders::_1,
+                               service::eProtocolTraffic);
         }
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
@@ -404,35 +410,36 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::HandleWriteIPPacket(llarp_buffer_t buf, std::function<huint32_t(void)> getFromIP)
+    TunEndpoint::HandleWriteIPPacket(llarp_buffer_t buf,
+                                     std::function< huint32_t(void) > getFromIP)
     {
       // llarp::LogInfo("got packet from ", msg->sender.Addr());
       auto themIP = getFromIP();
       // llarp::LogInfo("themIP ", themIP);
       auto usIP = m_OurIP;
       return m_NetworkToUserPktQueue.EmplaceIf(
-             [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
-               // load
-               if(!pkt.Load(buf))
-                 return false;
-               // filter out:
-               // - packets smaller than minimal IPv4 header
-               // - non-IPv4 packets
-               // - packets with weird src/dst addresses
-               //   (0.0.0.0/8 but not 0.0.0.0)
-               // - packets with 0 src but non-0 dst and oposite
-               auto hdr = pkt.Header();
-               if(pkt.sz < sizeof(*hdr) || hdr->version != 4
-                  || (hdr->saddr != 0 && *(byte_t *)&(hdr->saddr) == 0)
-                  || (hdr->daddr != 0 && *(byte_t *)&(hdr->daddr) == 0)
-                  || ((hdr->saddr == 0) != (hdr->daddr == 0)))
-               {
-                 return false;
-               }
-               // update packet to use proper addresses, recalc checksums
-               pkt.UpdateIPv4PacketOnDst(themIP, usIP);
-               return true;
-             });
+          [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
+            // load
+            if(!pkt.Load(buf))
+              return false;
+            // filter out:
+            // - packets smaller than minimal IPv4 header
+            // - non-IPv4 packets
+            // - packets with weird src/dst addresses
+            //   (0.0.0.0/8 but not 0.0.0.0)
+            // - packets with 0 src but non-0 dst and oposite
+            auto hdr = pkt.Header();
+            if(pkt.sz < sizeof(*hdr) || hdr->version != 4
+               || (hdr->saddr != 0 && *(byte_t *)&(hdr->saddr) == 0)
+               || (hdr->daddr != 0 && *(byte_t *)&(hdr->daddr) == 0)
+               || ((hdr->saddr == 0) != (hdr->daddr == 0)))
+            {
+              return false;
+            }
+            // update packet to use proper addresses, recalc checksums
+            pkt.UpdateIPv4PacketOnDst(themIP, usIP);
+            return true;
+          });
     }
 
     huint32_t
@@ -469,7 +476,7 @@ namespace llarp
         {
           m_AddrToIP[ident]  = nextIP;
           m_IPToAddr[nextIP] = ident;
-          m_SNodes[ident] = snode;
+          m_SNodes[ident]    = snode;
           llarp::LogInfo(Name(), " mapped ", ident, " to ", nextIP);
           MarkIPActive(nextIP);
           return nextIP;
@@ -498,7 +505,7 @@ namespace llarp
       // remap address
       m_IPToAddr[oldest.first] = ident;
       m_AddrToIP[ident]        = oldest.first;
-      m_SNodes[ident] = snode;
+      m_SNodes[ident]          = snode;
       nextIP                   = oldest.first;
 
       // mark ip active

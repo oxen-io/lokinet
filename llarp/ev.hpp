@@ -612,15 +612,19 @@ namespace llarp
 
 struct llarp_fd_promise
 {
-  llarp_fd_promise(std::promise<int> * p) : _impl(p) {}
-  std::promise<int> * _impl;
-  
-  void Set(int fd)
+  llarp_fd_promise(std::promise< int >* p) : _impl(p)
+  {
+  }
+  std::promise< int >* _impl;
+
+  void
+  Set(int fd)
   {
     _impl->set_value(fd);
   }
 
-  int Get()
+  int
+  Get()
   {
     auto future = _impl->get_future();
     future.wait();

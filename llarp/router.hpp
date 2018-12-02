@@ -106,11 +106,12 @@ struct llarp_router
   /// default network config for default network interface
   NetConfig_t netConfig;
 
-  /// identity keys whitelist of routers we will connect to directly (not for service nodes)
-  std::set<llarp::PubKey> strictConnectPubkeys;
+  /// identity keys whitelist of routers we will connect to directly (not for
+  /// service nodes)
+  std::set< llarp::PubKey > strictConnectPubkeys;
 
   /// bootstrap RCs
-  std::list<llarp::RouterContact> bootstrapRCList;
+  std::list< llarp::RouterContact > bootstrapRCList;
 
   bool
   ExitEnabled() const
@@ -213,17 +214,14 @@ struct llarp_router
   void
   PersistSessionUntil(const llarp::RouterID &remote, llarp_time_t until);
 
-
-
   bool
   EnsureIdentity();
 
   bool
   EnsureEncryptionKey();
 
-  bool 
-  ConnectionToRouterAllowed(const llarp::RouterID & router) const;
-
+  bool
+  ConnectionToRouterAllowed(const llarp::RouterID &router) const;
 
   bool
   SaveRC();
@@ -271,8 +269,9 @@ struct llarp_router
   void
   TryEstablishTo(const llarp::RouterID &remote);
 
-  void 
-  HandleDHTLookupForExplore(llarp::RouterID remote, const std::vector< llarp::RouterContact > &results);
+  void
+  HandleDHTLookupForExplore(llarp::RouterID remote,
+                            const std::vector< llarp::RouterContact > &results);
 
   void
   ForEachPeer(

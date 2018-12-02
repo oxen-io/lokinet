@@ -182,7 +182,9 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 
   f << "# bootstrap settings" << std::endl;
   f << "[bootstrap]" << std::endl;
-  f << "# add a bootstrap node's signed identity to the list of nodes we want to bootstrap from" << std::endl;
+  f << "# add a bootstrap node's signed identity to the list of nodes we want "
+       "to bootstrap from"
+    << std::endl;
   f << "# if we don't have any peers we connect to this router" << std::endl;
   f << "add-node=" << basepath << "bootstrap.signed" << std::endl;
   f << "# add another bootstrap node" << std::endl;
@@ -265,9 +267,12 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;
   f << "profiles=" << basepath << "profiles.dat" << std::endl;
-  f << "# uncomment next line to add router with pubkey to list of routers we connect directly to" << std::endl;
+  f << "# uncomment next line to add router with pubkey to list of routers we "
+       "connect directly to"
+    << std::endl;
   f << "#strict-connect=pubkey" << std::endl;
-  f << "# uncomment next line to use router with pubkey as an exit node" << std::endl;
+  f << "# uncomment next line to use router with pubkey as an exit node"
+    << std::endl;
   f << "#exit-node=pubkey" << std::endl;
   // pick ip
   std::string ip = llarp::findFreePrivateRange();
@@ -355,9 +360,9 @@ extern "C"
   {
     iter->conf                                                   = conf;
     std::map< std::string, llarp::Config::section_t & > sections = {
-        {"network", conf->impl.network},  {"connect", conf->impl.connect},
+        {"network", conf->impl.network},     {"connect", conf->impl.connect},
         {"bootstrap", conf->impl.bootstrap}, {"system", conf->impl.system},
-        {"netdb", conf->impl.netdb},      {"api", conf->impl.api},
+        {"netdb", conf->impl.netdb},         {"api", conf->impl.api},
         {"services", conf->impl.services}};
 
     for(const auto item : conf->impl.router)

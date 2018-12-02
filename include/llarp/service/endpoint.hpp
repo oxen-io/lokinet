@@ -128,8 +128,9 @@ namespace llarp
       bool
       HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
 
-      virtual 
-      bool HandleWriteIPPacket(llarp_buffer_t pkt, std::function<huint32_t(void)> getFromIP) = 0;
+      virtual bool
+      HandleWriteIPPacket(llarp_buffer_t pkt,
+                          std::function< huint32_t(void) > getFromIP) = 0;
 
       bool
       ProcessDataMessage(ProtocolMessage* msg);
@@ -154,10 +155,11 @@ namespace llarp
       HandlePathBuilt(path::Path* path);
 
       bool
-      SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t payload, ProtocolType t);
+      SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t payload,
+                           ProtocolType t);
 
       bool
-      SendToSNodeOrQueue(const byte_t * addr, llarp_buffer_t payload);
+      SendToSNodeOrQueue(const byte_t* addr, llarp_buffer_t payload);
 
       struct PendingBuffer
       {
@@ -329,14 +331,15 @@ namespace llarp
       EnsurePathToService(const Address& remote, PathEnsureHook h,
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
-      using SNodeEnsureHook = std::function<void(RouterID, llarp::exit::BaseSession *)>;
+      using SNodeEnsureHook =
+          std::function< void(RouterID, llarp::exit::BaseSession*) >;
 
       /// ensure a path to a service node by public key
       void
-      EnsurePathToSNode(const RouterID & remote);
+      EnsurePathToSNode(const RouterID& remote);
 
       bool
-      HasPathToSNode(const RouterID &remote) const;
+      HasPathToSNode(const RouterID& remote) const;
 
       void
       PutSenderFor(const ConvoTag& tag, const ServiceInfo& info);
@@ -445,7 +448,10 @@ namespace llarp
 
       Sessions m_DeadSessions;
 
-      using SNodeSessions = std::unordered_multimap<RouterID, std::unique_ptr<llarp::exit::BaseSession>, RouterID::Hash>;
+      using SNodeSessions =
+          std::unordered_multimap< RouterID,
+                                   std::unique_ptr< llarp::exit::BaseSession >,
+                                   RouterID::Hash >;
 
       SNodeSessions m_SNodeSessions;
 

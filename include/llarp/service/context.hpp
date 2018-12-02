@@ -28,7 +28,7 @@ namespace llarp
       getFirstEndpoint();
 
       bool
-      FindBestAddressFor(const byte_t* addr, bool isSNode, huint32_t &);
+      FindBestAddressFor(const byte_t *addr, bool isSNode, huint32_t &);
 
       /// DRY refactor
       llarp::handlers::TunEndpoint *

@@ -138,7 +138,7 @@ namespace llarp
     {
       llarp_buffer_t b;
       b.base = buf;
-      b.cur = b.base;
+      b.cur  = b.base;
       sockaddr_in6 src;
       socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
@@ -217,7 +217,7 @@ namespace llarp
     }
 
     int
-    read(byte_t * buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 0 && t->recvpkt)
@@ -228,12 +228,13 @@ namespace llarp
       return ret;
     }
 
-    static int wait_for_fd_promise(struct device * dev)
+    static int
+    wait_for_fd_promise(struct device* dev)
     {
-      llarp::tun *t = static_cast<llarp::tun *>(dev->user);
+      llarp::tun* t = static_cast< llarp::tun* >(dev->user);
       if(t->t->get_fd_promise)
       {
-        struct llarp_fd_promise * promise = t->t->get_fd_promise(t->t);
+        struct llarp_fd_promise* promise = t->t->get_fd_promise(t->t);
         if(promise)
           return llarp_fd_promise_wait_for_value(promise);
       }
@@ -247,7 +248,7 @@ namespace llarp
       if(t->get_fd_promise)
       {
         tunif->obtain_fd = &wait_for_fd_promise;
-        tunif->user = this;
+        tunif->user      = this;
       }
       llarp::LogDebug("set ifname to ", t->ifname);
       strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
@@ -513,8 +514,8 @@ struct llarp_epoll_loop : public llarp_ev_loop
     llarp::tun* t = new llarp::tun(tun, this);
     if(tun->get_fd_promise)
     {
-
-    } else if(t->setup())
+    }
+    else if(t->setup())
     {
       return t;
     }
@@ -577,6 +578,14 @@ struct llarp_epoll_loop : public llarp_ev_loop
   void
   stop()
   {
+    // close all handlers before closing the epoll fd
+    auto itr = handlers.begin();
+    while(itr != handler.end())
+    {
+      close_ev(itr->get());
+      itr = handlers.erase(itr);
+    }
+
     if(epollfd != -1)
       close(epollfd);
     epollfd = -1;

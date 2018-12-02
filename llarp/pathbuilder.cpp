@@ -180,7 +180,8 @@ namespace llarp
     {
       (void)roles;
       if(hop == 0)
-        return router->NumberOfConnectedRouters() && router->GetRandomConnectedRouter(cur);
+        return router->NumberOfConnectedRouters()
+            && router->GetRandomConnectedRouter(cur);
 
       size_t tries = 5;
       do

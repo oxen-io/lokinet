@@ -801,12 +801,13 @@ namespace llarp
       if(!m_ExitTrafficHandler)
         return false;
       bool sent = msg->X.size() > 0;
-      for(const auto & pkt : msg->X)
+      for(const auto& pkt : msg->X)
       {
         if(pkt.size() <= 8)
           return false;
         uint64_t counter = bufbe64toh(pkt.data());
-        m_ExitTrafficHandler(this, llarp::InitBuffer(pkt.data() +8, pkt.size()-8), counter);
+        m_ExitTrafficHandler(
+            this, llarp::InitBuffer(pkt.data() + 8, pkt.size() - 8), counter);
       }
       return sent;
     }

@@ -254,9 +254,7 @@ namespace llarp
   constexpr uint32_t
   __netmask_ipv4_bits(uint32_t numset)
   {
-    return (32 - numset)
-        ? (1 << numset) | __netmask_ipv4_bits(numset + 1)
-        : 0;
+    return (32 - numset) ? (1 << numset) | __netmask_ipv4_bits(numset + 1) : 0;
   }
 
   /// get an ipv4 netmask given some /N range

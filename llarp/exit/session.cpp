@@ -99,10 +99,11 @@ namespace llarp
     }
 
     bool
-    BaseSession::QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t N)
+    BaseSession::QueueUpstreamTraffic(llarp::net::IPv4Packet pkt,
+                                      const size_t N)
     {
-      auto buf = pkt.Buffer();
-      auto & queue = m_Upstream[buf.sz / N];
+      auto buf    = pkt.Buffer();
+      auto& queue = m_Upstream[buf.sz / N];
       // queue overflow
       if(queue.size() >= MaxUpstreamQueueLength)
         return false;
@@ -111,41 +112,41 @@ namespace llarp
         queue.emplace_back();
         return queue.back().PutBuffer(buf, m_Counter++);
       }
-      auto & back = queue.back();
+      auto& back = queue.back();
       // pack to nearest N
       if(back.Size() + buf.sz > N)
       {
-         queue.emplace_back();
-         return queue.back().PutBuffer(buf, m_Counter++);
+        queue.emplace_back();
+        return queue.back().PutBuffer(buf, m_Counter++);
       }
       else
         return back.PutBuffer(buf, m_Counter++);
     }
 
     bool
-    BaseSession::IsReady() const 
+    BaseSession::IsReady() const
     {
       return AvailablePaths(llarp::path::ePathRoleExit) > 0;
     }
 
-    bool 
+    bool
     BaseSession::FlushUpstreamTraffic()
     {
       auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
       if(!path)
       {
         // discard
-        for(auto & item : m_Upstream)
+        for(auto& item : m_Upstream)
           item.second.clear();
         return false;
       }
-      for (auto & item : m_Upstream)
+      for(auto& item : m_Upstream)
       {
-        auto & queue = item.second;
+        auto& queue = item.second;
         while(queue.size())
         {
-          auto & msg = queue.front();
-          msg.S = path->NextSeqNo();
+          auto& msg = queue.front();
+          msg.S     = path->NextSeqNo();
           path->SendRoutingMessage(&msg, router);
           queue.pop_front();
         }

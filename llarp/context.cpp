@@ -162,20 +162,15 @@ namespace llarp
   int
   Context::Run()
   {
-    // just check to make sure it's not already set up (either this or we add a
-    // bool and/or add another function)
-    if(!this->router)
+    if(router == nullptr)
     {
-      // set up all requirements
-      if(this->Setup())
-      {
-        llarp::LogError("Failed to setup router");
-        return 1;
-      }
+      // we are not set up so we should die
+      llarp::LogError("cannot run non configured context");
+      return 1;
     }
     // run
     if(!llarp_run_router(router, nodedb))
-      return 1;   // success
+      return 1;
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, worker, logic);
@@ -208,6 +203,14 @@ namespace llarp
   void
   Context::Close()
   {
+    llarp::LogDebug("stopping logic");
+    if(logic)
+      llarp_logic_stop(logic);
+
+    llarp::LogDebug("stopping event loop");
+    if(mainloop)
+      llarp_ev_loop_stop(mainloop);
+
     llarp::LogDebug("stop router");
     if(router)
       llarp_stop_router(router);
@@ -219,11 +222,6 @@ namespace llarp
     llarp::LogDebug("join workers");
     if(worker)
       llarp_threadpool_join(worker);
-
-    llarp::LogDebug("stop logic");
-
-    if(logic)
-      llarp_logic_stop(logic);
 
     llarp::LogDebug("free config");
     llarp_free_config(&config);
@@ -242,14 +240,6 @@ namespace llarp
 
     llarp::LogDebug("free logic");
     llarp_free_logic(&logic);
-
-    for(auto &t : netio_threads)
-    {
-      llarp::LogDebug("join netio thread");
-      t.join();
-    }
-
-    netio_threads.clear();
   }
 
   bool
@@ -296,10 +286,11 @@ extern "C"
     ptr->ctx->HandleSignal(sig);
   }
 
-  void 
-  llarp_main_inject_vpn_fd(struct llarp_main * ptr, int fd)
+  void
+  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int fd)
   {
-    llarp::handlers::TunEndpoint * tun =  ptr->ctx->router->hiddenServiceContext.getFirstTun();
+    llarp::handlers::TunEndpoint *tun =
+        ptr->ctx->router->hiddenServiceContext.getFirstTun();
     if(!tun)
       return;
     if(!tun->Promise)

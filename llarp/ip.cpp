@@ -24,7 +24,7 @@ namespace llarp
     }
 
     llarp_buffer_t
-    IPv4Packet::ConstBuffer() const 
+    IPv4Packet::ConstBuffer() const
     {
       return llarp::InitBuffer(buf, sz);
     }

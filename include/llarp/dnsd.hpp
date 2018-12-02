@@ -68,7 +68,8 @@ write404_dnss_response(const dnsd_question_request *request);
 
 /// for hook functions to use
 void
-writecname_dnss_response(std::string cname, const dnsd_question_request *request);
+writecname_dnss_response(std::string cname,
+                         const dnsd_question_request *request);
 // FIXME: llarp::Addr
 
 /// send an A record found response
@@ -79,7 +80,8 @@ writesend_dnss_response(llarp::huint32_t *hostRes,
 
 /// send an PTR record found response
 void
-writesend_dnss_revresponse(std::string reverse, const dnsd_question_request *request);
+writesend_dnss_revresponse(std::string reverse,
+                           const dnsd_question_request *request);
 // FIXME: llarp::Addr
 
 //

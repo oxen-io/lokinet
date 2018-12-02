@@ -259,13 +259,14 @@ namespace llarp
       if(endpoint)
       {
         bool sent = true;
-        for(const auto & pkt : msg->X)
+        for(const auto& pkt : msg->X)
         {
           // check short packet buffer
           if(pkt.size() <= 8)
             continue;
           uint64_t counter = bufbe64toh(pkt.data());
-          sent &= endpoint->QueueOutboundTraffic(llarp::InitBuffer(pkt.data() + 8, pkt.size() - 8), counter);
+          sent &= endpoint->QueueOutboundTraffic(
+              llarp::InitBuffer(pkt.data() + 8, pkt.size() - 8), counter);
         }
         return sent;
       }

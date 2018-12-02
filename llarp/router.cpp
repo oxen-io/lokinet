@@ -427,8 +427,8 @@ llarp_router::handle_router_ticker(void *user, uint64_t orig, uint64_t left)
   self->ScheduleTicker(orig);
 }
 
-bool 
-llarp_router::ConnectionToRouterAllowed(const llarp::RouterID & router) const 
+bool
+llarp_router::ConnectionToRouterAllowed(const llarp::RouterID &router) const
 {
   if(strictConnectPubkeys.size() && strictConnectPubkeys.count(router) == 0)
     return false;
@@ -438,12 +438,13 @@ llarp_router::ConnectionToRouterAllowed(const llarp::RouterID & router) const
     return true;
 }
 
-void 
-llarp_router::HandleDHTLookupForExplore(llarp::RouterID remote, const std::vector< llarp::RouterContact > &results)
+void
+llarp_router::HandleDHTLookupForExplore(
+    llarp::RouterID remote, const std::vector< llarp::RouterContact > &results)
 {
   if(results.size() == 0)
     return;
-  for(const auto & rc: results)
+  for(const auto &rc : results)
   {
     if(rc.Verify(&crypto))
       llarp_nodedb_put_rc(nodedb, rc);
@@ -461,7 +462,8 @@ llarp_router::TryEstablishTo(const llarp::RouterID &remote)
 {
   if(!ConnectionToRouterAllowed(remote))
   {
-    llarp::LogWarn("not connecting to ", remote, " as it's not permitted by config");
+    llarp::LogWarn("not connecting to ", remote,
+                   " as it's not permitted by config");
     return;
   }
 
@@ -566,7 +568,7 @@ llarp_router::Tick()
       // TODO: only connect to random subset
       if(bootstrapRCList.size())
       {
-        for(const auto & rc : bootstrapRCList)
+        for(const auto &rc : bootstrapRCList)
         {
           llarp_router_try_connect(this, rc, 4);
           dht->impl.ExploreNetworkVia(rc.pubkey.data());
@@ -934,7 +936,6 @@ llarp_router::InitServiceNode()
   llarp_dht_allow_transit(dht);
   return exitContext.AddExitEndpoint("default-connectivity", netConfig);
 }
-
 
 bool
 llarp_router::HasSessionTo(const llarp::RouterID &remote) const
@@ -1309,10 +1310,11 @@ namespace llarp
         self->netConfig.emplace(std::make_pair("local-dns", val));
       }
     }
-    else if(StrEq(section, "connect") || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
+    else if(StrEq(section, "connect")
+            || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
     {
       self->bootstrapRCList.emplace_back();
-      auto & rc = self->bootstrapRCList.back();
+      auto &rc = self->bootstrapRCList.back();
       if(rc.Read(val) && rc.Verify(&self->crypto))
       {
         llarp::LogInfo("Added bootstrap node ", rc.pubkey);

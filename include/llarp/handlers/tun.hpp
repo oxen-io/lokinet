@@ -13,7 +13,6 @@ namespace llarp
 {
   namespace handlers
   {
-
     static const int DefaultTunNetmask    = 16;
     static const char DefaultTunIfname[]  = "lokinet0";
     static const char DefaultTunDstAddr[] = "10.10.0.1";
@@ -39,7 +38,7 @@ namespace llarp
       bool
       Start();
 
-      bool 
+      bool
       IsSNode() const;
 
       /// set up tun interface, blocking
@@ -53,7 +52,8 @@ namespace llarp
       /// overrides Endpoint
       /// handle inbound traffic
       bool
-      HandleWriteIPPacket(llarp_buffer_t buf, std::function<huint32_t(void)> getFromIP) override;
+      HandleWriteIPPacket(llarp_buffer_t buf,
+                          std::function< huint32_t(void) > getFromIP) override;
 
       /// queue outbound packet to the world
       bool
@@ -77,7 +77,7 @@ namespace llarp
 #endif
 
       llarp_tun_io tunif;
-      std::unique_ptr<llarp_fd_promise> Promise;
+      std::unique_ptr< llarp_fd_promise > Promise;
 
       /// called before writing to tun interface
       static void
@@ -155,8 +155,10 @@ namespace llarp
                           AlignedBuffer< 32 >::Hash >
           m_AddrToIP;
 
-      /// maps key to true if key is a service node, maps key to false if key is a hidden service
-      std::unordered_map<AlignedBuffer<32>, bool, AlignedBuffer<32>::Hash> m_SNodes;
+      /// maps key to true if key is a service node, maps key to false if key is
+      /// a hidden service
+      std::unordered_map< AlignedBuffer< 32 >, bool, AlignedBuffer< 32 >::Hash >
+          m_SNodes;
 
      private:
       bool
@@ -177,7 +179,7 @@ namespace llarp
       std::promise< bool > m_TunSetupResult;
 #endif
 
-      std::promise<int> m_VPNPromise;
+      std::promise< int > m_VPNPromise;
 
       /// DNS server per tun
       struct dnsd_context dnsd;

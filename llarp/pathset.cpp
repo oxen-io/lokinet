@@ -242,7 +242,7 @@ namespace llarp
       intros.clear();
       size_t count = 0;
       Lock_t l(m_PathsMutex);
-      auto itr     = m_Paths.begin();
+      auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
         if(itr->second->IsReady() && filter(itr->second->intro))
@@ -262,7 +262,7 @@ namespace llarp
       intros.clear();
       size_t count = 0;
       Lock_t l(m_PathsMutex);
-      auto itr     = m_Paths.begin();
+      auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
         if(itr->second->IsReady())
@@ -287,7 +287,7 @@ namespace llarp
       intro.Clear();
       bool found = false;
       Lock_t l(m_PathsMutex);
-      auto itr   = m_Paths.begin();
+      auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
         if(itr->second->IsReady()

@@ -197,7 +197,8 @@ namespace llarp
             continue;
           byte_t tmp[1024] = {0};
           auto buf         = StackBuffer< decltype(tmp) >(tmp);
-          if(!SendToServiceOrQueue(introset.A.Addr().data(), buf, eProtocolText))
+          if(!SendToServiceOrQueue(introset.A.Addr().data(), buf,
+                                   eProtocolText))
           {
             llarp::LogWarn(Name(), " failed to send/queue data to ",
                            introset.A.Addr(), " for tag ", tag.ToString());
@@ -784,12 +785,12 @@ namespace llarp
     }
 
     bool
-    Endpoint::HasPathToSNode(const llarp::RouterID & ident) const
+    Endpoint::HasPathToSNode(const llarp::RouterID& ident) const
     {
       auto range = m_SNodeSessions.equal_range(ident);
-      auto itr = range.first;
+      auto itr   = range.first;
       while(itr != range.second)
-      { 
+      {
         if(itr->second->IsReady())
         {
           return true;
@@ -800,14 +801,16 @@ namespace llarp
     }
 
     bool
-    Endpoint::ProcessDataMessage(ProtocolMessage *msg)
+    Endpoint::ProcessDataMessage(ProtocolMessage* msg)
     {
       if(msg->proto == eProtocolTraffic)
       {
-        auto buf  = llarp::Buffer(msg->payload);
-        return HandleWriteIPPacket(buf, std::bind(&Endpoint::ObtainIPForAddr, this, msg->sender.Addr().data(), false));
+        auto buf = llarp::Buffer(msg->payload);
+        return HandleWriteIPPacket(buf,
+                                   std::bind(&Endpoint::ObtainIPForAddr, this,
+                                             msg->sender.Addr().data(), false));
       }
-      else if (msg->proto == eProtocolText)
+      else if(msg->proto == eProtocolText)
       {
         // TODO: implement me (?)
         return true;
@@ -1064,29 +1067,38 @@ namespace llarp
     }
 
     void
-    Endpoint::EnsurePathToSNode(const RouterID & snode)
+    Endpoint::EnsurePathToSNode(const RouterID& snode)
     {
       auto range = m_SNodeSessions.equal_range(snode);
       if(range.first == range.second)
       {
         auto themIP = ObtainIPForAddr(snode, true);
-        m_SNodeSessions.emplace(std::make_pair(snode, std::unique_ptr<llarp::exit::BaseSession>(new llarp::exit::SNodeSession(snode, std::bind(&Endpoint::HandleWriteIPPacket, this, std::placeholders::_1, [themIP]() -> huint32_t {return themIP;}), m_Router, 2, numHops))));
+        m_SNodeSessions.emplace(std::make_pair(
+            snode,
+            std::unique_ptr< llarp::exit::BaseSession >(
+                new llarp::exit::SNodeSession(
+                    snode,
+                    std::bind(&Endpoint::HandleWriteIPPacket, this,
+                              std::placeholders::_1,
+                              [themIP]() -> huint32_t { return themIP; }),
+                    m_Router, 2, numHops))));
       }
     }
 
     bool
-    Endpoint::SendToSNodeOrQueue(const byte_t * addr, llarp_buffer_t buf)
+    Endpoint::SendToSNodeOrQueue(const byte_t* addr, llarp_buffer_t buf)
     {
       llarp::net::IPv4Packet pkt;
       if(!pkt.Load(buf))
         return false;
       auto range = m_SNodeSessions.equal_range(addr);
-      auto itr = range.first;
+      auto itr   = range.first;
       while(itr != range.second)
       {
         if(itr->second->IsReady())
         {
-          if(itr->second->QueueUpstreamTraffic(pkt, llarp::routing::ExitPadSize))
+          if(itr->second->QueueUpstreamTraffic(pkt,
+                                               llarp::routing::ExitPadSize))
           {
             return true;
           }
@@ -1098,7 +1110,7 @@ namespace llarp
 
     bool
     Endpoint::SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t data,
-                            ProtocolType t)
+                                   ProtocolType t)
     {
       service::Address remote(addr);
 

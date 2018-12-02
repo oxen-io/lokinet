@@ -262,8 +262,8 @@ namespace llarp
       inf.read((char*)buf.base, sz);
       if(!BDecode(&buf))
         return false;
-      
-      const byte_t * ptr = nullptr;
+
+      const byte_t* ptr = nullptr;
       if(!vanity.IsZero())
         ptr = vanity.data();
       // update pubkeys
