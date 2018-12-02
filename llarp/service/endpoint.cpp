@@ -914,6 +914,7 @@ namespace llarp
       if(!path)
       {
         llarp::LogWarn("No outbound path for lookup yet");
+        BuildOne();
         return false;
       }
       llarp::LogInfo(Name(), " Ensure Path to ", remote.ToString());
