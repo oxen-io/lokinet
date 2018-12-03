@@ -10,7 +10,7 @@ prefix = $(DESTDIR)/usr/local
 CC ?= cc
 CXX ?= c++
 
-SETCAP ?= which setcap && setcap cap_net_admin=+eip
+SETCAP ?= which setcap && setcap cap_net_bind_service,cap_net_admin=+eip 
 
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
