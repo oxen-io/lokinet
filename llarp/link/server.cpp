@@ -97,7 +97,7 @@ namespace llarp
         if(m_AuthedLinks.count(pk) < MaxSessionsPerKey)
           m_AuthedLinks.insert(std::make_pair(pk, std::move(*itr)));
         else
-          s->Close();
+          s->SendClose();
         itr = m_Pending.erase(itr);
         return;
       }

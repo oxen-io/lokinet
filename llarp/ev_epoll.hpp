@@ -580,7 +580,7 @@ struct llarp_epoll_loop : public llarp_ev_loop
   {
     // close all handlers before closing the epoll fd
     auto itr = handlers.begin();
-    while(itr != handler.end())
+    while(itr != handlers.end())
     {
       close_ev(itr->get());
       itr = handlers.erase(itr);
