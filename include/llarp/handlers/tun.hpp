@@ -177,10 +177,9 @@ namespace llarp
       /// handles setup, given value true on success and false on failure to set
       /// up interface
       std::promise< bool > m_TunSetupResult;
-#endif
-
+      /// handles fd injection force android
       std::promise< int > m_VPNPromise;
-
+#endif
       /// DNS server per tun
       struct dnsd_context dnsd;
       /// DNS loki lookup subsystem configuration (also holds optional iptracker

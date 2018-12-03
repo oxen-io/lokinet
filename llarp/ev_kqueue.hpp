@@ -21,7 +21,7 @@
 namespace llarp
 {
   int
-  tcp_conn::read(void* buf, size_t sz)
+  tcp_conn::read(byte_t* buf, size_t sz)
   {
     if(sz == 0)
     {
@@ -100,7 +100,7 @@ namespace llarp
   }
 
   int
-  tcp_serv::read(void*, size_t)
+  tcp_serv::read(byte_t*, size_t)
   {
     int new_fd = ::accept(fd, nullptr, nullptr);
     if(new_fd == -1)
@@ -155,7 +155,7 @@ namespace llarp
     }
 
     virtual int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
       sockaddr_in6 src;
       socklen_t slen = sizeof(sockaddr_in6);
@@ -262,7 +262,7 @@ namespace llarp
     }
 
     int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
 #ifdef __APPLE__
       const ssize_t offset = 4;
@@ -272,9 +272,9 @@ namespace llarp
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)
       {
-        byte_t* ptr = ((byte_t*)buf) + offset;
+        buf += offset;
         ret -= offset;
-        t->recvpkt(t, llarp::InitBuffer(ptr, ret));
+        t->recvpkt(t, llarp::InitBuffer(buf, ret));
       }
       return ret;
     }
@@ -616,6 +616,13 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   void
   stop()
   {
+    auto itr = handlers.begin();
+    while(itr != handlers.end())
+    {
+      close_ev(itr->get());
+      itr = handlers.erase(itr);
+    }
+
     if(kqueuefd != -1)
       ::close(kqueuefd);
 

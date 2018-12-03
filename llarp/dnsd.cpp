@@ -17,7 +17,7 @@ raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
   int *fd = (int *)sock;
   // how do we get to these??
   socklen_t addrLen = sizeof(struct sockaddr_in);
-  return sendto(*fd, buf.base, buf.sz, 0, from, addrLen);
+  return sendto(*fd, (const char *)buf.base, buf.sz, 0, from, addrLen);
 }
 
 ssize_t

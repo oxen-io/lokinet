@@ -1,6 +1,7 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
 #include <llarp/ev.h>
+#include <llarp/threading.hpp>
 // writev
 #ifndef _WIN32
 #include <sys/uio.h>
@@ -62,6 +63,20 @@ namespace llarp
         }
       };
 
+      struct GetNow
+      {
+        llarp_ev_loop* loop;
+        GetNow(llarp_ev_loop* l) : loop(l)
+        {
+        }
+
+        llarp_time_t
+        operator()() const
+        {
+          return llarp_ev_loop_time_now_ms(loop);
+        }
+      };
+
       struct PutTime
       {
         llarp_ev_loop* loop;
@@ -88,8 +103,8 @@ namespace llarp
     using LossyWriteQueue_t =
         llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
                                  WriteBuffer::PutTime, WriteBuffer::Compare,
-                                 llarp::util::NullMutex, llarp::util::NullLock,
-                                 5, 100, 128 >;
+                                 WriteBuffer::GetNow, llarp::util::NullMutex,
+                                 llarp::util::NullLock, 5, 100, 128 >;
 
     using LosslessWriteQueue_t = std::deque< WriteBuffer >;
 
@@ -121,7 +136,7 @@ namespace llarp
     }
 
     virtual int
-    read(void* buf, size_t sz) = 0;
+    read(byte_t* buf, size_t sz) = 0;
 
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz)
@@ -610,6 +625,21 @@ namespace llarp
 
 };  // namespace llarp
 
+#ifdef _WIN32
+struct llarp_fd_promise
+{
+  void
+  Set(int)
+  {
+  }
+
+  int
+  Get()
+  {
+    return -1;
+  }
+};
+#else
 struct llarp_fd_promise
 {
   llarp_fd_promise(std::promise< int >* p) : _impl(p)
@@ -631,6 +661,7 @@ struct llarp_fd_promise
     return future.get();
   }
 };
+#endif
 
 // this (nearly!) abstract base class
 // is overriden for each platform

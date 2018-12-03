@@ -1,6 +1,6 @@
 #include "queue_manager.hpp"
 
-#include <thread>
+#include <llarp/threading.hpp>
 
 namespace llarp
 {

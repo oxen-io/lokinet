@@ -17,7 +17,7 @@
 namespace llarp
 {
   int
-  tcp_conn::read(void* buf, size_t sz)
+  tcp_conn::read(byte_t* buf, size_t sz)
   {
     WSABUF r_buf = {(u_long)sz, (char*)buf};
     DWORD amount = 0;
@@ -28,7 +28,7 @@ namespace llarp
     if(amount > 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, llarp::InitBuffer(buf, amount);
+        tcp.read(&tcp, llarp::InitBuffer(buf, amount));
     }
     else
     {
@@ -92,7 +92,7 @@ namespace llarp
   }
 
   int
-  tcp_serv::read(void*, size_t)
+  tcp_serv::read(byte_t*, size_t)
   {
     SOCKET new_fd = ::accept(std::get< SOCKET >(fd), nullptr, nullptr);
     if(new_fd == INVALID_SOCKET)
@@ -134,14 +134,14 @@ namespace llarp
     }
 
     virtual int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
       printf("read\n");
       sockaddr_in6 src;
       socklen_t slen      = sizeof(src);
       sockaddr* addr      = (sockaddr*)&src;
       unsigned long flags = 0;
-      WSABUF wbuf         = {(u_long)sz, static_cast< char* >(buf)};
+      WSABUF wbuf         = {(u_long)sz, (char*)buf};
       // WSARecvFrom
       llarp::LogDebug("read ", sz, " bytes from socket");
       int ret = ::WSARecvFrom(std::get< SOCKET >(fd), &wbuf, 1, nullptr, &flags,
@@ -234,7 +234,7 @@ namespace llarp
     }
 
     int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 0 && t->recvpkt)
