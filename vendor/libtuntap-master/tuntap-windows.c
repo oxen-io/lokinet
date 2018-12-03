@@ -24,6 +24,20 @@
 /*#include <strsafe.h>*/
 #include "tuntap.h"
 
+// io packet for TUN read/write
+// this _should_ be the same size as
+// the corresponding C++ struct
+struct asio_evt_pkt
+{
+  OVERLAPPED pkt;  // must be first, since this is part of the IO call
+  _Bool write;      // true, or false if read pkt
+  size_t sz;  // if this doesn't match what is in the packet, note the error
+};
+
+// function from c++
+struct asio_evt_pkt *
+getTunEventPkt();
+
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \
   (((DeviceType) << 16) | ((Access) << 14) | ((Function) << 2) | (Method))
@@ -385,7 +399,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   dns.length   = 4;
   dns.value[0] =
       htonl(0x7F000001); /* apparently this doesn't show in network properties,
-                            but it works 🤷🏻‍♂️ */
+                            but it works */
   dns.value[1] = 0;
 
   ret = DeviceIoControl(dev->tun_fd, TAP_IOCTL_CONFIG_DHCP_SET_OPT, &dns,
@@ -415,38 +429,49 @@ tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
 int
 tuntap_read(struct device *dev, void *buf, size_t size)
 {
+  DWORD x;
+  BOOL r;
+  int e = 0;
+  struct asio_evt_pkt *pkt = getTunEventPkt();
+  pkt->write               = FALSE;
+  pkt->sz                  = size;
   if(size)
   {
-    ReadFile(dev->tun_fd, buf, (DWORD)size, NULL, &dev->ovl[0]);
-
-    int errcode = GetLastError();
-
-    if(errcode != 997)
+    r = ReadFile(dev->tun_fd, buf, (DWORD)size, &x, &pkt->pkt);
+    if(r)
+      return x;
+    e = GetLastError();
+    if(e && e != 997)
     {
       tuntap_log(TUNTAP_LOG_ERR,
-                 (const char *)formated_error(L"%1%0", errcode));
+                 (const char *)formated_error(L"%1%0", _doserrno));
       return -1;
     }
   }
-  return 0;
+  else
+    return -1; // unreachable
+  return size;
 }
 
 int
 tuntap_write(struct device *dev, void *buf, size_t size)
 {
+  DWORD x;
   if(size)
   {
-    WriteFile(dev->tun_fd, buf, (DWORD)size, NULL, &dev->ovl[1]);
+    WriteFile(dev->tun_fd, buf, (DWORD)size, &x, NULL);
     int errcode = GetLastError();
 
-    if(errcode != 997)
+    if(errcode)
     {
       tuntap_log(TUNTAP_LOG_ERR,
                  (const char *)formated_error(L"%1%0", errcode));
       return -1;
     }
   }
-  return 0;
+  else
+    return -1;
+  return x;
 }
 
 int
