@@ -5,9 +5,8 @@
 #include <llarp/ip.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/threading.hpp>
-#include <llarp/dnsd.hpp>               // for relay
-#include <llarp/dns_dotlokilookup.hpp>  // for lookup
-#include <llarp/dns_iptracker.hpp>      // for tracker
+#include <llarp/dns/server.hpp>
+#include <llarp/net.hpp>
 
 namespace llarp
 {
@@ -18,7 +17,7 @@ namespace llarp
     static const char DefaultTunDstAddr[] = "10.10.0.1";
     static const char DefaultTunSrcAddr[] = "10.10.0.2";
 
-    struct TunEndpoint : public service::Endpoint
+    struct TunEndpoint : public service::Endpoint, public dns::IQueryHandler
     {
       TunEndpoint(const std::string& nickname, llarp_router* r);
       ~TunEndpoint();
@@ -28,6 +27,14 @@ namespace llarp
 
       virtual void
       Tick(llarp_time_t now);
+
+      bool
+      ShouldHookDNSMessage(const dns::Message& msg) const override;
+
+      bool
+      HandleHookedDNSMessage(
+          dns::Message query,
+          std::function< void(dns::Message) > sendreply) override;
 
       void
       TickTun(llarp_time_t now);
@@ -65,16 +72,6 @@ namespace llarp
 
       bool
       HasLocalIP(const huint32_t& ip) const;
-
-#ifndef WIN32
-      /// overrides Endpoint
-      bool
-      IsolationFailed()
-      {
-        m_TunSetupResult.set_value(false);
-        return false;
-      }
-#endif
 
       llarp_tun_io tunif;
       std::unique_ptr< llarp_fd_promise > Promise;
@@ -173,18 +170,18 @@ namespace llarp
             });
       }
 
+      void
+      SendDNSReply(service::Address addr,
+                   service::Endpoint::OutboundContext* ctx, dns::Message query,
+                   std::function< void(dns::Message) > reply);
+
 #ifndef WIN32
-      /// handles setup, given value true on success and false on failure to set
-      /// up interface
-      std::promise< bool > m_TunSetupResult;
       /// handles fd injection force android
       std::promise< int > m_VPNPromise;
 #endif
-      /// DNS server per tun
-      struct dnsd_context dnsd;
-      /// DNS loki lookup subsystem configuration (also holds optional iptracker
-      /// for netns)
-      struct dotLokiLookup dll;
+
+      /// our dns resolver
+      dns::Proxy m_Resolver;
 
       /// maps ip address to timestamp last active
       std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >
@@ -195,8 +192,10 @@ namespace llarp
       huint32_t m_NextIP;
       /// highest ip address to allocate (host byte order)
       huint32_t m_MaxIP;
-      /// upstream dns
-      llarp::Addr m_UpstreamDNSAddr;
+      /// our ip range we are using
+      llarp::IPRange m_OurRange;
+      /// upstream dns resolver list
+      std::vector< llarp::Addr > m_UpstreamResolvers;
       /// local dns
       llarp::Addr m_LocalResolverAddr;
     };

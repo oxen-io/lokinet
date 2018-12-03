@@ -191,7 +191,8 @@ main(int argc, char *argv[])
       return 0;
     }
     // Configure intercept
-    dnsd.intercept = &llarp_dotlokilookup_handler;
+    dnsd.intercept = nullptr;
+    // dnsd.intercept = &llarp_dotlokilookup_handler;
 
     llarp::LogInfo("singlethread start");
     llarp_ev_loop_run_single_process(netloop, worker, logic);
@@ -219,7 +220,8 @@ main(int argc, char *argv[])
       return 0;
     }
     // Configure intercept
-    dnsd.intercept = &llarp_dotlokilookup_handler;
+    dnsd.intercept = nullptr;
+    // dnsd.intercept = &llarp_dotlokilookup_handler;
 
     struct sockaddr_in m_address;
     int m_sockfd;
