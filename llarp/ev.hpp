@@ -19,8 +19,9 @@
 // io packet for TUN read/write
 struct asio_evt_pkt
 {
-  OVERLAPPED pkt = {0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
-  bool write = false;            // true, or false if read pkt
+  OVERLAPPED pkt = {
+      0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
+  bool write = false;        // true, or false if read pkt
   size_t sz;  // if this doesn't match what is in the packet, note the error
 };
 #endif
@@ -176,7 +177,7 @@ namespace llarp
         pkt->sz           = sz;
         pkt->write        = true;
         int e             = 0;
-        r = WriteFile(fd.tun, data, sz, &x, &pkt->pkt);
+        r                 = WriteFile(fd.tun, data, sz, &x, &pkt->pkt);
         if(r)  // we returned immediately
           return x;
         e = GetLastError();
