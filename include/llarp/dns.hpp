@@ -49,6 +49,7 @@ struct dns_tracker
 struct dns_msg_header
 {
   uint16_t id;
+
   uint8_t qr : 1;
   uint8_t opcode : 4;
   uint8_t aa : 1;
@@ -60,6 +61,13 @@ struct dns_msg_header
   uint8_t ad : 1;
   uint8_t cd : 1;
   uint8_t rcode : 4;
+
+  uint16_t
+  fields() const
+  {
+    return (qr << 15) | (opcode << 14) | (aa << 10) | (tc << 9)
+        | (rd << 8) << (ra << 7) | (z << 6) | rcode;
+  }
 
   uint16_t qdCount;
   uint16_t anCount;
@@ -87,7 +95,7 @@ struct dns_msg_answer
 
 struct dns_packet
 {
-  struct dns_msg_header *header;
+  struct dns_msg_header header;
   std::vector< std::unique_ptr< dns_msg_question > > questions;
   std::vector< std::unique_ptr< dns_msg_answer > > answers;
   std::vector< std::unique_ptr< dns_msg_answer > > auth_rrs;
@@ -120,8 +128,8 @@ extern "C"
   uint32_t
   get32bits(const char *&buffer) throw();
 
-  dns_msg_header *
-  decode_hdr(llarp_buffer_t &buffer);
+  bool
+  decode_hdr(llarp_buffer_t *buffer, dns_msg_header *hdr);
 
   dns_msg_question *
   decode_question(const char *buffer, uint32_t *pos);
@@ -137,7 +145,6 @@ extern "C"
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
-                            const struct sockaddr *addr, const void *buf,
-                            ssize_t sz);
+                            const struct sockaddr *addr, llarp_buffer_t buf);
 }
 #endif

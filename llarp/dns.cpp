@@ -120,7 +120,6 @@ code_domain(char *&buffer, const std::string &domain) throw()
     *buffer++ = domain[i];  // last label octets
     // llarp::LogInfo("Writing ", domain[i], " at ", i);
   }
-
   *buffer++ = 0;
 }
 
@@ -235,11 +234,11 @@ std::vector< byte_t >
 packet2bytes(dns_packet &in)
 {
   std::vector< byte_t > write_buffer;
-  vput16bits(write_buffer, in.header->id);
+  vput16bits(write_buffer, in.header.id);
 
-  int fields = (in.header->qr << 15);   // QR => message type, 1 = response
-  fields += (in.header->opcode << 14);  // I think opcode is always 0
-  fields += in.header->rcode;  // response code (3 => not found, 0 = Ok)
+  int fields = (in.header.qr << 15);   // QR => message type, 1 = response
+  fields += (in.header.opcode << 14);  // I think opcode is always 0
+  fields += in.header.rcode;           // response code (3 => not found, 0 = Ok)
   vput16bits(write_buffer, fields);
 
   // don't pull these from the header, trust what we actually have more
@@ -308,19 +307,24 @@ extern "C"
     return value;
   }
 
-  dns_msg_header *
-  decode_hdr(llarp_buffer_t &buffer)
+  bool
+  decode_hdr(llarp_buffer_t *buffer, dns_msg_header *hdr)
   {
-    dns_msg_header *hdr = new dns_msg_header;
     uint16_t fields;
 
-    // reads as network byte order
-    llarp_buffer_read_uint16(&buffer, &hdr->id);
-    llarp_buffer_read_uint16(&buffer, &fields);
-    llarp_buffer_read_uint16(&buffer, &hdr->qdCount);
-    llarp_buffer_read_uint16(&buffer, &hdr->anCount);
-    llarp_buffer_read_uint16(&buffer, &hdr->nsCount);
-    llarp_buffer_read_uint16(&buffer, &hdr->arCount);
+    // reads as HOST byte order
+    if(!llarp_buffer_read_uint16(buffer, &hdr->id))
+      return false;
+    if(!llarp_buffer_read_uint16(buffer, &fields))
+      return false;
+    if(!llarp_buffer_read_uint16(buffer, &hdr->qdCount))
+      return false;
+    if(!llarp_buffer_read_uint16(buffer, &hdr->anCount))
+      return false;
+    if(!llarp_buffer_read_uint16(buffer, &hdr->nsCount))
+      return false;
+    if(!llarp_buffer_read_uint16(buffer, &hdr->arCount))
+      return false;
 
     // decode fields into hdr
     uint8_t lFields = (fields & 0x00FF) >> 0;
@@ -340,8 +344,7 @@ extern "C"
     hdr->ad    = (lFields >> 5) & 0x1;
     hdr->cd    = (lFields >> 4) & 0x1;
     hdr->rcode = lFields & 0xf;
-
-    return hdr;
+    return true;
   }
 
   dns_msg_question *
@@ -601,19 +604,19 @@ extern "C"
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
-                            const struct sockaddr *addr, const void *buf,
-                            ssize_t sz)
+                            const struct sockaddr *addr, llarp_buffer_t buf)
   {
-    // auto abuffer = llarp::StackBuffer< decltype(buf) >(buf);
-
-    llarp_buffer_t buffer;
-    buffer.base = (byte_t *)buf;
-    buffer.cur  = buffer.base;
-    buffer.sz   = sz;
-
-    dns_msg_header *hdr = decode_hdr(buffer);
-    llarp::LogDebug("msg id ", hdr->id);
-    llarp::LogDebug("msg qr ", (uint8_t)hdr->qr);
+    // auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
+    dns_msg_header hdr;
+    if(!decode_hdr(&buf, &hdr))
+    {
+      llarp::LogError("failed to decode dns header");
+      return;
+    }
+    // rewind
+    buf.cur = buf.base;
+    llarp::LogDebug("msg id ", hdr.id);
+    llarp::LogDebug("msg qr ", (uint8_t)hdr.qr);
     if(!udp)
     {
       llarp::LogError("no udp passed in to handler");
@@ -622,16 +625,15 @@ extern "C"
     {
       llarp::LogError("no source addr passed in to handler");
     }
-    if(hdr->qr)
+    if(hdr.qr)
     {
       llarp::LogDebug("handling as dnsc answer");
-      llarp_handle_dnsc_recvfrom(udp, addr, buf, sz);
+      llarp_handle_dnsc_recvfrom(udp, addr, buf);
     }
     else
     {
       llarp::LogDebug("handling as dnsd question");
-      llarp_handle_dnsd_recvfrom(udp, addr, buf, sz);
+      llarp_handle_dnsd_recvfrom(udp, addr, buf);
     }
-    delete hdr;
   }
 }

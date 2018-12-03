@@ -10,7 +10,7 @@ prefix = $(DESTDIR)/usr/local
 CC ?= cc
 CXX ?= c++
 
-SETCAP ?= which setcap && setcap cap_net_admin=+eip
+SETCAP ?= which setcap && setcap cap_net_bind_service,cap_net_admin=+eip 
 
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
@@ -165,6 +165,7 @@ android-gradle: android-gradle-prepare
 	cd $(ANDROID_DIR) && JAVA_HOME=$(JAVA_HOME) $(GRADLE) clean assemble
 
 android: android-gradle
+	cp -f $(ANDROID_DIR)/build/outputs/apk/*.apk $(REPO)
 
 windows-configure: clean
 	mkdir -p '$(BUILD_ROOT)'

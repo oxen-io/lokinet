@@ -85,7 +85,7 @@ namespace llarp
       GetIfAddr() const;
 
       void
-      FlushInbound();
+      Flush();
 
      private:
       huint32_t

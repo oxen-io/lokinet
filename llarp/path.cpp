@@ -6,6 +6,7 @@
 #include <llarp/messages/discard.hpp>
 #include "buffer.hpp"
 #include "router.hpp"
+#include <llarp/endian.hpp>
 
 namespace llarp
 {
@@ -797,8 +798,18 @@ namespace llarp
         return false;
       MarkActive(r->Now());
       // handle traffic if we have a handler
-      return m_ExitTrafficHandler
-          && m_ExitTrafficHandler(this, llarp::ConstBuffer(msg->X));
+      if(!m_ExitTrafficHandler)
+        return false;
+      bool sent = msg->X.size() > 0;
+      for(const auto& pkt : msg->X)
+      {
+        if(pkt.size() <= 8)
+          return false;
+        uint64_t counter = bufbe64toh(pkt.data());
+        m_ExitTrafficHandler(
+            this, llarp::InitBuffer(pkt.data() + 8, pkt.size() - 8), counter);
+      }
+      return sent;
     }
 
   }  // namespace path

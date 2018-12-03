@@ -179,17 +179,18 @@ namespace llarp
                        RouterContact& cur, size_t hop, PathRole roles)
     {
       (void)roles;
-      if(hop == 0 && router->NumberOfConnectedRouters())
-        return router->GetRandomConnectedRouter(cur);
+      if(hop == 0)
+        return router->NumberOfConnectedRouters()
+            && router->GetRandomConnectedRouter(cur);
 
       size_t tries = 5;
       do
       {
         --tries;
         if(llarp_nodedb_select_random_hop(db, prev, cur, hop))
-          break;
+          return true;
       } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
-      return !router->routerProfiling.IsBad(cur.pubkey);
+      return false;
     }
 
     const byte_t*

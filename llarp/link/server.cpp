@@ -86,6 +86,7 @@ namespace llarp
   void
   ILinkLayer::MapAddr(const PubKey& pk, ILinkSession* s)
   {
+    static constexpr size_t MaxSessionsPerKey = 16;
     Lock l_authed(m_AuthedLinksMutex);
     Lock l_pending(m_PendingMutex);
     auto itr = m_Pending.begin();
@@ -93,7 +94,10 @@ namespace llarp
     {
       if(itr->get() == s)
       {
-        m_AuthedLinks.insert(std::make_pair(pk, std::move(*itr)));
+        if(m_AuthedLinks.count(pk) < MaxSessionsPerKey)
+          m_AuthedLinks.insert(std::make_pair(pk, std::move(*itr)));
+        else
+          s->SendClose();
         itr = m_Pending.erase(itr);
         return;
       }

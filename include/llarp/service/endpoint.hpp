@@ -110,18 +110,10 @@ namespace llarp
       HasPathToService(const Address& remote) const;
 
       virtual huint32_t
-      ObtainIPForAddr(const byte_t* addr)
-      {
-        (void)addr;
-        return {0};
-      }
+      ObtainIPForAddr(const byte_t* addr, bool serviceNode) = 0;
 
       virtual bool
-      HasAddress(const byte_t* addr) const
-      {
-        (void)addr;
-        return false;
-      }
+      HasAddress(const byte_t* addr) const = 0;
 
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
@@ -137,15 +129,11 @@ namespace llarp
       HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
 
       virtual bool
-      ProcessDataMessage(ProtocolMessage* msg)
-      {
-#ifdef TESTNET
-        llarp::LogInfo("Got message from ", msg->sender.Addr());
-#else
-        (void)msg;
-#endif
-        return true;
-      }
+      HandleWriteIPPacket(llarp_buffer_t pkt,
+                          std::function< huint32_t(void) > getFromIP) = 0;
+
+      bool
+      ProcessDataMessage(ProtocolMessage* msg);
 
       bool
       HandleDataMessage(const PathID_t&);
@@ -167,7 +155,11 @@ namespace llarp
       HandlePathBuilt(path::Path* path);
 
       bool
-      SendToOrQueue(const byte_t* addr, llarp_buffer_t payload, ProtocolType t);
+      SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t payload,
+                           ProtocolType t);
+
+      bool
+      SendToSNodeOrQueue(const byte_t* addr, llarp_buffer_t payload);
 
       struct PendingBuffer
       {
@@ -339,6 +331,16 @@ namespace llarp
       EnsurePathToService(const Address& remote, PathEnsureHook h,
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
+      using SNodeEnsureHook =
+          std::function< void(RouterID, llarp::exit::BaseSession*) >;
+
+      /// ensure a path to a service node by public key
+      void
+      EnsurePathToSNode(const RouterID& remote);
+
+      bool
+      HasPathToSNode(const RouterID& remote) const;
+
       void
       PutSenderFor(const ConvoTag& tag, const ServiceInfo& info);
 
@@ -445,6 +447,13 @@ namespace llarp
       Sessions m_RemoteSessions;
 
       Sessions m_DeadSessions;
+
+      using SNodeSessions =
+          std::unordered_multimap< RouterID,
+                                   std::unique_ptr< llarp::exit::BaseSession >,
+                                   RouterID::Hash >;
+
+      SNodeSessions m_SNodeSessions;
 
       std::unordered_map< Address, ServiceInfo, Address::Hash >
           m_AddressToService;

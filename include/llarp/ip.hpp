@@ -88,6 +88,9 @@ namespace llarp
       llarp_buffer_t
       Buffer();
 
+      llarp_buffer_t
+      ConstBuffer() const;
+
       bool
       Load(llarp_buffer_t buf);
 
@@ -123,6 +126,15 @@ namespace llarp
         operator()() const
         {
           return llarp_ev_loop_time_now_ms(loop);
+        }
+      };
+
+      struct CompareSize
+      {
+        bool
+        operator()(const IPv4Packet& left, const IPv4Packet& right)
+        {
+          return left.sz < right.sz;
         }
       };
 

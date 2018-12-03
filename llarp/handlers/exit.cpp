@@ -9,27 +9,26 @@ namespace llarp
   namespace handlers
   {
     static void
-    ExitHandlerRecvPkt(llarp_tun_io *tun, const void *pkt, ssize_t sz)
+    ExitHandlerRecvPkt(llarp_tun_io *tun, llarp_buffer_t buf)
     {
-      static_cast< ExitEndpoint * >(tun->user)->OnInetPacket(
-          llarp::InitBuffer(pkt, sz));
+      static_cast< ExitEndpoint * >(tun->user)->OnInetPacket(buf);
     }
     static void
-    ExitHandlerFlushInbound(llarp_tun_io *tun)
+    ExitHandlerFlush(llarp_tun_io *tun)
     {
-      static_cast< ExitEndpoint * >(tun->user)->FlushInbound();
+      static_cast< ExitEndpoint * >(tun->user)->Flush();
     }
 
     ExitEndpoint::ExitEndpoint(const std::string &name, llarp_router *r)
         : m_Router(r)
         , m_Name(name)
-        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0}
+        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0}
         , m_InetToNetwork(name + "_exit_rx", r->netloop, r->netloop)
 
     {
       m_Tun.user      = this;
       m_Tun.recvpkt   = &ExitHandlerRecvPkt;
-      m_Tun.tick      = &ExitHandlerFlushInbound;
+      m_Tun.tick      = &ExitHandlerFlush;
       m_ShouldInitTun = true;
     }
 
@@ -37,14 +36,14 @@ namespace llarp
     {
     }
 
-    llarp_time_t 
+    llarp_time_t
     ExitEndpoint::Now() const
     {
       return m_Router->Now();
     }
 
     void
-    ExitEndpoint::FlushInbound()
+    ExitEndpoint::Flush()
     {
       auto now = Now();
       m_InetToNetwork.Process([&](Pkt_t &pkt) {
@@ -74,20 +73,31 @@ namespace llarp
           }
           ++itr;
         }
-        
+
         if(ep == nullptr)
         {
           // we may have all dead sessions, wtf now?
-          llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we have no working endpoints");
+          llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk,
+                         " as we have no working endpoints");
         }
         else
         {
-          if(!ep->SendInboundTraffic(pkt.Buffer()))
+          if(!ep->QueueInboundTraffic(pkt.Buffer()))
           {
-            llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk, " as we are overloaded (probably)");
+            llarp::LogWarn(Name(), " dropped inbound traffic for session ", pk,
+                           " as we are overloaded (probably)");
           }
         }
       });
+      auto itr = m_ActiveExits.begin();
+      while(itr != m_ActiveExits.end())
+      {
+        if(!itr->second->Flush())
+        {
+          llarp::LogWarn("exit session with ", itr->first, " dropped packets");
+        }
+        ++itr;
+      }
     }
 
     bool
@@ -184,7 +194,7 @@ namespace llarp
     bool
     ExitEndpoint::QueueOutboundTraffic(llarp_buffer_t buf)
     {
-      return llarp_ev_tun_async_write(&m_Tun, buf.base, buf.sz);
+      return llarp_ev_tun_async_write(&m_Tun, buf);
     }
 
     void

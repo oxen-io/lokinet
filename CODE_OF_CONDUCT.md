@@ -2,7 +2,7 @@
 
 * Act like a responsible adult.
 
-* RUN `make format && make lint -j8` BEFORE COMMITING ALWAYS.
+* RUN `make format` BEFORE COMMITING ALWAYS.
 
 # Do NOT
 
@@ -22,3 +22,6 @@
 
 * Merge large and pointless or pedantic changes, (i.e. code formatting shift)
 
+## additional notes
+
+github's ui doesn't seem accept this file as a real code of conduct.

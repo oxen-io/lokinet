@@ -11,6 +11,7 @@ namespace llarp
         : llarp::path::Builder(r, r->dht, numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
+        , m_Counter(0)
     {
       r->crypto.identity_keygen(m_ExitIdentity);
     }
@@ -56,10 +57,7 @@ namespace llarp
       llarp::routing::ObtainExitMessage obtain;
       obtain.S = p->NextSeqNo();
       obtain.T = llarp_randint();
-      // TODO: set expiratation
-      obtain.X = 0;
-      // TODO: distinguish between service node traffic
-      obtain.E = 1;
+      PopulateRequest(obtain);
       if(!obtain.Sign(&router->crypto, m_ExitIdentity))
       {
         llarp::LogError("Failed to sign exit request");
@@ -101,16 +99,59 @@ namespace llarp
     }
 
     bool
-    BaseSession::SendUpstreamTraffic(llarp::net::IPv4Packet pkt)
+    BaseSession::QueueUpstreamTraffic(llarp::net::IPv4Packet pkt,
+                                      const size_t N)
+    {
+      auto buf    = pkt.Buffer();
+      auto& queue = m_Upstream[buf.sz / N];
+      // queue overflow
+      if(queue.size() >= MaxUpstreamQueueLength)
+        return false;
+      if(queue.size() == 0)
+      {
+        queue.emplace_back();
+        return queue.back().PutBuffer(buf, m_Counter++);
+      }
+      auto& back = queue.back();
+      // pack to nearest N
+      if(back.Size() + buf.sz > N)
+      {
+        queue.emplace_back();
+        return queue.back().PutBuffer(buf, m_Counter++);
+      }
+      else
+        return back.PutBuffer(buf, m_Counter++);
+    }
+
+    bool
+    BaseSession::IsReady() const
+    {
+      return AvailablePaths(llarp::path::ePathRoleExit) > 0;
+    }
+
+    bool
+    BaseSession::FlushUpstreamTraffic()
     {
       auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
       if(!path)
+      {
+        // discard
+        for(auto& item : m_Upstream)
+          item.second.clear();
         return false;
-      llarp::routing::TransferTrafficMessage transfer;
-      transfer.S = path->NextSeqNo();
-      if(!transfer.PutBuffer(pkt.Buffer()))
-        return false;
-      return path->SendRoutingMessage(&transfer, router);
+      }
+      for(auto& item : m_Upstream)
+      {
+        auto& queue = item.second;
+        while(queue.size())
+        {
+          auto& msg = queue.front();
+          msg.S     = path->NextSeqNo();
+          path->SendRoutingMessage(&msg, router);
+          queue.pop_front();
+        }
+      }
+      return true;
     }
 
   }  // namespace exit

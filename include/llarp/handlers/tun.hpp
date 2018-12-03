@@ -33,10 +33,13 @@ namespace llarp
       TickTun(llarp_time_t now);
 
       bool
-      MapAddress(const service::Address& remote, huint32_t ip);
+      MapAddress(const service::Address& remote, huint32_t ip, bool SNode);
 
       bool
       Start();
+
+      bool
+      IsSNode() const;
 
       /// set up tun interface, blocking
       bool
@@ -49,7 +52,8 @@ namespace llarp
       /// overrides Endpoint
       /// handle inbound traffic
       bool
-      ProcessDataMessage(service::ProtocolMessage* msg);
+      HandleWriteIPPacket(llarp_buffer_t buf,
+                          std::function< huint32_t(void) > getFromIP) override;
 
       /// queue outbound packet to the world
       bool
@@ -73,6 +77,7 @@ namespace llarp
 #endif
 
       llarp_tun_io tunif;
+      std::unique_ptr< llarp_fd_promise > Promise;
 
       /// called before writing to tun interface
       static void
@@ -85,7 +90,7 @@ namespace llarp
 
       /// called every time we wish to read a packet from the tun interface
       static void
-      tunifRecvPkt(llarp_tun_io* t, const void* pkt, ssize_t sz);
+      tunifRecvPkt(llarp_tun_io* t, llarp_buffer_t buf);
 
       /// called in the endpoint logic thread
       static void
@@ -94,10 +99,10 @@ namespace llarp
       /// get a key for ip address
       template < typename Addr >
       Addr
-      ObtainAddrForIP(huint32_t ip)
+      ObtainAddrForIP(huint32_t ip, bool isSNode)
       {
         auto itr = m_IPToAddr.find(ip);
-        if(itr == m_IPToAddr.end())
+        if(itr == m_IPToAddr.end() || m_SNodes[itr->second] != isSNode)
         {
           // not found
           Addr addr;
@@ -109,14 +114,14 @@ namespace llarp
       }
 
       bool
-      HasAddress(const byte_t* addr) const
+      HasAddress(const byte_t* addr) const override
       {
         return m_AddrToIP.find(addr) != m_AddrToIP.end();
       }
 
       /// get ip address for key unconditionally
       huint32_t
-      ObtainIPForAddr(const byte_t* addr);
+      ObtainIPForAddr(const byte_t* addr, bool serviceNode) override;
 
      protected:
       using PacketQueue_t = llarp::util::CoDelQueue<
@@ -150,6 +155,11 @@ namespace llarp
                           AlignedBuffer< 32 >::Hash >
           m_AddrToIP;
 
+      /// maps key to true if key is a service node, maps key to false if key is
+      /// a hidden service
+      std::unordered_map< AlignedBuffer< 32 >, bool, AlignedBuffer< 32 >::Hash >
+          m_SNodes;
+
      private:
       bool
       QueueInboundPacketForExit(llarp_buffer_t buf)
@@ -167,6 +177,8 @@ namespace llarp
       /// handles setup, given value true on success and false on failure to set
       /// up interface
       std::promise< bool > m_TunSetupResult;
+      /// handles fd injection force android
+      std::promise< int > m_VPNPromise;
 #endif
       /// DNS server per tun
       struct dnsd_context dnsd;

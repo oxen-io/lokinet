@@ -25,11 +25,40 @@ struct check_query_simple_request
 {
   // already inside request
   // const struct sockaddr *from;  // source
-  dnsd_question_request *request;
+  const dnsd_question_request *request;
 };
 
 std::unordered_map< std::string, struct dnsd_query_hook_response * >
     loki_tld_lookup_cache;
+
+static bool
+decode_request_name(const std::string &name, llarp::AlignedBuffer< 32 > &addr,
+                    bool &isSNode)
+{
+  llarp::service::Address serviceAddr;
+  llarp::RouterID snodeAddr;
+  auto pos = name.find(".snode");
+  if(pos != std::string::npos)
+  {
+    if(!llarp::HexDecode(name.substr(0, pos).c_str(), serviceAddr.data(),
+                         serviceAddr.size()))
+    {
+      return false;
+    }
+    addr    = snodeAddr.data();
+    isSNode = true;
+  }
+  else
+  {
+    if(!serviceAddr.FromString(name))
+    {
+      return false;
+    }
+    addr    = serviceAddr.data();
+    isSNode = false;
+  }
+  return true;
+}
 
 void
 llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
@@ -54,15 +83,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   // if so send that
   // else
   // if we have a free private ip, send that
-  llarp::service::Address addr;
-  if(!addr.FromString(qr->request->question.name))
-  {
-    llarp::LogWarn("Could not base32 decode address: ",
-                   qr->request->question.name);
-    write404_dnss_response(qr->request);
-    delete qr;
-    return;
-  }
+
   /*
   // cache hit
   auto itr = loki_tld_lookup_cache.find(addr.ToString());
@@ -90,10 +111,17 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
     delete qr;
     return;
   }
-
-  llarp::huint32_t *tunIp =
-      new llarp::huint32_t(routerHiddenServiceContext->GetIpForAddr(addr));
-  if(!tunIp->h)
+  llarp::huint32_t serviceIP;
+  llarp::AlignedBuffer< 32 > addr;
+  bool isSNode = false;
+  if(!decode_request_name(qr->request->question.name, addr, isSNode))
+  {
+    llarp::LogWarn("decode_request_name failed");
+    write404_dnss_response(qr->request);
+    delete qr;
+    return;
+  }
+  if(!routerHiddenServiceContext->FindBestAddressFor(addr, isSNode, serviceIP))
   {
     llarp::LogWarn("dotLokiLookup failed to map address");
     write404_dnss_response(qr->request);
@@ -120,7 +148,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   // llarp::Addr test(*free_private->hostResult.getSockAddr());
   // llarp::LogInfo("IP Test: ", test);
   // response->returnThis = &free_private->hostResult;
-  response->returnThis = tunIp;
+  response->returnThis = serviceIP;
   llarp::LogInfo("Saving ", qr->request->question.name);
   loki_tld_lookup_cache[qr->request->question.name] = response;
   // we can't delete response now...
@@ -141,7 +169,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   }
   */
   llarp::huint32_t foundAddr;
-  if(!routerHiddenServiceContext->FindBestAddressFor(addr, foundAddr))
+  if(!routerHiddenServiceContext->FindBestAddressFor(addr, isSNode, foundAddr))
   {
     write404_dnss_response(qr->request);
     delete qr;
@@ -190,7 +218,7 @@ struct reverse_handler_iter_context
 {
   std::string lName;
   // const struct sockaddr *from; // aready inside dnsd_question_request
-  const struct dnsd_question_request *request;
+  const dnsd_question_request *request;
 };
 
 #if defined(ANDROID) || defined(RPI)
@@ -234,54 +262,76 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
       llarp::iprange_ipv4(std::stoi(tokensCheck[0]), std::stoi(tokensCheck[1]),
                           std::stoi(tokensCheck[2]), std::stoi(tokensCheck[3]),
                           tunEndpoint->tunif.netmask);  // create range
-  // hack atm to work around limitations in ipaddr_ipv4_bits and llarp::IPRange
-  llarp::huint32_t searchIPv4_fixed = llarp::ipaddr_ipv4_bits(
-      std::stoi(tokensSearch[searchTokens - 6]),
-      std::stoi(tokensSearch[searchTokens - 5]),
-      std::stoi(tokensSearch[searchTokens - 4]),
-      std::stoi(tokensSearch[searchTokens - 3]));  // create ip
-  llarp::huint32_t searchIPv4_search = llarp::ipaddr_ipv4_bits(
+
+  llarp::huint32_t searchIPv4 = llarp::ipaddr_ipv4_bits(
       std::stoi(tokensSearch[searchTokens - 3]),
       std::stoi(tokensSearch[searchTokens - 4]),
       std::stoi(tokensSearch[searchTokens - 5]),
       std::stoi(tokensSearch[searchTokens - 6]));  // create ip
 
   // bool inRange = range.Contains(searchAddr.xtohl());
-  bool inRange = range.Contains(searchIPv4_search);
+  bool inRange = range.Contains(searchIPv4);
 
   llarp::Addr searchAddr(searchIp);
   llarp::Addr checkAddr(checkIp);
-  llarp::LogDebug(searchAddr, " vs ", range, " = ",
-                  inRange ? "inRange" : "not match");
+  llarp::LogInfo(searchIPv4, " vs ", range, " = ",
+                 inRange ? "inRange" : "not match");
 
   if(inRange)
   {
-    llarp::service::Address addr =
-        tunEndpoint->ObtainAddrForIP< llarp::service::Address >(
-            searchIPv4_fixed);
+    llarp::AlignedBuffer< 32 > addr =
+        tunEndpoint->ObtainAddrForIP< llarp::AlignedBuffer< 32 > >(searchIPv4,
+                                                                   false);
     if(addr.IsZero())
     {
-      write404_dnss_response((dnsd_question_request *)context->request);
+      addr = tunEndpoint->ObtainAddrForIP< llarp::AlignedBuffer< 32 > >(
+          searchIPv4, true);
+      if(!addr.IsZero())
+      {
+        char stack[128]   = {0};
+        std::string saddr = llarp::HexEncode(addr, stack);
+        saddr += ".snode";
+        writesend_dnss_revresponse(saddr, context->request);
+      }
+      else
+        write404_dnss_response(context->request);
     }
     else
     {
-      // llarp::LogInfo("Returning [", addr.ToString(), "]");
-      writesend_dnss_revresponse(addr.ToString(),
-                                 (dnsd_question_request *)context->request);
+      llarp::service::Address saddr = addr.data();
+      // llarp::LogInfo("Returning [", saddr.ToString(), "]");
+      writesend_dnss_revresponse(saddr.ToString(), context->request);
     }
     return false;
   }
   return true;  // we don't do anything with the result yet
 }
 
+static bool
+should_intercept_query_with_name(const std::string &lName)
+{
+  // null terminated list
+  static const char *const matches[] = {".loki", ".snode", ".loki.", ".snode.",
+                                        0};
+  size_t idx                         = 0;
+  while(matches[idx])
+  {
+    std::string match_str(matches[idx]);
+    if(lName.substr(lName.length() - match_str.length()) == match_str)
+      return true;
+    ++idx;
+  }
+  return false;
+}
+
 dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name,
-                            struct dnsd_question_request *const request)
+                            const dnsd_question_request *request)
 {
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
   response->dontLookUp               = false;
   response->dontSendResponse         = false;
-  response->returnThis               = nullptr;
+  response->returnThis.h             = 0;
   llarp::LogDebug("Hooked ", name);
   std::string lName = name;
   std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
@@ -315,6 +365,7 @@ llarp_dotlokilookup_handler(std::string name,
     if(!res)
     {
       llarp::LogDebug("Reverse is ours");
+      response->dontLookUp       = true;
       response->dontSendResponse = true;  // should have already sent it
     }
     else
@@ -322,9 +373,7 @@ llarp_dotlokilookup_handler(std::string name,
       llarp::LogInfo("Reverse is not ours");
     }
   }
-  else if((lName.length() > 5 && lName.substr(lName.length() - 5, 5) == ".loki")
-          || (lName.length() > 6
-              && lName.substr(lName.length() - 6, 6) == ".loki."))
+  else if(should_intercept_query_with_name(lName))
   {
     llarp::LogInfo("Detect Loki Lookup for ", lName);
     auto cache_check = loki_tld_lookup_cache.find(lName);
@@ -337,15 +386,14 @@ llarp_dotlokilookup_handler(std::string name,
       return cache_check->second;
     }
 
-    // decode string into HS addr
-    llarp::service::Address addr;
-    if(!addr.FromString(lName))
+    // decode address
+    llarp::AlignedBuffer< 32 > addr;
+    bool isSNode = false;
+    if(!decode_request_name(lName, addr, isSNode))
     {
-      llarp::LogWarn("Could not base32 decode address");
-      response->dontLookUp = true;  // will return nullptr which will give a 404
+      response->dontLookUp = true;
       return response;
     }
-    llarp::LogDebug("Base32 decoded address ", addr);
 
     dotLokiLookup *dll = (dotLokiLookup *)request->context->user;
     llarp::service::Context *routerHiddenServiceContext =
@@ -366,11 +414,23 @@ llarp_dotlokilookup_handler(std::string name,
     qr->request = request;
 
     auto tun = routerHiddenServiceContext->getFirstTun();
-    if(tun->HasPathToService(addr))
+    if(isSNode)
     {
-      llarp_dotlokilookup_checkQuery(qr, 0, 0);
-      response->dontSendResponse = true;  // will send it shortly
-      return response;
+      if(tun->HasPathToSNode(addr.data()))
+      {
+        llarp_dotlokilookup_checkQuery(qr, 0, 0);
+        response->dontSendResponse = true;  // will send it shortly
+        return response;
+      }
+    }
+    else
+    {
+      if(tun->HasPathToService(addr.data()))
+      {
+        llarp_dotlokilookup_checkQuery(qr, 0, 0);
+        response->dontSendResponse = true;  // will send it shortly
+        return response;
+      }
     }
 
     // nslookup on osx is about 5 sec before a retry, 2s on linux

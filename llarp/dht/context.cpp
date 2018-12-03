@@ -77,9 +77,11 @@ namespace llarp
         llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
         for(const auto &pk : valuesFound)
         {
-          // try connecting to it we don't know it
-          // this triggers a dht lookup
-          parent->router->TryEstablishTo(pk);
+          // lookup router
+          parent->LookupRouter(
+              pk,
+              std::bind(&llarp_router::HandleDHTLookupForExplore,
+                        parent->router, pk, std::placeholders::_1));
         }
       }
     };
@@ -87,8 +89,9 @@ namespace llarp
     void
     Context::ExploreNetworkVia(const Key_t &askpeer)
     {
-      TXOwner peer(askpeer, ++ids);
-      TXOwner whoasked(OurKey(), 0);
+      uint64_t txid = ++ids;
+      TXOwner peer(askpeer, txid);
+      TXOwner whoasked(OurKey(), txid);
       pendingExploreLookups.NewTX(peer, whoasked, askpeer,
                                   new ExploreNetworkJob(askpeer, this));
     }

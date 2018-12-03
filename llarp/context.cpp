@@ -13,6 +13,8 @@
 #include <pthread_np.h>
 #endif
 
+#include "ev.hpp"
+
 namespace llarp
 {
   Context::~Context()
@@ -154,27 +156,21 @@ namespace llarp
       llarp::LogError("Failed to configure router");
       return 1;
     }
-    // set nodedb, load our RC, establish DHT
-    llarp_run_router(router, nodedb);
-
-    return 0;  // success
+    return 0;
   }
 
   int
   Context::Run()
   {
-    // just check to make sure it's not already set up (either this or we add a
-    // bool and/or add another function)
-    if(!this->router)
+    if(router == nullptr)
     {
-      // set up all requirements
-      if(this->Setup())
-      {
-        llarp::LogError("Failed to setup router");
-        return 1;
-      }
+      // we are not set up so we should die
+      llarp::LogError("cannot run non configured context");
+      return 1;
     }
-
+    // run
+    if(!llarp_run_router(router, nodedb))
+      return 1;
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, worker, logic);
@@ -207,6 +203,14 @@ namespace llarp
   void
   Context::Close()
   {
+    llarp::LogDebug("stopping logic");
+    if(logic)
+      llarp_logic_stop(logic);
+
+    llarp::LogDebug("stopping event loop");
+    if(mainloop)
+      llarp_ev_loop_stop(mainloop);
+
     llarp::LogDebug("stop router");
     if(router)
       llarp_stop_router(router);
@@ -218,11 +222,6 @@ namespace llarp
     llarp::LogDebug("join workers");
     if(worker)
       llarp_threadpool_join(worker);
-
-    llarp::LogDebug("stop logic");
-
-    if(logic)
-      llarp_logic_stop(logic);
 
     llarp::LogDebug("free config");
     llarp_free_config(&config);
@@ -241,14 +240,6 @@ namespace llarp
 
     llarp::LogDebug("free logic");
     llarp_free_logic(&logic);
-
-    for(auto &t : netio_threads)
-    {
-      llarp::LogDebug("join netio thread");
-      t.join();
-    }
-
-    netio_threads.clear();
   }
 
   bool
@@ -295,6 +286,18 @@ extern "C"
     ptr->ctx->HandleSignal(sig);
   }
 
+  void
+  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int fd)
+  {
+    llarp::handlers::TunEndpoint *tun =
+        ptr->ctx->router->hiddenServiceContext.getFirstTun();
+    if(!tun)
+      return;
+    if(!tun->Promise)
+      return;
+    tun->Promise->Set(fd);
+  }
+
   int
   llarp_main_setup(struct llarp_main *ptr)
   {
@@ -307,7 +310,7 @@ extern "C"
     if(!ptr)
     {
       llarp::LogError("No ptr passed in");
-      return 0;
+      return 1;
     }
     return ptr->ctx->Run();
   }
@@ -444,14 +447,6 @@ extern "C"
   }
 
   bool
-  main_router_mapAddress(struct llarp_main *ptr,
-                         const llarp::service::Address &addr, uint32_t ip)
-  {
-    auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
-    return endpoint->MapAddress(addr, llarp::huint32_t{ip});
-  }
-
-  bool
   main_router_prefetch(struct llarp_main *ptr,
                        const llarp::service::Address &addr)
   {
@@ -462,8 +457,9 @@ extern "C"
   llarp::handlers::TunEndpoint *
   main_router_getFirstTunEndpoint(struct llarp_main *ptr)
   {
-    auto *context = &ptr->ctx->router->hiddenServiceContext;
-    return context->getFirstTun();
+    if(ptr && ptr->ctx && ptr->ctx->router)
+      return ptr->ctx->router->hiddenServiceContext.getFirstTun();
+    return nullptr;
   }
 
   //#include <llarp/service/context.hpp>

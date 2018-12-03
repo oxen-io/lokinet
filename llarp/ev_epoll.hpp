@@ -24,7 +24,7 @@
 namespace llarp
 {
   int
-  tcp_conn::read(void* buf, size_t sz)
+  tcp_conn::read(byte_t* buf, size_t sz)
   {
     if(_shouldClose)
       return -1;
@@ -34,7 +34,7 @@ namespace llarp
     if(amount > 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, buf, amount);
+        tcp.read(&tcp, llarp::InitBuffer(buf, amount));
     }
     else
     {
@@ -93,7 +93,7 @@ namespace llarp
   }
 
   int
-  tcp_serv::read(void*, size_t)
+  tcp_serv::read(byte_t*, size_t)
   {
     int new_fd = ::accept(fd, nullptr, nullptr);
     if(new_fd == -1)
@@ -134,17 +134,21 @@ namespace llarp
     }
 
     int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
+      llarp_buffer_t b;
+      b.base = buf;
+      b.cur  = b.base;
       sockaddr_in6 src;
       socklen_t slen = sizeof(sockaddr_in6);
       sockaddr* addr = (sockaddr*)&src;
-      ssize_t ret    = ::recvfrom(fd, buf, sz, 0, addr, &slen);
+      ssize_t ret    = ::recvfrom(fd, b.base, sz, 0, addr, &slen);
       if(ret < 0)
         return -1;
       if(static_cast< size_t >(ret) > sz)
         return -1;
-      udp->recvfrom(udp, addr, buf, ret);
+      b.sz = ret;
+      udp->recvfrom(udp, addr, b);
       return 0;
     }
 
@@ -213,37 +217,58 @@ namespace llarp
     }
 
     int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 0 && t->recvpkt)
       {
         // does not have pktinfo
-        t->recvpkt(t, buf, ret);
+        t->recvpkt(t, llarp::InitBuffer(buf, ret));
       }
       return ret;
+    }
+
+    static int
+    wait_for_fd_promise(struct device* dev)
+    {
+      llarp::tun* t = static_cast< llarp::tun* >(dev->user);
+      if(t->t->get_fd_promise)
+      {
+        struct llarp_fd_promise* promise = t->t->get_fd_promise(t->t);
+        if(promise)
+          return llarp_fd_promise_wait_for_value(promise);
+      }
+      return -1;
     }
 
     bool
     setup()
     {
+      // for android
+      if(t->get_fd_promise)
+      {
+        tunif->obtain_fd = &wait_for_fd_promise;
+        tunif->user      = this;
+      }
       llarp::LogDebug("set ifname to ", t->ifname);
       strncpy(tunif->if_name, t->ifname, sizeof(tunif->if_name));
-
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
       {
         llarp::LogWarn("failed to start interface");
         return false;
       }
-      if(tuntap_up(tunif) == -1)
+      if(t->get_fd_promise == nullptr)
       {
-        llarp::LogWarn("failed to put interface up: ", strerror(errno));
-        return false;
-      }
-      if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
-      {
-        llarp::LogWarn("failed to set ip");
-        return false;
+        if(tuntap_up(tunif) == -1)
+        {
+          llarp::LogWarn("failed to put interface up: ", strerror(errno));
+          return false;
+        }
+        if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
+        {
+          llarp::LogWarn("failed to set ip");
+          return false;
+        }
       }
       fd = tunif->tun_fd;
       if(fd == -1)
@@ -257,6 +282,8 @@ namespace llarp
 
     ~tun()
     {
+      if(tunif)
+        tuntap_destroy(tunif);
     }
   };
 };  // namespace llarp
@@ -485,7 +512,10 @@ struct llarp_epoll_loop : public llarp_ev_loop
   create_tun(llarp_tun_io* tun)
   {
     llarp::tun* t = new llarp::tun(tun, this);
-    if(t->setup())
+    if(tun->get_fd_promise)
+    {
+    }
+    else if(t->setup())
     {
       return t;
     }
@@ -548,6 +578,14 @@ struct llarp_epoll_loop : public llarp_ev_loop
   void
   stop()
   {
+    // close all handlers before closing the epoll fd
+    auto itr = handlers.begin();
+    while(itr != handlers.end())
+    {
+      close_ev(itr->get());
+      itr = handlers.erase(itr);
+    }
+
     if(epollfd != -1)
       close(epollfd);
     epollfd = -1;

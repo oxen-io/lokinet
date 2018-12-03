@@ -13,10 +13,10 @@ namespace llarp
      private:
       llarp::PubKey enckey;
       llarp::PubKey signkey;
-    
+
      public:
       VanityNonce vanity;
-      
+
       ServiceInfo() = default;
 
       ServiceInfo(ServiceInfo&& other)
@@ -58,7 +58,8 @@ namespace llarp
       }
 
       bool
-      Update(const byte_t* enc, const byte_t* sign, const byte_t * nonce=nullptr)
+      Update(const byte_t* enc, const byte_t* sign,
+             const byte_t* nonce = nullptr)
       {
         enckey  = enc;
         signkey = sign;

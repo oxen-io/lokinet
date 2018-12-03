@@ -4,6 +4,7 @@
 #include <llarp/crypto.hpp>
 #include <llarp/router.h>
 #include <llarp/path.hpp>
+#include <llarp/ip.hpp>
 
 namespace llarp
 {
@@ -18,8 +19,10 @@ namespace llarp
     /// persistant exit state for 1 identity on the exit node
     struct Endpoint
     {
+      static constexpr size_t MaxUpstreamQueueSize = 256;
+
       Endpoint(const llarp::PubKey& remoteIdent,
-               const llarp::PathID_t& beginPath, bool rewriteDst, huint32_t ip,
+               const llarp::PathID_t& beginPath, bool rewriteIP, huint32_t ip,
                llarp::handlers::ExitEndpoint* parent);
 
       ~Endpoint();
@@ -36,21 +39,25 @@ namespace llarp
       ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 5000) const;
 
       /// return true if this endpoint looks dead right now
-      bool 
+      bool
       LooksDead(llarp_time_t now, llarp_time_t timeout = 10000) const;
 
       /// tick ourself, reset tx/rx rates
       void
       Tick(llarp_time_t now);
 
-      /// handle traffic from service node / internet
+      /// queue traffic from service node / internet to be transmitted
       bool
-      SendInboundTraffic(llarp_buffer_t buff);
+      QueueInboundTraffic(llarp_buffer_t buff);
 
-      /// send traffic to service node / internet
+      /// flush inbound and outbound traffic queues
+      bool
+      Flush();
+
+      /// queue outbound traffic
       /// does ip rewrite here
       bool
-      SendOutboundTraffic(llarp_buffer_t buf);
+      QueueOutboundTraffic(llarp_buffer_t pkt, uint64_t counter);
 
       /// update local path id and cascade information to parent
       /// return true if success
@@ -98,6 +105,32 @@ namespace llarp
       uint64_t m_TxRate, m_RxRate;
       llarp_time_t m_LastActive;
       bool m_RewriteSource;
+      using InboundTrafficQueue_t =
+          std::deque< llarp::routing::TransferTrafficMessage >;
+      using TieredQueue = std::map< uint8_t, InboundTrafficQueue_t >;
+      // maps number of fragments the message will fit in to the queue for it
+      TieredQueue m_DownstreamQueues;
+
+      struct UpstreamBuffer
+      {
+        UpstreamBuffer(const llarp::net::IPv4Packet& p, uint64_t c)
+            : pkt(p), counter(c)
+        {
+        }
+
+        llarp::net::IPv4Packet pkt;
+        uint64_t counter;
+
+        bool
+        operator<(const UpstreamBuffer& other) const
+        {
+          return counter < other.counter;
+        }
+      };
+
+      using UpstreamQueue_t = std::priority_queue< UpstreamBuffer >;
+      UpstreamQueue_t m_UpstreamQueue;
+      uint64_t m_Counter;
     };
   }  // namespace exit
 }  // namespace llarp

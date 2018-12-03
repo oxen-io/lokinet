@@ -3,6 +3,7 @@
 #include <llarp/messages/discard.hpp>
 #include "buffer.hpp"
 #include "router.hpp"
+#include <llarp/endian.hpp>
 
 namespace llarp
 {
@@ -257,10 +258,17 @@ namespace llarp
       auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
       if(endpoint)
       {
-        if(endpoint->SendOutboundTraffic(llarp::ConstBuffer(msg->X)))
-          return true;
-        else
-          llarp::LogError("failed to send outbound traffic for exit on ", info);
+        bool sent = true;
+        for(const auto& pkt : msg->X)
+        {
+          // check short packet buffer
+          if(pkt.size() <= 8)
+            continue;
+          uint64_t counter = bufbe64toh(pkt.data());
+          sent &= endpoint->QueueOutboundTraffic(
+              llarp::InitBuffer(pkt.data() + 8, pkt.size() - 8), counter);
+        }
+        return sent;
       }
       else
         llarp::LogError("No exit endpoint on ", info);

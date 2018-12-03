@@ -15,7 +15,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="@dimen/horizontal_page_margin"
-        android:text="SD card write access is required to write the keys and other files on an SD card."
+        android:text="VPN permissions are required for lokinet usage."
         />
 
     <Button
