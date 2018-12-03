@@ -170,7 +170,9 @@ main(int argc, char *argv[])
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
 #endif
-    code = llarp_main_run(ctx);
+    code = llarp_main_setup(ctx);
+    if(code == 0)
+      code = llarp_main_run(ctx);
     llarp_main_free(ctx);
   }
 #ifdef _WIN32
