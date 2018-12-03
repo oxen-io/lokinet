@@ -24,6 +24,8 @@ struct asio_evt_pkt
   bool write = false;        // true, or false if read pkt
   size_t sz;  // if this doesn't match what is in the packet, note the error
 };
+#else
+#include <sys/un.h>
 #endif
 
 #ifndef MAX_WRITE_QUEUE_SIZE
