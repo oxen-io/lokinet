@@ -8,7 +8,7 @@
 #include <sodium/private/sse2_64_32.h>
 #include <sodium/utils.h>
 
-#if __AVX2__ && __amd64__
+#if __AVX2__
 
 #ifdef __GNUC__
 #pragma GCC target("sse2")

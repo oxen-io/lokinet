@@ -68,8 +68,25 @@ operator==(const sockaddr_in6& a, const sockaddr_in6& b)
 #include <iphlpapi.h>
 #include <strsafe.h>
 
+// current strategy: mingw 32-bit builds call an inlined version of the function
+// microsoft c++ and mingw 64-bit builds call the normal function
 #define DEFAULT_BUFFER_SIZE 15000
 
+// the inline monkey patch for downlevel platforms
+#ifndef _MSC_VER
+extern "C" DWORD FAR PASCAL
+_GetAdaptersAddresses(ULONG Family, ULONG Flags, PVOID Reserved,
+                      PIP_ADAPTER_ADDRESSES pAdapterAddresses,
+                      PULONG pOutBufLen);
+#endif
+
+// in any case, we still need to implement some form of
+// getifaddrs(3) with compatible semantics on NT...
+// daemon.ini section [bind] will have something like
+// [bind]
+// Ethernet=1090
+// inside, since that's what we use in windows to refer to
+// network interfaces
 struct llarp_nt_ifaddrs_t
 {
   struct llarp_nt_ifaddrs_t* ifa_next; /* Pointer to the next structure.  */
@@ -123,6 +140,148 @@ llarp_nt_sockaddr_pton(const char* src, struct sockaddr* dst)
   return 0;
 }
 
+/* NB: IP_ADAPTER_INFO size varies size due to sizeof (time_t), the API assumes
+ * 4-byte datatype whilst compiler uses an 8-byte datatype.  Size can be forced
+ * with -D_USE_32BIT_TIME_T with side effects to everything else.
+ *
+ * Only supports IPv4 addressing similar to SIOCGIFCONF socket option.
+ *
+ * Interfaces that are not "operationally up" will return the address 0.0.0.0,
+ * this includes adapters with static IP addresses but with disconnected cable.
+ * This is documented under the GetIpAddrTable API.  Interface status can only
+ * be determined by the address, a separate flag is introduced with the
+ * GetAdapterAddresses API.
+ *
+ * The IPv4 loopback interface is not included.
+ *
+ * Available in Windows 2000 and Wine 1.0.
+ */
+static bool
+_llarp_nt_getadaptersinfo(struct llarp_nt_ifaddrs_t** ifap)
+{
+  DWORD dwRet;
+  ULONG ulOutBufLen             = DEFAULT_BUFFER_SIZE;
+  PIP_ADAPTER_INFO pAdapterInfo = nullptr;
+  PIP_ADAPTER_INFO pAdapter     = nullptr;
+
+  /* loop to handle interfaces coming online causing a buffer overflow
+   * between first call to list buffer length and second call to enumerate.
+   */
+  for(unsigned i = 3; i; i--)
+  {
+#ifdef DEBUG
+    fprintf(stderr, "IP_ADAPTER_INFO buffer length %lu bytes.\n", ulOutBufLen);
+#endif
+    pAdapterInfo = (IP_ADAPTER_INFO*)_llarp_nt_heap_alloc(ulOutBufLen);
+    dwRet        = GetAdaptersInfo(pAdapterInfo, &ulOutBufLen);
+    if(ERROR_BUFFER_OVERFLOW == dwRet)
+    {
+      _llarp_nt_heap_free(pAdapterInfo);
+      pAdapterInfo = nullptr;
+    }
+    else
+    {
+      break;
+    }
+  }
+
+  switch(dwRet)
+  {
+    case ERROR_SUCCESS: /* NO_ERROR */
+      break;
+    case ERROR_BUFFER_OVERFLOW:
+      errno = ENOBUFS;
+      if(pAdapterInfo)
+        _llarp_nt_heap_free(pAdapterInfo);
+      return false;
+    default:
+      errno = dwRet;
+#ifdef DEBUG
+      fprintf(stderr, "system call failed: %lu\n", GetLastError());
+#endif
+      if(pAdapterInfo)
+        _llarp_nt_heap_free(pAdapterInfo);
+      return false;
+  }
+
+  /* count valid adapters */
+  int n = 0, k = 0;
+  for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
+  {
+    for(IP_ADDR_STRING* pIPAddr = &pAdapter->IpAddressList; pIPAddr;
+        pIPAddr                 = pIPAddr->Next)
+    {
+      /* skip null adapters */
+      if(strlen(pIPAddr->IpAddress.String) == 0)
+        continue;
+      ++n;
+    }
+  }
+
+#ifdef DEBUG
+  fprintf(stderr, "GetAdaptersInfo() discovered %d interfaces.\n", n);
+#endif
+
+  /* contiguous block for adapter list */
+  struct _llarp_nt_ifaddrs_t* ifa =
+      llarp_nt_new0(struct _llarp_nt_ifaddrs_t, n);
+  struct _llarp_nt_ifaddrs_t* ift = ifa;
+
+  /* now populate list */
+  for(pAdapter = pAdapterInfo; pAdapter; pAdapter = pAdapter->Next)
+  {
+    for(IP_ADDR_STRING* pIPAddr = &pAdapter->IpAddressList; pIPAddr;
+        pIPAddr                 = pIPAddr->Next)
+    {
+      /* skip null adapters */
+      if(strlen(pIPAddr->IpAddress.String) == 0)
+        continue;
+
+      /* address */
+      ift->_ifa.ifa_addr = (struct sockaddr*)&ift->_addr;
+      assert(1
+             == llarp_nt_sockaddr_pton(pIPAddr->IpAddress.String,
+                                       ift->_ifa.ifa_addr));
+
+      /* name */
+#ifdef DEBUG
+      fprintf(stderr, "name:%s IPv4 index:%lu\n", pAdapter->AdapterName,
+              pAdapter->Index);
+#endif
+      ift->_ifa.ifa_name = ift->_name;
+      StringCchCopyN(ift->_ifa.ifa_name, 128, pAdapter->AdapterName, 128);
+
+      /* flags: assume up, broadcast and multicast */
+      ift->_ifa.ifa_flags = IFF_UP | IFF_BROADCAST | IFF_MULTICAST;
+      if(pAdapter->Type == MIB_IF_TYPE_LOOPBACK)
+        ift->_ifa.ifa_flags |= IFF_LOOPBACK;
+
+      /* netmask */
+      ift->_ifa.ifa_netmask = (sockaddr*)&ift->_netmask;
+      assert(1
+             == llarp_nt_sockaddr_pton(pIPAddr->IpMask.String,
+                                       ift->_ifa.ifa_netmask));
+
+      /* next */
+      if(k++ < (n - 1))
+      {
+        ift->_ifa.ifa_next = (struct llarp_nt_ifaddrs_t*)(ift + 1);
+        ift                = (struct _llarp_nt_ifaddrs_t*)(ift->_ifa.ifa_next);
+      }
+      else
+      {
+        ift->_ifa.ifa_next = nullptr;
+      }
+    }
+  }
+
+  if(pAdapterInfo)
+    _llarp_nt_heap_free(pAdapterInfo);
+  *ifap = (struct llarp_nt_ifaddrs_t*)ifa;
+  return true;
+}
+
+#if 0
 /* Supports both IPv4 and IPv6 addressing.  The size of IP_ADAPTER_ADDRESSES
  * changes between Windows XP, XP SP1, and Vista with additional members.
  *
@@ -136,6 +295,9 @@ llarp_nt_sockaddr_pton(const char* src, struct sockaddr* dst)
  * and lower layer down.
  *
  * Available in Windows XP and Wine 1.3.
+ *
+ * NOTE(despair): an inline implementation is provided, much like
+ * getaddrinfo(3) for old hosts. See "win32_intrnl.*"
  */
 static bool
 _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
@@ -152,12 +314,12 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
     fprintf(stderr, "IP_ADAPTER_ADDRESSES buffer length %lu bytes.\n", dwSize);
 #endif
     pAdapterAddresses = (IP_ADAPTER_ADDRESSES*)_llarp_nt_heap_alloc(dwSize);
-    dwRet             = GetAdaptersAddresses(AF_UNSPEC,
-                                 GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_ANYCAST
-                                     | GAA_FLAG_SKIP_DNS_SERVER
-                                     | GAA_FLAG_SKIP_FRIENDLY_NAME
-                                     | GAA_FLAG_SKIP_MULTICAST,
-                                 nullptr, pAdapterAddresses, &dwSize);
+    dwRet = _GetAdaptersAddresses(
+        AF_UNSPEC,
+        GAA_FLAG_INCLUDE_PREFIX | GAA_FLAG_SKIP_ANYCAST
+            | GAA_FLAG_SKIP_DNS_SERVER | GAA_FLAG_SKIP_FRIENDLY_NAME
+            | GAA_FLAG_SKIP_MULTICAST,
+        nullptr, pAdapterAddresses, &dwSize);
     if(ERROR_BUFFER_OVERFLOW == dwRet)
     {
       _llarp_nt_heap_free(pAdapterAddresses);
@@ -459,13 +621,18 @@ _llarp_nt_getadaptersaddresses(struct llarp_nt_ifaddrs_t** ifap)
   *ifap = (struct llarp_nt_ifaddrs_t*)ifa;
   return TRUE;
 }
+#endif
 
+// an implementation of if_nametoindex(3) based on GetAdapterIndex(2)
+// with a fallback to GetAdaptersAddresses(2) commented out for now
+// unless it becomes evident that the first codepath fails in certain
+// edge cases?
 static unsigned
 _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
 {
   ULONG ifIndex;
-  DWORD dwSize                            = 4096, dwRet;
-  IP_ADAPTER_ADDRESSES *pAdapterAddresses = nullptr, *adapter;
+  DWORD /* dwSize = 4096,*/ dwRet;
+  // IP_ADAPTER_ADDRESSES *pAdapterAddresses = nullptr, *adapter;
   char szAdapterName[256];
 
   if(!ifname)
@@ -479,6 +646,7 @@ _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
   else
     return 0;
 
+#if 0
   /* fallback to finding index via iterating adapter list */
 
   /* loop to handle interfaces coming online causing a buffer overflow
@@ -487,7 +655,7 @@ _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
   for(unsigned i = 3; i; i--)
   {
     pAdapterAddresses = (IP_ADAPTER_ADDRESSES*)_llarp_nt_heap_alloc(dwSize);
-    dwRet             = GetAdaptersAddresses(
+    dwRet = _GetAdaptersAddresses(
         AF_UNSPEC,
         GAA_FLAG_SKIP_ANYCAST | GAA_FLAG_SKIP_DNS_SERVER
             | GAA_FLAG_SKIP_FRIENDLY_NAME | GAA_FLAG_SKIP_MULTICAST,
@@ -534,6 +702,7 @@ _llarp_nt_getadaptersaddresses_nametoindex(const char* ifname)
   if(pAdapterAddresses)
     _llarp_nt_heap_free(pAdapterAddresses);
   return 0;
+#endif
 }
 
 // the emulated getifaddrs(3) itself.
@@ -545,7 +714,7 @@ llarp_nt_getifaddrs(struct llarp_nt_ifaddrs_t** ifap)
   fprintf(stderr, "llarp_nt_getifaddrs (ifap:%p error:%p)\n", (void*)ifap,
           (void*)errno);
 #endif
-  return _llarp_nt_getadaptersaddresses(ifap);
+  return _llarp_nt_getadaptersinfo(ifap);
 }
 
 static void

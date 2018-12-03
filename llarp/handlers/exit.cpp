@@ -280,7 +280,8 @@ namespace llarp
         }
         std::string nmask_str = v.substr(1 + pos);
         std::string host_str  = v.substr(0, pos);
-        strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr));
+        // string, or just a plain char array?
+        strncpy(m_Tun.ifaddr, host_str.c_str(), sizeof(m_Tun.ifaddr) - 1);
         m_Tun.netmask = std::atoi(nmask_str.c_str());
 
         llarp::Addr ifaddr(host_str);
@@ -292,7 +293,7 @@ namespace llarp
       }
       if(k == "ifname")
       {
-        strncpy(m_Tun.ifname, v.c_str(), sizeof(m_Tun.ifname));
+        strncpy(m_Tun.ifname, v.c_str(), sizeof(m_Tun.ifname) - 1);
         llarp::LogInfo(Name(), " set ifname to ", m_Tun.ifname);
       }
       if(k == "exit-whitelist")

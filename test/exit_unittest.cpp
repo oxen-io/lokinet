@@ -7,6 +7,8 @@ struct ExitTest : public ::testing::Test
   ExitTest()
   {
     llarp_crypto_init(&r.crypto);
+    r.netloop = nullptr;  // only windows uses defined sentinel values in
+                          // uninitialised blocks
   }
   llarp_router r;
 };

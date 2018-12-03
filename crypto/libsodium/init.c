@@ -35,7 +35,8 @@ sodium_init(void)
     {
       return -1; /* LCOV_EXCL_LINE */
     }
-    return 1;
+    /* if we're here, we already started properly */
+    return initialized ? 0: -1;
   }
   _sodium_runtime_get_cpu_features();
   _crypto_generichash_blake2b_pick_best_implementation();
