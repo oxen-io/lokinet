@@ -51,7 +51,7 @@ write404_dnss_response(const dnsd_question_request *request)
   put16bits(write_buffer, (1 << 15) | request->hdr.fields() | 3);
 
   put16bits(write_buffer, 1);  // QD (number of questions)
-  put16bits(write_buffer, 0);  // AN (number of answers)
+  put16bits(write_buffer, 1);  // AN (number of answers)
   put16bits(write_buffer, 0);  // NS (number of auth RRs)
   put16bits(write_buffer, 0);  // AR (number of Additional RRs)
 
@@ -59,6 +59,14 @@ write404_dnss_response(const dnsd_question_request *request)
   code_domain(write_buffer, request->question.name);
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
+
+  // code answer
+  code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
+  put16bits(write_buffer, request->question.type);
+  put16bits(write_buffer, request->question.qClass);
+  put32bits(write_buffer, 1);  // ttl
+  put16bits(write_buffer, 1);  // rdLength
+  *write_buffer++ = 0;         // write a null byte
 
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending 404, ", out_bytes, " bytes");
