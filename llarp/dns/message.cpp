@@ -1,5 +1,7 @@
 #include <llarp/dns/message.hpp>
 #include <llarp/endian.hpp>
+#include <llarp/logger.hpp>
+
 namespace llarp
 {
   namespace dns
@@ -7,38 +9,76 @@ namespace llarp
     bool
     MessageHeader::Encode(llarp_buffer_t* buf) const
     {
-      if(!EncodeInt(buf, id))
+      if(!llarp_buffer_put_uint16(buf, id))
         return false;
-      if(!EncodeInt(buf, fields))
+      if(!llarp_buffer_put_uint16(buf, fields))
         return false;
-      if(!EncodeInt(buf, qd_count))
+      if(!llarp_buffer_put_uint16(buf, qd_count))
         return false;
-      if(!EncodeInt(buf, an_count))
+      if(!llarp_buffer_put_uint16(buf, an_count))
         return false;
-      if(!EncodeInt(buf, ns_count))
+      if(!llarp_buffer_put_uint16(buf, ns_count))
         return false;
-      return EncodeInt(buf, ar_count);
+      return llarp_buffer_put_uint16(buf, ar_count);
     }
 
     bool
     MessageHeader::Decode(llarp_buffer_t* buf)
     {
-      if(!DecodeInt(buf, id))
+      if(!llarp_buffer_read_uint16(buf, &id))
         return false;
-      if(!DecodeInt(buf, fields))
+      if(!llarp_buffer_read_uint16(buf, &fields))
         return false;
-      if(!DecodeInt(buf, qd_count))
+      if(!llarp_buffer_read_uint16(buf, &qd_count))
         return false;
-      if(!DecodeInt(buf, an_count))
+      if(!llarp_buffer_read_uint16(buf, &an_count))
         return false;
-      if(!DecodeInt(buf, ns_count))
+      if(!llarp_buffer_read_uint16(buf, &ns_count))
         return false;
-      return DecodeInt(buf, ar_count);
+      return llarp_buffer_read_uint16(buf, &ar_count);
+    }
+
+    Message::Message(Message&& other)
+        : hdr_id(std::move(other.hdr_id))
+        , hdr_fields(std::move(other.hdr_fields))
+        , questions(std::move(other.questions))
+        , answers(std::move(other.answers))
+        , authorities(std::move(other.authorities))
+        , additional(std::move(other.additional))
+    {
+    }
+
+    Message::Message(const Message& other)
+        : hdr_id(other.hdr_id)
+        , hdr_fields(other.hdr_fields)
+        , questions(other.questions)
+        , answers(other.answers)
+        , authorities(other.authorities)
+        , additional(other.additional)
+    {
+    }
+
+    Message::Message(const MessageHeader& hdr)
+        : hdr_id(hdr.id)
+        , hdr_fields(hdr.fields)
+        , questions(size_t(hdr.qd_count))
+        , answers(size_t(hdr.an_count))
+        , authorities(size_t(hdr.ns_count))
+        , additional(size_t(hdr.ar_count))
+    {
     }
 
     bool
     Message::Encode(llarp_buffer_t* buf) const
     {
+      MessageHeader hdr;
+      hdr.id       = hdr_id;
+      hdr.fields   = hdr_fields;
+      hdr.qd_count = questions.size();
+      hdr.an_count = answers.size();
+      hdr.ns_count = authorities.size();
+      hdr.ar_count = additional.size();
+
       if(!hdr.Encode(buf))
         return false;
 
@@ -64,98 +104,100 @@ namespace llarp
     bool
     Message::Decode(llarp_buffer_t* buf)
     {
-      if(!hdr.Decode(buf))
-        return false;
-      questions.resize(hdr.qd_count);
-      answers.resize(hdr.an_count);
-      authorities.resize(hdr.ns_count);
-      additional.resize(hdr.ar_count);
-
       for(auto& qd : questions)
+      {
         if(!qd.Decode(buf))
+        {
+          llarp::LogError("failed to decode question");
           return false;
+        }
+        llarp::LogDebug(qd);
+      }
 
       for(auto& an : answers)
+      {
         if(!an.Decode(buf))
+        {
+          llarp::LogError("failed to decode answer");
           return false;
+        }
+        llarp::LogDebug(an);
+      }
 
       for(auto& ns : authorities)
+      {
         if(!ns.Decode(buf))
+        {
+          llarp::LogError("failed to decode authority");
           return false;
+        }
+        llarp::LogDebug(ns);
+      }
 
       for(auto& ar : additional)
+      {
         if(!ar.Decode(buf))
+        {
+          llarp::LogError("failed to decode additonal");
           return false;
+        }
+        llarp::LogDebug(ar);
+      }
       return true;
     }
 
     void
-    Message::UpdateHeader()
-    {
-      hdr.qd_count = questions.size();
-      hdr.an_count = answers.size();
-      hdr.ns_count = authorities.size();
-      hdr.ar_count = additional.size();
-    }
-
-    Message&
     Message::AddINReply(llarp::huint32_t ip)
     {
       if(questions.size())
       {
-        hdr.fields |= (1 << 15);
+        hdr_fields |= (1 << 15);
         const auto& question = questions[0];
-        answers.emplace_back();
-        auto& rec     = answers.back();
-        rec.rr_name   = question.qname;
-        rec.rr_type.h = 1;
-        rec.rr_class  = question.qclass;
-        rec.ttl.h     = 1;
+        ResourceRecord rec;
+        rec.rr_name  = question.qname;
+        rec.rr_type  = 1;
+        rec.rr_class = 1;
+        rec.ttl      = 1;
         rec.rData.resize(4);
         htobe32buf(rec.rData.data(), ip.h);
-        UpdateHeader();
+        answers.emplace_back(std::move(rec));
       }
-      return *this;
     }
 
-    Message&
+    void
     Message::AddAReply(std::string name)
     {
       if(questions.size())
       {
-        hdr.fields |= (1 << 15);
+        hdr_fields |= (1 << 15);
         const auto& question = questions[0];
         answers.emplace_back();
-        auto& rec      = answers.back();
-        rec.rr_name    = question.qname;
-        rec.rr_type    = question.qtype;
-        rec.rr_class.h = 1;
-        rec.ttl.h      = 1;
+        auto& rec    = answers.back();
+        rec.rr_name  = question.qname;
+        rec.rr_type  = question.qtype;
+        rec.rr_class = 1;
+        rec.ttl      = 1;
         rec.rData.resize(name.size());
         memcpy(rec.rData.data(), name.c_str(), rec.rData.size());
-        UpdateHeader();
       }
-      return *this;
     }
 
-    Message&
+    void
     Message::AddNXReply()
     {
       if(questions.size())
       {
-        hdr.fields |= (1 << 15) | (1 << 3);
+        hdr_fields |= (1 << 15) | (1 << 3);
         const auto& question = questions[0];
         answers.emplace_back();
         auto& nx    = answers.back();
         nx.rr_name  = question.qname;
         nx.rr_type  = question.qtype;
         nx.rr_class = question.qclass;
-        nx.ttl.h    = 1;
+        nx.ttl      = 1;
         nx.rData.resize(1);
         nx.rData.data()[0] = 0;
-        UpdateHeader();
       }
-      return *this;
     }
 
   }  // namespace dns

@@ -43,8 +43,6 @@ struct llarpDNSdTest : public ::testing::Test
     test_request.question.qClass = 1;
     g_result                     = "";  // reset test global
     g_length                     = 0;
-    llarp::SetLogLevel(
-        llarp::eLogNone);  // turn off logging to keep gtest output pretty
   }
 };
 

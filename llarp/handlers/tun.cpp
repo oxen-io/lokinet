@@ -184,8 +184,9 @@ namespace llarp
         return false;
       }
       std::string qname = msg.questions[0].qname;
-      if(msg.questions[0].qtype.h == 1)
+      if(msg.questions[0].qtype == 1)
       {
+        // forward dns
         llarp::service::Address addr;
 
         if(addr.FromString(qname, ".loki"))
@@ -198,39 +199,50 @@ namespace llarp
         }
         else if(addr.FromString(qname, ".snode"))
         {
+          // TODO: add hook to EnsurePathToSNode
           EnsurePathToSNode(addr.data());
           huint32_t ip = ObtainIPForAddr(addr.data(), true);
-          reply(msg.AddINReply(ip));
+          msg.AddINReply(ip);
         }
         else
-          reply(msg.AddNXReply());
+          msg.AddNXReply();
+
+        reply(msg);
       }
-      else if(msg.questions[0].qtype.h == 12)
+      else if(msg.questions[0].qtype == 12)
       {
+        // reverse dns
         huint32_t ip = {0};
         if(!dns::DecodePTR(msg.questions[0].qname, ip))
         {
-          reply(msg.AddNXReply());
+          msg.AddNXReply();
+          reply(msg);
           return true;
         }
         llarp::service::Address addr =
             ObtainAddrForIP< llarp::service::Address >(ip, true);
         if(!addr.IsZero())
         {
-          reply(msg.AddAReply(addr.ToString(".snode")));
+          msg.AddAReply(addr.ToString(".snode"));
+          reply(msg);
           return true;
         }
         addr = ObtainAddrForIP< llarp::service::Address >(ip, false);
         if(!addr.IsZero())
         {
-          reply(msg.AddAReply(addr.ToString(".loki")));
+          msg.AddAReply(addr.ToString(".loki"));
+          reply(msg);
           return true;
         }
-        reply(msg.AddNXReply());
+        msg.AddNXReply();
+        reply(msg);
         return true;
       }
       else
-        reply(msg.AddNXReply());
+      {
+        msg.AddNXReply();
+        reply(msg);
+      }
       return true;
     }
 
@@ -244,7 +256,7 @@ namespace llarp
           return true;
         if(addr.FromString(msg.questions[0].qname, ".snode"))
           return true;
-        if(msg.questions[0].qtype.h == 12)
+        if(msg.questions[0].qtype == 12)
         {
           huint32_t ip = {0};
           if(!dns::DecodePTR(msg.questions[0].qname, ip))
@@ -264,10 +276,13 @@ namespace llarp
       if(ctx)
       {
         huint32_t ip = ObtainIPForAddr(addr.data(), false);
-        reply(request.AddINReply(ip));
+        llarp::LogInfo("mapped ", addr, " to ", ip);
+        request.AddINReply(ip);
       }
       else
-        reply(request.AddNXReply());
+        request.AddNXReply();
+
+      reply(request);
     }
 
     bool
@@ -368,7 +383,6 @@ namespace llarp
       m_OurRange.addr         = m_OurIP;
       m_MaxIP                 = m_OurIP | (~m_OurRange.netmask_bits);
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ", lAddr);
-
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ",
                      m_OurRange);
       MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());

@@ -18,11 +18,21 @@ namespace llarp
       {
         l = *buf->cur;
         buf->cur++;
-        if(llarp_buffer_size_left(*buf) < l)
-          return false;
         if(l)
+        {
+          if(l > 63)
+          {
+            llarp::LogError("decode name failed, field too big: ", l, " > 63");
+            llarp::DumpBuffer(*buf);
+            return false;
+          }
+          if(llarp_buffer_size_left(*buf) < l)
+            return false;
+
           ss << Name_t((const char*)buf->cur, l);
-        ss << ".";
+          ss << ".";
+        }
+        buf->cur = buf->cur + l;
       } while(l);
       name = ss.str();
       return true;
@@ -31,22 +41,32 @@ namespace llarp
     bool
     EncodeName(llarp_buffer_t* buf, const Name_t& name)
     {
-      std::stringstream ss(name);
-      if(name.size() == 0 || name[name.size() - 1] != '.')
-        ss << ".";
+      std::stringstream ss;
+      if(name.size() && name[name.size() - 1] == '.')
+        ss << name.substr(0, name.size() - 1);
+      else
+        ss << name;
+
       std::string part;
       while(std::getline(ss, part, '.'))
       {
-        uint8_t l;
-        if(part.size() > 63)
+        size_t l = part.length();
+        if(l > 63)
           return false;
-        l         = part.size();
-        *buf->cur = l;
+        *(buf->cur) = l;
         buf->cur++;
         if(llarp_buffer_size_left(*buf) < l)
           return false;
-        memcpy(buf->cur, part.c_str(), l);
+        if(l)
+        {
+          memcpy(buf->cur, part.data(), l);
+          buf->cur += l;
+        }
+        else
+          break;
       }
+      *buf->cur = 0;
+      buf->cur++;
       return true;
     }
 

@@ -14,6 +14,10 @@ namespace llarp
 
     struct MessageHeader : public Serialize
     {
+      const static size_t Size = 12;
+
+      MessageHeader() = default;
+
       MsgID_t id;
       Fields_t fields;
       Count_t qd_count;
@@ -26,20 +30,33 @@ namespace llarp
 
       bool
       Decode(llarp_buffer_t* buf) override;
+
+      bool
+      operator==(const MessageHeader& other) const
+      {
+        return id == other.id && fields == other.fields
+            && qd_count == other.qd_count && an_count == other.an_count
+            && ns_count == other.ns_count && ar_count == other.ar_count;
+      }
     };
 
     struct Message : public Serialize
     {
+      Message(const MessageHeader& hdr);
+
+      Message(Message&& other);
+      Message(const Message& other);
+
       void
       UpdateHeader();
 
-      Message&
+      void
       AddNXReply();
 
-      Message&
+      void
       AddINReply(llarp::huint32_t addr);
 
-      Message&
+      void
       AddAReply(std::string name);
 
       bool
@@ -48,7 +65,27 @@ namespace llarp
       bool
       Decode(llarp_buffer_t* buf) override;
 
-      MessageHeader hdr;
+      friend std::ostream&
+      operator<<(std::ostream& out, const Message& msg)
+      {
+        out << "[dns message id=" << std::hex << msg.hdr_id
+            << " fields=" << msg.hdr_fields << " questions=[ ";
+        for(const auto& qd : msg.questions)
+          out << qd << ", ";
+        out << "] answers=[ ";
+        for(const auto& an : msg.answers)
+          out << an << ", ";
+        out << "] nameserver=[ ";
+        for(const auto& ns : msg.authorities)
+          out << ns << ", ";
+        out << "] additional=[ ";
+        for(const auto& ar : msg.additional)
+          out << ar << ", ";
+        return out << "]";
+      }
+
+      MsgID_t hdr_id;
+      Fields_t hdr_fields;
       std::vector< Question > questions;
       std::vector< ResourceRecord > answers;
       std::vector< ResourceRecord > authorities;

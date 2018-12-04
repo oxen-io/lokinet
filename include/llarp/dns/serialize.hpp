@@ -19,14 +19,6 @@ namespace llarp
       Decode(llarp_buffer_t* buf) = 0;
     };
 
-    template < typename Int_t >
-    bool
-    EncodeInt(llarp_buffer_t* buf, const Int_t& i);
-
-    template < typename Int_t >
-    bool
-    DecodeInt(llarp_buffer_t* buf, Int_t& i);
-
     bool
     EncodeRData(llarp_buffer_t* buf, const std::vector< byte_t >& rdata);
 

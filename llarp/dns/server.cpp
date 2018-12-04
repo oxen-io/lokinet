@@ -74,17 +74,38 @@ namespace llarp
     void
     Proxy::HandlePkt(llarp::Addr from, llarp_buffer_t* pkt)
     {
-      Message msg;
-      if(!msg.Decode(pkt))
+      MessageHeader hdr;
+      if(!hdr.Decode(pkt))
       {
-        llarp::LogWarn("failed to handle dns message from ", from);
-        llarp::DumpBuffer(*pkt);
+        llarp::LogWarn("failed to parse dns header from ", from);
         return;
       }
+      TX tx    = {hdr.id, from};
+      auto itr = m_Forwarded.find(tx);
+      if(itr != m_Forwarded.end())
+      {
+        llarp_buffer_t buf;
+        buf.sz   = pkt->sz;
+        buf.base = pkt->base;
+        buf.cur  = buf.base;
+        // forward
+        llarp_ev_udp_sendto(&m_UDP, itr->second, buf);
+        // remove pending
+        m_Forwarded.erase(itr);
+        return;
+      }
+
+      Message msg(hdr);
+      if(!msg.Decode(pkt))
+      {
+        llarp::LogWarn("failed to parse dns message from ", from);
+        return;
+      }
+
       if(m_QueryHandler && m_QueryHandler->ShouldHookDNSMessage(msg))
       {
         if(!m_QueryHandler->HandleHookedDNSMessage(
-               msg,
+               std::move(msg),
                std::bind(&Proxy::SendMessageTo, this, from,
                          std::placeholders::_1)))
         {
@@ -92,19 +113,21 @@ namespace llarp
         }
         return;
       }
-      TX tx    = {msg.hdr.id, from};
-      auto itr = m_Forwarded.find(tx);
-      if(itr == m_Forwarded.end())
+      else if(itr == m_Forwarded.end())
       {
         // new forwarded query
         tx.from         = PickRandomResolver();
         m_Forwarded[tx] = from;
-        SendMessageTo(tx.from, msg);
+        llarp_buffer_t buf;
+        buf.sz   = pkt->sz;
+        buf.base = pkt->base;
+        buf.cur  = buf.base;
+        // do query
+        llarp_ev_udp_sendto(&m_UDP, tx.from, buf);
       }
       else
       {
-        SendMessageTo(itr->second, msg);
-        m_Forwarded.erase(itr);
+        // drop (?)
       }
     }
 
