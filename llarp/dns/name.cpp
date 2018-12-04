@@ -73,22 +73,22 @@ namespace llarp
     bool
     DecodePTR(const Name_t& name, huint32_t& ip)
     {
-      auto pos = name.find(".in-addr.arpa.");
-      if(pos == Name_t::npos)
+      auto pos = name.find(".in-addr.arpa");
+      if(pos == std::string::npos)
         return false;
-      std::string sub = name.substr(0, pos - 1);
+      std::string sub = name.substr(0, pos + 1);
       if(std::count(sub.begin(), sub.end(), '.') == 4)
       {
         uint8_t a, b, c, d;
         pos = sub.find('.');
         d   = atoi(sub.substr(0, pos).c_str());
-        sub = sub.substr(pos);
+        sub = sub.substr(pos + 1);
         pos = sub.find('.');
         c   = atoi(sub.substr(0, pos).c_str());
-        sub = sub.substr(pos);
+        sub = sub.substr(pos + 1);
         pos = sub.find('.');
         b   = atoi(sub.substr(0, pos).c_str());
-        sub = sub.substr(pos);
+        sub = sub.substr(pos + 1);
         pos = sub.find('.');
         a   = atoi(sub.substr(0, pos).c_str());
         ip  = llarp::ipaddr_ipv4_bits(a, b, c, d);

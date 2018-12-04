@@ -1,6 +1,7 @@
 #include <llarp/dns/dns.hpp>
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <llarp/net.hpp>
 
 struct DNSLibTest : public ::testing::Test
 {
@@ -20,6 +21,14 @@ struct DNSLibTest : public ::testing::Test
   {
     buf.cur = buf.base;
   }
+};
+
+TEST_F(DNSLibTest, TestPTR)
+{
+  llarp::huint32_t ip       = {0};
+  llarp::huint32_t expected = llarp::ipaddr_ipv4_bits(10, 10, 10, 1);
+  ASSERT_TRUE(llarp::dns::DecodePTR("1.10.10.10.in-addr.arpa.", ip));
+  ASSERT_EQ(ip, expected);
 };
 
 TEST_F(DNSLibTest, TestSerializeHeader)
