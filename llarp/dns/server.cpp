@@ -33,7 +33,7 @@ namespace llarp
       }
       llarp::Addr any("0.0.0.0", 0);
       return llarp_ev_add_udp(m_Loop, &m_Server, addr) == 0
-          && llarp_ev_add_udp(m_Loop, &m_Client, any);
+          && llarp_ev_add_udp(m_Loop, &m_Client, any) == 0;
     }
 
     void
@@ -55,7 +55,7 @@ namespace llarp
     {
       size_t sz = m_Resolvers.size();
       if(sz == 0)
-        return llarp::Addr("1.1.1.1", 52);
+        return llarp::Addr("1.1.1.1", 53);
       if(sz == 1)
         return m_Resolvers[0];
       auto itr = m_Resolvers.begin();
