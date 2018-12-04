@@ -39,7 +39,11 @@ namespace llarp
      private:
       /// low level packet handler
       static void
-      HandleUDPRecv(llarp_udp_io*, const struct sockaddr*, llarp_buffer_t);
+      HandleUDPRecv_client(llarp_udp_io*, const struct sockaddr*,
+                           llarp_buffer_t);
+      static void
+      HandleUDPRecv_server(llarp_udp_io*, const struct sockaddr*,
+                           llarp_buffer_t);
 
       /// low level ticker
       static void
@@ -49,7 +53,10 @@ namespace llarp
       Tick(llarp_time_t now);
 
       void
-      HandlePkt(llarp::Addr from, llarp_buffer_t* buf);
+      HandlePktClient(llarp::Addr from, llarp_buffer_t* buf);
+
+      void
+      HandlePktServer(llarp::Addr from, llarp_buffer_t* buf);
 
       void
       SendMessageTo(llarp::Addr to, Message msg);
@@ -58,7 +65,8 @@ namespace llarp
       PickRandomResolver() const;
 
      private:
-      llarp_udp_io m_UDP;
+      llarp_udp_io m_Server;
+      llarp_udp_io m_Client;
       llarp_ev_loop* m_Loop;
       IQueryHandler* m_QueryHandler;
       std::vector< llarp::Addr > m_Resolvers;

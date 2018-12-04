@@ -7,9 +7,12 @@ namespace llarp
     Proxy::Proxy(llarp_ev_loop* loop, IQueryHandler* h)
         : m_Loop(loop), m_QueryHandler(h)
     {
-      m_UDP.user     = this;
-      m_UDP.tick     = &HandleTick;
-      m_UDP.recvfrom = &HandleUDPRecv;
+      m_Client.user     = this;
+      m_Server.user     = this;
+      m_Client.tick     = nullptr;
+      m_Server.tick     = nullptr;
+      m_Client.recvfrom = &HandleUDPRecv_client;
+      m_Server.recvfrom = &HandleUDPRecv_server;
     }
 
     void
@@ -28,14 +31,23 @@ namespace llarp
         llarp::LogError("no upstream dns provide specified");
         return false;
       }
-      return llarp_ev_add_udp(m_Loop, &m_UDP, addr) == 0;
+      llarp::Addr any("0.0.0.0", 0);
+      return llarp_ev_add_udp(m_Loop, &m_Server, addr) == 0
+          && llarp_ev_add_udp(m_Loop, &m_Client, any);
     }
 
     void
-    Proxy::HandleUDPRecv(llarp_udp_io* u, const sockaddr* from,
-                         llarp_buffer_t buf)
+    Proxy::HandleUDPRecv_server(llarp_udp_io* u, const sockaddr* from,
+                                llarp_buffer_t buf)
     {
-      static_cast< Proxy* >(u->user)->HandlePkt(*from, &buf);
+      static_cast< Proxy* >(u->user)->HandlePktServer(*from, &buf);
+    }
+
+    void
+    Proxy::HandleUDPRecv_client(llarp_udp_io* u, const sockaddr* from,
+                                llarp_buffer_t buf)
+    {
+      static_cast< Proxy* >(u->user)->HandlePktClient(*from, &buf);
     }
 
     llarp::Addr
@@ -65,14 +77,14 @@ namespace llarp
       {
         buf.sz  = buf.cur - buf.base;
         buf.cur = buf.base;
-        llarp_ev_udp_sendto(&m_UDP, to, buf);
+        llarp_ev_udp_sendto(&m_Server, to, buf);
       }
       else
         llarp::LogWarn("failed to encode dns message when sending");
     }
 
     void
-    Proxy::HandlePkt(llarp::Addr from, llarp_buffer_t* pkt)
+    Proxy::HandlePktClient(llarp::Addr from, llarp_buffer_t* pkt)
     {
       MessageHeader hdr;
       if(!hdr.Decode(pkt))
@@ -88,13 +100,24 @@ namespace llarp
         buf.sz   = pkt->sz;
         buf.base = pkt->base;
         buf.cur  = buf.base;
-        // forward
-        llarp_ev_udp_sendto(&m_UDP, itr->second, buf);
+        // forward reply
+        llarp_ev_udp_sendto(&m_Server, itr->second, buf);
         // remove pending
         m_Forwarded.erase(itr);
+      }
+    }
+
+    void
+    Proxy::HandlePktServer(llarp::Addr from, llarp_buffer_t* pkt)
+    {
+      MessageHeader hdr;
+      if(!hdr.Decode(pkt))
+      {
+        llarp::LogWarn("failed to parse dns header from ", from);
         return;
       }
-
+      TX tx    = {hdr.id, from};
+      auto itr = m_Forwarded.find(tx);
       Message msg(hdr);
       if(!msg.Decode(pkt))
       {
@@ -123,7 +146,7 @@ namespace llarp
         buf.base = pkt->base;
         buf.cur  = buf.base;
         // do query
-        llarp_ev_udp_sendto(&m_UDP, tx.from, buf);
+        llarp_ev_udp_sendto(&m_Client, tx.from, buf);
       }
       else
       {
