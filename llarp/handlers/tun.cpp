@@ -276,7 +276,6 @@ namespace llarp
       if(ctx)
       {
         huint32_t ip = ObtainIPForAddr(addr.data(), false);
-        llarp::LogInfo("mapped ", addr, " to ", ip);
         request.AddINReply(ip);
       }
       else
@@ -627,8 +626,6 @@ namespace llarp
                return pkt.Load(buf) && pkt.Header()->version == 4;
              }))
       {
-        llarp::LogInfo("Failed to parse ipv4 packet");
-        llarp::DumpBuffer(buf);
       }
     }
 
