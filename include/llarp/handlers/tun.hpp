@@ -24,10 +24,10 @@ namespace llarp
       ~TunEndpoint();
 
       virtual bool
-      SetOption(const std::string& k, const std::string& v);
+      SetOption(const std::string& k, const std::string& v) override;
 
       virtual void
-      Tick(llarp_time_t now);
+      Tick(llarp_time_t now) override;
 
       void
       TickTun(llarp_time_t now);
@@ -36,7 +36,7 @@ namespace llarp
       MapAddress(const service::Address& remote, huint32_t ip, bool SNode);
 
       bool
-      Start();
+      Start() override;
 
       bool
       IsSNode() const;
@@ -47,7 +47,7 @@ namespace llarp
 
       /// overrides Endpoint
       bool
-      SetupNetworking();
+      SetupNetworking() override;
 
       /// overrides Endpoint
       /// handle inbound traffic
@@ -69,7 +69,7 @@ namespace llarp
 #ifndef WIN32
       /// overrides Endpoint
       bool
-      IsolationFailed()
+      IsolationFailed() override
       {
         m_TunSetupResult.set_value(false);
         return false;
