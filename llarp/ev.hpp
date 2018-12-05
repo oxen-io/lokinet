@@ -25,6 +25,12 @@ struct asio_evt_pkt
   size_t sz;  // if this doesn't match what is in the packet, note the error
 };
 #else
+
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || (__APPLE__ && __MACH__)
+#include <sys/event.h>
+#endif
+
 #include <sys/un.h>
 #endif
 
