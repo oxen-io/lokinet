@@ -5,25 +5,36 @@
 
 #include "dnsd.hpp"
 
-struct dotLokiLookup;
-
-using obtain_address_func =
-    std::function< bool(struct dotLokiLookup *, const byte_t *addr,
-                        bool isSNode, llarp::huint32_t &ip) >;
+using map_address_hook_func =
+    std::function< bool(const byte_t *addr, bool isSNode, uint32_t ip) >;
 
 /// dotLokiLookup context/config
 struct dotLokiLookup
 {
+  /// for timers (MAYBEFIXME? maybe we decouple this, yes pls have a generic
+  /// passed in)
+  // we can use DNSc for access to the logic
+  struct llarp_logic *logic;
+
+  /// which ip tracker to use
   struct dns_iptracker *ip_tracker;
-  /// opaque user data
-  void *user;
-  /// get address for lookup
-  obtain_address_func obtainAddress;
+
+  /// tunEndpoint
+  // llarp::handlers::TunEndpoint *tunEndpoint; // is this even needed here?
+  void *user;  // well dotLokiLookup current uses it to access the tun if
+  // pointer to tunendpoint properties?
+  // llarp::service::Context *hiddenServiceContext;
+
+  // need a way to reference
+  // 1. mapaddress
+  map_address_hook_func map_address_handler;
+  // std::function< bool(const llarp::service::Address &addr, uint32_t ip),
+  // llarp::handlers::TunEndpoint * > callback;
+  // 2. prefetch
 };
 
-void
+dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name,
-                            const dnsd_question_request *request,
-                            struct dnsd_query_hook_response *result);
+                            const dnsd_question_request *request);
 
 #endif

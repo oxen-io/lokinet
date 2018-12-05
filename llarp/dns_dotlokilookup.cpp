@@ -70,8 +70,47 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   // check_query_request * >(u);
   struct check_query_simple_request *qr =
       static_cast< struct check_query_simple_request * >(u);
-  dotLokiLookup *lookup = (dotLokiLookup *)qr->request->context->user;
+  dotLokiLookup *dll = (dotLokiLookup *)qr->request->context->user;
+  if(!dll)
+  {
+    llarp::LogError("DNSd dotLokiLookup is not configured");
+    write404_dnss_response(qr->request);
+    delete qr;
+    return;
+  }
 
+  // we do have result
+  // if so send that
+  // else
+  // if we have a free private ip, send that
+
+  /*
+  // cache hit
+  auto itr = loki_tld_lookup_cache.find(addr.ToString());
+  if(itr != loki_tld_lookup_cache.end())
+  {
+    llarp::LogDebug("Found in .loki lookup cache");
+    writesend_dnss_response(itr->second->returnThis, qr->from, qr->request);
+    delete qr;
+    return;
+  }
+
+  struct dns_pointer *free_private = dns_iptracker_get_free(dll->ip_tracker);
+  if(free_private)
+  {
+    */
+
+  // in_addr ip_address = ((sockaddr_in *)free_private->hostResult)->sin_addr;
+
+  llarp::service::Context *routerHiddenServiceContext =
+      (llarp::service::Context *)dll->user;
+  if(!routerHiddenServiceContext)
+  {
+    llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+    write404_dnss_response(qr->request);
+    delete qr;
+    return;
+  }
   llarp::huint32_t serviceIP;
   llarp::AlignedBuffer< 32 > addr;
   bool isSNode = false;
@@ -82,7 +121,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
     delete qr;
     return;
   }
-  if(!lookup->obtainAddress(lookup, addr, isSNode, serviceIP))
+  if(!routerHiddenServiceContext->FindBestAddressFor(addr, isSNode, serviceIP))
   {
     llarp::LogWarn("dotLokiLookup failed to map address");
     write404_dnss_response(qr->request);
@@ -129,7 +168,6 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
     return;
   }
   */
-  /*
   llarp::huint32_t foundAddr;
   if(!routerHiddenServiceContext->FindBestAddressFor(addr, isSNode, foundAddr))
   {
@@ -137,7 +175,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
     delete qr;
     return;
   }
-  */
+
   // make a dnsd_query_hook_response for the cache
   /*
   dnsd_query_hook_response *response = new dnsd_query_hook_response;
@@ -151,7 +189,7 @@ llarp_dotlokilookup_checkQuery(void *u, __attribute__((unused)) uint64_t orig,
   // saddr.sin_addr.s_addr = llarp::xhtonl(foundAddr).n;
   // FIXME: flush cache to disk
   // on crash we'll need to bring up all the same IPs we assigned before...
-  // writesend_dnss_response(&foundAddr, qr->request);
+  writesend_dnss_response(&foundAddr, qr->request);
   delete qr;
   return;
 }
@@ -317,14 +355,14 @@ should_intercept_query_with_name(const std::string &lName)
   return false;
 }
 
-void
+dnsd_query_hook_response *
 llarp_dotlokilookup_handler(std::string name,
-                            const dnsd_question_request *request,
-                            struct dnsd_query_hook_response *response)
+                            const dnsd_question_request *request)
 {
-  response->dontLookUp       = false;
-  response->dontSendResponse = false;
-  response->returnThis.h     = 0;
+  dnsd_query_hook_response *response = new dnsd_query_hook_response;
+  response->dontLookUp               = false;
+  response->dontSendResponse         = false;
+  response->returnThis.h             = 0;
   llarp::LogDebug("Hooked ", name);
   std::string lName = name;
   std::transform(lName.begin(), lName.end(), lName.begin(), ::tolower);
@@ -334,7 +372,14 @@ llarp_dotlokilookup_handler(std::string name,
   if(lName.find(".in-addr.arpa") != std::string::npos)
   {
     // llarp::LogDebug("Checking ", lName);
-    // dotLokiLookup *dll = (dotLokiLookup *)request->context->user;
+    dotLokiLookup *dll = (dotLokiLookup *)request->context->user;
+    llarp::service::Context *routerHiddenServiceContext =
+        (llarp::service::Context *)dll->user;
+    if(!routerHiddenServiceContext)
+    {
+      llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+      return response;
+    }
     // llarp::LogDebug("Starting rev iter for ", lName);
     // which range?
     // for each tun interface
@@ -347,9 +392,7 @@ llarp_dotlokilookup_handler(std::string name,
     i.user   = &context;
     i.index  = 0;
     i.visit  = &ReverseHandlerIter;
-    bool res = true;
-    (void)i;
-    // bool res = routerHiddenServiceContext->iterate(i);
+    bool res = routerHiddenServiceContext->iterate(i);
     if(!res)
     {
       llarp::LogDebug("Reverse is ours");
@@ -370,7 +413,8 @@ llarp_dotlokilookup_handler(std::string name,
       // was in cache
       llarp::LogInfo("Reused address from LokiLookupCache");
       // FIXME: avoid the response allocation if you could
-      return;
+      delete response;
+      return cache_check->second;
     }
 
     // decode address
@@ -379,6 +423,7 @@ llarp_dotlokilookup_handler(std::string name,
     if(!decode_request_name(lName, addr, isSNode))
     {
       response->dontLookUp = true;
+      return response;
     }
 
     dotLokiLookup *dll = (dotLokiLookup *)request->context->user;
@@ -387,6 +432,7 @@ llarp_dotlokilookup_handler(std::string name,
     if(!routerHiddenServiceContext)
     {
       llarp::LogWarn("dotLokiLookup user isnt a service::Context: ", dll->user);
+      return response;
     }
 
     // start path build early (if you're looking it up, you're probably going to
@@ -405,7 +451,7 @@ llarp_dotlokilookup_handler(std::string name,
       {
         llarp_dotlokilookup_checkQuery(qr, 0, 0);
         response->dontSendResponse = true;  // will send it shortly
-        return;
+        return response;
       }
     }
     else
@@ -414,7 +460,7 @@ llarp_dotlokilookup_handler(std::string name,
       {
         llarp_dotlokilookup_checkQuery(qr, 0, 0);
         response->dontSendResponse = true;  // will send it shortly
-        return;
+        return response;
       }
     }
 
@@ -424,5 +470,5 @@ llarp_dotlokilookup_handler(std::string name,
 
     response->dontSendResponse = true;  // will send it shortly
   }
-  return;
+  return response;
 }
