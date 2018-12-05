@@ -9,6 +9,20 @@
 #include <llarp/net_int.hpp>
 #include <vector>
 
+#include <stdlib.h>  // for itoa
+
+// for addrinfo
+#ifndef _WIN32
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#else
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <wspiapi.h>
+#define inet_aton(x, y) inet_pton(AF_INET, x, y)
+#endif
+
 bool
 operator==(const sockaddr& a, const sockaddr& b);
 

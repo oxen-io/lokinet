@@ -23,10 +23,10 @@ namespace llarp
       ~TunEndpoint();
 
       virtual bool
-      SetOption(const std::string& k, const std::string& v);
+      SetOption(const std::string& k, const std::string& v) override;
 
       virtual void
-      Tick(llarp_time_t now);
+      Tick(llarp_time_t now) override;
 
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;
@@ -43,7 +43,7 @@ namespace llarp
       MapAddress(const service::Address& remote, huint32_t ip, bool SNode);
 
       bool
-      Start();
+      Start() override;
 
       bool
       IsSNode() const;
@@ -54,7 +54,7 @@ namespace llarp
 
       /// overrides Endpoint
       bool
-      SetupNetworking();
+      SetupNetworking() override;
 
       /// overrides Endpoint
       /// handle inbound traffic

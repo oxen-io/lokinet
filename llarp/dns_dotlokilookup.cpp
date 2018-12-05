@@ -212,7 +212,38 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
 
   // well the tunif is just one ip on a network range...
   // support "b._dns-sd._udp.0.0.200.10.in-addr.arpa"
-  size_t searchTokens  = tokensSearch.size();
+  size_t searchTokens = tokensSearch.size();
+  // if the query has five or fewer levels,
+  // tack on leading '0.'s to form a minimum six-level
+  // PTR query -rick
+  if(searchTokens < 6)
+  {
+    switch(searchTokens)
+    {
+      case 5:
+        tokensSearch.clear();
+        context->lName.insert(0, "0.");
+        tokensSearch = split(context->lName);
+        searchTokens = tokensSearch.size();
+        break;
+      case 4:
+        tokensSearch.clear();
+        context->lName.insert(0, "0.0.");
+        tokensSearch = split(context->lName);
+        searchTokens = tokensSearch.size();
+        break;
+      case 3:
+        tokensSearch.clear();
+        context->lName.insert(0, "0.0.0.");
+        tokensSearch = split(context->lName);
+        searchTokens = tokensSearch.size();
+        break;
+      default:
+        llarp::LogError("invalid PTR query: ", context->lName);
+        break;
+    }
+  }
+  // this expression assumes a six-level name
   std::string searchIp = tokensSearch[searchTokens - 3] + "."
       + tokensSearch[searchTokens - 4] + "." + tokensSearch[searchTokens - 5]
       + "." + tokensSearch[searchTokens - 6];

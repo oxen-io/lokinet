@@ -118,11 +118,27 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
 {
   auto ret =
       static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf.base, buf.sz);
+#ifndef _WIN32
   if(ret == -1 && errno != 0)
   {
+#else
+  if(ret == -1 && WSAGetLastError())
+  {
+#endif
+
+#ifndef _WIN32
     llarp::LogWarn("sendto failed ", strerror(errno));
     errno = 0;
   }
+#else
+    char ebuf[1024];
+    int err = WSAGetLastError();
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf,
+                  1024, nullptr);
+    llarp::LogWarn("sendto failed: ", ebuf);
+    WSASetLastError(0);
+  }
+#endif
   return ret;
 }
 
@@ -132,9 +148,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   auto dev  = loop->create_tun(tun);
   tun->impl = dev;
   if(dev)
-  {
     return loop->add_ev(dev, false);
-  }
   return false;
 }
 
