@@ -264,11 +264,8 @@ namespace llarp
     int
     read(byte_t* buf, size_t sz)
     {
-#ifdef __APPLE__
+      // all BSD UNIX has pktinfo by default
       const ssize_t offset = 4;
-#else
-      const ssize_t offset = 0;
-#endif
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)
       {
