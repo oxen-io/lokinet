@@ -530,6 +530,7 @@ llarp_router::Tick()
 {
   // llarp::LogDebug("tick router");
   auto now = llarp_ev_loop_time_now_ms(netloop);
+  paths.TickPaths(now);
   paths.ExpirePaths(now);
   {
     auto itr = m_PersistingSessions.begin();
@@ -584,7 +585,6 @@ llarp_router::Tick()
   {
     ConnectToRandomRouters(minConnectedRouters);
   }
-  paths.TickPaths(now);
   exitContext.Tick(now);
   if(rpcCaller)
     rpcCaller->Tick(now);
