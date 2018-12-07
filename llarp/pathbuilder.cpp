@@ -20,6 +20,7 @@ namespace llarp
 
     Handler result;
     size_t idx               = 0;
+    llarp_router* router     = nullptr;
     llarp_threadpool* worker = nullptr;
     llarp_logic* logic       = nullptr;
     llarp_crypto* crypto     = nullptr;
@@ -136,24 +137,18 @@ namespace llarp
   void
   pathbuilder_generated_keys(AsyncPathKeyExchangeContext< path::Builder >* ctx)
   {
-    RouterID remote = ctx->path->Upstream();
-    auto router     = ctx->user->router;
-    if(!router)
-    {
-      llarp::LogError("null router");
-      return;
-    }
+    RouterID remote         = ctx->path->Upstream();
     const ILinkMessage* msg = &ctx->LRCM;
-    if(!router->SendToOrQueue(remote, msg))
+    if(!ctx->router->SendToOrQueue(remote, msg))
     {
       llarp::LogError("failed to send LRCM");
       return;
     }
 
     // persist session with router until this path is done
-    router->PersistSessionUntil(remote, ctx->path->ExpireTime());
+    ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
     // add own path
-    router->paths.AddOwnPath(ctx->pathset, ctx->path);
+    ctx->router->paths.AddOwnPath(ctx->pathset, ctx->path);
   }
 
   namespace path
@@ -257,6 +252,7 @@ namespace llarp
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
           new AsyncPathKeyExchangeContext< Builder >(&router->crypto);
+      ctx->router  = router;
       ctx->pathset = this;
       auto path    = new llarp::path::Path(hops, this, roles);
       path->SetBuildResultHook(std::bind(&llarp::path::Builder::HandlePathBuilt,
