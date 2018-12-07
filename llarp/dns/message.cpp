@@ -190,6 +190,31 @@ namespace llarp
     }
 
     void
+    Message::AddMXReply(std::string name, uint16_t priority)
+    {
+      if(questions.size())
+      {
+        hdr_fields |= (1 << 15);
+        const auto& question = questions[0];
+        answers.emplace_back();
+        auto& rec       = answers.back();
+        rec.rr_name     = question.qname;
+        rec.rr_type     = question.qtype;
+        rec.rr_class    = 15;
+        rec.ttl         = 1;
+        byte_t tmp[512] = {0};
+        auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+        llarp_buffer_put_uint16(&buf, priority);
+        if(EncodeName(&buf, name))
+        {
+          buf.sz = buf.cur - buf.base;
+          rec.rData.resize(buf.sz);
+          memcpy(rec.rData.data(), buf.base, buf.sz);
+        }
+      }
+    }
+
+    void
     Message::AddNXReply()
     {
       if(questions.size())

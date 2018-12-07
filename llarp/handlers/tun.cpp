@@ -184,7 +184,16 @@ namespace llarp
         return false;
       }
       std::string qname = msg.questions[0].qname;
-      if(msg.questions[0].qtype == 1)
+      if(msg.questions[0].qtype == 15)
+      {
+        // mx record
+        llarp::service::Address addr;
+        if(addr.FromString(qname, ".loki"))
+          msg.AddMXReply(qname, 1);
+        else
+          msg.AddNXReply();
+      }
+      else if(msg.questions[0].qtype == 1)
       {
         // forward dns
         llarp::service::Address addr;
@@ -198,10 +207,11 @@ namespace llarp
           }
           else
             return EnsurePathToService(
-              addr,
-              std::bind(&TunEndpoint::SendDNSReply, this, std::placeholders::_1,
-                        std::placeholders::_2, msg, reply),
-              2000);
+                addr,
+                std::bind(&TunEndpoint::SendDNSReply, this,
+                          std::placeholders::_1, std::placeholders::_2, msg,
+                          reply),
+                2000);
         }
         else if(addr.FromString(qname, ".snode"))
         {

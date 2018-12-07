@@ -54,6 +54,9 @@ namespace llarp
       AddNXReply();
 
       void
+      AddMXReply(std::string name, uint16_t priority);
+
+      void
       AddINReply(llarp::huint32_t addr);
 
       void
