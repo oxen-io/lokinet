@@ -191,7 +191,13 @@ namespace llarp
 
         if(addr.FromString(qname, ".loki"))
         {
-          return EnsurePathToService(
+          if(HasPathToService(addr))
+          {
+            huint32_t ip = ObtainIPForAddr(addr.data(), true);
+            msg.AddINReply(ip);
+          }
+          else
+            return EnsurePathToService(
               addr,
               std::bind(&TunEndpoint::SendDNSReply, this, std::placeholders::_1,
                         std::placeholders::_2, msg, reply),
