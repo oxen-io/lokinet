@@ -200,7 +200,7 @@ namespace llarp
         auto& rec       = answers.back();
         rec.rr_name     = question.qname;
         rec.rr_type     = question.qtype;
-        rec.rr_class    = 15;
+        rec.rr_class    = 1;
         rec.ttl         = 1;
         byte_t tmp[512] = {0};
         auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
