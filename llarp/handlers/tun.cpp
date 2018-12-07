@@ -269,8 +269,13 @@ namespace llarp
       llarp::service::Address addr;
       if(msg.questions.size() == 1)
       {
+        // always hook mx records
+        if(msg.questions[0].qtype == 15)
+          return true;
+        // always hook .loki
         if(addr.FromString(msg.questions[0].qname, ".loki"))
           return true;
+        // always hook .snode
         if(addr.FromString(msg.questions[0].qname, ".snode"))
           return true;
         if(msg.questions[0].qtype == 12)
