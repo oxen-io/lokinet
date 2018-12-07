@@ -9,14 +9,14 @@ namespace llarp
 {
   namespace service
   {
-    /// Snapp Address
+    /// Snapp/Snode Address
     struct Address
     {
       std::string
-      ToString() const;
+      ToString(const char* tld = ".loki") const;
 
       bool
-      FromString(const std::string& str);
+      FromString(const std::string& str, const char* tld = ".loki");
 
       Address()
       {

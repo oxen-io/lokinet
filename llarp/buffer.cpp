@@ -117,13 +117,3 @@ llarp_buffer_read_uint32(llarp_buffer_t* buf, uint32_t* i)
   buf->cur += sizeof(uint32_t);
   return true;
 }
-
-bool
-llarp_buffer_put_uint32(llarp_buffer_t* buf, uint32_t* i)
-{
-  if(llarp_buffer_size_left(*buf) < sizeof(uint32_t))
-    return false;
-  *i = bufbe32toh(buf->cur);
-  buf->cur += sizeof(uint32_t);
-  return true;
-}

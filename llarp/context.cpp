@@ -341,8 +341,10 @@ extern "C"
   llarp_main_init_dotLokiLookup(struct llarp_main *ptr,
                                 struct dotLokiLookup *dll)
   {
-    dll->logic = ptr->ctx->logic;
-    return true;
+    (void)ptr;
+    (void)dll;
+    // TODO: gutt me
+    return false;
   }
 
   void

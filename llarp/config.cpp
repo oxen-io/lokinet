@@ -37,6 +37,7 @@ namespace llarp
       system    = find_section(top, "system", section_t{});
       api       = find_section(top, "api", section_t{});
       lokid     = find_section(top, "lokid", section_t{});
+      bootstrap = find_section(top, "bootstrap", section_t{});
       return true;
     }
     return false;

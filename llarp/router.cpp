@@ -530,6 +530,7 @@ llarp_router::Tick()
 {
   // llarp::LogDebug("tick router");
   auto now = llarp_ev_loop_time_now_ms(netloop);
+  paths.TickPaths(now);
   paths.ExpirePaths(now);
   {
     auto itr = m_PersistingSessions.begin();
@@ -584,7 +585,6 @@ llarp_router::Tick()
   {
     ConnectToRandomRouters(minConnectedRouters);
   }
-  paths.TickPaths(now);
   exitContext.Tick(now);
   if(rpcCaller)
     rpcCaller->Tick(now);
@@ -858,6 +858,7 @@ llarp_router::Run()
 
   if(!SaveRC())
   {
+    llarp::LogError("failed to save RC");
     return false;
   }
 
@@ -1177,6 +1178,7 @@ namespace llarp
   router_iter_config(llarp_config_iterator *iter, const char *section,
                      const char *key, const char *val)
   {
+    llarp::LogDebug(section, " ", key, "=", val);
     llarp_router *self = static_cast< llarp_router * >(iter->user);
 
     int af;

@@ -423,8 +423,18 @@ if(WIN32)
   set(UTP_SRC ${UTP_SRC} libutp/libutp_inet_ntop.cpp)
 endif()
 
+set(DNSLIB_SRC
+  llarp/dns/message.cpp
+  llarp/dns/name.cpp
+  llarp/dns/question.cpp
+  llarp/dns/rr.cpp
+  llarp/dns/serialize.cpp
+  llarp/dns/server.cpp
+)
+
 
 set(LIB_SRC
+  ${DNSLIB_SRC}
   ${UTP_SRC}
   llarp/address_info.cpp
   llarp/bencode.cpp
@@ -527,6 +537,7 @@ set(TEST_SRC
   test/test_dns_unit.cpp
   test/test_dnsc_unit.cpp
   test/test_dnsd_unit.cpp
+  test/test_dnslib.cpp
   test/test_llarp_queue.cpp
   test/test_llarp_queue_manager.cpp
   test/test_llarp_thread_pool.cpp
