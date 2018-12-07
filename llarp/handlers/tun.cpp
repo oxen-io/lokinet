@@ -201,7 +201,7 @@ namespace llarp
 
         if(addr.FromString(qname, ".loki"))
         {
-          if(HasPathToService(addr))
+          if(HasAddress(addr.data()))
           {
             huint32_t ip = ObtainIPForAddr(addr.data(), true);
             msg.AddINReply(ip);
