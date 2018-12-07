@@ -192,6 +192,7 @@ namespace llarp
           msg.AddMXReply(qname, 1);
         else
           msg.AddNXReply();
+        reply(msg);
       }
       else if(msg.questions[0].qtype == 1)
       {
