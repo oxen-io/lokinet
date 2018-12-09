@@ -38,6 +38,6 @@ class LokiNetwork < Formula
   end
 
   test do
-    system "#{bin}/lokinet", "-h"
+    system "#{buildpath}/build/testAll"
   end
 end
