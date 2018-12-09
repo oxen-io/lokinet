@@ -9,7 +9,7 @@ class LokiNetwork < Formula
   depends_on "abyss" => :optional
   depends_on "ninja" => :build
   option "with-jsonrpc" "Build with JSON-RPC support"
-  option "without-avx2" "Build with AVX2 support"
+  option "with-avx2" "Build with AVX2 support"
   option "with-netns" "Build with network namespace support"
 
   def install
