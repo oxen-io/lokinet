@@ -32,9 +32,9 @@ class LokiNetwork < Formula
 
     bin.install "#{buildpath}/build/lokinet"
     bin.install "#{buildpath}/lokinet-bootstrap"
-    bin.install "#{buildpath}/build/dns"
-    bin.install "#{buildpath}/build/llarpc"
-    bin.install "#{buildpath}/build/rcutil"
+    libexec.install "#{buildpath}/build/dns"
+    libexec.install "#{buildpath}/build/llarpc"
+    libexec.install "#{buildpath}/build/rcutil"
   end
 
   test do
