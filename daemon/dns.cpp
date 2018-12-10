@@ -171,11 +171,11 @@ main(int argc, char *argv[])
     // libev version
     llarp_ev_loop *netloop   = nullptr;
     llarp_threadpool *worker = nullptr;
-    llarp_logic *logic       = nullptr;
+    llarp::Logic *logic      = nullptr;
 
     llarp_ev_loop_alloc(&netloop);  // set up netio worker
     worker = llarp_init_same_process_threadpool();
-    logic  = llarp_init_single_process_logic(worker);  // set up logic worker
+    logic  = new llarp::Logic(worker);  // set up logic worker
 
     // configure main netloop
     struct dnsd_context dnsd;
@@ -202,10 +202,8 @@ main(int argc, char *argv[])
   else
   {
     // need this for timer stuff
-    llarp_threadpool *worker = nullptr;
-    llarp_logic *logic       = nullptr;
-    worker                   = llarp_init_same_process_threadpool();
-    logic = llarp_init_single_process_logic(worker);  // set up logic worker
+    llarp_threadpool *worker = llarp_init_same_process_threadpool();
+    llarp::Logic *logic      = new llarp::Logic(worker);
 
     // configure main netloop
     struct dnsd_context dnsd;

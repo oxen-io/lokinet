@@ -19,7 +19,7 @@ namespace llarp
     llarp_crypto crypto;
     llarp_router *router     = nullptr;
     llarp_threadpool *worker = nullptr;
-    llarp_logic *logic       = nullptr;
+    llarp::Logic *logic      = nullptr;
     llarp_config *config     = nullptr;
     llarp_nodedb *nodedb     = nullptr;
     llarp_ev_loop *mainloop  = nullptr;

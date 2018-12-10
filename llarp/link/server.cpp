@@ -137,7 +137,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Start(llarp_logic* l)
+  ILinkLayer::Start(Logic* l)
   {
     m_Logic = l;
     ScheduleTick(100);
@@ -148,7 +148,7 @@ namespace llarp
   ILinkLayer::Stop()
   {
     if(m_Logic && tick_id)
-      llarp_logic_remove_call(m_Logic, tick_id);
+      m_Logic->remove_call(tick_id);
     {
       Lock l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
@@ -284,8 +284,7 @@ namespace llarp
   void
   ILinkLayer::ScheduleTick(uint64_t interval)
   {
-    tick_id = llarp_logic_call_later(
-        m_Logic, {interval, this, &ILinkLayer::on_timer_tick});
+    tick_id = m_Logic->call_later({interval, this, &ILinkLayer::on_timer_tick});
   }
 
 }  // namespace llarp

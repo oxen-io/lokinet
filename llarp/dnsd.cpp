@@ -550,8 +550,7 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
 }
 
 bool
-llarp_dnsd_init(struct dnsd_context *const dnsd,
-                struct llarp_logic *const logic,
+llarp_dnsd_init(struct dnsd_context *const dnsd, llarp::Logic *const logic,
                 struct llarp_ev_loop *const netloop,
                 const llarp::Addr &dnsd_sockaddr,
                 const llarp::Addr &dnsc_sockaddr)

@@ -15,7 +15,7 @@ llarp_findOrCreateIdentity(struct llarp_crypto *crypto, const char *path,
 
 struct llarp_router *
 llarp_init_router(struct llarp_threadpool *worker,
-                  struct llarp_ev_loop *netloop, struct llarp_logic *logic);
+                  struct llarp_ev_loop *netloop, llarp::Logic *logic);
 void
 llarp_free_router(struct llarp_router **router);
 bool

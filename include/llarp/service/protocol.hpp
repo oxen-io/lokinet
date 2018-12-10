@@ -95,7 +95,7 @@ namespace llarp
                      const byte_t* sharedkey, const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(llarp_logic* logic, llarp_crypto* c,
+      AsyncDecryptAndVerify(llarp::Logic* logic, llarp_crypto* c,
                             const PathID_t& srcpath, llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;

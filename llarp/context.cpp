@@ -144,10 +144,10 @@ namespace llarp
     // ensure netio thread
     if(singleThreaded)
     {
-      logic = llarp_init_single_process_logic(worker);
+      logic = new Logic(worker);
     }
     else
-      logic = llarp_init_logic();
+      logic = new Logic;
 
     router = llarp_init_router(worker, mainloop, logic);
 
@@ -205,7 +205,7 @@ namespace llarp
   {
     llarp::LogDebug("stopping logic");
     if(logic)
-      llarp_logic_stop(logic);
+      logic->stop();
 
     llarp::LogDebug("stopping event loop");
     if(mainloop)
@@ -239,7 +239,7 @@ namespace llarp
     llarp_free_router(&router);
 
     llarp::LogDebug("free logic");
-    llarp_free_logic(&logic);
+    delete logic;
   }
 
   bool
@@ -318,7 +318,7 @@ extern "C"
   void
   llarp_main_abort(struct llarp_main *ptr)
   {
-    llarp_logic_stop_timer(ptr->ctx->router->logic);
+    ptr->ctx->router->logic->stop_timer();
   }
 
   void
@@ -443,8 +443,8 @@ extern "C"
   {
     // llarp::Info("llarp_main_queryDHT - setting up timer");
     request->hook = &llarp_main_queryDHT_online;
-    llarp_logic_call_later(request->ptr->ctx->router->logic,
-                           {1000, request, &llarp_main_checkOnline});
+    request->ptr->ctx->router->logic->call_later(
+        {1000, request, &llarp_main_checkOnline});
     // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
   }
 

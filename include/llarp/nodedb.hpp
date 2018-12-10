@@ -13,6 +13,11 @@
 
 struct llarp_nodedb;
 
+namespace llarp
+{
+  class Logic;
+}
+
 /// create an empty nodedb
 struct llarp_nodedb *
 llarp_nodedb_new(struct llarp_crypto *crypto);
@@ -93,8 +98,8 @@ struct llarp_async_verify_rc
   void *user;
   /// nodedb storage
   struct llarp_nodedb *nodedb;
-  // llarp_logic for llarp_logic_queue_job
-  struct llarp_logic *logic;  // includes a llarp_threadpool
+  // llarp::Logic for queue_job
+  llarp::Logic *logic;  // includes a llarp_threadpool
   // struct llarp_crypto *crypto; // probably don't need this because we have
   // it in the nodedb
   struct llarp_threadpool *cryptoworker;
@@ -128,8 +133,8 @@ struct llarp_async_load_rc
   void *user;
   /// nodedb storage
   struct llarp_nodedb *nodedb;
-  /// llarp_logic for calling hook
-  struct llarp_logic *logic;
+  /// llarp::Logic for calling hook
+  llarp::Logic *logic;
   /// disk worker threadpool
   struct llarp_threadpool *diskworker;
   /// target pubkey

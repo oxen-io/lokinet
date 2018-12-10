@@ -70,7 +70,7 @@ struct llarp_router
 
   llarp_ev_loop *netloop;
   llarp_threadpool *tp;
-  llarp_logic *logic;
+  llarp::Logic *logic;
   llarp_crypto crypto;
   llarp::path::PathContext paths;
   llarp::exit::Context exitContext;

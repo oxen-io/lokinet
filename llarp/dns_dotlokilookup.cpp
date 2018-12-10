@@ -465,8 +465,8 @@ llarp_dotlokilookup_handler(std::string name,
     }
 
     // nslookup on osx is about 5 sec before a retry, 2s on linux
-    llarp_logic_call_later(request->context->client.logic,
-                           {2000, qr, &llarp_dotlokilookup_checkQuery});
+    request->context->client.logic->call_later(
+        {2000, qr, &llarp_dotlokilookup_checkQuery});
 
     response->dontSendResponse = true;  // will send it shortly
   }
