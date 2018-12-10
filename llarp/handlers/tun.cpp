@@ -434,8 +434,6 @@ namespace llarp
       // EndpointLogic()->queue_job({this, handleTickTun});
       if(m_Exit)
         EnsureRouterIsKnown(m_Exit->Endpoint());
-
-      FlushSend();
       Endpoint::Tick(now);
     }
 
@@ -452,13 +450,10 @@ namespace llarp
             pkt.UpdateIPv4PacketOnDst({0}, pkt.dst());
             m_Exit->QueueUpstreamTraffic(std::move(pkt),
                                          llarp::routing::ExitPadSize);
-            return true;
           }
           else
-          {
             llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
-            return true;
-          }
+          return true;
         }
 
         if(m_SNodes.at(itr->second))
