@@ -63,11 +63,11 @@ namespace llarp
 
       if(isFarthestHop)
       {
-        hop.upstream = hop.rc.pubkey;
+        hop.upstream = hop.rc.pubkey.data();
       }
       else
       {
-        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
+        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey.data();
       }
 
       // build record

@@ -24,7 +24,7 @@ namespace llarp
       return llarp_ev_loop_time_now_ms(m_Loop);
     }
     bool
-    HasSessionTo(const PubKey& pk);
+    HasSessionTo(const byte_t* pk);
 
     bool
     HasSessionVia(const Addr& addr);
@@ -80,13 +80,13 @@ namespace llarp
     Name() const = 0;
 
     void
-    CloseSessionTo(const PubKey& remote);
+    CloseSessionTo(const byte_t* remote);
 
     void
-    KeepAliveSessionTo(const PubKey& remote);
+    KeepAliveSessionTo(const byte_t* remote);
 
     bool
-    SendTo(const PubKey& remote, llarp_buffer_t buf);
+    SendTo(const byte_t* remote, llarp_buffer_t buf);
 
     bool
     GetOurAddressInfo(AddressInfo& addr) const;
@@ -107,7 +107,7 @@ namespace llarp
     EnsureKeys(const char* fpath);
 
     void
-    MapAddr(const PubKey& pk, ILinkSession* s);
+    MapAddr(const byte_t* pk, ILinkSession* s);
 
     virtual void
     Tick(__attribute__((unused)) llarp_time_t now)
@@ -146,8 +146,8 @@ namespace llarp
     SecretKey m_SecretKey;
 
     Mutex m_AuthedLinksMutex;
-    std::unordered_multimap< PubKey, std::unique_ptr< ILinkSession >,
-                             PubKey::Hash >
+    std::unordered_multimap< RouterID, std::unique_ptr< ILinkSession >,
+                             RouterID::Hash >
         m_AuthedLinks;
     Mutex m_PendingMutex;
     std::list< std::unique_ptr< ILinkSession > > m_Pending;

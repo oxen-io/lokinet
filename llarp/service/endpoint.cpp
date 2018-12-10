@@ -715,8 +715,7 @@ namespace llarp
           auto path = GetEstablishedPathClosestTo(router);
           routing::DHTMessage msg;
           auto txid = GenTXID();
-          msg.M.emplace_back(
-              new dht::FindRouterMessage({}, dht::Key_t(router), txid));
+          msg.M.emplace_back(new dht::FindRouterMessage(txid, router));
 
           if(path && path->SendRoutingMessage(&msg, m_Router))
           {

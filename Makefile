@@ -1,4 +1,3 @@
-
 all: test
 
 SIGN = gpg --sign --detach

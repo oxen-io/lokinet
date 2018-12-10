@@ -23,12 +23,13 @@ struct llarp_nodedb
   llarp_crypto *crypto;
   // std::map< llarp::pubkey, llarp_rc  > entries;
   llarp::util::Mutex access;
-  std::unordered_map< llarp::PubKey, llarp::RouterContact, llarp::PubKey::Hash >
+  std::unordered_map< llarp::RouterID, llarp::RouterContact,
+                      llarp::RouterID::Hash >
       entries;
   fs::path nodePath;
 
   bool
-  Remove(const llarp::PubKey &pk)
+  Remove(const byte_t *pk)
   {
     llarp::util::Lock lock(access);
     auto itr = entries.find(pk);
@@ -47,7 +48,7 @@ struct llarp_nodedb
   }
 
   bool
-  Get(const llarp::PubKey &pk, llarp::RouterContact &result)
+  Get(const byte_t *pk, llarp::RouterContact &result)
   {
     llarp::util::Lock lock(access);
     auto itr = entries.find(pk);
@@ -58,7 +59,7 @@ struct llarp_nodedb
   }
 
   bool
-  Has(const llarp::PubKey &pk)
+  Has(const byte_t *pk)
   {
     llarp::util::Lock lock(access);
     return entries.find(pk) != entries.end();
@@ -69,7 +70,8 @@ struct llarp_nodedb
   {
     char ftmp[68] = {0};
     const char *hexname =
-        llarp::HexEncode< llarp::PubKey, decltype(ftmp) >(pubkey, ftmp);
+        llarp::HexEncode< llarp::AlignedBuffer< 32 >, decltype(ftmp) >(pubkey,
+                                                                       ftmp);
     std::string hexString(hexname);
     std::string skiplistDir;
     skiplistDir += hexString[hexString.length() - 1];
@@ -86,7 +88,7 @@ struct llarp_nodedb
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
     {
       llarp::util::Lock lock(access);
-      entries.insert(std::make_pair(rc.pubkey, rc));
+      entries.insert(std::make_pair(rc.pubkey.data(), rc));
     }
     if(!rc.BEncode(&buf))
       return false;
@@ -163,7 +165,7 @@ struct llarp_nodedb
     }
     {
       llarp::util::Lock lock(access);
-      entries.insert(std::make_pair(rc.pubkey, rc));
+      entries.insert(std::make_pair(rc.pubkey.data(), rc));
     }
     return true;
   }

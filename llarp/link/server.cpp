@@ -8,7 +8,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::HasSessionTo(const PubKey& pk)
+  ILinkLayer::HasSessionTo(const byte_t* pk)
   {
     Lock l(m_AuthedLinksMutex);
     return m_AuthedLinks.find(pk) != m_AuthedLinks.end();
@@ -84,7 +84,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::MapAddr(const PubKey& pk, ILinkSession* s)
+  ILinkLayer::MapAddr(const byte_t* pk, ILinkSession* s)
   {
     static constexpr size_t MaxSessionsPerKey = 16;
     Lock l_authed(m_AuthedLinksMutex);
@@ -128,7 +128,7 @@ namespace llarp
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return false;
-    llarp::LogInfo("Try establish to ", rc.pubkey);
+    llarp::LogInfo("Try establish to ", RouterID(rc.pubkey.data()));
     llarp::Addr addr(to);
     auto s = NewOutboundSession(rc, to);
     s->Start();
@@ -170,11 +170,12 @@ namespace llarp
   }
 
   void
-  ILinkLayer::CloseSessionTo(const PubKey& remote)
+  ILinkLayer::CloseSessionTo(const byte_t* remote)
   {
     Lock l(m_AuthedLinksMutex);
-    llarp::LogInfo("Closing all to ", remote);
-    auto range = m_AuthedLinks.equal_range(remote);
+    RouterID r = remote;
+    llarp::LogInfo("Closing all to ", r);
+    auto range = m_AuthedLinks.equal_range(r);
     auto itr   = range.first;
     while(itr != range.second)
     {
@@ -184,7 +185,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::KeepAliveSessionTo(const PubKey& remote)
+  ILinkLayer::KeepAliveSessionTo(const byte_t* remote)
   {
     Lock l(m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
@@ -197,7 +198,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::SendTo(const PubKey& remote, llarp_buffer_t buf)
+  ILinkLayer::SendTo(const byte_t* remote, llarp_buffer_t buf)
   {
     ILinkSession* s = nullptr;
     {

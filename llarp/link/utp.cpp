@@ -207,7 +207,7 @@ namespace llarp
       // mix keys
       bool
       DoKeyExchange(llarp_transport_dh_func dh, const KeyExchangeNonce& n,
-                    const PubKey& other, const SecretKey& secret)
+                    const PubKey& other, const byte_t* secret)
       {
         ShortHash t_h;
         AlignedBuffer< 64 > tmp;
@@ -555,7 +555,7 @@ namespace llarp
 #ifdef __linux__
         ProcessICMP();
 #endif
-        std::set< PubKey > sessions;
+        std::set< RouterID > sessions;
         {
           Lock l(m_AuthedLinksMutex);
           auto itr = m_AuthedLinks.begin();

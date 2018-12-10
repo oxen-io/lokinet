@@ -58,9 +58,9 @@ namespace llarp
     }
 
     bool
-    PathContext::HopIsUs(const PubKey& k) const
+    PathContext::HopIsUs(const RouterID& k) const
     {
-      return memcmp(k, m_Router->pubkey(), PUBKEYSIZE) == 0;
+      return memcmp(k.data(), m_Router->pubkey(), PUBKEYSIZE) == 0;
     }
 
     bool
@@ -368,6 +368,12 @@ namespace llarp
 
     RouterID
     Path::Endpoint() const
+    {
+      return hops[hops.size() - 1].rc.pubkey;
+    }
+
+    PubKey
+    Path::EndpointPubKey() const
     {
       return hops[hops.size() - 1].rc.pubkey;
     }
@@ -692,7 +698,7 @@ namespace llarp
       /// allows exits to close from their end
       if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
       {
-        if(msg->Verify(&r->crypto, Endpoint()))
+        if(msg->Verify(&r->crypto, EndpointPubKey()))
         {
           llarp::LogInfo(Name(), " had its exit closed");
           _role &= ~ePathRoleExit;
@@ -741,7 +747,7 @@ namespace llarp
     {
       if(m_ExitObtainTX && msg->T == m_ExitObtainTX)
       {
-        if(!msg->Verify(&r->crypto, Endpoint()))
+        if(!msg->Verify(&r->crypto, EndpointPubKey()))
         {
           llarp::LogError(Name(), "RXM invalid signature");
           return false;
@@ -760,7 +766,7 @@ namespace llarp
     {
       if(m_ExitObtainTX && msg->T == m_ExitObtainTX)
       {
-        if(!msg->Verify(&r->crypto, Endpoint()))
+        if(!msg->Verify(&r->crypto, EndpointPubKey()))
         {
           llarp::LogError(Name(), " GXM signature failed");
           return false;

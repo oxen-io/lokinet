@@ -130,8 +130,8 @@ namespace llarp
           }
           else
           {
-            const auto& us = dht.OurKey();
-            auto target    = S.ToKey();
+            Key_t us     = dht.OurKey();
+            Key_t target = S.data();
             // we are recursive
             if(dht.nodes->FindCloseExcluding(target, peer, exclude))
             {

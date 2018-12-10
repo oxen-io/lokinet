@@ -443,6 +443,7 @@ set(LIB_SRC
   llarp/buffer.cpp
   llarp/config.cpp
   llarp/context.cpp
+  llarp/crypto.cpp
   llarp/crypto_libsodium.cpp
   llarp/dht.cpp
   llarp/dns_rectypes.cpp
@@ -467,6 +468,7 @@ set(LIB_SRC
   llarp/relay_commit.cpp
   llarp/relay_up_down.cpp
   llarp/router_contact.cpp
+  llarp/router_id.cpp
   llarp/router.cpp
   llarp/rpc.cpp
   llarp/service.cpp

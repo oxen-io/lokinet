@@ -86,12 +86,13 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetEstablishedPathClosestTo(const AlignedBuffer< 32 >& id,
+    PathSet::GetEstablishedPathClosestTo(const RouterID& id,
                                          PathRole roles) const
     {
       Lock_t l(m_PathsMutex);
       Path* path = nullptr;
       AlignedBuffer< 32 > dist;
+      AlignedBuffer< 32 > to = id.data();
       dist.Fill(0xff);
       for(const auto& item : m_Paths)
       {
@@ -99,7 +100,7 @@ namespace llarp
           continue;
         if(!item.second->SupportsAnyRoles(roles))
           continue;
-        AlignedBuffer< 32 > localDist = item.second->Endpoint() ^ id;
+        AlignedBuffer< 32 > localDist = item.second->Endpoint() ^ to;
         if(localDist < dist)
         {
           dist = localDist;
