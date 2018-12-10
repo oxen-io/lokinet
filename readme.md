@@ -24,7 +24,7 @@ build:
     $ sudo apt install build-essential cmake git libcap-dev wget rapidjson-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ make -j8
+    $ make -j
 
 install:
     
@@ -38,7 +38,7 @@ build:
     $ pkg install wget cmake git
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
-    $ gmake -j8
+    $ gmake -j
     
 install (root):
     
