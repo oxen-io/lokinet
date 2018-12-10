@@ -3,15 +3,16 @@
 #include <signal.h>
 #include "logger.hpp"
 
+#include <llarp/nodedb.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/time.hpp>
+#include <router.hpp>
 
 #include <fstream>
 #include "buffer.hpp"
 #include "crypto.hpp"
 #include "fs.hpp"
 #include "llarp/net.hpp"
-#include "router.hpp"
 
 #include <llarp/messages/dht.hpp>
 

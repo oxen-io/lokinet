@@ -1,7 +1,6 @@
 #ifndef LLARP_SERVICE_LOOKUP_HPP
 #define LLARP_SERVICE_LOOKUP_HPP
 
-#include <llarp/router.h>
 #include <llarp/routing/message.hpp>
 #include <llarp/service/IntroSet.hpp>
 #include <set>
@@ -46,7 +45,7 @@ namespace llarp
 
       /// build a new requset message and send it via a path
       bool
-      SendRequestViaPath(llarp::path::Path* p, llarp_router* r);
+      SendRequestViaPath(llarp::path::Path* p, llarp::Router* r);
 
       ILookupHolder* parent;
       uint64_t txid;

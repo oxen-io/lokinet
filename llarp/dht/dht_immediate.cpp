@@ -1,5 +1,6 @@
 #include <llarp/messages/dht_immediate.hpp>
-#include "router.hpp"
+
+#include <router.hpp>
 
 namespace llarp
 {
@@ -57,7 +58,7 @@ namespace llarp
   }
 
   bool
-  DHTImmeidateMessage::HandleMessage(llarp_router *router) const
+  DHTImmeidateMessage::HandleMessage(llarp::Router *router) const
   {
     DHTImmeidateMessage reply(session);
     bool result = true;

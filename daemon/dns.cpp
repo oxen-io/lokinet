@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <llarp.h>
+#include <llarp/config.h>
 #include <llarp/dns_iptracker.hpp>
 #include <llarp/dnsd.hpp>
 #include <llarp/dns_dotlokilookup.hpp>

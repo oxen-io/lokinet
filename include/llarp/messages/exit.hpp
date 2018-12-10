@@ -44,7 +44,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
     };
 
     struct GrantExitMessage final : public IMessage
@@ -77,7 +77,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
     };
 
     struct RejectExitMessage final : public IMessage
@@ -113,7 +113,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
     };
 
     struct UpdateExitVerifyMessage final : public IMessage
@@ -147,7 +147,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
     };
 
     struct UpdateExitMessage final : public IMessage
@@ -182,7 +182,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
     };
 
     struct CloseExitMessage final : public IMessage
@@ -210,7 +210,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
 
       bool
       Sign(llarp_crypto* c, const llarp::SecretKey& sk);

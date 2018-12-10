@@ -103,7 +103,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::HandleMessage(IMessageHandler* h, llarp_router* r) const
+    ObtainExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
     {
       return h->HandleObtainExitMessage(this, r);
     }

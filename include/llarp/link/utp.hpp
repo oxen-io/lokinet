@@ -8,7 +8,7 @@ namespace llarp
   namespace utp
   {
     std::unique_ptr< ILinkLayer >
-    NewServer(llarp_router* r);
+    NewServer(llarp::Router* r);
   }
 }  // namespace llarp
 

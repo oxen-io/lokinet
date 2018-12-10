@@ -2,8 +2,8 @@
 #include <llarp/dht/messages/gotrouter.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/dht_immediate.hpp>
-#include <vector>
 #include "router.hpp"
+#include <vector>
 
 namespace llarp
 {
@@ -79,7 +79,7 @@ namespace llarp
           // lookup router
           parent->LookupRouter(
               pk,
-              std::bind(&llarp_router::HandleDHTLookupForExplore,
+              std::bind(&llarp::Router::HandleDHTLookupForExplore,
                         parent->router, pk, std::placeholders::_1));
         }
       }
@@ -258,7 +258,7 @@ namespace llarp
     }
 
     void
-    Context::Init(const Key_t &us, llarp_router *r,
+    Context::Init(const Key_t &us, llarp::Router *r,
                   llarp_time_t exploreInterval)
     {
       router   = r;

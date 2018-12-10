@@ -34,7 +34,7 @@ namespace llarp
 
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
 
-      Endpoint(const std::string& nickname, llarp_router* r);
+      Endpoint(const std::string& nickname, llarp::Router* r);
       ~Endpoint();
 
       void
@@ -64,7 +64,7 @@ namespace llarp
       llarp_threadpool*
       Worker();
 
-      llarp_router*
+      llarp::Router*
       Router()
       {
         return m_Router;
@@ -90,10 +90,10 @@ namespace llarp
       EnsureReplyPath(const ServiceInfo& addr);
 
       bool
-      PublishIntroSet(llarp_router* r);
+      PublishIntroSet(llarp::Router* r);
 
       bool
-      PublishIntroSetVia(llarp_router* r, path::Path* p);
+      PublishIntroSetVia(llarp::Router* r, path::Path* p);
 
       bool
       HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
@@ -428,7 +428,7 @@ namespace llarp
       std::unique_ptr< llarp::exit::BaseSession > m_Exit;
 
      private:
-      llarp_router* m_Router;
+      llarp::Router* m_Router;
       llarp_threadpool* m_IsolatedWorker = nullptr;
       llarp::Logic* m_IsolatedLogic      = nullptr;
       llarp_ev_loop* m_IsolatedNetLoop   = nullptr;

@@ -2,7 +2,6 @@
 #define LLARP_DHT_H_
 
 #include <llarp/buffer.h>
-#include <llarp/router.h>
 #include <llarp/crypto.hpp>
 #include <llarp/router_contact.hpp>
 
@@ -14,9 +13,11 @@
 
 struct llarp_dht_context;
 
+namespace llarp { struct Router; }
+
 /// allocator
 struct llarp_dht_context*
-llarp_dht_context_new(struct llarp_router* parent);
+llarp_dht_context_new(llarp::Router* parent);
 
 /// deallocator
 void
@@ -37,7 +38,6 @@ struct llarp_router_lookup_job
   void* user;
   llarp_router_lookup_handler hook;
   struct llarp_dht_context* dht;
-  // byte_t target[PUBKEYSIZE];
   llarp::PubKey target;
   bool found;
   // make sure you initialize addr and exits

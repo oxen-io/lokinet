@@ -1,4 +1,5 @@
 #include <llarp/bencode.hpp>
+#include <llarp/path.hpp>
 #include <llarp/messages/path_confirm.hpp>
 #include <llarp/messages/relay_commit.hpp>
 #include "buffer.hpp"
@@ -45,7 +46,7 @@ namespace llarp
   }
 
   bool
-  LR_CommitMessage::HandleMessage(llarp_router* router) const
+  LR_CommitMessage::HandleMessage(llarp::Router* router) const
   {
     if(frames.size() != MAXHOPS)
     {

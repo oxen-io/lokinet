@@ -19,7 +19,7 @@ namespace llarp
 
     struct TunEndpoint : public service::Endpoint, public dns::IQueryHandler
     {
-      TunEndpoint(const std::string& nickname, llarp_router* r);
+      TunEndpoint(const std::string& nickname, llarp::Router* r);
       ~TunEndpoint();
 
       virtual bool

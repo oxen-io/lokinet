@@ -2,7 +2,6 @@
 #include "buffer.hpp"
 #include "fs.hpp"
 #include "ini.hpp"
-#include "router.hpp"
 
 namespace llarp
 {

@@ -11,7 +11,7 @@ namespace llarp
   {
     struct ExitEndpoint
     {
-      ExitEndpoint(const std::string& name, llarp_router* r);
+      ExitEndpoint(const std::string& name, llarp::Router* r);
       ~ExitEndpoint();
 
       void
@@ -41,7 +41,7 @@ namespace llarp
       void
       OnInetPacket(llarp_buffer_t buf);
 
-      llarp_router*
+      llarp::Router*
       Router();
 
       llarp_time_t
@@ -100,7 +100,7 @@ namespace llarp
       void
       KickIdentOffExit(const llarp::PubKey& pk);
 
-      llarp_router* m_Router;
+      llarp::Router* m_Router;
       bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;

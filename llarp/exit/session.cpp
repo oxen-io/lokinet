@@ -1,5 +1,6 @@
 #include <llarp/exit/session.hpp>
-#include "router.hpp"
+#include <llarp/path.hpp>
+#include <router.hpp>
 
 namespace llarp
 {
@@ -7,7 +8,7 @@ namespace llarp
   {
     BaseSession::BaseSession(const llarp::RouterID& router,
                              std::function< bool(llarp_buffer_t) > writepkt,
-                             llarp_router* r, size_t numpaths, size_t hoplen)
+                             llarp::Router* r, size_t numpaths, size_t hoplen)
         : llarp::path::Builder(r, r->dht, numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)

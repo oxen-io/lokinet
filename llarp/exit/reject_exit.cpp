@@ -91,7 +91,7 @@ namespace llarp
     }
 
     bool
-    RejectExitMessage::HandleMessage(IMessageHandler* h, llarp_router* r) const
+    RejectExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
     {
       return h->HandleRejectExitMessage(this, r);
     }

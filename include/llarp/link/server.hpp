@@ -10,10 +10,10 @@
 #include <llarp/logic.hpp>
 #include <list>
 
-struct llarp_router;
-
 namespace llarp
 {
+  struct Router;
+
   struct ILinkLayer
   {
     virtual ~ILinkLayer();

@@ -6,11 +6,10 @@
 #include <functional>
 #include <llarp/crypto.hpp>
 
-// forward declare
-struct llarp_router;
-
 namespace llarp
 {
+  struct Router;
+
   namespace rpc
   {
     struct ServerImpl;
@@ -18,7 +17,7 @@ namespace llarp
     /// jsonrpc server
     struct Server
     {
-      Server(llarp_router* r);
+      Server(llarp::Router* r);
       ~Server();
 
       bool
@@ -33,7 +32,7 @@ namespace llarp
     /// jsonrpc caller
     struct Caller
     {
-      Caller(llarp_router* r);
+      Caller(llarp::Router* r);
       ~Caller();
 
       /// start with jsonrpc endpoint address

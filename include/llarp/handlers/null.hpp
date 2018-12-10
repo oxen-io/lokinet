@@ -8,7 +8,7 @@ namespace llarp
   {
     struct NullEndpoint final : public llarp::service::Endpoint
     {
-      NullEndpoint(const std::string &name, llarp_router *r)
+      NullEndpoint(const std::string &name, llarp::Router *r)
           : llarp::service::Endpoint(name, r){};
 
       bool HandleWriteIPPacket(llarp_buffer_t,

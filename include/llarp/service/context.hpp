@@ -1,6 +1,5 @@
 #ifndef LLARP_SERVICE_CONTEXT_HPP
 #define LLARP_SERVICE_CONTEXT_HPP
-#include <llarp/router.h>
 #include <llarp/net.hpp>
 #include <llarp/service/config.hpp>
 #include <llarp/service/endpoint.hpp>
@@ -14,7 +13,7 @@ namespace llarp
     /// holds all the hidden service endpoints we own
     struct Context
     {
-      Context(llarp_router *r);
+      Context(llarp::Router *r);
       ~Context();
 
       void
@@ -74,7 +73,7 @@ namespace llarp
       StartAll();
 
      private:
-      llarp_router *m_Router;
+      llarp::Router *m_Router;
       std::unordered_map< std::string, std::unique_ptr< Endpoint > >
           m_Endpoints;
     };

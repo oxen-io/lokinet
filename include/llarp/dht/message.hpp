@@ -24,7 +24,7 @@ namespace llarp
 
       virtual bool
       HandleMessage(
-          llarp_dht_context* dht,
+          struct llarp_dht_context* dht,
           std::vector< std::unique_ptr< IMessage > >& replies) const = 0;
 
       Key_t From;

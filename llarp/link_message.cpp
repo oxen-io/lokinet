@@ -2,11 +2,10 @@
 #include <llarp/messages.hpp>
 #include "buffer.hpp"
 #include "logger.hpp"
-#include "router.hpp"
 
 namespace llarp
 {
-  InboundMessageParser::InboundMessageParser(llarp_router* _router)
+  InboundMessageParser::InboundMessageParser(Router* _router)
       : router(_router)
   {
   }

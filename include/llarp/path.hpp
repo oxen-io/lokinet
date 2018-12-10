@@ -1,6 +1,5 @@
 #ifndef LLARP_PATH_HPP
 #define LLARP_PATH_HPP
-#include <llarp/router.h>
 #include <llarp/time.hpp>
 #include <llarp/aligned.hpp>
 #include <llarp/crypto.hpp>
@@ -110,17 +109,17 @@ namespace llarp
       /// send routing message and increment sequence number
       virtual bool
       SendRoutingMessage(const llarp::routing::IMessage* msg,
-                         llarp_router* r) = 0;
+                         llarp::Router* r) = 0;
 
       // handle data in upstream direction
       virtual bool
       HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y,
-                     llarp_router* r) = 0;
+                     llarp::Router* r) = 0;
 
       // handle data in downstream direction
       virtual bool
       HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
-                       llarp_router* r) = 0;
+                       llarp::Router* r) = 0;
 
       uint64_t
       NextSeqNo()
@@ -176,55 +175,55 @@ namespace llarp
       // send routing message when end of path
       bool
       SendRoutingMessage(const llarp::routing::IMessage* msg,
-                         llarp_router* r) override;
+                         llarp::Router* r) override;
 
       // handle routing message when end of path
       bool
       HandleRoutingMessage(const llarp::routing::IMessage* msg,
-                           llarp_router* r);
+                           llarp::Router* r);
 
       bool
       HandleDataDiscardMessage(const llarp::routing::DataDiscardMessage* msg,
-                               llarp_router* r) override;
+                               llarp::Router* r) override;
 
       bool
       HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,
-                               llarp_router* r) override;
+                               llarp::Router* r) override;
       bool
       HandlePathTransferMessage(const llarp::routing::PathTransferMessage* msg,
-                                llarp_router* r) override;
+                                llarp::Router* r) override;
       bool
       HandlePathLatencyMessage(const llarp::routing::PathLatencyMessage* msg,
-                               llarp_router* r) override;
+                               llarp::Router* r) override;
 
       bool
       HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
-                              llarp_router* r) override;
+                              llarp::Router* r) override;
 
       bool
       HandleUpdateExitVerifyMessage(
           const llarp::routing::UpdateExitVerifyMessage* msg,
-          llarp_router* r) override;
+          llarp::Router* r) override;
 
       bool
       HandleTransferTrafficMessage(
           const llarp::routing::TransferTrafficMessage* msg,
-          llarp_router* r) override;
+          llarp::Router* r) override;
 
       bool
       HandleUpdateExitMessage(const llarp::routing::UpdateExitMessage* msg,
-                              llarp_router* r) override;
+                              llarp::Router* r) override;
 
       bool
       HandleGrantExitMessage(const llarp::routing::GrantExitMessage* msg,
-                             llarp_router* r) override;
+                             llarp::Router* r) override;
       bool
       HandleRejectExitMessage(const llarp::routing::RejectExitMessage* msg,
-                              llarp_router* r) override;
+                              llarp::Router* r) override;
 
       bool
       HandleCloseExitMessage(const llarp::routing::CloseExitMessage* msg,
-                             llarp_router* r) override;
+                             llarp::Router* r) override;
 
       bool
       HandleHiddenServiceFrame(__attribute__((
@@ -240,17 +239,17 @@ namespace llarp
 
       bool
       HandleDHTMessage(const llarp::dht::IMessage* msg,
-                       llarp_router* r) override;
+                       llarp::Router* r) override;
 
       // handle data in upstream direction
       bool
       HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y,
-                     llarp_router* r) override;
+                     llarp::Router* r) override;
 
       // handle data in downstream direction
       bool
       HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
-                       llarp_router* r) override;
+                       llarp::Router* r) override;
     };
 
     /// configuration for a single hop when building a path
@@ -395,55 +394,55 @@ namespace llarp
       Expired(llarp_time_t now) const override;
 
       void
-      Tick(llarp_time_t now, llarp_router* r);
+      Tick(llarp_time_t now, llarp::Router* r);
 
       bool
       SendRoutingMessage(const llarp::routing::IMessage* msg,
-                         llarp_router* r) override;
+                         llarp::Router* r) override;
 
       bool
       HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
-                              llarp_router* r) override;
+                              llarp::Router* r) override;
 
       bool
       HandleUpdateExitVerifyMessage(
           const llarp::routing::UpdateExitVerifyMessage* msg,
-          llarp_router* r) override;
+          llarp::Router* r) override;
 
       bool
       HandleTransferTrafficMessage(
           const llarp::routing::TransferTrafficMessage* msg,
-          llarp_router* r) override;
+          llarp::Router* r) override;
 
       bool
       HandleUpdateExitMessage(const llarp::routing::UpdateExitMessage* msg,
-                              llarp_router* r) override;
+                              llarp::Router* r) override;
 
       bool
       HandleCloseExitMessage(const llarp::routing::CloseExitMessage* msg,
-                             llarp_router* r) override;
+                             llarp::Router* r) override;
       bool
       HandleGrantExitMessage(const llarp::routing::GrantExitMessage* msg,
-                             llarp_router* r) override;
+                             llarp::Router* r) override;
       bool
       HandleRejectExitMessage(const llarp::routing::RejectExitMessage* msg,
-                              llarp_router* r) override;
+                              llarp::Router* r) override;
 
       bool
       HandleDataDiscardMessage(const llarp::routing::DataDiscardMessage* msg,
-                               llarp_router* r) override;
+                               llarp::Router* r) override;
 
       bool
       HandlePathConfirmMessage(const llarp::routing::PathConfirmMessage* msg,
-                               llarp_router* r) override;
+                               llarp::Router* r) override;
 
       bool
       HandlePathLatencyMessage(const llarp::routing::PathLatencyMessage* msg,
-                               llarp_router* r) override;
+                               llarp::Router* r) override;
 
       bool
       HandlePathTransferMessage(const llarp::routing::PathTransferMessage* msg,
-                                llarp_router* r) override;
+                                llarp::Router* r) override;
 
       bool
       HandleHiddenServiceFrame(
@@ -454,20 +453,20 @@ namespace llarp
 
       bool
       HandleDHTMessage(const llarp::dht::IMessage* msg,
-                       llarp_router* r) override;
+                       llarp::Router* r) override;
 
       bool
-      HandleRoutingMessage(llarp_buffer_t buf, llarp_router* r);
+      HandleRoutingMessage(llarp_buffer_t buf, llarp::Router* r);
 
       // handle data in upstream direction
       bool
       HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y,
-                     llarp_router* r) override;
+                     llarp::Router* r) override;
 
       // handle data in downstream direction
       bool
       HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
-                       llarp_router* r) override;
+                       llarp::Router* r) override;
 
       bool
       IsReady() const;
@@ -503,7 +502,7 @@ namespace llarp
 
       bool
       SendExitRequest(const llarp::routing::ObtainExitMessage* msg,
-                      llarp_router* r);
+                      llarp::Router* r);
 
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;
@@ -540,7 +539,7 @@ namespace llarp
 
     struct PathContext
     {
-      PathContext(llarp_router* router);
+      PathContext(llarp::Router* router);
       ~PathContext();
 
       /// called from router tick function
@@ -634,7 +633,7 @@ namespace llarp
       llarp::Logic*
       Logic();
 
-      llarp_router*
+      llarp::Router*
       Router();
 
       byte_t*
@@ -644,7 +643,7 @@ namespace llarp
       OurRouterID() const;
 
      private:
-      llarp_router* m_Router;
+      llarp::Router* m_Router;
       SyncTransitMap_t m_TransitPaths;
       SyncTransitMap_t m_Paths;
       SyncOwnedPathsMap_t m_OurPaths;

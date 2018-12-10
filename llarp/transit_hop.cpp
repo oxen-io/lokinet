@@ -53,7 +53,7 @@ namespace llarp
 
     bool
     TransitHop::SendRoutingMessage(const llarp::routing::IMessage* msg,
-                                   llarp_router* r)
+                                   llarp::Router* r)
     {
       if(!IsEndpoint(r->pubkey()))
         return false;
@@ -82,7 +82,7 @@ namespace llarp
 
     bool
     TransitHop::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
-                                 llarp_router* r)
+                                 llarp::Router* r)
     {
       RelayDownstreamMessage msg;
       msg.pathid = info.rxID;
@@ -96,7 +96,7 @@ namespace llarp
 
     bool
     TransitHop::HandleUpstream(llarp_buffer_t buf, const TunnelNonce& Y,
-                               llarp_router* r)
+                               llarp::Router* r)
     {
       r->crypto.xchacha20(buf, pathKey, Y);
       if(IsEndpoint(r->pubkey()))
@@ -118,14 +118,14 @@ namespace llarp
 
     bool
     TransitHop::HandleDHTMessage(const llarp::dht::IMessage* msg,
-                                 llarp_router* r)
+                                 llarp::Router* r)
     {
       return r->dht->impl.RelayRequestForPath(info.rxID, msg);
     }
 
     bool
     TransitHop::HandlePathLatencyMessage(
-        const llarp::routing::PathLatencyMessage* msg, llarp_router* r)
+        const llarp::routing::PathLatencyMessage* msg, llarp::Router* r)
     {
       llarp::routing::PathLatencyMessage reply;
       reply.L = msg->T;
@@ -135,7 +135,7 @@ namespace llarp
     bool
     TransitHop::HandlePathConfirmMessage(
         __attribute__((unused)) const llarp::routing::PathConfirmMessage* msg,
-        __attribute__((unused)) llarp_router* r)
+        __attribute__((unused)) llarp::Router* r)
     {
       llarp::LogWarn("unwarranted path confirm message on ", info);
       return false;
@@ -144,7 +144,7 @@ namespace llarp
     bool
     TransitHop::HandleDataDiscardMessage(
         __attribute__((unused)) const llarp::routing::DataDiscardMessage* msg,
-        __attribute__((unused)) llarp_router* r)
+        __attribute__((unused)) llarp::Router* r)
     {
       llarp::LogWarn("unwarranted path data discard message on ", info);
       return false;
@@ -152,7 +152,7 @@ namespace llarp
 
     bool
     TransitHop::HandleObtainExitMessage(
-        const llarp::routing::ObtainExitMessage* msg, llarp_router* r)
+        const llarp::routing::ObtainExitMessage* msg, llarp::Router* r)
     {
       if(msg->Verify(&r->crypto)
          && r->exitContext.ObtainNewExit(msg->I, info.rxID, msg->E != 0))
@@ -182,7 +182,7 @@ namespace llarp
 
     bool
     TransitHop::HandleCloseExitMessage(
-        const llarp::routing::CloseExitMessage* msg, llarp_router* r)
+        const llarp::routing::CloseExitMessage* msg, llarp::Router* r)
     {
       llarp::routing::DataDiscardMessage discard(info.rxID, msg->S);
       auto ep = r->exitContext.FindEndpointForPath(info.rxID);
@@ -200,7 +200,7 @@ namespace llarp
 
     bool
     TransitHop::HandleUpdateExitVerifyMessage(
-        const llarp::routing::UpdateExitVerifyMessage* msg, llarp_router* r)
+        const llarp::routing::UpdateExitVerifyMessage* msg, llarp::Router* r)
     {
       (void)msg;
       (void)r;
@@ -210,7 +210,7 @@ namespace llarp
 
     bool
     TransitHop::HandleUpdateExitMessage(
-        const llarp::routing::UpdateExitMessage* msg, llarp_router* r)
+        const llarp::routing::UpdateExitMessage* msg, llarp::Router* r)
     {
       auto ep = r->exitContext.FindEndpointForPath(msg->P);
       if(ep)
@@ -233,7 +233,7 @@ namespace llarp
 
     bool
     TransitHop::HandleRejectExitMessage(
-        const llarp::routing::RejectExitMessage* msg, llarp_router* r)
+        const llarp::routing::RejectExitMessage* msg, llarp::Router* r)
     {
       (void)msg;
       (void)r;
@@ -243,7 +243,7 @@ namespace llarp
 
     bool
     TransitHop::HandleGrantExitMessage(
-        const llarp::routing::GrantExitMessage* msg, llarp_router* r)
+        const llarp::routing::GrantExitMessage* msg, llarp::Router* r)
     {
       (void)msg;
       (void)r;
@@ -253,7 +253,7 @@ namespace llarp
 
     bool
     TransitHop::HandleTransferTrafficMessage(
-        const llarp::routing::TransferTrafficMessage* msg, llarp_router* r)
+        const llarp::routing::TransferTrafficMessage* msg, llarp::Router* r)
     {
       auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
       if(endpoint)
@@ -279,7 +279,7 @@ namespace llarp
 
     bool
     TransitHop::HandlePathTransferMessage(
-        const llarp::routing::PathTransferMessage* msg, llarp_router* r)
+        const llarp::routing::PathTransferMessage* msg, llarp::Router* r)
     {
       auto path = r->paths.GetPathForTransfer(msg->P);
       llarp::routing::DataDiscardMessage discarded(msg->P, msg->S);
