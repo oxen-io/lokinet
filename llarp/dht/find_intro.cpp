@@ -10,7 +10,7 @@ namespace llarp
     /*
     struct IntroSetLookupInformer
     {
-      llarp_router* router;
+    llarp::Router* router;
       service::Address target;
 
       void

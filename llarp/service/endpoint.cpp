@@ -1,5 +1,6 @@
 
 #include <llarp/dht/messages/findintro.hpp>
+#include <llarp/logic.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/service/protocol.hpp>
@@ -10,7 +11,7 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const std::string& name, llarp_router* r)
+    Endpoint::Endpoint(const std::string& name, llarp::Router* r)
         : path::Builder(r, r->dht, 6, 4), m_Router(r), m_Name(name)
     {
       m_Tag.Zero();
@@ -513,7 +514,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSet(llarp_router* r)
+    Endpoint::PublishIntroSet(llarp::Router* r)
     {
       // publish via near router
       RouterID location = m_Identity.pub.Addr().data();
@@ -561,7 +562,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSetVia(llarp_router* r, path::Path* path)
+    Endpoint::PublishIntroSetVia(llarp::Router* r, path::Path* path)
     {
       auto job = new PublishIntroSetJob(this, GenTXID(), m_IntroSet);
       if(job->SendRequestViaPath(path, r))

@@ -1,5 +1,7 @@
 #include <llarp/exit/endpoint.hpp>
-#include "router.hpp"
+#include <llarp/handlers/exit.hpp>
+
+#include <router.hpp>
 
 namespace llarp
 {

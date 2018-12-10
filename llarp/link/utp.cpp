@@ -1,5 +1,4 @@
 #include <llarp/link/utp.hpp>
-#include "router.hpp"
 #include <llarp/messages/link_intro.hpp>
 #include <llarp/messages/discard.hpp>
 #include <llarp/buffer.hpp>
@@ -8,6 +7,8 @@
 #include <cassert>
 #include <tuple>
 #include <deque>
+
+#include <router.hpp>
 
 #ifdef __linux__
 #include <linux/errqueue.h>
@@ -92,7 +93,7 @@ namespace llarp
         eClose             // utp connection is closed
       };
 
-      llarp_router*
+      llarp::Router*
       Router();
 
       State state;
@@ -323,7 +324,7 @@ namespace llarp
     struct LinkLayer : public ILinkLayer
     {
       utp_context* _utp_ctx = nullptr;
-      llarp_router* router  = nullptr;
+      llarp::Router* router  = nullptr;
       static uint64
       OnRead(utp_callback_arguments* arg);
 
@@ -437,7 +438,7 @@ namespace llarp
         return 0;
       }
 
-      LinkLayer(llarp_router* r) : ILinkLayer()
+      LinkLayer(llarp::Router* r) : ILinkLayer()
       {
         router   = r;
         _utp_ctx = utp_init(2);
@@ -584,7 +585,7 @@ namespace llarp
       {
       }
 
-      llarp_router*
+      llarp::Router*
       GetRouter();
 
       bool
@@ -618,7 +619,7 @@ namespace llarp
     };
 
     std::unique_ptr< ILinkLayer >
-    NewServer(llarp_router* r)
+    NewServer(llarp::Router* r)
     {
       return std::unique_ptr< LinkLayer >(new LinkLayer(r));
     }
@@ -803,7 +804,7 @@ namespace llarp
       EnterState(eSessionReady);
     }
 
-    llarp_router*
+    llarp::Router*
     BaseSession::Router()
     {
       return parent->router;

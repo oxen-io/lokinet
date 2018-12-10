@@ -1,6 +1,5 @@
 #include <llarp/rpc.hpp>
 
-#include "router.hpp"
 #ifdef USE_ABYSS
 #include <libabyss.hpp>
 #endif
@@ -110,12 +109,12 @@ namespace llarp
 
     struct CallerImpl : public ::abyss::http::JSONRPC
     {
-      llarp_router* router;
+      llarp::Router* router;
       llarp_time_t m_NextKeyUpdate;
       const llarp_time_t KeyUpdateInterval = 1000 * 60 * 2;
       using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
 
-      CallerImpl(llarp_router* r) : ::abyss::http::JSONRPC(), router(r)
+      CallerImpl(llarp::Router* r) : ::abyss::http::JSONRPC(), router(r)
       {
       }
 
@@ -179,8 +178,8 @@ namespace llarp
 
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
-      llarp_router* router;
-      Handler(::abyss::httpd::ConnImpl* conn, llarp_router* r)
+        llarp::Router* router;
+      Handler(::abyss::httpd::ConnImpl* conn, llarp::Router* r)
           : ::abyss::httpd::IRPCHandler(conn), router(r)
       {
       }
@@ -259,11 +258,11 @@ namespace llarp
 
     struct ReqHandlerImpl : public ::abyss::httpd::BaseReqHandler
     {
-      ReqHandlerImpl(llarp_router* r, llarp_time_t reqtimeout)
+      ReqHandlerImpl(llarp::Router* r, llarp_time_t reqtimeout)
           : ::abyss::httpd::BaseReqHandler(reqtimeout), router(r)
       {
       }
-      llarp_router* router;
+      llarp::Router* router;
       ::abyss::httpd::IRPCHandler*
       CreateHandler(::abyss::httpd::ConnImpl* conn)
       {
@@ -273,10 +272,10 @@ namespace llarp
 
     struct ServerImpl
     {
-      llarp_router* router;
+        llarp::Router* router;
       ReqHandlerImpl _handler;
 
-      ServerImpl(llarp_router* r) : router(r), _handler(r, 2000)
+      ServerImpl(llarp::Router* r) : router(r), _handler(r, 2000)
       {
       }
 
@@ -306,7 +305,7 @@ namespace llarp
 #else
     struct ServerImpl
     {
-      ServerImpl(__attribute__((unused)) llarp_router* r){};
+      ServerImpl(__attribute__((unused)) llarp::Router* r){};
 
       bool
       Start(__attribute__((unused)) const std::string& addr)
@@ -317,7 +316,7 @@ namespace llarp
 
     struct CallerImpl
     {
-      CallerImpl(__attribute__((unused)) llarp_router* r)
+      CallerImpl(__attribute__((unused)) llarp::Router* r)
       {
       }
 
@@ -340,7 +339,7 @@ namespace llarp
 
 #endif
 
-    Caller::Caller(llarp_router* r) : m_Impl(new CallerImpl(r))
+    Caller::Caller(llarp::Router* r) : m_Impl(new CallerImpl(r))
     {
     }
 
@@ -361,7 +360,7 @@ namespace llarp
       m_Impl->Tick(now);
     }
 
-    Server::Server(llarp_router* r) : m_Impl(new ServerImpl(r))
+    Server::Server(llarp::Router* r) : m_Impl(new ServerImpl(r))
     {
     }
 

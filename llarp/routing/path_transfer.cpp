@@ -57,7 +57,7 @@ namespace llarp
 
     bool
     PathTransferMessage::HandleMessage(IMessageHandler* h,
-                                       llarp_router* r) const
+                                       llarp::Router* r) const
     {
       return h->HandlePathTransferMessage(this, r);
     }

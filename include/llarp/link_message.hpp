@@ -8,11 +8,10 @@
 #include <queue>
 #include <vector>
 
-struct llarp_router;
-
 namespace llarp
 {
   struct ILinkSession;
+  struct Router;
 
   using SendQueue = std::queue< ILinkMessage* >;
 
@@ -35,12 +34,12 @@ namespace llarp
     }
 
     virtual bool
-    HandleMessage(llarp_router* router) const = 0;
+    HandleMessage(Router* router) const = 0;
   };
 
   struct InboundMessageParser
   {
-    InboundMessageParser(llarp_router* router);
+    InboundMessageParser(Router* router);
     dict_reader reader;
 
     static bool
@@ -65,7 +64,7 @@ namespace llarp
 
    private:
     bool firstkey;
-    llarp_router* router;
+    Router* router;
     ILinkSession* from = nullptr;
     std::unique_ptr< ILinkMessage > msg;
   };

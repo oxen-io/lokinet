@@ -4,6 +4,7 @@
 #include <llarp/bencode.hpp>
 #include <llarp/crypto.hpp>
 #include <llarp/encrypted.hpp>
+#include <llarp/dht/message.hpp>
 #include <llarp/routing/message.hpp>
 #include <llarp/service/Identity.hpp>
 #include <llarp/service/Info.hpp>
@@ -13,6 +14,8 @@
 
 namespace llarp
 {
+  class Logic;
+
   namespace service
   {
     constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
@@ -115,7 +118,7 @@ namespace llarp
 
       bool
       HandleMessage(llarp::routing::IMessageHandler* h,
-                    llarp_router* r) const override;
+                    llarp::Router* r) const override;
     };
   }  // namespace service
 }  // namespace llarp

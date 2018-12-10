@@ -94,7 +94,7 @@ namespace llarp
     InboundMessageParser::ParseMessageBuffer(llarp_buffer_t buf,
                                              IMessageHandler* h,
                                              const PathID_t& from,
-                                             llarp_router* r)
+                                             llarp::Router* r)
     {
       bool result = false;
       msg         = nullptr;

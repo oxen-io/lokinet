@@ -2,12 +2,12 @@
 #define LLARP_ROUTING_MESSAGE_HPP
 
 #include <llarp/buffer.h>
-#include <llarp/router.h>
 #include <llarp/bencode.hpp>
 #include <llarp/path_types.hpp>
 
 namespace llarp
 {
+  struct Router;
   namespace routing
   {
     struct IMessageHandler;
@@ -24,7 +24,7 @@ namespace llarp
       virtual ~IMessage(){};
 
       virtual bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const = 0;
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const = 0;
     };
 
     struct InboundMessageParser
@@ -32,7 +32,7 @@ namespace llarp
       InboundMessageParser();
       bool
       ParseMessageBuffer(llarp_buffer_t buf, IMessageHandler* handler,
-                         const PathID_t& from, llarp_router* r);
+                         const PathID_t& from, llarp::Router* r);
 
      private:
       static bool

@@ -1,5 +1,6 @@
 #ifndef LLARP_PATHSET_HPP
 #define LLARP_PATHSET_HPP
+
 #include <llarp/time.hpp>
 #include <functional>
 #include <list>
@@ -11,6 +12,8 @@
 #include <llarp/dht/messages/all.hpp>
 #include <map>
 #include <tuple>
+
+struct llarp_nodedb;
 
 namespace llarp
 {
@@ -58,7 +61,7 @@ namespace llarp
 
       /// tick owned paths
       void
-      Tick(llarp_time_t now, llarp_router* r);
+      Tick(llarp_time_t now, llarp::Router* r);
 
       /// count the number of paths that will exist at this timestamp in future
       size_t
@@ -167,7 +170,7 @@ namespace llarp
           std::set< llarp::service::Introduction >& intros) const;
 
       virtual bool
-      PublishIntroSet(__attribute__((unused)) llarp_router* r)
+      PublishIntroSet(__attribute__((unused)) llarp::Router* r)
       {
         return false;
       }

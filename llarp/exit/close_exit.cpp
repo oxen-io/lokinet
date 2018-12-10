@@ -76,7 +76,7 @@ namespace llarp
     }
 
     bool
-    CloseExitMessage::HandleMessage(IMessageHandler* h, llarp_router* r) const
+    CloseExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
     {
       return h->HandleCloseExitMessage(this, r);
     }

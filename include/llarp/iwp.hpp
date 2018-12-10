@@ -3,12 +3,17 @@
 #include <llarp/crypto.h>
 #include <string>
 
+namespace llarp {
+    class Logic;
+    struct Router;
+}
+
 struct llarp_iwp_args
 {
   struct llarp_crypto* crypto;
   llarp::Logic* logic;
   struct llarp_threadpool* cryptoworker;
-  struct llarp_router* router;
+  struct llarp::Router* router;
   bool permitInbound;
 };
 

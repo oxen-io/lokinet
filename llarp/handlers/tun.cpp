@@ -2,13 +2,14 @@
 // harmless on other platforms
 #define __USE_MINGW_ANSI_STDIO 1
 #include <llarp/handlers/tun.hpp>
-#include "router.hpp"
 #include <sys/types.h>
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <netdb.h>
 #endif
 #include "ev.hpp"
+
+#include <router.hpp>
 
 namespace llarp
 {
@@ -20,7 +21,7 @@ namespace llarp
       return static_cast< TunEndpoint * >(tun->user)->Promise.get();
     }
 
-    TunEndpoint::TunEndpoint(const std::string &nickname, llarp_router *r)
+    TunEndpoint::TunEndpoint(const std::string &nickname, llarp::Router *r)
         : service::Endpoint(nickname, r)
         , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop, r->netloop)

@@ -12,14 +12,14 @@ namespace llarp
 
     struct Builder : public PathSet
     {
-      struct llarp_router* router;
+      llarp::Router* router;
       struct llarp_dht_context* dht;
       llarp::SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild          = 0;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
       /// construct
-      Builder(llarp_router* p_router, struct llarp_dht_context* p_dht,
+      Builder(llarp::Router* p_router, struct llarp_dht_context* p_dht,
               size_t numPaths, size_t numHops);
 
       virtual ~Builder();

@@ -67,7 +67,7 @@ namespace llarp
     BEncode(llarp_buffer_t *buf) const;
 
     bool
-    HandleMessage(llarp_router *router) const;
+    HandleMessage(llarp::Router *router) const;
 
     bool
     AsyncDecrypt(llarp::path::PathContext *context) const;

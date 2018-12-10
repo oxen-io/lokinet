@@ -43,7 +43,7 @@ namespace llarp
     }
 
     bool
-    HandleMessage(__attribute__((unused)) llarp_router* router) const override
+    HandleMessage(__attribute__((unused)) llarp::Router* router) const override
     {
       return true;
     }
@@ -66,7 +66,7 @@ namespace llarp
       }
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const override
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const override
       {
         return h->HandleDataDiscardMessage(this, r);
       }

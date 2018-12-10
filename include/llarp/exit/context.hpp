@@ -4,7 +4,6 @@
 #include <string>
 #include <unordered_map>
 #include <llarp/handlers/exit.hpp>
-#include <llarp/router.h>
 
 namespace llarp
 {
@@ -15,7 +14,7 @@ namespace llarp
     {
       using Config_t = std::unordered_multimap< std::string, std::string >;
 
-      Context(llarp_router *r);
+      Context(llarp::Router *r);
       ~Context();
 
       void
@@ -43,7 +42,7 @@ namespace llarp
       CalculateExitTraffic(TrafficStats &stats);
 
      private:
-      llarp_router *m_Router;
+      llarp::Router *m_Router;
       std::unordered_map< std::string,
                           std::unique_ptr< llarp::handlers::ExitEndpoint > >
           m_Exits;

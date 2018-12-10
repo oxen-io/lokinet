@@ -20,7 +20,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       bool
-      HandleMessage(IMessageHandler* h, llarp_router* r) const override;
+      HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
     };
   }  // namespace routing
 }  // namespace llarp

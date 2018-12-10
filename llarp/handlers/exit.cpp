@@ -19,7 +19,7 @@ namespace llarp
       static_cast< ExitEndpoint * >(tun->user)->Flush();
     }
 
-    ExitEndpoint::ExitEndpoint(const std::string &name, llarp_router *r)
+    ExitEndpoint::ExitEndpoint(const std::string &name, llarp::Router *r)
         : m_Router(r)
         , m_Name(name)
         , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0}
@@ -108,7 +108,7 @@ namespace llarp
       return true;
     }
 
-    llarp_router *
+    llarp::Router *
     ExitEndpoint::Router()
     {
       return m_Router;

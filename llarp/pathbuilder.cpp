@@ -20,7 +20,7 @@ namespace llarp
 
     Handler result;
     size_t idx               = 0;
-    llarp_router* router     = nullptr;
+    llarp::Router* router     = nullptr;
     llarp_threadpool* worker = nullptr;
     llarp::Logic* logic      = nullptr;
     llarp_crypto* crypto     = nullptr;
@@ -153,7 +153,7 @@ namespace llarp
 
   namespace path
   {
-    Builder::Builder(llarp_router* p_router, struct llarp_dht_context* p_dht,
+    Builder::Builder(llarp::Router* p_router, struct llarp_dht_context* p_dht,
                      size_t pathNum, size_t hops)
         : llarp::path::PathSet(pathNum)
         , router(p_router)

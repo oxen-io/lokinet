@@ -81,7 +81,7 @@ namespace llarp
     }
 
     bool
-    GrantExitMessage::HandleMessage(IMessageHandler* h, llarp_router* r) const
+    GrantExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
     {
       return h->HandleGrantExitMessage(this, r);
     }

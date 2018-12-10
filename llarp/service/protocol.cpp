@@ -1,3 +1,4 @@
+#include <llarp/logic.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/service/protocol.hpp>
 #include "buffer.hpp"
@@ -384,7 +385,7 @@ namespace llarp
 
     bool
     ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
-                                 __attribute__((unused)) llarp_router* r) const
+                                 __attribute__((unused)) llarp::Router* r) const
     {
       return h->HandleHiddenServiceFrame(this);
     }

@@ -7,7 +7,6 @@
 #include <llarp/dht/message.hpp>
 #include <llarp/dht/messages/findintro.hpp>
 #include <llarp/dht/node.hpp>
-#include <llarp/router.h>
 #include <llarp/service/IntroSet.hpp>
 #include <llarp/time.hpp>
 
@@ -15,6 +14,8 @@
 
 namespace llarp
 {
+  struct Router;
+
   namespace dht
   {
     struct TXOwner
@@ -234,7 +235,7 @@ namespace llarp
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
-      Init(const Key_t& us, llarp_router* router, llarp_time_t exploreInterval);
+      Init(const Key_t& us, llarp::Router* router, llarp_time_t exploreInterval);
 
       /// get localally stored introset by service address
       const llarp::service::IntroSet*
@@ -250,7 +251,7 @@ namespace llarp
       void
       Explore(size_t N = 3);
 
-      llarp_router* router = nullptr;
+      llarp::Router* router = nullptr;
       // for router contacts
       Bucket< RCNode >* nodes = nullptr;
 
@@ -427,8 +428,8 @@ namespace llarp
 struct llarp_dht_context
 {
   llarp::dht::Context impl;
-  llarp_router* parent;
-  llarp_dht_context(llarp_router* router);
+  llarp::Router* parent;
+  llarp_dht_context(llarp::Router* router);
 };
 
 #endif

@@ -57,7 +57,7 @@ namespace llarp
     }
 
     void
-    PathSet::Tick(llarp_time_t now, llarp_router* r)
+    PathSet::Tick(llarp_time_t now, llarp::Router* r)
     {
       Lock_t l(m_PathsMutex);
       for(auto& item : m_Paths)

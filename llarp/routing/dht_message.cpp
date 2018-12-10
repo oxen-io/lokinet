@@ -48,7 +48,7 @@ namespace llarp
     }
 
     bool
-    DHTMessage::HandleMessage(IMessageHandler* h, llarp_router* r) const
+    DHTMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
     {
       // set source as us
       llarp::dht::Key_t us = r->pubkey();

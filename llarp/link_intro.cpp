@@ -114,7 +114,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::HandleMessage(llarp_router* router) const
+  LinkIntroMessage::HandleMessage(llarp::Router* router) const
   {
     if(!Verify(&router->crypto))
       return false;

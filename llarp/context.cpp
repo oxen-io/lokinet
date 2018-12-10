@@ -4,7 +4,7 @@
 #include <signal.h>
 #include <sys/param.h>  // for MIN
 #include <llarp.hpp>
-#include "router.hpp"
+#include <router.hpp>
 
 #include <llarp/dnsd.hpp>
 #include <llarp/dns_dotlokilookup.hpp>
@@ -149,9 +149,9 @@ namespace llarp
     else
       logic = new Logic;
 
-    router = llarp_init_router(worker, mainloop, logic);
+    router = new Router(worker, mainloop, logic);
 
-    if(!llarp_configure_router(router, config))
+    if(!router->Configure(config))
     {
       llarp::LogError("Failed to configure router");
       return 1;
@@ -169,7 +169,7 @@ namespace llarp
       return 1;
     }
     // run
-    if(!llarp_run_router(router, nodedb))
+    if(!router->Run(nodedb))
       return 1;
     // run net io thread
     llarp::LogInfo("running mainloop");
@@ -213,7 +213,7 @@ namespace llarp
 
     llarp::LogDebug("stop router");
     if(router)
-      llarp_stop_router(router);
+      router->Stop();
 
     llarp::LogDebug("stop workers");
     if(worker)
@@ -236,7 +236,7 @@ namespace llarp
     llarp_ev_loop_stop(mainloop);
 
     llarp::LogDebug("free router");
-    llarp_free_router(&router);
+    delete router;
 
     llarp::LogDebug("free logic");
     delete logic;

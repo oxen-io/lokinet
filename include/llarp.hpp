@@ -8,6 +8,9 @@
 #include <vector>
 #include <llarp/crypto.h>
 
+struct llarp_config;
+struct llarp_config_iterator;
+
 namespace llarp
 {
   struct Context
@@ -17,7 +20,7 @@ namespace llarp
     int num_nethreads   = 1;
     bool singleThreaded = false;
     llarp_crypto crypto;
-    llarp_router *router     = nullptr;
+    llarp::Router *router     = nullptr;
     llarp_threadpool *worker = nullptr;
     llarp::Logic *logic      = nullptr;
     llarp_config *config     = nullptr;
