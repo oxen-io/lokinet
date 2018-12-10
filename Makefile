@@ -212,7 +212,7 @@ debian: debian-configure
 debian-test:
 	$(TEST_EXE)
 
-install: build
+install: 
 	$(MAKE) -C '$(BUILD_ROOT)' install
 
 fuzz-configure: clean
