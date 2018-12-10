@@ -444,7 +444,7 @@ namespace llarp
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
-          if(m_Exit)
+          if(m_Exit && !llarp::IsIPv4Bogon(pkt.dst()))
           {
             pkt.UpdateIPv4PacketOnDst({0}, pkt.dst());
             m_Exit->QueueUpstreamTraffic(std::move(pkt),
