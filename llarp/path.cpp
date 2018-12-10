@@ -45,7 +45,7 @@ namespace llarp
       return &m_Router->crypto;
     }
 
-    llarp_logic*
+    llarp::Logic*
     PathContext::Logic()
     {
       return m_Router->logic;

@@ -1363,7 +1363,7 @@ namespace llarp
 
     struct AsyncKeyExchange
     {
-      llarp_logic* logic;
+      llarp::Logic* logic;
       llarp_crypto* crypto;
       SharedSecret sharedKey;
       ServiceInfo remote;
@@ -1377,7 +1377,7 @@ namespace llarp
       IDataHandler* handler;
       ConvoTag tag;
 
-      AsyncKeyExchange(llarp_logic* l, llarp_crypto* c, const ServiceInfo& r,
+      AsyncKeyExchange(llarp::Logic* l, llarp_crypto* c, const ServiceInfo& r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
                        const Introduction& remote, IDataHandler* h,
@@ -1437,7 +1437,7 @@ namespace llarp
         // encrypt and sign
         if(self->frame.EncryptAndSign(self->crypto, self->msg, K,
                                       self->m_LocalIdentity))
-          llarp_logic_queue_job(self->logic, {self, &Result});
+          self->logic->queue_job({self, &Result});
         else
         {
           llarp::LogError("failed to encrypt and sign");
@@ -1711,13 +1711,13 @@ namespace llarp
       }
     }
 
-    llarp_logic*
+    llarp::Logic*
     Endpoint::RouterLogic()
     {
       return m_Router->logic;
     }
 
-    llarp_logic*
+    llarp::Logic*
     Endpoint::EndpointLogic()
     {
       return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic;

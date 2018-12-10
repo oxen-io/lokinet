@@ -47,7 +47,7 @@ llarp_dht_lookup_router(struct llarp_dht_context *ctx,
   // llarp_rc_clear(&job->result);
   llarp::LogError("implement me llarp_dht_lookup_router");
   /*
-  llarp_logic_queue_job(ctx->parent->logic,
+  ctx->parent->logic->queue_job(
                         {job, &llarp::dht::Context::queue_router_lookup});
   */
 }

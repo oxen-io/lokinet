@@ -431,7 +431,7 @@ namespace llarp
     TunEndpoint::Tick(llarp_time_t now)
     {
       // call tun code in endpoint logic in case of network isolation
-      // llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
+      // EndpointLogic()->queue_job({this, handleTickTun});
       FlushSend();
       Endpoint::Tick(now);
     }
@@ -628,7 +628,7 @@ namespace llarp
           llarp::LogWarn("packet dropped");
       });
       if(self->m_UserToNetworkPktQueue.Size())
-        llarp_logic_queue_job(self->RouterLogic(), {self, &handleNetSend});
+        self->RouterLogic()->queue_job({self, &handleNetSend});
     }
 
     void

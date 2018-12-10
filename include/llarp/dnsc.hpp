@@ -85,7 +85,7 @@ struct dnsc_context
   // where to create the new sockets
   struct llarp_udp_io *udp;
   /// We will likely need something for timing events (timeouts)
-  struct llarp_logic *logic;
+  llarp::Logic *logic;
 };
 
 /// async (blocking w/callback) resolve a hostname using generic socks
@@ -108,8 +108,7 @@ llarp_host_resolved(dnsc_answer_request *const request);
 /// initialize dns subsystem and bind socket
 /// returns true on bind success otherwise returns false
 bool
-llarp_dnsc_init(struct dnsc_context *const dnsc,
-                struct llarp_logic *const logic,
+llarp_dnsc_init(struct dnsc_context *const dnsc, llarp::Logic *const logic,
                 struct llarp_ev_loop *const netloop,
                 const llarp::Addr &dnsc_sockaddr);
 

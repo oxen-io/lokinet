@@ -103,8 +103,7 @@ namespace llarp
         return;
       Context *ctx = static_cast< Context * >(u);
       ctx->Explore(1);
-      llarp_logic_call_later(ctx->router->logic,
-                             {orig, ctx, &handle_explore_timer});
+      ctx->router->logic->call_later({orig, ctx, &handle_explore_timer});
     }
 
     void
@@ -269,8 +268,8 @@ namespace llarp
       services = new Bucket< ISNode >(ourKey);
       llarp::LogDebug("intialize dht with key ", ourKey);
       // start exploring
-      llarp_logic_call_later(
-          r->logic,
+
+      r->logic->call_later(
           {exploreInterval, this, &llarp::dht::Context::handle_explore_timer});
       // start cleanup timer
       ScheduleCleanupTimer();
@@ -279,8 +278,7 @@ namespace llarp
     void
     Context::ScheduleCleanupTimer()
     {
-      llarp_logic_call_later(router->logic,
-                             {1000, this, &handle_cleaner_timer});
+      router->logic->call_later({1000, this, &handle_cleaner_timer});
     }
 
     void

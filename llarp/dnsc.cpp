@@ -785,8 +785,7 @@ llarp_host_resolved(dnsc_answer_request *const request)
 }
 
 bool
-llarp_dnsc_init(struct dnsc_context *const dnsc,
-                struct llarp_logic *const logic,
+llarp_dnsc_init(struct dnsc_context *const dnsc, llarp::Logic *const logic,
                 struct llarp_ev_loop *const netloop,
                 const llarp::Addr &dnsc_sockaddr)
 {
