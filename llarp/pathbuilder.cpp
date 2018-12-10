@@ -20,7 +20,7 @@ namespace llarp
 
     Handler result;
     size_t idx               = 0;
-    llarp::Router* router     = nullptr;
+    llarp::Router* router    = nullptr;
     llarp_threadpool* worker = nullptr;
     llarp::Logic* logic      = nullptr;
     llarp_crypto* crypto     = nullptr;
@@ -182,7 +182,7 @@ namespace llarp
       do
       {
         --tries;
-        if(llarp_nodedb_select_random_hop(db, prev, cur, hop))
+        if(db->select_random_hop(prev, cur, hop))
           return true;
       } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
       return false;

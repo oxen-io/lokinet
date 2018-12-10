@@ -68,7 +68,7 @@ struct TryConnectJob
     if(!router->IsServiceNode())
     {
       if(router->routerProfiling.IsBad(rc.pubkey))
-        llarp_nodedb_del_rc(router->nodedb, rc.pubkey);
+        router->nodedb->Remove(rc.pubkey);
     }
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
@@ -283,7 +283,7 @@ namespace llarp
     }
     llarp::RouterContact remoteRC;
     // we don't have an open session to that router right now
-    if(llarp_nodedb_get_rc(nodedb, remote, remoteRC))
+    if(nodedb->Get(remote, remoteRC))
     {
       // try connecting directly as the rc is loaded from disk
       llarp_router_try_connect(this, remoteRC, 10);
@@ -311,7 +311,7 @@ namespace llarp
       }
       if(results[0].Verify(&crypto))
       {
-        llarp_nodedb_put_rc(nodedb, results[0]);
+        nodedb->Insert(results[0]);
         llarp_router_try_connect(this, results[0], 10);
       }
     }
@@ -347,7 +347,7 @@ namespace llarp
     {
       llarp::LogDebug("verified signature");
       // store into filesystem
-      if(!llarp_nodedb_put_rc(nodedb, remote))
+      if(!nodedb->Insert(remote))
       {
         llarp::LogWarn("failed to store");
       }
@@ -534,7 +534,7 @@ namespace llarp
     for(const auto &rc : results)
     {
       if(rc.Verify(&crypto))
-        llarp_nodedb_put_rc(nodedb, rc);
+        nodedb->Insert(rc);
       else
         return;
     }
@@ -555,7 +555,7 @@ namespace llarp
     }
 
     llarp::RouterContact rc;
-    if(llarp_nodedb_get_rc(nodedb, remote, rc))
+    if(nodedb->Get(remote, rc))
     {
       // try connecting async
       llarp_router_try_connect(this, rc, 5);
@@ -602,7 +602,7 @@ namespace llarp
       if(whitelistRouters
          && lokinetRouters.find(result.pubkey) == lokinetRouters.end())
         continue;
-      llarp_nodedb_put_rc(nodedb, result);
+      nodedb->Insert(result);
       llarp_router_try_connect(this, result, 10);
     }
   }
@@ -649,7 +649,7 @@ namespace llarp
 
     if(inboundLinks.size() == 0)
     {
-      size_t N = llarp_nodedb_num_loaded(nodedb);
+      size_t N = nodedb->num_loaded();
       if(N < minRequiredRouters)
       {
         llarp::LogInfo("We need at least ", minRequiredRouters,
@@ -948,7 +948,7 @@ namespace llarp
       return false;
     }
 
-    llarp::LogInfo("have ", llarp_nodedb_num_loaded(nodedb), " routers");
+    llarp::LogInfo("have ", nodedb->num_loaded(), " routers");
 
     llarp::LogDebug("starting outbound link");
     if(!outboundLink->Start(logic))
@@ -1033,8 +1033,9 @@ namespace llarp
   {
     int wanted   = want;
     Router *self = this;
-    llarp_nodedb_visit_loaded(
-        self->nodedb, [self, &want](const llarp::RouterContact &other) -> bool {
+
+    self->nodedb->visit(
+        [self, &want](const llarp::RouterContact &other) -> bool {
           // check if we really want to
           if(!self->ConnectionToRouterAllowed(other.pubkey))
             return want > 0;

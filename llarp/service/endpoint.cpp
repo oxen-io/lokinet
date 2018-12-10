@@ -709,7 +709,7 @@ namespace llarp
       if(router.IsZero())
         return;
       RouterContact rc;
-      if(!llarp_nodedb_get_rc(m_Router->nodedb, router, rc))
+      if(!m_Router->nodedb->Get(router, rc))
       {
         if(m_PendingRouters.find(router) == m_PendingRouters.end())
         {
@@ -1222,7 +1222,7 @@ namespace llarp
         else if(hop == numHops - 1)
         {
           // last hop
-          if(!llarp_nodedb_get_rc(nodedb, remote, hops[hop]))
+          if(!nodedb->Get(remote, hops[hop]))
             return false;
         }
         // middle hop
@@ -1231,8 +1231,7 @@ namespace llarp
           size_t tries = 5;
           do
           {
-            llarp_nodedb_select_random_hop(nodedb, hops[hop - 1], hops[hop],
-                                           hop);
+            nodedb->select_random_hop(hops[hop - 1], hops[hop], hop);
             --tries;
           } while(m_Endpoint->Router()->routerProfiling.IsBad(hops[hop].pubkey)
                   && tries > 0);
@@ -1594,7 +1593,7 @@ namespace llarp
         return false;
       if(hop == numHops - 1)
       {
-        if(llarp_nodedb_get_rc(db, m_NextIntro.router, cur))
+        if(db->Get(m_NextIntro.router, cur))
         {
           return true;
         }

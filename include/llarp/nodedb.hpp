@@ -5,42 +5,18 @@
 #include <llarp/router_contact.hpp>
 #include <llarp/router_id.hpp>
 
+#include <fs.hpp>
+
 /**
  * nodedb.hpp
  *
  * persistent storage API for router contacts
  */
 
-struct llarp_nodedb;
-
 namespace llarp
 {
   class Logic;
 }
-
-/// create an empty nodedb
-struct llarp_nodedb *
-llarp_nodedb_new(struct llarp_crypto *crypto);
-
-/// free a nodedb and all loaded rc
-void
-llarp_nodedb_free(struct llarp_nodedb **n);
-
-/// ensure a nodedb fs skiplist structure is at dir
-/// create if not there.
-bool
-llarp_nodedb_ensure_dir(const char *dir);
-
-void
-llarp_nodedb_set_dir(struct llarp_nodedb *n, const char *dir);
-
-/// load entire nodedb from fs skiplist at dir
-ssize_t
-llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir);
-
-/// store entire nodedb to fs skiplist at dir
-ssize_t
-llarp_nodedb_store_dir(struct llarp_nodedb *n, const char *dir);
 
 struct llarp_nodedb_iter
 {
@@ -50,40 +26,82 @@ struct llarp_nodedb_iter
   bool (*visit)(struct llarp_nodedb_iter *);
 };
 
-/// iterate over all loaded rc with an iterator
-int
-llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i);
+struct llarp_nodedb
+{
+  llarp_nodedb(llarp_crypto *c) : crypto(c)
+  {
+  }
 
-/// visit all loaded rc
-/// stop iteration if visit return false
-void
-llarp_nodedb_visit_loaded(
-    struct llarp_nodedb *n,
-    std::function< bool(const llarp::RouterContact &) > visit);
+  ~llarp_nodedb()
+  {
+    Clear();
+  }
 
-/// return number of RC loaded
-size_t
-llarp_nodedb_num_loaded(struct llarp_nodedb *n);
+  llarp_crypto *crypto;
+  llarp::util::Mutex access;
+  std::unordered_map< llarp::RouterID, llarp::RouterContact,
+                      llarp::RouterID::Hash >
+      entries;
+  fs::path nodePath;
 
-/**
-   put an rc into the node db
-   overwrites with new contents if already present
-   flushes the single entry to disk
-   returns true on success and false on error
- */
-bool
-llarp_nodedb_put_rc(struct llarp_nodedb *n, const llarp::RouterContact &rc);
+  bool
+  Remove(const byte_t *pk);
 
-bool
-llarp_nodedb_get_rc(struct llarp_nodedb *n, const llarp::RouterID &pk,
-                    llarp::RouterContact &result);
+  void
+  Clear();
 
-/**
-   remove rc by public key from nodedb
-   returns true if removed
- */
-bool
-llarp_nodedb_del_rc(struct llarp_nodedb *n, const llarp::RouterID &pk);
+  bool
+  Get(const byte_t *pk, llarp::RouterContact &result);
+
+  bool
+  Has(const byte_t *pk);
+
+  std::string
+  getRCFilePath(const byte_t *pubkey) const;
+
+  /// insert and write to disk
+  bool
+  Insert(const llarp::RouterContact &rc);
+
+  ssize_t
+  Load(const fs::path &path);
+
+  ssize_t
+  loadSubdir(const fs::path &dir);
+
+  bool
+  loadfile(const fs::path &fpath);
+
+  void
+  visit(std::function< bool(const llarp::RouterContact &) > visit);
+
+  bool
+  iterate(struct llarp_nodedb_iter &i);
+
+  void
+  set_dir(const char *dir);
+
+  ssize_t
+  load_dir(const char *dir);
+  ssize_t
+  store_dir(const char *dir);
+
+  int
+  iterate_all(llarp_nodedb_iter i);
+
+  size_t
+  num_loaded() const;
+
+  bool
+  select_random_exit(llarp::RouterContact &rc);
+
+  bool
+  select_random_hop(const llarp::RouterContact &prev,
+                    llarp::RouterContact &result, size_t N);
+
+  static bool
+  ensure_dir(const char *dir);
+};
 
 /// struct for async rc verification
 struct llarp_async_verify_rc;
@@ -150,14 +168,5 @@ struct llarp_async_load_rc
 /// asynchronously load an rc from disk
 void
 llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job);
-
-bool
-llarp_nodedb_select_random_exit(struct llarp_nodedb *n,
-                                llarp::RouterContact &rc);
-
-bool
-llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
-                               const llarp::RouterContact &prev,
-                               llarp::RouterContact &result, size_t N);
 
 #endif
