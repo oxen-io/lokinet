@@ -264,11 +264,7 @@ namespace llarp
       {
         if(builder->ShouldBuildMore(now))
         {
-          builder->BuildOne(ePathRoleAny);
-        }
-        if(builder->ShouldBuildMoreForRoles(now, ePathRoleExit))
-        {
-          builder->BuildOne(ePathRoleExit);
+          builder->BuildOne();
         }
       }
     }

@@ -25,9 +25,9 @@ namespace llarp
     {
       const size_t expect = (1 + (m_NumPaths / 2));
       if(NumPathsExistingAt(now + (10 * 1000)) < expect)
-        return true;
+        return path::Builder::ShouldBuildMore(now);
       if(AvailablePaths(llarp::path::ePathRoleExit) < expect)
-        return true;
+        return path::Builder::ShouldBuildMore(now);
       return false;
     }
 
@@ -45,6 +45,7 @@ namespace llarp
     void
     BaseSession::HandlePathBuilt(llarp::path::Path* p)
     {
+      path::Builder::HandlePathBuilt(p);
       p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
