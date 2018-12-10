@@ -108,7 +108,7 @@ struct llarp_router
 
   /// identity keys whitelist of routers we will connect to directly (not for
   /// service nodes)
-  std::set< llarp::PubKey > strictConnectPubkeys;
+  std::set< llarp::RouterID > strictConnectPubkeys;
 
   /// bootstrap RCs
   std::list< llarp::RouterContact > bootstrapRCList;
@@ -169,7 +169,7 @@ struct llarp_router
 
   // lokinet routers from lokid, maps pubkey to when we think it will expire,
   // set to max value right now
-  std::unordered_map< llarp::PubKey, llarp_time_t, llarp::PubKey::Hash >
+  std::unordered_map< llarp::RouterID, llarp_time_t, llarp::RouterID::Hash >
       lokinetRouters;
 
   llarp_router();

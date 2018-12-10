@@ -56,8 +56,7 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(peer.node,
-                          new FindRouterMessage(parent->OurKey(), peer.txid));
+        parent->DHTSendTo(peer.node, new FindRouterMessage(peer.txid));
       }
 
       bool
@@ -92,8 +91,8 @@ namespace llarp
       uint64_t txid = ++ids;
       TXOwner peer(askpeer, txid);
       TXOwner whoasked(OurKey(), txid);
-      pendingExploreLookups.NewTX(peer, whoasked, askpeer,
-                                  new ExploreNetworkJob(askpeer, this));
+      pendingExploreLookups.NewTX(peer, whoasked, askpeer.data(),
+                                  new ExploreNetworkJob(askpeer.data(), this));
     }
 
     void
@@ -212,7 +211,7 @@ namespace llarp
           if((next ^ target) < (ourKey ^ target))
           {
             // yes it is closer, ask neighboor recursively
-            LookupRouterRecursive(target, requester, txid, next);
+            LookupRouterRecursive(target.data(), requester, txid, next);
           }
           else
           {
@@ -282,7 +281,7 @@ namespace llarp
     }
 
     void
-    Context::DHTSendTo(const Key_t &peer, IMessage *msg, bool keepalive)
+    Context::DHTSendTo(const byte_t *peer, IMessage *msg, bool keepalive)
     {
       llarp::DHTImmeidateMessage m;
       m.msgs.emplace_back(msg);
@@ -722,9 +721,7 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(
-            peer.node,
-            new FindRouterMessage(parent->OurKey(), target, peer.txid));
+        parent->DHTSendTo(peer.node, new FindRouterMessage(peer.txid, target));
       }
 
       virtual void

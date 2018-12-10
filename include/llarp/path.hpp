@@ -480,6 +480,9 @@ namespace llarp
       RouterID
       Endpoint() const;
 
+      PubKey
+      EndpointPubKey() const;
+
       bool
       IsEndpoint(const RouterID& router, const PathID_t& path) const;
 
@@ -595,7 +598,7 @@ namespace llarp
                   const std::array< EncryptedFrame, 8 >& frames);
 
       bool
-      HopIsUs(const PubKey& k) const;
+      HopIsUs(const RouterID& k) const;
 
       bool
       HandleLRUM(const RelayUpstreamMessage* msg);

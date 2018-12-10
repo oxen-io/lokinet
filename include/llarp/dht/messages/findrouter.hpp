@@ -8,18 +8,19 @@ namespace llarp
   {
     struct FindRouterMessage : public IMessage
     {
+      // inbound parsing
       FindRouterMessage(const Key_t& from) : IMessage(from)
       {
       }
 
-      FindRouterMessage(const Key_t& from, const RouterID& target, uint64_t id)
-          : IMessage(from), K(target), txid(id)
+      // find by routerid
+      FindRouterMessage(uint64_t id, const RouterID& target)
+          : IMessage({}), K(target), txid(id)
       {
       }
 
       // exploritory
-      FindRouterMessage(const Key_t& from, uint64_t id)
-          : IMessage(from), exploritory(true), txid(id)
+      FindRouterMessage(uint64_t id) : IMessage({}), exploritory(true), txid(id)
       {
         K.Randomize();
       }

@@ -46,14 +46,13 @@ struct TryConnectJob
   void
   Failed()
   {
-    llarp::LogInfo("session to ", rc.pubkey, " closed");
+    llarp::LogInfo("session to ", llarp::RouterID(rc.pubkey.data()), " closed");
     link->CloseSessionTo(rc.pubkey);
   }
 
   void
   Success()
   {
-    llarp::LogInfo("established session with ", rc.pubkey);
     router->FlushOutboundFor(rc.pubkey, link);
   }
 
@@ -112,7 +111,7 @@ llarp_router_try_connect(struct llarp_router *router,
 
   auto link          = router->outboundLink.get();
   auto itr           = router->pendingEstablishJobs.insert(std::make_pair(
-      remote.pubkey,
+      remote.pubkey.data(),
       std::make_unique< TryConnectJob >(remote, link, numretries, router)));
   TryConnectJob *job = itr.first->second.get();
   // try establishing async
@@ -174,13 +173,13 @@ llarp_router::SendToOrQueue(const llarp::RouterID &remote,
 {
   for(const auto &link : inboundLinks)
   {
-    if(link->HasSessionTo(remote))
+    if(link->HasSessionTo(remote.data()))
     {
       SendTo(remote, msg, link.get());
       return true;
     }
   }
-  if(outboundLink && outboundLink->HasSessionTo(remote))
+  if(outboundLink && outboundLink->HasSessionTo(remote.data()))
   {
     SendTo(remote, msg, outboundLink.get());
     return true;
@@ -397,7 +396,7 @@ llarp_router::on_verify_server_rc(llarp_async_verify_rc *job)
 
   llarp::RouterContact rc = job->rc;
 
-  router->validRouters.insert(std::make_pair(pk, rc));
+  router->validRouters.insert(std::make_pair(pk.data(), rc));
 
   // track valid router in dht
   router->dht->impl.nodes->PutNode(rc);
@@ -834,10 +833,8 @@ llarp_router::Run()
 
   // set public encryption key
   _rc.enckey = llarp::seckey_topublic(encryption);
-  llarp::LogInfo("Your Encryption pubkey ", rc().enckey);
   // set public signing key
   _rc.pubkey = llarp::seckey_topublic(identity);
-  llarp::LogInfo("Your Identity pubkey ", rc().pubkey);
   if(ExitEnabled())
   {
     llarp::nuint32_t a = publicAddr.xtonl();
@@ -892,6 +889,8 @@ llarp_router::Run()
       llarp::LogError("Failed to initialize service node");
       return false;
     }
+    llarp::RouterID us = pubkey();
+    llarp::LogInfo("initalized service node: ", us);
   }
   else
   {
@@ -921,9 +920,7 @@ llarp_router::Run()
     llarp::LogError("Failed to start hidden service context");
     return false;
   }
-  llarp::PubKey ourPubkey = pubkey();
-  llarp::LogInfo("starting dht context as ", ourPubkey);
-  llarp_dht_context_start(dht, ourPubkey);
+  llarp_dht_context_start(dht, pubkey());
   ScheduleTicker(1000);
   return true;
 }
@@ -1245,13 +1242,21 @@ namespace llarp
           llarp::LogError("cannot use strict-connect option as service node");
           return;
         }
+        llarp::RouterID snode;
         llarp::PubKey pk;
-        if(llarp::HexDecode(val, pk.data(), pk.size()))
+        if(pk.FromString(val))
         {
-          if(self->strictConnectPubkeys.insert(pk).second)
+          if(self->strictConnectPubkeys.insert(pk.data()).second)
             llarp::LogInfo("added ", pk, " to strict connect list");
           else
             llarp::LogWarn("duplicate key for strict connect: ", pk);
+        }
+        else if(snode.FromString(val))
+        {
+          if(self->strictConnectPubkeys.insert(snode).second)
+            llarp::LogInfo("added ", snode, " to strict connect list");
+          else
+            llarp::LogWarn("duplicate key for strict connect: ", snode);
         }
         else
           llarp::LogError("invalid key for strict-connect: ", val);
@@ -1318,7 +1323,7 @@ namespace llarp
       auto &rc = self->bootstrapRCList.back();
       if(rc.Read(val) && rc.Verify(&self->crypto))
       {
-        llarp::LogInfo("Added bootstrap node ", rc.pubkey);
+        llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey.data()));
       }
       else
       {

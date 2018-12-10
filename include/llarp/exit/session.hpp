@@ -40,6 +40,12 @@ namespace llarp
       bool
       IsReady() const;
 
+      const llarp::RouterID
+      Endpoint() const
+      {
+        return m_ExitRouter;
+      }
+
      protected:
       llarp::RouterID m_ExitRouter;
       std::function< bool(llarp_buffer_t) > m_WritePacket;

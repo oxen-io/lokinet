@@ -52,7 +52,8 @@ namespace llarp
       if(k == "exit-node")
       {
         llarp::RouterID exitRouter;
-        if(!HexDecode(v.c_str(), exitRouter, exitRouter.size()))
+        if(!(exitRouter.FromString(v)
+             || HexDecode(v.c_str(), exitRouter, exitRouter.size())))
         {
           llarp::LogError(Name(), " bad exit router key: ", v);
           return false;
@@ -432,7 +433,8 @@ namespace llarp
     {
       // call tun code in endpoint logic in case of network isolation
       // EndpointLogic()->queue_job({this, handleTickTun});
-      FlushSend();
+      if(m_Exit)
+        EnsureRouterIsKnown(m_Exit->Endpoint());
       Endpoint::Tick(now);
     }
 
@@ -449,13 +451,10 @@ namespace llarp
             pkt.UpdateIPv4PacketOnDst({0}, pkt.dst());
             m_Exit->QueueUpstreamTraffic(std::move(pkt),
                                          llarp::routing::ExitPadSize);
-            return true;
           }
           else
-          {
             llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
-            return true;
-          }
+          return true;
         }
 
         if(m_SNodes.at(itr->second))

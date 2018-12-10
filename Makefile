@@ -1,4 +1,3 @@
-
 all: test
 
 SIGN = gpg --sign --detach
@@ -212,14 +211,8 @@ debian: debian-configure
 debian-test:
 	$(TEST_EXE)
 
-install-bins:
-	install -T $(EXE) $(prefix)/bin/lokinet
-	install -T $(REPO)/lokinet-bootstrap $(prefix)/bin/lokinet-bootstrap
-
-install-setcap: install-bins
-	$(SETCAP) $(prefix)/bin/lokinet || true
-
-install: install-setcap
+install: 
+	$(MAKE) -C '$(BUILD_ROOT)' install
 
 fuzz-configure: clean
 	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++

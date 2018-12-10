@@ -16,7 +16,8 @@ namespace llarp
     {
       auto &dht = ctx->impl;
       /// lookup for us, send an immeidate reply
-      if(K == dht.OurKey())
+      Key_t us = dht.OurKey();
+      if(K == us)
       {
         auto path = dht.router->paths.GetByUpstream(K, pathID);
         if(path)
