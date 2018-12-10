@@ -617,6 +617,14 @@ add_executable(${EXE} ${EXE_SRC})
 target_include_directories(${TEST_EXE} PRIVATE ${GTEST_DIR}/include ${GTEST_DIR})
 
 install(TARGETS ${EXE} RUNTIME DESTINATION bin)
+
+# TODO: make this a native application :^)
+if(WIN32)
+  install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap.exe DESTINATION bin)
+else()
+  install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin)
+endif()
+  
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
 endif()
