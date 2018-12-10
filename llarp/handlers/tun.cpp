@@ -432,6 +432,9 @@ namespace llarp
     {
       // call tun code in endpoint logic in case of network isolation
       // EndpointLogic()->queue_job({this, handleTickTun});
+      if(m_Exit)
+        EnsureRouterIsKnown(m_Exit->Endpoint());
+
       FlushSend();
       Endpoint::Tick(now);
     }
