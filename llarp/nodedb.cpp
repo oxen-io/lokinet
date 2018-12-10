@@ -232,8 +232,8 @@ disk_threadworker_setRC(void *user)
       static_cast< llarp_async_verify_rc * >(user);
   verify_request->valid = verify_request->nodedb->Insert(verify_request->rc);
   if(verify_request->logic)
-    llarp_logic_queue_job(verify_request->logic,
-                          {verify_request, &logic_threadworker_callback});
+    verify_request->logic->queue_job(
+        {verify_request, &logic_threadworker_callback});
 }
 
 // we run the crypto verify in the crypto threadpool worker
@@ -256,8 +256,8 @@ crypto_threadworker_verifyrc(void *user)
     // callback to logic thread
     if(!verify_request->valid)
       llarp::LogWarn("RC is not valid, can't save to disk");
-    llarp_logic_queue_job(verify_request->logic,
-                          {verify_request, &logic_threadworker_callback});
+    verify_request->logic->queue_job(
+        {verify_request, &logic_threadworker_callback});
   }
 }
 
@@ -279,7 +279,7 @@ nodedb_async_load_rc(void *user)
   {
     job->nodedb->Get(job->pubkey, job->result);
   }
-  llarp_logic_queue_job(job->logic, {job, &nodedb_inform_load_rc});
+  job->logic->queue_job({job, &nodedb_inform_load_rc});
 }
 
 struct llarp_nodedb *

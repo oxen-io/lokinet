@@ -26,9 +26,13 @@
 
 // forward declare
 struct llarp_threadpool;
-struct llarp_logic;
 
 struct llarp_ev_loop;
+
+namespace llarp
+{
+  class Logic;
+}
 
 /// allocator
 void
@@ -40,12 +44,12 @@ llarp_ev_loop_free(struct llarp_ev_loop **ev);
 
 /// run main loop
 int
-llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic);
+llarp_ev_loop_run(struct llarp_ev_loop *ev, llarp::Logic *logic);
 
 void
 llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
                                  struct llarp_threadpool *tp,
-                                 struct llarp_logic *logic);
+                                 llarp::Logic *logic);
 
 /// get the current time on the event loop
 llarp_time_t

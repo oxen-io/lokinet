@@ -45,14 +45,14 @@ llarp_ev_loop_free(struct llarp_ev_loop **ev)
 }
 
 int
-llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
+llarp_ev_loop_run(struct llarp_ev_loop *ev, llarp::Logic *logic)
 {
   while(ev->running())
   {
     ev->_now = llarp::time_now_ms();
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
-      llarp_logic_tick(logic, ev->_now);
+      logic->tick(ev->_now);
   }
   return 0;
 }
@@ -66,7 +66,7 @@ llarp_fd_promise_wait_for_value(struct llarp_fd_promise *p)
 void
 llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
                                  struct llarp_threadpool *tp,
-                                 struct llarp_logic *logic)
+                                 llarp::Logic *logic)
 {
   while(ev->running())
   {
@@ -74,7 +74,7 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
     {
-      llarp_logic_tick_async(logic, ev->_now);
+      logic->tick_async(ev->_now);
       llarp_threadpool_tick(tp);
     }
   }

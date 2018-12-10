@@ -6,7 +6,7 @@
 struct llarp_iwp_args
 {
   struct llarp_crypto* crypto;
-  struct llarp_logic* logic;
+  llarp::Logic* logic;
   struct llarp_threadpool* cryptoworker;
   struct llarp_router* router;
   bool permitInbound;

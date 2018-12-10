@@ -71,7 +71,7 @@ namespace llarp
     TryEstablishTo(const RouterContact& rc);
 
     bool
-    Start(llarp_logic* l);
+    Start(llarp::Logic* l);
 
     void
     Stop();
@@ -139,7 +139,7 @@ namespace llarp
     void
     PutSession(ILinkSession* s);
 
-    llarp_logic* m_Logic  = nullptr;
+    llarp::Logic* m_Logic = nullptr;
     llarp_ev_loop* m_Loop = nullptr;
     Addr m_ourAddr;
     llarp_udp_io m_udp;

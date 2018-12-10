@@ -337,7 +337,7 @@ namespace abyss
     }
 
     bool
-    BaseReqHandler::ServeAsync(llarp_ev_loop* loop, llarp_logic* logic,
+    BaseReqHandler::ServeAsync(llarp_ev_loop* loop, llarp::Logic* logic,
                                const sockaddr* bindaddr)
     {
       m_loop  = loop;

@@ -22,7 +22,7 @@ namespace llarp
     size_t idx               = 0;
     llarp_router* router     = nullptr;
     llarp_threadpool* worker = nullptr;
-    llarp_logic* logic       = nullptr;
+    llarp::Logic* logic      = nullptr;
     llarp_crypto* crypto     = nullptr;
     LR_CommitMessage LRCM;
 
@@ -102,7 +102,7 @@ namespace llarp
       if(isFarthestHop)
       {
         // farthest hop
-        llarp_logic_queue_job(ctx->logic, {ctx, &HandleDone});
+        ctx->logic->queue_job({ctx, &HandleDone});
       }
       else
       {
@@ -117,7 +117,7 @@ namespace llarp
 
     /// Generate all keys asynchronously and call hadler when done
     void
-    AsyncGenerateKeys(Path_t* p, llarp_logic* l, llarp_threadpool* pool,
+    AsyncGenerateKeys(Path_t* p, llarp::Logic* l, llarp_threadpool* pool,
                       User* u, Handler func)
     {
       path   = p;

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include <llarp.h>        // for llarp_main_init
-#include <llarp/logic.hpp>  // for threadpool/llarp_logic
-#include "llarp/net.hpp"  // for llarp::Addr
+#include <llarp.h>          // for llarp_main_init
+#include <llarp/logic.hpp>  // for threadpool/llarp::Logic
+#include "llarp/net.hpp"    // for llarp::Addr
 #include "llarp/dns.hpp"
 #include "llarp/dnsc.hpp"
 
@@ -91,7 +91,6 @@ TEST_F(DNSTest, TestCodeDomain)
 // test decoders
 TEST_F(DNSTest, TestDecodeHdr)
 {
-
   dns_msg_header hdr;
   ASSERT_TRUE(decode_hdr(&this->buffer_t, &hdr));
   // rewind
@@ -197,7 +196,8 @@ TEST_F(DNSTest, handleDNSrecvFrom)
   llarp::Zero(&buffer, 15);
   ssize_t sz = 0;
   // hdr->qr decides dnsc (1) or dnsd (0)
-  llarp_handle_dns_recvfrom((llarp_udp_io *)&udp, &addr, llarp::InitBuffer(buffer, sz));
+  llarp_handle_dns_recvfrom((llarp_udp_io *)&udp, &addr,
+                            llarp::InitBuffer(buffer, sz));
   // llarp_handle_dnsc_recvfrom
   // llarp_handle_dnsd_recvfrom
 }

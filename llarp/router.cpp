@@ -116,7 +116,7 @@ llarp_router_try_connect(struct llarp_router *router,
       std::make_unique< TryConnectJob >(remote, link, numretries, router)));
   TryConnectJob *job = itr.first->second.get();
   // try establishing async
-  llarp_logic_queue_job(router->logic, {job, &on_try_connecting});
+  router->logic->queue_job({job, &on_try_connecting});
   return true;
 }
 
@@ -630,8 +630,7 @@ llarp_router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
 void
 llarp_router::ScheduleTicker(uint64_t ms)
 {
-  ticker_job_id =
-      llarp_logic_call_later(logic, {ms, this, &handle_router_ticker});
+  ticker_job_id = logic->call_later({ms, this, &handle_router_ticker});
 }
 
 void
@@ -1036,7 +1035,7 @@ llarp_router::HasPendingConnectJob(const llarp::RouterID &remote)
 
 struct llarp_router *
 llarp_init_router(struct llarp_threadpool *tp, struct llarp_ev_loop *netloop,
-                  struct llarp_logic *logic)
+                  llarp::Logic *logic)
 {
   llarp_router *router = new llarp_router();
   if(router)

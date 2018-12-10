@@ -208,13 +208,13 @@ namespace llarp
     struct AsyncFrameDecrypt
     {
       llarp_crypto* crypto;
-      llarp_logic* logic;
+      llarp::Logic* logic;
       ProtocolMessage* msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
       const ProtocolFrame frame;
 
-      AsyncFrameDecrypt(llarp_logic* l, llarp_crypto* c,
+      AsyncFrameDecrypt(llarp::Logic* l, llarp_crypto* c,
                         const Identity& localIdent, IDataHandler* h,
                         ProtocolMessage* m, const ProtocolFrame& f)
           : crypto(c)
@@ -286,8 +286,7 @@ namespace llarp
         self->handler->PutCachedSessionKeyFor(self->msg->tag, sharedKey);
 
         self->msg->handler = self->handler;
-        llarp_logic_queue_job(self->logic,
-                              {self->msg, &ProtocolMessage::ProcessAsync});
+        self->logic->queue_job({self->msg, &ProtocolMessage::ProcessAsync});
         delete self;
       }
     };
@@ -306,7 +305,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::AsyncDecryptAndVerify(llarp_logic* logic, llarp_crypto* c,
+    ProtocolFrame::AsyncDecryptAndVerify(llarp::Logic* logic, llarp_crypto* c,
                                          const PathID_t& srcPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
@@ -349,7 +348,7 @@ namespace llarp
       }
       msg->srcPath = srcPath;
       msg->handler = handler;
-      llarp_logic_queue_job(logic, {msg, &ProtocolMessage::ProcessAsync});
+      logic->queue_job({msg, &ProtocolMessage::ProcessAsync});
       return true;
     }
 

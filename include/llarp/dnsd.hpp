@@ -111,8 +111,7 @@ struct dnsd_context
 /// initialize dns subsystem and bind socket
 /// returns true on bind success otherwise returns false
 bool
-llarp_dnsd_init(struct dnsd_context *const dnsd,
-                struct llarp_logic *const logic,
+llarp_dnsd_init(struct dnsd_context *const dnsd, llarp::Logic *const logic,
                 struct llarp_ev_loop *const netloop,
                 const llarp::Addr &dnsd_sockaddr,
                 const llarp::Addr &dnsc_sockaddr);

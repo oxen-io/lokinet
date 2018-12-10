@@ -628,7 +628,7 @@ namespace llarp
       llarp_crypto*
       Crypto();
 
-      llarp_logic*
+      llarp::Logic*
       Logic();
 
       llarp_router*

@@ -104,7 +104,7 @@ main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
   llarp_ev_loop* loop          = nullptr;
   llarp_ev_loop_alloc(&loop);
-  llarp_logic* logic = llarp_init_single_process_logic(threadpool);
+  llarp::Logic* logic = new llarp::Logic(threadpool);
   sockaddr_in addr;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   addr.sin_port        = htons(1222);

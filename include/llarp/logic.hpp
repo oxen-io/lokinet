@@ -4,49 +4,54 @@
 #include <llarp/threadpool.h>
 #include <llarp/timer.hpp>
 
-struct llarp_logic
+namespace llarp
 {
-  struct llarp_threadpool* thread;
-  struct llarp_timer_context* timer;
-};
+  class Logic
+  {
+   private:
+    struct llarp_threadpool* thread;
+    struct llarp_timer_context* timer;
 
-struct llarp_logic*
-llarp_init_logic();
+   public:
+    Logic()
+        : thread(llarp_init_same_process_threadpool())
+        , timer(llarp_init_timer())
+    {
+    }
 
-/// single threaded mode logic event loop
-struct llarp_logic*
-llarp_init_single_process_logic(struct llarp_threadpool* tp);
+    Logic(struct llarp_threadpool* tp) : thread(tp), timer(llarp_init_timer())
+    {
+    }
 
-/// single threaded tick
-void
-llarp_logic_tick(struct llarp_logic* logic, llarp_time_t now);
+    /// single threaded tick
+    void
+    tick(llarp_time_t now);
 
-/// isolated tick
-void
-llarp_logic_tick_async(struct llarp_logic* logic, llarp_time_t now);
+    /// isolated tick
+    void
+    tick_async(llarp_time_t now);
 
-void
-llarp_free_logic(struct llarp_logic** logic);
+    void
+    stop_timer();
 
-void
-llarp_logic_queue_job(struct llarp_logic* logic, struct llarp_thread_job job);
+    void
+    stop();
 
-uint32_t
-llarp_logic_call_later(struct llarp_logic* logic, struct llarp_timeout_job job);
+    void
+    mainloop();
 
-void
-llarp_logic_cancel_call(struct llarp_logic* logic, uint32_t id);
+    void
+    queue_job(struct llarp_thread_job job);
 
-void
-llarp_logic_remove_call(struct llarp_logic* logic, uint32_t id);
+    uint32_t
+    call_later(struct llarp_timeout_job job);
 
-void
-llarp_logic_stop_timer(struct llarp_logic* logic);
+    void
+    cancel_call(uint32_t id);
 
-void
-llarp_logic_stop(struct llarp_logic* logic);
-
-void
-llarp_logic_mainloop(struct llarp_logic* logic);
+    void
+    remove_call(uint32_t id);
+  };
+}  // namespace llarp
 
 #endif

@@ -47,11 +47,11 @@ namespace llarp
       Tick(llarp_time_t now);
 
       /// router's logic
-      llarp_logic*
+      llarp::Logic*
       RouterLogic();
 
       /// endpoint's logic
-      llarp_logic*
+      llarp::Logic*
       EndpointLogic();
 
       /// endpoint's net loop for sending data to user
@@ -430,7 +430,7 @@ namespace llarp
      private:
       llarp_router* m_Router;
       llarp_threadpool* m_IsolatedWorker = nullptr;
-      llarp_logic* m_IsolatedLogic       = nullptr;
+      llarp::Logic* m_IsolatedLogic      = nullptr;
       llarp_ev_loop* m_IsolatedNetLoop   = nullptr;
       std::string m_Keyfile;
       std::string m_Name;

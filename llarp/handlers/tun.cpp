@@ -269,8 +269,13 @@ namespace llarp
       llarp::service::Address addr;
       if(msg.questions.size() == 1)
       {
+        // always hook mx records
+        if(msg.questions[0].qtype == 15)
+          return true;
+        // always hook .loki
         if(addr.FromString(msg.questions[0].qname, ".loki"))
           return true;
+        // always hook .snode
         if(addr.FromString(msg.questions[0].qname, ".snode"))
           return true;
         if(msg.questions[0].qtype == 12)
@@ -426,7 +431,7 @@ namespace llarp
     TunEndpoint::Tick(llarp_time_t now)
     {
       // call tun code in endpoint logic in case of network isolation
-      // llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
+      // EndpointLogic()->queue_job({this, handleTickTun});
       FlushSend();
       Endpoint::Tick(now);
     }
@@ -623,7 +628,7 @@ namespace llarp
           llarp::LogWarn("packet dropped");
       });
       if(self->m_UserToNetworkPktQueue.Size())
-        llarp_logic_queue_job(self->RouterLogic(), {self, &handleNetSend});
+        self->RouterLogic()->queue_job({self, &handleNetSend});
     }
 
     void
