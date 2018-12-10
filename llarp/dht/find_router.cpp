@@ -33,7 +33,7 @@ namespace llarp
       Key_t k = K.data();
       // check if we know this in our nodedb first
       RouterContact found;
-      if(llarp_nodedb_get_rc(dht.router->nodedb, K, found))
+      if(dht.router->nodedb->Get(K, found))
       {
         replies.emplace_back(
             new GotRouterMessage(K.data(), txid, {found}, false));
@@ -159,7 +159,7 @@ namespace llarp
       RouterContact found;
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
-      else if(llarp_nodedb_get_rc(dht.router->nodedb, K, found))
+      else if(dht.router->nodedb->Get(K, found))
       {
         replies.emplace_back(
             new GotRouterMessage(K.data(), txid, {found}, false));

@@ -14,208 +14,194 @@
 static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";
 
-struct llarp_nodedb
+bool
+llarp_nodedb::Remove(const byte_t *pk)
 {
-  llarp_nodedb(llarp_crypto *c) : crypto(c)
-  {
-  }
+  llarp::util::Lock lock(access);
+  auto itr = entries.find(pk);
+  if(itr == entries.end())
+    return false;
+  entries.erase(itr);
+  fs::remove(fs::path(getRCFilePath(pk)));
+  return true;
+}
 
-  llarp_crypto *crypto;
-  // std::map< llarp::pubkey, llarp_rc  > entries;
-  llarp::util::Mutex access;
-  std::unordered_map< llarp::RouterID, llarp::RouterContact,
-                      llarp::RouterID::Hash >
-      entries;
-  fs::path nodePath;
+void
+llarp_nodedb::Clear()
+{
+  llarp::util::Lock lock(access);
+  entries.clear();
+}
 
-  bool
-  Remove(const byte_t *pk)
-  {
-    llarp::util::Lock lock(access);
-    auto itr = entries.find(pk);
-    if(itr == entries.end())
-      return false;
-    entries.erase(itr);
-    fs::remove(fs::path(getRCFilePath(pk)));
-    return true;
-  }
+bool
+llarp_nodedb::Get(const byte_t *pk, llarp::RouterContact &result)
+{
+  llarp::util::Lock lock(access);
+  auto itr = entries.find(pk);
+  if(itr == entries.end())
+    return false;
+  result = itr->second;
+  return true;
+}
 
-  void
-  Clear()
-  {
-    llarp::util::Lock lock(access);
-    entries.clear();
-  }
+bool
+llarp_nodedb::Has(const byte_t *pk)
+{
+  llarp::util::Lock lock(access);
+  return entries.find(pk) != entries.end();
+}
 
-  bool
-  Get(const byte_t *pk, llarp::RouterContact &result)
-  {
-    llarp::util::Lock lock(access);
-    auto itr = entries.find(pk);
-    if(itr == entries.end())
-      return false;
-    result = itr->second;
-    return true;
-  }
+std::string
+llarp_nodedb::getRCFilePath(const byte_t *pubkey) const
+{
+  char ftmp[68] = {0};
+  const char *hexname =
+      llarp::HexEncode< llarp::AlignedBuffer< 32 >, decltype(ftmp) >(pubkey,
+                                                                     ftmp);
+  std::string hexString(hexname);
+  std::string skiplistDir;
+  skiplistDir += hexString[hexString.length() - 1];
+  hexString += RC_FILE_EXT;
+  fs::path filepath = nodePath / skiplistDir / hexString;
+  return filepath.string();
+}
 
-  bool
-  Has(const byte_t *pk)
-  {
-    llarp::util::Lock lock(access);
-    return entries.find(pk) != entries.end();
-  }
-
-  std::string
-  getRCFilePath(const byte_t *pubkey) const
-  {
-    char ftmp[68] = {0};
-    const char *hexname =
-        llarp::HexEncode< llarp::AlignedBuffer< 32 >, decltype(ftmp) >(pubkey,
-                                                                       ftmp);
-    std::string hexString(hexname);
-    std::string skiplistDir;
-    skiplistDir += hexString[hexString.length() - 1];
-    hexString += RC_FILE_EXT;
-    fs::path filepath = nodePath / skiplistDir / hexString;
-    return filepath.string();
-  }
-
-  /// insert and write to disk
-  bool
-  Insert(const llarp::RouterContact &rc)
-  {
-    byte_t tmp[MAX_RC_SIZE];
-    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
-    {
-      llarp::util::Lock lock(access);
-      entries.insert(std::make_pair(rc.pubkey.data(), rc));
-    }
-    if(!rc.BEncode(&buf))
-      return false;
-
-    buf.sz        = buf.cur - buf.base;
-    auto filepath = getRCFilePath(rc.pubkey);
-    llarp::LogDebug("saving RC.pubkey ", filepath);
-    std::ofstream ofs(
-        filepath,
-        std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
-    ofs.write((char *)buf.base, buf.sz);
-    ofs.close();
-    if(!ofs)
-    {
-      llarp::LogError("Failed to write: ", filepath);
-      return false;
-    }
-    llarp::LogDebug("saved RC.pubkey: ", filepath);
-    return true;
-  }
-
-  ssize_t
-  Load(const fs::path &path)
-  {
-    std::error_code ec;
-    if(!fs::exists(path, ec))
-    {
-      return -1;
-    }
-    ssize_t loaded = 0;
-
-    for(const char &ch : skiplist_subdirs)
-    {
-      if(!ch)
-        continue;
-      std::string p;
-      p += ch;
-      fs::path sub = path / p;
-
-      ssize_t l = loadSubdir(sub);
-      if(l > 0)
-        loaded += l;
-    }
-    return loaded;
-  }
-
-  ssize_t
-  loadSubdir(const fs::path &dir)
-  {
-    ssize_t sz = 0;
-    llarp::util::IterDir(dir, [&](const fs::path &f) -> bool {
-      if(fs::is_regular_file(f) && loadfile(f))
-        sz++;
-      return true;
-    });
-    return sz;
-  }
-
-  bool
-  loadfile(const fs::path &fpath)
-  {
-    if(fpath.extension() != RC_FILE_EXT)
-      return false;
-    llarp::RouterContact rc;
-    if(!rc.Read(fpath.string().c_str()))
-    {
-      llarp::LogError("failed to read file ", fpath);
-      return false;
-    }
-    if(!rc.Verify(crypto))
-    {
-      llarp::LogError(fpath, " contains invalid RC");
-      return false;
-    }
-    {
-      llarp::util::Lock lock(access);
-      entries.insert(std::make_pair(rc.pubkey.data(), rc));
-    }
-    return true;
-  }
-
-  void
-  visit(std::function< bool(const llarp::RouterContact &) > visit)
+/// insert and write to disk
+bool
+llarp_nodedb::Insert(const llarp::RouterContact &rc)
+{
+  byte_t tmp[MAX_RC_SIZE];
+  auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
   {
     llarp::util::Lock lock(access);
-    auto itr = entries.begin();
-    while(itr != entries.end())
-    {
-      if(!visit(itr->second))
-        return;
-      ++itr;
-    }
+    entries.insert(std::make_pair(rc.pubkey.data(), rc));
   }
+  if(!rc.BEncode(&buf))
+    return false;
 
-  bool
-  iterate(struct llarp_nodedb_iter &i)
+  buf.sz        = buf.cur - buf.base;
+  auto filepath = getRCFilePath(rc.pubkey);
+  llarp::LogDebug("saving RC.pubkey ", filepath);
+  std::ofstream ofs(
+      filepath,
+      std::ofstream::out | std::ofstream::binary | std::ofstream::trunc);
+  ofs.write((char *)buf.base, buf.sz);
+  ofs.close();
+  if(!ofs)
   {
-    i.index = 0;
+    llarp::LogError("Failed to write: ", filepath);
+    return false;
+  }
+  llarp::LogDebug("saved RC.pubkey: ", filepath);
+  return true;
+}
+
+ssize_t
+llarp_nodedb::Load(const fs::path &path)
+{
+  std::error_code ec;
+  if(!fs::exists(path, ec))
+  {
+    return -1;
+  }
+  ssize_t loaded = 0;
+
+  for(const char &ch : skiplist_subdirs)
+  {
+    if(!ch)
+      continue;
+    std::string p;
+    p += ch;
+    fs::path sub = path / p;
+
+    ssize_t l = loadSubdir(sub);
+    if(l > 0)
+      loaded += l;
+  }
+  return loaded;
+}
+
+ssize_t
+llarp_nodedb::loadSubdir(const fs::path &dir)
+{
+  ssize_t sz = 0;
+  llarp::util::IterDir(dir, [&](const fs::path &f) -> bool {
+    if(fs::is_regular_file(f) && loadfile(f))
+      sz++;
+    return true;
+  });
+  return sz;
+}
+
+bool
+llarp_nodedb::loadfile(const fs::path &fpath)
+{
+  if(fpath.extension() != RC_FILE_EXT)
+    return false;
+  llarp::RouterContact rc;
+  if(!rc.Read(fpath.string().c_str()))
+  {
+    llarp::LogError("failed to read file ", fpath);
+    return false;
+  }
+  if(!rc.Verify(crypto))
+  {
+    llarp::LogError(fpath, " contains invalid RC");
+    return false;
+  }
+  {
     llarp::util::Lock lock(access);
-    auto itr = entries.begin();
-    while(itr != entries.end())
-    {
-      i.rc = &itr->second;
-      i.visit(&i);
-
-      // advance
-      i.index++;
-      itr++;
-    }
-    return true;
+    entries.insert(std::make_pair(rc.pubkey.data(), rc));
   }
+  return true;
+}
 
-  /*
-  bool Save()
+void
+llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
+{
+  llarp::util::Lock lock(access);
+  auto itr = entries.begin();
+  while(itr != entries.end())
   {
-    auto itr = entries.begin();
-    while(itr != entries.end())
-    {
-      llarp::pubkey pk = itr->first;
-      llarp_rc *rc= itr->second;
-
-      itr++; // advance
-    }
-    return true;
+    if(!visit(itr->second))
+      return;
+    ++itr;
   }
-  */
-};
+}
+
+bool
+llarp_nodedb::iterate(struct llarp_nodedb_iter &i)
+{
+  i.index = 0;
+  llarp::util::Lock lock(access);
+  auto itr = entries.begin();
+  while(itr != entries.end())
+  {
+    i.rc = &itr->second;
+    i.visit(&i);
+
+    // advance
+    i.index++;
+    itr++;
+  }
+  return true;
+}
+
+/*
+bool
+llarp_nodedb::Save()
+{
+  auto itr = entries.begin();
+  while(itr != entries.end())
+  {
+    llarp::pubkey pk = itr->first;
+    llarp_rc *rc= itr->second;
+
+    itr++; // advance
+  }
+  return true;
+}
+*/
 
 // call request hook
 void
@@ -284,32 +270,8 @@ nodedb_async_load_rc(void *user)
   job->logic->queue_job({job, &nodedb_inform_load_rc});
 }
 
-struct llarp_nodedb *
-llarp_nodedb_new(struct llarp_crypto *crypto)
-{
-  return new llarp_nodedb(crypto);
-}
-
-void
-llarp_nodedb_free(struct llarp_nodedb **n)
-{
-  if(*n)
-  {
-    auto i = *n;
-    *n     = nullptr;
-    i->Clear();
-    delete i;
-  }
-}
-
 bool
-llarp_nodedb_put_rc(struct llarp_nodedb *n, const llarp::RouterContact &rc)
-{
-  return n->Insert(rc);
-}
-
-bool
-llarp_nodedb_ensure_dir(const char *dir)
+llarp_nodedb::ensure_dir(const char *dir)
 {
   fs::path path(dir);
   std::error_code ec;
@@ -341,36 +303,28 @@ llarp_nodedb_ensure_dir(const char *dir)
 }
 
 void
-llarp_nodedb_set_dir(struct llarp_nodedb *n, const char *dir)
+llarp_nodedb::set_dir(const char *dir)
 {
-  n->nodePath = dir;
+  nodePath = dir;
 }
 
 ssize_t
-llarp_nodedb_load_dir(struct llarp_nodedb *n, const char *dir)
+llarp_nodedb::load_dir(const char *dir)
 {
   std::error_code ec;
   if(!fs::exists(dir, ec))
   {
     return -1;
   }
-  llarp_nodedb_set_dir(n, dir);
-  return n->Load(dir);
+  set_dir(dir);
+  return Load(dir);
 }
 
 int
-llarp_nodedb_iterate_all(struct llarp_nodedb *n, struct llarp_nodedb_iter i)
+llarp_nodedb::iterate_all(struct llarp_nodedb_iter i)
 {
-  n->iterate(i);
-  return n->entries.size();
-}
-
-void
-llarp_nodedb_visit_loaded(
-    struct llarp_nodedb *n,
-    std::function< bool(const llarp::RouterContact &) > visit)
-{
-  return n->visit(visit);
+  iterate(i);
+  return entries.size();
 }
 
 /// maybe rename to verify_and_set
@@ -393,38 +347,23 @@ llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 }
 */
 
-bool
-llarp_nodedb_get_rc(struct llarp_nodedb *n, const llarp::RouterID &pk,
-                    llarp::RouterContact &result)
-{
-  // llarp::LogInfo("llarp_nodedb_get_rc [", pk, "]");
-  return n->Get(pk, result);
-}
-
 size_t
-llarp_nodedb_num_loaded(struct llarp_nodedb *n)
+llarp_nodedb::num_loaded() const
 {
-  return n->entries.size();
+  return entries.size();
 }
 
 bool
-llarp_nodedb_del_rc(struct llarp_nodedb *n, const llarp::RouterID &pk)
+llarp_nodedb::select_random_exit(llarp::RouterContact &result)
 {
-  return n->Remove(pk);
-}
-
-bool
-llarp_nodedb_select_random_exit(struct llarp_nodedb *n,
-                                llarp::RouterContact &result)
-{
-  const auto sz = n->entries.size();
-  auto itr      = n->entries.begin();
+  const auto sz = entries.size();
+  auto itr      = entries.begin();
   if(sz < 3)
     return false;
   auto idx = llarp_randint() % sz;
   if(idx)
     std::advance(itr, idx - 1);
-  while(itr != n->entries.end())
+  while(itr != entries.end())
   {
     if(itr->second.IsExit())
     {
@@ -433,8 +372,8 @@ llarp_nodedb_select_random_exit(struct llarp_nodedb *n,
     }
     ++itr;
   }
-  // wrap arround
-  itr = n->entries.begin();
+  // wrap around
+  itr = entries.begin();
   while(idx--)
   {
     if(itr->second.IsExit())
@@ -448,13 +387,12 @@ llarp_nodedb_select_random_exit(struct llarp_nodedb *n,
 }
 
 bool
-llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
-                               const llarp::RouterContact &prev,
-                               llarp::RouterContact &result, size_t N)
+llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
+                                llarp::RouterContact &result, size_t N)
 {
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
-  auto sz = n->entries.size();
+  auto sz = entries.size();
   if(sz < 3)
     return false;
   size_t tries = 5;
@@ -462,7 +400,7 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
   {
     do
     {
-      auto itr = n->entries.begin();
+      auto itr = entries.begin();
       if(sz > 1)
       {
         auto idx = llarp_randint() % sz;
@@ -485,7 +423,7 @@ llarp_nodedb_select_random_hop(struct llarp_nodedb *n,
   }
   else
   {
-    auto itr = n->entries.begin();
+    auto itr = entries.begin();
     if(sz > 1)
     {
       auto idx = llarp_randint() % sz;

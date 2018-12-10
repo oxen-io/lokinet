@@ -82,15 +82,15 @@ namespace llarp
   Context::LoadDatabase()
   {
     llarp_crypto_init(&crypto);
-    nodedb = llarp_nodedb_new(&crypto);
+    nodedb = new llarp_nodedb(&crypto);
 
-    if(!llarp_nodedb_ensure_dir(nodedb_dir.c_str()))
+    if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
       llarp::LogError("nodedb_dir is incorrect");
       return 0;
     }
     // llarp::LogInfo("nodedb_dir [", nodedb_dir, "] configured!");
-    ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir.c_str());
+    ssize_t loaded = nodedb->load_dir(nodedb_dir.c_str());
     llarp::LogInfo("nodedb_dir loaded ", loaded, " RCs from [", nodedb_dir,
                    "]");
     if(loaded < 0)
@@ -105,7 +105,7 @@ namespace llarp
   int
   Context::IterateDatabase(struct llarp_nodedb_iter i)
   {
-    return llarp_nodedb_iterate_all(nodedb, i);
+    return nodedb->iterate_all(i);
   }
 
   bool
@@ -230,7 +230,7 @@ namespace llarp
     llarp_free_threadpool(&worker);
 
     llarp::LogDebug("free nodedb");
-    llarp_nodedb_free(&nodedb);
+    delete nodedb;
 
     llarp::LogDebug("stopping event loop");
     llarp_ev_loop_stop(mainloop);

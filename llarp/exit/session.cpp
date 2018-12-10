@@ -39,7 +39,7 @@ namespace llarp
     {
       if(hop == numHops - 1)
       {
-        return llarp_nodedb_get_rc(db, m_ExitRouter, cur);
+        return db->Get(m_ExitRouter, cur);
       }
       else
         return path::Builder::SelectHop(db, prev, cur, hop, roles);
