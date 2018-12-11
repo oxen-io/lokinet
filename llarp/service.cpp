@@ -187,8 +187,19 @@ namespace llarp
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, buf))
         return false;
-      if(!BEncodeMaybeReadDictEntry("q", pq, read, key, buf))
-        return false;
+      if(llarp_buffer_eq(key, "q"))
+      {
+        llarp_buffer_t str;
+        if(!bencode_read_string(buf, &str))
+          return false;
+        if(str.sz == 3200 || str.sz == 2818)
+        {
+          pq = str.base;
+          return true;
+        }
+        else
+          return false;
+      }
       if(!BEncodeMaybeReadDictEntry("s", signkey, read, key, buf))
         return false;
       if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
