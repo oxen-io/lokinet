@@ -1032,6 +1032,7 @@ namespace llarp
     {
       if(markedBad)
         return true;
+      updatingIntroSet = false;
       if(i)
       {
         if(currentIntroSet.T >= i->T)
@@ -1055,7 +1056,6 @@ namespace llarp
         else
           SwapIntros();
       }
-      updatingIntroSet = false;
       return true;
     }
 
@@ -1294,6 +1294,7 @@ namespace llarp
       }
       else
       {
+        llarp::LogInfo(Name(), " updating introset");
         UpdateIntroSet(false);
       }
       return shiftedIntro;
