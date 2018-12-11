@@ -1292,6 +1292,10 @@ namespace llarp
       {
         SwapIntros();
       }
+      else
+      {
+        UpdateIntroSet(false);
+      }
       return shiftedIntro;
     }
 
