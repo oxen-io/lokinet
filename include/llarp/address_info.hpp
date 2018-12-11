@@ -1,5 +1,7 @@
 #ifndef LLARP_AI_HPP
 #define LLARP_AI_HPP
+
+#include <llarp/crypto.h>
 #include <llarp/mem.h>
 #include <llarp/net.h>
 #include <stdbool.h>
@@ -7,6 +9,7 @@
 #include <llarp/crypto.hpp>
 
 #include <string>
+#include <vector>
 
 /**
  * address_info.hpp
