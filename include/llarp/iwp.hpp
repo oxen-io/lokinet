@@ -10,7 +10,7 @@ namespace llarp {
 
 struct llarp_iwp_args
 {
-  struct llarp_crypto* crypto;
+  struct llarp::Crypto* crypto;
   llarp::Logic* logic;
   struct llarp_threadpool* cryptoworker;
   struct llarp::Router* router;

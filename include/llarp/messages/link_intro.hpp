@@ -38,10 +38,10 @@ namespace llarp
     HandleMessage(llarp::Router* router) const;
 
     bool
-    Sign(llarp_crypto* c, const SecretKey& signKeySecret);
+    Sign(llarp::Crypto* c, const SecretKey& signKeySecret);
 
     bool
-    Verify(llarp_crypto* c) const;
+    Verify(llarp::Crypto* c) const;
   };
 }  // namespace llarp
 

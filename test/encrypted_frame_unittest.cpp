@@ -11,12 +11,12 @@ using LRCR           = llarp::LR_CommitRecord;
 class FrameTest : public ::testing::Test
 {
  public:
-  llarp_crypto crypto;
+     llarp::Crypto crypto;
   SecretKey alice, bob;
 
   FrameTest()
+  : crypto(llarp::Crypto::sodium{})
   {
-    llarp_crypto_init(&crypto);
   }
 
   ~FrameTest()

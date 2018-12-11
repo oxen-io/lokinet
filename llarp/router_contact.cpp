@@ -150,7 +150,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::Sign(llarp_crypto *crypto, const SecretKey &secretkey)
+  RouterContact::Sign(llarp::Crypto *crypto, const SecretKey &secretkey)
   {
     pubkey                  = llarp::seckey_topublic(secretkey);
     byte_t tmp[MAX_RC_SIZE] = {0};
@@ -165,7 +165,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::Verify(llarp_crypto *crypto) const
+  RouterContact::Verify(llarp::Crypto *crypto) const
   {
     for(const auto &a : addrs)
     {
@@ -184,7 +184,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::VerifySignature(llarp_crypto *crypto) const
+  RouterContact::VerifySignature(llarp::Crypto *crypto) const
   {
     RouterContact copy;
     copy = *this;

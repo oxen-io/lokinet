@@ -173,43 +173,44 @@ namespace llarp
     return k;
   }
 
-}  // namespace llarp
-
-void
-llarp_crypto_init(struct llarp_crypto *c)
+  Crypto::Crypto(Crypto::sodium tag)
 {
+  (void)tag;
   assert(sodium_init() != -1);
-  char *avx2 = getenv("AVX2_FORCE_DISABLE");
+  char *avx2 = std::getenv("AVX2_FORCE_DISABLE");
   if(avx2 && std::string(avx2) == "1")
     ntru_init(1);
   else
     ntru_init(0);
-  c->xchacha20           = llarp::sodium::xchacha20;
-  c->dh_client           = llarp::sodium::dh_client;
-  c->dh_server           = llarp::sodium::dh_server;
-  c->transport_dh_client = llarp::sodium::dh_client;
-  c->transport_dh_server = llarp::sodium::dh_server;
-  c->hash                = llarp::sodium::hash;
-  c->shorthash           = llarp::sodium::shorthash;
-  c->hmac                = llarp::sodium::hmac;
-  c->sign                = llarp::sodium::sign;
-  c->verify              = llarp::sodium::verify;
-  c->randomize           = llarp::sodium::randomize;
-  c->randbytes           = llarp::sodium::randbytes;
-  c->identity_keygen     = llarp::sodium::sigkeygen;
-  c->encryption_keygen   = llarp::sodium::enckeygen;
-  c->pqe_encrypt         = llarp::pq::encrypt;
-  c->pqe_decrypt         = llarp::pq::decrypt;
-  c->pqe_keygen          = llarp::pq::keygen;
-  int seed;
-  c->randbytes(&seed, sizeof(seed));
+  this->xchacha20           = llarp::sodium::xchacha20;
+  this->dh_client           = llarp::sodium::dh_client;
+  this->dh_server           = llarp::sodium::dh_server;
+  this->transport_dh_client = llarp::sodium::dh_client;
+  this->transport_dh_server = llarp::sodium::dh_server;
+  this->hash                = llarp::sodium::hash;
+  this->shorthash           = llarp::sodium::shorthash;
+  this->hmac                = llarp::sodium::hmac;
+  this->sign                = llarp::sodium::sign;
+  this->verify              = llarp::sodium::verify;
+  this->randomize           = llarp::sodium::randomize;
+  this->randbytes           = llarp::sodium::randbytes;
+  this->identity_keygen     = llarp::sodium::sigkeygen;
+  this->encryption_keygen   = llarp::sodium::enckeygen;
+  this->pqe_encrypt         = llarp::pq::encrypt;
+  this->pqe_decrypt         = llarp::pq::decrypt;
+  this->pqe_keygen          = llarp::pq::keygen;
+  int seed = 0;
+  this->randbytes(&seed, sizeof(seed));
   srand(seed);
 }
 
 uint64_t
-llarp_randint()
+randint()
 {
   uint64_t i;
   randombytes((byte_t *)&i, sizeof(i));
   return i;
 }
+
+
+}  // namespace llarp

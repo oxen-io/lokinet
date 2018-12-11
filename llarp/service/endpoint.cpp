@@ -261,7 +261,7 @@ namespace llarp
     uint64_t
     Endpoint::GenTXID()
     {
-      uint64_t txid = llarp_randint();
+      uint64_t txid = llarp::randint();
       while(m_PendingLookups.find(txid) != m_PendingLookups.end())
         ++txid;
       return txid;
@@ -1363,7 +1363,7 @@ namespace llarp
     struct AsyncKeyExchange
     {
       llarp::Logic* logic;
-      llarp_crypto* crypto;
+      llarp::Crypto* crypto;
       SharedSecret sharedKey;
       ServiceInfo remote;
       const Identity& m_LocalIdentity;
@@ -1376,7 +1376,7 @@ namespace llarp
       IDataHandler* handler;
       ConvoTag tag;
 
-      AsyncKeyExchange(llarp::Logic* l, llarp_crypto* c, const ServiceInfo& r,
+      AsyncKeyExchange(llarp::Logic* l, llarp::Crypto* c, const ServiceInfo& r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
                        const Introduction& remote, IDataHandler* h,
@@ -1722,7 +1722,7 @@ namespace llarp
       return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic;
     }
 
-    llarp_crypto*
+    llarp::Crypto*
     Endpoint::Crypto()
     {
       return &m_Router->crypto;

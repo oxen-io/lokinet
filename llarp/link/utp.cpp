@@ -207,7 +207,7 @@ namespace llarp
 
       // mix keys
       bool
-      DoKeyExchange(llarp_transport_dh_func dh, const KeyExchangeNonce& n,
+      DoKeyExchange(transport_dh_func dh, const KeyExchangeNonce& n,
                     const PubKey& other, const byte_t* secret)
       {
         ShortHash t_h;

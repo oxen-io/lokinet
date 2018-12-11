@@ -1,12 +1,13 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
 
-#include <llarp.h>
 #include <iostream>
+#include <llarp.h>
+#include <llarp/crypto.h>
 #include <llarp/threading.hpp>
+#include <memory>
 #include <string>
 #include <vector>
-#include <llarp/crypto.h>
 
 struct llarp_config;
 struct llarp_config_iterator;
@@ -19,7 +20,7 @@ namespace llarp
 
     int num_nethreads   = 1;
     bool singleThreaded = false;
-    llarp_crypto crypto;
+    std::unique_ptr<llarp::Crypto> crypto;
     llarp::Router *router     = nullptr;
     llarp_threadpool *worker = nullptr;
     llarp::Logic *logic      = nullptr;

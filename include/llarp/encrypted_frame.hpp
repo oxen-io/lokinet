@@ -39,11 +39,11 @@ namespace llarp
     }
 
     bool
-    DecryptInPlace(const byte_t* seckey, llarp_crypto* crypto);
+    DecryptInPlace(const byte_t* seckey, llarp::Crypto* crypto);
 
     bool
     EncryptInPlace(const byte_t* seckey, const byte_t* other,
-                   llarp_crypto* crypto);
+                   llarp::Crypto* crypto);
   };
 
   /// TOOD: can only handle 1 frame at a time
@@ -66,14 +66,14 @@ namespace llarp
       }
     }
 
-    llarp_crypto* crypto;
+    llarp::Crypto* crypto;
     byte_t* secretkey;
     EncryptHandler handler;
     EncryptedFrame* frame;
     User* user;
     byte_t* otherKey;
 
-    AsyncFrameEncrypter(llarp_crypto* c, byte_t* seckey, EncryptHandler h)
+    AsyncFrameEncrypter(llarp::Crypto* c, byte_t* seckey, EncryptHandler h)
         : crypto(c), secretkey(seckey), handler(h)
     {
     }
@@ -114,7 +114,7 @@ namespace llarp
         ctx->result(nullptr, ctx->context);
     }
 
-    AsyncFrameDecrypter(llarp_crypto* c, const byte_t* secretkey,
+    AsyncFrameDecrypter(llarp::Crypto* c, const byte_t* secretkey,
                         DecryptHandler h)
         : result(h), crypto(c), seckey(secretkey)
     {
@@ -122,7 +122,7 @@ namespace llarp
 
     DecryptHandler result;
     User* context;
-    llarp_crypto* crypto;
+    llarp::Crypto* crypto;
     const byte_t* seckey;
     EncryptedFrame* target;
 

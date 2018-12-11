@@ -149,7 +149,7 @@ namespace llarp
       }
       auto itr = nodes.begin();
       // start at random middle point
-      auto start = llarp_randint() % nodes.size();
+      auto start = llarp::randint() % nodes.size();
       std::advance(itr, start);
       auto end            = itr;
       std::string tagname = tag.ToString();
@@ -807,7 +807,7 @@ namespace llarp
       }
     }
 
-    llarp_crypto *
+    llarp::Crypto *
     Context::Crypto()
     {
       return &router->crypto;

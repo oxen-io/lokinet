@@ -39,7 +39,7 @@ namespace llarp
       return m_Router->tp;
     }
 
-    llarp_crypto*
+    llarp::Crypto*
     PathContext::Crypto()
     {
       return &m_Router->crypto;
@@ -442,7 +442,7 @@ namespace llarp
       if(dlt > 5000 && m_LastLatencyTestID == 0)
       {
         llarp::routing::PathLatencyMessage latency;
-        latency.T             = llarp_randint();
+        latency.T             = llarp::randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = now;
         SendRoutingMessage(&latency, r);
@@ -639,7 +639,7 @@ namespace llarp
         MarkActive(now);
         // send path latency test
         llarp::routing::PathLatencyMessage latency;
-        latency.T             = llarp_randint();
+        latency.T             = llarp::randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = now;
         return SendRoutingMessage(&latency, r);

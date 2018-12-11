@@ -7,7 +7,7 @@ namespace llarp
   {
     bool
     DecryptInPlace(const byte_t* symkey, const byte_t* nonce,
-                   llarp_crypto* crypto);
+                   llarp::Crypto* crypto);
   };
 }  // namespace llarp
 

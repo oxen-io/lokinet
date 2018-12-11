@@ -360,7 +360,7 @@ llarp_nodedb::select_random_exit(llarp::RouterContact &result)
   auto itr      = entries.begin();
   if(sz < 3)
     return false;
-  auto idx = llarp_randint() % sz;
+  auto idx = llarp::randint() % sz;
   if(idx)
     std::advance(itr, idx - 1);
   while(itr != entries.end())
@@ -403,7 +403,7 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
       auto itr = entries.begin();
       if(sz > 1)
       {
-        auto idx = llarp_randint() % sz;
+        auto idx = llarp::randint() % sz;
         if(idx)
           std::advance(itr, idx - 1);
       }
@@ -426,7 +426,7 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
     auto itr = entries.begin();
     if(sz > 1)
     {
-      auto idx = llarp_randint() % sz;
+      auto idx = llarp::randint() % sz;
       if(idx)
         std::advance(itr, idx - 1);
     }

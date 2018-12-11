@@ -199,7 +199,7 @@ namespace llarp
     }
 
     void
-    Identity::RegenerateKeys(llarp_crypto* crypto)
+    Identity::RegenerateKeys(llarp::Crypto* crypto)
     {
       crypto->encryption_keygen(enckey);
       crypto->identity_keygen(signkey);
@@ -209,20 +209,20 @@ namespace llarp
     }
 
     bool
-    Identity::KeyExchange(llarp_path_dh_func dh, byte_t* result,
+    Identity::KeyExchange(path_dh_func dh, byte_t* result,
                           const ServiceInfo& other, const byte_t* N) const
     {
       return dh(result, other.EncryptionPublicKey(), enckey, N);
     }
 
     bool
-    Identity::Sign(llarp_crypto* c, byte_t* sig, llarp_buffer_t buf) const
+    Identity::Sign(llarp::Crypto* c, byte_t* sig, llarp_buffer_t buf) const
     {
       return c->sign(sig, signkey, buf);
     }
 
     bool
-    Identity::EnsureKeys(const std::string& fname, llarp_crypto* c)
+    Identity::EnsureKeys(const std::string& fname, llarp::Crypto* c)
     {
       byte_t tmp[4096];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -272,7 +272,7 @@ namespace llarp
     }
 
     bool
-    Identity::SignIntroSet(IntroSet& i, llarp_crypto* crypto,
+    Identity::SignIntroSet(IntroSet& i, llarp::Crypto* crypto,
                            llarp_time_t now) const
     {
       if(i.I.size() == 0)
@@ -297,7 +297,7 @@ namespace llarp
     }
 
     bool
-    IntroSet::Verify(llarp_crypto* crypto, llarp_time_t now) const
+    IntroSet::Verify(llarp::Crypto* crypto, llarp_time_t now) const
     {
       byte_t tmp[MAX_INTROSET_SIZE];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);

@@ -23,7 +23,7 @@ namespace llarp
     llarp::Router* router    = nullptr;
     llarp_threadpool* worker = nullptr;
     llarp::Logic* logic      = nullptr;
-    llarp_crypto* crypto     = nullptr;
+    llarp::Crypto* crypto     = nullptr;
     LR_CommitMessage LRCM;
 
     static void
@@ -111,7 +111,7 @@ namespace llarp
       }
     }
 
-    AsyncPathKeyExchangeContext(llarp_crypto* c) : crypto(c)
+    AsyncPathKeyExchangeContext(llarp::Crypto* c) : crypto(c)
     {
     }
 

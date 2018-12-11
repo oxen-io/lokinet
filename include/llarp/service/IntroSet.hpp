@@ -148,7 +148,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
       bool
-      Verify(llarp_crypto* crypto, llarp_time_t now) const;
+      Verify(llarp::Crypto* crypto, llarp_time_t now) const;
     };
   }  // namespace service
 }  // namespace llarp

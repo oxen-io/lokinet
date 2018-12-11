@@ -138,7 +138,7 @@ namespace llarp
       Context();
       ~Context();
 
-      llarp_crypto*
+      llarp::Crypto*
       Crypto();
 
       /// on behalf of whoasked request introset for target from dht router with

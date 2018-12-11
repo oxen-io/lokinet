@@ -627,7 +627,7 @@ namespace llarp
       llarp_threadpool*
       Worker();
 
-      llarp_crypto*
+      llarp::Crypto*
       Crypto();
 
       llarp::Logic*

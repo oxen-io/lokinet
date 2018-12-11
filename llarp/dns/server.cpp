@@ -59,7 +59,7 @@ namespace llarp
       if(sz == 1)
         return m_Resolvers[0];
       auto itr = m_Resolvers.begin();
-      std::advance(itr, llarp_randint() % sz);
+      std::advance(itr, llarp::randint() % sz);
       return *itr;
     }
 

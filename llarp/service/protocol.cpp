@@ -153,7 +153,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::DecryptPayloadInto(llarp_crypto* crypto,
+    ProtocolFrame::DecryptPayloadInto(llarp::Crypto* crypto,
                                       const byte_t* sharedkey,
                                       ProtocolMessage& msg) const
     {
@@ -164,7 +164,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::EncryptAndSign(llarp_crypto* crypto,
+    ProtocolFrame::EncryptAndSign(llarp::Crypto* crypto,
                                   const ProtocolMessage& msg,
                                   const byte_t* sessionKey,
                                   const Identity& localIdent)
@@ -208,14 +208,14 @@ namespace llarp
 
     struct AsyncFrameDecrypt
     {
-      llarp_crypto* crypto;
+        llarp::Crypto* crypto;
       llarp::Logic* logic;
       ProtocolMessage* msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
       const ProtocolFrame frame;
 
-      AsyncFrameDecrypt(llarp::Logic* l, llarp_crypto* c,
+      AsyncFrameDecrypt(llarp::Logic* l, llarp::Crypto* c,
                         const Identity& localIdent, IDataHandler* h,
                         ProtocolMessage* m, const ProtocolFrame& f)
           : crypto(c)
@@ -306,7 +306,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::AsyncDecryptAndVerify(llarp::Logic* logic, llarp_crypto* c,
+    ProtocolFrame::AsyncDecryptAndVerify(llarp::Logic* logic, llarp::Crypto* c,
                                          const PathID_t& srcPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
@@ -361,7 +361,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::Verify(llarp_crypto* crypto, const ServiceInfo& from) const
+    ProtocolFrame::Verify(llarp::Crypto* crypto, const ServiceInfo& from) const
     {
       ProtocolFrame copy(*this);
       // save signature

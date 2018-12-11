@@ -6,15 +6,15 @@ namespace llarp
 {
   struct PQCryptoTest : public ::testing::Test
   {
-    llarp_crypto crypto;
+      llarp::Crypto crypto;
     PQKeyPair keys;
 
     PQCryptoTest()
+    : crypto(llarp::Crypto::sodium{})
     {
-      llarp_crypto_init(&crypto);
     }
 
-    llarp_crypto*
+    llarp::Crypto*
     Crypto()
     {
       return &crypto;

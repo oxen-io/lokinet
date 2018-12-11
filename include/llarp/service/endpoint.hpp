@@ -58,7 +58,7 @@ namespace llarp
       llarp_ev_loop*
       EndpointNetLoop();
 
-      llarp_crypto*
+      llarp::Crypto*
       Crypto();
 
       llarp_threadpool*

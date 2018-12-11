@@ -85,10 +85,10 @@ namespace llarp
     SetNick(const std::string &nick);
 
     bool
-    Verify(llarp_crypto *crypto) const;
+    Verify(llarp::Crypto *crypto) const;
 
     bool
-    Sign(llarp_crypto *crypto, const llarp::SecretKey &secret);
+    Sign(llarp::Crypto *crypto, const llarp::SecretKey &secret);
 
     bool
     OtherIsNewer(const RouterContact &other) const
@@ -104,7 +104,7 @@ namespace llarp
 
    private:
     bool
-    VerifySignature(llarp_crypto *crypto) const;
+    VerifySignature(llarp::Crypto *crypto) const;
   };
 }  // namespace llarp
 

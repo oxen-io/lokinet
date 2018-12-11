@@ -317,7 +317,7 @@ namespace llarp
       auto sz = established.size();
       if(sz)
       {
-        return established[llarp_randint() % sz];
+        return established[llarp::randint() % sz];
       }
       else
         return nullptr;
