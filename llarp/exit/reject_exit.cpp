@@ -64,7 +64,7 @@ namespace llarp
     }
 
     bool
-    RejectExitMessage::Sign(llarp_crypto* c, const llarp::SecretKey& sk)
+    RejectExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
       byte_t tmp[512] = {0};
       auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -77,7 +77,7 @@ namespace llarp
     }
 
     bool
-    RejectExitMessage::Verify(llarp_crypto* c, const llarp::PubKey& pk) const
+    RejectExitMessage::Verify(llarp::Crypto* c, const llarp::PubKey& pk) const
     {
       byte_t tmp[512] = {0};
       auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);

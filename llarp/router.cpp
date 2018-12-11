@@ -120,7 +120,7 @@ llarp_router_try_connect(llarp::Router *router,
 }
 
 bool
-llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
+llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *fpath,
                            byte_t *secretkey)
 {
   llarp::LogDebug("find or create ", fpath);
@@ -148,7 +148,7 @@ llarp_findOrCreateIdentity(llarp_crypto *crypto, const char *fpath,
 
 // C++ ...
 bool
-llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
+llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
                              llarp::SecretKey &encryption)
 {
   llarp::LogDebug("find or create ", fpath);
@@ -190,12 +190,12 @@ namespace llarp
       , netloop(_netloop)
       , tp(_tp)
       , logic(_logic)
+      , crypto(llarp::Crypto::sodium{})
       , paths(this)
       , exitContext(this)
       , dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , hiddenServiceContext(this)
-
   {
     // set rational defaults
     this->ip4addr.sin_family = AF_INET;
@@ -206,7 +206,6 @@ namespace llarp
 #else
     disk = llarp_init_threadpool(1, "llarp-diskio");
 #endif
-    llarp_crypto_init(&crypto);
   }
 
   Router::~Router()
@@ -786,7 +785,7 @@ namespace llarp
     {
       auto itr = validRouters.begin();
       if(sz > 1)
-        std::advance(itr, llarp_randint() % sz);
+        std::advance(itr, llarp::randint() % sz);
       result = itr->second;
       return true;
     }
@@ -1039,7 +1038,7 @@ namespace llarp
           // check if we really want to
           if(!self->ConnectionToRouterAllowed(other.pubkey))
             return want > 0;
-          if(llarp_randint() % 2 == 0
+          if(llarp::randint() % 2 == 0
              && !(self->HasSessionTo(other.pubkey)
                   || self->HasPendingConnectJob(other.pubkey)))
           {

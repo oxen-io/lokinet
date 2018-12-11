@@ -33,11 +33,11 @@
 #include <str.hpp>
 
 bool
-llarp_findOrCreateEncryption(llarp_crypto *crypto, const char *fpath,
+llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
                              llarp::SecretKey &encryption);
 
 bool
-llarp_findOrCreateIdentity(struct llarp_crypto *crypto, const char *path,
+llarp_findOrCreateIdentity(struct llarp::Crypto *crypto, const char *path,
                            byte_t *secretkey);
 
 struct TryConnectJob;
@@ -82,7 +82,7 @@ namespace llarp
     llarp_ev_loop *netloop;
     llarp_threadpool *tp;
     llarp::Logic *logic;
-    llarp_crypto crypto;
+    llarp::Crypto crypto;
     llarp::path::PathContext paths;
     llarp::exit::Context exitContext;
     llarp::SecretKey identity;

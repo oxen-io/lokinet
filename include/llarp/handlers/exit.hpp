@@ -47,7 +47,7 @@ namespace llarp
       llarp_time_t
       Now() const;
 
-      llarp_crypto*
+      llarp::Crypto*
       Crypto();
 
       template < typename Stats >

@@ -36,7 +36,7 @@ namespace llarp
         }
         if(candidates.size() == 0)
           return false;
-        result = candidates[llarp_randint() % candidates.size()];
+        result = candidates[llarp::randint() % candidates.size()];
         return true;
       }
 
@@ -79,7 +79,7 @@ namespace llarp
         while(N)
         {
           auto itr = nodes.begin();
-          std::advance(itr, llarp_randint() % sz);
+          std::advance(itr, llarp::randint() % sz);
           if(result.insert(itr->first).second)
             --N;
         }

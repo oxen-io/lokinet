@@ -45,7 +45,7 @@ namespace llarp
       }
 
       bool
-      Verify(llarp_crypto* crypto, llarp_buffer_t payload,
+      Verify(llarp::Crypto* crypto, llarp_buffer_t payload,
              const Signature& sig) const
       {
         return crypto->verify(signkey, payload, sig);

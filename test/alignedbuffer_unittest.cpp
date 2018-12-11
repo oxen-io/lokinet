@@ -7,11 +7,11 @@ using Map_t    = std::unordered_map< Buffer_t, int, Buffer_t::Hash >;
 struct AlignedBufferTest : public ::testing::Test
 {
   AlignedBufferTest()
+  : crypto(llarp::Crypto::sodium{})
   {
-    llarp_crypto_init(&crypto);
   }
 
-  llarp_crypto crypto;
+  llarp::Crypto crypto;
 };
 
 TEST_F(AlignedBufferTest, TestHash)

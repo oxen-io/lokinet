@@ -81,8 +81,8 @@ namespace llarp
   int
   Context::LoadDatabase()
   {
-    llarp_crypto_init(&crypto);
-    nodedb = new llarp_nodedb(&crypto);
+    crypto = std::unique_ptr<llarp::Crypto>(new llarp::Crypto{llarp::Crypto::sodium{}});
+    nodedb = new llarp_nodedb(crypto.get());
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {

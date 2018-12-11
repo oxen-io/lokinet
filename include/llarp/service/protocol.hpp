@@ -94,17 +94,17 @@ namespace llarp
       operator=(const ProtocolFrame& other);
 
       bool
-      EncryptAndSign(llarp_crypto* c, const ProtocolMessage& msg,
+      EncryptAndSign(llarp::Crypto* c, const ProtocolMessage& msg,
                      const byte_t* sharedkey, const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(llarp::Logic* logic, llarp_crypto* c,
+      AsyncDecryptAndVerify(llarp::Logic* logic, llarp::Crypto* c,
                             const PathID_t& srcpath, llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
 
       bool
-      DecryptPayloadInto(llarp_crypto* c, const byte_t* sharedkey,
+      DecryptPayloadInto(llarp::Crypto* c, const byte_t* sharedkey,
                          ProtocolMessage& into) const;
 
       bool
@@ -114,7 +114,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      Verify(llarp_crypto* c, const ServiceInfo& from) const;
+      Verify(llarp::Crypto* c, const ServiceInfo& from) const;
 
       bool
       HandleMessage(llarp::routing::IMessageHandler* h,

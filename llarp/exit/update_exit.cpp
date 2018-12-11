@@ -43,7 +43,7 @@ namespace llarp
     }
 
     bool
-    UpdateExitMessage::Verify(llarp_crypto* c, const llarp::PubKey& pk) const
+    UpdateExitMessage::Verify(llarp::Crypto* c, const llarp::PubKey& pk) const
 
     {
       byte_t tmp[512] = {0};
@@ -70,7 +70,7 @@ namespace llarp
     }
 
     bool
-    UpdateExitMessage::Sign(llarp_crypto* c, const llarp::SecretKey& sk)
+    UpdateExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
       byte_t tmp[512] = {0};
       auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);

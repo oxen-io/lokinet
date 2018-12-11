@@ -28,7 +28,7 @@ struct llarp_nodedb_iter
 
 struct llarp_nodedb
 {
-  llarp_nodedb(llarp_crypto *c) : crypto(c)
+  llarp_nodedb(llarp::Crypto *c) : crypto(c)
   {
   }
 
@@ -37,7 +37,7 @@ struct llarp_nodedb
     Clear();
   }
 
-  llarp_crypto *crypto;
+  llarp::Crypto *crypto;
   llarp::util::Mutex access;
   std::unordered_map< llarp::RouterID, llarp::RouterContact,
                       llarp::RouterID::Hash >
@@ -118,7 +118,7 @@ struct llarp_async_verify_rc
   struct llarp_nodedb *nodedb;
   // llarp::Logic for queue_job
   llarp::Logic *logic;  // includes a llarp_threadpool
-  // struct llarp_crypto *crypto; // probably don't need this because we have
+  // struct llarp::Crypto *crypto; // probably don't need this because we have
   // it in the nodedb
   struct llarp_threadpool *cryptoworker;
   struct llarp_threadpool *diskworker;

@@ -6,7 +6,7 @@
 
 struct AbyssTestBase : public ::testing::Test
 {
-  llarp_crypto crypto;
+    llarp::Crypto crypto;
   llarp_threadpool* threadpool         = nullptr;
   llarp_ev_loop* loop                  = nullptr;
   llarp::Logic* logic                  = nullptr;
@@ -24,7 +24,7 @@ struct AbyssTestBase : public ::testing::Test
   void
   SetUp()
   {
-    // for llarp_randint
+    // for llarp::randint
     llarp_crypto_init(&crypto);
   }
 
@@ -45,7 +45,7 @@ struct AbyssTestBase : public ::testing::Test
 
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr.sin_port        = htons((llarp_randint() % 2000) + 2000);
+    addr.sin_port        = htons((llarp::randint() % 2000) + 2000);
     addr.sin_family      = AF_INET;
     llarp::Addr a(addr);
     while(true)

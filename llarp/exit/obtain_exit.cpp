@@ -22,7 +22,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::Sign(llarp_crypto* c, const llarp::SecretKey& sk)
+    ObtainExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
       byte_t tmp[1024] = {0};
       auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -35,7 +35,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::Verify(llarp_crypto* c) const
+    ObtainExitMessage::Verify(llarp::Crypto* c) const
     {
       byte_t tmp[1024] = {0};
       auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);

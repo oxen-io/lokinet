@@ -122,7 +122,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::Sign(llarp_crypto* c, const SecretKey& k)
+  LinkIntroMessage::Sign(llarp::Crypto* c, const SecretKey& k)
   {
     Z.Zero();
     byte_t tmp[MaxSize] = {0};
@@ -135,7 +135,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::Verify(llarp_crypto* c) const
+  LinkIntroMessage::Verify(llarp::Crypto* c) const
   {
     LinkIntroMessage copy;
     copy = *this;

@@ -60,7 +60,7 @@ namespace llarp
                                         std::placeholders::_2));
       llarp::routing::ObtainExitMessage obtain;
       obtain.S = p->NextSeqNo();
-      obtain.T = llarp_randint();
+      obtain.T = llarp::randint();
       PopulateRequest(obtain);
       if(!obtain.Sign(&router->crypto, m_ExitIdentity))
       {

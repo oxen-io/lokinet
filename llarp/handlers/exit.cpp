@@ -114,7 +114,7 @@ namespace llarp
       return m_Router;
     }
 
-    llarp_crypto *
+    llarp::Crypto *
     ExitEndpoint::Crypto()
     {
       return &m_Router->crypto;
