@@ -61,7 +61,8 @@ namespace llarp
         }
         else
         {
-          llarp::LogInfo("session to ", itr->second->GetPubKey(), " timed out");
+          llarp::LogInfo("session to ", RouterID(itr->second->GetPubKey()),
+                         " timed out");
           itr = m_AuthedLinks.erase(itr);
         }
       }
