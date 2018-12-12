@@ -460,7 +460,6 @@ namespace llarp
 
         if(m_SNodes.at(itr->second))
         {
-          llarp::LogInfo(Name(), " send to service node");
           sendFunc = std::bind(&TunEndpoint::SendToSNodeOrQueue, this,
                                itr->second.data(), std::placeholders::_1);
         }
