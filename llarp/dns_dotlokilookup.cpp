@@ -1,7 +1,7 @@
 #include <handlers/tun.hpp>
 #include <llarp/dns_dotlokilookup.hpp>
-#include <llarp/service/context.hpp>
 #include <llarp/logic.hpp>
+#include <service/context.hpp>
 
 std::string const default_chars =
     "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";

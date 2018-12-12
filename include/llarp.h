@@ -8,8 +8,8 @@
 
 #ifdef __cplusplus
 #include <handlers/tun.hpp>     // for handlers
-#include <llarp/service/address.hpp>  // for service::address
-#include <llarp/service/endpoint.hpp>
+#include <service/address.hpp>  // for service::address
+#include <service/endpoint.hpp>
 
 extern "C"
 {

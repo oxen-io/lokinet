@@ -1,9 +1,9 @@
 #ifndef LIBLLARP_DNS_DOTLOKILOOKUP_HPP
 #define LIBLLARP_DNS_DOTLOKILOOKUP_HPP
 
-#include <llarp/service/address.hpp>
+#include <llarp/dnsd.hpp>
+#include <service/address.hpp>
 
-#include "dnsd.hpp"
 
 using map_address_hook_func =
     std::function< bool(const byte_t *addr, bool isSNode, uint32_t ip) >;

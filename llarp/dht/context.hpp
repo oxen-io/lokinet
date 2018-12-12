@@ -7,8 +7,8 @@
 #include <dht/message.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/node.hpp>
-#include <llarp/service/IntroSet.hpp>
 #include <llarp/time.hpp>
+#include <service/IntroSet.hpp>
 
 #include <set>
 

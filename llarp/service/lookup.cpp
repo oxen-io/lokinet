@@ -1,7 +1,7 @@
 #include <llarp/path.hpp>
-#include <llarp/service/endpoint.hpp>
-#include <llarp/service/lookup.hpp>
 #include <llarp/time.hpp>
+#include <service/endpoint.hpp>
+#include <service/lookup.hpp>
 
 namespace llarp
 {

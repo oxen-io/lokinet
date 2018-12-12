@@ -1,16 +1,16 @@
 #ifndef LLARP_SERVICE_INTROSET_HPP
 #define LLARP_SERVICE_INTROSET_HPP
-#include <llarp/time.hpp>
-#include <iostream>
-#include <llarp/bencode.hpp>
 #include <crypto.hpp>
+#include <llarp/bencode.hpp>
 #include <llarp/pow.hpp>
-#include <llarp/service/Info.hpp>
-#include <llarp/service/Intro.hpp>
-#include <llarp/service/tag.hpp>
+#include <llarp/time.hpp>
+#include <service/Info.hpp>
+#include <service/Intro.hpp>
+#include <service/tag.hpp>
 
-#include <vector>
 #include <algorithm>
+#include <iostream>
+#include <vector>
 
 namespace llarp
 {

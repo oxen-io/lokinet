@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <llarp/service.hpp>
 #include <llarp/time.hpp>
+#include <service.hpp>
 
 struct HiddenServiceTest : public ::testing::Test
 {

@@ -464,7 +464,6 @@ extern "C"
     return nullptr;
   }
 
-  //#include <llarp/service/context.hpp>
   bool
   main_router_endpoint_iterator(
       struct llarp_main *ptr, struct llarp::service::Context::endpoint_iter &i)

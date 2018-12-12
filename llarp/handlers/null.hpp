@@ -1,6 +1,7 @@
 #ifndef LLARP_HANDLERS_NULL_HPP
 #define LLARP_HANDLERS_NULL_HPP
-#include <llarp/service/endpoint.hpp>
+
+#include <service/endpoint.hpp>
 
 namespace llarp
 {

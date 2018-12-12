@@ -18,10 +18,10 @@
 #include <llarp/path.hpp>
 #include <llarp/profiling.hpp>
 #include <llarp/rpc.hpp>
-#include <llarp/service.hpp>
 #include <mem.hpp>
 #include <router_contact.hpp>
 #include <routing/handler.hpp>
+#include <service.hpp>
 #include <str.hpp>
 #include <threadpool.hpp>
 

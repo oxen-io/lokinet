@@ -4,10 +4,10 @@
 #include <dht/messages/all.hpp>
 #include <llarp/path_types.hpp>
 #include <llarp/router_id.hpp>
-#include <llarp/service/IntroSet.hpp>
-#include <llarp/service/lookup.hpp>
 #include <llarp/time.hpp>
 #include <routing/message.hpp>
+#include <service/IntroSet.hpp>
+#include <service/lookup.hpp>
 
 #include <functional>
 #include <list>

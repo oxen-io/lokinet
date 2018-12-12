@@ -1,14 +1,15 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
+
 #include <exit/session.hpp>
 #include <llarp/codel.hpp>
 #include <llarp/ev.h>
 #include <llarp/net.hpp>
 #include <llarp/path.hpp>
 #include <llarp/pathbuilder.hpp>
-#include <llarp/service/Identity.hpp>
-#include <llarp/service/handler.hpp>
-#include <llarp/service/protocol.hpp>
+#include <service/Identity.hpp>
+#include <service/handler.hpp>
+#include <service/protocol.hpp>
 
 // minimum time between interoset shifts
 #ifndef MIN_SHIFT_INTERVAL

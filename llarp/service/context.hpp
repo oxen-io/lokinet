@@ -1,9 +1,10 @@
 #ifndef LLARP_SERVICE_CONTEXT_HPP
 #define LLARP_SERVICE_CONTEXT_HPP
+
 #include <handlers/tun.hpp>
 #include <llarp/net.hpp>
-#include <llarp/service/config.hpp>
-#include <llarp/service/endpoint.hpp>
+#include <service/config.hpp>
+#include <service/endpoint.hpp>
 
 #include <unordered_map>
 

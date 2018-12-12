@@ -2,9 +2,9 @@
 #define LLARP_DHT_MESSAGES_FIND_INTRO_HPP
 
 #include <dht/message.hpp>
-#include <llarp/service/address.hpp>
-#include <llarp/service/tag.hpp>
 #include <routing/message.hpp>
+#include <service/address.hpp>
+#include <service/tag.hpp>
 
 namespace llarp
 {

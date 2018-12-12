@@ -1,11 +1,12 @@
 #ifndef LIBLLARP_DNSIPTRACKER_HPP
 #define LIBLLARP_DNSIPTRACKER_HPP
 
+#include <llarp/dns_dotlokilookup.hpp>
 #include <llarp/net.hpp>
+#include <service/address.hpp>
+
 #include <map>
 #include <vector>
-#include <llarp/service/address.hpp>
-#include "dns_dotlokilookup.hpp"
 
 // either a request or response?
 // neither, it's a result set row

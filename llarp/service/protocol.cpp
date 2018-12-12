@@ -1,8 +1,8 @@
 #include <buffer.hpp>
 #include <llarp/logic.hpp>
-#include <llarp/service/protocol.hpp>
 #include <mem.hpp>
 #include <routing/handler.hpp>
+#include <service/protocol.hpp>
 
 namespace llarp
 {

@@ -5,12 +5,12 @@
 #include <dht/message.hpp>
 #include <llarp/bencode.hpp>
 #include <llarp/encrypted.hpp>
-#include <llarp/service/Identity.hpp>
-#include <llarp/service/Info.hpp>
-#include <llarp/service/Intro.hpp>
-#include <llarp/service/handler.hpp>
 #include <llarp/time.hpp>
 #include <routing/message.hpp>
+#include <service/Identity.hpp>
+#include <service/Info.hpp>
+#include <service/Intro.hpp>
+#include <service/handler.hpp>
 
 #include <vector>
 

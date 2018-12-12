@@ -10,11 +10,11 @@
 #include <llarp/pathbuilder.hpp>
 #include <llarp/pathset.hpp>
 #include <llarp/router_id.hpp>
-#include <llarp/service/Intro.hpp>
 #include <llarp/threading.hpp>
 #include <llarp/time.hpp>
 #include <routing/handler.hpp>
 #include <routing/message.hpp>
+#include <service/Intro.hpp>
 
 #include <functional>
 #include <list>
