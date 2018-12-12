@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
-#include <llarp/exit.hpp>
+
+#include <exit.hpp>
 #include <router.hpp>
 
 struct ExitTest : public ::testing::Test

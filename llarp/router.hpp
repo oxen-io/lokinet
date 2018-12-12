@@ -5,9 +5,9 @@
 #include <llarp/config.h>
 #include <dht.h>
 #include <dht.hpp>
+#include <exit.hpp>
 #include <llarp/establish_job.hpp>
 #include <llarp/ev.h>
-#include <llarp/exit.hpp>
 #include <llarp/handlers/tun.hpp>
 #include <llarp/link_layer.hpp>
 #include <llarp/link_message.hpp>

@@ -1,4 +1,4 @@
-#include <llarp/exit/endpoint.hpp>
+#include <exit/endpoint.hpp>
 #include <llarp/handlers/exit.hpp>
 
 #include <router.hpp>

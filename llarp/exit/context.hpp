@@ -1,6 +1,6 @@
 #ifndef LLARP_EXIT_CONTEXT_HPP
 #define LLARP_EXIT_CONTEXT_HPP
-#include <llarp/exit/policy.hpp>
+#include <exit/policy.hpp>
 #include <string>
 #include <unordered_map>
 #include <llarp/handlers/exit.hpp>

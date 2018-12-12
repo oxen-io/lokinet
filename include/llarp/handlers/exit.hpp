@@ -1,8 +1,9 @@
 #ifndef LLARP_HANDLERS_EXIT_HPP
 #define LLARP_HANDLERS_EXIT_HPP
 
+#include <exit/endpoint.hpp>
 #include <llarp/handlers/tun.hpp>
-#include <llarp/exit/endpoint.hpp>
+
 #include <unordered_map>
 
 namespace llarp

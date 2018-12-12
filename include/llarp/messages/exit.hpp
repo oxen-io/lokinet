@@ -1,9 +1,10 @@
 #ifndef LLARP_MESSAGES_EXIT_HPP
 #define LLARP_MESSAGES_EXIT_HPP
-#include <llarp/routing/message.hpp>
-#include <llarp/exit/policy.hpp>
-#include <vector>
 #include <crypto.hpp>
+#include <exit/policy.hpp>
+#include <llarp/routing/message.hpp>
+
+#include <vector>
 
 namespace llarp
 {
