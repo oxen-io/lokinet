@@ -1,12 +1,13 @@
 #ifndef LLARP_ALIGNED_HPP
 #define LLARP_ALIGNED_HPP
 
+#include <encode.hpp>
 #include <llarp/bencode.h>
 #include <llarp/crypto.h>
+#include <llarp/logger.hpp>
+
 #include <iomanip>
 #include <iostream>
-#include <llarp/encode.hpp>
-#include <llarp/logger.hpp>
 
 extern "C"
 {
