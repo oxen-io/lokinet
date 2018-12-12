@@ -1,5 +1,6 @@
 #ifndef LLARP_PATH_HPP
 #define LLARP_PATH_HPP
+
 #include <crypto.hpp>
 #include <dht.hpp>
 #include <llarp/aligned.hpp>
@@ -9,11 +10,11 @@
 #include <llarp/pathbuilder.hpp>
 #include <llarp/pathset.hpp>
 #include <llarp/router_id.hpp>
-#include <llarp/routing/handler.hpp>
-#include <llarp/routing/message.hpp>
 #include <llarp/service/Intro.hpp>
 #include <llarp/threading.hpp>
 #include <llarp/time.hpp>
+#include <routing/handler.hpp>
+#include <routing/message.hpp>
 
 #include <functional>
 #include <list>

@@ -1,10 +1,10 @@
 #include <llarp/messages/dht.hpp>
+#include <llarp/messages/discard.hpp>
 #include <llarp/messages/path_confirm.hpp>
 #include <llarp/messages/path_latency.hpp>
 #include <llarp/messages/path_transfer.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/routing/message.hpp>
-#include "mem.hpp"
+#include <mem.hpp>
+#include <routing/message.hpp>
 
 namespace llarp
 {

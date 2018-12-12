@@ -1,8 +1,9 @@
 #ifndef LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
 #define LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
-#include <llarp/routing/message.hpp>
-#include <llarp/encrypted.hpp>
 #include <crypto.hpp>
+#include <llarp/encrypted.hpp>
+#include <routing/message.hpp>
+
 #include <vector>
 
 namespace llarp

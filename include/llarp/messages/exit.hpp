@@ -2,7 +2,7 @@
 #define LLARP_MESSAGES_EXIT_HPP
 #include <crypto.hpp>
 #include <exit/policy.hpp>
-#include <llarp/routing/message.hpp>
+#include <routing/message.hpp>
 
 #include <vector>
 

@@ -1,7 +1,7 @@
 #ifndef LLARP_MESSAGES_PATH_LATENCY_HPP
 #define LLARP_MESSAGES_PATH_LATENCY_HPP
 
-#include <llarp/routing/message.hpp>
+#include <routing/message.hpp>
 
 namespace llarp
 {

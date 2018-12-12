@@ -1,8 +1,9 @@
 #ifndef LLARP_SERVICE_LOOKUP_HPP
 #define LLARP_SERVICE_LOOKUP_HPP
 
-#include <llarp/routing/message.hpp>
 #include <llarp/service/IntroSet.hpp>
+#include <routing/message.hpp>
+
 #include <set>
 
 namespace llarp

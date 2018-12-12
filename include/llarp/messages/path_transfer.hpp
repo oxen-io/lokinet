@@ -3,8 +3,8 @@
 
 #include <crypto.hpp>
 #include <llarp/encrypted.hpp>
-#include <llarp/routing/message.hpp>
 #include <llarp/service/protocol.hpp>
+#include <routing/message.hpp>
 
 namespace llarp
 {

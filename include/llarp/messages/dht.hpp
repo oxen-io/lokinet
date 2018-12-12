@@ -1,7 +1,7 @@
 #ifndef LLARP_MESSAGES_DHT_HPP
 #define LLARP_MESSAGES_DHT_HPP
 #include <dht.hpp>
-#include <llarp/routing/message.hpp>
+#include <routing/message.hpp>
 
 #include <vector>
 

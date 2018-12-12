@@ -1,7 +1,7 @@
 #include <dht/context.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/messages/gotintro.hpp>
-#include <llarp/routing/message.hpp>
+#include <routing/message.hpp>
 
 namespace llarp
 {
