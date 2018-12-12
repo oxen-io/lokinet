@@ -536,7 +536,15 @@ namespace llarp
 // finally create aliases by platform
 #ifdef _WIN32
   using ev_io = win32_ev_io;
-#define sizeof(sockaddr_un) 115
+
+#define UNIX_PATH_MAX 108
+
+  typedef struct sockaddr_un
+  {
+    ADDRESS_FAMILY sun_family;    /* AF_UNIX */
+    char sun_path[UNIX_PATH_MAX]; /* pathname */
+  } SOCKADDR_UN, *PSOCKADDR_UN;
+
 #else
   using ev_io = posix_ev_io;
 #endif
