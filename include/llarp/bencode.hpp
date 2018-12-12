@@ -1,10 +1,11 @@
 #ifndef LLARP_BENCODE_HPP
 #define LLARP_BENCODE_HPP
 
+#include <buffer.hpp>
 #include <llarp/bencode.h>
-#include <llarp/buffer.hpp>
 #include <llarp/logger.hpp>
 #include <llarp/mem.hpp>
+
 #include <set>
 #include <fstream>
 

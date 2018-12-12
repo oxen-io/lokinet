@@ -2,7 +2,7 @@
 #include <abyss/http.hpp>
 #include <llarp/logger.hpp>
 #include <llarp/crypto.hpp>
-#include <llarp/buffer.hpp>
+#include <buffer.hpp>
 
 namespace abyss
 {
