@@ -1,10 +1,10 @@
 #ifndef LLARP_DNS_SERVER_HPP
 #define LLARP_DNS_SERVER_HPP
-#include <llarp/string_view.hpp>
-#include <llarp/dns/message.hpp>
+#include <dns/message.hpp>
 
 #include <llarp/ev.h>
 #include <llarp/net.hpp>
+#include <llarp/string_view.hpp>
 
 #include <unordered_map>
 

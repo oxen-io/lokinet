@@ -3,8 +3,8 @@
 
 #include <llarp/ev.h>  // for sockaadr
 #include <string>
-#include <llarp/dns.hpp>  // question and dnsc
-#include <llarp/dnsc.hpp>
+#include <dns.hpp>  // question and dnsc
+#include <dnsc.hpp>
 
 //
 // Input structures/functions:

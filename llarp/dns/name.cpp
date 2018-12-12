@@ -1,7 +1,8 @@
-#include <llarp/dns/name.hpp>
+#include <dns/name.hpp>
 #include <llarp/net.hpp>
-#include <sstream>
+
 #include <algorithm>
+#include <sstream>
 
 namespace llarp
 {

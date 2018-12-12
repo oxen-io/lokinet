@@ -1,7 +1,7 @@
 #ifndef LIBLLARP_DNS_HPP
 #define LIBLLARP_DNS_HPP
 
-#include <llarp/dns.h>
+#include <dns.h>
 #include <sys/types.h>  // for uint & ssize_t
 #include <map>
 #include <string>
@@ -12,7 +12,7 @@
 #endif
 
 #include <llarp/net.hpp>  // for llarp::Addr , llarp::huint32_t
-#include <llarp/dns_rectypes.hpp>
+#include <dns_rectypes.hpp>
 
 #define LLARP_DNS_RECTYPE_A 1
 #define LLARP_DNS_RECTYPE_NS 2

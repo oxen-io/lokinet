@@ -2,7 +2,7 @@
 #define LIBLLARP_DNSC_HPP
 
 #include <llarp/ev.h>     // for sockaadr
-#include <llarp/dns.hpp>  // get protocol structs
+#include <dns.hpp>  // get protocol structs
 
 // internal, non-public functions
 // well dnsc init/stop are public...

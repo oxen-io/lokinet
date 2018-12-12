@@ -1,4 +1,4 @@
-#include <llarp/dnsc.hpp>
+#include <dnsc.hpp>
 
 #ifndef _WIN32
 #include <arpa/inet.h>

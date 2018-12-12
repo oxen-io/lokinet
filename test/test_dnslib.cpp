@@ -1,4 +1,4 @@
-#include <llarp/dns/dns.hpp>
+#include <dns/dns.hpp>
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <llarp/net.hpp>

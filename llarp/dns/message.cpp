@@ -1,5 +1,5 @@
 #include <buffer.hpp>
-#include <llarp/dns/message.hpp>
+#include <dns/message.hpp>
 #include <llarp/endian.hpp>
 #include <llarp/logger.hpp>
 

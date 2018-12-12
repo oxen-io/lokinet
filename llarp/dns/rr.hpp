@@ -1,10 +1,12 @@
 #ifndef LLARP_DNS_RR_HPP
 #define LLARP_DNS_RR_HPP
-#include <llarp/dns/name.hpp>
-#include <llarp/dns/serialize.hpp>
+#include <dns/name.hpp>
+#include <dns/serialize.hpp>
+
 #include <llarp/net_int.hpp>
-#include <vector>
+
 #include <memory>
+#include <vector>
 
 namespace llarp
 {

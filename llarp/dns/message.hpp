@@ -1,8 +1,8 @@
 #ifndef LLARP_DNS_MESSAGE_HPP
 #define LLARP_DNS_MESSAGE_HPP
-#include <llarp/dns/serialize.hpp>
-#include <llarp/dns/rr.hpp>
-#include <llarp/dns/question.hpp>
+#include <dns/serialize.hpp>
+#include <dns/rr.hpp>
+#include <dns/question.hpp>
 
 namespace llarp
 {

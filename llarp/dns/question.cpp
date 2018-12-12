@@ -1,4 +1,4 @@
-#include <llarp/dns/question.hpp>
+#include <dns/question.hpp>
 #include <llarp/logger.hpp>
 
 namespace llarp

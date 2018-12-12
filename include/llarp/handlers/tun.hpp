@@ -5,7 +5,7 @@
 #include <llarp/ip.hpp>
 #include <llarp/service/endpoint.hpp>
 #include <llarp/threading.hpp>
-#include <llarp/dns/server.hpp>
+#include <dns/server.hpp>
 #include <llarp/net.hpp>
 
 namespace llarp

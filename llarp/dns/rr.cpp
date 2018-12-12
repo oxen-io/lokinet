@@ -1,4 +1,4 @@
-#include <llarp/dns/rr.hpp>
+#include <dns/rr.hpp>
 #include <llarp/logger.hpp>
 
 namespace llarp
