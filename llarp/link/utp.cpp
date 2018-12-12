@@ -1,9 +1,9 @@
 #include <buffer.hpp>
+#include <endian.hpp>
 #include <link/server.hpp>
 #include <link/utp.hpp>
-#include <llarp/endian.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/messages/link_intro.hpp>
+#include <messages/discard.hpp>
+#include <messages/link_intro.hpp>
 #include <router.hpp>
 #include <utp.h>
 

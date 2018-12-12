@@ -3,8 +3,8 @@
 #include <dns.hpp>
 #include <dnsc.hpp>
 #include <llarp.h>          // for llarp_main_init
-#include <llarp/logic.hpp>  // for threadpool/llarp::Logic
-#include "llarp/net.hpp"    // for llarp::Addr
+#include <logic.hpp>  // for threadpool/llarp::Logic
+#include <net.hpp>    // for llarp::Addr
 
 struct DNSTest : public ::testing::Test
 {

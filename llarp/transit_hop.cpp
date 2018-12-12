@@ -1,7 +1,7 @@
 #include <buffer.hpp>
-#include <llarp/endian.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/path.hpp>
+#include <endian.hpp>
+#include <messages/discard.hpp>
+#include <path.hpp>
 #include <router.hpp>
 #include <routing/handler.hpp>
 

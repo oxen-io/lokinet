@@ -1,5 +1,5 @@
-#include <llarp/rpc.hpp>
 #include <router.hpp>
+#include <rpc.hpp>
 
 #ifdef USE_ABYSS
 #include <libabyss.hpp>

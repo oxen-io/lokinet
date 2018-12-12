@@ -2,10 +2,10 @@
 #include <crypto.hpp>
 #include <encode.hpp>
 #include <fs.hpp>
-#include <llarp/logic.hpp>
-#include <llarp/nodedb.hpp>
 #include <logger.hpp>
+#include <logic.hpp>
 #include <mem.hpp>
+#include <nodedb.hpp>
 #include <router_contact.hpp>
 
 #include <fstream>

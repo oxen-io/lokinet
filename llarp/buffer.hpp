@@ -1,7 +1,7 @@
 #ifndef LLARP_BUFFER_HPP
 #define LLARP_BUFFER_HPP
 
-#include <llarp/buffer.h>
+#include <buffer.h>
 
 namespace llarp
 {

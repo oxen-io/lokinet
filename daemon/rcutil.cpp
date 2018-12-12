@@ -1,16 +1,16 @@
 #include <buffer.hpp>
 #include <crypto.hpp>
 #include <fs.hpp>
-#include <fstream>
 #include <llarp.h>
-#include <llarp/messages/dht.hpp>
-#include <llarp/net.hpp>
-#include <llarp/nodedb.hpp>
-#include <llarp/time.hpp>
 #include <logger.hpp>
+#include <messages/dht.hpp>
+#include <net.hpp>
+#include <nodedb.hpp>
 #include <router.hpp>
 #include <router_contact.hpp>
+#include <time.hpp>
 
+#include <fstream>
 #include <getopt.h>
 #include <signal.h>
 

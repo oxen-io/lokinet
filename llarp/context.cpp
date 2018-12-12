@@ -1,19 +1,19 @@
+#include <dns_dotlokilookup.hpp>
+#include <dnsd.hpp>
+#include <ev.hpp>
 #include <getopt.h>
 #include <llarp.h>
-#include <llarp/logger.h>
-#include <signal.h>
-#include <sys/param.h>  // for MIN
 #include <llarp.hpp>
+#include <logger.h>
 #include <router.hpp>
+#include <signal.h>
 
-#include <llarp/dnsd.hpp>
-#include <llarp/dns_dotlokilookup.hpp>
+#include <sys/param.h>  // for MIN
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
 #endif
 
-#include "ev.hpp"
 
 namespace llarp
 {

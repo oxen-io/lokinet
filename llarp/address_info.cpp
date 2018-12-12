@@ -2,10 +2,10 @@
 #ifndef _WIN32
 #include <arpa/inet.h>
 #endif
-#include <llarp/bencode.h>
-#include <llarp/mem.h>
-#include <llarp/string.h>
-#include <llarp/net.hpp>
+#include <bencode.h>
+#include <mem.h>
+#include <string.h>
+#include <net.hpp>
 
 namespace llarp
 {

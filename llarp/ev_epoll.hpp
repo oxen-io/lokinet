@@ -1,19 +1,19 @@
 #ifndef EV_EPOLL_HPP
 #define EV_EPOLL_HPP
 #include <fcntl.h>
-#include <llarp/buffer.h>
-#include <llarp/net.h>
+#include <buffer.h>
+#include <net.h>
 #include <signal.h>
 #include <sys/epoll.h>
 #include <sys/un.h>
 #include <tuntap.h>
 #include <unistd.h>
 #include <cstdio>
-#include "buffer.hpp"
-#include "ev.hpp"
-#include "llarp/net.hpp"
-#include "logger.hpp"
-#include "mem.hpp"
+#include <buffer.hpp>
+#include <ev.hpp>
+#include <net.hpp>
+#include <logger.hpp>
+#include <mem.hpp>
 #include <cassert>
 
 #ifdef ANDROID

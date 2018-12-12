@@ -1,6 +1,6 @@
+#include <dns_dotlokilookup.hpp>
 #include <handlers/tun.hpp>
-#include <llarp/dns_dotlokilookup.hpp>
-#include <llarp/logic.hpp>
+#include <logic.hpp>
 #include <service/context.hpp>
 
 std::string const default_chars =

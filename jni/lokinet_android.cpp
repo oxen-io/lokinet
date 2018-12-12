@@ -2,7 +2,7 @@
 //#include <string.h>
 #include <jni.h>
 #include <llarp.h>
-#include <llarp/config.h>
+#include <config.h>
 #include <signal.h>
 #include <memory>
 #include <thread>
@@ -15,7 +15,7 @@ struct AndroidMain
   std::string configFile;
 
   /// set configuration and ensure files
-  bool 
+  bool
   Configure(const char * conf, const char * basedir)
   {
     configFile = conf;
@@ -84,7 +84,7 @@ struct AndroidMain
      return "";
   }
 
-  int GetIfRange() const 
+  int GetIfRange() const
   {
     if(m_impl)
     {
@@ -95,7 +95,7 @@ struct AndroidMain
     return -1;
   }
 
-  void 
+  void
   SetVPN_FD(int fd)
   {
     if(m_impl)
@@ -148,7 +148,7 @@ extern "C"
     {
       if(daemon->Start())
         return env->NewStringUTF("ok");
-      else 
+      else
         return env->NewStringUTF("failed to start daemon");
     }
     else
@@ -163,7 +163,7 @@ extern "C"
       daemon->Stop();
     }
   }
- 
+
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_setVPNFileDescriptor(JNIEnv*, jclass, jint fd)
   {

@@ -1,9 +1,11 @@
 #ifndef LLARP_EXIT_SESSION_HPP
 #define LLARP_EXIT_SESSION_HPP
-#include <llarp/pathbuilder.hpp>
-#include <llarp/ip.hpp>
-#include <llarp/messages/transfer_traffic.hpp>
-#include <llarp/messages/exit.hpp>
+
+#include <ip.hpp>
+#include <messages/exit.hpp>
+#include <messages/transfer_traffic.hpp>
+#include <pathbuilder.hpp>
+
 #include <deque>
 
 namespace llarp

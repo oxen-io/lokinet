@@ -1,5 +1,5 @@
 #include <handlers/exit.hpp>
-#include <llarp/net.hpp>
+#include <net.hpp>
 #include <router.hpp>
 #include <str.hpp>
 

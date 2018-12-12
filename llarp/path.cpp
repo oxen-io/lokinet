@@ -1,12 +1,13 @@
+#include <buffer.hpp>
+#include <encrypted_frame.hpp>
+#include <endian.hpp>
+#include <messages/dht.hpp>
+#include <messages/discard.hpp>
+#include <path.hpp>
+#include <pathbuilder.hpp>
+#include <router.hpp>
+
 #include <deque>
-#include <llarp/encrypted_frame.hpp>
-#include <llarp/path.hpp>
-#include <llarp/pathbuilder.hpp>
-#include <llarp/messages/dht.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/endian.hpp>
-#include "buffer.hpp"
-#include "router.hpp"
 
 namespace llarp
 {

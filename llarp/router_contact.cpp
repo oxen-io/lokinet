@@ -1,12 +1,12 @@
+#include <bencode.hpp>
 #include <buffer.hpp>
 #include <crypto.hpp>
-#include <llarp/bencode.hpp>
-#include <llarp/net.hpp>
-#include <llarp/time.hpp>
-#include <llarp/version.hpp>
 #include <logger.hpp>
 #include <mem.hpp>
+#include <net.hpp>
 #include <router_contact.hpp>
+#include <time.hpp>
+#include <version.hpp>
 
 #include <fstream>
 

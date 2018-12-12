@@ -1,9 +1,9 @@
 #ifndef LLARP_ROUTING_MESSAGE_HPP
 #define LLARP_ROUTING_MESSAGE_HPP
 
-#include <llarp/buffer.h>
-#include <llarp/bencode.hpp>
-#include <llarp/path_types.hpp>
+#include <bencode.hpp>
+#include <buffer.h>
+#include <path_types.hpp>
 
 namespace llarp
 {

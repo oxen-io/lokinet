@@ -1,9 +1,9 @@
-#include <llarp/messages/dht.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/messages/path_confirm.hpp>
-#include <llarp/messages/path_latency.hpp>
-#include <llarp/messages/path_transfer.hpp>
 #include <mem.hpp>
+#include <messages/dht.hpp>
+#include <messages/discard.hpp>
+#include <messages/path_confirm.hpp>
+#include <messages/path_latency.hpp>
+#include <messages/path_transfer.hpp>
 #include <routing/message.hpp>
 
 namespace llarp

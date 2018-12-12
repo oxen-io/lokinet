@@ -1,6 +1,7 @@
 #ifndef LLARP_DHT_KEY_HPP
 #define LLARP_DHT_KEY_HPP
-#include <llarp/aligned.hpp>
+
+#include <aligned.hpp>
 
 namespace llarp
 {

@@ -1,6 +1,6 @@
 #ifndef LLARP_DNS_SERIALIZE_HPP
 #define LLARP_DNS_SERIALIZE_HPP
-#include <llarp/buffer.h>
+#include <buffer.h>
 #include <vector>
 
 namespace llarp

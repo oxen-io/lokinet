@@ -1,4 +1,4 @@
-#include <llarp/messages/exit.hpp>
+#include <messages/exit.hpp>
 #include <routing/handler.hpp>
 
 namespace llarp

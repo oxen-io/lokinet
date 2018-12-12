@@ -1,5 +1,5 @@
 #include <buffer.hpp>
-#include <llarp/logic.hpp>
+#include <logic.hpp>
 #include <mem.hpp>
 #include <routing/handler.hpp>
 #include <service/protocol.hpp>

@@ -1,6 +1,6 @@
-#include <llarp/bencode.h>
-#include <llarp/messages/link_intro.hpp>
+#include <bencode.h>
 #include <logger.hpp>
+#include <messages/link_intro.hpp>
 #include <router.hpp>
 #include <router_contact.hpp>
 

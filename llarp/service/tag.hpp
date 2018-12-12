@@ -1,9 +1,10 @@
 #ifndef LLARP_SERVICE_TAG_HPP
 #define LLARP_SERVICE_TAG_HPP
 
-#include <sodium/crypto_generichash.h>
-#include <llarp/aligned.hpp>
+#include <aligned.hpp>
 #include <dht/key.hpp>
+
+#include <sodium/crypto_generichash.h>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN

@@ -1,14 +1,13 @@
 #ifndef LLARP_ROUTING_HANDLER_HPP
 #define LLARP_ROUTING_HANDLER_HPP
 
+#include <buffer.h>
 #include <dht.hpp>
-#include <llarp/buffer.h>
-
-#include <llarp/messages/path_confirm.hpp>
-#include <llarp/messages/path_latency.hpp>
-#include <llarp/messages/path_transfer.hpp>
-#include <llarp/messages/exit.hpp>
-#include <llarp/messages/transfer_traffic.hpp>
+#include <messages/exit.hpp>
+#include <messages/path_confirm.hpp>
+#include <messages/path_latency.hpp>
+#include <messages/path_transfer.hpp>
+#include <messages/transfer_traffic.hpp>
 
 namespace llarp
 {

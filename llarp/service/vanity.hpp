@@ -1,7 +1,9 @@
 
 #ifndef LLARP_SERVICE_VANITY_HPP
 #define LLARP_SERVICE_VANITY_HPP
-#include <llarp/aligned.hpp>
+
+#include <aligned.hpp>
+
 namespace llarp
 {
   namespace service

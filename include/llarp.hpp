@@ -1,10 +1,11 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
 
-#include <iostream>
+#include <crypto.h>
 #include <llarp.h>
-#include <llarp/crypto.h>
-#include <llarp/threading.hpp>
+#include <threading.hpp>
+
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>

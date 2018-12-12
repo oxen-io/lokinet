@@ -1,9 +1,10 @@
 #ifndef LLARP_EXIT_ENDPOINT_HPP
 #define LLARP_EXIT_ENDPOINT_HPP
-#include <llarp/time.hpp>
+
 #include <crypto.hpp>
-#include <llarp/path.hpp>
-#include <llarp/ip.hpp>
+#include <ip.hpp>
+#include <path.hpp>
+#include <time.hpp>
 
 namespace llarp
 {

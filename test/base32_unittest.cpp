@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <aligned.hpp>
 #include <encode.hpp>
-#include <llarp/aligned.hpp>
 #include <logger.hpp>
 
 struct Base32Test : public ::testing::Test

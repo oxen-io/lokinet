@@ -1,14 +1,14 @@
 #include <buffer.hpp>
 #include <encode.hpp>
+#include <iwp.hpp>
 #include <link/server.hpp>
 #include <link/utp.hpp>
 #include <link_message.hpp>
-#include <llarp/iwp.hpp>
-#include <llarp/net.hpp>
-#include <llarp/proto.hpp>
-#include <llarp/rpc.hpp>
 #include <logger.hpp>
+#include <net.hpp>
+#include <proto.hpp>
 #include <router.hpp>
+#include <rpc.hpp>
 #include <str.hpp>
 
 #include <fstream>

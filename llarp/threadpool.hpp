@@ -1,10 +1,9 @@
 #ifndef LLARP_THREADPOOL_HPP
 #define LLARP_THREADPOOL_HPP
 
-#include <llarp/threadpool.h>
-#include <llarp/threading.hpp>
-
-#include "thread_pool.hpp"
+#include <thread_pool.hpp>
+#include <threading.hpp>
+#include <threadpool.h>
 
 namespace llarp
 {

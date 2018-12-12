@@ -1,14 +1,16 @@
 #ifndef __ABYSS_CLIENT_HPP__
 #define __ABYSS_CLIENT_HPP__
-#include <string>
-#include <memory>
-#include <list>
-#include <deque>
-#include <unordered_map>
-#include <functional>
-#include <llarp/string_view.hpp>
+
 #include <abyss/json.hpp>
-#include <llarp/ev.h>
+#include <ev.h>
+#include <string_view.hpp>
+
+#include <deque>
+#include <functional>
+#include <list>
+#include <memory>
+#include <string>
+#include <unordered_map>
 
 namespace abyss
 {

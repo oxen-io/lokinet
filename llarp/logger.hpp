@@ -1,12 +1,9 @@
 #ifndef LLARP_LOGGER_HPP
 #define LLARP_LOGGER_HPP
-#include <llarp/time.hpp>
-#include <ctime>
-#include <iomanip>
-#include <iostream>
-#include <llarp/threading.hpp>
-#include <sstream>
-#include <string>
+
+#include <threading.hpp>
+#include <time.hpp>
+
 #ifdef _WIN32
 #define VC_EXTRALEAN
 #include <windows.h>
@@ -17,6 +14,12 @@
 #ifdef RPI
 #include <cstdio>
 #endif
+
+#include <ctime>
+#include <iomanip>
+#include <iostream>
+#include <sstream>
+#include <string>
 
 namespace llarp
 {

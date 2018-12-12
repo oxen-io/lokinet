@@ -1,11 +1,11 @@
 #ifndef LLARP_CRYPTO_HPP
 #define LLARP_CRYPTO_HPP
 
-#include <llarp/crypto.h>
-#include <llarp/mem.h>
-#include <llarp/threadpool.h>
-#include <llarp/aligned.hpp>
-#include <llarp/router_id.hpp>
+#include <aligned.hpp>
+#include <crypto.h>
+#include <mem.h>
+#include <router_id.hpp>
+#include <threadpool.h>
 
 namespace llarp
 {

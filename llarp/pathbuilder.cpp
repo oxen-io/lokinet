@@ -1,10 +1,10 @@
-#include <llarp/nodedb.hpp>
-#include <llarp/path.hpp>
+#include <buffer.hpp>
+#include <nodedb.hpp>
+#include <path.hpp>
+#include <pathbuilder.hpp>
+#include <router.hpp>
 
-#include <llarp/pathbuilder.hpp>
 #include <functional>
-#include "buffer.hpp"
-#include "router.hpp"
 
 namespace llarp
 {

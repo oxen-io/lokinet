@@ -1,12 +1,12 @@
-#include <llarp/time.hpp>
-#include <llarp/timer.hpp>
+#include <logger.hpp>
+#include <time.hpp>
+#include <timer.hpp>
+
 #include <atomic>
 #include <condition_variable>
 #include <list>
 #include <queue>
 #include <unordered_map>
-
-#include "logger.hpp"
 
 namespace llarp
 {

@@ -1,8 +1,9 @@
 #ifndef LLARP_DNS_QUESTION_HPP
 #define LLARP_DNS_QUESTION_HPP
+
 #include <dns/serialize.hpp>
 #include <dns/name.hpp>
-#include <llarp/net_int.hpp>
+#include <net_int.hpp>
 
 namespace llarp
 {

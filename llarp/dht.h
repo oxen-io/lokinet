@@ -2,7 +2,7 @@
 #define LLARP_DHT_H_
 
 #include <crypto.hpp>
-#include <llarp/buffer.h>
+#include <buffer.h>
 #include <router_contact.hpp>
 
 /**

@@ -1,6 +1,6 @@
 #include <buffer.hpp>
-#include <llarp/messages.hpp>
 #include <logger.hpp>
+#include <messages.hpp>
 #include <router_contact.hpp>
 
 namespace llarp

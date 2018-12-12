@@ -1,10 +1,11 @@
 #ifndef LLARP_H_
 #define LLARP_H_
+
 #include <dht.h>
-#include <llarp/ev.h>
-#include <llarp/logic.hpp>
-#include <llarp/mem.h>
-#include <llarp/version.hpp>
+#include <ev.h>
+#include <logic.hpp>
+#include <mem.h>
+#include <version.hpp>
 
 #ifdef __cplusplus
 #include <handlers/tun.hpp>     // for handlers

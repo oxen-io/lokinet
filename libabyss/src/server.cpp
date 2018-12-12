@@ -2,7 +2,7 @@
 #include <abyss/server.hpp>
 #include <buffer.hpp>
 #include <logger.hpp>
-#include <llarp/time.hpp>
+#include <time.hpp>
 
 #include <algorithm>
 #include <sstream>

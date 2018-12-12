@@ -1,9 +1,10 @@
 #ifndef LLARP_DNS_NAME_HPP
 #define LLARP_DNS_NAME_HPP
 
+#include <buffer.h>
+#include <net_int.hpp>
+
 #include <string>
-#include <llarp/buffer.h>
-#include <llarp/net_int.hpp>
 
 namespace llarp
 {

@@ -1,5 +1,4 @@
-#include <llarp/messages/path_latency.hpp>
-
+#include <messages/path_latency.hpp>
 #include <routing/handler.hpp>
 
 namespace llarp

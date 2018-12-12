@@ -1,4 +1,4 @@
-#include "llarp/net.hpp"
+#include <net.hpp>
 #include <str.hpp>
 #ifdef ANDROID
 #include "android/ifaddrs.h"
@@ -10,11 +10,10 @@
 #endif
 #include <net/if.h>
 #endif
-#include <cstdio>
 #include <logger.hpp>
+#include <net_addr.hpp>
 
-//#include <llarp/net_inaddr.hpp>
-#include <llarp/net_addr.hpp>
+#include <cstdio>
 
 bool
 operator==(const sockaddr& a, const sockaddr& b)

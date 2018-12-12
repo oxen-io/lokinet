@@ -1,5 +1,5 @@
 #include <dns/serialize.hpp>
-#include <llarp/net_int.hpp>
+#include <net_int.hpp>
 
 namespace llarp
 {

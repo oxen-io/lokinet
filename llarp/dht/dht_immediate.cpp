@@ -1,4 +1,4 @@
-#include <llarp/messages/dht_immediate.hpp>
+#include <messages/dht_immediate.hpp>
 
 #include <router.hpp>
 

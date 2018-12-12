@@ -1,9 +1,9 @@
 #ifndef LIBLLARP_DNS_REC_TYPES_HPP
 #define LIBLLARP_DNS_REC_TYPES_HPP
 
+#include <buffer.h>  // for byte_t
+#include <net.hpp>   // for llarp::Addr , llarp::huint32_t
 #include <vector>
-#include <llarp/buffer.h>  // for byte_t
-#include <llarp/net.hpp>   // for llarp::Addr , llarp::huint32_t
 
 namespace llarp
 {

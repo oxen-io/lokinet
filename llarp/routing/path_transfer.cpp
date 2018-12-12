@@ -1,6 +1,6 @@
-#include <llarp/messages/path_transfer.hpp>
-#include "../buffer.hpp"
-#include "../router.hpp"
+#include <buffer.hpp>
+#include <messages/path_transfer.hpp>
+#include <router.hpp>
 
 namespace llarp
 {

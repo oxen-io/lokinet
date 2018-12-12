@@ -1,8 +1,8 @@
 #ifndef LLARP_LINK_ENCODER_HPP
 #define LLARP_LINK_ENCODER_HPP
 
-#include <llarp/bencode.h>
-#include <llarp/buffer.h>
+#include <bencode.h>
+#include <buffer.h>
 #include <router_contact.hpp>
 
 namespace llarp

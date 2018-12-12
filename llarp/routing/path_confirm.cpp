@@ -1,8 +1,7 @@
-#include <llarp/messages/path_confirm.hpp>
-
-#include <llarp/bencode.hpp>
-#include <llarp/time.hpp>
+#include <bencode.hpp>
+#include <messages/path_confirm.hpp>
 #include <routing/handler.hpp>
+#include <time.hpp>
 
 namespace llarp
 {

@@ -1,5 +1,5 @@
-#include <llarp/messages/dht.hpp>
-#include "../router.hpp"
+#include <messages/dht.hpp>
+#include <router.hpp>
 
 namespace llarp
 {

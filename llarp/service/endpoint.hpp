@@ -1,12 +1,12 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
 
+#include <codel.hpp>
+#include <ev.h>
 #include <exit/session.hpp>
-#include <llarp/codel.hpp>
-#include <llarp/ev.h>
-#include <llarp/net.hpp>
-#include <llarp/path.hpp>
-#include <llarp/pathbuilder.hpp>
+#include <net.hpp>
+#include <path.hpp>
+#include <pathbuilder.hpp>
 #include <service/Identity.hpp>
 #include <service/handler.hpp>
 #include <service/protocol.hpp>
