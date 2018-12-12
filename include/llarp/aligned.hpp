@@ -4,7 +4,7 @@
 #include <encode.hpp>
 #include <llarp/bencode.h>
 #include <llarp/crypto.h>
-#include <llarp/logger.hpp>
+#include <logger.hpp>
 
 #include <iomanip>
 #include <iostream>

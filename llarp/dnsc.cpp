@@ -14,7 +14,7 @@
 
 #include <algorithm>      // for std::find_if
 #include <llarp/net.hpp>  // for llarp::Addr
-#include <llarp/logger.hpp>
+#include <logger.hpp>
 #include <stdio.h>  // sprintf
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))

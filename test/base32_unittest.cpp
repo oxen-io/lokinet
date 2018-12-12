@@ -2,7 +2,7 @@
 
 #include <encode.hpp>
 #include <llarp/aligned.hpp>
-#include <llarp/logger.hpp>
+#include <logger.hpp>
 
 struct Base32Test : public ::testing::Test
 {

@@ -1,7 +1,7 @@
 #include <abyss/http.hpp>
 #include <abyss/server.hpp>
 #include <buffer.hpp>
-#include <llarp/logger.hpp>
+#include <logger.hpp>
 #include <llarp/time.hpp>
 
 #include <algorithm>

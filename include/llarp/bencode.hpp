@@ -3,7 +3,7 @@
 
 #include <buffer.hpp>
 #include <llarp/bencode.h>
-#include <llarp/logger.hpp>
+#include <logger.hpp>
 #include <llarp/mem.hpp>
 
 #include <set>
