@@ -7,16 +7,31 @@ project(${PROJECT_NAME} C CXX ASM)
 option(USE_LIBABYSS "enable libabyss" )
 option(USE_AVX2 "enable avx2 code" )
 option(USE_NETNS "enable networking namespace support" )
+option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU, but does not show in CPUID)" )
+option(STATIC_LINK "emit fully linked binaries" )
+option(RPI "Build for 32-bit Raspberry Pi" )
+option(SHADOW "use shadow testing framework. linux only" )
+option(ASAN "use address sanitiser, if your system has it" )
+option(JEMALLOC "use jemalloc. Not required on BSD" )
+option(DEBIAN "build for debian" )
+option(TESTNET "testnet build" )
 
 if(WIN32)
   set(CMAKE_CXX_STANDARD 17)
 else()
   set(CMAKE_CXX_STANDARD 11)
-endif()
+endif(WIN32)
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
+  message( FATAL_ERROR "Shared library target is Linux only" )
+endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
+if (STATIC_LINK AND SHADOW)
+  message(FATAL_ERROR "the shadow-framework build cannot be linked statically!")
+endif(STATIC_LINK AND SHADOW)
 
 # turns off those annoying warnings for
 # target-specific crypto code paths not
@@ -27,43 +42,48 @@ add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
+# these vars are set by the cmake toolchain spec
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 # dynamic linking does this all the time
-if (USING_CLANG)
-option(NO_LIBGCC "use compiler-rt instead" OFF)
-add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
-add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
-if (NO_LIBGCC)
-set(CMAKE_CXX_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_CXX_STANDARD_LIBRARIES}")
-set(CMAKE_C_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_C_STANDARD_LIBRARIES}")
-endif()
-else()
-# found it. this is GNU only
-add_compile_options(-Wno-cast-function-type)
-endif(USING_CLANG)
-endif()
-
-
-
+  if (USING_CLANG) # windows only, also set by toolchain file
+    option(NO_LIBGCC "use compiler-rt instead" OFF)
+    add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
+    add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+    if (NO_LIBGCC)
+      set(CMAKE_CXX_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_CXX_STANDARD_LIBRARIES}")
+      set(CMAKE_C_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_C_STANDARD_LIBRARIES}")
+    endif(NO_LIBGCC)
+  else()
+    # found it. this is GNU only
+    add_compile_options(-Wno-cast-function-type)
+  endif(USING_CLANG)
+endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(WIN32)
-add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
-set(FS_LIB stdc++fs)
+  add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+  add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
+  set(FS_LIB stdc++fs)
 endif(WIN32)
-
-
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
 else()
-  if( NOT ANDROID)
-    if( NOT RPI )
-      set(CRYPTO_FLAGS -march=native)
-    endif()
-  endif()
-endif()
+  if(NOT ANDROID)
+    if(NOT RPI)
+	  if (NOT USE_AVX2)
+        set(CRYPTO_FLAGS -march=core2 -msse4.1 -mtune=native -mfpmath=sse)
+      else()
+        set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
+      endif(NOT USE_AVX2)
+    endif(NOT RPI)
+  endif(NOT ANDROID)
+endif(DEBIAN)
+
+# only needed if using AVX2
+if(AMD_RYZEN_HACK AND USE_AVX2)
+  set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
+endif(AMD_RYZEN_HACK AND USE_AVX2)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -76,29 +96,23 @@ if(STATIC_LINK)
   else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -static-libgcc -static -Wl,--whole-archive -Wl,--no-whole-archive")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" )
-  endif()
-endif()
+  endif(USING_CLANG)
+endif(STATIC_LINK)
 
 if(USE_NETNS)
   add_definitions(-DNETNS=1)
 else()
   add_definitions(-DNETNS=0)
-endif()
-
-if(SHADOW)
-  set(WITH_STATIC OFF)
-else()
-  set(WITH_STATIC ON)
-endif()
+endif(USE_NETNS)
 
 if(TESTNET)
   add_definitions(-DTESTNET=1)
-endif()
+endif(TESTNET)
 
 if(NOT DEBIAN)
-set(OPTIMIZE_FLAGS -O3)
-set(DEBUG_FLAGS -O0 -g3)
-endif()
+  set(OPTIMIZE_FLAGS -O3)
+  set(DEBUG_FLAGS -O0 -g3)
+endif(NOT DEBIAN)
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -106,6 +120,8 @@ if(ASAN)
 endif(ASAN)
 
 if(SHADOW)
+  set(WITH_STATIC OFF)
+  add_compile_options(-fPIC)
   if("${SHADOW_ROOT}" STREQUAL "")
     set(SHADOW_ROOT "$ENV{HOME}/.shadow")
   endif("${SHADOW_ROOT}" STREQUAL "")
@@ -113,7 +129,8 @@ if(SHADOW)
     message(STATUS "SHADOW_ROOT = ${SHADOW_ROOT}")
   else()
     message(FATAL_ERROR "SHADOW_ROOT path does not exist: '${SHADOW_ROOT}'")
-  endif()
+  endif(EXISTS "${SHADOW_ROOT}")
+
   set(CMAKE_MODULE_PATH "${SHADOW_ROOT}/share/cmake/Modules")
   include_directories(${CMAKE_MODULE_PATH})
   include(ShadowTools)
@@ -121,32 +138,30 @@ if(SHADOW)
   add_definitions(-DTESTNET=true)
   add_definitions(-DSHADOW_TESTNET)
   include_directories(${SHADOW_ROOT}/include)
-endif()
+else()
+  set(WITH_STATIC ON)
+endif(SHADOW)
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
   add_compile_options( ${DEBUG_FLAGS} )
-endif()
+endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 
 if(RPI)
   add_definitions(-DRPI)
   set(WITH_STATIC ON)
-endif()
+endif(RPI)
 
 add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
-
-if(SHADOW)
-  add_compile_options(-fPIC)
-endif()
 
 if(NOT GIT_VERSION)
   exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION)
   add_definitions(-DGIT_REV="${GIT_VERSION}")
-endif()
+endif(NOT GIT_VERSION)
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
-endif()
+endif(RELEASE_MOTTO)
 
 set(EXE lokinet)
 set(EXE_SRC daemon/main.cpp)
@@ -158,7 +173,7 @@ set(EXE_SRC daemon/main.cpp)
 # long ago
 if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
-endif()
+endif(JEMALLOC)
 
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
@@ -166,11 +181,9 @@ set(LIBS ${LIBS} ${MALLOC_LIB} ${FS_LIB})
 
 if(ANDROID)
   set(LIBS ${LIBS} log)
-endif()
-
-if(NOT USING_CLANG)
-  set(LIBS ${LIBS} Threads::Threads)
-endif()
+  add_definitions(-DANDROID)
+  set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
+endif(ANDROID)
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
@@ -178,17 +191,12 @@ set(STATIC_LIB ${LIB}-static)
 set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
 set(PLATFORM_LIB ${LIB}-platform)
 set(ANDROID_LIB ${LIB}android)
-
 set(TT_ROOT vendor/libtuntap-master)
-
 add_definitions(-D${CMAKE_SYSTEM_NAME})
 
-if (UNIX)
+if(UNIX)
   add_definitions(-DUNIX)
   add_definitions(-DPOSIX)
-endif()
-
-if(UNIX)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Android")
@@ -206,7 +214,7 @@ if(UNIX)
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
     else()
         message(FATAL_ERROR "Your operating system is not supported yet")
-    endif()
+    endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 elseif(WIN32)
     set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c)
     add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
@@ -220,21 +228,16 @@ set(LIBTUNTAP_SRC_BASE
   ${LIBTUNTAP_IMPL})
 
 if (UNIX)
-set(LIBTUNTAP_SRC
-    ${TT_ROOT}/tuntap-unix.c
-    ${LIBTUNTAP_SRC_BASE})
+  set(LIBTUNTAP_SRC
+      ${TT_ROOT}/tuntap-unix.c
+      ${LIBTUNTAP_SRC_BASE})
 else()
-set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
+  set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
 endif(UNIX)
-
-if(ANDROID)
-  add_definitions(-DANDROID)
-  set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
-endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
-endif()
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 if(NOT WIN32)
 set(CXX_COMPAT_SRC
@@ -411,7 +414,6 @@ set(CRYPTOGRAPHY_SRC
 
 add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
 
-
 set(UTP_SRC
   libutp/utp_callbacks.cpp
   libutp/utp_utils.cpp
@@ -423,7 +425,7 @@ set(UTP_SRC
 
 if(WIN32)
   set(UTP_SRC ${UTP_SRC} libutp/libutp_inet_ntop.cpp)
-endif()
+endif(WIN32)
 
 set(DNSLIB_SRC
   llarp/dns/message.cpp
@@ -547,10 +549,8 @@ set(TEST_SRC
   test/test_llarp_thread_pool.cpp
 )
 
-
 set(TEST_EXE testAll)
 set(GTEST_DIR test/gtest)
-
 set(CLIENT_EXE llarpc)
 
 set(CLIENT_SRC
@@ -566,7 +566,6 @@ include_directories(llarp)
 
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
-
 set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC})
 
 if(USE_LIBABYSS)
@@ -594,42 +593,30 @@ endif(NOT WIN32)
   # for freebsd
   if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     include_directories(/usr/local/include)
-  endif()
-endif()
+  endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+endif(USE_LIBABYSS)
 
 foreach(F ${ALL_SRC})
 set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
 endforeach(F)
 
 if(SHADOW)
-add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
-target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
-install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
+  add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
+  target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
+  install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
-  
-#add_executable(${RC_EXE} ${RC_SRC})
-#add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-#add_executable(${DNS_EXE} ${DNS_SRC})
+  #add_executable(${RC_EXE} ${RC_SRC})
+  #add_executable(${CLIENT_EXE} ${CLIENT_SRC})
+  #add_executable(${DNS_EXE} ${DNS_SRC})
+  add_subdirectory(${GTEST_DIR})
+  add_executable(${TEST_EXE} ${TEST_SRC})
+  add_executable(${EXE} ${EXE_SRC})
+  target_include_directories(${TEST_EXE} PRIVATE ${GTEST_DIR}/include ${GTEST_DIR})
+  install(TARGETS ${EXE} RUNTIME DESTINATION bin)
 
-add_subdirectory(${GTEST_DIR})
-
-add_executable(${TEST_EXE} ${TEST_SRC})
-add_executable(${EXE} ${EXE_SRC})
-
-target_include_directories(${TEST_EXE} PRIVATE ${GTEST_DIR}/include ${GTEST_DIR})
-
-install(TARGETS ${EXE} RUNTIME DESTINATION bin)
-
-# TODO: make this a native application :^)
-if(WIN32)
-  install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap.exe DESTINATION bin)
-else()
-  install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap DESTINATION bin)
-endif()
-  
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
-endif()
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
@@ -638,14 +625,14 @@ if(WITH_STATIC)
       target_link_libraries(${PLATFORM_LIB} Threads::Threads ${ABYSS_LIB})
     else()
       target_link_libraries(${PLATFORM_LIB} Threads::Threads)
-    endif()
+    endif(USE_LIBABYSS)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       if(RPI)
         target_link_libraries(${PLATFORM_LIB} -lrt)
       else()
         target_link_libraries(${PLATFORM_LIB} -lcap)
-      endif()
-    endif()
+      endif(RPI)
+    endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB})
     if(NOT WITH_SHARED)
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
@@ -660,22 +647,15 @@ if(WITH_STATIC)
         target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
       endif(WIN32)
-      if (WIN32)
-        #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} Threads::Threads ws2_32 iphlpapi)
-      endif(WIN32)
-      #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} Threads::Threads)
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
     target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
-  endif()
+  endif(ANDROID)
 
   if(WITH_SHARED)
     add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CRYPTOGRAPHY_SRC})
-    if (WIN32)
-      set(${LIBS} ${LIBS} ws2_32 iphlpapi)
-    endif(WIN32)
     target_link_libraries(${SHARED_LIB} ${LIBS} Threads::Threads)
     target_link_libraries(${EXE} ${SHARED_LIB})
     #target_link_libraries(${RC_EXE} ${SHARED_LIB})
