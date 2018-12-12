@@ -205,7 +205,7 @@ namespace llarp
         {
           if(HasAddress(addr.data()))
           {
-            huint32_t ip = ObtainIPForAddr(addr.data(), true);
+            huint32_t ip = ObtainIPForAddr(addr.data(), false);
             msg.AddINReply(ip);
           }
           else
@@ -460,6 +460,7 @@ namespace llarp
 
         if(m_SNodes.at(itr->second))
         {
+          llarp::LogInfo(Name(), " send to service node");
           sendFunc = std::bind(&TunEndpoint::SendToSNodeOrQueue, this,
                                itr->second.data(), std::placeholders::_1);
         }
@@ -480,6 +481,7 @@ namespace llarp
       });
       if(m_Exit)
         m_Exit->FlushUpstreamTraffic();
+      FlushSNodeTraffic();
     }
 
     bool

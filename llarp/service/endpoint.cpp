@@ -124,6 +124,17 @@ namespace llarp
     }
 
     void
+    Endpoint::FlushSNodeTraffic()
+    {
+      auto itr = m_SNodeSessions.begin();
+      while(itr != m_SNodeSessions.end())
+      {
+        itr->second->FlushUpstreamTraffic();
+        ++itr;
+      }
+    }
+
+    void
     Endpoint::Tick(llarp_time_t now)
     {
       // publish descriptors
@@ -1068,8 +1079,7 @@ namespace llarp
     void
     Endpoint::EnsurePathToSNode(const RouterID& snode)
     {
-      auto range = m_SNodeSessions.equal_range(snode);
-      if(range.first == range.second)
+      if(m_SNodeSessions.count(snode) == 0)
       {
         auto themIP = ObtainIPForAddr(snode, true);
         m_SNodeSessions.emplace(std::make_pair(
