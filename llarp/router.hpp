@@ -1,14 +1,16 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 
-#include <llarp/buffer.h>
-#include <llarp/config.h>
+#include <crypto.hpp>
 #include <dht.h>
 #include <dht.hpp>
 #include <exit.hpp>
+#include <fs.hpp>
+#include <handlers/tun.hpp>
+#include <llarp/buffer.h>
+#include <llarp/config.h>
 #include <llarp/establish_job.hpp>
 #include <llarp/ev.h>
-#include <llarp/handlers/tun.hpp>
 #include <llarp/link_layer.hpp>
 #include <llarp/link_message.hpp>
 #include <llarp/logic.hpp>
@@ -19,6 +21,8 @@
 #include <llarp/routing/handler.hpp>
 #include <llarp/rpc.hpp>
 #include <llarp/service.hpp>
+#include <mem.hpp>
+#include <str.hpp>
 #include <threadpool.hpp>
 
 #include <functional>
@@ -26,11 +30,6 @@
 #include <map>
 #include <vector>
 #include <unordered_map>
-
-#include <crypto.hpp>
-#include <fs.hpp>
-#include <mem.hpp>
-#include <str.hpp>
 
 bool
 llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,

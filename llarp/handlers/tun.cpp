@@ -1,14 +1,14 @@
 #include <algorithm>
 // harmless on other platforms
 #define __USE_MINGW_ANSI_STDIO 1
-#include <llarp/handlers/tun.hpp>
+#include <handlers/tun.hpp>
 #include <sys/types.h>
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <netdb.h>
 #endif
-#include "ev.hpp"
 
+#include <ev.hpp>
 #include <router.hpp>
 
 namespace llarp

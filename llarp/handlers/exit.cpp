@@ -1,7 +1,8 @@
-#include <llarp/handlers/exit.hpp>
-#include "../str.hpp"
-#include "../router.hpp"
+#include <handlers/exit.hpp>
 #include <llarp/net.hpp>
+#include <router.hpp>
+#include <str.hpp>
+
 #include <cassert>
 
 namespace llarp

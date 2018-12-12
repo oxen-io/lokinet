@@ -1,5 +1,5 @@
+#include <handlers/tun.hpp>
 #include <llarp/dns_dotlokilookup.hpp>
-#include <llarp/handlers/tun.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/logic.hpp>
 

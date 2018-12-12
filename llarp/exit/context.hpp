@@ -1,9 +1,10 @@
 #ifndef LLARP_EXIT_CONTEXT_HPP
 #define LLARP_EXIT_CONTEXT_HPP
 #include <exit/policy.hpp>
+#include <handlers/exit.hpp>
+
 #include <string>
 #include <unordered_map>
-#include <llarp/handlers/exit.hpp>
 
 namespace llarp
 {

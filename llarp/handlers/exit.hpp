@@ -2,7 +2,7 @@
 #define LLARP_HANDLERS_EXIT_HPP
 
 #include <exit/endpoint.hpp>
-#include <llarp/handlers/tun.hpp>
+#include <handlers/tun.hpp>
 
 #include <unordered_map>
 

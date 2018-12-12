@@ -1,5 +1,5 @@
-#include <llarp/handlers/tun.hpp>
-#include <llarp/handlers/null.hpp>
+#include <handlers/tun.hpp>
+#include <handlers/null.hpp>
 #include <llarp/service/context.hpp>
 #include <llarp/service/endpoint.hpp>
 
