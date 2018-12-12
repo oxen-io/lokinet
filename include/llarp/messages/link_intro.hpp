@@ -1,7 +1,9 @@
 #ifndef LLARP_MESSAGES_LINK_INTRO_HPP
 #define LLARP_MESSAGES_LINK_INTRO_HPP
+
 #include <link_message.hpp>
-#include <llarp/router_contact.hpp>
+#include <router_contact.hpp>
+
 namespace llarp
 {
   struct ILinkSession;

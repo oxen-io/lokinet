@@ -5,8 +5,8 @@
 #include <llarp/ev.h>
 #include <llarp/logic.hpp>
 #include <llarp/net.hpp>
-#include <llarp/router_contact.hpp>
 #include <llarp/threading.hpp>
+#include <router_contact.hpp>
 
 #include <list>
 #include <unordered_map>

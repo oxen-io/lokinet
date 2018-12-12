@@ -1,20 +1,18 @@
-#include <getopt.h>
-#include <llarp.h>
-#include <signal.h>
-#include "logger.hpp"
-
-#include <llarp/nodedb.hpp>
-#include <llarp/router_contact.hpp>
-#include <llarp/time.hpp>
-#include <router.hpp>
-
+#include <buffer.hpp>
+#include <crypto.hpp>
+#include <fs.hpp>
 #include <fstream>
-#include "buffer.hpp"
-#include "crypto.hpp"
-#include "fs.hpp"
-#include "llarp/net.hpp"
-
+#include <llarp.h>
 #include <llarp/messages/dht.hpp>
+#include <llarp/net.hpp>
+#include <llarp/nodedb.hpp>
+#include <llarp/time.hpp>
+#include <logger.hpp>
+#include <router.hpp>
+#include <router_contact.hpp>
+
+#include <getopt.h>
+#include <signal.h>
 
 struct llarp_main *ctx = 0;
 

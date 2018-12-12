@@ -1,15 +1,15 @@
+#include <buffer.hpp>
+#include <crypto.hpp>
+#include <encode.hpp>
+#include <fs.hpp>
 #include <llarp/logic.hpp>
 #include <llarp/nodedb.hpp>
-#include <llarp/router_contact.hpp>
+#include <logger.hpp>
+#include <mem.hpp>
+#include <router_contact.hpp>
 
 #include <fstream>
-#include <crypto.hpp>
 #include <unordered_map>
-#include "buffer.hpp"
-#include "encode.hpp"
-#include "fs.hpp"
-#include "logger.hpp"
-#include "mem.hpp"
 
 static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";

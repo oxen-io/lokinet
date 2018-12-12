@@ -1,9 +1,9 @@
 #ifndef LLARP_DHT_H_
 #define LLARP_DHT_H_
 
-#include <llarp/buffer.h>
 #include <crypto.hpp>
-#include <llarp/router_contact.hpp>
+#include <llarp/buffer.h>
+#include <router_contact.hpp>
 
 /**
  * dht.h

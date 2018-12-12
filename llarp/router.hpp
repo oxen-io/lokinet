@@ -17,11 +17,11 @@
 #include <llarp/nodedb.hpp>
 #include <llarp/path.hpp>
 #include <llarp/profiling.hpp>
-#include <llarp/router_contact.hpp>
 #include <llarp/routing/handler.hpp>
 #include <llarp/rpc.hpp>
 #include <llarp/service.hpp>
 #include <mem.hpp>
+#include <router_contact.hpp>
 #include <str.hpp>
 #include <threadpool.hpp>
 

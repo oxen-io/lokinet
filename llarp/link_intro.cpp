@@ -1,8 +1,8 @@
 #include <llarp/bencode.h>
-#include <llarp/router_contact.hpp>
 #include <llarp/messages/link_intro.hpp>
-#include "logger.hpp"
-#include "router.hpp"
+#include <logger.hpp>
+#include <router.hpp>
+#include <router_contact.hpp>
 
 namespace llarp
 {

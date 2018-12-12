@@ -3,7 +3,7 @@
 
 #include <llarp/bencode.h>
 #include <llarp/buffer.h>
-#include <llarp/router_contact.hpp>
+#include <router_contact.hpp>
 
 namespace llarp
 {
