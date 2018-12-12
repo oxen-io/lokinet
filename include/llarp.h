@@ -1,15 +1,16 @@
 #ifndef LLARP_H_
 #define LLARP_H_
-#include <llarp/dht.h>
-#include <llarp/ev.h>
-#include <llarp/logic.hpp>
-#include <llarp/mem.h>
-#include <llarp/version.hpp>
+
+#include <dht.h>
+#include <ev.h>
+#include <logic.hpp>
+#include <mem.h>
+#include <version.hpp>
 
 #ifdef __cplusplus
-#include <llarp/service/address.hpp>  // for service::address
-#include <llarp/handlers/tun.hpp>     // for handlers
-#include <llarp/service/endpoint.hpp>
+#include <handlers/tun.hpp>     // for handlers
+#include <service/address.hpp>  // for service::address
+#include <service/endpoint.hpp>
 
 extern "C"
 {

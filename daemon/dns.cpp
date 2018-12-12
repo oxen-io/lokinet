@@ -1,13 +1,12 @@
-#include <unistd.h>
+#include <config.h>
+#include <dns_dotlokilookup.hpp>
+#include <dns_iptracker.hpp>
+#include <dnsd.hpp>
 #include <llarp.h>
-#include <llarp/config.h>
-#include <llarp/dns_iptracker.hpp>
-#include <llarp/dnsd.hpp>
-#include <llarp/dns_dotlokilookup.hpp>
-
-#include <llarp/threading.hpp>  // for multithreaded version (multiplatorm)
+#include <threading.hpp>  // for multithreaded version (multiplatorm)
 
 #include <signal.h>  // Linux needs this for SIGINT
+#include <unistd.h>
 
 #ifdef _WIN32
 #define uint UINT

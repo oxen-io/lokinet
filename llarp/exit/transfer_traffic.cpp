@@ -1,6 +1,6 @@
-#include <llarp/messages/transfer_traffic.hpp>
-#include <llarp/routing/handler.hpp>
-#include <llarp/endian.hpp>
+#include <endian.hpp>
+#include <messages/transfer_traffic.hpp>
+#include <routing/handler.hpp>
 
 namespace llarp
 {

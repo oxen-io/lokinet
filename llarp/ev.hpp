@@ -1,17 +1,20 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
-#include <llarp/ev.h>
-#include <llarp/threading.hpp>
+
+#include <ev.h>
+#include <codel.hpp>
+#include <threading.hpp>
+
 // writev
 #ifndef _WIN32
 #include <sys/uio.h>
 #endif
-#include <unistd.h>
-#include <llarp/buffer.h>
-#include <llarp/codel.hpp>
-#include <list>
-#include <deque>
+
 #include <algorithm>
+#include <buffer.h>
+#include <deque>
+#include <list>
+#include <unistd.h>
 
 #ifdef _WIN32
 #include <win32_up.h>

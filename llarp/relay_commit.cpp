@@ -1,10 +1,10 @@
-#include <llarp/bencode.hpp>
-#include <llarp/path.hpp>
-#include <llarp/messages/path_confirm.hpp>
-#include <llarp/messages/relay_commit.hpp>
-#include "buffer.hpp"
-#include "logger.hpp"
-#include "router.hpp"
+#include <bencode.hpp>
+#include <buffer.hpp>
+#include <logger.hpp>
+#include <messages/path_confirm.hpp>
+#include <messages/relay_commit.hpp>
+#include <path.hpp>
+#include <router.hpp>
 
 namespace llarp
 {

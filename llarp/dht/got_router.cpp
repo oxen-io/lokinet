@@ -1,6 +1,5 @@
-
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/gotrouter.hpp>
+#include <dht/context.hpp>
+#include <dht/messages/gotrouter.hpp>
 
 #include <router.hpp>
 

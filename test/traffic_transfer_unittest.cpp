@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <llarp/messages/transfer_traffic.hpp>
+#include <messages/transfer_traffic.hpp>
 
 using TransferTrafficMessage = llarp::routing::TransferTrafficMessage;
 

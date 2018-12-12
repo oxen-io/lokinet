@@ -50,7 +50,7 @@ inet_ntop(int af, const void *src, char *dst, size_t size);
 
 #include <stdarg.h>
 
-#include <llarp/logger.hpp>
+#include <logger.hpp>
 
 #include "tuntap.h"
 

@@ -1,6 +1,7 @@
+#include <buffer.hpp>
+#include <pow.hpp>
+
 #include <cmath>
-#include <llarp/pow.hpp>
-#include "buffer.hpp"
 
 namespace llarp
 {

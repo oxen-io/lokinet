@@ -23,7 +23,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <llarp/logger.hpp>
+#include <logger.hpp>
 #include "tuntap.h"
 
 extern "C"

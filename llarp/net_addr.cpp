@@ -1,7 +1,6 @@
-#include <llarp/net_addr.hpp>
-
-#include <llarp/net.hpp>
-#include <llarp/string_view.hpp>
+#include <net.hpp>
+#include <net_addr.hpp>
+#include <string_view.hpp>
 
 // for addrinfo
 #ifndef _WIN32

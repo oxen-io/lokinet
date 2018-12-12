@@ -1,5 +1,5 @@
 #include <queue.hpp>
-#include <llarp/threading.hpp>
+#include <threading.hpp>
 
 #include <array>
 #include <thread>

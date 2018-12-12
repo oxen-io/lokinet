@@ -1,5 +1,6 @@
-#include <llarp/link/curvecp.hpp>
-#include <llarp/messages/link_intro.hpp>
+#include <link/curvecp.hpp>
+#include <link/server.hpp>
+#include <messages/link_intro.hpp>
 
 namespace llarp
 {

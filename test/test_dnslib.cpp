@@ -1,7 +1,9 @@
-#include <llarp/dns/dns.hpp>
 #include <gtest/gtest.h>
+
+#include <dns/dns.hpp>
+#include <net.hpp>
+
 #include <algorithm>
-#include <llarp/net.hpp>
 
 struct DNSLibTest : public ::testing::Test
 {

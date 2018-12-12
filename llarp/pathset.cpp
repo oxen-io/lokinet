@@ -1,7 +1,7 @@
-#include <llarp/dht/messages/pubintro.hpp>
-#include <llarp/messages/dht.hpp>
-#include <llarp/path.hpp>
-#include <llarp/pathset.hpp>
+#include <dht/messages/pubintro.hpp>
+#include <messages/dht.hpp>
+#include <path.hpp>
+#include <pathset.hpp>
 
 namespace llarp
 {

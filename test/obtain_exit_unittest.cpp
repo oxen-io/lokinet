@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
-#include <llarp/messages/exit.hpp>
+
+#include <messages/exit.hpp>
 
 using ObtainExitMessage = llarp::routing::ObtainExitMessage;
 

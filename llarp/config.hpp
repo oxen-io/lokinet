@@ -1,9 +1,9 @@
 #ifndef LIBLLARP_CONFIG_HPP
 #define LIBLLARP_CONFIG_HPP
+#include <config.h>
+
 #include <list>
 #include <string>
-
-#include <llarp/config.h>
 
 namespace llarp
 {

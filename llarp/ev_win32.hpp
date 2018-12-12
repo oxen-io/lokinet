@@ -1,12 +1,14 @@
 #ifndef EV_WIN32_HPP
 #define EV_WIN32_HPP
-#include <llarp/buffer.h>
-#include <llarp/net.h>
+
+#include <buffer.h>
+#include <ev.hpp>
+#include <logger.hpp>
+#include <net.h>
+#include <net.hpp>
 #include <windows.h>
+
 #include <cstdio>
-#include <llarp/net.hpp>
-#include "ev.hpp"
-#include "logger.hpp"
 
 #ifdef sizeof
 #undef sizeof

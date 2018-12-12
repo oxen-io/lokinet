@@ -1,7 +1,7 @@
-#include <llarp/router_contact.hpp>
-#include <llarp/messages.hpp>
-#include "buffer.hpp"
-#include "logger.hpp"
+#include <buffer.hpp>
+#include <logger.hpp>
+#include <messages.hpp>
+#include <router_contact.hpp>
 
 namespace llarp
 {

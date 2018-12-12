@@ -1,5 +1,5 @@
-#include <llarp/exit/session.hpp>
-#include <llarp/path.hpp>
+#include <exit/session.hpp>
+#include <path.hpp>
 #include <router.hpp>
 
 namespace llarp

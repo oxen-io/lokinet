@@ -1,5 +1,5 @@
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/all.hpp>
+#include <dht/context.hpp>
+#include <dht/messages/all.hpp>
 
 namespace llarp
 {

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
-#include <llarp/aligned.hpp>
+
+#include <aligned.hpp>
 
 using Buffer_t = llarp::AlignedBuffer< 32 >;
 using Map_t    = std::unordered_map< Buffer_t, int, Buffer_t::Hash >;

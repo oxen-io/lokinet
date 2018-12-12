@@ -1,24 +1,28 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 
-#include <llarp/buffer.h>
-#include <llarp/config.h>
-#include <llarp/dht.h>
-#include <llarp/dht.hpp>
-#include <llarp/establish_job.hpp>
-#include <llarp/ev.h>
-#include <llarp/exit.hpp>
-#include <llarp/handlers/tun.hpp>
-#include <llarp/link_layer.hpp>
-#include <llarp/link_message.hpp>
-#include <llarp/logic.hpp>
-#include <llarp/nodedb.hpp>
-#include <llarp/path.hpp>
-#include <llarp/profiling.hpp>
-#include <llarp/router_contact.hpp>
-#include <llarp/routing/handler.hpp>
-#include <llarp/rpc.hpp>
-#include <llarp/service.hpp>
+#include <buffer.h>
+#include <config.h>
+#include <crypto.hpp>
+#include <dht.h>
+#include <dht.hpp>
+#include <establish_job.hpp>
+#include <ev.h>
+#include <exit.hpp>
+#include <fs.hpp>
+#include <handlers/tun.hpp>
+#include <link_layer.hpp>
+#include <link_message.hpp>
+#include <logic.hpp>
+#include <mem.hpp>
+#include <nodedb.hpp>
+#include <path.hpp>
+#include <profiling.hpp>
+#include <router_contact.hpp>
+#include <routing/handler.hpp>
+#include <rpc.hpp>
+#include <service.hpp>
+#include <str.hpp>
 #include <threadpool.hpp>
 
 #include <functional>
@@ -26,11 +30,6 @@
 #include <map>
 #include <vector>
 #include <unordered_map>
-
-#include <crypto.hpp>
-#include <fs.hpp>
-#include <mem.hpp>
-#include <str.hpp>
 
 bool
 llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,

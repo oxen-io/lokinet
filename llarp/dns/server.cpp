@@ -1,4 +1,4 @@
-#include <llarp/dns/server.hpp>
+#include <dns/server.hpp>
 
 namespace llarp
 {

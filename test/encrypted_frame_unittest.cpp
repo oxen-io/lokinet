@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include <llarp/crypto.hpp>
-#include <llarp/encrypted_frame.hpp>
-#include <llarp/messages/relay_commit.hpp>
+#include <crypto.hpp>
+#include <encrypted_frame.hpp>
+#include <messages/relay_commit.hpp>
 
 using EncryptedFrame = llarp::EncryptedFrame;
 using SecretKey      = llarp::SecretKey;

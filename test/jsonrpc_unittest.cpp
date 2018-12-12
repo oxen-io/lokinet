@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 #include <libabyss.hpp>
-#include <llarp/ev.h>
-#include <llarp/threading.hpp>
-#include <llarp/net.hpp>
+#include <ev.h>
+#include <threading.hpp>
+#include <net.hpp>
 
 struct AbyssTestBase : public ::testing::Test
 {

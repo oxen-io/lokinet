@@ -1,5 +1,5 @@
-#include <llarp/dns/question.hpp>
-#include <llarp/logger.hpp>
+#include <dns/question.hpp>
+#include <logger.hpp>
 
 namespace llarp
 {

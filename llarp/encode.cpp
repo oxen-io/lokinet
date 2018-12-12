@@ -1,4 +1,4 @@
-#include <llarp/encode.hpp>
+#include <encode.hpp>
 #include <stdexcept>
 
 namespace llarp

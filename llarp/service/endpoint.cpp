@@ -1,11 +1,10 @@
-
-#include <llarp/dht/messages/findintro.hpp>
-#include <llarp/logic.hpp>
-#include <llarp/messages/dht.hpp>
-#include <llarp/service/endpoint.hpp>
-#include <llarp/service/protocol.hpp>
-#include "buffer.hpp"
-#include "router.hpp"
+#include <buffer.hpp>
+#include <dht/messages/findintro.hpp>
+#include <logic.hpp>
+#include <messages/dht.hpp>
+#include <router.hpp>
+#include <service/endpoint.hpp>
+#include <service/protocol.hpp>
 
 namespace llarp
 {

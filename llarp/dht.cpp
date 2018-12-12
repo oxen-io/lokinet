@@ -1,5 +1,5 @@
-#include <llarp/dht.h>
-#include <llarp/dht/context.hpp>
+#include <dht.h>
+#include <dht/context.hpp>
 #include "router_contact.hpp"
 
 llarp_dht_context::llarp_dht_context(llarp::Router *router)

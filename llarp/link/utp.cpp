@@ -1,14 +1,16 @@
-#include <llarp/link/utp.hpp>
-#include <llarp/messages/link_intro.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/buffer.hpp>
-#include <llarp/endian.hpp>
+#include <buffer.hpp>
+#include <endian.hpp>
+#include <link/server.hpp>
+#include <link/utp.hpp>
+#include <messages/discard.hpp>
+#include <messages/link_intro.hpp>
+#include <router.hpp>
 #include <utp.h>
+
 #include <cassert>
 #include <tuple>
 #include <deque>
 
-#include <router.hpp>
 
 #ifdef __linux__
 #include <linux/errqueue.h>

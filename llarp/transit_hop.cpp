@@ -1,9 +1,9 @@
-#include <llarp/path.hpp>
-#include <llarp/routing/handler.hpp>
-#include <llarp/messages/discard.hpp>
-#include "buffer.hpp"
-#include "router.hpp"
-#include <llarp/endian.hpp>
+#include <buffer.hpp>
+#include <endian.hpp>
+#include <messages/discard.hpp>
+#include <path.hpp>
+#include <router.hpp>
+#include <routing/handler.hpp>
 
 namespace llarp
 {

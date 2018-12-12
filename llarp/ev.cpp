@@ -1,10 +1,10 @@
-#include <llarp/ev.h>
-#include <llarp/logic.hpp>
-#include <llarp/string_view.hpp>
+#include <ev.h>
+#include <logic.hpp>
+#include <mem.hpp>
+#include <string_view.hpp>
 
 #include <stddef.h>
 
-#include "mem.hpp"
 
 #define EV_TICK_INTERVAL 100
 

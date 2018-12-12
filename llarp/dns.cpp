@@ -1,6 +1,6 @@
-#include <llarp/endian.hpp>
-#include <llarp/dnsd.hpp>  // for llarp_handle_dnsd_recvfrom, dnsc
-#include <llarp/logger.hpp>
+#include <dnsd.hpp>  // for llarp_handle_dnsd_recvfrom, dnsc
+#include <endian.hpp>
+#include <logger.hpp>
 
 void
 hexDump(const char *buffer, uint16_t size)

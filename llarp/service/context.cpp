@@ -1,7 +1,7 @@
-#include <llarp/handlers/tun.hpp>
-#include <llarp/handlers/null.hpp>
-#include <llarp/service/context.hpp>
-#include <llarp/service/endpoint.hpp>
+#include <handlers/null.hpp>
+#include <handlers/tun.hpp>
+#include <service/context.hpp>
+#include <service/endpoint.hpp>
 
 namespace llarp
 {

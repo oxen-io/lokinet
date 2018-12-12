@@ -1,7 +1,11 @@
 #ifndef EV_KQUEUE_HPP
 #define EV_KQUEUE_HPP
-#include <llarp/buffer.h>
-#include <llarp/net.h>
+
+#include <buffer.h>
+#include <ev.hpp>
+#include <logger.hpp>
+#include <net.h>
+#include <net.hpp>
 
 #include <sys/un.h>
 
@@ -14,9 +18,6 @@
 // original upstream
 #include <unistd.h>
 #include <cstdio>
-#include <llarp/net.hpp>
-#include "ev.hpp"
-#include "logger.hpp"
 
 namespace llarp
 {

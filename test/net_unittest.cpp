@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
-#include <llarp/net.hpp>
-#include <llarp/net_inaddr.hpp>
+
+#include <net.hpp>
+#include <net_inaddr.hpp>
 
 struct NetTest : public ::testing::Test
 {

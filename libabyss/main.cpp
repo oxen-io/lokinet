@@ -1,5 +1,6 @@
 #include <libabyss.hpp>
-#include <llarp/net.hpp>
+#include <net.hpp>
+
 #ifndef _WIN32
 #include <sys/signal.h>
 #endif
