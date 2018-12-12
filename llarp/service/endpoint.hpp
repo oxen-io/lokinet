@@ -162,6 +162,9 @@ namespace llarp
       bool
       SendToSNodeOrQueue(const byte_t* addr, llarp_buffer_t payload);
 
+      void
+      FlushSNodeTraffic();
+
       struct PendingBuffer
       {
         std::vector< byte_t > payload;

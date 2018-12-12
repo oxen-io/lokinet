@@ -547,6 +547,7 @@ set(TEST_SRC
   test/test_llarp_queue.cpp
   test/test_llarp_queue_manager.cpp
   test/test_llarp_thread_pool.cpp
+  test/test_service_address.cpp
 )
 
 set(TEST_EXE testAll)
