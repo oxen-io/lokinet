@@ -14,7 +14,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
-#include <llarp/linux/netns.hpp>
+#include <linux/netns.hpp>
 #include <llarp/logger.hpp>
 #ifndef MS_REC
 #define MS_REC (16384)
