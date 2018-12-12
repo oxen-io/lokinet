@@ -1,6 +1,6 @@
 #ifndef LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
 #define LLARP_DHT_MESSAGES_GOT_ROUTER_HPP
-#include <llarp/dht/message.hpp>
+#include <dht/message.hpp>
 #include <llarp/router_contact.hpp>
 
 namespace llarp

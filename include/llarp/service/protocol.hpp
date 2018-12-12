@@ -4,7 +4,7 @@
 #include <llarp/bencode.hpp>
 #include <crypto.hpp>
 #include <llarp/encrypted.hpp>
-#include <llarp/dht/message.hpp>
+#include <dht/message.hpp>
 #include <llarp/routing/message.hpp>
 #include <llarp/service/Identity.hpp>
 #include <llarp/service/Info.hpp>

@@ -1,5 +1,5 @@
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/gotintro.hpp>
+#include <dht/context.hpp>
+#include <dht/messages/gotintro.hpp>
 #include <llarp/messages/dht.hpp>
 
 #include <router.hpp>

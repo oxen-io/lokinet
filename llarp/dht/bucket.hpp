@@ -1,8 +1,8 @@
 #ifndef LLARP_DHT_BUCKET_HPP
 #define LLARP_DHT_BUCKET_HPP
 
-#include <llarp/dht/kademlia.hpp>
-#include <llarp/dht/key.hpp>
+#include <dht/kademlia.hpp>
+#include <dht/key.hpp>
 #include <map>
 #include <set>
 #include <vector>

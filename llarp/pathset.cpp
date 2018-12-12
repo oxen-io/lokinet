@@ -1,4 +1,4 @@
-#include <llarp/dht/messages/pubintro.hpp>
+#include <dht/messages/pubintro.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/path.hpp>
 #include <llarp/pathset.hpp>

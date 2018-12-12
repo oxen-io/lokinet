@@ -1,6 +1,6 @@
 #ifndef LLARP_DHT_MESSAGES_GOT_INTRO_HPP
 #define LLARP_DHT_MESSAGES_GOT_INTRO_HPP
-#include <llarp/dht/message.hpp>
+#include <dht/message.hpp>
 #include <llarp/service/IntroSet.hpp>
 #include <vector>
 

@@ -1,7 +1,7 @@
 #ifndef LLARP_DHT_KADEMLIA_HPP
 #define LLARP_DHT_KADEMLIA_HPP
 
-#include <llarp/dht/key.hpp>
+#include <dht/key.hpp>
 
 namespace llarp
 {

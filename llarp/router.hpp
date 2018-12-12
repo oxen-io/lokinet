@@ -3,8 +3,8 @@
 
 #include <llarp/buffer.h>
 #include <llarp/config.h>
-#include <llarp/dht.h>
-#include <llarp/dht.hpp>
+#include <dht.h>
+#include <dht.hpp>
 #include <llarp/establish_job.hpp>
 #include <llarp/ev.h>
 #include <llarp/exit.hpp>

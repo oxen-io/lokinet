@@ -3,7 +3,7 @@
 
 #include <sodium/crypto_generichash.h>
 #include <llarp/aligned.hpp>
-#include <llarp/dht/key.hpp>
+#include <dht/key.hpp>
 
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN

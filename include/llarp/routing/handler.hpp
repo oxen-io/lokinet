@@ -1,8 +1,8 @@
 #ifndef LLARP_ROUTING_HANDLER_HPP
 #define LLARP_ROUTING_HANDLER_HPP
 
+#include <dht.hpp>
 #include <llarp/buffer.h>
-#include <llarp/dht.hpp>
 
 #include <llarp/messages/path_confirm.hpp>
 #include <llarp/messages/path_latency.hpp>

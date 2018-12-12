@@ -1,6 +1,6 @@
 #ifndef LLARP_DHT_MESSAGES_FIND_INTRO_HPP
 #define LLARP_DHT_MESSAGES_FIND_INTRO_HPP
-#include <llarp/dht/message.hpp>
+#include <dht/message.hpp>
 #include <llarp/routing/message.hpp>
 #include <llarp/service/address.hpp>
 #include <llarp/service/tag.hpp>

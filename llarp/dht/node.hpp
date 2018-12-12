@@ -1,8 +1,8 @@
 #ifndef LLARP_DHT_NODE_HPP
 #define LLARP_DHT_NODE_HPP
 
+#include <dht/key.hpp>
 #include <llarp/router_contact.hpp>
-#include <llarp/dht/key.hpp>
 #include <llarp/service/IntroSet.hpp>
 
 namespace llarp

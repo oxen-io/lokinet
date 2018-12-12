@@ -1,5 +1,5 @@
 
-#include <llarp/dht/messages/findintro.hpp>
+#include <dht/messages/findintro.hpp>
 #include <llarp/logic.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/service/endpoint.hpp>

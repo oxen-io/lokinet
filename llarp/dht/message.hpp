@@ -1,9 +1,9 @@
 #ifndef LLARP_DHT_MESSAGE_HPP
 #define LLARP_DHT_MESSAGE_HPP
 
-#include <llarp/dht.h>
+#include <dht.h>
+#include <dht/key.hpp>
 #include <llarp/bencode.hpp>
-#include <llarp/dht/key.hpp>
 #include <llarp/path_types.hpp>
 #include <vector>
 

@@ -1,12 +1,12 @@
 #ifndef LLARP_DHT_CONTEXT_HPP
 #define LLARP_DHT_CONTEXT_HPP
 
-#include <llarp/dht.h>
-#include <llarp/dht/bucket.hpp>
-#include <llarp/dht/key.hpp>
-#include <llarp/dht/message.hpp>
-#include <llarp/dht/messages/findintro.hpp>
-#include <llarp/dht/node.hpp>
+#include <dht.h>
+#include <dht/bucket.hpp>
+#include <dht/key.hpp>
+#include <dht/message.hpp>
+#include <dht/messages/findintro.hpp>
+#include <dht/node.hpp>
 #include <llarp/service/IntroSet.hpp>
 #include <llarp/time.hpp>
 

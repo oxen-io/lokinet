@@ -1,6 +1,6 @@
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/findintro.hpp>
-#include <llarp/dht/messages/gotintro.hpp>
+#include <dht/context.hpp>
+#include <dht/messages/findintro.hpp>
+#include <dht/messages/gotintro.hpp>
 #include <llarp/routing/message.hpp>
 
 namespace llarp

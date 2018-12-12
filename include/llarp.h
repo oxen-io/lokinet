@@ -1,6 +1,6 @@
 #ifndef LLARP_H_
 #define LLARP_H_
-#include <llarp/dht.h>
+#include <dht.h>
 #include <llarp/ev.h>
 #include <llarp/logic.hpp>
 #include <llarp/mem.h>

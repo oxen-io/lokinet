@@ -1,5 +1,5 @@
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/pubintro.hpp>
+#include <dht/context.hpp>
+#include <dht/messages/pubintro.hpp>
 #include <llarp/messages/dht.hpp>
 #include <llarp/messages/dht_immediate.hpp>
 
