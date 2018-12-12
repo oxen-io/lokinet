@@ -1,14 +1,15 @@
 #ifndef LLARP_LINK_SERVER_HPP
 #define LLARP_LINK_SERVER_HPP
-#include <unordered_map>
-#include <llarp/threading.hpp>
-#include <llarp/router_contact.hpp>
 #include <crypto.hpp>
-#include <llarp/net.hpp>
+#include <link/session.hpp>
 #include <llarp/ev.h>
-#include <llarp/link/session.hpp>
 #include <llarp/logic.hpp>
+#include <llarp/net.hpp>
+#include <llarp/router_contact.hpp>
+#include <llarp/threading.hpp>
+
 #include <list>
+#include <unordered_map>
 
 namespace llarp
 {

@@ -7,12 +7,12 @@
 #include <exit.hpp>
 #include <fs.hpp>
 #include <handlers/tun.hpp>
+#include <link_layer.hpp>
+#include <link_message.hpp>
 #include <llarp/buffer.h>
 #include <llarp/config.h>
 #include <llarp/establish_job.hpp>
 #include <llarp/ev.h>
-#include <llarp/link_layer.hpp>
-#include <llarp/link_message.hpp>
 #include <llarp/logic.hpp>
 #include <llarp/nodedb.hpp>
 #include <llarp/path.hpp>

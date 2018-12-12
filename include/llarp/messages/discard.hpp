@@ -1,6 +1,6 @@
 #ifndef LLARP_MESSAGES_DISCARD_HPP
 #define LLARP_MESSAGES_DISCARD_HPP
-#include <llarp/link_message.hpp>
+#include <link_message.hpp>
 #include <llarp/routing/message.hpp>
 #include <llarp/bencode.hpp>
 #include <llarp/routing/handler.hpp>

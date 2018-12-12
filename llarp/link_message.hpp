@@ -1,9 +1,9 @@
 #ifndef LLARP_LINK_MESSAGE_HPP
 #define LLARP_LINK_MESSAGE_HPP
 
+#include <link/session.hpp>
 #include <llarp/bencode.hpp>
 #include <llarp/router_id.hpp>
-#include <llarp/link/session.hpp>
 
 #include <queue>
 #include <vector>

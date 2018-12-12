@@ -1,6 +1,6 @@
+#include <link_layer.hpp>
 #include <llarp/messages/exit.hpp>
 #include <llarp/routing/handler.hpp>
-#include <llarp/link_layer.hpp>
 
 namespace llarp
 {

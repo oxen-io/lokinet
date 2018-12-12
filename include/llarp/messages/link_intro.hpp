@@ -1,6 +1,6 @@
 #ifndef LLARP_MESSAGES_LINK_INTRO_HPP
 #define LLARP_MESSAGES_LINK_INTRO_HPP
-#include <llarp/link_message.hpp>
+#include <link_message.hpp>
 #include <llarp/router_contact.hpp>
 namespace llarp
 {

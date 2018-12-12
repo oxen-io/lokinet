@@ -1,10 +1,13 @@
 #ifndef LLARP_LINK_UTP_HPP
 #define LLARP_LINK_UTP_HPP
 
-#include <llarp/link_layer.hpp>
+#include <memory>
 
 namespace llarp
 {
+  struct ILinkLayer;
+  struct Router;
+
   namespace utp
   {
     std::unique_ptr< ILinkLayer >

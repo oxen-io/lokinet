@@ -1,11 +1,12 @@
 #ifndef LLARP_RELAY_COMMIT_HPP
 #define LLARP_RELAY_COMMIT_HPP
 #include <crypto.hpp>
+#include <link_message.hpp>
 #include <llarp/encrypted_ack.hpp>
 #include <llarp/encrypted_frame.hpp>
-#include <llarp/link_message.hpp>
 #include <llarp/path_types.hpp>
 #include <llarp/pow.hpp>
+
 #include <array>
 
 namespace llarp

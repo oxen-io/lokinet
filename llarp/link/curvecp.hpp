@@ -1,10 +1,13 @@
 #ifndef LLARP_LINK_CURVECP_HPP
 #define LLARP_LINK_CURVECP_HPP
 
-#include <llarp/link_layer.hpp>
+#include <memory>
 
 namespace llarp
 {
+  struct ILinkLayer;
+  struct Router;
+
   namespace curvecp
   {
     std::unique_ptr< ILinkLayer >
