@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <iostream>
 
 namespace llarp

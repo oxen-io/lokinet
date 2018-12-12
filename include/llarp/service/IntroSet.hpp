@@ -3,7 +3,7 @@
 #include <llarp/time.hpp>
 #include <iostream>
 #include <llarp/bencode.hpp>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <llarp/pow.hpp>
 #include <llarp/service/Info.hpp>
 #include <llarp/service/Intro.hpp>

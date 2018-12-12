@@ -2,7 +2,7 @@
 #define LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
 #include <llarp/routing/message.hpp>
 #include <llarp/encrypted.hpp>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <vector>
 
 namespace llarp

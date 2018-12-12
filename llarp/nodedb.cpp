@@ -3,7 +3,7 @@
 #include <llarp/router_contact.hpp>
 
 #include <fstream>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <unordered_map>
 #include "buffer.hpp"
 #include "encode.hpp"

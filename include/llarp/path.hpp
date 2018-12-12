@@ -2,7 +2,7 @@
 #define LLARP_PATH_HPP
 #include <llarp/time.hpp>
 #include <llarp/aligned.hpp>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <llarp/dht.hpp>
 #include <llarp/messages/relay.hpp>
 #include <llarp/messages/relay_commit.hpp>

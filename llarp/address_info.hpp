@@ -1,15 +1,15 @@
 #ifndef LLARP_AI_HPP
 #define LLARP_AI_HPP
 
+#include <crypto.hpp>
+#include <llarp/bencode.hpp>
 #include <llarp/crypto.h>
 #include <llarp/mem.h>
 #include <llarp/net.h>
-#include <stdbool.h>
-#include <llarp/bencode.hpp>
-#include <llarp/crypto.hpp>
 
 #include <string>
 #include <vector>
+#include <stdbool.h>
 
 /**
  * address_info.hpp

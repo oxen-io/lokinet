@@ -4,7 +4,7 @@
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>
 #include <sodium/crypto_stream_xchacha20.h>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include "mem.hpp"
 
 extern "C"

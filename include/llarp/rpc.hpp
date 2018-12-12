@@ -4,7 +4,7 @@
 #include <llarp/ev.h>
 #include <string>
 #include <functional>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 
 namespace llarp
 {

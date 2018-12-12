@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_PROTOCOL_HPP
 #include <llarp/time.hpp>
 #include <llarp/bencode.hpp>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <llarp/encrypted.hpp>
 #include <llarp/dht/message.hpp>
 #include <llarp/routing/message.hpp>

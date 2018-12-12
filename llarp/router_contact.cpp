@@ -1,5 +1,5 @@
+#include <crypto.hpp>
 #include <llarp/bencode.hpp>
-#include <llarp/crypto.hpp>
 #include <llarp/net.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/time.hpp>

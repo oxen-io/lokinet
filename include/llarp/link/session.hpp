@@ -1,7 +1,7 @@
 #ifndef LLARP_LINK_SESSION_HPP
 #define LLARP_LINK_SESSION_HPP
 
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <llarp/net.hpp>
 #include <llarp/router_contact.hpp>
 #include <llarp/types.hpp>

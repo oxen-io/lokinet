@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <llarp/encrypted_frame.hpp>
 #include <llarp/messages/relay_commit.hpp>
 

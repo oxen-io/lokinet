@@ -3,7 +3,7 @@
 #include <llarp/routing/message.hpp>
 #include <llarp/exit/policy.hpp>
 #include <vector>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 
 namespace llarp
 {

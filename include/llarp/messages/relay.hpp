@@ -2,7 +2,7 @@
 #define LLARP_MESSAGES_RELAY_HPP
 #include <llarp/link_message.hpp>
 
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <llarp/encrypted.hpp>
 #include <llarp/path_types.hpp>
 #include <vector>

@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <llarp/threading.hpp>
 #include <llarp/router_contact.hpp>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include <llarp/net.hpp>
 #include <llarp/ev.h>
 #include <llarp/link/session.hpp>
