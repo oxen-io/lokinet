@@ -4,7 +4,7 @@
 #include <buffer.hpp>
 #include <llarp/bencode.h>
 #include <logger.hpp>
-#include <llarp/mem.hpp>
+#include <mem.hpp>
 
 #include <set>
 #include <fstream>

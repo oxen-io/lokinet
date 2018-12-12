@@ -1,9 +1,9 @@
 #ifndef LLARP_CODEL_QUEUE_HPP
 #define LLARP_CODEL_QUEUE_HPP
-#include <llarp/mem.hpp>
 #include <llarp/threading.hpp>
 #include <llarp/time.hpp>
 #include <logger.hpp>
+#include <mem.hpp>
 
 #include <algorithm>
 #include <array>
