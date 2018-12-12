@@ -1,11 +1,11 @@
 #ifndef LLARP_NET_ADDR_HPP
 #define LLARP_NET_ADDR_HPP
-#include <string>
+#include <address_info.hpp>
 #include <llarp/net.h>
-#include <llarp/address_info.hpp>
+#include <llarp/net.hpp>
 #include <llarp/string_view.hpp>
 
-#include <llarp/net.hpp>
+#include <string>
 
 namespace llarp
 {

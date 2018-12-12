@@ -49,12 +49,6 @@ namespace llarp
     operator=(const AddressInfo& other);
 
     bool
-    operator==(const AddressInfo& other) const;
-
-    bool
-    operator<(const AddressInfo& other) const;
-
-    bool
     BEncode(llarp_buffer_t* buf) const override;
 
     bool
@@ -83,6 +77,13 @@ namespace llarp
       }
     };
   };
+
+  bool
+  operator==(const AddressInfo& lhs, const AddressInfo& rhs);
+
+  bool
+  operator<(const AddressInfo& lhs, const AddressInfo& rhs);
+
 
 }  // namespace llarp
 

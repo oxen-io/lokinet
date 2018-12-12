@@ -1,8 +1,9 @@
 #ifndef LLARP_RC_HPP
 #define LLARP_RC_HPP
-#include <llarp/address_info.hpp>
-#include <llarp/crypto.h>
+#include <address_info.hpp>
+
 #include <llarp/bencode.hpp>
+#include <llarp/crypto.h>
 #include <llarp/exit_info.hpp>
 
 #include <vector>

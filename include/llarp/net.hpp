@@ -1,12 +1,13 @@
 #ifndef LLARP_NET_HPP
 #define LLARP_NET_HPP
-#include <llarp/address_info.hpp>
-#include <llarp/net.h>
-#include <functional>
+#include <address_info.hpp>
 #include "logger.hpp"
 #include "mem.hpp"
-#include <llarp/string_view.hpp>
+#include <llarp/net.h>
 #include <llarp/net_int.hpp>
+#include <llarp/string_view.hpp>
+
+#include <functional>
 #include <vector>
 
 #include <stdlib.h>  // for itoa
