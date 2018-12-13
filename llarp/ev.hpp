@@ -163,9 +163,9 @@ namespace llarp
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz)
     {
-      (void)(dst);
-      (void)(data);
-      (void)(sz);
+      UNREFERENCED_PARAMETER(dst);
+      UNREFERENCED_PARAMETER(data);
+      UNREFERENCED_PARAMETER(sz);
       return -1;
     };
 
@@ -180,23 +180,6 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      if(this->is_tun)
-      {
-        DWORD x;
-        bool r;
-        asio_evt_pkt* pkt = new asio_evt_pkt;
-        pkt->sz           = sz;
-        pkt->write        = true;
-        int e             = 0;
-        r                 = WriteFile(fd.tun, data, sz, &x, &pkt->pkt);
-        if(r)  // we returned immediately
-          return x;
-        e = GetLastError();
-        if(e == ERROR_IO_PENDING)
-          return sz;
-        else
-          return -1;
-      }
       return uwrite(fd.socket, (char*)data, sz);
     }
 
@@ -537,6 +520,8 @@ namespace llarp
 #ifdef _WIN32
   using ev_io = win32_ev_io;
 
+  // From the preview SDK, should take a look at that
+  // periodically in case its definition changes
 #define UNIX_PATH_MAX 108
 
   typedef struct sockaddr_un

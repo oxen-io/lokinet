@@ -154,13 +154,31 @@ namespace llarp
       return true;
     }
 
+    virtual ssize_t
+    do_write(void* buf, size_t sz)
+    {
+      DWORD x;
+      bool r;
+      asio_evt_pkt* pkt = new asio_evt_pkt;
+      memset(pkt, 0, sizeof(asio_evt_pkt));
+      pkt->sz    = sz;
+      pkt->write = true;
+      int e      = 0;
+      r          = WriteFile(fd.tun, buf, sz, &x, &pkt->pkt);
+      if(r)  // we returned immediately
+        return x;
+      e = GetLastError();
+      if(e == ERROR_IO_PENDING)
+        return sz;
+      else
+        return -1;
+    }
+
     int
     read(byte_t* buf, size_t sz)
     {
       ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > 0 && t->recvpkt)
-        // should have pktinfo
-        // I have no idea...
         t->recvpkt(t, llarp::InitBuffer(buf, ret));
       return ret;
     }
@@ -356,6 +374,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     return upollfd && (tun_event_queue != INVALID_HANDLE_VALUE);
   }
 
+  // Service paths first, then virtual interface
   int
   tick(int ms)
   {
@@ -393,7 +412,7 @@ struct llarp_win32_loop : public llarp_ev_loop
     DWORD size         = 0;
     OVERLAPPED* ovl    = nullptr;
     ULONG_PTR listener = 0;
-    asio_evt_pkt* pkt;
+    asio_evt_pkt* pkt  = nullptr;
     while(
         GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl, ms))
     {
@@ -403,14 +422,17 @@ struct llarp_win32_loop : public llarp_ev_loop
         llarp::LogWarn("incomplete async io operation: got ", size,
                        " bytes, expected ", pkt->sz, " bytes");*/
       if(!pkt->write)
+      {
         ev->read(readbuf, size);
+        printf("read tun\n");
+      }
       else
       {
         ev->flush_write_buffers(pkt->sz);
         printf("write tun\n");
       }
       ++result;
-      delete pkt;
+      delete pkt;  // don't leak
     }
 
     if(result != -1)
@@ -547,8 +569,9 @@ struct llarp_win32_loop : public llarp_ev_loop
     if(e->is_tun)
     {
       asio_evt_pkt* pkt = new asio_evt_pkt;
-      pkt->write        = false;
-      pkt->sz           = sizeof(readbuf);
+      memset(pkt, 0, sizeof(asio_evt_pkt));
+      pkt->write = false;
+      pkt->sz    = sizeof(readbuf);
       CreateIoCompletionPort(e->fd.tun, tun_event_queue, (ULONG_PTR)e, 1024);
       // queue an initial read
       ReadFile(e->fd.tun, readbuf, sizeof(readbuf), nullptr, &pkt->pkt);
@@ -610,7 +633,9 @@ struct llarp_win32_loop : public llarp_ev_loop
 extern "C" asio_evt_pkt*
 getTunEventPkt()
 {
-  return new asio_evt_pkt;
+  asio_evt_pkt* newpkt = new asio_evt_pkt;
+  memset(newpkt, 0, sizeof(asio_evt_pkt));
+  return newpkt;
 }
 
 #endif

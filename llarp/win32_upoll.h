@@ -28,38 +28,13 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
-#if defined(__WINDOWS__)
 #include <io.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #include <wspiapi.h>
-#else
-#include <unistd.h>
-#include <stdint.h>
-#include <sys/time.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <netinet/tcp.h>
-#include <arpa/inet.h>
-#endif
 
-#if defined(__linux__)
-#undef HAVE_EPOLL
-#define HAVE_EPOLL 1
-#elif defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
-#undef HAVE_POLL
-#define HAVE_POLL 1
-#else
 #undef HAVE_SELECT
 #define HAVE_SELECT 1
-#endif
-
-#if defined(HAVE_EPOLL)
-#include <sys/epoll.h>
-#elif defined(HAVE_POLL)
-#include <poll.h>
-#endif
 
 typedef struct unote unote_t;
 typedef struct ulist ulist_t;

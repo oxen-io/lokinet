@@ -444,7 +444,7 @@ tuntap_read(struct device *dev, void *buf, size_t size)
     if(e && e != 997)
     {
       tuntap_log(TUNTAP_LOG_ERR,
-                 (const char *)formated_error(L"%1%0", _doserrno));
+                 (const char *)formated_error(L"%1%0", e));
       return -1;
     }
   }
