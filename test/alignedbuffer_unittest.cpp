@@ -1,14 +1,13 @@
 #include <gtest/gtest.h>
 
-#include <aligned.hpp>
+#include <crypto.hpp>
 
 using Buffer_t = llarp::AlignedBuffer< 32 >;
 using Map_t    = std::unordered_map< Buffer_t, int, Buffer_t::Hash >;
 
 struct AlignedBufferTest : public ::testing::Test
 {
-  AlignedBufferTest()
-  : crypto(llarp::Crypto::sodium{})
+  AlignedBufferTest() : crypto(llarp::Crypto::sodium{})
   {
   }
 

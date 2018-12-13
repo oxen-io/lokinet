@@ -10,6 +10,7 @@
 
 #include <ev.hpp>
 #include <router.hpp>
+#include <dns/dns.hpp>
 
 namespace llarp
 {
@@ -279,7 +280,7 @@ namespace llarp
       if(msg.questions.size() == 1)
       {
         // always hook mx records
-        if(msg.questions[0].qtype == 15)
+        if(msg.questions[0].qtype == llarp::dns::qTypeMX)
           return true;
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
@@ -290,7 +291,7 @@ namespace llarp
         // always hook .snode
         if(addr.FromString(msg.questions[0].qname, ".snode"))
           return true;
-        if(msg.questions[0].qtype == 12)
+        if(msg.questions[0].qtype == llarp::dns::qTypePTR)
         {
           huint32_t ip = {0};
           if(!dns::DecodePTR(msg.questions[0].qname, ip))

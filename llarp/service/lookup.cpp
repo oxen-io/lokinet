@@ -16,7 +16,8 @@ namespace llarp
     }
 
     bool
-    IServiceLookup::SendRequestViaPath(llarp::path::Path *path, llarp::Router *r)
+    IServiceLookup::SendRequestViaPath(llarp::path::Path *path,
+                                       llarp::Router *r)
     {
       auto msg = BuildRequestMessage();
       if(!msg)

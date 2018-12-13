@@ -5,8 +5,7 @@
 
 namespace llarp
 {
-  InboundMessageParser::InboundMessageParser(Router* _router)
-      : router(_router)
+  InboundMessageParser::InboundMessageParser(Router* _router) : router(_router)
   {
   }
 

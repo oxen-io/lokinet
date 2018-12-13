@@ -2,7 +2,6 @@
 #define LLARP_ALIGNED_HPP
 
 #include <bencode.h>
-#include <crypto.h>
 #include <encode.hpp>
 #include <logger.hpp>
 

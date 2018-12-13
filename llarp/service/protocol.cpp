@@ -208,7 +208,7 @@ namespace llarp
 
     struct AsyncFrameDecrypt
     {
-        llarp::Crypto* crypto;
+      llarp::Crypto* crypto;
       llarp::Logic* logic;
       ProtocolMessage* msg;
       const Identity& m_LocalIdentity;

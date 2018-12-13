@@ -235,7 +235,8 @@ namespace llarp
 
       /// initialize dht context and explore every exploreInterval milliseconds
       void
-      Init(const Key_t& us, llarp::Router* router, llarp_time_t exploreInterval);
+      Init(const Key_t& us, llarp::Router* router,
+           llarp_time_t exploreInterval);
 
       /// get localally stored introset by service address
       const llarp::service::IntroSet*

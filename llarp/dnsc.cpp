@@ -14,8 +14,8 @@
 #include <sys/types.h>
 #include <unistd.h> /* close */
 
-#include <algorithm>      // for std::find_if
-#include <stdio.h>  // sprintf
+#include <algorithm>  // for std::find_if
+#include <stdio.h>    // sprintf
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 

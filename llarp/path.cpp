@@ -174,6 +174,17 @@ namespace llarp
                     });
     }
 
+    bool
+    PathContext::TransitHopPreviousIsRouter(const PathID_t& path,
+                                            const RouterID& otherRouter)
+    {
+      util::Lock lock(m_TransitPaths.first);
+      auto itr = m_TransitPaths.second.find(path);
+      if(itr == m_TransitPaths.second.end())
+        return false;
+      return itr->second->info.downstream == otherRouter;
+    }
+
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
