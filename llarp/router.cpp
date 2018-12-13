@@ -10,6 +10,7 @@
 #include <router.hpp>
 #include <rpc.hpp>
 #include <str.hpp>
+#include <crypto.hpp>
 
 #include <fstream>
 #include <cstdlib>
@@ -231,6 +232,19 @@ namespace llarp
     llarp::LogDebug("persist session to ", remote, " until ", until);
     m_PersistingSessions[remote] =
         std::max(until, m_PersistingSessions[remote]);
+  }
+
+  bool
+  Router::GetRandomGoodRouter(RouterID &router)
+  {
+    auto sz = nodedb->entries.size();
+    if(sz == 0)
+      return false;
+    auto itr = nodedb->entries.begin();
+    if(sz > 1)
+      std::advance(itr, randint() % sz);
+    router = itr->first;
+    return true;
   }
 
   constexpr size_t MaxPendingSendQueueSize = 8;

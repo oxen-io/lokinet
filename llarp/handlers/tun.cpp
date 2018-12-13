@@ -200,8 +200,15 @@ namespace llarp
       {
         // forward dns
         llarp::service::Address addr;
-
-        if(addr.FromString(qname, ".loki"))
+        if(qname == "random.snode" || qname == "random.snode.")
+        {
+          RouterID random;
+          if(Router()->GetRandomGoodRouter(random))
+            msg.AddCNAMEReply(random.ToString(), 1);
+          else
+            msg.AddNXReply();
+        }
+        else if(addr.FromString(qname, ".loki"))
         {
           if(HasAddress(addr.data()))
           {
@@ -273,6 +280,9 @@ namespace llarp
       {
         // always hook mx records
         if(msg.questions[0].qtype == 15)
+          return true;
+        if(msg.questions[0].qname == "random.snode"
+           || msg.questions[0].qname == "random.snode.")
           return true;
         // always hook .loki
         if(addr.FromString(msg.questions[0].qname, ".loki"))

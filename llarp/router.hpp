@@ -199,6 +199,9 @@ namespace llarp
     bool
     InitOutboundLink();
 
+    bool
+    GetRandomGoodRouter(RouterID &r);
+
     /// initialize us as a service node
     /// return true on success
     bool

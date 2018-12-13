@@ -57,6 +57,9 @@ namespace llarp
       AddMXReply(std::string name, uint16_t priority);
 
       void
+      AddCNAMEReply(std::string name, uint32_t ttl);
+
+      void
       AddINReply(llarp::huint32_t addr);
 
       void
