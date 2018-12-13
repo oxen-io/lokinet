@@ -27,6 +27,16 @@ struct asio_evt_pkt
   bool write = false;        // true, or false if read pkt
   size_t sz;  // if this doesn't match what is in the packet, note the error
 };
+
+// From the preview SDK, should take a look at that
+// periodically in case its definition changes
+#define UNIX_PATH_MAX 108
+
+typedef struct sockaddr_un
+{
+  ADDRESS_FAMILY sun_family;    /* AF_UNIX */
+  char sun_path[UNIX_PATH_MAX]; /* pathname */
+} SOCKADDR_UN, *PSOCKADDR_UN;
 #else
 
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
@@ -519,17 +529,6 @@ namespace llarp
 // finally create aliases by platform
 #ifdef _WIN32
   using ev_io = win32_ev_io;
-
-  // From the preview SDK, should take a look at that
-  // periodically in case its definition changes
-#define UNIX_PATH_MAX 108
-
-  typedef struct sockaddr_un
-  {
-    ADDRESS_FAMILY sun_family;    /* AF_UNIX */
-    char sun_path[UNIX_PATH_MAX]; /* pathname */
-  } SOCKADDR_UN, *PSOCKADDR_UN;
-
 #else
   using ev_io = posix_ev_io;
 #endif

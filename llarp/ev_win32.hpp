@@ -10,10 +10,6 @@
 
 #include <cstdio>
 
-#ifdef sizeof
-#undef sizeof
-#endif
-
 namespace llarp
 {
   int
@@ -117,6 +113,7 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
+
     tun(llarp_tun_io* tio, llarp_ev_loop* l)
         : ev_io(INVALID_HANDLE_VALUE,
                 new LossyWriteQueue_t("win32_tun_write_queue", l, l))
@@ -324,8 +321,8 @@ struct llarp_win32_loop : public llarp_ev_loop
     // beta
     else if(bindaddr->sa_family == AF_UNIX)
     {
-      sz = 110;  // current size in 10.0.17763, verify each time the beta PSDK
-                 // is updated
+      sz = sizeof(sockaddr_un);  // current size in 10.0.17763, verify each time
+                                 // the beta PSDK is updated
     }
     if(::bind(fd, bindaddr, sz) == -1)
     {
@@ -370,7 +367,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       upollfd = upoll_create(1);
     if(tun_event_queue == INVALID_HANDLE_VALUE)
       tun_event_queue =
-          CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 1024);
+          CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, 0);
     return upollfd && (tun_event_queue != INVALID_HANDLE_VALUE);
   }
 
@@ -572,9 +569,7 @@ struct llarp_win32_loop : public llarp_ev_loop
       memset(pkt, 0, sizeof(asio_evt_pkt));
       pkt->write = false;
       pkt->sz    = sizeof(readbuf);
-      CreateIoCompletionPort(e->fd.tun, tun_event_queue, (ULONG_PTR)e, 1024);
-      // queue an initial read
-      ReadFile(e->fd.tun, readbuf, sizeof(readbuf), nullptr, &pkt->pkt);
+      CreateIoCompletionPort(e->fd.tun, tun_event_queue, (ULONG_PTR)e, 0);
       goto add;
     }
     upoll_event_t ev;
