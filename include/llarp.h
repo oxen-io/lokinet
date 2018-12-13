@@ -3,11 +3,12 @@
 
 #include <dht.h>
 #include <ev.h>
-#include <logic.hpp>
+
 #include <mem.h>
-#include <version.hpp>
 
 #ifdef __cplusplus
+#include <logic.hpp>
+#include <version.hpp>
 #include <handlers/tun.hpp>     // for handlers
 #include <service/address.hpp>  // for service::address
 #include <service/endpoint.hpp>
@@ -65,10 +66,6 @@ extern "C"
   llarp_main_putDatabase(struct llarp_main *ptr,
                          struct llarp::RouterContact &rc);
 
-  /// get RC from nodeDB
-  llarp::RouterContact *
-  llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
-
   // fwd declr
   struct check_online_request;
 
@@ -115,6 +112,10 @@ extern "C"
   handleBaseCmdLineArgs(int argc, char *argv[]);
 
 #ifdef __cplusplus
+
+  /// get RC from nodeDB
+  llarp::RouterContact *
+  llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
 
   llarp::handlers::TunEndpoint *
   main_router_getFirstTunEndpoint(struct llarp_main *ptr);
