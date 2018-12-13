@@ -15,6 +15,8 @@ namespace llarp
     /// handler of dns query hooking
     struct IQueryHandler
     {
+      virtual ~IQueryHandler(){};
+
       /// return true if we should hook this message
       virtual bool
       ShouldHookDNSMessage(const Message& msg) const = 0;
