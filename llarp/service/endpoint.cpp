@@ -142,6 +142,17 @@ namespace llarp
       {
         RegenAndPublishIntroSet(now);
       }
+      // expire snode sessions
+      {
+        auto itr = m_SNodeSessions.begin();
+        while(itr != m_SNodeSessions.end())
+        {
+          if(itr->second->IsExpired(now))
+            itr = m_SNodeSessions.erase(itr);
+          else
+            ++itr;
+        }
+      }
       // expire pending tx
       {
         std::set< service::IntroSet > empty;
