@@ -16,6 +16,7 @@ namespace llarp
     struct BaseSession : public llarp::path::Builder
     {
       static constexpr size_t MaxUpstreamQueueLength = 256;
+      static constexpr llarp_time_t LifeSpan         = 60 * 10 * 1000;
 
       BaseSession(const llarp::RouterID& exitRouter,
                   std::function< bool(llarp_buffer_t) > writepkt,
@@ -48,6 +49,9 @@ namespace llarp
         return m_ExitRouter;
       }
 
+      bool
+      IsExpired(llarp_time_t now) const;
+
      protected:
       llarp::RouterID m_ExitRouter;
       std::function< bool(llarp_buffer_t) > m_WritePacket;
@@ -72,6 +76,7 @@ namespace llarp
       TieredQueue_t m_Upstream;
       uint64_t m_Counter;
       llarp::SecretKey m_ExitIdentity;
+      llarp_time_t m_LastUse;
     };
 
     struct ExitSession final : public BaseSession
