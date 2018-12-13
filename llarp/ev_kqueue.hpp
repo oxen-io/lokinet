@@ -267,7 +267,7 @@ namespace llarp
     {
       // all BSD UNIX has pktinfo by default
       const ssize_t offset = 4;
-      ssize_t ret = tuntap_read(tunif, buf, sz);
+      ssize_t ret          = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)
       {
         buf += offset;

@@ -23,6 +23,12 @@ namespace llarp
     }
 
     bool
+    BaseSession::LoadIdentityFromFile(const char* fname)
+    {
+      return m_ExitIdentity.LoadFromFile(fname);
+    }
+
+    bool
     BaseSession::ShouldBuildMore(llarp_time_t now) const
     {
       const size_t expect = (1 + (m_NumPaths / 2));
@@ -173,5 +179,16 @@ namespace llarp
       return true;
     }
 
+    SNodeSession::SNodeSession(const llarp::RouterID& snodeRouter,
+                               std::function< bool(llarp_buffer_t) > writepkt,
+                               llarp::Router* r, size_t numpaths, size_t hoplen,
+                               bool useRouterSNodeKey)
+        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
+    {
+      if(useRouterSNodeKey)
+      {
+        m_ExitIdentity = r->identity;
+      }
+    }
   }  // namespace exit
 }  // namespace llarp

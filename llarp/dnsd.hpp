@@ -1,7 +1,7 @@
 #ifndef LIBLLARP_DNSD_HPP
 #define LIBLLARP_DNSD_HPP
 
-#include <ev.h>  // for sockaadr
+#include <ev.h>     // for sockaadr
 #include <dns.hpp>  // question and dnsc
 #include <dnsc.hpp>
 

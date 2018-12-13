@@ -2,7 +2,7 @@
 #include <net.hpp>
 #include <router.hpp>
 #include <str.hpp>
-
+#include <dns/dns.hpp>
 #include <cassert>
 
 namespace llarp
@@ -14,6 +14,7 @@ namespace llarp
     {
       static_cast< ExitEndpoint * >(tun->user)->OnInetPacket(buf);
     }
+
     static void
     ExitHandlerFlush(llarp_tun_io *tun)
     {
@@ -22,8 +23,10 @@ namespace llarp
 
     ExitEndpoint::ExitEndpoint(const std::string &name, llarp::Router *r)
         : m_Router(r)
+        , m_Resolver(r->netloop, this)
         , m_Name(name)
         , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0}
+        , m_LocalResolverAddr("127.0.0.1", 53)
         , m_InetToNetwork(name + "_exit_rx", r->netloop, r->netloop)
 
     {
@@ -35,6 +38,89 @@ namespace llarp
 
     ExitEndpoint::~ExitEndpoint()
     {
+    }
+
+    bool
+    ExitEndpoint::ShouldHookDNSMessage(const llarp::dns::Message &msg) const
+    {
+      if(msg.questions.size() == 0)
+        return false;
+      if(msg.questions[0].qtype == llarp::dns::qTypePTR)
+      {
+        llarp::huint32_t ip;
+        if(!llarp::dns::DecodePTR(msg.questions[0].qname, ip))
+          return false;
+        return m_OurRange.Contains(ip);
+      }
+      else if(msg.questions[0].qtype == llarp::dns::qTypeA)
+      {
+        return msg.questions[0].qname.find(".snode.")
+            == (msg.questions[0].qname.size() - 7);
+      }
+      else
+        return false;
+    }
+
+    bool
+    ExitEndpoint::HandleHookedDNSMessage(
+        llarp::dns::Message msg,
+        std::function< void(llarp::dns::Message) > reply)
+    {
+      if(msg.questions[0].qtype == llarp::dns::qTypePTR)
+      {
+        llarp::huint32_t ip;
+        if(!llarp::dns::DecodePTR(msg.questions[0].qname, ip))
+          return false;
+        if(ip == m_IfAddr)
+        {
+          RouterID us = Router()->pubkey();
+          msg.AddAReply(us.ToString(), 300);
+        }
+        else
+        {
+          auto itr = m_IPToKey.find(ip);
+          if(itr != m_IPToKey.end()
+             && m_SNodeKeys.find(itr->second) != m_SNodeKeys.end())
+          {
+            RouterID them = itr->second;
+            msg.AddAReply(them.ToString());
+          }
+          else
+            msg.AddNXReply();
+        }
+      }
+      else if(msg.questions[0].qtype == llarp::dns::qTypeA)
+      {
+        // forward dns for snode
+        RouterID r;
+        if(r.FromString(msg.questions[0].qname))
+        {
+          huint32_t ip;
+          if(m_SNodeKeys.find(r.data()) == m_SNodeKeys.end())
+          {
+            // we do not have it mapped
+            // map it
+            ip = ObtainServiceNodeIP(r);
+            msg.AddINReply(ip);
+          }
+          else
+          {
+            // we have it mapped already as a service node
+            auto itr = m_KeyToIP.find(r.data());
+            if(itr != m_KeyToIP.end())
+            {
+              ip = itr->second;
+              msg.AddINReply(ip);
+            }
+            else  // fallback case that should never happen (probably)
+              msg.AddNXReply();
+          }
+        }
+        else
+          msg.AddNXReply();
+      }
+      reply(msg);
+      return true;
     }
 
     llarp_time_t
@@ -59,6 +145,20 @@ namespace llarp
             return;
           }
           pk = itr->second;
+        }
+        // check if this key is a service node
+        if(m_SNodeKeys.find(pk) != m_SNodeKeys.end())
+        {
+          // check if it's a service node session we made and queue it via our
+          // snode session that we made otherwise use an inbound session that
+          // was made by the other service node
+          auto itr = m_SNodeSessions.find(pk);
+          if(itr != m_SNodeSessions.end())
+          {
+            if(itr->second->QueueUpstreamTraffic(pkt,
+                                                 llarp::routing::ExitPadSize))
+              return;
+          }
         }
         llarp::exit::Endpoint *ep = nullptr;
         auto range                = m_ActiveExits.equal_range(pk);
@@ -90,14 +190,29 @@ namespace llarp
           }
         }
       });
-      auto itr = m_ActiveExits.begin();
-      while(itr != m_ActiveExits.end())
       {
-        if(!itr->second->Flush())
+        auto itr = m_ActiveExits.begin();
+        while(itr != m_ActiveExits.end())
         {
-          llarp::LogWarn("exit session with ", itr->first, " dropped packets");
+          if(!itr->second->Flush())
+          {
+            llarp::LogWarn("exit session with ", itr->first,
+                           " dropped packets");
+          }
+          ++itr;
         }
-        ++itr;
+      }
+      {
+        auto itr = m_SNodeSessions.begin();
+        while(itr != m_SNodeSessions.end())
+        {
+          if(!itr->second->FlushUpstreamTraffic())
+          {
+            llarp::LogWarn("failed to flushsnode traffic to ", itr->first,
+                           " via outbound session");
+          }
+          ++itr;
+        }
       }
     }
 
@@ -105,7 +220,13 @@ namespace llarp
     ExitEndpoint::Start()
     {
       if(m_ShouldInitTun)
-        return llarp_ev_add_tun(Router()->netloop, &m_Tun);
+      {
+        if(!llarp_ev_add_tun(Router()->netloop, &m_Tun))
+          return false;
+        if(m_UpstreamResolvers.size() == 0)
+          m_UpstreamResolvers.emplace_back("8.8.8.8", 53);
+        return m_Resolver.Start(m_LocalResolverAddr, m_UpstreamResolvers);
+      }
       return true;
     }
 
@@ -224,6 +345,17 @@ namespace llarp
           [buf](Pkt_t &pkt) -> bool { return pkt.Load(buf); });
     }
 
+    bool
+    ExitEndpoint::QueueSNodePacket(llarp_buffer_t buf, llarp::huint32_t from)
+    {
+      llarp::net::IPv4Packet pkt;
+      if(!pkt.Load(buf))
+        return false;
+      // rewrite ip
+      pkt.UpdateIPv4PacketOnDst(from, m_IfAddr);
+      return llarp_ev_tun_async_write(&m_Tun, pkt.Buffer());
+    }
+
     llarp::exit::Endpoint *
     ExitEndpoint::FindEndpointByPath(const llarp::PathID_t &path)
     {
@@ -271,6 +403,33 @@ namespace llarp
         m_PermitExit = IsTrueValue(v.c_str());
         return true;
       }
+      if(k == "local-dns")
+      {
+        std::string resolverAddr = v;
+        uint16_t dnsport         = 53;
+        auto pos                 = v.find(":");
+        if(pos != std::string::npos)
+        {
+          resolverAddr = v.substr(0, pos);
+          dnsport      = std::atoi(v.substr(pos + 1).c_str());
+        }
+        m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
+        llarp::LogInfo(Name(), " local dns set to ", m_LocalResolverAddr);
+      }
+      if(k == "upstream-dns")
+      {
+        std::string resolverAddr = v;
+        uint16_t dnsport         = 53;
+        auto pos                 = v.find(":");
+        if(pos != std::string::npos)
+        {
+          resolverAddr = v.substr(0, pos);
+          dnsport      = std::atoi(v.substr(pos + 1).c_str());
+        }
+        m_UpstreamResolvers.emplace_back(resolverAddr, dnsport);
+        llarp::LogInfo(Name(), "adding upstream dns set to ", resolverAddr, ":",
+                       dnsport);
+      }
       if(k == "ifaddr")
       {
         auto pos = v.find("/");
@@ -286,9 +445,11 @@ namespace llarp
         m_Tun.netmask = std::atoi(nmask_str.c_str());
 
         llarp::Addr ifaddr(host_str);
-        m_IfAddr     = ifaddr.xtohl();
-        m_NextAddr   = m_IfAddr;
-        m_HigestAddr = m_IfAddr ^ (~llarp::netmask_ipv4_bits(m_Tun.netmask));
+        m_IfAddr                = ifaddr.xtohl();
+        m_OurRange.netmask_bits = netmask_ipv4_bits(m_Tun.netmask);
+        m_OurRange.addr         = m_IfAddr;
+        m_NextAddr              = m_IfAddr;
+        m_HigestAddr            = m_IfAddr | (~m_OurRange.netmask_bits);
         llarp::LogInfo(Name(), " set ifaddr range to ", m_Tun.ifaddr, "/",
                        m_Tun.netmask, " lo=", m_IfAddr, " hi=", m_HigestAddr);
       }
@@ -313,6 +474,25 @@ namespace llarp
       return true;
     }
 
+    huint32_t
+    ExitEndpoint::ObtainServiceNodeIP(const llarp::RouterID &other)
+    {
+      huint32_t ip = GetIPForIdent(other.data());
+      if(m_SNodeKeys.insert(other.data()).second)
+      {
+        // this is a new service node make an outbound session to them
+        m_SNodeSessions.insert(
+            std::make_pair(other,
+                           std::unique_ptr< llarp::exit::SNodeSession >(
+                               new llarp::exit::SNodeSession(
+                                   other,
+                                   std::bind(&ExitEndpoint::QueueSNodePacket,
+                                             this, std::placeholders::_1, ip),
+                                   Router(), 2, 1, true))));
+      }
+      return ip;
+    }
+
     bool
     ExitEndpoint::AllocateNewExit(const llarp::PubKey pk,
                                   const llarp::PathID_t &path,
@@ -321,10 +501,17 @@ namespace llarp
       if(wantInternet && !m_PermitExit)
         return false;
       huint32_t ip = GetIPForIdent(pk);
+      if(Router()->paths.TransitHopPreviousIsRouter(path, pk.data()))
+      {
+        // we think this path belongs to a service node
+        // mark it as such so we don't make an outbound session to them
+        m_SNodeKeys.insert(pk.data());
+      }
       m_ActiveExits.insert(
           std::make_pair(pk,
                          std::make_unique< llarp::exit::Endpoint >(
                              pk, path, !wantInternet, ip, this)));
+
       m_Paths[path] = pk;
       return HasLocalMappedAddrFor(pk);
     }
@@ -361,17 +548,29 @@ namespace llarp
     void
     ExitEndpoint::Tick(llarp_time_t now)
     {
-      auto itr = m_ActiveExits.begin();
-      while(itr != m_ActiveExits.end())
       {
-        if(itr->second->IsExpired(now))
+        auto itr = m_SNodeSessions.begin();
+        while(itr != m_SNodeSessions.end())
         {
-          itr = m_ActiveExits.erase(itr);
+          if(itr->second->IsExpired(now))
+            itr = m_SNodeSessions.erase(itr);
+          else
+            ++itr;
         }
-        else
+      }
+      {
+        auto itr = m_ActiveExits.begin();
+        while(itr != m_ActiveExits.end())
         {
-          itr->second->Tick(now);
-          ++itr;
+          if(itr->second->IsExpired(now))
+          {
+            itr = m_ActiveExits.erase(itr);
+          }
+          else
+          {
+            itr->second->Tick(now);
+            ++itr;
+          }
         }
       }
     }

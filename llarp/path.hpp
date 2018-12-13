@@ -581,6 +581,9 @@ namespace llarp
       IHopHandler*
       GetByUpstream(const RouterID& id, const PathID_t& path);
 
+      bool
+      TransitHopPreviousIsRouter(const PathID_t& path, const RouterID& r);
+
       IHopHandler*
       GetPathForTransfer(const PathID_t& topath);
 

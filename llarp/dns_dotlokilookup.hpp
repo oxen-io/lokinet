@@ -4,7 +4,6 @@
 #include <dnsd.hpp>
 #include <service/address.hpp>
 
-
 using map_address_hook_func =
     std::function< bool(const byte_t *addr, bool isSNode, uint32_t ip) >;
 

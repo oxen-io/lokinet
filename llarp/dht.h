@@ -13,7 +13,10 @@
 
 struct llarp_dht_context;
 
-namespace llarp { struct Router; }
+namespace llarp
+{
+  struct Router;
+}
 
 /// allocator
 struct llarp_dht_context*

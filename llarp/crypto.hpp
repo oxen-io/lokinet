@@ -60,6 +60,12 @@ namespace llarp
       return out << "[secretkey]";
     }
 
+    bool
+    LoadFromFile(const char* fname);
+
+    bool
+    SaveToFile(const char* fname) const;
+
     SecretKey&
     operator=(const byte_t* ptr)
     {

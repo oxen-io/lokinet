@@ -52,8 +52,12 @@ namespace llarp
       bool
       IsExpired(llarp_time_t now) const;
 
+      bool
+      LoadIdentityFromFile(const char* fname);
+
      protected:
       llarp::RouterID m_ExitRouter;
+      llarp::SecretKey m_ExitIdentity;
       std::function< bool(llarp_buffer_t) > m_WritePacket;
 
       virtual void
@@ -75,7 +79,6 @@ namespace llarp
       using TieredQueue_t = std::map< uint8_t, UpstreamTrafficQueue_t >;
       TieredQueue_t m_Upstream;
       uint64_t m_Counter;
-      llarp::SecretKey m_ExitIdentity;
       llarp_time_t m_LastUse;
     };
 
@@ -102,8 +105,8 @@ namespace llarp
     {
       SNodeSession(const llarp::RouterID& snodeRouter,
                    std::function< bool(llarp_buffer_t) > writepkt,
-                   llarp::Router* r, size_t numpaths, size_t hoplen)
-          : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen){};
+                   llarp::Router* r, size_t numpaths, size_t hoplen,
+                   bool useRouterSNodeKey = false);
 
       ~SNodeSession(){};
 

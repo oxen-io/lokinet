@@ -261,7 +261,7 @@ main(int argc, char *argv[])
 
   if(verifyMode)
   {
-      llarp::Crypto crypto;
+    llarp::Crypto crypto;
     llarp_crypto_init(&crypto);
     if(!rc.Read(rcfname))
     {
@@ -327,7 +327,7 @@ main(int argc, char *argv[])
   // this is the only one...
   if(listMode)
   {
-      llarp::Crypto crypto;
+    llarp::Crypto crypto;
     llarp_crypto_init(&crypto);
     auto nodedb = llarp_nodedb_new(&crypto);
     llarp_nodedb_iter itr;
@@ -467,7 +467,7 @@ main(int argc, char *argv[])
 
   if(listMode)
   {
-      llarp::Crypto crypto;
+    llarp::Crypto crypto;
     // no longer used?
     // llarp_crypto_libsodium_init(&crypto);
     llarp_crypto_init(&crypto);

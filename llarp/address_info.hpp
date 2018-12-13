@@ -84,7 +84,6 @@ namespace llarp
   bool
   operator<(const AddressInfo& lhs, const AddressInfo& rhs);
 
-
 }  // namespace llarp
 
 #endif

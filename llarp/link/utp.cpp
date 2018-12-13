@@ -11,7 +11,6 @@
 #include <tuple>
 #include <deque>
 
-
 #ifdef __linux__
 #include <linux/errqueue.h>
 #include <netinet/ip_icmp.h>
@@ -326,7 +325,7 @@ namespace llarp
     struct LinkLayer : public ILinkLayer
     {
       utp_context* _utp_ctx = nullptr;
-      llarp::Router* router  = nullptr;
+      llarp::Router* router = nullptr;
       static uint64
       OnRead(utp_callback_arguments* arg);
 

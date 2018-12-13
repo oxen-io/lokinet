@@ -21,8 +21,8 @@ namespace llarp
 
     int num_nethreads   = 1;
     bool singleThreaded = false;
-    std::unique_ptr<llarp::Crypto> crypto;
-    llarp::Router *router     = nullptr;
+    std::unique_ptr< llarp::Crypto > crypto;
+    llarp::Router *router    = nullptr;
     llarp_threadpool *worker = nullptr;
     llarp::Logic *logic      = nullptr;
     llarp_config *config     = nullptr;

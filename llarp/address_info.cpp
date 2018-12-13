@@ -25,7 +25,7 @@ namespace llarp
   }
 
   bool
-  operator==(const AddressInfo& lhs, const AddressInfo& rhs)
+  operator==(const AddressInfo &lhs, const AddressInfo &rhs)
   {
     // we don't care about rank
     return lhs.pubkey == rhs.pubkey && lhs.port == rhs.port
@@ -33,7 +33,7 @@ namespace llarp
   }
 
   bool
-  operator<(const AddressInfo& lhs, const AddressInfo& rhs)
+  operator<(const AddressInfo &lhs, const AddressInfo &rhs)
   {
     return lhs.rank < rhs.rank || lhs.ip < rhs.ip || lhs.port < rhs.port;
   }

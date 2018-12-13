@@ -5,10 +5,11 @@
 
 #include <string>
 
-namespace llarp {
-    class Logic;
-    struct Router;
-}
+namespace llarp
+{
+  class Logic;
+  struct Router;
+}  // namespace llarp
 
 struct llarp_iwp_args
 {

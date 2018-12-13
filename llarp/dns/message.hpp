@@ -51,19 +51,19 @@ namespace llarp
       UpdateHeader();
 
       void
-      AddNXReply();
+      AddNXReply(RR_TTL_t ttl = 1);
 
       void
-      AddMXReply(std::string name, uint16_t priority);
+      AddMXReply(std::string name, uint16_t priority, RR_TTL_t ttl = 1);
 
       void
-      AddCNAMEReply(std::string name, uint32_t ttl);
+      AddCNAMEReply(std::string name, RR_TTL_t ttl = 1);
 
       void
-      AddINReply(llarp::huint32_t addr);
+      AddINReply(llarp::huint32_t addr, RR_TTL_t ttl = 1);
 
       void
-      AddAReply(std::string name);
+      AddAReply(std::string name, RR_TTL_t ttl = 1);
 
       bool
       Encode(llarp_buffer_t* buf) const override;

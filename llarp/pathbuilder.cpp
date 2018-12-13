@@ -23,7 +23,7 @@ namespace llarp
     llarp::Router* router    = nullptr;
     llarp_threadpool* worker = nullptr;
     llarp::Logic* logic      = nullptr;
-    llarp::Crypto* crypto     = nullptr;
+    llarp::Crypto* crypto    = nullptr;
     LR_CommitMessage LRCM;
 
     static void

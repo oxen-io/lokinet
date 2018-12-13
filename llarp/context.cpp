@@ -14,7 +14,6 @@
 #include <pthread_np.h>
 #endif
 
-
 namespace llarp
 {
   Context::~Context()
@@ -81,7 +80,8 @@ namespace llarp
   int
   Context::LoadDatabase()
   {
-    crypto = std::unique_ptr<llarp::Crypto>(new llarp::Crypto{llarp::Crypto::sodium{}});
+    crypto = std::unique_ptr< llarp::Crypto >(
+        new llarp::Crypto{llarp::Crypto::sodium{}});
     nodedb = new llarp_nodedb(crypto.get());
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))

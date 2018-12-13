@@ -1,5 +1,5 @@
 #include <buffer.hpp>
-#include <dns/message.hpp>
+#include <dns/dns.hpp>
 #include <endian.hpp>
 #include <logger.hpp>
 
@@ -148,7 +148,7 @@ namespace llarp
     }
 
     void
-    Message::AddINReply(llarp::huint32_t ip)
+    Message::AddINReply(llarp::huint32_t ip, RR_TTL_t ttl)
     {
       if(questions.size())
       {
@@ -156,9 +156,9 @@ namespace llarp
         const auto& question = questions[0];
         ResourceRecord rec;
         rec.rr_name  = question.qname;
-        rec.rr_type  = 1;
-        rec.rr_class = 1;
-        rec.ttl      = 1;
+        rec.rr_type  = qTypeA;
+        rec.rr_class = qClassIN;
+        rec.ttl      = ttl;
         rec.rData.resize(4);
         htobe32buf(rec.rData.data(), ip.h);
         answers.emplace_back(std::move(rec));
@@ -166,7 +166,7 @@ namespace llarp
     }
 
     void
-    Message::AddAReply(std::string name)
+    Message::AddAReply(std::string name, RR_TTL_t ttl)
     {
       if(questions.size())
       {
@@ -176,31 +176,7 @@ namespace llarp
         auto& rec       = answers.back();
         rec.rr_name     = question.qname;
         rec.rr_type     = question.qtype;
-        rec.rr_class    = 1;
-        rec.ttl         = 1;
-        byte_t tmp[512] = {0};
-        auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
-        if(EncodeName(&buf, name))
-        {
-          buf.sz = buf.cur - buf.base;
-          rec.rData.resize(buf.sz);
-          memcpy(rec.rData.data(), buf.base, buf.sz);
-        }
-      }
-    }
-
-    void
-    Message::AddCNAMEReply(std::string name, uint32_t ttl)
-    {
-      if(questions.size())
-      {
-        hdr_fields |= (1 << 15);
-        const auto& question = questions[0];
-        answers.emplace_back();
-        auto& rec       = answers.back();
-        rec.rr_name     = question.qname;
-        rec.rr_type     = 5;
-        rec.rr_class    = 1;
+        rec.rr_class    = qClassIN;
         rec.ttl         = ttl;
         byte_t tmp[512] = {0};
         auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -214,7 +190,7 @@ namespace llarp
     }
 
     void
-    Message::AddMXReply(std::string name, uint16_t priority)
+    Message::AddCNAMEReply(std::string name, RR_TTL_t ttl)
     {
       if(questions.size())
       {
@@ -223,9 +199,33 @@ namespace llarp
         answers.emplace_back();
         auto& rec       = answers.back();
         rec.rr_name     = question.qname;
-        rec.rr_type     = question.qtype;
-        rec.rr_class    = 1;
-        rec.ttl         = 1;
+        rec.rr_type     = qTypeCNAME;
+        rec.rr_class    = qClassIN;
+        rec.ttl         = ttl;
+        byte_t tmp[512] = {0};
+        auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+        if(EncodeName(&buf, name))
+        {
+          buf.sz = buf.cur - buf.base;
+          rec.rData.resize(buf.sz);
+          memcpy(rec.rData.data(), buf.base, buf.sz);
+        }
+      }
+    }
+
+    void
+    Message::AddMXReply(std::string name, uint16_t priority, RR_TTL_t ttl)
+    {
+      if(questions.size())
+      {
+        hdr_fields |= (1 << 15);
+        const auto& question = questions[0];
+        answers.emplace_back();
+        auto& rec       = answers.back();
+        rec.rr_name     = question.qname;
+        rec.rr_type     = qTypeMX;
+        rec.rr_class    = qClassIN;
+        rec.ttl         = ttl;
         byte_t tmp[512] = {0};
         auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
         llarp_buffer_put_uint16(&buf, priority);
@@ -239,7 +239,7 @@ namespace llarp
     }
 
     void
-    Message::AddNXReply()
+    Message::AddNXReply(RR_TTL_t ttl)
     {
       if(questions.size())
       {
@@ -250,7 +250,7 @@ namespace llarp
         nx.rr_name  = question.qname;
         nx.rr_type  = question.qtype;
         nx.rr_class = question.qclass;
-        nx.ttl      = 1;
+        nx.ttl      = ttl;
         nx.rData.resize(1);
         nx.rData.data()[0] = 0;
       }
