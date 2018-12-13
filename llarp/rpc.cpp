@@ -179,7 +179,7 @@ namespace llarp
 
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
-        llarp::Router* router;
+      llarp::Router* router;
       Handler(::abyss::httpd::ConnImpl* conn, llarp::Router* r)
           : ::abyss::httpd::IRPCHandler(conn), router(r)
       {
@@ -273,7 +273,7 @@ namespace llarp
 
     struct ServerImpl
     {
-        llarp::Router* router;
+      llarp::Router* router;
       ReqHandlerImpl _handler;
 
       ServerImpl(llarp::Router* r) : router(r), _handler(r, 2000)
