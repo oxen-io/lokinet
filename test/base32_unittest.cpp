@@ -1,13 +1,12 @@
 #include <gtest/gtest.h>
 
-#include <aligned.hpp>
+#include <crypto.hpp>
 #include <encode.hpp>
 #include <logger.hpp>
 
 struct Base32Test : public ::testing::Test
 {
-  Base32Test()
-  : crypto(llarp::Crypto::sodium{})
+  Base32Test() : crypto(llarp::Crypto::sodium{})
   {
   }
 
