@@ -19,15 +19,6 @@
 #ifdef _WIN32
 #include <win32_up.h>
 #include <win32_upoll.h>
-// io packet for TUN read/write
-struct asio_evt_pkt
-{
-  OVERLAPPED pkt = {
-      0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
-  bool write = false;        // true, or false if read pkt
-  size_t sz;  // if this doesn't match what is in the packet, note the error
-};
-
 // From the preview SDK, should take a look at that
 // periodically in case its definition changes
 #define UNIX_PATH_MAX 108
@@ -128,38 +119,15 @@ namespace llarp
       };
     };
 
-    using LossyWriteQueue_t =
-        llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
-                                 WriteBuffer::PutTime, WriteBuffer::Compare,
-                                 WriteBuffer::GetNow, llarp::util::NullMutex,
-                                 llarp::util::NullLock, 5, 100, 128 >;
-
     using LosslessWriteQueue_t = std::deque< WriteBuffer >;
 
-    union {
-      intptr_t socket;
-      HANDLE tun;
-    } fd;
+    intptr_t fd; // Sockets only, fuck UNIX-style reactive IO with a rusty knife
 
     int flags   = 0;
-    bool is_tun = false;
-
-    win32_ev_io(intptr_t f)
-    {
-      fd.socket = f;
-    }
-
-    /// for tun
-    win32_ev_io(HANDLE f, LossyWriteQueue_t* q) : m_LossyWriteQueue(q)
-    {
-      fd.tun = f;
-    }
+    win32_ev_io(intptr_t f) : fd(f){};
 
     /// for tcp
-    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q) : m_BlockingWriteQueue(q)
-    {
-      fd.socket = f;
-    }
+    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q) : fd(f), m_BlockingWriteQueue(q){}
 
     virtual void
     error()
@@ -190,18 +158,13 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      return uwrite(fd.socket, (char*)data, sz);
+      return uwrite(fd, (char*)data, sz);
     }
 
     bool
     queue_write(const byte_t* buf, size_t sz)
     {
-      if(m_LossyWriteQueue)
-      {
-        m_LossyWriteQueue->Emplace(buf, sz);
-        return true;
-      }
-      else if(m_BlockingWriteQueue)
+      if(m_BlockingWriteQueue)
       {
         m_BlockingWriteQueue->emplace_back(buf, sz);
         return true;
@@ -222,13 +185,7 @@ namespace llarp
     virtual void
     flush_write_buffers(size_t amount)
     {
-      if(m_LossyWriteQueue)
-        m_LossyWriteQueue->Process([&](WriteBuffer& buffer) {
-          do_write(buffer.buf, buffer.bufsz);
-          // if we would block we save the entries for later
-          // discard entry
-        });
-      else if(m_BlockingWriteQueue)
+	  if(m_BlockingWriteQueue)
       {
         if(amount)
         {
@@ -273,11 +230,8 @@ namespace llarp
             }
             m_BlockingWriteQueue->pop_front();
             int wsaerr = WSAGetLastError();
-            int syserr = GetLastError();
-            if(wsaerr == WSA_IO_PENDING || wsaerr == WSAEWOULDBLOCK
-               || syserr == 997 || syserr == 21)
+            if(wsaerr == WSA_IO_PENDING || wsaerr == WSAEWOULDBLOCK)
             {
-              SetLastError(0);
               WSASetLastError(0);
               return;
             }
@@ -285,16 +239,14 @@ namespace llarp
         }
       }
       /// reset errno
-      SetLastError(0);
       WSASetLastError(0);
     }
 
-    std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;
     std::unique_ptr< LosslessWriteQueue_t > m_BlockingWriteQueue;
 
     virtual ~win32_ev_io()
     {
-      uclose(fd.socket);
+      uclose(fd);
     };
   };
 #endif
