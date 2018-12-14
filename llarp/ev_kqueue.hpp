@@ -291,21 +291,7 @@ namespace llarp
       if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
         return false;
       fd = tunif->tun_fd;
-      // set non blocking
-      if(fd != -1)
-      {
-        int flags = fcntl(fd, F_GETFL, 0);
-        if(flags == -1)
-        {
-          ::close(fd);
-          return false;
-        }
-        if(fcntl(fd, F_SETFL, flags | O_NONBLOCK) == -1)
-        {
-          ::close(fd);
-          return false;
-        }
-      }
+
       return fd != -1;
     }
 
@@ -440,7 +426,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev)
         {
-          if(events[idx].filter & EVFILT_READ)
+          if(events[idx].filter & EVFILT_READ && events[idx].data > 0)
             ev->read(readbuf,
                      std::min(sizeof(readbuf), size_t(events[idx].data)));
           if(events[idx].filter & EVFILT_WRITE)
