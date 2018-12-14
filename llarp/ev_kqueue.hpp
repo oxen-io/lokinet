@@ -286,7 +286,7 @@ namespace llarp
         return false;
       if(tuntap_up(tunif) == -1)
         return false;
-      if(tuntap_set_ifname(tunif, t->if_name) == -1)
+      if(tuntap_set_ifname(tunif, t->ifname) == -1)
         return false;
       fd = tunif->tun_fd;
       return fd != -1;
