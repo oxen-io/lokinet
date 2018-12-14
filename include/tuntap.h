@@ -43,7 +43,12 @@
 #if defined Linux
 #include <netinet/in.h>
 #else
+
+// iOS and other mobile Darwin platforms don't  have this header
+#ifndef Darwin
 #include <netinet/if_ether.h>
+#endif
+
 #endif
 #endif
 

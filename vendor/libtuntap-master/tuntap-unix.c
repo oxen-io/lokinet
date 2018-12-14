@@ -49,7 +49,12 @@
 #elif !defined(Darwin)
 #include <net/if_tun.h>
 #endif
+
+// iOS and other mobile Darwin platforms don't  have this header
+#ifndef Darwin
 #include <netinet/if_ether.h>
+#endif
+
 #include <netinet/in.h>
 #endif
 

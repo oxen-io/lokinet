@@ -23,8 +23,11 @@
 #include <net/if.h>
 #include <net/if_var.h>
 #include <net/if_types.h>
+// Mobile Darwin platforms don't have these headers
+#ifndef Darwin
 #include <net/route.h>
 #include <netinet/if_ether.h>
+#endif
 #include <netinet/in.h>
 
 #include <fcntl.h>
@@ -37,12 +40,19 @@
 #include <errno.h>
 #include "tuntap.h"
 
+// mobile darwin platforms don't have these headers
+#ifndef Darwin
 #include <sys/kern_control.h>
 #include <sys/sys_domain.h>
 #include <sys/kern_event.h>
+#endif
 
 #define APPLE_UTUN "com.apple.net.utun_control"
 #define UTUN_OPT_IFNAME 2
+
+/*
+ 
+ This code is not being used with NE API for Darwin.
 
 static int
 fucky_tuntap_sys_start(struct device *dev, __attribute__((unused)) int mode,
@@ -95,9 +105,14 @@ fucky_tuntap_sys_start(struct device *dev, __attribute__((unused)) int mode,
   return fd;
 }
 
+*/
+
 int
 tuntap_sys_start(struct device *dev, int mode, int tun)
 {
+  (void) dev; (void) mode; (void) tun;
+  /*
+   NOOP this
   int fd = -1;
   while(tun < 128)
   {
@@ -110,6 +125,7 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
     }
     ++tun;
   }
+  */
   return -1;
 }
 
@@ -121,7 +137,8 @@ tuntap_sys_destroy(struct device *dev)
 
 struct tuntap_rtmsg
 {
-  struct rt_msghdr hdr;
+  // below isn't being used for NetworkExtension API based Darwin support
+  // struct rt_msghdr hdr;
   struct sockaddr_in saddr;
   struct sockaddr_in mask;
   struct sockaddr_in daddr;
@@ -130,6 +147,9 @@ struct tuntap_rtmsg
 int
 tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 {
+  (void) dev; (void) s4; (void) bits;
+  /*
+   NOOP this nonsense
   struct sockaddr_in mask;
   mask.sin_family      = AF_INET;
   mask.sin_addr.s_addr = bits;
@@ -139,7 +159,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
   char buf[1028];
   const char *addr    = addrbuf;
   const char *netmask = inet_ntoa(mask.sin_addr);
-  /** because fuck this other stuff */
+  ** because fuck this other stuff *
   snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask %s up",
            dev->if_name, addr, addr, netmask);
   tuntap_log(TUNTAP_LOG_INFO, buf);
@@ -149,6 +169,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
            netmask, dev->if_name);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
+   */
   /* Simpler than calling SIOCSIFADDR and/or SIOCSIFBRDADDR */
   /*
     if(ioctl(dev->ctrl_sock, SIOCSIFADDR, &ifa) == -1)
