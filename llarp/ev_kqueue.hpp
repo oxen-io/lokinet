@@ -244,12 +244,11 @@ namespace llarp
 #endif
 
     void
-    flush_write()
+    before_flush_write() override
     {
       if(t->before_write)
       {
         t->before_write(t);
-        ev_io::flush_write();
       }
     }
 
@@ -258,7 +257,6 @@ namespace llarp
     {
       if(t->tick)
         t->tick(t);
-      flush_write();
       return true;
     }
 
