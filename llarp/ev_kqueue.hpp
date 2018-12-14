@@ -265,7 +265,7 @@ namespace llarp
     {
       // all BSDs have packet info
       const ssize_t offset = 4;
-      ssize_t ret          = tuntap_read(tunif, buf, sz);
+      ssize_t ret          = ::read(fd, buf, sz);
       if(ret > offset && t->recvpkt)
       {
         buf += offset;
