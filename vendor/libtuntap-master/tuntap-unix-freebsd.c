@@ -142,13 +142,6 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
   /* Save flags for tuntap_{up, down} */
   dev->flags = ifr.ifr_flags;
 
-  if(tuntap_sys_set_ifname(dev, newifname,
-                           strnlen(newifname, sizeof(newifname))))
-  {
-    tuntap_log(TUNTAP_LOG_ERR, "can't set interface name");
-    return -1;
-  }
-
   return fd;
 }
 
