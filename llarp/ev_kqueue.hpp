@@ -229,8 +229,8 @@ namespace llarp
     }
 
 #ifdef __APPLE__
-    virtual ssize_t
-    do_write(void* buf, size_t sz)
+    ssize_t
+    do_write(void* buf, size_t sz) override
     {
       iovec vecs[2];
       // TODO: IPV6

@@ -146,8 +146,13 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {
   auto dev  = loop->create_tun(tun);
   tun->impl = dev;
+#ifdef __linux__
+  constexpr bool shouldwrite = false;
+#else
+  constexpr bool shouldwrite = true;
+#endif
   if(dev)
-    return loop->add_ev(dev, false);
+    return loop->add_ev(dev, shouldwrite);
   return false;
 }
 

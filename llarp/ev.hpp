@@ -465,9 +465,9 @@ namespace llarp
     virtual void
     flush_write_buffers(size_t amount)
     {
+      before_flush_write();
       if(m_LossyWriteQueue)
       {
-        before_flush_write();
         m_LossyWriteQueue->Process([&](WriteBuffer& buffer) {
           do_write(buffer.buf, buffer.bufsz);
           // if we would block we save the entries for later
