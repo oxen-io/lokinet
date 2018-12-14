@@ -1,6 +1,8 @@
 #ifndef LLARP_H_
 #define LLARP_H_
 
+#include <stdbool.h>
+
 #ifdef __cplusplus
 #include <ev.h>
 #include <mem.h>
