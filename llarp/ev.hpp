@@ -132,7 +132,11 @@ namespace llarp
     virtual void
     error()
     {
-      llarp::LogError(strerror(errno));
+      char ebuf[1024];
+      int err = WSAGetLastError();
+      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                    ebuf, 1024, nullptr);
+      llarp::LogError(ebuf);
     }
 
     virtual int
@@ -249,8 +253,7 @@ namespace llarp
       uclose(fd);
     };
   };
-#endif
-
+#else
   struct posix_ev_io
   {
     struct WriteBuffer
@@ -477,6 +480,7 @@ namespace llarp
       close(fd);
     };
   };
+#endif
 
 // finally create aliases by platform
 #ifdef _WIN32

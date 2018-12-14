@@ -25,7 +25,7 @@ struct asio_evt_pkt
 struct win32_tun_io;
 extern "C" DWORD FAR PASCAL
 tun_ev_loop(void* unused);
-// list of TUN listeners (useful for exits or other nodes with multiple TUNs
+// list of TUN listeners (useful for exits or other nodes with multiple TUNs)
 std::list< win32_tun_io* > tun_listeners;
 
 // a single event queue for the TUN interface
