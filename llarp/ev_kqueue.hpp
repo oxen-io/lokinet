@@ -263,9 +263,13 @@ namespace llarp
     int
     read(byte_t* buf, size_t sz)
     {
-      // all BSD UNIX has pktinfo by default
+// freebsd does not have packet info
+#ifdef __FreeBSD__
+      const ssize_t offset = 0;
+#else
       const ssize_t offset = 4;
-      ssize_t ret          = tuntap_read(tunif, buf, sz);
+#endif
+      ssize_t ret = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)
       {
         buf += offset;
