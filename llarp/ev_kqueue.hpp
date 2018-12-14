@@ -298,6 +298,8 @@ namespace llarp
 
     ~tun()
     {
+      if(tunif)
+        tuntap_destroy(tunif);
     }
   };
 
