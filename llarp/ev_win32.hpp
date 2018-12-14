@@ -764,9 +764,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   void
   stop()
   {
-    if(upollfd)
-      upoll_destroy(upollfd);
-    upollfd = nullptr;
+	  // do nothing
   }
 };
 
