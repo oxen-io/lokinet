@@ -228,7 +228,6 @@ namespace llarp
       return -1;
     }
 
-#ifdef __APPLE__
     virtual ssize_t
     do_write(void* buf, size_t sz)
     {
@@ -241,7 +240,6 @@ namespace llarp
       vecs[1].iov_len  = sz;
       return writev(fd, vecs, 2);
     }
-#endif
 
     void
     flush_write()
