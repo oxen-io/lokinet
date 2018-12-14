@@ -195,15 +195,20 @@ tuntap_sys_add_route(struct device *dev, t_tun_in_addr *s4, uint32_t bits,
   mask.sin_addr.s_addr = bits;
   mask.sin_len         = sizeof(struct sockaddr_in);
   char addrbuf[32]     = {0};
+  char bcaddrbuf[32]   = {0};
   char buf[1028]       = {0};
 
   inet_ntop(AF_INET, s4, addrbuf, sizeof(struct sockaddr_in));
 
   const char *addr        = addrbuf;
   const char *netmask_str = inet_ntoa(mask.sin_addr);
+  in_addr bca;
+  bca.s_addr = s4->s_addr | ~mask.sin_addr.s_addr;
+  inet_ntop(AF_INET, &bca, bcaddrbuf, sizeof(struct sockaddr_in));
+  const char *bcaddr = bcaddrbuf;
   /** because fuck this other stuff */
   snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask %s up",
-           dev->if_name, addr, addr, netmask_str);
+           dev->if_name, addr, bcaddr, netmask_str);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
   snprintf(buf, sizeof(buf), "route add %s/%d -interface %s", addr, netmask,
