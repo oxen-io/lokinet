@@ -283,12 +283,14 @@ namespace llarp
       llarp::LogDebug("set up tunif");
       if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, TUNTAP_ID_ANY) == -1)
         return false;
-      llarp::LogInfo("set ", tunif->if_name, " to use address ", t->ifaddr);
-      if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
-        return false;
+
       if(tuntap_up(tunif) == -1)
         return false;
       if(tuntap_set_ifname(tunif, t->ifname) == -1)
+        return false;
+      llarp::LogInfo("set ", tunif->if_name, " to use address ", t->ifaddr);
+
+      if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
         return false;
       fd = tunif->tun_fd;
       return fd != -1;
