@@ -148,7 +148,10 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
 void
 tuntap_sys_destroy(struct device *dev)
 {
-  (void)dev;
+  char cmdbuf[128] = {0};
+  snprintf(cmdbuf, sizeof(cmdbuf), "ifconfig %s destroy", dev->if_name);
+  tuntap_log(TUNTAP_LOG_INFO, cmdbuf);
+  system(cmdbuf);
   return;
 }
 
@@ -293,7 +296,6 @@ tuntap_sys_set_descr(struct device *dev, const char *descr, size_t len)
 int
 tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
 {
-  (void)len;
   struct ifreq ifr;
   char *newname;
   //(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
@@ -313,6 +315,7 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
     tuntap_log(TUNTAP_LOG_ERR, "Can't set interface name");
     return -1;
   }
+  (void)strlcpy(dev->if_name, ifname, len);
   free(newname);
   return 0;
 }
