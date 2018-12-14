@@ -115,7 +115,6 @@ tuntap_release(struct device *dev)
 {
   (void)close(dev->tun_fd);
   (void)close(dev->ctrl_sock);
-  free(dev);
 }
 
 int
