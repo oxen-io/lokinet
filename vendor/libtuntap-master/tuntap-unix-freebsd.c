@@ -155,6 +155,7 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
 void
 tuntap_sys_destroy(struct device *dev)
 {
+  (void)dev;
   return;
 }
 
