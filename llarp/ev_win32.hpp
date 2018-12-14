@@ -371,7 +371,10 @@ struct llarp_win32_loop : public llarp_ev_loop
     return upollfd && (tun_event_queue != INVALID_HANDLE_VALUE);
   }
 
-  // Service paths first, then virtual interface
+  // OK, the event loop, as it exists now, will _only_
+  // work on sockets (and not very efficiently at that).
+  // This will NOT work on device files like /dev/tun
+  // on Windows
   int
   tick(int ms)
   {

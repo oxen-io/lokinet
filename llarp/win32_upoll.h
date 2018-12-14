@@ -28,6 +28,13 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 
+// this is probably big enough to get
+// the lesser of 4096 sockets or whatever
+// the system allows
+#ifndef FD_SETSIZE
+#define FD_SETSIZE 4096
+#endif
+
 #include <io.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
