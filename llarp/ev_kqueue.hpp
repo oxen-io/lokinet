@@ -223,7 +223,7 @@ namespace llarp
     int
     sendto(__attribute__((unused)) const sockaddr* to,
            __attribute__((unused)) const void* data,
-           __attribute__((unused)) size_t sz)
+           __attribute__((unused)) size_t sz) override
     {
       return -1;
     }
@@ -253,7 +253,7 @@ namespace llarp
     }
 
     bool
-    tick()
+    tick() override
     {
       if(t->tick)
         t->tick(t);
@@ -261,7 +261,7 @@ namespace llarp
     }
 
     int
-    read(byte_t* buf, size_t sz)
+    read(byte_t* buf, size_t sz) override
     {
       // all BSDs have packet info
       const ssize_t offset = 4;
