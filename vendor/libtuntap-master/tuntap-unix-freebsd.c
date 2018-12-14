@@ -59,7 +59,6 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
   int persist;
   char *ifname;
   char name[MAXPATHLEN];
-  struct ifaddrs *ifa;
   struct ifreq ifr;
 
   /* Get the persistence bit */
@@ -124,6 +123,8 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
       /* NOTREACHED */
       break;
   }
+  char newifname[IFNAMSIZ] = {0};
+  (void)strlcpy(newifname, dev->if_name, sizeof(newifname));
 
   /* Set the interface name */
   (void)memset(&ifr, 0, sizeof(ifr));
@@ -140,6 +141,13 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
 
   /* Save flags for tuntap_{up, down} */
   dev->flags = ifr.ifr_flags;
+
+  if(tuntap_sys_set_ifname(dev, newifname,
+                           strnlen(newifname, sizeof(newifname))))
+  {
+    tuntap_log(TUNTAP_LOG_ERR, "can't set interface name");
+    return -1;
+  }
 
   return fd;
 }
@@ -202,7 +210,7 @@ tuntap_sys_add_route(struct device *dev, t_tun_in_addr *s4, uint32_t bits,
 
   const char *addr        = addrbuf;
   const char *netmask_str = inet_ntoa(mask.sin_addr);
-  in_addr bca;
+  struct in_addr bca;
   bca.s_addr = s4->s_addr | ~mask.sin_addr.s_addr;
   inet_ntop(AF_INET, &bca, bcaddrbuf, sizeof(struct sockaddr_in));
   const char *bcaddr = bcaddrbuf;
@@ -291,6 +299,7 @@ tuntap_sys_set_descr(struct device *dev, const char *descr, size_t len)
 int
 tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
 {
+  (void)len;
   struct ifreq ifr;
   char *newname;
   //(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
