@@ -266,8 +266,11 @@ namespace llarp
     {
       // all BSDs have packet info
       const ssize_t offset = 4;
-      ssize_t ret          = ::read(fd, buf, sz);
-      llarp::LogInfo("got ", ret, " bytes on tun");
+      // becuase reasons :^)
+      if(sz <= offset)
+        sz = 1500;
+
+      ssize_t ret = ::read(fd, buf, sz);
       if(ret > offset && t->recvpkt)
       {
         buf += offset;
