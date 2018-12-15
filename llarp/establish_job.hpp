@@ -1,6 +1,8 @@
 #ifndef LLARP_ESTABLISH_JOB_HPP
 #define LLARP_ESTABLISH_JOB_HPP
 
+#include <router_contact.hpp>
+
 namespace llarp
 {
   struct OutboundLinkEstablishJob

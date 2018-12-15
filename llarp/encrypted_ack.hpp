@@ -5,6 +5,8 @@
 
 namespace llarp
 {
+  struct Crypto;
+
   struct EncryptedAck : public Encrypted
   {
     bool
