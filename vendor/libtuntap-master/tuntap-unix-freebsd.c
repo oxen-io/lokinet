@@ -139,6 +139,13 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
     return -1;
   }
 
+  int set = 1;
+  if(ioctl(dev->ctrl_sock, TUNSIFHEAD, &set) == -1)
+  {
+    tuntap_log(TUNTAP_LOG_ERR, "ioctl for TUNSIFHEAD failed");
+    return -1;
+  }
+
   /* Save flags for tuntap_{up, down} */
   dev->flags = ifr.ifr_flags;
 
