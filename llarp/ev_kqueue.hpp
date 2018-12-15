@@ -264,8 +264,12 @@ namespace llarp
     int
     read(byte_t* buf, size_t sz) override
     {
-      // all BSDs have packet info
+// all BSDs have packet info
+#ifdef __FreeBSD__
+      const ssize_t offset = 0;
+#else
       const ssize_t offset = 4;
+#endif
       // becuase reasons :^)
       if(sz < offset)
         sz = 1500;
