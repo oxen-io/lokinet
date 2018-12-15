@@ -3,6 +3,8 @@
 
 #include <string>
 
+struct llarp_buffer_t;
+
 namespace llarp
 {
   namespace dns

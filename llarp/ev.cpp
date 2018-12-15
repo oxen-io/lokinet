@@ -5,8 +5,6 @@
 
 #include <stddef.h>
 
-#define EV_TICK_INTERVAL 100
-
 // apparently current Solaris will emulate epoll.
 #if __linux__ || __sun__
 #include "ev_epoll.hpp"
