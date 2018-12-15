@@ -266,7 +266,7 @@ namespace llarp
     {
 // all BSDs have packet info
 #ifdef __FreeBSD__
-      const ssize_t offset = 0;
+      const ssize_t offset = 8;
 #else
       const ssize_t offset = 4;
 #endif
