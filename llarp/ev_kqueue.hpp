@@ -256,7 +256,10 @@ namespace llarp
     tick() override
     {
       if(t->tick)
+      {
+        llarp::LogInfo("tick tun");
         t->tick(t);
+      }
       flush_write();
       return true;
     }
