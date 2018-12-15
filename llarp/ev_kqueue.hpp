@@ -271,7 +271,6 @@ namespace llarp
         sz = 1500;
 
       ssize_t ret = ::read(fd, buf, sz);
-      llarp::LogInfo("read ", ret, " of ", sz, " on tun interface");
       if(ret > offset && t->recvpkt)
       {
         buf += offset;
