@@ -257,6 +257,7 @@ namespace llarp
     {
       if(t->tick)
         t->tick(t);
+      flush_write();
       return true;
     }
 
@@ -440,7 +441,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev)
         {
-          if(events[idx].filter & EVFILT_READ && events[idx].data > 0)
+          if(events[idx].filter & EVFILT_READ && events[idx].data >= 0)
             ev->read(readbuf,
                      std::min(sizeof(readbuf), size_t(events[idx].data)));
           if(events[idx].filter & EVFILT_WRITE)
