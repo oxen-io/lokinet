@@ -256,10 +256,7 @@ namespace llarp
     tick() override
     {
       if(t->tick)
-      {
-        llarp::LogInfo("tick tun");
         t->tick(t);
-      }
       flush_write();
       return true;
     }
@@ -278,7 +275,10 @@ namespace llarp
       {
         buf += offset;
         ret -= offset;
-        t->recvpkt(t, llarp::InitBuffer(buf, ret));
+        llarp::LogInfo("read ", ret, " of ", sz);
+        auto pkt = llarp::InitBuffer(buf, ret);
+        llarp::DumpBuffer(pkt);
+        t->recvpkt(t, pkt);
       }
       return ret;
     }
