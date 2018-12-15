@@ -640,7 +640,7 @@ namespace llarp
           llarp::LogWarn("packet dropped");
       });
       if(self->m_UserToNetworkPktQueue.Size())
-        self->RouterLogic()->queue_job({self, &handleNetSend});
+        self->FlushSend();
     }
 
     void
