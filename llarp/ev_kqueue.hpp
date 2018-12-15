@@ -271,8 +271,7 @@ namespace llarp
       const ssize_t offset = 4;
 #endif
       // becuase reasons :^)
-      if(sz < offset)
-        sz = 1500;
+      sz = 1500;
 
       ssize_t ret = ::read(fd, buf, sz);
       if(ret > offset && t->recvpkt)
