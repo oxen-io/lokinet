@@ -22,6 +22,13 @@ namespace llarp
       return static_cast< TunEndpoint * >(tun->user)->Promise.get();
     }
 
+    static void
+    tunifTick(llarp_tun_io *tun)
+    {
+      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      self->Flush();
+    }
+
     TunEndpoint::TunEndpoint(const std::string &nickname, llarp::Router *r)
         : service::Endpoint(nickname, r)
         , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
@@ -43,7 +50,7 @@ namespace llarp
       strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
       strncpy(tunif.ifname, DefaultTunIfname, sizeof(tunif.ifname) - 1);
 #endif
-      tunif.tick         = &tunifBeforeWrite;
+      tunif.tick         = &tunifTick;
       tunif.before_write = &tunifBeforeWrite;
       tunif.recvpkt      = &tunifRecvPkt;
     }
@@ -175,6 +182,12 @@ namespace llarp
       return m_NetworkToUserPktQueue.EmplaceIf(
           [](llarp::net::IPv4Packet &) -> bool { return true; },
           std::move(pkt));
+    }
+
+    void
+    TunEndpoint::Flush()
+    {
+      FlushSend();
     }
 
     bool
@@ -618,13 +631,6 @@ namespace llarp
     }
 
     void
-    TunEndpoint::handleTickTun(void *u)
-    {
-      TunEndpoint *self = static_cast< TunEndpoint * >(u);
-      self->TickTun(self->Now());
-    }
-
-    void
     TunEndpoint::TickTun(__attribute__((unused)) llarp_time_t now)
     {
       // called in the isolated thread
@@ -639,8 +645,6 @@ namespace llarp
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
           llarp::LogWarn("packet dropped");
       });
-      if(self->m_UserToNetworkPktQueue.Size())
-        self->FlushSend();
     }
 
     void
