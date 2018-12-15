@@ -275,9 +275,7 @@ namespace llarp
       {
         buf += offset;
         ret -= offset;
-        llarp::LogInfo("read ", ret, " of ", sz);
         auto pkt = llarp::InitBuffer(buf, ret);
-        llarp::DumpBuffer(pkt);
         t->recvpkt(t, pkt);
       }
       return ret;
