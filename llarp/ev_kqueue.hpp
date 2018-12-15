@@ -271,7 +271,7 @@ namespace llarp
       {
         buf += offset;
         ret -= offset;
-        llarp::LogInfo("got " ret, " bytes on tun");
+        llarp::LogInfo("got ", ret, " bytes on tun");
         t->recvpkt(t, llarp::InitBuffer(buf, ret));
       }
       return ret;
