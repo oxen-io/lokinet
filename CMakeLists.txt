@@ -199,24 +199,32 @@ if(UNIX)
   add_definitions(-DPOSIX)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
+        set(EV_SRC llarp/ev_epoll.cpp)
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Android")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
+        set(EV_SRC llarp/ev_epoll.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-openbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+        set(EV_SRC llarp/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-netbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+        set(EV_SRC llarp/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR ${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+        set(EV_SRC llarp/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
+        set(EV_SRC llarp/ev_kqueue.cpp)
 # TODO: _actually_ port to solaris/illumos (it's fairly complete...except for TUN) -rick
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
+        set(EV_SRC llarp/ev_epoll.cpp)
     else()
         message(FATAL_ERROR "Your operating system is not supported yet")
     endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 elseif(WIN32)
     set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c)
+    set(EV_SRC llarp/ev_win32.cpp)
     add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
@@ -428,54 +436,36 @@ if(WIN32)
 endif(WIN32)
 
 set(DNSLIB_SRC
+  llarp/dns/dns.cpp
   llarp/dns/message.cpp
   llarp/dns/name.cpp
+  llarp/dns/query.cpp
   llarp/dns/question.cpp
   llarp/dns/rr.cpp
   llarp/dns/serialize.cpp
   llarp/dns/server.cpp
+  llarp/dns/string.cpp
 )
 
 
 set(LIB_SRC
   ${DNSLIB_SRC}
+  ${EV_SRC}
   ${UTP_SRC}
   llarp/address_info.cpp
+  llarp/aligned.cpp
   llarp/bencode.cpp
+  llarp/bits.cpp
   llarp/buffer.cpp
+  llarp/codel.cpp
+  llarp/common.cpp
   llarp/config.cpp
   llarp/context.cpp
   llarp/crypto.cpp
   llarp/crypto_libsodium.cpp
+  llarp/defaults.cpp
   llarp/dht.cpp
-  llarp/dns_rectypes.cpp
-  llarp/dns.cpp
-  llarp/dnsc.cpp
-  llarp/dnsd.cpp
-  llarp/dns_iptracker.cpp
-  llarp/dns_dotlokilookup.cpp
-  llarp/encode.cpp
-  llarp/encrypted_frame.cpp
-  llarp/exit_info.cpp
-  llarp/exit_route.cpp
-  llarp/ip.cpp
-  llarp/link_intro.cpp
-  llarp/link_message.cpp
-  llarp/nodedb.cpp
-  llarp/path.cpp
-  llarp/pathbuilder.cpp
-  llarp/pathset.cpp
-  llarp/profiling.cpp
-  llarp/proofofwork.cpp
-  llarp/relay_commit.cpp
-  llarp/relay_up_down.cpp
-  llarp/router_contact.cpp
-  llarp/router_id.cpp
-  llarp/router.cpp
-  llarp/rpc.cpp
-  llarp/service.cpp
-  llarp/transit_hop.cpp
-  llarp/testnet.c
+  llarp/dht/bucket.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
@@ -483,34 +473,115 @@ set(LIB_SRC
   llarp/dht/find_router.cpp
   llarp/dht/got_intro.cpp
   llarp/dht/got_router.cpp
+  llarp/dht/kademlia.cpp
+  llarp/dht/key.cpp
+  llarp/dht/message.cpp
+  llarp/dht/messages/all.cpp
+  llarp/dht/messages/findintro.cpp
+  llarp/dht/messages/findrouter.cpp
+  llarp/dht/messages/gotintro.cpp
+  llarp/dht/messages/gotrouter.cpp
+  llarp/dht/messages/pubintro.cpp
+  llarp/dht/node.cpp
   llarp/dht/publish_intro.cpp
+  llarp/dns.cpp
+  llarp/dns_dotlokilookup.cpp
+  llarp/dns_iptracker.cpp
+  llarp/dns_rectypes.cpp
+  llarp/dnsc.cpp
+  llarp/dnsd.cpp
+  llarp/encode.cpp
+  llarp/encrypted.cpp
+  llarp/encrypted_ack.cpp
+  llarp/encrypted_frame.cpp
+  llarp/endian.cpp
+  llarp/establish_job.cpp
+  llarp/exit.cpp
   llarp/exit/close_exit.cpp
   llarp/exit/context.cpp
   llarp/exit/endpoint.cpp
   llarp/exit/grant_exit.cpp
-  llarp/exit/update_exit.cpp
   llarp/exit/obtain_exit.cpp
   llarp/exit/policy.cpp
   llarp/exit/reject_exit.cpp
   llarp/exit/session.cpp
   llarp/exit/transfer_traffic.cpp
+  llarp/exit/update_exit.cpp
+  llarp/exit_info.cpp
+  llarp/exit_route.cpp
+  llarp/fs.cpp
   llarp/handlers/exit.cpp
+  llarp/handlers/null.cpp
   llarp/handlers/tun.cpp
+  llarp/ini.cpp
+  llarp/ip.cpp
+  llarp/iwp.cpp
   llarp/link/curvecp.cpp
+  llarp/link/encoder.cpp
   llarp/link/server.cpp
+  llarp/link/session.cpp
   llarp/link/utp.cpp
+  llarp/link_intro.cpp
+  llarp/link_layer.cpp
+  llarp/link_message.cpp
+  llarp/messages.cpp
+  llarp/messages/dht.cpp
+  llarp/messages/dht_immediate.cpp
+  llarp/messages/discard.cpp
+  llarp/messages/exit.cpp
+  llarp/messages/link_intro.cpp
+  llarp/messages/path_confirm.cpp
+  llarp/messages/path_latency.cpp
+  llarp/messages/path_transfer.cpp
+  llarp/messages/relay.cpp
+  llarp/messages/relay_commit.cpp
+  llarp/messages/transfer_traffic.cpp
+  llarp/net_int.cpp
+  llarp/nodedb.cpp
+  llarp/path.cpp
+  llarp/path_types.cpp
+  llarp/pathbuilder.cpp
+  llarp/pathset.cpp
+  llarp/pow.cpp
+  llarp/profiling.cpp
+  llarp/proofofwork.cpp
+  llarp/proto.cpp
+  llarp/queue.cpp
+  llarp/relay_commit.cpp
+  llarp/relay_up_down.cpp
+  llarp/router.cpp
+  llarp/router_contact.cpp
+  llarp/router_id.cpp
   llarp/routing/dht_message.cpp
+  llarp/routing/handler.cpp
+  llarp/routing/message.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp
   llarp/routing/path_latency.cpp
   llarp/routing/path_transfer.cpp
+  llarp/routing_endpoint.cpp
+  llarp/rpc.cpp
+  llarp/service.cpp
+  llarp/service/Identity.cpp
+  llarp/service/Intro.cpp
+  llarp/service/IntroSet.cpp
   llarp/service/address.cpp
+  llarp/service/config.cpp
   llarp/service/context.cpp
   llarp/service/endpoint.cpp
+  llarp/service/handler.cpp
+  llarp/service/info.cpp
   llarp/service/lookup.cpp
   llarp/service/protocol.cpp
   llarp/service/tag.cpp
-  llarp/service/info.cpp
+  llarp/service/types.cpp
+  llarp/service/vanity.cpp
+  llarp/string_view.cpp
+  llarp/testnet.c
+  llarp/threading.cpp
+  llarp/transit_hop.cpp
+  llarp/types.cpp
+  llarp/version.cpp
 )
 
 set(RC_SRC

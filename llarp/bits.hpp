@@ -1,12 +1,14 @@
 #ifndef LLARP_BITS_HPP
 #define LLARP_BITS_HPP
 
+#include <cstddef>
+
 namespace llarp
 {
   namespace bits
   {
     template < typename Int_t >
-    constexpr size_t
+    constexpr std::size_t
     count_bits(const Int_t& i)
     {
       return i == 0 ? 0
@@ -15,8 +17,8 @@ namespace llarp
     }
 
     template < typename T >
-    constexpr size_t
-    __count_array_bits(const T& array, size_t idx)
+    constexpr std::size_t
+    __count_array_bits(const T& array, std::size_t idx)
     {
       return idx < sizeof(T)
           ? count_bits(array[idx]) + __count_array_bits(array, idx + 1)
@@ -24,7 +26,7 @@ namespace llarp
     }
 
     template < typename T >
-    constexpr size_t
+    constexpr std::size_t
     count_array_bits(const T& array)
     {
       return __count_array_bits(array, 0);
