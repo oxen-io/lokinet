@@ -467,7 +467,6 @@ namespace llarp
     TunEndpoint::FlushSend()
     {
       m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
-        llarp::LogInfo(pkt.src(), " to ", pkt.dst());
         std::function< bool(llarp_buffer_t) > sendFunc;
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
@@ -667,7 +666,6 @@ namespace llarp
              }))
       {
       }
-      llarp::DumpBuffer(buf);
     }
 
     TunEndpoint::~TunEndpoint()
