@@ -267,11 +267,11 @@ namespace llarp
       // all BSDs have packet info
       const ssize_t offset = 4;
       ssize_t ret          = ::read(fd, buf, sz);
+      llarp::LogInfo("got ", ret, " bytes on tun");
       if(ret > offset && t->recvpkt)
       {
         buf += offset;
         ret -= offset;
-        llarp::LogInfo("got ", ret, " bytes on tun");
         t->recvpkt(t, llarp::InitBuffer(buf, ret));
       }
       return ret;
@@ -427,7 +427,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev)
         {
-          if(events[idx].filter & EVFILT_READ && events[idx].data >= 0)
+          if(events[idx].filter & EVFILT_READ)
             ev->read(readbuf,
                      std::min(sizeof(readbuf), size_t(events[idx].data)));
           if(events[idx].filter & EVFILT_WRITE)
