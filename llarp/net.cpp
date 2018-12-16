@@ -860,7 +860,7 @@ namespace llarp
         if(i->ifa_addr->sa_family == af)
         {
           llarp::Addr a(*i->ifa_addr);
-          if(!(a.isPrivate() || a.isLoopback() || (a.getHostLong() == 0)))
+          if(!a.isBogon())
           {
             ifname = i->ifa_name;
             found  = true;
