@@ -13,8 +13,8 @@ Alice establishes a UTP "connection" with Bob.
 
 Alice sends a LIM a_L encrpyted with the initial b_K key
 
-if Bob accepts Alice's router, Bob replies with a LIM b_L encrpyted via the
-initial a_K key.
+if Bob accepts Alice's router, Bob replies with a LIM b_L encrpyted with the
+b_K key.
 
 next the session keys are generated via:
 
@@ -30,13 +30,13 @@ B.rx_K = B_K
 
 the initial value of a_K is HS(A.k) and b_K is HS(B.k)
 
-1128 byte fragments are sent over UTP in an ordered fashion.
+1120 byte fragments are sent over UTP in an ordered fashion.
 
 The each fragment F has the following structure:
 
-[ 32 bytes blake2 keyed hash of the following 1096 bytes (h)]
+[ 32 bytes blake2 keyed hash of the following 1088 bytes (h)]
 [ 32 bytes random nonce (n)]
-[ 1064 bytes encrypted payload (p)]
+[ 1056 bytes encrypted payload (p)]
 
 the recipiant verifies F.h == MDS(F.n + F.p, rx_K) and the UTP session 
 is reset if verification fails.

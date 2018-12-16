@@ -31,11 +31,11 @@ namespace llarp
   namespace utp
   {
     constexpr size_t FragmentHashSize  = 32;
-    constexpr size_t FragmentNonceSize = 24;
+    constexpr size_t FragmentNonceSize = 32;
     constexpr size_t FragmentOverheadSize =
         FragmentHashSize + FragmentNonceSize;
     constexpr size_t FragmentBodyPayloadSize = 1024;
-    constexpr size_t FragmentBodyOverhead    = sizeof(uint32_t) * 2;
+    constexpr size_t FragmentBodyOverhead    = 32;
     constexpr size_t FragmentBodySize =
         FragmentBodyOverhead + FragmentBodyPayloadSize;
 
@@ -46,9 +46,25 @@ namespace llarp
     /// maximum size for send queue for a session before we drop
     constexpr size_t MaxSendQueueSize = 1024;
 
-    typedef llarp::AlignedBuffer< MAX_LINK_MSG_SIZE > MessageBuffer;
+    using MessageBuffer = llarp::AlignedBuffer< MAX_LINK_MSG_SIZE >;
 
     struct LinkLayer;
+
+    /// pending inbound message being received
+    struct InboundMessage
+    {
+      llarp_time_t lastActive;
+      MessageBuffer msg;
+
+      llarp_buffer_t buffer = llarp::Buffer(msg);
+
+      /// return true if this inbound message can be removed due to expiration
+      bool
+      IsExpired(llarp_time_t now) const
+      {
+        return now > lastActive && now - lastActive >= 2000;
+      }
+    };
 
     struct BaseSession : public ILinkSession
     {
@@ -58,19 +74,28 @@ namespace llarp
       bool gotLIM;
       PubKey remoteTransportPubKey;
       Addr remoteAddr;
-      SharedSecret sessionKey;
+      SharedSecret rxKey;
+      SharedSecret txKey;
       llarp_time_t lastActive;
       const static llarp_time_t sessionTimeout = 30 * 1000;
 
+      /// send queue for utp
       std::deque< utp_iovec > vecq;
+      /// current fragments waiting to be sent
       std::deque< FragmentBuffer > sendq;
 
+      /// current fragment buffer
       FragmentBuffer recvBuf;
+      /// current offset in current fragment buffer
       size_t recvBufOffset;
-      MessageBuffer recvMsg;
-      size_t recvMsgOffset;
+
+      /// messages we are recving right now
+      std::unordered_map< uint32_t, InboundMessage > m_RecvMsgs;
+
+      /// are we stalled or nah?
       bool stalled = false;
 
+      /// mark session as alive
       void
       Alive();
 
@@ -99,6 +124,7 @@ namespace llarp
 
       State state;
 
+      /// hook for utp
       void
       OnLinkEstablished(LinkLayer* p)
       {
@@ -113,6 +139,7 @@ namespace llarp
       BaseSession();
       ~BaseSession();
 
+      /// pump outbound send queue
       void
       PumpWrite()
       {
@@ -144,50 +171,21 @@ namespace llarp
             front.iov_base = ((byte_t*)front.iov_base) + s;
           }
         }
-
-        /*
-        while(sendq.size() > 0 && !stalled)
-        {
-          ssize_t expect = FragmentBufferSize - sendBufOffset;
-          ssize_t s      = write_ll(sendq.front().data() + sendBufOffset,
-        expect); if(s != expect)
-          {
-            llarp::LogDebug("stalled at offset=", sendBufOffset, " sz=", s,
-                            " to ", remoteAddr);
-            sendBufOffset += s;
-            stalled = true;
-          }
-          else
-          {
-            sendBufOffset = 0;
-            sendq.pop_front();
-          }
-        }
-        */
       }
 
-      ssize_t
-      write_ll(byte_t* buf, size_t sz)
-      {
-        if(sock == nullptr)
-        {
-          llarp::LogWarn("write_ll failed: no socket");
-          return 0;
-        }
-        ssize_t s = utp_write(sock, buf, sz);
-        llarp::LogDebug("write_ll ", s, " of ", sz, " bytes to ", remoteAddr);
-        return s;
-      }
-
+      /// verify a fragment buffer and the decrypt it
       bool
       VerifyThenDecrypt(byte_t* buf);
 
+      /// encrypt a fragment then hash the ciphertext
       void
       EncryptThenHash(const byte_t* ptr, uint32_t sz, bool isLastFragment);
 
+      /// queue a fully formed message
       bool
       QueueWriteBuffers(llarp_buffer_t buf);
 
+      /// do low level connect
       void
       Connect()
       {
@@ -195,6 +193,7 @@ namespace llarp
         EnterState(eConnecting);
       }
 
+      /// handle outbound connection made
       void
       OutboundLinkEstablished(LinkLayer* p)
       {
@@ -206,15 +205,16 @@ namespace llarp
       void
       OutboundHandshake();
 
-      // mix keys
+      // do key exchange for handshake
       bool
-      DoKeyExchange(transport_dh_func dh, const KeyExchangeNonce& n,
-                    const PubKey& other, const byte_t* secret)
+      DoKeyExchange(transport_dh_func dh, SharedSecret& K,
+                    const KeyExchangeNonce& n, const PubKey& other,
+                    const byte_t* secret)
       {
         ShortHash t_h;
         AlignedBuffer< 64 > tmp;
-        memcpy(tmp.data(), sessionKey, sessionKey.size());
-        memcpy(tmp.data() + sessionKey.size(), n, n.size());
+        memcpy(tmp.data(), K, K.size());
+        memcpy(tmp.data() + K.size(), n, n.size());
         // t_h = HS(K + L.n)
         if(!Router()->crypto.shorthash(t_h, ConstBuffer(tmp)))
         {
@@ -223,7 +223,7 @@ namespace llarp
         }
 
         // K = TKE(a.p, B_a.e, sk, t_h)
-        if(!dh(sessionKey, other, secret, t_h))
+        if(!dh(K, other, secret, t_h))
         {
           llarp::LogError("key exchange with ", other, " failed");
           return false;
@@ -232,14 +232,29 @@ namespace llarp
         return true;
       }
 
+      /// does K = HS(K + A)
+      bool
+      MutateKey(SharedSecret& K, const AlignedBuffer< 24 >& A)
+      {
+        AlignedBuffer< 56 > tmp;
+        auto buf = llarp::Buffer(tmp);
+        memcpy(buf.cur, K.data(), K.size());
+        buf.cur += K.size();
+        memcpy(buf.cur, A, A.size());
+        buf.cur = buf.base;
+        return Router()->crypto.shorthash(K, buf);
+      }
+
       void
       TickImpl(__attribute__((unused)) llarp_time_t now)
       {
       }
 
+      /// close session
       void
       Close();
 
+      /// low level read
       bool
       Recv(const void* buf, size_t sz)
       {
@@ -625,11 +640,11 @@ namespace llarp
       return std::unique_ptr< LinkLayer >(new LinkLayer(r));
     }
 
+    /// base constructor
     BaseSession::BaseSession(LinkLayer* p)
     {
       parent = p;
       remoteTransportPubKey.Zero();
-      recvMsgOffset = 0;
 
       SendQueueBacklog = [&]() -> size_t { return sendq.size(); };
 
@@ -657,7 +672,7 @@ namespace llarp
       };
       GetPubKey  = std::bind(&BaseSession::RemotePubKey, this);
       lastActive = parent->now();
-      // Pump       = []() {};
+
       Pump = std::bind(&BaseSession::PumpWrite, this);
       Tick = std::bind(&BaseSession::TickImpl, this, std::placeholders::_1);
       SendMessageBuffer = std::bind(&BaseSession::QueueWriteBuffers, this,
@@ -671,10 +686,12 @@ namespace llarp
       GetRemoteEndpoint = std::bind(&BaseSession::RemoteEndpoint, this);
     }
 
+    /// outbound session
     BaseSession::BaseSession(LinkLayer* p, utp_socket* s,
                              const RouterContact& rc, const AddressInfo& addr)
         : BaseSession(p)
     {
+      p->router->crypto.shorthash(txKey, InitBuffer(rc.pubkey, PUBKEYSIZE));
       remoteRC.Clear();
       remoteTransportPubKey = addr.pubkey;
       remoteRC              = rc;
@@ -687,10 +704,11 @@ namespace llarp
           std::bind(&BaseSession::OutboundLIM, this, std::placeholders::_1);
     }
 
+    /// inbound session
     BaseSession::BaseSession(LinkLayer* p, utp_socket* s, const Addr& addr)
         : BaseSession(p)
     {
-      p->router->crypto.shorthash(sessionKey,
+      p->router->crypto.shorthash(rxKey,
                                   InitBuffer(p->router->pubkey(), PUBKEYSIZE));
       remoteRC.Clear();
       sock = s;
@@ -708,11 +726,14 @@ namespace llarp
       {
         return false;
       }
-      remoteRC = msg->rc;
-      gotLIM   = true;
-      if(!DoKeyExchange(Router()->crypto.transport_dh_server, msg->N,
-                        remoteRC.enckey, parent->TransportSecretKey()))
-        return false;
+      if(!gotLIM)
+      {
+        remoteRC = msg->rc;
+        gotLIM   = true;
+        if(!DoKeyExchange(Router()->crypto.transport_dh_server, txKey, msg->N,
+                          remoteRC.enckey, parent->TransportSecretKey()))
+          return false;
+      }
       EnterState(eSessionReady);
       return true;
     }
@@ -745,7 +766,6 @@ namespace llarp
       }
       remoteRC = msg->rc;
       gotLIM   = true;
-      // TODO: update address info pubkey
       return DoKeyExchange(Router()->crypto.transport_dh_client, msg->N,
                            remoteTransportPubKey, Router()->encryption);
     }
@@ -753,9 +773,6 @@ namespace llarp
     void
     BaseSession::OutboundHandshake()
     {
-      // set session key
-      Router()->crypto.shorthash(sessionKey, ConstBuffer(remoteRC.pubkey));
-
       byte_t tmp[LinkIntroMessage::MaxSize];
       auto buf = StackBuffer< decltype(tmp) >(tmp);
       // build our RC
@@ -793,8 +810,7 @@ namespace llarp
         Close();
         return;
       }
-      // mix keys
-      if(!DoKeyExchange(Router()->crypto.transport_dh_client, msg.N,
+      if(!DoKeyExchange(Router()->crypto.transport_dh_client, txKey, msg.N,
                         remoteTransportPubKey, Router()->encryption))
       {
         llarp::LogError("failed to mix keys for outbound session to ",
@@ -900,8 +916,8 @@ namespace llarp
     }
 
     void
-    BaseSession::EncryptThenHash(const byte_t* ptr, uint32_t sz,
-                                 bool isLastFragment)
+    BaseSession::EncryptThenHash(const byte_t* ptr, uint32_t msgid,
+                                 uint16_t length, uint16_t remaining)
 
     {
       sendq.emplace_back();
@@ -912,9 +928,10 @@ namespace llarp
       vec.iov_len  = FragmentBufferSize;
       llarp::LogDebug("encrypt then hash ", sz, " bytes last=", isLastFragment);
       buf.Randomize();
-      byte_t* nonce = buf.data() + FragmentHashSize;
-      byte_t* body  = nonce + FragmentNonceSize;
-      byte_t* base  = body;
+      AlignedBuffer< 24 > A = buf.data();
+      byte_t* nonce         = buf.data() + FragmentHashSize;
+      byte_t* body          = nonce + FragmentNonceSize;
+      byte_t* base          = body;
       if(isLastFragment)
         htobe32buf(body, 0);
       else
@@ -928,13 +945,13 @@ namespace llarp
           InitBuffer(base, FragmentBufferSize - FragmentOverheadSize);
 
       // encrypt
-      Router()->crypto.xchacha20(payload, sessionKey, nonce);
+      Router()->crypto.xchacha20(payload, txKey, nonce);
 
       payload.base = nonce;
       payload.cur  = payload.base;
       payload.sz   = FragmentBufferSize - FragmentHashSize;
       // key'd hash
-      Router()->crypto.hmac(buf.data(), payload, sessionKey);
+      Router()->crypto.hmac(buf.data(), payload, txKey);
     }
 
     void
@@ -957,7 +974,7 @@ namespace llarp
 
       auto hbuf = InitBuffer(buf + FragmentHashSize,
                              FragmentBufferSize - FragmentHashSize);
-      if(!Router()->crypto.hmac(digest.data(), hbuf, sessionKey))
+      if(!Router()->crypto.hmac(digest.data(), hbuf, rxKey))
       {
         llarp::LogError("keyed hash failed");
         return false;
@@ -974,32 +991,43 @@ namespace llarp
       auto body = InitBuffer(buf + FragmentOverheadSize,
                              FragmentBufferSize - FragmentOverheadSize);
 
-      Router()->crypto.xchacha20(body, sessionKey, buf + FragmentHashSize);
+      Router()->crypto.xchacha20(body, rxKey, buf + FragmentHashSize);
 
-      uint32_t upper, lower;
-      if(!(llarp_buffer_read_uint32(&body, &upper)
-           && llarp_buffer_read_uint32(&body, &lower)))
+      AlignedBuffer< 24 > A = body.cur;
+
+      MutateKey(rxKey, A);
+
+      body.cur += 24;
+      uint32_t msgid;
+      if(!llarp_buffer_read_uint32(&body, &msgid))
         return false;
-      bool fragmentEnd = upper == 0;
-      llarp::LogDebug("fragment size ", lower, " from ", remoteAddr);
-      if(lower + recvMsgOffset > recvMsg.size())
+
+      uint32_t length, remaining;
+
+      if(!(llarp_buffer_read_uint16(&body, &length)
+           && llarp_buffer_read_uint16(&body, &remaining)))
+        return false;
+
+      if(length > (body.sz - (body.cur - body.base)))
       {
-        llarp::LogError("Fragment too big: ", lower, " bytes");
+        // too big length
         return false;
       }
-      memcpy(recvMsg.data() + recvMsgOffset, body.cur, lower);
-      recvMsgOffset += lower;
-      if(fragmentEnd)
+
+      auto& inbound      = m_RecvMsgs[msgid];
+      inbound.lastActive = Router()->Now();
+
+      inbound.FeedData(body.cur, length);
+
+      if(remaining == 0)
       {
-        // got a message
-        llarp::LogDebug("end of message from ", remoteAddr);
-        auto mbuf = InitBuffer(recvMsg.data(), recvMsgOffset);
-        if(!Router()->HandleRecvLinkMessageBuffer(this, mbuf))
-        {
-          llarp::LogWarn("failed to handle message from ", remoteAddr);
-          llarp::DumpBuffer(mbuf);
-        }
-        recvMsgOffset = 0;
+        // reszie
+        inbound.buffer.sz = inbound.buffer.cur - inbound.buffer.base;
+        // rewind
+        inbound.buffer.cur = inbound.buffer.base;
+        // process
+        if(!Router()->HandleRecvLinkMessageBuffer(this, inbound.buffer))
+          return false;
       }
       return true;
     }
