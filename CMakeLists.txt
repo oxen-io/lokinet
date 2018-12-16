@@ -685,10 +685,11 @@ else()
   add_executable(${EXE} ${EXE_SRC})
   target_include_directories(${TEST_EXE} PRIVATE ${GTEST_DIR}/include ${GTEST_DIR})
   install(TARGETS ${EXE} RUNTIME DESTINATION bin)
-
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap RUNTIME DESTINATION bin)
+  
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
+  endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
