@@ -1,14 +1,14 @@
 #include <gtest/gtest.h>
-#include <llarp/exit.hpp>
-#include "router.hpp"
+
+#include <exit.hpp>
+#include <router.hpp>
 
 struct ExitTest : public ::testing::Test
 {
-  ExitTest()
+  ExitTest() : r(nullptr, nullptr, nullptr)
   {
-    llarp_crypto_init(&r.crypto);
   }
-  llarp_router r;
+  llarp::Router r;
 };
 
 TEST_F(ExitTest, AddMultipleIP)

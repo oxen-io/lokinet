@@ -1,6 +1,6 @@
-#include <llarp/messages/path_transfer.hpp>
-#include "../buffer.hpp"
-#include "../router.hpp"
+#include <buffer.hpp>
+#include <messages/path_transfer.hpp>
+#include <router.hpp>
 
 namespace llarp
 {
@@ -57,7 +57,7 @@ namespace llarp
 
     bool
     PathTransferMessage::HandleMessage(IMessageHandler* h,
-                                       llarp_router* r) const
+                                       llarp::Router* r) const
     {
       return h->HandlePathTransferMessage(this, r);
     }

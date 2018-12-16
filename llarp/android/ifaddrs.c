@@ -326,8 +326,8 @@ interpretLink(struct nlmsghdr *p_hdr, struct ifaddrs **p_resultList)
   for(l_rta = IFLA_RTA(l_info); RTA_OK(l_rta, l_rtaSize);
       l_rta = RTA_NEXT(l_rta, l_rtaSize))
   {
-    void *l_rtaData      = RTA_DATA(l_rta);
-    (void) l_rtaData;
+    void *l_rtaData = RTA_DATA(l_rta);
+    (void)l_rtaData;
     size_t l_rtaDataSize = RTA_PAYLOAD(l_rta);
     switch(l_rta->rta_type)
     {
@@ -454,8 +454,8 @@ interpretAddr(struct nlmsghdr *p_hdr, struct ifaddrs **p_resultList,
   for(l_rta = IFA_RTA(l_info); RTA_OK(l_rta, l_rtaSize);
       l_rta = RTA_NEXT(l_rta, l_rtaSize))
   {
-    void *l_rtaData      = RTA_DATA(l_rta);
-    (void) l_rtaData;
+    void *l_rtaData = RTA_DATA(l_rta);
+    (void)l_rtaData;
     size_t l_rtaDataSize = RTA_PAYLOAD(l_rta);
 
     switch(l_rta->rta_type)

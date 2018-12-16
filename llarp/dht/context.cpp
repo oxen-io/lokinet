@@ -1,9 +1,10 @@
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/gotrouter.hpp>
-#include <llarp/messages/dht.hpp>
-#include <llarp/messages/dht_immediate.hpp>
+#include <dht/context.hpp>
+#include <dht/messages/gotrouter.hpp>
+#include <messages/dht.hpp>
+#include <messages/dht_immediate.hpp>
+#include <router.hpp>
+
 #include <vector>
-#include "router.hpp"
 
 namespace llarp
 {
@@ -56,8 +57,7 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(peer.node,
-                          new FindRouterMessage(parent->OurKey(), peer.txid));
+        parent->DHTSendTo(peer.node, new FindRouterMessage(peer.txid));
       }
 
       bool
@@ -77,9 +77,11 @@ namespace llarp
         llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
         for(const auto &pk : valuesFound)
         {
-          // try connecting to it we don't know it
-          // this triggers a dht lookup
-          parent->router->TryEstablishTo(pk);
+          // lookup router
+          parent->LookupRouter(
+              pk,
+              std::bind(&llarp::Router::HandleDHTLookupForExplore,
+                        parent->router, pk, std::placeholders::_1));
         }
       }
     };
@@ -87,10 +89,11 @@ namespace llarp
     void
     Context::ExploreNetworkVia(const Key_t &askpeer)
     {
-      TXOwner peer(askpeer, ++ids);
-      TXOwner whoasked(OurKey(), 0);
-      pendingExploreLookups.NewTX(peer, whoasked, askpeer,
-                                  new ExploreNetworkJob(askpeer, this));
+      uint64_t txid = ++ids;
+      TXOwner peer(askpeer, txid);
+      TXOwner whoasked(OurKey(), txid);
+      pendingExploreLookups.NewTX(peer, whoasked, askpeer.data(),
+                                  new ExploreNetworkJob(askpeer.data(), this));
     }
 
     void
@@ -100,8 +103,7 @@ namespace llarp
         return;
       Context *ctx = static_cast< Context * >(u);
       ctx->Explore(1);
-      llarp_logic_call_later(ctx->router->logic,
-                             {orig, ctx, &handle_explore_timer});
+      ctx->router->logic->call_later({orig, ctx, &handle_explore_timer});
     }
 
     void
@@ -148,7 +150,7 @@ namespace llarp
       }
       auto itr = nodes.begin();
       // start at random middle point
-      auto start = llarp_randint() % nodes.size();
+      auto start = llarp::randint() % nodes.size();
       std::advance(itr, start);
       auto end            = itr;
       std::string tagname = tag.ToString();
@@ -210,7 +212,7 @@ namespace llarp
           if((next ^ target) < (ourKey ^ target))
           {
             // yes it is closer, ask neighboor recursively
-            LookupRouterRecursive(target, requester, txid, next);
+            LookupRouterRecursive(target.data(), requester, txid, next);
           }
           else
           {
@@ -257,7 +259,7 @@ namespace llarp
     }
 
     void
-    Context::Init(const Key_t &us, llarp_router *r,
+    Context::Init(const Key_t &us, llarp::Router *r,
                   llarp_time_t exploreInterval)
     {
       router   = r;
@@ -266,8 +268,8 @@ namespace llarp
       services = new Bucket< ISNode >(ourKey);
       llarp::LogDebug("intialize dht with key ", ourKey);
       // start exploring
-      llarp_logic_call_later(
-          r->logic,
+
+      r->logic->call_later(
           {exploreInterval, this, &llarp::dht::Context::handle_explore_timer});
       // start cleanup timer
       ScheduleCleanupTimer();
@@ -276,12 +278,11 @@ namespace llarp
     void
     Context::ScheduleCleanupTimer()
     {
-      llarp_logic_call_later(router->logic,
-                             {1000, this, &handle_cleaner_timer});
+      router->logic->call_later({1000, this, &handle_cleaner_timer});
     }
 
     void
-    Context::DHTSendTo(const Key_t &peer, IMessage *msg, bool keepalive)
+    Context::DHTSendTo(const byte_t *peer, IMessage *msg, bool keepalive)
     {
       llarp::DHTImmeidateMessage m;
       m.msgs.emplace_back(msg);
@@ -721,9 +722,7 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(
-            peer.node,
-            new FindRouterMessage(parent->OurKey(), target, peer.txid));
+        parent->DHTSendTo(peer.node, new FindRouterMessage(peer.txid, target));
       }
 
       virtual void
@@ -809,7 +808,7 @@ namespace llarp
       }
     }
 
-    llarp_crypto *
+    llarp::Crypto *
     Context::Crypto()
     {
       return &router->crypto;

@@ -1,5 +1,6 @@
-#include <llarp/buffer.h>
-#include <llarp/endian.hpp>
+#include <buffer.h>
+#include <endian.hpp>
+
 #include <stdarg.h>
 #include <stdio.h>
 
@@ -110,16 +111,6 @@ llarp_buffer_read_uint16(llarp_buffer_t* buf, uint16_t* i)
 
 bool
 llarp_buffer_read_uint32(llarp_buffer_t* buf, uint32_t* i)
-{
-  if(llarp_buffer_size_left(*buf) < sizeof(uint32_t))
-    return false;
-  *i = bufbe32toh(buf->cur);
-  buf->cur += sizeof(uint32_t);
-  return true;
-}
-
-bool
-llarp_buffer_put_uint32(llarp_buffer_t* buf, uint32_t* i)
 {
   if(llarp_buffer_size_left(*buf) < sizeof(uint32_t))
     return false;

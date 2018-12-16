@@ -1,5 +1,6 @@
-#include <llarp/exit/session.hpp>
-#include "router.hpp"
+#include <exit/session.hpp>
+#include <path.hpp>
+#include <router.hpp>
 
 namespace llarp
 {
@@ -7,10 +8,12 @@ namespace llarp
   {
     BaseSession::BaseSession(const llarp::RouterID& router,
                              std::function< bool(llarp_buffer_t) > writepkt,
-                             llarp_router* r, size_t numpaths, size_t hoplen)
+                             llarp::Router* r, size_t numpaths, size_t hoplen)
         : llarp::path::Builder(r, r->dht, numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
+        , m_Counter(0)
+        , m_LastUse(0)
     {
       r->crypto.identity_keygen(m_ExitIdentity);
     }
@@ -20,13 +23,19 @@ namespace llarp
     }
 
     bool
+    BaseSession::LoadIdentityFromFile(const char* fname)
+    {
+      return m_ExitIdentity.LoadFromFile(fname);
+    }
+
+    bool
     BaseSession::ShouldBuildMore(llarp_time_t now) const
     {
       const size_t expect = (1 + (m_NumPaths / 2));
       if(NumPathsExistingAt(now + (10 * 1000)) < expect)
-        return true;
+        return path::Builder::ShouldBuildMore(now);
       if(AvailablePaths(llarp::path::ePathRoleExit) < expect)
-        return true;
+        return path::Builder::ShouldBuildMore(now);
       return false;
     }
 
@@ -36,7 +45,9 @@ namespace llarp
                            llarp::path::PathRole roles)
     {
       if(hop == numHops - 1)
-        return llarp_nodedb_get_rc(db, m_ExitRouter, cur);
+      {
+        return db->Get(m_ExitRouter, cur);
+      }
       else
         return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
@@ -44,6 +55,7 @@ namespace llarp
     void
     BaseSession::HandlePathBuilt(llarp::path::Path* p)
     {
+      path::Builder::HandlePathBuilt(p);
       p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
@@ -55,11 +67,8 @@ namespace llarp
                                         std::placeholders::_2));
       llarp::routing::ObtainExitMessage obtain;
       obtain.S = p->NextSeqNo();
-      obtain.T = llarp_randint();
-      // TODO: set expiratation
-      obtain.X = 0;
-      // TODO: distinguish between service node traffic
-      obtain.E = 1;
+      obtain.T = llarp::randint();
+      PopulateRequest(obtain);
       if(!obtain.Sign(&router->crypto, m_ExitIdentity))
       {
         llarp::LogError("Failed to sign exit request");
@@ -74,10 +83,10 @@ namespace llarp
     bool
     BaseSession::HandleGotExit(llarp::path::Path* p, llarp_time_t b)
     {
+      m_LastUse = router->Now();
       if(b == 0)
-      {
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
-      }
+
       return true;
     }
 
@@ -86,7 +95,13 @@ namespace llarp
     {
       (void)p;
       if(m_WritePacket)
-        return m_WritePacket(pkt);
+      {
+        if(!m_WritePacket(pkt))
+          return false;
+        m_LastUse = router->Now();
+        return true;
+      }
+
       return false;
     }
 
@@ -101,17 +116,79 @@ namespace llarp
     }
 
     bool
-    BaseSession::SendUpstreamTraffic(llarp::net::IPv4Packet pkt)
+    BaseSession::QueueUpstreamTraffic(llarp::net::IPv4Packet pkt,
+                                      const size_t N)
     {
-      auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
-      if(!path)
+      auto buf    = pkt.Buffer();
+      auto& queue = m_Upstream[buf.sz / N];
+      // queue overflow
+      if(queue.size() >= MaxUpstreamQueueLength)
         return false;
-      llarp::routing::TransferTrafficMessage transfer;
-      transfer.S = path->NextSeqNo();
-      if(!transfer.PutBuffer(pkt.Buffer()))
-        return false;
-      return path->SendRoutingMessage(&transfer, router);
+      if(queue.size() == 0)
+      {
+        queue.emplace_back();
+        return queue.back().PutBuffer(buf, m_Counter++);
+      }
+      auto& back = queue.back();
+      // pack to nearest N
+      if(back.Size() + buf.sz > N)
+      {
+        queue.emplace_back();
+        return queue.back().PutBuffer(buf, m_Counter++);
+      }
+      else
+        return back.PutBuffer(buf, m_Counter++);
     }
 
+    bool
+    BaseSession::IsReady() const
+    {
+      return AvailablePaths(llarp::path::ePathRoleExit) > 0;
+    }
+
+    bool
+    BaseSession::IsExpired(llarp_time_t now) const
+    {
+      return m_LastUse && now > m_LastUse && now - m_LastUse > LifeSpan;
+    }
+
+    bool
+    BaseSession::FlushUpstreamTraffic()
+    {
+      auto now  = router->Now();
+      auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
+      if(!path)
+      {
+        // discard
+        for(auto& item : m_Upstream)
+          item.second.clear();
+        return false;
+      }
+      for(auto& item : m_Upstream)
+      {
+        auto& queue = item.second;
+        while(queue.size())
+        {
+          auto& msg = queue.front();
+          msg.S     = path->NextSeqNo();
+          if(path->SendRoutingMessage(&msg, router))
+            m_LastUse = now;
+          queue.pop_front();
+        }
+      }
+      return true;
+    }
+
+    SNodeSession::SNodeSession(const llarp::RouterID& snodeRouter,
+                               std::function< bool(llarp_buffer_t) > writepkt,
+                               llarp::Router* r, size_t numpaths, size_t hoplen,
+                               bool useRouterSNodeKey)
+        : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
+    {
+      if(useRouterSNodeKey)
+      {
+        m_ExitIdentity = r->identity;
+      }
+    }
   }  // namespace exit
 }  // namespace llarp

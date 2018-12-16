@@ -1,14 +1,14 @@
-#include <llarp/dht.h>
-#include "router.hpp"
+#include <dht.h>
+#include <dht/context.hpp>
 #include "router_contact.hpp"
 
-llarp_dht_context::llarp_dht_context(llarp_router *router)
+llarp_dht_context::llarp_dht_context(llarp::Router *router)
 {
   parent = router;
 }
 
 struct llarp_dht_context *
-llarp_dht_context_new(struct llarp_router *router)
+llarp_dht_context_new(llarp::Router *router)
 {
   return new llarp_dht_context(router);
 }
@@ -47,7 +47,7 @@ llarp_dht_lookup_router(struct llarp_dht_context *ctx,
   // llarp_rc_clear(&job->result);
   llarp::LogError("implement me llarp_dht_lookup_router");
   /*
-  llarp_logic_queue_job(ctx->parent->logic,
+  ctx->parent->logic->queue_job(
                         {job, &llarp::dht::Context::queue_router_lookup});
   */
 }

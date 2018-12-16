@@ -1,7 +1,8 @@
-#include <llarp/routing/handler.hpp>
-#include <llarp/service/protocol.hpp>
-#include "buffer.hpp"
-#include "mem.hpp"
+#include <buffer.hpp>
+#include <logic.hpp>
+#include <mem.hpp>
+#include <routing/handler.hpp>
+#include <service/protocol.hpp>
 
 namespace llarp
 {
@@ -152,7 +153,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::DecryptPayloadInto(llarp_crypto* crypto,
+    ProtocolFrame::DecryptPayloadInto(llarp::Crypto* crypto,
                                       const byte_t* sharedkey,
                                       ProtocolMessage& msg) const
     {
@@ -163,7 +164,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::EncryptAndSign(llarp_crypto* crypto,
+    ProtocolFrame::EncryptAndSign(llarp::Crypto* crypto,
                                   const ProtocolMessage& msg,
                                   const byte_t* sessionKey,
                                   const Identity& localIdent)
@@ -207,14 +208,14 @@ namespace llarp
 
     struct AsyncFrameDecrypt
     {
-      llarp_crypto* crypto;
-      llarp_logic* logic;
+      llarp::Crypto* crypto;
+      llarp::Logic* logic;
       ProtocolMessage* msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
       const ProtocolFrame frame;
 
-      AsyncFrameDecrypt(llarp_logic* l, llarp_crypto* c,
+      AsyncFrameDecrypt(llarp::Logic* l, llarp::Crypto* c,
                         const Identity& localIdent, IDataHandler* h,
                         ProtocolMessage* m, const ProtocolFrame& f)
           : crypto(c)
@@ -286,8 +287,7 @@ namespace llarp
         self->handler->PutCachedSessionKeyFor(self->msg->tag, sharedKey);
 
         self->msg->handler = self->handler;
-        llarp_logic_queue_job(self->logic,
-                              {self->msg, &ProtocolMessage::ProcessAsync});
+        self->logic->queue_job({self->msg, &ProtocolMessage::ProcessAsync});
         delete self;
       }
     };
@@ -306,7 +306,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::AsyncDecryptAndVerify(llarp_logic* logic, llarp_crypto* c,
+    ProtocolFrame::AsyncDecryptAndVerify(llarp::Logic* logic, llarp::Crypto* c,
                                          const PathID_t& srcPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
@@ -349,7 +349,7 @@ namespace llarp
       }
       msg->srcPath = srcPath;
       msg->handler = handler;
-      llarp_logic_queue_job(logic, {msg, &ProtocolMessage::ProcessAsync});
+      logic->queue_job({msg, &ProtocolMessage::ProcessAsync});
       return true;
     }
 
@@ -361,7 +361,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::Verify(llarp_crypto* crypto, const ServiceInfo& from) const
+    ProtocolFrame::Verify(llarp::Crypto* crypto, const ServiceInfo& from) const
     {
       ProtocolFrame copy(*this);
       // save signature
@@ -385,7 +385,7 @@ namespace llarp
 
     bool
     ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
-                                 __attribute__((unused)) llarp_router* r) const
+                                 __attribute__((unused)) llarp::Router* r) const
     {
       return h->HandleHiddenServiceFrame(this);
     }

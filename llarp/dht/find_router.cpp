@@ -1,9 +1,8 @@
-
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/findrouter.hpp>
-#include <llarp/dht/messages/gotrouter.hpp>
-#include <llarp/messages/dht.hpp>
-#include "router.hpp"
+#include <dht/context.hpp>
+#include <dht/messages/findrouter.hpp>
+#include <dht/messages/gotrouter.hpp>
+#include <messages/dht.hpp>
+#include <router.hpp>
 
 namespace llarp
 {
@@ -16,7 +15,8 @@ namespace llarp
     {
       auto &dht = ctx->impl;
       /// lookup for us, send an immeidate reply
-      if(K == dht.OurKey())
+      Key_t us = dht.OurKey();
+      if(K == us)
       {
         auto path = dht.router->paths.GetByUpstream(K, pathID);
         if(path)
@@ -32,7 +32,7 @@ namespace llarp
       Key_t k = K.data();
       // check if we know this in our nodedb first
       RouterContact found;
-      if(llarp_nodedb_get_rc(dht.router->nodedb, K, found))
+      if(dht.router->nodedb->Get(K, found))
       {
         replies.emplace_back(
             new GotRouterMessage(K.data(), txid, {found}, false));
@@ -158,7 +158,7 @@ namespace llarp
       RouterContact found;
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
-      else if(llarp_nodedb_get_rc(dht.router->nodedb, K, found))
+      else if(dht.router->nodedb->Get(K, found))
       {
         replies.emplace_back(
             new GotRouterMessage(K.data(), txid, {found}, false));

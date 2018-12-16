@@ -1,4 +1,6 @@
-#include <llarp/dnsc.hpp>
+#include <dnsc.hpp>
+#include <logger.hpp>
+#include <net.hpp>  // for llarp::Addr
 
 #ifndef _WIN32
 #include <arpa/inet.h>
@@ -12,10 +14,8 @@
 #include <sys/types.h>
 #include <unistd.h> /* close */
 
-#include <algorithm>      // for std::find_if
-#include <llarp/net.hpp>  // for llarp::Addr
-#include <llarp/logger.hpp>
-#include <stdio.h>  // sprintf
+#include <algorithm>  // for std::find_if
+#include <stdio.h>    // sprintf
 
 #define MIN(X, Y) (((X) < (Y)) ? (X) : (Y))
 
@@ -123,8 +123,6 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
   }
   request->question.type   = type;
   request->question.qClass = 1;
-
-  request->packet.header = nullptr;
 
   // register our self with the tracker
   dns_tracker *tracker = request->context->tracker;
@@ -633,66 +631,63 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
 
   // unsigned char *castBuf = (unsigned char *)buffer;
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
-  dns_msg_header *hdr = decode_hdr(lbuffer);
-  llarp::LogInfo("response header says it belongs to id #", hdr->id);
+  dns_msg_header hdr;
+  if(!decode_hdr(&lbuffer, &hdr))
+  {
+    llarp::LogError("failed to decode dns header");
+    return;
+  }
+
+  llarp::LogInfo("response header says it belongs to id #", hdr.id);
 
   // if we sent this out, then there's an id
   struct dns_tracker *tracker         = (struct dns_tracker *)dnsc->tracker;
-  struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
+  struct dnsc_answer_request *request = tracker->client_request[hdr.id].get();
 
   if(request)
   {
     request->packet.header = hdr;
-    generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(),
-                                 lbuffer, hdr);
+    generic_handle_dnsc_recvfrom(tracker->client_request[hdr.id].get(), lbuffer,
+                                 &hdr);
   }
   else
   {
-    llarp::LogWarn("Ignoring multiple responses on ID #", hdr->id);
+    llarp::LogWarn("Ignoring multiple responses on ID #", hdr.id);
   }
 }
 
 /// intermediate udp_io handler
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
-                           const struct sockaddr *saddr, const void *buf,
-                           const ssize_t sz)
+                           const struct sockaddr *saddr, llarp_buffer_t buf)
 {
   if(!saddr)
   {
     llarp::LogWarn("saddr isnt set");
   }
-  if(sz < 0)
+  // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
+  dns_msg_header hdr;
+  if(!decode_hdr(&buf, &hdr))
   {
-    llarp::LogWarn("Error Receiving DNS Client Response");
+    llarp::LogError("failed to decode dns header");
     return;
   }
+  buf.cur = buf.base;  // reset cursor to beginning
 
-  llarp_buffer_t buffer;
-  buffer.base = (byte_t *)buf;
-  buffer.cur  = buffer.base;
-  buffer.sz   = sz;
-
-  // unsigned char *castBuf = (unsigned char *)buf;
-  // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
-  dns_msg_header *hdr = decode_hdr(buffer);
-  buffer.cur          = buffer.base;  // reset cursor to beginning
-
-  llarp::LogDebug("Header got client responses for id: ", hdr->id);
+  llarp::LogDebug("Header got client responses for id: ", hdr.id);
 
   // if we sent this out, then there's an id
   struct dns_tracker *tracker         = (struct dns_tracker *)udp->user;
-  struct dnsc_answer_request *request = tracker->client_request[hdr->id].get();
+  struct dnsc_answer_request *request = tracker->client_request[hdr.id].get();
 
   // sometimes we'll get double responses
   if(request)
   {
-    request->packet.header = hdr;
-    generic_handle_dnsc_recvfrom(request, buffer, hdr);
+    generic_handle_dnsc_recvfrom(request, buf, &hdr);
   }
   else
   {
-    llarp::LogWarn("Ignoring multiple responses on ID #", hdr->id);
+    llarp::LogWarn("Ignoring multiple responses on ID #", hdr.id);
   }
 }
 
@@ -757,8 +752,9 @@ llarp_resolve_host(struct dnsc_context *const dnsc, const char *url,
   // bytes");
 
   // ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, bytes, length);
-  ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->resolvers[0],
-                                    dns_packet->request, dns_packet->length);
+  ssize_t ret = llarp_ev_udp_sendto(
+      dnsc->udp, dnsc->resolvers[0],
+      llarp::InitBuffer(dns_packet->request, dns_packet->length));
   delete dns_packet;
   if(ret < 0)
   {
@@ -789,8 +785,7 @@ llarp_host_resolved(dnsc_answer_request *const request)
 }
 
 bool
-llarp_dnsc_init(struct dnsc_context *const dnsc,
-                struct llarp_logic *const logic,
+llarp_dnsc_init(struct dnsc_context *const dnsc, llarp::Logic *const logic,
                 struct llarp_ev_loop *const netloop,
                 const llarp::Addr &dnsc_sockaddr)
 {

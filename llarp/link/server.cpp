@@ -1,5 +1,5 @@
-#include <llarp/link/server.hpp>
-#include "fs.hpp"
+#include <fs.hpp>
+#include <link/server.hpp>
 
 namespace llarp
 {
@@ -8,7 +8,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::HasSessionTo(const PubKey& pk)
+  ILinkLayer::HasSessionTo(const byte_t* pk)
   {
     Lock l(m_AuthedLinksMutex);
     return m_AuthedLinks.find(pk) != m_AuthedLinks.end();
@@ -61,7 +61,8 @@ namespace llarp
         }
         else
         {
-          llarp::LogInfo("session to ", itr->second->GetPubKey(), " timed out");
+          llarp::LogInfo("session to ", RouterID(itr->second->GetPubKey()),
+                         " timed out");
           itr = m_AuthedLinks.erase(itr);
         }
       }
@@ -84,8 +85,9 @@ namespace llarp
   }
 
   void
-  ILinkLayer::MapAddr(const PubKey& pk, ILinkSession* s)
+  ILinkLayer::MapAddr(const byte_t* pk, ILinkSession* s)
   {
+    static constexpr size_t MaxSessionsPerKey = 16;
     Lock l_authed(m_AuthedLinksMutex);
     Lock l_pending(m_PendingMutex);
     auto itr = m_Pending.begin();
@@ -93,7 +95,10 @@ namespace llarp
     {
       if(itr->get() == s)
       {
-        m_AuthedLinks.insert(std::make_pair(pk, std::move(*itr)));
+        if(m_AuthedLinks.count(pk) < MaxSessionsPerKey)
+          m_AuthedLinks.insert(std::make_pair(pk, std::move(*itr)));
+        else
+          s->SendClose();
         itr = m_Pending.erase(itr);
         return;
       }
@@ -124,7 +129,7 @@ namespace llarp
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return false;
-    llarp::LogInfo("Try establish to ", rc.pubkey);
+    llarp::LogInfo("Try establish to ", RouterID(rc.pubkey.data()));
     llarp::Addr addr(to);
     auto s = NewOutboundSession(rc, to);
     s->Start();
@@ -133,7 +138,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Start(llarp_logic* l)
+  ILinkLayer::Start(Logic* l)
   {
     m_Logic = l;
     ScheduleTick(100);
@@ -144,7 +149,7 @@ namespace llarp
   ILinkLayer::Stop()
   {
     if(m_Logic && tick_id)
-      llarp_logic_remove_call(m_Logic, tick_id);
+      m_Logic->remove_call(tick_id);
     {
       Lock l(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
@@ -166,11 +171,12 @@ namespace llarp
   }
 
   void
-  ILinkLayer::CloseSessionTo(const PubKey& remote)
+  ILinkLayer::CloseSessionTo(const byte_t* remote)
   {
     Lock l(m_AuthedLinksMutex);
-    llarp::LogInfo("Closing all to ", remote);
-    auto range = m_AuthedLinks.equal_range(remote);
+    RouterID r = remote;
+    llarp::LogInfo("Closing all to ", r);
+    auto range = m_AuthedLinks.equal_range(r);
     auto itr   = range.first;
     while(itr != range.second)
     {
@@ -180,7 +186,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::KeepAliveSessionTo(const PubKey& remote)
+  ILinkLayer::KeepAliveSessionTo(const byte_t* remote)
   {
     Lock l(m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
@@ -193,7 +199,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::SendTo(const PubKey& remote, llarp_buffer_t buf)
+  ILinkLayer::SendTo(const byte_t* remote, llarp_buffer_t buf)
   {
     ILinkSession* s = nullptr;
     {
@@ -280,8 +286,7 @@ namespace llarp
   void
   ILinkLayer::ScheduleTick(uint64_t interval)
   {
-    tick_id = llarp_logic_call_later(
-        m_Logic, {interval, this, &ILinkLayer::on_timer_tick});
+    tick_id = m_Logic->call_later({interval, this, &ILinkLayer::on_timer_tick});
   }
 
 }  // namespace llarp

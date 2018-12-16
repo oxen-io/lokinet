@@ -1,12 +1,13 @@
-#include <llarp.h>
-#include <llarp/logger.hpp>
-#include <signal.h>
+#include <config.hpp>  // for ensure_config
+#include <fs.hpp>
 #include <getopt.h>
+#include <libgen.h>
+#include <llarp.h>
+#include <logger.hpp>
+#include <signal.h>
+
 #include <string>
 #include <iostream>
-#include <libgen.h>
-#include "fs.hpp"
-#include "config.hpp"  // for ensure_config
 
 #ifdef _WIN32
 #define wmin(x, y) (((x) < (y)) ? (x) : (y))
@@ -166,10 +167,13 @@ main(int argc, char *argv[])
   if(ctx)
   {
     signal(SIGINT, handle_signal);
+    signal(SIGTERM, handle_signal);
 #ifndef _WIN32
     signal(SIGHUP, handle_signal);
 #endif
-    code = llarp_main_run(ctx);
+    code = llarp_main_setup(ctx);
+    if(code == 0)
+      code = llarp_main_run(ctx);
     llarp_main_free(ctx);
   }
 #ifdef _WIN32

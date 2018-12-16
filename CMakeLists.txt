@@ -7,53 +7,83 @@ project(${PROJECT_NAME} C CXX ASM)
 option(USE_LIBABYSS "enable libabyss" )
 option(USE_AVX2 "enable avx2 code" )
 option(USE_NETNS "enable networking namespace support" )
+option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU, but does not show in CPUID)" )
+option(STATIC_LINK "emit fully linked binaries" )
+option(RPI "Build for 32-bit Raspberry Pi" )
+option(SHADOW "use shadow testing framework. linux only" )
+option(ASAN "use address sanitiser, if your system has it" )
+option(JEMALLOC "use jemalloc. Not required on BSD" )
+option(DEBIAN "build for debian" )
+option(TESTNET "testnet build" )
 
-# Require C++11
-set(CMAKE_CXX_STANDARD 11)
+if(WIN32)
+  set(CMAKE_CXX_STANDARD 17)
+else()
+  set(CMAKE_CXX_STANDARD 11)
+endif(WIN32)
+
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
+  message( FATAL_ERROR "Shared library target is Linux only" )
+endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
+
+if (STATIC_LINK AND SHADOW)
+  message(FATAL_ERROR "the shadow-framework build cannot be linked statically!")
+endif(STATIC_LINK AND SHADOW)
 
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
-add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas)
+add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unknown-warning-option)
 # vla are evil
 add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
-# gah, can't recall which -Wno flag is exclusive to clang
-# -Wno-cast-function-type is GNU exclusive..i think
+# these vars are set by the cmake toolchain spec
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 # dynamic linking does this all the time
-add_compile_options(-Wno-cast-function-type)
-if (USING_CLANG)
-add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
-add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-# because clang is insane enough to inline whole sections of the C++ library!
-# May have been fixed in llvm-7.
-set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition --rtlib=libgcc")
-endif(USING_CLANG)
-endif()
-
-
-
+  if (USING_CLANG) # windows only, also set by toolchain file
+    option(NO_LIBGCC "use compiler-rt instead" OFF)
+    add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
+    add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+    if (NO_LIBGCC)
+      set(CMAKE_CXX_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_CXX_STANDARD_LIBRARIES}")
+      set(CMAKE_C_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_C_STANDARD_LIBRARIES}")
+    endif(NO_LIBGCC)
+  else()
+    # found it. this is GNU only
+    add_compile_options(-Wno-cast-function-type)
+  endif(USING_CLANG)
+endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(WIN32)
-add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-add_compile_options(-Wno-cast-function-type)
-set(FS_LIB stdc++fs)
+  add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
+  add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
+  set(FS_LIB stdc++fs)
 endif(WIN32)
-
-
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
 else()
-  if( NOT ANDROID)
-    set(CRYPTO_FLAGS -march=native)
-  endif()
-endif()
+  if(NOT ANDROID)
+    if(NOT RPI)
+	  if (NOT USE_AVX2)
+        set(CRYPTO_FLAGS -march=core2 -msse4.1 -mtune=native -mfpmath=sse)
+      else()
+        set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
+      endif(NOT USE_AVX2)
+    endif(NOT RPI)
+  endif(NOT ANDROID)
+endif(DEBIAN)
+
+# only needed if using AVX2
+if(AMD_RYZEN_HACK AND USE_AVX2)
+  set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
+endif(AMD_RYZEN_HACK AND USE_AVX2)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -66,29 +96,23 @@ if(STATIC_LINK)
   else()
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -static-libgcc -static -Wl,--whole-archive -Wl,--no-whole-archive")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" )
-  endif()
-endif()
+  endif(USING_CLANG)
+endif(STATIC_LINK)
 
 if(USE_NETNS)
   add_definitions(-DNETNS=1)
 else()
   add_definitions(-DNETNS=0)
-endif()
-
-if(SHADOW)
-  set(WITH_STATIC OFF)
-else()
-  set(WITH_STATIC ON)
-endif()
+endif(USE_NETNS)
 
 if(TESTNET)
   add_definitions(-DTESTNET=1)
-endif()
+endif(TESTNET)
 
 if(NOT DEBIAN)
-set(OPTIMIZE_FLAGS -O3)
-set(DEBUG_FLAGS -O0 -g3)
-endif()
+  set(OPTIMIZE_FLAGS -O3)
+  set(DEBUG_FLAGS -O0 -g3)
+endif(NOT DEBIAN)
 
 if(ASAN)
   set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
@@ -96,6 +120,8 @@ if(ASAN)
 endif(ASAN)
 
 if(SHADOW)
+  set(WITH_STATIC OFF)
+  add_compile_options(-fPIC)
   if("${SHADOW_ROOT}" STREQUAL "")
     set(SHADOW_ROOT "$ENV{HOME}/.shadow")
   endif("${SHADOW_ROOT}" STREQUAL "")
@@ -103,7 +129,8 @@ if(SHADOW)
     message(STATUS "SHADOW_ROOT = ${SHADOW_ROOT}")
   else()
     message(FATAL_ERROR "SHADOW_ROOT path does not exist: '${SHADOW_ROOT}'")
-  endif()
+  endif(EXISTS "${SHADOW_ROOT}")
+
   set(CMAKE_MODULE_PATH "${SHADOW_ROOT}/share/cmake/Modules")
   include_directories(${CMAKE_MODULE_PATH})
   include(ShadowTools)
@@ -111,32 +138,30 @@ if(SHADOW)
   add_definitions(-DTESTNET=true)
   add_definitions(-DSHADOW_TESTNET)
   include_directories(${SHADOW_ROOT}/include)
-endif()
+else()
+  set(WITH_STATIC ON)
+endif(SHADOW)
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
   add_compile_options( ${DEBUG_FLAGS} )
-endif()
+endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 
 if(RPI)
   add_definitions(-DRPI)
   set(WITH_STATIC ON)
-endif()
+endif(RPI)
 
 add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
-
-if(SHADOW)
-  add_compile_options(-fPIC)
-endif()
 
 if(NOT GIT_VERSION)
   exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION)
   add_definitions(-DGIT_REV="${GIT_VERSION}")
-endif()
+endif(NOT GIT_VERSION)
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
-endif()
+endif(RELEASE_MOTTO)
 
 set(EXE lokinet)
 set(EXE_SRC daemon/main.cpp)
@@ -148,7 +173,7 @@ set(EXE_SRC daemon/main.cpp)
 # long ago
 if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
-endif()
+endif(JEMALLOC)
 
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
@@ -156,11 +181,9 @@ set(LIBS ${LIBS} ${MALLOC_LIB} ${FS_LIB})
 
 if(ANDROID)
   set(LIBS ${LIBS} log)
-endif()
-
-if(NOT USING_CLANG)
-  set(LIBS ${LIBS} Threads::Threads)
-endif()
+  add_definitions(-DANDROID)
+  set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
+endif(ANDROID)
 
 set(LIB lokinet)
 set(SHARED_LIB ${LIB})
@@ -168,38 +191,41 @@ set(STATIC_LIB ${LIB}-static)
 set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
 set(PLATFORM_LIB ${LIB}-platform)
 set(ANDROID_LIB ${LIB}android)
-
 set(TT_ROOT vendor/libtuntap-master)
-
 add_definitions(-D${CMAKE_SYSTEM_NAME})
 
-if (UNIX)
+if(UNIX)
   add_definitions(-DUNIX)
   add_definitions(-DPOSIX)
-endif()
-
-if(UNIX)
-    if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
+        set(EV_SRC llarp/ev_epoll.cpp)
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Android")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
+        set(EV_SRC llarp/ev_epoll.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-openbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+        set(EV_SRC llarp/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-netbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+        set(EV_SRC llarp/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR ${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
+        set(EV_SRC llarp/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
+        set(EV_SRC llarp/ev_kqueue.cpp)
 # TODO: _actually_ port to solaris/illumos (it's fairly complete...except for TUN) -rick
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
+        set(EV_SRC llarp/ev_epoll.cpp)
     else()
         message(FATAL_ERROR "Your operating system is not supported yet")
-    endif()
+    endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 elseif(WIN32)
     set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x600 -D_WIN32_WINNT=0x600)
+    set(EV_SRC llarp/ev_win32.cpp)
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif(UNIX)
@@ -210,21 +236,16 @@ set(LIBTUNTAP_SRC_BASE
   ${LIBTUNTAP_IMPL})
 
 if (UNIX)
-set(LIBTUNTAP_SRC
-    ${TT_ROOT}/tuntap-unix.c
-    ${LIBTUNTAP_SRC_BASE})
+  set(LIBTUNTAP_SRC
+      ${TT_ROOT}/tuntap-unix.c
+      ${LIBTUNTAP_SRC_BASE})
 else()
-set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
+  set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
 endif(UNIX)
-
-if(ANDROID)
-  add_definitions(-DANDROID)
-  set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
-endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
-endif()
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 if(NOT WIN32)
 set(CXX_COMPAT_SRC
@@ -278,6 +299,10 @@ set(LIB_PLATFORM_SRC
   ${LIBTUNTAP_SRC}
 # c++17 compat code
   ${CXX_COMPAT_SRC}
+# win32 inline code
+  llarp/win32_inet.c
+  llarp/win32_intrnl.c
+  llarp/win32_upoll.c
 )
 
 set(NTRU_AVX_SRC
@@ -397,7 +422,6 @@ set(CRYPTOGRAPHY_SRC
 
 add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
 
-
 set(UTP_SRC
   libutp/utp_callbacks.cpp
   libutp/utp_utils.cpp
@@ -409,45 +433,39 @@ set(UTP_SRC
 
 if(WIN32)
   set(UTP_SRC ${UTP_SRC} libutp/libutp_inet_ntop.cpp)
-endif()
+endif(WIN32)
+
+set(DNSLIB_SRC
+  llarp/dns/dns.cpp
+  llarp/dns/message.cpp
+  llarp/dns/name.cpp
+  llarp/dns/query.cpp
+  llarp/dns/question.cpp
+  llarp/dns/rr.cpp
+  llarp/dns/serialize.cpp
+  llarp/dns/server.cpp
+  llarp/dns/string.cpp
+)
 
 
 set(LIB_SRC
+  ${DNSLIB_SRC}
+  ${EV_SRC}
   ${UTP_SRC}
   llarp/address_info.cpp
+  llarp/aligned.cpp
   llarp/bencode.cpp
+  llarp/bits.cpp
   llarp/buffer.cpp
+  llarp/codel.cpp
+  llarp/common.cpp
   llarp/config.cpp
   llarp/context.cpp
+  llarp/crypto.cpp
   llarp/crypto_libsodium.cpp
+  llarp/defaults.cpp
   llarp/dht.cpp
-  llarp/dns_rectypes.cpp
-  llarp/dns.cpp
-  llarp/dnsc.cpp
-  llarp/dnsd.cpp
-  llarp/dns_iptracker.cpp
-  llarp/dns_dotlokilookup.cpp
-  llarp/encode.cpp
-  llarp/encrypted_frame.cpp
-  llarp/exit_info.cpp
-  llarp/exit_route.cpp
-  llarp/ip.cpp
-  llarp/link_intro.cpp
-  llarp/link_message.cpp
-  llarp/nodedb.cpp
-  llarp/path.cpp
-  llarp/pathbuilder.cpp
-  llarp/pathset.cpp
-  llarp/profiling.cpp
-  llarp/proofofwork.cpp
-  llarp/relay_commit.cpp
-  llarp/relay_up_down.cpp
-  llarp/router_contact.cpp
-  llarp/router.cpp
-  llarp/rpc.cpp
-  llarp/service.cpp
-  llarp/transit_hop.cpp
-  llarp/testnet.c
+  llarp/dht/bucket.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
@@ -455,35 +473,115 @@ set(LIB_SRC
   llarp/dht/find_router.cpp
   llarp/dht/got_intro.cpp
   llarp/dht/got_router.cpp
+  llarp/dht/kademlia.cpp
+  llarp/dht/key.cpp
+  llarp/dht/message.cpp
+  llarp/dht/messages/all.cpp
+  llarp/dht/messages/findintro.cpp
+  llarp/dht/messages/findrouter.cpp
+  llarp/dht/messages/gotintro.cpp
+  llarp/dht/messages/gotrouter.cpp
+  llarp/dht/messages/pubintro.cpp
+  llarp/dht/node.cpp
   llarp/dht/publish_intro.cpp
+  llarp/dns.cpp
+  llarp/dns_dotlokilookup.cpp
+  llarp/dns_iptracker.cpp
+  llarp/dns_rectypes.cpp
+  llarp/dnsc.cpp
+  llarp/dnsd.cpp
+  llarp/encode.cpp
+  llarp/encrypted.cpp
+  llarp/encrypted_ack.cpp
+  llarp/encrypted_frame.cpp
+  llarp/endian.cpp
+  llarp/establish_job.cpp
+  llarp/exit.cpp
   llarp/exit/close_exit.cpp
   llarp/exit/context.cpp
   llarp/exit/endpoint.cpp
   llarp/exit/grant_exit.cpp
-  llarp/exit/update_exit.cpp
   llarp/exit/obtain_exit.cpp
   llarp/exit/policy.cpp
   llarp/exit/reject_exit.cpp
   llarp/exit/session.cpp
   llarp/exit/transfer_traffic.cpp
+  llarp/exit/update_exit.cpp
+  llarp/exit_info.cpp
+  llarp/exit_route.cpp
+  llarp/fs.cpp
   llarp/handlers/exit.cpp
+  llarp/handlers/null.cpp
   llarp/handlers/tun.cpp
+  llarp/ini.cpp
+  llarp/ip.cpp
+  llarp/iwp.cpp
   llarp/link/curvecp.cpp
+  llarp/link/encoder.cpp
   llarp/link/server.cpp
+  llarp/link/session.cpp
   llarp/link/utp.cpp
+  llarp/link_intro.cpp
+  llarp/link_layer.cpp
+  llarp/link_message.cpp
+  llarp/messages.cpp
+  llarp/messages/dht.cpp
+  llarp/messages/dht_immediate.cpp
+  llarp/messages/discard.cpp
+  llarp/messages/exit.cpp
+  llarp/messages/link_intro.cpp
+  llarp/messages/path_confirm.cpp
+  llarp/messages/path_latency.cpp
+  llarp/messages/path_transfer.cpp
+  llarp/messages/relay.cpp
+  llarp/messages/relay_commit.cpp
+  llarp/messages/transfer_traffic.cpp
+  llarp/net_int.cpp
+  llarp/nodedb.cpp
+  llarp/path.cpp
+  llarp/path_types.cpp
+  llarp/pathbuilder.cpp
+  llarp/pathset.cpp
+  llarp/pow.cpp
+  llarp/profiling.cpp
+  llarp/proofofwork.cpp
+  llarp/proto.cpp
+  llarp/queue.cpp
+  llarp/relay_commit.cpp
+  llarp/relay_up_down.cpp
+  llarp/router.cpp
+  llarp/router_contact.cpp
+  llarp/router_id.cpp
   llarp/routing/dht_message.cpp
+  llarp/routing/handler.cpp
+  llarp/routing/message.cpp
   llarp/routing/message_parser.cpp
   llarp/routing/path_confirm.cpp
   llarp/routing/path_latency.cpp
   llarp/routing/path_transfer.cpp
+  llarp/routing_endpoint.cpp
+  llarp/rpc.cpp
+  llarp/service.cpp
+  llarp/service/Identity.cpp
+  llarp/service/Intro.cpp
+  llarp/service/IntroSet.cpp
   llarp/service/address.cpp
+  llarp/service/config.cpp
   llarp/service/context.cpp
   llarp/service/endpoint.cpp
+  llarp/service/handler.cpp
+  llarp/service/info.cpp
   llarp/service/lookup.cpp
   llarp/service/protocol.cpp
   llarp/service/tag.cpp
-  llarp/service/info.cpp
-
+  llarp/service/types.cpp
+  llarp/service/vanity.cpp
+  llarp/string_view.cpp
+  llarp/testnet.c
+  llarp/threading.cpp
+  llarp/transit_hop.cpp
+  llarp/types.cpp
+  llarp/version.cpp
 )
 
 set(RC_SRC
@@ -516,15 +614,15 @@ set(TEST_SRC
   test/test_dns_unit.cpp
   test/test_dnsc_unit.cpp
   test/test_dnsd_unit.cpp
+  test/test_dnslib.cpp
   test/test_llarp_queue.cpp
   test/test_llarp_queue_manager.cpp
   test/test_llarp_thread_pool.cpp
+  test/test_service_address.cpp
 )
-
 
 set(TEST_EXE testAll)
 set(GTEST_DIR test/gtest)
-
 set(CLIENT_EXE llarpc)
 
 set(CLIENT_SRC
@@ -540,7 +638,6 @@ include_directories(llarp)
 
 set(RC_EXE rcutil)
 set(DNS_EXE dns)
-
 set(ALL_SRC ${CLIENT_SRC} ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC} ${TEST_SRC})
 
 if(USE_LIBABYSS)
@@ -568,26 +665,30 @@ endif(NOT WIN32)
   # for freebsd
   if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     include_directories(/usr/local/include)
-  endif()
-endif()
+  endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+endif(USE_LIBABYSS)
 
 foreach(F ${ALL_SRC})
 set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
 endforeach(F)
 
 if(SHADOW)
-add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
-target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
-install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
+  add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
+  target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
+  install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
-add_executable(${RC_EXE} ${RC_SRC})
-add_executable(${EXE} ${EXE_SRC})
-add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-add_executable(${DNS_EXE} ${DNS_SRC})
-add_subdirectory(${GTEST_DIR})
-include_directories(${GTEST_DIR}/include ${GTEST_DIR})
-add_executable(${TEST_EXE} ${TEST_SRC})
+  #add_executable(${RC_EXE} ${RC_SRC})
+  #add_executable(${CLIENT_EXE} ${CLIENT_SRC})
+  #add_executable(${DNS_EXE} ${DNS_SRC})
+  add_subdirectory(${GTEST_DIR})
+  add_executable(${TEST_EXE} ${TEST_SRC})
+  add_executable(${EXE} ${EXE_SRC})
+  target_include_directories(${TEST_EXE} PRIVATE ${GTEST_DIR}/include ${GTEST_DIR})
+  install(TARGETS ${EXE} RUNTIME DESTINATION bin)
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+  install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
+endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
 if(WITH_STATIC)
     add_library(${STATIC_LIB} STATIC ${LIB_SRC})
@@ -596,47 +697,40 @@ if(WITH_STATIC)
       target_link_libraries(${PLATFORM_LIB} Threads::Threads ${ABYSS_LIB})
     else()
       target_link_libraries(${PLATFORM_LIB} Threads::Threads)
-    endif()
+    endif(USE_LIBABYSS)
     if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       if(RPI)
         target_link_libraries(${PLATFORM_LIB} -lrt)
       else()
         target_link_libraries(${PLATFORM_LIB} -lcap)
-      endif()
-    endif()
+      endif(RPI)
+    endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB})
     if(NOT WITH_SHARED)
       target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-      target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-      target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
+      #target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
+      #target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
       target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
-      target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB})
+      #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB})
       if (WIN32)
         target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        #target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        #target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
         target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+        #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
       endif(WIN32)
-      if (WIN32)
-        target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} Threads::Threads ws2_32 iphlpapi)
-      endif(WIN32)
-      target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} Threads::Threads)
     endif(NOT WITH_SHARED)
   endif(WITH_STATIC)
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
     target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
-  endif()
+  endif(ANDROID)
 
   if(WITH_SHARED)
     add_library(${SHARED_LIB} SHARED ${LIB_SRC} ${LIB_PLATFORM_SRC} ${CRYPTOGRAPHY_SRC})
-    if (WIN32)
-      set(${LIBS} ${LIBS} ws2_32 iphlpapi)
-    endif(WIN32)
     target_link_libraries(${SHARED_LIB} ${LIBS} Threads::Threads)
     target_link_libraries(${EXE} ${SHARED_LIB})
-    target_link_libraries(${RC_EXE} ${SHARED_LIB})
-    target_link_libraries(${DNS_EXE} ${SHARED_LIB} Threads::Threads)
+    #target_link_libraries(${RC_EXE} ${SHARED_LIB})
+    #target_link_libraries(${DNS_EXE} ${SHARED_LIB} Threads::Threads)
   endif(WITH_SHARED)
 endif(SHADOW)

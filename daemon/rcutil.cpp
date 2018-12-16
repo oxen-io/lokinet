@@ -1,19 +1,18 @@
-#include <getopt.h>
+#include <buffer.hpp>
+#include <crypto.hpp>
+#include <fs.hpp>
 #include <llarp.h>
-#include <signal.h>
-#include "logger.hpp"
-
-#include <llarp/router_contact.hpp>
-#include <llarp/time.hpp>
+#include <logger.hpp>
+#include <messages/dht.hpp>
+#include <net.hpp>
+#include <nodedb.hpp>
+#include <router.hpp>
+#include <router_contact.hpp>
+#include <time.hpp>
 
 #include <fstream>
-#include "buffer.hpp"
-#include "crypto.hpp"
-#include "fs.hpp"
-#include "llarp/net.hpp"
-#include "router.hpp"
-
-#include <llarp/messages/dht.hpp>
+#include <getopt.h>
+#include <signal.h>
 
 struct llarp_main *ctx = 0;
 
@@ -262,7 +261,7 @@ main(int argc, char *argv[])
 
   if(verifyMode)
   {
-    llarp_crypto crypto;
+    llarp::Crypto crypto;
     llarp_crypto_init(&crypto);
     if(!rc.Read(rcfname))
     {
@@ -328,7 +327,7 @@ main(int argc, char *argv[])
   // this is the only one...
   if(listMode)
   {
-    llarp_crypto crypto;
+    llarp::Crypto crypto;
     llarp_crypto_init(&crypto);
     auto nodedb = llarp_nodedb_new(&crypto);
     llarp_nodedb_iter itr;
@@ -349,7 +348,7 @@ main(int argc, char *argv[])
       std::cout << "no file to import" << std::endl;
       return 1;
     }
-    llarp_crypto crypto;
+    llarp::Crypto crypto;
     llarp_crypto_init(&crypto);
     auto nodedb = llarp_nodedb_new(&crypto);
     if(!llarp_nodedb_ensure_dir(nodesdir))
@@ -390,7 +389,7 @@ main(int argc, char *argv[])
     // set updated timestamp
     rc.last_updated = llarp::time_now_ms();
     // load longterm identity
-    llarp_crypto crypt;
+    llarp::Crypto crypt;
     llarp_crypto_init(&crypt);
 
     // which is in daemon.ini config: router.encryption-privkey (defaults
@@ -439,7 +438,7 @@ main(int argc, char *argv[])
     // set updated timestamp
     rc.last_updated = llarp::time_now_ms();
     // load longterm identity
-    llarp_crypto crypt;
+    llarp::Crypto crypt;
 
     // no longer used?
     // llarp_crypto_libsodium_init(&crypt);
@@ -468,7 +467,7 @@ main(int argc, char *argv[])
 
   if(listMode)
   {
-    llarp_crypto crypto;
+    llarp::Crypto crypto;
     // no longer used?
     // llarp_crypto_libsodium_init(&crypto);
     llarp_crypto_init(&crypto);

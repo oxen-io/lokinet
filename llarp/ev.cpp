@@ -1,12 +1,9 @@
-#include <llarp/ev.h>
-#include <llarp/logic.hpp>
-#include <llarp/string_view.hpp>
+#include <ev.h>
+#include <logic.hpp>
+#include <mem.hpp>
+#include <string_view.hpp>
 
 #include <stddef.h>
-
-#include "mem.hpp"
-
-#define EV_TICK_INTERVAL 100
 
 // apparently current Solaris will emulate epoll.
 #if __linux__ || __sun__
@@ -19,7 +16,6 @@
 #else
 #error No async event loop for your platform, subclass llarp_ev_loop
 #endif
-
 
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
@@ -46,19 +42,20 @@ llarp_ev_loop_free(struct llarp_ev_loop **ev)
 }
 
 int
-llarp_ev_loop_run(struct llarp_ev_loop *ev, struct llarp_logic *logic)
+llarp_ev_loop_run(struct llarp_ev_loop *ev, llarp::Logic *logic)
 {
   while(ev->running())
   {
     ev->_now = llarp::time_now_ms();
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
-      llarp_logic_tick(logic, ev->_now);
+      logic->tick(ev->_now);
   }
   return 0;
 }
 
-int llarp_fd_promise_wait_for_value(struct llarp_fd_promise * p)
+int
+llarp_fd_promise_wait_for_value(struct llarp_fd_promise *p)
 {
   return p->Get();
 }
@@ -66,7 +63,7 @@ int llarp_fd_promise_wait_for_value(struct llarp_fd_promise * p)
 void
 llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
                                  struct llarp_threadpool *tp,
-                                 struct llarp_logic *logic)
+                                 llarp::Logic *logic)
 {
   while(ev->running())
   {
@@ -74,7 +71,7 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
     {
-      llarp_logic_tick_async(logic, ev->_now);
+      logic->tick_async(ev->_now);
       llarp_threadpool_tick(tp);
     }
   }
@@ -114,14 +111,31 @@ llarp_ev_loop_stop(struct llarp_ev_loop *loop)
 
 int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
-                    const void *buf, size_t sz)
+                    llarp_buffer_t buf)
 {
-  auto ret = static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf, sz);
+  auto ret =
+      static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf.base, buf.sz);
+#ifndef _WIN32
   if(ret == -1 && errno != 0)
   {
+#else
+  if(ret == -1 && WSAGetLastError())
+  {
+#endif
+
+#ifndef _WIN32
     llarp::LogWarn("sendto failed ", strerror(errno));
     errno = 0;
   }
+#else
+    char ebuf[1024];
+    int err = WSAGetLastError();
+    FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf,
+                  1024, nullptr);
+    llarp::LogWarn("sendto failed: ", ebuf);
+    WSASetLastError(0);
+  }
+#endif
   return ret;
 }
 
@@ -131,31 +145,29 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   auto dev  = loop->create_tun(tun);
   tun->impl = dev;
   if(dev)
-  {
     return loop->add_ev(dev, false);
-  }
   return false;
 }
 
 bool
-llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const void *pkt,
-                           size_t sz)
+llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, llarp_buffer_t buf)
 {
-  const byte_t *ptr     = (const byte_t *)pkt;
   llarp::tcp_conn *impl = static_cast< llarp::tcp_conn * >(conn->impl);
   if(impl->_shouldClose)
   {
     llarp::LogError("write on closed connection");
     return false;
   }
+  size_t sz = buf.sz;
+  buf.cur   = buf.base;
   while(sz > EV_WRITE_BUF_SZ)
   {
-    if(!impl->queue_write((const byte_t *)ptr, EV_WRITE_BUF_SZ))
+    if(!impl->queue_write(buf.cur, EV_WRITE_BUF_SZ))
       return false;
-    ptr += EV_WRITE_BUF_SZ;
+    buf.cur += EV_WRITE_BUF_SZ;
     sz -= EV_WRITE_BUF_SZ;
   }
-  return impl->queue_write(ptr, sz);
+  return impl->queue_write(buf.cur, sz);
 }
 
 void
@@ -220,15 +232,14 @@ llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *tcp)
 }
 
 bool
-llarp_ev_tun_async_write(struct llarp_tun_io *tun, const void *buf, size_t sz)
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
 {
-  if(sz > EV_WRITE_BUF_SZ)
+  if(buf.sz > EV_WRITE_BUF_SZ)
   {
-    llarp::LogWarn("packet too big, ", sz, " > ", EV_WRITE_BUF_SZ);
+    llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
     return false;
   }
-  return static_cast< llarp::tun * >(tun->impl)->queue_write(
-      (const byte_t *)buf, sz);
+  return static_cast< llarp::tun * >(tun->impl)->queue_write(buf.base, buf.sz);
 }
 
 void

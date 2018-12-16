@@ -1,16 +1,16 @@
-
-#include <llarp/dht/messages/findintro.hpp>
-#include <llarp/messages/dht.hpp>
-#include <llarp/service/endpoint.hpp>
-#include <llarp/service/protocol.hpp>
-#include "buffer.hpp"
-#include "router.hpp"
+#include <buffer.hpp>
+#include <dht/messages/findintro.hpp>
+#include <logic.hpp>
+#include <messages/dht.hpp>
+#include <router.hpp>
+#include <service/endpoint.hpp>
+#include <service/protocol.hpp>
 
 namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const std::string& name, llarp_router* r)
+    Endpoint::Endpoint(const std::string& name, llarp::Router* r)
         : path::Builder(r, r->dht, 6, 4), m_Router(r), m_Name(name)
     {
       m_Tag.Zero();
@@ -124,12 +124,34 @@ namespace llarp
     }
 
     void
+    Endpoint::FlushSNodeTraffic()
+    {
+      auto itr = m_SNodeSessions.begin();
+      while(itr != m_SNodeSessions.end())
+      {
+        itr->second->FlushUpstreamTraffic();
+        ++itr;
+      }
+    }
+
+    void
     Endpoint::Tick(llarp_time_t now)
     {
       // publish descriptors
       if(ShouldPublishDescriptors(now))
       {
         RegenAndPublishIntroSet(now);
+      }
+      // expire snode sessions
+      {
+        auto itr = m_SNodeSessions.begin();
+        while(itr != m_SNodeSessions.end())
+        {
+          if(itr->second->IsExpired(now))
+            itr = m_SNodeSessions.erase(itr);
+          else
+            ++itr;
+        }
       }
       // expire pending tx
       {
@@ -197,7 +219,8 @@ namespace llarp
             continue;
           byte_t tmp[1024] = {0};
           auto buf         = StackBuffer< decltype(tmp) >(tmp);
-          if(!SendToOrQueue(introset.A.Addr().data(), buf, eProtocolText))
+          if(!SendToServiceOrQueue(introset.A.Addr().data(), buf,
+                                   eProtocolText))
           {
             llarp::LogWarn(Name(), " failed to send/queue data to ",
                            introset.A.Addr(), " for tag ", tag.ToString());
@@ -259,7 +282,7 @@ namespace llarp
     uint64_t
     Endpoint::GenTXID()
     {
-      uint64_t txid = llarp_randint();
+      uint64_t txid = llarp::randint();
       while(m_PendingLookups.find(txid) != m_PendingLookups.end())
         ++txid;
       return txid;
@@ -512,7 +535,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSet(llarp_router* r)
+    Endpoint::PublishIntroSet(llarp::Router* r)
     {
       // publish via near router
       RouterID location = m_Identity.pub.Addr().data();
@@ -560,7 +583,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSetVia(llarp_router* r, path::Path* path)
+    Endpoint::PublishIntroSetVia(llarp::Router* r, path::Path* path)
     {
       auto job = new PublishIntroSetJob(this, GenTXID(), m_IntroSet);
       if(job->SendRequestViaPath(path, r))
@@ -707,15 +730,14 @@ namespace llarp
       if(router.IsZero())
         return;
       RouterContact rc;
-      if(!llarp_nodedb_get_rc(m_Router->nodedb, router, rc))
+      if(!m_Router->nodedb->Get(router, rc))
       {
         if(m_PendingRouters.find(router) == m_PendingRouters.end())
         {
           auto path = GetEstablishedPathClosestTo(router);
           routing::DHTMessage msg;
           auto txid = GenTXID();
-          msg.M.emplace_back(
-              new dht::FindRouterMessage({}, dht::Key_t(router), txid));
+          msg.M.emplace_back(new dht::FindRouterMessage(txid, router));
 
           if(path && path->SendRoutingMessage(&msg, m_Router))
           {
@@ -781,6 +803,40 @@ namespace llarp
       PutIntroFor(msg->tag, msg->introReply);
       EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
+    }
+
+    bool
+    Endpoint::HasPathToSNode(const llarp::RouterID& ident) const
+    {
+      auto range = m_SNodeSessions.equal_range(ident);
+      auto itr   = range.first;
+      while(itr != range.second)
+      {
+        if(itr->second->IsReady())
+        {
+          return true;
+        }
+        ++itr;
+      }
+      return false;
+    }
+
+    bool
+    Endpoint::ProcessDataMessage(ProtocolMessage* msg)
+    {
+      if(msg->proto == eProtocolTraffic)
+      {
+        auto buf = llarp::Buffer(msg->payload);
+        return HandleWriteIPPacket(buf,
+                                   std::bind(&Endpoint::ObtainIPForAddr, this,
+                                             msg->sender.Addr().data(), false));
+      }
+      else if(msg->proto == eProtocolText)
+      {
+        // TODO: implement me (?)
+        return true;
+      }
+      return false;
     }
 
     bool
@@ -882,6 +938,7 @@ namespace llarp
       if(!path)
       {
         llarp::LogWarn("No outbound path for lookup yet");
+        BuildOne();
         return false;
       }
       llarp::LogInfo(Name(), " Ensure Path to ", remote.ToString());
@@ -996,6 +1053,7 @@ namespace llarp
     {
       if(markedBad)
         return true;
+      updatingIntroSet = false;
       if(i)
       {
         if(currentIntroSet.T >= i->T)
@@ -1019,7 +1077,6 @@ namespace llarp
         else
           SwapIntros();
       }
-      updatingIntroSet = false;
       return true;
     }
 
@@ -1030,9 +1087,50 @@ namespace llarp
           && GetPathByRouter(remoteIntro.router) != nullptr;
     }
 
+    void
+    Endpoint::EnsurePathToSNode(const RouterID& snode)
+    {
+      if(m_SNodeSessions.count(snode) == 0)
+      {
+        auto themIP = ObtainIPForAddr(snode, true);
+        m_SNodeSessions.emplace(std::make_pair(
+            snode,
+            std::unique_ptr< llarp::exit::BaseSession >(
+                new llarp::exit::SNodeSession(
+                    snode,
+                    std::bind(&Endpoint::HandleWriteIPPacket, this,
+                              std::placeholders::_1,
+                              [themIP]() -> huint32_t { return themIP; }),
+                    m_Router, 2, numHops))));
+      }
+    }
+
     bool
-    Endpoint::SendToOrQueue(const byte_t* addr, llarp_buffer_t data,
-                            ProtocolType t)
+    Endpoint::SendToSNodeOrQueue(const byte_t* addr, llarp_buffer_t buf)
+    {
+      llarp::net::IPv4Packet pkt;
+      if(!pkt.Load(buf))
+        return false;
+      auto range = m_SNodeSessions.equal_range(addr);
+      auto itr   = range.first;
+      while(itr != range.second)
+      {
+        if(itr->second->IsReady())
+        {
+          if(itr->second->QueueUpstreamTraffic(pkt,
+                                               llarp::routing::ExitPadSize))
+          {
+            return true;
+          }
+        }
+        ++itr;
+      }
+      return false;
+    }
+
+    bool
+    Endpoint::SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t data,
+                                   ProtocolType t)
     {
       service::Address remote(addr);
 
@@ -1138,13 +1236,13 @@ namespace llarp
             if(!router->GetRandomConnectedRouter(hops[0]))
               return false;
           }
-          else if(!llarp_nodedb_select_random_hop(nodedb, hops[0], hops[0], 0))
+          else
             return false;
         }
         else if(hop == numHops - 1)
         {
           // last hop
-          if(!llarp_nodedb_get_rc(nodedb, remote, hops[hop]))
+          if(!nodedb->Get(remote, hops[hop]))
             return false;
         }
         // middle hop
@@ -1153,8 +1251,7 @@ namespace llarp
           size_t tries = 5;
           do
           {
-            llarp_nodedb_select_random_hop(nodedb, hops[hop - 1], hops[hop],
-                                           hop);
+            nodedb->select_random_hop(hops[hop - 1], hops[hop], hop);
             --tries;
           } while(m_Endpoint->Router()->routerProfiling.IsBad(hops[hop].pubkey)
                   && tries > 0);
@@ -1213,6 +1310,11 @@ namespace llarp
       else if(shiftedIntro)
       {
         SwapIntros();
+      }
+      else
+      {
+        llarp::LogInfo(Name(), " updating introset");
+        UpdateIntroSet(false);
       }
       return shiftedIntro;
     }
@@ -1285,8 +1387,8 @@ namespace llarp
 
     struct AsyncKeyExchange
     {
-      llarp_logic* logic;
-      llarp_crypto* crypto;
+      llarp::Logic* logic;
+      llarp::Crypto* crypto;
       SharedSecret sharedKey;
       ServiceInfo remote;
       const Identity& m_LocalIdentity;
@@ -1299,7 +1401,7 @@ namespace llarp
       IDataHandler* handler;
       ConvoTag tag;
 
-      AsyncKeyExchange(llarp_logic* l, llarp_crypto* c, const ServiceInfo& r,
+      AsyncKeyExchange(llarp::Logic* l, llarp::Crypto* c, const ServiceInfo& r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
                        const Introduction& remote, IDataHandler* h,
@@ -1359,7 +1461,7 @@ namespace llarp
         // encrypt and sign
         if(self->frame.EncryptAndSign(self->crypto, self->msg, K,
                                       self->m_LocalIdentity))
-          llarp_logic_queue_job(self->logic, {self, &Result});
+          self->logic->queue_job({self, &Result});
         else
         {
           llarp::LogError("failed to encrypt and sign");
@@ -1516,7 +1618,7 @@ namespace llarp
         return false;
       if(hop == numHops - 1)
       {
-        if(llarp_nodedb_get_rc(db, m_NextIntro.router, cur))
+        if(db->Get(m_NextIntro.router, cur))
         {
           return true;
         }
@@ -1633,19 +1735,19 @@ namespace llarp
       }
     }
 
-    llarp_logic*
+    llarp::Logic*
     Endpoint::RouterLogic()
     {
       return m_Router->logic;
     }
 
-    llarp_logic*
+    llarp::Logic*
     Endpoint::EndpointLogic()
     {
       return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic;
     }
 
-    llarp_crypto*
+    llarp::Crypto*
     Endpoint::Crypto()
     {
       return &m_Router->crypto;

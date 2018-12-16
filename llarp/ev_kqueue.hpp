@@ -1,7 +1,11 @@
 #ifndef EV_KQUEUE_HPP
 #define EV_KQUEUE_HPP
-#include <llarp/buffer.h>
-#include <llarp/net.h>
+
+#include <buffer.h>
+#include <ev.hpp>
+#include <logger.hpp>
+#include <net.h>
+#include <net.hpp>
 
 #include <sys/un.h>
 
@@ -14,19 +18,16 @@
 // original upstream
 #include <unistd.h>
 #include <cstdio>
-#include <llarp/net.hpp>
-#include "ev.hpp"
-#include "logger.hpp"
 
 namespace llarp
 {
   int
-  tcp_conn::read(void* buf, size_t sz)
+  tcp_conn::read(byte_t* buf, size_t sz)
   {
     if(sz == 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, 0, 0);
+        tcp.read(&tcp, llarp::InitBuffer(nullptr, 0));
       return 0;
     }
     if(_shouldClose)
@@ -37,7 +38,7 @@ namespace llarp
     if(amount >= 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, buf, amount);
+        tcp.read(&tcp, llarp::InitBuffer(buf, amount));
     }
     else
     {
@@ -100,7 +101,7 @@ namespace llarp
   }
 
   int
-  tcp_serv::read(void*, size_t)
+  tcp_serv::read(byte_t*, size_t)
   {
     int new_fd = ::accept(fd, nullptr, nullptr);
     if(new_fd == -1)
@@ -155,7 +156,7 @@ namespace llarp
     }
 
     virtual int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
       sockaddr_in6 src;
       socklen_t slen = sizeof(sockaddr_in6);
@@ -176,7 +177,7 @@ namespace llarp
         llarp::LogWarn("no source addr");
       }
       // Addr is the source
-      udp->recvfrom(udp, addr, buf, ret);
+      udp->recvfrom(udp, addr, llarp::InitBuffer(buf, ret));
       return 0;
     }
 
@@ -262,16 +263,17 @@ namespace llarp
     }
 
     int
-    read(void* buf, size_t sz)
+    read(byte_t* buf, size_t sz)
     {
-#ifdef __APPLE__
+      // all BSD UNIX has pktinfo by default
       const ssize_t offset = 4;
-#else
-      const ssize_t offset = 0;
-#endif
-      ssize_t ret = tuntap_read(tunif, buf, sz);
+      ssize_t ret          = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)
-        t->recvpkt(t, ((byte_t*)buf) + offset, ret - offset);
+      {
+        buf += offset;
+        ret -= offset;
+        t->recvpkt(t, llarp::InitBuffer(buf, ret));
+      }
       return ret;
     }
 
@@ -612,6 +614,13 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   void
   stop()
   {
+    auto itr = handlers.begin();
+    while(itr != handlers.end())
+    {
+      close_ev(itr->get());
+      itr = handlers.erase(itr);
+    }
+
     if(kqueuefd != -1)
       ::close(kqueuefd);
 

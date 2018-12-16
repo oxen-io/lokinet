@@ -1,5 +1,5 @@
-#include <llarp/bencode.h>
-#include <llarp/logger.hpp>
+#include <bencode.h>
+#include <logger.hpp>
 
 bool
 bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)

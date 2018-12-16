@@ -1,6 +1,7 @@
+#include <buffer.hpp>
+#include <pow.hpp>
+
 #include <cmath>
-#include <llarp/pow.hpp>
-#include "buffer.hpp"
 
 namespace llarp
 {
@@ -26,7 +27,7 @@ namespace llarp
   }
 
   bool
-  PoW::IsValid(llarp_shorthash_func hashfunc, llarp_time_t now) const
+  PoW::IsValid(shorthash_func hashfunc, llarp_time_t now) const
   {
     if(now - timestamp > (uint64_t(extendedLifetime) * 1000))
       return false;

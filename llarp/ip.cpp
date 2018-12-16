@@ -1,13 +1,14 @@
-#include <llarp/endian.hpp>
-#include <algorithm>
-#include <llarp/ip.hpp>
-#include "llarp/buffer.hpp"
-#include "mem.hpp"
+#include <buffer.hpp>
+#include <endian.hpp>
+#include <ip.hpp>
+#include <mem.hpp>
+
 #ifndef _WIN32
 #include <netinet/in.h>
 #endif
-#include <map>
+
 #include <algorithm>
+#include <map>
 
 namespace llarp
 {
@@ -21,6 +22,12 @@ namespace llarp
       sz = pkt.sz;
       memcpy(buf, pkt.base, sz);
       return true;
+    }
+
+    llarp_buffer_t
+    IPv4Packet::ConstBuffer() const
+    {
+      return llarp::InitBuffer(buf, sz);
     }
 
     llarp_buffer_t

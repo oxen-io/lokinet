@@ -1,9 +1,10 @@
 #ifndef __ABYSS_HTTP_HPP__
 #define __ABYSS_HTTP_HPP__
+#include <abyss/json.hpp>
+#include <string_view.hpp>
+
 #include <string>
 #include <unordered_map>
-#include <llarp/string_view.hpp>
-#include <abyss/json.hpp>
 
 namespace abyss
 {

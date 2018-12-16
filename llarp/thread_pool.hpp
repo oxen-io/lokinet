@@ -1,8 +1,8 @@
 #ifndef LLARP_THREAD_POOL_HPP
 #define LLARP_THREAD_POOL_HPP
 
-#include <llarp/threading.hpp>
 #include <queue.hpp>
+#include <threading.hpp>
 
 #include <functional>
 #include <thread>

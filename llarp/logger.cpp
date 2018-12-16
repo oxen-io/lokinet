@@ -1,5 +1,5 @@
-#include "logger.hpp"
-#include <llarp/logger.h>
+#include <logger.hpp>
+#include <logger.h>
 
 namespace llarp
 {

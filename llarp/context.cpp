@@ -1,19 +1,18 @@
+#include <dns_dotlokilookup.hpp>
+#include <dnsd.hpp>
+#include <ev.hpp>
 #include <getopt.h>
 #include <llarp.h>
-#include <llarp/logger.h>
-#include <signal.h>
-#include <sys/param.h>  // for MIN
 #include <llarp.hpp>
-#include "router.hpp"
+#include <logger.h>
+#include <router.hpp>
+#include <signal.h>
 
-#include <llarp/dnsd.hpp>
-#include <llarp/dns_dotlokilookup.hpp>
+#include <sys/param.h>  // for MIN
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
 #endif
-
-#include "ev.hpp"
 
 namespace llarp
 {
@@ -81,16 +80,17 @@ namespace llarp
   int
   Context::LoadDatabase()
   {
-    llarp_crypto_init(&crypto);
-    nodedb = llarp_nodedb_new(&crypto);
+    crypto = std::unique_ptr< llarp::Crypto >(
+        new llarp::Crypto{llarp::Crypto::sodium{}});
+    nodedb = new llarp_nodedb(crypto.get());
 
-    if(!llarp_nodedb_ensure_dir(nodedb_dir.c_str()))
+    if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
       llarp::LogError("nodedb_dir is incorrect");
       return 0;
     }
     // llarp::LogInfo("nodedb_dir [", nodedb_dir, "] configured!");
-    ssize_t loaded = llarp_nodedb_load_dir(nodedb, nodedb_dir.c_str());
+    ssize_t loaded = nodedb->load_dir(nodedb_dir.c_str());
     llarp::LogInfo("nodedb_dir loaded ", loaded, " RCs from [", nodedb_dir,
                    "]");
     if(loaded < 0)
@@ -105,7 +105,7 @@ namespace llarp
   int
   Context::IterateDatabase(struct llarp_nodedb_iter i)
   {
-    return llarp_nodedb_iterate_all(nodedb, i);
+    return nodedb->iterate_all(i);
   }
 
   bool
@@ -144,14 +144,14 @@ namespace llarp
     // ensure netio thread
     if(singleThreaded)
     {
-      logic = llarp_init_single_process_logic(worker);
+      logic = new Logic(worker);
     }
     else
-      logic = llarp_init_logic();
+      logic = new Logic;
 
-    router = llarp_init_router(worker, mainloop, logic);
+    router = new Router(worker, mainloop, logic);
 
-    if(!llarp_configure_router(router, config))
+    if(!router->Configure(config))
     {
       llarp::LogError("Failed to configure router");
       return 1;
@@ -162,20 +162,15 @@ namespace llarp
   int
   Context::Run()
   {
-    // just check to make sure it's not already set up (either this or we add a
-    // bool and/or add another function)
-    if(!this->router)
+    if(router == nullptr)
     {
-      // set up all requirements
-      if(this->Setup())
-      {
-        llarp::LogError("Failed to setup router");
-        return 1;
-      }
+      // we are not set up so we should die
+      llarp::LogError("cannot run non configured context");
+      return 1;
     }
     // run
-    if(!llarp_run_router(router, nodedb))
-      return 1;   // success
+    if(!router->Run(nodedb))
+      return 1;
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, worker, logic);
@@ -185,9 +180,8 @@ namespace llarp
   void
   Context::HandleSignal(int sig)
   {
-    if(sig == SIGINT)
+    if(sig == SIGINT || sig == SIGTERM)
     {
-      llarp::LogInfo("SIGINT");
       SigINT();
     }
     // TODO(despair): implement hot-reloading config on NT
@@ -209,9 +203,17 @@ namespace llarp
   void
   Context::Close()
   {
+    llarp::LogDebug("stopping logic");
+    if(logic)
+      logic->stop();
+
+    llarp::LogDebug("stopping event loop");
+    if(mainloop)
+      llarp_ev_loop_stop(mainloop);
+
     llarp::LogDebug("stop router");
     if(router)
-      llarp_stop_router(router);
+      router->Stop();
 
     llarp::LogDebug("stop workers");
     if(worker)
@@ -221,11 +223,6 @@ namespace llarp
     if(worker)
       llarp_threadpool_join(worker);
 
-    llarp::LogDebug("stop logic");
-
-    if(logic)
-      llarp_logic_stop(logic);
-
     llarp::LogDebug("free config");
     llarp_free_config(&config);
 
@@ -233,24 +230,16 @@ namespace llarp
     llarp_free_threadpool(&worker);
 
     llarp::LogDebug("free nodedb");
-    llarp_nodedb_free(&nodedb);
+    delete nodedb;
 
     llarp::LogDebug("stopping event loop");
     llarp_ev_loop_stop(mainloop);
 
     llarp::LogDebug("free router");
-    llarp_free_router(&router);
+    delete router;
 
     llarp::LogDebug("free logic");
-    llarp_free_logic(&logic);
-
-    for(auto &t : netio_threads)
-    {
-      llarp::LogDebug("join netio thread");
-      t.join();
-    }
-
-    netio_threads.clear();
+    delete logic;
   }
 
   bool
@@ -297,10 +286,11 @@ extern "C"
     ptr->ctx->HandleSignal(sig);
   }
 
-  void 
-  llarp_main_inject_vpn_fd(struct llarp_main * ptr, int fd)
+  void
+  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int fd)
   {
-    llarp::handlers::TunEndpoint * tun =  ptr->ctx->router->hiddenServiceContext.getFirstTun();
+    llarp::handlers::TunEndpoint *tun =
+        ptr->ctx->router->hiddenServiceContext.getFirstTun();
     if(!tun)
       return;
     if(!tun->Promise)
@@ -328,7 +318,7 @@ extern "C"
   void
   llarp_main_abort(struct llarp_main *ptr)
   {
-    llarp_logic_stop_timer(ptr->ctx->router->logic);
+    ptr->ctx->router->logic->stop_timer();
   }
 
   void
@@ -351,8 +341,10 @@ extern "C"
   llarp_main_init_dotLokiLookup(struct llarp_main *ptr,
                                 struct dotLokiLookup *dll)
   {
-    dll->logic = ptr->ctx->logic;
-    return true;
+    (void)ptr;
+    (void)dll;
+    // TODO: gutt me
+    return false;
   }
 
   void
@@ -451,17 +443,9 @@ extern "C"
   {
     // llarp::Info("llarp_main_queryDHT - setting up timer");
     request->hook = &llarp_main_queryDHT_online;
-    llarp_logic_call_later(request->ptr->ctx->router->logic,
-                           {1000, request, &llarp_main_checkOnline});
+    request->ptr->ctx->router->logic->call_later(
+        {1000, request, &llarp_main_checkOnline});
     // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
-  }
-
-  bool
-  main_router_mapAddress(struct llarp_main *ptr,
-                         const llarp::service::Address &addr, uint32_t ip)
-  {
-    auto &endpoint = ptr->ctx->router->hiddenServiceContext;
-    return endpoint.MapAddress(addr, llarp::huint32_t{ip});
   }
 
   bool
@@ -480,7 +464,6 @@ extern "C"
     return nullptr;
   }
 
-  //#include <llarp/service/context.hpp>
   bool
   main_router_endpoint_iterator(
       struct llarp_main *ptr, struct llarp::service::Context::endpoint_iter &i)

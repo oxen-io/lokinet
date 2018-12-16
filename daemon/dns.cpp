@@ -1,12 +1,12 @@
-#include <unistd.h>
+#include <config.h>
+#include <dns_dotlokilookup.hpp>
+#include <dns_iptracker.hpp>
+#include <dnsd.hpp>
 #include <llarp.h>
-#include <llarp/dns_iptracker.hpp>
-#include <llarp/dnsd.hpp>
-#include <llarp/dns_dotlokilookup.hpp>
-
-#include <llarp/threading.hpp>  // for multithreaded version (multiplatorm)
+#include <threading.hpp>  // for multithreaded version (multiplatorm)
 
 #include <signal.h>  // Linux needs this for SIGINT
+#include <unistd.h>
 
 #ifdef _WIN32
 #define uint UINT
@@ -171,11 +171,11 @@ main(int argc, char *argv[])
     // libev version
     llarp_ev_loop *netloop   = nullptr;
     llarp_threadpool *worker = nullptr;
-    llarp_logic *logic       = nullptr;
+    llarp::Logic *logic      = nullptr;
 
     llarp_ev_loop_alloc(&netloop);  // set up netio worker
     worker = llarp_init_same_process_threadpool();
-    logic  = llarp_init_single_process_logic(worker);  // set up logic worker
+    logic  = new llarp::Logic(worker);  // set up logic worker
 
     // configure main netloop
     struct dnsd_context dnsd;
@@ -202,10 +202,8 @@ main(int argc, char *argv[])
   else
   {
     // need this for timer stuff
-    llarp_threadpool *worker = nullptr;
-    llarp_logic *logic       = nullptr;
-    worker                   = llarp_init_same_process_threadpool();
-    logic = llarp_init_single_process_logic(worker);  // set up logic worker
+    llarp_threadpool *worker = llarp_init_same_process_threadpool();
+    llarp::Logic *logic      = new llarp::Logic(worker);
 
     // configure main netloop
     struct dnsd_context dnsd;
@@ -276,22 +274,27 @@ main(int argc, char *argv[])
       lbuffer.cur  = lbuffer.base;
       lbuffer.sz   = nbytes;
 
-      dns_msg_header *hdr = decode_hdr(lbuffer);
+      dns_msg_header hdr;
+      if(!decode_hdr(&lbuffer, &hdr))
+      {
+        llarp::LogError("failed to decode dns header");
+        continue;
+      }
 
       // if we sent this out, then there's an id
       struct dns_tracker *tracker = (struct dns_tracker *)dnsd.client.tracker;
       struct dnsc_answer_request *request =
-          tracker->client_request[hdr->id].get();
+          tracker->client_request[hdr.id].get();
 
       if(request)
       {
         request->packet.header = hdr;
-        generic_handle_dnsc_recvfrom(tracker->client_request[hdr->id].get(),
-                                     lbuffer, hdr);
+        generic_handle_dnsc_recvfrom(tracker->client_request[hdr.id].get(),
+                                     lbuffer, &hdr);
       }
       else
       {
-        llarp::LogWarn("Ignoring multiple responses on ID #", hdr->id);
+        llarp::LogWarn("Ignoring multiple responses on ID #", hdr.id);
       }
 
       // raw_handle_recvfrom(&m_sockfd, (const struct sockaddr *)&clientAddress,

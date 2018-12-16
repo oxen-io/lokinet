@@ -1,111 +1,79 @@
-#include <llarp/logic.hpp>
-#include <llarp/mem.h>
-#include "logger.hpp"
+#include <logger.hpp>
+#include <logic.hpp>
+#include <mem.h>
 
-struct llarp_logic*
-llarp_init_logic()
+namespace llarp
 {
-  llarp_logic* logic = new llarp_logic;
-  if(logic)
+  void
+  Logic::tick(llarp_time_t now)
   {
-    logic->thread = llarp_init_same_process_threadpool();
-    logic->timer  = llarp_init_timer();
+    llarp_timer_set_time(this->timer, now);
+    llarp_timer_tick_all(this->timer);
+    llarp_threadpool_tick(this->thread);
   }
-  return logic;
-};
 
-struct llarp_logic*
-llarp_init_single_process_logic(struct llarp_threadpool* tp)
-{
-  llarp_logic* logic = new llarp_logic;
-  if(logic)
+  void
+  Logic::tick_async(llarp_time_t now)
   {
-    logic->thread = tp;
-    logic->timer  = llarp_init_timer();
+    llarp_timer_tick_all_async(this->timer, this->thread, now);
+    llarp_threadpool_tick(this->thread);
   }
-  return logic;
-}
 
-void
-llarp_logic_tick(struct llarp_logic* logic, llarp_time_t now)
-{
-  llarp_timer_set_time(logic->timer, now);
-  llarp_timer_tick_all(logic->timer);
-  llarp_threadpool_tick(logic->thread);
-}
-
-void
-llarp_logic_tick_async(struct llarp_logic* logic, llarp_time_t now)
-{
-  llarp_timer_tick_all_async(logic->timer, logic->thread, now);
-  llarp_threadpool_tick(logic->thread);
-}
-
-void
-llarp_free_logic(struct llarp_logic** logic)
-{
-  if(*logic)
+  void
+  Logic::stop_timer()
   {
-    // llarp_free_timer(&(*logic)->timer);
-    delete *logic;
+    llarp_timer_stop(this->timer);
   }
-  *logic = nullptr;
-}
 
-void
-llarp_logic_stop_timer(struct llarp_logic* logic)
-{
-  if(logic->timer)
-    llarp_timer_stop(logic->timer);
-}
-
-void
-llarp_logic_stop(struct llarp_logic* logic)
-{
-  llarp::LogDebug("logic thread stop");
-  if(logic->thread)
+  void
+  Logic::queue_job(struct llarp_thread_job job)
   {
-    llarp_threadpool_stop(logic->thread);
-    llarp_threadpool_join(logic->thread);
+    if(job.user && job.work)
+      llarp_threadpool_queue_job(this->thread, {job.user, job.work});
   }
-  llarp_free_threadpool(&logic->thread);
 
-  llarp::LogDebug("logic timer stop");
-  if(logic->timer)
-    llarp_timer_stop(logic->timer);
-}
+  void
+  Logic::stop()
+  {
+    llarp::LogDebug("logic thread stop");
+    if(this->thread)
+    {
+      llarp_threadpool_stop(this->thread);
+      llarp_threadpool_join(this->thread);
+    }
+    llarp_free_threadpool(&this->thread);
 
-void
-llarp_logic_mainloop(struct llarp_logic* logic)
-{
-  llarp_timer_run(logic->timer, logic->thread);
-}
+    llarp::LogDebug("logic timer stop");
+    if(this->timer)
+      llarp_timer_stop(this->timer);
+  }
 
-void
-llarp_logic_queue_job(struct llarp_logic* logic, struct llarp_thread_job job)
-{
-  if(job.user && job.work)
-    llarp_threadpool_queue_job(logic->thread, {job.user, job.work});
-}
+  void
+  Logic::mainloop()
+  {
+    llarp_timer_run(this->timer, this->thread);
+  }
 
-uint32_t
-llarp_logic_call_later(struct llarp_logic* logic, struct llarp_timeout_job job)
-{
-  llarp_timeout_job j;
-  j.user    = job.user;
-  j.timeout = job.timeout;
-  j.handler = job.handler;
-  return llarp_timer_call_later(logic->timer, j);
-}
+  uint32_t
+  Logic::call_later(struct llarp_timeout_job job)
+  {
+    llarp_timeout_job j;
+    j.user    = job.user;
+    j.timeout = job.timeout;
+    j.handler = job.handler;
+    return llarp_timer_call_later(this->timer, j);
+  }
 
-void
-llarp_logic_cancel_call(struct llarp_logic* logic, uint32_t id)
-{
-  llarp_timer_cancel_job(logic->timer, id);
-}
+  void
+  Logic::cancel_call(uint32_t id)
+  {
+    llarp_timer_cancel_job(this->timer, id);
+  }
 
-void
-llarp_logic_remove_call(struct llarp_logic* logic, uint32_t id)
-{
-  llarp_timer_remove_job(logic->timer, id);
-}
+  void
+  Logic::remove_call(uint32_t id)
+  {
+    llarp_timer_remove_job(this->timer, id);
+  }
+
+}  // namespace llarp

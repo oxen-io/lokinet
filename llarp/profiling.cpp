@@ -1,4 +1,5 @@
-#include <llarp/profiling.hpp>
+#include <profiling.hpp>
+
 #include <fstream>
 
 namespace llarp

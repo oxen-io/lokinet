@@ -1,8 +1,8 @@
-#include <llarp/bencode.h>
-#include <llarp/router_contact.hpp>
-#include <llarp/messages/link_intro.hpp>
-#include "logger.hpp"
-#include "router.hpp"
+#include <bencode.h>
+#include <logger.hpp>
+#include <messages/link_intro.hpp>
+#include <router.hpp>
+#include <router_contact.hpp>
 
 namespace llarp
 {
@@ -114,7 +114,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::HandleMessage(llarp_router* router) const
+  LinkIntroMessage::HandleMessage(llarp::Router* router) const
   {
     if(!Verify(&router->crypto))
       return false;
@@ -122,7 +122,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::Sign(llarp_crypto* c, const SecretKey& k)
+  LinkIntroMessage::Sign(llarp::Crypto* c, const SecretKey& k)
   {
     Z.Zero();
     byte_t tmp[MaxSize] = {0};
@@ -135,7 +135,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::Verify(llarp_crypto* c) const
+  LinkIntroMessage::Verify(llarp::Crypto* c) const
   {
     LinkIntroMessage copy;
     copy = *this;

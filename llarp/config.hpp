@@ -1,9 +1,9 @@
 #ifndef LIBLLARP_CONFIG_HPP
 #define LIBLLARP_CONFIG_HPP
+#include <config.h>
+
 #include <list>
 #include <string>
-
-#include <llarp/config.h>
 
 namespace llarp
 {
@@ -21,6 +21,7 @@ namespace llarp
     section_t system;
     section_t api;
     section_t lokid;
+    section_t bootstrap;
 
     bool
     Load(const char *fname);

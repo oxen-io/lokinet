@@ -1,10 +1,12 @@
-#include <llarp/link/utp.hpp>
-#include "router.hpp"
-#include <llarp/messages/link_intro.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/buffer.hpp>
-#include <llarp/endian.hpp>
+#include <buffer.hpp>
+#include <endian.hpp>
+#include <link/server.hpp>
+#include <link/utp.hpp>
+#include <messages/discard.hpp>
+#include <messages/link_intro.hpp>
+#include <router.hpp>
 #include <utp.h>
+
 #include <cassert>
 #include <tuple>
 #include <deque>
@@ -17,6 +19,11 @@
 #ifdef _WIN32
 #include <winsock2.h>
 #include <ws2tcpip.h>
+#include <wspiapi.h>
+#endif
+
+#ifndef IP_DONTFRAGMENT
+#define IP_DONTFRAGMENT IP_DONTFRAG
 #endif
 
 namespace llarp
@@ -87,7 +94,7 @@ namespace llarp
         eClose             // utp connection is closed
       };
 
-      llarp_router*
+      llarp::Router*
       Router();
 
       State state;
@@ -201,8 +208,8 @@ namespace llarp
 
       // mix keys
       bool
-      DoKeyExchange(llarp_transport_dh_func dh, const KeyExchangeNonce& n,
-                    const PubKey& other, const SecretKey& secret)
+      DoKeyExchange(transport_dh_func dh, const KeyExchangeNonce& n,
+                    const PubKey& other, const byte_t* secret)
       {
         ShortHash t_h;
         AlignedBuffer< 64 > tmp;
@@ -318,7 +325,7 @@ namespace llarp
     struct LinkLayer : public ILinkLayer
     {
       utp_context* _utp_ctx = nullptr;
-      llarp_router* router  = nullptr;
+      llarp::Router* router = nullptr;
       static uint64
       OnRead(utp_callback_arguments* arg);
 
@@ -329,12 +336,77 @@ namespace llarp
             static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
         llarp::LogDebug("utp_sendto ", Addr(*arg->address), " ", arg->len,
                         " bytes");
+        // For whatever reason, the UTP_UDP_DONTFRAG flag is set
+        // on the socket itself....which isn't correct and causes
+        // winsock (at minimum) to reeee
+        // here, we check its value, then set fragmentation the _right_
+        // way. Naturally, Linux has its own special procedure.
+        // Of course, the flag itself is cleared. -rick
+#ifndef _WIN32
+        // No practical method of doing this on NetBSD or Darwin
+        // without resorting to raw sockets
+#if !(__NetBSD__ || __OpenBSD__ || (__APPLE__ && __MACH__))
+#ifndef __linux__
+        if(arg->flags == 2)
+        {
+          int val = 1;
+          setsockopt(l->m_udp.fd, IPPROTO_IP, IP_DONTFRAGMENT, &val,
+                     sizeof(val));
+        }
+        else
+        {
+          int val = 0;
+          setsockopt(l->m_udp.fd, IPPROTO_IP, IP_DONTFRAGMENT, &val,
+                     sizeof(val));
+        }
+#else
+        if(arg->flags == 2)
+        {
+          int val = IP_PMTUDISC_DO;
+          setsockopt(l->m_udp.fd, IPPROTO_IP, IP_MTU_DISCOVER, &val,
+                     sizeof(val));
+        }
+        else
+        {
+          int val = IP_PMTUDISC_DONT;
+          setsockopt(l->m_udp.fd, IPPROTO_IP, IP_MTU_DISCOVER, &val,
+                     sizeof(val));
+        }
+#endif
+#endif
+        arg->flags = 0;
         if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
                     arg->address, arg->address_len)
                == -1
            && errno)
+#else
+        if(arg->flags == 2)
         {
+          char val = 1;
+          setsockopt(l->m_udp.fd, IPPROTO_IP, IP_DONTFRAGMENT, &val,
+                     sizeof(val));
+        }
+        else
+        {
+          char val = 0;
+          setsockopt(l->m_udp.fd, IPPROTO_IP, IP_DONTFRAGMENT, &val,
+                     sizeof(val));
+        }
+        arg->flags = 0;
+        if(::sendto(l->m_udp.fd, (char*)arg->buf, arg->len, arg->flags,
+                    arg->address, arg->address_len)
+           == -1)
+#endif
+        {
+#ifdef _WIN32
+          char buf[1024];
+          int err = WSAGetLastError();
+          FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                        buf, 1024, nullptr);
+          llarp::LogError("sendto failed: ", buf);
+#else
           llarp::LogError("sendto failed: ", strerror(errno));
+#endif
         }
         return 0;
       }
@@ -367,7 +439,7 @@ namespace llarp
         return 0;
       }
 
-      LinkLayer(llarp_router* r) : ILinkLayer()
+      LinkLayer(llarp::Router* r) : ILinkLayer()
       {
         router   = r;
         _utp_ctx = utp_init(2);
@@ -485,7 +557,7 @@ namespace llarp
 #ifdef __linux__
         ProcessICMP();
 #endif
-        std::set< PubKey > sessions;
+        std::set< RouterID > sessions;
         {
           Lock l(m_AuthedLinksMutex);
           auto itr = m_AuthedLinks.begin();
@@ -514,7 +586,7 @@ namespace llarp
       {
       }
 
-      llarp_router*
+      llarp::Router*
       GetRouter();
 
       bool
@@ -548,7 +620,7 @@ namespace llarp
     };
 
     std::unique_ptr< ILinkLayer >
-    NewServer(llarp_router* r)
+    NewServer(llarp::Router* r)
     {
       return std::unique_ptr< LinkLayer >(new LinkLayer(r));
     }
@@ -733,7 +805,7 @@ namespace llarp
       EnterState(eSessionReady);
     }
 
-    llarp_router*
+    llarp::Router*
     BaseSession::Router()
     {
       return parent->router;

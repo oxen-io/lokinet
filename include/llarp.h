@@ -1,15 +1,14 @@
 #ifndef LLARP_H_
 #define LLARP_H_
-#include <llarp/dht.h>
-#include <llarp/ev.h>
-#include <llarp/logic.hpp>
-#include <llarp/mem.h>
-#include <llarp/version.hpp>
 
 #ifdef __cplusplus
-#include <llarp/service/address.hpp>  // for service::address
-#include <llarp/handlers/tun.hpp>     // for handlers
-#include <llarp/service/endpoint.hpp>
+#include <ev.h>
+#include <mem.h>
+#include <logic.hpp>
+#include <version.hpp>
+#include <handlers/tun.hpp>     // for handlers
+#include <service/address.hpp>  // for service::address
+#include <service/endpoint.hpp>
 
 extern "C"
 {
@@ -37,18 +36,27 @@ extern "C"
 
   /// give main context a vpn file descriptor (android/ios)
   void
-  llarp_main_inject_vpn_fd(struct llarp_main * m, int fd);
+  llarp_main_inject_vpn_fd(struct llarp_main *m, int fd);
 
-  /// setup main context
+  /// setup main context, returns 0 on success
   int
   llarp_main_setup(struct llarp_main *ptr);
 
-  /// run main context
+  /// run main context, returns 0 on success, blocks until program end
   int
   llarp_main_run(struct llarp_main *ptr);
 
+  /// free main context and end all operations
+  void
+  llarp_main_free(struct llarp_main *ptr);
+
+#ifdef __cplusplus
+
   void
   llarp_main_abort(struct llarp_main *ptr);
+
+  const char *
+  handleBaseCmdLineArgs(int argc, char *argv[]);
 
   /// load nodeDB into memory
   int
@@ -63,10 +71,6 @@ extern "C"
   bool
   llarp_main_putDatabase(struct llarp_main *ptr,
                          struct llarp::RouterContact &rc);
-
-  /// get RC from nodeDB
-  llarp::RouterContact *
-  llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
 
   // fwd declr
   struct check_online_request;
@@ -106,14 +110,9 @@ extern "C"
 
   llarp::RouterContact *
   llarp_main_getLocalRC(struct llarp_main *ptr);
-
-  void
-  llarp_main_free(struct llarp_main *ptr);
-
-  const char *
-  handleBaseCmdLineArgs(int argc, char *argv[]);
-
-#ifdef __cplusplus
+  /// get RC from nodeDB
+  llarp::RouterContact *
+  llarp_main_getDatabase(struct llarp_main *ptr, byte_t *pk);
 
   llarp::handlers::TunEndpoint *
   main_router_getFirstTunEndpoint(struct llarp_main *ptr);

@@ -1,17 +1,18 @@
 #include <gtest/gtest.h>
-#include <llarp/messages/exit.hpp>
+
+#include <messages/exit.hpp>
 
 using ObtainExitMessage = llarp::routing::ObtainExitMessage;
 
 class ObtainExitTest : public ::testing::Test
 {
  public:
-  llarp_crypto crypto;
+     llarp::Crypto crypto;
   llarp::SecretKey alice;
 
   ObtainExitTest()
+  : crypto(llarp::Crypto::sodium{})
   {
-    llarp_crypto_init(&crypto);
   }
 
   ~ObtainExitTest()
@@ -29,8 +30,8 @@ TEST_F(ObtainExitTest, TestSignVerify)
 {
   ObtainExitMessage msg;
   msg.Z.Zero();
-  msg.S = llarp_randint();
-  msg.T = llarp_randint();
+  msg.S = llarp::randint();
+  msg.T = llarp::randint();
   ASSERT_TRUE(msg.Sign(&crypto, alice));
   ASSERT_TRUE(msg.Verify(&crypto));
   ASSERT_TRUE(msg.I == llarp::PubKey(llarp::seckey_topublic(alice)));

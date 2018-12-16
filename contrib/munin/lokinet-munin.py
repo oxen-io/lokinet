@@ -12,7 +12,26 @@ def jsonrpc(method, **args):
         {'method': method, 'params': args, 'id': 0}), headers={'content-type': 'application/json'}).json()
 
 
-def main():
+def exit_sessions_main():
+    if len(sys.argv) == 2 and sys.argv[1] == 'config':
+        print("graph_title lokinet exit sessions")
+        print("graph_vlabel sessions")
+        print("graph_category network")
+        print("graph_info This graph shows the number of exit sessions on a lokinet exit")
+        print("lokinet.exit.sessions.info Number of exit sessions")
+        print("lokinet.exit.sessions.label sessions"))
+    else:
+        count = 0
+        try:
+            j = jsonrpc("llarp.admin.exit.list")
+            count = len(j['result'])
+        except:
+            pass
+        print("lokinet.exit.sessions {}".format(outbound))
+
+    
+
+def peers_main():
     if len(sys.argv) == 2 and sys.argv[1] == 'config':
         print("graph_title lokinet peers")
         print("graph_vlabel peers")
@@ -40,4 +59,9 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    if sys.argv[0] == 'lokinet-peers':
+        peers_main()
+    elif sys.argv[0] == 'lokinet-exit':
+        exit_sessions_main()
+    else:
+        print('please symlink this as `lokinet-peers` or `lokinet-exit` in munin plugins dir')

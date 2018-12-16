@@ -1,46 +1,51 @@
 #include <algorithm>
 // harmless on other platforms
 #define __USE_MINGW_ANSI_STDIO 1
-#include <llarp/handlers/tun.hpp>
-#include "router.hpp"
+#include <handlers/tun.hpp>
 #include <sys/types.h>
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <netdb.h>
 #endif
-#include "ev.hpp"
+
+#include <ev.hpp>
+#include <router.hpp>
+#include <dns/dns.hpp>
 
 namespace llarp
 {
   namespace handlers
   {
-
-    static llarp_fd_promise * get_tun_fd_promise(llarp_tun_io * tun)
+    static llarp_fd_promise *
+    get_tun_fd_promise(llarp_tun_io *tun)
     {
-      return static_cast<TunEndpoint *>(tun->user)->Promise.get();
+      return static_cast< TunEndpoint * >(tun->user)->Promise.get();
     }
 
-    TunEndpoint::TunEndpoint(const std::string &nickname, llarp_router *r)
+    TunEndpoint::TunEndpoint(const std::string &nickname, llarp::Router *r)
         : service::Endpoint(nickname, r)
         , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop, r->netloop)
+        , m_Resolver(r->netloop, this)
     {
-#ifdef ANDROID      
+#ifdef ANDROID
       tunif.get_fd_promise = &get_tun_fd_promise;
       Promise.reset(new llarp_fd_promise(&m_VPNPromise));
-#else 
+#else
       tunif.get_fd_promise = nullptr;
 #endif
       tunif.user    = this;
       tunif.netmask = DefaultTunNetmask;
+#ifdef _WIN32
+      llarp::Zero(tunif.ifaddr, sizeof(tunif.ifaddr));
+      llarp::Zero(tunif.ifname, sizeof(tunif.ifname));
+#else
       strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
       strncpy(tunif.ifname, DefaultTunIfname, sizeof(tunif.ifname) - 1);
-      tunif.tick           = nullptr;
-      tunif.before_write   = &tunifBeforeWrite;
-      tunif.recvpkt        = &tunifRecvPkt;
-      this->dll.ip_tracker = nullptr;
-      this->dll.user       = &r->hiddenServiceContext;
-      // this->dll.callback = std::bind(&TunEndpoint::MapAddress, this);
+#endif
+      tunif.tick         = nullptr;
+      tunif.before_write = &tunifBeforeWrite;
+      tunif.recvpkt      = &tunifRecvPkt;
     }
 
     bool
@@ -49,12 +54,13 @@ namespace llarp
       if(k == "exit-node")
       {
         llarp::RouterID exitRouter;
-        if(!HexDecode(v.c_str(), exitRouter, exitRouter.size()))
+        if(!(exitRouter.FromString(v)
+             || HexDecode(v.c_str(), exitRouter, exitRouter.size())))
         {
           llarp::LogError(Name(), " bad exit router key: ", v);
           return false;
         }
-        m_Exit.reset(new llarp::exit::BaseSession(
+        m_Exit.reset(new llarp::exit::ExitSession(
             exitRouter,
             std::bind(&TunEndpoint::QueueInboundPacketForExit, this,
                       std::placeholders::_1),
@@ -84,8 +90,9 @@ namespace llarp
           resolverAddr = v.substr(0, pos);
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
-        m_UpstreamDNSAddr = llarp::Addr(resolverAddr, dnsport);
-        llarp::LogInfo(Name(), " upstream dns set to ", m_UpstreamDNSAddr);
+        m_UpstreamResolvers.emplace_back(resolverAddr, dnsport);
+        llarp::LogInfo(Name(), "adding upstream dns set to ", resolverAddr, ":",
+                       dnsport);
       }
       if(k == "mapaddr")
       {
@@ -111,7 +118,7 @@ namespace llarp
           llarp::LogError("cannot map to invalid ip ", ip_str);
           return false;
         }
-        return MapAddress(addr, huint32_t{ntohl(ip.s_addr)});
+        return MapAddress(addr, huint32_t{ntohl(ip.s_addr)}, false);
       }
       if(k == "ifname")
       {
@@ -151,15 +158,6 @@ namespace llarp
         llarp::LogInfo(Name() + " set ifaddr to ", addr, " with netmask ",
                        tunif.netmask);
         strncpy(tunif.ifaddr, addr.c_str(), sizeof(tunif.ifaddr) - 1);
-
-        // set up address in dotLokiLookup
-        // llarp::Addr tunIp(tunif.ifaddr);
-        llarp::huint32_t tunIpV4;
-        tunIpV4.h = inet_addr(tunif.ifaddr);
-        // related to dns_iptracker_setup_dotLokiLookup(&this->dll, tunIp);
-        dns_iptracker_setup(
-            this->dll.ip_tracker,
-            tunIpV4);  // claim GW IP to make sure it's not inuse
         return true;
       }
       return Endpoint::SetOption(k, v);
@@ -180,7 +178,150 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::MapAddress(const service::Address &addr, huint32_t ip)
+    TunEndpoint::HandleHookedDNSMessage(
+        dns::Message msg, std::function< void(dns::Message) > reply)
+    {
+      if(msg.questions.size() != 1)
+      {
+        llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
+        return false;
+      }
+      std::string qname = msg.questions[0].qname;
+      if(msg.questions[0].qtype == 15)
+      {
+        // mx record
+        llarp::service::Address addr;
+        if(addr.FromString(qname, ".loki"))
+          msg.AddMXReply(qname, 1);
+        else
+          msg.AddNXReply();
+        reply(msg);
+      }
+      else if(msg.questions[0].qtype == 1)
+      {
+        // forward dns
+        llarp::service::Address addr;
+        if(qname == "random.snode" || qname == "random.snode.")
+        {
+          RouterID random;
+          if(Router()->GetRandomGoodRouter(random))
+            msg.AddCNAMEReply(random.ToString(), 1);
+          else
+            msg.AddNXReply();
+        }
+        else if(addr.FromString(qname, ".loki"))
+        {
+          if(HasAddress(addr.data()))
+          {
+            huint32_t ip = ObtainIPForAddr(addr.data(), false);
+            msg.AddINReply(ip);
+          }
+          else
+            return EnsurePathToService(
+                addr,
+                std::bind(&TunEndpoint::SendDNSReply, this,
+                          std::placeholders::_1, std::placeholders::_2, msg,
+                          reply),
+                2000);
+        }
+        else if(addr.FromString(qname, ".snode"))
+        {
+          // TODO: add hook to EnsurePathToSNode
+          EnsurePathToSNode(addr.data());
+          huint32_t ip = ObtainIPForAddr(addr.data(), true);
+          msg.AddINReply(ip);
+        }
+        else
+          msg.AddNXReply();
+
+        reply(msg);
+      }
+      else if(msg.questions[0].qtype == 12)
+      {
+        // reverse dns
+        huint32_t ip = {0};
+        if(!dns::DecodePTR(msg.questions[0].qname, ip))
+        {
+          msg.AddNXReply();
+          reply(msg);
+          return true;
+        }
+        llarp::service::Address addr =
+            ObtainAddrForIP< llarp::service::Address >(ip, true);
+        if(!addr.IsZero())
+        {
+          msg.AddAReply(addr.ToString(".snode"));
+          reply(msg);
+          return true;
+        }
+        addr = ObtainAddrForIP< llarp::service::Address >(ip, false);
+        if(!addr.IsZero())
+        {
+          msg.AddAReply(addr.ToString(".loki"));
+          reply(msg);
+          return true;
+        }
+        msg.AddNXReply();
+        reply(msg);
+        return true;
+      }
+      else
+      {
+        msg.AddNXReply();
+        reply(msg);
+      }
+      return true;
+    }
+
+    bool
+    TunEndpoint::ShouldHookDNSMessage(const dns::Message &msg) const
+    {
+      llarp::service::Address addr;
+      if(msg.questions.size() == 1)
+      {
+        // always hook mx records
+        if(msg.questions[0].qtype == llarp::dns::qTypeMX)
+          return true;
+        if(msg.questions[0].qname == "random.snode"
+           || msg.questions[0].qname == "random.snode.")
+          return true;
+        // always hook .loki
+        if(addr.FromString(msg.questions[0].qname, ".loki"))
+          return true;
+        // always hook .snode
+        if(addr.FromString(msg.questions[0].qname, ".snode"))
+          return true;
+        if(msg.questions[0].qtype == llarp::dns::qTypePTR)
+        {
+          huint32_t ip = {0};
+          if(!dns::DecodePTR(msg.questions[0].qname, ip))
+            return false;
+          return m_OurRange.Contains(ip);
+        }
+      }
+      return false;
+    }
+
+    void
+    TunEndpoint::SendDNSReply(service::Address addr,
+                              service::Endpoint::OutboundContext *ctx,
+                              dns::Message request,
+                              std::function< void(dns::Message) > reply)
+    {
+      if(ctx)
+      {
+        huint32_t ip = ObtainIPForAddr(addr.data(), false);
+        request.AddINReply(ip);
+      }
+      else
+        request.AddNXReply();
+
+      reply(request);
+    }
+
+    bool
+    TunEndpoint::MapAddress(const service::Address &addr, huint32_t ip,
+                            bool SNode)
     {
       auto itr = m_IPToAddr.find(ip);
       if(itr != m_IPToAddr.end())
@@ -192,8 +333,9 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr.insert(std::make_pair(ip, addr.data()));
-      m_AddrToIP.insert(std::make_pair(addr.data(), ip));
+      m_IPToAddr[ip]          = addr.data();
+      m_AddrToIP[addr.data()] = ip;
+      m_SNodes[addr.data()]   = SNode;
       MarkIPActiveForever(ip);
       return true;
     }
@@ -201,44 +343,16 @@ namespace llarp
     bool
     TunEndpoint::Start()
     {
-      // do network isolation first
       if(!Endpoint::Start())
         return false;
-#ifdef WIN32
       return SetupNetworking();
-#else
-      if(!NetworkIsIsolated())
-      {
-        llarp::LogInfo("Setting up global DNS IP tracker");
-        llarp::huint32_t tunIpV4;
-        tunIpV4.h = inet_addr(tunif.ifaddr);
-        dns_iptracker_setup_dotLokiLookup(
-            &this->dll, tunIpV4);  // just set ups dll to use global iptracker
-        dns_iptracker_setup(
-            this->dll.ip_tracker,
-            tunIpV4);  // claim GW IP to make sure it's not inuse
+    }
 
-        // set up networking in currrent thread if we are not isolated
-        if(!SetupNetworking())
-          return false;
-      }
-      else
-      {
-        llarp::LogInfo("Setting up per netns DNS IP tracker");
-        llarp::huint32_t tunIpV4;
-        tunIpV4.h = inet_addr(tunif.ifaddr);
-        llarp::Addr tunIp(tunif.ifaddr);
-        this->dll.ip_tracker = new dns_iptracker;
-        dns_iptracker_setup_dotLokiLookup(
-            &this->dll, tunIpV4);  // just set ups dll to use global iptracker
-        dns_iptracker_setup(
-            this->dll.ip_tracker,
-            tunIpV4);  // claim GW IP to make sure it's not inuse
-      }
-      // wait for result for network setup
-      llarp::LogInfo("waiting for tun interface...");
-      return m_TunSetupResult.get_future().get();
-#endif
+    bool
+    TunEndpoint::IsSNode() const
+    {
+      // TODO : implement me
+      return false;
     }
 
     bool
@@ -253,7 +367,7 @@ namespace llarp
       struct addrinfo hint, *res = NULL;
       int ret;
 
-      memset(&hint, '\0', sizeof hint);
+      memset(&hint, 0, sizeof hint);
 
       hint.ai_family = PF_UNSPEC;
       hint.ai_flags  = AI_NUMERICHOST;
@@ -274,8 +388,8 @@ namespace llarp
       int s = inet_pton(res->ai_family, tunif.ifaddr, buf);
       if (s <= 0)
       {
-        llarp::LogError(Name(), " failed to set up tun interface, cant parse ",
-      tunif.ifaddr); return false;
+        llarp::LogError(Name(), " failed to set up tun interface, cant parse
+      ", tunif.ifaddr); return false;
       }
       */
       if(res->ai_family == AF_INET6)
@@ -297,13 +411,15 @@ namespace llarp
 
       llarp::Addr lAddr(tunif.ifaddr);
 
-      m_OurIP    = lAddr.xtohl();
-      m_NextIP   = m_OurIP;
-      auto xmask = netmask_ipv4_bits(tunif.netmask);
-      m_MaxIP    = m_OurIP ^ (~xmask);
+      m_OurIP                 = lAddr.xtohl();
+      m_NextIP                = m_OurIP;
+      m_OurRange.netmask_bits = netmask_ipv4_bits(tunif.netmask);
+      m_OurRange.addr         = m_OurIP;
+      m_MaxIP                 = m_OurIP | (~m_OurRange.netmask_bits);
       llarp::LogInfo(Name(), " set ", tunif.ifname, " to have address ", lAddr);
-
-      llarp::LogInfo(Name(), " allocated up to ", m_MaxIP);
+      llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ",
+                     m_OurRange);
+      MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());
       return true;
     }
 
@@ -311,45 +427,26 @@ namespace llarp
     TunEndpoint::SetupNetworking()
     {
       llarp::LogInfo("Set Up networking for ", Name());
-      bool result = SetupTun();
-#ifndef WIN32
-      m_TunSetupResult.set_value(
-          result);  // now that NT has tun, we don't need the CPP guard
-#endif
-      if(!NetworkIsIsolated())
+      if(!SetupTun())
       {
-        // need to check to see if we have more than one hidden service
-        // well we'll only use the primary
-        // FIXME: detect number of hidden services
-        llarp::LogWarn(
-            "Only utilizing first hidden service for .loki look ups");
-        // because we can't find to the tun interface because we don't want it
-        // accessible on lokinet we can only bind one to loopback, and we can't
-        // really utilize anything other than port 53 we can't bind to our
-        // public interface, don't want it exploitable maybe we could detect if
-        // you have a private interface
+        llarp::LogError(Name(), " failed to set up network interface");
+        return false;
       }
-
-      llarp::LogInfo("TunDNS set up ", m_LocalResolverAddr, " to ",
-                     m_UpstreamDNSAddr);
-      if(!llarp_dnsd_init(&this->dnsd, EndpointLogic(), EndpointNetLoop(),
-                          m_LocalResolverAddr, m_UpstreamDNSAddr))
+      if(!m_Resolver.Start(m_LocalResolverAddr, m_UpstreamResolvers))
       {
-        llarp::LogError("Couldnt init dns daemon");
+        llarp::LogError(Name(), " failed to start dns server");
+        return false;
       }
-      // configure hook for .loki lookup
-      dnsd.intercept = &llarp_dotlokilookup_handler;
-      // set dotLokiLookup (this->dll) configuration
-      dnsd.user = &this->dll;
-      return result;
+      return true;
     }
 
     void
     TunEndpoint::Tick(llarp_time_t now)
     {
       // call tun code in endpoint logic in case of network isolation
-      //llarp_logic_queue_job(EndpointLogic(), {this, handleTickTun});
-      FlushSend();
+      // EndpointLogic()->queue_job({this, handleTickTun});
+      if(m_Exit)
+        EnsureRouterIsKnown(m_Exit->Endpoint());
       Endpoint::Tick(now);
     }
 
@@ -357,67 +454,77 @@ namespace llarp
     TunEndpoint::FlushSend()
     {
       m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
+        std::function< bool(llarp_buffer_t) > sendFunc;
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
-          if(m_Exit)
+          if(m_Exit && !llarp::IsIPv4Bogon(pkt.dst()))
           {
             pkt.UpdateIPv4PacketOnDst({0}, pkt.dst());
-            m_Exit->SendUpstreamTraffic(std::move(pkt));
+            m_Exit->QueueUpstreamTraffic(std::move(pkt),
+                                         llarp::routing::ExitPadSize);
           }
           else
             llarp::LogWarn(Name(), " has no endpoint for ", pkt.dst());
           return true;
         }
 
+        if(m_SNodes.at(itr->second))
+        {
+          sendFunc = std::bind(&TunEndpoint::SendToSNodeOrQueue, this,
+                               itr->second.data(), std::placeholders::_1);
+        }
+        else
+        {
+          sendFunc = std::bind(&TunEndpoint::SendToServiceOrQueue, this,
+                               itr->second.data(), std::placeholders::_1,
+                               service::eProtocolTraffic);
+        }
         // prepare packet for insertion into network
         // this includes clearing IP addresses, recalculating checksums, etc
         pkt.UpdateIPv4PacketOnSrc();
 
-        if(!SendToOrQueue(itr->second.data(), pkt.Buffer(),
-                          service::eProtocolTraffic))
-        {
-          llarp::LogWarn(Name(), " did not flush packets");
-        }
+        if(sendFunc && sendFunc(pkt.Buffer()))
+          return true;
+        llarp::LogWarn(Name(), " did not flush packets");
         return true;
       });
+      if(m_Exit)
+        m_Exit->FlushUpstreamTraffic();
+      FlushSNodeTraffic();
     }
 
     bool
-    TunEndpoint::ProcessDataMessage(service::ProtocolMessage *msg)
+    TunEndpoint::HandleWriteIPPacket(llarp_buffer_t buf,
+                                     std::function< huint32_t(void) > getFromIP)
     {
       // llarp::LogInfo("got packet from ", msg->sender.Addr());
-      auto themIP = ObtainIPForAddr(msg->sender.Addr().data());
+      auto themIP = getFromIP();
       // llarp::LogInfo("themIP ", themIP);
       auto usIP = m_OurIP;
-      auto buf  = llarp::Buffer(msg->payload);
-      if(m_NetworkToUserPktQueue.EmplaceIf(
-             [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
-               // load
-               if(!pkt.Load(buf))
-                 return false;
-               // filter out:
-               // - packets smaller than minimal IPv4 header
-               // - non-IPv4 packets
-               // - packets with weird src/dst addresses
-               //   (0.0.0.0/8 but not 0.0.0.0)
-               // - packets with 0 src but non-0 dst and oposite
-               auto hdr = pkt.Header();
-               if(pkt.sz < sizeof(*hdr) || hdr->version != 4
-                  || (hdr->saddr != 0 && *(byte_t *)&(hdr->saddr) == 0)
-                  || (hdr->daddr != 0 && *(byte_t *)&(hdr->daddr) == 0)
-                  || ((hdr->saddr == 0) != (hdr->daddr == 0)))
-               {
-                 return false;
-               }
-               // update packet to use proper addresses, recalc checksums
-               pkt.UpdateIPv4PacketOnDst(themIP, usIP);
-               return true;
-             }))
-
-        llarp::LogDebug(Name(), " handle data message ", msg->payload.size(),
-                        " bytes from ", themIP);
-      return true;
+      return m_NetworkToUserPktQueue.EmplaceIf(
+          [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
+            // load
+            if(!pkt.Load(buf))
+              return false;
+            // filter out:
+            // - packets smaller than minimal IPv4 header
+            // - non-IPv4 packets
+            // - packets with weird src/dst addresses
+            //   (0.0.0.0/8 but not 0.0.0.0)
+            // - packets with 0 src but non-0 dst and oposite
+            auto hdr = pkt.Header();
+            if(pkt.sz < sizeof(*hdr) || hdr->version != 4
+               || (hdr->saddr != 0 && *(byte_t *)&(hdr->saddr) == 0)
+               || (hdr->daddr != 0 && *(byte_t *)&(hdr->daddr) == 0)
+               || ((hdr->saddr == 0) != (hdr->daddr == 0)))
+            {
+              return false;
+            }
+            // update packet to use proper addresses, recalc checksums
+            pkt.UpdateIPv4PacketOnDst(themIP, usIP);
+            return true;
+          });
     }
 
     huint32_t
@@ -427,7 +534,7 @@ namespace llarp
     }
 
     huint32_t
-    TunEndpoint::ObtainIPForAddr(const byte_t *a)
+    TunEndpoint::ObtainIPForAddr(const byte_t *a, bool snode)
     {
       llarp_time_t now = Now();
       huint32_t nextIP = {0};
@@ -454,6 +561,7 @@ namespace llarp
         {
           m_AddrToIP[ident]  = nextIP;
           m_IPToAddr[nextIP] = ident;
+          m_SNodes[ident]    = snode;
           llarp::LogInfo(Name(), " mapped ", ident, " to ", nextIP);
           MarkIPActive(nextIP);
           return nextIP;
@@ -482,6 +590,7 @@ namespace llarp
       // remap address
       m_IPToAddr[oldest.first] = ident;
       m_AddrToIP[ident]        = oldest.first;
+      m_SNodes[ident]          = snode;
       nextIP                   = oldest.first;
 
       // mark ip active
@@ -527,11 +636,11 @@ namespace llarp
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
-        if(!llarp_ev_tun_async_write(tun, pkt.buf, pkt.sz))
+        if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
           llarp::LogWarn("packet dropped");
       });
       if(self->m_UserToNetworkPktQueue.Size())
-        llarp_logic_queue_job(self->RouterLogic(), {self, &handleNetSend});
+        self->RouterLogic()->queue_job({self, &handleNetSend});
     }
 
     void
@@ -542,19 +651,15 @@ namespace llarp
     }
 
     void
-    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, const void *buf, ssize_t sz)
+    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, llarp_buffer_t buf)
     {
       // called for every packet read from user in isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      llarp::LogDebug("got pkt ", sz, " bytes");
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
-             [buf, sz](net::IPv4Packet &pkt) -> bool {
-               return pkt.Load(llarp::InitBuffer(buf, sz))
-                   && pkt.Header()->version == 4;
+             [buf](net::IPv4Packet &pkt) -> bool {
+               return pkt.Load(buf) && pkt.Header()->version == 4;
              }))
       {
-        llarp::LogInfo("Failed to parse ipv4 packet");
-        llarp::DumpBuffer(llarp::InitBuffer(buf, sz));
       }
     }
 

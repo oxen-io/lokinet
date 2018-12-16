@@ -1,8 +1,8 @@
 #ifndef LLARP_QUEUE_HPP
 #define LLARP_QUEUE_HPP
 
-#include <llarp/threading.hpp>
 #include <queue_manager.hpp>
+#include <threading.hpp>
 
 #include <atomic>
 #if __cplusplus >= 201703L

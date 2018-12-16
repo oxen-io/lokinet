@@ -1,6 +1,6 @@
-#include <llarp/messages/exit.hpp>
-#include <llarp/routing/handler.hpp>
-#include <llarp/link_layer.hpp>
+#include <link_layer.hpp>
+#include <messages/exit.hpp>
+#include <routing/handler.hpp>
 
 namespace llarp
 {
@@ -22,7 +22,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::Sign(llarp_crypto* c, const llarp::SecretKey& sk)
+    ObtainExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
       byte_t tmp[1024] = {0};
       auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -35,7 +35,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::Verify(llarp_crypto* c) const
+    ObtainExitMessage::Verify(llarp::Crypto* c) const
     {
       byte_t tmp[1024] = {0};
       auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);
@@ -103,7 +103,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::HandleMessage(IMessageHandler* h, llarp_router* r) const
+    ObtainExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
     {
       return h->HandleObtainExitMessage(this, r);
     }

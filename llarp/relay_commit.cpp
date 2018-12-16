@@ -1,9 +1,10 @@
-#include <llarp/bencode.hpp>
-#include <llarp/messages/path_confirm.hpp>
-#include <llarp/messages/relay_commit.hpp>
-#include "buffer.hpp"
-#include "logger.hpp"
-#include "router.hpp"
+#include <bencode.hpp>
+#include <buffer.hpp>
+#include <logger.hpp>
+#include <messages/path_confirm.hpp>
+#include <messages/relay_commit.hpp>
+#include <path.hpp>
+#include <router.hpp>
 
 namespace llarp
 {
@@ -45,7 +46,7 @@ namespace llarp
   }
 
   bool
-  LR_CommitMessage::HandleMessage(llarp_router* router) const
+  LR_CommitMessage::HandleMessage(llarp::Router* router) const
   {
     if(frames.size() != MAXHOPS)
     {
@@ -303,13 +304,13 @@ namespace llarp
         // we are the farthest hop
         llarp::LogDebug("We are the farthest hop for ", info);
         // send a LRAM down the path
-        llarp_logic_queue_job(self->context->Logic(), {self, &SendPathConfirm});
+        self->context->Logic()->queue_job({self, &SendPathConfirm});
       }
       else
       {
         // forward upstream
         // we are still in the worker thread so post job to logic
-        llarp_logic_queue_job(self->context->Logic(), {self, &SendLRCM});
+        self->context->Logic()->queue_job({self, &SendLRCM});
       }
     }
   };

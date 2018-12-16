@@ -1,15 +1,15 @@
 #include <gtest/gtest.h>
 #include <libabyss.hpp>
-#include <llarp/ev.h>
-#include <llarp/threading.hpp>
-#include <llarp/net.hpp>
+#include <ev.h>
+#include <threading.hpp>
+#include <net.hpp>
 
 struct AbyssTestBase : public ::testing::Test
 {
-  llarp_crypto crypto;
+    llarp::Crypto crypto;
   llarp_threadpool* threadpool         = nullptr;
   llarp_ev_loop* loop                  = nullptr;
-  llarp_logic* logic                   = nullptr;
+  llarp::Logic* logic                  = nullptr;
   abyss::httpd::BaseReqHandler* server = nullptr;
   abyss::http::JSONRPC* client         = nullptr;
   const std::string method             = "test.method";
@@ -24,7 +24,7 @@ struct AbyssTestBase : public ::testing::Test
   void
   SetUp()
   {
-    // for llarp_randint
+    // for llarp::randint
     llarp_crypto_init(&crypto);
   }
 
@@ -45,7 +45,7 @@ struct AbyssTestBase : public ::testing::Test
 
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    addr.sin_port        = htons((llarp_randint() % 2000) + 2000);
+    addr.sin_port        = htons((llarp::randint() % 2000) + 2000);
     addr.sin_family      = AF_INET;
     llarp::Addr a(addr);
     while(true)
@@ -53,7 +53,7 @@ struct AbyssTestBase : public ::testing::Test
       if(server->ServeAsync(loop, logic, a))
       {
         client->RunAsync(loop, a.ToString());
-        llarp_logic_call_later(logic, {1000, this, &CancelIt});
+        logic->call_later({1000, this, &CancelIt});
         return;
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -65,7 +65,7 @@ struct AbyssTestBase : public ::testing::Test
   {
     if(server)
       server->Close();
-    llarp_logic_stop(logic);
+    logic->stop();
     llarp_ev_loop_stop(loop);
     llarp_threadpool_stop(threadpool);
   }
@@ -168,7 +168,7 @@ struct AbyssTest : public AbyssTestBase,
   void
   AsyncFlush()
   {
-    llarp_logic_queue_job(logic, {this, &FlushIt});
+    logic->queue_job({this, &FlushIt});
   }
 
   void

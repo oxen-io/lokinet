@@ -1,10 +1,10 @@
-#include <llarp/messages/dht.hpp>
-#include <llarp/messages/path_confirm.hpp>
-#include <llarp/messages/path_latency.hpp>
-#include <llarp/messages/path_transfer.hpp>
-#include <llarp/messages/discard.hpp>
-#include <llarp/routing/message.hpp>
-#include "mem.hpp"
+#include <mem.hpp>
+#include <messages/dht.hpp>
+#include <messages/discard.hpp>
+#include <messages/path_confirm.hpp>
+#include <messages/path_latency.hpp>
+#include <messages/path_transfer.hpp>
+#include <routing/message.hpp>
 
 namespace llarp
 {
@@ -94,7 +94,7 @@ namespace llarp
     InboundMessageParser::ParseMessageBuffer(llarp_buffer_t buf,
                                              IMessageHandler* h,
                                              const PathID_t& from,
-                                             llarp_router* r)
+                                             llarp::Router* r)
     {
       bool result = false;
       msg         = nullptr;

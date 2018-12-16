@@ -1,5 +1,5 @@
-#include <llarp/messages/path_latency.hpp>
-#include <llarp/routing/handler.hpp>
+#include <messages/path_latency.hpp>
+#include <routing/handler.hpp>
 
 namespace llarp
 {
@@ -45,7 +45,8 @@ namespace llarp
     }
 
     bool
-    PathLatencyMessage::HandleMessage(IMessageHandler* h, llarp_router* r) const
+    PathLatencyMessage::HandleMessage(IMessageHandler* h,
+                                      llarp::Router* r) const
     {
       return h && h->HandlePathLatencyMessage(this, r);
     }

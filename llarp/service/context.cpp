@@ -1,13 +1,13 @@
-#include <llarp/handlers/tun.hpp>
-#include <llarp/service/context.hpp>
-#include <llarp/service/endpoint.hpp>
-#include "router.hpp"
+#include <handlers/null.hpp>
+#include <handlers/tun.hpp>
+#include <service/context.hpp>
+#include <service/endpoint.hpp>
 
 namespace llarp
 {
   namespace service
   {
-    Context::Context(llarp_router *r) : m_Router(r)
+    Context::Context(llarp::Router *r) : m_Router(r)
     {
     }
 
@@ -45,7 +45,7 @@ namespace llarp
         llarp::LogError("No endpoints found");
         return nullptr;
       }
-      auto itr  = m_Endpoints.begin();
+      auto itr = m_Endpoints.begin();
       if(itr == m_Endpoints.end())
         return nullptr;
       return itr->second.get();
@@ -100,15 +100,14 @@ namespace llarp
     }
 
     bool
-    Context::FindBestAddressFor(const llarp::service::Address &addr,
-                                huint32_t &ip)
+    Context::FindBestAddressFor(const byte_t *addr, bool isSNode, huint32_t &ip)
     {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
-        if(itr->second->HasAddress(addr.data()))
+        if(itr->second->HasAddress(addr))
         {
-          ip = itr->second->ObtainIPForAddr(addr.data());
+          ip = itr->second->ObtainIPForAddr(addr, isSNode);
           return true;
         }
         ++itr;
@@ -116,7 +115,7 @@ namespace llarp
       itr = m_Endpoints.find("default");
       if(itr != m_Endpoints.end())
       {
-        ip = itr->second->ObtainIPForAddr(addr.data());
+        ip = itr->second->ObtainIPForAddr(addr, isSNode);
         return true;
       }
       return false;
@@ -141,41 +140,6 @@ namespace llarp
           10000);
     }
 
-    huint32_t
-    Context::GetIpForAddr(const llarp::service::Address &addr)
-    {
-      llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
-      if(!tunEndpoint)
-      {
-        huint32_t zero;
-        zero.h = 0;
-        llarp::LogError("No tunnel endpoint found");
-        return zero;
-      }
-      return tunEndpoint->ObtainIPForAddr(addr.data());
-    }
-
-    bool
-    Context::MapAddress(const llarp::service::Address &addr, huint32_t ip)
-    {
-      if(!m_Endpoints.size())
-      {
-        llarp::LogError("No endpoints found");
-        return false;
-      }
-      auto firstEndpoint                   = m_Endpoints.begin();
-      auto *uniqueEndpoint                 = &firstEndpoint->second;
-      llarp::service::Endpoint *endpointer = uniqueEndpoint->get();
-      llarp::handlers::TunEndpoint *tunEndpoint =
-          static_cast< llarp::handlers::TunEndpoint * >(endpointer);
-      if(!tunEndpoint)
-      {
-        llarp::LogError("No tunnel endpoint found");
-        return false;
-      }
-      return tunEndpoint->MapAddress(addr, ip);
-    }
-
     bool
     MapAddressAllIter(struct Context::endpoint_iter *endpointCfg)
     {
@@ -188,8 +152,8 @@ namespace llarp
         llarp::LogError("No tunnel endpoint found");
         return true;  // still continue
       }
-      return tunEndpoint->MapAddress(context->serviceAddr,
-                                     context->localPrivateIpAddr.xtohl());
+      return tunEndpoint->MapAddress(
+          context->serviceAddr, context->localPrivateIpAddr.xtohl(), false);
     }
 
     bool
@@ -264,17 +228,17 @@ namespace llarp
 
       static std::map< std::string,
                        std::function< llarp::service::Endpoint *(
-                           const std::string &, llarp_router *) > >
+                           const std::string &, llarp::Router *) > >
           endpointConstructors = {
               {"tun",
                [](const std::string &nick,
-                  llarp_router *r) -> llarp::service::Endpoint * {
+                  llarp::Router *r) -> llarp::service::Endpoint * {
                  return new llarp::handlers::TunEndpoint(nick, r);
                }},
               {"null",
                [](const std::string &nick,
-                  llarp_router *r) -> llarp::service::Endpoint * {
-                 return new llarp::service::Endpoint(nick, r);
+                  llarp::Router *r) -> llarp::service::Endpoint * {
+                 return new llarp::handlers::NullEndpoint(nick, r);
                }}};
 
       {

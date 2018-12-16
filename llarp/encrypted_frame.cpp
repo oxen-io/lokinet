@@ -1,12 +1,18 @@
-#include <llarp/crypto.hpp>
-#include <llarp/encrypted_frame.hpp>
-#include "logger.hpp"
-#include "mem.hpp"
+#include <crypto.hpp>
+#include <encrypted_frame.hpp>
+#include <logger.hpp>
+#include <mem.hpp>
 
 namespace llarp
 {
   Encrypted::Encrypted()
   {
+    UpdateBuffer();
+  }
+
+  Encrypted::Encrypted(Encrypted&& other)
+  {
+    _data = std::move(other._data);
     UpdateBuffer();
   }
 
@@ -35,7 +41,7 @@ namespace llarp
   bool
   EncryptedFrame::EncryptInPlace(const byte_t* ourSecretKey,
                                  const byte_t* otherPubkey,
-                                 llarp_crypto* crypto)
+                                 llarp::Crypto* crypto)
   {
     // format of frame is
     // <32 bytes keyed hash of following data>
@@ -93,7 +99,7 @@ namespace llarp
 
   bool
   EncryptedFrame::DecryptInPlace(const byte_t* ourSecretKey,
-                                 llarp_crypto* crypto)
+                                 llarp::Crypto* crypto)
   {
     if(size() <= size_t(EncryptedFrame::OverheadSize))
     {

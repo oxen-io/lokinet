@@ -1,11 +1,11 @@
-#include <llarp/address_info.hpp>
+#include <address_info.hpp>
 #ifndef _WIN32
 #include <arpa/inet.h>
 #endif
-#include <llarp/bencode.h>
-#include <llarp/mem.h>
-#include <llarp/string.h>
-#include <llarp/net.hpp>
+#include <bencode.h>
+#include <mem.h>
+#include <string.h>
+#include <net.hpp>
 
 namespace llarp
 {
@@ -25,17 +25,17 @@ namespace llarp
   }
 
   bool
-  AddressInfo::operator==(const AddressInfo &other) const
+  operator==(const AddressInfo &lhs, const AddressInfo &rhs)
   {
     // we don't care about rank
-    return pubkey == other.pubkey && port == other.port
-        && dialect == other.dialect && ip == other.ip;
+    return lhs.pubkey == rhs.pubkey && lhs.port == rhs.port
+        && lhs.dialect == rhs.dialect && lhs.ip == rhs.ip;
   }
 
   bool
-  AddressInfo::operator<(const AddressInfo &other) const
+  operator<(const AddressInfo &lhs, const AddressInfo &rhs)
   {
-    return rank < other.rank || ip < other.ip || port < other.port;
+    return lhs.rank < rhs.rank || lhs.ip < rhs.ip || lhs.port < rhs.port;
   }
 
   bool

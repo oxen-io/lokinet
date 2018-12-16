@@ -1,10 +1,10 @@
-#include <llarp/nodedb.hpp>
-#include <llarp/path.hpp>
+#include <buffer.hpp>
+#include <nodedb.hpp>
+#include <path.hpp>
+#include <pathbuilder.hpp>
+#include <router.hpp>
 
-#include <llarp/pathbuilder.hpp>
 #include <functional>
-#include "buffer.hpp"
-#include "router.hpp"
 
 namespace llarp
 {
@@ -20,9 +20,10 @@ namespace llarp
 
     Handler result;
     size_t idx               = 0;
+    llarp::Router* router    = nullptr;
     llarp_threadpool* worker = nullptr;
-    llarp_logic* logic       = nullptr;
-    llarp_crypto* crypto     = nullptr;
+    llarp::Logic* logic      = nullptr;
+    llarp::Crypto* crypto    = nullptr;
     LR_CommitMessage LRCM;
 
     static void
@@ -62,11 +63,11 @@ namespace llarp
 
       if(isFarthestHop)
       {
-        hop.upstream = hop.rc.pubkey;
+        hop.upstream = hop.rc.pubkey.data();
       }
       else
       {
-        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
+        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey.data();
       }
 
       // build record
@@ -101,7 +102,7 @@ namespace llarp
       if(isFarthestHop)
       {
         // farthest hop
-        llarp_logic_queue_job(ctx->logic, {ctx, &HandleDone});
+        ctx->logic->queue_job({ctx, &HandleDone});
       }
       else
       {
@@ -110,13 +111,13 @@ namespace llarp
       }
     }
 
-    AsyncPathKeyExchangeContext(llarp_crypto* c) : crypto(c)
+    AsyncPathKeyExchangeContext(llarp::Crypto* c) : crypto(c)
     {
     }
 
     /// Generate all keys asynchronously and call hadler when done
     void
-    AsyncGenerateKeys(Path_t* p, llarp_logic* l, llarp_threadpool* pool,
+    AsyncGenerateKeys(Path_t* p, llarp::Logic* l, llarp_threadpool* pool,
                       User* u, Handler func)
     {
       path   = p;
@@ -136,29 +137,23 @@ namespace llarp
   void
   pathbuilder_generated_keys(AsyncPathKeyExchangeContext< path::Builder >* ctx)
   {
-    RouterID remote = ctx->path->Upstream();
-    auto router     = ctx->user->router;
-    if(!router)
-    {
-      llarp::LogError("null router");
-      return;
-    }
+    RouterID remote         = ctx->path->Upstream();
     const ILinkMessage* msg = &ctx->LRCM;
-    if(!router->SendToOrQueue(remote, msg))
+    if(!ctx->router->SendToOrQueue(remote, msg))
     {
       llarp::LogError("failed to send LRCM");
       return;
     }
 
     // persist session with router until this path is done
-    router->PersistSessionUntil(remote, ctx->path->ExpireTime());
+    ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
     // add own path
-    router->paths.AddOwnPath(ctx->pathset, ctx->path);
+    ctx->router->paths.AddOwnPath(ctx->pathset, ctx->path);
   }
 
   namespace path
   {
-    Builder::Builder(llarp_router* p_router, struct llarp_dht_context* p_dht,
+    Builder::Builder(llarp::Router* p_router, struct llarp_dht_context* p_dht,
                      size_t pathNum, size_t hops)
         : llarp::path::PathSet(pathNum)
         , router(p_router)
@@ -179,17 +174,18 @@ namespace llarp
                        RouterContact& cur, size_t hop, PathRole roles)
     {
       (void)roles;
-      if(hop == 0 && router->NumberOfConnectedRouters())
-        return router->GetRandomConnectedRouter(cur);
+      if(hop == 0)
+        return router->NumberOfConnectedRouters()
+            && router->GetRandomConnectedRouter(cur);
 
       size_t tries = 5;
       do
       {
         --tries;
-        if(llarp_nodedb_select_random_hop(db, prev, cur, hop))
-          break;
+        if(db->select_random_hop(prev, cur, hop))
+          return true;
       } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
-      return !router->routerProfiling.IsBad(cur.pubkey);
+      return false;
     }
 
     const byte_t*
@@ -256,6 +252,7 @@ namespace llarp
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
           new AsyncPathKeyExchangeContext< Builder >(&router->crypto);
+      ctx->router  = router;
       ctx->pathset = this;
       auto path    = new llarp::path::Path(hops, this, roles);
       path->SetBuildResultHook(std::bind(&llarp::path::Builder::HandlePathBuilt,

@@ -1,7 +1,7 @@
-#include <llarp/path.hpp>
-#include <llarp/service/endpoint.hpp>
-#include <llarp/service/lookup.hpp>
-#include <llarp/time.hpp>
+#include <path.hpp>
+#include <service/endpoint.hpp>
+#include <service/lookup.hpp>
+#include <time.hpp>
 
 namespace llarp
 {
@@ -16,7 +16,8 @@ namespace llarp
     }
 
     bool
-    IServiceLookup::SendRequestViaPath(llarp::path::Path *path, llarp_router *r)
+    IServiceLookup::SendRequestViaPath(llarp::path::Path *path,
+                                       llarp::Router *r)
     {
       auto msg = BuildRequestMessage();
       if(!msg)

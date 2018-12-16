@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
-#include <llarp/crypto.hpp>
-#include <llarp/encrypted_frame.hpp>
-#include <llarp/messages/relay_commit.hpp>
+#include <crypto.hpp>
+#include <encrypted_frame.hpp>
+#include <messages/relay_commit.hpp>
 
 using EncryptedFrame = llarp::EncryptedFrame;
 using SecretKey      = llarp::SecretKey;
@@ -11,12 +11,12 @@ using LRCR           = llarp::LR_CommitRecord;
 class FrameTest : public ::testing::Test
 {
  public:
-  llarp_crypto crypto;
+     llarp::Crypto crypto;
   SecretKey alice, bob;
 
   FrameTest()
+  : crypto(llarp::Crypto::sodium{})
   {
-    llarp_crypto_init(&crypto);
   }
 
   ~FrameTest()

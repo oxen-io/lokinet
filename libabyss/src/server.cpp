@@ -1,11 +1,13 @@
-#include <abyss/server.hpp>
 #include <abyss/http.hpp>
-#include <llarp/time.hpp>
-#include <sstream>
-#include <unordered_map>
-#include <string>
-#include <llarp/logger.hpp>
+#include <abyss/server.hpp>
+#include <buffer.hpp>
+#include <logger.hpp>
+#include <time.hpp>
+
 #include <algorithm>
+#include <sstream>
+#include <string>
+#include <unordered_map>
 
 namespace abyss
 {
@@ -109,12 +111,13 @@ namespace abyss
                           code, msg.c_str(), contentType, contentLength);
         if(sz <= 0)
           return false;
-        if(!llarp_tcp_conn_async_write(_conn, buf, sz))
+        if(!llarp_tcp_conn_async_write(_conn, llarp::InitBuffer(buf, sz)))
           return false;
 
         m_State = eWriteHTTPBody;
 
-        return llarp_tcp_conn_async_write(_conn, content, contentLength);
+        return llarp_tcp_conn_async_write(
+            _conn, llarp::InitBuffer(content, contentLength));
       }
 
       bool
@@ -256,10 +259,10 @@ namespace abyss
       }
 
       static void
-      OnRead(llarp_tcp_conn* conn, const void* buf, size_t sz)
+      OnRead(llarp_tcp_conn* conn, llarp_buffer_t buf)
       {
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
-        if(!self->ProcessRead((const char*)buf, sz))
+        if(!self->ProcessRead((const char*)buf.base, buf.sz))
           self->MarkBad();
       }
 
@@ -335,7 +338,7 @@ namespace abyss
     }
 
     bool
-    BaseReqHandler::ServeAsync(llarp_ev_loop* loop, llarp_logic* logic,
+    BaseReqHandler::ServeAsync(llarp_ev_loop* loop, llarp::Logic* logic,
                                const sockaddr* bindaddr)
     {
       m_loop  = loop;

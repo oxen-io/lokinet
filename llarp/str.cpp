@@ -1,8 +1,8 @@
-#include "str.hpp"
+#include <str.hpp>
 
+#include <algorithm>
 #include <cstring>
 #include <string>
-#include <algorithm>
 
 namespace llarp
 {

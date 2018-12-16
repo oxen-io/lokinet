@@ -1,10 +1,10 @@
 #include <assert.h>
-#include <llarp/crypto.h>
+#include <crypto.h>
 #include <sodium/crypto_generichash.h>
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>
 #include <sodium/crypto_stream_xchacha20.h>
-#include <llarp/crypto.hpp>
+#include <crypto.hpp>
 #include "mem.hpp"
 
 extern "C"
@@ -173,43 +173,43 @@ namespace llarp
     return k;
   }
 
+  Crypto::Crypto(Crypto::sodium tag)
+  {
+    (void)tag;
+    assert(sodium_init() != -1);
+    char *avx2 = std::getenv("AVX2_FORCE_DISABLE");
+    if(avx2 && std::string(avx2) == "1")
+      ntru_init(1);
+    else
+      ntru_init(0);
+    this->xchacha20           = llarp::sodium::xchacha20;
+    this->dh_client           = llarp::sodium::dh_client;
+    this->dh_server           = llarp::sodium::dh_server;
+    this->transport_dh_client = llarp::sodium::dh_client;
+    this->transport_dh_server = llarp::sodium::dh_server;
+    this->hash                = llarp::sodium::hash;
+    this->shorthash           = llarp::sodium::shorthash;
+    this->hmac                = llarp::sodium::hmac;
+    this->sign                = llarp::sodium::sign;
+    this->verify              = llarp::sodium::verify;
+    this->randomize           = llarp::sodium::randomize;
+    this->randbytes           = llarp::sodium::randbytes;
+    this->identity_keygen     = llarp::sodium::sigkeygen;
+    this->encryption_keygen   = llarp::sodium::enckeygen;
+    this->pqe_encrypt         = llarp::pq::encrypt;
+    this->pqe_decrypt         = llarp::pq::decrypt;
+    this->pqe_keygen          = llarp::pq::keygen;
+    int seed                  = 0;
+    this->randbytes(&seed, sizeof(seed));
+    srand(seed);
+  }
+
+  uint64_t
+  randint()
+  {
+    uint64_t i;
+    randombytes((byte_t *)&i, sizeof(i));
+    return i;
+  }
+
 }  // namespace llarp
-
-void
-llarp_crypto_init(struct llarp_crypto *c)
-{
-  assert(sodium_init() != -1);
-  char *avx2 = getenv("AVX2_FORCE_DISABLE");
-  if(avx2 && std::string(avx2) == "1")
-    ntru_init(1);
-  else
-    ntru_init(0);
-  c->xchacha20           = llarp::sodium::xchacha20;
-  c->dh_client           = llarp::sodium::dh_client;
-  c->dh_server           = llarp::sodium::dh_server;
-  c->transport_dh_client = llarp::sodium::dh_client;
-  c->transport_dh_server = llarp::sodium::dh_server;
-  c->hash                = llarp::sodium::hash;
-  c->shorthash           = llarp::sodium::shorthash;
-  c->hmac                = llarp::sodium::hmac;
-  c->sign                = llarp::sodium::sign;
-  c->verify              = llarp::sodium::verify;
-  c->randomize           = llarp::sodium::randomize;
-  c->randbytes           = llarp::sodium::randbytes;
-  c->identity_keygen     = llarp::sodium::sigkeygen;
-  c->encryption_keygen   = llarp::sodium::enckeygen;
-  c->pqe_encrypt         = llarp::pq::encrypt;
-  c->pqe_decrypt         = llarp::pq::decrypt;
-  c->pqe_keygen          = llarp::pq::keygen;
-  int seed;
-  c->randbytes(&seed, sizeof(seed));
-  srand(seed);
-}
-
-uint64_t
-llarp_randint()
-{
-  uint64_t i;
-  randombytes((byte_t *)&i, sizeof(i));
-  return i;
-}

@@ -1,7 +1,7 @@
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/findintro.hpp>
-#include <llarp/dht/messages/gotintro.hpp>
-#include <llarp/routing/message.hpp>
+#include <dht/context.hpp>
+#include <dht/messages/findintro.hpp>
+#include <dht/messages/gotintro.hpp>
+#include <routing/message.hpp>
 
 namespace llarp
 {
@@ -10,7 +10,7 @@ namespace llarp
     /*
     struct IntroSetLookupInformer
     {
-      llarp_router* router;
+    llarp::Router* router;
       service::Address target;
 
       void
@@ -130,8 +130,8 @@ namespace llarp
           }
           else
           {
-            const auto& us = dht.OurKey();
-            auto target    = S.ToKey();
+            Key_t us     = dht.OurKey();
+            Key_t target = S.data();
             // we are recursive
             if(dht.nodes->FindCloseExcluding(target, peer, exclude))
             {

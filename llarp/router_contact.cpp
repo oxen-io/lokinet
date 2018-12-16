@@ -1,12 +1,12 @@
-#include <llarp/bencode.hpp>
-#include <llarp/crypto.hpp>
-#include <llarp/net.hpp>
-#include <llarp/router_contact.hpp>
-#include <llarp/time.hpp>
-#include <llarp/version.hpp>
-#include "buffer.hpp"
-#include "logger.hpp"
-#include "mem.hpp"
+#include <bencode.hpp>
+#include <buffer.hpp>
+#include <crypto.hpp>
+#include <logger.hpp>
+#include <mem.hpp>
+#include <net.hpp>
+#include <router_contact.hpp>
+#include <time.hpp>
+#include <version.hpp>
 
 #include <fstream>
 
@@ -57,7 +57,7 @@ namespace llarp
     if(!bencode_write_version_entry(buf))
       return false;
 
-    /* write ai if they exist */
+    /* write xi if they exist */
     if(!bencode_write_bytestring(buf, "x", 1))
       return false;
     if(!BEncodeWriteList(exits.begin(), exits.end(), buf))
@@ -150,7 +150,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::Sign(llarp_crypto *crypto, const SecretKey &secretkey)
+  RouterContact::Sign(llarp::Crypto *crypto, const SecretKey &secretkey)
   {
     pubkey                  = llarp::seckey_topublic(secretkey);
     byte_t tmp[MAX_RC_SIZE] = {0};
@@ -165,7 +165,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::Verify(llarp_crypto *crypto) const
+  RouterContact::Verify(llarp::Crypto *crypto) const
   {
     for(const auto &a : addrs)
     {
@@ -184,7 +184,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::VerifySignature(llarp_crypto *crypto) const
+  RouterContact::VerifySignature(llarp::Crypto *crypto) const
   {
     RouterContact copy;
     copy = *this;

@@ -1,5 +1,5 @@
-#include <llarp/dnsd.hpp>
-#include <llarp/net.hpp>
+#include <dnsd.hpp>
+#include <net.hpp>
 
 extern dns_tracker dns_udp_tracker;
 
@@ -12,17 +12,17 @@ constexpr size_t BUFFER_SIZE = 1500;
 
 ssize_t
 raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
-                         const void *buffer, size_t length)
+                         llarp_buffer_t buf)
 {
   int *fd = (int *)sock;
   // how do we get to these??
   socklen_t addrLen = sizeof(struct sockaddr_in);
-  return sendto(*fd, (const char *)buffer, length, 0, from, addrLen);
+  return sendto(*fd, (const char *)buf.base, buf.sz, 0, from, addrLen);
 }
 
 ssize_t
 llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
-                           const void *buffer, size_t length)
+                           llarp_buffer_t buf)
 {
   struct llarp_udp_io *udp = (struct llarp_udp_io *)sock;
   if(!udp)
@@ -35,22 +35,20 @@ llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
   // this call isn't calling the function...
   // llarp::ev_io * evio = static_cast< llarp::ev_io * >(udp->impl);
   // printf("ev_io[%x]\n", evio);
-  return llarp_ev_udp_sendto(udp, from, buffer, length);
+  return llarp_ev_udp_sendto(udp, from, buf);
 }
 
 void
-write404_dnss_response(dnsd_question_request *request)
+write404_dnss_response(const dnsd_question_request *request)
 {
   char buf[BUFFER_SIZE] = {0};
 
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
-  put16bits(write_buffer, request->id);
-  int fields = (1 << 15);  // QR => message type, 1 = response
-  fields += (0 << 14);     // I think opcode is always 0
-  fields += 3;             // response code (3 => not found, 0 = Ok)
-  put16bits(write_buffer, fields);
+  put16bits(write_buffer, request->hdr.id);
+  // not found flag set
+  put16bits(write_buffer, (1 << 15) | request->hdr.fields() | 3);
 
   put16bits(write_buffer, 1);  // QD (number of questions)
   put16bits(write_buffer, 1);  // AN (number of answers)
@@ -67,32 +65,30 @@ write404_dnss_response(dnsd_question_request *request)
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
   put32bits(write_buffer, 1);  // ttl
-
   put16bits(write_buffer, 1);  // rdLength
   *write_buffer++ = 0;         // write a null byte
 
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending 404, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, request->from, buf, out_bytes);
+  request->sendto_hook(request->user, request->from,
+                       llarp::InitBuffer(buf, out_bytes));
 }
 
 void
-writecname_dnss_response(std::string cname, dnsd_question_request *request)
+writecname_dnss_response(std::string cname,
+                         const dnsd_question_request *request)
 {
   char buf[BUFFER_SIZE] = {0};
 
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
-  put16bits(write_buffer, request->id);
-  int fields = (1 << 15);  // QR => message type, 1 = response
-  fields += (0 << 14);     // I think opcode is always 0
-  fields += 0;             // response code (3 => not found, 0 = Ok)
+  put16bits(write_buffer, request->hdr.id);
   // fields |= 1UL << 7; // RA recursion available
   // fields |= 1UL << 8; // RD recursion desired
   // fields |= 1UL << 9; // 9 is truncate, forces TCP
-  put16bits(write_buffer, fields);
+  put16bits(write_buffer, request->hdr.fields() | (1 << 15));
 
   put16bits(write_buffer, 1);  // QD (number of questions)
   put16bits(write_buffer, 1);  // AN (number of answers)
@@ -141,22 +137,22 @@ writecname_dnss_response(std::string cname, dnsd_question_request *request)
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending cname, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, request->from, buf, out_bytes);
+  request->sendto_hook(request->user, request->from,
+                       llarp::InitBuffer(buf, out_bytes));
 }
 
 void
-writesend_dnss_revresponse(std::string reverse, dnsd_question_request *request)
+writesend_dnss_revresponse(std::string reverse,
+                           const dnsd_question_request *request)
 {
   char buf[BUFFER_SIZE] = {0};
 
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
-  put16bits(write_buffer, request->id);
-  int fields = (1 << 15);  // QR => message type, 1 = response
-  fields += (0 << 14);     // I think opcode is always 0
-  fields += 0;             // response code (3 => not found, 0 = Ok)
-  put16bits(write_buffer, fields);
+  put16bits(write_buffer, request->hdr.id);
+  // response
+  put16bits(write_buffer, request->hdr.fields() | (1 << 15) | (1 << 10));
 
   put16bits(write_buffer, 1);  // QD (number of questions)
   put16bits(write_buffer, 1);  // AN (number of answers)
@@ -172,21 +168,22 @@ writesend_dnss_revresponse(std::string reverse, dnsd_question_request *request)
   code_domain(write_buffer, request->question.name);  // com, type=6, ttl=0
   put16bits(write_buffer, request->question.type);
   put16bits(write_buffer, request->question.qClass);
-  put32bits(write_buffer, 1);                     // ttl
-  put16bits(write_buffer, reverse.length() + 2);  // rdLength
+  put32bits(write_buffer, 1);                   // ttl
+  put16bits(write_buffer, reverse.size() + 2);  // rdLength
   code_domain(write_buffer, reverse);
 
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending reverse: ", reverse, " ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, request->from, buf, out_bytes);
+  request->sendto_hook(request->user, request->from,
+                       llarp::InitBuffer(buf, out_bytes));
 }
 
 // FIXME: we need an DNS answer not a sockaddr
 // otherwise ttl, type and class can't be relayed correctly
 void
 writesend_dnss_response(llarp::huint32_t *hostRes,
-                        dnsd_question_request *request)
+                        const dnsd_question_request *request)
 {
   // llarp::Addr test(*from);
   // llarp::LogInfo("from ", test);
@@ -202,11 +199,8 @@ writesend_dnss_response(llarp::huint32_t *hostRes,
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
-  put16bits(write_buffer, request->id);
-  int fields = (1 << 15);  // QR => message type, 1 = response
-  fields += (0 << 14);     // I think opcode is always 0
-  fields += 0;             // response code (3 => not found, 0 = Ok)
-  put16bits(write_buffer, fields);
+  put16bits(write_buffer, request->hdr.id);
+  put16bits(write_buffer, request->hdr.fields() | (1 << 15));
 
   put16bits(write_buffer, 1);  // QD (number of questions)
   put16bits(write_buffer, 1);  // AN (number of answers)
@@ -247,7 +241,8 @@ writesend_dnss_response(llarp::huint32_t *hostRes,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, request->from, buf, out_bytes);
+  request->sendto_hook(request->user, request->from,
+                       llarp::InitBuffer(buf, out_bytes));
 }
 
 void
@@ -260,11 +255,8 @@ writesend_dnss_mxresponse(uint16_t priority, std::string mx,
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
-  put16bits(write_buffer, request->id);
-  int fields = (1 << 15);  // QR => message type, 1 = response
-  fields += (0 << 14);     // I think opcode is always 0
-  fields += 0;             // response code (3 => not found, 0 = Ok)
-  put16bits(write_buffer, fields);
+  put16bits(write_buffer, request->hdr.id);
+  put16bits(write_buffer, request->hdr.fields() | (1 << 15));
 
   put16bits(write_buffer, 1);  // QD (number of questions)
   put16bits(write_buffer, 1);  // AN (number of answers)
@@ -290,7 +282,7 @@ writesend_dnss_mxresponse(uint16_t priority, std::string mx,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, from, buf, out_bytes);
+  request->sendto_hook(request->user, from, llarp::InitBuffer(buf, out_bytes));
 }
 
 void
@@ -302,11 +294,8 @@ writesend_dnss_txtresponse(std::string txt, const struct sockaddr *from,
   char *write_buffer = buf;
   char *bufferBegin  = buf;
   // build header
-  put16bits(write_buffer, request->id);
-  int fields = (1 << 15);  // QR => message type, 1 = response
-  fields += (0 << 14);     // I think opcode is always 0
-  fields += 0;             // response code (3 => not found, 0 = Ok)
-  put16bits(write_buffer, fields);
+  put16bits(write_buffer, request->hdr.id);
+  put16bits(write_buffer, request->hdr.fields() | (1 << 15));
 
   put16bits(write_buffer, 1);  // QD (number of questions)
   put16bits(write_buffer, 1);  // AN (number of answers)
@@ -333,7 +322,7 @@ writesend_dnss_txtresponse(std::string txt, const struct sockaddr *from,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, from, buf, out_bytes);
+  request->sendto_hook(request->user, from, llarp::InitBuffer(buf, out_bytes));
 }
 
 void
@@ -347,13 +336,13 @@ handle_dnsc_result(dnsc_answer_request *client_request)
     return;
   }
 
-  client_request->packet.header->id = server_request->id;  // stomp ID
-  std::vector< byte_t > test        = packet2bytes(client_request->packet);
+  client_request->packet.header.id = server_request->hdr.id;  // stomp ID
+  std::vector< byte_t > test       = packet2bytes(client_request->packet);
   // llarp::LogInfo("packet2bytes figures we should send ", test.size(), "
   // bytes");
 
   server_request->sendto_hook(server_request->user, server_request->from,
-                              test.data(), test.size());
+                              llarp::Buffer(test));
 
   llarp_host_resolved(client_request);
   return;
@@ -396,17 +385,20 @@ handle_dnsc_result(dnsc_answer_request *client_request)
 
 // our generic version
 void
-handle_recvfrom(llarp_buffer_t buffer, dnsd_question_request *request)
+handle_recvfrom(llarp_buffer_t *buffer, dnsd_question_request *request)
 {
   const size_t HDR_OFFSET = 12;
-  const char *p_buffer    = (const char *)buffer.base;
+  const char *p_buffer    = (const char *)buffer->base;
 
-  int rcode = (buffer[3] & 0x0F);
+  int rcode = (buffer->base[3] & 0x0F);
   llarp::LogDebug("dnsd rcode ", rcode);
 
-  dns_msg_header *msg = decode_hdr(buffer);
+  if(!decode_hdr(buffer, &request->hdr))
+  {
+    llarp::LogError("failed to decode dns header");
+    return;
+  }
   p_buffer += HDR_OFFSET;
-  request->id         = msg->id;
   std::string m_qName = "";
   int length          = *p_buffer++;
   while(length != 0)
@@ -462,11 +454,11 @@ handle_recvfrom(llarp_buffer_t buffer, dnsd_question_request *request)
         llarp::LogDebug("HOOKED: Not sending a response");
         return;
       }
-      if(intercept->dontLookUp == true && intercept->returnThis)
+      if(intercept->dontLookUp && intercept->returnThis.h)
       {
         llarp::LogDebug("HOOKED: sending an immediate override");
         // told that hook will handle overrides
-        writesend_dnss_response(intercept->returnThis, request);
+        writesend_dnss_response(&intercept->returnThis, request);
         return;
       }
     }
@@ -517,8 +509,7 @@ handle_recvfrom(llarp_buffer_t buffer, dnsd_question_request *request)
 
 void
 llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
-                           const struct sockaddr *saddr, const void *buf,
-                           ssize_t sz)
+                           const struct sockaddr *saddr, llarp_buffer_t buf)
 {
   if(!dns_udp_tracker.dnsd)
   {
@@ -534,14 +525,8 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
   llarp_dns_request->llarp = true;
   llarp_dns_request->sendto_hook =
       &llarp_sendto_dns_hook_func;  // set sock hook
-
   // llarp::LogInfo("Server request's UDP ", llarp_dns_request->user);
-  llarp_buffer_t buffer;
-  buffer.base = (byte_t *)buf;
-  buffer.cur  = buffer.base;
-  buffer.sz   = sz;
-
-  handle_recvfrom(buffer, llarp_dns_request);
+  handle_recvfrom(&buf, llarp_dns_request);
 }
 
 void
@@ -561,12 +546,11 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
   llarp_dns_request->llarp       = false;
   llarp_dns_request->sendto_hook = &raw_sendto_dns_hook_func;
 
-  handle_recvfrom(buffer, llarp_dns_request);
+  handle_recvfrom(&buffer, llarp_dns_request);
 }
 
 bool
-llarp_dnsd_init(struct dnsd_context *const dnsd,
-                struct llarp_logic *const logic,
+llarp_dnsd_init(struct dnsd_context *const dnsd, llarp::Logic *const logic,
                 struct llarp_ev_loop *const netloop,
                 const llarp::Addr &dnsd_sockaddr,
                 const llarp::Addr &dnsc_sockaddr)

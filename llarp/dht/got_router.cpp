@@ -1,7 +1,7 @@
+#include <dht/context.hpp>
+#include <dht/messages/gotrouter.hpp>
 
-#include <llarp/dht/context.hpp>
-#include <llarp/dht/messages/gotrouter.hpp>
-#include "router.hpp"
+#include <router.hpp>
 
 namespace llarp
 {
@@ -99,7 +99,7 @@ namespace llarp
           dht.pendingExploreLookups.NotFound(owner, K);
         else
         {
-          dht.pendingExploreLookups.Found(owner, From, N);
+          dht.pendingExploreLookups.Found(owner, From.data(), N);
         }
         return true;
       }

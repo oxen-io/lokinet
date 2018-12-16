@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include <llarp/dht.hpp>
+#include <dht.hpp>
 
 using Key_t = llarp::dht::Key_t;
 

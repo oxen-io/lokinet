@@ -1,20 +1,39 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
-#include <llarp/ev.h>
+
+#include <ev.h>
+#include <codel.hpp>
+#include <threading.hpp>
+
 // writev
 #ifndef _WIN32
 #include <sys/uio.h>
 #endif
-#include <unistd.h>
-#include <llarp/buffer.h>
-#include <llarp/codel.hpp>
-#include <list>
-#include <deque>
+
 #include <algorithm>
+#include <buffer.h>
+#include <deque>
+#include <list>
+#include <unistd.h>
 
 #ifdef _WIN32
-#include <variant>
+#include <win32_up.h>
+#include <win32_upoll.h>
+// io packet for TUN read/write
+struct asio_evt_pkt
+{
+  OVERLAPPED pkt = {
+      0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
+  bool write = false;        // true, or false if read pkt
+  size_t sz;  // if this doesn't match what is in the packet, note the error
+};
 #else
+
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || (__APPLE__ && __MACH__)
+#include <sys/event.h>
+#endif
+
 #include <sys/un.h>
 #endif
 
@@ -62,6 +81,20 @@ namespace llarp
         }
       };
 
+      struct GetNow
+      {
+        llarp_ev_loop* loop;
+        GetNow(llarp_ev_loop* l) : loop(l)
+        {
+        }
+
+        llarp_time_t
+        operator()() const
+        {
+          return llarp_ev_loop_time_now_ms(loop);
+        }
+      };
+
       struct PutTime
       {
         llarp_ev_loop* loop;
@@ -88,40 +121,44 @@ namespace llarp
     using LossyWriteQueue_t =
         llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
                                  WriteBuffer::PutTime, WriteBuffer::Compare,
-                                 llarp::util::NullMutex, llarp::util::NullLock,
-                                 5, 100, 128 >;
+                                 WriteBuffer::GetNow, llarp::util::NullMutex,
+                                 llarp::util::NullLock, 5, 100, 128 >;
 
     using LosslessWriteQueue_t = std::deque< WriteBuffer >;
 
-    // on windows, tcp/udp event loops are socket fds
-    // and TUN device is a plain old fd
-    std::variant< SOCKET, HANDLE > fd;
-    ULONG_PTR listener_id = 0;
-    bool isTCP            = false;
-    bool write            = false;
-    WSAOVERLAPPED portfd[2];
+    union {
+      intptr_t socket;
+      HANDLE tun;
+    } fd;
 
-    // constructors
-    // for udp
-    win32_ev_io(SOCKET f) : fd(f)
+    int flags   = 0;
+    bool is_tun = false;
+
+    win32_ev_io(intptr_t f)
     {
-      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
-    };
-    // for tun
-    win32_ev_io(HANDLE t, LossyWriteQueue_t* q) : fd(t), m_LossyWriteQueue(q)
-    {
-      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
+      fd.socket = f;
     }
-    // for tcp
-    win32_ev_io(SOCKET f, LosslessWriteQueue_t* q)
-        : fd(f), m_BlockingWriteQueue(q)
+
+    /// for tun
+    win32_ev_io(HANDLE f, LossyWriteQueue_t* q) : m_LossyWriteQueue(q)
     {
-      memset((void*)&portfd[0], 0, sizeof(WSAOVERLAPPED) * 2);
-      isTCP = true;
+      fd.tun = f;
+    }
+
+    /// for tcp
+    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q) : m_BlockingWriteQueue(q)
+    {
+      fd.socket = f;
+    }
+
+    virtual void
+    error()
+    {
+      llarp::LogError(strerror(errno));
     }
 
     virtual int
-    read(void* buf, size_t sz) = 0;
+    read(byte_t* buf, size_t sz) = 0;
 
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz)
@@ -143,13 +180,24 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      // DWORD w;
-      if(std::holds_alternative< HANDLE >(fd))
-        WriteFile(std::get< HANDLE >(fd), data, sz, nullptr, &portfd[1]);
-      else
-        WriteFile((HANDLE)std::get< SOCKET >(fd), data, sz, nullptr,
-                  &portfd[1]);
-      return sz;
+      if(this->is_tun)
+      {
+        DWORD x;
+        bool r;
+        asio_evt_pkt* pkt = new asio_evt_pkt;
+        pkt->sz           = sz;
+        pkt->write        = true;
+        int e             = 0;
+        r                 = WriteFile(fd.tun, data, sz, &x, &pkt->pkt);
+        if(r)  // we returned immediately
+          return x;
+        e = GetLastError();
+        if(e == ERROR_IO_PENDING)
+          return sz;
+        else
+          return -1;
+      }
+      return uwrite(fd.socket, (char*)data, sz);
     }
 
     bool
@@ -231,17 +279,21 @@ namespace llarp
               return;
             }
             m_BlockingWriteQueue->pop_front();
-            if(errno == EAGAIN || errno == EWOULDBLOCK)
+            int wsaerr = WSAGetLastError();
+            int syserr = GetLastError();
+            if(wsaerr == WSA_IO_PENDING || wsaerr == WSAEWOULDBLOCK
+               || syserr == 997 || syserr == 21)
             {
-              errno = 0;
+              SetLastError(0);
+              WSASetLastError(0);
               return;
             }
           }
         }
       }
       /// reset errno
-      errno = 0;
       SetLastError(0);
+      WSASetLastError(0);
     }
 
     std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;
@@ -249,7 +301,7 @@ namespace llarp
 
     virtual ~win32_ev_io()
     {
-      closesocket(std::get< SOCKET >(fd));
+      uclose(fd.socket);
     };
   };
 #endif
@@ -357,7 +409,7 @@ namespace llarp
     }
 
     virtual int
-    read(void* buf, size_t sz) = 0;
+    read(byte_t* buf, size_t sz) = 0;
 
     virtual int
     sendto(__attribute__((unused)) const sockaddr* dst,
@@ -484,7 +536,15 @@ namespace llarp
 // finally create aliases by platform
 #ifdef _WIN32
   using ev_io = win32_ev_io;
-#define sizeof(sockaddr_un) 115
+
+#define UNIX_PATH_MAX 108
+
+  typedef struct sockaddr_un
+  {
+    ADDRESS_FAMILY sun_family;    /* AF_UNIX */
+    char sun_path[UNIX_PATH_MAX]; /* pathname */
+  } SOCKADDR_UN, *PSOCKADDR_UN;
+
 #else
   using ev_io = posix_ev_io;
 #endif
@@ -569,7 +629,15 @@ namespace llarp
     {
       if(_conn)
       {
+#ifndef _WIN32
         llarp::LogError("tcp_conn error: ", strerror(errno));
+#else
+        char ebuf[1024];
+        int err = WSAGetLastError();
+        FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                      ebuf, 1024, nullptr);
+        llarp::LogError("tcp_conn error: ", ebuf);
+#endif
         if(_conn->error)
           _conn->error(_conn);
       }
@@ -579,7 +647,7 @@ namespace llarp
     do_write(void* buf, size_t sz);
 
     virtual int
-    read(void* buf, size_t sz);
+    read(byte_t* buf, size_t sz);
 
     bool
     tick();
@@ -605,28 +673,48 @@ namespace llarp
 
     /// actually does accept() :^)
     virtual int
-    read(void*, size_t);
+    read(byte_t*, size_t);
   };
 
 };  // namespace llarp
 
+#ifdef _WIN32
 struct llarp_fd_promise
 {
-  llarp_fd_promise(std::promise<int> * p) : _impl(p) {}
-  std::promise<int> * _impl;
-  
-  void Set(int fd)
+  void
+  Set(int)
+  {
+  }
+
+  int
+  Get()
+  {
+    return -1;
+  }
+};
+#else
+struct llarp_fd_promise
+{
+  llarp_fd_promise(std::promise< int >* p) : _impl(p)
+  {
+  }
+  std::promise< int >* _impl;
+
+  void
+  Set(int fd)
   {
     _impl->set_value(fd);
   }
 
-  int Get()
+  int
+  Get()
   {
     auto future = _impl->get_future();
     future.wait();
     return future.get();
   }
 };
+#endif
 
 // this (nearly!) abstract base class
 // is overriden for each platform

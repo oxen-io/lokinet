@@ -1,19 +1,19 @@
 #include <gtest/gtest.h>
 
-#include <llarp/service.hpp>
-#include <llarp/time.hpp>
+#include <service.hpp>
+#include <time.hpp>
 
 struct HiddenServiceTest : public ::testing::Test
 {
-  llarp_crypto crypto;
+    llarp::Crypto crypto;
   llarp::service::Identity ident;
 
   HiddenServiceTest()
+  : crypto(llarp::Crypto::sodium{})
   {
-    llarp_crypto_init(&crypto);
   }
 
-  llarp_crypto*
+  llarp::Crypto*
   Crypto()
   {
     return &crypto;
