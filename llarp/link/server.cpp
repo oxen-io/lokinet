@@ -3,6 +3,20 @@
 
 namespace llarp
 {
+  ILinkLayer::ILinkLayer(const byte_t* routerEncSecret, GetRCFunc getrc,
+                         LinkMessageHandler handler, SignBufferFunc signbuf,
+                         SessionEstablishedHandler establishedSession,
+                         TimeoutHandler timeout, SessionClosedHandler closed)
+      : HandleMessage(handler)
+      , HandleTimeout(timeout)
+      , Sign(signbuf)
+      , GetOurRC(getrc)
+      , SessionEstablished(establishedSession)
+      , SessionClosed(closed)
+      , m_RouterEncSecret(routerEncSecret)
+  {
+  }
+
   ILinkLayer::~ILinkLayer()
   {
   }
@@ -48,7 +62,7 @@ namespace llarp
   void
   ILinkLayer::Pump()
   {
-    auto _now = now();
+    auto _now = Now();
     {
       Lock lock(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
@@ -247,6 +261,12 @@ namespace llarp
   }
 
   bool
+  ILinkLayer::GenEphemeralKeys()
+  {
+    return KeyGen(m_SecretKey);
+  }
+
+  bool
   ILinkLayer::EnsureKeys(const char* f)
   {
     fs::path fpath(f);
@@ -279,7 +299,7 @@ namespace llarp
   void
   ILinkLayer::OnTick(uint64_t interval)
   {
-    Tick(now());
+    Tick(Now());
     ScheduleTick(interval);
   }
 

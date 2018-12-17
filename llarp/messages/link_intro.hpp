@@ -40,7 +40,7 @@ namespace llarp
     HandleMessage(llarp::Router* router) const;
 
     bool
-    Sign(llarp::Crypto* c, const SecretKey& signKeySecret);
+    Sign(std::function< bool(Signature&, llarp_buffer_t) > signer);
 
     bool
     Verify(llarp::Crypto* c) const;

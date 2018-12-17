@@ -12,6 +12,8 @@
 
 namespace llarp
 {
+  bool RouterContact::IgnoreBogons = false;
+
   bool
   RouterContact::BEncode(llarp_buffer_t *buf) const
   {
@@ -169,7 +171,7 @@ namespace llarp
   {
     for(const auto &a : addrs)
     {
-      if(IsBogon(a.ip))
+      if(IsBogon(a.ip) && !IgnoreBogons)
       {
         llarp::LogError("invalid address info: ", a);
         return false;

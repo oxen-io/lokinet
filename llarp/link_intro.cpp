@@ -122,7 +122,8 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::Sign(llarp::Crypto* c, const SecretKey& k)
+  LinkIntroMessage::Sign(
+      std::function< bool(Signature&, llarp_buffer_t) > signer)
   {
     Z.Zero();
     byte_t tmp[MaxSize] = {0};
@@ -131,7 +132,7 @@ namespace llarp
       return false;
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    return c->sign(Z, k, buf);
+    return signer(Z, buf);
   }
 
   bool

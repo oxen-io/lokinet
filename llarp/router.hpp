@@ -89,6 +89,9 @@ namespace llarp
     llarp_threadpool *disk;
     llarp_dht_context *dht = nullptr;
 
+    bool
+    Sign(Signature &sig, llarp_buffer_t buf) const;
+
     llarp_nodedb *nodedb;
 
     // buffer for serializing link messages
@@ -188,7 +191,7 @@ namespace llarp
     ~Router();
 
     void
-    HandleLinkSessionEstablished(llarp::RouterContact, llarp::ILinkLayer *);
+    OnSessionEstablished(llarp::ILinkSession *from);
 
     bool
     HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);
@@ -254,7 +257,7 @@ namespace llarp
     }
 
     void
-    OnConnectTimeout(const llarp::RouterID &remote);
+    OnConnectTimeout(ILinkSession *session);
 
     bool
     HasPendingConnectJob(const llarp::RouterID &remote);
@@ -305,9 +308,9 @@ namespace llarp
     void
     FlushOutbound();
 
-    /// called by link when a remote session is expunged
+    /// called by link when a remote session has no more sessions open
     void
-    SessionClosed(const llarp::RouterID &remote);
+    SessionClosed(RouterID remote);
 
     /// call internal router ticker
     void

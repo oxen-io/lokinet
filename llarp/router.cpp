@@ -179,10 +179,9 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
 namespace llarp
 {
   void
-  Router::HandleLinkSessionEstablished(llarp::RouterContact rc,
-                                       llarp::ILinkLayer *link)
+  Router::OnSessionEstablished(llarp::ILinkSession *session)
   {
-    async_verify_RC(rc, link);
+    async_verify_RC(session->GetRemoteRC(), session->GetLinkLayer());
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *_netloop,
@@ -591,9 +590,9 @@ namespace llarp
   }
 
   void
-  Router::OnConnectTimeout(const llarp::RouterID &remote)
+  Router::OnConnectTimeout(ILinkSession *session)
   {
-    auto itr = pendingEstablishJobs.find(remote);
+    auto itr = pendingEstablishJobs.find(session->GetPubKey());
     if(itr != pendingEstablishJobs.end())
     {
       itr->second->AttemptTimedout();
@@ -691,6 +690,12 @@ namespace llarp
       rpcCaller->Tick(now);
   }
 
+  bool
+  Router::Sign(llarp::Signature &sig, llarp_buffer_t buf) const
+  {
+    return crypto.sign(sig, identity, buf);
+  }
+
   void
   Router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
                  llarp::ILinkLayer *selected)
@@ -735,7 +740,7 @@ namespace llarp
   }
 
   void
-  Router::SessionClosed(const llarp::RouterID &remote)
+  Router::SessionClosed(llarp::RouterID remote)
   {
     __llarp_dht_remove_peer(dht, remote);
     // remove from valid routers if it's a valid router
@@ -1088,7 +1093,7 @@ namespace llarp
     if(outboundLink)
       return true;
 
-    auto link = llarp::utp::NewServer(this);
+    auto link = llarp::utp::NewServerFromRouter(this);
 
     if(!link->EnsureKeys(transport_keyfile.string().c_str()))
     {
@@ -1189,7 +1194,7 @@ namespace llarp
     {
       if(!StrEq(key, "*"))
       {
-        auto server = llarp::utp::NewServer(self);
+        auto server = llarp::utp::NewServerFromRouter(self);
         if(!server->EnsureKeys(self->transport_keyfile.string().c_str()))
         {
           llarp::LogError("failed to ensure keyfile ", self->transport_keyfile);

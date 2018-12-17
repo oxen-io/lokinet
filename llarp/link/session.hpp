@@ -43,14 +43,21 @@ namespace llarp
 
     /// get remote public identity key
     std::function< const byte_t *(void) > GetPubKey;
+
     /// get remote address
     std::function< const Addr &(void) > GetRemoteEndpoint;
+
+    // get remote rc
+    std::function< const llarp::RouterContact &(void) > GetRemoteRC;
 
     /// handle a valid LIM
     std::function< bool(const LinkIntroMessage *msg) > GotLIM;
 
     /// send queue current blacklog
     std::function< size_t(void) > SendQueueBacklog;
+
+    /// get parent link layer
+    std::function< ILinkLayer *(void) > GetLinkLayer;
   };
 }  // namespace llarp
 

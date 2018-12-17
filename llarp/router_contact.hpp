@@ -15,6 +15,9 @@ namespace llarp
 {
   struct RouterContact final : public IBEncodeMessage
   {
+    /// for unit tests
+    static bool IgnoreBogons;
+
     RouterContact() : IBEncodeMessage()
     {
       Clear();
@@ -50,6 +53,14 @@ namespace llarp
 
     bool
     BEncode(llarp_buffer_t *buf) const override;
+
+    bool
+    operator==(const RouterContact &other) const
+    {
+      return addrs == other.addrs && enckey == other.enckey
+          && pubkey == other.pubkey && signature == other.signature
+          && nickname == other.nickname && last_updated == other.last_updated;
+    }
 
     void
     Clear();
