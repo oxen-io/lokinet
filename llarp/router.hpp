@@ -191,7 +191,7 @@ namespace llarp
     ~Router();
 
     void
-    OnSessionEstablished(llarp::ILinkSession *from);
+    OnSessionEstablished(llarp::RouterContact rc);
 
     bool
     HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);

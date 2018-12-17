@@ -28,7 +28,7 @@ namespace llarp
   using GetRCFunc = std::function< const llarp::RouterContact&(void) >;
 
   /// handler of session established
-  using SessionEstablishedHandler = std::function< void(ILinkSession*) >;
+  using SessionEstablishedHandler = std::function< void(llarp::RouterContact) >;
 
   /// handles close of all sessions with pubkey
   using SessionClosedHandler = std::function< void(llarp::RouterID) >;

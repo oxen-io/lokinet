@@ -48,7 +48,7 @@ namespace llarp
     std::function< const Addr &(void) > GetRemoteEndpoint;
 
     // get remote rc
-    std::function< const llarp::RouterContact &(void) > GetRemoteRC;
+    std::function< llarp::RouterContact(void) > GetRemoteRC;
 
     /// handle a valid LIM
     std::function< bool(const LinkIntroMessage *msg) > GotLIM;

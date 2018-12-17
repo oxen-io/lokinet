@@ -580,7 +580,7 @@ namespace llarp
         return this->IsTimedOut(now) || this->state == eClose;
       };
       GetPubKey    = std::bind(&Session::RemotePubKey, this);
-      GetRemoteRC  = std::bind(&Session::RemoteRC, this);
+      GetRemoteRC  = [&]() -> llarp::RouterContact { return this->remoteRC; };
       GetLinkLayer = std::bind(&Session::GetParent, this);
 
       lastActive = parent->Now();
@@ -630,12 +630,6 @@ namespace llarp
       remoteAddr = addr;
       Start      = []() {};
       GotLIM     = std::bind(&Session::InboundLIM, this, std::placeholders::_1);
-    }
-
-    const RouterContact&
-    Session::RemoteRC() const
-    {
-      return remoteRC;
     }
 
     ILinkLayer*
@@ -699,10 +693,11 @@ namespace llarp
           Close();
           return false;
         }
-        llarp::LogDebug("Sent reply LIM");
         if(!DoKeyExchange(Crypto()->transport_dh_client, txKey, replymsg.N,
                           remoteRC.enckey, parent->RouterEncryptionSecret()))
+
           return false;
+        llarp::LogDebug("Sent reply LIM");
         gotLIM = true;
         EnterState(eSessionReady);
       }
@@ -943,25 +938,25 @@ namespace llarp
       Alive();
       if(st == eSessionReady)
       {
-        parent->MapAddr(remoteRC.pubkey, this);
-        parent->SessionEstablished(this);
+        parent->MapAddr(remoteRC.pubkey.data(), this);
+        parent->SessionEstablished(remoteRC);
       }
     }
 
     bool
-    Session::VerifyThenDecrypt(const byte_t* buf)
+    Session::VerifyThenDecrypt(const byte_t* ptr)
     {
       llarp::LogDebug("verify then decrypt ", remoteAddr);
       ShortHash digest;
 
-      auto hbuf = InitBuffer(buf + FragmentHashSize,
+      auto hbuf = InitBuffer(ptr + FragmentHashSize,
                              FragmentBufferSize - FragmentHashSize);
       if(!Crypto()->hmac(digest.data(), hbuf, rxKey))
       {
         llarp::LogError("keyed hash failed");
         return false;
       }
-      ShortHash expected(buf);
+      ShortHash expected(ptr);
       if(expected != digest)
       {
         llarp::LogError("Message Integrity Failed: got ", digest, " from ",
@@ -969,13 +964,13 @@ namespace llarp
         return false;
       }
 
-      auto in = InitBuffer(buf + FragmentOverheadSize,
+      auto in = InitBuffer(ptr + FragmentOverheadSize,
                            FragmentBufferSize - FragmentOverheadSize);
 
       auto out = Buffer(rxFragBody);
 
       // decrypt
-      if(!Crypto()->xchacha20_alt(out, in, rxKey, buf + FragmentHashSize))
+      if(!Crypto()->xchacha20_alt(out, in, rxKey, ptr + FragmentHashSize))
       {
         llarp::LogError("failed to decrypt message from ", remoteAddr);
         return false;
@@ -1005,15 +1000,19 @@ namespace llarp
         llarp::LogError("fragment body too big");
         return false;
       }
+      if(msgid < m_NextRXMsgID)
+        return false;
+      m_NextRXMsgID = msgid;
 
       // get message
-      auto& inbound = m_RecvMsgs[msgid];
-      // set next message
-      m_NextRXMsgID = std::max(msgid, m_NextRXMsgID);
+      if(m_RecvMsgs.find(msgid) == m_RecvMsgs.end())
+        m_RecvMsgs.emplace(std::make_pair(msgid, InboundMessage{}));
+
+      auto itr = m_RecvMsgs.find(msgid);
       // add message activity
-      inbound.lastActive = parent->Now();
+      itr->second.lastActive = parent->Now();
       // append data
-      if(!inbound.AppendData(out.cur, length))
+      if(!itr->second.AppendData(out.cur, length))
       {
         llarp::LogError("inbound buffer is full");
         return false;  // not enough room
@@ -1022,15 +1021,16 @@ namespace llarp
       bool result = true;
       if(remaining == 0)
       {
+        llarp_buffer_t buf = itr->second.buffer;
         // resize
-        inbound.buffer.sz = inbound.buffer.cur - inbound.buffer.base;
+        buf.sz = buf.cur - buf.base;
         // rewind
-        inbound.buffer.cur = inbound.buffer.base;
+        buf.cur = buf.base;
         // process buffer
         llarp::LogDebug("got message ", msgid, " from ", remoteAddr);
-        result = parent->HandleMessage(this, inbound.buffer);
+        result = parent->HandleMessage(this, buf);
         // get rid of message buffer
-        m_RecvMsgs.erase(msgid);
+        itr = m_RecvMsgs.erase(itr);
       }
       // mutate key
       if(msgid)

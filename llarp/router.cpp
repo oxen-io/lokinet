@@ -179,9 +179,9 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
 namespace llarp
 {
   void
-  Router::OnSessionEstablished(llarp::ILinkSession *session)
+  Router::OnSessionEstablished(llarp::RouterContact rc)
   {
-    async_verify_RC(session->GetRemoteRC(), session->GetLinkLayer());
+    async_verify_RC(rc, nullptr);
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *_netloop,

@@ -55,7 +55,13 @@ namespace llarp
       MessageBuffer _msg;
 
       /// for accessing message buffer
-      llarp_buffer_t buffer = llarp::Buffer(_msg);
+      llarp_buffer_t buffer = llarp::InitBuffer(_msg.data(), _msg.size());
+
+      bool
+      operator==(const InboundMessage& other) const
+      {
+        return buffer.base == other.buffer.base;
+      }
 
       /// return true if this inbound message can be removed due to expiration
       bool
@@ -230,10 +236,6 @@ namespace llarp
       /// get remote address
       const Addr&
       RemoteEndpoint() const;
-
-      /// get remote rc
-      const RouterContact&
-      RemoteRC() const;
 
       /// get parent link
       ILinkLayer*

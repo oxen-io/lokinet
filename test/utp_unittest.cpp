@@ -161,24 +161,13 @@ TEST_F(UTPTest, TestAliceAndBob)
             return false;
           if(!s->GotLIM(&msg))
             return false;
-          Alice.gotLIM = true;
           return true;
         }
       },
       [&](llarp::Signature& sig, llarp_buffer_t buf) -> bool {
         return crypto.sign(sig, Alice.signingKey, buf);
       },
-      [&](llarp::ILinkSession* session) {
-        ASSERT_EQ(session->GetRemoteRC(), Bob.GetRC());
-        llarp::DiscardMessage msg;
-        byte_t tmp[32] = {0};
-        auto buf       = llarp::StackBuffer< decltype(tmp) >(tmp);
-        ASSERT_TRUE(msg.BEncode(&buf));
-        buf.sz  = buf.cur - buf.base;
-        buf.cur = buf.base;
-        ASSERT_TRUE(session->SendMessageBuffer(buf));
-        ASSERT_TRUE(session->SendMessageBuffer(buf));
-      },
+      [&](llarp::RouterContact rc) { ASSERT_EQ(rc, Bob.GetRC()); },
       [&](llarp::ILinkSession* session) {
         ASSERT_FALSE(session->IsEstablished());
         Stop();
@@ -207,17 +196,7 @@ TEST_F(UTPTest, TestAliceAndBob)
       [&](llarp::Signature& sig, llarp_buffer_t buf) -> bool {
         return crypto.sign(sig, Bob.signingKey, buf);
       },
-      [&](llarp::ILinkSession* session) {
-        ASSERT_EQ(session->GetRemoteRC(), Alice.GetRC());
-        llarp::DiscardMessage msg;
-        byte_t tmp[32] = {0};
-        auto buf       = llarp::StackBuffer< decltype(tmp) >(tmp);
-        ASSERT_TRUE(msg.BEncode(&buf));
-        buf.sz  = buf.cur - buf.base;
-        buf.cur = buf.base;
-        ASSERT_TRUE(session->SendMessageBuffer(buf));
-        ASSERT_TRUE(session->SendMessageBuffer(buf));
-      },
+      [&](llarp::RouterContact rc) { ASSERT_EQ(rc, Alice.GetRC()); },
       [&](llarp::ILinkSession* session) {
         ASSERT_FALSE(session->IsEstablished());
       },
