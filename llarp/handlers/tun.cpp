@@ -98,8 +98,8 @@ namespace llarp
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_UpstreamResolvers.emplace_back(resolverAddr, dnsport);
-        llarp::LogInfo(Name(), " adding upstream dns set to ", resolverAddr, ":",
-                       dnsport);
+        llarp::LogInfo(Name(), " adding upstream dns set to ", resolverAddr,
+                       ":", dnsport);
       }
       if(k == "mapaddr")
       {
