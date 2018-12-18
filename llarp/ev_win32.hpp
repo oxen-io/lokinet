@@ -279,7 +279,7 @@ tun_ev_loop(void* unused)
       //llarp::LogInfo("read tun ", size, " bytes, pass to handler");
       if(ev->t->recvpkt)
         ev->t->recvpkt(ev->t, llarp::InitBuffer(pkt->buf, size));
-      ev->read(ev->readbuf, sizeof(ev->readbuf));
+      ev->flush_write();
     }
     else
     {
