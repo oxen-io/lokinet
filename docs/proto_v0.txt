@@ -41,7 +41,7 @@ see crypto_v0.txt
 
 wire protocol
 
-see iwp-v0.txt
+see wire-protocol.txt
 
 ---
 
@@ -135,6 +135,7 @@ router's full identity
 
 {
   a: [ one, or, many, AI, here ... ],
+  i: "<max 16 bytes network identifier>",
   k: "<32 bytes public long term identity signing key>",
   n: "<optional max 32 bytes router nickname>",
   p: "<32 bytes public path encryption key>",   
@@ -143,6 +144,18 @@ router's full identity
   x: [ Exit, Infos ],
   z: "<64 bytes signature using identity key>"
 }
+
+
+RC.i is set to the network identifier.
+
+only routers with the same network identifier may connect to each other.
+
+"loki-test" for lokinet testnet
+"loki-stage" for lokinet staging
+"loki-main" for the "official" lokinet mainline network.
+
+other values of RC.i indicate the router belongs to a network fork.
+
 
 service info (SI)
 
