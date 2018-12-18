@@ -86,8 +86,7 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetEstablishedPathClosestTo(const RouterID& id,
-                                         PathRole roles) const
+    PathSet::GetEstablishedPathClosestTo(RouterID id, PathRole roles) const
     {
       Lock_t l(m_PathsMutex);
       Path* path = nullptr;
@@ -111,7 +110,7 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetNewestPathByRouter(const RouterID& id, PathRole roles) const
+    PathSet::GetNewestPathByRouter(RouterID id, PathRole roles) const
     {
       Lock_t l(m_PathsMutex);
       Path* chosen = nullptr;
@@ -134,7 +133,7 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetPathByRouter(const RouterID& id, PathRole roles) const
+    PathSet::GetPathByRouter(RouterID id, PathRole roles) const
     {
       Lock_t l(m_PathsMutex);
       Path* chosen = nullptr;
@@ -157,7 +156,7 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetPathByID(const PathID_t& id) const
+    PathSet::GetPathByID(PathID_t id) const
     {
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.begin();
@@ -218,7 +217,7 @@ namespace llarp
     }
 
     Path*
-    PathSet::GetByUpstream(const RouterID& remote, const PathID_t& rxid) const
+    PathSet::GetByUpstream(RouterID remote, PathID_t rxid) const
     {
       Lock_t l(m_PathsMutex);
       auto itr = m_Paths.find({remote, rxid});
