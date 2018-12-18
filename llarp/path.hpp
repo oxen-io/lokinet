@@ -474,7 +474,7 @@ namespace llarp
 
       // Is this deprecated?
       // nope not deprecated :^DDDD
-      const PathID_t&
+      PathID_t
       TXID() const;
 
       RouterID
@@ -486,7 +486,7 @@ namespace llarp
       bool
       IsEndpoint(const RouterID& router, const PathID_t& path) const;
 
-      const PathID_t&
+      PathID_t
       RXID() const;
 
       RouterID
