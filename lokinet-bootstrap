@@ -2,6 +2,10 @@
 # this shell script will be replaced by a proper program in the future (probably)
 #
 
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+NC='\033[0m' # No Color
+
 if [ -z "$1" ]
 then
   url="https://i2p.rocks/i2procks.signed"
@@ -16,4 +20,6 @@ then
   mkdir $HOME/.lokinet
 fi
 
-wget -O $HOME/.lokinet/bootstrap.signed "$url" || echo "failed to download bootstrap from $url"
+# MacOS does not have wget without homebrew but does have curl
+# Rick also had indicated most BSDs have curl too
+curl "$url" > $HOME/.lokinet/bootstrap.signed; echo -e "${GREEN}lokinet successfully bootstrapped${NC}" || echo -e "${RED}failed to download bootstrap from $url${NC}"
