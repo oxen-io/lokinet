@@ -154,7 +154,7 @@ RC.i is set to the network identifier.
 
 only routers with the same network identifier may connect to each other.
 
-"lokinet-test" for testnet.
+"testnet" for testnet.
 "lokinet" for the "official" lokinet mainline network.
 
 other values of RC.i indicate the router belongs to a network fork.
