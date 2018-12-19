@@ -660,25 +660,26 @@ namespace llarp
       }
     }
 
+    size_t N = nodedb->num_loaded();
+    if(N < minRequiredRouters)
+    {
+      llarp::LogInfo("We need at least ", minRequiredRouters,
+                     " service nodes to build paths but we have ", N, " in nodedb");
+      // TODO: only connect to random subset
+      if(bootstrapRCList.size())
+      {
+        for(const auto &rc : bootstrapRCList)
+        {
+          llarp_router_try_connect(this, rc, 4);
+          dht->impl.ExploreNetworkVia(rc.pubkey.data());
+        }
+      }
+      else
+        llarp::LogError("we have no bootstrap nodes specified");
+    }
+
     if(inboundLinks.size() == 0)
     {
-      size_t N = nodedb->num_loaded();
-      if(N < minRequiredRouters)
-      {
-        llarp::LogInfo("We need at least ", minRequiredRouters,
-                       " service nodes to build paths but we have ", N);
-        // TODO: only connect to random subset
-        if(bootstrapRCList.size())
-        {
-          for(const auto &rc : bootstrapRCList)
-          {
-            llarp_router_try_connect(this, rc, 4);
-            dht->impl.ExploreNetworkVia(rc.pubkey.data());
-          }
-        }
-        else
-          llarp::LogError("we have no bootstrap nodes specified");
-      }
       paths.BuildPaths(now);
       hiddenServiceContext.Tick(now);
     }

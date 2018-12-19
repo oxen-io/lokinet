@@ -669,7 +669,12 @@ namespace llarp
             "cannot handle exploritory router lookup, no dht peers");
         return false;
       }
-      size_t want = std::min(size_t(4), nodeCount);
+      llarp::LogDebug("We have ", nodes->Size(), " connected nodes into the DHT");
+      // ourKey should never be in the connected list
+      // requester is likely in the connected list
+      // 4 or connection nodes (minus a potential requestor), whatever is less
+      size_t want = std::min(size_t(4), nodeCount - 1);
+      llarp::LogDebug("We want ", want, " connected nodes in the DHT");
       if(!nodes->GetManyNearExcluding(t, found, want,
                                       std::set< Key_t >{ourKey, requester}))
       {
