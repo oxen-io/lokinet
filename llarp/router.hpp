@@ -304,6 +304,16 @@ namespace llarp
     ForEachPeer(
         std::function< void(const llarp::ILinkSession *, bool) > visit) const;
 
+    void
+    ForEachPeer(std::function< void(llarp::ILinkSession *) > visit);
+
+    /// check if newRc matches oldRC and update local rc for this remote contact
+    /// if valid
+    /// returns true on valid and updated
+    /// returns false otherwise
+    bool
+    CheckRenegotiateValid(RouterContact newRc, RouterContact oldRC);
+
     /// flush outbound message queue
     void
     FlushOutbound();
@@ -368,6 +378,9 @@ namespace llarp
     HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
 
    private:
+    bool
+    UpdateOurRC(bool rotateKeys = true);
+
     template < typename Config >
     void
     mergeHiddenServiceConfig(const Config &in, Config &out)

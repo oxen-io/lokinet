@@ -233,8 +233,8 @@ namespace llarp
       return remoteRC.pubkey;
     }
 
-    const Addr&
-    Session::RemoteEndpoint() const
+    Addr
+    Session::RemoteEndpoint()
     {
       return remoteAddr;
     }
@@ -346,10 +346,11 @@ namespace llarp
                          llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
                          llarp::SignBufferFunc sign,
                          llarp::SessionEstablishedHandler established,
+                         llarp::SessionRenegotiateHandler reneg,
                          llarp::TimeoutHandler timeout,
                          llarp::SessionClosedHandler closed)
-        : ILinkLayer(routerEncSecret, getrc, h, sign, established, timeout,
-                     closed)
+        : ILinkLayer(routerEncSecret, getrc, h, sign, established, reneg,
+                     timeout, closed)
     {
       _crypto  = crypto;
       _utp_ctx = utp_init(2);
@@ -494,6 +495,7 @@ namespace llarp
     void
     LinkLayer::Stop()
     {
+      ForEachSession([](ILinkSession* s) { s->SendClose(); });
     }
 
     bool
@@ -525,11 +527,14 @@ namespace llarp
     std::unique_ptr< ILinkLayer >
     NewServer(llarp::Crypto* crypto, const byte_t* routerEncSecret,
               llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
-              llarp::SignBufferFunc sign, llarp::SessionEstablishedHandler est,
-              llarp::TimeoutHandler timeout, llarp::SessionClosedHandler closed)
+              llarp::SessionEstablishedHandler est,
+              llarp::SessionRenegotiateHandler reneg,
+              llarp::SignBufferFunc sign, llarp::TimeoutHandler timeout,
+              llarp::SessionClosedHandler closed)
     {
-      return std::unique_ptr< ILinkLayer >(new LinkLayer(
-          crypto, routerEncSecret, getrc, h, sign, est, timeout, closed));
+      return std::unique_ptr< ILinkLayer >(
+          new LinkLayer(crypto, routerEncSecret, getrc, h, sign, est, reneg,
+                        timeout, closed));
     }
 
     std::unique_ptr< ILinkLayer >
@@ -539,10 +544,12 @@ namespace llarp
           &r->crypto, r->encryption, std::bind(&llarp::Router::rc, r),
           std::bind(&llarp::Router::HandleRecvLinkMessageBuffer, r,
                     std::placeholders::_1, std::placeholders::_2),
-          std::bind(&llarp::Router::Sign, r, std::placeholders::_1,
-                    std::placeholders::_2),
           std::bind(&llarp::Router::OnSessionEstablished, r,
                     std::placeholders::_1),
+          std::bind(&llarp::Router::CheckRenegotiateValid, r,
+                    std::placeholders::_1, std::placeholders::_2),
+          std::bind(&llarp::Router::Sign, r, std::placeholders::_1,
+                    std::placeholders::_2),
           std::bind(&llarp::Router::OnConnectTimeout, r, std::placeholders::_1),
           std::bind(&llarp::Router::SessionClosed, r, std::placeholders::_1));
     }
@@ -594,8 +601,9 @@ namespace llarp
         return this->state == eSessionReady || this->state == eLinkEstablished;
       };
 
-      SendClose         = std::bind(&Session::Close, this);
-      GetRemoteEndpoint = std::bind(&Session::RemoteEndpoint, this);
+      SendClose          = std::bind(&Session::Close, this);
+      GetRemoteEndpoint  = std::bind(&Session::RemoteEndpoint, this);
+      RenegotiateSession = std::bind(&Session::Rehandshake, this);
     }
 
     /// outbound session
@@ -660,7 +668,7 @@ namespace llarp
         auto buf = StackBuffer< decltype(tmp) >(tmp);
         LinkIntroMessage replymsg;
         replymsg.rc = parent->GetOurRC();
-        if(!replymsg.rc.Verify(Crypto()))
+        if(!replymsg.rc.Verify(Crypto(), parent->Now()))
         {
           llarp::LogError("our RC is invalid? closing session to", remoteAddr);
           Close();
@@ -754,7 +762,7 @@ namespace llarp
       // build our RC
       LinkIntroMessage msg;
       msg.rc = parent->GetOurRC();
-      if(!msg.rc.Verify(Crypto()))
+      if(!msg.rc.Verify(Crypto(), parent->Now()))
       {
         llarp::LogError("our RC is invalid? closing session to", remoteAddr);
         Close();
@@ -926,9 +934,7 @@ namespace llarp
       // key'd hash
       if(!Crypto()->hmac(buf.data(), payload, txKey))
         return false;
-      if(msgid)
-        return MutateKey(txKey, A);
-      return true;
+      return MutateKey(txKey, A);
     }
 
     void
@@ -940,7 +946,51 @@ namespace llarp
       {
         parent->MapAddr(remoteRC.pubkey.data(), this);
         parent->SessionEstablished(remoteRC);
+        /// future LIM are used for session renegotiation
+        GotLIM = std::bind(&Session::GotSessionRenegotiate, this,
+                           std::placeholders::_1);
       }
+    }
+
+    bool
+    Session::GotSessionRenegotiate(const LinkIntroMessage* msg)
+    {
+      // check with parent and possibly process and store new rc
+      if(!parent->SessionRenegotiate(msg->rc, remoteRC))
+      {
+        // failed to renegotiate
+        Close();
+        return false;
+      }
+      // set remote rc
+      remoteRC = msg->rc;
+      // recalcuate rx key
+      return DoKeyExchange(Crypto()->transport_dh_server, rxKey, msg->N,
+                           remoteRC.enckey, parent->RouterEncryptionSecret());
+    }
+
+    bool
+    Session::Rehandshake()
+    {
+      byte_t tmp[LinkIntroMessage::MaxSize];
+      LinkIntroMessage lim;
+      lim.rc = parent->GetOurRC();
+      lim.N.Randomize();
+      lim.P = 60 * 1000 * 10;
+      if(!lim.Sign(parent->Sign))
+        return false;
+      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      if(!lim.BEncode(&buf))
+        return false;
+      // rewind and resize buffer
+      buf.sz  = buf.cur - buf.base;
+      buf.cur = buf.base;
+      // send message
+      if(!SendMessageBuffer(buf))
+        return false;
+      // regen our tx Key
+      return DoKeyExchange(Crypto()->transport_dh_client, txKey, lim.N,
+                           remoteRC.enckey, parent->RouterEncryptionSecret());
     }
 
     bool
@@ -1019,6 +1069,13 @@ namespace llarp
       }
       // determine if this message is done
       bool result = true;
+      // mutate key
+      if(!MutateKey(rxKey, A))
+      {
+        llarp::LogError("failed to mutate rx key");
+        return false;
+      }
+
       if(remaining == 0)
       {
         llarp_buffer_t buf = itr->second.buffer;
@@ -1031,15 +1088,6 @@ namespace llarp
         result = parent->HandleMessage(this, buf);
         // get rid of message buffer
         itr = m_RecvMsgs.erase(itr);
-      }
-      // mutate key
-      if(msgid)
-      {
-        if(!MutateKey(rxKey, A))
-        {
-          llarp::LogError("failed to mutate rx key");
-          return false;
-        }
       }
       return result;
     }

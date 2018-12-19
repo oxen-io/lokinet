@@ -30,6 +30,13 @@ namespace llarp
   /// handler of session established
   using SessionEstablishedHandler = std::function< void(llarp::RouterContact) >;
 
+  /// f(new, old)
+  /// handler of session renegotiation
+  /// returns true if the new rc is valid
+  /// returns false otherwise and the session is terminated
+  using SessionRenegotiateHandler =
+      std::function< bool(llarp::RouterContact, llarp::RouterContact) >;
+
   /// handles close of all sessions with pubkey
   using SessionClosedHandler = std::function< void(llarp::RouterID) >;
 
@@ -38,7 +45,8 @@ namespace llarp
     ILinkLayer(const byte_t* routerEncSecret, GetRCFunc getrc,
                LinkMessageHandler handler, SignBufferFunc signFunc,
                SessionEstablishedHandler sessionEstablish,
-               TimeoutHandler timeout, SessionClosedHandler closed);
+               SessionRenegotiateHandler renegotiate, TimeoutHandler timeout,
+               SessionClosedHandler closed);
     virtual ~ILinkLayer();
 
     /// get current time via event loop
@@ -56,6 +64,9 @@ namespace llarp
 
     void
     ForEachSession(std::function< void(const ILinkSession*) > visit) const;
+
+    void
+    ForEachSession(std::function< void(ILinkSession*) > visit);
 
     static void
     udp_tick(llarp_udp_io* udp)
@@ -116,6 +127,10 @@ namespace llarp
     bool
     GetOurAddressInfo(AddressInfo& addr) const;
 
+    bool
+    VisitSessionByPubkey(const byte_t* pk,
+                         std::function< bool(ILinkSession*) > visit);
+
     virtual uint16_t
     Rank() const = 0;
 
@@ -153,6 +168,7 @@ namespace llarp
     GetRCFunc GetOurRC;
     SessionEstablishedHandler SessionEstablished;
     SessionClosedHandler SessionClosed;
+    SessionRenegotiateHandler SessionRenegotiate;
 
    private:
     static void

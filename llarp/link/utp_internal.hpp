@@ -162,6 +162,14 @@ namespace llarp
       Session();
       ~Session();
 
+      /// handle LIM after handshake
+      bool
+      GotSessionRenegotiate(const LinkIntroMessage* msg);
+
+      /// re negotiate session with our new local RC
+      bool
+      Rehandshake();
+
       /// pump tx queue
       void
       PumpWrite();
@@ -234,8 +242,8 @@ namespace llarp
       RemotePubKey() const;
 
       /// get remote address
-      const Addr&
-      RemoteEndpoint() const;
+      Addr
+      RemoteEndpoint();
 
       /// get parent link
       ILinkLayer*
@@ -279,6 +287,7 @@ namespace llarp
                 llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
                 llarp::SignBufferFunc sign,
                 llarp::SessionEstablishedHandler established,
+                llarp::SessionRenegotiateHandler reneg,
                 llarp::TimeoutHandler timeout,
                 llarp::SessionClosedHandler closed);
 

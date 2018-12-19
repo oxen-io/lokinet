@@ -45,7 +45,7 @@ namespace llarp
     std::function< const byte_t *(void) > GetPubKey;
 
     /// get remote address
-    std::function< const Addr &(void) > GetRemoteEndpoint;
+    std::function< Addr(void) > GetRemoteEndpoint;
 
     // get remote rc
     std::function< llarp::RouterContact(void) > GetRemoteRC;
@@ -58,6 +58,9 @@ namespace llarp
 
     /// get parent link layer
     std::function< ILinkLayer *(void) > GetLinkLayer;
+
+    /// renegotiate session when we have a new RC locally
+    std::function< bool(void) > RenegotiateSession;
   };
 }  // namespace llarp
 

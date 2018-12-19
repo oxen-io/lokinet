@@ -5,6 +5,7 @@
 #include <bencode.hpp>
 #include <crypto.h>
 #include <exit_info.hpp>
+#include <version.hpp>
 
 #include <vector>
 
@@ -13,10 +14,43 @@
 
 namespace llarp
 {
+  /// NetID
+  struct NetID final : public AlignedBuffer< 8 >
+  {
+    NetID();
+
+    bool
+    operator==(const NetID &other) const;
+
+    bool
+    operator!=(const NetID &other) const
+    {
+      return !(*this == other);
+    }
+
+    friend std::ostream &
+    operator<<(std::ostream &out, const NetID &id)
+    {
+      return out << id.ToString();
+    }
+
+    std::string
+    ToString() const;
+
+    bool
+    BDecode(llarp_buffer_t *buf);
+
+    bool
+    BEncode(llarp_buffer_t *buf) const;
+  };
+
+  /// RouterContact
   struct RouterContact final : public IBEncodeMessage
   {
     /// for unit tests
     static bool IgnoreBogons;
+
+    static llarp_time_t Lifetime;
 
     RouterContact() : IBEncodeMessage()
     {
@@ -26,6 +60,7 @@ namespace llarp
     RouterContact(const RouterContact &other)
         : IBEncodeMessage()
         , addrs(other.addrs)
+        , netID(other.netID)
         , enckey(other.enckey)
         , pubkey(other.pubkey)
         , exits(other.exits)
@@ -38,6 +73,8 @@ namespace llarp
 
     // advertised addresses
     std::vector< AddressInfo > addrs;
+    // network identifier
+    NetID netID;
     // public encryption public key
     llarp::PubKey enckey;
     // public signing public key
@@ -59,7 +96,8 @@ namespace llarp
     {
       return addrs == other.addrs && enckey == other.enckey
           && pubkey == other.pubkey && signature == other.signature
-          && nickname == other.nickname && last_updated == other.last_updated;
+          && nickname == other.nickname && last_updated == other.last_updated
+          && netID == other.netID;
     }
 
     void
@@ -97,10 +135,17 @@ namespace llarp
     SetNick(const std::string &nick);
 
     bool
-    Verify(llarp::Crypto *crypto) const;
+    Verify(llarp::Crypto *crypto, llarp_time_t now) const;
 
     bool
     Sign(llarp::Crypto *crypto, const llarp::SecretKey &secret);
+
+    /// does this RC expire soon? default delta is 1 minute
+    bool
+    ExpiresSoon(llarp_time_t now, llarp_time_t dlt = 60000) const;
+
+    bool
+    IsExpired(llarp_time_t now) const;
 
     bool
     OtherIsNewer(const RouterContact &other) const

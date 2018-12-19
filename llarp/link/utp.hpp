@@ -13,8 +13,9 @@ namespace llarp
     std::unique_ptr< ILinkLayer >
     NewServer(llarp::Crypto* crypto, const byte_t* routerEncSecret,
               llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
-              llarp::SessionEstablishedHandler est, llarp::SignBufferFunc sign,
-              llarp::TimeoutHandler timeout,
+              llarp::SessionEstablishedHandler est,
+              llarp::SessionRenegotiateHandler reneg,
+              llarp::SignBufferFunc sign, llarp::TimeoutHandler timeout,
               llarp::SessionClosedHandler closed);
 
     std::unique_ptr< ILinkLayer >

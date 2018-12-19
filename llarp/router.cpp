@@ -182,6 +182,7 @@ namespace llarp
   Router::OnSessionEstablished(llarp::RouterContact rc)
   {
     async_verify_RC(rc, nullptr);
+    llarp::LogInfo("session with ", rc.pubkey, "established");
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *_netloop,
@@ -321,16 +322,14 @@ namespace llarp
       {
         return;
       }
-      if(results[0].Verify(&crypto))
+      if(results[0].Verify(&crypto, Now()))
       {
         nodedb->Insert(results[0]);
         llarp_router_try_connect(this, results[0], 10);
+        return;
       }
     }
-    else
-    {
-      DiscardOutboundFor(remote);
-    }
+    DiscardOutboundFor(remote);
   }
 
   void
@@ -347,6 +346,17 @@ namespace llarp
   }
 
   void
+  Router::ForEachPeer(std::function< void(llarp::ILinkSession *) > visit)
+  {
+    outboundLink->ForEachSession(
+        [visit](llarp::ILinkSession *peer) { visit(peer); });
+    for(const auto &link : inboundLinks)
+    {
+      link->ForEachSession([visit](llarp::ILinkSession *peer) { visit(peer); });
+    }
+  }
+
+  void
   Router::try_connect(fs::path rcfile)
   {
     llarp::RouterContact remote;
@@ -355,7 +365,7 @@ namespace llarp
       llarp::LogError("failure to decode or verify of remote RC");
       return;
     }
-    if(remote.Verify(&crypto))
+    if(remote.Verify(&crypto, Now()))
     {
       llarp::LogDebug("verified signature");
       // store into filesystem
@@ -421,7 +431,7 @@ namespace llarp
   Router::SaveRC()
   {
     llarp::LogDebug("verify RC signature");
-    if(!rc().Verify(&crypto))
+    if(!rc().Verify(&crypto, Now()))
     {
       rc().Dump< MAX_RC_SIZE >();
       llarp::LogError("RC is invalid, not saving");
@@ -545,7 +555,7 @@ namespace llarp
       return;
     for(const auto &rc : results)
     {
-      if(rc.Verify(&crypto))
+      if(rc.Verify(&crypto, Now()))
         nodedb->Insert(rc);
       else
         return;
@@ -625,11 +635,68 @@ namespace llarp
     return validRouters.size();
   }
 
+  bool
+  Router::UpdateOurRC(bool rotateKeys)
+  {
+    llarp::SecretKey nextOnionKey;
+    llarp::RouterContact nextRC = _rc;
+    if(rotateKeys)
+    {
+      crypto.encryption_keygen(nextOnionKey);
+      nextRC.enckey = llarp::seckey_topublic(nextOnionKey);
+    }
+    nextRC.last_updated = Now();
+    if(!nextRC.Sign(&crypto, identity))
+      return false;
+    _rc = nextRC;
+    if(rotateKeys)
+    {
+      encryption = nextOnionKey;
+      // propagate RC by renegotiating sessions
+      ForEachPeer([&](llarp::ILinkSession *s) {
+        if(!s->RenegotiateSession())
+        {
+          llarp::LogWarn("failed to renegotiate session with ",
+                         s->GetRemoteEndpoint());
+        }
+      });
+    }
+    // TODO: do this async
+    return SaveRC();
+  }
+
+  bool
+  Router::CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc)
+  {
+    // missmatch of identity ?
+    if(newrc.pubkey != oldrc.pubkey)
+      return false;
+
+    // store it in nodedb async
+    nodedb->InsertAsync(newrc);
+    // update valid routers
+    {
+      auto itr = validRouters.find(newrc.pubkey);
+      if(itr == validRouters.end())
+        validRouters[newrc.pubkey] = newrc;
+      else
+        itr->second = newrc;
+    }
+    // TODO: check for other places that need updating the RC
+    return true;
+  }
+
   void
   Router::Tick()
   {
     // llarp::LogDebug("tick router");
     auto now = llarp_ev_loop_time_now_ms(netloop);
+    if(_rc.ExpiresSoon(now))
+    {
+      if(!UpdateOurRC())
+        llarp::LogError("Failed to update our RC");
+    }
+
     paths.TickPaths(now);
     paths.ExpirePaths(now);
     {
@@ -950,7 +1017,8 @@ namespace llarp
       // TODO: enable this once the network can serialize xi
       //_rc.exits.emplace_back(_rc.pubkey, a);
       llarp::LogInfo(
-          "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your exit "
+          "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your "
+          "exit "
           "is advertised as exiting at ",
           a);
     }
@@ -1316,9 +1384,15 @@ namespace llarp
     {
       self->bootstrapRCList.emplace_back();
       auto &rc = self->bootstrapRCList.back();
-      if(rc.Read(val) && rc.Verify(&self->crypto))
+      if(rc.Read(val) && rc.Verify(&self->crypto, self->Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey.data()));
+      }
+      else if(self->Now() - rc.last_updated > RouterContact::Lifetime)
+      {
+        llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey.data()),
+                       " is too old and needs to be refreshed");
+        self->bootstrapRCList.pop_back();
       }
       else
       {

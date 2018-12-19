@@ -6,6 +6,7 @@ namespace llarp
   ILinkLayer::ILinkLayer(const byte_t* routerEncSecret, GetRCFunc getrc,
                          LinkMessageHandler handler, SignBufferFunc signbuf,
                          SessionEstablishedHandler establishedSession,
+                         SessionRenegotiateHandler reneg,
                          TimeoutHandler timeout, SessionClosedHandler closed)
       : HandleMessage(handler)
       , HandleTimeout(timeout)
@@ -13,6 +14,7 @@ namespace llarp
       , GetOurRC(getrc)
       , SessionEstablished(establishedSession)
       , SessionClosed(closed)
+      , SessionRenegotiate(reneg)
       , m_RouterEncSecret(routerEncSecret)
   {
   }
@@ -31,6 +33,29 @@ namespace llarp
   void
   ILinkLayer::ForEachSession(
       std::function< void(const ILinkSession*) > visit) const
+  {
+    auto itr = m_AuthedLinks.begin();
+    while(itr != m_AuthedLinks.end())
+    {
+      visit(itr->second.get());
+      ++itr;
+    }
+  }
+
+  bool
+  ILinkLayer::VisitSessionByPubkey(const byte_t* pk,
+                                   std::function< bool(ILinkSession*) > visit)
+  {
+    auto itr = m_AuthedLinks.find(pk);
+    if(itr != m_AuthedLinks.end())
+    {
+      return visit(itr->second.get());
+    }
+    return false;
+  }
+
+  void
+  ILinkLayer::ForEachSession(std::function< void(ILinkSession*) > visit)
   {
     auto itr = m_AuthedLinks.begin();
     while(itr != m_AuthedLinks.end())

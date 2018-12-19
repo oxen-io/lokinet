@@ -700,7 +700,7 @@ namespace llarp
       bool
       Validate(const RouterContact &rc) const override
       {
-        if(!rc.Verify(parent->Crypto()))
+        if(!rc.Verify(parent->Crypto(), parent->Now()))
         {
           llarp::LogWarn("rc from lookup result is invalid");
           return false;

@@ -135,7 +135,7 @@ router's full identity
 
 {
   a: [ one, or, many, AI, here ... ],
-  i: "<max 16 bytes network identifier>",
+  i: "<max 8 bytes network identifier>",
   k: "<32 bytes public long term identity signing key>",
   n: "<optional max 32 bytes router nickname>",
   p: "<32 bytes public path encryption key>",   

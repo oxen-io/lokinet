@@ -154,7 +154,7 @@ namespace llarp
       return false;
     }
     // verify RC
-    if(!rc.Verify(c))
+    if(!rc.Verify(c, llarp::time_now_ms()))
     {
       llarp::LogError("invalid RC in link intro");
       return false;

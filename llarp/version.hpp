@@ -29,4 +29,8 @@
 #define LLARP_RELEASE_MOTTO "(dev build)"
 #endif
 
+#ifndef LLARP_NET_ID
+#define LLARP_NET_ID "testnet"
+#endif
+
 #endif
