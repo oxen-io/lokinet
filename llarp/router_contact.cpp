@@ -14,9 +14,13 @@ namespace llarp
 {
   bool RouterContact::IgnoreBogons = false;
 
-  /// 1 hour
+#ifdef TESTNET
+  // 1 minute for testnet
+  llarp_time_t RouterContact::Lifetime = 60 * 1000;
+#else
+  /// 1 hour for real network
   llarp_time_t RouterContact::Lifetime = 60 * 60 * 1000;
-
+#endif
   NetID::NetID() : AlignedBuffer< 8 >((const byte_t *)LLARP_NET_ID)
   {
   }
