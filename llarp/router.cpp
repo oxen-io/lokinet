@@ -653,17 +653,16 @@ namespace llarp
     {
       encryption = nextOnionKey;
       // propagate RC by renegotiating sessions
-      ForEachPeer([&](llarp::ILinkSession *s) {
-        if(!s->RenegotiateSession())
-        {
-          llarp::LogWarn("failed to renegotiate session with ",
-                         s->GetRemoteEndpoint());
-        }
+      ForEachPeer([](llarp::ILinkSession *s) {
+        if(s->RenegotiateSession())
+          llarp::LogInfo("renegotiated session");
+        else
+          llarp::LogWarn("failed to renegotiate session");
       });
     }
     // TODO: do this async
     return SaveRC();
-  }
+  }  // namespace llarp
 
   bool
   Router::CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc)
@@ -674,6 +673,11 @@ namespace llarp
 
     // store it in nodedb async
     nodedb->InsertAsync(newrc);
+    // update dht if required
+    if(dht->impl.nodes->HasNode(newrc.pubkey.data()))
+    {
+      dht->impl.nodes->PutNode(newrc);
+    }
     // update valid routers
     {
       auto itr = validRouters.find(newrc.pubkey);
@@ -687,16 +691,36 @@ namespace llarp
   }
 
   void
+  Router::ServiceNodeLookupRouterWhenExpired(RouterID router)
+  {
+    dht->impl.LookupRouter(router,
+                           std::bind(&Router::HandleDHTLookupForExplore, this,
+                                     router, std::placeholders::_1));
+  }
+
+  void
   Router::Tick()
   {
     // llarp::LogDebug("tick router");
     auto now = llarp_ev_loop_time_now_ms(netloop);
-    if(_rc.ExpiresSoon(now))
+
+    if(_rc.ExpiresSoon(now, llarp::randint() % 10000))
     {
-      if(!UpdateOurRC())
+      llarp::LogInfo("regenerating RC");
+      if(!UpdateOurRC(IsServiceNode()))
         llarp::LogError("Failed to update our RC");
     }
 
+    if(IsServiceNode())
+    {
+      // only do this as service node
+      // client endpoints do this on their own
+      nodedb->visit([&](const RouterContact &rc) -> bool {
+        if(rc.ExpiresSoon(now, llarp::randint() % 10000))
+          ServiceNodeLookupRouterWhenExpired(rc.pubkey);
+        return true;
+      });
+    }
     paths.TickPaths(now);
     paths.ExpirePaths(now);
     {
@@ -1124,6 +1148,8 @@ namespace llarp
     self->nodedb->visit(
         [self, &want](const llarp::RouterContact &other) -> bool {
           // check if we really want to
+          if(other.ExpiresSoon(self->Now(), 30000))
+            return want > 0;
           if(!self->ConnectionToRouterAllowed(other.pubkey))
             return want > 0;
           if(llarp::randint() % 2 == 0
@@ -1199,7 +1225,8 @@ namespace llarp
     auto itr = netConfigDefaults.begin();
     while(itr != netConfigDefaults.end())
     {
-      if(netConfig.count(itr->first) == 0)
+      auto found = netConfig.find(itr->first);
+      if(found == netConfig.end() || found->second.empty())
       {
         netConfig.emplace(std::make_pair(itr->first, itr->second()));
       }

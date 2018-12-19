@@ -2,6 +2,7 @@
 #include <handlers/tun.hpp>
 #include <service/context.hpp>
 #include <service/endpoint.hpp>
+#include <router.hpp>
 
 namespace llarp
 {
@@ -29,6 +30,11 @@ namespace llarp
         itr->second->Tick(now);
         ++itr;
       }
+      m_Router->nodedb->visit([&](const RouterContact &rc) -> bool {
+        if(rc.IsExpired(now))
+          getFirstEndpoint()->LookupRouterAnon(rc.pubkey);
+        return true;
+      });
     }
 
     bool

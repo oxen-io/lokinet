@@ -18,8 +18,8 @@ namespace llarp
   // 1 minute for testnet
   llarp_time_t RouterContact::Lifetime = 60 * 1000;
 #else
-  /// 1 hour for real network
-  llarp_time_t RouterContact::Lifetime = 60 * 60 * 1000;
+  /// 1 day for real network
+  llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
   NetID::NetID() : AlignedBuffer< 8 >((const byte_t *)LLARP_NET_ID)
   {
@@ -200,13 +200,17 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
-    return now > last_updated && now - last_updated >= Lifetime;
+    auto expiresAt = last_updated + Lifetime;
+    return now >= expiresAt;
   }
 
   bool
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
-    return now - (last_updated + Lifetime) >= dlt;
+    if(IsExpired(now))
+      return true;
+    auto expiresAt = last_updated + Lifetime;
+    return expiresAt - now <= dlt;
   }
 
   std::string

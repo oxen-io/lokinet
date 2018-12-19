@@ -143,6 +143,10 @@ namespace llarp
       void
       EnsureRouterIsKnown(const RouterID& router);
 
+      /// lookup a router via closest path
+      bool
+      LookupRouterAnon(RouterID router);
+
       const Identity&
       GetIdentity() const
       {

@@ -1011,6 +1011,7 @@ namespace llarp
       {
         llarp::LogError("Message Integrity Failed: got ", digest, " from ",
                         remoteAddr, " instead of ", expected);
+        Close();
         return false;
       }
 

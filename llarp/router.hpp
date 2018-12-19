@@ -295,6 +295,10 @@ namespace llarp
     void
     TryEstablishTo(const llarp::RouterID &remote);
 
+    /// lookup a router by pubkey when it expires when we are a service node
+    void
+    ServiceNodeLookupRouterWhenExpired(llarp::RouterID remote);
+
     void
     HandleDHTLookupForExplore(
         llarp::RouterID remote,

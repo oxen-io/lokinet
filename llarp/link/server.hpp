@@ -104,7 +104,7 @@ namespace llarp
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;
 
     bool
-    TryEstablishTo(const RouterContact& rc);
+    TryEstablishTo(RouterContact rc);
 
     bool
     Start(llarp::Logic* l);

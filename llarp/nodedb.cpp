@@ -421,7 +421,8 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   auto sz = entries.size();
   if(sz < 3)
     return false;
-  size_t tries = 5;
+  size_t tries     = 5;
+  llarp_time_t now = llarp::time_now_ms();
   if(N)
   {
     do
@@ -439,7 +440,7 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
           continue;
         return false;
       }
-      if(itr->second.addrs.size())
+      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
       {
         result = itr->second;
         return true;
@@ -448,15 +449,5 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
     return false;
   }
   else
-  {
-    auto itr = entries.begin();
-    if(sz > 1)
-    {
-      auto idx = llarp::randint() % sz;
-      if(idx)
-        std::advance(itr, idx - 1);
-    }
-    result = itr->second;
-    return true;
-  }
+    return false;
 }

@@ -163,7 +163,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::TryEstablishTo(const RouterContact& rc)
+  ILinkLayer::TryEstablishTo(RouterContact rc)
   {
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
