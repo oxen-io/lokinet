@@ -25,7 +25,7 @@
 #define MAXHOPS (8)
 #define DEFAULT_PATH_LIFETIME (10 * 60 * 1000)
 #define PATH_BUILD_TIMEOUT (30 * 1000)
-#define MESSAGE_PAD_SIZE (512)
+#define MESSAGE_PAD_SIZE (128)
 #define PATH_ALIVE_TIMEOUT (10 * 1000)
 
 namespace llarp
@@ -314,7 +314,7 @@ namespace llarp
       void
       MarkActive(llarp_time_t now)
       {
-        m_LastRecvMessage = now;
+        m_LastRecvMessage = std::max(now, m_LastRecvMessage);
       }
 
       /// return true if ALL of the specified roles are supported
