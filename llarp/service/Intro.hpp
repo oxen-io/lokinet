@@ -86,7 +86,7 @@ namespace llarp
         size_t
         operator()(const Introduction& i) const
         {
-          return *i.router.data_l() ^ *i.pathID.data_l();
+          return PubKey::Hash()(i.router) ^ PathID_t::Hash()(i.pathID);
         }
       };
     };
