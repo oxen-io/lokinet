@@ -7,12 +7,14 @@ namespace llarp
 {
   Encrypted::Encrypted()
   {
+    _sz = 0;
     UpdateBuffer();
   }
 
   Encrypted::Encrypted(Encrypted&& other)
   {
-    _data = std::move(other._data);
+    _sz = std::move(other._sz);
+    memcpy(_buf, other._buf, _sz);
     UpdateBuffer();
   }
 
@@ -21,12 +23,12 @@ namespace llarp
   {
   }
 
-  Encrypted::Encrypted(const byte_t* buf, size_t sz) : _data(sz)
+  Encrypted::Encrypted(const byte_t* buf, size_t sz) : _sz(sz)
   {
     if(buf)
-      memcpy(data(), buf, sz);
+      memcpy(_buf, buf, sz);
     else
-      llarp::Zero(data(), sz);
+      llarp::Zero(_buf, sz);
     UpdateBuffer();
   }
 

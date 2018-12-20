@@ -522,7 +522,7 @@ namespace llarp
     Path::Expired(llarp_time_t now) const
     {
       if(_status == ePathEstablished)
-        return now - buildStarted > hops[0].lifetime;
+        return now >= ExpireTime();
       else if(_status == ePathBuilding)
         return false;
       else

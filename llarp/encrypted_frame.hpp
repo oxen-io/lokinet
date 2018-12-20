@@ -33,7 +33,7 @@ namespace llarp
     EncryptedFrame&
     operator=(const EncryptedFrame& other)
     {
-      _data.resize(other.size());
+      _sz = other.size();
       memcpy(data(), other.data(), size());
       return *this;
     }

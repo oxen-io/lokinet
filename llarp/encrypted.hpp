@@ -4,6 +4,7 @@
 #include <aligned.hpp>
 #include <bencode.h>
 #include <buffer.h>
+#include <link_layer.hpp>
 
 #include <vector>
 #include <stdexcept>
@@ -23,14 +24,13 @@ namespace llarp
     bool
     BEncode(llarp_buffer_t* buf) const
     {
-      return bencode_write_bytestring(buf, data(), size());
+      return bencode_write_bytestring(buf, _buf, _sz);
     }
 
     bool
     operator==(const Encrypted& other) const
     {
-      return size() == other.size()
-          && memcmp(data(), other.data(), size()) == 0;
+      return _sz == other._sz && memcmp(_buf, other._buf, _sz) == 0;
     }
 
     bool
@@ -48,10 +48,10 @@ namespace llarp
     Encrypted&
     operator=(const llarp_buffer_t& buf)
     {
-      _data.resize(buf.sz);
-      if(buf.sz)
+      if(buf.sz && buf.sz <= sizeof(_buf))
       {
-        memcpy(data(), buf.base, buf.sz);
+        _sz = buf.sz;
+        memcpy(_buf, buf.base, _sz);
       }
       UpdateBuffer();
       return *this;
@@ -60,18 +60,16 @@ namespace llarp
     void
     Fill(byte_t fill)
     {
-      size_t _sz = size();
       size_t idx = 0;
       while(idx < _sz)
-        _data[idx++] = fill;
+        _buf[idx++] = fill;
     }
 
     void
     Randomize()
     {
-      size_t _sz = size();
       if(_sz)
-        randombytes(data(), _sz);
+        randombytes(_buf, _sz);
     }
 
     bool
@@ -80,10 +78,10 @@ namespace llarp
       llarp_buffer_t strbuf;
       if(!bencode_read_string(buf, &strbuf))
         return false;
-      if(strbuf.sz == 0)
+      if(strbuf.sz == 0 || strbuf.sz > sizeof(_buf))
         return false;
-      _data.resize(strbuf.sz);
-      memcpy(data(), strbuf.base, size());
+      _sz = strbuf.sz;
+      memcpy(_buf, strbuf.base, _sz);
       UpdateBuffer();
       return true;
     }
@@ -103,25 +101,25 @@ namespace llarp
     size_t
     size()
     {
-      return _data.size();
+      return _sz;
     }
 
     size_t
     size() const
     {
-      return _data.size();
+      return _sz;
     }
 
     byte_t*
     data()
     {
-      return _data.data();
+      return _buf;
     }
 
     const byte_t*
     data() const
     {
-      return _data.data();
+      return _buf;
     }
 
    protected:
@@ -132,7 +130,8 @@ namespace llarp
       m_Buffer.cur  = data();
       m_Buffer.sz   = size();
     }
-    std::vector< byte_t > _data;
+    byte_t _buf[MAX_LINK_MSG_SIZE];
+    size_t _sz;
     llarp_buffer_t m_Buffer;
   };
 }  // namespace llarp
