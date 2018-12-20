@@ -129,7 +129,7 @@ namespace llarp
       auto itr = m_SNodeSessions.begin();
       while(itr != m_SNodeSessions.end())
       {
-        itr->second->FlushUpstreamTraffic();
+        itr->second->Flush();
         ++itr;
       }
     }

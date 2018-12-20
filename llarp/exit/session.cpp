@@ -59,9 +59,11 @@ namespace llarp
       p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
-      p->SetExitTrafficHandler(std::bind(&BaseSession::HandleTraffic, this,
-                                         std::placeholders::_1,
-                                         std::placeholders::_2));
+
+      p->SetExitTrafficHandler(
+          std::bind(&BaseSession::HandleTraffic, this, std::placeholders::_1,
+                    std::placeholders::_2, std::placeholders::_3));
+
       p->AddObtainExitHandler(std::bind(&BaseSession::HandleGotExit, this,
                                         std::placeholders::_1,
                                         std::placeholders::_2));
@@ -91,13 +93,16 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleTraffic(llarp::path::Path* p, llarp_buffer_t pkt)
+    BaseSession::HandleTraffic(llarp::path::Path* p, llarp_buffer_t buf,
+                               uint64_t counter)
     {
       (void)p;
       if(m_WritePacket)
       {
-        if(!m_WritePacket(pkt))
+        llarp::net::IPv4Packet pkt;
+        if(!pkt.Load(buf))
           return false;
+        m_Downstream.emplace(counter, pkt);
         m_LastUse = router->Now();
         return true;
       }
@@ -153,7 +158,7 @@ namespace llarp
     }
 
     bool
-    BaseSession::FlushUpstreamTraffic()
+    BaseSession::Flush()
     {
       auto now  = router->Now();
       auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
@@ -175,6 +180,12 @@ namespace llarp
             m_LastUse = now;
           queue.pop_front();
         }
+      }
+      while(m_Downstream.size())
+      {
+        if(m_WritePacket)
+          m_WritePacket(m_Downstream.top().second.ConstBuffer());
+        m_Downstream.pop();
       }
       return true;
     }
