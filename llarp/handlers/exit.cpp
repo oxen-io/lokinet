@@ -206,7 +206,7 @@ namespace llarp
         auto itr = m_SNodeSessions.begin();
         while(itr != m_SNodeSessions.end())
         {
-          if(!itr->second->FlushUpstreamTraffic())
+          if(!itr->second->Flush())
           {
             llarp::LogWarn("failed to flushsnode traffic to ", itr->first,
                            " via outbound session");

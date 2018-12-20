@@ -503,7 +503,7 @@ namespace llarp
         return true;
       });
       if(m_Exit)
-        m_Exit->FlushUpstreamTraffic();
+        m_Exit->Flush();
       FlushSNodeTraffic();
     }
 
