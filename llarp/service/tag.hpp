@@ -54,14 +54,7 @@ namespace llarp
         return ToString().empty();
       }
 
-      struct Hash
-      {
-        std::size_t
-        operator()(const Tag& t) const
-        {
-          return *t.data_l();
-        }
-      };
+      using Hash = AlignedBuffer< SIZE >::Hash;
     };
   }  // namespace service
 }  // namespace llarp

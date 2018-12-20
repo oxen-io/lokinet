@@ -191,7 +191,7 @@ namespace llarp
         size_t
         operator()(const PathInfo_t& i) const
         {
-          return *i.first.data_l() ^ *i.second.data_l();
+          return RouterID::Hash()(i.first) ^ PathID_t::Hash()(i.second);
         }
       };
       using Mtx_t     = llarp::util::NullMutex;

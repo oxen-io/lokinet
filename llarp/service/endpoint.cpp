@@ -538,7 +538,7 @@ namespace llarp
     Endpoint::PublishIntroSet(llarp::Router* r)
     {
       // publish via near router
-      RouterID location = m_Identity.pub.Addr().data();
+      RouterID location = m_Identity.pub.Addr().data().data();
       auto path         = GetEstablishedPathClosestTo(location);
       return path && PublishIntroSetVia(r, path);
     }
@@ -827,9 +827,10 @@ namespace llarp
       if(msg->proto == eProtocolTraffic)
       {
         auto buf = llarp::Buffer(msg->payload);
-        return HandleWriteIPPacket(buf,
-                                   std::bind(&Endpoint::ObtainIPForAddr, this,
-                                             msg->sender.Addr().data(), false));
+        return HandleWriteIPPacket(
+            buf,
+            std::bind(&Endpoint::ObtainIPForAddr, this,
+                      msg->sender.Addr().data().data(), false));
       }
       else if(msg->proto == eProtocolText)
       {

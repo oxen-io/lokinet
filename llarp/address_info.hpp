@@ -73,7 +73,7 @@ namespace llarp
       size_t
       operator()(const AddressInfo& addr) const
       {
-        return *addr.pubkey.data_l();
+        return AlignedBuffer< PUBKEYSIZE >::Hash()(addr.pubkey);
       }
     };
   };

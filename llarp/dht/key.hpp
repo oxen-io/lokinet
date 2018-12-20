@@ -3,17 +3,24 @@
 
 #include <aligned.hpp>
 
+#include <array>
+
 namespace llarp
 {
   namespace dht
   {
     struct Key_t : public llarp::AlignedBuffer< 32 >
     {
-      Key_t(const byte_t* val) : llarp::AlignedBuffer< 32 >(val)
+      Key_t(const byte_t* buf) : llarp::AlignedBuffer< SIZE >(buf)
       {
       }
 
-      Key_t() : llarp::AlignedBuffer< 32 >()
+      Key_t(const std::array< byte_t, SIZE >& val)
+          : llarp::AlignedBuffer< SIZE >(val.data())
+      {
+      }
+
+      Key_t() : llarp::AlignedBuffer< SIZE >()
       {
       }
 
@@ -21,33 +28,34 @@ namespace llarp
       operator^(const Key_t& other) const
       {
         Key_t dist;
-        for(size_t idx = 0; idx < (size() / sizeof(l[0])); ++idx)
-          dist.l[idx] = l[idx] ^ other.l[idx];
+        std::transform(as_array().begin(), as_array().end(),
+                       other.as_array().begin(), dist.as_array().begin(),
+                       std::bit_xor< byte_t >());
         return dist;
       }
 
       bool
       operator==(const Key_t& other) const
       {
-        return memcmp(data(), other.data(), 32) == 0;
+        return memcmp(data(), other.data(), SIZE) == 0;
       }
 
       bool
       operator!=(const Key_t& other) const
       {
-        return memcmp(data(), other.data(), 32) != 0;
+        return memcmp(data(), other.data(), SIZE) != 0;
       }
 
       bool
       operator<(const Key_t& other) const
       {
-        return memcmp(data(), other.data(), 32) < 0;
+        return memcmp(data(), other.data(), SIZE) < 0;
       }
 
       bool
       operator>(const Key_t& other) const
       {
-        return memcmp(data(), other.data(), 32) > 0;
+        return memcmp(data(), other.data(), SIZE) > 0;
       }
     };
   }  // namespace dht

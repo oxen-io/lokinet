@@ -5,6 +5,8 @@
 #include <dht/key.hpp>
 #include <router_id.hpp>
 
+#include <functional>
+#include <numeric>
 #include <string>
 
 namespace llarp
@@ -14,6 +16,10 @@ namespace llarp
     /// Snapp/Snode Address
     struct Address
     {
+      static constexpr size_t SIZE = 32;
+
+      using Data = std::array< byte_t, SIZE >;
+
       std::string
       ToString(const char* tld = ".loki") const;
 
@@ -27,12 +33,12 @@ namespace llarp
 
       Address(const byte_t* buf)
       {
-        memcpy(b, buf, 32);
+        std::copy(buf, buf + SIZE, b.begin());
       }
 
       Address(const Address& other)
       {
-        memcpy(b, other.b, 32);
+        b = other.b;
       }
 
       byte_t& operator[](size_t idx)
@@ -48,7 +54,7 @@ namespace llarp
       bool
       BEncode(llarp_buffer_t* buf) const
       {
-        return bencode_write_bytestring(buf, b, 32);
+        return bencode_write_bytestring(buf, b.data(), SIZE);
       }
 
       bool
@@ -57,49 +63,39 @@ namespace llarp
         llarp_buffer_t strbuf;
         if(!bencode_read_string(buf, &strbuf))
           return false;
-        if(strbuf.sz != 32)
+        if(strbuf.sz != SIZE)
         {
           llarp::LogErrorTag("Address::BDecode",
                              "bdecode buffer size missmatch ", strbuf.sz,
                              "!=32");
           return false;
         }
-        memcpy(b, strbuf.base, 32);
+        std::copy(strbuf.base, strbuf.base + SIZE, b.begin());
         return true;
       }
 
-      size_t
-      size() const
+      static constexpr size_t
+      size()
       {
-        return 32;
+        return SIZE;
       }
 
       bool
       IsZero() const
       {
-        size_t sz = 4;
-        while(sz)
-        {
-          if(l[--sz])
-            return false;
-        }
-        return true;
+        return b == Data{};
       }
 
       void
       Zero()
       {
-        size_t sz = 4;
-        while(sz)
-        {
-          l[--sz] = 0;
-        }
+        b.fill(0);
       }
 
       bool
       operator<(const Address& other) const
       {
-        return memcmp(data(), other.data(), 32) < 0;
+        return data() < other.data();
       }
 
       friend std::ostream&
@@ -111,7 +107,7 @@ namespace llarp
       bool
       operator==(const Address& other) const
       {
-        return memcmp(data(), other.data(), 32) == 0;
+        return data() == other.data();
       }
 
       bool
@@ -121,11 +117,7 @@ namespace llarp
       }
 
       Address&
-      operator=(const Address& other)
-      {
-        memcpy(data(), other.data(), 32);
-        return *this;
-      }
+      operator=(const Address& other) = default;
 
       const dht::Key_t
       ToKey() const
@@ -136,25 +128,19 @@ namespace llarp
       const RouterID
       ToRouter() const
       {
-        return RouterID(data());
+        return RouterID(data().data());
       }
 
-      const byte_t*
+      const Data&
       data() const
       {
         return b;
       }
 
-      byte_t*
+      Data&
       data()
       {
         return b;
-      }
-
-      const uint64_t*
-      data_l() const
-      {
-        return l;
       }
 
       struct Hash
@@ -162,15 +148,13 @@ namespace llarp
         size_t
         operator()(const Address& buf) const
         {
-          return *buf.data_l();
+          return std::accumulate(buf.data().begin(), buf.data().end(), 0,
+                                 std::bit_xor< size_t >());
         }
       };
 
      private:
-      union {
-        byte_t b[32];
-        uint64_t l[4];
-      };
+      Data b;
     };
 
   }  // namespace service
