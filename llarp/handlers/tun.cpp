@@ -654,6 +654,8 @@ namespace llarp
                return pkt.Load(buf) && pkt.Header()->version == 4;
              }))
       {
+        llarp::LogInfo("invalid pkt");
+        llarp::DumpBuffer(buf);
       }
     }
 
