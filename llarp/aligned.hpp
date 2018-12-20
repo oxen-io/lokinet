@@ -12,6 +12,7 @@
 #include <memory>
 #include <numeric>
 #include <type_traits>
+#include <algorithm>
 
 extern "C"
 {
