@@ -3,38 +3,37 @@
 
 #include <crypto.h>
 #include <encrypted.hpp>
+#include <buffer.hpp>
 #include <mem.h>
 #include <threadpool.h>
 
 namespace llarp
 {
-  struct EncryptedFrame : public Encrypted
+  static constexpr size_t EncryptedFrameOverheadSize =
+      PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
+  static constexpr size_t EncryptedFrameBodySize = 512;
+  static constexpr size_t EncryptedFrameSize =
+      EncryptedFrameOverheadSize + EncryptedFrameBodySize;
+
+  struct EncryptedFrame : public Encrypted< EncryptedFrameSize >
   {
-    static constexpr size_t OverheadSize =
-        PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
-
-    EncryptedFrame() : EncryptedFrame(256)
+    EncryptedFrame() : EncryptedFrame(EncryptedFrameBodySize)
     {
     }
 
-    EncryptedFrame(const EncryptedFrame& other)
-        : EncryptedFrame(other.data(), other.size())
-    {
-    }
-
-    EncryptedFrame(const byte_t* buf, size_t sz) : Encrypted(buf, sz)
-    {
-    }
     EncryptedFrame(size_t sz)
-        : Encrypted(sz + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE)
+        : Encrypted< EncryptedFrameSize >(std::min(sz, EncryptedFrameBodySize)
+                                          + EncryptedFrameOverheadSize)
     {
+      UpdateBuffer();
     }
 
     EncryptedFrame&
     operator=(const EncryptedFrame& other)
     {
-      _sz = other.size();
+      _sz = other._sz;
       memcpy(data(), other.data(), size());
+      UpdateBuffer();
       return *this;
     }
 
@@ -58,8 +57,8 @@ namespace llarp
       AsyncFrameEncrypter< User >* ctx =
           static_cast< AsyncFrameEncrypter< User >* >(user);
 
-      if(ctx->frame->EncryptInPlace(ctx->seckey, ctx->otherKey, ctx->crypto))
-        ctx->handler(ctx->frame, ctx->user);
+      if(ctx->frame.EncryptInPlace(ctx->seckey, ctx->otherKey, ctx->crypto))
+        ctx->handler(&ctx->frame, ctx->user);
       else
       {
         ctx->handler(nullptr, ctx->user);
@@ -69,7 +68,7 @@ namespace llarp
     llarp::Crypto* crypto;
     byte_t* secretkey;
     EncryptHandler handler;
-    EncryptedFrame* frame;
+    EncryptedFrame frame;
     User* user;
     byte_t* otherKey;
 
@@ -84,9 +83,10 @@ namespace llarp
     {
       // TODO: should we own otherKey?
       otherKey = other;
-      frame    = new EncryptedFrame(buf.sz);
-      memcpy(frame->data() + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE,
-             buf.base, buf.sz);
+      if(buf.sz > EncryptedFrameBodySize)
+        return;
+      memcpy(frame.data() + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE, buf.base,
+             buf.sz);
       user = u;
       llarp_threadpool_queue_job(worker, {this, &Encrypt});
     }
@@ -104,10 +104,10 @@ namespace llarp
       AsyncFrameDecrypter< User >* ctx =
           static_cast< AsyncFrameDecrypter< User >* >(user);
 
-      if(ctx->target->DecryptInPlace(ctx->seckey, ctx->crypto))
+      if(ctx->target.DecryptInPlace(ctx->seckey, ctx->crypto))
       {
-        auto buf = ctx->target->Buffer();
-        buf->cur = buf->base + EncryptedFrame::OverheadSize;
+        auto buf = ctx->target.Buffer();
+        buf->cur = buf->base + EncryptedFrameOverheadSize;
         ctx->result(buf, ctx->context);
       }
       else
@@ -124,10 +124,11 @@ namespace llarp
     User* context;
     llarp::Crypto* crypto;
     const byte_t* seckey;
-    EncryptedFrame* target;
+    EncryptedFrame target;
 
     void
-    AsyncDecrypt(llarp_threadpool* worker, EncryptedFrame* frame, User* user)
+    AsyncDecrypt(llarp_threadpool* worker, const EncryptedFrame& frame,
+                 User* user)
     {
       target  = frame;
       context = user;

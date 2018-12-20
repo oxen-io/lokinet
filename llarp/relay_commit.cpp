@@ -27,6 +27,19 @@ namespace llarp
     return read;
   }
 
+  void
+  LR_CommitMessage::Clear()
+  {
+    frames[0].Clear();
+    frames[1].Clear();
+    frames[2].Clear();
+    frames[3].Clear();
+    frames[4].Clear();
+    frames[5].Clear();
+    frames[6].Clear();
+    frames[7].Clear();
+  }
+
   bool
   LR_CommitMessage::BEncode(llarp_buffer_t* buf) const
   {
@@ -235,7 +248,7 @@ namespace llarp
         delete self;
         return;
       }
-      buf->cur = buf->base + EncryptedFrame::OverheadSize;
+      buf->cur = buf->base + EncryptedFrameOverheadSize;
       llarp::LogDebug("decrypted LRCM from ", info.downstream);
       // successful decrypt
       if(!self->record.BDecode(buf))
@@ -295,7 +308,7 @@ namespace llarp
       frames[5] = self->frames[6];
       frames[6] = self->frames[7];
       // put our response on the end
-      frames[7] = EncryptedFrame(sz - EncryptedFrame::OverheadSize);
+      frames[7] = EncryptedFrame(sz - EncryptedFrameOverheadSize);
       // random junk for now
       frames[7].Randomize();
       self->frames = std::move(frames);
@@ -325,7 +338,7 @@ namespace llarp
     LRCMFrameDecrypt* frames = new LRCMFrameDecrypt(context, decrypter, this);
 
     // decrypt frames async
-    decrypter->AsyncDecrypt(context->Worker(), &frames->frames[0], frames);
+    decrypter->AsyncDecrypt(context->Worker(), frames->frames[0], frames);
     return true;
   }
 }  // namespace llarp

@@ -4,6 +4,7 @@
 #include <aligned.hpp>
 #include <bencode.h>
 #include <buffer.h>
+#include <mem.hpp>
 #include <link_layer.hpp>
 
 #include <vector>
@@ -12,14 +13,55 @@
 namespace llarp
 {
   /// encrypted buffer base type
+  template < size_t bufsz = MAX_LINK_MSG_SIZE >
   struct Encrypted
   {
-    Encrypted(Encrypted&& other);
-    Encrypted(const Encrypted& other);
-    Encrypted();
-    Encrypted(const byte_t* buf, size_t sz);
-    Encrypted(size_t sz);
-    ~Encrypted();
+    Encrypted(Encrypted&& other)
+    {
+      _sz = std::move(other._sz);
+      memcpy(_buf, other._buf, _sz);
+      UpdateBuffer();
+    }
+
+    Encrypted(const Encrypted& other) : Encrypted(other.data(), other.size())
+    {
+      UpdateBuffer();
+    }
+
+    Encrypted()
+    {
+      Clear();
+    }
+
+    void
+    Clear()
+    {
+      _sz = 0;
+      UpdateBuffer();
+    }
+
+    Encrypted(const byte_t* buf, size_t sz)
+    {
+      if(sz <= bufsz)
+      {
+        _sz = sz;
+        if(buf)
+          memcpy(_buf, buf, sz);
+        else
+          llarp::Zero(_buf, sz);
+      }
+      else
+        _sz = 0;
+      UpdateBuffer();
+    }
+
+    Encrypted(size_t sz) : Encrypted(nullptr, sz)
+    {
+    }
+
+    ~Encrypted()
+    {
+    }
 
     bool
     BEncode(llarp_buffer_t* buf) const
@@ -48,7 +90,7 @@ namespace llarp
     Encrypted&
     operator=(const llarp_buffer_t& buf)
     {
-      if(buf.sz && buf.sz <= sizeof(_buf))
+      if(buf.sz <= sizeof(_buf))
       {
         _sz = buf.sz;
         memcpy(_buf, buf.base, _sz);
@@ -78,10 +120,11 @@ namespace llarp
       llarp_buffer_t strbuf;
       if(!bencode_read_string(buf, &strbuf))
         return false;
-      if(strbuf.sz == 0 || strbuf.sz > sizeof(_buf))
+      if(strbuf.sz > sizeof(_buf))
         return false;
       _sz = strbuf.sz;
-      memcpy(_buf, strbuf.base, _sz);
+      if(_sz)
+        memcpy(_buf, strbuf.base, _sz);
       UpdateBuffer();
       return true;
     }
@@ -126,14 +169,14 @@ namespace llarp
     void
     UpdateBuffer()
     {
-      m_Buffer.base = data();
-      m_Buffer.cur  = data();
-      m_Buffer.sz   = size();
+      m_Buffer.base = _buf;
+      m_Buffer.cur  = _buf;
+      m_Buffer.sz   = _sz;
     }
-    byte_t _buf[MAX_LINK_MSG_SIZE];
+    byte_t _buf[bufsz];
     size_t _sz;
     llarp_buffer_t m_Buffer;
-  };
+  };  // namespace llarp
 }  // namespace llarp
 
 #endif

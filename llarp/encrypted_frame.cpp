@@ -5,41 +5,6 @@
 
 namespace llarp
 {
-  Encrypted::Encrypted()
-  {
-    _sz = 0;
-    UpdateBuffer();
-  }
-
-  Encrypted::Encrypted(Encrypted&& other)
-  {
-    _sz = std::move(other._sz);
-    memcpy(_buf, other._buf, _sz);
-    UpdateBuffer();
-  }
-
-  Encrypted::Encrypted(const Encrypted& other)
-      : Encrypted(other.data(), other.size())
-  {
-  }
-
-  Encrypted::Encrypted(const byte_t* buf, size_t sz) : _sz(sz)
-  {
-    if(buf)
-      memcpy(_buf, buf, sz);
-    else
-      llarp::Zero(_buf, sz);
-    UpdateBuffer();
-  }
-
-  Encrypted::~Encrypted()
-  {
-  }
-
-  Encrypted::Encrypted(size_t sz) : Encrypted(nullptr, sz)
-  {
-  }
-
   bool
   EncryptedFrame::EncryptInPlace(const byte_t* ourSecretKey,
                                  const byte_t* otherPubkey,
@@ -65,7 +30,7 @@ namespace llarp
     llarp_buffer_t buf;
     buf.base = body;
     buf.cur  = buf.base;
-    buf.sz   = size() - EncryptedFrame::OverheadSize;
+    buf.sz   = size() - EncryptedFrameOverheadSize;
 
     // set our pubkey
     memcpy(pubkey, llarp::seckey_topublic(ourSecretKey), PUBKEYSIZE);
@@ -103,12 +68,6 @@ namespace llarp
   EncryptedFrame::DecryptInPlace(const byte_t* ourSecretKey,
                                  llarp::Crypto* crypto)
   {
-    if(size() <= size_t(EncryptedFrame::OverheadSize))
-    {
-      llarp::LogWarn("encrypted frame too small, ", size(),
-                     " <= ", size_t(EncryptedFrame::OverheadSize));
-      return false;
-    }
     // format of frame is
     // <32 bytes keyed hash of following data>
     // <32 bytes nonce>
@@ -153,7 +112,7 @@ namespace llarp
 
     buf.base = body;
     buf.cur  = body;
-    buf.sz   = size() - EncryptedFrame::OverheadSize;
+    buf.sz   = size() - EncryptedFrameOverheadSize;
 
     if(!Decrypt(buf, shared, nonce))
     {

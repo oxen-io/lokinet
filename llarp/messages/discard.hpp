@@ -10,17 +10,7 @@ namespace llarp
 {
   struct DiscardMessage final : public ILinkMessage
   {
-    /// who did this message come from or is going to
-
-    DiscardMessage() : ILinkMessage(nullptr)
-    {
-    }
-
-    DiscardMessage(ILinkSession* from) : ILinkMessage(from)
-    {
-    }
-
-    ~DiscardMessage()
+    DiscardMessage() : ILinkMessage()
     {
     }
 
@@ -34,6 +24,11 @@ namespace llarp
       if(!bencode_write_bytestring(buf, "x", 1))
         return false;
       return bencode_end(buf);
+    }
+
+    void
+    Clear() override
+    {
     }
 
     bool

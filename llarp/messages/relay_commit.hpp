@@ -53,10 +53,6 @@ namespace llarp
     {
     }
 
-    LR_CommitMessage(ILinkSession *from) : ILinkMessage(from)
-    {
-    }
-
     ~LR_CommitMessage();
 
     void

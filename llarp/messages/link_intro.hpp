@@ -16,10 +16,6 @@ namespace llarp
     {
     }
 
-    LinkIntroMessage(ILinkSession* s) : ILinkMessage(s)
-    {
-    }
-
     ~LinkIntroMessage();
 
     RouterContact rc;
@@ -44,6 +40,9 @@ namespace llarp
 
     bool
     Verify(llarp::Crypto* c) const;
+
+    void
+    Clear() override;
   };
 }  // namespace llarp
 
