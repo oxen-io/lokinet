@@ -91,8 +91,8 @@ namespace llarp
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_UpstreamResolvers.emplace_back(resolverAddr, dnsport);
-        llarp::LogInfo(Name(), " adding upstream dns set to ", resolverAddr, ":",
-                       dnsport);
+        llarp::LogInfo(Name(), " adding upstream dns set to ", resolverAddr,
+                       ":", dnsport);
       }
       if(k == "mapaddr")
       {
@@ -489,9 +489,6 @@ namespace llarp
         llarp::LogWarn(Name(), " did not flush packets");
         return true;
       });
-      if(m_Exit)
-        m_Exit->Flush();
-      FlushSNodeTraffic();
     }
 
     bool
@@ -635,19 +632,18 @@ namespace llarp
     {
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      // flush user to network
+      self->FlushSend();
+      // flush exit traffic queues if it's there
+      if(self->m_Exit)
+        self->m_Exit->Flush();
+      // flush snode traffic
+      self->FlushSNodeTraffic();
+      // flush network to user
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
           llarp::LogWarn("packet dropped");
       });
-      if(self->m_UserToNetworkPktQueue.Size())
-        self->RouterLogic()->queue_job({self, &handleNetSend});
-    }
-
-    void
-    TunEndpoint::handleNetSend(void *user)
-    {
-      TunEndpoint *self = static_cast< TunEndpoint * >(user);
-      self->FlushSend();
     }
 
     void
