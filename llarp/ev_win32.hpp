@@ -280,6 +280,7 @@ tun_ev_loop(void* unused)
       if(ev->t->recvpkt)
         ev->t->recvpkt(ev->t, llarp::InitBuffer(pkt->buf, size));
       ev->flush_write();
+      ev->read(ev->readbuf, sizeof(ev->readbuf));
     }
     else
     {
@@ -364,7 +365,7 @@ namespace llarp
   {
     socklen_t slen = sizeof(sockaddr_in);
     if(_addr.ss_family == AF_UNIX)
-      slen = 115;
+      slen = sizeof(sockaddr_un);
     else if(_addr.ss_family == AF_INET6)
       slen = sizeof(sockaddr_in6);
     int result = ::connect(fd, (const sockaddr*)&_addr, slen);
