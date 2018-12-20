@@ -59,8 +59,9 @@ namespace llarp
     /// outer message
     struct ProtocolFrame final : public llarp::routing::IMessage
     {
+      using Encrypted_t = llarp::Encrypted< 2048 >;
       llarp::PQCipherBlock C;
-      llarp::Encrypted D;
+      Encrypted_t D;
       llarp::KeyExchangeNonce N;
       llarp::Signature Z;
       llarp::service::ConvoTag T;

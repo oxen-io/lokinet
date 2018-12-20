@@ -121,6 +121,12 @@ namespace llarp
     return session->GotLIM(this);
   }
 
+  void
+  LinkIntroMessage::Clear()
+  {
+    rc.Clear();
+  }
+
   bool
   LinkIntroMessage::Sign(llarp::Crypto* c, const SecretKey& k)
   {

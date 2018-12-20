@@ -4,17 +4,18 @@
 
 namespace llarp
 {
-  RelayUpstreamMessage::RelayUpstreamMessage(ILinkSession *from)
-      : ILinkMessage(from)
-  {
-  }
-
   RelayUpstreamMessage::RelayUpstreamMessage() : ILinkMessage()
   {
   }
 
   RelayUpstreamMessage::~RelayUpstreamMessage()
   {
+  }
+
+  void
+  RelayUpstreamMessage::Clear()
+  {
+    X.Clear();
   }
 
   bool
@@ -63,11 +64,6 @@ namespace llarp
     return false;
   }
 
-  RelayDownstreamMessage::RelayDownstreamMessage(ILinkSession *from)
-      : ILinkMessage(from)
-  {
-  }
-
   RelayDownstreamMessage::RelayDownstreamMessage() : ILinkMessage()
   {
   }
@@ -75,6 +71,13 @@ namespace llarp
   RelayDownstreamMessage::~RelayDownstreamMessage()
   {
   }
+
+  void
+  RelayDownstreamMessage::Clear()
+  {
+    X.Clear();
+  }
+
   bool
   RelayDownstreamMessage::BEncode(llarp_buffer_t *buf) const
   {

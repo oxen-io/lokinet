@@ -163,8 +163,8 @@ namespace llarp
         {
           router->lokinetRouters.clear();
           for(const auto& pk : list)
-            router->lokinetRouters.insert(
-                std::make_pair(pk, std::numeric_limits< llarp_time_t >::max()));
+            router->lokinetRouters.insert(std::make_pair(
+                pk.data(), std::numeric_limits< llarp_time_t >::max()));
           llarp::LogInfo("updated service node list, we have ",
                          router->lokinetRouters.size(), " authorized routers");
         }
@@ -225,7 +225,7 @@ namespace llarp
               peer.SetObject();
               abyss::json::Value ident_val, addr_val;
 
-              auto ident = session->GetPubKey().ToHex();
+              auto ident = RouterID(session->GetPubKey()).ToString();
               ident_val.SetString(ident.c_str(), alloc);
 
               auto addr = session->GetRemoteEndpoint().ToString();
