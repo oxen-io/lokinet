@@ -7,6 +7,7 @@
 #include <pathbuilder.hpp>
 
 #include <deque>
+#include <queue>
 
 namespace llarp
 {
@@ -37,8 +38,9 @@ namespace llarp
       bool
       QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t packSize);
 
+      /// flush upstream and downstream traffic
       bool
-      FlushUpstreamTraffic();
+      Flush();
 
       bool
       IsReady() const;
@@ -71,13 +73,30 @@ namespace llarp
       HandleGotExit(llarp::path::Path* p, llarp_time_t b);
 
       bool
-      HandleTraffic(llarp::path::Path* p, llarp_buffer_t buf);
+      HandleTraffic(llarp::path::Path* p, llarp_buffer_t buf, uint64_t seqno);
 
      private:
       using UpstreamTrafficQueue_t =
           std::deque< llarp::routing::TransferTrafficMessage >;
       using TieredQueue_t = std::map< uint8_t, UpstreamTrafficQueue_t >;
       TieredQueue_t m_Upstream;
+
+      using DownstreamPkt = std::pair< uint64_t, llarp::net::IPv4Packet >;
+
+      struct DownstreamPktSorter
+      {
+        bool
+        operator()(const DownstreamPkt& left, const DownstreamPkt& right) const
+        {
+          return left.first < right.first;
+        }
+      };
+
+      using DownstreamTrafficQueue_t =
+          std::priority_queue< DownstreamPkt, std::vector< DownstreamPkt >,
+                               DownstreamPktSorter >;
+      DownstreamTrafficQueue_t m_Downstream;
+
       uint64_t m_Counter;
       llarp_time_t m_LastUse;
     };
