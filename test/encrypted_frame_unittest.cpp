@@ -11,11 +11,10 @@ using LRCR           = llarp::LR_CommitRecord;
 class FrameTest : public ::testing::Test
 {
  public:
-     llarp::Crypto crypto;
+  llarp::Crypto crypto;
   SecretKey alice, bob;
 
-  FrameTest()
-  : crypto(llarp::Crypto::sodium{})
+  FrameTest() : crypto(llarp::Crypto::sodium{})
   {
   }
 
@@ -47,12 +46,12 @@ TEST_F(FrameTest, TestFrameCrypto)
   record.txid.Fill(4);
 
   auto buf = f.Buffer();
-  buf->cur = buf->base + EncryptedFrame::OverheadSize;
+  buf->cur = buf->base + llarp::EncryptedFrameOverheadSize;
 
   ASSERT_TRUE(record.BEncode(buf));
 
   // rewind buffer
-  buf->cur = buf->base + EncryptedFrame::OverheadSize;
+  buf->cur = buf->base + llarp::EncryptedFrameOverheadSize;
   // encrypt to alice
   ASSERT_TRUE(f.EncryptInPlace(alice, llarp::seckey_topublic(bob), &crypto));
   // decrypt from alice

@@ -5,50 +5,67 @@
 #include <encode.hpp>
 #include <logger.hpp>
 
+#include <array>
+#include <cstddef>
 #include <iomanip>
 #include <iostream>
+#include <memory>
+#include <numeric>
+#include <type_traits>
+#include <algorithm>
 
 extern "C"
 {
   extern void
   randombytes(unsigned char* const ptr, unsigned long long sz);
-  extern void
-  sodium_memzero(void* const ptr, const size_t sz);
-  extern int
-  sodium_is_zero(const unsigned char* ptr, size_t sz);
 }
 namespace llarp
 {
-  /// aligned buffer that is sz bytes long and aligns to the nears Long_t
-  template < size_t sz, bool randomize = false, typename Long_t = uint64_t >
+  /// aligned buffer that is sz bytes long and aligns to the nearest Alignment
+  template < size_t sz >
   struct AlignedBuffer
   {
+    static constexpr size_t SIZE = sz;
+
+    using Data = std::array< byte_t, SIZE >;
+
     AlignedBuffer()
     {
-      if(randomize)
-        Randomize();
-      else
-        Zero();
+      new(&val) Data;
+      Zero();
     }
 
     AlignedBuffer(const byte_t* data)
     {
+      new(&val) Data;
+      auto& b = as_array();
       for(size_t idx = 0; idx < sz; ++idx)
+      {
         b[idx] = data[idx];
+      }
+    }
+
+    AlignedBuffer(const Data& buf)
+    {
+      new(&val) Data;
+      std::copy(buf.begin(), buf.end(), as_array().begin());
     }
 
     AlignedBuffer&
     operator=(const byte_t* data)
     {
+      auto& b = as_array();
       for(size_t idx = 0; idx < sz; ++idx)
+      {
         b[idx] = data[idx];
+      }
       return *this;
     }
 
     friend std::ostream&
     operator<<(std::ostream& out, const AlignedBuffer& self)
     {
-      char tmp[(1 + sz) * 2] = {0};
+      char tmp[(sz * 2) + 1] = {0};
       return out << HexEncode(self, tmp);
     }
 
@@ -57,75 +74,72 @@ namespace llarp
     operator~() const
     {
       AlignedBuffer< sz > ret;
-      size_t idx = 0;
-      while(idx < sz / sizeof(Long_t))
-      {
-        ret.data_l()[idx] = ~data_l()[idx];
-        ++idx;
-      }
+      std::transform(as_array().begin(), as_array().end(),
+                     ret.as_array().begin(), [](byte_t a) { return ~a; });
+
       return ret;
     }
 
     bool
     operator==(const AlignedBuffer& other) const
     {
-      return memcmp(b, other.b, sz) == 0;
+      return as_array() == other.as_array();
     }
 
     bool
     operator!=(const AlignedBuffer& other) const
     {
-      return !(*this == other);
+      return as_array() != other.as_array();
     }
 
     bool
     operator<(const AlignedBuffer& other) const
     {
-      return memcmp(l, other.l, sz) < 0;
+      return as_array() < other.as_array();
     }
 
     bool
     operator>(const AlignedBuffer& other) const
     {
-      return memcmp(l, other.l, sz) > 0;
+      return as_array() > other.as_array();
     }
 
     bool
     operator<=(const AlignedBuffer& other) const
     {
-      return memcmp(l, other.l, sz) <= 0;
+      return as_array() <= other.as_array();
     }
 
     bool
     operator>=(const AlignedBuffer& other) const
     {
-      return memcmp(l, other.l, sz) >= 0;
+      return as_array() >= other.as_array();
     }
 
     AlignedBuffer
     operator^(const AlignedBuffer& other) const
     {
       AlignedBuffer< sz > ret;
-      for(size_t idx = 0; idx < sz / sizeof(Long_t); ++idx)
-        ret.l[idx] = l[idx] ^ other.l[idx];
+      std::transform(as_array().begin(), as_array().end(),
+                     other.as_array().begin(), ret.as_array().begin(),
+                     std::bit_xor< byte_t >());
       return ret;
     }
 
     AlignedBuffer&
     operator^=(const AlignedBuffer& other)
     {
-      for(size_t idx = 0; idx < sz / sizeof(Long_t); ++idx)
-        l[idx] ^= other.l[idx];
+      // Mutate in place instead.
+      // Well defined for std::transform,
+
+      for(size_t i = 0; i < as_array().size(); ++i)
+      {
+        as_array()[i] ^= other.as_array()[i];
+      }
       return *this;
     }
 
-    size_t
-    size() const
-    {
-      return sz;
-    }
-
-    size_t
+    static constexpr size_t
     size()
     {
       return sz;
@@ -134,66 +148,78 @@ namespace llarp
     void
     Fill(byte_t f)
     {
-      for(size_t idx = 0; idx < sz; ++idx)
-        b[idx] = f;
+      as_array().fill(f);
+    }
+
+    Data&
+    as_array()
+    {
+      return reinterpret_cast< Data& >(val);
+    }
+
+    const Data&
+    as_array() const
+    {
+      return reinterpret_cast< const Data& >(val);
     }
 
     bool
     IsZero() const
     {
-      return sodium_is_zero(b, sz) != 0;
+      auto notZero = [](byte_t b) { return b != 0; };
+
+      return std::find_if(as_array().begin(), as_array().end(), notZero)
+          == as_array().end();
     }
 
     void
     Zero()
     {
-      sodium_memzero(l, sz);
+      as_array().fill(0);
     }
 
     void
     Randomize()
     {
-      randombytes(b, sz);
+      randombytes(as_array().data(), SIZE);
     }
 
     byte_t*
     data()
     {
-      return b;
+      return as_array().data();
     }
 
     const byte_t*
     data() const
     {
-      return b;
-    }
-
-    Long_t*
-    data_l()
-    {
-      return l;
-    }
-
-    const Long_t*
-    data_l() const
-    {
-      return l;
+      return as_array().data();
     }
 
     operator const byte_t*() const
     {
-      return b;
+      return as_array().data();
     }
 
     operator byte_t*()
     {
-      return b;
+      return as_array().data();
+    }
+
+    operator const Data&() const
+    {
+      return as_array();
+    }
+
+    operator Data&()
+    {
+      return as_array();
     }
 
     bool
     BEncode(llarp_buffer_t* buf) const
     {
-      return bencode_write_bytestring(buf, b, sz);
+      return bencode_write_bytestring(buf, as_array().data(), sz);
     }
 
     bool
@@ -201,13 +227,15 @@ namespace llarp
     {
       llarp_buffer_t strbuf;
       if(!bencode_read_string(buf, &strbuf))
+      {
         return false;
+      }
       if(strbuf.sz != sz)
       {
         llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
         return false;
       }
-      memcpy(b, strbuf.base, sz);
+      memcpy(as_array().data(), strbuf.base, sz);
       return true;
     }
 
@@ -221,17 +249,18 @@ namespace llarp
     struct Hash
     {
       size_t
-      operator()(const AlignedBuffer< sz, randomize, Long_t >& buf) const
+      operator()(const AlignedBuffer& buf) const
       {
-        return buf.l[0];
+        return std::accumulate(buf.as_array().begin(), buf.as_array().end(), 0,
+                               std::bit_xor< size_t >());
       }
     };
 
-   protected:
-    union {
-      byte_t b[sz];
-      Long_t l[(sz / sizeof(Long_t)) + (sz % sizeof(Long_t))];
-    };
+   private:
+    using AlignedStorage =
+        typename std::aligned_storage< sizeof(Data),
+                                       alignof(std::max_align_t) >::type;
+    AlignedStorage val;
   };
 
 }  // namespace llarp

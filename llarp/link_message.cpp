@@ -2,6 +2,7 @@
 #include <logger.hpp>
 #include <messages.hpp>
 #include <router_contact.hpp>
+#include <link_message_parser.hpp>
 
 namespace llarp
 {
@@ -45,29 +46,29 @@ namespace llarp
       switch(*strbuf.cur)
       {
         case 'i':
-          handler->msg = std::make_unique< LinkIntroMessage >(handler->from);
+          handler->msg = &handler->holder.i;
           break;
         case 'd':
-          handler->msg =
-              std::make_unique< RelayDownstreamMessage >(handler->from);
+          handler->msg = &handler->holder.d;
           break;
         case 'u':
-          handler->msg =
-              std::make_unique< RelayUpstreamMessage >(handler->from);
+          handler->msg = &handler->holder.u;
           break;
         case 'm':
-          handler->msg = std::make_unique< DHTImmeidateMessage >(handler->from);
+          handler->msg = &handler->holder.m;
           break;
         case 'c':
-          handler->msg = std::make_unique< LR_CommitMessage >(handler->from);
+          handler->msg = &handler->holder.c;
           break;
         case 'x':
-          handler->msg = std::make_unique< DiscardMessage >(handler->from);
+          handler->msg = &handler->holder.x;
           break;
         default:
           return false;
       }
-      handler->firstkey = false;
+      handler->msg->Clear();
+      handler->msg->session = handler->from;
+      handler->firstkey     = false;
       return true;
     }
     // check for last element
@@ -107,6 +108,6 @@ namespace llarp
   void
   InboundMessageParser::Reset()
   {
-    msg.reset(nullptr);
+    msg = nullptr;
   }
 }  // namespace llarp

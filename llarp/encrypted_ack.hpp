@@ -7,12 +7,6 @@ namespace llarp
 {
   struct Crypto;
 
-  struct EncryptedAck : public Encrypted
-  {
-    bool
-    DecryptInPlace(const byte_t* symkey, const byte_t* nonce,
-                   llarp::Crypto* crypto);
-  };
 }  // namespace llarp
 
 #endif

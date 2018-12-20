@@ -13,7 +13,7 @@ namespace llarp
   struct RelayUpstreamMessage : public ILinkMessage
   {
     PathID_t pathid;
-    Encrypted X;
+    Encrypted< MAX_LINK_MSG_SIZE - 128 > X;
     TunnelNonce Y;
 
     RelayUpstreamMessage();
@@ -21,32 +21,38 @@ namespace llarp
     ~RelayUpstreamMessage();
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const;
+    BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    HandleMessage(llarp::Router* router) const;
+    HandleMessage(llarp::Router* router) const override;
+
+    void
+    Clear() override;
   };
 
   struct RelayDownstreamMessage : public ILinkMessage
   {
     PathID_t pathid;
-    Encrypted X;
+    Encrypted< MAX_LINK_MSG_SIZE - 128 > X;
     TunnelNonce Y;
     RelayDownstreamMessage();
     RelayDownstreamMessage(ILinkSession* from);
     ~RelayDownstreamMessage();
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const;
+    BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    HandleMessage(llarp::Router* router) const;
+    HandleMessage(llarp::Router* router) const override;
+
+    void
+    Clear() override;
   };
 }  // namespace llarp
 

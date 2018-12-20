@@ -9,10 +9,6 @@ namespace llarp
 {
   struct DHTImmeidateMessage : public ILinkMessage
   {
-    DHTImmeidateMessage(ILinkSession* parent) : ILinkMessage(parent)
-    {
-    }
-
     DHTImmeidateMessage() : ILinkMessage()
     {
     }
@@ -29,6 +25,9 @@ namespace llarp
 
     bool
     HandleMessage(llarp::Router* router) const;
+
+    void
+    Clear() override;
   };
 }  // namespace llarp
 

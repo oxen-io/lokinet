@@ -12,7 +12,7 @@
 #include <fs.hpp>
 #include <handlers/tun.hpp>
 #include <link_layer.hpp>
-#include <link_message.hpp>
+#include <link_message_parser.hpp>
 #include <logic.hpp>
 #include <mem.hpp>
 #include <nodedb.hpp>

@@ -8,6 +8,12 @@ namespace llarp
   {
   }
 
+  void
+  DHTImmeidateMessage::Clear()
+  {
+    msgs.clear();
+  }
+
   bool
   DHTImmeidateMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
   {
@@ -60,8 +66,9 @@ namespace llarp
   bool
   DHTImmeidateMessage::HandleMessage(llarp::Router *router) const
   {
-    DHTImmeidateMessage reply(session);
-    bool result = true;
+    DHTImmeidateMessage reply;
+    reply.session = session;
+    bool result   = true;
     for(auto &msg : msgs)
     {
       result &= msg->HandleMessage(router->dht, reply.msgs);

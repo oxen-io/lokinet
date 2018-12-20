@@ -121,6 +121,12 @@ namespace llarp
     return session->GotLIM(this);
   }
 
+  void
+  LinkIntroMessage::Clear()
+  {
+    rc.Clear();
+  }
+
   bool
   LinkIntroMessage::Sign(
       std::function< bool(Signature&, llarp_buffer_t) > signer)

@@ -600,26 +600,30 @@ set(DNS_SRC
 )
 
 set(TEST_SRC
-  test/main.cpp
-  test/alignedbuffer_unittest.cpp
   test/base32_unittest.cpp
   test/dht_unittest.cpp
   test/encrypted_frame_unittest.cpp
   test/exit_unittest.cpp
   test/hiddenservice_unittest.cpp
-  test/traffic_transfer_unittest.cpp
+  test/main.cpp
+  test/net_unittest.cpp
   test/obtain_exit_unittest.cpp
   test/pq_unittest.cpp
+<<<<<<< HEAD
   test/net_unittest.cpp
   test/utp_unittest.cpp
+=======
+>>>>>>> origin/master
   test/test_dns_unit.cpp
   test/test_dnsc_unit.cpp
   test/test_dnsd_unit.cpp
   test/test_dnslib.cpp
-  test/test_llarp_queue.cpp
+  test/test_llarp_aligned.cpp
   test/test_llarp_queue_manager.cpp
+  test/test_llarp_queue.cpp
   test/test_llarp_thread_pool.cpp
   test/test_service_address.cpp
+  test/traffic_transfer_unittest.cpp
 )
 
 set(TEST_EXE testAll)

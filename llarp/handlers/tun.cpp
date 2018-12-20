@@ -224,9 +224,9 @@ namespace llarp
         }
         else if(addr.FromString(qname, ".loki"))
         {
-          if(HasAddress(addr.data()))
+          if(HasAddress(addr.data().data()))
           {
-            huint32_t ip = ObtainIPForAddr(addr.data(), false);
+            huint32_t ip = ObtainIPForAddr(addr.data().data(), false);
             msg.AddINReply(ip);
           }
           else
@@ -240,8 +240,8 @@ namespace llarp
         else if(addr.FromString(qname, ".snode"))
         {
           // TODO: add hook to EnsurePathToSNode
-          EnsurePathToSNode(addr.data());
-          huint32_t ip = ObtainIPForAddr(addr.data(), true);
+          EnsurePathToSNode(addr.data().data());
+          huint32_t ip = ObtainIPForAddr(addr.data().data(), true);
           msg.AddINReply(ip);
         }
         else
@@ -323,7 +323,7 @@ namespace llarp
     {
       if(ctx)
       {
-        huint32_t ip = ObtainIPForAddr(addr.data(), false);
+        huint32_t ip = ObtainIPForAddr(addr.data().data(), false);
         request.AddINReply(ip);
       }
       else
@@ -346,9 +346,9 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr[ip]          = addr.data();
-      m_AddrToIP[addr.data()] = ip;
-      m_SNodes[addr.data()]   = SNode;
+      m_IPToAddr[ip]                 = addr.data().data();
+      m_AddrToIP[addr.data().data()] = ip;
+      m_SNodes[addr.data().data()]   = SNode;
       MarkIPActiveForever(ip);
       return true;
     }
@@ -502,9 +502,6 @@ namespace llarp
         llarp::LogWarn(Name(), " did not flush packets");
         return true;
       });
-      if(m_Exit)
-        m_Exit->Flush();
-      FlushSNodeTraffic();
     }
 
     bool
@@ -642,17 +639,18 @@ namespace llarp
     {
       // called in the isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      // flush user to network
+      self->FlushSend();
+      // flush exit traffic queues if it's there
+      if(self->m_Exit)
+        self->m_Exit->Flush();
+      // flush snode traffic
+      self->FlushSNodeTraffic();
+      // flush network to user
       self->m_NetworkToUserPktQueue.Process([tun](net::IPv4Packet &pkt) {
         if(!llarp_ev_tun_async_write(tun, pkt.Buffer()))
           llarp::LogWarn("packet dropped");
       });
-    }
-
-    void
-    TunEndpoint::handleNetSend(void *user)
-    {
-      TunEndpoint *self = static_cast< TunEndpoint * >(user);
-      self->FlushSend();
     }
 
     void

@@ -754,7 +754,8 @@ namespace llarp
     if(N < minRequiredRouters)
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,
-                     " service nodes to build paths but we have ", N);
+                     " service nodes to build paths but we have ", N,
+                     " in nodedb");
       // TODO: only connect to random subset
       if(bootstrapRCList.size())
       {

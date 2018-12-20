@@ -80,12 +80,13 @@ namespace llarp
       record.commkey     = llarp::seckey_topublic(hop.commkey);
 
       auto buf = frame.Buffer();
-      buf->cur = buf->base + EncryptedFrame::OverheadSize;
+      buf->cur = buf->base + EncryptedFrameOverheadSize;
       // encode record
       if(!record.BEncode(buf))
       {
         // failed to encode?
         llarp::LogError("Failed to generate Commit Record");
+        llarp::DumpBuffer(*buf);
         delete ctx;
         return;
       }
