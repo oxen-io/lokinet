@@ -17,10 +17,6 @@ extern "C"
 {
   extern void
   randombytes(unsigned char* const ptr, unsigned long long sz);
-  extern void
-  sodium_memzero(void* const ptr, const size_t sz);
-  extern int
-  sodium_is_zero(const unsigned char* ptr, size_t sz);
 }
 namespace llarp
 {
@@ -48,7 +44,7 @@ namespace llarp
       }
     }
 
-    AlignedBuffer(const std::array< byte_t, SIZE >& buf)
+    AlignedBuffer(const Data& buf)
     {
       new(&val) Data;
       std::copy(buf.begin(), buf.end(), as_array().begin());
@@ -68,7 +64,7 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const AlignedBuffer& self)
     {
-      char tmp[(1 + sz) * 2] = {0};
+      char tmp[(sz * 2) + 1] = {0};
       return out << HexEncode(self, tmp);
     }
 
@@ -154,10 +150,25 @@ namespace llarp
       as_array().fill(f);
     }
 
+    Data&
+    as_array()
+    {
+      return reinterpret_cast< Data& >(val);
+    }
+
+    const Data&
+    as_array() const
+    {
+      return reinterpret_cast< const Data& >(val);
+    }
+
     bool
     IsZero() const
     {
-      return sodium_is_zero(as_array().data(), SIZE) != 0;
+      auto notZero = [](byte_t b) { return b != 0; };
+
+      return std::find_if(as_array().begin(), as_array().end(), notZero)
+          == as_array().end();
     }
 
     void
@@ -249,19 +260,6 @@ namespace llarp
         typename std::aligned_storage< sizeof(Data),
                                        alignof(std::max_align_t) >::type;
     AlignedStorage val;
-
-   protected:
-    Data&
-    as_array()
-    {
-      return reinterpret_cast< Data& >(val);
-    }
-
-    const Data&
-    as_array() const
-    {
-      return reinterpret_cast< const Data& >(val);
-    }
   };
 
 }  // namespace llarp
