@@ -225,7 +225,7 @@ namespace llarp
               peer.SetObject();
               abyss::json::Value ident_val, addr_val;
 
-              auto ident = session->GetPubKey().ToHex();
+              auto ident = RouterID(session->GetPubKey()).ToString();
               ident_val.SetString(ident.c_str(), alloc);
 
               auto addr = session->GetRemoteEndpoint().ToString();
