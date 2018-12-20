@@ -211,9 +211,9 @@ namespace llarp
         }
         else if(addr.FromString(qname, ".loki"))
         {
-          if(HasAddress(addr.data()))
+          if(HasAddress(addr.data().data()))
           {
-            huint32_t ip = ObtainIPForAddr(addr.data(), false);
+            huint32_t ip = ObtainIPForAddr(addr.data().data(), false);
             msg.AddINReply(ip);
           }
           else
@@ -227,8 +227,8 @@ namespace llarp
         else if(addr.FromString(qname, ".snode"))
         {
           // TODO: add hook to EnsurePathToSNode
-          EnsurePathToSNode(addr.data());
-          huint32_t ip = ObtainIPForAddr(addr.data(), true);
+          EnsurePathToSNode(addr.data().data());
+          huint32_t ip = ObtainIPForAddr(addr.data().data(), true);
           msg.AddINReply(ip);
         }
         else
@@ -310,7 +310,7 @@ namespace llarp
     {
       if(ctx)
       {
-        huint32_t ip = ObtainIPForAddr(addr.data(), false);
+        huint32_t ip = ObtainIPForAddr(addr.data().data(), false);
         request.AddINReply(ip);
       }
       else
@@ -333,9 +333,9 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr[ip]          = addr.data();
-      m_AddrToIP[addr.data()] = ip;
-      m_SNodes[addr.data()]   = SNode;
+      m_IPToAddr[ip]                 = addr.data().data();
+      m_AddrToIP[addr.data().data()] = ip;
+      m_SNodes[addr.data().data()]   = SNode;
       MarkIPActiveForever(ip);
       return true;
     }

@@ -56,15 +56,14 @@ namespace llarp
       return m_CachedAddr.ToString();
     }
 
-    bool
-    ServiceInfo::CalculateAddress(byte_t* addr) const
+    bool ServiceInfo::CalculateAddress(std::array< byte_t, 32 >& data) const
     {
       byte_t tmp[256] = {0};
       auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
       if(!BEncode(&buf))
         return false;
-      return crypto_generichash_blake2b(addr, 32, buf.base, buf.cur - buf.base,
-                                        nullptr, 0)
+      return crypto_generichash_blake2b(data.data(), data.size(), buf.base,
+                                        buf.cur - buf.base, nullptr, 0)
           != -1;
     }
 

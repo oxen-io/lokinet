@@ -41,7 +41,7 @@ decode_request_name(const std::string &name, llarp::AlignedBuffer< 32 > &addr,
   auto pos = name.find(".snode");
   if(pos != std::string::npos)
   {
-    if(!llarp::HexDecode(name.substr(0, pos).c_str(), serviceAddr.data(),
+    if(!llarp::HexDecode(name.substr(0, pos).c_str(), serviceAddr.data().data(),
                          serviceAddr.size()))
     {
       return false;
@@ -55,7 +55,7 @@ decode_request_name(const std::string &name, llarp::AlignedBuffer< 32 > &addr,
     {
       return false;
     }
-    addr    = serviceAddr.data();
+    addr    = serviceAddr.data().data();
     isSNode = false;
   }
   return true;

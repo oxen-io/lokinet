@@ -121,8 +121,7 @@ namespace llarp
       }
 
       /// calculate our address
-      bool
-      CalculateAddress(byte_t* buf) const;
+      bool CalculateAddress(std::array< byte_t, 32 >& data) const;
 
       bool
       BDecode(llarp_buffer_t* buf) override

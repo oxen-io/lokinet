@@ -7,11 +7,19 @@ namespace llarp
 {
   struct RouterID : public AlignedBuffer< 32 >
   {
-    RouterID() : AlignedBuffer< 32 >()
+    static constexpr size_t SIZE = 32;
+
+    using Data = std::array< byte_t, SIZE >;
+
+    RouterID() : AlignedBuffer< SIZE >()
     {
     }
 
-    RouterID(const byte_t* buf) : AlignedBuffer< 32 >(buf)
+    RouterID(const byte_t* buf) : AlignedBuffer< SIZE >(buf)
+    {
+    }
+
+    RouterID(const Data& data) : AlignedBuffer< SIZE >(data)
     {
     }
 
@@ -24,7 +32,7 @@ namespace llarp
     RouterID&
     operator=(const byte_t* ptr)
     {
-      memcpy(data(), ptr, 32);
+      memcpy(data(), ptr, SIZE);
       return *this;
     }
 
@@ -34,7 +42,7 @@ namespace llarp
       return out << id.ToString();
     }
 
-    using Hash = AlignedBuffer< 32 >::Hash;
+    using Hash = AlignedBuffer< SIZE >::Hash;
   };
 }  // namespace llarp
 
