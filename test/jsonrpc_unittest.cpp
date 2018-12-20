@@ -6,7 +6,7 @@
 
 struct AbyssTestBase : public ::testing::Test
 {
-    llarp::Crypto crypto;
+  llarp::Crypto crypto;
   llarp_threadpool* threadpool         = nullptr;
   llarp_ev_loop* loop                  = nullptr;
   llarp::Logic* logic                  = nullptr;
@@ -14,6 +14,10 @@ struct AbyssTestBase : public ::testing::Test
   abyss::http::JSONRPC* client         = nullptr;
   const std::string method             = "test.method";
   bool called                          = false;
+
+  AbyssTestBase() : crypto(llarp::Crypto::sodium{})
+  {
+  }
 
   void
   AssertMethod(const std::string& meth) const
@@ -25,7 +29,6 @@ struct AbyssTestBase : public ::testing::Test
   SetUp()
   {
     // for llarp::randint
-    llarp_crypto_init(&crypto);
   }
 
   static void
@@ -41,7 +44,7 @@ struct AbyssTestBase : public ::testing::Test
   {
     threadpool = llarp_init_same_process_threadpool();
     llarp_ev_loop_alloc(&loop);
-    logic = llarp_init_single_process_logic(threadpool);
+    logic = new llarp::Logic(threadpool);
 
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -75,7 +78,8 @@ struct AbyssTestBase : public ::testing::Test
   {
     if(loop && threadpool && logic)
     {
-      llarp_free_logic(&logic);
+      delete logic;
+      logic = nullptr;
       llarp_ev_loop_free(&loop);
       llarp_free_threadpool(&threadpool);
     }
