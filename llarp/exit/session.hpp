@@ -88,7 +88,7 @@ namespace llarp
         bool
         operator()(const DownstreamPkt& left, const DownstreamPkt& right) const
         {
-          return left.first > right.first;
+          return left.first < right.first;
         }
       };
 
