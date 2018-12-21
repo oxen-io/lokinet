@@ -17,6 +17,8 @@ namespace llarp
   /// NetID
   struct NetID final : public AlignedBuffer< 8 >
   {
+    static const byte_t *DefaultValue;
+
     NetID();
 
     bool

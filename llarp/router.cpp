@@ -1430,6 +1430,20 @@ namespace llarp
     }
     else if(StrEq(section, "router"))
     {
+      if(StrEq(key, "netid"))
+      {
+        if(strlen(val) <= self->_rc.netID.size())
+        {
+          llarp::LogWarn("!!!! you have manually set netid to be '", val,
+                         "' which does not equal '", LLARP_NET_ID,
+                         "' you will run as a different network, good luck and "
+                         "don't forget: something something MUH traffic shape "
+                         "correlation !!!!");
+          llarp::NetID::DefaultValue = (const byte_t *)strdup(val);
+        }
+        else
+          llarp::LogError("invalid netid '", val, "', is too long");
+      }
       if(StrEq(key, "nickname"))
       {
         self->_rc.SetNick(val);

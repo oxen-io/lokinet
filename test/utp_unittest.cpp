@@ -61,7 +61,7 @@ struct UTPTest : public ::testing::Test
     || (__APPLE__ && __MACH__)
       return "lo0";
 #else
-      return "lo"
+      return "lo";
 #endif
     }
 

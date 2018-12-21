@@ -12,6 +12,8 @@
 
 namespace llarp
 {
+  const byte_t *NetID::DefaultValue = (const byte_t *)LLARP_NET_ID;
+
   bool RouterContact::IgnoreBogons = false;
 
 #ifdef TESTNET
@@ -21,7 +23,7 @@ namespace llarp
   /// 1 day for real network
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
-  NetID::NetID() : AlignedBuffer< 8 >((const byte_t *)LLARP_NET_ID)
+  NetID::NetID() : AlignedBuffer< 8 >(DefaultValue)
   {
   }
 
@@ -74,9 +76,8 @@ namespace llarp
     /* write netid */
     if(!bencode_write_bytestring(buf, "i", 1))
       return false;
-    if(!bencode_write_bytestring(buf, netID.data(), netID.size()))
+    if(!netID.BEncode(buf))
       return false;
-
     /* write signing pubkey */
     if(!bencode_write_bytestring(buf, "k", 1))
       return false;
@@ -238,7 +239,7 @@ namespace llarp
   bool
   RouterContact::Verify(llarp::Crypto *crypto, llarp_time_t now) const
   {
-    if(netID.ToString() != LLARP_NET_ID)
+    if(netID != NetID())
       return false;
     if(IsExpired(now))
       return false;
