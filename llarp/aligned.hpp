@@ -259,7 +259,7 @@ namespace llarp
    private:
     using AlignedStorage =
         typename std::aligned_storage< sizeof(Data),
-                                       alignof(std::max_align_t) >::type;
+                                       alignof(uint64_t) >::type; // why did we align to the nearest double-precision float
     AlignedStorage val;
   };
 
