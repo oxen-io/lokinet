@@ -1,0 +1,3 @@
+[submodule "darwin/ios-cmake"]
+	path = darwin/ios-cmake
+	url = https://github.com/leetal/ios-cmake.git
