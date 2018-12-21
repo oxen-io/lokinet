@@ -54,10 +54,21 @@ struct UTPTest : public ::testing::Test
 
     std::unique_ptr< Link_t > link;
 
+    static std::string
+    localLoopBack()
+    {
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || (__APPLE__ && __MACH__)
+      return "lo0";
+#else
+      return "lo"
+#endif
+    }
+
     bool
     Start(llarp::Logic* logic, llarp_ev_loop* loop, uint16_t port)
     {
-      if(!link->Configure(loop, "lo", AF_INET, port))
+      if(!link->Configure(loop, localLoopBack(), AF_INET, port))
         return false;
       if(!link->GenEphemeralKeys())
         return false;
