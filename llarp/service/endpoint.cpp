@@ -11,7 +11,9 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp::Router* r)
-        : path::Builder(r, r->dht, 6, 4), m_Router(r), m_Name(name)
+        : path::Builder(r, r->dht, 6, DEFAULT_HOP_LENGTH)
+        , m_Router(r)
+        , m_Name(name)
     {
       m_Tag.Zero();
     }
@@ -1002,7 +1004,8 @@ namespace llarp
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& introset,
                                                Endpoint* parent)
-        : path::Builder(parent->m_Router, parent->m_Router->dht, 3, 4)
+        : path::Builder(parent->m_Router, parent->m_Router->dht, 3,
+                        DEFAULT_HOP_LENGTH)
         , SendContext(introset.A, {}, this, parent)
         , currentIntroSet(introset)
 
