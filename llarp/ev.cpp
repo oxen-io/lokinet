@@ -39,6 +39,9 @@ llarp_ev_loop_free(struct llarp_ev_loop **ev)
 {
   delete *ev;
   *ev = nullptr;
+#ifdef _WIN32
+  exit_tun_loop();
+#endif
 }
 
 int
@@ -139,6 +142,7 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
   return ret;
 }
 
+#ifndef _WIN32
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {
@@ -148,6 +152,51 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
     return loop->add_ev(dev, false);
   return false;
 }
+#else
+// OK, now it's time to do it my way.
+// we're not even going to use the existing llarp::tun
+// we still use the llarp_tun_io struct
+// since we still need to branch to the
+// packet processing functions
+bool
+llarp_ev_add_tun(llarp_ev_loop *loop, llarp_tun_io *tun)
+{
+  UNREFERENCED_PARAMETER(loop);
+  auto dev = new win32_tun_io(tun);
+  tun->impl = dev;
+  // We're not even going to add this to the socket event loop
+  if (dev)
+  {
+    dev->setup();
+    return dev->add_ev();  // start up tun and add to event queue
+  }
+  return false;
+}
+#endif
+
+#ifndef _WIN32
+bool
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
+{
+  if(buf.sz > EV_WRITE_BUF_SZ)
+  {
+    llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
+    return false;
+  }
+  return static_cast< llarp::tun * >(tun->impl)->queue_write(buf.base, buf.sz);
+}
+#else
+bool
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
+{
+  if(buf.sz > EV_WRITE_BUF_SZ)
+  {
+    llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
+    return false;
+  }
+  return static_cast< win32_tun_io * >(tun->impl)->queue_write(buf.base, buf.sz);
+}
+#endif
 
 bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, llarp_buffer_t buf)
@@ -229,17 +278,6 @@ llarp_tcp_acceptor_close(struct llarp_tcp_acceptor *tcp)
   if(tcp->closed)
     tcp->closed(tcp);
   // dont free acceptor because it may be stack allocated
-}
-
-bool
-llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
-{
-  if(buf.sz > EV_WRITE_BUF_SZ)
-  {
-    llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
-    return false;
-  }
-  return static_cast< llarp::tun * >(tun->impl)->queue_write(buf.base, buf.sz);
 }
 
 void

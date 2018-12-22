@@ -268,6 +268,7 @@ tuntap_get_hwaddr(struct device *dev)
   return (char *)hwaddr;
 }
 
+/* Isn't this an ioctl? */
 int
 tuntap_set_hwaddr(struct device *dev, const char *hwaddr)
 {
@@ -338,6 +339,7 @@ tuntap_get_mtu(struct device *dev)
   return 0;
 }
 
+/* I _think_ it's possible to do this on windows, might be a setting in the reg db */
 int
 tuntap_set_mtu(struct device *dev, int mtu)
 {
@@ -415,6 +417,7 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   return 0;
 }
 
+/* To be implemented at a later time? I'm not quite certain TAP-Windows v9.x supports inet6 */
 int
 tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
 {
@@ -426,52 +429,25 @@ tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
   return -1;
 }
 
+/* Anything below this comment is unimplemented, either due to lack of OS support, or duplicated functionality elsewhere */
 int
 tuntap_read(struct device *dev, void *buf, size_t size)
 {
-  DWORD x;
-  BOOL r;
-  int e = 0;
-  struct asio_evt_pkt *pkt = getTunEventPkt();
-  pkt->write               = FALSE;
-  pkt->sz                  = size;
-  if(size)
-  {
-    r = ReadFile(dev->tun_fd, buf, (DWORD)size, &x, &pkt->pkt);
-    if(r)
-      return x;
-    e = GetLastError();
-    if(e && e != 997)
-    {
-      tuntap_log(TUNTAP_LOG_ERR,
-                 (const char *)formated_error(L"%1%0", _doserrno));
-      return -1;
-    }
-  }
-  else
-    return -1; // unreachable
-  return size;
+  // We read and write to TUN directly
+  UNREFERENCED_PARAMETER(dev);
+  UNREFERENCED_PARAMETER(buf);
+  UNREFERENCED_PARAMETER(size);
+  return -1;
 }
 
 int
 tuntap_write(struct device *dev, void *buf, size_t size)
 {
-  DWORD x;
-  if(size)
-  {
-    WriteFile(dev->tun_fd, buf, (DWORD)size, &x, NULL);
-    int errcode = GetLastError();
-
-    if(errcode)
-    {
-      tuntap_log(TUNTAP_LOG_ERR,
-                 (const char *)formated_error(L"%1%0", errcode));
-      return -1;
-    }
-  }
-  else
-    return -1;
-  return x;
+  // We read and write to TUN directly
+  UNREFERENCED_PARAMETER(dev);
+  UNREFERENCED_PARAMETER(buf);
+  UNREFERENCED_PARAMETER(size);
+  return -1;
 }
 
 int
