@@ -97,6 +97,8 @@ namespace llarp
         return m_IP;
       }
 
+      const llarp_time_t createdAt;
+
      private:
       llarp::handlers::ExitEndpoint* m_Parent;
       llarp::PubKey m_remoteSignKey;

@@ -753,7 +753,7 @@ llarp_getifaddr(const char* ifname, int af, struct sockaddr* addr)
 #ifndef _WIN32
   if(getifaddrs(&ifa) == -1)
 #else
-  if (!strcmp(ifname, "lo") || !strcmp(ifname, "lo0"))
+  if(!strcmp(ifname, "lo") || !strcmp(ifname, "lo0"))
   {
     sockaddr_in* lo = (sockaddr_in*)addr;
     lo->sin_family  = af;

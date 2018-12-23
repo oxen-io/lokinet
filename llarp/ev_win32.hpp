@@ -57,7 +57,7 @@ struct win32_tun_io
   device* tunif;
   byte_t readbuf[EV_READ_BUF_SZ] = {0};
 
-struct WriteBuffer
+  struct WriteBuffer
   {
     llarp_time_t timestamp = 0;
     size_t bufsz;
@@ -128,12 +128,14 @@ struct WriteBuffer
                                WriteBuffer::GetNow, llarp::util::NullMutex,
                                llarp::util::NullLock, 5, 100, 128 >;
 
-  std::unique_ptr<LossyWriteQueue_t> m_LossyWriteQueue;
+  std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;
 
   win32_tun_io(llarp_tun_io* tio) : t(tio), tunif(tuntap_init())
   {
-	  // This is not your normal everyday event loop, this is _advanced_ event handling :>
-	  m_LossyWriteQueue = std::make_unique<LossyWriteQueue_t>("win32_tun_queue", nullptr, nullptr);
+    // This is not your normal everyday event loop, this is _advanced_ event
+    // handling :>
+    m_LossyWriteQueue = std::make_unique< LossyWriteQueue_t >("win32_tun_queue",
+                                                              nullptr, nullptr);
   };
 
   bool
@@ -276,7 +278,7 @@ tun_ev_loop(void* unused)
     win32_tun_io* ev = reinterpret_cast< win32_tun_io* >(listener);
     if(!pkt->write)
     {
-      //llarp::LogInfo("read tun ", size, " bytes, pass to handler");
+      // llarp::LogInfo("read tun ", size, " bytes, pass to handler");
       if(ev->t->recvpkt)
         ev->t->recvpkt(ev->t, llarp::InitBuffer(pkt->buf, size));
       ev->flush_write();
@@ -765,7 +767,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   void
   stop()
   {
-	  // do nothing
+    // do nothing
   }
 };
 

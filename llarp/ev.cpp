@@ -165,7 +165,7 @@ llarp_ev_add_tun(llarp_ev_loop *loop, llarp_tun_io *tun)
   auto dev = new win32_tun_io(tun);
   tun->impl = dev;
   // We're not even going to add this to the socket event loop
-  if (dev)
+  if(dev)
   {
     dev->setup();
     return dev->add_ev();  // start up tun and add to event queue
@@ -194,7 +194,8 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
     llarp::LogWarn("packet too big, ", buf.sz, " > ", EV_WRITE_BUF_SZ);
     return false;
   }
-  return static_cast< win32_tun_io * >(tun->impl)->queue_write(buf.base, buf.sz);
+  return static_cast< win32_tun_io * >(tun->impl)->queue_write(buf.base,
+                                                               buf.sz);
 }
 #endif
 

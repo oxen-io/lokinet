@@ -669,7 +669,8 @@ namespace llarp
             "cannot handle exploritory router lookup, no dht peers");
         return false;
       }
-      llarp::LogDebug("We have ", nodes->Size(), " connected nodes into the DHT");
+      llarp::LogDebug("We have ", nodes->Size(),
+                      " connected nodes into the DHT");
       // ourKey should never be in the connected list
       // requester is likely in the connected list
       // 4 or connection nodes (minus a potential requestor), whatever is less

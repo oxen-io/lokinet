@@ -132,7 +132,6 @@ namespace llarp
     void
     ExitEndpoint::Flush()
     {
-      auto now = Now();
       m_InetToNetwork.Process([&](Pkt_t &pkt) {
         llarp::PubKey pk;
         {
@@ -160,20 +159,7 @@ namespace llarp
               return;
           }
         }
-        llarp::exit::Endpoint *ep = nullptr;
-        auto range                = m_ActiveExits.equal_range(pk);
-        auto itr                  = range.first;
-        uint64_t min              = std::numeric_limits< uint64_t >::max();
-        /// pick non dead looking path with lowest tx rate
-        while(itr != range.second)
-        {
-          if(itr->second->TxRate() < min && !itr->second->LooksDead(now))
-          {
-            ep  = itr->second.get();
-            min = ep->TxRate();
-          }
-          ++itr;
-        }
+        llarp::exit::Endpoint *ep = m_ChosenExits[pk];
 
         if(ep == nullptr)
         {
@@ -427,8 +413,8 @@ namespace llarp
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_UpstreamResolvers.emplace_back(resolverAddr, dnsport);
-        llarp::LogInfo(Name(), " adding upstream dns set to ", resolverAddr, ":",
-                       dnsport);
+        llarp::LogInfo(Name(), " adding upstream dns set to ", resolverAddr,
+                       ":", dnsport);
       }
       if(k == "ifaddr")
       {
@@ -559,18 +545,38 @@ namespace llarp
         }
       }
       {
+        // expire
         auto itr = m_ActiveExits.begin();
         while(itr != m_ActiveExits.end())
         {
           if(itr->second->IsExpired(now))
-          {
             itr = m_ActiveExits.erase(itr);
-          }
           else
-          {
-            itr->second->Tick(now);
             ++itr;
+        }
+        // pick chosen exits and tick
+        m_ChosenExits.clear();
+        itr = m_ActiveExits.begin();
+        while(itr != m_ActiveExits.end())
+        {
+          // do we have an exit set for this key?
+          if(m_ChosenExits.find(itr->first) != m_ChosenExits.end())
+          {
+            // yes
+            if(m_ChosenExits[itr->first]->createdAt < itr->second->createdAt)
+            {
+              // if the iterators's exit is newer use it for the chosen exit for
+              // key
+              m_ChosenExits[itr->first] = itr->second.get();
+            }
           }
+          else if(!itr->second->LooksDead(
+                      now))  // set chosen exit if not dead for key that doesn't
+                             // have one yet
+            m_ChosenExits[itr->first] = itr->second.get();
+          // tick which clears the tx rx counters
+          itr->second->Tick(now);
+          ++itr;
         }
       }
     }

@@ -121,13 +121,17 @@ namespace llarp
 
     using LosslessWriteQueue_t = std::deque< WriteBuffer >;
 
-    intptr_t fd; // Sockets only, fuck UNIX-style reactive IO with a rusty knife
+    intptr_t
+        fd;  // Sockets only, fuck UNIX-style reactive IO with a rusty knife
 
-    int flags   = 0;
+    int flags = 0;
     win32_ev_io(intptr_t f) : fd(f){};
 
     /// for tcp
-    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q) : fd(f), m_BlockingWriteQueue(q){}
+    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q)
+        : fd(f), m_BlockingWriteQueue(q)
+    {
+    }
 
     virtual void
     error()
@@ -189,7 +193,7 @@ namespace llarp
     virtual void
     flush_write_buffers(size_t amount)
     {
-	  if(m_BlockingWriteQueue)
+      if(m_BlockingWriteQueue)
       {
         if(amount)
         {

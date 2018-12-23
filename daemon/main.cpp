@@ -51,7 +51,7 @@ handle_signal_win32(DWORD fdwCtrlType)
 {
   UNREFERENCED_PARAMETER(fdwCtrlType);
   handle_signal(SIGINT);
-  return TRUE; // probably unreachable
+  return TRUE;  // probably unreachable
 }
 #endif
 

@@ -274,7 +274,7 @@ int
 upoll_wait(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
 {
   int r = 0;
-  r = upoll_wait_select(upq, evs, nev, timeout);
+  r     = upoll_wait_select(upq, evs, nev, timeout);
   return r;
 }
 
