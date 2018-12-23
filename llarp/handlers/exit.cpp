@@ -567,7 +567,8 @@ namespace llarp
             {
               // if the iterators's exit is newer use it for the chosen exit for
               // key
-              m_ChosenExits[itr->first] = itr->second.get();
+              if(!itr->second->LooksDead(now))
+                m_ChosenExits[itr->first] = itr->second.get();
             }
           }
           else if(!itr->second->LooksDead(
