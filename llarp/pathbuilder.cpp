@@ -138,19 +138,20 @@ namespace llarp
   static void
   PathBuilderKeysGenerated(AsyncPathKeyExchangeContext< path::Builder >* ctx)
   {
-    RouterID remote         = ctx->path->Upstream();
-    const ILinkMessage* msg = &ctx->LRCM;
-    if(!ctx->router->SendToOrQueue(remote, msg))
+    if(ctx->pathset->CanBuildPaths())
     {
-      llarp::LogError("failed to send LRCM to ", remote);
-      ctx->pathset->keygens--;
-      return;
+      RouterID remote         = ctx->path->Upstream();
+      const ILinkMessage* msg = &ctx->LRCM;
+      if(ctx->router->SendToOrQueue(remote, msg))
+      {
+        // persist session with router until this path is done
+        ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
+        // add own path
+        ctx->router->paths.AddOwnPath(ctx->pathset, ctx->path);
+      }
+      else
+        llarp::LogError("failed to send LRCM to ", remote);
     }
-
-    // persist session with router until this path is done
-    ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
-    // add own path
-    ctx->router->paths.AddOwnPath(ctx->pathset, ctx->path);
     // decrement keygen counter
     ctx->pathset->keygens--;
   }
@@ -204,7 +205,7 @@ namespace llarp
     bool
     Builder::ShouldRemove() const
     {
-      if(_run)
+      if(CanBuildPaths())
         return false;
       return keygens.load() > 0;
     }

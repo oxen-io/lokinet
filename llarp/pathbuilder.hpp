@@ -18,6 +18,12 @@ namespace llarp
       std::atomic< bool > _run;
 
      public:
+      bool
+      CanBuildPaths() const
+      {
+        return _run.load();
+      }
+
       llarp::Router* router;
       struct llarp_dht_context* dht;
       llarp::SecretKey enckey;
