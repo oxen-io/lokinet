@@ -445,8 +445,7 @@ namespace llarp
   void
   Router::Close()
   {
-    if(logic)
-      logic->stop();
+    llarp::LogInfo("closing router");
     llarp_ev_loop_stop(netloop);
     inboundLinks.clear();
     outboundLink.reset(nullptr);
@@ -664,7 +663,8 @@ namespace llarp
     if(N < minRequiredRouters)
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,
-                     " service nodes to build paths but we have ", N, " in nodedb");
+                     " service nodes to build paths but we have ", N,
+                     " in nodedb");
       // TODO: only connect to random subset
       if(bootstrapRCList.size())
       {
