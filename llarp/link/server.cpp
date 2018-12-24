@@ -156,7 +156,7 @@ namespace llarp
       while(itr != m_AuthedLinks.end())
       {
         itr->second->SendClose();
-        itr = m_AuthedLinks.erase(itr);
+        ++itr;
       }
     }
     {
@@ -165,7 +165,7 @@ namespace llarp
       while(itr != m_Pending.end())
       {
         (*itr)->SendClose();
-        itr = m_Pending.erase(itr);
+        ++itr;
       }
     }
   }

@@ -14,11 +14,35 @@ namespace llarp
     void
     Context::Tick(llarp_time_t now)
     {
+      {
+        auto itr = m_Exits.begin();
+        while(itr != m_Exits.end())
+        {
+          itr->second->Tick(now);
+          ++itr;
+        }
+      }
+      {
+        auto itr = m_Closed.begin();
+        while(itr != m_Closed.end())
+        {
+          if((*itr)->ShouldRemove())
+            itr = m_Closed.erase(itr);
+          else
+            ++itr;
+        }
+      }
+    }
+
+    void
+    Context::Stop()
+    {
       auto itr = m_Exits.begin();
       while(itr != m_Exits.end())
       {
-        itr->second->Tick(now);
-        ++itr;
+        itr->second->Stop();
+        m_Closed.emplace_back(std::move(itr->second));
+        itr = m_Exits.erase(itr);
       }
     }
 

@@ -11,6 +11,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <atomic>
 
 namespace abyss
 {
@@ -77,6 +78,10 @@ namespace abyss
       void
       DropAllCalls();
 
+      /// close all connections and stop operation
+      void
+      Stop();
+
       /// handle new outbound connection
       void
       Connected(llarp_tcp_conn* conn);
@@ -108,6 +113,7 @@ namespace abyss
       static void
       OnTick(llarp_tcp_connecter* connect);
 
+      std::atomic< bool > m_Run;
       llarp_tcp_connecter m_connect;
       llarp_ev_loop* m_Loop;
       std::deque< Call > m_PendingCalls;

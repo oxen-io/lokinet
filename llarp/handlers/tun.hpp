@@ -47,6 +47,9 @@ namespace llarp
       Start() override;
 
       bool
+      Stop() override;
+
+      bool
       IsSNode() const;
 
       /// set up tun interface, blocking

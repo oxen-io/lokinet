@@ -101,6 +101,15 @@ namespace llarp
       virtual llarp_time_t
       Now() const = 0;
 
+      /// stop this pathset and mark it as to be removed
+      virtual bool
+      Stop() = 0;
+
+      /// return true if we can and should remove this pathset and underlying
+      /// resources from its parent context
+      virtual bool
+      ShouldRemove() const = 0;
+
       /// return true if we should build another path
       virtual bool
       ShouldBuildMore(llarp_time_t now) const;
@@ -182,6 +191,18 @@ namespace llarp
 
      protected:
       size_t m_NumPaths;
+
+      void
+      ForEachPath(std::function< void(Path*) > visit)
+      {
+        Lock_t lock(m_PathsMutex);
+        auto itr = m_Paths.begin();
+        while(itr != m_Paths.end())
+        {
+          visit(itr->second);
+          ++itr;
+        }
+      }
 
      private:
       using PathInfo_t = std::pair< RouterID, PathID_t >;

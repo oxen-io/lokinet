@@ -734,6 +734,16 @@ namespace llarp
     }
 
     bool
+    Path::SendExitClose(const llarp::routing::CloseExitMessage* msg,
+                        llarp::Router* r)
+    {
+      llarp::LogInfo(Name(), " closing exit to ", Endpoint());
+      // mark as not exit anymore
+      _role &= ~ePathRoleExit;
+      return SendRoutingMessage(msg, r);
+    }
+
+    bool
     Path::HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
                                   llarp::Router* r)
     {
