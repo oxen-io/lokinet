@@ -74,13 +74,6 @@ namespace llarp
       virtual bool
       Start();
 
-      virtual bool
-      Stop()
-      {
-        // TODO: implement me
-        return false;
-      }
-
       virtual std::string
       Name() const;
 
@@ -146,6 +139,10 @@ namespace llarp
       /// lookup a router via closest path
       bool
       LookupRouterAnon(RouterID router);
+
+      /// stop this endpoint
+      bool
+      Stop() override;
 
       const Identity&
       GetIdentity() const
@@ -250,6 +247,9 @@ namespace llarp
       {
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
+
+        bool
+        Stop() override;
 
         bool
         HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);

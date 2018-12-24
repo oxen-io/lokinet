@@ -21,6 +21,10 @@ namespace llarp
       void
       Tick(llarp_time_t now);
 
+      /// stop all held services
+      bool
+      StopAll();
+
       bool
       hasEndpoints();
 
@@ -64,12 +68,19 @@ namespace llarp
       MapAddressAll(const llarp::service::Address &addr,
                     llarp::Addr &localPrivateIpAddr);
 
+      /// add default endpoint with options
       bool
       AddDefaultEndpoint(
           const std::unordered_multimap< std::string, std::string > &opts);
 
+      /// add endpoint via config
       bool
       AddEndpoint(const Config::section_t &conf, bool autostart = false);
+
+      /// stop and remove an endpoint by name
+      /// return false if we don't have the hidden service with that name
+      bool
+      RemoveEndpoint(const std::string &name);
 
       bool
       StartAll();
@@ -78,6 +89,7 @@ namespace llarp
       llarp::Router *m_Router;
       std::unordered_map< std::string, std::unique_ptr< Endpoint > >
           m_Endpoints;
+      std::list< std::unique_ptr< Endpoint > > m_Stopped;
     };
   }  // namespace service
 }  // namespace llarp

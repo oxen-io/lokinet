@@ -24,6 +24,10 @@ namespace llarp
       void
       ClearAllEndpoints();
 
+      /// send close to all exit sessions and remove all sessions
+      void
+      Stop();
+
       bool
       AddExitEndpoint(const std::string &name, const Config_t &config);
 
@@ -47,6 +51,7 @@ namespace llarp
       std::unordered_map< std::string,
                           std::unique_ptr< llarp::handlers::ExitEndpoint > >
           m_Exits;
+      std::list< std::unique_ptr< llarp::handlers::ExitEndpoint > > m_Closed;
     };
   }  // namespace exit
 }  // namespace llarp

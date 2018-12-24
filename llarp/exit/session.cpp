@@ -93,6 +93,23 @@ namespace llarp
     }
 
     bool
+    BaseSession::Stop()
+    {
+      auto sendExitClose = [&](llarp::path::Path* p) {
+        if(p->SupportsAnyRoles(llarp::path::ePathRoleExit))
+        {
+          llarp::LogInfo(Name(), " closing exit path");
+          llarp::routing::CloseExitMessage msg;
+          if(!(msg.Sign(&router->crypto, m_ExitIdentity)
+               && p->SendExitClose(&msg, router)))
+            llarp::LogWarn(Name(), " failed to send exit close message");
+        }
+      };
+      ForEachPath(sendExitClose);
+      return llarp::path::Builder::Stop();
+    }
+
+    bool
     BaseSession::HandleTraffic(llarp::path::Path* p, llarp_buffer_t buf,
                                uint64_t counter)
     {

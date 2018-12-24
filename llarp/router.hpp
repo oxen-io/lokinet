@@ -232,8 +232,13 @@ namespace llarp
     bool
     Run(struct llarp_nodedb *nodedb);
 
+    /// stop running the router logic gracefully
     void
     Stop();
+
+    /// close all sessions and shutdown all links
+    void
+    StopLinks();
 
     void
     PersistSessionUntil(const llarp::RouterID &remote, llarp_time_t until);
@@ -265,8 +270,15 @@ namespace llarp
     void
     try_connect(fs::path rcfile);
 
+    /// inject configuration and reconfigure router
     bool
-    ReloadConfig(const llarp_config *conf);
+    Reconfigure(llarp_config *conf);
+
+    /// validate new configuration against old one
+    /// return true on 100% valid
+    /// return false if not 100% valid
+    bool
+    ValidateConfig(llarp_config *conf) const;
 
     /// send to remote router or queue for sending
     /// returns false on overflow
@@ -382,6 +394,9 @@ namespace llarp
     HandleAsyncLoadRCForSendTo(llarp_async_load_rc *async);
 
    private:
+    std::atomic< bool > _stopping;
+    std::atomic< bool > _running;
+
     bool
     UpdateOurRC(bool rotateKeys = true);
 

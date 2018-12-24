@@ -253,10 +253,10 @@ namespace llarp
         {
           if(itr->second->Tick(now))
           {
-            m_DeadSessions
-                .insert(std::make_pair(itr->first, std::move(itr->second)))
-                ->second->markedBad = true;
-            itr                     = m_RemoteSessions.erase(itr);
+            itr->second->Stop();
+            m_DeadSessions.insert(
+                std::make_pair(itr->first, std::move(itr->second)));
+            itr = m_RemoteSessions.erase(itr);
           }
           else
             ++itr;
@@ -276,9 +276,32 @@ namespace llarp
     }
 
     bool
+    Endpoint::OutboundContext::Stop()
+    {
+      markedBad = true;
+      return llarp::path::Builder::Stop();
+    }
+
+    bool
+    Endpoint::Stop()
+    {
+      // stop remote sessions
+      for(auto& item : m_RemoteSessions)
+      {
+        item.second->Stop();
+      }
+      // stop snode sessions
+      for(auto& item : m_SNodeSessions)
+      {
+        item.second->Stop();
+      }
+      return llarp::path::Builder::Stop();
+    }
+
+    bool
     Endpoint::OutboundContext::IsDone(llarp_time_t now) const
     {
-      return now - lastGoodSend > DEFAULT_PATH_LIFETIME;
+      return now - lastGoodSend > DEFAULT_PATH_LIFETIME && ShouldRemove();
     }
 
     uint64_t

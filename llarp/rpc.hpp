@@ -25,6 +25,10 @@ namespace llarp
       bool
       Start(const std::string& bindaddr);
 
+      /// stop and close
+      void
+      Stop();
+
      private:
       ServerImpl* m_Impl;
     };
@@ -40,6 +44,10 @@ namespace llarp
       /// start with jsonrpc endpoint address
       bool
       Start(const std::string& remote);
+
+      /// stop and close
+      void
+      Stop();
 
       /// test if a router is valid
       bool
