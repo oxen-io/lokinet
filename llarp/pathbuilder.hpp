@@ -42,19 +42,19 @@ namespace llarp
 
       virtual bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles);
+                size_t hop, PathRole roles) override;
 
       virtual bool
-      ShouldBuildMore(llarp_time_t now) const;
+      ShouldBuildMore(llarp_time_t now) const override;
 
       virtual bool
-      Stop();
+      Stop() override;
 
       bool
       ShouldRemove() const override;
 
       llarp_time_t
-      Now() const;
+      Now() const override;
 
       void
       BuildOne(PathRole roles = ePathRoleAny);
@@ -74,10 +74,10 @@ namespace llarp
       GetTunnelEncryptionSecretKey() const;
 
       virtual void
-      HandlePathBuilt(Path* p);
+      HandlePathBuilt(Path* p) override;
 
       virtual void
-      HandlePathBuildTimeout(Path* p);
+      HandlePathBuildTimeout(Path* p) override;
     };
   }  // namespace path
 

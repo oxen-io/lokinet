@@ -27,13 +27,13 @@ namespace llarp
     operator=(const LinkIntroMessage& msg);
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf);
+    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
 
     bool
-    BEncode(llarp_buffer_t* buf) const;
+    BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    HandleMessage(llarp::Router* router) const;
+    HandleMessage(llarp::Router* router) const override;
 
     bool
     Sign(llarp::Crypto* c, const SecretKey& signKeySecret);
