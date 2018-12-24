@@ -454,8 +454,7 @@ namespace llarp
   void
   Router::Close()
   {
-    if(logic)
-      logic->stop();
+    llarp::LogInfo("closing router");
     llarp_ev_loop_stop(netloop);
     inboundLinks.clear();
     outboundLink.reset(nullptr);
