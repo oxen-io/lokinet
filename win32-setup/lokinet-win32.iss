@@ -58,9 +58,7 @@ Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32
 Source: "{#DevPath}build64\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
 ; eh, might as well ship the 32-bit port of everything else
 ; do we _need_ to ship these?
-Source: "{#DevPath}build\dns.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#DevPath}build\llarpc.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#DevPath}build\rcutil.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
 ; delet this after finishing setup, we only need it to extract the drivers
 ; and download an initial RC
 Source: "{#DevPath}lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
