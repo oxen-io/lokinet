@@ -2,6 +2,7 @@
 #define LLARP_PATHBUILDER_HPP_
 
 #include <pathset.hpp>
+#include <atomic>
 
 namespace llarp
 {
@@ -12,12 +13,21 @@ namespace llarp
 
     struct Builder : public PathSet
     {
+     protected:
+      /// flag for PathSet::Stop()
+      std::atomic< bool > _run;
+
+     public:
       llarp::Router* router;
       struct llarp_dht_context* dht;
       llarp::SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild          = 0;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+
+      // how many keygens are currently happening
+      std::atomic< uint8_t > keygens;
+
       /// construct
       Builder(llarp::Router* p_router, struct llarp_dht_context* p_dht,
               size_t numPaths, size_t numHops);
@@ -30,6 +40,12 @@ namespace llarp
 
       virtual bool
       ShouldBuildMore(llarp_time_t now) const;
+
+      virtual bool
+      Stop();
+
+      bool
+      ShouldRemove() const override;
 
       llarp_time_t
       Now() const;

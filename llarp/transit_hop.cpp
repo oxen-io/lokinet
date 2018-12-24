@@ -295,7 +295,7 @@ namespace llarp
         llarp::LogWarn(info, " failed to transfer data message, encode failed");
         return SendRoutingMessage(&discarded, r);
       }
-      // rewind0
+      // rewind
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       // send

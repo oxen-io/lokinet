@@ -12,7 +12,7 @@ namespace llarp
   struct AsyncPathKeyExchangeContext
   {
     typedef llarp::path::Path Path_t;
-    typedef llarp::path::PathSet PathSet_t;
+    typedef llarp::path::Builder PathSet_t;
     PathSet_t* pathset = nullptr;
     Path_t* path       = nullptr;
     typedef std::function< void(AsyncPathKeyExchangeContext< User >*) > Handler;
@@ -135,14 +135,15 @@ namespace llarp
     }
   };
 
-  void
-  pathbuilder_generated_keys(AsyncPathKeyExchangeContext< path::Builder >* ctx)
+  static void
+  PathBuilderKeysGenerated(AsyncPathKeyExchangeContext< path::Builder >* ctx)
   {
     RouterID remote         = ctx->path->Upstream();
     const ILinkMessage* msg = &ctx->LRCM;
     if(!ctx->router->SendToOrQueue(remote, msg))
     {
-      llarp::LogError("failed to send LRCM");
+      llarp::LogError("failed to send LRCM to ", remote);
+      ctx->pathset->keygens--;
       return;
     }
 
@@ -150,6 +151,8 @@ namespace llarp
     ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
     // add own path
     ctx->router->paths.AddOwnPath(ctx->pathset, ctx->path);
+    // decrement keygen counter
+    ctx->pathset->keygens--;
   }
 
   namespace path
@@ -163,6 +166,8 @@ namespace llarp
     {
       p_router->paths.AddPathBuilder(this);
       p_router->crypto.encryption_keygen(enckey);
+      _run.store(true);
+      keygens.store(0);
     }
 
     Builder::~Builder()
@@ -187,6 +192,21 @@ namespace llarp
           return true;
       } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
       return false;
+    }
+
+    bool
+    Builder::Stop()
+    {
+      _run.store(false);
+      return true;
+    }
+
+    bool
+    Builder::ShouldRemove() const
+    {
+      if(_run)
+        return false;
+      return keygens.load() > 0;
     }
 
     const byte_t*
@@ -249,6 +269,8 @@ namespace llarp
     void
     Builder::Build(const std::vector< RouterContact >& hops, PathRole roles)
     {
+      if(!_run)
+        return;
       lastBuild = Now();
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
@@ -258,8 +280,9 @@ namespace llarp
       auto path    = new llarp::path::Path(hops, this, roles);
       path->SetBuildResultHook(std::bind(&llarp::path::Builder::HandlePathBuilt,
                                          this, std::placeholders::_1));
+      ++keygens;
       ctx->AsyncGenerateKeys(path, router->logic, router->tp, this,
-                             &pathbuilder_generated_keys);
+                             &PathBuilderKeysGenerated);
     }
 
     void

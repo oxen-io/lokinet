@@ -13,21 +13,56 @@ namespace llarp
 
     Context::~Context()
     {
+    }
+
+    bool
+    Context::StopAll()
+    {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
+        itr->second->Stop();
+        m_Stopped.emplace_back(std::move(itr->second));
         itr = m_Endpoints.erase(itr);
       }
+      return true;
+    }
+
+    bool
+    Context::RemoveEndpoint(const std::string &name)
+    {
+      auto itr = m_Endpoints.find(name);
+      if(itr == m_Endpoints.end())
+        return false;
+      std::unique_ptr< Endpoint > ep = std::move(itr->second);
+      m_Endpoints.erase(itr);
+      ep->Stop();
+      m_Stopped.emplace_back(std::move(ep));
+      return true;
     }
 
     void
     Context::Tick(llarp_time_t now)
     {
-      auto itr = m_Endpoints.begin();
-      while(itr != m_Endpoints.end())
+      // erase stopped endpoints that are done
       {
-        itr->second->Tick(now);
-        ++itr;
+        auto itr = m_Stopped.begin();
+        while(itr != m_Stopped.end())
+        {
+          if((*itr)->ShouldRemove())
+            itr = m_Stopped.erase(itr);
+          else
+            ++itr;
+        }
+      }
+      // tick active endpoints
+      {
+        auto itr = m_Endpoints.begin();
+        while(itr != m_Endpoints.end())
+        {
+          itr->second->Tick(now);
+          ++itr;
+        }
       }
     }
 

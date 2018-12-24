@@ -42,6 +42,10 @@ namespace llarp
       bool
       Flush();
 
+      /// send close and stop session
+      bool
+      Stop() override;
+
       bool
       IsReady() const;
 

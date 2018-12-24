@@ -207,6 +207,8 @@ namespace llarp
 #else
     disk = llarp_init_threadpool(1, "llarp-diskio");
 #endif
+    _stopping.store(false);
+    _running.store(false);
   }
 
   Router::~Router()
@@ -218,6 +220,9 @@ namespace llarp
   Router::HandleRecvLinkMessageBuffer(llarp::ILinkSession *session,
                                       llarp_buffer_t buf)
   {
+    if(_stopping)
+      return true;
+
     if(!session)
     {
       llarp::LogWarn("no link session");
@@ -440,16 +445,11 @@ namespace llarp
   void
   Router::Close()
   {
-    for(const auto &link : inboundLinks)
-    {
-      link->Stop();
-    }
+    if(logic)
+      logic->stop();
+    llarp_ev_loop_stop(netloop);
     inboundLinks.clear();
-    if(outboundLink)
-    {
-      outboundLink->Stop();
-      outboundLink.reset(nullptr);
-    }
+    outboundLink.reset(nullptr);
   }
 
   void
@@ -852,6 +852,8 @@ namespace llarp
   bool
   Router::Run(struct llarp_nodedb *nodedb)
   {
+    if(_running || _stopping)
+      return false;
     this->nodedb = nodedb;
 
     if(enableRPCServer)
@@ -1026,14 +1028,49 @@ namespace llarp
     }
     llarp_dht_context_start(dht, pubkey());
     ScheduleTicker(1000);
-    return true;
+    _running.store(true);
+    return _running;
+  }
+
+  static void
+  RouterAfterStopLinks(void *u, uint64_t, uint64_t)
+  {
+    Router *self = static_cast< Router * >(u);
+    self->Close();
+  }
+
+  static void
+  RouterAfterStopIssued(void *u, uint64_t, uint64_t)
+  {
+    Router *self = static_cast< Router * >(u);
+    self->StopLinks();
+    self->logic->call_later({200, self, &RouterAfterStopLinks});
+  }
+
+  void
+  Router::StopLinks()
+  {
+    llarp::LogInfo("stopping links");
+    outboundLink->Stop();
+    for(auto &link : inboundLinks)
+      link->Stop();
   }
 
   void
   Router::Stop()
   {
-    this->Close();
-    this->routerProfiling.Save(this->routerProfilesFile.c_str());
+    if(!_running)
+      return;
+    if(_stopping)
+      return;
+
+    _stopping.store(true);
+    llarp::LogInfo("stopping router");
+    hiddenServiceContext.StopAll();
+    exitContext.Stop();
+    if(rpcServer)
+      rpcServer->Stop();
+    logic->call_later({200, this, &RouterAfterStopIssued});
   }
 
   bool
@@ -1076,8 +1113,68 @@ namespace llarp
     return exitContext.AddExitEndpoint("default-connectivity", netConfig);
   }
 
+  /// validate a new configuration against an already made and running
+  /// router
+  struct RouterConfigValidator
+  {
+    static void
+    ValidateEntry(llarp_config_iterator *i, const char *section,
+                  const char *key, const char *val)
+    {
+      RouterConfigValidator *self =
+          static_cast< RouterConfigValidator * >(i->user);
+      if(self->valid)
+      {
+        if(!self->OnEntry(section, key, val))
+        {
+          llarp::LogError("invalid entry in section [", section, "]: '", key,
+                          "'='", val, "'");
+          self->valid = false;
+        }
+      }
+    }
+
+    const Router *router;
+    llarp_config *config;
+    bool valid;
+    RouterConfigValidator(const Router *r, llarp_config *conf)
+        : router(r), config(conf), valid(true)
+    {
+    }
+
+    /// checks the (section, key, value) config tuple
+    /// return false if that entry conflicts
+    /// with existing configuration in router
+    bool
+    OnEntry(const char *, const char *, const char *) const
+    {
+      // TODO: implement me
+      return true;
+    }
+
+    /// do validation
+    /// return true if this config is valid
+    /// return false if this config is not valid
+    bool
+    Validate()
+    {
+      llarp_config_iterator iter;
+      iter.user  = this;
+      iter.visit = &ValidateEntry;
+      llarp_config_iter(config, &iter);
+      return valid;
+    }
+  };
+
   bool
-  Router::ReloadConfig(__attribute__((unused)) const llarp_config *conf)
+  Router::ValidateConfig(llarp_config *conf) const
+  {
+    RouterConfigValidator validator(this, conf);
+    return validator.Validate();
+  }
+
+  bool
+  Router::Reconfigure(llarp_config *)
   {
     // TODO: implement me
     return true;
