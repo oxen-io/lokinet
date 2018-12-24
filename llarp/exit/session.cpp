@@ -98,11 +98,11 @@ namespace llarp
       auto sendExitClose = [&](llarp::path::Path* p) {
         if(p->SupportsAnyRoles(llarp::path::ePathRoleExit))
         {
-          llarp::LogInfo(Name(), " closing exit path");
+          llarp::LogInfo(p->Name(), " closing exit path");
           llarp::routing::CloseExitMessage msg;
           if(!(msg.Sign(&router->crypto, m_ExitIdentity)
                && p->SendExitClose(&msg, router)))
-            llarp::LogWarn(Name(), " failed to send exit close message");
+            llarp::LogWarn(p->Name(), " failed to send exit close message");
         }
       };
       ForEachPath(sendExitClose);
