@@ -1,22 +1,14 @@
 // Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
-
-#define APSTUDIO_READONLY_SYMBOLS
-/////////////////////////////////////////////////////////////////////////////
-//
-// Generated from the TEXTINCLUDE 2 resource.
-//
-
-/////////////////////////////////////////////////////////////////////////////
-#undef APSTUDIO_READONLY_SYMBOLS
-
+#include <winresrc.h>
 /////////////////////////////////////////////////////////////////////////////
 // English (U.S.) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 #ifdef _WIN32
-LANGUAGE 0,0
+LANGUAGE 1033,1
+#pragma code_page(1252)
 #endif //_WIN32
 
 #ifdef APSTUDIO_INVOKED
@@ -68,13 +60,13 @@ BEGIN
         BEGIN
             VALUE "Comments", "includes relay/exit functionality, such code is highly experimental on non UNIX/Linux/Macintosh targets!"
             VALUE "CompanyName", "Loki Foundation"
-            VALUE "FileDescription", "LokiNET daemon for MicrosoftÂ® WindowsÂ® NTâ„¢"
-            VALUE "FileVersion", "0, 31, 0, 0"
+            VALUE "FileDescription", "LokiNET daemon for Microsoft® Windows® NT™"
+            VALUE "FileVersion", "0.31"
             VALUE "InternalName", "llarpd"
-            VALUE "LegalCopyright", "Copyright Â©2018 Loki Foundation, Jeff Becker, Rick V. All rights reserved. This product is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
+            VALUE "LegalCopyright", "Copyright ©2018 Loki Foundation, Jeff Becker, Rick V. All rights reserved. This product is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
             VALUE "OriginalFilename", "llarpd.exe"
             VALUE "ProductName", "LokiNET for Windows"
-            VALUE "ProductVersion", "0, 31, 0, 0"
+            VALUE "ProductVersion", "0.31"
         END
     END
     BLOCK "VarFileInfo"
@@ -83,6 +75,13 @@ BEGIN
     END
 END
 
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// RT_MANIFEST
+//
+
+1                       RT_MANIFEST             "app.xml"
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////
 
