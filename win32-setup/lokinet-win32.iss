@@ -43,7 +43,6 @@ InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
 VersionInfoCopyright=Copyright ©2018 Loki Project
-AlwaysRestart=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -94,7 +93,7 @@ begin
   GetWindowsVersionEx(Version);
   if Version.NTPlatform and (Version.Major = 5) and (Version.Minor = 0) and (FileExists(ExpandConstant('{tmp}\inet6.7z')) = true) then
      // I need a better message...
-    MsgBox('Set up IPv6 in Network Connections after reboot.', mbInformation, MB_OK);
+    MsgBox('Restart your computer, then set up IPv6 in Network Connections.\n[Adapter] > Properties > Install... > Protocol > Microsoft IPv6 Driver...', mbInformation, MB_OK);
   end;
 end;
 
