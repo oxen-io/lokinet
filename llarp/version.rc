@@ -42,8 +42,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,31,0,0
- PRODUCTVERSION 0,31,0,0
+ FILEVERSION 0,3,1,0
+ PRODUCTVERSION 0,3,1,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x3L
@@ -61,12 +61,12 @@ BEGIN
             VALUE "Comments", "includes relay/exit functionality, such code is highly experimental on non UNIX/Linux/Macintosh targets!"
             VALUE "CompanyName", "Loki Foundation"
             VALUE "FileDescription", "LokiNET daemon for Microsoft® Windows® NT™"
-            VALUE "FileVersion", "0.31"
+            VALUE "FileVersion", "0.3.1-dev"
             VALUE "InternalName", "llarpd"
             VALUE "LegalCopyright", "Copyright ©2018 Loki Foundation, Jeff Becker, Rick V. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
             VALUE "OriginalFilename", "llarpd.exe"
             VALUE "ProductName", "LokiNET for Windows"
-            VALUE "ProductVersion", "0.31"
+            VALUE "ProductVersion", "0.3.1-dev"
         END
     END
     BLOCK "VarFileInfo"
