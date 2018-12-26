@@ -47,7 +47,6 @@ namespace llarp
       // eh this shouldn't do anything on windows anyway
       strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
       strncpy(tunif.ifname, DefaultTunIfname, sizeof(tunif.ifname) - 1);
-#endif
       tunif.tick         = &tunifTick;
       tunif.before_write = &tunifBeforeWrite;
       tunif.recvpkt      = &tunifRecvPkt;

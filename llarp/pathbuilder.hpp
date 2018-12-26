@@ -53,12 +53,6 @@ namespace llarp
       bool
       ShouldRemove() const override;
 
-      virtual bool
-      Stop();
-
-      bool
-      ShouldRemove() const override;
-
       llarp_time_t
       Now() const override;
 
