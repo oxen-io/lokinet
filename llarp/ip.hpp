@@ -11,43 +11,6 @@
 #include <sys/types.h>  // FreeBSD needs this for uchar for ip.h
 #include <netinet/in.h>
 #include <netinet/ip.h>
-#else
-// windows nt
-#include <winsock2.h>
-typedef struct ip_hdr
-{
-  unsigned char
-      ip_header_len : 4;  // 4-bit header length (in 32-bit words) normally=5
-                          // (Means 20 Bytes may be 24 also)
-  unsigned char ip_version : 4;    // 4-bit IPv4 version
-  unsigned char ip_tos;            // IP type of service
-  unsigned short ip_total_length;  // Total length
-  unsigned short ip_id;            // Unique identifier
-
-  unsigned char ip_frag_offset : 5;  // Fragment offset field
-
-  unsigned char ip_more_fragment : 1;
-  unsigned char ip_dont_fragment : 1;
-  unsigned char ip_reserved_zero : 1;
-
-  unsigned char ip_frag_offset1;  // fragment offset
-
-  unsigned char ip_ttl;        // Time to live
-  unsigned char ip_protocol;   // Protocol(TCP,UDP etc)
-  unsigned short ip_checksum;  // IP checksum
-  unsigned int ip_srcaddr;     // Source address
-  unsigned int ip_destaddr;    // Source address
-} IPV4_HDR;
-#define iphdr IPV4_HDR
-#define saddr ip_srcaddr
-#define daddr ip_destaddr
-#define check ip_checksum
-#define ihl ip_header_len
-#define ip_version version
-#endif
-
-#include <memory>
-
 // anything not win32
 struct ip_header
 {
@@ -74,6 +37,44 @@ struct ip_header
   uint32_t saddr;
   uint32_t daddr;
 };
+#else
+// windows nt
+#include <winsock2.h>
+typedef struct ip_hdr
+{
+  unsigned char
+      ip_header_len : 4;  // 4-bit header length (in 32-bit words) normally=5
+                          // (Means 20 Bytes may be 24 also)
+  unsigned char version : 4;       // 4-bit IPv4 version
+  unsigned char ip_tos;            // IP type of service
+  unsigned short ip_total_length;  // Total length
+  unsigned short ip_id;            // Unique identifier
+
+  unsigned char ip_frag_offset : 5;  // Fragment offset field
+
+  unsigned char ip_more_fragment : 1;
+  unsigned char ip_dont_fragment : 1;
+  unsigned char ip_reserved_zero : 1;
+
+  unsigned char ip_frag_offset1;  // fragment offset
+
+  unsigned char ip_ttl;        // Time to live
+  unsigned char ip_protocol;   // Protocol(TCP,UDP etc)
+  unsigned short ip_checksum;  // IP checksum
+  unsigned int ip_srcaddr;     // Source address
+  unsigned int ip_destaddr;    // Source address
+} IPV4_HDR;
+#define ip_header IPV4_HDR
+#define saddr ip_srcaddr
+#define daddr ip_destaddr
+#define check ip_checksum
+#define ihl ip_header_len
+#define protocol ip_protocol
+#define frag_off ip_frag_offset
+
+#endif
+
+#include <memory>
 
 namespace llarp
 {

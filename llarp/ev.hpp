@@ -19,14 +19,15 @@
 #ifdef _WIN32
 #include <win32_up.h>
 #include <win32_upoll.h>
-// io packet for TUN read/write
-struct asio_evt_pkt
+// From the preview SDK, should take a look at that
+// periodically in case its definition changes
+#define UNIX_PATH_MAX 108
+
+typedef struct sockaddr_un
 {
-  OVERLAPPED pkt = {
-      0, 0, 0, 0, nullptr};  // must be first, since this is part of the IO call
-  bool write = false;        // true, or false if read pkt
-  size_t sz;  // if this doesn't match what is in the packet, note the error
-};
+  ADDRESS_FAMILY sun_family;    /* AF_UNIX */
+  char sun_path[UNIX_PATH_MAX]; /* pathname */
+} SOCKADDR_UN, *PSOCKADDR_UN;
 #else
 
 #if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
@@ -118,43 +119,28 @@ namespace llarp
       };
     };
 
-    using LossyWriteQueue_t =
-        llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
-                                 WriteBuffer::PutTime, WriteBuffer::Compare,
-                                 WriteBuffer::GetNow, llarp::util::NullMutex,
-                                 llarp::util::NullLock, 5, 100, 128 >;
-
     using LosslessWriteQueue_t = std::deque< WriteBuffer >;
 
-    union {
-      intptr_t socket;
-      HANDLE tun;
-    } fd;
+    intptr_t
+        fd;  // Sockets only, fuck UNIX-style reactive IO with a rusty knife
 
-    int flags   = 0;
-    bool is_tun = false;
-
-    win32_ev_io(intptr_t f)
-    {
-      fd.socket = f;
-    }
-
-    /// for tun
-    win32_ev_io(HANDLE f, LossyWriteQueue_t* q) : m_LossyWriteQueue(q)
-    {
-      fd.tun = f;
-    }
+    int flags = 0;
+    win32_ev_io(intptr_t f) : fd(f){};
 
     /// for tcp
-    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q) : m_BlockingWriteQueue(q)
+    win32_ev_io(intptr_t f, LosslessWriteQueue_t* q)
+        : fd(f), m_BlockingWriteQueue(q)
     {
-      fd.socket = f;
     }
 
     virtual void
     error()
     {
-      llarp::LogError(strerror(errno));
+      char ebuf[1024];
+      int err = WSAGetLastError();
+      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
+                    ebuf, 1024, nullptr);
+      llarp::LogError(ebuf);
     }
 
     virtual int
@@ -163,9 +149,9 @@ namespace llarp
     virtual int
     sendto(const sockaddr* dst, const void* data, size_t sz)
     {
-      (void)(dst);
-      (void)(data);
-      (void)(sz);
+      UNREFERENCED_PARAMETER(dst);
+      UNREFERENCED_PARAMETER(data);
+      UNREFERENCED_PARAMETER(sz);
       return -1;
     };
 
@@ -180,35 +166,13 @@ namespace llarp
     virtual ssize_t
     do_write(void* data, size_t sz)
     {
-      if(this->is_tun)
-      {
-        DWORD x;
-        bool r;
-        asio_evt_pkt* pkt = new asio_evt_pkt;
-        pkt->sz           = sz;
-        pkt->write        = true;
-        int e             = 0;
-        r                 = WriteFile(fd.tun, data, sz, &x, &pkt->pkt);
-        if(r)  // we returned immediately
-          return x;
-        e = GetLastError();
-        if(e == ERROR_IO_PENDING)
-          return sz;
-        else
-          return -1;
-      }
-      return uwrite(fd.socket, (char*)data, sz);
+      return uwrite(fd, (char*)data, sz);
     }
 
     bool
     queue_write(const byte_t* buf, size_t sz)
     {
-      if(m_LossyWriteQueue)
-      {
-        m_LossyWriteQueue->Emplace(buf, sz);
-        return true;
-      }
-      else if(m_BlockingWriteQueue)
+      if(m_BlockingWriteQueue)
       {
         m_BlockingWriteQueue->emplace_back(buf, sz);
         return true;
@@ -229,13 +193,7 @@ namespace llarp
     virtual void
     flush_write_buffers(size_t amount)
     {
-      if(m_LossyWriteQueue)
-        m_LossyWriteQueue->Process([&](WriteBuffer& buffer) {
-          do_write(buffer.buf, buffer.bufsz);
-          // if we would block we save the entries for later
-          // discard entry
-        });
-      else if(m_BlockingWriteQueue)
+      if(m_BlockingWriteQueue)
       {
         if(amount)
         {
@@ -280,11 +238,8 @@ namespace llarp
             }
             m_BlockingWriteQueue->pop_front();
             int wsaerr = WSAGetLastError();
-            int syserr = GetLastError();
-            if(wsaerr == WSA_IO_PENDING || wsaerr == WSAEWOULDBLOCK
-               || syserr == 997 || syserr == 21)
+            if(wsaerr == WSA_IO_PENDING || wsaerr == WSAEWOULDBLOCK)
             {
-              SetLastError(0);
               WSASetLastError(0);
               return;
             }
@@ -292,20 +247,17 @@ namespace llarp
         }
       }
       /// reset errno
-      SetLastError(0);
       WSASetLastError(0);
     }
 
-    std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;
     std::unique_ptr< LosslessWriteQueue_t > m_BlockingWriteQueue;
 
     virtual ~win32_ev_io()
     {
-      uclose(fd.socket);
+      uclose(fd);
     };
   };
-#endif
-
+#else
   struct posix_ev_io
   {
     struct WriteBuffer
@@ -538,19 +490,11 @@ namespace llarp
       close(fd);
     };
   };
+#endif
 
 // finally create aliases by platform
 #ifdef _WIN32
   using ev_io = win32_ev_io;
-
-#define UNIX_PATH_MAX 108
-
-  typedef struct sockaddr_un
-  {
-    ADDRESS_FAMILY sun_family;    /* AF_UNIX */
-    char sun_path[UNIX_PATH_MAX]; /* pathname */
-  } SOCKADDR_UN, *PSOCKADDR_UN;
-
 #else
   using ev_io = posix_ev_io;
 #endif

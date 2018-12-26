@@ -3,6 +3,7 @@
 #pragma GCC diagnostic ignored "-Wvla"
 /* emulated epoll, because the native async event system does not do
  * particularly well with notification
+ * update: now win32-exclusive
  */
 #include "win32_upoll.h"
 
@@ -172,75 +173,6 @@ upoll_ctl(upoll_t* upq, int op, intptr_t fd, upoll_event_t* event)
   return 0;
 }
 
-#if defined(HAVE_POLL)
-int
-upoll_wait_poll(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
-{
-  /* FD_SETSIZE should be smaller than OPEN_MAX, but OPEN_MAX isn't portable */
-  if(nev > FD_SETSIZE)
-    nev = FD_SETSIZE;
-
-  unote_t* nvec[nev];
-  int r, i, nfds = 0;
-  uint32_t hint;
-  struct pollfd pfds[nev];
-
-  unote_t* n = NULL;
-  ulist_t* s = ulist_mark(&upq->alive);
-  ulist_t* q = ulist_next(&upq->alive);
-
-  while(q != s && nfds < nev)
-  {
-    n = ulist_data(q, unote_t, queue);
-    q = ulist_next(q);
-
-    ulist_remove(&n->queue);
-    ulist_insert(&upq->alive, &n->queue);
-
-    nvec[nfds]        = n;
-    pfds[nfds].events = 0;
-    pfds[nfds].fd     = n->fd;
-    if(n->event.events & UPOLLIN)
-    {
-      pfds[nfds].events |= POLLIN;
-    }
-    if(n->event.events & UPOLLOUT)
-    {
-      pfds[nfds].events |= POLLOUT;
-    }
-    nfds++;
-  }
-
-  r = poll(pfds, nfds, timeout);
-  if(r < 0)
-    return -errno;
-
-  int e = 0;
-  for(i = 0; i < nfds && e < nev; i++)
-  {
-    hint = 0;
-    if(pfds[i].revents)
-    {
-      n = nvec[i];
-      if(pfds[i].revents & POLLIN)
-        hint |= UPOLLIN;
-      if(pfds[i].revents & POLLOUT)
-        hint |= UPOLLOUT;
-      if(pfds[i].revents & (POLLERR | POLLNVAL | POLLHUP))
-        hint |= (UPOLLERR | UPOLLIN);
-
-      if(hint & UPOLLERR)
-        hint &= ~UPOLLOUT;
-
-      evs[e].data   = n->event.data;
-      evs[e].events = hint;
-      ++e;
-    }
-  }
-
-  return e;
-}
-#else
 int
 upoll_wait_select(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
 {
@@ -302,21 +234,13 @@ upoll_wait_select(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
     nfds++;
   }
 
-#if defined(__WINDOWS__)
   int rc = select(0, &pollin, &pollout, &pollerr, tvp);
   if(rc == SOCKET_ERROR)
   {
     assert(WSAGetLastError() == WSAENOTSOCK);
     return -WSAGetLastError();
   }
-#else
-  int rc = select(maxfd + 1, &pollin, &pollout, &pollerr, tvp);
-  if(rc == -1)
-  {
-    assert(errno == EINTR || errno == EBADF);
-    return -errno;
-  }
-#endif
+
   e = 0;
   for(i = 0; i < nfds && e < nev; i++)
   {
@@ -345,17 +269,12 @@ upoll_wait_select(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
   }
   return e;
 }
-#endif
 
 int
 upoll_wait(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
 {
   int r = 0;
-#if defined(HAVE_POLL)
-  r = upoll_wait_poll(upq, evs, nev, timeout);
-#else
-  r = upoll_wait_select(upq, evs, nev, timeout);
-#endif
+  r     = upoll_wait_select(upq, evs, nev, timeout);
   return r;
 }
 
@@ -364,20 +283,12 @@ usocket(int domain, int type, int proto)
 {
   intptr_t fd = (intptr_t)socket(domain, type, proto);
 
-#if defined(__WINDOWS__)
   if(fd < 0)
     return -WSAGetLastError();
   unsigned long flags = 1;
   int rc              = ioctlsocket((SOCKET)fd, FIONBIO, &flags);
   if(rc < 0)
     return -WSAGetLastError();
-#else
-  if(fd < 0)
-    return -errno;
-  int rc = fcntl(fd, F_SETFL, fcntl(fd, F_GETFL, 0) | O_NONBLOCK);
-  if(rc < 0)
-    return -errno;
-#endif
 
   return fd;
 }
@@ -391,12 +302,8 @@ ubind(intptr_t fd, const char* host, const char* serv)
 
   int optval          = 0;
   unsigned int optlen = sizeof(optval);
-#if defined(__WINDOWS__)
   int rc = getsockopt((SOCKET)fd, SOL_SOCKET, SO_TYPE, (char*)&optval,
                       (int*)&optlen);
-#else
-  int rc = getsockopt(fd, SOL_SOCKET, SO_TYPE, &optval, &optlen);
-#endif
 
   hint.ai_family   = AF_INET;
   hint.ai_socktype = optval;
@@ -406,25 +313,15 @@ ubind(intptr_t fd, const char* host, const char* serv)
   optval = 1;
   if(!rc)
   {
-#if defined(__WINDOWS__)
     rc = setsockopt((SOCKET)fd, SOL_SOCKET, SO_REUSEADDR, (char*)&optval,
                     sizeof(optval));
-#else
-    rc = setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval));
-#endif
     if(!rc)
       rc = bind(fd, info->ai_addr, info->ai_addrlen);
   }
 
   freeaddrinfo(info);
   if(rc)
-  {
-#if defined(__WINDOWS__)
     return WSAGetLastError();
-#else
-    return errno;
-#endif
-  }
   return 0;
 }
 
@@ -439,11 +336,7 @@ uconnect(intptr_t fd, const char* host, const char* serv)
   int optval = 0;
   unsigned int optlen;
 
-#if defined(__WINDOWS__)
   int rc = getsockopt(fd, SOL_SOCKET, SO_TYPE, (char*)&optval, (int*)&optlen);
-#else
-  int rc = getsockopt(fd, SOL_SOCKET, SO_TYPE, &optval, &optlen);
-#endif
 
   hint.ai_family   = AF_INET;
   hint.ai_socktype = optval;
@@ -451,25 +344,14 @@ uconnect(intptr_t fd, const char* host, const char* serv)
   rc = getaddrinfo(host, serv, &hint, &info);
 
   if(!rc)
-  {
-#if defined(__WINDOWS__)
     rc = connect((SOCKET)fd, info->ai_addr, info->ai_addrlen);
-#else
-    rc = connect(fd, info->ai_addr, info->ai_addrlen);
-#endif
-  }
 
   freeaddrinfo(info);
 
   if(rc)
   {
-#if defined(__WINDOWS__)
     if(WSAGetLastError() != WSAEWOULDBLOCK)
       return WSAGetLastError();
-#else
-    if(errno != EINPROGRESS)
-      return errno;
-#endif
   }
   return 0;
 }
@@ -488,15 +370,9 @@ uaccept(intptr_t sock)
   addr.sa_family = AF_INET;
   socklen_t addr_len;
 
-#if defined(__WINDOWS__)
   intptr_t fd = (intptr_t)accept((SOCKET)sock, &addr, &addr_len);
   if(fd == -1)
     return WSAGetLastError();
-#else
-  intptr_t fd = accept(sock, &addr, &addr_len);
-  if(fd < 0)
-    return errno;
-#endif
 
   return fd;
 }
@@ -504,11 +380,7 @@ uaccept(intptr_t sock)
 int
 uclose(intptr_t sock)
 {
-#if defined(__WINDOWS__)
   return closesocket((SOCKET)sock);
-#else
-  return close(sock);
-#endif
 }
 
 int
@@ -573,7 +445,6 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  *   add argument make_overlapped
  */
 
-#if defined(__WINDOWS__)
 int
 usocketpair(intptr_t socks[2], int async)
 {
@@ -646,28 +517,4 @@ usocketpair(intptr_t socks[2], int async)
   socks[0] = socks[1] = -1;
   return SOCKET_ERROR;
 }
-#else
-int
-usocketpair(intptr_t socks[2], int dummy)
-{
-  int sovec[2];
-  if(socks == 0)
-  {
-    errno = EINVAL;
-    return -1;
-  }
-  dummy = socketpair(AF_LOCAL, SOCK_STREAM, 0, sovec);
-  if(dummy)
-  {
-    socks[0] = socks[1] = -1;
-  }
-  else
-  {
-    socks[0] = sovec[0];
-    socks[1] = sovec[1];
-  }
-  return dummy;
-}
-#endif
-
 #endif

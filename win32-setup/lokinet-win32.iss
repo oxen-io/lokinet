@@ -43,7 +43,6 @@ InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
 VersionInfoCopyright=Copyright ©2018 Loki Project
-AlwaysRestart=yes
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -57,10 +56,8 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
 Source: "{#DevPath}build64\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
 ; eh, might as well ship the 32-bit port of everything else
-; do we _need_ to ship these?
-Source: "{#DevPath}build\dns.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#DevPath}build\llarpc.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "{#DevPath}build\rcutil.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; delet this after finishing setup, we only need it to extract the drivers
 ; and download an initial RC
 Source: "{#DevPath}lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
@@ -68,8 +65,8 @@ Source: "{#DevPath}win32-setup\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinst
 ; if nonexistent, then inet6 was already installed
 Source: "{tmp}\inet6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,5.0; OnlyBelowVersion: 0,5.1
 ; Copy the correct tuntap driver for the selected platform
-Source: "{tmp}\tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall; OnlyBelowVersion: 0, 6.0
-Source: "{tmp}\tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall; MinVersion: 0,6.0
+Source: "{tmp}\tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; OnlyBelowVersion: 0, 6.0
+Source: "{tmp}\tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,6.0
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 
@@ -96,7 +93,7 @@ begin
   GetWindowsVersionEx(Version);
   if Version.NTPlatform and (Version.Major = 5) and (Version.Minor = 0) and (FileExists(ExpandConstant('{tmp}\inet6.7z')) = true) then
      // I need a better message...
-    MsgBox('Set up IPv6 in Network Connections after reboot.', mbInformation, MB_OK);
+    MsgBox('Restart your computer, then set up IPv6 in Network Connections.\n[Adapter] > Properties > Install... > Protocol > Microsoft IPv6 Driver...', mbInformation, MB_OK);
   end;
 end;
 
@@ -106,18 +103,17 @@ var
   S: String;
 begin
   GetWindowsVersionEx(Version);
+  // if we already have a generic openvpn tap driver installed, then skip all the downloading
+  // lokinet is coded to enumerate all generic tap virtual adapters and use the first free device
+  if (FileExists(ExpandConstant('{sys}\drivers\tap0901.sys')) = false) then
+  begin
   if Version.NTPlatform and
      (Version.Major < 6) then
   begin
     // Windows 2000, XP, .NET Svr 2003
-    // these have a horribly crippled WinInet that issues Triple-DES as its most secure
+    // these have a horribly crippled WinInet that issues TLSv1-RSA-SHA1-Triple-DES as its most secure
     // cipher suite
     idpAddFile('http://www.rvx86.net/files/tuntapv9.7z', ExpandConstant('{tmp}\tuntapv9.7z'));
-    // Windows 2000 only, we need to install inet6 separately
-    if (FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys')) = false) and (Version.Major = 5) and (Version.Minor = 0) then
-    begin
-    idpAddFile('http://www.rvx86.net/files/inet6.7z', ExpandConstant('{tmp}\inet6.7z'));
-    end;
   end
   else
   begin
@@ -125,7 +121,13 @@ begin
     // (Arguably, one could pull this from any of the forks.)
     idpAddFile('https://github.com/despair86/loki-network/raw/master/contrib/tuntapv9-ndis/tap-windows-9.21.2.7z', ExpandConstant('{tmp}\tuntapv9_n6.7z'));
   end;
+  // Windows 2000 only, we need to install inet6 separately
+  if (FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys')) = false) and (Version.Major = 5) and (Version.Minor = 0) then
+  begin
+    idpAddFile('http://www.rvx86.net/files/inet6.7z', ExpandConstant('{tmp}\inet6.7z'));
+  end;
     idpDownloadAfter(wpReady);
+  end;
 end;
 
 [Icons]
@@ -139,14 +141,14 @@ Name: "{userappdata}\Microsoft\Internet Explorer\Quick Launch\User Pinned\TaskBa
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"
 ; wait until either one or two of these terminates
-Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0
-Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0
-Filename: "{tmp}\7z.exe"; Parameters: "x inet6.7z"; WorkingDir: "{app}"; Flags: skipifdoesntexist runascurrentuser waituntilterminated; Description: "extract inet6 driver"; StatusMsg: "Extracting IPv6 driver..."; MinVersion: 0, 5.0; OnlyBelowVersion: 0, 5.1
+Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0
+Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0
+Filename: "{tmp}\7z.exe"; Parameters: "x inet6.7z"; WorkingDir: "{app}"; Flags: skipifdoesntexist runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract inet6 driver"; StatusMsg: "Extracting IPv6 driver..."; MinVersion: 0, 5.0; OnlyBelowVersion: 0, 5.1
 Filename: "{tmp}\lokinet-bootstrap.exe"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
 ; then ask to install drivers
-Filename: "{app}\tap-windows-9.9.2\install.bat"; WorkingDir: "{app}\tap-windows-9.9.2\"; Flags: runascurrentuser waituntilterminated; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; OnlyBelowVersion: 0, 6.0
-Filename: "{app}\tap-windows-9.21.2\install.bat"; WorkingDir: "{app}\tap-windows-9.21.2\"; Flags: runascurrentuser waituntilterminated; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; MinVersion: 0, 6.0
+Filename: "{app}\tap-windows-9.9.2\install.bat"; WorkingDir: "{app}\tap-windows-9.9.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; OnlyBelowVersion: 0, 6.0;  Check: not FileExists(ExpandConstant('{sys}\drivers\tap0901.sys'))
+Filename: "{app}\tap-windows-9.21.2\install.bat"; WorkingDir: "{app}\tap-windows-9.21.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; MinVersion: 0, 6.0;  Check: not FileExists(ExpandConstant('{sys}\drivers\tap0901.sys'))
 ; install inet6 if not present. (I'd assume netsh displays something helpful if inet6 is already set up and configured.)
 ; if it doesn't exist, then the inet6 driver appears to be installed
-Filename: "{app}\inet6_driver\setup\hotfix.exe"; Parameters: "/m /z"; WorkingDir: "{app}\inet6_driver\setup\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install IPv6 driver"; StatusMsg: "Installing IPv6..."; OnlyBelowVersion: 0, 5.1
+Filename: "{app}\inet6_driver\setup\hotfix.exe"; Parameters: "/m /z"; WorkingDir: "{app}\inet6_driver\setup\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install IPv6 driver"; StatusMsg: "Installing IPv6..."; OnlyBelowVersion: 0, 5.1;  Check: not FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys'))
 Filename: "{sys}\netsh.exe"; Parameters: "int ipv6 install"; Flags: runascurrentuser waituntilterminated; Description: "install ipv6 on whistler"; StatusMsg: "Installing IPv6..."; MinVersion: 0,5.1; OnlyBelowVersion: 0,6.0

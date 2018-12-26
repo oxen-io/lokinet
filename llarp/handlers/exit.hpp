@@ -131,6 +131,11 @@ namespace llarp
       std::unordered_map< llarp::PathID_t, llarp::PubKey,
                           llarp::PathID_t::Hash >
           m_Paths;
+
+      std::unordered_map< llarp::PubKey, llarp::exit::Endpoint*,
+                          llarp::PubKey::Hash >
+          m_ChosenExits;
+
       std::unordered_multimap< llarp::PubKey,
                                std::unique_ptr< llarp::exit::Endpoint >,
                                llarp::PubKey::Hash >

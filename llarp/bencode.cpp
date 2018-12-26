@@ -58,7 +58,7 @@ bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
 
   buffer->cur++;
 
-  numbuf[len] = 0;
+  numbuf[len] = '\0';
   *result     = strtoull(numbuf, nullptr, 10);
   return true;
 }
@@ -75,7 +75,7 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
   if(!len)
     return false;
 
-  numbuf[len] = 0;
+  numbuf[len] = '\0';
   num         = atoi(numbuf);
   if(num < 0)
     return false;

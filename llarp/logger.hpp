@@ -49,7 +49,7 @@ namespace llarp
     CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
     short old_attrs;
 #endif
-    Logger() : Logger(std::cout, "unnamed")
+    Logger() : Logger(std::cout)
     {
 #ifdef _WIN32
       // Attempt to use ANSI escapes directly
@@ -67,7 +67,7 @@ namespace llarp
 #endif
     }
 
-    Logger(std::ostream& o, const std::string& name) : nodeName(name), out(o)
+    Logger(std::ostream& o) : out(o)
     {
     }
   };
@@ -227,7 +227,9 @@ namespace llarp
 #endif
 #endif
     std::string tag = fname;
-    ss << _glog.nodeName << " (" << thread_id_string() << ") "
+    if(_glog.nodeName.size())
+      ss << _glog.nodeName << " ";
+    ss << "(" << thread_id_string() << ") "
        << log_timestamp() << " " << tag << ":" << lineno;
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);

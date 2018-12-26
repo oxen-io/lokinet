@@ -45,6 +45,14 @@ startWinsock()
   }
   return 0;
 }
+
+extern "C" BOOL FAR PASCAL
+handle_signal_win32(DWORD fdwCtrlType)
+{
+  UNREFERENCED_PARAMETER(fdwCtrlType);
+  handle_signal(SIGINT);
+  return TRUE;  // probably unreachable
+}
 #endif
 
 int
@@ -60,6 +68,7 @@ main(int argc, char *argv[])
 #ifdef _WIN32
   if(startWinsock())
     return -1;
+  SetConsoleCtrlHandler(handle_signal_win32, TRUE);
 #endif
 
   int opt            = 0;

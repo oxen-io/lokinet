@@ -210,9 +210,7 @@ namespace llarp
     flush_write()
     {
       if(t->before_write)
-      {
         t->before_write(t);
-      }
       ev_io::flush_write();
     }
 

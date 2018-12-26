@@ -9,7 +9,8 @@ namespace llarp
     Endpoint::Endpoint(const llarp::PubKey& remoteIdent,
                        const llarp::PathID_t& beginPath, bool rewriteIP,
                        huint32_t ip, llarp::handlers::ExitEndpoint* parent)
-        : m_Parent(parent)
+        : createdAt(parent->Now())
+        , m_Parent(parent)
         , m_remoteSignKey(remoteIdent)
         , m_CurrentPath(beginPath)
         , m_IP(ip)
@@ -73,9 +74,7 @@ namespace llarp
     {
       if(ExpiresSoon(now, timeout))
         return true;
-      if(now > m_LastActive)
-        return now - m_LastActive > timeout;
-      return true;
+      return now > m_LastActive && now - m_LastActive > timeout;
     }
 
     bool

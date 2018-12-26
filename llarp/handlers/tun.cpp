@@ -43,10 +43,8 @@ namespace llarp
 #endif
       tunif.user    = this;
       tunif.netmask = DefaultTunNetmask;
-#ifdef _WIN32
-      llarp::Zero(tunif.ifaddr, sizeof(tunif.ifaddr));
-      llarp::Zero(tunif.ifname, sizeof(tunif.ifname));
-#else
+
+      // eh this shouldn't do anything on windows anyway
       strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
       strncpy(tunif.ifname, DefaultTunIfname, sizeof(tunif.ifname) - 1);
 #endif
@@ -671,6 +669,8 @@ namespace llarp
                return pkt.Load(buf) && pkt.Header()->version == 4;
              }))
       {
+        llarp::LogInfo("invalid pkt");
+        llarp::DumpBuffer(buf);
       }
     }
 
