@@ -1,5 +1,8 @@
 LLARP - Low Latency Anon Routing Protocol
-	
+
+	TL;DR edition: an onion router with a tun interface for transporting ip packets
+	anonymously between you and the internet and internally inside itself to other users.
+
 	
 	This document describes the high level outline of LLARP, specific all the
 	project's goals, non-goals and network architecture from a bird's eye view.

@@ -74,33 +74,26 @@ namespace llarp
       virtual bool
       Start();
 
-      virtual bool
-      Stop()
-      {
-        // TODO: implement me
-        return false;
-      }
-
       virtual std::string
       Name() const;
 
       bool
-      ShouldPublishDescriptors(llarp_time_t now) const;
+      ShouldPublishDescriptors(llarp_time_t now) const override;
 
       void
       EnsureReplyPath(const ServiceInfo& addr);
 
       bool
-      PublishIntroSet(llarp::Router* r);
+      PublishIntroSet(llarp::Router* r) override;
 
       bool
       PublishIntroSetVia(llarp::Router* r, path::Path* p);
 
       bool
-      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg);
+      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg) override;
 
       bool
-      HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg);
+      HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg) override;
 
       bool
       HandleHiddenServiceFrame(path::Path* p,
@@ -127,7 +120,7 @@ namespace llarp
       ForgetPathToService(const Address& remote);
 
       bool
-      HandleDataMessage(const PathID_t&, ProtocolMessage* msg);
+      HandleDataMessage(const PathID_t&, ProtocolMessage* msg) override;
 
       virtual bool
       HandleWriteIPPacket(llarp_buffer_t pkt,
@@ -136,12 +129,17 @@ namespace llarp
       bool
       ProcessDataMessage(ProtocolMessage* msg);
 
-      bool
-      HandleDataMessage(const PathID_t&);
-
       /// ensure that we know a router, looks up if it doesn't
       void
       EnsureRouterIsKnown(const RouterID& router);
+
+      /// lookup a router via closest path
+      bool
+      LookupRouterAnon(RouterID router);
+
+      /// stop this endpoint
+      bool
+      Stop() override;
 
       const Identity&
       GetIdentity() const
@@ -150,10 +148,10 @@ namespace llarp
       }
 
       void
-      PutLookup(IServiceLookup* lookup, uint64_t txid);
+      PutLookup(IServiceLookup* lookup, uint64_t txid) override;
 
       void
-      HandlePathBuilt(path::Path* path);
+      HandlePathBuilt(path::Path* path) override;
 
       bool
       SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t payload,
@@ -246,6 +244,9 @@ namespace llarp
       {
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
+
+        bool
+        Stop() override;
 
         bool
         HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
@@ -346,27 +347,27 @@ namespace llarp
       HasPathToSNode(const RouterID& remote) const;
 
       void
-      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info);
+      PutSenderFor(const ConvoTag& tag, const ServiceInfo& info) override;
 
       bool
       GetCachedSessionKeyFor(const ConvoTag& remote,
-                             const byte_t*& secret) const;
+                             const byte_t*& secret) const override;
       void
       PutCachedSessionKeyFor(const ConvoTag& remote,
-                             const SharedSecret& secret);
+                             const SharedSecret& secret) override;
 
       bool
-      GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const;
+      GetSenderFor(const ConvoTag& remote, ServiceInfo& si) const override;
 
       void
-      PutIntroFor(const ConvoTag& remote, const Introduction& intro);
+      PutIntroFor(const ConvoTag& remote, const Introduction& intro) override;
 
       bool
-      GetIntroFor(const ConvoTag& remote, Introduction& intro) const;
+      GetIntroFor(const ConvoTag& remote, Introduction& intro) const override;
 
       bool
       GetConvoTagsForService(const ServiceInfo& si,
-                             std::set< ConvoTag >& tag) const;
+                             std::set< ConvoTag >& tag) const override;
 
       void
       PutNewOutboundContext(const IntroSet& introset);

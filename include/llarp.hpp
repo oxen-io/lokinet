@@ -58,6 +58,9 @@ namespace llarp
     HandleSignal(int sig);
 
    private:
+    bool
+    Configure();
+
     void
     SigINT();
 

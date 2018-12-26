@@ -88,6 +88,12 @@ namespace llarp
       Start();
 
       bool
+      Stop();
+
+      bool
+      ShouldRemove() const;
+
+      bool
       HasLocalMappedAddrFor(const llarp::PubKey& pk) const;
 
       huint32_t

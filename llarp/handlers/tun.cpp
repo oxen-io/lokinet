@@ -448,6 +448,14 @@ namespace llarp
       Endpoint::Tick(now);
     }
 
+    bool
+    TunEndpoint::Stop()
+    {
+      if(m_Exit)
+        m_Exit->Stop();
+      return llarp::service::Endpoint::Stop();
+    }
+
     void
     TunEndpoint::FlushSend()
     {

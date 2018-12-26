@@ -284,6 +284,12 @@ namespace llarp
       {
       }
 
+      void
+      Stop()
+      {
+        _handler.Close();
+      }
+
       bool
       Start(const std::string& addr)
       {
@@ -313,6 +319,11 @@ namespace llarp
       {
         return true;
       }
+
+      void
+      Stop()
+      {
+      }
     };
 
     struct CallerImpl
@@ -332,6 +343,11 @@ namespace llarp
       }
 
       void
+      Stop()
+      {
+      }
+
+      void
       Tick(llarp_time_t now)
       {
         (void)now;
@@ -347,6 +363,12 @@ namespace llarp
     Caller::~Caller()
     {
       delete m_Impl;
+    }
+
+    void
+    Caller::Stop()
+    {
+      m_Impl->Stop();
     }
 
     bool
@@ -368,6 +390,12 @@ namespace llarp
     Server::~Server()
     {
       delete m_Impl;
+    }
+
+    void
+    Server::Stop()
+    {
+      m_Impl->Stop();
     }
 
     bool

@@ -505,6 +505,10 @@ namespace llarp
       SendExitRequest(const llarp::routing::ObtainExitMessage* msg,
                       llarp::Router* r);
 
+      bool
+      SendExitClose(const llarp::routing::CloseExitMessage* msg,
+                    llarp::Router* r);
+
      protected:
       llarp::routing::InboundMessageParser m_InboundMessageParser;
 

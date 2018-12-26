@@ -2,6 +2,7 @@
 #define LLARP_PATHBUILDER_HPP_
 
 #include <pathset.hpp>
+#include <atomic>
 
 namespace llarp
 {
@@ -12,12 +13,27 @@ namespace llarp
 
     struct Builder : public PathSet
     {
+     protected:
+      /// flag for PathSet::Stop()
+      std::atomic< bool > _run;
+
+     public:
+      bool
+      CanBuildPaths() const
+      {
+        return _run.load();
+      }
+
       llarp::Router* router;
       struct llarp_dht_context* dht;
       llarp::SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild          = 0;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+
+      // how many keygens are currently happening
+      std::atomic< uint8_t > keygens;
+
       /// construct
       Builder(llarp::Router* p_router, struct llarp_dht_context* p_dht,
               size_t numPaths, size_t numHops);
@@ -26,13 +42,19 @@ namespace llarp
 
       virtual bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, PathRole roles);
+                size_t hop, PathRole roles) override;
 
       virtual bool
-      ShouldBuildMore(llarp_time_t now) const;
+      ShouldBuildMore(llarp_time_t now) const override;
+
+      virtual bool
+      Stop() override;
+
+      bool
+      ShouldRemove() const override;
 
       llarp_time_t
-      Now() const;
+      Now() const override;
 
       void
       BuildOne(PathRole roles = ePathRoleAny);
@@ -52,10 +74,10 @@ namespace llarp
       GetTunnelEncryptionSecretKey() const;
 
       virtual void
-      HandlePathBuilt(Path* p);
+      HandlePathBuilt(Path* p) override;
 
       virtual void
-      HandlePathBuildTimeout(Path* p);
+      HandlePathBuildTimeout(Path* p) override;
     };
   }  // namespace path
 

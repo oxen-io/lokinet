@@ -28,7 +28,7 @@ namespace llarp
   }
 
   bool
-  Context::ReloadConfig()
+  Context::Configure()
   {
     // llarp::LogInfo("loading config at ", configfile);
     if(llarp_load_config(config, configfile.c_str()))
@@ -41,7 +41,7 @@ namespace llarp
     iter.user  = this;
     iter.visit = &iter_config;
     llarp_config_iter(config, &iter);
-    return router->ReloadConfig(config);
+    return true;
   }
 
   void
@@ -174,6 +174,7 @@ namespace llarp
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, worker, logic);
+    // waits for router graceful stop
     return 0;
   }
 
@@ -189,7 +190,34 @@ namespace llarp
     if(sig == SIGHUP)
     {
       llarp::LogInfo("SIGHUP");
-      ReloadConfig();
+      if(router)
+      {
+        llarp_config *newconfig = nullptr;
+        llarp_new_config(&newconfig);
+        if(llarp_load_config(newconfig, configfile.c_str()))
+        {
+          llarp_free_config(&newconfig);
+          llarp::LogError("failed to load config file ", configfile);
+          return;
+        }
+        // validate config
+        if(!router->ValidateConfig(newconfig))
+        {
+          llarp::LogWarn("new configuration is invalid");
+          llarp_free_config(&newconfig);
+          return;
+        }
+        // reconfigure
+        if(!router->Reconfigure(newconfig))
+        {
+          llarp_free_config(&newconfig);
+          llarp::LogError("Failed to reconfigure so we will stop.");
+          router->Stop();
+          return;
+        }
+        llarp::LogInfo("router reconfigured");
+        llarp_free_config(&newconfig);
+      }
     }
 #endif
   }
@@ -197,24 +225,23 @@ namespace llarp
   void
   Context::SigINT()
   {
-    Close();
+    if(router)
+    {
+      /// async stop router on sigint
+      router->Stop();
+    }
+    else
+    {
+      if(logic)
+        logic->stop();
+      llarp_ev_loop_stop(mainloop);
+      Close();
+    }
   }
 
   void
   Context::Close()
   {
-    llarp::LogDebug("stopping logic");
-    if(logic)
-      logic->stop();
-
-    llarp::LogDebug("stopping event loop");
-    if(mainloop)
-      llarp_ev_loop_stop(mainloop);
-
-    llarp::LogDebug("stop router");
-    if(router)
-      router->Stop();
-
     llarp::LogDebug("stop workers");
     if(worker)
       llarp_threadpool_stop(worker);
@@ -232,14 +259,18 @@ namespace llarp
     llarp::LogDebug("free nodedb");
     delete nodedb;
 
-    llarp::LogDebug("stopping event loop");
-    llarp_ev_loop_stop(mainloop);
-
-    llarp::LogDebug("free router");
-    delete router;
-
-    llarp::LogDebug("free logic");
-    delete logic;
+    if(router)
+    {
+      llarp::LogDebug("free router");
+      delete router;
+      router = nullptr;
+    }
+    if(logic)
+    {
+      llarp::LogDebug("free logic");
+      delete logic;
+      logic = nullptr;
+    }
   }
 
   bool
@@ -247,7 +278,7 @@ namespace llarp
   {
     llarp_new_config(&config);
     configfile = fname;
-    return ReloadConfig();
+    return Configure();
   }
 }  // namespace llarp
 

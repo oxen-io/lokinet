@@ -235,6 +235,23 @@ namespace llarp
     }
 
     bool
+    ExitEndpoint::Stop()
+    {
+      for(auto &item : m_SNodeSessions)
+        item.second->Stop();
+      return true;
+    }
+
+    bool
+    ExitEndpoint::ShouldRemove() const
+    {
+      for(auto &item : m_SNodeSessions)
+        if(!item.second->ShouldRemove())
+          return false;
+      return true;
+    }
+
+    bool
     ExitEndpoint::HasLocalMappedAddrFor(const llarp::PubKey &pk) const
     {
       return m_KeyToIP.find(pk) != m_KeyToIP.end();

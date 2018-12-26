@@ -334,6 +334,7 @@ namespace abyss
 
     JSONRPC::JSONRPC()
     {
+      m_Run.store(true);
     }
 
     JSONRPC::~JSONRPC()
@@ -344,8 +345,9 @@ namespace abyss
     JSONRPC::QueueRPC(RPC_Method_t method, RPC_Params params,
                       HandlerFactory createHandler)
     {
-      m_PendingCalls.emplace_back(std::move(method), std::move(params),
-                                  std::move(createHandler));
+      if(m_Run)
+        m_PendingCalls.emplace_back(std::move(method), std::move(params),
+                                    std::move(createHandler));
     }
 
     bool
@@ -380,6 +382,11 @@ namespace abyss
     void
     JSONRPC::Connected(llarp_tcp_conn* conn)
     {
+      if(!m_Run)
+      {
+        llarp_tcp_conn_close(conn);
+        return;
+      }
       auto& front = m_PendingCalls.front();
       ConnImpl* connimpl =
           new ConnImpl(conn, std::move(front.method), std::move(front.params),
@@ -387,6 +394,13 @@ namespace abyss
       m_PendingCalls.pop_front();
       m_Conns.emplace_back(connimpl->handler);
       connimpl->SendRequest();
+    }
+
+    void
+    JSONRPC::Stop()
+    {
+      m_Run.store(false);
+      DropAllCalls();
     }
 
     void
