@@ -583,10 +583,8 @@ namespace llarp
       };
       gotLIM        = false;
       recvBufOffset = 0;
-      TimedOut      = [&](llarp_time_t now) -> bool {
-        return this->IsTimedOut(now) || this->state == eClose;
-      };
-      GetPubKey    = std::bind(&Session::RemotePubKey, this);
+      TimedOut  = std::bind(&Session::IsTimedOut, this, std::placeholders::_1);
+      GetPubKey = std::bind(&Session::RemotePubKey, this);
       GetRemoteRC  = [&]() -> llarp::RouterContact { return this->remoteRC; };
       GetLinkLayer = std::bind(&Session::GetParent, this);
 

@@ -268,8 +268,6 @@ crypto_threadworker_verifyrc(void *user)
   else
   {
     // callback to logic thread
-    if(!verify_request->valid)
-      llarp::LogWarn("RC is not valid, can't save to disk");
     verify_request->logic->queue_job(
         {verify_request, &logic_threadworker_callback});
   }
