@@ -1,10 +1,5 @@
 #include <mem.hpp>
-#include <messages/dht.hpp>
-#include <messages/discard.hpp>
-#include <messages/path_confirm.hpp>
-#include <messages/path_latency.hpp>
-#include <messages/path_transfer.hpp>
-#include <routing/message.hpp>
+#include <routing/message_parser.hpp>
 
 namespace llarp
 {
@@ -43,40 +38,40 @@ namespace llarp
         switch(self->key)
         {
           case 'D':
-            self->msg.reset(new DataDiscardMessage());
+            self->msg = &self->m_Holder.D;
             break;
           case 'L':
-            self->msg.reset(new PathLatencyMessage());
+            self->msg = &self->m_Holder.L;
             break;
           case 'M':
-            self->msg.reset(new DHTMessage());
+            self->msg = &self->m_Holder.M;
             break;
           case 'P':
-            self->msg.reset(new PathConfirmMessage());
+            self->msg = &self->m_Holder.P;
             break;
           case 'T':
-            self->msg.reset(new PathTransferMessage());
+            self->msg = &self->m_Holder.T;
             break;
           case 'H':
-            self->msg.reset(new service::ProtocolFrame());
+            self->msg = &self->m_Holder.H;
             break;
           case 'I':
-            self->msg.reset(new TransferTrafficMessage());
+            self->msg = &self->m_Holder.I;
             break;
           case 'G':
-            self->msg.reset(new GrantExitMessage());
+            self->msg = &self->m_Holder.G;
             break;
           case 'J':
-            self->msg.reset(new RejectExitMessage());
+            self->msg = &self->m_Holder.J;
             break;
           case 'O':
-            self->msg.reset(new ObtainExitMessage());
+            self->msg = &self->m_Holder.O;
             break;
           case 'U':
-            self->msg.reset(new UpdateExitMessage());
+            self->msg = &self->m_Holder.U;
             break;
           case 'C':
-            self->msg.reset(new CloseExitMessage());
+            self->msg = &self->m_Holder.C;
             break;
           default:
             llarp::LogError("invalid routing message id: ", *strbuf.cur);
@@ -111,7 +106,8 @@ namespace llarp
         llarp::LogError("read dict failed in routing layer");
         llarp::DumpBuffer< llarp_buffer_t, 128 >(buf);
       }
-      msg.reset();
+      msg->Clear();
+      msg = nullptr;
       return result;
     }
   }  // namespace routing

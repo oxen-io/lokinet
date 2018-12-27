@@ -18,6 +18,8 @@ namespace llarp
     // handles messages on the routing level
     struct IMessageHandler
     {
+      
+
       virtual bool
       HandleObtainExitMessage(const ObtainExitMessage *msg,
                               llarp::Router *r) = 0;

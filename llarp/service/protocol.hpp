@@ -116,6 +116,12 @@ namespace llarp
       bool
       BEncode(llarp_buffer_t* buf) const override;
 
+      void
+      Clear() override
+      {
+        D.Clear();
+      }
+
       bool
       Verify(llarp::Crypto* c, const ServiceInfo& from) const;
 

@@ -25,23 +25,12 @@ namespace llarp
 
       virtual bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const = 0;
+
+      virtual void 
+      Clear() = 0;
     };
 
-    struct InboundMessageParser
-    {
-      InboundMessageParser();
-      bool
-      ParseMessageBuffer(llarp_buffer_t buf, IMessageHandler* handler,
-                         const PathID_t& from, llarp::Router* r);
-
-     private:
-      static bool
-      OnKey(dict_reader* r, llarp_buffer_t* key);
-      bool firstKey;
-      char key;
-      dict_reader reader;
-      std::unique_ptr< IMessage > msg;
-    };
+    
   }  // namespace routing
 }  // namespace llarp
 

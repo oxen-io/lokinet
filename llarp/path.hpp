@@ -122,6 +122,10 @@ namespace llarp
       HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
                        llarp::Router* r) = 0;
 
+      /// return timestamp last remote activity happened at
+      virtual llarp_time_t
+      LastRemoteActivityAt() const = 0;
+
       uint64_t
       NextSeqNo()
       {
@@ -146,6 +150,7 @@ namespace llarp
       // 10 minutes default
       llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
       llarp_proto_version_t version;
+      llarp_time_t m_LastActivity = 0;
 
       bool
       IsEndpoint(const RouterID& us) const
@@ -155,7 +160,12 @@ namespace llarp
 
       llarp_time_t
       ExpireTime() const;
-      llarp::routing::InboundMessageParser m_MessageParser;
+
+      llarp_time_t
+      LastRemoteActivityAt() const override
+      {
+        return m_LastActivity;
+      }
 
       friend std::ostream&
       operator<<(std::ostream& out, const TransitHop& h)
@@ -337,6 +347,12 @@ namespace llarp
         return _status;
       }
 
+      llarp_time_t
+      LastRemoteActivityAt() const override
+      {
+        return m_LastRecvMessage;
+      }
+
       void
       SetBuildResultHook(BuildResultHookFunc func);
 
@@ -508,9 +524,6 @@ namespace llarp
       bool
       SendExitClose(const llarp::routing::CloseExitMessage* msg,
                     llarp::Router* r);
-
-     protected:
-      llarp::routing::InboundMessageParser m_InboundMessageParser;
 
      private:
       /// call obtained exit hooks
