@@ -706,6 +706,9 @@ namespace llarp
         llarp::LogDebug("Sent reply LIM");
         gotLIM = true;
         EnterState(eSessionReady);
+        /// future LIM are used for session renegotiation
+        GotLIM = std::bind(&Session::GotSessionRenegotiate, this,
+                           std::placeholders::_1);
       }
       return true;
     }
@@ -749,6 +752,8 @@ namespace llarp
         return false;
       }
       EnterState(eSessionReady);
+      /// future LIM are used for session renegotiation
+      GotLIM = std::bind(&Session::GotSessionRenegotiate, this,std::placeholders::_1);
       return true;
     }
 
@@ -944,9 +949,6 @@ namespace llarp
       {
         parent->MapAddr(remoteRC.pubkey.data(), this);
         parent->SessionEstablished(remoteRC);
-        /// future LIM are used for session renegotiation
-        GotLIM = std::bind(&Session::GotSessionRenegotiate, this,
-                           std::placeholders::_1);
       }
     }
 
@@ -1066,17 +1068,17 @@ namespace llarp
         llarp::LogError("inbound buffer is full");
         return false;  // not enough room
       }
-      // determine if this message is done
-      bool result = true;
       // mutate key
       if(!MutateKey(rxKey, A))
       {
         llarp::LogError("failed to mutate rx key");
         return false;
       }
-
+  
       if(remaining == 0)
       {
+        // we done with this guy, prune next tick
+        itr->second.lastActive = 0;
         llarp_buffer_t buf = itr->second.buffer;
         // resize
         buf.sz = buf.cur - buf.base;
@@ -1084,12 +1086,9 @@ namespace llarp
         buf.cur = buf.base;
         // process buffer
         llarp::LogDebug("got message ", msgid, " from ", remoteAddr);
-        result = parent->HandleMessage(this, buf);
-        // get rid of message buffer
-        if(result)
-          m_RecvMsgs.erase(itr->first);
+        return parent->HandleMessage(this, buf);
       }
-      return result;
+      return true;
     }
 
     void

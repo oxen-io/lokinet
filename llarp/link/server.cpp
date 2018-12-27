@@ -93,7 +93,7 @@ namespace llarp
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
-        if(!itr->second->TimedOut(_now))
+        if(itr->second.get() && !itr->second->TimedOut(_now))
         {
           itr->second->Pump();
           ++itr;
@@ -112,7 +112,7 @@ namespace llarp
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
-        if(!(*itr)->TimedOut(_now))
+        if(itr->get() && !(*itr)->TimedOut(_now))
         {
           (*itr)->Pump();
           ++itr;
@@ -324,7 +324,8 @@ namespace llarp
   void
   ILinkLayer::OnTick(uint64_t interval)
   {
-    Tick(Now());
+    auto now = Now();
+    Tick(now);
     ScheduleTick(interval);
   }
 
