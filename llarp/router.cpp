@@ -849,7 +849,7 @@ namespace llarp
   llarp::ILinkLayer *
   Router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
   {
-    if(outboundLink->HasSessionTo(pubkey))
+    if(outboundLink && outboundLink->HasSessionTo(pubkey))
       return outboundLink.get();
     for(const auto &link : inboundLinks)
     {

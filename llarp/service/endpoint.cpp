@@ -221,7 +221,7 @@ namespace llarp
             continue;
           byte_t tmp[1024] = {0};
           auto buf         = StackBuffer< decltype(tmp) >(tmp);
-          if(!SendToServiceOrQueue(introset.A.Addr().data(), buf,
+          if(!SendToServiceOrQueue(introset.A.Addr().data().data(), buf,
                                    eProtocolText))
           {
             llarp::LogWarn(Name(), " failed to send/queue data to ",
