@@ -101,7 +101,12 @@ namespace llarp
       r->crypto.xchacha20(buf, pathKey, Y);
       if(IsEndpoint(r->pubkey()))
       {
-        return m_MessageParser.ParseMessageBuffer(buf, this, info.rxID, r);
+        if(r->ParseRoutingMessageBuffer(buf, this, info.rxID))
+        {
+          m_LastActivity = r->Now();
+          return true;
+        }
+        return false;
       }
       else
       {

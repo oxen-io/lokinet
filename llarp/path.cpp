@@ -553,7 +553,7 @@ namespace llarp
     bool
     Path::HandleRoutingMessage(llarp_buffer_t buf, llarp::Router* r)
     {
-      if(!m_InboundMessageParser.ParseMessageBuffer(buf, this, RXID(), r))
+      if(!r->ParseRoutingMessageBuffer(buf, this, RXID()))
       {
         llarp::LogWarn("Failed to parse inbound routing message");
         return false;

@@ -74,7 +74,13 @@ namespace llarp
     {
       if(ExpiresSoon(now, timeout))
         return true;
-      return now > m_LastActive && now - m_LastActive > timeout;
+      auto path = GetCurrentPath();
+      if(!path)
+        return true;
+      auto lastPing = path->LastRemoteActivityAt();
+      if(now > lastPing && now - lastPing > timeout)
+        return now > m_LastActive && now - m_LastActive > timeout;
+      return true;
     }
 
     bool

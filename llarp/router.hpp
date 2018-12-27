@@ -13,6 +13,7 @@
 #include <handlers/tun.hpp>
 #include <link_layer.hpp>
 #include <link_message_parser.hpp>
+#include <routing/message_parser.hpp>
 #include <logic.hpp>
 #include <mem.hpp>
 #include <nodedb.hpp>
@@ -338,6 +339,12 @@ namespace llarp
 
     llarp::ILinkLayer *
     GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
+
+
+    /// parse a routing message in a buffer and handle it with a handler if successful parsing
+    /// return true on parse and handle success otherwise return false
+    bool
+    ParseRoutingMessageBuffer(llarp_buffer_t buf, routing::IMessageHandler * h, PathID_t rxid);
 
     void
     ConnectToRandomRouters(int N);

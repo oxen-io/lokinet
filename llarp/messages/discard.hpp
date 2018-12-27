@@ -61,6 +61,8 @@ namespace llarp
         version = LLARP_PROTO_VERSION;
       }
 
+      void Clear() override {}
+
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override
       {

@@ -526,6 +526,12 @@ namespace llarp
   }
 
   bool
+  Router::ParseRoutingMessageBuffer(llarp_buffer_t buf, routing::IMessageHandler * h, PathID_t rxid)
+  {
+    return inbound_routing_msg_parser.ParseMessageBuffer(buf, h, rxid, this);
+  }
+
+  bool
   Router::ConnectionToRouterAllowed(const llarp::RouterID &router) const
   {
     if(strictConnectPubkeys.size() && strictConnectPubkeys.count(router) == 0)
