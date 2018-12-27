@@ -217,10 +217,16 @@ namespace llarp
     }
 
     bool
+    Builder::BuildCooldownHit(llarp_time_t now) const
+    {
+      return now < lastBuild
+          || now - lastBuild < buildIntervalLimit;
+    }
+
+    bool
     Builder::ShouldBuildMore(llarp_time_t now) const
     {
-      return llarp::path::PathSet::ShouldBuildMore(now) && now > lastBuild
-          && now - lastBuild > buildIntervalLimit;
+      return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
     }
 
     void

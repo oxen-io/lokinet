@@ -32,11 +32,15 @@ namespace llarp
     BaseSession::ShouldBuildMore(llarp_time_t now) const
     {
       const size_t expect = (1 + (m_NumPaths / 2));
-      if(NumPathsExistingAt(now + (10 * 1000)) < expect)
-        return path::Builder::ShouldBuildMore(now);
+      // check 30 seconds into the future and see if we need more paths
+      const llarp_time_t future = now + (30 * 1000);
+      if(NumPathsExistingAt(future) < expect)
+        return llarp::randint() % 4 == 0; // 25% chance for build if we will run out soon
+      // if we don't have the expended number of paths right now try building some if the cooldown timer isn't hit
       if(AvailablePaths(llarp::path::ePathRoleExit) < expect)
-        return path::Builder::ShouldBuildMore(now);
-      return false;
+        return !path::Builder::BuildCooldownHit(now); 
+      // maintain regular number of paths
+      return path::Builder::ShouldBuildMore(now);
     }
 
     bool
@@ -179,24 +183,29 @@ namespace llarp
     {
       auto now  = router->Now();
       auto path = PickRandomEstablishedPath(llarp::path::ePathRoleExit);
-      if(!path)
+      if(path)
       {
-        // discard
+        for(auto& item : m_Upstream)
+        {
+          auto& queue = item.second;
+          while(queue.size())
+          {
+            auto& msg = queue.front();
+            msg.S     = path->NextSeqNo();
+            if(path->SendRoutingMessage(&msg, router))
+              m_LastUse = now;
+            queue.pop_front();
+          }
+        }
+      }
+      else
+      {
+        if(m_Upstream.size())
+          llarp::LogWarn("no path for exit session");
+        // discard upstream
         for(auto& item : m_Upstream)
           item.second.clear();
-        return false;
-      }
-      for(auto& item : m_Upstream)
-      {
-        auto& queue = item.second;
-        while(queue.size())
-        {
-          auto& msg = queue.front();
-          msg.S     = path->NextSeqNo();
-          if(path->SendRoutingMessage(&msg, router))
-            m_LastUse = now;
-          queue.pop_front();
-        }
+        m_Upstream.clear();
       }
       while(m_Downstream.size())
       {
