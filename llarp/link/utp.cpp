@@ -1088,7 +1088,8 @@ namespace llarp
         llarp::LogDebug("got message ", msgid, " from ", remoteAddr);
         result = parent->HandleMessage(this, buf);
         // get rid of message buffer
-        m_RecvMsgs.erase(itr);
+        if(result)
+          m_RecvMsgs.erase(itr->first);
       }
       return result;
     }
