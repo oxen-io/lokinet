@@ -390,13 +390,13 @@ namespace llarp
       return hops[hops.size() - 1].rc.pubkey;
     }
 
-    const PathID_t&
+    PathID_t
     Path::TXID() const
     {
       return hops[0].txID;
     }
 
-    const PathID_t&
+    PathID_t
     Path::RXID() const
     {
       return hops[0].rxID;

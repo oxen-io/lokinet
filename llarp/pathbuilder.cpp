@@ -303,7 +303,8 @@ namespace llarp
     Builder::HandlePathBuildTimeout(Path* p)
     {
       // linear backoff
-      buildIntervalLimit += 1000;
+      static constexpr llarp_time_t MaxBuildInterval = 10 * 1000;
+      buildIntervalLimit = std::max(1000 + buildIntervalLimit, MaxBuildInterval);
       PathSet::HandlePathBuildTimeout(p);
     }
 

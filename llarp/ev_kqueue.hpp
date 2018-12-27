@@ -223,14 +223,14 @@ namespace llarp
     int
     sendto(__attribute__((unused)) const sockaddr* to,
            __attribute__((unused)) const void* data,
-           __attribute__((unused)) size_t sz)
+           __attribute__((unused)) size_t sz) override
     {
       return -1;
     }
 
 #ifdef __APPLE__
-    virtual ssize_t
-    do_write(void* buf, size_t sz)
+    ssize_t
+    do_write(void* buf, size_t sz) override
     {
       iovec vecs[2];
       // TODO: IPV6
@@ -244,17 +244,16 @@ namespace llarp
 #endif
 
     void
-    flush_write()
+    before_flush_write() override
     {
       if(t->before_write)
       {
         t->before_write(t);
-        ev_io::flush_write();
       }
     }
 
     bool
-    tick()
+    tick() override
     {
       if(t->tick)
         t->tick(t);
@@ -263,16 +262,24 @@ namespace llarp
     }
 
     int
-    read(byte_t* buf, size_t sz)
+    read(byte_t* buf, size_t sz) override
     {
-      // all BSD UNIX has pktinfo by default
+// all BSDs have packet info
+#ifdef __FreeBSD__
+      const ssize_t offset = 0;
+#else
       const ssize_t offset = 4;
-      ssize_t ret          = tuntap_read(tunif, buf, sz);
+#endif
+      // becuase reasons :^)
+      sz = 1500;
+
+      ssize_t ret = ::read(fd, buf, sz);
       if(ret > offset && t->recvpkt)
       {
         buf += offset;
         ret -= offset;
-        t->recvpkt(t, llarp::InitBuffer(buf, ret));
+        auto pkt = llarp::InitBuffer(buf, ret);
+        t->recvpkt(t, pkt);
       }
       return ret;
     }
@@ -281,12 +288,16 @@ namespace llarp
     setup()
     {
       llarp::LogDebug("set up tunif");
-      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
+      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, TUNTAP_ID_ANY) == -1)
+        return false;
+
+      if(tuntap_up(tunif) == -1)
+        return false;
+      if(tuntap_set_ifname(tunif, t->ifname) == -1)
         return false;
       llarp::LogInfo("set ", tunif->if_name, " to use address ", t->ifaddr);
+
       if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
-        return false;
-      if(tuntap_up(tunif) == -1)
         return false;
       fd = tunif->tun_fd;
       return fd != -1;
@@ -294,6 +305,8 @@ namespace llarp
 
     ~tun()
     {
+      if(tunif)
+        tuntap_destroy(tunif);
     }
   };
 

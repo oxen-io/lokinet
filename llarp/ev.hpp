@@ -408,18 +408,24 @@ namespace llarp
       flush_write_buffers(0);
     }
 
+    virtual void
+    before_flush_write(){};
+
     /// called in event loop when fd is ready for writing
     /// requeues anything not written
     /// this assumes fd is set to non blocking
     virtual void
     flush_write_buffers(size_t amount)
     {
+      before_flush_write();
       if(m_LossyWriteQueue)
+      {
         m_LossyWriteQueue->Process([&](WriteBuffer& buffer) {
           do_write(buffer.buf, buffer.bufsz);
           // if we would block we save the entries for later
           // discard entry
         });
+      }
       else if(m_BlockingWriteQueue)
       {
         if(amount)

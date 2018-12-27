@@ -87,13 +87,8 @@ to run as relay:
 
 **DO NOT RUN AS ELEVATED USER**, run as normal user.
 
-to run as client:
+to run as client, run the `run-lokinet.bat` batch file as your normal user.
 
-    C:\>lokinet -g && lokinet-bootstrap && lokinet
-
-to run as relay (highly experimental, currently unsupported!):
-
-    C:\>lokinet -r -g && lokinet-bootstrap && lokinet 
 
 ## Usage
 

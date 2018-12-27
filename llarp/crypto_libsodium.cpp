@@ -25,6 +25,15 @@ namespace llarp
     }
 
     static bool
+    xchacha20_alt(llarp_buffer_t out, llarp_buffer_t in, const byte_t *k,
+                  const byte_t *n)
+    {
+      if(in.sz > out.sz)
+        return false;
+      return crypto_stream_xchacha20_xor(out.base, in.base, in.sz, n, k) == 0;
+    }
+
+    static bool
     dh(uint8_t *out, const uint8_t *client_pk, const uint8_t *server_pk,
        const uint8_t *themPub, const uint8_t *usSec)
     {
@@ -183,6 +192,7 @@ namespace llarp
     else
       ntru_init(0);
     this->xchacha20           = llarp::sodium::xchacha20;
+    this->xchacha20_alt       = llarp::sodium::xchacha20_alt;
     this->dh_client           = llarp::sodium::dh_client;
     this->dh_server           = llarp::sodium::dh_server;
     this->transport_dh_client = llarp::sodium::dh_client;

@@ -25,12 +25,13 @@ namespace llarp
         : m_Router(r)
         , m_Resolver(r->netloop, this)
         , m_Name(name)
-        , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0}
         , m_LocalResolverAddr("127.0.0.1", 53)
         , m_InetToNetwork(name + "_exit_rx", r->netloop, r->netloop)
 
     {
       m_Tun.user      = this;
+      m_Tun.before_write = nullptr;
+      m_Tun.get_fd_promise = nullptr;
       m_Tun.recvpkt   = &ExitHandlerRecvPkt;
       m_Tun.tick      = &ExitHandlerFlush;
       m_ShouldInitTun = true;

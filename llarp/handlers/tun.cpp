@@ -22,6 +22,13 @@ namespace llarp
       return static_cast< TunEndpoint * >(tun->user)->Promise.get();
     }
 
+    static void
+    tunifTick(llarp_tun_io *tun)
+    {
+      TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      self->Flush();
+    }
+
     TunEndpoint::TunEndpoint(const std::string &nickname, llarp::Router *r)
         : service::Endpoint(nickname, r)
         , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
@@ -40,8 +47,7 @@ namespace llarp
       // eh this shouldn't do anything on windows anyway
       strncpy(tunif.ifaddr, DefaultTunSrcAddr, sizeof(tunif.ifaddr) - 1);
       strncpy(tunif.ifname, DefaultTunIfname, sizeof(tunif.ifname) - 1);
-
-      tunif.tick         = nullptr;
+      tunif.tick         = &tunifTick;
       tunif.before_write = &tunifBeforeWrite;
       tunif.recvpkt      = &tunifRecvPkt;
     }
@@ -173,6 +179,12 @@ namespace llarp
       return m_NetworkToUserPktQueue.EmplaceIf(
           [](llarp::net::IPv4Packet &) -> bool { return true; },
           std::move(pkt));
+    }
+
+    void
+    TunEndpoint::Flush()
+    {
+      FlushSend();
     }
 
     bool
@@ -524,6 +536,7 @@ namespace llarp
             {
               return false;
             }
+
             // update packet to use proper addresses, recalc checksums
             pkt.UpdateIPv4PacketOnDst(themIP, usIP);
             return true;
@@ -618,13 +631,6 @@ namespace llarp
     TunEndpoint::MarkIPActiveForever(huint32_t ip)
     {
       m_IPActivity[ip] = std::numeric_limits< uint64_t >::max();
-    }
-
-    void
-    TunEndpoint::handleTickTun(void *u)
-    {
-      TunEndpoint *self = static_cast< TunEndpoint * >(u);
-      self->TickTun(self->Now());
     }
 
     void

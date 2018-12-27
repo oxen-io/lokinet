@@ -14,17 +14,48 @@
 
 namespace llarp
 {
-  struct Router;
+  /// handle a link layer message
+  using LinkMessageHandler =
+      std::function< bool(ILinkSession*, llarp_buffer_t) >;
+
+  /// sign a buffer with identity key
+  using SignBufferFunc = std::function< bool(Signature&, llarp_buffer_t) >;
+
+  /// handle connection timeout
+  using TimeoutHandler = std::function< void(ILinkSession*) >;
+
+  /// get our RC
+  using GetRCFunc = std::function< const llarp::RouterContact&(void) >;
+
+  /// handler of session established
+  using SessionEstablishedHandler = std::function< void(llarp::RouterContact) >;
+
+  /// f(new, old)
+  /// handler of session renegotiation
+  /// returns true if the new rc is valid
+  /// returns false otherwise and the session is terminated
+  using SessionRenegotiateHandler =
+      std::function< bool(llarp::RouterContact, llarp::RouterContact) >;
+
+  /// handles close of all sessions with pubkey
+  using SessionClosedHandler = std::function< void(llarp::RouterID) >;
 
   struct ILinkLayer
   {
+    ILinkLayer(const byte_t* routerEncSecret, GetRCFunc getrc,
+               LinkMessageHandler handler, SignBufferFunc signFunc,
+               SessionEstablishedHandler sessionEstablish,
+               SessionRenegotiateHandler renegotiate, TimeoutHandler timeout,
+               SessionClosedHandler closed);
     virtual ~ILinkLayer();
+
     /// get current time via event loop
     llarp_time_t
-    now() const
+    Now() const
     {
       return llarp_ev_loop_time_now_ms(m_Loop);
     }
+
     bool
     HasSessionTo(const byte_t* pk);
 
@@ -33,6 +64,9 @@ namespace llarp
 
     void
     ForEachSession(std::function< void(const ILinkSession*) > visit) const;
+
+    void
+    ForEachSession(std::function< void(ILinkSession*) > visit);
 
     static void
     udp_tick(llarp_udp_io* udp)
@@ -70,7 +104,7 @@ namespace llarp
     PickAddress(const RouterContact& rc, AddressInfo& picked) const;
 
     bool
-    TryEstablishTo(const RouterContact& rc);
+    TryEstablishTo(RouterContact rc);
 
     bool
     Start(llarp::Logic* l);
@@ -93,6 +127,10 @@ namespace llarp
     bool
     GetOurAddressInfo(AddressInfo& addr) const;
 
+    bool
+    VisitSessionByPubkey(const byte_t* pk,
+                         std::function< bool(ILinkSession*) > visit);
+
     virtual uint16_t
     Rank() const = 0;
 
@@ -103,18 +141,34 @@ namespace llarp
     TransportPubKey() const;
 
     const byte_t*
+    RouterEncryptionSecret() const
+    {
+      return m_RouterEncSecret;
+    }
+
+    const byte_t*
     TransportSecretKey() const;
 
     bool
     EnsureKeys(const char* fpath);
 
+    bool
+    GenEphemeralKeys();
+
     void
     MapAddr(const byte_t* pk, ILinkSession* s);
 
-    virtual void
-    Tick(__attribute__((unused)) llarp_time_t now)
+    virtual void Tick(llarp_time_t)
     {
     }
+
+    LinkMessageHandler HandleMessage;
+    TimeoutHandler HandleTimeout;
+    SignBufferFunc Sign;
+    GetRCFunc GetOurRC;
+    SessionEstablishedHandler SessionEstablished;
+    SessionClosedHandler SessionClosed;
+    SessionRenegotiateHandler SessionRenegotiate;
 
    private:
     static void
@@ -133,6 +187,7 @@ namespace llarp
     ScheduleTick(uint64_t interval);
 
     uint32_t tick_id;
+    const byte_t* m_RouterEncSecret;
 
    protected:
     using Lock  = util::NullLock;

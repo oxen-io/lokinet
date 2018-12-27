@@ -179,10 +179,10 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
 namespace llarp
 {
   void
-  Router::HandleLinkSessionEstablished(llarp::RouterContact rc,
-                                       llarp::ILinkLayer *link)
+  Router::OnSessionEstablished(llarp::RouterContact rc)
   {
-    async_verify_RC(rc, link);
+    async_verify_RC(rc, nullptr);
+    llarp::LogInfo("session with ", rc.pubkey, "established");
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *_netloop,
@@ -327,16 +327,14 @@ namespace llarp
       {
         return;
       }
-      if(results[0].Verify(&crypto))
+      if(results[0].Verify(&crypto, Now()))
       {
         nodedb->Insert(results[0]);
         llarp_router_try_connect(this, results[0], 10);
+        return;
       }
     }
-    else
-    {
-      DiscardOutboundFor(remote);
-    }
+    DiscardOutboundFor(remote);
   }
 
   void
@@ -353,6 +351,17 @@ namespace llarp
   }
 
   void
+  Router::ForEachPeer(std::function< void(llarp::ILinkSession *) > visit)
+  {
+    outboundLink->ForEachSession(
+        [visit](llarp::ILinkSession *peer) { visit(peer); });
+    for(const auto &link : inboundLinks)
+    {
+      link->ForEachSession([visit](llarp::ILinkSession *peer) { visit(peer); });
+    }
+  }
+
+  void
   Router::try_connect(fs::path rcfile)
   {
     llarp::RouterContact remote;
@@ -361,7 +370,7 @@ namespace llarp
       llarp::LogError("failure to decode or verify of remote RC");
       return;
     }
-    if(remote.Verify(&crypto))
+    if(remote.Verify(&crypto, Now()))
     {
       llarp::LogDebug("verified signature");
       // store into filesystem
@@ -427,7 +436,7 @@ namespace llarp
   Router::SaveRC()
   {
     llarp::LogDebug("verify RC signature");
-    if(!rc().Verify(&crypto))
+    if(!rc().Verify(&crypto, Now()))
     {
       rc().Dump< MAX_RC_SIZE >();
       llarp::LogError("RC is invalid, not saving");
@@ -551,7 +560,7 @@ namespace llarp
       return;
     for(const auto &rc : results)
     {
-      if(rc.Verify(&crypto))
+      if(rc.Verify(&crypto, Now()))
         nodedb->Insert(rc);
       else
         return;
@@ -596,9 +605,9 @@ namespace llarp
   }
 
   void
-  Router::OnConnectTimeout(const llarp::RouterID &remote)
+  Router::OnConnectTimeout(ILinkSession *session)
   {
-    auto itr = pendingEstablishJobs.find(remote);
+    auto itr = pendingEstablishJobs.find(session->GetPubKey());
     if(itr != pendingEstablishJobs.end())
     {
       itr->second->AttemptTimedout();
@@ -631,11 +640,92 @@ namespace llarp
     return validRouters.size();
   }
 
+  bool
+  Router::UpdateOurRC(bool rotateKeys)
+  {
+    llarp::SecretKey nextOnionKey;
+    llarp::RouterContact nextRC = _rc;
+    if(rotateKeys)
+    {
+      crypto.encryption_keygen(nextOnionKey);
+      nextRC.enckey = llarp::seckey_topublic(nextOnionKey);
+    }
+    nextRC.last_updated = Now();
+    if(!nextRC.Sign(&crypto, identity))
+      return false;
+    _rc = nextRC;
+    if(rotateKeys)
+    {
+      encryption = nextOnionKey;
+      // propagate RC by renegotiating sessions
+      ForEachPeer([](llarp::ILinkSession *s) {
+        if(s->RenegotiateSession())
+          llarp::LogInfo("renegotiated session");
+        else
+          llarp::LogWarn("failed to renegotiate session");
+      });
+    }
+    // TODO: do this async
+    return SaveRC();
+  }  // namespace llarp
+
+  bool
+  Router::CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc)
+  {
+    // missmatch of identity ?
+    if(newrc.pubkey != oldrc.pubkey)
+      return false;
+
+    // store it in nodedb async
+    nodedb->InsertAsync(newrc);
+    // update dht if required
+    if(dht->impl.nodes->HasNode(newrc.pubkey.data()))
+    {
+      dht->impl.nodes->PutNode(newrc);
+    }
+    // update valid routers
+    {
+      auto itr = validRouters.find(newrc.pubkey);
+      if(itr == validRouters.end())
+        validRouters[newrc.pubkey] = newrc;
+      else
+        itr->second = newrc;
+    }
+    // TODO: check for other places that need updating the RC
+    return true;
+  }
+
+  void
+  Router::ServiceNodeLookupRouterWhenExpired(RouterID router)
+  {
+    dht->impl.LookupRouter(router,
+                           std::bind(&Router::HandleDHTLookupForExplore, this,
+                                     router, std::placeholders::_1));
+  }
+
   void
   Router::Tick()
   {
     // llarp::LogDebug("tick router");
     auto now = llarp_ev_loop_time_now_ms(netloop);
+
+    if(_rc.ExpiresSoon(now, llarp::randint() % 10000))
+    {
+      llarp::LogInfo("regenerating RC");
+      if(!UpdateOurRC(IsServiceNode()))
+        llarp::LogError("Failed to update our RC");
+    }
+
+    if(IsServiceNode())
+    {
+      // only do this as service node
+      // client endpoints do this on their own
+      nodedb->visit([&](const RouterContact &rc) -> bool {
+        if(rc.ExpiresSoon(now, llarp::randint() % 10000))
+          ServiceNodeLookupRouterWhenExpired(rc.pubkey);
+        return true;
+      });
+    }
     paths.TickPaths(now);
     paths.ExpirePaths(now);
     {
@@ -698,6 +788,12 @@ namespace llarp
       rpcCaller->Tick(now);
   }
 
+  bool
+  Router::Sign(llarp::Signature &sig, llarp_buffer_t buf) const
+  {
+    return crypto.sign(sig, identity, buf);
+  }
+
   void
   Router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
                  llarp::ILinkLayer *selected)
@@ -742,7 +838,7 @@ namespace llarp
   }
 
   void
-  Router::SessionClosed(const llarp::RouterID &remote)
+  Router::SessionClosed(llarp::RouterID remote)
   {
     __llarp_dht_remove_peer(dht, remote);
     // remove from valid routers if it's a valid router
@@ -753,7 +849,7 @@ namespace llarp
   llarp::ILinkLayer *
   Router::GetLinkWithSessionByPubkey(const llarp::RouterID &pubkey)
   {
-    if(outboundLink->HasSessionTo(pubkey))
+    if(outboundLink && outboundLink->HasSessionTo(pubkey))
       return outboundLink.get();
     for(const auto &link : inboundLinks)
     {
@@ -953,7 +1049,8 @@ namespace llarp
       // TODO: enable this once the network can serialize xi
       //_rc.exits.emplace_back(_rc.pubkey, a);
       llarp::LogInfo(
-          "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your exit "
+          "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your "
+          "exit "
           "is advertised as exiting at ",
           a);
     }
@@ -1094,6 +1191,8 @@ namespace llarp
     self->nodedb->visit(
         [self, &want](const llarp::RouterContact &other) -> bool {
           // check if we really want to
+          if(other.ExpiresSoon(self->Now(), 30000))
+            return want > 0;
           if(!self->ConnectionToRouterAllowed(other.pubkey))
             return want > 0;
           if(llarp::randint() % 2 == 0
@@ -1192,7 +1291,7 @@ namespace llarp
     if(outboundLink)
       return true;
 
-    auto link = llarp::utp::NewServer(this);
+    auto link = llarp::utp::NewServerFromRouter(this);
 
     if(!link->EnsureKeys(transport_keyfile.string().c_str()))
     {
@@ -1229,7 +1328,8 @@ namespace llarp
     auto itr = netConfigDefaults.begin();
     while(itr != netConfigDefaults.end())
     {
-      if(netConfig.count(itr->first) == 0)
+      auto found = netConfig.find(itr->first);
+      if(found == netConfig.end() || found->second.empty())
       {
         netConfig.emplace(std::make_pair(itr->first, itr->second()));
       }
@@ -1293,7 +1393,7 @@ namespace llarp
     {
       if(!StrEq(key, "*"))
       {
-        auto server = llarp::utp::NewServer(self);
+        auto server = llarp::utp::NewServerFromRouter(self);
         if(!server->EnsureKeys(self->transport_keyfile.string().c_str()))
         {
           llarp::LogError("failed to ensure keyfile ", self->transport_keyfile);
@@ -1414,9 +1514,15 @@ namespace llarp
     {
       self->bootstrapRCList.emplace_back();
       auto &rc = self->bootstrapRCList.back();
-      if(rc.Read(val) && rc.Verify(&self->crypto))
+      if(rc.Read(val) && rc.Verify(&self->crypto, self->Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey.data()));
+      }
+      else if(self->Now() - rc.last_updated > RouterContact::Lifetime)
+      {
+        llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey.data()),
+                       " is too old and needs to be refreshed");
+        self->bootstrapRCList.pop_back();
       }
       else
       {
@@ -1426,6 +1532,20 @@ namespace llarp
     }
     else if(StrEq(section, "router"))
     {
+      if(StrEq(key, "netid"))
+      {
+        if(strlen(val) <= self->_rc.netID.size())
+        {
+          llarp::LogWarn("!!!! you have manually set netid to be '", val,
+                         "' which does not equal '", LLARP_NET_ID,
+                         "' you will run as a different network, good luck and "
+                         "don't forget: something something MUH traffic shape "
+                         "correlation !!!!");
+          llarp::NetID::DefaultValue = (const byte_t *)strdup(val);
+        }
+        else
+          llarp::LogError("invalid netid '", val, "', is too long");
+      }
       if(StrEq(key, "nickname"))
       {
         self->_rc.SetNick(val);

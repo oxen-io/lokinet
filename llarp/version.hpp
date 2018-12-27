@@ -6,11 +6,11 @@
 #endif
 
 #ifndef LLARP_VERSION_MIN
-#define LLARP_VERSION_MIN "3"
+#define LLARP_VERSION_MIN "4"
 #endif
 
 #ifndef LLARP_VERSION_PATCH
-#define LLARP_VERSION_PATCH "1"
+#define LLARP_VERSION_PATCH "0"
 #endif
 
 #ifndef LLARP_VERSION_NUM
@@ -27,6 +27,10 @@
 
 #ifndef LLARP_RELEASE_MOTTO
 #define LLARP_RELEASE_MOTTO "(dev build)"
+#endif
+
+#ifndef LLARP_NET_ID
+#define LLARP_NET_ID "testnet"
 #endif
 
 #endif

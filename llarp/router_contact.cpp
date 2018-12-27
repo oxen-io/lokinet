@@ -12,6 +12,54 @@
 
 namespace llarp
 {
+  const byte_t *NetID::DefaultValue = (const byte_t *)LLARP_NET_ID;
+
+  bool RouterContact::IgnoreBogons = false;
+
+#ifdef TESTNET
+  // 1 minute for testnet
+  llarp_time_t RouterContact::Lifetime = 60 * 1000;
+#else
+  /// 1 day for real network
+  llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
+#endif
+  NetID::NetID() : AlignedBuffer< 8 >(DefaultValue)
+  {
+  }
+
+  bool
+  NetID::operator==(const NetID &other) const
+  {
+    return memcmp(data(), other.data(), size()) == 0;
+  }
+
+  std::string
+  NetID::ToString() const
+  {
+    size_t l = strnlen((const char *)data(), size());
+    return std::string((const char *)data(), l);
+  }
+
+  bool
+  NetID::BDecode(llarp_buffer_t *buf)
+  {
+    Zero();
+    llarp_buffer_t strbuf;
+    if(!bencode_read_string(buf, &strbuf))
+      return false;
+    if(strbuf.sz > 8)
+      return false;
+    memcpy(data(), strbuf.base, strbuf.sz);
+    return true;
+  }
+
+  bool
+  NetID::BEncode(llarp_buffer_t *buf) const
+  {
+    size_t l = strnlen((const char *)data(), size());
+    return bencode_write_bytestring(buf, data(), l);
+  }
+
   bool
   RouterContact::BEncode(llarp_buffer_t *buf) const
   {
@@ -25,6 +73,11 @@ namespace llarp
     if(!BEncodeWriteList(addrs.begin(), addrs.end(), buf))
       return false;
 
+    /* write netid */
+    if(!bencode_write_bytestring(buf, "i", 1))
+      return false;
+    if(!netID.BEncode(buf))
+      return false;
     /* write signing pubkey */
     if(!bencode_write_bytestring(buf, "k", 1))
       return false;
@@ -48,7 +101,7 @@ namespace llarp
       return false;
 
     /* write last updated */
-    if(!bencode_write_bytestring(buf, "u", 1))
+    if(!bencode_write_bytestring(buf, "t", 1))
       return false;
     if(!bencode_write_uint64(buf, last_updated))
       return false;
@@ -90,6 +143,9 @@ namespace llarp
     if(!BEncodeMaybeReadDictList("a", addrs, read, key, buf))
       return false;
 
+    if(!BEncodeMaybeReadDictEntry("i", netID, read, key, buf))
+      return false;
+
     if(!BEncodeMaybeReadDictEntry("k", pubkey, read, key, buf))
       return false;
 
@@ -111,7 +167,7 @@ namespace llarp
     if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
       return false;
 
-    if(!BEncodeMaybeReadDictInt("u", last_updated, read, key, buf))
+    if(!BEncodeMaybeReadDictInt("t", last_updated, read, key, buf))
       return false;
 
     if(!BEncodeMaybeReadDictList("x", exits, read, key, buf))
@@ -142,6 +198,22 @@ namespace llarp
     memcpy(nickname, nick.c_str(), std::min(nick.size(), nickname.size()));
   }
 
+  bool
+  RouterContact::IsExpired(llarp_time_t now) const
+  {
+    auto expiresAt = last_updated + Lifetime;
+    return now >= expiresAt;
+  }
+
+  bool
+  RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
+  {
+    if(IsExpired(now))
+      return true;
+    auto expiresAt = last_updated + Lifetime;
+    return expiresAt - now <= dlt;
+  }
+
   std::string
   RouterContact::Nick() const
   {
@@ -165,11 +237,15 @@ namespace llarp
   }
 
   bool
-  RouterContact::Verify(llarp::Crypto *crypto) const
+  RouterContact::Verify(llarp::Crypto *crypto, llarp_time_t now) const
   {
+    if(netID != NetID())
+      return false;
+    if(IsExpired(now))
+      return false;
     for(const auto &a : addrs)
     {
-      if(IsBogon(a.ip))
+      if(IsBogon(a.ip) && !IgnoreBogons)
       {
         llarp::LogError("invalid address info: ", a);
         return false;
