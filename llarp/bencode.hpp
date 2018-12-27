@@ -63,7 +63,7 @@ namespace llarp
     {
       if(!item.BDecode(buf))
       {
-        llarp::LogWarnTag("llarp/BEncode.hpp", "failed to decode key ", k,
+        llarp::LogWarnTag("llarp/bencode.hpp", "failed to decode key ", k,
                           " for entry in dict");
 
         return false;
@@ -261,7 +261,9 @@ namespace llarp
         return true;
       if(DecodeKey(*k, val))
         return true;
-      llarp::LogError("unhandled key '", *k->cur, "'");
+      llarp::LogWarnTag("llarp/bencode.hpp", "undefined key '", *k->cur,
+                        "' for entry in dict");
+
       return false;
     }
 

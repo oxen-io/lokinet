@@ -82,7 +82,7 @@ namespace llarp
   {
     crypto = std::unique_ptr< llarp::Crypto >(
         new llarp::Crypto{llarp::Crypto::sodium{}});
-    nodedb = new llarp_nodedb(crypto.get());
+    nodedb = new llarp_nodedb(crypto.get(), router->disk);
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
@@ -129,8 +129,6 @@ namespace llarp
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
-    if(!this->LoadDatabase())
-      return -1;
     llarp_ev_loop_alloc(&mainloop);
 
     // ensure worker thread pool
@@ -150,7 +148,9 @@ namespace llarp
       logic = new Logic;
 
     router = new Router(worker, mainloop, logic);
-
+    // must be done after router is made so we can use its disk io worker
+    if(!this->LoadDatabase())
+      return 1;
     if(!router->Configure(config))
     {
       llarp::LogError("Failed to configure router");

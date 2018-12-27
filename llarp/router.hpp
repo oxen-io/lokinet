@@ -90,6 +90,9 @@ namespace llarp
     llarp_threadpool *disk;
     llarp_dht_context *dht = nullptr;
 
+    bool
+    Sign(Signature &sig, llarp_buffer_t buf) const;
+
     llarp_nodedb *nodedb;
 
     // buffer for serializing link messages
@@ -189,7 +192,7 @@ namespace llarp
     ~Router();
 
     void
-    HandleLinkSessionEstablished(llarp::RouterContact, llarp::ILinkLayer *);
+    OnSessionEstablished(llarp::RouterContact rc);
 
     bool
     HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);
@@ -260,7 +263,7 @@ namespace llarp
     }
 
     void
-    OnConnectTimeout(const llarp::RouterID &remote);
+    OnConnectTimeout(ILinkSession *session);
 
     bool
     HasPendingConnectJob(const llarp::RouterID &remote);
@@ -305,6 +308,10 @@ namespace llarp
     void
     TryEstablishTo(const llarp::RouterID &remote);
 
+    /// lookup a router by pubkey when it expires when we are a service node
+    void
+    ServiceNodeLookupRouterWhenExpired(llarp::RouterID remote);
+
     void
     HandleDHTLookupForExplore(
         llarp::RouterID remote,
@@ -314,13 +321,23 @@ namespace llarp
     ForEachPeer(
         std::function< void(const llarp::ILinkSession *, bool) > visit) const;
 
+    void
+    ForEachPeer(std::function< void(llarp::ILinkSession *) > visit);
+
+    /// check if newRc matches oldRC and update local rc for this remote contact
+    /// if valid
+    /// returns true on valid and updated
+    /// returns false otherwise
+    bool
+    CheckRenegotiateValid(RouterContact newRc, RouterContact oldRC);
+
     /// flush outbound message queue
     void
     FlushOutbound();
 
-    /// called by link when a remote session is expunged
+    /// called by link when a remote session has no more sessions open
     void
-    SessionClosed(const llarp::RouterID &remote);
+    SessionClosed(RouterID remote);
 
     /// call internal router ticker
     void

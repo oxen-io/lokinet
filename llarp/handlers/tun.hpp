@@ -124,6 +124,10 @@ namespace llarp
       huint32_t
       ObtainIPForAddr(const byte_t* addr, bool serviceNode) override;
 
+      /// flush network traffic
+      void
+      Flush();
+
      protected:
       using PacketQueue_t = llarp::util::CoDelQueue<
           net::IPv4Packet, net::IPv4Packet::GetTime, net::IPv4Packet::PutTime,

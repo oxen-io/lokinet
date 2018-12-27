@@ -64,21 +64,22 @@ extern "C"
     if((dev = (struct device *)malloc(sizeof(*dev))) == NULL)
       return NULL;
     dev->obtain_fd = nullptr;
-    dev->user = nullptr;
+    dev->user      = nullptr;
     (void)memset(dev->if_name, '\0', sizeof(dev->if_name));
     dev->tun_fd    = TUNFD_INVALID_VALUE;
     dev->ctrl_sock = -1;
     dev->flags     = 0;
 
-	__tuntap_log = &tuntap_log_default;
+    __tuntap_log = &tuntap_log_default;
     return dev;
   }
 
   void
   tuntap_destroy(struct device *dev)
   {
-    tuntap_sys_destroy(dev);
     tuntap_release(dev);
+    tuntap_sys_destroy(dev);
+    free(dev);
   }
 
   char *

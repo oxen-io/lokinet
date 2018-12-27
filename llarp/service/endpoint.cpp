@@ -11,7 +11,9 @@ namespace llarp
   namespace service
   {
     Endpoint::Endpoint(const std::string& name, llarp::Router* r)
-        : path::Builder(r, r->dht, 6, 4), m_Router(r), m_Name(name)
+        : path::Builder(r, r->dht, 6, DEFAULT_HOP_LENGTH)
+        , m_Router(r)
+        , m_Name(name)
     {
       m_Tag.Zero();
     }
@@ -738,7 +740,7 @@ namespace llarp
         job->nodedb                = m_Router->nodedb;
         job->cryptoworker          = m_Router->tp;
         job->diskworker            = m_Router->disk;
-        job->logic                 = nullptr;
+        job->logic                 = m_Router->logic;
         job->hook                  = nullptr;
         job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
@@ -755,25 +757,31 @@ namespace llarp
       RouterContact rc;
       if(!m_Router->nodedb->Get(router, rc))
       {
-        if(m_PendingRouters.find(router) == m_PendingRouters.end())
-        {
-          auto path = GetEstablishedPathClosestTo(router);
-          routing::DHTMessage msg;
-          auto txid = GenTXID();
-          msg.M.emplace_back(new dht::FindRouterMessage(txid, router));
-
-          if(path && path->SendRoutingMessage(&msg, m_Router))
-          {
-            llarp::LogInfo(Name(), " looking up ", router);
-            m_PendingRouters.insert(
-                std::make_pair(router, RouterLookupJob(this)));
-          }
-          else
-          {
-            llarp::LogError("failed to send request for router lookup");
-          }
-        }
+        LookupRouterAnon(router);
       }
+    }
+
+    bool
+    Endpoint::LookupRouterAnon(RouterID router)
+    {
+      if(m_PendingRouters.find(router) == m_PendingRouters.end())
+      {
+        auto path = GetEstablishedPathClosestTo(router);
+        routing::DHTMessage msg;
+        auto txid = GenTXID();
+        msg.M.emplace_back(new dht::FindRouterMessage(txid, router));
+
+        if(path && path->SendRoutingMessage(&msg, m_Router))
+        {
+          llarp::LogInfo(Name(), " looking up ", router);
+          m_PendingRouters.insert(
+              std::make_pair(router, RouterLookupJob(this)));
+          return true;
+        }
+        else
+          llarp::LogError("failed to send request for router lookup");
+      }
+      return false;
     }
 
     void
@@ -1019,7 +1027,8 @@ namespace llarp
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& introset,
                                                Endpoint* parent)
-        : path::Builder(parent->m_Router, parent->m_Router->dht, 3, 4)
+        : path::Builder(parent->m_Router, parent->m_Router->dht, 3,
+                        DEFAULT_HOP_LENGTH)
         , SendContext(introset.A, {}, this, parent)
         , currentIntroSet(introset)
 
