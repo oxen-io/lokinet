@@ -78,9 +78,9 @@ namespace llarp
       if(!path)
         return true;
       auto lastPing = path->LastRemoteActivityAt();
-      if(now > lastPing && now - lastPing > timeout)
+      if(lastPing && now > lastPing && now - lastPing > timeout)
         return now > m_LastActive && now - m_LastActive > timeout;
-      return true;
+      return lastPing > 0;
     }
 
     bool
