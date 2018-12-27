@@ -28,8 +28,7 @@ struct llarp_nodedb_iter
 
 struct llarp_nodedb
 {
-  llarp_nodedb(llarp::Crypto *c, llarp_threadpool *diskworker)
-      : crypto(c), disk(diskworker)
+  llarp_nodedb(llarp::Crypto *c) : crypto(c)
   {
   }
 
@@ -39,7 +38,6 @@ struct llarp_nodedb
   }
 
   llarp::Crypto *crypto;
-  llarp_threadpool *disk;
   llarp::util::Mutex access;
   std::unordered_map< llarp::RouterID, llarp::RouterContact,
                       llarp::RouterID::Hash >
@@ -64,10 +62,6 @@ struct llarp_nodedb
   /// insert and write to disk
   bool
   Insert(const llarp::RouterContact &rc);
-
-  /// insert and write to disk in background
-  void
-  InsertAsync(llarp::RouterContact rc);
 
   ssize_t
   Load(const fs::path &path);

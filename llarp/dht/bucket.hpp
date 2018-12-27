@@ -144,12 +144,6 @@ namespace llarp
           nodes.erase(itr);
       }
 
-      bool
-      HasNode(const Key_t& key) const
-      {
-        return nodes.find(key) != nodes.end();
-      }
-
       BucketStorage_t nodes;
     };
   }  // namespace dht

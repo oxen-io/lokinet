@@ -868,7 +868,6 @@ namespace llarp
         if(i->ifa_addr->sa_family == af)
         {
           llarp::Addr a(*i->ifa_addr);
-
           if(!a.IsBogon())
           {
             ifname = i->ifa_name;

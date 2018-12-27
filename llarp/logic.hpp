@@ -9,10 +9,11 @@ namespace llarp
 {
   class Logic
   {
-   public:
+   private:
     struct llarp_threadpool* thread;
     struct llarp_timer_context* timer;
 
+   public:
     Logic()
         : thread(llarp_init_same_process_threadpool())
         , timer(llarp_init_timer())

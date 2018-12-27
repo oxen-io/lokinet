@@ -128,8 +128,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::Sign(
-      std::function< bool(Signature&, llarp_buffer_t) > signer)
+  LinkIntroMessage::Sign(llarp::Crypto* c, const SecretKey& k)
   {
     Z.Zero();
     byte_t tmp[MaxSize] = {0};
@@ -138,7 +137,7 @@ namespace llarp
       return false;
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    return signer(Z, buf);
+    return c->sign(Z, k, buf);
   }
 
   bool
@@ -160,7 +159,7 @@ namespace llarp
       return false;
     }
     // verify RC
-    if(!rc.Verify(c, llarp::time_now_ms()))
+    if(!rc.Verify(c))
     {
       llarp::LogError("invalid RC in link intro");
       return false;

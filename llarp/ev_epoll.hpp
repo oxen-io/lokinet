@@ -389,8 +389,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
         if(ev)
         {
-          llarp::LogDebug(idx, " of ", result,
-                          " events=", std::to_string(events[idx].events));
           if(events[idx].events & EPOLLERR)
           {
             ev->error();

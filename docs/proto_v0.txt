@@ -41,7 +41,7 @@ see crypto_v0.txt
 
 wire protocol
 
-see wire-protocol.txt
+see iwp-v0.txt
 
 ---
 
@@ -135,30 +135,14 @@ router's full identity
 
 {
   a: [ one, or, many, AI, here ... ],
-  i: "<max 8 bytes network identifier>",
   k: "<32 bytes public long term identity signing key>",
   n: "<optional max 32 bytes router nickname>",
   p: "<32 bytes public path encryption key>",   
-  t: time_signed_at_milliseconds_since_epoch_uint64,
+  u: next_update_needed_milliseconds_since_epoch_uint64,
   v: 0,
   x: [ Exit, Infos ],
   z: "<64 bytes signature using identity key>"
 }
-
-
-RC.t is the timestamp of when this RC was signed.
-RC is valid for a maximum of 1 hour after which it MUST be resigned with the new
-timestamp.
-
-RC.i is set to the network identifier.
-
-only routers with the same network identifier may connect to each other.
-
-"testnet" for testnet.
-"lokinet" for the "official" lokinet mainline network.
-
-other values of RC.i indicate the router belongs to a network fork.
-
 
 service info (SI)
 

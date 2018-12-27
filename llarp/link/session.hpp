@@ -43,24 +43,14 @@ namespace llarp
 
     /// get remote public identity key
     std::function< const byte_t *(void) > GetPubKey;
-
     /// get remote address
-    std::function< Addr(void) > GetRemoteEndpoint;
-
-    // get remote rc
-    std::function< llarp::RouterContact(void) > GetRemoteRC;
+    std::function< const Addr &(void) > GetRemoteEndpoint;
 
     /// handle a valid LIM
     std::function< bool(const LinkIntroMessage *msg) > GotLIM;
 
     /// send queue current blacklog
     std::function< size_t(void) > SendQueueBacklog;
-
-    /// get parent link layer
-    std::function< ILinkLayer *(void) > GetLinkLayer;
-
-    /// renegotiate session when we have a new RC locally
-    std::function< bool(void) > RenegotiateSession;
   };
 }  // namespace llarp
 

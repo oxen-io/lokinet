@@ -659,9 +659,9 @@ namespace llarp
       std::vector< RouterID > closer;
       Key_t t(target.data());
       std::set< Key_t > found;
+      // TODO: also load from nodedb
       if(!nodes)
         return false;
-
       size_t nodeCount = nodes->Size();
       if(nodeCount == 0)
       {
@@ -706,7 +706,7 @@ namespace llarp
       bool
       Validate(const RouterContact &rc) const override
       {
-        if(!rc.Verify(parent->Crypto(), parent->Now()))
+        if(!rc.Verify(parent->Crypto()))
         {
           llarp::LogWarn("rc from lookup result is invalid");
           return false;

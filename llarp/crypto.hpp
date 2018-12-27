@@ -54,10 +54,6 @@ namespace llarp
   using sym_cipher_func =
       std::function< bool(llarp_buffer_t, const byte_t *, const byte_t *) >;
 
-  /// SD/SE(dst, src, key, nonce)
-  using sym_ciper_alt_func = std::function< bool(
-      llarp_buffer_t, llarp_buffer_t, const byte_t *, const byte_t *) >;
-
   /// H(result, body)
   using hash_func = std::function< bool(byte_t *, llarp_buffer_t) >;
 
@@ -81,8 +77,6 @@ namespace llarp
   {
     /// xchacha symettric cipher
     sym_cipher_func xchacha20;
-    /// xchacha symettric cipher (multibuffer)
-    sym_ciper_alt_func xchacha20_alt;
     /// path dh creator's side
     path_dh_func dh_client;
     /// path dh relay side

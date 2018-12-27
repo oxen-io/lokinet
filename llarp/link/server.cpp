@@ -3,22 +3,6 @@
 
 namespace llarp
 {
-  ILinkLayer::ILinkLayer(const byte_t* routerEncSecret, GetRCFunc getrc,
-                         LinkMessageHandler handler, SignBufferFunc signbuf,
-                         SessionEstablishedHandler establishedSession,
-                         SessionRenegotiateHandler reneg,
-                         TimeoutHandler timeout, SessionClosedHandler closed)
-      : HandleMessage(handler)
-      , HandleTimeout(timeout)
-      , Sign(signbuf)
-      , GetOurRC(getrc)
-      , SessionEstablished(establishedSession)
-      , SessionClosed(closed)
-      , SessionRenegotiate(reneg)
-      , m_RouterEncSecret(routerEncSecret)
-  {
-  }
-
   ILinkLayer::~ILinkLayer()
   {
   }
@@ -33,29 +17,6 @@ namespace llarp
   void
   ILinkLayer::ForEachSession(
       std::function< void(const ILinkSession*) > visit) const
-  {
-    auto itr = m_AuthedLinks.begin();
-    while(itr != m_AuthedLinks.end())
-    {
-      visit(itr->second.get());
-      ++itr;
-    }
-  }
-
-  bool
-  ILinkLayer::VisitSessionByPubkey(const byte_t* pk,
-                                   std::function< bool(ILinkSession*) > visit)
-  {
-    auto itr = m_AuthedLinks.find(pk);
-    if(itr != m_AuthedLinks.end())
-    {
-      return visit(itr->second.get());
-    }
-    return false;
-  }
-
-  void
-  ILinkLayer::ForEachSession(std::function< void(ILinkSession*) > visit)
   {
     auto itr = m_AuthedLinks.begin();
     while(itr != m_AuthedLinks.end())
@@ -87,13 +48,13 @@ namespace llarp
   void
   ILinkLayer::Pump()
   {
-    auto _now = Now();
+    auto _now = now();
     {
       Lock lock(m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
-        if(itr->second.get() && !itr->second->TimedOut(_now))
+        if(!itr->second->TimedOut(_now))
         {
           itr->second->Pump();
           ++itr;
@@ -112,7 +73,7 @@ namespace llarp
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
-        if(itr->get() && !(*itr)->TimedOut(_now))
+        if(!(*itr)->TimedOut(_now))
         {
           (*itr)->Pump();
           ++itr;
@@ -163,7 +124,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::TryEstablishTo(RouterContact rc)
+  ILinkLayer::TryEstablishTo(const RouterContact& rc)
   {
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
@@ -286,12 +247,6 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::GenEphemeralKeys()
-  {
-    return KeyGen(m_SecretKey);
-  }
-
-  bool
   ILinkLayer::EnsureKeys(const char* f)
   {
     fs::path fpath(f);
@@ -324,8 +279,7 @@ namespace llarp
   void
   ILinkLayer::OnTick(uint64_t interval)
   {
-    auto now = Now();
-    Tick(now);
+    Tick(now());
     ScheduleTick(interval);
   }
 

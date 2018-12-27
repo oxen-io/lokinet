@@ -23,9 +23,6 @@
 #include <vector>
 
 #define MAXHOPS (8)
-#ifndef DEFAULT_HOP_LENGTH
-#define DEFAULT_HOP_LENGTH (4)
-#endif
 #define DEFAULT_PATH_LIFETIME (10 * 60 * 1000)
 #define PATH_BUILD_TIMEOUT (30 * 1000)
 #define MESSAGE_PAD_SIZE (128)
@@ -493,7 +490,7 @@ namespace llarp
 
       // Is this deprecated?
       // nope not deprecated :^DDDD
-      PathID_t
+      const PathID_t&
       TXID() const;
 
       RouterID
@@ -505,7 +502,7 @@ namespace llarp
       bool
       IsEndpoint(const RouterID& router, const PathID_t& path) const;
 
-      PathID_t
+      const PathID_t&
       RXID() const;
 
       RouterID

@@ -7,9 +7,9 @@
 struct AbyssTestBase : public ::testing::Test
 {
   llarp::Crypto crypto;
-  llarp_threadpool* threadpool = nullptr;
-  llarp_ev_loop* loop          = nullptr;
-  std::unique_ptr< llarp::Logic > logic;
+  llarp_threadpool* threadpool         = nullptr;
+  llarp_ev_loop* loop                  = nullptr;
+  llarp::Logic* logic                  = nullptr;
   abyss::httpd::BaseReqHandler* server = nullptr;
   abyss::http::JSONRPC* client         = nullptr;
   const std::string method             = "test.method";
@@ -28,7 +28,6 @@ struct AbyssTestBase : public ::testing::Test
   void
   SetUp()
   {
-    llarp::SetLogLevel(llarp::eLogDebug);
     // for llarp::randint
   }
 
@@ -40,18 +39,12 @@ struct AbyssTestBase : public ::testing::Test
     static_cast< AbyssTestBase* >(u)->Stop();
   }
 
-  static void
-  StopIt(void* u)
-  {
-    static_cast< AbyssTestBase* >(u)->Stop();
-  }
-
   void
   Start()
   {
     threadpool = llarp_init_same_process_threadpool();
     llarp_ev_loop_alloc(&loop);
-    logic.reset(new llarp::Logic(threadpool));
+    logic = new llarp::Logic(threadpool);
 
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -60,7 +53,7 @@ struct AbyssTestBase : public ::testing::Test
     llarp::Addr a(addr);
     while(true)
     {
-      if(server->ServeAsync(loop, logic.get(), a))
+      if(server->ServeAsync(loop, logic, a))
       {
         client->RunAsync(loop, a.ToString());
         logic->call_later({1000, this, &CancelIt});
@@ -73,25 +66,23 @@ struct AbyssTestBase : public ::testing::Test
   void
   Stop()
   {
-    llarp::LogDebug("test case Stop() called");
     if(server)
       server->Close();
+    logic->stop();
     llarp_ev_loop_stop(loop);
-  }
-
-  void
-  AsyncStop()
-  {
-    logic->queue_job({this, &StopIt});
+    llarp_threadpool_stop(threadpool);
   }
 
   void
   TearDown()
   {
-    logic.reset();
-    llarp_ev_loop_free(&loop);
-    llarp_free_threadpool(&threadpool);
-    llarp::SetLogLevel(llarp::eLogInfo);
+    if(loop && threadpool && logic)
+    {
+      delete logic;
+      logic = nullptr;
+      llarp_ev_loop_free(&loop);
+      llarp_free_threadpool(&threadpool);
+    }
   }
 };
 
@@ -117,7 +108,7 @@ struct ClientHandler : public abyss::http::IRPCClientHandler
   bool
   HandleResponse(__attribute__((unused)) abyss::http::RPC_Response response)
   {
-    test->AsyncStop();
+    test->Stop();
     return true;
   }
 };
@@ -187,7 +178,7 @@ struct AbyssTest : public AbyssTestBase,
   void
   RunLoop()
   {
-    llarp_ev_loop_run_single_process(loop, threadpool, logic.get());
+    llarp_ev_loop_run_single_process(loop, threadpool, logic);
   }
 };
 

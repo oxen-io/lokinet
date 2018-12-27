@@ -66,31 +66,6 @@ llarp_nodedb::getRCFilePath(const byte_t *pubkey) const
   return filepath.string();
 }
 
-struct async_insert_rc
-{
-  llarp_nodedb *nodedb;
-  llarp::RouterContact rc;
-  async_insert_rc(llarp_nodedb *n, const llarp::RouterContact &r)
-      : nodedb(n), rc(r)
-  {
-  }
-};
-
-static void
-handle_async_insert_rc(void *u)
-{
-  async_insert_rc *job = static_cast< async_insert_rc * >(u);
-  job->nodedb->Insert(job->rc);
-  delete job;
-}
-
-void
-llarp_nodedb::InsertAsync(llarp::RouterContact rc)
-{
-  async_insert_rc *ctx = new async_insert_rc(this, rc);
-  llarp_threadpool_queue_job(disk, {ctx, &handle_async_insert_rc});
-}
-
 /// insert and write to disk
 bool
 llarp_nodedb::Insert(const llarp::RouterContact &rc)
@@ -169,7 +144,7 @@ llarp_nodedb::loadfile(const fs::path &fpath)
     llarp::LogError("failed to read file ", fpath);
     return false;
   }
-  if(!rc.Verify(crypto, llarp::time_now_ms()))
+  if(!rc.Verify(crypto))
   {
     llarp::LogError(fpath, " contains invalid RC");
     return false;
@@ -256,8 +231,7 @@ crypto_threadworker_verifyrc(void *user)
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
   llarp::RouterContact rc = verify_request->rc;
-  verify_request->valid =
-      rc.Verify(verify_request->nodedb->crypto, llarp::time_now_ms());
+  verify_request->valid   = rc.Verify(verify_request->nodedb->crypto);
   // if it's valid we need to set it
   if(verify_request->valid && rc.IsPublicRouter())
   {
@@ -268,6 +242,8 @@ crypto_threadworker_verifyrc(void *user)
   else
   {
     // callback to logic thread
+    if(!verify_request->valid)
+      llarp::LogWarn("RC is not valid, can't save to disk");
     verify_request->logic->queue_job(
         {verify_request, &logic_threadworker_callback});
   }
@@ -419,8 +395,7 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   auto sz = entries.size();
   if(sz < 3)
     return false;
-  size_t tries     = 5;
-  llarp_time_t now = llarp::time_now_ms();
+  size_t tries = 5;
   if(N)
   {
     do
@@ -438,7 +413,7 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
           continue;
         return false;
       }
-      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      if(itr->second.addrs.size())
       {
         result = itr->second;
         return true;
@@ -447,5 +422,15 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
     return false;
   }
   else
-    return false;
+  {
+    auto itr = entries.begin();
+    if(sz > 1)
+    {
+      auto idx = llarp::randint() % sz;
+      if(idx)
+        std::advance(itr, idx - 1);
+    }
+    result = itr->second;
+    return true;
+  }
 }

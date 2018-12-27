@@ -97,8 +97,7 @@ llarp_threadpool_tick(struct llarp_threadpool *pool)
       job = std::move(pool->jobs.front());
       pool->jobs.pop();
     }
-    if(job)
-      job();
+    job();
   }
 }
 
