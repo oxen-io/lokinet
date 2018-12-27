@@ -558,6 +558,7 @@ namespace llarp
         llarp::LogWarn("Failed to parse inbound routing message");
         return false;
       }
+      m_LastRecvMessage = r->Now();
       return true;
     }
 
