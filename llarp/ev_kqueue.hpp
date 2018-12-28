@@ -262,18 +262,16 @@ namespace llarp
     }
 
     int
-    read(byte_t* buf, size_t sz) override
+    read(byte_t* buf, size_t) override
     {
-// all BSDs have packet info
+// all BSDs have packet info except freebsd
 #ifdef __FreeBSD__
       const ssize_t offset = 0;
 #else
       const ssize_t offset = 4;
 #endif
-      // becuase reasons :^)
-      sz = 1500;
 
-      ssize_t ret = ::read(fd, buf, sz);
+      ssize_t ret = ::read(fd, buf, 1500);
       if(ret > offset && t->recvpkt)
       {
         buf += offset;
