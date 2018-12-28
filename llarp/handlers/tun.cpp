@@ -126,6 +126,11 @@ namespace llarp
       }
       if(k == "ifname")
       {
+        if(v.length() >= sizeof(tunif.ifname))
+        {
+          llarp::LogError(Name() + " ifname '", v, "' is too long");
+          return false;
+        }
         strncpy(tunif.ifname, v.c_str(), sizeof(tunif.ifname) - 1);
         llarp::LogInfo(Name() + " setting ifname to ", tunif.ifname);
         return true;

@@ -458,6 +458,11 @@ namespace llarp
       }
       if(k == "ifname")
       {
+        if(v.length() >= sizeof(m_Tun.ifname))
+        {
+          llarp::LogError(Name() + " ifname '", v, "' is too long");
+          return false;
+        }
         strncpy(m_Tun.ifname, v.c_str(), sizeof(m_Tun.ifname) - 1);
         llarp::LogInfo(Name(), " set ifname to ", m_Tun.ifname);
       }
