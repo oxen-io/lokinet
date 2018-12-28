@@ -23,14 +23,15 @@ namespace llarp
   /// 1 day for real network
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
-  NetID::NetID() : AlignedBuffer< 8 >(DefaultValue)
+  NetID::NetID() : AlignedBuffer< 8 >()
   {
+    memcpy(data(), DefaultValue, strnlen((const char *)DefaultValue, size()));
   }
 
   bool
   NetID::operator==(const NetID &other) const
   {
-    return memcmp(data(), other.data(), size()) == 0;
+    return ToString() == other.ToString();
   }
 
   std::string
@@ -47,7 +48,7 @@ namespace llarp
     llarp_buffer_t strbuf;
     if(!bencode_read_string(buf, &strbuf))
       return false;
-    if(strbuf.sz > 8)
+    if(strbuf.sz > size())
       return false;
     memcpy(data(), strbuf.base, strbuf.sz);
     return true;
@@ -239,10 +240,17 @@ namespace llarp
   bool
   RouterContact::Verify(llarp::Crypto *crypto, llarp_time_t now) const
   {
-    if(netID != NetID())
+    static const NetID networkNetID;
+    if(netID != networkNetID)
+    {
+      llarp::LogError("netid missmatch: '", netID, "' != '", networkNetID, "'");
       return false;
+    }
     if(IsExpired(now))
+    {
+      llarp::LogError("RC is expired");
       return false;
+    }
     for(const auto &a : addrs)
     {
       if(IsBogon(a.ip) && !IgnoreBogons)
@@ -256,7 +264,12 @@ namespace llarp
       if(IsBogonRange(exit.address, exit.netmask))
         return false;
     }
-    return VerifySignature(crypto);
+    if(!VerifySignature(crypto))
+    {
+      llarp::LogError("invalid signature");
+      return false;
+    }
+    return true;
   }
 
   bool
@@ -328,6 +341,7 @@ namespace llarp
     pubkey       = other.pubkey;
     nickname     = other.nickname;
     version      = other.version;
+    netID        = other.netID;
     return *this;
   }
 

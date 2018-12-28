@@ -621,6 +621,7 @@ set(TEST_SRC
   test/test_llarp_queue_manager.cpp
   test/test_llarp_queue.cpp
   test/test_llarp_thread_pool.cpp
+  test/test_router_contact.cpp
   test/test_service_address.cpp
   test/traffic_transfer_unittest.cpp
 )
