@@ -51,6 +51,8 @@ llarp_nodedb::Has(const byte_t *pk)
   return entries.find(pk) != entries.end();
 }
 
+/// skiplist directory is hex encoded first nibble
+/// skiplist filename is <base32encoded>.snode.signed
 std::string
 llarp_nodedb::getRCFilePath(const byte_t *pubkey) const
 {
@@ -60,9 +62,13 @@ llarp_nodedb::getRCFilePath(const byte_t *pubkey) const
                                                                      ftmp);
   std::string hexString(hexname);
   std::string skiplistDir;
-  skiplistDir += hexString[hexString.length() - 1];
-  hexString += RC_FILE_EXT;
-  fs::path filepath = nodePath / skiplistDir / hexString;
+
+  llarp::RouterID r(pubkey);
+  std::string fname = r.ToString();
+
+  skiplistDir += hexString[0];
+  fname += RC_FILE_EXT;
+  fs::path filepath = nodePath / skiplistDir / fname;
   return filepath.string();
 }
 
