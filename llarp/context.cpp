@@ -148,14 +148,16 @@ namespace llarp
       logic = new Logic;
 
     router = new Router(worker, mainloop, logic);
-    // must be done after router is made so we can use its disk io worker
-    if(!this->LoadDatabase())
-      return 1;
     if(!router->Configure(config))
     {
       llarp::LogError("Failed to configure router");
       return 1;
     }
+    // must be done after router is made so we can use its disk io worker
+    // must also be done after configure so that netid is properly set if it is
+    // provided by config
+    if(!this->LoadDatabase())
+      return 1;
     return 0;
   }
 

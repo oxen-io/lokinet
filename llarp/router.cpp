@@ -535,7 +535,8 @@ namespace llarp
   }
 
   bool
-  Router::ParseRoutingMessageBuffer(llarp_buffer_t buf, routing::IMessageHandler * h, PathID_t rxid)
+  Router::ParseRoutingMessageBuffer(llarp_buffer_t buf,
+                                    routing::IMessageHandler *h, PathID_t rxid)
   {
     return inbound_routing_msg_parser.ParseMessageBuffer(buf, h, rxid, this);
   }
@@ -1542,6 +1543,8 @@ namespace llarp
                          "don't forget: something something MUH traffic shape "
                          "correlation !!!!");
           llarp::NetID::DefaultValue = (const byte_t *)strdup(val);
+          // re set netid in our rc
+          self->_rc.netID = llarp::NetID();
         }
         else
           llarp::LogError("invalid netid '", val, "', is too long");
