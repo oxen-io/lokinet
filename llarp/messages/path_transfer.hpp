@@ -33,10 +33,12 @@ namespace llarp
       bool
       HandleMessage(IMessageHandler*, llarp::Router* r) const override;
 
-      void 
-      Clear() override 
+      void
+      Clear() override
       {
+        P.Zero();
         T.Clear();
+        Y.Zero();
       }
     };
 
