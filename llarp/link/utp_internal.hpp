@@ -33,7 +33,7 @@ namespace llarp
     constexpr size_t FragmentBufferSize =
         FragmentOverheadSize + FragmentBodySize;
 
-    static_assert(FragmentBufferSize == 1120);
+    static_assert(FragmentBufferSize == 1120, "Buffer size invalid");
 
     /// buffer for a single utp fragment
     using FragmentBuffer = llarp::AlignedBuffer< FragmentBufferSize >;
