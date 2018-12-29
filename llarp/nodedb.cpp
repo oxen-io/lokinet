@@ -209,7 +209,8 @@ logic_threadworker_callback(void *user)
 {
   llarp_async_verify_rc *verify_request =
       static_cast< llarp_async_verify_rc * >(user);
-  verify_request->hook(verify_request);
+  if(verify_request->hook)
+    verify_request->hook(verify_request);
 }
 
 // write it to disk

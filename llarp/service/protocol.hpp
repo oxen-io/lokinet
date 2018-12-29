@@ -80,6 +80,7 @@ namespace llarp
 
       ProtocolFrame() : llarp::routing::IMessage()
       {
+        Clear();
       }
 
       ~ProtocolFrame();
@@ -119,7 +120,11 @@ namespace llarp
       void
       Clear() override
       {
+        C.Zero();
         D.Clear();
+        T.Zero();
+        N.Zero();
+        Z.Zero();
       }
 
       bool
