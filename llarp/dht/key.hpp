@@ -16,7 +16,7 @@ namespace llarp
       }
 
       Key_t(const std::array< byte_t, SIZE >& val)
-          : llarp::AlignedBuffer< SIZE >(val.data())
+          : llarp::AlignedBuffer< SIZE >(val)
       {
       }
 
@@ -37,25 +37,25 @@ namespace llarp
       bool
       operator==(const Key_t& other) const
       {
-        return memcmp(data(), other.data(), SIZE) == 0;
+        return as_array() == other.as_array();
       }
 
       bool
       operator!=(const Key_t& other) const
       {
-        return memcmp(data(), other.data(), SIZE) != 0;
+        return as_array() != other.as_array();
       }
 
       bool
       operator<(const Key_t& other) const
       {
-        return memcmp(data(), other.data(), SIZE) < 0;
+        return as_array() < other.as_array();
       }
 
       bool
       operator>(const Key_t& other) const
       {
-        return memcmp(data(), other.data(), SIZE) > 0;
+        return as_array() > other.as_array();
       }
     };
   }  // namespace dht

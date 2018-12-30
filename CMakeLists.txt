@@ -618,6 +618,7 @@ set(TEST_SRC
   test/test_dnsd_unit.cpp
   test/test_dnslib.cpp
   test/test_llarp_aligned.cpp
+  test/test_llarp_dht_key.cpp
   test/test_llarp_queue_manager.cpp
   test/test_llarp_queue.cpp
   test/test_llarp_thread_pool.cpp
