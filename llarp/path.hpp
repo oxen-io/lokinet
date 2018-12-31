@@ -81,7 +81,7 @@ namespace llarp
           memcpy(&idx1, a.downstream, sizeof(std::size_t));
           memcpy(&idx2, a.txID, sizeof(std::size_t));
           memcpy(&idx3, a.rxID, sizeof(std::size_t));
-          return idx0 ^ idx1 ^ idx2;
+          return idx0 ^ idx1 ^ idx2 ^ idx3;
         }
       };
     };
