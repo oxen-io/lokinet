@@ -77,8 +77,14 @@ public class LokiNetActivity extends Activity {
 
 	public void runLokinetService()
 	{
-		startService(new Intent(LokiNetActivity.this,
-				LokinetService.class));
+    File f = new File(getFilesDir(), "lokinet.ini");
+    String status = Lokinet_JNI.startLokinet(f.getAbsolutePath());
+    if(!status.equalsIgnoreCase(Lokinet_JNI.STATUS_OK))
+    {
+      textView.setText(String.format("lokinet failed to start: %s", status));
+      return;
+    }
+    startService(new Intent(LokiNetActivity.this, LokiNetService.class));
 	}
 
 	@Override

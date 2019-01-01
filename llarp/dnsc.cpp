@@ -1,3 +1,4 @@
+#ifndef ANDROID
 #include <dnsc.hpp>
 #include <logger.hpp>
 #include <net.hpp>  // for llarp::Addr
@@ -819,3 +820,4 @@ llarp_dnsc_stop(__attribute__((unused)) struct dnsc_context *const dnsc)
   // delete(sockaddr_in *)dnsc->server;  // deallocation
   return true;
 }
+#endif

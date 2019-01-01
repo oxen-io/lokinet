@@ -1,3 +1,4 @@
+#ifndef ANDROID
 #include <dnsd.hpp>  // for llarp_handle_dnsd_recvfrom, dnsc
 #include <endian.hpp>
 #include <logger.hpp>
@@ -637,3 +638,4 @@ extern "C"
     }
   }
 }
+#endif
