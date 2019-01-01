@@ -292,6 +292,8 @@ tun_ev_loop(void* unused)
       // ok let's queue another read!
       ev->read(ev->readbuf, sizeof(ev->readbuf));
     }
+    if(ev->t->tick)
+      ev->t->tick(ev->t);
     delete pkt;  // don't leak
   }
   llarp::LogInfo("exit TUN event loop thread from system managed thread pool");
