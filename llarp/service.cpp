@@ -220,14 +220,15 @@ namespace llarp
     }
 
     bool
-    Identity::KeyExchange(path_dh_func dh, byte_t* result,
-                          const ServiceInfo& other, const byte_t* N) const
+    Identity::KeyExchange(path_dh_func dh, SharedSecret& result,
+                          const ServiceInfo& other,
+                          const KeyExchangeNonce& N) const
     {
       return dh(result, other.EncryptionPublicKey(), enckey, N);
     }
 
     bool
-    Identity::Sign(llarp::Crypto* c, byte_t* sig, llarp_buffer_t buf) const
+    Identity::Sign(Crypto* c, Signature& sig, llarp_buffer_t buf) const
     {
       return c->sign(sig, signkey, buf);
     }
@@ -273,12 +274,12 @@ namespace llarp
       if(!BDecode(&buf))
         return false;
 
-      const byte_t* ptr = nullptr;
+      ServiceInfo::OptNonce van;
       if(!vanity.IsZero())
-        ptr = vanity.data();
+        van = vanity;
       // update pubkeys
       pub.Update(llarp::seckey_topublic(enckey),
-                 llarp::seckey_topublic(signkey), ptr);
+                 llarp::seckey_topublic(signkey), van);
       return true;
     }
 

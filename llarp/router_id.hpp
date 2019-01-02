@@ -32,7 +32,7 @@ namespace llarp
     RouterID&
     operator=(const byte_t* ptr)
     {
-      memcpy(data(), ptr, SIZE);
+      std::copy(ptr, ptr + SIZE, begin());
       return *this;
     }
 

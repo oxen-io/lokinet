@@ -15,9 +15,9 @@ namespace llarp
     struct IMessage : public llarp::IBEncodeMessage
     {
       llarp::PathID_t from;
-      uint64_t S = 0;
+      uint64_t S;
 
-      IMessage() : llarp::IBEncodeMessage()
+      IMessage() : llarp::IBEncodeMessage(), S(0)
       {
       }
 
@@ -26,11 +26,10 @@ namespace llarp
       virtual bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const = 0;
 
-      virtual void 
+      virtual void
       Clear() = 0;
     };
 
-    
   }  // namespace routing
 }  // namespace llarp
 

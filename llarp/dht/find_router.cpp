@@ -16,26 +16,25 @@ namespace llarp
       auto &dht = ctx->impl;
       /// lookup for us, send an immeidate reply
       Key_t us = dht.OurKey();
+      Key_t k{K};
       if(K == us)
       {
         auto path = dht.router->paths.GetByUpstream(K, pathID);
         if(path)
         {
           replies.emplace_back(
-              new GotRouterMessage(K.data(), txid, {dht.router->rc()}, false));
+              new GotRouterMessage(k, txid, {dht.router->rc()}, false));
           return true;
         }
         return false;
       }
 
       Key_t peer;
-      Key_t k = K.data();
       // check if we know this in our nodedb first
       RouterContact found;
       if(dht.router->nodedb->Get(K, found))
       {
-        replies.emplace_back(
-            new GotRouterMessage(K.data(), txid, {found}, false));
+        replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;
       }
       // lookup if we don't have it in our nodedb
@@ -124,7 +123,7 @@ namespace llarp
         if(strbuf.sz != K.size())
           return false;
 
-        memcpy(K.data(), strbuf.base, K.size());
+        std::copy(strbuf.base, strbuf.base + K.SIZE, K.begin());
         return true;
       }
       if(llarp_buffer_eq(key, "T"))
@@ -156,16 +155,16 @@ namespace llarp
         return false;
       }
       RouterContact found;
+      Key_t k{K};
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
       else if(dht.router->nodedb->Get(K, found))
       {
-        replies.emplace_back(
-            new GotRouterMessage(K.data(), txid, {found}, false));
+        replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;
       }
       else
-        dht.LookupRouterRelayed(From, txid, K.data(), !iterative, replies);
+        dht.LookupRouterRelayed(From, txid, k, !iterative, replies);
       return true;
     }
   }  // namespace dht

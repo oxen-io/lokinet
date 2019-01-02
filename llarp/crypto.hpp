@@ -40,49 +40,135 @@ static constexpr uint32_t PATHIDSIZE    = 16;
 
 namespace llarp
 {
+  using SharedSecret     = AlignedBuffer< SHAREDKEYSIZE >;
+  using KeyExchangeNonce = AlignedBuffer< 32 >;
+
+  struct PubKey final : public AlignedBuffer< PUBKEYSIZE >
+  {
+    PubKey() : AlignedBuffer< SIZE >()
+    {
+    }
+
+    explicit PubKey(const byte_t *ptr) : AlignedBuffer< SIZE >(ptr)
+    {
+    }
+
+    explicit PubKey(const Data &data) : AlignedBuffer< SIZE >(data)
+    {
+    }
+
+    explicit PubKey(const AlignedBuffer< SIZE > &other)
+        : AlignedBuffer< SIZE >(other)
+    {
+    }
+
+    std::string
+    ToString() const;
+
+    bool
+    FromString(const std::string &str);
+
+    friend std::ostream &
+    operator<<(std::ostream &out, const PubKey &k)
+    {
+      return out << k.ToString();
+    }
+
+    operator RouterID() const
+    {
+      return RouterID(as_array());
+    }
+
+    PubKey &
+    operator=(const byte_t *ptr)
+    {
+      std::copy(ptr, ptr + SIZE, begin());
+      return *this;
+    }
+  };
+
+  struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
+  {
+    friend std::ostream &
+    operator<<(std::ostream &out, const SecretKey &)
+    {
+      // make sure we never print out secret keys
+      return out << "[secretkey]";
+    }
+
+    PubKey
+    toPublic() const
+    {
+      return PubKey(data() + 32);
+    }
+
+    bool
+    LoadFromFile(const char *fname);
+
+    bool
+    SaveToFile(const char *fname) const;
+
+    SecretKey &
+    operator=(const byte_t *ptr)
+    {
+      std::copy(ptr, ptr + SIZE, begin());
+      return *this;
+    }
+  };
+
+  using ShortHash   = AlignedBuffer< SHORTHASHSIZE >;
+  using Signature   = AlignedBuffer< SIGSIZE >;
+  using TunnelNonce = AlignedBuffer< TUNNONCESIZE >;
+  using SymmNonce   = AlignedBuffer< NONCESIZE >;
+  using SymmKey     = AlignedBuffer< 32 >;
+
+  using PQCipherBlock = AlignedBuffer< PQ_CIPHERTEXTSIZE + 1 >;
+  using PQPubKey      = AlignedBuffer< PQ_PUBKEYSIZE >;
+  using PQKeyPair     = AlignedBuffer< PQ_KEYPAIRSIZE >;
+
   /// label functors
 
   /// PKE(result, publickey, secretkey, nonce)
-  using path_dh_func = std::function< bool(byte_t *, const byte_t *,
-                                           const byte_t *, const byte_t *) >;
+  using path_dh_func = std::function< bool(
+      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
 
   /// TKE(result, publickey, secretkey, nonce)
   using transport_dh_func = std::function< bool(
-      byte_t *, const byte_t *, const byte_t *, const byte_t *) >;
+      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
 
   /// SD/SE(buffer, key, nonce)
-  using sym_cipher_func =
-      std::function< bool(llarp_buffer_t, const byte_t *, const byte_t *) >;
+  using sym_cipher_func = std::function< bool(
+      llarp_buffer_t, const SharedSecret &, const TunnelNonce &) >;
 
   /// SD/SE(dst, src, key, nonce)
-  using sym_ciper_alt_func = std::function< bool(
-      llarp_buffer_t, llarp_buffer_t, const byte_t *, const byte_t *) >;
+  using sym_cipher_alt_func = std::function< bool(
+      llarp_buffer_t, llarp_buffer_t, const SharedSecret &, const byte_t *) >;
 
   /// H(result, body)
   using hash_func = std::function< bool(byte_t *, llarp_buffer_t) >;
 
   /// SH(result, body)
-  using shorthash_func = std::function< bool(byte_t *, llarp_buffer_t) >;
+  using shorthash_func = std::function< bool(ShortHash &, llarp_buffer_t) >;
 
   /// MDS(result, body, shared_secret)
   using hmac_func =
-      std::function< bool(byte_t *, llarp_buffer_t, const byte_t *) >;
+      std::function< bool(byte_t *, llarp_buffer_t, const SharedSecret &) >;
 
   /// S(sig, secretkey, body)
   using sign_func =
-      std::function< bool(byte_t *, const byte_t *, llarp_buffer_t) >;
+      std::function< bool(Signature &, const SecretKey &, llarp_buffer_t) >;
 
   /// V(pubkey, body, sig)
   using verify_func =
-      std::function< bool(const byte_t *, llarp_buffer_t, const byte_t *) >;
+      std::function< bool(const PubKey &, llarp_buffer_t, const Signature &) >;
 
   /// library crypto configuration
   struct Crypto
   {
-    /// xchacha symettric cipher
+    /// xchacha symmetric cipher
     sym_cipher_func xchacha20;
-    /// xchacha symettric cipher (multibuffer)
-    sym_ciper_alt_func xchacha20_alt;
+    /// xchacha symmetric cipher (multibuffer)
+    sym_cipher_alt_func xchacha20_alt;
     /// path dh creator's side
     path_dh_func dh_client;
     /// path dh relay side
@@ -106,15 +192,17 @@ namespace llarp
     /// randomizer memory
     std::function< void(void *, size_t) > randbytes;
     /// generate signing keypair
-    std::function< void(byte_t *) > identity_keygen;
+    std::function< void(SecretKey &) > identity_keygen;
     /// generate encryption keypair
-    std::function< void(byte_t *) > encryption_keygen;
+    std::function< void(SecretKey &) > encryption_keygen;
     /// generate post quantum encrytion key
-    std::function< void(byte_t *) > pqe_keygen;
+    std::function< void(PQKeyPair &) > pqe_keygen;
     /// post quantum decrypt (buffer, sharedkey_dst, sec)
-    std::function< bool(const byte_t *, byte_t *, const byte_t *) > pqe_decrypt;
+    std::function< bool(const PQCipherBlock &, SharedSecret &, const byte_t *) >
+        pqe_decrypt;
     /// post quantum encrypt (buffer, sharedkey_dst,  pub)
-    std::function< bool(byte_t *, byte_t *, const byte_t *) > pqe_encrypt;
+    std::function< bool(PQCipherBlock &, SharedSecret &, const PQPubKey &) >
+        pqe_encrypt;
 
     // Give a basic type tag for the constructor to pick libsodium
     struct sodium
@@ -129,79 +217,13 @@ namespace llarp
   randint();
 
   const byte_t *
-  seckey_topublic(const byte_t *secret);
+  seckey_topublic(const SecretKey &secret);
 
   const byte_t *
-  pq_keypair_to_public(const byte_t *keypair);
+  pq_keypair_to_public(const PQKeyPair &keypair);
 
   const byte_t *
-  pq_keypair_to_secret(const byte_t *keypair);
-
-  using SharedSecret     = AlignedBuffer< SHAREDKEYSIZE >;
-  using KeyExchangeNonce = AlignedBuffer< 32 >;
-
-  struct PubKey final : public AlignedBuffer< PUBKEYSIZE >
-  {
-    PubKey() : AlignedBuffer< PUBKEYSIZE >(){};
-    PubKey(const byte_t *ptr) : AlignedBuffer< PUBKEYSIZE >(ptr){};
-
-    std::string
-    ToString() const;
-
-    bool
-    FromString(const std::string &str);
-
-    friend std::ostream &
-    operator<<(std::ostream &out, const PubKey &k)
-    {
-      return out << k.ToString();
-    }
-
-    operator RouterID() const
-    {
-      return RouterID(data());
-    }
-
-    PubKey &
-    operator=(const byte_t *ptr)
-    {
-      memcpy(data(), ptr, size());
-      return *this;
-    }
-  };
-
-  struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
-  {
-    friend std::ostream &
-    operator<<(std::ostream &out, const SecretKey &)
-    {
-      // make sure we never print out secret keys
-      return out << "[secretkey]";
-    }
-
-    bool
-    LoadFromFile(const char *fname);
-
-    bool
-    SaveToFile(const char *fname) const;
-
-    SecretKey &
-    operator=(const byte_t *ptr)
-    {
-      memcpy(data(), ptr, size());
-      return *this;
-    }
-  };
-
-  using ShortHash   = AlignedBuffer< SHORTHASHSIZE >;
-  using Signature   = AlignedBuffer< SIGSIZE >;
-  using TunnelNonce = AlignedBuffer< TUNNONCESIZE >;
-  using SymmNonce   = AlignedBuffer< NONCESIZE >;
-  using SymmKey     = AlignedBuffer< 32 >;
-
-  using PQCipherBlock = AlignedBuffer< PQ_CIPHERTEXTSIZE + 1 >;
-  using PQPubKey      = AlignedBuffer< PQ_PUBKEYSIZE >;
-  using PQKeyPair     = AlignedBuffer< PQ_KEYPAIRSIZE >;
+  pq_keypair_to_secret(const PQKeyPair &keypair);
 
 }  // namespace llarp
 

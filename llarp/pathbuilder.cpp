@@ -56,18 +56,18 @@ namespace llarp
         return;
       }
       // generate nonceXOR valueself->hop->pathKey
-      ctx->crypto->shorthash(hop.nonceXOR, llarp::Buffer(hop.shared));
+      ctx->crypto->shorthash(hop.nonceXOR, hop.shared.as_buffer());
       ++ctx->idx;
 
       bool isFarthestHop = ctx->idx == ctx->path->hops.size();
 
       if(isFarthestHop)
       {
-        hop.upstream = hop.rc.pubkey.data();
+        hop.upstream = hop.rc.pubkey;
       }
       else
       {
-        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey.data();
+        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
       }
 
       // build record
@@ -90,7 +90,7 @@ namespace llarp
         delete ctx;
         return;
       }
-      // use ephameral keypair for frame
+      // use ephemeral keypair for frame
       SecretKey framekey;
       ctx->crypto->encryption_keygen(framekey);
       if(!frame.EncryptInPlace(framekey, hop.rc.enckey, ctx->crypto))
@@ -210,7 +210,7 @@ namespace llarp
       return keygens.load() > 0;
     }
 
-    const byte_t*
+    const SecretKey&
     Builder::GetTunnelEncryptionSecretKey() const
     {
       return enckey;
@@ -219,8 +219,7 @@ namespace llarp
     bool
     Builder::BuildCooldownHit(llarp_time_t now) const
     {
-      return now < lastBuild
-          || now - lastBuild < buildIntervalLimit;
+      return now < lastBuild || now - lastBuild < buildIntervalLimit;
     }
 
     bool
@@ -304,7 +303,8 @@ namespace llarp
     {
       // linear backoff
       static constexpr llarp_time_t MaxBuildInterval = 10 * 1000;
-      buildIntervalLimit = std::max(1000 + buildIntervalLimit, MaxBuildInterval);
+      buildIntervalLimit =
+          std::max(1000 + buildIntervalLimit, MaxBuildInterval);
       PathSet::HandlePathBuildTimeout(p);
     }
 

@@ -48,7 +48,7 @@ namespace llarp
       ShouldBuildMore(llarp_time_t now) const override;
 
       /// return true if we hit our soft limit for building paths too fast
-      bool 
+      bool
       BuildCooldownHit(llarp_time_t now) const;
 
       virtual bool
@@ -74,7 +74,7 @@ namespace llarp
       void
       ManualRebuild(size_t N, PathRole roles = ePathRoleAny);
 
-      virtual const byte_t*
+      virtual const SecretKey&
       GetTunnelEncryptionSecretKey() const;
 
       virtual void

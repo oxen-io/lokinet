@@ -42,7 +42,7 @@ namespace llarp
 
   struct ILinkLayer
   {
-    ILinkLayer(const byte_t* routerEncSecret, GetRCFunc getrc,
+    ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
                LinkMessageHandler handler, SignBufferFunc signFunc,
                SessionEstablishedHandler sessionEstablish,
                SessionRenegotiateHandler renegotiate, TimeoutHandler timeout,
@@ -57,7 +57,7 @@ namespace llarp
     }
 
     bool
-    HasSessionTo(const byte_t* pk);
+    HasSessionTo(const RouterID& pk);
 
     bool
     HasSessionVia(const Addr& addr);
@@ -82,7 +82,7 @@ namespace llarp
         llarp::LogWarn("no udp set");
         return;
       }
-      // maybe chekc from too?
+      // maybe check from too?
       // no it's never null
       static_cast< ILinkLayer* >(udp->user)->RecvFrom(*from, buf.base, buf.sz);
     }
@@ -116,19 +116,19 @@ namespace llarp
     Name() const = 0;
 
     void
-    CloseSessionTo(const byte_t* remote);
+    CloseSessionTo(const RouterID& remote);
 
     void
-    KeepAliveSessionTo(const byte_t* remote);
+    KeepAliveSessionTo(const RouterID& remote);
 
     bool
-    SendTo(const byte_t* remote, llarp_buffer_t buf);
+    SendTo(const RouterID& remote, llarp_buffer_t buf);
 
     bool
     GetOurAddressInfo(AddressInfo& addr) const;
 
     bool
-    VisitSessionByPubkey(const byte_t* pk,
+    VisitSessionByPubkey(const RouterID& pk,
                          std::function< bool(ILinkSession*) > visit);
 
     virtual uint16_t
@@ -140,13 +140,13 @@ namespace llarp
     const byte_t*
     TransportPubKey() const;
 
-    const byte_t*
+    const SecretKey&
     RouterEncryptionSecret() const
     {
       return m_RouterEncSecret;
     }
 
-    const byte_t*
+    const SecretKey&
     TransportSecretKey() const;
 
     bool
@@ -156,7 +156,7 @@ namespace llarp
     GenEphemeralKeys();
 
     void
-    MapAddr(const byte_t* pk, ILinkSession* s);
+    MapAddr(const RouterID& pk, ILinkSession* s);
 
     virtual void Tick(llarp_time_t)
     {
@@ -187,7 +187,7 @@ namespace llarp
     ScheduleTick(uint64_t interval);
 
     uint32_t tick_id;
-    const byte_t* m_RouterEncSecret;
+    const SecretKey& m_RouterEncSecret;
 
    protected:
     using Lock  = util::NullLock;

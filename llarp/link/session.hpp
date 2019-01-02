@@ -42,7 +42,7 @@ namespace llarp
     std::function< bool(llarp_time_t) > TimedOut;
 
     /// get remote public identity key
-    std::function< const byte_t *(void) > GetPubKey;
+    std::function< const PubKey &(void) > GetPubKey;
 
     /// get remote address
     std::function< Addr(void) > GetRemoteEndpoint;

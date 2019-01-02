@@ -22,7 +22,7 @@ llarp_dht_context_free(struct llarp_dht_context *ctx)
 void
 __llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 {
-  ctx->impl.nodes->DelNode(id);
+  ctx->impl.nodes->DelNode(llarp::dht::Key_t(id));
 }
 
 void
@@ -34,7 +34,7 @@ llarp_dht_allow_transit(llarp_dht_context *ctx)
 void
 llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
 {
-  ctx->impl.Init(key, ctx->parent, 20000);
+  ctx->impl.Init(llarp::dht::Key_t(key), ctx->parent, 20000);
 }
 
 void

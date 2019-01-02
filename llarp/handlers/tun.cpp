@@ -59,7 +59,7 @@ namespace llarp
       {
         llarp::RouterID exitRouter;
         if(!(exitRouter.FromString(v)
-             || HexDecode(v.c_str(), exitRouter, exitRouter.size())))
+             || HexDecode(v.c_str(), exitRouter.begin(), exitRouter.size())))
         {
           llarp::LogError(Name(), " bad exit router key: ", v);
           return false;
@@ -226,9 +226,9 @@ namespace llarp
         }
         else if(addr.FromString(qname, ".loki"))
         {
-          if(HasAddress(addr.data().data()))
+          if(HasAddress(addr))
           {
-            huint32_t ip = ObtainIPForAddr(addr.data().data(), false);
+            huint32_t ip = ObtainIPForAddr(addr, false);
             msg.AddINReply(ip);
           }
           else
@@ -242,8 +242,8 @@ namespace llarp
         else if(addr.FromString(qname, ".snode"))
         {
           // TODO: add hook to EnsurePathToSNode
-          EnsurePathToSNode(addr.data().data());
-          huint32_t ip = ObtainIPForAddr(addr.data().data(), true);
+          EnsurePathToSNode(addr.as_array());
+          huint32_t ip = ObtainIPForAddr(addr, true);
           msg.AddINReply(ip);
         }
         else
@@ -261,8 +261,8 @@ namespace llarp
           reply(msg);
           return true;
         }
-        llarp::service::Address addr =
-            ObtainAddrForIP< llarp::service::Address >(ip, true);
+        llarp::service::Address addr(
+            ObtainAddrForIP< llarp::service::Address >(ip, true));
         if(!addr.IsZero())
         {
           msg.AddAReply(addr.ToString(".snode"));
@@ -325,7 +325,7 @@ namespace llarp
     {
       if(ctx)
       {
-        huint32_t ip = ObtainIPForAddr(addr.data().data(), false);
+        huint32_t ip = ObtainIPForAddr(addr, false);
         request.AddINReply(ip);
       }
       else
@@ -343,14 +343,14 @@ namespace llarp
       {
         // XXX is calling inet_ntoa safe in this context? it's MP-unsafe
         llarp::LogWarn(ip, " already mapped to ",
-                       service::Address(itr->second).ToString());
+                       service::Address(itr->second.as_array()).ToString());
         return false;
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr[ip]                 = addr.data().data();
-      m_AddrToIP[addr.data().data()] = ip;
-      m_SNodes[addr.data().data()]   = SNode;
+      m_IPToAddr[ip]   = addr;
+      m_AddrToIP[addr] = ip;
+      m_SNodes[addr]   = SNode;
       MarkIPActiveForever(ip);
       return true;
     }
@@ -495,12 +495,12 @@ namespace llarp
         if(m_SNodes.at(itr->second))
         {
           sendFunc = std::bind(&TunEndpoint::SendToSNodeOrQueue, this,
-                               itr->second.data(), std::placeholders::_1);
+                               itr->second.as_array(), std::placeholders::_1);
         }
         else
         {
           sendFunc = std::bind(&TunEndpoint::SendToServiceOrQueue, this,
-                               itr->second.data(), std::placeholders::_1,
+                               itr->second.as_array(), std::placeholders::_1,
                                service::eProtocolTraffic);
         }
         // prepare packet for insertion into network
@@ -555,11 +555,11 @@ namespace llarp
     }
 
     huint32_t
-    TunEndpoint::ObtainIPForAddr(const byte_t *a, bool snode)
+    TunEndpoint::ObtainIPForAddr(const AlignedBuffer< 32 > &addr, bool snode)
     {
       llarp_time_t now = Now();
       huint32_t nextIP = {0};
-      AlignedBuffer< 32 > ident(a);
+      AlignedBuffer< 32 > ident(addr);
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(ident);

@@ -278,7 +278,7 @@ namespace llarp
       }
       // generate hash of hop key for nonce mutation
       self->context->Crypto()->shorthash(self->hop->nonceXOR,
-                                         llarp::Buffer(self->hop->pathKey));
+                                         self->hop->pathKey.as_buffer());
       if(self->record.work
          && self->record.work->IsValid(self->context->Crypto()->shorthash, now))
       {

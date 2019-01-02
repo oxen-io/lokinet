@@ -25,7 +25,9 @@ namespace llarp
 #endif
   NetID::NetID() : AlignedBuffer< 8 >()
   {
-    memcpy(data(), DefaultValue, strnlen((const char *)DefaultValue, size()));
+    size_t len =
+        strnlen(reinterpret_cast< const char * >(DefaultValue), size());
+    std::copy(DefaultValue, DefaultValue + len, begin());
   }
 
   bool
@@ -37,8 +39,8 @@ namespace llarp
   std::string
   NetID::ToString() const
   {
-    size_t l = strnlen((const char *)data(), size());
-    return std::string((const char *)data(), l);
+    auto term = std::find(begin(), end(), '\0');
+    return std::string(begin(), term);
   }
 
   bool
@@ -50,15 +52,16 @@ namespace llarp
       return false;
     if(strbuf.sz > size())
       return false;
-    memcpy(data(), strbuf.base, strbuf.sz);
+
+    std::copy(strbuf.base, strbuf.base + strbuf.sz, begin());
     return true;
   }
 
   bool
   NetID::BEncode(llarp_buffer_t *buf) const
   {
-    size_t l = strnlen((const char *)data(), size());
-    return bencode_write_bytestring(buf, data(), l);
+    auto term = std::find(begin(), end(), '\0');
+    return bencode_write_bytestring(buf, begin(), std::distance(begin(), term));
   }
 
   bool
@@ -158,7 +161,8 @@ namespace llarp
       if(strbuf.sz > nickname.size())
         return false;
       nickname.Zero();
-      memcpy(nickname.data(), strbuf.base, strbuf.sz);
+      std::copy(strbuf.base, strbuf.base + strbuf.sz,
+                nickname.begin());
       return true;
     }
 
@@ -196,7 +200,9 @@ namespace llarp
   RouterContact::SetNick(const std::string &nick)
   {
     nickname.Zero();
-    memcpy(nickname, nick.c_str(), std::min(nick.size(), nickname.size()));
+    std::copy(nick.begin(),
+              nick.begin() + std::min(nick.size(), nickname.size()),
+              nickname.begin());
   }
 
   bool
@@ -218,8 +224,8 @@ namespace llarp
   std::string
   RouterContact::Nick() const
   {
-    const char *n = (const char *)nickname.data();
-    return std::string(n, strnlen(n, nickname.size()));
+    auto term = std::find(nickname.begin(), nickname.end(), '\0');
+    return std::string(nickname.begin(), term);
   }
 
   bool

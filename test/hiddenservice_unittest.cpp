@@ -5,11 +5,10 @@
 
 struct HiddenServiceTest : public ::testing::Test
 {
-    llarp::Crypto crypto;
+  llarp::Crypto crypto;
   llarp::service::Identity ident;
 
-  HiddenServiceTest()
-  : crypto(llarp::Crypto::sodium{})
+  HiddenServiceTest() : crypto(llarp::Crypto::sodium{})
   {
   }
 
@@ -31,7 +30,7 @@ struct HiddenServiceTest : public ::testing::Test
 TEST_F(HiddenServiceTest, TestGenerateIntroSet)
 {
   llarp::service::Address addr;
-  ASSERT_TRUE(ident.pub.CalculateAddress(addr.data()));
+  ASSERT_TRUE(ident.pub.CalculateAddress(addr.as_array()));
   llarp::service::IntroSet I;
   auto now = llarp::time_now_ms();
   I.T      = now;

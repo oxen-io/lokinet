@@ -133,8 +133,19 @@ namespace llarp
   int
   char2int(char input);
 
+  template < typename OutputIt >
   bool
-  HexDecode(const char* src, uint8_t* target, size_t sz);
+  HexDecode(const char* src, OutputIt target, size_t sz)
+  {
+    while(*src && src[1] && sz)
+    {
+      *(target++) = char2int(*src) * 16 + char2int(src[1]);
+      src += 2;
+      --sz;
+    }
+    return sz == 0;
+  }
+
 }  // namespace llarp
 
 #endif

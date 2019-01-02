@@ -14,16 +14,4 @@ namespace llarp
       return input - 'a' + 10;
     return 0;
   }
-
-  bool
-  HexDecode(const char* src, uint8_t* target, size_t sz)
-  {
-    while(*src && src[1] && sz)
-    {
-      *(target++) = char2int(*src) * 16 + char2int(src[1]);
-      src += 2;
-      --sz;
-    }
-    return sz == 0;
-  }
 }  // namespace llarp

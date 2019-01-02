@@ -16,11 +16,11 @@ namespace llarp
   {
     struct Tag : public llarp::AlignedBuffer< 16 >
     {
-      Tag() : llarp::AlignedBuffer< 16 >()
+      Tag() : llarp::AlignedBuffer< SIZE >()
       {
       }
 
-      Tag(const byte_t* d) : llarp::AlignedBuffer< 16 >(d)
+      Tag(const byte_t* d) : llarp::AlignedBuffer< SIZE >(d)
       {
       }
 
@@ -28,20 +28,22 @@ namespace llarp
       {
         // evidently, does nothing on LP64 systems (where size_t is *already*
         // unsigned long but zero-extends this on LLP64 systems
-        memcpy(data(), str.c_str(), std::min(16UL, (unsigned long)str.size()));
+        std::copy(str.begin(), str.begin() + std::min(16UL, str.size()),
+                  begin());
       }
 
       Tag&
       operator=(const Tag& other)
       {
-        memcpy(data(), other.data(), 16);
+        as_array() = other.as_array();
         return *this;
       }
 
       Tag&
       operator=(const std::string& str)
       {
-        memcpy(data(), str.data(), std::min(16UL, (unsigned long)str.size()));
+        std::copy(str.begin(), str.begin() + std::min(16UL, str.size()),
+                  begin());
         return *this;
       }
 

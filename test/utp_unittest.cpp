@@ -230,7 +230,7 @@ TEST_F(UTPTest, TestAliceRenegWithBob)
       [&](llarp::RouterContact rc) {
         ASSERT_EQ(rc, Alice.GetRC());
         llarp::LogInfo("bob established with alice");
-        Bob.link->VisitSessionByPubkey(Alice.GetRC().pubkey.data(),
+        Bob.link->VisitSessionByPubkey(Alice.GetRC().pubkey.as_array(),
                                        sendDiscardMessage);
       },
       [&](llarp::RouterContact newrc, llarp::RouterContact oldrc) -> bool {
@@ -318,7 +318,7 @@ TEST_F(UTPTest, TestAliceConnectToBob)
       [&](llarp::RouterContact rc) {
         ASSERT_EQ(rc, Alice.GetRC());
         llarp::LogInfo("bob established with alice");
-        Bob.link->VisitSessionByPubkey(Alice.GetRC().pubkey.data(),
+        Bob.link->VisitSessionByPubkey(Alice.GetRC().pubkey.as_array(),
                                        sendDiscardMessage);
       },
       [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },

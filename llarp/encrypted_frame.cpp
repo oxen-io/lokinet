@@ -6,8 +6,8 @@
 namespace llarp
 {
   bool
-  EncryptedFrame::EncryptInPlace(const byte_t* ourSecretKey,
-                                 const byte_t* otherPubkey,
+  EncryptedFrame::EncryptInPlace(const SecretKey& ourSecretKey,
+                                 const PubKey& otherPubkey,
                                  llarp::Crypto* crypto)
   {
     // format of frame is
@@ -16,10 +16,10 @@ namespace llarp
     // <32 bytes pubkey>
     // <N bytes encrypted payload>
     //
-    byte_t* hash   = data();
-    byte_t* nonce  = hash + SHORTHASHSIZE;
-    byte_t* pubkey = nonce + TUNNONCESIZE;
-    byte_t* body   = pubkey + PUBKEYSIZE;
+    byte_t* hash     = data();
+    byte_t* noncePtr = hash + SHORTHASHSIZE;
+    byte_t* pubkey   = noncePtr + TUNNONCESIZE;
+    byte_t* body     = pubkey + PUBKEYSIZE;
 
     SharedSecret shared;
 
@@ -33,9 +33,10 @@ namespace llarp
     buf.sz   = size() - EncryptedFrameOverheadSize;
 
     // set our pubkey
-    memcpy(pubkey, llarp::seckey_topublic(ourSecretKey), PUBKEYSIZE);
+    memcpy(pubkey, ourSecretKey.toPublic().data(), PUBKEYSIZE);
     // randomize nonce
-    crypto->randbytes(nonce, TUNNONCESIZE);
+    crypto->randbytes(noncePtr, TUNNONCESIZE);
+    TunnelNonce nonce(noncePtr);
 
     // derive shared key
     if(!DH(shared, otherPubkey, ourSecretKey, nonce))
@@ -52,20 +53,20 @@ namespace llarp
     }
 
     // generate message auth
-    buf.base = nonce;
+    buf.base = noncePtr;
     buf.cur  = buf.base;
     buf.sz   = size() - SHORTHASHSIZE;
 
     if(!MDS(hash, buf, shared))
     {
-      llarp::LogError("Failed to generate messgae auth");
+      llarp::LogError("Failed to generate message auth");
       return false;
     }
     return true;
   }
 
   bool
-  EncryptedFrame::DecryptInPlace(const byte_t* ourSecretKey,
+  EncryptedFrame::DecryptInPlace(const SecretKey& ourSecretKey,
                                  llarp::Crypto* crypto)
   {
     // format of frame is
@@ -74,23 +75,18 @@ namespace llarp
     // <32 bytes pubkey>
     // <N bytes encrypted payload>
     //
-    byte_t* hash        = data();
-    byte_t* nonce       = hash + SHORTHASHSIZE;
-    byte_t* otherPubkey = nonce + TUNNONCESIZE;
-    byte_t* body        = otherPubkey + PUBKEYSIZE;
+    ShortHash hash(data());
+    byte_t* noncePtr = data() + SHORTHASHSIZE;
+    byte_t* body     = data() + EncryptedFrameOverheadSize;
+    TunnelNonce nonce(noncePtr);
+    PubKey otherPubkey(noncePtr + TUNNONCESIZE);
 
-    // use dh_server becuase we are not the creator of this message
+    // use dh_server because we are not the creator of this message
     auto DH      = crypto->dh_server;
     auto Decrypt = crypto->xchacha20;
     auto MDS     = crypto->hmac;
 
-    llarp_buffer_t buf;
-    buf.base = nonce;
-    buf.cur  = buf.base;
-    buf.sz   = size() - SHORTHASHSIZE;
-
     SharedSecret shared;
-    ShortHash digest;
 
     if(!DH(shared, otherPubkey, ourSecretKey, nonce))
     {
@@ -98,13 +94,19 @@ namespace llarp
       return false;
     }
 
-    if(!MDS(digest, buf, shared))
+    llarp_buffer_t buf;
+    buf.base = noncePtr;
+    buf.cur  = buf.base;
+    buf.sz   = size() - SHORTHASHSIZE;
+
+    ShortHash digest;
+    if(!MDS(digest.data(), buf, shared))
     {
       llarp::LogError("Digest failed");
       return false;
     }
 
-    if(memcmp(digest, hash, digest.size()))
+    if(!std::equal(digest.begin(), digest.end(), hash.begin()))
     {
       llarp::LogError("message authentication failed");
       return false;

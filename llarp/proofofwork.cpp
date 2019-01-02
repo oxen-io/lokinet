@@ -32,7 +32,7 @@ namespace llarp
     if(now - timestamp > (uint64_t(extendedLifetime) * 1000))
       return false;
 
-    byte_t digest[SHORTHASHSIZE];
+    ShortHash digest;
     byte_t tmp[MaxSize];
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
     // encode

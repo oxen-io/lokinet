@@ -37,8 +37,8 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
                              llarp::SecretKey &encryption);
 
 bool
-llarp_findOrCreateIdentity(struct llarp::Crypto *crypto, const char *path,
-                           byte_t *secretkey);
+llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *path,
+                           llarp::SecretKey &secretkey);
 
 struct TryConnectJob;
 
@@ -357,11 +357,12 @@ namespace llarp
     llarp::ILinkLayer *
     GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
-
-    /// parse a routing message in a buffer and handle it with a handler if successful parsing
-    /// return true on parse and handle success otherwise return false
+    /// parse a routing message in a buffer and handle it with a handler if
+    /// successful parsing return true on parse and handle success otherwise
+    /// return false
     bool
-    ParseRoutingMessageBuffer(llarp_buffer_t buf, routing::IMessageHandler * h, PathID_t rxid);
+    ParseRoutingMessageBuffer(llarp_buffer_t buf, routing::IMessageHandler *h,
+                              PathID_t rxid);
 
     void
     ConnectToRandomRouters(int N);

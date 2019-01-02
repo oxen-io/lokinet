@@ -7,7 +7,7 @@ namespace llarp
   bool
   PubKey::FromString(const std::string& str)
   {
-    return HexDecode(str.c_str(), data(), size());
+    return HexDecode(str.c_str(), begin(), size());
   }
 
   std::string
@@ -31,7 +31,8 @@ namespace llarp
     if(sz == size())
     {
       // is raw buffer
-      f.read((char*)data(), 64);
+      std::copy(std::istream_iterator< byte_t >(f),
+                std::istream_iterator< byte_t >(), begin());
       return true;
     }
     byte_t tmp[128];

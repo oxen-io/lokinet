@@ -91,7 +91,7 @@ namespace llarp
       Lock_t l(m_PathsMutex);
       Path* path = nullptr;
       AlignedBuffer< 32 > dist;
-      AlignedBuffer< 32 > to = id.data();
+      AlignedBuffer< 32 > to = id;
       dist.Fill(0xff);
       for(const auto& item : m_Paths)
       {

@@ -20,7 +20,7 @@ namespace llarp
 {
   namespace service
   {
-    // foward declare
+    // forward declare
     struct AsyncKeyExchange;
 
     struct Endpoint : public path::Builder,
@@ -104,10 +104,10 @@ namespace llarp
       HasPathToService(const Address& remote) const;
 
       virtual huint32_t
-      ObtainIPForAddr(const byte_t* addr, bool serviceNode) = 0;
+      ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
 
       virtual bool
-      HasAddress(const byte_t* addr) const = 0;
+      HasAddress(const AlignedBuffer< 32 >& addr) const = 0;
 
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
@@ -154,11 +154,11 @@ namespace llarp
       HandlePathBuilt(path::Path* path) override;
 
       bool
-      SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t payload,
+      SendToServiceOrQueue(const RouterID& addr, llarp_buffer_t payload,
                            ProtocolType t);
 
       bool
-      SendToSNodeOrQueue(const byte_t* addr, llarp_buffer_t payload);
+      SendToSNodeOrQueue(const RouterID& addr, llarp_buffer_t payload);
 
       void
       FlushSNodeTraffic();
@@ -177,7 +177,7 @@ namespace llarp
         llarp_buffer_t
         Buffer()
         {
-          return llarp::InitBuffer(payload.data(), payload.size());
+          return llarp::Buffer(payload);
         }
       };
 
@@ -351,7 +351,7 @@ namespace llarp
 
       bool
       GetCachedSessionKeyFor(const ConvoTag& remote,
-                             const byte_t*& secret) const override;
+                             SharedSecret& secret) const override;
       void
       PutCachedSessionKeyFor(const ConvoTag& remote,
                              const SharedSecret& secret) override;

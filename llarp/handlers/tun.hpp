@@ -111,18 +111,19 @@ namespace llarp
           return addr;
         }
         // found
-        return itr->second.data();
+        return Addr{itr->second};
       }
 
       bool
-      HasAddress(const byte_t* addr) const override
+      HasAddress(const AlignedBuffer< 32 >& addr) const override
       {
         return m_AddrToIP.find(addr) != m_AddrToIP.end();
       }
 
       /// get ip address for key unconditionally
       huint32_t
-      ObtainIPForAddr(const byte_t* addr, bool serviceNode) override;
+      ObtainIPForAddr(const AlignedBuffer< 32 >& addr,
+                      bool serviceNode) override;
 
       /// flush network traffic
       void

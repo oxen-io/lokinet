@@ -7,7 +7,7 @@ namespace llarp
     std::string
     Tag::ToString() const
     {
-      return std::string((const char *)data());
+      return std::string(begin(), end());
     }
   }  // namespace service
 }  // namespace llarp

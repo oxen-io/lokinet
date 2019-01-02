@@ -462,12 +462,12 @@ namespace llarp
 
     bool
     Endpoint::GetCachedSessionKeyFor(const ConvoTag& tag,
-                                     const byte_t*& secret) const
+                                     SharedSecret& secret) const
     {
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
         return false;
-      secret = itr->second.sharedKey.data();
+      secret = itr->second.sharedKey;
       return true;
     }
 
@@ -563,7 +563,7 @@ namespace llarp
     Endpoint::PublishIntroSet(llarp::Router* r)
     {
       // publish via near router
-      RouterID location = m_Identity.pub.Addr().data().data();
+      RouterID location = m_Identity.pub.Addr().as_array();
       auto path         = GetEstablishedPathClosestTo(location);
       return path && PublishIntroSetVia(r, path);
     }
@@ -696,7 +696,7 @@ namespace llarp
     Endpoint::PutNewOutboundContext(const llarp::service::IntroSet& introset)
     {
       Address addr;
-      introset.A.CalculateAddress(addr.data());
+      introset.A.CalculateAddress(addr.as_array());
 
       if(m_RemoteSessions.count(addr) >= MAX_OUTBOUND_CONTEXT_COUNT)
       {
@@ -858,10 +858,9 @@ namespace llarp
       if(msg->proto == eProtocolTraffic)
       {
         auto buf = llarp::Buffer(msg->payload);
-        return HandleWriteIPPacket(
-            buf,
-            std::bind(&Endpoint::ObtainIPForAddr, this,
-                      msg->sender.Addr().data().data(), false));
+        return HandleWriteIPPacket(buf,
+                                   std::bind(&Endpoint::ObtainIPForAddr, this,
+                                             msg->sender.Addr(), false));
       }
       else if(msg->proto == eProtocolText)
       {
@@ -1139,7 +1138,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToSNodeOrQueue(const byte_t* addr, llarp_buffer_t buf)
+    Endpoint::SendToSNodeOrQueue(const RouterID& addr, llarp_buffer_t buf)
     {
       llarp::net::IPv4Packet pkt;
       if(!pkt.Load(buf))
@@ -1162,10 +1161,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t data,
+    Endpoint::SendToServiceOrQueue(const RouterID& addr, llarp_buffer_t data,
                                    ProtocolType t)
     {
-      service::Address remote(addr);
+      service::Address remote(addr.as_array());
 
       // inbound converstation
       auto now = Now();
@@ -1184,7 +1183,7 @@ namespace llarp
             return false;
           }
           Introduction remoteIntro;
-          const byte_t* K = nullptr;
+          SharedSecret K;
           for(const auto& tag : tags)
           {
             if(tag.IsZero())
@@ -1470,17 +1469,22 @@ namespace llarp
         // derive ntru session key component
         SharedSecret K;
         self->crypto->pqe_encrypt(self->frame.C, K, self->introPubKey);
-        // randomize Nounce
+        // randomize Nonce
         self->frame.N.Randomize();
         // compure post handshake session key
-        byte_t tmp[64];
-        // K
-        memcpy(tmp, K, 32);
         // PKE (A, B, N)
-        if(!self->m_LocalIdentity.KeyExchange(self->crypto->dh_client, tmp + 32,
-                                              self->remote, self->frame.N))
+        SharedSecret sharedSecret;
+        if(!self->m_LocalIdentity.KeyExchange(self->crypto->dh_client,
+                                              sharedSecret, self->remote,
+                                              self->frame.N))
+        {
           llarp::LogError("failed to derive x25519 shared key component");
+        }
+        std::array< byte_t, 64 > tmp;
+        // K
+        std::copy(K.begin(), K.end(), tmp.begin());
         // H (K + PKE(A, B, N))
+        std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
         self->crypto->shorthash(self->sharedKey,
                                 llarp::StackBuffer< decltype(tmp) >(tmp));
         // set tag
@@ -1561,7 +1565,7 @@ namespace llarp
           llarp::LogError("Failed to send frame on path");
       }
       else
-        llarp::LogError("cannot send becuase we have no path to ",
+        llarp::LogError("cannot send because we have no path to ",
                         remoteIntro.router);
     }
 
@@ -1583,7 +1587,7 @@ namespace llarp
       if(randomizePath)
         path = m_Endpoint->PickRandomEstablishedPath();
       else
-        path = m_Endpoint->GetEstablishedPathClosestTo(addr.data());
+        path = m_Endpoint->GetEstablishedPathClosestTo(addr.as_array());
 
       if(path)
       {
@@ -1705,8 +1709,8 @@ namespace llarp
     Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
                                             ProtocolType t)
     {
-      auto crypto          = m_Endpoint->Router()->crypto;
-      const byte_t* shared = nullptr;
+      auto crypto = m_Endpoint->Router()->crypto;
+      SharedSecret shared;
       routing::PathTransferMessage msg;
       ProtocolFrame& f = msg.T;
       f.N.Randomize();

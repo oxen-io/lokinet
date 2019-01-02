@@ -35,7 +35,7 @@ namespace llarp
       Zero();
     }
 
-    AlignedBuffer(const byte_t* data)
+    explicit AlignedBuffer(const byte_t* data)
     {
       new(&val) Data;
       auto& b = as_array();
@@ -45,10 +45,10 @@ namespace llarp
       }
     }
 
-    AlignedBuffer(const Data& buf)
+    explicit AlignedBuffer(const Data& buf)
     {
       new(&val) Data;
-      std::copy(buf.begin(), buf.end(), as_array().begin());
+      std::copy(buf.begin(), buf.end(), begin());
     }
 
     AlignedBuffer&
@@ -74,8 +74,7 @@ namespace llarp
     operator~() const
     {
       AlignedBuffer< sz > ret;
-      std::transform(as_array().begin(), as_array().end(),
-                     ret.as_array().begin(), [](byte_t a) { return ~a; });
+      std::transform(begin(), end(), ret.begin(), [](byte_t a) { return ~a; });
 
       return ret;
     }
@@ -120,8 +119,7 @@ namespace llarp
     operator^(const AlignedBuffer& other) const
     {
       AlignedBuffer< sz > ret;
-      std::transform(as_array().begin(), as_array().end(),
-                     other.as_array().begin(), ret.as_array().begin(),
+      std::transform(begin(), end(), other.begin(), ret.begin(),
                      std::bit_xor< byte_t >());
       return ret;
     }
@@ -130,13 +128,23 @@ namespace llarp
     operator^=(const AlignedBuffer& other)
     {
       // Mutate in place instead.
-      // Well defined for std::transform,
-
       for(size_t i = 0; i < as_array().size(); ++i)
       {
         as_array()[i] ^= other.as_array()[i];
       }
       return *this;
+    }
+
+    byte_t& operator[](size_t idx)
+    {
+      assert(idx < SIZE);
+      return as_array()[idx];
+    }
+
+    const byte_t& operator[](size_t idx) const
+    {
+      assert(idx < SIZE);
+      return as_array()[idx];
     }
 
     static constexpr size_t
@@ -163,27 +171,6 @@ namespace llarp
       return reinterpret_cast< const Data& >(val);
     }
 
-    bool
-    IsZero() const
-    {
-      auto notZero = [](byte_t b) { return b != 0; };
-
-      return std::find_if(as_array().begin(), as_array().end(), notZero)
-          == as_array().end();
-    }
-
-    void
-    Zero()
-    {
-      as_array().fill(0);
-    }
-
-    void
-    Randomize()
-    {
-      randombytes(as_array().data(), SIZE);
-    }
-
     byte_t*
     data()
     {
@@ -196,30 +183,64 @@ namespace llarp
       return as_array().data();
     }
 
-    operator const byte_t*() const
+    bool
+    IsZero() const
     {
-      return as_array().data();
+      auto notZero = [](byte_t b) { return b != 0; };
+
+      return std::find_if(begin(), end(), notZero) == end();
     }
 
-    operator byte_t*()
+    void
+    Zero()
     {
-      return as_array().data();
+      as_array().fill(0);
     }
 
-    operator const Data&() const
+    void
+    Randomize()
     {
-      return as_array();
+      randombytes(data(), SIZE);
     }
 
-    operator Data&()
+    typename Data::iterator
+    begin()
     {
-      return as_array();
+      return as_array().begin();
+    }
+
+    typename Data::iterator
+    end()
+    {
+      return as_array().end();
+    }
+
+    typename Data::const_iterator
+    begin() const
+    {
+      return as_array().cbegin();
+    }
+
+    typename Data::const_iterator
+    end() const
+    {
+      return as_array().cend();
+    }
+
+    llarp_buffer_t
+    as_buffer()
+    {
+      llarp_buffer_t buff;
+      buff.base = data();
+      buff.cur  = buff.base;
+      buff.sz   = size();
+      return buff;
     }
 
     bool
     BEncode(llarp_buffer_t* buf) const
     {
-      return bencode_write_bytestring(buf, as_array().data(), sz);
+      return bencode_write_bytestring(buf, data(), sz);
     }
 
     bool
@@ -235,7 +256,7 @@ namespace llarp
         llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
         return false;
       }
-      memcpy(as_array().data(), strbuf.base, sz);
+      memcpy(data(), strbuf.base, sz);
       return true;
     }
 
@@ -251,7 +272,7 @@ namespace llarp
       size_t
       operator()(const AlignedBuffer& buf) const
       {
-        return std::accumulate(buf.as_array().begin(), buf.as_array().end(), 0,
+        return std::accumulate(buf.begin(), buf.end(), 0,
                                std::bit_xor< size_t >());
       }
     };

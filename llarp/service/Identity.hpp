@@ -40,8 +40,8 @@ namespace llarp
       EnsureKeys(const std::string& fpath, llarp::Crypto* c);
 
       bool
-      KeyExchange(llarp::path_dh_func dh, byte_t* sharedkey,
-                  const ServiceInfo& other, const byte_t* N) const;
+      KeyExchange(llarp::path_dh_func dh, SharedSecret& sharedkey,
+                  const ServiceInfo& other, const KeyExchangeNonce& N) const;
 
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
@@ -50,7 +50,7 @@ namespace llarp
       SignIntroSet(IntroSet& i, llarp::Crypto* c, llarp_time_t now) const;
 
       bool
-      Sign(llarp::Crypto*, byte_t* sig, llarp_buffer_t buf) const;
+      Sign(llarp::Crypto*, Signature& sig, llarp_buffer_t buf) const;
     };
   }  // namespace service
 }  // namespace llarp

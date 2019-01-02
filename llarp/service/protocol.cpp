@@ -154,7 +154,7 @@ namespace llarp
 
     bool
     ProtocolFrame::DecryptPayloadInto(llarp::Crypto* crypto,
-                                      const byte_t* sharedkey,
+                                      const SharedSecret& sharedkey,
                                       ProtocolMessage& msg) const
     {
       Encrypted_t tmp = D;
@@ -166,7 +166,7 @@ namespace llarp
     bool
     ProtocolFrame::EncryptAndSign(llarp::Crypto* crypto,
                                   const ProtocolMessage& msg,
-                                  const byte_t* sessionKey,
+                                  const SharedSecret& sessionKey,
                                   const Identity& localIdent)
     {
       byte_t tmp[MAX_PROTOCOL_MESSAGE_SIZE];
@@ -266,11 +266,9 @@ namespace llarp
           delete self;
           return;
         }
-        byte_t tmp[64];
-        // K
-        memcpy(tmp, K, 32);
         // PKE (A, B, N)
-        if(!self->m_LocalIdentity.KeyExchange(crypto->dh_server, tmp + 32,
+        SharedSecret sharedSecret;
+        if(!self->m_LocalIdentity.KeyExchange(crypto->dh_server, sharedSecret,
                                               self->msg->sender, self->frame.N))
         {
           llarp::LogError("x25519 key exchange failed");
@@ -279,7 +277,11 @@ namespace llarp
           delete self;
           return;
         }
+        std::array< byte_t, 64 > tmp;
+        // K
+        std::copy(K.begin(), K.end(), tmp.begin());
         // S = HS( K + PKE( A, B, N))
+        std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
         crypto->shorthash(sharedKey, StackBuffer< decltype(tmp) >(tmp));
 
         self->handler->PutIntroFor(self->msg->tag, self->msg->introReply);
@@ -323,7 +325,7 @@ namespace llarp
         llarp_threadpool_queue_job(worker, {dh, &AsyncFrameDecrypt::Work});
         return true;
       }
-      const byte_t* shared = nullptr;
+      SharedSecret shared;
       if(!handler->GetCachedSessionKeyFor(T, shared))
       {
         llarp::LogError("No cached session for T=", T);

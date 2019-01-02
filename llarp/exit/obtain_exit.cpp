@@ -6,21 +6,6 @@ namespace llarp
 {
   namespace routing
   {
-    ObtainExitMessage&
-    ObtainExitMessage::operator=(const ObtainExitMessage& other)
-    {
-      B       = other.B;
-      E       = other.E;
-      I       = other.I;
-      T       = other.T;
-      W       = other.W;
-      X       = other.X;
-      version = other.version;
-      S       = other.S;
-      Z       = other.Z;
-      return *this;
-    }
-
     bool
     ObtainExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
@@ -29,7 +14,9 @@ namespace llarp
       I                = llarp::seckey_topublic(sk);
       Z.Zero();
       if(!BEncode(&buf))
+      {
         return false;
+      }
       buf.sz = buf.cur - buf.base;
       return c->sign(Z, sk, buf);
     }
@@ -43,7 +30,9 @@ namespace llarp
       copy = *this;
       copy.Z.Zero();
       if(!copy.BEncode(&buf))
+      {
         return false;
+      }
       // rewind buffer
       buf.sz = buf.cur - buf.base;
       return c->verify(I, buf, Z);

@@ -19,13 +19,13 @@ namespace llarp
       }
 
       huint32_t
-      ObtainIPForAddr(const byte_t *, bool) override
+      ObtainIPForAddr(const AlignedBuffer< 32 > &, bool) override
       {
         return {0};
       }
 
       bool
-      HasAddress(const byte_t *) const override
+      HasAddress(const AlignedBuffer< 32 > &) const override
       {
         return false;
       }
