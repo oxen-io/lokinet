@@ -141,7 +141,8 @@ namespace llarp
     }
 
     bool
-    Context::FindBestAddressFor(const byte_t *addr, bool isSNode, huint32_t &ip)
+    Context::FindBestAddressFor(const llarp::AlignedBuffer< 32 > &addr,
+                                bool isSNode, huint32_t &ip)
     {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())

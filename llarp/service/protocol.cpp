@@ -154,7 +154,7 @@ namespace llarp
 
     bool
     ProtocolFrame::DecryptPayloadInto(llarp::Crypto* crypto,
-                                      const byte_t* sharedkey,
+                                      const SharedSecret& sharedkey,
                                       ProtocolMessage& msg) const
     {
       Encrypted_t tmp = D;
@@ -166,7 +166,7 @@ namespace llarp
     bool
     ProtocolFrame::EncryptAndSign(llarp::Crypto* crypto,
                                   const ProtocolMessage& msg,
-                                  const byte_t* sessionKey,
+                                  const SharedSecret& sessionKey,
                                   const Identity& localIdent)
     {
       byte_t tmp[MAX_PROTOCOL_MESSAGE_SIZE];
@@ -325,7 +325,7 @@ namespace llarp
         llarp_threadpool_queue_job(worker, {dh, &AsyncFrameDecrypt::Work});
         return true;
       }
-      const byte_t* shared = nullptr;
+      SharedSecret shared;
       if(!handler->GetCachedSessionKeyFor(T, shared))
       {
         llarp::LogError("No cached session for T=", T);

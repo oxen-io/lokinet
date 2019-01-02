@@ -57,7 +57,8 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(peer.node, new FindRouterMessage(peer.txid));
+        parent->DHTSendTo(peer.node.as_array(),
+                          new FindRouterMessage(peer.txid));
       }
 
       bool
@@ -284,7 +285,7 @@ namespace llarp
     }
 
     void
-    Context::DHTSendTo(const byte_t *peer, IMessage *msg, bool keepalive)
+    Context::DHTSendTo(const RouterID &peer, IMessage *msg, bool keepalive)
     {
       llarp::DHTImmeidateMessage m;
       m.msgs.emplace_back(msg);
@@ -352,7 +353,7 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(peer.node,
+        parent->DHTSendTo(peer.node.as_array(),
                           new FindIntroMessage(peer.txid, target, R));
       }
 
@@ -373,7 +374,7 @@ namespace llarp
         if(handleResult)
           handleResult(valuesFound);
 
-        parent->DHTSendTo(whoasked.node,
+        parent->DHTSendTo(whoasked.node.as_array(),
                           new GotIntroMessage(valuesFound, whoasked.txid));
       }
     };
@@ -462,7 +463,7 @@ namespace llarp
         std::vector< Key_t > exclude;
         for(const auto &router : dontTell)
           exclude.push_back(router);
-        parent->DHTSendTo(peer.node,
+        parent->DHTSendTo(peer.node.as_array(),
                           new PublishIntroMessage(I, peer.txid, S, exclude));
       }
 
@@ -552,7 +553,7 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(peer.node,
+        parent->DHTSendTo(peer.node.as_array(),
                           new FindIntroMessage(target, peer.txid, R));
       }
 
@@ -589,7 +590,7 @@ namespace llarp
         {
           values.push_back(introset);
         }
-        parent->DHTSendTo(whoasked.node,
+        parent->DHTSendTo(whoasked.node.as_array(),
                           new GotIntroMessage(values, whoasked.txid));
       }
     };
@@ -730,7 +731,7 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(peer.node, new FindRouterMessage(peer.txid, target));
+        parent->DHTSendTo(peer.node.as_array(), new FindRouterMessage(peer.txid, target));
       }
 
       virtual void
@@ -743,7 +744,7 @@ namespace llarp
         else
         {
           parent->DHTSendTo(
-              whoasked.node,
+              whoasked.node.as_array(),
               new GotRouterMessage({}, whoasked.txid, valuesFound, false));
         }
       }

@@ -75,7 +75,7 @@ namespace llarp
     PubKey &
     operator=(const byte_t *ptr)
     {
-      std::copy(ptr, ptr + SIZE, as_array().begin());
+      std::copy(ptr, ptr + SIZE, begin());
       return *this;
     }
   };
@@ -98,7 +98,7 @@ namespace llarp
     SecretKey &
     operator=(const byte_t *ptr)
     {
-      std::copy(ptr, ptr + SIZE, as_array().begin());
+      std::copy(ptr, ptr + SIZE, begin());
       return *this;
     }
   };
@@ -116,20 +116,20 @@ namespace llarp
   /// label functors
 
   /// PKE(result, publickey, secretkey, nonce)
-  using path_dh_func = std::function< bool(SharedSecret &, const PubKey &,
-                                           const byte_t *, const byte_t *) >;
+  using path_dh_func = std::function< bool(
+      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
 
   /// TKE(result, publickey, secretkey, nonce)
   using transport_dh_func = std::function< bool(
-      SharedSecret &, const PubKey &, const byte_t *, const byte_t *) >;
+      SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
 
   /// SD/SE(buffer, key, nonce)
-  using sym_cipher_func =
-      std::function< bool(llarp_buffer_t, const byte_t *, const byte_t *) >;
+  using sym_cipher_func = std::function< bool(
+      llarp_buffer_t, const SharedSecret &, const TunnelNonce &) >;
 
   /// SD/SE(dst, src, key, nonce)
   using sym_cipher_alt_func = std::function< bool(
-      llarp_buffer_t, llarp_buffer_t, const byte_t *, const byte_t *) >;
+      llarp_buffer_t, llarp_buffer_t, const SharedSecret &, const byte_t *) >;
 
   /// H(result, body)
   using hash_func = std::function< bool(byte_t *, llarp_buffer_t) >;
@@ -147,7 +147,7 @@ namespace llarp
 
   /// V(pubkey, body, sig)
   using verify_func =
-      std::function< bool(const PubKey &, llarp_buffer_t, const byte_t *) >;
+      std::function< bool(const PubKey &, llarp_buffer_t, const Signature &) >;
 
   /// library crypto configuration
   struct Crypto
@@ -188,7 +188,7 @@ namespace llarp
     std::function< bool(const PQCipherBlock &, SharedSecret &, const byte_t *) >
         pqe_decrypt;
     /// post quantum encrypt (buffer, sharedkey_dst,  pub)
-    std::function< bool(PQCipherBlock &, SharedSecret &, const byte_t *) >
+    std::function< bool(PQCipherBlock &, SharedSecret &, const PQPubKey &) >
         pqe_encrypt;
 
     // Give a basic type tag for the constructor to pick libsodium
@@ -204,13 +204,13 @@ namespace llarp
   randint();
 
   const byte_t *
-  seckey_topublic(const byte_t *secret);
+  seckey_topublic(const SecretKey &secret);
 
   const byte_t *
-  pq_keypair_to_public(const byte_t *keypair);
+  pq_keypair_to_public(const PQKeyPair &keypair);
 
   const byte_t *
-  pq_keypair_to_secret(const byte_t *keypair);
+  pq_keypair_to_secret(const PQKeyPair &keypair);
 
 }  // namespace llarp
 

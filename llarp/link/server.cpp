@@ -3,7 +3,7 @@
 
 namespace llarp
 {
-  ILinkLayer::ILinkLayer(const byte_t* routerEncSecret, GetRCFunc getrc,
+  ILinkLayer::ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
                          LinkMessageHandler handler, SignBufferFunc signbuf,
                          SessionEstablishedHandler establishedSession,
                          SessionRenegotiateHandler reneg,
@@ -210,7 +210,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::CloseSessionTo(const byte_t* remote)
+  ILinkLayer::CloseSessionTo(const RouterID& remote)
   {
     Lock l(m_AuthedLinksMutex);
     RouterID r = remote;
@@ -225,7 +225,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::KeepAliveSessionTo(const byte_t* remote)
+  ILinkLayer::KeepAliveSessionTo(const RouterID& remote)
   {
     Lock l(m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
@@ -238,7 +238,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::SendTo(const byte_t* remote, llarp_buffer_t buf)
+  ILinkLayer::SendTo(const RouterID& remote, llarp_buffer_t buf)
   {
     ILinkSession* s = nullptr;
     {
@@ -279,7 +279,7 @@ namespace llarp
     return llarp::seckey_topublic(TransportSecretKey());
   }
 
-  const byte_t*
+  const SecretKey&
   ILinkLayer::TransportSecretKey() const
   {
     return m_SecretKey;

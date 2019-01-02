@@ -7,7 +7,7 @@ namespace llarp
   bool
   PubKey::FromString(const std::string& str)
   {
-    return HexDecode(str.c_str(), as_array().data(), size());
+    return HexDecode(str.c_str(), begin(), size());
   }
 
   std::string

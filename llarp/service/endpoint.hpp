@@ -107,7 +107,7 @@ namespace llarp
       ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
 
       virtual bool
-      HasAddress(const byte_t* addr) const = 0;
+      HasAddress(const AlignedBuffer< 32 >& addr) const = 0;
 
       /// return true if we have a pending job to build to a hidden service but
       /// it's not done yet
@@ -177,7 +177,7 @@ namespace llarp
         llarp_buffer_t
         Buffer()
         {
-          return llarp::InitBuffer(payload.data(), payload.size());
+          return llarp::Buffer(payload);
         }
       };
 
@@ -351,7 +351,7 @@ namespace llarp
 
       bool
       GetCachedSessionKeyFor(const ConvoTag& remote,
-                             const byte_t*& secret) const override;
+                             SharedSecret& secret) const override;
       void
       PutCachedSessionKeyFor(const ConvoTag& remote,
                              const SharedSecret& secret) override;

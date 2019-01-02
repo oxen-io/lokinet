@@ -20,7 +20,7 @@ namespace llarp
 
       virtual bool
       GetCachedSessionKeyFor(const ConvoTag& remote,
-                             const byte_t*& secret) const = 0;
+                             SharedSecret& secret) const = 0;
       virtual void
       PutCachedSessionKeyFor(const ConvoTag& remote,
                              const SharedSecret& secret) = 0;

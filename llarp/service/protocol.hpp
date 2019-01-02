@@ -99,7 +99,7 @@ namespace llarp
 
       bool
       EncryptAndSign(llarp::Crypto* c, const ProtocolMessage& msg,
-                     const byte_t* sharedkey, const Identity& localIdent);
+                     const SharedSecret& sharedkey, const Identity& localIdent);
 
       bool
       AsyncDecryptAndVerify(llarp::Logic* logic, llarp::Crypto* c,
@@ -108,7 +108,7 @@ namespace llarp
                             IDataHandler* handler) const;
 
       bool
-      DecryptPayloadInto(llarp::Crypto* c, const byte_t* sharedkey,
+      DecryptPayloadInto(llarp::Crypto* c, const SharedSecret& sharedkey,
                          ProtocolMessage& into) const;
 
       bool

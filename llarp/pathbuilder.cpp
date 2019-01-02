@@ -49,25 +49,25 @@ namespace llarp
       hop.nonce.Randomize();
       // do key exchange
       if(!ctx->crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey,
-                                 hop.nonce))
+                                 hop.nonce.data()))
       {
         llarp::LogError("Failed to generate shared key for path build");
         delete ctx;
         return;
       }
       // generate nonceXOR valueself->hop->pathKey
-      ctx->crypto->shorthash(hop.nonceXOR, llarp::Buffer(hop.shared));
+      ctx->crypto->shorthash(hop.nonceXOR, hop.shared.as_buffer());
       ++ctx->idx;
 
       bool isFarthestHop = ctx->idx == ctx->path->hops.size();
 
       if(isFarthestHop)
       {
-        hop.upstream = hop.rc.pubkey.as_array();
+        hop.upstream = hop.rc.pubkey;
       }
       else
       {
-        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey.as_array();
+        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
       }
 
       // build record
@@ -90,7 +90,7 @@ namespace llarp
         delete ctx;
         return;
       }
-      // use ephameral keypair for frame
+      // use ephemeral keypair for frame
       SecretKey framekey;
       ctx->crypto->encryption_keygen(framekey);
       if(!frame.EncryptInPlace(framekey, hop.rc.enckey, ctx->crypto))
@@ -210,7 +210,7 @@ namespace llarp
       return keygens.load() > 0;
     }
 
-    const byte_t*
+    const SecretKey&
     Builder::GetTunnelEncryptionSecretKey() const
     {
       return enckey;

@@ -462,12 +462,12 @@ namespace llarp
 
     bool
     Endpoint::GetCachedSessionKeyFor(const ConvoTag& tag,
-                                     const byte_t*& secret) const
+                                     SharedSecret& secret) const
     {
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
         return false;
-      secret = itr->second.sharedKey.as_array().data();
+      secret = itr->second.sharedKey;
       return true;
     }
 
@@ -1183,7 +1183,7 @@ namespace llarp
             return false;
           }
           Introduction remoteIntro;
-          const byte_t* K = nullptr;
+          SharedSecret K;
           for(const auto& tag : tags)
           {
             if(tag.IsZero())
@@ -1468,9 +1468,8 @@ namespace llarp
         AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
         // derive ntru session key component
         SharedSecret K;
-        self->crypto->pqe_encrypt(self->frame.C, K,
-                                  self->introPubKey.as_array().data());
-        // randomize Nounce
+        self->crypto->pqe_encrypt(self->frame.C, K, self->introPubKey);
+        // randomize Nonce
         self->frame.N.Randomize();
         // compure post handshake session key
         // PKE (A, B, N)
@@ -1710,8 +1709,8 @@ namespace llarp
     Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
                                             ProtocolType t)
     {
-      auto crypto          = m_Endpoint->Router()->crypto;
-      const byte_t* shared = nullptr;
+      auto crypto = m_Endpoint->Router()->crypto;
+      SharedSecret shared;
       routing::PathTransferMessage msg;
       ProtocolFrame& f = msg.T;
       f.N.Randomize();

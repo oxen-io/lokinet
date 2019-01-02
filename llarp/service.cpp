@@ -221,7 +221,8 @@ namespace llarp
 
     bool
     Identity::KeyExchange(path_dh_func dh, SharedSecret& result,
-                          const ServiceInfo& other, const byte_t* N) const
+                          const ServiceInfo& other,
+                          const KeyExchangeNonce& N) const
     {
       return dh(result, other.EncryptionPublicKey(), enckey, N);
     }
@@ -273,12 +274,12 @@ namespace llarp
       if(!BDecode(&buf))
         return false;
 
-      const byte_t* ptr = nullptr;
+      ServiceInfo::OptNonce van;
       if(!vanity.IsZero())
-        ptr = vanity.as_array().data();
+        van = vanity;
       // update pubkeys
       pub.Update(llarp::seckey_topublic(enckey),
-                 llarp::seckey_topublic(signkey), ptr);
+                 llarp::seckey_topublic(signkey), van);
       return true;
     }
 

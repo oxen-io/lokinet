@@ -74,30 +74,27 @@ namespace llarp
             || upstream < other.upstream || downstream < other.downstream;
       }
 
+      struct PathIDHash
+      {
+        std::size_t
+        operator()(const PathID_t& a) const
+        {
+          return AlignedBuffer< PathID_t::SIZE >::Hash()(a);
+        }
+      };
+
       struct Hash
       {
         std::size_t
         operator()(TransitHopInfo const& a) const
         {
-          std::size_t idx0, idx1, idx2, idx3;
-          memcpy(&idx0, a.upstream, sizeof(std::size_t));
-          memcpy(&idx1, a.downstream, sizeof(std::size_t));
-          memcpy(&idx2, a.txID, sizeof(std::size_t));
-          memcpy(&idx3, a.rxID, sizeof(std::size_t));
-          return idx0 ^ idx1 ^ idx2;
+          std::size_t idx0 = RouterID::Hash()(a.upstream);
+          std::size_t idx1 = RouterID::Hash()(a.downstream);
+          std::size_t idx2 = PathIDHash()(a.txID);
+          std::size_t idx3 = PathIDHash()(a.rxID);
+          return idx0 ^ idx1 ^ idx2 ^ idx3;
         }
       };
-    };
-
-    struct PathIDHash
-    {
-      std::size_t
-      operator()(const PathID_t& a) const
-      {
-        std::size_t idx0;
-        memcpy(&idx0, a, sizeof(std::size_t));
-        return idx0;
-      }
     };
 
     struct IHopHandler

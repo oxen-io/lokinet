@@ -137,7 +137,7 @@ namespace llarp
     /* encryption key */
     if(!bencode_write_bytestring(buff, "e", 1))
       return false;
-    if(!bencode_write_bytestring(buff, pubkey.as_array().data(), PUBKEYSIZE))
+    if(!bencode_write_bytestring(buff, pubkey.data(), PUBKEYSIZE))
       return false;
     /** ip */
     ipstr = inet_ntop(AF_INET6, (void *)&ip, ipbuff, sizeof(ipbuff));

@@ -18,7 +18,8 @@ namespace llarp
   DHTImmeidateMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
   {
     if(llarp_buffer_eq(key, "m"))
-      return llarp::dht::DecodeMesssageList(session->GetPubKey(), buf, msgs);
+      return llarp::dht::DecodeMesssageList(session->GetPubKey().as_array(),
+                                            buf, msgs);
     if(llarp_buffer_eq(key, "v"))
     {
       if(!bencode_read_integer(buf, &version))

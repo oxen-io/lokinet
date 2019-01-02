@@ -41,7 +41,7 @@ namespace llarp
 
       bool
       KeyExchange(llarp::path_dh_func dh, SharedSecret& sharedkey,
-                  const ServiceInfo& other, const byte_t* N) const;
+                  const ServiceInfo& other, const KeyExchangeNonce& N) const;
 
       bool
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;

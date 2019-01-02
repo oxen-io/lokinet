@@ -47,19 +47,19 @@ struct llarp_nodedb
   fs::path nodePath;
 
   bool
-  Remove(const byte_t *pk);
+  Remove(const llarp::RouterID &pk);
 
   void
   Clear();
 
   bool
-  Get(const byte_t *pk, llarp::RouterContact &result);
+  Get(const llarp::RouterID &pk, llarp::RouterContact &result);
 
   bool
-  Has(const byte_t *pk);
+  Has(const llarp::RouterID &pk);
 
   std::string
-  getRCFilePath(const byte_t *pubkey) const;
+  getRCFilePath(const llarp::RouterID &pubkey) const;
 
   /// insert and write to disk
   bool

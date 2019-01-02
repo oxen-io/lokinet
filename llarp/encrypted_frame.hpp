@@ -38,14 +38,14 @@ namespace llarp
     }
 
     bool
-    DecryptInPlace(const byte_t* seckey, llarp::Crypto* crypto);
+    DecryptInPlace(const SecretKey& seckey, llarp::Crypto* crypto);
 
     bool
-    EncryptInPlace(const byte_t* seckey, const byte_t* other,
+    EncryptInPlace(const SecretKey& seckey, const PubKey& other,
                    llarp::Crypto* crypto);
   };
 
-  /// TOOD: can only handle 1 frame at a time
+  /// TODO: can only handle 1 frame at a time
   template < typename User >
   struct AsyncFrameEncrypter
   {
@@ -92,7 +92,7 @@ namespace llarp
     }
   };
 
-  /// TOOD: can only handle 1 frame at a time
+  /// TODO: can only handle 1 frame at a time
   template < typename User >
   struct AsyncFrameDecrypter
   {
@@ -114,7 +114,7 @@ namespace llarp
         ctx->result(nullptr, ctx->context);
     }
 
-    AsyncFrameDecrypter(llarp::Crypto* c, const byte_t* secretkey,
+    AsyncFrameDecrypter(llarp::Crypto* c, const SecretKey& secretkey,
                         DecryptHandler h)
         : result(h), crypto(c), seckey(secretkey)
     {
@@ -123,7 +123,7 @@ namespace llarp
     DecryptHandler result;
     User* context;
     llarp::Crypto* crypto;
-    const byte_t* seckey;
+    const SecretKey& seckey;
     EncryptedFrame target;
 
     void

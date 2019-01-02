@@ -20,7 +20,7 @@ namespace llarp
       llarp_time_t X;
       llarp::Signature Z;
 
-      ObtainExitMessage() : IMessage()
+      ObtainExitMessage() : IMessage(), E(0), T(0), X(0)
       {
       }
 
@@ -28,11 +28,8 @@ namespace llarp
       {
       }
 
-      ObtainExitMessage&
-      operator=(const ObtainExitMessage& other);
-
       void
-      Clear() override 
+      Clear() override
       {
         B.clear();
         W.clear();
@@ -87,8 +84,10 @@ namespace llarp
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
 
-      void 
-      Clear() override {}
+      void
+      Clear() override
+      {
+      }
     };
 
     struct RejectExitMessage final : public IMessage
@@ -108,7 +107,7 @@ namespace llarp
       {
       }
 
-      void 
+      void
       Clear() override
       {
         R.clear();
@@ -148,8 +147,10 @@ namespace llarp
       {
       }
 
-      void 
-      Clear() override {}
+      void
+      Clear() override
+      {
+      }
 
       UpdateExitVerifyMessage&
       operator=(const UpdateExitVerifyMessage& other);
@@ -204,8 +205,10 @@ namespace llarp
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
 
-      void 
-      Clear() override {}
+      void
+      Clear() override
+      {
+      }
     };
 
     struct CloseExitMessage final : public IMessage
@@ -240,9 +243,11 @@ namespace llarp
 
       bool
       Verify(llarp::Crypto* c, const llarp::PubKey& pk) const;
-      
-      void 
-      Clear() override {}
+
+      void
+      Clear() override
+      {
+      }
     };
 
   }  // namespace routing

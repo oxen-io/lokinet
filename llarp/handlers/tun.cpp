@@ -226,9 +226,9 @@ namespace llarp
         }
         else if(addr.FromString(qname, ".loki"))
         {
-          if(HasAddress(addr.as_array().data()))
+          if(HasAddress(addr))
           {
-            huint32_t ip = ObtainIPForAddr(addr.as_array().data(), false);
+            huint32_t ip = ObtainIPForAddr(addr, false);
             msg.AddINReply(ip);
           }
           else
@@ -243,7 +243,7 @@ namespace llarp
         {
           // TODO: add hook to EnsurePathToSNode
           EnsurePathToSNode(addr.as_array());
-          huint32_t ip = ObtainIPForAddr(addr.as_array().data(), true);
+          huint32_t ip = ObtainIPForAddr(addr, true);
           msg.AddINReply(ip);
         }
         else
@@ -325,7 +325,7 @@ namespace llarp
     {
       if(ctx)
       {
-        huint32_t ip = ObtainIPForAddr(addr.as_array().data(), false);
+        huint32_t ip = ObtainIPForAddr(addr, false);
         request.AddINReply(ip);
       }
       else

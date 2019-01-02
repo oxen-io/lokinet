@@ -5,6 +5,12 @@
 #include <crypto.hpp>
 #include <service/types.hpp>
 
+#if __cplusplus >= 201703L
+#include <optional>
+#else
+#include <tl/optional.hpp>
+#endif
+
 namespace llarp
 {
   namespace service
@@ -17,6 +23,12 @@ namespace llarp
 
      public:
       VanityNonce vanity;
+
+#if __cplusplus >= 201703L
+      using OptNonce = std::optional< VanityNonce >;
+#else
+      using OptNonce = tl::optional< VanityNonce >;
+#endif
 
       ServiceInfo() = default;
 
@@ -52,7 +64,7 @@ namespace llarp
         return crypto->verify(signkey, payload, sig);
       }
 
-      const byte_t*
+      const PubKey&
       EncryptionPublicKey() const
       {
         return enckey;
@@ -60,12 +72,14 @@ namespace llarp
 
       bool
       Update(const byte_t* enc, const byte_t* sign,
-             const byte_t* nonce = nullptr)
+             const OptNonce& nonce = OptNonce())
       {
         enckey  = enc;
         signkey = sign;
         if(nonce)
-          vanity = nonce;
+        {
+          vanity = nonce.value();
+        }
         return UpdateAddr();
       }
 

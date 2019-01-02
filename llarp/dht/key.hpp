@@ -28,8 +28,8 @@ namespace llarp
       operator^(const Key_t& other) const
       {
         Key_t dist;
-        std::transform(as_array().begin(), as_array().end(),
-                       other.as_array().begin(), dist.as_array().begin(),
+        std::transform(begin(), end(),
+                       other.begin(), dist.begin(),
                        std::bit_xor< byte_t >());
         return dist;
       }

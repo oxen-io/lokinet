@@ -27,7 +27,7 @@ namespace llarp
   {
     size_t len =
         strnlen(reinterpret_cast< const char * >(DefaultValue), size());
-    std::copy(DefaultValue, DefaultValue + len, as_array().begin());
+    std::copy(DefaultValue, DefaultValue + len, begin());
   }
 
   bool
@@ -53,7 +53,7 @@ namespace llarp
     if(strbuf.sz > size())
       return false;
 
-    std::copy(strbuf.base, strbuf.base + strbuf.sz, as_array().begin());
+    std::copy(strbuf.base, strbuf.base + strbuf.sz, begin());
     return true;
   }
 
@@ -162,7 +162,7 @@ namespace llarp
         return false;
       nickname.Zero();
       std::copy(strbuf.base, strbuf.base + strbuf.sz,
-                nickname.as_array().begin());
+                nickname.begin());
       return true;
     }
 

@@ -25,7 +25,7 @@ namespace llarp
       }
 
       bool
-      HasAddress(const byte_t *) const override
+      HasAddress(const AlignedBuffer< 32 > &) const override
       {
         return false;
       }

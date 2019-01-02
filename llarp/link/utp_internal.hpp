@@ -55,8 +55,7 @@ namespace llarp
       MessageBuffer _msg;
 
       /// for accessing message buffer
-      llarp_buffer_t buffer =
-          llarp::InitBuffer(_msg.as_array().data(), _msg.size());
+      llarp_buffer_t buffer = _msg.as_buffer();
 
       bool
       operator==(const InboundMessage& other) const
@@ -209,7 +208,7 @@ namespace llarp
       bool
       DoKeyExchange(transport_dh_func dh, SharedSecret& K,
                     const KeyExchangeNonce& n, const PubKey& other,
-                    const byte_t* secret);
+                    const SecretKey& secret);
 
       /// does K = HS(K + A)
       bool
@@ -284,7 +283,7 @@ namespace llarp
       OnLog(utp_callback_arguments* arg);
 
       /// construct
-      LinkLayer(llarp::Crypto* crypto, const byte_t* routerEncSecret,
+      LinkLayer(llarp::Crypto* crypto, const SecretKey& routerEncSecret,
                 llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
                 llarp::SignBufferFunc sign,
                 llarp::SessionEstablishedHandler established,

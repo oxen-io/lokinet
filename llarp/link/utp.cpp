@@ -126,10 +126,14 @@ namespace llarp
     bool
     Session::DoKeyExchange(transport_dh_func dh, SharedSecret& K,
                            const KeyExchangeNonce& n, const PubKey& other,
-                           const byte_t* secret)
+                           const SecretKey& secret)
     {
       ShortHash t_h;
-      AlignedBuffer< 64 > tmp;
+      static constexpr size_t TMP_SIZE = 64;
+      static_assert(SharedSecret::SIZE + KeyExchangeNonce::SIZE == TMP_SIZE,
+                    "Invalid sizes");
+
+      AlignedBuffer< TMP_SIZE > tmp;
       std::copy(K.begin(), K.end(), tmp.begin());
       std::copy(n.begin(), n.end(), tmp.begin() + K.size());
       // t_h = HS(K + L.n)
@@ -140,7 +144,7 @@ namespace llarp
       }
 
       // K = TKE(a.p, B_a.e, sk, t_h)
-      if(!dh(K, other, secret, t_h.as_array().data()))
+      if(!dh(K, other, secret, t_h))
       {
         llarp::LogError("key exchange with ", other, " failed");
         return false;
@@ -153,10 +157,10 @@ namespace llarp
     Session::MutateKey(SharedSecret& K, const AlignedBuffer< 24 >& A)
     {
       AlignedBuffer< 56 > tmp;
-      auto buf = llarp::Buffer(tmp);
+      auto buf = tmp.as_buffer();
       std::copy(K.begin(), K.end(), buf.cur);
       buf.cur += K.size();
-      memcpy(buf.cur, A, A.size());
+      std::copy(A.begin(), A.end(), buf.cur);
       buf.cur = buf.base;
       return Crypto()->shorthash(K, buf);
     }
@@ -187,7 +191,7 @@ namespace llarp
           s -= left;
           recvBufOffset = 0;
           buf += left;
-          if(!VerifyThenDecrypt(recvBuf.as_array().data()))
+          if(!VerifyThenDecrypt(recvBuf.data()))
             return false;
         }
       }
@@ -342,7 +346,8 @@ namespace llarp
       return 0;
     }
 
-    LinkLayer::LinkLayer(llarp::Crypto* crypto, const byte_t* routerEncSecret,
+    LinkLayer::LinkLayer(llarp::Crypto* crypto,
+                         const SecretKey& routerEncSecret,
                          llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
                          llarp::SignBufferFunc sign,
                          llarp::SessionEstablishedHandler established,
@@ -525,7 +530,7 @@ namespace llarp
     }
 
     std::unique_ptr< ILinkLayer >
-    NewServer(llarp::Crypto* crypto, const byte_t* routerEncSecret,
+    NewServer(llarp::Crypto* crypto, const SecretKey& routerEncSecret,
               llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
               llarp::SessionEstablishedHandler est,
               llarp::SessionRenegotiateHandler reneg,
@@ -612,9 +617,9 @@ namespace llarp
       remoteTransportPubKey = addr.pubkey;
       remoteRC              = rc;
       RouterID rid          = remoteRC.pubkey;
-      Crypto()->shorthash(txKey, InitBuffer(rid.as_array().data(), PUBKEYSIZE));
-      rid = p->GetOurRC().pubkey.as_array();
-      Crypto()->shorthash(rxKey, InitBuffer(rid.as_array().data(), PUBKEYSIZE));
+      Crypto()->shorthash(txKey, rid.as_buffer());
+      rid = p->GetOurRC().pubkey;
+      Crypto()->shorthash(rxKey, rid.as_buffer());
 
       sock = s;
       assert(utp_set_userdata(sock, this) == this);
@@ -628,7 +633,7 @@ namespace llarp
     Session::Session(LinkLayer* p, utp_socket* s, const Addr& addr) : Session(p)
     {
       RouterID rid = p->GetOurRC().pubkey;
-      Crypto()->shorthash(rxKey, InitBuffer(rid.as_array().data(), PUBKEYSIZE));
+      Crypto()->shorthash(rxKey, rid.as_buffer());
       remoteRC.Clear();
       sock = s;
       assert(s == sock);
@@ -655,9 +660,7 @@ namespace llarp
       if(!gotLIM)
       {
         remoteRC = msg->rc;
-        Crypto()->shorthash(
-            txKey,
-            llarp::InitBuffer(remoteRC.pubkey.as_array().data(), PUBKEYSIZE));
+        Crypto()->shorthash(txKey, remoteRC.pubkey.as_buffer());
 
         if(!DoKeyExchange(Crypto()->transport_dh_server, rxKey, msg->N,
                           remoteRC.enckey, parent->TransportSecretKey()))
@@ -905,10 +908,10 @@ namespace llarp
       auto& buf = sendq.back();
       vecq.emplace_back();
       auto& vec    = vecq.back();
-      vec.iov_base = buf.as_array().data();
+      vec.iov_base = buf.data();
       vec.iov_len  = FragmentBufferSize;
       buf.Randomize();
-      byte_t* nonce         = buf.as_array().data() + FragmentHashSize;
+      byte_t* nonce         = buf.data() + FragmentHashSize;
       byte_t* body          = nonce + FragmentNonceSize;
       byte_t* base          = body;
       AlignedBuffer< 24 > A = base;
@@ -937,7 +940,7 @@ namespace llarp
       payload.cur  = payload.base;
       payload.sz   = FragmentBufferSize - FragmentHashSize;
       // key'd hash
-      if(!Crypto()->hmac(buf.as_array().data(), payload, txKey))
+      if(!Crypto()->hmac(buf.data(), payload, txKey))
         return false;
       return MutateKey(txKey, A);
     }
@@ -1003,7 +1006,7 @@ namespace llarp
 
       auto hbuf = InitBuffer(ptr + FragmentHashSize,
                              FragmentBufferSize - FragmentHashSize);
-      if(!Crypto()->hmac(digest.as_array().data(), hbuf, rxKey))
+      if(!Crypto()->hmac(digest.data(), hbuf, rxKey))
       {
         llarp::LogError("keyed hash failed");
         return false;
@@ -1020,7 +1023,7 @@ namespace llarp
       auto in = InitBuffer(ptr + FragmentOverheadSize,
                            FragmentBufferSize - FragmentOverheadSize);
 
-      auto out = Buffer(rxFragBody);
+      llarp_buffer_t out = rxFragBody.as_buffer();
 
       // decrypt
       if(!Crypto()->xchacha20_alt(out, in, rxKey, ptr + FragmentHashSize))

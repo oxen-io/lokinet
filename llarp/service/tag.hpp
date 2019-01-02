@@ -29,7 +29,7 @@ namespace llarp
         // evidently, does nothing on LP64 systems (where size_t is *already*
         // unsigned long but zero-extends this on LLP64 systems
         std::copy(str.begin(), str.begin() + std::min(16UL, str.size()),
-                  as_array().begin());
+                  begin());
       }
 
       Tag&
@@ -43,7 +43,7 @@ namespace llarp
       operator=(const std::string& str)
       {
         std::copy(str.begin(), str.begin() + std::min(16UL, str.size()),
-                  as_array().begin());
+                  begin());
         return *this;
       }
 

@@ -15,7 +15,7 @@ static const char skiplist_subdirs[] = "0123456789abcdef";
 static const std::string RC_FILE_EXT = ".signed";
 
 bool
-llarp_nodedb::Remove(const byte_t *pk)
+llarp_nodedb::Remove(const llarp::RouterID &pk)
 {
   llarp::util::Lock lock(access);
   auto itr = entries.find(pk);
@@ -34,7 +34,7 @@ llarp_nodedb::Clear()
 }
 
 bool
-llarp_nodedb::Get(const byte_t *pk, llarp::RouterContact &result)
+llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
 {
   llarp::util::Lock lock(access);
   auto itr = entries.find(pk);
@@ -45,7 +45,7 @@ llarp_nodedb::Get(const byte_t *pk, llarp::RouterContact &result)
 }
 
 bool
-llarp_nodedb::Has(const byte_t *pk)
+llarp_nodedb::Has(const llarp::RouterID &pk)
 {
   llarp::util::Lock lock(access);
   return entries.find(pk) != entries.end();
@@ -54,7 +54,7 @@ llarp_nodedb::Has(const byte_t *pk)
 /// skiplist directory is hex encoded first nibble
 /// skiplist filename is <base32encoded>.snode.signed
 std::string
-llarp_nodedb::getRCFilePath(const byte_t *pubkey) const
+llarp_nodedb::getRCFilePath(const llarp::RouterID &pubkey) const
 {
   char ftmp[68] = {0};
   const char *hexname =

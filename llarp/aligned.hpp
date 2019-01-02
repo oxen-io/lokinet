@@ -48,7 +48,7 @@ namespace llarp
     AlignedBuffer(const Data& buf)
     {
       new(&val) Data;
-      std::copy(buf.begin(), buf.end(), as_array().begin());
+      std::copy(buf.begin(), buf.end(), begin());
     }
 
     AlignedBuffer&
@@ -74,8 +74,7 @@ namespace llarp
     operator~() const
     {
       AlignedBuffer< sz > ret;
-      std::transform(as_array().begin(), as_array().end(),
-                     ret.as_array().begin(), [](byte_t a) { return ~a; });
+      std::transform(begin(), end(), ret.begin(), [](byte_t a) { return ~a; });
 
       return ret;
     }
@@ -120,8 +119,7 @@ namespace llarp
     operator^(const AlignedBuffer& other) const
     {
       AlignedBuffer< sz > ret;
-      std::transform(as_array().begin(), as_array().end(),
-                     other.as_array().begin(), ret.as_array().begin(),
+      std::transform(begin(), end(), other.begin(), ret.begin(),
                      std::bit_xor< byte_t >());
       return ret;
     }
@@ -130,8 +128,6 @@ namespace llarp
     operator^=(const AlignedBuffer& other)
     {
       // Mutate in place instead.
-      // Well defined for std::transform,
-
       for(size_t i = 0; i < as_array().size(); ++i)
       {
         as_array()[i] ^= other.as_array()[i];
@@ -175,13 +171,24 @@ namespace llarp
       return reinterpret_cast< const Data& >(val);
     }
 
+    byte_t*
+    data()
+    {
+      return as_array().data();
+    }
+
+    const byte_t*
+    data() const
+    {
+      return as_array().data();
+    }
+
     bool
     IsZero() const
     {
       auto notZero = [](byte_t b) { return b != 0; };
 
-      return std::find_if(as_array().begin(), as_array().end(), notZero)
-          == as_array().end();
+      return std::find_if(begin(), end(), notZero) == end();
     }
 
     void
@@ -193,12 +200,7 @@ namespace llarp
     void
     Randomize()
     {
-      randombytes(as_array().data(), SIZE);
-    }
-
-    operator const byte_t*() const
-    {
-      return as_array().data();
+      randombytes(data(), SIZE);
     }
 
     typename Data::iterator
@@ -225,10 +227,20 @@ namespace llarp
       return as_array().cend();
     }
 
+    llarp_buffer_t
+    as_buffer()
+    {
+      llarp_buffer_t buff;
+      buff.base = data();
+      buff.cur  = buff.base;
+      buff.sz   = size();
+      return buff;
+    }
+
     bool
     BEncode(llarp_buffer_t* buf) const
     {
-      return bencode_write_bytestring(buf, as_array().data(), sz);
+      return bencode_write_bytestring(buf, data(), sz);
     }
 
     bool
@@ -244,7 +256,7 @@ namespace llarp
         llarp::LogError("bdecode buffer size missmatch ", strbuf.sz, "!=", sz);
         return false;
       }
-      memcpy(as_array().data(), strbuf.base, sz);
+      memcpy(data(), strbuf.base, sz);
       return true;
     }
 
@@ -260,7 +272,7 @@ namespace llarp
       size_t
       operator()(const AlignedBuffer& buf) const
       {
-        return std::accumulate(buf.as_array().begin(), buf.as_array().end(), 0,
+        return std::accumulate(buf.begin(), buf.end(), 0,
                                std::bit_xor< size_t >());
       }
     };

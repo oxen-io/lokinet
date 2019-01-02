@@ -47,8 +47,7 @@ struct TryConnectJob
   void
   Failed()
   {
-    llarp::LogInfo("session to ", llarp::RouterID(rc.pubkey.as_array()),
-                   " closed");
+    llarp::LogInfo("session to ", llarp::RouterID(rc.pubkey), " closed");
     link->CloseSessionTo(rc.pubkey);
   }
 
@@ -113,7 +112,7 @@ llarp_router_try_connect(llarp::Router *router,
 
   auto link = router->outboundLink.get();
   auto itr  = router->pendingEstablishJobs.emplace(
-      remote.pubkey.as_array(),
+      remote.pubkey,
       std::make_unique< TryConnectJob >(remote, link, numretries, router));
   TryConnectJob *job = itr.first->second.get();
   // try establishing async
@@ -135,14 +134,15 @@ llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *fpath,
     std::ofstream f(path.string(), std::ios::binary);
     if(f.is_open())
     {
-      f.write(reinterpret_cast< char * >(secretkey.as_array().data()),
-              SECKEYSIZE);
+      std::copy(secretkey.begin(), secretkey.end(),
+                std::ostream_iterator< byte_t >(f));
     }
   }
   std::ifstream f(path.string(), std::ios::binary);
   if(f.is_open())
   {
-    f.read(reinterpret_cast< char * >(secretkey.as_array().data()), SECKEYSIZE);
+    std::copy_n(std::istream_iterator< byte_t >(f), secretkey.size(),
+                secretkey.begin());
     return true;
   }
   llarp::LogInfo("failed to get identity key");
@@ -172,8 +172,8 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
   std::ifstream f(path.string(), std::ios::binary);
   if(f.is_open())
   {
-    f.read(reinterpret_cast< char * >(encryption.as_array().data()),
-           SECKEYSIZE);
+    std::copy_n(std::istream_iterator< byte_t >(f), encryption.size(),
+                encryption.begin());
     return true;
   }
   llarp::LogInfo("failed to get encryption key");
@@ -264,13 +264,13 @@ namespace llarp
   {
     for(const auto &link : inboundLinks)
     {
-      if(link->HasSessionTo(remote.as_array()))
+      if(link->HasSessionTo(remote))
       {
         SendTo(remote, msg, link.get());
         return true;
       }
     }
-    if(outboundLink && outboundLink->HasSessionTo(remote.as_array()))
+    if(outboundLink && outboundLink->HasSessionTo(remote))
     {
       SendTo(remote, msg, outboundLink.get());
       return true;
@@ -508,7 +508,7 @@ namespace llarp
 
     llarp::RouterContact rc = job->rc;
 
-    router->validRouters.emplace(pk.as_array(), rc);
+    router->validRouters.emplace(pk, rc);
 
     // track valid router in dht
     router->dht->impl.nodes->PutNode(rc);
@@ -845,7 +845,7 @@ namespace llarp
   void
   Router::SessionClosed(llarp::RouterID remote)
   {
-    __llarp_dht_remove_peer(dht, remote);
+    __llarp_dht_remove_peer(dht, remote.data());
     // remove from valid routers if it's a valid router
     validRouters.erase(remote);
     llarp::LogInfo("Session to ", remote, " fully closed");
@@ -1444,7 +1444,7 @@ namespace llarp
         llarp::PubKey pk;
         if(pk.FromString(val))
         {
-          if(self->strictConnectPubkeys.insert(pk.as_array()).second)
+          if(self->strictConnectPubkeys.emplace(pk).second)
             llarp::LogInfo("added ", pk, " to strict connect list");
           else
             llarp::LogWarn("duplicate key for strict connect: ", pk);
@@ -1521,11 +1521,11 @@ namespace llarp
       auto &rc = self->bootstrapRCList.back();
       if(rc.Read(val) && rc.Verify(&self->crypto, self->Now()))
       {
-        llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey.as_array()));
+        llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
       }
       else if(self->Now() - rc.last_updated > RouterContact::Lifetime)
       {
-        llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey.as_array()),
+        llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
                        " is too old and needs to be refreshed");
         self->bootstrapRCList.pop_back();
       }

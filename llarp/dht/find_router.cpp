@@ -75,7 +75,7 @@ namespace llarp
       // key
       if(!bencode_write_bytestring(buf, "K", 1))
         return false;
-      if(!bencode_write_bytestring(buf, K.as_array().data(), K.size()))
+      if(!bencode_write_bytestring(buf, K.data(), K.size()))
         return false;
 
       // txid
@@ -124,7 +124,7 @@ namespace llarp
         if(strbuf.sz != K.size())
           return false;
 
-        std::copy(strbuf.base, strbuf.base + K.SIZE, K.as_array().begin());
+        std::copy(strbuf.base, strbuf.base + K.SIZE, K.begin());
         return true;
       }
       if(llarp_buffer_eq(key, "T"))

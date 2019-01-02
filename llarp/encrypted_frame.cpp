@@ -6,8 +6,8 @@
 namespace llarp
 {
   bool
-  EncryptedFrame::EncryptInPlace(const byte_t* ourSecretKey,
-                                 const byte_t* otherPubkey,
+  EncryptedFrame::EncryptInPlace(const SecretKey& ourSecretKey,
+                                 const PubKey& otherPubkey,
                                  llarp::Crypto* crypto)
   {
     // format of frame is
@@ -65,7 +65,7 @@ namespace llarp
   }
 
   bool
-  EncryptedFrame::DecryptInPlace(const byte_t* ourSecretKey,
+  EncryptedFrame::DecryptInPlace(const SecretKey& ourSecretKey,
                                  llarp::Crypto* crypto)
   {
     // format of frame is
@@ -98,13 +98,13 @@ namespace llarp
       return false;
     }
 
-    if(!MDS(digest.as_array().data(), buf, shared))
+    if(!MDS(digest.data(), buf, shared))
     {
       llarp::LogError("Digest failed");
       return false;
     }
 
-    if(memcmp(digest, hash, digest.size()))
+    if(!std::equal(digest.begin(), digest.end(), hash))
     {
       llarp::LogError("message authentication failed");
       return false;

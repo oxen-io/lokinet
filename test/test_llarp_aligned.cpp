@@ -66,7 +66,7 @@ TYPED_TEST(AlignedBufferTest, AltConstructors)
   Buffer c(b.as_array());
   EXPECT_FALSE(c.IsZero());
 
-  Buffer d(c.as_array().data());
+  Buffer d(c.data());
   EXPECT_FALSE(d.IsZero());
 }
 

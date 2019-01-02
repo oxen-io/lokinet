@@ -115,7 +115,7 @@ namespace llarp
       }
 
       bool
-      HasAddress(const byte_t* addr) const override
+      HasAddress(const AlignedBuffer< 32 >& addr) const override
       {
         return m_AddrToIP.find(addr) != m_AddrToIP.end();
       }

@@ -205,7 +205,7 @@ namespace llarp
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
       void
-      DHTSendTo(const byte_t* peer, IMessage* msg, bool keepalive = true);
+      DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true);
 
       /// get routers closest to target excluding requester
       bool
