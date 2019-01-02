@@ -61,14 +61,15 @@ namespace llarp
     bool
     PathContext::HopIsUs(const RouterID& k) const
     {
-      return memcmp(k.data(), m_Router->pubkey(), PUBKEYSIZE) == 0;
+      return std::equal(m_Router->pubkey(), m_Router->pubkey() + PUBKEYSIZE,
+                        k.begin());
     }
 
     bool
     PathContext::ForwardLRCM(const RouterID& nextHop,
                              const std::array< EncryptedFrame, 8 >& frames)
     {
-      llarp::LogDebug("fowarding LRCM to ", nextHop);
+      llarp::LogDebug("forwarding LRCM to ", nextHop);
       LR_CommitMessage msg;
       msg.frames = frames;
       return m_Router->SendToOrQueue(nextHop, &msg);

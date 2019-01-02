@@ -99,7 +99,7 @@ namespace llarp
           dht.pendingExploreLookups.NotFound(owner, K);
         else
         {
-          dht.pendingExploreLookups.Found(owner, From.data(), N);
+          dht.pendingExploreLookups.Found(owner, From.as_array(), N);
         }
         return true;
       }

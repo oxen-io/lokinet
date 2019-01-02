@@ -41,12 +41,12 @@ decode_request_name(const std::string &name, llarp::AlignedBuffer< 32 > &addr,
   auto pos = name.find(".snode");
   if(pos != std::string::npos)
   {
-    if(!llarp::HexDecode(name.substr(0, pos).c_str(), serviceAddr.data().data(),
-                         serviceAddr.size()))
+    if(!llarp::HexDecode(name.substr(0, pos).c_str(),
+                         serviceAddr.as_array().data(), serviceAddr.size()))
     {
       return false;
     }
-    addr    = snodeAddr.data();
+    addr    = snodeAddr.as_array();
     isSNode = true;
   }
   else
@@ -55,7 +55,7 @@ decode_request_name(const std::string &name, llarp::AlignedBuffer< 32 > &addr,
     {
       return false;
     }
-    addr    = serviceAddr.data().data();
+    addr    = serviceAddr.as_array();
     isSNode = false;
   }
   return true;
@@ -330,7 +330,7 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
     }
     else
     {
-      llarp::service::Address saddr = addr.data();
+      llarp::service::Address saddr = addr.as_array();
       // llarp::LogInfo("Returning [", saddr.ToString(), "]");
       writesend_dnss_revresponse(saddr.ToString(), context->request);
     }
@@ -448,7 +448,7 @@ llarp_dotlokilookup_handler(std::string name,
     auto tun = routerHiddenServiceContext->getFirstTun();
     if(isSNode)
     {
-      if(tun->HasPathToSNode(addr.data()))
+      if(tun->HasPathToSNode(addr.as_array()))
       {
         llarp_dotlokilookup_checkQuery(qr, 0, 0);
         response->dontSendResponse = true;  // will send it shortly
@@ -457,7 +457,7 @@ llarp_dotlokilookup_handler(std::string name,
     }
     else
     {
-      if(tun->HasPathToService(addr.data()))
+      if(tun->HasPathToService(addr.as_array()))
       {
         llarp_dotlokilookup_checkQuery(qr, 0, 0);
         response->dontSendResponse = true;  // will send it shortly

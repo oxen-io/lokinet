@@ -127,7 +127,7 @@ namespace llarp
       BDecode(llarp_buffer_t* buf) override
       {
         if(IBEncodeMessage::BDecode(buf))
-          return CalculateAddress(m_CachedAddr.data());
+          return CalculateAddress(m_CachedAddr.as_array());
         return false;
       }
 

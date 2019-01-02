@@ -100,7 +100,7 @@ namespace llarp
         if(next)
         {
           // explicit next peer provided
-          peer = next->data();
+          peer = *next;
         }
         else if(!GetNextPeer(peer, peersAsked))
         {
@@ -109,7 +109,7 @@ namespace llarp
           return false;
         }
 
-        const Key_t targetKey = target.data();
+        const Key_t targetKey = target.as_array();
         if((prevPeer ^ targetKey) < (peer ^ targetKey))
         {
           // next peer is not closer
@@ -118,7 +118,9 @@ namespace llarp
           return false;
         }
         else
+        {
           peersAsked.insert(peer);
+        }
         DoNextRequest(peer);
         return true;
       }
@@ -166,7 +168,7 @@ namespace llarp
       LookupRouter(const RouterID& target, RouterLookupHandler result)
       {
         Key_t askpeer;
-        if(!nodes->FindClosest(target.data(), askpeer))
+        if(!nodes->FindClosest(target.as_array(), askpeer))
           return false;
         LookupRouterRecursive(target, OurKey(), 0, askpeer, result);
         return true;
@@ -260,7 +262,7 @@ namespace llarp
       Bucket< ISNode >* services = nullptr;
       bool allowTransit          = false;
 
-      const byte_t*
+      const Key_t&
       OurKey() const
       {
         return ourKey;

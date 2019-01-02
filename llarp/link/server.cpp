@@ -24,10 +24,10 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::HasSessionTo(const byte_t* pk)
+  ILinkLayer::HasSessionTo(const RouterID& id)
   {
     Lock l(m_AuthedLinksMutex);
-    return m_AuthedLinks.find(pk) != m_AuthedLinks.end();
+    return m_AuthedLinks.find(id) != m_AuthedLinks.end();
   }
 
   void
@@ -43,7 +43,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::VisitSessionByPubkey(const byte_t* pk,
+  ILinkLayer::VisitSessionByPubkey(const RouterID& pk,
                                    std::function< bool(ILinkSession*) > visit)
   {
     auto itr = m_AuthedLinks.find(pk);
@@ -124,7 +124,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::MapAddr(const byte_t* pk, ILinkSession* s)
+  ILinkLayer::MapAddr(const RouterID& pk, ILinkSession* s)
   {
     static constexpr size_t MaxSessionsPerKey = 16;
     Lock l_authed(m_AuthedLinksMutex);
@@ -135,7 +135,7 @@ namespace llarp
       if(itr->get() == s)
       {
         if(m_AuthedLinks.count(pk) < MaxSessionsPerKey)
-          m_AuthedLinks.insert(std::make_pair(pk, std::move(*itr)));
+          m_AuthedLinks.emplace(pk, std::move(*itr));
         else
           s->SendClose();
         itr = m_Pending.erase(itr);
@@ -168,7 +168,7 @@ namespace llarp
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return false;
-    llarp::LogInfo("Try establish to ", RouterID(rc.pubkey.data()));
+    llarp::LogInfo("Try establish to ", RouterID(rc.pubkey.as_array()));
     llarp::Addr addr(to);
     auto s = NewOutboundSession(rc, to);
     s->Start();

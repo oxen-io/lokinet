@@ -142,8 +142,9 @@ namespace llarp
 
   struct PubKey final : public AlignedBuffer< PUBKEYSIZE >
   {
-    PubKey() : AlignedBuffer< PUBKEYSIZE >(){};
-    PubKey(const byte_t *ptr) : AlignedBuffer< PUBKEYSIZE >(ptr){};
+    PubKey() : AlignedBuffer< SIZE >(){}
+    PubKey(const byte_t *ptr) : AlignedBuffer< SIZE >(ptr){}
+    PubKey(const Data& data) : AlignedBuffer< SIZE >(data){}
 
     std::string
     ToString() const;
@@ -159,13 +160,13 @@ namespace llarp
 
     operator RouterID() const
     {
-      return RouterID(data());
+      return RouterID(as_array());
     }
 
     PubKey &
     operator=(const byte_t *ptr)
     {
-      memcpy(data(), ptr, size());
+      std::copy(ptr, ptr + SIZE, as_array().begin());
       return *this;
     }
   };
@@ -188,7 +189,7 @@ namespace llarp
     SecretKey &
     operator=(const byte_t *ptr)
     {
-      memcpy(data(), ptr, size());
+      std::copy(ptr, ptr + SIZE, as_array().begin());
       return *this;
     }
   };

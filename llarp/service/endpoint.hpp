@@ -20,7 +20,7 @@ namespace llarp
 {
   namespace service
   {
-    // foward declare
+    // forward declare
     struct AsyncKeyExchange;
 
     struct Endpoint : public path::Builder,
@@ -104,7 +104,7 @@ namespace llarp
       HasPathToService(const Address& remote) const;
 
       virtual huint32_t
-      ObtainIPForAddr(const byte_t* addr, bool serviceNode) = 0;
+      ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool serviceNode) = 0;
 
       virtual bool
       HasAddress(const byte_t* addr) const = 0;
@@ -154,11 +154,11 @@ namespace llarp
       HandlePathBuilt(path::Path* path) override;
 
       bool
-      SendToServiceOrQueue(const byte_t* addr, llarp_buffer_t payload,
+      SendToServiceOrQueue(const RouterID& addr, llarp_buffer_t payload,
                            ProtocolType t);
 
       bool
-      SendToSNodeOrQueue(const byte_t* addr, llarp_buffer_t payload);
+      SendToSNodeOrQueue(const RouterID& addr, llarp_buffer_t payload);
 
       void
       FlushSNodeTraffic();

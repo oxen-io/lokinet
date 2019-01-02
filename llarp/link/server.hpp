@@ -57,7 +57,7 @@ namespace llarp
     }
 
     bool
-    HasSessionTo(const byte_t* pk);
+    HasSessionTo(const RouterID& pk);
 
     bool
     HasSessionVia(const Addr& addr);
@@ -128,7 +128,7 @@ namespace llarp
     GetOurAddressInfo(AddressInfo& addr) const;
 
     bool
-    VisitSessionByPubkey(const byte_t* pk,
+    VisitSessionByPubkey(const RouterID& pk,
                          std::function< bool(ILinkSession*) > visit);
 
     virtual uint16_t
@@ -156,7 +156,7 @@ namespace llarp
     GenEphemeralKeys();
 
     void
-    MapAddr(const byte_t* pk, ILinkSession* s);
+    MapAddr(const RouterID& pk, ILinkSession* s);
 
     virtual void Tick(llarp_time_t)
     {

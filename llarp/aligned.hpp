@@ -139,6 +139,18 @@ namespace llarp
       return *this;
     }
 
+    byte_t& operator[](size_t idx)
+    {
+      assert(idx < SIZE);
+      return as_array()[idx];
+    }
+
+    const byte_t& operator[](size_t idx) const
+    {
+      assert(idx < SIZE);
+      return as_array()[idx];
+    }
+
     static constexpr size_t
     size()
     {
@@ -184,18 +196,6 @@ namespace llarp
       randombytes(as_array().data(), SIZE);
     }
 
-    byte_t*
-    data()
-    {
-      return as_array().data();
-    }
-
-    const byte_t*
-    data() const
-    {
-      return as_array().data();
-    }
-
     operator const byte_t*() const
     {
       return as_array().data();
@@ -214,6 +214,30 @@ namespace llarp
     operator Data&()
     {
       return as_array();
+    }
+
+    typename Data::iterator
+    begin()
+    {
+      return as_array().begin();
+    }
+
+    typename Data::iterator
+    end()
+    {
+      return as_array().end();
+    }
+
+    typename Data::const_iterator
+    begin() const
+    {
+      return as_array().cbegin();
+    }
+
+    typename Data::const_iterator
+    end() const
+    {
+      return as_array().cend();
     }
 
     bool

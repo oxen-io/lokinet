@@ -23,7 +23,7 @@ namespace llarp
       RCNode(const llarp::RouterContact& other)
       {
         rc = other;
-        ID = other.pubkey.data();
+        ID = other.pubkey.as_array();
       }
 
       bool
@@ -47,7 +47,7 @@ namespace llarp
       ISNode(const llarp::service::IntroSet& other)
       {
         introset = other;
-        introset.A.CalculateAddress(ID);
+        introset.A.CalculateAddress(ID.as_array());
       }
 
       bool

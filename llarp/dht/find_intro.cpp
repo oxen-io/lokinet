@@ -117,7 +117,7 @@ namespace llarp
           if(R == 0)
           {
             // we don't have it
-            Key_t target = S.data();
+            Key_t target = S.ToKey();
             Key_t closer;
             // find closer peer
             if(!dht.nodes->FindClosest(target, closer))
@@ -131,7 +131,7 @@ namespace llarp
           else
           {
             Key_t us     = dht.OurKey();
-            Key_t target = S.data();
+            Key_t target = S.ToKey();
             // we are recursive
             if(dht.nodes->FindCloseExcluding(target, peer, exclude))
             {

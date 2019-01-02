@@ -55,7 +55,8 @@ namespace llarp
       MessageBuffer _msg;
 
       /// for accessing message buffer
-      llarp_buffer_t buffer = llarp::InitBuffer(_msg.data(), _msg.size());
+      llarp_buffer_t buffer =
+          llarp::InitBuffer(_msg.as_array().data(), _msg.size());
 
       bool
       operator==(const InboundMessage& other) const

@@ -63,11 +63,11 @@ namespace llarp
 
       if(isFarthestHop)
       {
-        hop.upstream = hop.rc.pubkey.data();
+        hop.upstream = hop.rc.pubkey.as_array();
       }
       else
       {
-        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey.data();
+        hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey.as_array();
       }
 
       // build record
@@ -219,8 +219,7 @@ namespace llarp
     bool
     Builder::BuildCooldownHit(llarp_time_t now) const
     {
-      return now < lastBuild
-          || now - lastBuild < buildIntervalLimit;
+      return now < lastBuild || now - lastBuild < buildIntervalLimit;
     }
 
     bool
@@ -304,7 +303,8 @@ namespace llarp
     {
       // linear backoff
       static constexpr llarp_time_t MaxBuildInterval = 10 * 1000;
-      buildIntervalLimit = std::max(1000 + buildIntervalLimit, MaxBuildInterval);
+      buildIntervalLimit =
+          std::max(1000 + buildIntervalLimit, MaxBuildInterval);
       PathSet::HandlePathBuildTimeout(p);
     }
 

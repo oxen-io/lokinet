@@ -92,8 +92,9 @@ namespace llarp
       uint64_t txid = ++ids;
       TXOwner peer(askpeer, txid);
       TXOwner whoasked(OurKey(), txid);
-      pendingExploreLookups.NewTX(peer, whoasked, askpeer.data(),
-                                  new ExploreNetworkJob(askpeer.data(), this));
+      pendingExploreLookups.NewTX(
+          peer, whoasked, askpeer.as_array(),
+          new ExploreNetworkJob(askpeer.as_array(), this));
     }
 
     void
@@ -211,8 +212,8 @@ namespace llarp
           // is the next peer we ask closer to the target than us?
           if((next ^ target) < (ourKey ^ target))
           {
-            // yes it is closer, ask neighboor recursively
-            LookupRouterRecursive(target.data(), requester, txid, next);
+            // yes it is closer, ask neighbour recursively
+            LookupRouterRecursive(target.as_array(), requester, txid, next);
           }
           else
           {
@@ -240,7 +241,8 @@ namespace llarp
     Context::GetIntroSetByServiceAddress(
         const llarp::service::Address &addr) const
     {
-      auto itr = services->nodes.find(addr.data());
+      auto key = addr.ToKey();
+      auto itr = services->nodes.find(key);
       if(itr == services->nodes.end())
         return nullptr;
       return &itr->second.introset;
@@ -343,7 +345,7 @@ namespace llarp
       bool
       GetNextPeer(Key_t &next, const std::set< Key_t > &exclude) override
       {
-        Key_t k = target.data();
+        Key_t k = target.ToKey();
         return parent->nodes->FindCloseExcluding(k, next, exclude);
       }
 
@@ -392,8 +394,8 @@ namespace llarp
       void
       SendReply() override
       {
-        auto path =
-            parent->router->paths.GetByUpstream(parent->OurKey(), localPath);
+        auto path = parent->router->paths.GetByUpstream(
+            parent->OurKey().as_array(), localPath);
         if(!path)
         {
           llarp::LogWarn(
@@ -619,8 +621,8 @@ namespace llarp
       void
       SendReply() override
       {
-        auto path =
-            parent->router->paths.GetByUpstream(parent->OurKey(), localPath);
+        auto path = parent->router->paths.GetByUpstream(
+            parent->OurKey().as_array(), localPath);
         if(!path)
         {
           llarp::LogWarn(
@@ -657,7 +659,7 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > > &reply)
     {
       std::vector< RouterID > closer;
-      Key_t t(target.data());
+      Key_t t(target.as_array());
       std::set< Key_t > found;
       if(!nodes)
         return false;
@@ -686,7 +688,7 @@ namespace llarp
         return false;
       }
       for(const auto &f : found)
-        closer.emplace_back(f.data());
+        closer.emplace_back(f.as_array());
       reply.emplace_back(new GotRouterMessage(txid, closer, false));
       return true;
     }
@@ -762,8 +764,8 @@ namespace llarp
       void
       SendReply() override
       {
-        auto path =
-            parent->router->paths.GetByUpstream(parent->OurKey(), localPath);
+        auto path = parent->router->paths.GetByUpstream(
+            parent->OurKey().as_array(), localPath);
         if(!path)
         {
           llarp::LogWarn(

@@ -275,7 +275,7 @@ namespace llarp
 
       const byte_t* ptr = nullptr;
       if(!vanity.IsZero())
-        ptr = vanity.data();
+        ptr = vanity.as_array().data();
       // update pubkeys
       pub.Update(llarp::seckey_topublic(enckey),
                  llarp::seckey_topublic(signkey), ptr);

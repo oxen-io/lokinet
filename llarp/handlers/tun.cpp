@@ -226,9 +226,9 @@ namespace llarp
         }
         else if(addr.FromString(qname, ".loki"))
         {
-          if(HasAddress(addr.data().data()))
+          if(HasAddress(addr.as_array().data()))
           {
-            huint32_t ip = ObtainIPForAddr(addr.data().data(), false);
+            huint32_t ip = ObtainIPForAddr(addr.as_array().data(), false);
             msg.AddINReply(ip);
           }
           else
@@ -242,8 +242,8 @@ namespace llarp
         else if(addr.FromString(qname, ".snode"))
         {
           // TODO: add hook to EnsurePathToSNode
-          EnsurePathToSNode(addr.data().data());
-          huint32_t ip = ObtainIPForAddr(addr.data().data(), true);
+          EnsurePathToSNode(addr.as_array());
+          huint32_t ip = ObtainIPForAddr(addr.as_array().data(), true);
           msg.AddINReply(ip);
         }
         else
@@ -325,7 +325,7 @@ namespace llarp
     {
       if(ctx)
       {
-        huint32_t ip = ObtainIPForAddr(addr.data().data(), false);
+        huint32_t ip = ObtainIPForAddr(addr.as_array().data(), false);
         request.AddINReply(ip);
       }
       else
@@ -348,9 +348,9 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr[ip]                 = addr.data().data();
-      m_AddrToIP[addr.data().data()] = ip;
-      m_SNodes[addr.data().data()]   = SNode;
+      m_IPToAddr[ip]              = addr.as_array();
+      m_AddrToIP[addr.as_array()] = ip;
+      m_SNodes[addr.as_array()]   = SNode;
       MarkIPActiveForever(ip);
       return true;
     }
@@ -495,12 +495,12 @@ namespace llarp
         if(m_SNodes.at(itr->second))
         {
           sendFunc = std::bind(&TunEndpoint::SendToSNodeOrQueue, this,
-                               itr->second.data(), std::placeholders::_1);
+                               itr->second.as_array(), std::placeholders::_1);
         }
         else
         {
           sendFunc = std::bind(&TunEndpoint::SendToServiceOrQueue, this,
-                               itr->second.data(), std::placeholders::_1,
+                               itr->second.as_array(), std::placeholders::_1,
                                service::eProtocolTraffic);
         }
         // prepare packet for insertion into network
@@ -555,11 +555,11 @@ namespace llarp
     }
 
     huint32_t
-    TunEndpoint::ObtainIPForAddr(const byte_t *a, bool snode)
+    TunEndpoint::ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool snode)
     {
       llarp_time_t now = Now();
       huint32_t nextIP = {0};
-      AlignedBuffer< 32 > ident(a);
+      AlignedBuffer< 32 > ident(addr);
       {
         // previously allocated address
         auto itr = m_AddrToIP.find(ident);

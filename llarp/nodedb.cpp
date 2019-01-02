@@ -105,7 +105,7 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
   auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
   {
     llarp::util::Lock lock(access);
-    entries.insert(std::make_pair(rc.pubkey.data(), rc));
+    entries.emplace(rc.pubkey.as_array(), rc);
   }
   if(!rc.BEncode(&buf))
     return false;
@@ -182,7 +182,7 @@ llarp_nodedb::loadfile(const fs::path &fpath)
   }
   {
     llarp::util::Lock lock(access);
-    entries.insert(std::make_pair(rc.pubkey.data(), rc));
+    entries.emplace(rc.pubkey.as_array(), rc);
   }
   return true;
 }

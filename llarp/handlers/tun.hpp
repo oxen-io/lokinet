@@ -111,7 +111,7 @@ namespace llarp
           return addr;
         }
         // found
-        return itr->second.data();
+        return itr->second.as_array();
       }
 
       bool
@@ -122,7 +122,8 @@ namespace llarp
 
       /// get ip address for key unconditionally
       huint32_t
-      ObtainIPForAddr(const byte_t* addr, bool serviceNode) override;
+      ObtainIPForAddr(const AlignedBuffer< 32 >& addr,
+                      bool serviceNode) override;
 
       /// flush network traffic
       void

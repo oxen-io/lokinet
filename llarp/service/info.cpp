@@ -50,7 +50,7 @@ namespace llarp
       if(m_CachedAddr.IsZero())
       {
         Address addr;
-        CalculateAddress(addr.data());
+        CalculateAddress(addr.as_array());
         return addr.ToString();
       }
       return m_CachedAddr.ToString();
@@ -70,7 +70,7 @@ namespace llarp
     bool
     ServiceInfo::UpdateAddr()
     {
-      return CalculateAddress(m_CachedAddr.data());
+      return CalculateAddress(m_CachedAddr.as_array());
     }
 
   }  // namespace service
