@@ -9,11 +9,11 @@
 #include <messages/path_latency.hpp>
 #include <messages/path_transfer.hpp>
 
-namespace llarp 
+namespace llarp
 {
   struct Router;
 
-  namespace routing 
+  namespace routing
   {
     struct IMessageHandler;
 
@@ -31,8 +31,8 @@ namespace llarp
       bool firstKey;
       char key;
       dict_reader reader;
-      
-      struct MessageHolder 
+
+      struct MessageHolder
       {
         DataDiscardMessage D;
         PathLatencyMessage L;
@@ -48,9 +48,9 @@ namespace llarp
         CloseExitMessage C;
       };
 
-      IMessage * msg = nullptr;
+      IMessage* msg = nullptr;
       MessageHolder m_Holder;
     };
-  }
-}
+  }  // namespace routing
+}  // namespace llarp
 #endif

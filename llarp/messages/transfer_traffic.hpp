@@ -19,7 +19,8 @@ namespace llarp
       std::vector< llarp::Encrypted< MaxExitMTU + ExitOverhead > > X;
       size_t _size = 0;
 
-      void Clear() override
+      void
+      Clear() override
       {
         X.clear();
       }

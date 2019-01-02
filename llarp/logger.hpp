@@ -229,8 +229,8 @@ namespace llarp
     std::string tag = fname;
     if(_glog.nodeName.size())
       ss << _glog.nodeName << " ";
-    ss << "(" << thread_id_string() << ") "
-       << log_timestamp() << " " << tag << ":" << lineno;
+    ss << "(" << thread_id_string() << ") " << log_timestamp() << " " << tag
+       << ":" << lineno;
     ss << "\t";
     LogAppend(ss, std::forward< TArgs >(args)...);
 #ifndef ANDROID
