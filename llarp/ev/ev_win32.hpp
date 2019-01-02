@@ -59,98 +59,13 @@ struct win32_tun_io
   device* tunif;
   byte_t readbuf[EV_READ_BUF_SZ] = {0};
 
-  struct WriteBuffer
-  {
-    llarp_time_t timestamp = 0;
-    size_t bufsz;
-    byte_t buf[EV_WRITE_BUF_SZ];
-
-    WriteBuffer() = default;
-
-    WriteBuffer(const byte_t* ptr, size_t sz)
-    {
-      if(sz <= sizeof(buf))
-      {
-        bufsz = sz;
-        memcpy(buf, ptr, bufsz);
-      }
-      else
-        bufsz = 0;
-    }
-
-    struct GetTime
-    {
-      llarp_time_t
-      operator()(const WriteBuffer& buf) const
-      {
-        return buf.timestamp;
-      }
-    };
-
-    struct GetNow
-    {
-      void* loop;
-      GetNow(void* l) : loop(l)
-      {
-      }
-
-      llarp_time_t
-      operator()() const
-      {
-        return llarp::time_now_ms();
-      }
-    };
-
-    struct PutTime
-    {
-      void* loop;
-      PutTime(void* l) : loop(l)
-      {
-      }
-      void
-      operator()(WriteBuffer& buf)
-      {
-        buf.timestamp = llarp::time_now_ms();
-      }
-    };
-
-    struct Compare
-    {
-      bool
-      operator()(const WriteBuffer& left, const WriteBuffer& right) const
-      {
-        return left.timestamp < right.timestamp;
-      }
-    };
-  };
-
-  using LossyWriteQueue_t =
-      llarp::util::CoDelQueue< WriteBuffer, WriteBuffer::GetTime,
-                               WriteBuffer::PutTime, WriteBuffer::Compare,
-                               WriteBuffer::GetNow, llarp::util::NullMutex,
-                               llarp::util::NullLock, 5, 100, 128 >;
-
-  std::unique_ptr< LossyWriteQueue_t > m_LossyWriteQueue;
-
-  win32_tun_io(llarp_tun_io* tio) : t(tio), tunif(tuntap_init())
-  {
-    // This is not your normal everyday event loop, this is _advanced_ event
-    // handling :>
-    m_LossyWriteQueue = std::make_unique< LossyWriteQueue_t >("win32_tun_queue",
-                                                              nullptr, nullptr);
-  };
+  win32_tun_io(llarp_tun_io* tio) : t(tio), tunif(tuntap_init()){};
 
   bool
   queue_write(const byte_t* buf, size_t sz)
   {
-    if(m_LossyWriteQueue)
-    {
-      m_LossyWriteQueue->Emplace(buf, sz);
-      flush_write();
-      return true;
-    }
-    else
-      return false;
+    do_write((void*)buf, sz);
+    return true;
   }
 
   bool
@@ -212,7 +127,6 @@ struct win32_tun_io
   void
   do_write(void* data, size_t sz)
   {
-    llarp::LogInfo("writing some data");
     asio_evt_pkt* pkt = new asio_evt_pkt;
     pkt->buf          = data;
     pkt->sz           = sz;
@@ -228,11 +142,6 @@ struct win32_tun_io
   {
     if(t->before_write)
       t->before_write(t);
-    m_LossyWriteQueue->Process([&](WriteBuffer& buffer) {
-      do_write(buffer.buf, buffer.bufsz);
-      // we are NEVER going to block
-      // because Windows NT implements true async io
-    });
   }
 
   void
@@ -281,19 +190,21 @@ tun_ev_loop(void* unused)
     if(!pkt->write)
     {
       // llarp::LogInfo("read tun ", size, " bytes, pass to handler");
+      // skip if our buffer remains empty
+      if(*(byte_t*)pkt->buf == '\0')
+        continue;
       if(ev->t->recvpkt)
         ev->t->recvpkt(ev->t, llarp::InitBuffer(pkt->buf, size));
-      ev->flush_write();
       ev->read(ev->readbuf, sizeof(ev->readbuf));
     }
     else
     {
-      llarp::LogInfo("write ", size, " bytes to tunnel interface");
       // ok let's queue another read!
       ev->read(ev->readbuf, sizeof(ev->readbuf));
     }
     if(ev->t->tick)
       ev->t->tick(ev->t);
+    ev->flush_write();
     delete pkt;  // don't leak
   }
   llarp::LogInfo("exit TUN event loop thread from system managed thread pool");
