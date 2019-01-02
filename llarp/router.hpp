@@ -340,11 +340,12 @@ namespace llarp
     llarp::ILinkLayer *
     GetLinkWithSessionByPubkey(const llarp::RouterID &remote);
 
-
-    /// parse a routing message in a buffer and handle it with a handler if successful parsing
-    /// return true on parse and handle success otherwise return false
+    /// parse a routing message in a buffer and handle it with a handler if
+    /// successful parsing return true on parse and handle success otherwise
+    /// return false
     bool
-    ParseRoutingMessageBuffer(llarp_buffer_t buf, routing::IMessageHandler * h, PathID_t rxid);
+    ParseRoutingMessageBuffer(llarp_buffer_t buf, routing::IMessageHandler *h,
+                              PathID_t rxid);
 
     void
     ConnectToRandomRouters(int N);
