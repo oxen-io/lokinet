@@ -12,7 +12,8 @@
 
 namespace llarp
 {
-  const byte_t *NetID::DefaultValue = (const byte_t *)LLARP_NET_ID;
+  const byte_t *NetID::DefaultValue =
+      reinterpret_cast< const byte_t * >(Version::LLARP_NET_ID);
 
   bool RouterContact::IgnoreBogons = false;
 
@@ -23,6 +24,7 @@ namespace llarp
   /// 1 day for real network
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
+
   NetID::NetID() : AlignedBuffer< 8 >()
   {
     size_t len =
@@ -161,8 +163,7 @@ namespace llarp
       if(strbuf.sz > nickname.size())
         return false;
       nickname.Zero();
-      std::copy(strbuf.base, strbuf.base + strbuf.sz,
-                nickname.begin());
+      std::copy(strbuf.base, strbuf.base + strbuf.sz, nickname.begin());
       return true;
     }
 
@@ -216,7 +217,9 @@ namespace llarp
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
     if(IsExpired(now))
+    {
       return true;
+    }
     auto expiresAt = last_updated + Lifetime;
     return expiresAt - now <= dlt;
   }

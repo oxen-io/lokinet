@@ -3,32 +3,32 @@
 #include <router_contact.hpp>
 #include <crypto.hpp>
 
+static const byte_t DEF_VALUE[] = "unittest";
+
 struct RCTest : public ::testing::Test
 {
   using RC_t     = llarp::RouterContact;
   using SecKey_t = llarp::SecretKey;
 
-  RCTest() : crypto(llarp::Crypto::sodium{})
+  static void
+  SetUpTestCase()
   {
+    llarp::NetID::DefaultValue = DEF_VALUE;
   }
 
-  void
-  SetUp()
+  RCTest() : crypto(llarp::Crypto::sodium{}), oldval(llarp::NetID::DefaultValue)
   {
-    oldval                     = llarp::NetID::DefaultValue;
-    llarp::NetID::DefaultValue = (const byte_t*)"unittest";
     rc.Clear();
   }
 
-  void
-  TearDown()
+  ~RCTest()
   {
     llarp::NetID::DefaultValue = oldval;
   }
 
   RC_t rc;
   llarp::Crypto crypto;
-  const byte_t* oldval = nullptr;
+  const byte_t* oldval;
 };
 
 TEST_F(RCTest, TestSignVerify)
@@ -37,7 +37,7 @@ TEST_F(RCTest, TestSignVerify)
   SecKey_t sign;
   crypto.encryption_keygen(encr);
   crypto.identity_keygen(sign);
-  rc.enckey = llarp::seckey_topublic(encr);
+  rc.enckey = encr.toPublic();
   ASSERT_TRUE(rc.Sign(&crypto, sign));
   ASSERT_TRUE(rc.Verify(&crypto, llarp::time_now_ms()));
 }

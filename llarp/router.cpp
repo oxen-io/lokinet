@@ -1542,7 +1542,7 @@ namespace llarp
         if(strlen(val) <= self->_rc.netID.size())
         {
           llarp::LogWarn("!!!! you have manually set netid to be '", val,
-                         "' which does not equal '", LLARP_NET_ID,
+                         "' which does not equal '", Version::LLARP_NET_ID,
                          "' you will run as a different network, good luck and "
                          "don't forget: something something MUH traffic shape "
                          "correlation !!!!");
