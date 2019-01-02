@@ -220,14 +220,14 @@ namespace llarp
     }
 
     bool
-    Identity::KeyExchange(path_dh_func dh, byte_t* result,
+    Identity::KeyExchange(path_dh_func dh, SharedSecret& result,
                           const ServiceInfo& other, const byte_t* N) const
     {
       return dh(result, other.EncryptionPublicKey(), enckey, N);
     }
 
     bool
-    Identity::Sign(llarp::Crypto* c, byte_t* sig, llarp_buffer_t buf) const
+    Identity::Sign(Crypto* c, Signature& sig, llarp_buffer_t buf) const
     {
       return c->sign(sig, signkey, buf);
     }

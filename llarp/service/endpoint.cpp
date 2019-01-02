@@ -1468,18 +1468,24 @@ namespace llarp
         AsyncKeyExchange* self = static_cast< AsyncKeyExchange* >(user);
         // derive ntru session key component
         SharedSecret K;
-        self->crypto->pqe_encrypt(self->frame.C, K, self->introPubKey);
+        self->crypto->pqe_encrypt(self->frame.C, K,
+                                  self->introPubKey.as_array().data());
         // randomize Nounce
         self->frame.N.Randomize();
         // compure post handshake session key
-        byte_t tmp[64];
-        // K
-        memcpy(tmp, K, 32);
         // PKE (A, B, N)
-        if(!self->m_LocalIdentity.KeyExchange(self->crypto->dh_client, tmp + 32,
-                                              self->remote, self->frame.N))
+        SharedSecret sharedSecret;
+        if(!self->m_LocalIdentity.KeyExchange(self->crypto->dh_client,
+                                              sharedSecret, self->remote,
+                                              self->frame.N))
+        {
           llarp::LogError("failed to derive x25519 shared key component");
+        }
+        std::array< byte_t, 64 > tmp;
+        // K
+        std::copy(K.begin(), K.end(), tmp.begin());
         // H (K + PKE(A, B, N))
+        std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
         self->crypto->shorthash(self->sharedKey,
                                 llarp::StackBuffer< decltype(tmp) >(tmp));
         // set tag
@@ -1560,7 +1566,7 @@ namespace llarp
           llarp::LogError("Failed to send frame on path");
       }
       else
-        llarp::LogError("cannot send becuase we have no path to ",
+        llarp::LogError("cannot send because we have no path to ",
                         remoteIntro.router);
     }
 

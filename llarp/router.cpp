@@ -123,7 +123,7 @@ llarp_router_try_connect(llarp::Router *router,
 
 bool
 llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *fpath,
-                           byte_t *secretkey)
+                           llarp::SecretKey &secretkey)
 {
   llarp::LogDebug("find or create ", fpath);
   fs::path path(fpath);
@@ -135,13 +135,14 @@ llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *fpath,
     std::ofstream f(path.string(), std::ios::binary);
     if(f.is_open())
     {
-      f.write((char *)secretkey, SECKEYSIZE);
+      f.write(reinterpret_cast< char * >(secretkey.as_array().data()),
+              SECKEYSIZE);
     }
   }
   std::ifstream f(path.string(), std::ios::binary);
   if(f.is_open())
   {
-    f.read((char *)secretkey, SECKEYSIZE);
+    f.read(reinterpret_cast< char * >(secretkey.as_array().data()), SECKEYSIZE);
     return true;
   }
   llarp::LogInfo("failed to get identity key");

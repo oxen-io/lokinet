@@ -58,7 +58,7 @@ namespace llarp
 
     if(!MDS(hash, buf, shared))
     {
-      llarp::LogError("Failed to generate messgae auth");
+      llarp::LogError("Failed to generate message auth");
       return false;
     }
     return true;
@@ -79,7 +79,7 @@ namespace llarp
     byte_t* otherPubkey = nonce + TUNNONCESIZE;
     byte_t* body        = otherPubkey + PUBKEYSIZE;
 
-    // use dh_server becuase we are not the creator of this message
+    // use dh_server because we are not the creator of this message
     auto DH      = crypto->dh_server;
     auto Decrypt = crypto->xchacha20;
     auto MDS     = crypto->hmac;
@@ -98,7 +98,7 @@ namespace llarp
       return false;
     }
 
-    if(!MDS(digest, buf, shared))
+    if(!MDS(digest.as_array().data(), buf, shared))
     {
       llarp::LogError("Digest failed");
       return false;

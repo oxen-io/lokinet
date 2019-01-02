@@ -201,11 +201,6 @@ namespace llarp
       return as_array().data();
     }
 
-    operator byte_t*()
-    {
-      return as_array().data();
-    }
-
     typename Data::iterator
     begin()
     {

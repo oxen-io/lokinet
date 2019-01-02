@@ -140,7 +140,7 @@ namespace llarp
       }
 
       // K = TKE(a.p, B_a.e, sk, t_h)
-      if(!dh(K, other, secret, t_h))
+      if(!dh(K, other, secret, t_h.as_array().data()))
       {
         llarp::LogError("key exchange with ", other, " failed");
         return false;

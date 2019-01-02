@@ -200,7 +200,9 @@ namespace llarp
   RouterContact::SetNick(const std::string &nick)
   {
     nickname.Zero();
-    memcpy(nickname, nick.c_str(), std::min(nick.size(), nickname.size()));
+    std::copy(nick.begin(),
+              nick.begin() + std::min(nick.size(), nickname.size()),
+              nickname.begin());
   }
 
   bool

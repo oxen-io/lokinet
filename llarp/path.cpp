@@ -52,7 +52,7 @@ namespace llarp
       return m_Router->logic;
     }
 
-    byte_t*
+    llarp::SecretKey&
     PathContext::EncryptionSecretKey()
     {
       return m_Router->encryption;

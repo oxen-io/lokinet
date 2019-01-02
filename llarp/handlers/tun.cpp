@@ -59,7 +59,7 @@ namespace llarp
       {
         llarp::RouterID exitRouter;
         if(!(exitRouter.FromString(v)
-             || HexDecode(v.c_str(), exitRouter, exitRouter.size())))
+             || HexDecode(v.c_str(), exitRouter.begin(), exitRouter.size())))
         {
           llarp::LogError(Name(), " bad exit router key: ", v);
           return false;

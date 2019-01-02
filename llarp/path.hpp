@@ -660,7 +660,7 @@ namespace llarp
       llarp::Router*
       Router();
 
-      byte_t*
+      llarp::SecretKey&
       EncryptionSecretKey();
 
       const byte_t*
