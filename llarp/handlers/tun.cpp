@@ -343,7 +343,7 @@ namespace llarp
       {
         // XXX is calling inet_ntoa safe in this context? it's MP-unsafe
         llarp::LogWarn(ip, " already mapped to ",
-                       service::Address(itr->second).ToString());
+                       service::Address(itr->second.as_array()).ToString());
         return false;
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
@@ -555,7 +555,7 @@ namespace llarp
     }
 
     huint32_t
-    TunEndpoint::ObtainIPForAddr(const AlignedBuffer< 32 >& addr, bool snode)
+    TunEndpoint::ObtainIPForAddr(const AlignedBuffer< 32 > &addr, bool snode)
     {
       llarp_time_t now = Now();
       huint32_t nextIP = {0};

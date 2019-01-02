@@ -206,16 +206,6 @@ namespace llarp
       return as_array().data();
     }
 
-    operator const Data&() const
-    {
-      return as_array();
-    }
-
-    operator Data&()
-    {
-      return as_array();
-    }
-
     typename Data::iterator
     begin()
     {

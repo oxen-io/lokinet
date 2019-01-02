@@ -1164,7 +1164,7 @@ namespace llarp
     Endpoint::SendToServiceOrQueue(const RouterID& addr, llarp_buffer_t data,
                                    ProtocolType t)
     {
-      service::Address remote(addr);
+      service::Address remote(addr.as_array());
 
       // inbound converstation
       auto now = Now();

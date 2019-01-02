@@ -65,7 +65,7 @@ namespace llarp
         return true;
       }
       llarp::dht::Key_t addr;
-      if(!I.A.CalculateAddress(addr))
+      if(!I.A.CalculateAddress(addr.as_array()))
       {
         llarp::LogWarn(
             "failed to calculate hidden service address for PubIntro message");
