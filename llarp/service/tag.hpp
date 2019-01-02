@@ -28,7 +28,8 @@ namespace llarp
       {
         // evidently, does nothing on LP64 systems (where size_t is *already*
         // unsigned long but zero-extends this on LLP64 systems
-        std::copy(str.begin(), str.begin() + std::min(16UL, str.size()),
+        // 2Jan19: reeee someone undid the patch
+        std::copy(str.begin(), str.begin() + std::min(std::string::size_type(16), str.size()),
                   begin());
       }
 
@@ -42,7 +43,7 @@ namespace llarp
       Tag&
       operator=(const std::string& str)
       {
-        std::copy(str.begin(), str.begin() + std::min(16UL, str.size()),
+        std::copy(str.begin(), str.begin() + std::min(std::string::size_type(16), str.size()),
                   begin());
         return *this;
       }

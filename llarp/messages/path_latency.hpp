@@ -20,11 +20,7 @@ namespace llarp
       DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
 
       void
-      Clear() override
-      {
-        T = 0;
-        L = 0;
-      };
+      Clear() override{};
 
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;

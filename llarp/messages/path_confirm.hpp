@@ -25,11 +25,7 @@ namespace llarp
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
 
       void
-      Clear() override
-      {
-        pathLifetime = 0;
-        pathCreated  = 0;
-      };
+      Clear() override{};
     };
   }  // namespace routing
 }  // namespace llarp
