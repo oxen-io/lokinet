@@ -684,7 +684,7 @@ namespace llarp
     // store it in nodedb async
     nodedb->InsertAsync(newrc);
     // update dht if required
-    if(dht->impl.nodes->HasNode(newrc.pubkey.as_array()))
+    if(dht->impl.nodes->HasNode(dht::Key_t{newrc.pubkey}))
     {
       dht->impl.nodes->PutNode(newrc);
     }
@@ -772,7 +772,7 @@ namespace llarp
         for(const auto &rc : bootstrapRCList)
         {
           llarp_router_try_connect(this, rc, 4);
-          dht->impl.ExploreNetworkVia(rc.pubkey.as_array());
+          dht->impl.ExploreNetworkVia(dht::Key_t{rc.pubkey});
         }
       }
       else

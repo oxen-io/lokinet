@@ -111,7 +111,7 @@ namespace llarp
           return addr;
         }
         // found
-        return itr->second.as_array();
+        return Addr{itr->second};
       }
 
       bool

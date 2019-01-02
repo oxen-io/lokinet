@@ -53,7 +53,7 @@ TEST_F(FrameTest, TestFrameCrypto)
   // rewind buffer
   buf->cur = buf->base + llarp::EncryptedFrameOverheadSize;
   // encrypt to alice
-  ASSERT_TRUE(f.EncryptInPlace(alice, llarp::seckey_topublic(bob), &crypto));
+  ASSERT_TRUE(f.EncryptInPlace(alice, bob.toPublic(), &crypto));
   // decrypt from alice
   ASSERT_TRUE(f.DecryptInPlace(bob, &crypto));
 

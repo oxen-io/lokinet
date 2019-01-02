@@ -46,7 +46,7 @@ decode_request_name(const std::string &name, llarp::AlignedBuffer< 32 > &addr,
     {
       return false;
     }
-    addr    = snodeAddr.as_array();
+    addr    = snodeAddr;
     isSNode = true;
   }
   else
@@ -55,7 +55,7 @@ decode_request_name(const std::string &name, llarp::AlignedBuffer< 32 > &addr,
     {
       return false;
     }
-    addr    = serviceAddr.as_array();
+    addr    = serviceAddr;
     isSNode = false;
   }
   return true;
@@ -330,7 +330,7 @@ ReverseHandlerIter(struct llarp::service::Context::endpoint_iter *endpointCfg)
     }
     else
     {
-      llarp::service::Address saddr = addr.as_array();
+      llarp::service::Address saddr(addr);
       // llarp::LogInfo("Returning [", saddr.ToString(), "]");
       writesend_dnss_revresponse(saddr.ToString(), context->request);
     }
@@ -457,7 +457,7 @@ llarp_dotlokilookup_handler(std::string name,
     }
     else
     {
-      if(tun->HasPathToService(addr.as_array()))
+      if(tun->HasPathToService(llarp::service::Address(addr)))
       {
         llarp_dotlokilookup_checkQuery(qr, 0, 0);
         response->dontSendResponse = true;  // will send it shortly

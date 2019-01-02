@@ -96,7 +96,8 @@ namespace llarp
         if(r.FromString(msg.questions[0].qname))
         {
           huint32_t ip;
-          if(m_SNodeKeys.find(r.as_array()) == m_SNodeKeys.end())
+          PubKey pubKey(r);
+          if(m_SNodeKeys.find(pubKey) == m_SNodeKeys.end())
           {
             // we do not have it mapped
             // map it
@@ -106,7 +107,7 @@ namespace llarp
           else
           {
             // we have it mapped already as a service node
-            auto itr = m_KeyToIP.find(r.as_array());
+            auto itr = m_KeyToIP.find(pubKey);
             if(itr != m_KeyToIP.end())
             {
               ip = itr->second;
@@ -485,18 +486,19 @@ namespace llarp
     huint32_t
     ExitEndpoint::ObtainServiceNodeIP(const llarp::RouterID &other)
     {
-      huint32_t ip = GetIPForIdent(other.as_array());
-      if(m_SNodeKeys.emplace(other.as_array()).second)
+      PubKey pubKey(other);
+      huint32_t ip = GetIPForIdent(pubKey);
+      if(m_SNodeKeys.emplace(pubKey).second)
       {
         // this is a new service node make an outbound session to them
-        m_SNodeSessions.insert(
-            std::make_pair(other,
-                           std::unique_ptr< llarp::exit::SNodeSession >(
-                               new llarp::exit::SNodeSession(
-                                   other,
-                                   std::bind(&ExitEndpoint::QueueSNodePacket,
-                                             this, std::placeholders::_1, ip),
-                                   Router(), 2, 1, true))));
+        m_SNodeSessions.emplace(
+            other,
+            std::unique_ptr< llarp::exit::SNodeSession >(
+                new llarp::exit::SNodeSession(
+                    other,
+                    std::bind(&ExitEndpoint::QueueSNodePacket, this,
+                              std::placeholders::_1, ip),
+                    Router(), 2, 1, true)));
       }
       return ip;
     }

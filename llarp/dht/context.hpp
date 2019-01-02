@@ -109,7 +109,7 @@ namespace llarp
           return false;
         }
 
-        const Key_t targetKey = target.as_array();
+        const Key_t targetKey{target};
         if((prevPeer ^ targetKey) < (peer ^ targetKey))
         {
           // next peer is not closer
@@ -168,7 +168,7 @@ namespace llarp
       LookupRouter(const RouterID& target, RouterLookupHandler result)
       {
         Key_t askpeer;
-        if(!nodes->FindClosest(target.as_array(), askpeer))
+        if(!nodes->FindClosest(Key_t(target), askpeer))
           return false;
         LookupRouterRecursive(target, OurKey(), 0, askpeer, result);
         return true;

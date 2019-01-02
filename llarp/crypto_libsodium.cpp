@@ -21,8 +21,7 @@ namespace llarp
     xchacha20(llarp_buffer_t buff, const SharedSecret &k, const TunnelNonce &n)
     {
       return crypto_stream_xchacha20_xor(buff.base, buff.base, buff.sz,
-                                         n.data(),
-                                         k.data())
+                                         n.data(), k.data())
           == 0;
     }
 
@@ -32,8 +31,7 @@ namespace llarp
     {
       if(in.sz > out.sz)
         return false;
-      return crypto_stream_xchacha20_xor(out.base, in.base, in.sz, n,
-                                         k.data())
+      return crypto_stream_xchacha20_xor(out.base, in.base, in.sz, n, k.data())
           == 0;
     }
 
@@ -45,8 +43,7 @@ namespace llarp
       crypto_generichash_state h;
       const size_t outsz = SHAREDKEYSIZE;
 
-      if(crypto_scalarmult_curve25519(shared.data(),
-                                      usSec.data(), themPub))
+      if(crypto_scalarmult_curve25519(shared.data(), usSec.data(), themPub))
         return false;
       crypto_generichash_blake2b_init(&h, nullptr, 0U, outsz);
       crypto_generichash_blake2b_update(&h, client_pk.data(), 32);
@@ -62,11 +59,9 @@ namespace llarp
     {
       llarp::SharedSecret dh_result;
 
-      if(dh(dh_result, llarp::seckey_topublic(sk), pk.data(),
-            pk.data(), sk))
+      if(dh(dh_result, sk.toPublic(), pk, pk.data(), sk))
       {
-        return crypto_generichash_blake2b(shared.data(), 32,
-                                          n.data(), 32,
+        return crypto_generichash_blake2b(shared.data(), 32, n.data(), 32,
                                           dh_result.data(), 32)
             != -1;
       }
@@ -79,11 +74,9 @@ namespace llarp
               const SecretKey &sk, const TunnelNonce &n)
     {
       llarp::SharedSecret dh_result;
-      if(dh(dh_result, pk, llarp::seckey_topublic(sk), pk.data(),
-            sk))
+      if(dh(dh_result, pk, sk.toPublic(), pk.data(), sk))
       {
-        return crypto_generichash_blake2b(shared.data(), 32,
-                                          n.data(), 32,
+        return crypto_generichash_blake2b(shared.data(), 32, n.data(), 32,
                                           dh_result.data(), 32)
             != -1;
       }
@@ -102,9 +95,8 @@ namespace llarp
     static bool
     shorthash(ShortHash &result, llarp_buffer_t buff)
     {
-      return crypto_generichash_blake2b(result.data(),
-                                        ShortHash::SIZE, buff.base, buff.sz,
-                                        nullptr, 0)
+      return crypto_generichash_blake2b(result.data(), ShortHash::SIZE,
+                                        buff.base, buff.sz, nullptr, 0)
           != -1;
     }
 
@@ -119,17 +111,16 @@ namespace llarp
     static bool
     sign(Signature &result, const SecretKey &secret, llarp_buffer_t buff)
     {
-      int rc =
-          crypto_sign_detached(result.data(), nullptr, buff.base,
-                               buff.sz, secret.data());
+      int rc = crypto_sign_detached(result.data(), nullptr, buff.base, buff.sz,
+                                    secret.data());
       return rc != -1;
     }
 
     static bool
     verify(const PubKey &pub, llarp_buffer_t buff, const Signature &sig)
     {
-      int rc = crypto_sign_verify_detached(sig.data(), buff.base,
-                                           buff.sz, pub.data());
+      int rc = crypto_sign_verify_detached(sig.data(), buff.base, buff.sz,
+                                           pub.data());
       return rc != -1;
     }
 
@@ -173,17 +164,14 @@ namespace llarp
     encrypt(PQCipherBlock &ciphertext, SharedSecret &sharedkey,
             const PQPubKey &pubkey)
     {
-      return crypto_kem_enc(ciphertext.data(),
-                            sharedkey.data(),
-                            pubkey.data())
+      return crypto_kem_enc(ciphertext.data(), sharedkey.data(), pubkey.data())
           != -1;
     }
     bool
     decrypt(const PQCipherBlock &ciphertext, SharedSecret &sharedkey,
             const byte_t *secretkey)
     {
-      return crypto_kem_dec(sharedkey.data(),
-                            ciphertext.data(), secretkey)
+      return crypto_kem_dec(sharedkey.data(), ciphertext.data(), secretkey)
           != -1;
     }
 

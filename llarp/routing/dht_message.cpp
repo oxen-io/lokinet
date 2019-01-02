@@ -51,7 +51,7 @@ namespace llarp
     DHTMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
     {
       // set source as us
-      llarp::dht::Key_t us = r->pubkey();
+      llarp::dht::Key_t us{r->pubkey()};
       for(const auto& msg : M)
       {
         msg->From   = us;

@@ -261,8 +261,8 @@ namespace llarp
           reply(msg);
           return true;
         }
-        llarp::service::Address addr =
-            ObtainAddrForIP< llarp::service::Address >(ip, true);
+        llarp::service::Address addr(
+            ObtainAddrForIP< llarp::service::Address >(ip, true));
         if(!addr.IsZero())
         {
           msg.AddAReply(addr.ToString(".snode"));
@@ -348,9 +348,9 @@ namespace llarp
       }
       llarp::LogInfo(Name() + " map ", addr.ToString(), " to ", ip);
 
-      m_IPToAddr[ip]              = addr.as_array();
-      m_AddrToIP[addr.as_array()] = ip;
-      m_SNodes[addr.as_array()]   = SNode;
+      m_IPToAddr[ip]   = addr;
+      m_AddrToIP[addr] = ip;
+      m_SNodes[addr]   = SNode;
       MarkIPActiveForever(ip);
       return true;
     }

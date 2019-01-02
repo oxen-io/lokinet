@@ -45,7 +45,7 @@ namespace llarp
       }
     }
 
-    AlignedBuffer(const Data& buf)
+    explicit AlignedBuffer(const Data& buf)
     {
       new(&val) Data;
       std::copy(buf.begin(), buf.end(), begin());

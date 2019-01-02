@@ -26,11 +26,16 @@ namespace llarp
       {
       }
 
-      Address(const Data& buf) : AlignedBuffer< SIZE >(buf)
+      explicit Address(const Data& buf) : AlignedBuffer< SIZE >(buf)
       {
       }
 
       Address(const Address& other) : AlignedBuffer< SIZE >(other.as_array())
+      {
+      }
+
+      explicit Address(const AlignedBuffer< SIZE >& other)
+          : AlignedBuffer< SIZE >(other)
       {
       }
 

@@ -33,7 +33,7 @@ namespace llarp
     buf.sz   = size() - EncryptedFrameOverheadSize;
 
     // set our pubkey
-    memcpy(pubkey, seckey_topublic(ourSecretKey), PUBKEYSIZE);
+    memcpy(pubkey, ourSecretKey.toPublic().data(), PUBKEYSIZE);
     // randomize nonce
     crypto->randbytes(noncePtr, TUNNONCESIZE);
     TunnelNonce nonce(noncePtr);
@@ -76,10 +76,10 @@ namespace llarp
     // <N bytes encrypted payload>
     //
     ShortHash hash(data());
-    byte_t* noncePtr   = data() + SHORTHASHSIZE;
-    PubKey otherPubkey = noncePtr + TUNNONCESIZE;
-    byte_t* body       = data() + EncryptedFrameOverheadSize;
+    byte_t* noncePtr = data() + SHORTHASHSIZE;
+    byte_t* body     = data() + EncryptedFrameOverheadSize;
     TunnelNonce nonce(noncePtr);
+    PubKey otherPubkey(noncePtr + TUNNONCESIZE);
 
     // use dh_server because we are not the creator of this message
     auto DH      = crypto->dh_server;

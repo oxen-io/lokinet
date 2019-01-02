@@ -48,10 +48,17 @@ namespace llarp
     PubKey() : AlignedBuffer< SIZE >()
     {
     }
-    PubKey(const byte_t *ptr) : AlignedBuffer< SIZE >(ptr)
+
+    explicit PubKey(const byte_t *ptr) : AlignedBuffer< SIZE >(ptr)
     {
     }
-    PubKey(const Data &data) : AlignedBuffer< SIZE >(data)
+
+    explicit PubKey(const Data &data) : AlignedBuffer< SIZE >(data)
+    {
+    }
+
+    explicit PubKey(const AlignedBuffer< SIZE > &other)
+        : AlignedBuffer< SIZE >(other)
     {
     }
 
@@ -87,6 +94,12 @@ namespace llarp
     {
       // make sure we never print out secret keys
       return out << "[secretkey]";
+    }
+
+    PubKey
+    toPublic() const
+    {
+      return PubKey(data() + 32);
     }
 
     bool

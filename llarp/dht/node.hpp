@@ -20,10 +20,8 @@ namespace llarp
         ID.Zero();
       }
 
-      RCNode(const llarp::RouterContact& other)
+      RCNode(const llarp::RouterContact& other) : rc(other), ID(other.pubkey)
       {
-        rc = other;
-        ID = other.pubkey.as_array();
       }
 
       bool
