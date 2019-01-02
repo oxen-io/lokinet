@@ -60,7 +60,7 @@ namespace llarp
     }
 
     RouterContact(const RouterContact &other)
-        : IBEncodeMessage()
+        : IBEncodeMessage(other.version)
         , addrs(other.addrs)
         , netID(other.netID)
         , enckey(other.enckey)
@@ -70,7 +70,6 @@ namespace llarp
         , nickname(other.nickname)
         , last_updated(other.last_updated)
     {
-      version = other.version;
     }
 
     // advertised addresses

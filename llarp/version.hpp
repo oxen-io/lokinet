@@ -29,8 +29,9 @@
 #define LLARP_RELEASE_MOTTO "(dev build)"
 #endif
 
-#ifndef LLARP_NET_ID
-#define LLARP_NET_ID "testnet"
-#endif
+struct Version
+{
+  static const char LLARP_NET_ID[];
+};
 
 #endif
