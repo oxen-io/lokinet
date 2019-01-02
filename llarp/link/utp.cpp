@@ -911,10 +911,10 @@ namespace llarp
       vec.iov_base = buf.data();
       vec.iov_len  = FragmentBufferSize;
       buf.Randomize();
-      byte_t* nonce         = buf.data() + FragmentHashSize;
-      byte_t* body          = nonce + FragmentNonceSize;
-      byte_t* base          = body;
-      AlignedBuffer< 24 > A = base;
+      byte_t* noncePtr = buf.data() + FragmentHashSize;
+      byte_t* body     = noncePtr + FragmentNonceSize;
+      byte_t* base     = body;
+      AlignedBuffer< 24 > A(base);
       // skip inner nonce
       body += A.size();
       // put msgid
@@ -932,11 +932,13 @@ namespace llarp
       auto payload =
           InitBuffer(base, FragmentBufferSize - FragmentOverheadSize);
 
+      TunnelNonce nonce(noncePtr);
+
       // encrypt
       if(!Crypto()->xchacha20(payload, txKey, nonce))
         return false;
 
-      payload.base = nonce;
+      payload.base = noncePtr;
       payload.cur  = payload.base;
       payload.sz   = FragmentBufferSize - FragmentHashSize;
       // key'd hash
@@ -1032,7 +1034,7 @@ namespace llarp
         return false;
       }
       // get inner nonce
-      AlignedBuffer< 24 > A = out.base;
+      AlignedBuffer< 24 > A(out.base);
       // advance buffer
       out.cur += A.size();
       // read msgid

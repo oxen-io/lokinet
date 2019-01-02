@@ -16,10 +16,10 @@ namespace llarp
     // <32 bytes pubkey>
     // <N bytes encrypted payload>
     //
-    byte_t* hash   = data();
-    byte_t* nonce  = hash + SHORTHASHSIZE;
-    byte_t* pubkey = nonce + TUNNONCESIZE;
-    byte_t* body   = pubkey + PUBKEYSIZE;
+    byte_t* hash     = data();
+    byte_t* noncePtr = hash + SHORTHASHSIZE;
+    byte_t* pubkey   = noncePtr + TUNNONCESIZE;
+    byte_t* body     = pubkey + PUBKEYSIZE;
 
     SharedSecret shared;
 
@@ -33,9 +33,10 @@ namespace llarp
     buf.sz   = size() - EncryptedFrameOverheadSize;
 
     // set our pubkey
-    memcpy(pubkey, llarp::seckey_topublic(ourSecretKey), PUBKEYSIZE);
+    memcpy(pubkey, seckey_topublic(ourSecretKey), PUBKEYSIZE);
     // randomize nonce
-    crypto->randbytes(nonce, TUNNONCESIZE);
+    crypto->randbytes(noncePtr, TUNNONCESIZE);
+    TunnelNonce nonce(noncePtr);
 
     // derive shared key
     if(!DH(shared, otherPubkey, ourSecretKey, nonce))
@@ -52,7 +53,7 @@ namespace llarp
     }
 
     // generate message auth
-    buf.base = nonce;
+    buf.base = noncePtr;
     buf.cur  = buf.base;
     buf.sz   = size() - SHORTHASHSIZE;
 
@@ -74,23 +75,18 @@ namespace llarp
     // <32 bytes pubkey>
     // <N bytes encrypted payload>
     //
-    byte_t* hash        = data();
-    byte_t* nonce       = hash + SHORTHASHSIZE;
-    byte_t* otherPubkey = nonce + TUNNONCESIZE;
-    byte_t* body        = otherPubkey + PUBKEYSIZE;
+    ShortHash hash(data());
+    byte_t* noncePtr   = data() + SHORTHASHSIZE;
+    PubKey otherPubkey = noncePtr + TUNNONCESIZE;
+    byte_t* body       = data() + EncryptedFrameOverheadSize;
+    TunnelNonce nonce(noncePtr);
 
     // use dh_server because we are not the creator of this message
     auto DH      = crypto->dh_server;
     auto Decrypt = crypto->xchacha20;
     auto MDS     = crypto->hmac;
 
-    llarp_buffer_t buf;
-    buf.base = nonce;
-    buf.cur  = buf.base;
-    buf.sz   = size() - SHORTHASHSIZE;
-
     SharedSecret shared;
-    ShortHash digest;
 
     if(!DH(shared, otherPubkey, ourSecretKey, nonce))
     {
@@ -98,13 +94,19 @@ namespace llarp
       return false;
     }
 
+    llarp_buffer_t buf;
+    buf.base = noncePtr;
+    buf.cur  = buf.base;
+    buf.sz   = size() - SHORTHASHSIZE;
+
+    ShortHash digest;
     if(!MDS(digest.data(), buf, shared))
     {
       llarp::LogError("Digest failed");
       return false;
     }
 
-    if(!std::equal(digest.begin(), digest.end(), hash))
+    if(!std::equal(digest.begin(), digest.end(), hash.begin()))
     {
       llarp::LogError("message authentication failed");
       return false;

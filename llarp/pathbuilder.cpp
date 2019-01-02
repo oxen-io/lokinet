@@ -49,7 +49,7 @@ namespace llarp
       hop.nonce.Randomize();
       // do key exchange
       if(!ctx->crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey,
-                                 hop.nonce.data()))
+                                 hop.nonce))
       {
         llarp::LogError("Failed to generate shared key for path build");
         delete ctx;

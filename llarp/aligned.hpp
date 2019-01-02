@@ -35,7 +35,7 @@ namespace llarp
       Zero();
     }
 
-    AlignedBuffer(const byte_t* data)
+    explicit AlignedBuffer(const byte_t* data)
     {
       new(&val) Data;
       auto& b = as_array();
