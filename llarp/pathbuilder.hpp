@@ -48,7 +48,7 @@ namespace llarp
       ShouldBuildMore(llarp_time_t now) const override;
 
       /// return true if we hit our soft limit for building paths too fast
-      bool 
+      bool
       BuildCooldownHit(llarp_time_t now) const;
 
       virtual bool
