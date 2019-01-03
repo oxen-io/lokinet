@@ -87,6 +87,12 @@ namespace llarp
       static_cast< ILinkLayer* >(udp->user)->RecvFrom(*from, buf.base, buf.sz);
     }
 
+    void
+    SendTo_LL(const llarp::Addr& to, llarp_buffer_t pkt)
+    {
+      llarp_ev_udp_sendto(&m_udp, to, pkt);
+    }
+
     bool
     Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
               uint16_t port);
@@ -106,7 +112,7 @@ namespace llarp
     bool
     TryEstablishTo(RouterContact rc);
 
-    bool
+    virtual bool
     Start(llarp::Logic* l);
 
     void

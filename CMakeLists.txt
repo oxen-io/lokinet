@@ -519,6 +519,7 @@ set(LIB_SRC
   llarp/ip.cpp
   llarp/iwp.cpp
   llarp/link/curvecp.cpp
+  llarp/link/dtls.cpp
   llarp/link/encoder.cpp
   llarp/link/server.cpp
   llarp/link/session.cpp
