@@ -417,12 +417,12 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   int
   tick(int ms)
   {
-    struct kevent events[1024];
+    std::array< struct kevent, 1024 > events;
     int result;
     timespec t;
     t.tv_sec  = 0;
     t.tv_nsec = ms * 1000000UL;
-    result    = kevent(kqueuefd, nullptr, 0, events, 1024, &t);
+    result    = kevent(kqueuefd, nullptr, 0, events.data(), events.size(), &t);
     // result: 0 is a timeout
     if(result > 0)
     {
@@ -436,7 +436,9 @@ struct llarp_kqueue_loop : public llarp_ev_loop
             ev->read(readbuf,
                      std::min(sizeof(readbuf), size_t(events[idx].data)));
           if(events[idx].filter & EVFILT_WRITE)
+          {
             ev->flush_write_buffers(events[idx].data);
+          }
         }
         ++idx;
       }

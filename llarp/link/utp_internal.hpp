@@ -55,7 +55,11 @@ namespace llarp
       MessageBuffer _msg;
 
       /// for accessing message buffer
-      llarp_buffer_t buffer = _msg.as_buffer();
+      llarp_buffer_t buffer;
+
+      InboundMessage() : lastActive(0), _msg(), buffer(_msg.as_buffer())
+      {
+      }
 
       bool
       operator==(const InboundMessage& other) const

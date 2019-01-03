@@ -116,7 +116,7 @@ if(NOT DEBIAN)
 endif(NOT DEBIAN)
 
 if(ASAN)
-  set(DEBUG_FLAGS "${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer")
+  set(DEBUG_FLAGS ${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer)
   set(OPTIMIZE_FLAGS "-O0")
 endif(ASAN)
 
@@ -146,6 +146,7 @@ endif(SHADOW)
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
   add_compile_options( ${DEBUG_FLAGS} )
+  link_libraries( ${DEBUG_FLAGS} )
 endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 
 # Add non-386 target-specific options here
