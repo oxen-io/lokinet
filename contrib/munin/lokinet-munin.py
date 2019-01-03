@@ -19,7 +19,7 @@ def exit_sessions_main():
         print("graph_category network")
         print("graph_info This graph shows the number of exit sessions on a lokinet exit")
         print("lokinet.exit.sessions.info Number of exit sessions")
-        print("lokinet.exit.sessions.label sessions"))
+        print("lokinet.exit.sessions.label sessions")
     else:
         count = 0
         try:
@@ -29,7 +29,6 @@ def exit_sessions_main():
             pass
         print("lokinet.exit.sessions {}".format(outbound))
 
-    
 
 def peers_main():
     if len(sys.argv) == 2 and sys.argv[1] == 'config':
@@ -64,4 +63,5 @@ if __name__ == '__main__':
     elif sys.argv[0] == 'lokinet-exit':
         exit_sessions_main()
     else:
-        print('please symlink this as `lokinet-peers` or `lokinet-exit` in munin plugins dir')
+        print(
+            'please symlink this as `lokinet-peers` or `lokinet-exit` in munin plugins dir')

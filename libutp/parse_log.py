@@ -1,4 +1,5 @@
-import os, sys, time
+import os
+import sys
 
 # usage: parse_log.py log-file [socket-index to focus on]
 
@@ -7,15 +8,16 @@ socket_filter = None
 if len(sys.argv) >= 3:
     socket_filter = sys.argv[2].strip()
 
-if socket_filter == None:
+if socket_filter is None:
     print "scanning for socket with the most packets"
     file = open(sys.argv[1], 'rb')
 
     sockets = {}
 
     for l in file:
-        if not 'our_delay' in l: continue
-    
+        if not 'our_delay' in l:
+            continue
+
         try:
             a = l.strip().split(" ")
             socket_index = a[1][:-1]
@@ -39,14 +41,15 @@ if socket_filter == None:
     for i in items:
         print '%s: %d' % (i[0], i[1])
         count += 1
-        if count > 5: break
-    
+        if count > 5:
+            break
+
     file.close()
     socket_filter = items[0][0]
     print '\nfocusing on socket %s' % socket_filter
 
 file = open(sys.argv[1], 'rb')
-out_file = 'utp.out%s' % socket_filter;
+out_file = 'utp.out%s' % socket_filter
 out = open(out_file, 'wb')
 
 delay_samples = 'dots lc rgb "blue"'
@@ -58,24 +61,24 @@ window_size = 'steps lc rgb "sea-green"'
 rtt = 'lines lc rgb "light-blue"'
 
 metrics = {
-    'our_delay':['our delay (ms)', 'x1y2', delay_samples],
-    'upload_rate':['send rate (B/s)', 'x1y1', 'lines'],
-    'max_window':['cwnd (B)', 'x1y1', cwnd],
-    'target_delay':['target delay (ms)', 'x1y2', target_delay],
-    'cur_window':['bytes in-flight (B)', 'x1y1', window_size],
-    'cur_window_packets':['number of packets in-flight', 'x1y2', 'steps'],
-    'packet_size':['current packet size (B)', 'x1y2', 'steps'],
-    'rtt':['rtt (ms)', 'x1y2', rtt],
-    'off_target':['off-target (ms)', 'x1y2', off_target],
-    'delay_sum':['delay sum (ms)', 'x1y2', 'steps'],
-    'their_delay':['their delay (ms)', 'x1y2', delay_samples],
-    'get_microseconds':['clock (us)', 'x1y1', 'steps'],
-    'wnduser':['advertised window size (B)', 'x1y1', 'steps'],
+    'our_delay': ['our delay (ms)', 'x1y2', delay_samples],
+    'upload_rate': ['send rate (B/s)', 'x1y1', 'lines'],
+    'max_window': ['cwnd (B)', 'x1y1', cwnd],
+    'target_delay': ['target delay (ms)', 'x1y2', target_delay],
+    'cur_window': ['bytes in-flight (B)', 'x1y1', window_size],
+    'cur_window_packets': ['number of packets in-flight', 'x1y2', 'steps'],
+    'packet_size': ['current packet size (B)', 'x1y2', 'steps'],
+    'rtt': ['rtt (ms)', 'x1y2', rtt],
+    'off_target': ['off-target (ms)', 'x1y2', off_target],
+    'delay_sum': ['delay sum (ms)', 'x1y2', 'steps'],
+    'their_delay': ['their delay (ms)', 'x1y2', delay_samples],
+    'get_microseconds': ['clock (us)', 'x1y1', 'steps'],
+    'wnduser': ['advertised window size (B)', 'x1y1', 'steps'],
 
-    'delay_base':['delay base (us)', 'x1y1', delay_base],
-    'their_delay_base':['their delay base (us)', 'x1y1', delay_base],
-    'their_actual_delay':['their actual delay (us)', 'x1y1', delay_samples],
-    'actual_delay':['actual_delay (us)', 'x1y1', delay_samples]
+    'delay_base': ['delay base (us)', 'x1y1', delay_base],
+    'their_delay_base': ['their delay base (us)', 'x1y1', delay_base],
+    'their_actual_delay': ['their actual delay (us)', 'x1y1', delay_samples],
+    'actual_delay': ['actual_delay (us)', 'x1y1', delay_samples]
 }
 
 histogram_quantization = 1
@@ -115,7 +118,7 @@ for l in file:
         continue
 #    if socket_index[:2] != '0x':
 #        continue
-    
+
     if socket_filter != None and socket_index != socket_filter:
         continue
 
@@ -151,7 +154,7 @@ for l in file:
     # print time. Convert from milliseconds to seconds
     print >>out, '%f\t' % (float(t)/1000.),
 
-    #if t > 200000:
+    # if t > 200000:
     #    break
 
     fill_columns = not columns
@@ -164,12 +167,14 @@ for l in file:
         if n == "our_delay":
             bucket = v / histogram_quantization
             delay_histogram[bucket] = 1 + delay_histogram.get(bucket, 0)
-        if not n in metrics: continue
+        if not n in metrics:
+            continue
         if fill_columns:
             columns.append(n)
         if n == "max_window":
             window_size[socket_index] = v
-            print >>out, '%f\t' % int(reduce(lambda a,b: a+b, window_size.values())),
+            print >>out, '%f\t' % int(
+                reduce(lambda a, b: a+b, window_size.values())),
         else:
             print >>out, '%f\t' % v,
     print >>out, float(packet_loss * 8000), float(packet_timeout * 8000)
@@ -179,8 +184,9 @@ for l in file:
 out.close()
 
 out = open('%s.histogram' % out_file, 'wb')
-for d,f in delay_histogram.iteritems():
-    print >>out, float(d*histogram_quantization) + histogram_quantization / 2, f
+for d, f in delay_histogram.iteritems():
+    print >>out, float(d*histogram_quantization) + \
+        histogram_quantization / 2, f
 out.close()
 
 
@@ -216,7 +222,7 @@ plot = [
         'y2': 'Time (ms)'
     },
     {
-        'data': ['their_actual_delay','their_delay_base'],
+        'data': ['their_actual_delay', 'their_delay_base'],
         'title': 'their_delay_base',
         'y1': 'Time (us)',
         'y2': ''
@@ -253,9 +259,9 @@ print >>out, "set style data steps"
 #print >>out, "set yrange [0:*]"
 print >>out, "set y2range [*:*]"
 files += out_file + '.delays.png '
-#set hidden3d
-#set title "Peer bandwidth distribution"
-#set xlabel "Ratio"
+# set hidden3d
+# set title "Peer bandwidth distribution"
+# set xlabel "Ratio"
 
 for p in plot:
     print >>out, 'set title "%s %s"' % (p['title'], title)
@@ -274,9 +280,11 @@ for p in plot:
     print >>out, "plot",
 
     for c in p['data']:
-        if not c in metrics: continue
+        if not c in metrics:
+            continue
         i = columns.index(c)
-        print >>out, '%s"%s" using 1:%d title "%s-%s" axes %s with %s' % (comma, out_file, i + 2, metrics[c][0], metrics[c][1], metrics[c][1], metrics[c][2]),
+        print >>out, '%s"%s" using 1:%d title "%s-%s" axes %s with %s' % (
+            comma, out_file, i + 2, metrics[c][0], metrics[c][1], metrics[c][1], metrics[c][2]),
         comma = ', '
     print >>out, ''
 
@@ -285,4 +293,3 @@ out.close()
 os.system("gnuplot utp.gnuplot")
 
 os.system("open %s" % files)
-

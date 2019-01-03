@@ -121,11 +121,10 @@ llarp_router_try_connect(llarp::Router *router,
 }
 
 bool
-llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *fpath,
+llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
                            llarp::SecretKey &secretkey)
 {
-  llarp::LogDebug("find or create ", fpath);
-  fs::path path(fpath);
+  llarp::LogDebug("find or create ", path);
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
@@ -151,11 +150,10 @@ llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *fpath,
 
 // C++ ...
 bool
-llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
+llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &path,
                              llarp::SecretKey &encryption)
 {
-  llarp::LogDebug("find or create ", fpath);
-  fs::path path(fpath);
+  llarp::LogDebug("find or create ", path);
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
@@ -397,15 +395,14 @@ namespace llarp
   {
     if(!EnsureEncryptionKey())
       return false;
-    return llarp_findOrCreateIdentity(&crypto, ident_keyfile.string().c_str(),
-                                      identity);
+    return llarp_findOrCreateIdentity(&crypto, ident_keyfile, identity);
   }
 
   bool
   Router::EnsureEncryptionKey()
   {
-    return llarp_findOrCreateEncryption(
-        &crypto, encryption_keyfile.string().c_str(), encryption);
+    return llarp_findOrCreateEncryption(&crypto, encryption_keyfile,
+                                        encryption);
   }
 
   void
