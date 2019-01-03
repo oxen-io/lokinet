@@ -1064,7 +1064,7 @@ namespace llarp
 
       // get message
       if(m_RecvMsgs.find(msgid) == m_RecvMsgs.end())
-        m_RecvMsgs.emplace(std::make_pair(msgid, InboundMessage{}));
+        m_RecvMsgs.emplace(msgid, InboundMessage{});
 
       auto itr = m_RecvMsgs.find(msgid);
       // add message activity
