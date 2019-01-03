@@ -176,9 +176,6 @@ upoll_ctl(upoll_t* upq, int op, intptr_t fd, upoll_event_t* event)
 int
 upoll_wait_select(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
 {
-  /* ok we need to test each file descriptor to see whether it is a real file
-   * or a socket. select any file handles (they are always ready)
-   */
   if(nev > FD_SETSIZE)
     nev = FD_SETSIZE;
 

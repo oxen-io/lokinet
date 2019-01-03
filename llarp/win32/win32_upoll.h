@@ -29,10 +29,12 @@
 #include <sys/stat.h>
 
 // this is probably big enough to get
-// the lesser of 4096 sockets or whatever
+// the lesser of 96 sockets or whatever
 // the system allows
+// this used to be 4096, but i think
+// that took ages to process
 #ifndef FD_SETSIZE
-#define FD_SETSIZE 4096
+#define FD_SETSIZE 96
 #endif
 
 #include <io.h>
