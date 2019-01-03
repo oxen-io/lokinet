@@ -55,7 +55,7 @@ namespace llarp
   }
 
   uint32_t
-  Logic::call_later(struct llarp_timeout_job job)
+  Logic::call_later(const llarp_timeout_job& job)
   {
     llarp_timeout_job j;
     j.user    = job.user;

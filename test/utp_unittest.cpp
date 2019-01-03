@@ -102,30 +102,25 @@ struct UTPTest : public ::testing::Test
   bool success = false;
 
   llarp_ev_loop* netLoop;
-  std::unique_ptr< llarp::Logic > logic;
 
   llarp_time_t oldRCLifetime;
+
+  std::unique_ptr< llarp::Logic > logic;
 
   UTPTest()
       : crypto(llarp::Crypto::sodium{})
       , Alice(crypto)
       , Bob(crypto)
       , netLoop(nullptr)
+      , oldRCLifetime(llarp::RouterContact::Lifetime)
   {
-  }
-
-  void
-  SetUp()
-  {
-    oldRCLifetime                      = llarp::RouterContact::Lifetime;
     llarp::RouterContact::IgnoreBogons = true;
     llarp::RouterContact::Lifetime     = 500;
     llarp_ev_loop_alloc(&netLoop);
     logic.reset(new llarp::Logic());
   }
 
-  void
-  TearDown()
+  ~UTPTest()
   {
     Alice.TearDown();
     Bob.TearDown();

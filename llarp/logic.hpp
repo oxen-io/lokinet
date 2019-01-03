@@ -44,7 +44,7 @@ namespace llarp
     queue_job(struct llarp_thread_job job);
 
     uint32_t
-    call_later(struct llarp_timeout_job job);
+    call_later(const llarp_timeout_job& job);
 
     void
     cancel_call(uint32_t id);
