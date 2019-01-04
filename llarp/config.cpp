@@ -229,7 +229,6 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
 bool
 llarp_ensure_client_config(std::ofstream &f, std::string basepath)
 {
-#ifndef _WIN32
   const std::string snappExample_fpath = basepath + "snapp-example.ini";
   // done with fname.ini
   // start client.ini
@@ -263,7 +262,6 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   f << "# uncomment next line to enable persistant snapp" << std::endl;
   f << "#example-snapp=" << snappExample_fpath << std::endl;
   f << std::endl << std::endl;
-#endif
 
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;
