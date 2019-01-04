@@ -163,6 +163,9 @@ endif(NOT GIT_VERSION)
 
 if(RELEASE_MOTTO)
   add_definitions(-DLLARP_RELEASE_MOTTO="${RELEASE_MOTTO}")
+if(WIN32)
+  add_definitions(-DRELEASE_MOTTO=${RELEASE_MOTTO})
+endif(WIN32)
 endif(RELEASE_MOTTO)
 
 set(EXE lokinet)
