@@ -595,7 +595,7 @@ namespace llarp
 
       lastActive = parent->Now();
 
-      Pump = std::bind(&Session::PumpWrite, this);
+      Pump = std::bind(&Session::DoPump, this);
       Tick = std::bind(&Session::TickImpl, this, std::placeholders::_1);
       SendMessageBuffer =
           std::bind(&Session::QueueWriteBuffers, this, std::placeholders::_1);
@@ -715,6 +715,15 @@ namespace llarp
                            std::placeholders::_1);
       }
       return true;
+    }
+
+    void
+    Session::DoPump()
+    {
+      // pump write queue
+      PumpWrite();
+      // prune inbound messages
+      PruneInboundMessages(parent->Now());
     }
 
     bool
@@ -894,8 +903,14 @@ namespace llarp
       Addr remote(*arg->address);
       llarp::LogDebug("utp accepted from ", remote);
       Session* session = new Session(self, arg->socket, remote);
-      self->PutSession(session);
-      session->OnLinkEstablished(self);
+      if(!self->PutSession(session))
+      {
+        session->Close();
+        delete session;
+      }
+      else
+        session->OnLinkEstablished(self);
+
       return 0;
     }
 

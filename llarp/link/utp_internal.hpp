@@ -178,6 +178,9 @@ namespace llarp
       void
       PumpWrite();
 
+      void
+      DoPump();
+
       /// verify a fragment buffer and the decrypt it
       /// buf is assumed to be FragmentBufferSize bytes long
       bool
