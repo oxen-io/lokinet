@@ -98,7 +98,7 @@ namespace llarp
       static constexpr uint8_t maxfrags = 8;
 
       /// maximum fragment size
-      static constexpr size_t fragsize = MAX_LINK_MSG_SIZE / maxfrags;
+      static constexpr FragLen_t fragsize = MAX_LINK_MSG_SIZE / maxfrags;
 
       struct FragmentHeader
       {
@@ -106,9 +106,10 @@ namespace llarp
         Proto_t version = LLARP_PROTO_VERSION;
         /// fragment command type
         Cmd_t cmd = 0;
-        /// if cmd is XMIT this is the number of fragments this message has
-        /// if cmd is FACK this is the fragment bitfield of the messages acked
-        /// otherwise 0
+        /// if cmd is XMIT this is the number of additional fragments this
+        /// message has
+        /// if cmd is FACK this is the fragment bitfield of the
+        /// messages acked otherwise 0
         Flags_t flags = 0;
         /// if cmd is XMIT this is the fragment index
         /// if cmd is FACK this is set to 0xff to indicate message drop
@@ -160,7 +161,8 @@ namespace llarp
           buf->cur++;
           llarp_buffer_put_uint16(buf, fraglen);
           llarp_buffer_put_uint32(buf, seqno);
-          memcpy(buf->cur, body.base, fraglen);
+          if(fraglen)
+            memcpy(buf->cur, body.base, fraglen);
           buf->cur += fraglen;
           return true;
         }
@@ -225,18 +227,63 @@ namespace llarp
           return now > lastActiveAt && now - lastActiveAt > 500;
         }
 
-        int
-        TransmitUnacked(mbedtls_ssl_context *ctx)
+        bool
+        TransmitUnacked(mbedtls_ssl_context *ctx, Seqno_t seqno) const
         {
-          AlignedBuffer< fragoverhead + fragsize > buf;
-          return mbedtls_ssl_write(ctx, buf.data(), buf.size());
+          FragmentHeader hdr;
+          hdr.seqno = seqno;
+          hdr.cmd   = XMIT;
+          AlignedBuffer< fragoverhead + fragsize > frag;
+          auto buf          = frag.as_buffer();
+          const byte_t *ptr = msg.data();
+          Fragno_t idx      = 0;
+          FragLen_t len     = sz;
+          while(idx < maxfrags)
+          {
+            const FragLen_t l = std::min(len, fragsize);
+            if(!acks.test(idx))
+            {
+              hdr.fragno  = idx;
+              hdr.fraglen = l;
+              if(!hdr.Encode(&buf, llarp::InitBuffer(ptr, l)))
+                return false;
+              buf.sz  = buf.cur - buf.base;
+              buf.cur = buf.base;
+              len -= l;
+              if(mbedtls_ssl_write(ctx, buf.base, buf.sz) != int(buf.sz))
+                return false;
+            }
+            ptr += l;
+            len -= l;
+            if(l >= fragsize)
+              ++idx;
+            else
+              break;
+          }
+          return true;
         }
 
-        void
-        TransmitAcks(mbedtls_ssl_context *ctx)
+        bool
+        TransmitAcks(mbedtls_ssl_context *ctx, Seqno_t seqno)
         {
-          AlignedBuffer< fragoverhead > buf;
-          return mbedtls_ssl_write(ctx, buf.data(), buf.size());
+          FragmentHeader hdr;
+          hdr.seqno  = seqno;
+          hdr.cmd    = FACK;
+          hdr.flags  = 0;
+          byte_t idx = 0;
+          while(idx < maxfrags)
+          {
+            if(acks.test(idx))
+              hdr.flags |= 1 << idx;
+            ++idx;
+          }
+          hdr.fraglen = 0;
+          hdr.fragno  = 0;
+          AlignedBuffer< fragoverhead > frag;
+          auto buf = frag.as_buffer();
+          if(!hdr.Encode(&buf, llarp::InitBuffer(nullptr, 0)))
+            return false;
+          return mbedtls_ssl_write(ctx, buf.base, buf.sz) == int(buf.sz);
         }
       };
 
@@ -254,9 +301,9 @@ namespace llarp
 
     struct LinkLayer final : public llarp::ILinkLayer
     {
-      LinkLayer(llarp::Crypto *crypto, const byte_t *encryptionSecretKey,
-                const byte_t *identitySecretKey, llarp::GetRCFunc getrc,
-                llarp::LinkMessageHandler h,
+      LinkLayer(llarp::Crypto *crypto, const SecretKey &encryptionSecretKey,
+                const SecretKey &identitySecretKey, llarp::GetRCFunc getrc,
+                llarp::LinkMessageHandler h, llarp::SignBufferFunc sign,
                 llarp::SessionEstablishedHandler established,
                 llarp::SessionRenegotiateHandler reneg,
                 llarp::TimeoutHandler timeout,
@@ -266,7 +313,7 @@ namespace llarp
       llarp::Crypto *const crypto;
 
       static const mbedtls_ecp_group_id AllowedCurve[2];
-      static const mbedtls_md_type_t AllowedHash[2];
+      static const int AllowedHash[2];
       static const int CipherSuite[2];
       static const mbedtls_x509_crt_profile X509Profile;
 

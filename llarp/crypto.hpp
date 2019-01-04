@@ -91,6 +91,10 @@ namespace llarp
   {
     SecretKey() : AlignedBuffer< SECKEYSIZE >(){};
 
+    explicit SecretKey(const SecretKey &k) : AlignedBuffer< SECKEYSIZE >(k)
+    {
+    }
+
     explicit SecretKey(const byte_t *ptr) : AlignedBuffer< SECKEYSIZE >(ptr)
     {
     }

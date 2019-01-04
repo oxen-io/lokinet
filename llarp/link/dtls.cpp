@@ -9,8 +9,7 @@ namespace llarp
   {
     const mbedtls_ecp_group_id LinkLayer::AllowedCurve[2] = {
         MBEDTLS_ECP_DP_CURVE25519, MBEDTLS_ECP_DP_NONE};
-    const mbedtls_md_type_t LinkLayer::AllowedHash[2] = {MBEDTLS_MD_SHA256,
-                                                         MBEDTLS_MD_NONE};
+    const int LinkLayer::AllowedHash[2] = {MBEDTLS_MD_SHA256, MBEDTLS_MD_NONE};
 
     const int LinkLayer::CipherSuite[2] = {
         MBEDTLS_TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256, 0};
@@ -55,11 +54,25 @@ namespace llarp
       return -1;
     }
 
+    static int
+    InboundVerifyCert(void *, mbedtls_x509_crt *, int, unsigned int *)
+    {
+      return 0;
+    }
+
+    static int
+    OutboundVerifyCert(void *, mbedtls_x509_crt *, int, unsigned int *)
+    {
+      return 0;
+    }
+
     Session::Session(LinkLayer *parent) : ILinkSession(), crypto(parent->crypto)
     {
       m_Parent = parent;
       mbedtls_ssl_config_init(&m_config);
       mbedtls_ssl_conf_transport(&m_config, MBEDTLS_SSL_TRANSPORT_DATAGRAM);
+      mbedtls_ssl_conf_authmode(&m_config, MBEDTLS_SSL_VERIFY_REQUIRED);
+      mbedtls_ssl_conf_sig_hashes(&m_config, LinkLayer::AllowedHash);
       m_config.p_vrfy         = this;
       m_config.key_cert       = &m_Parent->ourKeys;
       m_config.p_cookie       = this;
@@ -154,7 +167,7 @@ namespace llarp
               }
               else if(itr->second.ShouldRetransmit(now))
               {
-                itr->second.TransmitAcks(&m_ctx);
+                itr->second.TransmitAcks(&m_ctx, itr->first);
               }
               ++itr;
             }
@@ -173,7 +186,7 @@ namespace llarp
               continue;
             }
             else if(itr->second.ShouldRetransmit(now))
-              itr->second.TransmitUnacked(&m_ctx);
+              itr->second.TransmitUnacked(&m_ctx, itr->first);
 
             ++itr;
           }
@@ -214,27 +227,19 @@ namespace llarp
       llarp::_Log(llarp::eLogInfo, fname, lineno, msg);
     }
 
-    LinkLayer::LinkLayer(llarp::Crypto *c, const byte_t *encryptionSecretKey,
-                         const byte_t *identitySecretKey,
+    LinkLayer::LinkLayer(llarp::Crypto *c, const SecretKey &encryptionSecretKey,
+                         const SecretKey &identitySecretKey,
                          llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
+                         llarp::SignBufferFunc sign,
                          llarp::SessionEstablishedHandler established,
                          llarp::SessionRenegotiateHandler reneg,
                          llarp::TimeoutHandler timeout,
                          llarp::SessionClosedHandler closed)
-        : ILinkLayer(encryptionSecretKey, getrc, h,
-                     std::bind(&LinkLayer::SignBuffer, this,
-                               std::placeholders::_1, std::placeholders::_2),
-                     established, reneg, timeout, closed)
+        : llarp::ILinkLayer(encryptionSecretKey, getrc, h, sign, established,
+                            reneg, timeout, closed)
         , crypto(c)
         , m_IdentityKey(identitySecretKey)
     {
-    }
-
-    static int
-    Random(void *ctx, unsigned char *buf, size_t sz)
-    {
-      static_cast< llarp::Crypto * >(ctx)->randbytes(buf, sz);
-      return 0;
     }
 
     bool
@@ -242,7 +247,7 @@ namespace llarp
     {
       if(!ILinkLayer::Start(l))
         return false;
-      return crypto->shrothash(m_CookieSec, m_IdentityKey.toBuffer());
+      return crypto->shorthash(m_CookieSec, llarp::ConstBuffer(m_IdentityKey));
     }
 
     void
@@ -300,12 +305,12 @@ namespace llarp
           std::bind(&llarp::Router::rc, r),
           std::bind(&llarp::Router::HandleRecvLinkMessageBuffer, r,
                     std::placeholders::_1, std::placeholders::_2),
+          std::bind(&llarp::Router::Sign, r, std::placeholders::_1,
+                    std::placeholders::_2),
           std::bind(&llarp::Router::OnSessionEstablished, r,
                     std::placeholders::_1),
           std::bind(&llarp::Router::CheckRenegotiateValid, r,
                     std::placeholders::_1, std::placeholders::_2),
-          std::bind(&llarp::Router::Sign, r, std::placeholders::_1,
-                    std::placeholders::_2),
           std::bind(&llarp::Router::OnConnectTimeout, r, std::placeholders::_1),
           std::bind(&llarp::Router::SessionClosed, r, std::placeholders::_1)));
     }

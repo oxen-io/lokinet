@@ -199,7 +199,7 @@ namespace llarp
     using Lock  = util::NullLock;
     using Mutex = util::NullMutex;
 
-    void
+    bool
     PutSession(ILinkSession* s);
 
     llarp::Logic* m_Logic = nullptr;
@@ -213,7 +213,9 @@ namespace llarp
                              RouterID::Hash >
         m_AuthedLinks;
     Mutex m_PendingMutex;
-    std::list< std::unique_ptr< ILinkSession > > m_Pending;
+    std::unordered_map< llarp::Addr, std::unique_ptr< ILinkSession >,
+                        llarp::Addr::Hash >
+        m_Pending;
   };
 }  // namespace llarp
 
