@@ -1,3 +1,9 @@
+// WARNING: for the love of all that is good and holy
+// please DO NOT convert this file to UTF-8, much less
+// UTF-16 - the UNIX cross-rc does not understand UTF-16,
+// and UTF-8 chews up the copyright symbols.
+// -rick
+//
 // Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
