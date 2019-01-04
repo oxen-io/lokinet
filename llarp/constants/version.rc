@@ -3,7 +3,7 @@
 #include "resource.h"
 #include <winresrc.h>
 /////////////////////////////////////////////////////////////////////////////
-// English (U.S.) resources
+// English (United States) resources
 
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 #ifdef _WIN32
@@ -42,8 +42,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 0,3,1,0
- PRODUCTVERSION 0,3,1,0
+ FILEVERSION 0,4,0,0
+ PRODUCTVERSION 0,4,0,0
  FILEFLAGSMASK 0x17L
 #ifdef _DEBUG
  FILEFLAGS 0x3L
@@ -58,15 +58,15 @@ BEGIN
     BEGIN
         BLOCK "040904b0"
         BEGIN
-            VALUE "Comments", "includes relay/exit functionality, such code is highly experimental on non UNIX/Linux/Macintosh targets!"
+            VALUE "Comments", "includes relay/exit functionality, such code is highly experimental on non-Linux targets"
             VALUE "CompanyName", "Loki Foundation"
             VALUE "FileDescription", "LokiNET daemon for Microsoft® Windows® NT™"
-            VALUE "FileVersion", "0.3.1-dev"
+            VALUE "FileVersion", "0.4.0-dev"
             VALUE "InternalName", "llarpd"
-            VALUE "LegalCopyright", "Copyright ©2018 Loki Foundation, Jeff Becker, Rick V. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
+            VALUE "LegalCopyright", "Copyright ©2018 Jeff Becker, Rick V for the Loki Foundation. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
             VALUE "OriginalFilename", "llarpd.exe"
             VALUE "ProductName", "LokiNET for Windows"
-            VALUE "ProductVersion", "0.3.1-dev"
+            VALUE "ProductVersion", "0.4.0-dev"
         END
     END
     BLOCK "VarFileInfo"
@@ -82,7 +82,8 @@ END
 //
 
 1                       RT_MANIFEST             "app.xml"
-#endif    // English (U.S.) resources
+
+#endif    // English (United States) resources
 /////////////////////////////////////////////////////////////////////////////
 
 
