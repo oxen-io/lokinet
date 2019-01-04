@@ -33,11 +33,11 @@
 #include <unordered_map>
 
 bool
-llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
+llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &fpath,
                              llarp::SecretKey &encryption);
 
 bool
-llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *path,
+llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
                            llarp::SecretKey &secretkey);
 
 struct TryConnectJob;

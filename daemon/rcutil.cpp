@@ -261,8 +261,7 @@ main(int argc, char *argv[])
 
   if(verifyMode)
   {
-    llarp::Crypto crypto;
-    llarp_crypto_init(&crypto);
+    llarp::Crypto crypto(llarp::Crypto::sodium{});
     if(!rc.Read(rcfname))
     {
       std::cout << "failed to read " << rcfname << std::endl;
@@ -327,8 +326,7 @@ main(int argc, char *argv[])
   // this is the only one...
   if(listMode)
   {
-    llarp::Crypto crypto;
-    llarp_crypto_init(&crypto);
+    llarp::Crypto crypto(llarp::Crypto::sodium{});
     auto nodedb = llarp_nodedb_new(&crypto);
     llarp_nodedb_iter itr;
     itr.visit = [](llarp_nodedb_iter *i) -> bool {
@@ -348,8 +346,7 @@ main(int argc, char *argv[])
       std::cout << "no file to import" << std::endl;
       return 1;
     }
-    llarp::Crypto crypto;
-    llarp_crypto_init(&crypto);
+    llarp::Crypto crypto(llarp::Crypto::sodium{});
     auto nodedb = llarp_nodedb_new(&crypto);
     if(!llarp_nodedb_ensure_dir(nodesdir))
     {
@@ -389,24 +386,21 @@ main(int argc, char *argv[])
     // set updated timestamp
     rc.last_updated = llarp::time_now_ms();
     // load longterm identity
-    llarp::Crypto crypt;
-    llarp_crypto_init(&crypt);
+    llarp::Crypto crypt(llarp::Crypto::sodium{});
 
     // which is in daemon.ini config: router.encryption-privkey (defaults
     // "encryption.key")
     fs::path encryption_keyfile = "encryption.key";
     llarp::SecretKey encryption;
 
-    llarp_findOrCreateEncryption(&crypt, encryption_keyfile.string().c_str(),
-                                 encryption);
+    llarp_findOrCreateEncryption(&crypt, encryption_keyfile, encryption);
 
     rc.enckey = llarp::seckey_topublic(encryption);
 
     // get identity public sig key
     fs::path ident_keyfile = "identity.key";
     llarp::SecretKey identity;
-    llarp_findOrCreateIdentity(&crypt, ident_keyfile.string().c_str(),
-                               identity);
+    llarp_findOrCreateIdentity(&crypt, ident_keyfile, identity);
 
     rc.pubkey = llarp::seckey_topublic(identity);
 
@@ -438,15 +432,14 @@ main(int argc, char *argv[])
     // set updated timestamp
     rc.last_updated = llarp::time_now_ms();
     // load longterm identity
-    llarp::Crypto crypt;
+    llarp::Crypto crypt(llarp::Crypto::sodium{});
 
     // no longer used?
     // llarp_crypto_libsodium_init(&crypt);
     llarp::SecretKey identityKey;  // FIXME: Jeff requests we use this
     fs::path ident_keyfile = "identity.key";
-    byte_t identity[SECKEYSIZE];
-    llarp_findOrCreateIdentity(&crypt, ident_keyfile.string().c_str(),
-                               identity);
+    llarp::SecretKey identity;
+    llarp_findOrCreateIdentity(&crypt, ident_keyfile, identity);
 
     // FIXME: update RC API
     // get identity public key
@@ -467,10 +460,7 @@ main(int argc, char *argv[])
 
   if(listMode)
   {
-    llarp::Crypto crypto;
-    // no longer used?
-    // llarp_crypto_libsodium_init(&crypto);
-    llarp_crypto_init(&crypto);
+    llarp::Crypto crypto(llarp::Crypto::sodium{});
     auto nodedb = llarp_nodedb_new(&crypto);
     llarp_nodedb_iter itr;
     itr.visit = [](llarp_nodedb_iter *i) -> bool {
@@ -517,7 +507,7 @@ main(int argc, char *argv[])
     job->found                   = false;
     job->hook                    = &HandleDHTLocate;
     // llarp_rc_new(&job->result);
-    memcpy(job->target, binaryPK, PUBKEYSIZE);  // set job's target
+    job->target = binaryPK;  // set job's target
 
     // create query DHT request
     check_online_request *request = new check_online_request;
