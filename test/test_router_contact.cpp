@@ -10,25 +10,21 @@ struct RCTest : public ::testing::Test
   using RC_t     = llarp::RouterContact;
   using SecKey_t = llarp::SecretKey;
 
-  static void
-  SetUpTestCase()
+  RCTest()
+      : crypto(llarp::Crypto::sodium{}), oldval(llarp::NetID::DefaultValue())
   {
-    llarp::NetID::DefaultValue = DEF_VALUE;
-  }
-
-  RCTest() : crypto(llarp::Crypto::sodium{}), oldval(llarp::NetID::DefaultValue)
-  {
+    llarp::NetID::DefaultValue() = llarp::NetID(DEF_VALUE);
     rc.Clear();
   }
 
   ~RCTest()
   {
-    llarp::NetID::DefaultValue = oldval;
+    llarp::NetID::DefaultValue() = oldval;
   }
 
   RC_t rc;
   llarp::Crypto crypto;
-  const byte_t* oldval;
+  const llarp::NetID oldval;
 };
 
 TEST_F(RCTest, TestSignVerify)

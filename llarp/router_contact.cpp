@@ -1,10 +1,11 @@
+#include <router_contact.hpp>
+
 #include <bencode.hpp>
 #include <buffer.hpp>
 #include <crypto.hpp>
 #include <logger.hpp>
 #include <mem.hpp>
 #include <net.hpp>
-#include <router_contact.hpp>
 #include <time.hpp>
 #include <version.hpp>
 
@@ -12,8 +13,13 @@
 
 namespace llarp
 {
-  const byte_t *NetID::DefaultValue =
-      reinterpret_cast< const byte_t * >(Version::LLARP_NET_ID);
+  NetID &
+  NetID::DefaultValue()
+  {
+    static NetID defaultID(
+        reinterpret_cast< const byte_t * >(Version::LLARP_NET_ID));
+    return defaultID;
+  }
 
   bool RouterContact::IgnoreBogons = false;
 
@@ -25,11 +31,14 @@ namespace llarp
   llarp_time_t RouterContact::Lifetime = 24 * 60 * 60 * 1000;
 #endif
 
-  NetID::NetID() : AlignedBuffer< 8 >()
+  NetID::NetID(const byte_t *val) : AlignedBuffer< 8 >()
   {
-    size_t len =
-        strnlen(reinterpret_cast< const char * >(DefaultValue), size());
-    std::copy(DefaultValue, DefaultValue + len, begin());
+    size_t len = strnlen(reinterpret_cast< const char * >(val), size());
+    std::copy(val, val + len, begin());
+  }
+
+  NetID::NetID() : NetID(DefaultValue().data())
+  {
   }
 
   bool

@@ -1543,7 +1543,8 @@ namespace llarp
                          "' you will run as a different network, good luck and "
                          "don't forget: something something MUH traffic shape "
                          "correlation !!!!");
-          llarp::NetID::DefaultValue = (const byte_t *)strdup(val);
+          llarp::NetID::DefaultValue() =
+              llarp::NetID(reinterpret_cast< const byte_t * >(strdup(val)));
           // re set netid in our rc
           self->_rc.netID = llarp::NetID();
         }
