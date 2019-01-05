@@ -1,20 +1,15 @@
-#ifndef LLARP_LINK_DTLS_INTERNAL_HPP
-#define LLARP_LINK_DTLS_INTERNAL_HPP
+#ifndef LLARP_LINK_IWP_INTERNAL_HPP
+#define LLARP_LINK_IWP_INTERNAL_HPP
 #include <link/server.hpp>
 #include <link/session.hpp>
 #include <link_layer.hpp>
-
-#include <mbedtls/ssl_internal.h>
-#include <mbedtls/ecp.h>
-#include <mbedtls/md.h>
-#include <mbedtls/x509.h>
 
 #include <bitset>
 #include <deque>
 
 namespace llarp
 {
-  namespace dtls
+  namespace iwp
   {
     struct LinkLayer;
 
@@ -33,10 +28,15 @@ namespace llarp
       PumpIO();
 
       void
-      TickIO();
+      TickIO(llarp_time_t now);
 
       bool
-      QueueBuffer(llarp_buffer_t buf);
+      QueueMessageBuffer(llarp_buffer_t buf);
+
+      /// return true if the session is established and handshaked and all that
+      /// jazz
+      bool
+      SessionIsEstablished();
 
       /// inbound start
       void
@@ -53,22 +53,16 @@ namespace llarp
       void
       Configure();
 
-      /// ll recv
+      /// low level recv
       void
       Recv_ll(const void *buf, size_t sz);
 
-      static int
-      ssl_recv(void *ctx, unsigned char *buf, size_t sz);
+      /// verify a lim
+      bool
+      VerfiyLIM(const llarp::LinkIntroMessage *msg);
 
-      static int
-      ssl_send(void *ctx, const unsigned char *buf, size_t sz);
-
-      static void
-      Debug(void *ctx, int lvl, const char *fname, int lineno, const char *msg);
-
-      mbedtls_ssl_config m_config;
-      mbedtls_ssl_context m_ctx;
-      mbedtls_ssl_session m_session;
+      SharedSecret m_TXKey;
+      SharedSecret m_RXKey;
       LinkLayer *m_Parent;
       llarp::Crypto *const crypto;
       llarp::RouterContact remoteRC;
@@ -227,9 +221,11 @@ namespace llarp
           return now > lastActiveAt && now - lastActiveAt > 500;
         }
 
+        template < typename write_pkt_func >
         bool
-        TransmitUnacked(mbedtls_ssl_context *ctx, Seqno_t seqno) const
+        TransmitUnacked(write_pkt_func write_pkt, Seqno_t seqno) const
         {
+          static FragLen_t maxfragsize = fragsize;
           FragmentHeader hdr;
           hdr.seqno = seqno;
           hdr.cmd   = XMIT;
@@ -240,7 +236,7 @@ namespace llarp
           FragLen_t len     = sz;
           while(idx < maxfrags)
           {
-            const FragLen_t l = std::min(len, fragsize);
+            const FragLen_t l = std::min(len, maxfragsize);
             if(!acks.test(idx))
             {
               hdr.fragno  = idx;
@@ -250,7 +246,7 @@ namespace llarp
               buf.sz  = buf.cur - buf.base;
               buf.cur = buf.base;
               len -= l;
-              if(mbedtls_ssl_write(ctx, buf.base, buf.sz) != int(buf.sz))
+              if(write_pkt(buf.base, buf.sz) != int(buf.sz))
                 return false;
             }
             ptr += l;
@@ -263,8 +259,9 @@ namespace llarp
           return true;
         }
 
+        template < typename write_pkt_func >
         bool
-        TransmitAcks(mbedtls_ssl_context *ctx, Seqno_t seqno)
+        TransmitAcks(write_pkt_func write_pkt, Seqno_t seqno)
         {
           FragmentHeader hdr;
           hdr.seqno  = seqno;
@@ -283,7 +280,7 @@ namespace llarp
           auto buf = frag.as_buffer();
           if(!hdr.Encode(&buf, llarp::InitBuffer(nullptr, 0)))
             return false;
-          return mbedtls_ssl_write(ctx, buf.base, buf.sz) == int(buf.sz);
+          return write_pkt(buf.base, buf.sz) == int(buf.sz);
         }
       };
 
@@ -312,11 +309,6 @@ namespace llarp
       ~LinkLayer();
       llarp::Crypto *const crypto;
 
-      static const mbedtls_ecp_group_id AllowedCurve[2];
-      static const int AllowedHash[2];
-      static const int CipherSuite[2];
-      static const mbedtls_x509_crt_profile X509Profile;
-
       bool
       Start(llarp::Logic *l) override;
 
@@ -336,8 +328,6 @@ namespace llarp
       uint16_t
       Rank() const override;
 
-      mbedtls_ssl_key_cert ourKeys;
-
       const byte_t *
       IndentityKey() const
       {
@@ -348,6 +338,12 @@ namespace llarp
       CookieSec() const
       {
         return m_CookieSec;
+      }
+
+      RouterID
+      GetRouterID() const
+      {
+        return m_IdentityKey.toPublic();
       }
 
      private:
@@ -363,7 +359,7 @@ namespace llarp
       void
       RecvFrom(const llarp::Addr &from, const void *buf, size_t sz) override;
     };
-  }  // namespace dtls
+  }  // namespace iwp
 }  // namespace llarp
 
 #endif

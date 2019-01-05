@@ -31,6 +31,7 @@
 #include <map>
 #include <vector>
 #include <unordered_map>
+#include <set>
 
 bool
 llarp_findOrCreateEncryption(llarp::Crypto *crypto, const char *fpath,
@@ -44,6 +45,19 @@ struct TryConnectJob;
 
 namespace llarp
 {
+  template < typename T >
+  struct CompareLinks
+  {
+    bool
+    operator()(const std::unique_ptr< T > &left,
+               const std::unique_ptr< T > &right) const
+    {
+      const std::string leftName  = left->Name();
+      const std::string rightName = right->Name();
+      return left->Rank() < right->Rank() || leftName < rightName;
+    }
+  };
+
   struct Router
   {
     bool ready;
@@ -150,8 +164,12 @@ namespace llarp
     std::unique_ptr< llarp::rpc::Caller > rpcCaller;
     std::string lokidRPCAddr = DefaultLokidRPCAddr;
 
-    std::unique_ptr< llarp::ILinkLayer > outboundLink;
-    std::vector< std::unique_ptr< llarp::ILinkLayer > > inboundLinks;
+    std::set< std::unique_ptr< llarp::ILinkLayer >,
+              CompareLinks< llarp::ILinkLayer > >
+        outboundLinks;
+    std::set< std::unique_ptr< llarp::ILinkLayer >,
+              CompareLinks< llarp::ILinkLayer > >
+        inboundLinks;
 
     llarp::Profiling routerProfiling;
     std::string routerProfilesFile = "profiles.dat";
@@ -201,7 +219,7 @@ namespace llarp
     AddInboundLink(std::unique_ptr< llarp::ILinkLayer > &link);
 
     bool
-    InitOutboundLink();
+    InitOutboundLinks();
 
     bool
     GetRandomGoodRouter(RouterID &r);
@@ -369,6 +387,9 @@ namespace llarp
 
     size_t
     NumberOfConnectedRouters() const;
+
+    bool
+    TryConnectAsync(llarp::RouterContact rc, uint16_t tries);
 
     bool
     GetRandomConnectedRouter(llarp::RouterContact &result) const;

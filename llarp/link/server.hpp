@@ -156,6 +156,16 @@ namespace llarp
     TransportSecretKey() const;
 
     bool
+    IsCompatable(const llarp::RouterContact& other) const
+    {
+      const std::string us = Name();
+      for(const auto& ai : other.addrs)
+        if(ai.dialect == us)
+          return true;
+      return false;
+    }
+
+    bool
     EnsureKeys(const char* fpath);
 
     bool

@@ -177,6 +177,7 @@ if(JEMALLOC)
   set(MALLOC_LIB jemalloc)
 endif(JEMALLOC)
 
+
 # FS_LIB should resolve to nothing on all other platforms
 # it is only required on win32 -rick
 set(LIBS ${LIBS} ${MALLOC_LIB} ${FS_LIB})
@@ -517,10 +518,9 @@ set(LIB_SRC
   llarp/handlers/tun.cpp
   llarp/ini.cpp
   llarp/ip.cpp
-  llarp/iwp.cpp
   llarp/link/curvecp.cpp
-  llarp/link/dtls.cpp
   llarp/link/encoder.cpp
+  llarp/link/iwp.cpp
   llarp/link/server.cpp
   llarp/link/session.cpp
   llarp/link/utp.cpp
@@ -613,7 +613,7 @@ set(TEST_SRC
   test/obtain_exit_unittest.cpp
   test/pq_unittest.cpp
   test/net_unittest.cpp
-  test/utp_unittest.cpp
+  test/link_layer_unittest.cpp
   test/test_dns_unit.cpp
   test/test_dnsc_unit.cpp
   test/test_dnsd_unit.cpp
