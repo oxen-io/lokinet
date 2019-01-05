@@ -1289,6 +1289,8 @@ namespace llarp
     for(const auto &factory : linkFactories)
     {
       auto link = factory(this);
+      if(!link)
+        continue;
       if(!link->EnsureKeys(transport_keyfile.string().c_str()))
       {
         llarp::LogError("failed to load ", transport_keyfile);
