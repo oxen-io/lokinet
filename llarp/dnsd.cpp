@@ -1,3 +1,4 @@
+#ifndef ANDROID
 #include <dnsd.hpp>
 #include <net.hpp>
 
@@ -608,3 +609,4 @@ llarp_dnsd_init(struct dnsd_context *const dnsd, llarp::Logic *const logic,
     return true;
   }
 }
+#endif

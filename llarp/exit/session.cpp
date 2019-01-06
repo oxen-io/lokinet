@@ -189,7 +189,7 @@ namespace llarp
       {
         for(auto& item : m_Upstream)
         {
-          auto& queue = item.second;// XXX: uninitialised memory here!
+          auto& queue = item.second;  // XXX: uninitialised memory here!
           while(queue.size())
           {
             auto& msg = queue.front();
@@ -199,6 +199,8 @@ namespace llarp
             queue.pop_front();
           }
         }
+        // clear upstream queues
+        m_Upstream.clear();
       }
       else
       {

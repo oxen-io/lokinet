@@ -64,13 +64,13 @@ extern "C"
     if((dev = (struct device *)malloc(sizeof(*dev))) == NULL)
       return NULL;
     dev->obtain_fd = nullptr;
-    dev->user = nullptr;
+    dev->user      = nullptr;
     (void)memset(dev->if_name, '\0', sizeof(dev->if_name));
     dev->tun_fd    = TUNFD_INVALID_VALUE;
     dev->ctrl_sock = -1;
     dev->flags     = 0;
 
-	__tuntap_log = &tuntap_log_default;
+    __tuntap_log = &tuntap_log_default;
     return dev;
   }
 
@@ -82,9 +82,14 @@ extern "C"
   }
 
   char *
-  tuntap_get_ifname(struct device *dev)
+  tuntap_get_ifname(struct device *dev, char *buf, size_t sz)
   {
-    return dev->if_name;
+    size_t ifname_len = strnlen(dev->if_name, sizeof(dev->if_name) - 1);
+    if(ifname_len)
+      strncpy(buf, dev->if_name, std::min(sz, ifname_len));
+    else
+      memset(buf, 0, sz);
+    return buf;
   }
 
   int

@@ -171,8 +171,10 @@ extern "C"
   tuntap_release(struct device *);
   TUNTAP_EXPORT int
   tuntap_start(struct device *, int, int);
+
   TUNTAP_EXPORT char *
-  tuntap_get_ifname(struct device *);
+  tuntap_get_ifname(struct device *, char *, size_t);
+
   TUNTAP_EXPORT int
   tuntap_set_ifname(struct device *, const char *);
 

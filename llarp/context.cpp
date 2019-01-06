@@ -1,5 +1,7 @@
+#ifndef ANDROID
 #include <dns_dotlokilookup.hpp>
 #include <dnsd.hpp>
+#endif
 #include <ev.hpp>
 #include <getopt.h>
 #include <llarp.h>
@@ -358,7 +360,7 @@ extern "C"
   {
     llarp_dht_lookup_router(ptr->ctx->router->dht, job);
   }
-
+#ifndef ANDROID
   bool
   llarp_main_init_dnsd(struct llarp_main *ptr, struct dnsd_context *dnsd,
                        const llarp::Addr &dnsd_sockaddr,
@@ -377,6 +379,7 @@ extern "C"
     // TODO: gutt me
     return false;
   }
+#endif
 
   void
   llarp_main_free(struct llarp_main *ptr)
