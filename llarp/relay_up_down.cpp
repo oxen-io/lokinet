@@ -15,7 +15,9 @@ namespace llarp
   void
   RelayUpstreamMessage::Clear()
   {
+    pathid.Zero();
     X.Clear();
+    Y.Zero();
   }
 
   bool
@@ -75,7 +77,9 @@ namespace llarp
   void
   RelayDownstreamMessage::Clear()
   {
+    pathid.Zero();
     X.Clear();
+    Y.Zero();
   }
 
   bool
