@@ -112,9 +112,9 @@ namespace llarp
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
-        if(itr->get() && !(*itr)->TimedOut(_now))
+        if(itr->second.get() && !itr->second->TimedOut(_now))
         {
-          (*itr)->Pump();
+          itr->second->Pump();
           ++itr;
         }
         else
@@ -123,27 +123,27 @@ namespace llarp
     }
   }
 
-  void
+  bool
   ILinkLayer::MapAddr(const RouterID& pk, ILinkSession* s)
   {
     static constexpr size_t MaxSessionsPerKey = 16;
     Lock l_authed(m_AuthedLinksMutex);
     Lock l_pending(m_PendingMutex);
-    auto itr = m_Pending.begin();
-    while(itr != m_Pending.end())
+    auto itr = m_Pending.find(s->GetRemoteEndpoint());
+    if(itr == m_Pending.end())
     {
-      if(itr->get() == s)
-      {
-        if(m_AuthedLinks.count(pk) < MaxSessionsPerKey)
-          m_AuthedLinks.emplace(pk, std::move(*itr));
-        else
-          s->SendClose();
-        itr = m_Pending.erase(itr);
-        return;
-      }
-      else
-        ++itr;
+      // this should never happen
+      return false;
     }
+    if(m_AuthedLinks.count(pk) >= MaxSessionsPerKey)
+    {
+      s->SendClose();
+      m_Pending.erase(itr);
+      return false;
+    }
+    m_AuthedLinks.emplace(pk, std::move(itr->second));
+    itr = m_Pending.erase(itr);
+    return true;  
   }
 
   bool
@@ -171,9 +171,13 @@ namespace llarp
     llarp::LogInfo("Try establish to ", RouterID(rc.pubkey.as_array()));
     llarp::Addr addr(to);
     auto s = NewOutboundSession(rc, to);
-    s->Start();
-    PutSession(s);
-    return true;
+    if(PutSession(s))
+    {
+      s->Start();
+      return true;
+    }
+    delete s;
+    return false;
   }
 
   bool
@@ -203,7 +207,7 @@ namespace llarp
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
-        (*itr)->SendClose();
+        itr->second->SendClose();
         ++itr;
       }
     }
@@ -314,11 +318,15 @@ namespace llarp
     return true;
   }
 
-  void
+  bool
   ILinkLayer::PutSession(ILinkSession* s)
   {
     Lock lock(m_PendingMutex);
-    m_Pending.emplace_back(s);
+    auto itr = m_Pending.find(s->GetRemoteEndpoint());
+    if(itr != m_Pending.end())
+      return false;
+    m_Pending.emplace(s->GetRemoteEndpoint(), s);
+    return true;
   }
 
   void
