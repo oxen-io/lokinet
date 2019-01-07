@@ -18,8 +18,8 @@ namespace llarp
   {
     Encrypted(Encrypted&& other)
     {
-      _sz = std::move(other._sz);
-      memcpy(_buf, other._buf, _sz);
+      _sz  = std::move(other._sz);
+      _buf = std::move(other._buf);
       UpdateBuffer();
     }
 
@@ -46,9 +46,9 @@ namespace llarp
       {
         _sz = sz;
         if(buf)
-          memcpy(_buf, buf, sz);
+          memcpy(_buf.data(), buf, sz);
         else
-          llarp::Zero(_buf, sz);
+          _buf.Zero();
       }
       else
         _sz = 0;
@@ -66,13 +66,13 @@ namespace llarp
     bool
     BEncode(llarp_buffer_t* buf) const
     {
-      return bencode_write_bytestring(buf, _buf, _sz);
+      return bencode_write_bytestring(buf, data(), _sz);
     }
 
     bool
     operator==(const Encrypted& other) const
     {
-      return _sz == other._sz && memcmp(_buf, other._buf, _sz) == 0;
+      return _sz == other._sz && memcmp(data(), other.data(), _sz) == 0;
     }
 
     bool
@@ -90,10 +90,10 @@ namespace llarp
     Encrypted&
     operator=(const llarp_buffer_t& buf)
     {
-      if(buf.sz <= sizeof(_buf))
+      if(buf.sz <= _buf.size())
       {
         _sz = buf.sz;
-        memcpy(_buf, buf.base, _sz);
+        memcpy(_buf.data(), buf.base, _sz);
       }
       UpdateBuffer();
       return *this;
@@ -111,7 +111,7 @@ namespace llarp
     Randomize()
     {
       if(_sz)
-        randombytes(_buf, _sz);
+        randombytes(_buf.data(), _sz);
     }
 
     bool
@@ -124,7 +124,7 @@ namespace llarp
         return false;
       _sz = strbuf.sz;
       if(_sz)
-        memcpy(_buf, strbuf.base, _sz);
+        memcpy(_buf.data(), strbuf.base, _sz);
       UpdateBuffer();
       return true;
     }
@@ -156,24 +156,24 @@ namespace llarp
     byte_t*
     data()
     {
-      return _buf;
+      return _buf.data();
     }
 
     const byte_t*
     data() const
     {
-      return _buf;
+      return _buf.data();
     }
 
    protected:
     void
     UpdateBuffer()
     {
-      m_Buffer.base = _buf;
-      m_Buffer.cur  = _buf;
+      m_Buffer.base = _buf.data();
+      m_Buffer.cur  = _buf.data();
       m_Buffer.sz   = _sz;
     }
-    byte_t _buf[bufsz];
+    AlignedBuffer< bufsz > _buf;
     size_t _sz;
     llarp_buffer_t m_Buffer;
   };  // namespace llarp

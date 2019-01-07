@@ -22,6 +22,7 @@ namespace llarp
       void Clear() override
       {
         X.clear();
+        _size = 0;
       }
 
       size_t

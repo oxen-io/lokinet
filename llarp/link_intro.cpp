@@ -124,7 +124,10 @@ namespace llarp
   void
   LinkIntroMessage::Clear()
   {
+    P = 0;
+    N.Zero();
     rc.Clear();
+    Z.Zero();
   }
 
   bool
