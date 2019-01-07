@@ -21,7 +21,7 @@ Build requirements:
 
 build:
 
-    $ sudo apt install build-essential cmake git libcap-dev wget rapidjson-dev
+    $ sudo apt install build-essential cmake git libcap-dev curl rapidjson-dev
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ make -j8
@@ -48,7 +48,7 @@ install (root):
 
 build (where `$ARCH` is your platform - `i686` or `x86_64`):
 
-    $ pacman -Sy base-devel mingw-w64-$ARCH-toolchain git libtool autoconf mingw-w64-$ARCH-cmake
+    $ pacman -Sy base-devel mingw-w64-$ARCH-toolchain git libtool autoconf mingw-w64-$ARCH-cmake curl
     $ git clone https://github.com/loki-project/loki-network.git
     $ cd loki-network
     $ mkdir -p build; cd build
