@@ -170,6 +170,10 @@ namespace llarp
     SessionClosedHandler SessionClosed;
     SessionRenegotiateHandler SessionRenegotiate;
 
+    /// called by link session to remove a pending session who is timed out
+    void
+    RemovePending(ILinkSession * s);
+
    private:
     static void
     on_timer_tick(void* user, uint64_t orig, uint64_t left)

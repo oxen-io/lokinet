@@ -334,7 +334,9 @@ namespace llarp
         link->HandleTimeout(session);
         llarp::LogError(utp_error_code_names[arg->error_code], " via ",
                         session->remoteAddr);
-        session->Close();
+        if(arg->error_code != UTP_ETIMEDOUT)
+          session->Close();
+        link->RemovePending(session);
       }
       return 0;
     }
@@ -826,7 +828,6 @@ namespace llarp
     {
       if(sock)
       {
-        utp_close(sock);
         utp_set_userdata(sock, nullptr);
       }
     }
@@ -1121,10 +1122,10 @@ namespace llarp
         {
           if(state == eLinkEstablished || state == eSessionReady)
           {
-            // only call shutdown when we are actually connected
+            // only call shutdown and close when we are actually connected
             utp_shutdown(sock, SHUT_RDWR);
+            utp_close(sock);
           }
-          utp_close(sock);
           llarp::LogDebug("utp_close ", remoteAddr);
           utp_set_userdata(sock, nullptr);
         }

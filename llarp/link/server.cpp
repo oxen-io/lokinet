@@ -162,6 +162,13 @@ namespace llarp
     return false;
   }
 
+  void
+  ILinkLayer::RemovePending(ILinkSession * s)
+  {
+    llarp::Addr remote = s->GetRemoteEndpoint();
+    m_Pending.erase(remote);
+  }
+
   bool
   ILinkLayer::TryEstablishTo(RouterContact rc)
   {

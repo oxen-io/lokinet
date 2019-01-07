@@ -80,8 +80,12 @@ struct TryConnectJob
   {
     --triesLeft;
     if(!link->TryEstablishTo(rc))
+    {
       llarp::LogError("did not attempt connection to ", rc.pubkey,
                       " and it has ", rc.addrs.size(), " advertised addresses");
+      // delete this
+      router->pendingEstablishJobs.erase(rc.pubkey);
+    }
   }
 
   bool
