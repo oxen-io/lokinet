@@ -34,7 +34,7 @@ namespace llarp
 
       bool
       HandleHookedDNSMessage(
-          dns::Message query,
+          dns::Message&& query,
           std::function< void(dns::Message) > sendreply) override;
 
       void
@@ -181,7 +181,8 @@ namespace llarp
 
       void
       SendDNSReply(service::Address addr,
-                   service::Endpoint::OutboundContext* ctx, dns::Message query,
+                   service::Endpoint::OutboundContext* ctx,
+                   dns::Message&& query,
                    std::function< void(dns::Message) > reply);
 
 #ifndef WIN32

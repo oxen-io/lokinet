@@ -78,7 +78,7 @@ namespace llarp
       if(!path)
         return true;
       auto lastPing = path->LastRemoteActivityAt();
-      if(lastPing == 0 || ( now > lastPing && now - lastPing > timeout))
+      if(lastPing == 0 || (now > lastPing && now - lastPing > timeout))
         return now > m_LastActive && now - m_LastActive > timeout;
       else if(lastPing)
         return now > lastPing && now - lastPing > timeout;
@@ -160,7 +160,7 @@ namespace llarp
           {
             auto& msg = queue.front();
             msg.S     = path->NextSeqNo();
-            if(path->SendRoutingMessage(&msg, m_Parent->Router()))
+            if(path->SendRoutingMessage(&msg, m_Parent->GetRouter()))
             {
               m_RxRate += msg.Size();
               sent = true;
@@ -177,7 +177,7 @@ namespace llarp
     llarp::path::IHopHandler*
     Endpoint::GetCurrentPath() const
     {
-      auto router = m_Parent->Router();
+      auto router = m_Parent->GetRouter();
       return router->paths.GetByUpstream(router->pubkey(), m_CurrentPath);
     }
   }  // namespace exit

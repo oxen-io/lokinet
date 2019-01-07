@@ -7,6 +7,7 @@
 #include <net.hpp>
 #include <path.hpp>
 #include <pathbuilder.hpp>
+#include <service/address.hpp>
 #include <service/Identity.hpp>
 #include <service/handler.hpp>
 #include <service/protocol.hpp>

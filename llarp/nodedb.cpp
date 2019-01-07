@@ -423,7 +423,7 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
 {
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
-  auto sz = entries.size();
+  size_t sz = entries.size();
   if(sz < 3)
     return false;
   size_t tries     = 5;
@@ -433,12 +433,6 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
     do
     {
       auto itr = entries.begin();
-      if(sz > 1)
-      {
-        auto idx = llarp::randint() % sz;
-        if(idx)
-          std::advance(itr, idx - 1);
-      }
       if(prev.pubkey == itr->second.pubkey)
       {
         if(tries--)

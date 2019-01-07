@@ -917,11 +917,8 @@ namespace llarp
 
     bool
     Endpoint::CheckPathIsDead(__attribute__((unused)) path::Path* p,
-                              llarp_time_t latency)
+                              __attribute__((unused)) llarp_time_t latency)
     {
-      if(latency >= m_MinPathLatency)
-      {
-      }
       return false;
     }
 

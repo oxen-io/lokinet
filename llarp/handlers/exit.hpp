@@ -8,11 +8,12 @@
 
 namespace llarp
 {
+  struct Router;
   namespace handlers
   {
-    struct ExitEndpoint : public llarp::dns::IQueryHandler
+    struct ExitEndpoint : public dns::IQueryHandler
     {
-      ExitEndpoint(const std::string& name, llarp::Router* r);
+      ExitEndpoint(const std::string& name, Router* r);
       ~ExitEndpoint();
 
       void
@@ -25,38 +26,36 @@ namespace llarp
       Name() const;
 
       bool
-      ShouldHookDNSMessage(const llarp::dns::Message& msg) const override;
+      ShouldHookDNSMessage(const dns::Message& msg) const override;
 
       bool
-      HandleHookedDNSMessage(
-          llarp::dns::Message,
-          std::function< void(llarp::dns::Message) >) override;
+      HandleHookedDNSMessage(dns::Message&& msg,
+                             std::function< void(dns::Message) >) override;
 
       bool
-      AllocateNewExit(const llarp::PubKey pk, const llarp::PathID_t& path,
+      AllocateNewExit(const PubKey pk, const PathID_t& path,
                       bool permitInternet);
 
-      llarp::exit::Endpoint*
-      FindEndpointByPath(const llarp::PathID_t& path);
+      exit::Endpoint*
+      FindEndpointByPath(const PathID_t& path);
 
-      llarp::exit::Endpoint*
+      exit::Endpoint*
       FindEndpointByIP(huint32_t ip);
 
       bool
-      UpdateEndpointPath(const llarp::PubKey& remote,
-                         const llarp::PathID_t& next);
+      UpdateEndpointPath(const PubKey& remote, const PathID_t& next);
 
       /// handle ip packet from outside
       void
       OnInetPacket(llarp_buffer_t buf);
 
-      llarp::Router*
-      Router();
+      Router*
+      GetRouter();
 
       llarp_time_t
       Now() const;
 
-      llarp::Crypto*
+      Crypto*
       Crypto();
 
       template < typename Stats >
@@ -74,11 +73,11 @@ namespace llarp
 
       /// DO NOT CALL ME
       void
-      DelEndpointInfo(const llarp::PathID_t& path);
+      DelEndpointInfo(const PathID_t& path);
 
       /// DO NOT CALL ME
       void
-      RemoveExit(const llarp::exit::Endpoint* ep);
+      RemoveExit(const exit::Endpoint* ep);
 
       bool
       QueueOutboundTraffic(llarp_buffer_t buf);
@@ -94,7 +93,7 @@ namespace llarp
       ShouldRemove() const;
 
       bool
-      HasLocalMappedAddrFor(const llarp::PubKey& pk) const;
+      HasLocalMappedAddrFor(const PubKey& pk) const;
 
       huint32_t
       GetIfAddr() const;
@@ -104,7 +103,7 @@ namespace llarp
 
      private:
       huint32_t
-      GetIPForIdent(const llarp::PubKey pk);
+      GetIPForIdent(const PubKey pk);
 
       huint32_t
       AllocateNewAddress();
@@ -112,75 +111,64 @@ namespace llarp
       /// obtain ip for service node session, creates a new session if one does
       /// not existing already
       huint32_t
-      ObtainServiceNodeIP(const llarp::RouterID& router);
+      ObtainServiceNodeIP(const RouterID& router);
 
       bool
-      QueueSNodePacket(llarp_buffer_t buf, llarp::huint32_t from);
+      QueueSNodePacket(llarp_buffer_t buf, huint32_t from);
 
       void
-      MarkIPActive(llarp::huint32_t ip);
+      MarkIPActive(huint32_t ip);
 
       void
-      KickIdentOffExit(const llarp::PubKey& pk);
+      KickIdentOffExit(const PubKey& pk);
 
-      llarp::Router* m_Router;
-      llarp::dns::Proxy m_Resolver;
+      Router* m_Router;
+      dns::Proxy m_Resolver;
       bool m_ShouldInitTun;
       std::string m_Name;
       bool m_PermitExit;
-      std::unordered_map< llarp::PathID_t, llarp::PubKey,
-                          llarp::PathID_t::Hash >
-          m_Paths;
+      std::unordered_map< PathID_t, PubKey, PathID_t::Hash > m_Paths;
 
-      std::unordered_map< llarp::PubKey, llarp::exit::Endpoint*,
-                          llarp::PubKey::Hash >
-          m_ChosenExits;
+      std::unordered_map< PubKey, exit::Endpoint*, PubKey::Hash > m_ChosenExits;
 
-      std::unordered_multimap< llarp::PubKey,
-                               std::unique_ptr< llarp::exit::Endpoint >,
-                               llarp::PubKey::Hash >
+      std::unordered_multimap< PubKey, std::unique_ptr< exit::Endpoint >,
+                               PubKey::Hash >
           m_ActiveExits;
 
-      using KeyMap_t = std::unordered_map< llarp::PubKey, llarp::huint32_t,
-                                           llarp::PubKey::Hash >;
+      using KeyMap_t = std::unordered_map< PubKey, huint32_t, PubKey::Hash >;
 
       KeyMap_t m_KeyToIP;
 
-      using SNodes_t = std::set< llarp::PubKey >;
+      using SNodes_t = std::set< PubKey >;
       /// set of pubkeys we treat as snodes
       SNodes_t m_SNodeKeys;
 
       using SNodeSessions_t =
-          std::unordered_map< llarp::RouterID,
-                              std::unique_ptr< llarp::exit::SNodeSession >,
-                              llarp::RouterID::Hash >;
+          std::unordered_map< RouterID, std::unique_ptr< exit::SNodeSession >,
+                              RouterID::Hash >;
       /// snode sessions we are talking to directly
       SNodeSessions_t m_SNodeSessions;
 
-      std::unordered_map< llarp::huint32_t, llarp::PubKey,
-                          llarp::huint32_t::Hash >
-          m_IPToKey;
+      std::unordered_map< huint32_t, PubKey, huint32_t::Hash > m_IPToKey;
 
       huint32_t m_IfAddr;
       huint32_t m_HigestAddr;
       huint32_t m_NextAddr;
-      llarp::IPRange m_OurRange;
+      IPRange m_OurRange;
 
-      std::unordered_map< llarp::huint32_t, llarp_time_t,
-                          llarp::huint32_t::Hash >
+      std::unordered_map< huint32_t, llarp_time_t, huint32_t::Hash >
           m_IPActivity;
 
       llarp_tun_io m_Tun;
 
-      llarp::Addr m_LocalResolverAddr;
-      std::vector< llarp::Addr > m_UpstreamResolvers;
+      Addr m_LocalResolverAddr;
+      std::vector< Addr > m_UpstreamResolvers;
 
-      using Pkt_t = llarp::net::IPv4Packet;
+      using Pkt_t = net::IPv4Packet;
       using PacketQueue_t =
-          llarp::util::CoDelQueue< Pkt_t, Pkt_t::GetTime, Pkt_t::PutTime,
-                                   Pkt_t::CompareOrder, Pkt_t::GetNow,
-                                   llarp::util::DummyMutex,
-                                   llarp::util::DummyLock, 5, 100, 1024 >;
+          util::CoDelQueue< Pkt_t, Pkt_t::GetTime, Pkt_t::PutTime,
+                            Pkt_t::CompareOrder, Pkt_t::GetNow,
+                            util::DummyMutex, util::DummyLock, 5, 100, 1024 >;
 
       /// internet to llarp packet queue
       PacketQueue_t m_InetToNetwork;
