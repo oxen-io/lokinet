@@ -1,3 +1,5 @@
+#ifndef LLARP_DNS_DNS_HPP
+#define LLARP_DNS_DNS_HPP
 #include <dns/name.hpp>
 #include <dns/rr.hpp>
 #include <dns/serialize.hpp>
@@ -18,3 +20,5 @@ namespace llarp
     constexpr uint16_t qClassIN = 1;
   }  // namespace dns
 }  // namespace llarp
+
+#endif

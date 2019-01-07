@@ -194,7 +194,7 @@ namespace llarp
 
     bool
     TunEndpoint::HandleHookedDNSMessage(
-        dns::Message msg, std::function< void(dns::Message) > reply)
+        dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
       if(msg.questions.size() != 1)
       {
@@ -232,12 +232,13 @@ namespace llarp
             msg.AddINReply(ip);
           }
           else
-            return EnsurePathToService(
-                addr,
-                std::bind(&TunEndpoint::SendDNSReply, this,
-                          std::placeholders::_1, std::placeholders::_2, msg,
-                          reply),
-                2000);
+          {
+            service::Endpoint::PathEnsureHook hook = [&](service::Address addr,
+                                                         OutboundContext *ctx) {
+              this->SendDNSReply(addr, ctx, std::move(msg), reply);
+            };
+            return EnsurePathToService(addr, hook, 2000);
+          }
         }
         else if(addr.FromString(qname, ".snode"))
         {
@@ -320,7 +321,7 @@ namespace llarp
     void
     TunEndpoint::SendDNSReply(service::Address addr,
                               service::Endpoint::OutboundContext *ctx,
-                              dns::Message request,
+                              dns::Message &&request,
                               std::function< void(dns::Message) > reply)
     {
       if(ctx)
