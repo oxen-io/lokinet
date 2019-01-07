@@ -36,7 +36,9 @@ namespace llarp
       void
       Clear() override
       {
+        P.Zero();
         T.Clear();
+        Y.Zero();
       }
     };
 
