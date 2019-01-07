@@ -1120,7 +1120,11 @@ namespace llarp
       {
         if(sock)
         {
-          utp_shutdown(sock, SHUT_RDWR);
+          if(state == eLinkEstablished || state == eSessionReady)
+          {
+            // only call shutdown when we are actually connected
+            utp_shutdown(sock, SHUT_RDWR);
+          }
           utp_close(sock);
           llarp::LogDebug("utp_close ", remoteAddr);
           utp_set_userdata(sock, nullptr);
