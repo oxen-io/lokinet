@@ -20,6 +20,12 @@ then
   mkdir $HOME/.lokinet
 fi
 
+# use temp file to not overrwrite existing bootstrap file on fail
+tmp=mktemp
+
 # MacOS does not have wget without homebrew but does have curl
 # Rick also had indicated most BSDs have curl too
-curl "$url" > $HOME/.lokinet/bootstrap.signed; echo -e "${GREEN}lokinet successfully bootstrapped${NC}" || echo -e "${RED}failed to download bootstrap from $url${NC}"
+curl "$url" > "$tmp" && \
+    (mv "$tmp" "$HOME/.lokinet/bootstrap.signed" && echo -e "${GREEN}lokinet successfully bootstrapped${NC}" ) \
+        || echo -e "${RED}failed to download bootstrap from $url${NC}"
+rm -f "$tmp"
