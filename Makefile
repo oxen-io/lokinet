@@ -134,10 +134,12 @@ testnet-build: testnet-configure
 	$(MAKE) -C $(BUILD_ROOT)
 
 shared-configure: clean
+	mkdir -p $(BUILD_ROOT)
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DWITH_SHARED=ON
 
 shared: shared-configure
 	$(MAKE) -C $(BUILD_ROOT)
+	cp $(BUILD_ROOT)/liblokinet-shared.so liblokinet-shared.so
 
 testnet:
 	cp $(EXE) $(TESTNET_EXE)

@@ -154,12 +154,8 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
 
   f << "# dns provider configuration section" << std::endl;
   f << "[dns]" << std::endl;
-  f << "# opennic us resolver" << std::endl;
+  f << "# resolver" << std::endl;
   f << "upstream=" << DEFAULT_RESOLVER_US << std::endl;
-  f << "# opennic eu resolver" << std::endl;
-  f << "upstream=" << DEFAULT_RESOLVER_EU << std::endl;
-  f << "# opennic au resolver" << std::endl;
-  f << "upstream=" << DEFAULT_RESOLVER_AU << std::endl;
 
 // Make auto-config smarter
 // will this break reproducibility rules?

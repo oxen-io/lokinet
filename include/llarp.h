@@ -21,7 +21,8 @@ extern "C"
   /// if basedir is not nullptr then use basedir as an absolute
   /// base path for all files in config
   bool
-  llarp_ensure_config(const char *, const char *, bool, bool);
+  llarp_ensure_config(const char *, const char *, bool overwrite,
+                      bool asrouter);
 
   /// llarp application context for C api
   struct llarp_main;

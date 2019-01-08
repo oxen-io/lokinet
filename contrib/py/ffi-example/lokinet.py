@@ -20,6 +20,16 @@ class LokiNET(threading.Thread):
         self.ctx = self.lib.llarp_main_init(conf)
         return self.ctx != 0
 
+    def inform_fail(self):
+        """
+        inform lokinet crashed
+        """
+
+    def inform_end(self):
+        """
+        inform lokinet ended clean
+        """
+
 
     def signal(self, sig):
         if self.ctx and self.lib:
@@ -28,7 +38,11 @@ class LokiNET(threading.Thread):
     def run(self):
         code = self.lib.llarp_main_run(self.ctx)
         print("llarp_main_run exited with status {}".format(code))
-
+        if code:
+            self.inform_fail()
+        else:
+            self.inform_end()
+            
     def close(self):
         if self.lib and self.ctx:
             self.lib.llarp_main_free(self.ctx)
@@ -36,7 +50,10 @@ class LokiNET(threading.Thread):
 def main():
     loki = LokiNET()
     if loki.load(lib_file, b'daemon.ini'):
-        loki.start()
+        if loki.configure():
+            loki.start()
+        else:
+            print("failed to configure lokinet context")
         try:
             while True:
                 time.sleep(1)
