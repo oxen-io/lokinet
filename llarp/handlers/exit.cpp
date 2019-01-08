@@ -220,7 +220,7 @@ namespace llarp
     }
 
     Crypto *
-    ExitEndpoint::Crypto()
+    ExitEndpoint::GetCrypto()
     {
       return &m_Router->crypto;
     }

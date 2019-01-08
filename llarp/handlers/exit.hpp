@@ -56,7 +56,7 @@ namespace llarp
       Now() const;
 
       Crypto*
-      Crypto();
+      GetCrypto();
 
       template < typename Stats >
       void
