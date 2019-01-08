@@ -102,6 +102,8 @@ release-configure: clean
 debug: debug-configure
 	$(MAKE) -C $(BUILD_ROOT)
 	cp $(EXE) lokinet
+	cp $(BUILD_ROOT)/liblokinet-shared.so liblokinet-shared.so
+
 
 release-compile: release-configure
 	$(MAKE) -C $(BUILD_ROOT)
