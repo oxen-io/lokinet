@@ -2,7 +2,7 @@
 
 * Act like a responsible adult.
 
-* RUN `make format && make lint -j8` BEFORE COMMITING ALWAYS.
+* RUN `make format` BEFORE COMMITING ALWAYS.
 
 # Do NOT
 
