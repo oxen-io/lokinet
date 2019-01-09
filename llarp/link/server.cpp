@@ -329,10 +329,11 @@ namespace llarp
   ILinkLayer::PutSession(ILinkSession* s)
   {
     Lock lock(m_PendingMutex);
-    auto itr = m_Pending.find(s->GetRemoteEndpoint());
+    llarp::Addr addr = s->GetRemoteEndpoint();
+    auto itr = m_Pending.find(addr);
     if(itr != m_Pending.end())
       return false;
-    m_Pending.emplace(s->GetRemoteEndpoint(), s);
+    m_Pending.insert(std::make_pair(addr, std::unique_ptr<ILinkSession>(s)));
     return true;
   }
 
