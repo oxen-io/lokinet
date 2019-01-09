@@ -22,6 +22,3 @@
 
 * Merge large and pointless or pedantic changes, (i.e. code formatting shift)
 
-## additional notes
-
-github's ui doesn't seem accept this file as a real code of conduct.
