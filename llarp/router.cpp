@@ -441,13 +441,14 @@ namespace llarp
   Router::SaveRC()
   {
     llarp::LogDebug("verify RC signature");
-    if(!rc().Verify(&crypto, Now()))
+    if(!_rc.Verify(&crypto, Now()))
     {
       rc().Dump< MAX_RC_SIZE >();
       llarp::LogError("RC is invalid, not saving");
       return false;
     }
-    return rc().Write(our_rc_file.string().c_str());
+    std::string fname = our_rc_file.string();
+    return _rc.Write(fname.c_str());
   }
 
   bool
