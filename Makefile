@@ -44,23 +44,32 @@ ANDROID_LOCAL_PROPS=$(ANDROID_DIR)/local.properties
 GRADLE ?= gradle
 JAVA_HOME ?= /usr/lib/jvm/default-java
 
-# features enabled
+# jsonrpc server
 JSONRPC ?= OFF
+# native avx2 code
 AVX2 ?= OFF
-RPI ?= OFF
+# non x86 target
+NON_PC_TARGET ?= OFF
+# statically link
 STATIC_LINK ?= OFF
+# enable network namespace isolation
 NETNS ?= OFF
+# using clang
 CLANG ?= OFF
+# cross compile?
 CROSS ?= OFF
-
+# build liblokinet-shared.so
+SHARED_LIB ?= ON
+# cmake generator type
 CMAKE_GEN ?= Unix Makefiles
 
 BUILD_ROOT = $(REPO)/build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DRPI=$(RPI) '$(REPO)'")
-
 SCAN_BUILD ?= scan-build
-ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -DUSE_LIBABYSS=$(JSONRPC) '$(REPO)'")
+
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
+
+ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
@@ -133,12 +142,6 @@ testnet-configure: testnet-clean
 testnet-build: testnet-configure
 	$(MAKE) -C $(BUILD_ROOT)
 
-shared-configure: clean
-	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DWITH_TESTS=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DWITH_SHARED=ON
-
-shared: shared-configure
-	$(MAKE) -C $(BUILD_ROOT)
-
 testnet:
 	cp $(EXE) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
@@ -185,8 +188,7 @@ analyze-config: clean
 	$(ANALYZE_CONFIG_CMD)
 
 analyze: analyze-config
-	cd '$(BUILD_ROOT)'
-	$(SCAN_BUILD) $(MAKE)
+	cd '$(BUILD_ROOT)' && $(SCAN_BUILD) $(MAKE)
 
 lint: $(LINT_CHECK)
 
