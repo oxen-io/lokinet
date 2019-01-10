@@ -103,7 +103,7 @@ on_try_connecting(void *u)
 }
 
 bool
-llarp_findOrCreateIdentity(llarp::Crypto *crypto, const char *fpath,
+llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
                            llarp::SecretKey &secretkey)
 {
   llarp::LogDebug("find or create ", path);
@@ -1306,6 +1306,7 @@ namespace llarp
         if(!link->Configure(netloop, "*", af, 0))
           continue;
         outboundLinks.insert(std::move(link));
+        break;
       }
     }
     return outboundLinks.size() > 0;
