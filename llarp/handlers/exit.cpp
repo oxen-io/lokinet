@@ -54,7 +54,7 @@ namespace llarp
         return m_OurRange.Contains(ip);
       }
       else if(msg.questions[0].qtype == dns::qTypeA
-              || msg.questions[0].qtype == dns.qTypeCNAME)
+              || msg.questions[0].qtype == dns::qTypeCNAME)
       {
         // hook for forward dns or cname when using snode tld
         return msg.questions[0].qname.find(".snode.")
@@ -97,7 +97,7 @@ namespace llarp
            || msg.questions[0].qname == "random.snode.")
         {
           RouterID random;
-          if(Router()->GetRandomGoodRouter(random))
+          if(GetRouter()->GetRandomGoodRouter(random))
             msg.AddCNAMEReply(random.ToString(), 1);
           else
             msg.AddNXReply();
