@@ -35,7 +35,12 @@ namespace llarp
       Clear() override
       {
         B.clear();
+        E = 0;
+        I.Zero();
+        T = 0;
         W.clear();
+        X = 0;
+        Z.Zero();
       }
 
       /// populates I and signs
@@ -90,6 +95,9 @@ namespace llarp
       void
       Clear() override
       {
+        T = 0;
+        Y.Zero();
+        Z.Zero();
       }
     };
 
@@ -113,7 +121,11 @@ namespace llarp
       void
       Clear() override
       {
+        B = 0;
         R.clear();
+        T = 0;
+        Y.Zero();
+        Z.Zero();
       }
 
       RejectExitMessage&
@@ -153,6 +165,9 @@ namespace llarp
       void
       Clear() override
       {
+        T = 0;
+        Y.Zero();
+        Z.Zero();
       }
 
       UpdateExitVerifyMessage&
@@ -211,6 +226,10 @@ namespace llarp
       void
       Clear() override
       {
+        P.Zero();
+        T = 0;
+        Y.Zero();
+        Z.Zero();
       }
     };
 
@@ -250,6 +269,8 @@ namespace llarp
       void
       Clear() override
       {
+        Y.Zero();
+        Z.Zero();
       }
     };
 

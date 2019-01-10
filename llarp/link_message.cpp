@@ -66,7 +66,6 @@ namespace llarp
         default:
           return false;
       }
-      handler->msg->Clear();
       handler->msg->session = handler->from;
       handler->firstkey     = false;
       return true;
@@ -108,6 +107,8 @@ namespace llarp
   void
   InboundMessageParser::Reset()
   {
+    if(msg)
+      msg->Clear();
     msg = nullptr;
   }
 }  // namespace llarp

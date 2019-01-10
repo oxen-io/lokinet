@@ -29,6 +29,7 @@ namespace llarp
       Clear() override
       {
         M.clear();
+        V = 0;
       }
     };
   }  // namespace routing

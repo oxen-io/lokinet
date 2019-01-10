@@ -45,15 +45,18 @@ namespace llarp
     {
       if(msg.questions.size() == 0)
         return false;
-      if(msg.questions[0].qtype == llarp::dns::qTypePTR)
+      // always hook ptr for ranges we own
+      if(msg.questions[0].qtype == dns::qTypePTR)
       {
         llarp::huint32_t ip;
         if(!llarp::dns::DecodePTR(msg.questions[0].qname, ip))
           return false;
         return m_OurRange.Contains(ip);
       }
-      else if(msg.questions[0].qtype == llarp::dns::qTypeA)
+      else if(msg.questions[0].qtype == dns::qTypeA
+              || msg.questions[0].qtype == dns::qTypeCNAME)
       {
+        // hook for forward dns or cname when using snode tld
         return msg.questions[0].qname.find(".snode.")
             == (msg.questions[0].qname.size() - 7);
       }
@@ -89,7 +92,21 @@ namespace llarp
             msg.AddNXReply();
         }
       }
-      else if(msg.questions[0].qtype == llarp::dns::qTypeA)
+      else if(msg.questions[0].qtype == dns::qTypeCNAME)
+      {
+        if(msg.questions[0].qname == "random.snode"
+           || msg.questions[0].qname == "random.snode.")
+        {
+          RouterID random;
+          if(Router()->GetRandomGoodRouter(random))
+            msg.AddCNAMEReply(random.ToString(), 1);
+          else
+            msg.AddNXReply();
+        }
+        else
+          msg.AddNXReply();
+      }
+      else if(msg.questions[0].qtype == dns::qTypeA)
       {
         // forward dns for snode
         RouterID r;
