@@ -14,7 +14,7 @@ namespace llarp
   {
     constexpr size_t MAX_MSG_SIZE = 2048;
 
-    struct IMessage : public llarp::IBEncodeMessage
+    struct IMessage : public IBEncodeMessage
     {
       virtual ~IMessage(){};
 

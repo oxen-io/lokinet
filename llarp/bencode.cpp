@@ -1,11 +1,74 @@
 #include <bencode.h>
 #include <logger.hpp>
 
+#include <cstdlib>
+
+bool
+bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
+{
+  size_t len;
+  if(*buffer->cur != 'i')
+    return false;
+
+  char numbuf[32];
+
+  buffer->cur++;
+
+  len =
+      llarp_buffer_read_until(buffer, 'e', (byte_t*)numbuf, sizeof(numbuf) - 1);
+  if(!len)
+  {
+    return false;
+  }
+
+  buffer->cur++;
+
+  numbuf[len] = '\0';
+  *result     = std::strtoull(numbuf, nullptr, 10);
+  return true;
+}
+
+bool
+bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
+{
+  char numbuf[10];
+
+  size_t len =
+      llarp_buffer_read_until(buffer, ':', (byte_t*)numbuf, sizeof(numbuf) - 1);
+  if(!len)
+    return false;
+
+  numbuf[len]   = '\0';
+  const int num = atoi(numbuf);
+  if(num < 0)
+  {
+    return false;
+  }
+
+  const size_t slen = num;
+
+  buffer->cur++;
+
+  len = llarp_buffer_size_left(*buffer);
+  if(len < slen)
+  {
+    return false;
+  }
+
+  result->base = buffer->cur;
+  result->cur  = buffer->cur;
+  result->sz   = slen;
+  buffer->cur += slen;
+  return true;
+}
+
 bool
 bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 {
   if(!llarp_buffer_writef(buff, "%zu:", sz))
+  {
     return false;
+  }
   return llarp_buffer_write(buff, data, sz);
 }
 
@@ -14,6 +77,12 @@ bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
   return llarp_buffer_writef(buff, "i%llu", i)
       && llarp_buffer_write(buff, "e", 1);
+}
+
+bool
+bencode_write_version_entry(llarp_buffer_t* buff)
+{
+  return llarp_buffer_writef(buff, "1:vi%de", LLARP_PROTO_VERSION);
 }
 
 bool
@@ -32,67 +101,6 @@ bool
 bencode_end(llarp_buffer_t* buff)
 {
   return llarp_buffer_write(buff, "e", 1);
-}
-
-bool
-bencode_write_version_entry(llarp_buffer_t* buff)
-{
-  return llarp_buffer_writef(buff, "1:vi%de", LLARP_PROTO_VERSION);
-}
-
-bool
-bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
-{
-  size_t len;
-  if(*buffer->cur != 'i')
-    return false;
-
-  char numbuf[32];
-
-  buffer->cur++;
-
-  len =
-      llarp_buffer_read_until(buffer, 'e', (byte_t*)numbuf, sizeof(numbuf) - 1);
-  if(!len)
-    return false;
-
-  buffer->cur++;
-
-  numbuf[len] = '\0';
-  *result     = strtoull(numbuf, nullptr, 10);
-  return true;
-}
-
-bool
-bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
-{
-  size_t len, slen;
-  int num;
-  char numbuf[10];
-
-  len =
-      llarp_buffer_read_until(buffer, ':', (byte_t*)numbuf, sizeof(numbuf) - 1);
-  if(!len)
-    return false;
-
-  numbuf[len] = '\0';
-  num         = atoi(numbuf);
-  if(num < 0)
-    return false;
-
-  slen = num;
-
-  buffer->cur++;
-
-  len = llarp_buffer_size_left(*buffer);
-  if(len < slen)
-    return false;
-
-  result->base = buffer->cur;
-  result->cur  = buffer->cur;
-  result->sz   = slen;
-  buffer->cur += slen;
-  return true;
 }
 
 bool

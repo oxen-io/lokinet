@@ -48,7 +48,9 @@ namespace llarp
     if(llarp_buffer_eq(key, k))
     {
       if(!BEncodeReadList(item, buf))
+      {
         return false;
+      }
       read = true;
     }
     return true;
