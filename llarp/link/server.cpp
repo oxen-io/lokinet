@@ -129,21 +129,20 @@ namespace llarp
     static constexpr size_t MaxSessionsPerKey = 16;
     Lock l_authed(m_AuthedLinksMutex);
     Lock l_pending(m_PendingMutex);
-    auto itr = m_Pending.find(s->GetRemoteEndpoint());
-    if(itr == m_Pending.end())
+    llarp::Addr addr = s->GetRemoteEndpoint();
+    auto itr = m_Pending.find(addr);
+    if(itr != m_Pending.end())
     {
-      // this should never happen
-      return false;
+      if(m_AuthedLinks.count(pk) > MaxSessionsPerKey)
+      {
+        s->SendClose();
+        return false;
+      }
+      m_AuthedLinks.emplace(pk, std::move(itr->second));
+      itr = m_Pending.erase(itr);
+      return true;
     }
-    if(m_AuthedLinks.count(pk) >= MaxSessionsPerKey)
-    {
-      s->SendClose();
-      m_Pending.erase(itr);
-      return false;
-    }
-    m_AuthedLinks.emplace(pk, std::move(itr->second));
-    itr = m_Pending.erase(itr);
-    return true;  
+    return false;
   }
 
   bool

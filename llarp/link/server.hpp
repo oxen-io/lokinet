@@ -87,6 +87,12 @@ namespace llarp
       static_cast< ILinkLayer* >(udp->user)->RecvFrom(*from, buf.base, buf.sz);
     }
 
+    void
+    SendTo_LL(const llarp::Addr& to, llarp_buffer_t pkt)
+    {
+      llarp_ev_udp_sendto(&m_udp, to, pkt);
+    }
+
     bool
     Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
               uint16_t port);
@@ -106,7 +112,7 @@ namespace llarp
     bool
     TryEstablishTo(RouterContact rc);
 
-    bool
+    virtual bool
     Start(llarp::Logic* l);
 
     void
@@ -148,6 +154,16 @@ namespace llarp
 
     const SecretKey&
     TransportSecretKey() const;
+
+    bool
+    IsCompatable(const llarp::RouterContact& other) const
+    {
+      const std::string us = Name();
+      for(const auto& ai : other.addrs)
+        if(ai.dialect == us)
+          return true;
+      return false;
+    }
 
     bool
     EnsureKeys(const char* fpath);
@@ -211,7 +227,9 @@ namespace llarp
                              RouterID::Hash >
         m_AuthedLinks;
     Mutex m_PendingMutex;
-    std::unordered_map<llarp::Addr, std::unique_ptr< ILinkSession >, llarp::Addr::Hash > m_Pending;
+    std::unordered_map< llarp::Addr, std::unique_ptr< ILinkSession >,
+                        llarp::Addr::Hash >
+        m_Pending;
   };
 }  // namespace llarp
 

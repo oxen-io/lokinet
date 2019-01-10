@@ -45,8 +45,7 @@
 #define UTUN_OPT_IFNAME 2
 
 static int
-fucky_tuntap_sys_start(struct device *dev, __attribute__((unused)) int mode,
-                       int tun)
+tuntap_sys_start(struct device *dev, int, int)
 {
   uint32_t namesz = IFNAMSIZ;
   char name[IFNAMSIZ + 1];
@@ -56,8 +55,6 @@ fucky_tuntap_sys_start(struct device *dev, __attribute__((unused)) int mode,
   fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
   if(fd == -1)
     return fd;
-
-  snprintf(name, sizeof(name), "utun%i", tun);
 
   struct ctl_info info;
   memset(&info, 0, sizeof(info));
@@ -77,7 +74,7 @@ fucky_tuntap_sys_start(struct device *dev, __attribute__((unused)) int mode,
   addr.sc_len     = sizeof(addr);
   addr.sc_family  = AF_SYSTEM;
   addr.ss_sysaddr = AF_SYS_CONTROL;
-  addr.sc_unit    = tun + 1;
+  addr.sc_unit    = 0;
 
   if(connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
   {
@@ -93,24 +90,6 @@ fucky_tuntap_sys_start(struct device *dev, __attribute__((unused)) int mode,
   strncpy(dev->if_name, ifname, sizeof(dev->if_name));
 
   return fd;
-}
-
-int
-tuntap_sys_start(struct device *dev, int mode, int tun)
-{
-  int fd = -1;
-  while(tun < 128)
-  {
-    // yes linear complexity here
-    // sue me but I blame apple
-    fd = fucky_tuntap_sys_start(dev, mode, tun);
-    if(fd != -1)
-    {
-      return fd;
-    }
-    ++tun;
-  }
-  return -1;
 }
 
 void

@@ -1,8 +1,7 @@
 #include <crypto.hpp>
-#include <buffer.hpp>
-
 #include <fstream>
 #include <iterator>
+#include <buffer.hpp>
 
 namespace llarp
 {

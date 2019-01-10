@@ -1,14 +1,12 @@
-#ifndef LLARP_LINK_UTP_HPP
-#define LLARP_LINK_UTP_HPP
+#ifndef LLARP_LINK_IWP_HPP
+#define LLARP_LINK_IWP_HPP
 
 #include <memory>
 #include <link/server.hpp>
 
 namespace llarp
 {
-  struct Router;
-
-  namespace utp
+  namespace iwp
   {
     std::unique_ptr< ILinkLayer >
     NewServer(llarp::Crypto* crypto, const SecretKey& routerEncSecret,
@@ -20,7 +18,8 @@ namespace llarp
 
     std::unique_ptr< ILinkLayer >
     NewServerFromRouter(llarp::Router* r);
-  }  // namespace utp
+
+  }  // namespace iwp
 }  // namespace llarp
 
 #endif

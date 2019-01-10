@@ -300,6 +300,7 @@ the RC.a matching the ipv6 address it originated from.
 
 {
   a: "i",
+  e: "<32 bytes ephemeral public encryption key>",
   n: "<32 bytes nonce for key exhcange>",
   p: uint64_milliseconds_session_period,
   r: RC,
