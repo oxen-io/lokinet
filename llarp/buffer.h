@@ -4,6 +4,7 @@
 #include <common.hpp>
 #include <mem.h>
 
+#include <cassert>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -54,7 +55,7 @@ typedef uint8_t byte_t;
   ABSOLUTELY NEVER USE DOUBLE POINTERS.
 
  */
-typedef struct llarp_buffer_t
+struct llarp_buffer_t
 {
   /// starting memory address
   byte_t *base;
@@ -63,13 +64,22 @@ typedef struct llarp_buffer_t
   /// max size of buffer
   size_t sz;
 
-#ifdef __cplusplus
   byte_t operator[](size_t x)
   {
     return *(this->base + x);
   }
-#endif
-} llarp_buffer_t;
+
+  llarp_buffer_t() : base(nullptr), cur(nullptr), sz(0)
+  {
+  }
+
+  llarp_buffer_t(byte_t *b, byte_t *c, size_t s) : base(b), cur(c), sz(s)
+  {
+    assert(b != nullptr);
+    assert(c != nullptr);
+    assert(s != 0);
+  }
+};
 
 /// how much room is left in buffer
 size_t

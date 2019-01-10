@@ -34,13 +34,10 @@ namespace llarp
   llarp_buffer_t
   Buffer(T& t)
   {
-    llarp_buffer_t buff;
     // use data over the first element to "enforce" the container used has
     // contiguous memory. (Note this isn't required by the standard, but a
     // reasonable test on most standard library implementations).
-    buff.base = t.data();
-    buff.cur  = buff.base;
-    buff.sz   = t.size();
+    llarp_buffer_t buff(t.data(), t.data(), t.size());
     return buff;
   }
 

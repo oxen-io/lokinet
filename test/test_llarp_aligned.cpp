@@ -1,7 +1,6 @@
 #include <gtest/gtest.h>
 
 #include <aligned.hpp>
-#include <crypto.hpp>
 
 #include <iostream>
 #include <sstream>
@@ -21,10 +20,6 @@ using TestSizes =
 template < typename T >
 struct AlignedBufferTest : public ::testing::Test
 {
-  AlignedBufferTest() : crypto(llarp::Crypto::sodium{})
-  {
-  }
-  llarp::Crypto crypto;
 };
 
 TYPED_TEST_CASE(AlignedBufferTest, TestSizes);
@@ -228,5 +223,3 @@ TYPED_TEST(AlignedBufferTest, TestHash)
   EXPECT_FALSE(m[k_copy] == 2);
   EXPECT_TRUE(m[k_copy] == 1);
 };
-
-// TEST_P(Copy, )

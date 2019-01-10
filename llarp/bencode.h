@@ -5,6 +5,7 @@
 #include <common.hpp>
 #include <proto.hpp>
 
+#include <functional>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -17,10 +18,19 @@
  */
 
 bool
+bencode_read_integer(llarp_buffer_t* buffer, uint64_t* result);
+
+bool
+bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result);
+
+bool
 bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz);
 
 bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i);
+
+bool
+bencode_write_version_entry(llarp_buffer_t* buff);
 
 bool
 bencode_start_list(llarp_buffer_t* buff);
@@ -30,15 +40,6 @@ bencode_start_dict(llarp_buffer_t* buff);
 
 bool
 bencode_end(llarp_buffer_t* buff);
-
-bool
-bencode_write_version_entry(llarp_buffer_t* buff);
-
-bool
-bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result);
-
-bool
-bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result);
 
 struct dict_reader
 {
@@ -51,7 +52,7 @@ struct dict_reader
    * called when we got a key string, return true to continue iteration
    * called with null key on done iterating
    */
-  bool (*on_key)(struct dict_reader*, llarp_buffer_t*);
+  std::function< bool(dict_reader*, llarp_buffer_t*) > on_key;
 };
 
 bool
@@ -68,7 +69,7 @@ struct list_reader
    * called with true when we got an element, return true to continue iteration
    * called with false on iteration completion
    */
-  bool (*on_item)(struct list_reader*, bool);
+  std::function< bool(list_reader*, bool) > on_item;
 };
 
 bool
