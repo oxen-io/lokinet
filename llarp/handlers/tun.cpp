@@ -185,10 +185,7 @@ namespace llarp
         return false;
       }
       std::string qname = msg.questions[0].qname;
-      if(msg.questions[0].qtype == dns::qTypeCNAME)
-      {
-      }
-      else if(msg.questions[0].qtype == dns::qTypeMX)
+      if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
         llarp::service::Address addr;
@@ -211,6 +208,7 @@ namespace llarp
         }
         else
           msg.AddNXReply();
+        reply(msg);
       }
       else if(msg.questions[0].qtype == dns::qTypeA)
       {
