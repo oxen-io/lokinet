@@ -98,7 +98,7 @@ namespace llarp
            || msg.questions[0].qname == "random.snode.")
         {
           RouterID random;
-          if(GetRouter()->GetRandomGoodRouter(random))
+          if(Router()->GetRandomGoodRouter(random))
             msg.AddCNAMEReply(random.ToString(), 1);
           else
             msg.AddNXReply();
