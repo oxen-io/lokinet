@@ -107,28 +107,17 @@ bool
 llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
                            llarp::SecretKey &secretkey)
 {
-  llarp::LogDebug("find or create ", path);
+  std::string fpath = path.string();
+  llarp::LogDebug("find or create ", fpath);
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
     llarp::LogInfo("generating new identity key");
     crypto->identity_keygen(secretkey);
-    std::ofstream f(path.string(), std::ios::binary);
-    if(f.is_open())
-    {
-      std::copy(secretkey.begin(), secretkey.end(),
-                std::ostream_iterator< byte_t >(f));
-    }
+    if(!secretkey.SaveToFile(fpath.c_str()))
+      return false;
   }
-  std::ifstream f(path.string(), std::ios::binary);
-  if(f.is_open())
-  {
-    std::copy_n(std::istream_iterator< byte_t >(f), secretkey.size(),
-                secretkey.begin());
-    return true;
-  }
-  llarp::LogInfo("failed to get identity key");
-  return false;
+  return secretkey.LoadFromFile(fpath.c_str());
 }
 
 // C++ ...
@@ -136,29 +125,17 @@ bool
 llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &path,
                              llarp::SecretKey &encryption)
 {
-  llarp::LogDebug("find or create ", path);
+  std::string fpath = path.string();
+  llarp::LogDebug("find or create ",fpath);
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
     llarp::LogInfo("generating new encryption key");
     crypto->encryption_keygen(encryption);
-    std::ofstream f(path.string(), std::ios::binary);
-    if(f.is_open())
-    {
-      std::copy(encryption.begin(), encryption.end(),
-                std::ostream_iterator< byte_t >(f));
-    }
+    if(!encryption.SaveToFile(fpath.c_str()))
+      return false;
   }
-
-  std::ifstream f(path.string(), std::ios::binary);
-  if(f.is_open())
-  {
-    std::copy_n(std::istream_iterator< byte_t >(f), encryption.size(),
-                encryption.begin());
-    return true;
-  }
-  llarp::LogInfo("failed to get encryption key");
-  return false;
+  return encryption.LoadFromFile(fpath.c_str());
 }
 
 namespace llarp
@@ -1058,12 +1035,12 @@ namespace llarp
 
     llarp::LogInfo("have ", nodedb->num_loaded(), " routers");
 
-    llarp::LogDebug("starting outbound links");
+    llarp::LogInfo("starting outbound ", outboundLinks.size(), " links");
     for(const auto &link : outboundLinks)
     {
-      if(link->Start(logic))
+      if(!link->Start(logic))
       {
-        llarp::LogWarn("outbound link failed to start");
+        llarp::LogWarn("outbound link '", link->Name(),"' failed to start");
         return false;
       }
     }
