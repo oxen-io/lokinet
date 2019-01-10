@@ -1,10 +1,10 @@
 #ifndef LLARP_XI_HPP
 #define LLARP_XI_HPP
 
-#include <bencode.hpp>
-#include <bits.hpp>
 #include <crypto.hpp>
 #include <net.hpp>
+#include <util/bencode.hpp>
+#include <util/bits.hpp>
 
 #include <iostream>
 

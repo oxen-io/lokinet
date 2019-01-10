@@ -2,10 +2,10 @@
 #define LLARP_RC_HPP
 
 #include <address_info.hpp>
-#include <bencode.hpp>
+#include <constants/version.hpp>
 #include <crypto.h>
 #include <exit_info.hpp>
-#include <version.hpp>
+#include <util/bencode.hpp>
 
 #include <vector>
 

@@ -4,7 +4,7 @@
 #include <getopt.h>
 #include <llarp.h>
 #include <llarp.hpp>
-#include <logger.h>
+#include <util/logger.h>
 #include <router.hpp>
 #include <signal.h>
 

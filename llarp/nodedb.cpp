@@ -1,12 +1,13 @@
-#include <buffer.hpp>
-#include <crypto.hpp>
-#include <encode.hpp>
-#include <fs.hpp>
-#include <logger.hpp>
-#include <logic.hpp>
-#include <mem.hpp>
 #include <nodedb.hpp>
+
+#include <crypto.hpp>
+#include <logic.hpp>
 #include <router_contact.hpp>
+#include <util/buffer.hpp>
+#include <util/encode.hpp>
+#include <util/fs.hpp>
+#include <util/logger.hpp>
+#include <util/mem.hpp>
 
 #include <fstream>
 #include <unordered_map>

@@ -23,8 +23,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <logger.hpp>
-#include "tuntap.h"
+#include <tuntap.h>
+#include <util/logger.hpp>
 
 extern "C"
 {

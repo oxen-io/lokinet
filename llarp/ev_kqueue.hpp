@@ -1,11 +1,11 @@
 #ifndef EV_KQUEUE_HPP
 #define EV_KQUEUE_HPP
 
-#include <buffer.h>
 #include <ev.hpp>
-#include <logger.hpp>
 #include <net.h>
 #include <net.hpp>
+#include <util/buffer.h>
+#include <util/logger.hpp>
 
 #include <sys/un.h>
 

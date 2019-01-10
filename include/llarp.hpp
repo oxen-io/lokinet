@@ -3,7 +3,7 @@
 
 #include <crypto.h>
 #include <llarp.h>
-#include <threading.hpp>
+#include <util/threading.hpp>
 
 #include <iostream>
 #include <memory>

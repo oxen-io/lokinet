@@ -3,7 +3,8 @@
 
 #include <ev.h>
 #include <codel.hpp>
-#include <threading.hpp>
+#include <util/buffer.h>
+#include <util/threading.hpp>
 
 // writev
 #ifndef _WIN32
@@ -11,7 +12,6 @@
 #endif
 
 #include <algorithm>
-#include <buffer.h>
 #include <deque>
 #include <list>
 #include <unistd.h>

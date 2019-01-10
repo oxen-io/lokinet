@@ -1,7 +1,7 @@
 #ifndef LLARP_EXIT_POLICY_HPP
 #define LLARP_EXIT_POLICY_HPP
 
-#include <bencode.hpp>
+#include <util/bencode.hpp>
 
 namespace llarp
 {

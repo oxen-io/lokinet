@@ -1,10 +1,10 @@
 #ifndef LLARP_DHT_MESSAGE_HPP
 #define LLARP_DHT_MESSAGE_HPP
 
-#include <bencode.hpp>
 #include <dht.h>
 #include <dht/key.hpp>
 #include <path_types.hpp>
+#include <util/bencode.hpp>
 
 #include <vector>
 

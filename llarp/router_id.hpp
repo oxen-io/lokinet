@@ -1,7 +1,7 @@
 #ifndef LLARP_ROUTER_ID_HPP
 #define LLARP_ROUTER_ID_HPP
 
-#include <aligned.hpp>
+#include <util/aligned.hpp>
 
 namespace llarp
 {

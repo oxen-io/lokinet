@@ -1,12 +1,12 @@
 #ifndef LLARP_CRYPTO_HPP
 #define LLARP_CRYPTO_HPP
 
-#include <aligned.hpp>
-#include <mem.h>
 #include <router_id.hpp>
-#include <threadpool.h>
-#include <buffer.h>
-#include <common.hpp>
+#include <util/aligned.hpp>
+#include <util/buffer.h>
+#include <util/common.hpp>
+#include <util/mem.h>
+#include <util/threadpool.h>
 
 #include <functional>
 #include <stdbool.h>

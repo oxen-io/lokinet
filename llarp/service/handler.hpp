@@ -1,10 +1,10 @@
 #ifndef LLARP_SERVICE_HANDLER_HPP
 #define LLARP_SERVICE_HANDLER_HPP
 
-#include <aligned.hpp>
 #include <crypto.hpp>
 #include <path_types.hpp>
 #include <service/IntroSet.hpp>
+#include <util/aligned.hpp>
 
 namespace llarp
 {

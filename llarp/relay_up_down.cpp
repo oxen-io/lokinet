@@ -1,6 +1,6 @@
-#include <bencode.hpp>
 #include <messages/relay.hpp>
 #include <router.hpp>
+#include <util/bencode.hpp>
 
 namespace llarp
 {

@@ -7,7 +7,7 @@
 #include <logic.hpp>
 #include <net.hpp>
 #include <router_contact.hpp>
-#include <threading.hpp>
+#include <util/threading.hpp>
 
 #include <list>
 #include <unordered_map>

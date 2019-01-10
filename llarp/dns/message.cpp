@@ -1,7 +1,9 @@
-#include <buffer.hpp>
+#include <dns/message.hpp>
+
 #include <dns/dns.hpp>
-#include <endian.hpp>
-#include <logger.hpp>
+#include <util/buffer.hpp>
+#include <util/endian.hpp>
+#include <util/logger.hpp>
 
 namespace llarp
 {

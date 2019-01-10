@@ -1,6 +1,6 @@
 #ifndef LLARP_LINK_LAYER_HPP
 #define LLARP_LINK_LAYER_HPP
-#include <types.hpp>
+#include <util/types.hpp>
 
 #include <stdlib.h>
 

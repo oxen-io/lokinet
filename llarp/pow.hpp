@@ -1,8 +1,8 @@
 #ifndef LLARP_POW_HPP
 #define LLARP_POW_HPP
 #include <crypto.h>
-#include <bencode.hpp>
 #include <router_id.hpp>
+#include <util/bencode.hpp>
 
 namespace llarp
 {

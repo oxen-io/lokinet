@@ -3,9 +3,9 @@
 
 #include <crypto.h>
 #include <encrypted.hpp>
-#include <buffer.hpp>
-#include <mem.h>
-#include <threadpool.h>
+#include <util/buffer.hpp>
+#include <util/mem.h>
+#include <util/threadpool.h>
 
 namespace llarp
 {

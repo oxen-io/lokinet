@@ -2,11 +2,11 @@
 #define LLARP_NET_HPP
 
 #include <address_info.hpp>
-#include <logger.hpp>
-#include <mem.hpp>
-#include <net.h>
 #include <net_int.hpp>
-#include <string_view.hpp>
+#include <net.h>
+#include <util/logger.hpp>
+#include <util/mem.hpp>
+#include <util/string_view.hpp>
 
 #include <functional>
 #include <stdlib.h>  // for itoa

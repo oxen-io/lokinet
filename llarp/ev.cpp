@@ -1,7 +1,7 @@
 #include <ev.h>
 #include <logic.hpp>
-#include <mem.hpp>
-#include <string_view.hpp>
+#include <util/mem.hpp>
+#include <util/string_view.hpp>
 
 #include <stddef.h>
 

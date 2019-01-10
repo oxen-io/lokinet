@@ -1,8 +1,8 @@
 #ifndef LLARP_ROUTING_ENDPOINT_HPP
 #define LLARP_ROUTING_ENDPOINT_HPP
 
-#include <aligned.hpp>
-#include <buffer.h>
+#include <util/aligned.hpp>
+#include <util/buffer.h>
 
 namespace llarp
 {

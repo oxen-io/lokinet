@@ -2,12 +2,12 @@
 #include <arpa/inet.h>
 #endif
 
-#include <bencode.h>
 #include <exit_info.hpp>
-#include <mem.h>
-#include <string.h>
+#include <util/bencode.h>
+#include <util/mem.h>
 
 #include <list>
+#include <string.h>
 
 namespace llarp
 {

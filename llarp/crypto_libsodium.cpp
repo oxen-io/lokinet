@@ -1,11 +1,12 @@
-#include <assert.h>
 #include <crypto.h>
+#include <crypto.hpp>
 #include <sodium/crypto_generichash.h>
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>
 #include <sodium/crypto_stream_xchacha20.h>
-#include <crypto.hpp>
-#include "mem.hpp"
+#include <util/mem.hpp>
+
+#include <assert.h>
 
 extern "C"
 {

@@ -1,8 +1,9 @@
-#include <buffer.hpp>
+#include <pathbuilder.hpp>
+
 #include <nodedb.hpp>
 #include <path.hpp>
-#include <pathbuilder.hpp>
 #include <router.hpp>
+#include <util/buffer.hpp>
 
 #include <functional>
 
