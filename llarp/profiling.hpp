@@ -1,10 +1,10 @@
 #ifndef LLARP_PROFILING_HPP
 #define LLARP_PROFILING_HPP
 
-#include <bencode.hpp>
-#include <threading.hpp>
-#include <router_id.hpp>
 #include <path.hpp>
+#include <router_id.hpp>
+#include <util/bencode.hpp>
+#include <util/threading.hpp>
 
 #include <map>
 

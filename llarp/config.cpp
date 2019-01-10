@@ -1,11 +1,12 @@
 #include <config.h>
 #include <config.hpp>
-#include <defaults.hpp>
-#include <fs.hpp>
+
+#include <constants/defaults.hpp>
 #include <ini.hpp>
-#include <logger.hpp>
-#include <mem.hpp>
 #include <net.hpp>
+#include <util/fs.hpp>
+#include <util/logger.hpp>
+#include <util/mem.hpp>
 
 namespace llarp
 {

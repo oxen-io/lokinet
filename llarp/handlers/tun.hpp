@@ -7,7 +7,7 @@
 #include <ip.hpp>
 #include <net.hpp>
 #include <service/endpoint.hpp>
-#include <threading.hpp>
+#include <util/threading.hpp>
 
 namespace llarp
 {

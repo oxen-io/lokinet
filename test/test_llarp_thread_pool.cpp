@@ -1,5 +1,5 @@
-#include <thread_pool.hpp>
-#include <threading.hpp>
+#include <util/thread_pool.hpp>
+#include <util/threading.hpp>
 
 #include <gtest/gtest.h>
 

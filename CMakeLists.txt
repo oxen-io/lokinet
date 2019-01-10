@@ -198,6 +198,7 @@ set(LIB lokinet)
 set(SHARED_LIB ${LIB}-shared)
 set(STATIC_LIB ${LIB}-static)
 set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
+set(UTIL_LIB ${LIB}-util)
 set(PLATFORM_LIB ${LIB}-platform)
 set(ANDROID_LIB ${LIB}android)
 set(TT_ROOT vendor/libtuntap-master)
@@ -278,28 +279,41 @@ set(CXX_COMPAT_SRC
 include_directories(vendor/cppbackport-master/lib)
 endif(NOT WIN32)
 
+set(LIB_UTIL_SRC
+  llarp/constants/defaults.cpp
+  llarp/constants/proto.cpp
+  llarp/constants/version.cpp
+  llarp/util/aligned.cpp
+  llarp/util/bencode.cpp
+  llarp/util/bits.cpp
+  llarp/util/buffer.cpp
+  llarp/util/common.cpp
+  llarp/util/encode.cpp
+  llarp/util/endian.cpp
+  llarp/util/fs.cpp
+  llarp/util/logger.c
+  llarp/util/logger.cpp
+  llarp/util/mem.cpp
+  llarp/util/queue_manager.cpp
+  llarp/util/queue.cpp
+  llarp/util/str.cpp
+  llarp/util/string_view.cpp
+  llarp/util/thread_pool.cpp
+  llarp/util/threading.cpp
+  llarp/util/threadpool.cpp
+  llarp/util/time.cpp
+  llarp/util/timer.cpp
+  llarp/util/types.cpp
+)
+
 set(LIB_PLATFORM_SRC
-# string stuff
-  llarp/str.cpp
-# for outpug
-  llarp/logger.cpp
 # needed for threading
   llarp/logic.cpp
-# for zero (for net.hpp stuff for llarp::addr stuff)
-  llarp/mem.cpp
 # for networking
   llarp/ev.cpp
   llarp/net.cpp
   llarp/net_addr.cpp
   llarp/net_inaddr.cpp
-# for timer
-  llarp/time.cpp
-# for logic
-  llarp/timer.cpp
-# for threading
-  llarp/queue_manager.cpp
-  llarp/thread_pool.cpp
-  llarp/threadpool.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
 # process isolation implementation
@@ -462,17 +476,11 @@ set(LIB_SRC
   ${EV_SRC}
   ${UTP_SRC}
   llarp/address_info.cpp
-  llarp/aligned.cpp
-  llarp/bencode.cpp
-  llarp/bits.cpp
-  llarp/buffer.cpp
   llarp/codel.cpp
-  llarp/common.cpp
   llarp/config.cpp
   llarp/context.cpp
   llarp/crypto.cpp
   llarp/crypto_libsodium.cpp
-  llarp/defaults.cpp
   llarp/dht.cpp
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
@@ -499,11 +507,9 @@ set(LIB_SRC
   llarp/dns_rectypes.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
-  llarp/encode.cpp
   llarp/encrypted.cpp
   llarp/encrypted_ack.cpp
   llarp/encrypted_frame.cpp
-  llarp/endian.cpp
   llarp/establish_job.cpp
   llarp/exit.cpp
   llarp/exit/close_exit.cpp
@@ -518,7 +524,6 @@ set(LIB_SRC
   llarp/exit/update_exit.cpp
   llarp/exit_info.cpp
   llarp/exit_route.cpp
-  llarp/fs.cpp
   llarp/handlers/exit.cpp
   llarp/handlers/null.cpp
   llarp/handlers/tun.cpp
@@ -554,8 +559,6 @@ set(LIB_SRC
   llarp/pow.cpp
   llarp/profiling.cpp
   llarp/proofofwork.cpp
-  llarp/proto.cpp
-  llarp/queue.cpp
   llarp/relay_commit.cpp
   llarp/relay_up_down.cpp
   llarp/router.cpp
@@ -585,12 +588,8 @@ set(LIB_SRC
   llarp/service/tag.cpp
   llarp/service/types.cpp
   llarp/service/vanity.cpp
-  llarp/string_view.cpp
   llarp/testnet.c
-  llarp/threading.cpp
   llarp/transit_hop.cpp
-  llarp/types.cpp
-  llarp/version.cpp
 )
 
 set(RC_SRC
@@ -670,9 +669,9 @@ if(USE_LIBABYSS)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
 
 if (NOT WIN32)
-  target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB})
+  target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB})
 else()
-  target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB} ws2_32 iphlpapi)
+  target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
 endif(NOT WIN32)
 
   set(TEST_SRC ${TEST_SRC} test/jsonrpc_unittest.cpp)
@@ -714,11 +713,12 @@ endif(NOT WIN32)
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
   add_library(${STATIC_LIB} STATIC ${LIB_SRC})
+  add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
   add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
   if(USE_LIBABYSS)
-    target_link_libraries(${PLATFORM_LIB} Threads::Threads ${ABYSS_LIB})
+    target_link_libraries(${PLATFORM_LIB} ${UTIL_LIB} Threads::Threads ${ABYSS_LIB})
   else()
-    target_link_libraries(${PLATFORM_LIB} Threads::Threads)
+    target_link_libraries(${PLATFORM_LIB} ${UTIL_LIB} Threads::Threads)
   endif(USE_LIBABYSS)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     if(NON_PC_TARGET)
@@ -727,20 +727,14 @@ endif(NOT WIN32)
       target_link_libraries(${PLATFORM_LIB} -lcap)
     endif(NON_PC_TARGET)
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB}) 
-  target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-  #target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-  #target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
-  #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB})
+  target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB})
+  target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
+  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   if (WIN32)
-    target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    #target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    #target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
   endif(WIN32)
-  
+
 
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
@@ -749,10 +743,6 @@ endif(NOT WIN32)
 
   if(WITH_SHARED)
     add_library(${SHARED_LIB} SHARED ${LIB_SRC})
-    target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB} Threads::Threads)
-    #target_link_libraries(${EXE} ${SHARED_LIB})
-    #target_link_libraries(${TEST_EXE} ${SHARED_LIB})
-    #target_link_libraries(${RC_EXE} ${SHARED_LIB})
-    #target_link_libraries(${DNS_EXE} ${SHARED_LIB} Threads::Threads)
+    target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB} Threads::Threads)
   endif(WITH_SHARED)
 endif(SHADOW)

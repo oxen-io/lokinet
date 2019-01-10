@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <aligned.hpp>
+#include <util/aligned.hpp>
 
 #include <iostream>
 #include <sstream>

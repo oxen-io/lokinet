@@ -1,8 +1,8 @@
 #include <gtest/gtest.h>
 
 #include <crypto.hpp>
-#include <encode.hpp>
-#include <logger.hpp>
+#include <util/encode.hpp>
+#include <util/logger.hpp>
 
 struct Base32Test : public ::testing::Test
 {

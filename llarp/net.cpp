@@ -1,5 +1,4 @@
 #include <net.hpp>
-#include <str.hpp>
 #ifdef ANDROID
 #include "android/ifaddrs.h"
 #endif
@@ -10,8 +9,9 @@
 #endif
 #include <net/if.h>
 #endif
-#include <logger.hpp>
 #include <net_addr.hpp>
+#include <util/logger.hpp>
+#include <util/str.hpp>
 
 #include <cstdio>
 

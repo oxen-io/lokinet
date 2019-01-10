@@ -1,5 +1,5 @@
-#include <bencode.h>
-#include <bencode.hpp>
+#include <util/bencode.h>
+#include <util/bencode.hpp>
 
 #include <iostream>
 #include <string>
@@ -418,7 +418,7 @@ TEST_P(ListReadTest, readtest)
                          auto b = r->buffer;
                          llarp_buffer_t tmp;
                          bencode_read_string(b, &tmp);
-                         result.emplace_back(tmp.base, tmp.cur);
+                         result.emplace_back(tmp.base, tmp.base + tmp.sz);
                        }
                        return true;
                      }};

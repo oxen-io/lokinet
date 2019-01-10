@@ -1,8 +1,8 @@
 #ifndef LLARP_XR_H
 #define LLARP_XR_H
 
-#include <buffer.h>
 #include <net.h>
+#include <util/buffer.h>
 
 #include <stdint.h>
 

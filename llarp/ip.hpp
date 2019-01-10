@@ -1,10 +1,10 @@
 #ifndef LLARP_IP_HPP
 #define LLARP_IP_HPP
 
-#include <buffer.h>
 #include <ev.h>
 #include <net.hpp>
-#include <time.hpp>
+#include <util/buffer.h>
+#include <util/time.hpp>
 
 #ifndef _WIN32
 // unix, linux

@@ -1,20 +1,22 @@
 #ifndef EV_EPOLL_HPP
 #define EV_EPOLL_HPP
-#include <fcntl.h>
-#include <buffer.h>
+
+#include <ev.hpp>
 #include <net.h>
+#include <net.hpp>
+#include <util/buffer.h>
+#include <util/buffer.hpp>
+#include <util/logger.hpp>
+#include <util/mem.hpp>
+
+#include <cassert>
+#include <cstdio>
+#include <fcntl.h>
 #include <signal.h>
 #include <sys/epoll.h>
 #include <sys/un.h>
 #include <tuntap.h>
 #include <unistd.h>
-#include <cstdio>
-#include <buffer.hpp>
-#include <ev.hpp>
-#include <net.hpp>
-#include <logger.hpp>
-#include <mem.hpp>
-#include <cassert>
 
 #ifdef ANDROID
 /** TODO: correct this value */

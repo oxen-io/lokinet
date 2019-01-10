@@ -1,11 +1,11 @@
 #ifndef LLARP_NODEDB_HPP
 #define LLARP_NODEDB_HPP
 
-#include <common.hpp>
 #include <crypto.h>
-#include <fs.hpp>
 #include <router_contact.hpp>
 #include <router_id.hpp>
+#include <util/common.hpp>
+#include <util/fs.hpp>
 
 /**
  * nodedb.hpp

@@ -1,9 +1,9 @@
 #ifndef LLARP_LOGIC_HPP
 #define LLARP_LOGIC_HPP
 
-#include <mem.h>
-#include <threadpool.h>
-#include <timer.hpp>
+#include <util/mem.h>
+#include <util/threadpool.h>
+#include <util/timer.hpp>
 
 namespace llarp
 {

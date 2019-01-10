@@ -1,8 +1,8 @@
 #ifndef LLARP_EV_H
 #define LLARP_EV_H
 
-#include <buffer.h>
-#include <time.hpp>
+#include <util/buffer.h>
+#include <util/time.hpp>
 #include <tuntap.h>
 
 #ifdef _WIN32

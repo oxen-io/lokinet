@@ -2,8 +2,8 @@
 #include <arpa/inet.h>
 #endif
 
-#include <bencode.h>
 #include <exit_route.h>
+#include <util/bencode.h>
 
 #include <llarp/string.h>
 

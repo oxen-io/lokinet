@@ -1,9 +1,9 @@
 #ifndef LLARP_SERVICE_INFO_HPP
 #define LLARP_SERVICE_INFO_HPP
 
-#include <bencode.hpp>
 #include <crypto.hpp>
 #include <service/types.hpp>
+#include <util/bencode.hpp>
 
 #if __cplusplus >= 201703L
 #include <optional>

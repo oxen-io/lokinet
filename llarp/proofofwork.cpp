@@ -1,5 +1,6 @@
-#include <buffer.hpp>
 #include <pow.hpp>
+
+#include <util/buffer.hpp>
 
 #include <cmath>
 

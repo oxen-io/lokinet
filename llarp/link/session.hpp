@@ -4,7 +4,7 @@
 #include <crypto.hpp>
 #include <net.hpp>
 #include <router_contact.hpp>
-#include <types.hpp>
+#include <util/types.hpp>
 
 #include <functional>
 

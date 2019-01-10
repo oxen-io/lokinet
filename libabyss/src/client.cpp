@@ -1,8 +1,8 @@
 #include <abyss/client.hpp>
 #include <abyss/http.hpp>
-#include <logger.hpp>
 #include <crypto.hpp>
-#include <buffer.hpp>
+#include <util/buffer.hpp>
+#include <util/logger.hpp>
 
 namespace abyss
 {

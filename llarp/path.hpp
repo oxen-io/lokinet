@@ -1,11 +1,10 @@
 #ifndef LLARP_PATH_HPP
 #define LLARP_PATH_HPP
 
-#include <aligned.hpp>
 #include <crypto.hpp>
 #include <dht.hpp>
-#include <messages/relay.hpp>
 #include <messages/relay_commit.hpp>
+#include <messages/relay.hpp>
 #include <path_types.hpp>
 #include <pathbuilder.hpp>
 #include <pathset.hpp>
@@ -13,8 +12,9 @@
 #include <routing/handler.hpp>
 #include <routing/message.hpp>
 #include <service/Intro.hpp>
-#include <threading.hpp>
-#include <time.hpp>
+#include <util/aligned.hpp>
+#include <util/threading.hpp>
+#include <util/time.hpp>
 
 #include <functional>
 #include <list>

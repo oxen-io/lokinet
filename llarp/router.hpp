@@ -1,7 +1,6 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 
-#include <buffer.h>
 #include <config.h>
 #include <crypto.hpp>
 #include <dht.h>
@@ -9,22 +8,23 @@
 #include <establish_job.hpp>
 #include <ev.h>
 #include <exit.hpp>
-#include <fs.hpp>
 #include <handlers/tun.hpp>
 #include <link_layer.hpp>
 #include <link_message_parser.hpp>
-#include <routing/message_parser.hpp>
 #include <logic.hpp>
-#include <mem.hpp>
 #include <nodedb.hpp>
 #include <path.hpp>
 #include <profiling.hpp>
 #include <router_contact.hpp>
 #include <routing/handler.hpp>
+#include <routing/message_parser.hpp>
 #include <rpc.hpp>
 #include <service.hpp>
-#include <str.hpp>
-#include <threadpool.hpp>
+#include <util/buffer.h>
+#include <util/fs.hpp>
+#include <util/mem.hpp>
+#include <util/str.hpp>
+#include <util/threadpool.hpp>
 
 #include <functional>
 #include <list>

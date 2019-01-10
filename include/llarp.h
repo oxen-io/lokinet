@@ -2,13 +2,13 @@
 #define LLARP_H_
 
 #ifdef __cplusplus
+#include <constants/version.hpp>
 #include <ev.h>
-#include <mem.h>
-#include <logic.hpp>
-#include <version.hpp>
 #include <handlers/tun.hpp>     // for handlers
+#include <logic.hpp>
 #include <service/address.hpp>  // for service::address
 #include <service/endpoint.hpp>
+#include <util/mem.h>
 
 extern "C"
 {
