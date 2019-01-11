@@ -317,13 +317,11 @@ namespace llarp
       return false;
     buf.sz  = buf.cur - buf.base;
     buf.cur = buf.base;
-    {
-      std::ofstream f;
-      f.open(fname, std::ios::binary);
-      if(!f.is_open())
-        return false;
-      f.write((char *)buf.base, buf.sz);
-    }
+    std::ofstream f;  // why was this in its own scope?
+    f.open(fname, std::ios::binary);
+    if(!f.is_open())
+      return false;
+    f.write((char *)buf.base, buf.sz);
     return true;
   }
 
@@ -331,19 +329,17 @@ namespace llarp
   RouterContact::Read(const char *fname)
   {
     byte_t tmp[MAX_RC_SIZE] = {0};
+    std::ifstream f;
+    f.open(fname, std::ios::binary);
+    if(!f.is_open())
     {
-      std::ifstream f;
-      f.open(fname, std::ios::binary);
-      if(!f.is_open())
-      {
-        llarp::LogError("Failed to open ", fname);
-        return false;
-      }
-      f.seekg(0, std::ios::end);
-      auto l = f.tellg();
-      f.seekg(0, std::ios::beg);
-      f.read((char *)tmp, l);
+      llarp::LogError("Failed to open ", fname);
+      return false;
     }
+    f.seekg(0, std::ios::end);
+    auto l = f.tellg();
+    f.seekg(0, std::ios::beg);
+    f.read((char *)tmp, l);
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
     return BDecode(&buf);
   }
