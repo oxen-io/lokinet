@@ -13,7 +13,7 @@
 #include <stdint.h>
 
 /**
- * crypto.h
+ * crypto.hpp
  *
  * libsodium abstraction layer
  * potentially allow libssl support in the future

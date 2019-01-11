@@ -2,7 +2,6 @@
 #define LLARP_PATH_HPP
 
 #include <crypto.hpp>
-#include <dht.hpp>
 #include <messages/relay_commit.hpp>
 #include <messages/relay.hpp>
 #include <path_types.hpp>

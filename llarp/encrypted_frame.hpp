@@ -1,7 +1,7 @@
 #ifndef LLARP_ENCRYPTED_FRAME_HPP
 #define LLARP_ENCRYPTED_FRAME_HPP
 
-#include <crypto.h>
+#include <crypto.hpp>
 #include <encrypted.hpp>
 #include <util/buffer.hpp>
 #include <util/mem.h>

@@ -1,7 +1,7 @@
 #ifndef LLARP_NODEDB_HPP
 #define LLARP_NODEDB_HPP
 
-#include <crypto.h>
+#include <crypto.hpp>
 #include <router_contact.hpp>
 #include <router_id.hpp>
 #include <util/common.hpp>
@@ -82,7 +82,7 @@ struct llarp_nodedb
   visit(std::function< bool(const llarp::RouterContact &) > visit);
 
   bool
-  iterate(struct llarp_nodedb_iter &i);
+  iterate(llarp_nodedb_iter &i);
 
   void
   set_dir(const char *dir);

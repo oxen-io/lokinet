@@ -1,6 +1,6 @@
 #ifndef LLARP_POW_HPP
 #define LLARP_POW_HPP
-#include <crypto.h>
+#include <crypto.hpp>
 #include <router_id.hpp>
 #include <util/bencode.hpp>
 

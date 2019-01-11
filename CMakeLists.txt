@@ -511,7 +511,6 @@ set(LIB_SRC
   llarp/encrypted_ack.cpp
   llarp/encrypted_frame.cpp
   llarp/establish_job.cpp
-  llarp/exit.cpp
   llarp/exit/close_exit.cpp
   llarp/exit/context.cpp
   llarp/exit/endpoint.cpp
@@ -573,7 +572,6 @@ set(LIB_SRC
   llarp/routing/path_transfer.cpp
   llarp/routing_endpoint.cpp
   llarp/rpc.cpp
-  llarp/service.cpp
   llarp/service/Identity.cpp
   llarp/service/Intro.cpp
   llarp/service/IntroSet.cpp
@@ -608,30 +606,29 @@ set(DNS_SRC
 )
 
 set(TEST_SRC
-  test/base32_unittest.cpp
-  test/dht_unittest.cpp
-  test/encrypted_frame_unittest.cpp
-  test/exit_unittest.cpp
-  test/hiddenservice_unittest.cpp
+  test/dht/test_llarp_dht.cpp
+  test/dns/test_llarp_dns_dns.cpp
+  test/exit/test_llarp_exit_context.cpp
+  test/link/test_llarp_link.cpp
   test/main.cpp
-  test/net_unittest.cpp
-  test/obtain_exit_unittest.cpp
-  test/pq_unittest.cpp
-  test/net_unittest.cpp
-  test/link_layer_unittest.cpp
-  test/test_dns_unit.cpp
-  test/test_dnsc_unit.cpp
-  test/test_dnsd_unit.cpp
-  test/test_dnslib.cpp
-  test/test_llarp_aligned.cpp
-  test/test_llarp_bencode.cpp
+  test/routing/llarp_routing_transfer_traffic.cpp
+  test/routing/test_llarp_routing_obtainexitmessage.cpp
+  test/service/test_llarp_service_address.cpp
+  test/service/test_llarp_service_identity.cpp
+  test/test_llarp_crypto.cpp
   test/test_llarp_dht_key.cpp
-  test/test_llarp_queue_manager.cpp
-  test/test_llarp_queue.cpp
-  test/test_llarp_thread_pool.cpp
-  test/test_router_contact.cpp
-  test/test_service_address.cpp
-  test/traffic_transfer_unittest.cpp
+  test/test_llarp_dns.cpp
+  test/test_llarp_dnsd.cpp
+  test/test_llarp_encrypted_frame.cpp
+  test/test_llarp_net_inaddr.cpp
+  test/test_llarp_net.cpp
+  test/test_llarp_router_contact.cpp
+  test/util/test_llarp_util_aligned.cpp
+  test/util/test_llarp_util_bencode.cpp
+  test/util/test_llarp_util_encode.cpp
+  test/util/test_llarp_util_queue_manager.cpp
+  test/util/test_llarp_util_queue.cpp
+  test/util/test_llarp_util_thread_pool.cpp
 )
 
 set(TEST_EXE testAll)
@@ -674,7 +671,7 @@ else()
   target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
 endif(NOT WIN32)
 
-  set(TEST_SRC ${TEST_SRC} test/jsonrpc_unittest.cpp)
+  set(TEST_SRC ${TEST_SRC} test/test_libabyss.cpp)
   # for freebsd
   if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     include_directories(/usr/local/include)

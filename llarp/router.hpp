@@ -4,10 +4,9 @@
 #include <config.h>
 #include <crypto.hpp>
 #include <dht.h>
-#include <dht.hpp>
 #include <establish_job.hpp>
 #include <ev.h>
-#include <exit.hpp>
+#include <exit/context.hpp>
 #include <handlers/tun.hpp>
 #include <link_layer.hpp>
 #include <link_message_parser.hpp>
@@ -19,7 +18,7 @@
 #include <routing/handler.hpp>
 #include <routing/message_parser.hpp>
 #include <rpc.hpp>
-#include <service.hpp>
+#include <service/context.hpp>
 #include <util/buffer.h>
 #include <util/fs.hpp>
 #include <util/mem.hpp>

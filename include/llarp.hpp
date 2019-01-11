@@ -1,8 +1,7 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
 
-#include <crypto.h>
-#include <llarp.h>
+#include <crypto.hpp>
 #include <util/threading.hpp>
 
 #include <iostream>
@@ -12,9 +11,16 @@
 
 struct llarp_config;
 struct llarp_config_iterator;
+struct llarp_ev_loop;
+struct llarp_nodedb;
+struct llarp_nodedb_iter;
 
 namespace llarp
 {
+  class Logic;
+  struct Router;
+  struct RouterContact;
+
   struct Context
   {
     ~Context();
@@ -40,7 +46,7 @@ namespace llarp
     LoadDatabase();
 
     int
-    IterateDatabase(struct llarp_nodedb_iter i);
+    IterateDatabase(llarp_nodedb_iter &i);
 
     bool
     PutDatabase(struct llarp::RouterContact &rc);

@@ -1,7 +1,6 @@
 #ifndef LLARP_AI_HPP
 #define LLARP_AI_HPP
 
-#include <crypto.h>
 #include <crypto.hpp>
 #include <net.h>
 #include <util/bencode.hpp>

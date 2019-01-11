@@ -3,7 +3,7 @@
 
 #include <address_info.hpp>
 #include <constants/version.hpp>
-#include <crypto.h>
+#include <crypto.hpp>
 #include <exit_info.hpp>
 #include <util/bencode.hpp>
 

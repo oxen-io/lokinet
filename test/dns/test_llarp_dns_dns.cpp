@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <dns/dns.hpp>
+#include <dns/message.hpp>
+#include <dns/name.hpp>
+#include <dns/rr.hpp>
 #include <net.hpp>
 
 #include <algorithm>

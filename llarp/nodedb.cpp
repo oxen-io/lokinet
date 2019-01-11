@@ -202,7 +202,7 @@ llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
 }
 
 bool
-llarp_nodedb::iterate(struct llarp_nodedb_iter &i)
+llarp_nodedb::iterate(llarp_nodedb_iter &i)
 {
   i.index = 0;
   llarp::util::Lock lock(access);

@@ -1,7 +1,6 @@
 #ifndef LLARP_ROUTING_HANDLER_HPP
 #define LLARP_ROUTING_HANDLER_HPP
 
-#include <dht.hpp>
 #include <messages/exit.hpp>
 #include <messages/path_confirm.hpp>
 #include <messages/path_latency.hpp>
@@ -18,7 +17,6 @@ namespace llarp
     // handles messages on the routing level
     struct IMessageHandler
     {
-
 
       virtual bool
       HandleObtainExitMessage(const ObtainExitMessage *msg,
