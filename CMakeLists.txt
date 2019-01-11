@@ -323,9 +323,9 @@ set(LIB_PLATFORM_SRC
 # c++17 compat code
   ${CXX_COMPAT_SRC}
 # win32 inline code
-  llarp/win32_inet.c
-  llarp/win32_intrnl.c
-  llarp/win32_upoll.c
+  llarp/win32/win32_inet.c
+  llarp/win32/win32_intrnl.c
+  llarp/win32/win32_upoll.c
 )
 
 set(NTRU_AVX_SRC

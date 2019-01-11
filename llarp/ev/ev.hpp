@@ -17,8 +17,8 @@
 #include <unistd.h>
 
 #ifdef _WIN32
-#include <win32_up.h>
-#include <win32_upoll.h>
+#include <win32/win32_up.h>
+#include <win32/win32_upoll.h>
 // From the preview SDK, should take a look at that
 // periodically in case its definition changes
 #define UNIX_PATH_MAX 108
