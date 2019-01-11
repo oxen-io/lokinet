@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_CONTEXT_HPP
 
 #include <handlers/tun.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <service/config.hpp>
 #include <service/endpoint.hpp>
 

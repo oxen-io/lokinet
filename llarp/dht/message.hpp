@@ -3,7 +3,7 @@
 
 #include <dht.h>
 #include <dht/key.hpp>
-#include <path_types.hpp>
+#include <path/path_types.hpp>
 #include <util/bencode.hpp>
 
 #include <vector>

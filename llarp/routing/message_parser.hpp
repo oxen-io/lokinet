@@ -6,7 +6,7 @@
 #include <messages/path_confirm.hpp>
 #include <messages/path_latency.hpp>
 #include <messages/path_transfer.hpp>
-#include <path_types.hpp>
+#include <path/path_types.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.h>
 

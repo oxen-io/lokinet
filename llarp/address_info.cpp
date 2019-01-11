@@ -2,11 +2,11 @@
 #ifndef _WIN32
 #include <arpa/inet.h>
 #endif
+#include <net/net.hpp>
 #include <util/bencode.h>
 #include <util/mem.h>
 
 #include <string.h>
-#include <net.hpp>
 
 namespace llarp
 {

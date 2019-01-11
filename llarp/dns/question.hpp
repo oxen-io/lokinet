@@ -3,7 +3,7 @@
 
 #include <dns/serialize.hpp>
 #include <dns/name.hpp>
-#include <net_int.hpp>
+#include <net/net_int.hpp>
 
 namespace llarp
 {

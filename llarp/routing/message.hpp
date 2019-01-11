@@ -1,7 +1,7 @@
 #ifndef LLARP_ROUTING_MESSAGE_HPP
 #define LLARP_ROUTING_MESSAGE_HPP
 
-#include <path_types.hpp>
+#include <path/path_types.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.h>
 

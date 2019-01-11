@@ -2,8 +2,8 @@
 #define LLARP_DNS_SERVER_HPP
 
 #include <dns/message.hpp>
-#include <ev.h>
-#include <net.hpp>
+#include <ev/ev.h>
+#include <net/net.hpp>
 #include <util/string_view.hpp>
 
 #include <unordered_map>

@@ -2,7 +2,7 @@
 #define __ABYSS_CLIENT_HPP__
 
 #include <abyss/json.hpp>
-#include <ev.h>
+#include <ev/ev.h>
 #include <util/string_view.hpp>
 
 #include <deque>

@@ -209,32 +209,32 @@ if(UNIX)
   add_definitions(-DPOSIX)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
-        set(EV_SRC llarp/ev_epoll.cpp)
+        set(EV_SRC llarp/ev/ev_epoll.cpp)
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Android")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
-        set(EV_SRC llarp/ev_epoll.cpp)
+        set(EV_SRC llarp/ev/ev_epoll.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-openbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-        set(EV_SRC llarp/ev_kqueue.cpp)
+        set(EV_SRC llarp/ev/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-netbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-        set(EV_SRC llarp/ev_kqueue.cpp)
+        set(EV_SRC llarp/ev/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR ${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-        set(EV_SRC llarp/ev_kqueue.cpp)
+        set(EV_SRC llarp/ev/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
-        set(EV_SRC llarp/ev_kqueue.cpp)
+        set(EV_SRC llarp/ev/ev_kqueue.cpp)
 # TODO: _actually_ port to solaris/illumos (it's fairly complete...except for TUN) -rick
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
-        set(EV_SRC llarp/ev_epoll.cpp)
+        set(EV_SRC llarp/ev/ev_epoll.cpp)
     else()
         message(FATAL_ERROR "Your operating system is not supported yet")
     endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 elseif(WIN32)
     set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c)
-    set(EV_SRC llarp/ev_win32.cpp)
+    set(EV_SRC llarp/ev/ev_win32.cpp)
     add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
@@ -291,8 +291,10 @@ set(LIB_UTIL_SRC
   llarp/util/encode.cpp
   llarp/util/endian.cpp
   llarp/util/fs.cpp
+  llarp/util/ini.cpp
   llarp/util/logger.c
   llarp/util/logger.cpp
+  llarp/util/logic.cpp
   llarp/util/mem.cpp
   llarp/util/queue_manager.cpp
   llarp/util/queue.cpp
@@ -307,13 +309,11 @@ set(LIB_UTIL_SRC
 )
 
 set(LIB_PLATFORM_SRC
-# needed for threading
-  llarp/logic.cpp
 # for networking
-  llarp/ev.cpp
-  llarp/net.cpp
-  llarp/net_addr.cpp
-  llarp/net_inaddr.cpp
+  llarp/ev/ev.cpp
+  llarp/net/net.cpp
+  llarp/net/net_addr.cpp
+  llarp/net/net_inaddr.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
 # process isolation implementation
@@ -323,9 +323,9 @@ set(LIB_PLATFORM_SRC
 # c++17 compat code
   ${CXX_COMPAT_SRC}
 # win32 inline code
-  llarp/win32_inet.c
-  llarp/win32_intrnl.c
-  llarp/win32_upoll.c
+  llarp/win32/win32_inet.c
+  llarp/win32/win32_intrnl.c
+  llarp/win32/win32_upoll.c
 )
 
 set(NTRU_AVX_SRC
@@ -459,11 +459,14 @@ if(WIN32)
 endif(WIN32)
 
 set(DNSLIB_SRC
+  llarp/dns/dotlokilookup.cpp
   llarp/dns/dns.cpp
+  llarp/dns/iptracker.cpp
   llarp/dns/message.cpp
   llarp/dns/name.cpp
   llarp/dns/query.cpp
   llarp/dns/question.cpp
+  llarp/dns/rectypes.cpp
   llarp/dns/rr.cpp
   llarp/dns/serialize.cpp
   llarp/dns/server.cpp
@@ -502,9 +505,6 @@ set(LIB_SRC
   llarp/dht/node.cpp
   llarp/dht/publish_intro.cpp
   llarp/dns.cpp
-  llarp/dns_dotlokilookup.cpp
-  llarp/dns_iptracker.cpp
-  llarp/dns_rectypes.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
   llarp/encrypted.cpp
@@ -522,11 +522,9 @@ set(LIB_SRC
   llarp/exit/transfer_traffic.cpp
   llarp/exit/update_exit.cpp
   llarp/exit_info.cpp
-  llarp/exit_route.cpp
   llarp/handlers/exit.cpp
   llarp/handlers/null.cpp
   llarp/handlers/tun.cpp
-  llarp/ini.cpp
   llarp/ip.cpp
   llarp/link/curvecp.cpp
   llarp/link/encoder.cpp
@@ -537,7 +535,6 @@ set(LIB_SRC
   llarp/link_intro.cpp
   llarp/link_layer.cpp
   llarp/link_message.cpp
-  llarp/messages.cpp
   llarp/messages/dht.cpp
   llarp/messages/dht_immediate.cpp
   llarp/messages/discard.cpp
@@ -549,12 +546,12 @@ set(LIB_SRC
   llarp/messages/relay.cpp
   llarp/messages/relay_commit.cpp
   llarp/messages/transfer_traffic.cpp
-  llarp/net_int.cpp
+  llarp/net/net_int.cpp
   llarp/nodedb.cpp
-  llarp/path.cpp
-  llarp/path_types.cpp
-  llarp/pathbuilder.cpp
-  llarp/pathset.cpp
+  llarp/path/path.cpp
+  llarp/path/path_types.cpp
+  llarp/path/pathbuilder.cpp
+  llarp/path/pathset.cpp
   llarp/pow.cpp
   llarp/profiling.cpp
   llarp/proofofwork.cpp
@@ -601,27 +598,27 @@ set(DNS_SRC
   llarp/dns_iptracker.cpp
   llarp/dns_dotlokilookup.cpp
   llarp/dns_rectypes.cpp
-  llarp/net.cpp
+  llarp/net/net.cpp
   daemon/dns.cpp
 )
 
 set(TEST_SRC
+  test/dht/test_llarp_dht_key.cpp
   test/dht/test_llarp_dht.cpp
   test/dns/test_llarp_dns_dns.cpp
   test/exit/test_llarp_exit_context.cpp
   test/link/test_llarp_link.cpp
   test/main.cpp
+  test/net/test_llarp_net_inaddr.cpp
+  test/net/test_llarp_net.cpp
   test/routing/llarp_routing_transfer_traffic.cpp
   test/routing/test_llarp_routing_obtainexitmessage.cpp
   test/service/test_llarp_service_address.cpp
   test/service/test_llarp_service_identity.cpp
   test/test_llarp_crypto.cpp
-  test/test_llarp_dht_key.cpp
   test/test_llarp_dns.cpp
   test/test_llarp_dnsd.cpp
   test/test_llarp_encrypted_frame.cpp
-  test/test_llarp_net_inaddr.cpp
-  test/test_llarp_net.cpp
   test/test_llarp_router_contact.cpp
   test/util/test_llarp_util_aligned.cpp
   test/util/test_llarp_util_bencode.cpp

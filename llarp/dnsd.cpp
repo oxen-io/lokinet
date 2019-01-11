@@ -1,5 +1,5 @@
 #include <dnsd.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 
 extern dns_tracker dns_udp_tracker;
 

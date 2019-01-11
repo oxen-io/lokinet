@@ -3,11 +3,11 @@
 
 #ifdef __cplusplus
 #include <constants/version.hpp>
-#include <ev.h>
+#include <ev/ev.h>
 #include <handlers/tun.hpp>     // for handlers
-#include <logic.hpp>
 #include <service/address.hpp>  // for service::address
 #include <service/endpoint.hpp>
+#include <util/logic.hpp>
 #include <util/mem.h>
 
 extern "C"

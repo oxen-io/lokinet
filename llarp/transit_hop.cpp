@@ -1,4 +1,4 @@
-#include <path.hpp>
+#include <path/path.hpp>
 
 #include <dht/context.hpp>
 #include <messages/discard.hpp>

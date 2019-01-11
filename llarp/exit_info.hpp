@@ -2,7 +2,7 @@
 #define LLARP_XI_HPP
 
 #include <crypto.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <util/bencode.hpp>
 #include <util/bits.hpp>
 

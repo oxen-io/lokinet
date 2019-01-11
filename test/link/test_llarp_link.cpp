@@ -1,8 +1,8 @@
 #include <link/utp.hpp>
 #include <link/iwp.hpp>
+#include <ev/ev.h>
 #include <messages/link_intro.hpp>
 #include <messages/discard.hpp>
-#include <ev.h>
 
 #include <gtest/gtest.h>
 

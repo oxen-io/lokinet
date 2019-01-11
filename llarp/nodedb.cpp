@@ -1,12 +1,12 @@
 #include <nodedb.hpp>
 
 #include <crypto.hpp>
-#include <logic.hpp>
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/fs.hpp>
 #include <util/logger.hpp>
+#include <util/logic.hpp>
 #include <util/mem.hpp>
 
 #include <fstream>

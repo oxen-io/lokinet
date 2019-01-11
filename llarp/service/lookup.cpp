@@ -1,6 +1,7 @@
-#include <path.hpp>
-#include <service/endpoint.hpp>
 #include <service/lookup.hpp>
+
+#include <path/path.hpp>
+#include <service/endpoint.hpp>
 #include <util/time.hpp>
 
 namespace llarp

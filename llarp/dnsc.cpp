@@ -1,5 +1,5 @@
 #include <dnsc.hpp>
-#include <net.hpp>  // for llarp::Addr
+#include <net/net.hpp>  // for llarp::Addr
 #include <util/logger.hpp>
 
 #ifndef _WIN32

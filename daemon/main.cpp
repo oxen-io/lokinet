@@ -1,9 +1,10 @@
 #include <config.hpp>  // for ensure_config
-#include <util/fs.hpp>
-#include <getopt.h>
 #include <libgen.h>
 #include <llarp.h>
+#include <util/fs.hpp>
 #include <util/logger.hpp>
+
+#include <getopt.h>
 #include <signal.h>
 
 #include <string>

@@ -1,5 +1,5 @@
 #include <dns/name.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 
 #include <algorithm>
 #include <sstream>

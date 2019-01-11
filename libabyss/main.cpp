@@ -1,5 +1,5 @@
 #include <libabyss.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 
 #ifndef _WIN32
 #include <sys/signal.h>

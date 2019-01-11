@@ -2,7 +2,7 @@
 #define LLARP_AI_HPP
 
 #include <crypto.hpp>
-#include <net.h>
+#include <net/net.h>
 #include <util/bencode.hpp>
 #include <util/mem.h>
 

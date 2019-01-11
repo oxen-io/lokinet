@@ -8,9 +8,9 @@
 #include <netdb.h>
 #endif
 
-#include <ev.hpp>
-#include <router.hpp>
 #include <dns/dns.hpp>
+#include <ev/ev.hpp>
+#include <router.hpp>
 
 namespace llarp
 {

@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include <libabyss.hpp>
-#include <ev.h>
-#include <net.hpp>
+#include <ev/ev.h>
+#include <net/net.hpp>
 #include <util/threading.hpp>
 
 struct AbyssTestBase : public ::testing::Test

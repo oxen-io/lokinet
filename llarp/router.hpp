@@ -5,14 +5,13 @@
 #include <crypto.hpp>
 #include <dht.h>
 #include <establish_job.hpp>
-#include <ev.h>
+#include <ev/ev.h>
 #include <exit/context.hpp>
 #include <handlers/tun.hpp>
 #include <link_layer.hpp>
 #include <link_message_parser.hpp>
-#include <logic.hpp>
 #include <nodedb.hpp>
-#include <path.hpp>
+#include <path/path.hpp>
 #include <profiling.hpp>
 #include <router_contact.hpp>
 #include <routing/handler.hpp>
@@ -21,6 +20,7 @@
 #include <service/context.hpp>
 #include <util/buffer.h>
 #include <util/fs.hpp>
+#include <util/logic.hpp>
 #include <util/mem.hpp>
 #include <util/str.hpp>
 #include <util/threadpool.hpp>

@@ -1,6 +1,6 @@
 #include <service/IntroSet.hpp>
 
-#include <path.hpp>
+#include <path/path.hpp>
 
 namespace llarp
 {

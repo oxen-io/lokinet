@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <crypto.hpp>
-#include <path.hpp>
+#include <path/path.hpp>
 #include <service/address.hpp>
 #include <service/Identity.hpp>
 #include <service/IntroSet.hpp>
