@@ -11,6 +11,16 @@
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) resources
 
+#define STRINGIZER(version) #version
+
+#ifdef LLARP_RELEASE_MOTTO
+#define VERSION_STRING(version, codename, revision) \
+  STRINGIZER(version) "-release [" STRINGIZER(codename) "] (rev-" STRINGIZER(revision) ")"
+#else
+#define VERSION_STRING(version, revision) \
+  STRINGIZER(version) STRINGIZER(revision)
+#endif
+
 #if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
 #ifdef _WIN32
 LANGUAGE 1033,1
@@ -67,12 +77,20 @@ BEGIN
             VALUE "Comments", "includes relay/exit functionality, such code is highly experimental on non-Linux targets"
             VALUE "CompanyName", "Loki Foundation"
             VALUE "FileDescription", "LokiNET daemon for Microsoft® Windows® NT™"
-            VALUE "FileVersion", "0.4.0-dev"
+#ifdef LLARP_RELEASE_MOTTO
+            VALUE "FileVersion", VERSION_STRING(0.4.0, RELEASE_MOTTO, GIT_REV)
+#else
+            VALUE "FileVersion", VERSION_STRING(0.4.0-dev-, GIT_REV)
+#endif
             VALUE "InternalName", "llarpd"
             VALUE "LegalCopyright", "Copyright ©2018 Jeff Becker, Rick V for the Loki Foundation. All rights reserved. This software is provided under the terms of the zlib-libpng licence; see the file LICENSE for details."
             VALUE "OriginalFilename", "llarpd.exe"
             VALUE "ProductName", "LokiNET for Windows"
-            VALUE "ProductVersion", "0.4.0-dev"
+#ifdef LLARP_RELEASE_MOTTO
+            VALUE "ProductVersion", VERSION_STRING(0.4.0, RELEASE_MOTTO, GIT_REV)
+#else
+            VALUE "ProductVersion", VERSION_STRING(0.4.0-dev-, GIT_REV)
+#endif
         END
     END
     BLOCK "VarFileInfo"
