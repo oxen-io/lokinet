@@ -4,7 +4,7 @@
 #include <crypto.hpp>
 #include <ev/ev.h>
 #include <link/session.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <router_contact.hpp>
 #include <util/logic.hpp>
 #include <util/threading.hpp>

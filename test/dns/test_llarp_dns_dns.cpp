@@ -4,7 +4,8 @@
 #include <dns/message.hpp>
 #include <dns/name.hpp>
 #include <dns/rr.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
+#include <util/buffer.hpp>
 
 #include <algorithm>
 

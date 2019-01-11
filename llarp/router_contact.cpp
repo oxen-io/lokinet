@@ -2,7 +2,7 @@
 
 #include <constants/version.hpp>
 #include <crypto.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>

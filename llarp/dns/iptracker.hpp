@@ -2,7 +2,7 @@
 #define LLARP_DNSIPTRACKER_HPP
 
 #include <dns/dotlokilookup.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <service/address.hpp>
 
 #include <map>

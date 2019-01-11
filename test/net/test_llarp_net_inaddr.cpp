@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <net_inaddr.hpp>
+#include <net/net_inaddr.hpp>
 
 struct TestNetInAddr : public ::testing::Test
 {

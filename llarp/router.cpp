@@ -7,7 +7,7 @@
 #include <link/iwp.hpp>
 #include <link/server.hpp>
 #include <link/utp.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <rpc.hpp>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
@@ -127,7 +127,7 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &path,
                              llarp::SecretKey &encryption)
 {
   std::string fpath = path.string();
-  llarp::LogDebug("find or create ",fpath);
+  llarp::LogDebug("find or create ", fpath);
   std::error_code ec;
   if(!fs::exists(path, ec))
   {
@@ -1041,7 +1041,7 @@ namespace llarp
     {
       if(!link->Start(logic))
       {
-        llarp::LogWarn("outbound link '", link->Name(),"' failed to start");
+        llarp::LogWarn("outbound link '", link->Name(), "' failed to start");
         return false;
       }
     }

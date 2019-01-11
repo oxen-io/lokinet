@@ -4,7 +4,7 @@
 #include <codel.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <path/path.hpp>
 #include <path/pathbuilder.hpp>
 #include <service/address.hpp>

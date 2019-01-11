@@ -2,8 +2,8 @@
 #define LLARP_NET_ADDR_HPP
 
 #include <address_info.hpp>
-#include <net.h>
-#include <net.hpp>
+#include <net/net.h>
+#include <net/net.hpp>
 #include <util/string_view.hpp>
 
 #include <string>

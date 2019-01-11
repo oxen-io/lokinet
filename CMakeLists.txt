@@ -311,9 +311,9 @@ set(LIB_UTIL_SRC
 set(LIB_PLATFORM_SRC
 # for networking
   llarp/ev/ev.cpp
-  llarp/net.cpp
-  llarp/net_addr.cpp
-  llarp/net_inaddr.cpp
+  llarp/net/net.cpp
+  llarp/net/net_addr.cpp
+  llarp/net/net_inaddr.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
 # process isolation implementation
@@ -522,7 +522,6 @@ set(LIB_SRC
   llarp/exit/transfer_traffic.cpp
   llarp/exit/update_exit.cpp
   llarp/exit_info.cpp
-  llarp/exit_route.cpp
   llarp/handlers/exit.cpp
   llarp/handlers/null.cpp
   llarp/handlers/tun.cpp
@@ -547,7 +546,7 @@ set(LIB_SRC
   llarp/messages/relay.cpp
   llarp/messages/relay_commit.cpp
   llarp/messages/transfer_traffic.cpp
-  llarp/net_int.cpp
+  llarp/net/net_int.cpp
   llarp/nodedb.cpp
   llarp/path/path.cpp
   llarp/path/path_types.cpp
@@ -599,27 +598,27 @@ set(DNS_SRC
   llarp/dns_iptracker.cpp
   llarp/dns_dotlokilookup.cpp
   llarp/dns_rectypes.cpp
-  llarp/net.cpp
+  llarp/net/net.cpp
   daemon/dns.cpp
 )
 
 set(TEST_SRC
+  test/dht/test_llarp_dht_key.cpp
   test/dht/test_llarp_dht.cpp
   test/dns/test_llarp_dns_dns.cpp
   test/exit/test_llarp_exit_context.cpp
   test/link/test_llarp_link.cpp
   test/main.cpp
+  test/net/test_llarp_net_inaddr.cpp
+  test/net/test_llarp_net.cpp
   test/routing/llarp_routing_transfer_traffic.cpp
   test/routing/test_llarp_routing_obtainexitmessage.cpp
   test/service/test_llarp_service_address.cpp
   test/service/test_llarp_service_identity.cpp
   test/test_llarp_crypto.cpp
-  test/test_llarp_dht_key.cpp
   test/test_llarp_dns.cpp
   test/test_llarp_dnsd.cpp
   test/test_llarp_encrypted_frame.cpp
-  test/test_llarp_net_inaddr.cpp
-  test/test_llarp_net.cpp
   test/test_llarp_router_contact.cpp
   test/util/test_llarp_util_aligned.cpp
   test/util/test_llarp_util_bencode.cpp

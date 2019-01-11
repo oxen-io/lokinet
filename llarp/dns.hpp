@@ -9,7 +9,7 @@
 #endif
 
 #include <dns/rectypes.hpp>
-#include <net.hpp>  // for llarp::Addr , llarp::huint32_t
+#include <net/net.hpp>  // for llarp::Addr , llarp::huint32_t
 
 #include <map>
 #include <string>

@@ -12,7 +12,7 @@
 #define inet_aton(x, y) inet_pton(AF_INET, x, y)
 #endif
 
-#include <net.h>
+#include <net/net.h>
 
 #include <stdlib.h>  // for itoa
 #include <iostream>

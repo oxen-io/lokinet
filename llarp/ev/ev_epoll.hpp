@@ -2,8 +2,8 @@
 #define EV_EPOLL_HPP
 
 #include <ev/ev.hpp>
-#include <net.h>
-#include <net.hpp>
+#include <net/net.h>
+#include <net/net.hpp>
 #include <util/buffer.h>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>

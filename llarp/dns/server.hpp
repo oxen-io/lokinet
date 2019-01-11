@@ -3,7 +3,7 @@
 
 #include <dns/message.hpp>
 #include <ev/ev.h>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <util/string_view.hpp>
 
 #include <unordered_map>

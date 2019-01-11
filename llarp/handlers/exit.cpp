@@ -1,7 +1,7 @@
 #include <handlers/exit.hpp>
 
 #include <dns/dns.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <router.hpp>
 #include <util/str.hpp>
 

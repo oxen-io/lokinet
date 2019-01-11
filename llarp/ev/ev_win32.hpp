@@ -4,8 +4,8 @@
 #include <buffer.h>
 #include <ev/ev.hpp>
 #include <util/logger.hpp>
-#include <net.h>
-#include <net.hpp>
+#include <net/net.h>
+#include <net/net.hpp>
 #include <windows.h>
 #include <process.h>
 

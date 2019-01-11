@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
-#include <net.hpp>
-#include <net_inaddr.hpp>
+#include <net/net.hpp>
+#include <net/net_inaddr.hpp>
 
 struct TestNet : public ::testing::Test
 {

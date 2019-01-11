@@ -1,7 +1,7 @@
 #ifndef LLARP_NET_INADDR_HPP
 #define LLARP_NET_INADDR_HPP
 
-#include <net.hpp>
+#include <net/net.hpp>
 
 namespace llarp
 {

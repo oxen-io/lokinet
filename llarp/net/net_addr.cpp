@@ -1,5 +1,5 @@
-#include <net.hpp>
-#include <net_addr.hpp>
+#include <net/net.hpp>
+#include <net/net_addr.hpp>
 #include <util/string_view.hpp>
 
 // for addrinfo

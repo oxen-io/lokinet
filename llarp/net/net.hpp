@@ -2,8 +2,8 @@
 #define LLARP_NET_HPP
 
 #include <address_info.hpp>
-#include <net_int.hpp>
-#include <net.h>
+#include <net/net_int.hpp>
+#include <net/net.h>
 #include <util/logger.hpp>
 #include <util/mem.hpp>
 #include <util/string_view.hpp>
@@ -147,7 +147,7 @@ namespace llarp
 
 }  // namespace llarp
 
-#include <net_addr.hpp>
-#include <net_inaddr.hpp>
+#include <net/net_addr.hpp>
+#include <net/net_inaddr.hpp>
 
 #endif

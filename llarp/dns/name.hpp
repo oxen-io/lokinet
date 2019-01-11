@@ -1,7 +1,7 @@
 #ifndef LLARP_DNS_NAME_HPP
 #define LLARP_DNS_NAME_HPP
 
-#include <net_int.hpp>
+#include <net/net_int.hpp>
 #include <util/buffer.h>
 
 #include <string>

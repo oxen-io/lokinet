@@ -2,7 +2,7 @@
 #define LLARP_IP_HPP
 
 #include <ev/ev.h>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <util/buffer.h>
 #include <util/time.hpp>
 

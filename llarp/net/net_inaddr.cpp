@@ -1,4 +1,4 @@
-#include <net_inaddr.hpp>
+#include <net/net_inaddr.hpp>
 
 std::ostream&
 operator<<(std::ostream& out, const llarp::inAddr& a)

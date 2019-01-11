@@ -5,7 +5,7 @@
 #include <dns/server.hpp>
 #include <ev/ev.h>
 #include <ip.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <service/endpoint.hpp>
 #include <util/threading.hpp>
 
