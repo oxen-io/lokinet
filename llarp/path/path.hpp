@@ -4,9 +4,9 @@
 #include <crypto.hpp>
 #include <messages/relay_commit.hpp>
 #include <messages/relay.hpp>
-#include <path_types.hpp>
-#include <pathbuilder.hpp>
-#include <pathset.hpp>
+#include <path/path_types.hpp>
+#include <path/pathbuilder.hpp>
+#include <path/pathset.hpp>
 #include <router_id.hpp>
 #include <routing/handler.hpp>
 #include <routing/message.hpp>

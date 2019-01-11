@@ -1,5 +1,5 @@
 #include <dns.hpp>  // for vput16bits()
-#include <dns_rectypes.hpp>
+#include <dns/rectypes.hpp>
 
 namespace llarp
 {

@@ -1,7 +1,7 @@
 #ifndef LLARP_PATHBUILDER_HPP_
 #define LLARP_PATHBUILDER_HPP_
 
-#include <pathset.hpp>
+#include <path/pathset.hpp>
 #include <atomic>
 
 namespace llarp

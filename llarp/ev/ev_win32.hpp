@@ -2,8 +2,8 @@
 #define EV_WIN32_HPP
 
 #include <buffer.h>
-#include <ev.hpp>
-#include <logger.hpp>
+#include <ev/ev.hpp>
+#include <util/logger.hpp>
 #include <net.h>
 #include <net.hpp>
 #include <windows.h>

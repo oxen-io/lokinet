@@ -2,12 +2,12 @@
 #include <llarp.h>
 
 #include <dht/context.hpp>
-#include <dns_dotlokilookup.hpp>
+#include <dns/dotlokilookup.hpp>
 #include <dnsd.hpp>
-#include <ev.hpp>
-#include <util/logger.h>
-#include <router.hpp>
+#include <ev/ev.hpp>
 #include <nodedb.hpp>
+#include <router.hpp>
+#include <util/logger.h>
 
 #include <getopt.h>
 #include <signal.h>

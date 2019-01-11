@@ -1,7 +1,7 @@
-#ifndef LIBLLARP_DNSIPTRACKER_HPP
-#define LIBLLARP_DNSIPTRACKER_HPP
+#ifndef LLARP_DNSIPTRACKER_HPP
+#define LLARP_DNSIPTRACKER_HPP
 
-#include <dns_dotlokilookup.hpp>
+#include <dns/dotlokilookup.hpp>
 #include <net.hpp>
 #include <service/address.hpp>
 

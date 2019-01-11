@@ -1,5 +1,5 @@
-#ifndef LIBLLARP_DNS_DOTLOKILOOKUP_HPP
-#define LIBLLARP_DNS_DOTLOKILOOKUP_HPP
+#ifndef LLARP_DNS_DOTLOKILOOKUP_HPP
+#define LLARP_DNS_DOTLOKILOOKUP_HPP
 
 #include <dnsd.hpp>
 #include <service/address.hpp>

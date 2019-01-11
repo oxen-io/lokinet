@@ -1,10 +1,10 @@
 #include <service/endpoint.hpp>
 
 #include <dht/messages/findintro.hpp>
-#include <logic.hpp>
 #include <messages/dht.hpp>
 #include <router.hpp>
 #include <service/protocol.hpp>
+#include <util/logic.hpp>
 
 #include <util/buffer.hpp>
 

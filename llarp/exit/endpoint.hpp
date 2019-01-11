@@ -3,7 +3,7 @@
 
 #include <crypto.hpp>
 #include <ip.hpp>
-#include <path.hpp>
+#include <path/path.hpp>
 #include <util/time.hpp>
 
 namespace llarp

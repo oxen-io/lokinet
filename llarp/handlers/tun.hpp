@@ -3,7 +3,7 @@
 
 #include <codel.hpp>
 #include <dns/server.hpp>
-#include <ev.h>
+#include <ev/ev.h>
 #include <ip.hpp>
 #include <net.hpp>
 #include <service/endpoint.hpp>

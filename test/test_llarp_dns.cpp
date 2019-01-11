@@ -2,9 +2,9 @@
 
 #include <dns.hpp>
 #include <dnsc.hpp>
-#include <llarp.h>          // for llarp_main_init
-#include <logic.hpp>  // for threadpool/llarp::Logic
-#include <net.hpp>    // for llarp::Addr
+#include <llarp.h>         // for llarp_main_init
+#include <net.hpp>         // for llarp::Addr
+#include <util/logic.hpp>  // for threadpool/llarp::Logic
 
 struct DNSTest : public ::testing::Test
 {

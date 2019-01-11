@@ -1,5 +1,5 @@
-#include <ev.h>
-#include <logic.hpp>
+#include <ev/ev.h>
+#include <util/logic.hpp>
 #include <util/mem.hpp>
 #include <util/string_view.hpp>
 
@@ -7,12 +7,12 @@
 
 // apparently current Solaris will emulate epoll.
 #if __linux__ || __sun__
-#include "ev_epoll.hpp"
+#include <ev/ev_epoll.hpp>
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
-#include "ev_kqueue.hpp"
+#include <ev/ev_kqueue.hpp>
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
-#include "ev_win32.hpp"
+#include <ev/ev_win32.hpp>
 #else
 #error No async event loop for your platform, subclass llarp_ev_loop
 #endif

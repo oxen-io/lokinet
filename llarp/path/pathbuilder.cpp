@@ -1,7 +1,7 @@
-#include <pathbuilder.hpp>
+#include <path/pathbuilder.hpp>
 
 #include <nodedb.hpp>
-#include <path.hpp>
+#include <path/path.hpp>
 #include <router.hpp>
 #include <util/buffer.hpp>
 

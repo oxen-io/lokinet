@@ -1,6 +1,6 @@
 #include <service/config.hpp>
 
-#include <ini.hpp>
+#include <util/ini.hpp>
 
 namespace llarp
 {

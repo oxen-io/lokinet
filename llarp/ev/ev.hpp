@@ -1,7 +1,7 @@
 #ifndef LLARP_EV_HPP
 #define LLARP_EV_HPP
 
-#include <ev.h>
+#include <ev/ev.h>
 #include <codel.hpp>
 #include <util/buffer.h>
 #include <util/threading.hpp>

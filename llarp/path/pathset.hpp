@@ -2,7 +2,7 @@
 #define LLARP_PATHSET_HPP
 
 #include <dht/messages/all.hpp>
-#include <path_types.hpp>
+#include <path/path_types.hpp>
 #include <router_id.hpp>
 #include <routing/message.hpp>
 #include <service/IntroSet.hpp>

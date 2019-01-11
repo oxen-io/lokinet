@@ -2,7 +2,7 @@
 #define LLARP_DNS_SERVER_HPP
 
 #include <dns/message.hpp>
-#include <ev.h>
+#include <ev/ev.h>
 #include <net.hpp>
 #include <util/string_view.hpp>
 
