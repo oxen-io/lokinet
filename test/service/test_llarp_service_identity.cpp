@@ -1,6 +1,10 @@
 #include <gtest/gtest.h>
 
-#include <service.hpp>
+#include <crypto.hpp>
+#include <path.hpp>
+#include <service/address.hpp>
+#include <service/Identity.hpp>
+#include <service/IntroSet.hpp>
 #include <util/time.hpp>
 
 struct HiddenServiceTest : public ::testing::Test

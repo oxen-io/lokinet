@@ -1,6 +1,7 @@
 #ifndef LLARP_MESSAGES_DHT_HPP
 #define LLARP_MESSAGES_DHT_HPP
-#include <dht.hpp>
+
+#include <dht/message.hpp>
 #include <routing/message.hpp>
 
 #include <vector>
@@ -25,13 +26,12 @@ namespace llarp
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
 
-      void 
-      Clear() override 
+      void
+      Clear() override
       {
         M.clear();
         V = 0;
       }
-
     };
   }  // namespace routing
 }  // namespace llarp

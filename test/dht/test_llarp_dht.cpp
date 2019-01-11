@@ -1,5 +1,8 @@
+#include <dht/bucket.hpp>
+#include <dht/key.hpp>
+#include <dht/node.hpp>
+
 #include <gtest/gtest.h>
-#include <dht.hpp>
 
 using Key_t = llarp::dht::Key_t;
 
@@ -77,7 +80,7 @@ TEST_F(KademliaDHTTest, TestBucketOperators)
   ASSERT_TRUE((one ^ three) == (three ^ one));
 };
 
-TEST_F(KademliaDHTTest, TestBucketRandomzied_1000)
+TEST_F(KademliaDHTTest, TestBucketRandomized_1000)
 {
   size_t moreNodes = 100;
   while(moreNodes--)

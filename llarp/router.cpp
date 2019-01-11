@@ -2,6 +2,7 @@
 
 #include <constants/proto.hpp>
 #include <crypto.hpp>
+#include <dht/context.hpp>
 #include <link_message.hpp>
 #include <link/iwp.hpp>
 #include <link/server.hpp>

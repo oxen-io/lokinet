@@ -1,11 +1,15 @@
+#include <llarp.hpp>
+#include <llarp.h>
+
+#include <dht/context.hpp>
 #include <dns_dotlokilookup.hpp>
 #include <dnsd.hpp>
 #include <ev.hpp>
-#include <getopt.h>
-#include <llarp.h>
-#include <llarp.hpp>
 #include <util/logger.h>
 #include <router.hpp>
+#include <nodedb.hpp>
+
+#include <getopt.h>
 #include <signal.h>
 
 #include <sys/param.h>  // for MIN
@@ -103,7 +107,7 @@ namespace llarp
   }
 
   int
-  Context::IterateDatabase(struct llarp_nodedb_iter i)
+  Context::IterateDatabase(llarp_nodedb_iter &i)
   {
     return nodedb->iterate_all(i);
   }

@@ -1,5 +1,7 @@
-#include <messages/discard.hpp>
 #include <path.hpp>
+
+#include <dht/context.hpp>
+#include <messages/discard.hpp>
 #include <router.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
