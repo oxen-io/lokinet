@@ -162,7 +162,7 @@ tuntap_set_ifname(struct device *dev, const char *ifname)
 
   if(tuntap_sys_set_ifname(dev, ifname, len) == -1)
   {
-    return -1;
+    return 0;
   }
 
   (void)memset(dev->if_name, 0, IF_NAMESIZE);

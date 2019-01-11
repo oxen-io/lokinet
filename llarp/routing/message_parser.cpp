@@ -1,5 +1,6 @@
-#include <mem.hpp>
 #include <routing/message_parser.hpp>
+
+#include <util/mem.hpp>
 
 namespace llarp
 {

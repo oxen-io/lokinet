@@ -1,11 +1,12 @@
 #include <config.h>
 #include <config.hpp>
-#include <defaults.hpp>
-#include <fs.hpp>
-#include <ini.hpp>
-#include <logger.hpp>
-#include <mem.hpp>
-#include <net.hpp>
+
+#include <constants/defaults.hpp>
+#include <net/net.hpp>
+#include <util/fs.hpp>
+#include <util/ini.hpp>
+#include <util/logger.hpp>
+#include <util/mem.hpp>
 
 namespace llarp
 {
@@ -140,7 +141,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "bind=127.0.0.1:1190" << std::endl;
   f << std::endl << std::endl;
 
-  f << "# system settings for priviledges and such" << std::endl;
+  f << "# system settings for privileges and such" << std::endl;
   f << "[system]" << std::endl;
 #ifdef _WIN32
   f << "# ";

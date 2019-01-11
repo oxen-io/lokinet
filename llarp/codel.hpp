@@ -1,10 +1,10 @@
 #ifndef LLARP_CODEL_QUEUE_HPP
 #define LLARP_CODEL_QUEUE_HPP
 
-#include <logger.hpp>
-#include <mem.hpp>
-#include <threading.hpp>
-#include <time.hpp>
+#include <util/logger.hpp>
+#include <util/mem.hpp>
+#include <util/threading.hpp>
+#include <util/time.hpp>
 
 #include <algorithm>
 #include <array>

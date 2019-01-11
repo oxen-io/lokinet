@@ -1,7 +1,6 @@
 #ifndef LLARP_SERVICE_PROTOCOL_HPP
 #define LLARP_SERVICE_PROTOCOL_HPP
 
-#include <bencode.hpp>
 #include <crypto.hpp>
 #include <dht/message.hpp>
 #include <encrypted.hpp>
@@ -10,7 +9,8 @@
 #include <service/Info.hpp>
 #include <service/Intro.hpp>
 #include <service/handler.hpp>
-#include <time.hpp>
+#include <util/bencode.hpp>
+#include <util/time.hpp>
 
 #include <vector>
 

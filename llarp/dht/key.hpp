@@ -1,7 +1,7 @@
 #ifndef LLARP_DHT_KEY_HPP
 #define LLARP_DHT_KEY_HPP
 
-#include <aligned.hpp>
+#include <util/aligned.hpp>
 
 #include <array>
 

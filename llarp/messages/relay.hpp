@@ -4,7 +4,7 @@
 #include <crypto.hpp>
 #include <encrypted.hpp>
 #include <link_message.hpp>
-#include <path_types.hpp>
+#include <path/path_types.hpp>
 
 #include <vector>
 

@@ -1,11 +1,11 @@
 #ifndef LLARP_SERVICE_IDENTITY_HPP
 #define LLARP_SERVICE_IDENTITY_HPP
 
-#include <bencode.hpp>
 #include <crypto.hpp>
 #include <service/Info.hpp>
 #include <service/IntroSet.hpp>
 #include <service/types.hpp>
+#include <util/bencode.hpp>
 
 namespace llarp
 {

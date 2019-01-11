@@ -3,11 +3,11 @@
 
 #include <codel.hpp>
 #include <dns/server.hpp>
-#include <ev.h>
+#include <ev/ev.h>
 #include <ip.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <service/endpoint.hpp>
-#include <threading.hpp>
+#include <util/threading.hpp>
 
 namespace llarp
 {

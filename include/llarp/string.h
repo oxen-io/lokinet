@@ -1,7 +1,7 @@
 #ifndef LLARP_STRING_H
 #define LLARP_STRING_H
 
-#include <common.hpp>
+#include <util/common.hpp>
 
 #ifndef __FreeBSD__
 #if !(__APPLE__ && __MACH__)

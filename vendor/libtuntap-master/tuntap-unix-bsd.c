@@ -45,7 +45,7 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
   /* just leave it as tunX, there doesn't seem to be any
    * practical manner of setting this param in NetBSD and its forks :-( 
    */
-  return 0;
+  return -1;
 }
 
 #endif

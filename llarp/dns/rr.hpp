@@ -3,7 +3,7 @@
 
 #include <dns/name.hpp>
 #include <dns/serialize.hpp>
-#include <net_int.hpp>
+#include <net/net_int.hpp>
 
 #include <memory>
 #include <vector>

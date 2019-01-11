@@ -1,19 +1,20 @@
 #ifndef LLARP_ROUTING_MESSAGE_PARSER_HPP
 #define LLARP_ROUTING_MESSAGE_PARSER_HPP
-#include <bencode.hpp>
-#include <buffer.h>
-#include <path_types.hpp>
+
 #include <messages/dht.hpp>
 #include <messages/discard.hpp>
 #include <messages/path_confirm.hpp>
 #include <messages/path_latency.hpp>
 #include <messages/path_transfer.hpp>
+#include <path/path_types.hpp>
+#include <util/bencode.hpp>
+#include <util/buffer.h>
 
-namespace llarp 
+namespace llarp
 {
   struct Router;
 
-  namespace routing 
+  namespace routing
   {
     struct IMessageHandler;
 
@@ -31,8 +32,8 @@ namespace llarp
       bool firstKey;
       char key;
       dict_reader reader;
-      
-      struct MessageHolder 
+
+      struct MessageHolder
       {
         DataDiscardMessage D;
         PathLatencyMessage L;

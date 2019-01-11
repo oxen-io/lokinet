@@ -1,11 +1,11 @@
 #ifndef LLARP_ENCRYPTED_FRAME_HPP
 #define LLARP_ENCRYPTED_FRAME_HPP
 
-#include <crypto.h>
+#include <crypto.hpp>
 #include <encrypted.hpp>
-#include <buffer.hpp>
-#include <mem.h>
-#include <threadpool.h>
+#include <util/buffer.hpp>
+#include <util/mem.h>
+#include <util/threadpool.h>
 
 namespace llarp
 {

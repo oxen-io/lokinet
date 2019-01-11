@@ -1,9 +1,9 @@
 #ifndef LLARP_SERVICE_ADDRESS_HPP
 #define LLARP_SERVICE_ADDRESS_HPP
 
-#include <aligned.hpp>
 #include <dht/key.hpp>
 #include <router_id.hpp>
+#include <util/aligned.hpp>
 
 #include <functional>
 #include <numeric>

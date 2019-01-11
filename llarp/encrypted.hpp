@@ -1,11 +1,11 @@
 #ifndef LLARP_ENCCRYPTED_HPP
 #define LLARP_ENCCRYPTED_HPP
 
-#include <aligned.hpp>
-#include <bencode.h>
-#include <buffer.h>
-#include <mem.hpp>
 #include <link_layer.hpp>
+#include <util/aligned.hpp>
+#include <util/bencode.h>
+#include <util/buffer.h>
+#include <util/mem.hpp>
 
 #include <vector>
 #include <stdexcept>

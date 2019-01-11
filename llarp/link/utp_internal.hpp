@@ -2,8 +2,8 @@
 #define LLARP_LINK_UTP_INTERNAL_HPP
 #include <link/utp.hpp>
 #include <utp.h>
-#include <aligned.hpp>
 #include <link_layer.hpp>
+#include <util/aligned.hpp>
 
 #include <tuple>
 #include <deque>

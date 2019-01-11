@@ -44,9 +44,11 @@
 #define APPLE_UTUN "com.apple.net.utun_control"
 #define UTUN_OPT_IFNAME 2
 
-static int
-tuntap_sys_start(struct device *dev, int, int)
+int
+tuntap_sys_start(struct device *dev, int mode, int tun)
 {
+  (void)mode;
+  (void)tun;
   uint32_t namesz = IFNAMSIZ;
   char name[IFNAMSIZ + 1];
   int fd;

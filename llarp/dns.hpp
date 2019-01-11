@@ -1,5 +1,5 @@
-#ifndef LIBLLARP_DNS_HPP
-#define LIBLLARP_DNS_HPP
+#ifndef LLARP_DNS_HPP
+#define LLARP_DNS_HPP
 
 #include <dns.h>
 #include <sys/types.h>  // for uint & ssize_t
@@ -8,8 +8,8 @@
 #include <sys/socket.h>
 #endif
 
-#include <net.hpp>  // for llarp::Addr , llarp::huint32_t
-#include <dns_rectypes.hpp>
+#include <dns/rectypes.hpp>
+#include <net/net.hpp>  // for llarp::Addr , llarp::huint32_t
 
 #include <map>
 #include <string>
@@ -23,6 +23,7 @@
 #define LLARP_DNS_RECTYPE_MX 15
 #define LLARP_DNS_RECTYPE_TXT 16
 
+struct dnsc_answer_request;
 struct dnsd_context;
 
 // dnsc can work over any UDP socket

@@ -2,9 +2,9 @@
 #define LLARP_LINK_SESSION_HPP
 
 #include <crypto.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <router_contact.hpp>
-#include <types.hpp>
+#include <util/types.hpp>
 
 #include <functional>
 

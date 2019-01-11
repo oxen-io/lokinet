@@ -198,6 +198,7 @@ set(LIB lokinet)
 set(SHARED_LIB ${LIB}-shared)
 set(STATIC_LIB ${LIB}-static)
 set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
+set(UTIL_LIB ${LIB}-util)
 set(PLATFORM_LIB ${LIB}-platform)
 set(ANDROID_LIB ${LIB}android)
 set(TT_ROOT vendor/libtuntap-master)
@@ -208,32 +209,32 @@ if(UNIX)
   add_definitions(-DPOSIX)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
-        set(EV_SRC llarp/ev_epoll.cpp)
+        set(EV_SRC llarp/ev/ev_epoll.cpp)
     elseif(${CMAKE_SYSTEM_NAME} MATCHES "Android")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-linux.c)
-        set(EV_SRC llarp/ev_epoll.cpp)
+        set(EV_SRC llarp/ev/ev_epoll.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "OpenBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-openbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-        set(EV_SRC llarp/ev_kqueue.cpp)
+        set(EV_SRC llarp/ev/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-netbsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-        set(EV_SRC llarp/ev_kqueue.cpp)
+        set(EV_SRC llarp/ev/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD" OR ${CMAKE_SYSTEM_NAME} MATCHES "DragonFly")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-freebsd.c ${TT_ROOT}/tuntap-unix-bsd.c)
-        set(EV_SRC llarp/ev_kqueue.cpp)
+        set(EV_SRC llarp/ev/ev_kqueue.cpp)
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
-        set(EV_SRC llarp/ev_kqueue.cpp)
+        set(EV_SRC llarp/ev/ev_kqueue.cpp)
 # TODO: _actually_ port to solaris/illumos (it's fairly complete...except for TUN) -rick
     elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
         set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
-        set(EV_SRC llarp/ev_epoll.cpp)
+        set(EV_SRC llarp/ev/ev_epoll.cpp)
     else()
         message(FATAL_ERROR "Your operating system is not supported yet")
     endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 elseif(WIN32)
     set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c)
-    set(EV_SRC llarp/ev_win32.cpp)
+    set(EV_SRC llarp/ev/ev_win32.cpp)
     add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
@@ -278,28 +279,41 @@ set(CXX_COMPAT_SRC
 include_directories(vendor/cppbackport-master/lib)
 endif(NOT WIN32)
 
+set(LIB_UTIL_SRC
+  llarp/constants/defaults.cpp
+  llarp/constants/proto.cpp
+  llarp/constants/version.cpp
+  llarp/util/aligned.cpp
+  llarp/util/bencode.cpp
+  llarp/util/bits.cpp
+  llarp/util/buffer.cpp
+  llarp/util/common.cpp
+  llarp/util/encode.cpp
+  llarp/util/endian.cpp
+  llarp/util/fs.cpp
+  llarp/util/ini.cpp
+  llarp/util/logger.c
+  llarp/util/logger.cpp
+  llarp/util/logic.cpp
+  llarp/util/mem.cpp
+  llarp/util/queue_manager.cpp
+  llarp/util/queue.cpp
+  llarp/util/str.cpp
+  llarp/util/string_view.cpp
+  llarp/util/thread_pool.cpp
+  llarp/util/threading.cpp
+  llarp/util/threadpool.cpp
+  llarp/util/time.cpp
+  llarp/util/timer.cpp
+  llarp/util/types.cpp
+)
+
 set(LIB_PLATFORM_SRC
-# string stuff
-  llarp/str.cpp
-# for outpug
-  llarp/logger.cpp
-# needed for threading
-  llarp/logic.cpp
-# for zero (for net.hpp stuff for llarp::addr stuff)
-  llarp/mem.cpp
 # for networking
-  llarp/ev.cpp
-  llarp/net.cpp
-  llarp/net_addr.cpp
-  llarp/net_inaddr.cpp
-# for timer
-  llarp/time.cpp
-# for logic
-  llarp/timer.cpp
-# for threading
-  llarp/queue_manager.cpp
-  llarp/thread_pool.cpp
-  llarp/threadpool.cpp
+  llarp/ev/ev.cpp
+  llarp/net/net.cpp
+  llarp/net/net_addr.cpp
+  llarp/net/net_inaddr.cpp
 # for android shim
   ${ANDROID_PLATFORM_SRC}
 # process isolation implementation
@@ -309,9 +323,9 @@ set(LIB_PLATFORM_SRC
 # c++17 compat code
   ${CXX_COMPAT_SRC}
 # win32 inline code
-  llarp/win32_inet.c
-  llarp/win32_intrnl.c
-  llarp/win32_upoll.c
+  llarp/win32/win32_inet.c
+  llarp/win32/win32_intrnl.c
+  llarp/win32/win32_upoll.c
 )
 
 set(NTRU_AVX_SRC
@@ -445,11 +459,14 @@ if(WIN32)
 endif(WIN32)
 
 set(DNSLIB_SRC
+  llarp/dns/dotlokilookup.cpp
   llarp/dns/dns.cpp
+  llarp/dns/iptracker.cpp
   llarp/dns/message.cpp
   llarp/dns/name.cpp
   llarp/dns/query.cpp
   llarp/dns/question.cpp
+  llarp/dns/rectypes.cpp
   llarp/dns/rr.cpp
   llarp/dns/serialize.cpp
   llarp/dns/server.cpp
@@ -462,17 +479,11 @@ set(LIB_SRC
   ${EV_SRC}
   ${UTP_SRC}
   llarp/address_info.cpp
-  llarp/aligned.cpp
-  llarp/bencode.cpp
-  llarp/bits.cpp
-  llarp/buffer.cpp
   llarp/codel.cpp
-  llarp/common.cpp
   llarp/config.cpp
   llarp/context.cpp
   llarp/crypto.cpp
   llarp/crypto_libsodium.cpp
-  llarp/defaults.cpp
   llarp/dht.cpp
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
@@ -494,18 +505,12 @@ set(LIB_SRC
   llarp/dht/node.cpp
   llarp/dht/publish_intro.cpp
   llarp/dns.cpp
-  llarp/dns_dotlokilookup.cpp
-  llarp/dns_iptracker.cpp
-  llarp/dns_rectypes.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
-  llarp/encode.cpp
   llarp/encrypted.cpp
   llarp/encrypted_ack.cpp
   llarp/encrypted_frame.cpp
-  llarp/endian.cpp
   llarp/establish_job.cpp
-  llarp/exit.cpp
   llarp/exit/close_exit.cpp
   llarp/exit/context.cpp
   llarp/exit/endpoint.cpp
@@ -517,12 +522,9 @@ set(LIB_SRC
   llarp/exit/transfer_traffic.cpp
   llarp/exit/update_exit.cpp
   llarp/exit_info.cpp
-  llarp/exit_route.cpp
-  llarp/fs.cpp
   llarp/handlers/exit.cpp
   llarp/handlers/null.cpp
   llarp/handlers/tun.cpp
-  llarp/ini.cpp
   llarp/ip.cpp
   llarp/link/curvecp.cpp
   llarp/link/encoder.cpp
@@ -533,7 +535,6 @@ set(LIB_SRC
   llarp/link_intro.cpp
   llarp/link_layer.cpp
   llarp/link_message.cpp
-  llarp/messages.cpp
   llarp/messages/dht.cpp
   llarp/messages/dht_immediate.cpp
   llarp/messages/discard.cpp
@@ -545,17 +546,15 @@ set(LIB_SRC
   llarp/messages/relay.cpp
   llarp/messages/relay_commit.cpp
   llarp/messages/transfer_traffic.cpp
-  llarp/net_int.cpp
+  llarp/net/net_int.cpp
   llarp/nodedb.cpp
-  llarp/path.cpp
-  llarp/path_types.cpp
-  llarp/pathbuilder.cpp
-  llarp/pathset.cpp
+  llarp/path/path.cpp
+  llarp/path/path_types.cpp
+  llarp/path/pathbuilder.cpp
+  llarp/path/pathset.cpp
   llarp/pow.cpp
   llarp/profiling.cpp
   llarp/proofofwork.cpp
-  llarp/proto.cpp
-  llarp/queue.cpp
   llarp/relay_commit.cpp
   llarp/relay_up_down.cpp
   llarp/router.cpp
@@ -570,7 +569,6 @@ set(LIB_SRC
   llarp/routing/path_transfer.cpp
   llarp/routing_endpoint.cpp
   llarp/rpc.cpp
-  llarp/service.cpp
   llarp/service/Identity.cpp
   llarp/service/Intro.cpp
   llarp/service/IntroSet.cpp
@@ -585,12 +583,8 @@ set(LIB_SRC
   llarp/service/tag.cpp
   llarp/service/types.cpp
   llarp/service/vanity.cpp
-  llarp/string_view.cpp
   llarp/testnet.c
-  llarp/threading.cpp
   llarp/transit_hop.cpp
-  llarp/types.cpp
-  llarp/version.cpp
 )
 
 set(RC_SRC
@@ -604,34 +598,34 @@ set(DNS_SRC
   llarp/dns_iptracker.cpp
   llarp/dns_dotlokilookup.cpp
   llarp/dns_rectypes.cpp
-  llarp/net.cpp
+  llarp/net/net.cpp
   daemon/dns.cpp
 )
 
 set(TEST_SRC
-  test/base32_unittest.cpp
-  test/dht_unittest.cpp
-  test/encrypted_frame_unittest.cpp
-  test/exit_unittest.cpp
-  test/hiddenservice_unittest.cpp
+  test/dht/test_llarp_dht_key.cpp
+  test/dht/test_llarp_dht.cpp
+  test/dns/test_llarp_dns_dns.cpp
+  test/exit/test_llarp_exit_context.cpp
+  test/link/test_llarp_link.cpp
   test/main.cpp
-  test/net_unittest.cpp
-  test/obtain_exit_unittest.cpp
-  test/pq_unittest.cpp
-  test/net_unittest.cpp
-  test/link_layer_unittest.cpp
-  test/test_dns_unit.cpp
-  test/test_dnsc_unit.cpp
-  test/test_dnsd_unit.cpp
-  test/test_dnslib.cpp
-  test/test_llarp_aligned.cpp
-  test/test_llarp_dht_key.cpp
-  test/test_llarp_queue_manager.cpp
-  test/test_llarp_queue.cpp
-  test/test_llarp_thread_pool.cpp
-  test/test_router_contact.cpp
-  test/test_service_address.cpp
-  test/traffic_transfer_unittest.cpp
+  test/net/test_llarp_net_inaddr.cpp
+  test/net/test_llarp_net.cpp
+  test/routing/llarp_routing_transfer_traffic.cpp
+  test/routing/test_llarp_routing_obtainexitmessage.cpp
+  test/service/test_llarp_service_address.cpp
+  test/service/test_llarp_service_identity.cpp
+  test/test_llarp_crypto.cpp
+  test/test_llarp_dns.cpp
+  test/test_llarp_dnsd.cpp
+  test/test_llarp_encrypted_frame.cpp
+  test/test_llarp_router_contact.cpp
+  test/util/test_llarp_util_aligned.cpp
+  test/util/test_llarp_util_bencode.cpp
+  test/util/test_llarp_util_encode.cpp
+  test/util/test_llarp_util_queue_manager.cpp
+  test/util/test_llarp_util_queue.cpp
+  test/util/test_llarp_util_thread_pool.cpp
 )
 
 set(TEST_EXE testAll)
@@ -669,12 +663,12 @@ if(USE_LIBABYSS)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
 
 if (NOT WIN32)
-  target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB})
+  target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB})
 else()
-  target_link_libraries(${ABYSS_EXE} ${PLATFORM_LIB} ws2_32 iphlpapi)
+  target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
 endif(NOT WIN32)
 
-  set(TEST_SRC ${TEST_SRC} test/jsonrpc_unittest.cpp)
+  set(TEST_SRC ${TEST_SRC} test/test_libabyss.cpp)
   # for freebsd
   if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
     include_directories(/usr/local/include)
@@ -713,11 +707,12 @@ endif(NOT WIN32)
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
   add_library(${STATIC_LIB} STATIC ${LIB_SRC})
+  add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
   add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
   if(USE_LIBABYSS)
-    target_link_libraries(${PLATFORM_LIB} Threads::Threads ${ABYSS_LIB})
+    target_link_libraries(${PLATFORM_LIB} ${UTIL_LIB} Threads::Threads ${ABYSS_LIB})
   else()
-    target_link_libraries(${PLATFORM_LIB} Threads::Threads)
+    target_link_libraries(${PLATFORM_LIB} ${UTIL_LIB} Threads::Threads)
   endif(USE_LIBABYSS)
   if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     if(NON_PC_TARGET)
@@ -726,20 +721,14 @@ endif(NOT WIN32)
       target_link_libraries(${PLATFORM_LIB} -lcap)
     endif(NON_PC_TARGET)
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB}) 
-  target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-  #target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-  #target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB})
-  #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB})
+  target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB})
+  target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
+  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   if (WIN32)
-    target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    #target_link_libraries(${CLIENT_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    #target_link_libraries(${RC_EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    #target_link_libraries(${DNS_EXE} ${STATIC_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
   endif(WIN32)
-  
+
 
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
@@ -748,10 +737,6 @@ endif(NOT WIN32)
 
   if(WITH_SHARED)
     add_library(${SHARED_LIB} SHARED ${LIB_SRC})
-    target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${PLATFORM_LIB} Threads::Threads)
-    #target_link_libraries(${EXE} ${SHARED_LIB})
-    #target_link_libraries(${TEST_EXE} ${SHARED_LIB})
-    #target_link_libraries(${RC_EXE} ${SHARED_LIB})
-    #target_link_libraries(${DNS_EXE} ${SHARED_LIB} Threads::Threads)
+    target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB} Threads::Threads)
   endif(WITH_SHARED)
 endif(SHADOW)

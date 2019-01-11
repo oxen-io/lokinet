@@ -2,12 +2,12 @@
 #define LLARP_LINK_SERVER_HPP
 
 #include <crypto.hpp>
-#include <ev.h>
+#include <ev/ev.h>
 #include <link/session.hpp>
-#include <logic.hpp>
-#include <net.hpp>
+#include <net/net.hpp>
 #include <router_contact.hpp>
-#include <threading.hpp>
+#include <util/logic.hpp>
+#include <util/threading.hpp>
 
 #include <list>
 #include <unordered_map>
@@ -188,7 +188,7 @@ namespace llarp
 
     /// called by link session to remove a pending session who is timed out
     void
-    RemovePending(ILinkSession * s);
+    RemovePending(ILinkSession* s);
 
    private:
     static void

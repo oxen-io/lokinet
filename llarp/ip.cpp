@@ -1,7 +1,8 @@
-#include <buffer.hpp>
-#include <endian.hpp>
 #include <ip.hpp>
-#include <mem.hpp>
+
+#include <util/buffer.hpp>
+#include <util/endian.hpp>
+#include <util/mem.hpp>
 
 #ifndef _WIN32
 #include <netinet/in.h>

@@ -1,12 +1,13 @@
-#include <buffer.hpp>
-#include <crypto.hpp>
-#include <encode.hpp>
-#include <fs.hpp>
-#include <logger.hpp>
-#include <logic.hpp>
-#include <mem.hpp>
 #include <nodedb.hpp>
+
+#include <crypto.hpp>
 #include <router_contact.hpp>
+#include <util/buffer.hpp>
+#include <util/encode.hpp>
+#include <util/fs.hpp>
+#include <util/logger.hpp>
+#include <util/logic.hpp>
+#include <util/mem.hpp>
 
 #include <fstream>
 #include <unordered_map>
@@ -201,7 +202,7 @@ llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
 }
 
 bool
-llarp_nodedb::iterate(struct llarp_nodedb_iter &i)
+llarp_nodedb::iterate(llarp_nodedb_iter &i)
 {
   i.index = 0;
   llarp::util::Lock lock(access);

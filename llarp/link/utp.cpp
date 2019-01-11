@@ -1,10 +1,11 @@
-#include <buffer.hpp>
-#include <endian.hpp>
-#include <link/server.hpp>
 #include <link/utp.hpp>
+
+#include <link/server.hpp>
 #include <messages/discard.hpp>
 #include <messages/link_intro.hpp>
 #include <router.hpp>
+#include <util/buffer.hpp>
+#include <util/endian.hpp>
 
 #ifdef __linux__
 #include <linux/errqueue.h>

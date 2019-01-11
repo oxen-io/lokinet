@@ -1,10 +1,10 @@
 #ifndef LLARP_DHT_MESSAGE_HPP
 #define LLARP_DHT_MESSAGE_HPP
 
-#include <bencode.hpp>
 #include <dht.h>
 #include <dht/key.hpp>
-#include <path_types.hpp>
+#include <path/path_types.hpp>
+#include <util/bencode.hpp>
 
 #include <vector>
 
@@ -14,7 +14,7 @@ namespace llarp
   {
     constexpr size_t MAX_MSG_SIZE = 2048;
 
-    struct IMessage : public llarp::IBEncodeMessage
+    struct IMessage : public IBEncodeMessage
     {
       virtual ~IMessage(){};
 

@@ -1,5 +1,5 @@
-#ifndef LIBLLARP_CONFIG_HPP
-#define LIBLLARP_CONFIG_HPP
+#ifndef LLARP_CONFIG_HPP
+#define LLARP_CONFIG_HPP
 #include <config.h>
 
 #include <list>
