@@ -2,8 +2,8 @@
 #define __ABYSS_SERVER_HPP__
 
 #include <abyss/json.hpp>
-#include <ev.h>
-#include <logic.hpp>
+#include <ev/ev.h>
+#include <util/logic.hpp>
 #include <util/string_view.hpp>
 #include <util/time.hpp>
 
