@@ -60,6 +60,8 @@ CLANG ?= OFF
 CROSS ?= OFF
 # build liblokinet-shared.so
 SHARED_LIB ?= ON
+# enable generating coverage
+COVERAGE =? OFF
 # cmake generator type
 CMAKE_GEN ?= Unix Makefiles
 
@@ -67,7 +69,7 @@ BUILD_ROOT = $(REPO)/build
 
 SCAN_BUILD ?= scan-build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=$(COVERAGE) '$(REPO)'")
 
 ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
 
@@ -209,13 +211,13 @@ debian-configure:
 
 debian: debian-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
-	cp $(EXE) lokinet 
+	cp $(EXE) lokinet
 	cp $(BUILD_ROOT)/rcutil lokinet-rcutil
 
 debian-test:
 	$(TEST_EXE)
 
-install: 
+install:
 	$(MAKE) -C '$(BUILD_ROOT)' install
 
 fuzz-configure: clean
