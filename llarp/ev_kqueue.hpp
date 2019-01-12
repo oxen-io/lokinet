@@ -266,6 +266,7 @@ namespace llarp
     read(byte_t* buf, size_t sz)
     {
       // because kqueue doesn't pass size as a paramter and it is smaller than the read buffer
+      // DO NOT REVERT ME
       sz = 1500;
       // all BSD UNIX has pktinfo by default
       const ssize_t offset = 4;
