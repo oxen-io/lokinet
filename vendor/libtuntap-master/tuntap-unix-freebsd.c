@@ -59,7 +59,7 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
   int persist;
   char *ifname;
   char name[MAXPATHLEN];
-  struct ifaddrs *ifa;
+  
   struct ifreq ifr;
 
   /* Get the persistence bit */
@@ -147,6 +147,7 @@ tuntap_sys_start(struct device *dev, int mode, int tun)
 void
 tuntap_sys_destroy(struct device *dev)
 {
+  (void) dev;
   return;
 }
 
@@ -288,8 +289,9 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
 {
   struct ifreq ifr;
   char *newname;
-  //(void)strncpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
-  strlcpy(ifr.ifr_name, dev->if_name, IF_NAMESIZE);
+  if(len > sizeof(ifr.ifr_name))
+    len = sizeof(ifr.ifr_name);
+  (void)strlcpy(ifr.ifr_name, ifname, len);
 
   newname = strdup(ifname);
   if(newname == NULL)
@@ -305,6 +307,7 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
     tuntap_log(TUNTAP_LOG_ERR, "Can't set interface name");
     return -1;
   }
+  (void)strlcpy(dev->if_name, ifname, len);
   free(newname);
   return 0;
 }
