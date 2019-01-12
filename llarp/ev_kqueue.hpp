@@ -249,8 +249,8 @@ namespace llarp
       if(t->before_write)
       {
         t->before_write(t);
-        ev_io::flush_write();
       }
+      ev_io::flush_write();
     }
 
     bool
@@ -265,13 +265,11 @@ namespace llarp
     int
     read(byte_t* buf, size_t sz)
     {
+      // because kqueue doesn't pass size as a paramter and it is smaller than the read buffer
+      // DO NOT REVERT ME
+      sz = 1500;
       // all BSD UNIX has pktinfo by default
-#ifdef __FreeBSD__
-      // not freebsd, stop reverting this part.
-      const ssize_t offset = 0;
-#else
       const ssize_t offset = 4;
-#endif
       ssize_t ret          = tuntap_read(tunif, buf, sz);
       if(ret > offset && t->recvpkt)
       {
