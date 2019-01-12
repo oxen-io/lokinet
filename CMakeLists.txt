@@ -619,6 +619,7 @@ set(TEST_SRC
   test/test_llarp_dns.cpp
   test/test_llarp_dnsd.cpp
   test/test_llarp_encrypted_frame.cpp
+  test/test_llarp_router.cpp
   test/test_llarp_router_contact.cpp
   test/util/test_llarp_util_aligned.cpp
   test/util/test_llarp_util_bencode.cpp
