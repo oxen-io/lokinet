@@ -268,9 +268,12 @@ namespace llarp
       // because kqueue doesn't pass size as a paramter and it is smaller than the read buffer
       // DO NOT REVERT ME
       sz = 1500;
-      // all BSD UNIX has pktinfo by default
-      const ssize_t offset = 4;
-      ssize_t ret          = tuntap_read(tunif, buf, sz);
+#ifdef __FreeBSD__
+      const ssize_t offset = 0;
+#else
+      const ssize_t offset = 4;      
+#endif
+      ssize_t ret          = ::read(fd, buf, sz);
       if(ret > offset && t->recvpkt)
       {
         buf += offset;
