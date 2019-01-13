@@ -1,8 +1,7 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
 
-#include <crypto/crypto.hpp>
-#include <util/threading.hpp>
+#include <util/types.hpp>
 
 #include <iostream>
 #include <memory>
@@ -14,9 +13,11 @@ struct llarp_config_iterator;
 struct llarp_ev_loop;
 struct llarp_nodedb;
 struct llarp_nodedb_iter;
+struct llarp_threadpool;
 
 namespace llarp
 {
+  struct Crypto;
   class Logic;
   struct Router;
   struct RouterContact;

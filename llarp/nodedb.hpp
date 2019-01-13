@@ -1,7 +1,6 @@
 #ifndef LLARP_NODEDB_HPP
 #define LLARP_NODEDB_HPP
 
-#include <crypto/crypto.hpp>
 #include <router_contact.hpp>
 #include <router_id.hpp>
 #include <util/common.hpp>
@@ -13,10 +12,13 @@
  * persistent storage API for router contacts
  */
 
+struct llarp_threadpool;
+
 namespace llarp
 {
+  struct Crypto;
   class Logic;
-}
+}  // namespace llarp
 
 struct llarp_nodedb_iter
 {

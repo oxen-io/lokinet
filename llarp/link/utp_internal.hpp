@@ -1,15 +1,18 @@
 #ifndef LLARP_LINK_UTP_INTERNAL_HPP
 #define LLARP_LINK_UTP_INTERNAL_HPP
-#include <link/utp.hpp>
-#include <utp.h>
+
+#include <crypto/types.hpp>
 #include <link_layer.hpp>
+#include <link/utp.hpp>
 #include <util/aligned.hpp>
+#include <utp.h>
 
 #include <tuple>
 #include <deque>
 
 namespace llarp
 {
+  struct Crypto;
   namespace utp
   {
     /// size of keyed hash

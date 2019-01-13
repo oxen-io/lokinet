@@ -493,8 +493,10 @@ set(LIB_SRC
   llarp/codel.cpp
   llarp/config.cpp
   llarp/context.cpp
+  llarp/crypto/constants.cpp
   llarp/crypto/crypto.cpp
   llarp/crypto/crypto_libsodium.cpp
+  llarp/crypto/types.cpp
   llarp/dht.cpp
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp

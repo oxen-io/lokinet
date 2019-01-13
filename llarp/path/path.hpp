@@ -1,7 +1,7 @@
 #ifndef LLARP_PATH_HPP
 #define LLARP_PATH_HPP
 
-#include <crypto/crypto.hpp>
+#include <crypto/types.hpp>
 #include <messages/relay_commit.hpp>
 #include <messages/relay.hpp>
 #include <path/path_types.hpp>
@@ -32,6 +32,7 @@
 
 namespace llarp
 {
+  struct Crypto;
   namespace path
   {
     struct TransitHopInfo

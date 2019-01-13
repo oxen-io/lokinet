@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_INTRO_HPP
 #define LLARP_SERVICE_INTRO_HPP
 
-#include <crypto/crypto.hpp>
+#include <crypto/types.hpp>
 #include <path/path_types.hpp>
 #include <util/bencode.hpp>
 

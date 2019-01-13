@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <crypto/crypto.hpp>
 #include <messages/exit.hpp>
 
 using ObtainExitMessage = llarp::routing::ObtainExitMessage;

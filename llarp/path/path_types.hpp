@@ -1,7 +1,7 @@
 #ifndef LLARP_PATH_TYPES_HPP
 #define LLARP_PATH_TYPES_HPP
 
-#include <crypto/crypto.hpp>
+#include <crypto/constants.hpp>
 #include <util/aligned.hpp>
 
 namespace llarp

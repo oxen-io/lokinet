@@ -1,7 +1,6 @@
 #ifndef LLARP_RPC_HPP
 #define LLARP_RPC_HPP
 
-#include <crypto/crypto.hpp>
 #include <ev/ev.h>
 #include <util/time.hpp>
 
