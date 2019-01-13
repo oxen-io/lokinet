@@ -61,7 +61,8 @@ CROSS ?= OFF
 # build liblokinet-shared.so
 SHARED_LIB ?= ON
 # enable generating coverage
-COVERAGE =? OFF
+COVERAGE ?= OFF
+COVERAGE_OUTDIR ?= "$(TMPDIR)/lokinet-coverage"
 # cmake generator type
 CMAKE_GEN ?= Unix Makefiles
 
@@ -69,9 +70,11 @@ BUILD_ROOT = $(REPO)/build
 
 SCAN_BUILD ?= scan-build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=$(COVERAGE) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
 
 ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
+
+COVERAGE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DUSING_CLANG=$(CLANG) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=yes '$(REPO)'")
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
@@ -193,6 +196,21 @@ analyze-config: clean
 
 analyze: analyze-config
 	cd '$(BUILD_ROOT)' && $(SCAN_BUILD) $(MAKE)
+
+coverage-config: clean
+	mkdir -p '$(BUILD_ROOT)'
+	$(COVERAGE_CONFIG_CMD)
+
+coverage: coverage-config
+	$(MAKE) -C $(BUILD_ROOT) -j 12
+	$(TEST_EXE) || true # continue even if tests fail
+	mkdir -p "$(COVERAGE_OUTDIR)"
+ifeq ($(CLANG),OFF)
+	gcovr -r . --branches --html --html-details -o "$(COVERAGE_OUTDIR)/lokinet.html"
+else
+	llvm-profdata merge default.profraw -output $(BUILD_ROOT)/profdata
+	llvm-cov show -format=html -output-dir="$(COVERAGE_OUTDIR)" -instr-profile "$(BUILD_ROOT)/profdata" "$(BUILD_ROOT)/testAll" $(shell find ./llarp -type f)
+endif
 
 lint: $(LINT_CHECK)
 
