@@ -16,6 +16,7 @@ Build requirements:
 * CMake
 * C++ 17 capable C++ compiler
 * rapidjson (if enabling jsonrpc server)
+* gcovr (if generating test coverage with gcc)
 
 ### Linux
 
@@ -27,22 +28,22 @@ build:
     $ make -j8
 
 install:
-    
+
     $ sudo make install
 
 
 ### FreeBSD
 
-build: 
+build:
 
     $ pkg install wget cmake git
     $ git clone https://github.com/loki-project/loki-network
     $ cd loki-network
     $ gmake -j8
-    
+
 install (root):
-    
-    # gmake install 
+
+    # gmake install
 
 ## Windows
 
@@ -55,10 +56,10 @@ build (where `$ARCH` is your platform - `i686` or `x86_64`):
     $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DDNS_PORT=53 -G 'Unix Makefiles'
 
 install (elevated) to `$PROGRAMFILES/lokinet` or `$ProgramFiles(x86)/lokinet`:
-    
+
     $ make install
 
-if cross-compiling, install mingw-w64 from your distro's package manager, or [build from source](https://sourceforge.net/p/mingw-w64/wiki2/Cross%20Win32%20and%20Win64%20compiler/), then: 
+if cross-compiling, install mingw-w64 from your distro's package manager, or [build from source](https://sourceforge.net/p/mingw-w64/wiki2/Cross%20Win32%20and%20Win64%20compiler/), then:
 
     $ mkdir -p build; cd build
     $ export COMPILER=clang # if using clang for windows

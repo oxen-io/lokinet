@@ -26,7 +26,9 @@ namespace llarp
     std::ifstream f;
     f.open(fname, std::ios::binary);
     if(!f.is_open())
+    {
       return false;
+    }
     size_t sz = 0;
     f.seekg(0, std::ios::end);
     sz = f.tellg();
@@ -41,7 +43,9 @@ namespace llarp
     byte_t tmp[128];
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
     if(sz > sizeof(tmp))
+    {
       return false;
+    }
     f.read((char*)tmp, sz);
     return BDecode(&buf);
   }
@@ -52,7 +56,9 @@ namespace llarp
     byte_t tmp[128];
     auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
     if(!BEncode(&buf))
+    {
       return false;
+    }
 
     std::ofstream f;
     f.open(fname, std::ios::binary);
