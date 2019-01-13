@@ -48,3 +48,4 @@ rapidjson/
 .vscode
 build64/
 build2/
+default.profraw

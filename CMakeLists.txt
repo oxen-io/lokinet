@@ -16,6 +16,7 @@ option(JEMALLOC "use jemalloc. Not required on BSD" )
 option(DEBIAN "build for debian" )
 option(TESTNET "testnet build" )
 option(WITH_SHARED "build shared library")
+option(WITH_COVERAGE "generate coverage data")
 
 if(WIN32)
   set(CMAKE_CXX_STANDARD 17)
@@ -43,6 +44,16 @@ add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unknown-warn
 add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
+
+if (WITH_COVERAGE)
+  if (USING_CLANG)
+    add_compile_options( -fprofile-instr-generate -fcoverage-mapping )
+    link_libraries( -fprofile-instr-generate )
+  else()
+    add_compile_options( --coverage -g0 )
+    link_libraries( --coverage )
+  endif()
+endif()
 
 # these vars are set by the cmake toolchain spec
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
