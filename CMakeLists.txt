@@ -292,12 +292,14 @@ endif(NOT WIN32)
 
 set(LIB_UTIL_SRC
   llarp/constants/defaults.cpp
+  llarp/constants/link_layer.cpp
   llarp/constants/proto.cpp
   llarp/constants/version.cpp
   llarp/util/aligned.cpp
   llarp/util/bencode.cpp
   llarp/util/bits.cpp
   llarp/util/buffer.cpp
+  llarp/util/codel.cpp
   llarp/util/common.cpp
   llarp/util/encode.cpp
   llarp/util/endian.cpp
@@ -490,18 +492,18 @@ set(LIB_SRC
   ${EV_SRC}
   ${UTP_SRC}
   llarp/address_info.cpp
-  llarp/codel.cpp
   llarp/config.cpp
   llarp/context.cpp
   llarp/crypto/constants.cpp
   llarp/crypto/crypto.cpp
   llarp/crypto/crypto_libsodium.cpp
+  llarp/crypto/encrypted.cpp
   llarp/crypto/types.cpp
-  llarp/dht.cpp
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
+  llarp/dht/dht.cpp
   llarp/dht/find_intro.cpp
   llarp/dht/find_router.cpp
   llarp/dht/got_intro.cpp
@@ -520,8 +522,6 @@ set(LIB_SRC
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
-  llarp/encrypted.cpp
-  llarp/encrypted_ack.cpp
   llarp/encrypted_frame.cpp
   llarp/establish_job.cpp
   llarp/exit/close_exit.cpp
@@ -546,7 +546,6 @@ set(LIB_SRC
   llarp/link/session.cpp
   llarp/link/utp.cpp
   llarp/link_intro.cpp
-  llarp/link_layer.cpp
   llarp/link_message.cpp
   llarp/messages/dht.cpp
   llarp/messages/dht_immediate.cpp

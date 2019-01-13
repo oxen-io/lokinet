@@ -1,0 +1,109 @@
+digraph {
+    constants -> util;
+
+    util -> constants;
+    util -> win32;
+
+    android -> linux;
+
+    crypto -> constants;
+    crypto -> llarp;
+    crypto -> util;
+
+    dht -> crypto;
+    dht -> messages;
+    dht -> llarp;
+    dht -> path;
+    dht -> routing;
+    dht -> service;
+    dht -> util;
+
+    dns -> crypto;
+    dns -> ev;
+    dns -> handlers;
+    dns -> llarp;
+    dns -> net;
+    dns -> service;
+    dns -> util;
+
+    ev -> net;
+    ev -> util;
+    ev -> win32;
+
+    exit -> crypto;
+    exit -> handlers;
+    exit -> llarp;
+    exit -> messages;
+    exit -> path;
+    exit -> routing;
+    exit -> util;
+
+    handlers -> dns;
+    handlers -> ev;
+    handlers -> exit;
+    handlers -> llarp;
+    handlers -> net;
+    handlers -> service;
+    handlers -> util;
+
+    link -> constants;
+    link -> crypto;
+    link -> ev;
+    link -> linux;
+    link -> messages;
+    link -> net;
+    link -> util;
+
+    linux -> util;
+
+    messages -> crypto;
+    messages -> dht;
+    messages -> exit;
+    messages -> llarp;
+    messages -> path;
+    messages -> routing;
+    messages -> service;
+    messages -> util;
+
+    net -> android;
+    net -> llarp;
+    net -> util;
+
+    path -> crypto;
+    path -> dht;
+    path -> llarp;
+    path -> messages;
+    path -> routing;
+    path -> service;
+    path -> util;
+
+    routing -> llarp;
+    routing -> messages;
+    routing -> path;
+    routing -> util;
+
+    service -> crypto;
+    service -> dht;
+    service -> ev;
+    service -> exit;
+    service -> handlers;
+    service -> messages;
+    service -> net;
+    service -> path;
+    service -> routing;
+    service -> util;
+
+    llarp -> constants;
+    llarp -> crypto;
+    llarp -> dht;
+    llarp -> dns;
+    llarp -> ev;
+    llarp -> exit;
+    llarp -> handlers;
+    llarp -> link;
+    llarp -> messages;
+    llarp -> net;
+    llarp -> path;
+    llarp -> routing;
+    llarp -> util;
+}

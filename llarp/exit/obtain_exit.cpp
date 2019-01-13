@@ -1,5 +1,5 @@
-#include <link_layer.hpp>
 #include <messages/exit.hpp>
+
 #include <routing/handler.hpp>
 
 namespace llarp

@@ -15,11 +15,11 @@
 #include <cstring>
 #include <fstream>
 #include <linux/netns.hpp>
-#include <logger.hpp>
+#include <util/logger.hpp>
 #ifndef MS_REC
 #define MS_REC (16384)
 #endif
-#include "fs.hpp"
+#include <util/fs.hpp>
 
 namespace llarp
 {

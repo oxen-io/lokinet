@@ -1,12 +1,12 @@
 #ifndef LLARP_HANDLERS_TUN_HPP
 #define LLARP_HANDLERS_TUN_HPP
 
-#include <codel.hpp>
 #include <dns/server.hpp>
 #include <ev/ev.h>
 #include <ip.hpp>
 #include <net/net.hpp>
 #include <service/endpoint.hpp>
+#include <util/codel.hpp>
 #include <util/threading.hpp>
 
 namespace llarp
