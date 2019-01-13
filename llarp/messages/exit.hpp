@@ -1,6 +1,7 @@
 #ifndef LLARP_MESSAGES_EXIT_HPP
 #define LLARP_MESSAGES_EXIT_HPP
-#include <crypto.hpp>
+
+#include <crypto/crypto.hpp>
 #include <exit/policy.hpp>
 #include <routing/message.hpp>
 

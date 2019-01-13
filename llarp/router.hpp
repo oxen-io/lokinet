@@ -2,7 +2,7 @@
 #define LLARP_ROUTER_HPP
 
 #include <config.h>
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <dht.h>
 #include <establish_job.hpp>
 #include <ev/ev.h>

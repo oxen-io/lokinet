@@ -1,7 +1,7 @@
 #ifndef LLARP_RELAY_COMMIT_HPP
 #define LLARP_RELAY_COMMIT_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <encrypted_ack.hpp>
 #include <encrypted_frame.hpp>
 #include <link_message.hpp>

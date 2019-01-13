@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_HANDLER_HPP
 #define LLARP_SERVICE_HANDLER_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <path/path_types.hpp>
 #include <service/IntroSet.hpp>
 #include <util/aligned.hpp>

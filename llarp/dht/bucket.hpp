@@ -1,7 +1,7 @@
 #ifndef LLARP_DHT_BUCKET_HPP
 #define LLARP_DHT_BUCKET_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <dht/kademlia.hpp>
 #include <dht/key.hpp>
 #include <map>

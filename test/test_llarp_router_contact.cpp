@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <crypto/crypto.hpp>
 #include <router_contact.hpp>
-#include <crypto.hpp>
 
 static const byte_t DEF_VALUE[] = "unittest";
 

@@ -1,7 +1,7 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <util/threading.hpp>
 
 #include <iostream>

@@ -1,4 +1,5 @@
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
+
 #include <sodium/crypto_generichash.h>
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>

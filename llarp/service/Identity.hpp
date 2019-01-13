@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_IDENTITY_HPP
 #define LLARP_SERVICE_IDENTITY_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <service/Info.hpp>
 #include <service/IntroSet.hpp>
 #include <service/types.hpp>

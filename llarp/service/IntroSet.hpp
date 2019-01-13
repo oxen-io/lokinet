@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_INTROSET_HPP
 #define LLARP_SERVICE_INTROSET_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <pow.hpp>
 #include <service/Info.hpp>
 #include <service/Intro.hpp>

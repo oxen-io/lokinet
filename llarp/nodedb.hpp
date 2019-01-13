@@ -1,7 +1,7 @@
 #ifndef LLARP_NODEDB_HPP
 #define LLARP_NODEDB_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <router_contact.hpp>
 #include <router_id.hpp>
 #include <util/common.hpp>

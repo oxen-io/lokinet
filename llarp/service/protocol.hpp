@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_PROTOCOL_HPP
 #define LLARP_SERVICE_PROTOCOL_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <dht/message.hpp>
 #include <encrypted.hpp>
 #include <routing/message.hpp>

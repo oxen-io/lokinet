@@ -1,7 +1,7 @@
 #ifndef LLARP_PATH_HPP
 #define LLARP_PATH_HPP
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <messages/relay_commit.hpp>
 #include <messages/relay.hpp>
 #include <path/path_types.hpp>
