@@ -181,7 +181,18 @@ tun_ev_loop(void* unused)
         GetQueuedCompletionStatus(tun_event_queue, &size, &listener, &ovl, 100);
 
     if(!alert)
+    {
+      // tick listeners on io timeout, this is required to be done every tick
+      // cycle regardless of any io being done, this manages the internal state
+      // of the tun logic
+      for(const auto& tun : tun_listeners)
+      {
+        if(tun->t->tick)
+          tun->t->tick(tun->t);
+        tun->flush_write();
+      }
       continue;  // let's go at it once more
+    }
     if(listener == (ULONG_PTR)~0)
       break;
     // if we're here, then we got something interesting :>
