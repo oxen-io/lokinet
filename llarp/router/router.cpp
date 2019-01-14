@@ -1,14 +1,14 @@
-#include <router.hpp>
+#include <router/router.hpp>
 
 #include <constants/proto.hpp>
 #include <crypto/crypto.hpp>
 #include <dht/context.hpp>
-#include <link_message.hpp>
 #include <link/iwp.hpp>
 #include <link/server.hpp>
 #include <link/utp.hpp>
+#include <messages/link_message.hpp>
 #include <net/net.hpp>
-#include <rpc.hpp>
+#include <rpc/rpc.hpp>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>

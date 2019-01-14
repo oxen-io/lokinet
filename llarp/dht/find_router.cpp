@@ -1,8 +1,9 @@
-#include <dht/context.hpp>
 #include <dht/messages/findrouter.hpp>
+
+#include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <messages/dht.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 
 namespace llarp
 {

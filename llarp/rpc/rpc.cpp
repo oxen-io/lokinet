@@ -1,9 +1,11 @@
-#include <router.hpp>
-#include <rpc.hpp>
+#include <rpc/rpc.hpp>
+
+#include <router/router.hpp>
 
 #ifdef USE_ABYSS
 #include <libabyss.hpp>
 #endif
+
 namespace llarp
 {
   namespace rpc
@@ -51,7 +53,7 @@ namespace llarp
 
     struct GetServiceNodeListHandler final : public CallerHandler
     {
-      using PubkeyList_t = std::vector< llarp::PubKey >;
+      using PubkeyList_t = std::vector< PubKey >;
       using Callback_t   = std::function< void(const PubkeyList_t&, bool) >;
 
       ~GetServiceNodeListHandler()
@@ -90,7 +92,8 @@ namespace llarp
           if(key_itr->IsString())
           {
             keys.emplace_back();
-            if(!HexDecode(key_itr->GetString(), keys.back().begin(), decltype(keys)::value_type::SIZE))
+            if(!HexDecode(key_itr->GetString(), keys.back().begin(),
+                          decltype(keys)::value_type::SIZE))
             {
               keys.pop_back();
             }
@@ -110,12 +113,12 @@ namespace llarp
 
     struct CallerImpl : public ::abyss::http::JSONRPC
     {
-      llarp::Router* router;
+      Router* router;
       llarp_time_t m_NextKeyUpdate;
       const llarp_time_t KeyUpdateInterval = 1000 * 60 * 2;
       using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
 
-      CallerImpl(llarp::Router* r) : ::abyss::http::JSONRPC(), router(r)
+      CallerImpl(Router* r) : ::abyss::http::JSONRPC(), router(r)
       {
       }
 
@@ -133,7 +136,7 @@ namespace llarp
       void
       AsyncUpdatePubkeyList()
       {
-        llarp::LogInfo("Updating service node list");
+        LogInfo("Updating service node list");
         ::abyss::json::Value params;
         params.SetObject();
         QueueRPC("/get_all_service_node_keys", std::move(params),
@@ -165,11 +168,11 @@ namespace llarp
           for(const auto& pk : list)
             router->lokinetRouters.insert(std::make_pair(
                 pk.data(), std::numeric_limits< llarp_time_t >::max()));
-          llarp::LogInfo("updated service node list, we have ",
-                         router->lokinetRouters.size(), " authorized routers");
+          LogInfo("updated service node list, we have ",
+                  router->lokinetRouters.size(), " authorized routers");
         }
         else
-          llarp::LogError("service node list not updated");
+          LogError("service node list not updated");
       }
 
       ~CallerImpl()
@@ -179,8 +182,8 @@ namespace llarp
 
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
-      llarp::Router* router;
-      Handler(::abyss::httpd::ConnImpl* conn, llarp::Router* r)
+      Router* router;
+      Handler(::abyss::httpd::ConnImpl* conn, Router* r)
           : ::abyss::httpd::IRPCHandler(conn), router(r)
       {
       }
@@ -192,7 +195,7 @@ namespace llarp
       bool
       ListExitLevels(Response& resp) const
       {
-        llarp::exit::Context::TrafficStats stats;
+        exit::Context::TrafficStats stats;
         router->exitContext.CalculateExitTraffic(stats);
         auto& alloc = resp.GetAllocator();
         abyss::json::Value exits;
@@ -219,23 +222,22 @@ namespace llarp
         auto& alloc = resp.GetAllocator();
         abyss::json::Value peers;
         peers.SetArray();
-        router->ForEachPeer(
-            [&](const llarp::ILinkSession* session, bool outbound) {
-              abyss::json::Value peer;
-              peer.SetObject();
-              abyss::json::Value ident_val, addr_val;
+        router->ForEachPeer([&](const ILinkSession* session, bool outbound) {
+          abyss::json::Value peer;
+          peer.SetObject();
+          abyss::json::Value ident_val, addr_val;
 
-              auto ident = RouterID(session->GetPubKey()).ToString();
-              ident_val.SetString(ident.c_str(), alloc);
+          auto ident = RouterID(session->GetPubKey()).ToString();
+          ident_val.SetString(ident.c_str(), alloc);
 
-              auto addr = session->GetRemoteEndpoint().ToString();
-              addr_val.SetString(addr.c_str(), alloc);
+          auto addr = session->GetRemoteEndpoint().ToString();
+          addr_val.SetString(addr.c_str(), alloc);
 
-              peer.AddMember("addr", addr_val, alloc);
-              peer.AddMember("ident", ident_val, alloc);
-              peer.AddMember("outbound", abyss::json::Value(outbound), alloc);
-              peers.PushBack(peer, alloc);
-            });
+          peer.AddMember("addr", addr_val, alloc);
+          peer.AddMember("ident", ident_val, alloc);
+          peer.AddMember("outbound", abyss::json::Value(outbound), alloc);
+          peers.PushBack(peer, alloc);
+        });
         resp.AddMember("result", peers, alloc);
         return true;
       }
@@ -259,11 +261,11 @@ namespace llarp
 
     struct ReqHandlerImpl : public ::abyss::httpd::BaseReqHandler
     {
-      ReqHandlerImpl(llarp::Router* r, llarp_time_t reqtimeout)
+      ReqHandlerImpl(Router* r, llarp_time_t reqtimeout)
           : ::abyss::httpd::BaseReqHandler(reqtimeout), router(r)
       {
       }
-      llarp::Router* router;
+      Router* router;
       ::abyss::httpd::IRPCHandler*
       CreateHandler(::abyss::httpd::ConnImpl* conn)
       {
@@ -273,10 +275,10 @@ namespace llarp
 
     struct ServerImpl
     {
-      llarp::Router* router;
+      Router* router;
       ReqHandlerImpl _handler;
 
-      ServerImpl(llarp::Router* r) : router(r), _handler(r, 2000)
+      ServerImpl(Router* r) : router(r), _handler(r, 2000)
       {
       }
 
@@ -295,11 +297,11 @@ namespace llarp
       {
         uint16_t port = 0;
         auto idx      = addr.find_first_of(':');
-        llarp::Addr netaddr;
+        Addr netaddr;
         if(idx != std::string::npos)
         {
           port    = std::stoi(addr.substr(1 + idx));
-          netaddr = llarp::Addr(addr.substr(0, idx));
+          netaddr = Addr(addr.substr(0, idx));
         }
         sockaddr_in saddr;
         saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -312,7 +314,7 @@ namespace llarp
 #else
     struct ServerImpl
     {
-      ServerImpl(__attribute__((unused)) llarp::Router* r){};
+      ServerImpl(__attribute__((unused)) Router* r){};
 
       bool
       Start(__attribute__((unused)) const std::string& addr)
@@ -328,7 +330,7 @@ namespace llarp
 
     struct CallerImpl
     {
-      CallerImpl(__attribute__((unused)) llarp::Router* r)
+      CallerImpl(__attribute__((unused)) Router* r)
       {
       }
 
@@ -356,7 +358,7 @@ namespace llarp
 
 #endif
 
-    Caller::Caller(llarp::Router* r) : m_Impl(new CallerImpl(r))
+    Caller::Caller(Router* r) : m_Impl(new CallerImpl(r))
     {
     }
 
@@ -383,7 +385,7 @@ namespace llarp
       m_Impl->Tick(now);
     }
 
-    Server::Server(llarp::Router* r) : m_Impl(new ServerImpl(r))
+    Server::Server(Router* r) : m_Impl(new ServerImpl(r))
     {
     }
 

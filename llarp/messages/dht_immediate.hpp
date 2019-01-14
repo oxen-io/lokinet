@@ -2,7 +2,7 @@
 #define LLARP_MESSAGES_DHT_IMMEDIATE_HPP
 
 #include <dht/message.hpp>
-#include <link_message.hpp>
+#include <messages/link_message.hpp>
 
 #include <vector>
 

@@ -1,6 +1,6 @@
-#include <crypto/crypto.hpp>
+#include <crypto/encrypted_frame.hpp>
 
-#include <encrypted_frame.hpp>
+#include <crypto/crypto.hpp>
 #include <messages/relay_commit.hpp>
 
 #include <gtest/gtest.h>

@@ -1,7 +1,6 @@
 #ifndef LLARP_RPC_HPP
 #define LLARP_RPC_HPP
 
-#include <ev/ev.h>
 #include <util/time.hpp>
 
 #include <string>
@@ -9,6 +8,7 @@
 
 namespace llarp
 {
+  struct PubKey;
   struct Router;
 
   namespace rpc
@@ -18,7 +18,7 @@ namespace llarp
     /// jsonrpc server
     struct Server
     {
-      Server(llarp::Router* r);
+      Server(Router* r);
       ~Server();
 
       bool
@@ -37,7 +37,7 @@ namespace llarp
     /// jsonrpc caller
     struct Caller
     {
-      Caller(llarp::Router* r);
+      Caller(Router* r);
       ~Caller();
 
       /// start with jsonrpc endpoint address
@@ -50,7 +50,7 @@ namespace llarp
 
       /// test if a router is valid
       bool
-      VerifyRouter(const llarp::PubKey& pk);
+      VerifyRouter(const PubKey& pk);
 
       /// do per second tick
       void

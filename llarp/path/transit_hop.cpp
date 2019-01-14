@@ -2,7 +2,7 @@
 
 #include <dht/context.hpp>
 #include <messages/discard.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>

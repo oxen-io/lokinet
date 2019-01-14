@@ -1,4 +1,4 @@
-#include <encrypted_frame.hpp>
+#include <crypto/encrypted_frame.hpp>
 
 #include <crypto/crypto.hpp>
 #include <util/logger.hpp>

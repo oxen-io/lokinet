@@ -2,7 +2,7 @@
 
 #include <nodedb.hpp>
 #include <path/path.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 #include <util/buffer.hpp>
 
 #include <functional>

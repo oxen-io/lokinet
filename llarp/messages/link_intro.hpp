@@ -2,7 +2,7 @@
 #define LLARP_MESSAGES_LINK_INTRO_HPP
 
 #include <crypto/types.hpp>
-#include <link_message.hpp>
+#include <messages/link_message.hpp>
 #include <router_contact.hpp>
 
 namespace llarp

@@ -1,11 +1,6 @@
 digraph {
     constants -> util;
 
-    util -> constants;
-    util -> win32;
-
-    android -> linux;
-
     crypto -> constants;
     crypto -> llarp;
     crypto -> util;
@@ -28,12 +23,11 @@ digraph {
 
     ev -> net;
     ev -> util;
-    ev -> win32;
 
     exit -> crypto;
     exit -> handlers;
-    exit -> llarp;
     exit -> messages;
+    exit -> net;
     exit -> path;
     exit -> routing;
     exit -> util;
@@ -41,7 +35,6 @@ digraph {
     handlers -> dns;
     handlers -> ev;
     handlers -> exit;
-    handlers -> llarp;
     handlers -> net;
     handlers -> service;
     handlers -> util;
@@ -49,24 +42,21 @@ digraph {
     link -> constants;
     link -> crypto;
     link -> ev;
-    link -> linux;
     link -> messages;
     link -> net;
     link -> util;
 
-    linux -> util;
-
     messages -> crypto;
     messages -> dht;
     messages -> exit;
+    messages -> link;
     messages -> llarp;
     messages -> path;
     messages -> routing;
     messages -> service;
     messages -> util;
 
-    net -> android;
-    net -> llarp;
+    net -> crypto;
     net -> util;
 
     path -> crypto;
@@ -93,6 +83,8 @@ digraph {
     service -> routing;
     service -> util;
 
+    util -> constants;
+
     llarp -> constants;
     llarp -> crypto;
     llarp -> dht;
@@ -105,5 +97,6 @@ digraph {
     llarp -> net;
     llarp -> path;
     llarp -> routing;
+    llarp -> service;
     llarp -> util;
 }

@@ -1,7 +1,7 @@
 #ifndef LLARP_MESSAGES_DISCARD_HPP
 #define LLARP_MESSAGES_DISCARD_HPP
 
-#include <link_message.hpp>
+#include <messages/link_message.hpp>
 #include <routing/handler.hpp>
 #include <routing/message.hpp>
 #include <util/bencode.hpp>
@@ -61,7 +61,10 @@ namespace llarp
         version = LLARP_PROTO_VERSION;
       }
 
-      void Clear() override {}
+      void
+      Clear() override
+      {
+      }
 
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override

@@ -1,10 +1,9 @@
 #include <path/path.hpp>
 
-#include <encrypted_frame.hpp>
 #include <messages/dht.hpp>
 #include <messages/discard.hpp>
 #include <path/pathbuilder.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
 

@@ -2,7 +2,7 @@
 #include <arpa/inet.h>
 #endif
 
-#include <exit_info.hpp>
+#include <net/exit_info.hpp>
 #include <util/bencode.h>
 #include <util/mem.h>
 

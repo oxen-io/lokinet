@@ -491,12 +491,12 @@ set(LIB_SRC
   ${DNSLIB_SRC}
   ${EV_SRC}
   ${UTP_SRC}
-  llarp/address_info.cpp
   llarp/config.cpp
   llarp/context.cpp
   llarp/crypto/constants.cpp
-  llarp/crypto/crypto.cpp
   llarp/crypto/crypto_libsodium.cpp
+  llarp/crypto/crypto.cpp
+  llarp/crypto/encrypted_frame.cpp
   llarp/crypto/encrypted.cpp
   llarp/crypto/types.cpp
   llarp/dht/bucket.cpp
@@ -522,8 +522,6 @@ set(LIB_SRC
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
-  llarp/encrypted_frame.cpp
-  llarp/establish_job.cpp
   llarp/exit/close_exit.cpp
   llarp/exit/context.cpp
   llarp/exit/endpoint.cpp
@@ -534,53 +532,50 @@ set(LIB_SRC
   llarp/exit/session.cpp
   llarp/exit/transfer_traffic.cpp
   llarp/exit/update_exit.cpp
-  llarp/exit_info.cpp
   llarp/handlers/exit.cpp
   llarp/handlers/null.cpp
   llarp/handlers/tun.cpp
-  llarp/ip.cpp
   llarp/link/curvecp.cpp
   llarp/link/encoder.cpp
   llarp/link/iwp.cpp
   llarp/link/server.cpp
   llarp/link/session.cpp
   llarp/link/utp.cpp
-  llarp/link_intro.cpp
-  llarp/link_message.cpp
   llarp/messages/dht.cpp
   llarp/messages/dht_immediate.cpp
   llarp/messages/discard.cpp
   llarp/messages/exit.cpp
   llarp/messages/link_intro.cpp
+  llarp/messages/link_message.cpp
   llarp/messages/path_confirm.cpp
   llarp/messages/path_latency.cpp
   llarp/messages/path_transfer.cpp
   llarp/messages/relay.cpp
   llarp/messages/relay_commit.cpp
   llarp/messages/transfer_traffic.cpp
+  llarp/net/address_info.cpp
+  llarp/net/exit_info.cpp
+  llarp/net/ip.cpp
   llarp/net/net_int.cpp
   llarp/nodedb.cpp
   llarp/path/path.cpp
   llarp/path/path_types.cpp
   llarp/path/pathbuilder.cpp
   llarp/path/pathset.cpp
+  llarp/path/transit_hop.cpp
   llarp/pow.cpp
   llarp/profiling.cpp
-  llarp/proofofwork.cpp
-  llarp/relay_commit.cpp
-  llarp/relay_up_down.cpp
-  llarp/router.cpp
+  llarp/router/router.cpp
   llarp/router_contact.cpp
   llarp/router_id.cpp
   llarp/routing/dht_message.cpp
   llarp/routing/handler.cpp
-  llarp/routing/message.cpp
   llarp/routing/message_parser.cpp
+  llarp/routing/message.cpp
   llarp/routing/path_confirm.cpp
   llarp/routing/path_latency.cpp
   llarp/routing/path_transfer.cpp
-  llarp/routing_endpoint.cpp
-  llarp/rpc.cpp
+  llarp/rpc/rpc.cpp
   llarp/service/Identity.cpp
   llarp/service/Intro.cpp
   llarp/service/IntroSet.cpp
@@ -596,7 +591,6 @@ set(LIB_SRC
   llarp/service/types.cpp
   llarp/service/vanity.cpp
   llarp/testnet.c
-  llarp/transit_hop.cpp
 )
 
 set(RC_SRC
