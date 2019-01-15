@@ -1,8 +1,11 @@
-#include <gtest/gtest.h>
 #include <libabyss.hpp>
+
+#include <crypto/crypto.hpp>
 #include <ev/ev.h>
 #include <net/net.hpp>
 #include <util/threading.hpp>
+
+#include <gtest/gtest.h>
 
 struct AbyssTestBase : public ::testing::Test
 {
