@@ -23,8 +23,8 @@ namespace llarp
   bool
   SecretKey::LoadFromFile(const char* fname)
   {
-    std::ifstream f;
-    f.open(fname, std::ios::binary);
+    std::ifstream f(fname, std::ios::in | std::ios::binary);
+
     if(!f.is_open())
     {
       return false;
@@ -37,7 +37,7 @@ namespace llarp
     if(sz == size())
     {
       // is raw buffer
-      std::copy_n(std::istream_iterator< byte_t >(f), sz, begin());
+      std::copy_n(std::istreambuf_iterator< char >(f), sz, begin());
       return true;
     }
     std::array< byte_t, 128 > tmp;
