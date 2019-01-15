@@ -1,5 +1,5 @@
 #include <link/iwp_internal.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 
 namespace llarp
 {

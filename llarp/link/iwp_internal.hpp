@@ -1,11 +1,11 @@
 #ifndef LLARP_LINK_IWP_INTERNAL_HPP
 #define LLARP_LINK_IWP_INTERNAL_HPP
 
+#include <constants/link_layer.hpp>
 #include <crypto/crypto.hpp>
 #include <crypto/types.hpp>
 #include <link/server.hpp>
 #include <link/session.hpp>
-#include <link_layer.hpp>
 
 #include <bitset>
 #include <deque>

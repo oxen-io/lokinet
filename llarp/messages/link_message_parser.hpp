@@ -1,10 +1,10 @@
 #ifndef LLARP_LINK_MESSAGE_PARSER_HPP
 #define LLARP_LINK_MESSAGE_PARSER_HPP
 
-#include <link_message.hpp>
 #include <messages/discard.hpp>
 #include <messages/dht_immediate.hpp>
 #include <messages/link_intro.hpp>
+#include <messages/link_message.hpp>
 #include <messages/relay.hpp>
 #include <messages/relay_commit.hpp>
 

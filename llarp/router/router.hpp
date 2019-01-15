@@ -2,21 +2,19 @@
 #define LLARP_ROUTER_HPP
 
 #include <config.h>
+#include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
-#include <dht.h>
-#include <establish_job.hpp>
 #include <ev/ev.h>
 #include <exit/context.hpp>
 #include <handlers/tun.hpp>
-#include <link_layer.hpp>
-#include <link_message_parser.hpp>
+#include <messages/link_message_parser.hpp>
 #include <nodedb.hpp>
 #include <path/path.hpp>
 #include <profiling.hpp>
 #include <router_contact.hpp>
 #include <routing/handler.hpp>
 #include <routing/message_parser.hpp>
-#include <rpc.hpp>
+#include <rpc/rpc.hpp>
 #include <service/context.hpp>
 #include <util/buffer.h>
 #include <util/fs.hpp>
@@ -32,7 +30,8 @@
 #include <unordered_map>
 #include <set>
 
-namespace llarp {
+namespace llarp
+{
   struct Crypto;
 }
 

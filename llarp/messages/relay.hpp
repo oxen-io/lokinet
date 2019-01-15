@@ -1,9 +1,9 @@
 #ifndef LLARP_MESSAGES_RELAY_HPP
 #define LLARP_MESSAGES_RELAY_HPP
 
+#include <crypto/encrypted.hpp>
 #include <crypto/types.hpp>
-#include <encrypted.hpp>
-#include <link_message.hpp>
+#include <messages/link_message.hpp>
 #include <path/path_types.hpp>
 
 #include <vector>

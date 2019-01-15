@@ -1,7 +1,8 @@
-#include <gtest/gtest.h>
-
 #include <exit/context.hpp>
-#include <router.hpp>
+
+#include <router/router.hpp>
+
+#include <gtest/gtest.h>
 
 struct ExitTest : public ::testing::Test
 {

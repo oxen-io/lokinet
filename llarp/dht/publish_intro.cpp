@@ -2,7 +2,7 @@
 #include <dht/messages/pubintro.hpp>
 #include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 
 namespace llarp
 {

@@ -10,7 +10,7 @@
 
 #include <dns/dns.hpp>
 #include <ev/ev.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 
 namespace llarp
 {

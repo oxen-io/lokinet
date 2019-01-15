@@ -1,7 +1,7 @@
-#ifndef LLARP_ENCCRYPTED_HPP
-#define LLARP_ENCCRYPTED_HPP
+#ifndef LLARP_ENCRYPTED_HPP
+#define LLARP_ENCRYPTED_HPP
 
-#include <link_layer.hpp>
+#include <constants/link_layer.hpp>
 #include <util/aligned.hpp>
 #include <util/bencode.h>
 #include <util/buffer.h>

@@ -76,6 +76,8 @@ typedef struct ip_hdr
 
 #include <memory>
 
+struct llarp_ev_loop;
+
 namespace llarp
 {
   namespace net

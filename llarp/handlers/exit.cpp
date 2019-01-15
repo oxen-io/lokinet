@@ -2,7 +2,7 @@
 
 #include <dns/dns.hpp>
 #include <net/net.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 #include <util/str.hpp>
 
 #include <cassert>

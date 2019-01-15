@@ -6,7 +6,7 @@
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
 #include <nodedb.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 #include <util/logger.h>
 
 #include <getopt.h>

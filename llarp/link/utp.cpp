@@ -3,7 +3,7 @@
 #include <link/server.hpp>
 #include <messages/discard.hpp>
 #include <messages/link_intro.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
 

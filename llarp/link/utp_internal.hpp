@@ -1,8 +1,8 @@
 #ifndef LLARP_LINK_UTP_INTERNAL_HPP
 #define LLARP_LINK_UTP_INTERNAL_HPP
 
+#include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
-#include <link_layer.hpp>
 #include <link/utp.hpp>
 #include <util/aligned.hpp>
 #include <utp.h>

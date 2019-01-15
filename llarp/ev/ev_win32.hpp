@@ -1,11 +1,13 @@
 #ifndef EV_WIN32_HPP
 #define EV_WIN32_HPP
 
-#include <buffer.h>
 #include <ev/ev.hpp>
-#include <util/logger.hpp>
+
 #include <net/net.h>
 #include <net/net.hpp>
+#include <util/buffer.h>
+#include <util/logger.hpp>
+
 #include <windows.h>
 #include <process.h>
 

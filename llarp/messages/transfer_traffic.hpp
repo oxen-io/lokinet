@@ -1,7 +1,7 @@
 #ifndef LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
 #define LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
 
-#include <encrypted.hpp>
+#include <crypto/encrypted.hpp>
 #include <routing/message.hpp>
 
 #include <vector>
@@ -18,7 +18,8 @@ namespace llarp
       std::vector< llarp::Encrypted< MaxExitMTU + ExitOverhead > > X;
       size_t _size = 0;
 
-      void Clear() override
+      void
+      Clear() override
       {
         X.clear();
         _size = 0;

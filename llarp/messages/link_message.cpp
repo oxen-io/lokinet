@@ -1,4 +1,4 @@
-#include <link_message_parser.hpp>
+#include <messages/link_message_parser.hpp>
 
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
