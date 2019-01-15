@@ -609,13 +609,17 @@ set(DNS_SRC
 )
 
 set(TEST_SRC
+  # helpers
+  test/main.cpp
+  test/test_util.cpp
+  # actual test cases
+  test/crypto/test_llarp_crypto_types.cpp
   test/crypto/test_llarp_crypto.cpp
   test/dht/test_llarp_dht_key.cpp
   test/dht/test_llarp_dht.cpp
   test/dns/test_llarp_dns_dns.cpp
   test/exit/test_llarp_exit_context.cpp
   test/link/test_llarp_link.cpp
-  test/main.cpp
   test/net/test_llarp_net_inaddr.cpp
   test/net/test_llarp_net.cpp
   test/routing/llarp_routing_transfer_traffic.cpp
@@ -702,7 +706,10 @@ else()
   add_executable(${TEST_EXE} ${TEST_SRC} llarp/version.rc)
   add_executable(${EXE} ${EXE_SRC} llarp/version.rc)
 endif(NOT WIN32)
+
+  target_include_directories(${TEST_EXE} PRIVATE test)
   target_include_directories(${TEST_EXE} PRIVATE ${GTEST_DIR}/include ${GTEST_DIR})
+
   install(TARGETS ${EXE} RUNTIME DESTINATION bin)
   if(WIN32)
     install(PROGRAMS ${CMAKE_SOURCE_DIR}/lokinet-bootstrap.exe DESTINATION bin)

@@ -29,24 +29,24 @@ namespace llarp
     {
       return false;
     }
-    size_t sz = 0;
+
     f.seekg(0, std::ios::end);
-    sz = f.tellg();
+    const size_t sz = f.tellg();
     f.seekg(0, std::ios::beg);
+
     if(sz == size())
     {
       // is raw buffer
-      std::copy(std::istream_iterator< byte_t >(f),
-                std::istream_iterator< byte_t >(), begin());
+      std::copy_n(std::istream_iterator< byte_t >(f), sz, begin());
       return true;
     }
-    byte_t tmp[128];
-    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, 128 > tmp;
+    llarp_buffer_t buf = llarp::Buffer(tmp);
     if(sz > sizeof(tmp))
     {
       return false;
     }
-    f.read((char*)tmp, sz);
+    f.read(reinterpret_cast< char* >(tmp.data()), sz);
     return BDecode(&buf);
   }
 
