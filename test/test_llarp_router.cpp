@@ -5,48 +5,8 @@
 #include <functional>
 #include <random>
 
+#include <test_util.hpp>
 #include <gtest/gtest.h>
-
-std::string
-randFilename()
-{
-  static const char alphabet[] = "abcdefghijklmnopqrstuvwxyz";
-
-  std::random_device rd;
-  std::uniform_int_distribution< size_t > dist{0, sizeof(alphabet) - 2};
-
-  std::string filename;
-  for(size_t i = 0; i < 5; ++i)
-  {
-    filename.push_back(alphabet[dist(rd)]);
-  }
-
-  filename.push_back('.');
-
-  for(size_t i = 0; i < 5; ++i)
-  {
-    filename.push_back(alphabet[dist(rd)]);
-  }
-
-  return filename;
-}
-
-struct FileGuard
-{
-  const fs::path &p;
-
-  explicit FileGuard(const fs::path &_p) : p(_p)
-  {
-  }
-
-  ~FileGuard()
-  {
-    if(fs::exists(fs::status(p)))
-    {
-      fs::remove(p);
-    }
-  }
-};
 
 using FindOrCreateFunc = std::function< bool(llarp::Crypto *, const fs::path &,
                                              llarp::SecretKey &) >;
@@ -69,10 +29,10 @@ TEST_P(FindOrCreate, find_file_missing)
 {
   // File missing. Should create a new file
   llarp::SecretKey key;
-  fs::path p = randFilename();
+  fs::path p = llarp::test::randFilename();
   ASSERT_FALSE(fs::exists(fs::status(p)));
 
-  FileGuard guard(p);
+  llarp::test::FileGuard guard(p);
 
   ASSERT_TRUE(GetParam()(&crypto, p, key));
   ASSERT_TRUE(fs::exists(fs::status(p)));
@@ -83,14 +43,14 @@ TEST_P(FindOrCreate, find_file_empty)
 {
   // File empty.
   llarp::SecretKey key;
-  fs::path p = randFilename();
+  fs::path p = llarp::test::randFilename();
   ASSERT_FALSE(fs::exists(fs::status(p)));
 
   std::fstream f;
   f.open(p.string(), std::ios::out);
   f.close();
 
-  FileGuard guard(p);
+  llarp::test::FileGuard guard(p);
 
   ASSERT_FALSE(GetParam()(&crypto, p, key));
   // Verify we didn't delete an invalid file
@@ -101,7 +61,7 @@ TEST_P(FindOrCreate, happy_path)
 {
   // happy path.
   llarp::SecretKey key;
-  fs::path p = randFilename();
+  fs::path p = llarp::test::randFilename();
   ASSERT_FALSE(fs::exists(fs::status(p)));
 
   std::ofstream f;
@@ -109,7 +69,7 @@ TEST_P(FindOrCreate, happy_path)
   std::fill_n(std::ostream_iterator< byte_t >(f), key.size(), 0x20);
   f.close();
 
-  FileGuard guard(p);
+  llarp::test::FileGuard guard(p);
 
   ASSERT_TRUE(GetParam()(&crypto, p, key));
   // Verify we didn't delete the file
