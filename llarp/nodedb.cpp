@@ -1,6 +1,6 @@
 #include <nodedb.hpp>
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/encode.hpp>

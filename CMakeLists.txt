@@ -493,8 +493,10 @@ set(LIB_SRC
   llarp/codel.cpp
   llarp/config.cpp
   llarp/context.cpp
-  llarp/crypto.cpp
-  llarp/crypto_libsodium.cpp
+  llarp/crypto/constants.cpp
+  llarp/crypto/crypto.cpp
+  llarp/crypto/crypto_libsodium.cpp
+  llarp/crypto/types.cpp
   llarp/dht.cpp
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
@@ -614,6 +616,7 @@ set(DNS_SRC
 )
 
 set(TEST_SRC
+  test/crypto/test_llarp_crypto.cpp
   test/dht/test_llarp_dht_key.cpp
   test/dht/test_llarp_dht.cpp
   test/dns/test_llarp_dns_dns.cpp
@@ -626,12 +629,11 @@ set(TEST_SRC
   test/routing/test_llarp_routing_obtainexitmessage.cpp
   test/service/test_llarp_service_address.cpp
   test/service/test_llarp_service_identity.cpp
-  test/test_llarp_crypto.cpp
   test/test_llarp_dns.cpp
   test/test_llarp_dnsd.cpp
   test/test_llarp_encrypted_frame.cpp
-  test/test_llarp_router.cpp
   test/test_llarp_router_contact.cpp
+  test/test_llarp_router.cpp
   test/util/test_llarp_util_aligned.cpp
   test/util/test_llarp_util_bencode.cpp
   test/util/test_llarp_util_encode.cpp

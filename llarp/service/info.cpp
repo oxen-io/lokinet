@@ -1,5 +1,6 @@
 #include <service/Info.hpp>
 
+#include <crypto/crypto.hpp>
 #include <service/address.hpp>
 #include <util/buffer.hpp>
 
@@ -11,6 +12,13 @@ namespace llarp
 {
   namespace service
   {
+    bool
+    ServiceInfo::Verify(llarp::Crypto* crypto, llarp_buffer_t payload,
+                        const Signature& sig) const
+    {
+      return crypto->verify(signkey, payload, sig);
+    }
+
     bool
     ServiceInfo::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
     {

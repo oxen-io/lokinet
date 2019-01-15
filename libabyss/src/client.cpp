@@ -1,6 +1,6 @@
 #include <abyss/client.hpp>
 #include <abyss/http.hpp>
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
 

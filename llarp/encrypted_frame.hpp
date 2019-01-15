@@ -1,7 +1,7 @@
 #ifndef LLARP_ENCRYPTED_FRAME_HPP
 #define LLARP_ENCRYPTED_FRAME_HPP
 
-#include <crypto.hpp>
+#include <crypto/types.hpp>
 #include <encrypted.hpp>
 #include <util/buffer.hpp>
 #include <util/mem.h>
@@ -9,6 +9,8 @@
 
 namespace llarp
 {
+  struct Crypto;
+
   static constexpr size_t EncryptedFrameOverheadSize =
       PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE;
   static constexpr size_t EncryptedFrameBodySize = 512;
@@ -85,8 +87,7 @@ namespace llarp
       otherKey = other;
       if(buf.sz > EncryptedFrameBodySize)
         return;
-      memcpy(frame.data() + PUBKEYSIZE + TUNNONCESIZE + SHORTHASHSIZE, buf.base,
-             buf.sz);
+      memcpy(frame.data() + EncryptedFrameOverheadSize, buf.base, buf.sz);
       user = u;
       llarp_threadpool_queue_job(worker, {this, &Encrypt});
     }

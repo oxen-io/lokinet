@@ -3,8 +3,9 @@
 
 #include <address_info.hpp>
 #include <constants/version.hpp>
-#include <crypto.hpp>
+#include <crypto/types.hpp>
 #include <exit_info.hpp>
+#include <util/aligned.hpp>
 #include <util/bencode.hpp>
 
 #include <vector>
@@ -14,6 +15,8 @@
 
 namespace llarp
 {
+  struct Crypto;
+
   /// NetID
   struct NetID final : public AlignedBuffer< 8 >
   {

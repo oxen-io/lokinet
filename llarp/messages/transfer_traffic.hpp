@@ -1,7 +1,6 @@
 #ifndef LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
 #define LLARP_MESSAGES_TRANSFER_TRAFFIC_HPP
 
-#include <crypto.hpp>
 #include <encrypted.hpp>
 #include <routing/message.hpp>
 

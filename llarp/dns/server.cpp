@@ -1,5 +1,7 @@
 #include <dns/server.hpp>
 
+#include <crypto/crypto.hpp>
+
 namespace llarp
 {
   namespace dns

@@ -1,7 +1,7 @@
 #include <router.hpp>
 
 #include <constants/proto.hpp>
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <dht/context.hpp>
 #include <link_message.hpp>
 #include <link/iwp.hpp>

@@ -1,12 +1,10 @@
 #ifndef LLARP_CRYPTO_HPP
 #define LLARP_CRYPTO_HPP
 
-#include <router_id.hpp>
-#include <util/aligned.hpp>
+#include <crypto/constants.hpp>
+#include <crypto/types.hpp>
+
 #include <util/buffer.h>
-#include <util/common.hpp>
-#include <util/mem.h>
-#include <util/threadpool.h>
 
 #include <functional>
 #include <stdbool.h>
@@ -19,123 +17,8 @@
  * potentially allow libssl support in the future
  */
 
-static constexpr uint32_t PUBKEYSIZE    = 32;
-static constexpr uint32_t SECKEYSIZE    = 64;
-static constexpr uint32_t NONCESIZE     = 24;
-static constexpr uint32_t SHAREDKEYSIZE = 32;
-static constexpr uint32_t HASHSIZE      = 64;
-static constexpr uint32_t SHORTHASHSIZE = 32;
-static constexpr uint32_t HMACSECSIZE   = 32;
-static constexpr uint32_t SIGSIZE       = 64;
-static constexpr uint32_t TUNNONCESIZE  = 32;
-static constexpr uint32_t HMACSIZE      = 32;
-static constexpr uint32_t PATHIDSIZE    = 16;
-
-#include <libntrup/ntru.h>
-
-#define PQ_CIPHERTEXTSIZE crypto_kem_CIPHERTEXTBYTES
-#define PQ_PUBKEYSIZE crypto_kem_PUBLICKEYBYTES
-#define PQ_SECRETKEYSIZE crypto_kem_SECRETKEYBYTES
-#define PQ_KEYPAIRSIZE (PQ_SECRETKEYSIZE + PQ_PUBKEYSIZE)
-
 namespace llarp
 {
-  using SharedSecret     = AlignedBuffer< SHAREDKEYSIZE >;
-  using KeyExchangeNonce = AlignedBuffer< 32 >;
-
-  struct PubKey final : public AlignedBuffer< PUBKEYSIZE >
-  {
-    PubKey() : AlignedBuffer< SIZE >()
-    {
-    }
-
-    explicit PubKey(const byte_t *ptr) : AlignedBuffer< SIZE >(ptr)
-    {
-    }
-
-    explicit PubKey(const Data &data) : AlignedBuffer< SIZE >(data)
-    {
-    }
-
-    explicit PubKey(const AlignedBuffer< SIZE > &other)
-        : AlignedBuffer< SIZE >(other)
-    {
-    }
-
-    std::string
-    ToString() const;
-
-    bool
-    FromString(const std::string &str);
-
-    friend std::ostream &
-    operator<<(std::ostream &out, const PubKey &k)
-    {
-      return out << k.ToString();
-    }
-
-    operator RouterID() const
-    {
-      return RouterID(as_array());
-    }
-
-    PubKey &
-    operator=(const byte_t *ptr)
-    {
-      std::copy(ptr, ptr + SIZE, begin());
-      return *this;
-    }
-  };
-
-  struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
-  {
-    SecretKey() : AlignedBuffer< SECKEYSIZE >(){};
-
-    explicit SecretKey(const SecretKey &k) : AlignedBuffer< SECKEYSIZE >(k)
-    {
-    }
-
-    explicit SecretKey(const byte_t *ptr) : AlignedBuffer< SECKEYSIZE >(ptr)
-    {
-    }
-
-    friend std::ostream &
-    operator<<(std::ostream &out, const SecretKey &)
-    {
-      // make sure we never print out secret keys
-      return out << "[secretkey]";
-    }
-
-    PubKey
-    toPublic() const
-    {
-      return PubKey(data() + 32);
-    }
-
-    bool
-    LoadFromFile(const char *fname);
-
-    bool
-    SaveToFile(const char *fname) const;
-
-    SecretKey &
-    operator=(const byte_t *ptr)
-    {
-      std::copy(ptr, ptr + SIZE, begin());
-      return *this;
-    }
-  };
-
-  using ShortHash   = AlignedBuffer< SHORTHASHSIZE >;
-  using Signature   = AlignedBuffer< SIGSIZE >;
-  using TunnelNonce = AlignedBuffer< TUNNONCESIZE >;
-  using SymmNonce   = AlignedBuffer< NONCESIZE >;
-  using SymmKey     = AlignedBuffer< 32 >;
-
-  using PQCipherBlock = AlignedBuffer< PQ_CIPHERTEXTSIZE + 1 >;
-  using PQPubKey      = AlignedBuffer< PQ_PUBKEYSIZE >;
-  using PQKeyPair     = AlignedBuffer< PQ_KEYPAIRSIZE >;
-
   /// label functors
 
   /// PKE(result, publickey, secretkey, nonce)

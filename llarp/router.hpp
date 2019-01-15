@@ -2,7 +2,7 @@
 #define LLARP_ROUTER_HPP
 
 #include <config.h>
-#include <crypto.hpp>
+#include <crypto/types.hpp>
 #include <dht.h>
 #include <establish_job.hpp>
 #include <ev/ev.h>
@@ -31,6 +31,10 @@
 #include <vector>
 #include <unordered_map>
 #include <set>
+
+namespace llarp {
+  struct Crypto;
+}
 
 bool
 llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &fpath,

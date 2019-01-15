@@ -1,4 +1,5 @@
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
+
 #include <sodium/crypto_generichash.h>
 #include <sodium/crypto_sign.h>
 #include <sodium/crypto_scalarmult.h>
@@ -41,15 +42,14 @@ namespace llarp
     {
       llarp::SharedSecret shared;
       crypto_generichash_state h;
-      const size_t outsz = SHAREDKEYSIZE;
 
       if(crypto_scalarmult_curve25519(shared.data(), usSec.data(), themPub))
         return false;
-      crypto_generichash_blake2b_init(&h, nullptr, 0U, outsz);
+      crypto_generichash_blake2b_init(&h, nullptr, 0U, shared.size());
       crypto_generichash_blake2b_update(&h, client_pk.data(), 32);
       crypto_generichash_blake2b_update(&h, server_pk.data(), 32);
       crypto_generichash_blake2b_update(&h, shared.data(), 32);
-      crypto_generichash_blake2b_final(&h, out.data(), outsz);
+      crypto_generichash_blake2b_final(&h, out.data(), shared.size());
       return true;
     }
 

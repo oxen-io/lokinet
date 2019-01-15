@@ -1,6 +1,6 @@
 #include <encrypted_frame.hpp>
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <util/logger.hpp>
 #include <util/mem.hpp>
 

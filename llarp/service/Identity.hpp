@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_IDENTITY_HPP
 #define LLARP_SERVICE_IDENTITY_HPP
 
-#include <crypto.hpp>
+#include <crypto/types.hpp>
 #include <service/Info.hpp>
 #include <service/IntroSet.hpp>
 #include <service/types.hpp>
@@ -9,6 +9,8 @@
 
 namespace llarp
 {
+  struct Crypto;
+
   namespace service
   {
     // private keys
