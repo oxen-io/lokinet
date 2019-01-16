@@ -55,5 +55,5 @@ namespace llarp
       latency   = 0;
       expiresAt = 0;
     }
-  }
-}
+  }  // namespace service
+}  // namespace llarp
