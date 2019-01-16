@@ -286,17 +286,33 @@ namespace llarp
     setup()
     {
       llarp::LogDebug("set up tunif");
-      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, TUNTAP_ID_ANY) == -1)
+
+      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
+      {
+        llarp::LogWarn("Can't set tuntap to tunnel mode");
         return false;
+      }
 
       if(tuntap_up(tunif) == -1)
+      {
+        llarp::LogWarn("Can't bring up tuntap");
         return false;
-      if(tuntap_set_ifname(tunif, t->ifname) == -1)
-        return false;
-      llarp::LogInfo("set ", tunif->if_name, " to use address ", t->ifaddr);
+      }
 
-      if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
+      if(tuntap_set_ifname(tunif, t->ifname) == -1)
+      {
+        llarp::LogInfo("Can't set tun interface name to ", tunif->if_name);
         return false;
+      }
+
+      // currently trying to set
+      llarp::LogInfo("setting ", tunif->if_name, " to use address ", t->ifaddr);
+      if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
+      {
+        llarp::LogWarn("Can't set tuntap ip on ", tunif->if_name, " to ",
+                       t->ifaddr, " netmask ", t->netmask);
+        return false;
+      }
       fd = tunif->tun_fd;
       return fd != -1;
     }
@@ -370,6 +386,7 @@ struct llarp_kqueue_loop : public llarp_ev_loop
     llarp::tun* t = new llarp::tun(tun, this);
     if(t->setup())
       return t;
+    llarp::LogWarn("Could not set up tun");
     delete t;
     return nullptr;
   }
@@ -432,13 +449,11 @@ struct llarp_kqueue_loop : public llarp_ev_loop
         llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
         if(ev)
         {
+          if(events[idx].filter & EVFILT_WRITE)
+            ev->flush_write_buffers(events[idx].data);
           if(events[idx].filter & EVFILT_READ)
             ev->read(readbuf,
                      std::min(sizeof(readbuf), size_t(events[idx].data)));
-          if(events[idx].filter & EVFILT_WRITE)
-          {
-            ev->flush_write_buffers(events[idx].data);
-          }
         }
         ++idx;
       }
