@@ -150,6 +150,7 @@ main(int argc, char *argv[])
     fs::path basepath = homedir / fs::path(".lokinet");
     fs::path fpath    = basepath / "lokinet.ini";
 
+    llarp::LogDebug("Find or create ", basepath.string());
     std::error_code ec;
     // These paths are guaranteed to exist - $APPDATA or $HOME
     // so only create .lokinet/*
@@ -170,8 +171,12 @@ main(int argc, char *argv[])
   }
 
   if(genconfigOnly)
+  {
     return 0;
+  }
 
+  // this is important, can downgrade from Info though
+  llarp::LogInfo("Using config file: ", conffname);
   ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
   int code = 1;
   if(ctx)
