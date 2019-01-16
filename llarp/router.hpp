@@ -153,6 +153,9 @@ namespace llarp
     bool
     CreateDefaultHiddenService();
 
+    bool
+    ShouldCreateDefaultHiddenService();
+
     const std::string DefaultRPCBindAddr = "127.0.0.1:1190";
     bool enableRPCServer                 = true;
     std::unique_ptr< llarp::rpc::Server > rpcServer;
