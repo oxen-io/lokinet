@@ -42,11 +42,11 @@ LLARP - Low Latency Anon Routing Protocol
 	network level (IPv4/IPv6) tunnel broker for both "hidden services" and
 	communication back to "the clearnet" (the normal internet). Both hidden service
 	and clearnet communication MUST permit both outbound and inbound traffic on the
-	network level without any NAT (expect for IPv4 in which NAT is permitted due to
+	network level without any NAT (except for IPv4 in which NAT is permitted due to
 	lack of address availability). 
 	
 	
-	In short We want to permit both anonymous exit and entry network level traffic
+	In short we want to permit both anonymous exit and entry network level traffic
 	between LLARP enabled networks and the internet.
 	
 	
