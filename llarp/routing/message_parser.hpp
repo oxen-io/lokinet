@@ -49,9 +49,9 @@ namespace llarp
         CloseExitMessage C;
       };
 
-      IMessage * msg = nullptr;
+      IMessage* msg = nullptr;
       MessageHolder m_Holder;
     };
-  }
-}
+  }  // namespace routing
+}  // namespace llarp
 #endif

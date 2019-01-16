@@ -55,6 +55,8 @@ namespace llarp
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
+      // Name won't be set because we need to read the config before we can read
+      // the keyfile
       if(k == "exit-node")
       {
         llarp::RouterID exitRouter;
@@ -82,7 +84,7 @@ namespace llarp
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_LocalResolverAddr = llarp::Addr(resolverAddr, dnsport);
-        llarp::LogInfo(Name(), " local dns set to ", m_LocalResolverAddr);
+        llarp::LogInfo(Name(), " binding DNS server to ", m_LocalResolverAddr);
       }
       if(k == "upstream-dns")
       {
@@ -95,7 +97,7 @@ namespace llarp
           dnsport      = std::atoi(v.substr(pos + 1).c_str());
         }
         m_UpstreamResolvers.emplace_back(resolverAddr, dnsport);
-        llarp::LogInfo(Name(), " adding upstream dns set to ", resolverAddr,
+        llarp::LogInfo(Name(), " adding upstream DNS server ", resolverAddr,
                        ":", dnsport);
       }
       if(k == "mapaddr")
@@ -360,7 +362,10 @@ namespace llarp
     TunEndpoint::Start()
     {
       if(!Endpoint::Start())
+      {
+        llarp::LogWarn("Couldn't start endpoint");
         return false;
+      }
       return SetupNetworking();
     }
 
@@ -376,7 +381,9 @@ namespace llarp
     {
       if(!llarp_ev_add_tun(EndpointNetLoop(), &tunif))
       {
-        llarp::LogError(Name(), " failed to set up tun interface");
+        llarp::LogError(Name(),
+                        " failed to set up tun interface: ", tunif.ifaddr,
+                        " on ", tunif.ifname);
         return false;
       }
 

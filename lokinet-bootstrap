@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # this shell script will be replaced by a proper program in the future (probably)
 #
-
+# from https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m' # No Color

@@ -343,8 +343,8 @@ namespace tl
     using enable_assign_forward = detail::enable_if_t<
         !std::is_same< optional< T >, detail::decay_t< U > >::value
         && !detail::conjunction<
-            std::is_scalar< T >,
-            std::is_same< T, detail::decay_t< U > > >::value
+               std::is_scalar< T >,
+               std::is_same< T, detail::decay_t< U > > >::value
         && std::is_constructible< T, U >::value
         && std::is_assignable< T &, U >::value >;
 
@@ -465,7 +465,7 @@ namespace tl
                           0))::value &&detail::swap_adl_tests::
                            is_std_swap_noexcept< T >::value)
                       || (!decltype(detail::swap_adl_tests::uses_std< T, U >(
-                          0))::value &&detail::swap_adl_tests::
+                             0))::value &&detail::swap_adl_tests::
                               is_adl_swap_noexcept< T, U >::value)) >
     {
     };
