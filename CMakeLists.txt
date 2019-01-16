@@ -504,21 +504,15 @@ set(LIB_SRC
   llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
   llarp/dht/dht.cpp
-  llarp/dht/find_intro.cpp
-  llarp/dht/find_router.cpp
-  llarp/dht/got_intro.cpp
-  llarp/dht/got_router.cpp
   llarp/dht/kademlia.cpp
   llarp/dht/key.cpp
   llarp/dht/message.cpp
-  llarp/dht/messages/all.cpp
   llarp/dht/messages/findintro.cpp
   llarp/dht/messages/findrouter.cpp
   llarp/dht/messages/gotintro.cpp
   llarp/dht/messages/gotrouter.cpp
   llarp/dht/messages/pubintro.cpp
   llarp/dht/node.cpp
-  llarp/dht/publish_intro.cpp
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp

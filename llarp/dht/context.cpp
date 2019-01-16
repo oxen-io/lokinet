@@ -1,6 +1,9 @@
 #include <dht/context.hpp>
 
+#include <dht/messages/findrouter.hpp>
+#include <dht/messages/gotintro.hpp>
 #include <dht/messages/gotrouter.hpp>
+#include <dht/messages/pubintro.hpp>
 #include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
 #include <router/router.hpp>
@@ -270,7 +273,7 @@ namespace llarp
       ourKey   = us;
       nodes    = new Bucket< RCNode >(ourKey);
       services = new Bucket< ISNode >(ourKey);
-      llarp::LogDebug("intialize dht with key ", ourKey);
+      llarp::LogDebug("initialize dht with key ", ourKey);
       // start exploring
 
       r->logic->call_later(
@@ -452,7 +455,7 @@ namespace llarp
         if(I.A != introset.A)
         {
           llarp::LogWarn(
-              "publish introset acknoledgement acked a different service");
+              "publish introset acknowledgement acked a different service");
           return false;
         }
         return true;

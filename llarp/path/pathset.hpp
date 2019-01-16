@@ -1,7 +1,6 @@
 #ifndef LLARP_PATHSET_HPP
 #define LLARP_PATHSET_HPP
 
-#include <dht/messages/all.hpp>
 #include <path/path_types.hpp>
 #include <router_id.hpp>
 #include <routing/message.hpp>
@@ -18,10 +17,13 @@ struct llarp_nodedb;
 
 namespace llarp
 {
+  struct RouterContact;
+
   namespace dht
   {
     struct GotIntroMessage;
-  }
+    struct GotRouterMessage;
+  }  // namespace dht
 
   namespace path
   {
@@ -34,12 +36,12 @@ namespace llarp
       ePathExpired
     };
 
-    /// the role of this path can fuffill
+    /// the role of this path can fulfill
     using PathRole = int;
 
     /// capable of any role
     constexpr PathRole ePathRoleAny = 0;
-    /// outbound hs traffic capabale
+    /// outbound hs traffic capable
     constexpr PathRole ePathRoleOutboundHS = (1 << 0);
     /// inbound hs traffic capable
     constexpr PathRole ePathRoleInboundHS = (1 << 1);

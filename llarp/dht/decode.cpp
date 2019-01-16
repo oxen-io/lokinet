@@ -1,5 +1,10 @@
 #include <dht/context.hpp>
-#include <dht/messages/all.hpp>
+
+#include <dht/messages/findintro.hpp>
+#include <dht/messages/findrouter.hpp>
+#include <dht/messages/gotintro.hpp>
+#include <dht/messages/gotrouter.hpp>
+#include <dht/messages/pubintro.hpp>
 
 namespace llarp
 {

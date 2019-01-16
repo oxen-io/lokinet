@@ -1,4 +1,5 @@
 #include <exit/session.hpp>
+
 #include <path/path.hpp>
 #include <router/router.hpp>
 
@@ -85,7 +86,7 @@ namespace llarp
       if(p->SendExitRequest(&obtain, router))
         llarp::LogInfo("asking ", m_ExitRouter, " for exit");
       else
-        llarp::LogError("faild to send exit request");
+        llarp::LogError("failed to send exit request");
     }
 
     bool
