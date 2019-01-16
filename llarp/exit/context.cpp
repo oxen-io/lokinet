@@ -106,13 +106,20 @@ namespace llarp
         while(itr != conf.end())
         {
           if(!endpoint->SetOption(itr->first, itr->second))
+          {
+            llarp::LogWarn("Couldn't set option ", itr->first, " to  ",
+                           itr->second);
             return false;
+          }
           ++itr;
         }
       }
       // add endpoint
       if(!endpoint->Start())
+      {
+        llarp::LogWarn("Couldn't start exit endpoint");
         return false;
+      }
       m_Exits.emplace(name, std::move(endpoint));
       return true;
     }
