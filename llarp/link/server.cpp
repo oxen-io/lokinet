@@ -131,7 +131,7 @@ namespace llarp
     Lock l_authed(m_AuthedLinksMutex);
     Lock l_pending(m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
-    auto itr = m_Pending.find(addr);
+    auto itr         = m_Pending.find(addr);
     if(itr != m_Pending.end())
     {
       if(m_AuthedLinks.count(pk) > MaxSessionsPerKey)
@@ -163,7 +163,7 @@ namespace llarp
   }
 
   void
-  ILinkLayer::RemovePending(ILinkSession * s)
+  ILinkLayer::RemovePending(ILinkSession* s)
   {
     llarp::Addr remote = s->GetRemoteEndpoint();
     m_Pending.erase(remote);
@@ -330,10 +330,10 @@ namespace llarp
   {
     Lock lock(m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
-    auto itr = m_Pending.find(addr);
+    auto itr         = m_Pending.find(addr);
     if(itr != m_Pending.end())
       return false;
-    m_Pending.insert(std::make_pair(addr, std::unique_ptr<ILinkSession>(s)));
+    m_Pending.insert(std::make_pair(addr, std::unique_ptr< ILinkSession >(s)));
     return true;
   }
 
