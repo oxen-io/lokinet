@@ -90,7 +90,8 @@ namespace llarp
           if(key_itr->IsString())
           {
             keys.emplace_back();
-            if(!HexDecode(key_itr->GetString(), keys.back().begin(), decltype(keys)::value_type::SIZE))
+            if(!HexDecode(key_itr->GetString(), keys.back().begin(),
+                          decltype(keys)::value_type::SIZE))
             {
               keys.pop_back();
             }

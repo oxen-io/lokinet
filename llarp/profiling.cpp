@@ -100,9 +100,9 @@ namespace llarp
     lock_t lock(m_ProfilesMutex);
     size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
 
-    std::vector<byte_t> tmp(sz, 0);
-    auto buf    = llarp::Buffer(tmp);
-    auto res    = BEncode(&buf);
+    std::vector< byte_t > tmp(sz, 0);
+    auto buf = llarp::Buffer(tmp);
+    auto res = BEncode(&buf);
     if(res)
     {
       buf.sz = buf.cur - buf.base;

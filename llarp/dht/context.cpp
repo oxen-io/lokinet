@@ -731,7 +731,8 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(peer.node.as_array(), new FindRouterMessage(peer.txid, target));
+        parent->DHTSendTo(peer.node.as_array(),
+                          new FindRouterMessage(peer.txid, target));
       }
 
       virtual void
