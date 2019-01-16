@@ -73,6 +73,9 @@ namespace llarp
       }
 
       virtual bool
+      LoadKeyFile();
+
+      virtual bool
       Start();
 
       virtual std::string
