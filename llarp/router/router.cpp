@@ -103,7 +103,6 @@ struct TryConnectJob
   }
 };
 
-
 static void
 on_try_connecting(void *u)
 {
@@ -163,10 +162,9 @@ namespace llarp
     {
       if(!link->IsCompatable(remote))
         continue;
-      std::unique_ptr<TryConnectJob> j = std::make_unique< TryConnectJob >(remote, link.get(), numretries, this);
-      auto itr = pendingEstablishJobs.emplace(
-          remote.pubkey,
-          std::move(j));
+      std::unique_ptr< TryConnectJob > j = std::make_unique< TryConnectJob >(
+          remote, link.get(), numretries, this);
+      auto itr = pendingEstablishJobs.emplace(remote.pubkey, std::move(j));
       if(itr.second)
       {
         // only try establishing if we inserted a new element
