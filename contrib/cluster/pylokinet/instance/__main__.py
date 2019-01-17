@@ -12,6 +12,8 @@ import os
 import sys
 import requests
 
+from pylokinet import rc 
+
 lib_file = os.path.join(os.path.realpath('.'), 'liblokinet-shared.so')
 
 
@@ -30,6 +32,8 @@ class LokiNET(threading.Thread):
 
     def configure(self, lib, conf, ip=None, port=None, ifname=None):
         log("configure lib={} conf={}".format(lib, conf))
+        if not os.path.exists(os.path.dirname(conf)):
+            os.mkdir(os.path.dirname(conf))
         try:
             self.lib = CDLL(lib)
         except OSError as ex:
@@ -111,6 +115,10 @@ def main(args):
         print("LOKINET_SUBMIT_URL was not set")
         return
     
+    bootstrap = getconf("LOKINET_BOOTSTRAP_URL")
+    if bootstrap is None:
+        print("LOKINET_BOOTSTRAP_URL was not set")
+
     lib = getconf("LOKINET_LIB", lib_file)
     timeout = int(getconf("LOKINET_TIMEOUT", "5"))
     ping_interval = int(getconf("LOKINET_PING_INTERVAL", "60"))
@@ -123,8 +131,28 @@ def main(args):
         return
     conf = os.path.join(root, "daemon.ini")
     loki = LokiNET()
+    log("bootstrapping...")
+    try:
+        r = requests.get(bootstrap)
+        if r.status_code == 404:
+            log("bootstrap gave no RCs, we are the seed node")
+        elif r.status_code != 200:
+            raise Exception("http {}".format(r.status_code))
+        else:
+            data = r.content
+            if rc.validate(data):
+                log("valid RC obtained")
+                with open(os.path.join(root, "bootstrap.signed"), "wb") as f:
+                    f.write(data)
+            else:
+                raise Exception("invalid RC")
+    except Exception as ex:
+        log("failed to bootstrap: {}".format(ex))
+        loki.close()
+        return
     if loki.configure(lib, conf, ip, port, ifname):
         log("configured")
+        
         loki.start()
         try:
             log("waiting for spawn")
