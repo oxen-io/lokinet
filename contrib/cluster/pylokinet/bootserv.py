@@ -9,7 +9,7 @@ run me with via gunicorn pylokinet.bootserv:app
 
 import os
 
-from lokinet import rc
+from pylokinet import rc
 import random
 
 class RCHolder:
@@ -20,7 +20,7 @@ class RCHolder:
 
     def __init__(self):
         if os.path.exists(self._dir):
-            os.path.walk(self._dir, lambda _, _, f : self._load_subdir(f), None)
+            os.path.walk(self._dir, lambda _1, _2, f : self._load_subdir(f), None)
         else:
             os.mkdir(self._dir)
         
@@ -50,37 +50,44 @@ class RCHolder:
         return len(self._rc_files) == 0
 
 
-def bad_request(msg):
-    return "400 Bad Request", [("Content-Type", "text/plain"), ['{}'.format(msg)]]
-
-def status_ok(msg):
-    return "200 OK", [("Content-Type", "text/plain"), ['{}'.format(msg)]]
-
-def handle_rc_upload(body):
+def handle_rc_upload(body, respond):
     holder = RCHolder()
-    if not holder.validate_then_put(body):
-        return bad_request('invalid rc')
-    return status_ok("rc accepted")
+    if holder.validate_then_put(body):
+        respond("200 OK", [("Content-Type", "text/plain")])
+        return "rc accepted".encode('ascii')
+    else:
+        respond("400 Bad Request", [("Content-Type", "text/plain")])
+        return "bad rc".encode('ascii')
+     
 
 def serve_random_rc():
     holder = RCHolder()
     if holder.empty():
-        return '404 Not Found', [("Content-Type", "application/octect-stream")]
+        return None
     else:
-        return '200 OK', [("Content-Type", "application/octect-stream"), [holder.serve_random()]]
+        return holder.serve_random()
+
+def response(status, msg, respond):
+    respond(status, [("Content-Type", "text/plain"), ("Content-Length", "{}".format(len(msg)))])
+    return [msg.encode("utf-8")]
 
 def app(environ, start_response):
     request_body_size = int(environ.get("CONTENT_LENGTH", 0))
     method = environ.get("REQUEST_METHOD")
     if method.upper() == "PUT" and request_body_size > 0:
         rcbody = environ.get("wsgi.input").read(request_body_size)
-        return handle_rc_upload(rcbody)
+        return handle_rc_upload(rcbody, start_response)
     elif method.upper() == "GET":
         if environ.get("PATH_INFO") == "/bootstrap.signed":
-            return serve_random_rc()
+            resp = serve_random_rc()
+            if resp is not None:
+                start_response(b"200 OK", [("Content-Type", "application/octet-stream")])
+                return [resp]
+            else:
+                return response('404 Not Found', 'no RCs', start_response)
         elif environ.get("PATH_INFO") == "/ping":
-            return status_ok("pong")
+            return response('200 OK', 'pong', start_response)
         else:
-            bad_request("bad path")
+            return response('400 Bad Request', 'invalid path', start_response)
     else:
-        return bad_request("invalid request")
+        return response('405 Method Not Allowed', 'method not allowed', start_response)

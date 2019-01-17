@@ -1,4 +1,4 @@
-from lokinet import bencode
+from pylokinet import bencode
 import pysodium
 
 def validate(data):
