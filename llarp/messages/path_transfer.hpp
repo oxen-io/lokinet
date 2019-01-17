@@ -1,8 +1,8 @@
 #ifndef LLARP_MESSAGES_PATH_TRANSFER_HPP
 #define LLARP_MESSAGES_PATH_TRANSFER_HPP
 
-#include <crypto.hpp>
-#include <encrypted.hpp>
+#include <crypto/encrypted.hpp>
+#include <crypto/types.hpp>
 #include <routing/message.hpp>
 #include <service/protocol.hpp>
 

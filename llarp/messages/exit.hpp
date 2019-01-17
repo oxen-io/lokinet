@@ -1,6 +1,7 @@
 #ifndef LLARP_MESSAGES_EXIT_HPP
 #define LLARP_MESSAGES_EXIT_HPP
-#include <crypto.hpp>
+
+#include <crypto/types.hpp>
 #include <exit/policy.hpp>
 #include <routing/message.hpp>
 
@@ -8,6 +9,7 @@
 
 namespace llarp
 {
+  struct Crypto;
   namespace routing
   {
     struct ObtainExitMessage final : public IMessage

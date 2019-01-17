@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_INTROSET_HPP
 #define LLARP_SERVICE_INTROSET_HPP
 
-#include <crypto.hpp>
+#include <crypto/types.hpp>
 #include <pow.hpp>
 #include <service/Info.hpp>
 #include <service/Intro.hpp>
@@ -15,6 +15,8 @@
 
 namespace llarp
 {
+  struct Crypto;
+
   namespace service
   {
     constexpr std::size_t MAX_INTROSET_SIZE = 4096;

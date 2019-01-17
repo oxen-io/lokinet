@@ -1,8 +1,8 @@
 #ifndef LLARP_EXIT_ENDPOINT_HPP
 #define LLARP_EXIT_ENDPOINT_HPP
 
-#include <crypto.hpp>
-#include <ip.hpp>
+#include <crypto/types.hpp>
+#include <net/ip.hpp>
 #include <path/path.hpp>
 #include <util/time.hpp>
 

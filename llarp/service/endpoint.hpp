@@ -1,7 +1,6 @@
 #ifndef LLARP_SERVICE_ENDPOINT_HPP
 #define LLARP_SERVICE_ENDPOINT_HPP
 
-#include <codel.hpp>
 #include <ev/ev.h>
 #include <exit/session.hpp>
 #include <net/net.hpp>

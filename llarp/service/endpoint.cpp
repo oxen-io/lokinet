@@ -2,7 +2,7 @@
 
 #include <dht/messages/findintro.hpp>
 #include <messages/dht.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 #include <service/protocol.hpp>
 #include <util/logic.hpp>
 

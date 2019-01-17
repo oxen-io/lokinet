@@ -1,8 +1,8 @@
 #ifndef LLARP_DHT_CONTEXT_HPP
 #define LLARP_DHT_CONTEXT_HPP
 
-#include <dht.h>
 #include <dht/bucket.hpp>
+#include <dht/dht.h>
 #include <dht/key.hpp>
 #include <dht/message.hpp>
 #include <dht/messages/findintro.hpp>

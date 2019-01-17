@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <path/path.hpp>
 #include <service/address.hpp>
 #include <service/Identity.hpp>

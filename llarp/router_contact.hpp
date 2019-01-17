@@ -1,10 +1,11 @@
 #ifndef LLARP_RC_HPP
 #define LLARP_RC_HPP
 
-#include <address_info.hpp>
 #include <constants/version.hpp>
-#include <crypto.hpp>
-#include <exit_info.hpp>
+#include <crypto/types.hpp>
+#include <net/address_info.hpp>
+#include <net/exit_info.hpp>
+#include <util/aligned.hpp>
 #include <util/bencode.hpp>
 
 #include <vector>
@@ -14,6 +15,8 @@
 
 namespace llarp
 {
+  struct Crypto;
+
   /// NetID
   struct NetID final : public AlignedBuffer< 8 >
   {

@@ -1,6 +1,6 @@
 #include <messages/dht_immediate.hpp>
 
-#include <router.hpp>
+#include <router/router.hpp>
 
 namespace llarp
 {

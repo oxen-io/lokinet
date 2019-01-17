@@ -2,8 +2,8 @@
 #define LLARP_EV_HPP
 
 #include <ev/ev.h>
-#include <codel.hpp>
 #include <util/buffer.h>
+#include <util/codel.hpp>
 #include <util/threading.hpp>
 
 // writev

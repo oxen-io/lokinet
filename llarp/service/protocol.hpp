@@ -1,9 +1,9 @@
 #ifndef LLARP_SERVICE_PROTOCOL_HPP
 #define LLARP_SERVICE_PROTOCOL_HPP
 
-#include <crypto.hpp>
+#include <crypto/encrypted.hpp>
+#include <crypto/types.hpp>
 #include <dht/message.hpp>
-#include <encrypted.hpp>
 #include <routing/message.hpp>
 #include <service/Identity.hpp>
 #include <service/Info.hpp>
@@ -14,8 +14,11 @@
 
 #include <vector>
 
+struct llarp_threadpool;
+
 namespace llarp
 {
+  struct Crypto;
   class Logic;
 
   namespace service
@@ -57,17 +60,17 @@ namespace llarp
     };
 
     /// outer message
-    struct ProtocolFrame final : public llarp::routing::IMessage
+    struct ProtocolFrame final : public routing::IMessage
     {
-      using Encrypted_t = llarp::Encrypted< 2048 >;
-      llarp::PQCipherBlock C;
+      using Encrypted_t = Encrypted< 2048 >;
+      PQCipherBlock C;
       Encrypted_t D;
-      llarp::KeyExchangeNonce N;
-      llarp::Signature Z;
-      llarp::service::ConvoTag T;
+      KeyExchangeNonce N;
+      Signature Z;
+      service::ConvoTag T;
 
       ProtocolFrame(const ProtocolFrame& other)
-          : llarp::routing::IMessage()
+          : routing::IMessage()
           , C(other.C)
           , D(other.D)
           , N(other.N)
@@ -78,7 +81,7 @@ namespace llarp
         version = other.version;
       }
 
-      ProtocolFrame() : llarp::routing::IMessage()
+      ProtocolFrame() : routing::IMessage()
       {
         Clear();
       }
@@ -98,17 +101,17 @@ namespace llarp
       operator=(const ProtocolFrame& other);
 
       bool
-      EncryptAndSign(llarp::Crypto* c, const ProtocolMessage& msg,
+      EncryptAndSign(Crypto* c, const ProtocolMessage& msg,
                      const SharedSecret& sharedkey, const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(llarp::Logic* logic, llarp::Crypto* c,
-                            const PathID_t& srcpath, llarp_threadpool* worker,
+      AsyncDecryptAndVerify(Logic* logic, Crypto* c, const PathID_t& srcpath,
+                            llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
 
       bool
-      DecryptPayloadInto(llarp::Crypto* c, const SharedSecret& sharedkey,
+      DecryptPayloadInto(Crypto* c, const SharedSecret& sharedkey,
                          ProtocolMessage& into) const;
 
       bool
@@ -128,11 +131,10 @@ namespace llarp
       }
 
       bool
-      Verify(llarp::Crypto* c, const ServiceInfo& from) const;
+      Verify(Crypto* c, const ServiceInfo& from) const;
 
       bool
-      HandleMessage(llarp::routing::IMessageHandler* h,
-                    llarp::Router* r) const override;
+      HandleMessage(routing::IMessageHandler* h, Router* r) const override;
     };
   }  // namespace service
 }  // namespace llarp

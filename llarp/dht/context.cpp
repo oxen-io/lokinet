@@ -1,8 +1,9 @@
 #include <dht/context.hpp>
+
 #include <dht/messages/gotrouter.hpp>
 #include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
-#include <router.hpp>
+#include <router/router.hpp>
 
 #include <vector>
 
@@ -731,7 +732,8 @@ namespace llarp
       void
       Start(const TXOwner &peer) override
       {
-        parent->DHTSendTo(peer.node.as_array(), new FindRouterMessage(peer.txid, target));
+        parent->DHTSendTo(peer.node.as_array(),
+                          new FindRouterMessage(peer.txid, target));
       }
 
       virtual void

@@ -1,7 +1,7 @@
 #ifndef LLARP_NET_HPP
 #define LLARP_NET_HPP
 
-#include <address_info.hpp>
+#include <net/address_info.hpp>
 #include <net/net_int.hpp>
 #include <net/net.h>
 #include <util/logger.hpp>

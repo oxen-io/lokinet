@@ -1,7 +1,7 @@
 #ifndef LLARP_LINK_SERVER_HPP
 #define LLARP_LINK_SERVER_HPP
 
-#include <crypto.hpp>
+#include <crypto/types.hpp>
 #include <ev/ev.h>
 #include <link/session.hpp>
 #include <net/net.hpp>

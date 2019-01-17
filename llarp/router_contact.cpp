@@ -1,7 +1,7 @@
 #include <router_contact.hpp>
 
 #include <constants/version.hpp>
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <net/net.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>

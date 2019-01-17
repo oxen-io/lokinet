@@ -1,7 +1,9 @@
 #include <net/net.hpp>
+
 #ifdef ANDROID
-#include "android/ifaddrs.h"
+#include <android/ifaddrs.h>
 #endif
+
 #ifndef _WIN32
 #include <arpa/inet.h>
 #ifndef ANDROID
@@ -9,6 +11,7 @@
 #endif
 #include <net/if.h>
 #endif
+
 #include <net/net_addr.hpp>
 #include <util/logger.hpp>
 #include <util/str.hpp>

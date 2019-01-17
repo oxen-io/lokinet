@@ -1,5 +1,5 @@
 #include <buffer.hpp>
-#include <crypto.hpp>
+#include <crypto/crypto.hpp>
 #include <fs.hpp>
 #include <llarp.h>
 #include <logger.hpp>

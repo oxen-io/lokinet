@@ -3,6 +3,7 @@
 
 #include <util/common.hpp>
 #include <util/mem.h>
+#include <util/types.hpp>
 
 #include <cassert>
 #include <stdbool.h>
@@ -15,8 +16,6 @@
  *
  * generic memory buffer
  */
-
-typedef uint8_t byte_t;
 
 /**
   llarp_buffer_t represents a region of memory that is ONLY

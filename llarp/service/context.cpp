@@ -1,8 +1,9 @@
+#include <service/context.hpp>
+
 #include <handlers/null.hpp>
 #include <handlers/tun.hpp>
-#include <service/context.hpp>
+#include <router/router.hpp>
 #include <service/endpoint.hpp>
-#include <router.hpp>
 
 namespace llarp
 {

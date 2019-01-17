@@ -1,7 +1,7 @@
 #ifndef LLARP_SERVICE_INFO_HPP
 #define LLARP_SERVICE_INFO_HPP
 
-#include <crypto.hpp>
+#include <crypto/types.hpp>
 #include <service/types.hpp>
 #include <util/bencode.hpp>
 
@@ -13,6 +13,8 @@
 
 namespace llarp
 {
+  struct Crypto;
+
   namespace service
   {
     struct ServiceInfo final : public llarp::IBEncodeMessage
@@ -59,10 +61,7 @@ namespace llarp
 
       bool
       Verify(llarp::Crypto* crypto, llarp_buffer_t payload,
-             const Signature& sig) const
-      {
-        return crypto->verify(signkey, payload, sig);
-      }
+             const Signature& sig) const;
 
       const PubKey&
       EncryptionPublicKey() const
