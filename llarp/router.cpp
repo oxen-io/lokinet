@@ -46,11 +46,17 @@ struct TryConnectJob
   {
   }
 
+  ~TryConnectJob()
+  {
+  }
+
   void
   Failed()
   {
     llarp::LogInfo("session to ", llarp::RouterID(rc.pubkey), " closed");
     link->CloseSessionTo(rc.pubkey);
+    // delete this
+    router->pendingEstablishJobs.erase(rc.pubkey);
   }
 
   void
@@ -97,10 +103,12 @@ struct TryConnectJob
   }
 };
 
+
 static void
 on_try_connecting(void *u)
 {
   TryConnectJob *j = static_cast< TryConnectJob * >(u);
+
   j->Attempt();
 }
 
@@ -155,14 +163,18 @@ namespace llarp
     {
       if(!link->IsCompatable(remote))
         continue;
+      std::unique_ptr<TryConnectJob> j = std::make_unique< TryConnectJob >(remote, link.get(), numretries, this);
       auto itr = pendingEstablishJobs.emplace(
           remote.pubkey,
-          std::make_unique< TryConnectJob >(remote, link.get(), numretries,
-                                            this));
-      TryConnectJob *job = itr.first->second.get();
-      // try establishing async
-      logic->queue_job({job, &on_try_connecting});
-      return true;
+          std::move(j));
+      if(itr.second)
+      {
+        // only try establishing if we inserted a new element
+        TryConnectJob *job = itr.first->second.get();
+        // try establishing async
+        logic->queue_job({job, &on_try_connecting});
+        return true;
+      }
     }
     return false;
   }
@@ -461,12 +473,12 @@ namespace llarp
   {
     llarp::async_verify_context *ctx =
         static_cast< llarp::async_verify_context * >(job->user);
-    ctx->router->pendingEstablishJobs.erase(job->rc.pubkey);
     auto router = ctx->router;
     llarp::PubKey pk(job->rc.pubkey);
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
     delete ctx;
     router->pendingVerifyRC.erase(pk);
+    router->pendingEstablishJobs.erase(pk);
   }
 
   void
