@@ -1,15 +1,17 @@
 from pylokinet import bencode
 import pysodium
+import binascii
 
 def validate(data):
   rc = bencode.bdecode(data)
-  if 'z' not in rc or 'k' not in rc:
+  if b'z' not in rc or b'k' not in rc:
     return False
-  sig = rc['z']
-  rc['z'] = '\x00' * 32
+  sig = rc[b'z']
+  rc[b'z'] = b'\x00' * 64
   buf = bencode.bencode(rc)
   try:
-    pysodium.crypto_sign_verify_detached(sig, buf, rc['k'])
+    k = rc[b'k']
+    pysodium.crypto_sign_verify_detached(sig, buf, k)
   except:
     return False
   else:
@@ -17,5 +19,5 @@ def validate(data):
 
 def get_pubkey(data):
    rc = bencode.bdecode(data)
-   if 'k' in rc:
-     return rc['k'].encode('hex')
+   if b'k' in rc:
+     return binascii.hexlify(rc[b'k']).decode('ascii')

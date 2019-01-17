@@ -14,13 +14,15 @@ import random
 
 class RCHolder:
 
-    _dir = '/tmp/lokinet_nodedb'
+    _dir = '/tmp/lokinet_nodedb/'
 
     _rc_files = list()
 
     def __init__(self):
         if os.path.exists(self._dir):
-            os.path.walk(self._dir, lambda _1, _2, f : self._load_subdir(f), None)
+            for root, _, files in os.walk(self._dir):
+                for f in files:
+                    self._add_rc(os.path.join(root, f))
         else:
             os.mkdir(self._dir)
         
@@ -28,6 +30,7 @@ class RCHolder:
         if not rc.validate(body):
             return False
         k = rc.get_pubkey(body)
+        print(k)
         if k is None:
             return False
         with open(os.path.join(self._dir, k), "wb") as f:
@@ -36,11 +39,6 @@ class RCHolder:
 
     def _add_rc(self, fpath):
         self._rc_files.append(fpath)
-
-    def _load_subdir(self, files):
-        for f in files:
-            path = os.path.join(self._dir, f)
-            self._add_rc(path)
 
     def serve_random(self):
         with open(random.choice(self._rc_files), 'rb') as f:
@@ -54,10 +52,10 @@ def handle_rc_upload(body, respond):
     holder = RCHolder()
     if holder.validate_then_put(body):
         respond("200 OK", [("Content-Type", "text/plain")])
-        return "rc accepted".encode('ascii')
+        return ["rc accepted".encode('ascii')]
     else:
         respond("400 Bad Request", [("Content-Type", "text/plain")])
-        return "bad rc".encode('ascii')
+        return ["bad rc".encode('ascii')]
      
 
 def serve_random_rc():
@@ -81,7 +79,7 @@ def app(environ, start_response):
         if environ.get("PATH_INFO") == "/bootstrap.signed":
             resp = serve_random_rc()
             if resp is not None:
-                start_response(b"200 OK", [("Content-Type", "application/octet-stream")])
+                start_response('200 OK', [("Content-Type", "application/octet-stream")])
                 return [resp]
             else:
                 return response('404 Not Found', 'no RCs', start_response)

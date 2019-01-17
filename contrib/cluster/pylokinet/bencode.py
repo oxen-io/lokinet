@@ -104,9 +104,8 @@ def bencode(obj):
   buf = BytesIO()
   b = BCodec(buf)
   b.encode(obj)
-  return buf.bytes()
+  return buf.getvalue()
 
 def bdecode(bytestring):
-  buf = BytesIO()
-  buf.write(bytestring)
+  buf = BytesIO(bytestring)
   return BCodec(buf).decode()
