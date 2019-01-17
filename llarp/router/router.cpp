@@ -1182,10 +1182,10 @@ namespace llarp
       if(hiddenServiceContext.hasEndpoints())
       {
         llarp::LogInfo("Auto mode detected and we have endpoints");
-        netConfig.emplace(std::make_pair("enabled", "false"));
+        netConfig.emplace("enabled", "false");
         return false;
       }
-      netConfig.emplace(std::make_pair("enabled", "true"));
+      netConfig.emplace("enabled", "true");
     }
     // ev.cpp llarp_ev_add_tun now handles this
     /*
@@ -1388,6 +1388,7 @@ namespace llarp
   Router::CreateDefaultHiddenService()
   {
     // fallback defaults
+    // To NeuroScr: why run findFree* here instead of in tun.cpp?
     static const std::unordered_map< std::string,
                                      std::function< std::string(void) > >
         netConfigDefaults = {
