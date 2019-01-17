@@ -16,6 +16,7 @@ obtain `liblokinet-shared.so` from a lokinet build
 
 run (root):
     
+    # export LOKINET_ROOT=/tmp/lokinet-instance/
     # export LOKINET_LIB=/path/to/liblokinet-shared.so
     # export LOKINET_BOOTSTRAP_URL=http://bootserv.ip.address.here:8000/bootstrap.signed
     # export LOKINET_PING_URL=http://bootserv.ip.address.here:8000/ping
