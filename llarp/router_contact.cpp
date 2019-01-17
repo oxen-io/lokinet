@@ -258,10 +258,10 @@ namespace llarp
   bool
   RouterContact::Verify(llarp::Crypto *crypto, llarp_time_t now) const
   {
-    static const NetID networkNetID;
-    if(netID != networkNetID)
+    if(netID != NetID::DefaultValue())
     {
-      llarp::LogError("netid missmatch: '", netID, "' != '", networkNetID, "'");
+      llarp::LogError("netid missmatch: '", netID, "' != '",
+                      NetID::DefaultValue(), "'");
       return false;
     }
     if(IsExpired(now))
