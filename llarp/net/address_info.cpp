@@ -22,7 +22,8 @@ namespace llarp
     dialect = other.dialect;
     pubkey  = other.pubkey;
     memcpy(ip.s6_addr, other.ip.s6_addr, 16);
-    port = other.port;
+    port    = other.port;
+    version = other.version;
     return *this;
   }
 

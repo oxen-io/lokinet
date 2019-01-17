@@ -162,6 +162,22 @@ namespace llarp
       return last_updated < other.last_updated;
     }
 
+    friend std::ostream &
+    operator<<(std::ostream &out, const RouterContact &rc)
+    {
+      out << "[RouterContact k=" << rc.pubkey;
+      out << " updated=" << rc.last_updated;
+      out << " netid=" << rc.netID;
+      out << " v=" << rc.version;
+      out << " ai=[ ";
+      for(const auto &addr : rc.addrs)
+        out << addr << " ";
+      out << " ] xi=[ ";
+      for(const auto &xi : rc.exits)
+        out << xi << " ";
+      return out << " ] e=" << rc.enckey << " z=" << rc.signature << " ]";
+    }
+
     bool
     Read(const char *fname);
 

@@ -202,7 +202,7 @@ coverage-config: clean
 	$(COVERAGE_CONFIG_CMD)
 
 coverage: coverage-config
-	$(MAKE) -C $(BUILD_ROOT) -j 12
+	$(MAKE) -C $(BUILD_ROOT)
 	$(TEST_EXE) || true # continue even if tests fail
 	mkdir -p "$(COVERAGE_OUTDIR)"
 ifeq ($(CLANG),OFF)

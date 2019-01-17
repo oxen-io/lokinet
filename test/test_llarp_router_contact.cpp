@@ -14,7 +14,6 @@ struct RCTest : public ::testing::Test
       : crypto(llarp::Crypto::sodium{}), oldval(llarp::NetID::DefaultValue())
   {
     llarp::NetID::DefaultValue() = llarp::NetID(DEF_VALUE);
-    rc.Clear();
   }
 
   ~RCTest()
@@ -22,18 +21,22 @@ struct RCTest : public ::testing::Test
     llarp::NetID::DefaultValue() = oldval;
   }
 
-  RC_t rc;
   llarp::Crypto crypto;
   const llarp::NetID oldval;
 };
 
 TEST_F(RCTest, TestSignVerify)
 {
+  llarp::NetID netid(DEF_VALUE);
+  RC_t rc;
   SecKey_t encr;
   SecKey_t sign;
   crypto.encryption_keygen(encr);
   crypto.identity_keygen(sign);
   rc.enckey = encr.toPublic();
+  rc.pubkey = sign.toPublic();
+  ASSERT_TRUE(rc.netID == netid);
+  ASSERT_TRUE(rc.netID == llarp::NetID::DefaultValue());
   ASSERT_TRUE(rc.Sign(&crypto, sign));
   ASSERT_TRUE(rc.Verify(&crypto, llarp::time_now_ms()));
 }

@@ -204,7 +204,10 @@ namespace llarp
         return false;
       }
       std::string qname = msg.questions[0].qname;
-      if(msg.questions[0].qtype == 15)
+      if(msg.questions[0].qtype == dns::qTypeCNAME)
+      {
+      }
+      else if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
         llarp::service::Address addr;
@@ -214,7 +217,21 @@ namespace llarp
           msg.AddNXReply();
         reply(msg);
       }
-      else if(msg.questions[0].qtype == 1)
+      else if(msg.questions[0].qtype == dns::qTypeCNAME)
+      {
+        if(msg.questions[0].qname == "random.snode"
+           || msg.questions[0].qname == "random.snode.")
+        {
+          RouterID random;
+          if(Router()->GetRandomGoodRouter(random))
+            msg.AddCNAMEReply(random.ToString(), 1);
+          else
+            msg.AddNXReply();
+        }
+        else
+          msg.AddNXReply();
+      }
+      else if(msg.questions[0].qtype == dns::qTypeA)
       {
         // forward dns
         llarp::service::Address addr;
@@ -254,7 +271,7 @@ namespace llarp
 
         reply(msg);
       }
-      else if(msg.questions[0].qtype == 12)
+      else if(msg.questions[0].qtype == dns::qTypePTR)
       {
         // reverse dns
         huint32_t ip = {0};
@@ -300,6 +317,7 @@ namespace llarp
         // always hook mx records
         if(msg.questions[0].qtype == llarp::dns::qTypeMX)
           return true;
+        // always hook random.snode
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
           return true;
@@ -309,6 +327,7 @@ namespace llarp
         // always hook .snode
         if(addr.FromString(msg.questions[0].qname, ".snode"))
           return true;
+        // hook any ranges we own
         if(msg.questions[0].qtype == llarp::dns::qTypePTR)
         {
           huint32_t ip = {0};

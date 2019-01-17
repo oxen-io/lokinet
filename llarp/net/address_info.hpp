@@ -32,13 +32,12 @@ namespace llarp
     }
 
     AddressInfo(const AddressInfo& other)
-        : IBEncodeMessage()
+        : IBEncodeMessage(other.version)
         , rank(other.rank)
         , dialect(other.dialect)
         , pubkey(other.pubkey)
+        , port(other.port)
     {
-      port    = other.port;
-      version = other.version;
       memcpy(ip.s6_addr, other.ip.s6_addr, 16);
     }
 

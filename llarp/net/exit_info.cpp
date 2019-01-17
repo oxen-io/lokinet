@@ -51,12 +51,34 @@ namespace llarp
     return bencode_end(buf);
   }
 
+  static bool
+  bdecode_ip_string(llarp_buffer_t* buf, in6_addr& ip)
+  {
+    char tmp[128] = {0};
+    llarp_buffer_t strbuf;
+    if(!bencode_read_string(buf, &strbuf))
+      return false;
+
+    if(strbuf.sz >= sizeof(tmp))
+      return false;
+
+    memcpy(tmp, strbuf.base, strbuf.sz);
+    tmp[strbuf.sz] = 0;
+    return inet_pton(AF_INET6, tmp, &ip.s6_addr[0]) == 1;
+  }
+
   bool
-  ExitInfo::DecodeKey(__attribute__((unused)) llarp_buffer_t k,
-                      __attribute__((unused)) llarp_buffer_t* buf)
+  ExitInfo::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
   {
     bool read = false;
-    // TODO: implement me
+    if(!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))
+      return false;
+    if(!BEncodeMaybeReadDictInt("v", version, read, k, buf))
+      return false;
+    if(llarp_buffer_eq(k, "a"))
+      return bdecode_ip_string(buf, address);
+    if(llarp_buffer_eq(k, "b"))
+      return bdecode_ip_string(buf, netmask);
     return read;
   }
 
