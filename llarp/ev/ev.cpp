@@ -151,7 +151,6 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   if(strcmp(tun->ifaddr, "") == 0 || strcmp(tun->ifaddr, "auto"))
   {
     std::string ifaddr = llarp::findFreePrivateRange();
-    std::string addr;
     auto pos = ifaddr.find("/");
     if(pos == std::string::npos)
     {
@@ -171,13 +170,14 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
       return false;
     }
     tun->netmask = num;
-    addr         = ifaddr.substr(0, pos);
-    strcpy(tun->ifaddr, addr.c_str());
+    const std::string addr = ifaddr.substr(0, pos);
+    std::copy_n(addr.begin(), std::min(sizeof(tun->ifaddr), addr.size()), tun->ifaddr);
     llarp::LogInfo("IfAddr autodetect: ", tun->ifaddr, "/", tun->netmask);
   }
   if(strcmp(tun->ifname, "") == 0 || strcmp(tun->ifname, "auto"))
   {
-    strcpy(tun->ifname, llarp::findFreeLokiTunIfName().c_str());
+    std::string ifname = llarp::findFreeLokiTunIfName();
+    std::copy_n(ifname.begin(), std::min(sizeof(tun->ifname), ifname.size()), tun->ifname);
     llarp::LogInfo("IfName autodetect: ", tun->ifname);
   }
   llarp::LogDebug("Tun Interface will use the following settings:");
