@@ -65,6 +65,16 @@ namespace llarp
     HandleSignal(int sig);
 
    private:
+
+    void 
+    SetPIDFile(const std::string & fname);
+
+    bool
+    WritePIDFile() const;
+
+    void
+    RemovePIDFile() const;
+
     bool
     Configure();
 
@@ -82,6 +92,7 @@ namespace llarp
     progress();
 
     std::string configfile;
+    std::string pidfile;
   };
 }  // namespace llarp
 
