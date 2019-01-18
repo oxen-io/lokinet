@@ -507,7 +507,8 @@ namespace llarp
     bool
     Endpoint::Start()
     {
-      this->LoadKeyFile();
+      // how can I tell if a m_Identity isn't loaded?
+      //this->LoadKeyFile();
       if(!m_DataHandler)
       {
         m_DataHandler = this;

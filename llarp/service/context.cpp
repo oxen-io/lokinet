@@ -298,14 +298,17 @@ namespace llarp
 
         // construct
         service.reset(itr->second(conf.first, m_Router));
+
+        // if ephemeral, then we need to regen key
+        // if privkey file, then set it and load it
         if(keyfile != "")
         {
-          llarp::LogInfo("Found keyfile, prestarting endpoint");
           service->SetOption("keyfile", keyfile);
           // load keyfile, so we have the correct name for logging
-          service->LoadKeyFile();  // only start endpoint not tun
-          llarp::LogInfo("Endpoint prestarted");
         }
+        llarp::LogInfo("Establishing endpoint identity");
+        service->LoadKeyFile();  // only start endpoint not tun
+        // now Name() will be correct
       }
       // configure
       for(const auto &option : conf.second)
