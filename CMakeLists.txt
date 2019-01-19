@@ -501,7 +501,6 @@ set(LIB_SRC
   llarp/crypto/types.cpp
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
-  llarp/dht/dht_immediate.cpp
   llarp/dht/dht.cpp
   llarp/dht/kademlia.cpp
   llarp/dht/key.cpp
@@ -611,6 +610,7 @@ set(TEST_SRC
   test/dht/test_llarp_dht_bucket.cpp
   test/dht/test_llarp_dht_kademlia.cpp
   test/dht/test_llarp_dht_key.cpp
+  test/dht/test_llarp_dht_txowner.cpp
   test/dns/test_llarp_dns_dns.cpp
   test/exit/test_llarp_exit_context.cpp
   test/link/test_llarp_link.cpp
