@@ -29,12 +29,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
-  message( FATAL_ERROR "shadow-framework is Linux only (or anything that has epoll(5). Check your Oracle manuals for information.)" )
+  message( FATAL_ERROR "shadow-framework is Linux only" )
 endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
 if (STATIC_LINK AND SHADOW)
   message(FATAL_ERROR "the shadow-framework build cannot be linked statically!")
 endif(STATIC_LINK AND SHADOW)
+
+if (WIN32 AND NOT STATIC_LINK)
+  message("Shared object builds are not yet supported for Windows, linking statically")
+  set(STATIC_LINK ON)
+endif(WIN32 AND NOT STATIC_LINK)
 
 # turns off those annoying warnings for
 # target-specific crypto code paths not
