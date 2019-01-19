@@ -11,8 +11,7 @@ namespace llarp
   {
     struct RCNode
     {
-      llarp::RouterContact rc;
-
+      RouterContact rc;
       Key_t ID;
 
       RCNode()
@@ -20,7 +19,7 @@ namespace llarp
         ID.Zero();
       }
 
-      RCNode(const llarp::RouterContact& other) : rc(other), ID(other.pubkey)
+      RCNode(const RouterContact& other) : rc(other), ID(other.pubkey)
       {
       }
 
@@ -33,7 +32,7 @@ namespace llarp
 
     struct ISNode
     {
-      llarp::service::IntroSet introset;
+      service::IntroSet introset;
 
       Key_t ID;
 
@@ -42,7 +41,7 @@ namespace llarp
         ID.Zero();
       }
 
-      ISNode(const llarp::service::IntroSet& other)
+      ISNode(const service::IntroSet& other)
       {
         introset = other;
         introset.A.CalculateAddress(ID.as_array());

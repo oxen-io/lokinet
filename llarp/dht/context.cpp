@@ -4,6 +4,7 @@
 #include <dht/messages/gotintro.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <dht/messages/pubintro.hpp>
+#include <dht/node.hpp>
 #include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
 #include <router/router.hpp>

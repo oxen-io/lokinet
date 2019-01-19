@@ -3,6 +3,7 @@
 #include <constants/proto.hpp>
 #include <crypto/crypto.hpp>
 #include <dht/context.hpp>
+#include <dht/node.hpp>
 #include <link/iwp.hpp>
 #include <link/server.hpp>
 #include <link/utp.hpp>
@@ -888,7 +889,7 @@ namespace llarp
     {
       auto buf = llarp::ConstBuffer(itr->second.front());
       if(!chosen->SendTo(remote, buf))
-        llarp::LogWarn("failed to send outboud message to ", remote, " via ",
+        llarp::LogWarn("failed to send outbound message to ", remote, " via ",
                        chosen->Name());
 
       itr->second.pop();

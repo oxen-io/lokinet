@@ -511,6 +511,7 @@ set(LIB_SRC
   llarp/dht/messages/gotrouter.cpp
   llarp/dht/messages/pubintro.cpp
   llarp/dht/node.cpp
+  llarp/dht/txowner.cpp
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
