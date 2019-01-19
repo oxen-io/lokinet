@@ -7,19 +7,6 @@ namespace llarp
 {
   namespace dht
   {
-    /*
-    struct IntroSetLookupInformer
-    {
-    llarp::Router* router;
-      service::Address target;
-
-      void
-      SendReply(const llarp::routing::IMessage* msg)
-      {
-      }
-    };
-    */
-
     FindIntroMessage::~FindIntroMessage()
     {
     }

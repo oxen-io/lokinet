@@ -98,3 +98,26 @@ TEST(TestDhtKey, XOR)
   ASSERT_EQ(dht::Key_t(xorResult),
             dht::Key_t(seqArray) ^ dht::Key_t(fullArray));
 }
+
+TEST(TestDhtKey, TestBucketOperators)
+{
+  dht::Key_t zero;
+  dht::Key_t one;
+  dht::Key_t three;
+
+  zero.Zero();
+  one.Fill(1);
+  three.Fill(3);
+  ASSERT_LT(zero, one);
+  ASSERT_LT(zero, three);
+  ASSERT_FALSE(zero > one);
+  ASSERT_FALSE(zero > three);
+  ASSERT_NE(zero, three);
+  ASSERT_FALSE(zero == three);
+  ASSERT_EQ(zero ^ one, one);
+  ASSERT_LT(one, three);
+  ASSERT_GT(three, one);
+  ASSERT_NE(one, three);
+  ASSERT_FALSE(one == three);
+  ASSERT_EQ(one ^ three, three ^ one);
+};

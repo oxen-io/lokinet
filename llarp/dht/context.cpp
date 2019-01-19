@@ -271,8 +271,8 @@ namespace llarp
     {
       router   = r;
       ourKey   = us;
-      nodes    = new Bucket< RCNode >(ourKey);
-      services = new Bucket< ISNode >(ourKey);
+      nodes    = new Bucket< RCNode >(ourKey, llarp::randint);
+      services = new Bucket< ISNode >(ourKey, llarp::randint);
       llarp::LogDebug("initialize dht with key ", ourKey);
       // start exploring
 
@@ -669,14 +669,14 @@ namespace llarp
       if(!nodes)
         return false;
 
-      size_t nodeCount = nodes->Size();
+      size_t nodeCount = nodes->size();
       if(nodeCount == 0)
       {
         llarp::LogError(
             "cannot handle exploritory router lookup, no dht peers");
         return false;
       }
-      llarp::LogDebug("We have ", nodes->Size(),
+      llarp::LogDebug("We have ", nodes->size(),
                       " connected nodes into the DHT");
       // ourKey should never be in the connected list
       // requester is likely in the connected list
