@@ -65,9 +65,8 @@ namespace llarp
     HandleSignal(int sig);
 
    private:
-
-    void 
-    SetPIDFile(const std::string & fname);
+    void
+    SetPIDFile(const std::string &fname);
 
     bool
     WritePIDFile() const;
