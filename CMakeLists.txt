@@ -501,7 +501,6 @@ set(LIB_SRC
   llarp/crypto/types.cpp
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
-  llarp/dht/decode.cpp
   llarp/dht/dht_immediate.cpp
   llarp/dht/dht.cpp
   llarp/dht/kademlia.cpp
