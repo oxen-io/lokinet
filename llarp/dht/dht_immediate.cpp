@@ -4,18 +4,18 @@
 
 namespace llarp
 {
-  DHTImmeidateMessage::~DHTImmeidateMessage()
+  DHTImmediateMessage::~DHTImmediateMessage()
   {
   }
 
   void
-  DHTImmeidateMessage::Clear()
+  DHTImmediateMessage::Clear()
   {
     msgs.clear();
   }
 
   bool
-  DHTImmeidateMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
+  DHTImmediateMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
   {
     if(llarp_buffer_eq(key, "m"))
       return llarp::dht::DecodeMesssageList(dht::Key_t(session->GetPubKey()),
@@ -31,7 +31,7 @@ namespace llarp
   }
 
   bool
-  DHTImmeidateMessage::BEncode(llarp_buffer_t *buf) const
+  DHTImmediateMessage::BEncode(llarp_buffer_t *buf) const
   {
     if(!bencode_start_dict(buf))
       return false;
@@ -65,9 +65,9 @@ namespace llarp
   }
 
   bool
-  DHTImmeidateMessage::HandleMessage(llarp::Router *router) const
+  DHTImmediateMessage::HandleMessage(llarp::Router *router) const
   {
-    DHTImmeidateMessage reply;
+    DHTImmediateMessage reply;
     reply.session = session;
     bool result   = true;
     for(auto &msg : msgs)

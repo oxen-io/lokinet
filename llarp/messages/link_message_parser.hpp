@@ -46,7 +46,7 @@ namespace llarp
       LinkIntroMessage i;
       RelayDownstreamMessage d;
       RelayUpstreamMessage u;
-      DHTImmeidateMessage m;
+      DHTImmediateMessage m;
       LR_CommitMessage c;
       DiscardMessage x;
     };

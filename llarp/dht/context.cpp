@@ -291,7 +291,7 @@ namespace llarp
     void
     Context::DHTSendTo(const RouterID &peer, IMessage *msg, bool keepalive)
     {
-      llarp::DHTImmeidateMessage m;
+      llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
       router->SendToOrQueue(peer, &m);
       if(keepalive)
