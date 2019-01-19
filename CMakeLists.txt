@@ -46,8 +46,13 @@ add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
 if (WITH_COVERAGE)
-  add_compile_options( --coverage -g0 )
-  link_libraries( --coverage )
+  if (USING_CLANG)
+    add_compile_options( -fprofile-instr-generate -fcoverage-mapping )
+    link_libraries( -fprofile-instr-generate )
+  else()
+    add_compile_options( --coverage -g0 )
+    link_libraries( --coverage )
+  endif()
 endif()
 
 # these vars are set by the cmake toolchain spec
