@@ -184,14 +184,14 @@ namespace llarp
   int
   tun::sendto(__attribute__((unused)) const sockaddr* to,
               __attribute__((unused)) const void* data,
-              __attribute__((unused)) size_t sz) override
+              __attribute__((unused)) size_t sz)
   {
     return -1;
   }
 
 #ifdef __APPLE__
   ssize_t
-  tun::do_write(void* buf, size_t sz) override
+  tun::do_write(void* buf, size_t sz)
   {
     iovec vecs[2];
     // TODO: IPV6
@@ -205,7 +205,7 @@ namespace llarp
 #endif
 
   void
-  tun::before_flush_write() override
+  tun::before_flush_write()
   {
     if(t->before_write)
     {
@@ -214,7 +214,7 @@ namespace llarp
   }
 
   bool
-  tun::tick() override
+  tun::tick()
   {
     if(t->tick)
       t->tick(t);
@@ -223,7 +223,7 @@ namespace llarp
   }
 
   int
-  tun::read(byte_t* buf, size_t) override
+  tun::read(byte_t* buf, size_t)
   {
 // all BSDs have packet info except freebsd
 #ifdef __FreeBSD__
