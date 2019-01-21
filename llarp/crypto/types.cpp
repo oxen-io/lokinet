@@ -68,4 +68,22 @@ namespace llarp
     return true;
   }
 
+  bool
+  IdentitySecret::LoadFromFile(const char* fname)
+  {
+    std::ifstream f(fname, std::ios::binary | std::ios::in);
+    if(!f.is_open())
+      return false;
+    f.seekg(0, std::ios::end);
+    const size_t sz = f.tellg();
+    f.seekg(0, std::ios::beg);
+    if(sz != 32)
+    {
+      llarp::LogError("service node seed size invalid: ", sz, " != 32");
+      return false;
+    }
+    std::copy_n(std::istreambuf_iterator< char >(f), sz, begin());
+    return true;
+  }
+
 }  // namespace llarp

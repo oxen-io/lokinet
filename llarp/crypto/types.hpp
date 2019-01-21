@@ -97,6 +97,21 @@ namespace llarp
     }
   };
 
+  /// IdentitySecret is a secret key from a service node secret seed
+  struct IdentitySecret final : public AlignedBuffer< 32 >
+  {
+    IdentitySecret() : AlignedBuffer< 32 >(){};
+
+    /// no copy constructor
+    explicit IdentitySecret(const IdentitySecret &) = delete;
+    // no byte data constructor
+    explicit IdentitySecret(const byte_t *) = delete;
+
+    /// load service node seed from file
+    bool
+    LoadFromFile(const char *fname);
+  };
+
   using ShortHash   = AlignedBuffer< SHORTHASHSIZE >;
   using Signature   = AlignedBuffer< SIGSIZE >;
   using TunnelNonce = AlignedBuffer< TUNNONCESIZE >;

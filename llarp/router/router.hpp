@@ -43,6 +43,10 @@ bool
 llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
                            llarp::SecretKey &secretkey);
 
+bool
+llarp_loadServiceNodeIdentityKey(llarp::Crypto *crypto, const fs::path &fpath,
+                                 llarp::SecretKey &secretkey);
+
 struct TryConnectJob;
 
 namespace llarp

@@ -112,6 +112,19 @@ on_try_connecting(void *u)
 }
 
 bool
+llarp_loadServiceNodeIdentityKey(llarp::Crypto *crypto, const fs::path &fpath,
+                                 llarp::SecretKey &secret)
+{
+  std::string path = fpath.string();
+  llarp::IdentitySecret ident;
+
+  if(!ident.LoadFromFile(path.c_str()))
+    return false;
+
+  return crypto->seed_to_secretkey(secret, ident);
+}
+
+bool
 llarp_findOrCreateIdentity(llarp::Crypto *crypto, const fs::path &path,
                            llarp::SecretKey &secretkey)
 {

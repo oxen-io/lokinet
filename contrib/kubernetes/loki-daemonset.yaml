@@ -5,3 +5,7 @@ metadata:
   namespace: kube-system
   labels:
     k8s-app: fluentd-logging
+spec:
+  selector:
+    matchLabels:
+      name: 

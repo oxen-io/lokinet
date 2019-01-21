@@ -254,8 +254,11 @@ TEST_F(TestCryptoTypesSecret, secret_key_from_file_happy_bencode)
 TEST_F(TestCryptoTypesSecret, secret_key_to_missing_file)
 {
   // Verify writing to an unwritable file fails.
-  // Assume we're not running as root, so can't write to /dev/
-  filename = "/dev/" + filename;
+  // Assume we're not running as root, so can't write to /
+  // if we are root just skip this test
+  if(getuid() == 0)
+    return;
+  filename = "/" + filename;
   p        = filename;
   ASSERT_FALSE(fs::exists(fs::status(p)));
 

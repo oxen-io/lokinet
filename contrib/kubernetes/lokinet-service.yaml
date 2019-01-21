@@ -1,10 +1,12 @@
 kind: Service
 apiVersion: v1
 metadata:
-  name: lokinet-service
+  name: lokinet
+  labels:
+    app: lokinet
 spec:
   selector:
-    app: lokinet-app
+    app: lokinet
   ports:
   - protocol: UDP
     port: 1090

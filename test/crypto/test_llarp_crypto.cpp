@@ -6,6 +6,45 @@
 
 namespace llarp
 {
+  struct IdentityKeyTest : public ::testing::Test 
+  {
+    llarp::Crypto crypto;
+    llarp::IdentitySecret seed;
+
+    IdentityKeyTest() : crypto(llarp::Crypto::sodium{})
+    {
+
+    }
+    
+    llarp::Crypto*
+    Crypto()
+    {
+      return &crypto;
+    }
+
+    void
+    SetUp()
+    {
+      seed.Randomize();
+    }
+
+
+  };
+
+  TEST_F(IdentityKeyTest, TestSeedToSecretKey)
+  {
+    SecretKey secret;
+    ASSERT_TRUE(crypto.seed_to_secretkey(secret, seed));
+    AlignedBuffer<128> random;
+    random.Randomize();
+    Signature sig;
+    ASSERT_TRUE(crypto.sign(sig, secret, random.as_buffer()));
+    ASSERT_TRUE(crypto.verify(secret.toPublic(), random.as_buffer(), sig));
+    // mangle sig
+    sig.Randomize();
+    ASSERT_FALSE(crypto.verify(secret.toPublic(), random.as_buffer(), sig));
+  }
+
   struct PQCryptoTest : public ::testing::Test
   {
     llarp::Crypto crypto;

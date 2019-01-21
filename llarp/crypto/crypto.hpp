@@ -55,6 +55,10 @@ namespace llarp
   using verify_func =
       std::function< bool(const PubKey &, llarp_buffer_t, const Signature &) >;
 
+  /// converts seed to secretkey
+  using seed_to_secret_func =
+      std::function< bool(llarp::SecretKey &, const llarp::IdentitySecret &) >;
+
   /// library crypto configuration
   struct Crypto
   {
@@ -80,6 +84,8 @@ namespace llarp
     sign_func sign;
     /// ed25519 verify
     verify_func verify;
+    /// seed to secretkey
+    seed_to_secret_func seed_to_secretkey;
     /// randomize buffer
     std::function< void(llarp_buffer_t) > randomize;
     /// randomizer memory

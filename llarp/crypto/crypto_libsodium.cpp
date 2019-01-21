@@ -124,6 +124,15 @@ namespace llarp
       return rc != -1;
     }
 
+    static bool
+    seed_to_secretkey(llarp::SecretKey &secret,
+                      const llarp::IdentitySecret &seed)
+    {
+      byte_t pk[crypto_sign_ed25519_PUBLICKEYBYTES];
+      return crypto_sign_ed25519_seed_keypair(pk, secret.data(), seed.data())
+          != -1;
+    }
+
     static void
     randomize(llarp_buffer_t buff)
     {
@@ -198,7 +207,8 @@ namespace llarp
   Crypto::Crypto(Crypto::sodium tag)
   {
     (void)tag;
-    assert(sodium_init() != -1);
+    if(sodium_init() == -1)
+      throw std::runtime_error("sodium_init() returned -1");
     char *avx2 = std::getenv("AVX2_FORCE_DISABLE");
     if(avx2 && std::string(avx2) == "1")
       ntru_init(1);
@@ -219,6 +229,7 @@ namespace llarp
     this->randbytes           = llarp::sodium::randbytes;
     this->identity_keygen     = llarp::sodium::sigkeygen;
     this->encryption_keygen   = llarp::sodium::enckeygen;
+    this->seed_to_secretkey   = llarp::sodium::seed_to_secretkey;
     this->pqe_encrypt         = llarp::pq::encrypt;
     this->pqe_decrypt         = llarp::pq::decrypt;
     this->pqe_keygen          = llarp::pq::keygen;
