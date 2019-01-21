@@ -21,6 +21,7 @@ begin_tun_loop(int nThreads)
   llarp::LogInfo("created ", nThreads, " threads for TUN event queue");
 }
 
+// this one is called from the TUN handler
 bool
 win32_tun_io::queue_write(const byte_t* buf, size_t sz)
 {
@@ -94,8 +95,8 @@ win32_tun_io::do_write(void* data, size_t sz)
   WriteFile(tunif->tun_fd, data, sz, nullptr, &pkt->pkt);
 }
 
-// we call this one when we get a packet in the event port
-// which then kicks off another write
+// while this one is called from the event loop
+// eventually comes back and calls queue_write()
 void
 win32_tun_io::flush_write()
 {
@@ -153,8 +154,13 @@ tun_ev_loop(void* unused)
     {
       // llarp::LogInfo("read tun ", size, " bytes, pass to handler");
       // skip if our buffer remains empty
+      // (if our buffer is empty, we don't even have a valid IP frame.
+      // just throw it out)
       if(*(byte_t*)pkt->buf == '\0')
+      {
+        delete pkt;
         continue;
+      }
       if(ev->t->recvpkt)
         ev->t->recvpkt(ev->t, llarp::InitBuffer(pkt->buf, size));
       ev->read(ev->readbuf, sizeof(ev->readbuf));
