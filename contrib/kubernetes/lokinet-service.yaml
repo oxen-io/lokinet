@@ -1,0 +1,11 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: lokinet-service
+spec:
+  selector:
+    app: lokinet-app
+  ports:
+  - protocol: UDP
+    port: 1090
+    targetPort: 1090

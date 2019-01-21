@@ -1,6 +1,6 @@
-# lokinet cluster setup
+# pylokinet
 
-clustering lokinet with python 3
+lokinet with python 3
 
     # python3 setup.py install
 
