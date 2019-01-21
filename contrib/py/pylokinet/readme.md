@@ -24,4 +24,4 @@ run (root):
     # export LOKINET_IP=public.ip.goes.here
     # export LOKINET_PORT=1090
     # export LOKINET_IFNAME=eth0
-    # python3 -m pylokinet.instance
+    # python3 -m pylokinet

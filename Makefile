@@ -9,6 +9,8 @@ prefix = $(DESTDIR)/usr/local
 CC ?= cc
 CXX ?= c++
 
+PYTHON ?= python3
+
 SETCAP ?= which setcap && setcap cap_net_admin,cap_net_bind_service=+eip
 
 SHADOW_ROOT ?= $(HOME)/.shadow
@@ -131,7 +133,7 @@ shadow-build: shadow-configure
 	$(MAKE) -C $(BUILD_ROOT)
 
 shadow-run: shadow-build
-	python3 contrib/shadow/genconf.py $(SHADOW_CONFIG)
+	$(PYTHON) contrib/shadow/genconf.py $(SHADOW_CONFIG)
 	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) | $(SHADOW_PARSE)"
 
 shadow-plot: shadow-run
@@ -152,7 +154,7 @@ testnet-build: testnet-configure
 testnet:
 	cp $(EXE) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
-	python3 contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4
+	$(PYTHON) contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 $(TEST_EXE): debug
@@ -217,6 +219,13 @@ lint: $(LINT_CHECK)
 %.cpp-check: %.cpp
 	clang-tidy $^ -- -I$(REPO)/include -I$(REPO)/crypto/include -I$(REPO)/llarp -I$(REPO)/vendor/cppbackport-master/lib
 
+docker-kubernetes:
+	docker build -f docker/loki-svc-kubernetes.Dockerfile .
+
+install-pylokinet:
+	cd $(REPO)/contrib/py/pylokinet && $(PYTHON) setup.py install
+
+kubernetes-install: install install-pylokinet
 
 docker-debian:
 	docker build -f docker/debian.Dockerfile .

@@ -17,6 +17,7 @@ from pylokinet import rc
 lib_file = os.path.join(os.path.realpath('.'), 'liblokinet-shared.so')
 
 
+
 def log(msg):
     sys.stderr.write("lokinet: {}\n".format(msg))
     sys.stderr.flush()
@@ -103,7 +104,7 @@ class LokiNET(threading.Thread):
 def getconf(name, fallback=None):
     return name in os.environ and os.environ[name] or fallback
 
-def main(args):
+def run_main(args):
     log("going up")
     root = getconf("LOKINET_ROOT")
     if root is None:
@@ -120,6 +121,8 @@ def main(args):
         print("LOKINET_BOOTSTRAP_URL was not set")
 
     lib = getconf("LOKINET_LIB", lib_file)
+    if not os.path.exists(lib):
+        lib = "liblokinet-shared.so"
     timeout = int(getconf("LOKINET_TIMEOUT", "5"))
     ping_interval = int(getconf("LOKINET_PING_INTERVAL", "60"))
     ping_callback = getconf("LOKINET_PING_URL")
@@ -191,5 +194,9 @@ def main(args):
             loki.close()
     else:
         loki.close()
-        
-main(sys.argv[1:])
+
+def main():
+    run_main(sys.argv[1:])
+
+if __name__ == "__main__":
+    main()
