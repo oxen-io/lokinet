@@ -85,6 +85,9 @@ namespace llarp
     // our router contact
     llarp::RouterContact _rc;
 
+    /// are we using the lokid service node seed ?
+    bool usingSNSeed = false;
+
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
 

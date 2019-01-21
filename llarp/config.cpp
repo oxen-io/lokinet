@@ -364,6 +364,9 @@ extern "C"
         {"netdb", conf->impl.netdb},         {"api", conf->impl.api},
         {"services", conf->impl.services}};
 
+    for(const auto item : conf->impl.lokid)
+      iter->visit(iter, "lokid", item.first.c_str(), item.second.c_str());
+
     for(const auto item : conf->impl.router)
       iter->visit(iter, "router", item.first.c_str(), item.second.c_str());
 

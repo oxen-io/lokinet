@@ -412,7 +412,10 @@ namespace llarp
   {
     if(!EnsureEncryptionKey())
       return false;
-    return llarp_findOrCreateIdentity(&crypto, ident_keyfile, identity);
+    if(usingSNSeed)
+      return llarp_loadServiceNodeIdentityKey(&crypto, ident_keyfile, identity);
+    else
+      return llarp_findOrCreateIdentity(&crypto, ident_keyfile, identity);
   }
 
   bool
@@ -1488,6 +1491,11 @@ namespace llarp
     }
     else if(StrEq(section, "lokid"))
     {
+      if(StrEq(key, "service-node-seed"))
+      {
+        self->usingSNSeed   = true;
+        self->ident_keyfile = val;
+      }
       if(StrEq(key, "enabled"))
       {
         self->whitelistRouters = IsTrueValue(val);
@@ -1568,7 +1576,7 @@ namespace llarp
       {
         self->transport_keyfile = val;
       }
-      if(StrEq(key, "ident-privkey"))
+      if(StrEq(key, "ident-privkey") && !self->usingSNSeed)
       {
         self->ident_keyfile = val;
       }
