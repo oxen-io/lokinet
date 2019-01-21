@@ -198,6 +198,7 @@ llarp_ensure_router_config(std::ofstream &f, std::string basepath)
   f << "[lokid]" << std::endl;
   f << "enabled=false" << std::endl;
   f << "jsonrpc=127.0.0.1:22023" << std::endl;
+  f << "#service-node-seed=/path/to/servicenode/seed" << std::Endl;
   f << std::endl;
   f << "# network settings " << std::endl;
   f << "[network]" << std::endl;

@@ -31,7 +31,7 @@ class LokiNET(threading.Thread):
     
     asRouter = True
 
-    def configure(self, lib, conf, ip=None, port=None, ifname=None):
+    def configure(self, lib, conf, ip=None, port=None, ifname=None, seedfile=None, lokid_host=None, lokid_port=None):
         log("configure lib={} conf={}".format(lib, conf))
         if not os.path.exists(os.path.dirname(conf)):
             os.mkdir(os.path.dirname(conf))
@@ -43,7 +43,16 @@ class LokiNET(threading.Thread):
         if self.lib.llarp_ensure_config(conf.encode('utf-8'), os.path.dirname(conf).encode('utf-8'), True, self.asRouter):
             config = configparser.ConfigParser()
             config.read(conf)
-            log('overwrite ip="{}" port="{}" ifname="{}"'.format(ip, port, ifname))
+            log('overwrite ip="{}" port="{}" ifname="{}" seedfile="{}" lokid=("{}", "{}")'.format(ip, port, ifname, seedfile, lokid_host, lokid_port))
+            if seedfile and lokid_host and lokid_port:
+                if not os.path.exists(seedfile):
+                    log('cannot access service node seed at "{}"'.format(seedfile))
+                    return False
+                config['lokid'] = {
+                    'service-node-seed': seedfile,
+                    'enabled': "true",
+                    'jsonrpc': "{}:{}".format(lokid_host, lokid_port)
+                }
             if ip:
                 config['router']['public-address'] = '{}'.format(ip)
             if port:
@@ -105,7 +114,14 @@ def getconf(name, fallback=None):
     return name in os.environ and os.environ[name] or fallback
 
 def run_main(args):
-    log("going up")
+    seedfile = getconf("LOKI_SEED_FILE")
+    if seedfile is None:
+        print("LOKI_SEED_FILE was not set")
+        return
+
+    lokid_host = getconf("LOKI_RPC_HOST", "127.0.0.1")
+    lokid_port = getconf("LOKI_RPC_PORT", "22023")
+
     root = getconf("LOKINET_ROOT")
     if root is None:
         print("LOKINET_ROOT was not set")
@@ -133,12 +149,13 @@ def run_main(args):
         print("LOKINET_PING_URL was not set")
         return
     conf = os.path.join(root, "daemon.ini")
+    log("going up")
     loki = LokiNET()
     log("bootstrapping...")
     try:
         r = requests.get(bootstrap)
         if r.status_code == 404:
-            log("bootstrap gave no RCs, we are the seed node")
+            log("bootstrap gave no RCs, we are probably the seed node")
         elif r.status_code != 200:
             raise Exception("http {}".format(r.status_code))
         else:
@@ -153,7 +170,7 @@ def run_main(args):
         log("failed to bootstrap: {}".format(ex))
         loki.close()
         return
-    if loki.configure(lib, conf, ip, port, ifname):
+    if loki.configure(lib, conf, ip, port, ifname, seedfile, lokid_host, lokid_port):
         log("configured")
         
         loki.start()
