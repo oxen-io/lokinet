@@ -153,6 +153,7 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "# ";
 #endif
   f << "group=" << DEFAULT_LOKINET_GROUP << std::endl;
+  f << "pidfile=" << basepath << "lokinet.pid" << std::endl;
   f << std::endl << std::endl;
 
   f << "# dns provider configuration section" << std::endl;

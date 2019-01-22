@@ -53,6 +53,13 @@ namespace llarp
                        const char *key, const char *val)
   {
     Context *ctx = static_cast< Context * >(itr->user);
+    if(!strcmp(section, "system"))
+    {
+      if(!strcmp(key, "pidfile"))
+      {
+        ctx->SetPIDFile(val);
+      }
+    }
     if(!strcmp(section, "router"))
     {
       if(!strcmp(key, "worker-threads") && !ctx->singleThreaded)
@@ -79,6 +86,12 @@ namespace llarp
         ctx->nodedb_dir = val;
       }
     }
+  }
+
+  void 
+  Context::SetPIDFile(const std::string & fname)
+  {
+    pidfile = fname;
   }
 
   int
@@ -174,14 +187,45 @@ namespace llarp
       llarp::LogError("cannot run non configured context");
       return 1;
     }
+    if(!WritePIDFile())
+      return 1;
     // run
     if(!router->Run(nodedb))
       return 1;
+    
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, worker, logic);
     // waits for router graceful stop
     return 0;
+  }
+
+  bool
+  Context::WritePIDFile() const
+  {
+    if(pidfile.size())
+    {
+      std::ofstream f(pidfile);
+      f << std::to_string(getpid());
+      return f.good();
+    }
+    else
+      return true;
+  }
+
+  void
+  Context::RemovePIDFile() const
+  {
+    if(pidfile.size())
+    {
+      fs::path f = pidfile;
+      std::error_code ex;
+      if(fs::exists(f, ex))
+      {
+        if(!ex)
+          fs::remove(f);
+      }
+    }
   }
 
   void
@@ -277,6 +321,7 @@ namespace llarp
       delete logic;
       logic = nullptr;
     }
+    RemovePIDFile();
   }
 
   bool
