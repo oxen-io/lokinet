@@ -287,7 +287,7 @@ namespace llarp
     {
       llarp::LogDebug("set up tunif");
 
-      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
+      if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, TUNTAP_ID_ANY) == -1)
       {
         llarp::LogWarn("Can't set tuntap to tunnel mode");
         return false;
