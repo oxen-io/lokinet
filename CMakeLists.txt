@@ -634,6 +634,7 @@ set(TEST_SRC
   test/util/test_llarp_util_aligned.cpp
   test/util/test_llarp_util_bencode.cpp
   test/util/test_llarp_util_encode.cpp
+  test/util/test_llarp_util_ini.cpp
   test/util/test_llarp_util_queue_manager.cpp
   test/util/test_llarp_util_queue.cpp
   test/util/test_llarp_util_thread_pool.cpp

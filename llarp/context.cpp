@@ -88,8 +88,8 @@ namespace llarp
     }
   }
 
-  void 
-  Context::SetPIDFile(const std::string & fname)
+  void
+  Context::SetPIDFile(const std::string &fname)
   {
     pidfile = fname;
   }
@@ -192,7 +192,7 @@ namespace llarp
     // run
     if(!router->Run(nodedb))
       return 1;
-    
+
     // run net io thread
     llarp::LogInfo("running mainloop");
     llarp_ev_loop_run_single_process(mainloop, worker, logic);
