@@ -510,8 +510,12 @@ set(LIB_SRC
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
   llarp/dht/dht.cpp
+  llarp/dht/explorenetworkjob.cpp
   llarp/dht/kademlia.cpp
   llarp/dht/key.cpp
+  llarp/dht/localtaglookup.cpp
+  llarp/dht/localrouterlookup.cpp
+  llarp/dht/localserviceaddresslookup.cpp
   llarp/dht/message.cpp
   llarp/dht/messages/findintro.cpp
   llarp/dht/messages/findrouter.cpp
@@ -519,6 +523,12 @@ set(LIB_SRC
   llarp/dht/messages/gotrouter.cpp
   llarp/dht/messages/pubintro.cpp
   llarp/dht/node.cpp
+  llarp/dht/publishservicejob.cpp
+  llarp/dht/recursiverouterlookup.cpp
+  llarp/dht/serviceaddresslookup.cpp
+  llarp/dht/taglookup.cpp
+  llarp/dht/tx.cpp
+  llarp/dht/txholder.cpp
   llarp/dht/txowner.cpp
   llarp/dns.cpp
   llarp/dnsc.cpp
