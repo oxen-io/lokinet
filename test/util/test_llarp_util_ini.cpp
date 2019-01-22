@@ -20,6 +20,7 @@ TEST_F(TestINIParser, TestParseEmpty)
 TEST_F(TestINIParser, TestParseOneSection)
 {
   llarp::ConfigParser::Section_t sect;
+  // this is an anti pattern don't write this kind of code with configpaser
   auto assertVisit = [&sect](const auto & section) -> bool {
     sect = section;
     return true;
