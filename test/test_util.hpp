@@ -2,6 +2,7 @@
 #define TEST_UTIL_HPP
 
 #include <util/fs.hpp>
+#include <util/types.hpp>
 
 namespace llarp
 {
@@ -9,6 +10,15 @@ namespace llarp
   {
     std::string
     randFilename();
+
+    template < typename Buf >
+    Buf
+    makeBuf(byte_t val)
+    {
+      Buf b;
+      b.Fill(val);
+      return b;
+    }
 
     struct FileGuard
     {

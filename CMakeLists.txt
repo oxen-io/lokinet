@@ -622,13 +622,16 @@ set(DNS_SRC
 set(TEST_SRC
   # helpers
   test/main.cpp
+  test/dht/mock_context.cpp
   test/test_util.cpp
   # actual test cases
   test/crypto/test_llarp_crypto_types.cpp
   test/crypto/test_llarp_crypto.cpp
   test/dht/test_llarp_dht_bucket.cpp
+  test/dht/test_llarp_dht_explorenetworkjob.cpp
   test/dht/test_llarp_dht_kademlia.cpp
   test/dht/test_llarp_dht_key.cpp
+  test/dht/test_llarp_dht_tx.cpp
   test/dht/test_llarp_dht_txowner.cpp
   test/dns/test_llarp_dns_dns.cpp
   test/exit/test_llarp_exit_context.cpp

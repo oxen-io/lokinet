@@ -18,13 +18,14 @@ namespace llarp
     ExploreNetworkJob::SendReply()
     {
       llarp::LogInfo("got ", valuesFound.size(), " routers from exploration");
+
+      auto router = parent->GetRouter();
+      using std::placeholders::_1;
       for(const auto &pk : valuesFound)
       {
         // lookup router
         parent->LookupRouter(
-            pk,
-            std::bind(&Router::HandleDHTLookupForExplore, parent->GetRouter(), pk,
-                      std::placeholders::_1));
+            pk, std::bind(&Router::HandleDHTLookupForExplore, router, pk, _1));
       }
     }
   }  // namespace dht

@@ -10,8 +10,6 @@
 
 namespace llarp
 {
-  struct Router;
-
   namespace dht
   {
     struct AbstractContext;
@@ -32,11 +30,15 @@ namespace llarp
 
       virtual ~TX(){};
 
+      void
+      OnFound(const Key_t& askedPeer, const V& value);
+
+      /// return true if we want to persist this tx
+      bool
+      AskNextPeer(const Key_t& prevPeer, const std::unique_ptr< Key_t >& next);
+
       virtual bool
       Validate(const V& value) const = 0;
-
-      void
-      OnFound(const Key_t askedPeer, const V& value);
 
       virtual void
       Start(const TXOwner& peer) = 0;
@@ -47,17 +49,13 @@ namespace llarp
       virtual void
       DoNextRequest(const Key_t& peer) = 0;
 
-      /// return true if we want to persist this tx
-      bool
-      AskNextPeer(const Key_t& prevPeer, const std::unique_ptr< Key_t >& next);
-
       virtual void
       SendReply() = 0;
     };
 
     template < typename K, typename V >
     inline void
-    TX< K, V >::OnFound(const Key_t askedPeer, const V& value)
+    TX< K, V >::OnFound(const Key_t& askedPeer, const V& value)
     {
       peersAsked.insert(askedPeer);
       if(Validate(value))
