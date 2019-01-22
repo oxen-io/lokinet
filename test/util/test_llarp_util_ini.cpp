@@ -25,7 +25,7 @@ TEST_F(TestINIParser, TestParseOneSection)
     sect = section;
     return true;
   };
-  ASSERT_TRUE(parser.LoadString("[test]\nkey=val"));
+  ASSERT_TRUE(parser.LoadString("[test]\nkey=val   \n"));
   ASSERT_TRUE(parser.VisitSection("test", assertVisit));
   auto itr = sect.find("notfound");
   ASSERT_EQ(itr, sect.end());

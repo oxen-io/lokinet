@@ -37,6 +37,12 @@ namespace llarp
     m_Data.clear();
   }
 
+  static bool 
+  whitespace(char ch)
+  {
+    return std::isspace(static_cast<unsigned char>(ch)) != 0;
+  }
+
   bool
   ConfigParser::Parse()
   {
@@ -49,7 +55,7 @@ namespace llarp
         auto beg = itr;
         while(itr != m_Data.end() && *itr != '\n' && *itr != '\r')
           ++itr;
-        lines.emplace_back(std::addressof(*beg), (itr - beg));
+        lines.emplace_back(std::addressof(*beg), std::distance(beg, itr));
         if(itr == m_Data.end())
           break;
         ++itr;
@@ -82,10 +88,10 @@ namespace llarp
 
         // clamp whitespaces
         ++sectOpenPos;
-        while(std::isspace(realLine[sectOpenPos]) && sectOpenPos != sectClosPos)
+        while(whitespace(realLine[sectOpenPos]) && sectOpenPos != sectClosPos)
           ++sectOpenPos;
         --sectClosPos;
-        while(std::isspace(realLine[sectClosPos]) && sectClosPos != sectOpenPos)
+        while(whitespace(realLine[sectClosPos]) && sectClosPos != sectOpenPos)
           --sectClosPos;
         // set section name
         sectName = realLine.substr(sectOpenPos, sectClosPos);
@@ -98,18 +104,18 @@ namespace llarp
         String_t::size_type v_start = kvDelim + 1;
         String_t::size_type v_end   = realLine.size() - 1;
         // clamp whitespaces
-        while(std::isspace(realLine[k_start]) && k_start != kvDelim)
+        while(whitespace(realLine[k_start]) && k_start != kvDelim)
           ++k_start;
-        while(std::isspace(realLine[k_end]) && k_end != k_start)
+        while(whitespace(realLine[k_end]) && k_end != k_start)
           --k_end;
-        while(std::isspace(realLine[v_start]) && v_start != v_end)
+        while(whitespace(realLine[v_start]) && v_start != v_end)
           ++v_start;
-        while(std::isspace(realLine[v_end]))
+        while(whitespace(realLine[v_end]))
           --v_end;
 
         // sect.k = v
-        String_t k      = realLine.substr(k_start, k_end);
-        String_t v      = realLine.substr(v_start, v_end);
+        String_t k      = realLine.substr(k_start, k_end - k_start);
+        String_t v      = realLine.substr(v_start, 1 + (v_end - v_start));
         Section_t& sect = m_Config[sectName];
         sect.emplace(k, v);
       }
