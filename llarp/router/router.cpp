@@ -399,14 +399,14 @@ namespace llarp
   {
     if(!EnsureEncryptionKey())
       return false;
-    return llarp_findOrCreateIdentity(&crypto, ident_keyfile, identity);
+    return llarp_findOrCreateIdentity(&crypto, ident_keyfile, this->identity);
   }
 
   bool
   Router::EnsureEncryptionKey()
   {
     return llarp_findOrCreateEncryption(&crypto, encryption_keyfile,
-                                        encryption);
+                                        this->encryption);
   }
 
   void
@@ -1094,12 +1094,17 @@ namespace llarp
         llarp::LogError("failed to regenerate keys and sign RC");
         return false;
       }
-      // generate default hidden service
-      llarp::LogInfo("setting up default network endpoint");
-      if(!CreateDefaultHiddenService())
+
+      // don't create default if we already have some defined
+      if(this->ShouldCreateDefaultHiddenService())
       {
-        llarp::LogError("failed to set up default network endpoint");
-        return false;
+        // generate default hidden service
+        llarp::LogInfo("setting up default network endpoint");
+        if(!CreateDefaultHiddenService())
+        {
+          llarp::LogError("failed to set up default network endpoint");
+          return false;
+        }
       }
     }
 
@@ -1138,6 +1143,84 @@ namespace llarp
       link->Stop();
     for(const auto &link : inboundLinks)
       link->Stop();
+  }
+
+  bool
+  Router::ShouldCreateDefaultHiddenService()
+  {
+    std::string defaultIfAddr = "auto";
+    std::string defaultIfName = "auto";
+    std::string enabledOption = "auto";
+    auto itr                  = netConfig.find("defaultIfAddr");
+    if(itr != netConfig.end())
+    {
+      defaultIfAddr = itr->second;
+    }
+    itr = netConfig.find("defaultIfName");
+    if(itr != netConfig.end())
+    {
+      defaultIfName = itr->second;
+    }
+    itr = netConfig.find("enabled");
+    if(itr != netConfig.end())
+    {
+      enabledOption = itr->second;
+    }
+    llarp::LogDebug("IfName: ", defaultIfName, " IfAddr: ", defaultIfAddr,
+                    " Enabled: ", enabledOption);
+    // llarp::LogInfo("IfAddr: ", itr->second);
+    // llarp::LogInfo("IfName: ", itr->second);
+    if(enabledOption == "false")
+    {
+      llarp::LogInfo("Disabling default hidden service");
+      return false;
+    }
+    else if(enabledOption == "auto")
+    {
+      // auto detect if we have any pre-defined endpoints
+      // no if we have a endpoints
+      if(hiddenServiceContext.hasEndpoints())
+      {
+        llarp::LogInfo("Auto mode detected and we have endpoints");
+        netConfig.emplace("enabled", "false");
+        return false;
+      }
+      netConfig.emplace("enabled", "true");
+    }
+    // ev.cpp llarp_ev_add_tun now handles this
+    /*
+    // so basically enabled at this point
+    if(defaultIfName == "auto")
+    {
+      // we don't have any endpoints, auto configure settings
+      // set a default IP range
+      defaultIfAddr = llarp::findFreePrivateRange();
+      if(defaultIfAddr == "")
+      {
+        llarp::LogError(
+                        "Could not find any free lokitun interface names, can't
+    auto set up " "default HS context for client"); defaultIfAddr = "no";
+        netConfig.emplace(std::make_pair("defaultIfAddr", defaultIfAddr));
+        return false;
+      }
+      netConfig.emplace(std::make_pair("defaultIfAddr", defaultIfAddr));
+    }
+    if(defaultIfName == "auto")
+    {
+      // pick an ifName
+      defaultIfName = llarp::findFreeLokiTunIfName();
+      if(defaultIfName == "")
+      {
+        llarp::LogError(
+                        "Could not find any free private ip ranges, can't auto
+    set up " "default HS context for client"); defaultIfName = "no";
+        netConfig.emplace(std::make_pair("defaultIfName", defaultIfName));
+        return false;
+      }
+      netConfig.emplace(std::make_pair("defaultIfName", defaultIfName));
+    }
+    */
+    return true;
   }
 
   void
@@ -1305,6 +1388,7 @@ namespace llarp
   Router::CreateDefaultHiddenService()
   {
     // fallback defaults
+    // To NeuroScr: why run findFree* here instead of in tun.cpp?
     static const std::unordered_map< std::string,
                                      std::function< std::string(void) > >
         netConfigDefaults = {
@@ -1554,6 +1638,14 @@ namespace llarp
       if(StrEq(key, "transport-privkey"))
       {
         self->transport_keyfile = val;
+      }
+      if(StrEq(key, "identity-privkey"))
+      {
+        llarp::LogWarn(
+            "Deprecated INI key identity-privkey detected, please rename it to "
+            "ident-privkey");
+        // FIXME: use the config writer to fix it
+        self->ident_keyfile = val;
       }
       if(StrEq(key, "ident-privkey"))
       {

@@ -72,6 +72,8 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
 #endif
   }
 
+  llarp::LogInfo("Attempting to create config file ", fname);
+
   // abort if client.ini already exists
   if(!asRouter)
   {

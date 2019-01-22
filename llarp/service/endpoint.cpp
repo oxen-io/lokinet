@@ -486,18 +486,29 @@ namespace llarp
     }
 
     bool
-    Endpoint::Start()
+    Endpoint::LoadKeyFile()
     {
       auto crypto = &m_Router->crypto;
       if(m_Keyfile.size())
       {
         if(!m_Identity.EnsureKeys(m_Keyfile, crypto))
+        {
+          llarp::LogWarn("Can't ensure keyfile [", m_Keyfile, "]");
           return false;
+        }
       }
       else
       {
         m_Identity.RegenerateKeys(crypto);
       }
+      return true;
+    }
+
+    bool
+    Endpoint::Start()
+    {
+      // how can I tell if a m_Identity isn't loaded?
+      //this->LoadKeyFile();
       if(!m_DataHandler)
       {
         m_DataHandler = this;
@@ -508,7 +519,10 @@ namespace llarp
         if(m_OnInit.front()())
           m_OnInit.pop_front();
         else
+        {
+          llarp::LogWarn("Can't call init of network isolation");
           return false;
+        }
       }
       return true;
     }
