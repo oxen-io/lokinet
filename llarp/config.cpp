@@ -11,37 +11,41 @@
 namespace llarp
 {
   template < typename Config, typename Section >
-  static const Section &
+  Section
   find_section(Config &c, const std::string &name, const Section &fallback)
   {
-    if(c.sections.find(name) == c.sections.end())
+    Section ret;
+    if(c.VisitSection(name.c_str(),
+                      [&ret](const ConfigParser::Section_t &s) -> bool {
+                        for(const auto &item : s)
+                        {
+                          ret.emplace_back(item.first, item.second);
+                        }
+                        return true;
+                      }))
+      return ret;
+    else
       return fallback;
-    return c.sections[name].values;
   }
 
   bool
   Config::Load(const char *fname)
   {
-    std::ifstream f;
-    f.open(fname);
-    if(f.is_open())
-    {
-      ini::Parser parser(f);
-      auto &top = parser.top();
-      router    = find_section(top, "router", section_t{});
-      network   = find_section(top, "network", section_t{});
-      connect   = find_section(top, "connect", section_t{});
-      netdb     = find_section(top, "netdb", section_t{});
-      dns       = find_section(top, "dns", section_t{});
-      iwp_links = find_section(top, "bind", section_t{});
-      services  = find_section(top, "services", section_t{});
-      system    = find_section(top, "system", section_t{});
-      api       = find_section(top, "api", section_t{});
-      lokid     = find_section(top, "lokid", section_t{});
-      bootstrap = find_section(top, "bootstrap", section_t{});
-      return true;
-    }
-    return false;
+    ConfigParser parser;
+    if(!parser.LoadFile(fname))
+      return false;
+    router    = find_section(parser, "router", section_t{});
+    network   = find_section(parser, "network", section_t{});
+    connect   = find_section(parser, "connect", section_t{});
+    netdb     = find_section(parser, "netdb", section_t{});
+    dns       = find_section(parser, "dns", section_t{});
+    iwp_links = find_section(parser, "bind", section_t{});
+    services  = find_section(parser, "services", section_t{});
+    system    = find_section(parser, "system", section_t{});
+    api       = find_section(parser, "api", section_t{});
+    lokid     = find_section(parser, "lokid", section_t{});
+    bootstrap = find_section(parser, "bootstrap", section_t{});
+    return true;
   };
 
 }  // namespace llarp
@@ -358,23 +362,26 @@ extern "C"
   llarp_config_iter(struct llarp_config *conf,
                     struct llarp_config_iterator *iter)
   {
-    iter->conf                                                   = conf;
-    std::map< std::string, llarp::Config::section_t & > sections = {
-        {"network", conf->impl.network},     {"connect", conf->impl.connect},
-        {"bootstrap", conf->impl.bootstrap}, {"system", conf->impl.system},
-        {"netdb", conf->impl.netdb},         {"api", conf->impl.api},
-        {"services", conf->impl.services}};
+    iter->conf = conf;
+    std::unordered_map< std::string, const llarp::Config::section_t & >
+        sections = {{"network", conf->impl.network},
+                    {"connect", conf->impl.connect},
+                    {"bootstrap", conf->impl.bootstrap},
+                    {"system", conf->impl.system},
+                    {"netdb", conf->impl.netdb},
+                    {"api", conf->impl.api},
+                    {"services", conf->impl.services}};
 
-    for(const auto item : conf->impl.lokid)
+    for(const auto &item : conf->impl.lokid)
       iter->visit(iter, "lokid", item.first.c_str(), item.second.c_str());
 
-    for(const auto item : conf->impl.router)
+    for(const auto &item : conf->impl.router)
       iter->visit(iter, "router", item.first.c_str(), item.second.c_str());
 
-    for(const auto item : conf->impl.dns)
+    for(const auto &item : conf->impl.dns)
       iter->visit(iter, "dns", item.first.c_str(), item.second.c_str());
 
-    for(const auto item : conf->impl.iwp_links)
+    for(const auto &item : conf->impl.iwp_links)
       iter->visit(iter, "bind", item.first.c_str(), item.second.c_str());
 
     for(const auto &section : sections)
