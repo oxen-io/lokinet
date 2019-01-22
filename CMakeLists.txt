@@ -699,9 +699,6 @@ if(SHADOW)
   target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
   install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
-  #add_executable(${RC_EXE} ${RC_SRC})
-  #add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-  #add_executable(${DNS_EXE} ${DNS_SRC})
   add_subdirectory(${GTEST_DIR})
   if(NOT WIN32)
     add_executable(${TEST_EXE} ${TEST_SRC})
@@ -745,11 +742,10 @@ else()
 
   target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB})
   target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
-
+  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   if (WIN32)
     target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
   endif(WIN32)
 
 
