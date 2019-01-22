@@ -1,7 +1,6 @@
 #ifndef LLARP_DHT_BUCKET_HPP
 #define LLARP_DHT_BUCKET_HPP
 
-#include <crypto/crypto.hpp>
 #include <dht/kademlia.hpp>
 #include <dht/key.hpp>
 
@@ -17,28 +16,47 @@ namespace llarp
     struct Bucket
     {
       using BucketStorage_t = std::map< Key_t, Val_t, XorMetric >;
+      using Random_t        = std::function< uint64_t() >;
 
-      Bucket(const Key_t& us) : nodes(XorMetric(us)){};
+      Bucket(const Key_t& us, Random_t r) : nodes(XorMetric(us)), random(r){};
 
       size_t
-      Size() const
+      size() const
       {
         return nodes.size();
       }
+
+      struct SetIntersector
+      {
+        bool
+        operator()(const typename BucketStorage_t::value_type& lhs,
+                   const Key_t& rhs)
+        {
+          return lhs.first < rhs;
+        }
+
+        bool
+        operator()(const Key_t& lhs,
+                   const typename BucketStorage_t::value_type& rhs)
+        {
+          return lhs < rhs.first;
+        }
+      };
 
       bool
       GetRandomNodeExcluding(Key_t& result,
                              const std::set< Key_t >& exclude) const
       {
-        std::vector< Key_t > candidates;
-        for(const auto& item : nodes)
+        std::vector< typename BucketStorage_t::value_type > candidates;
+        std::set_difference(nodes.begin(), nodes.end(), exclude.begin(),
+                            exclude.end(), std::back_inserter(candidates),
+                            SetIntersector());
+
+        if(candidates.empty())
         {
-          if(exclude.find(item.first) == exclude.end())
-            candidates.push_back(item.first);
-        }
-        if(candidates.size() == 0)
           return false;
-        result = candidates[llarp::randint() % candidates.size()];
+        }
+        result = candidates[random() % candidates.size()].first;
         return true;
       }
 
@@ -62,7 +80,7 @@ namespace llarp
       bool
       GetManyRandom(std::set< Key_t >& result, size_t N) const
       {
-        if(nodes.size() < N)
+        if(nodes.size() < N || nodes.empty())
         {
           llarp::LogWarn("Not enough dht nodes, have ", nodes.size(), " want ",
                          N);
@@ -70,10 +88,10 @@ namespace llarp
         }
         if(nodes.size() == N)
         {
-          for(const auto& node : nodes)
-          {
-            result.insert(node.first);
-          }
+          std::transform(nodes.begin(), nodes.end(),
+                         std::inserter(result, result.end()),
+                         [](const auto& a) { return a.first; });
+
           return true;
         }
         size_t expecting = N;
@@ -81,29 +99,13 @@ namespace llarp
         while(N)
         {
           auto itr = nodes.begin();
-          std::advance(itr, llarp::randint() % sz);
+          std::advance(itr, random() % sz);
           if(result.insert(itr->first).second)
+          {
             --N;
+          }
         }
         return result.size() == expecting;
-      }
-
-      bool
-      GetManyNearExcluding(const Key_t& target, std::set< Key_t >& result,
-                           size_t N, const std::set< Key_t >& exclude) const
-      {
-        std::set< Key_t > s;
-        for(const auto& k : exclude)
-          s.insert(k);
-        Key_t peer;
-        while(N--)
-        {
-          if(!FindCloseExcluding(target, peer, s))
-            return false;
-          s.insert(peer);
-          result.insert(peer);
-        }
-        return true;
       }
 
       bool
@@ -117,7 +119,9 @@ namespace llarp
         for(const auto& item : nodes)
         {
           if(exclude.count(item.first))
+          {
             continue;
+          }
 
           auto curDist = item.first ^ target;
           if(curDist < mindist)
@@ -129,12 +133,33 @@ namespace llarp
         return mindist < maxdist;
       }
 
+      bool
+      GetManyNearExcluding(const Key_t& target, std::set< Key_t >& result,
+                           size_t N, const std::set< Key_t >& exclude) const
+      {
+        std::set< Key_t > s(exclude.begin(), exclude.end());
+
+        Key_t peer;
+        while(N--)
+        {
+          if(!FindCloseExcluding(target, peer, s))
+          {
+            return false;
+          }
+          s.insert(peer);
+          result.insert(peer);
+        }
+        return true;
+      }
+
       void
       PutNode(const Val_t& val)
       {
         auto itr = nodes.find(val.ID);
         if(itr == nodes.end() || itr->second < val)
+        {
           nodes[val.ID] = val;
+        }
       }
 
       void
@@ -142,7 +167,9 @@ namespace llarp
       {
         auto itr = nodes.find(key);
         if(itr != nodes.end())
+        {
           nodes.erase(itr);
+        }
       }
 
       bool
@@ -151,7 +178,14 @@ namespace llarp
         return nodes.find(key) != nodes.end();
       }
 
+      void
+      Clear()
+      {
+        nodes.clear();
+      }
+
       BucketStorage_t nodes;
+      Random_t random;
     };
   }  // namespace dht
 }  // namespace llarp

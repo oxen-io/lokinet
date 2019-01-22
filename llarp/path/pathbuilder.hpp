@@ -4,6 +4,8 @@
 #include <path/pathset.hpp>
 #include <atomic>
 
+struct llarp_dht_context;
+
 namespace llarp
 {
   namespace path
@@ -25,7 +27,7 @@ namespace llarp
       }
 
       llarp::Router* router;
-      struct llarp_dht_context* dht;
+      llarp_dht_context* dht;
       llarp::SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild          = 0;
@@ -35,7 +37,7 @@ namespace llarp
       std::atomic< uint8_t > keygens;
 
       /// construct
-      Builder(llarp::Router* p_router, struct llarp_dht_context* p_dht,
+      Builder(llarp::Router* p_router, llarp_dht_context* p_dht,
               size_t numPaths, size_t numHops);
 
       virtual ~Builder();

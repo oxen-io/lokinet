@@ -8,13 +8,13 @@
 
 namespace llarp
 {
-  struct DHTImmeidateMessage : public ILinkMessage
+  struct DHTImmediateMessage : public ILinkMessage
   {
-    DHTImmeidateMessage() : ILinkMessage()
+    DHTImmediateMessage() : ILinkMessage()
     {
     }
 
-    ~DHTImmeidateMessage();
+    ~DHTImmediateMessage();
 
     std::vector< std::unique_ptr< llarp::dht::IMessage > > msgs;
 

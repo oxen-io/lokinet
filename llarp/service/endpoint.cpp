@@ -1,6 +1,10 @@
 #include <service/endpoint.hpp>
 
 #include <dht/messages/findintro.hpp>
+#include <dht/messages/findrouter.hpp>
+#include <dht/messages/gotintro.hpp>
+#include <dht/messages/gotrouter.hpp>
+#include <dht/messages/pubintro.hpp>
 #include <messages/dht.hpp>
 #include <router/router.hpp>
 #include <service/protocol.hpp>
@@ -1702,7 +1706,7 @@ namespace llarp
       if(markedBad)
         return false;
       bool should = path::Builder::ShouldBuildMore(now);
-      // determinte newest intro
+      // determine newest intro
       Introduction intro;
       if(!GetNewestIntro(intro))
         return should;
