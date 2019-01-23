@@ -80,7 +80,7 @@ class BinHolder:
         if os.path.exists(self._fpath):
             st = os.stat(self._fpath)
             return st.st_mtime >= t
-        return False
+        return True
 
 
     def serve(self, last_modified, respond):
