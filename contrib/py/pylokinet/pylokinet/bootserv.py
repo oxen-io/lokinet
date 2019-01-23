@@ -79,7 +79,7 @@ class BinHolder:
             return False
         if os.path.exists(self._fpath):
             st = os.stat(self._fpath)
-            return st.st_mtime >= t.timestamp()
+            return st.st_mtime < t.timestamp()
         return True
 
 
