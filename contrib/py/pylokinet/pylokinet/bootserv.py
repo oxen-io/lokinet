@@ -20,7 +20,7 @@ from email.utils import parsedate, format_datetime
 import requests
 
 
-root = '/srv/lokinet'
+root = './lokinet'
 
 def _compare_dates(left, right):
     """
@@ -35,11 +35,11 @@ class TokenHolder:
 
     def __init__(self, f="token"):
         if not os.path.exists(self._dir):
-            os.mkdir(self._dir, 0700)
+            os.mkdir(self._dir, 0o700)
         f = os.path.join(self._dir, f)
         if os.path.exists(f):
             with open(f) as fd:
-                self._token = fd.read()
+                self._token = fd.read().replace("\n", "")
 
     def verify(self, token):
         """
@@ -57,7 +57,7 @@ class BinHolder:
 
     def __init__(self, f):
         if not os.path.exists(self._dir):
-            os.mkdir(self._dir, 0700)
+            os.mkdir(self._dir, 0o700)
         self._fpath = os.path.join(self._dir, f)
             
     def put(self, fd):
@@ -76,9 +76,10 @@ class BinHolder:
         if not t:
             return False
         t = time.mktime(t)
-        
-        st = os.stat(self._fpath)
-        return st.st_mtime >= t
+        if os.path.exists(self._fpath):
+            st = os.stat(self._fpath)
+            return st.st_mtime >= t
+        return False
 
 
     def serve(self, last_modified, respond):
@@ -90,7 +91,9 @@ class BinHolder:
             t = time.mktime(t)
         if t is None:
             t = 0
-
+        if not os.path.exists(self._fpath):
+            respond("404 Not Found", [])
+            return []
         st = os.stat(self._fpath)
         if st.st_mtime < t:
             respond("304 Not Modified", [("Last-Modified", format_datetime(st.st_mtime)) ])
@@ -114,7 +117,7 @@ class RCHolder:
                 for f in files:
                     self._add_rc(os.path.join(root, f))
         else:
-            os.mkdir(self._dir, 0700)
+            os.mkdir(self._dir, 0o700)
         
     def prune(self):
         """
@@ -226,8 +229,10 @@ def app(environ, start_response):
         if environ.get("PATH_INFO") == "/":
             j = json.loads(environ.get("wsgi.input").read(request_body_size))
             environ.get("wsgi.errors").write("webhook json: {}".format(json.dumps(j, sort_keys=True, indent=2)))
+            token = environ.get("HTTP_X_GITLAB_TOKEN")
+            environ.get("wsgi.errors").write("\ntoken={}\n".format(token))
             environ.get("wsgi.errors").flush()
-            return handle_webhook(j, environ.get("HTTP_X_GITLAB_TOKEN"), environ.get("HTTP_X_GITLAB_EVENT"), start_response)
+            return handle_webhook(j, token, environ.get("HTTP_X_GITLAB_EVENT"), start_response)
         else:
             return response("404 Not Found", 'bad url', start_response)
     elif method.upper() == "GET":
