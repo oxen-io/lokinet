@@ -180,12 +180,22 @@ def handle_serve_lokinet(modified_since, respond):
     return l.serve(modified_since, respond)
 
 
-def fetch_lokinet(j):
+def fetch_lokinet(j, ref="staging", name="build:linux"):
     holder = BinHolder("lokinet.zip")
     if 'builds' not in j:
         return False
     selected = None
+    attrs = dict()
+    if 'object_attributes' in j:
+        attrs = j['object_attributes']
+    if 'ref' not in attrs or attrs["ref"] != ref:
+        return True
+        
     for build in j['builds']:
+        if 'name' not in build or build['name'] != name:
+            continue
+        if 'status' not in build or build['status'] != 'success':
+            continue
         if 'finished_at' not in build or build['finished_at'] is None:
             continue
         if holder.is_new(build['finished_at']):
