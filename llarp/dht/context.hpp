@@ -7,6 +7,7 @@
 #include <dht/message.hpp>
 #include <dht/messages/findintro.hpp>
 #include <dht/node.hpp>
+#include <dht/txowner.hpp>
 #include <service/IntroSet.hpp>
 #include <util/time.hpp>
 
@@ -18,40 +19,6 @@ namespace llarp
 
   namespace dht
   {
-    struct TXOwner
-    {
-      Key_t node;
-      uint64_t txid = 0;
-
-      TXOwner() = default;
-
-      TXOwner(const Key_t& k, uint64_t id) : node(k), txid(id)
-      {
-      }
-
-      bool
-      operator==(const TXOwner& other) const
-      {
-        return txid == other.txid && node == other.node;
-      }
-      bool
-      operator<(const TXOwner& other) const
-      {
-        return txid < other.txid || node < other.node;
-      }
-
-      struct Hash
-      {
-        std::size_t
-        operator()(TXOwner const& o) const noexcept
-        {
-          std::size_t sz2;
-          memcpy(&sz2, &o.node[0], sizeof(std::size_t));
-          return o.txid ^ (sz2 << 1);
-        }
-      };
-    };
-
     struct Context;
 
     template < typename K, typename V >
@@ -224,7 +191,7 @@ namespace llarp
                           const Key_t& target, bool recursive,
                           std::vector< std::unique_ptr< IMessage > >& replies);
 
-      /// relay a dht messeage from a local path to the main network
+      /// relay a dht message from a local path to the main network
       bool
       RelayRequestForPath(const llarp::PathID_t& localPath,
                           const IMessage* msg);

@@ -1,6 +1,10 @@
 #include <dht/context.hpp>
 
+#include <dht/messages/findrouter.hpp>
+#include <dht/messages/gotintro.hpp>
 #include <dht/messages/gotrouter.hpp>
+#include <dht/messages/pubintro.hpp>
+#include <dht/node.hpp>
 #include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
 #include <router/router.hpp>
@@ -268,9 +272,9 @@ namespace llarp
     {
       router   = r;
       ourKey   = us;
-      nodes    = new Bucket< RCNode >(ourKey);
-      services = new Bucket< ISNode >(ourKey);
-      llarp::LogDebug("intialize dht with key ", ourKey);
+      nodes    = new Bucket< RCNode >(ourKey, llarp::randint);
+      services = new Bucket< ISNode >(ourKey, llarp::randint);
+      llarp::LogDebug("initialize dht with key ", ourKey);
       // start exploring
 
       r->logic->call_later(
@@ -288,7 +292,7 @@ namespace llarp
     void
     Context::DHTSendTo(const RouterID &peer, IMessage *msg, bool keepalive)
     {
-      llarp::DHTImmeidateMessage m;
+      llarp::DHTImmediateMessage m;
       m.msgs.emplace_back(msg);
       router->SendToOrQueue(peer, &m);
       if(keepalive)
@@ -452,7 +456,7 @@ namespace llarp
         if(I.A != introset.A)
         {
           llarp::LogWarn(
-              "publish introset acknoledgement acked a different service");
+              "publish introset acknowledgement acked a different service");
           return false;
         }
         return true;
@@ -666,14 +670,14 @@ namespace llarp
       if(!nodes)
         return false;
 
-      size_t nodeCount = nodes->Size();
+      size_t nodeCount = nodes->size();
       if(nodeCount == 0)
       {
         llarp::LogError(
             "cannot handle exploritory router lookup, no dht peers");
         return false;
       }
-      llarp::LogDebug("We have ", nodes->Size(),
+      llarp::LogDebug("We have ", nodes->size(),
                       " connected nodes into the DHT");
       // ourKey should never be in the connected list
       // requester is likely in the connected list

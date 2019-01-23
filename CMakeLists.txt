@@ -501,24 +501,17 @@ set(LIB_SRC
   llarp/crypto/types.cpp
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
-  llarp/dht/decode.cpp
-  llarp/dht/dht_immediate.cpp
   llarp/dht/dht.cpp
-  llarp/dht/find_intro.cpp
-  llarp/dht/find_router.cpp
-  llarp/dht/got_intro.cpp
-  llarp/dht/got_router.cpp
   llarp/dht/kademlia.cpp
   llarp/dht/key.cpp
   llarp/dht/message.cpp
-  llarp/dht/messages/all.cpp
   llarp/dht/messages/findintro.cpp
   llarp/dht/messages/findrouter.cpp
   llarp/dht/messages/gotintro.cpp
   llarp/dht/messages/gotrouter.cpp
   llarp/dht/messages/pubintro.cpp
   llarp/dht/node.cpp
-  llarp/dht/publish_intro.cpp
+  llarp/dht/txowner.cpp
   llarp/dns.cpp
   llarp/dnsc.cpp
   llarp/dnsd.cpp
@@ -615,8 +608,10 @@ set(TEST_SRC
   # actual test cases
   test/crypto/test_llarp_crypto_types.cpp
   test/crypto/test_llarp_crypto.cpp
+  test/dht/test_llarp_dht_bucket.cpp
+  test/dht/test_llarp_dht_kademlia.cpp
   test/dht/test_llarp_dht_key.cpp
-  test/dht/test_llarp_dht.cpp
+  test/dht/test_llarp_dht_txowner.cpp
   test/dns/test_llarp_dns_dns.cpp
   test/exit/test_llarp_exit_context.cpp
   test/link/test_llarp_link.cpp

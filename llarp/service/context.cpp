@@ -262,10 +262,13 @@ namespace llarp
       }
       // extract type
       std::string endpointType = "tun";
+      std::string keyfile      = "";
       for(const auto &option : conf.second)
       {
         if(option.first == "type")
           endpointType = option.second;
+        if(option.first == "keyfile")
+          keyfile = option.second;
       }
       std::unique_ptr< llarp::service::Endpoint > service;
 
@@ -295,6 +298,17 @@ namespace llarp
 
         // construct
         service.reset(itr->second(conf.first, m_Router));
+
+        // if ephemeral, then we need to regen key
+        // if privkey file, then set it and load it
+        if(keyfile != "")
+        {
+          service->SetOption("keyfile", keyfile);
+          // load keyfile, so we have the correct name for logging
+        }
+        llarp::LogInfo("Establishing endpoint identity");
+        service->LoadKeyFile();  // only start endpoint not tun
+        // now Name() will be correct
       }
       // configure
       for(const auto &option : conf.second)
