@@ -677,11 +677,11 @@ if(USE_LIBABYSS)
   set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
 
-if (NOT WIN32)
-  target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB})
-else()
-  target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-endif(NOT WIN32)
+  if (NOT WIN32)
+    target_link_libraries(${ABYSS_EXE} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} Threads::Threads)
+  else()
+    target_link_libraries(${ABYSS_EXE} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi Threads::Threads)
+  endif(NOT WIN32)
 
   set(TEST_SRC ${TEST_SRC} test/test_libabyss.cpp)
   # for freebsd

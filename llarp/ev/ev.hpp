@@ -672,10 +672,19 @@ struct llarp_ev_loop
 {
   byte_t readbuf[EV_READ_BUF_SZ] = {0};
   llarp_time_t _now              = 0;
+
   virtual bool
   init() = 0;
+
   virtual int
   run() = 0;
+
+  virtual bool
+  running() const = 0;
+
+  /// return false on socket error (non blocking)
+  virtual bool
+  tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) = 0;
 
   virtual int
   tick(int ms) = 0;
@@ -701,16 +710,9 @@ struct llarp_ev_loop
   virtual llarp::ev_io*
   bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* addr) = 0;
 
-  /// return false on socket error (non blocking)
-  virtual bool
-  tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) = 0;
-
   /// register event listener
   virtual bool
   add_ev(llarp::ev_io* ev, bool write) = 0;
-
-  virtual bool
-  running() const = 0;
 
   virtual ~llarp_ev_loop(){};
 
