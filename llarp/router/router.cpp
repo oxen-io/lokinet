@@ -17,6 +17,7 @@
 
 #include <fstream>
 #include <cstdlib>
+#include <iterator>
 #if defined(RPI) || defined(ANDROID)
 #include <unistd.h>
 #endif
