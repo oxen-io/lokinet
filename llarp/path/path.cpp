@@ -587,6 +587,10 @@ namespace llarp
     {
       byte_t tmp[MAX_LINK_MSG_SIZE / 2];
       auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      // should help prevent bad paths with uninitialised members
+      // FIXME: Why would we get uninitialised IMessages?
+      if(msg->version != LLARP_PROTO_VERSION)
+        return false;
       if(!msg->BEncode(&buf))
       {
         llarp::LogError("Bencode failed");

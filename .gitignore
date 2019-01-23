@@ -48,4 +48,7 @@ rapidjson/
 .vscode
 build64/
 build2/
+/contrib/lokinet-bootstrap-winnt/cacert.pem
+/contrib/lokinet-bootstrap-winnt/data.enc
+/contrib/lokinet-bootstrap-winnt/out.bine
 default.profraw
