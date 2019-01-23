@@ -69,11 +69,11 @@ class BinHolder:
                 f.write(chunk)
 
 
-    def is_new(self, last_modified):
+    def is_new(self, date):
         """
         return true if last modified timestamp is fresher than current
         """
-        t = date_parse(last_modified)
+        t = date_parse('{}'.format(date))
         if not t:
             return False
         if os.path.exists(self._fpath):
@@ -185,7 +185,7 @@ def fetch_lokinet(j):
         return False
     selected = None
     for build in j['builds']:
-        if 'finished_at' not in build:
+        if 'finished_at' not in build or build['finished_at'] is None:
             continue
         if holder.is_new(build['finished_at']):
             if selected is None or _compare_dates(build["finished_at"], selected["finished_at"]):
