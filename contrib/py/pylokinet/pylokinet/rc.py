@@ -1,6 +1,14 @@
 from pylokinet import bencode
 import pysodium
 import binascii
+import time
+
+def _expired(ts, lifetime=84600000):
+  """
+  return True if a timestamp is considered expired
+  lifetime is default 23.5 hours
+  """
+  return (int(time.time()) * 1000) - ts >= lifetime
 
 def validate(data):
   rc = bencode.bdecode(data)
@@ -15,7 +23,7 @@ def validate(data):
   except:
     return False
   else:
-    return True
+    return not _expired(rc[b't'])
 
 def get_pubkey(data):
    rc = bencode.bdecode(data)
