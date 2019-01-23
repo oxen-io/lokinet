@@ -60,12 +60,13 @@ class BinHolder:
             os.mkdir(self._dir, 0o700)
         self._fpath = os.path.join(self._dir, f)
             
-    def put(self, fd):
+    def put(self, r):
         """
         put a new file into the place that is held
         """
         with open(self._fpath, "wb") as f:
-            f.write(fd.read())
+            for chunk in r.iter_content(chunk_size=1024):
+                f.write(chunk)
 
 
     def is_new(self, last_modified):
@@ -175,12 +176,12 @@ def response(status, msg, respond):
     return [msg.encode("utf-8")]
 
 def handle_serve_lokinet(modified_since, respond):
-    l = BinHolder('lokinet')
+    l = BinHolder('lokinet.zip')
     return l.serve(modified_since, respond)
 
 
 def fetch_lokinet(j):
-    holder = BinHolder("lokinet")
+    holder = BinHolder("lokinet.zip")
     if 'builds' not in j:
         return False
     selected = None
@@ -190,9 +191,13 @@ def fetch_lokinet(j):
         if holder.is_new(build['finished_at']):
             if selected is None or _compare_dates(build["finished_at"], selected["finished_at"]):
                 selected = build
-    if not selected:
-        return True
+    if selected and 'id' in selected:
+        url = 'https://gitlab.com/lokiproject/loki-network/-/jobs/{}/artifacts/download'.format(selected['id'])
+        r = requests.get(url)
+        if r.status_code == 200:
+            holder.put(r)
     return True
+
     #if 'artifacts_file' not in selected:
     #    return False
     #f = selected["artifacts_file"]
@@ -228,10 +233,7 @@ def app(environ, start_response):
     elif method.upper() == "POST":
         if environ.get("PATH_INFO") == "/":
             j = json.loads(environ.get("wsgi.input").read(request_body_size))
-            environ.get("wsgi.errors").write("webhook json: {}".format(json.dumps(j, sort_keys=True, indent=2)))
             token = environ.get("HTTP_X_GITLAB_TOKEN")
-            environ.get("wsgi.errors").write("\ntoken={}\n".format(token))
-            environ.get("wsgi.errors").flush()
             return handle_webhook(j, token, environ.get("HTTP_X_GITLAB_EVENT"), start_response)
         else:
             return response("404 Not Found", 'bad url', start_response)
@@ -245,7 +247,7 @@ def app(environ, start_response):
                 return response('404 Not Found', 'no RCs', start_response)
         elif environ.get("PATH_INFO") == "/ping":
             return response('200 OK', 'pong', start_response)
-        elif environ.get("PATH_INFO") == "/lokinet":
+        elif environ.get("PATH_INFO") == "/lokinet.zip":
             return handle_serve_lokinet(environ.get("HTTP_IF_MODIFIED_SINCE"),start_response)
         else:
             return response('400 Bad Request', 'invalid path', start_response)
