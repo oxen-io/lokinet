@@ -249,7 +249,7 @@ def app(environ, start_response):
             return response('200 OK', 'pong', start_response)
         elif environ.get("PATH_INFO") == "/lokinet.zip":
             return handle_serve_lokinet(environ.get("HTTP_IF_MODIFIED_SINCE"),start_response)
-        else if environ.get("PATH_INFO") == "/":
+        elif environ.get("PATH_INFO") == "/":
             return response("200 OK", "lokinet bootserv", start_response)
         else:
             return response('404 Not Found', 'Not found', start_response)
