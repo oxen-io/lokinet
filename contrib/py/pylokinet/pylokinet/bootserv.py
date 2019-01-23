@@ -15,6 +15,7 @@ import json
 
 import random
 import time
+from datetime import datetime
 from email.utils import parsedate, format_datetime
 from dateutil.parser import parse as date_parse
 import requests
@@ -101,7 +102,7 @@ class BinHolder:
         with open(self._fpath, "rb") as f:
             data = f.read()
         respond("200 OK", [("Content-Type", "application/octect-stream"), 
-        ("Last-Modified", format_datetime(st.st_mtime)),("Content-Length", "{}".format(len(st.st_size)))])
+        ("Last-Modified", format_datetime(datetime.fromtimestamp(int(st.st_mtime)))),("Content-Length", "{}".format(st.st_size))])
         return [data]
 
 
