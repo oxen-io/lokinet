@@ -28,8 +28,8 @@ cross-compile build:
 
 # Usage
 
-   C:\>lokinet-bootstrap [uri] [local download path]
+   C:\>lokinet-bootstrap
 
 this is also included in the lokinet installer package.
 
--despair86
+-rick
