@@ -32,6 +32,7 @@ base64enc: base64enc.c
 download:
 	wget -O ./cacert.pem https://curl.haxx.se/ca/cacert.pem
 
+# I *think* this only work with GNU sed...
 prepare: zpipe base64enc download
 	./zpipe < cacert.pem > data.enc
 	./base64enc < data.enc > out.bin

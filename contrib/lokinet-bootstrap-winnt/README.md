@@ -24,7 +24,7 @@ cross-compile build:
     $ export CC=i686-w64-mingw32-gcc # change these if you use clang, make sure these are in your system $PATH!
     $ export NATIVE_CC=cc
     $ export WINNT_INCLUDE=/path/to/win32/headers WINNT_LIBS=/path/to/win32/libs
-    $ make prepare;make lokinet-bootstrap
+    $ make lokinet-bootstrap
 
 # Usage
 
