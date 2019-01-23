@@ -16,7 +16,7 @@ import json
 import random
 import time
 from email.utils import parsedate, format_datetime
-
+from dateutil.parser import parse as date_parse
 import requests
 
 
@@ -26,7 +26,7 @@ def _compare_dates(left, right):
     """
     return true if left timestamp is bigger than right
     """
-    return time.mktime(parsedate(left)) > time.mktime(parsedate(right))
+    return date_parse(left) > date_parse(right)
 
 class TokenHolder:
 
@@ -73,13 +73,12 @@ class BinHolder:
         """
         return true if last modified timestamp is fresher than current
         """
-        t = parsedate(last_modified)
+        t = date_parse(last_modified)
         if not t:
             return False
-        t = time.mktime(t)
         if os.path.exists(self._fpath):
             st = os.stat(self._fpath)
-            return st.st_mtime >= t
+            return st.st_mtime >= t.timestamp()
         return True
 
 
