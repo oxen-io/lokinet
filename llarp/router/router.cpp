@@ -1611,7 +1611,8 @@ namespace llarp
       auto &rc = self->bootstrapRCList.back();
       if(!rc.Read(val))
       {
-        llarp::LogWarn("failed to decode bootstrap RC, file='", val, "' rc=", rc);
+        llarp::LogWarn("failed to decode bootstrap RC, file='", val,
+                       "' rc=", rc);
         self->bootstrapRCList.pop_back();
         return;
       }
@@ -1621,16 +1622,17 @@ namespace llarp
       }
       else
       {
-         if(rc.IsExpired(self->Now()))
+        if(rc.IsExpired(self->Now()))
         {
           llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
-                        " is too old and needs to be refreshed");
+                         " is too old and needs to be refreshed");
         }
         else
         {
           llarp::LogError("malformed rc file='", val, "' rc=", rc);
         }
         self->bootstrapRCList.pop_back();
+      }
     }
     else if(StrEq(section, "router"))
     {
@@ -1640,8 +1642,10 @@ namespace llarp
         {
           llarp::LogWarn("!!!! you have manually set netid to be '", val,
                          "' which does not equal '", Version::LLARP_NET_ID,
-                         "' you will run as a different network, good luck and "
-                         "don't forget: something something MUH traffic shape "
+                         "' you will run as a different network, good luck "
+                         "and "
+                         "don't forget: something something MUH traffic "
+                         "shape "
                          "correlation !!!!");
           llarp::NetID::DefaultValue() =
               llarp::NetID(reinterpret_cast< const byte_t * >(strdup(val)));
@@ -1669,7 +1673,8 @@ namespace llarp
       {
         self->transport_keyfile = val;
       }
-      if((StrEq(key, "identity-privkey") || StrEq(key, "ident-privkey")) && !self->usingSNSeed)
+      if((StrEq(key, "identity-privkey") || StrEq(key, "ident-privkey"))
+         && !self->usingSNSeed)
       {
         self->ident_keyfile = val;
       }
