@@ -116,7 +116,7 @@ namespace llarp
       return false;
 
     /* write last updated */
-    if(!bencode_write_bytestring(buf, "t", 1))
+    if(!bencode_write_bytestring(buf, "u", 1))
       return false;
     if(!bencode_write_uint64(buf, last_updated))
       return false;
@@ -179,10 +179,10 @@ namespace llarp
     if(!BEncodeMaybeReadDictEntry("p", enckey, read, key, buf))
       return false;
 
-    if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
+    if(!BEncodeMaybeReadDictInt("u", last_updated, read, key, buf))
       return false;
 
-    if(!BEncodeMaybeReadDictInt("t", last_updated, read, key, buf))
+    if(!BEncodeMaybeReadDictInt("v", version, read, key, buf))
       return false;
 
     if(!BEncodeMaybeReadDictList("x", exits, read, key, buf))

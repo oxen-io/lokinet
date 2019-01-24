@@ -139,7 +139,7 @@ router's full identity
   k: "<32 bytes public long term identity signing key>",
   n: "<optional max 32 bytes router nickname>",
   p: "<32 bytes public path encryption key>",   
-  t: time_signed_at_milliseconds_since_epoch_uint64,
+  u: time_signed_at_milliseconds_since_epoch_uint64,
   v: 0,
   x: [ Exit, Infos ],
   z: "<64 bytes signature using identity key>"
