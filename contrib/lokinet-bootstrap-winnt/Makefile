@@ -21,13 +21,13 @@ WINNT_LIBS ?=
 
 # windows target only
 .c.o:
-	$(CC) $(WINNT_INCLUDE) -Ofast -march=nocona -mfpmath=sse $< -c
+	$(CC) $(WINNT_INCLUDE) -Iinclude -Ofast -march=nocona -mfpmath=sse $< -c
 
 zpipe: zpipe.c miniz.c
-	$(NATIVE_CC) $(INCLUDE) $(LIBS) $^ -s -static -o $@
+	$(NATIVE_CC) $(INCLUDE) -Iinclude $(LIBS) $^ -s -static -o $@
 
 base64enc: base64enc.c
-	$(NATIVE_CC) $(INCLUDE) $(LIBS) $^ -s -static -o $@ -lmbedx509 -lmbedtls -lmbedcrypto
+	$(NATIVE_CC) $(INCLUDE) -Iinclude $(LIBS) $^ -s -static -o $@ -lmbedx509 -lmbedtls -lmbedcrypto
 
 download:
 	wget -O ./cacert.pem https://curl.haxx.se/ca/cacert.pem

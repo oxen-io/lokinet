@@ -18,7 +18,7 @@ native build:
     $ export WINNT_INCLUDE=$INCLUDE WINNT_LIBS=$LIBS
     $ make prepare;make lokinet-bootstrap
 
-cross-compile build:
+cross-compile build (If you have *GNU* sed, you can also update the certificate trust store with `make prepare`):
 
     $ export INCLUDE=/usr/local/include LIBS=/usr/local/lib # or a different path
     $ export CC=i686-w64-mingw32-gcc # change these if you use clang, make sure these are in your system $PATH!
@@ -28,7 +28,7 @@ cross-compile build:
 
 # Usage
 
-   C:\>lokinet-bootstrap
+    C:\>lokinet-bootstrap [uri] [local download path]
 
 this is also included in the lokinet installer package.
 
