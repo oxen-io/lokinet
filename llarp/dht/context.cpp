@@ -23,6 +23,8 @@ namespace llarp
 {
   namespace dht
   {
+    AbstractContext::~AbstractContext() {}
+
     Context::Context() : router(nullptr), allowTransit(false)
     {
       randombytes((byte_t *)&ids, sizeof(uint64_t));
@@ -413,13 +415,13 @@ namespace llarp
     }
 
     llarp::Crypto *
-    Context::Crypto()
+    Context::Crypto() const
     {
       return &router->crypto;
     }
 
     llarp_time_t
-    Context::Now()
+    Context::Now() const
     {
       return llarp_ev_loop_time_now_ms(router->netloop);
     }

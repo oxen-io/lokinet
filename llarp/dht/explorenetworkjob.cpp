@@ -23,7 +23,7 @@ namespace llarp
         // lookup router
         parent->LookupRouter(
             pk,
-            std::bind(&Router::HandleDHTLookupForExplore, parent->router, pk,
+            std::bind(&Router::HandleDHTLookupForExplore, parent->GetRouter(), pk,
                       std::placeholders::_1));
       }
     }

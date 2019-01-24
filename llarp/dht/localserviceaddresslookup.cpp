@@ -11,7 +11,7 @@ namespace llarp
   {
     LocalServiceAddressLookup::LocalServiceAddressLookup(
         const PathID_t &pathid, uint64_t txid, const service::Address &addr,
-        Context *ctx, __attribute__((unused)) const Key_t &askpeer)
+        AbstractContext *ctx, __attribute__((unused)) const Key_t &askpeer)
         : ServiceAddressLookup(TXOwner{ctx->OurKey(), txid}, addr, ctx, 5,
                                nullptr)
         , localPath(pathid)
@@ -21,7 +21,7 @@ namespace llarp
     void
     LocalServiceAddressLookup::SendReply()
     {
-      auto path = parent->router->paths.GetByUpstream(
+      auto path = parent->GetRouter()->paths.GetByUpstream(
           parent->OurKey().as_array(), localPath);
       if(!path)
       {
@@ -33,7 +33,7 @@ namespace llarp
       }
       routing::DHTMessage msg;
       msg.M.emplace_back(new GotIntroMessage(valuesFound, whoasked.txid));
-      if(!path->SendRoutingMessage(&msg, parent->router))
+      if(!path->SendRoutingMessage(&msg, parent->GetRouter()))
       {
         llarp::LogWarn(
             "failed to send routing message when informing result of dht "

@@ -14,21 +14,20 @@ namespace llarp
 
   namespace dht
   {
-    struct Context;
+    struct AbstractContext;
 
     template < typename K, typename V >
     struct TX
     {
       K target;
-      Context* parent;
+      AbstractContext* parent;
       std::set< Key_t > peersAsked;
       std::vector< V > valuesFound;
       TXOwner whoasked;
 
-      TX(const TXOwner& asker, const K& k, Context* p)
-          : target(k), whoasked(asker)
+      TX(const TXOwner& asker, const K& k, AbstractContext* p)
+          : target(k), parent(p), whoasked(asker)
       {
-        parent = p;
       }
 
       virtual ~TX(){};
@@ -82,7 +81,7 @@ namespace llarp
       else if(!GetNextPeer(peer, peersAsked))
       {
         // no more peers
-        llarp::LogInfo("no more peers for request asking for", target);
+        llarp::LogInfo("no more peers for request asking for ", target);
         return false;
       }
 

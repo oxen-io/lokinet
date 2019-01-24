@@ -10,7 +10,7 @@ namespace llarp
   {
     RecursiveRouterLookup::RecursiveRouterLookup(const TXOwner &whoasked,
                                                  const RouterID &target,
-                                                 Context *ctx,
+                                                 AbstractContext *ctx,
                                                  RouterLookupHandler result)
         : TX< RouterID, RouterContact >(whoasked, target, ctx)
         , resultHandler(result)

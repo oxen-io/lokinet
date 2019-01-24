@@ -19,7 +19,7 @@ namespace llarp
       uint64_t R;
 
       ServiceAddressLookup(const TXOwner &asker, const service::Address &addr,
-                           Context *ctx, uint64_t r,
+                           AbstractContext *ctx, uint64_t r,
                            service::IntroSetLookupHandler handler);
 
       bool

@@ -14,7 +14,7 @@ namespace llarp
       PathID_t localPath;
 
       LocalServiceAddressLookup(const PathID_t &pathid, uint64_t txid,
-                                const service::Address &addr, Context *ctx,
+                                const service::Address &addr, AbstractContext *ctx,
                                 __attribute__((unused)) const Key_t &askpeer);
 
       void

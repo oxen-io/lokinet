@@ -21,12 +21,61 @@ namespace llarp
 
   namespace dht
   {
-    struct Context
+    struct AbstractContext
+    {
+      virtual ~AbstractContext() = 0;
+
+      virtual bool
+      LookupRouter(const RouterID& target, RouterLookupHandler result) = 0;
+
+      /// on behalf of whoasked request introset for target from dht router with
+      /// key askpeer
+      virtual void
+      LookupIntroSetRecursive(const service::Address& target,
+                              const Key_t& whoasked, uint64_t whoaskedTX,
+                              const Key_t& askpeer, uint64_t R,
+                              service::IntroSetLookupHandler result = nullptr) = 0;
+
+      virtual void
+      LookupIntroSetIterative(const service::Address& target,
+                              const Key_t& whoasked, uint64_t whoaskedTX,
+                              const Key_t& askpeer,
+                              service::IntroSetLookupHandler result = nullptr) = 0;
+
+
+      virtual std::set< service::IntroSet >
+      FindRandomIntroSetsWithTagExcluding(
+          const service::Tag& tag, size_t max = 2,
+          const std::set< service::IntroSet >& excludes = {}) = 0;
+
+      virtual void
+      DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) = 0;
+
+      virtual llarp_time_t
+      Now() const = 0;
+
+      virtual llarp::Crypto*
+      Crypto() const = 0;
+
+      virtual llarp::Router*
+      GetRouter() const = 0;
+
+      virtual const Key_t&
+      OurKey() const = 0;
+
+      virtual Bucket< RCNode >* Nodes() const = 0;
+    };
+
+    struct Context final : public AbstractContext
     {
       Context();
 
+      ~Context()
+      {
+      }
+
       llarp::Crypto*
-      Crypto();
+      Crypto() const override;
 
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
@@ -34,13 +83,13 @@ namespace llarp
       LookupIntroSetRecursive(const service::Address& target,
                               const Key_t& whoasked, uint64_t whoaskedTX,
                               const Key_t& askpeer, uint64_t R,
-                              service::IntroSetLookupHandler result = nullptr);
+                              service::IntroSetLookupHandler result = nullptr) override;
 
       void
       LookupIntroSetIterative(const service::Address& target,
                               const Key_t& whoasked, uint64_t whoaskedTX,
                               const Key_t& askpeer,
-                              service::IntroSetLookupHandler result = nullptr);
+                              service::IntroSetLookupHandler result = nullptr) override;
 
       /// on behalf of whoasked request router with public key target from dht
       /// router with key askpeer
@@ -50,7 +99,7 @@ namespace llarp
                             RouterLookupHandler result = nullptr);
 
       bool
-      LookupRouter(const RouterID& target, RouterLookupHandler result)
+      LookupRouter(const RouterID& target, RouterLookupHandler result) override
       {
         Key_t askpeer;
         if(!nodes->FindClosest(Key_t(target), askpeer))
@@ -92,7 +141,7 @@ namespace llarp
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
       void
-      DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true);
+      DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) override;
 
       /// get routers closest to target excluding requester
       bool
@@ -103,7 +152,7 @@ namespace llarp
       std::set< service::IntroSet >
       FindRandomIntroSetsWithTagExcluding(
           const service::Tag& tag, size_t max = 2,
-          const std::set< service::IntroSet >& excludes = {});
+          const std::set< service::IntroSet >& excludes = {}) override;
 
       /// handle rc lookup from requester for target
       void
@@ -149,11 +198,16 @@ namespace llarp
       std::unique_ptr< Bucket< ISNode > > services;
       bool allowTransit;
 
+      Bucket< RCNode >* Nodes() const override { return nodes.get(); }
+
       const Key_t&
-      OurKey() const
+      OurKey() const override
       {
         return ourKey;
       }
+
+      llarp::Router*
+      GetRouter() const override { return router; }
 
       TXHolder< service::Address, service::IntroSet, service::Address::Hash >
           pendingIntrosetLookups;
@@ -172,7 +226,7 @@ namespace llarp
       }
 
       llarp_time_t
-      Now();
+      Now() const override;
 
       void
       ExploreNetworkVia(const Key_t& peer);

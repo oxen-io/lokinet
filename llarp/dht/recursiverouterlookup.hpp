@@ -14,7 +14,7 @@ namespace llarp
     {
       RouterLookupHandler resultHandler;
       RecursiveRouterLookup(const TXOwner &whoasked, const RouterID &target,
-                            Context *ctx, RouterLookupHandler result);
+                            AbstractContext *ctx, RouterLookupHandler result);
 
       bool
       Validate(const RouterContact &rc) const override;

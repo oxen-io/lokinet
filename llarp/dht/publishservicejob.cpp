@@ -9,7 +9,7 @@ namespace llarp
   {
     PublishServiceJob::PublishServiceJob(const TXOwner &asker,
                                          const service::IntroSet &introset,
-                                         Context *ctx, uint64_t s,
+                                         AbstractContext *ctx, uint64_t s,
                                          const std::set< Key_t > &exclude)
         : TX< service::Address, service::IntroSet >(asker, introset.A.Addr(),
                                                     ctx)

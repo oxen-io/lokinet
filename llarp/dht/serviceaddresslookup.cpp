@@ -9,7 +9,7 @@ namespace llarp
   namespace dht
   {
     ServiceAddressLookup::ServiceAddressLookup(
-        const TXOwner &asker, const service::Address &addr, Context *ctx,
+        const TXOwner &asker, const service::Address &addr, AbstractContext *ctx,
         uint64_t r, service::IntroSetLookupHandler handler)
         : TX< service::Address, service::IntroSet >(asker, addr, ctx)
         , handleResult(handler)
@@ -39,7 +39,7 @@ namespace llarp
                                       const std::set< Key_t > &exclude)
     {
       Key_t k = target.ToKey();
-      return parent->nodes->FindCloseExcluding(k, next, exclude);
+      return parent->Nodes()->FindCloseExcluding(k, next, exclude);
     }
 
     void
