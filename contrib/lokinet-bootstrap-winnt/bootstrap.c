@@ -16,6 +16,16 @@
 * 2. Altered source versions must be plainly marked as such, and must not be
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
+*------------------------------------------------------------------------------
+* lokinet-winnt bootstrap loader for public use. takes a URI and a file path
+* as its arguments.
+* 
+* HTTPS only; why the hell would you serve semi-sensitive data over an
+* unencrypted channel? In fact, the polarssl integration is intended to
+* bypass limitations in the native TLS stack (no TLS 1.1+ on some older
+* platforms, lack of high-encryption ciphersuites other than ARC4 or
+* Triple-DES, etc)
+* -rick
 */
 
 #include <stdio.h>

@@ -16,6 +16,15 @@
 * 2. Altered source versions must be plainly marked as such, and must not be
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
+*------------------------------------------------------------------------------
+* This is the LokiNET Windows NT bootstrap loader for internal use:
+* it is hard-coded to download https://i2p.rocks/i2procks.signed
+* and save it at $APPDATA/.lokinet/bootstrap.signed.
+* 
+* For general/public use, see 'bootstrap.c' in the same folder, that one is a
+* bootstrap loader that takes a URI and a local file path, to download a 
+* bootstrap RC from a trusted service node.
+* -rick
 */
 
 #include <stdio.h>
@@ -25,7 +34,7 @@
 #include <wincrypt.h>
 #include "miniz.h"
 
-// PolarSSL
+/* PolarSSL */
 #include <mbedtls/ssl.h>
 #include <mbedtls/entropy.h>
 #include <mbedtls/ctr_drbg.h>
@@ -34,7 +43,7 @@
 #include <mbedtls/certs.h>
 #include <mbedtls/base64.h>
 
-// PolarSSL internal state
+/* PolarSSL internal state */
 mbedtls_net_context server_fd;
 mbedtls_entropy_context entropy;
 mbedtls_ctr_drbg_context ctr_drbg;
@@ -2160,7 +2169,7 @@ bool initTLS()
 		free(tmp);
 		return false;
 	}
-	// inflate ca certs, they are still compressed
+	/* inflate ca certs, they are still compressed */
 	ca_certs = malloc(524288);
 	inf_len = 524288;
 
@@ -2209,7 +2218,7 @@ char** argv;
 		return -1;
 	}
 	
-	// fill in user-agent string
+	/* fill in user-agent string */
 	version = GetVersion();
 	major = (DWORD)(LOBYTE(LOWORD(version)));
 	minor = (DWORD)(HIBYTE(LOWORD(version)));
@@ -2266,7 +2275,7 @@ char** argv;
 	}
 	printf("\nDownloading i2procks.signed...");
 	snprintf(rq, 512, "%sHost: i2p.rocks\r\nUser-Agent: %s\r\n\r\n", request, ua);
-	//printf("%s",rq);
+	/* printf("%s",rq); */
 	while ((r = mbedtls_ssl_write(&ssl, (unsigned char*)rq, strlen(rq))) <= 0)
 	{
 		if (r != MBEDTLS_ERR_SSL_WANT_READ && r != MBEDTLS_ERR_SSL_WANT_WRITE)
