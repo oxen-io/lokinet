@@ -21,7 +21,7 @@ WINNT_LIBS ?=
 
 # windows target only
 .c.o:
-	$(CC) $(WINNT_INCLUDE) -Ofast -march=core2 -mfpmath=sse $< -c
+	$(CC) $(WINNT_INCLUDE) -Ofast -march=nocona -mfpmath=sse $< -c
 
 zpipe: zpipe.c miniz.c
 	$(NATIVE_CC) $(INCLUDE) $(LIBS) $^ -s -static -o $@
@@ -42,11 +42,22 @@ prepare: zpipe base64enc download
 	echo ';' >> out.bin
 	sed -i '50r out.bin' bootstrap.c
 
+prepare-testnet: zpipe base64enc download
+	./zpipe < cacert.pem > data.enc
+	./base64enc < data.enc > out.bin
+	sed -ie "s/.\{76\}/&\n/g" out.bin
+	sed -i 's/.*/\"&\"/g' out.bin
+	sed -i '49,2135d' testnet.c
+	echo ';' >> out.bin
+	sed -i '48r out.bin' testnet.c
+
 lokinet-bootstrap: bootstrap.o miniz.o
 	$(CC) $(WINNT_LIBS) -static -s $^ -o $@.exe -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
 
+lokinet-bootstrap-testnet: testnet.o miniz.o
+	$(CC) $(WINNT_LIBS) -static -s $^ -o $@.exe -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
 clean:
-	-@rm lokinet-bootstrap.exe
+	-@rm lokinet*.exe
 	-@rm base64enc
 	-@rm zpipe
 	-@rm cacert.pem
