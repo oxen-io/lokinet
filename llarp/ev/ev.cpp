@@ -74,6 +74,7 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
     {
+      ev->_now = llarp::time_now_ms();
       logic->tick_async(ev->_now);
       llarp_threadpool_tick(tp);
     }

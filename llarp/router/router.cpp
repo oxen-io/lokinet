@@ -1609,21 +1609,28 @@ namespace llarp
     {
       self->bootstrapRCList.emplace_back();
       auto &rc = self->bootstrapRCList.back();
-      if(rc.Read(val) && rc.Verify(&self->crypto, self->Now()))
+      if(!rc.Read(val))
+      {
+        llarp::LogWarn("failed to decode bootstrap RC, file='", val, "' rc=", rc);
+        self->bootstrapRCList.pop_back();
+        return;
+      }
+      if(rc.Verify(&self->crypto, self->Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
       }
-      else if(self->Now() - rc.last_updated > RouterContact::Lifetime)
-      {
-        llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
-                       " is too old and needs to be refreshed");
-        self->bootstrapRCList.pop_back();
-      }
       else
       {
-        llarp::LogError("malformed rc file: ", val);
+         if(rc.IsExpired(self->Now()))
+        {
+          llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
+                        " is too old and needs to be refreshed");
+        }
+        else
+        {
+          llarp::LogError("malformed rc file='", val, "' rc=", rc);
+        }
         self->bootstrapRCList.pop_back();
-      }
     }
     else if(StrEq(section, "router"))
     {
