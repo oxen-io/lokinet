@@ -53,7 +53,7 @@ namespace llarp
 
     struct GetServiceNodeListHandler final : public CallerHandler
     {
-      using PubkeyList_t = std::vector< PubKey >;
+      using PubkeyList_t = std::vector< RouterID >;
       using Callback_t   = std::function< void(const PubkeyList_t&, bool) >;
 
       ~GetServiceNodeListHandler()
@@ -92,8 +92,12 @@ namespace llarp
           if(key_itr->IsString())
           {
             keys.emplace_back();
-            if(!HexDecode(key_itr->GetString(), keys.back().begin(),
-                          decltype(keys)::value_type::SIZE))
+            std::string str = key_itr->GetString();
+            if(str.size() != Base32DecodeSize(keys.back().size()))
+            {
+              keys.pop_back();
+            } 
+            else if(!Base32Decode(str, keys.back()))
             {
               keys.pop_back();
             }
@@ -114,7 +118,7 @@ namespace llarp
     struct CallerImpl : public ::abyss::http::JSONRPC
     {
       Router* router;
-      llarp_time_t m_NextKeyUpdate;
+      llarp_time_t m_NextKeyUpdate = 0;
       const llarp_time_t KeyUpdateInterval = 1000 * 60 * 2;
       using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
 
@@ -139,7 +143,7 @@ namespace llarp
         LogInfo("Updating service node list");
         ::abyss::json::Value params;
         params.SetObject();
-        QueueRPC("/get_all_service_node_keys", std::move(params),
+        QueueRPC("get_all_service_nodes_keys", std::move(params),
                  std::bind(&CallerImpl::NewAsyncUpdatePubkeyListConn, this,
                            std::placeholders::_1));
       }

@@ -31,13 +31,19 @@ namespace llarp
     return b * d.quot;
   }
 
+  static size_t
+  Base32DecodeSize(size_t sz)
+  {
+    return DecodeSize<5, 8>(sz);
+  }
+
   template < typename Stack, typename V >
   bool
   Base32Decode(const Stack& stack, V& value)
   {
     int tmp = 0, bits = 0;
     size_t ret    = 0;
-    size_t len    = DecodeSize< 5, 8 >(value.size());
+    size_t len    = Base32DecodeSize(value.size());
     size_t outLen = value.size();
     for(size_t i = 0; i < len; i++)
     {
