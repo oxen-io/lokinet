@@ -1609,19 +1609,28 @@ namespace llarp
     {
       self->bootstrapRCList.emplace_back();
       auto &rc = self->bootstrapRCList.back();
-      if(rc.Read(val) && rc.Verify(&self->crypto, self->Now()))
+      if(!rc.Read(val))
+      {
+        llarp::LogWarn("failed to decode bootstrap RC, file='", val,
+                       "' rc=", rc);
+        self->bootstrapRCList.pop_back();
+        return;
+      }
+      if(rc.Verify(&self->crypto, self->Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
       }
-      else if(self->Now() - rc.last_updated > RouterContact::Lifetime)
-      {
-        llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
-                       " is too old and needs to be refreshed");
-        self->bootstrapRCList.pop_back();
-      }
       else
       {
-        llarp::LogError("malformed rc file: ", val);
+        if(rc.IsExpired(self->Now()))
+        {
+          llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
+                         " is too old and needs to be refreshed");
+        }
+        else
+        {
+          llarp::LogError("malformed rc file='", val, "' rc=", rc);
+        }
         self->bootstrapRCList.pop_back();
       }
     }
@@ -1633,8 +1642,10 @@ namespace llarp
         {
           llarp::LogWarn("!!!! you have manually set netid to be '", val,
                          "' which does not equal '", Version::LLARP_NET_ID,
-                         "' you will run as a different network, good luck and "
-                         "don't forget: something something MUH traffic shape "
+                         "' you will run as a different network, good luck "
+                         "and "
+                         "don't forget: something something MUH traffic "
+                         "shape "
                          "correlation !!!!");
           llarp::NetID::DefaultValue() =
               llarp::NetID(reinterpret_cast< const byte_t * >(strdup(val)));
@@ -1662,7 +1673,8 @@ namespace llarp
       {
         self->transport_keyfile = val;
       }
-      if((StrEq(key, "identity-privkey") || StrEq(key, "ident-privkey")) && !self->usingSNSeed)
+      if((StrEq(key, "identity-privkey") || StrEq(key, "ident-privkey"))
+         && !self->usingSNSeed)
       {
         self->ident_keyfile = val;
       }

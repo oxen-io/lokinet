@@ -74,6 +74,7 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
     {
+      ev->_now = llarp::time_now_ms();
       logic->tick_async(ev->_now);
       llarp_threadpool_tick(tp);
     }
@@ -151,7 +152,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
   if(strcmp(tun->ifaddr, "") == 0 || strcmp(tun->ifaddr, "auto"))
   {
     std::string ifaddr = llarp::findFreePrivateRange();
-    auto pos = ifaddr.find("/");
+    auto pos           = ifaddr.find("/");
     if(pos == std::string::npos)
     {
       llarp::LogWarn("Auto ifaddr didn't return a netmask: ", ifaddr);
@@ -169,15 +170,17 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
       llarp::LogError("bad ifaddr netmask value: ", ifaddr);
       return false;
     }
-    tun->netmask = num;
+    tun->netmask           = num;
     const std::string addr = ifaddr.substr(0, pos);
-    std::copy_n(addr.begin(), std::min(sizeof(tun->ifaddr), addr.size()), tun->ifaddr);
+    std::copy_n(addr.begin(), std::min(sizeof(tun->ifaddr), addr.size()),
+                tun->ifaddr);
     llarp::LogInfo("IfAddr autodetect: ", tun->ifaddr, "/", tun->netmask);
   }
   if(strcmp(tun->ifname, "") == 0 || strcmp(tun->ifname, "auto"))
   {
     std::string ifname = llarp::findFreeLokiTunIfName();
-    std::copy_n(ifname.begin(), std::min(sizeof(tun->ifname), ifname.size()), tun->ifname);
+    std::copy_n(ifname.begin(), std::min(sizeof(tun->ifname), ifname.size()),
+                tun->ifname);
     llarp::LogInfo("IfName autodetect: ", tun->ifname);
   }
   llarp::LogDebug("Tun Interface will use the following settings:");
