@@ -1,5 +1,5 @@
 /*
-* Copyright (c)2018 Rick V. All rights reserved.
+* Copyright (c)2018-2019 Rick V. All rights reserved.
 *
 * This software is provided 'as-is', without any express or implied
 * warranty. In no event will the authors be held liable for any damages
@@ -17,6 +17,17 @@
 * misrepresented as being the original software.
 * 3. This notice may not be removed or altered from any source distribution.
 */
+
+/* this is a tiny build-time utility that base64 encodes up to 512K
+ * of text/binary data from stdin. (On UNIX, we'd use GNU's [g]base64(1)
+ * to encode the stream. Can't guarantee that a windows user will have cygwin
+ * installed, so we bootstrap these at build-time instead.)
+ *
+ * here, it is used to encode the compressed zlib-stream of the 
+ * Netscape root certificate trust store on behalf of the lokinet
+ * for NT bootstrap scripts and the (cross-platform) libuNR, a tiny
+ * HTTPS client library.
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
