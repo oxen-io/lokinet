@@ -54,7 +54,7 @@ mbedtls_x509_crt cacert;
 unsigned char* ca_certs;
 
 /* imageboard ref just because */
-static char userAgent[] = "NetRunner_Micro/0.1 PolarSSL/2.13.0;U;Windows NT ";
+static char userAgent[] = "NetRunner_Micro/0.1 PolarSSL/2.16.0;U;Windows NT ";
 
 /* netscape ca bundle */
 static const unsigned char ca_cert_store_encoded[] = 

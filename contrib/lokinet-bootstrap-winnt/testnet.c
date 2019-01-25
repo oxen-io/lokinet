@@ -53,7 +53,7 @@ mbedtls_x509_crt cacert;
 unsigned char* ca_certs;
 
 static const char* request = "GET /i2procks.signed HTTP/1.0\r\n";
-static char userAgent[] = "NetRunner_Micro/0.1 PolarSSL/2.13.0;U;Windows NT ";
+static char userAgent[] = "NetRunner_Micro/0.1 PolarSSL/2.16.0;U;Windows NT ";
 static const unsigned char ca_cert_store_encoded[] = 
 "eAG8/Uey69izPYz1MYqKUENSUN+fBAhDKEINeEMCJLzpKOAIbwgPzEJD0AA0AXUVmpc2z7m+bpnf"
 "e+/Tjbp1zgVBAtjcO3PlWrkz/w//B+j/8H/4g56auEr+aJ9/MNQfetuOfzBJP+bPPArGZABnvE/6"
