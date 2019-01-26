@@ -1,5 +1,6 @@
-#include <gtest/gtest.h>
 #include <service/address.hpp>
+
+#include <gtest/gtest.h>
 
 struct ServiceAddressTest : public ::testing::Test
 {
