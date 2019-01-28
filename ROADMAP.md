@@ -17,12 +17,12 @@ This is the roadmap for lokinet.
 
 * anonymous anycast for snapps
 
-0.x: (eta ‾\(._.)/‾ idk)
+0.x: (eta `‾\(._.)/‾ idk`)
 
 * f2f connectivity layer for censor resistance
 * L2 automagic peer discovery
 * dht key blinding
 
-1.0: (eta ‾\(._.)/‾ idk)
+1.0: (eta `‾\(._.)/‾ idk`)
 
 * full audit
