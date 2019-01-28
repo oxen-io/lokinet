@@ -348,20 +348,21 @@ namespace llarp
         // always hook mx records
         if(msg.questions[0].qtype == llarp::dns::qTypeMX)
           return true;
-        // always hook random.snode
+        // hook random.snode for CNAME
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
-          return true;
+          return msg.questions[0].qtype == llarp::dns::qTypeCNAME;
+        // hook localhost.loki for CNAME and A records
         if(msg.questions[0].qname == "localhost.loki"
            || msg.questions[0].qname == "localhost.loki.")
           return msg.questions[0].qtype == llarp::dns::qTypeCNAME
               || msg.questions[0].qtype == llarp::dns::qTypeA;
-        // always hook .loki
+        // hook .loki A records
         if(addr.FromString(msg.questions[0].qname, ".loki"))
-          return true;
-        // always hook .snode
+          return msg.questions[0].qtype == llarp::dns::qTypeA;
+        // hook .snode A records
         if(addr.FromString(msg.questions[0].qname, ".snode"))
-          return true;
+          return msg.questions[0].qtype == llarp::dns::qTypeA;
         // hook any ranges we own
         if(msg.questions[0].qtype == llarp::dns::qTypePTR)
         {
