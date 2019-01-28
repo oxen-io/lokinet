@@ -174,7 +174,9 @@ namespace llarp
     /// lokid caller
     const std::string DefaultLokidRPCAddr = "127.0.0.1:22023";
     std::unique_ptr< llarp::rpc::Caller > rpcCaller;
-    std::string lokidRPCAddr = DefaultLokidRPCAddr;
+    std::string lokidRPCAddr     = DefaultLokidRPCAddr;
+    std::string lokidRPCUser     = "";
+    std::string lokidRPCPassword = "";
 
     std::set< std::unique_ptr< llarp::ILinkLayer >,
               CompareLinks< llarp::ILinkLayer > >

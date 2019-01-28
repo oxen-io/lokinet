@@ -1002,6 +1002,21 @@ namespace llarp
       }
       llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
     }
+    if(whitelistRouters)
+    {
+      rpcCaller = std::make_unique<llarp::rpc::Caller>(this);
+      rpcCaller->SetBasicAuth(lokidRPCUser, lokidRPCPassword);
+      while(!rpcCaller->Start(lokidRPCAddr))
+      {
+        llarp::LogError("failed to start jsonrpc caller to ", lokidRPCAddr);
+#if defined(ANDROID) || defined(RPI)
+        sleep(1);
+#else
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+#endif
+      }
+      llarp::LogInfo("RPC Caller to ", lokidRPCAddr, " started");
+    }
 
     llarp_threadpool_start(tp);
     llarp_threadpool_start(disk);
@@ -1590,6 +1605,14 @@ namespace llarp
       {
         self->lokidRPCAddr = val;
       }
+      if(StrEq(key, "username"))
+      {
+        self->lokidRPCUser = val;
+      }
+      if(StrEq(key, "password"))
+      {
+        self->lokidRPCPassword = val;
+      }
     }
     else if(StrEq(section, "dns"))
     {
@@ -1662,7 +1685,8 @@ namespace llarp
       {
         self->transport_keyfile = val;
       }
-      if((StrEq(key, "identity-privkey") || StrEq(key, "ident-privkey")) && !self->usingSNSeed)
+      if((StrEq(key, "identity-privkey") || StrEq(key, "ident-privkey"))
+         && !self->usingSNSeed)
       {
         self->ident_keyfile = val;
       }
