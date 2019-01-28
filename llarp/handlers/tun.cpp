@@ -246,17 +246,9 @@ namespace llarp
       }
       else if(msg.questions[0].qtype == dns::qTypeA)
       {
-        // forward dns
         llarp::service::Address addr;
-        if(qname == "random.snode" || qname == "random.snode.")
-        {
-          RouterID random;
-          if(Router()->GetRandomGoodRouter(random))
-            msg.AddCNAMEReply(random.ToString(), 1);
-          else
-            msg.AddNXReply();
-        }
-        else if(msg.questions[0].qname == "localhost.loki"
+        // forward dns
+        if(msg.questions[0].qname == "localhost.loki"
                 || msg.questions[0].qname == "localhost.loki.")
         {
           size_t counter = 0;
@@ -351,18 +343,17 @@ namespace llarp
         // hook random.snode for CNAME
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
-          return msg.questions[0].qtype == llarp::dns::qTypeCNAME;
-        // hook localhost.loki for CNAME and A records
+          return true;
+        // hook localhost.loki 
         if(msg.questions[0].qname == "localhost.loki"
            || msg.questions[0].qname == "localhost.loki.")
-          return msg.questions[0].qtype == llarp::dns::qTypeCNAME
-              || msg.questions[0].qtype == llarp::dns::qTypeA;
+          return true;
         // hook .loki A records
         if(addr.FromString(msg.questions[0].qname, ".loki"))
-          return msg.questions[0].qtype == llarp::dns::qTypeA;
+          return true;
         // hook .snode A records
         if(addr.FromString(msg.questions[0].qname, ".snode"))
-          return msg.questions[0].qtype == llarp::dns::qTypeA;
+          return true;
         // hook any ranges we own
         if(msg.questions[0].qtype == llarp::dns::qTypePTR)
         {

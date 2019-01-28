@@ -247,14 +247,17 @@ namespace llarp
       {
         hdr_fields |= (1 << 15) | (1 << 3);
         const auto& question = questions[0];
-        answers.emplace_back();
-        auto& nx    = answers.back();
-        nx.rr_name  = question.qname;
-        nx.rr_type  = question.qtype;
-        nx.rr_class = question.qclass;
-        nx.ttl      = ttl;
-        nx.rData.resize(1);
-        nx.rData.data()[0] = 0;
+        if(question.qtype != qTypeAAAA)
+        {
+          answers.emplace_back();
+          auto& nx    = answers.back();
+          nx.rr_name  = question.qname;
+          nx.rr_type  = question.qtype;
+          nx.rr_class = question.qclass;
+          nx.ttl      = ttl;
+          nx.rData.resize(1);
+          nx.rData.data()[0] = 0;
+        }
       }
     }
 
