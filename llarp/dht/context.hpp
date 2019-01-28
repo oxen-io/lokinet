@@ -31,16 +31,18 @@ namespace llarp
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
       virtual void
-      LookupIntroSetRecursive(
-          const service::Address& target, const Key_t& whoasked,
-          uint64_t whoaskedTX, const Key_t& askpeer, uint64_t R,
-          service::IntroSetLookupHandler result = nullptr) = 0;
+      LookupIntroSetRecursive(const service::Address& target,
+                              const Key_t& whoasked, uint64_t whoaskedTX,
+                              const Key_t& askpeer, uint64_t R,
+                              service::IntroSetLookupHandler result =
+                                  service::IntroSetLookupHandler()) = 0;
 
       virtual void
-      LookupIntroSetIterative(
-          const service::Address& target, const Key_t& whoasked,
-          uint64_t whoaskedTX, const Key_t& askpeer,
-          service::IntroSetLookupHandler result = nullptr) = 0;
+      LookupIntroSetIterative(const service::Address& target,
+                              const Key_t& whoasked, uint64_t whoaskedTX,
+                              const Key_t& askpeer,
+                              service::IntroSetLookupHandler result =
+                                  service::IntroSetLookupHandler()) = 0;
 
       virtual std::set< service::IntroSet >
       FindRandomIntroSetsWithTagExcluding(

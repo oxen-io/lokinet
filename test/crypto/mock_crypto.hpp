@@ -12,12 +12,12 @@ namespace llarp
     struct MockCrypto final : public Crypto
     {
       MOCK_METHOD3(xchacha20,
-                   bool(llarp_buffer_t, const SharedSecret &,
+                   bool(const llarp_buffer_t &, const SharedSecret &,
                         const TunnelNonce &));
 
       MOCK_METHOD4(xchacha20_alt,
-                   bool(llarp_buffer_t, llarp_buffer_t, const SharedSecret &,
-                        const byte_t *));
+                   bool(const llarp_buffer_t &, const llarp_buffer_t &,
+                        const SharedSecret &, const byte_t *));
 
       MOCK_METHOD4(dh_client,
                    bool(SharedSecret &, const PubKey &, const SecretKey &,
@@ -35,21 +35,26 @@ namespace llarp
                    bool(SharedSecret &, const PubKey &, const SecretKey &,
                         const TunnelNonce &));
 
-      MOCK_METHOD2(hash, bool(byte_t *, llarp_buffer_t));
+      MOCK_METHOD2(hash, bool(byte_t *, const llarp_buffer_t &));
 
-      MOCK_METHOD2(shorthash, bool(ShortHash &, llarp_buffer_t));
+      MOCK_METHOD2(shorthash, bool(ShortHash &, const llarp_buffer_t &));
 
-      MOCK_METHOD3(hmac, bool(byte_t *, llarp_buffer_t, const SharedSecret &));
+      MOCK_METHOD3(hmac,
+                   bool(byte_t *, const llarp_buffer_t &,
+                        const SharedSecret &));
 
-      MOCK_METHOD3(sign, bool(Signature &, const SecretKey &, llarp_buffer_t));
+      MOCK_METHOD3(sign,
+                   bool(Signature &, const SecretKey &,
+                        const llarp_buffer_t &));
 
       MOCK_METHOD3(verify,
-                   bool(const PubKey &, llarp_buffer_t, const Signature &));
+                   bool(const PubKey &, const llarp_buffer_t &,
+                        const Signature &));
 
       MOCK_METHOD2(seed_to_secretkey,
                    bool(llarp::SecretKey &, const llarp::IdentitySecret &));
 
-      MOCK_METHOD1(randomize, void(llarp_buffer_t));
+      MOCK_METHOD1(randomize, void(const llarp_buffer_t &));
 
       MOCK_METHOD2(randbytes, void(void *, size_t));
 
