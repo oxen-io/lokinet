@@ -632,6 +632,7 @@ set(TEST_SRC
   test/dht/test_llarp_dht_explorenetworkjob.cpp
   test/dht/test_llarp_dht_kademlia.cpp
   test/dht/test_llarp_dht_key.cpp
+  test/dht/test_llarp_dht_node.cpp
   test/dht/test_llarp_dht_serviceaddresslookup.cpp
   test/dht/test_llarp_dht_taglookup.cpp
   test/dht/test_llarp_dht_tx.cpp

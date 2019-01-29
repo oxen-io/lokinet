@@ -7,6 +7,7 @@
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 
 using namespace llarp;
 using namespace ::testing;
