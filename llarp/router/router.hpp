@@ -439,7 +439,7 @@ namespace llarp
     std::atomic< bool > _running;
 
     bool
-    UpdateOurRC(bool rotateKeys = true);
+    UpdateOurRC(bool rotateKeys = false);
 
     template < typename Config >
     void
