@@ -682,14 +682,15 @@ namespace llarp
     if(rotateKeys)
     {
       encryption = nextOnionKey;
-      // propagate RC by renegotiating sessions
-      ForEachPeer([](llarp::ILinkSession *s) {
-        if(s->RenegotiateSession())
-          llarp::LogInfo("renegotiated session");
-        else
-          llarp::LogWarn("failed to renegotiate session");
-      });
     }
+    // propagate RC by renegotiating sessions
+    ForEachPeer([](llarp::ILinkSession *s) {
+      if(s->RenegotiateSession())
+        llarp::LogInfo("renegotiated session");
+      else
+        llarp::LogWarn("failed to renegotiate session");
+    });
+    
     // TODO: do this async
     return SaveRC();
   }  // namespace llarp
@@ -737,7 +738,7 @@ namespace llarp
     if(_rc.ExpiresSoon(now, llarp::randint() % 10000))
     {
       llarp::LogInfo("regenerating RC");
-      if(!UpdateOurRC(IsServiceNode()))
+      if(!UpdateOurRC(false))
         llarp::LogError("Failed to update our RC");
     }
 
