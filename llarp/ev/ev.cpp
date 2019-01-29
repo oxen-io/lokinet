@@ -149,7 +149,8 @@ llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
 bool
 llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
 {
-  if(strcmp(tun->ifaddr, "") == 0 || strcmp(tun->ifaddr, "auto"))
+  // llarp::LogInfo("ev creating tunnel ", tun->ifaddr, " on ", tun->ifname);
+  if(strcmp(tun->ifaddr, "") == 0 || strcmp(tun->ifaddr, "auto") == 0)
   {
     std::string ifaddr = llarp::findFreePrivateRange();
     auto pos           = ifaddr.find("/");
@@ -176,7 +177,7 @@ llarp_ev_add_tun(struct llarp_ev_loop *loop, struct llarp_tun_io *tun)
                 tun->ifaddr);
     llarp::LogInfo("IfAddr autodetect: ", tun->ifaddr, "/", tun->netmask);
   }
-  if(strcmp(tun->ifname, "") == 0 || strcmp(tun->ifname, "auto"))
+  if(strcmp(tun->ifname, "") == 0 || strcmp(tun->ifname, "auto") == 0)
   {
     std::string ifname = llarp::findFreeLokiTunIfName();
     std::copy_n(ifname.begin(), std::min(sizeof(tun->ifname), ifname.size()),

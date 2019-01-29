@@ -61,6 +61,12 @@ namespace llarp
       bool
       iterate(struct endpoint_iter &i);
 
+      /// function visitor returns false to prematurely break iteration
+      void
+      ForEachService(std::function< bool(const std::string &,
+                                         const std::unique_ptr< Endpoint > &) >
+                         visit);
+
       /// hint at possible path usage and trigger building early
       bool
       Prefetch(const llarp::service::Address &addr);

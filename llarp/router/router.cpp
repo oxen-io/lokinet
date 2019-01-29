@@ -197,7 +197,7 @@ namespace llarp
   Router::OnSessionEstablished(llarp::RouterContact rc)
   {
     async_verify_RC(rc, nullptr);
-    llarp::LogInfo("session with ", rc.pubkey, "established");
+    llarp::LogInfo("session with ", rc.pubkey, " established");
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *_netloop,
@@ -1043,8 +1043,7 @@ namespace llarp
     if(ExitEnabled())
     {
       llarp::nuint32_t a = publicAddr.xtonl();
-      // TODO: enable this once the network can serialize xi
-      //_rc.exits.emplace_back(_rc.pubkey, a);
+      _rc.exits.emplace_back(_rc.pubkey, a);
       llarp::LogInfo(
           "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your "
           "exit "
@@ -1409,11 +1408,13 @@ namespace llarp
   {
     // fallback defaults
     // To NeuroScr: why run findFree* here instead of in tun.cpp?
+    // I think it should be in tun.cpp, better to closer to time of usage
+    // that way new tun may have grab a range we may have also grabbed here
     static const std::unordered_map< std::string,
                                      std::function< std::string(void) > >
         netConfigDefaults = {
-            {"ifname", llarp::findFreeLokiTunIfName},
-            {"ifaddr", llarp::findFreePrivateRange},
+            {"ifname", []() -> std::string { return "auto"; }},
+            {"ifaddr", []() -> std::string { return "auto"; }},
             {"local-dns", []() -> std::string { return "127.0.0.1:53"; }},
             {"upstream-dns", []() -> std::string { return "1.1.1.1:53"; }}};
     // populate with fallback defaults if values not present
@@ -1609,6 +1610,7 @@ namespace llarp
     else if(StrEq(section, "connect")
             || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
     {
+      //llarp::LogDebug("connect section has ", key, "=", val);
       self->bootstrapRCList.emplace_back();
       auto &rc = self->bootstrapRCList.back();
       if(!rc.Read(val))

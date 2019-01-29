@@ -6,6 +6,7 @@
 
 #include <getopt.h>
 #include <signal.h>
+#include <wordexp.h>
 
 #include <string>
 #include <iostream>
@@ -55,6 +56,22 @@ handle_signal_win32(DWORD fdwCtrlType)
   return TRUE;  // probably unreachable
 }
 #endif
+
+/// resolve ~ and symlinks into actual paths (so we know the real path on disk,
+/// to remove assumptions and confusion with permissions)
+std::string
+resolvePath(std::string conffname)
+{
+  wordexp_t exp_result;
+  wordexp(conffname.c_str(), &exp_result, 0);
+  char *resolvedPath = realpath(exp_result.we_wordv[0], NULL);
+  if(!resolvedPath)
+  {
+    llarp::LogWarn("Can't resolve path: ", exp_result.we_wordv[0]);
+    return "";
+  }
+  return resolvedPath;
+}
 
 int
 main(int argc, char *argv[])
@@ -108,7 +125,7 @@ main(int argc, char *argv[])
     }
   }
 
-  std::string conffname;
+  std::string conffname;  // suggestions: confFName? conf_fname?
 
   if(optind < argc)
   {
@@ -116,15 +133,33 @@ main(int argc, char *argv[])
     fs::path fname   = fs::path(argv[optind]);
     fs::path basedir = fname.parent_path();
     conffname        = fname.string();
+    conffname        = resolvePath(conffname);
+    std::error_code ec;
+
+    // llarp::LogDebug("Basedir: ", basedir);
     if(basedir.string().empty())
     {
-      if(!llarp_ensure_config(fname.string().c_str(), nullptr, overWrite,
-                              asRouter))
-        return 1;
+      // relative path to config
+
+      // does this file exist?
+      if(genconfigOnly)
+      {
+        if(!llarp_ensure_config(conffname.c_str(), nullptr, overWrite,
+                                asRouter))
+          return 1;
+      }
+      else
+      {
+        if(!fs::exists(fname, ec))
+        {
+          llarp::LogError("Config file not found ", conffname);
+          return 1;
+        }
+      }
     }
     else
     {
-      std::error_code ec;
+      // absolute path to config
       if(!fs::create_directories(basedir, ec))
       {
         if(ec)
@@ -134,9 +169,22 @@ main(int argc, char *argv[])
           return 1;
         }
       }
-      if(!llarp_ensure_config(fname.string().c_str(), basedir.string().c_str(),
-                              overWrite, asRouter))
-        return 1;
+      if(genconfigOnly)
+      {
+        // find or create file
+        if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(),
+                                overWrite, asRouter))
+          return 1;
+      }
+      else
+      {
+        // does this file exist?
+        if(!fs::exists(conffname, ec))
+        {
+          llarp::LogError("Config file not found ", conffname);
+          return 1;
+        }
+      }
     }
   }
   else
@@ -149,6 +197,8 @@ main(int argc, char *argv[])
 #endif
     fs::path basepath = homedir / fs::path(".lokinet");
     fs::path fpath    = basepath / "lokinet.ini";
+    // I don't think this is necessary with this condition
+    // conffname = resolvePath(conffname);
 
     llarp::LogDebug("Find or create ", basepath.string());
     std::error_code ec;
@@ -164,6 +214,7 @@ main(int argc, char *argv[])
       }
     }
 
+    // if using default INI file, we're create it even if you don't ask us too
     if(!llarp_ensure_config(fpath.string().c_str(), basepath.string().c_str(),
                             overWrite, asRouter))
       return 1;
@@ -176,6 +227,7 @@ main(int argc, char *argv[])
   }
 
   // this is important, can downgrade from Info though
+  llarp::LogInfo("Running from: ", cpp17::filesystem::current_path());
   llarp::LogInfo("Using config file: ", conffname);
   ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
   int code = 1;
