@@ -332,7 +332,7 @@ namespace llarp
         saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         saddr.sin_family      = AF_INET;
         saddr.sin_port        = htons(port);
-        return _handler.ServeAsync(router->netloop, router->logic,
+        return _handler.ServeAsync(router->netloop, router->logic(),
                                    (const sockaddr*)&saddr);
       }
     };

@@ -43,13 +43,13 @@ namespace llarp
     llarp::Crypto*
     PathContext::Crypto()
     {
-      return m_Router->crypto.get();
+      return m_Router->crypto();
     }
 
     llarp::Logic*
     PathContext::Logic()
     {
-      return m_Router->logic;
+      return m_Router->logic();
     }
 
     llarp::SecretKey&
@@ -155,24 +155,26 @@ namespace llarp
     IHopHandler*
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
-      auto own = MapGet(m_OurPaths, id,
-                        [](__attribute__((unused)) const PathSet* s) -> bool {
-                          // TODO: is this right?
-                          return true;
-                        },
-                        [remote, id](PathSet* p) -> IHopHandler* {
-                          return p->GetByUpstream(remote, id);
-                        });
+      auto own = MapGet(
+          m_OurPaths, id,
+          [](__attribute__((unused)) const PathSet* s) -> bool {
+            // TODO: is this right?
+            return true;
+          },
+          [remote, id](PathSet* p) -> IHopHandler* {
+            return p->GetByUpstream(remote, id);
+          });
       if(own)
         return own;
 
-      return MapGet(m_TransitPaths, id,
-                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return hop->info.upstream == remote;
-                    },
-                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-                      return h.get();
-                    });
+      return MapGet(
+          m_TransitPaths, id,
+          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return hop->info.upstream == remote;
+          },
+          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+            return h.get();
+          });
     }
 
     bool
@@ -189,13 +191,14 @@ namespace llarp
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
-      return MapGet(m_TransitPaths, id,
-                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return hop->info.downstream == remote;
-                    },
-                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-                      return h.get();
-                    });
+      return MapGet(
+          m_TransitPaths, id,
+          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return hop->info.downstream == remote;
+          },
+          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+            return h.get();
+          });
     }
 
     PathSet*
@@ -505,12 +508,12 @@ namespace llarp
 
     bool
     Path::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
-                         llarp::Router* r)
+                         AbstractRouter* r)
     {
       TunnelNonce n = Y;
       for(const auto& hop : hops)
       {
-        r->crypto->xchacha20(buf, hop.shared, n);
+        r->crypto()->xchacha20(buf, hop.shared, n);
         n ^= hop.nonceXOR;
       }
       RelayUpstreamMessage msg;
@@ -544,19 +547,19 @@ namespace llarp
 
     bool
     Path::HandleDownstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
-                           llarp::Router* r)
+                           AbstractRouter* r)
     {
       TunnelNonce n = Y;
       for(const auto& hop : hops)
       {
         n ^= hop.nonceXOR;
-        r->crypto->xchacha20(buf, hop.shared, n);
+        r->crypto()->xchacha20(buf, hop.shared, n);
       }
       return HandleRoutingMessage(buf, r);
     }
 
     bool
-    Path::HandleRoutingMessage(const llarp_buffer_t& buf, llarp::Router* r)
+    Path::HandleRoutingMessage(const llarp_buffer_t& buf, AbstractRouter* r)
     {
       if(!r->ParseRoutingMessageBuffer(buf, this, RXID()))
       {
@@ -587,7 +590,7 @@ namespace llarp
 
     bool
     Path::SendRoutingMessage(const llarp::routing::IMessage* msg,
-                             llarp::Router* r)
+                             llarp::AbstractRouter* r)
     {
       std::array< byte_t, MAX_LINK_MSG_SIZE / 2 > tmp;
       llarp_buffer_t buf(tmp);
@@ -609,7 +612,7 @@ namespace llarp
       if(buf.sz < MESSAGE_PAD_SIZE)
       {
         // randomize padding
-        r->crypto->randbytes(buf.cur, MESSAGE_PAD_SIZE - buf.sz);
+        r->crypto()->randbytes(buf.cur, MESSAGE_PAD_SIZE - buf.sz);
         buf.sz = MESSAGE_PAD_SIZE;
       }
       buf.cur = buf.base;
@@ -699,7 +702,7 @@ namespace llarp
     Path::HandleDHTMessage(const llarp::dht::IMessage* msg, llarp::Router* r)
     {
       llarp::routing::DHTMessage reply;
-      if(!msg->HandleMessage(r->dht, reply.M))
+      if(!msg->HandleMessage(r->dht(), reply.M))
         return false;
       MarkActive(r->Now());
       if(reply.M.size())
@@ -714,7 +717,7 @@ namespace llarp
       /// allows exits to close from their end
       if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
       {
-        if(msg->Verify(r->crypto.get(), EndpointPubKey()))
+        if(msg->Verify(r->crypto(), EndpointPubKey()))
         {
           llarp::LogInfo(Name(), " had its exit closed");
           _role &= ~ePathRoleExit;
@@ -773,7 +776,7 @@ namespace llarp
     {
       if(m_ExitObtainTX && msg->T == m_ExitObtainTX)
       {
-        if(!msg->Verify(r->crypto.get(), EndpointPubKey()))
+        if(!msg->Verify(r->crypto(), EndpointPubKey()))
         {
           llarp::LogError(Name(), "RXM invalid signature");
           return false;
@@ -792,7 +795,7 @@ namespace llarp
     {
       if(m_ExitObtainTX && msg->T == m_ExitObtainTX)
       {
-        if(!msg->Verify(r->crypto.get(), EndpointPubKey()))
+        if(!msg->Verify(r->crypto(), EndpointPubKey()))
         {
           llarp::LogError(Name(), " GXM signature failed");
           return false;

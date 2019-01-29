@@ -72,7 +72,7 @@ namespace llarp
     bool result   = true;
     for(auto &msg : msgs)
     {
-      result &= msg->HandleMessage(router->dht, reply.msgs);
+      result &= msg->HandleMessage(router->dht(), reply.msgs);
     }
     if(reply.msgs.size())
     {

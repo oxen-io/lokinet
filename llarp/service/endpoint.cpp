@@ -18,7 +18,7 @@ namespace llarp
   {
     Endpoint::Endpoint(const std::string& name, llarp::Router* r,
                        Context* parent)
-        : path::Builder(r, r->dht, 6, DEFAULT_HOP_LENGTH)
+        : path::Builder(r, r->dht(), 6, DEFAULT_HOP_LENGTH)
         , context(parent)
         , m_Router(r)
         , m_Name(name)
@@ -118,7 +118,7 @@ namespace llarp
         return;
       }
       m_IntroSet.topic = m_Tag;
-      if(!m_Identity.SignIntroSet(m_IntroSet, m_Router->crypto.get(), now))
+      if(!m_Identity.SignIntroSet(m_IntroSet, m_Router->crypto(), now))
       {
         llarp::LogWarn("failed to sign introset for endpoint ", Name());
         return;
@@ -360,7 +360,7 @@ namespace llarp
     bool
     Endpoint::HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg)
     {
-      auto crypto = m_Router->crypto.get();
+      auto crypto = m_Router->crypto();
       std::set< IntroSet > remote;
       for(const auto& introset : msg->I)
       {
@@ -500,7 +500,7 @@ namespace llarp
     bool
     Endpoint::LoadKeyFile()
     {
-      auto crypto = m_Router->crypto.get();
+      auto crypto = m_Router->crypto();
       if(m_Keyfile.size())
       {
         if(!m_Identity.EnsureKeys(m_Keyfile, crypto))
@@ -765,10 +765,10 @@ namespace llarp
         if(itr == m_PendingRouters.end())
           return false;
         llarp_async_verify_rc* job = new llarp_async_verify_rc;
-        job->nodedb                = m_Router->nodedb;
+        job->nodedb                = m_Router->nodedb();
         job->cryptoworker          = m_Router->tp;
         job->diskworker            = m_Router->disk;
-        job->logic                 = m_Router->logic;
+        job->logic                 = m_Router->logic();
         job->hook                  = nullptr;
         job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
@@ -783,7 +783,7 @@ namespace llarp
       if(router.IsZero())
         return;
       RouterContact rc;
-      if(!m_Router->nodedb->Get(router, rc))
+      if(!m_Router->nodedb()->Get(router, rc))
       {
         LookupRouterAnon(router);
       }
@@ -1051,7 +1051,7 @@ namespace llarp
 
     Endpoint::OutboundContext::OutboundContext(const IntroSet& introset,
                                                Endpoint* parent)
-        : path::Builder(parent->m_Router, parent->m_Router->dht, 3,
+        : path::Builder(parent->m_Router, parent->m_Router->dht(), 3,
                         DEFAULT_HOP_LENGTH)
         , SendContext(introset.A, {}, this, parent)
         , currentIntroSet(introset)
@@ -1242,7 +1242,7 @@ namespace llarp
             f.C.Zero();
             transfer.Y.Randomize();
             transfer.P = remoteIntro.pathID;
-            if(!f.EncryptAndSign(Router()->crypto.get(), m, K, m_Identity))
+            if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
             {
               llarp::LogError("failed to encrypt and sign");
               return false;
@@ -1281,7 +1281,7 @@ namespace llarp
     Endpoint::OutboundContext::BuildOneAlignedTo(const RouterID& remote)
     {
       llarp::LogInfo(Name(), " building path to ", remote);
-      auto nodedb = m_Endpoint->Router()->nodedb;
+      auto nodedb = m_Endpoint->Router()->nodedb();
       std::vector< RouterContact > hops;
       hops.resize(numHops);
       for(size_t hop = 0; hop < numHops; ++hop)
@@ -1736,7 +1736,7 @@ namespace llarp
     Endpoint::SendContext::EncryptAndSendTo(const llarp_buffer_t& payload,
                                             ProtocolType t)
     {
-      auto crypto = m_Endpoint->Router()->crypto.get();
+      auto crypto = m_Endpoint->Router()->crypto();
       SharedSecret shared;
       routing::PathTransferMessage msg;
       ProtocolFrame& f = msg.T;
@@ -1802,19 +1802,19 @@ namespace llarp
     llarp::Logic*
     Endpoint::RouterLogic()
     {
-      return m_Router->logic;
+      return m_Router->logic();
     }
 
     llarp::Logic*
     Endpoint::EndpointLogic()
     {
-      return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic;
+      return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic();
     }
 
     llarp::Crypto*
     Endpoint::Crypto()
     {
-      return m_Router->crypto.get();
+      return m_Router->crypto();
     }
 
     llarp_threadpool*
