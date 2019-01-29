@@ -1041,8 +1041,7 @@ namespace llarp
     if(ExitEnabled())
     {
       llarp::nuint32_t a = publicAddr.xtonl();
-      // TODO: enable this once the network can serialize xi
-      //_rc.exits.emplace_back(_rc.pubkey, a);
+      _rc.exits.emplace_back(_rc.pubkey, a);
       llarp::LogInfo(
           "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your "
           "exit "
