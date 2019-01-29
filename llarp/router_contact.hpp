@@ -8,6 +8,7 @@
 #include <util/aligned.hpp>
 #include <util/bencode.hpp>
 
+#include <functional>
 #include <vector>
 
 #define MAX_RC_SIZE (1024)
@@ -188,6 +189,9 @@ namespace llarp
     bool
     VerifySignature(llarp::Crypto *crypto) const;
   };
+
+  using RouterLookupHandler =
+        std::function< void(const std::vector< RouterContact >&) >;
 }  // namespace llarp
 
 #endif

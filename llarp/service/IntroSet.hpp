@@ -10,6 +10,7 @@
 #include <util/time.hpp>
 
 #include <algorithm>
+#include <functional>
 #include <iostream>
 #include <vector>
 
@@ -153,6 +154,10 @@ namespace llarp
       bool
       Verify(llarp::Crypto* crypto, llarp_time_t now) const;
     };
+
+    using IntroSetLookupHandler =
+        std::function< void(const std::vector< IntroSet >&) >;
+
   }  // namespace service
 }  // namespace llarp
 
