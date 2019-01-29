@@ -58,6 +58,24 @@ namespace llarp
     }
   };
 
+  inline bool
+  operator==(const PubKey &lhs, const PubKey &rhs)
+  {
+    return lhs.as_array() == rhs.as_array();
+  }
+
+  inline bool
+  operator==(const PubKey &lhs, const RouterID &rhs)
+  {
+    return lhs.as_array() == rhs.as_array();
+  }
+
+  inline bool
+  operator==(const RouterID &lhs, const PubKey &rhs)
+  {
+    return lhs.as_array() == rhs.as_array();
+  }
+
   struct SecretKey final : public AlignedBuffer< SECKEYSIZE >
   {
     SecretKey() : AlignedBuffer< SECKEYSIZE >(){};

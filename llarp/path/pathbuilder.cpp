@@ -167,7 +167,7 @@ namespace llarp
         , numHops(hops)
     {
       p_router->paths.AddPathBuilder(this);
-      p_router->crypto.encryption_keygen(enckey);
+      p_router->crypto->encryption_keygen(enckey);
       _run.store(true);
       keygens.store(0);
     }
@@ -281,7 +281,7 @@ namespace llarp
       lastBuild = Now();
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
-          new AsyncPathKeyExchangeContext< Builder >(&router->crypto);
+          new AsyncPathKeyExchangeContext< Builder >(router->crypto.get());
       ctx->router  = router;
       ctx->pathset = this;
       auto path    = new llarp::path::Path(hops, this, roles);

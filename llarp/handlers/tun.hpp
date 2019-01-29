@@ -20,7 +20,8 @@ namespace llarp
 
     struct TunEndpoint : public service::Endpoint, public dns::IQueryHandler
     {
-      TunEndpoint(const std::string& nickname, llarp::Router* r);
+      TunEndpoint(const std::string& nickname, llarp::Router* r,
+                  llarp::service::Context* parent);
       ~TunEndpoint();
 
       virtual bool
@@ -69,6 +70,13 @@ namespace llarp
       /// queue outbound packet to the world
       bool
       QueueOutboundTraffic(llarp::net::IPv4Packet&& pkt);
+
+      /// we have a resolvable ip address
+      bool
+      HasIfAddr() const override
+      {
+        return true;
+      }
 
       /// get the local interface's address
       huint32_t

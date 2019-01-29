@@ -30,6 +30,22 @@ namespace llarp
       return true;
     }
 
+    void
+    Context::ForEachService(
+        std::function< bool(const std::string &,
+                            const std::unique_ptr< Endpoint > &) >
+            visit)
+    {
+      auto itr = m_Endpoints.begin();
+      while(itr != m_Endpoints.end())
+      {
+        if(visit(itr->first, itr->second))
+          ++itr;
+        else
+          return;
+      }
+    }
+
     bool
     Context::RemoveEndpoint(const std::string &name)
     {
@@ -274,17 +290,18 @@ namespace llarp
 
       static std::map< std::string,
                        std::function< llarp::service::Endpoint *(
-                           const std::string &, llarp::Router *) > >
+                           const std::string &, llarp::Router *,
+                           llarp::service::Context *) > >
           endpointConstructors = {
               {"tun",
-               [](const std::string &nick,
-                  llarp::Router *r) -> llarp::service::Endpoint * {
-                 return new llarp::handlers::TunEndpoint(nick, r);
+               [](const std::string &nick, llarp::Router *r,
+                  llarp::service::Context *c) -> llarp::service::Endpoint * {
+                 return new llarp::handlers::TunEndpoint(nick, r, c);
                }},
               {"null",
-               [](const std::string &nick,
-                  llarp::Router *r) -> llarp::service::Endpoint * {
-                 return new llarp::handlers::NullEndpoint(nick, r);
+               [](const std::string &nick, llarp::Router *r,
+                  llarp::service::Context *c) -> llarp::service::Endpoint * {
+                 return new llarp::handlers::NullEndpoint(nick, r, c);
                }}};
 
       {
@@ -297,7 +314,7 @@ namespace llarp
         }
 
         // construct
-        service.reset(itr->second(conf.first, m_Router));
+        service.reset(itr->second(conf.first, m_Router, this));
 
         // if ephemeral, then we need to regen key
         // if privkey file, then set it and load it

@@ -29,8 +29,9 @@ namespace llarp
       self->Flush();
     }
 
-    TunEndpoint::TunEndpoint(const std::string &nickname, llarp::Router *r)
-        : service::Endpoint(nickname, r)
+    TunEndpoint::TunEndpoint(const std::string &nickname, llarp::Router *r,
+                             service::Context *parent)
+        : service::Endpoint(nickname, r, parent)
         , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
         , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop, r->netloop)
         , m_Resolver(r->netloop, this)
@@ -204,10 +205,7 @@ namespace llarp
         return false;
       }
       std::string qname = msg.questions[0].qname;
-      if(msg.questions[0].qtype == dns::qTypeCNAME)
-      {
-      }
-      else if(msg.questions[0].qtype == dns::qTypeMX)
+      if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
         llarp::service::Address addr;
@@ -228,19 +226,44 @@ namespace llarp
           else
             msg.AddNXReply();
         }
+        else if(msg.questions[0].qname == "localhost.loki"
+                || msg.questions[0].qname == "localhost.loki.")
+        {
+          size_t counter = 0;
+          context->ForEachService(
+              [&](const std::string &,
+                  const std::unique_ptr< service::Endpoint > &service) -> bool {
+                service::Address addr = service->GetIdentity().pub.Addr();
+                msg.AddCNAMEReply(addr.ToString(), 1);
+                ++counter;
+                return true;
+              });
+          if(counter == 0)
+            msg.AddNXReply();
+        }
         else
           msg.AddNXReply();
       }
       else if(msg.questions[0].qtype == dns::qTypeA)
       {
-        // forward dns
         llarp::service::Address addr;
-        if(qname == "random.snode" || qname == "random.snode.")
+        // forward dns
+        if(msg.questions[0].qname == "localhost.loki"
+                || msg.questions[0].qname == "localhost.loki.")
         {
-          RouterID random;
-          if(Router()->GetRandomGoodRouter(random))
-            msg.AddCNAMEReply(random.ToString(), 1);
-          else
+          size_t counter = 0;
+          context->ForEachService(
+              [&](const std::string &,
+                  const std::unique_ptr< service::Endpoint > &service) -> bool {
+                if(service->HasIfAddr())
+                {
+                  huint32_t ip = service->GetIfAddr();
+                  msg.AddINReply(ip);
+                  ++counter;
+                }
+                return true;
+              });
+          if(counter == 0)
             msg.AddNXReply();
         }
         else if(addr.FromString(qname, ".loki"))
@@ -317,14 +340,18 @@ namespace llarp
         // always hook mx records
         if(msg.questions[0].qtype == llarp::dns::qTypeMX)
           return true;
-        // always hook random.snode
+        // hook random.snode for CNAME
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
           return true;
-        // always hook .loki
+        // hook localhost.loki 
+        if(msg.questions[0].qname == "localhost.loki"
+           || msg.questions[0].qname == "localhost.loki.")
+          return true;
+        // hook .loki A records
         if(addr.FromString(msg.questions[0].qname, ".loki"))
           return true;
-        // always hook .snode
+        // hook .snode A records
         if(addr.FromString(msg.questions[0].qname, ".snode"))
           return true;
         // hook any ranges we own

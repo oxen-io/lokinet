@@ -25,7 +25,7 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht   = ctx->impl;
-      auto crypto = &dht.router->crypto;
+      auto crypto = dht.router->crypto.get();
 
       for(const auto &introset : I)
       {
