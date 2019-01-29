@@ -16,8 +16,10 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const std::string& name, llarp::Router* r)
+    Endpoint::Endpoint(const std::string& name, llarp::Router* r,
+                       Context* parent)
         : path::Builder(r, r->dht, 6, DEFAULT_HOP_LENGTH)
+        , context(parent)
         , m_Router(r)
         , m_Name(name)
     {
