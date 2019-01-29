@@ -269,19 +269,21 @@ namespace llarp
         return;
       }
       // generate path key as we are in a worker thread
-      auto DH = self->context->Crypto()->dh_server;
-      if(!DH(self->hop->pathKey, self->record.commkey,
-             self->context->EncryptionSecretKey(), self->record.tunnelNonce))
+      auto crypto = self->context->Crypto();
+      if(!crypto->dh_server(self->hop->pathKey, self->record.commkey,
+                            self->context->EncryptionSecretKey(),
+                            self->record.tunnelNonce))
       {
         llarp::LogError("LRCM DH Failed ", info);
         delete self;
         return;
       }
       // generate hash of hop key for nonce mutation
-      self->context->Crypto()->shorthash(self->hop->nonceXOR,
-                                         self->hop->pathKey.as_buffer());
+      crypto->shorthash(self->hop->nonceXOR, self->hop->pathKey.as_buffer());
+      using namespace std::placeholders;
       if(self->record.work
-         && self->record.work->IsValid(self->context->Crypto()->shorthash, now))
+         && self->record.work->IsValid(
+             std::bind(&Crypto::shorthash, crypto, _1, _2), now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",

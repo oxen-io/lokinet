@@ -1,17 +1,19 @@
-#include <gtest/gtest.h>
+#include <messages/exit.hpp>
 
 #include <crypto/crypto.hpp>
-#include <messages/exit.hpp>
+#include <crypto/crypto_libsodium.hpp>
+
+#include <gtest/gtest.h>
 
 using ObtainExitMessage = llarp::routing::ObtainExitMessage;
 
 class ObtainExitTest : public ::testing::Test
 {
  public:
-  llarp::Crypto crypto;
+  llarp::sodium::CryptoLibSodium crypto;
   llarp::SecretKey alice;
 
-  ObtainExitTest() : crypto(llarp::Crypto::sodium{})
+  ObtainExitTest()
   {
   }
 

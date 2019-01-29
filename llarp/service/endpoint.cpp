@@ -16,8 +16,10 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const std::string& name, llarp::Router* r)
+    Endpoint::Endpoint(const std::string& name, llarp::Router* r,
+                       Context* parent)
         : path::Builder(r, r->dht, 6, DEFAULT_HOP_LENGTH)
+        , context(parent)
         , m_Router(r)
         , m_Name(name)
     {
@@ -116,7 +118,7 @@ namespace llarp
         return;
       }
       m_IntroSet.topic = m_Tag;
-      if(!m_Identity.SignIntroSet(m_IntroSet, &m_Router->crypto, now))
+      if(!m_Identity.SignIntroSet(m_IntroSet, m_Router->crypto.get(), now))
       {
         llarp::LogWarn("failed to sign introset for endpoint ", Name());
         return;
@@ -352,7 +354,7 @@ namespace llarp
     bool
     Endpoint::HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg)
     {
-      auto crypto = &m_Router->crypto;
+      auto crypto = m_Router->crypto.get();
       std::set< IntroSet > remote;
       for(const auto& introset : msg->I)
       {
@@ -492,7 +494,7 @@ namespace llarp
     bool
     Endpoint::LoadKeyFile()
     {
-      auto crypto = &m_Router->crypto;
+      auto crypto = m_Router->crypto.get();
       if(m_Keyfile.size())
       {
         if(!m_Identity.EnsureKeys(m_Keyfile, crypto))
@@ -1233,7 +1235,7 @@ namespace llarp
             f.C.Zero();
             transfer.Y.Randomize();
             transfer.P = remoteIntro.pathID;
-            if(!f.EncryptAndSign(&Router()->crypto, m, K, m_Identity))
+            if(!f.EncryptAndSign(Router()->crypto.get(), m, K, m_Identity))
             {
               llarp::LogError("failed to encrypt and sign");
               return false;
@@ -1260,12 +1262,13 @@ namespace llarp
         }
       }
       // no converstation
-      return EnsurePathToService(remote,
-                                 [](Address, OutboundContext* c) {
-                                   if(c)
-                                     c->UpdateIntroSet(true);
-                                 },
-                                 5000, false);
+      return EnsurePathToService(
+          remote,
+          [](Address, OutboundContext* c) {
+            if(c)
+              c->UpdateIntroSet(true);
+          },
+          5000, false);
     }
 
     bool
@@ -1491,9 +1494,11 @@ namespace llarp
         // compure post handshake session key
         // PKE (A, B, N)
         SharedSecret sharedSecret;
-        if(!self->m_LocalIdentity.KeyExchange(self->crypto->dh_client,
-                                              sharedSecret, self->remote,
-                                              self->frame.N))
+        using namespace std::placeholders;
+        path_dh_func dh_client =
+            std::bind(&Crypto::dh_client, self->crypto, _1, _2, _3, _4);
+        if(!self->m_LocalIdentity.KeyExchange(dh_client, sharedSecret,
+                                              self->remote, self->frame.N))
         {
           llarp::LogError("failed to derive x25519 shared key component");
         }
@@ -1726,7 +1731,7 @@ namespace llarp
     Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
                                             ProtocolType t)
     {
-      auto crypto = m_Endpoint->Router()->crypto;
+      auto crypto = m_Endpoint->Router()->crypto.get();
       SharedSecret shared;
       routing::PathTransferMessage msg;
       ProtocolFrame& f = msg.T;
@@ -1762,7 +1767,7 @@ namespace llarp
         m.PutBuffer(payload);
         m.tag = f.T;
 
-        if(!f.EncryptAndSign(&crypto, m, shared, m_Endpoint->m_Identity))
+        if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->m_Identity))
         {
           llarp::LogError("failed to sign");
           return;
@@ -1804,7 +1809,7 @@ namespace llarp
     llarp::Crypto*
     Endpoint::Crypto()
     {
-      return &m_Router->crypto;
+      return m_Router->crypto.get();
     }
 
     llarp_threadpool*

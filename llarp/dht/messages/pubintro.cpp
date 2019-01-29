@@ -52,14 +52,18 @@ namespace llarp
         return false;
       }
       auto &dht = ctx->impl;
-      if(!I.Verify(&dht.router->crypto, now))
+      if(!I.Verify(dht.router->crypto.get(), now))
       {
         llarp::LogWarn("invalid introset: ", I);
         // don't propogate or store
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
-      if(I.W && !I.W->IsValid(dht.router->crypto.shorthash, now))
+
+      using namespace std::placeholders;
+      shorthash_func shorthash =
+          std::bind(&Crypto::shorthash, dht.router->crypto.get(), _1, _2);
+      if(I.W && !I.W->IsValid(shorthash, now))
       {
         llarp::LogWarn("proof of work not good enough for IntroSet");
         // don't propogate or store

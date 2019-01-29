@@ -1,6 +1,7 @@
 #include <crypto/encrypted_frame.hpp>
 
 #include <crypto/crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 #include <messages/relay_commit.hpp>
 
 #include <gtest/gtest.h>
@@ -13,10 +14,10 @@ using LRCR           = llarp::LR_CommitRecord;
 class FrameTest : public ::testing::Test
 {
  public:
-  llarp::Crypto crypto;
+  llarp::sodium::CryptoLibSodium crypto;
   SecretKey alice, bob;
 
-  FrameTest() : crypto(llarp::Crypto::sodium{})
+  FrameTest()
   {
   }
 

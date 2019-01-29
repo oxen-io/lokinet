@@ -26,9 +26,10 @@
 #include <functional>
 #include <list>
 #include <map>
-#include <vector>
-#include <unordered_map>
+#include <memory>
 #include <set>
+#include <unordered_map>
+#include <vector>
 
 namespace llarp
 {
@@ -105,7 +106,7 @@ namespace llarp
     llarp_ev_loop *netloop;
     llarp_threadpool *tp;
     llarp::Logic *logic;
-    llarp::Crypto crypto;
+    std::unique_ptr< llarp::Crypto > crypto;
     llarp::path::PathContext paths;
     llarp::exit::Context exitContext;
     llarp::SecretKey identity;

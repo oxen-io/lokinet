@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <crypto/crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 #include <router_contact.hpp>
 
 static const byte_t DEF_VALUE[] = "unittest";
@@ -10,8 +11,7 @@ struct RCTest : public ::testing::Test
   using RC_t     = llarp::RouterContact;
   using SecKey_t = llarp::SecretKey;
 
-  RCTest()
-      : crypto(llarp::Crypto::sodium{}), oldval(llarp::NetID::DefaultValue())
+  RCTest() : oldval(llarp::NetID::DefaultValue())
   {
     llarp::NetID::DefaultValue() = llarp::NetID(DEF_VALUE);
   }
@@ -21,7 +21,7 @@ struct RCTest : public ::testing::Test
     llarp::NetID::DefaultValue() = oldval;
   }
 
-  llarp::Crypto crypto;
+  llarp::sodium::CryptoLibSodium crypto;
   const llarp::NetID oldval;
 };
 

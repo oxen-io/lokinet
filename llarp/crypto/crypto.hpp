@@ -19,8 +19,6 @@
 
 namespace llarp
 {
-  /// label functors
-
   /// PKE(result, publickey, secretkey, nonce)
   using path_dh_func = std::function< bool(
       SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
@@ -29,87 +27,82 @@ namespace llarp
   using transport_dh_func = std::function< bool(
       SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
 
-  /// SD/SE(buffer, key, nonce)
-  using sym_cipher_func = std::function< bool(
-      llarp_buffer_t, const SharedSecret &, const TunnelNonce &) >;
-
-  /// SD/SE(dst, src, key, nonce)
-  using sym_cipher_alt_func = std::function< bool(
-      llarp_buffer_t, llarp_buffer_t, const SharedSecret &, const byte_t *) >;
-
-  /// H(result, body)
-  using hash_func = std::function< bool(byte_t *, llarp_buffer_t) >;
-
   /// SH(result, body)
   using shorthash_func = std::function< bool(ShortHash &, llarp_buffer_t) >;
-
-  /// MDS(result, body, shared_secret)
-  using hmac_func =
-      std::function< bool(byte_t *, llarp_buffer_t, const SharedSecret &) >;
-
-  /// S(sig, secretkey, body)
-  using sign_func =
-      std::function< bool(Signature &, const SecretKey &, llarp_buffer_t) >;
-
-  /// V(pubkey, body, sig)
-  using verify_func =
-      std::function< bool(const PubKey &, llarp_buffer_t, const Signature &) >;
-
-  /// converts seed to secretkey
-  using seed_to_secret_func =
-      std::function< bool(llarp::SecretKey &, const llarp::IdentitySecret &) >;
 
   /// library crypto configuration
   struct Crypto
   {
+    virtual ~Crypto() = 0;
+
     /// xchacha symmetric cipher
-    sym_cipher_func xchacha20;
+    virtual bool
+    xchacha20(llarp_buffer_t, const SharedSecret &, const TunnelNonce &) = 0;
+
     /// xchacha symmetric cipher (multibuffer)
-    sym_cipher_alt_func xchacha20_alt;
+    virtual bool
+    xchacha20_alt(llarp_buffer_t, llarp_buffer_t, const SharedSecret &,
+                  const byte_t *) = 0;
+
     /// path dh creator's side
-    path_dh_func dh_client;
+    virtual bool
+    dh_client(SharedSecret &, const PubKey &, const SecretKey &,
+              const TunnelNonce &) = 0;
     /// path dh relay side
-    path_dh_func dh_server;
+    virtual bool
+    dh_server(SharedSecret &, const PubKey &, const SecretKey &,
+              const TunnelNonce &) = 0;
     /// transport dh client side
-    transport_dh_func transport_dh_client;
+    virtual bool
+    transport_dh_client(SharedSecret &, const PubKey &, const SecretKey &,
+                        const TunnelNonce &) = 0;
     /// transport dh server side
-    transport_dh_func transport_dh_server;
+    virtual bool
+    transport_dh_server(SharedSecret &, const PubKey &, const SecretKey &,
+                        const TunnelNonce &) = 0;
     /// blake2b 512 bit
-    hash_func hash;
+    virtual bool
+    hash(byte_t *, llarp_buffer_t) = 0;
     /// blake2b 256 bit
-    shorthash_func shorthash;
+    virtual bool
+    shorthash(ShortHash &, llarp_buffer_t) = 0;
     /// blake2s 256 bit hmac
-    hmac_func hmac;
+    virtual bool
+    hmac(byte_t *, llarp_buffer_t, const SharedSecret &) = 0;
     /// ed25519 sign
-    sign_func sign;
+    virtual bool
+    sign(Signature &, const SecretKey &, llarp_buffer_t) = 0;
     /// ed25519 verify
-    verify_func verify;
+    virtual bool
+    verify(const PubKey &, llarp_buffer_t, const Signature &) = 0;
     /// seed to secretkey
-    seed_to_secret_func seed_to_secretkey;
+    virtual bool
+    seed_to_secretkey(llarp::SecretKey &, const llarp::IdentitySecret &) = 0;
     /// randomize buffer
-    std::function< void(llarp_buffer_t) > randomize;
+    virtual void randomize(llarp_buffer_t) = 0;
     /// randomizer memory
-    std::function< void(void *, size_t) > randbytes;
+    virtual void
+    randbytes(void *, size_t) = 0;
     /// generate signing keypair
-    std::function< void(SecretKey &) > identity_keygen;
+    virtual void
+    identity_keygen(SecretKey &) = 0;
     /// generate encryption keypair
-    std::function< void(SecretKey &) > encryption_keygen;
+    virtual void
+    encryption_keygen(SecretKey &) = 0;
     /// generate post quantum encrytion key
-    std::function< void(PQKeyPair &) > pqe_keygen;
+    virtual void
+    pqe_keygen(PQKeyPair &) = 0;
     /// post quantum decrypt (buffer, sharedkey_dst, sec)
-    std::function< bool(const PQCipherBlock &, SharedSecret &, const byte_t *) >
-        pqe_decrypt;
+    virtual bool
+    pqe_decrypt(const PQCipherBlock &, SharedSecret &, const byte_t *) = 0;
     /// post quantum encrypt (buffer, sharedkey_dst,  pub)
-    std::function< bool(PQCipherBlock &, SharedSecret &, const PQPubKey &) >
-        pqe_encrypt;
-
-    // Give a basic type tag for the constructor to pick libsodium
-    struct sodium
-    {
-    };
-
-    Crypto(Crypto::sodium tag);
+    virtual bool
+    pqe_encrypt(PQCipherBlock &, SharedSecret &, const PQPubKey &) = 0;
   };
+
+  inline Crypto::~Crypto()
+  {
+  }
 
   /// return random 64bit unsigned interger
   uint64_t

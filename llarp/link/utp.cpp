@@ -28,6 +28,8 @@ namespace llarp
 {
   namespace utp
   {
+    using namespace std::placeholders;
+
     bool
     InboundMessage::IsExpired(llarp_time_t now) const
     {
@@ -549,7 +551,7 @@ namespace llarp
     NewServerFromRouter(llarp::Router* r)
     {
       return NewServer(
-          &r->crypto, r->encryption, std::bind(&llarp::Router::rc, r),
+          r->crypto.get(), r->encryption, std::bind(&llarp::Router::rc, r),
           std::bind(&llarp::Router::HandleRecvLinkMessageBuffer, r,
                     std::placeholders::_1, std::placeholders::_2),
           std::bind(&llarp::Router::OnSessionEstablished, r,
@@ -665,8 +667,10 @@ namespace llarp
         remoteRC = msg->rc;
         Crypto()->shorthash(txKey, remoteRC.pubkey.as_buffer());
 
-        if(!DoKeyExchange(Crypto()->transport_dh_server, rxKey, msg->N,
-                          remoteRC.enckey, parent->TransportSecretKey()))
+        if(!DoKeyExchange(std::bind(&Crypto::transport_dh_server, Crypto(), _1,
+                                    _2, _3, _4),
+                          rxKey, msg->N, remoteRC.enckey,
+                          parent->TransportSecretKey()))
           return false;
 
         byte_t tmp[LinkIntroMessage::MaxSize];
@@ -706,8 +710,10 @@ namespace llarp
           Close();
           return false;
         }
-        if(!DoKeyExchange(Crypto()->transport_dh_client, txKey, replymsg.N,
-                          remoteRC.enckey, parent->RouterEncryptionSecret()))
+        if(!DoKeyExchange(std::bind(&Crypto::transport_dh_client, Crypto(), _1,
+                                    _2, _3, _4),
+                          txKey, replymsg.N, remoteRC.enckey,
+                          parent->RouterEncryptionSecret()))
 
           return false;
         llarp::LogDebug("Sent reply LIM");
@@ -761,8 +767,10 @@ namespace llarp
       }
       remoteRC = msg->rc;
       gotLIM   = true;
-      if(!DoKeyExchange(Crypto()->transport_dh_server, rxKey, msg->N,
-                        remoteRC.enckey, parent->RouterEncryptionSecret()))
+
+      if(!DoKeyExchange(
+             std::bind(&Crypto::transport_dh_server, Crypto(), _1, _2, _3, _4),
+             rxKey, msg->N, remoteRC.enckey, parent->RouterEncryptionSecret()))
       {
         Close();
         return false;
@@ -814,9 +822,11 @@ namespace llarp
         Close();
         return;
       }
-      if(!DoKeyExchange(Crypto()->transport_dh_client, txKey, msg.N,
-                        remoteTransportPubKey,
-                        parent->RouterEncryptionSecret()))
+
+      if(!DoKeyExchange(
+             std::bind(&Crypto::transport_dh_client, Crypto(), _1, _2, _3, _4),
+             txKey, msg.N, remoteTransportPubKey,
+             parent->RouterEncryptionSecret()))
       {
         llarp::LogError("failed to mix keys for outbound session to ",
                         remoteAddr);
@@ -988,8 +998,9 @@ namespace llarp
       // set remote rc
       remoteRC = msg->rc;
       // recalcuate rx key
-      return DoKeyExchange(Crypto()->transport_dh_server, rxKey, msg->N,
-                           remoteRC.enckey, parent->RouterEncryptionSecret());
+      return DoKeyExchange(
+          std::bind(&Crypto::transport_dh_server, Crypto(), _1, _2, _3, _4),
+          rxKey, msg->N, remoteRC.enckey, parent->RouterEncryptionSecret());
     }
 
     bool
@@ -1012,8 +1023,9 @@ namespace llarp
       if(!SendMessageBuffer(buf))
         return false;
       // regen our tx Key
-      return DoKeyExchange(Crypto()->transport_dh_client, txKey, lim.N,
-                           remoteRC.enckey, parent->RouterEncryptionSecret());
+      return DoKeyExchange(
+          std::bind(&Crypto::transport_dh_client, Crypto(), _1, _2, _3, _4),
+          txKey, lim.N, remoteRC.enckey, parent->RouterEncryptionSecret());
     }
 
     bool
@@ -1080,7 +1092,9 @@ namespace llarp
 
       // get message
       if(m_RecvMsgs.find(msgid) == m_RecvMsgs.end())
+      {
         m_RecvMsgs.emplace(msgid, InboundMessage{});
+      }
 
       auto itr = m_RecvMsgs.find(msgid);
       // add message activity

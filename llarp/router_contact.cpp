@@ -337,8 +337,8 @@ namespace llarp
       return false;
     }
     f.seekg(0, std::ios::end);
-    auto l = f.tellg();
-    if(l > static_cast< std::streamoff >(sizeof tmp))
+    size_t l = f.tellg();
+    if(l > sizeof(tmp))
       return false;
     f.seekg(0, std::ios::beg);
     f.read((char *)tmp, l);

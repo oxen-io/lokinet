@@ -417,7 +417,7 @@ namespace llarp
     llarp::Crypto *
     Context::Crypto() const
     {
-      return &router->crypto;
+      return router->crypto.get();
     }
 
     llarp_time_t

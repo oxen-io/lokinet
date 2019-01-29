@@ -1,4 +1,4 @@
-#include <crypto/crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 
 #include <iostream>
 
@@ -6,16 +6,15 @@
 
 namespace llarp
 {
-  struct IdentityKeyTest : public ::testing::Test 
+  struct IdentityKeyTest : public ::testing::Test
   {
-    llarp::Crypto crypto;
+    llarp::sodium::CryptoLibSodium crypto;
     llarp::IdentitySecret seed;
 
-    IdentityKeyTest() : crypto(llarp::Crypto::sodium{})
+    IdentityKeyTest()
     {
-
     }
-    
+
     llarp::Crypto*
     Crypto()
     {
@@ -27,15 +26,13 @@ namespace llarp
     {
       seed.Randomize();
     }
-
-
   };
 
   TEST_F(IdentityKeyTest, TestSeedToSecretKey)
   {
     SecretKey secret;
     ASSERT_TRUE(crypto.seed_to_secretkey(secret, seed));
-    AlignedBuffer<128> random;
+    AlignedBuffer< 128 > random;
     random.Randomize();
     Signature sig;
     ASSERT_TRUE(crypto.sign(sig, secret, random.as_buffer()));
@@ -47,10 +44,10 @@ namespace llarp
 
   struct PQCryptoTest : public ::testing::Test
   {
-    llarp::Crypto crypto;
+    llarp::sodium::CryptoLibSodium crypto;
     PQKeyPair keys;
 
-    PQCryptoTest() : crypto(llarp::Crypto::sodium{})
+    PQCryptoTest()
     {
     }
 

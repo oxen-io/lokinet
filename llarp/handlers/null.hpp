@@ -9,8 +9,9 @@ namespace llarp
   {
     struct NullEndpoint final : public llarp::service::Endpoint
     {
-      NullEndpoint(const std::string &name, llarp::Router *r)
-          : llarp::service::Endpoint(name, r){};
+      NullEndpoint(const std::string &name, llarp::Router *r,
+                   llarp::service::Context *parent)
+          : llarp::service::Endpoint(name, r, parent){};
 
       bool HandleWriteIPPacket(llarp_buffer_t,
                                std::function< huint32_t(void) >) override
