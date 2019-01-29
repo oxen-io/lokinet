@@ -2,6 +2,7 @@
 
 #include <constants/proto.hpp>
 #include <crypto/crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
 #include <dht/node.hpp>
 #include <link/iwp.hpp>
@@ -205,7 +206,7 @@ namespace llarp
       , netloop(_netloop)
       , tp(_tp)
       , logic(_logic)
-      , crypto(llarp::Crypto::sodium{})
+      , crypto(std::make_unique< sodium::CryptoLibSodium >())
       , paths(this)
       , exitContext(this)
       , dht(llarp_dht_context_new(this))
@@ -343,7 +344,7 @@ namespace llarp
       {
         return;
       }
-      if(results[0].Verify(&crypto, Now()))
+      if(results[0].Verify(crypto.get(), Now()))
       {
         nodedb->Insert(results[0]);
         TryConnectAsync(results[0], 10);
@@ -391,7 +392,7 @@ namespace llarp
       llarp::LogError("failure to decode or verify of remote RC");
       return;
     }
-    if(remote.Verify(&crypto, Now()))
+    if(remote.Verify(crypto.get(), Now()))
     {
       llarp::LogDebug("verified signature");
       // store into filesystem
@@ -415,15 +416,16 @@ namespace llarp
     if(!EnsureEncryptionKey())
       return false;
     if(usingSNSeed)
-      return llarp_loadServiceNodeIdentityKey(&crypto, ident_keyfile, identity);
+      return llarp_loadServiceNodeIdentityKey(crypto.get(), ident_keyfile,
+                                              identity);
     else
-      return llarp_findOrCreateIdentity(&crypto, ident_keyfile, identity);
+      return llarp_findOrCreateIdentity(crypto.get(), ident_keyfile, identity);
   }
 
   bool
   Router::EnsureEncryptionKey()
   {
-    return llarp_findOrCreateEncryption(&crypto, encryption_keyfile,
+    return llarp_findOrCreateEncryption(crypto.get(), encryption_keyfile,
                                         this->encryption);
   }
 
@@ -459,7 +461,7 @@ namespace llarp
   Router::SaveRC()
   {
     llarp::LogDebug("verify RC signature");
-    if(!_rc.Verify(&crypto, Now()))
+    if(!_rc.Verify(crypto.get(), Now()))
     {
       rc().Dump< MAX_RC_SIZE >();
       llarp::LogError("RC is invalid, not saving");
@@ -585,7 +587,7 @@ namespace llarp
       return;
     for(const auto &rc : results)
     {
-      if(rc.Verify(&crypto, Now()))
+      if(rc.Verify(crypto.get(), Now()))
         nodedb->Insert(rc);
       else
         return;
@@ -672,11 +674,11 @@ namespace llarp
     llarp::RouterContact nextRC = _rc;
     if(rotateKeys)
     {
-      crypto.encryption_keygen(nextOnionKey);
+      crypto->encryption_keygen(nextOnionKey);
       nextRC.enckey = llarp::seckey_topublic(nextOnionKey);
     }
     nextRC.last_updated = Now();
-    if(!nextRC.Sign(&crypto, identity))
+    if(!nextRC.Sign(crypto.get(), identity))
       return false;
     _rc = nextRC;
     if(rotateKeys)
@@ -816,7 +818,7 @@ namespace llarp
   bool
   Router::Sign(llarp::Signature &sig, llarp_buffer_t buf) const
   {
-    return crypto.sign(sig, identity, buf);
+    return crypto->sign(sig, identity, buf);
   }
 
   void
@@ -966,7 +968,7 @@ namespace llarp
 
     job->nodedb = nodedb;
     job->logic  = logic;
-    // job->crypto = &crypto; // we already have this
+    // job->crypto = crypto.get(); // we already have this
     job->cryptoworker = tp;
     job->diskworker   = disk;
     if(rc.IsPublicRouter())
@@ -1049,7 +1051,7 @@ namespace llarp
           a);
     }
     llarp::LogInfo("Signing rc...");
-    if(!_rc.Sign(&crypto, identity))
+    if(!_rc.Sign(crypto.get(), identity))
     {
       llarp::LogError("failed to sign rc");
       return false;
@@ -1102,11 +1104,11 @@ namespace llarp
     {
       // we are a client
       // regenerate keys and resign rc before everything else
-      crypto.identity_keygen(identity);
-      crypto.encryption_keygen(encryption);
+      crypto->identity_keygen(identity);
+      crypto->encryption_keygen(encryption);
       _rc.pubkey = llarp::seckey_topublic(identity);
       _rc.enckey = llarp::seckey_topublic(encryption);
-      if(!_rc.Sign(&crypto, identity))
+      if(!_rc.Sign(crypto.get(), identity))
       {
         llarp::LogError("failed to regenerate keys and sign RC");
         return false;
@@ -1618,7 +1620,7 @@ namespace llarp
         self->bootstrapRCList.pop_back();
         return;
       }
-      if(rc.Verify(&self->crypto, self->Now()))
+      if(rc.Verify(self->crypto.get(), self->Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
       }
