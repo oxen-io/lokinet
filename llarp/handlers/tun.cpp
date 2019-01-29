@@ -476,8 +476,9 @@ namespace llarp
       }
       if(!m_Resolver.Start(m_LocalResolverAddr, m_UpstreamResolvers))
       {
-        llarp::LogError(Name(), " failed to start dns server");
-        return false;
+        // downgrade DNS server failure to a warning
+        llarp::LogWarn(Name(), " failed to start dns server");
+        // return false;
       }
       return true;
     }
