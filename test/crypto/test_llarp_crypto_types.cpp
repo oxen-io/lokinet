@@ -256,8 +256,13 @@ TEST_F(TestCryptoTypesSecret, secret_key_to_missing_file)
   // Verify writing to an unwritable file fails.
   // Assume we're not running as root, so can't write to /
   // if we are root just skip this test
+  // TODO(despair): check elevation status, return if running
+  // as someone who can write to C:/
+  // (normal users cannot write to C:/)
+#ifndef _WIN32
   if(getuid() == 0)
     return;
+#endif
   filename = "/" + filename;
   p        = filename;
   ASSERT_FALSE(fs::exists(fs::status(p)));

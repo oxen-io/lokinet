@@ -104,6 +104,8 @@ else()
 endif(DEBIAN)
 
 # only needed if using AVX2
+# TODO: generate a config-time test for this
+# in cmake
 if(AMD_RYZEN_HACK AND USE_AVX2)
   set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
 endif(AMD_RYZEN_HACK AND USE_AVX2)

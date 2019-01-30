@@ -6,7 +6,10 @@
 
 #include <getopt.h>
 #include <signal.h>
+
+#ifndef _WIN32
 #include <wordexp.h>
+#endif
 
 #include <string>
 #include <iostream>
@@ -62,6 +65,7 @@ handle_signal_win32(DWORD fdwCtrlType)
 std::string
 resolvePath(std::string conffname)
 {
+#ifndef _WIN32
   wordexp_t exp_result;
   wordexp(conffname.c_str(), &exp_result, 0);
   char *resolvedPath = realpath(exp_result.we_wordv[0], NULL);
@@ -71,6 +75,11 @@ resolvePath(std::string conffname)
     return "";
   }
   return resolvedPath;
+#else
+  // TODO(despair): dig through LLVM local patch set
+  // one of these exists deep in the bowels of LLVMSupport
+  return conffname;  // eww, easier said than done outside of cygwin
+#endif
 }
 
 int
@@ -110,11 +119,6 @@ main(int argc, char *argv[])
         genconfigOnly = true;
         break;
       case 'r':
-#ifdef _WIN32
-        llarp::LogWarn(
-            "please don't try this at home, the relay feature is untested on "
-            "windows server --R.");
-#endif
         asRouter = true;
         break;
       case 'f':
@@ -227,7 +231,7 @@ main(int argc, char *argv[])
   }
 
   // this is important, can downgrade from Info though
-  llarp::LogInfo("Running from: ", cpp17::filesystem::current_path());
+  llarp::LogInfo("Running from: ", fs::current_path());
   llarp::LogInfo("Using config file: ", conffname);
   ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
   int code = 1;

@@ -31,7 +31,11 @@ TEST_F(TestINIParser, TestParseOneSection)
   ASSERT_EQ(itr, sect.end());
   itr = sect.find("key");
   ASSERT_NE(itr, sect.end());
+#if __cplusplus >= 201703L
+  ASSERT_STREQ(itr->second.data(), "val");
+#else
   ASSERT_STREQ(itr->second.c_str(), "val");
+#endif
 }
 
 TEST_F(TestINIParser, TestParseSectionDuplicateKeys)
