@@ -510,8 +510,12 @@ set(LIB_SRC
   llarp/dht/bucket.cpp
   llarp/dht/context.cpp
   llarp/dht/dht.cpp
+  llarp/dht/explorenetworkjob.cpp
   llarp/dht/kademlia.cpp
   llarp/dht/key.cpp
+  llarp/dht/localtaglookup.cpp
+  llarp/dht/localrouterlookup.cpp
+  llarp/dht/localserviceaddresslookup.cpp
   llarp/dht/message.cpp
   llarp/dht/messages/findintro.cpp
   llarp/dht/messages/findrouter.cpp
@@ -519,6 +523,12 @@ set(LIB_SRC
   llarp/dht/messages/gotrouter.cpp
   llarp/dht/messages/pubintro.cpp
   llarp/dht/node.cpp
+  llarp/dht/publishservicejob.cpp
+  llarp/dht/recursiverouterlookup.cpp
+  llarp/dht/serviceaddresslookup.cpp
+  llarp/dht/taglookup.cpp
+  llarp/dht/tx.cpp
+  llarp/dht/txholder.cpp
   llarp/dht/txowner.cpp
   llarp/dns.cpp
   llarp/dnsc.cpp
@@ -612,13 +622,16 @@ set(DNS_SRC
 set(TEST_SRC
   # helpers
   test/main.cpp
+  test/dht/mock_context.cpp
   test/test_util.cpp
   # actual test cases
   test/crypto/test_llarp_crypto_types.cpp
   test/crypto/test_llarp_crypto.cpp
   test/dht/test_llarp_dht_bucket.cpp
+  test/dht/test_llarp_dht_explorenetworkjob.cpp
   test/dht/test_llarp_dht_kademlia.cpp
   test/dht/test_llarp_dht_key.cpp
+  test/dht/test_llarp_dht_tx.cpp
   test/dht/test_llarp_dht_txowner.cpp
   test/dns/test_llarp_dns_dns.cpp
   test/exit/test_llarp_exit_context.cpp
@@ -677,11 +690,11 @@ if(USE_LIBABYSS)
   set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
 
-if (NOT WIN32)
-  target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB})
-else()
-  target_link_libraries(${ABYSS_EXE} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-endif(NOT WIN32)
+  if (NOT WIN32)
+    target_link_libraries(${ABYSS_EXE} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} Threads::Threads)
+  else()
+    target_link_libraries(${ABYSS_EXE} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi Threads::Threads)
+  endif(NOT WIN32)
 
   set(TEST_SRC ${TEST_SRC} test/test_libabyss.cpp)
   # for freebsd
@@ -699,9 +712,6 @@ if(SHADOW)
   target_link_libraries(shadow-plugin-${SHARED_LIB} ${LIBS})
   install(TARGETS shadow-plugin-${SHARED_LIB} DESTINATION plugins)
 else()
-  #add_executable(${RC_EXE} ${RC_SRC})
-  #add_executable(${CLIENT_EXE} ${CLIENT_SRC})
-  #add_executable(${DNS_EXE} ${DNS_SRC})
   add_subdirectory(${GTEST_DIR})
   if(NOT WIN32)
     add_executable(${TEST_EXE} ${TEST_SRC})
@@ -745,11 +755,10 @@ else()
 
   target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB})
   target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
-
+  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   if (WIN32)
     target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
-    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gtest_main ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
   endif(WIN32)
 
 

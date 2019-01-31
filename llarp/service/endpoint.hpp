@@ -20,6 +20,8 @@ namespace llarp
 {
   namespace service
   {
+    // foward declare
+    struct Context;
     // forward declare
     struct AsyncKeyExchange;
 
@@ -35,7 +37,7 @@ namespace llarp
 
       static const size_t MAX_OUTBOUND_CONTEXT_COUNT = 4;
 
-      Endpoint(const std::string& nickname, llarp::Router* r);
+      Endpoint(const std::string& nickname, llarp::Router* r, Context* parent);
       ~Endpoint();
 
       void
@@ -46,6 +48,20 @@ namespace llarp
 
       virtual void
       Tick(llarp_time_t now);
+
+      /// return true if we have a resolvable ip address
+      virtual bool
+      HasIfAddr() const
+      {
+        return false;
+      }
+
+      /// get our ifaddr if it is set
+      virtual huint32_t
+      GetIfAddr() const
+      {
+        return huint32_t{0};
+      }
 
       /// router's logic
       llarp::Logic*
@@ -381,6 +397,9 @@ namespace llarp
       IntroSetPublished();
 
      protected:
+      /// parent context that owns this endpoint
+      Context* const context;
+
       void
       RegenAndPublishIntroSet(llarp_time_t now, bool forceRebuild = false);
 

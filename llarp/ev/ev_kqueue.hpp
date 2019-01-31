@@ -77,7 +77,7 @@ namespace llarp
 
 }  // namespace llarp
 
-struct llarp_kqueue_loop : public llarp_ev_loop
+struct llarp_kqueue_loop final : public llarp_ev_loop
 {
   int kqueuefd;
 
@@ -85,51 +85,51 @@ struct llarp_kqueue_loop : public llarp_ev_loop
   {
   }
 
-  llarp::ev_io*
-  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr);
-
-  ~llarp_kqueue_loop()
+  virtual ~llarp_kqueue_loop()
   {
   }
 
-  llarp::ev_io*
-  create_tun(llarp_tun_io* tun);
-
   bool
-  init();
-
-  bool
-  running() const;
-
-  bool
-  tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr);
+  init() override;
 
   int
-  tick(int ms);
+  run() override;
+
+  bool
+  running() const override;
+
+  bool
+  tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr) override;
 
   int
-  run();
+  tick(int ms) override;
 
   int
   udp_bind(const sockaddr* addr);
 
   virtual bool
-  udp_listen(llarp_udp_io* l, const sockaddr* src);
+  udp_listen(llarp_udp_io* l, const sockaddr* src) override;
 
   bool
-  close_ev(llarp::ev_io* ev);
+  close_ev(llarp::ev_io* ev) override;
 
   llarp::ev_io*
-  create_udp(llarp_udp_io* l, const sockaddr* src);
+  create_tun(llarp_tun_io* tun) override;
+
+  llarp::ev_io*
+  bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr) override;
+
+  llarp::ev_io*
+  create_udp(llarp_udp_io* l, const sockaddr* src) override;
 
   bool
-  add_ev(llarp::ev_io* ev, bool w);
+  add_ev(llarp::ev_io* ev, bool w) override;
 
   bool
-  udp_close(llarp_udp_io* l);
+  udp_close(llarp_udp_io* l) override;
 
   void
-  stop();
+  stop() override;
 };
 
 #endif

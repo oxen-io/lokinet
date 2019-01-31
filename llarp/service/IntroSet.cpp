@@ -122,7 +122,8 @@ namespace llarp
       if(!A.Verify(crypto, buf, Z))
         return false;
       // validate PoW
-      if(W && !W->IsValid(crypto->shorthash, now))
+      using namespace std::placeholders;
+      if(W && !W->IsValid(std::bind(&Crypto::shorthash, crypto, _1, _2), now))
         return false;
       // valid timestamps
       // add max clock skew

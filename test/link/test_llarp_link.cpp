@@ -4,6 +4,8 @@
 #include <messages/link_intro.hpp>
 #include <messages/discard.hpp>
 
+#include <crypto/crypto_libsodium.hpp>
+
 #include <gtest/gtest.h>
 
 struct LinkLayerTest : public ::testing::Test
@@ -97,7 +99,7 @@ struct LinkLayerTest : public ::testing::Test
     }
   };
 
-  llarp::Crypto crypto;
+  llarp::sodium::CryptoLibSodium crypto;
 
   Context Alice;
   Context Bob;
@@ -109,11 +111,7 @@ struct LinkLayerTest : public ::testing::Test
 
   llarp_time_t oldRCLifetime;
 
-  LinkLayerTest()
-      : crypto(llarp::Crypto::sodium{})
-      , Alice(crypto)
-      , Bob(crypto)
-      , netLoop(nullptr)
+  LinkLayerTest() : Alice(crypto), Bob(crypto), netLoop(nullptr)
   {
   }
 

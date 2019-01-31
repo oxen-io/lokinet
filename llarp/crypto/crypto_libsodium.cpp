@@ -1,4 +1,4 @@
-#include <crypto/crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 
 #include <sodium/crypto_generichash.h>
 #include <sodium/crypto_sign.h>
@@ -19,24 +19,6 @@ namespace llarp
   namespace sodium
   {
     static bool
-    xchacha20(llarp_buffer_t buff, const SharedSecret &k, const TunnelNonce &n)
-    {
-      return crypto_stream_xchacha20_xor(buff.base, buff.base, buff.sz,
-                                         n.data(), k.data())
-          == 0;
-    }
-
-    static bool
-    xchacha20_alt(llarp_buffer_t out, llarp_buffer_t in, const SharedSecret &k,
-                  const byte_t *n)
-    {
-      if(in.sz > out.sz)
-        return false;
-      return crypto_stream_xchacha20_xor(out.base, in.base, in.sz, n, k.data())
-          == 0;
-    }
-
-    static bool
     dh(llarp::SharedSecret &out, const PubKey &client_pk,
        const PubKey &server_pk, const uint8_t *themPub, const SecretKey &usSec)
     {
@@ -44,7 +26,9 @@ namespace llarp
       crypto_generichash_state h;
 
       if(crypto_scalarmult_curve25519(shared.data(), usSec.data(), themPub))
+      {
         return false;
+      }
       crypto_generichash_blake2b_init(&h, nullptr, 0U, shared.size());
       crypto_generichash_blake2b_update(&h, client_pk.data(), 32);
       crypto_generichash_blake2b_update(&h, server_pk.data(), 32);
@@ -54,8 +38,8 @@ namespace llarp
     }
 
     static bool
-    dh_client(llarp::SharedSecret &shared, const PubKey &pk,
-              const SecretKey &sk, const TunnelNonce &n)
+    dh_client_priv(llarp::SharedSecret &shared, const PubKey &pk,
+                   const SecretKey &sk, const TunnelNonce &n)
     {
       llarp::SharedSecret dh_result;
 
@@ -70,8 +54,8 @@ namespace llarp
     }
 
     static bool
-    dh_server(llarp::SharedSecret &shared, const PubKey &pk,
-              const SecretKey &sk, const TunnelNonce &n)
+    dh_server_priv(llarp::SharedSecret &shared, const PubKey &pk,
+                   const SecretKey &sk, const TunnelNonce &n)
     {
       llarp::SharedSecret dh_result;
       if(dh(dh_result, pk, sk.toPublic(), pk.data(), sk))
@@ -84,80 +68,176 @@ namespace llarp
       return false;
     }
 
-    static bool
-    hash(uint8_t *result, llarp_buffer_t buff)
+    CryptoLibSodium::CryptoLibSodium()
+    {
+      if(sodium_init() == -1)
+      {
+        throw std::runtime_error("sodium_init() returned -1");
+      }
+      char *avx2 = std::getenv("AVX2_FORCE_DISABLE");
+      if(avx2 && std::string(avx2) == "1")
+      {
+        ntru_init(1);
+      }
+      else
+      {
+        ntru_init(0);
+      }
+      int seed = 0;
+      this->randbytes(&seed, sizeof(seed));
+      srand(seed);
+    }
+
+    bool
+    CryptoLibSodium::xchacha20(llarp_buffer_t buff, const SharedSecret &k,
+                               const TunnelNonce &n)
+    {
+      return crypto_stream_xchacha20_xor(buff.base, buff.base, buff.sz,
+                                         n.data(), k.data())
+          == 0;
+    }
+
+    bool
+    CryptoLibSodium::xchacha20_alt(llarp_buffer_t out, llarp_buffer_t in,
+                                   const SharedSecret &k, const byte_t *n)
+    {
+      if(in.sz > out.sz)
+        return false;
+      return crypto_stream_xchacha20_xor(out.base, in.base, in.sz, n, k.data())
+          == 0;
+    }
+
+    bool
+    CryptoLibSodium::dh_client(llarp::SharedSecret &shared, const PubKey &pk,
+                               const SecretKey &sk, const TunnelNonce &n)
+    {
+      return dh_client_priv(shared, pk, sk, n);
+    }
+    /// path dh relay side
+    bool
+    CryptoLibSodium::dh_server(llarp::SharedSecret &shared, const PubKey &pk,
+                               const SecretKey &sk, const TunnelNonce &n)
+    {
+      return dh_server_priv(shared, pk, sk, n);
+    }
+    /// transport dh client side
+    bool
+    CryptoLibSodium::transport_dh_client(llarp::SharedSecret &shared,
+                                         const PubKey &pk, const SecretKey &sk,
+                                         const TunnelNonce &n)
+    {
+      return dh_client_priv(shared, pk, sk, n);
+    }
+    /// transport dh server side
+    bool
+    CryptoLibSodium::transport_dh_server(llarp::SharedSecret &shared,
+                                         const PubKey &pk, const SecretKey &sk,
+                                         const TunnelNonce &n)
+    {
+      return dh_server_priv(shared, pk, sk, n);
+    }
+
+    bool
+    CryptoLibSodium::hash(uint8_t *result, llarp_buffer_t buff)
     {
       return crypto_generichash_blake2b(result, HASHSIZE, buff.base, buff.sz,
                                         nullptr, 0)
           != -1;
     }
 
-    static bool
-    shorthash(ShortHash &result, llarp_buffer_t buff)
+    bool
+    CryptoLibSodium::shorthash(ShortHash &result, llarp_buffer_t buff)
     {
       return crypto_generichash_blake2b(result.data(), ShortHash::SIZE,
                                         buff.base, buff.sz, nullptr, 0)
           != -1;
     }
 
-    static bool
-    hmac(byte_t *result, llarp_buffer_t buff, const SharedSecret &secret)
+    bool
+    CryptoLibSodium::hmac(byte_t *result, llarp_buffer_t buff,
+                          const SharedSecret &secret)
     {
       return crypto_generichash_blake2b(result, HMACSIZE, buff.base, buff.sz,
                                         secret.data(), HMACSECSIZE)
           != -1;
     }
 
-    static bool
-    sign(Signature &result, const SecretKey &secret, llarp_buffer_t buff)
+    bool
+    CryptoLibSodium::sign(Signature &result, const SecretKey &secret,
+                          llarp_buffer_t buff)
     {
       int rc = crypto_sign_detached(result.data(), nullptr, buff.base, buff.sz,
                                     secret.data());
       return rc != -1;
     }
 
-    static bool
-    verify(const PubKey &pub, llarp_buffer_t buff, const Signature &sig)
+    bool
+    CryptoLibSodium::verify(const PubKey &pub, llarp_buffer_t buff,
+                            const Signature &sig)
     {
       int rc = crypto_sign_verify_detached(sig.data(), buff.base, buff.sz,
                                            pub.data());
       return rc != -1;
     }
 
-    static bool
-    seed_to_secretkey(llarp::SecretKey &secret,
-                      const llarp::IdentitySecret &seed)
+    bool
+    CryptoLibSodium::seed_to_secretkey(llarp::SecretKey &secret,
+                                       const llarp::IdentitySecret &seed)
     {
       byte_t pk[crypto_sign_ed25519_PUBLICKEYBYTES];
       return crypto_sign_ed25519_seed_keypair(pk, secret.data(), seed.data())
           != -1;
     }
 
-    static void
-    randomize(llarp_buffer_t buff)
+    void
+    CryptoLibSodium::randomize(llarp_buffer_t buff)
     {
       randombytes((unsigned char *)buff.base, buff.sz);
     }
 
-    static inline void
-    randbytes(void *ptr, size_t sz)
+    void
+    CryptoLibSodium::randbytes(void *ptr, size_t sz)
     {
       randombytes((unsigned char *)ptr, sz);
     }
 
-    static void
-    sigkeygen(llarp::SecretKey &keys)
+    void
+    CryptoLibSodium::identity_keygen(llarp::SecretKey &keys)
     {
       byte_t *d = keys.data();
       crypto_sign_keypair(d + 32, d);
     }
 
-    static void
-    enckeygen(llarp::SecretKey &keys)
+    void
+    CryptoLibSodium::encryption_keygen(llarp::SecretKey &keys)
     {
       auto d = keys.data();
       randombytes(d, 32);
       crypto_scalarmult_curve25519_base(d + 32, d);
+    }
+
+    bool
+    CryptoLibSodium::pqe_encrypt(PQCipherBlock &ciphertext,
+                                 SharedSecret &sharedkey,
+                                 const PQPubKey &pubkey)
+    {
+      return crypto_kem_enc(ciphertext.data(), sharedkey.data(), pubkey.data())
+          != -1;
+    }
+    bool
+    CryptoLibSodium::pqe_decrypt(const PQCipherBlock &ciphertext,
+                                 SharedSecret &sharedkey,
+                                 const byte_t *secretkey)
+    {
+      return crypto_kem_dec(sharedkey.data(), ciphertext.data(), secretkey)
+          != -1;
+    }
+
+    void
+    CryptoLibSodium::pqe_keygen(PQKeyPair &keypair)
+    {
+      auto d = keypair.data();
+      crypto_kem_keypair(d + PQ_SECRETKEYSIZE, d);
     }
   }  // namespace sodium
 
@@ -166,31 +246,6 @@ namespace llarp
   {
     return sec.data() + 32;
   }
-
-  namespace pq
-  {
-    bool
-    encrypt(PQCipherBlock &ciphertext, SharedSecret &sharedkey,
-            const PQPubKey &pubkey)
-    {
-      return crypto_kem_enc(ciphertext.data(), sharedkey.data(), pubkey.data())
-          != -1;
-    }
-    bool
-    decrypt(const PQCipherBlock &ciphertext, SharedSecret &sharedkey,
-            const byte_t *secretkey)
-    {
-      return crypto_kem_dec(sharedkey.data(), ciphertext.data(), secretkey)
-          != -1;
-    }
-
-    void
-    keygen(PQKeyPair &keypair)
-    {
-      auto d = keypair.data();
-      crypto_kem_keypair(d + PQ_SECRETKEYSIZE, d);
-    }
-  }  // namespace pq
 
   const byte_t *
   pq_keypair_to_public(const PQKeyPair &k)
@@ -202,40 +257,6 @@ namespace llarp
   pq_keypair_to_secret(const PQKeyPair &k)
   {
     return k.data();
-  }
-
-  Crypto::Crypto(Crypto::sodium tag)
-  {
-    (void)tag;
-    if(sodium_init() == -1)
-      throw std::runtime_error("sodium_init() returned -1");
-    char *avx2 = std::getenv("AVX2_FORCE_DISABLE");
-    if(avx2 && std::string(avx2) == "1")
-      ntru_init(1);
-    else
-      ntru_init(0);
-    this->xchacha20           = llarp::sodium::xchacha20;
-    this->xchacha20_alt       = llarp::sodium::xchacha20_alt;
-    this->dh_client           = llarp::sodium::dh_client;
-    this->dh_server           = llarp::sodium::dh_server;
-    this->transport_dh_client = llarp::sodium::dh_client;
-    this->transport_dh_server = llarp::sodium::dh_server;
-    this->hash                = llarp::sodium::hash;
-    this->shorthash           = llarp::sodium::shorthash;
-    this->hmac                = llarp::sodium::hmac;
-    this->sign                = llarp::sodium::sign;
-    this->verify              = llarp::sodium::verify;
-    this->randomize           = llarp::sodium::randomize;
-    this->randbytes           = llarp::sodium::randbytes;
-    this->identity_keygen     = llarp::sodium::sigkeygen;
-    this->encryption_keygen   = llarp::sodium::enckeygen;
-    this->seed_to_secretkey   = llarp::sodium::seed_to_secretkey;
-    this->pqe_encrypt         = llarp::pq::encrypt;
-    this->pqe_decrypt         = llarp::pq::decrypt;
-    this->pqe_keygen          = llarp::pq::keygen;
-    int seed                  = 0;
-    this->randbytes(&seed, sizeof(seed));
-    srand(seed);
   }
 
   uint64_t

@@ -1,6 +1,7 @@
 #include <libabyss.hpp>
 
 #include <crypto/crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 #include <ev/ev.h>
 #include <net/net.hpp>
 #include <util/threading.hpp>
@@ -9,7 +10,7 @@
 
 struct AbyssTestBase : public ::testing::Test
 {
-  llarp::Crypto crypto;
+  llarp::sodium::CryptoLibSodium crypto;
   llarp_threadpool* threadpool = nullptr;
   llarp_ev_loop* loop          = nullptr;
   std::unique_ptr< llarp::Logic > logic;
@@ -18,7 +19,7 @@ struct AbyssTestBase : public ::testing::Test
   const std::string method             = "test.method";
   bool called                          = false;
 
-  AbyssTestBase() : crypto(llarp::Crypto::sodium{})
+  AbyssTestBase()
   {
   }
 

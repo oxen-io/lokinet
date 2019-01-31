@@ -31,13 +31,19 @@ namespace llarp
     return b * d.quot;
   }
 
+  static size_t
+  Base32DecodeSize(size_t sz)
+  {
+    return DecodeSize<5, 8>(sz);
+  }
+
   template < typename Stack, typename V >
   bool
   Base32Decode(const Stack& stack, V& value)
   {
     int tmp = 0, bits = 0;
     size_t ret    = 0;
-    size_t len    = DecodeSize< 5, 8 >(value.size());
+    size_t len    = Base32DecodeSize(value.size());
     size_t outLen = value.size();
     for(size_t i = 0; i < len; i++)
     {
@@ -144,6 +150,68 @@ namespace llarp
       --sz;
     }
     return sz == 0;
+  }
+
+  static const char base64_table[] = {
+      'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M',
+      'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+      'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
+      'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '+', '/'};
+
+  template < typename OStream_t >
+  void
+  Base64Encode(OStream_t& out, const uint8_t* src, size_t len)
+  {
+    size_t i       = 0;
+    size_t j       = 0;
+    uint8_t buf[4] = {0};
+    uint8_t tmp[3] = {0};
+    while(len--)
+    {
+      tmp[i++] = *(src++);
+      if(3 == i)
+      {
+        buf[0] = (tmp[0] & 0xfc) >> 2;
+        buf[1] = ((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4);
+        buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
+        buf[3] = tmp[2] & 0x3f;
+
+        // encode
+        for(i = 0; i < 4; ++i)
+        {
+          out << base64_table[buf[i]];
+        }
+        // reset
+        i = 0;
+      }
+    }
+
+    // remainder
+    if(i > 0)
+    {
+      // fill `tmp' with `\0' at most 3 times
+      for(j = i; j < 3; ++j)
+      {
+        tmp[j] = 0;
+      }
+
+      // encode remainder
+      buf[0] = (tmp[0] & 0xfc) >> 2;
+      buf[1] = ((tmp[0] & 0x03) << 4) + ((tmp[1] & 0xf0) >> 4);
+      buf[2] = ((tmp[1] & 0x0f) << 2) + ((tmp[2] & 0xc0) >> 6);
+      buf[3] = tmp[2] & 0x3f;
+      for(j = 0; (j < i + 1); ++j)
+      {
+        out << base64_table[buf[j]];
+      }
+
+      // pad
+      while((i++ < 3))
+      {
+        out << '=';
+      }
+    }
   }
 
 }  // namespace llarp

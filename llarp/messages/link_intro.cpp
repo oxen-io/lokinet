@@ -117,7 +117,7 @@ namespace llarp
   bool
   LinkIntroMessage::HandleMessage(llarp::Router* router) const
   {
-    if(!Verify(&router->crypto))
+    if(!Verify(router->crypto.get()))
       return false;
     return session->GotLIM(this);
   }

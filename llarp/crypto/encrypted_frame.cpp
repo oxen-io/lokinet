@@ -24,10 +24,6 @@ namespace llarp
 
     SharedSecret shared;
 
-    auto DH      = crypto->dh_client;
-    auto Encrypt = crypto->xchacha20;
-    auto MDS     = crypto->hmac;
-
     llarp_buffer_t buf;
     buf.base = body;
     buf.cur  = buf.base;
@@ -40,14 +36,14 @@ namespace llarp
     TunnelNonce nonce(noncePtr);
 
     // derive shared key
-    if(!DH(shared, otherPubkey, ourSecretKey, nonce))
+    if(!crypto->dh_client(shared, otherPubkey, ourSecretKey, nonce))
     {
       llarp::LogError("DH failed");
       return false;
     }
 
     // encrypt body
-    if(!Encrypt(buf, shared, nonce))
+    if(!crypto->xchacha20(buf, shared, nonce))
     {
       llarp::LogError("encrypt failed");
       return false;
@@ -58,7 +54,7 @@ namespace llarp
     buf.cur  = buf.base;
     buf.sz   = size() - SHORTHASHSIZE;
 
-    if(!MDS(hash, buf, shared))
+    if(!crypto->hmac(hash, buf, shared))
     {
       llarp::LogError("Failed to generate message auth");
       return false;
@@ -82,14 +78,10 @@ namespace llarp
     TunnelNonce nonce(noncePtr);
     PubKey otherPubkey(noncePtr + TUNNONCESIZE);
 
-    // use dh_server because we are not the creator of this message
-    auto DH      = crypto->dh_server;
-    auto Decrypt = crypto->xchacha20;
-    auto MDS     = crypto->hmac;
-
     SharedSecret shared;
 
-    if(!DH(shared, otherPubkey, ourSecretKey, nonce))
+    // use dh_server because we are not the creator of this message
+    if(!crypto->dh_server(shared, otherPubkey, ourSecretKey, nonce))
     {
       llarp::LogError("DH failed");
       return false;
@@ -101,7 +93,7 @@ namespace llarp
     buf.sz   = size() - SHORTHASHSIZE;
 
     ShortHash digest;
-    if(!MDS(digest.data(), buf, shared))
+    if(!crypto->hmac(digest.data(), buf, shared))
     {
       llarp::LogError("Digest failed");
       return false;
@@ -117,7 +109,7 @@ namespace llarp
     buf.cur  = body;
     buf.sz   = size() - EncryptedFrameOverheadSize;
 
-    if(!Decrypt(buf, shared, nonce))
+    if(!crypto->xchacha20(buf, shared, nonce))
     {
       llarp::LogError("decrypt failed");
       return false;

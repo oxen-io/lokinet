@@ -1,6 +1,7 @@
 #include <router/router.hpp>
 
 #include <crypto/crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 
 #include <functional>
 #include <random>
@@ -13,11 +14,11 @@ using FindOrCreateFunc = std::function< bool(llarp::Crypto *, const fs::path &,
 
 struct FindOrCreate : public ::testing::TestWithParam< FindOrCreateFunc >
 {
-  FindOrCreate() : crypto(llarp::Crypto::sodium{})
+  FindOrCreate()
   {
   }
 
-  llarp::Crypto crypto;
+  llarp::sodium::CryptoLibSodium crypto;
 };
 
 // Concerns

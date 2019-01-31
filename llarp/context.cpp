@@ -1,6 +1,7 @@
 #include <llarp.hpp>
 #include <llarp.h>
 
+#include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
 #include <dns/dotlokilookup.hpp>
 #include <dnsd.hpp>
@@ -97,8 +98,7 @@ namespace llarp
   int
   Context::LoadDatabase()
   {
-    crypto = std::unique_ptr< llarp::Crypto >(
-        new llarp::Crypto{llarp::Crypto::sodium{}});
+    crypto = std::make_unique< sodium::CryptoLibSodium >();
     nodedb = new llarp_nodedb(crypto.get(), router->disk);
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))

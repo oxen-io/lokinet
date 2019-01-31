@@ -269,7 +269,11 @@ namespace llarp
         }
         // PKE (A, B, N)
         SharedSecret sharedSecret;
-        if(!self->m_LocalIdentity.KeyExchange(crypto->dh_server, sharedSecret,
+        using namespace std::placeholders;
+        path_dh_func dh_server =
+            std::bind(&Crypto::dh_server, self->crypto, _1, _2, _3, _4);
+
+        if(!self->m_LocalIdentity.KeyExchange(dh_server, sharedSecret,
                                               self->msg->sender, self->frame.N))
         {
           llarp::LogError("x25519 key exchange failed");

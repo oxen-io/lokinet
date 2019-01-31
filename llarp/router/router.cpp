@@ -2,6 +2,7 @@
 
 #include <constants/proto.hpp>
 #include <crypto/crypto.hpp>
+#include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
 #include <dht/node.hpp>
 #include <link/iwp.hpp>
@@ -196,7 +197,7 @@ namespace llarp
   Router::OnSessionEstablished(llarp::RouterContact rc)
   {
     async_verify_RC(rc, nullptr);
-    llarp::LogInfo("session with ", rc.pubkey, "established");
+    llarp::LogInfo("session with ", rc.pubkey, " established");
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *_netloop,
@@ -205,7 +206,7 @@ namespace llarp
       , netloop(_netloop)
       , tp(_tp)
       , logic(_logic)
-      , crypto(llarp::Crypto::sodium{})
+      , crypto(std::make_unique< sodium::CryptoLibSodium >())
       , paths(this)
       , exitContext(this)
       , dht(llarp_dht_context_new(this))
@@ -343,7 +344,7 @@ namespace llarp
       {
         return;
       }
-      if(results[0].Verify(&crypto, Now()))
+      if(results[0].Verify(crypto.get(), Now()))
       {
         nodedb->Insert(results[0]);
         TryConnectAsync(results[0], 10);
@@ -391,7 +392,7 @@ namespace llarp
       llarp::LogError("failure to decode or verify of remote RC");
       return;
     }
-    if(remote.Verify(&crypto, Now()))
+    if(remote.Verify(crypto.get(), Now()))
     {
       llarp::LogDebug("verified signature");
       // store into filesystem
@@ -415,15 +416,16 @@ namespace llarp
     if(!EnsureEncryptionKey())
       return false;
     if(usingSNSeed)
-      return llarp_loadServiceNodeIdentityKey(&crypto, ident_keyfile, identity);
+      return llarp_loadServiceNodeIdentityKey(crypto.get(), ident_keyfile,
+                                              identity);
     else
-      return llarp_findOrCreateIdentity(&crypto, ident_keyfile, identity);
+      return llarp_findOrCreateIdentity(crypto.get(), ident_keyfile, identity);
   }
 
   bool
   Router::EnsureEncryptionKey()
   {
-    return llarp_findOrCreateEncryption(&crypto, encryption_keyfile,
+    return llarp_findOrCreateEncryption(crypto.get(), encryption_keyfile,
                                         this->encryption);
   }
 
@@ -459,7 +461,7 @@ namespace llarp
   Router::SaveRC()
   {
     llarp::LogDebug("verify RC signature");
-    if(!_rc.Verify(&crypto, Now()))
+    if(!_rc.Verify(crypto.get(), Now()))
     {
       rc().Dump< MAX_RC_SIZE >();
       llarp::LogError("RC is invalid, not saving");
@@ -585,7 +587,7 @@ namespace llarp
       return;
     for(const auto &rc : results)
     {
-      if(rc.Verify(&crypto, Now()))
+      if(rc.Verify(crypto.get(), Now()))
         nodedb->Insert(rc);
       else
         return;
@@ -681,7 +683,7 @@ namespace llarp
       }
     }
     nextRC.last_updated = Now();
-    if(!nextRC.Sign(&crypto, identity))
+    if(!nextRC.Sign(crypto.get(), identity))
       return false;
     _rc = nextRC;
     // propagate RC by renegotiating sessions
@@ -818,7 +820,7 @@ namespace llarp
   bool
   Router::Sign(llarp::Signature &sig, llarp_buffer_t buf) const
   {
-    return crypto.sign(sig, identity, buf);
+    return crypto->sign(sig, identity, buf);
   }
 
   void
@@ -968,7 +970,7 @@ namespace llarp
 
     job->nodedb = nodedb;
     job->logic  = logic;
-    // job->crypto = &crypto; // we already have this
+    // job->crypto = crypto.get(); // we already have this
     job->cryptoworker = tp;
     job->diskworker   = disk;
     if(rc.IsPublicRouter())
@@ -1003,6 +1005,21 @@ namespace llarp
 #endif
       }
       llarp::LogInfo("Bound RPC server to ", rpcBindAddr);
+    }
+    if(whitelistRouters)
+    {
+      rpcCaller = std::make_unique<llarp::rpc::Caller>(this);
+      rpcCaller->SetBasicAuth(lokidRPCUser, lokidRPCPassword);
+      while(!rpcCaller->Start(lokidRPCAddr))
+      {
+        llarp::LogError("failed to start jsonrpc caller to ", lokidRPCAddr);
+#if defined(ANDROID) || defined(RPI)
+        sleep(1);
+#else
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+#endif
+      }
+      llarp::LogInfo("RPC Caller to ", lokidRPCAddr, " started");
     }
 
     llarp_threadpool_start(tp);
@@ -1043,8 +1060,7 @@ namespace llarp
     if(ExitEnabled())
     {
       llarp::nuint32_t a = publicAddr.xtonl();
-      // TODO: enable this once the network can serialize xi
-      //_rc.exits.emplace_back(_rc.pubkey, a);
+      _rc.exits.emplace_back(_rc.pubkey, a);
       llarp::LogInfo(
           "Neato tehl33toh, You are a freaking exit relay. w00t!!!!! your "
           "exit "
@@ -1052,7 +1068,7 @@ namespace llarp
           a);
     }
     llarp::LogInfo("Signing rc...");
-    if(!_rc.Sign(&crypto, identity))
+    if(!_rc.Sign(crypto.get(), identity))
     {
       llarp::LogError("failed to sign rc");
       return false;
@@ -1105,11 +1121,11 @@ namespace llarp
     {
       // we are a client
       // regenerate keys and resign rc before everything else
-      crypto.identity_keygen(identity);
-      crypto.encryption_keygen(encryption);
+      crypto->identity_keygen(identity);
+      crypto->encryption_keygen(encryption);
       _rc.pubkey = llarp::seckey_topublic(identity);
       _rc.enckey = llarp::seckey_topublic(encryption);
-      if(!_rc.Sign(&crypto, identity))
+      if(!_rc.Sign(crypto.get(), identity))
       {
         llarp::LogError("failed to regenerate keys and sign RC");
         return false;
@@ -1409,11 +1425,13 @@ namespace llarp
   {
     // fallback defaults
     // To NeuroScr: why run findFree* here instead of in tun.cpp?
+    // I think it should be in tun.cpp, better to closer to time of usage
+    // that way new tun may have grab a range we may have also grabbed here
     static const std::unordered_map< std::string,
                                      std::function< std::string(void) > >
         netConfigDefaults = {
-            {"ifname", llarp::findFreeLokiTunIfName},
-            {"ifaddr", llarp::findFreePrivateRange},
+            {"ifname", []() -> std::string { return "auto"; }},
+            {"ifaddr", []() -> std::string { return "auto"; }},
             {"local-dns", []() -> std::string { return "127.0.0.1:53"; }},
             {"upstream-dns", []() -> std::string { return "1.1.1.1:53"; }}};
     // populate with fallback defaults if values not present
@@ -1592,6 +1610,14 @@ namespace llarp
       {
         self->lokidRPCAddr = val;
       }
+      if(StrEq(key, "username"))
+      {
+        self->lokidRPCUser = val;
+      }
+      if(StrEq(key, "password"))
+      {
+        self->lokidRPCPassword = val;
+      }
     }
     else if(StrEq(section, "dns"))
     {
@@ -1609,21 +1635,31 @@ namespace llarp
     else if(StrEq(section, "connect")
             || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
     {
+      //llarp::LogDebug("connect section has ", key, "=", val);
       self->bootstrapRCList.emplace_back();
       auto &rc = self->bootstrapRCList.back();
-      if(rc.Read(val) && rc.Verify(&self->crypto, self->Now()))
+      if(!rc.Read(val))
+      {
+        llarp::LogWarn("failed to decode bootstrap RC, file='", val,
+                       "' rc=", rc);
+        self->bootstrapRCList.pop_back();
+        return;
+      }
+      if(rc.Verify(self->crypto.get(), self->Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
       }
-      else if(self->Now() - rc.last_updated > RouterContact::Lifetime)
-      {
-        llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
-                       " is too old and needs to be refreshed");
-        self->bootstrapRCList.pop_back();
-      }
       else
       {
-        llarp::LogError("malformed rc file: ", val);
+        if(rc.IsExpired(self->Now()))
+        {
+          llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
+                         " is too old and needs to be refreshed");
+        }
+        else
+        {
+          llarp::LogError("malformed rc file='", val, "' rc=", rc);
+        }
         self->bootstrapRCList.pop_back();
       }
     }
@@ -1635,8 +1671,10 @@ namespace llarp
         {
           llarp::LogWarn("!!!! you have manually set netid to be '", val,
                          "' which does not equal '", Version::LLARP_NET_ID,
-                         "' you will run as a different network, good luck and "
-                         "don't forget: something something MUH traffic shape "
+                         "' you will run as a different network, good luck "
+                         "and "
+                         "don't forget: something something MUH traffic "
+                         "shape "
                          "correlation !!!!");
           llarp::NetID::DefaultValue() =
               llarp::NetID(reinterpret_cast< const byte_t * >(strdup(val)));
