@@ -50,8 +50,8 @@ llarp_buffer_read_until(llarp_buffer_t* buff, char delim, byte_t* result,
 {
   size_t read = 0;
 
-  while(*buff->cur != delim && resultsize
-        && (buff->cur != buff->base + buff->sz))
+  // do the bound check first, to avoid over running
+  while((buff->cur != buff->base + buff->sz) && *buff->cur != delim && resultsize)
   {
     *result = *buff->cur;
     buff->cur++;
