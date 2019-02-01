@@ -7,7 +7,7 @@
 #include <getopt.h>
 #include <signal.h>
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__NetBSD__) && !defined(__OpenBSD__)
 #include <wordexp.h>
 #endif
 
@@ -65,7 +65,7 @@ handle_signal_win32(DWORD fdwCtrlType)
 std::string
 resolvePath(std::string conffname)
 {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__NetBSD__) && !defined(__OpenBSD__)
   wordexp_t exp_result;
   wordexp(conffname.c_str(), &exp_result, 0);
   char *resolvedPath = realpath(exp_result.we_wordv[0], NULL);
