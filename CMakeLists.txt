@@ -86,6 +86,10 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if(WIN32)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
+# unlike unix where you get a *single* compiler ID string in .comment
+# GNU ld sees fit to merge *all* the .ident sections in object files
+# to .r[o]data section one after the other!
+  add_compile_options(-fno-ident)
   set(FS_LIB stdc++fs)
 endif(WIN32)
 
