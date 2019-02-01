@@ -47,13 +47,13 @@ namespace llarp
       ConvoTag tag;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
 
       void
-      PutBuffer(llarp_buffer_t payload);
+      PutBuffer(const llarp_buffer_t& payload);
 
       static void
       ProcessAsync(void* user);
@@ -115,7 +115,7 @@ namespace llarp
                          ProtocolMessage& into) const;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

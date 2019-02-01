@@ -116,12 +116,12 @@ namespace llarp
 
       // handle data in upstream direction
       virtual bool
-      HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y,
+      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                      llarp::Router* r) = 0;
 
       // handle data in downstream direction
       virtual bool
-      HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
+      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                        llarp::Router* r) = 0;
 
       /// return timestamp last remote activity happened at
@@ -256,12 +256,12 @@ namespace llarp
 
       // handle data in upstream direction
       bool
-      HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y,
+      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                      llarp::Router* r) override;
 
       // handle data in downstream direction
       bool
-      HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
+      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                        llarp::Router* r) override;
     };
 
@@ -302,7 +302,7 @@ namespace llarp
       using ExitUpdatedFunc = std::function< bool(Path*) >;
       using ExitClosedFunc  = std::function< bool(Path*) >;
       using ExitTrafficHandlerFunc =
-          std::function< bool(Path*, llarp_buffer_t, uint64_t) >;
+          std::function< bool(Path*, const llarp_buffer_t&, uint64_t) >;
       /// (path, backoff) backoff is 0 on success
       using ObtainedExitHandler = std::function< bool(Path*, llarp_time_t) >;
 
@@ -475,16 +475,16 @@ namespace llarp
                        llarp::Router* r) override;
 
       bool
-      HandleRoutingMessage(llarp_buffer_t buf, llarp::Router* r);
+      HandleRoutingMessage(const llarp_buffer_t& buf, llarp::Router* r);
 
       // handle data in upstream direction
       bool
-      HandleUpstream(llarp_buffer_t X, const TunnelNonce& Y,
+      HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                      llarp::Router* r) override;
 
       // handle data in downstream direction
       bool
-      HandleDownstream(llarp_buffer_t X, const TunnelNonce& Y,
+      HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                        llarp::Router* r) override;
 
       bool

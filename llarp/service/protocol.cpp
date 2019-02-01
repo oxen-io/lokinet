@@ -23,7 +23,7 @@ namespace llarp
     }
 
     void
-    ProtocolMessage::PutBuffer(llarp_buffer_t buf)
+    ProtocolMessage::PutBuffer(const llarp_buffer_t& buf)
     {
       payload.resize(buf.sz);
       memcpy(payload.data(), buf.base, buf.sz);
@@ -39,7 +39,7 @@ namespace llarp
     }
 
     bool
-    ProtocolMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+    ProtocolMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("a", proto, read, k, buf))
@@ -123,7 +123,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    ProtocolFrame::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       bool read = false;
       if(llarp_buffer_eq(key, "A"))

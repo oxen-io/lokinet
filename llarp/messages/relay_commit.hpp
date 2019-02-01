@@ -58,7 +58,7 @@ namespace llarp
     Clear();
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf);
+    DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf);
 
     bool
     BEncode(llarp_buffer_t *buf) const;

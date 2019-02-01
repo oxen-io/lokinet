@@ -29,7 +29,7 @@ namespace llarp
     }
 
     bool
-    Identity::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
+    Identity::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, buf))
@@ -75,7 +75,7 @@ namespace llarp
     }
 
     bool
-    Identity::Sign(Crypto* c, Signature& sig, llarp_buffer_t buf) const
+    Identity::Sign(Crypto* c, Signature& sig, const llarp_buffer_t& buf) const
     {
       return c->sign(sig, signkey, buf);
     }

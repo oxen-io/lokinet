@@ -11,7 +11,7 @@ namespace llarp
   }
 
   bool
-  PoW::DecodeKey(__attribute__((unused)) llarp_buffer_t k,
+  PoW::DecodeKey(__attribute__((unused)) const llarp_buffer_t& k,
                  __attribute__((unused)) llarp_buffer_t* val)
   {
     // TODO: implement me

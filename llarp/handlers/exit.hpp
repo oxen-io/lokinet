@@ -47,7 +47,7 @@ namespace llarp
 
       /// handle ip packet from outside
       void
-      OnInetPacket(llarp_buffer_t buf);
+      OnInetPacket(const llarp_buffer_t& buf);
 
       Router*
       GetRouter();
@@ -80,7 +80,7 @@ namespace llarp
       RemoveExit(const exit::Endpoint* ep);
 
       bool
-      QueueOutboundTraffic(llarp_buffer_t buf);
+      QueueOutboundTraffic(const llarp_buffer_t& buf);
 
       /// sets up networking and starts traffic
       bool
@@ -114,7 +114,7 @@ namespace llarp
       ObtainServiceNodeIP(const RouterID& router);
 
       bool
-      QueueSNodePacket(llarp_buffer_t buf, huint32_t from);
+      QueueSNodePacket(const llarp_buffer_t & buf, huint32_t from);
 
       void
       MarkIPActive(huint32_t ip);

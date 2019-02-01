@@ -13,14 +13,14 @@ namespace llarp
 {
   namespace exit
   {
-    /// a persisiting exit session with an exit router
+    /// a persisting exit session with an exit router
     struct BaseSession : public llarp::path::Builder
     {
       static constexpr size_t MaxUpstreamQueueLength = 256;
       static constexpr llarp_time_t LifeSpan         = 60 * 10 * 1000;
 
       BaseSession(const llarp::RouterID& exitRouter,
-                  std::function< bool(llarp_buffer_t) > writepkt,
+                  std::function< bool(const llarp_buffer_t&) > writepkt,
                   llarp::Router* r, size_t numpaths, size_t hoplen);
 
       virtual ~BaseSession();
@@ -64,7 +64,7 @@ namespace llarp
      protected:
       llarp::RouterID m_ExitRouter;
       llarp::SecretKey m_ExitIdentity;
-      std::function< bool(llarp_buffer_t) > m_WritePacket;
+      std::function< bool(const llarp_buffer_t&) > m_WritePacket;
 
       virtual void
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const = 0;
@@ -77,7 +77,8 @@ namespace llarp
       HandleGotExit(llarp::path::Path* p, llarp_time_t b);
 
       bool
-      HandleTraffic(llarp::path::Path* p, llarp_buffer_t buf, uint64_t seqno);
+      HandleTraffic(llarp::path::Path* p, const llarp_buffer_t& buf,
+                    uint64_t seqno);
 
      private:
       using UpstreamTrafficQueue_t =
@@ -108,7 +109,7 @@ namespace llarp
     struct ExitSession final : public BaseSession
     {
       ExitSession(const llarp::RouterID& snodeRouter,
-                  std::function< bool(llarp_buffer_t) > writepkt,
+                  std::function< bool(const llarp_buffer_t&) > writepkt,
                   llarp::Router* r, size_t numpaths, size_t hoplen)
           : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen){};
 
@@ -127,7 +128,7 @@ namespace llarp
     struct SNodeSession final : public BaseSession
     {
       SNodeSession(const llarp::RouterID& snodeRouter,
-                   std::function< bool(llarp_buffer_t) > writepkt,
+                   std::function< bool(const llarp_buffer_t&) > writepkt,
                    llarp::Router* r, size_t numpaths, size_t hoplen,
                    bool useRouterSNodeKey = false);
 

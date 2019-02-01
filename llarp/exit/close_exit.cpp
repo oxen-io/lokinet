@@ -24,7 +24,7 @@ namespace llarp
     }
 
     bool
-    CloseExitMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+    CloseExitMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))

@@ -152,7 +152,7 @@ namespace llarp
   }
 
   bool
-  RouterContact::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
+  RouterContact::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
   {
     bool read = false;
     if(!BEncodeMaybeReadDictList("a", addrs, read, key, buf))

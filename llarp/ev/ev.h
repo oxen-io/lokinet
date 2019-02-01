@@ -88,7 +88,7 @@ llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp,
 /// send a UDP packet
 int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,
-                    llarp_buffer_t pkt);
+                    const llarp_buffer_t &pkt);
 
 /// close UDP handler
 int
@@ -203,7 +203,7 @@ struct llarp_tun_io
   void (*before_write)(struct llarp_tun_io *);
   /// called every event loop tick after reads
   void (*tick)(struct llarp_tun_io *);
-  void (*recvpkt)(struct llarp_tun_io *, llarp_buffer_t);
+  void (*recvpkt)(struct llarp_tun_io *, const llarp_buffer_t &);
 };
 
 /// create tun interface with network interface name ifname

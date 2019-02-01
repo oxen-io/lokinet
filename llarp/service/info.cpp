@@ -13,14 +13,14 @@ namespace llarp
   namespace service
   {
     bool
-    ServiceInfo::Verify(llarp::Crypto* crypto, llarp_buffer_t payload,
+    ServiceInfo::Verify(llarp::Crypto* crypto, const llarp_buffer_t& payload,
                         const Signature& sig) const
     {
       return crypto->verify(signkey, payload, sig);
     }
 
     bool
-    ServiceInfo::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    ServiceInfo::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, val))

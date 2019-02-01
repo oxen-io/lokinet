@@ -30,7 +30,7 @@ namespace llarp
     }
 
     bool
-    RejectExitMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+    RejectExitMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("B", B, read, k, buf))

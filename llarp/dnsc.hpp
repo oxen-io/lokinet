@@ -71,7 +71,7 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *addr, const void *buf,
 // removed saddr, if needed get through request
 void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
-                             llarp_buffer_t buffer, dns_msg_header *hdr);
+                             const llarp_buffer_t &buffer, dns_msg_header *hdr);
 
 /// DNS client context (one needed per upstream DNS server)
 struct dnsc_context

@@ -83,7 +83,7 @@ namespace llarp
     }
 
     bool
-    TransitHop::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
+    TransitHop::HandleDownstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
                                  llarp::Router* r)
     {
       RelayDownstreamMessage msg;
@@ -97,7 +97,7 @@ namespace llarp
     }
 
     bool
-    TransitHop::HandleUpstream(llarp_buffer_t buf, const TunnelNonce& Y,
+    TransitHop::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
                                llarp::Router* r)
     {
       r->crypto->xchacha20(buf, pathKey, Y);

@@ -25,7 +25,7 @@ namespace llarp
   }
 
   bool
-  RouterProfile::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+  RouterProfile::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
   {
     bool read = false;
     if(!BEncodeMaybeReadDictInt("g", connectGoodCount, read, k, buf))
@@ -134,7 +134,7 @@ namespace llarp
   }
 
   bool
-  Profiling::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+  Profiling::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
   {
     if(k.sz != 32)
       return false;

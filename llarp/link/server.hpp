@@ -16,10 +16,11 @@ namespace llarp
 {
   /// handle a link layer message
   using LinkMessageHandler =
-      std::function< bool(ILinkSession*, llarp_buffer_t) >;
+      std::function< bool(ILinkSession*, const llarp_buffer_t&) >;
 
   /// sign a buffer with identity key
-  using SignBufferFunc = std::function< bool(Signature&, llarp_buffer_t) >;
+  using SignBufferFunc =
+      std::function< bool(Signature&, const llarp_buffer_t&) >;
 
   /// handle connection timeout
   using TimeoutHandler = std::function< void(ILinkSession*) >;
@@ -128,7 +129,7 @@ namespace llarp
     KeepAliveSessionTo(const RouterID& remote);
 
     bool
-    SendTo(const RouterID& remote, llarp_buffer_t buf);
+    SendTo(const RouterID& remote, const llarp_buffer_t& buf);
 
     bool
     GetOurAddressInfo(AddressInfo& addr) const;

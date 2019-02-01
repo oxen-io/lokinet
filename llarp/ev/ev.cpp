@@ -115,7 +115,7 @@ llarp_ev_loop_stop(struct llarp_ev_loop *loop)
 
 int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
-                    llarp_buffer_t buf)
+                    const llarp_buffer_t &buf)
 {
   auto ret =
       static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf.base, buf.sz);

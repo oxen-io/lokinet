@@ -21,7 +21,7 @@ namespace llarp
     ~RelayUpstreamMessage();
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
+    DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
 
     bool
     BEncode(llarp_buffer_t* buf) const override;
@@ -43,7 +43,7 @@ namespace llarp
     ~RelayDownstreamMessage();
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
+    DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
 
     bool
     BEncode(llarp_buffer_t* buf) const override;

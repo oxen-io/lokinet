@@ -15,7 +15,7 @@ namespace llarp
     }
 
     bool
-    PublishIntroMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
+    PublishIntroMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *val)
     {
       bool read = false;
       if(llarp_buffer_eq(key, "E"))

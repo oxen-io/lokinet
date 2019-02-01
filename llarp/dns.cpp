@@ -629,12 +629,12 @@ extern "C"
     if(hdr.qr)
     {
       llarp::LogDebug("handling as dnsc answer");
-      llarp_handle_dnsc_recvfrom(udp, addr, buf);
+      llarp_handle_dnsc_recvfrom(udp, addr, buf.clone());
     }
     else
     {
       llarp::LogDebug("handling as dnsd question");
-      llarp_handle_dnsd_recvfrom(udp, addr, buf);
+      llarp_handle_dnsd_recvfrom(udp, addr, buf.clone());
     }
   }
 }

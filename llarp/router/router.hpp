@@ -115,7 +115,7 @@ namespace llarp
     llarp_dht_context *dht = nullptr;
 
     bool
-    Sign(Signature &sig, llarp_buffer_t buf) const;
+    Sign(Signature &sig, const llarp_buffer_t &buf) const;
 
     llarp_nodedb *nodedb;
 
@@ -228,7 +228,8 @@ namespace llarp
     OnSessionEstablished(llarp::RouterContact rc);
 
     bool
-    HandleRecvLinkMessageBuffer(llarp::ILinkSession *from, llarp_buffer_t msg);
+    HandleRecvLinkMessageBuffer(llarp::ILinkSession *from,
+                                const llarp_buffer_t &msg);
 
     void
     AddInboundLink(std::unique_ptr< llarp::ILinkLayer > &link);
@@ -394,8 +395,8 @@ namespace llarp
     /// successful parsing return true on parse and handle success otherwise
     /// return false
     bool
-    ParseRoutingMessageBuffer(llarp_buffer_t buf, routing::IMessageHandler *h,
-                              PathID_t rxid);
+    ParseRoutingMessageBuffer(const llarp_buffer_t &buf,
+                              routing::IMessageHandler *h, PathID_t rxid);
 
     void
     ConnectToRandomRouters(int N);

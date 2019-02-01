@@ -5,7 +5,7 @@
 #include <stdio.h>
 
 size_t
-llarp_buffer_size_left(llarp_buffer_t buff)
+llarp_buffer_size_left(const llarp_buffer_t& buff)
 {
   size_t diff = buff.cur - buff.base;
   if(diff > buff.sz)
@@ -51,7 +51,8 @@ llarp_buffer_read_until(llarp_buffer_t* buff, char delim, byte_t* result,
   size_t read = 0;
 
   // do the bound check first, to avoid over running
-  while((buff->cur != buff->base + buff->sz) && *buff->cur != delim && resultsize)
+  while((buff->cur != buff->base + buff->sz) && *buff->cur != delim
+        && resultsize)
   {
     *result = *buff->cur;
     buff->cur++;
@@ -67,13 +68,14 @@ llarp_buffer_read_until(llarp_buffer_t* buff, char delim, byte_t* result,
 }
 
 bool
-llarp_buffer_eq(llarp_buffer_t buf, const char* str)
+llarp_buffer_eq(const llarp_buffer_t& buf, const char* str)
 {
-  while(*str && buf.cur != (buf.base + buf.sz))
+  llarp_buffer_t copy = buf.clone();
+  while(*str && copy.cur != (copy.base + copy.sz))
   {
-    if(*buf.cur != *str)
+    if(*copy.cur != *str)
       return false;
-    buf.cur++;
+    copy.cur++;
     str++;
   }
   return *str == 0;

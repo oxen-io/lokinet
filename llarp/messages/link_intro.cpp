@@ -12,7 +12,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
+  LinkIntroMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, "a"))
     {
@@ -133,7 +133,7 @@ namespace llarp
 
   bool
   LinkIntroMessage::Sign(
-      std::function< bool(Signature&, llarp_buffer_t) > signer)
+      std::function< bool(Signature&, const llarp_buffer_t&) > signer)
   {
     Z.Zero();
     byte_t tmp[MaxSize] = {0};

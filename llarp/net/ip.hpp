@@ -96,7 +96,7 @@ namespace llarp
       ConstBuffer() const;
 
       bool
-      Load(llarp_buffer_t buf);
+      Load(const llarp_buffer_t& buf);
 
       struct GetTime
       {

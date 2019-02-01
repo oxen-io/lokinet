@@ -13,7 +13,7 @@ namespace llarp
     }
 
     bool
-    IntroSet::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
+    IntroSet::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("a", A, read, key, buf))

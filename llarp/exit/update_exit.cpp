@@ -26,7 +26,7 @@ namespace llarp
     }
 
     bool
-    UpdateExitMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+    UpdateExitMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
@@ -104,7 +104,7 @@ namespace llarp
     }
 
     bool
-    UpdateExitVerifyMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+    UpdateExitVerifyMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))

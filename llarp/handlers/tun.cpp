@@ -249,7 +249,7 @@ namespace llarp
         llarp::service::Address addr;
         // forward dns
         if(msg.questions[0].qname == "localhost.loki"
-                || msg.questions[0].qname == "localhost.loki.")
+           || msg.questions[0].qname == "localhost.loki.")
         {
           size_t counter = 0;
           context->ForEachService(
@@ -344,7 +344,7 @@ namespace llarp
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
           return true;
-        // hook localhost.loki 
+        // hook localhost.loki
         if(msg.questions[0].qname == "localhost.loki"
            || msg.questions[0].qname == "localhost.loki.")
           return true;
@@ -570,17 +570,18 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::HandleWriteIPPacket(llarp_buffer_t buf,
+    TunEndpoint::HandleWriteIPPacket(const llarp_buffer_t &b,
                                      std::function< huint32_t(void) > getFromIP)
     {
       // llarp::LogInfo("got packet from ", msg->sender.Addr());
       auto themIP = getFromIP();
       // llarp::LogInfo("themIP ", themIP);
       auto usIP = m_OurIP;
+      CopyableBuffer buf(b);
       return m_NetworkToUserPktQueue.EmplaceIf(
           [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
             // load
-            if(!pkt.Load(buf))
+            if(!pkt.Load(buf.underlying))
               return false;
             // filter out:
             // - packets smaller than minimal IPv4 header
@@ -719,18 +720,19 @@ namespace llarp
     }
 
     void
-    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, llarp_buffer_t buf)
+    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, const llarp_buffer_t &b)
     {
       // called for every packet read from user in isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      CopyableBuffer buf(b);
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [buf](net::IPv4Packet &pkt) -> bool {
-               return pkt.Load(buf) && pkt.Header()->version == 4;
+               return pkt.Load(buf.underlying) && pkt.Header()->version == 4;
              }))
       {
 #if defined(DEBUG) || !defined(RELEASE_MOTTO)
         llarp::LogInfo("invalid pkt");
-        llarp::DumpBuffer(buf);
+        llarp::DumpBuffer(buf.underlying);
 #endif
       }
     }

@@ -35,7 +35,7 @@ namespace llarp
       TickIO(llarp_time_t now);
 
       bool
-      QueueMessageBuffer(llarp_buffer_t buf);
+      QueueMessageBuffer(const llarp_buffer_t& buf);
 
       /// return true if the session is established and handshaked and all that
       /// jazz
@@ -184,7 +184,7 @@ namespace llarp
         }
 
         /// outbound
-        MessageState(llarp_buffer_t buf)
+        MessageState(const llarp_buffer_t &buf)
         {
           sz = std::min(buf.sz, MAX_LINK_MSG_SIZE);
           memcpy(msg.data(), buf.base, sz);

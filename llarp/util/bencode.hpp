@@ -43,7 +43,7 @@ namespace llarp
   template < typename List_t >
   bool
   BEncodeMaybeReadDictList(const char* k, List_t& item, bool& read,
-                           llarp_buffer_t key, llarp_buffer_t* buf)
+                           const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, k))
     {
@@ -59,7 +59,7 @@ namespace llarp
   template < typename Item_t >
   bool
   BEncodeMaybeReadDictEntry(const char* k, Item_t& item, bool& read,
-                            llarp_buffer_t key, llarp_buffer_t* buf)
+                            const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, k))
     {
@@ -78,7 +78,7 @@ namespace llarp
   template < typename Int_t >
   bool
   BEncodeMaybeReadDictInt(const char* k, Int_t& i, bool& read,
-                          llarp_buffer_t key, llarp_buffer_t* buf)
+                          const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, k))
     {
@@ -96,7 +96,8 @@ namespace llarp
   template < typename Item_t >
   bool
   BEncodeMaybeReadVersion(const char* k, Item_t& item, uint64_t expect,
-                          bool& read, llarp_buffer_t key, llarp_buffer_t* buf)
+                          bool& read, const llarp_buffer_t& key,
+                          llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, k))
     {
@@ -233,7 +234,7 @@ namespace llarp
     }
 
     virtual bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) = 0;
+    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;
 
     virtual bool
     BEncode(llarp_buffer_t* buf) const = 0;

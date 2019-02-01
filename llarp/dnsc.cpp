@@ -151,7 +151,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
 /// generic dnsc handler
 void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
-                             llarp_buffer_t buffer, dns_msg_header *hdr)
+                             const llarp_buffer_t &buffer, dns_msg_header *hdr)
 {
   if(!request)
   {

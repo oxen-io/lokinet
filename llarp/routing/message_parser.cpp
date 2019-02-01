@@ -87,7 +87,7 @@ namespace llarp
     }
 
     bool
-    InboundMessageParser::ParseMessageBuffer(llarp_buffer_t buf,
+    InboundMessageParser::ParseMessageBuffer(const llarp_buffer_t& buf,
                                              IMessageHandler* h,
                                              const PathID_t& from,
                                              llarp::Router* r)
@@ -95,7 +95,8 @@ namespace llarp
       bool result = false;
       msg         = nullptr;
       firstKey    = true;
-      if(bencode_read_dict(&buf, &reader))
+      llarp_buffer_t copy(buf.clone());
+      if(bencode_read_dict(&copy, &reader))
       {
         msg->from = from;
         result    = msg->HandleMessage(h, r);

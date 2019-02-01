@@ -14,7 +14,7 @@ namespace llarp
   }
 
   bool
-  LR_CommitMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
+  LR_CommitMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, "c"))
     {

@@ -197,7 +197,7 @@ namespace llarp
 
       /// queue a fully formed message
       bool
-      QueueWriteBuffers(llarp_buffer_t buf);
+      QueueWriteBuffers(const llarp_buffer_t& buf);
 
       /// prune expired inbound messages
       void

@@ -72,17 +72,42 @@ struct llarp_buffer_t
   {
   }
 
+  llarp_buffer_t(const llarp_buffer_t &) = delete;
+  llarp_buffer_t(llarp_buffer_t &&)      = default;
+
   llarp_buffer_t(byte_t *b, byte_t *c, size_t s) : base(b), cur(c), sz(s)
   {
     assert(b != nullptr);
     assert(c != nullptr);
     assert(s != 0);
   }
+
+  llarp_buffer_t
+  clone() const
+  {
+    return llarp_buffer_t(base, cur, sz);
+  }
+};
+
+struct CopyableBuffer
+{
+  llarp_buffer_t underlying;
+
+  explicit CopyableBuffer(const llarp_buffer_t &b)
+      : underlying(b.base, b.cur, b.sz)
+  {
+  }
+
+  CopyableBuffer(CopyableBuffer &&) = default;
+  explicit CopyableBuffer(const CopyableBuffer &c)
+      : underlying(c.underlying.base, c.underlying.cur, c.underlying.sz)
+  {
+  }
 };
 
 /// how much room is left in buffer
 size_t
-llarp_buffer_size_left(llarp_buffer_t buff);
+llarp_buffer_size_left(const llarp_buffer_t &buff);
 
 /// write a chunk of data size "sz"
 bool
@@ -98,7 +123,7 @@ llarp_buffer_read_until(llarp_buffer_t *buff, char delim, byte_t *result,
                         size_t resultlen);
 /// compare buffers, true if equal else false
 bool
-llarp_buffer_eq(llarp_buffer_t buff, const char *data);
+llarp_buffer_eq(const llarp_buffer_t &buff, const char *data);
 
 /// put big endian unsigned 16 bit integer
 bool

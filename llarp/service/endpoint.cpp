@@ -1157,7 +1157,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToSNodeOrQueue(const RouterID& addr, llarp_buffer_t buf)
+    Endpoint::SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& buf)
     {
       llarp::net::IPv4Packet pkt;
       if(!pkt.Load(buf))
@@ -1180,8 +1180,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToServiceOrQueue(const RouterID& addr, llarp_buffer_t data,
-                                   ProtocolType t)
+    Endpoint::SendToServiceOrQueue(const RouterID& addr,
+                                   const llarp_buffer_t& data, ProtocolType t)
     {
       service::Address remote(addr.as_array());
 
@@ -1416,7 +1416,7 @@ namespace llarp
     }
 
     void
-    Endpoint::SendContext::AsyncEncryptAndSendTo(llarp_buffer_t data,
+    Endpoint::SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data,
                                                  ProtocolType protocol)
     {
       auto now = m_Endpoint->Now();
@@ -1536,7 +1536,7 @@ namespace llarp
     }
 
     void
-    Endpoint::OutboundContext::AsyncGenIntro(llarp_buffer_t payload,
+    Endpoint::OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload,
                                              __attribute__((unused))
                                              ProtocolType t)
     {
@@ -1728,7 +1728,7 @@ namespace llarp
 
     /// send on an established convo tag
     void
-    Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
+    Endpoint::SendContext::EncryptAndSendTo(const llarp_buffer_t& payload,
                                             ProtocolType t)
     {
       auto crypto = m_Endpoint->Router()->crypto.get();

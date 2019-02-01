@@ -138,7 +138,7 @@ namespace llarp
     llarp_buffer_t
     Buffer() const
     {
-      return m_Buffer;
+      return m_Buffer.clone();
     }
 
     size_t

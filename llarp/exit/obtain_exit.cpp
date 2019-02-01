@@ -67,7 +67,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+    ObtainExitMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictList("B", B, read, k, buf))

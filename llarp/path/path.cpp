@@ -503,7 +503,7 @@ namespace llarp
     }
 
     bool
-    Path::HandleUpstream(llarp_buffer_t buf, const TunnelNonce& Y,
+    Path::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
                          llarp::Router* r)
     {
       TunnelNonce n = Y;
@@ -542,7 +542,7 @@ namespace llarp
     }
 
     bool
-    Path::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
+    Path::HandleDownstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
                            llarp::Router* r)
     {
       TunnelNonce n = Y;
@@ -555,7 +555,7 @@ namespace llarp
     }
 
     bool
-    Path::HandleRoutingMessage(llarp_buffer_t buf, llarp::Router* r)
+    Path::HandleRoutingMessage(const llarp_buffer_t& buf, llarp::Router* r)
     {
       if(!r->ParseRoutingMessageBuffer(buf, this, RXID()))
       {

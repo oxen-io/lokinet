@@ -41,7 +41,7 @@ namespace llarp
   }
 
   bool
-  RelayUpstreamMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
+  RelayUpstreamMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
   {
     bool read = false;
     if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))
@@ -103,7 +103,7 @@ namespace llarp
   }
 
   bool
-  RelayDownstreamMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
+  RelayDownstreamMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
   {
     bool read = false;
     if(!BEncodeMaybeReadDictEntry("p", pathid, read, key, buf))

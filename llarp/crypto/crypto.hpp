@@ -28,7 +28,8 @@ namespace llarp
       SharedSecret &, const PubKey &, const SecretKey &, const TunnelNonce &) >;
 
   /// SH(result, body)
-  using shorthash_func = std::function< bool(ShortHash &, llarp_buffer_t) >;
+  using shorthash_func =
+      std::function< bool(ShortHash &, const llarp_buffer_t &) >;
 
   /// library crypto configuration
   struct Crypto
@@ -37,12 +38,13 @@ namespace llarp
 
     /// xchacha symmetric cipher
     virtual bool
-    xchacha20(llarp_buffer_t, const SharedSecret &, const TunnelNonce &) = 0;
+    xchacha20(const llarp_buffer_t &, const SharedSecret &,
+              const TunnelNonce &) = 0;
 
     /// xchacha symmetric cipher (multibuffer)
     virtual bool
-    xchacha20_alt(llarp_buffer_t, llarp_buffer_t, const SharedSecret &,
-                  const byte_t *) = 0;
+    xchacha20_alt(const llarp_buffer_t &, const llarp_buffer_t &,
+                  const SharedSecret &, const byte_t *) = 0;
 
     /// path dh creator's side
     virtual bool
@@ -62,24 +64,25 @@ namespace llarp
                         const TunnelNonce &) = 0;
     /// blake2b 512 bit
     virtual bool
-    hash(byte_t *, llarp_buffer_t) = 0;
+    hash(byte_t *, const llarp_buffer_t &) = 0;
     /// blake2b 256 bit
     virtual bool
-    shorthash(ShortHash &, llarp_buffer_t) = 0;
+    shorthash(ShortHash &, const llarp_buffer_t &) = 0;
     /// blake2s 256 bit hmac
     virtual bool
-    hmac(byte_t *, llarp_buffer_t, const SharedSecret &) = 0;
+    hmac(byte_t *, const llarp_buffer_t &, const SharedSecret &) = 0;
     /// ed25519 sign
     virtual bool
-    sign(Signature &, const SecretKey &, llarp_buffer_t) = 0;
+    sign(Signature &, const SecretKey &, const llarp_buffer_t &) = 0;
     /// ed25519 verify
     virtual bool
-    verify(const PubKey &, llarp_buffer_t, const Signature &) = 0;
+    verify(const PubKey &, const llarp_buffer_t &, const Signature &) = 0;
     /// seed to secretkey
     virtual bool
     seed_to_secretkey(llarp::SecretKey &, const llarp::IdentitySecret &) = 0;
     /// randomize buffer
-    virtual void randomize(llarp_buffer_t) = 0;
+    virtual void
+    randomize(const llarp_buffer_t &) = 0;
     /// randomizer memory
     virtual void
     randbytes(void *, size_t) = 0;

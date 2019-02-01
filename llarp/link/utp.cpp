@@ -736,7 +736,7 @@ namespace llarp
     }
 
     bool
-    Session::QueueWriteBuffers(llarp_buffer_t buf)
+    Session::QueueWriteBuffers(const llarp_buffer_t& buf)
     {
       if(sendq.size() >= MaxSendQueueSize)
         return false;
@@ -1116,7 +1116,7 @@ namespace llarp
       {
         // we done with this guy, prune next tick
         itr->second.lastActive = 0;
-        llarp_buffer_t buf     = itr->second.buffer;
+        llarp_buffer_t buf(itr->second.buffer.clone());
         // resize
         buf.sz = buf.cur - buf.base;
         // rewind

@@ -15,7 +15,7 @@ namespace llarp
   }
 
   bool
-  DHTImmediateMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
+  DHTImmediateMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
   {
     if(llarp_buffer_eq(key, "m"))
       return llarp::dht::DecodeMesssageList(dht::Key_t(session->GetPubKey()),
