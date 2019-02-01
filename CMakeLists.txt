@@ -348,6 +348,7 @@ set(LIB_PLATFORM_SRC
   ${ISOLATE_PROC_SRC}
 # tun
   ${LIBTUNTAP_SRC}
+  ${EV_SRC}
 # c++17 compat code
   ${CXX_COMPAT_SRC}
 # win32 inline code
@@ -504,7 +505,6 @@ set(DNSLIB_SRC
 
 set(LIB_SRC
   ${DNSLIB_SRC}
-  ${EV_SRC}
   ${UTP_SRC}
   llarp/config.cpp
   llarp/context.cpp
