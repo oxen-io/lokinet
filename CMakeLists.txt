@@ -37,15 +37,17 @@ if (STATIC_LINK AND SHADOW)
 endif(STATIC_LINK AND SHADOW)
 
 if (WIN32 AND NOT STATIC_LINK)
-  message("Shared object builds are not yet supported for Windows, linking statically")
-  set(STATIC_LINK ON)
+  message("must ship compiler runtime libraries with this build: libwinpthread-1.dll, libgcc_s_dw2-1.dll, and libstdc++-6.dll")
+  message("for release builds, turn on STATIC_LINK in cmake options")
+  #set(STATIC_LINK ON)
 endif(WIN32 AND NOT STATIC_LINK)
 
+if (NOT WIN32)
 add_compile_options(-fPIC)
 set(ABSEIL_DIR vendor/abseil-cpp)
 add_subdirectory(${ABSEIL_DIR})
 include_directories(${ABSEIL_DIR})
-
+endif(NOT WIN32)
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
@@ -114,9 +116,10 @@ if(AMD_RYZEN_HACK AND USE_AVX2)
   set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
 endif(AMD_RYZEN_HACK AND USE_AVX2)
 
-if(WITH_SHARED)
-  set(CRYPTO_FLAGS ${CRYPTO_FLAGS} -fPIC)
-endif()
+# Probably safe to remove
+#if(WITH_SHARED)
+#  set(CRYPTO_FLAGS ${CRYPTO_FLAGS} -fPIC)
+#endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
