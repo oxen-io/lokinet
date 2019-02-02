@@ -25,8 +25,7 @@
  *
  * here, it is used to encode the compressed zlib-stream of the 
  * Netscape root certificate trust store on behalf of the lokinet
- * for NT bootstrap scripts and the (cross-platform) libuNR, a tiny
- * HTTPS client library.
+ * for NT bootstrap stubs.
  */
 
 #include <stdio.h>
