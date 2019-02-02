@@ -65,6 +65,13 @@ namespace llarp
       {
       }
 
+      InboundMessage(const InboundMessage& other)
+          : lastActive(other.lastActive), _msg(other._msg), buffer(_msg)
+      {
+        buffer.cur = buffer.base + (other.buffer.cur - other.buffer.base);
+        buffer.sz  = other.buffer.sz;
+      }
+
       bool
       operator==(const InboundMessage& other) const
       {
