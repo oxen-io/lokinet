@@ -28,6 +28,7 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
   *ev = new llarp_win32_loop;
 #else
+// TODO: fall back to a generic select-based event loop
 #error no event loop subclass
 #endif
   (*ev)->init();

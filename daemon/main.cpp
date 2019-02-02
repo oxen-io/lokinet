@@ -233,7 +233,7 @@ main(int argc, char *argv[])
   }
 
   // this is important, can downgrade from Info though
-  llarp::LogInfo("Running from: ", fs::current_path());
+  llarp::LogInfo("Running from: ", fs::current_path().string());
   llarp::LogInfo("Using config file: ", conffname);
   ctx      = llarp_main_init(conffname.c_str(), multiThreaded);
   int code = 1;

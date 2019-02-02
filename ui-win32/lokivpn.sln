@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.28307.102
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "lokivpn", "lokivpn\lokivpn.csproj", "{1CDEE73C-29C5-4781-BD74-1EEAC6F75A14}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "lokivpn", "lokivpn.csproj", "{1CDEE73C-29C5-4781-BD74-1EEAC6F75A14}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

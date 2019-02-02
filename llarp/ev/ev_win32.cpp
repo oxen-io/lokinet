@@ -259,7 +259,8 @@ namespace llarp
       llarp::LogDebug("connected immedidately");
       connected();
     }
-    else if(WSAGetLastError() == WSAEINPROGRESS)
+    // Winsock 2.x no longer returns WSAEINPROGRESS
+    else if(WSAGetLastError() == WSAEWOULDBLOCK)
     {
       // in progress
       llarp::LogDebug("connect in progress");
@@ -273,7 +274,9 @@ namespace llarp
       int err = WSAGetLastError();
       FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
                     ebuf, 1024, nullptr);
-      llarp::LogError("error connecting: ", ebuf);
+      int l = strlen(ebuf);
+      ebuf[l-2] = '\0'; // remove line break
+      llarp::LogError("error connecting: ", ebuf, " [", err, "]");
       _conn->error(_conn);
     }
   }
@@ -288,7 +291,9 @@ namespace llarp
       int err = WSAGetLastError();
       FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
                     ebuf, 1024, nullptr);
-      llarp::LogError("failed to accept on ", fd, ":", ebuf);
+      int l = strlen(ebuf);
+      ebuf[l-2] = '\0'; // remove line break
+      llarp::LogError("failed to accept on ", fd, ":", ebuf, " [", err, "]");
       return -1;
     }
     // build handler
