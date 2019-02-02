@@ -102,8 +102,8 @@ namespace llarp
     reader.on_key = &OnKey;
     from          = src;
     firstkey      = true;
-    llarp_buffer_t copy(buf.clone());
-    return bencode_read_dict(&copy, &reader);
+    CopyableBuffer copy(buf);
+    return bencode_read_dict(&copy.underlying, &reader);
   }
 
   void

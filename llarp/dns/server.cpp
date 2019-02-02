@@ -2,6 +2,8 @@
 
 #include <crypto/crypto.hpp>
 
+#include <array>
+
 namespace llarp
 {
   namespace dns
@@ -40,16 +42,16 @@ namespace llarp
 
     void
     Proxy::HandleUDPRecv_server(llarp_udp_io* u, const sockaddr* from,
-                                llarp_buffer_t buf)
+                                CopyableBuffer buf)
     {
-      static_cast< Proxy* >(u->user)->HandlePktServer(*from, &buf);
+      static_cast< Proxy* >(u->user)->HandlePktServer(*from, &buf.underlying);
     }
 
     void
     Proxy::HandleUDPRecv_client(llarp_udp_io* u, const sockaddr* from,
-                                llarp_buffer_t buf)
+                                CopyableBuffer buf)
     {
-      static_cast< Proxy* >(u->user)->HandlePktClient(*from, &buf);
+      static_cast< Proxy* >(u->user)->HandlePktClient(*from, &buf.underlying);
     }
 
     llarp::Addr
@@ -73,8 +75,8 @@ namespace llarp
     void
     Proxy::SendMessageTo(llarp::Addr to, Message msg)
     {
-      byte_t tmp[1500] = {0};
-      auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 1500 > tmp = {0};
+      llarp_buffer_t buf(tmp);
       if(msg.Encode(&buf))
       {
         buf.sz  = buf.cur - buf.base;

@@ -140,7 +140,7 @@ namespace llarp
       std::copy(K.begin(), K.end(), tmp.begin());
       std::copy(n.begin(), n.end(), tmp.begin() + K.size());
       // t_h = HS(K + L.n)
-      if(!Crypto()->shorthash(t_h, ConstBuffer(tmp)))
+      if(!Crypto()->shorthash(t_h, llarp_buffer_t(tmp)))
       {
         llarp::LogError("failed to mix key to ", remoteAddr);
         return false;
@@ -160,7 +160,7 @@ namespace llarp
     Session::MutateKey(SharedSecret& K, const AlignedBuffer< 24 >& A)
     {
       AlignedBuffer< 56 > tmp;
-      auto buf = tmp.as_buffer();
+      llarp_buffer_t buf{tmp};
       std::copy(K.begin(), K.end(), buf.cur);
       buf.cur += K.size();
       std::copy(A.begin(), A.end(), buf.cur);
@@ -580,8 +580,8 @@ namespace llarp
            && now - lastActive > 5000)
         {
           DiscardMessage msg;
-          byte_t tmp[128] = {0};
-          auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+          std::array< byte_t, 128 > tmp;
+          llarp_buffer_t buf(tmp);
           if(!msg.BEncode(&buf))
             return false;
           buf.sz  = buf.cur - buf.base;
@@ -622,9 +622,9 @@ namespace llarp
       remoteTransportPubKey = addr.pubkey;
       remoteRC              = rc;
       RouterID rid          = remoteRC.pubkey;
-      Crypto()->shorthash(txKey, rid.as_buffer());
+      Crypto()->shorthash(txKey, rid.as_buffer().underlying);
       rid = p->GetOurRC().pubkey;
-      Crypto()->shorthash(rxKey, rid.as_buffer());
+      Crypto()->shorthash(rxKey, rid.as_buffer().underlying);
 
       sock = s;
       assert(utp_set_userdata(sock, this) == this);
@@ -638,7 +638,7 @@ namespace llarp
     Session::Session(LinkLayer* p, utp_socket* s, const Addr& addr) : Session(p)
     {
       RouterID rid = p->GetOurRC().pubkey;
-      Crypto()->shorthash(rxKey, rid.as_buffer());
+      Crypto()->shorthash(rxKey, rid.as_buffer().underlying);
       remoteRC.Clear();
       sock = s;
       assert(s == sock);
@@ -665,7 +665,7 @@ namespace llarp
       if(!gotLIM)
       {
         remoteRC = msg->rc;
-        Crypto()->shorthash(txKey, remoteRC.pubkey.as_buffer());
+        Crypto()->shorthash(txKey, remoteRC.pubkey.as_buffer().underlying);
 
         if(!DoKeyExchange(std::bind(&Crypto::transport_dh_server, Crypto(), _1,
                                     _2, _3, _4),
@@ -673,8 +673,8 @@ namespace llarp
                           parent->TransportSecretKey()))
           return false;
 
-        byte_t tmp[LinkIntroMessage::MaxSize];
-        auto buf = StackBuffer< decltype(tmp) >(tmp);
+        std::array< byte_t, LinkIntroMessage::MaxSize > tmp;
+        llarp_buffer_t buf(tmp);
         LinkIntroMessage replymsg;
         replymsg.rc = parent->GetOurRC();
         if(!replymsg.rc.Verify(Crypto(), parent->Now()))
@@ -785,8 +785,8 @@ namespace llarp
     void
     Session::OutboundHandshake()
     {
-      byte_t tmp[LinkIntroMessage::MaxSize];
-      auto buf = StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, LinkIntroMessage::MaxSize > tmp;
+      llarp_buffer_t buf(tmp);
       // build our RC
       LinkIntroMessage msg;
       msg.rc = parent->GetOurRC();
@@ -955,8 +955,8 @@ namespace llarp
       // put body
       memcpy(body, ptr, length);
 
-      auto payload =
-          InitBuffer(base, FragmentBufferSize - FragmentOverheadSize);
+      llarp_buffer_t payload(base, base,
+                             FragmentBufferSize - FragmentOverheadSize);
 
       TunnelNonce nonce(noncePtr);
 
@@ -997,7 +997,7 @@ namespace llarp
       }
       // set remote rc
       remoteRC = msg->rc;
-      // recalcuate rx key
+      // recalculate rx key
       return DoKeyExchange(
           std::bind(&Crypto::transport_dh_server, Crypto(), _1, _2, _3, _4),
           rxKey, msg->N, remoteRC.enckey, parent->RouterEncryptionSecret());
@@ -1006,14 +1006,15 @@ namespace llarp
     bool
     Session::Rehandshake()
     {
-      byte_t tmp[LinkIntroMessage::MaxSize];
       LinkIntroMessage lim;
       lim.rc = parent->GetOurRC();
       lim.N.Randomize();
       lim.P = 60 * 1000 * 10;
       if(!lim.Sign(parent->Sign))
         return false;
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+
+      std::array< byte_t, LinkIntroMessage::MaxSize > tmp;
+      llarp_buffer_t buf(tmp);
       if(!lim.BEncode(&buf))
         return false;
       // rewind and resize buffer
@@ -1034,8 +1035,8 @@ namespace llarp
       llarp::LogDebug("verify then decrypt ", remoteAddr);
       ShortHash digest;
 
-      auto hbuf = InitBuffer(ptr + FragmentHashSize,
-                             FragmentBufferSize - FragmentHashSize);
+      llarp_buffer_t hbuf(ptr + FragmentHashSize,
+                          FragmentBufferSize - FragmentHashSize);
       if(!Crypto()->hmac(digest.data(), hbuf, rxKey))
       {
         llarp::LogError("keyed hash failed");
@@ -1050,37 +1051,39 @@ namespace llarp
         return false;
       }
 
-      auto in = InitBuffer(ptr + FragmentOverheadSize,
-                           FragmentBufferSize - FragmentOverheadSize);
+      llarp_buffer_t in(ptr + FragmentOverheadSize,
+                        FragmentBufferSize - FragmentOverheadSize);
 
-      llarp_buffer_t out = rxFragBody.as_buffer();
+      CopyableBuffer out = rxFragBody.as_buffer();
 
       // decrypt
-      if(!Crypto()->xchacha20_alt(out, in, rxKey, ptr + FragmentHashSize))
+      if(!Crypto()->xchacha20_alt(out.underlying, in, rxKey,
+                                  ptr + FragmentHashSize))
       {
         llarp::LogError("failed to decrypt message from ", remoteAddr);
         return false;
       }
       // get inner nonce
-      AlignedBuffer< 24 > A(out.base);
+      AlignedBuffer< 24 > A(out.underlying.base);
       // advance buffer
-      out.cur += A.size();
+      out.underlying.cur += A.size();
       // read msgid
       uint32_t msgid;
-      if(!llarp_buffer_read_uint32(&out, &msgid))
+      if(!llarp_buffer_read_uint32(&out.underlying, &msgid))
       {
         llarp::LogError("failed to read msgid");
         return false;
       }
       // read length and remaining
       uint16_t length, remaining;
-      if(!(llarp_buffer_read_uint16(&out, &length)
-           && llarp_buffer_read_uint16(&out, &remaining)))
+      if(!(llarp_buffer_read_uint16(&out.underlying, &length)
+           && llarp_buffer_read_uint16(&out.underlying, &remaining)))
       {
         llarp::LogError("failed to read the rest of the header");
         return false;
       }
-      if(length > (out.sz - (out.cur - out.base)))
+      if(length
+         > (out.underlying.sz - (out.underlying.cur - out.underlying.base)))
       {
         // too big length
         llarp::LogError("fragment body too big");
@@ -1100,7 +1103,7 @@ namespace llarp
       // add message activity
       itr->second.lastActive = parent->Now();
       // append data
-      if(!itr->second.AppendData(out.cur, length))
+      if(!itr->second.AppendData(out.underlying.cur, length))
       {
         llarp::LogError("inbound buffer is full");
         return false;  // not enough room
@@ -1116,14 +1119,14 @@ namespace llarp
       {
         // we done with this guy, prune next tick
         itr->second.lastActive = 0;
-        llarp_buffer_t buf(itr->second.buffer.clone());
+        CopyableBuffer buf(itr->second.buffer);
         // resize
-        buf.sz = buf.cur - buf.base;
+        buf.underlying.sz = buf.underlying.cur - buf.underlying.base;
         // rewind
-        buf.cur = buf.base;
+        buf.underlying.cur = buf.underlying.base;
         // process buffer
         llarp::LogDebug("got message ", msgid, " from ", remoteAddr);
-        return parent->HandleMessage(this, buf);
+        return parent->HandleMessage(this, buf.underlying);
       }
       return true;
     }

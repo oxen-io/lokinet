@@ -9,9 +9,9 @@ namespace llarp
     bool
     ObtainExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
-      byte_t tmp[1024] = {0};
-      auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);
-      I                = llarp::seckey_topublic(sk);
+      std::array< byte_t, 1024 > tmp;
+      llarp_buffer_t buf(tmp);
+      I = llarp::seckey_topublic(sk);
       Z.Zero();
       if(!BEncode(&buf))
       {
@@ -24,8 +24,8 @@ namespace llarp
     bool
     ObtainExitMessage::Verify(llarp::Crypto* c) const
     {
-      byte_t tmp[1024] = {0};
-      auto buf         = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 1024 > tmp;
+      llarp_buffer_t buf(tmp);
       ObtainExitMessage copy;
       copy = *this;
       copy.Z.Zero();
@@ -67,7 +67,7 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
+    ObtainExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictList("B", B, read, k, buf))

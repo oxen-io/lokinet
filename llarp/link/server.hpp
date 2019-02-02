@@ -76,7 +76,7 @@ namespace llarp
     }
 
     static void
-    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, llarp_buffer_t buf)
+    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, CopyableBuffer buf)
     {
       if(!udp)
       {
@@ -85,7 +85,8 @@ namespace llarp
       }
       // maybe check from too?
       // no it's never null
-      static_cast< ILinkLayer* >(udp->user)->RecvFrom(*from, buf.base, buf.sz);
+      static_cast< ILinkLayer* >(udp->user)->RecvFrom(
+          *from, buf.underlying.base, buf.underlying.sz);
     }
 
     void

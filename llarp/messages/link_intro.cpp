@@ -136,8 +136,8 @@ namespace llarp
       std::function< bool(Signature&, const llarp_buffer_t&) > signer)
   {
     Z.Zero();
-    byte_t tmp[MaxSize] = {0};
-    auto buf            = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, MaxSize > tmp;
+    llarp_buffer_t buf(tmp);
     if(!BEncode(&buf))
       return false;
     buf.sz  = buf.cur - buf.base;
@@ -151,8 +151,8 @@ namespace llarp
     LinkIntroMessage copy;
     copy = *this;
     copy.Z.Zero();
-    byte_t tmp[MaxSize] = {0};
-    auto buf            = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, MaxSize > tmp;
+    llarp_buffer_t buf(tmp);
     if(!copy.BEncode(&buf))
       return false;
     buf.sz  = buf.cur - buf.base;

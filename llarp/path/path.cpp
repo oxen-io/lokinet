@@ -588,8 +588,8 @@ namespace llarp
     Path::SendRoutingMessage(const llarp::routing::IMessage* msg,
                              llarp::Router* r)
     {
-      byte_t tmp[MAX_LINK_MSG_SIZE / 2];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, MAX_LINK_MSG_SIZE / 2 > tmp;
+      llarp_buffer_t buf(tmp);
       // should help prevent bad paths with uninitialised members
       // FIXME: Why would we get uninitialised IMessages?
       if(msg->version != LLARP_PROTO_VERSION)
@@ -840,7 +840,7 @@ namespace llarp
           return false;
         uint64_t counter = bufbe64toh(pkt.data());
         m_ExitTrafficHandler(
-            this, llarp::InitBuffer(pkt.data() + 8, pkt.size() - 8), counter);
+            this, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter);
       }
       return sent;
     }

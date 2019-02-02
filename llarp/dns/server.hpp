@@ -42,10 +42,10 @@ namespace llarp
       /// low level packet handler
       static void
       HandleUDPRecv_client(llarp_udp_io*, const struct sockaddr*,
-                           llarp_buffer_t);
+                           CopyableBuffer);
       static void
       HandleUDPRecv_server(llarp_udp_io*, const struct sockaddr*,
-                           llarp_buffer_t);
+                           CopyableBuffer);
 
       /// low level ticker
       static void

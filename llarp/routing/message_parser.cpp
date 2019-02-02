@@ -95,7 +95,8 @@ namespace llarp
       bool result = false;
       msg         = nullptr;
       firstKey    = true;
-      llarp_buffer_t copy(buf.clone());
+      CopyableBuffer copiedBuf(buf);
+      auto& copy = copiedBuf.underlying;
       if(bencode_read_dict(&copy, &reader))
       {
         msg->from = from;

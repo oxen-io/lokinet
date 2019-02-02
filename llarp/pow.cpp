@@ -34,8 +34,8 @@ namespace llarp
       return false;
 
     ShortHash digest;
-    byte_t tmp[MaxSize];
-    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, MaxSize > tmp;
+    llarp_buffer_t buf(tmp);
     // encode
     if(!BEncode(&buf))
       return false;

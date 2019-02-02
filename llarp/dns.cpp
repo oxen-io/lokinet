@@ -1,5 +1,6 @@
 #include <dnsd.hpp>  // for llarp_handle_dnsd_recvfrom, dnsc
 
+#include <util/buffer.hpp>
 #include <util/endian.hpp>
 #include <util/logger.hpp>
 
@@ -605,17 +606,17 @@ extern "C"
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
-                            const struct sockaddr *addr, llarp_buffer_t buf)
+                            const struct sockaddr *addr, CopyableBuffer buf)
   {
     // auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
     dns_msg_header hdr;
-    if(!decode_hdr(&buf, &hdr))
+    if(!decode_hdr(&buf.underlying, &hdr))
     {
       llarp::LogError("failed to decode dns header");
       return;
     }
     // rewind
-    buf.cur = buf.base;
+    buf.underlying.cur = buf.underlying.base;
     llarp::LogDebug("msg id ", hdr.id);
     llarp::LogDebug("msg qr ", (uint8_t)hdr.qr);
     if(!udp)
@@ -629,12 +630,12 @@ extern "C"
     if(hdr.qr)
     {
       llarp::LogDebug("handling as dnsc answer");
-      llarp_handle_dnsc_recvfrom(udp, addr, buf.clone());
+      llarp_handle_dnsc_recvfrom(udp, addr, buf);
     }
     else
     {
       llarp::LogDebug("handling as dnsd question");
-      llarp_handle_dnsd_recvfrom(udp, addr, buf.clone());
+      llarp_handle_dnsd_recvfrom(udp, addr, buf);
     }
   }
 }

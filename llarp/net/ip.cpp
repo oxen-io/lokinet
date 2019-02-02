@@ -28,13 +28,13 @@ namespace llarp
     llarp_buffer_t
     IPv4Packet::ConstBuffer() const
     {
-      return llarp::InitBuffer(buf, sz);
+      return {buf, sz};
     }
 
     llarp_buffer_t
     IPv4Packet::Buffer()
     {
-      return llarp::InitBuffer(buf, sz);
+      return {buf, sz};
     }
 
 #if 0

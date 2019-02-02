@@ -2,7 +2,7 @@
 #define LLARP_EV_HPP
 
 #include <ev/ev.h>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 #include <util/codel.hpp>
 #include <util/threading.hpp>
 

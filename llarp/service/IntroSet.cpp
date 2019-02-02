@@ -13,7 +13,7 @@ namespace llarp
     }
 
     bool
-    IntroSet::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf)
+    IntroSet::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("a", A, read, key, buf))
@@ -109,8 +109,8 @@ namespace llarp
     bool
     IntroSet::Verify(llarp::Crypto* crypto, llarp_time_t now) const
     {
-      byte_t tmp[MAX_INTROSET_SIZE];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, MAX_INTROSET_SIZE > tmp;
+      llarp_buffer_t buf(tmp);
       IntroSet copy;
       copy = *this;
       copy.Z.Zero();

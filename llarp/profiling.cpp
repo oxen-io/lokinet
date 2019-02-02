@@ -25,7 +25,7 @@ namespace llarp
   }
 
   bool
-  RouterProfile::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
+  RouterProfile::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
     if(!BEncodeMaybeReadDictInt("g", connectGoodCount, read, k, buf))
@@ -101,7 +101,7 @@ namespace llarp
     size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
 
     std::vector< byte_t > tmp(sz, 0);
-    auto buf = llarp::Buffer(tmp);
+    llarp_buffer_t buf(tmp);
     auto res = BEncode(&buf);
     if(res)
     {
@@ -134,7 +134,7 @@ namespace llarp
   }
 
   bool
-  Profiling::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
+  Profiling::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     if(k.sz != 32)
       return false;

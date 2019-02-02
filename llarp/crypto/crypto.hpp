@@ -4,7 +4,7 @@
 #include <crypto/constants.hpp>
 #include <crypto/types.hpp>
 
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 
 #include <functional>
 #include <stdbool.h>

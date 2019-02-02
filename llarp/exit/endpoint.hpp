@@ -48,7 +48,7 @@ namespace llarp
 
       /// queue traffic from service node / internet to be transmitted
       bool
-      QueueInboundTraffic(llarp_buffer_t buff);
+      QueueInboundTraffic(CopyableBuffer buff);
 
       /// flush inbound and outbound traffic queues
       bool
@@ -57,7 +57,7 @@ namespace llarp
       /// queue outbound traffic
       /// does ip rewrite here
       bool
-      QueueOutboundTraffic(llarp_buffer_t pkt, uint64_t counter);
+      QueueOutboundTraffic(CopyableBuffer pkt, uint64_t counter);
 
       /// update local path id and cascade information to parent
       /// return true if success

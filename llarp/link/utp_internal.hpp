@@ -61,7 +61,7 @@ namespace llarp
       /// for accessing message buffer
       llarp_buffer_t buffer;
 
-      InboundMessage() : lastActive(0), _msg(), buffer(_msg.as_buffer())
+      InboundMessage() : lastActive(0), _msg(), buffer(_msg)
       {
       }
 

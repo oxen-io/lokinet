@@ -1,4 +1,4 @@
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 #include <util/endian.hpp>
 
 #include <stdarg.h>
@@ -70,12 +70,13 @@ llarp_buffer_read_until(llarp_buffer_t* buff, char delim, byte_t* result,
 bool
 llarp_buffer_eq(const llarp_buffer_t& buf, const char* str)
 {
-  llarp_buffer_t copy = buf.clone();
-  while(*str && copy.cur != (copy.base + copy.sz))
+  CopyableBuffer copy{buf};
+  while(*str
+        && copy.underlying.cur != (copy.underlying.base + copy.underlying.sz))
   {
-    if(*copy.cur != *str)
+    if(*copy.underlying.cur != *str)
       return false;
-    copy.cur++;
+    copy.underlying.cur++;
     str++;
   }
   return *str == 0;

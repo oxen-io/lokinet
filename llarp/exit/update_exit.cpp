@@ -26,7 +26,7 @@ namespace llarp
     }
 
     bool
-    UpdateExitMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
+    UpdateExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
@@ -46,8 +46,8 @@ namespace llarp
     UpdateExitMessage::Verify(llarp::Crypto* c, const llarp::PubKey& pk) const
 
     {
-      byte_t tmp[512] = {0};
-      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 512 > tmp;
+      llarp_buffer_t buf(tmp);
       UpdateExitMessage copy;
       copy = *this;
       copy.Z.Zero();
@@ -72,8 +72,8 @@ namespace llarp
     bool
     UpdateExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
-      byte_t tmp[512] = {0};
-      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 512 > tmp;
+      llarp_buffer_t buf(tmp);
       Y.Randomize();
       if(!BEncode(&buf))
         return false;
@@ -104,7 +104,8 @@ namespace llarp
     }
 
     bool
-    UpdateExitVerifyMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
+    UpdateExitVerifyMessage::DecodeKey(const llarp_buffer_t& k,
+                                       llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))

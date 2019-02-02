@@ -35,7 +35,7 @@ namespace llarp
       TickIO(llarp_time_t now);
 
       bool
-      QueueMessageBuffer(const llarp_buffer_t& buf);
+      QueueMessageBuffer(const llarp_buffer_t &buf);
 
       /// return true if the session is established and handshaked and all that
       /// jazz
@@ -142,7 +142,7 @@ namespace llarp
         }
 
         bool
-        Encode(llarp_buffer_t *buf, llarp_buffer_t body)
+        Encode(llarp_buffer_t *buf, const llarp_buffer_t &body)
         {
           if(body.sz > fragsize)
             return false;
@@ -234,7 +234,8 @@ namespace llarp
           hdr.seqno = seqno;
           hdr.cmd   = XMIT;
           AlignedBuffer< fragoverhead + fragsize > frag;
-          auto buf          = frag.as_buffer();
+          CopyableBuffer copiedBuffer(frag.as_buffer());
+          auto &buf         = copiedBuffer.underlying;
           const byte_t *ptr = msg.data();
           Fragno_t idx      = 0;
           FragLen_t len     = sz;
@@ -245,7 +246,7 @@ namespace llarp
             {
               hdr.fragno  = idx;
               hdr.fraglen = l;
-              if(!hdr.Encode(&buf, llarp::InitBuffer(ptr, l)))
+              if(!hdr.Encode(&buf, llarp_buffer_t(ptr, l)))
                 return false;
               buf.sz  = buf.cur - buf.base;
               buf.cur = buf.base;
@@ -281,8 +282,9 @@ namespace llarp
           hdr.fraglen = 0;
           hdr.fragno  = 0;
           AlignedBuffer< fragoverhead > frag;
-          auto buf = frag.as_buffer();
-          if(!hdr.Encode(&buf, llarp::InitBuffer(nullptr, 0)))
+          CopyableBuffer copiedBuffer(frag.as_buffer());
+          auto &buf = copiedBuffer.underlying;
+          if(!hdr.Encode(&buf, llarp_buffer_t(nullptr, nullptr, 0)))
             return false;
           return write_pkt(buf.base, buf.sz) == int(buf.sz);
         }

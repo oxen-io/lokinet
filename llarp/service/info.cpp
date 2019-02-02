@@ -67,8 +67,8 @@ namespace llarp
 
     bool ServiceInfo::CalculateAddress(std::array< byte_t, 32 >& data) const
     {
-      byte_t tmp[256] = {0};
-      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 256 > tmp;
+      llarp_buffer_t buf(tmp);
       if(!BEncode(&buf))
         return false;
       return crypto_generichash_blake2b(data.data(), data.size(), buf.base,

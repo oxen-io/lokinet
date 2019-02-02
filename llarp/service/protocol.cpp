@@ -170,8 +170,8 @@ namespace llarp
                                   const SharedSecret& sessionKey,
                                   const Identity& localIdent)
     {
-      byte_t tmp[MAX_PROTOCOL_MESSAGE_SIZE];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, MAX_PROTOCOL_MESSAGE_SIZE > tmp;
+      llarp_buffer_t buf(tmp);
       // encode message
       if(!msg.BEncode(&buf))
       {
@@ -187,7 +187,7 @@ namespace llarp
       D = buf;
       // zero out signature
       Z.Zero();
-      auto buf2 = llarp::StackBuffer< decltype(tmp) >(tmp);
+      llarp_buffer_t buf2(tmp);
       // encode frame
       if(!BEncode(&buf2))
       {
@@ -287,7 +287,7 @@ namespace llarp
         std::copy(K.begin(), K.end(), tmp.begin());
         // S = HS( K + PKE( A, B, N))
         std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
-        crypto->shorthash(sharedKey, StackBuffer< decltype(tmp) >(tmp));
+        crypto->shorthash(sharedKey, llarp_buffer_t(tmp));
 
         self->handler->PutIntroFor(self->msg->tag, self->msg->introReply);
         self->handler->PutSenderFor(self->msg->tag, self->msg->sender);
@@ -375,8 +375,8 @@ namespace llarp
       // zero out signature for verify
       copy.Z.Zero();
       // serialize
-      byte_t tmp[MAX_PROTOCOL_MESSAGE_SIZE];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, MAX_PROTOCOL_MESSAGE_SIZE > tmp;
+      llarp_buffer_t buf(tmp);
       if(!copy.BEncode(&buf))
       {
         llarp::LogError("bencode fail");

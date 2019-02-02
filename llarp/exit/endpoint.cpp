@@ -86,14 +86,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::QueueOutboundTraffic(llarp_buffer_t buf, uint64_t counter)
+    Endpoint::QueueOutboundTraffic(CopyableBuffer buf, uint64_t counter)
     {
       // queue overflow
       if(m_UpstreamQueue.size() > MaxUpstreamQueueSize)
         return false;
 
       llarp::net::IPv4Packet pkt;
-      if(!pkt.Load(buf))
+      if(!pkt.Load(buf.underlying))
         return false;
 
       huint32_t dst;
@@ -103,16 +103,16 @@ namespace llarp
         dst = pkt.dst();
       pkt.UpdateIPv4PacketOnDst(m_IP, dst);
       m_UpstreamQueue.emplace(pkt, counter);
-      m_TxRate += buf.sz;
+      m_TxRate += buf.underlying.sz;
       m_LastActive = m_Parent->Now();
       return true;
     }
 
     bool
-    Endpoint::QueueInboundTraffic(llarp_buffer_t buf)
+    Endpoint::QueueInboundTraffic(CopyableBuffer buf)
     {
       llarp::net::IPv4Packet pkt;
-      if(!pkt.Load(buf))
+      if(!pkt.Load(buf.underlying))
         return false;
 
       huint32_t src;
@@ -121,13 +121,13 @@ namespace llarp
       else
         src = pkt.src();
       pkt.UpdateIPv4PacketOnDst(src, m_IP);
-      auto pktbuf       = pkt.Buffer();
-      uint8_t queue_idx = pktbuf.sz / llarp::routing::ExitPadSize;
-      auto& queue       = m_DownstreamQueues[queue_idx];
+      const llarp_buffer_t& pktbuf = pkt.Buffer();  // life time extension
+      uint8_t queue_idx            = pktbuf.sz / llarp::routing::ExitPadSize;
+      auto& queue                  = m_DownstreamQueues[queue_idx];
       if(queue.size() == 0)
       {
         queue.emplace_back();
-        return queue.back().PutBuffer(buf, m_Counter++);
+        return queue.back().PutBuffer(buf.underlying, m_Counter++);
       }
       auto& msg = queue.back();
       if(msg.Size() + pktbuf.sz > llarp::routing::ExitPadSize)

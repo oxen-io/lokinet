@@ -1,7 +1,7 @@
 #ifndef LLARP_MEM_HPP
 #define LLARP_MEM_HPP
 
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 #include <util/mem.h>
 
 #include <cctype>

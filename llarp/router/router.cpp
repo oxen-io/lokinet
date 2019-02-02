@@ -298,8 +298,7 @@ namespace llarp
       outboundMessageQueue.insert(std::make_pair(remote, MessageQueue()));
     }
     // encode
-    llarp_buffer_t buf =
-        llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+    llarp_buffer_t buf(linkmsg_buffer);
     if(!msg->BEncode(&buf))
       return false;
     // queue buffer
@@ -825,8 +824,7 @@ namespace llarp
   Router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
                  llarp::ILinkLayer *selected)
   {
-    llarp_buffer_t buf =
-        llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+    llarp_buffer_t buf(linkmsg_buffer);
 
     if(!msg->BEncode(&buf))
     {
@@ -906,7 +904,7 @@ namespace llarp
     }
     while(itr->second.size())
     {
-      auto buf = llarp::ConstBuffer(itr->second.front());
+      llarp_buffer_t buf(itr->second.front());
       if(!chosen->SendTo(remote, buf))
         llarp::LogWarn("failed to send outbound message to ", remote, " via ",
                        chosen->Name());

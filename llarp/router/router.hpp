@@ -16,7 +16,7 @@
 #include <routing/message_parser.hpp>
 #include <rpc/rpc.hpp>
 #include <service/context.hpp>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 #include <util/fs.hpp>
 #include <util/logic.hpp>
 #include <util/mem.hpp>
@@ -120,7 +120,7 @@ namespace llarp
     llarp_nodedb *nodedb;
 
     // buffer for serializing link messages
-    byte_t linkmsg_buffer[MAX_LINK_MSG_SIZE];
+    std::array< byte_t, MAX_LINK_MSG_SIZE > linkmsg_buffer;
 
     /// always maintain this many connections to other routers
     size_t minConnectedRouters = 1;

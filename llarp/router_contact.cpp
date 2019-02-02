@@ -243,9 +243,9 @@ namespace llarp
   bool
   RouterContact::Sign(llarp::Crypto *crypto, const SecretKey &secretkey)
   {
-    pubkey                  = llarp::seckey_topublic(secretkey);
-    byte_t tmp[MAX_RC_SIZE] = {0};
-    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    pubkey = llarp::seckey_topublic(secretkey);
+    std::array< byte_t, MAX_RC_SIZE > tmp;
+    llarp_buffer_t buf(tmp);
     signature.Zero();
     last_updated = time_now_ms();
     if(!BEncode(&buf))
@@ -296,8 +296,8 @@ namespace llarp
     RouterContact copy;
     copy = *this;
     copy.signature.Zero();
-    byte_t tmp[MAX_RC_SIZE] = {0};
-    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, MAX_RC_SIZE > tmp;
+    llarp_buffer_t buf(tmp);
     if(!copy.BEncode(&buf))
     {
       llarp::LogError("bencode failed");
@@ -311,8 +311,8 @@ namespace llarp
   bool
   RouterContact::Write(const char *fname) const
   {
-    byte_t tmp[MAX_RC_SIZE] = {0};
-    auto buf                = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, MAX_RC_SIZE > tmp;
+    llarp_buffer_t buf(tmp);
     if(!BEncode(&buf))
       return false;
     buf.sz  = buf.cur - buf.base;
@@ -328,7 +328,8 @@ namespace llarp
   bool
   RouterContact::Read(const char *fname)
   {
-    byte_t tmp[MAX_RC_SIZE] = {0};
+    std::array< byte_t, MAX_RC_SIZE > tmp;
+    llarp_buffer_t buf(tmp);
     std::ifstream f;
     f.open(fname, std::ios::binary);
     if(!f.is_open())
@@ -338,11 +339,10 @@ namespace llarp
     }
     f.seekg(0, std::ios::end);
     size_t l = f.tellg();
-    if(l > sizeof(tmp))
+    if(l > tmp.size())
       return false;
     f.seekg(0, std::ios::beg);
-    f.read((char *)tmp, l);
-    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    f.read((char *)tmp.data(), l);
     return BDecode(&buf);
   }
 

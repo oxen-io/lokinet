@@ -178,11 +178,11 @@ namespace llarp
       bool
       QueueInboundPacketForExit(const llarp_buffer_t& buf)
       {
-        llarp_buffer_t copy = buf.clone();
+        CopyableBuffer copy{buf};
 
         return m_NetworkToUserPktQueue.EmplaceIf(
             [&](llarp::net::IPv4Packet& pkt) -> bool {
-              if(!pkt.Load(copy))
+              if(!pkt.Load(copy.underlying))
                 return false;
               pkt.UpdateIPv4PacketOnDst(pkt.src(), m_OurIP);
               return true;

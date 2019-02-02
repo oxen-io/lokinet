@@ -5,6 +5,8 @@
 #include <util/endian.hpp>
 #include <util/logger.hpp>
 
+#include <array>
+
 namespace llarp
 {
   namespace dns
@@ -175,13 +177,14 @@ namespace llarp
         hdr_fields |= (1 << 15);
         const auto& question = questions[0];
         answers.emplace_back();
-        auto& rec       = answers.back();
-        rec.rr_name     = question.qname;
-        rec.rr_type     = question.qtype;
-        rec.rr_class    = qClassIN;
-        rec.ttl         = ttl;
-        byte_t tmp[512] = {0};
-        auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+        auto& rec                     = answers.back();
+        rec.rr_name                   = question.qname;
+        rec.rr_type                   = question.qtype;
+        rec.rr_class                  = qClassIN;
+        rec.ttl                       = ttl;
+        std::array< byte_t, 512 > tmp = {0};
+        ;
+        llarp_buffer_t buf(tmp);
         if(EncodeName(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
@@ -199,13 +202,13 @@ namespace llarp
         hdr_fields |= (1 << 15);
         const auto& question = questions[0];
         answers.emplace_back();
-        auto& rec       = answers.back();
-        rec.rr_name     = question.qname;
-        rec.rr_type     = qTypeCNAME;
-        rec.rr_class    = qClassIN;
-        rec.ttl         = ttl;
-        byte_t tmp[512] = {0};
-        auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+        auto& rec                     = answers.back();
+        rec.rr_name                   = question.qname;
+        rec.rr_type                   = qTypeCNAME;
+        rec.rr_class                  = qClassIN;
+        rec.ttl                       = ttl;
+        std::array< byte_t, 512 > tmp = {0};
+        llarp_buffer_t buf(tmp);
         if(EncodeName(&buf, name))
         {
           buf.sz = buf.cur - buf.base;
@@ -223,13 +226,13 @@ namespace llarp
         hdr_fields |= (1 << 15);
         const auto& question = questions[0];
         answers.emplace_back();
-        auto& rec       = answers.back();
-        rec.rr_name     = question.qname;
-        rec.rr_type     = qTypeMX;
-        rec.rr_class    = qClassIN;
-        rec.ttl         = ttl;
-        byte_t tmp[512] = {0};
-        auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+        auto& rec                     = answers.back();
+        rec.rr_name                   = question.qname;
+        rec.rr_type                   = qTypeMX;
+        rec.rr_class                  = qClassIN;
+        rec.ttl                       = ttl;
+        std::array< byte_t, 512 > tmp = {0};
+        llarp_buffer_t buf(tmp);
         llarp_buffer_put_uint16(&buf, priority);
         if(EncodeName(&buf, name))
         {

@@ -54,7 +54,7 @@ struct dnsc_answer_request
 /// event handler for processing DNS responses
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
-                           const struct sockaddr *addr, llarp_buffer_t buf);
+                           const struct sockaddr *addr, CopyableBuffer buf);
 
 /// generic handler for processing DNS responses
 /// this doesn't look like it exists

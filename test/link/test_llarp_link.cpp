@@ -180,8 +180,8 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
         else
         {
           llarp::LinkIntroMessage msg;
-          llarp_buffer_t copy(buf.clone());
-          if(!msg.BDecode(&copy))
+          CopyableBuffer copy{buf};
+          if(!msg.BDecode(&copy.underlying))
             return false;
           if(!s->GotLIM(&msg))
             return false;
@@ -205,8 +205,8 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
 
   auto sendDiscardMessage = [](llarp::ILinkSession* s) -> bool {
     // send discard message in reply to complete unit test
-    byte_t tmp[32] = {0};
-    auto otherBuf  = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, 32 > tmp;
+    llarp_buffer_t otherBuf(tmp);
     llarp::DiscardMessage discard;
     if(!discard.BEncode(&otherBuf))
       return false;
@@ -220,8 +220,8 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp::LinkIntroMessage msg;
-        llarp_buffer_t copy(buf.clone());
-        if(!msg.BDecode(&copy))
+        CopyableBuffer copy{buf};
+        if(!msg.BDecode(&copy.underlying))
           return false;
         if(!s->GotLIM(&msg))
           return false;
@@ -270,8 +270,8 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
         else
         {
           llarp::LinkIntroMessage msg;
-          llarp_buffer_t copy(buf.clone());
-          if(!msg.BDecode(&copy))
+          CopyableBuffer copy{buf};
+          if(!msg.BDecode(&copy.underlying))
             return false;
           if(!s->GotLIM(&msg))
             return false;
@@ -295,8 +295,8 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
 
   auto sendDiscardMessage = [](llarp::ILinkSession* s) -> bool {
     // send discard message in reply to complete unit test
-    byte_t tmp[32] = {0};
-    auto otherBuf  = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, 32 > tmp;
+    llarp_buffer_t otherBuf(tmp);
     llarp::DiscardMessage discard;
     if(!discard.BEncode(&otherBuf))
       return false;
@@ -310,8 +310,8 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp::LinkIntroMessage msg;
-        llarp_buffer_t copy(buf.clone());
-        if(!msg.BDecode(&copy))
+        CopyableBuffer copy{buf};
+        if(!msg.BDecode(&copy.underlying))
           return false;
         if(!s->GotLIM(&msg))
           return false;

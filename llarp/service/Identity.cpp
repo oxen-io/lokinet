@@ -83,8 +83,8 @@ namespace llarp
     bool
     Identity::EnsureKeys(const std::string& fname, llarp::Crypto* c)
     {
-      byte_t tmp[4096];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 4096 > tmp;
+      llarp_buffer_t buf(tmp);
       std::error_code ec;
       // check for file
       if(!fs::exists(fname, ec))
@@ -145,8 +145,8 @@ namespace llarp
       i.K = pq_keypair_to_public(pq);
       // zero out signature for signing process
       i.Z.Zero();
-      byte_t tmp[MAX_INTROSET_SIZE];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, MAX_INTROSET_SIZE > tmp;
+      llarp_buffer_t buf(tmp);
       if(!i.BEncode(&buf))
         return false;
       // rewind and resize buffer

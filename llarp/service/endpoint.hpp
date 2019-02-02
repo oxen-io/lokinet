@@ -20,7 +20,7 @@ namespace llarp
 {
   namespace service
   {
-    // foward declare
+    // forward declare
     struct Context;
     // forward declare
     struct AsyncKeyExchange;
@@ -193,10 +193,10 @@ namespace llarp
           memcpy(payload.data(), buf.base, buf.sz);
         }
 
-        llarp_buffer_t
+        CopyableBuffer
         Buffer()
         {
-          return llarp::Buffer(payload);
+          return CopyableBuffer{llarp_buffer_t(payload)};
         }
       };
 

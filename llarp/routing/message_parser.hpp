@@ -8,7 +8,7 @@
 #include <messages/path_transfer.hpp>
 #include <path/path_types.hpp>
 #include <util/bencode.hpp>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 
 namespace llarp
 {

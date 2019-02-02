@@ -186,7 +186,7 @@ namespace llarp
         }
         else
         {
-          if(!ep->QueueInboundTraffic(pkt.Buffer()))
+          if(!ep->QueueInboundTraffic(CopyableBuffer{pkt.Buffer()}))
           {
             LogWarn(Name(), " dropped inbound traffic for session ", pk,
                     " as we are overloaded (probably)");
@@ -340,7 +340,7 @@ namespace llarp
     bool
     ExitEndpoint::QueueOutboundTraffic(const llarp_buffer_t &buf)
     {
-      return llarp_ev_tun_async_write(&m_Tun, buf.clone());
+      return llarp_ev_tun_async_write(&m_Tun, buf);
     }
 
     void

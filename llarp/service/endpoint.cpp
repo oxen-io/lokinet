@@ -227,8 +227,8 @@ namespace llarp
         {
           if(HasPendingPathToService(introset.A.Addr()))
             continue;
-          byte_t tmp[1024] = {0};
-          auto buf         = StackBuffer< decltype(tmp) >(tmp);
+          std::array< byte_t, 1024 > tmp = {0};
+          llarp_buffer_t buf(tmp);
           if(!SendToServiceOrQueue(introset.A.Addr().data().data(), buf,
                                    eProtocolText))
           {
@@ -879,7 +879,7 @@ namespace llarp
     {
       if(msg->proto == eProtocolTraffic)
       {
-        auto buf = llarp::Buffer(msg->payload);
+        llarp_buffer_t buf(msg->payload);
         return HandleWriteIPPacket(buf,
                                    std::bind(&Endpoint::ObtainIPForAddr, this,
                                              msg->sender.Addr(), false));
@@ -1157,7 +1157,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& buf)
+    Endpoint::SendToSNodeOrQueue(const RouterID& addr,
+                                 const llarp_buffer_t& buf)
     {
       llarp::net::IPv4Packet pkt;
       if(!pkt.Load(buf))
@@ -1502,13 +1503,12 @@ namespace llarp
         {
           llarp::LogError("failed to derive x25519 shared key component");
         }
-        std::array< byte_t, 64 > tmp;
+        std::array< byte_t, 64 > tmp = {0};
         // K
         std::copy(K.begin(), K.end(), tmp.begin());
         // H (K + PKE(A, B, N))
         std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
-        self->crypto->shorthash(self->sharedKey,
-                                llarp::StackBuffer< decltype(tmp) >(tmp));
+        self->crypto->shorthash(self->sharedKey, llarp_buffer_t(tmp));
         // set tag
         self->msg.tag = self->tag;
         // set sender

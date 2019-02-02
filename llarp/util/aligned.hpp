@@ -227,14 +227,10 @@ namespace llarp
       return as_array().cend();
     }
 
-    llarp_buffer_t
+    CopyableBuffer
     as_buffer()
     {
-      llarp_buffer_t buff;
-      buff.base = data();
-      buff.cur  = buff.base;
-      buff.sz   = size();
-      return buff;
+      return CopyableBuffer(llarp_buffer_t(as_array()));
     }
 
     bool
