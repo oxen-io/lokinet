@@ -606,7 +606,7 @@ extern "C"
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
-                            const struct sockaddr *addr, CopyableBuffer buf)
+                            const struct sockaddr *addr, ManagedBuffer buf)
   {
     // auto buffer = llarp::StackBuffer< decltype(castBuf) >(castBuf);
     dns_msg_header hdr;

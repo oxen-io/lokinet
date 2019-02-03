@@ -147,6 +147,6 @@ extern "C"
 
   void
   llarp_handle_dns_recvfrom(struct llarp_udp_io *udp,
-                            const struct sockaddr *addr, CopyableBuffer buf);
+                            const struct sockaddr *addr, ManagedBuffer buf);
 }
 #endif

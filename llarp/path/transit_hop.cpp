@@ -270,7 +270,7 @@ namespace llarp
             continue;
           uint64_t counter = bufbe64toh(pkt.data());
           sent &= endpoint->QueueOutboundTraffic(
-              CopyableBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)),
+              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)),
               counter);
         }
         return sent;

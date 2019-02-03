@@ -12,7 +12,7 @@ std::string g_result  = "";
 ssize_t
 test_sendto_dns_hook(__attribute__((unused)) void *sock,
                      __attribute__((unused)) const struct sockaddr *from,
-                     CopyableBuffer buf)
+                     ManagedBuffer buf)
 {
   char *hex_buffer                  = new char[buf.underlying.sz * 3 + 1];
   hex_buffer[buf.underlying.sz * 3] = 0;

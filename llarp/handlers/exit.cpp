@@ -186,7 +186,7 @@ namespace llarp
         }
         else
         {
-          if(!ep->QueueInboundTraffic(CopyableBuffer{pkt.Buffer()}))
+          if(!ep->QueueInboundTraffic(ManagedBuffer{pkt.Buffer()}))
           {
             LogWarn(Name(), " dropped inbound traffic for session ", pk,
                     " as we are overloaded (probably)");
@@ -365,7 +365,7 @@ namespace llarp
     void
     ExitEndpoint::OnInetPacket(const llarp_buffer_t &buf)
     {
-      m_InetToNetwork.EmplaceIf([b = CopyableBuffer(buf)](Pkt_t &pkt) -> bool {
+      m_InetToNetwork.EmplaceIf([b = ManagedBuffer(buf)](Pkt_t &pkt) -> bool {
         return pkt.Load(b.underlying);
       });
     }

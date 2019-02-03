@@ -77,7 +77,7 @@ struct llarp_udp_io
   void (*tick)(struct llarp_udp_io *);
   /// sockaddr * is the source address
   void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *,
-                   CopyableBuffer);
+                   ManagedBuffer);
 };
 
 /// add UDP handler

@@ -70,7 +70,7 @@ llarp_buffer_read_until(llarp_buffer_t* buff, char delim, byte_t* result,
 bool
 llarp_buffer_eq(const llarp_buffer_t& buf, const char* str)
 {
-  CopyableBuffer copy{buf};
+  ManagedBuffer copy{buf};
   while(*str
         && copy.underlying.cur != (copy.underlying.base + copy.underlying.sz))
   {

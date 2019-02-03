@@ -76,7 +76,7 @@ namespace llarp
     }
 
     static void
-    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, CopyableBuffer buf)
+    udp_recv_from(llarp_udp_io* udp, const sockaddr* from, ManagedBuffer buf)
     {
       if(!udp)
       {

@@ -577,7 +577,7 @@ namespace llarp
       auto themIP = getFromIP();
       // llarp::LogInfo("themIP ", themIP);
       auto usIP = m_OurIP;
-      CopyableBuffer buf(b);
+      ManagedBuffer buf(b);
       return m_NetworkToUserPktQueue.EmplaceIf(
           [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
             // load
@@ -724,7 +724,7 @@ namespace llarp
     {
       // called for every packet read from user in isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
-      CopyableBuffer buf(b);
+      ManagedBuffer buf(b);
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [buf](net::IPv4Packet &pkt) -> bool {
                return pkt.Load(buf.underlying) && pkt.Header()->version == 4;

@@ -148,7 +148,7 @@ namespace llarp
       llarp::LogWarn("no source addr");
     }
     // Addr is the source
-    udp->recvfrom(udp, addr, CopyableBuffer{llarp_buffer_t(buf, ret)});
+    udp->recvfrom(udp, addr, ManagedBuffer{llarp_buffer_t(buf, ret)});
     return 0;
   }
 

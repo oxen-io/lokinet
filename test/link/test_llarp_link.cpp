@@ -180,7 +180,7 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
         else
         {
           llarp::LinkIntroMessage msg;
-          CopyableBuffer copy{buf};
+          ManagedBuffer copy{buf};
           if(!msg.BDecode(&copy.underlying))
             return false;
           if(!s->GotLIM(&msg))
@@ -220,7 +220,7 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp::LinkIntroMessage msg;
-        CopyableBuffer copy{buf};
+        ManagedBuffer copy{buf};
         if(!msg.BDecode(&copy.underlying))
           return false;
         if(!s->GotLIM(&msg))
@@ -270,7 +270,7 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
         else
         {
           llarp::LinkIntroMessage msg;
-          CopyableBuffer copy{buf};
+          ManagedBuffer copy{buf};
           if(!msg.BDecode(&copy.underlying))
             return false;
           if(!s->GotLIM(&msg))
@@ -310,7 +310,7 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp::LinkIntroMessage msg;
-        CopyableBuffer copy{buf};
+        ManagedBuffer copy{buf};
         if(!msg.BDecode(&copy.underlying))
           return false;
         if(!s->GotLIM(&msg))

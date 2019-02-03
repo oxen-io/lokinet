@@ -56,7 +56,7 @@
 
  */
 
-struct CopyableBuffer;
+struct ManagedBuffer;
 
 struct llarp_buffer_t
 {
@@ -80,8 +80,8 @@ struct llarp_buffer_t
   {
   }
 
-  llarp_buffer_t(const CopyableBuffer &) = delete;
-  llarp_buffer_t(CopyableBuffer &&)      = delete;
+  llarp_buffer_t(const ManagedBuffer &) = delete;
+  llarp_buffer_t(ManagedBuffer &&)      = delete;
 
   template < typename T >
   llarp_buffer_t(T *buf, size_t _sz)
@@ -112,21 +112,21 @@ struct llarp_buffer_t
   }
 
  private:
-  friend struct CopyableBuffer;
+  friend struct ManagedBuffer;
   llarp_buffer_t(const llarp_buffer_t &) = default;
   llarp_buffer_t(llarp_buffer_t &&)      = default;
 };
 
-struct CopyableBuffer
+struct ManagedBuffer
 {
   llarp_buffer_t underlying;
 
-  explicit CopyableBuffer(const llarp_buffer_t &b) : underlying(b)
+  explicit ManagedBuffer(const llarp_buffer_t &b) : underlying(b)
   {
   }
 
-  CopyableBuffer(CopyableBuffer &&)      = default;
-  CopyableBuffer(const CopyableBuffer &) = default;
+  ManagedBuffer(ManagedBuffer &&)      = default;
+  ManagedBuffer(const ManagedBuffer &) = default;
 };
 
 /// how much room is left in buffer

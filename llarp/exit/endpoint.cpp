@@ -86,7 +86,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::QueueOutboundTraffic(CopyableBuffer buf, uint64_t counter)
+    Endpoint::QueueOutboundTraffic(ManagedBuffer buf, uint64_t counter)
     {
       // queue overflow
       if(m_UpstreamQueue.size() > MaxUpstreamQueueSize)
@@ -109,7 +109,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::QueueInboundTraffic(CopyableBuffer buf)
+    Endpoint::QueueInboundTraffic(ManagedBuffer buf)
     {
       llarp::net::IPv4Packet pkt;
       if(!pkt.Load(buf.underlying))

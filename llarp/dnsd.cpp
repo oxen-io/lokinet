@@ -14,7 +14,7 @@ constexpr size_t BUFFER_SIZE = 1500;
 
 ssize_t
 raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
-                         CopyableBuffer buf)
+                         ManagedBuffer buf)
 {
   int *fd = (int *)sock;
   // how do we get to these??
@@ -25,7 +25,7 @@ raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
 
 ssize_t
 llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
-                           CopyableBuffer buf)
+                           ManagedBuffer buf)
 {
   struct llarp_udp_io *udp = (struct llarp_udp_io *)sock;
   if(!udp)
@@ -75,7 +75,7 @@ write404_dnss_response(const dnsd_question_request *request)
   llarp::LogDebug("Sending 404, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from,
-                       CopyableBuffer(llarp_buffer_t(buf, out_bytes)));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -141,7 +141,7 @@ writecname_dnss_response(std::string cname,
   llarp::LogDebug("Sending cname, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from,
-                       CopyableBuffer(llarp_buffer_t(buf, out_bytes)));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -179,7 +179,7 @@ writesend_dnss_revresponse(std::string reverse,
   llarp::LogDebug("Sending reverse: ", reverse, " ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from,
-                       CopyableBuffer(llarp_buffer_t(buf, out_bytes)));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 // FIXME: we need an DNS answer not a sockaddr
@@ -245,7 +245,7 @@ writesend_dnss_response(llarp::huint32_t *hostRes,
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from,
-                       CopyableBuffer(llarp_buffer_t(buf, out_bytes)));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -286,7 +286,7 @@ writesend_dnss_mxresponse(uint16_t priority, std::string mx,
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from,
-                       CopyableBuffer(llarp_buffer_t(buf, out_bytes)));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -327,7 +327,7 @@ writesend_dnss_txtresponse(std::string txt, const struct sockaddr *from,
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, from,
-                       CopyableBuffer(llarp_buffer_t(buf, out_bytes)));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -347,7 +347,7 @@ handle_dnsc_result(dnsc_answer_request *client_request)
   // bytes");
 
   server_request->sendto_hook(server_request->user, server_request->from,
-                              CopyableBuffer(llarp_buffer_t(test)));
+                              ManagedBuffer(llarp_buffer_t(test)));
 
   llarp_host_resolved(client_request);
   return;
@@ -514,7 +514,7 @@ handle_recvfrom(llarp_buffer_t *buffer, dnsd_question_request *request)
 
 void
 llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
-                           const struct sockaddr *saddr, CopyableBuffer buf)
+                           const struct sockaddr *saddr, ManagedBuffer buf)
 {
   if(!dns_udp_tracker.dnsd)
   {
@@ -536,7 +536,7 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
 
 void
 raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
-                    CopyableBuffer buffer)
+                    ManagedBuffer buffer)
 {
   if(!dns_udp_tracker.dnsd)
   {

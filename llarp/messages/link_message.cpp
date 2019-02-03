@@ -102,7 +102,7 @@ namespace llarp
     reader.on_key = &OnKey;
     from          = src;
     firstkey      = true;
-    CopyableBuffer copy(buf);
+    ManagedBuffer copy(buf);
     return bencode_read_dict(&copy.underlying, &reader);
   }
 

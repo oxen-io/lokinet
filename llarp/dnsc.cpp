@@ -659,7 +659,7 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
 /// intermediate udp_io handler
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
-                           const struct sockaddr *saddr, CopyableBuffer buf)
+                           const struct sockaddr *saddr, ManagedBuffer buf)
 {
   if(!saddr)
   {

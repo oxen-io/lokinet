@@ -42,14 +42,14 @@ namespace llarp
 
     void
     Proxy::HandleUDPRecv_server(llarp_udp_io* u, const sockaddr* from,
-                                CopyableBuffer buf)
+                                ManagedBuffer buf)
     {
       static_cast< Proxy* >(u->user)->HandlePktServer(*from, &buf.underlying);
     }
 
     void
     Proxy::HandleUDPRecv_client(llarp_udp_io* u, const sockaddr* from,
-                                CopyableBuffer buf)
+                                ManagedBuffer buf)
     {
       static_cast< Proxy* >(u->user)->HandlePktClient(*from, &buf.underlying);
     }

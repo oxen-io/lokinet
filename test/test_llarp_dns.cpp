@@ -197,7 +197,7 @@ TEST_F(DNSTest, handleDNSrecvFrom)
   std::fill(buffer.begin(), buffer.end(), 0);
   // hdr->qr decides dnsc (1) or dnsd (0)
   llarp_handle_dns_recvfrom((llarp_udp_io *)&udp, &addr,
-                            CopyableBuffer(llarp_buffer_t(buffer)));
+                            ManagedBuffer(llarp_buffer_t(buffer)));
   // llarp_handle_dnsc_recvfrom
   // llarp_handle_dnsd_recvfrom
 }

@@ -1119,7 +1119,7 @@ namespace llarp
       {
         // we done with this guy, prune next tick
         itr->second.lastActive = 0;
-        CopyableBuffer buf(itr->second.buffer);
+        ManagedBuffer buf(itr->second.buffer);
         // resize
         buf.underlying.sz = buf.underlying.cur - buf.underlying.base;
         // rewind

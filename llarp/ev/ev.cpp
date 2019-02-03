@@ -247,7 +247,7 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
 bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const llarp_buffer_t &b)
 {
-  CopyableBuffer buf{b};
+  ManagedBuffer buf{b};
   llarp::tcp_conn *impl = static_cast< llarp::tcp_conn * >(conn->impl);
   if(impl->_shouldClose)
   {

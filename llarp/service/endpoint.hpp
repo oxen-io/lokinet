@@ -193,10 +193,10 @@ namespace llarp
           memcpy(payload.data(), buf.base, buf.sz);
         }
 
-        CopyableBuffer
+        ManagedBuffer
         Buffer()
         {
-          return CopyableBuffer{llarp_buffer_t(payload)};
+          return ManagedBuffer{llarp_buffer_t(payload)};
         }
       };
 

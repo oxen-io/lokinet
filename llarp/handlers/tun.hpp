@@ -178,7 +178,7 @@ namespace llarp
       bool
       QueueInboundPacketForExit(const llarp_buffer_t& buf)
       {
-        CopyableBuffer copy{buf};
+        ManagedBuffer copy{buf};
 
         return m_NetworkToUserPktQueue.EmplaceIf(
             [&](llarp::net::IPv4Packet& pkt) -> bool {
