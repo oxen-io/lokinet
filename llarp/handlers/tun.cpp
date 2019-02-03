@@ -581,7 +581,7 @@ namespace llarp
       return m_NetworkToUserPktQueue.EmplaceIf(
           [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
             // load
-            if(!pkt.Load(buf.underlying))
+            if(!pkt.Load(buf))
               return false;
             // filter out:
             // - packets smaller than minimal IPv4 header
@@ -727,7 +727,7 @@ namespace llarp
       ManagedBuffer buf(b);
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [buf](net::IPv4Packet &pkt) -> bool {
-               return pkt.Load(buf.underlying) && pkt.Header()->version == 4;
+               return pkt.Load(buf) && pkt.Header()->version == 4;
              }))
       {
 #if defined(DEBUG) || !defined(RELEASE_MOTTO)

@@ -683,7 +683,7 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
   // sometimes we'll get double responses
   if(request)
   {
-    generic_handle_dnsc_recvfrom(request, buf.underlying, &hdr);
+    generic_handle_dnsc_recvfrom(request, buf, &hdr);
   }
   else
   {

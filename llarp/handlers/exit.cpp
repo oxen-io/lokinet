@@ -365,9 +365,8 @@ namespace llarp
     void
     ExitEndpoint::OnInetPacket(const llarp_buffer_t &buf)
     {
-      m_InetToNetwork.EmplaceIf([b = ManagedBuffer(buf)](Pkt_t &pkt) -> bool {
-        return pkt.Load(b.underlying);
-      });
+      m_InetToNetwork.EmplaceIf(
+          [b = ManagedBuffer(buf)](Pkt_t &pkt) -> bool { return pkt.Load(b); });
     }
 
     bool

@@ -32,10 +32,11 @@
 
   ALWAYS pass a llarp_buffer_t * if you plan on advancing the stream position
 
-  ALWAYS pass a llarp_buffer_t if you are doing a read only operation that does
-  not modify the buffer
+  ALWAYS pass a const llarp_buffer_t & if you are doing a read only operation
+  that does not modify the buffer
 
-  ALWAYS pass a llarp_buffer_t if you don't want to advance the stream position
+  ALWAYS pass a const llarp_buffer_t & if you don't want to advance the stream
+  position
 
   ALWAYS bail out of the current operation if you run out of space in a buffer
 
@@ -117,9 +118,14 @@ struct llarp_buffer_t
   llarp_buffer_t(llarp_buffer_t &&)      = default;
 };
 
+/**
+ Provide a copyable/moveable wrapper around `llarp_buffer_t`.
+ */
 struct ManagedBuffer
 {
   llarp_buffer_t underlying;
+
+  ManagedBuffer() = delete;
 
   explicit ManagedBuffer(const llarp_buffer_t &b) : underlying(b)
   {
@@ -127,6 +133,11 @@ struct ManagedBuffer
 
   ManagedBuffer(ManagedBuffer &&)      = default;
   ManagedBuffer(const ManagedBuffer &) = default;
+
+  operator const llarp_buffer_t &() const
+  {
+    return underlying;
+  }
 };
 
 /// how much room is left in buffer
