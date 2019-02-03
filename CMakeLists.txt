@@ -41,6 +41,8 @@ if (WIN32 AND NOT STATIC_LINK)
   set(STATIC_LINK ON)
 endif(WIN32 AND NOT STATIC_LINK)
 
+add_subdirectory(vendor/abseil-cpp)
+
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
