@@ -4,12 +4,8 @@
 #include <util/queue_manager.hpp>
 #include <util/threading.hpp>
 
+#include <absl/types/optional.h>
 #include <atomic>
-#if __cplusplus >= 201703L
-#include <optional>
-#else
-#include <tl/optional.hpp>
-#endif
 #include <tuple>
 
 namespace llarp
@@ -76,11 +72,8 @@ namespace llarp
       // Remove an element from the queue. Block until an element is available
       Type
       popFront();
-#if __cplusplus >= 201703L
-      std::optional< Type >
-#else
-      tl::optional< Type >
-#endif
+
+      absl::optional< Type >
       tryPopFront();
 
       // Remove all elements from the queue. Note this is not atomic, and if
@@ -267,11 +260,7 @@ namespace llarp
     }
 
     template < typename Type >
-#if __cplusplus >= 201703L
-    std::optional< Type >
-#else
-    tl::optional< Type >
-#endif
+    absl::optional< Type >
     Queue< Type >::tryPopFront()
     {
       uint32_t generation;
@@ -296,11 +285,7 @@ namespace llarp
       // - notify any waiting pushers
 
       QueuePopGuard< Type > popGuard(*this, generation, index);
-#if __cplusplus >= 201703L
-      return std::optional< Type >(std::move(m_data[index]));
-#else
-      return tl::optional< Type >(std::move(m_data[index]));
-#endif
+      return absl::optional< Type >(std::move(m_data[index]));
     }
 
     template < typename Type >
