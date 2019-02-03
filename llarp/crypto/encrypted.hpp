@@ -84,7 +84,7 @@ namespace llarp
     Encrypted&
     operator=(const Encrypted& other)
     {
-      return (*this) = other.Buffer().underlying;
+      return Encrypted::operator=(llarp_buffer_t(other));
     }
 
     Encrypted&
@@ -131,12 +131,6 @@ namespace llarp
     Buffer()
     {
       return &m_Buffer;
-    }
-
-    CopyableBuffer
-    Buffer() const
-    {
-      return CopyableBuffer{m_Buffer};
     }
 
     size_t

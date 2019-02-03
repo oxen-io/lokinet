@@ -107,7 +107,7 @@ struct llarp_buffer_t
   }
 
   template < typename T >
-  llarp_buffer_t(const T &t) : base(t.data()), cur(t.data()), sz(t.size())
+  llarp_buffer_t(const T &t) : llarp_buffer_t(t.data(), t.size())
   {
   }
 

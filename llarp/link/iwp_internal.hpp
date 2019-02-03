@@ -234,8 +234,7 @@ namespace llarp
           hdr.seqno = seqno;
           hdr.cmd   = XMIT;
           AlignedBuffer< fragoverhead + fragsize > frag;
-          CopyableBuffer copiedBuffer(frag.as_buffer());
-          auto &buf         = copiedBuffer.underlying;
+          llarp_buffer_t buf(frag);
           const byte_t *ptr = msg.data();
           Fragno_t idx      = 0;
           FragLen_t len     = sz;
@@ -282,8 +281,7 @@ namespace llarp
           hdr.fraglen = 0;
           hdr.fragno  = 0;
           AlignedBuffer< fragoverhead > frag;
-          CopyableBuffer copiedBuffer(frag.as_buffer());
-          auto &buf = copiedBuffer.underlying;
+          llarp_buffer_t buf(frag);
           if(!hdr.Encode(&buf, llarp_buffer_t(nullptr, nullptr, 0)))
             return false;
           return write_pkt(buf.base, buf.sz) == int(buf.sz);

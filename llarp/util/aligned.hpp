@@ -227,12 +227,6 @@ namespace llarp
       return as_array().cend();
     }
 
-    CopyableBuffer
-    as_buffer()
-    {
-      return CopyableBuffer(llarp_buffer_t(as_array()));
-    }
-
     bool
     BEncode(llarp_buffer_t* buf) const
     {

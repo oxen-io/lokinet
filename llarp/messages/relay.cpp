@@ -63,7 +63,7 @@ namespace llarp
     auto path = r->paths.GetByDownstream(session->GetPubKey(), pathid);
     if(path)
     {
-      return path->HandleUpstream(X.Buffer().underlying, Y, r);
+      return path->HandleUpstream(llarp_buffer_t(X), Y, r);
     }
     return false;
   }
@@ -126,7 +126,7 @@ namespace llarp
     auto path = r->paths.GetByUpstream(session->GetPubKey(), pathid);
     if(path)
     {
-      return path->HandleDownstream(X.Buffer().underlying, Y, r);
+      return path->HandleDownstream(llarp_buffer_t(X), Y, r);
     }
     llarp::LogWarn("unhandled downstream message");
     return false;

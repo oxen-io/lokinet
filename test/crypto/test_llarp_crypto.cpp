@@ -36,7 +36,7 @@ namespace llarp
     random.Randomize();
     Signature sig;
 
-    const llarp_buffer_t& buf = random.as_buffer().underlying;
+    llarp_buffer_t buf(random);
     ASSERT_TRUE(crypto.sign(sig, secret, buf));
     ASSERT_TRUE(crypto.verify(secret.toPublic(), buf, sig));
     // mangle sig

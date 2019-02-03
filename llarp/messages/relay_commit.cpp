@@ -279,7 +279,7 @@ namespace llarp
         return;
       }
       // generate hash of hop key for nonce mutation
-      crypto->shorthash(self->hop->nonceXOR, self->hop->pathKey.as_buffer().underlying);
+      crypto->shorthash(self->hop->nonceXOR, llarp_buffer_t(self->hop->pathKey));
       using namespace std::placeholders;
       if(self->record.work
          && self->record.work->IsValid(
