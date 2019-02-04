@@ -162,7 +162,7 @@ tun_ev_loop(void* unused)
         continue;
       }
       if(ev->t->recvpkt)
-        ev->t->recvpkt(ev->t, llarp::InitBuffer(pkt->buf, size));
+        ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
       ev->read(ev->readbuf, sizeof(ev->readbuf));
     }
     else
@@ -219,7 +219,7 @@ namespace llarp
     if(amount > 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, llarp::InitBuffer(buf, amount));
+        tcp.read(&tcp, llarp_buffer_t(buf, amount));
     }
     else
     {
@@ -333,7 +333,7 @@ namespace llarp
     if(static_cast< size_t >(ret) > sz)
       return -1;
     b.sz = ret;
-    udp->recvfrom(udp, addr, b);
+    udp->recvfrom(udp, addr, ManagedBuffer{b});
     return 0;
   }
 

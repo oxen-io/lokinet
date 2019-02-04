@@ -18,7 +18,7 @@ namespace llarp
     if(amount > 0)
     {
       if(tcp.read)
-        tcp.read(&tcp, llarp::InitBuffer(buf, amount));
+        tcp.read(&tcp, llarp_buffer_t(buf, amount));
     }
     else
     {
@@ -122,7 +122,7 @@ namespace llarp
     if(static_cast< size_t >(ret) > sz)
       return -1;
     b.sz = ret;
-    udp->recvfrom(udp, addr, b);
+    udp->recvfrom(udp, addr, ManagedBuffer{b});
     return 0;
   }
 
@@ -181,7 +181,7 @@ namespace llarp
     if(ret > 0 && t->recvpkt)
     {
       // does not have pktinfo
-      t->recvpkt(t, llarp::InitBuffer(buf, ret));
+      t->recvpkt(t, llarp_buffer_t(buf, ret));
     }
     return ret;
   }

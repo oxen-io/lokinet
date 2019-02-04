@@ -251,6 +251,7 @@ TEST_F(TestCryptoTypesSecret, secret_key_from_file_happy_bencode)
 // - file not writeable
 // - happy path
 
+// Win32: check for root/admin/elevation privileges
 #ifdef _WIN32
 BOOL IsRunAsAdmin() 
 { 
