@@ -18,7 +18,7 @@ namespace llarp
     }
 
     bool
-    PathConfirmMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    PathConfirmMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* val)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("L", pathLifetime, read, key, val))

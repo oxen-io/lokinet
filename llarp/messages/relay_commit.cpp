@@ -14,7 +14,7 @@ namespace llarp
   }
 
   bool
-  LR_CommitMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
+  LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, "c"))
     {
@@ -279,7 +279,7 @@ namespace llarp
         return;
       }
       // generate hash of hop key for nonce mutation
-      crypto->shorthash(self->hop->nonceXOR, self->hop->pathKey.as_buffer());
+      crypto->shorthash(self->hop->nonceXOR, llarp_buffer_t(self->hop->pathKey));
       using namespace std::placeholders;
       if(self->record.work
          && self->record.work->IsValid(

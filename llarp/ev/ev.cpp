@@ -115,7 +115,7 @@ llarp_ev_loop_stop(struct llarp_ev_loop *loop)
 
 int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const sockaddr *to,
-                    llarp_buffer_t buf)
+                    const llarp_buffer_t &buf)
 {
   auto ret =
       static_cast< llarp::ev_io * >(udp->impl)->sendto(to, buf.base, buf.sz);
@@ -221,7 +221,7 @@ llarp_ev_add_tun(llarp_ev_loop *loop, llarp_tun_io *tun)
 
 #ifndef _WIN32
 bool
-llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
 {
   if(buf.sz > EV_WRITE_BUF_SZ)
   {
@@ -232,7 +232,7 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
 }
 #else
 bool
-llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &buf)
 {
   if(buf.sz > EV_WRITE_BUF_SZ)
   {
@@ -245,24 +245,27 @@ llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t buf)
 #endif
 
 bool
-llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, llarp_buffer_t buf)
+llarp_tcp_conn_async_write(struct llarp_tcp_conn *conn, const llarp_buffer_t &b)
 {
+  ManagedBuffer buf{b};
   llarp::tcp_conn *impl = static_cast< llarp::tcp_conn * >(conn->impl);
   if(impl->_shouldClose)
   {
     llarp::LogError("write on closed connection");
     return false;
   }
-  size_t sz = buf.sz;
-  buf.cur   = buf.base;
+  size_t sz          = buf.underlying.sz;
+  buf.underlying.cur = buf.underlying.base;
   while(sz > EV_WRITE_BUF_SZ)
   {
-    if(!impl->queue_write(buf.cur, EV_WRITE_BUF_SZ))
+    if(!impl->queue_write(buf.underlying.cur, EV_WRITE_BUF_SZ))
+    {
       return false;
-    buf.cur += EV_WRITE_BUF_SZ;
+    }
+    buf.underlying.cur += EV_WRITE_BUF_SZ;
     sz -= EV_WRITE_BUF_SZ;
   }
-  return impl->queue_write(buf.cur, sz);
+  return impl->queue_write(buf.underlying.cur, sz);
 }
 
 void

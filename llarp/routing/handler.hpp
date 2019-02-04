@@ -6,7 +6,7 @@
 #include <messages/path_latency.hpp>
 #include <messages/path_transfer.hpp>
 #include <messages/transfer_traffic.hpp>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 
 namespace llarp
 {

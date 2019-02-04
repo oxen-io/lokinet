@@ -49,7 +49,7 @@ namespace llarp
     }
 
     bool
-    GotRouterMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
+    GotRouterMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *val)
     {
       if(llarp_buffer_eq(key, "K"))
       {

@@ -3,7 +3,7 @@
 
 #include <crypto/crypto.hpp>
 #include <router_contact.hpp>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 
 /**
  * dht.h

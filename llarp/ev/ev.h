@@ -1,7 +1,7 @@
 #ifndef LLARP_EV_H
 #define LLARP_EV_H
 
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 #include <util/time.hpp>
 #include <tuntap.h>
 
@@ -77,7 +77,7 @@ struct llarp_udp_io
   void (*tick)(struct llarp_udp_io *);
   /// sockaddr * is the source address
   void (*recvfrom)(struct llarp_udp_io *, const struct sockaddr *,
-                   llarp_buffer_t);
+                   ManagedBuffer);
 };
 
 /// add UDP handler
@@ -88,7 +88,7 @@ llarp_ev_add_udp(struct llarp_ev_loop *ev, struct llarp_udp_io *udp,
 /// send a UDP packet
 int
 llarp_ev_udp_sendto(struct llarp_udp_io *udp, const struct sockaddr *to,
-                    llarp_buffer_t pkt);
+                    const llarp_buffer_t &pkt);
 
 /// close UDP handler
 int
@@ -107,7 +107,7 @@ struct llarp_tcp_conn
   /// parent loop (dont set me)
   struct llarp_ev_loop *loop;
   /// handle read event
-  void (*read)(struct llarp_tcp_conn *, llarp_buffer_t);
+  void (*read)(struct llarp_tcp_conn *, const llarp_buffer_t &);
   /// handle close event (free-ing is handled by event loop)
   void (*closed)(struct llarp_tcp_conn *);
   /// handle event loop tick
@@ -117,7 +117,7 @@ struct llarp_tcp_conn
 /// queue async write a buffer in full
 /// return if we queueed it or not
 bool
-llarp_tcp_conn_async_write(struct llarp_tcp_conn *, llarp_buffer_t);
+llarp_tcp_conn_async_write(struct llarp_tcp_conn *, const llarp_buffer_t &);
 
 /// close a tcp connection
 void
@@ -203,7 +203,7 @@ struct llarp_tun_io
   void (*before_write)(struct llarp_tun_io *);
   /// called every event loop tick after reads
   void (*tick)(struct llarp_tun_io *);
-  void (*recvpkt)(struct llarp_tun_io *, llarp_buffer_t);
+  void (*recvpkt)(struct llarp_tun_io *, const llarp_buffer_t &);
 };
 
 /// create tun interface with network interface name ifname
@@ -214,6 +214,6 @@ llarp_ev_add_tun(struct llarp_ev_loop *ev, struct llarp_tun_io *tun);
 /// async write a packet on tun interface
 /// returns true if queued, returns false on drop
 bool
-llarp_ev_tun_async_write(struct llarp_tun_io *tun, llarp_buffer_t);
+llarp_ev_tun_async_write(struct llarp_tun_io *tun, const llarp_buffer_t &);
 
 #endif

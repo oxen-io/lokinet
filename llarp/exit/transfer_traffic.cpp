@@ -17,7 +17,8 @@ namespace llarp
     }
 
     bool
-    TransferTrafficMessage::PutBuffer(llarp_buffer_t buf, uint64_t counter)
+    TransferTrafficMessage::PutBuffer(const llarp_buffer_t& buf,
+                                      uint64_t counter)
     {
       if(buf.sz > MaxExitMTU)
         return false;
@@ -48,7 +49,8 @@ namespace llarp
     }
 
     bool
-    TransferTrafficMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf)
+    TransferTrafficMessage::DecodeKey(const llarp_buffer_t& key,
+                                      llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("S", S, read, key, buf))

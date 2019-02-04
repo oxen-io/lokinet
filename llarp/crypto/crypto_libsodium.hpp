@@ -17,13 +17,13 @@ namespace llarp
 
       /// xchacha symmetric cipher
       bool
-      xchacha20(llarp_buffer_t, const SharedSecret &,
+      xchacha20(const llarp_buffer_t &, const SharedSecret &,
                 const TunnelNonce &) override;
 
       /// xchacha symmetric cipher (multibuffer)
       bool
-      xchacha20_alt(llarp_buffer_t, llarp_buffer_t, const SharedSecret &,
-                    const byte_t *) override;
+      xchacha20_alt(const llarp_buffer_t &, const llarp_buffer_t &,
+                    const SharedSecret &, const byte_t *) override;
 
       /// path dh creator's side
       bool
@@ -43,25 +43,27 @@ namespace llarp
                           const TunnelNonce &) override;
       /// blake2b 512 bit
       bool
-      hash(byte_t *, llarp_buffer_t) override;
+      hash(byte_t *, const llarp_buffer_t &) override;
       /// blake2b 256 bit
       bool
-      shorthash(ShortHash &, llarp_buffer_t) override;
+      shorthash(ShortHash &, const llarp_buffer_t &) override;
       /// blake2s 256 bit hmac
       bool
-      hmac(byte_t *, llarp_buffer_t, const SharedSecret &) override;
+      hmac(byte_t *, const llarp_buffer_t &, const SharedSecret &) override;
       /// ed25519 sign
       bool
-      sign(Signature &, const SecretKey &, llarp_buffer_t) override;
+      sign(Signature &, const SecretKey &, const llarp_buffer_t &) override;
       /// ed25519 verify
       bool
-      verify(const PubKey &, llarp_buffer_t, const Signature &) override;
+      verify(const PubKey &, const llarp_buffer_t &,
+             const Signature &) override;
       /// seed to secretkey
       bool
       seed_to_secretkey(llarp::SecretKey &,
                         const llarp::IdentitySecret &) override;
       /// randomize buffer
-      void randomize(llarp_buffer_t) override;
+      void
+      randomize(const llarp_buffer_t &) override;
       /// randomizer memory
       void
       randbytes(void *, size_t) override;

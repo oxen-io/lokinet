@@ -36,13 +36,13 @@ namespace llarp
 
       /// append buffer to X
       bool
-      PutBuffer(llarp_buffer_t buf, uint64_t counter);
+      PutBuffer(const llarp_buffer_t& buf, uint64_t counter);
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t k, llarp_buffer_t* val) override;
+      DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val) override;
 
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;

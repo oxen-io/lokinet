@@ -13,14 +13,14 @@ namespace llarp
   namespace service
   {
     bool
-    ServiceInfo::Verify(llarp::Crypto* crypto, llarp_buffer_t payload,
+    ServiceInfo::Verify(llarp::Crypto* crypto, const llarp_buffer_t& payload,
                         const Signature& sig) const
     {
       return crypto->verify(signkey, payload, sig);
     }
 
     bool
-    ServiceInfo::DecodeKey(llarp_buffer_t key, llarp_buffer_t* val)
+    ServiceInfo::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, val))
@@ -67,8 +67,8 @@ namespace llarp
 
     bool ServiceInfo::CalculateAddress(std::array< byte_t, 32 >& data) const
     {
-      byte_t tmp[256] = {0};
-      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 256 > tmp;
+      llarp_buffer_t buf(tmp);
       if(!BEncode(&buf))
         return false;
       return crypto_generichash_blake2b(data.data(), data.size(), buf.base,

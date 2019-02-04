@@ -59,8 +59,9 @@ namespace llarp
     {
       if(!IsEndpoint(r->pubkey()))
         return false;
-      byte_t tmp[MAX_LINK_MSG_SIZE - 128];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+
+      std::array< byte_t, MAX_LINK_MSG_SIZE - 128 > tmp;
+      llarp_buffer_t buf(tmp);
       if(!msg->BEncode(&buf))
       {
         llarp::LogError("failed to encode routing message");
@@ -83,8 +84,8 @@ namespace llarp
     }
 
     bool
-    TransitHop::HandleDownstream(llarp_buffer_t buf, const TunnelNonce& Y,
-                                 llarp::Router* r)
+    TransitHop::HandleDownstream(const llarp_buffer_t& buf,
+                                 const TunnelNonce& Y, llarp::Router* r)
     {
       RelayDownstreamMessage msg;
       msg.pathid = info.rxID;
@@ -97,7 +98,7 @@ namespace llarp
     }
 
     bool
-    TransitHop::HandleUpstream(llarp_buffer_t buf, const TunnelNonce& Y,
+    TransitHop::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
                                llarp::Router* r)
     {
       r->crypto->xchacha20(buf, pathKey, Y);
@@ -269,7 +270,8 @@ namespace llarp
             continue;
           uint64_t counter = bufbe64toh(pkt.data());
           sent &= endpoint->QueueOutboundTraffic(
-              llarp::InitBuffer(pkt.data() + 8, pkt.size() - 8), counter);
+              ManagedBuffer(llarp_buffer_t(pkt.data() + 8, pkt.size() - 8)),
+              counter);
         }
         return sent;
       }
@@ -291,8 +293,8 @@ namespace llarp
         return SendRoutingMessage(&discarded, r);
       }
 
-      byte_t tmp[service::MAX_PROTOCOL_MESSAGE_SIZE];
-      auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, service::MAX_PROTOCOL_MESSAGE_SIZE > tmp;
+      llarp_buffer_t buf(tmp);
       if(!msg->T.BEncode(&buf))
       {
         llarp::LogWarn(info, " failed to transfer data message, encode failed");

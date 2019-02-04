@@ -7,9 +7,10 @@ namespace llarp
 {
   namespace exit
   {
-    BaseSession::BaseSession(const llarp::RouterID& router,
-                             std::function< bool(llarp_buffer_t) > writepkt,
-                             llarp::Router* r, size_t numpaths, size_t hoplen)
+    BaseSession::BaseSession(
+        const llarp::RouterID& router,
+        std::function< bool(const llarp_buffer_t&) > writepkt, llarp::Router* r,
+        size_t numpaths, size_t hoplen)
         : llarp::path::Builder(r, r->dht, numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
@@ -117,7 +118,7 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleTraffic(llarp::path::Path* p, llarp_buffer_t buf,
+    BaseSession::HandleTraffic(llarp::path::Path* p, const llarp_buffer_t& buf,
                                uint64_t counter)
     {
       (void)p;
@@ -148,8 +149,8 @@ namespace llarp
     BaseSession::QueueUpstreamTraffic(llarp::net::IPv4Packet pkt,
                                       const size_t N)
     {
-      auto buf    = pkt.Buffer();
-      auto& queue = m_Upstream[buf.sz / N];
+      const llarp_buffer_t& buf = pkt.Buffer();
+      auto& queue               = m_Upstream[buf.sz / N];
       // queue overflow
       if(queue.size() >= MaxUpstreamQueueLength)
         return false;
@@ -219,10 +220,10 @@ namespace llarp
       return true;
     }
 
-    SNodeSession::SNodeSession(const llarp::RouterID& snodeRouter,
-                               std::function< bool(llarp_buffer_t) > writepkt,
-                               llarp::Router* r, size_t numpaths, size_t hoplen,
-                               bool useRouterSNodeKey)
+    SNodeSession::SNodeSession(
+        const llarp::RouterID& snodeRouter,
+        std::function< bool(const llarp_buffer_t&) > writepkt, llarp::Router* r,
+        size_t numpaths, size_t hoplen, bool useRouterSNodeKey)
         : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
     {
       if(useRouterSNodeKey)
