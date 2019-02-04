@@ -673,12 +673,12 @@ namespace llarp
     llarp::RouterContact nextRC = _rc;
     if(rotateKeys)
     {
-      crypto.encryption_keygen(nextOnionKey);
+      crypto->encryption_keygen(nextOnionKey);
       std::string f = encryption_keyfile.string();
       if(nextOnionKey.SaveToFile(f.c_str()))
       {
         nextRC.enckey = llarp::seckey_topublic(nextOnionKey);
-        encryption = nextOnionKey;
+        encryption    = nextOnionKey;
       }
     }
     nextRC.last_updated = Now();
@@ -692,7 +692,7 @@ namespace llarp
       else
         llarp::LogWarn("failed to renegotiate session");
     });
-    
+
     // TODO: do this async
     return SaveRC();
   }  // namespace llarp
