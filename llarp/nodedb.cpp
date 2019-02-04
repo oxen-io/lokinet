@@ -434,11 +434,16 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
     do
     {
       auto itr = entries.begin();
+      std::advance(itr, llarp::randint() % sz);
+      if(itr == entries.end())
+      {
+        --tries;
+        continue;
+      }
       if(prev.pubkey == itr->second.pubkey)
       {
-        if(tries--)
-          continue;
-        return false;
+        --tries;
+        continue;
       }
       if(itr->second.addrs.size() && !itr->second.IsExpired(now))
       {
