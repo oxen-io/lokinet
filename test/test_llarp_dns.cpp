@@ -193,12 +193,11 @@ TEST_F(DNSTest, handleDNSrecvFrom)
 {
   llarp_udp_io_mock udp;
   sockaddr addr;
-  char buffer[16];
-  llarp::Zero(&buffer, 15);
-  ssize_t sz = 0;
+  std::array< byte_t, 16 > buffer;
+  std::fill(buffer.begin(), buffer.end(), 0);
   // hdr->qr decides dnsc (1) or dnsd (0)
   llarp_handle_dns_recvfrom((llarp_udp_io *)&udp, &addr,
-                            llarp::InitBuffer(buffer, sz));
+                            ManagedBuffer(llarp_buffer_t(buffer)));
   // llarp_handle_dnsc_recvfrom
   // llarp_handle_dnsd_recvfrom
 }

@@ -151,7 +151,7 @@ answer_request_alloc(struct dnsc_context *dnsc, void *sock, const char *url,
 /// generic dnsc handler
 void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
-                             llarp_buffer_t buffer, dns_msg_header *hdr)
+                             const llarp_buffer_t &buffer, dns_msg_header *hdr)
 {
   if(!request)
   {
@@ -659,7 +659,7 @@ raw_resolve_host(struct dnsc_context *const dnsc, const char *url,
 /// intermediate udp_io handler
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
-                           const struct sockaddr *saddr, llarp_buffer_t buf)
+                           const struct sockaddr *saddr, ManagedBuffer buf)
 {
   if(!saddr)
   {
@@ -667,12 +667,12 @@ llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
   }
   // auto buffer            = llarp::StackBuffer< decltype(castBuf) >(castBuf);
   dns_msg_header hdr;
-  if(!decode_hdr(&buf, &hdr))
+  if(!decode_hdr(&buf.underlying, &hdr))
   {
     llarp::LogError("failed to decode dns header");
     return;
   }
-  buf.cur = buf.base;  // reset cursor to beginning
+  buf.underlying.cur = buf.underlying.base;  // reset cursor to beginning
 
   llarp::LogDebug("Header got client responses for id: ", hdr.id);
 
@@ -754,7 +754,7 @@ llarp_resolve_host(struct dnsc_context *const dnsc, const char *url,
   // ssize_t ret = llarp_ev_udp_sendto(dnsc->udp, dnsc->server, bytes, length);
   ssize_t ret = llarp_ev_udp_sendto(
       dnsc->udp, dnsc->resolvers[0],
-      llarp::InitBuffer(dns_packet->request, dns_packet->length));
+      llarp_buffer_t(dns_packet->request, dns_packet->length));
   delete dns_packet;
   if(ret < 0)
   {

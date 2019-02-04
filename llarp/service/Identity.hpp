@@ -46,13 +46,13 @@ namespace llarp
                   const ServiceInfo& other, const KeyExchangeNonce& N) const;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
       SignIntroSet(IntroSet& i, llarp::Crypto* c, llarp_time_t now) const;
 
       bool
-      Sign(llarp::Crypto*, Signature& sig, llarp_buffer_t buf) const;
+      Sign(llarp::Crypto*, Signature& sig, const llarp_buffer_t& buf) const;
     };
   }  // namespace service
 }  // namespace llarp

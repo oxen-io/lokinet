@@ -24,7 +24,7 @@ namespace llarp
     std::function< void(llarp_time_t) > Tick;
 
     /// send a message buffer to the remote endpoint
-    std::function< bool(llarp_buffer_t) > SendMessageBuffer;
+    std::function< bool(const llarp_buffer_t &) > SendMessageBuffer;
 
     /// start the connection
     std::function< void(void) > Start;

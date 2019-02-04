@@ -60,7 +60,7 @@ namespace llarp
       }
 
       bool
-      Verify(llarp::Crypto* crypto, llarp_buffer_t payload,
+      Verify(llarp::Crypto* crypto, const llarp_buffer_t& payload,
              const Signature& sig) const;
 
       const PubKey&
@@ -148,7 +148,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
      private:
       Address m_CachedAddr;

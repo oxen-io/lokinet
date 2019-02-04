@@ -20,7 +20,7 @@ namespace llarp
 
     /// start processig message from a link session
     bool
-    ProcessFrom(ILinkSession* from, llarp_buffer_t buf);
+    ProcessFrom(ILinkSession* from, const llarp_buffer_t& buf);
 
     /// called when the message is fully read
     /// return true when the message was accepted otherwise returns false

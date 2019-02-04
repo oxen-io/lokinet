@@ -20,7 +20,7 @@ namespace llarp
 {
   namespace service
   {
-    // foward declare
+    // forward declare
     struct Context;
     // forward declare
     struct AsyncKeyExchange;
@@ -142,7 +142,7 @@ namespace llarp
       HandleDataMessage(const PathID_t&, ProtocolMessage* msg) override;
 
       virtual bool
-      HandleWriteIPPacket(llarp_buffer_t pkt,
+      HandleWriteIPPacket(const llarp_buffer_t& pkt,
                           std::function< huint32_t(void) > getFromIP) = 0;
 
       bool
@@ -173,11 +173,11 @@ namespace llarp
       HandlePathBuilt(path::Path* path) override;
 
       bool
-      SendToServiceOrQueue(const RouterID& addr, llarp_buffer_t payload,
+      SendToServiceOrQueue(const RouterID& addr, const llarp_buffer_t& payload,
                            ProtocolType t);
 
       bool
-      SendToSNodeOrQueue(const RouterID& addr, llarp_buffer_t payload);
+      SendToSNodeOrQueue(const RouterID& addr, const llarp_buffer_t& payload);
 
       void
       FlushSNodeTraffic();
@@ -187,16 +187,16 @@ namespace llarp
         std::vector< byte_t > payload;
         ProtocolType protocol;
 
-        PendingBuffer(llarp_buffer_t buf, ProtocolType t)
+        PendingBuffer(const llarp_buffer_t& buf, ProtocolType t)
             : payload(buf.sz), protocol(t)
         {
           memcpy(payload.data(), buf.base, buf.sz);
         }
 
-        llarp_buffer_t
+        ManagedBuffer
         Buffer()
         {
-          return llarp::Buffer(payload);
+          return ManagedBuffer{llarp_buffer_t(payload)};
         }
       };
 
@@ -214,7 +214,7 @@ namespace llarp
                     PathSet* send, Endpoint* ep);
 
         void
-        AsyncEncryptAndSendTo(llarp_buffer_t payload, ProtocolType t);
+        AsyncEncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
 
         /// send a fully encrypted hidden service frame
         /// via a path on our pathset with path id p
@@ -249,10 +249,10 @@ namespace llarp
 
        private:
         void
-        EncryptAndSendTo(llarp_buffer_t payload, ProtocolType t);
+        EncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
 
         virtual void
-        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t) = 0;
+        AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t) = 0;
       };
 
       static void
@@ -302,7 +302,7 @@ namespace llarp
         CheckPathIsDead(path::Path* p, llarp_time_t dlt);
 
         void
-        AsyncGenIntro(llarp_buffer_t payload, ProtocolType t) override;
+        AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t) override;
 
         /// issues a lookup to find the current intro set of the remote service
         void

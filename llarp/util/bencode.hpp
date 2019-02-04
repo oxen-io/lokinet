@@ -6,8 +6,9 @@
 #include <util/logger.hpp>
 #include <util/mem.hpp>
 
-#include <set>
 #include <fstream>
+#include <set>
+#include <vector>
 
 namespace llarp
 {
@@ -43,7 +44,7 @@ namespace llarp
   template < typename List_t >
   bool
   BEncodeMaybeReadDictList(const char* k, List_t& item, bool& read,
-                           llarp_buffer_t key, llarp_buffer_t* buf)
+                           const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, k))
     {
@@ -59,7 +60,7 @@ namespace llarp
   template < typename Item_t >
   bool
   BEncodeMaybeReadDictEntry(const char* k, Item_t& item, bool& read,
-                            llarp_buffer_t key, llarp_buffer_t* buf)
+                            const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, k))
     {
@@ -78,7 +79,7 @@ namespace llarp
   template < typename Int_t >
   bool
   BEncodeMaybeReadDictInt(const char* k, Int_t& i, bool& read,
-                          llarp_buffer_t key, llarp_buffer_t* buf)
+                          const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, k))
     {
@@ -96,7 +97,8 @@ namespace llarp
   template < typename Item_t >
   bool
   BEncodeMaybeReadVersion(const char* k, Item_t& item, uint64_t expect,
-                          bool& read, llarp_buffer_t key, llarp_buffer_t* buf)
+                          bool& read, const llarp_buffer_t& key,
+                          llarp_buffer_t* buf)
   {
     if(llarp_buffer_eq(key, k))
     {
@@ -233,7 +235,7 @@ namespace llarp
     }
 
     virtual bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* val) = 0;
+    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) = 0;
 
     virtual bool
     BEncode(llarp_buffer_t* buf) const = 0;
@@ -273,10 +275,12 @@ namespace llarp
     void
     Dump() const
     {
-      byte_t tmp[bufsz] = {0};
-      auto buf          = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, bufsz > tmp;
+      llarp_buffer_t buf(tmp);
       if(BEncode(&buf))
+      {
         llarp::DumpBuffer< decltype(buf), align >(buf);
+      }
     }
   };
 
@@ -285,24 +289,26 @@ namespace llarp
   bool
   BDecodeReadFile(const char* fpath, T& t)
   {
-    byte_t* ptr = nullptr;
-    size_t sz   = 0;
+    std::vector< byte_t > ptr;
     {
       std::ifstream f;
       f.open(fpath);
       if(!f.is_open())
+      {
         return false;
+      }
       f.seekg(0, std::ios::end);
-      sz = f.tellg();
+      const std::streampos sz = f.tellg();
       f.seekg(0, std::ios::beg);
-      ptr = new byte_t[sz];
-      f.read((char*)ptr, sz);
+      ptr.resize(sz);
+      f.read((char*)ptr.data(), sz);
     }
-    llarp_buffer_t buf = InitBuffer(ptr, sz);
-    auto result        = t.BDecode(&buf);
+    llarp_buffer_t buf(ptr);
+    auto result = t.BDecode(&buf);
     if(!result)
+    {
       DumpBuffer(buf);
-    delete[] ptr;
+    }
     return result;
   }
 
@@ -311,8 +317,8 @@ namespace llarp
   bool
   BEncodeWriteFile(const char* fpath, const T& t)
   {
-    uint8_t tmp[bufsz] = {0};
-    auto buf           = StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, bufsz > tmp;
+    llarp_buffer_t buf(tmp);
     if(!t.BEncode(&buf))
       return false;
     buf.sz = buf.cur - buf.base;

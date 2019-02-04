@@ -21,7 +21,7 @@ namespace llarp
     IsValid(shorthash_func hashfunc, llarp_time_t now) const;
 
     bool
-    DecodeKey(llarp_buffer_t k, llarp_buffer_t* val) override;
+    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* val) override;
 
     bool
     BEncode(llarp_buffer_t* buf) const override;

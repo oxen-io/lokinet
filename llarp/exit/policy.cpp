@@ -25,7 +25,7 @@ namespace llarp
     }
 
     bool
-    Policy::DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf)
+    Policy::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("a", proto, read, k, buf))

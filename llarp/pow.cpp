@@ -11,7 +11,7 @@ namespace llarp
   }
 
   bool
-  PoW::DecodeKey(__attribute__((unused)) llarp_buffer_t k,
+  PoW::DecodeKey(__attribute__((unused)) const llarp_buffer_t& k,
                  __attribute__((unused)) llarp_buffer_t* val)
   {
     // TODO: implement me
@@ -34,8 +34,8 @@ namespace llarp
       return false;
 
     ShortHash digest;
-    byte_t tmp[MaxSize];
-    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, MaxSize > tmp;
+    llarp_buffer_t buf(tmp);
     // encode
     if(!BEncode(&buf))
       return false;

@@ -19,7 +19,7 @@ namespace llarp
     std::vector< std::unique_ptr< llarp::dht::IMessage > > msgs;
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
+    DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
 
     bool
     BEncode(llarp_buffer_t* buf) const override;

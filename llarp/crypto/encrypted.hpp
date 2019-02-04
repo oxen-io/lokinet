@@ -4,7 +4,7 @@
 #include <constants/link_layer.hpp>
 #include <util/aligned.hpp>
 #include <util/bencode.h>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 #include <util/mem.hpp>
 
 #include <vector>
@@ -84,7 +84,7 @@ namespace llarp
     Encrypted&
     operator=(const Encrypted& other)
     {
-      return (*this) = other.Buffer();
+      return Encrypted::operator=(llarp_buffer_t(other));
     }
 
     Encrypted&
@@ -102,9 +102,7 @@ namespace llarp
     void
     Fill(byte_t fill)
     {
-      size_t idx = 0;
-      while(idx < _sz)
-        _buf[idx++] = fill;
+      std::fill(_buf.begin(), _buf.begin() + _sz, fill);
     }
 
     void
@@ -133,12 +131,6 @@ namespace llarp
     Buffer()
     {
       return &m_Buffer;
-    }
-
-    llarp_buffer_t
-    Buffer() const
-    {
-      return m_Buffer;
     }
 
     size_t

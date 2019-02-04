@@ -233,7 +233,7 @@ namespace llarp
 
   bool
   Router::HandleRecvLinkMessageBuffer(llarp::ILinkSession *session,
-                                      llarp_buffer_t buf)
+                                      const llarp_buffer_t &buf)
   {
     if(_stopping)
       return true;
@@ -298,8 +298,7 @@ namespace llarp
       outboundMessageQueue.insert(std::make_pair(remote, MessageQueue()));
     }
     // encode
-    llarp_buffer_t buf =
-        llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+    llarp_buffer_t buf(linkmsg_buffer);
     if(!msg->BEncode(&buf))
       return false;
     // queue buffer
@@ -561,7 +560,7 @@ namespace llarp
   }
 
   bool
-  Router::ParseRoutingMessageBuffer(llarp_buffer_t buf,
+  Router::ParseRoutingMessageBuffer(const llarp_buffer_t &buf,
                                     routing::IMessageHandler *h, PathID_t rxid)
   {
     return inbound_routing_msg_parser.ParseMessageBuffer(buf, h, rxid, this);
@@ -816,7 +815,7 @@ namespace llarp
   }
 
   bool
-  Router::Sign(llarp::Signature &sig, llarp_buffer_t buf) const
+  Router::Sign(llarp::Signature &sig, const llarp_buffer_t &buf) const
   {
     return crypto->sign(sig, identity, buf);
   }
@@ -825,8 +824,7 @@ namespace llarp
   Router::SendTo(llarp::RouterID remote, const llarp::ILinkMessage *msg,
                  llarp::ILinkLayer *selected)
   {
-    llarp_buffer_t buf =
-        llarp::StackBuffer< decltype(linkmsg_buffer) >(linkmsg_buffer);
+    llarp_buffer_t buf(linkmsg_buffer);
 
     if(!msg->BEncode(&buf))
     {
@@ -906,7 +904,7 @@ namespace llarp
     }
     while(itr->second.size())
     {
-      auto buf = llarp::ConstBuffer(itr->second.front());
+      llarp_buffer_t buf(itr->second.front());
       if(!chosen->SendTo(remote, buf))
         llarp::LogWarn("failed to send outbound message to ", remote, " via ",
                        chosen->Name());
@@ -1006,7 +1004,7 @@ namespace llarp
     }
     if(whitelistRouters)
     {
-      rpcCaller = std::make_unique<llarp::rpc::Caller>(this);
+      rpcCaller = std::make_unique< llarp::rpc::Caller >(this);
       rpcCaller->SetBasicAuth(lokidRPCUser, lokidRPCPassword);
       while(!rpcCaller->Start(lokidRPCAddr))
       {
@@ -1633,7 +1631,7 @@ namespace llarp
     else if(StrEq(section, "connect")
             || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
     {
-      //llarp::LogDebug("connect section has ", key, "=", val);
+      // llarp::LogDebug("connect section has ", key, "=", val);
       self->bootstrapRCList.emplace_back();
       auto &rc = self->bootstrapRCList.back();
       if(!rc.Read(val))

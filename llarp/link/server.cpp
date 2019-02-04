@@ -250,7 +250,7 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::SendTo(const RouterID& remote, llarp_buffer_t buf)
+  ILinkLayer::SendTo(const RouterID& remote, const llarp_buffer_t& buf)
   {
     ILinkSession* s = nullptr;
     {

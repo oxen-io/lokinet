@@ -89,8 +89,8 @@ namespace llarp
     }
 
     bool
-    CryptoLibSodium::xchacha20(llarp_buffer_t buff, const SharedSecret &k,
-                               const TunnelNonce &n)
+    CryptoLibSodium::xchacha20(const llarp_buffer_t &buff,
+                               const SharedSecret &k, const TunnelNonce &n)
     {
       return crypto_stream_xchacha20_xor(buff.base, buff.base, buff.sz,
                                          n.data(), k.data())
@@ -98,7 +98,8 @@ namespace llarp
     }
 
     bool
-    CryptoLibSodium::xchacha20_alt(llarp_buffer_t out, llarp_buffer_t in,
+    CryptoLibSodium::xchacha20_alt(const llarp_buffer_t &out,
+                                   const llarp_buffer_t &in,
                                    const SharedSecret &k, const byte_t *n)
     {
       if(in.sz > out.sz)
@@ -138,7 +139,7 @@ namespace llarp
     }
 
     bool
-    CryptoLibSodium::hash(uint8_t *result, llarp_buffer_t buff)
+    CryptoLibSodium::hash(uint8_t *result, const llarp_buffer_t &buff)
     {
       return crypto_generichash_blake2b(result, HASHSIZE, buff.base, buff.sz,
                                         nullptr, 0)
@@ -146,7 +147,7 @@ namespace llarp
     }
 
     bool
-    CryptoLibSodium::shorthash(ShortHash &result, llarp_buffer_t buff)
+    CryptoLibSodium::shorthash(ShortHash &result, const llarp_buffer_t &buff)
     {
       return crypto_generichash_blake2b(result.data(), ShortHash::SIZE,
                                         buff.base, buff.sz, nullptr, 0)
@@ -154,7 +155,7 @@ namespace llarp
     }
 
     bool
-    CryptoLibSodium::hmac(byte_t *result, llarp_buffer_t buff,
+    CryptoLibSodium::hmac(byte_t *result, const llarp_buffer_t &buff,
                           const SharedSecret &secret)
     {
       return crypto_generichash_blake2b(result, HMACSIZE, buff.base, buff.sz,
@@ -164,7 +165,7 @@ namespace llarp
 
     bool
     CryptoLibSodium::sign(Signature &result, const SecretKey &secret,
-                          llarp_buffer_t buff)
+                          const llarp_buffer_t &buff)
     {
       int rc = crypto_sign_detached(result.data(), nullptr, buff.base, buff.sz,
                                     secret.data());
@@ -172,7 +173,7 @@ namespace llarp
     }
 
     bool
-    CryptoLibSodium::verify(const PubKey &pub, llarp_buffer_t buff,
+    CryptoLibSodium::verify(const PubKey &pub, const llarp_buffer_t &buff,
                             const Signature &sig)
     {
       int rc = crypto_sign_verify_detached(sig.data(), buff.base, buff.sz,
@@ -190,7 +191,7 @@ namespace llarp
     }
 
     void
-    CryptoLibSodium::randomize(llarp_buffer_t buff)
+    CryptoLibSodium::randomize(const llarp_buffer_t &buff)
     {
       randombytes((unsigned char *)buff.base, buff.sz);
     }

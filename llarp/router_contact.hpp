@@ -127,7 +127,7 @@ namespace llarp
     }
 
     bool
-    DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf) override;
+    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf) override;
 
     RouterContact &
     operator=(const RouterContact &other);

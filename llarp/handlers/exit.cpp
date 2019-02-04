@@ -12,7 +12,7 @@ namespace llarp
   namespace handlers
   {
     static void
-    ExitHandlerRecvPkt(llarp_tun_io *tun, llarp_buffer_t buf)
+    ExitHandlerRecvPkt(llarp_tun_io *tun, const llarp_buffer_t &buf)
     {
       static_cast< ExitEndpoint * >(tun->user)->OnInetPacket(buf);
     }
@@ -186,7 +186,7 @@ namespace llarp
         }
         else
         {
-          if(!ep->QueueInboundTraffic(pkt.Buffer()))
+          if(!ep->QueueInboundTraffic(ManagedBuffer{pkt.Buffer()}))
           {
             LogWarn(Name(), " dropped inbound traffic for session ", pk,
                     " as we are overloaded (probably)");
@@ -338,7 +338,7 @@ namespace llarp
     }
 
     bool
-    ExitEndpoint::QueueOutboundTraffic(llarp_buffer_t buf)
+    ExitEndpoint::QueueOutboundTraffic(const llarp_buffer_t &buf)
     {
       return llarp_ev_tun_async_write(&m_Tun, buf);
     }
@@ -363,14 +363,14 @@ namespace llarp
     }
 
     void
-    ExitEndpoint::OnInetPacket(llarp_buffer_t buf)
+    ExitEndpoint::OnInetPacket(const llarp_buffer_t &buf)
     {
       m_InetToNetwork.EmplaceIf(
-          [buf](Pkt_t &pkt) -> bool { return pkt.Load(buf); });
+          [b = ManagedBuffer(buf)](Pkt_t &pkt) -> bool { return pkt.Load(b); });
     }
 
     bool
-    ExitEndpoint::QueueSNodePacket(llarp_buffer_t buf, huint32_t from)
+    ExitEndpoint::QueueSNodePacket(const llarp_buffer_t &buf, huint32_t from)
     {
       net::IPv4Packet pkt;
       if(!pkt.Load(buf))

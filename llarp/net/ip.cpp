@@ -16,7 +16,7 @@ namespace llarp
   namespace net
   {
     bool
-    IPv4Packet::Load(llarp_buffer_t pkt)
+    IPv4Packet::Load(const llarp_buffer_t &pkt)
     {
       if(pkt.sz > sizeof(buf))
         return false;
@@ -28,13 +28,13 @@ namespace llarp
     llarp_buffer_t
     IPv4Packet::ConstBuffer() const
     {
-      return llarp::InitBuffer(buf, sz);
+      return {buf, sz};
     }
 
     llarp_buffer_t
     IPv4Packet::Buffer()
     {
-      return llarp::InitBuffer(buf, sz);
+      return {buf, sz};
     }
 
 #if 0

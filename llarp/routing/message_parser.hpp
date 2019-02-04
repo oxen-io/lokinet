@@ -8,7 +8,7 @@
 #include <messages/path_transfer.hpp>
 #include <path/path_types.hpp>
 #include <util/bencode.hpp>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 
 namespace llarp
 {
@@ -23,7 +23,7 @@ namespace llarp
       InboundMessageParser();
 
       bool
-      ParseMessageBuffer(llarp_buffer_t buf, IMessageHandler* handler,
+      ParseMessageBuffer(const llarp_buffer_t& buf, IMessageHandler* handler,
                          const PathID_t& from, llarp::Router* r);
 
      private:

@@ -102,8 +102,8 @@ llarp_nodedb::InsertAsync(llarp::RouterContact rc)
 bool
 llarp_nodedb::Insert(const llarp::RouterContact &rc)
 {
-  byte_t tmp[MAX_RC_SIZE];
-  auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+  std::array< byte_t, MAX_RC_SIZE > tmp;
+  llarp_buffer_t buf(tmp);
   {
     llarp::util::Lock lock(access);
     entries.emplace(rc.pubkey.as_array(), rc);

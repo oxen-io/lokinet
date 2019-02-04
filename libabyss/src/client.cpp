@@ -60,11 +60,13 @@ namespace abyss
       }
 
       static void
-      OnRead(llarp_tcp_conn* conn, llarp_buffer_t buf)
+      OnRead(llarp_tcp_conn* conn, const llarp_buffer_t& buf)
       {
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
         if(!self->ProcessRead((const char*)buf.base, buf.sz))
+        {
           self->CloseError();
+        }
       }
 
       static void
@@ -220,7 +222,7 @@ namespace abyss
                           body.size());
         if(sz <= 0)
           return;
-        if(!llarp_tcp_conn_async_write(m_Conn, llarp::InitBuffer(buf, sz)))
+        if(!llarp_tcp_conn_async_write(m_Conn, llarp_buffer_t(buf, sz)))
         {
           llarp::LogError("failed to write first part of request");
           CloseError();
@@ -237,15 +239,14 @@ namespace abyss
         {
           // header name
           if(!llarp_tcp_conn_async_write(
-                 m_Conn,
-                 llarp::InitBuffer(item.first.c_str(), item.first.size())))
+                 m_Conn, llarp_buffer_t(item.first.c_str(), item.first.size())))
           {
             CloseError();
             return;
           }
           // header delimiter
-          if(!llarp_tcp_conn_async_write(
-                 m_Conn, llarp::InitBuffer(buf, 2 * sizeof(char))))
+          if(!llarp_tcp_conn_async_write(m_Conn,
+                                         llarp_buffer_t(buf, 2 * sizeof(char))))
           {
             CloseError();
             return;
@@ -253,14 +254,14 @@ namespace abyss
           // header value
           if(!llarp_tcp_conn_async_write(
                  m_Conn,
-                 llarp::InitBuffer(item.second.c_str(), item.second.size())))
+                 llarp_buffer_t(item.second.c_str(), item.second.size())))
           {
             CloseError();
             return;
           }
           // CRLF
           if(!llarp_tcp_conn_async_write(
-                 m_Conn, llarp::InitBuffer(buf + 2, 2 * sizeof(char))))
+                 m_Conn, llarp_buffer_t(buf + 2, 2 * sizeof(char))))
           {
             CloseError();
             return;
@@ -268,14 +269,14 @@ namespace abyss
         }
         // CRLF
         if(!llarp_tcp_conn_async_write(
-               m_Conn, llarp::InitBuffer(buf + 2, 2 * sizeof(char))))
+               m_Conn, llarp_buffer_t(buf + 2, 2 * sizeof(char))))
         {
           CloseError();
           return;
         }
         // request body
         if(!llarp_tcp_conn_async_write(
-               m_Conn, llarp::InitBuffer(body.c_str(), body.size())))
+               m_Conn, llarp_buffer_t(body.c_str(), body.size())))
         {
           CloseError();
           return;

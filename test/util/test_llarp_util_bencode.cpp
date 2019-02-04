@@ -45,7 +45,7 @@ TEST_P(ReadInt, readInt)
 {
   auto d = GetParam();
 
-  llarp_buffer_t buffer = llarp::Buffer(d.buffer);
+  llarp_buffer_t buffer(d.buffer);
 
   uint64_t result = 0;
   bool rc         = bencode_read_integer(&buffer, &result);
@@ -90,7 +90,7 @@ TEST_P(ReadStr, readStr)
 {
   auto d = GetParam();
 
-  llarp_buffer_t buffer = llarp::Buffer(d.buffer);
+  llarp_buffer_t buffer(d.buffer);
 
   llarp_buffer_t result;
   bool rc = bencode_read_string(&buffer, &result);
@@ -140,7 +140,7 @@ TEST_P(WriteByteStr, writeByte)
   auto d = GetParam();
 
   std::vector< byte_t > backingBuffer(d.bufferSize, 0);
-  llarp_buffer_t buffer = llarp::Buffer(backingBuffer);
+  llarp_buffer_t buffer(backingBuffer);
 
   bool rc = bencode_write_bytestring(&buffer, d.input.data(), d.input.size());
 
@@ -175,7 +175,7 @@ TEST_P(WriteInt, writeInt)
   auto d = GetParam();
 
   std::vector< byte_t > backingBuffer(d.bufferSize, 0);
-  llarp_buffer_t buffer = llarp::Buffer(backingBuffer);
+  llarp_buffer_t buffer(backingBuffer);
 
   bool rc = bencode_write_uint64(&buffer, d.input);
 
@@ -205,16 +205,21 @@ TEST_P(WriteIntValues, anyvalue)
   uint64_t val = GetParam();
 
   std::vector< byte_t > backingBuffer(100, 0);
-  llarp_buffer_t buffer = llarp::Buffer(backingBuffer);
 
-  bool rc = bencode_write_uint64(&buffer, val);
-  ASSERT_TRUE(rc);
+  {
+    llarp_buffer_t buffer(backingBuffer);
 
-  uint64_t result = 0;
-  buffer          = llarp::Buffer(backingBuffer);
-  rc              = bencode_read_integer(&buffer, &result);
-  ASSERT_TRUE(rc);
-  ASSERT_EQ(result, val);
+    bool rc = bencode_write_uint64(&buffer, val);
+    ASSERT_TRUE(rc);
+  }
+
+  {
+    uint64_t result = 0;
+    llarp_buffer_t buffer(backingBuffer);
+    bool rc = bencode_read_integer(&buffer, &result);
+    ASSERT_TRUE(rc);
+    ASSERT_EQ(result, val);
+  }
 }
 
 INSTANTIATE_TEST_CASE_P(
@@ -224,17 +229,20 @@ INSTANTIATE_TEST_CASE_P(
                       std::numeric_limits< uint64_t >::max() / 2,
                       std::numeric_limits< uint64_t >::max() / 3));
 
-TEST(TestBencode, version)
+TEST(TestBencode, good_version)
 {
   std::vector< byte_t > backingBuffer(100, 0);
-  llarp_buffer_t buffer = llarp::Buffer(backingBuffer);
+  llarp_buffer_t buffer(backingBuffer);
 
   ASSERT_TRUE(bencode_write_version_entry(&buffer));
 
   ASSERT_EQ(std::string(buffer.base, buffer.cur), "1:vi0e");
+}
 
+TEST(TestBencode, bad_version)
+{
   std::vector< byte_t > otherBuffer(1, 0);
-  buffer = llarp::Buffer(otherBuffer);
+  llarp_buffer_t buffer(otherBuffer);
 
   ASSERT_FALSE(bencode_write_version_entry(&buffer));
 }
@@ -263,7 +271,7 @@ TEST_P(ListTest, list)
   auto d = GetParam();
 
   std::vector< byte_t > backingBuffer(d.bufferSize, 0);
-  llarp_buffer_t buffer = llarp::Buffer(backingBuffer);
+  llarp_buffer_t buffer(backingBuffer);
 
   ASSERT_TRUE(bencode_start_list(&buffer));
 
@@ -315,7 +323,7 @@ TEST_P(DictTest, dict)
   auto d = GetParam();
 
   std::vector< byte_t > backingBuffer(d.bufferSize, 0);
-  llarp_buffer_t buffer = llarp::Buffer(backingBuffer);
+  llarp_buffer_t buffer(backingBuffer);
 
   ASSERT_TRUE(bencode_start_dict(&buffer));
 

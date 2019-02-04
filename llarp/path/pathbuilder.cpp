@@ -57,7 +57,7 @@ namespace llarp
         return;
       }
       // generate nonceXOR valueself->hop->pathKey
-      ctx->crypto->shorthash(hop.nonceXOR, hop.shared.as_buffer());
+      ctx->crypto->shorthash(hop.nonceXOR, llarp_buffer_t(hop.shared));
       ++ctx->idx;
 
       bool isFarthestHop = ctx->idx == ctx->path->hops.size();

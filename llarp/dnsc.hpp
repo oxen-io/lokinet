@@ -54,7 +54,7 @@ struct dnsc_answer_request
 /// event handler for processing DNS responses
 void
 llarp_handle_dnsc_recvfrom(struct llarp_udp_io *const udp,
-                           const struct sockaddr *addr, llarp_buffer_t buf);
+                           const struct sockaddr *addr, ManagedBuffer buf);
 
 /// generic handler for processing DNS responses
 /// this doesn't look like it exists
@@ -71,7 +71,7 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *addr, const void *buf,
 // removed saddr, if needed get through request
 void
 generic_handle_dnsc_recvfrom(dnsc_answer_request *request,
-                             llarp_buffer_t buffer, dns_msg_header *hdr);
+                             const llarp_buffer_t &buffer, dns_msg_header *hdr);
 
 /// DNS client context (one needed per upstream DNS server)
 struct dnsc_context

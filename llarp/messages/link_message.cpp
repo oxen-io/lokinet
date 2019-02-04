@@ -90,7 +90,8 @@ namespace llarp
   }
 
   bool
-  InboundMessageParser::ProcessFrom(ILinkSession* src, llarp_buffer_t buf)
+  InboundMessageParser::ProcessFrom(ILinkSession* src,
+                                    const llarp_buffer_t& buf)
   {
     if(!src)
     {
@@ -101,7 +102,8 @@ namespace llarp
     reader.on_key = &OnKey;
     from          = src;
     firstkey      = true;
-    return bencode_read_dict(&buf, &reader);
+    ManagedBuffer copy(buf);
+    return bencode_read_dict(&copy.underlying, &reader);
   }
 
   void
