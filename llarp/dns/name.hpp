@@ -2,7 +2,7 @@
 #define LLARP_DNS_NAME_HPP
 
 #include <net/net_int.hpp>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 
 #include <string>
 

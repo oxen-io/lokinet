@@ -249,7 +249,7 @@ namespace llarp
         llarp::service::Address addr;
         // forward dns
         if(msg.questions[0].qname == "localhost.loki"
-                || msg.questions[0].qname == "localhost.loki.")
+           || msg.questions[0].qname == "localhost.loki.")
         {
           size_t counter = 0;
           context->ForEachService(
@@ -344,7 +344,7 @@ namespace llarp
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
           return true;
-        // hook localhost.loki 
+        // hook localhost.loki
         if(msg.questions[0].qname == "localhost.loki"
            || msg.questions[0].qname == "localhost.loki.")
           return true;
@@ -532,7 +532,7 @@ namespace llarp
     TunEndpoint::FlushSend()
     {
       m_UserToNetworkPktQueue.Process([&](net::IPv4Packet &pkt) {
-        std::function< bool(llarp_buffer_t) > sendFunc;
+        std::function< bool(const llarp_buffer_t &) > sendFunc;
         auto itr = m_IPToAddr.find(pkt.dst());
         if(itr == m_IPToAddr.end())
         {
@@ -570,13 +570,14 @@ namespace llarp
     }
 
     bool
-    TunEndpoint::HandleWriteIPPacket(llarp_buffer_t buf,
+    TunEndpoint::HandleWriteIPPacket(const llarp_buffer_t &b,
                                      std::function< huint32_t(void) > getFromIP)
     {
       // llarp::LogInfo("got packet from ", msg->sender.Addr());
       auto themIP = getFromIP();
       // llarp::LogInfo("themIP ", themIP);
       auto usIP = m_OurIP;
+      ManagedBuffer buf(b);
       return m_NetworkToUserPktQueue.EmplaceIf(
           [buf, themIP, usIP](net::IPv4Packet &pkt) -> bool {
             // load
@@ -719,10 +720,11 @@ namespace llarp
     }
 
     void
-    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, llarp_buffer_t buf)
+    TunEndpoint::tunifRecvPkt(llarp_tun_io *tun, const llarp_buffer_t &b)
     {
       // called for every packet read from user in isolated network thread
       TunEndpoint *self = static_cast< TunEndpoint * >(tun->user);
+      ManagedBuffer buf(b);
       if(!self->m_UserToNetworkPktQueue.EmplaceIf(
              [buf](net::IPv4Packet &pkt) -> bool {
                return pkt.Load(buf) && pkt.Header()->version == 4;
@@ -730,7 +732,7 @@ namespace llarp
       {
 #if defined(DEBUG) || !defined(RELEASE_MOTTO)
         llarp::LogInfo("invalid pkt");
-        llarp::DumpBuffer(buf);
+        llarp::DumpBuffer(buf.underlying);
 #endif
       }
     }

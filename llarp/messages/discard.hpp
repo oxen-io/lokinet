@@ -32,7 +32,7 @@ namespace llarp
     }
 
     bool
-    DecodeKey(__attribute__((unused)) llarp_buffer_t key,
+    DecodeKey(__attribute__((unused)) const llarp_buffer_t& key,
               __attribute__((unused)) llarp_buffer_t* buf) override
     {
       return false;
@@ -73,7 +73,7 @@ namespace llarp
       }
 
       bool
-      DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf) override
+      DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override
       {
         bool read = false;
         if(!BEncodeMaybeReadDictEntry("P", P, read, k, buf))

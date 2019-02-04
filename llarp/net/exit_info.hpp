@@ -50,7 +50,7 @@ namespace llarp
     BEncode(llarp_buffer_t *buf) const override;
 
     bool
-    DecodeKey(llarp_buffer_t k, llarp_buffer_t *buf) override;
+    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t *buf) override;
 
     ExitInfo &
     operator=(const ExitInfo &other);

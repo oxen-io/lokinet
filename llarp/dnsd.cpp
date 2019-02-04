@@ -1,4 +1,6 @@
 #include <dnsd.hpp>
+
+#include <util/buffer.hpp>
 #include <net/net.hpp>
 
 extern dns_tracker dns_udp_tracker;
@@ -12,17 +14,18 @@ constexpr size_t BUFFER_SIZE = 1500;
 
 ssize_t
 raw_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
-                         llarp_buffer_t buf)
+                         ManagedBuffer buf)
 {
   int *fd = (int *)sock;
   // how do we get to these??
   socklen_t addrLen = sizeof(struct sockaddr_in);
-  return sendto(*fd, (const char *)buf.base, buf.sz, 0, from, addrLen);
+  return sendto(*fd, (const char *)buf.underlying.base, buf.underlying.sz, 0,
+                from, addrLen);
 }
 
 ssize_t
 llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
-                           llarp_buffer_t buf)
+                           ManagedBuffer buf)
 {
   struct llarp_udp_io *udp = (struct llarp_udp_io *)sock;
   if(!udp)
@@ -35,7 +38,7 @@ llarp_sendto_dns_hook_func(void *sock, const struct sockaddr *from,
   // this call isn't calling the function...
   // llarp::ev_io * evio = static_cast< llarp::ev_io * >(udp->impl);
   // printf("ev_io[%x]\n", evio);
-  return llarp_ev_udp_sendto(udp, from, buf);
+  return llarp_ev_udp_sendto(udp, from, buf.underlying);
 }
 
 void
@@ -72,7 +75,7 @@ write404_dnss_response(const dnsd_question_request *request)
   llarp::LogDebug("Sending 404, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from,
-                       llarp::InitBuffer(buf, out_bytes));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -138,7 +141,7 @@ writecname_dnss_response(std::string cname,
   llarp::LogDebug("Sending cname, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from,
-                       llarp::InitBuffer(buf, out_bytes));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -176,7 +179,7 @@ writesend_dnss_revresponse(std::string reverse,
   llarp::LogDebug("Sending reverse: ", reverse, " ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from,
-                       llarp::InitBuffer(buf, out_bytes));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 // FIXME: we need an DNS answer not a sockaddr
@@ -242,7 +245,7 @@ writesend_dnss_response(llarp::huint32_t *hostRes,
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
   request->sendto_hook(request->user, request->from,
-                       llarp::InitBuffer(buf, out_bytes));
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -282,7 +285,8 @@ writesend_dnss_mxresponse(uint16_t priority, std::string mx,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, from, llarp::InitBuffer(buf, out_bytes));
+  request->sendto_hook(request->user, from,
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -322,7 +326,8 @@ writesend_dnss_txtresponse(std::string txt, const struct sockaddr *from,
   uint32_t out_bytes = write_buffer - bufferBegin;
   llarp::LogDebug("Sending found, ", out_bytes, " bytes");
   // struct llarp_udp_io *udp = (struct llarp_udp_io *)request->user;
-  request->sendto_hook(request->user, from, llarp::InitBuffer(buf, out_bytes));
+  request->sendto_hook(request->user, from,
+                       ManagedBuffer(llarp_buffer_t(buf, out_bytes)));
 }
 
 void
@@ -342,7 +347,7 @@ handle_dnsc_result(dnsc_answer_request *client_request)
   // bytes");
 
   server_request->sendto_hook(server_request->user, server_request->from,
-                              llarp::Buffer(test));
+                              ManagedBuffer(llarp_buffer_t(test)));
 
   llarp_host_resolved(client_request);
   return;
@@ -509,7 +514,7 @@ handle_recvfrom(llarp_buffer_t *buffer, dnsd_question_request *request)
 
 void
 llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
-                           const struct sockaddr *saddr, llarp_buffer_t buf)
+                           const struct sockaddr *saddr, ManagedBuffer buf)
 {
   if(!dns_udp_tracker.dnsd)
   {
@@ -526,12 +531,12 @@ llarp_handle_dnsd_recvfrom(struct llarp_udp_io *udp,
   llarp_dns_request->sendto_hook =
       &llarp_sendto_dns_hook_func;  // set sock hook
   // llarp::LogInfo("Server request's UDP ", llarp_dns_request->user);
-  handle_recvfrom(&buf, llarp_dns_request);
+  handle_recvfrom(&buf.underlying, llarp_dns_request);
 }
 
 void
 raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
-                    llarp_buffer_t buffer)
+                    ManagedBuffer buffer)
 {
   if(!dns_udp_tracker.dnsd)
   {
@@ -546,7 +551,7 @@ raw_handle_recvfrom(int *sockfd, const struct sockaddr *saddr,
   llarp_dns_request->llarp       = false;
   llarp_dns_request->sendto_hook = &raw_sendto_dns_hook_func;
 
-  handle_recvfrom(&buffer, llarp_dns_request);
+  handle_recvfrom(&buffer.underlying, llarp_dns_request);
 }
 
 bool

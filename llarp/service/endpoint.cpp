@@ -227,8 +227,8 @@ namespace llarp
         {
           if(HasPendingPathToService(introset.A.Addr()))
             continue;
-          byte_t tmp[1024] = {0};
-          auto buf         = StackBuffer< decltype(tmp) >(tmp);
+          std::array< byte_t, 1024 > tmp = {0};
+          llarp_buffer_t buf(tmp);
           if(!SendToServiceOrQueue(introset.A.Addr().data().data(), buf,
                                    eProtocolText))
           {
@@ -879,7 +879,7 @@ namespace llarp
     {
       if(msg->proto == eProtocolTraffic)
       {
-        auto buf = llarp::Buffer(msg->payload);
+        llarp_buffer_t buf(msg->payload);
         return HandleWriteIPPacket(buf,
                                    std::bind(&Endpoint::ObtainIPForAddr, this,
                                              msg->sender.Addr(), false));
@@ -1157,7 +1157,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToSNodeOrQueue(const RouterID& addr, llarp_buffer_t buf)
+    Endpoint::SendToSNodeOrQueue(const RouterID& addr,
+                                 const llarp_buffer_t& buf)
     {
       llarp::net::IPv4Packet pkt;
       if(!pkt.Load(buf))
@@ -1180,8 +1181,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::SendToServiceOrQueue(const RouterID& addr, llarp_buffer_t data,
-                                   ProtocolType t)
+    Endpoint::SendToServiceOrQueue(const RouterID& addr,
+                                   const llarp_buffer_t& data, ProtocolType t)
     {
       service::Address remote(addr.as_array());
 
@@ -1416,7 +1417,7 @@ namespace llarp
     }
 
     void
-    Endpoint::SendContext::AsyncEncryptAndSendTo(llarp_buffer_t data,
+    Endpoint::SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data,
                                                  ProtocolType protocol)
     {
       auto now = m_Endpoint->Now();
@@ -1502,13 +1503,12 @@ namespace llarp
         {
           llarp::LogError("failed to derive x25519 shared key component");
         }
-        std::array< byte_t, 64 > tmp;
+        std::array< byte_t, 64 > tmp = {0};
         // K
         std::copy(K.begin(), K.end(), tmp.begin());
         // H (K + PKE(A, B, N))
         std::copy(sharedSecret.begin(), sharedSecret.end(), tmp.begin() + 32);
-        self->crypto->shorthash(self->sharedKey,
-                                llarp::StackBuffer< decltype(tmp) >(tmp));
+        self->crypto->shorthash(self->sharedKey, llarp_buffer_t(tmp));
         // set tag
         self->msg.tag = self->tag;
         // set sender
@@ -1536,7 +1536,7 @@ namespace llarp
     }
 
     void
-    Endpoint::OutboundContext::AsyncGenIntro(llarp_buffer_t payload,
+    Endpoint::OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload,
                                              __attribute__((unused))
                                              ProtocolType t)
     {
@@ -1728,7 +1728,7 @@ namespace llarp
 
     /// send on an established convo tag
     void
-    Endpoint::SendContext::EncryptAndSendTo(llarp_buffer_t payload,
+    Endpoint::SendContext::EncryptAndSendTo(const llarp_buffer_t& payload,
                                             ProtocolType t)
     {
       auto crypto = m_Endpoint->Router()->crypto.get();

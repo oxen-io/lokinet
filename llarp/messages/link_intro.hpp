@@ -28,7 +28,7 @@ namespace llarp
     operator=(const LinkIntroMessage& msg);
 
     bool
-    DecodeKey(llarp_buffer_t key, llarp_buffer_t* buf) override;
+    DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
     bool
     BEncode(llarp_buffer_t* buf) const override;
@@ -37,7 +37,7 @@ namespace llarp
     HandleMessage(llarp::Router* router) const override;
 
     bool
-    Sign(std::function< bool(Signature&, llarp_buffer_t) > signer);
+    Sign(std::function< bool(Signature&, const llarp_buffer_t&) > signer);
 
     bool
     Verify(llarp::Crypto* c) const;

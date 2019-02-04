@@ -30,7 +30,7 @@ namespace llarp
     }
 
     bool
-    RejectExitMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+    RejectExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("B", B, read, k, buf))
@@ -66,8 +66,8 @@ namespace llarp
     bool
     RejectExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
-      byte_t tmp[512] = {0};
-      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 512 > tmp;
+      llarp_buffer_t buf(tmp);
       Z.Zero();
       Y.Randomize();
       if(!BEncode(&buf))
@@ -79,8 +79,8 @@ namespace llarp
     bool
     RejectExitMessage::Verify(llarp::Crypto* c, const llarp::PubKey& pk) const
     {
-      byte_t tmp[512] = {0};
-      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 512 > tmp;
+      llarp_buffer_t buf(tmp);
       RejectExitMessage copy;
       copy = *this;
       copy.Z.Zero();

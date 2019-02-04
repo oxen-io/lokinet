@@ -11,15 +11,13 @@
 
 struct DNSLibTest : public ::testing::Test
 {
-  byte_t mem[1500];
-  llarp_buffer_t buf = llarp::StackBuffer< decltype(mem) >(mem);
+  std::array< byte_t, 1500 > mem;
+  llarp_buffer_t buf;
 
-  void
-  SetUp()
+  DNSLibTest() : buf(mem)
   {
-    buf.sz = sizeof(mem);
     Rewind();
-    memset(mem, '$', sizeof(mem));
+    std::fill(mem.begin(), mem.end(), '$');
   }
 
   void

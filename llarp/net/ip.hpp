@@ -3,7 +3,7 @@
 
 #include <ev/ev.h>
 #include <net/net.hpp>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 #include <util/time.hpp>
 
 #ifndef _WIN32
@@ -96,7 +96,7 @@ namespace llarp
       ConstBuffer() const;
 
       bool
-      Load(llarp_buffer_t buf);
+      Load(const llarp_buffer_t& buf);
 
       struct GetTime
       {

@@ -41,7 +41,7 @@ namespace llarp
       return true;
     }
     std::array< byte_t, 128 > tmp;
-    llarp_buffer_t buf = llarp::Buffer(tmp);
+    llarp_buffer_t buf(tmp);
     if(sz > sizeof(tmp))
     {
       return false;
@@ -53,8 +53,8 @@ namespace llarp
   bool
   SecretKey::SaveToFile(const char* fname) const
   {
-    byte_t tmp[128];
-    auto buf = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, 128 > tmp;
+    llarp_buffer_t buf(tmp);
     if(!BEncode(&buf))
     {
       return false;

@@ -42,7 +42,7 @@ namespace llarp
   }
 
   bool
-  AddressInfo::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
+  AddressInfo::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
   {
     uint64_t i;
     char tmp[128] = {0};

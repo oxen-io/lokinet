@@ -2,7 +2,7 @@
 #define LLARP_BENCODE_H
 
 #include <constants/proto.hpp>
-#include <util/buffer.h>
+#include <util/buffer.hpp>
 #include <util/common.hpp>
 
 #include <functional>

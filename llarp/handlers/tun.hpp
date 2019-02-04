@@ -64,7 +64,7 @@ namespace llarp
       /// overrides Endpoint
       /// handle inbound traffic
       bool
-      HandleWriteIPPacket(llarp_buffer_t buf,
+      HandleWriteIPPacket(const llarp_buffer_t& buf,
                           std::function< huint32_t(void) > getFromIP) override;
 
       /// queue outbound packet to the world
@@ -99,7 +99,7 @@ namespace llarp
 
       /// called every time we wish to read a packet from the tun interface
       static void
-      tunifRecvPkt(llarp_tun_io* t, llarp_buffer_t buf);
+      tunifRecvPkt(llarp_tun_io* t, const llarp_buffer_t& buf);
 
       /// called in the endpoint logic thread
       static void
@@ -176,11 +176,13 @@ namespace llarp
 
      private:
       bool
-      QueueInboundPacketForExit(llarp_buffer_t buf)
+      QueueInboundPacketForExit(const llarp_buffer_t& buf)
       {
+        ManagedBuffer copy{buf};
+
         return m_NetworkToUserPktQueue.EmplaceIf(
             [&](llarp::net::IPv4Packet& pkt) -> bool {
-              if(!pkt.Load(buf))
+              if(!pkt.Load(copy.underlying))
                 return false;
               pkt.UpdateIPv4PacketOnDst(pkt.src(), m_OurIP);
               return true;

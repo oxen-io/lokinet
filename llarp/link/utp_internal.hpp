@@ -61,8 +61,15 @@ namespace llarp
       /// for accessing message buffer
       llarp_buffer_t buffer;
 
-      InboundMessage() : lastActive(0), _msg(), buffer(_msg.as_buffer())
+      InboundMessage() : lastActive(0), _msg(), buffer(_msg)
       {
+      }
+
+      InboundMessage(const InboundMessage& other)
+          : lastActive(other.lastActive), _msg(other._msg), buffer(_msg)
+      {
+        buffer.cur = buffer.base + (other.buffer.cur - other.buffer.base);
+        buffer.sz  = other.buffer.sz;
       }
 
       bool
@@ -197,7 +204,7 @@ namespace llarp
 
       /// queue a fully formed message
       bool
-      QueueWriteBuffers(llarp_buffer_t buf);
+      QueueWriteBuffers(const llarp_buffer_t& buf);
 
       /// prune expired inbound messages
       void

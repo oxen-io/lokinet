@@ -80,7 +80,7 @@ namespace llarp
     }
 
     bool
-    GotIntroMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *buf)
+    GotIntroMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
     {
       if(llarp_buffer_eq(key, "I"))
       {

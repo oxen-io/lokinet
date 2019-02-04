@@ -35,11 +35,13 @@ namespace llarp
     AlignedBuffer< 128 > random;
     random.Randomize();
     Signature sig;
-    ASSERT_TRUE(crypto.sign(sig, secret, random.as_buffer()));
-    ASSERT_TRUE(crypto.verify(secret.toPublic(), random.as_buffer(), sig));
+
+    llarp_buffer_t buf(random);
+    ASSERT_TRUE(crypto.sign(sig, secret, buf));
+    ASSERT_TRUE(crypto.verify(secret.toPublic(), buf, sig));
     // mangle sig
     sig.Randomize();
-    ASSERT_FALSE(crypto.verify(secret.toPublic(), random.as_buffer(), sig));
+    ASSERT_FALSE(crypto.verify(secret.toPublic(), buf, sig));
   }
 
   struct PQCryptoTest : public ::testing::Test

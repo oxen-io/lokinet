@@ -26,7 +26,7 @@ namespace llarp
     }
 
     bool
-    GrantExitMessage::DecodeKey(llarp_buffer_t k, llarp_buffer_t* buf)
+    GrantExitMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("S", S, read, k, buf))
@@ -45,8 +45,8 @@ namespace llarp
     bool
     GrantExitMessage::Verify(llarp::Crypto* c, const llarp::PubKey& pk) const
     {
-      byte_t tmp[512] = {0};
-      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 512 > tmp;
+      llarp_buffer_t buf(tmp);
       GrantExitMessage copy;
       copy = *this;
       copy.Z.Zero();
@@ -59,8 +59,8 @@ namespace llarp
     bool
     GrantExitMessage::Sign(llarp::Crypto* c, const llarp::SecretKey& sk)
     {
-      byte_t tmp[512] = {0};
-      auto buf        = llarp::StackBuffer< decltype(tmp) >(tmp);
+      std::array< byte_t, 512 > tmp;
+      llarp_buffer_t buf(tmp);
       Z.Zero();
       Y.Randomize();
       if(!BEncode(&buf))

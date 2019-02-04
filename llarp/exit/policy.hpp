@@ -16,7 +16,7 @@ namespace llarp
       uint64_t drop;
 
       bool
-      DecodeKey(llarp_buffer_t k, llarp_buffer_t* val) override;
+      DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val) override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

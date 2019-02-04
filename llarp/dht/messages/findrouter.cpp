@@ -94,7 +94,7 @@ namespace llarp
     }
 
     bool
-    FindRouterMessage::DecodeKey(llarp_buffer_t key, llarp_buffer_t *val)
+    FindRouterMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *val)
     {
       llarp_buffer_t strbuf;
 
