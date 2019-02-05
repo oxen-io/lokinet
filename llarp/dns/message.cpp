@@ -183,7 +183,7 @@ namespace llarp
         rec.rr_class                  = qClassIN;
         rec.ttl                       = ttl;
         std::array< byte_t, 512 > tmp = {0};
-        ;
+
         llarp_buffer_t buf(tmp);
         if(EncodeName(&buf, name))
         {
