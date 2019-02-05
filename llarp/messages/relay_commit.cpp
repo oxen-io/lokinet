@@ -279,11 +279,12 @@ namespace llarp
         return;
       }
       // generate hash of hop key for nonce mutation
-      crypto->shorthash(self->hop->nonceXOR, llarp_buffer_t(self->hop->pathKey));
+      crypto->shorthash(self->hop->nonceXOR,
+                        llarp_buffer_t(self->hop->pathKey));
       using namespace std::placeholders;
       if(self->record.work
          && self->record.work->IsValid(
-             std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+                std::bind(&Crypto::shorthash, crypto, _1, _2), now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",

@@ -191,7 +191,7 @@ namespace llarp
   };
 
   using RouterLookupHandler =
-        std::function< void(const std::vector< RouterContact >&) >;
+      std::function< void(const std::vector< RouterContact > &) >;
 }  // namespace llarp
 
 #endif

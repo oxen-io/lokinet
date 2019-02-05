@@ -9,8 +9,9 @@ namespace llarp
   namespace dht
   {
     ServiceAddressLookup::ServiceAddressLookup(
-        const TXOwner &asker, const service::Address &addr, AbstractContext *ctx,
-        uint64_t r, service::IntroSetLookupHandler handler)
+        const TXOwner &asker, const service::Address &addr,
+        AbstractContext *ctx, uint64_t r,
+        service::IntroSetLookupHandler handler)
         : TX< service::Address, service::IntroSet >(asker, addr, ctx)
         , handleResult(handler)
         , R(r)

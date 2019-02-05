@@ -11,7 +11,7 @@ namespace llarp
     }
 
     bool
-    DHTMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* val)
+    DHTMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       llarp::dht::Key_t from;
       from.Zero();
