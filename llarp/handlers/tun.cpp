@@ -199,7 +199,7 @@ namespace llarp
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
-      //llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname);
+      // llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname);
       if(msg.questions.size() != 1)
       {
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
@@ -244,6 +244,7 @@ namespace llarp
         }
         else
           msg.AddNXReply();
+        reply(msg);
       }
       else if(msg.questions[0].qtype == dns::qTypeA)
       {
@@ -252,14 +253,11 @@ namespace llarp
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
         {
-          RouterID random;
-          if(Router()->GetRandomGoodRouter(random))
-            msg.AddCNAMEReply(random.ToString(), 1);
-          else
-            msg.AddNXReply();
+          // don't reply to A queries, applications MUST use CNAME queries
+          msg.AddNXReply();
         }
         else if(msg.questions[0].qname == "localhost.loki"
-           || msg.questions[0].qname == "localhost.loki.")
+                || msg.questions[0].qname == "localhost.loki.")
         {
           size_t counter = 0;
           context->ForEachService(
@@ -297,7 +295,7 @@ namespace llarp
           // TODO: add hook to EnsurePathToSNode
           EnsurePathToSNode(addr.as_array());
           huint32_t ip = ObtainIPForAddr(addr, true);
-          if (ip.h)
+          if(ip.h)
             msg.AddINReply(ip);
           else
           {
@@ -357,7 +355,7 @@ namespace llarp
         // always hook mx records
         if(msg.questions[0].qtype == llarp::dns::qTypeMX)
           return true;
-        // hook random.snode for CNAME
+        // hook random.snode
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
           return true;
