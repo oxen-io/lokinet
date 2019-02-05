@@ -199,7 +199,7 @@ namespace llarp
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
-      //llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname);
+      // llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname);
       if(msg.questions.size() != 1)
       {
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
@@ -244,6 +244,7 @@ namespace llarp
         }
         else
           msg.AddNXReply();
+        reply(msg);
       }
       else if(msg.questions[0].qtype == dns::qTypeA)
       {
@@ -259,7 +260,7 @@ namespace llarp
             msg.AddNXReply();
         }
         else if(msg.questions[0].qname == "localhost.loki"
-           || msg.questions[0].qname == "localhost.loki.")
+                || msg.questions[0].qname == "localhost.loki.")
         {
           size_t counter = 0;
           context->ForEachService(
@@ -297,7 +298,7 @@ namespace llarp
           // TODO: add hook to EnsurePathToSNode
           EnsurePathToSNode(addr.as_array());
           huint32_t ip = ObtainIPForAddr(addr, true);
-          if (ip.h)
+          if(ip.h)
             msg.AddINReply(ip);
           else
           {
