@@ -41,6 +41,10 @@ if (WIN32 AND NOT STATIC_LINK)
   set(STATIC_LINK ON)
 endif(WIN32 AND NOT STATIC_LINK)
 
+set(ABSEIL_DIR vendor/abseil-cpp)
+add_subdirectory(${ABSEIL_DIR})
+include_directories(${ABSEIL_DIR})
+
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
@@ -737,6 +741,7 @@ else()
 
   add_library(${STATIC_LIB} STATIC ${LIB_SRC})
   add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
+  target_link_libraries(${UTIL_LIB} absl::optional)
   add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
 
   if(USE_LIBABYSS)
