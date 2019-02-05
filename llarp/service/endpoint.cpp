@@ -147,10 +147,16 @@ namespace llarp
         auto itr = m_SNodeSessions.begin();
         while(itr != m_SNodeSessions.end())
         {
-          if(itr->second->IsExpired(now))
+          if(itr->second->ShouldRemove() && itr->second->IsStopped())
+          {
             itr = m_SNodeSessions.erase(itr);
-          else
-            ++itr;
+            continue;
+          }
+          // expunge next tick
+          if(itr->second->IsExpired(now))
+            itr->second->Stop();
+
+          ++itr;
         }
       }
       // expire pending tx
@@ -244,6 +250,17 @@ namespace llarp
       }
 #endif
 
+      // deregister dead sessions
+      {
+        auto itr = m_DeadSessions.begin();
+        while(itr != m_DeadSessions.end())
+        {
+          if(itr->second->IsDone(now) && itr->second->ShouldRemove())
+            itr = m_DeadSessions.erase(itr);
+          else
+            ++itr;
+        }
+      }
       // tick remote sessions
       {
         auto itr = m_RemoteSessions.begin();
@@ -256,17 +273,6 @@ namespace llarp
                 std::make_pair(itr->first, std::move(itr->second)));
             itr = m_RemoteSessions.erase(itr);
           }
-          else
-            ++itr;
-        }
-      }
-      // deregister dead sessions
-      {
-        auto itr = m_DeadSessions.begin();
-        while(itr != m_DeadSessions.end())
-        {
-          if(itr->second->IsDone(now))
-            itr = m_DeadSessions.erase(itr);
           else
             ++itr;
         }

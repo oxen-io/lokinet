@@ -105,6 +105,10 @@ namespace llarp
       virtual bool
       Stop() = 0;
 
+      /// return true if we are stopped
+      virtual bool
+      IsStopped() const = 0;
+
       /// return true if we can and should remove this pathset and underlying
       /// resources from its parent context
       virtual bool
