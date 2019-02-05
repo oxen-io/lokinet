@@ -228,11 +228,8 @@ namespace llarp
     }
 
     void
-    PathSet::HandlePathBuilt(Path* path)
+    PathSet::HandlePathBuilt(Path*)
     {
-      auto dlt = Now() - path->buildStarted;
-      llarp::LogInfo("Path build took ", dlt, "ms for tx=", path->TXID(),
-                     " rx=", path->RXID());
     }
 
     bool
