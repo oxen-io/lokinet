@@ -248,6 +248,10 @@ namespace llarp
       if(questions.size())
       {
         hdr_fields |= flags_QR;
+        // don't allow recursion
+        hdr_fields &= ~flags_RD;
+        // don't advertise recurision
+        hdr_fields &= ~flags_RA;
         const auto& question = questions[0];
         if(question.qtype != qTypeAAAA)
         {
