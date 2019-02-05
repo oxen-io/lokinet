@@ -428,7 +428,8 @@ namespace llarp
       }
       else if(st == ePathEstablished && _status == ePathBuilding)
       {
-        llarp::LogInfo("path ", Name(), " is built");
+        llarp::LogInfo("path ", Name(), " is built, took ", now - buildStarted,
+                       " ms");
       }
       _status = st;
     }
@@ -644,8 +645,6 @@ namespace llarp
       {
         // finish initializing introduction
         intro.expiresAt = buildStarted + hops[0].lifetime;
-        llarp::LogInfo("path is built tx=", TXID(), " rx=", RXID(), " took ",
-                       now - buildStarted, " ms");
 
         r->routerProfiling.MarkPathSuccess(this);
 
