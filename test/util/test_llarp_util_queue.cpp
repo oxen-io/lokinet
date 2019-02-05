@@ -572,8 +572,12 @@ TEST(TestQueue, moveIt)
   (void)popped;
 
   ASSERT_EQ(5u, counter);
-
-  absl::optional< MoveTester > optPopped = queue.tryPopFront();
+#if __cplusplus >= 201703L
+  std::optional< MoveTester >
+#else
+  absl::optional< MoveTester >
+#endif
+      optPopped = queue.tryPopFront();
 
   ASSERT_TRUE(optPopped.has_value());
 

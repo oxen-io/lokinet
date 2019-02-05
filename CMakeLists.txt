@@ -755,7 +755,14 @@ else()
 
   add_library(${STATIC_LIB} STATIC ${LIB_SRC})
   add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
+
+# cut back on fluff
+if (NOT WIN32)
   target_link_libraries(${UTIL_LIB} absl::optional)
+else()
+  target_link_libraries(${UTIL_LIB})
+endif(NOT WIN32)
+
   add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
 
   if(USE_LIBABYSS)
