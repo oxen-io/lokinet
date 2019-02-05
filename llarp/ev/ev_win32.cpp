@@ -5,6 +5,7 @@ static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
 
 // we hand the kernel our thread handles to process completion events
 static HANDLE* kThreadPool;
+static int poolSize;
 
 // list of TUN listeners (useful for exits or other nodes with multiple TUNs)
 std::list< win32_tun_io* > tun_listeners;
@@ -19,6 +20,7 @@ begin_tun_loop(int nThreads)
         CreateThread(nullptr, 0, &tun_ev_loop, nullptr, 0, nullptr);
   }
   llarp::LogInfo("created ", nThreads, " threads for TUN event queue");
+  poolSize = nThreads;
 }
 
 // this one is called from the TUN handler
@@ -175,7 +177,7 @@ tun_ev_loop(void* unused)
     ev->flush_write();
     delete pkt;  // don't leak
   }
-  llarp::LogInfo("exit TUN event loop thread from system managed thread pool");
+  llarp::LogDebug("exit TUN event loop thread from system managed thread pool");
   return 0;
 }
 
@@ -184,16 +186,18 @@ exit_tun_loop()
 {
   if(kThreadPool)
   {
-    // if we get all-ones in the queue, thread exits, and we clean up
-    PostQueuedCompletionStatus(tun_event_queue, 0, ~0, nullptr);
-
     // kill the kernel's thread pool
-    int i = (&kThreadPool)[1] - kThreadPool;  // get the size of our thread pool
-    llarp::LogInfo("closing ", i, " threads");
-    WaitForMultipleObjects(i, kThreadPool, TRUE, INFINITE);
-    for(int j = 0; j < i; ++j)
+    // int i = (&kThreadPool)[1] - kThreadPool;  // get the size of our thread
+    // pool
+    llarp::LogInfo("closing ", poolSize, " threads");
+    // if we get all-ones in the queue, thread exits, and we clean up
+    for(int j = 0; j < poolSize; ++j)
+      PostQueuedCompletionStatus(tun_event_queue, 0, ~0, nullptr);
+    WaitForMultipleObjects(poolSize, kThreadPool, TRUE, INFINITE);
+    for(int j = 0; j < poolSize; ++j)
       CloseHandle(kThreadPool[j]);
     delete[] kThreadPool;
+    kThreadPool = nullptr;
 
     // the IOCP refcount is decreased each time an associated fd
     // is closed
