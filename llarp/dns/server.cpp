@@ -59,7 +59,7 @@ namespace llarp
     {
       size_t sz = m_Resolvers.size();
       if(sz == 0)
-        return llarp::Addr("1.1.1.1", 53);
+        return llarp::Addr("8.8.8.8", 53);
       if(sz == 1)
         return m_Resolvers[0];
       auto itr = m_Resolvers.begin();
@@ -75,7 +75,7 @@ namespace llarp
     void
     Proxy::SendMessageTo(llarp::Addr to, Message msg)
     {
-      std::array< byte_t, 1500 > tmp = {0};
+      std::array< byte_t, 1500 > tmp = {{0}};
       llarp_buffer_t buf(tmp);
       if(msg.Encode(&buf))
       {

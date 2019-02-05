@@ -26,7 +26,7 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf) override;
+    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override;
 
     bool
     IsGood(uint64_t chances) const;
@@ -55,7 +55,7 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf) override;
+    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override;
 
     bool
     Load(const char* fname);

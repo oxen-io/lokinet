@@ -56,7 +56,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       void
       Clear();

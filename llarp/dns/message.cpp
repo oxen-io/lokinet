@@ -182,8 +182,7 @@ namespace llarp
         rec.rr_type                   = question.qtype;
         rec.rr_class                  = qClassIN;
         rec.ttl                       = ttl;
-        std::array< byte_t, 512 > tmp = {0};
-
+        std::array< byte_t, 512 > tmp = {{0}};
         llarp_buffer_t buf(tmp);
         if(EncodeName(&buf, name))
         {
@@ -207,7 +206,7 @@ namespace llarp
         rec.rr_type                   = qTypeCNAME;
         rec.rr_class                  = qClassIN;
         rec.ttl                       = ttl;
-        std::array< byte_t, 512 > tmp = {0};
+        std::array< byte_t, 512 > tmp = {{0}};
         llarp_buffer_t buf(tmp);
         if(EncodeName(&buf, name))
         {
@@ -231,7 +230,7 @@ namespace llarp
         rec.rr_type                   = qTypeMX;
         rec.rr_class                  = qClassIN;
         rec.ttl                       = ttl;
-        std::array< byte_t, 512 > tmp = {0};
+        std::array< byte_t, 512 > tmp = {{0}};
         llarp_buffer_t buf(tmp);
         llarp_buffer_put_uint16(&buf, priority);
         if(EncodeName(&buf, name))

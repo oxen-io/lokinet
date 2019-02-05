@@ -10,7 +10,8 @@ namespace llarp
     }
 
     bool
-    PathLatencyMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* val)
+    PathLatencyMessage::DecodeKey(const llarp_buffer_t& key,
+                                  llarp_buffer_t* val)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictInt("L", L, read, key, val))

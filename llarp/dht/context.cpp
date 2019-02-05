@@ -23,7 +23,9 @@ namespace llarp
 {
   namespace dht
   {
-    AbstractContext::~AbstractContext() {}
+    AbstractContext::~AbstractContext()
+    {
+    }
 
     Context::Context() : router(nullptr), allowTransit(false)
     {

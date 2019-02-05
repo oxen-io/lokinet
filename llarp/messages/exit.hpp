@@ -53,7 +53,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
@@ -86,7 +86,7 @@ namespace llarp
       Verify(llarp::Crypto* c, const llarp::PubKey& pk) const;
 
       bool
-      DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
@@ -140,7 +140,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
@@ -182,7 +182,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
@@ -217,7 +217,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
       HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
