@@ -195,6 +195,20 @@ namespace llarp
       FlushSend();
     }
 
+    static bool
+    is_random_snode(const dns::Message &msg)
+    {
+      return msg.questions[0].qname == "random.snode"
+          || msg.questions[0].qname == "random.snode.";
+    }
+
+    static bool
+    is_localhost_loki(const dns::Message &msg)
+    {
+      return msg.questions[0].qname == "localhost.loki"
+          || msg.questions[0].qname == "localhost.loki.";
+    }
+
     bool
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
@@ -209,8 +223,9 @@ namespace llarp
       if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
-        llarp::service::Address addr;
-        if(addr.FromString(qname, ".loki"))
+        service::Address addr;
+        if(addr.FromString(qname, ".loki") || addr.FromString(qname, ".snode")
+           || is_random_snode(msg) || is_localhost_loki(msg))
           msg.AddMXReply(qname, 1);
         else
           msg.AddNXReply();
@@ -218,8 +233,7 @@ namespace llarp
       }
       else if(msg.questions[0].qtype == dns::qTypeCNAME)
       {
-        if(msg.questions[0].qname == "random.snode"
-           || msg.questions[0].qname == "random.snode.")
+        if(is_random_snode(msg))
         {
           RouterID random;
           if(Router()->GetRandomGoodRouter(random))
@@ -227,8 +241,7 @@ namespace llarp
           else
             msg.AddNXReply();
         }
-        else if(msg.questions[0].qname == "localhost.loki"
-                || msg.questions[0].qname == "localhost.loki.")
+        else if(is_localhost_loki(msg))
         {
           size_t counter = 0;
           context->ForEachService(
@@ -250,14 +263,12 @@ namespace llarp
       {
         llarp::service::Address addr;
         // on MacOS this is a typeA query
-        if(msg.questions[0].qname == "random.snode"
-           || msg.questions[0].qname == "random.snode.")
+        if(is_random_snode(msg))
         {
           // don't reply to A queries, applications MUST use CNAME queries
           msg.AddNXReply();
         }
-        else if(msg.questions[0].qname == "localhost.loki"
-                || msg.questions[0].qname == "localhost.loki.")
+        else if(is_localhost_loki(msg))
         {
           size_t counter = 0;
           context->ForEachService(
