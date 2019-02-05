@@ -23,7 +23,7 @@ namespace llarp
     constexpr size_t FragmentOverheadSize =
         FragmentHashSize + FragmentNonceSize;
     /// max fragment payload size
-    constexpr size_t FragmentBodyPayloadSize = 1024;
+    constexpr size_t FragmentBodyPayloadSize = 512;
     /// size of inner nonce
     constexpr size_t FragmentBodyNonceSize = 24;
     /// size of fragment body overhead
@@ -36,8 +36,8 @@ namespace llarp
     constexpr size_t FragmentBufferSize =
         FragmentOverheadSize + FragmentBodySize;
 
-    static_assert(FragmentBufferSize == 1120,
-                  "Fragement Buffer Size is not 1120");
+    static_assert(FragmentBufferSize == 608,
+                  "Fragement Buffer Size is not 608");
 
     /// buffer for a single utp fragment
     using FragmentBuffer = llarp::AlignedBuffer< FragmentBufferSize >;

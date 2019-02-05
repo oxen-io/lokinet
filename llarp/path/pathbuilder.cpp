@@ -27,6 +27,12 @@ namespace llarp
     llarp::Crypto* crypto    = nullptr;
     LR_CommitMessage LRCM;
 
+    ~AsyncPathKeyExchangeContext()
+    {
+      if(path)
+        delete path;
+    }
+
     static void
     HandleDone(void* u)
     {
@@ -139,7 +145,7 @@ namespace llarp
   static void
   PathBuilderKeysGenerated(AsyncPathKeyExchangeContext< path::Builder >* ctx)
   {
-    if(ctx->pathset->CanBuildPaths())
+    if(!ctx->pathset->IsStopped())
     {
       RouterID remote         = ctx->path->Upstream();
       const ILinkMessage* msg = &ctx->LRCM;
@@ -149,6 +155,7 @@ namespace llarp
         ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
         // add own path
         ctx->router->paths.AddOwnPath(ctx->pathset, ctx->path);
+        ctx->path = nullptr;
       }
       else
         llarp::LogError("failed to send LRCM to ", remote);
@@ -204,9 +211,15 @@ namespace llarp
     }
 
     bool
+    Builder::IsStopped() const
+    {
+      return !_run.load();
+    }
+
+    bool
     Builder::ShouldRemove() const
     {
-      if(CanBuildPaths())
+      if(!IsStopped())
         return false;
       return keygens.load() > 0;
     }
@@ -276,7 +289,7 @@ namespace llarp
     void
     Builder::Build(const std::vector< RouterContact >& hops, PathRole roles)
     {
-      if(!_run)
+      if(IsStopped())
         return;
       lastBuild = Now();
       // async generate keys

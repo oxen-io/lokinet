@@ -20,12 +20,6 @@ namespace llarp
       std::atomic< bool > _run;
 
      public:
-      bool
-      CanBuildPaths() const
-      {
-        return _run.load();
-      }
-
       llarp::Router* router;
       llarp_dht_context* dht;
       llarp::SecretKey enckey;
@@ -55,6 +49,9 @@ namespace llarp
 
       virtual bool
       Stop() override;
+
+      bool
+      IsStopped() const override;
 
       bool
       ShouldRemove() const override;
