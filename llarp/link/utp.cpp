@@ -1066,7 +1066,6 @@ namespace llarp
       AlignedBuffer< 24 > A(out.base);
       // advance buffer
       out.cur += A.size();
-
       // read msgid
       uint32_t msgid;
       if(!llarp_buffer_read_uint32(&out, &msgid))
@@ -1093,10 +1092,9 @@ namespace llarp
       m_NextRXMsgID = msgid;
 
       // get message
-      InboundMessage toClean;
       if(m_RecvMsgs.find(msgid) == m_RecvMsgs.end())
       {
-        m_RecvMsgs.emplace(msgid, toClean);
+        m_RecvMsgs.emplace(msgid, InboundMessage{});
       }
 
       auto itr = m_RecvMsgs.find(msgid);
