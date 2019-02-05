@@ -1263,13 +1263,12 @@ namespace llarp
         }
       }
       // no converstation
-      return EnsurePathToService(
-          remote,
-          [](Address, OutboundContext* c) {
-            if(c)
-              c->UpdateIntroSet(true);
-          },
-          5000, false);
+      return EnsurePathToService(remote,
+                                 [](Address, OutboundContext* c) {
+                                   if(c)
+                                     c->UpdateIntroSet(true);
+                                 },
+                                 5000, false);
     }
 
     bool
@@ -1503,7 +1502,7 @@ namespace llarp
         {
           llarp::LogError("failed to derive x25519 shared key component");
         }
-        std::array< byte_t, 64 > tmp = {0};
+        std::array< byte_t, 64 > tmp = {{0}};
         // K
         std::copy(K.begin(), K.end(), tmp.begin());
         // H (K + PKE(A, B, N))
