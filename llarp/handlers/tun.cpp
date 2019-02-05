@@ -297,7 +297,13 @@ namespace llarp
           // TODO: add hook to EnsurePathToSNode
           EnsurePathToSNode(addr.as_array());
           huint32_t ip = ObtainIPForAddr(addr, true);
-          msg.AddINReply(ip);
+          if (ip.h)
+            msg.AddINReply(ip);
+          else
+          {
+            llarp::LogWarn("no ip found for ", addr);
+            msg.AddNXReply();
+          }
         }
         else
           // forward dns
