@@ -41,6 +41,7 @@ if (WIN32 AND NOT STATIC_LINK)
   set(STATIC_LINK ON)
 endif(WIN32 AND NOT STATIC_LINK)
 
+add_compile_options(-fPIC)
 set(ABSEIL_DIR vendor/abseil-cpp)
 add_subdirectory(${ABSEIL_DIR})
 include_directories(${ABSEIL_DIR})
