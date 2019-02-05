@@ -674,16 +674,17 @@ namespace llarp
     if(rotateKeys)
     {
       crypto->encryption_keygen(nextOnionKey);
-      nextRC.enckey = llarp::seckey_topublic(nextOnionKey);
+      std::string f = encryption_keyfile.string();
+      if(nextOnionKey.SaveToFile(f.c_str()))
+      {
+        nextRC.enckey = llarp::seckey_topublic(nextOnionKey);
+        encryption    = nextOnionKey;
+      }
     }
     nextRC.last_updated = Now();
     if(!nextRC.Sign(crypto.get(), identity))
       return false;
     _rc = nextRC;
-    if(rotateKeys)
-    {
-      encryption = nextOnionKey;
-    }
     // propagate RC by renegotiating sessions
     ForEachPeer([](llarp::ILinkSession *s) {
       if(s->RenegotiateSession())
@@ -691,7 +692,7 @@ namespace llarp
       else
         llarp::LogWarn("failed to renegotiate session");
     });
-    
+
     // TODO: do this async
     return SaveRC();
   }  // namespace llarp
