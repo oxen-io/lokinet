@@ -253,11 +253,8 @@ namespace llarp
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
         {
-          RouterID random;
-          if(Router()->GetRandomGoodRouter(random))
-            msg.AddCNAMEReply(random.ToString(), 1);
-          else
-            msg.AddNXReply();
+          // don't reply to A queries, applications MUST use CNAME queries
+          msg.AddNXReply();
         }
         else if(msg.questions[0].qname == "localhost.loki"
                 || msg.questions[0].qname == "localhost.loki.")
@@ -358,7 +355,7 @@ namespace llarp
         // always hook mx records
         if(msg.questions[0].qtype == llarp::dns::qTypeMX)
           return true;
-        // hook random.snode for CNAME
+        // hook random.snode
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
           return true;
