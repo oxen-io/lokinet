@@ -427,6 +427,10 @@ namespace llarp
         llarp::LogInfo("path ", Name(), " is building");
         buildStarted = now;
       }
+      else if(st == ePathEstablished && _status == ePathBuilding)
+      {
+        llarp::LogInfo("path ", Name(), " is built");
+      }
       _status = st;
     }
 
@@ -438,19 +442,18 @@ namespace llarp
 
       if(_status == ePathBuilding)
       {
-        if(now < buildStarted)
-          return;
-        auto dlt = now - buildStarted;
-        if(dlt >= PATH_BUILD_TIMEOUT)
+        if(now >= buildStarted)
         {
-          r->routerProfiling.MarkPathFail(this);
-          EnterState(ePathTimeout, now);
-          return;
+          auto dlt = now - buildStarted;
+          if(dlt >= PATH_BUILD_TIMEOUT)
+          {
+            r->routerProfiling.MarkPathFail(this);
+            EnterState(ePathTimeout, now);
+            return;
+          }
         }
       }
 
-      if(now < m_LastLatencyTestTime)
-        return;
       auto dlt = now - m_LastLatencyTestTime;
       if(dlt > 5000 && m_LastLatencyTestID == 0)
       {
@@ -642,13 +645,8 @@ namespace llarp
       {
         // finish initializing introduction
         intro.expiresAt = buildStarted + hops[0].lifetime;
-        // confirm that we build the path
-        EnterState(ePathEstablished, now);
-        llarp::LogInfo("path is confirmed tx=", TXID(), " rx=", RXID(),
-                       " took ", now - buildStarted, " ms");
-        if(m_BuiltHook)
-          m_BuiltHook(this);
-        m_BuiltHook = nullptr;
+        llarp::LogInfo("path is built tx=", TXID(), " rx=", RXID(), " took ",
+                       now - buildStarted, " ms");
 
         r->routerProfiling.MarkPathSuccess(this);
 
@@ -682,11 +680,12 @@ namespace llarp
       MarkActive(now);
       if(msg->L == m_LastLatencyTestID)
       {
-        intro.latency = now - m_LastLatencyTestTime;
-        llarp::LogDebug("path latency is ", intro.latency,
-                        " ms for tx=", TXID(), " rx=", RXID());
+        intro.latency       = now - m_LastLatencyTestTime;
         m_LastLatencyTestID = 0;
-        _status             = ePathEstablished;
+        EnterState(ePathEstablished, now);
+        if(m_BuiltHook)
+          m_BuiltHook(this);
+        m_BuiltHook = nullptr;
 
         return true;
       }
