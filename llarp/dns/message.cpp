@@ -156,7 +156,7 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= (1 << 15);
+        hdr_fields |= flags_QR | flags_AA;
         const auto& question = questions[0];
         ResourceRecord rec;
         rec.rr_name  = question.qname;
@@ -174,7 +174,7 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= (1 << 15);
+        hdr_fields |= flags_QR | flags_AA;
         const auto& question = questions[0];
         answers.emplace_back();
         auto& rec                     = answers.back();
@@ -199,7 +199,7 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= (1 << 15);
+        hdr_fields |= flags_QR | flags_AA;
         const auto& question = questions[0];
         answers.emplace_back();
         auto& rec                     = answers.back();
@@ -223,7 +223,7 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= (1 << 15);
+        hdr_fields |= flags_QR | flags_AA;
         const auto& question = questions[0];
         answers.emplace_back();
         auto& rec                     = answers.back();
@@ -248,10 +248,11 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= (1 << 15) | (1 << 3);
+        hdr_fields |= flags_QR;
         const auto& question = questions[0];
         if(question.qtype != qTypeAAAA)
         {
+          hdr_fields |= flags_RCODENameError | flags_AA;
           answers.emplace_back();
           auto& nx    = answers.back();
           nx.rr_name  = question.qname;
