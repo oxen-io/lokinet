@@ -199,6 +199,7 @@ namespace llarp
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
+      //llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname);
       if(msg.questions.size() != 1)
       {
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
@@ -247,8 +248,17 @@ namespace llarp
       else if(msg.questions[0].qtype == dns::qTypeA)
       {
         llarp::service::Address addr;
-        // forward dns
-        if(msg.questions[0].qname == "localhost.loki"
+        // on MacOS this is a typeA query
+        if(msg.questions[0].qname == "random.snode"
+           || msg.questions[0].qname == "random.snode.")
+        {
+          RouterID random;
+          if(Router()->GetRandomGoodRouter(random))
+            msg.AddCNAMEReply(random.ToString(), 1);
+          else
+            msg.AddNXReply();
+        }
+        else if(msg.questions[0].qname == "localhost.loki"
            || msg.questions[0].qname == "localhost.loki.")
         {
           size_t counter = 0;
@@ -287,9 +297,16 @@ namespace llarp
           // TODO: add hook to EnsurePathToSNode
           EnsurePathToSNode(addr.as_array());
           huint32_t ip = ObtainIPForAddr(addr, true);
-          msg.AddINReply(ip);
+          if (ip.h)
+            msg.AddINReply(ip);
+          else
+          {
+            llarp::LogWarn("no ip found for ", addr);
+            msg.AddNXReply();
+          }
         }
         else
+          // forward dns
           msg.AddNXReply();
 
         reply(msg);
