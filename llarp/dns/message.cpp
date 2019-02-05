@@ -247,7 +247,7 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= flags_QR;
+        hdr_fields |= flags_QR | flags_AA;
         // don't allow recursion
         hdr_fields &= ~flags_RD;
         // don't advertise recurision
@@ -255,7 +255,7 @@ namespace llarp
         const auto& question = questions[0];
         if(question.qtype != qTypeAAAA)
         {
-          hdr_fields |= flags_RCODENameError | flags_AA;
+          hdr_fields |= flags_RCODENameError;
           answers.emplace_back();
           auto& nx    = answers.back();
           nx.rr_name  = question.qname;
