@@ -71,6 +71,7 @@ uhash_delete(uhash_t* hash, intptr_t key)
     {
       ulist_remove(q);
       free(q);
+      q = NULL;
       return 1;
     }
   }
@@ -88,6 +89,7 @@ uhash_destroy(uhash_t* hash)
       uitem_t* n = ulist_data(q, uitem_t, list);
       ulist_remove(q);
       free(n);
+      n = NULL;
     }
   }
   return 0;
@@ -118,8 +120,10 @@ upoll_destroy(upoll_t* upq)
     n = ulist_data(n, unote_t, queue);
     ulist_remove(q);
     free(n);
+    n = NULL;
   }
   free(upq);
+  upq = NULL;
 }
 
 int
@@ -155,6 +159,7 @@ upoll_ctl(upoll_t* upq, int op, intptr_t fd, upoll_event_t* event)
       ulist_remove(&note->queue);
       uhash_delete(upq->table, fd);
       free(note);
+      note = NULL;
       break;
     }
     case UPOLL_CTL_MOD:

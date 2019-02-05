@@ -115,8 +115,6 @@ struct llarp_win32_loop : public llarp_ev_loop
 
   ~llarp_win32_loop()
   {
-    if(upollfd)
-      upoll_destroy(upollfd);
   }
 
   bool

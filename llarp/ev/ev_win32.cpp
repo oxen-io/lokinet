@@ -1,10 +1,10 @@
 #include <ev/ev_win32.hpp>
 
 // a single event queue for the TUN interface
-HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
+static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
 
 // we hand the kernel our thread handles to process completion events
-HANDLE* kThreadPool;
+static HANDLE* kThreadPool;
 
 // list of TUN listeners (useful for exits or other nodes with multiple TUNs)
 std::list< win32_tun_io* > tun_listeners;
@@ -182,28 +182,31 @@ tun_ev_loop(void* unused)
 void
 exit_tun_loop()
 {
-  // if we get all-ones in the queue, thread exits, and we clean up
-  PostQueuedCompletionStatus(tun_event_queue, 0, ~0, nullptr);
-
-  // kill the kernel's thread pool
-  int i = (&kThreadPool)[1] - kThreadPool;  // get the size of our thread pool
-  llarp::LogInfo("closing ", i, " threads");
-  WaitForMultipleObjects(i, kThreadPool, TRUE, INFINITE);
-  for(int j = 0; j < i; ++j)
-    CloseHandle(kThreadPool[j]);
-  delete[] kThreadPool;
-
-  // the IOCP refcount is decreased each time an associated fd
-  // is closed
-  // the fds are closed in their destructors
-  // once we get to zero, we can safely close the event port
-  auto itr = tun_listeners.begin();
-  while(itr != tun_listeners.end())
+  if(kThreadPool)
   {
-    delete(*itr);
-    itr = tun_listeners.erase(itr);
+    // if we get all-ones in the queue, thread exits, and we clean up
+    PostQueuedCompletionStatus(tun_event_queue, 0, ~0, nullptr);
+
+    // kill the kernel's thread pool
+    int i = (&kThreadPool)[1] - kThreadPool;  // get the size of our thread pool
+    llarp::LogInfo("closing ", i, " threads");
+    WaitForMultipleObjects(i, kThreadPool, TRUE, INFINITE);
+    for(int j = 0; j < i; ++j)
+      CloseHandle(kThreadPool[j]);
+    delete[] kThreadPool;
+
+    // the IOCP refcount is decreased each time an associated fd
+    // is closed
+    // the fds are closed in their destructors
+    // once we get to zero, we can safely close the event port
+    auto itr = tun_listeners.begin();
+    while(itr != tun_listeners.end())
+    {
+      delete(*itr);
+      itr = tun_listeners.erase(itr);
+    }
+    CloseHandle(tun_event_queue);
   }
-  CloseHandle(tun_event_queue);
 }
 
 namespace llarp
@@ -274,8 +277,8 @@ namespace llarp
       int err = WSAGetLastError();
       FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
                     ebuf, 1024, nullptr);
-      int l = strlen(ebuf);
-      ebuf[l-2] = '\0'; // remove line break
+      int l       = strlen(ebuf);
+      ebuf[l - 2] = '\0';  // remove line break
       llarp::LogError("error connecting: ", ebuf, " [", err, "]");
       _conn->error(_conn);
     }
@@ -291,8 +294,8 @@ namespace llarp
       int err = WSAGetLastError();
       FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL,
                     ebuf, 1024, nullptr);
-      int l = strlen(ebuf);
-      ebuf[l-2] = '\0'; // remove line break
+      int l       = strlen(ebuf);
+      ebuf[l - 2] = '\0';  // remove line break
       llarp::LogError("failed to accept on ", fd, ":", ebuf, " [", err, "]");
       return -1;
     }
@@ -630,5 +633,8 @@ llarp_win32_loop::udp_close(llarp_udp_io* l)
 void
 llarp_win32_loop::stop()
 {
-  // do nothing
+  if(upollfd)
+    upoll_destroy(upollfd);
+  upollfd = nullptr;
+  llarp::LogDebug("destroy upoll");
 }

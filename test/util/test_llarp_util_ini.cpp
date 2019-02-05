@@ -32,7 +32,7 @@ TEST_F(TestINIParser, TestParseOneSection)
   itr = sect.find("key");
   ASSERT_NE(itr, sect.end());
 #if __cplusplus >= 201703L
-  ASSERT_STREQ(itr->second.data(), "val");
+  ASSERT_STREQ(llarp::string_view_string(itr->second).c_str(), "val");
 #else
   ASSERT_STREQ(itr->second.c_str(), "val");
 #endif
