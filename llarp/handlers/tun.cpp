@@ -223,7 +223,7 @@ namespace llarp
       if(msg.questions[0].qtype == dns::qTypeMX)
       {
         // mx record
-        Address addr;
+        service::Address addr;
         if(addr.FromString(qname, ".loki") || addr.FromString(qname, ".snode")
            || is_random_snode(msg) || is_localhost_loki(msg))
           msg.AddMXReply(qname, 1);
