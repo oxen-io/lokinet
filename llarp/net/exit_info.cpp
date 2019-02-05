@@ -68,7 +68,7 @@ namespace llarp
   }
 
   bool
-  ExitInfo::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* buf)
+  ExitInfo::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf)
   {
     bool read = false;
     if(!BEncodeMaybeReadDictEntry("k", pubkey, read, k, buf))

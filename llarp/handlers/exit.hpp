@@ -114,7 +114,7 @@ namespace llarp
       ObtainServiceNodeIP(const RouterID& router);
 
       bool
-      QueueSNodePacket(const llarp_buffer_t & buf, huint32_t from);
+      QueueSNodePacket(const llarp_buffer_t& buf, huint32_t from);
 
       void
       MarkIPActive(huint32_t ip);

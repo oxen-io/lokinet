@@ -12,7 +12,7 @@ namespace llarp
     }
 
     bool
-    FindIntroMessage::DecodeKey(const llarp_buffer_t &k, llarp_buffer_t* val)
+    FindIntroMessage::DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* val)
     {
       bool read = false;
 

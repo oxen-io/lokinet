@@ -34,7 +34,7 @@ namespace llarp
   static size_t
   Base32DecodeSize(size_t sz)
   {
-    return DecodeSize<5, 8>(sz);
+    return DecodeSize< 5, 8 >(sz);
   }
 
   template < typename Stack, typename V >

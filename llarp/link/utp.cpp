@@ -1057,8 +1057,7 @@ namespace llarp
       llarp_buffer_t out(rxFragBody);
 
       // decrypt
-      if(!Crypto()->xchacha20_alt(out, in, rxKey,
-                                  ptr + FragmentHashSize))
+      if(!Crypto()->xchacha20_alt(out, in, rxKey, ptr + FragmentHashSize))
       {
         llarp::LogError("failed to decrypt message from ", remoteAddr);
         return false;
@@ -1082,8 +1081,7 @@ namespace llarp
         llarp::LogError("failed to read the rest of the header");
         return false;
       }
-      if(length
-         > (out.sz - (out.cur - out.base)))
+      if(length > (out.sz - (out.cur - out.base)))
       {
         // too big length
         llarp::LogError("fragment body too big");

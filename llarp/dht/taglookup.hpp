@@ -12,8 +12,8 @@ namespace llarp
     struct TagLookup : public TX< service::Tag, service::IntroSet >
     {
       uint64_t R;
-      TagLookup(const TXOwner &asker, const service::Tag &tag, AbstractContext *ctx,
-                uint64_t r)
+      TagLookup(const TXOwner &asker, const service::Tag &tag,
+                AbstractContext *ctx, uint64_t r)
           : TX< service::Tag, service::IntroSet >(asker, tag, ctx), R(r)
       {
       }

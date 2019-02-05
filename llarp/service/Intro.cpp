@@ -9,7 +9,7 @@ namespace llarp
     }
 
     bool
-    Introduction::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* buf)
+    Introduction::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("k", router, read, key, buf))

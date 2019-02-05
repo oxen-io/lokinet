@@ -18,7 +18,7 @@ namespace llarp
       ~DHTMessage();
 
       bool
-      DecodeKey(const llarp_buffer_t &key, llarp_buffer_t* val) override;
+      DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val) override;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;

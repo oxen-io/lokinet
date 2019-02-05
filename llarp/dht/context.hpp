@@ -31,17 +31,16 @@ namespace llarp
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
       virtual void
-      LookupIntroSetRecursive(const service::Address& target,
-                              const Key_t& whoasked, uint64_t whoaskedTX,
-                              const Key_t& askpeer, uint64_t R,
-                              service::IntroSetLookupHandler result = nullptr) = 0;
+      LookupIntroSetRecursive(
+          const service::Address& target, const Key_t& whoasked,
+          uint64_t whoaskedTX, const Key_t& askpeer, uint64_t R,
+          service::IntroSetLookupHandler result = nullptr) = 0;
 
       virtual void
-      LookupIntroSetIterative(const service::Address& target,
-                              const Key_t& whoasked, uint64_t whoaskedTX,
-                              const Key_t& askpeer,
-                              service::IntroSetLookupHandler result = nullptr) = 0;
-
+      LookupIntroSetIterative(
+          const service::Address& target, const Key_t& whoasked,
+          uint64_t whoaskedTX, const Key_t& askpeer,
+          service::IntroSetLookupHandler result = nullptr) = 0;
 
       virtual std::set< service::IntroSet >
       FindRandomIntroSetsWithTagExcluding(
@@ -63,7 +62,8 @@ namespace llarp
       virtual const Key_t&
       OurKey() const = 0;
 
-      virtual Bucket< RCNode >* Nodes() const = 0;
+      virtual Bucket< RCNode >*
+      Nodes() const = 0;
     };
 
     struct Context final : public AbstractContext
@@ -80,16 +80,16 @@ namespace llarp
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
       void
-      LookupIntroSetRecursive(const service::Address& target,
-                              const Key_t& whoasked, uint64_t whoaskedTX,
-                              const Key_t& askpeer, uint64_t R,
-                              service::IntroSetLookupHandler result = nullptr) override;
+      LookupIntroSetRecursive(
+          const service::Address& target, const Key_t& whoasked,
+          uint64_t whoaskedTX, const Key_t& askpeer, uint64_t R,
+          service::IntroSetLookupHandler result = nullptr) override;
 
       void
-      LookupIntroSetIterative(const service::Address& target,
-                              const Key_t& whoasked, uint64_t whoaskedTX,
-                              const Key_t& askpeer,
-                              service::IntroSetLookupHandler result = nullptr) override;
+      LookupIntroSetIterative(
+          const service::Address& target, const Key_t& whoasked,
+          uint64_t whoaskedTX, const Key_t& askpeer,
+          service::IntroSetLookupHandler result = nullptr) override;
 
       /// on behalf of whoasked request router with public key target from dht
       /// router with key askpeer
@@ -141,7 +141,8 @@ namespace llarp
       /// send a dht message to peer, if keepalive is true then keep the session
       /// with that peer alive for 10 seconds
       void
-      DHTSendTo(const RouterID& peer, IMessage* msg, bool keepalive = true) override;
+      DHTSendTo(const RouterID& peer, IMessage* msg,
+                bool keepalive = true) override;
 
       /// get routers closest to target excluding requester
       bool
@@ -198,7 +199,11 @@ namespace llarp
       std::unique_ptr< Bucket< ISNode > > services;
       bool allowTransit;
 
-      Bucket< RCNode >* Nodes() const override { return nodes.get(); }
+      Bucket< RCNode >*
+      Nodes() const override
+      {
+        return nodes.get();
+      }
 
       const Key_t&
       OurKey() const override
@@ -207,7 +212,10 @@ namespace llarp
       }
 
       llarp::Router*
-      GetRouter() const override { return router; }
+      GetRouter() const override
+      {
+        return router;
+      }
 
       TXHolder< service::Address, service::IntroSet, service::Address::Hash >
           pendingIntrosetLookups;

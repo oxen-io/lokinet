@@ -23,8 +23,8 @@ namespace llarp
     struct in6_addr netmask;
     PubKey pubkey;
 
-    ExitInfo(const PubKey &pk, const nuint32_t &ipv4_exit) : IBEncodeMessage(),
-    pubkey(pk)
+    ExitInfo(const PubKey &pk, const nuint32_t &ipv4_exit)
+        : IBEncodeMessage(), pubkey(pk)
     {
       memset(address.s6_addr, 0, 16);
       address.s6_addr[11] = 0xff;
@@ -37,8 +37,8 @@ namespace llarp
     {
     }
 
-    ExitInfo(const ExitInfo &other) : IBEncodeMessage(other.version),
-    pubkey(other.pubkey)
+    ExitInfo(const ExitInfo &other)
+        : IBEncodeMessage(other.version), pubkey(other.pubkey)
     {
       memcpy(address.s6_addr, other.address.s6_addr, 16);
       memcpy(netmask.s6_addr, other.netmask.s6_addr, 16);
