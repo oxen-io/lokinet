@@ -10,7 +10,7 @@ class TransferTrafficTest : public ::testing::Test
 TEST_F(TransferTrafficTest, TestPutBufferOverflow)
 {
   TransferTrafficMessage msg;
-  std::array< byte_t, llarp::routing::MaxExitMTU* 2 > tmp = {0};
+  std::array< byte_t, llarp::routing::MaxExitMTU* 2 > tmp = {{0}};
   llarp_buffer_t buf(tmp);
   ASSERT_FALSE(msg.PutBuffer(buf, 1));
 };
@@ -18,7 +18,7 @@ TEST_F(TransferTrafficTest, TestPutBufferOverflow)
 TEST_F(TransferTrafficTest, TestPutBuffer)
 {
   TransferTrafficMessage msg;
-  std::array< byte_t, llarp::routing::MaxExitMTU > tmp = {0};
+  std::array< byte_t, llarp::routing::MaxExitMTU > tmp = {{0}};
   llarp_buffer_t buf(tmp);
   ASSERT_TRUE(msg.PutBuffer(buf, 1));
 };
