@@ -1,5 +1,5 @@
-#ifndef TEST_LLARP_MOCK_CONTEXT
-#define TEST_LLARP_MOCK_CONTEXT
+#ifndef TEST_LLARP_DHT_MOCK_CONTEXT
+#define TEST_LLARP_DHT_MOCK_CONTEXT
 
 #include <dht/context.hpp>
 
