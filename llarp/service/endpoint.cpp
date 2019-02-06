@@ -87,8 +87,18 @@ namespace llarp
     bool
     Endpoint::HasPendingPathToService(const Address& addr) const
     {
-      return m_PendingServiceLookups.find(addr)
-          != m_PendingServiceLookups.end();
+      if(m_PendingServiceLookups.find(addr) == m_PendingServiceLookups.end())
+      {
+        auto range = m_RemoteSessions.equal_range(addr);
+        auto itr   = range.first;
+        while(itr != range.second)
+        {
+          if(itr->second->ReadyToSend())
+            return false;
+          ++itr;
+        }
+      }
+      return true;
     }
 
     void
@@ -171,7 +181,6 @@ namespace llarp
       }
       // expire pending tx
       {
-        std::set< service::IntroSet > empty;
         auto itr = m_PendingLookups.begin();
         while(itr != m_PendingLookups.end())
         {
@@ -180,14 +189,13 @@ namespace llarp
             std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
 
             llarp::LogInfo(lookup->name, " timed out txid=", lookup->txid);
-            lookup->HandleResponse(empty);
+            lookup->HandleResponse({});
             itr = m_PendingLookups.erase(itr);
           }
           else
             ++itr;
         }
       }
-
       // expire pending router lookups
       {
         auto itr = m_PendingRouters.begin();
@@ -367,24 +375,7 @@ namespace llarp
         if(!introset.Verify(crypto, Now()))
         {
           if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
-          {
             IntroSetPublishFail();
-          }
-          else
-          {
-            auto itr = m_PendingLookups.find(msg->T);
-            if(itr == m_PendingLookups.end())
-            {
-              llarp::LogWarn(
-                  "invalid lookup response for hidden service endpoint ",
-                  Name(), " txid=", msg->T);
-              return true;
-            }
-            std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
-            m_PendingLookups.erase(itr);
-            lookup->HandleResponse({});
-            return true;
-          }
           return true;
         }
         if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
@@ -688,7 +679,13 @@ namespace llarp
         llarp::LogInfo("found ", results.size(), " for ", remote.ToString());
         if(results.size() > 0)
         {
-          return handle(remote, &*results.begin(), endpoint);
+          IntroSet selected;
+          for(const auto& introset : results)
+          {
+            if(selected.OtherIsNewer(introset) && introset.A.Addr() == remote)
+              selected = introset;
+          }
+          return handle(remote, &selected, endpoint);
         }
         return handle(remote, nullptr, endpoint);
       }
@@ -730,13 +727,14 @@ namespace llarp
       {
         auto itr = m_RemoteSessions.find(addr);
 
-        auto i = m_PendingServiceLookups.find(addr);
-        if(i != m_PendingServiceLookups.end())
+        auto range = m_PendingServiceLookups.equal_range(addr);
+        auto i     = range.first;
+        if(i != range.second)
         {
-          auto f = i->second;
-          m_PendingServiceLookups.erase(i);
-          f(addr, itr->second.get());
+          i->second(addr, itr->second.get());
+          ++i;
         }
+        m_PendingServiceLookups.erase(addr);
         return;
       }
 
@@ -746,13 +744,14 @@ namespace llarp
       llarp::LogInfo("Created New outbound context for ", addr.ToString());
 
       // inform pending
-      auto itr = m_PendingServiceLookups.find(addr);
-      if(itr != m_PendingServiceLookups.end())
+      auto range = m_PendingServiceLookups.equal_range(addr);
+      auto itr   = range.first;
+      if(itr != range.second)
       {
-        auto f = itr->second;
-        m_PendingServiceLookups.erase(itr);
-        f(addr, ctx);
+        itr->second(addr, ctx);
+        ++itr;
       }
+      m_PendingServiceLookups.erase(addr);
     }
 
     bool
@@ -967,16 +966,17 @@ namespace llarp
         llarp::LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
                         endpoint);
         m_ServiceLookupFails[endpoint] = m_ServiceLookupFails[endpoint] + 1;
-        auto itr                       = m_PendingServiceLookups.find(addr);
+        // inform one
+        auto itr = m_PendingServiceLookups.find(addr);
         if(itr != m_PendingServiceLookups.end())
         {
-          auto func = itr->second;
+          itr->second(addr, nullptr);
           m_PendingServiceLookups.erase(itr);
-          func(addr, nullptr);
         }
         return false;
       }
-      PutNewOutboundContext(*introset);
+      else
+        PutNewOutboundContext(*introset);
       return true;
     }
 
@@ -1006,18 +1006,14 @@ namespace llarp
           return true;
         }
       }
+
+      if(m_PendingServiceLookups.count(remote) >= MaxConcurrentLookups)
       {
-        auto itr = m_PendingServiceLookups.find(remote);
-        if(itr != m_PendingServiceLookups.end())
-        {
-          // duplicate
-          llarp::LogWarn("duplicate pending service lookup to ",
-                         remote.ToString());
-          return false;
-        }
+        llarp::LogWarn(Name(), " has too many pending service lookups for ",
+                       remote.ToString());
+        return false;
       }
 
-      m_PendingServiceLookups.insert(std::make_pair(remote, hook));
       {
         RouterID endpoint = path->Endpoint();
         auto itr          = m_ServiceLookupFails.find(endpoint);
@@ -1042,9 +1038,12 @@ namespace llarp
           std::bind(&Endpoint::OnLookup, this, std::placeholders::_1,
                     std::placeholders::_2, std::placeholders::_3),
           remote, GenTXID());
-
+      llarp::LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
       if(job->SendRequestViaPath(path, Router()))
+      {
+        m_PendingServiceLookups.insert(std::make_pair(remote, hook));
         return true;
+      }
       llarp::LogError("send via path failed");
       return false;
     }
