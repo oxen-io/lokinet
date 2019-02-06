@@ -297,9 +297,10 @@ namespace llarp
           }
           else
           {
+            dns::Message *replyMsg = new dns::Message(std::move(msg));
             service::Endpoint::PathEnsureHook hook = std::bind(
                 &TunEndpoint::SendDNSReply, this, std::placeholders::_1,
-                std::placeholders::_2, std::move(msg), reply);
+                std::placeholders::_2, replyMsg, reply);
             return EnsurePathToService(addr, hook, 2000);
           }
         }
@@ -397,18 +398,19 @@ namespace llarp
     void
     TunEndpoint::SendDNSReply(service::Address addr,
                               service::Endpoint::OutboundContext *ctx,
-                              dns::Message request,
+                              dns::Message *request,
                               std::function< void(dns::Message) > reply)
     {
       if(ctx)
       {
         huint32_t ip = ObtainIPForAddr(addr, false);
-        request.AddINReply(ip);
+        request->AddINReply(ip);
       }
       else
-        request.AddNXReply();
+        request->AddNXReply();
 
-      reply(request);
+      reply(*request);
+      delete request;
     }
 
     bool

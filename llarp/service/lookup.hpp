@@ -33,7 +33,7 @@ namespace llarp
 
       /// determine if this request has timed out
       bool
-      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 20000) const
+      IsTimedOut(llarp_time_t now, llarp_time_t timeout = 15000) const
       {
         if(now <= m_created)
           return false;
