@@ -116,20 +116,33 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
   mask.sin_addr.s_addr = bits;
   mask.sin_len         = sizeof(struct sockaddr_in);
   char addrbuf[32];
-  inet_ntop(AF_INET, s4, addrbuf, sizeof(struct sockaddr_in));
+  inet_ntop(AF_INET, s4, addrbuf, sizeof(addrbuf));
   char buf[1028];
   const char *addr    = addrbuf;
+  
+  char daddrbuf[32];
+  in_addr_t daddr_s4 = {s4->s_addr & bits};
+  inet_ntop(AF_INET, &daddr_s4, daddrbuf, sizeof(daddrbuf));
+  const char *daddr = daddrbuf;
+  
   const char *netmask = inet_ntoa(mask.sin_addr);
   /** because fuck this other stuff */
-  snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask %s up",
-           dev->if_name, addr, addr, netmask);
+  snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask 255.255.255.255 up",
+           dev->if_name, addr, daddr);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
+
   snprintf(buf, sizeof(buf),
-           "route add -cloning -net %s -netmask %s -interface %s", addr,
-           netmask, dev->if_name);
+           "route add %s -netmask %s -interface %s", daddr, netmask, dev->if_name);
   tuntap_log(TUNTAP_LOG_INFO, buf);
   system(buf);
+
+
+  snprintf(buf, sizeof(buf),
+           "route add %s -interface lo0", addr);
+  tuntap_log(TUNTAP_LOG_INFO, buf);
+  system(buf);
+  
   /* Simpler than calling SIOCSIFADDR and/or SIOCSIFBRDADDR */
   /*
     if(ioctl(dev->ctrl_sock, SIOCSIFADDR, &ifa) == -1)

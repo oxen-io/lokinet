@@ -455,18 +455,18 @@ namespace llarp
         }
       }
 
-      auto dlt = now - m_LastLatencyTestTime;
-      if(dlt > 5000 && m_LastLatencyTestID == 0)
-      {
-        llarp::routing::PathLatencyMessage latency;
-        latency.T             = llarp::randint();
-        m_LastLatencyTestID   = latency.T;
-        m_LastLatencyTestTime = now;
-        SendRoutingMessage(&latency, r);
-      }
       // check to see if this path is dead
       if(_status == ePathEstablished)
       {
+        auto dlt = now - m_LastLatencyTestTime;
+        if(dlt > 5000 && m_LastLatencyTestID == 0)
+        {
+          llarp::routing::PathLatencyMessage latency;
+          latency.T             = llarp::randint();
+          m_LastLatencyTestID   = latency.T;
+          m_LastLatencyTestTime = now;
+          SendRoutingMessage(&latency, r);
+        }
         if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
         {
           if(m_LastRecvMessage && now > m_LastRecvMessage

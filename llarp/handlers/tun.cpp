@@ -277,9 +277,9 @@ namespace llarp
           context->ForEachService(
               [&](const std::string &,
                   const std::unique_ptr< service::Endpoint > &service) -> bool {
-                if(service->HasIfAddr())
+                huint32_t ip = service->GetIfAddr();
+                if(ip.h)
                 {
-                  huint32_t ip = service->GetIfAddr();
                   msg.AddINReply(ip);
                   ++counter;
                 }
@@ -297,10 +297,10 @@ namespace llarp
           }
           else
           {
-            service::Endpoint::PathEnsureHook hook = [&](service::Address addr,
-                                                         OutboundContext *ctx) {
-              this->SendDNSReply(addr, ctx, std::move(msg), reply);
-            };
+            dns::Message *replyMsg = new dns::Message(std::move(msg));
+            service::Endpoint::PathEnsureHook hook = std::bind(
+                &TunEndpoint::SendDNSReply, this, std::placeholders::_1,
+                std::placeholders::_2, replyMsg, reply);
             return EnsurePathToService(addr, hook, 2000);
           }
         }
@@ -398,18 +398,19 @@ namespace llarp
     void
     TunEndpoint::SendDNSReply(service::Address addr,
                               service::Endpoint::OutboundContext *ctx,
-                              dns::Message &&request,
+                              dns::Message *request,
                               std::function< void(dns::Message) > reply)
     {
       if(ctx)
       {
         huint32_t ip = ObtainIPForAddr(addr, false);
-        request.AddINReply(ip);
+        request->AddINReply(ip);
       }
       else
-        request.AddNXReply();
+        request->AddNXReply();
 
-      reply(request);
+      reply(*request);
+      delete request;
     }
 
     bool

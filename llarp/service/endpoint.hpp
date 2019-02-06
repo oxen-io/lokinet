@@ -485,7 +485,7 @@ namespace llarp
       std::unordered_map< Address, ServiceInfo, Address::Hash >
           m_AddressToService;
 
-      std::unordered_map< Address, PathEnsureHook, Address::Hash >
+      std::unordered_multimap< Address, PathEnsureHook, Address::Hash >
           m_PendingServiceLookups;
 
       std::unordered_map< RouterID, uint32_t, RouterID::Hash >
