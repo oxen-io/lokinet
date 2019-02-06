@@ -41,6 +41,11 @@ if (WIN32 AND NOT STATIC_LINK)
   set(STATIC_LINK ON)
 endif(WIN32 AND NOT STATIC_LINK)
 
+add_compile_options(-fPIC)
+set(ABSEIL_DIR vendor/abseil-cpp)
+add_subdirectory(${ABSEIL_DIR})
+include_directories(${ABSEIL_DIR})
+
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
@@ -622,6 +627,7 @@ set(DNS_SRC
 set(TEST_SRC
   # helpers
   test/main.cpp
+  test/crypto/mock_crypto.cpp
   test/dht/mock_context.cpp
   test/test_util.cpp
   # actual test cases
@@ -631,6 +637,9 @@ set(TEST_SRC
   test/dht/test_llarp_dht_explorenetworkjob.cpp
   test/dht/test_llarp_dht_kademlia.cpp
   test/dht/test_llarp_dht_key.cpp
+  test/dht/test_llarp_dht_node.cpp
+  test/dht/test_llarp_dht_serviceaddresslookup.cpp
+  test/dht/test_llarp_dht_taglookup.cpp
   test/dht/test_llarp_dht_tx.cpp
   test/dht/test_llarp_dht_txowner.cpp
   test/dns/test_llarp_dns_dns.cpp
@@ -737,6 +746,7 @@ else()
 
   add_library(${STATIC_LIB} STATIC ${LIB_SRC})
   add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
+  target_link_libraries(${UTIL_LIB} absl::optional)
   add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
 
   if(USE_LIBABYSS)

@@ -115,16 +115,22 @@ namespace llarp
       copy = *this;
       copy.Z.Zero();
       if(!copy.BEncode(&buf))
+      {
         return false;
+      }
       // rewind and resize buffer
       buf.sz  = buf.cur - buf.base;
       buf.cur = buf.base;
       if(!A.Verify(crypto, buf, Z))
+      {
         return false;
+      }
       // validate PoW
       using namespace std::placeholders;
       if(W && !W->IsValid(std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+      {
         return false;
+      }
       // valid timestamps
       // add max clock skew
       now += MAX_INTROSET_TIME_DELTA;

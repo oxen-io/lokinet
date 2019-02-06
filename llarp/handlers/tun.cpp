@@ -265,8 +265,11 @@ namespace llarp
         // on MacOS this is a typeA query
         if(is_random_snode(msg))
         {
-          // don't reply to A queries, applications MUST use CNAME queries
-          msg.AddNXReply();
+          RouterID random;
+          if(Router()->GetRandomGoodRouter(random))
+            msg.AddCNAMEReply(random.ToString(), 1);
+          else
+            msg.AddNXReply();
         }
         else if(is_localhost_loki(msg))
         {

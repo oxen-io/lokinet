@@ -33,25 +33,17 @@ namespace llarp
     void
     TagLookup::SendReply()
     {
-      std::set< service::IntroSet > found;
-      for(const auto &remoteTag : valuesFound)
-      {
-        found.insert(remoteTag);
-      }
+      std::set< service::IntroSet > found(valuesFound.begin(),
+                                          valuesFound.end());
       // collect our local values if we haven't hit a limit
       if(found.size() < 2)
       {
-        for(const auto &localTag :
-            parent->FindRandomIntroSetsWithTagExcluding(target, 1, found))
-        {
-          found.insert(localTag);
-        }
+        auto tags =
+            parent->FindRandomIntroSetsWithTagExcluding(target, 1, found);
+        std::copy(tags.begin(), tags.end(), std::inserter(found, found.end()));
       }
-      std::vector< service::IntroSet > values;
-      for(const auto &introset : found)
-      {
-        values.push_back(introset);
-      }
+      std::vector< service::IntroSet > values(found.begin(), found.end());
+
       parent->DHTSendTo(whoasked.node.as_array(),
                         new GotIntroMessage(values, whoasked.txid));
     }

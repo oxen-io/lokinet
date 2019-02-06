@@ -30,13 +30,13 @@ B.rx_K = B_K
 
 the initial value of a_K is HS(A.k) and b_K is HS(B.k)
 
-1120 byte fragments are sent over UTP in an ordered fashion.
+608 byte fragments are sent over UTP in an ordered fashion.
 
 The each fragment F has the following structure:
 
-[ 32 bytes blake2 keyed hash of the following 1088 bytes (h)]
+[ 32 bytes blake2 keyed hash of the following 576 bytes (h)]
 [ 32 bytes random nonce (n)]
-[ 1056 bytes encrypted payload (p)]
+[ 544 bytes encrypted payload (p)]
 
 the recipiant verifies F.h == MDS(F.n + F.p, rx_K) and the UTP session 
 is reset if verification fails.
