@@ -171,7 +171,6 @@ namespace llarp
       }
       // expire pending tx
       {
-        std::set< service::IntroSet > empty;
         auto itr = m_PendingLookups.begin();
         while(itr != m_PendingLookups.end())
         {
@@ -180,14 +179,13 @@ namespace llarp
             std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
 
             llarp::LogInfo(lookup->name, " timed out txid=", lookup->txid);
-            lookup->HandleResponse(empty);
+            lookup->HandleResponse({});
             itr = m_PendingLookups.erase(itr);
           }
           else
             ++itr;
         }
       }
-
       // expire pending router lookups
       {
         auto itr = m_PendingRouters.begin();
@@ -1042,7 +1040,7 @@ namespace llarp
           std::bind(&Endpoint::OnLookup, this, std::placeholders::_1,
                     std::placeholders::_2, std::placeholders::_3),
           remote, GenTXID());
-
+      llarp::LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
       if(job->SendRequestViaPath(path, Router()))
         return true;
       llarp::LogError("send via path failed");

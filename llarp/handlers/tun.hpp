@@ -191,8 +191,7 @@ namespace llarp
 
       void
       SendDNSReply(service::Address addr,
-                   service::Endpoint::OutboundContext* ctx,
-                   dns::Message&& query,
+                   service::Endpoint::OutboundContext* ctx, dns::Message query,
                    std::function< void(dns::Message) > reply);
 
 #ifndef WIN32
