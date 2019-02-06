@@ -966,14 +966,13 @@ namespace llarp
         llarp::LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
                         endpoint);
         m_ServiceLookupFails[endpoint] = m_ServiceLookupFails[endpoint] + 1;
-        auto range = m_PendingServiceLookups.equal_range(addr);
-        auto itr   = range.first;
-        if(itr != range.second)
+        // inform one
+        auto itr = m_PendingServiceLookups.find(addr);
+        if(itr != m_PendingServiceLookups.end())
         {
           itr->second(addr, nullptr);
-          ++itr;
+          m_PendingServiceLookups.erase(itr);
         }
-        m_PendingServiceLookups.erase(addr);
         return false;
       }
       else
@@ -1007,6 +1006,14 @@ namespace llarp
           return true;
         }
       }
+
+      if(m_PendingServiceLookups.count(remote) >= MaxConcurrentLookups)
+      {
+        llarp::LogWarn(Name(), " has too many pending service lookups for ",
+                       remote.ToString());
+        return false;
+      }
+
       {
         RouterID endpoint = path->Endpoint();
         auto itr          = m_ServiceLookupFails.find(endpoint);
