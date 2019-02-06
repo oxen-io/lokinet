@@ -44,11 +44,13 @@ if (WIN32 AND NOT STATIC_LINK_RUNTIME)
   #set(STATIC_LINK_RUNTIME ON)
 endif(WIN32 AND NOT STATIC_LINK_RUNTIME)
 
+# still need the headers unconditionally
+set(ABSEIL_DIR vendor/abseil-cpp)
+include_directories(${ABSEIL_DIR})
+
 if (NOT WIN32)
 add_compile_options(-fPIC)
-set(ABSEIL_DIR vendor/abseil-cpp)
 add_subdirectory(${ABSEIL_DIR})
-include_directories(${ABSEIL_DIR})
 endif(NOT WIN32)
 
 # turns off those annoying warnings for

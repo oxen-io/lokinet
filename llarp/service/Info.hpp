@@ -5,11 +5,7 @@
 #include <service/types.hpp>
 #include <util/bencode.hpp>
 
-#if __cplusplus >= 201703L
-#include <optional>
-#else
 #include <absl/types/optional.h>
-#endif
 
 namespace llarp
 {
@@ -26,11 +22,7 @@ namespace llarp
      public:
       VanityNonce vanity;
 
-#if __cplusplus >= 201703L
-      using OptNonce = std::optional< VanityNonce >;
-#else
       using OptNonce = absl::optional< VanityNonce >;
-#endif
 
       ServiceInfo() = default;
 
