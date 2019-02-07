@@ -32,6 +32,7 @@
 
 namespace llarp
 {
+  struct AbstractRouter;
   struct Crypto;
   struct LR_CommitMessage;
   struct LR_CommitRecord;
@@ -112,17 +113,17 @@ namespace llarp
       /// send routing message and increment sequence number
       virtual bool
       SendRoutingMessage(const llarp::routing::IMessage* msg,
-                         llarp::Router* r) = 0;
+                         llarp::AbstractRouter* r) = 0;
 
       // handle data in upstream direction
       virtual bool
       HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                     llarp::Router* r) = 0;
+                     AbstractRouter* r) = 0;
 
       // handle data in downstream direction
       virtual bool
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                       llarp::Router* r) = 0;
+                       AbstractRouter* r) = 0;
 
       /// return timestamp last remote activity happened at
       virtual llarp_time_t
@@ -188,12 +189,12 @@ namespace llarp
       // send routing message when end of path
       bool
       SendRoutingMessage(const llarp::routing::IMessage* msg,
-                         llarp::Router* r) override;
+                         AbstractRouter* r) override;
 
       // handle routing message when end of path
       bool
       HandleRoutingMessage(const llarp::routing::IMessage* msg,
-                           llarp::Router* r);
+                           AbstractRouter* r);
 
       bool
       HandleDataDiscardMessage(const llarp::routing::DataDiscardMessage* msg,
@@ -257,12 +258,12 @@ namespace llarp
       // handle data in upstream direction
       bool
       HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                     llarp::Router* r) override;
+                     AbstractRouter* r) override;
 
       // handle data in downstream direction
       bool
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                       llarp::Router* r) override;
+                       AbstractRouter* r) override;
     };
 
     /// configuration for a single hop when building a path
@@ -417,7 +418,7 @@ namespace llarp
 
       bool
       SendRoutingMessage(const llarp::routing::IMessage* msg,
-                         llarp::Router* r) override;
+                         llarp::AbstractRouter* r) override;
 
       bool
       HandleObtainExitMessage(const llarp::routing::ObtainExitMessage* msg,
@@ -475,17 +476,17 @@ namespace llarp
                        llarp::Router* r) override;
 
       bool
-      HandleRoutingMessage(const llarp_buffer_t& buf, llarp::Router* r);
+      HandleRoutingMessage(const llarp_buffer_t& buf, AbstractRouter* r);
 
       // handle data in upstream direction
       bool
       HandleUpstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                     llarp::Router* r) override;
+                     AbstractRouter* r) override;
 
       // handle data in downstream direction
       bool
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
-                       llarp::Router* r) override;
+                       AbstractRouter* r) override;
 
       bool
       IsReady() const;

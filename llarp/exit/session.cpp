@@ -11,13 +11,13 @@ namespace llarp
         const llarp::RouterID& router,
         std::function< bool(const llarp_buffer_t&) > writepkt, llarp::Router* r,
         size_t numpaths, size_t hoplen)
-        : llarp::path::Builder(r, r->dht, numpaths, hoplen)
+        : llarp::path::Builder(r, r->dht(), numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
         , m_Counter(0)
         , m_LastUse(0)
     {
-      r->crypto->identity_keygen(m_ExitIdentity);
+      r->crypto()->identity_keygen(m_ExitIdentity);
     }
 
     BaseSession::~BaseSession()
@@ -79,7 +79,7 @@ namespace llarp
       obtain.S = p->NextSeqNo();
       obtain.T = llarp::randint();
       PopulateRequest(obtain);
-      if(!obtain.Sign(router->crypto.get(), m_ExitIdentity))
+      if(!obtain.Sign(router->crypto(), m_ExitIdentity))
       {
         llarp::LogError("Failed to sign exit request");
         return;
@@ -108,7 +108,7 @@ namespace llarp
         {
           llarp::LogInfo(p->Name(), " closing exit path");
           llarp::routing::CloseExitMessage msg;
-          if(!(msg.Sign(router->crypto.get(), m_ExitIdentity)
+          if(!(msg.Sign(router->crypto(), m_ExitIdentity)
                && p->SendExitClose(&msg, router)))
             llarp::LogWarn(p->Name(), " failed to send exit close message");
         }

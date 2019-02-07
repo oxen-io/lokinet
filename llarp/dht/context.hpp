@@ -17,7 +17,7 @@
 
 namespace llarp
 {
-  struct Router;
+  struct AbstractRouter;
 
   namespace dht
   {
@@ -58,7 +58,7 @@ namespace llarp
       virtual llarp::Crypto*
       Crypto() const = 0;
 
-      virtual llarp::Router*
+      virtual llarp::AbstractRouter*
       GetRouter() const = 0;
 
       virtual const Key_t&
@@ -193,7 +193,7 @@ namespace llarp
       void
       Explore(size_t N = 3);
 
-      llarp::Router* router;
+      llarp::AbstractRouter* router;
       // for router contacts
       std::unique_ptr< Bucket< RCNode > > nodes;
 
@@ -213,7 +213,7 @@ namespace llarp
         return ourKey;
       }
 
-      llarp::Router*
+      llarp::AbstractRouter*
       GetRouter() const override
       {
         return router;

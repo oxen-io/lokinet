@@ -25,7 +25,7 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       auto &dht   = ctx->impl;
-      auto crypto = dht.router->crypto.get();
+      auto crypto = dht.router->crypto();
 
       for(const auto &introset : I)
       {
@@ -70,7 +70,7 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       // TODO: implement me better?
-      auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);
+      auto pathset = ctx->impl.router->pathContext().GetLocalPathSet(pathID);
       if(pathset)
       {
         return pathset->HandleGotIntroMessage(this);

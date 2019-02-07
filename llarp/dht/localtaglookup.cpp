@@ -20,7 +20,7 @@ namespace llarp
     void
     LocalTagLookup::SendReply()
     {
-      auto path = parent->GetRouter()->paths.GetByUpstream(
+      auto path = parent->GetRouter()->pathContext().GetByUpstream(
           parent->OurKey().as_array(), localPath);
       if(!path)
       {

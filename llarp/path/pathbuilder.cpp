@@ -173,8 +173,8 @@ namespace llarp
         , dht(p_dht)
         , numHops(hops)
     {
-      p_router->paths.AddPathBuilder(this);
-      p_router->crypto->encryption_keygen(enckey);
+      p_router->pathContext().AddPathBuilder(this);
+      p_router->crypto()->encryption_keygen(enckey);
       _run.store(true);
       keygens.store(0);
     }
@@ -246,7 +246,7 @@ namespace llarp
     Builder::BuildOne(PathRole roles)
     {
       std::vector< RouterContact > hops;
-      if(SelectHops(router->nodedb, hops, roles))
+      if(SelectHops(router->nodedb(), hops, roles))
         Build(hops, roles);
     }
 
@@ -294,14 +294,14 @@ namespace llarp
       lastBuild = Now();
       // async generate keys
       AsyncPathKeyExchangeContext< Builder >* ctx =
-          new AsyncPathKeyExchangeContext< Builder >(router->crypto.get());
+          new AsyncPathKeyExchangeContext< Builder >(router->crypto());
       ctx->router  = router;
       ctx->pathset = this;
       auto path    = new llarp::path::Path(hops, this, roles);
       path->SetBuildResultHook(std::bind(&llarp::path::Builder::HandlePathBuilt,
                                          this, std::placeholders::_1));
       ++keygens;
-      ctx->AsyncGenerateKeys(path, router->logic, router->tp, this,
+      ctx->AsyncGenerateKeys(path, router->logic(), router->tp, this,
                              &PathBuilderKeysGenerated);
     }
 

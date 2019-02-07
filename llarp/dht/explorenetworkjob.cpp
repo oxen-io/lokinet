@@ -25,7 +25,9 @@ namespace llarp
       {
         // lookup router
         parent->LookupRouter(
-            pk, std::bind(&Router::HandleDHTLookupForExplore, router, pk, _1));
+            pk,
+            std::bind(&AbstractRouter::HandleDHTLookupForExplore, router, pk,
+                      _1));
       }
     }
   }  // namespace dht
