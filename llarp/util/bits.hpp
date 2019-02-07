@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <numeric>
 #include <type_traits>
+#include <limits>
 
 namespace llarp
 {
