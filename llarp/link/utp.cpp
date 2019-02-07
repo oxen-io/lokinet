@@ -551,7 +551,7 @@ namespace llarp
     NewServerFromRouter(llarp::Router* r)
     {
       return NewServer(
-          r->crypto.get(), r->encryption, std::bind(&llarp::Router::rc, r),
+          r->crypto(), r->encryption, std::bind(&llarp::Router::rc, r),
           std::bind(&llarp::Router::HandleRecvLinkMessageBuffer, r,
                     std::placeholders::_1, std::placeholders::_2),
           std::bind(&llarp::Router::OnSessionEstablished, r,

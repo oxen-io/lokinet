@@ -1,7 +1,11 @@
 #ifndef LLARP_BITS_HPP
 #define LLARP_BITS_HPP
 
+#include <bitset>
 #include <cstddef>
+#include <numeric>
+#include <type_traits>
+#include <limits>
 
 namespace llarp
 {
@@ -9,27 +13,29 @@ namespace llarp
   {
     template < typename Int_t >
     constexpr std::size_t
-    count_bits(const Int_t& i)
+    count_bits(Int_t i)
     {
-      return i == 0 ? 0
-                    : ((i & 0x01) == 0x01) ? 1UL + count_bits(i >> 1)
-                                           : count_bits(i >> 1);
+      static_assert(std::is_integral< Int_t >::value,
+                    "Int_t should be an integer");
+      static_assert(std::is_unsigned< Int_t >::value,
+                    "Int_t should be unsigned");
+      return std::bitset< std::numeric_limits< Int_t >::digits >(i).count();
     }
 
-    template < typename T >
+    template < typename InputIt >
     constexpr std::size_t
-    __count_array_bits(const T& array, std::size_t idx)
+    __count_array_bits(InputIt begin, InputIt end)
     {
-      return idx < sizeof(T)
-          ? count_bits(array[idx]) + __count_array_bits(array, idx + 1)
-          : 0;
+      return std::accumulate(begin, end, 0, [](auto acc, auto val) {
+        return acc + count_bits(val);
+      });
     }
 
     template < typename T >
     constexpr std::size_t
     count_array_bits(const T& array)
     {
-      return __count_array_bits(array, 0);
+      return __count_array_bits(std::begin(array), std::end(array));
     }
   }  // namespace bits
 }  // namespace llarp

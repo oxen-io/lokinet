@@ -9,7 +9,7 @@ namespace llarp
   ConfigParser::LoadFile(const char* fname)
   {
     {
-      std::ifstream f(fname);
+      std::ifstream f(fname, std::ios::in | std::ios::binary);
       if(!f.is_open())
         return false;
       f.seekg(0, std::ios::end);
@@ -106,7 +106,7 @@ namespace llarp
         // clamp whitespaces
         while(whitespace(realLine[k_start]) && k_start != kvDelim)
           ++k_start;
-        while(whitespace(realLine[k_end]) && k_end != k_start)
+        while(whitespace(realLine[k_end - 1]) && k_end != k_start)
           --k_end;
         while(whitespace(realLine[v_start]) && v_start != v_end)
           ++v_start;

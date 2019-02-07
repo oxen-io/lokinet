@@ -80,7 +80,9 @@ struct TryConnectJob
     if(!router->IsServiceNode())
     {
       if(router->routerProfiling.IsBad(rc.pubkey))
-        router->nodedb->Remove(rc.pubkey);
+      {
+        router->nodedb()->Remove(rc.pubkey);
+      }
     }
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
@@ -164,6 +166,10 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &path,
 
 namespace llarp
 {
+  AbstractRouter::~AbstractRouter()
+  {
+  }
+
   bool
   Router::TryConnectAsync(llarp::RouterContact remote, uint16_t numretries)
   {
@@ -186,7 +192,7 @@ namespace llarp
         // only try establishing if we inserted a new element
         TryConnectJob *job = itr.first->second.get();
         // try establishing async
-        logic->queue_job({job, &on_try_connecting});
+        _logic->queue_job({job, &on_try_connecting});
         return true;
       }
     }
@@ -201,15 +207,15 @@ namespace llarp
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *_netloop,
-                 llarp::Logic *_logic)
+                 llarp::Logic *l)
       : ready(false)
       , netloop(_netloop)
       , tp(_tp)
-      , logic(_logic)
-      , crypto(std::make_unique< sodium::CryptoLibSodium >())
+      , _logic(l)
+      , _crypto(std::make_unique< sodium::CryptoLibSodium >())
       , paths(this)
       , exitContext(this)
-      , dht(llarp_dht_context_new(this))
+      , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
       , hiddenServiceContext(this)
   {
@@ -228,7 +234,7 @@ namespace llarp
 
   Router::~Router()
   {
-    llarp_dht_context_free(dht);
+    llarp_dht_context_free(_dht);
   }
 
   bool
@@ -257,10 +263,10 @@ namespace llarp
   bool
   Router::GetRandomGoodRouter(RouterID &router)
   {
-    auto sz = nodedb->entries.size();
+    auto sz = nodedb()->entries.size();
     if(sz == 0)
       return false;
-    auto itr = nodedb->entries.begin();
+    auto itr = nodedb()->entries.begin();
     if(sz > 1)
       std::advance(itr, randint() % sz);
     router = itr->first;
@@ -317,7 +323,7 @@ namespace llarp
     }
     llarp::RouterContact remoteRC;
     // we don't have an open session to that router right now
-    if(nodedb->Get(remote, remoteRC))
+    if(nodedb()->Get(remote, remoteRC))
     {
       // try connecting directly as the rc is loaded from disk
       TryConnectAsync(remoteRC, 10);
@@ -325,9 +331,9 @@ namespace llarp
     }
 
     // we don't have the RC locally so do a dht lookup
-    dht->impl.LookupRouter(remote,
-                           std::bind(&Router::HandleDHTLookupForSendTo, this,
-                                     remote, std::placeholders::_1));
+    _dht->impl.LookupRouter(remote,
+                            std::bind(&Router::HandleDHTLookupForSendTo, this,
+                                      remote, std::placeholders::_1));
     return true;
   }
 
@@ -343,9 +349,9 @@ namespace llarp
       {
         return;
       }
-      if(results[0].Verify(crypto.get(), Now()))
+      if(results[0].Verify(crypto(), Now()))
       {
-        nodedb->Insert(results[0]);
+        nodedb()->Insert(results[0]);
         TryConnectAsync(results[0], 10);
         return;
       }
@@ -391,11 +397,11 @@ namespace llarp
       llarp::LogError("failure to decode or verify of remote RC");
       return;
     }
-    if(remote.Verify(crypto.get(), Now()))
+    if(remote.Verify(crypto(), Now()))
     {
       llarp::LogDebug("verified signature");
       // store into filesystem
-      if(!nodedb->Insert(remote))
+      if(!nodedb()->Insert(remote))
       {
         llarp::LogWarn("failed to store");
       }
@@ -415,16 +421,16 @@ namespace llarp
     if(!EnsureEncryptionKey())
       return false;
     if(usingSNSeed)
-      return llarp_loadServiceNodeIdentityKey(crypto.get(), ident_keyfile,
+      return llarp_loadServiceNodeIdentityKey(crypto(), ident_keyfile,
                                               identity);
     else
-      return llarp_findOrCreateIdentity(crypto.get(), ident_keyfile, identity);
+      return llarp_findOrCreateIdentity(crypto(), ident_keyfile, identity);
   }
 
   bool
   Router::EnsureEncryptionKey()
   {
-    return llarp_findOrCreateEncryption(crypto.get(), encryption_keyfile,
+    return llarp_findOrCreateEncryption(crypto(), encryption_keyfile,
                                         this->encryption);
   }
 
@@ -460,7 +466,7 @@ namespace llarp
   Router::SaveRC()
   {
     llarp::LogDebug("verify RC signature");
-    if(!_rc.Verify(crypto.get(), Now()))
+    if(!_rc.Verify(crypto(), Now()))
     {
       rc().Dump< MAX_RC_SIZE >();
       llarp::LogError("RC is invalid, not saving");
@@ -532,7 +538,7 @@ namespace llarp
     router->validRouters.emplace(pk, rc);
 
     // track valid router in dht
-    router->dht->impl.nodes->PutNode(rc);
+    router->dht()->impl.nodes->PutNode(rc);
 
     // mark success in profile
     router->routerProfiling.MarkSuccess(pk);
@@ -586,8 +592,8 @@ namespace llarp
       return;
     for(const auto &rc : results)
     {
-      if(rc.Verify(crypto.get(), Now()))
-        nodedb->Insert(rc);
+      if(rc.Verify(crypto(), Now()))
+        nodedb()->Insert(rc);
       else
         return;
     }
@@ -608,18 +614,18 @@ namespace llarp
     }
 
     llarp::RouterContact rc;
-    if(nodedb->Get(remote, rc))
+    if(nodedb()->Get(remote, rc))
     {
       // try connecting async
       TryConnectAsync(rc, 5);
     }
     else if(IsServiceNode() || !routerProfiling.IsBad(remote))
     {
-      if(dht->impl.HasRouterLookup(remote))
+      if(dht()->impl.HasRouterLookup(remote))
         return;
       llarp::LogInfo("looking up router ", remote);
       // dht lookup as we don't know it
-      dht->impl.LookupRouter(
+      dht()->impl.LookupRouter(
           remote,
           std::bind(&Router::HandleDHTLookupForTryEstablishTo, this, remote,
                     std::placeholders::_1));
@@ -655,7 +661,7 @@ namespace llarp
       if(whitelistRouters
          && lokinetRouters.find(result.pubkey) == lokinetRouters.end())
         continue;
-      nodedb->Insert(result);
+      nodedb()->Insert(result);
       TryConnectAsync(result, 10);
     }
   }
@@ -673,7 +679,7 @@ namespace llarp
     llarp::RouterContact nextRC = _rc;
     if(rotateKeys)
     {
-      crypto->encryption_keygen(nextOnionKey);
+      crypto()->encryption_keygen(nextOnionKey);
       std::string f = encryption_keyfile.string();
       if(nextOnionKey.SaveToFile(f.c_str()))
       {
@@ -682,7 +688,7 @@ namespace llarp
       }
     }
     nextRC.last_updated = Now();
-    if(!nextRC.Sign(crypto.get(), identity))
+    if(!nextRC.Sign(crypto(), identity))
       return false;
     _rc = nextRC;
     // propagate RC by renegotiating sessions
@@ -705,11 +711,11 @@ namespace llarp
       return false;
 
     // store it in nodedb async
-    nodedb->InsertAsync(newrc);
+    nodedb()->InsertAsync(newrc);
     // update dht if required
-    if(dht->impl.nodes->HasNode(dht::Key_t{newrc.pubkey}))
+    if(dht()->impl.nodes->HasNode(dht::Key_t{newrc.pubkey}))
     {
-      dht->impl.nodes->PutNode(newrc);
+      dht()->impl.nodes->PutNode(newrc);
     }
     // update valid routers
     {
@@ -726,9 +732,9 @@ namespace llarp
   void
   Router::ServiceNodeLookupRouterWhenExpired(RouterID router)
   {
-    dht->impl.LookupRouter(router,
-                           std::bind(&Router::HandleDHTLookupForExplore, this,
-                                     router, std::placeholders::_1));
+    dht()->impl.LookupRouter(router,
+                             std::bind(&Router::HandleDHTLookupForExplore, this,
+                                       router, std::placeholders::_1));
   }
 
   void
@@ -748,7 +754,7 @@ namespace llarp
     {
       // only do this as service node
       // client endpoints do this on their own
-      nodedb->visit([&](const RouterContact &rc) -> bool {
+      nodedb()->visit([&](const RouterContact &rc) -> bool {
         if(rc.ExpiresSoon(now, llarp::randint() % 10000))
           ServiceNodeLookupRouterWhenExpired(rc.pubkey);
         return true;
@@ -783,7 +789,7 @@ namespace llarp
       }
     }
 
-    size_t N = nodedb->num_loaded();
+    size_t N = nodedb()->num_loaded();
     if(N < minRequiredRouters)
     {
       llarp::LogInfo("We need at least ", minRequiredRouters,
@@ -795,7 +801,7 @@ namespace llarp
         for(const auto &rc : bootstrapRCList)
         {
           TryConnectAsync(rc, 4);
-          dht->impl.ExploreNetworkVia(dht::Key_t{rc.pubkey});
+          dht()->impl.ExploreNetworkVia(dht::Key_t{rc.pubkey});
         }
       }
       else
@@ -819,7 +825,7 @@ namespace llarp
   bool
   Router::Sign(llarp::Signature &sig, const llarp_buffer_t &buf) const
   {
-    return crypto->sign(sig, identity, buf);
+    return crypto()->sign(sig, identity, buf);
   }
 
   void
@@ -859,13 +865,13 @@ namespace llarp
   void
   Router::ScheduleTicker(uint64_t ms)
   {
-    ticker_job_id = logic->call_later({ms, this, &handle_router_ticker});
+    ticker_job_id = _logic->call_later({ms, this, &handle_router_ticker});
   }
 
   void
   Router::SessionClosed(llarp::RouterID remote)
   {
-    __llarp_dht_remove_peer(dht, remote.data());
+    __llarp_dht_remove_peer(dht(), remote.data());
     // remove from valid routers if it's a valid router
     validRouters.erase(remote);
     llarp::LogInfo("Session to ", remote, " fully closed");
@@ -966,9 +972,8 @@ namespace llarp
     job->valid = false;
     job->hook  = nullptr;
 
-    job->nodedb = nodedb;
-    job->logic  = logic;
-    // job->crypto = crypto.get(); // we already have this
+    job->nodedb       = _nodedb;
+    job->logic        = _logic;
     job->cryptoworker = tp;
     job->diskworker   = disk;
     if(rc.IsPublicRouter())
@@ -984,7 +989,7 @@ namespace llarp
   {
     if(_running || _stopping)
       return false;
-    this->nodedb = nodedb;
+    this->_nodedb = nodedb;
 
     if(enableRPCServer)
     {
@@ -1066,7 +1071,7 @@ namespace llarp
           a);
     }
     llarp::LogInfo("Signing rc...");
-    if(!_rc.Sign(crypto.get(), identity))
+    if(!_rc.Sign(crypto(), identity))
     {
       llarp::LogError("failed to sign rc");
       return false;
@@ -1083,7 +1088,7 @@ namespace llarp
     llarp::LogInfo("starting outbound ", outboundLinks.size(), " links");
     for(const auto &link : outboundLinks)
     {
-      if(!link->Start(logic))
+      if(!link->Start(_logic))
       {
         llarp::LogWarn("outbound link '", link->Name(), "' failed to start");
         return false;
@@ -1095,7 +1100,7 @@ namespace llarp
     // start links
     for(const auto &link : inboundLinks)
     {
-      if(link->Start(logic))
+      if(link->Start(_logic))
       {
         llarp::LogDebug("Link ", link->Name(), " started");
         IBLinksStarted++;
@@ -1119,11 +1124,11 @@ namespace llarp
     {
       // we are a client
       // regenerate keys and resign rc before everything else
-      crypto->identity_keygen(identity);
-      crypto->encryption_keygen(encryption);
+      crypto()->identity_keygen(identity);
+      crypto()->encryption_keygen(encryption);
       _rc.pubkey = llarp::seckey_topublic(identity);
       _rc.enckey = llarp::seckey_topublic(encryption);
-      if(!_rc.Sign(crypto.get(), identity))
+      if(!_rc.Sign(crypto(), identity))
       {
         llarp::LogError("failed to regenerate keys and sign RC");
         return false;
@@ -1148,7 +1153,7 @@ namespace llarp
       llarp::LogError("Failed to start hidden service context");
       return false;
     }
-    llarp_dht_context_start(dht, pubkey());
+    llarp_dht_context_start(dht(), pubkey());
     ScheduleTicker(1000);
     _running.store(true);
     return _running;
@@ -1166,7 +1171,7 @@ namespace llarp
   {
     Router *self = static_cast< Router * >(u);
     self->StopLinks();
-    self->logic->call_later({200, self, &RouterAfterStopLinks});
+    self->_logic->call_later({200, self, &RouterAfterStopLinks});
   }
 
   void
@@ -1271,7 +1276,7 @@ namespace llarp
     exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
-    logic->call_later({200, this, &RouterAfterStopIssued});
+    _logic->call_later({200, this, &RouterAfterStopIssued});
   }
 
   bool
@@ -1286,7 +1291,7 @@ namespace llarp
     int wanted   = want;
     Router *self = this;
 
-    self->nodedb->visit(
+    self->nodedb()->visit(
         [self, &want](const llarp::RouterContact &other) -> bool {
           // check if we really want to
           if(other.ExpiresSoon(self->Now(), 30000))
@@ -1312,7 +1317,7 @@ namespace llarp
   {
     llarp::LogInfo("accepting transit traffic");
     paths.AllowTransit();
-    llarp_dht_allow_transit(dht);
+    llarp_dht_allow_transit(dht());
     return exitContext.AddExitEndpoint("default-connectivity", netConfig);
   }
 
@@ -1643,7 +1648,7 @@ namespace llarp
         self->bootstrapRCList.pop_back();
         return;
       }
-      if(rc.Verify(self->crypto.get(), self->Now()))
+      if(rc.Verify(self->crypto(), self->Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
       }
@@ -1705,7 +1710,7 @@ namespace llarp
       {
         self->ident_keyfile = val;
       }
-      if(StrEq(key, "public-address"))
+      if(StrEq(key, "public-address") || StrEq(key, "public-ip"))
       {
         llarp::LogInfo("public ip ", val, " size ", strlen(val));
         if(strlen(val) < 17)

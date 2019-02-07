@@ -66,7 +66,7 @@ namespace llarp
         return;
       Context *ctx = static_cast< Context * >(u);
       ctx->Explore(1);
-      ctx->router->logic->call_later({orig, ctx, &handle_explore_timer});
+      ctx->router->logic()->call_later({orig, ctx, &handle_explore_timer});
     }
 
     void
@@ -233,7 +233,7 @@ namespace llarp
       llarp::LogDebug("initialize dht with key ", ourKey);
       // start exploring
 
-      r->logic->call_later(
+      r->logic()->call_later(
           {exploreInterval, this, &llarp::dht::Context::handle_explore_timer});
       // start cleanup timer
       ScheduleCleanupTimer();
@@ -242,7 +242,7 @@ namespace llarp
     void
     Context::ScheduleCleanupTimer()
     {
-      router->logic->call_later({1000, this, &handle_cleaner_timer});
+      router->logic()->call_later({1000, this, &handle_cleaner_timer});
     }
 
     void
@@ -262,11 +262,11 @@ namespace llarp
     Context::RelayRequestForPath(const llarp::PathID_t &id, const IMessage *msg)
     {
       llarp::routing::DHTMessage reply;
-      if(!msg->HandleMessage(router->dht, reply.M))
+      if(!msg->HandleMessage(router->dht(), reply.M))
         return false;
       if(!reply.M.empty())
       {
-        auto path = router->paths.GetByUpstream(router->pubkey(), id);
+        auto path = router->pathContext().GetByUpstream(router->pubkey(), id);
         return path && path->SendRoutingMessage(&reply, router);
       }
       return true;
@@ -419,13 +419,13 @@ namespace llarp
     llarp::Crypto *
     Context::Crypto() const
     {
-      return router->crypto.get();
+      return router->crypto();
     }
 
     llarp_time_t
     Context::Now() const
     {
-      return llarp_ev_loop_time_now_ms(router->netloop);
+      return router->Now();
     }
 
   }  // namespace dht

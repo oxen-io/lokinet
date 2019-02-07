@@ -31,6 +31,10 @@ TESTNET_EXE=$(REPO)/lokinet-testnet
 TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
+TESTNET_IFNAME ?= lo
+TESTNET_BASEPORT ?= 1900
+TESTNET_IP ?= 127.0.0.1
+TESTNET_NETID ?= loopback
 
 ANDROID_NDK ?= $(HOME)/Android/Ndk
 ANDROID_SDK ?= $(HOME)/Android/Sdk
@@ -63,27 +67,34 @@ SHARED_LIB ?= ON
 # enable generating coverage
 COVERAGE ?= OFF
 COVERAGE_OUTDIR ?= "$(TMPDIR)/lokinet-coverage"
+
 # cmake generator type
 CMAKE_GEN ?= Unix Makefiles
+
+
+ifdef NINJA
+	BUILD_CMD = $(NINJA) -C
+	CMAKE_GEN = Ninja
+else
+	BUILD_CMD = $(MAKE) -C
+endif
+
 
 BUILD_ROOT = $(REPO)/build
 
 SCAN_BUILD ?= scan-build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
 
-ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
+ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
 
-COVERAGE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=yes '$(REPO)'")
+COVERAGE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=yes '$(REPO)'")
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
 EXE = $(BUILD_ROOT)/lokinet
 TEST_EXE = $(BUILD_ROOT)/testAll
 ABYSS_EXE = $(BUILD_ROOT)/abyss-main
-
-# PROCS ?= $(shell cat /proc/cpuinfo | grep processor | wc -l)
-
 
 LINT_FILES = $(wildcard llarp/*.cpp)
 
@@ -102,17 +113,16 @@ debug-configure:
 
 release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DSTATIC_LINK=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DSTATIC_LINK_RUNTIME=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
-	$(MAKE) -C $(BUILD_ROOT)
-	cp $(EXE) lokinet
-	cp $(BUILD_ROOT)/liblokinet-shared.so liblokinet-shared.so
+	$(BUILD_CMD) $(BUILD_ROOT)
+	cp $(EXE) $(REPO)/lokinet
 
 
 release-compile: release-configure
-	$(MAKE) -C $(BUILD_ROOT)
-	cp $(EXE) lokinet
+	$(BUILD_CMD) $(BUILD_ROOT)
+	cp $(EXE) $(REPO)/lokinet
 	strip $(TARGETS)
 
 $(TARGETS): release-compile
@@ -127,11 +137,11 @@ shadow-configure: clean
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 shadow-build: shadow-configure
-	$(MAKE) -C $(BUILD_ROOT) clean
-	$(MAKE) -C $(BUILD_ROOT)
+	$(BUILD_CMD) $(BUILD_ROOT) clean
+	$(BUILD_CMD) $(BUILD_ROOT)
 
 shadow-run: shadow-build
-	$(PYTHON) contrib/shadow/genconf.py $(SHADOW_CONFIG)
+	$(PYTHON) $(REPO)/contrib/shadow/genconf.py $(SHADOW_CONFIG)
 	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) | $(SHADOW_PARSE)"
 
 shadow-plot: shadow-run
@@ -147,12 +157,12 @@ testnet-configure: testnet-clean
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTESTNET=1
 
 testnet-build: testnet-configure
-	$(MAKE) -C $(BUILD_ROOT)
+	$(BUILD_CMD) $(BUILD_ROOT)
 
 testnet:
 	cp $(EXE) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
-	$(PYTHON) contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4
+	$(PYTHON) $(REPO)/contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4 --ifname=$(TESTNET_IFNAME) --baseport=$(TESTNET_BASEPORT) --ip=$(TESTNET_IP) --netid=$(TESTNET_NETID)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 $(TEST_EXE): debug
@@ -181,7 +191,7 @@ windows-configure: clean
 	$(CONFIG_CMD) -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc-win32 -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++-win32 -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 windows: windows-configure
-	$(MAKE) -C '$(BUILD_ROOT)'
+	$(BUILD_CMD) '$(BUILD_ROOT)'
 	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
 
 abyss: debug
@@ -195,14 +205,14 @@ analyze-config: clean
 	$(ANALYZE_CONFIG_CMD)
 
 analyze: analyze-config
-	cd '$(BUILD_ROOT)' && $(SCAN_BUILD) $(MAKE)
+	$(SCAN_BUILD) $(BUILD_CMD) $(BUILD_ROOT)
 
 coverage-config: clean
 	mkdir -p '$(BUILD_ROOT)'
 	$(COVERAGE_CONFIG_CMD)
 
 coverage: coverage-config
-	$(MAKE) -C $(BUILD_ROOT)
+	$(BUILD_CMD) $(BUILD_ROOT)
 	$(TEST_EXE) || true # continue even if tests fail
 	mkdir -p "$(COVERAGE_OUTDIR)"
 ifeq ($(CLANG),OFF)
@@ -236,7 +246,7 @@ debian-configure:
 	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)" -DCMAKE_BUILD_TYPE=Release
 
 debian: debian-configure
-	$(MAKE) -C '$(BUILD_ROOT)'
+	$(BUILD_CMD) '$(BUILD_ROOT)'
 	cp $(EXE) lokinet
 	cp $(BUILD_ROOT)/rcutil lokinet-rcutil
 
@@ -244,15 +254,6 @@ debian-test:
 	$(TEST_EXE)
 
 install:
-	$(MAKE) -C '$(BUILD_ROOT)' install
-
-fuzz-configure: clean
-	cmake -GNinja -DCMAKE_BUILD_TYPE=Fuzz -DCMAKE_C_COMPILER=afl-gcc -DCMAKE_CXX_COMPILER=afl-g++
-
-fuzz-build: fuzz-configure
-	ninja
-
-fuzz: fuzz-build
-	$(EXE)
+	$(BUILD_CMD) '$(BUILD_ROOT)' install
 
 .PHONY: debian-install

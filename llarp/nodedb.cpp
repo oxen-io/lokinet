@@ -106,6 +106,9 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
   llarp_buffer_t buf(tmp);
   {
     llarp::util::Lock lock(access);
+    auto itr = entries.find(rc.pubkey.as_array());
+    if(itr != entries.end())
+      entries.erase(itr);
     entries.emplace(rc.pubkey.as_array(), rc);
   }
   if(!rc.BEncode(&buf))
@@ -388,6 +391,7 @@ llarp_nodedb::num_loaded() const
 bool
 llarp_nodedb::select_random_exit(llarp::RouterContact &result)
 {
+  llarp::util::Lock lock(access);
   const auto sz = entries.size();
   auto itr      = entries.begin();
   if(sz < 3)
@@ -422,37 +426,44 @@ bool
 llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
                                 llarp::RouterContact &result, size_t N)
 {
+  llarp::util::Lock lock(access);
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
   size_t sz = entries.size();
   if(sz < 3)
     return false;
-  size_t tries     = 5;
+  if(!N)
+    return false;
   llarp_time_t now = llarp::time_now_ms();
-  if(N)
+
+  auto itr   = entries.begin();
+  size_t pos = llarp::randint() % sz;
+  std::advance(itr, pos);
+  auto start = itr;
+  while(itr == entries.end())
   {
-    do
+    if(prev.pubkey != itr->second.pubkey)
     {
-      auto itr = entries.begin();
-      std::advance(itr, llarp::randint() % sz);
-      if(itr == entries.end())
-      {
-        --tries;
-        continue;
-      }
-      if(prev.pubkey == itr->second.pubkey)
-      {
-        --tries;
-        continue;
-      }
       if(itr->second.addrs.size() && !itr->second.IsExpired(now))
       {
         result = itr->second;
         return true;
       }
-    } while(tries--);
-    return false;
+    }
+    itr++;
   }
-  else
-    return false;
+  itr = entries.begin();
+  while(itr != start)
+  {
+    if(prev.pubkey != itr->second.pubkey)
+    {
+      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      {
+        result = itr->second;
+        return true;
+      }
+    }
+    ++itr;
+  }
+  return false;
 }

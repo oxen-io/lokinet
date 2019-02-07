@@ -95,7 +95,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
   }
 
   // write fname ini
-  std::ofstream f(fname);
+  std::ofstream f(fname, std::ios::out | std::ios::binary);
   if(!f.is_open())
   {
     llarp::LogError("failed to open ", fname, " for writing");
@@ -239,7 +239,8 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   // start client.ini
   // write fname ini
   {
-    std::ofstream clientini_f(snappExample_fpath);
+    std::ofstream clientini_f(snappExample_fpath,
+                              std::ios::binary | std::ios::out);
     if(f.is_open())
     {
       clientini_f << "# this is an example configuration for a snapp";

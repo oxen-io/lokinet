@@ -181,8 +181,13 @@ int main(int argc, char **argv)
 	SET_BINARY_MODE(stdout);
 
 	/* do compression if no arguments */
+	/* Warning: Not compatible with plain libz, dial it back down to
+	 * 9 if this is required, uber-level is 10
+	 * since we have everything crammed in miniz, we don't depend on
+	 * libz at all.
+	 */
 	if (argc == 1) {
-		ret = def(stdin, stdout, Z_DEFAULT_COMPRESSION);
+		ret = def(stdin, stdout, MZ_UBER_COMPRESSION);
 		if (ret != Z_OK)
 			zerr(ret);
 		return ret;

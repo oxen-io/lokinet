@@ -87,7 +87,7 @@ namespace llarp
       auto &dht = ctx->impl;
       if(relayed)
       {
-        auto pathset = ctx->impl.router->paths.GetLocalPathSet(pathID);
+        auto pathset = ctx->impl.router->pathContext().GetLocalPathSet(pathID);
         return pathset && pathset->HandleGotRouterMessage(this);
       }
       // not relayed
