@@ -1710,7 +1710,7 @@ namespace llarp
       {
         self->ident_keyfile = val;
       }
-      if(StrEq(key, "public-address"))
+      if(StrEq(key, "public-address") || StrEq(key, "public-ip"))
       {
         llarp::LogInfo("public ip ", val, " size ", strlen(val));
         if(strlen(val) < 17)
