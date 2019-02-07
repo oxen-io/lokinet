@@ -16,7 +16,11 @@ option(gtest_build_tests "Build all of gtest's own tests." OFF)
 
 option(gtest_build_samples "Build gtest's sample programs." OFF)
 
+if (WIN32)
+option(gtest_disable_pthreads "Disable uses of pthreads in gtest." ON)
+else (NOT WIN32)
 option(gtest_disable_pthreads "Disable uses of pthreads in gtest." OFF)
+endif(WIN32)
 
 option(
   gtest_hide_internal_symbols
