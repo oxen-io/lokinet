@@ -243,7 +243,7 @@ namespace llarp
             continue;
           std::array< byte_t, 1024 > tmp = {0};
           llarp_buffer_t buf(tmp);
-          if(!SendToServiceOrQueue(introset.A.Addr().data().data(), buf,
+          if(!SendToServiceOrQueue(introset.A.Addr().data(), buf,
                                    eProtocolText))
           {
             llarp::LogWarn(Name(), " failed to send/queue data to ",
