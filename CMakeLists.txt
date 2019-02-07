@@ -658,6 +658,7 @@ set(TEST_SRC
   test/test_llarp_router.cpp
   test/util/test_llarp_util_aligned.cpp
   test/util/test_llarp_util_bencode.cpp
+  test/util/test_llarp_util_bits.cpp
   test/util/test_llarp_util_encode.cpp
   test/util/test_llarp_util_ini.cpp
   test/util/test_llarp_util_queue_manager.cpp
@@ -765,7 +766,7 @@ else()
 
   target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB})
   target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
+  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest absl::variant ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   if (WIN32)
     target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
     target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
