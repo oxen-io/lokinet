@@ -427,10 +427,9 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   size_t sz = entries.size();
   if(sz < 3)
     return false;
-  size_t tries     = 5;
-  llarp_time_t now = llarp::time_now_ms();
   if(!N)
     return false;
+  llarp_time_t now = llarp::time_now_ms();
 
   auto itr   = entries.begin();
   size_t pos = llarp::randint() % sz;
