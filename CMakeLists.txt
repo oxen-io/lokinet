@@ -8,7 +8,7 @@ option(USE_LIBABYSS "enable libabyss" )
 option(USE_AVX2 "enable avx2 code" )
 option(USE_NETNS "enable networking namespace support. Linux only" )
 option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU, but does not show in CPUID)" )
-option(STATIC_LINK "emit fully linked binaries" )
+option(STATIC_LINK_RUNTIME "link statically against compiler runtime, standard library and pthreads")
 option(NON_PC_TARGET "non-pc target build: iphone, andriod, embedded non-i386 SBC, etc" )
 option(SHADOW "use shadow testing framework. linux only" )
 option(ASAN "use address sanitiser, if your system has it" )
@@ -32,19 +32,26 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
   message( FATAL_ERROR "shadow-framework is Linux only" )
 endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
-if (STATIC_LINK AND SHADOW)
+# might be redundant. Waiting on new 2U blade to spin up new
+# lunix box -rick
+if (STATIC_LINK_RUNTIME AND SHADOW)
   message(FATAL_ERROR "the shadow-framework build cannot be linked statically!")
-endif(STATIC_LINK AND SHADOW)
+endif(STATIC_LINK_RUNTIME AND SHADOW)
 
-if (WIN32 AND NOT STATIC_LINK)
-  message("Shared object builds are not yet supported for Windows, linking statically")
-  set(STATIC_LINK ON)
-endif(WIN32 AND NOT STATIC_LINK)
+if (WIN32 AND NOT STATIC_LINK_RUNTIME)
+  message("must ship compiler runtime libraries with this build: libwinpthread-1.dll, libgcc_s_dw2-1.dll, and libstdc++-6.dll")
+  message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
+  #set(STATIC_LINK_RUNTIME ON)
+endif(WIN32 AND NOT STATIC_LINK_RUNTIME)
 
-add_compile_options(-fPIC)
+# still need the headers unconditionally
 set(ABSEIL_DIR vendor/abseil-cpp)
-add_subdirectory(${ABSEIL_DIR})
 include_directories(${ABSEIL_DIR})
+
+if (NOT WIN32)
+add_compile_options(-fPIC)
+add_subdirectory(${ABSEIL_DIR})
+endif(NOT WIN32)
 
 # turns off those annoying warnings for
 # target-specific crypto code paths not
@@ -86,6 +93,10 @@ endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 if(WIN32)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
+# unlike unix where you get a *single* compiler ID string in .comment
+# GNU ld sees fit to merge *all* the .ident sections in object files
+# to .r[o]data section one after the other!
+  add_compile_options(-fno-ident)
   set(FS_LIB stdc++fs)
 endif(WIN32)
 
@@ -104,27 +115,24 @@ else()
 endif(DEBIAN)
 
 # only needed if using AVX2
+# TODO: generate a config-time test for this
+# in cmake
 if(AMD_RYZEN_HACK AND USE_AVX2)
   set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
 endif(AMD_RYZEN_HACK AND USE_AVX2)
-
-if(WITH_SHARED)
-  set(CRYPTO_FLAGS ${CRYPTO_FLAGS} -fPIC)
-endif()
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
-if(STATIC_LINK)
+if(STATIC_LINK_RUNTIME)
   add_compile_options(-static)
   if(USING_CLANG)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
   else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}  -static-libgcc -static -Wl,--whole-archive -Wl,--no-whole-archive")
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" )
   endif(USING_CLANG)
-endif(STATIC_LINK)
+endif(STATIC_LINK_RUNTIME)
 
 if(USE_NETNS)
   add_definitions(-DNETNS=1)
@@ -346,6 +354,7 @@ set(LIB_PLATFORM_SRC
   ${ISOLATE_PROC_SRC}
 # tun
   ${LIBTUNTAP_SRC}
+  ${EV_SRC}
 # c++17 compat code
   ${CXX_COMPAT_SRC}
 # win32 inline code
@@ -502,7 +511,6 @@ set(DNSLIB_SRC
 
 set(LIB_SRC
   ${DNSLIB_SRC}
-  ${EV_SRC}
   ${UTP_SRC}
   llarp/config.cpp
   llarp/context.cpp
@@ -658,6 +666,7 @@ set(TEST_SRC
   test/test_llarp_router.cpp
   test/util/test_llarp_util_aligned.cpp
   test/util/test_llarp_util_bencode.cpp
+  test/util/test_llarp_util_bits.cpp
   test/util/test_llarp_util_encode.cpp
   test/util/test_llarp_util_ini.cpp
   test/util/test_llarp_util_queue_manager.cpp
@@ -697,11 +706,11 @@ if(USE_LIBABYSS)
     ${ABYSS}/src/json.cpp)
   add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
   set(ALL_SRC ${ALL_SRC} ${ABYSS_SRC} ${ABYSS}/main.cpp)
-  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-
   if (NOT WIN32)
+    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
     target_link_libraries(${ABYSS_EXE} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} Threads::Threads)
   else()
+    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
     target_link_libraries(${ABYSS_EXE} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi Threads::Threads)
   endif(NOT WIN32)
 
@@ -726,8 +735,8 @@ else()
     add_executable(${TEST_EXE} ${TEST_SRC})
     add_executable(${EXE} ${EXE_SRC})
   else()
-    add_executable(${TEST_EXE} ${TEST_SRC} llarp/constants/version.rc)
-    add_executable(${EXE} ${EXE_SRC} llarp/constants/version.rc)
+    add_executable(${TEST_EXE} ${TEST_SRC} llarp/win32/test.rc)
+    add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
   endif(NOT WIN32)
 
   target_include_directories(${TEST_EXE} PRIVATE test)
@@ -746,7 +755,14 @@ else()
 
   add_library(${STATIC_LIB} STATIC ${LIB_SRC})
   add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
+
+# cut back on fluff
+if (NOT WIN32)
   target_link_libraries(${UTIL_LIB} absl::optional)
+else()
+  target_link_libraries(${UTIL_LIB})
+endif(NOT WIN32)
+
   add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
 
   if(USE_LIBABYSS)
@@ -764,11 +780,12 @@ else()
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
   target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   if (WIN32)
     target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
     target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+  else()
+    target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
+    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest absl::variant ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   endif(WIN32)
 
 
@@ -779,7 +796,11 @@ else()
 
   if(WITH_SHARED)
     add_library(${SHARED_LIB} SHARED ${LIB_SRC})
-    target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB} Threads::Threads)
-    install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
+    if (WIN32)
+      target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi Threads::Threads)
+    else (NOT WIN32)
+      target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB} Threads::Threads)
+      install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
+    endif(WIN32)
   endif(WITH_SHARED)
 endif(SHADOW)

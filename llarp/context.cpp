@@ -400,14 +400,14 @@ extern "C"
   void
   llarp_main_abort(struct llarp_main *ptr)
   {
-    ptr->ctx->router->logic->stop_timer();
+    ptr->ctx->router->logic()->stop_timer();
   }
 
   void
   llarp_main_queryDHT_RC(struct llarp_main *ptr,
                          struct llarp_router_lookup_job *job)
   {
-    llarp_dht_lookup_router(ptr->ctx->router->dht, job);
+    llarp_dht_lookup_router(ptr->ctx->router->dht(), job);
   }
 
   bool
@@ -495,8 +495,8 @@ extern "C"
     // llarp::Info("checkOnline - DHT nodes ",
     // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
     request->online = false;
-    request->nodes  = request->ptr->ctx->router->dht->impl.nodes->nodes.size();
-    if(request->ptr->ctx->router->dht->impl.nodes->nodes.size())
+    request->nodes = request->ptr->ctx->router->dht()->impl.nodes->nodes.size();
+    if(request->ptr->ctx->router->dht()->impl.nodes->nodes.size())
     {
       // llarp::Info("checkOnline - Going to say we're online");
       request->online = true;
@@ -516,7 +516,7 @@ extern "C"
       request->first = true;
       llarp::LogInfo("llarp_main_queryDHT_online - We're online");
       llarp::LogInfo("llarp_main_queryDHT_online - Querying DHT");
-      llarp_dht_lookup_router(request->ptr->ctx->router->dht, request->job);
+      llarp_dht_lookup_router(request->ptr->ctx->router->dht(), request->job);
     }
   }
 
@@ -525,7 +525,7 @@ extern "C"
   {
     // llarp::Info("llarp_main_queryDHT - setting up timer");
     request->hook = &llarp_main_queryDHT_online;
-    request->ptr->ctx->router->logic->call_later(
+    request->ptr->ctx->router->logic()->call_later(
         {1000, request, &llarp_main_checkOnline});
     // llarp_dht_lookup_router(ptr->ctx->router->dht, job);
   }

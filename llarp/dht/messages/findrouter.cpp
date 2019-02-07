@@ -20,7 +20,7 @@ namespace llarp
       Key_t k{K};
       if(K == us)
       {
-        auto path = dht.router->paths.GetByUpstream(K, pathID);
+        auto path = dht.router->pathContext().GetByUpstream(K, pathID);
         if(path)
         {
           replies.emplace_back(
@@ -33,7 +33,7 @@ namespace llarp
       Key_t peer;
       // check if we know this in our nodedb first
       RouterContact found;
-      if(dht.router->nodedb->Get(K, found))
+      if(dht.router->nodedb()->Get(K, found))
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;
@@ -159,7 +159,7 @@ namespace llarp
       Key_t k{K};
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
-      else if(dht.router->nodedb->Get(K, found))
+      else if(dht.router->nodedb()->Get(K, found))
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;

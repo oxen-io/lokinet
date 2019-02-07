@@ -4,9 +4,8 @@
 #include <crypto/types.hpp>
 #include <net/net.hpp>
 #include <util/bencode.hpp>
-#include <util/bits.hpp>
 
-#include <iostream>
+#include <iosfwd>
 
 /**
  * exit_info.h
@@ -54,26 +53,10 @@ namespace llarp
 
     ExitInfo &
     operator=(const ExitInfo &other);
-
-    friend std::ostream &
-    operator<<(std::ostream &out, const ExitInfo &xi)
-    {
-      char tmp[128] = {0};
-      if(inet_ntop(AF_INET6, (void *)&xi.address, tmp, sizeof(tmp)))
-        out << std::string(tmp);
-      else
-        return out;
-      out << std::string("/");
-#if defined(ANDROID) || defined(RPI)
-      snprintf(tmp, sizeof(tmp), "%zu",
-               llarp::bits::count_array_bits(xi.netmask.s6_addr));
-      return out << tmp;
-#else
-      return out << std::to_string(
-                 llarp::bits::count_array_bits(xi.netmask.s6_addr));
-#endif
-    }
   };
+
+  std::ostream &
+  operator<<(std::ostream &out, const ExitInfo &xi);
 }  // namespace llarp
 
 #endif

@@ -246,7 +246,7 @@ namespace llarp
     Crypto *
     ExitEndpoint::GetCrypto()
     {
-      return m_Router->crypto.get();
+      return m_Router->crypto();
     }
 
     huint32_t

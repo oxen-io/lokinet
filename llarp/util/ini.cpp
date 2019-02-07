@@ -9,7 +9,7 @@ namespace llarp
   ConfigParser::LoadFile(const char* fname)
   {
     {
-      std::ifstream f(fname);
+      std::ifstream f(fname, std::ios::in | std::ios::binary);
       if(!f.is_open())
         return false;
       f.seekg(0, std::ios::end);

@@ -55,7 +55,7 @@ namespace llarp
 
     bool
     TransitHop::SendRoutingMessage(const llarp::routing::IMessage* msg,
-                                   llarp::Router* r)
+                                   AbstractRouter* r)
     {
       if(!IsEndpoint(r->pubkey()))
         return false;
@@ -76,7 +76,7 @@ namespace llarp
       {
         dlt = MESSAGE_PAD_SIZE - dlt;
         // randomize padding
-        r->crypto->randbytes(buf.cur, dlt);
+        r->crypto()->randbytes(buf.cur, dlt);
         buf.sz += dlt;
       }
       buf.cur = buf.base;
@@ -85,12 +85,12 @@ namespace llarp
 
     bool
     TransitHop::HandleDownstream(const llarp_buffer_t& buf,
-                                 const TunnelNonce& Y, llarp::Router* r)
+                                 const TunnelNonce& Y, AbstractRouter* r)
     {
       RelayDownstreamMessage msg;
       msg.pathid = info.rxID;
       msg.Y      = Y ^ nonceXOR;
-      r->crypto->xchacha20(buf, pathKey, Y);
+      r->crypto()->xchacha20(buf, pathKey, Y);
       msg.X = buf;
       llarp::LogDebug("relay ", msg.X.size(), " bytes downstream from ",
                       info.upstream, " to ", info.downstream);
@@ -99,9 +99,9 @@ namespace llarp
 
     bool
     TransitHop::HandleUpstream(const llarp_buffer_t& buf, const TunnelNonce& Y,
-                               llarp::Router* r)
+                               AbstractRouter* r)
     {
-      r->crypto->xchacha20(buf, pathKey, Y);
+      r->crypto()->xchacha20(buf, pathKey, Y);
       if(IsEndpoint(r->pubkey()))
       {
         m_LastActivity = r->Now();
@@ -124,7 +124,7 @@ namespace llarp
     TransitHop::HandleDHTMessage(const llarp::dht::IMessage* msg,
                                  llarp::Router* r)
     {
-      return r->dht->impl.RelayRequestForPath(info.rxID, msg);
+      return r->dht()->impl.RelayRequestForPath(info.rxID, msg);
     }
 
     bool
@@ -158,13 +158,13 @@ namespace llarp
     TransitHop::HandleObtainExitMessage(
         const llarp::routing::ObtainExitMessage* msg, llarp::Router* r)
     {
-      if(msg->Verify(r->crypto.get())
+      if(msg->Verify(r->crypto())
          && r->exitContext.ObtainNewExit(msg->I, info.rxID, msg->E != 0))
       {
         llarp::routing::GrantExitMessage grant;
         grant.S = NextSeqNo();
         grant.T = msg->T;
-        if(!grant.Sign(r->crypto.get(), r->identity))
+        if(!grant.Sign(r->crypto(), r->identity))
         {
           llarp::LogError("Failed to sign grant exit message");
           return false;
@@ -176,7 +176,7 @@ namespace llarp
       llarp::routing::RejectExitMessage reject;
       reject.S = NextSeqNo();
       reject.T = msg->T;
-      if(!reject.Sign(r->crypto.get(), r->identity))
+      if(!reject.Sign(r->crypto(), r->identity))
       {
         llarp::LogError("Failed to sign reject exit message");
         return false;
@@ -190,13 +190,13 @@ namespace llarp
     {
       llarp::routing::DataDiscardMessage discard(info.rxID, msg->S);
       auto ep = r->exitContext.FindEndpointForPath(info.rxID);
-      if(ep && msg->Verify(r->crypto.get(), ep->PubKey()))
+      if(ep && msg->Verify(r->crypto(), ep->PubKey()))
       {
         ep->Close();
         // ep is now gone af
         llarp::routing::CloseExitMessage reply;
         reply.S = NextSeqNo();
-        if(reply.Sign(r->crypto.get(), r->identity))
+        if(reply.Sign(r->crypto(), r->identity))
           return SendRoutingMessage(&reply, r);
       }
       return SendRoutingMessage(&discard, r);
@@ -219,7 +219,7 @@ namespace llarp
       auto ep = r->exitContext.FindEndpointForPath(msg->P);
       if(ep)
       {
-        if(!msg->Verify(r->crypto.get(), ep->PubKey()))
+        if(!msg->Verify(r->crypto(), ep->PubKey()))
           return false;
 
         if(ep->UpdateLocalPath(info.rxID))

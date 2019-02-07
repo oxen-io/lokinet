@@ -65,7 +65,55 @@ namespace llarp
     }
   };
 
-  struct Router
+  struct AbstractRouter
+  {
+    virtual ~AbstractRouter() = 0;
+
+    virtual Logic *
+    logic() const = 0;
+
+    virtual llarp_dht_context *
+    dht() const = 0;
+
+    virtual Crypto *
+    crypto() const = 0;
+
+    virtual llarp_nodedb *
+    nodedb() const = 0;
+
+    virtual const path::PathContext &
+    pathContext() const = 0;
+
+    virtual path::PathContext &
+    pathContext() = 0;
+
+    virtual const llarp::RouterContact &
+    rc() const = 0;
+
+    virtual const byte_t *
+    pubkey() const = 0;
+
+    virtual llarp_time_t
+    Now() const = 0;
+
+    virtual bool
+    SendToOrQueue(const llarp::RouterID &remote,
+                  const llarp::ILinkMessage *msg) = 0;
+
+    virtual void
+    PersistSessionUntil(const llarp::RouterID &remote, llarp_time_t until) = 0;
+
+    virtual bool
+    ParseRoutingMessageBuffer(const llarp_buffer_t &buf,
+                              routing::IMessageHandler *h, PathID_t rxid) = 0;
+
+    virtual void
+    HandleDHTLookupForExplore(
+        llarp::RouterID remote,
+        const std::vector< llarp::RouterContact > &results) = 0;
+  };
+
+  struct Router final : public AbstractRouter
   {
     bool ready;
     // transient iwp encryption key
@@ -92,8 +140,44 @@ namespace llarp
     /// should we obey the service node whitelist?
     bool whitelistRouters = false;
 
+    Logic *
+    logic() const override
+    {
+      return _logic;
+    }
+
+    llarp_dht_context *
+    dht() const override
+    {
+      return _dht;
+    }
+
+    Crypto *
+    crypto() const override
+    {
+      return _crypto.get();
+    }
+
+    llarp_nodedb *
+    nodedb() const override
+    {
+      return _nodedb;
+    }
+
+    const path::PathContext &
+    pathContext() const override
+    {
+      return paths;
+    }
+
+    path::PathContext &
+    pathContext() override
+    {
+      return paths;
+    }
+
     const llarp::RouterContact &
-    rc() const
+    rc() const override
     {
       return _rc;
     }
@@ -105,19 +189,18 @@ namespace llarp
 
     llarp_ev_loop *netloop;
     llarp_threadpool *tp;
-    llarp::Logic *logic;
-    std::unique_ptr< llarp::Crypto > crypto;
-    llarp::path::PathContext paths;
-    llarp::exit::Context exitContext;
-    llarp::SecretKey identity;
-    llarp::SecretKey encryption;
+    Logic *_logic;
+    std::unique_ptr< Crypto > _crypto;
+    path::PathContext paths;
+    exit::Context exitContext;
+    SecretKey identity;
+    SecretKey encryption;
     llarp_threadpool *disk;
-    llarp_dht_context *dht = nullptr;
+    llarp_dht_context *_dht = nullptr;
+    llarp_nodedb *_nodedb;
 
     bool
     Sign(Signature &sig, const llarp_buffer_t &buf) const;
-
-    llarp_nodedb *nodedb;
 
     // buffer for serializing link messages
     std::array< byte_t, MAX_LINK_MSG_SIZE > linkmsg_buffer;
@@ -276,7 +359,8 @@ namespace llarp
     StopLinks();
 
     void
-    PersistSessionUntil(const llarp::RouterID &remote, llarp_time_t until);
+    PersistSessionUntil(const llarp::RouterID &remote,
+                        llarp_time_t until) override;
 
     bool
     EnsureIdentity();
@@ -291,7 +375,7 @@ namespace llarp
     SaveRC();
 
     const byte_t *
-    pubkey() const
+    pubkey() const override
     {
       return llarp::seckey_topublic(identity);
     }
@@ -322,7 +406,7 @@ namespace llarp
     /// MUST be called in the logic thread
     bool
     SendToOrQueue(const llarp::RouterID &remote,
-                  const llarp::ILinkMessage *msg);
+                  const llarp::ILinkMessage *msg) override;
 
     /// sendto or drop
     void
@@ -349,7 +433,7 @@ namespace llarp
     void
     HandleDHTLookupForExplore(
         llarp::RouterID remote,
-        const std::vector< llarp::RouterContact > &results);
+        const std::vector< llarp::RouterContact > &results) override;
 
     void
     ForEachPeer(
@@ -379,7 +463,7 @@ namespace llarp
 
     /// get time from event loop
     llarp_time_t
-    Now() const
+    Now() const override
     {
       return llarp_ev_loop_time_now_ms(netloop);
     }
@@ -396,7 +480,8 @@ namespace llarp
     /// return false
     bool
     ParseRoutingMessageBuffer(const llarp_buffer_t &buf,
-                              routing::IMessageHandler *h, PathID_t rxid);
+                              routing::IMessageHandler *h,
+                              PathID_t rxid) override;
 
     void
     ConnectToRandomRouters(int N);

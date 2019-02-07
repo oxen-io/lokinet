@@ -17,11 +17,16 @@ LIBS ?=
 WINNT_INCLUDE ?=
 WINNT_LIBS ?=
 
+ifdef LTO
+LTO_FLAG = -flto
+LTO_LDFLAG = -flto -march=nocona -mfpmath=sse -Ofast
+endif
+
 .PHONY: download prepare all default
 
 # windows target only
 .c.o:
-	$(CC) $(WINNT_INCLUDE) -Iinclude -Ofast -march=nocona -mfpmath=sse $< -c
+	$(CC) $(WINNT_INCLUDE) -Iinclude $(LTO_FLAG) -Ofast -march=nocona -mfpmath=sse $< -c
 
 zpipe: zpipe.c miniz.c
 	$(NATIVE_CC) $(INCLUDE) -Iinclude $(LIBS) $^ -s -static -o $@
@@ -38,24 +43,24 @@ prepare: zpipe base64enc download
 	./base64enc < data.enc > out.bin
 	sed -ie "s/.\{76\}/&\n/g" out.bin
 	sed -i 's/.*/\"&\"/g' out.bin
-	sed -i '51,2258d' bootstrap.c
+	sed -i '61,2268d' bootstrap.c
 	echo ';' >> out.bin
-	sed -i '50r out.bin' bootstrap.c
+	sed -i '60r out.bin' bootstrap.c
 
 prepare-testnet: zpipe base64enc download
 	./zpipe < cacert.pem > data.enc
 	./base64enc < data.enc > out.bin
 	sed -ie "s/.\{76\}/&\n/g" out.bin
 	sed -i 's/.*/\"&\"/g' out.bin
-	sed -i '49,2135d' testnet.c
+	sed -i '58,2144d' testnet.c
 	echo ';' >> out.bin
-	sed -i '48r out.bin' testnet.c
+	sed -i '57r out.bin' testnet.c
 
 lokinet-bootstrap: bootstrap.o miniz.o
-	$(CC) $(WINNT_LIBS) -static -s $^ -o $@.exe -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
+	$(CC) $(WINNT_LIBS) -s -static $^ -o $@.exe $(LTO_LDFLAG) -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
 
 lokinet-bootstrap-testnet: testnet.o miniz.o
-	$(CC) $(WINNT_LIBS) -static -s $^ -o $@.exe -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
+	$(CC) $(WINNT_LIBS) -s -static $^ -o $@.exe $(LTO_LDFLAG) -lmbedx509 -lmbedtls -lmbedcrypto -lws2_32
 clean:
 	-@rm lokinet*.exe
 	-@rm base64enc
