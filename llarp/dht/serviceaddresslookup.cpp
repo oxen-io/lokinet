@@ -80,7 +80,16 @@ namespace llarp
       {
         handleResult(valuesFound);
       }
-
+      // get newest introset
+      if(valuesFound.size() > 1)
+      {
+        IntroSet found;
+        for(const auto & introset : valuesFound)
+          if(found.OtherIsNewer(introset))
+            found = introset;
+        valuesFound.clear();
+        valuesFound.emplace_back(found);
+      }
       parent->DHTSendTo(whoasked.node.as_array(),
                         new GotIntroMessage(valuesFound, whoasked.txid));
     }
