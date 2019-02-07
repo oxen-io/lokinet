@@ -780,11 +780,12 @@ endif(NOT WIN32)
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
   target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
-  target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest absl::variant ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   if (WIN32)
     target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
     target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi)
+  else()
+    target_link_libraries(${EXE} ${STATIC_LINK_LIBS} ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
+    target_link_libraries(${TEST_EXE} ${STATIC_LINK_LIBS} gmock gtest absl::variant ${STATIC_LIB} ${UTIL_LIB} ${PLATFORM_LIB})
   endif(WIN32)
 
 
