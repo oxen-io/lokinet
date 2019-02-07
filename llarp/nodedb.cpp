@@ -429,30 +429,37 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
     return false;
   size_t tries     = 5;
   llarp_time_t now = llarp::time_now_ms();
-  if(N)
+  if(!N)
+    return false;
+
+  auto itr   = entries.begin();
+  size_t pos = llarp::randint() % sz;
+  std::advance(itr, pos);
+  auto start = itr;
+  while(itr == entries.end())
   {
-    do
+    if(prev.pubkey != itr->second.pubkey)
     {
-      auto itr = entries.begin();
-      std::advance(itr, llarp::randint() % sz);
-      if(itr == entries.end())
-      {
-        --tries;
-        continue;
-      }
-      if(prev.pubkey == itr->second.pubkey)
-      {
-        --tries;
-        continue;
-      }
       if(itr->second.addrs.size() && !itr->second.IsExpired(now))
       {
         result = itr->second;
         return true;
       }
-    } while(tries--);
-    return false;
+    }
+    itr++;
   }
-  else
-    return false;
+  itr = entries.begin();
+  while(itr != start)
+  {
+    if(prev.pubkey != itr->second.pubkey)
+    {
+      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      {
+        result = itr->second;
+        return true;
+      }
+    }
+    ++itr;
+  }
+  return false;
 }
