@@ -106,7 +106,7 @@ namespace llarp
         // clamp whitespaces
         while(whitespace(realLine[k_start]) && k_start != kvDelim)
           ++k_start;
-        while(whitespace(realLine[k_end]) && k_end != k_start)
+        while(whitespace(realLine[k_end - 1]) && k_end != k_start)
           --k_end;
         while(whitespace(realLine[v_start]) && v_start != v_end)
           ++v_start;
