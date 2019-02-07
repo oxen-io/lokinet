@@ -83,7 +83,7 @@ namespace llarp
       // get newest introset
       if(valuesFound.size() > 1)
       {
-        IntroSet found;
+        llarp::service::IntroSet found;
         for(const auto & introset : valuesFound)
           if(found.OtherIsNewer(introset))
             found = introset;
