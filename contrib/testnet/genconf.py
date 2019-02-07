@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 #
 # this script generate supervisord configs for running a test network on loopback
 #
@@ -28,8 +28,9 @@ def main():
     ap.add_argument('--bin', type=str, required=True)
     ap.add_argument('--out', type=str, required=True)
     ap.add_argument('--connect', type=int, default=10)
+    ap.add_argument('--ip', type=str, default=None)
     ap.add_argument('--ifname', type=str, default='lo')
-
+    ap.add_argument('--netid', type=str, default=None)
     args = ap.parse_args()
 
     if args.valgrind:
@@ -46,6 +47,13 @@ def main():
             'worker-threads': '4',
             'nickname': svcNodeName(nodeid)
         }
+        if args.netid:
+            config['router']['netid'] = args.netid
+            
+        if args.ip:
+            config['router']['public-ip'] = args.ip
+            config['router']['public-port'] = str(args.baseport + nodeid)
+            
         config['bind'] = {
             args.ifname: str(args.baseport + nodeid)
         }
