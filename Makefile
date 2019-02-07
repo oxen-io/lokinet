@@ -31,6 +31,10 @@ TESTNET_EXE=$(REPO)/lokinet-testnet
 TESTNET_CLIENTS ?= 50
 TESTNET_SERVERS ?= 50
 TESTNET_DEBUG ?= 0
+TESTNET_IFNAME ?= lo
+TESTNET_BASEPORT ?= 1900
+TESTNET_IP ?= 127.0.0.1
+TESTNET_NETID ?= loopback
 
 ANDROID_NDK ?= $(HOME)/Android/Ndk
 ANDROID_SDK ?= $(HOME)/Android/Sdk
@@ -152,7 +156,7 @@ testnet-build: testnet-configure
 testnet:
 	cp $(EXE) $(TESTNET_EXE)
 	mkdir -p $(TESTNET_ROOT)
-	$(PYTHON) contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4
+	$(PYTHON) $(REPO)/contrib/testnet/genconf.py --bin=$(TESTNET_EXE) --svc=$(TESTNET_SERVERS) --clients=$(TESTNET_CLIENTS) --dir=$(TESTNET_ROOT) --out $(TESTNET_CONF) --connect=4 --ifname=$(TESTNET_IFNAME) --baseport=$(TESTNET_BASEPORT) --ip=$(TESTNET_IP) --netid=$(TESTNET_NETID)
 	LLARP_DEBUG=$(TESTNET_DEBUG) supervisord -n -d $(TESTNET_ROOT) -l $(TESTNET_LOG) -c $(TESTNET_CONF)
 
 $(TEST_EXE): debug
