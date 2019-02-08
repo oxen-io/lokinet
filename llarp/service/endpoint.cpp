@@ -87,18 +87,8 @@ namespace llarp
     bool
     Endpoint::HasPendingPathToService(const Address& addr) const
     {
-      if(m_PendingServiceLookups.find(addr) == m_PendingServiceLookups.end())
-      {
-        auto range = m_RemoteSessions.equal_range(addr);
-        auto itr   = range.first;
-        while(itr != range.second)
-        {
-          if(itr->second->ReadyToSend())
-            return false;
-          ++itr;
-        }
-      }
-      return true;
+      return m_PendingServiceLookups.find(addr)
+          != m_PendingServiceLookups.end();
     }
 
     void
