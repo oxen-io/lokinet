@@ -46,14 +46,14 @@ namespace llarp
     ExitEndpoint::ExtractStatus(util::StatusObject &obj) const
     {
       obj.PutBool("permitExit", m_PermitExit);
-      std::vector< util::StatusObject > activeObjs;
+      std::vector< util::StatusObject > activeObjs(m_ActiveExits.size());
       {
-        auto itr = m_ActiveExits.begin();
+        size_t idx = 0;
+        auto itr   = m_ActiveExits.begin();
         while(itr != m_ActiveExits.end())
         {
-          util::StatusObject sessionObj;
+          util::StatusObject &sessionObj = activeObjs[idx++];
           itr->second->ExtractStatus(sessionObj);
-          activeObjs.emplace_back(sessionObj);
           ++itr;
         }
       }

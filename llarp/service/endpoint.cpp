@@ -159,49 +159,51 @@ namespace llarp
       if(!m_Tag.IsZero())
         obj.PutString("tag", m_Tag.ToString());
 
-      std::vector< util::StatusObject > remoteSessions, deadSessions,
-          snodeSessions, lookups;
+      std::vector< util::StatusObject > remoteSessions(m_RemoteSessions.size());
+      std::vector< util::StatusObject > deadSessions(m_DeadSessions.size());
+      std::vector< util::StatusObject > snodeSessions(m_SNodeSessions.size());
+      std::vector< util::StatusObject > lookups(m_PendingLookups.size());
 
       {
-        auto itr = m_RemoteSessions.begin();
+        size_t idx = 0;
+        auto itr   = m_RemoteSessions.begin();
         while(itr != m_RemoteSessions.end())
         {
-          util::StatusObject sobj;
+          util::StatusObject& sobj = remoteSessions[idx++];
           itr->second->ExtractStatus(sobj);
-          remoteSessions.emplace_back(sobj);
           ++itr;
         }
       }
       obj.PutObjectArray("remoteSessions", remoteSessions);
       {
-        auto itr = m_DeadSessions.begin();
+        size_t idx = 0;
+        auto itr   = m_DeadSessions.begin();
         while(itr != m_DeadSessions.end())
         {
-          util::StatusObject sobj;
+          util::StatusObject& sobj = deadSessions[idx++];
           itr->second->ExtractStatus(sobj);
-          deadSessions.emplace_back(sobj);
           ++itr;
         }
       }
       obj.PutObjectArray("deadSessions", deadSessions);
       {
-        auto itr = m_SNodeSessions.begin();
+        size_t idx = 0;
+        auto itr   = m_SNodeSessions.begin();
         while(itr != m_SNodeSessions.end())
         {
-          util::StatusObject sobj;
+          util::StatusObject& sobj = snodeSessions[idx++];
           itr->second->ExtractStatus(sobj);
-          snodeSessions.emplace_back(sobj);
           ++itr;
         }
       }
       obj.PutObjectArray("snodeSessions", snodeSessions);
       {
-        auto itr = m_PendingLookups.begin();
+        size_t idx = 0;
+        auto itr   = m_PendingLookups.begin();
         while(itr != m_PendingLookups.end())
         {
-          util::StatusObject sobj;
+          util::StatusObject& sobj = lookups[idx++];
           itr->second->ExtractStatus(sobj);
-          lookups.emplace_back(sobj);
           ++itr;
         }
       }

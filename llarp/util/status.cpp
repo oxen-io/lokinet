@@ -11,28 +11,20 @@ namespace llarp
 #endif
     }
 
-    StatusObject::StatusObject(const StatusObject& other)
-    {
-#ifdef USE_ABYSS
-      Impl.SetObject();
-      Impl.CopyFrom(other.Impl, Impl.GetAllocator());
-#else
-      (void)other;
-#endif
-    }
-
     StatusObject::~StatusObject()
     {
+      Impl.RemoveAllMembers();
     }
 
     void
     StatusObject::PutBool(const char* name, bool val)
     {
 #ifdef USE_ABYSS
+      auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetBool(val);
-      Value_t k(name, Impl.GetAllocator());
-      Impl.AddMember(k, v, Impl.GetAllocator());
+      Value_t k(name, a);
+      Impl.AddMember(k, v, a);
 #else
       (void)name;
       (void)val;
@@ -43,10 +35,11 @@ namespace llarp
     StatusObject::PutInt(const char* name, uint64_t val)
     {
 #ifdef USE_ABYSS
+      auto& a = Impl.GetAllocator();
       Value_t v;
-      v.SetInt(val);
-      Value_t k(name, Impl.GetAllocator());
-      Impl.AddMember(k, v, Impl.GetAllocator());
+      v.SetUint64(val);
+      Value_t k(name, a);
+      Impl.AddMember(k, v, a);
 #else
       (void)name;
       (void)val;
@@ -54,14 +47,15 @@ namespace llarp
     }
 
     void
-    StatusObject::PutObject(const char* name, const StatusObject& val)
+    StatusObject::PutObject(const char* name, StatusObject& val)
     {
 #ifdef USE_ABYSS
+      auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetObject();
-      v.CopyFrom(val.Impl, Impl.GetAllocator());
-      Value_t k(name, Impl.GetAllocator());
-      Impl.AddMember(k, v, Impl.GetAllocator());
+      v.CopyFrom(val.Impl, a);
+      Value_t k(name, a);
+      Impl.AddMember(k, v, a);
 #else
       (void)name;
       (void)val;
@@ -70,44 +64,44 @@ namespace llarp
 
     void
     StatusObject::PutObjectArray(const char* name,
-                                 const std::vector< StatusObject >& arr)
+                                 std::vector< StatusObject >& arr)
     {
 #ifdef USE_ABYSS
+      auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetArray();
+      Value_t i;
       for(const auto& obj : arr)
       {
-        Value_t i;
-        i.SetObject();
-        i.CopyFrom(obj.Impl, Impl.GetAllocator());
-        v.PushBack(i, Impl.GetAllocator());
+        v.PushBack(i.SetObject().CopyFrom(obj.Impl, a), a);
       }
-      Value_t k(name, Impl.GetAllocator());
-      Impl.AddMember(k, v, Impl.GetAllocator());
+      Value_t k(name, a);
+
+      Impl.AddMember(k, v, a);
 #else
       (void)name;
-      (void)val;
+      (void)arr;
 #endif
     }
 
     void
     StatusObject::PutStringArray(const char* name,
-                                 const std::vector< std::string >& arr)
+                                 std::vector< std::string >& arr)
     {
 #ifdef USE_ABYSS
+      auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetArray();
-      for(const auto& str : arr)
+      Value_t i;
+      for(auto& str : arr)
       {
-        Value_t i;
-        i.SetString(str.c_str(), Impl.GetAllocator());
-        v.PushBack(i, Impl.GetAllocator());
+        v.PushBack(i.SetString(str.c_str(), a), a);
       }
-      Value_t k(name, Impl.GetAllocator());
-      Impl.AddMember(k, v, Impl.GetAllocator());
+      Value_t k(name, a);
+      Impl.AddMember(k, v, a);
 #else
       (void)name;
-      (void)val;
+      (void)arr;
 #endif
     }
 
@@ -115,10 +109,11 @@ namespace llarp
     StatusObject::PutString(const char* name, const std::string& val)
     {
 #ifdef USE_ABYSS
+      auto& a = Impl.GetAllocator();
       Value_t v;
-      v.SetString(val.c_str(), Impl.GetAllocator());
-      Value_t k(name, Impl.GetAllocator());
-      Impl.AddMember(k, v, Impl.GetAllocator());
+      v.SetString(val.c_str(), a);
+      Value_t k(name, a);
+      Impl.AddMember(k, v, a);
 #else
       (void)name;
       (void)val;

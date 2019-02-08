@@ -28,12 +28,14 @@ namespace llarp
       void
       ExtractStatus(util::StatusObject &obj) const override
       {
-        std::vector< util::StatusObject > foundObjs;
-        for(const auto &found : valuesFound)
+        std::vector< util::StatusObject > foundObjs(valuesFound.size());
         {
-          util::StatusObject foundObj;
-          found.ExtractStatus(foundObj);
-          foundObjs.emplace_back(foundObj);
+          size_t idx = 0;
+          for(const auto &found : valuesFound)
+          {
+            util::StatusObject &foundObj = foundObjs[idx++];
+            found.ExtractStatus(foundObj);
+          }
         }
         obj.PutObjectArray("found", foundObjs);
 

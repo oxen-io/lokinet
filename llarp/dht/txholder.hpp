@@ -32,45 +32,49 @@ namespace llarp
       void
       ExtractStatus(util::StatusObject& obj) const override
       {
-        std::vector< util::StatusObject > txObjs, timeoutsObjs, waitingObjs;
+        std::vector< util::StatusObject > txObjs(tx.size());
+        std::vector< util::StatusObject > timeoutsObjs(timeouts.size());
+        std::vector< util::StatusObject > waitingObjs(waiting.size());
         {
-          auto itr = tx.begin();
+          auto itr   = tx.begin();
+          size_t idx = 0;
           while(itr != tx.end())
           {
-            util::StatusObject txObj, txOwnerObj, txSuperObj;
+            auto& txSuperObj = txObjs[idx++];
+            util::StatusObject txObj, txOwnerObj;
             itr->second->ExtractStatus(txObj);
             txOwnerObj.PutInt("txid", itr->first.txid);
             txOwnerObj.PutString("node", itr->first.node.ToHex());
 
             txSuperObj.PutObject("tx", txObj);
             txSuperObj.PutObject("owner", txOwnerObj);
-            txObjs.emplace_back(txSuperObj);
             ++itr;
           }
         }
         obj.PutObjectArray("tx", txObjs);
         {
-          auto itr = timeouts.begin();
+          auto itr   = timeouts.begin();
+          size_t idx = 0;
           while(itr != timeouts.end())
           {
-            util::StatusObject timeoutObj;
+            auto& timeoutObj = timeoutsObjs[idx++];
             timeoutObj.PutInt("time", itr->second);
             timeoutObj.PutString("target", itr->first.ToHex());
-            timeoutsObjs.emplace_back(timeoutObj);
             ++itr;
           }
         }
         obj.PutObjectArray("timeouts", timeoutsObjs);
         {
-          auto itr = waiting.begin();
+          auto itr   = waiting.begin();
+          size_t idx = 0;
           while(itr != waiting.end())
           {
-            util::StatusObject waitingObj, txOwnerObj;
+            auto& waitingObj = waitingObjs[idx++];
+            util::StatusObject txOwnerObj;
             txOwnerObj.PutInt("txid", itr->second.txid);
             txOwnerObj.PutString("node", itr->second.node.ToHex());
             waitingObj.PutObject("whoasked", txOwnerObj);
             waitingObj.PutString("target", itr->first.ToHex());
-            waitingObjs.emplace_back(waitingObj);
             ++itr;
           }
         }

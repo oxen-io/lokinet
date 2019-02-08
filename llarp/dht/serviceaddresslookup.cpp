@@ -75,12 +75,14 @@ namespace llarp
     void
     ServiceAddressLookup::ExtractStatus(util::StatusObject &obj) const
     {
-      std::vector< util::StatusObject > foundObjs;
-      for(const auto &found : valuesFound)
+      std::vector< util::StatusObject > foundObjs(valuesFound.size());
       {
-        util::StatusObject introsetObj;
-        found.ExtractStatus(introsetObj);
-        foundObjs.emplace_back(introsetObj);
+        size_t idx = 0;
+        for(const auto &found : valuesFound)
+        {
+          util::StatusObject &introsetObj = foundObjs[idx++];
+          found.ExtractStatus(introsetObj);
+        }
       }
       obj.PutObjectArray("found", foundObjs);
 

@@ -15,12 +15,14 @@ namespace llarp
     void
     IntroSet::ExtractStatus(util::StatusObject& obj) const
     {
-      std::vector< util::StatusObject > introsObjs;
-      for(const auto& intro : I)
+      std::vector< util::StatusObject > introsObjs(I.size());
       {
-        util::StatusObject introObj;
-        intro.ExtractStatus(introObj);
-        introsObjs.emplace_back(introObj);
+        size_t idx = 0;
+        for(const auto& intro : I)
+        {
+          util::StatusObject& introObj = introsObjs[idx++];
+          intro.ExtractStatus(introObj);
+        }
       }
       obj.PutObjectArray("intros", introsObjs);
       if(!topic.IsZero())

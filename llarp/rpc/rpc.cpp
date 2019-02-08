@@ -222,7 +222,10 @@ namespace llarp
       {
         util::StatusObject dump;
         router->ExtractStatus(dump);
-        resp.AddMember("result", dump.Impl, resp.GetAllocator());
+        if(!dump.Impl.IsObject())
+          return false;
+        resp.AddMember("result", dump.Impl.GetObject(), resp.GetAllocator());
+
         return true;
       }
 

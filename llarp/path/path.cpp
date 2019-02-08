@@ -438,15 +438,17 @@ namespace llarp
     void
     Path::ExtractStatus(util::StatusObject& obj) const
     {
-      std::vector< util::StatusObject > subobj;
-      for(const auto& hop : hops)
+      std::vector< util::StatusObject > subobj(hops.size());
       {
-        util::StatusObject hopobj;
-        hopobj.PutString("txid", hop.txID.ToHex());
-        hopobj.PutString("rxid", hop.rxID.ToHex());
-        hopobj.PutString("router", hop.rc.pubkey.ToString());
-        hopobj.PutInt("lifetime", hop.lifetime);
-        subobj.emplace_back(hopobj);
+        size_t idx = 0;
+        for(const auto& hop : hops)
+        {
+          util::StatusObject& hopobj = subobj[idx++];
+          hopobj.PutString("txid", hop.txID.ToHex());
+          hopobj.PutString("rxid", hop.rxID.ToHex());
+          hopobj.PutString("router", hop.rc.pubkey.ToString());
+          hopobj.PutInt("lifetime", hop.lifetime);
+        }
       }
       obj.PutObjectArray("hops", subobj);
 

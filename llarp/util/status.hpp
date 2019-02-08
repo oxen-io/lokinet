@@ -16,15 +16,15 @@ namespace llarp
     struct StatusObject_Impl
     {
     };
+    struct Value_t
+    {
+    }
 #endif
 
     struct StatusObject
     {
       StatusObject();
       ~StatusObject();
-
-      StatusObject(StatusObject&&) = delete;
-      StatusObject(const StatusObject& other);
 
       void
       PutInt(const char* name, uint64_t val);
@@ -36,13 +36,13 @@ namespace llarp
       PutBool(const char* name, bool val);
 
       void
-      PutObject(const char* name, const StatusObject& obj);
+      PutObject(const char* name, StatusObject& obj);
 
       void
-      PutStringArray(const char* name, const std::vector< std::string >& arr);
+      PutStringArray(const char* name, std::vector< std::string >& arr);
 
       void
-      PutObjectArray(const char* name, const std::vector< StatusObject >& arr);
+      PutObjectArray(const char* name, std::vector< StatusObject >& arr);
 
       StatusObject_Impl Impl;
     };

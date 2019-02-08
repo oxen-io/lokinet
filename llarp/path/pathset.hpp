@@ -222,7 +222,6 @@ namespace llarp
         }
       }
 
-     private:
       using PathInfo_t = std::pair< RouterID, PathID_t >;
 
       struct PathInfoHash

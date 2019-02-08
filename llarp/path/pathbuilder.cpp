@@ -190,12 +190,17 @@ namespace llarp
       obj.PutInt("keygens", keygens.load());
       obj.PutInt("numHops", numHops);
       obj.PutInt("numPaths", m_NumPaths);
-      std::vector< util::StatusObject > pathObjs;
-      ForEachPath([&pathObjs](const Path* p) {
-        util::StatusObject pobj;
-        p->ExtractStatus(pobj);
-        pathObjs.emplace_back(pobj);
-      });
+      std::vector< util::StatusObject > pathObjs(m_Paths.size());
+      {
+        size_t idx = 0;
+        auto itr   = m_Paths.begin();
+        while(itr != m_Paths.end())
+        {
+          util::StatusObject& pobj = pathObjs[idx++];
+          itr->second->ExtractStatus(pobj);
+          ++itr;
+        }
+      }
       obj.PutObjectArray("paths", pathObjs);
     }
 

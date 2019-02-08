@@ -57,15 +57,15 @@ namespace llarp
       {
         obj.PutInt("timestamp", introset.T);
 
-        std::vector< util::StatusObject > introsObjs;
+        std::vector< util::StatusObject > introsObjs(introset.I.size());
+        size_t idx = 0;
         for(const auto intro : introset.I)
         {
-          util::StatusObject introObj;
+          auto& introObj = introsObjs[idx++];
           introObj.PutString("router", intro.router.ToHex());
           introObj.PutInt("expiresAt", intro.expiresAt);
           introObj.PutInt("latency", intro.latency);
           introObj.PutInt("version", intro.version);
-          introsObjs.emplace_back(introObj);
         }
         obj.PutObjectArray("intros", introsObjs);
       }
