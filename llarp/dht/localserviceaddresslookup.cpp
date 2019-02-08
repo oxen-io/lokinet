@@ -32,7 +32,7 @@ namespace llarp
         return;
       }
       // pick newest if we have more than 1 result
-      if(valuesFound.size() > 1)
+      if(valuesFound.size())
       {
         service::IntroSet found;
         for(const auto &introset : valuesFound)

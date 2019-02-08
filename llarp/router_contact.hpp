@@ -96,7 +96,7 @@ namespace llarp
     /// node nickname, yw kee
     llarp::AlignedBuffer< NICKLEN > nickname;
 
-    uint64_t last_updated;
+    uint64_t last_updated = 0;
 
     bool
     BEncode(llarp_buffer_t *buf) const override;

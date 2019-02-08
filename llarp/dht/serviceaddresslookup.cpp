@@ -81,10 +81,10 @@ namespace llarp
         handleResult(valuesFound);
       }
       // get newest introset
-      if(valuesFound.size() > 1)
+      if(valuesFound.size())
       {
         llarp::service::IntroSet found;
-        for(const auto & introset : valuesFound)
+        for(const auto &introset : valuesFound)
           if(found.OtherIsNewer(introset))
             found = introset;
         valuesFound.clear();

@@ -40,6 +40,17 @@ namespace llarp
     void
     RecursiveRouterLookup::SendReply()
     {
+      if(valuesFound.size())
+      {
+        RouterContact found;
+        for(const auto &rc : valuesFound)
+        {
+          if(found.OtherIsNewer(rc))
+            found = rc;
+        }
+        valuesFound.clear();
+        valuesFound.emplace_back(found);
+      }
       if(resultHandler)
       {
         resultHandler(valuesFound);
