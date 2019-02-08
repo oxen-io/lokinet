@@ -46,7 +46,11 @@ namespace abyss
         auto& alloc = m_RequestBody.GetAllocator();
         m_RequestBody.AddMember("jsonrpc", json::Value().SetString("2.0"),
                                 alloc);
-        m_RequestBody.AddMember("id", json::Value(abs(rand())), alloc);
+        llarp::AlignedBuffer< 8 > p;
+        p.Randomize();
+        std::string str = p.ToHex();
+        m_RequestBody.AddMember(
+            "id", json::Value().SetString(str.c_str(), alloc), alloc);
         m_RequestBody.AddMember(
             "method", json::Value().SetString(method.c_str(), alloc), alloc);
         m_RequestBody.AddMember("params", params, alloc);
@@ -212,7 +216,9 @@ namespace abyss
         handler->PopulateReqHeaders(m_SendHeaders);
         // create request body
         std::string body;
-        json::ToString(m_RequestBody, body);
+        std::stringstream ss;
+        json::ToString(m_RequestBody, ss);
+        body = ss.str();
         // request base
         char buf[512] = {0};
         int sz        = snprintf(buf, sizeof(buf),

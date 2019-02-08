@@ -13,7 +13,9 @@ namespace llarp
 
     StatusObject::~StatusObject()
     {
+#ifdef USE_ABYSS
       Impl.RemoveAllMembers();
+#endif
     }
 
     void

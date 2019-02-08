@@ -26,7 +26,7 @@ struct AbyssTestBase : public ::testing::Test
   void
   AssertMethod(const std::string& meth) const
   {
-    ASSERT_TRUE(meth == method);
+    ASSERT_EQ(meth, method);
   }
 
   void
@@ -136,10 +136,12 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
 
   bool
   HandleJSONRPC(Method_t method, __attribute__((unused)) const Params& params,
-                __attribute__((unused)) Response& response)
+                Response& response)
   {
     test->AssertMethod(method);
     test->called = true;
+    response.StartObject();
+    response.EndObject();
     return true;
   }
 };

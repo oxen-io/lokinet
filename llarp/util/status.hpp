@@ -4,6 +4,7 @@
 #include <abyss/json.hpp>
 #endif
 #include <vector>
+#include <string>
 
 namespace llarp
 {
@@ -18,7 +19,7 @@ namespace llarp
     };
     struct Value_t
     {
-    }
+    };
 #endif
 
     struct StatusObject

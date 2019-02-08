@@ -3,12 +3,17 @@
 
 #include <memory>
 #include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/ostreamwrapper.h>
+#include <iostream>
+
 namespace abyss
 {
   namespace json
   {
     using Document = rapidjson::Document;
     using Value    = rapidjson::Value;
+    using Writer   = rapidjson::PrettyWriter< rapidjson::OStreamWrapper >;
   }  // namespace json
 
 #if __cplusplus >= 201703L
@@ -46,7 +51,7 @@ namespace abyss
     MakeParser(size_t contentSize);
 
     void
-    ToString(const json::Document &obj, std::string &out);
+    ToString(const json::Document &obj, std::ostream &out);
 
   }  // namespace json
 }  // namespace abyss

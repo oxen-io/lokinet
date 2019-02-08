@@ -22,7 +22,7 @@ namespace abyss
     {
       using Method_t = std::string;
       using Params   = json::Value;
-      using Response = json::Document;
+      using Response = json::Writer;
 
       IRPCHandler(ConnImpl* impl);
 
