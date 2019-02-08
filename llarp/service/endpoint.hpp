@@ -40,6 +40,9 @@ namespace llarp
       Endpoint(const std::string& nickname, llarp::Router* r, Context* parent);
       ~Endpoint();
 
+      virtual void
+      ExtractStatus(util::StatusObject& obj) const override;
+
       void
       SetHandler(IDataHandler* h);
 
@@ -532,13 +535,24 @@ namespace llarp
       /// on initialize functions
       std::list< std::function< bool(void) > > m_OnInit;
 
-      struct Session
+      struct Session : public util::IStateful
       {
         SharedSecret sharedKey;
         ServiceInfo remote;
         Introduction intro;
         llarp_time_t lastUsed = 0;
         uint64_t seqno        = 0;
+
+        void
+        ExtractStatus(util::StatusObject& obj) const override
+        {
+          obj.PutInt("lastUsed", lastUsed);
+          obj.PutString("remote", remote.Addr().ToString());
+          obj.PutInt("seqno", seqno);
+          util::StatusObject introObj;
+          intro.ExtractStatus(introObj);
+          obj.PutObject("intro", introObj);
+        };
       };
 
       /// sessions

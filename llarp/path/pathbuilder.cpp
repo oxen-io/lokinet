@@ -184,6 +184,21 @@ namespace llarp
       router->paths.RemovePathBuilder(this);
     }
 
+    void
+    Builder::ExtractStatus(util::StatusObject& obj) const
+    {
+      obj.PutInt("keygens", keygens.load());
+      obj.PutInt("numHops", numHops);
+      obj.PutInt("numPaths", m_NumPaths);
+      std::vector< util::StatusObject > pathObjs;
+      ForEachPath([&pathObjs](const Path* p) {
+        util::StatusObject pobj;
+        p->ExtractStatus(pobj);
+        pathObjs.emplace_back(pobj);
+      });
+      obj.PutObjectArray("paths", pathObjs);
+    }
+
     bool
     Builder::SelectHop(llarp_nodedb* db, const RouterContact& prev,
                        RouterContact& cur, size_t hop, PathRole roles)

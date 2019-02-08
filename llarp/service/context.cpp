@@ -31,6 +31,19 @@ namespace llarp
     }
 
     void
+    Context::ExtractStatus(util::StatusObject &obj) const
+    {
+      auto itr = m_Endpoints.begin();
+      while(itr != m_Endpoints.end())
+      {
+        util::StatusObject sobj;
+        itr->second->ExtractStatus(sobj);
+        obj.PutObject(itr->first.c_str(), sobj);
+        ++itr;
+      }
+    }
+
+    void
     Context::ForEachService(
         std::function< bool(const std::string &,
                             const std::unique_ptr< Endpoint > &) >

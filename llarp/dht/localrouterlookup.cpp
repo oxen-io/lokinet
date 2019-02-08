@@ -32,6 +32,17 @@ namespace llarp
             localPath);
         return;
       }
+      if(valuesFound.size())
+      {
+        RouterContact found;
+        for(const auto &rc : valuesFound)
+        {
+          if(rc.OtherIsNewer(found))
+            found = rc;
+        }
+        valuesFound.clear();
+        valuesFound.emplace_back(found);
+      }
       routing::DHTMessage msg;
       msg.M.emplace_back(new GotRouterMessage(parent->OurKey(), whoasked.txid,
                                               valuesFound, true));

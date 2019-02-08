@@ -2,18 +2,6 @@
 #define __ABYSS_JSON_JSON_HPP
 
 #include <memory>
-//#if __cplusplus >= 201703L
-#if 0
-#include <unordered_map>
-#include <any>
-namespace abyss
-{
-  namespace json
-  {
-    using Object = std::unordered_map< std::string, std::any >;
-  }
-}  // namespace abyss
-#else
 #include <rapidjson/document.h>
 namespace abyss
 {
@@ -22,10 +10,7 @@ namespace abyss
     using Document = rapidjson::Document;
     using Value    = rapidjson::Value;
   }  // namespace json
-}  // namespace abyss
-#endif
-namespace abyss
-{
+
 #if __cplusplus >= 201703L
   using string_view = std::string_view;
 #else

@@ -155,26 +155,24 @@ namespace llarp
     IHopHandler*
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
-      auto own = MapGet(
-          m_OurPaths, id,
-          [](__attribute__((unused)) const PathSet* s) -> bool {
-            // TODO: is this right?
-            return true;
-          },
-          [remote, id](PathSet* p) -> IHopHandler* {
-            return p->GetByUpstream(remote, id);
-          });
+      auto own = MapGet(m_OurPaths, id,
+                        [](__attribute__((unused)) const PathSet* s) -> bool {
+                          // TODO: is this right?
+                          return true;
+                        },
+                        [remote, id](PathSet* p) -> IHopHandler* {
+                          return p->GetByUpstream(remote, id);
+                        });
       if(own)
         return own;
 
-      return MapGet(
-          m_TransitPaths, id,
-          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-            return hop->info.upstream == remote;
-          },
-          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-            return h.get();
-          });
+      return MapGet(m_TransitPaths, id,
+                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+                      return hop->info.upstream == remote;
+                    },
+                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+                      return h.get();
+                    });
     }
 
     bool
@@ -191,14 +189,13 @@ namespace llarp
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
-      return MapGet(
-          m_TransitPaths, id,
-          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-            return hop->info.downstream == remote;
-          },
-          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-            return h.get();
-          });
+      return MapGet(m_TransitPaths, id,
+                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+                      return hop->info.downstream == remote;
+                    },
+                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+                      return h.get();
+                    });
     }
 
     PathSet*
@@ -436,6 +433,55 @@ namespace llarp
                        " ms");
       }
       _status = st;
+    }
+
+    void
+    Path::ExtractStatus(util::StatusObject& obj) const
+    {
+      std::vector< util::StatusObject > subobj;
+      for(const auto& hop : hops)
+      {
+        util::StatusObject hopobj;
+        hopobj.PutString("txid", hop.txID.ToHex());
+        hopobj.PutString("rxid", hop.rxID.ToHex());
+        hopobj.PutString("router", hop.rc.pubkey.ToString());
+        hopobj.PutInt("lifetime", hop.lifetime);
+        subobj.emplace_back(hopobj);
+      }
+      obj.PutObjectArray("hops", subobj);
+
+      util::StatusObject introObj;
+      intro.ExtractStatus(introObj);
+      obj.PutObject("intro", introObj);
+
+      switch(_status)
+      {
+        case ePathBuilding:
+          obj.PutString("status", "building");
+          break;
+        case ePathEstablished:
+          obj.PutString("status", "established");
+          break;
+        case ePathTimeout:
+          obj.PutString("status", "timeout");
+          break;
+        case ePathExpired:
+          obj.PutString("status", "expired");
+          break;
+        default:
+          obj.PutString("status", "unknown");
+          break;
+      }
+      obj.PutInt("lastRecvMsg", m_LastRecvMessage);
+      obj.PutInt("lastLatencyTest", m_LastLatencyTestTime);
+      obj.PutInt("buildStarted", buildStarted);
+      obj.PutBool("ready", IsReady());
+      obj.PutBool("hasExit", SupportsAnyRoles(ePathRoleExit));
+
+      auto now = llarp::time_now_ms();
+      obj.PutBool("expired", Expired(now));
+      obj.PutBool("expiresSoon", ExpiresSoon(now));
+      obj.PutInt("expiresAt", ExpireTime());
     }
 
     void

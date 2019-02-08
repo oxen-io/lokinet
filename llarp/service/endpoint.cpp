@@ -145,6 +145,84 @@ namespace llarp
     }
 
     void
+    Endpoint::ExtractStatus(util::StatusObject& obj) const
+    {
+      path::Builder::ExtractStatus(obj);
+      obj.PutString("identity", m_Identity.pub.Addr().ToString());
+
+      obj.PutInt("lastPublished", m_LastPublish);
+      obj.PutInt("lastPublishAttempt", m_LastPublishAttempt);
+      util::StatusObject introsetObj;
+      m_IntroSet.ExtractStatus(introsetObj);
+      obj.PutObject("introset", introsetObj);
+
+      if(!m_Tag.IsZero())
+        obj.PutString("tag", m_Tag.ToString());
+
+      std::vector< util::StatusObject > remoteSessions, deadSessions,
+          snodeSessions, lookups;
+
+      {
+        auto itr = m_RemoteSessions.begin();
+        while(itr != m_RemoteSessions.end())
+        {
+          util::StatusObject sobj;
+          itr->second->ExtractStatus(sobj);
+          remoteSessions.emplace_back(sobj);
+          ++itr;
+        }
+      }
+      obj.PutObjectArray("remoteSessions", remoteSessions);
+      {
+        auto itr = m_DeadSessions.begin();
+        while(itr != m_DeadSessions.end())
+        {
+          util::StatusObject sobj;
+          itr->second->ExtractStatus(sobj);
+          deadSessions.emplace_back(sobj);
+          ++itr;
+        }
+      }
+      obj.PutObjectArray("deadSessions", deadSessions);
+      {
+        auto itr = m_SNodeSessions.begin();
+        while(itr != m_SNodeSessions.end())
+        {
+          util::StatusObject sobj;
+          itr->second->ExtractStatus(sobj);
+          snodeSessions.emplace_back(sobj);
+          ++itr;
+        }
+      }
+      obj.PutObjectArray("snodeSessions", snodeSessions);
+      {
+        auto itr = m_PendingLookups.begin();
+        while(itr != m_PendingLookups.end())
+        {
+          util::StatusObject sobj;
+          itr->second->ExtractStatus(sobj);
+          lookups.emplace_back(sobj);
+          ++itr;
+        }
+      }
+      obj.PutObjectArray("lookups", lookups);
+
+      util::StatusObject sessionObj;
+      {
+        auto itr = m_Sessions.begin();
+        while(itr != m_Sessions.end())
+        {
+          util::StatusObject sobj;
+          itr->second.ExtractStatus(sobj);
+          std::string k = itr->first.ToHex();
+          sessionObj.PutObject(k.c_str(), sobj);
+          ++itr;
+        }
+      }
+      obj.PutObject("converstations", sessionObj);
+    }
+
+    void
     Endpoint::Tick(llarp_time_t now)
     {
       // publish descriptors
@@ -233,12 +311,13 @@ namespace llarp
             continue;
           std::array< byte_t, 1024 > tmp = {0};
           llarp_buffer_t buf(tmp);
-          if(!SendToServiceOrQueue(introset.A.Addr().data(), buf,
-                                   eProtocolText))
-          {
+          if(SendToServiceOrQueue(introset.A.Addr().data(), buf, eProtocolText))
+            llarp::LogInfo(Name(), " send message to ", introset.A.Addr(),
+                           " for tag ", tag.ToString());
+          else
+
             llarp::LogWarn(Name(), " failed to send/queue data to ",
                            introset.A.Addr(), " for tag ", tag.ToString());
-          }
         }
         itr->second.Expire(now);
         if(itr->second.ShouldRefresh(now))

@@ -13,7 +13,7 @@ namespace llarp
   namespace service
   {
     /// holds all the hidden service endpoints we own
-    struct Context
+    struct Context : public util::IStateful
     {
       Context(llarp::Router *r);
       ~Context();
@@ -24,6 +24,9 @@ namespace llarp
       /// stop all held services
       bool
       StopAll();
+
+      void
+      ExtractStatus(util::StatusObject &obj) const override;
 
       bool
       hasEndpoints();

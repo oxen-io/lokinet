@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace dht
   {
-    struct RCNode
+    struct RCNode : public util::IStateful
     {
       RouterContact rc;
       Key_t ID;
@@ -23,6 +23,12 @@ namespace llarp
       {
       }
 
+      void
+      ExtractStatus(util::StatusObject& obj) const override
+      {
+        obj.PutInt("lastUpdated", rc.last_updated);
+      }
+
       bool
       operator<(const RCNode& other) const
       {
@@ -30,7 +36,7 @@ namespace llarp
       }
     };
 
-    struct ISNode
+    struct ISNode : public util::IStateful
     {
       service::IntroSet introset;
 
@@ -44,6 +50,24 @@ namespace llarp
       ISNode(const service::IntroSet& other) : introset(other)
       {
         introset.A.CalculateAddress(ID.as_array());
+      }
+
+      void
+      ExtractStatus(util::StatusObject& obj) const override
+      {
+        obj.PutInt("timestamp", introset.T);
+
+        std::vector< util::StatusObject > introsObjs;
+        for(const auto intro : introset.I)
+        {
+          util::StatusObject introObj;
+          introObj.PutString("router", intro.router.ToHex());
+          introObj.PutInt("expiresAt", intro.expiresAt);
+          introObj.PutInt("latency", intro.latency);
+          introObj.PutInt("version", intro.version);
+          introsObjs.emplace_back(introObj);
+        }
+        obj.PutObjectArray("intros", introsObjs);
       }
 
       bool

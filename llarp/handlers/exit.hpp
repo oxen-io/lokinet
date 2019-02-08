@@ -11,7 +11,7 @@ namespace llarp
   struct Router;
   namespace handlers
   {
-    struct ExitEndpoint : public dns::IQueryHandler
+    struct ExitEndpoint : public dns::IQueryHandler, public util::IStateful
     {
       ExitEndpoint(const std::string& name, Router* r);
       ~ExitEndpoint();
@@ -24,6 +24,9 @@ namespace llarp
 
       std::string
       Name() const;
+
+      void
+      ExtractStatus(util::StatusObject& obj) const override;
 
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;

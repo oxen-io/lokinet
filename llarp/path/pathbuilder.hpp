@@ -2,6 +2,8 @@
 #define LLARP_PATHBUILDER_HPP_
 
 #include <path/pathset.hpp>
+#include <util/status.hpp>
+
 #include <atomic>
 
 struct llarp_dht_context;
@@ -13,7 +15,7 @@ namespace llarp
     // milliseconds waiting between builds on a path
     constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 5 * 1000;
 
-    struct Builder : public PathSet
+    struct Builder : public PathSet, public util::IStateful
     {
      protected:
       /// flag for PathSet::Stop()
@@ -35,6 +37,9 @@ namespace llarp
               size_t numPaths, size_t numHops);
 
       virtual ~Builder();
+
+      virtual void
+      ExtractStatus(util::StatusObject& obj) const override;
 
       virtual bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,

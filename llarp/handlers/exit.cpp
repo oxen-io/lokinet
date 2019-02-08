@@ -42,6 +42,25 @@ namespace llarp
     {
     }
 
+    void
+    ExitEndpoint::ExtractStatus(util::StatusObject &obj) const
+    {
+      obj.PutBool("permitExit", m_PermitExit);
+      std::vector< util::StatusObject > activeObjs;
+      {
+        auto itr = m_ActiveExits.begin();
+        while(itr != m_ActiveExits.end())
+        {
+          util::StatusObject sessionObj;
+          itr->second->ExtractStatus(sessionObj);
+          activeObjs.emplace_back(sessionObj);
+          ++itr;
+        }
+      }
+      obj.PutString("ip", m_IfAddr.ToString());
+      obj.PutObjectArray("exitSessions", activeObjs);
+    }
+
     bool
     ExitEndpoint::ShouldHookDNSMessage(const dns::Message &msg) const
     {

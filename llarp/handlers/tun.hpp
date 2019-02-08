@@ -30,6 +30,9 @@ namespace llarp
       virtual void
       Tick(llarp_time_t now) override;
 
+      void
+      ExtractStatus(util::StatusObject& obj) const override;
+
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;
 

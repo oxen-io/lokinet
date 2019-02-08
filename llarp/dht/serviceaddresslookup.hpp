@@ -34,6 +34,9 @@ namespace llarp
       void
       DoNextRequest(const Key_t &ask) override;
 
+      void
+      ExtractStatus(util::StatusObject &obj) const override;
+
       virtual void
       SendReply() override;
     };

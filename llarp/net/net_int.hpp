@@ -53,6 +53,15 @@ namespace llarp
       return out;
     }
 
+    std::string ToString() const
+    {
+      uint32_t n = htonl(h);
+      char tmp[INET_ADDRSTRLEN]   = {0};
+      if(!inet_ntop(AF_INET, (void*)&n, tmp, sizeof(tmp)))
+        return "";
+      return tmp;
+    }
+    
     struct Hash
     {
       inline size_t

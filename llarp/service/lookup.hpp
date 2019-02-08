@@ -20,7 +20,7 @@ namespace llarp
 
     constexpr size_t MaxConcurrentLookups = size_t(4);
 
-    struct IServiceLookup
+    struct IServiceLookup : public util::IStateful
     {
       IServiceLookup() = delete;
       virtual ~IServiceLookup(){};
@@ -54,6 +54,17 @@ namespace llarp
       uint64_t txid;
       const std::string name;
       RouterID endpoint;
+
+      void
+      ExtractStatus(util::StatusObject& obj) const override
+      {
+        auto now = llarp::time_now_ms();
+        obj.PutInt("txid", txid);
+        obj.PutString("endpoint", endpoint.ToHex());
+        obj.PutString("name", name);
+        obj.PutBool("timedOut", IsTimedOut(now));
+        obj.PutInt("createdAt", m_created);
+      }
 
      protected:
       IServiceLookup(ILookupHolder* parent, uint64_t tx,

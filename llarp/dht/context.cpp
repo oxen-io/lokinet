@@ -223,6 +223,28 @@ namespace llarp
     }
 
     void
+    Context::ExtractStatus(util::StatusObject &obj) const
+    {
+      util::StatusObject pendingRouterObj, pendingIntrosetObj, pendingTagObj,
+          pendingExploreObj, routerBucketObj, serviceBucketObj;
+
+      pendingRouterLookups.ExtractStatus(pendingRouterObj);
+      pendingIntrosetLookups.ExtractStatus(pendingIntrosetObj);
+      pendingTagLookups.ExtractStatus(pendingTagObj);
+      pendingExploreLookups.ExtractStatus(pendingExploreObj);
+      nodes->ExtractStatus(routerBucketObj);
+      services->ExtractStatus(serviceBucketObj);
+
+      obj.PutObject("pendingRouterLookups", pendingRouterObj);
+      obj.PutObject("pendingIntrosetLookups", pendingIntrosetObj);
+      obj.PutObject("pendingTagLookups", pendingTagObj);
+      obj.PutObject("pendingExploreLookups", pendingExploreObj);
+      obj.PutObject("nodes", routerBucketObj);
+      obj.PutObject("services", serviceBucketObj);
+      obj.PutString("ourKey", ourKey.ToHex());
+    }
+
+    void
     Context::Init(const Key_t &us, llarp::Router *r,
                   llarp_time_t exploreInterval)
     {

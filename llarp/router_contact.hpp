@@ -7,6 +7,7 @@
 #include <net/exit_info.hpp>
 #include <util/aligned.hpp>
 #include <util/bencode.hpp>
+#include <util/status.hpp>
 
 #include <functional>
 #include <vector>
@@ -56,7 +57,7 @@ namespace llarp
   };
 
   /// RouterContact
-  struct RouterContact final : public IBEncodeMessage
+  struct RouterContact final : public IBEncodeMessage, public util::IStateful
   {
     /// for unit tests
     static bool IgnoreBogons;
@@ -97,6 +98,9 @@ namespace llarp
     llarp::AlignedBuffer< NICKLEN > nickname;
 
     uint64_t last_updated = 0;
+
+    void
+    ExtractStatus(util::StatusObject &obj) const override;
 
     bool
     BEncode(llarp_buffer_t *buf) const override;

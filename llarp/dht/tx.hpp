@@ -4,6 +4,7 @@
 #include <dht/key.hpp>
 #include <dht/txowner.hpp>
 #include <util/logger.hpp>
+#include <util/status.hpp>
 
 #include <set>
 #include <vector>
@@ -15,7 +16,7 @@ namespace llarp
     struct AbstractContext;
 
     template < typename K, typename V >
-    struct TX
+    struct TX : public util::IStateful
     {
       K target;
       AbstractContext* parent;
@@ -36,6 +37,11 @@ namespace llarp
       /// return true if we want to persist this tx
       bool
       AskNextPeer(const Key_t& prevPeer, const std::unique_ptr< Key_t >& next);
+
+      virtual void
+      ExtractStatus(util::StatusObject&) const override
+      {
+      }
 
       virtual bool
       Validate(const V& value) const = 0;

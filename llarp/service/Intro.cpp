@@ -8,6 +8,15 @@ namespace llarp
     {
     }
 
+    void
+    Introduction::ExtractStatus(util::StatusObject& obj) const
+    {
+      obj.PutString("router", router.ToHex());
+      obj.PutInt("expiresAt", expiresAt);
+      obj.PutInt("latency", latency);
+      obj.PutInt("version", version);
+    }
+
     bool
     Introduction::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {

@@ -332,6 +332,7 @@ set(LIB_UTIL_SRC
   llarp/util/mem.cpp
   llarp/util/queue_manager.cpp
   llarp/util/queue.cpp
+  llarp/util/status.cpp
   llarp/util/str.cpp
   llarp/util/string_view.cpp
   llarp/util/thread_pool.cpp

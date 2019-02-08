@@ -24,6 +24,15 @@ namespace llarp
     {
     }
 
+    void
+    BaseSession::ExtractStatus(util::StatusObject& obj) const
+    {
+      path::Builder::ExtractStatus(obj);
+      obj.PutInt("lastExitUse", m_LastUse);
+      auto pub = m_ExitIdentity.toPublic();
+      obj.PutString("exitIdentity", pub.ToString());
+    }
+
     bool
     BaseSession::LoadIdentityFromFile(const char* fname)
     {

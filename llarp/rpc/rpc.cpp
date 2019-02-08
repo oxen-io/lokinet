@@ -218,6 +218,15 @@ namespace llarp
       }
 
       bool
+      DumpState(Response& resp) const
+      {
+        util::StatusObject dump;
+        router->ExtractStatus(dump);
+        resp.AddMember("result", dump.Impl, resp.GetAllocator());
+        return true;
+      }
+
+      bool
       ListExitLevels(Response& resp) const
       {
         exit::Context::TrafficStats stats;
@@ -279,6 +288,10 @@ namespace llarp
         else if(method == "llarp.admin.exit.list")
         {
           return ListExitLevels(response);
+        }
+        else if(method == "llarp.admin.dumpstate")
+        {
+          return DumpState(response);
         }
         return false;
       }

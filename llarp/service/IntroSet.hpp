@@ -8,6 +8,7 @@
 #include <service/tag.hpp>
 #include <util/bencode.hpp>
 #include <util/time.hpp>
+#include <util/status.hpp>
 
 #include <algorithm>
 #include <functional>
@@ -23,8 +24,12 @@ namespace llarp
     constexpr std::size_t MAX_INTROSET_SIZE = 4096;
     // 10 seconds clock skew permitted for introset expiration
     constexpr llarp_time_t MAX_INTROSET_TIME_DELTA = (10 * 1000);
-    struct IntroSet final : public llarp::IBEncodeMessage
+    struct IntroSet final : public llarp::IBEncodeMessage,
+                            public util::IStateful
     {
+      void
+      ExtractStatus(util::StatusObject& obj) const override;
+
       ServiceInfo A;
       std::vector< Introduction > I;
       PQPubKey K;

@@ -5,6 +5,7 @@
 #include <dht/txowner.hpp>
 #include <util/logger.hpp>
 #include <util/time.hpp>
+#include <util/status.hpp>
 
 #include <memory>
 #include <unordered_map>
@@ -15,7 +16,7 @@ namespace llarp
   {
     template < typename K, typename V, typename K_Hash,
                llarp_time_t requestTimeoutMS = 5000UL >
-    struct TXHolder
+    struct TXHolder : public util::IStateful
     {
       using TXPtr = std::unique_ptr< TX< K, V > >;
       // tx who are waiting for a reply for each key
@@ -27,6 +28,54 @@ namespace llarp
 
       const TX< K, V >*
       GetPendingLookupFrom(const TXOwner& owner) const;
+
+      void
+      ExtractStatus(util::StatusObject& obj) const override
+      {
+        std::vector< util::StatusObject > txObjs, timeoutsObjs, waitingObjs;
+        {
+          auto itr = tx.begin();
+          while(itr != tx.end())
+          {
+            util::StatusObject txObj, txOwnerObj, txSuperObj;
+            itr->second->ExtractStatus(txObj);
+            txOwnerObj.PutInt("txid", itr->first.txid);
+            txOwnerObj.PutString("node", itr->first.node.ToHex());
+
+            txSuperObj.PutObject("tx", txObj);
+            txSuperObj.PutObject("owner", txOwnerObj);
+            txObjs.emplace_back(txSuperObj);
+            ++itr;
+          }
+        }
+        obj.PutObjectArray("tx", txObjs);
+        {
+          auto itr = timeouts.begin();
+          while(itr != timeouts.end())
+          {
+            util::StatusObject timeoutObj;
+            timeoutObj.PutInt("time", itr->second);
+            timeoutObj.PutString("target", itr->first.ToHex());
+            timeoutsObjs.emplace_back(timeoutObj);
+            ++itr;
+          }
+        }
+        obj.PutObjectArray("timeouts", timeoutsObjs);
+        {
+          auto itr = waiting.begin();
+          while(itr != waiting.end())
+          {
+            util::StatusObject waitingObj, txOwnerObj;
+            txOwnerObj.PutInt("txid", itr->second.txid);
+            txOwnerObj.PutString("node", itr->second.node.ToHex());
+            waitingObj.PutObject("whoasked", txOwnerObj);
+            waitingObj.PutString("target", itr->first.ToHex());
+            waitingObjs.emplace_back(waitingObj);
+            ++itr;
+          }
+        }
+        obj.PutObjectArray("waiting", waitingObjs);
+      }
 
       bool
       HasLookupFor(const K& target) const

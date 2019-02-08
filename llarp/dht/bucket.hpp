@@ -3,6 +3,7 @@
 
 #include <dht/kademlia.hpp>
 #include <dht/key.hpp>
+#include <util/status.hpp>
 
 #include <map>
 #include <set>
@@ -13,12 +14,24 @@ namespace llarp
   namespace dht
   {
     template < typename Val_t >
-    struct Bucket
+    struct Bucket : public util::IStateful
     {
       using BucketStorage_t = std::map< Key_t, Val_t, XorMetric >;
       using Random_t        = std::function< uint64_t() >;
 
       Bucket(const Key_t& us, Random_t r) : nodes(XorMetric(us)), random(r){};
+
+      void
+      ExtractStatus(util::StatusObject& obj) const override
+      {
+        for(const auto& item : nodes)
+        {
+          std::string keyname = item.first.ToHex();
+          util::StatusObject itemObj;
+          item.second.ExtractStatus(itemObj);
+          obj.PutObject(keyname.c_str(), itemObj);
+        }
+      }
 
       size_t
       size() const

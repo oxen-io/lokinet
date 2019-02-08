@@ -26,6 +26,31 @@ namespace llarp
       }
 
       void
+      ExtractStatus(util::StatusObject &obj) const override
+      {
+        std::vector< util::StatusObject > foundObjs;
+        for(const auto &found : valuesFound)
+        {
+          util::StatusObject foundObj;
+          found.ExtractStatus(foundObj);
+          foundObjs.emplace_back(foundObj);
+        }
+        obj.PutObjectArray("found", foundObjs);
+
+        util::StatusObject txownerObj;
+        txownerObj.PutInt("txid", whoasked.txid);
+        txownerObj.PutString("node", whoasked.node.ToHex());
+        obj.PutObject("whoasked", txownerObj);
+
+        std::vector< std::string > asked;
+        for(const auto &peer : peersAsked)
+          asked.emplace_back(peer.ToHex());
+        obj.PutStringArray("asked", asked);
+
+        obj.PutString("target", target.ToHex());
+      }
+
+      void
       DoNextRequest(const Key_t &) override
       {
       }

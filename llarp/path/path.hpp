@@ -291,7 +291,9 @@ namespace llarp
     };
 
     /// A path we made
-    struct Path : public IHopHandler, public llarp::routing::IMessageHandler
+    struct Path : public IHopHandler,
+                  public llarp::routing::IMessageHandler,
+                  public util::IStateful
     {
       using BuildResultHookFunc = std::function< void(Path*) >;
       using CheckForDeadFunc    = std::function< bool(Path*, llarp_time_t) >;
@@ -317,6 +319,9 @@ namespace llarp
 
       Path(const std::vector< RouterContact >& routers, PathSet* parent,
            PathRole startingRoles);
+
+      void
+      ExtractStatus(util::StatusObject& obj) const override;
 
       PathRole
       Role() const

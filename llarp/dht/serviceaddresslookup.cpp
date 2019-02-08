@@ -72,23 +72,49 @@ namespace llarp
                                         ask);
       }
     }
+    void
+    ServiceAddressLookup::ExtractStatus(util::StatusObject &obj) const
+    {
+      std::vector< util::StatusObject > foundObjs;
+      for(const auto &found : valuesFound)
+      {
+        util::StatusObject introsetObj;
+        found.ExtractStatus(introsetObj);
+        foundObjs.emplace_back(introsetObj);
+      }
+      obj.PutObjectArray("found", foundObjs);
+
+      util::StatusObject txownerObj;
+      txownerObj.PutInt("txid", whoasked.txid);
+      txownerObj.PutString("node", whoasked.node.ToHex());
+      obj.PutObject("whoasked", txownerObj);
+
+      std::vector< std::string > asked;
+      for(const auto &peer : peersAsked)
+        asked.emplace_back(peer.ToHex());
+      obj.PutStringArray("asked", asked);
+
+      obj.PutString("target", target.ToHex());
+    }
 
     void
     ServiceAddressLookup::SendReply()
     {
-      if(handleResult)
-      {
-        handleResult(valuesFound);
-      }
       // get newest introset
       if(valuesFound.size())
       {
         llarp::service::IntroSet found;
         for(const auto &introset : valuesFound)
+        {
           if(found.OtherIsNewer(introset))
             found = introset;
+        }
         valuesFound.clear();
         valuesFound.emplace_back(found);
+      }
+      if(handleResult)
+      {
+        handleResult(valuesFound);
       }
       parent->DHTSendTo(whoasked.node.as_array(),
                         new GotIntroMessage(valuesFound, whoasked.txid));

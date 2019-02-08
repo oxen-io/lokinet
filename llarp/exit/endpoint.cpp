@@ -31,6 +31,21 @@ namespace llarp
       m_Parent->RemoveExit(this);
     }
 
+    void
+    Endpoint::ExtractStatus(util::StatusObject& obj) const
+    {
+      obj.PutString("identity", m_remoteSignKey.ToHex());
+      obj.PutString("ip", m_IP.ToString());
+      obj.PutInt("txRate", m_TxRate);
+      obj.PutInt("rxRate", m_RxRate);
+      obj.PutInt("createdAt", createdAt);
+      auto now = m_Parent->Now();
+      obj.PutBool("exiting", !m_RewriteSource);
+      obj.PutBool("looksDead", LooksDead(now));
+      obj.PutBool("expiresSoon", ExpiresSoon(now));
+      obj.PutBool("expired", IsExpired(now));
+    }
+
     bool
     Endpoint::UpdateLocalPath(const llarp::PathID_t& nextPath)
     {

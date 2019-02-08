@@ -237,6 +237,18 @@ namespace llarp
     llarp_dht_context_free(_dht);
   }
 
+  void
+  Router::ExtractStatus(util::StatusObject &obj) const
+  {
+    util::StatusObject dhtObj, exitObj, hsObj;
+    _dht->impl.ExtractStatus(dhtObj);
+    obj.PutObject("dht", dhtObj);
+    hiddenServiceContext.ExtractStatus(hsObj);
+    obj.PutObject("services", hsObj);
+    exitContext.ExtractStatus(exitObj);
+    obj.PutObject("exit", exitObj);
+  }
+
   bool
   Router::HandleRecvLinkMessageBuffer(llarp::ILinkSession *session,
                                       const llarp_buffer_t &buf)

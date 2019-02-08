@@ -53,6 +53,38 @@ namespace llarp
       tunif.recvpkt      = &tunifRecvPkt;
     }
 
+    void
+    TunEndpoint::ExtractStatus(util::StatusObject &obj) const
+    {
+      service::Endpoint::ExtractStatus(obj);
+      obj.PutString("ifaddr", m_OurRange.ToString());
+
+      std::vector< std::string > resolvers;
+      for(const auto &addr : m_UpstreamResolvers)
+        resolvers.emplace_back(addr.ToString());
+      obj.PutStringArray("ustreamResolvers", resolvers);
+      obj.PutString("localResolver", m_LocalResolverAddr.ToString());
+      util::StatusObject ips;
+      for(const auto &item : m_IPActivity)
+      {
+        util::StatusObject ipObj;
+        ipObj.PutInt("lastActive", item.second);
+        std::string remoteStr;
+        AlignedBuffer< 32 > addr = m_IPToAddr.at(item.first);
+        if(m_SNodes.at(addr))
+          remoteStr = RouterID(addr.as_array()).ToString();
+        else
+          remoteStr = service::Address(addr.as_array()).ToString();
+        ipObj.PutString("remote", remoteStr);
+        std::string ipaddr = item.first.ToString();
+        ips.PutObject(ipaddr.c_str(), ipObj);
+      }
+      obj.PutObject("addrs", ips);
+      obj.PutString("ourIP", m_OurIP.ToString());
+      obj.PutString("nextIP", m_NextIP.ToString());
+      obj.PutString("maxIP", m_MaxIP.ToString());
+    }
+
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {
