@@ -73,10 +73,8 @@ CMAKE_GEN ?= Unix Makefiles
 
 
 ifdef NINJA
-	BUILD_CMD = $(NINJA) -C
+	MAKE = $(NINJA)
 	CMAKE_GEN = Ninja
-else
-	BUILD_CMD = $(MAKE) -C
 endif
 
 
@@ -116,12 +114,12 @@ release-configure: clean
 	$(CONFIG_CMD) -DSTATIC_LINK_RUNTIME=ON -DCMAKE_BUILD_TYPE=Release -DRELEASE_MOTTO="$(shell cat motto.txt)" -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 debug: debug-configure
-	$(BUILD_CMD) $(BUILD_ROOT)
+	$(MAKE) -C $(BUILD_ROOT)
 	cp $(EXE) $(REPO)/lokinet
 
 
 release-compile: release-configure
-	$(BUILD_CMD) $(BUILD_ROOT)
+	$(MAKE) -C $(BUILD_ROOT)
 	cp $(EXE) $(REPO)/lokinet
 	strip $(TARGETS)
 
@@ -137,8 +135,8 @@ shadow-configure: clean
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 shadow-build: shadow-configure
-	$(BUILD_CMD) $(BUILD_ROOT) clean
-	$(BUILD_CMD) $(BUILD_ROOT)
+	$(MAKE) -C $(BUILD_ROOT) clean
+	$(MAKE) -C $(BUILD_ROOT)
 
 shadow-run: shadow-build
 	$(PYTHON) $(REPO)/contrib/shadow/genconf.py $(SHADOW_CONFIG)
@@ -157,7 +155,7 @@ testnet-configure: testnet-clean
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX) -DTESTNET=1
 
 testnet-build: testnet-configure
-	$(BUILD_CMD) $(BUILD_ROOT)
+	$(MAKE) -C $(BUILD_ROOT)
 
 testnet:
 	cp $(EXE) $(TESTNET_EXE)
@@ -191,7 +189,7 @@ windows-configure: clean
 	$(CONFIG_CMD) -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc-win32 -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++-win32 -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 windows: windows-configure
-	$(BUILD_CMD) '$(BUILD_ROOT)'
+	$(MAKE) -C '$(BUILD_ROOT)'
 	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
 
 abyss: debug
@@ -205,14 +203,14 @@ analyze-config: clean
 	$(ANALYZE_CONFIG_CMD)
 
 analyze: analyze-config
-	$(SCAN_BUILD) $(BUILD_CMD) $(BUILD_ROOT)
+	$(SCAN_BUILD) $(MAKE) -C $(BUILD_ROOT)
 
 coverage-config: clean
 	mkdir -p '$(BUILD_ROOT)'
 	$(COVERAGE_CONFIG_CMD)
 
 coverage: coverage-config
-	$(BUILD_CMD) $(BUILD_ROOT)
+	$(MAKE) -C $(BUILD_ROOT)
 	$(TEST_EXE) || true # continue even if tests fail
 	mkdir -p "$(COVERAGE_OUTDIR)"
 ifeq ($(CLANG),OFF)
@@ -246,7 +244,7 @@ debian-configure:
 	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)" -DCMAKE_BUILD_TYPE=Release
 
 debian: debian-configure
-	$(BUILD_CMD) '$(BUILD_ROOT)'
+	$(MAKE) -C '$(BUILD_ROOT)'
 	cp $(EXE) lokinet
 	cp $(BUILD_ROOT)/rcutil lokinet-rcutil
 
@@ -254,6 +252,6 @@ debian-test:
 	$(TEST_EXE)
 
 install:
-	$(BUILD_CMD) '$(BUILD_ROOT)' install
+	$(MAKE) -C '$(BUILD_ROOT)' install
 
 .PHONY: debian-install

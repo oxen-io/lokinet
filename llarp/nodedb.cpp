@@ -35,9 +35,12 @@ llarp_nodedb::Clear()
 }
 
 bool
-llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
+llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result,
+                  bool lock)
 {
-  llarp::util::Lock lock(access);
+  std::unique_ptr< llarp::util::Lock > l;
+  if(lock)
+    l.reset(new llarp::util::Lock(access));
   auto itr = entries.find(pk);
   if(itr == entries.end())
     return false;
