@@ -31,6 +31,18 @@ namespace llarp
             localPath);
         return;
       }
+      // pick newest if we have more than 1 result
+      if(valuesFound.size() > 1)
+      {
+        service::IntroSet found;
+        for(const auto &introset : valuesFound)
+        {
+          if(found.OtherIsNewer(introset))
+            found = introset;
+        }
+        valuesFound.clear();
+        valuesFound.emplace_back(found);
+      }
       routing::DHTMessage msg;
       msg.M.emplace_back(new GotIntroMessage(valuesFound, whoasked.txid));
       if(!path->SendRoutingMessage(&msg, parent->GetRouter()))
