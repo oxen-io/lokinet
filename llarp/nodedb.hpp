@@ -55,7 +55,8 @@ struct llarp_nodedb
   Clear();
 
   bool
-  Get(const llarp::RouterID &pk, llarp::RouterContact &result);
+  Get(const llarp::RouterID &pk, llarp::RouterContact &result,
+      bool lock = true);
 
   bool
   Has(const llarp::RouterID &pk);

@@ -82,11 +82,18 @@ namespace llarp
           ++itr;
         }
       }
+
+      auto ep = getFirstEndpoint();
+      if(!ep)
+        return;
+      std::vector< RouterID > expired;
       m_Router->nodedb()->visit([&](const RouterContact &rc) -> bool {
         if(rc.IsExpired(now))
-          getFirstEndpoint()->LookupRouterAnon(rc.pubkey);
+          expired.emplace_back(rc.pubkey);
         return true;
       });
+      for(const auto &k : expired)
+        ep->LookupRouterAnon(k);
     }
 
     bool
