@@ -92,6 +92,8 @@ namespace llarp
           expired.emplace_back(rc.pubkey);
         return true;
       });
+      // TODO: we need to stop looking up service nodes that are gone forever
+      // how do?
       for(const auto &k : expired)
         ep->LookupRouterAnon(k);
     }
