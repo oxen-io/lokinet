@@ -553,6 +553,14 @@ namespace llarp
           intro.ExtractStatus(introObj);
           obj.PutObject("intro", introObj);
         };
+
+        bool
+        IsExpired(llarp_time_t now) const
+        {
+          if(now <= lastUsed)
+            return false;
+          return intro.IsExpired(now);
+        }
       };
 
       /// sessions

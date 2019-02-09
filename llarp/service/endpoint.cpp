@@ -366,6 +366,17 @@ namespace llarp
             ++itr;
         }
       }
+      // expire convotags
+      {
+        auto itr = m_Sessions.begin();
+        while(itr != m_Sessions.end())
+        {
+          if(itr->second.IsExpired(now))
+            itr = m_Sessions.erase(itr);
+          else
+            ++itr;
+        }
+      }
     }
 
     bool
@@ -394,7 +405,8 @@ namespace llarp
     bool
     Endpoint::OutboundContext::IsDone(llarp_time_t now) const
     {
-      return now - lastGoodSend > (DEFAULT_PATH_LIFETIME / 4) && ShouldRemove();
+      (void)now;
+      return AvailablePaths(path::ePathRoleAny) == 0 && ShouldRemove();
     }
 
     uint64_t
