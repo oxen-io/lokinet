@@ -344,7 +344,7 @@ namespace llarp
         auto itr = m_DeadSessions.begin();
         while(itr != m_DeadSessions.end())
         {
-          if(itr->second->IsDone(now) && itr->second->ShouldRemove())
+          if(itr->second->IsDone(now))
             itr = m_DeadSessions.erase(itr);
           else
             ++itr;
@@ -394,7 +394,7 @@ namespace llarp
     bool
     Endpoint::OutboundContext::IsDone(llarp_time_t now) const
     {
-      return now - lastGoodSend > DEFAULT_PATH_LIFETIME && ShouldRemove();
+      return now - lastGoodSend > (DEFAULT_PATH_LIFETIME / 4) && ShouldRemove();
     }
 
     uint64_t
