@@ -555,16 +555,20 @@ namespace llarp
         };
 
         bool
-        IsExpired(llarp_time_t now) const
+        IsExpired(llarp_time_t now,
+                  llarp_time_t lifetime = (DEFAULT_PATH_LIFETIME * 2)) const
         {
           if(now <= lastUsed)
             return false;
-          return intro.IsExpired(now);
+          return now - lastUsed > lifetime;
         }
       };
 
-      /// sessions
-      std::unordered_map< ConvoTag, Session, ConvoTag::Hash > m_Sessions;
+      /// conversations
+      using ConvoMap_t =
+          std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
+
+      ConvoMap_t m_Sessions;
 
       struct CachedTagResult
       {

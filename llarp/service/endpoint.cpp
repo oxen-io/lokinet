@@ -311,9 +311,10 @@ namespace llarp
         {
           if(HasPendingPathToService(introset.A.Addr()))
             continue;
-          std::array< byte_t, 1024 > tmp = {0};
+          std::array< byte_t, 128 > tmp = {0};
           llarp_buffer_t buf(tmp);
-          if(SendToServiceOrQueue(introset.A.Addr().data(), buf, eProtocolText))
+          if(SendToServiceOrQueue(introset.A.Addr().data(), buf,
+                                  eProtocolControl))
             llarp::LogInfo(Name(), " send message to ", introset.A.Addr(),
                            " for tag ", tag.ToString());
           else
@@ -972,9 +973,10 @@ namespace llarp
                                    std::bind(&Endpoint::ObtainIPForAddr, this,
                                              msg->sender.Addr(), false));
       }
-      else if(msg->proto == eProtocolText)
+      else if(msg->proto == eProtocolControl)
       {
         // TODO: implement me (?)
+        // right now it's just random noise
         return true;
       }
       return false;
@@ -1292,22 +1294,21 @@ namespace llarp
           }
           Introduction remoteIntro;
           SharedSecret K;
+          // pick tag
           for(const auto& tag : tags)
           {
             if(tag.IsZero())
               continue;
+            if(!GetCachedSessionKeyFor(tag, K))
+              continue;
             if(p == nullptr && GetIntroFor(tag, remoteIntro))
             {
               if(!remoteIntro.ExpiresSoon(now))
-                p = GetPathByRouter(remoteIntro.router);
+                p = GetNewestPathByRouter(remoteIntro.router);
               if(p)
               {
                 f.T = tag;
-                if(!GetCachedSessionKeyFor(tag, K))
-                {
-                  llarp::LogError("no cached session key");
-                  return false;
-                }
+                break;
               }
             }
           }
@@ -1748,6 +1749,14 @@ namespace llarp
         else
           ++itr;
       }
+      // send control message if we look too quiet
+      if(now - lastGoodSend > 60000)
+      {
+        Encrypted< 64 > tmp;
+        tmp.Randomize();
+        llarp_buffer_t buf(tmp.data(), tmp.size());
+        AsyncEncryptAndSendTo(buf, eProtocolControl);
+      }
       // if we are dead return true so we are removed
       return lastGoodSend
           ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
@@ -1847,10 +1856,10 @@ namespace llarp
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
         ProtocolMessage m;
-        m.proto = t;
-        m_DataHandler->PutIntroFor(f.T, remoteIntro);
+        m.proto      = t;
         m.introReply = path->intro;
-        m.sender     = m_Endpoint->m_Identity.pub;
+        m_DataHandler->PutIntroFor(f.T, remoteIntro);
+        m.sender = m_Endpoint->m_Identity.pub;
         m.PutBuffer(payload);
         m.tag = f.T;
 

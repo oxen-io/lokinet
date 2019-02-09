@@ -27,7 +27,7 @@ namespace llarp
 
     using ProtocolType = uint64_t;
 
-    constexpr ProtocolType eProtocolText    = 0UL;
+    constexpr ProtocolType eProtocolControl = 0UL;
     constexpr ProtocolType eProtocolTraffic = 1UL;
 
     /// inner message
