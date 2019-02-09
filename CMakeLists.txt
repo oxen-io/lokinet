@@ -18,6 +18,11 @@ option(TESTNET "testnet build" )
 option(WITH_SHARED "build shared library")
 option(WITH_COVERAGE "generate coverage data")
 
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
+endif()
+
 if(WIN32)
   set(CMAKE_CXX_STANDARD 17)
   ENABLE_LANGUAGE(RC)
