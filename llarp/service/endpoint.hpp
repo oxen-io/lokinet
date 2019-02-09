@@ -267,6 +267,9 @@ namespace llarp
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
 
+        void
+        ExtractStatus(util::StatusObject& obj) const override;
+
         bool
         Stop() override;
 

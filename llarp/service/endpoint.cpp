@@ -1718,6 +1718,40 @@ namespace llarp
       }
     }
 
+    void
+    Endpoint::OutboundContext::ExtractStatus(util::StatusObject& obj) const
+    {
+      path::Builder::ExtractStatus(obj);
+      obj.PutString("currentConvoTag", currentConvoTag.ToHex());
+      util::StatusObject remoteIntroObj;
+      remoteIntro.ExtractStatus(remoteIntroObj);
+      obj.PutObject("remoteIntro", remoteIntroObj);
+      obj.PutInt("sessionCreatedAt", createdAt);
+      obj.PutInt("lastGoodSend", lastGoodSend);
+      obj.PutInt("seqno", sequenceNo);
+      obj.PutBool("markedBad", markedBad);
+      obj.PutInt("lastShift", lastShift);
+      obj.PutString("remoteIdentity", remoteIdent.Addr().ToString());
+      util::StatusObject remoteIntrosetObj;
+      currentIntroSet.ExtractStatus(remoteIntrosetObj);
+      obj.PutObject("currentRemoteIntroset", remoteIntrosetObj);
+      util::StatusObject nextIntroObj;
+      m_NextIntro.ExtractStatus(nextIntroObj);
+      obj.PutObject("nextIntro", nextIntroObj);
+      std::vector< util::StatusObject > badIntrosObj(m_BadIntros.size());
+      {
+        size_t idx = 0;
+        for(const auto& item : m_BadIntros)
+        {
+          auto& badIntroObj = badIntrosObj[idx++];
+          badIntroObj.PutInt("count", item.second);
+          util::StatusObject i;
+          item.first.ExtractStatus(i);
+          badIntroObj.PutObject("intro", i);
+        }
+      }
+    }
+
     bool
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
