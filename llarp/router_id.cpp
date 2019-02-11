@@ -9,6 +9,13 @@ namespace llarp
     return std::string(llarp::Base32Encode(*this, stack)) + ".snode";
   }
 
+  util::StatusObject
+  RouterID::ExtractStatus() const
+  {
+    util::StatusObject obj{{"snode", ToString()}, {"hex", ToHex()}};
+    return obj;
+  }
+
   bool
   RouterID::FromString(const std::string& str)
   {

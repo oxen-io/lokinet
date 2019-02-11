@@ -7,6 +7,7 @@
 #include <service/IntroSet.hpp>
 #include <service/lookup.hpp>
 #include <util/time.hpp>
+#include <util/status.hpp>
 
 #include <functional>
 #include <list>
@@ -209,7 +210,18 @@ namespace llarp
         }
       }
 
-     private:
+      void
+      ForEachPath(std::function< void(const Path*) > visit) const
+      {
+        Lock_t lock(m_PathsMutex);
+        auto itr = m_Paths.begin();
+        while(itr != m_Paths.end())
+        {
+          visit(itr->second);
+          ++itr;
+        }
+      }
+
       using PathInfo_t = std::pair< RouterID, PathID_t >;
 
       struct PathInfoHash

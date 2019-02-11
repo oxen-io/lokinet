@@ -12,6 +12,21 @@ namespace llarp
         delete W;
     }
 
+    util::StatusObject
+    IntroSet::ExtractStatus() const
+    {
+      util::StatusObject obj{{"published", T}};
+      std::vector< util::StatusObject > introsObjs;
+      std::transform(I.begin(), I.end(), std::back_inserter(introsObjs),
+                     [](const auto& intro) -> util::StatusObject {
+                       return intro.ExtractStatus();
+                     });
+      obj.Put("intros", introsObjs);
+      if(!topic.IsZero())
+        obj.Put("topic", topic.ToString());
+      return obj;
+    }
+
     bool
     IntroSet::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
     {

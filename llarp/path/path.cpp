@@ -155,26 +155,24 @@ namespace llarp
     IHopHandler*
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
-      auto own = MapGet(
-          m_OurPaths, id,
-          [](__attribute__((unused)) const PathSet* s) -> bool {
-            // TODO: is this right?
-            return true;
-          },
-          [remote, id](PathSet* p) -> IHopHandler* {
-            return p->GetByUpstream(remote, id);
-          });
+      auto own = MapGet(m_OurPaths, id,
+                        [](__attribute__((unused)) const PathSet* s) -> bool {
+                          // TODO: is this right?
+                          return true;
+                        },
+                        [remote, id](PathSet* p) -> IHopHandler* {
+                          return p->GetByUpstream(remote, id);
+                        });
       if(own)
         return own;
 
-      return MapGet(
-          m_TransitPaths, id,
-          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-            return hop->info.upstream == remote;
-          },
-          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-            return h.get();
-          });
+      return MapGet(m_TransitPaths, id,
+                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+                      return hop->info.upstream == remote;
+                    },
+                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+                      return h.get();
+                    });
     }
 
     bool
@@ -191,14 +189,13 @@ namespace llarp
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
-      return MapGet(
-          m_TransitPaths, id,
-          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-            return hop->info.downstream == remote;
-          },
-          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-            return h.get();
-          });
+      return MapGet(m_TransitPaths, id,
+                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+                      return hop->info.downstream == remote;
+                    },
+                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+                      return h.get();
+                    });
     }
 
     PathSet*
@@ -436,6 +433,59 @@ namespace llarp
                        " ms");
       }
       _status = st;
+    }
+
+    util::StatusObject
+    PathHopConfig::ExtractStatus() const
+    {
+      util::StatusObject obj{{"lifetime", lifetime},
+                             {"router", rc.pubkey.ToHex()},
+                             {"txid", txID.ToHex()},
+                             {"rxid", rxID.ToHex()}};
+      return obj;
+    }
+
+    util::StatusObject
+    Path::ExtractStatus() const
+    {
+      auto now = llarp::time_now_ms();
+
+      util::StatusObject obj{{"intro", intro.ExtractStatus()},
+                             {"lastRecvMsg", m_LastRecvMessage},
+                             {"lastLatencyTest", m_LastLatencyTestTime},
+                             {"buildStarted", buildStarted},
+                             {"expired", Expired(now)},
+                             {"expiresSoon", ExpiresSoon(now)},
+                             {"expiresAt", ExpireTime()},
+                             {"ready", IsReady()},
+                             {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
+
+      std::vector< util::StatusObject > hopsObj;
+      std::transform(hops.begin(), hops.end(), std::back_inserter(hopsObj),
+                     [](const auto& hop) -> util::StatusObject {
+                       return hop.ExtractStatus();
+                     });
+      obj.Put("hops", hopsObj);
+
+      switch(_status)
+      {
+        case ePathBuilding:
+          obj.Put("status", "building");
+          break;
+        case ePathEstablished:
+          obj.Put("status", "established");
+          break;
+        case ePathTimeout:
+          obj.Put("status", "timeout");
+          break;
+        case ePathExpired:
+          obj.Put("status", "expired");
+          break;
+        default:
+          obj.Put("status", "unknown");
+          break;
+      }
+      return obj;
     }
 
     void

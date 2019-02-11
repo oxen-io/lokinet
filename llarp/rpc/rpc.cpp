@@ -218,52 +218,55 @@ namespace llarp
       }
 
       bool
+      DumpState(Response& resp) const
+      {
+        util::StatusObject dump = router->ExtractStatus();
+        dump.Impl.Accept(resp);
+        return true;
+      }
+
+      bool
       ListExitLevels(Response& resp) const
       {
         exit::Context::TrafficStats stats;
         router->exitContext.CalculateExitTraffic(stats);
-        auto& alloc = resp.GetAllocator();
-        abyss::json::Value exits;
-        exits.SetArray();
+        resp.StartArray();
         auto itr = stats.begin();
         while(itr != stats.end())
         {
-          abyss::json::Value info, ident;
-          info.SetObject();
-          ident.SetString(itr->first.ToHex().c_str(), alloc);
-          info.AddMember("ident", ident, alloc);
-          info.AddMember("tx", abyss::json::Value(itr->second.first), alloc);
-          info.AddMember("rx", abyss::json::Value(itr->second.second), alloc);
-          exits.PushBack(info, alloc);
+          resp.StartObject();
+          resp.Key("ident");
+          resp.String(itr->first.ToHex().c_str());
+          resp.Key("tx");
+          resp.Uint64(itr->second.first);
+          resp.Key("rx");
+          resp.Uint64(itr->second.second);
+          resp.EndObject();
           ++itr;
         }
-        resp.AddMember("result", exits, alloc);
+        resp.EndArray();
         return true;
       }
 
       bool
       ListNeighboors(Response& resp) const
       {
-        auto& alloc = resp.GetAllocator();
-        abyss::json::Value peers;
-        peers.SetArray();
+        resp.StartArray();
         router->ForEachPeer([&](const ILinkSession* session, bool outbound) {
-          abyss::json::Value peer;
-          peer.SetObject();
-          abyss::json::Value ident_val, addr_val;
-
+          resp.StartObject();
           auto ident = RouterID(session->GetPubKey()).ToString();
-          ident_val.SetString(ident.c_str(), alloc);
+          resp.Key("ident");
+          resp.String(ident.c_str());
 
           auto addr = session->GetRemoteEndpoint().ToString();
-          addr_val.SetString(addr.c_str(), alloc);
+          resp.Key("addr");
+          resp.String(addr.c_str());
 
-          peer.AddMember("addr", addr_val, alloc);
-          peer.AddMember("ident", ident_val, alloc);
-          peer.AddMember("outbound", abyss::json::Value(outbound), alloc);
-          peers.PushBack(peer, alloc);
+          resp.Key("outbound");
+          resp.Bool(outbound);
+          resp.EndObject();
         });
-        resp.AddMember("result", peers, alloc);
+        resp.EndArray();
         return true;
       }
 
@@ -279,6 +282,10 @@ namespace llarp
         else if(method == "llarp.admin.exit.list")
         {
           return ListExitLevels(response);
+        }
+        else if(method == "llarp.admin.dumpstate")
+        {
+          return DumpState(response);
         }
         return false;
       }

@@ -12,6 +12,7 @@
 #include <dht/txowner.hpp>
 #include <service/IntroSet.hpp>
 #include <util/time.hpp>
+#include <util/status.hpp>
 
 #include <set>
 
@@ -68,13 +69,16 @@ namespace llarp
       Nodes() const = 0;
     };
 
-    struct Context final : public AbstractContext
+    struct Context final : public AbstractContext, public util::IStateful
     {
       Context();
 
       ~Context()
       {
       }
+
+      util::StatusObject
+      ExtractStatus() const override;
 
       llarp::Crypto*
       Crypto() const override;

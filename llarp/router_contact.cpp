@@ -151,6 +151,18 @@ namespace llarp
     last_updated = 0;
   }
 
+  util::StatusObject
+  RouterContact::ExtractStatus() const
+  {
+    util::StatusObject obj{{"lastUpdated", last_updated},
+                           {"exit", IsExit()},
+                           {"publicRouter", IsPublicRouter()},
+                           {"identity", pubkey.ToHex()}};
+    if(HasNick())
+      obj.Put("nickname", Nick());
+    return obj;
+  }
+
   bool
   RouterContact::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
   {
@@ -218,19 +230,28 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
+    /*
     auto expiresAt = last_updated + Lifetime;
     return now >= expiresAt;
+    */
+    (void)now;
+    return false;
   }
 
   bool
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
+    (void)now;
+    (void)dlt;
+    return false;
+    /*
     if(IsExpired(now))
     {
       return true;
     }
     auto expiresAt = last_updated + Lifetime;
     return expiresAt - now <= dlt;
+    */
   }
 
   std::string

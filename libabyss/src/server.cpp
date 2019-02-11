@@ -24,7 +24,9 @@ namespace abyss
       bool m_Bad;
       std::unique_ptr< abyss::json::IParser > m_BodyParser;
       json::Document m_Request;
-      json::Document m_Response;
+      std::stringstream m_ResponseBuffer;
+      rapidjson::OStreamWrapper m_ResponseStream;
+      abyss::json::Writer m_Response;
 
       enum HTTPState
       {
@@ -40,7 +42,10 @@ namespace abyss
       HTTPState m_State;
 
       ConnImpl(BaseReqHandler* p, llarp_tcp_conn* c, llarp_time_t readtimeout)
-          : _conn(c), _parent(p)
+          : _conn(c)
+          , _parent(p)
+          , m_ResponseStream(m_ResponseBuffer)
+          , m_Response(m_ResponseStream)
       {
         handler       = nullptr;
         m_LastActive  = p->now();
@@ -181,19 +186,19 @@ namespace abyss
           case json::IParser::eDone:
             if(m_Request.IsObject() && m_Request.HasMember("params")
                && m_Request.HasMember("method") && m_Request.HasMember("id")
-               && (m_Request["id"].IsString() || m_Request["id"].IsNumber())
-               && m_Request["method"].IsString()
+               && m_Request["id"].IsString() && m_Request["method"].IsString()
                && m_Request["params"].IsObject())
             {
-              m_Response.SetObject();
-              m_Response.AddMember("jsonrpc",
-                                   abyss::json::Value().SetString("2.0"),
-                                   m_Response.GetAllocator());
-              m_Response.AddMember("id", m_Request["id"],
-                                   m_Response.GetAllocator());
+              m_Response.StartObject();
+              m_Response.Key("jsonrpc");
+              m_Response.String("2.0");
+              m_Response.Key("id");
+              m_Response.String(m_Request["id"].GetString());
+              m_Response.Key("result");
               if(handler->HandleJSONRPC(m_Request["method"].GetString(),
                                         m_Request["params"], m_Response))
               {
+                m_Response.EndObject();
                 return WriteResponseJSON();
               }
             }
@@ -208,7 +213,8 @@ namespace abyss
       WriteResponseJSON()
       {
         std::string response;
-        json::ToString(m_Response, response);
+        m_ResponseStream.Flush();
+        response = m_ResponseBuffer.str();
         return WriteResponseSimple(200, "OK", "application/json",
                                    response.c_str());
       }

@@ -337,6 +337,7 @@ set(LIB_UTIL_SRC
   llarp/util/mem.cpp
   llarp/util/queue_manager.cpp
   llarp/util/queue.cpp
+  llarp/util/status.cpp
   llarp/util/str.cpp
   llarp/util/string_view.cpp
   llarp/util/thread_pool.cpp
@@ -760,7 +761,8 @@ else()
 
   add_library(${STATIC_LIB} STATIC ${LIB_SRC})
   add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
-
+  target_link_libraries(${UTIL_LIB} absl::variant)
+  
 # cut back on fluff
 if (NOT WIN32)
   target_link_libraries(${UTIL_LIB} absl::optional)

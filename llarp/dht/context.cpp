@@ -222,6 +222,20 @@ namespace llarp
       pendingExploreLookups.Expire(now);
     }
 
+    util::StatusObject
+    Context::ExtractStatus() const
+    {
+      util::StatusObject obj{
+          {"pendingRouterLookups", pendingRouterLookups.ExtractStatus()},
+          {"pendingIntrosetLookups", pendingIntrosetLookups.ExtractStatus()},
+          {"pendingTagLookups", pendingTagLookups.ExtractStatus()},
+          {"pendingExploreLookups", pendingExploreLookups.ExtractStatus()},
+          {"nodes", nodes->ExtractStatus()},
+          {"services", services->ExtractStatus()},
+          {"ourKey", ourKey.ToHex()}};
+      return obj;
+    }
+
     void
     Context::Init(const Key_t &us, llarp::Router *r,
                   llarp_time_t exploreInterval)

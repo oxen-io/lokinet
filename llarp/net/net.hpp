@@ -7,6 +7,7 @@
 #include <util/logger.hpp>
 #include <util/mem.hpp>
 #include <util/string_view.hpp>
+#include <util/bits.hpp>
 
 #include <functional>
 #include <stdlib.h>  // for itoa
@@ -71,7 +72,14 @@ namespace llarp
     friend std::ostream&
     operator<<(std::ostream& out, const IPRange& a)
     {
-      return out << a.addr << "/" << a.netmask_bits;
+      return out << a.ToString();
+    }
+
+    std::string
+    ToString() const
+    {
+      return addr.ToString() + "/"
+          + std::to_string(llarp::bits::count_bits(netmask_bits.h));
     }
   };
 

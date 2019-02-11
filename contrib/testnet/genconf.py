@@ -81,6 +81,9 @@ def main():
             'worker-threads': '2',
             'nickname': clientNodeName(nodeid)
         }
+        if args.netid:
+            config['router']['netid'] = args.netid
+
         config['netdb'] = {
             'dir': 'netdb'
         }

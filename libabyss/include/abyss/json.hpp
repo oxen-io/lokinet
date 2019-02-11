@@ -2,30 +2,20 @@
 #define __ABYSS_JSON_JSON_HPP
 
 #include <memory>
-//#if __cplusplus >= 201703L
-#if 0
-#include <unordered_map>
-#include <any>
-namespace abyss
-{
-  namespace json
-  {
-    using Object = std::unordered_map< std::string, std::any >;
-  }
-}  // namespace abyss
-#else
 #include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/ostreamwrapper.h>
+#include <iostream>
+
 namespace abyss
 {
   namespace json
   {
     using Document = rapidjson::Document;
     using Value    = rapidjson::Value;
+    using Writer   = rapidjson::PrettyWriter< rapidjson::OStreamWrapper >;
   }  // namespace json
-}  // namespace abyss
-#endif
-namespace abyss
-{
+
 #if __cplusplus >= 201703L
   using string_view = std::string_view;
 #else
@@ -61,7 +51,7 @@ namespace abyss
     MakeParser(size_t contentSize);
 
     void
-    ToString(const json::Document &obj, std::string &out);
+    ToString(const json::Document &obj, std::ostream &out);
 
   }  // namespace json
 }  // namespace abyss

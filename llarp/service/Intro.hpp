@@ -4,6 +4,7 @@
 #include <crypto/types.hpp>
 #include <path/path_types.hpp>
 #include <util/bencode.hpp>
+#include <util/status.hpp>
 
 #include <iostream>
 
@@ -11,7 +12,8 @@ namespace llarp
 {
   namespace service
   {
-    struct Introduction final : public llarp::IBEncodeMessage
+    struct Introduction final : public llarp::IBEncodeMessage,
+                                public util::IStateful
     {
       llarp::PubKey router;
       llarp::PathID_t pathID;
@@ -28,6 +30,9 @@ namespace llarp
         version   = other.version;
         expiresAt = other.expiresAt;
       }
+
+      util::StatusObject
+      ExtractStatus() const override;
 
       bool
       IsExpired(llarp_time_t now) const

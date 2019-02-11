@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace dht
   {
-    struct RCNode
+    struct RCNode : public util::IStateful
     {
       RouterContact rc;
       Key_t ID;
@@ -23,6 +23,12 @@ namespace llarp
       {
       }
 
+      util::StatusObject
+      ExtractStatus() const override
+      {
+        return rc.ExtractStatus();
+      }
+
       bool
       operator<(const RCNode& other) const
       {
@@ -30,7 +36,7 @@ namespace llarp
       }
     };
 
-    struct ISNode
+    struct ISNode : public util::IStateful
     {
       service::IntroSet introset;
 
@@ -44,6 +50,12 @@ namespace llarp
       ISNode(const service::IntroSet& other) : introset(other)
       {
         introset.A.CalculateAddress(ID.as_array());
+      }
+
+      util::StatusObject
+      ExtractStatus() const override
+      {
+        return introset.ExtractStatus();
       }
 
       bool

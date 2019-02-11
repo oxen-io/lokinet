@@ -1,5 +1,5 @@
 #include <dht/tx.hpp>
-
+#include <service/tag.hpp>
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
@@ -10,16 +10,18 @@ using namespace ::testing;
 
 using llarp::test::makeBuf;
 
+using Val_t = llarp::service::Tag;
+
 // Mock implementation of TX.
-struct TestTx final : public dht::TX< dht::Key_t, std::string >
+struct TestTx final : public dht::TX< dht::Key_t, Val_t >
 {
   TestTx(const dht::TXOwner& asker, const dht::Key_t& k,
          dht::AbstractContext* p)
-      : dht::TX< dht::Key_t, std::string >(asker, k, p)
+      : dht::TX< dht::Key_t, Val_t >(asker, k, p)
   {
   }
 
-  MOCK_CONST_METHOD1(Validate, bool(const std::string&));
+  MOCK_CONST_METHOD1(Validate, bool(const Val_t&));
 
   MOCK_METHOD1(Start, void(const dht::TXOwner&));
 
@@ -51,7 +53,7 @@ TEST_F(TestDhtTx, on_found)
   // - Repeated call on success after failure
 
   const auto key = makeBuf< dht::Key_t >(0x00);
-  std::string val("good value");
+  Val_t val("good value");
 
   // Validate returns true
   {
@@ -72,7 +74,7 @@ TEST_F(TestDhtTx, on_found)
   }
 
   const auto key1 = makeBuf< dht::Key_t >(0x01);
-  std::string badVal("bad value");
+  Val_t badVal("bad value");
 
   // Validate returns false
   {

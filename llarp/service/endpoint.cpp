@@ -87,18 +87,8 @@ namespace llarp
     bool
     Endpoint::HasPendingPathToService(const Address& addr) const
     {
-      if(m_PendingServiceLookups.find(addr) == m_PendingServiceLookups.end())
-      {
-        auto range = m_RemoteSessions.equal_range(addr);
-        auto itr   = range.first;
-        while(itr != range.second)
-        {
-          if(itr->second->ReadyToSend())
-            return false;
-          ++itr;
-        }
-      }
-      return true;
+      return m_PendingServiceLookups.find(addr)
+          != m_PendingServiceLookups.end();
     }
 
     void
@@ -152,6 +142,46 @@ namespace llarp
         itr->second->Flush();
         ++itr;
       }
+    }
+
+    util::StatusObject
+    Endpoint::ExtractStatus() const
+    {
+      auto obj = path::Builder::ExtractStatus();
+      obj.Put("identity", m_Identity.pub.Addr().ToString());
+
+      obj.Put("lastPublished", m_LastPublish);
+      obj.Put("lastPublishAttempt", m_LastPublishAttempt);
+      obj.Put("introset", m_IntroSet.ExtractStatus());
+
+      if(!m_Tag.IsZero())
+        obj.Put("tag", m_Tag.ToString());
+
+      auto putContainer = [](util::StatusObject& o, const std::string& keyname,
+                             const auto& container) {
+        std::vector< util::StatusObject > objs;
+        std::transform(container.begin(), container.end(),
+                       std::back_inserter(objs),
+                       [](const auto& item) -> util::StatusObject {
+                         return item.second->ExtractStatus();
+                       });
+        o.Put(keyname, objs);
+      };
+      putContainer(obj, "deadSessions", m_DeadSessions);
+      putContainer(obj, "remoteSessions", m_RemoteSessions);
+      putContainer(obj, "snodeSessions", m_SNodeSessions);
+      putContainer(obj, "lookups", m_PendingLookups);
+
+      util::StatusObject sessionObj{};
+
+      for(const auto& item : m_Sessions)
+      {
+        std::string k = item.first.ToHex();
+        sessionObj.Put(k, item.second.ExtractStatus());
+      }
+
+      obj.Put("converstations", sessionObj);
+      return obj;
     }
 
     void
@@ -241,14 +271,16 @@ namespace llarp
         {
           if(HasPendingPathToService(introset.A.Addr()))
             continue;
-          std::array< byte_t, 1024 > tmp = {0};
+          std::array< byte_t, 128 > tmp = {0};
           llarp_buffer_t buf(tmp);
-          if(!SendToServiceOrQueue(introset.A.Addr().data(), buf,
-                                   eProtocolText))
-          {
+          if(SendToServiceOrQueue(introset.A.Addr().data(), buf,
+                                  eProtocolControl))
+            llarp::LogInfo(Name(), " send message to ", introset.A.Addr(),
+                           " for tag ", tag.ToString());
+          else
+
             llarp::LogWarn(Name(), " failed to send/queue data to ",
                            introset.A.Addr(), " for tag ", tag.ToString());
-          }
         }
         itr->second.Expire(now);
         if(itr->second.ShouldRefresh(now))
@@ -273,7 +305,7 @@ namespace llarp
         auto itr = m_DeadSessions.begin();
         while(itr != m_DeadSessions.end())
         {
-          if(itr->second->IsDone(now) && itr->second->ShouldRemove())
+          if(itr->second->IsDone(now))
             itr = m_DeadSessions.erase(itr);
           else
             ++itr;
@@ -291,6 +323,17 @@ namespace llarp
                 std::make_pair(itr->first, std::move(itr->second)));
             itr = m_RemoteSessions.erase(itr);
           }
+          else
+            ++itr;
+        }
+      }
+      // expire convotags
+      {
+        auto itr = m_Sessions.begin();
+        while(itr != m_Sessions.end())
+        {
+          if(itr->second.IsExpired(now))
+            itr = m_Sessions.erase(itr);
           else
             ++itr;
         }
@@ -323,7 +366,8 @@ namespace llarp
     bool
     Endpoint::OutboundContext::IsDone(llarp_time_t now) const
     {
-      return now - lastGoodSend > DEFAULT_PATH_LIFETIME && ShouldRemove();
+      (void)now;
+      return AvailablePaths(path::ePathRoleAny) == 0 && ShouldRemove();
     }
 
     uint64_t
@@ -889,9 +933,10 @@ namespace llarp
                                    std::bind(&Endpoint::ObtainIPForAddr, this,
                                              msg->sender.Addr(), false));
       }
-      else if(msg->proto == eProtocolText)
+      else if(msg->proto == eProtocolControl)
       {
         // TODO: implement me (?)
+        // right now it's just random noise
         return true;
       }
       return false;
@@ -1209,22 +1254,21 @@ namespace llarp
           }
           Introduction remoteIntro;
           SharedSecret K;
+          // pick tag
           for(const auto& tag : tags)
           {
             if(tag.IsZero())
               continue;
+            if(!GetCachedSessionKeyFor(tag, K))
+              continue;
             if(p == nullptr && GetIntroFor(tag, remoteIntro))
             {
               if(!remoteIntro.ExpiresSoon(now))
-                p = GetPathByRouter(remoteIntro.router);
+                p = GetNewestPathByRouter(remoteIntro.router);
               if(p)
               {
                 f.T = tag;
-                if(!GetCachedSessionKeyFor(tag, K))
-                {
-                  llarp::LogError("no cached session key");
-                  return false;
-                }
+                break;
               }
             }
           }
@@ -1634,6 +1678,33 @@ namespace llarp
       }
     }
 
+    util::StatusObject
+    Endpoint::OutboundContext::ExtractStatus() const
+    {
+      auto obj = path::Builder::ExtractStatus();
+      obj.Put("currentConvoTag", currentConvoTag.ToHex());
+      obj.Put("remoteIntro", remoteIntro.ExtractStatus());
+      obj.Put("sessionCreatedAt", createdAt);
+      obj.Put("lastGoodSend", lastGoodSend);
+      obj.Put("seqno", sequenceNo);
+      obj.Put("markedBad", markedBad);
+      obj.Put("lastShift", lastShift);
+      obj.Put("remoteIdentity", remoteIdent.Addr().ToString());
+      obj.Put("currentRemoteIntroset", currentIntroSet.ExtractStatus());
+      obj.Put("nextIntro", m_NextIntro.ExtractStatus());
+      std::vector< util::StatusObject > badIntrosObj;
+      std::transform(m_BadIntros.begin(), m_BadIntros.end(),
+                     std::back_inserter(badIntrosObj),
+                     [](const auto& item) -> util::StatusObject {
+                       util::StatusObject o{
+                           {"count", item.second},
+                           {"intro", item.first.ExtractStatus()}};
+                       return o;
+                     });
+      obj.Put("badIntros", badIntrosObj);
+      return obj;
+    }
+
     bool
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
@@ -1664,6 +1735,14 @@ namespace llarp
           itr = m_BadIntros.erase(itr);
         else
           ++itr;
+      }
+      // send control message if we look too quiet
+      if(now - lastGoodSend > 60000)
+      {
+        Encrypted< 64 > tmp;
+        tmp.Randomize();
+        llarp_buffer_t buf(tmp.data(), tmp.size());
+        AsyncEncryptAndSendTo(buf, eProtocolControl);
       }
       // if we are dead return true so we are removed
       return lastGoodSend
@@ -1764,10 +1843,10 @@ namespace llarp
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
         ProtocolMessage m;
-        m.proto = t;
-        m_DataHandler->PutIntroFor(f.T, remoteIntro);
+        m.proto      = t;
         m.introReply = path->intro;
-        m.sender     = m_Endpoint->m_Identity.pub;
+        m_DataHandler->PutIntroFor(f.T, remoteIntro);
+        m.sender = m_Endpoint->m_Identity.pub;
         m.PutBuffer(payload);
         m.tag = f.T;
 

@@ -42,6 +42,20 @@ namespace llarp
     {
     }
 
+    util::StatusObject
+    ExitEndpoint::ExtractStatus() const
+    {
+      util::StatusObject obj{{"permitExit", m_PermitExit},
+                             {"ip", m_IfAddr.ToString()}};
+      util::StatusObject exitsObj{};
+      for(const auto &item : m_ActiveExits)
+      {
+        exitsObj.Put(item.first.ToHex(), item.second->ExtractStatus());
+      }
+      obj.Put("exits", exitsObj);
+      return obj;
+    }
+
     bool
     ExitEndpoint::ShouldHookDNSMessage(const dns::Message &msg) const
     {

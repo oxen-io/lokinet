@@ -20,6 +20,7 @@
 #include <util/fs.hpp>
 #include <util/logic.hpp>
 #include <util/mem.hpp>
+#include <util/status.hpp>
 #include <util/str.hpp>
 #include <util/threadpool.hpp>
 
@@ -113,7 +114,7 @@ namespace llarp
         const std::vector< llarp::RouterContact > &results) = 0;
   };
 
-  struct Router final : public AbstractRouter
+  struct Router final : public AbstractRouter, public util::IStateful
   {
     bool ready;
     // transient iwp encryption key
@@ -151,6 +152,9 @@ namespace llarp
     {
       return _dht;
     }
+
+    util::StatusObject
+    ExtractStatus() const override;
 
     Crypto *
     crypto() const override

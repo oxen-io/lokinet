@@ -53,6 +53,38 @@ namespace llarp
       tunif.recvpkt      = &tunifRecvPkt;
     }
 
+    util::StatusObject
+    TunEndpoint::ExtractStatus() const
+    {
+      auto obj = service::Endpoint::ExtractStatus();
+      obj.Put("ifaddr", m_OurRange.ToString());
+
+      std::vector< std::string > resolvers;
+      for(const auto &addr : m_UpstreamResolvers)
+        resolvers.emplace_back(addr.ToString());
+      obj.Put("ustreamResolvers", resolvers);
+      obj.Put("localResolver", m_LocalResolverAddr.ToString());
+      util::StatusObject ips{};
+      for(const auto &item : m_IPActivity)
+      {
+        util::StatusObject ipObj{{"lastActive", item.second}};
+        std::string remoteStr;
+        AlignedBuffer< 32 > addr = m_IPToAddr.at(item.first);
+        if(m_SNodes.at(addr))
+          remoteStr = RouterID(addr.as_array()).ToString();
+        else
+          remoteStr = service::Address(addr.as_array()).ToString();
+        ipObj.Put("remote", remoteStr);
+        std::string ipaddr = item.first.ToString();
+        ips.Put(ipaddr.c_str(), ipObj);
+      }
+      obj.Put("addrs", ips);
+      obj.Put("ourIP", m_OurIP.ToString());
+      obj.Put("nextIP", m_NextIP.ToString());
+      obj.Put("maxIP", m_MaxIP.ToString());
+      return obj;
+    }
+
     bool
     TunEndpoint::SetOption(const std::string &k, const std::string &v)
     {

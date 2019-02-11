@@ -25,6 +25,9 @@ namespace llarp
 
       virtual ~BaseSession();
 
+      util::StatusObject
+      ExtractStatus() const override;
+
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop, llarp::path::PathRole roles) override;

@@ -2,10 +2,11 @@
 #define LLARP_ROUTER_ID_HPP
 
 #include <util/aligned.hpp>
+#include <util/status.hpp>
 
 namespace llarp
 {
-  struct RouterID : public AlignedBuffer< 32 >
+  struct RouterID : public AlignedBuffer< 32 >, public util::IStateful
   {
     static constexpr size_t SIZE = 32;
 
@@ -22,6 +23,9 @@ namespace llarp
     RouterID(const Data& data) : AlignedBuffer< SIZE >(data)
     {
     }
+
+    util::StatusObject
+    ExtractStatus() const override;
 
     std::string
     ToString() const;

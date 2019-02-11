@@ -31,6 +31,22 @@ namespace llarp
       m_Parent->RemoveExit(this);
     }
 
+    util::StatusObject
+    Endpoint::ExtractStatus() const
+    {
+      auto now = m_Parent->Now();
+      util::StatusObject obj{{"identity", m_remoteSignKey.ToString()},
+                             {"ip", m_IP.ToString()},
+                             {"txRate", m_TxRate},
+                             {"rxRate", m_RxRate},
+                             {"createdAt", createdAt},
+                             {"exiting", !m_RewriteSource},
+                             {"looksDead", LooksDead(now)},
+                             {"expiresSoon", ExpiresSoon(now)},
+                             {"expired", IsExpired(now)}};
+      return obj;
+    }
+
     bool
     Endpoint::UpdateLocalPath(const llarp::PathID_t& nextPath)
     {

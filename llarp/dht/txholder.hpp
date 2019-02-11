@@ -5,6 +5,7 @@
 #include <dht/txowner.hpp>
 #include <util/logger.hpp>
 #include <util/time.hpp>
+#include <util/status.hpp>
 
 #include <memory>
 #include <unordered_map>
@@ -15,7 +16,7 @@ namespace llarp
   {
     template < typename K, typename V, typename K_Hash,
                llarp_time_t requestTimeoutMS = 5000UL >
-    struct TXHolder
+    struct TXHolder : public util::IStateful
     {
       using TXPtr = std::unique_ptr< TX< K, V > >;
       // tx who are waiting for a reply for each key
@@ -27,6 +28,36 @@ namespace llarp
 
       const TX< K, V >*
       GetPendingLookupFrom(const TXOwner& owner) const;
+
+      util::StatusObject
+      ExtractStatus() const override
+      {
+        util::StatusObject obj{};
+        std::vector< util::StatusObject > txObjs, timeoutsObjs, waitingObjs;
+        std::transform(tx.begin(), tx.end(), std::back_inserter(txObjs),
+                       [](const auto& item) -> util::StatusObject {
+                         return util::StatusObject{
+                             {"owner", item.first.ExtractStatus()},
+                             {"tx", item.second->ExtractStatus()}};
+                       });
+        obj.Put("tx", txObjs);
+        std::transform(
+            timeouts.begin(), timeouts.end(), std::back_inserter(timeoutsObjs),
+            [](const auto& item) -> util::StatusObject {
+              return util::StatusObject{{"time", item.second},
+                                        {"target", item.first.ToHex()}};
+            });
+        obj.Put("timeouts", timeoutsObjs);
+        std::transform(waiting.begin(), waiting.end(),
+                       std::back_inserter(waitingObjs),
+                       [](const auto& item) -> util::StatusObject {
+                         return util::StatusObject{
+                             {"target", item.first.ToHex()},
+                             {"whoasked", item.second.ExtractStatus()}};
+                       });
+        obj.Put("waiting", waitingObjs);
+        return obj;
+      }
 
       bool
       HasLookupFor(const K& target) const

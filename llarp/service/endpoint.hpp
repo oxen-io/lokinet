@@ -40,6 +40,9 @@ namespace llarp
       Endpoint(const std::string& nickname, llarp::Router* r, Context* parent);
       ~Endpoint();
 
+      virtual util::StatusObject
+      ExtractStatus() const override;
+
       void
       SetHandler(IDataHandler* h);
 
@@ -263,6 +266,9 @@ namespace llarp
       {
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
+
+        util::StatusObject
+        ExtractStatus() const override;
 
         bool
         Stop() override;
@@ -532,17 +538,39 @@ namespace llarp
       /// on initialize functions
       std::list< std::function< bool(void) > > m_OnInit;
 
-      struct Session
+      struct Session : public util::IStateful
       {
         SharedSecret sharedKey;
         ServiceInfo remote;
         Introduction intro;
         llarp_time_t lastUsed = 0;
         uint64_t seqno        = 0;
+
+        util::StatusObject
+        ExtractStatus() const override
+        {
+          util::StatusObject obj{{"lastUsed", lastUsed},
+                                 {"remote", remote.Addr().ToString()},
+                                 {"seqno", seqno}};
+          obj.Put("intro", intro.ExtractStatus());
+          return obj;
+        };
+
+        bool
+        IsExpired(llarp_time_t now,
+                  llarp_time_t lifetime = (DEFAULT_PATH_LIFETIME * 2)) const
+        {
+          if(now <= lastUsed)
+            return false;
+          return now - lastUsed > lifetime;
+        }
       };
 
-      /// sessions
-      std::unordered_map< ConvoTag, Session, ConvoTag::Hash > m_Sessions;
+      /// conversations
+      using ConvoMap_t =
+          std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
+
+      ConvoMap_t m_Sessions;
 
       struct CachedTagResult
       {

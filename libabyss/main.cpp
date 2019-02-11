@@ -16,8 +16,8 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
                 Response& resp) override
   {
     llarp::LogInfo("method: ", method);
-    resp.AddMember("result", abyss::json::Value().SetInt(1),
-                   resp.GetAllocator());
+    resp.StartObject();
+    resp.EndObject();
     return true;
   }
 };
@@ -32,9 +32,7 @@ struct DemoCall : public abyss::http::IRPCClientHandler
   bool
   HandleResponse(abyss::http::RPC_Response resp) override
   {
-    std::string body;
-    abyss::json::ToString(resp, body);
-    llarp::LogInfo("got response body: ", body);
+    abyss::json::ToString(resp, std::cout);
     return true;
   }
 

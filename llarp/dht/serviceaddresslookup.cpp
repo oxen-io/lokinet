@@ -76,19 +76,21 @@ namespace llarp
     void
     ServiceAddressLookup::SendReply()
     {
-      if(handleResult)
-      {
-        handleResult(valuesFound);
-      }
       // get newest introset
       if(valuesFound.size())
       {
         llarp::service::IntroSet found;
         for(const auto &introset : valuesFound)
+        {
           if(found.OtherIsNewer(introset))
             found = introset;
+        }
         valuesFound.clear();
         valuesFound.emplace_back(found);
+      }
+      if(handleResult)
+      {
+        handleResult(valuesFound);
       }
       parent->DHTSendTo(whoasked.node.as_array(),
                         new GotIntroMessage(valuesFound, whoasked.txid));
