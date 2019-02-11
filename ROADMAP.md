@@ -2,12 +2,12 @@ This is the roadmap for lokinet.
 
 0.4: (eta end of Q1 2019)
 
-* onion key rotation
-* RC expiration
+* non stream based inter router comm protocol.
 
 0.5: (eta end of Q2 2019)
 
-* non stream based inter router comm protocol.
+* onion key rotation
+* RC expiration
 
 0.6: (eta Q3 end of 2019)
 
