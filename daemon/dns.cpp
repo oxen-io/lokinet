@@ -1,4 +1,4 @@
-#include <config.h>
+#include <config.hpp>
 #include <dns_dotlokilookup.hpp>
 #include <dns_iptracker.hpp>
 #include <dnsd.hpp>
@@ -38,29 +38,26 @@ struct dns_relay_config
 {
   std::string upstream_host;
   uint16_t upstream_port;
-};
 
-void
-dns_iter_config(llarp_config_iterator *itr, const char *section,
-                const char *key, const char *val)
-{
-  dns_relay_config *config = (dns_relay_config *)itr->user;
-  if(!strcmp(section, "dns"))
+  void
+  dns_iter_config(const char *section, const char *key, const char *val)
   {
-    if(!strcmp(key, "upstream-server"))
+    if(!strcmp(section, "dns"))
     {
-      config->upstream_host = strdup(val);
-      llarp::LogDebug("Config file setting dns server to ",
-                      config->upstream_host);
-    }
-    if(!strcmp(key, "upstream-port"))
-    {
-      config->upstream_port = atoi(val);
-      llarp::LogDebug("Config file setting dns server port to ",
-                      config->upstream_port);
+      if(!strcmp(key, "upstream-server"))
+      {
+        upstream_host = strdup(val);
+        llarp::LogDebug("Config file setting dns server to ", upstream_host);
+      }
+      if(!strcmp(key, "upstream-port"))
+      {
+        upstream_port = atoi(val);
+        llarp::LogDebug("Config file setting dns server port to ",
+                        upstream_port);
+      }
     }
   }
-}
+};
 
 int
 main(int argc, char *argv[])
@@ -74,19 +71,17 @@ main(int argc, char *argv[])
   dns_relay_config dnsr_config;
   dnsr_config.upstream_host = "8.8.8.8";
   dnsr_config.upstream_port = 53;
-  llarp_config *config_reader;
-  llarp_new_config(&config_reader);
+  llarp::Config config_reader;
 
-  if(llarp_load_config(config_reader, conffname))
+  if(config_reader.load(conffname))
   {
-    llarp_free_config(&config_reader);
     llarp::LogError("failed to load config file ", conffname);
     return 0;
   }
-  llarp_config_iterator iter;
-  iter.user  = &dnsr_config;
-  iter.visit = &dns_iter_config;
-  llarp_config_iter(config_reader, &iter);
+
+  using namespace std::placeholders;
+  config_reader.visit(
+      std::bind(&dns_relay_config::dns_iter_config, &dnsr_config, _1, _2, _3));
   llarp::LogInfo("config [", conffname, "] loaded");
 
   const uint16_t server_port = 53;

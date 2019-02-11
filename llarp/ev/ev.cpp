@@ -24,7 +24,7 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
   *ev = new llarp_epoll_loop;
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
-  *ev = new llarp_kqueue_loop;
+  *ev                                = new llarp_kqueue_loop;
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
   *ev = new llarp_win32_loop;
 #else
@@ -33,6 +33,27 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 #endif
   (*ev)->init();
   (*ev)->_now = llarp::time_now_ms();
+}
+
+std::unique_ptr< llarp_ev_loop >
+llarp_make_ev_loop()
+{
+#if __linux__ || __sun__
+  std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_epoll_loop >();
+#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
+    || (__APPLE__ && __MACH__)
+  std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_kqueue_loop >();
+#elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+  std::unique_ptr< llarp_win32_loop > r =
+      std::make_unique< llarp_kqueue_loop >();
+#else
+// TODO: fall back to a generic select-based event loop
+#error no event loop subclass
+#endif
+  r->init();
+  r->_now = llarp::time_now_ms();
+
+  return r;
 }
 
 void

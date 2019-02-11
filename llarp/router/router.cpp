@@ -1,5 +1,6 @@
 #include <router/router.hpp>
 
+#include <config.hpp>
 #include <constants/proto.hpp>
 #include <crypto/crypto.hpp>
 #include <crypto/crypto_libsodium.hpp>
@@ -25,10 +26,6 @@
 
 namespace llarp
 {
-  void
-  router_iter_config(llarp_config_iterator *iter, const char *section,
-                     const char *key, const char *val);
-
   struct async_verify_context
   {
     Router *router;
@@ -450,12 +447,10 @@ namespace llarp
   }
 
   bool
-  Router::Configure(struct llarp_config *conf)
+  Router::Configure(Config *conf)
   {
-    llarp_config_iterator iter;
-    iter.user  = this;
-    iter.visit = llarp::router_iter_config;
-    llarp_config_iter(conf, &iter);
+    using namespace std::placeholders;
+    conf->visit(std::bind(&Router::router_iter_config, this, _1, _2, _3));
     if(!InitOutboundLinks())
       return false;
     if(!Ready())
@@ -711,6 +706,268 @@ namespace llarp
     // TODO: do this async
     return SaveRC();
   }  // namespace llarp
+
+  void
+  Router::router_iter_config(const char *section, const char *key,
+                             const char *val)
+  {
+    llarp::LogDebug(section, " ", key, "=", val);
+
+    int af;
+    uint16_t proto;
+    if(StrEq(val, "eth"))
+    {
+#ifdef AF_LINK
+      af = AF_LINK;
+#endif
+#ifdef AF_PACKET
+      af = AF_PACKET;
+#endif
+      proto = LLARP_ETH_PROTO;
+    }
+    else
+    {
+      // try IPv4 first
+      af    = AF_INET;
+      proto = std::atoi(val);
+    }
+
+    if(StrEq(section, "bind"))
+    {
+      if(!StrEq(key, "*"))
+      {
+        auto server = llarp::utp::NewServerFromRouter(this);
+        if(!server->EnsureKeys(transport_keyfile.string().c_str()))
+        {
+          llarp::LogError("failed to ensure keyfile ", transport_keyfile);
+          return;
+        }
+        if(server->Configure(netloop, key, af, proto))
+        {
+          AddInboundLink(server);
+          return;
+        }
+        if(af == AF_INET6)
+        {
+          // we failed to configure IPv6
+          // try IPv4
+          llarp::LogInfo("link ", key,
+                         " failed to configure IPv6, trying IPv4");
+          af = AF_INET;
+          if(server->Configure(netloop, key, af, proto))
+          {
+            AddInboundLink(server);
+            return;
+          }
+        }
+        llarp::LogError("Failed to set up curvecp link");
+      }
+    }
+    else if(StrEq(section, "network"))
+    {
+      if(StrEq(key, "profiles"))
+      {
+        routerProfilesFile = val;
+        routerProfiling.Load(val);
+        llarp::LogInfo("setting profiles to ", routerProfilesFile);
+      }
+      else if(StrEq(key, "strict-connect"))
+      {
+        if(IsServiceNode())
+        {
+          llarp::LogError("cannot use strict-connect option as service node");
+          return;
+        }
+        llarp::RouterID snode;
+        llarp::PubKey pk;
+        if(pk.FromString(val))
+        {
+          if(strictConnectPubkeys.emplace(pk).second)
+            llarp::LogInfo("added ", pk, " to strict connect list");
+          else
+            llarp::LogWarn("duplicate key for strict connect: ", pk);
+        }
+        else if(snode.FromString(val))
+        {
+          if(strictConnectPubkeys.insert(snode).second)
+            llarp::LogInfo("added ", snode, " to strict connect list");
+          else
+            llarp::LogWarn("duplicate key for strict connect: ", snode);
+        }
+        else
+          llarp::LogError("invalid key for strict-connect: ", val);
+      }
+      else
+      {
+        netConfig.insert(std::make_pair(key, val));
+      }
+    }
+    else if(StrEq(section, "api"))
+    {
+      if(StrEq(key, "enabled"))
+      {
+        enableRPCServer = IsTrueValue(val);
+      }
+      if(StrEq(key, "bind"))
+      {
+        rpcBindAddr = val;
+      }
+      if(StrEq(key, "authkey"))
+      {
+        // TODO: add pubkey to whitelist
+      }
+    }
+    else if(StrEq(section, "services"))
+    {
+      if(LoadHiddenServiceConfig(val))
+      {
+        llarp::LogInfo("loaded hidden service config for ", key);
+      }
+      else
+      {
+        llarp::LogWarn("failed to load hidden service config for ", key);
+      }
+    }
+    else if(StrEq(section, "lokid"))
+    {
+      if(StrEq(key, "service-node-seed"))
+      {
+        usingSNSeed   = true;
+        ident_keyfile = val;
+      }
+      if(StrEq(key, "enabled"))
+      {
+        whitelistRouters = IsTrueValue(val);
+      }
+      if(StrEq(key, "jsonrpc"))
+      {
+        lokidRPCAddr = val;
+      }
+      if(StrEq(key, "username"))
+      {
+        lokidRPCUser = val;
+      }
+      if(StrEq(key, "password"))
+      {
+        lokidRPCPassword = val;
+      }
+    }
+    else if(StrEq(section, "dns"))
+    {
+      if(StrEq(key, "upstream"))
+      {
+        llarp::LogInfo("add upstream resolver ", val);
+        netConfig.emplace("upstream-dns", val);
+      }
+      if(StrEq(key, "bind"))
+      {
+        llarp::LogInfo("set local dns to ", val);
+        netConfig.emplace("local-dns", val);
+      }
+    }
+    else if(StrEq(section, "connect")
+            || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
+    {
+      // llarp::LogDebug("connect section has ", key, "=", val);
+      bootstrapRCList.emplace_back();
+      auto &rc = bootstrapRCList.back();
+      if(!rc.Read(val))
+      {
+        llarp::LogWarn("failed to decode bootstrap RC, file='", val,
+                       "' rc=", rc);
+        bootstrapRCList.pop_back();
+        return;
+      }
+      if(rc.Verify(crypto(), Now()))
+      {
+        llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
+      }
+      else
+      {
+        if(rc.IsExpired(Now()))
+        {
+          llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
+                         " is too old and needs to be refreshed");
+        }
+        else
+        {
+          llarp::LogError("malformed rc file='", val, "' rc=", rc);
+        }
+        bootstrapRCList.pop_back();
+      }
+    }
+    else if(StrEq(section, "router"))
+    {
+      if(StrEq(key, "netid"))
+      {
+        if(strlen(val) <= _rc.netID.size())
+        {
+          llarp::LogWarn("!!!! you have manually set netid to be '", val,
+                         "' which does not equal '", Version::LLARP_NET_ID,
+                         "' you will run as a different network, good luck "
+                         "and "
+                         "don't forget: something something MUH traffic "
+                         "shape "
+                         "correlation !!!!");
+          llarp::NetID::DefaultValue() =
+              llarp::NetID(reinterpret_cast< const byte_t * >(strdup(val)));
+          // re set netid in our rc
+          _rc.netID = llarp::NetID();
+        }
+        else
+          llarp::LogError("invalid netid '", val, "', is too long");
+      }
+      if(StrEq(key, "nickname"))
+      {
+        _rc.SetNick(val);
+        // set logger name here
+        _glog.nodeName = rc().Nick();
+      }
+      if(StrEq(key, "encryption-privkey"))
+      {
+        encryption_keyfile = val;
+      }
+      if(StrEq(key, "contact-file"))
+      {
+        our_rc_file = val;
+      }
+      if(StrEq(key, "transport-privkey"))
+      {
+        transport_keyfile = val;
+      }
+      if((StrEq(key, "identity-privkey") || StrEq(key, "ident-privkey"))
+         && !usingSNSeed)
+      {
+        ident_keyfile = val;
+      }
+      if(StrEq(key, "public-address") || StrEq(key, "public-ip"))
+      {
+        llarp::LogInfo("public ip ", val, " size ", strlen(val));
+        if(strlen(val) < 17)
+        {
+          // assume IPv4
+          // inet_pton(AF_INET, val, &ip4addr.sin_addr);
+          // struct sockaddr dest;
+          // sockaddr *dest = (sockaddr *)&ip4addr;
+          llarp::Addr a(val);
+          llarp::LogInfo("setting public ipv4 ", a);
+          addrInfo.ip    = *a.addr6();
+          publicOverride = true;
+        }
+        // llarp::Addr a(val);
+      }
+      if(StrEq(key, "public-port"))
+      {
+        llarp::LogInfo("Setting public port ", val);
+        int p = atoi(val);
+        // Not needed to flip upside-down - this is done in llarp::Addr(const
+        // AddressInfo&)
+        ip4addr.sin_port = p;
+        addrInfo.port    = p;
+        publicOverride   = true;
+      }
+    }
+  }
 
   bool
   Router::CheckRenegotiateValid(RouterContact newrc, RouterContact oldrc)
@@ -1246,9 +1503,9 @@ namespace llarp
       if(defaultIfAddr == "")
       {
         llarp::LogError(
-                        "Could not find any free lokitun interface names, can't
-    auto set up " "default HS context for client"); defaultIfAddr = "no";
-        netConfig.emplace(std::make_pair("defaultIfAddr", defaultIfAddr));
+                        "Could not find any free lokitun interface names,
+    can't auto set up " "default HS context for client"); defaultIfAddr =
+    "no"; netConfig.emplace(std::make_pair("defaultIfAddr", defaultIfAddr));
         return false;
       }
       netConfig.emplace(std::make_pair("defaultIfAddr", defaultIfAddr));
@@ -1334,27 +1591,24 @@ namespace llarp
   /// router
   struct RouterConfigValidator
   {
-    static void
-    ValidateEntry(llarp_config_iterator *i, const char *section,
-                  const char *key, const char *val)
+    void
+    ValidateEntry(const char *section, const char *key, const char *val)
     {
-      RouterConfigValidator *self =
-          static_cast< RouterConfigValidator * >(i->user);
-      if(self->valid)
+      if(valid)
       {
-        if(!self->OnEntry(section, key, val))
+        if(!OnEntry(section, key, val))
         {
           llarp::LogError("invalid entry in section [", section, "]: '", key,
                           "'='", val, "'");
-          self->valid = false;
+          valid = false;
         }
       }
     }
 
     const Router *router;
-    llarp_config *config;
+    Config *config;
     bool valid;
-    RouterConfigValidator(const Router *r, llarp_config *conf)
+    RouterConfigValidator(const Router *r, Config *conf)
         : router(r), config(conf), valid(true)
     {
     }
@@ -1375,23 +1629,22 @@ namespace llarp
     bool
     Validate()
     {
-      llarp_config_iterator iter;
-      iter.user  = this;
-      iter.visit = &ValidateEntry;
-      llarp_config_iter(config, &iter);
+      using namespace std::placeholders;
+      config->visit(
+          std::bind(&RouterConfigValidator::ValidateEntry, this, _1, _2, _3));
       return valid;
     }
   };
 
   bool
-  Router::ValidateConfig(llarp_config *conf) const
+  Router::ValidateConfig(Config *conf) const
   {
     RouterConfigValidator validator(this, conf);
     return validator.Validate();
   }
 
   bool
-  Router::Reconfigure(llarp_config *)
+  Router::Reconfigure(Config *)
   {
     // TODO: implement me
     return true;
@@ -1484,267 +1737,4 @@ namespace llarp
     }
     return true;
   }
-
-  void
-  router_iter_config(llarp_config_iterator *iter, const char *section,
-                     const char *key, const char *val)
-  {
-    llarp::LogDebug(section, " ", key, "=", val);
-    Router *self = static_cast< Router * >(iter->user);
-
-    int af;
-    uint16_t proto;
-    if(StrEq(val, "eth"))
-    {
-#ifdef AF_LINK
-      af = AF_LINK;
-#endif
-#ifdef AF_PACKET
-      af = AF_PACKET;
-#endif
-      proto = LLARP_ETH_PROTO;
-    }
-    else
-    {
-      // try IPv4 first
-      af    = AF_INET;
-      proto = std::atoi(val);
-    }
-
-    if(StrEq(section, "bind"))
-    {
-      if(!StrEq(key, "*"))
-      {
-        auto server = llarp::utp::NewServerFromRouter(self);
-        if(!server->EnsureKeys(self->transport_keyfile.string().c_str()))
-        {
-          llarp::LogError("failed to ensure keyfile ", self->transport_keyfile);
-          return;
-        }
-        if(server->Configure(self->netloop, key, af, proto))
-        {
-          self->AddInboundLink(server);
-          return;
-        }
-        if(af == AF_INET6)
-        {
-          // we failed to configure IPv6
-          // try IPv4
-          llarp::LogInfo("link ", key,
-                         " failed to configure IPv6, trying IPv4");
-          af = AF_INET;
-          if(server->Configure(self->netloop, key, af, proto))
-          {
-            self->AddInboundLink(server);
-            return;
-          }
-        }
-        llarp::LogError("Failed to set up curvecp link");
-      }
-    }
-    else if(StrEq(section, "network"))
-    {
-      if(StrEq(key, "profiles"))
-      {
-        self->routerProfilesFile = val;
-        self->routerProfiling.Load(val);
-        llarp::LogInfo("setting profiles to ", self->routerProfilesFile);
-      }
-      else if(StrEq(key, "strict-connect"))
-      {
-        if(self->IsServiceNode())
-        {
-          llarp::LogError("cannot use strict-connect option as service node");
-          return;
-        }
-        llarp::RouterID snode;
-        llarp::PubKey pk;
-        if(pk.FromString(val))
-        {
-          if(self->strictConnectPubkeys.emplace(pk).second)
-            llarp::LogInfo("added ", pk, " to strict connect list");
-          else
-            llarp::LogWarn("duplicate key for strict connect: ", pk);
-        }
-        else if(snode.FromString(val))
-        {
-          if(self->strictConnectPubkeys.insert(snode).second)
-            llarp::LogInfo("added ", snode, " to strict connect list");
-          else
-            llarp::LogWarn("duplicate key for strict connect: ", snode);
-        }
-        else
-          llarp::LogError("invalid key for strict-connect: ", val);
-      }
-      else
-      {
-        self->netConfig.insert(std::make_pair(key, val));
-      }
-    }
-    else if(StrEq(section, "api"))
-    {
-      if(StrEq(key, "enabled"))
-      {
-        self->enableRPCServer = IsTrueValue(val);
-      }
-      if(StrEq(key, "bind"))
-      {
-        self->rpcBindAddr = val;
-      }
-      if(StrEq(key, "authkey"))
-      {
-        // TODO: add pubkey to whitelist
-      }
-    }
-    else if(StrEq(section, "services"))
-    {
-      if(self->LoadHiddenServiceConfig(val))
-      {
-        llarp::LogInfo("loaded hidden service config for ", key);
-      }
-      else
-      {
-        llarp::LogWarn("failed to load hidden service config for ", key);
-      }
-    }
-    else if(StrEq(section, "lokid"))
-    {
-      if(StrEq(key, "service-node-seed"))
-      {
-        self->usingSNSeed   = true;
-        self->ident_keyfile = val;
-      }
-      if(StrEq(key, "enabled"))
-      {
-        self->whitelistRouters = IsTrueValue(val);
-      }
-      if(StrEq(key, "jsonrpc"))
-      {
-        self->lokidRPCAddr = val;
-      }
-      if(StrEq(key, "username"))
-      {
-        self->lokidRPCUser = val;
-      }
-      if(StrEq(key, "password"))
-      {
-        self->lokidRPCPassword = val;
-      }
-    }
-    else if(StrEq(section, "dns"))
-    {
-      if(StrEq(key, "upstream"))
-      {
-        llarp::LogInfo("add upstream resolver ", val);
-        self->netConfig.emplace(std::make_pair("upstream-dns", val));
-      }
-      if(StrEq(key, "bind"))
-      {
-        llarp::LogInfo("set local dns to ", val);
-        self->netConfig.emplace(std::make_pair("local-dns", val));
-      }
-    }
-    else if(StrEq(section, "connect")
-            || (StrEq(section, "bootstrap") && StrEq(key, "add-node")))
-    {
-      // llarp::LogDebug("connect section has ", key, "=", val);
-      self->bootstrapRCList.emplace_back();
-      auto &rc = self->bootstrapRCList.back();
-      if(!rc.Read(val))
-      {
-        llarp::LogWarn("failed to decode bootstrap RC, file='", val,
-                       "' rc=", rc);
-        self->bootstrapRCList.pop_back();
-        return;
-      }
-      if(rc.Verify(self->crypto(), self->Now()))
-      {
-        llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
-      }
-      else
-      {
-        if(rc.IsExpired(self->Now()))
-        {
-          llarp::LogWarn("Bootstrap node ", RouterID(rc.pubkey),
-                         " is too old and needs to be refreshed");
-        }
-        else
-        {
-          llarp::LogError("malformed rc file='", val, "' rc=", rc);
-        }
-        self->bootstrapRCList.pop_back();
-      }
-    }
-    else if(StrEq(section, "router"))
-    {
-      if(StrEq(key, "netid"))
-      {
-        if(strlen(val) <= self->_rc.netID.size())
-        {
-          llarp::LogWarn("!!!! you have manually set netid to be '", val,
-                         "' which does not equal '", Version::LLARP_NET_ID,
-                         "' you will run as a different network, good luck "
-                         "and "
-                         "don't forget: something something MUH traffic "
-                         "shape "
-                         "correlation !!!!");
-          llarp::NetID::DefaultValue() =
-              llarp::NetID(reinterpret_cast< const byte_t * >(strdup(val)));
-          // re set netid in our rc
-          self->_rc.netID = llarp::NetID();
-        }
-        else
-          llarp::LogError("invalid netid '", val, "', is too long");
-      }
-      if(StrEq(key, "nickname"))
-      {
-        self->_rc.SetNick(val);
-        // set logger name here
-        _glog.nodeName = self->rc().Nick();
-      }
-      if(StrEq(key, "encryption-privkey"))
-      {
-        self->encryption_keyfile = val;
-      }
-      if(StrEq(key, "contact-file"))
-      {
-        self->our_rc_file = val;
-      }
-      if(StrEq(key, "transport-privkey"))
-      {
-        self->transport_keyfile = val;
-      }
-      if((StrEq(key, "identity-privkey") || StrEq(key, "ident-privkey"))
-         && !self->usingSNSeed)
-      {
-        self->ident_keyfile = val;
-      }
-      if(StrEq(key, "public-address") || StrEq(key, "public-ip"))
-      {
-        llarp::LogInfo("public ip ", val, " size ", strlen(val));
-        if(strlen(val) < 17)
-        {
-          // assume IPv4
-          // inet_pton(AF_INET, val, &self->ip4addr.sin_addr);
-          // struct sockaddr dest;
-          // sockaddr *dest = (sockaddr *)&self->ip4addr;
-          llarp::Addr a(val);
-          llarp::LogInfo("setting public ipv4 ", a);
-          self->addrInfo.ip    = *a.addr6();
-          self->publicOverride = true;
-        }
-        // llarp::Addr a(val);
-      }
-      if(StrEq(key, "public-port"))
-      {
-        llarp::LogInfo("Setting public port ", val);
-        int p = atoi(val);
-        // Not needed to flip upside-down - this is done in llarp::Addr(const
-        // AddressInfo&)
-        self->ip4addr.sin_port = p;
-        self->addrInfo.port    = p;
-        self->publicOverride   = true;
-      }
-    }
-  }  // namespace llarp
 }  // namespace llarp

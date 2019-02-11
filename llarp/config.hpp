@@ -1,15 +1,15 @@
 #ifndef LLARP_CONFIG_HPP
 #define LLARP_CONFIG_HPP
-#include <config.h>
 
-#include <list>
+#include <forward_list>
 #include <string>
 
 namespace llarp
 {
   struct Config
   {
-    using section_t = std::list< std::pair< std::string, std::string > >;
+    using section_t =
+        std::forward_list< std::pair< std::string, std::string > >;
 
     section_t router;
     section_t network;
@@ -25,14 +25,15 @@ namespace llarp
 
     bool
     Load(const char *fname);
+
+    using Visitor = std::function< void(const char *section, const char *key,
+                                        const char *val) >;
+
+    void
+    visit(const Visitor &visitor);
   };
 
 }  // namespace llarp
-
-struct llarp_config
-{
-  llarp::Config impl;
-};
 
 void
 llarp_generic_ensure_config(std::ofstream &f, std::string basepath);

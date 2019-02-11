@@ -5,6 +5,7 @@
 #include <atomic>
 #include <condition_variable>
 #include <list>
+#include <memory>
 #include <queue>
 #include <unordered_map>
 
@@ -59,7 +60,7 @@ struct llarp_timer_context
   std::unordered_map< uint32_t, std::unique_ptr< llarp::timer > > timers;
   std::priority_queue< std::unique_ptr< llarp::timer > > calling;
   llarp::util::Mutex tickerMutex;
-  llarp::util::Condition* ticker        = nullptr;
+  std::unique_ptr< llarp::util::Condition > ticker;
   std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(100);
 
   llarp_time_t m_Now;
@@ -74,8 +75,6 @@ struct llarp_timer_context
 
   ~llarp_timer_context()
   {
-    if(ticker)
-      delete ticker;
   }
 
   bool
@@ -117,10 +116,8 @@ struct llarp_timer_context
     llarp::util::Lock lock(timersMutex);
 
     uint32_t id = ++ids;
-    timers.insert(
-        std::make_pair(id,
-                       std::unique_ptr< llarp::timer >(
-                           new llarp::timer(m_Now, timeout_ms, user, func))));
+    timers.emplace(
+        id, std::make_unique< llarp::timer >(m_Now, timeout_ms, user, func));
     return id;
   }
 
@@ -247,7 +244,7 @@ llarp_timer_tick_all_async(struct llarp_timer_context* t,
 void
 llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
 {
-  t->ticker = new llarp::util::Condition();
+  t->ticker = std::make_unique< llarp::util::Condition >();
   while(t->run())
   {
     // wait for timer mutex

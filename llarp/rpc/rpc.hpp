@@ -3,8 +3,9 @@
 
 #include <util/time.hpp>
 
-#include <string>
 #include <functional>
+#include <memory>
+#include <string>
 
 namespace llarp
 {
@@ -29,7 +30,7 @@ namespace llarp
       Stop();
 
      private:
-      ServerImpl* m_Impl;
+      std::unique_ptr< ServerImpl > m_Impl;
     };
 
     struct CallerImpl;
@@ -57,7 +58,7 @@ namespace llarp
       Tick(llarp_time_t now);
 
      private:
-      CallerImpl* m_Impl;
+      std::unique_ptr< CallerImpl > m_Impl;
     };
 
   }  // namespace rpc

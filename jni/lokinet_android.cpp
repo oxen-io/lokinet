@@ -1,12 +1,11 @@
-
-//#include <string.h>
-#include <jni.h>
 #include <llarp.h>
-#include <config.h>
+#include <config.hpp>
+#include <util/fs.hpp>
+
+#include <jni.h>
 #include <signal.h>
 #include <memory>
 #include <thread>
-#include "fs.hpp"
 
 struct AndroidMain
 {
@@ -16,7 +15,7 @@ struct AndroidMain
 
   /// set configuration and ensure files
   bool
-  Configure(const char * conf, const char * basedir)
+  Configure(const char* conf, const char* basedir)
   {
     configFile = conf;
     return llarp_ensure_config(conf, basedir, false, false);
@@ -66,14 +65,15 @@ struct AndroidMain
     {
       // on error
       llarp::LogError("daemon run fail");
-      llarp_main * ptr = m_impl;
-      m_impl = nullptr;
+      llarp_main* ptr = m_impl;
+      m_impl          = nullptr;
       llarp_main_signal(ptr, SIGINT);
       llarp_main_free(ptr);
     }
   }
 
-  const char * GetIfAddr()
+  const char*
+  GetIfAddr()
   {
     if(m_impl)
     {
@@ -81,10 +81,11 @@ struct AndroidMain
       if(tun)
         return tun->tunif.ifaddr;
     }
-     return "";
+    return "";
   }
 
-  int GetIfRange() const
+  int
+  GetIfRange() const
   {
     if(m_impl)
     {
@@ -165,13 +166,14 @@ extern "C"
   }
 
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_setVPNFileDescriptor(JNIEnv*, jclass, jint fd)
+  Java_network_loki_lokinet_Lokinet_1JNI_setVPNFileDescriptor(JNIEnv*, jclass,
+                                                              jint fd)
   {
     daemon->SetVPN_FD(fd);
   }
 
-  JNIEXPORT jstring JNICALL Java_network_loki_lokinet_Lokinet_1JNI_getIfAddr
-  (JNIEnv * env, jclass)
+  JNIEXPORT jstring JNICALL
+  Java_network_loki_lokinet_Lokinet_1JNI_getIfAddr(JNIEnv* env, jclass)
   {
     if(daemon)
       return env->NewStringUTF(daemon->GetIfAddr());
@@ -179,18 +181,18 @@ extern "C"
       return env->NewStringUTF("");
   }
 
-  JNIEXPORT jint JNICALL Java_network_loki_lokinet_Lokinet_1JNI_getIfRange
-  (JNIEnv *, jclass)
+  JNIEXPORT jint JNICALL
+  Java_network_loki_lokinet_Lokinet_1JNI_getIfRange(JNIEnv*, jclass)
   {
-   if(daemon)
+    if(daemon)
       return daemon->GetIfRange();
     else
       return -1;
   }
 
   JNIEXPORT void JNICALL
-  Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(JNIEnv*, jclass,
-                                                               jboolean isConnected)
+  Java_network_loki_lokinet_Lokinet_1JNI_onNetworkStateChanged(
+      JNIEnv*, jclass, jboolean isConnected)
   {
     if(isConnected)
     {

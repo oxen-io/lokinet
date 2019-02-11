@@ -1,7 +1,6 @@
 #ifndef LLARP_ROUTER_HPP
 #define LLARP_ROUTER_HPP
 
-#include <config.h>
 #include <constants/link_layer.hpp>
 #include <crypto/types.hpp>
 #include <ev/ev.h>
@@ -34,8 +33,9 @@
 
 namespace llarp
 {
+  struct Config;
   struct Crypto;
-}
+}  // namespace llarp
 
 bool
 llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &fpath,
@@ -346,7 +346,7 @@ namespace llarp
     AddHiddenService(const llarp::service::Config::section_t &config);
 
     bool
-    Configure(struct llarp_config *conf);
+    Configure(Config *conf);
 
     bool
     Ready();
@@ -395,13 +395,13 @@ namespace llarp
 
     /// inject configuration and reconfigure router
     bool
-    Reconfigure(llarp_config *conf);
+    Reconfigure(Config *conf);
 
     /// validate new configuration against old one
     /// return true on 100% valid
     /// return false if not 100% valid
     bool
-    ValidateConfig(llarp_config *conf) const;
+    ValidateConfig(Config *conf) const;
 
     /// send to remote router or queue for sending
     /// returns false on overflow
@@ -543,6 +543,9 @@ namespace llarp
       for(const auto &item : in)
         out.push_back({item.first, item.second});
     }
+
+    void
+    router_iter_config(const char *section, const char *key, const char *val);
   };
 
 }  // namespace llarp

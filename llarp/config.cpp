@@ -1,4 +1,3 @@
-#include <config.h>
 #include <config.hpp>
 
 #include <constants/defaults.hpp>
@@ -19,7 +18,7 @@ namespace llarp
                       [&ret](const ConfigParser::Section_t &s) -> bool {
                         for(const auto &item : s)
                         {
-                          ret.emplace_back(item.first, item.second);
+                          ret.emplace_after(ret.end(), item.first, item.second);
                         }
                         return true;
                       }))
@@ -47,6 +46,35 @@ namespace llarp
     bootstrap = find_section(parser, "bootstrap", section_t{});
     return true;
   };
+
+  void
+  Config::visit(const Visitor &functor)
+  {
+    std::unordered_map< std::string, const llarp::Config::section_t & >
+        sections = {{"network", network},     {"connect", connect},
+                    {"bootstrap", bootstrap}, {"system", system},
+                    {"netdb", netdb},         {"api", api},
+                    {"services", services}};
+
+    auto visitor = [&](const char *name, const auto &item) {
+      functor(name, item.first.c_str(), item.second.c_str());
+    };
+
+    using namespace std::placeholders;
+
+    std::for_each(lokid.begin(), lokid.end(), std::bind(visitor, "lokid", _1));
+    std::for_each(router.begin(), router.end(),
+                  std::bind(visitor, "router", _1));
+
+    std::for_each(dns.begin(), dns.end(), std::bind(visitor, "dns", _1));
+    std::for_each(iwp_links.begin(), iwp_links.end(),
+                  std::bind(visitor, "bind", _1));
+
+    std::for_each(sections.begin(), sections.end(), [&](const auto &section) {
+      std::for_each(section.second.begin(), section.second.end(),
+                    std::bind(visitor, section.first.c_str(), _1));
+    });
+  }
 
 }  // namespace llarp
 
@@ -332,62 +360,4 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   f << "ifaddr=" << ip << std::endl;
   f << "enabled=true" << std::endl;
   return true;
-}
-
-extern "C"
-{
-  void
-  llarp_new_config(struct llarp_config **conf)
-  {
-    llarp_config *c = new llarp_config();
-    *conf           = c;
-  }
-
-  void
-  llarp_free_config(struct llarp_config **conf)
-  {
-    if(*conf)
-      delete *conf;
-    *conf = nullptr;
-  }
-
-  int
-  llarp_load_config(struct llarp_config *conf, const char *fname)
-  {
-    if(!conf->impl.Load(fname))
-      return -1;
-    return 0;
-  }
-
-  void
-  llarp_config_iter(struct llarp_config *conf,
-                    struct llarp_config_iterator *iter)
-  {
-    iter->conf = conf;
-    std::unordered_map< std::string, const llarp::Config::section_t & >
-        sections = {{"network", conf->impl.network},
-                    {"connect", conf->impl.connect},
-                    {"bootstrap", conf->impl.bootstrap},
-                    {"system", conf->impl.system},
-                    {"netdb", conf->impl.netdb},
-                    {"api", conf->impl.api},
-                    {"services", conf->impl.services}};
-
-    for(const auto &item : conf->impl.lokid)
-      iter->visit(iter, "lokid", item.first.c_str(), item.second.c_str());
-
-    for(const auto &item : conf->impl.router)
-      iter->visit(iter, "router", item.first.c_str(), item.second.c_str());
-
-    for(const auto &item : conf->impl.dns)
-      iter->visit(iter, "dns", item.first.c_str(), item.second.c_str());
-
-    for(const auto &item : conf->impl.iwp_links)
-      iter->visit(iter, "bind", item.first.c_str(), item.second.c_str());
-
-    for(const auto &section : sections)
-      for(const auto &item : section.second)
-        iter->visit(iter, section.first.c_str(), item.first.c_str(),
-                    item.second.c_str());
-  }
 }
