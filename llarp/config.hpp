@@ -3,6 +3,7 @@
 
 #include <forward_list>
 #include <string>
+#include <functional>
 
 namespace llarp
 {
