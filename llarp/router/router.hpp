@@ -209,6 +209,8 @@ namespace llarp
     // buffer for serializing link messages
     std::array< byte_t, MAX_LINK_MSG_SIZE > linkmsg_buffer;
 
+    uint16_t m_OutboundPort = 0;
+
     /// always maintain this many connections to other routers
     size_t minConnectedRouters = 1;
     /// hard upperbound limit on the number of router to router connections
