@@ -1,16 +1,47 @@
 #include <routing/message_parser.hpp>
 
+#include <messages/dht.hpp>
+#include <messages/discard.hpp>
+#include <messages/exit.hpp>
+#include <messages/path_confirm.hpp>
+#include <messages/path_latency.hpp>
+#include <messages/path_transfer.hpp>
+#include <messages/transfer_traffic.hpp>
+#include <path/path_types.hpp>
 #include <util/mem.hpp>
 
 namespace llarp
 {
   namespace routing
   {
+    struct InboundMessageParser::MessageHolder
+    {
+      DataDiscardMessage D;
+      PathLatencyMessage L;
+      DHTMessage M;
+      PathConfirmMessage P;
+      PathTransferMessage T;
+      service::ProtocolFrame H;
+      TransferTrafficMessage I;
+      GrantExitMessage G;
+      RejectExitMessage J;
+      ObtainExitMessage O;
+      UpdateExitMessage U;
+      CloseExitMessage C;
+    };
+
     InboundMessageParser::InboundMessageParser()
+        : firstKey(false)
+        , key('\0')
+        , msg(nullptr)
+        , m_Holder(std::make_unique< MessageHolder >())
     {
       reader.user   = this;
       reader.on_key = &OnKey;
-      firstKey      = false;
+    }
+
+    InboundMessageParser::~InboundMessageParser()
+    {
     }
 
     bool
@@ -39,40 +70,40 @@ namespace llarp
         switch(self->key)
         {
           case 'D':
-            self->msg = &self->m_Holder.D;
+            self->msg = &self->m_Holder->D;
             break;
           case 'L':
-            self->msg = &self->m_Holder.L;
+            self->msg = &self->m_Holder->L;
             break;
           case 'M':
-            self->msg = &self->m_Holder.M;
+            self->msg = &self->m_Holder->M;
             break;
           case 'P':
-            self->msg = &self->m_Holder.P;
+            self->msg = &self->m_Holder->P;
             break;
           case 'T':
-            self->msg = &self->m_Holder.T;
+            self->msg = &self->m_Holder->T;
             break;
           case 'H':
-            self->msg = &self->m_Holder.H;
+            self->msg = &self->m_Holder->H;
             break;
           case 'I':
-            self->msg = &self->m_Holder.I;
+            self->msg = &self->m_Holder->I;
             break;
           case 'G':
-            self->msg = &self->m_Holder.G;
+            self->msg = &self->m_Holder->G;
             break;
           case 'J':
-            self->msg = &self->m_Holder.J;
+            self->msg = &self->m_Holder->J;
             break;
           case 'O':
-            self->msg = &self->m_Holder.O;
+            self->msg = &self->m_Holder->O;
             break;
           case 'U':
-            self->msg = &self->m_Holder.U;
+            self->msg = &self->m_Holder->U;
             break;
           case 'C':
-            self->msg = &self->m_Holder.C;
+            self->msg = &self->m_Holder->C;
             break;
           default:
             llarp::LogError("invalid routing message id: ", *strbuf.cur);
@@ -90,7 +121,7 @@ namespace llarp
     InboundMessageParser::ParseMessageBuffer(const llarp_buffer_t& buf,
                                              IMessageHandler* h,
                                              const PathID_t& from,
-                                             llarp::Router* r)
+                                             AbstractRouter* r)
     {
       bool result = false;
       msg         = nullptr;

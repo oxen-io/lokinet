@@ -1,7 +1,8 @@
 #include <exit/session.hpp>
 
+#include <nodedb.hpp>
 #include <path/path.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -9,8 +10,8 @@ namespace llarp
   {
     BaseSession::BaseSession(
         const llarp::RouterID& router,
-        std::function< bool(const llarp_buffer_t&) > writepkt, llarp::Router* r,
-        size_t numpaths, size_t hoplen)
+        std::function< bool(const llarp_buffer_t&) > writepkt,
+        AbstractRouter* r, size_t numpaths, size_t hoplen)
         : llarp::path::Builder(r, r->dht(), numpaths, hoplen)
         , m_ExitRouter(router)
         , m_WritePacket(writepkt)
@@ -232,13 +233,14 @@ namespace llarp
 
     SNodeSession::SNodeSession(
         const llarp::RouterID& snodeRouter,
-        std::function< bool(const llarp_buffer_t&) > writepkt, llarp::Router* r,
-        size_t numpaths, size_t hoplen, bool useRouterSNodeKey)
+        std::function< bool(const llarp_buffer_t&) > writepkt,
+        AbstractRouter* r, size_t numpaths, size_t hoplen,
+        bool useRouterSNodeKey)
         : BaseSession(snodeRouter, writepkt, r, numpaths, hoplen)
     {
       if(useRouterSNodeKey)
       {
-        m_ExitIdentity = r->identity;
+        m_ExitIdentity = r->identity();
       }
     }
   }  // namespace exit

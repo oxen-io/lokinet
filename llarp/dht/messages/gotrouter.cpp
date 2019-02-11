@@ -1,7 +1,8 @@
 #include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
 
-#include <router/router.hpp>
+#include <path/path.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -107,7 +108,7 @@ namespace llarp
 
       if(!dht.pendingRouterLookups.HasPendingLookupFrom(owner))
       {
-        llarp::LogWarn("Unwarrented GRM from ", From, " txid=", txid);
+        llarp::LogWarn("Unwarranted GRM from ", From, " txid=", txid);
         return false;
       }
       // no pending lookup

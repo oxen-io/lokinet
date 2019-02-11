@@ -177,6 +177,7 @@ set(LIB_SRC
   path/transit_hop.cpp
   pow.cpp
   profiling.cpp
+  router/abstractrouter.cpp
   router/router.cpp
   router_contact.cpp
   router_id.cpp

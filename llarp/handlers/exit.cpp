@@ -2,7 +2,7 @@
 
 #include <dns/dns.hpp>
 #include <net/net.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 #include <util/str.hpp>
 
 #include <cassert>
@@ -23,13 +23,13 @@ namespace llarp
       static_cast< ExitEndpoint * >(tun->user)->Flush();
     }
 
-    ExitEndpoint::ExitEndpoint(const std::string &name, Router *r)
+    ExitEndpoint::ExitEndpoint(const std::string &name, AbstractRouter *r)
         : m_Router(r)
-        , m_Resolver(r->netloop, this)
+        , m_Resolver(r->netloop(), this)
         , m_Name(name)
         , m_Tun{{0}, 0, {0}, 0, 0, 0, 0, 0, 0, 0}
         , m_LocalResolverAddr("127.0.0.1", 53)
-        , m_InetToNetwork(name + "_exit_rx", r->netloop, r->netloop)
+        , m_InetToNetwork(name + "_exit_rx", r->netloop(), r->netloop())
 
     {
       m_Tun.user      = this;
@@ -237,7 +237,7 @@ namespace llarp
     {
       if(m_ShouldInitTun)
       {
-        if(!llarp_ev_add_tun(GetRouter()->netloop, &m_Tun))
+        if(!llarp_ev_add_tun(GetRouter()->netloop(), &m_Tun))
         {
           llarp::LogWarn("Could not create tunnel for exit endpoint");
           return false;
@@ -251,7 +251,7 @@ namespace llarp
       return true;
     }
 
-    Router *
+    AbstractRouter *
     ExitEndpoint::GetRouter()
     {
       return m_Router;
@@ -542,7 +542,8 @@ namespace llarp
       if(wantInternet && !m_PermitExit)
         return false;
       huint32_t ip = GetIPForIdent(pk);
-      if(GetRouter()->paths.TransitHopPreviousIsRouter(path, pk.as_array()))
+      if(GetRouter()->pathContext().TransitHopPreviousIsRouter(path,
+                                                               pk.as_array()))
       {
         // we think this path belongs to a service node
         // mark it as such so we don't make an outbound session to them

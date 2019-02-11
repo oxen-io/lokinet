@@ -2,7 +2,7 @@
 
 #include <dht/context.hpp>
 #include <dht/messages/findrouter.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {

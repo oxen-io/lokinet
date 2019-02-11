@@ -1,6 +1,6 @@
 #include <rpc/rpc.hpp>
 
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 
 #ifdef USE_ABYSS
 #include <util/encode.hpp>
@@ -116,7 +116,7 @@ namespace llarp
 
     struct CallerImpl : public ::abyss::http::JSONRPC
     {
-      Router* router;
+      AbstractRouter* router;
       llarp_time_t m_NextKeyUpdate         = 0;
       const llarp_time_t KeyUpdateInterval = 1000 * 60 * 2;
       using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
@@ -124,7 +124,7 @@ namespace llarp
       std::string username;
       std::string password;
 
-      CallerImpl(Router* r) : ::abyss::http::JSONRPC(), router(r)
+      CallerImpl(AbstractRouter* r) : ::abyss::http::JSONRPC(), router(r)
       {
       }
 
@@ -207,8 +207,8 @@ namespace llarp
 
     struct Handler : public ::abyss::httpd::IRPCHandler
     {
-      Router* router;
-      Handler(::abyss::httpd::ConnImpl* conn, Router* r)
+      AbstractRouter* router;
+      Handler(::abyss::httpd::ConnImpl* conn, AbstractRouter* r)
           : ::abyss::httpd::IRPCHandler(conn), router(r)
       {
       }
@@ -293,11 +293,11 @@ namespace llarp
 
     struct ReqHandlerImpl : public ::abyss::httpd::BaseReqHandler
     {
-      ReqHandlerImpl(Router* r, llarp_time_t reqtimeout)
+      ReqHandlerImpl(AbstractRouter* r, llarp_time_t reqtimeout)
           : ::abyss::httpd::BaseReqHandler(reqtimeout), router(r)
       {
       }
-      Router* router;
+      AbstractRouter* router;
       ::abyss::httpd::IRPCHandler*
       CreateHandler(::abyss::httpd::ConnImpl* conn)
       {
@@ -307,10 +307,10 @@ namespace llarp
 
     struct ServerImpl
     {
-      Router* router;
+      AbstractRouter* router;
       ReqHandlerImpl _handler;
 
-      ServerImpl(Router* r) : router(r), _handler(r, 2000)
+      ServerImpl(AbstractRouter* r) : router(r), _handler(r, 2000)
       {
       }
 
@@ -346,7 +346,7 @@ namespace llarp
 #else
     struct ServerImpl
     {
-      ServerImpl(__attribute__((unused)) Router* r){};
+      ServerImpl(__attribute__((unused)) AbstractRouter* r){};
 
       bool
       Start(__attribute__((unused)) const std::string& addr)
@@ -362,7 +362,7 @@ namespace llarp
 
     struct CallerImpl
     {
-      CallerImpl(__attribute__((unused)) Router* r)
+      CallerImpl(__attribute__((unused)) AbstractRouter* r)
       {
       }
 
@@ -395,7 +395,8 @@ namespace llarp
 
 #endif
 
-    Caller::Caller(Router* r) : m_Impl(std::make_unique< CallerImpl >(r))
+    Caller::Caller(AbstractRouter* r)
+        : m_Impl(std::make_unique< CallerImpl >(r))
     {
     }
 
@@ -427,7 +428,8 @@ namespace llarp
       m_Impl->SetBasicAuth(user, passwd);
     }
 
-    Server::Server(Router* r) : m_Impl(std::make_unique< ServerImpl >(r))
+    Server::Server(AbstractRouter* r)
+        : m_Impl(std::make_unique< ServerImpl >(r))
     {
     }
 

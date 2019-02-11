@@ -4,7 +4,7 @@
 #include <dht/messages/gotintro.hpp>
 #include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {

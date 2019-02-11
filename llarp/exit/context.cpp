@@ -4,7 +4,7 @@ namespace llarp
 {
   namespace exit
   {
-    Context::Context(llarp::Router* r) : m_Router(r)
+    Context::Context(AbstractRouter* r) : m_Router(r)
     {
     }
     Context::~Context()

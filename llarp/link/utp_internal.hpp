@@ -36,8 +36,7 @@ namespace llarp
     constexpr size_t FragmentBufferSize =
         FragmentOverheadSize + FragmentBodySize;
 
-    static_assert(FragmentBufferSize == 608,
-                  "Fragement Buffer Size is not 608");
+    static_assert(FragmentBufferSize == 608, "Fragment Buffer Size is not 608");
 
     /// buffer for a single utp fragment
     using FragmentBuffer = llarp::AlignedBuffer< FragmentBufferSize >;
@@ -161,7 +160,7 @@ namespace llarp
       // Router();
 
       llarp::Crypto*
-      Crypto();
+      OurCrypto();
 
       /// session state, call EnterState(State) to set
       State state;
@@ -327,7 +326,7 @@ namespace llarp
 #endif
 
       llarp::Crypto*
-      Crypto();
+      OurCrypto();
 
       /// pump sessions
       void
@@ -337,7 +336,7 @@ namespace llarp
       void
       Stop();
 
-      /// rengenerate transport keypair
+      /// regenerate transport keypair
       bool
       KeyGen(SecretKey& k);
 

@@ -48,7 +48,7 @@ namespace llarp
 
       /// build a new requset message and send it via a path
       bool
-      SendRequestViaPath(llarp::path::Path* p, llarp::Router* r);
+      SendRequestViaPath(llarp::path::Path* p, AbstractRouter* r);
 
       ILookupHolder* parent;
       uint64_t txid;

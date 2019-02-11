@@ -1,4 +1,6 @@
 #include <messages/exit.hpp>
+
+#include <crypto/crypto.hpp>
 #include <routing/handler.hpp>
 
 namespace llarp
@@ -82,7 +84,8 @@ namespace llarp
     }
 
     bool
-    UpdateExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
+    UpdateExitMessage::HandleMessage(IMessageHandler* h,
+                                     AbstractRouter* r) const
     {
       return h->HandleUpdateExitMessage(this, r);
     }
@@ -119,7 +122,7 @@ namespace llarp
 
     bool
     UpdateExitVerifyMessage::HandleMessage(IMessageHandler* h,
-                                           llarp::Router* r) const
+                                           AbstractRouter* r) const
     {
       return h->HandleUpdateExitVerifyMessage(this, r);
     }

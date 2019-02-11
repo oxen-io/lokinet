@@ -15,7 +15,7 @@ namespace llarp
     /// holds all the hidden service endpoints we own
     struct Context : public util::IStateful
     {
-      Context(llarp::Router *r);
+      Context(AbstractRouter *r);
       ~Context();
 
       void
@@ -96,7 +96,7 @@ namespace llarp
       StartAll();
 
      private:
-      llarp::Router *m_Router;
+      AbstractRouter *m_Router;
       std::unordered_map< std::string, std::unique_ptr< Endpoint > >
           m_Endpoints;
       std::list< std::unique_ptr< Endpoint > > m_Stopped;

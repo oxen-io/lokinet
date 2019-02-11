@@ -1,6 +1,7 @@
 #include <messages/dht.hpp>
 
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
+#include <routing/handler.hpp>
 
 namespace llarp
 {
@@ -49,7 +50,7 @@ namespace llarp
     }
 
     bool
-    DHTMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
+    DHTMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       // set source as us
       llarp::dht::Key_t us{r->pubkey()};

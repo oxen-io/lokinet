@@ -3,7 +3,9 @@
 #include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <messages/dht.hpp>
-#include <router/router.hpp>
+#include <path/path.hpp>
+#include <nodedb.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {

@@ -3,7 +3,8 @@
 #include <dht/context.hpp>
 #include <dht/messages/gotintro.hpp>
 #include <messages/dht.hpp>
-#include <router/router.hpp>
+#include <path/path.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {

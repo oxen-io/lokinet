@@ -20,7 +20,7 @@ namespace llarp
 
     struct TunEndpoint : public service::Endpoint, public dns::IQueryHandler
     {
-      TunEndpoint(const std::string& nickname, llarp::Router* r,
+      TunEndpoint(const std::string& nickname, AbstractRouter* r,
                   llarp::service::Context* parent);
       ~TunEndpoint();
 

@@ -1,8 +1,13 @@
 #include <path/path.hpp>
 
 #include <dht/context.hpp>
+#include <exit/context.hpp>
 #include <messages/discard.hpp>
-#include <router/router.hpp>
+#include <messages/exit.hpp>
+#include <messages/path_latency.hpp>
+#include <messages/path_transfer.hpp>
+#include <messages/relay_commit.hpp>
+#include <router/abstractrouter.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
@@ -122,14 +127,14 @@ namespace llarp
 
     bool
     TransitHop::HandleDHTMessage(const llarp::dht::IMessage* msg,
-                                 llarp::Router* r)
+                                 AbstractRouter* r)
     {
       return r->dht()->impl.RelayRequestForPath(info.rxID, msg);
     }
 
     bool
     TransitHop::HandlePathLatencyMessage(
-        const llarp::routing::PathLatencyMessage* msg, llarp::Router* r)
+        const llarp::routing::PathLatencyMessage* msg, AbstractRouter* r)
     {
       llarp::routing::PathLatencyMessage reply;
       reply.L = msg->T;
@@ -139,7 +144,7 @@ namespace llarp
     bool
     TransitHop::HandlePathConfirmMessage(
         __attribute__((unused)) const llarp::routing::PathConfirmMessage* msg,
-        __attribute__((unused)) llarp::Router* r)
+        __attribute__((unused)) AbstractRouter* r)
     {
       llarp::LogWarn("unwarranted path confirm message on ", info);
       return false;
@@ -148,7 +153,7 @@ namespace llarp
     bool
     TransitHop::HandleDataDiscardMessage(
         __attribute__((unused)) const llarp::routing::DataDiscardMessage* msg,
-        __attribute__((unused)) llarp::Router* r)
+        __attribute__((unused)) AbstractRouter* r)
     {
       llarp::LogWarn("unwarranted path data discard message on ", info);
       return false;
@@ -156,15 +161,15 @@ namespace llarp
 
     bool
     TransitHop::HandleObtainExitMessage(
-        const llarp::routing::ObtainExitMessage* msg, llarp::Router* r)
+        const llarp::routing::ObtainExitMessage* msg, AbstractRouter* r)
     {
       if(msg->Verify(r->crypto())
-         && r->exitContext.ObtainNewExit(msg->I, info.rxID, msg->E != 0))
+         && r->exitContext().ObtainNewExit(msg->I, info.rxID, msg->E != 0))
       {
         llarp::routing::GrantExitMessage grant;
         grant.S = NextSeqNo();
         grant.T = msg->T;
-        if(!grant.Sign(r->crypto(), r->identity))
+        if(!grant.Sign(r->crypto(), r->identity()))
         {
           llarp::LogError("Failed to sign grant exit message");
           return false;
@@ -176,7 +181,7 @@ namespace llarp
       llarp::routing::RejectExitMessage reject;
       reject.S = NextSeqNo();
       reject.T = msg->T;
-      if(!reject.Sign(r->crypto(), r->identity))
+      if(!reject.Sign(r->crypto(), r->identity()))
       {
         llarp::LogError("Failed to sign reject exit message");
         return false;
@@ -186,17 +191,17 @@ namespace llarp
 
     bool
     TransitHop::HandleCloseExitMessage(
-        const llarp::routing::CloseExitMessage* msg, llarp::Router* r)
+        const llarp::routing::CloseExitMessage* msg, AbstractRouter* r)
     {
       llarp::routing::DataDiscardMessage discard(info.rxID, msg->S);
-      auto ep = r->exitContext.FindEndpointForPath(info.rxID);
+      auto ep = r->exitContext().FindEndpointForPath(info.rxID);
       if(ep && msg->Verify(r->crypto(), ep->PubKey()))
       {
         ep->Close();
         // ep is now gone af
         llarp::routing::CloseExitMessage reply;
         reply.S = NextSeqNo();
-        if(reply.Sign(r->crypto(), r->identity))
+        if(reply.Sign(r->crypto(), r->identity()))
           return SendRoutingMessage(&reply, r);
       }
       return SendRoutingMessage(&discard, r);
@@ -204,7 +209,7 @@ namespace llarp
 
     bool
     TransitHop::HandleUpdateExitVerifyMessage(
-        const llarp::routing::UpdateExitVerifyMessage* msg, llarp::Router* r)
+        const llarp::routing::UpdateExitVerifyMessage* msg, AbstractRouter* r)
     {
       (void)msg;
       (void)r;
@@ -214,9 +219,9 @@ namespace llarp
 
     bool
     TransitHop::HandleUpdateExitMessage(
-        const llarp::routing::UpdateExitMessage* msg, llarp::Router* r)
+        const llarp::routing::UpdateExitMessage* msg, AbstractRouter* r)
     {
-      auto ep = r->exitContext.FindEndpointForPath(msg->P);
+      auto ep = r->exitContext().FindEndpointForPath(msg->P);
       if(ep)
       {
         if(!msg->Verify(r->crypto(), ep->PubKey()))
@@ -237,29 +242,29 @@ namespace llarp
 
     bool
     TransitHop::HandleRejectExitMessage(
-        const llarp::routing::RejectExitMessage* msg, llarp::Router* r)
+        const llarp::routing::RejectExitMessage* msg, AbstractRouter* r)
     {
       (void)msg;
       (void)r;
-      llarp::LogError(info, " got unwarrented RXM");
+      llarp::LogError(info, " got unwarranted RXM");
       return false;
     }
 
     bool
     TransitHop::HandleGrantExitMessage(
-        const llarp::routing::GrantExitMessage* msg, llarp::Router* r)
+        const llarp::routing::GrantExitMessage* msg, AbstractRouter* r)
     {
       (void)msg;
       (void)r;
-      llarp::LogError(info, " got unwarrented GXM");
+      llarp::LogError(info, " got unwarranted GXM");
       return false;
     }
 
     bool
     TransitHop::HandleTransferTrafficMessage(
-        const llarp::routing::TransferTrafficMessage* msg, llarp::Router* r)
+        const llarp::routing::TransferTrafficMessage* msg, AbstractRouter* r)
     {
-      auto endpoint = r->exitContext.FindEndpointForPath(info.rxID);
+      auto endpoint = r->exitContext().FindEndpointForPath(info.rxID);
       if(endpoint)
       {
         bool sent = true;
@@ -284,9 +289,9 @@ namespace llarp
 
     bool
     TransitHop::HandlePathTransferMessage(
-        const llarp::routing::PathTransferMessage* msg, llarp::Router* r)
+        const llarp::routing::PathTransferMessage* msg, AbstractRouter* r)
     {
-      auto path = r->paths.GetPathForTransfer(msg->P);
+      auto path = r->pathContext().GetPathForTransfer(msg->P);
       llarp::routing::DataDiscardMessage discarded(msg->P, msg->S);
       if(!path)
       {

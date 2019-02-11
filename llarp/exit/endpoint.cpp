@@ -1,6 +1,6 @@
 #include <exit/endpoint.hpp>
 #include <handlers/exit.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -194,7 +194,8 @@ namespace llarp
     Endpoint::GetCurrentPath() const
     {
       auto router = m_Parent->GetRouter();
-      return router->paths.GetByUpstream(router->pubkey(), m_CurrentPath);
+      return router->pathContext().GetByUpstream(router->pubkey(),
+                                                 m_CurrentPath);
     }
   }  // namespace exit
 }  // namespace llarp
