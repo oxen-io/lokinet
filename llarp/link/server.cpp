@@ -334,7 +334,7 @@ namespace llarp
     auto itr         = m_Pending.find(addr);
     if(itr != m_Pending.end())
       return false;
-    m_Pending.insert(std::make_pair(addr, std::unique_ptr< ILinkSession >(s)));
+    m_Pending.emplace(addr, std::unique_ptr< ILinkSession >(s));
     return true;
   }
 

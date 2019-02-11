@@ -1,6 +1,7 @@
 #include <llarp.hpp>
 #include <llarp.h>
 
+#include <config.hpp>
 #include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
 #include <dns/dotlokilookup.hpp>
@@ -23,7 +24,8 @@ namespace llarp
 {
   Context::~Context()
   {
-    llarp_ev_loop_free(&mainloop);
+    llarp_ev_loop *ptr = mainloop.release();
+    llarp_ev_loop_free(&ptr);
   }
 
   void
@@ -36,55 +38,51 @@ namespace llarp
   Context::Configure()
   {
     // llarp::LogInfo("loading config at ", configfile);
-    if(llarp_load_config(config, configfile.c_str()))
+    if(config->Load(configfile.c_str()))
     {
-      llarp_free_config(&config);
+      config.release();
       llarp::LogError("failed to load config file ", configfile);
       return false;
     }
-    llarp_config_iterator iter;
-    iter.user  = this;
-    iter.visit = &iter_config;
-    llarp_config_iter(config, &iter);
+    using namespace std::placeholders;
+    config->visit(std::bind(&Context::iter_config, this, _1, _2, _3));
     return true;
   }
 
   void
-  Context::iter_config(llarp_config_iterator *itr, const char *section,
-                       const char *key, const char *val)
+  Context::iter_config(const char *section, const char *key, const char *val)
   {
-    Context *ctx = static_cast< Context * >(itr->user);
     if(!strcmp(section, "system"))
     {
       if(!strcmp(key, "pidfile"))
       {
-        ctx->SetPIDFile(val);
+        SetPIDFile(val);
       }
     }
     if(!strcmp(section, "router"))
     {
-      if(!strcmp(key, "worker-threads") && !ctx->singleThreaded)
+      if(!strcmp(key, "worker-threads") && !singleThreaded)
       {
         int workers = atoi(val);
-        if(workers > 0 && ctx->worker == nullptr)
+        if(workers > 0 && worker == nullptr)
         {
-          ctx->worker = llarp_init_threadpool(workers, "llarp-worker");
+          worker.reset(llarp_init_threadpool(workers, "llarp-worker"));
         }
       }
       else if(!strcmp(key, "net-threads"))
       {
-        ctx->num_nethreads = atoi(val);
-        if(ctx->num_nethreads <= 0)
-          ctx->num_nethreads = 1;
-        if(ctx->singleThreaded)
-          ctx->num_nethreads = 0;
+        num_nethreads = atoi(val);
+        if(num_nethreads <= 0)
+          num_nethreads = 1;
+        if(singleThreaded)
+          num_nethreads = 0;
       }
     }
     if(!strcmp(section, "netdb"))
     {
       if(!strcmp(key, "dir"))
       {
-        ctx->nodedb_dir = val;
+        nodedb_dir = val;
       }
     }
   }
@@ -99,7 +97,7 @@ namespace llarp
   Context::LoadDatabase()
   {
     crypto = std::make_unique< sodium::CryptoLibSodium >();
-    nodedb = new llarp_nodedb(crypto.get(), router->disk);
+    nodedb = std::make_unique< llarp_nodedb >(crypto.get(), router->disk);
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
@@ -146,26 +144,27 @@ namespace llarp
   {
     llarp::LogInfo(LLARP_VERSION, " ", LLARP_RELEASE_MOTTO);
     llarp::LogInfo("starting up");
-    llarp_ev_loop_alloc(&mainloop);
+    mainloop = llarp_make_ev_loop();
 
     // ensure worker thread pool
     if(!worker && !singleThreaded)
-      worker = llarp_init_threadpool(2, "llarp-worker");
+      worker.reset(llarp_init_threadpool(2, "llarp-worker"));
     else if(singleThreaded)
     {
       llarp::LogInfo("running in single threaded mode");
-      worker = llarp_init_same_process_threadpool();
+      worker.reset(llarp_init_same_process_threadpool());
     }
     // ensure netio thread
     if(singleThreaded)
     {
-      logic = new Logic(worker);
+      logic = std::make_unique< Logic >(worker.get());
     }
     else
-      logic = new Logic;
+      logic = std::make_unique< Logic >();
 
-    router = new Router(worker, mainloop, logic);
-    if(!router->Configure(config))
+    router =
+        std::make_unique< Router >(worker.get(), mainloop.get(), logic.get());
+    if(!router->Configure(config.get()))
     {
       llarp::LogError("Failed to configure router");
       return 1;
@@ -190,12 +189,12 @@ namespace llarp
     if(!WritePIDFile())
       return 1;
     // run
-    if(!router->Run(nodedb))
+    if(!router->Run(nodedb.get()))
       return 1;
 
     // run net io thread
     llarp::LogInfo("running mainloop");
-    llarp_ev_loop_run_single_process(mainloop, worker, logic);
+    llarp_ev_loop_run_single_process(mainloop.get(), worker.get(), logic.get());
     // waits for router graceful stop
     return 0;
   }
@@ -242,31 +241,26 @@ namespace llarp
       llarp::LogInfo("SIGHUP");
       if(router)
       {
-        llarp_config *newconfig = nullptr;
-        llarp_new_config(&newconfig);
-        if(llarp_load_config(newconfig, configfile.c_str()))
+        Config newconfig;
+        if(newconfig.Load(configfile.c_str()))
         {
-          llarp_free_config(&newconfig);
           llarp::LogError("failed to load config file ", configfile);
           return;
         }
         // validate config
-        if(!router->ValidateConfig(newconfig))
+        if(!router->ValidateConfig(&newconfig))
         {
           llarp::LogWarn("new configuration is invalid");
-          llarp_free_config(&newconfig);
           return;
         }
         // reconfigure
-        if(!router->Reconfigure(newconfig))
+        if(!router->Reconfigure(&newconfig))
         {
-          llarp_free_config(&newconfig);
           llarp::LogError("Failed to reconfigure so we will stop.");
           router->Stop();
           return;
         }
         llarp::LogInfo("router reconfigured");
-        llarp_free_config(&newconfig);
       }
     }
 #endif
@@ -284,7 +278,7 @@ namespace llarp
     {
       if(logic)
         logic->stop();
-      llarp_ev_loop_stop(mainloop);
+      llarp_ev_loop_stop(mainloop.get());
       Close();
     }
   }
@@ -294,40 +288,34 @@ namespace llarp
   {
     llarp::LogDebug("stop workers");
     if(worker)
-      llarp_threadpool_stop(worker);
+      llarp_threadpool_stop(worker.get());
 
     llarp::LogDebug("join workers");
     if(worker)
-      llarp_threadpool_join(worker);
+      llarp_threadpool_join(worker.get());
 
     llarp::LogDebug("free config");
-    llarp_free_config(&config);
+    config.release();
 
     llarp::LogDebug("free workers");
-    llarp_free_threadpool(&worker);
+    worker.release();
 
     llarp::LogDebug("free nodedb");
-    delete nodedb;
+    nodedb.release();
 
-    if(router)
-    {
-      llarp::LogDebug("free router");
-      delete router;
-      router = nullptr;
-    }
-    if(logic)
-    {
-      llarp::LogDebug("free logic");
-      delete logic;
-      logic = nullptr;
-    }
+    llarp::LogDebug("free router");
+    router.release();
+
+    llarp::LogDebug("free logic");
+    logic.release();
+
     RemovePIDFile();
   }
 
   bool
   Context::LoadConfig(const std::string &fname)
   {
-    llarp_new_config(&config);
+    config     = std::make_unique< Config >();
     configfile = fname;
     return Configure();
   }
@@ -415,8 +403,9 @@ extern "C"
                        const llarp::Addr &dnsd_sockaddr,
                        const llarp::Addr &dnsc_sockaddr)
   {
-    return llarp_dnsd_init(dnsd, ptr->ctx->logic, ptr->ctx->mainloop,
-                           dnsd_sockaddr, dnsc_sockaddr);
+    return llarp_dnsd_init(dnsd, ptr->ctx->logic.get(),
+                           ptr->ctx->mainloop.get(), dnsd_sockaddr,
+                           dnsc_sockaddr);
   }
 
   bool
@@ -425,7 +414,7 @@ extern "C"
   {
     (void)ptr;
     (void)dll;
-    // TODO: gutt me
+    // TODO: gut me
     return false;
   }
 
@@ -462,23 +451,6 @@ extern "C"
   llarp::RouterContact *
   llarp_main_getLocalRC(__attribute__((unused)) struct llarp_main *ptr)
   {
-    //
-    /*
-     llarp_config_iterator iter;
-     iter.user  = this;
-     iter.visit = &iter_config;
-     llarp_config_iter(ctx->config, &iter);
-     */
-    // llarp_rc *rc = new llarp_rc;
-    // llarp::RouterContact *rc = new llarp::RouterContact;
-    // llarp_rc_new(rc);
-    // llarp::LogInfo("FIXME: Loading ", ptr->ctx->conatctFile);
-    // FIXME
-    /*
-    if(llarp_rc_read(ptr->ctx->conatctFile, rc))
-      return rc;
-    else
-    */
     return nullptr;
   }
 

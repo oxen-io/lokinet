@@ -6,25 +6,6 @@
 #include <functional>
 #include <queue>
 
-struct llarp_threadpool
-{
-  std::unique_ptr< llarp::thread::Pool > impl;
-
-  llarp::util::Mutex m_access;
-  uint32_t ids = 0;
-  std::queue< std::function< void(void) > > jobs;
-
-  llarp_threadpool(int workers, const char *name)
-  {
-    (void)name;
-    impl.reset(new llarp::thread::Pool(workers, workers * 128));
-  }
-
-  llarp_threadpool()
-  {
-  }
-};
-
 struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name)
 {

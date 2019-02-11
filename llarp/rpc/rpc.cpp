@@ -388,13 +388,12 @@ namespace llarp
 
 #endif
 
-    Caller::Caller(Router* r) : m_Impl(new CallerImpl(r))
+    Caller::Caller(Router* r) : m_Impl(std::make_unique< CallerImpl >(r))
     {
     }
 
     Caller::~Caller()
     {
-      delete m_Impl;
     }
 
     void
@@ -421,13 +420,12 @@ namespace llarp
       m_Impl->SetBasicAuth(user, passwd);
     }
 
-    Server::Server(Router* r) : m_Impl(new ServerImpl(r))
+    Server::Server(Router* r) : m_Impl(std::make_unique< ServerImpl >(r))
     {
     }
 
     Server::~Server()
     {
-      delete m_Impl;
     }
 
     void

@@ -1,6 +1,5 @@
 #ifndef LLARP_CONFIG_HPP
 #define LLARP_CONFIG_HPP
-#include <config.h>
 
 #include <list>
 #include <string>
@@ -25,14 +24,15 @@ namespace llarp
 
     bool
     Load(const char *fname);
+
+    using Visitor = std::function< void(const char *section, const char *key,
+                                        const char *val) >;
+
+    void
+    visit(const Visitor &visitor);
   };
 
 }  // namespace llarp
-
-struct llarp_config
-{
-  llarp::Config impl;
-};
 
 void
 llarp_generic_ensure_config(std::ofstream &f, std::string basepath);

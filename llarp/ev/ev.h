@@ -17,6 +17,7 @@
 #include <sys/socket.h>
 #endif
 
+#include <memory>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -42,6 +43,9 @@ namespace llarp
 /// allocator
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev);
+
+std::unique_ptr< llarp_ev_loop >
+llarp_make_ev_loop();
 
 // deallocator
 void
@@ -115,7 +119,7 @@ struct llarp_tcp_conn
 };
 
 /// queue async write a buffer in full
-/// return if we queueed it or not
+/// return if we queued it or not
 bool
 llarp_tcp_conn_async_write(struct llarp_tcp_conn *, const llarp_buffer_t &);
 
@@ -164,7 +168,7 @@ struct llarp_tcp_acceptor
 
 /// bind to an address and start serving async
 /// return false if failed to bind
-/// return true on successs
+/// return true on success
 bool
 llarp_tcp_serve(struct llarp_ev_loop *loop, struct llarp_tcp_acceptor *t,
                 const sockaddr *bindaddr);

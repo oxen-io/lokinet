@@ -105,12 +105,6 @@ namespace llarp
     return bencode_end(buf);
   }
 
-  LR_CommitRecord::~LR_CommitRecord()
-  {
-    if(work)
-      delete work;
-  }
-
   bool
   LR_CommitRecord::OnKey(dict_reader* r, llarp_buffer_t* key)
   {
@@ -146,7 +140,7 @@ namespace llarp
         return false;
       }
 
-      self->work = new PoW();
+      self->work = std::make_unique< PoW >();
       return self->work->BDecode(r->buffer);
     }
     return read;
@@ -178,7 +172,7 @@ namespace llarp
     typedef llarp::path::PathContext Context;
     typedef llarp::path::TransitHop Hop;
     typedef AsyncFrameDecrypter< LRCMFrameDecrypt > Decrypter;
-    Decrypter* decrypter;
+    std::unique_ptr< Decrypter > decrypter;
     std::array< EncryptedFrame, 8 > frames;
     Context* context;
     // decrypted record
@@ -188,21 +182,24 @@ namespace llarp
 
     LRCMFrameDecrypt(Context* ctx, Decrypter* dec,
                      const LR_CommitMessage* commit)
-        : decrypter(dec), frames(commit->frames), context(ctx), hop(new Hop())
+        : decrypter(dec)
+        , frames(commit->frames)
+        , context(ctx)
+        , hop(std::make_shared< Hop >())
     {
       hop->info.downstream = commit->session->GetPubKey();
     }
 
     ~LRCMFrameDecrypt()
     {
-      delete decrypter;
     }
 
     /// this is done from logic thread
     static void
     SendLRCM(void* user)
     {
-      LRCMFrameDecrypt* self = static_cast< LRCMFrameDecrypt* >(user);
+      std::unique_ptr< LRCMFrameDecrypt > self(
+          static_cast< LRCMFrameDecrypt* >(user));
       // persist sessions to upstream and downstream routers until the commit
       // ends
       self->context->Router()->PersistSessionUntil(self->hop->info.downstream,
@@ -214,14 +211,14 @@ namespace llarp
       // forward to next hop
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames);
       self->hop = nullptr;
-      delete self;
     }
 
     // this is called from the logic thread
     static void
     SendPathConfirm(void* user)
     {
-      LRCMFrameDecrypt* self = static_cast< LRCMFrameDecrypt* >(user);
+      std::unique_ptr< LRCMFrameDecrypt > self(
+          static_cast< LRCMFrameDecrypt* >(user));
       // persist session to downstream until path expiration
       self->context->Router()->PersistSessionUntil(self->hop->info.downstream,
                                                    self->hop->ExpireTime());
@@ -235,7 +232,6 @@ namespace llarp
                         self->hop->info);
       }
       self->hop = nullptr;
-      delete self;
     }
 
     static void
@@ -284,7 +280,7 @@ namespace llarp
       using namespace std::placeholders;
       if(self->record.work
          && self->record.work->IsValid(
-                std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+             std::bind(&Crypto::shorthash, crypto, _1, _2), now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",

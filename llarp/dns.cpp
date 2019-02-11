@@ -8,26 +8,24 @@ void
 hexDump(const char *buffer, uint16_t size)
 {
   // would rather heap allocate than use VLA
-  char *hex_buffer     = new char[size * 3 + 1];
+  std::vector< char > hex_buffer(size * 3 + 1);
   hex_buffer[size * 3] = 0;
   for(unsigned int j = 0; j < size; j++)
     sprintf(&hex_buffer[3 * j], "%02X ", buffer[j]);
-  std::string str(hex_buffer);
+  std::string str(hex_buffer.begin(), hex_buffer.end());
   llarp::LogInfo("First ", size, " bytes: ", str);
-  delete[] hex_buffer;
 }
 
 void
 hexDumpAt(const char *const buffer, uint32_t pos, uint16_t size)
 {
   // would rather heap allocate than use VLA
-  char *hex_buffer     = new char[size * 3 + 1];
+  std::vector< char > hex_buffer(size * 3 + 1);
   hex_buffer[size * 3] = 0;
   for(unsigned int j = 0; j < size; j++)
     sprintf(&hex_buffer[3 * j], "%02X ", buffer[pos + j]);
-  std::string str(hex_buffer);
+  std::string str(hex_buffer.begin(), hex_buffer.end());
   llarp::LogInfo(pos, " ", size, " bytes: ", str);
-  delete[] hex_buffer;
 }
 
 /*

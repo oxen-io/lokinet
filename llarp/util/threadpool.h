@@ -1,7 +1,31 @@
 #ifndef LLARP_THREADPOOL_H
 #define LLARP_THREADPOOL_H
 
-struct llarp_threadpool;
+#include <util/threading.hpp>
+#include <util/threadpool.hpp>
+
+#include <memory>
+#include <queue>
+
+struct llarp_threadpool
+{
+  std::unique_ptr< llarp::thread::ThreadPool > impl;
+
+  llarp::util::Mutex m_access;
+  uint32_t ids = 0;
+  std::queue< std::function< void(void) > > jobs;
+
+  llarp_threadpool(int workers, const char *name)
+      : impl(
+          std::make_unique< llarp::thread::ThreadPool >(workers, workers * 128))
+  {
+    (void)name;
+  }
+
+  llarp_threadpool()
+  {
+  }
+};
 
 struct llarp_threadpool *
 llarp_init_threadpool(int workers, const char *name);

@@ -8,6 +8,7 @@
 #include <pow.hpp>
 
 #include <array>
+#include <memory>
 
 namespace llarp
 {
@@ -24,7 +25,7 @@ namespace llarp
     TunnelNonce tunnelNonce;
     PathID_t txid, rxid;
 
-    PoW *work         = nullptr;
+    std::unique_ptr< PoW > work;
     uint64_t version  = 0;
     uint64_t lifetime = 0;
 
@@ -33,8 +34,6 @@ namespace llarp
 
     bool
     BEncode(llarp_buffer_t *buf) const;
-
-    ~LR_CommitRecord();
 
     bool
     operator==(const LR_CommitRecord &other) const;
