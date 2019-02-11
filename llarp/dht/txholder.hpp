@@ -29,56 +29,34 @@ namespace llarp
       const TX< K, V >*
       GetPendingLookupFrom(const TXOwner& owner) const;
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override
+      util::StatusObject
+      ExtractStatus() const override
       {
-        std::vector< util::StatusObject > txObjs(tx.size());
-        std::vector< util::StatusObject > timeoutsObjs(timeouts.size());
-        std::vector< util::StatusObject > waitingObjs(waiting.size());
-        {
-          auto itr   = tx.begin();
-          size_t idx = 0;
-          while(itr != tx.end())
-          {
-            auto& txSuperObj = txObjs[idx++];
-            util::StatusObject txObj, txOwnerObj;
-            itr->second->ExtractStatus(txObj);
-            txOwnerObj.PutInt("txid", itr->first.txid);
-            txOwnerObj.PutString("node", itr->first.node.ToHex());
-
-            txSuperObj.PutObject("tx", txObj);
-            txSuperObj.PutObject("owner", txOwnerObj);
-            ++itr;
-          }
-        }
-        obj.PutObjectArray("tx", txObjs);
-        {
-          auto itr   = timeouts.begin();
-          size_t idx = 0;
-          while(itr != timeouts.end())
-          {
-            auto& timeoutObj = timeoutsObjs[idx++];
-            timeoutObj.PutInt("time", itr->second);
-            timeoutObj.PutString("target", itr->first.ToHex());
-            ++itr;
-          }
-        }
-        obj.PutObjectArray("timeouts", timeoutsObjs);
-        {
-          auto itr   = waiting.begin();
-          size_t idx = 0;
-          while(itr != waiting.end())
-          {
-            auto& waitingObj = waitingObjs[idx++];
-            util::StatusObject txOwnerObj;
-            txOwnerObj.PutInt("txid", itr->second.txid);
-            txOwnerObj.PutString("node", itr->second.node.ToHex());
-            waitingObj.PutObject("whoasked", txOwnerObj);
-            waitingObj.PutString("target", itr->first.ToHex());
-            ++itr;
-          }
-        }
-        obj.PutObjectArray("waiting", waitingObjs);
+        util::StatusObject obj{};
+        std::vector< util::StatusObject > txObjs, timeoutsObjs, waitingObjs;
+        std::transform(tx.begin(), tx.end(), std::back_inserter(txObjs),
+                       [](const auto& item) -> util::StatusObject {
+                         return util::StatusObject{
+                             {"owner", item.first.ExtractStatus()},
+                             {"tx", item.second->ExtractStatus()}};
+                       });
+        obj.Put("tx", txObjs);
+        std::transform(
+            timeouts.begin(), timeouts.end(), std::back_inserter(timeoutsObjs),
+            [](const auto& item) -> util::StatusObject {
+              return util::StatusObject{{"time", item.second},
+                                        {"target", item.first.ToHex()}};
+            });
+        obj.Put("timeouts", timeoutsObjs);
+        std::transform(waiting.begin(), waiting.end(),
+                       std::back_inserter(waitingObjs),
+                       [](const auto& item) -> util::StatusObject {
+                         return util::StatusObject{
+                             {"target", item.first.ToHex()},
+                             {"whoasked", item.second.ExtractStatus()}};
+                       });
+        obj.Put("waiting", waitingObjs);
+        return obj;
       }
 
       bool

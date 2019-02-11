@@ -237,16 +237,13 @@ namespace llarp
     llarp_dht_context_free(_dht);
   }
 
-  void
-  Router::ExtractStatus(util::StatusObject &obj) const
+  util::StatusObject
+  Router::ExtractStatus() const
   {
-    util::StatusObject dhtObj, exitObj, hsObj;
-    _dht->impl.ExtractStatus(dhtObj);
-    obj.PutObject("dht", dhtObj);
-    hiddenServiceContext.ExtractStatus(hsObj);
-    obj.PutObject("services", hsObj);
-    exitContext.ExtractStatus(exitObj);
-    obj.PutObject("exit", exitObj);
+    util::StatusObject obj{{"dht", _dht->impl.ExtractStatus()},
+                           {"services", hiddenServiceContext.ExtractStatus()},
+                           {"exit", exitContext.ExtractStatus()}};
+    return obj;
   }
 
   bool

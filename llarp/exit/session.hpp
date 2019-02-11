@@ -25,8 +25,8 @@ namespace llarp
 
       virtual ~BaseSession();
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override;
+      util::StatusObject
+      ExtractStatus() const override;
 
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,

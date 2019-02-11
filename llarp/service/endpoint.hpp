@@ -40,8 +40,8 @@ namespace llarp
       Endpoint(const std::string& nickname, llarp::Router* r, Context* parent);
       ~Endpoint();
 
-      virtual void
-      ExtractStatus(util::StatusObject& obj) const override;
+      virtual util::StatusObject
+      ExtractStatus() const override;
 
       void
       SetHandler(IDataHandler* h);
@@ -267,8 +267,8 @@ namespace llarp
         OutboundContext(const IntroSet& introSet, Endpoint* parent);
         ~OutboundContext();
 
-        void
-        ExtractStatus(util::StatusObject& obj) const override;
+        util::StatusObject
+        ExtractStatus() const override;
 
         bool
         Stop() override;
@@ -546,15 +546,14 @@ namespace llarp
         llarp_time_t lastUsed = 0;
         uint64_t seqno        = 0;
 
-        void
-        ExtractStatus(util::StatusObject& obj) const override
+        util::StatusObject
+        ExtractStatus() const override
         {
-          obj.PutInt("lastUsed", lastUsed);
-          obj.PutString("remote", remote.Addr().ToString());
-          obj.PutInt("seqno", seqno);
-          util::StatusObject introObj;
-          intro.ExtractStatus(introObj);
-          obj.PutObject("intro", introObj);
+          util::StatusObject obj{{"lastUsed", lastUsed},
+                                 {"remote", remote.Addr().ToString()},
+                                 {"seqno", seqno}};
+          obj.Put("intro", intro.ExtractStatus());
+          return obj;
         };
 
         bool

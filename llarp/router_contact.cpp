@@ -151,14 +151,16 @@ namespace llarp
     last_updated = 0;
   }
 
-  void
-  RouterContact::ExtractStatus(util::StatusObject &obj) const
+  util::StatusObject
+  RouterContact::ExtractStatus() const
   {
-    obj.PutInt("lastUpdated", last_updated);
-    obj.PutBool("exit", IsExit());
-    obj.PutBool("publicRouter", IsPublicRouter());
+    util::StatusObject obj{{"lastUpdated", last_updated},
+                           {"exit", IsExit()},
+                           {"publicRouter", IsPublicRouter()},
+                           {"identity", pubkey.ToHex()}};
     if(HasNick())
-      obj.PutString("nickname", Nick());
+      obj.Put("nickname", Nick());
+    return obj;
   }
 
   bool

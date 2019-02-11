@@ -2,14 +2,14 @@
 #define LLARP_DHT_TXOWNER_HPP
 
 #include <dht/key.hpp>
-
+#include <util/status.hpp>
 #include <cstdint>
 
 namespace llarp
 {
   namespace dht
   {
-    struct TXOwner
+    struct TXOwner : public util::IStateful
     {
       Key_t node;
       uint64_t txid = 0;
@@ -23,6 +23,16 @@ namespace llarp
 
       TXOwner(const Key_t& k, uint64_t id) : node(k), txid(id)
       {
+      }
+
+      util::StatusObject
+      ExtractStatus() const override
+      {
+        util::StatusObject obj{
+            {"txid", txid},
+            {"node", node.ToHex()},
+        };
+        return obj;
       }
 
       bool

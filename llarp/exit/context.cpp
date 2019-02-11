@@ -46,17 +46,17 @@ namespace llarp
       }
     }
 
-    void
-    Context::ExtractStatus(util::StatusObject& obj) const
+    util::StatusObject
+    Context::ExtractStatus() const
     {
+      util::StatusObject obj{};
       auto itr = m_Exits.begin();
       while(itr != m_Exits.end())
       {
-        util::StatusObject sobj;
-        itr->second->ExtractStatus(sobj);
-        obj.PutObject(itr->first.c_str(), sobj);
+        obj.Put(itr->first, itr->second->ExtractStatus());
         ++itr;
       }
+      return obj;
     }
 
     void

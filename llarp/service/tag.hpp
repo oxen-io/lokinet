@@ -3,6 +3,7 @@
 
 #include <dht/key.hpp>
 #include <util/aligned.hpp>
+#include <util/status.hpp>
 
 #include <sodium/crypto_generichash.h>
 
@@ -14,7 +15,7 @@ namespace llarp
 {
   namespace service
   {
-    struct Tag : public llarp::AlignedBuffer< 16 >
+    struct Tag : public llarp::AlignedBuffer< 16 >, public util::IStateful
     {
       Tag() : llarp::AlignedBuffer< SIZE >()
       {
@@ -50,6 +51,12 @@ namespace llarp
             str.begin() + std::min(std::string::size_type(16), str.size()),
             begin());
         return *this;
+      }
+
+      util::StatusObject
+      ExtractStatus() const override
+      {
+        return util::StatusObject{{"name", ToString()}};
       }
 
       std::string

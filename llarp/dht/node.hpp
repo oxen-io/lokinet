@@ -23,10 +23,10 @@ namespace llarp
       {
       }
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override
+      util::StatusObject
+      ExtractStatus() const override
       {
-        obj.PutInt("lastUpdated", rc.last_updated);
+        return rc.ExtractStatus();
       }
 
       bool
@@ -52,22 +52,10 @@ namespace llarp
         introset.A.CalculateAddress(ID.as_array());
       }
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override
+      util::StatusObject
+      ExtractStatus() const override
       {
-        obj.PutInt("timestamp", introset.T);
-
-        std::vector< util::StatusObject > introsObjs(introset.I.size());
-        size_t idx = 0;
-        for(const auto intro : introset.I)
-        {
-          auto& introObj = introsObjs[idx++];
-          introObj.PutString("router", intro.router.ToHex());
-          introObj.PutInt("expiresAt", intro.expiresAt);
-          introObj.PutInt("latency", intro.latency);
-          introObj.PutInt("version", intro.version);
-        }
-        obj.PutObjectArray("intros", introsObjs);
+        return introset.ExtractStatus();
       }
 
       bool

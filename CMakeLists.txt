@@ -756,7 +756,8 @@ else()
 
   add_library(${STATIC_LIB} STATIC ${LIB_SRC})
   add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
-
+  target_link_libraries(${UTIL_LIB} absl::variant)
+  
 # cut back on fluff
 if (NOT WIN32)
   target_link_libraries(${UTIL_LIB} absl::optional)

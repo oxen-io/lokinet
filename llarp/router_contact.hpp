@@ -99,8 +99,8 @@ namespace llarp
 
     uint64_t last_updated = 0;
 
-    void
-    ExtractStatus(util::StatusObject &obj) const override;
+    util::StatusObject
+    ExtractStatus() const override;
 
     bool
     BEncode(llarp_buffer_t *buf) const override;

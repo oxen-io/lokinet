@@ -144,84 +144,44 @@ namespace llarp
       }
     }
 
-    void
-    Endpoint::ExtractStatus(util::StatusObject& obj) const
+    util::StatusObject
+    Endpoint::ExtractStatus() const
     {
-      path::Builder::ExtractStatus(obj);
-      obj.PutString("identity", m_Identity.pub.Addr().ToString());
+      auto obj = path::Builder::ExtractStatus();
+      obj.Put("identity", m_Identity.pub.Addr().ToString());
 
-      obj.PutInt("lastPublished", m_LastPublish);
-      obj.PutInt("lastPublishAttempt", m_LastPublishAttempt);
-      util::StatusObject introsetObj;
-      m_IntroSet.ExtractStatus(introsetObj);
-      obj.PutObject("introset", introsetObj);
+      obj.Put("lastPublished", m_LastPublish);
+      obj.Put("lastPublishAttempt", m_LastPublishAttempt);
+      obj.Put("introset", m_IntroSet.ExtractStatus());
 
       if(!m_Tag.IsZero())
-        obj.PutString("tag", m_Tag.ToString());
+        obj.Put("tag", m_Tag.ToString());
 
-      std::vector< util::StatusObject > remoteSessions(m_RemoteSessions.size());
-      std::vector< util::StatusObject > deadSessions(m_DeadSessions.size());
-      std::vector< util::StatusObject > snodeSessions(m_SNodeSessions.size());
-      std::vector< util::StatusObject > lookups(m_PendingLookups.size());
+      auto putContainer = [](util::StatusObject& o, const std::string& keyname,
+                             const auto& container) {
+        std::vector< util::StatusObject > objs;
+        std::transform(container.begin(), container.end(),
+                       std::back_inserter(objs),
+                       [](const auto& item) -> util::StatusObject {
+                         return item.second->ExtractStatus();
+                       });
+        o.Put(keyname, objs);
+      };
+      putContainer(obj, "deadSessions", m_DeadSessions);
+      putContainer(obj, "remoteSessions", m_RemoteSessions);
+      putContainer(obj, "snodeSessions", m_SNodeSessions);
+      putContainer(obj, "lookups", m_PendingLookups);
 
-      {
-        size_t idx = 0;
-        auto itr   = m_RemoteSessions.begin();
-        while(itr != m_RemoteSessions.end())
-        {
-          util::StatusObject& sobj = remoteSessions[idx++];
-          itr->second->ExtractStatus(sobj);
-          ++itr;
-        }
-      }
-      obj.PutObjectArray("remoteSessions", remoteSessions);
-      {
-        size_t idx = 0;
-        auto itr   = m_DeadSessions.begin();
-        while(itr != m_DeadSessions.end())
-        {
-          util::StatusObject& sobj = deadSessions[idx++];
-          itr->second->ExtractStatus(sobj);
-          ++itr;
-        }
-      }
-      obj.PutObjectArray("deadSessions", deadSessions);
-      {
-        size_t idx = 0;
-        auto itr   = m_SNodeSessions.begin();
-        while(itr != m_SNodeSessions.end())
-        {
-          util::StatusObject& sobj = snodeSessions[idx++];
-          itr->second->ExtractStatus(sobj);
-          ++itr;
-        }
-      }
-      obj.PutObjectArray("snodeSessions", snodeSessions);
-      {
-        size_t idx = 0;
-        auto itr   = m_PendingLookups.begin();
-        while(itr != m_PendingLookups.end())
-        {
-          util::StatusObject& sobj = lookups[idx++];
-          itr->second->ExtractStatus(sobj);
-          ++itr;
-        }
-      }
-      obj.PutObjectArray("lookups", lookups);
+      util::StatusObject sessionObj{};
 
-      util::StatusObject sessionObj;
+      for(const auto& item : m_Sessions)
       {
-        auto itr = m_Sessions.begin();
-        while(itr != m_Sessions.end())
-        {
-          util::StatusObject sobj;
-          itr->second.ExtractStatus(sobj);
-          std::string k = itr->first.ToHex();
-          sessionObj.PutObject(k.c_str(), sobj);
-          ++itr;
-        }
+        std::string k = item.first.ToHex();
+        sessionObj.Put(k, item.second.ExtractStatus());
       }
-      obj.PutObject("converstations", sessionObj);
+
+      obj.Put("converstations", sessionObj);
+      return obj;
     }
 
     void
@@ -1718,38 +1678,31 @@ namespace llarp
       }
     }
 
-    void
-    Endpoint::OutboundContext::ExtractStatus(util::StatusObject& obj) const
+    util::StatusObject
+    Endpoint::OutboundContext::ExtractStatus() const
     {
-      path::Builder::ExtractStatus(obj);
-      obj.PutString("currentConvoTag", currentConvoTag.ToHex());
-      util::StatusObject remoteIntroObj;
-      remoteIntro.ExtractStatus(remoteIntroObj);
-      obj.PutObject("remoteIntro", remoteIntroObj);
-      obj.PutInt("sessionCreatedAt", createdAt);
-      obj.PutInt("lastGoodSend", lastGoodSend);
-      obj.PutInt("seqno", sequenceNo);
-      obj.PutBool("markedBad", markedBad);
-      obj.PutInt("lastShift", lastShift);
-      obj.PutString("remoteIdentity", remoteIdent.Addr().ToString());
-      util::StatusObject remoteIntrosetObj;
-      currentIntroSet.ExtractStatus(remoteIntrosetObj);
-      obj.PutObject("currentRemoteIntroset", remoteIntrosetObj);
-      util::StatusObject nextIntroObj;
-      m_NextIntro.ExtractStatus(nextIntroObj);
-      obj.PutObject("nextIntro", nextIntroObj);
-      std::vector< util::StatusObject > badIntrosObj(m_BadIntros.size());
-      {
-        size_t idx = 0;
-        for(const auto& item : m_BadIntros)
-        {
-          auto& badIntroObj = badIntrosObj[idx++];
-          badIntroObj.PutInt("count", item.second);
-          util::StatusObject i;
-          item.first.ExtractStatus(i);
-          badIntroObj.PutObject("intro", i);
-        }
-      }
+      auto obj = path::Builder::ExtractStatus();
+      obj.Put("currentConvoTag", currentConvoTag.ToHex());
+      obj.Put("remoteIntro", remoteIntro.ExtractStatus());
+      obj.Put("sessionCreatedAt", createdAt);
+      obj.Put("lastGoodSend", lastGoodSend);
+      obj.Put("seqno", sequenceNo);
+      obj.Put("markedBad", markedBad);
+      obj.Put("lastShift", lastShift);
+      obj.Put("remoteIdentity", remoteIdent.Addr().ToString());
+      obj.Put("currentRemoteIntroset", currentIntroSet.ExtractStatus());
+      obj.Put("nextIntro", m_NextIntro.ExtractStatus());
+      std::vector< util::StatusObject > badIntrosObj;
+      std::transform(m_BadIntros.begin(), m_BadIntros.end(),
+                     std::back_inserter(badIntrosObj),
+                     [](const auto& item) -> util::StatusObject {
+                       util::StatusObject o{
+                           {"count", item.second},
+                           {"intro", item.first.ExtractStatus()}};
+                       return o;
+                     });
+      obj.Put("badIntros", badIntrosObj);
+      return obj;
     }
 
     bool

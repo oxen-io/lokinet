@@ -153,8 +153,8 @@ namespace llarp
       return _dht;
     }
 
-    void
-    ExtractStatus(util::StatusObject &obj) const override;
+    util::StatusObject
+    ExtractStatus() const override;
 
     Crypto *
     crypto() const override

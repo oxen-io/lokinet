@@ -77,8 +77,8 @@ namespace llarp
       {
       }
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override;
+      util::StatusObject
+      ExtractStatus() const override;
 
       llarp::Crypto*
       Crypto() const override;

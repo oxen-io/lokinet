@@ -21,16 +21,15 @@ namespace llarp
 
       Bucket(const Key_t& us, Random_t r) : nodes(XorMetric(us)), random(r){};
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override
+      util::StatusObject
+      ExtractStatus() const override
       {
+        util::StatusObject obj{};
         for(const auto& item : nodes)
         {
-          std::string keyname = item.first.ToHex();
-          util::StatusObject itemObj;
-          item.second.ExtractStatus(itemObj);
-          obj.PutObject(keyname.c_str(), itemObj);
+          obj.Put(item.first.ToHex(), item.second.ExtractStatus());
         }
+        return obj;
       }
 
       size_t

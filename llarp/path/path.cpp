@@ -435,55 +435,57 @@ namespace llarp
       _status = st;
     }
 
-    void
-    Path::ExtractStatus(util::StatusObject& obj) const
+    util::StatusObject
+    PathHopConfig::ExtractStatus() const
     {
-      std::vector< util::StatusObject > subobj(hops.size());
-      {
-        size_t idx = 0;
-        for(const auto& hop : hops)
-        {
-          util::StatusObject& hopobj = subobj[idx++];
-          hopobj.PutString("txid", hop.txID.ToHex());
-          hopobj.PutString("rxid", hop.rxID.ToHex());
-          hopobj.PutString("router", hop.rc.pubkey.ToString());
-          hopobj.PutInt("lifetime", hop.lifetime);
-        }
-      }
-      obj.PutObjectArray("hops", subobj);
+      util::StatusObject obj{{"lifetime", lifetime},
+                             {"router", rc.pubkey.ToHex()},
+                             {"txid", txID.ToHex()},
+                             {"rxid", rxID.ToHex()}};
+      return obj;
+    }
 
-      util::StatusObject introObj;
-      intro.ExtractStatus(introObj);
-      obj.PutObject("intro", introObj);
+    util::StatusObject
+    Path::ExtractStatus() const
+    {
+      auto now = llarp::time_now_ms();
+
+      util::StatusObject obj{{"intro", intro.ExtractStatus()},
+                             {"lastRecvMsg", m_LastRecvMessage},
+                             {"lastLatencyTest", m_LastLatencyTestTime},
+                             {"buildStarted", buildStarted},
+                             {"expired", Expired(now)},
+                             {"expiresSoon", ExpiresSoon(now)},
+                             {"expiresAt", ExpireTime()},
+                             {"ready", IsReady()},
+                             {"hasExit", SupportsAnyRoles(ePathRoleExit)}};
+
+      std::vector< util::StatusObject > hopsObj;
+      std::transform(hops.begin(), hops.end(), std::back_inserter(hopsObj),
+                     [](const auto& hop) -> util::StatusObject {
+                       return hop.ExtractStatus();
+                     });
+      obj.Put("hops", hopsObj);
 
       switch(_status)
       {
         case ePathBuilding:
-          obj.PutString("status", "building");
+          obj.Put("status", "building");
           break;
         case ePathEstablished:
-          obj.PutString("status", "established");
+          obj.Put("status", "established");
           break;
         case ePathTimeout:
-          obj.PutString("status", "timeout");
+          obj.Put("status", "timeout");
           break;
         case ePathExpired:
-          obj.PutString("status", "expired");
+          obj.Put("status", "expired");
           break;
         default:
-          obj.PutString("status", "unknown");
+          obj.Put("status", "unknown");
           break;
       }
-      obj.PutInt("lastRecvMsg", m_LastRecvMessage);
-      obj.PutInt("lastLatencyTest", m_LastLatencyTestTime);
-      obj.PutInt("buildStarted", buildStarted);
-      obj.PutBool("ready", IsReady());
-      obj.PutBool("hasExit", SupportsAnyRoles(ePathRoleExit));
-
-      auto now = llarp::time_now_ms();
-      obj.PutBool("expired", Expired(now));
-      obj.PutBool("expiresSoon", ExpiresSoon(now));
-      obj.PutInt("expiresAt", ExpireTime());
+      return obj;
     }
 
     void

@@ -220,12 +220,8 @@ namespace llarp
       bool
       DumpState(Response& resp) const
       {
-        util::StatusObject dump;
-        router->ExtractStatus(dump);
-        if(!dump.Impl.IsObject())
-          return false;
+        util::StatusObject dump = router->ExtractStatus();
         dump.Impl.Accept(resp);
-
         return true;
       }
 

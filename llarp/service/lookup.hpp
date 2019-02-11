@@ -55,15 +55,16 @@ namespace llarp
       const std::string name;
       RouterID endpoint;
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override
+      util::StatusObject
+      ExtractStatus() const override
       {
         auto now = llarp::time_now_ms();
-        obj.PutInt("txid", txid);
-        obj.PutString("endpoint", endpoint.ToHex());
-        obj.PutString("name", name);
-        obj.PutBool("timedOut", IsTimedOut(now));
-        obj.PutInt("createdAt", m_created);
+        util::StatusObject obj{{"txid", txid},
+                               {"endpoint", endpoint.ToHex()},
+                               {"name", name},
+                               {"timedOut", IsTimedOut(now)},
+                               {"createdAt", m_created}};
+        return obj;
       }
 
      protected:

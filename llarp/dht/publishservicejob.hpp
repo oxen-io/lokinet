@@ -35,9 +35,6 @@ namespace llarp
       }
 
       void
-      ExtractStatus(util::StatusObject &obj) const override;
-
-      void
       DoNextRequest(const Key_t &) override
       {
       }

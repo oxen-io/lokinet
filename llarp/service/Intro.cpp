@@ -8,13 +8,14 @@ namespace llarp
     {
     }
 
-    void
-    Introduction::ExtractStatus(util::StatusObject& obj) const
+    util::StatusObject
+    Introduction::ExtractStatus() const
     {
-      obj.PutString("router", router.ToHex());
-      obj.PutInt("expiresAt", expiresAt);
-      obj.PutInt("latency", latency);
-      obj.PutInt("version", version);
+      util::StatusObject obj{{"router", router.ToHex()},
+                             {"expiresAt", expiresAt},
+                             {"latency", latency},
+                             {"version", uint64_t(version)}};
+      return obj;
     }
 
     bool

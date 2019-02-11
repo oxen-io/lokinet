@@ -32,8 +32,8 @@ namespace llarp
       Close();
 
       /// implement istateful
-      void
-      ExtractStatus(util::StatusObject& obj) const override;
+      util::StatusObject
+      ExtractStatus() const override;
 
       /// return true if we are expired right now
       bool

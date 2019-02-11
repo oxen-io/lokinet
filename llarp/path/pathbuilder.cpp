@@ -184,24 +184,20 @@ namespace llarp
       router->paths.RemovePathBuilder(this);
     }
 
-    void
-    Builder::ExtractStatus(util::StatusObject& obj) const
+    util::StatusObject
+    Builder::ExtractStatus() const
     {
-      obj.PutInt("keygens", keygens.load());
-      obj.PutInt("numHops", numHops);
-      obj.PutInt("numPaths", m_NumPaths);
-      std::vector< util::StatusObject > pathObjs(m_Paths.size());
-      {
-        size_t idx = 0;
-        auto itr   = m_Paths.begin();
-        while(itr != m_Paths.end())
-        {
-          util::StatusObject& pobj = pathObjs[idx++];
-          itr->second->ExtractStatus(pobj);
-          ++itr;
-        }
-      }
-      obj.PutObjectArray("paths", pathObjs);
+      util::StatusObject obj{{"keygens", uint64_t(keygens.load())},
+                             {"numHops", uint64_t(numHops)},
+                             {"numPaths", uint64_t(m_NumPaths)}};
+      std::vector< util::StatusObject > pathObjs;
+      std::transform(m_Paths.begin(), m_Paths.end(),
+                     std::back_inserter(pathObjs),
+                     [](const auto& item) -> util::StatusObject {
+                       return item.second->ExtractStatus();
+                     });
+      obj.Put("paths", pathObjs);
+      return obj;
     }
 
     bool

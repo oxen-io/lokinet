@@ -24,13 +24,14 @@ namespace llarp
     {
     }
 
-    void
-    BaseSession::ExtractStatus(util::StatusObject& obj) const
+    util::StatusObject
+    BaseSession::ExtractStatus() const
     {
-      path::Builder::ExtractStatus(obj);
-      obj.PutInt("lastExitUse", m_LastUse);
+      auto obj = path::Builder::ExtractStatus();
+      obj.Put("lastExitUse", m_LastUse);
       auto pub = m_ExitIdentity.toPublic();
-      obj.PutString("exitIdentity", pub.ToString());
+      obj.Put("exitIdentity", pub.ToString());
+      return obj;
     }
 
     bool

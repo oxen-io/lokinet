@@ -25,8 +25,8 @@ namespace llarp
       std::string
       Name() const;
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override;
+      util::StatusObject
+      ExtractStatus() const override;
 
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;

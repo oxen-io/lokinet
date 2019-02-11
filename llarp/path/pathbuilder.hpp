@@ -38,8 +38,8 @@ namespace llarp
 
       virtual ~Builder();
 
-      virtual void
-      ExtractStatus(util::StatusObject& obj) const override;
+      virtual util::StatusObject
+      ExtractStatus() const override;
 
       virtual bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,

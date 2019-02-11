@@ -267,7 +267,7 @@ namespace llarp
     };
 
     /// configuration for a single hop when building a path
-    struct PathHopConfig
+    struct PathHopConfig : public util::IStateful
     {
       /// path id
       PathID_t txID, rxID;
@@ -288,6 +288,9 @@ namespace llarp
 
       ~PathHopConfig();
       PathHopConfig();
+
+      util::StatusObject
+      ExtractStatus() const override;
     };
 
     /// A path we made
@@ -320,8 +323,8 @@ namespace llarp
       Path(const std::vector< RouterContact >& routers, PathSet* parent,
            PathRole startingRoles);
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override;
+      util::StatusObject
+      ExtractStatus() const override;
 
       PathRole
       Role() const

@@ -27,8 +27,8 @@ namespace llarp
     struct IntroSet final : public llarp::IBEncodeMessage,
                             public util::IStateful
     {
-      void
-      ExtractStatus(util::StatusObject& obj) const override;
+      util::StatusObject
+      ExtractStatus() const override;
 
       ServiceInfo A;
       std::vector< Introduction > I;

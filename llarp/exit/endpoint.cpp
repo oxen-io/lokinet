@@ -31,19 +31,20 @@ namespace llarp
       m_Parent->RemoveExit(this);
     }
 
-    void
-    Endpoint::ExtractStatus(util::StatusObject& obj) const
+    util::StatusObject
+    Endpoint::ExtractStatus() const
     {
-      obj.PutString("identity", m_remoteSignKey.ToHex());
-      obj.PutString("ip", m_IP.ToString());
-      obj.PutInt("txRate", m_TxRate);
-      obj.PutInt("rxRate", m_RxRate);
-      obj.PutInt("createdAt", createdAt);
       auto now = m_Parent->Now();
-      obj.PutBool("exiting", !m_RewriteSource);
-      obj.PutBool("looksDead", LooksDead(now));
-      obj.PutBool("expiresSoon", ExpiresSoon(now));
-      obj.PutBool("expired", IsExpired(now));
+      util::StatusObject obj{{"identity", m_remoteSignKey.ToString()},
+                             {"ip", m_IP.ToString()},
+                             {"txRate", m_TxRate},
+                             {"rxRate", m_RxRate},
+                             {"createdAt", createdAt},
+                             {"exiting", !m_RewriteSource},
+                             {"looksDead", LooksDead(now)},
+                             {"expiresSoon", ExpiresSoon(now)},
+                             {"expired", IsExpired(now)}};
+      return obj;
     }
 
     bool

@@ -222,26 +222,18 @@ namespace llarp
       pendingExploreLookups.Expire(now);
     }
 
-    void
-    Context::ExtractStatus(util::StatusObject &obj) const
+    util::StatusObject
+    Context::ExtractStatus() const
     {
-      util::StatusObject pendingRouterObj, pendingIntrosetObj, pendingTagObj,
-          pendingExploreObj, routerBucketObj, serviceBucketObj;
-
-      pendingRouterLookups.ExtractStatus(pendingRouterObj);
-      pendingIntrosetLookups.ExtractStatus(pendingIntrosetObj);
-      pendingTagLookups.ExtractStatus(pendingTagObj);
-      pendingExploreLookups.ExtractStatus(pendingExploreObj);
-      nodes->ExtractStatus(routerBucketObj);
-      services->ExtractStatus(serviceBucketObj);
-
-      obj.PutObject("pendingRouterLookups", pendingRouterObj);
-      obj.PutObject("pendingIntrosetLookups", pendingIntrosetObj);
-      obj.PutObject("pendingTagLookups", pendingTagObj);
-      obj.PutObject("pendingExploreLookups", pendingExploreObj);
-      obj.PutObject("nodes", routerBucketObj);
-      obj.PutObject("services", serviceBucketObj);
-      obj.PutString("ourKey", ourKey.ToHex());
+      util::StatusObject obj{
+          {"pendingRouterLookups", pendingRouterLookups.ExtractStatus()},
+          {"pendingIntrosetLookups", pendingIntrosetLookups.ExtractStatus()},
+          {"pendingTagLookups", pendingTagLookups.ExtractStatus()},
+          {"pendingExploreLookups", pendingExploreLookups.ExtractStatus()},
+          {"nodes", nodes->ExtractStatus()},
+          {"services", services->ExtractStatus()},
+          {"ourKey", ourKey.ToHex()}};
+      return obj;
     }
 
     void

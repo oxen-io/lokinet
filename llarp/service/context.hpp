@@ -25,8 +25,8 @@ namespace llarp
       bool
       StopAll();
 
-      void
-      ExtractStatus(util::StatusObject &obj) const override;
+      util::StatusObject
+      ExtractStatus() const override;
 
       bool
       hasEndpoints();

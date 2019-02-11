@@ -32,26 +32,6 @@ namespace llarp
     }
 
     void
-    PublishServiceJob::ExtractStatus(util::StatusObject &obj) const
-    {
-      obj.PutString("target", I.A.Name());
-      obj.PutInt("S", S);
-      util::StatusObject introsetObj;
-      I.ExtractStatus(introsetObj);
-      obj.PutObject("introset", introsetObj);
-      std::vector< std::string > dontTellObj;
-      for(const auto &key : dontTell)
-        dontTellObj.emplace_back(key.ToHex());
-      obj.PutStringArray("exclude", dontTellObj);
-
-      util::StatusObject whoaskedTx;
-      whoaskedTx.PutInt("txid", whoasked.txid);
-      whoaskedTx.PutString("node", whoasked.node.ToHex());
-
-      obj.PutObject("whoasked", whoaskedTx);
-    }
-
-    void
     PublishServiceJob::Start(const TXOwner &peer)
     {
       std::vector< Key_t > exclude;

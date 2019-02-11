@@ -31,8 +31,8 @@ namespace llarp
         expiresAt = other.expiresAt;
       }
 
-      void
-      ExtractStatus(util::StatusObject& obj) const override;
+      util::StatusObject
+      ExtractStatus() const override;
 
       bool
       IsExpired(llarp_time_t now) const

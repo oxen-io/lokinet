@@ -42,23 +42,18 @@ namespace llarp
     {
     }
 
-    void
-    ExitEndpoint::ExtractStatus(util::StatusObject &obj) const
+    util::StatusObject
+    ExitEndpoint::ExtractStatus() const
     {
-      obj.PutBool("permitExit", m_PermitExit);
-      std::vector< util::StatusObject > activeObjs(m_ActiveExits.size());
+      util::StatusObject obj{{"permitExit", m_PermitExit},
+                             {"ip", m_IfAddr.ToString()}};
+      util::StatusObject exitsObj{};
+      for(const auto &item : m_ActiveExits)
       {
-        size_t idx = 0;
-        auto itr   = m_ActiveExits.begin();
-        while(itr != m_ActiveExits.end())
-        {
-          util::StatusObject &sessionObj = activeObjs[idx++];
-          itr->second->ExtractStatus(sessionObj);
-          ++itr;
-        }
+        exitsObj.Put(item.first.ToHex(), item.second->ExtractStatus());
       }
-      obj.PutString("ip", m_IfAddr.ToString());
-      obj.PutObjectArray("exitSessions", activeObjs);
+      obj.Put("exits", exitsObj);
+      return obj;
     }
 
     bool
