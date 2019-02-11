@@ -13,7 +13,7 @@ namespace abyss
   {
     using Document = rapidjson::Document;
     using Value    = rapidjson::Value;
-    using Writer   = rapidjson::PrettyWriter< rapidjson::OStreamWrapper >;
+    using Writer   = rapidjson::Writer< rapidjson::OStreamWrapper >;
   }  // namespace json
 
 #if __cplusplus >= 201703L
