@@ -18,7 +18,7 @@ namespace llarp
                       [&ret](const ConfigParser::Section_t &s) -> bool {
                         for(const auto &item : s)
                         {
-                          ret.emplace_back(item.first, item.second);
+                          ret.emplace_after(ret.end(), item.first, item.second);
                         }
                         return true;
                       }))

@@ -1,14 +1,15 @@
 #ifndef LLARP_CONFIG_HPP
 #define LLARP_CONFIG_HPP
 
-#include <list>
+#include <forward_list>
 #include <string>
 
 namespace llarp
 {
   struct Config
   {
-    using section_t = std::list< std::pair< std::string, std::string > >;
+    using section_t =
+        std::forward_list< std::pair< std::string, std::string > >;
 
     section_t router;
     section_t network;
