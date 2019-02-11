@@ -11,5 +11,5 @@ if(WIN32)
   list(APPEND UTP_SRC libutp_inet_ntop.cpp)
 endif(WIN32)
 
-add_library(libutp OBJECT ${UTP_SRC})
+add_library(libutp STATIC ${UTP_SRC})
 target_include_directories(libutp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CORE_INCLUDE})

@@ -91,7 +91,7 @@ COVERAGE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
 EXE = $(BUILD_ROOT)/lokinet
-TEST_EXE = $(BUILD_ROOT)/testAll
+TEST_EXE = $(BUILD_ROOT)/test/testAll
 ABYSS_EXE = $(BUILD_ROOT)/abyss-main
 
 LINT_FILES = $(wildcard llarp/*.cpp)
