@@ -230,19 +230,28 @@ namespace llarp
   bool
   RouterContact::IsExpired(llarp_time_t now) const
   {
+    /*
     auto expiresAt = last_updated + Lifetime;
     return now >= expiresAt;
+    */
+    (void)now;
+    return false;
   }
 
   bool
   RouterContact::ExpiresSoon(llarp_time_t now, llarp_time_t dlt) const
   {
+    (void)now;
+    (void)dlt;
+    return false;
+    /*
     if(IsExpired(now))
     {
       return true;
     }
     auto expiresAt = last_updated + Lifetime;
     return expiresAt - now <= dlt;
+    */
   }
 
   std::string
