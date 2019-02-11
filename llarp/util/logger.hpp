@@ -259,22 +259,14 @@ namespace llarp
   }
 }  // namespace llarp
 
-#define LogDebug(x, ...) \
-  _Log(llarp::eLogDebug, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
-#define LogInfo(x, ...) \
-  _Log(llarp::eLogInfo, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
-#define LogWarn(x, ...) \
-  _Log(llarp::eLogWarn, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
-#define LogError(x, ...) \
-  _Log(llarp::eLogError, LOG_TAG, __LINE__, x, ##__VA_ARGS__)
-#define LogDebugTag(tag, x, ...) \
-  _Log(llarp::eLogDebug, tag, __LINE__, x, ##__VA_ARGS__)
-#define LogInfoTag(tag, x, ...) \
-  _Log(llarp::eLogInfo, tag, __LINE__, x, ##__VA_ARGS__)
-#define LogWarnTag(tag, x, ...) \
-  _Log(llarp::eLogWarn, tag, __LINE__, x, ##__VA_ARGS__)
-#define LogErrorTag(tag, x, ...) \
-  _Log(llarp::eLogError, tag, __LINE__, x, ##__VA_ARGS__)
+#define LogDebug(...) _Log(llarp::eLogDebug, LOG_TAG, __LINE__, __VA_ARGS__)
+#define LogInfo(...) _Log(llarp::eLogInfo, LOG_TAG, __LINE__, __VA_ARGS__)
+#define LogWarn(...) _Log(llarp::eLogWarn, LOG_TAG, __LINE__, __VA_ARGS__)
+#define LogError(...) _Log(llarp::eLogError, LOG_TAG, __LINE__, __VA_ARGS__)
+#define LogDebugTag(tag, ...) _Log(llarp::eLogDebug, tag, __LINE__, __VA_ARGS__)
+#define LogInfoTag(tag, ...) _Log(llarp::eLogInfo, tag, __LINE__, __VA_ARGS__)
+#define LogWarnTag(tag, ...) _Log(llarp::eLogWarn, tag, __LINE__, __VA_ARGS__)
+#define LogErrorTag(tag, ...) _Log(llarp::eLogError, tag, __LINE__, __VA_ARGS__)
 
 #ifndef LOG_TAG
 #define LOG_TAG "default"

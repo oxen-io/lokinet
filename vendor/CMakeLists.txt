@@ -17,5 +17,5 @@ set(CXX_COMPAT_SRC
   cppbackport-master/lib/fs/direntry.cpp
 )
 
-add_library(cppbackport OBJECT ${CXX_COMPAT_SRC})
+add_library(cppbackport STATIC ${CXX_COMPAT_SRC})
 target_include_directories(cppbackport PUBLIC cppbackport-master/lib)

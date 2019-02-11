@@ -48,12 +48,6 @@ add_executable(${TEST_EXE}
     ${TEST_SRC}
 )
 
-set(GTEST_ROOT ${INSTALL_DIR})
-# This will warn because we have googletest in-source, but this is the only way
-# to import gtest_add_tests.
-find_package(GTest)
-gtest_add_tests(TARGET ${TEST_EXE} SOURCES ${TEST_SRC})
-
 target_link_libraries(${TEST_EXE} PUBLIC gmock gtest ${STATIC_LIB})
 target_include_directories(${TEST_EXE} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 

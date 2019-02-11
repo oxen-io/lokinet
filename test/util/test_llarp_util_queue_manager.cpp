@@ -377,7 +377,7 @@ TEST_P(BasicFunctionality, pushIndex)
 }
 
 INSTANTIATE_TEST_CASE_P(TestQueueManagerBasic, BasicFunctionality,
-                        ::testing::Range(1u, 100u));
+                        ::testing::Range(1u, 100u), );
 
 // Potential issues:
 // - That pushing an element at the max combined index will push the next
@@ -557,7 +557,7 @@ CombinedIndexData PopAtMaxData[] =
         {7, 14, 7}};
 
 INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, PopAtMax,
-                        ::testing::ValuesIn(PopAtMaxData));
+                        ::testing::ValuesIn(PopAtMaxData), );
 
 class ReservePop : public ::testing::TestWithParam< CombinedIndexData >
 {
@@ -632,7 +632,7 @@ CombinedIndexData ReservePopIndexForClearData[] = {
 };
 
 INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, ReservePop,
-                        ::testing::ValuesIn(ReservePopIndexForClearData));
+                        ::testing::ValuesIn(ReservePopIndexForClearData), );
 
 struct CircularDifferenceData
 {
@@ -716,7 +716,7 @@ CircularDifferenceData circularDifferenceData[] = {
 };
 
 INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, CircularDifference,
-                        ::testing::ValuesIn(circularDifferenceData));
+                        ::testing::ValuesIn(circularDifferenceData), );
 
 class NumGenerations : public ::testing::TestWithParam< uint32_t >
 {
@@ -750,7 +750,7 @@ uint32_t GenerationData[] = {1,
                              QueueManager::MAX_CAPACITY};
 
 INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, NumGenerations,
-                        ::testing::ValuesIn(GenerationData));
+                        ::testing::ValuesIn(GenerationData), );
 
 TEST(TestQueueManager, abortPushIndexReservation)
 {
@@ -880,7 +880,7 @@ AbortData abortData[] = {
 };
 
 INSTANTIATE_TEST_CASE_P(TestQueueManagerMaxCombinedIndex, AbortPush,
-                        ::testing::ValuesIn(abortData));
+                        ::testing::ValuesIn(abortData), );
 
 // Testing reservePopForClear
 // - Failure is returned when the head of the queue is the same as the given end
@@ -1056,7 +1056,7 @@ ReserveData reserveData[] = {
 };
 
 INSTANTIATE_TEST_CASE_P(TestQueueManagerReserve, Reserve,
-                        ::testing::ValuesIn(reserveData));
+                        ::testing::ValuesIn(reserveData), );
 
 TEST(TestQueueManager, Enabled)
 {

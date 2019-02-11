@@ -241,6 +241,13 @@ set(ANDROID_LIB ${LIB}android)
 get_filename_component(TT_ROOT "vendor/libtuntap-master" ABSOLUTE)
 add_definitions(-D${CMAKE_SYSTEM_NAME})
 
+function(add_import_library libname)
+  add_library(libname SHARED IMPORTED)
+  if(NOT TARGET libname)
+    message(FATAL "unable to find library ${libname}")
+  endif()
+endfunction()
+
 if(UNIX)
   add_definitions(-DUNIX)
   add_definitions(-DPOSIX)
@@ -288,10 +295,6 @@ else()
   set(LIBTUNTAP_SRC ${LIBTUNTAP_SRC_BASE})
 endif(UNIX)
 
-if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(ISOLATE_PROC_SRC llarp/linux/netns.cpp)
-endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-
 if(NOT WIN32)
   add_subdirectory(vendor)
 endif(NOT WIN32)
@@ -304,18 +307,7 @@ set(RC_SRC
   daemon/rcutil.cpp
 )
 
-set(DNS_SRC
-  llarp/dns.cpp
-  llarp/dnsc.cpp
-  llarp/dnsd.cpp
-  llarp/dns_iptracker.cpp
-  llarp/dns_dotlokilookup.cpp
-  llarp/dns_rectypes.cpp
-  llarp/net/net.cpp
-  daemon/dns.cpp
-)
-
-set(ALL_SRC ${RC_SRC} ${EXE_SRC} ${DNS_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC})
+set(ALL_SRC ${RC_SRC} ${EXE_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC})
 
 foreach(F ${ALL_SRC})
   set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
@@ -343,14 +335,6 @@ else()
     install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
-  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    if(NON_PC_TARGET)
-      target_link_libraries(${PLATFORM_LIB} -lrt)
-    else()
-      target_link_libraries(${PLATFORM_LIB} -lcap)
-    endif(NON_PC_TARGET)
-  endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-
   if (WIN32)
     target_link_libraries(${EXE} ${STATIC_LIB} ws2_32 iphlpapi)
   else()
@@ -362,16 +346,6 @@ else()
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
     target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
   endif(ANDROID)
-
-  if(WITH_SHARED)
-    add_library(${SHARED_LIB} SHARED ${LIB_SRC})
-    if (WIN32)
-      target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB} ws2_32 iphlpapi Threads::Threads)
-    else (NOT WIN32)
-      target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} libutp ${PLATFORM_LIB} Threads::Threads)
-      install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
-    endif(WIN32)
-  endif(WITH_SHARED)
 endif(SHADOW)
 
 if(USE_LIBABYSS)
@@ -384,7 +358,7 @@ if(USE_LIBABYSS)
     ${ABYSS}/src/client.cpp
     ${ABYSS}/src/server.cpp
     ${ABYSS}/src/json.cpp)
-  add_library(${ABYSS_LIB} OBJECT ${ABYSS_SRC})
+  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
   target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
   list(APPEND ALL_SRC ${ABYSS_SRC} ${ABYSS}/main.cpp)
 
