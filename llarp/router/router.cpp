@@ -734,7 +734,11 @@ namespace llarp
 
     if(StrEq(section, "bind"))
     {
-      if(!StrEq(key, "*"))
+      if(StrEq(key, "*"))
+      {
+        m_OutboundPort = proto;
+      }
+      else
       {
         auto server = llarp::utp::NewServerFromRouter(this);
         if(!server->EnsureKeys(transport_keyfile.string().c_str()))
@@ -1676,7 +1680,7 @@ namespace llarp
 
       for(auto af : afs)
       {
-        if(!link->Configure(netloop, "*", af, 0))
+        if(!link->Configure(netloop, "*", af, m_OutboundPort))
           continue;
         outboundLinks.insert(std::move(link));
         break;
