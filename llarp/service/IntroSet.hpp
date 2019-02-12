@@ -145,6 +145,10 @@ namespace llarp
       GetNewestIntroExpiration() const;
 
       bool
+      GetNewestIntroOnRouter(const RouterID& router,
+                             Introduction& result) const;
+
+      bool
       HasExpiredIntros(llarp_time_t now) const;
 
       bool
