@@ -7,6 +7,10 @@
 #include <util/logger.hpp>
 #include <util/mem.hpp>
 
+#include <fstream>
+#include <ios>
+#include <iostream>
+
 namespace llarp
 {
   template < typename Config, typename Section >
@@ -18,7 +22,7 @@ namespace llarp
                       [&ret](const ConfigParser::Section_t &s) -> bool {
                         for(const auto &item : s)
                         {
-                          ret.emplace_after(ret.end(), item.first, item.second);
+                          ret.emplace_back(item.first, item.second);
                         }
                         return true;
                       }))
@@ -32,7 +36,9 @@ namespace llarp
   {
     ConfigParser parser;
     if(!parser.LoadFile(fname))
+    {
       return false;
+    }
     router    = find_section(parser, "router", section_t{});
     network   = find_section(parser, "network", section_t{});
     connect   = find_section(parser, "connect", section_t{});
