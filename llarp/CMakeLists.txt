@@ -31,7 +31,7 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(${UTIL_LIB} PUBLIC cppbackport)
+target_link_libraries(${UTIL_LIB} PUBLIC cppbackport absl::variant)
 
 # cut back on fluff
 if (NOT WIN32)
@@ -76,6 +76,7 @@ if(WIN32)
 endif()
 
 if(USE_LIBABYSS)
+    target_link_libraries(${UTIL_LIB} PUBLIC ${ABYSS_LIB})
     target_link_libraries(${PLATFORM_LIB} ${ABYSS_LIB})
 endif()
 

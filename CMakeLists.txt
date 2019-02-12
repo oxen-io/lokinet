@@ -370,8 +370,9 @@ if(USE_LIBABYSS)
   endif(NOT WIN32)
 
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} Threads::Threads)
-  target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+  target_include_directories(${UTIL_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
   target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+  target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
 
   # for freebsd
   if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
