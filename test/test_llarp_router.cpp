@@ -81,4 +81,4 @@ FindOrCreateFunc findOrCreateFunc[] = {llarp_findOrCreateEncryption,
                                        llarp_findOrCreateIdentity};
 
 INSTANTIATE_TEST_CASE_P(TestRouter, FindOrCreate,
-                        ::testing::ValuesIn(findOrCreateFunc));
+                        ::testing::ValuesIn(findOrCreateFunc), );

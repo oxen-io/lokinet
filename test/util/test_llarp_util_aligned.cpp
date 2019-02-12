@@ -22,7 +22,7 @@ struct AlignedBufferTest : public ::testing::Test
 {
 };
 
-TYPED_TEST_CASE(AlignedBufferTest, TestSizes);
+TYPED_TEST_CASE(AlignedBufferTest, TestSizes, );
 
 TYPED_TEST(AlignedBufferTest, Constructor)
 {
