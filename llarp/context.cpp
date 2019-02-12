@@ -38,7 +38,7 @@ namespace llarp
   Context::Configure()
   {
     // llarp::LogInfo("loading config at ", configfile);
-    if(config->Load(configfile.c_str()))
+    if(!config->Load(configfile.c_str()))
     {
       config.release();
       llarp::LogError("failed to load config file ", configfile);
