@@ -335,37 +335,6 @@ else()
     install(CODE "execute_process(COMMAND setcap cap_net_admin,cap_net_bind_service=+eip ${CMAKE_INSTALL_PREFIX}/bin/lokinet)")
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
-<<<<<<< HEAD
-  add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-  add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
-  target_link_libraries(${UTIL_LIB} absl::variant)
-  
-# cut back on fluff
-if (NOT WIN32)
-  target_link_libraries(${UTIL_LIB} absl::optional)
-else()
-  target_link_libraries(${UTIL_LIB})
-endif(NOT WIN32)
-
-  add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
-
-  if(USE_LIBABYSS)
-    target_link_libraries(${PLATFORM_LIB} ${UTIL_LIB} Threads::Threads ${ABYSS_LIB})
-  else()
-    target_link_libraries(${PLATFORM_LIB} ${UTIL_LIB} Threads::Threads)
-  endif(USE_LIBABYSS)
-
-  if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-    if(NON_PC_TARGET)
-      target_link_libraries(${PLATFORM_LIB} -lrt)
-    else()
-      target_link_libraries(${PLATFORM_LIB} -lcap)
-    endif(NON_PC_TARGET)
-  endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-
-  target_link_libraries(${STATIC_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB})
-=======
->>>>>>> 057365d40c4305c8ccdf866de1f2f635a361ada3
   if (WIN32)
     target_link_libraries(${EXE} ${STATIC_LIB} ws2_32 iphlpapi)
   else()

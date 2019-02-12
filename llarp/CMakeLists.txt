@@ -19,6 +19,7 @@ set(LIB_UTIL_SRC
   util/queue_manager.cpp
   util/queue.cpp
   util/str.cpp
+  util/status.cpp
   util/string_view.cpp
   util/thread_pool.cpp
   util/threading.cpp
@@ -30,7 +31,7 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(${UTIL_LIB} PUBLIC cppbackport)
+target_link_libraries(${UTIL_LIB} PUBLIC cppbackport absl::variant)
 
 # cut back on fluff
 if (NOT WIN32)
