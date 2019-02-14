@@ -1737,7 +1737,7 @@ namespace llarp
           ++itr;
       }
       // send control message if we look too quiet
-      if(now - lastGoodSend > 60000)
+      if(now - lastGoodSend > (sendTimeout / 2))
       {
         Encrypted< 64 > tmp;
         tmp.Randomize();
