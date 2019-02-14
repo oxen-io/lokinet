@@ -1121,6 +1121,29 @@ namespace llarp
     Endpoint::OutboundContext::SwapIntros()
     {
       remoteIntro = m_NextIntro;
+      // prepare next intro
+      auto now = Now();
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(intro.ExpiresSoon(now))
+          continue;
+        if(m_BadIntros.find(intro) == m_BadIntros.end()
+           && remoteIntro.router == intro.router)
+        {
+          m_NextIntro = intro;
+          return;
+        }
+      }
+      for(const auto& intro : currentIntroSet.I)
+      {
+        if(intro.ExpiresSoon(now))
+          continue;
+        if(m_BadIntros.find(intro) == m_BadIntros.end())
+        {
+          m_NextIntro = intro;
+          return;
+        }
+      }
     }
 
     bool
@@ -1152,6 +1175,8 @@ namespace llarp
         }
         if(GetPathByRouter(m_NextIntro.router) == nullptr)
           BuildOneAlignedTo(m_NextIntro.router);
+        else
+          SwapIntros();
       }
       return true;
     }
@@ -1383,6 +1408,10 @@ namespace llarp
         lastShift = now;
         BuildOneAlignedTo(m_NextIntro.router);
       }
+      else if(shiftedIntro)
+      {
+        SwapIntros();
+      }
       else
       {
         llarp::LogInfo(Name(), " updating introset");
@@ -1399,16 +1428,18 @@ namespace llarp
       if(now - lastShift < MIN_SHIFT_INTERVAL)
         return false;
       bool shifted = false;
-      Introduction newIntro;
-      if(currentIntroSet.GetNewestIntroOnRouter(remoteIntro.router, newIntro))
+      // to find a intro on the same router as before
+      for(const auto& intro : currentIntroSet.I)
       {
-        if(m_NextIntro != newIntro)
+        if(intro.ExpiresSoon(now))
+          continue;
+        if(m_BadIntros.find(intro) == m_BadIntros.end()
+           && remoteIntro.router == intro.router)
         {
-          m_NextIntro = newIntro;
+          m_NextIntro = intro;
           return true;
         }
       }
-
       for(const auto& intro : currentIntroSet.I)
       {
         m_Endpoint->EnsureRouterIsKnown(intro.router);
@@ -1416,7 +1447,10 @@ namespace llarp
           continue;
         if(m_BadIntros.find(intro) == m_BadIntros.end() && m_NextIntro != intro)
         {
-          shifted     = intro.router != m_NextIntro.router;
+          shifted = intro.router != m_NextIntro.router
+              || (now < intro.expiresAt
+                  && intro.expiresAt - now
+                      > 10 * 1000);  // TODO: hardcoded value
           m_NextIntro = intro;
           success     = true;
           break;
@@ -1426,7 +1460,6 @@ namespace llarp
       {
         lastShift = now;
         BuildOneAlignedTo(m_NextIntro.router);
-        SwapIntros();
       }
       return success;
     }
@@ -1438,7 +1471,10 @@ namespace llarp
       auto now = m_Endpoint->Now();
       if(remoteIntro.ExpiresSoon(now))
       {
-        llarp::LogWarn("no good path yet, your message may drop");
+        if(!MarkCurrentIntroBad(now))
+        {
+          llarp::LogWarn("no good path yet, your message may drop");
+        }
       }
       if(sequenceNo)
       {
@@ -1672,6 +1708,13 @@ namespace llarp
     bool
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
+      // check for expiration
+      if(remoteIntro.ExpiresSoon(now))
+      {
+        // shift intro if it expires "soon"
+        ShiftIntroduction();
+      }
+      // swap if we can
       if(remoteIntro != m_NextIntro)
       {
         if(GetPathByRouter(m_NextIntro.router) != nullptr)
@@ -1681,16 +1724,9 @@ namespace llarp
           llarp::LogInfo(Name(), "swapped intro");
         }
       }
-      else if(remoteIntro.ExpiresSoon(now))
-      {
-        // shift intro if it expires "soon"
-        ShiftIntroduction();
-      }
-
       // lookup router in intro if set and unknown
       if(!remoteIntro.router.IsZero())
         m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
-
       // expire bad intros
       auto itr = m_BadIntros.begin();
       while(itr != m_BadIntros.end())
@@ -1703,11 +1739,6 @@ namespace llarp
       // send control message if we look too quiet
       if(now - lastGoodSend > (sendTimeout / 2))
       {
-        // build path
-        if(GetPathByRouter(remoteIntro.router) == nullptr)
-        {
-          BuildOneAlignedTo(remoteIntro.router);
-        }
         Encrypted< 64 > tmp;
         tmp.Randomize();
         llarp_buffer_t buf(tmp.data(), tmp.size());
@@ -1805,6 +1836,7 @@ namespace llarp
       {
         llarp::LogError("cannot encrypt and send: no path for intro ",
                         remoteIntro);
+
         return;
       }
 

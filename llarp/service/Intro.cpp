@@ -12,7 +12,6 @@ namespace llarp
     Introduction::ExtractStatus() const
     {
       util::StatusObject obj{{"router", router.ToHex()},
-                             {"path", pathID.ToHex()},
                              {"expiresAt", expiresAt},
                              {"latency", latency},
                              {"version", uint64_t(version)}};

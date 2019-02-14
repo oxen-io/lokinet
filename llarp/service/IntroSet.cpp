@@ -65,19 +65,6 @@ namespace llarp
     }
 
     bool
-    IntroSet::GetNewestIntroOnRouter(const RouterID& router,
-                                     Introduction& intro) const
-    {
-      intro.Clear();
-      for(const auto& i : I)
-      {
-        if(intro.router == router && intro.expiresAt < i.expiresAt)
-          intro = i;
-      }
-      return intro.expiresAt > 0;
-    }
-
-    bool
     IntroSet::BEncode(llarp_buffer_t* buf) const
     {
       if(!bencode_start_dict(buf))
