@@ -44,8 +44,7 @@ llarp_make_ev_loop()
     || (__APPLE__ && __MACH__)
   std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_kqueue_loop >();
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
-  std::unique_ptr< llarp_win32_loop > r =
-      std::make_unique< llarp_kqueue_loop >();
+  std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_win32_loop >();
 #else
 // TODO: fall back to a generic select-based event loop
 #error no event loop subclass
