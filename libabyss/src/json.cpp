@@ -1,6 +1,4 @@
 #include <abyss/json.hpp>
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/writer.h>
 #include <util/string_view.hpp>
 
 #include <cstring>
@@ -52,8 +50,8 @@ namespace abyss
     void
     ToString(const json::Document& val, std::ostream& out)
     {
-      rapidjson::OStreamWrapper s(out);
-      rapidjson::Writer< rapidjson::OStreamWrapper > writer(s);
+      Stream s(out);
+      rapidjson::Writer< Stream > writer(s);
       val.Accept(writer);
     }
 

@@ -25,7 +25,7 @@ namespace abyss
       std::unique_ptr< abyss::json::IParser > m_BodyParser;
       json::Document m_Request;
       std::stringstream m_ResponseBuffer;
-      rapidjson::OStreamWrapper m_ResponseStream;
+      abyss::json::Stream m_ResponseStream;
       abyss::json::Writer m_Response;
 
       enum HTTPState
