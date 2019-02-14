@@ -117,7 +117,7 @@ namespace
 }  // namespace
 
 INSTANTIATE_TEST_CASE_P(TestDhtTxOwner, TxOwner,
-                        ::testing::ValuesIn(makeData()));
+                        ::testing::ValuesIn(makeData()), );
 
 INSTANTIATE_TEST_CASE_P(TestDhtTxOwner, TxOwnerOps,
-                        ::testing::ValuesIn(makeCmpData()));
+                        ::testing::ValuesIn(makeCmpData()), );
