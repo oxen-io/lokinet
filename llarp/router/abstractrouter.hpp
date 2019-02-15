@@ -2,7 +2,7 @@
 #define LLARP_ABSTRACT_ROUTER_HPP
 
 #include <util/types.hpp>
-
+#include <util/status.hpp>
 #include <vector>
 
 struct llarp_buffer_t;
@@ -39,7 +39,7 @@ namespace llarp
     struct IMessageHandler;
   }
 
-  struct AbstractRouter
+  struct AbstractRouter : public util::IStateful
   {
     virtual ~AbstractRouter() = 0;
 
@@ -138,6 +138,14 @@ namespace llarp
     /// returns false otherwise
     virtual bool
     CheckRenegotiateValid(RouterContact newRc, RouterContact oldRC) = 0;
+
+    /// set router's service node whitelist
+    virtual void 
+    SetRouterWhitelist(const std::vector<RouterID> & routers) =0 ;
+
+    /// visit each connected link session 
+    virtual void
+    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit) const = 0;
   };
 }  // namespace llarp
 

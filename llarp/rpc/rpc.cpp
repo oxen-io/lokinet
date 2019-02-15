@@ -1,6 +1,9 @@
 #include <rpc/rpc.hpp>
 
 #include <router/abstractrouter.hpp>
+#include <util/logger.hpp>
+#include <router_id.hpp>
+#include <exit/context.hpp>
 
 #ifdef USE_ABYSS
 #include <util/encode.hpp>
@@ -160,7 +163,7 @@ namespace llarp
       bool
       Start(const std::string& remote)
       {
-        return RunAsync(router->netloop, remote);
+        return RunAsync(router->netloop(), remote);
       }
 
       abyss::http::IRPCClientHandler*
@@ -177,12 +180,7 @@ namespace llarp
       {
         if(updated)
         {
-          router->lokinetRouters.clear();
-          for(const auto& pk : list)
-            router->lokinetRouters.insert(std::make_pair(
-                pk.data(), std::numeric_limits< llarp_time_t >::max()));
-          LogInfo("updated service node list, we have ",
-                  router->lokinetRouters.size(), " authorized routers");
+          router->SetRouterWhitelist(list);
         }
         else
           LogError("service node list not updated");
@@ -229,7 +227,7 @@ namespace llarp
       ListExitLevels(Response& resp) const
       {
         exit::Context::TrafficStats stats;
-        router->exitContext.CalculateExitTraffic(stats);
+        router->exitContext().CalculateExitTraffic(stats);
         resp.StartArray();
         auto itr = stats.begin();
         while(itr != stats.end())
@@ -339,7 +337,7 @@ namespace llarp
         saddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         saddr.sin_family      = AF_INET;
         saddr.sin_port        = htons(port);
-        return _handler.ServeAsync(router->netloop, router->logic(),
+        return _handler.ServeAsync(router->netloop(), router->logic(),
                                    (const sockaddr*)&saddr);
       }
     };

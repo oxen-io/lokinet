@@ -68,7 +68,7 @@ namespace llarp
     }
   };
 
-  struct Router final : public AbstractRouter, public util::IStateful
+  struct Router final : public AbstractRouter
   {
     bool ready;
     // transient iwp encryption key
@@ -139,6 +139,9 @@ namespace llarp
     {
       return _rc;
     }
+
+    void
+    SetRouterWhitelist(const std::vector<RouterID> & routers) override;
 
     exit::Context &
     exitContext() override
@@ -427,7 +430,7 @@ namespace llarp
         RouterID remote, const std::vector< RouterContact > &results) override;
 
     void
-    ForEachPeer(std::function< void(const ILinkSession *, bool) > visit) const;
+    ForEachPeer(std::function< void(const ILinkSession *, bool) > visit) const override;
 
     void
     ForEachPeer(std::function< void(ILinkSession *) > visit);

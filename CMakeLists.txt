@@ -239,6 +239,9 @@ set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
 set(UTIL_LIB ${LIB}-util)
 set(PLATFORM_LIB ${LIB}-platform)
 set(ANDROID_LIB ${LIB}android)
+set(ABYSS libabyss)
+set(ABYSS_LIB abyss)
+set(ABYSS_EXE ${ABYSS_LIB}-main)
 get_filename_component(TT_ROOT "vendor/libtuntap-master" ABSOLUTE)
 add_definitions(-D${CMAKE_SYSTEM_NAME})
 
@@ -307,9 +310,43 @@ function(add_log_tag target)
   endforeach(F)
 endfunction()
 
+if(USE_LIBABYSS)
+  add_definitions(-DUSE_ABYSS=1)
+
+  set(ABYSS_SRC
+    ${ABYSS}/src/http.cpp
+    ${ABYSS}/src/client.cpp
+    ${ABYSS}/src/server.cpp
+    ${ABYSS}/src/json.cpp)
+  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
+
+
+endif(USE_LIBABYSS)
+
 add_subdirectory(crypto)
 add_subdirectory(libutp)
 add_subdirectory(llarp)
+
+if(USE_LIBABYSS)
+  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
+
+  if (NOT WIN32)
+    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
+    target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} Threads::Threads)
+  else()
+    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
+    target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
+  endif(NOT WIN32)
+  target_include_directories(${UTIL_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+  target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+  target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+  # for freebsd
+  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    target_include_directories(${ABYSS_LIB} /usr/local/include)
+  endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  add_log_tag(${ABYSS_EXE})
+  add_log_tag(${ABYSS_LIB})
+endif(USE_LIBABYSS)
 
 if(SHADOW)
   add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${UTP_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
@@ -348,40 +385,6 @@ else()
     target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
   endif(ANDROID)
 endif(SHADOW)
-
-if(USE_LIBABYSS)
-  add_definitions(-DUSE_ABYSS=1)
-  set(ABYSS libabyss)
-  set(ABYSS_LIB abyss)
-  set(ABYSS_EXE ${ABYSS_LIB}-main)
-  set(ABYSS_SRC
-    ${ABYSS}/src/http.cpp
-    ${ABYSS}/src/client.cpp
-    ${ABYSS}/src/server.cpp
-    ${ABYSS}/src/json.cpp)
-  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
-  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
-
-  if (NOT WIN32)
-    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-    target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} Threads::Threads)
-  else()
-    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
-    target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
-  endif(NOT WIN32)
-
-  add_log_tag(${ABYSS_EXE})
-  add_log_tag(${ABYSS_LIB})
-
-  target_include_directories(${UTIL_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
-  target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
-  target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
-
-  # for freebsd
-  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    target_include_directories(${ABYSS_LIB} /usr/local/include)
-  endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-endif(USE_LIBABYSS)
 
 enable_testing()
 
