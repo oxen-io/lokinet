@@ -240,6 +240,17 @@ namespace llarp
     util::StatusObject obj{{"dht", _dht->impl.ExtractStatus()},
                            {"services", hiddenServiceContext.ExtractStatus()},
                            {"exit", _exitContext.ExtractStatus()}};
+    std::vector<util::StatusObject> ob_links, ib_links;
+    std::transform(inboundLinks.begin(), inboundLinks.end(), std::back_inserter(ib_links), [](const auto & link) -> util::StatusObject {
+      return link->ExtractStatus();
+    });
+    std::transform(outboundLinks.begin(), outboundLinks.end(), std::back_inserter(ob_links), [](const auto & link) -> util::StatusObject {
+      return link->ExtractStatus();
+    });
+    obj.Put("links", util::StatusObject{
+      {"outbound", ob_links},
+      {"inbound", ib_links}
+    });
     return obj;
   }
 
@@ -977,7 +988,7 @@ namespace llarp
       return false;
 
     // store it in nodedb async
-    nodedb()->InsertAsync(newrc);
+    async_verify_RC(newrc, nullptr);
     // update dht if required
     if(dht()->impl.nodes->HasNode(dht::Key_t{newrc.pubkey}))
     {
@@ -1245,6 +1256,16 @@ namespace llarp
       job->hook = &Router::on_verify_client_rc;
 
     llarp_nodedb_async_verify(job);
+  }
+
+  void
+  Router::SetRouterWhitelist(const std::vector<RouterID> & routers)
+  {
+    lokinetRouters.clear();
+    for(const auto & router : routers)
+      lokinetRouters.emplace(router, std::numeric_limits<llarp_time_t>::max());
+    LogInfo("lokinet service node list now has ", lokinetRouters.size(), 
+     " routers");
   }
 
   bool

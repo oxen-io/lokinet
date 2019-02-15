@@ -78,10 +78,6 @@ if(WIN32)
   target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
 endif()
 
-if(USE_LIBABYSS)
-    target_link_libraries(${UTIL_LIB} PUBLIC ${ABYSS_LIB})
-    target_link_libraries(${PLATFORM_LIB} ${ABYSS_LIB})
-endif()
 
 set(DNSLIB_SRC
   dns/dotlokilookup.cpp
@@ -207,6 +203,13 @@ set(LIB_SRC
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 target_link_libraries(${STATIC_LIB} PUBLIC ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} libutp ${LIBS})
+
+if(USE_LIBABYSS)
+    add_definitions(-DUSE_ABYSS=1)
+    target_link_libraries(${UTIL_LIB} PUBLIC ${ABYSS_LIB})
+    target_link_libraries(${PLATFORM_LIB} PUBLIC  ${ABYSS_LIB})
+    target_link_libraries(${STATIC_LIB} PUBLIC ${ABYSS_LIB})
+endif()
 
 if(TESTNET)
   target_sources(${STATIC_LIB} PUBLIC testnet.c)

@@ -83,8 +83,8 @@ namespace llarp
       if(expect)
       {
         ssize_t s = utp_writev(sock, vecs.data(), vecs.size());
-
-        while(s > static_cast< ssize_t >(vecq.front().iov_len))
+        m_TXRate += s;
+        while(s > 0 && s >= static_cast< ssize_t >(vecq.front().iov_len))
         {
           s -= vecq.front().iov_len;
           vecq.pop_front();
@@ -173,6 +173,8 @@ namespace llarp
     Session::TickImpl(llarp_time_t now)
     {
       PruneInboundMessages(now);
+      m_TXRate = 0;
+      m_RXRate = 0;
     }
 
     /// low level read
@@ -181,6 +183,7 @@ namespace llarp
     {
       // mark we are alive
       Alive();
+      m_RXRate += sz;
       size_t s = sz;
       // process leftovers
       if(recvBufOffset)
@@ -978,6 +981,19 @@ namespace llarp
         parent->MapAddr(remoteRC.pubkey.as_array(), this);
         parent->SessionEstablished(remoteRC);
       }
+    }
+
+    util::StatusObject
+    Session::ExtractStatus() const
+    {
+      return {
+        {"client", !remoteRC.IsPublicRouter()},
+        {"sendBacklog", uint64_t(SendQueueBacklog())},
+        {"tx", m_TXRate},
+        {"rx", m_RXRate},
+        {"remoteAddr", remoteAddr.ToString()},
+        {"pubkey", remoteRC.pubkey.ToHex()}
+      };
     }
 
     bool

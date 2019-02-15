@@ -131,9 +131,16 @@ namespace llarp
       std::unordered_map< uint32_t, InboundMessage > m_RecvMsgs;
       /// are we stalled or nah?
       bool stalled = false;
+
+      uint64_t m_RXRate = 0;
+      uint64_t m_TXRate = 0;
+
       /// mark session as alive
       void
       Alive();
+
+      util::StatusObject 
+      ExtractStatus() const override;
 
       /// base
       Session(LinkLayer* p);
