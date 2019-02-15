@@ -163,10 +163,6 @@ llarp_findOrCreateEncryption(llarp::Crypto *crypto, const fs::path &path,
 
 namespace llarp
 {
-  AbstractRouter::~AbstractRouter()
-  {
-  }
-
   bool
   Router::TryConnectAsync(RouterContact remote, uint16_t numretries)
   {
