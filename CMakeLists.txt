@@ -300,15 +300,16 @@ if(NOT WIN32)
   add_subdirectory(vendor)
 endif(NOT WIN32)
 
+function(add_log_tag target)
+  get_target_property(TARGET_SRCS ${target} SOURCES)
+  foreach(F ${TARGET_SRCS})
+    set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
+  endforeach(F)
+endfunction()
+
 add_subdirectory(crypto)
 add_subdirectory(libutp)
 add_subdirectory(llarp)
-
-set(ALL_SRC ${EXE_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC})
-
-foreach(F ${ALL_SRC})
-  set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
-endforeach(F)
 
 if(SHADOW)
   add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${UTP_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
@@ -320,6 +321,8 @@ else()
   else()
     add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
   endif(NOT WIN32)
+
+  add_log_tag(${EXE})
 
   install(TARGETS ${EXE} RUNTIME DESTINATION bin)
   if(WIN32)
@@ -341,6 +344,7 @@ else()
 
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
+    add_log_tag(${ANDROID_LIB})
     target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
   endif(ANDROID)
 endif(SHADOW)
@@ -357,7 +361,6 @@ if(USE_LIBABYSS)
     ${ABYSS}/src/json.cpp)
   add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
   target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
-  list(APPEND ALL_SRC ${ABYSS_SRC} ${ABYSS}/main.cpp)
 
   if (NOT WIN32)
     add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
@@ -366,6 +369,9 @@ if(USE_LIBABYSS)
     add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
     target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
   endif(NOT WIN32)
+
+  add_log_tag(${ABYSS_EXE})
+  add_log_tag(${ABYSS_LIB})
 
   target_include_directories(${UTIL_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
   target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
