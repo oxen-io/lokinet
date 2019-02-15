@@ -12,4 +12,7 @@ if(WIN32)
 endif(WIN32)
 
 add_library(libutp STATIC ${UTP_SRC})
+if(WIN32)
+  target_link_libraries(libutp ws2_32)
+endif(WIN32)
 target_include_directories(libutp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${CORE_INCLUDE})
