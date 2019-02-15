@@ -1,8 +1,8 @@
 #ifndef __ABYSS_SERVER_HPP__
 #define __ABYSS_SERVER_HPP__
 
-#include <abyss/json.hpp>
 #include <ev/ev.h>
+#include <util/json.hpp>
 #include <util/logic.hpp>
 #include <util/string_view.hpp>
 #include <util/time.hpp>
@@ -21,8 +21,8 @@ namespace abyss
     struct IRPCHandler
     {
       using Method_t = std::string;
-      using Params   = json::Value;
-      using Response = json::Writer;
+      using Params   = llarp::json::Value;
+      using Response = llarp::json::Writer;
 
       IRPCHandler(ConnImpl* impl);
 

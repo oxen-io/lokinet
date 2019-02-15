@@ -29,7 +29,7 @@ namespace llarp
       }
 
       virtual bool
-      HandleJSONResult(const ::abyss::json::Value& val) = 0;
+      HandleJSONResult(const json::Value& val) = 0;
 
       bool
       HandleResponse(::abyss::http::RPC_Response response)
@@ -69,7 +69,7 @@ namespace llarp
       }
 
       bool
-      HandleJSONResult(const ::abyss::json::Value& result) override
+      HandleJSONResult(const json::Value& result) override
       {
         PubkeyList_t keys;
         if(!result.IsObject())
@@ -153,7 +153,7 @@ namespace llarp
       AsyncUpdatePubkeyList()
       {
         LogInfo("Updating service node list");
-        ::abyss::json::Value params;
+        json::Value params;
         params.SetObject();
         QueueRPC("get_all_service_nodes_keys", std::move(params),
                  std::bind(&CallerImpl::NewAsyncUpdatePubkeyListConn, this,

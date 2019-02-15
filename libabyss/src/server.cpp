@@ -14,6 +14,7 @@ namespace abyss
 {
   namespace httpd
   {
+    namespace json = llarp::json;
     struct ConnImpl : abyss::http::HeaderReader
     {
       llarp_tcp_conn* _conn;
@@ -22,11 +23,11 @@ namespace abyss
       llarp_time_t m_LastActive;
       llarp_time_t m_ReadTimeout;
       bool m_Bad;
-      std::unique_ptr< abyss::json::IParser > m_BodyParser;
+      std::unique_ptr< json::IParser > m_BodyParser;
       json::Document m_Request;
       std::stringstream m_ResponseBuffer;
-      abyss::json::Stream m_ResponseStream;
-      abyss::json::Writer m_Response;
+      json::Stream m_ResponseStream;
+      json::Writer m_Response;
 
       enum HTTPState
       {
@@ -167,7 +168,7 @@ namespace abyss
           }
           else
           {
-            m_BodyParser.reset(abyss::json::MakeParser(contentLength));
+            m_BodyParser.reset(json::MakeParser(contentLength));
           }
         }
         if(!m_BodyParser->FeedData(buf, sz))

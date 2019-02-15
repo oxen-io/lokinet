@@ -1,12 +1,13 @@
-#ifndef __ABYSS_JSON_JSON_HPP
-#define __ABYSS_JSON_JSON_HPP
+#ifndef LLARP_UTIL_JSON_HPP
+#define LLARP_UTIL_JSON_HPP
 
-#include <memory>
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
+
+#include <memory>
 #include <iostream>
 
-namespace abyss
+namespace llarp
 {
   namespace json
   {
@@ -116,6 +117,6 @@ namespace abyss
     ToString(const json::Document& obj, std::ostream& out);
 
   }  // namespace json
-}  // namespace abyss
+}  // namespace llarp
 
 #endif
