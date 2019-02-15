@@ -5,15 +5,12 @@
 #include <router_id.hpp>
 #include <util/bencode.hpp>
 
-#include <queue>
 #include <vector>
 
 namespace llarp
 {
   struct ILinkSession;
-  struct Router;
-
-  using SendQueue = std::queue< ILinkMessage* >;
+  struct AbstractRouter;
 
   /// parsed link layer message
   struct ILinkMessage : public IBEncodeMessage
@@ -29,7 +26,7 @@ namespace llarp
     }
 
     virtual bool
-    HandleMessage(Router* router) const = 0;
+    HandleMessage(AbstractRouter* router) const = 0;
 
     virtual void
     Clear() = 0;

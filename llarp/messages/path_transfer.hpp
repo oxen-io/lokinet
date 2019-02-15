@@ -31,7 +31,7 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      HandleMessage(IMessageHandler*, llarp::Router* r) const override;
+      HandleMessage(IMessageHandler*, AbstractRouter* r) const override;
 
       void
       Clear() override

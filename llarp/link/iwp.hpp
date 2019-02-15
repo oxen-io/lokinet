@@ -1,11 +1,14 @@
 #ifndef LLARP_LINK_IWP_HPP
 #define LLARP_LINK_IWP_HPP
 
-#include <memory>
 #include <link/server.hpp>
+
+#include <memory>
 
 namespace llarp
 {
+  struct AbstractRouter;
+
   namespace iwp
   {
     std::unique_ptr< ILinkLayer >
@@ -17,7 +20,7 @@ namespace llarp
               llarp::SessionClosedHandler closed);
 
     std::unique_ptr< ILinkLayer >
-    NewServerFromRouter(llarp::Router* r);
+    NewServerFromRouter(AbstractRouter* r);
 
   }  // namespace iwp
 }  // namespace llarp

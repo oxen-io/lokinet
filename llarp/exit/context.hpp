@@ -15,7 +15,7 @@ namespace llarp
     {
       using Config_t = std::unordered_multimap< std::string, std::string >;
 
-      Context(llarp::Router *r);
+      Context(AbstractRouter *r);
       ~Context();
 
       void
@@ -50,7 +50,7 @@ namespace llarp
       CalculateExitTraffic(TrafficStats &stats);
 
      private:
-      llarp::Router *m_Router;
+      AbstractRouter *m_Router;
       std::unordered_map< std::string,
                           std::unique_ptr< llarp::handlers::ExitEndpoint > >
           m_Exits;

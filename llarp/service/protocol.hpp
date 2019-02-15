@@ -134,7 +134,7 @@ namespace llarp
       Verify(Crypto* c, const ServiceInfo& from) const;
 
       bool
-      HandleMessage(routing::IMessageHandler* h, Router* r) const override;
+      HandleMessage(routing::IMessageHandler* h, AbstractRouter* r) const override;
     };
   }  // namespace service
 }  // namespace llarp

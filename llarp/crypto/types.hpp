@@ -130,8 +130,10 @@ namespace llarp
     LoadFromFile(const char *fname);
   };
 
-  using ShortHash   = AlignedBuffer< SHORTHASHSIZE >;
-  using Signature   = AlignedBuffer< SIGSIZE >;
+  using ShortHash = AlignedBuffer< SHORTHASHSIZE >;
+  struct Signature final : public AlignedBuffer< SIGSIZE >
+  {
+  };
   using TunnelNonce = AlignedBuffer< TUNNONCESIZE >;
   using SymmNonce   = AlignedBuffer< NONCESIZE >;
   using SymmKey     = AlignedBuffer< 32 >;

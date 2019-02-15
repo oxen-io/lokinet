@@ -23,9 +23,9 @@ TEST_F(ExitTest, AddMultipleIP)
   conf.emplace("exit", "true");
   conf.emplace("type", "null");
   conf.emplace("ifaddr", "10.0.0.1/24");
-  ASSERT_TRUE(r.exitContext.AddExitEndpoint("test-exit", conf));
-  ASSERT_TRUE(r.exitContext.ObtainNewExit(pk, firstPath, true));
-  ASSERT_TRUE(r.exitContext.ObtainNewExit(pk, secondPath, true));
-  ASSERT_TRUE(r.exitContext.FindEndpointForPath(firstPath)->LocalIP()
-              == r.exitContext.FindEndpointForPath(secondPath)->LocalIP());
+  ASSERT_TRUE(r.exitContext().AddExitEndpoint("test-exit", conf));
+  ASSERT_TRUE(r.exitContext().ObtainNewExit(pk, firstPath, true));
+  ASSERT_TRUE(r.exitContext().ObtainNewExit(pk, secondPath, true));
+  ASSERT_TRUE(r.exitContext().FindEndpointForPath(firstPath)->LocalIP()
+              == r.exitContext().FindEndpointForPath(secondPath)->LocalIP());
 };

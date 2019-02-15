@@ -1,7 +1,8 @@
 #include <messages/link_intro.hpp>
 
+#include <crypto/crypto.hpp>
 #include <router_contact.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 #include <util/bencode.h>
 #include <util/logger.hpp>
 
@@ -115,7 +116,7 @@ namespace llarp
   }
 
   bool
-  LinkIntroMessage::HandleMessage(llarp::Router* router) const
+  LinkIntroMessage::HandleMessage(AbstractRouter* router) const
   {
     if(!Verify(router->crypto()))
       return false;

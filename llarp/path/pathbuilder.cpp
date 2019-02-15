@@ -1,9 +1,12 @@
 #include <path/pathbuilder.hpp>
 
+#include <messages/relay_commit.hpp>
 #include <nodedb.hpp>
 #include <path/path.hpp>
-#include <router/router.hpp>
+#include <profiling.hpp>
+#include <router/abstractrouter.hpp>
 #include <util/buffer.hpp>
+#include <util/logic.hpp>
 
 #include <functional>
 
@@ -21,7 +24,7 @@ namespace llarp
 
     Handler result;
     size_t idx               = 0;
-    llarp::Router* router    = nullptr;
+    AbstractRouter* router   = nullptr;
     llarp_threadpool* worker = nullptr;
     llarp::Logic* logic      = nullptr;
     llarp::Crypto* crypto    = nullptr;
@@ -123,7 +126,7 @@ namespace llarp
     {
     }
 
-    /// Generate all keys asynchronously and call hadler when done
+    /// Generate all keys asynchronously and call handler when done
     void
     AsyncGenerateKeys(Path_t* p, llarp::Logic* l, llarp_threadpool* pool,
                       User* u, Handler func)
@@ -154,7 +157,7 @@ namespace llarp
         // persist session with router until this path is done
         ctx->router->PersistSessionUntil(remote, ctx->path->ExpireTime());
         // add own path
-        ctx->router->paths.AddOwnPath(ctx->pathset, ctx->path);
+        ctx->router->pathContext().AddOwnPath(ctx->pathset, ctx->path);
         ctx->path = nullptr;
       }
       else
@@ -166,7 +169,7 @@ namespace llarp
 
   namespace path
   {
-    Builder::Builder(llarp::Router* p_router, struct llarp_dht_context* p_dht,
+    Builder::Builder(AbstractRouter* p_router, struct llarp_dht_context* p_dht,
                      size_t pathNum, size_t hops)
         : llarp::path::PathSet(pathNum)
         , router(p_router)
@@ -181,7 +184,7 @@ namespace llarp
 
     Builder::~Builder()
     {
-      router->paths.RemovePathBuilder(this);
+      router->pathContext().RemovePathBuilder(this);
     }
 
     util::StatusObject
@@ -215,7 +218,7 @@ namespace llarp
         --tries;
         if(db->select_random_hop(prev, cur, hop))
           return true;
-      } while(router->routerProfiling.IsBad(cur.pubkey) && tries > 0);
+      } while(router->routerProfiling().IsBad(cur.pubkey) && tries > 0);
       return false;
     }
 
@@ -317,7 +320,7 @@ namespace llarp
       path->SetBuildResultHook(std::bind(&llarp::path::Builder::HandlePathBuilt,
                                          this, std::placeholders::_1));
       ++keygens;
-      ctx->AsyncGenerateKeys(path, router->logic(), router->tp, this,
+      ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(), this,
                              &PathBuilderKeysGenerated);
     }
 

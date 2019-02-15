@@ -304,11 +304,7 @@ add_subdirectory(crypto)
 add_subdirectory(libutp)
 add_subdirectory(llarp)
 
-set(RC_SRC
-  daemon/rcutil.cpp
-)
-
-set(ALL_SRC ${RC_SRC} ${EXE_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC})
+set(ALL_SRC ${EXE_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC})
 
 foreach(F ${ALL_SRC})
   set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
