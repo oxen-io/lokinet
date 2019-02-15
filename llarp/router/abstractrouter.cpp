@@ -2,7 +2,5 @@
 
 namespace llarp
 {
-  AbstractRouter::~AbstractRouter()
-  {
-  }
+
 }  // namespace llarp

@@ -41,7 +41,6 @@ namespace llarp
 
   struct AbstractRouter : public util::IStateful
   {
-    virtual ~AbstractRouter() = 0;
 
     virtual void
     OnSessionEstablished(RouterContact rc) = 0;
