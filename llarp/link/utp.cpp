@@ -337,7 +337,9 @@ namespace llarp
         link->HandleTimeout(session);
         llarp::LogError(utp_error_code_names[arg->error_code], " via ",
                         session->remoteAddr);
-        if(arg->error_code != UTP_ETIMEDOUT)
+        if(arg->error_code == UTP_ETIMEDOUT)
+          utp_close(arg->socket);
+        else
           session->Close();
         link->RemovePending(session);
       }
@@ -872,6 +874,7 @@ namespace llarp
       else
       {
         llarp::LogWarn("utp_socket got data with no underlying session");
+        utp_shutdown(arg->socket, SHUT_RDWR);
         utp_close(arg->socket);
       }
       return 0;
