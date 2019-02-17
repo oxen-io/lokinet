@@ -176,7 +176,7 @@ namespace llarp
     if(!BEncodeMaybeReadDictEntry("k", pubkey, read, key, buf))
       return false;
 
-    if(llarp_buffer_eq(key, "n"))
+    if(key == "n")
     {
       llarp_buffer_t strbuf;
       if(!bencode_read_string(buf, &strbuf))

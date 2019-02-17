@@ -33,7 +33,7 @@ namespace llarp
         // first key
         if(dec->firstKey)
         {
-          if(!llarp_buffer_eq(*key, "A"))
+          if(!(*key == "A"))
             return false;
           if(!bencode_read_string(r->buffer, &strbuf))
             return false;

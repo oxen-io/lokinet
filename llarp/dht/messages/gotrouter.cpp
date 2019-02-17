@@ -52,22 +52,22 @@ namespace llarp
     bool
     GotRouterMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *val)
     {
-      if(llarp_buffer_eq(key, "K"))
+      if(key == "K")
       {
         if(K)  // duplicate key?
           return false;
         K.reset(new dht::Key_t());
         return K->BDecode(val);
       }
-      if(llarp_buffer_eq(key, "N"))
+      if(key == "N")
       {
         return BEncodeReadList(N, val);
       }
-      if(llarp_buffer_eq(key, "R"))
+      if(key == "R")
       {
         return BEncodeReadList(R, val);
       }
-      if(llarp_buffer_eq(key, "T"))
+      if(key == "T")
       {
         return bencode_read_integer(val, &txid);
       }

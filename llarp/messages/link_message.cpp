@@ -48,7 +48,7 @@ namespace llarp
       if(!key)
         return false;
       // we are expecting the first key to be 'a'
-      if(!llarp_buffer_eq(*key, "a"))
+      if(!(*key == "a"))
       {
         llarp::LogWarn("message has no message type");
         return false;
