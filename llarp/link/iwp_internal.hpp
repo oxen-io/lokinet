@@ -28,6 +28,13 @@ namespace llarp
               const AddressInfo &ai);
       ~Session();
 
+      util::StatusObject
+      ExtractStatus() const override
+      {
+        // TODO: fill me in.
+        return {};
+      }
+
       void
       PumpIO();
 
@@ -124,7 +131,7 @@ namespace llarp
         bool
         Decode(llarp_buffer_t *buf)
         {
-          if(llarp_buffer_size_left(*buf) < fragoverhead)
+          if(buf->size_left() < fragoverhead)
             return false;
           version = *buf->cur;
           if(version != LLARP_PROTO_VERSION)
@@ -136,8 +143,8 @@ namespace llarp
           buf->cur++;
           fragno = *buf->cur;
           buf->cur++;
-          llarp_buffer_read_uint16(buf, &fraglen);
-          llarp_buffer_read_uint32(buf, &seqno);
+          buf->read_uint16(fraglen);
+          buf->read_uint32(seqno);
           return fraglen <= fragsize;
         }
 
@@ -147,7 +154,7 @@ namespace llarp
           if(body.sz > fragsize)
             return false;
           fraglen = body.sz;
-          if(llarp_buffer_size_left(*buf) < (fragoverhead + fraglen))
+          if(buf->size_left() < (fragoverhead + fraglen))
             return false;
           *buf->cur = LLARP_PROTO_VERSION;
           buf->cur++;
@@ -157,8 +164,8 @@ namespace llarp
           buf->cur++;
           *buf->cur = fragno;
           buf->cur++;
-          llarp_buffer_put_uint16(buf, fraglen);
-          llarp_buffer_put_uint32(buf, seqno);
+          buf->put_uint16(fraglen);
+          buf->put_uint32(seqno);
           if(fraglen)
             memcpy(buf->cur, body.base, fraglen);
           buf->cur += fraglen;

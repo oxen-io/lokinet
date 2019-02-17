@@ -22,9 +22,9 @@ namespace llarp
     {
       if(!EncodeName(buf, qname))
         return false;
-      if(!llarp_buffer_put_uint16(buf, qtype))
+      if(!buf->put_uint16(qtype))
         return false;
-      return llarp_buffer_put_uint16(buf, qclass);
+      return buf->put_uint16(qclass);
     }
 
     bool
@@ -35,12 +35,12 @@ namespace llarp
         llarp::LogError("failed to decode name");
         return false;
       }
-      if(!llarp_buffer_read_uint16(buf, &qtype))
+      if(!buf->read_uint16(qtype))
       {
         llarp::LogError("failed to decode type");
         return false;
       }
-      if(!llarp_buffer_read_uint16(buf, &qclass))
+      if(!buf->read_uint16(qclass))
       {
         llarp::LogError("failed to decode class");
         return false;

@@ -1,6 +1,6 @@
 #ifndef __ABYSS_HTTP_HPP__
 #define __ABYSS_HTTP_HPP__
-#include <abyss/json.hpp>
+#include <util/json.hpp>
 #include <util/string_view.hpp>
 
 #include <string>
@@ -20,16 +20,18 @@ namespace abyss
 
     struct HeaderReader
     {
+      using string_view = llarp::string_view;
+
       RequestHeader Header;
       virtual ~HeaderReader()
       {
       }
 
       bool
-      ProcessHeaderLine(abyss::string_view line, bool& done);
+      ProcessHeaderLine(string_view line, bool& done);
 
       virtual bool
-      ShouldProcessHeader(const abyss::string_view& line) const = 0;
+      ShouldProcessHeader(const string_view& line) const = 0;
     };
 
   }  // namespace http

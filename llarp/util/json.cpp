@@ -1,11 +1,11 @@
-#include <abyss/json.hpp>
+#include <util/json.hpp>
 #include <util/string_view.hpp>
 
 #include <cstring>
 #include <string>
 #include <vector>
 
-namespace abyss
+namespace llarp
 {
   namespace json
   {
@@ -56,4 +56,4 @@ namespace abyss
     }
 
   }  // namespace json
-}  // namespace abyss
+}  // namespace llarp

@@ -8,6 +8,7 @@ namespace abyss
 {
   namespace http
   {
+    namespace json = llarp::json;
     struct ConnImpl : HeaderReader
     {
       // big
@@ -16,7 +17,7 @@ namespace abyss
       json::Document m_RequestBody;
       Headers_t m_SendHeaders;
       IRPCClientHandler* handler;
-      std::unique_ptr< abyss::json::IParser > m_BodyParser;
+      std::unique_ptr< json::IParser > m_BodyParser;
       json::Document m_Response;
 
       enum State
@@ -94,7 +95,7 @@ namespace abyss
       }
 
       bool
-      ShouldProcessHeader(const abyss::string_view& name) const
+      ShouldProcessHeader(const llarp::string_view& name) const
       {
         return name == "content-length" || name == "content-type";
       }
@@ -123,7 +124,7 @@ namespace abyss
           if(contentSize > MAX_BODY_SIZE)
             return false;
 
-          m_BodyParser.reset(abyss::json::MakeParser(contentSize));
+          m_BodyParser.reset(json::MakeParser(contentSize));
         }
         if(m_BodyParser && m_BodyParser->FeedData(buf, sz))
         {

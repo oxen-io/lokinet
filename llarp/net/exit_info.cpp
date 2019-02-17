@@ -76,9 +76,9 @@ namespace llarp
       return false;
     if(!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
-    if(llarp_buffer_eq(k, "a"))
+    if(k == "a")
       return bdecode_ip_string(buf, address);
-    if(llarp_buffer_eq(k, "b"))
+    if(k == "b")
       return bdecode_ip_string(buf, netmask);
     return read;
   }

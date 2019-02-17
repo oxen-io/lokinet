@@ -40,7 +40,7 @@ namespace llarp
     bool
     InboundMessage::AppendData(const byte_t* ptr, uint16_t sz)
     {
-      if(llarp_buffer_size_left(buffer) < sz)
+      if(buffer.size_left() < sz)
         return false;
       memcpy(buffer.cur, ptr, sz);
       buffer.cur += sz;
@@ -867,7 +867,6 @@ namespace llarp
       }
       else
       {
-
         LogWarn("utp_socket got data with no underlying session");
         utp_shutdown(arg->socket, SHUT_RDWR);
         utp_close(arg->socket);
@@ -986,14 +985,12 @@ namespace llarp
     util::StatusObject
     Session::ExtractStatus() const
     {
-      return {
-        {"client", !remoteRC.IsPublicRouter()},
-        {"sendBacklog", uint64_t(SendQueueBacklog())},
-        {"tx", m_TXRate},
-        {"rx", m_RXRate},
-        {"remoteAddr", remoteAddr.ToString()},
-        {"pubkey", remoteRC.pubkey.ToHex()}
-      };
+      return {{"client", !remoteRC.IsPublicRouter()},
+              {"sendBacklog", uint64_t(SendQueueBacklog())},
+              {"tx", m_TXRate},
+              {"rx", m_RXRate},
+              {"remoteAddr", remoteAddr.ToString()},
+              {"pubkey", remoteRC.pubkey.ToHex()}};
     }
 
     bool
@@ -1079,15 +1076,14 @@ namespace llarp
       out.cur += A.size();
       // read msgid
       uint32_t msgid;
-      if(!llarp_buffer_read_uint32(&out, &msgid))
+      if(!out.read_uint32(msgid))
       {
         LogError("failed to read msgid");
         return false;
       }
       // read length and remaining
       uint16_t length, remaining;
-      if(!(llarp_buffer_read_uint16(&out, &length)
-           && llarp_buffer_read_uint16(&out, &remaining)))
+      if(!(out.read_uint16(length) && out.read_uint16(remaining)))
       {
         LogError("failed to read the rest of the header");
         return false;

@@ -5,72 +5,99 @@
 #include <stdio.h>
 
 size_t
-llarp_buffer_size_left(const llarp_buffer_t& buff)
+llarp_buffer_t::size_left() const
 {
-  size_t diff = buff.cur - buff.base;
-  if(diff > buff.sz)
+  size_t diff = cur - base;
+  if(diff > sz)
+  {
     return 0;
+  }
   else
-    return buff.sz - diff;
+    return sz - diff;
 }
 
 bool
-llarp_buffer_writef(llarp_buffer_t* buff, const char* fmt, ...)
+llarp_buffer_t::writef(const char* fmt, ...)
 {
   int written;
-  ssize_t sz = llarp_buffer_size_left(*buff);
+  ssize_t sz = size_left();
   va_list args;
   va_start(args, fmt);
-  written = vsnprintf((char*)buff->cur, sz, fmt, args);
+  written = vsnprintf(reinterpret_cast< char* >(cur), sz, fmt, args);
   va_end(args);
   if(written <= 0)
     return false;
   if(sz < written)
     return false;
-  buff->cur += written;
+  cur += written;
   return true;
 }
 
 bool
-llarp_buffer_write(llarp_buffer_t* buff, const void* data, size_t sz)
+llarp_buffer_t::put_uint16(uint16_t i)
 {
-  size_t left = llarp_buffer_size_left(*buff);
-  if(left >= sz)
-  {
-    memcpy(buff->cur, data, sz);
-    buff->cur += sz;
-    return true;
-  }
-  return false;
+  if(size_left() < sizeof(uint16_t))
+    return false;
+  htobe16buf(cur, i);
+  cur += sizeof(uint16_t);
+  return true;
+}
+
+bool
+llarp_buffer_t::put_uint32(uint32_t i)
+{
+  if(size_left() < sizeof(uint32_t))
+    return false;
+  htobe32buf(cur, i);
+  cur += sizeof(uint32_t);
+  return true;
+}
+
+bool
+llarp_buffer_t::read_uint16(uint16_t& i)
+{
+  if(size_left() < sizeof(uint16_t))
+    return false;
+  i = bufbe16toh(cur);
+  cur += sizeof(uint16_t);
+  return true;
+}
+
+bool
+llarp_buffer_t::read_uint32(uint32_t& i)
+{
+  if(size_left() < sizeof(uint32_t))
+    return false;
+  i = bufbe32toh(cur);
+  cur += sizeof(uint32_t);
+  return true;
 }
 
 size_t
-llarp_buffer_read_until(llarp_buffer_t* buff, char delim, byte_t* result,
-                        size_t resultsize)
+llarp_buffer_t::read_until(char delim, byte_t* result, size_t resultsize)
 {
   size_t read = 0;
 
   // do the bound check first, to avoid over running
-  while((buff->cur != buff->base + buff->sz) && *buff->cur != delim
-        && resultsize)
+  while((cur != base + sz) && *cur != delim && resultsize)
   {
-    *result = *buff->cur;
-    buff->cur++;
+    *result = *cur;
+    cur++;
     result++;
     resultsize--;
     read++;
   }
 
-  if(llarp_buffer_size_left(*buff))
+  if(size_left())
     return read;
   else
     return 0;
 }
 
 bool
-llarp_buffer_eq(const llarp_buffer_t& buf, const char* str)
+operator==(const llarp_buffer_t& buff, const char* str)
 {
-  ManagedBuffer copy{buf};
+  ManagedBuffer copy{buff};
   while(*str
         && copy.underlying.cur != (copy.underlying.base + copy.underlying.sz))
   {
@@ -80,44 +107,4 @@ llarp_buffer_eq(const llarp_buffer_t& buf, const char* str)
     str++;
   }
   return *str == 0;
-}
-
-bool
-llarp_buffer_put_uint16(llarp_buffer_t* buf, uint16_t i)
-{
-  if(llarp_buffer_size_left(*buf) < sizeof(uint16_t))
-    return false;
-  htobe16buf(buf->cur, i);
-  buf->cur += sizeof(uint16_t);
-  return true;
-}
-
-bool
-llarp_buffer_put_uint32(llarp_buffer_t* buf, uint32_t i)
-{
-  if(llarp_buffer_size_left(*buf) < sizeof(uint32_t))
-    return false;
-  htobe32buf(buf->cur, i);
-  buf->cur += sizeof(uint32_t);
-  return true;
-}
-
-bool
-llarp_buffer_read_uint16(llarp_buffer_t* buf, uint16_t* i)
-{
-  if(llarp_buffer_size_left(*buf) < sizeof(uint16_t))
-    return false;
-  *i = bufbe16toh(buf->cur);
-  buf->cur += sizeof(uint16_t);
-  return true;
-}
-
-bool
-llarp_buffer_read_uint32(llarp_buffer_t* buf, uint32_t* i)
-{
-  if(llarp_buffer_size_left(*buf) < sizeof(uint32_t))
-    return false;
-  *i = bufbe32toh(buf->cur);
-  buf->cur += sizeof(uint32_t);
-  return true;
 }

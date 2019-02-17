@@ -15,8 +15,7 @@ bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
 
   buffer->cur++;
 
-  len =
-      llarp_buffer_read_until(buffer, 'e', (byte_t*)numbuf, sizeof(numbuf) - 1);
+  len = buffer->read_until('e', (byte_t*)numbuf, sizeof(numbuf) - 1);
   if(!len)
   {
     return false;
@@ -34,8 +33,7 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
 {
   char numbuf[10];
 
-  size_t len =
-      llarp_buffer_read_until(buffer, ':', (byte_t*)numbuf, sizeof(numbuf) - 1);
+  size_t len = buffer->read_until(':', (byte_t*)numbuf, sizeof(numbuf) - 1);
   if(!len)
     return false;
 
@@ -50,7 +48,7 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
 
   buffer->cur++;
 
-  len = llarp_buffer_size_left(*buffer);
+  len = buffer->size_left();
   if(len < slen)
   {
     return false;
@@ -66,42 +64,55 @@ bencode_read_string(llarp_buffer_t* buffer, llarp_buffer_t* result)
 bool
 bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 {
-  if(!llarp_buffer_writef(buff, "%zu:", sz))
+  if(!buff->writef("%zu:", sz))
   {
     return false;
   }
-  return llarp_buffer_write(buff, data, sz);
+  return buff->write(reinterpret_cast< const char* >(data),
+                     reinterpret_cast< const char* >(data) + sz);
 }
 
 bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
-  return llarp_buffer_writef(buff, "i%llu", i)
-      && llarp_buffer_write(buff, "e", 1);
+  if(!buff->writef("i%llu", i))
+  {
+    return false;
+  }
+
+  static const char letter[1] = {'e'};
+  assert(std::distance(std::begin(letter), std::end(letter)) == 1);
+  return buff->write(std::begin(letter), std::end(letter));
 }
 
 bool
 bencode_write_version_entry(llarp_buffer_t* buff)
 {
-  return llarp_buffer_writef(buff, "1:vi%de", LLARP_PROTO_VERSION);
+  return buff->writef("1:vi%de", LLARP_PROTO_VERSION);
 }
 
 bool
 bencode_start_list(llarp_buffer_t* buff)
 {
-  return llarp_buffer_write(buff, "l", 1);
+  static const char letter[1] = {'l'};
+  assert(std::distance(std::begin(letter), std::end(letter)) == 1);
+  return buff->write(std::begin(letter), std::end(letter));
 }
 
 bool
 bencode_start_dict(llarp_buffer_t* buff)
 {
-  return llarp_buffer_write(buff, "d", 1);
+  static const char letter[1] = {'d'};
+  assert(std::distance(std::begin(letter), std::end(letter)) == 1);
+  return buff->write(std::begin(letter), std::end(letter));
 }
 
 bool
 bencode_end(llarp_buffer_t* buff)
 {
-  return llarp_buffer_write(buff, "e", 1);
+  static const char letter[1] = {'e'};
+  assert(std::distance(std::begin(letter), std::end(letter)) == 1);
+  return buff->write(std::begin(letter), std::end(letter));
 }
 
 bool
@@ -112,7 +123,7 @@ bencode_read_dict(llarp_buffer_t* buff, struct dict_reader* r)
   if(*r->buffer->cur != 'd')  // ensure is a dictionary
     return false;
   r->buffer->cur++;
-  while(llarp_buffer_size_left(*r->buffer) && *r->buffer->cur != 'e')
+  while(r->buffer->size_left() && *r->buffer->cur != 'e')
   {
     if(bencode_read_string(r->buffer, &strbuf))
     {
@@ -145,7 +156,7 @@ bencode_read_list(llarp_buffer_t* buff, struct list_reader* r)
   }
 
   r->buffer->cur++;
-  while(llarp_buffer_size_left(*r->buffer) && *r->buffer->cur != 'e')
+  while(r->buffer->size_left() && *r->buffer->cur != 'e')
   {
     if(!r->on_item(r, true))  // check for early abort
       return false;

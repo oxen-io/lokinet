@@ -316,11 +316,8 @@ if(USE_LIBABYSS)
   set(ABYSS_SRC
     ${ABYSS}/src/http.cpp
     ${ABYSS}/src/client.cpp
-    ${ABYSS}/src/server.cpp
-    ${ABYSS}/src/json.cpp)
+    ${ABYSS}/src/server.cpp)
   add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
-
-
 endif(USE_LIBABYSS)
 
 add_subdirectory(crypto)
@@ -337,7 +334,6 @@ if(USE_LIBABYSS)
     add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
     target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
   endif(NOT WIN32)
-  target_include_directories(${UTIL_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
   target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
   target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
   # for freebsd

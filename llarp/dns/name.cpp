@@ -11,7 +11,7 @@ namespace llarp
     bool
     DecodeName(llarp_buffer_t* buf, Name_t& name)
     {
-      if(llarp_buffer_size_left(*buf) < 1)
+      if(buf->size_left() < 1)
         return false;
       std::stringstream ss;
       size_t l;
@@ -27,7 +27,7 @@ namespace llarp
             llarp::DumpBuffer(*buf);
             return false;
           }
-          if(llarp_buffer_size_left(*buf) < l)
+          if(buf->size_left() < l)
             return false;
 
           ss << Name_t((const char*)buf->cur, l);
@@ -56,7 +56,7 @@ namespace llarp
           return false;
         *(buf->cur) = l;
         buf->cur++;
-        if(llarp_buffer_size_left(*buf) < l)
+        if(buf->size_left() < l)
           return false;
         if(l)
         {
