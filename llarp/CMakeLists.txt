@@ -13,6 +13,7 @@ set(LIB_UTIL_SRC
   util/endian.cpp
   util/fs.cpp
   util/ini.cpp
+  util/json.cpp
   util/logger.cpp
   util/logic.cpp
   util/mem.cpp
@@ -77,7 +78,6 @@ if(WIN32)
   target_sources(${PLATFORM_LIB} PUBLIC ${win32_inet} ${win32_intrnl} ${win32_upoll})
   target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
 endif()
-
 
 set(DNSLIB_SRC
   dns/dotlokilookup.cpp
@@ -206,8 +206,6 @@ target_link_libraries(${STATIC_LIB} PUBLIC ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOG
 
 if(USE_LIBABYSS)
     add_definitions(-DUSE_ABYSS=1)
-    target_link_libraries(${UTIL_LIB} PUBLIC ${ABYSS_LIB})
-    target_link_libraries(${PLATFORM_LIB} PUBLIC  ${ABYSS_LIB})
     target_link_libraries(${STATIC_LIB} PUBLIC ${ABYSS_LIB})
 endif()
 

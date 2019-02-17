@@ -28,6 +28,13 @@ namespace llarp
               const AddressInfo &ai);
       ~Session();
 
+      util::StatusObject
+      ExtractStatus() const override
+      {
+        // TODO: fill me in.
+        return {};
+      }
+
       void
       PumpIO();
 

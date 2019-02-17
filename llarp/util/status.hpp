@@ -1,7 +1,7 @@
 #ifndef LLARP_UTIL_STATUS_HPP
 #define LLARP_UTIL_STATUS_HPP
 #ifdef USE_ABYSS
-#include <abyss/json.hpp>
+#include <util/json.hpp>
 #endif
 #include <util/string_view.hpp>
 #include <vector>
@@ -14,8 +14,8 @@ namespace llarp
   namespace util
   {
 #ifdef USE_ABYSS
-    using StatusObject_Impl = ::abyss::json::Document;
-    using Value_t           = ::abyss::json::Value;
+    using StatusObject_Impl = json::Document;
+    using Value_t           = json::Value;
 #else
     struct StatusObject_Impl
     {
@@ -27,7 +27,7 @@ namespace llarp
 
     struct StatusObject
     {
-      using String_t = llarp::string_view;
+      using String_t = string_view;
       using Variant  = absl::variant< uint64_t, std::string, bool, StatusObject,
                                      std::vector< std::string >,
                                      std::vector< StatusObject > >;

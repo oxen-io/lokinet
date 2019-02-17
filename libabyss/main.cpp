@@ -32,7 +32,7 @@ struct DemoCall : public abyss::http::IRPCClientHandler
   bool
   HandleResponse(abyss::http::RPC_Response resp) override
   {
-    abyss::json::ToString(resp, std::cout);
+    llarp::json::ToString(resp, std::cout);
     return true;
   }
 
@@ -60,7 +60,7 @@ struct DemoClient : public abyss::http::JSONRPC
   void
   DoDemoRequest()
   {
-    abyss::json::Value params;
+    llarp::json::Value params;
     params.SetObject();
     QueueRPC("test", std::move(params),
              std::bind(&DemoClient::NewConn, this, std::placeholders::_1));
