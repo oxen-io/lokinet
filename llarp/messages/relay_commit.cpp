@@ -17,7 +17,7 @@ namespace llarp
   bool
   LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if(llarp_buffer_eq(key, "c"))
+    if(key == "c")
     {
       return BEncodeReadArray(frames, buf);
     }
@@ -132,7 +132,7 @@ namespace llarp
     if(!BEncodeMaybeReadVersion("v", self->version, LLARP_PROTO_VERSION, read,
                                 *key, r->buffer))
       return false;
-    if(llarp_buffer_eq(*key, "w"))
+    if(*key == "w")
     {
       // check for duplicate
       if(self->work)

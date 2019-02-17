@@ -60,7 +60,7 @@ namespace llarp
       if(self->firstKey)
       {
         llarp_buffer_t strbuf;
-        if(!llarp_buffer_eq(*key, "A"))
+        if(!(*key == "A"))
           return false;
         if(!bencode_read_string(r->buffer, &strbuf))
           return false;

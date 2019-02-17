@@ -14,33 +14,33 @@ namespace llarp
     bool
     MessageHeader::Encode(llarp_buffer_t* buf) const
     {
-      if(!llarp_buffer_put_uint16(buf, id))
+      if(!buf->put_uint16(id))
         return false;
-      if(!llarp_buffer_put_uint16(buf, fields))
+      if(!buf->put_uint16(fields))
         return false;
-      if(!llarp_buffer_put_uint16(buf, qd_count))
+      if(!buf->put_uint16(qd_count))
         return false;
-      if(!llarp_buffer_put_uint16(buf, an_count))
+      if(!buf->put_uint16(an_count))
         return false;
-      if(!llarp_buffer_put_uint16(buf, ns_count))
+      if(!buf->put_uint16(ns_count))
         return false;
-      return llarp_buffer_put_uint16(buf, ar_count);
+      return buf->put_uint16(ar_count);
     }
 
     bool
     MessageHeader::Decode(llarp_buffer_t* buf)
     {
-      if(!llarp_buffer_read_uint16(buf, &id))
+      if(!buf->read_uint16(id))
         return false;
-      if(!llarp_buffer_read_uint16(buf, &fields))
+      if(!buf->read_uint16(fields))
         return false;
-      if(!llarp_buffer_read_uint16(buf, &qd_count))
+      if(!buf->read_uint16(qd_count))
         return false;
-      if(!llarp_buffer_read_uint16(buf, &an_count))
+      if(!buf->read_uint16(an_count))
         return false;
-      if(!llarp_buffer_read_uint16(buf, &ns_count))
+      if(!buf->read_uint16(ns_count))
         return false;
-      return llarp_buffer_read_uint16(buf, &ar_count);
+      return buf->read_uint16(ar_count);
     }
 
     Message::Message(Message&& other)
@@ -232,7 +232,7 @@ namespace llarp
         rec.ttl                       = ttl;
         std::array< byte_t, 512 > tmp = {{0}};
         llarp_buffer_t buf(tmp);
-        llarp_buffer_put_uint16(&buf, priority);
+        buf.put_uint16(priority);
         if(EncodeName(&buf, name))
         {
           buf.sz = buf.cur - buf.base;

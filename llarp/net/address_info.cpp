@@ -50,7 +50,7 @@ namespace llarp
     llarp_buffer_t strbuf;
 
     // rank
-    if(llarp_buffer_eq(key, "c"))
+    if(key == "c")
     {
       if(!bencode_read_integer(buf, &i))
         return false;
@@ -63,7 +63,7 @@ namespace llarp
     }
 
     // dialect
-    if(llarp_buffer_eq(key, "d"))
+    if(key == "d")
     {
       if(!bencode_read_string(buf, &strbuf))
         return false;
@@ -76,13 +76,13 @@ namespace llarp
     }
 
     // encryption public key
-    if(llarp_buffer_eq(key, "e"))
+    if(key == "e")
     {
       return pubkey.BDecode(buf);
     }
 
     // ip address
-    if(llarp_buffer_eq(key, "i"))
+    if(key == "i")
     {
       if(!bencode_read_string(buf, &strbuf))
         return false;
@@ -96,7 +96,7 @@ namespace llarp
     }
 
     // port
-    if(llarp_buffer_eq(key, "p"))
+    if(key == "p")
     {
       if(!bencode_read_integer(buf, &i))
         return false;
@@ -109,7 +109,7 @@ namespace llarp
     }
 
     // version
-    if(llarp_buffer_eq(key, "v"))
+    if(key == "v")
     {
       if(!bencode_read_integer(buf, &i))
         return false;

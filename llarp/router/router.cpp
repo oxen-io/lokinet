@@ -236,17 +236,19 @@ namespace llarp
     util::StatusObject obj{{"dht", _dht->impl.ExtractStatus()},
                            {"services", hiddenServiceContext.ExtractStatus()},
                            {"exit", _exitContext.ExtractStatus()}};
-    std::vector<util::StatusObject> ob_links, ib_links;
-    std::transform(inboundLinks.begin(), inboundLinks.end(), std::back_inserter(ib_links), [](const auto & link) -> util::StatusObject {
-      return link->ExtractStatus();
-    });
-    std::transform(outboundLinks.begin(), outboundLinks.end(), std::back_inserter(ob_links), [](const auto & link) -> util::StatusObject {
-      return link->ExtractStatus();
-    });
-    obj.Put("links", util::StatusObject{
-      {"outbound", ob_links},
-      {"inbound", ib_links}
-    });
+    std::vector< util::StatusObject > ob_links, ib_links;
+    std::transform(inboundLinks.begin(), inboundLinks.end(),
+                   std::back_inserter(ib_links),
+                   [](const auto &link) -> util::StatusObject {
+                     return link->ExtractStatus();
+                   });
+    std::transform(outboundLinks.begin(), outboundLinks.end(),
+                   std::back_inserter(ob_links),
+                   [](const auto &link) -> util::StatusObject {
+                     return link->ExtractStatus();
+                   });
+    obj.Put("links",
+            util::StatusObject{{"outbound", ob_links}, {"inbound", ib_links}});
     return obj;
   }
 
@@ -1108,7 +1110,7 @@ namespace llarp
     if(!msg->BEncode(&buf))
     {
       LogWarn("failed to encode outbound message, buffer size left: ",
-              llarp_buffer_size_left(buf));
+              buf.size_left());
       return;
     }
     // set size of message
@@ -1255,13 +1257,14 @@ namespace llarp
   }
 
   void
-  Router::SetRouterWhitelist(const std::vector<RouterID> & routers)
+  Router::SetRouterWhitelist(const std::vector< RouterID > &routers)
   {
     lokinetRouters.clear();
-    for(const auto & router : routers)
-      lokinetRouters.emplace(router, std::numeric_limits<llarp_time_t>::max());
-    LogInfo("lokinet service node list now has ", lokinetRouters.size(), 
-     " routers");
+    for(const auto &router : routers)
+      lokinetRouters.emplace(router,
+                             std::numeric_limits< llarp_time_t >::max());
+    LogInfo("lokinet service node list now has ", lokinetRouters.size(),
+            " routers");
   }
 
   bool

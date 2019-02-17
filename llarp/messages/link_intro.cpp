@@ -15,7 +15,7 @@ namespace llarp
   bool
   LinkIntroMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if(llarp_buffer_eq(key, "a"))
+    if(key == "a")
     {
       llarp_buffer_t strbuf;
       if(!bencode_read_string(buf, &strbuf))
@@ -24,18 +24,18 @@ namespace llarp
         return false;
       return *strbuf.cur == 'i';
     }
-    if(llarp_buffer_eq(key, "n"))
+    else if(key == "n")
     {
       if(N.BDecode(buf))
         return true;
       llarp::LogWarn("failed to decode nonce in LIM");
       return false;
     }
-    if(llarp_buffer_eq(key, "p"))
+    else if(key == "p")
     {
       return bencode_read_integer(buf, &P);
     }
-    if(llarp_buffer_eq(key, "r"))
+    else if(key == "r")
     {
       if(rc.BDecode(buf))
         return true;
@@ -43,7 +43,7 @@ namespace llarp
       llarp::DumpBuffer(*buf);
       return false;
     }
-    else if(llarp_buffer_eq(key, "v"))
+    else if(key == "v")
     {
       if(!bencode_read_integer(buf, &version))
         return false;
@@ -56,7 +56,7 @@ namespace llarp
       llarp::LogDebug("LIM version ", version);
       return true;
     }
-    else if(llarp_buffer_eq(key, "z"))
+    else if(key == "z")
     {
       return Z.BDecode(buf);
     }

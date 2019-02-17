@@ -34,7 +34,7 @@ namespace llarp
       bool read = false;
       if(!BEncodeMaybeReadDictEntry("e", enckey, read, key, buf))
         return false;
-      if(llarp_buffer_eq(key, "q"))
+      if(key == "q")
       {
         llarp_buffer_t str;
         if(!bencode_read_string(buf, &str))
