@@ -281,7 +281,7 @@ namespace llarp
       using namespace std::placeholders;
       if(self->record.work
          && self->record.work->IsValid(
-             std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+                std::bind(&Crypto::shorthash, crypto, _1, _2), now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",

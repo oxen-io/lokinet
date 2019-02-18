@@ -103,7 +103,8 @@ namespace abyss
       ShouldProcessHeader(const string_view& name) const
       {
         // TODO: header whitelist
-        return name == string_view("content-type") || name == string_view("content-length");
+        return name == string_view("content-type")
+            || name == string_view("content-length");
       }
 
       bool

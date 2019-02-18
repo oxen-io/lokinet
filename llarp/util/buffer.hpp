@@ -125,7 +125,9 @@ struct llarp_buffer_t
   writef(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
   ;
 #else
-  bool writef(const char *fmt, ...) __attribute__((__format__ (__MINGW_PRINTF_FORMAT, 2, 3)));
+  bool
+  writef(const char *fmt, ...)
+      __attribute__((__format__(__MINGW_PRINTF_FORMAT, 2, 3)));
   ;
 #endif
 
