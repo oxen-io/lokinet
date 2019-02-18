@@ -142,7 +142,7 @@ namespace llarp
     if(!profile.BDecode(buf))
       return false;
     RouterID pk = k.base;
-    return m_Profiles.insert(std::make_pair(pk, profile)).second;
+    return m_Profiles.emplace(pk, profile).second;
   }
 
   bool
