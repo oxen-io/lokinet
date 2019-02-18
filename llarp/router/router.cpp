@@ -315,7 +315,7 @@ namespace llarp
     auto itr = outboundMessageQueue.find(remote);
     if(itr == outboundMessageQueue.end())
     {
-      outboundMessageQueue.insert(std::make_pair(remote, MessageQueue()));
+      outboundMessageQueue.emplace(remote, MessageQueue());
     }
     // encode
     llarp_buffer_t buf(linkmsg_buffer);
@@ -450,7 +450,7 @@ namespace llarp
   void
   Router::AddInboundLink(std::unique_ptr< ILinkLayer > &link)
   {
-    inboundLinks.insert(std::move(link));
+    inboundLinks.emplace(std::move(link));
   }
 
   bool
@@ -812,7 +812,7 @@ namespace llarp
       }
       else
       {
-        netConfig.insert(std::make_pair(key, val));
+        netConfig.emplace(key, val);
       }
     }
     else if(StrEq(section, "api"))
@@ -1526,10 +1526,10 @@ namespace llarp
         LogError(
                         "Could not find any free lokitun interface names, can't
     auto set up " "default HS context for client"); defaultIfAddr = "no";
-        netConfig.emplace(std::make_pair("defaultIfAddr", defaultIfAddr));
+        netConfig.emplace("defaultIfAddr", defaultIfAddr);
         return false;
       }
-      netConfig.emplace(std::make_pair("defaultIfAddr", defaultIfAddr));
+      netConfig.emplace("defaultIfAddr", defaultIfAddr);
     }
     if(defaultIfName == "auto")
     {
@@ -1540,10 +1540,10 @@ namespace llarp
         LogError(
                         "Could not find any free private ip ranges, can't auto
     set up " "default HS context for client"); defaultIfName = "no";
-        netConfig.emplace(std::make_pair("defaultIfName", defaultIfName));
+        netConfig.emplace("defaultIfName", defaultIfName);
         return false;
       }
-      netConfig.emplace(std::make_pair("defaultIfName", defaultIfName));
+      netConfig.emplace("defaultIfName", defaultIfName);
     }
     */
     return true;
@@ -1724,7 +1724,7 @@ namespace llarp
       auto found = netConfig.find(itr->first);
       if(found == netConfig.end() || found->second.empty())
       {
-        netConfig.emplace(std::make_pair(itr->first, itr->second()));
+        netConfig.emplace(itr->first, itr->second());
       }
       ++itr;
     }

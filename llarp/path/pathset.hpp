@@ -139,7 +139,7 @@ namespace llarp
       /// override me in subtype
       virtual bool
       HandleGotIntroMessage(__attribute__((unused))
-                            const llarp::dht::GotIntroMessage* msg)
+                            const dht::GotIntroMessage* msg)
       {
         return false;
       }
@@ -147,7 +147,7 @@ namespace llarp
       /// override me in subtype
       virtual bool
       HandleGotRouterMessage(__attribute__((unused))
-                             const llarp::dht::GotRouterMessage* msg)
+                             const dht::GotRouterMessage* msg)
       {
         return false;
       }
@@ -177,13 +177,11 @@ namespace llarp
 
       bool
       GetCurrentIntroductionsWithFilter(
-          std::set< llarp::service::Introduction >& intros,
-          std::function< bool(const llarp::service::Introduction&) > filter)
-          const;
+          std::set< service::Introduction >& intros,
+          std::function< bool(const service::Introduction&) > filter) const;
 
       bool
-      GetCurrentIntroductions(
-          std::set< llarp::service::Introduction >& intros) const;
+      GetCurrentIntroductions(std::set< service::Introduction >& intros) const;
 
       virtual bool
       PublishIntroSet(__attribute__((unused)) AbstractRouter* r)
@@ -232,8 +230,8 @@ namespace llarp
           return RouterID::Hash()(i.first) ^ PathID_t::Hash()(i.second);
         }
       };
-      using Mtx_t     = llarp::util::NullMutex;
-      using Lock_t    = llarp::util::NullLock;
+      using Mtx_t     = util::NullMutex;
+      using Lock_t    = util::NullLock;
       using PathMap_t = std::unordered_map< PathInfo_t, Path*, PathInfoHash >;
       mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;

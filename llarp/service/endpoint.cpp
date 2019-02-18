@@ -267,7 +267,7 @@ namespace llarp
         if(itr == m_PrefetchedTags.end())
         {
           itr = m_PrefetchedTags
-                    .insert(std::make_pair(tag, CachedTagResult(tag, this)))
+                    .emplace(tag, CachedTagResult(tag, this))
                     .first;
         }
         for(const auto& introset : itr->second.result)
@@ -322,8 +322,7 @@ namespace llarp
           if(itr->second->Tick(now))
           {
             itr->second->Stop();
-            m_DeadSessions.insert(
-                std::make_pair(itr->first, std::move(itr->second)));
+            m_DeadSessions.emplace(itr->first, std::move(itr->second));
             itr = m_RemoteSessions.erase(itr);
           }
           else
@@ -406,10 +405,9 @@ namespace llarp
     Endpoint::PutLookup(IServiceLookup* lookup, uint64_t txid)
     {
       // std::unique_ptr< service::IServiceLookup > ptr(lookup);
-      // m_PendingLookups.insert(std::make_pair(txid, ptr));
+      // m_PendingLookups.emplace(txid, ptr);
       // m_PendingLookups[txid] = std::move(ptr);
-      m_PendingLookups.insert(
-          std::make_pair(txid, std::unique_ptr< IServiceLookup >(lookup)));
+      m_PendingLookups.emplace(txid, std::unique_ptr< IServiceLookup >(lookup));
     }
 
     bool
@@ -457,7 +455,7 @@ namespace llarp
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
       {
-        itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
+        itr = m_Sessions.emplace(tag, Session{}).first;
       }
       itr->second.remote   = info;
       itr->second.lastUsed = Now();
@@ -479,7 +477,7 @@ namespace llarp
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
       {
-        itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
+        itr = m_Sessions.emplace(tag, Session{}).first;
       }
       itr->second.intro    = intro;
       itr->second.lastUsed = Now();
@@ -529,7 +527,7 @@ namespace llarp
       auto itr = m_Sessions.find(tag);
       if(itr == m_Sessions.end())
       {
-        itr = m_Sessions.insert(std::make_pair(tag, Session{})).first;
+        itr = m_Sessions.emplace(tag, Session{}).first;
       }
       itr->second.sharedKey = k;
       itr->second.lastUsed  = Now();
@@ -786,8 +784,7 @@ namespace llarp
       }
 
       OutboundContext* ctx = new OutboundContext(introset, this);
-      m_RemoteSessions.insert(
-          std::make_pair(addr, std::unique_ptr< OutboundContext >(ctx)));
+      m_RemoteSessions.emplace(addr, std::unique_ptr< OutboundContext >(ctx));
       llarp::LogInfo("Created New outbound context for ", addr.ToString());
 
       // inform pending
@@ -848,8 +845,7 @@ namespace llarp
         if(path && path->SendRoutingMessage(&msg, m_Router))
         {
           llarp::LogInfo(Name(), " looking up ", router);
-          m_PendingRouters.insert(
-              std::make_pair(router, RouterLookupJob(this)));
+          m_PendingRouters.emplace(router, RouterLookupJob(this));
           return true;
         }
         else
@@ -1089,7 +1085,7 @@ namespace llarp
       llarp::LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
       if(job->SendRequestViaPath(path, Router()))
       {
-        m_PendingServiceLookups.insert(std::make_pair(remote, hook));
+        m_PendingServiceLookups.emplace(remote, hook);
         return true;
       }
       llarp::LogError("send via path failed");
@@ -1197,15 +1193,14 @@ namespace llarp
       if(m_SNodeSessions.count(snode) == 0)
       {
         auto themIP = ObtainIPForAddr(snode, true);
-        m_SNodeSessions.emplace(std::make_pair(
+        m_SNodeSessions.emplace(
             snode,
-            std::unique_ptr< llarp::exit::BaseSession >(
-                new llarp::exit::SNodeSession(
+            std::make_unique< exit::SNodeSession >(
                     snode,
                     std::bind(&Endpoint::HandleWriteIPPacket, this,
                               std::placeholders::_1,
                               [themIP]() -> huint32_t { return themIP; }),
-                    m_Router, 2, numHops))));
+                    m_Router, 2, numHops));
       }
     }
 

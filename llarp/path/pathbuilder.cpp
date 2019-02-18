@@ -15,8 +15,8 @@ namespace llarp
   template < typename User >
   struct AsyncPathKeyExchangeContext
   {
-    typedef llarp::path::Path Path_t;
-    typedef llarp::path::Builder PathSet_t;
+    typedef path::Path Path_t;
+    typedef path::Builder PathSet_t;
     PathSet_t* pathset = nullptr;
     Path_t* path       = nullptr;
     typedef std::function< void(AsyncPathKeyExchangeContext< User >*) > Handler;
@@ -26,8 +26,8 @@ namespace llarp
     size_t idx               = 0;
     AbstractRouter* router   = nullptr;
     llarp_threadpool* worker = nullptr;
-    llarp::Logic* logic      = nullptr;
-    llarp::Crypto* crypto    = nullptr;
+    Logic* logic             = nullptr;
+    Crypto* crypto           = nullptr;
     LR_CommitMessage LRCM;
 
     ~AsyncPathKeyExchangeContext()
@@ -61,7 +61,7 @@ namespace llarp
       if(!ctx->crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey,
                                  hop.nonce))
       {
-        llarp::LogError("Failed to generate shared key for path build");
+        LogError("Failed to generate shared key for path build");
         delete ctx;
         return;
       }
@@ -87,7 +87,7 @@ namespace llarp
       record.rxid        = hop.rxID;
       record.tunnelNonce = hop.nonce;
       record.nextHop     = hop.upstream;
-      record.commkey     = llarp::seckey_topublic(hop.commkey);
+      record.commkey     = seckey_topublic(hop.commkey);
 
       auto buf = frame.Buffer();
       buf->cur = buf->base + EncryptedFrameOverheadSize;
@@ -95,8 +95,8 @@ namespace llarp
       if(!record.BEncode(buf))
       {
         // failed to encode?
-        llarp::LogError("Failed to generate Commit Record");
-        llarp::DumpBuffer(*buf);
+        LogError("Failed to generate Commit Record");
+        DumpBuffer(*buf);
         delete ctx;
         return;
       }
@@ -105,7 +105,7 @@ namespace llarp
       ctx->crypto->encryption_keygen(framekey);
       if(!frame.EncryptInPlace(framekey, hop.rc.enckey, ctx->crypto))
       {
-        llarp::LogError("Failed to encrypt LRCR");
+        LogError("Failed to encrypt LRCR");
         delete ctx;
         return;
       }
@@ -122,14 +122,14 @@ namespace llarp
       }
     }
 
-    AsyncPathKeyExchangeContext(llarp::Crypto* c) : crypto(c)
+    AsyncPathKeyExchangeContext(Crypto* c) : crypto(c)
     {
     }
 
     /// Generate all keys asynchronously and call handler when done
     void
-    AsyncGenerateKeys(Path_t* p, llarp::Logic* l, llarp_threadpool* pool,
-                      User* u, Handler func)
+    AsyncGenerateKeys(Path_t* p, Logic* l, llarp_threadpool* pool, User* u,
+                      Handler func)
     {
       path   = p;
       logic  = l;
@@ -161,7 +161,7 @@ namespace llarp
         ctx->path = nullptr;
       }
       else
-        llarp::LogError("failed to send LRCM to ", remote);
+        LogError("failed to send LRCM to ", remote);
     }
     // decrement keygen counter
     ctx->pathset->keygens--;
@@ -171,10 +171,7 @@ namespace llarp
   {
     Builder::Builder(AbstractRouter* p_router, struct llarp_dht_context* p_dht,
                      size_t pathNum, size_t hops)
-        : llarp::path::PathSet(pathNum)
-        , router(p_router)
-        , dht(p_dht)
-        , numHops(hops)
+        : path::PathSet(pathNum), router(p_router), dht(p_dht), numHops(hops)
     {
       p_router->pathContext().AddPathBuilder(this);
       p_router->crypto()->encryption_keygen(enckey);
@@ -281,7 +278,7 @@ namespace llarp
         {
           if(!SelectHop(nodedb, hops[0], hops[0], 0, roles))
           {
-            llarp::LogError("failed to select first hop");
+            LogError("failed to select first hop");
             return false;
           }
         }
@@ -290,7 +287,7 @@ namespace llarp
           if(!SelectHop(nodedb, hops[idx - 1], hops[idx], idx, roles))
           {
             /// TODO: handle this failure properly
-            llarp::LogWarn("Failed to select hop ", idx);
+            LogWarn("Failed to select hop ", idx);
             return false;
           }
         }
@@ -316,9 +313,9 @@ namespace llarp
           new AsyncPathKeyExchangeContext< Builder >(router->crypto());
       ctx->router  = router;
       ctx->pathset = this;
-      auto path    = new llarp::path::Path(hops, this, roles);
-      path->SetBuildResultHook(std::bind(&llarp::path::Builder::HandlePathBuilt,
-                                         this, std::placeholders::_1));
+      auto path    = new path::Path(hops, this, roles);
+      path->SetBuildResultHook(std::bind(&path::Builder::HandlePathBuilt, this,
+                                         std::placeholders::_1));
       ++keygens;
       ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(), this,
                              &PathBuilderKeysGenerated);
@@ -344,7 +341,7 @@ namespace llarp
     void
     Builder::ManualRebuild(size_t num, PathRole roles)
     {
-      llarp::LogDebug("manual rebuild ", num);
+      LogDebug("manual rebuild ", num);
       while(num--)
         BuildOne(roles);
     }
