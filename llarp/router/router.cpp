@@ -679,9 +679,7 @@ namespace llarp
   Router::NumberOfConnectedRouters() const
   {
     size_t s = 0;
-    ForEachPeer([&s](const auto *, bool) {
-      ++s;
-    });
+    ForEachPeer([&s](const auto *, bool) { ++s; });
     return s;
   }
 

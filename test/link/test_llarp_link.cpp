@@ -346,11 +346,10 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
 
 TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
 {
-  /*
   Alice.link = llarp::iwp::NewServer(
       &crypto, Alice.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Alice.GetRC(); },
-      [&](llarp::ILinkSession* s, llarp_buffer_t buf) -> bool {
+      [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         if(Alice.gotLIM)
         {
           return AliceGotMessage(buf);
@@ -358,7 +357,8 @@ TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
         else
         {
           llarp::LinkIntroMessage msg;
-          if(!msg.BDecode(&buf))
+          ManagedBuffer copy{buf};
+          if(!msg.BDecode(&copy.underlying))
             return false;
           if(!s->GotLIM(&msg))
             return false;
@@ -371,7 +371,7 @@ TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
         llarp::LogInfo("alice established with bob");
       },
       [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },
-      [&](llarp::Signature& sig, llarp_buffer_t buf) -> bool {
+      [&](llarp::Signature& sig, const llarp_buffer_t& buf) -> bool {
         return crypto.sign(sig, Alice.signingKey, buf);
       },
       [&](llarp::ILinkSession* session) {
@@ -382,8 +382,8 @@ TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
 
   auto sendDiscardMessage = [](llarp::ILinkSession* s) -> bool {
     // send discard message in reply to complete unit test
-    byte_t tmp[32] = {0};
-    auto otherBuf  = llarp::StackBuffer< decltype(tmp) >(tmp);
+    std::array< byte_t, 32 > tmp;
+    llarp_buffer_t otherBuf(tmp);
     llarp::DiscardMessage discard;
     if(!discard.BEncode(&otherBuf))
       return false;
@@ -395,9 +395,10 @@ TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
   Bob.link = llarp::iwp::NewServer(
       &crypto, Bob.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
-      [&](llarp::ILinkSession* s, llarp_buffer_t buf) -> bool {
+      [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
         llarp::LinkIntroMessage msg;
-        if(!msg.BDecode(&buf))
+        ManagedBuffer copy{buf};
+        if(!msg.BDecode(&copy.underlying))
           return false;
         if(!s->GotLIM(&msg))
           return false;
@@ -411,7 +412,7 @@ TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
                                        sendDiscardMessage);
       },
       [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },
-      [&](llarp::Signature& sig, llarp_buffer_t buf) -> bool {
+      [&](llarp::Signature& sig, const llarp_buffer_t& buf) -> bool {
         return crypto.sign(sig, Bob.signingKey, buf);
       },
       [&](llarp::ILinkSession* session) {
@@ -428,5 +429,4 @@ TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
   ASSERT_TRUE(Alice.gotLIM);
   ASSERT_TRUE(Bob.gotLIM);
   ASSERT_TRUE(success);
-  */
-}
+};

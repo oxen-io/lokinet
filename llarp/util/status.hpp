@@ -71,7 +71,7 @@ namespace llarp
     /// an entity that has a status that can be extracted
     struct IStateful
     {
-      virtual ~IStateful() {};
+      virtual ~IStateful(){};
 
       virtual StatusObject
       ExtractStatus() const = 0;

@@ -139,7 +139,7 @@ namespace llarp
       void
       Alive();
 
-      util::StatusObject 
+      util::StatusObject
       ExtractStatus() const override;
 
       /// base

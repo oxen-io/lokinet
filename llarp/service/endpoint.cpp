@@ -266,9 +266,7 @@ namespace llarp
         auto itr = m_PrefetchedTags.find(tag);
         if(itr == m_PrefetchedTags.end())
         {
-          itr = m_PrefetchedTags
-                    .emplace(tag, CachedTagResult(tag, this))
-                    .first;
+          itr = m_PrefetchedTags.emplace(tag, CachedTagResult(tag, this)).first;
         }
         for(const auto& introset : itr->second.result)
         {
@@ -1196,11 +1194,11 @@ namespace llarp
         m_SNodeSessions.emplace(
             snode,
             std::make_unique< exit::SNodeSession >(
-                    snode,
-                    std::bind(&Endpoint::HandleWriteIPPacket, this,
-                              std::placeholders::_1,
-                              [themIP]() -> huint32_t { return themIP; }),
-                    m_Router, 2, numHops));
+                snode,
+                std::bind(&Endpoint::HandleWriteIPPacket, this,
+                          std::placeholders::_1,
+                          [themIP]() -> huint32_t { return themIP; }),
+                m_Router, 2, numHops));
       }
     }
 
@@ -1310,13 +1308,12 @@ namespace llarp
         }
       }
       // no converstation
-      return EnsurePathToService(
-          remote,
-          [](Address, OutboundContext* c) {
-            if(c)
-              c->UpdateIntroSet(true);
-          },
-          5000, false);
+      return EnsurePathToService(remote,
+                                 [](Address, OutboundContext* c) {
+                                   if(c)
+                                     c->UpdateIntroSet(true);
+                                 },
+                                 5000, false);
     }
 
     bool

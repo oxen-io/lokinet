@@ -41,7 +41,6 @@ namespace llarp
 
   struct AbstractRouter : public util::IStateful
   {
-
     virtual void
     OnSessionEstablished(RouterContact rc) = 0;
 
@@ -139,12 +138,13 @@ namespace llarp
     CheckRenegotiateValid(RouterContact newRc, RouterContact oldRC) = 0;
 
     /// set router's service node whitelist
-    virtual void 
-    SetRouterWhitelist(const std::vector<RouterID> & routers) =0 ;
-
-    /// visit each connected link session 
     virtual void
-    ForEachPeer(std::function<void(const ILinkSession*, bool)> visit) const = 0;
+    SetRouterWhitelist(const std::vector< RouterID > &routers) = 0;
+
+    /// visit each connected link session
+    virtual void
+    ForEachPeer(
+        std::function< void(const ILinkSession *, bool) > visit) const = 0;
   };
 }  // namespace llarp
 
