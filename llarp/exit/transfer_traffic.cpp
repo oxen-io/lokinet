@@ -64,7 +64,7 @@ namespace llarp
 
     bool
     TransferTrafficMessage::HandleMessage(IMessageHandler* h,
-                                          llarp::Router* r) const
+                                          AbstractRouter* r) const
     {
       return h->HandleTransferTrafficMessage(this, r);
     }

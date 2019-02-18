@@ -16,7 +16,7 @@ namespace llarp
 
     ~DHTImmediateMessage();
 
-    std::vector< std::unique_ptr< llarp::dht::IMessage > > msgs;
+    std::vector< std::unique_ptr< dht::IMessage > > msgs;
 
     bool
     DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
@@ -25,7 +25,7 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    HandleMessage(llarp::Router* router) const override;
+    HandleMessage(AbstractRouter* router) const override;
 
     void
     Clear() override;

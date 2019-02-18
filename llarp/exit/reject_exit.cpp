@@ -1,4 +1,6 @@
 #include <messages/exit.hpp>
+
+#include <crypto/crypto.hpp>
 #include <routing/handler.hpp>
 
 namespace llarp
@@ -91,7 +93,8 @@ namespace llarp
     }
 
     bool
-    RejectExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
+    RejectExitMessage::HandleMessage(IMessageHandler* h,
+                                     AbstractRouter* r) const
     {
       return h->HandleRejectExitMessage(this, r);
     }

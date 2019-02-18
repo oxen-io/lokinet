@@ -6,7 +6,10 @@
 #include <dht/messages/gotrouter.hpp>
 #include <dht/messages/pubintro.hpp>
 #include <messages/dht.hpp>
-#include <router/router.hpp>
+#include <messages/path_transfer.hpp>
+#include <nodedb.hpp>
+#include <profiling.hpp>
+#include <router/abstractrouter.hpp>
 #include <service/protocol.hpp>
 #include <util/logic.hpp>
 
@@ -16,7 +19,7 @@ namespace llarp
 {
   namespace service
   {
-    Endpoint::Endpoint(const std::string& name, llarp::Router* r,
+    Endpoint::Endpoint(const std::string& name, AbstractRouter* r,
                        Context* parent)
         : path::Builder(r, r->dht(), 6, DEFAULT_HOP_LENGTH)
         , context(parent)
@@ -69,7 +72,7 @@ namespace llarp
       if(m_IsolatedNetLoop)
         return m_IsolatedNetLoop;
       else
-        return m_Router->netloop;
+        return m_Router->netloop();
     }
 
     bool
@@ -623,7 +626,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSet(llarp::Router* r)
+    Endpoint::PublishIntroSet(AbstractRouter* r)
     {
       // publish via near router
       RouterID location = m_Identity.pub.Addr().as_array();
@@ -671,7 +674,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSetVia(llarp::Router* r, path::Path* path)
+    Endpoint::PublishIntroSetVia(AbstractRouter* r, path::Path* path)
     {
       auto job = new PublishIntroSetJob(this, GenTXID(), m_IntroSet);
       if(job->SendRequestViaPath(path, r))
@@ -809,8 +812,8 @@ namespace llarp
           return false;
         llarp_async_verify_rc* job = new llarp_async_verify_rc;
         job->nodedb                = m_Router->nodedb();
-        job->cryptoworker          = m_Router->tp;
-        job->diskworker            = m_Router->disk;
+        job->cryptoworker          = m_Router->threadpool();
+        job->diskworker            = m_Router->diskworker();
         job->logic                 = m_Router->logic();
         job->hook                  = nullptr;
         job->rc                    = msg->R[0];
@@ -1312,12 +1315,13 @@ namespace llarp
         }
       }
       // no converstation
-      return EnsurePathToService(remote,
-                                 [](Address, OutboundContext* c) {
-                                   if(c)
-                                     c->UpdateIntroSet(true);
-                                 },
-                                 5000, false);
+      return EnsurePathToService(
+          remote,
+          [](Address, OutboundContext* c) {
+            if(c)
+              c->UpdateIntroSet(true);
+          },
+          5000, false);
     }
 
     bool
@@ -1354,8 +1358,9 @@ namespace llarp
           {
             nodedb->select_random_hop(hops[hop - 1], hops[hop], hop);
             --tries;
-          } while(m_Endpoint->Router()->routerProfiling.IsBad(hops[hop].pubkey)
-                  && tries > 0);
+          } while(
+              m_Endpoint->Router()->routerProfiling().IsBad(hops[hop].pubkey)
+              && tries > 0);
           return tries > 0;
         }
         return false;
@@ -1737,7 +1742,7 @@ namespace llarp
           ++itr;
       }
       // send control message if we look too quiet
-      if(now - lastGoodSend > 60000)
+      if(now - lastGoodSend > (sendTimeout / 2))
       {
         Encrypted< 64 > tmp;
         tmp.Randomize();
@@ -1898,7 +1903,7 @@ namespace llarp
     llarp_threadpool*
     Endpoint::Worker()
     {
-      return m_Router->tp;
+      return m_Router->threadpool();
     }
 
   }  // namespace service

@@ -89,6 +89,7 @@ if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
     add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
     add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition")
     if (NO_LIBGCC)
       set(CMAKE_CXX_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_CXX_STANDARD_LIBRARIES}")
       set(CMAKE_C_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_C_STANDARD_LIBRARIES}")
@@ -238,6 +239,9 @@ set(CRYPTOGRAPHY_LIB ${LIB}-cryptography)
 set(UTIL_LIB ${LIB}-util)
 set(PLATFORM_LIB ${LIB}-platform)
 set(ANDROID_LIB ${LIB}android)
+set(ABYSS libabyss)
+set(ABYSS_LIB abyss)
+set(ABYSS_EXE ${ABYSS_LIB}-main)
 get_filename_component(TT_ROOT "vendor/libtuntap-master" ABSOLUTE)
 add_definitions(-D${CMAKE_SYSTEM_NAME})
 
@@ -277,7 +281,7 @@ if(UNIX)
       message(FATAL_ERROR "Your operating system is not supported yet")
   endif()
 elseif(WIN32)
-    get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-windows.c ABSOLUTE)
+    get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c ABSOLUTE)
     get_filename_component(EV_SRC "llarp/ev/ev_win32.cpp" ABSOLUTE)
     add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
 else()
@@ -299,19 +303,46 @@ if(NOT WIN32)
   add_subdirectory(vendor)
 endif(NOT WIN32)
 
+function(add_log_tag target)
+  get_target_property(TARGET_SRCS ${target} SOURCES)
+  foreach(F ${TARGET_SRCS})
+    set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
+  endforeach(F)
+endfunction()
+
+if(USE_LIBABYSS)
+  add_definitions(-DUSE_ABYSS=1)
+
+  set(ABYSS_SRC
+    ${ABYSS}/src/http.cpp
+    ${ABYSS}/src/client.cpp
+    ${ABYSS}/src/server.cpp)
+  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
+endif(USE_LIBABYSS)
+
 add_subdirectory(crypto)
 add_subdirectory(libutp)
 add_subdirectory(llarp)
 
-set(RC_SRC
-  daemon/rcutil.cpp
-)
+if(USE_LIBABYSS)
+  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
 
-set(ALL_SRC ${RC_SRC} ${EXE_SRC} ${LIB_PLATFORM_SRC} ${LIB_SRC})
-
-foreach(F ${ALL_SRC})
-  set_source_files_properties(${F} PROPERTIES COMPILE_FLAGS -DLOG_TAG=\\\"${F}\\\")
-endforeach(F)
+  if (NOT WIN32)
+    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
+    target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} Threads::Threads)
+  else()
+    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
+    target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
+  endif(NOT WIN32)
+  target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+  target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+  # for freebsd
+  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+    target_include_directories(${ABYSS_LIB} /usr/local/include)
+  endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  add_log_tag(${ABYSS_EXE})
+  add_log_tag(${ABYSS_LIB})
+endif(USE_LIBABYSS)
 
 if(SHADOW)
   add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${UTP_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})
@@ -323,6 +354,8 @@ else()
   else()
     add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
   endif(NOT WIN32)
+
+  add_log_tag(${EXE})
 
   install(TARGETS ${EXE} RUNTIME DESTINATION bin)
   if(WIN32)
@@ -336,48 +369,18 @@ else()
   endif(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 
   if (WIN32)
-    target_link_libraries(${EXE} ${STATIC_LIB} ws2_32 iphlpapi)
+    target_link_libraries(${EXE} PUBLIC ${STATIC_LIB} ws2_32 iphlpapi)
   else()
-    target_link_libraries(${EXE} ${STATIC_LIB} cppbackport libutp)
+    target_link_libraries(${EXE} PUBLIC ${STATIC_LIB} cppbackport libutp)
   endif(WIN32)
 
 
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
+    add_log_tag(${ANDROID_LIB})
     target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
   endif(ANDROID)
 endif(SHADOW)
-
-if(USE_LIBABYSS)
-  add_definitions(-DUSE_ABYSS=1)
-  set(ABYSS libabyss)
-  set(ABYSS_LIB abyss)
-  set(ABYSS_EXE ${ABYSS_LIB}-main)
-  set(ABYSS_SRC
-    ${ABYSS}/src/http.cpp
-    ${ABYSS}/src/client.cpp
-    ${ABYSS}/src/server.cpp
-    ${ABYSS}/src/json.cpp)
-  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
-  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
-  list(APPEND ALL_SRC ${ABYSS_SRC} ${ABYSS}/main.cpp)
-
-  if (NOT WIN32)
-    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-  else()
-    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
-    target_link_libraries(${ABYSS_EXE} ws2_32 iphlpapi)
-  endif(NOT WIN32)
-
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} Threads::Threads)
-  target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
-  target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
-
-  # for freebsd
-  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    target_include_directories(${ABYSS_LIB} /usr/local/include)
-  endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-endif(USE_LIBABYSS)
 
 enable_testing()
 

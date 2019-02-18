@@ -200,7 +200,7 @@ struct AbyssTest : public AbyssTestBase,
 TEST_F(AbyssTest, TestClientAndServer)
 {
   Start();
-  abyss::json::Value params;
+  llarp::json::Value params;
   params.SetObject();
   QueueRPC(method, std::move(params),
            std::bind(&AbyssTest::NewConn, this, std::placeholders::_1));

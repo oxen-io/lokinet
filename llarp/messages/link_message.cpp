@@ -1,12 +1,36 @@
 #include <messages/link_message_parser.hpp>
 
+#include <messages/dht_immediate.hpp>
+#include <messages/discard.hpp>
+#include <messages/link_intro.hpp>
+#include <messages/link_message.hpp>
+#include <messages/relay_commit.hpp>
+#include <messages/relay.hpp>
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
 
 namespace llarp
 {
-  InboundMessageParser::InboundMessageParser(Router* _router) : router(_router)
+  struct InboundMessageParser::msg_holder_t
+  {
+    LinkIntroMessage i;
+    RelayDownstreamMessage d;
+    RelayUpstreamMessage u;
+    DHTImmediateMessage m;
+    LR_CommitMessage c;
+    DiscardMessage x;
+  };
+
+  InboundMessageParser::InboundMessageParser(AbstractRouter* _router)
+      : router(_router)
+      , from(nullptr)
+      , msg(nullptr)
+      , holder(std::make_unique< msg_holder_t >())
+  {
+  }
+
+  InboundMessageParser::~InboundMessageParser()
   {
   }
 
@@ -24,7 +48,7 @@ namespace llarp
       if(!key)
         return false;
       // we are expecting the first key to be 'a'
-      if(!llarp_buffer_eq(*key, "a"))
+      if(!(*key == "a"))
       {
         llarp::LogWarn("message has no message type");
         return false;
@@ -46,22 +70,22 @@ namespace llarp
       switch(*strbuf.cur)
       {
         case 'i':
-          handler->msg = &handler->holder.i;
+          handler->msg = &handler->holder->i;
           break;
         case 'd':
-          handler->msg = &handler->holder.d;
+          handler->msg = &handler->holder->d;
           break;
         case 'u':
-          handler->msg = &handler->holder.u;
+          handler->msg = &handler->holder->u;
           break;
         case 'm':
-          handler->msg = &handler->holder.m;
+          handler->msg = &handler->holder->m;
           break;
         case 'c':
-          handler->msg = &handler->holder.c;
+          handler->msg = &handler->holder->c;
           break;
         case 'x':
-          handler->msg = &handler->holder.x;
+          handler->msg = &handler->holder->x;
           break;
         default:
           return false;

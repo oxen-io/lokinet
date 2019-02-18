@@ -1,16 +1,17 @@
+#include <link/iwp.hpp>
 #include <link/iwp_internal.hpp>
-#include <router/router.hpp>
 
 namespace llarp
 {
   namespace iwp
   {
     std::unique_ptr< ILinkLayer >
-    NewServerFromRouter(llarp::Router*)
+    NewServerFromRouter(AbstractRouter*)
     {
       // TODO: implement me
       return nullptr;
     }
+
     std::unique_ptr< ILinkLayer >
     NewServer(llarp::Crypto*, const SecretKey&, llarp::GetRCFunc,
               llarp::LinkMessageHandler, llarp::SessionEstablishedHandler,

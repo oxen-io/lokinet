@@ -15,12 +15,12 @@ struct llarp_dht_context;
 
 namespace llarp
 {
-  struct Router;
+  struct AbstractRouter;
 }
 
 /// allocator
 struct llarp_dht_context*
-llarp_dht_context_new(llarp::Router* parent);
+llarp_dht_context_new(llarp::AbstractRouter* parent);
 
 /// deallocator
 void

@@ -1,8 +1,8 @@
 #ifndef __ABYSS_CLIENT_HPP__
 #define __ABYSS_CLIENT_HPP__
 
-#include <abyss/json.hpp>
 #include <ev/ev.h>
+#include <util/json.hpp>
 #include <util/string_view.hpp>
 
 #include <deque>
@@ -18,8 +18,8 @@ namespace abyss
   namespace http
   {
     using RPC_Method_t = std::string;
-    using RPC_Params   = json::Value;
-    using RPC_Response = json::Document;
+    using RPC_Params   = llarp::json::Value;
+    using RPC_Response = llarp::json::Document;
     using Headers_t    = std::unordered_multimap< std::string, std::string >;
     struct ConnImpl;
 

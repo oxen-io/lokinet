@@ -2,7 +2,8 @@
 
 #include <dht/context.hpp>
 #include <messages/dht.hpp>
-#include <router/router.hpp>
+#include <path/path.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -82,11 +83,11 @@ namespace llarp
     bool
     GotIntroMessage::DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf)
     {
-      if(llarp_buffer_eq(key, "I"))
+      if(key == "I")
       {
         return BEncodeReadList(I, buf);
       }
-      if(llarp_buffer_eq(key, "K"))
+      if(key == "K")
       {
         if(K)  // duplicate key?
           return false;

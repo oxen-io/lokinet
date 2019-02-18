@@ -1,6 +1,7 @@
 #include <messages/dht.hpp>
 
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
+#include <routing/handler.hpp>
 
 namespace llarp
 {
@@ -15,15 +16,15 @@ namespace llarp
     {
       llarp::dht::Key_t from;
       from.Zero();
-      if(llarp_buffer_eq(key, "M"))
+      if(key == "M")
       {
         return llarp::dht::DecodeMesssageList(from, val, M, true);
       }
-      else if(llarp_buffer_eq(key, "S"))
+      else if(key == "S")
       {
         return bencode_read_integer(val, &S);
       }
-      else if(llarp_buffer_eq(key, "V"))
+      else if(key == "V")
       {
         return bencode_read_integer(val, &V);
       }
@@ -49,7 +50,7 @@ namespace llarp
     }
 
     bool
-    DHTMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
+    DHTMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       // set source as us
       llarp::dht::Key_t us{r->pubkey()};

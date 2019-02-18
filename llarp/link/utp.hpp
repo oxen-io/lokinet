@@ -6,7 +6,7 @@
 
 namespace llarp
 {
-  struct Router;
+  struct AbstractRouter;
 
   namespace utp
   {
@@ -19,7 +19,7 @@ namespace llarp
               llarp::SessionClosedHandler closed);
 
     std::unique_ptr< ILinkLayer >
-    NewServerFromRouter(llarp::Router* r);
+    NewServerFromRouter(AbstractRouter* r);
   }  // namespace utp
 }  // namespace llarp
 

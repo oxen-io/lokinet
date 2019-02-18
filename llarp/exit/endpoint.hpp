@@ -6,6 +6,8 @@
 #include <path/path.hpp>
 #include <util/time.hpp>
 
+#include <queue>
+
 namespace llarp
 {
   namespace handlers

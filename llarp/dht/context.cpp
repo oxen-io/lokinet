@@ -15,7 +15,9 @@
 #include <dht/taglookup.hpp>
 #include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
-#include <router/router.hpp>
+#include <path/path.hpp>
+#include <router/abstractrouter.hpp>
+#include <util/logic.hpp>
 
 #include <vector>
 
@@ -237,7 +239,7 @@ namespace llarp
     }
 
     void
-    Context::Init(const Key_t &us, llarp::Router *r,
+    Context::Init(const Key_t &us, AbstractRouter *r,
                   llarp_time_t exploreInterval)
     {
       router   = r;

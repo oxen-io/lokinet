@@ -2,10 +2,11 @@
 
 #include <messages/path_confirm.hpp>
 #include <path/path.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 #include <util/bencode.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
+#include <util/logic.hpp>
 
 namespace llarp
 {
@@ -16,7 +17,7 @@ namespace llarp
   bool
   LR_CommitMessage::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if(llarp_buffer_eq(key, "c"))
+    if(key == "c")
     {
       return BEncodeReadArray(frames, buf);
     }
@@ -60,7 +61,7 @@ namespace llarp
   }
 
   bool
-  LR_CommitMessage::HandleMessage(llarp::Router* router) const
+  LR_CommitMessage::HandleMessage(AbstractRouter* router) const
   {
     if(frames.size() != MAXHOPS)
     {
@@ -68,12 +69,12 @@ namespace llarp
                       "!=", MAXHOPS);
       return false;
     }
-    if(!router->paths.AllowingTransit())
+    if(!router->pathContext().AllowingTransit())
     {
       llarp::LogError("got LRCM when not permitting transit");
       return false;
     }
-    return AsyncDecrypt(&router->paths);
+    return AsyncDecrypt(&router->pathContext());
   }
 
   bool
@@ -131,7 +132,7 @@ namespace llarp
     if(!BEncodeMaybeReadVersion("v", self->version, LLARP_PROTO_VERSION, read,
                                 *key, r->buffer))
       return false;
-    if(llarp_buffer_eq(*key, "w"))
+    if(*key == "w")
     {
       // check for duplicate
       if(self->work)

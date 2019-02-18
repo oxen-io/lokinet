@@ -10,7 +10,8 @@
 
 #include <dns/dns.hpp>
 #include <ev/ev.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
+#include <service/context.hpp>
 
 namespace llarp
 {
@@ -29,12 +30,14 @@ namespace llarp
       self->Flush();
     }
 
-    TunEndpoint::TunEndpoint(const std::string &nickname, llarp::Router *r,
+    TunEndpoint::TunEndpoint(const std::string &nickname, AbstractRouter *r,
                              service::Context *parent)
         : service::Endpoint(nickname, r, parent)
-        , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop, r->netloop)
-        , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop, r->netloop)
-        , m_Resolver(r->netloop, this)
+        , m_UserToNetworkPktQueue(nickname + "_sendq", r->netloop(),
+                                  r->netloop())
+        , m_NetworkToUserPktQueue(nickname + "_recvq", r->netloop(),
+                                  r->netloop())
+        , m_Resolver(r->netloop(), this)
     {
 #ifdef ANDROID
       tunif.get_fd_promise = &get_tun_fd_promise;

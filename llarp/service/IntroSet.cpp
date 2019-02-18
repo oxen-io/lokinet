@@ -34,7 +34,7 @@ namespace llarp
       if(!BEncodeMaybeReadDictEntry("a", A, read, key, buf))
         return false;
 
-      if(llarp_buffer_eq(key, "i"))
+      if(key == "i")
       {
         return BEncodeReadList(I, buf);
       }
@@ -47,7 +47,7 @@ namespace llarp
       if(!BEncodeMaybeReadDictInt("t", T, read, key, buf))
         return false;
 
-      if(llarp_buffer_eq(key, "w"))
+      if(key == "w")
       {
         if(W)
           delete W;

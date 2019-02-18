@@ -27,7 +27,7 @@ namespace llarp
       };
 
       bool
-      HandleMessage(IMessageHandler* h, llarp::Router* r) const override;
+      HandleMessage(IMessageHandler* h, AbstractRouter* r) const override;
     };
   }  // namespace routing
 }  // namespace llarp

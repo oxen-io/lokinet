@@ -1,10 +1,10 @@
 FROM ubuntu:latest
 
 RUN apt update && \
-    apt install -y build-essential cmake git libcap-dev curl rapidjson-dev
+    apt install -y build-essential cmake git libcap-dev curl rapidjson-dev ninja-build
 
 WORKDIR /src/
 
 COPY . /src/
 
-RUN make -j 8 JSONRPC=ON
+RUN make NINJA=ninja JSONRPC=ON

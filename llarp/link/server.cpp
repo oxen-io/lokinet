@@ -170,6 +170,29 @@ namespace llarp
     m_Pending.erase(remote);
   }
 
+  util::StatusObject
+  ILinkLayer::ExtractStatus() const
+  {
+    std::vector<util::StatusObject> pending, established;
+
+    std::transform(m_Pending.begin(), m_Pending.end(), std::back_inserter(pending), [](const auto & item) -> util::StatusObject {
+      return item.second->ExtractStatus();
+    });
+    std::transform(m_AuthedLinks.begin(), m_AuthedLinks.end(), std::back_inserter(established), [](const auto & item) -> util::StatusObject {
+      return item.second->ExtractStatus();
+    });
+
+    return {
+      {"name", Name()},
+      {"rank", uint64_t(Rank())},
+      {"addr", m_ourAddr.ToString()},
+      {"sessions", util::StatusObject{
+        {"pending", pending},
+        {"established", established}
+      }}
+    };
+  }
+
   bool
   ILinkLayer::TryEstablishTo(RouterContact rc)
   {
@@ -194,6 +217,18 @@ namespace llarp
     m_Logic = l;
     ScheduleTick(100);
     return true;
+  }
+
+  void
+  ILinkLayer::Tick(llarp_time_t now)
+  {
+    Lock l(m_AuthedLinksMutex);
+    auto itr = m_AuthedLinks.begin();
+    while(itr != m_AuthedLinks.end())
+    {
+      itr->second->Tick(now);
+      ++itr;
+    }
   }
 
   void

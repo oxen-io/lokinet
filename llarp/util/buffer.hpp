@@ -6,6 +6,7 @@
 #include <util/types.hpp>
 
 #include <cassert>
+#include <iterator>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -112,11 +113,51 @@ struct llarp_buffer_t
   {
   }
 
+  size_t
+  size_left() const;
+
+  template < typename InputIt >
+  bool
+  write(InputIt begin, InputIt end);
+
+  bool
+  writef(const char *fmt, ...) __attribute__((format(printf, 2, 3)));
+  ;
+
+  bool
+  put_uint16(uint16_t i);
+  bool
+  put_uint32(uint32_t i);
+
+  bool
+  read_uint16(uint16_t &i);
+  bool
+  read_uint32(uint32_t &i);
+
+  size_t
+  read_until(char delim, byte_t *result, size_t resultlen);
+
  private:
   friend struct ManagedBuffer;
   llarp_buffer_t(const llarp_buffer_t &) = default;
   llarp_buffer_t(llarp_buffer_t &&)      = default;
 };
+
+bool
+operator==(const llarp_buffer_t &buff, const char *data);
+
+template < typename InputIt >
+bool
+llarp_buffer_t::write(InputIt begin, InputIt end)
+{
+  auto dist = std::distance(begin, end);
+  if(static_cast< decltype(dist) >(size_left()) >= dist)
+  {
+    cur = std::copy(begin, end, cur);
+    return true;
+  }
+  return false;
+}
 
 /**
  Provide a copyable/moveable wrapper around `llarp_buffer_t`.
@@ -139,41 +180,5 @@ struct ManagedBuffer
     return underlying;
   }
 };
-
-/// how much room is left in buffer
-size_t
-llarp_buffer_size_left(const llarp_buffer_t &buff);
-
-/// write a chunk of data size "sz"
-bool
-llarp_buffer_write(llarp_buffer_t *buff, const void *data, size_t sz);
-
-/// write multiple strings
-bool
-llarp_buffer_writef(llarp_buffer_t *buff, const char *fmt, ...);
-
-/// read buffer upto character delimiter
-size_t
-llarp_buffer_read_until(llarp_buffer_t *buff, char delim, byte_t *result,
-                        size_t resultlen);
-/// compare buffers, true if equal else false
-bool
-llarp_buffer_eq(const llarp_buffer_t &buff, const char *data);
-
-/// put big endian unsigned 16 bit integer
-bool
-llarp_buffer_put_uint16(llarp_buffer_t *buf, uint16_t i);
-
-/// put big endian unsigned 32 bit integer
-bool
-llarp_buffer_put_uint32(llarp_buffer_t *buf, uint32_t i);
-
-/// read big endian unsigned 16 bit integer
-bool
-llarp_buffer_read_uint16(llarp_buffer_t *buf, uint16_t *i);
-
-/// read big endian unsigned 32 bit integer
-bool
-llarp_buffer_read_uint32(llarp_buffer_t *buf, uint32_t *i);
 
 #endif

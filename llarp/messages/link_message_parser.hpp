@@ -1,18 +1,21 @@
 #ifndef LLARP_LINK_MESSAGE_PARSER_HPP
 #define LLARP_LINK_MESSAGE_PARSER_HPP
 
-#include <messages/discard.hpp>
-#include <messages/dht_immediate.hpp>
-#include <messages/link_intro.hpp>
-#include <messages/link_message.hpp>
-#include <messages/relay.hpp>
-#include <messages/relay_commit.hpp>
+#include <router_id.hpp>
+#include <util/bencode.h>
+
+#include <memory>
 
 namespace llarp
 {
+  struct AbstractRouter;
+  struct ILinkMessage;
+  struct ILinkSession;
+
   struct InboundMessageParser
   {
-    InboundMessageParser(Router* router);
+    InboundMessageParser(AbstractRouter* router);
+    ~InboundMessageParser();
     dict_reader reader;
 
     static bool
@@ -37,21 +40,12 @@ namespace llarp
 
    private:
     bool firstkey;
-    Router* router;
-    ILinkSession* from = nullptr;
-    ILinkMessage* msg  = nullptr;
+    AbstractRouter* router;
+    ILinkSession* from;
+    ILinkMessage* msg;
 
-    struct msg_holder_t
-    {
-      LinkIntroMessage i;
-      RelayDownstreamMessage d;
-      RelayUpstreamMessage u;
-      DHTImmediateMessage m;
-      LR_CommitMessage c;
-      DiscardMessage x;
-    };
-
-    msg_holder_t holder;
+    struct msg_holder_t;
+    std::unique_ptr< msg_holder_t > holder;
   };
 }  // namespace llarp
 #endif

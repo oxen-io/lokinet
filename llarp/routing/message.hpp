@@ -7,14 +7,14 @@
 
 namespace llarp
 {
-  struct Router;
+  struct AbstractRouter;
   namespace routing
   {
     struct IMessageHandler;
 
     struct IMessage : public llarp::IBEncodeMessage
     {
-      llarp::PathID_t from;
+      PathID_t from;
       uint64_t S;
 
       IMessage() : llarp::IBEncodeMessage(), S(0)
@@ -24,7 +24,7 @@ namespace llarp
       virtual ~IMessage(){};
 
       virtual bool
-      HandleMessage(IMessageHandler* h, llarp::Router* r) const = 0;
+      HandleMessage(IMessageHandler* h, AbstractRouter* r) const = 0;
 
       virtual void
       Clear() = 0;

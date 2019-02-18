@@ -1,5 +1,6 @@
 #include <messages/exit.hpp>
 
+#include <crypto/crypto.hpp>
 #include <routing/handler.hpp>
 
 namespace llarp
@@ -11,7 +12,7 @@ namespace llarp
     {
       std::array< byte_t, 1024 > tmp;
       llarp_buffer_t buf(tmp);
-      I = llarp::seckey_topublic(sk);
+      I = seckey_topublic(sk);
       Z.Zero();
       if(!BEncode(&buf))
       {
@@ -92,7 +93,8 @@ namespace llarp
     }
 
     bool
-    ObtainExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
+    ObtainExitMessage::HandleMessage(IMessageHandler* h,
+                                     AbstractRouter* r) const
     {
       return h->HandleObtainExitMessage(this, r);
     }

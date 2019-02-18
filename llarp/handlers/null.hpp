@@ -9,7 +9,7 @@ namespace llarp
   {
     struct NullEndpoint final : public llarp::service::Endpoint
     {
-      NullEndpoint(const std::string &name, llarp::Router *r,
+      NullEndpoint(const std::string &name, AbstractRouter *r,
                    llarp::service::Context *parent)
           : llarp::service::Endpoint(name, r, parent){};
 
