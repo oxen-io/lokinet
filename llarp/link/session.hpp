@@ -13,7 +13,7 @@ namespace llarp
   struct LinkIntroMessage;
   struct ILinkMessage;
   struct ILinkLayer;
-  struct ILinkSession
+  struct ILinkSession : public util::IStateful
   {
     virtual ~ILinkSession(){};
 

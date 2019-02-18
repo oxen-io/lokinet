@@ -6,7 +6,10 @@
 
 namespace llarp
 {
-  using PathID_t = AlignedBuffer< PATHIDSIZE >;
-}
+  struct PathID_t final : public AlignedBuffer< PATHIDSIZE >
+  {
+  };
+
+}  // namespace llarp
 
 #endif

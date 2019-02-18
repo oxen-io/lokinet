@@ -65,7 +65,7 @@ namespace llarp
 
       /// tick owned paths
       void
-      Tick(llarp_time_t now, llarp::Router* r);
+      Tick(llarp_time_t now, AbstractRouter* r);
 
       /// count the number of paths that will exist at this timestamp in future
       size_t
@@ -186,7 +186,7 @@ namespace llarp
           std::set< llarp::service::Introduction >& intros) const;
 
       virtual bool
-      PublishIntroSet(__attribute__((unused)) llarp::Router* r)
+      PublishIntroSet(__attribute__((unused)) AbstractRouter* r)
       {
         return false;
       }

@@ -1,13 +1,11 @@
-#include <abyss/json.hpp>
-#include <rapidjson/ostreamwrapper.h>
-#include <rapidjson/writer.h>
+#include <util/json.hpp>
 #include <util/string_view.hpp>
 
 #include <cstring>
 #include <string>
 #include <vector>
 
-namespace abyss
+namespace llarp
 {
   namespace json
   {
@@ -52,10 +50,10 @@ namespace abyss
     void
     ToString(const json::Document& val, std::ostream& out)
     {
-      rapidjson::OStreamWrapper s(out);
-      rapidjson::Writer< rapidjson::OStreamWrapper > writer(s);
+      Stream s(out);
+      rapidjson::Writer< Stream > writer(s);
       val.Accept(writer);
     }
 
   }  // namespace json
-}  // namespace abyss
+}  // namespace llarp

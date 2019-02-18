@@ -22,7 +22,7 @@ namespace llarp
       std::atomic< bool > _run;
 
      public:
-      llarp::Router* router;
+      AbstractRouter* router;
       llarp_dht_context* dht;
       llarp::SecretKey enckey;
       size_t numHops;
@@ -33,7 +33,7 @@ namespace llarp
       std::atomic< uint8_t > keygens;
 
       /// construct
-      Builder(llarp::Router* p_router, llarp_dht_context* p_dht,
+      Builder(AbstractRouter* p_router, llarp_dht_context* p_dht,
               size_t numPaths, size_t numHops);
 
       virtual ~Builder();

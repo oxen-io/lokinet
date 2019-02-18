@@ -313,17 +313,17 @@ extern "C"
     uint16_t fields;
 
     // reads as HOST byte order
-    if(!llarp_buffer_read_uint16(buffer, &hdr->id))
+    if(!buffer->read_uint16(hdr->id))
       return false;
-    if(!llarp_buffer_read_uint16(buffer, &fields))
+    if(!buffer->read_uint16(fields))
       return false;
-    if(!llarp_buffer_read_uint16(buffer, &hdr->qdCount))
+    if(!buffer->read_uint16(hdr->qdCount))
       return false;
-    if(!llarp_buffer_read_uint16(buffer, &hdr->anCount))
+    if(!buffer->read_uint16(hdr->anCount))
       return false;
-    if(!llarp_buffer_read_uint16(buffer, &hdr->nsCount))
+    if(!buffer->read_uint16(hdr->nsCount))
       return false;
-    if(!llarp_buffer_read_uint16(buffer, &hdr->arCount))
+    if(!buffer->read_uint16(hdr->arCount))
       return false;
 
     // decode fields into hdr

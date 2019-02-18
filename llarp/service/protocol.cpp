@@ -44,7 +44,7 @@ namespace llarp
       bool read = false;
       if(!BEncodeMaybeReadDictInt("a", proto, read, k, buf))
         return false;
-      if(llarp_buffer_eq(k, "d"))
+      if(k == "d")
       {
         llarp_buffer_t strbuf;
         if(!bencode_read_string(buf, &strbuf))
@@ -126,7 +126,7 @@ namespace llarp
     ProtocolFrame::DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* val)
     {
       bool read = false;
-      if(llarp_buffer_eq(key, "A"))
+      if(key == "A")
       {
         llarp_buffer_t strbuf;
         if(!bencode_read_string(val, &strbuf))
@@ -392,7 +392,8 @@ namespace llarp
 
     bool
     ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
-                                 __attribute__((unused)) llarp::Router* r) const
+                                 __attribute__((unused))
+                                 AbstractRouter* r) const
     {
       return h->HandleHiddenServiceFrame(this);
     }

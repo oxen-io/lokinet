@@ -112,4 +112,5 @@ set(CRYPTOGRAPHY_SRC
   ${NTRU_SRC})
 
 add_library(${CRYPTOGRAPHY_LIB} STATIC ${CRYPTOGRAPHY_SRC})
+add_log_tag(${CRYPTOGRAPHY_LIB})
 target_include_directories (${CRYPTOGRAPHY_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

@@ -6,7 +6,7 @@
 //
 // Microsoft Visual C++ generated resource script.
 //
-#include "resource.h"
+#include <win32/resource.h>
 #include <winresrc.h>
 /////////////////////////////////////////////////////////////////////////////
 // English (United States) resources

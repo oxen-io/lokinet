@@ -46,7 +46,7 @@ namespace llarp
   BEncodeMaybeReadDictList(const char* k, List_t& item, bool& read,
                            const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if(llarp_buffer_eq(key, k))
+    if(key == k)
     {
       if(!BEncodeReadList(item, buf))
       {
@@ -62,7 +62,7 @@ namespace llarp
   BEncodeMaybeReadDictEntry(const char* k, Item_t& item, bool& read,
                             const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if(llarp_buffer_eq(key, k))
+    if(key == k)
     {
       if(!item.BDecode(buf))
       {
@@ -81,7 +81,7 @@ namespace llarp
   BEncodeMaybeReadDictInt(const char* k, Int_t& i, bool& read,
                           const llarp_buffer_t& key, llarp_buffer_t* buf)
   {
-    if(llarp_buffer_eq(key, k))
+    if(key == k)
     {
       if(!bencode_read_integer(buf, &i))
       {
@@ -100,7 +100,7 @@ namespace llarp
                           bool& read, const llarp_buffer_t& key,
                           llarp_buffer_t* buf)
   {
-    if(llarp_buffer_eq(key, k))
+    if(key == k)
     {
       if(!bencode_read_integer(buf, &item))
         return false;
@@ -149,7 +149,7 @@ namespace llarp
 
     buf->cur++;
     size_t idx = 0;
-    while(llarp_buffer_size_left(*buf) && *buf->cur != 'e')
+    while(buf->size_left() && *buf->cur != 'e')
     {
       if(idx >= array.size())
         return false;
@@ -184,7 +184,7 @@ namespace llarp
       return false;
 
     buf->cur++;
-    while(llarp_buffer_size_left(*buf) && *buf->cur != 'e')
+    while(buf->size_left() && *buf->cur != 'e')
     {
       if(!result.emplace(result.end())->BDecode(buf))
         return false;
@@ -203,7 +203,7 @@ namespace llarp
       return false;
 
     buf->cur++;
-    while(llarp_buffer_size_left(*buf) && *buf->cur != 'e')
+    while(buf->size_left() && *buf->cur != 'e')
     {
       T item;
       if(!item.BDecode(buf))

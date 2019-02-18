@@ -2,7 +2,9 @@
 
 #include <dht/context.hpp>
 #include <dht/messages/gotintro.hpp>
-#include <router/router.hpp>
+#include <messages/dht.hpp>
+#include <path/path.hpp>
+#include <router/abstractrouter.hpp>
 #include <util/logger.hpp>
 
 namespace llarp

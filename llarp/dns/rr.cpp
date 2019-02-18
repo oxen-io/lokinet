@@ -31,15 +31,15 @@ namespace llarp
       {
         return false;
       }
-      if(!llarp_buffer_put_uint16(buf, rr_type))
+      if(!buf->put_uint16(rr_type))
       {
         return false;
       }
-      if(!llarp_buffer_put_uint16(buf, rr_class))
+      if(!buf->put_uint16(rr_class))
       {
         return false;
       }
-      if(!llarp_buffer_put_uint32(buf, ttl))
+      if(!buf->put_uint32(ttl))
       {
         return false;
       }
@@ -58,17 +58,17 @@ namespace llarp
         llarp::LogError("failed to decode rr name");
         return false;
       }
-      if(!llarp_buffer_read_uint16(buf, &rr_type))
+      if(!buf->read_uint16(rr_type))
       {
         llarp::LogError("failed to decode rr type");
         return false;
       }
-      if(!llarp_buffer_read_uint16(buf, &rr_class))
+      if(!buf->read_uint16(rr_class))
       {
         llarp::LogError("failed to decode rr class");
         return false;
       }
-      if(!llarp_buffer_read_uint32(buf, &ttl))
+      if(!buf->read_uint32(ttl))
       {
         llarp::LogError("failed to decode ttl");
         return false;

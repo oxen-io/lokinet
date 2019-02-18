@@ -8,6 +8,7 @@
 #include <router_contact.hpp>
 #include <util/logic.hpp>
 #include <util/threading.hpp>
+#include <util/status.hpp>
 
 #include <list>
 #include <unordered_map>
@@ -41,7 +42,7 @@ namespace llarp
   /// handles close of all sessions with pubkey
   using SessionClosedHandler = std::function< void(llarp::RouterID) >;
 
-  struct ILinkLayer
+  struct ILinkLayer : public util::IStateful
   {
     ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
                LinkMessageHandler handler, SignBufferFunc signFunc,
@@ -123,6 +124,9 @@ namespace llarp
     virtual const char*
     Name() const = 0;
 
+    util::StatusObject 
+    ExtractStatus() const override;
+
     void
     CloseSessionTo(const RouterID& remote);
 
@@ -176,9 +180,7 @@ namespace llarp
     bool
     MapAddr(const RouterID& pk, ILinkSession* s);
 
-    virtual void Tick(llarp_time_t)
-    {
-    }
+    void Tick(llarp_time_t now);
 
     LinkMessageHandler HandleMessage;
     TimeoutHandler HandleTimeout;

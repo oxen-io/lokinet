@@ -1,4 +1,6 @@
 #include <messages/exit.hpp>
+
+#include <crypto/crypto.hpp>
 #include <routing/handler.hpp>
 
 namespace llarp
@@ -81,7 +83,7 @@ namespace llarp
     }
 
     bool
-    GrantExitMessage::HandleMessage(IMessageHandler* h, llarp::Router* r) const
+    GrantExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
       return h->HandleGrantExitMessage(this, r);
     }

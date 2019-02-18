@@ -1,56 +1,42 @@
 #ifndef LLARP_ROUTING_MESSAGE_PARSER_HPP
 #define LLARP_ROUTING_MESSAGE_PARSER_HPP
 
-#include <messages/dht.hpp>
-#include <messages/discard.hpp>
-#include <messages/path_confirm.hpp>
-#include <messages/path_latency.hpp>
-#include <messages/path_transfer.hpp>
-#include <path/path_types.hpp>
-#include <util/bencode.hpp>
+#include <util/bencode.h>
 #include <util/buffer.hpp>
+
+#include <memory>
 
 namespace llarp
 {
-  struct Router;
+  struct AbstractRouter;
+  struct PathID_t;
 
   namespace routing
   {
+    struct IMessage;
     struct IMessageHandler;
 
     struct InboundMessageParser
     {
       InboundMessageParser();
+      ~InboundMessageParser();
 
       bool
       ParseMessageBuffer(const llarp_buffer_t& buf, IMessageHandler* handler,
-                         const PathID_t& from, llarp::Router* r);
+                         const PathID_t& from, AbstractRouter* r);
 
      private:
       static bool
       OnKey(dict_reader* r, llarp_buffer_t* key);
+
       bool firstKey;
       char key;
       dict_reader reader;
 
-      struct MessageHolder
-      {
-        DataDiscardMessage D;
-        PathLatencyMessage L;
-        DHTMessage M;
-        PathConfirmMessage P;
-        PathTransferMessage T;
-        service::ProtocolFrame H;
-        TransferTrafficMessage I;
-        GrantExitMessage G;
-        RejectExitMessage J;
-        ObtainExitMessage O;
-        UpdateExitMessage U;
-        CloseExitMessage C;
-      };
+      struct MessageHolder;
 
-      IMessage* msg = nullptr;
-      MessageHolder m_Holder;
+      IMessage* msg;
+      std::unique_ptr< MessageHolder > m_Holder;
     };
   }  // namespace routing
 }  // namespace llarp

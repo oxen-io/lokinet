@@ -10,7 +10,7 @@
 namespace llarp
 {
   struct PubKey;
-  struct Router;
+  struct AbstractRouter;
 
   namespace rpc
   {
@@ -19,7 +19,7 @@ namespace llarp
     /// jsonrpc server
     struct Server
     {
-      Server(Router* r);
+      Server(AbstractRouter* r);
       ~Server();
 
       bool
@@ -38,7 +38,7 @@ namespace llarp
     /// jsonrpc caller
     struct Caller
     {
-      Caller(Router* r);
+      Caller(AbstractRouter* r);
       ~Caller();
 
       /// set http basic auth for use with remote rpc endpoint

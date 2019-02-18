@@ -8,12 +8,12 @@
 
 namespace llarp
 {
-  struct Router;
+  struct AbstractRouter;
   namespace handlers
   {
     struct ExitEndpoint : public dns::IQueryHandler, public util::IStateful
     {
-      ExitEndpoint(const std::string& name, Router* r);
+      ExitEndpoint(const std::string& name, AbstractRouter* r);
       ~ExitEndpoint();
 
       void
@@ -52,7 +52,7 @@ namespace llarp
       void
       OnInetPacket(const llarp_buffer_t& buf);
 
-      Router*
+      AbstractRouter*
       GetRouter();
 
       llarp_time_t
@@ -125,7 +125,7 @@ namespace llarp
       void
       KickIdentOffExit(const PubKey& pk);
 
-      Router* m_Router;
+      AbstractRouter* m_Router;
       dns::Proxy m_Resolver;
       bool m_ShouldInitTun;
       std::string m_Name;

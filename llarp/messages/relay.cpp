@@ -1,6 +1,7 @@
 #include <messages/relay.hpp>
 
-#include <router/router.hpp>
+#include <path/path.hpp>
+#include <router/abstractrouter.hpp>
 #include <util/bencode.hpp>
 
 namespace llarp
@@ -58,9 +59,9 @@ namespace llarp
   }
 
   bool
-  RelayUpstreamMessage::HandleMessage(llarp::Router *r) const
+  RelayUpstreamMessage::HandleMessage(AbstractRouter *r) const
   {
-    auto path = r->paths.GetByDownstream(session->GetPubKey(), pathid);
+    auto path = r->pathContext().GetByDownstream(session->GetPubKey(), pathid);
     if(path)
     {
       return path->HandleUpstream(llarp_buffer_t(X), Y, r);
@@ -121,9 +122,9 @@ namespace llarp
   }
 
   bool
-  RelayDownstreamMessage::HandleMessage(llarp::Router *r) const
+  RelayDownstreamMessage::HandleMessage(AbstractRouter *r) const
   {
-    auto path = r->paths.GetByUpstream(session->GetPubKey(), pathid);
+    auto path = r->pathContext().GetByUpstream(session->GetPubKey(), pathid);
     if(path)
     {
       return path->HandleDownstream(llarp_buffer_t(X), Y, r);

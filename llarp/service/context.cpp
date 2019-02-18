@@ -2,14 +2,15 @@
 
 #include <handlers/null.hpp>
 #include <handlers/tun.hpp>
-#include <router/router.hpp>
+#include <nodedb.hpp>
+#include <router/abstractrouter.hpp>
 #include <service/endpoint.hpp>
 
 namespace llarp
 {
   namespace service
   {
-    Context::Context(llarp::Router *r) : m_Router(r)
+    Context::Context(AbstractRouter *r) : m_Router(r)
     {
     }
 
@@ -312,16 +313,16 @@ namespace llarp
 
       static std::map< std::string,
                        std::function< llarp::service::Endpoint *(
-                           const std::string &, llarp::Router *,
+                           const std::string &, AbstractRouter *,
                            llarp::service::Context *) > >
           endpointConstructors = {
               {"tun",
-               [](const std::string &nick, llarp::Router *r,
+               [](const std::string &nick, AbstractRouter *r,
                   llarp::service::Context *c) -> llarp::service::Endpoint * {
                  return new llarp::handlers::TunEndpoint(nick, r, c);
                }},
               {"null",
-               [](const std::string &nick, llarp::Router *r,
+               [](const std::string &nick, AbstractRouter *r,
                   llarp::service::Context *c) -> llarp::service::Endpoint * {
                  return new llarp::handlers::NullEndpoint(nick, r, c);
                }}};

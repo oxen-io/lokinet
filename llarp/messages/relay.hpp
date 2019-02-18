@@ -27,7 +27,7 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    HandleMessage(llarp::Router* router) const override;
+    HandleMessage(AbstractRouter* router) const override;
 
     void
     Clear() override;
@@ -49,7 +49,7 @@ namespace llarp
     BEncode(llarp_buffer_t* buf) const override;
 
     bool
-    HandleMessage(llarp::Router* router) const override;
+    HandleMessage(AbstractRouter* router) const override;
 
     void
     Clear() override;

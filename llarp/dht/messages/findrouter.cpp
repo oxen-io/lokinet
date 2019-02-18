@@ -3,7 +3,9 @@
 #include <dht/context.hpp>
 #include <dht/messages/gotrouter.hpp>
 #include <messages/dht.hpp>
-#include <router/router.hpp>
+#include <path/path.hpp>
+#include <nodedb.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -98,7 +100,7 @@ namespace llarp
     {
       llarp_buffer_t strbuf;
 
-      if(llarp_buffer_eq(key, "E"))
+      if(key == "E")
       {
         uint64_t result;
         if(!bencode_read_integer(val, &result))
@@ -108,7 +110,7 @@ namespace llarp
         return true;
       }
 
-      if(llarp_buffer_eq(key, "I"))
+      if(key == "I")
       {
         uint64_t result;
         if(!bencode_read_integer(val, &result))
@@ -117,7 +119,7 @@ namespace llarp
         iterative = result != 0;
         return true;
       }
-      if(llarp_buffer_eq(key, "K"))
+      if(key == "K")
       {
         if(!bencode_read_string(val, &strbuf))
           return false;
@@ -127,11 +129,11 @@ namespace llarp
         std::copy(strbuf.base, strbuf.base + K.SIZE, K.begin());
         return true;
       }
-      if(llarp_buffer_eq(key, "T"))
+      if(key == "T")
       {
         return bencode_read_integer(val, &txid);
       }
-      if(llarp_buffer_eq(key, "V"))
+      if(key == "V")
       {
         return bencode_read_integer(val, &version);
       }

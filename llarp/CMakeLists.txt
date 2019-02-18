@@ -13,13 +13,14 @@ set(LIB_UTIL_SRC
   util/endian.cpp
   util/fs.cpp
   util/ini.cpp
+  util/json.cpp
   util/logger.cpp
   util/logic.cpp
   util/mem.cpp
   util/queue_manager.cpp
   util/queue.cpp
-  util/str.cpp
   util/status.cpp
+  util/str.cpp
   util/string_view.cpp
   util/thread_pool.cpp
   util/threading.cpp
@@ -31,11 +32,10 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(${UTIL_LIB} PUBLIC cppbackport absl::variant)
 
 # cut back on fluff
 if (NOT WIN32)
-    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional)
+    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant cppbackport)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -58,7 +58,7 @@ set(LIB_PLATFORM_SRC
 )
 
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
-target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} libutp cppbackport Threads::Threads)
+target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} libutp Threads::Threads)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   if(NON_PC_TARGET)
@@ -72,11 +72,11 @@ endif()
 
 if(WIN32)
   # win32 inline code
-  target_sources(${PLATFORM_LIB} PUBLIC win32/win32_inet.c win32/win32_intrnl.c win32/win32_upoll.c)
-endif()
-
-if(USE_LIBABYSS)
-    target_link_libraries(${PLATFORM_LIB} ${ABYSS_LIB})
+  get_filename_component(win32_inet win32/win32_inet.c ABSOLUTE)
+  get_filename_component(win32_intrnl win32/win32_intrnl.c ABSOLUTE)
+  get_filename_component(win32_upoll win32/win32_upoll.c ABSOLUTE)
+  target_sources(${PLATFORM_LIB} PUBLIC ${win32_inet} ${win32_intrnl} ${win32_upoll})
+  target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
 endif()
 
 set(DNSLIB_SRC
@@ -173,6 +173,7 @@ set(LIB_SRC
   path/transit_hop.cpp
   pow.cpp
   profiling.cpp
+  router/abstractrouter.cpp
   router/router.cpp
   router_contact.cpp
   router_id.cpp
@@ -201,7 +202,12 @@ set(LIB_SRC
 )
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-target_link_libraries(${STATIC_LIB} PUBLIC ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} cppbackport libutp ${LIBS})
+target_link_libraries(${STATIC_LIB} PUBLIC ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} libutp ${LIBS})
+
+if(USE_LIBABYSS)
+    add_definitions(-DUSE_ABYSS=1)
+    target_link_libraries(${STATIC_LIB} PUBLIC ${ABYSS_LIB})
+endif()
 
 if(TESTNET)
   target_sources(${STATIC_LIB} PUBLIC testnet.c)
@@ -215,4 +221,9 @@ if(WITH_SHARED)
     target_link_libraries(${SHARED_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} libutp ${PLATFORM_LIB} Threads::Threads)
     install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
   endif()
+  add_log_tag(${SHARED_LIB})
 endif()
+
+add_log_tag(${UTIL_LIB})
+add_log_tag(${PLATFORM_LIB})
+add_log_tag(${STATIC_LIB})

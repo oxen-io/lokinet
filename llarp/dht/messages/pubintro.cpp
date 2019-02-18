@@ -4,7 +4,7 @@
 #include <dht/messages/gotintro.hpp>
 #include <messages/dht.hpp>
 #include <messages/dht_immediate.hpp>
-#include <router/router.hpp>
+#include <router/abstractrouter.hpp>
 
 namespace llarp
 {
@@ -19,7 +19,7 @@ namespace llarp
                                    llarp_buffer_t *val)
     {
       bool read = false;
-      if(llarp_buffer_eq(key, "E"))
+      if(key == "E")
       {
         return BEncodeReadList(E, val);
       }
@@ -27,7 +27,7 @@ namespace llarp
         return false;
       if(!BEncodeMaybeReadDictInt("R", R, read, key, val))
         return false;
-      if(llarp_buffer_eq(key, "S"))
+      if(key == "S")
       {
         read = true;
         hasS = true;
