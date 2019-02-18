@@ -1,7 +1,5 @@
 #include <util/bencode.h>
-
 #include <util/logger.hpp>
-
 #include <cstdlib>
 
 bool
@@ -75,7 +73,11 @@ bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
-  if(!buff->writef("i%lu", i))
+#ifndef __LP64__
+  if(!buff->writef("i%llu", i))
+#else
+  if(!buff->write("i%lu", i))
+#endif
   {
     return false;
   }
