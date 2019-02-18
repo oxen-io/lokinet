@@ -24,7 +24,7 @@ namespace llarp
      public:
       AbstractRouter* router;
       llarp_dht_context* dht;
-      llarp::SecretKey enckey;
+      SecretKey enckey;
       size_t numHops;
       llarp_time_t lastBuild          = 0;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;

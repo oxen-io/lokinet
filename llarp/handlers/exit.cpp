@@ -423,7 +423,7 @@ namespace llarp
       auto itr = m_Paths.find(next);
       if(itr != m_Paths.end())
         return false;
-      m_Paths.insert(std::make_pair(next, remote));
+      m_Paths.emplace(next, remote);
       return true;
     }
 

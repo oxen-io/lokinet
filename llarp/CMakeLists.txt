@@ -143,7 +143,6 @@ set(LIB_SRC
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
-  link/curvecp.cpp
   link/encoder.cpp
   link/iwp.cpp
   link/server.cpp

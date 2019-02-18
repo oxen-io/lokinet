@@ -371,7 +371,7 @@ namespace llarp
         {
           llarp::LogInfo("autostarting hidden service endpoint ",
                          service->Name());
-          m_Endpoints.insert(std::make_pair(conf.first, std::move(service)));
+          m_Endpoints.emplace(conf.first, std::move(service));
           return true;
         }
         llarp::LogError("failed to start hidden service endpoint ", conf.first);
@@ -380,7 +380,7 @@ namespace llarp
       else
       {
         llarp::LogInfo("added hidden service endpoint ", service->Name());
-        m_Endpoints.insert(std::make_pair(conf.first, std::move(service)));
+        m_Endpoints.emplace(conf.first, std::move(service));
         return true;
       }
     }

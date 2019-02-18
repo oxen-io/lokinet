@@ -207,7 +207,7 @@ namespace llarp
       Lock_t l(m_PathsMutex);
       auto upstream = path->Upstream();  // RouterID
       auto RXID     = path->RXID();      // PathID
-      m_Paths.insert(std::make_pair(std::make_pair(upstream, RXID), path));
+      m_Paths.emplace(std::make_pair(upstream, RXID), path);
     }
 
     void
@@ -234,8 +234,8 @@ namespace llarp
 
     bool
     PathSet::GetCurrentIntroductionsWithFilter(
-        std::set< llarp::service::Introduction >& intros,
-        std::function< bool(const llarp::service::Introduction&) > filter) const
+        std::set< service::Introduction >& intros,
+        std::function< bool(const service::Introduction&) > filter) const
     {
       intros.clear();
       size_t count = 0;
@@ -255,7 +255,7 @@ namespace llarp
 
     bool
     PathSet::GetCurrentIntroductions(
-        std::set< llarp::service::Introduction >& intros) const
+        std::set< service::Introduction >& intros) const
     {
       intros.clear();
       size_t count = 0;
@@ -276,7 +276,7 @@ namespace llarp
     void
     PathSet::HandlePathBuildTimeout(Path* p)
     {
-      llarp::LogInfo("path build for ", p->Name(), " has timed out");
+      LogInfo("path build for ", p->Name(), " has timed out");
     }
 
     bool
@@ -314,7 +314,7 @@ namespace llarp
       auto sz = established.size();
       if(sz)
       {
-        return established[llarp::randint() % sz];
+        return established[randint() % sz];
       }
       else
         return nullptr;
