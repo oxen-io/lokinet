@@ -80,7 +80,8 @@ namespace llarp
   Base32Encode(const V& value, Stack& stack)
   {
     size_t ret = 0, pos = 1;
-    int bits = 8, tmp = value[0];
+    int bits = 8;
+    uint32_t tmp = value[0];
     size_t len = value.size();
     while(ret < sizeof(stack) && (bits > 0 || pos < len))
     {
