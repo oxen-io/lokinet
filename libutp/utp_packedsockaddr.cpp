@@ -71,7 +71,8 @@ void
 PackedSockAddr::set(const SOCKADDR_STORAGE *sa, socklen_t len)
 {
   // on unix, the cast does nothing, socklen_t is _already_ unsigned
-  if(sa->ss_family == AF_INET)
+  sockaddr_storage ssa = *sa; // stops member access with misaligned address
+  if( ssa.ss_family == AF_INET)
   {
     assert((unsigned)len >= sizeof(sockaddr_in));
     const sockaddr_in *sin = (sockaddr_in *)sa;
