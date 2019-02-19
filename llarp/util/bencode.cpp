@@ -2,6 +2,7 @@
 #include <util/logger.hpp>
 #include <cstdlib>
 #include <inttypes.h>
+#include <stdio.h>
 
 bool
 bencode_read_integer(struct llarp_buffer_t* buffer, uint64_t* result)
