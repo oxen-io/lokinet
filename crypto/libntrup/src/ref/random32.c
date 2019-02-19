@@ -22,6 +22,7 @@ small_random32(void)
 #else
   unsigned char x[4];
   randombytes(x, 4);
-  return x[0] + (x[1] << 8) + (x[2] << 16) + (x[3] << 24);
+  uint32_t x4 = x[3] << 24;
+  return x[0] + (x[1] << 8) + (x[2] << 16) + x4;
 #endif
 }
