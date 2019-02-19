@@ -173,24 +173,25 @@ namespace llarp
   util::StatusObject
   ILinkLayer::ExtractStatus() const
   {
-    std::vector<util::StatusObject> pending, established;
+    std::vector< util::StatusObject > pending, established;
 
-    std::transform(m_Pending.begin(), m_Pending.end(), std::back_inserter(pending), [](const auto & item) -> util::StatusObject {
-      return item.second->ExtractStatus();
-    });
-    std::transform(m_AuthedLinks.begin(), m_AuthedLinks.end(), std::back_inserter(established), [](const auto & item) -> util::StatusObject {
-      return item.second->ExtractStatus();
-    });
+    std::transform(m_Pending.begin(), m_Pending.end(),
+                   std::back_inserter(pending),
+                   [](const auto& item) -> util::StatusObject {
+                     return item.second->ExtractStatus();
+                   });
+    std::transform(m_AuthedLinks.begin(), m_AuthedLinks.end(),
+                   std::back_inserter(established),
+                   [](const auto& item) -> util::StatusObject {
+                     return item.second->ExtractStatus();
+                   });
 
-    return {
-      {"name", Name()},
-      {"rank", uint64_t(Rank())},
-      {"addr", m_ourAddr.ToString()},
-      {"sessions", util::StatusObject{
-        {"pending", pending},
-        {"established", established}
-      }}
-    };
+    return {{"name", Name()},
+            {"rank", uint64_t(Rank())},
+            {"addr", m_ourAddr.ToString()},
+            {"sessions",
+             util::StatusObject{{"pending", pending},
+                                {"established", established}}}};
   }
 
   bool

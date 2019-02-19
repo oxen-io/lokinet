@@ -103,7 +103,8 @@ namespace abyss
       ShouldProcessHeader(const string_view& name) const
       {
         // TODO: header whitelist
-        return name == "content-type" || name == "content-length";
+        return name == string_view("content-type")
+            || name == string_view("content-length");
       }
 
       bool
@@ -143,7 +144,7 @@ namespace abyss
                                        "text/plain",
                                        "no content type provided");
           }
-          else if(itr->second != "application/json")
+          else if(itr->second != string_view("application/json"))
           {
             return WriteResponseSimple(415, "Unsupported Media Type",
                                        "text/plain",

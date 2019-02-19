@@ -124,7 +124,7 @@ namespace llarp
     virtual const char*
     Name() const = 0;
 
-    util::StatusObject 
+    util::StatusObject
     ExtractStatus() const override;
 
     void
@@ -180,7 +180,8 @@ namespace llarp
     bool
     MapAddr(const RouterID& pk, ILinkSession* s);
 
-    void Tick(llarp_time_t now);
+    void
+    Tick(llarp_time_t now);
 
     LinkMessageHandler HandleMessage;
     TimeoutHandler HandleTimeout;

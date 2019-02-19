@@ -16,8 +16,8 @@ struct llarp_threadpool
   std::queue< std::function< void(void) > > jobs;
 
   llarp_threadpool(int workers, const char *name)
-      : impl(
-          std::make_unique< llarp::thread::ThreadPool >(workers, workers * 128))
+      : impl(std::make_unique< llarp::thread::ThreadPool >(workers,
+                                                           workers * 128))
   {
     (void)name;
   }
