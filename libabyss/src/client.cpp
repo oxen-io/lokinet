@@ -97,14 +97,15 @@ namespace abyss
       bool
       ShouldProcessHeader(const llarp::string_view& name) const
       {
-        return name == "content-length" || name == "content-type";
+        return name == llarp::string_view("content-length")
+            || name == llarp::string_view("content-type");
       }
 
       /// return true if we get a 200 status code
       bool
       HandleStatusCode(string_view code) const
       {
-        return code == "200";
+        return code == string_view("200");
       }
 
       bool
