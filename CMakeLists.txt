@@ -5,7 +5,6 @@ set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
 
 # Core options
-option(USE_LIBABYSS "enable libabyss" )
 option(USE_AVX2 "enable avx2 code" )
 option(USE_NETNS "enable networking namespace support. Linux only" )
 option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU, but does not show in CPUID)" )
@@ -21,6 +20,7 @@ option(WITH_COVERAGE "generate coverage data")
 
 # Basic definitions
 get_filename_component(CORE_INCLUDE include ABSOLUTE)
+get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/${ABYSS}/include" ABSOLUTE CACHE)
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -310,39 +310,33 @@ function(add_log_tag target)
   endforeach(F)
 endfunction()
 
-if(USE_LIBABYSS)
-  add_definitions(-DUSE_ABYSS=1)
-
-  set(ABYSS_SRC
-    ${ABYSS}/src/http.cpp
-    ${ABYSS}/src/client.cpp
-    ${ABYSS}/src/server.cpp)
-  add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
-endif(USE_LIBABYSS)
+set(ABYSS_SRC
+  ${ABYSS}/src/http.cpp
+  ${ABYSS}/src/client.cpp
+  ${ABYSS}/src/server.cpp)
+add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
 
 add_subdirectory(crypto)
 add_subdirectory(libutp)
 add_subdirectory(llarp)
 
-if(USE_LIBABYSS)
-  target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
+target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
 
-  if (NOT WIN32)
-    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-    target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} Threads::Threads)
-  else()
-    add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
-    target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
-  endif(NOT WIN32)
-  target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
-  target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
-  # for freebsd
-  if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    target_include_directories(${ABYSS_LIB} /usr/local/include)
-  endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  add_log_tag(${ABYSS_EXE})
-  add_log_tag(${ABYSS_LIB})
-endif(USE_LIBABYSS)
+if (NOT WIN32)
+  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} Threads::Threads)
+else()
+  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
+endif(NOT WIN32)
+target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+# for freebsd
+if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  target_include_directories(${ABYSS_LIB} /usr/local/include)
+endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+add_log_tag(${ABYSS_EXE})
+add_log_tag(${ABYSS_LIB})
 
 if(SHADOW)
   add_shadow_plugin(shadow-plugin-${SHARED_LIB} ${EXE_SRC} ${LIB_SRC} ${UTP_SRC} ${LIB_PLATFORM_SRC} ${CPP_BACKPORT_SRC} ${ABYSS_SRC} ${CRYPTOGRAPHY_SRC})

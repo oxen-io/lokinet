@@ -23,6 +23,7 @@ list(APPEND TEST_SRC
     routing/test_llarp_routing_obtainexitmessage.cpp
     service/test_llarp_service_address.cpp
     service/test_llarp_service_identity.cpp
+    test_libabyss.cpp
     test_llarp_dns.cpp
     test_llarp_dnsd.cpp
     test_llarp_encrypted_frame.cpp
@@ -57,9 +58,3 @@ else()
     target_sources(${TEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
     target_link_libraries(${TEST_EXE} PUBLIC ws2_32 iphlpapi)
 endif(NOT WIN32)
-
-
-if(USE_LIBABYSS)
-    target_sources(${TEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/test_libabyss.cpp")
-    target_link_libraries(${TEST_EXE} PUBLIC ${ABYSS_LIB})
-endif()

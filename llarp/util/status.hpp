@@ -1,9 +1,9 @@
 #ifndef LLARP_UTIL_STATUS_HPP
 #define LLARP_UTIL_STATUS_HPP
-#ifdef USE_ABYSS
+
 #include <util/json.hpp>
-#endif
 #include <util/string_view.hpp>
+
 #include <vector>
 #include <string>
 #include <algorithm>
@@ -13,17 +13,8 @@ namespace llarp
 {
   namespace util
   {
-#ifdef USE_ABYSS
     using StatusObject_Impl = json::Document;
     using Value_t           = json::Value;
-#else
-    struct StatusObject_Impl
-    {
-    };
-    struct Value_t
-    {
-    };
-#endif
 
     struct StatusObject
     {
@@ -38,9 +29,7 @@ namespace llarp
 
       StatusObject(std::initializer_list< value_type > vals)
       {
-#ifdef USE_ABYSS
         Impl.SetObject();
-#endif
         std::for_each(vals.begin(), vals.end(),
                       [&](const value_type& item) { Put(item); });
       }
