@@ -972,9 +972,6 @@ namespace llarp
       p->SetDropHandler(std::bind(
           &Endpoint::OutboundContext::HandleDataDrop, this,
           std::placeholders::_1, std::placeholders::_2, std::placeholders::_3));
-      p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, m_Endpoint,
-                                  std::placeholders::_1,
-                                  std::placeholders::_2));
     }
 
     void
@@ -985,10 +982,10 @@ namespace llarp
     }
 
     bool
-    Endpoint::CheckPathIsDead(__attribute__((unused)) path::Path* p,
-                              __attribute__((unused)) llarp_time_t latency)
+    Endpoint::CheckPathIsDead(path::Path*, llarp_time_t)
     {
-      return false;
+      Logic()->queue_job({this, &HandlePathDead});
+      return true;
     }
 
     bool
