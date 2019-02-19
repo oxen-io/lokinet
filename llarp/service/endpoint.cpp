@@ -984,7 +984,12 @@ namespace llarp
     bool
     Endpoint::CheckPathIsDead(path::Path*, llarp_time_t)
     {
-      Logic()->queue_job({this, &HandlePathDead});
+      RouterLogic()->call_later(
+          {100, this, [](void* u, uint64_t, uint64_t left) {
+             if(left)
+               return;
+             HandlePathDead(u);
+           }});
       return true;
     }
 
