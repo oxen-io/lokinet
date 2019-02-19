@@ -211,7 +211,7 @@ namespace llarp
     uint16_t m_OutboundPort = 0;
 
     /// always maintain this many connections to other routers
-    size_t minConnectedRouters = 1;
+    size_t minConnectedRouters = 3;
     /// hard upperbound limit on the number of router to router connections
     size_t maxConnectedRouters = 2000;
 

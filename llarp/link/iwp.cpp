@@ -138,6 +138,41 @@ namespace llarp
       }
     }
 
+    ILinkSession*
+    LinkLayer::NewOutboundSession(const RouterContact& rc,
+                                  const AddressInfo& ai)
+    {
+      (void)rc;
+      (void)ai;
+      // TODO: implement me
+      return nullptr;
+    }
+
+    void
+    LinkLayer::SendFlowID(const Addr& to, const FlowID_t& flow)
+    {
+      // TODO: implement me
+      (void)to;
+      (void)flow;
+    }
+
+    bool
+    LinkLayer::ShouldSendFlowID(const Addr& to) const
+    {
+      (void)to;
+      // TODO: implement me
+      return false;
+    }
+
+    void
+    LinkLayer::SendReject(const Addr& to, const FlowID_t& flow, const char* msg)
+    {
+      // TODO: implement me
+      (void)to;
+      (void)flow;
+      (void)msg;
+    }
+
     std::unique_ptr< ILinkLayer >
     NewServerFromRouter(AbstractRouter* r)
     {
@@ -158,8 +193,17 @@ namespace llarp
               SessionRenegotiateHandler reneg, SignBufferFunc sign,
               TimeoutHandler t, SessionClosedHandler closed)
     {
-      return std::unique_ptr< ILinkLayer >(
-          new LinkLayer(c, enckey, getrc, h, est, reneg, sign, t, closed));
+      (void)c;
+      (void)enckey;
+      (void)getrc;
+      (void)h;
+      (void)est;
+      (void)reneg;
+      (void)sign;
+      (void)t;
+      (void)closed;
+      // TODO: implement me
+      return nullptr;
     }
   }  // namespace iwp
 }  // namespace llarp
