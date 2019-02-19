@@ -89,17 +89,18 @@ namespace llarp
       record.nextHop     = hop.upstream;
       record.commkey     = seckey_topublic(hop.commkey);
 
-      auto buf = frame.Buffer();
-      buf->cur = buf->base + EncryptedFrameOverheadSize;
+      llarp_buffer_t buf(frame.data(), frame.size());
+      buf.cur = buf.base + EncryptedFrameOverheadSize;
       // encode record
-      if(!record.BEncode(buf))
+      if(!record.BEncode(&buf))
       {
         // failed to encode?
         LogError("Failed to generate Commit Record");
-        DumpBuffer(*buf);
+        DumpBuffer(buf);
         delete ctx;
         return;
       }
+      frame.Resize(buf.cur - buf.base);
       // use ephemeral keypair for frame
       SecretKey framekey;
       ctx->crypto->encryption_keygen(framekey);

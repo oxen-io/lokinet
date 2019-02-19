@@ -39,6 +39,16 @@ namespace llarp
       return *this;
     }
 
+    void
+    Resize(size_t sz)
+    {
+      if(sz <= EncryptedFrameSize)
+      {
+        _sz = sz;
+        UpdateBuffer();
+      }
+    }
+
     bool
     DecryptInPlace(const SecretKey& seckey, llarp::Crypto* crypto);
 
