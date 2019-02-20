@@ -73,18 +73,10 @@ bencode_write_bytestring(llarp_buffer_t* buff, const void* data, size_t sz)
 bool
 bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
-#ifndef __LP64__
-  if(!buff->writef("i%llu", i))
-#else
-  if(!buff->write("i%lu", i))
-#endif
-  {
-    return false;
-  }
-
-  static const char letter[1] = {'e'};
-  assert(std::distance(std::begin(letter), std::end(letter)) == 1);
-  return buff->write(std::begin(letter), std::end(letter));
+  std::string str = "i";
+  str += std::to_string(i);
+  str += "e";
+  return buff->write(str.begin(), str.end());
 }
 
 bool
