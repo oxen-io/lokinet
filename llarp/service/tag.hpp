@@ -65,7 +65,7 @@ namespace llarp
       bool
       Empty() const
       {
-        return ToString().empty();
+        return data()[0] == 0;
       }
 
       using Hash = AlignedBuffer< SIZE >::Hash;
