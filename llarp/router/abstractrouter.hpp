@@ -99,6 +99,10 @@ namespace llarp
     virtual void
     OnConnectTimeout(ILinkSession *session) = 0;
 
+    /// connect to N random routers
+    virtual void
+    ConnectToRandomRouters(int N) = 0;
+
     /// called by link when a remote session has no more sessions open
     virtual void
     SessionClosed(RouterID remote) = 0;

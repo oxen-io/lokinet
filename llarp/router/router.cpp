@@ -1084,14 +1084,17 @@ namespace llarp
         LogError("we have no bootstrap nodes specified");
     }
 
-    if(inboundLinks.size() == 0)
+    if(!IsServiceNode())
     {
+      size_t connected = NumberOfConnectedRouters();
+      if(connected < minConnectedRouters)
+      {
+        size_t dlt = connected - minConnectedRouters;
+        LogInfo("connecting to ", dlt, " random routers to keep alive");
+        ConnectToRandomRouters(dlt);
+      }
       paths.BuildPaths(now);
       hiddenServiceContext.Tick(now);
-    }
-    if(NumberOfConnectedRouters() < minConnectedRouters)
-    {
-      ConnectToRandomRouters(minConnectedRouters);
     }
     _exitContext.Tick(now);
     if(rpcCaller)

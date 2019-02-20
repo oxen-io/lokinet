@@ -478,7 +478,7 @@ namespace llarp
                               const PathID_t &rxid) override;
 
     void
-    ConnectToRandomRouters(int N);
+    ConnectToRandomRouters(int N) override;
 
     size_t
     NumberOfConnectedRouters() const override;
