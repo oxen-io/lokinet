@@ -1089,7 +1089,7 @@ namespace llarp
       size_t connected = NumberOfConnectedRouters();
       if(connected < minConnectedRouters)
       {
-        size_t dlt = connected - minConnectedRouters;
+        size_t dlt = minConnectedRouters - connected;
         LogInfo("connecting to ", dlt, " random routers to keep alive");
         ConnectToRandomRouters(dlt);
       }
