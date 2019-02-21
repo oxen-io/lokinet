@@ -195,6 +195,12 @@ namespace llarp
       {
         RegenAndPublishIntroSet(now);
       }
+      else if(NumInStatus(llarp::path::ePathEstablished) < 3)
+      {
+        if(m_IntroSet.HasExpiredIntros(now))
+          ManualRebuild(1);
+      }
+
       // expire snode sessions
       {
         auto itr = m_SNodeSessions.begin();
