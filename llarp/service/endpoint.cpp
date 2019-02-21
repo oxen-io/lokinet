@@ -895,11 +895,14 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataMessage(__attribute__((unused)) const PathID_t& src,
-                                ProtocolMessage* msg)
+    Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
     {
+      auto path = GetPathByID(src);
+      if(path == nullptr)
+        return false;
       msg->sender.UpdateAddr();
       PutIntroFor(msg->tag, msg->introReply);
+      PutSenderFor(msg->tag, path->intro);
       EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
     }
