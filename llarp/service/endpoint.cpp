@@ -920,11 +920,10 @@ namespace llarp
     Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
     {
       auto path = GetPathByID(src);
-      if(path == nullptr)
-        return false;
+      if(path)
+        PutReplyIntroFor(msg->tag, path->intro);
       msg->sender.UpdateAddr();
       PutIntroFor(msg->tag, msg->introReply);
-      PutReplyIntroFor(msg->tag, path->intro);
       EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
     }
@@ -1636,6 +1635,7 @@ namespace llarp
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
+      m_DataHandler->PutReplyIntroFor(currentConvoTag, path->intro);
       llarp_threadpool_queue_job(m_Endpoint->Worker(),
                                  {ex, &AsyncKeyExchange::Encrypt});
     }
