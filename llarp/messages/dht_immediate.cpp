@@ -81,6 +81,6 @@ namespace llarp
         result = router->SendToOrQueue(session->GetPubKey(), &reply);
       }
     }
-    return result;
+    return true;
   }
 }  // namespace llarp
