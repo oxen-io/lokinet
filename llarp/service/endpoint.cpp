@@ -1595,6 +1595,7 @@ namespace llarp
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
         if(path == nullptr)
         {
+          BuildOneAlignedTo(remoteIntro.router);
           llarp::LogWarn(Name(), " dropping intro frame, no path to ",
                          remoteIntro.router);
           return;
