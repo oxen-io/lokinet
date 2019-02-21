@@ -37,6 +37,12 @@ namespace llarp
       virtual bool
       GetIntroFor(const ConvoTag& remote, Introduction& intro) const = 0;
 
+      virtual void
+      PutReplyIntroFor(const ConvoTag& remote, const Introduction& intro) = 0;
+
+      virtual bool
+      GetReplyIntroFor(const ConvoTag& remote, Introduction& intro) const = 0;
+
       virtual bool
       GetConvoTagsForService(const ServiceInfo& si,
                              std::set< ConvoTag >& tag) const = 0;

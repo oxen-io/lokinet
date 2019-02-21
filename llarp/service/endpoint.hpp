@@ -221,7 +221,7 @@ namespace llarp
 
         /// send a fully encrypted hidden service frame
         /// via a path on our pathset with path id p
-        void
+        bool
         Send(ProtocolFrame& f);
 
         llarp::SharedSecret sharedKey;
@@ -390,6 +390,14 @@ namespace llarp
       bool
       GetIntroFor(const ConvoTag& remote, Introduction& intro) const override;
 
+      void
+      PutReplyIntroFor(const ConvoTag& remote,
+                       const Introduction& intro) override;
+
+      bool
+      GetReplyIntroFor(const ConvoTag& remote,
+                       Introduction& intro) const override;
+
       bool
       GetConvoTagsForService(const ServiceInfo& si,
                              std::set< ConvoTag >& tag) const override;
@@ -540,6 +548,7 @@ namespace llarp
 
       struct Session : public util::IStateful
       {
+        Introduction replyIntro;
         SharedSecret sharedKey;
         ServiceInfo remote;
         Introduction intro;
@@ -550,9 +559,10 @@ namespace llarp
         ExtractStatus() const override
         {
           util::StatusObject obj{{"lastUsed", lastUsed},
+                                 {"replyIntro", replyIntro.ExtractStatus()},
                                  {"remote", remote.Addr().ToString()},
-                                 {"seqno", seqno}};
-          obj.Put("intro", intro.ExtractStatus());
+                                 {"seqno", seqno},
+                                 {"intro", intro.ExtractStatus()}};
           return obj;
         };
 

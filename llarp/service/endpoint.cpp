@@ -491,6 +491,28 @@ namespace llarp
       return true;
     }
 
+    void
+    Endpoint::PutReplyIntroFor(const ConvoTag& tag, const Introduction& intro)
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+      {
+        itr = m_Sessions.emplace(tag, Session{}).first;
+      }
+      itr->second.replyIntro = intro;
+      itr->second.lastUsed   = Now();
+    }
+
+    bool
+    Endpoint::GetReplyIntroFor(const ConvoTag& tag, Introduction& intro) const
+    {
+      auto itr = m_Sessions.find(tag);
+      if(itr == m_Sessions.end())
+        return false;
+      intro = itr->second.replyIntro;
+      return true;
+    }
+
     bool
     Endpoint::GetConvoTagsForService(const ServiceInfo& info,
                                      std::set< ConvoTag >& tags) const
@@ -902,7 +924,7 @@ namespace llarp
         return false;
       msg->sender.UpdateAddr();
       PutIntroFor(msg->tag, msg->introReply);
-      PutSenderFor(msg->tag, path->intro);
+      PutReplyIntroFor(msg->tag, path->intro);
       EnsureReplyPath(msg->sender);
       return ProcessDataMessage(msg);
     }
@@ -1279,7 +1301,8 @@ namespace llarp
             ProtocolMessage m(f.T);
             m.proto      = t;
             m.introReply = p->intro;
-            m.sender     = m_Identity.pub;
+            PutReplyIntroFor(f.T, m.introReply);
+            m.sender = m_Identity.pub;
             m.PutBuffer(data);
             f.N.Randomize();
             f.S = GetSeqNoForConvo(f.T);
@@ -1617,7 +1640,7 @@ namespace llarp
                                  {ex, &AsyncKeyExchange::Encrypt});
     }
 
-    void
+    bool
     Endpoint::SendContext::Send(ProtocolFrame& msg)
     {
       auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
@@ -1632,6 +1655,7 @@ namespace llarp
           llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
                           remoteIntro.router);
           lastGoodSend = m_Endpoint->Now();
+          return true;
         }
         else
           llarp::LogError("Failed to send frame on path");
@@ -1639,6 +1663,7 @@ namespace llarp
       else
         llarp::LogError("cannot send because we have no path to ",
                         remoteIntro.router);
+      return false;
     }
 
     std::string
@@ -1845,8 +1870,12 @@ namespace llarp
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
         ProtocolMessage m;
-        m.proto      = t;
-        m.introReply = path->intro;
+        m.proto = t;
+        if(!m_DataHandler->GetReplyIntroFor(f.T, m.introReply))
+        {
+          m_DataHandler->PutReplyIntroFor(f.T, path->intro);
+          m.introReply = path->intro;
+        }
         m_DataHandler->PutIntroFor(f.T, remoteIntro);
         m.sender = m_Endpoint->m_Identity.pub;
         m.PutBuffer(payload);
@@ -1866,11 +1895,11 @@ namespace llarp
 
       msg.P = remoteIntro.pathID;
       msg.Y.Randomize();
-      ++sequenceNo;
       if(path->SendRoutingMessage(&msg, m_Endpoint->Router()))
       {
         llarp::LogDebug("sent message via ", remoteIntro.pathID, " on ",
                         remoteIntro.router);
+        ++sequenceNo;
         lastGoodSend = now;
       }
       else
