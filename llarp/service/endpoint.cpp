@@ -195,6 +195,12 @@ namespace llarp
       {
         RegenAndPublishIntroSet(now);
       }
+      else if(NumInStatus(llarp::path::ePathEstablished) < 3)
+      {
+        if(m_IntroSet.HasExpiredIntros(now))
+          ManualRebuild(1);
+      }
+
       // expire snode sessions
       {
         auto itr = m_SNodeSessions.begin();
@@ -688,7 +694,16 @@ namespace llarp
     void
     Endpoint::IntroSetPublishFail()
     {
-      // TODO: linear backoff
+      auto now = Now();
+      if(ShouldPublishDescriptors(now))
+      {
+        RegenAndPublishIntroSet(now);
+      }
+      else if(NumInStatus(llarp::path::ePathEstablished) < 3)
+      {
+        if(m_IntroSet.HasExpiredIntros(now))
+          ManualRebuild(1);
+      }
     }
 
     bool
@@ -1595,6 +1610,7 @@ namespace llarp
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
         if(path == nullptr)
         {
+          BuildOneAlignedTo(remoteIntro.router);
           llarp::LogWarn(Name(), " dropping intro frame, no path to ",
                          remoteIntro.router);
           return;
