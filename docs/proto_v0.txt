@@ -639,7 +639,7 @@ sent inside a HSFM encrypted with a shared secret.
   n: uint_message_sequence_number,
   o: N seconds until this converstation plans terminate,
   s: SI of sender,
-  t: "<16 bytes converstation tag present only when n is 0>",
+  t: "<16 bytes converstation_tag>,
   v: 0
 }
 
