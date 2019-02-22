@@ -699,5 +699,11 @@ namespace llarp
       return router->Now();
     }
 
+    std::unique_ptr< AbstractContext >
+    makeContext()
+    {
+      return std::make_unique< Context >();
+    }
+
   }  // namespace dht
 }  // namespace llarp
