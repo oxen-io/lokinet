@@ -81,8 +81,8 @@ namespace llarp
         llarp::LogError("R value too big, ", R, "> 5");
         return false;
       }
-      auto& dht = ctx->impl;
-      if(dht.pendingIntrosetLookups.HasPendingLookupFrom(TXOwner{From, T}))
+      auto& dht = *ctx->impl;
+      if(dht.pendingIntrosetLookups().HasPendingLookupFrom(TXOwner{From, T}))
       {
         llarp::LogWarn("duplicate FIM from ", From, " txid=", T);
         return false;
@@ -107,7 +107,7 @@ namespace llarp
             Key_t target = S.ToKey();
             Key_t closer;
             // find closer peer
-            if(!dht.nodes->FindClosest(target, closer))
+            if(!dht.Nodes()->FindClosest(target, closer))
               return false;
             if(relayed)
               dht.LookupIntroSetForPath(S, T, pathID, closer);
@@ -120,7 +120,7 @@ namespace llarp
             Key_t us     = dht.OurKey();
             Key_t target = S.ToKey();
             // we are recursive
-            if(dht.nodes->FindCloseExcluding(target, peer, exclude))
+            if(dht.Nodes()->FindCloseExcluding(target, peer, exclude))
             {
               if(relayed)
                 dht.LookupIntroSetForPath(S, T, pathID, peer);
@@ -154,7 +154,7 @@ namespace llarp
         if(relayed)
         {
           // tag lookup
-          if(dht.nodes->GetRandomNodeExcluding(peer, exclude))
+          if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
           {
             dht.LookupTagForPath(N, T, pathID, peer);
           }
@@ -182,7 +182,7 @@ namespace llarp
           else if(R < 5)
           {
             // tag lookup
-            if(dht.nodes->GetRandomNodeExcluding(peer, exclude))
+            if(dht.Nodes()->GetRandomNodeExcluding(peer, exclude))
             {
               dht.LookupTagRecursive(N, From, T, peer, R - 1);
             }

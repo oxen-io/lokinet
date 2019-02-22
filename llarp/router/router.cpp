@@ -233,7 +233,7 @@ namespace llarp
   util::StatusObject
   Router::ExtractStatus() const
   {
-    util::StatusObject obj{{"dht", _dht->impl.ExtractStatus()},
+    util::StatusObject obj{{"dht", _dht->impl->ExtractStatus()},
                            {"services", hiddenServiceContext.ExtractStatus()},
                            {"exit", _exitContext.ExtractStatus()}};
     std::vector< util::StatusObject > ob_links, ib_links;
@@ -345,9 +345,9 @@ namespace llarp
     }
 
     // we don't have the RC locally so do a dht lookup
-    _dht->impl.LookupRouter(remote,
-                            std::bind(&Router::HandleDHTLookupForSendTo, this,
-                                      remote, std::placeholders::_1));
+    _dht->impl->LookupRouter(remote,
+                             std::bind(&Router::HandleDHTLookupForSendTo, this,
+                                       remote, std::placeholders::_1));
     return true;
   }
 
@@ -549,7 +549,7 @@ namespace llarp
     router->validRouters.emplace(pk, rc);
 
     // track valid router in dht
-    router->dht()->impl.nodes->PutNode(rc);
+    router->dht()->impl->Nodes()->PutNode(rc);
 
     // mark success in profile
     router->routerProfiling().MarkSuccess(pk);
@@ -631,11 +631,11 @@ namespace llarp
     }
     else if(IsServiceNode() || !routerProfiling().IsBad(remote))
     {
-      if(dht()->impl.HasRouterLookup(remote))
+      if(dht()->impl->HasRouterLookup(remote))
         return;
       LogInfo("looking up router ", remote);
       // dht lookup as we don't know it
-      dht()->impl.LookupRouter(
+      dht()->impl->LookupRouter(
           remote,
           std::bind(&Router::HandleDHTLookupForTryEstablishTo, this, remote,
                     std::placeholders::_1));
@@ -990,9 +990,9 @@ namespace llarp
     // store it in nodedb async
     async_verify_RC(newrc, nullptr);
     // update dht if required
-    if(dht()->impl.nodes->HasNode(dht::Key_t{newrc.pubkey}))
+    if(dht()->impl->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
     {
-      dht()->impl.nodes->PutNode(newrc);
+      dht()->impl->Nodes()->PutNode(newrc);
     }
     // update valid routers
     {
@@ -1009,9 +1009,9 @@ namespace llarp
   void
   Router::ServiceNodeLookupRouterWhenExpired(RouterID router)
   {
-    dht()->impl.LookupRouter(router,
-                             std::bind(&Router::HandleDHTLookupForExplore, this,
-                                       router, std::placeholders::_1));
+    dht()->impl->LookupRouter(router,
+                              std::bind(&Router::HandleDHTLookupForExplore,
+                                        this, router, std::placeholders::_1));
   }
 
   void
@@ -1077,7 +1077,7 @@ namespace llarp
         for(const auto &rc : bootstrapRCList)
         {
           TryConnectAsync(rc, 4);
-          dht()->impl.ExploreNetworkVia(dht::Key_t{rc.pubkey});
+          dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
         }
       }
       else

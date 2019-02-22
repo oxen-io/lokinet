@@ -85,28 +85,29 @@ namespace llarp
         __attribute__((unused))
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      auto &dht = ctx->impl;
+      auto &dht = *ctx->impl;
       if(relayed)
       {
-        auto pathset = ctx->impl.router->pathContext().GetLocalPathSet(pathID);
+        auto pathset =
+            ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
         return pathset && pathset->HandleGotRouterMessage(this);
       }
       // not relayed
       TXOwner owner(From, txid);
 
-      if(dht.pendingExploreLookups.HasPendingLookupFrom(owner))
+      if(dht.pendingExploreLookups().HasPendingLookupFrom(owner))
       {
         if(N.size() == 0)
-          dht.pendingExploreLookups.NotFound(owner, K);
+          dht.pendingExploreLookups().NotFound(owner, K);
         else
         {
-          dht.pendingExploreLookups.Found(owner, From.as_array(), N);
+          dht.pendingExploreLookups().Found(owner, From.as_array(), N);
         }
         return true;
       }
       // not explore lookup
 
-      if(!dht.pendingRouterLookups.HasPendingLookupFrom(owner))
+      if(!dht.pendingRouterLookups().HasPendingLookupFrom(owner))
       {
         llarp::LogWarn("Unwarranted GRM from ", From, " txid=", txid);
         return false;
@@ -115,9 +116,9 @@ namespace llarp
 
       llarp::LogInfo("DHT no pending lookup");
       if(R.size() == 1)
-        dht.pendingRouterLookups.Found(owner, R[0].pubkey, {R[0]});
+        dht.pendingRouterLookups().Found(owner, R[0].pubkey, {R[0]});
       else
-        dht.pendingRouterLookups.NotFound(owner, K);
+        dht.pendingRouterLookups().NotFound(owner, K);
       return true;
     }
   }  // namespace dht

@@ -16,17 +16,17 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      auto &dht = ctx->impl;
+      auto &dht = *ctx->impl;
       /// lookup for us, send an immeidate reply
       Key_t us = dht.OurKey();
       Key_t k{K};
       if(K == us)
       {
-        auto path = dht.router->pathContext().GetByUpstream(K, pathID);
+        auto path = dht.GetRouter()->pathContext().GetByUpstream(K, pathID);
         if(path)
         {
           replies.emplace_back(
-              new GotRouterMessage(k, txid, {dht.router->rc()}, false));
+              new GotRouterMessage(k, txid, {dht.GetRouter()->rc()}, false));
           return true;
         }
         return false;
@@ -35,13 +35,13 @@ namespace llarp
       Key_t peer;
       // check if we know this in our nodedb first
       RouterContact found;
-      if(dht.router->nodedb()->Get(K, found))
+      if(dht.GetRouter()->nodedb()->Get(K, found))
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;
       }
       // lookup if we don't have it in our nodedb
-      if(dht.nodes->FindClosest(k, peer))
+      if(dht.Nodes()->FindClosest(k, peer))
         dht.LookupRouterForPath(K, txid, pathID, peer);
       return true;
     }
@@ -145,14 +145,14 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      auto &dht = ctx->impl;
-      if(!dht.allowTransit)
+      auto &dht = *ctx->impl;
+      if(!dht.AllowTransit())
       {
         llarp::LogWarn("Got DHT lookup from ", From,
                        " when we are not allowing dht transit");
         return false;
       }
-      if(dht.pendingRouterLookups.HasPendingLookupFrom({From, txid}))
+      if(dht.pendingRouterLookups().HasPendingLookupFrom({From, txid}))
       {
         llarp::LogWarn("Duplicate FRM from ", From, " txid=", txid);
         return false;
@@ -161,7 +161,7 @@ namespace llarp
       Key_t k{K};
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
-      else if(dht.router->nodedb()->Get(K, found))
+      else if(dht.GetRouter()->nodedb()->Get(K, found))
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;

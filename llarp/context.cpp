@@ -467,8 +467,9 @@ extern "C"
     // llarp::Info("checkOnline - DHT nodes ",
     // request->ptr->ctx->router->dht->impl.nodes->nodes.size());
     request->online = false;
-    request->nodes = request->ptr->ctx->router->dht()->impl.nodes->nodes.size();
-    if(request->ptr->ctx->router->dht()->impl.nodes->nodes.size())
+    request->nodes =
+        request->ptr->ctx->router->dht()->impl->Nodes()->nodes.size();
+    if(request->ptr->ctx->router->dht()->impl->Nodes()->nodes.size())
     {
       // llarp::Info("checkOnline - Going to say we're online");
       request->online = true;
