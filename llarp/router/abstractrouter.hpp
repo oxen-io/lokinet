@@ -40,7 +40,8 @@ namespace llarp
     struct IMessageHandler;
   }
 
-  namespace service {
+  namespace service
+  {
     struct Context;
   }
 

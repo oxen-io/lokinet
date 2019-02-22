@@ -78,10 +78,10 @@ bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 #ifndef __LP64__
   if(!buff->writef("i%llu", i))
 #else
-#if (__APPLE__ && __MACH__)
-    if(!buff->writef("i%llu", i))
+#if(__APPLE__ && __MACH__)
+  if(!buff->writef("i%llu", i))
 #else
-    if(!buff->writef("i%lu", i))
+  if(!buff->writef("i%lu", i))
 #endif
 #endif
   {

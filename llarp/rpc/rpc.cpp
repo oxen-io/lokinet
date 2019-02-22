@@ -12,7 +12,6 @@ namespace llarp
 {
   namespace rpc
   {
-
     struct CallerHandler : public ::abyss::http::IRPCClientHandler
     {
       CallerImpl* m_Parent;

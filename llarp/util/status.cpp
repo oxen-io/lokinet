@@ -48,7 +48,6 @@ namespace llarp
       auto s = llarp::string_view_string(name);
       Value_t k(s.c_str(), a);
       Impl.AddMember(k, v, a);
-
     }
 
     void
