@@ -18,7 +18,7 @@ namespace llarp
   struct Config;
   struct Crypto;
   class Logic;
-  struct Router;
+  struct AbstractRouter;
   struct RouterContact;
 
   struct Context
@@ -28,7 +28,7 @@ namespace llarp
     int num_nethreads   = 1;
     bool singleThreaded = false;
     std::unique_ptr< llarp::Crypto > crypto;
-    std::unique_ptr< llarp::Router > router;
+    std::unique_ptr< llarp::AbstractRouter > router;
     std::unique_ptr< llarp_threadpool > worker;
     std::unique_ptr< llarp::Logic > logic;
     std::unique_ptr< llarp::Config > config;

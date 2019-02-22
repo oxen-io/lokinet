@@ -46,14 +46,14 @@ namespace llarp
         llarp_dht_context *ctx,
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      auto now = ctx->impl.Now();
+      auto now = ctx->impl->Now();
       if(S > 5)
       {
         llarp::LogWarn("invalid S value ", S, " > 5");
         return false;
       }
-      auto &dht = ctx->impl;
-      if(!I.Verify(dht.router->crypto(), now))
+      auto &dht = *ctx->impl;
+      if(!I.Verify(dht.Crypto(), now))
       {
         llarp::LogWarn("invalid introset: ", I);
         // don't propogate or store
@@ -63,7 +63,7 @@ namespace llarp
 
       using namespace std::placeholders;
       shorthash_func shorthash =
-          std::bind(&Crypto::shorthash, dht.router->crypto(), _1, _2);
+          std::bind(&Crypto::shorthash, dht.Crypto(), _1, _2);
       if(I.W && !I.W->IsValid(shorthash, now))
       {
         llarp::LogWarn("proof of work not good enough for IntroSet");
@@ -86,7 +86,7 @@ namespace llarp
         replies.emplace_back(new GotIntroMessage({}, txID));
         return true;
       }
-      dht.services->PutNode(I);
+      dht.services()->PutNode(I);
       replies.emplace_back(new GotIntroMessage({I}, txID));
       Key_t peer;
       std::set< Key_t > exclude;
@@ -94,7 +94,7 @@ namespace llarp
         exclude.insert(e);
       exclude.insert(From);
       exclude.insert(dht.OurKey());
-      if(S && dht.nodes->FindCloseExcluding(addr, peer, exclude))
+      if(S && dht.Nodes()->FindCloseExcluding(addr, peer, exclude))
       {
         dht.PropagateIntroSetTo(From, txID, I, peer, S - 1, exclude);
       }
