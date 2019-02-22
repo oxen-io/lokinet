@@ -210,7 +210,7 @@ namespace llarp
       , _exitContext(this)
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
-      , hiddenServiceContext(this)
+      , _hiddenServiceContext(this)
   {
     // set rational defaults
     this->ip4addr.sin_family = AF_INET;
@@ -234,7 +234,7 @@ namespace llarp
   Router::ExtractStatus() const
   {
     util::StatusObject obj{{"dht", _dht->impl->ExtractStatus()},
-                           {"services", hiddenServiceContext.ExtractStatus()},
+                           {"services", _hiddenServiceContext.ExtractStatus()},
                            {"exit", _exitContext.ExtractStatus()}};
     std::vector< util::StatusObject > ob_links, ib_links;
     std::transform(inboundLinks.begin(), inboundLinks.end(),
@@ -1087,7 +1087,7 @@ namespace llarp
     if(inboundLinks.size() == 0)
     {
       paths.BuildPaths(now);
-      hiddenServiceContext.Tick(now);
+      _hiddenServiceContext.Tick(now);
     }
     if(NumberOfConnectedRouters() < minConnectedRouters)
     {
@@ -1433,7 +1433,7 @@ namespace llarp
     }
 
     LogInfo("starting hidden service context...");
-    if(!hiddenServiceContext.StartAll())
+    if(!hiddenServiceContext().StartAll())
     {
       LogError("Failed to start hidden service context");
       return false;
@@ -1503,7 +1503,7 @@ namespace llarp
     {
       // auto detect if we have any pre-defined endpoints
       // no if we have a endpoints
-      if(hiddenServiceContext.hasEndpoints())
+      if(hiddenServiceContext().hasEndpoints())
       {
         LogInfo("Auto mode detected and we have endpoints");
         netConfig.emplace("enabled", "false");
@@ -1557,7 +1557,7 @@ namespace llarp
 
     _stopping.store(true);
     LogInfo("stopping router");
-    hiddenServiceContext.StopAll();
+    hiddenServiceContext().StopAll();
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
@@ -1727,7 +1727,7 @@ namespace llarp
       ++itr;
     }
     // add endpoint
-    return hiddenServiceContext.AddDefaultEndpoint(netConfig);
+    return hiddenServiceContext().AddDefaultEndpoint(netConfig);
   }
 
   bool
@@ -1748,7 +1748,7 @@ namespace llarp
       service::Config::section_t filteredConfig;
       mergeHiddenServiceConfig(config.second, filteredConfig.second);
       filteredConfig.first = config.first;
-      if(!hiddenServiceContext.AddEndpoint(filteredConfig))
+      if(!hiddenServiceContext().AddEndpoint(filteredConfig))
         return false;
     }
     return true;

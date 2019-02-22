@@ -97,7 +97,8 @@ namespace llarp
   Context::LoadDatabase()
   {
     crypto = std::make_unique< sodium::CryptoLibSodium >();
-    nodedb = std::make_unique< llarp_nodedb >(crypto.get(), router->disk);
+    nodedb =
+        std::make_unique< llarp_nodedb >(crypto.get(), router->diskworker());
 
     if(!llarp_nodedb::ensure_dir(nodedb_dir.c_str()))
     {
@@ -360,7 +361,7 @@ extern "C"
   llarp_main_inject_vpn_fd(struct llarp_main *ptr, int fd)
   {
     llarp::handlers::TunEndpoint *tun =
-        ptr->ctx->router->hiddenServiceContext.getFirstTun();
+        ptr->ctx->router->hiddenServiceContext().getFirstTun();
     if(!tun)
       return;
     if(!tun->Promise)
@@ -507,15 +508,15 @@ extern "C"
   main_router_prefetch(struct llarp_main *ptr,
                        const llarp::service::Address &addr)
   {
-    auto *endpoint = &ptr->ctx->router->hiddenServiceContext;
-    return endpoint->Prefetch(addr);
+    auto &endpoint = ptr->ctx->router->hiddenServiceContext();
+    return endpoint.Prefetch(addr);
   }
 
   llarp::handlers::TunEndpoint *
   main_router_getFirstTunEndpoint(struct llarp_main *ptr)
   {
     if(ptr && ptr->ctx && ptr->ctx->router)
-      return ptr->ctx->router->hiddenServiceContext.getFirstTun();
+      return ptr->ctx->router->hiddenServiceContext().getFirstTun();
     return nullptr;
   }
 
@@ -523,15 +524,13 @@ extern "C"
   main_router_endpoint_iterator(
       struct llarp_main *ptr, struct llarp::service::Context::endpoint_iter &i)
   {
-    auto *context = &ptr->ctx->router->hiddenServiceContext;
-    return context->iterate(i);
+    return ptr->ctx->router->hiddenServiceContext().iterate(i);
   }
 
   llarp_tun_io *
   main_router_getRange(struct llarp_main *ptr)
   {
-    auto *context = &ptr->ctx->router->hiddenServiceContext;
-    return context->getRange();
+    return ptr->ctx->router->hiddenServiceContext().getRange();
   }
 
   const char *
