@@ -5,6 +5,7 @@
 llarp_dht_context::llarp_dht_context(llarp::AbstractRouter *router)
 {
   parent = router;
+  impl   = llarp::dht::makeContext();
 }
 
 struct llarp_dht_context *
