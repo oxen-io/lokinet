@@ -47,7 +47,6 @@ namespace llarp
         , upstream(record.nextHop)
         , downstream(down)
     {
-      started = llarp::time_now_ms();
     }
 
     TransitHop::TransitHop(const TransitHop& other)
