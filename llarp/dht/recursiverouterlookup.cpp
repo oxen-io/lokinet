@@ -55,12 +55,10 @@ namespace llarp
       {
         resultHandler(valuesFound);
       }
-      else
-      {
+      if(whoasked.node != parent->OurKey())
         parent->DHTSendTo(
             whoasked.node.as_array(),
-            new GotRouterMessage({}, whoasked.txid, valuesFound, false));
-      }
+            new GotRouterMessage({}, whoasked.txid, valuesFound, false), false);
     }
   }  // namespace dht
 }  // namespace llarp
