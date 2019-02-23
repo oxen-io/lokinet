@@ -161,8 +161,9 @@ namespace llarp
       Key_t k{K};
       if(exploritory)
         return dht.HandleExploritoryRouterLookup(From, txid, K, replies);
-      else if(dht.GetRouter()->nodedb()->Get(K, found))
+      else if(dht.Nodes()->HasNode(k))
       {
+        found = dht.Nodes()->nodes[k].rc;
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;
       }
