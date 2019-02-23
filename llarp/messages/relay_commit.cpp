@@ -203,10 +203,10 @@ namespace llarp
           static_cast< LRCMFrameDecrypt* >(user));
       // persist sessions to upstream and downstream routers until the commit
       // ends
-      self->context->Router()->PersistSessionUntil(self->hop->info.downstream,
-                                                   self->hop->ExpireTime());
-      self->context->Router()->PersistSessionUntil(self->hop->info.upstream,
-                                                   self->hop->ExpireTime());
+      self->context->Router()->PersistSessionUntil(
+          self->hop->info.downstream, self->hop->ExpireTime() + 10000);
+      self->context->Router()->PersistSessionUntil(
+          self->hop->info.upstream, self->hop->ExpireTime() + 10000);
       // put hop
       self->context->PutTransitHop(self->hop);
       // forward to next hop
@@ -221,8 +221,8 @@ namespace llarp
       std::unique_ptr< LRCMFrameDecrypt > self(
           static_cast< LRCMFrameDecrypt* >(user));
       // persist session to downstream until path expiration
-      self->context->Router()->PersistSessionUntil(self->hop->info.downstream,
-                                                   self->hop->ExpireTime());
+      self->context->Router()->PersistSessionUntil(
+          self->hop->info.downstream, self->hop->ExpireTime() + 10000);
       // put hop
       self->context->PutTransitHop(self->hop);
       // send path confirmation
@@ -281,7 +281,7 @@ namespace llarp
       using namespace std::placeholders;
       if(self->record.work
          && self->record.work->IsValid(
-             std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+                std::bind(&Crypto::shorthash, crypto, _1, _2), now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",
