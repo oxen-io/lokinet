@@ -1131,7 +1131,7 @@ namespace llarp
         buf.underlying.cur = buf.underlying.base;
         // process buffer
         LogDebug("got message ", msgid, " from ", remoteAddr);
-        return parent->HandleMessage(this, buf.underlying);
+        parent->HandleMessage(this, buf.underlying);
       }
       return true;
     }
