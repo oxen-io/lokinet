@@ -27,6 +27,7 @@ set(LIB_UTIL_SRC
   util/threadpool.cpp
   util/time.cpp
   util/timer.cpp
+  util/traits.cpp
   util/types.cpp
 )
 

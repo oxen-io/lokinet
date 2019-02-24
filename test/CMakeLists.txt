@@ -37,6 +37,7 @@ list(APPEND TEST_SRC
     util/test_llarp_util_queue_manager.cpp
     util/test_llarp_util_queue.cpp
     util/test_llarp_util_thread_pool.cpp
+    util/test_llarp_util_traits.cpp
 )
 
 add_executable(${TEST_EXE}
