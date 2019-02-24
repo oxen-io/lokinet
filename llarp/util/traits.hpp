@@ -2,6 +2,7 @@
 #define LLARP_TRAITS_HPP
 
 #include <type_traits>
+#include <utility>
 
 namespace llarp
 {
@@ -93,15 +94,15 @@ namespace llarp
 
       /// implementation helper
       template < typename T,
-                 template < typename > class Trait1,
-                 template < typename > class Trait2,
-                 template < typename > class Trait3,
-                 template < typename > class Trait4,
-                 template < typename > class Trait5,
-                 template < typename > class Trait6,
-                 template < typename > class Trait7,
-                 template < typename > class Trait8,
-                 template < typename > class Trait9 >
+                 template < typename... > class Trait1,
+                 template < typename... > class Trait2,
+                 template < typename... > class Trait3,
+                 template < typename... > class Trait4,
+                 template < typename... > class Trait5,
+                 template < typename... > class Trait6,
+                 template < typename... > class Trait7,
+                 template < typename... > class Trait8,
+                 template < typename... > class Trait9 >
       struct SelectHelper {
           enum {
               Selector = (
@@ -133,15 +134,15 @@ namespace llarp
       };
 
       template< typename Type,
-                template < typename > class Trait1,
-                template < typename > class Trait2 = False,
-                template < typename > class Trait3 = False,
-                template < typename > class Trait4 = False,
-                template < typename > class Trait5 = False,
-                template < typename > class Trait6 = False,
-                template < typename > class Trait7 = False,
-                template < typename > class Trait8 = False,
-                template < typename > class Trait9 = False >
+                template < typename... > class Trait1,
+                template < typename... > class Trait2 = False,
+                template < typename... > class Trait3 = False,
+                template < typename... > class Trait4 = False,
+                template < typename... > class Trait5 = False,
+                template < typename... > class Trait6 = False,
+                template < typename... > class Trait7 = False,
+                template < typename... > class Trait8 = False,
+                template < typename... > class Trait9 = False >
       struct Select : public SelectHelper< Type,
                                            Trait1,
                                            Trait2,
@@ -171,7 +172,26 @@ namespace llarp
 
       // clang-format on
     }  // namespace select
-  }    // namespace traits
+
+    namespace detail
+    {
+      template < typename T, typename F, size_t... Is >
+      void
+      for_each(T&& t, F f, std::index_sequence< Is... >)
+      {
+        auto l = {(f(std::get< Is >(t)), 0)...};
+        (void)l;
+      }
+    }  // namespace detail
+
+    template < typename... Ts, typename F >
+    void
+    for_each_in_tuple(std::tuple< Ts... > const& t, F f)
+    {
+      detail::for_each(t, f, std::make_index_sequence< sizeof...(Ts) >());
+    }
+
+  }  // namespace traits
 }  // namespace llarp
 
 #endif
