@@ -6,7 +6,9 @@
 #include <string>
 namespace llarp
 {
-  using string_view = std::string_view;
+  using string_view      = std::string_view;
+  using string_view_hash = std::hash< string_view >;
+
   static std::string
   string_view_string(const string_view& v)
   {
@@ -14,15 +16,17 @@ namespace llarp
   }
 }  // namespace llarp
 #else
-#include <string>
+#include <absl/hash/hash.h>
+#include <absl/strings/string_view.h>
 namespace llarp
 {
-  using string_view = std::string;
+  using string_view      = absl::string_view;
+  using string_view_hash = absl::Hash< string_view >;
 
   static std::string
   string_view_string(const string_view& v)
   {
-    return v;
+    return std::string(v);
   };
 }  // namespace llarp
 #endif
