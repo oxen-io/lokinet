@@ -29,13 +29,8 @@ namespace llarp
       bool
       Decode(llarp_buffer_t* buf) override;
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const ResourceRecord& rr)
-      {
-        return out << "[RR name=" << rr.rr_name << " type=" << rr.rr_type
-                   << " class=" << rr.rr_class << " ttl=" << rr.ttl
-                   << " rdata=[" << rr.rData.size() << " bytes]";
-      }
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
 
       Name_t rr_name;
       RRType_t rr_type;
@@ -43,6 +38,12 @@ namespace llarp
       RR_TTL_t ttl;
       RR_RData_t rData;
     };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const ResourceRecord& rr)
+    {
+      return rr.print(out, -1, -1);
+    }
   }  // namespace dns
 }  // namespace llarp
 

@@ -7,6 +7,7 @@
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
 #include <util/mem.hpp>
+#include <util/printer.hpp>
 #include <util/time.hpp>
 
 #include <fstream>
@@ -380,6 +381,22 @@ namespace llarp
     version      = other.version;
     netID        = other.netID;
     return *this;
+  }
+
+  std::ostream &
+  RouterContact::print(std::ostream &stream, int level, int spaces) const
+  {
+    Printer printer(stream, level, spaces);
+    printer.printAttribute("k", pubkey);
+    printer.printAttribute("updated", last_updated);
+    printer.printAttribute("netid", netID);
+    printer.printAttribute("v", version);
+    printer.printAttribute("ai", addrs);
+    printer.printAttribute("xi", exits);
+    printer.printAttribute("e", enckey);
+    printer.printAttribute("z", signature);
+
+    return stream;
   }
 
 }  // namespace llarp

@@ -1,6 +1,7 @@
 #include <dns/question.hpp>
 
 #include <util/logger.hpp>
+#include <util/printer.hpp>
 
 namespace llarp
 {
@@ -46,6 +47,17 @@ namespace llarp
         return false;
       }
       return true;
+    }
+
+    std::ostream&
+    Question::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("qname", qname);
+      printer.printAttributeAsHex("qtype", qtype);
+      printer.printAttributeAsHex("qclass", qclass);
+
+      return stream;
     }
   }  // namespace dns
 }  // namespace llarp

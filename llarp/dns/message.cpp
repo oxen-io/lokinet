@@ -4,6 +4,7 @@
 #include <util/buffer.hpp>
 #include <util/endian.hpp>
 #include <util/logger.hpp>
+#include <util/printer.hpp>
 
 #include <array>
 
@@ -268,6 +269,21 @@ namespace llarp
           }
         }
       }
+    }
+
+    std::ostream&
+    Message::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+
+      printer.printAttributeAsHex("dns message id", hdr_id);
+      printer.printAttributeAsHex("fields", hdr_fields);
+      printer.printAttribute("questions", questions);
+      printer.printAttribute("answers", answers);
+      printer.printAttribute("nameserer", authorities);
+      printer.printAttribute("additional", additional);
+
+      return stream;
     }
 
   }  // namespace dns

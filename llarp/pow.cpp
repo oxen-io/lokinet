@@ -55,4 +55,16 @@ namespace llarp
     return true;
   }
 
+  std::ostream&
+  PoW::print(std::ostream& stream, int level, int spaces) const
+  {
+    Printer printer(stream, level, spaces);
+
+    printer.printAttribute("pow timestamp", timestamp);
+    printer.printAttribute("lifetime", extendedLifetime);
+    printer.printAttribute("nonce", nonce);
+
+    return stream;
+  }
+
 }  // namespace llarp

@@ -82,5 +82,17 @@ namespace llarp
       return CalculateAddress(m_CachedAddr.as_array());
     }
 
+    std::ostream&
+    ServiceInfo::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("e", enckey);
+      printer.printAttribute("s", signkey);
+      printer.printAttribute("v", version);
+      printer.printAttribute("x", vanity);
+
+      return stream;
+    }
+
   }  // namespace service
 }  // namespace llarp

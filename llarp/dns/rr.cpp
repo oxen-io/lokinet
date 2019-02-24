@@ -1,6 +1,7 @@
 #include <dns/rr.hpp>
 
 #include <util/logger.hpp>
+#include <util/printer.hpp>
 
 namespace llarp
 {
@@ -79,6 +80,19 @@ namespace llarp
         return false;
       }
       return true;
+    }
+
+    std::ostream&
+    ResourceRecord::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("RR name", rr_name);
+      printer.printAttribute("type", rr_type);
+      printer.printAttribute("class", rr_class);
+      printer.printAttribute("ttl", ttl);
+      printer.printAttribute("rdata", rData.size());
+
+      return stream;
     }
   }  // namespace dns
 }  // namespace llarp
