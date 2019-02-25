@@ -83,18 +83,21 @@ namespace llarp
       if(expect)
       {
         ssize_t s = utp_writev(sock, vecs.data(), vecs.size());
+        if(s < 0)
+          return;
         m_TXRate += s;
-        while(s > 0 && s >= static_cast< ssize_t >(vecq.front().iov_len))
+        size_t sz = s;
+        while(sz >= vecq.front().iov_len)
         {
-          s -= vecq.front().iov_len;
+          sz -= vecq.front().iov_len;
           vecq.pop_front();
           sendq.pop_front();
         }
         if(vecq.size())
         {
           auto& front = vecq.front();
-          front.iov_len -= s;
-          front.iov_base = ((byte_t*)front.iov_base) + s;
+          front.iov_len -= sz;
+          front.iov_base = ((byte_t*)front.iov_base) + sz;
         }
       }
     }
