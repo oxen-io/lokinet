@@ -196,7 +196,7 @@ namespace llarp
   Router::OnSessionEstablished(RouterContact rc)
   {
     async_verify_RC(rc, nullptr);
-    LogInfo("session with ", rc.pubkey, " established");
+    LogInfo("session with ", RouterID(rc.pubkey), " established");
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *__netloop,
