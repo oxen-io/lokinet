@@ -87,7 +87,7 @@ namespace llarp
           return;
         m_TXRate += s;
         size_t sz = s;
-        while(sz >= vecq.front().iov_len)
+        while(vecq.size() && sz >= vecq.front().iov_len)
         {
           sz -= vecq.front().iov_len;
           vecq.pop_front();
