@@ -6,6 +6,7 @@ static HANDLE tun_event_queue = INVALID_HANDLE_VALUE;
 // we hand the kernel our thread handles to process completion events
 static HANDLE* kThreadPool;
 static int poolSize;
+static CRITICAL_SECTION HandlerMtx;
 
 // list of TUN listeners (useful for exits or other nodes with multiple TUNs)
 std::list< win32_tun_io* > tun_listeners;
@@ -56,6 +57,13 @@ win32_tun_io::setup()
 
   if(tunif->tun_fd == INVALID_HANDLE_VALUE)
     return false;
+
+  // Create a critical section to synchronise access to the TUN handler.
+  // This *probably* has the effect of making packets move in order now
+  // as only one IOCP thread will have access to the TUN handler at a
+  // time
+  // XXX: network isn't in a state where this bug can be tested!
+  InitializeCriticalSection(&HandlerMtx);
 
   return true;
 }
@@ -152,6 +160,7 @@ tun_ev_loop(void* unused)
     // if we're here, then we got something interesting :>
     pkt              = (asio_evt_pkt*)ovl;
     win32_tun_io* ev = reinterpret_cast< win32_tun_io* >(listener);
+	// XXX: should we give up after a certain time and drop packet?
     if(!pkt->write)
     {
       // llarp::LogInfo("read tun ", size, " bytes, pass to handler");
@@ -163,17 +172,23 @@ tun_ev_loop(void* unused)
         delete pkt;
         continue;
       }
+      //EnterCriticalSection(&HandlerMtx);
       if(ev->t->recvpkt)
         ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
       ev->read(ev->readbuf, sizeof(ev->readbuf));
+      //LeaveCriticalSection(&HandlerMtx);
     }
     else
     {
       // ok let's queue another read!
+      //EnterCriticalSection(&HandlerMtx);
       ev->read(ev->readbuf, sizeof(ev->readbuf));
+      //LeaveCriticalSection(&HandlerMtx);
     }
+    EnterCriticalSection(&HandlerMtx);
     if(ev->t->tick)
       ev->t->tick(ev->t);
+    LeaveCriticalSection(&HandlerMtx);
     ev->flush_write();
     delete pkt;  // don't leak
   }
@@ -210,6 +225,7 @@ exit_tun_loop()
       itr = tun_listeners.erase(itr);
     }
     CloseHandle(tun_event_queue);
+    DeleteCriticalSection(&HandlerMtx);
   }
 }
 
