@@ -509,6 +509,7 @@ namespace llarp
         static_cast< async_verify_context * >(job->user);
     auto router = ctx->router;
     PubKey pk(job->rc.pubkey);
+    router->m_ClientRCs[pk] = job->rc;
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
     delete ctx;
     router->pendingVerifyRC.erase(pk);
@@ -1039,6 +1040,7 @@ namespace llarp
     }
     paths.TickPaths(now);
     paths.ExpirePaths(now);
+
     {
       auto itr = m_PersistingSessions.begin();
       while(itr != m_PersistingSessions.end())
@@ -1051,7 +1053,7 @@ namespace llarp
             LogDebug("keepalive to ", itr->first);
             link->KeepAliveSessionTo(itr->first);
           }
-          else
+          else if(m_ClientRCs.count(itr->first) == 0)
           {
             LogDebug("establish to ", itr->first);
             TryEstablishTo(itr->first);
@@ -1146,9 +1148,11 @@ namespace llarp
   void
   Router::SessionClosed(RouterID remote)
   {
-    __llarp_dht_remove_peer(dht(), remote.data());
+    dht::Key_t k(remote);
+    dht()->impl->Nodes()->DelNode(k);
     // remove from valid routers if it's a valid router
     validRouters.erase(remote);
+    m_ClientRCs.erase(remote);
     LogInfo("Session to ", remote, " fully closed");
   }
 

@@ -82,6 +82,15 @@ namespace llarp
     {
     }
 
+    struct Hash
+    {
+      size_t
+      operator()(const RouterContact &r) const
+      {
+        return PubKey::Hash()(r.pubkey);
+      }
+    };
+
     // advertised addresses
     std::vector< AddressInfo > addrs;
     // network identifier
