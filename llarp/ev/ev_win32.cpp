@@ -151,7 +151,9 @@ tun_ev_loop(void* unused)
       {
         if(tun->t->tick)
           tun->t->tick(tun->t);
+        EnterCriticalSection(&HandlerMtx);
         tun->flush_write();
+        LeaveCriticalSection(&HandlerMtx);
       }
       continue;  // let's go at it once more
     }
@@ -160,7 +162,6 @@ tun_ev_loop(void* unused)
     // if we're here, then we got something interesting :>
     pkt              = (asio_evt_pkt*)ovl;
     win32_tun_io* ev = reinterpret_cast< win32_tun_io* >(listener);
-	// XXX: should we give up after a certain time and drop packet?
     if(!pkt->write)
     {
       // llarp::LogInfo("read tun ", size, " bytes, pass to handler");
@@ -172,24 +173,24 @@ tun_ev_loop(void* unused)
         delete pkt;
         continue;
       }
-      //EnterCriticalSection(&HandlerMtx);
+      // EnterCriticalSection(&HandlerMtx);
       if(ev->t->recvpkt)
         ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
       ev->read(ev->readbuf, sizeof(ev->readbuf));
-      //LeaveCriticalSection(&HandlerMtx);
+      // LeaveCriticalSection(&HandlerMtx);
     }
     else
     {
       // ok let's queue another read!
-      //EnterCriticalSection(&HandlerMtx);
+      // EnterCriticalSection(&HandlerMtx);
       ev->read(ev->readbuf, sizeof(ev->readbuf));
-      //LeaveCriticalSection(&HandlerMtx);
+      // LeaveCriticalSection(&HandlerMtx);
     }
-    EnterCriticalSection(&HandlerMtx);
     if(ev->t->tick)
       ev->t->tick(ev->t);
-    LeaveCriticalSection(&HandlerMtx);
+    EnterCriticalSection(&HandlerMtx);
     ev->flush_write();
+    LeaveCriticalSection(&HandlerMtx);
     delete pkt;  // don't leak
   }
   llarp::LogDebug("exit TUN event loop thread from system managed thread pool");
