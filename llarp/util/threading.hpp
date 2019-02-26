@@ -1,18 +1,13 @@
 #ifndef LLARP_THREADING_HPP
 #define LLARP_THREADING_HPP
 #include <mutex>
-#if defined(__MINGW32__) && !defined(_GLIBCXX_HAS_GTHREADS)
-#if defined(RPI)
-#error this should not be set
-#endif
-#define _MINGW32_NO_THREADS
-#include <win32/threads/mingw.condition_variable.h>
-#include <win32/threads/mingw.mutex.h>
-#include <win32/threads/mingw.thread.h>
-#else
+// We only support posix threads:
+// MSYS2 has a full native C++11 toolset, and a suitable
+// cross-compilation system can be assembled on Linux and UNIX
+// Last time i checked, Red Hat has this problem (no libpthread)
+// Not sure about the other distros generally -rick
 #include <condition_variable>
 #include <thread>
-#endif
 #include <future>
 #include <memory>
 #include <cassert>
