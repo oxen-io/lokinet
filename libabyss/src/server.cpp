@@ -89,12 +89,12 @@ namespace abyss
         auto idx = line.find_first_of(' ');
         if(idx == string_view::npos)
           return false;
-        Header.Method = line.substr(0, idx);
+        Header.Method = std::string(line.substr(0, idx));
         line          = line.substr(idx + 1);
         idx           = line.find_first_of(' ');
         if(idx == string_view::npos)
           return false;
-        Header.Path = line.substr(0, idx);
+        Header.Path = std::string(line.substr(0, idx));
         m_State     = eReadHTTPHeaders;
         return true;
       }
