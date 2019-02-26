@@ -39,14 +39,15 @@ namespace llarp
       return !(*this == other);
     }
 
-    friend std::ostream&
-    operator<<(std::ostream& out, const PoW& p)
-    {
-      return out << "[pow timestamp=" << p.timestamp
-                 << " lifetime=" << p.extendedLifetime << " nonce=" << p.nonce
-                 << "]";
-    }
+    std::ostream&
+    print(std::ostream& stream, int level, int spaces) const;
   };
+
+  inline std::ostream&
+  operator<<(std::ostream& out, const PoW& p)
+  {
+    return p.print(out, -1, -1);
+  }
 }  // namespace llarp
 
 #endif

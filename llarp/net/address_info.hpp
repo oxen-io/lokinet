@@ -52,19 +52,8 @@ namespace llarp
     bool
     DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override;
 
-    friend std::ostream&
-    operator<<(std::ostream& out, const AddressInfo& a)
-    {
-      char tmp[128] = {0};
-      inet_ntop(AF_INET6, (void*)&a.ip, tmp, sizeof(tmp));
-      out << tmp << ".";
-#if defined(ANDROID) || defined(RPI)
-      snprintf(tmp, sizeof(tmp), "%u", a.port);
-      return out << tmp;
-#else
-      return out << std::to_string(a.port);
-#endif
-    }
+    std::ostream&
+    print(std::ostream& stream, int level, int spaces) const;
 
     struct Hash
     {
@@ -75,6 +64,12 @@ namespace llarp
       }
     };
   };
+
+  inline std::ostream&
+  operator<<(std::ostream& out, const AddressInfo& a)
+  {
+    return a.print(out, -1, -1);
+  }
 
   bool
   operator==(const AddressInfo& lhs, const AddressInfo& rhs);

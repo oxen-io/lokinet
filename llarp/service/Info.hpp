@@ -105,12 +105,8 @@ namespace llarp
         return Addr() < other.Addr();
       }
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const ServiceInfo& i)
-      {
-        return out << "[e=" << i.enckey << " s=" << i.signkey
-                   << " v=" << i.version << " x=" << i.vanity << "]";
-      }
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
 
       /// .loki address
       std::string
@@ -145,6 +141,12 @@ namespace llarp
      private:
       Address m_CachedAddr;
     };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const ServiceInfo& i)
+    {
+      return i.print(out, -1, -1);
+    }
   }  // namespace service
 }  // namespace llarp
 

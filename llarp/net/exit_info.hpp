@@ -53,10 +53,16 @@ namespace llarp
 
     ExitInfo &
     operator=(const ExitInfo &other);
+
+    std::ostream &
+    print(std::ostream &stream, int level, int spaces) const;
   };
 
-  std::ostream &
-  operator<<(std::ostream &out, const ExitInfo &xi);
+  inline std::ostream &
+  operator<<(std::ostream &out, const ExitInfo &xi)
+  {
+    return xi.print(out, -1, -1);
+  }
 }  // namespace llarp
 
 #endif

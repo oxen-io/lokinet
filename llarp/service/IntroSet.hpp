@@ -114,32 +114,8 @@ namespace llarp
         return T < other.T;
       }
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const IntroSet& i)
-      {
-        out << "A=[" << i.A << "] I=[";
-        for(const auto& intro : i.I)
-        {
-          out << intro << ", ";
-        }
-        out << "]";
-        out << "K=" << i.K;
-        auto topic = i.topic.ToString();
-        if(topic.size())
-        {
-          out << " topic=" << topic;
-        }
-        else
-        {
-          out << " topic=" << i.topic;
-        }
-        out << " T=" << i.T;
-        if(i.W)
-        {
-          out << " W=" << *i.W;
-        }
-        return out << " V=" << i.version << " Z=" << i.Z;
-      }
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
 
       llarp_time_t
       GetNewestIntroExpiration() const;
@@ -159,6 +135,12 @@ namespace llarp
       bool
       Verify(llarp::Crypto* crypto, llarp_time_t now) const;
     };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const IntroSet& i)
+    {
+      return i.print(out, -1, -1);
+    }
 
     using IntroSetLookupHandler =
         std::function< void(const std::vector< IntroSet >&) >;

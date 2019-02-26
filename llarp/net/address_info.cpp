@@ -6,6 +6,7 @@
 #include <net/net.hpp>
 #include <util/bencode.h>
 #include <util/mem.h>
+#include <util/printer.hpp>
 
 #include <string.h>
 
@@ -161,5 +162,18 @@ namespace llarp
       return false;
     /** end */
     return bencode_end(buff);
+  }
+
+  std::ostream &
+  AddressInfo::print(std::ostream &stream, int level, int spaces) const
+  {
+    char tmp[128] = {0};
+    inet_ntop(AF_INET6, (void *)&ip, tmp, sizeof(tmp));
+
+    Printer printer(stream, level, spaces);
+    printer.printAttribute("ip", tmp);
+    printer.printAttribute("port", port);
+
+    return stream;
   }
 }  // namespace llarp
