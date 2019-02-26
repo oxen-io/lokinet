@@ -326,7 +326,8 @@ tuntap_get_mtu(struct device *dev)
   return 0;
 }
 
-/* I _think_ it's possible to do this on windows, might be a setting in the reg db */
+/* I _think_ it's possible to do this on windows, might be a setting in the reg
+ * db */
 int
 tuntap_set_mtu(struct device *dev, int mtu)
 {
@@ -404,7 +405,8 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   return 0;
 }
 
-/* To be implemented at a later time? I'm not quite certain TAP-Windows v9.x supports inet6 */
+/* To be implemented at a later time? I'm not quite certain TAP-Windows v9.x
+ * supports inet6 */
 int
 tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
 {
@@ -416,7 +418,8 @@ tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
   return -1;
 }
 
-/* Anything below this comment is unimplemented, either due to lack of OS support, or duplicated functionality elsewhere */
+/* Anything below this comment is unimplemented, either due to lack of OS
+ * support, or duplicated functionality elsewhere */
 int
 tuntap_read(struct device *dev, void *buf, size_t size)
 {

@@ -62,7 +62,6 @@ win32_tun_io::setup()
   // This *probably* has the effect of making packets move in order now
   // as only one IOCP thread will have access to the TUN handler at a
   // time
-  // XXX: network isn't in a state where this bug can be tested!
   InitializeCriticalSection(&HandlerMtx);
 
   return true;
