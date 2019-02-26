@@ -226,6 +226,11 @@ extern "C"
   int
   tuntap_sys_set_ipv4(struct device *, t_tun_in_addr *, uint32_t);
 
+#if defined(Windows)
+  int
+  tuntap_sys_set_dns(struct device *dev, t_tun_in_addr *s, uint32_t mask);
+#endif
+
 #if defined(FreeBSD)
   int
   tuntap_sys_set_ipv4_tap(struct device *, t_tun_in_addr *, uint32_t);

@@ -24,19 +24,6 @@
 /*#include <strsafe.h>*/
 #include "tuntap.h"
 
-// io packet for TUN read/write
-// this _should_ be the same size as
-// the corresponding C++ struct
-struct asio_evt_pkt
-{
-  OVERLAPPED pkt;  // must be first, since this is part of the IO call
-  _Bool write;      // true, or false if read pkt
-  size_t sz;  // if this doesn't match what is in the packet, note the error
-};
-
-// function from c++
-struct asio_evt_pkt *
-getTunEventPkt();
 
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \

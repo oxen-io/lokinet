@@ -17,6 +17,7 @@
 #error No async event loop for your platform, subclass llarp_ev_loop
 #endif
 
+// This is dead now isn't it -rick
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {
