@@ -149,9 +149,9 @@ tun_ev_loop(void* unused)
       // of the tun logic
       for(const auto& tun : tun_listeners)
       {
+        EnterCriticalSection(&HandlerMtx);
         if(tun->t->tick)
           tun->t->tick(tun->t);
-        EnterCriticalSection(&HandlerMtx);
         tun->flush_write();
         LeaveCriticalSection(&HandlerMtx);
       }
@@ -186,9 +186,9 @@ tun_ev_loop(void* unused)
       ev->read(ev->readbuf, sizeof(ev->readbuf));
       // LeaveCriticalSection(&HandlerMtx);
     }
+    EnterCriticalSection(&HandlerMtx);
     if(ev->t->tick)
       ev->t->tick(ev->t);
-    EnterCriticalSection(&HandlerMtx);
     ev->flush_write();
     LeaveCriticalSection(&HandlerMtx);
     delete pkt;  // don't leak
