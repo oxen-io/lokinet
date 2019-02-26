@@ -25,8 +25,8 @@ namespace llarp
         __attribute__((unused))
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
-      auto &dht   = ctx->impl;
-      auto crypto = dht.router->crypto();
+      auto &dht   = *ctx->impl;
+      auto crypto = dht.GetRouter()->crypto();
 
       for(const auto &introset : I)
       {
@@ -40,23 +40,23 @@ namespace llarp
         }
       }
       TXOwner owner(From, T);
-      auto tagLookup = dht.pendingTagLookups.GetPendingLookupFrom(owner);
+      auto tagLookup = dht.pendingTagLookups().GetPendingLookupFrom(owner);
       if(tagLookup)
       {
-        dht.pendingTagLookups.Found(owner, tagLookup->target, I);
+        dht.pendingTagLookups().Found(owner, tagLookup->target, I);
         return true;
       }
       auto serviceLookup =
-          dht.pendingIntrosetLookups.GetPendingLookupFrom(owner);
+          dht.pendingIntrosetLookups().GetPendingLookupFrom(owner);
       if(serviceLookup)
       {
         if(I.size())
         {
-          dht.pendingIntrosetLookups.Found(owner, serviceLookup->target, I);
+          dht.pendingIntrosetLookups().Found(owner, serviceLookup->target, I);
         }
         else
         {
-          dht.pendingIntrosetLookups.NotFound(owner, K);
+          dht.pendingIntrosetLookups().NotFound(owner, K);
         }
         return true;
       }
@@ -71,7 +71,8 @@ namespace llarp
         std::vector< std::unique_ptr< IMessage > > &replies) const
     {
       // TODO: implement me better?
-      auto pathset = ctx->impl.router->pathContext().GetLocalPathSet(pathID);
+      auto pathset =
+          ctx->impl->GetRouter()->pathContext().GetLocalPathSet(pathID);
       if(pathset)
       {
         return pathset->HandleGotIntroMessage(this);

@@ -225,7 +225,19 @@ namespace llarp
     InboundMessageParser inbound_link_msg_parser;
     routing::InboundMessageParser inbound_routing_msg_parser;
 
-    service::Context hiddenServiceContext;
+    service::Context _hiddenServiceContext;
+
+    service::Context &
+    hiddenServiceContext() override
+    {
+      return _hiddenServiceContext;
+    }
+
+    const service::Context &
+    hiddenServiceContext() const override
+    {
+      return _hiddenServiceContext;
+    }
 
     using NetConfig_t = std::unordered_multimap< std::string, std::string >;
 
@@ -297,6 +309,9 @@ namespace llarp
     std::unordered_map< RouterID, llarp_time_t, RouterID::Hash >
         m_PersistingSessions;
 
+    // RCs of connected clients
+    std::set< RouterID > m_Clients;
+
     // lokinet routers from lokid, maps pubkey to when we think it will expire,
     // set to max value right now
     std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;
@@ -341,17 +356,17 @@ namespace llarp
     AddHiddenService(const service::Config::section_t &config);
 
     bool
-    Configure(Config *conf);
+    Configure(Config *conf) override;
 
     bool
     Ready();
 
     bool
-    Run(struct llarp_nodedb *nodedb);
+    Run(struct llarp_nodedb *nodedb) override;
 
     /// stop running the router logic gracefully
     void
-    Stop();
+    Stop() override;
 
     /// close all sessions and shutdown all links
     void
@@ -389,13 +404,13 @@ namespace llarp
 
     /// inject configuration and reconfigure router
     bool
-    Reconfigure(Config *conf);
+    Reconfigure(Config *conf) override;
 
     /// validate new configuration against old one
     /// return true on 100% valid
     /// return false if not 100% valid
     bool
-    ValidateConfig(Config *conf) const;
+    ValidateConfig(Config *conf) const override;
 
     /// send to remote router or queue for sending
     /// returns false on overflow

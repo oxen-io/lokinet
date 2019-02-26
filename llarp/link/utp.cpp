@@ -83,18 +83,21 @@ namespace llarp
       if(expect)
       {
         ssize_t s = utp_writev(sock, vecs.data(), vecs.size());
+        if(s < 0)
+          return;
         m_TXRate += s;
-        while(s > 0 && s >= static_cast< ssize_t >(vecq.front().iov_len))
+        size_t sz = s;
+        while(vecq.size() && sz >= vecq.front().iov_len)
         {
-          s -= vecq.front().iov_len;
+          sz -= vecq.front().iov_len;
           vecq.pop_front();
           sendq.pop_front();
         }
         if(vecq.size())
         {
           auto& front = vecq.front();
-          front.iov_len -= s;
-          front.iov_base = ((byte_t*)front.iov_base) + s;
+          front.iov_len -= sz;
+          front.iov_base = ((byte_t*)front.iov_base) + sz;
         }
       }
     }
@@ -175,6 +178,7 @@ namespace llarp
       PruneInboundMessages(now);
       m_TXRate = 0;
       m_RXRate = 0;
+      SendKeepAlive();
     }
 
     /// low level read
@@ -1131,7 +1135,7 @@ namespace llarp
         buf.underlying.cur = buf.underlying.base;
         // process buffer
         LogDebug("got message ", msgid, " from ", remoteAddr);
-        return parent->HandleMessage(this, buf.underlying);
+        parent->HandleMessage(this, buf.underlying);
       }
       return true;
     }

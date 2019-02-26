@@ -195,6 +195,12 @@ namespace llarp
       {
         RegenAndPublishIntroSet(now);
       }
+      else if(NumInStatus(llarp::path::ePathEstablished) < 3)
+      {
+        if(m_IntroSet.HasExpiredIntros(now))
+          ManualRebuild(1);
+      }
+
       // expire snode sessions
       {
         auto itr = m_SNodeSessions.begin();
@@ -688,7 +694,16 @@ namespace llarp
     void
     Endpoint::IntroSetPublishFail()
     {
-      // TODO: linear backoff
+      auto now = Now();
+      if(ShouldPublishDescriptors(now))
+      {
+        RegenAndPublishIntroSet(now);
+      }
+      else if(NumInStatus(llarp::path::ePathEstablished) < 3)
+      {
+        if(m_IntroSet.HasExpiredIntros(now))
+          ManualRebuild(1);
+      }
     }
 
     bool
@@ -1144,29 +1159,7 @@ namespace llarp
     Endpoint::OutboundContext::SwapIntros()
     {
       remoteIntro = m_NextIntro;
-      // prepare next intro
-      auto now = Now();
-      for(const auto& intro : currentIntroSet.I)
-      {
-        if(intro.ExpiresSoon(now))
-          continue;
-        if(m_BadIntros.find(intro) == m_BadIntros.end()
-           && remoteIntro.router == intro.router)
-        {
-          m_NextIntro = intro;
-          return;
-        }
-      }
-      for(const auto& intro : currentIntroSet.I)
-      {
-        if(intro.ExpiresSoon(now))
-          continue;
-        if(m_BadIntros.find(intro) == m_BadIntros.end())
-        {
-          m_NextIntro = intro;
-          return;
-        }
-      }
+      m_DataHandler->PutIntroFor(currentConvoTag, remoteIntro);
     }
 
     bool
@@ -1335,12 +1328,13 @@ namespace llarp
         }
       }
       // no converstation
-      return EnsurePathToService(remote,
-                                 [](Address, OutboundContext* c) {
-                                   if(c)
-                                     c->UpdateIntroSet(true);
-                                 },
-                                 5000, false);
+      return EnsurePathToService(
+          remote,
+          [](Address, OutboundContext* c) {
+            if(c)
+              c->UpdateIntroSet(true);
+          },
+          5000, false);
     }
 
     bool
@@ -1619,6 +1613,7 @@ namespace llarp
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
         if(path == nullptr)
         {
+          BuildOneAlignedTo(remoteIntro.router);
           llarp::LogWarn(Name(), " dropping intro frame, no path to ",
                          remoteIntro.router);
           return;
@@ -1648,13 +1643,13 @@ namespace llarp
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
       if(path)
       {
-        ++sequenceNo;
         routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
         {
           llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
                           remoteIntro.router);
           lastGoodSend = m_Endpoint->Now();
+          ++sequenceNo;
           return true;
         }
         else

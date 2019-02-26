@@ -196,7 +196,7 @@ namespace llarp
   Router::OnSessionEstablished(RouterContact rc)
   {
     async_verify_RC(rc, nullptr);
-    LogInfo("session with ", rc.pubkey, " established");
+    LogInfo("session with ", RouterID(rc.pubkey), " established");
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *__netloop,
@@ -210,7 +210,7 @@ namespace llarp
       , _exitContext(this)
       , _dht(llarp_dht_context_new(this))
       , inbound_link_msg_parser(this)
-      , hiddenServiceContext(this)
+      , _hiddenServiceContext(this)
   {
     // set rational defaults
     this->ip4addr.sin_family = AF_INET;
@@ -233,8 +233,8 @@ namespace llarp
   util::StatusObject
   Router::ExtractStatus() const
   {
-    util::StatusObject obj{{"dht", _dht->impl.ExtractStatus()},
-                           {"services", hiddenServiceContext.ExtractStatus()},
+    util::StatusObject obj{{"dht", _dht->impl->ExtractStatus()},
+                           {"services", _hiddenServiceContext.ExtractStatus()},
                            {"exit", _exitContext.ExtractStatus()}};
     std::vector< util::StatusObject > ob_links, ib_links;
     std::transform(inboundLinks.begin(), inboundLinks.end(),
@@ -345,9 +345,9 @@ namespace llarp
     }
 
     // we don't have the RC locally so do a dht lookup
-    _dht->impl.LookupRouter(remote,
-                            std::bind(&Router::HandleDHTLookupForSendTo, this,
-                                      remote, std::placeholders::_1));
+    _dht->impl->LookupRouter(remote,
+                             std::bind(&Router::HandleDHTLookupForSendTo, this,
+                                       remote, std::placeholders::_1));
     return true;
   }
 
@@ -509,6 +509,7 @@ namespace llarp
         static_cast< async_verify_context * >(job->user);
     auto router = ctx->router;
     PubKey pk(job->rc.pubkey);
+    router->m_Clients.insert(pk);
     router->FlushOutboundFor(pk, router->GetLinkWithSessionByPubkey(pk));
     delete ctx;
     router->pendingVerifyRC.erase(pk);
@@ -549,7 +550,7 @@ namespace llarp
     router->validRouters.emplace(pk, rc);
 
     // track valid router in dht
-    router->dht()->impl.nodes->PutNode(rc);
+    router->dht()->impl->Nodes()->PutNode(rc);
 
     // mark success in profile
     router->routerProfiling().MarkSuccess(pk);
@@ -631,11 +632,11 @@ namespace llarp
     }
     else if(IsServiceNode() || !routerProfiling().IsBad(remote))
     {
-      if(dht()->impl.HasRouterLookup(remote))
+      if(dht()->impl->HasRouterLookup(remote))
         return;
       LogInfo("looking up router ", remote);
       // dht lookup as we don't know it
-      dht()->impl.LookupRouter(
+      dht()->impl->LookupRouter(
           remote,
           std::bind(&Router::HandleDHTLookupForTryEstablishTo, this, remote,
                     std::placeholders::_1));
@@ -990,9 +991,9 @@ namespace llarp
     // store it in nodedb async
     async_verify_RC(newrc, nullptr);
     // update dht if required
-    if(dht()->impl.nodes->HasNode(dht::Key_t{newrc.pubkey}))
+    if(dht()->impl->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
     {
-      dht()->impl.nodes->PutNode(newrc);
+      dht()->impl->Nodes()->PutNode(newrc);
     }
     // update valid routers
     {
@@ -1009,9 +1010,9 @@ namespace llarp
   void
   Router::ServiceNodeLookupRouterWhenExpired(RouterID router)
   {
-    dht()->impl.LookupRouter(router,
-                             std::bind(&Router::HandleDHTLookupForExplore, this,
-                                       router, std::placeholders::_1));
+    dht()->impl->LookupRouter(router,
+                              std::bind(&Router::HandleDHTLookupForExplore,
+                                        this, router, std::placeholders::_1));
   }
 
   void
@@ -1039,6 +1040,7 @@ namespace llarp
     }
     paths.TickPaths(now);
     paths.ExpirePaths(now);
+
     {
       auto itr = m_PersistingSessions.begin();
       while(itr != m_PersistingSessions.end())
@@ -1051,7 +1053,7 @@ namespace llarp
             LogDebug("keepalive to ", itr->first);
             link->KeepAliveSessionTo(itr->first);
           }
-          else
+          else if(m_Clients.count(itr->first) == 0)
           {
             LogDebug("establish to ", itr->first);
             TryEstablishTo(itr->first);
@@ -1077,7 +1079,7 @@ namespace llarp
         for(const auto &rc : bootstrapRCList)
         {
           TryConnectAsync(rc, 4);
-          dht()->impl.ExploreNetworkVia(dht::Key_t{rc.pubkey});
+          dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
         }
       }
       else
@@ -1094,7 +1096,7 @@ namespace llarp
         ConnectToRandomRouters(dlt);
       }
       paths.BuildPaths(now);
-      hiddenServiceContext.Tick(now);
+      _hiddenServiceContext.Tick(now);
     }
     _exitContext.Tick(now);
     if(rpcCaller)
@@ -1149,9 +1151,11 @@ namespace llarp
   void
   Router::SessionClosed(RouterID remote)
   {
-    __llarp_dht_remove_peer(dht(), remote.data());
+    dht::Key_t k(remote);
+    dht()->impl->Nodes()->DelNode(k);
     // remove from valid routers if it's a valid router
     validRouters.erase(remote);
+    m_Clients.erase(remote);
     LogInfo("Session to ", remote, " fully closed");
   }
 
@@ -1436,7 +1440,7 @@ namespace llarp
     }
 
     LogInfo("starting hidden service context...");
-    if(!hiddenServiceContext.StartAll())
+    if(!hiddenServiceContext().StartAll())
     {
       LogError("Failed to start hidden service context");
       return false;
@@ -1506,7 +1510,7 @@ namespace llarp
     {
       // auto detect if we have any pre-defined endpoints
       // no if we have a endpoints
-      if(hiddenServiceContext.hasEndpoints())
+      if(hiddenServiceContext().hasEndpoints())
       {
         LogInfo("Auto mode detected and we have endpoints");
         netConfig.emplace("enabled", "false");
@@ -1560,7 +1564,7 @@ namespace llarp
 
     _stopping.store(true);
     LogInfo("stopping router");
-    hiddenServiceContext.StopAll();
+    hiddenServiceContext().StopAll();
     _exitContext.Stop();
     if(rpcServer)
       rpcServer->Stop();
@@ -1730,7 +1734,7 @@ namespace llarp
       ++itr;
     }
     // add endpoint
-    return hiddenServiceContext.AddDefaultEndpoint(netConfig);
+    return hiddenServiceContext().AddDefaultEndpoint(netConfig);
   }
 
   bool
@@ -1751,7 +1755,7 @@ namespace llarp
       service::Config::section_t filteredConfig;
       mergeHiddenServiceConfig(config.second, filteredConfig.second);
       filteredConfig.first = config.first;
-      if(!hiddenServiceContext.AddEndpoint(filteredConfig))
+      if(!hiddenServiceContext().AddEndpoint(filteredConfig))
         return false;
     }
     return true;

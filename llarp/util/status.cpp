@@ -6,20 +6,14 @@ namespace llarp
   {
     StatusObject::StatusObject(const StatusObject& other)
     {
-#ifdef USE_ABYSS
       Impl.SetObject();
       auto& a = Impl.GetAllocator();
       Impl.CopyFrom(other.Impl, a);
-#else
-      (void)other;
-#endif
     }
 
     StatusObject::~StatusObject()
     {
-#ifdef USE_ABYSS
       Impl.RemoveAllMembers();
-#endif
     }
 
     void
@@ -48,39 +42,28 @@ namespace llarp
     void
     StatusObject::PutBool(String_t name, bool val)
     {
-#ifdef USE_ABYSS
       auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetBool(val);
       auto s = llarp::string_view_string(name);
       Value_t k(s.c_str(), a);
       Impl.AddMember(k, v, a);
-#else
-      (void)name;
-      (void)val;
-#endif
     }
 
     void
     StatusObject::PutInt(String_t name, uint64_t val)
     {
-#ifdef USE_ABYSS
       auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetUint64(val);
       auto s = llarp::string_view_string(name);
       Value_t k(s.c_str(), a);
       Impl.AddMember(k, v, a);
-#else
-      (void)name;
-      (void)val;
-#endif
     }
 
     void
     StatusObject::PutObject(String_t name, const StatusObject& val)
     {
-#ifdef USE_ABYSS
       auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetObject();
@@ -88,17 +71,12 @@ namespace llarp
       auto s = llarp::string_view_string(name);
       Value_t k(s.c_str(), a);
       Impl.AddMember(k, v, a);
-#else
-      (void)name;
-      (void)val;
-#endif
     }
 
     void
     StatusObject::PutObjectArray(String_t name,
                                  const std::vector< StatusObject >& arr)
     {
-#ifdef USE_ABYSS
       auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetArray();
@@ -110,17 +88,12 @@ namespace llarp
       auto s = llarp::string_view_string(name);
       Value_t k(s.c_str(), a);
       Impl.AddMember(k, v, a);
-#else
-      (void)name;
-      (void)arr;
-#endif
     }
 
     void
     StatusObject::PutStringArray(String_t name,
                                  const std::vector< std::string >& arr)
     {
-#ifdef USE_ABYSS
       auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetArray();
@@ -132,26 +105,17 @@ namespace llarp
       auto s = llarp::string_view_string(name);
       Value_t k(s.c_str(), a);
       Impl.AddMember(k, v, a);
-#else
-      (void)name;
-      (void)arr;
-#endif
     }
 
     void
     StatusObject::PutString(String_t name, const std::string& val)
     {
-#ifdef USE_ABYSS
       auto& a = Impl.GetAllocator();
       Value_t v;
       v.SetString(val.c_str(), a);
       auto s = llarp::string_view_string(name);
       Value_t k(s.c_str(), a);
       Impl.AddMember(k, v, a);
-#else
-      (void)name;
-      (void)val;
-#endif
     }
   }  // namespace util
 }  // namespace llarp

@@ -5,6 +5,7 @@
 llarp_dht_context::llarp_dht_context(llarp::AbstractRouter *router)
 {
   parent = router;
+  impl   = llarp::dht::makeContext();
 }
 
 struct llarp_dht_context *
@@ -22,19 +23,19 @@ llarp_dht_context_free(struct llarp_dht_context *ctx)
 void
 __llarp_dht_remove_peer(struct llarp_dht_context *ctx, const byte_t *id)
 {
-  ctx->impl.nodes->DelNode(llarp::dht::Key_t(id));
+  ctx->impl->Nodes()->DelNode(llarp::dht::Key_t(id));
 }
 
 void
 llarp_dht_allow_transit(llarp_dht_context *ctx)
 {
-  ctx->impl.allowTransit = true;
+  ctx->impl->AllowTransit() = true;
 }
 
 void
 llarp_dht_context_start(struct llarp_dht_context *ctx, const byte_t *key)
 {
-  ctx->impl.Init(llarp::dht::Key_t(key), ctx->parent, 20000);
+  ctx->impl->Init(llarp::dht::Key_t(key), ctx->parent, 20000);
 }
 
 void

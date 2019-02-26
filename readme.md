@@ -49,7 +49,7 @@ install (root):
 
 build (where `$ARCH` is your platform - `i686` or `x86_64`):
 
-    $ pacman -Sy base-devel mingw-w64-$ARCH-toolchain git libtool autoconf mingw-w64-$ARCH-cmake
+    $ pacman -Sy base-devel mingw-w64-$ARCH-toolchain git libtool autoconf mingw-w64-$ARCH-cmake mingw-w64-$ARCH-rapidjson
     $ git clone https://github.com/loki-project/loki-network.git
     $ cd loki-network
     $ mkdir -p build; cd build

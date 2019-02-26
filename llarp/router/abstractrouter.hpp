@@ -13,8 +13,9 @@ struct llarp_threadpool;
 
 namespace llarp
 {
-  struct Crypto;
   class Logic;
+  struct Config;
+  struct Crypto;
   struct RouterContact;
   struct RouterID;
   struct ILinkMessage;
@@ -37,6 +38,11 @@ namespace llarp
   namespace routing
   {
     struct IMessageHandler;
+  }
+
+  namespace service
+  {
+    struct Context;
   }
 
   struct AbstractRouter : public util::IStateful
@@ -90,8 +96,24 @@ namespace llarp
     virtual llarp_threadpool *
     diskworker() = 0;
 
+    virtual service::Context &
+    hiddenServiceContext() = 0;
+
+    virtual const service::Context &
+    hiddenServiceContext() const = 0;
+
     virtual bool
     Sign(Signature &sig, const llarp_buffer_t &buf) const = 0;
+
+    virtual bool
+    Configure(Config *conf) = 0;
+
+    virtual bool
+    Run(struct llarp_nodedb *nodedb) = 0;
+
+    /// stop running the router logic gracefully
+    virtual void
+    Stop() = 0;
 
     virtual const byte_t *
     pubkey() const = 0;
@@ -102,6 +124,15 @@ namespace llarp
     /// connect to N random routers
     virtual void
     ConnectToRandomRouters(int N) = 0;
+    /// inject configuration and reconfigure router
+    virtual bool
+    Reconfigure(Config *conf) = 0;
+
+    /// validate new configuration against old one
+    /// return true on 100% valid
+    /// return false if not 100% valid
+    virtual bool
+    ValidateConfig(Config *conf) const = 0;
 
     /// called by link when a remote session has no more sessions open
     virtual void

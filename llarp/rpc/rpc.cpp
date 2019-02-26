@@ -5,17 +5,13 @@
 #include <router_id.hpp>
 #include <exit/context.hpp>
 
-#ifdef USE_ABYSS
 #include <util/encode.hpp>
 #include <libabyss.hpp>
-#endif
 
 namespace llarp
 {
   namespace rpc
   {
-#ifdef USE_ABYSS
-
     struct CallerHandler : public ::abyss::http::IRPCClientHandler
     {
       CallerImpl* m_Parent;
@@ -341,57 +337,6 @@ namespace llarp
                                    (const sockaddr*)&saddr);
       }
     };
-#else
-    struct ServerImpl
-    {
-      ServerImpl(__attribute__((unused)) AbstractRouter* r){};
-
-      bool
-      Start(__attribute__((unused)) const std::string& addr)
-      {
-        return true;
-      }
-
-      void
-      Stop()
-      {
-      }
-    };
-
-    struct CallerImpl
-    {
-      CallerImpl(__attribute__((unused)) AbstractRouter* r)
-      {
-      }
-
-      ~CallerImpl()
-      {
-      }
-
-      bool
-      Start(const std::string&)
-      {
-        return true;
-      }
-
-      void
-      Stop()
-      {
-      }
-
-      void
-      Tick(llarp_time_t now)
-      {
-        (void)now;
-      }
-
-      void
-      SetBasicAuth(const std::string&, const std::string&)
-      {
-      }
-    };
-
-#endif
 
     Caller::Caller(AbstractRouter* r)
         : m_Impl(std::make_unique< CallerImpl >(r))
