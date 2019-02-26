@@ -24,15 +24,28 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
 
 struct DemoCall : public abyss::http::IRPCClientHandler
 {
-  DemoCall(abyss::http::ConnImpl* impl) : abyss::http::IRPCClientHandler(impl)
+  std::function< void(void) > m_Callback;
+  llarp::Logic* m_Logic;
+
+  DemoCall(abyss::http::ConnImpl* impl, llarp::Logic* logic,
+           std::function< void(void) > callback)
+      : abyss::http::IRPCClientHandler(impl)
+      , m_Callback(callback)
+      , m_Logic(logic)
   {
     llarp::LogInfo("new call");
   }
 
-  bool
-  HandleResponse(abyss::http::RPC_Response resp) override
+  static void
+  CallCallback(void* u)
   {
-    llarp::json::ToString(resp, std::cout);
+    static_cast< DemoCall* >(u)->m_Callback();
+  }
+
+  bool HandleResponse(abyss::http::RPC_Response) override
+  {
+    llarp::LogInfo("response get");
+    m_Logic->queue_job({this, &CallCallback});
     return true;
   }
 
@@ -51,10 +64,18 @@ struct DemoCall : public abyss::http::IRPCClientHandler
 
 struct DemoClient : public abyss::http::JSONRPC
 {
+  llarp_ev_loop* m_Loop;
+  llarp::Logic* m_Logic;
+
+  DemoClient(llarp_ev_loop* l, llarp::Logic* logic)
+      : abyss::http::JSONRPC(), m_Loop(l), m_Logic(logic)
+  {
+  }
+
   abyss::http::IRPCClientHandler*
   NewConn(abyss::http::ConnImpl* impl)
   {
-    return new DemoCall(impl);
+    return new DemoCall(impl, m_Logic, std::bind(&llarp_ev_loop_stop, m_Loop));
   }
 
   void
@@ -109,7 +130,7 @@ main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
   addr.sin_port        = htons(1222);
   addr.sin_family      = AF_INET;
   DemoServer serv;
-  DemoClient client;
+  DemoClient client(loop, logic);
   llarp::Addr a(addr);
   while(true)
   {

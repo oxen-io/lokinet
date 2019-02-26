@@ -70,7 +70,7 @@ namespace abyss
         ConnImpl* self = static_cast< ConnImpl* >(conn->user);
         if(!self->ProcessRead((const char*)buf.base, buf.sz))
         {
-          self->CloseError();
+          self->CloseError("on read failed");
         }
       }
 
@@ -138,8 +138,8 @@ namespace abyss
               Close();
               return true;
             case json::IParser::eParseError:
-              handler->HandleError();
-              return false;
+              CloseError("json parse error");
+              return true;
             default:
               return false;
           }
@@ -195,8 +195,9 @@ namespace abyss
       }
 
       void
-      CloseError()
+      CloseError(const char* msg)
       {
+        LogError("CloseError: ", msg);
         if(handler)
           handler->HandleError();
         handler = nullptr;
@@ -221,72 +222,20 @@ namespace abyss
         std::stringstream ss;
         json::ToString(m_RequestBody, ss);
         body = ss.str();
-        // request base
-        char buf[512] = {0};
-        int sz        = snprintf(buf, sizeof(buf),
-                          "POST /rpc HTTP/1.0\r\nContent-Type: "
-                          "application/json\r\nContent-Length: %zu\r\nAccept: "
-                          "application/json\r\n",
-                          body.size());
-        if(sz <= 0)
-          return;
-        if(!llarp_tcp_conn_async_write(m_Conn, llarp_buffer_t(buf, sz)))
-        {
-          llarp::LogError("failed to write first part of request");
-          CloseError();
-          return;
-        }
-        // header delimiter
-        buf[0] = ':';
-        buf[1] = ' ';
-        // CRLF
-        buf[2] = '\r';
-        buf[3] = '\n';
-        // write extra request header
+        m_SendHeaders.emplace("Content-Type", "application/json");
+        m_SendHeaders.emplace("Content-Length", std::to_string(body.size()));
+        m_SendHeaders.emplace("Accept", "application/json");
+        std::stringstream request;
+        request << "POST /rpc HTTP/1.0\r\n";
         for(const auto& item : m_SendHeaders)
+          request << item.first << ": " << item.second << "\r\n";
+        request << "\r\n" << body;
+        std::string buf = request.str();
+
+        if(!llarp_tcp_conn_async_write(m_Conn,
+                                       llarp_buffer_t(buf.c_str(), buf.size())))
         {
-          // header name
-          if(!llarp_tcp_conn_async_write(
-                 m_Conn, llarp_buffer_t(item.first.c_str(), item.first.size())))
-          {
-            CloseError();
-            return;
-          }
-          // header delimiter
-          if(!llarp_tcp_conn_async_write(m_Conn,
-                                         llarp_buffer_t(buf, 2 * sizeof(char))))
-          {
-            CloseError();
-            return;
-          }
-          // header value
-          if(!llarp_tcp_conn_async_write(
-                 m_Conn,
-                 llarp_buffer_t(item.second.c_str(), item.second.size())))
-          {
-            CloseError();
-            return;
-          }
-          // CRLF
-          if(!llarp_tcp_conn_async_write(
-                 m_Conn, llarp_buffer_t(buf + 2, 2 * sizeof(char))))
-          {
-            CloseError();
-            return;
-          }
-        }
-        // CRLF
-        if(!llarp_tcp_conn_async_write(
-               m_Conn, llarp_buffer_t(buf + 2, 2 * sizeof(char))))
-        {
-          CloseError();
-          return;
-        }
-        // request body
-        if(!llarp_tcp_conn_async_write(
-               m_Conn, llarp_buffer_t(body.c_str(), body.size())))
-        {
-          CloseError();
+          CloseError("failed to write request");
           return;
         }
         llarp::LogDebug("request sent");

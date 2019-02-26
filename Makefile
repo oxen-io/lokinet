@@ -51,7 +51,7 @@ GRADLE ?= gradle
 JAVA_HOME ?= /usr/lib/jvm/default-java
 
 # jsonrpc server
-JSONRPC ?= OFF
+JSONRPC ?= ON
 # native avx2 code
 AVX2 ?= OFF
 # non x86 target
@@ -63,7 +63,7 @@ NETNS ?= OFF
 # cross compile?
 CROSS ?= OFF
 # build liblokinet-shared.so
-SHARED_LIB ?= ON
+SHARED_LIB ?= OFF
 # enable generating coverage
 COVERAGE ?= OFF
 COVERAGE_OUTDIR ?= "$(TMPDIR)/lokinet-coverage"
