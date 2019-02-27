@@ -850,7 +850,7 @@ namespace llarp
       {
         whitelistRouters = IsTrueValue(val);
       }
-      if(StrEq(key, "jsonrpc"))
+      if(StrEq(key, "jsonrpc") || StrEq(key, "addr"))
       {
         lokidRPCAddr = val;
       }

@@ -226,7 +226,7 @@ namespace abyss
         m_SendHeaders.emplace("Content-Length", std::to_string(body.size()));
         m_SendHeaders.emplace("Accept", "application/json");
         std::stringstream request;
-        request << "POST /rpc HTTP/1.0\r\n";
+        request << "POST /json_rpc HTTP/1.0\r\n";
         for(const auto& item : m_SendHeaders)
           request << item.first << ": " << item.second << "\r\n";
         request << "\r\n" << body;
