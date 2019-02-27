@@ -31,7 +31,7 @@ namespace llarp
     {
       /// minimum interval for publishing introsets
       static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
-          DEFAULT_PATH_LIFETIME / 4;
+          DEFAULT_PATH_LIFETIME / 8;
 
       static const llarp_time_t INTROSET_PUBLISH_RETRY_INTERVAL = 5000;
 
