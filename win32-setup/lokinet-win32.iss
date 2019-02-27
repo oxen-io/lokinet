@@ -16,7 +16,7 @@
 ; NOTE: The value of AppId uniquely identifies this application.
 ; Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{11335EAC-0385-4C78-A3AA-67731326B653}
+AppId={{11335EAC-0385-4C78-A3AA-67731326B653}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -77,8 +77,8 @@ Type: filesandordirs; Name: "{app}\inet6_driver"; MinVersion: 0,5.0; OnlyBelowVe
 Type: filesandordirs; Name: "{userappdata}\.lokinet"
 
 [UninstallRun]
-Filename: "{app}\tap-windows-9.21.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.21.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; MinVersion: 0,6.0
-Filename: "{app}\tap-windows-9.9.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.9.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; OnlyBelowVersion: 0,6.0
+Filename: "{app}\tap-windows-9.21.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.21.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; RunOnceId: "RemoveTap"; MinVersion: 0,6.0
+Filename: "{app}\tap-windows-9.9.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.9.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; RunOnceId: "RemoveTap"; OnlyBelowVersion: 0,6.0
 
 [Dirs]
 Name: "{userappdata}\.lokinet"
