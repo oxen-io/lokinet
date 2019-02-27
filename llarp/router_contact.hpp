@@ -40,10 +40,12 @@ namespace llarp
       return !(*this == other);
     }
 
-    friend std::ostream &
-    operator<<(std::ostream &out, const NetID &id)
+    std::ostream &
+    print(std::ostream &stream, int level, int spaces) const
     {
-      return out << id.ToString();
+      Printer printer(stream, level, spaces);
+      printer.printValue(ToString());
+      return stream;
     }
 
     std::string
@@ -55,6 +57,12 @@ namespace llarp
     bool
     BEncode(llarp_buffer_t *buf) const;
   };
+
+  inline std::ostream &
+  operator<<(std::ostream &out, const NetID &id)
+  {
+    return id.print(out, -1, -1);
+  }
 
   /// RouterContact
   struct RouterContact final : public IBEncodeMessage, public util::IStateful
@@ -182,21 +190,8 @@ namespace llarp
       return last_updated < other.last_updated;
     }
 
-    friend std::ostream &
-    operator<<(std::ostream &out, const RouterContact &rc)
-    {
-      out << "[RouterContact k=" << rc.pubkey;
-      out << " updated=" << rc.last_updated;
-      out << " netid=" << rc.netID;
-      out << " v=" << rc.version;
-      out << " ai=[ ";
-      for(const auto &addr : rc.addrs)
-        out << addr << " ";
-      out << " ] xi=[ ";
-      for(const auto &xi : rc.exits)
-        out << xi << " ";
-      return out << " ] e=" << rc.enckey << " z=" << rc.signature << " ]";
-    }
+    std::ostream &
+    print(std::ostream &stream, int level, int spaces) const;
 
     bool
     Read(const char *fname);
@@ -208,6 +203,12 @@ namespace llarp
     bool
     VerifySignature(llarp::Crypto *crypto) const;
   };
+
+  inline std::ostream &
+  operator<<(std::ostream &out, const RouterContact &rc)
+  {
+    return rc.print(out, -1, -1);
+  }
 
   using RouterLookupHandler =
       std::function< void(const std::vector< RouterContact > &) >;

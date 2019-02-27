@@ -179,5 +179,32 @@ namespace llarp
         t = std::max(intro.expiresAt, t);
       return t;
     }
+
+    std::ostream&
+    IntroSet::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("A", A);
+      printer.printAttribute("I", I);
+      printer.printAttribute("K", K);
+
+      std::string _topic = topic.ToString();
+
+      if(!_topic.empty())
+      {
+        printer.printAttribute("topic", _topic);
+      }
+      else
+      {
+        printer.printAttribute("topic", topic);
+      }
+
+      printer.printAttribute("T", T);
+      printer.printAttribute("W", W);
+      printer.printAttribute("V", version);
+      printer.printAttribute("Z", Z);
+
+      return stream;
+    }
   }  // namespace service
 }  // namespace llarp

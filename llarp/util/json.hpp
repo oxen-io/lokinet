@@ -1,6 +1,8 @@
 #ifndef LLARP_UTIL_JSON_HPP
 #define LLARP_UTIL_JSON_HPP
 
+#include <util/string_view.hpp>
+
 #include <rapidjson/document.h>
 #include <rapidjson/writer.h>
 
@@ -79,11 +81,6 @@ namespace llarp
     using Writer   = rapidjson::Writer< Stream >;
   }  // namespace json
 
-#if __cplusplus >= 201703L
-  using string_view = std::string_view;
-#else
-  using string_view = std::string;
-#endif
   namespace json
   {
     struct IParser

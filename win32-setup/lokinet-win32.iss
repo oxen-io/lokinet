@@ -69,6 +69,7 @@ Source: "{tmp}\tuntapv9.7z"; DestDir: "{app}"; Flags: ignoreversion external del
 Source: "{tmp}\tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion external deleteafterinstall skipifsourcedoesntexist; MinVersion: 0,6.0
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
+Source: "regdbhelper.dll"; Flags: dontcopy
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\tap-windows*"
@@ -76,14 +77,19 @@ Type: filesandordirs; Name: "{app}\inet6_driver"; MinVersion: 0,5.0; OnlyBelowVe
 Type: filesandordirs; Name: "{userappdata}\.lokinet"
 
 [UninstallRun]
-Filename: "{app}\tap-windows-9.21.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.21.2"; MinVersion: 0,6.0; Flags: runascurrentuser
-Filename: "{app}\tap-windows-9.9.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.9.2"; OnlyBelowVersion: 0,6.0; Flags: runascurrentuser
- 
+Filename: "{app}\tap-windows-9.21.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.21.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; MinVersion: 0,6.0
+Filename: "{app}\tap-windows-9.9.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.9.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; OnlyBelowVersion: 0,6.0
 
 [Dirs]
 Name: "{userappdata}\.lokinet"
 
 [Code]
+var 
+TapInstalled: Boolean;
+
+function reg_query_helper(): Integer;
+external 'reg_query_helper@files:regdbhelper.dll cdecl setuponly';
+
 procedure CurStepChanged(CurStep: TSetupStep);
 var
   Version: TWindowsVersion;
@@ -93,8 +99,13 @@ begin
   GetWindowsVersionEx(Version);
   if Version.NTPlatform and (Version.Major = 5) and (Version.Minor = 0) and (FileExists(ExpandConstant('{tmp}\inet6.7z')) = true) then
      // I need a better message...
-    MsgBox('Restart your computer, then set up IPv6 in Network Connections.\n[Adapter] > Properties > Install... > Protocol > Microsoft IPv6 Driver...', mbInformation, MB_OK);
+    MsgBox('Restart your computer, then set up IPv6 in Network Connections. [Adapter] > Properties > Install... > Protocol > Microsoft IPv6 Driver...', mbInformation, MB_OK);
   end;
+end;
+
+function IsTapInstalled(): Boolean;
+begin
+Result := TapInstalled;
 end;
 
 procedure InitializeWizard();
@@ -105,8 +116,17 @@ begin
   GetWindowsVersionEx(Version);
   // if we already have a generic openvpn tap driver installed, then skip all the downloading
   // lokinet is coded to enumerate all generic tap virtual adapters and use the first free device
-  if (FileExists(ExpandConstant('{sys}\drivers\tap0901.sys')) = false) then
-  begin
+if (reg_query_helper() = 0) then
+begin
+TapInstalled := false;
+end
+else
+begin
+TapInstalled := true;
+end;
+
+if (reg_query_helper() = 0) then
+begin
   if Version.NTPlatform and
      (Version.Major < 6) then
   begin
@@ -144,10 +164,10 @@ Filename: "{app}\{#MyAppExeName}"; Flags: nowait postinstall skipifsilent; Descr
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; OnlyBelowVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x tuntapv9_n6.7z"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract TUN/TAP-v9 driver"; StatusMsg: "Extracting driver..."; MinVersion: 0, 6.0
 Filename: "{tmp}\7z.exe"; Parameters: "x inet6.7z"; WorkingDir: "{app}"; Flags: skipifdoesntexist runascurrentuser waituntilterminated skipifdoesntexist; Description: "extract inet6 driver"; StatusMsg: "Extracting IPv6 driver..."; MinVersion: 0, 5.0; OnlyBelowVersion: 0, 5.1
-Filename: "{tmp}\lokinet-bootstrap.exe"; Parameters:"https://i2p.rocks/bootstrap.signed %APPDATA%\.lokinet\bootstrap.signed"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
+Filename: "{tmp}\lokinet-bootstrap.exe"; Parameters:"https://i2p.rocks/bootstrap.signed {userappdata}\.lokinet\bootstrap.signed"; WorkingDir: "{app}"; Flags: runascurrentuser waituntilterminated; Description: "bootstrap dht"; StatusMsg: "Downloading initial RC..."
 ; then ask to install drivers
-Filename: "{app}\tap-windows-9.9.2\install.bat"; WorkingDir: "{app}\tap-windows-9.9.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; OnlyBelowVersion: 0, 6.0;  Check: not FileExists(ExpandConstant('{sys}\drivers\tap0901.sys'))
-Filename: "{app}\tap-windows-9.21.2\install.bat"; WorkingDir: "{app}\tap-windows-9.21.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; MinVersion: 0, 6.0;  Check: not FileExists(ExpandConstant('{sys}\drivers\tap0901.sys'))
+Filename: "{app}\tap-windows-9.9.2\install.bat"; WorkingDir: "{app}\tap-windows-9.9.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; OnlyBelowVersion: 0, 6.0; Check: not IsTapInstalled
+Filename: "{app}\tap-windows-9.21.2\install.bat"; WorkingDir: "{app}\tap-windows-9.21.2\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install TUN/TAP-v9 driver"; StatusMsg: "Installing driver..."; MinVersion: 0, 6.0; Check: not IsTapInstalled
 ; install inet6 if not present. (I'd assume netsh displays something helpful if inet6 is already set up and configured.)
 ; if it doesn't exist, then the inet6 driver appears to be installed
 Filename: "{app}\inet6_driver\setup\hotfix.exe"; Parameters: "/m /z"; WorkingDir: "{app}\inet6_driver\setup\"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; Description: "Install IPv6 driver"; StatusMsg: "Installing IPv6..."; OnlyBelowVersion: 0, 5.1;  Check: not FileExists(ExpandConstant('{sys}\drivers\tcpip6.sys'))

@@ -23,6 +23,9 @@ namespace llarp
       bool
       Decode(llarp_buffer_t* buf) override;
 
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
+
       bool
       operator==(const Question& other) const
       {
@@ -30,17 +33,17 @@ namespace llarp
             && qclass == other.qclass;
       }
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const Question& q)
-      {
-        return out << "qname=" << q.qname << " qtype=" << (int)q.qtype
-                   << " qclass=" << (int)q.qclass;
-      }
-
       Name_t qname;
       QType_t qtype;
       QClass_t qclass;
     };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const Question& q)
+    {
+      q.print(out, -1, -1);
+      return out;
+    }
   }  // namespace dns
 }  // namespace llarp
 

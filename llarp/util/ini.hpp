@@ -10,9 +10,11 @@ namespace llarp
 {
   struct ConfigParser
   {
-    using String_t      = llarp::string_view;
-    using Section_t     = std::unordered_multimap< String_t, String_t >;
-    using Config_impl_t = std::unordered_map< String_t, Section_t >;
+    using String_t = llarp::string_view;
+    using Section_t =
+        std::unordered_multimap< String_t, String_t, string_view_hash >;
+    using Config_impl_t =
+        std::unordered_map< String_t, Section_t, string_view_hash >;
     /// clear parser
     void
     Clear();

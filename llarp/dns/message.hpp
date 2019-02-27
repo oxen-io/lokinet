@@ -72,24 +72,8 @@ namespace llarp
       bool
       Decode(llarp_buffer_t* buf) override;
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const Message& msg)
-      {
-        out << "[dns message id=" << std::hex << msg.hdr_id
-            << " fields=" << msg.hdr_fields << " questions=[ ";
-        for(const auto& qd : msg.questions)
-          out << qd << ", ";
-        out << "] answers=[ ";
-        for(const auto& an : msg.answers)
-          out << an << ", ";
-        out << "] nameserver=[ ";
-        for(const auto& ns : msg.authorities)
-          out << ns << ", ";
-        out << "] additional=[ ";
-        for(const auto& ar : msg.additional)
-          out << ar << ", ";
-        return out << "]";
-      }
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
 
       MsgID_t hdr_id;
       Fields_t hdr_fields;
@@ -98,6 +82,13 @@ namespace llarp
       std::vector< ResourceRecord > authorities;
       std::vector< ResourceRecord > additional;
     };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const Message& msg)
+    {
+      msg.print(out, -1, -1);
+      return out;
+    }
   }  // namespace dns
 }  // namespace llarp
 

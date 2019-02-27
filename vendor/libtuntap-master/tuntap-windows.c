@@ -24,19 +24,6 @@
 /*#include <strsafe.h>*/
 #include "tuntap.h"
 
-// io packet for TUN read/write
-// this _should_ be the same size as
-// the corresponding C++ struct
-struct asio_evt_pkt
-{
-  OVERLAPPED pkt;  // must be first, since this is part of the IO call
-  _Bool write;      // true, or false if read pkt
-  size_t sz;  // if this doesn't match what is in the packet, note the error
-};
-
-// function from c++
-struct asio_evt_pkt *
-getTunEventPkt();
 
 // DDK macros
 #define CTL_CODE(DeviceType, Function, Method, Access) \
@@ -339,7 +326,8 @@ tuntap_get_mtu(struct device *dev)
   return 0;
 }
 
-/* I _think_ it's possible to do this on windows, might be a setting in the reg db */
+/* I _think_ it's possible to do this on windows, might be a setting in the reg
+ * db */
 int
 tuntap_set_mtu(struct device *dev, int mtu)
 {
@@ -417,7 +405,8 @@ tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s, uint32_t mask)
   return 0;
 }
 
-/* To be implemented at a later time? I'm not quite certain TAP-Windows v9.x supports inet6 */
+/* To be implemented at a later time? I'm not quite certain TAP-Windows v9.x
+ * supports inet6 */
 int
 tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
 {
@@ -429,7 +418,8 @@ tuntap_sys_set_ipv6(struct device *dev, t_tun_in6_addr *s, uint32_t mask)
   return -1;
 }
 
-/* Anything below this comment is unimplemented, either due to lack of OS support, or duplicated functionality elsewhere */
+/* Anything below this comment is unimplemented, either due to lack of OS
+ * support, or duplicated functionality elsewhere */
 int
 tuntap_read(struct device *dev, void *buf, size_t size)
 {

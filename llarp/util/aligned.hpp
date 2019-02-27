@@ -4,6 +4,8 @@
 #include <util/bencode.h>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/printer.hpp>
+#include <util/traits.hpp>
 
 #include <array>
 #include <cstddef>
@@ -257,6 +259,15 @@ namespace llarp
       return std::string(HexEncode(*this, strbuf));
     }
 
+    std::ostream&
+    print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printValue(ToHex());
+
+      return stream;
+    }
+
     struct Hash
     {
       size_t
@@ -273,7 +284,6 @@ namespace llarp
         type;  // why did we align to the nearest double-precision float
     AlignedStorage val;
   };
-
 }  // namespace llarp
 
 #endif

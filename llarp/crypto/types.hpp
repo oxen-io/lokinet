@@ -95,6 +95,14 @@ namespace llarp
       return out << "[secretkey]";
     }
 
+    std::ostream &
+    print(std::ostream &stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printValue("secretkey");
+      return stream;
+    }
+
     PubKey
     toPublic() const
     {

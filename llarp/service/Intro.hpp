@@ -50,12 +50,8 @@ namespace llarp
 
       ~Introduction();
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const Introduction& i)
-      {
-        return out << "k=" << i.router << " p=" << i.pathID
-                   << " v=" << i.version << " x=" << i.expiresAt;
-      }
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
 
       bool
       BEncode(llarp_buffer_t* buf) const override;
@@ -95,6 +91,12 @@ namespace llarp
         }
       };
     };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const Introduction& i)
+    {
+      return i.print(out, -1, -1);
+    }
   }  // namespace service
 }  // namespace llarp
 

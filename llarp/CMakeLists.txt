@@ -19,6 +19,7 @@ set(LIB_UTIL_SRC
   util/mem.cpp
   util/queue_manager.cpp
   util/queue.cpp
+  util/printer.cpp
   util/status.cpp
   util/str.cpp
   util/string_view.cpp
@@ -27,6 +28,7 @@ set(LIB_UTIL_SRC
   util/threadpool.cpp
   util/time.cpp
   util/timer.cpp
+  util/traits.cpp
   util/types.cpp
 )
 
@@ -36,7 +38,7 @@ target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/../inc
 
 # cut back on fluff
 if (NOT WIN32)
-    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant cppbackport)
+    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings absl::hash cppbackport)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

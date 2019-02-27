@@ -50,14 +50,8 @@ namespace llarp
       RouterID upstream;
       RouterID downstream;
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const TransitHopInfo& info)
-      {
-        out << "<tx=" << info.txID << " rx=" << info.rxID;
-        out << " upstream=" << info.upstream
-            << " downstream=" << info.downstream;
-        return out << ">";
-      }
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
 
       bool
       operator==(const TransitHopInfo& other) const
@@ -101,6 +95,12 @@ namespace llarp
         }
       };
     };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const TransitHopInfo& info)
+    {
+      return info.print(out, -1, -1);
+    }
 
     struct IHopHandler
     {
@@ -172,12 +172,8 @@ namespace llarp
         return m_LastActivity;
       }
 
-      friend std::ostream&
-      operator<<(std::ostream& out, const TransitHop& h)
-      {
-        return out << "[TransitHop " << h.info << " started=" << h.started
-                   << " lifetime=" << h.lifetime << "]";
-      }
+      std::ostream&
+      print(std::ostream& stream, int level, int spaces) const;
 
       bool
       Expired(llarp_time_t now) const override;
@@ -267,6 +263,12 @@ namespace llarp
       HandleDownstream(const llarp_buffer_t& X, const TunnelNonce& Y,
                        AbstractRouter* r) override;
     };
+
+    inline std::ostream&
+    operator<<(std::ostream& out, const TransitHop& h)
+    {
+      return h.print(out, -1, -1);
+    }
 
     /// configuration for a single hop when building a path
     struct PathHopConfig : public util::IStateful

@@ -18,6 +18,18 @@ namespace llarp
 {
   namespace path
   {
+    std::ostream&
+    TransitHopInfo::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("tx", txID);
+      printer.printAttribute("rx", rxID);
+      printer.printAttribute("upstream", upstream);
+      printer.printAttribute("downstream", downstream);
+
+      return stream;
+    }
+
     PathContext::PathContext(AbstractRouter* router)
         : m_Router(router), m_AllowTransit(false)
     {
@@ -345,6 +357,17 @@ namespace llarp
     {
       m_PathBuilders.remove(ctx);
       RemovePathSet(ctx);
+    }
+
+    std::ostream&
+    TransitHop::print(std::ostream& stream, int level, int spaces) const
+    {
+      Printer printer(stream, level, spaces);
+      printer.printAttribute("TransitHop", info);
+      printer.printAttribute("started", started);
+      printer.printAttribute("lifetime", lifetime);
+
+      return stream;
     }
 
     PathHopConfig::PathHopConfig()
