@@ -1,6 +1,7 @@
 #ifndef LLARP_TRAITS_HPP
 #define LLARP_TRAITS_HPP
 
+#include <cstddef>
 #include <type_traits>
 #include <utility>
 
