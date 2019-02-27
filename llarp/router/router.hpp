@@ -321,8 +321,8 @@ namespace llarp
 
     ~Router();
 
-    void
-    OnSessionEstablished(RouterContact rc) override;
+    bool
+    OnSessionEstablished(ILinkSession *) override;
 
     bool
     HandleRecvLinkMessageBuffer(ILinkSession *from,
@@ -504,8 +504,8 @@ namespace llarp
     bool
     GetRandomConnectedRouter(RouterContact &result) const override;
 
-    void
-    async_verify_RC(const RouterContact &rc, ILinkLayer *link);
+    bool
+    async_verify_RC(const RouterContact &rc);
 
     void
     HandleDHTLookupForSendTo(RouterID remote,
