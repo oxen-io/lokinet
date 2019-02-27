@@ -6,6 +6,7 @@
 
 #include <functional>
 #include <iostream>
+#include <assert.h>
 
 namespace llarp
 {
