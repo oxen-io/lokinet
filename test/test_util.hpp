@@ -4,6 +4,8 @@
 #include <util/fs.hpp>
 #include <util/types.hpp>
 
+#include <bitset>
+
 namespace llarp
 {
   namespace test
@@ -34,6 +36,55 @@ namespace llarp
         {
           fs::remove(p);
         }
+      }
+    };
+
+    template < typename T >
+    struct CombinationIterator
+    {
+      std::vector< T > toCombine;
+      std::vector< T > currentCombo;
+
+      int bits;
+      int maxBits;
+
+      void
+      createCombo()
+      {
+        currentCombo.clear();
+        for(size_t i = 0; i < toCombine.size(); ++i)
+        {
+          if(bits & (1 << i))
+          {
+            currentCombo.push_back(toCombine[i]);
+          }
+        }
+      }
+
+      CombinationIterator(const std::vector< T > &values)
+          : toCombine(values), bits(0), maxBits((1 << values.size()) - 1)
+      {
+        currentCombo.reserve(values.size());
+        createCombo();
+      }
+
+      bool
+      next()
+      {
+        if(bits >= maxBits)
+        {
+          return false;
+        }
+
+        ++bits;
+        createCombo();
+        return true;
+      }
+
+      bool
+      includesElement(size_t index)
+      {
+        return bits & (1 << index);
       }
     };
 
