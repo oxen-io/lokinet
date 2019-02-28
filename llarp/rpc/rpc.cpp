@@ -70,17 +70,20 @@ namespace llarp
         PubkeyList_t keys;
         if(!result.IsObject())
         {
+          LogWarn("Invalid result: not an object");
           handler({}, false);
           return false;
         }
         const auto itr = result.FindMember("keys");
         if(itr == result.MemberEnd())
         {
+          LogWarn("Invalid result: no keys member");
           handler({}, false);
           return false;
         }
         if(!itr->value.IsArray())
         {
+          LogWarn("Invalid result: keys is not an array");
           handler({}, false);
           return false;
         }
@@ -91,12 +94,9 @@ namespace llarp
           {
             keys.emplace_back();
             std::string str = key_itr->GetString();
-            if(str.size() != Base32DecodeSize(keys.back().size()))
+            if(!Base32Decode(str, keys.back()))
             {
-              keys.pop_back();
-            }
-            else if(!Base32Decode(str, keys.back()))
-            {
+              LogWarn("Invalid key: ", str);
               keys.pop_back();
             }
           }

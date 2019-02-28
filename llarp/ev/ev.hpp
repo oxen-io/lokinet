@@ -458,7 +458,10 @@ namespace llarp
             auto& itr      = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, itr.bufsz);
             if(result == -1)
+            {
+              errno = 0;
               return;
+            }
             ssize_t dlt = itr.bufsz - result;
             if(dlt > 0)
             {
@@ -601,7 +604,7 @@ namespace llarp
         if(_conn->error)
           _conn->error(_conn);
       }
-      
+      errno = 0;
     }
 
     virtual ssize_t
