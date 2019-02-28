@@ -192,11 +192,10 @@ namespace llarp
     return false;
   }
 
-  void
-  Router::OnSessionEstablished(RouterContact rc)
+  bool
+  Router::OnSessionEstablished(ILinkSession * s)
   {
-    async_verify_RC(rc, nullptr);
-    LogInfo("session with ", RouterID(rc.pubkey), " established");
+    return async_verify_RC(s->GetRemoteRC());
   }
 
   Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *__netloop,
@@ -851,7 +850,7 @@ namespace llarp
       {
         whitelistRouters = IsTrueValue(val);
       }
-      if(StrEq(key, "jsonrpc"))
+      if(StrEq(key, "jsonrpc") || StrEq(key, "addr"))
       {
         lokidRPCAddr = val;
       }
@@ -989,7 +988,8 @@ namespace llarp
       return false;
 
     // store it in nodedb async
-    async_verify_RC(newrc, nullptr);
+    if(!async_verify_RC(newrc))
+      return false;
     // update dht if required
     if(dht()->impl->Nodes()->HasNode(dht::Key_t{newrc.pubkey}))
     {
@@ -1086,14 +1086,17 @@ namespace llarp
         LogError("we have no bootstrap nodes specified");
     }
 
-    if(inboundLinks.size() == 0)
+    if(!IsServiceNode())
     {
+      size_t connected = NumberOfConnectedRouters();
+      if(connected < minConnectedRouters)
+      {
+        size_t dlt = minConnectedRouters - connected;
+        LogInfo("connecting to ", dlt, " random routers to keep alive");
+        ConnectToRandomRouters(dlt);
+      }
       paths.BuildPaths(now);
       _hiddenServiceContext.Tick(now);
-    }
-    if(NumberOfConnectedRouters() < minConnectedRouters)
-    {
-      ConnectToRandomRouters(minConnectedRouters);
     }
     _exitContext.Tick(now);
     if(rpcCaller)
@@ -1222,21 +1225,22 @@ namespace llarp
     return false;
   }
 
-  void
-  Router::async_verify_RC(const RouterContact &rc, ILinkLayer *link)
+  bool
+  Router::async_verify_RC(const RouterContact &rc)
   {
-    if(pendingVerifyRC.count(rc.pubkey))
-      return;
-    if(rc.IsPublicRouter() && whitelistRouters)
+    
+    if(rc.IsPublicRouter() && whitelistRouters && IsServiceNode())
     {
       if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
       {
         RouterID sn(rc.pubkey);
         LogInfo(sn, " is NOT a valid service node, rejecting");
-        link->CloseSessionTo(rc.pubkey);
         return;
       }
     }
+    if(pendingVerifyRC.count(rc.pubkey))
+      return true;
+    LogInfo("session with ", RouterID(rc.pubkey), " established");
     llarp_async_verify_rc *job = &pendingVerifyRC[rc.pubkey];
     async_verify_context *ctx  = new async_verify_context();
     ctx->router                = this;
@@ -1261,6 +1265,7 @@ namespace llarp
       job->hook = &Router::on_verify_client_rc;
 
     llarp_nodedb_async_verify(job);
+    return true;
   }
 
   void

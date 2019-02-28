@@ -3,6 +3,7 @@
 
 #include <constants/link_layer.hpp>
 #include <crypto/crypto.hpp>
+#include <crypto/encrypted.hpp>
 #include <crypto/types.hpp>
 #include <link/server.hpp>
 #include <link/session.hpp>
@@ -16,6 +17,117 @@ namespace llarp
   namespace iwp
   {
     struct LinkLayer;
+
+    using FlowID_t = llarp::AlignedBuffer< 32 >;
+
+    using OuterCommand_t = byte_t;
+
+    constexpr OuterCommand_t eOCMD_ObtainFlowID     = 'O';
+    constexpr OuterCommand_t eOCMD_GiveFlowID       = 'G';
+    constexpr OuterCommand_t eOCMD_Reject           = 'R';
+    constexpr OuterCommand_t eOCMD_SessionNegotiate = 'S';
+    constexpr OuterCommand_t eOCMD_TransmitData     = 'D';
+
+    using InnerCommand_t = byte_t;
+
+    constexpr InnerCommand_t eICMD_KeepAlive       = 'k';
+    constexpr InnerCommand_t eICMD_KeepAliveAck    = 'l';
+    constexpr InnerCommand_t eICMD_Congestion      = 'c';
+    constexpr InnerCommand_t eICMD_AntiCongestion  = 'd';
+    constexpr InnerCommand_t eICMD_Transmit        = 't';
+    constexpr InnerCommand_t eICMD_Ack             = 'a';
+    constexpr InnerCommand_t eICMD_RotateKeys      = 'r';
+    constexpr InnerCommand_t eICMD_UpgradeProtocol = 'u';
+    constexpr InnerCommand_t eICMD_VersionUpgrade  = 'v';
+
+    struct OuterMessage
+    {
+      // required memebers
+      byte_t command;
+      FlowID_t flow;
+
+      // optional memebers follow
+      NetID netid;
+      FlowID_t nextFlowID;
+      std::string rejectReason;
+      AlignedBuffer< 24 > N;
+      // TODO: compute optimal size
+      AlignedBuffer< 1440 > X;
+      size_t Xsize;
+      ShortHash Z;
+
+      /// encode to buffer
+      bool
+      Encode(llarp_buffer_t *buf) const;
+
+      /// decode from buffer
+      bool
+      Decode(llarp_buffer_t *buf);
+
+      /// verify signature if needed
+      bool
+      Verify(const SharedSecret &K) const;
+
+      /// clear members
+      void
+      Clear();
+    };
+
+    /// TODO: fixme
+    constexpr size_t MaxFrags = 8;
+
+    using MessageBuffer_t = AlignedBuffer< MAX_LINK_MSG_SIZE >;
+    using FragmentLen_t   = uint16_t;
+    using SequenceNum_t   = uint32_t;
+
+    using WritePacketFunc = std::function< void(const llarp_buffer_t &) >;
+
+    struct MessageState
+    {
+      /// default
+      MessageState();
+      /// inbound
+      MessageState(const ShortHash &digest, SequenceNum_t num);
+      /// outbound
+      MessageState(const ShortHash &digest, const llarp_buffer_t &buf,
+                   SequenceNum_t num);
+
+      /// the expected hash of the message
+      const ShortHash expectedHash;
+
+      /// which fragments have we got
+      std::bitset< MaxFrags > acks;
+      /// the message buffer
+      MessageBuffer_t msg;
+      /// the message's size
+      FragmentLen_t sz;
+      /// the last activity we have had
+      llarp_time_t lastActiveAt;
+      // sequence number
+      const SequenceNum_t seqno;
+
+      /// return true if this message is to be removed
+      /// because of inactivity
+      bool
+      IsExpired(llarp_time_t now) const;
+
+      /// return true if we have recvieved or sent the underlying message in
+      /// full.
+      bool
+      IsDone() const;
+
+      /// return true if we should retransmit some packets
+      bool
+      ShouldRetransmit(llarp_time_t now) const;
+
+      /// transmit unacked fragments
+      bool
+      TransmitUnacked(WritePacketFunc write_pkt) const;
+
+      /// transmit acks packet
+      bool
+      TransmitAcks(WritePacketFunc write_pkt);
+    };
 
     struct Session final : public llarp::ILinkSession
     {
@@ -35,12 +147,15 @@ namespace llarp
         return {};
       }
 
+      /// pump ll io
       void
       PumpIO();
 
+      /// tick every 1 s
       void
       TickIO(llarp_time_t now);
 
+      /// queue full message
       bool
       QueueMessageBuffer(const llarp_buffer_t &buf);
 
@@ -57,6 +172,7 @@ namespace llarp
       void
       Close();
 
+      /// start outbound handshake
       void
       Connect();
 
@@ -105,196 +221,6 @@ namespace llarp
       /// maximum fragment size
       static constexpr FragLen_t fragsize = MAX_LINK_MSG_SIZE / maxfrags;
 
-      struct FragmentHeader
-      {
-        /// protocol version, always LLARP_PROTO_VERSION
-        Proto_t version = LLARP_PROTO_VERSION;
-        /// fragment command type
-        Cmd_t cmd = 0;
-        /// if cmd is XMIT this is the number of additional fragments this
-        /// message has
-        /// if cmd is FACK this is the fragment bitfield of the
-        /// messages acked otherwise 0
-        Flags_t flags = 0;
-        /// if cmd is XMIT this is the fragment index
-        /// if cmd is FACK this is set to 0xff to indicate message drop
-        /// otherwise set to 0
-        /// any other cmd it is set to 0
-        Fragno_t fragno = 0;
-        /// if cmd is XMIT then this is the size of the current fragment
-        /// if cmd is FACK then this MUST be set to 0
-        FragLen_t fraglen = 0;
-        /// if cmd is XMIT or FACK this is the sequence number of the message
-        /// otherwise it's 0
-        Seqno_t seqno = 0;
-
-        bool
-        Decode(llarp_buffer_t *buf)
-        {
-          if(buf->size_left() < fragoverhead)
-            return false;
-          version = *buf->cur;
-          if(version != LLARP_PROTO_VERSION)
-            return false;
-          buf->cur++;
-          cmd = *buf->cur;
-          buf->cur++;
-          flags = *buf->cur;
-          buf->cur++;
-          fragno = *buf->cur;
-          buf->cur++;
-          buf->read_uint16(fraglen);
-          buf->read_uint32(seqno);
-          return fraglen <= fragsize;
-        }
-
-        bool
-        Encode(llarp_buffer_t *buf, const llarp_buffer_t &body)
-        {
-          if(body.sz > fragsize)
-            return false;
-          fraglen = body.sz;
-          if(buf->size_left() < (fragoverhead + fraglen))
-            return false;
-          *buf->cur = LLARP_PROTO_VERSION;
-          buf->cur++;
-          *buf->cur = cmd;
-          buf->cur++;
-          *buf->cur = flags;
-          buf->cur++;
-          *buf->cur = fragno;
-          buf->cur++;
-          buf->put_uint16(fraglen);
-          buf->put_uint32(seqno);
-          if(fraglen)
-            memcpy(buf->cur, body.base, fraglen);
-          buf->cur += fraglen;
-          return true;
-        }
-      };
-
-      struct MessageState
-      {
-        /// default
-        MessageState(){};
-        /// inbound
-        MessageState(Flags_t numfrags)
-        {
-          acks.set();
-          if(numfrags <= maxfrags)
-          {
-            while(numfrags)
-              acks.reset(maxfrags - (numfrags--));
-          }
-          else  // invalid value
-            return;
-        }
-
-        /// outbound
-        MessageState(const llarp_buffer_t &buf)
-        {
-          sz = std::min(buf.sz, MAX_LINK_MSG_SIZE);
-          memcpy(msg.data(), buf.base, sz);
-          size_t idx = 0;
-          acks.set();
-          while(idx * fragsize < sz)
-            acks.reset(idx++);
-        };
-
-        /// which fragments have we got
-        std::bitset< maxfrags > acks;
-        /// the message buffer
-        MessageBuffer_t msg;
-        /// the message's size
-        FragLen_t sz;
-        /// the last activity we have had
-        llarp_time_t lastActiveAt;
-
-        /// return true if this message is to be removed
-        /// because of inactivity
-        bool
-        IsExpired(llarp_time_t now) const
-        {
-          return now > lastActiveAt && now - lastActiveAt > 2000;
-        }
-
-        bool
-        IsDone() const
-        {
-          return acks.all();
-        }
-
-        bool
-        ShouldRetransmit(llarp_time_t now) const
-        {
-          if(IsDone())
-            return false;
-          return now > lastActiveAt && now - lastActiveAt > 500;
-        }
-
-        template < typename write_pkt_func >
-        bool
-        TransmitUnacked(write_pkt_func write_pkt, Seqno_t seqno) const
-        {
-          static FragLen_t maxfragsize = fragsize;
-          FragmentHeader hdr;
-          hdr.seqno = seqno;
-          hdr.cmd   = XMIT;
-          AlignedBuffer< fragoverhead + fragsize > frag;
-          llarp_buffer_t buf(frag);
-          const byte_t *ptr = msg.data();
-          Fragno_t idx      = 0;
-          FragLen_t len     = sz;
-          while(idx < maxfrags)
-          {
-            const FragLen_t l = std::min(len, maxfragsize);
-            if(!acks.test(idx))
-            {
-              hdr.fragno  = idx;
-              hdr.fraglen = l;
-              if(!hdr.Encode(&buf, llarp_buffer_t(ptr, l)))
-                return false;
-              buf.sz  = buf.cur - buf.base;
-              buf.cur = buf.base;
-              len -= l;
-              if(write_pkt(buf.base, buf.sz) != int(buf.sz))
-                return false;
-            }
-            ptr += l;
-            len -= l;
-            if(l >= fragsize)
-              ++idx;
-            else
-              break;
-          }
-          return true;
-        }
-
-        template < typename write_pkt_func >
-        bool
-        TransmitAcks(write_pkt_func write_pkt, Seqno_t seqno)
-        {
-          FragmentHeader hdr;
-          hdr.seqno  = seqno;
-          hdr.cmd    = FACK;
-          hdr.flags  = 0;
-          byte_t idx = 0;
-          while(idx < maxfrags)
-          {
-            if(acks.test(idx))
-              hdr.flags |= 1 << idx;
-            ++idx;
-          }
-          hdr.fraglen = 0;
-          hdr.fragno  = 0;
-          AlignedBuffer< fragoverhead > frag;
-          llarp_buffer_t buf(frag);
-          if(!hdr.Encode(&buf, llarp_buffer_t(nullptr, nullptr, 0)))
-            return false;
-          return write_pkt(buf.base, buf.sz) == int(buf.sz);
-        }
-      };
-
       using MessageHolder_t = std::unordered_map< Seqno_t, MessageState >;
 
       MessageHolder_t m_Inbound;
@@ -310,11 +236,10 @@ namespace llarp
     struct LinkLayer final : public llarp::ILinkLayer
     {
       LinkLayer(llarp::Crypto *crypto, const SecretKey &encryptionSecretKey,
-                const SecretKey &identitySecretKey, llarp::GetRCFunc getrc,
-                llarp::LinkMessageHandler h, llarp::SignBufferFunc sign,
+                llarp::GetRCFunc getrc, llarp::LinkMessageHandler h,
                 llarp::SessionEstablishedHandler established,
                 llarp::SessionRenegotiateHandler reneg,
-                llarp::TimeoutHandler timeout,
+                llarp::SignBufferFunc sign, llarp::TimeoutHandler timeout,
                 llarp::SessionClosedHandler closed);
 
       ~LinkLayer();
@@ -339,36 +264,37 @@ namespace llarp
       uint16_t
       Rank() const override;
 
-      const byte_t *
-      IndentityKey() const
-      {
-        return m_IdentityKey.data();
-      }
+      /// verify that a new flow id matches addresses and old flow id
+      bool
+      VerifyFlowID(const FlowID_t &newID, const Addr &from,
+                   const FlowID_t &oldID) const;
 
-      const AlignedBuffer< 32 > &
-      CookieSec() const
-      {
-        return m_CookieSec;
-      }
-
-      RouterID
-      GetRouterID() const
-      {
-        return m_IdentityKey.toPublic();
-      }
+      void
+      RecvFrom(const llarp::Addr &from, const void *buf, size_t sz) override;
 
      private:
       bool
-      SignBuffer(llarp::Signature &sig, llarp_buffer_t buf) const
-      {
-        return crypto->sign(sig, m_IdentityKey, buf);
-      }
-      const llarp::SecretKey m_IdentityKey;
-      AlignedBuffer< 32 > m_CookieSec;
+      ShouldSendFlowID(const Addr &from) const;
 
-      /// handle ll recv
       void
-      RecvFrom(const llarp::Addr &from, const void *buf, size_t sz) override;
+      SendReject(const Addr &to, const FlowID_t &flow, const char *msg);
+
+      void
+      SendFlowID(const Addr &to, const FlowID_t &flow);
+
+      using ActiveFlows_t =
+          std::unordered_map< FlowID_t, RouterID, FlowID_t::Hash >;
+
+      ActiveFlows_t m_ActiveFlows;
+
+      using PendingFlows_t = std::unordered_map< Addr, FlowID_t, Addr::Hash >;
+      /// flows that are pending authentication
+      PendingFlows_t m_PendingFlows;
+
+      /// cookie used in flow id computation
+      AlignedBuffer< 32 > m_FlowCookie;
+
+      OuterMessage m_OuterMsg;
     };
   }  // namespace iwp
 }  // namespace llarp

@@ -189,9 +189,9 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
           return true;
         }
       },
-      [&](llarp::RouterContact rc) {
-        ASSERT_EQ(rc, Bob.GetRC());
-        llarp::LogInfo("alice established with bob");
+      [&](llarp::ILinkSession * s) -> bool {
+        const auto rc = s->GetRemoteRC();
+        return rc.pubkey == Bob.GetRC().pubkey;
       },
       [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },
       [&](llarp::Signature& sig, const llarp_buffer_t& buf) -> bool {
@@ -228,10 +228,11 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
         Bob.gotLIM = true;
         return sendDiscardMessage(s);
       },
-      [&](llarp::RouterContact rc) {
-        ASSERT_EQ(rc, Alice.GetRC());
+      [&](llarp::ILinkSession * s) -> bool {
+        if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
+          return false;
         llarp::LogInfo("bob established with alice");
-        Bob.link->VisitSessionByPubkey(Alice.GetRC().pubkey.as_array(),
+        return Bob.link->VisitSessionByPubkey(Alice.GetRC().pubkey.as_array(),
                                        sendDiscardMessage);
       },
       [&](llarp::RouterContact newrc, llarp::RouterContact oldrc) -> bool {
@@ -252,7 +253,6 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
   ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
 
   RunMainloop();
-  ASSERT_TRUE(Alice.gotLIM);
   ASSERT_TRUE(Bob.gotLIM);
   ASSERT_TRUE(success);
 }
@@ -260,6 +260,74 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
 TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
 {
   Alice.link = llarp::utp::NewServer(
+      &crypto, Alice.encryptionKey,
+      [&]() -> const llarp::RouterContact& { return Alice.GetRC(); },
+      [&](llarp::ILinkSession*, const llarp_buffer_t& buf) -> bool {
+        return AliceGotMessage(buf);
+      },
+      [&](llarp::ILinkSession * s) -> bool {
+        if(s->GetRemoteRC().pubkey != Bob.GetRC().pubkey)
+          return false;
+        llarp::LogInfo("alice established with bob");
+        return true;
+      },
+      [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },
+      [&](llarp::Signature& sig, const llarp_buffer_t& buf) -> bool {
+        return crypto.sign(sig, Alice.signingKey, buf);
+      },
+      [&](llarp::ILinkSession* session) {
+        ASSERT_FALSE(session->IsEstablished());
+        Stop();
+      },
+      [&](llarp::RouterID router) { ASSERT_EQ(router, Bob.GetRouterID()); });
+
+  Bob.link = llarp::utp::NewServer(
+      &crypto, Bob.encryptionKey,
+      [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
+      [&](llarp::ILinkSession*, const llarp_buffer_t& ) -> bool {
+        return true;
+      },
+      [&](llarp::ILinkSession * s) -> bool {
+        if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
+          return false;
+        llarp::LogInfo("bob established with alice");
+        logic->queue_job({s, [](void * u) {
+          llarp::ILinkSession * self = static_cast<llarp::ILinkSession*>(u);
+          std::array< byte_t, 32 > tmp;
+          llarp_buffer_t otherBuf(tmp);
+          llarp::DiscardMessage discard;
+          if(!discard.BEncode(&otherBuf))
+            return;
+          otherBuf.sz  = otherBuf.cur - otherBuf.base;
+          otherBuf.cur = otherBuf.base;
+          self->SendMessageBuffer(otherBuf);
+        }});
+        return true;
+      },
+      [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },
+      [&](llarp::Signature& sig, const llarp_buffer_t& buf) -> bool {
+        return crypto.sign(sig, Bob.signingKey, buf);
+      },
+      [&](llarp::ILinkSession* session) {
+        ASSERT_FALSE(session->IsEstablished());
+      },
+      [&](llarp::RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
+
+  ASSERT_TRUE(Alice.Start(logic.get(), netLoop, AlicePort));
+  ASSERT_TRUE(Bob.Start(logic.get(), netLoop, BobPort));
+
+  ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
+
+  RunMainloop();
+  ASSERT_TRUE(Bob.gotLIM);
+  ASSERT_TRUE(success);
+}
+
+/*
+
+TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
+{
+  Alice.link = llarp::iwp::NewServer(
       &crypto, Alice.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Alice.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
@@ -305,7 +373,7 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
     return s->SendMessageBuffer(otherBuf);
   };
 
-  Bob.link = llarp::utp::NewServer(
+  Bob.link = llarp::iwp::NewServer(
       &crypto, Bob.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
       [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
@@ -342,91 +410,5 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
   ASSERT_TRUE(Alice.gotLIM);
   ASSERT_TRUE(Bob.gotLIM);
   ASSERT_TRUE(success);
-}
-
-TEST_F(LinkLayerTest, TestIWPAliceConnectToBob)
-{
-  /*
-  Alice.link = llarp::iwp::NewServer(
-      &crypto, Alice.encryptionKey,
-      [&]() -> const llarp::RouterContact& { return Alice.GetRC(); },
-      [&](llarp::ILinkSession* s, llarp_buffer_t buf) -> bool {
-        if(Alice.gotLIM)
-        {
-          return AliceGotMessage(buf);
-        }
-        else
-        {
-          llarp::LinkIntroMessage msg;
-          if(!msg.BDecode(&buf))
-            return false;
-          if(!s->GotLIM(&msg))
-            return false;
-          Alice.gotLIM = true;
-          return true;
-        }
-      },
-      [&](llarp::RouterContact rc) {
-        ASSERT_EQ(rc, Bob.GetRC());
-        llarp::LogInfo("alice established with bob");
-      },
-      [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },
-      [&](llarp::Signature& sig, llarp_buffer_t buf) -> bool {
-        return crypto.sign(sig, Alice.signingKey, buf);
-      },
-      [&](llarp::ILinkSession* session) {
-        ASSERT_FALSE(session->IsEstablished());
-        Stop();
-      },
-      [&](llarp::RouterID router) { ASSERT_EQ(router, Bob.GetRouterID()); });
-
-  auto sendDiscardMessage = [](llarp::ILinkSession* s) -> bool {
-    // send discard message in reply to complete unit test
-    byte_t tmp[32] = {0};
-    auto otherBuf  = llarp::StackBuffer< decltype(tmp) >(tmp);
-    llarp::DiscardMessage discard;
-    if(!discard.BEncode(&otherBuf))
-      return false;
-    otherBuf.sz  = otherBuf.cur - otherBuf.base;
-    otherBuf.cur = otherBuf.base;
-    return s->SendMessageBuffer(otherBuf);
-  };
-
-  Bob.link = llarp::iwp::NewServer(
-      &crypto, Bob.encryptionKey,
-      [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
-      [&](llarp::ILinkSession* s, llarp_buffer_t buf) -> bool {
-        llarp::LinkIntroMessage msg;
-        if(!msg.BDecode(&buf))
-          return false;
-        if(!s->GotLIM(&msg))
-          return false;
-        Bob.gotLIM = true;
-        return true;
-      },
-      [&](llarp::RouterContact rc) {
-        ASSERT_EQ(rc, Alice.GetRC());
-        llarp::LogInfo("bob established with alice");
-        Bob.link->VisitSessionByPubkey(Alice.GetRC().pubkey.as_array(),
-                                       sendDiscardMessage);
-      },
-      [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },
-      [&](llarp::Signature& sig, llarp_buffer_t buf) -> bool {
-        return crypto.sign(sig, Bob.signingKey, buf);
-      },
-      [&](llarp::ILinkSession* session) {
-        ASSERT_FALSE(session->IsEstablished());
-      },
-      [&](llarp::RouterID router) { ASSERT_EQ(router, Alice.GetRouterID()); });
-
-  ASSERT_TRUE(Alice.Start(logic.get(), netLoop, AlicePort));
-  ASSERT_TRUE(Bob.Start(logic.get(), netLoop, BobPort));
-
-  ASSERT_TRUE(Alice.link->TryEstablishTo(Bob.GetRC()));
-
-  RunMainloop();
-  ASSERT_TRUE(Alice.gotLIM);
-  ASSERT_TRUE(Bob.gotLIM);
-  ASSERT_TRUE(success);
-  */
-}
+};
+*/
