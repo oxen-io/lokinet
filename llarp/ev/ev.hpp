@@ -577,10 +577,10 @@ namespace llarp
     }
 
     void
-    flush_write();
+    flush_write() override;
 
     void
-    flush_write_buffers(size_t a)
+    flush_write_buffers(size_t a) override
     {
       connected();
       ev_io::flush_write_buffers(a);
@@ -608,13 +608,13 @@ namespace llarp
     }
 
     virtual ssize_t
-    do_write(void* buf, size_t sz);
+    do_write(void* buf, size_t sz) override;
 
     virtual int
-    read(byte_t* buf, size_t sz);
+    read(byte_t* buf, size_t sz) override;
 
     bool
-    tick();
+    tick() override;
   };
 
   struct tcp_serv : public ev_io
