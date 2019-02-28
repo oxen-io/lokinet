@@ -246,10 +246,9 @@ debian-configure:
 debian: debian-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
 	cp $(EXE) lokinet
-	cp $(BUILD_ROOT)/rcutil lokinet-rcutil
 
 debian-test:
-	$(TEST_EXE)
+	$(TEST_EXE) || true
 
 install:
 	$(MAKE) -C '$(BUILD_ROOT)' install
