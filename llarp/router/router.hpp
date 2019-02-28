@@ -211,7 +211,7 @@ namespace llarp
     uint16_t m_OutboundPort = 0;
 
     /// always maintain this many connections to other routers
-    size_t minConnectedRouters = 1;
+    size_t minConnectedRouters = 3;
     /// hard upperbound limit on the number of router to router connections
     size_t maxConnectedRouters = 2000;
 
@@ -321,8 +321,8 @@ namespace llarp
 
     ~Router();
 
-    void
-    OnSessionEstablished(RouterContact rc) override;
+    bool
+    OnSessionEstablished(ILinkSession *) override;
 
     bool
     HandleRecvLinkMessageBuffer(ILinkSession *from,
@@ -493,7 +493,7 @@ namespace llarp
                               const PathID_t &rxid) override;
 
     void
-    ConnectToRandomRouters(int N);
+    ConnectToRandomRouters(int N) override;
 
     size_t
     NumberOfConnectedRouters() const override;
@@ -504,8 +504,8 @@ namespace llarp
     bool
     GetRandomConnectedRouter(RouterContact &result) const override;
 
-    void
-    async_verify_RC(const RouterContact &rc, ILinkLayer *link);
+    bool
+    async_verify_RC(const RouterContact &rc);
 
     void
     HandleDHTLookupForSendTo(RouterID remote,

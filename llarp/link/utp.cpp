@@ -777,10 +777,10 @@ namespace llarp
         Close();
         return false;
       }
-      EnterState(eSessionReady);
       /// future LIM are used for session renegotiation
       GotLIM = std::bind(&Session::GotSessionRenegotiate, this,
                          std::placeholders::_1);
+      EnterState(eSessionReady);
       return true;
     }
 
@@ -982,7 +982,8 @@ namespace llarp
       if(st == eSessionReady)
       {
         parent->MapAddr(remoteRC.pubkey.as_array(), this);
-        parent->SessionEstablished(remoteRC);
+        if(!parent->SessionEstablished(this))
+          Close();
       }
     }
 

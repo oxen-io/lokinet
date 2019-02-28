@@ -30,7 +30,9 @@ namespace llarp
   using GetRCFunc = std::function< const llarp::RouterContact&(void) >;
 
   /// handler of session established
-  using SessionEstablishedHandler = std::function< void(llarp::RouterContact) >;
+  /// return false to reject
+  /// return true to accept
+  using SessionEstablishedHandler = std::function< bool(ILinkSession*) >;
 
   /// f(new, old)
   /// handler of session renegotiation
