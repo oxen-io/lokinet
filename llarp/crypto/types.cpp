@@ -17,7 +17,7 @@ namespace llarp
   PubKey::ToString() const
   {
     char buf[(PUBKEYSIZE + 1) * 2] = {0};
-    return Base32Encode(*this, buf);
+    return HexEncode(*this, buf);
   }
 
   bool
