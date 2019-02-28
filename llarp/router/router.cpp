@@ -1231,7 +1231,8 @@ namespace llarp
     {
       if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
       {
-        LogInfo(rc.pubkey, " is NOT a valid service node, rejecting");
+        RouterID sn(rc.pubkey);
+        LogInfo(sn, " is NOT a valid service node, rejecting");
         link->CloseSessionTo(rc.pubkey);
         return;
       }
