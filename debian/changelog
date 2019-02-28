@@ -1,4 +1,34 @@
-lokinet (0.2.3) UNRELEASED; urgency=medium
+lokinet (0.4.0) UNRELEASED; urgency=medium
+
+  * MANDITORY UPGRADE FOR TOYNET (again)
+  
+  * crypto protocol fixes in utp preventing fragment replaying
+  
+  * rewrite dns subsystem
+
+  * snode tld resolution to service nodes
+
+  * random.snode CNAME records giving a random service node
+
+  * localhost.loki A and CNAME records for giving IP and Hostnames (respectively) for all locally owned endpoints
+
+  * stability fixes
+
+  * crash fixes
+
+  * much refactoring
+
+  * such documentation updates
+
+  * many C++ 17 isms
+
+  * very vendor updates
+
+  * wow
+
+ -- jeff <jeff@i2p.rocks>  Thu, 28 Feb 2019 08:45:04 -0500
+
+lokinet (0.2.3) bionic; urgency=medium
 
   [ Jeff Becker (probably not evil) ]
   * MANDITORY UPGRADE FOR TOYNET
@@ -54,5 +84,6 @@ lokinet (0.2.3) UNRELEASED; urgency=medium
   * hidden serivce junk
  
   * systemd unit
+  * 0.4.0
 
- -- jeff <jeff@i2p.rocks>  Tue, 25 Sep 2018 09:17:17 -0400
+ -- jeff <jeff@i2p.rocks>  Thu, 28 Feb 2019 08:44:59 -0500
