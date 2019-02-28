@@ -1235,7 +1235,7 @@ namespace llarp
       {
         RouterID sn(rc.pubkey);
         LogInfo(sn, " is NOT a valid service node, rejecting");
-        return;
+        return false;
       }
     }
     if(pendingVerifyRC.count(rc.pubkey))
