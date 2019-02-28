@@ -555,13 +555,22 @@ namespace llarp
     void
     connected()
     {
-      // we are connected yeh boi
-      if(_conn)
+      sockaddr_storage st;
+      socklen_t sl;
+      if (getpeername(fd, (sockaddr*)&st, &sl) == 0)
       {
-        if(_conn->connected && !_calledConnected)
-          _conn->connected(_conn, &tcp);
+        // we are connected yeh boi
+        if(_conn)
+        {
+          if(_conn->connected && !_calledConnected)
+            _conn->connected(_conn, &tcp);
+        }
+        _calledConnected = true;
       }
-      _calledConnected = true;
+      else
+      {
+        error();
+      }
     }
 
     void
@@ -575,8 +584,9 @@ namespace llarp
     }
 
     void
-    error()
+    error() override
     {
+      _shouldClose = true;
       if(_conn)
       {
 #ifndef _WIN32
@@ -591,6 +601,7 @@ namespace llarp
         if(_conn->error)
           _conn->error(_conn);
       }
+      
     }
 
     virtual ssize_t

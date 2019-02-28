@@ -20,7 +20,7 @@ namespace llarp
       if(tcp.read)
         tcp.read(&tcp, llarp_buffer_t(buf, amount));
     }
-    else
+    else if(amount < 0)
     {
       // error
       _shouldClose = true;
@@ -123,7 +123,7 @@ namespace llarp
       return -1;
     b.sz = ret;
     udp->recvfrom(udp, addr, ManagedBuffer{b});
-    return 0;
+    return ret;
   }
 
   int
@@ -323,6 +323,7 @@ llarp_epoll_loop::tick(int ms)
   epoll_event events[1024];
   int result;
   result = epoll_wait(epollfd, events, 1024, ms);
+  bool didIO = false;
   if(result > 0)
   {
     int idx = 0;
@@ -331,21 +332,26 @@ llarp_epoll_loop::tick(int ms)
       llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
       if(ev)
       {
-        llarp::LogDebug(idx, " of ", result,
+        llarp::LogDebug(idx, " of ", result, " on ", ev->fd,
                         " events=", std::to_string(events[idx].events));
         if(events[idx].events & EPOLLERR)
         {
+          llarp::LogDebug("epoll error");
           ev->error();
         }
-        else
+        else 
         {
-          if(events[idx].events & EPOLLIN)
-          {
-            ev->read(readbuf, sizeof(readbuf));
-          }
+          // write THEN READ don't revert me
           if(events[idx].events & EPOLLOUT)
           {
+            llarp::LogDebug("epoll out");
             ev->flush_write();
+          }
+          if(events[idx].events & EPOLLIN)
+          {
+            llarp::LogDebug("epoll in");
+            if(ev->read(readbuf, sizeof(readbuf)) > 0)
+              didIO = true;
           }
         }
       }
@@ -354,6 +360,9 @@ llarp_epoll_loop::tick(int ms)
   }
   if(result != -1)
     tick_listeners();
+  /// if we didn't get an io events we sleep to avoid 100% cpu use
+  if(!didIO)
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
   return result;
 }
 

@@ -47,8 +47,8 @@ namespace llarp
 
   struct AbstractRouter : public util::IStateful
   {
-    virtual void
-    OnSessionEstablished(RouterContact rc) = 0;
+    virtual bool
+    OnSessionEstablished(ILinkSession *) = 0;
 
     virtual bool
     HandleRecvLinkMessageBuffer(ILinkSession *from,
@@ -121,6 +121,9 @@ namespace llarp
     virtual void
     OnConnectTimeout(ILinkSession *session) = 0;
 
+    /// connect to N random routers
+    virtual void
+    ConnectToRandomRouters(int N) = 0;
     /// inject configuration and reconfigure router
     virtual bool
     Reconfigure(Config *conf) = 0;
