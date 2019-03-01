@@ -13,6 +13,10 @@ namespace llarp
 {
   namespace exit
   {
+    struct BaseSession;
+
+    using SessionReadyFunc = std::function< void(BaseSession*) >;
+
     /// a persisting exit session with an exit router
     struct BaseSession : public llarp::path::Builder
     {
@@ -64,6 +68,9 @@ namespace llarp
       bool
       LoadIdentityFromFile(const char* fname);
 
+      void
+      AddReadyHook(SessionReadyFunc func);
+
      protected:
       llarp::RouterID m_ExitRouter;
       llarp::SecretKey m_ExitIdentity;
@@ -107,6 +114,8 @@ namespace llarp
 
       uint64_t m_Counter;
       llarp_time_t m_LastUse;
+
+      std::vector< SessionReadyFunc > m_PendingCallbacks;
     };
 
     struct ExitSession final : public BaseSession

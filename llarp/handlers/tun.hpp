@@ -192,10 +192,21 @@ namespace llarp
             });
       }
 
+      template < typename Addr_t, typename Endpoint_t >
       void
-      SendDNSReply(service::Address addr,
-                   service::Endpoint::OutboundContext* ctx, dns::Message* query,
-                   std::function< void(dns::Message) > reply);
+      SendDNSReply(Addr_t addr, Endpoint_t* ctx, dns::Message* query,
+                   std::function< void(dns::Message) > reply, bool snode)
+      {
+        if(ctx)
+        {
+          huint32_t ip = ObtainIPForAddr(addr, snode);
+          query->AddINReply(ip);
+        }
+        else
+          query->AddNXReply();
+        reply(*query);
+        delete query;
+      }
 
 #ifndef WIN32
       /// handles fd injection force android

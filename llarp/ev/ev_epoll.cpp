@@ -322,7 +322,7 @@ llarp_epoll_loop::tick(int ms)
 {
   epoll_event events[1024];
   int result;
-  result = epoll_wait(epollfd, events, 1024, ms);
+  result     = epoll_wait(epollfd, events, 1024, ms);
   bool didIO = false;
   if(result > 0)
   {
@@ -339,7 +339,7 @@ llarp_epoll_loop::tick(int ms)
           llarp::LogDebug("epoll error");
           ev->error();
         }
-        else 
+        else
         {
           // write THEN READ don't revert me
           if(events[idx].events & EPOLLOUT)

@@ -560,7 +560,7 @@ namespace llarp
     {
       sockaddr_storage st;
       socklen_t sl;
-      if (getpeername(fd, (sockaddr*)&st, &sl) == 0)
+      if(getpeername(fd, (sockaddr*)&st, &sl) == 0)
       {
         // we are connected yeh boi
         if(_conn)

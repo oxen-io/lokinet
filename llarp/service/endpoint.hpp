@@ -366,7 +366,7 @@ namespace llarp
 
       /// ensure a path to a service node by public key
       void
-      EnsurePathToSNode(const RouterID& remote);
+      EnsurePathToSNode(const RouterID& remote, SNodeEnsureHook h);
 
       bool
       HasPathToSNode(const RouterID& remote) const;

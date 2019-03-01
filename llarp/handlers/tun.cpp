@@ -333,24 +333,28 @@ namespace llarp
           else
           {
             dns::Message *replyMsg = new dns::Message(std::move(msg));
-            service::Endpoint::PathEnsureHook hook = std::bind(
-                &TunEndpoint::SendDNSReply, this, std::placeholders::_1,
-                std::placeholders::_2, replyMsg, reply);
-            return EnsurePathToService(addr, hook, 2000);
+            return EnsurePathToService(
+                addr,
+                [=](const service::Address &remote, OutboundContext *ctx) {
+                  SendDNSReply(remote, ctx, replyMsg, reply, false);
+                },
+                2000);
           }
         }
         else if(addr.FromString(qname, ".snode"))
         {
-          // TODO: add hook to EnsurePathToSNode
-          EnsurePathToSNode(addr.as_array());
-          huint32_t ip = ObtainIPForAddr(addr, true);
-          if(ip.h)
-            msg.AddINReply(ip);
-          else
+          if(HasPathToSNode(addr.as_array()))
           {
-            llarp::LogWarn("no ip found for ", addr);
-            msg.AddNXReply();
+            msg.AddINReply(ObtainIPForAddr(addr, true));
+            reply(msg);
+            return true;
           }
+          dns::Message *replyMsg = new dns::Message(std::move(msg));
+          EnsurePathToSNode(addr.as_array(),
+                            [=](const RouterID &remote, exit::BaseSession *s) {
+                              SendDNSReply(remote, s, replyMsg, reply, true);
+                            });
+          return true;
         }
         else
           // forward dns
@@ -428,24 +432,6 @@ namespace llarp
         }
       }
       return false;
-    }
-
-    void
-    TunEndpoint::SendDNSReply(service::Address addr,
-                              service::Endpoint::OutboundContext *ctx,
-                              dns::Message *request,
-                              std::function< void(dns::Message) > reply)
-    {
-      if(ctx)
-      {
-        huint32_t ip = ObtainIPForAddr(addr, false);
-        request->AddINReply(ip);
-      }
-      else
-        request->AddNXReply();
-
-      reply(*request);
-      delete request;
     }
 
     bool

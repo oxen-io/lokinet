@@ -193,7 +193,7 @@ namespace llarp
   }
 
   bool
-  Router::OnSessionEstablished(ILinkSession * s)
+  Router::OnSessionEstablished(ILinkSession *s)
   {
     return async_verify_RC(s->GetRemoteRC());
   }
@@ -1228,7 +1228,6 @@ namespace llarp
   bool
   Router::async_verify_RC(const RouterContact &rc)
   {
-    
     if(rc.IsPublicRouter() && whitelistRouters && IsServiceNode())
     {
       if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
