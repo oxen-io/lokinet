@@ -1205,7 +1205,7 @@ namespace llarp
     }
 
     void
-    Endpoint::EnsurePathToSNode(const RouterID& snode)
+    Endpoint::EnsurePathToSNode(const RouterID& snode, SNodeEnsureHook h)
     {
       if(m_SNodeSessions.count(snode) == 0)
       {
@@ -1218,6 +1218,13 @@ namespace llarp
                           std::placeholders::_1,
                           [themIP]() -> huint32_t { return themIP; }),
                 m_Router, 2, numHops));
+      }
+      auto range = m_SNodeSessions.equal_range(snode);
+      auto itr   = range.first;
+      while(itr != range.second)
+      {
+        itr->second->AddReadyHook(std::bind(h, snode, std::placeholders::_1));
+        ++itr;
       }
     }
 

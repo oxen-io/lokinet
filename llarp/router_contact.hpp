@@ -130,9 +130,9 @@ namespace llarp
           && nickname == other.nickname && last_updated == other.last_updated
           && netID == other.netID;
     }
-    
-    bool 
-    operator!=(const RouterContact & other) const 
+
+    bool
+    operator!=(const RouterContact &other) const
     {
       return !(*this == other);
     }

@@ -101,19 +101,34 @@ namespace llarp
         llarp::LogError("failed to send exit request");
     }
 
+    void
+    BaseSession::AddReadyHook(SessionReadyFunc func)
+    {
+      m_PendingCallbacks.emplace_back(func);
+    }
+
     bool
     BaseSession::HandleGotExit(llarp::path::Path* p, llarp_time_t b)
     {
-      m_LastUse = router->Now();
+      BaseSession* self = this;
+      m_LastUse         = router->Now();
       if(b == 0)
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
+      else
+        self = nullptr;
 
+      for(auto& f : m_PendingCallbacks)
+        f(self);
+      m_PendingCallbacks.clear();
       return true;
     }
 
     bool
     BaseSession::Stop()
     {
+      for(auto& f : m_PendingCallbacks)
+        f(nullptr);
+      m_PendingCallbacks.clear();
       auto sendExitClose = [&](llarp::path::Path* p) {
         if(p->SupportsAnyRoles(llarp::path::ePathRoleExit))
         {
