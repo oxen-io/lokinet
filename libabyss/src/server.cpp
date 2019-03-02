@@ -24,10 +24,7 @@ namespace abyss
       llarp_time_t m_ReadTimeout;
       bool m_Bad;
       std::unique_ptr< json::IParser > m_BodyParser;
-      json::Document m_Request;
-      std::stringstream m_ResponseBuffer;
-      json::Stream m_ResponseStream;
-      json::Writer m_Response;
+      nlohmann::json m_Request;
 
       enum HTTPState
       {
@@ -43,10 +40,7 @@ namespace abyss
       HTTPState m_State;
 
       ConnImpl(BaseReqHandler* p, llarp_tcp_conn* c, llarp_time_t readtimeout)
-          : _conn(c)
-          , _parent(p)
-          , m_ResponseStream(m_ResponseBuffer)
-          , m_Response(m_ResponseStream)
+          : _conn(c), _parent(p)
       {
         handler       = nullptr;
         m_LastActive  = p->now();
@@ -154,14 +148,13 @@ namespace abyss
         // initialize body parser
         if(m_BodyParser == nullptr)
         {
-          ssize_t contentLength = 0;
-          auto itr              = Header.Headers.find("content-length");
+          auto itr = Header.Headers.find("content-length");
           if(itr == Header.Headers.end())
           {
             return WriteResponseSimple(400, "Bad Request", "text/plain",
                                        "no content length");
           }
-          contentLength = std::stoll(itr->second);
+          ssize_t contentLength = std::stoll(itr->second);
           if(contentLength <= 0)
           {
             return WriteResponseSimple(400, "Bad Request", "text/plain",
@@ -186,22 +179,21 @@ namespace abyss
             return WriteResponseSimple(400, "Bad Request", "text/plain",
                                        "bad json object");
           case json::IParser::eDone:
-            if(m_Request.IsObject() && m_Request.HasMember("params")
-               && m_Request.HasMember("method") && m_Request.HasMember("id")
-               && m_Request["id"].IsString() && m_Request["method"].IsString()
-               && m_Request["params"].IsObject())
+            if(m_Request.is_object() && m_Request.count("params")
+               && m_Request.count("method") && m_Request.count("id")
+               && m_Request["id"].is_string() && m_Request["method"].is_string()
+               && m_Request["params"].is_object())
             {
-              m_Response.StartObject();
-              m_Response.Key("jsonrpc");
-              m_Response.String("2.0");
-              m_Response.Key("id");
-              m_Response.String(m_Request["id"].GetString());
-              m_Response.Key("result");
-              if(handler->HandleJSONRPC(m_Request["method"].GetString(),
-                                        m_Request["params"], m_Response))
+              nlohmann::json response;
+              response["jsonrpc"]     = "2.0";
+              response["id"]          = m_Request["id"];
+              auto value              = handler->HandleJSONRPC(
+                  m_Request["method"].get< std::string >(),
+                  m_Request["params"]);
+              if(value)
               {
-                m_Response.EndObject();
-                return WriteResponseJSON();
+                response["result"] = value.value();
+                return WriteResponseJSON(response);
               }
             }
             return WriteResponseSimple(500, "internal error", "text/plain",
@@ -212,13 +204,11 @@ namespace abyss
       }
 
       bool
-      WriteResponseJSON()
+      WriteResponseJSON(const nlohmann::json& response)
       {
-        std::string response;
-        m_ResponseStream.Flush();
-        response = m_ResponseBuffer.str();
+        std::string responseStr = response.dump();
         return WriteResponseSimple(200, "OK", "application/json",
-                                   response.c_str());
+                                   responseStr.c_str());
       }
 
       bool

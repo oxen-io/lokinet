@@ -7,6 +7,7 @@
 #include <util/string_view.hpp>
 #include <util/time.hpp>
 
+#include <absl/types/optional.h>
 #include <list>
 #include <memory>
 #include <string>
@@ -21,14 +22,13 @@ namespace abyss
     struct IRPCHandler
     {
       using Method_t = std::string;
-      using Params   = llarp::json::Value;
-      using Response = llarp::json::Writer;
+      using Params   = nlohmann::json;
+      using Response = nlohmann::json;
 
       IRPCHandler(ConnImpl* impl);
 
-      virtual bool
-      HandleJSONRPC(Method_t method, const Params& params,
-                    Response& response) = 0;
+      virtual absl::optional< Response >
+      HandleJSONRPC(Method_t method, const Params& params) = 0;
 
       virtual ~IRPCHandler();
 

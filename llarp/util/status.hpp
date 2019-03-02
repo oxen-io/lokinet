@@ -1,8 +1,9 @@
 #ifndef LLARP_UTIL_STATUS_HPP
 #define LLARP_UTIL_STATUS_HPP
 
-#include <util/json.hpp>
 #include <util/string_view.hpp>
+
+#include <nlohmann/json.hpp>
 
 #include <vector>
 #include <string>
@@ -13,23 +14,17 @@ namespace llarp
 {
   namespace util
   {
-    using StatusObject_Impl = json::Document;
-    using Value_t           = json::Value;
-
+    struct StatusVisitor;
     struct StatusObject
     {
       using String_t = string_view;
       using Variant  = absl::variant< uint64_t, std::string, bool, StatusObject,
                                      std::vector< std::string >,
                                      std::vector< StatusObject > >;
-      using value_type = std::tuple< String_t, Variant >;
-
-      StatusObject(const StatusObject&);
-      ~StatusObject();
+      using value_type = std::pair< String_t, Variant >;
 
       StatusObject(std::initializer_list< value_type > vals)
       {
-        Impl.SetObject();
         std::for_each(vals.begin(), vals.end(),
                       [&](const value_type& item) { Put(item); });
       }
@@ -40,21 +35,15 @@ namespace llarp
       void
       Put(const value_type& value);
 
-      StatusObject_Impl Impl;
+      nlohmann::json
+      get() const
+      {
+        return Impl;
+      }
 
      private:
-      void
-      PutBool(String_t name, bool val);
-      void
-      PutInt(String_t name, uint64_t val);
-      void
-      PutObject(String_t name, const StatusObject& val);
-      void
-      PutObjectArray(String_t name, const std::vector< StatusObject >& arr);
-      void
-      PutStringArray(String_t name, const std::vector< std::string >& arr);
-      void
-      PutString(String_t name, const std::string& val);
+      friend struct StatusVisitor;
+      nlohmann::json Impl;
     };
 
     /// an entity that has a status that can be extracted
