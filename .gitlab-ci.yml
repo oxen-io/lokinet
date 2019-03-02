@@ -11,9 +11,9 @@ build:linux:
     - linux
   stage: build
   before_script:
-    - apk add --update g++ make cmake linux-headers libcap-dev rapidjson
+    - apk add --update g++ make cmake linux-headers libcap-dev
   script:
-    - make 
+    - make
   artifacts:
     paths:
       - "lokinet"
