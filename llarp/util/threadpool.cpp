@@ -70,7 +70,7 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
 void
 llarp_threadpool_tick(struct llarp_threadpool *pool)
 {
-  while(pool->jobs.size())
+  while(pool->size())
   {
     std::function< void(void) > job;
     {
@@ -79,7 +79,9 @@ llarp_threadpool_tick(struct llarp_threadpool *pool)
       pool->jobs.pop();
     }
     if(job)
+    {
       job();
+    }
   }
 }
 

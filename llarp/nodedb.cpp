@@ -35,14 +35,9 @@ llarp_nodedb::Clear()
 }
 
 bool
-llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result,
-                  bool lock)
+llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
 {
-  absl::optional< llarp::util::Lock > l;
-  if(lock)
-  {
-    l.emplace(&access);
-  }
+  llarp::util::Lock l(&access);
   auto itr = entries.find(pk);
   if(itr == entries.end())
     return false;
@@ -364,7 +359,7 @@ int
 llarp_nodedb::iterate_all(struct llarp_nodedb_iter i)
 {
   iterate(i);
-  return entries.size();
+  return num_loaded();
 }
 
 /// maybe rename to verify_and_set
@@ -390,6 +385,7 @@ llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 size_t
 llarp_nodedb::num_loaded() const
 {
+  absl::ReaderMutexLock l(&access);
   return entries.size();
 }
 

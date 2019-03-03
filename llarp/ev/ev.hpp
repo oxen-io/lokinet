@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <deque>
 #include <list>
+#include <future>
 #include <unistd.h>
 
 #ifdef _WIN32

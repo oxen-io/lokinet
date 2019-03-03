@@ -3,30 +3,26 @@
 
 #include <absl/synchronization/barrier.h>
 #include <absl/synchronization/mutex.h>
-// We only support posix threads:
-// MSYS2 has a full native C++11 toolset, and a suitable
-// cross-compilation system can be assembled on Linux and UNIX
-// Last time i checked, Red Hat has this problem (no libpthread)
-// Not sure about the other distros generally -rick
-#include <condition_variable>
-#include <thread>
-#include <future>
-#include <memory>
-#include <cassert>
+#include <absl/time/time.h>
 
 namespace llarp
 {
   namespace util
   {
     /// a mutex that does nothing
-    struct NullMutex
+    struct LOCKABLE NullMutex
     {
     };
 
     /// a lock that does nothing
-    struct NullLock
+    struct SCOPED_LOCKABLE NullLock
     {
-      NullLock(__attribute__((unused)) NullMutex* mtx)
+      NullLock(__attribute__((unused)) const NullMutex* mtx)
+          EXCLUSIVE_LOCK_FUNCTION(mtx)
+      {
+      }
+
+      ~NullLock() UNLOCK_FUNCTION()
       {
       }
     };
@@ -38,9 +34,14 @@ namespace llarp
     class Semaphore
     {
      private:
-      Mutex m_mutex;
-      Condition m_cv;
-      size_t m_count;
+      Mutex m_mutex;  // protects m_count
+      size_t m_count GUARDED_BY(m_mutex);
+
+      bool
+      ready() const SHARED_LOCKS_REQUIRED(m_mutex)
+      {
+        return m_count > 0;
+      }
 
      public:
       Semaphore(size_t count) : m_count(count)
@@ -48,37 +49,30 @@ namespace llarp
       }
 
       void
-      notify()
+      notify() LOCKS_EXCLUDED(m_mutex)
       {
         Lock lock(&m_mutex);
         m_count++;
-
-        m_cv.Signal();
       }
 
       void
-      wait()
+      wait() LOCKS_EXCLUDED(m_mutex)
       {
         Lock lock(&m_mutex);
-        while(this->m_count == 0)
-        {
-          m_cv.Wait(&m_mutex);
-        }
+        m_mutex.Await(absl::Condition(this, &Semaphore::ready));
 
         m_count--;
       }
 
       bool
-      waitFor(absl::Duration timeout)
+      waitFor(absl::Duration timeout) LOCKS_EXCLUDED(m_mutex)
       {
         Lock lock(&m_mutex);
 
-        while(this->m_count == 0)
+        if(!m_mutex.AwaitWithTimeout(absl::Condition(this, &Semaphore::ready),
+                                     timeout))
         {
-          if(m_cv.WaitWithTimeout(&m_mutex, timeout))
-          {
-            return false;
-          }
+          return false;
         }
 
         m_count--;

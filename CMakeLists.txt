@@ -72,6 +72,10 @@ add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
+if (USING_CLANG)
+  add_compile_options(-Wthread-safety -Wthread-safety-negative)
+endif()
+
 if (WITH_COVERAGE)
   if (USING_CLANG)
     add_compile_options( -fprofile-instr-generate -fcoverage-mapping )

@@ -1,7 +1,6 @@
 #ifndef LLARP_LOGGER_HPP
 #define LLARP_LOGGER_HPP
 
-#include <util/threading.hpp>
 #include <util/time.hpp>
 
 #ifdef _WIN32
@@ -20,6 +19,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <thread>
 
 namespace llarp
 {
@@ -40,8 +40,6 @@ namespace llarp
     std::ostream& out;
 
     std::function< void(const std::string&) > customLog;
-
-    llarp::util::Mutex access;
 #ifdef _WIN32
     bool isConsoleModern =
         true;  // qol fix so oldfag clients don't see ugly escapes

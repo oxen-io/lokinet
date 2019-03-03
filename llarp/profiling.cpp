@@ -97,12 +97,12 @@ namespace llarp
   bool
   Profiling::Save(const char* fname)
   {
-    lock_t lock(&m_ProfilesMutex);
+    absl::ReaderMutexLock lock(&m_ProfilesMutex);
     size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
 
     std::vector< byte_t > tmp(sz, 0);
     llarp_buffer_t buf(tmp);
-    auto res = BEncode(&buf);
+    auto res = BEncodeNoLock(&buf);
     if(res)
     {
       buf.sz = buf.cur - buf.base;
@@ -119,8 +119,16 @@ namespace llarp
   bool
   Profiling::BEncode(llarp_buffer_t* buf) const
   {
+    absl::ReaderMutexLock lock(&m_ProfilesMutex);
+    return BEncodeNoLock(buf);
+  }
+
+  bool
+  Profiling::BEncodeNoLock(llarp_buffer_t* buf) const
+  {
     if(!bencode_start_dict(buf))
       return false;
+
     auto itr = m_Profiles.begin();
     while(itr != m_Profiles.end())
     {
@@ -142,6 +150,7 @@ namespace llarp
     if(!profile.BDecode(buf))
       return false;
     RouterID pk = k.base;
+    absl::WriterMutexLock l(&m_ProfilesMutex);
     return m_Profiles.emplace(pk, profile).second;
   }
 

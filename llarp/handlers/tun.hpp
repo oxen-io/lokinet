@@ -9,6 +9,8 @@
 #include <util/codel.hpp>
 #include <util/threading.hpp>
 
+#include <future>
+
 namespace llarp
 {
   namespace handlers

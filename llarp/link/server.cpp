@@ -36,6 +36,7 @@ namespace llarp
   ILinkLayer::ForEachSession(
       std::function< void(const ILinkSession*) > visit) const
   {
+    Lock l(&m_AuthedLinksMutex);
     auto itr = m_AuthedLinks.begin();
     while(itr != m_AuthedLinks.end())
     {
@@ -48,6 +49,7 @@ namespace llarp
   ILinkLayer::VisitSessionByPubkey(const RouterID& pk,
                                    std::function< bool(ILinkSession*) > visit)
   {
+    Lock l(&m_AuthedLinksMutex);
     auto itr = m_AuthedLinks.find(pk);
     if(itr != m_AuthedLinks.end())
     {
@@ -59,6 +61,7 @@ namespace llarp
   void
   ILinkLayer::ForEachSession(std::function< void(ILinkSession*) > visit)
   {
+    Lock l(&m_AuthedLinksMutex);
     auto itr = m_AuthedLinks.begin();
     while(itr != m_AuthedLinks.end())
     {
@@ -166,6 +169,7 @@ namespace llarp
   void
   ILinkLayer::RemovePending(ILinkSession* s)
   {
+    Lock l(&m_PendingMutex);
     llarp::Addr remote = s->GetRemoteEndpoint();
     m_Pending.erase(remote);
   }
@@ -175,16 +179,22 @@ namespace llarp
   {
     std::vector< util::StatusObject > pending, established;
 
-    std::transform(m_Pending.begin(), m_Pending.end(),
-                   std::back_inserter(pending),
-                   [](const auto& item) -> util::StatusObject {
-                     return item.second->ExtractStatus();
-                   });
-    std::transform(m_AuthedLinks.begin(), m_AuthedLinks.end(),
-                   std::back_inserter(established),
-                   [](const auto& item) -> util::StatusObject {
-                     return item.second->ExtractStatus();
-                   });
+    {
+      Lock l(&m_PendingMutex);
+      std::transform(m_Pending.cbegin(), m_Pending.cend(),
+                     std::back_inserter(pending),
+                     [](const auto& item) -> util::StatusObject {
+                       return item.second->ExtractStatus();
+                     });
+    }
+    {
+      Lock l(&m_AuthedLinksMutex);
+      std::transform(m_AuthedLinks.cbegin(), m_AuthedLinks.cend(),
+                     std::back_inserter(established),
+                     [](const auto& item) -> util::StatusObject {
+                       return item.second->ExtractStatus();
+                     });
+    }
 
     return {{"name", Name()},
             {"rank", uint64_t(Rank())},

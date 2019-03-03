@@ -32,12 +32,12 @@ namespace llarp
     struct CoDelQueue
     {
       CoDelQueue(const std::string& name, const PutTime& put, const GetNow& now)
-          : m_name(name), _putTime(put), _getNow(now)
+          : m_QueueIdx(0), m_name(name), _putTime(put), _getNow(now)
       {
       }
 
       size_t
-      Size()
+      Size() LOCKS_EXCLUDED(m_QueueMutex)
       {
         Lock_t lock(m_QueueMutex);
         return m_QueueIdx;
@@ -46,6 +46,7 @@ namespace llarp
       template < typename... Args >
       bool
       EmplaceIf(std::function< bool(T&) > pred, Args&&... args)
+          LOCKS_EXCLUDED(m_QueueMutex)
       {
         Lock_t lock(&m_QueueMutex);
         if(m_QueueIdx == MaxSize)
@@ -68,7 +69,7 @@ namespace llarp
 
       template < typename... Args >
       void
-      Emplace(Args&&... args)
+      Emplace(Args&&... args) LOCKS_EXCLUDED(m_QueueMutex)
       {
         Lock_t lock(&m_QueueMutex);
         if(m_QueueIdx == MaxSize)
@@ -90,7 +91,7 @@ namespace llarp
 
       template < typename Visit, typename Filter >
       void
-      Process(Visit visitor, Filter f)
+      Process(Visit visitor, Filter f) LOCKS_EXCLUDED(m_QueueMutex)
       {
         llarp_time_t lowest = std::numeric_limits< llarp_time_t >::max();
         if(_getNow() < nextTickAt)
@@ -149,8 +150,8 @@ namespace llarp
       llarp_time_t nextTickInterval = initialIntervalMs;
       llarp_time_t nextTickAt       = 0;
       Mutex_t m_QueueMutex;
-      size_t m_QueueIdx = 0;
-      T m_Queue[MaxSize];
+      size_t m_QueueIdx GUARDED_BY(m_QueueMutex);
+      std::array< T, MaxSize > m_Queue GUARDED_BY(m_QueueMutex);
       std::string m_name;
       GetTime _getTime;
       PutTime _putTime;

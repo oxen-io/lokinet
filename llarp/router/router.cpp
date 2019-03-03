@@ -277,6 +277,7 @@ namespace llarp
   bool
   Router::GetRandomGoodRouter(RouterID &router)
   {
+    absl::ReaderMutexLock l(&nodedb()->access);
     auto sz = nodedb()->entries.size();
     if(sz == 0)
       return false;

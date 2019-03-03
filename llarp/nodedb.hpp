@@ -5,6 +5,9 @@
 #include <router_id.hpp>
 #include <util/common.hpp>
 #include <util/fs.hpp>
+#include <util/threading.hpp>
+
+#include <absl/base/thread_annotations.h>
 
 /**
  * nodedb.hpp
@@ -42,31 +45,31 @@ struct llarp_nodedb
 
   llarp::Crypto *crypto;
   llarp_threadpool *disk;
-  llarp::util::Mutex access;
+  mutable llarp::util::Mutex access;  // protects entries
   std::unordered_map< llarp::RouterID, llarp::RouterContact,
                       llarp::RouterID::Hash >
-      entries;
+      entries GUARDED_BY(access);
   fs::path nodePath;
 
   bool
-  Remove(const llarp::RouterID &pk);
+  Remove(const llarp::RouterID &pk) LOCKS_EXCLUDED(access);
 
   void
-  Clear();
+  Clear() LOCKS_EXCLUDED(access);
 
   bool
-  Get(const llarp::RouterID &pk, llarp::RouterContact &result,
-      bool lock = true);
+  Get(const llarp::RouterID &pk, llarp::RouterContact &result)
+      LOCKS_EXCLUDED(access);
 
   bool
-  Has(const llarp::RouterID &pk);
+  Has(const llarp::RouterID &pk) LOCKS_EXCLUDED(access);
 
   std::string
   getRCFilePath(const llarp::RouterID &pubkey) const;
 
   /// insert and write to disk
   bool
-  Insert(const llarp::RouterContact &rc);
+  Insert(const llarp::RouterContact &rc) LOCKS_EXCLUDED(access);
 
   /// insert and write to disk in background
   void
@@ -79,13 +82,14 @@ struct llarp_nodedb
   loadSubdir(const fs::path &dir);
 
   bool
-  loadfile(const fs::path &fpath);
+  loadfile(const fs::path &fpath) LOCKS_EXCLUDED(access);
 
   void
-  visit(std::function< bool(const llarp::RouterContact &) > visit);
+  visit(std::function< bool(const llarp::RouterContact &) > visit)
+      LOCKS_EXCLUDED(access);
 
   bool
-  iterate(llarp_nodedb_iter &i);
+  iterate(llarp_nodedb_iter &i) LOCKS_EXCLUDED(access);
 
   void
   set_dir(const char *dir);
@@ -99,14 +103,15 @@ struct llarp_nodedb
   iterate_all(llarp_nodedb_iter i);
 
   size_t
-  num_loaded() const;
+  num_loaded() const LOCKS_EXCLUDED(access);
 
   bool
-  select_random_exit(llarp::RouterContact &rc);
+  select_random_exit(llarp::RouterContact &rc) LOCKS_EXCLUDED(access);
 
   bool
   select_random_hop(const llarp::RouterContact &prev,
-                    llarp::RouterContact &result, size_t N);
+                    llarp::RouterContact &result, size_t N)
+      LOCKS_EXCLUDED(access);
 
   static bool
   ensure_dir(const char *dir);

@@ -6,8 +6,9 @@
 #include <routing/message.hpp>
 #include <service/IntroSet.hpp>
 #include <service/lookup.hpp>
-#include <util/time.hpp>
 #include <util/status.hpp>
+#include <util/threading.hpp>
+#include <util/time.hpp>
 
 #include <functional>
 #include <list>
