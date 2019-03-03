@@ -16,19 +16,6 @@ namespace llarp
 {
   namespace util
   {
-    struct DummyMutex
-    {
-    };
-
-    struct DummyLock
-    {
-      DummyLock(__attribute__((unused)) const DummyMutex& mtx){};
-
-      ~DummyLock()
-      {
-      }
-    };
-
     struct GetNowSyscall
     {
       llarp_time_t
@@ -60,7 +47,7 @@ namespace llarp
       bool
       EmplaceIf(std::function< bool(T&) > pred, Args&&... args)
       {
-        Lock_t lock(m_QueueMutex);
+        Lock_t lock(&m_QueueMutex);
         if(m_QueueIdx == MaxSize)
           return false;
         T* t = &m_Queue[m_QueueIdx];
@@ -83,7 +70,7 @@ namespace llarp
       void
       Emplace(Args&&... args)
       {
-        Lock_t lock(m_QueueMutex);
+        Lock_t lock(&m_QueueMutex);
         if(m_QueueIdx == MaxSize)
           return;
         T* t = &m_Queue[m_QueueIdx];
@@ -109,7 +96,7 @@ namespace llarp
         if(_getNow() < nextTickAt)
           return;
         // llarp::LogInfo("CoDelQueue::Process - start at ", start);
-        Lock_t lock(m_QueueMutex);
+        Lock_t lock(&m_QueueMutex);
         auto start = firstPut;
 
         if(m_QueueIdx == 1)

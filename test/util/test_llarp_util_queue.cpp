@@ -120,7 +120,7 @@ void
 abaThread(char* firstValue, char* lastValue, Queue< char* >& queue,
           util::Barrier& barrier)
 {
-  barrier.wait();
+  barrier.Block();
 
   for(char* val = firstValue; val <= lastValue; ++val)
   {
@@ -171,7 +171,7 @@ sleepNWait(size_t microseconds, util::Barrier& barrier)
   std::this_thread::sleep_for(
       std::chrono::duration< double, std::micro >(microseconds));
 
-  barrier.wait();
+  barrier.Block();
 }
 
 void
@@ -505,14 +505,14 @@ TEST(TestQueue, exceptionSafety)
   ASSERT_THROW({ (void)queue.popFront(); }, Exception);
 
   // Now the queue is not full, and the producer thread can start adding items.
-  ASSERT_TRUE(semaphore.waitFor(std::chrono::seconds{1}));
+  ASSERT_TRUE(semaphore.waitFor(absl::Seconds(1)));
 
   ASSERT_EQ(queueSize, queue.size());
 
   ASSERT_THROW({ (void)queue.popFront(); }, Exception);
 
   // Now the queue is not full, and the producer thread can start adding items.
-  ASSERT_TRUE(semaphore.waitFor(std::chrono::seconds{1}));
+  ASSERT_TRUE(semaphore.waitFor(absl::Seconds(1)));
 
   ASSERT_EQ(queueSize, queue.size());
 
@@ -522,7 +522,7 @@ TEST(TestQueue, exceptionSafety)
   // pop an item to unblock the pusher
   (void)queue.popFront();
 
-  ASSERT_TRUE(semaphore.waitFor(std::chrono::seconds{1}));
+  ASSERT_TRUE(semaphore.waitFor(absl::Seconds(1)));
 
   ASSERT_EQ(1u, caught);
 

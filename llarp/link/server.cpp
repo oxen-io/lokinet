@@ -28,7 +28,7 @@ namespace llarp
   bool
   ILinkLayer::HasSessionTo(const RouterID& id)
   {
-    Lock l(m_AuthedLinksMutex);
+    Lock l(&m_AuthedLinksMutex);
     return m_AuthedLinks.find(id) != m_AuthedLinks.end();
   }
 
@@ -91,7 +91,7 @@ namespace llarp
   {
     auto _now = Now();
     {
-      Lock lock(m_AuthedLinksMutex);
+      Lock lock(&m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
@@ -109,7 +109,7 @@ namespace llarp
       }
     }
     {
-      Lock lock(m_PendingMutex);
+      Lock lock(&m_PendingMutex);
 
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
@@ -129,8 +129,8 @@ namespace llarp
   ILinkLayer::MapAddr(const RouterID& pk, ILinkSession* s)
   {
     static constexpr size_t MaxSessionsPerKey = 16;
-    Lock l_authed(m_AuthedLinksMutex);
-    Lock l_pending(m_PendingMutex);
+    Lock l_authed(&m_AuthedLinksMutex);
+    Lock l_pending(&m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
     auto itr         = m_Pending.find(addr);
     if(itr != m_Pending.end())
@@ -223,7 +223,7 @@ namespace llarp
   void
   ILinkLayer::Tick(llarp_time_t now)
   {
-    Lock l(m_AuthedLinksMutex);
+    Lock l(&m_AuthedLinksMutex);
     auto itr = m_AuthedLinks.begin();
     while(itr != m_AuthedLinks.end())
     {
@@ -238,7 +238,7 @@ namespace llarp
     if(m_Logic && tick_id)
       m_Logic->remove_call(tick_id);
     {
-      Lock l(m_AuthedLinksMutex);
+      Lock l(&m_AuthedLinksMutex);
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
@@ -247,7 +247,7 @@ namespace llarp
       }
     }
     {
-      Lock l(m_PendingMutex);
+      Lock l(&m_PendingMutex);
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
@@ -260,7 +260,7 @@ namespace llarp
   void
   ILinkLayer::CloseSessionTo(const RouterID& remote)
   {
-    Lock l(m_AuthedLinksMutex);
+    Lock l(&m_AuthedLinksMutex);
     RouterID r = remote;
     llarp::LogInfo("Closing all to ", r);
     auto range = m_AuthedLinks.equal_range(r);
@@ -275,7 +275,7 @@ namespace llarp
   void
   ILinkLayer::KeepAliveSessionTo(const RouterID& remote)
   {
-    Lock l(m_AuthedLinksMutex);
+    Lock l(&m_AuthedLinksMutex);
     auto range = m_AuthedLinks.equal_range(remote);
     auto itr   = range.first;
     while(itr != range.second)
@@ -290,7 +290,7 @@ namespace llarp
   {
     ILinkSession* s = nullptr;
     {
-      Lock l(m_AuthedLinksMutex);
+      Lock l(&m_AuthedLinksMutex);
       auto range = m_AuthedLinks.equal_range(remote);
       auto itr   = range.first;
       // pick lowest backlog session
@@ -365,7 +365,7 @@ namespace llarp
   bool
   ILinkLayer::PutSession(ILinkSession* s)
   {
-    Lock lock(m_PendingMutex);
+    Lock lock(&m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
     auto itr         = m_Pending.find(addr);
     if(itr != m_Pending.end())

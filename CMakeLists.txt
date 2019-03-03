@@ -186,7 +186,8 @@ endif(SHADOW)
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
-  add_compile_options( ${DEBUG_FLAGS} )
+  add_compile_options( ${DEBUG_FLAGS})
+  add_definitions(-DLOKINET_DEBUG=1)
   link_libraries( ${DEBUG_FLAGS} )
 endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 

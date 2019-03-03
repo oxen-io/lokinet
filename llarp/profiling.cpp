@@ -52,7 +52,7 @@ namespace llarp
   bool
   Profiling::IsBad(const RouterID& r, uint64_t chances)
   {
-    lock_t lock(m_ProfilesMutex);
+    lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
     if(itr == m_Profiles.end())
       return false;
@@ -62,21 +62,21 @@ namespace llarp
   void
   Profiling::MarkTimeout(const RouterID& r)
   {
-    lock_t lock(m_ProfilesMutex);
+    lock_t lock(&m_ProfilesMutex);
     m_Profiles[r].connectTimeoutCount += 1;
   }
 
   void
   Profiling::MarkSuccess(const RouterID& r)
   {
-    lock_t lock(m_ProfilesMutex);
+    lock_t lock(&m_ProfilesMutex);
     m_Profiles[r].connectGoodCount += 1;
   }
 
   void
   Profiling::MarkPathFail(path::Path* p)
   {
-    lock_t lock(m_ProfilesMutex);
+    lock_t lock(&m_ProfilesMutex);
     for(const auto& hop : p->hops)
     {
       // TODO: also mark bad?
@@ -87,7 +87,7 @@ namespace llarp
   void
   Profiling::MarkPathSuccess(path::Path* p)
   {
-    lock_t lock(m_ProfilesMutex);
+    lock_t lock(&m_ProfilesMutex);
     for(const auto& hop : p->hops)
     {
       m_Profiles[hop.rc.pubkey].pathSuccessCount += 1;
@@ -97,7 +97,7 @@ namespace llarp
   bool
   Profiling::Save(const char* fname)
   {
-    lock_t lock(m_ProfilesMutex);
+    lock_t lock(&m_ProfilesMutex);
     size_t sz = (m_Profiles.size() * (RouterProfile::MaxSize + 32 + 8)) + 8;
 
     std::vector< byte_t > tmp(sz, 0);
@@ -148,7 +148,7 @@ namespace llarp
   bool
   Profiling::Load(const char* fname)
   {
-    lock_t lock(m_ProfilesMutex);
+    lock_t lock(&m_ProfilesMutex);
     m_Profiles.clear();
     if(!BDecodeReadFile(fname, *this))
     {
