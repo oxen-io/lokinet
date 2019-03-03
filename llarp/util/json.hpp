@@ -3,9 +3,6 @@
 
 #include <util/string_view.hpp>
 
-#include <rapidjson/document.h>
-#include <rapidjson/writer.h>
-
 #include <nlohmann/json.hpp>
 
 #include <memory>
