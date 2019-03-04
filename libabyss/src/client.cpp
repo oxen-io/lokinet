@@ -14,11 +14,11 @@ namespace abyss
       // big
       static const size_t MAX_BODY_SIZE = (1024 * 1024);
       llarp_tcp_conn* m_Conn;
-      json::Document m_RequestBody;
+      nlohmann::json m_RequestBody;
       Headers_t m_SendHeaders;
       IRPCClientHandler* handler;
       std::unique_ptr< json::IParser > m_BodyParser;
-      json::Document m_Response;
+      nlohmann::json m_Response;
 
       enum State
       {
@@ -31,9 +31,12 @@ namespace abyss
 
       State state;
 
-      ConnImpl(llarp_tcp_conn* conn, RPC_Method_t method, RPC_Params params,
-               JSONRPC::HandlerFactory factory)
-          : m_Conn(conn), state(eInitial)
+      ConnImpl(llarp_tcp_conn* conn, const RPC_Method_t& method,
+               const RPC_Params& params, JSONRPC::HandlerFactory factory)
+          : m_Conn(conn)
+          , m_RequestBody(nlohmann::json::object())
+          , m_Response(nlohmann::json::object())
+          , state(eInitial)
       {
         srand(time(nullptr));
         conn->user   = this;
@@ -43,18 +46,12 @@ namespace abyss
 
         handler = factory(this);
 
-        m_RequestBody.SetObject();
-        auto& alloc = m_RequestBody.GetAllocator();
-        m_RequestBody.AddMember("jsonrpc", json::Value().SetString("2.0"),
-                                alloc);
+        m_RequestBody["jsonrpc"] = "2.0";
         llarp::AlignedBuffer< 8 > p;
         p.Randomize();
-        std::string str = p.ToHex();
-        m_RequestBody.AddMember(
-            "id", json::Value().SetString(str.c_str(), alloc), alloc);
-        m_RequestBody.AddMember(
-            "method", json::Value().SetString(method.c_str(), alloc), alloc);
-        m_RequestBody.AddMember("params", params, alloc);
+        m_RequestBody["id"]     = p.ToHex();
+        m_RequestBody["method"] = method;
+        m_RequestBody["params"] = params;
       }
 
       static void
@@ -220,8 +217,7 @@ namespace abyss
         // create request body
         std::string body;
         std::stringstream ss;
-        json::ToString(m_RequestBody, ss);
-        body = ss.str();
+        body = m_RequestBody.dump();
         m_SendHeaders.emplace("Content-Type", "application/json");
         m_SendHeaders.emplace("Content-Length", std::to_string(body.size()));
         m_SendHeaders.emplace("Accept", "application/json");
@@ -347,8 +343,7 @@ namespace abyss
       }
       auto& front = m_PendingCalls.front();
       ConnImpl* connimpl =
-          new ConnImpl(conn, std::move(front.method), std::move(front.params),
-                       std::move(front.createHandler));
+          new ConnImpl(conn, front.method, front.params, front.createHandler);
       m_PendingCalls.pop_front();
       m_Conns.emplace_back(connimpl->handler);
       connimpl->SendRequest();

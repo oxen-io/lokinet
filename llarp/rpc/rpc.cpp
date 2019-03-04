@@ -25,23 +25,28 @@ namespace llarp
       }
 
       virtual bool
-      HandleJSONResult(const json::Value& val) = 0;
+      HandleJSONResult(const nlohmann::json& val) = 0;
 
       bool
       HandleResponse(::abyss::http::RPC_Response response)
       {
-        if(!response.IsObject())
+        if(!response.is_object())
         {
           return HandleJSONResult({});
         }
-        const auto itr = response.FindMember("result");
-        if(itr == response.MemberEnd())
+        const auto itr = response.find("result");
+        if(itr == response.end())
         {
           return HandleJSONResult({});
         }
-        if(itr->value.IsObject())
-          return HandleJSONResult(itr->value);
-        return false;
+        else if(itr.value().is_object())
+        {
+          return HandleJSONResult(itr.value());
+        }
+        else
+        {
+          return false;
+        }
       }
 
       void
@@ -65,42 +70,40 @@ namespace llarp
       }
 
       bool
-      HandleJSONResult(const json::Value& result) override
+      HandleJSONResult(const nlohmann::json& result) override
       {
         PubkeyList_t keys;
-        if(!result.IsObject())
+        if(!result.is_object())
         {
           LogWarn("Invalid result: not an object");
           handler({}, false);
           return false;
         }
-        const auto itr = result.FindMember("keys");
-        if(itr == result.MemberEnd())
+        const auto itr = result.find("keys");
+        if(itr == result.end())
         {
           LogWarn("Invalid result: no keys member");
           handler({}, false);
           return false;
         }
-        if(!itr->value.IsArray())
+        if(!itr.value().is_array())
         {
           LogWarn("Invalid result: keys is not an array");
           handler({}, false);
           return false;
         }
-        auto key_itr = itr->value.Begin();
-        while(key_itr != itr->value.End())
+        for(const auto item : itr.value())
         {
-          if(key_itr->IsString())
+          if(item.is_string())
           {
             keys.emplace_back();
-            std::string str = key_itr->GetString();
+            std::string str = item.get< std::string >();
             if(!Base32Decode(str, keys.back()))
             {
               LogWarn("Invalid key: ", str);
               keys.pop_back();
             }
           }
-          ++key_itr;
         }
         handler(keys, true);
         return true;
@@ -149,9 +152,7 @@ namespace llarp
       AsyncUpdatePubkeyList()
       {
         LogInfo("Updating service node list");
-        json::Value params;
-        params.SetObject();
-        QueueRPC("get_all_service_nodes_keys", std::move(params),
+        QueueRPC("get_all_service_nodes_keys", nlohmann::json::object(),
                  std::bind(&CallerImpl::NewAsyncUpdatePubkeyListConn, this,
                            std::placeholders::_1));
       }
@@ -211,75 +212,59 @@ namespace llarp
       {
       }
 
-      bool
-      DumpState(Response& resp) const
+      Response
+      DumpState() const
       {
         util::StatusObject dump = router->ExtractStatus();
-        dump.Impl.Accept(resp);
-        return true;
+        return dump.get();
       }
 
-      bool
-      ListExitLevels(Response& resp) const
+      Response
+      ListExitLevels() const
       {
         exit::Context::TrafficStats stats;
         router->exitContext().CalculateExitTraffic(stats);
-        resp.StartArray();
-        auto itr = stats.begin();
-        while(itr != stats.end())
+        Response resp;
+
+        for(const auto& stat : stats)
         {
-          resp.StartObject();
-          resp.Key("ident");
-          resp.String(itr->first.ToHex().c_str());
-          resp.Key("tx");
-          resp.Uint64(itr->second.first);
-          resp.Key("rx");
-          resp.Uint64(itr->second.second);
-          resp.EndObject();
-          ++itr;
+          resp.emplace_back(Response{
+              {"ident", stat.first.ToHex()},
+              {"tx", stat.second.first},
+              {"rx", stat.second.second},
+          });
         }
-        resp.EndArray();
-        return true;
+        return resp;
       }
 
-      bool
-      ListNeighboors(Response& resp) const
+      Response
+      ListNeighboors() const
       {
-        resp.StartArray();
+        Response resp = Response::array();
         router->ForEachPeer([&](const ILinkSession* session, bool outbound) {
-          resp.StartObject();
-          auto ident = RouterID(session->GetPubKey()).ToString();
-          resp.Key("ident");
-          resp.String(ident.c_str());
-
-          auto addr = session->GetRemoteEndpoint().ToString();
-          resp.Key("addr");
-          resp.String(addr.c_str());
-
-          resp.Key("outbound");
-          resp.Bool(outbound);
-          resp.EndObject();
+          resp.emplace_back(
+              Response{{"ident", RouterID(session->GetPubKey()).ToString()},
+                       {"addr", session->GetRemoteEndpoint().ToString()},
+                       {"outbound", outbound}});
         });
-        resp.EndArray();
-        return true;
+        return resp;
       }
 
-      bool
+      absl::optional< Response >
       HandleJSONRPC(Method_t method,
-                    __attribute__((unused)) const Params& params,
-                    Response& response)
+                    __attribute__((unused)) const Params& params)
       {
         if(method == "llarp.admin.link.neighboors")
         {
-          return ListNeighboors(response);
+          return ListNeighboors();
         }
         else if(method == "llarp.admin.exit.list")
         {
-          return ListExitLevels(response);
+          return ListExitLevels();
         }
         else if(method == "llarp.admin.dumpstate")
         {
-          return DumpState(response);
+          return DumpState();
         }
         return false;
       }

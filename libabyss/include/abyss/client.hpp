@@ -18,8 +18,8 @@ namespace abyss
   namespace http
   {
     using RPC_Method_t = std::string;
-    using RPC_Params   = llarp::json::Value;
-    using RPC_Response = llarp::json::Document;
+    using RPC_Params   = nlohmann::json;
+    using RPC_Response = nlohmann::json;
     using Headers_t    = std::unordered_multimap< std::string, std::string >;
     struct ConnImpl;
 

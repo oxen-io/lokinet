@@ -20,7 +20,7 @@ option(WITH_COVERAGE "generate coverage data")
 
 # Basic definitions
 get_filename_component(CORE_INCLUDE include ABSOLUTE)
-get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/${ABYSS}/include" ABSOLUTE CACHE)
+get_filename_component(ABYSS_INCLUDE "${CMAKE_CURRENT_LIST_DIR}/${ABYSS}/include" ABSOLUTE)
 
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
@@ -53,6 +53,8 @@ if (WIN32 AND NOT STATIC_LINK_RUNTIME)
   message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
   #set(STATIC_LINK_RUNTIME ON)
 endif(WIN32 AND NOT STATIC_LINK_RUNTIME)
+
+add_subdirectory(vendor/nlohmann)
 
 # still need the headers unconditionally
 set(ABSEIL_DIR vendor/abseil-cpp)

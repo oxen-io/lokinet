@@ -1,7 +1,7 @@
 FROM debian:stable
 
 RUN apt update && \
-    apt install -y build-essential cmake git libcap-dev curl rapidjson-dev ninja-build
+    apt install -y build-essential cmake git libcap-dev curl ninja-build
 
 WORKDIR /src/
 
