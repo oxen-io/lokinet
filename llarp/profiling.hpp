@@ -17,6 +17,7 @@ namespace llarp
     uint64_t connectGoodCount       = 0;
     uint64_t pathSuccessCount       = 0;
     uint64_t pathFailCount          = 0;
+    llarp_time_t lastUpdated        = 0;
 
     RouterProfile() : IBEncodeMessage(){};
 
@@ -30,6 +31,14 @@ namespace llarp
 
     bool
     IsGood(uint64_t chances) const;
+
+    /// clear stats
+    void
+    Clear();
+
+    // rotate stats if timeout reached
+    void
+    Tick();
   };
 
   struct Profiling final : public IBEncodeMessage
@@ -50,6 +59,9 @@ namespace llarp
 
     void
     MarkTimeout(const RouterID& r);
+
+    void
+    Tick();
 
     bool
     BEncode(llarp_buffer_t* buf) const override;

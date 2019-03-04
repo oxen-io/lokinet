@@ -210,7 +210,7 @@ namespace llarp
         return router->NumberOfConnectedRouters()
             && router->GetRandomConnectedRouter(cur);
 
-      size_t tries = 5;
+      size_t tries = 10;
       do
       {
         --tries;
@@ -326,6 +326,7 @@ namespace llarp
     Builder::HandlePathBuilt(Path* p)
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
+      router->routerProfiling().MarkPathSuccess(p);
       PathSet::HandlePathBuilt(p);
     }
 
@@ -336,6 +337,7 @@ namespace llarp
       static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
       buildIntervalLimit =
           std::max(1000 + buildIntervalLimit, MaxBuildInterval);
+      router->routerProfiling().MarkPathFail(p);
       PathSet::HandlePathBuildTimeout(p);
     }
 
