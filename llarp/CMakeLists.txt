@@ -40,6 +40,7 @@ target_link_libraries(${UTIL_LIB} PUBLIC nlohmann_json::nlohmann_json)
 # cut back on fluff
 if (NOT WIN32)
     target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings absl::hash cppbackport)
+# TODO #371: link against absl::synchronization on windows
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -61,6 +62,15 @@ set(LIB_PLATFORM_SRC
   ${EV_SRC}
 )
 
+if (WIN32)
+set(LIB_PLATFORM_SRC
+${LIB_PLATFORM_SRC}
+win32/win32_inet.c
+win32/win32_intrnl.c
+win32/win32_upoll.c
+)
+endif(WIN32)
+
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
 target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} libutp Threads::Threads)
 
@@ -75,14 +85,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if(WIN32)
-  # win32 inline code
-  get_filename_component(win32_inet win32/win32_inet.c ABSOLUTE)
-  get_filename_component(win32_intrnl win32/win32_intrnl.c ABSOLUTE)
-  get_filename_component(win32_upoll win32/win32_upoll.c ABSOLUTE)
-  target_sources(${PLATFORM_LIB} PUBLIC ${win32_inet} ${win32_intrnl} ${win32_upoll})
   target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
 endif()
-
 set(DNSLIB_SRC
   dns/dotlokilookup.cpp
   dns/dns.cpp
