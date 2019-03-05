@@ -9,9 +9,6 @@ namespace llarp
 {
   namespace thread
   {
-    using mtx_t  = util::Mutex;
-    using lock_t = util::Lock;
-
     using Pool = ThreadPool;
 
     struct IsolatedPool : public Pool

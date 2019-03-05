@@ -257,6 +257,10 @@ main(int argc, char *argv[])
     return 1;
   }
 
+#ifdef LOKINET_DEBUG
+  absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
+#endif
+
   llarp::RouterContact tmp;
 
   if(verifyMode)

@@ -4,6 +4,7 @@
 #include <util/threading.hpp>
 #include <util/threadpool.hpp>
 
+#include <absl/base/thread_annotations.h>
 #include <memory>
 #include <queue>
 
@@ -11,19 +12,25 @@ struct llarp_threadpool
 {
   std::unique_ptr< llarp::thread::ThreadPool > impl;
 
-  llarp::util::Mutex m_access;
-  uint32_t ids = 0;
-  std::queue< std::function< void(void) > > jobs;
+  mutable llarp::util::Mutex m_access;  // protects jobs
+  std::queue< std::function< void(void) > > jobs GUARDED_BY(m_access);
 
   llarp_threadpool(int workers, const char *name)
-      : impl(std::make_unique< llarp::thread::ThreadPool >(workers,
-                                                           workers * 128))
+      : impl(
+          std::make_unique< llarp::thread::ThreadPool >(workers, workers * 128))
   {
     (void)name;
   }
 
   llarp_threadpool()
   {
+  }
+
+  size_t
+  size() const LOCKS_EXCLUDED(m_access)
+  {
+    absl::ReaderMutexLock l(&m_access);
+    return jobs.size();
   }
 };
 

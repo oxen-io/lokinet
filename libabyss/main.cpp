@@ -1,6 +1,8 @@
 #include <libabyss.hpp>
 #include <net/net.hpp>
 
+#include <absl/synchronization/mutex.h>
+
 #ifndef _WIN32
 #include <sys/signal.h>
 #endif
@@ -115,6 +117,10 @@ main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
     perror("Failed to start Windows Sockets");
     return err;
   }
+#endif
+
+#ifdef LOKINET_DEBUG
+  absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
 #endif
   llarp::SetLogLevel(llarp::eLogDebug);
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();

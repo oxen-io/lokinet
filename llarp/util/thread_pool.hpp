@@ -4,6 +4,7 @@
 #include <util/queue.hpp>
 #include <util/threading.hpp>
 
+#include <atomic>
 #include <functional>
 #include <thread>
 #include <vector>
@@ -36,17 +37,15 @@ namespace llarp
 
       std::atomic_size_t m_idleThreads;  // Number of idle threads
 
-      std::mutex m_mutex;
+      util::Mutex m_mutex;
 
       std::atomic< Status > m_status;
 
-      size_t m_gateCount;
-      size_t m_numThreadsReady;  // Threads ready to go through the gate.
+      size_t m_gateCount GUARDED_BY(m_gateMutex);
+      size_t m_numThreadsReady
+          GUARDED_BY(m_gateMutex);  // Threads ready to go through the gate.
 
-      std::mutex m_gateMutex;
-      std::condition_variable m_threadsReadyCond;
-
-      std::condition_variable m_gateCond;
+      util::Mutex m_gateMutex;
 
       std::vector< std::thread > m_threads;
       size_t m_createdThreads;
@@ -74,6 +73,12 @@ namespace llarp
 
       bool
       spawn();
+
+      bool
+      allThreadsReady() const SHARED_LOCKS_REQUIRED(m_gateMutex)
+      {
+        return m_numThreadsReady == m_threads.size();
+      }
 
      public:
       ThreadPool(size_t numThreads, size_t maxJobs);

@@ -100,6 +100,10 @@ main(int argc, char *argv[])
   SetConsoleCtrlHandler(handle_signal_win32, TRUE);
 #endif
 
+#ifdef LOKINET_DEBUG
+  absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
+#endif
+
   int opt            = 0;
   bool genconfigOnly = false;
   bool asRouter      = false;

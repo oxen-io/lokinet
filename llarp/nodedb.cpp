@@ -18,7 +18,7 @@ static const std::string RC_FILE_EXT = ".signed";
 bool
 llarp_nodedb::Remove(const llarp::RouterID &pk)
 {
-  llarp::util::Lock lock(access);
+  llarp::util::Lock lock(&access);
   auto itr = entries.find(pk);
   if(itr == entries.end())
     return false;
@@ -30,17 +30,14 @@ llarp_nodedb::Remove(const llarp::RouterID &pk)
 void
 llarp_nodedb::Clear()
 {
-  llarp::util::Lock lock(access);
+  llarp::util::Lock lock(&access);
   entries.clear();
 }
 
 bool
-llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result,
-                  bool lock)
+llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
 {
-  std::unique_ptr< llarp::util::Lock > l;
-  if(lock)
-    l.reset(new llarp::util::Lock(access));
+  llarp::util::Lock l(&access);
   auto itr = entries.find(pk);
   if(itr == entries.end())
     return false;
@@ -51,7 +48,7 @@ llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result,
 bool
 llarp_nodedb::Has(const llarp::RouterID &pk)
 {
-  llarp::util::Lock lock(access);
+  llarp::util::Lock lock(&access);
   return entries.find(pk) != entries.end();
 }
 
@@ -108,7 +105,7 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
   std::array< byte_t, MAX_RC_SIZE > tmp;
   llarp_buffer_t buf(tmp);
   {
-    llarp::util::Lock lock(access);
+    llarp::util::Lock lock(&access);
     auto itr = entries.find(rc.pubkey.as_array());
     if(itr != entries.end())
       entries.erase(itr);
@@ -188,7 +185,7 @@ llarp_nodedb::loadfile(const fs::path &fpath)
     return false;
   }
   {
-    llarp::util::Lock lock(access);
+    llarp::util::Lock lock(&access);
     entries.emplace(rc.pubkey.as_array(), rc);
   }
   return true;
@@ -197,7 +194,7 @@ llarp_nodedb::loadfile(const fs::path &fpath)
 void
 llarp_nodedb::visit(std::function< bool(const llarp::RouterContact &) > visit)
 {
-  llarp::util::Lock lock(access);
+  llarp::util::Lock lock(&access);
   auto itr = entries.begin();
   while(itr != entries.end())
   {
@@ -211,7 +208,7 @@ bool
 llarp_nodedb::iterate(llarp_nodedb_iter &i)
 {
   i.index = 0;
-  llarp::util::Lock lock(access);
+  llarp::util::Lock lock(&access);
   auto itr = entries.begin();
   while(itr != entries.end())
   {
@@ -362,7 +359,7 @@ int
 llarp_nodedb::iterate_all(struct llarp_nodedb_iter i)
 {
   iterate(i);
-  return entries.size();
+  return num_loaded();
 }
 
 /// maybe rename to verify_and_set
@@ -388,13 +385,14 @@ llarp_nodedb_async_load_rc(struct llarp_async_load_rc *job)
 size_t
 llarp_nodedb::num_loaded() const
 {
+  absl::ReaderMutexLock l(&access);
   return entries.size();
 }
 
 bool
 llarp_nodedb::select_random_exit(llarp::RouterContact &result)
 {
-  llarp::util::Lock lock(access);
+  llarp::util::Lock lock(&access);
   const auto sz = entries.size();
   auto itr      = entries.begin();
   if(sz < 3)
@@ -429,7 +427,7 @@ bool
 llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
                                 llarp::RouterContact &result, size_t N)
 {
-  llarp::util::Lock lock(access);
+  llarp::util::Lock lock(&access);
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
   size_t sz = entries.size();

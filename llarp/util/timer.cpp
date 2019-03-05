@@ -56,12 +56,13 @@ namespace llarp
 
 struct llarp_timer_context
 {
-  llarp::util::Mutex timersMutex;
-  std::unordered_map< uint32_t, std::unique_ptr< llarp::timer > > timers;
+  llarp::util::Mutex timersMutex;  // protects timers
+  std::unordered_map< uint32_t, std::unique_ptr< llarp::timer > > timers
+      GUARDED_BY(timersMutex);
   std::priority_queue< std::unique_ptr< llarp::timer > > calling;
   llarp::util::Mutex tickerMutex;
   std::unique_ptr< llarp::util::Condition > ticker;
-  std::chrono::milliseconds nextTickLen = std::chrono::milliseconds(100);
+  absl::Duration nextTickLen = absl::Milliseconds(100);
 
   llarp_time_t m_Now;
 
@@ -90,9 +91,9 @@ struct llarp_timer_context
   }
 
   void
-  cancel(uint32_t id)
+  cancel(uint32_t id) LOCKS_EXCLUDED(timersMutex)
   {
-    llarp::util::Lock lock(timersMutex);
+    llarp::util::Lock lock(&timersMutex);
     const auto& itr = timers.find(id);
     if(itr == timers.end())
       return;
@@ -100,9 +101,9 @@ struct llarp_timer_context
   }
 
   void
-  remove(uint32_t id)
+  remove(uint32_t id) LOCKS_EXCLUDED(timersMutex)
   {
-    llarp::util::Lock lock(timersMutex);
+    llarp::util::Lock lock(&timersMutex);
     const auto& itr = timers.find(id);
     if(itr == timers.end())
       return;
@@ -112,8 +113,9 @@ struct llarp_timer_context
 
   uint32_t
   call_later(void* user, llarp_timer_handler_func func, uint64_t timeout_ms)
+      LOCKS_EXCLUDED(timersMutex)
   {
-    llarp::util::Lock lock(timersMutex);
+    llarp::util::Lock lock(&timersMutex);
 
     uint32_t id = ++ids;
     timers.emplace(
@@ -122,12 +124,12 @@ struct llarp_timer_context
   }
 
   void
-  cancel_all()
+  cancel_all() LOCKS_EXCLUDED(timersMutex)
   {
     std::list< uint32_t > ids;
 
     {
-      llarp::util::Lock lock(timersMutex);
+      llarp::util::Lock lock(&timersMutex);
 
       for(auto& item : timers)
       {
@@ -174,10 +176,11 @@ llarp_timer_stop(struct llarp_timer_context* t)
 {
   // destroy all timers
   // don't call callbacks on timers
+  llarp::util::Lock lock(&t->timersMutex);
   t->timers.clear();
   t->stop();
   if(t->ticker)
-    t->ticker->NotifyAll();
+    t->ticker->SignalAll();
 }
 
 void
@@ -202,7 +205,7 @@ llarp_timer_tick_all(struct llarp_timer_context* t)
 
   std::list< std::unique_ptr< llarp::timer > > hit;
   {
-    llarp::util::Lock lock(t->timersMutex);
+    llarp::util::Lock lock(&t->timersMutex);
     auto itr = t->timers.begin();
     while(itr != t->timers.end())
     {
@@ -250,13 +253,13 @@ llarp_timer_run(struct llarp_timer_context* t, struct llarp_threadpool* pool)
     // wait for timer mutex
     if(t->ticker)
     {
-      llarp::util::Lock lock(t->tickerMutex);
-      t->ticker->WaitFor(lock, t->nextTickLen);
+      llarp::util::Lock lock(&t->tickerMutex);
+      t->ticker->WaitWithTimeout(&t->tickerMutex, t->nextTickLen);
     }
 
     if(t->run())
     {
-      llarp::util::Lock lock(t->timersMutex);
+      llarp::util::Lock lock(&t->timersMutex);
       // we woke up
       llarp_timer_tick_all_async(t, pool, llarp::time_now_ms());
     }

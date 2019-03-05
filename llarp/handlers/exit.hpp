@@ -170,8 +170,8 @@ namespace llarp
       using Pkt_t = net::IPv4Packet;
       using PacketQueue_t =
           util::CoDelQueue< Pkt_t, Pkt_t::GetTime, Pkt_t::PutTime,
-                            Pkt_t::CompareOrder, Pkt_t::GetNow,
-                            util::DummyMutex, util::DummyLock, 5, 100, 1024 >;
+                            Pkt_t::CompareOrder, Pkt_t::GetNow, util::NullMutex,
+                            util::NullLock, 5, 100, 1024 >;
 
       /// internet to llarp packet queue
       PacketQueue_t m_InetToNetwork;

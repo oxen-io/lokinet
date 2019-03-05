@@ -16,14 +16,14 @@ namespace llarp
     PathSet::ShouldBuildMore(llarp_time_t now) const
     {
       (void)now;
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       return m_Paths.size() < m_NumPaths;
     }
 
     bool
     PathSet::ShouldBuildMoreForRoles(llarp_time_t now, PathRole roles) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       const size_t required = MinRequiredForRoles(roles);
       size_t has            = 0;
       for(const auto& item : m_Paths)
@@ -48,7 +48,7 @@ namespace llarp
     PathSet::NumPathsExistingAt(llarp_time_t futureTime) const
     {
       size_t num = 0;
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       for(const auto& item : m_Paths)
       {
         if(!item.second->Expired(futureTime))
@@ -60,7 +60,7 @@ namespace llarp
     void
     PathSet::Tick(llarp_time_t now, AbstractRouter* r)
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       for(auto& item : m_Paths)
       {
         item.second->Tick(now, r);
@@ -70,7 +70,7 @@ namespace llarp
     void
     PathSet::ExpirePaths(llarp_time_t now)
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       if(m_Paths.size() == 0)
         return;
       auto itr = m_Paths.begin();
@@ -89,7 +89,7 @@ namespace llarp
     Path*
     PathSet::GetEstablishedPathClosestTo(RouterID id, PathRole roles) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       Path* path = nullptr;
       AlignedBuffer< 32 > dist;
       AlignedBuffer< 32 > to = id;
@@ -113,7 +113,7 @@ namespace llarp
     Path*
     PathSet::GetNewestPathByRouter(RouterID id, PathRole roles) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       Path* chosen = nullptr;
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
@@ -136,7 +136,7 @@ namespace llarp
     Path*
     PathSet::GetPathByRouter(RouterID id, PathRole roles) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       Path* chosen = nullptr;
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
@@ -159,7 +159,7 @@ namespace llarp
     Path*
     PathSet::GetPathByID(PathID_t id) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
@@ -173,7 +173,7 @@ namespace llarp
     size_t
     PathSet::AvailablePaths(PathRole roles) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       size_t count = 0;
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
@@ -189,7 +189,7 @@ namespace llarp
     size_t
     PathSet::NumInStatus(PathStatus st) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       size_t count = 0;
       auto itr     = m_Paths.begin();
       while(itr != m_Paths.end())
@@ -204,7 +204,7 @@ namespace llarp
     void
     PathSet::AddPath(Path* path)
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       auto upstream = path->Upstream();  // RouterID
       auto RXID     = path->RXID();      // PathID
       m_Paths.emplace(std::make_pair(upstream, RXID), path);
@@ -213,14 +213,14 @@ namespace llarp
     void
     PathSet::RemovePath(Path* path)
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       m_Paths.erase({path->Upstream(), path->RXID()});
     }
 
     Path*
     PathSet::GetByUpstream(RouterID remote, PathID_t rxid) const
     {
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       auto itr = m_Paths.find({remote, rxid});
       if(itr == m_Paths.end())
         return nullptr;
@@ -239,7 +239,7 @@ namespace llarp
     {
       intros.clear();
       size_t count = 0;
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
@@ -259,7 +259,7 @@ namespace llarp
     {
       intros.clear();
       size_t count = 0;
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
@@ -284,7 +284,7 @@ namespace llarp
     {
       intro.Clear();
       bool found = false;
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
@@ -303,7 +303,7 @@ namespace llarp
     PathSet::PickRandomEstablishedPath(PathRole roles) const
     {
       std::vector< Path* > established;
-      Lock_t l(m_PathsMutex);
+      Lock_t l(&m_PathsMutex);
       auto itr = m_Paths.begin();
       while(itr != m_Paths.end())
       {
