@@ -374,13 +374,22 @@ llarp_kqueue_loop::tick(int ms)
       llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
       if(ev)
       {
-        if(events[idx].filter & EVFILT_WRITE)
+        if(events[idx].filter & EV_ERROR)
         {
-          ev->flush_write_buffers(events[idx].data);
+          ev->error();
         }
-        if(events[idx].filter & EVFILT_READ)
-          ev->read(readbuf,
-                   std::min(sizeof(readbuf), size_t(events[idx].data)));
+        else if(events[idx.filter] & EV_EOF == 0)
+        {
+          if(events[idx].filter & EVFILT_WRITE)
+          {
+            ev->flush_write_buffers(events[idx].data);
+          }
+          if(events[idx].filter & EVFILT_READ)
+          {
+            ev->read(readbuf,
+                     std::min(sizeof(readbuf), size_t(events[idx].data)));
+          }
+        }
       }
       ++idx;
     }
