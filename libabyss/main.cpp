@@ -13,14 +13,12 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
   {
   }
 
-  bool
-  HandleJSONRPC(Method_t method, __attribute__((unused)) const Params& params,
-                Response& resp) override
+  absl::optional< Response >
+  HandleJSONRPC(Method_t method,
+                __attribute__((unused)) const Params& params) override
   {
     llarp::LogInfo("method: ", method);
-    resp.StartObject();
-    resp.EndObject();
-    return true;
+    return Response::object();
   }
 };
 
@@ -83,9 +81,7 @@ struct DemoClient : public abyss::http::JSONRPC
   void
   DoDemoRequest()
   {
-    llarp::json::Value params;
-    params.SetObject();
-    QueueRPC("test", std::move(params),
+    QueueRPC("test", nlohmann::json::object(),
              std::bind(&DemoClient::NewConn, this, std::placeholders::_1));
     Flush();
   };

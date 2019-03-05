@@ -18,6 +18,8 @@ namespace llarp
       return false;
     if(!BEncodeWriteDictInt("t", connectTimeoutCount, buf))
       return false;
+    if(!BEncodeWriteDictInt("u", lastUpdated, buf))
+      return false;
     if(!BEncodeWriteDictInt("v", version, buf))
       return false;
 
@@ -32,6 +34,8 @@ namespace llarp
       return false;
     if(!BEncodeMaybeReadDictInt("t", connectTimeoutCount, read, k, buf))
       return false;
+    if(!BEncodeMaybeReadDictInt("u", lastUpdated, read, k, buf))
+      return false;
     if(!BEncodeMaybeReadDictInt("v", version, read, k, buf))
       return false;
     if(!BEncodeMaybeReadDictInt("s", pathFailCount, read, k, buf))
@@ -39,6 +43,28 @@ namespace llarp
     if(!BEncodeMaybeReadDictInt("p", pathSuccessCount, read, k, buf))
       return false;
     return read;
+  }
+
+  void
+  RouterProfile::Clear()
+  {
+    connectGoodCount    = 0;
+    connectTimeoutCount = 0;
+    pathSuccessCount    = 0;
+    pathFailCount       = 0;
+    lastUpdated         = llarp::time_now_ms();
+  }
+
+  void
+  RouterProfile::Tick()
+  {
+    // 10 minutes
+    static constexpr llarp_time_t updateInterval = DEFAULT_PATH_LIFETIME;
+    auto now                                     = llarp::time_now_ms();
+    if(lastUpdated < now && now - lastUpdated > updateInterval)
+    {
+      Clear();
+    }
   }
 
   bool
@@ -60,10 +86,19 @@ namespace llarp
   }
 
   void
+  Profiling::Tick()
+  {
+    lock_t lock(m_ProfilesMutex);
+    std::for_each(m_Profiles.begin(), m_Profiles.end(),
+                  [](auto& item) { item.second.Tick(); });
+  }
+
+  void
   Profiling::MarkTimeout(const RouterID& r)
   {
     lock_t lock(&m_ProfilesMutex);
     m_Profiles[r].connectTimeoutCount += 1;
+    m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
 
   void
@@ -71,6 +106,7 @@ namespace llarp
   {
     lock_t lock(&m_ProfilesMutex);
     m_Profiles[r].connectGoodCount += 1;
+    m_Profiles[r].lastUpdated = llarp::time_now_ms();
   }
 
   void
@@ -81,6 +117,7 @@ namespace llarp
     {
       // TODO: also mark bad?
       m_Profiles[hop.rc.pubkey].pathFailCount += 1;
+      m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
     }
   }
 
@@ -91,6 +128,7 @@ namespace llarp
     for(const auto& hop : p->hops)
     {
       m_Profiles[hop.rc.pubkey].pathSuccessCount += 1;
+      m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
     }
   }
 

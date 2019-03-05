@@ -189,7 +189,7 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
           return true;
         }
       },
-      [&](llarp::ILinkSession * s) -> bool {
+      [&](llarp::ILinkSession* s) -> bool {
         const auto rc = s->GetRemoteRC();
         return rc.pubkey == Bob.GetRC().pubkey;
       },
@@ -228,12 +228,12 @@ TEST_F(LinkLayerTest, TestUTPAliceRenegWithBob)
         Bob.gotLIM = true;
         return sendDiscardMessage(s);
       },
-      [&](llarp::ILinkSession * s) -> bool {
+      [&](llarp::ILinkSession* s) -> bool {
         if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
           return false;
         llarp::LogInfo("bob established with alice");
         return Bob.link->VisitSessionByPubkey(Alice.GetRC().pubkey.as_array(),
-                                       sendDiscardMessage);
+                                              sendDiscardMessage);
       },
       [&](llarp::RouterContact newrc, llarp::RouterContact oldrc) -> bool {
         success = newrc.pubkey == oldrc.pubkey;
@@ -262,10 +262,21 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
   Alice.link = llarp::utp::NewServer(
       &crypto, Alice.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Alice.GetRC(); },
-      [&](llarp::ILinkSession*, const llarp_buffer_t& buf) -> bool {
+      [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
+        llarp::LinkIntroMessage lim;
+        llarp_buffer_t copy(buf.base, buf.sz);
+        if(lim.BDecode(&copy))
+        {
+          if(s->GotLIM(&lim))
+          {
+            Alice.gotLIM = true;
+            return true;
+          }
+          return false;
+        }
         return AliceGotMessage(buf);
       },
-      [&](llarp::ILinkSession * s) -> bool {
+      [&](llarp::ILinkSession* s) -> bool {
         if(s->GetRemoteRC().pubkey != Bob.GetRC().pubkey)
           return false;
         llarp::LogInfo("alice established with bob");
@@ -284,24 +295,36 @@ TEST_F(LinkLayerTest, TestUTPAliceConnectToBob)
   Bob.link = llarp::utp::NewServer(
       &crypto, Bob.encryptionKey,
       [&]() -> const llarp::RouterContact& { return Bob.GetRC(); },
-      [&](llarp::ILinkSession*, const llarp_buffer_t& ) -> bool {
+      [&](llarp::ILinkSession* s, const llarp_buffer_t& buf) -> bool {
+        llarp::LinkIntroMessage lim;
+        llarp_buffer_t copy(buf.base, buf.sz);
+        if(lim.BDecode(&copy))
+        {
+          if(s->GotLIM(&lim))
+          {
+            Bob.gotLIM = true;
+            return true;
+          }
+          return false;
+        }
         return true;
       },
-      [&](llarp::ILinkSession * s) -> bool {
+      [&](llarp::ILinkSession* s) -> bool {
         if(s->GetRemoteRC().pubkey != Alice.GetRC().pubkey)
           return false;
         llarp::LogInfo("bob established with alice");
-        logic->queue_job({s, [](void * u) {
-          llarp::ILinkSession * self = static_cast<llarp::ILinkSession*>(u);
-          std::array< byte_t, 32 > tmp;
-          llarp_buffer_t otherBuf(tmp);
-          llarp::DiscardMessage discard;
-          if(!discard.BEncode(&otherBuf))
-            return;
-          otherBuf.sz  = otherBuf.cur - otherBuf.base;
-          otherBuf.cur = otherBuf.base;
-          self->SendMessageBuffer(otherBuf);
-        }});
+        logic->queue_job({s, [](void* u) {
+                            llarp::ILinkSession* self =
+                                static_cast< llarp::ILinkSession* >(u);
+                            std::array< byte_t, 32 > tmp;
+                            llarp_buffer_t otherBuf(tmp);
+                            llarp::DiscardMessage discard;
+                            if(!discard.BEncode(&otherBuf))
+                              return;
+                            otherBuf.sz  = otherBuf.cur - otherBuf.base;
+                            otherBuf.cur = otherBuf.base;
+                            self->SendMessageBuffer(otherBuf);
+                          }});
         return true;
       },
       [&](llarp::RouterContact, llarp::RouterContact) -> bool { return true; },

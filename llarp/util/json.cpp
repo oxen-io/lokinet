@@ -9,10 +9,12 @@ namespace llarp
 {
   namespace json
   {
-    struct RapidJSONParser : public IParser
+    struct NlohmannJSONParser : public IParser
     {
-      RapidJSONParser(size_t contentSize) : m_Buf(contentSize + 1), m_Offset(0)
+      NlohmannJSONParser(size_t contentSize)
+          : m_Buf(contentSize + 1), m_Offset(0)
       {
+        assert(contentSize != 0);
       }
 
       std::vector< char > m_Buf;
@@ -23,36 +25,34 @@ namespace llarp
       {
         if(m_Offset + sz > m_Buf.size() - 1)
           return false;
-        memcpy(m_Buf.data() + m_Offset, buf, sz);
+        std::copy(buf, buf + sz, m_Buf.begin());
         m_Offset += sz;
         m_Buf[m_Offset] = 0;
         return true;
       }
 
       Result
-      Parse(Document& obj) const
+      Parse(nlohmann::json& obj) const
       {
         if(m_Offset < m_Buf.size() - 1)
           return eNeedData;
-        obj.Parse(m_Buf.data());
-        if(obj.HasParseError())
+
+        try
+        {
+          obj = nlohmann::json::parse(m_Buf.data());
+          return eDone;
+        }
+        catch(const nlohmann::json::exception&)
+        {
           return eParseError;
-        return eDone;
+        }
       }
     };
 
     IParser*
     MakeParser(size_t contentSize)
     {
-      return new RapidJSONParser(contentSize);
-    }
-
-    void
-    ToString(const json::Document& val, std::ostream& out)
-    {
-      Stream s(out);
-      rapidjson::Writer< Stream > writer(s);
-      val.Accept(writer);
+      return new NlohmannJSONParser(contentSize);
     }
 
   }  // namespace json

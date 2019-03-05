@@ -110,7 +110,7 @@ struct ClientHandler : public abyss::http::IRPCClientHandler
   void
   HandleError()
   {
-    ASSERT_TRUE(false);
+    FAIL() << "unexpected error";
   }
 
   void
@@ -134,15 +134,12 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   {
   }
 
-  bool
-  HandleJSONRPC(Method_t method, __attribute__((unused)) const Params& params,
-                Response& response)
+  absl::optional< Response >
+  HandleJSONRPC(Method_t method, __attribute__((unused)) const Params& params)
   {
     test->AssertMethod(method);
     test->called = true;
-    response.StartObject();
-    response.EndObject();
-    return true;
+    return Response();
   }
 };
 
@@ -200,9 +197,7 @@ struct AbyssTest : public AbyssTestBase,
 TEST_F(AbyssTest, TestClientAndServer)
 {
   Start();
-  llarp::json::Value params;
-  params.SetObject();
-  QueueRPC(method, std::move(params),
+  QueueRPC(method, nlohmann::json::object(),
            std::bind(&AbyssTest::NewConn, this, std::placeholders::_1));
 
   AsyncFlush();

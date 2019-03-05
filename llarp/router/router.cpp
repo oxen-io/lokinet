@@ -1022,6 +1022,8 @@ namespace llarp
     // LogDebug("tick router");
     auto now = Now();
 
+    routerProfiling().Tick();
+
     if(_rc.ExpiresSoon(now, randint() % 10000))
     {
       LogInfo("regenerating RC");
