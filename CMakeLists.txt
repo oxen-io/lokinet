@@ -7,6 +7,7 @@ project(${PROJECT_NAME} C CXX ASM)
 # Core options
 option(USE_AVX2 "enable avx2 code" )
 option(USE_NETNS "enable networking namespace support. Linux only" )
+option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU, but does not show in CPUID)" )
 option(STATIC_LINK_RUNTIME "link statically against compiler runtime, standard library and pthreads")
 option(NON_PC_TARGET "non-pc target build: iphone, andriod, embedded non-i386 SBC, etc" )
 option(SHADOW "use shadow testing framework. linux only" )
@@ -121,6 +122,12 @@ elseif(NOT ANDROID AND NOT NON_PC_TARGET)
     set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
   endif()
 endif()
+
+# only needed if using AVX2
+if(AMD_RYZEN_HACK AND USE_AVX2)
+  set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
+  message(WARNING "This option may be removed in a future release. Contact your computer manufacturer for updated ROMs or microcode patches.")
+endif(AMD_RYZEN_HACK AND USE_AVX2)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
