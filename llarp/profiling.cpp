@@ -46,24 +46,24 @@ namespace llarp
   }
 
   void
-  RouterProfile::Clear()
+  RouterProfile::Decay()
   {
-    connectGoodCount    = 0;
-    connectTimeoutCount = 0;
-    pathSuccessCount    = 0;
-    pathFailCount       = 0;
-    lastUpdated         = llarp::time_now_ms();
+    connectGoodCount /= 2;
+    connectTimeoutCount /= 2;
+    pathSuccessCount /= 2;
+    pathFailCount /= 2;
+    lastUpdated = llarp::time_now_ms();
   }
 
   void
   RouterProfile::Tick()
   {
-    // 10 minutes
-    static constexpr llarp_time_t updateInterval = DEFAULT_PATH_LIFETIME;
+    // 20 minutes
+    static constexpr llarp_time_t updateInterval = DEFAULT_PATH_LIFETIME * 2;
     auto now                                     = llarp::time_now_ms();
     if(lastUpdated < now && now - lastUpdated > updateInterval)
     {
-      Clear();
+      Decay();
     }
   }
 
