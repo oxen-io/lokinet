@@ -7,7 +7,6 @@ project(${PROJECT_NAME} C CXX ASM)
 # Core options
 option(USE_AVX2 "enable avx2 code" )
 option(USE_NETNS "enable networking namespace support. Linux only" )
-option(AMD_RYZEN_HACK "hack for AMD Ryzen FPU bug (support FMA3 and FMA4 in FPU, but does not show in CPUID)" )
 option(STATIC_LINK_RUNTIME "link statically against compiler runtime, standard library and pthreads")
 option(NON_PC_TARGET "non-pc target build: iphone, andriod, embedded non-i386 SBC, etc" )
 option(SHADOW "use shadow testing framework. linux only" )
@@ -126,13 +125,6 @@ elseif(NOT ANDROID AND NOT NON_PC_TARGET)
   endif()
 endif()
 
-# only needed if using AVX2
-# TODO: generate a config-time test for this
-# in cmake
-if(AMD_RYZEN_HACK AND USE_AVX2)
-  set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
-endif(AMD_RYZEN_HACK AND USE_AVX2)
-
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
@@ -189,8 +181,9 @@ endif(SHADOW)
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
-  add_compile_options( ${DEBUG_FLAGS})
   add_definitions(-DLOKINET_DEBUG=1)
+  set(CRYPTO_FLAGS "")
+  add_compile_options( ${DEBUG_FLAGS} )
   link_libraries( ${DEBUG_FLAGS} )
 endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 
