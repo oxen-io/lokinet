@@ -32,9 +32,9 @@ namespace llarp
     bool
     IsGood(uint64_t chances) const;
 
-    /// clear stats
+    /// decay stats
     void
-    Clear();
+    Decay();
 
     // rotate stats if timeout reached
     void
