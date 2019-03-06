@@ -378,7 +378,7 @@ llarp_kqueue_loop::tick(int ms)
         {
           ev->error();
         }
-        else if(events[idx.filter] & EV_EOF == 0)
+        else if((events[idx].filter & EV_EOF) == 0)
         {
           if(events[idx].filter & EVFILT_WRITE)
           {
