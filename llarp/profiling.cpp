@@ -88,7 +88,7 @@ namespace llarp
   void
   Profiling::Tick()
   {
-    lock_t lock(m_ProfilesMutex);
+    lock_t lock(&m_ProfilesMutex);
     std::for_each(m_Profiles.begin(), m_Profiles.end(),
                   [](auto& item) { item.second.Tick(); });
   }
