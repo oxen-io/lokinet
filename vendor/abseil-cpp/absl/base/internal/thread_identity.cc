@@ -70,10 +70,11 @@ void SetCurrentThreadIdentity(
   absl::call_once(init_thread_identity_key_once, AllocateThreadIdentityKey,
                   reclaimer);
 
-#ifdef __EMSCRIPTEN__
+#if __EMSCRIPTEN__ || __MINGW32__
   // Emscripten PThread implementation does not support signals.
   // See https://kripken.github.io/emscripten-site/docs/porting/pthreads.html
   // for more information.
+  // Nor does Windows
   pthread_setspecific(thread_identity_pthread_key,
                       reinterpret_cast<void*>(identity));
 #else

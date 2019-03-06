@@ -107,11 +107,16 @@
 // Note: As the GCC manual states, "[s]ince non-static C++ methods
 // have an implicit 'this' argument, the arguments of such methods
 // should be counted from two, not one."
-#if ABSL_HAVE_ATTRIBUTE(format) || (defined(__GNUC__) && !defined(__clang__))
+#if ABSL_HAVE_ATTRIBUTE(format)  && !defined(_WIN32)
 #define ABSL_PRINTF_ATTRIBUTE(string_index, first_to_check) \
   __attribute__((__format__(__printf__, string_index, first_to_check)))
 #define ABSL_SCANF_ATTRIBUTE(string_index, first_to_check) \
   __attribute__((__format__(__scanf__, string_index, first_to_check)))
+#elif ABSL_HAVE_ATTRIBUTE(format) && defined(__MINGW32__)
+#define ABSL_PRINTF_ATTRIBUTE(string_index, first_to_check) \
+  __attribute__((__format__ (__MINGW_PRINTF_FORMAT, string_index, first_to_check)))
+#define ABSL_SCANF_ATTRIBUTE(string_index, first_to_check) \
+  __attribute__((__format__ (__MINGW_PRINTF_FORMAT, string_index, first_to_check)))
 #else
 #define ABSL_PRINTF_ATTRIBUTE(string_index, first_to_check)
 #define ABSL_SCANF_ATTRIBUTE(string_index, first_to_check)
@@ -164,6 +169,12 @@
 #undef ABSL_ATTRIBUTE_WEAK
 #define ABSL_ATTRIBUTE_WEAK __attribute__((weak))
 #define ABSL_HAVE_ATTRIBUTE_WEAK 1
+#ifdef __MINGW32__
+#undef ABSL_ATTRIBUTE_WEAK
+#define ABSL_ATTRIBUTE_WEAK
+#undef ABSL_HAVE_ATTRIBUTE_WEAK
+#define ABSL_HAVE_ATTRIBUTE_WEAK 0
+#endif
 #else
 #define ABSL_ATTRIBUTE_WEAK
 #define ABSL_HAVE_ATTRIBUTE_WEAK 0

@@ -40,7 +40,6 @@ target_link_libraries(${UTIL_LIB} PUBLIC nlohmann_json::nlohmann_json)
 # cut back on fluff
 if (NOT WIN32)
     target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings absl::hash cppbackport)
-# TODO #371: link against absl::synchronization on windows
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

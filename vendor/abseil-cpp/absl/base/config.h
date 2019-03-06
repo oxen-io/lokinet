@@ -328,7 +328,7 @@
 #elif defined(__GLIBC__)
 // feature test for glibc
 #define ABSL_HAVE_ALARM 1
-#elif defined(_MSC_VER)
+#elif defined(_MSC_VER) || defined(__MINGW32__)
 // feature tests for Microsoft's library
 #elif defined(__EMSCRIPTEN__)
 // emscripten doesn't support signals
