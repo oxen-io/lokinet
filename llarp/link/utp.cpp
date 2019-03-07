@@ -178,7 +178,6 @@ namespace llarp
       PruneInboundMessages(now);
       m_TXRate = 0;
       m_RXRate = 0;
-      SendKeepAlive();
     }
 
     /// low level read
