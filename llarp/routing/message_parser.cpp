@@ -67,6 +67,7 @@ namespace llarp
         if(strbuf.sz != 1)
           return false;
         self->key = *strbuf.cur;
+        LogDebug("routing message '", self->key, "'");
         switch(self->key)
         {
           case 'D':

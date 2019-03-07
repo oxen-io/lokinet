@@ -767,7 +767,7 @@ namespace llarp
         if(m_BuiltHook)
           m_BuiltHook(this);
         m_BuiltHook = nullptr;
-
+        LogDebug("path latency is now ", intro.latency, " for ", Name());
         return true;
       }
       else

@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <utility>
+#include <algorithm>
 
 /**
  * buffer.h
@@ -116,6 +117,10 @@ struct llarp_buffer_t
   size_t
   size_left() const;
 
+  template < typename OutputIt >
+  bool
+  read_into(OutputIt begin, OutputIt end);
+
   template < typename InputIt >
   bool
   write(InputIt begin, InputIt end);
@@ -137,9 +142,15 @@ struct llarp_buffer_t
   put_uint32(uint32_t i);
 
   bool
+  put_uint64(uint64_t i);
+
+  bool
   read_uint16(uint16_t &i);
   bool
   read_uint32(uint32_t &i);
+
+  bool
+  read_uint64(uint64_t &i);
 
   size_t
   read_until(char delim, byte_t *result, size_t resultlen);
@@ -152,6 +163,20 @@ struct llarp_buffer_t
 
 bool
 operator==(const llarp_buffer_t &buff, const char *data);
+
+template < typename OutputIt >
+bool
+llarp_buffer_t::read_into(OutputIt begin, OutputIt end)
+{
+  auto dist = std::distance(begin, end);
+  if(static_cast< decltype(dist) >(size_left()) >= dist)
+  {
+    std::copy_n(cur, dist, begin);
+    cur += dist;
+    return true;
+  }
+  return false;
+}
 
 template < typename InputIt >
 bool

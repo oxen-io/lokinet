@@ -233,12 +233,24 @@ namespace llarp
   void
   ILinkLayer::Tick(llarp_time_t now)
   {
-    Lock l(&m_AuthedLinksMutex);
-    auto itr = m_AuthedLinks.begin();
-    while(itr != m_AuthedLinks.end())
     {
-      itr->second->Tick(now);
-      ++itr;
+      Lock l(&m_AuthedLinksMutex);
+      auto itr = m_AuthedLinks.begin();
+      while(itr != m_AuthedLinks.end())
+      {
+        itr->second->Tick(now);
+        ++itr;
+      }
+    }
+
+    {
+      Lock l(&m_PendingMutex);
+      auto itr = m_Pending.begin();
+      while(itr != m_Pending.end())
+      {
+        itr->second->Tick(now);
+        ++itr;
+      }
     }
   }
 

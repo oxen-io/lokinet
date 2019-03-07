@@ -21,7 +21,7 @@ namespace llarp
   {
     Endpoint::Endpoint(const std::string& name, AbstractRouter* r,
                        Context* parent)
-        : path::Builder(r, r->dht(), 6, DEFAULT_HOP_LENGTH)
+        : path::Builder(r, r->dht(), 3, DEFAULT_HOP_LENGTH)
         , context(parent)
         , m_Router(r)
         , m_Name(name)
@@ -1223,7 +1223,10 @@ namespace llarp
       auto itr   = range.first;
       while(itr != range.second)
       {
-        itr->second->AddReadyHook(std::bind(h, snode, std::placeholders::_1));
+        if(itr->second->IsReady())
+          h(snode, itr->second.get());
+        else
+          itr->second->AddReadyHook(std::bind(h, snode, std::placeholders::_1));
         ++itr;
       }
     }
@@ -1269,53 +1272,51 @@ namespace llarp
           ProtocolFrame& f = transfer.T;
           path::Path* p    = nullptr;
           std::set< ConvoTag > tags;
-          if(!GetConvoTagsForService(itr->second, tags))
+          if(GetConvoTagsForService(itr->second, tags))
           {
-            llarp::LogError("no convo tag");
-            return false;
-          }
-          Introduction remoteIntro;
-          SharedSecret K;
-          // pick tag
-          for(const auto& tag : tags)
-          {
-            if(tag.IsZero())
-              continue;
-            if(!GetCachedSessionKeyFor(tag, K))
-              continue;
-            if(p == nullptr && GetIntroFor(tag, remoteIntro))
+            Introduction remoteIntro;
+            SharedSecret K;
+            // pick tag
+            for(const auto& tag : tags)
             {
-              if(!remoteIntro.ExpiresSoon(now))
-                p = GetNewestPathByRouter(remoteIntro.router);
-              if(p)
+              if(tag.IsZero())
+                continue;
+              if(!GetCachedSessionKeyFor(tag, K))
+                continue;
+              if(p == nullptr && GetIntroFor(tag, remoteIntro))
               {
-                f.T = tag;
-                break;
+                if(!remoteIntro.ExpiresSoon(now))
+                  p = GetNewestPathByRouter(remoteIntro.router);
+                if(p)
+                {
+                  f.T = tag;
+                  break;
+                }
               }
             }
-          }
-          if(p)
-          {
-            // TODO: check expiration of our end
-            ProtocolMessage m(f.T);
-            m.proto      = t;
-            m.introReply = p->intro;
-            PutReplyIntroFor(f.T, m.introReply);
-            m.sender = m_Identity.pub;
-            m.PutBuffer(data);
-            f.N.Randomize();
-            f.S = GetSeqNoForConvo(f.T);
-            f.C.Zero();
-            transfer.Y.Randomize();
-            transfer.P = remoteIntro.pathID;
-            if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
+            if(p)
             {
-              llarp::LogError("failed to encrypt and sign");
-              return false;
+              // TODO: check expiration of our end
+              ProtocolMessage m(f.T);
+              m.proto      = t;
+              m.introReply = p->intro;
+              PutReplyIntroFor(f.T, m.introReply);
+              m.sender = m_Identity.pub;
+              m.PutBuffer(data);
+              f.N.Randomize();
+              f.S = GetSeqNoForConvo(f.T);
+              f.C.Zero();
+              transfer.Y.Randomize();
+              transfer.P = remoteIntro.pathID;
+              if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
+              {
+                llarp::LogError("failed to encrypt and sign");
+                return false;
+              }
+              llarp::LogDebug(Name(), " send ", data.sz, " via ",
+                              remoteIntro.router);
+              return p->SendRoutingMessage(&transfer, Router());
             }
-            llarp::LogDebug(Name(), " send ", data.sz, " via ",
-                            remoteIntro.router);
-            return p->SendRoutingMessage(&transfer, Router());
           }
         }
       }
@@ -1749,7 +1750,7 @@ namespace llarp
         {
           // we can safely set remoteIntro to the next one
           SwapIntros();
-          llarp::LogInfo(Name(), "swapped intro");
+          llarp::LogInfo(Name(), " swapped intro");
         }
       }
       // lookup router in intro if set and unknown
@@ -1767,6 +1768,10 @@ namespace llarp
       // send control message if we look too quiet
       if(now - lastGoodSend > (sendTimeout / 2))
       {
+        if(!GetNewestPathByRouter(remoteIntro.router))
+        {
+          BuildOneAlignedTo(remoteIntro.router);
+        }
         Encrypted< 64 > tmp;
         tmp.Randomize();
         llarp_buffer_t buf(tmp.data(), tmp.size());
@@ -1864,7 +1869,6 @@ namespace llarp
       {
         llarp::LogError("cannot encrypt and send: no path for intro ",
                         remoteIntro);
-
         return;
       }
 

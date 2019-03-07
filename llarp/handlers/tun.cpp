@@ -343,12 +343,6 @@ namespace llarp
         }
         else if(addr.FromString(qname, ".snode"))
         {
-          if(HasPathToSNode(addr.as_array()))
-          {
-            msg.AddINReply(ObtainIPForAddr(addr, true));
-            reply(msg);
-            return true;
-          }
           dns::Message *replyMsg = new dns::Message(std::move(msg));
           EnsurePathToSNode(addr.as_array(),
                             [=](const RouterID &remote, exit::BaseSession *s) {

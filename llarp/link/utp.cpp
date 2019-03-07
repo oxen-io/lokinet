@@ -236,7 +236,7 @@ namespace llarp
       auto dlt = now - lastActive;
       if(dlt >= sessionTimeout)
       {
-        LogDebug("session timeout reached for ", remoteAddr);
+        LogInfo("session timeout reached for ", remoteAddr);
         return true;
       }
       return false;
@@ -252,6 +252,17 @@ namespace llarp
     Session::RemoteEndpoint()
     {
       return remoteAddr;
+    }
+
+    uint64
+    LinkLayer::OnConnect(utp_callback_arguments* arg)
+    {
+      LinkLayer* l =
+          static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
+      Session* session = static_cast< Session* >(utp_get_userdata(arg->socket));
+      if(session && l)
+        session->OutboundLinkEstablished(l);
+      return 0;
     }
 
     uint64
@@ -374,6 +385,7 @@ namespace llarp
       utp_context_set_userdata(_utp_ctx, this);
       utp_set_callback(_utp_ctx, UTP_SENDTO, &LinkLayer::SendTo);
       utp_set_callback(_utp_ctx, UTP_ON_ACCEPT, &LinkLayer::OnAccept);
+      utp_set_callback(_utp_ctx, UTP_ON_CONNECT, &LinkLayer::OnConnect);
       utp_set_callback(_utp_ctx, UTP_ON_STATE_CHANGE,
                        &LinkLayer::OnStateChange);
       utp_set_callback(_utp_ctx, UTP_ON_READ, &LinkLayer::OnRead);
@@ -404,9 +416,11 @@ namespace llarp
     }
 
 #ifdef __linux__
+
     void
     LinkLayer::ProcessICMP()
     {
+#ifndef TESTNET
       do
       {
         byte_t vec_buf[4096], ancillary_buf[4096];
@@ -475,13 +489,13 @@ namespace llarp
           }
         }
       } while(true);
+#endif
     }
 #endif
 
     void
     LinkLayer::Pump()
     {
-      utp_issue_deferred_acks(_utp_ctx);
 #ifdef __linux__
       ProcessICMP();
 #endif
@@ -507,6 +521,7 @@ namespace llarp
           }
         }
       }
+      utp_issue_deferred_acks(_utp_ctx);
     }
 
     void
@@ -577,9 +592,7 @@ namespace llarp
       SendQueueBacklog = [&]() -> size_t { return sendq.size(); };
 
       SendKeepAlive = [&]() -> bool {
-        auto now = parent->Now();
-        if(sendq.size() == 0 && state == eSessionReady && now > lastActive
-           && now - lastActive > 5000)
+        if(state == eSessionReady)
         {
           DiscardMessage msg;
           std::array< byte_t, 128 > tmp;
@@ -590,6 +603,7 @@ namespace llarp
           buf.cur = buf.base;
           if(!this->QueueWriteBuffers(buf))
             return false;
+          PumpWrite();
         }
         return true;
       };
@@ -840,6 +854,7 @@ namespace llarp
       if(sock)
       {
         utp_set_userdata(sock, nullptr);
+        sock = nullptr;
       }
     }
 
@@ -872,7 +887,6 @@ namespace llarp
       else
       {
         LogWarn("utp_socket got data with no underlying session");
-        utp_shutdown(arg->socket, SHUT_RDWR);
         utp_close(arg->socket);
       }
       return 0;
@@ -881,20 +895,10 @@ namespace llarp
     uint64
     LinkLayer::OnStateChange(utp_callback_arguments* arg)
     {
-      LinkLayer* l =
-          static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
       Session* session = static_cast< Session* >(utp_get_userdata(arg->socket));
       if(session)
       {
-        if(arg->state == UTP_STATE_CONNECT)
-        {
-          if(session->state == Session::eClose)
-          {
-            return 0;
-          }
-          session->OutboundLinkEstablished(l);
-        }
-        else if(arg->state == UTP_STATE_WRITABLE)
+        if(arg->state == UTP_STATE_WRITABLE)
         {
           session->PumpWrite();
         }
@@ -1155,11 +1159,9 @@ namespace llarp
             utp_close(sock);
           }
           LogDebug("utp_close ", remoteAddr);
-          utp_set_userdata(sock, nullptr);
         }
       }
       EnterState(eClose);
-      sock = nullptr;
     }
 
     void

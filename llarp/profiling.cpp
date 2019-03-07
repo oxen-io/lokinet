@@ -70,9 +70,11 @@ namespace llarp
   bool
   RouterProfile::IsGood(uint64_t chances) const
   {
-    return connectTimeoutCount <= connectGoodCount
-        /// N chances
-        && (pathSuccessCount * chances) >= pathFailCount;
+    if(connectTimeoutCount > 3)
+      return connectTimeoutCount <= connectGoodCount
+          && (pathSuccessCount * chances) >= pathFailCount;
+    else
+      return (pathSuccessCount * chances) >= pathFailCount;
   }
 
   bool

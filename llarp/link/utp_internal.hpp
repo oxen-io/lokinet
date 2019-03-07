@@ -109,8 +109,8 @@ namespace llarp
       SharedSecret txKey;
       /// timestamp last active
       llarp_time_t lastActive;
-      /// session timeout (30s)
-      const static llarp_time_t sessionTimeout = 30 * 1000;
+      /// session timeout (60s)
+      const static llarp_time_t sessionTimeout = DefaultLinkSessionLifetime;
 
       /// send queue for utp
       std::deque< utp_iovec > vecq;
@@ -297,6 +297,9 @@ namespace llarp
       /// state change callback
       static uint64
       OnStateChange(utp_callback_arguments*);
+
+      static uint64
+      OnConnect(utp_callback_arguments*);
 
       /// accept callback
       static uint64

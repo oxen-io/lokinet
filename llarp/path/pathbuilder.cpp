@@ -256,7 +256,9 @@ namespace llarp
     bool
     Builder::ShouldBuildMore(llarp_time_t now) const
     {
-      return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
+      if(llarp::randint() % 3 >= 1)
+        return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
+      return false;
     }
 
     void

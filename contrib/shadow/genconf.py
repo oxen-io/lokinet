@@ -13,7 +13,7 @@ def getSetting(s, name, fallback): return name in s and s[name] or fallback
 shadowRoot = getSetting(os.environ, "SHADOW_ROOT",
                         os.path.join(os.environ['HOME'], '.shadow'))
 
-libpath = 'libshadow-plugin-lokinet.so'
+libpath = 'libshadow-plugin-lokinet-shared.so'
 
 
 def nodeconf(conf, baseDir, name, ifname=None, port=None):
@@ -59,11 +59,11 @@ def makeClient(settings, name, id):
     basedir = getSetting(settings, 'baseDir', 'tmp')
     nodeconf(peer['config'], basedir, name)
     fname = os.path.join(basedir, "test-service.ini")
-    peer['config']['services'] = {
-        'test-service': fname
+    peer['config']['network'] = {
+        'type': 'null',
+        'tag':'test',
+        'prefetch-tag':'test'
     }
-    with open(fname, 'w') as f:
-        f.write("[test-service]")
     return peer
 
 
@@ -71,6 +71,9 @@ def makeSVCNode(settings, name, id, port):
     peer = makeBase(settings, name, id)
     nodeconf(peer['config'], getSetting(
         settings, 'baseDir', 'tmp'), name, 'eth0', port)
+    peer['config']['network'] = {
+        'type': 'null'
+    }
     return peer
 
 
@@ -81,7 +84,7 @@ def genconf(settings, outf):
     topology.attrib['path'] = getSetting(settings, 'topology', os.path.join(
         shadowRoot, 'share', 'topology.graphml.xml'))
 
-    pluginName = getSetting(settings, 'name', 'llarpd')
+    pluginName = getSetting(settings, 'name', 'lokinet-shared')
 
     kill = etree.SubElement(root, 'kill')
     kill.attrib['time'] = getSetting(settings, 'runFor', '600')
@@ -96,7 +99,7 @@ def genconf(settings, outf):
     plugin.attrib['id'] = pluginName
     plugin.attrib['path'] = libpath
     basePort = getSetting(settings, 'svc-base-port', 19000)
-    svcNodeCount = getSetting(settings, 'service-nodes', 20)
+    svcNodeCount = getSetting(settings, 'service-nodes', 80)
     peers = list()
     for nodeid in range(svcNodeCount):
         peers.append(makeSVCNode(

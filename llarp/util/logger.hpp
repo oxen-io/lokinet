@@ -239,6 +239,9 @@ namespace llarp
 #endif
       ss << (char)27 << "[0;0m";
       _glog.out << ss.str() << std::endl;
+#ifdef TESTNET
+      _glog.out << std::flush;
+#endif
 #ifdef _WIN32
     }
     else
