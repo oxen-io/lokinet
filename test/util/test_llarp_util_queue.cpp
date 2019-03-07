@@ -4,6 +4,7 @@
 #include <array>
 #include <functional>
 #include <thread>
+#include <condition_variable>
 
 #include <gtest/gtest.h>
 

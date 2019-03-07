@@ -1,5 +1,6 @@
 #include <util/thread_pool.hpp>
 #include <util/threading.hpp>
+#include <condition_variable>
 
 #include <gtest/gtest.h>
 
