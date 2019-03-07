@@ -44,6 +44,16 @@ llarp_buffer_t::put_uint16(uint16_t i)
 }
 
 bool
+llarp_buffer_t::put_uint64(uint64_t i)
+{
+  if(size_left() < sizeof(uint64_t))
+    return false;
+  htobe64buf(cur, i);
+  cur += sizeof(uint64_t);
+  return true;
+}
+
+bool
 llarp_buffer_t::put_uint32(uint32_t i)
 {
   if(size_left() < sizeof(uint32_t))
@@ -70,6 +80,16 @@ llarp_buffer_t::read_uint32(uint32_t& i)
     return false;
   i = bufbe32toh(cur);
   cur += sizeof(uint32_t);
+  return true;
+}
+
+bool
+llarp_buffer_t::read_uint64(uint64_t& i)
+{
+  if(size_left() < sizeof(uint64_t))
+    return false;
+  i = bufbe64toh(cur);
+  cur += sizeof(uint64_t);
   return true;
 }
 

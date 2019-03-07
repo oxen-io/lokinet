@@ -110,25 +110,34 @@ namespace llarp
     bool
     BaseSession::HandleGotExit(llarp::path::Path* p, llarp_time_t b)
     {
-      BaseSession* self = this;
-      m_LastUse         = router->Now();
+      m_LastUse = router->Now();
       if(b == 0)
         llarp::LogInfo("obtained an exit via ", p->Endpoint());
-      else
-        self = nullptr;
-
-      for(auto& f : m_PendingCallbacks)
-        f(self);
-      m_PendingCallbacks.clear();
+      if(IsReady())
+        CallPendingCallbacks(true);
       return true;
+    }
+
+    void
+    BaseSession::CallPendingCallbacks(bool success)
+    {
+      if(success)
+      {
+        for(auto& f : m_PendingCallbacks)
+          f(this);
+      }
+      else
+      {
+        for(auto& f : m_PendingCallbacks)
+          f(nullptr);
+      }
+      m_PendingCallbacks.clear();
     }
 
     bool
     BaseSession::Stop()
     {
-      for(auto& f : m_PendingCallbacks)
-        f(nullptr);
-      m_PendingCallbacks.clear();
+      CallPendingCallbacks(false);
       auto sendExitClose = [&](llarp::path::Path* p) {
         if(p->SupportsAnyRoles(llarp::path::ePathRoleExit))
         {
@@ -199,7 +208,8 @@ namespace llarp
     bool
     BaseSession::IsReady() const
     {
-      return AvailablePaths(llarp::path::ePathRoleExit) > 0;
+      const size_t expect = (1 + (m_NumPaths / 2));
+      return AvailablePaths(llarp::path::ePathRoleExit) >= expect;
     }
 
     bool

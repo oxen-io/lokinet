@@ -1223,7 +1223,10 @@ namespace llarp
       auto itr   = range.first;
       while(itr != range.second)
       {
-        itr->second->AddReadyHook(std::bind(h, snode, std::placeholders::_1));
+        if(itr->second->IsReady())
+          h(snode, itr->second.get());
+        else
+          itr->second->AddReadyHook(std::bind(h, snode, std::placeholders::_1));
         ++itr;
       }
     }
@@ -1749,7 +1752,7 @@ namespace llarp
         {
           // we can safely set remoteIntro to the next one
           SwapIntros();
-          llarp::LogInfo(Name(), "swapped intro");
+          llarp::LogInfo(Name(), " swapped intro");
         }
       }
       // lookup router in intro if set and unknown
@@ -1767,6 +1770,10 @@ namespace llarp
       // send control message if we look too quiet
       if(now - lastGoodSend > (sendTimeout / 2))
       {
+        if(!GetNewestPathByRouter(remoteIntro.router))
+        {
+          BuildOneAlignedTo(remoteIntro.router);
+        }
         Encrypted< 64 > tmp;
         tmp.Randomize();
         llarp_buffer_t buf(tmp.data(), tmp.size());
@@ -1864,7 +1871,6 @@ namespace llarp
       {
         llarp::LogError("cannot encrypt and send: no path for intro ",
                         remoteIntro);
-
         return;
       }
 

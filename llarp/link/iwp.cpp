@@ -6,62 +6,149 @@ namespace llarp
 {
   namespace iwp
   {
+    std::array< byte_t, 6 > OuterMessage::obtain_flow_id_magic =
+        std::array< byte_t, 6 >{'n', 'e', 't', 'i', 'd', '?'};
+
+    std::array< byte_t, 6 > OuterMessage::give_flow_id_magic =
+        std::array< byte_t, 6 >{'n', 'e', 't', 'i', 'd', '!'};
+
+    OuterMessage::OuterMessage()
+    {
+      Clear();
+    }
+
+    OuterMessage::~OuterMessage()
+    {
+    }
+
     void
     OuterMessage::Clear()
     {
       command = 0;
       flow.Zero();
       netid.Zero();
-      nextFlowID.Zero();
-      rejectReason.clear();
+      reject.fill(0);
       N.Zero();
       X.Zero();
       Xsize = 0;
-      Z.Zero();
+      Zsig.Zero();
+      Zhash.Zero();
+      pubkey.Zero();
+      magic.fill(0);
+      uinteger = 0;
+      A.reset();
+    }
+
+    void
+    OuterMessage::CreateReject(const char* msg, llarp_time_t now,
+                               const PubKey& pk)
+    {
+      Clear();
+      std::copy_n(msg, std::min(strlen(msg), reject.size()), reject.begin());
+      uinteger = now;
+      pubkey   = pk;
+    }
+
+    bool
+    OuterMessage::Encode(llarp_buffer_t* buf) const
+    {
+      if(buf->size_left() < 2)
+        return false;
+      *buf->cur = command;
+      buf->cur++;
+      *buf->cur = '=';
+      buf->cur++;
+      switch(command)
+      {
+        case eOCMD_ObtainFlowID:
+
+        case eOCMD_GiveFlowID:
+          if(!buf->write(reject.begin(), reject.end()))
+            return false;
+          if(!buf->write(give_flow_id_magic.begin(), give_flow_id_magic.end()))
+            return false;
+          if(!buf->write(flow.begin(), flow.end()))
+            return false;
+          if(!buf->write(pubkey.begin(), pubkey.end()))
+            return false;
+          return buf->write(Zsig.begin(), Zsig.end());
+        default:
+          return false;
+      }
     }
 
     bool
     OuterMessage::Decode(llarp_buffer_t* buf)
     {
-      if(buf->size_left() < 34)
+      static constexpr size_t header_size = 2;
+
+      if(buf->size_left() < header_size)
         return false;
       command = *buf->cur;
       ++buf->cur;
       if(*buf->cur != '=')
         return false;
-      std::copy_n(flow.begin(), 32, buf->cur);
-      buf->cur += 32;
+      ++buf->cur;
       switch(command)
       {
         case eOCMD_ObtainFlowID:
-          if(buf->size_left() < 40)
+          if(!buf->read_into(magic.begin(), magic.end()))
             return false;
-          buf->cur += 32;
-          std::copy_n(netid.begin(), 8, buf->cur);
-          return true;
+          if(!buf->read_into(netid.begin(), netid.end()))
+            return false;
+          if(!buf->read_uint64(uinteger))
+            return false;
+          if(!buf->read_into(pubkey.begin(), pubkey.end()))
+            return false;
+          if(buf->size_left() <= Zsig.size())
+            return false;
+          Xsize = buf->size_left() - Zsig.size();
+          if(!buf->read_into(X.begin(), X.begin() + Xsize))
+            return false;
+          return buf->read_into(Zsig.begin(), Zsig.end());
         case eOCMD_GiveFlowID:
-          if(buf->size_left() < 32)
+          if(!buf->read_into(magic.begin(), magic.end()))
             return false;
-          std::copy_n(nextFlowID.begin(), 32, buf->cur);
-          return true;
+          if(!buf->read_into(flow.begin(), flow.end()))
+            return false;
+          if(!buf->read_into(pubkey.begin(), pubkey.end()))
+            return false;
+          buf->cur += buf->size_left() - Zsig.size();
+          return buf->read_into(Zsig.begin(), Zsig.end());
         case eOCMD_Reject:
-          rejectReason = std::string(buf->cur, buf->base + buf->sz);
-          return true;
+          if(!buf->read_into(reject.begin(), reject.end()))
+            return false;
+          if(!buf->read_uint64(uinteger))
+            return false;
+          if(!buf->read_into(pubkey.begin(), pubkey.end()))
+            return false;
+          buf->cur += buf->size_left() - Zsig.size();
+          return buf->read_into(Zsig.begin(), Zsig.end());
         case eOCMD_SessionNegotiate:
-          // explicit fallthrough
+          if(!buf->read_into(flow.begin(), flow.end()))
+            return false;
+          if(!buf->read_into(pubkey.begin(), pubkey.end()))
+            return false;
+          if(!buf->read_uint64(uinteger))
+            return false;
+          if(buf->size_left() == Zsig.size() + 32)
+          {
+            A.reset(new AlignedBuffer< 32 >());
+            if(!buf->read_into(A->begin(), A->end()))
+              return false;
+          }
+          return buf->read_into(Zsig.begin(), Zsig.end());
         case eOCMD_TransmitData:
-          if(buf->size_left() <= 56)
+          if(!buf->read_into(flow.begin(), flow.end()))
             return false;
-          std::copy_n(N.begin(), N.size(), buf->cur);
-          buf->cur += N.size();
-          Xsize = buf->size_left() - Z.size();
-          if(Xsize > X.size())
+          if(!buf->read_into(N.begin(), N.end()))
             return false;
-          std::copy_n(X.begin(), Xsize, buf->cur);
-          buf->cur += Xsize;
-          std::copy_n(Z.begin(), Z.size(), buf->cur);
-          return true;
-
+          if(buf->size_left() <= Zhash.size())
+            return false;
+          Xsize = buf->size_left() - Zhash.size();
+          if(!buf->read_into(X.begin(), X.begin() + Xsize))
+            return false;
+          return buf->read_into(Zhash.begin(), Zhash.end());
         default:
           return false;
       }
@@ -73,6 +160,7 @@ namespace llarp
                          TimeoutHandler t, SessionClosedHandler closed)
         : ILinkLayer(enckey, getrc, h, sign, est, reneg, t, closed), crypto(c)
     {
+      m_FlowCookie.Randomize();
     }
 
     LinkLayer::~LinkLayer()
@@ -118,8 +206,9 @@ namespace llarp
     LinkLayer::RecvFrom(const Addr& from, const void* pkt, size_t sz)
     {
       m_OuterMsg.Clear();
-      llarp_buffer_t buf(pkt, sz);
-      if(!m_OuterMsg.Decode(&buf))
+      llarp_buffer_t sigbuf(pkt, sz);
+      llarp_buffer_t decodebuf(pkt, sz);
+      if(!m_OuterMsg.Decode(&decodebuf))
       {
         LogError("failed to decode outer message");
         return;
@@ -128,13 +217,27 @@ namespace llarp
       switch(m_OuterMsg.command)
       {
         case eOCMD_ObtainFlowID:
+          sigbuf.sz -= m_OuterMsg.Zsig.size();
+          if(!crypto->verify(m_OuterMsg.pubkey, sigbuf, m_OuterMsg.Zsig))
+          {
+            LogError("failed to verify signature on '",
+                     (char)m_OuterMsg.command, "' message from ", from);
+            return;
+          }
           if(!ShouldSendFlowID(from))
-            return;  // drop
-
+          {
+            SendReject(from, "no flo 4u :^)");
+            return;
+          }
           if(m_OuterMsg.netid == ourNetID)
-            SendFlowID(from, m_OuterMsg.flow);
+          {
+            if(GenFlowIDFor(m_OuterMsg.pubkey, from, m_OuterMsg.flow))
+              SendFlowID(from, m_OuterMsg.flow);
+            else
+              SendReject(from, "genflow fail");
+          }
           else
-            SendReject(from, m_OuterMsg.flow, "bad net id");
+            SendReject(from, "bad netid");
       }
     }
 
@@ -157,6 +260,35 @@ namespace llarp
     }
 
     bool
+    LinkLayer::VerifyFlowID(const PubKey& pk, const Addr& from,
+                            const FlowID_t& flow) const
+    {
+      FlowID_t expected;
+      if(!GenFlowIDFor(pk, from, expected))
+        return false;
+      return expected == flow;
+    }
+
+    bool
+    LinkLayer::GenFlowIDFor(const PubKey& pk, const Addr& from,
+                            FlowID_t& flow) const
+    {
+      std::array< byte_t, 128 > tmp = {0};
+      if(inet_ntop(AF_INET6, from.addr6(), (char*)tmp.data(), tmp.size())
+         == nullptr)
+        return false;
+      std::copy_n(pk.begin(), pk.size(), tmp.begin() + 64);
+      std::copy_n(m_FlowCookie.begin(), m_FlowCookie.size(),
+                  tmp.begin() + 64 + pk.size());
+      llarp_buffer_t buf(tmp);
+      ShortHash h;
+      if(!crypto->shorthash(h, buf))
+        return false;
+      std::copy_n(h.begin(), flow.size(), flow.begin());
+      return true;
+    }
+
+    bool
     LinkLayer::ShouldSendFlowID(const Addr& to) const
     {
       (void)to;
@@ -165,12 +297,33 @@ namespace llarp
     }
 
     void
-    LinkLayer::SendReject(const Addr& to, const FlowID_t& flow, const char* msg)
+    LinkLayer::SendReject(const Addr& to, const char* msg)
     {
-      // TODO: implement me
-      (void)to;
-      (void)flow;
-      (void)msg;
+      if(strlen(msg) > 14)
+      {
+        throw std::logic_error("reject message too big");
+      }
+      std::array< byte_t, 120 > pkt;
+      auto now  = Now();
+      PubKey pk = GetOurRC().pubkey;
+      OuterMessage m;
+      m.CreateReject(msg, now, pk);
+      llarp_buffer_t encodebuf(pkt);
+      if(!m.Encode(&encodebuf))
+      {
+        LogError("failed to encode reject message to ", to);
+        return;
+      }
+      llarp_buffer_t signbuf(pkt.data(), pkt.size() - m.Zsig.size());
+      if(!Sign(m.Zsig, signbuf))
+      {
+        LogError("failed to sign reject messsage to ", to);
+        return;
+      }
+      std::copy_n(m.Zsig.begin(), m.Zsig.size(),
+                  pkt.begin() + (pkt.size() - m.Zsig.size()));
+      llarp_buffer_t pktbuf(pkt);
+      SendTo_LL(to, pktbuf);
     }
 
     std::unique_ptr< ILinkLayer >

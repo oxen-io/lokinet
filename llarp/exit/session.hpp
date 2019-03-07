@@ -49,6 +49,12 @@ namespace llarp
       bool
       Flush();
 
+      path::PathRole
+      GetRoles() const override
+      {
+        return path::ePathRoleExit;
+      }
+
       /// send close and stop session
       bool
       Stop() override;
@@ -116,6 +122,9 @@ namespace llarp
       llarp_time_t m_LastUse;
 
       std::vector< SessionReadyFunc > m_PendingCallbacks;
+
+      void
+      CallPendingCallbacks(bool success);
     };
 
     struct ExitSession final : public BaseSession

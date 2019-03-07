@@ -8,6 +8,7 @@
 #include <link/server.hpp>
 #include <link/session.hpp>
 
+#include <array>
 #include <bitset>
 #include <deque>
 
@@ -46,15 +47,35 @@ namespace llarp
       byte_t command;
       FlowID_t flow;
 
+      OuterMessage();
+      ~OuterMessage();
+
+      // static members
+      static std::array< byte_t, 6 > obtain_flow_id_magic;
+      static std::array< byte_t, 6 > give_flow_id_magic;
+
+      void
+      CreateReject(const char *msg, llarp_time_t now, const PubKey &pk);
+
       // optional memebers follow
+      std::array< byte_t, 6 > magic;
       NetID netid;
-      FlowID_t nextFlowID;
-      std::string rejectReason;
+      // either timestamp or counter
+      uint64_t uinteger;
+      std::array< byte_t, 14 > reject;
       AlignedBuffer< 24 > N;
-      // TODO: compute optimal size
-      AlignedBuffer< 1440 > X;
+      PubKey pubkey;
+
+      std::unique_ptr< AlignedBuffer< 32 > > A;
+
+      static constexpr size_t ipv6_mtu      = 1280;
+      static constexpr size_t overhead_size = 16 + 24 + 32;
+      static constexpr size_t payload_size  = ipv6_mtu - overhead_size;
+
+      AlignedBuffer< payload_size > X;
       size_t Xsize;
-      ShortHash Z;
+      ShortHash Zhash;
+      Signature Zsig;
 
       /// encode to buffer
       bool
@@ -63,10 +84,6 @@ namespace llarp
       /// decode from buffer
       bool
       Decode(llarp_buffer_t *buf);
-
-      /// verify signature if needed
-      bool
-      Verify(const SharedSecret &K) const;
 
       /// clear members
       void
@@ -264,20 +281,23 @@ namespace llarp
       uint16_t
       Rank() const override;
 
-      /// verify that a new flow id matches addresses and old flow id
+      /// verify that a new flow id matches addresses and pubkey
       bool
-      VerifyFlowID(const FlowID_t &newID, const Addr &from,
-                   const FlowID_t &oldID) const;
+      VerifyFlowID(const PubKey &pk, const Addr &from,
+                   const FlowID_t &flow) const;
 
       void
       RecvFrom(const llarp::Addr &from, const void *buf, size_t sz) override;
 
      private:
       bool
+      GenFlowIDFor(const PubKey &pk, const Addr &from, FlowID_t &flow) const;
+
+      bool
       ShouldSendFlowID(const Addr &from) const;
 
       void
-      SendReject(const Addr &to, const FlowID_t &flow, const char *msg);
+      SendReject(const Addr &to, const char *msg);
 
       void
       SendFlowID(const Addr &to, const FlowID_t &flow);

@@ -93,7 +93,7 @@ namespace llarp
     }
 
     void
-    SendTo_LL(const llarp::Addr& to, llarp_buffer_t pkt)
+    SendTo_LL(const llarp::Addr& to, const llarp_buffer_t& pkt)
     {
       llarp_ev_udp_sendto(&m_udp, to, pkt);
     }
