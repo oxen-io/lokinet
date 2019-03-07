@@ -16,12 +16,12 @@ SETCAP ?= which setcap && setcap cap_net_admin,cap_net_bind_service=+eip
 SHADOW_ROOT ?= $(HOME)/.shadow
 SHADOW_BIN=$(SHADOW_ROOT)/bin/shadow
 SHADOW_CONFIG=$(REPO)/shadow.config.xml
-SHADOW_PLUGIN=$(REPO)/libshadow-plugin-llarp.so
+SHADOW_PLUGIN=$(BUILD_ROOT)/libshadow-plugin-lokinet-shared.so
 SHADOW_LOG=$(REPO)/shadow.log.txt
 
 SHADOW_SRC ?= $(HOME)/local/shadow
-SHADOW_PARSE ?= python $(SHADOW_SRC)/src/tools/parse-shadow.py - -m 0 --packet-data
-SHADOW_PLOT ?= python $(SHADOW_SRC)/src/tools/plot-shadow.py -d $(REPO) LokiNET -c $(SHADOW_CONFIG) -r 10000 -e '.*'
+SHADOW_PARSE ?= $(PYTHON) $(SHADOW_SRC)/src/tools/parse-shadow.py - -m 0 --packet-data
+SHADOW_PLOT ?= $(PYTHON) $(SHADOW_SRC)/src/tools/plot-shadow.py -d $(REPO) LokiNET -c $(SHADOW_CONFIG) -r 10000 -e '.*'
 
 TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
@@ -135,11 +135,11 @@ shadow-configure: clean
 	$(CONFIG_CMD) -DCMAKE_BUILD_TYPE=Debug -DSHADOW=ON -DCMAKE_C_COMPILER=$(CC) -DCMAKE_CXX_COMPILER=$(CXX)
 
 shadow-build: shadow-configure
-	$(MAKE) -C $(BUILD_ROOT) clean
 	$(MAKE) -C $(BUILD_ROOT)
 
 shadow-run: shadow-build
 	$(PYTHON) $(REPO)/contrib/shadow/genconf.py $(SHADOW_CONFIG)
+	cp $(SHADOW_PLUGIN) $(REPO)
 	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) | $(SHADOW_PARSE)"
 
 shadow-plot: shadow-run

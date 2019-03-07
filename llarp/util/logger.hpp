@@ -40,8 +40,6 @@ namespace llarp
     std::ostream& out;
 
     std::function< void(const std::string&) > customLog;
-
-    llarp::util::Mutex access;
 #ifdef _WIN32
     bool isConsoleModern =
         true;  // qol fix so oldfag clients don't see ugly escapes
@@ -240,6 +238,9 @@ namespace llarp
 #endif
       ss << (char)27 << "[0;0m";
       _glog.out << ss.str() << std::endl;
+#ifdef TESTNET
+      _glog.out << std::flush;
+#endif
 #ifdef _WIN32
     }
     else

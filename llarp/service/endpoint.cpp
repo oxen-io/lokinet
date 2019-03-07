@@ -21,7 +21,7 @@ namespace llarp
   {
     Endpoint::Endpoint(const std::string& name, AbstractRouter* r,
                        Context* parent)
-        : path::Builder(r, r->dht(), 6, DEFAULT_HOP_LENGTH)
+        : path::Builder(r, r->dht(), 3, DEFAULT_HOP_LENGTH)
         , context(parent)
         , m_Router(r)
         , m_Name(name)
@@ -1272,53 +1272,51 @@ namespace llarp
           ProtocolFrame& f = transfer.T;
           path::Path* p    = nullptr;
           std::set< ConvoTag > tags;
-          if(!GetConvoTagsForService(itr->second, tags))
+          if(GetConvoTagsForService(itr->second, tags))
           {
-            llarp::LogError("no convo tag");
-            return false;
-          }
-          Introduction remoteIntro;
-          SharedSecret K;
-          // pick tag
-          for(const auto& tag : tags)
-          {
-            if(tag.IsZero())
-              continue;
-            if(!GetCachedSessionKeyFor(tag, K))
-              continue;
-            if(p == nullptr && GetIntroFor(tag, remoteIntro))
+            Introduction remoteIntro;
+            SharedSecret K;
+            // pick tag
+            for(const auto& tag : tags)
             {
-              if(!remoteIntro.ExpiresSoon(now))
-                p = GetNewestPathByRouter(remoteIntro.router);
-              if(p)
+              if(tag.IsZero())
+                continue;
+              if(!GetCachedSessionKeyFor(tag, K))
+                continue;
+              if(p == nullptr && GetIntroFor(tag, remoteIntro))
               {
-                f.T = tag;
-                break;
+                if(!remoteIntro.ExpiresSoon(now))
+                  p = GetNewestPathByRouter(remoteIntro.router);
+                if(p)
+                {
+                  f.T = tag;
+                  break;
+                }
               }
             }
-          }
-          if(p)
-          {
-            // TODO: check expiration of our end
-            ProtocolMessage m(f.T);
-            m.proto      = t;
-            m.introReply = p->intro;
-            PutReplyIntroFor(f.T, m.introReply);
-            m.sender = m_Identity.pub;
-            m.PutBuffer(data);
-            f.N.Randomize();
-            f.S = GetSeqNoForConvo(f.T);
-            f.C.Zero();
-            transfer.Y.Randomize();
-            transfer.P = remoteIntro.pathID;
-            if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
+            if(p)
             {
-              llarp::LogError("failed to encrypt and sign");
-              return false;
+              // TODO: check expiration of our end
+              ProtocolMessage m(f.T);
+              m.proto      = t;
+              m.introReply = p->intro;
+              PutReplyIntroFor(f.T, m.introReply);
+              m.sender = m_Identity.pub;
+              m.PutBuffer(data);
+              f.N.Randomize();
+              f.S = GetSeqNoForConvo(f.T);
+              f.C.Zero();
+              transfer.Y.Randomize();
+              transfer.P = remoteIntro.pathID;
+              if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
+              {
+                llarp::LogError("failed to encrypt and sign");
+                return false;
+              }
+              llarp::LogDebug(Name(), " send ", data.sz, " via ",
+                              remoteIntro.router);
+              return p->SendRoutingMessage(&transfer, Router());
             }
-            llarp::LogDebug(Name(), " send ", data.sz, " via ",
-                            remoteIntro.router);
-            return p->SendRoutingMessage(&transfer, Router());
           }
         }
       }

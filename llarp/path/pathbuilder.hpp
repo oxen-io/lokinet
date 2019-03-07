@@ -52,6 +52,13 @@ namespace llarp
       bool
       BuildCooldownHit(llarp_time_t now) const;
 
+      /// get roles for this path builder
+      virtual PathRole
+      GetRoles() const
+      {
+        return ePathRoleAny;
+      }
+
       virtual bool
       Stop() override;
 

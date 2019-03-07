@@ -374,11 +374,7 @@ llarp_kqueue_loop::tick(int ms)
       llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].udata);
       if(ev)
       {
-        if(events[idx].filter & EV_ERROR)
-        {
-          ev->error();
-        }
-        else if(events[idx.filter] & EV_EOF == 0)
+        if(events[idx.filter] & EV_EOF == 0)
         {
           if(events[idx].filter & EVFILT_WRITE)
           {
