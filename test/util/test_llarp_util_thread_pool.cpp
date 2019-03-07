@@ -1,5 +1,6 @@
 #include <util/thread_pool.hpp>
 #include <util/threading.hpp>
+#include <condition_variable>
 
 #include <gtest/gtest.h>
 
@@ -57,9 +58,9 @@ incrementFunction(PoolArgs& args)
 void
 barrierFunction(BarrierArgs& args)
 {
-  args.startBarrier.wait();
+  args.startBarrier.Block();
   args.count++;
-  args.stopBarrier.wait();
+  args.stopBarrier.Block();
 }
 
 void
@@ -82,7 +83,7 @@ recurse(util::Barrier& barrier, std::atomic_size_t& counter, ThreadPool& pool,
                               std::ref(pool), depthLimit)));
   }
 
-  barrier.wait();
+  barrier.Block();
 }
 
 class DestructiveObject
@@ -98,7 +99,7 @@ class DestructiveObject
 
   ~DestructiveObject()
   {
-    auto job = std::bind(&util::Barrier::wait, &barrier);
+    auto job = std::bind(&util::Barrier::Block, &barrier);
     pool.addJob(job);
   }
 };
@@ -384,7 +385,7 @@ TEST_P(TryAdd, noblocking)
   }
 
   // Wait for everything to start.
-  startBarrier.wait();
+  startBarrier.Block();
 
   // and that we emptied the queue.
   ASSERT_EQ(0u, pool.jobCount());
@@ -402,7 +403,7 @@ TEST_P(TryAdd, noblocking)
   ASSERT_FALSE(pool.tryAddJob(workJob));
 
   // and finish
-  stopBarrier.wait();
+  stopBarrier.Block();
 }
 
 TEST(TestThreadPool, recurseJob)
@@ -424,7 +425,7 @@ TEST(TestThreadPool, recurseJob)
   ASSERT_TRUE(pool.addJob(std::bind(recurse, std::ref(barrier),
                                     std::ref(counter), std::ref(pool), depth)));
 
-  barrier.wait();
+  barrier.Block();
   ASSERT_EQ(depth, counter);
 }
 
@@ -447,5 +448,5 @@ TEST(TestThreadPool, destructors)
     ASSERT_TRUE(pool.addJob(std::bind(destructiveJob, obj)));
   }
 
-  barrier.wait();
+  barrier.Block();
 }

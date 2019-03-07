@@ -501,7 +501,7 @@ namespace llarp
 #endif
       std::set< RouterID > sessions;
       {
-        Lock l(m_AuthedLinksMutex);
+        Lock l(&m_AuthedLinksMutex);
         auto itr = m_AuthedLinks.begin();
         while(itr != m_AuthedLinks.end())
         {
@@ -511,7 +511,7 @@ namespace llarp
       }
       ILinkLayer::Pump();
       {
-        Lock l(m_AuthedLinksMutex);
+        Lock l(&m_AuthedLinksMutex);
         for(const auto& pk : sessions)
         {
           if(m_AuthedLinks.count(pk) == 0)

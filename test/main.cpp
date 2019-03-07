@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <absl/synchronization/mutex.h>
+
 #ifdef _WIN32
 #include <winsock2.h>
 int
@@ -24,6 +26,8 @@ main(int argc, char** argv)
   if(startWinsock())
     return -1;
 #endif
+
+  absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
   ::testing::InitGoogleTest(&argc, argv);
   int r = RUN_ALL_TESTS();
 #ifdef _WIN32

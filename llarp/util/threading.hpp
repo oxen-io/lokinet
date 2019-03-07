@@ -1,94 +1,47 @@
 #ifndef LLARP_THREADING_HPP
 #define LLARP_THREADING_HPP
-#include <mutex>
-// We only support posix threads:
-// MSYS2 has a full native C++11 toolset, and a suitable
-// cross-compilation system can be assembled on Linux and UNIX
-// Last time i checked, Red Hat has this problem (no libpthread)
-// Not sure about the other distros generally -rick
-#include <condition_variable>
-#include <thread>
-#include <future>
-#include <memory>
-#include <cassert>
+
+#include <absl/synchronization/barrier.h>
+#include <absl/synchronization/mutex.h>
+#include <absl/time/time.h>
 
 namespace llarp
 {
   namespace util
   {
     /// a mutex that does nothing
-    struct NullMutex
+    struct LOCKABLE NullMutex
     {
     };
 
     /// a lock that does nothing
-    struct NullLock
+    struct SCOPED_LOCKABLE NullLock
     {
-      NullLock(__attribute__((unused)) NullMutex& mtx)
+      NullLock(__attribute__((unused)) const NullMutex* mtx)
+          EXCLUSIVE_LOCK_FUNCTION(mtx)
+      {
+      }
+
+      ~NullLock() UNLOCK_FUNCTION()
       {
       }
     };
 
-    using mtx_t  = std::mutex;
-    using lock_t = std::unique_lock< std::mutex >;
-    using cond_t = std::condition_variable;
-
-    struct Mutex
-    {
-      mtx_t impl;
-    };
-
-    /// aqcuire a lock on a mutex
-    struct Lock
-    {
-      Lock(Mutex& mtx) : impl(mtx.impl)
-      {
-      }
-      lock_t impl;
-    };
-
-    struct Condition
-    {
-      cond_t impl;
-      void
-      NotifyAll()
-      {
-        impl.notify_all();
-      }
-
-      void
-      NotifyOne()
-      {
-        impl.notify_one();
-      }
-
-      void
-      Wait(Lock& lock)
-      {
-        impl.wait(lock.impl);
-      }
-
-      template < typename Interval >
-      void
-      WaitFor(Lock& lock, Interval i)
-      {
-        impl.wait_for(lock.impl, i);
-      }
-
-      template < typename Pred >
-      void
-      WaitUntil(Lock& lock, Pred p)
-      {
-        impl.wait(lock.impl, p);
-      }
-    };
+    using Mutex     = absl::Mutex;
+    using Lock      = absl::MutexLock;
+    using Condition = absl::CondVar;
 
     class Semaphore
     {
      private:
-      std::mutex m_mutex;
-      std::condition_variable m_cv;
-      size_t m_count;
+      Mutex m_mutex;  // protects m_count
+      size_t m_count GUARDED_BY(m_mutex);
+
+      bool
+      ready() const SHARED_LOCKS_REQUIRED(m_mutex)
+      {
+        return m_count > 0;
+      }
 
      public:
       Semaphore(size_t count) : m_count(count)
@@ -96,101 +49,38 @@ namespace llarp
       }
 
       void
-      notify()
+      notify() LOCKS_EXCLUDED(m_mutex)
       {
-        std::unique_lock< std::mutex > lock(m_mutex);
+        Lock lock(&m_mutex);
         m_count++;
-
-        m_cv.notify_one();
       }
 
       void
-      wait()
+      wait() LOCKS_EXCLUDED(m_mutex)
       {
-        std::unique_lock< std::mutex > lock(m_mutex);
-        m_cv.wait(lock, [this]() { return this->m_count > 0; });
+        Lock lock(&m_mutex);
+        m_mutex.Await(absl::Condition(this, &Semaphore::ready));
 
         m_count--;
       }
 
-      template < typename Rep, typename Period >
       bool
-      waitFor(const std::chrono::duration< Rep, Period >& period)
+      waitFor(absl::Duration timeout) LOCKS_EXCLUDED(m_mutex)
       {
-        std::unique_lock< std::mutex > lock(m_mutex);
+        Lock lock(&m_mutex);
 
-        if(m_cv.wait_for(lock, period, [this]() { return this->m_count > 0; }))
+        if(!m_mutex.AwaitWithTimeout(absl::Condition(this, &Semaphore::ready),
+                                     timeout))
         {
-          m_count--;
-          return true;
+          return false;
         }
 
-        return false;
+        m_count--;
+        return true;
       }
     };
 
-    class Barrier
-    {
-     private:
-      std::mutex mutex;
-      std::condition_variable cv;
-
-      const size_t numThreads;
-      size_t numThreadsWaiting;  // number of threads to be woken
-      size_t sigCount;    // number of times the barrier has been signalled
-      size_t numPending;  // number of threads that have been signalled, but
-                          // haven't woken.
-
-     public:
-      Barrier(size_t threadCount)
-          : numThreads(threadCount)
-          , numThreadsWaiting(0)
-          , sigCount(0)
-          , numPending(0)
-      {
-      }
-
-      ~Barrier()
-      {
-        for(;;)
-        {
-          {
-            std::unique_lock< std::mutex > lock(mutex);
-            if(numPending == 0)
-            {
-              break;
-            }
-          }
-
-          std::this_thread::yield();
-        }
-
-        assert(numThreadsWaiting == 0);
-      }
-
-      void
-      wait()
-      {
-        std::unique_lock< std::mutex > lock(mutex);
-        size_t signalCount = sigCount;
-
-        if(++numThreadsWaiting == numThreads)
-        {
-          ++sigCount;
-          numPending += numThreads - 1;
-          numThreadsWaiting = 0;
-          cv.notify_all();
-        }
-        else
-        {
-          cv.wait(lock, [this, signalCount]() {
-            return this->sigCount != signalCount;
-          });
-
-          --numPending;
-        }
-      }
-    };
+    using Barrier = absl::Barrier;
 
   }  // namespace util
 }  // namespace llarp

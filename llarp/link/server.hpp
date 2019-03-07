@@ -67,10 +67,12 @@ namespace llarp
     HasSessionVia(const Addr& addr);
 
     void
-    ForEachSession(std::function< void(const ILinkSession*) > visit) const;
+    ForEachSession(std::function< void(const ILinkSession*) > visit) const
+        LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     void
-    ForEachSession(std::function< void(ILinkSession*) > visit);
+    ForEachSession(std::function< void(ILinkSession*) > visit)
+        LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     static void
     udp_tick(llarp_udp_io* udp)
@@ -127,7 +129,7 @@ namespace llarp
     Name() const = 0;
 
     util::StatusObject
-    ExtractStatus() const override;
+    ExtractStatus() const override LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     void
     CloseSessionTo(const RouterID& remote);
@@ -143,7 +145,8 @@ namespace llarp
 
     bool
     VisitSessionByPubkey(const RouterID& pk,
-                         std::function< bool(ILinkSession*) > visit);
+                         std::function< bool(ILinkSession*) > visit)
+        LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     virtual uint16_t
     Rank() const = 0;
@@ -195,7 +198,7 @@ namespace llarp
 
     /// called by link session to remove a pending session who is timed out
     void
-    RemovePending(ILinkSession* s);
+    RemovePending(ILinkSession* s) LOCKS_EXCLUDED(m_PendingMutex);
 
    private:
     static void
@@ -229,14 +232,16 @@ namespace llarp
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;
 
-    Mutex m_AuthedLinksMutex;
+    Mutex m_AuthedLinksMutex
+        ACQUIRED_BEFORE(m_PendingMutex);  // protects m_AuthedLinks
     std::unordered_multimap< RouterID, std::unique_ptr< ILinkSession >,
                              RouterID::Hash >
-        m_AuthedLinks;
-    Mutex m_PendingMutex;
+        m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
+    Mutex m_PendingMutex
+        ACQUIRED_AFTER(m_AuthedLinksMutex);  // protects m_Pending
     std::unordered_map< llarp::Addr, std::unique_ptr< ILinkSession >,
                         llarp::Addr::Hash >
-        m_Pending;
+        m_Pending GUARDED_BY(m_PendingMutex);
   };
 }  // namespace llarp
 

@@ -96,7 +96,7 @@ namespace llarp
     IHopHandler*
     MapGet(Map_t& map, const Key_t& k, CheckValue_t check, GetFunc_t get)
     {
-      util::Lock lock(map.first);
+      util::Lock lock(&map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second; ++i)
       {
@@ -110,7 +110,7 @@ namespace llarp
     bool
     MapHas(Map_t& map, const Key_t& k, CheckValue_t check)
     {
-      util::Lock lock(map.first);
+      util::Lock lock(&map.first);
       auto range = map.second.equal_range(k);
       for(auto i = range.first; i != range.second; ++i)
       {
@@ -124,7 +124,7 @@ namespace llarp
     void
     MapPut(Map_t& map, const Key_t& k, const Value_t& v)
     {
-      util::Lock lock(map.first);
+      util::Lock lock(&map.first);
       map.second.emplace(k, v);
     }
 
@@ -172,31 +172,33 @@ namespace llarp
     IHopHandler*
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
-      auto own = MapGet(m_OurPaths, id,
-                        [](__attribute__((unused)) const PathSet* s) -> bool {
-                          // TODO: is this right?
-                          return true;
-                        },
-                        [remote, id](PathSet* p) -> IHopHandler* {
-                          return p->GetByUpstream(remote, id);
-                        });
+      auto own = MapGet(
+          m_OurPaths, id,
+          [](__attribute__((unused)) const PathSet* s) -> bool {
+            // TODO: is this right?
+            return true;
+          },
+          [remote, id](PathSet* p) -> IHopHandler* {
+            return p->GetByUpstream(remote, id);
+          });
       if(own)
         return own;
 
-      return MapGet(m_TransitPaths, id,
-                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return hop->info.upstream == remote;
-                    },
-                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-                      return h.get();
-                    });
+      return MapGet(
+          m_TransitPaths, id,
+          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return hop->info.upstream == remote;
+          },
+          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+            return h.get();
+          });
     }
 
     bool
     PathContext::TransitHopPreviousIsRouter(const PathID_t& path,
                                             const RouterID& otherRouter)
     {
-      util::Lock lock(m_TransitPaths.first);
+      util::Lock lock(&m_TransitPaths.first);
       auto itr = m_TransitPaths.second.find(path);
       if(itr == m_TransitPaths.second.end())
         return false;
@@ -206,20 +208,21 @@ namespace llarp
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
-      return MapGet(m_TransitPaths, id,
-                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return hop->info.downstream == remote;
-                    },
-                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-                      return h.get();
-                    });
+      return MapGet(
+          m_TransitPaths, id,
+          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return hop->info.downstream == remote;
+          },
+          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+            return h.get();
+          });
     }
 
     PathSet*
     PathContext::GetLocalPathSet(const PathID_t& id)
     {
       auto& map = m_OurPaths;
-      util::Lock lock(map.first);
+      util::Lock lock(&map.first);
       auto itr = map.second.find(id);
       if(itr != map.second.end())
       {
@@ -246,7 +249,7 @@ namespace llarp
       RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
-        util::Lock lock(map.first);
+        util::Lock lock(&map.first);
         auto range = map.second.equal_range(id);
         for(auto i = range.first; i != range.second; ++i)
         {
@@ -267,7 +270,7 @@ namespace llarp
     void
     PathContext::ExpirePaths(llarp_time_t now)
     {
-      util::Lock lock(m_TransitPaths.first);
+      util::Lock lock(&m_TransitPaths.first);
       auto& map = m_TransitPaths.second;
       auto itr  = map.begin();
       while(itr != map.end())
@@ -320,7 +323,7 @@ namespace llarp
       RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
-        util::Lock lock(map.first);
+        util::Lock lock(&map.first);
         auto range = map.second.equal_range(id);
         for(auto i = range.first; i != range.second; ++i)
         {
@@ -340,7 +343,7 @@ namespace llarp
     void
     PathContext::RemovePathSet(PathSet* set)
     {
-      util::Lock lock(m_OurPaths.first);
+      util::Lock lock(&m_OurPaths.first);
       auto& map = m_OurPaths.second;
       auto itr  = map.begin();
       while(itr != map.end())

@@ -653,12 +653,20 @@ namespace llarp
       using TransitHopsMap_t =
           std::multimap< PathID_t, std::shared_ptr< TransitHop > >;
 
-      using SyncTransitMap_t = std::pair< util::Mutex, TransitHopsMap_t >;
+      struct SyncTransitMap_t
+      {
+        util::Mutex first;  // protects second
+        TransitHopsMap_t second GUARDED_BY(first);
+      };
 
       // maps path id -> pathset owner of path
       using OwnedPathsMap_t = std::map< PathID_t, PathSet* >;
 
-      using SyncOwnedPathsMap_t = std::pair< util::Mutex, OwnedPathsMap_t >;
+      struct SyncOwnedPathsMap_t
+      {
+        util::Mutex first;  // protects second
+        OwnedPathsMap_t second GUARDED_BY(first);
+      };
 
       llarp_threadpool*
       Worker();

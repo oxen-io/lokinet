@@ -62,7 +62,7 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
   else
   {
     // single threaded mode
-    llarp::util::Lock lock(pool->m_access);
+    llarp::util::Lock lock(&pool->m_access);
     pool->jobs.emplace(std::bind(job.work, job.user));
   }
 }
@@ -70,16 +70,18 @@ llarp_threadpool_queue_job(struct llarp_threadpool *pool,
 void
 llarp_threadpool_tick(struct llarp_threadpool *pool)
 {
-  while(pool->jobs.size())
+  while(pool->size())
   {
     std::function< void(void) > job;
     {
-      llarp::util::Lock lock(pool->m_access);
+      llarp::util::Lock lock(&pool->m_access);
       job = std::move(pool->jobs.front());
       pool->jobs.pop();
     }
     if(job)
+    {
       job();
+    }
   }
 }
 

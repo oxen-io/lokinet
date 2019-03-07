@@ -1,7 +1,6 @@
 #ifndef LLARP_LOGGER_HPP
 #define LLARP_LOGGER_HPP
 
-#include <util/threading.hpp>
 #include <util/time.hpp>
 
 #ifdef _WIN32
@@ -20,6 +19,8 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <thread>
+#include <functional>
 
 namespace llarp
 {
