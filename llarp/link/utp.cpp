@@ -230,12 +230,12 @@ namespace llarp
     {
       if(state == eClose)
         return true;
-      if(now < lastActive)
+      if(now <= lastActive)
         return false;
       auto dlt = now - lastActive;
       if(dlt >= sessionTimeout)
       {
-        LogInfo("session timeout reached for ", remoteAddr);
+        LogInfo("session timeout reached for ", remoteAddr, " dlt=", dlt);
         return true;
       }
       return false;
