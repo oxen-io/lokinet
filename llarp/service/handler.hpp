@@ -28,6 +28,9 @@ namespace llarp
       virtual void
       RemoveConvoTag(const ConvoTag& remote) = 0;
 
+      virtual bool
+      HasConvoTag(const ConvoTag& remote) const = 0;
+
       virtual void
       PutSenderFor(const ConvoTag& remote, const ServiceInfo& si) = 0;
 

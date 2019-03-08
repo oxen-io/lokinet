@@ -656,6 +656,7 @@ start a new session
   A: "H",
   C: "<1048 bytes ciphertext block>",
   D: "<N bytes encrypted HSD>",
+  F: "<16 bytes source path_id>",
   N: "<32 bytes nonce for key exchange>",
   V: 0,
   Z: "<64 bytes signature of entire message using sender's signing key>"
@@ -691,6 +692,8 @@ C, K = PQKE_A(I_B.k)
 N = RAND(32)
 D = SE(X, K, N)
 
+path = PickSendPath()
+
 M = {
   A: "T",
   P: I_B.P,
@@ -699,6 +702,7 @@ M = {
     A: "H",
     C: C,
     D: D,
+    F: path.lastHop.txID,
     N: N,
     V: 0,
     Z: "\x00" * 64
@@ -711,6 +715,8 @@ Z = S(A_sk, BE(M))
 alice transmits a TDFM to router with public key I_B.K via her path that ends 
 with router with public key I_B.k
 
+path = PickSendPath()
+
 {
   A: "T",
   P: I_B.P,
@@ -719,6 +725,7 @@ with router with public key I_B.k
     A: "H",
     C: C,
     D: D,
+    F: path.lastHop.txID,
     N: N,
     V: 0,
     Z: Z
@@ -744,6 +751,7 @@ transfer data on a session previously made
 {
   A: "H",
   D: "<N bytes encrypted HSD>",
+  F: "<16 bytes path id of soruce>",
   N: "<32 bytes nonce for symettric cipher>",
   T: "<16 bytes converstation tag>",
   V: 0,

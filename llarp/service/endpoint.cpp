@@ -998,6 +998,7 @@ namespace llarp
         if(!frame->Verify(Crypto(), si))
           return false;
         // remove convotag it doesn't exist
+        LogWarn("remove convotag T=", frame->T);
         RemoveConvoTag(frame->T);
         return true;
       }
@@ -1027,6 +1028,7 @@ namespace llarp
         , m_Endpoint(ep)
     {
       createdAt = ep->Now();
+      currentConvoTag.Zero();
     }
 
     void
@@ -1682,11 +1684,11 @@ namespace llarp
         path = m_Endpoint->GetPathByRouter(remoteIntro.router);
       if(path)
       {
-        routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
+        const routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
         {
           llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
-                          remoteIntro.router);
+                          remoteIntro.router, " seqno=", sequenceNo);
           lastGoodSend = m_Endpoint->Now();
           ++sequenceNo;
           return true;
@@ -1798,21 +1800,34 @@ namespace llarp
           ++itr;
       }
       // send control message if we look too quiet
-      if(now - lastGoodSend > (sendTimeout / 2))
+      if(lastGoodSend)
       {
-        if(!GetNewestPathByRouter(remoteIntro.router))
+        if(now - lastGoodSend > (sendTimeout / 2))
         {
-          BuildOneAlignedTo(remoteIntro.router);
+          if(!GetNewestPathByRouter(remoteIntro.router))
+          {
+            BuildOneAlignedTo(remoteIntro.router);
+          }
+          Encrypted< 64 > tmp;
+          tmp.Randomize();
+          llarp_buffer_t buf(tmp.data(), tmp.size());
+          AsyncEncryptAndSendTo(buf, eProtocolControl);
+          SharedSecret k;
+          if(currentConvoTag.IsZero())
+            return false;
+          return !m_DataHandler->HasConvoTag(currentConvoTag);
         }
-        Encrypted< 64 > tmp;
-        tmp.Randomize();
-        llarp_buffer_t buf(tmp.data(), tmp.size());
-        AsyncEncryptAndSendTo(buf, eProtocolControl);
       }
       // if we are dead return true so we are removed
       return lastGoodSend
           ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
           : (now >= createdAt && now - createdAt > connectTimeout);
+    }
+
+    bool
+    Endpoint::HasConvoTag(const ConvoTag& t) const
+    {
+      return m_Sessions.find(t) != m_Sessions.end();
     }
 
     bool

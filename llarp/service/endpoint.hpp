@@ -262,6 +262,9 @@ namespace llarp
       HandlePathDead(void*);
 
       bool
+      HasConvoTag(const ConvoTag& t) const override;
+
+      bool
       ShouldBuildMore(llarp_time_t now) const override;
 
       /// context needed to initiate an outbound hidden service session
