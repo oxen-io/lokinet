@@ -108,6 +108,9 @@ namespace llarp
       if(!BEncodeWriteDictEntry("D", D, buf))
         return false;
 
+      if(!BEncodeWriteDictEntry("F", F, buf))
+        return false;
+
       if(!BEncodeWriteDictEntry("N", N, buf))
         return false;
       if(!T.IsZero())
@@ -136,6 +139,8 @@ namespace llarp
         return *strbuf.cur == 'H';
       }
       if(!BEncodeMaybeReadDictEntry("D", D, read, key, val))
+        return false;
+      if(!BEncodeMaybeReadDictEntry("F", F, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictEntry("C", C, read, key, val))
         return false;
@@ -304,6 +309,7 @@ namespace llarp
     {
       C       = other.C;
       D       = other.D;
+      F       = other.F;
       N       = other.N;
       Z       = other.Z;
       T       = other.T;

@@ -1298,16 +1298,17 @@ namespace llarp
             {
               // TODO: check expiration of our end
               ProtocolMessage m(f.T);
-              m.proto      = t;
-              m.introReply = p->intro;
               PutReplyIntroFor(f.T, m.introReply);
-              m.sender = m_Identity.pub;
               m.PutBuffer(data);
               f.N.Randomize();
-              f.S = GetSeqNoForConvo(f.T);
               f.C.Zero();
               transfer.Y.Randomize();
-              transfer.P = remoteIntro.pathID;
+              m.proto      = t;
+              m.introReply = p->intro;
+              m.sender     = m_Identity.pub;
+              f.F          = m.introReply.pathID;
+              f.S          = GetSeqNoForConvo(f.T);
+              transfer.P   = remoteIntro.pathID;
               if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
               {
                 llarp::LogError("failed to encrypt and sign");
@@ -1883,14 +1884,14 @@ namespace llarp
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
         ProtocolMessage m;
-        m.proto = t;
-        m_DataHandler->PutReplyIntroFor(f.T, path->intro);
-        m.introReply = path->intro;
         m_DataHandler->PutIntroFor(f.T, remoteIntro);
-        m.sender = m_Endpoint->m_Identity.pub;
+        m_DataHandler->PutReplyIntroFor(f.T, path->intro);
+        m.proto      = t;
+        m.introReply = path->intro;
+        f.F          = m.introReply.pathID;
+        m.sender     = m_Endpoint->m_Identity.pub;
+        m.tag        = f.T;
         m.PutBuffer(payload);
-        m.tag = f.T;
-
         if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->m_Identity))
         {
           llarp::LogError("failed to sign");

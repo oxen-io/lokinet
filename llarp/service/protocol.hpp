@@ -67,6 +67,7 @@ namespace llarp
       Encrypted_t D;
       KeyExchangeNonce N;
       Signature Z;
+      PathID_t F;
       service::ConvoTag T;
 
       ProtocolFrame(const ProtocolFrame& other)
@@ -75,6 +76,7 @@ namespace llarp
           , D(other.D)
           , N(other.N)
           , Z(other.Z)
+          , F(other.F)
           , T(other.T)
       {
         S       = other.S;
@@ -125,6 +127,7 @@ namespace llarp
       {
         C.Zero();
         D.Clear();
+        F.Zero();
         T.Zero();
         N.Zero();
         Z.Zero();
