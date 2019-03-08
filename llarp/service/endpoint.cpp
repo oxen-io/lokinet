@@ -1826,6 +1826,14 @@ namespace llarp
     {
       if(markedBad)
         return false;
+      if(path::Builder::ShouldBuildMore(now))
+        return true;
+      return !ReadyToSend();
+    }
+
+    bool
+    Endpoint::ShouldBuildMore(llarp_time_t now) const
+    {
       bool should = path::Builder::ShouldBuildMore(now);
       // determine newest intro
       Introduction intro;
