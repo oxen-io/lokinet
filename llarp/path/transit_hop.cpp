@@ -293,7 +293,7 @@ namespace llarp
     {
       auto path = r->pathContext().GetPathForTransfer(msg->P);
       llarp::routing::DataDiscardMessage discarded(msg->P, msg->S);
-      if(!path)
+      if(path == nullptr || msg->T.F != info.txID)
       {
         return SendRoutingMessage(&discarded, r);
       }

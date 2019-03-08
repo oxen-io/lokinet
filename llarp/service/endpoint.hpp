@@ -261,6 +261,9 @@ namespace llarp
       static void
       HandlePathDead(void*);
 
+      bool
+      ShouldBuildMore(llarp_time_t now) const override;
+
       /// context needed to initiate an outbound hidden service session
       struct OutboundContext : public path::Builder, public SendContext
       {
@@ -389,6 +392,9 @@ namespace llarp
 
       bool
       GetIntroFor(const ConvoTag& remote, Introduction& intro) const override;
+
+      void
+      RemoveConvoTag(const ConvoTag& remote) override;
 
       void
       PutReplyIntroFor(const ConvoTag& remote,

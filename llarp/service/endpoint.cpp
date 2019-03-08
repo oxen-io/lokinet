@@ -978,12 +978,43 @@ namespace llarp
       return false;
     }
 
+    void
+    Endpoint::RemoveConvoTag(const ConvoTag& t)
+    {
+      m_Sessions.erase(t);
+    }
+
     bool
     Endpoint::HandleHiddenServiceFrame(path::Path* p,
                                        const ProtocolFrame* frame)
     {
-      return frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p->RXID(),
-                                          Worker(), m_Identity, m_DataHandler);
+      if(frame->R)
+      {
+        // handle discard
+        ServiceInfo si;
+        if(!GetSenderFor(frame->T, si))
+          return false;
+        // verify source
+        if(!frame->Verify(Crypto(), si))
+          return false;
+        // remove convotag it doesn't exist
+        RemoveConvoTag(frame->T);
+        return true;
+      }
+      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p->RXID(),
+                                       Worker(), m_Identity, m_DataHandler))
+      {
+        // send discard
+        ProtocolFrame f;
+        f.R = 1;
+        f.T = frame->T;
+        f.F = p->intro.pathID;
+        if(!f.Sign(Crypto(), m_Identity))
+          return false;
+        const routing::PathTransferMessage d(f, frame->F);
+        return p->SendRoutingMessage(&d, router);
+      }
+      return true;
     }
 
     Endpoint::SendContext::SendContext(const ServiceInfo& ident,
@@ -1298,16 +1329,17 @@ namespace llarp
             {
               // TODO: check expiration of our end
               ProtocolMessage m(f.T);
-              m.proto      = t;
-              m.introReply = p->intro;
               PutReplyIntroFor(f.T, m.introReply);
-              m.sender = m_Identity.pub;
               m.PutBuffer(data);
               f.N.Randomize();
-              f.S = GetSeqNoForConvo(f.T);
               f.C.Zero();
               transfer.Y.Randomize();
-              transfer.P = remoteIntro.pathID;
+              m.proto      = t;
+              m.introReply = p->intro;
+              m.sender     = m_Identity.pub;
+              f.F          = m.introReply.pathID;
+              f.S          = GetSeqNoForConvo(f.T);
+              transfer.P   = remoteIntro.pathID;
               if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
               {
                 llarp::LogError("failed to encrypt and sign");
@@ -1826,6 +1858,14 @@ namespace llarp
     {
       if(markedBad)
         return false;
+      if(path::Builder::ShouldBuildMore(now))
+        return true;
+      return !ReadyToSend();
+    }
+
+    bool
+    Endpoint::ShouldBuildMore(llarp_time_t now) const
+    {
       bool should = path::Builder::ShouldBuildMore(now);
       // determine newest intro
       Introduction intro;
@@ -1875,17 +1915,14 @@ namespace llarp
       if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
       {
         ProtocolMessage m;
-        m.proto = t;
-        if(!m_DataHandler->GetReplyIntroFor(f.T, m.introReply))
-        {
-          m_DataHandler->PutReplyIntroFor(f.T, path->intro);
-          m.introReply = path->intro;
-        }
         m_DataHandler->PutIntroFor(f.T, remoteIntro);
-        m.sender = m_Endpoint->m_Identity.pub;
+        m_DataHandler->PutReplyIntroFor(f.T, path->intro);
+        m.proto      = t;
+        m.introReply = path->intro;
+        f.F          = m.introReply.pathID;
+        m.sender     = m_Endpoint->m_Identity.pub;
+        m.tag        = f.T;
         m.PutBuffer(payload);
-        m.tag = f.T;
-
         if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->m_Identity))
         {
           llarp::LogError("failed to sign");

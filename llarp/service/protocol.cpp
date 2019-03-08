@@ -105,11 +105,23 @@ namespace llarp
         if(!BEncodeWriteDictEntry("C", C, buf))
           return false;
       }
-      if(!BEncodeWriteDictEntry("D", D, buf))
+      if(D.size() > 0)
+      {
+        if(!BEncodeWriteDictEntry("D", D, buf))
+          return false;
+      }
+      if(!BEncodeWriteDictEntry("F", F, buf))
         return false;
-
-      if(!BEncodeWriteDictEntry("N", N, buf))
-        return false;
+      if(!N.IsZero())
+      {
+        if(!BEncodeWriteDictEntry("N", N, buf))
+          return false;
+      }
+      if(R)
+      {
+        if(!BEncodeWriteDictInt("R", R, buf))
+          return false;
+      }
       if(!T.IsZero())
       {
         if(!BEncodeWriteDictEntry("T", T, buf))
@@ -137,11 +149,15 @@ namespace llarp
       }
       if(!BEncodeMaybeReadDictEntry("D", D, read, key, val))
         return false;
+      if(!BEncodeMaybeReadDictEntry("F", F, read, key, val))
+        return false;
       if(!BEncodeMaybeReadDictEntry("C", C, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictEntry("N", N, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictInt("S", S, read, key, val))
+        return false;
+      if(!BEncodeMaybeReadDictInt("R", R, read, key, val))
         return false;
       if(!BEncodeMaybeReadDictEntry("T", T, read, key, val))
         return false;
@@ -162,6 +178,25 @@ namespace llarp
       auto buf        = tmp.Buffer();
       crypto->xchacha20(*buf, sharedkey, N);
       return msg.BDecode(buf);
+    }
+
+    bool
+    ProtocolFrame::Sign(llarp::Crypto* crypto, const Identity& localIdent)
+    {
+      Z.Zero();
+      std::array< byte_t, MAX_PROTOCOL_MESSAGE_SIZE > tmp;
+      llarp_buffer_t buf(tmp);
+      // encode
+      if(!BEncode(&buf))
+      {
+        llarp::LogError("message too big to encode");
+        return false;
+      }
+      // rewind
+      buf.sz  = buf.cur - buf.base;
+      buf.cur = buf.base;
+      // sign
+      return localIdent.Sign(crypto, Z, buf);
     }
 
     bool
@@ -304,9 +339,11 @@ namespace llarp
     {
       C       = other.C;
       D       = other.D;
+      F       = other.F;
       N       = other.N;
       Z       = other.Z;
       T       = other.T;
+      R       = other.R;
       S       = other.S;
       version = other.version;
       return *this;

@@ -65,16 +65,20 @@ namespace llarp
       using Encrypted_t = Encrypted< 2048 >;
       PQCipherBlock C;
       Encrypted_t D;
+      uint64_t R;
       KeyExchangeNonce N;
       Signature Z;
+      PathID_t F;
       service::ConvoTag T;
 
       ProtocolFrame(const ProtocolFrame& other)
           : routing::IMessage()
           , C(other.C)
           , D(other.D)
+          , R(other.R)
           , N(other.N)
           , Z(other.Z)
+          , F(other.F)
           , T(other.T)
       {
         S       = other.S;
@@ -105,6 +109,9 @@ namespace llarp
                      const SharedSecret& sharedkey, const Identity& localIdent);
 
       bool
+      Sign(Crypto* c, const Identity& localIdent);
+
+      bool
       AsyncDecryptAndVerify(Logic* logic, Crypto* c, const PathID_t& srcpath,
                             llarp_threadpool* worker,
                             const Identity& localIdent,
@@ -125,9 +132,11 @@ namespace llarp
       {
         C.Zero();
         D.Clear();
+        F.Zero();
         T.Zero();
         N.Zero();
         Z.Zero();
+        R = 0;
       }
 
       bool
