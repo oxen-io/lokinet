@@ -157,6 +157,22 @@ namespace llarp
     }
 
     Path*
+    PathSet::GetByEndpointWithID(RouterID ep, PathID_t id) const
+    {
+      Lock_t l(&m_PathsMutex);
+      auto itr = m_Paths.begin();
+      while(itr != m_Paths.end())
+      {
+        if(itr->second->IsEndpoint(ep, id))
+        {
+          return itr->second;
+        }
+        ++itr;
+      }
+      return nullptr;
+    }
+
+    Path*
     PathSet::GetPathByID(PathID_t id) const
     {
       Lock_t l(&m_PathsMutex);

@@ -998,6 +998,7 @@ namespace llarp
         if(!frame->Verify(Crypto(), si))
           return false;
         // remove convotag it doesn't exist
+        LogWarn("remove convotag T=", frame->T);
         RemoveConvoTag(frame->T);
         return true;
       }
@@ -1027,6 +1028,7 @@ namespace llarp
         , m_Endpoint(ep)
     {
       createdAt = ep->Now();
+      currentConvoTag.Zero();
     }
 
     void
@@ -1583,6 +1585,7 @@ namespace llarp
         self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
         self->handler->PutIntroFor(self->msg.tag, self->remoteIntro);
         self->handler->PutSenderFor(self->msg.tag, self->remote);
+        self->handler->PutReplyIntroFor(self->msg.tag, self->msg.introReply);
         self->hook(self->frame);
         delete self;
       }
@@ -1669,24 +1672,22 @@ namespace llarp
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
-      m_DataHandler->PutReplyIntroFor(currentConvoTag, path->intro);
+      ex->frame.F        = ex->msg.introReply.pathID;
       llarp_threadpool_queue_job(m_Endpoint->Worker(),
                                  {ex, &AsyncKeyExchange::Encrypt});
     }
 
     bool
-    Endpoint::SendContext::Send(ProtocolFrame& msg)
+    Endpoint::SendContext::Send(const ProtocolFrame& msg)
     {
-      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
-      if(path == nullptr)
-        path = m_Endpoint->GetPathByRouter(remoteIntro.router);
+      auto path = m_PathSet->GetByEndpointWithID(remoteIntro.router, msg.F);
       if(path)
       {
-        routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
+        const routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
         {
-          llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
-                          remoteIntro.router);
+          llarp::LogInfo("sent intro to ", remoteIntro.pathID, " on ",
+                         remoteIntro.router, " seqno=", sequenceNo);
           lastGoodSend = m_Endpoint->Now();
           ++sequenceNo;
           return true;
@@ -1798,21 +1799,34 @@ namespace llarp
           ++itr;
       }
       // send control message if we look too quiet
-      if(now - lastGoodSend > (sendTimeout / 2))
+      if(lastGoodSend)
       {
-        if(!GetNewestPathByRouter(remoteIntro.router))
+        if(now - lastGoodSend > (sendTimeout / 2))
         {
-          BuildOneAlignedTo(remoteIntro.router);
+          if(!GetNewestPathByRouter(remoteIntro.router))
+          {
+            BuildOneAlignedTo(remoteIntro.router);
+          }
+          Encrypted< 64 > tmp;
+          tmp.Randomize();
+          llarp_buffer_t buf(tmp.data(), tmp.size());
+          AsyncEncryptAndSendTo(buf, eProtocolControl);
+          SharedSecret k;
+          if(currentConvoTag.IsZero())
+            return false;
+          return !m_DataHandler->HasConvoTag(currentConvoTag);
         }
-        Encrypted< 64 > tmp;
-        tmp.Randomize();
-        llarp_buffer_t buf(tmp.data(), tmp.size());
-        AsyncEncryptAndSendTo(buf, eProtocolControl);
       }
       // if we are dead return true so we are removed
       return lastGoodSend
           ? (now >= lastGoodSend && now - lastGoodSend > sendTimeout)
           : (now >= createdAt && now - createdAt > connectTimeout);
+    }
+
+    bool
+    Endpoint::HasConvoTag(const ConvoTag& t) const
+    {
+      return m_Sessions.find(t) != m_Sessions.end();
     }
 
     bool
