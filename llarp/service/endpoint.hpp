@@ -394,6 +394,9 @@ namespace llarp
       GetIntroFor(const ConvoTag& remote, Introduction& intro) const override;
 
       void
+      RemoveConvoTag(const ConvoTag& remote) override;
+
+      void
       PutReplyIntroFor(const ConvoTag& remote,
                        const Introduction& intro) override;
 

@@ -978,12 +978,43 @@ namespace llarp
       return false;
     }
 
+    void
+    Endpoint::RemoveConvoTag(const ConvoTag& t)
+    {
+      m_Sessions.erase(t);
+    }
+
     bool
     Endpoint::HandleHiddenServiceFrame(path::Path* p,
                                        const ProtocolFrame* frame)
     {
-      return frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p->RXID(),
-                                          Worker(), m_Identity, m_DataHandler);
+      if(frame->R)
+      {
+        // handle discard
+        ServiceInfo si;
+        if(!GetSenderFor(frame->T, si))
+          return false;
+        // verify source
+        if(!frame->Verify(Crypto(), si))
+          return false;
+        // remove convotag it doesn't exist
+        RemoveConvoTag(frame->T);
+        return true;
+      }
+      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p->RXID(),
+                                       Worker(), m_Identity, m_DataHandler))
+      {
+        // send discard
+        ProtocolFrame f;
+        f.R = 1;
+        f.T = frame->T;
+        f.F = p->intro.pathID;
+        if(!f.Sign(Crypto(), m_Identity))
+          return false;
+        const routing::PathTransferMessage d(f, frame->F);
+        return p->SendRoutingMessage(&d, router);
+      }
+      return true;
     }
 
     Endpoint::SendContext::SendContext(const ServiceInfo& ident,

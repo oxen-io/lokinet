@@ -26,6 +26,9 @@ namespace llarp
                              const SharedSecret& secret) = 0;
 
       virtual void
+      RemoveConvoTag(const ConvoTag& remote) = 0;
+
+      virtual void
       PutSenderFor(const ConvoTag& remote, const ServiceInfo& si) = 0;
 
       virtual bool
