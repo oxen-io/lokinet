@@ -1585,6 +1585,7 @@ namespace llarp
         self->handler->PutCachedSessionKeyFor(self->msg.tag, self->sharedKey);
         self->handler->PutIntroFor(self->msg.tag, self->remoteIntro);
         self->handler->PutSenderFor(self->msg.tag, self->remote);
+        self->handler->PutReplyIntroFor(self->msg.tag, self->msg.introReply);
         self->hook(self->frame);
         delete self;
       }
@@ -1671,24 +1672,22 @@ namespace llarp
 
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
-      m_DataHandler->PutReplyIntroFor(currentConvoTag, path->intro);
+      ex->frame.F        = ex->msg.introReply.pathID;
       llarp_threadpool_queue_job(m_Endpoint->Worker(),
                                  {ex, &AsyncKeyExchange::Encrypt});
     }
 
     bool
-    Endpoint::SendContext::Send(ProtocolFrame& msg)
+    Endpoint::SendContext::Send(const ProtocolFrame& msg)
     {
-      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
-      if(path == nullptr)
-        path = m_Endpoint->GetPathByRouter(remoteIntro.router);
+      auto path = m_PathSet->GetByEndpointWithID(remoteIntro.router, msg.F);
       if(path)
       {
         const routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
         if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
         {
-          llarp::LogDebug("sent data to ", remoteIntro.pathID, " on ",
-                          remoteIntro.router, " seqno=", sequenceNo);
+          llarp::LogInfo("sent intro to ", remoteIntro.pathID, " on ",
+                         remoteIntro.router, " seqno=", sequenceNo);
           lastGoodSend = m_Endpoint->Now();
           ++sequenceNo;
           return true;

@@ -222,7 +222,7 @@ namespace llarp
         /// send a fully encrypted hidden service frame
         /// via a path on our pathset with path id p
         bool
-        Send(ProtocolFrame& f);
+        Send(const ProtocolFrame& f);
 
         llarp::SharedSecret sharedKey;
         ServiceInfo remoteIdent;

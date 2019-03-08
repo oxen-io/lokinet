@@ -176,6 +176,9 @@ namespace llarp
       Path*
       GetPathByID(PathID_t id) const;
 
+      Path*
+      GetByEndpointWithID(RouterID router, PathID_t id) const;
+
       bool
       GetCurrentIntroductionsWithFilter(
           std::set< service::Introduction >& intros,
