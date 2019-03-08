@@ -1884,11 +1884,8 @@ namespace llarp
       {
         ProtocolMessage m;
         m.proto = t;
-        if(!m_DataHandler->GetReplyIntroFor(f.T, m.introReply))
-        {
-          m_DataHandler->PutReplyIntroFor(f.T, path->intro);
-          m.introReply = path->intro;
-        }
+        m_DataHandler->PutReplyIntroFor(f.T, path->intro);
+        m.introReply = path->intro;
         m_DataHandler->PutIntroFor(f.T, remoteIntro);
         m.sender = m_Endpoint->m_Identity.pub;
         m.PutBuffer(payload);
