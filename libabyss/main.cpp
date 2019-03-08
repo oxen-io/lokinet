@@ -4,7 +4,7 @@
 #include <absl/synchronization/mutex.h>
 
 #ifndef _WIN32
-#include <sys/signal.h>
+#include <signal.h>
 #endif
 
 struct DemoHandler : public abyss::httpd::IRPCHandler
