@@ -9,6 +9,8 @@
 
 #include <absl/base/thread_annotations.h>
 
+#include <set>
+
 /**
  * nodedb.hpp
  *
@@ -111,6 +113,11 @@ struct llarp_nodedb
   bool
   select_random_hop(const llarp::RouterContact &prev,
                     llarp::RouterContact &result, size_t N)
+      LOCKS_EXCLUDED(access);
+
+  bool
+  select_random_hop_excluding(llarp::RouterContact &result,
+                              const std::set< llarp::RouterID > &exclude)
       LOCKS_EXCLUDED(access);
 
   static bool

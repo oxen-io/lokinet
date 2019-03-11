@@ -450,6 +450,15 @@ namespace llarp
       return hops[0].rc.pubkey;
     }
 
+    std::string
+    Path::HopsString() const
+    {
+      std::stringstream ss;
+      for(const auto& hop : hops)
+        ss << RouterID(hop.rc.pubkey) << " -> ";
+      return ss.str();
+    }
+
     void
     Path::EnterState(PathStatus st, llarp_time_t now)
     {

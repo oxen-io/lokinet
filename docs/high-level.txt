@@ -27,7 +27,7 @@ LLARP - Low Latency Anon Routing Protocol
 	state sponsored network attacks. The former is an inherit property of low latency
 	computer networks that I personally do not think is possible to properly fully
 	"solve". The latter is a threat that lies outside the scope of what the current
-	toolset that is available to me at the moment.
+	toolset that is available to me at the moment provides.
 	
 	
 	This project does not attempt to be a magical application level cure-all for

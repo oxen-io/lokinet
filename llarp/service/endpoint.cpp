@@ -1854,6 +1854,11 @@ namespace llarp
           return false;
         }
       }
+      else if(hop == numHops - 2)
+      {
+        return db->select_random_hop_excluding(
+            cur, {prev.pubkey, m_NextIntro.router});
+      }
       (void)roles;
       return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }

@@ -184,7 +184,6 @@ namespace llarp
       QueueInboundPacketForExit(const llarp_buffer_t& buf)
       {
         ManagedBuffer copy{buf};
-
         return m_NetworkToUserPktQueue.EmplaceIf(
             [&](llarp::net::IPv4Packet& pkt) -> bool {
               if(!pkt.Load(copy.underlying))
