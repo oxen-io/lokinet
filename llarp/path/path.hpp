@@ -362,6 +362,9 @@ namespace llarp
         return _status;
       }
 
+      std::string
+      HopsString() const;
+
       llarp_time_t
       LastRemoteActivityAt() const override
       {

@@ -132,6 +132,12 @@ namespace llarp
     }
 
     bool
+    operator<(const RouterContact &other) const
+    {
+      return pubkey < other.pubkey;
+    }
+
+    bool
     operator!=(const RouterContact &other) const
     {
       return !(*this == other);

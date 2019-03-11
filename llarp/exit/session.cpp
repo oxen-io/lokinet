@@ -67,6 +67,11 @@ namespace llarp
       {
         return db->Get(m_ExitRouter, cur);
       }
+      else if(hop == numHops - 2)
+      {
+        return db->select_random_hop_excluding(cur,
+                                               {prev.pubkey, m_ExitRouter});
+      }
       else
         return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }

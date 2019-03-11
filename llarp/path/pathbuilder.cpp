@@ -213,11 +213,15 @@ namespace llarp
       size_t tries = 10;
       do
       {
+        cur.Clear();
         --tries;
         if(db->select_random_hop(prev, cur, hop))
-          return true;
-      } while(router->routerProfiling().IsBad(cur.pubkey) && tries > 0);
-      return false;
+        {
+          if(!router->routerProfiling().IsBad(cur.pubkey))
+            return true;
+        }
+      } while(tries > 0);
+      return tries > 0;
     }
 
     bool

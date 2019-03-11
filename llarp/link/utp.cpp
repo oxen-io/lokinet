@@ -228,6 +228,8 @@ namespace llarp
     bool
     Session::IsTimedOut(llarp_time_t now) const
     {
+      if(state == eConnecting)
+        return false;
       if(state == eClose)
         return true;
       if(now <= lastActive)

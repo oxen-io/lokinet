@@ -468,3 +468,47 @@ llarp_nodedb::select_random_hop(const llarp::RouterContact &prev,
   }
   return false;
 }
+
+bool
+llarp_nodedb::select_random_hop_excluding(
+    llarp::RouterContact &result, const std::set< llarp::RouterID > &exclude)
+{
+  llarp::util::Lock lock(&access);
+  /// checking for "guard" status for N = 0 is done by caller inside of
+  /// pathbuilder's scope
+  size_t sz = entries.size();
+  if(sz < 3)
+    return false;
+  llarp_time_t now = llarp::time_now_ms();
+
+  auto itr   = entries.begin();
+  size_t pos = llarp::randint() % sz;
+  std::advance(itr, pos);
+  auto start = itr;
+  while(itr == entries.end())
+  {
+    if(exclude.count(itr->first) == 0)
+    {
+      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      {
+        result = itr->second;
+        return true;
+      }
+    }
+    itr++;
+  }
+  itr = entries.begin();
+  while(itr != start)
+  {
+    if(exclude.count(itr->first) == 0)
+    {
+      if(itr->second.addrs.size() && !itr->second.IsExpired(now))
+      {
+        result = itr->second;
+        return true;
+      }
+    }
+    ++itr;
+  }
+  return false;
+}
