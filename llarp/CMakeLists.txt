@@ -203,17 +203,18 @@ set(LIB_SRC
   service/types.cpp
   service/vanity.cpp
 )
+if(TESTNET)
+  set(LIB_SRC ${LIB_SRC} testnet.c)
+endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
-target_link_libraries(${STATIC_LIB} PUBLIC ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} libutp ${LIBS})
-
-if(TESTNET)
-  target_sources(${STATIC_LIB} PUBLIC testnet.c)
-endif()
+set(LIBS ${LIBS} libutp)
+target_link_libraries(${STATIC_LIB} PUBLIC ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS})
 
 if(WITH_SHARED)
   add_library(${SHARED_LIB} SHARED ${LIB_SRC})
-  target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS} ${UTIL_LIB} ${PLATFORM_LIB} Threads::Threads)
+  set(LIBS ${LIBS} Threads::Threads)
+  target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
   if (WIN32)
     target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi)
   else()
