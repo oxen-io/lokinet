@@ -123,7 +123,10 @@ namespace llarp
           ++itr;
         }
         else
+        {
+          LogInfo("pending session at ", itr->first, " timed out");
           itr = m_Pending.erase(itr);
+        }
       }
     }
   }
@@ -164,14 +167,6 @@ namespace llarp
       }
     }
     return false;
-  }
-
-  void
-  ILinkLayer::RemovePending(ILinkSession* s)
-  {
-    Lock l(&m_PendingMutex);
-    llarp::Addr remote = s->GetRemoteEndpoint();
-    m_Pending.erase(remote);
   }
 
   util::StatusObject

@@ -51,3 +51,8 @@ build2/
 /contrib/lokinet-bootstrap-winnt/data.enc
 /contrib/lokinet-bootstrap-winnt/out.bine
 default.profraw
+
+# ctags shit
+GTAGS
+GRTAGS
+GPATH

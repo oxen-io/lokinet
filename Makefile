@@ -22,6 +22,7 @@ SHADOW_LOG=$(REPO)/shadow.log.txt
 SHADOW_SRC ?= $(HOME)/local/shadow
 SHADOW_PARSE ?= $(PYTHON) $(SHADOW_SRC)/src/tools/parse-shadow.py - -m 0 --packet-data
 SHADOW_PLOT ?= $(PYTHON) $(SHADOW_SRC)/src/tools/plot-shadow.py -d $(REPO) LokiNET -c $(SHADOW_CONFIG) -r 10000 -e '.*'
+SHADOW_OPTS ?=
 
 TESTNET_ROOT=/tmp/lokinet_testnet_tmp
 TESTNET_CONF=$(TESTNET_ROOT)/supervisor.conf
@@ -82,11 +83,11 @@ BUILD_ROOT = $(REPO)/build
 
 SCAN_BUILD ?= scan-build
 
-CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
+CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
 
-ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) '$(REPO)'")
+ANALYZE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
 
-COVERAGE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=yes '$(REPO)'")
+COVERAGE_CONFIG_CMD = $(shell /bin/echo -n "cd '$(BUILD_ROOT)' && " ; /bin/echo -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DWITH_COVERAGE=yes -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
 
 TARGETS = $(REPO)/lokinet
 SIGS = $(TARGETS:=.sig)
@@ -139,8 +140,8 @@ shadow-build: shadow-configure
 
 shadow-run: shadow-build
 	$(PYTHON) $(REPO)/contrib/shadow/genconf.py $(SHADOW_CONFIG)
-	cp $(SHADOW_PLUGIN) $(REPO)
-	bash -c "$(SHADOW_BIN) -w $$(cat /proc/cpuinfo | grep processor | wc -l) $(SHADOW_CONFIG) | $(SHADOW_PARSE)"
+	cp $(SHADOW_PLUGIN) $(REPO)/libshadow-plugin-lokinet.so
+	$(SHADOW_BIN) $(SHADOW_OPTS) $(SHADOW_CONFIG) | $(SHADOW_PARSE)
 
 shadow-plot: shadow-run
 	$(SHADOW_PLOT)
@@ -184,13 +185,15 @@ android-gradle: android-gradle-prepare
 android: android-gradle
 	cp -f $(ANDROID_DIR)/build/outputs/apk/*.apk $(REPO)
 
-windows-configure: clean
+windows-release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=i686-w64-mingw32-gcc-win32 -DCMAKE_CXX_COMPILER=i686-w64-mingw32-g++-win32 -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
-windows: windows-configure
+windows-release: windows-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
 	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
+
+windows: windows-release
 
 abyss: debug
 	$(ABYSS_EXE)

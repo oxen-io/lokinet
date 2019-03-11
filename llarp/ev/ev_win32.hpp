@@ -23,13 +23,10 @@ struct asio_evt_pkt
 };
 
 extern "C" DWORD FAR PASCAL
-tun_ev_loop(void* unused);
+tun_ev_loop(void* ev);
 
 void
 exit_tun_loop();
-
-void
-begin_tun_loop(int nThreads);
 
 namespace llarp
 {
@@ -60,10 +57,12 @@ namespace llarp
 struct win32_tun_io
 {
   llarp_tun_io* t;
+  llarp::Logic* logic;
   device* tunif;
   byte_t readbuf[EV_READ_BUF_SZ] = {0};
 
-  win32_tun_io(llarp_tun_io* tio) : t(tio), tunif(tuntap_init()){};
+  win32_tun_io(llarp_tun_io* tio, llarp::Logic* l)
+      : t(tio), logic(l), tunif(tuntap_init()){};
 
   bool
   queue_write(const byte_t* buf, size_t sz);

@@ -358,7 +358,6 @@ namespace llarp
           utp_close(arg->socket);
         else
           session->Close();
-        link->RemovePending(session);
       }
       return 0;
     }

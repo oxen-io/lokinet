@@ -197,8 +197,8 @@ namespace llarp
     SessionRenegotiateHandler SessionRenegotiate;
 
     /// called by link session to remove a pending session who is timed out
-    void
-    RemovePending(ILinkSession* s) LOCKS_EXCLUDED(m_PendingMutex);
+    // void
+    // RemovePending(ILinkSession* s) LOCKS_EXCLUDED(m_PendingMutex);
 
    private:
     static void
