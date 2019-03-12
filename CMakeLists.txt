@@ -74,7 +74,7 @@ add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
 if (USING_CLANG)
-  add_compile_options(-Wthread-safety -Wthread-safety-negative)
+  add_compile_options(-Wthread-safety)
 endif()
 
 if (WITH_COVERAGE)
