@@ -7,7 +7,9 @@
 #define MyAppURL "https://loki.network"
 #define MyAppExeName "lokinet.exe"
 ; change this to avoid compiler errors  -despair
+#ifndef DevPath
 #define DevPath "D:\dev\external\llarp\"
+#endif
 #include <idp.iss>
 
 ; see ../LICENSE
@@ -42,7 +44,7 @@ VersionInfoProductTextVersion=0.4.0-dev
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
-VersionInfoCopyright=Copyright ©2018 Loki Project
+VersionInfoCopyright=Copyright ©2018-2019 Loki Project
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -53,8 +55,12 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; only one of these is installed
+#ifdef SINGLE_ARCH
+Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion
+#else
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
 Source: "{#DevPath}build64\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
+#endif
 ; eh, might as well ship the 32-bit port of everything else
 Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}LICENSE"; DestDir: "{app}"; Flags: ignoreversion
