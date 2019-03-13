@@ -4,6 +4,7 @@
 #include <ev/ev.h>
 #include <util/json.hpp>
 #include <util/string_view.hpp>
+#include <abyss/http.hpp>
 
 #include <deque>
 #include <functional>
@@ -21,6 +22,7 @@ namespace abyss
     using RPC_Params   = nlohmann::json;
     using RPC_Response = nlohmann::json;
     using Headers_t    = std::unordered_multimap< std::string, std::string >;
+    using Response     = RequestHeader;
     struct ConnImpl;
 
     /// jsonrpc response handler for client
@@ -90,6 +92,9 @@ namespace abyss
       void
       Flush();
 
+      std::string username;
+      std::string password;
+
      private:
       struct Call
       {
@@ -119,7 +124,6 @@ namespace abyss
       std::deque< Call > m_PendingCalls;
       std::list< std::unique_ptr< IRPCClientHandler > > m_Conns;
     };
-
   }  // namespace http
 }  // namespace abyss
 

@@ -1309,7 +1309,7 @@ namespace llarp
     if(whitelistRouters)
     {
       rpcCaller = std::make_unique< rpc::Caller >(this);
-      rpcCaller->SetBasicAuth(lokidRPCUser, lokidRPCPassword);
+      rpcCaller->SetAuth(lokidRPCUser, lokidRPCPassword);
       while(!rpcCaller->Start(lokidRPCAddr))
       {
         LogError("failed to start jsonrpc caller to ", lokidRPCAddr);

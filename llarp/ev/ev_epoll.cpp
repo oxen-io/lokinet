@@ -24,6 +24,7 @@ namespace llarp
     {
       // error
       _shouldClose = true;
+      errno        = 0;
       return -1;
     }
     return 0;
@@ -73,6 +74,7 @@ namespace llarp
       // wtf?
       llarp::LogError("error connecting ", strerror(errno));
       _conn->error(_conn);
+      errno = 0;
     }
   }
 
@@ -118,7 +120,10 @@ namespace llarp
     sockaddr* addr = (sockaddr*)&src;
     ssize_t ret    = ::recvfrom(fd, b.base, sz, 0, addr, &slen);
     if(ret < 0)
+    {
+      errno = 0;
       return -1;
+    }
     if(static_cast< size_t >(ret) > sz)
       return -1;
     b.sz = ret;
@@ -334,10 +339,11 @@ llarp_epoll_loop::tick(int ms)
       {
         llarp::LogDebug(idx, " of ", result, " on ", ev->fd,
                         " events=", std::to_string(events[idx].events));
-        if(events[idx].events & EPOLLERR)
+        if(events[idx].events & EPOLLERR && errno)
         {
           llarp::LogDebug("epoll error");
           ev->error();
+          errno = 0;
         }
         else
         {
@@ -361,6 +367,7 @@ llarp_epoll_loop::tick(int ms)
   if(result != -1)
     tick_listeners();
   /// if we didn't get an io events we sleep to avoid 100% cpu use
+  errno = 0;
   if(!didIO)
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
   return result;
