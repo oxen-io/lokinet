@@ -1,5 +1,6 @@
 #include <abyss/client.hpp>
 #include <abyss/http.hpp>
+#include <abyss/md5.hpp>
 #include <crypto/crypto.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
@@ -14,12 +15,14 @@ namespace abyss
       // big
       static const size_t MAX_BODY_SIZE = (1024 * 1024);
       llarp_tcp_conn* m_Conn;
+      JSONRPC* m_Parent;
       nlohmann::json m_RequestBody;
       Headers_t m_SendHeaders;
       IRPCClientHandler* handler;
       std::unique_ptr< json::IParser > m_BodyParser;
       nlohmann::json m_Response;
-
+      uint16_t m_AuthTries;
+      bool m_ShouldAuth;
       enum State
       {
         eInitial,
@@ -31,14 +34,17 @@ namespace abyss
 
       State state;
 
-      ConnImpl(llarp_tcp_conn* conn, const RPC_Method_t& method,
-               const RPC_Params& params, JSONRPC::HandlerFactory factory)
+      ConnImpl(llarp_tcp_conn* conn, JSONRPC* parent,
+               const RPC_Method_t& method, const RPC_Params& params,
+               JSONRPC::HandlerFactory factory)
           : m_Conn(conn)
+          , m_Parent(parent)
           , m_RequestBody(nlohmann::json::object())
           , m_Response(nlohmann::json::object())
+          , m_AuthTries(0)
+          , m_ShouldAuth(false)
           , state(eInitial)
       {
-        srand(time(nullptr));
         conn->user   = this;
         conn->closed = &ConnImpl::OnClosed;
         conn->read   = &ConnImpl::OnRead;
@@ -77,7 +83,7 @@ namespace abyss
       }
 
       bool
-      ProcessStatusLine(string_view line) const
+      ProcessStatusLine(string_view line)
       {
         auto idx = line.find_first_of(' ');
         if(idx == string_view::npos)
@@ -95,19 +101,121 @@ namespace abyss
       ShouldProcessHeader(const llarp::string_view& name) const
       {
         return name == llarp::string_view("content-length")
-            || name == llarp::string_view("content-type");
+            || name == llarp::string_view("content-type")
+            || name == llarp::string_view("www-authenticate");
       }
 
       /// return true if we get a 200 status code
       bool
-      HandleStatusCode(string_view code) const
+      HandleStatusCode(string_view code)
       {
-        return code == string_view("200");
+        if(code == string_view("200"))
+          return true;
+        if(code == string_view("401"))
+        {
+          m_ShouldAuth = true;
+          return true;
+        }
+        return false;
+      }
+
+      bool
+      RetryWithAuth(const std::string& auth)
+      {
+        m_ShouldAuth = false;
+        auto idx     = auth.find_first_of(' ');
+        if(idx == std::string::npos)
+          return false;
+        std::istringstream info(auth.substr(1 + idx));
+        std::unordered_map< std::string, std::string > opts;
+        std::string part;
+        while(std::getline(info, part, ','))
+        {
+          idx = part.find_first_of('=');
+          if(idx == std::string::npos)
+            return false;
+          std::string k = part.substr(0, idx);
+          std::string val;
+          ++idx;
+          while(idx < part.size())
+          {
+            const char ch = part.at(idx);
+            val += ch;
+            ++idx;
+          }
+          opts[k] = val;
+        }
+        auto itr = opts.find("algorithm");
+
+        if(itr != opts.end() && itr->second == "MD5-sess")
+          return false;
+
+        std::stringstream authgen;
+
+        auto strip = [&opts](const std::string& name) -> std::string {
+          std::string val;
+          std::for_each(opts[name].begin(), opts[name].end(),
+                        [&val](const char& ch) {
+                          if(ch != '"')
+                            val += ch;
+                        });
+          return val;
+        };
+
+        const auto realm       = strip("realm");
+        const auto nonce       = strip("nonce");
+        const auto qop         = strip("qop");
+        std::string nonceCount = "0000000" + std::to_string(m_AuthTries);
+
+        std::string str =
+            m_Parent->username + ":" + realm + ":" + m_Parent->password;
+        std::string h1 = MD5::SumHex(str);
+        str            = "POST:/json_rpc";
+        std::string h2 = MD5::SumHex(str);
+        llarp::AlignedBuffer< 8 > n;
+        n.Randomize();
+        std::string cnonce = n.ToHex();
+        str = h1 + ":" + nonce + ":" + nonceCount + ":" + cnonce + ":" + qop
+            + ":" + h2;
+
+        auto responseH = MD5::SumHex(str);
+        authgen << "Digest username=\"" << m_Parent->username + "\", realm=\""
+                << realm
+                << "\", uri=\"/json_rpc\", algorithm=MD5, qop=auth, nonce=\""
+                << nonce << "\", response=\"" << responseH
+                << "\", nc=" << nonceCount << ", cnonce=\"" << cnonce << "\"";
+        for(const auto& opt : opts)
+        {
+          if(opt.first == "algorithm" || opt.first == "realm"
+             || opt.first == "qop" || opt.first == "nonce"
+             || opt.first == "stale")
+            continue;
+          authgen << ", " << opt.first << "=" << opt.second;
+        }
+        m_SendHeaders.clear();
+        m_SendHeaders.emplace("Authorization", authgen.str());
+        SendRequest();
+        return true;
       }
 
       bool
       ProcessBody(const char* buf, size_t sz)
       {
+        // we got 401 ?
+        if(m_ShouldAuth && m_AuthTries < 9)
+        {
+          m_AuthTries++;
+          auto range = Header.Headers.equal_range("www-authenticate");
+          auto itr   = range.first;
+          while(itr != range.second)
+          {
+            if(RetryWithAuth(itr->second))
+              return true;
+            else
+              ++itr;
+          }
+          return false;
+        }
         // init parser
         if(m_BodyParser == nullptr)
         {
@@ -222,7 +330,7 @@ namespace abyss
         m_SendHeaders.emplace("Content-Length", std::to_string(body.size()));
         m_SendHeaders.emplace("Accept", "application/json");
         std::stringstream request;
-        request << "POST /json_rpc HTTP/1.0\r\n";
+        request << "POST /json_rpc HTTP/1.1\r\n";
         for(const auto& item : m_SendHeaders)
           request << item.first << ": " << item.second << "\r\n";
         request << "\r\n" << body;
@@ -341,9 +449,9 @@ namespace abyss
         llarp_tcp_conn_close(conn);
         return;
       }
-      auto& front = m_PendingCalls.front();
-      ConnImpl* connimpl =
-          new ConnImpl(conn, front.method, front.params, front.createHandler);
+      auto& front        = m_PendingCalls.front();
+      ConnImpl* connimpl = new ConnImpl(conn, this, front.method, front.params,
+                                        front.createHandler);
       m_PendingCalls.pop_front();
       m_Conns.emplace_back(connimpl->handler);
       connimpl->SendRequest();

@@ -43,7 +43,7 @@ namespace llarp
 
       /// set http basic auth for use with remote rpc endpoint
       void
-      SetBasicAuth(const std::string& user, const std::string& password);
+      SetAuth(const std::string& user, const std::string& password);
 
       /// start with jsonrpc endpoint address
       bool

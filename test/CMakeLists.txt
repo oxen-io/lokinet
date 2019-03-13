@@ -29,6 +29,7 @@ list(APPEND TEST_SRC
     test_llarp_encrypted_frame.cpp
     test_llarp_router_contact.cpp
     test_llarp_router.cpp
+    test_md5.cpp
     util/test_llarp_util_aligned.cpp
     util/test_llarp_util_bencode.cpp
     util/test_llarp_util_bits.cpp

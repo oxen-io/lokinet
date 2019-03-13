@@ -120,11 +120,8 @@ namespace llarp
     {
       AbstractRouter* router;
       llarp_time_t m_NextKeyUpdate         = 0;
-      const llarp_time_t KeyUpdateInterval = 1000 * 60 * 2;
+      const llarp_time_t KeyUpdateInterval = 5000;
       using PubkeyList_t = GetServiceNodeListHandler::PubkeyList_t;
-
-      std::string username;
-      std::string password;
 
       CallerImpl(AbstractRouter* r) : ::abyss::http::JSONRPC(), router(r)
       {
@@ -142,7 +139,7 @@ namespace llarp
       }
 
       void
-      SetBasicAuth(const std::string& user, const std::string& passwd)
+      SetAuth(const std::string& user, const std::string& passwd)
       {
         username = user;
         password = passwd;
@@ -191,13 +188,7 @@ namespace llarp
     void
     CallerHandler::PopulateReqHeaders(abyss::http::Headers_t& hdr)
     {
-      if(m_Parent->username.empty() || m_Parent->password.empty())
-        return;
-      std::stringstream ss;
-      ss << "Basic ";
-      std::string cred = m_Parent->username + ":" + m_Parent->password;
-      llarp::Base64Encode(ss, (const byte_t*)cred.c_str(), cred.size());
-      hdr.emplace("Authorization", ss.str());
+      hdr.emplace("User-Agent", "lokinet rpc (YOLO)");
     }
 
     struct Handler : public ::abyss::httpd::IRPCHandler
@@ -351,9 +342,9 @@ namespace llarp
     }
 
     void
-    Caller::SetBasicAuth(const std::string& user, const std::string& passwd)
+    Caller::SetAuth(const std::string& user, const std::string& passwd)
     {
-      m_Impl->SetBasicAuth(user, passwd);
+      m_Impl->SetAuth(user, passwd);
     }
 
     Server::Server(AbstractRouter* r)

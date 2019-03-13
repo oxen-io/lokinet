@@ -316,6 +316,7 @@ function(add_log_tag target)
 endfunction()
 
 set(ABYSS_SRC
+  ${ABYSS}/src/md5.cpp
   ${ABYSS}/src/http.cpp
   ${ABYSS}/src/client.cpp
   ${ABYSS}/src/server.cpp)
