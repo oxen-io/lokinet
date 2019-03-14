@@ -343,7 +343,6 @@ llarp_epoll_loop::tick(int ms)
         {
           llarp::LogDebug("epoll error");
           ev->error();
-          errno = 0;
         }
         else
         {
@@ -362,12 +361,13 @@ llarp_epoll_loop::tick(int ms)
         }
       }
       ++idx;
+      // clear errno just in case
+      errno = 0;
     }
   }
   if(result != -1)
     tick_listeners();
   /// if we didn't get an io events we sleep to avoid 100% cpu use
-  errno = 0;
   if(!didIO)
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
   return result;
