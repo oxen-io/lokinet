@@ -190,7 +190,6 @@ namespace llarp
     if(!profile.BDecode(buf))
       return false;
     RouterID pk = k.base;
-    absl::WriterMutexLock l(&m_ProfilesMutex);
     return m_Profiles.emplace(pk, profile).second;
   }
 
