@@ -7,7 +7,7 @@
 
 namespace llarp
 {
-  inline int
+  int
   tcp_conn::read(byte_t* buf, size_t sz)
   {
     if(_shouldClose)
@@ -30,14 +30,14 @@ namespace llarp
     return 0;
   }
 
-  inline void
+  void
   tcp_conn::flush_write()
   {
     connected();
     ev_io::flush_write();
   }
 
-  inline ssize_t
+  ssize_t
   tcp_conn::do_write(void* buf, size_t sz)
   {
     if(_shouldClose)
@@ -48,7 +48,7 @@ namespace llarp
     return ::send(fd, buf, sz, MSG_NOSIGNAL);  // ignore sigpipe
   }
 
-  inline void
+  void
   tcp_conn::connect()
   {
     socklen_t slen = sizeof(sockaddr_in);
@@ -78,7 +78,7 @@ namespace llarp
     }
   }
 
-  inline int
+  int
   tcp_serv::read(byte_t*, size_t)
   {
     int new_fd = ::accept(fd, nullptr, nullptr);
