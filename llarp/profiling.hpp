@@ -69,13 +69,14 @@ namespace llarp
     MarkPathSuccess(path::Path* p) LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void
-    Tick();
+    Tick() LOCKS_EXCLUDED(m_ProfilesMutex);
 
     bool
     BEncode(llarp_buffer_t* buf) const override LOCKS_EXCLUDED(m_ProfilesMutex);
 
     bool
-    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override;
+    DecodeKey(const llarp_buffer_t& k, llarp_buffer_t* buf) override
+        SHARED_LOCKS_REQUIRED(m_ProfilesMutex);
 
     bool
     Load(const char* fname) LOCKS_EXCLUDED(m_ProfilesMutex);

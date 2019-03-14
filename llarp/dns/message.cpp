@@ -157,7 +157,7 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= flags_QR | flags_AA;
+        hdr_fields |= flags_QR | flags_AA | flags_RA;
         const auto& question = questions[0];
         ResourceRecord rec;
         rec.rr_name  = question.qname;
@@ -175,7 +175,7 @@ namespace llarp
     {
       if(questions.size())
       {
-        hdr_fields |= flags_QR | flags_AA;
+        hdr_fields |= flags_QR | flags_AA | flags_RA;
         const auto& question = questions[0];
         answers.emplace_back();
         auto& rec                     = answers.back();
