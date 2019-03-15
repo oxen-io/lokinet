@@ -341,35 +341,42 @@ llarp_epoll_loop::tick(int ms)
                         " events=", std::to_string(events[idx].events));
         if(events[idx].events & EPOLLERR && errno)
         {
-          llarp::LogDebug("epoll error");
-          ev->error();
+          IO([&]() -> ssize_t {
+            llarp::LogDebug("epoll error");
+            ev->error();
+            return 0;
+          });
         }
         else
         {
           // write THEN READ don't revert me
           if(events[idx].events & EPOLLOUT)
           {
-            llarp::LogDebug("epoll out");
-            ev->flush_write();
+            IO([&]() -> ssize_t {
+              llarp::LogDebug("epoll out");
+              ev->flush_write();
+              return 0;
+            });
           }
           if(events[idx].events & EPOLLIN)
           {
-            llarp::LogDebug("epoll in");
-            if(ev->read(readbuf, sizeof(readbuf)) > 0)
+            ssize_t amount = IO([&]() -> ssize_t {
+              llarp::LogDebug("epoll in");
+              return ev->read(readbuf, sizeof(readbuf));
+            });
+            if(amount > 0)
               didIO = true;
           }
         }
       }
       ++idx;
-      // clear errno just in case
-      errno = 0;
     }
   }
   if(result != -1)
     tick_listeners();
   /// if we didn't get an io events we sleep to avoid 100% cpu use
   if(!didIO)
-    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   return result;
 }
 
