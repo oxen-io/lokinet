@@ -51,8 +51,7 @@ llarp_make_ev_loop()
 #error no event loop subclass
 #endif
   r->init();
-  r->_now = llarp::time_now_ms();
-
+  r->update_time();
   return r;
 }
 
@@ -71,7 +70,7 @@ llarp_ev_loop_run(struct llarp_ev_loop *ev, llarp::Logic *logic)
 {
   while(ev->running())
   {
-    ev->_now = llarp::time_now_ms();
+    ev->update_time();
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
       logic->tick(ev->_now);
@@ -92,12 +91,12 @@ llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
 {
   while(ev->running())
   {
-    ev->_now = llarp::time_now_ms();
+    ev->update_time();
     ev->tick(EV_TICK_INTERVAL);
     if(ev->running())
     {
-      ev->_now = llarp::time_now_ms();
-      logic->tick_async(ev->_now);
+      ev->update_time();
+      logic->tick_async(ev->time_now());
       llarp_threadpool_tick(tp);
     }
   }
@@ -125,7 +124,7 @@ llarp_time_t
 llarp_ev_loop_time_now_ms(struct llarp_ev_loop *loop)
 {
   if(loop)
-    return loop->_now;
+    return loop->time_now();
   return llarp::time_now_ms();
 }
 

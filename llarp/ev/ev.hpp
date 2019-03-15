@@ -50,6 +50,15 @@ typedef struct sockaddr_un
 #define EV_WRITE_BUF_SZ (2 * 1024UL)
 #endif
 
+/// do io and reset errno after
+static ssize_t
+IO(std::function< ssize_t(void) > iofunc)
+{
+  ssize_t ret = iofunc();
+  errno       = 0;
+  return ret;
+}
+
 namespace llarp
 {
 #ifdef _WIN32
@@ -696,6 +705,18 @@ struct llarp_ev_loop
 
   virtual bool
   running() const = 0;
+
+  void
+  update_time()
+  {
+    _now = llarp::time_now_ms();
+  }
+
+  virtual llarp_time_t
+  time_now() const
+  {
+    return _now;
+  }
 
   /// return false on socket error (non blocking)
   virtual bool
