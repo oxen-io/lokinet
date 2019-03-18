@@ -592,7 +592,7 @@ namespace llarp
       SendQueueBacklog = [&]() -> size_t { return sendq.size(); };
 
       ShouldPing = [&]() -> bool {
-        auto dlt = lastActive - parent->Now();
+        auto dlt = parent->Now() - lastActive;
         return dlt >= 10000;
       };
 
