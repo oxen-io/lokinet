@@ -759,20 +759,7 @@ namespace llarp
           AddInboundLink(server);
           return;
         }
-        if(af == AF_INET6)
-        {
-          // we failed to configure IPv6
-          // try IPv4
-          llarp::LogInfo("link ", key,
-                         " failed to configure IPv6, trying IPv4");
-          af = AF_INET;
-          if(server->Configure(netloop(), key, af, proto))
-          {
-            AddInboundLink(server);
-            return;
-          }
-        }
-        llarp::LogError("Failed to set up curvecp link");
+        LogError("failed to bind inbound link on ", val);
       }
     }
     else if(StrEq(section, "network"))
