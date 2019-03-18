@@ -759,7 +759,7 @@ namespace llarp
           AddInboundLink(server);
           return;
         }
-        LogError("failed to bind inbound link on ", val);
+        LogError("failed to bind inbound link on ", key, " port ", val);
       }
     }
     else if(StrEq(section, "network"))
