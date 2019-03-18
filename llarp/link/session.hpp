@@ -61,6 +61,9 @@ namespace llarp
 
     /// renegotiate session when we have a new RC locally
     std::function< bool(void) > RenegotiateSession;
+
+    /// return true if we should send an explicit keepalive message
+    std::function< bool(void) > ShouldPing;
   };
 }  // namespace llarp
 
