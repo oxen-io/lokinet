@@ -17,7 +17,7 @@ namespace llarp
         llarp::service::Config::section_t values;
         values.first.assign(name.begin(), name.end());
         for(const auto& item : section)
-          values.second.emplace_back(item.first, item.second);
+          values.second.emplace_back(string_view_string(item.first), string_view_string(item.second));
         services.emplace_back(values);
       });
       return services.size() > 0;
