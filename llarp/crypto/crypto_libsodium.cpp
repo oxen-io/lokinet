@@ -12,6 +12,9 @@ extern "C"
 {
   extern int
   sodium_init(void);
+
+#include <sodium/private/ed25519_ref10.h>
+
 }
 
 namespace llarp
@@ -185,9 +188,12 @@ namespace llarp
     CryptoLibSodium::seed_to_secretkey(llarp::SecretKey &secret,
                                        const llarp::IdentitySecret &seed)
     {
-      byte_t pk[crypto_sign_ed25519_PUBLICKEYBYTES];
-      return crypto_sign_ed25519_seed_keypair(pk, secret.data(), seed.data())
-          != -1;
+      ge25519_p3 A;
+      std::copy_n(seed.begin(), 32, secret.begin());
+      ge25519_scalarmult_base(&A, seed.data());
+      byte_t * pub = secret.data() + 32;
+      ge25519_p3_tobytes(pub, &A);
+      return true;
     }
 
     void
