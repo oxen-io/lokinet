@@ -17,6 +17,7 @@ option(DEBIAN "build for debian" )
 option(TESTNET "testnet build" )
 option(WITH_SHARED "build shared library")
 option(WITH_COVERAGE "generate coverage data")
+option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 
 # Basic definitions
 get_filename_component(CORE_INCLUDE include ABSOLUTE)
@@ -65,7 +66,10 @@ add_subdirectory(${ABSEIL_DIR})
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
-add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unknown-warning-option)
+if (WARNINGS_AS_ERRORS)
+  add_compile_options(-Werror)
+endif()
+add_compile_options(-Wall -Wextra -Wno-unknown-pragmas -Wno-unknown-warning-option)
 # vla are evil
 add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
