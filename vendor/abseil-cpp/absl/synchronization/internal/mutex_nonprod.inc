@@ -9,7 +9,7 @@
 
 #include <type_traits>
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_MSC_VER)
 #include <condition_variable>
 #include <mutex>
 #else
@@ -61,7 +61,7 @@ class CondVarImpl {
   bool WaitWithDeadline(MutexImpl* mutex, absl::Time deadline);
 
  private:
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_MSC_VER)
   std::condition_variable_any std_cv_;
 #else
   pthread_cond_t pthread_cv_;
@@ -89,7 +89,7 @@ class MutexImpl {
  private:
   friend class CondVarImpl;
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_MSC_VER)
   std::mutex std_mutex_;
 #else
   pthread_mutex_t pthread_mutex_;

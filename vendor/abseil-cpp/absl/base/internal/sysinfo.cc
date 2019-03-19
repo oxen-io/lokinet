@@ -79,7 +79,6 @@ static int GetNumCPUs() {
 static double GetNominalCPUFrequency() {
   DWORD data;
   DWORD data_size = sizeof(data);
-  #pragma comment(lib, "shlwapi.lib")  // For SHGetValue().
   if (SUCCEEDED(
           SHGetValueA(HKEY_LOCAL_MACHINE,
                       "HARDWARE\\DESCRIPTION\\System\\CentralProcessor\\0",
@@ -275,7 +274,7 @@ double NominalCPUFrequency() {
   return nominal_cpu_frequency;
 }
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_MSC_VER)
 
 pid_t GetTID() {
   return GetCurrentThreadId();
@@ -326,6 +325,7 @@ pid_t GetTID() {
 #else
 
 // Fallback implementation of GetTID using pthread_getspecific.
+// this might work on mingw32
 static once_flag tid_once;
 static pthread_key_t tid_key;
 static absl::base_internal::SpinLock tid_lock(

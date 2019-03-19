@@ -21,7 +21,7 @@
 
 #include "absl/base/internal/spinlock_wait.h"
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_MSC_VER)
 #include "absl/base/internal/spinlock_win32.inc"
 #elif defined(__linux__)
 #include "absl/base/internal/spinlock_linux.inc"

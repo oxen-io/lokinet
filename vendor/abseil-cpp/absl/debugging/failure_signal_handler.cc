@@ -272,7 +272,7 @@ static void WriteFailureInfo(int signo, void* ucontext,
 // may be overridden to do something that isn't async-signal-safe on
 // some platforms.
 static void PortableSleepForSeconds(int seconds) {
-#ifdef _WIN32
+#ifdef _MSC_VER
   Sleep(seconds * 1000);
 #else
   struct timespec sleep_time;
