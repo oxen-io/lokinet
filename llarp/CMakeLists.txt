@@ -105,6 +105,7 @@ set(LIB_SRC
   crypto/constants.cpp
   crypto/crypto_libsodium.cpp
   crypto/crypto.cpp
+  crypto/ec.cpp
   crypto/encrypted_frame.cpp
   crypto/encrypted.cpp
   crypto/types.cpp
