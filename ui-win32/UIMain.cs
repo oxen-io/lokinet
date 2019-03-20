@@ -29,6 +29,13 @@ namespace network.loki.lokinet.win32.ui
             UIVersionLabel.Text = String.Format("LokiNET version {0}", build);
             lokinetd_fd1.Text = string.Empty;
             logText = string.Empty;
+            lokiNetDaemon.OutputDataReceived += new DataReceivedEventHandler((s, ev) =>
+            {
+                if (!string.IsNullOrEmpty(ev.Data))
+                {
+                    UpdateUI(ev.Data + Environment.NewLine);
+                }
+            });
         }
 
         private void btnConfigProfile_Click(object sender, EventArgs e)
@@ -53,13 +60,6 @@ namespace network.loki.lokinet.win32.ui
             //lokiNetDaemon.EnableRaisingEvents = true;
             lokiNetDaemon.StartInfo.CreateNoWindow = true;
             lokiNetDaemon.StartInfo.FileName = lokinetExeString;
-            lokiNetDaemon.OutputDataReceived += new DataReceivedEventHandler((s, ev) =>
-            {
-                if (!string.IsNullOrEmpty(ev.Data))
-                {
-                    UpdateUI(ev.Data + Environment.NewLine);
-                }
-            });
             lokiNetDaemon.Start();
             lokiNetDaemon.BeginOutputReadLine();
             btnConnect.Enabled = false;
