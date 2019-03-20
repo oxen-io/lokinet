@@ -12,6 +12,7 @@
 #endif
 #include <idp.iss>
 #include "version.txt"
+#define RELEASE
 
 ; see ../LICENSE
 
@@ -47,7 +48,7 @@ VersionInfoTextVersion=0.4.0-dev-{#VCSRev}
 VersionInfoProductTextVersion=0.4.0-dev-{#VCSRev}
 #else
 VersionInfoTextVersion=0.4.0
-VersionInfoProductTextVersion=0.4.0 {#Codename}
+VersionInfoProductTextVersion=0.4.0 ({#Codename})
 #endif
 VersionInfoProductName=LokiNET
 VersionInfoProductVersion=0.4.0
