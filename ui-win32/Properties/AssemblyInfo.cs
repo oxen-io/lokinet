@@ -5,13 +5,13 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("LokiNET for Windows")]
-[assembly: AssemblyDescription("LokiNET Client UI for Windows NT (standalone)")]
+[assembly: AssemblyTitle("LokiNET end-user interface")]
+[assembly: AssemblyDescription("LokiNET end-user UI")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Loki Project")]
-[assembly: AssemblyProduct("lokinet-win32")]
-[assembly: AssemblyCopyright("Copyright ©2018 Rick V for the Loki Project. All rights reserved. See LICENSE for more details.")]
-[assembly: AssemblyTrademark("Loki, Loki Project, LokiNET are ™ & © 2018 Loki Foundation")]
+[assembly: AssemblyProduct("LokiNET for Microsoft® Windows® NT™")]
+[assembly: AssemblyCopyright("Copyright ©2018-2019 Rick V for the Loki Project. All rights reserved. See LICENSE for more details.")]
+[assembly: AssemblyTrademark("Loki, Loki Project, LokiNET are ™ & ©2018-2019 Loki Foundation")]
 [assembly: AssemblyCulture("")]
 
 // Setting ComVisible to false makes the types in this assembly not visible
@@ -32,5 +32,10 @@ using System.Runtime.InteropServices;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("0.4.0.0")]
+[assembly: AssemblyFileVersion("0.4.0.0")]
+#if DEBUG
+[assembly: AssemblyInformationalVersion("0.4.0-dev-{chash:8}")]
+#else
+[assembly: AssemblyInformationalVersion("0.4.0 (RELEASE_CODENAME)")]
+#endif

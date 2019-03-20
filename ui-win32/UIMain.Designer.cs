@@ -1,6 +1,6 @@
-﻿namespace lokivpn
+﻿namespace network.loki.lokinet.win32.ui
 {
-    partial class UI_Main_Frame
+    partial class main_frame
     {
         /// <summary>
         /// Required designer variable.
@@ -29,7 +29,7 @@
         private void InitializeComponent()
         {
             this.components = new System.ComponentModel.Container();
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(UI_Main_Frame));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(main_frame));
             this.StatusLabel = new System.Windows.Forms.Label();
             this.lokinetd_fd1 = new System.Windows.Forms.TextBox();
             this.NotificationTrayIcon = new System.Windows.Forms.NotifyIcon(this.components);
@@ -67,13 +67,14 @@
             this.lokinetd_fd1.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.lokinetd_fd1.Size = new System.Drawing.Size(776, 330);
             this.lokinetd_fd1.TabIndex = 1;
-            this.lokinetd_fd1.Text = "[pipe lokinetd fd 1 here]";
+            this.lokinetd_fd1.TextChanged += new System.EventHandler(this.lokinetd_fd1_TextChanged);
             // 
             // NotificationTrayIcon
             // 
             this.NotificationTrayIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("NotificationTrayIcon.Icon")));
-            this.NotificationTrayIcon.Text = "LokiNET for Windows - [status]";
+            this.NotificationTrayIcon.Text = "LokiNET - disconnected";
             this.NotificationTrayIcon.Visible = true;
+            this.NotificationTrayIcon.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.NotificationTrayIcon_MouseDoubleClick);
             // 
             // btnHide
             // 
@@ -84,16 +85,17 @@
             this.btnHide.TabIndex = 2;
             this.btnHide.Text = "Hide";
             this.btnHide.UseVisualStyleBackColor = true;
+            this.btnHide.Click += new System.EventHandler(this.btnHide_Click);
             // 
             // UIVersionLabel
             // 
             this.UIVersionLabel.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
-            this.UIVersionLabel.AutoSize = true;
-            this.UIVersionLabel.Location = new System.Drawing.Point(529, 388);
+            this.UIVersionLabel.Location = new System.Drawing.Point(455, 388);
             this.UIVersionLabel.Name = "UIVersionLabel";
-            this.UIVersionLabel.Size = new System.Drawing.Size(259, 13);
+            this.UIVersionLabel.Size = new System.Drawing.Size(333, 13);
             this.UIVersionLabel.TabIndex = 3;
-            this.UIVersionLabel.Text = "LokiNET for Windows UI [version]/LokiNET [vcs-rev]";
+            this.UIVersionLabel.Text = "version label";
+            this.UIVersionLabel.TextAlign = System.Drawing.ContentAlignment.TopRight;
             // 
             // btnConnect
             // 
@@ -104,21 +106,24 @@
             this.btnConnect.TabIndex = 4;
             this.btnConnect.Text = "Connect";
             this.btnConnect.UseVisualStyleBackColor = true;
+            this.btnConnect.Click += new System.EventHandler(this.btnConnect_Click);
             // 
             // btnDrop
             // 
             this.btnDrop.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnDrop.Location = new System.Drawing.Point(95, 414);
+            this.btnDrop.Enabled = false;
+            this.btnDrop.Location = new System.Drawing.Point(95, 415);
             this.btnDrop.Name = "btnDrop";
             this.btnDrop.Size = new System.Drawing.Size(75, 23);
             this.btnDrop.TabIndex = 5;
             this.btnDrop.Text = "Disconnect";
             this.btnDrop.UseVisualStyleBackColor = true;
+            this.btnDrop.Click += new System.EventHandler(this.btnDrop_Click);
             // 
             // btnConfigProfile
             // 
             this.btnConfigProfile.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)));
-            this.btnConfigProfile.Location = new System.Drawing.Point(177, 413);
+            this.btnConfigProfile.Location = new System.Drawing.Point(177, 415);
             this.btnConfigProfile.Name = "btnConfigProfile";
             this.btnConfigProfile.Size = new System.Drawing.Size(75, 23);
             this.btnConfigProfile.TabIndex = 6;
@@ -126,7 +131,7 @@
             this.btnConfigProfile.UseVisualStyleBackColor = true;
             this.btnConfigProfile.Click += new System.EventHandler(this.btnConfigProfile_Click);
             // 
-            // UI_Main_Frame
+            // main_frame
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
@@ -139,10 +144,10 @@
             this.Controls.Add(this.lokinetd_fd1);
             this.Controls.Add(this.StatusLabel);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Name = "UI_Main_Frame";
+            this.Name = "main_frame";
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
-            this.Text = "LokiNET for Windows";
+            this.Text = "LokiNET Launcher";
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -151,13 +156,13 @@
         #endregion
 
         private System.Windows.Forms.Label StatusLabel;
-        private System.Windows.Forms.TextBox lokinetd_fd1;
         private System.Windows.Forms.NotifyIcon NotificationTrayIcon;
         private System.Windows.Forms.Button btnHide;
         private System.Windows.Forms.Label UIVersionLabel;
         private System.Windows.Forms.Button btnConnect;
         private System.Windows.Forms.Button btnDrop;
         private System.Windows.Forms.Button btnConfigProfile;
+        public System.Windows.Forms.TextBox lokinetd_fd1;
     }
 }
 

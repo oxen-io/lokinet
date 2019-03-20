@@ -5,12 +5,13 @@
 #define MyAppVersion "0.4.0"
 #define MyAppPublisher "Loki Project"
 #define MyAppURL "https://loki.network"
-#define MyAppExeName "lokinet.exe"
+#define MyAppExeName "lokinetui.exe"
 ; change this to avoid compiler errors  -despair
 #ifndef DevPath
 #define DevPath "D:\dev\external\llarp\"
 #endif
 #include <idp.iss>
+#include "version.txt"
 
 ; see ../LICENSE
 
@@ -36,11 +37,11 @@ Compression=lzma
 SolidCompression=yes
 VersionInfoVersion=0.4.0
 VersionInfoCompany=Loki Project
-VersionInfoDescription=lokinet for windows
-VersionInfoTextVersion=0.4.0-dev
-VersionInfoProductName=loki-network
+VersionInfoDescription=LokiNET for Microsoft® Windows® NT™
+VersionInfoTextVersion=0.4.0-dev-{#VCSRev}
+VersionInfoProductName=LokiNET
 VersionInfoProductVersion=0.4.0
-VersionInfoProductTextVersion=0.4.0-dev
+VersionInfoProductTextVersion=0.4.0-dev-{#VCSRev}
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
@@ -57,15 +58,28 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 ; only one of these is installed
 #ifdef SINGLE_ARCH
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion
 #else
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
+Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
 Source: "{#DevPath}build64\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
+Source: "{#DevPath}build64\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
+#endif
+; UI has landed!
+#ifndef RELEASE
+Source: "{#DevPath}ui-win32\bin\debug\lokinetui.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}ui-win32\bin\debug\lokinetui.exe.config"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}ui-win32\bin\debug\lokinetui.pdb"; DestDir: "{app}"; Flags: ignoreversion
+#else
+Source: "{#DevPath}ui-win32\bin\release\lokinetui.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}ui-win32\bin\release\lokinetui.exe.config"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}ui-win32\bin\release\lokinetui.pdb"; DestDir: "{app}"; Flags: ignoreversion
 #endif
 ; eh, might as well ship the 32-bit port of everything else
 Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; delet this after finishing setup, we only need it to extract the drivers
-; and download an initial RC
+; and download an initial RC. The UI has its own bootstrap built-in!
 Source: "{#DevPath}lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "{#DevPath}win32-setup\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 ; if nonexistent, then inet6 was already installed
