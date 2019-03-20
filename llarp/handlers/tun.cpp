@@ -248,7 +248,7 @@ namespace llarp
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
-      // llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname);
+      //llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname, " of type", msg.questions[0].qtype);
       if(msg.questions.size() != 1)
       {
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
@@ -393,6 +393,7 @@ namespace llarp
       return true;
     }
 
+    // FIXME: pass in which question it should be addressing
     bool
     TunEndpoint::ShouldHookDNSMessage(const dns::Message &msg) const
     {
