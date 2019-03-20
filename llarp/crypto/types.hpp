@@ -91,6 +91,7 @@ namespace llarp
     friend std::ostream &
     operator<<(std::ostream &out, const SecretKey &)
     {
+      //return out << k.ToHex();
       // make sure we never print out secret keys
       return out << "[secretkey]";
     }
@@ -127,6 +128,14 @@ namespace llarp
   struct IdentitySecret final : public AlignedBuffer< 32 >
   {
     IdentitySecret() : AlignedBuffer< 32 >(){};
+
+    friend std::ostream &
+    operator<<(std::ostream &out, const IdentitySecret &)
+    {
+      //return out << k.ToHex();
+      // make sure we never print out secret keys
+      return out << "[secretkey]";
+    }
 
     /// no copy constructor
     explicit IdentitySecret(const IdentitySecret &) = delete;
