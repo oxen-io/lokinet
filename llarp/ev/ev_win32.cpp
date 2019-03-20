@@ -12,12 +12,13 @@ static CRITICAL_SECTION HandlerMtx;
 std::list< win32_tun_io* > tun_listeners;
 
 void
-win32_tun_io::begin_tun_loop(int nThreads)
+begin_tun_loop(int nThreads)
 {
   kThreadPool = new HANDLE[nThreads];
   for(int i = 0; i < nThreads; ++i)
   {
-    kThreadPool[i] = CreateThread(nullptr, 0, &tun_ev_loop, this, 0, nullptr);
+    kThreadPool[i] =
+        CreateThread(nullptr, 0, &tun_ev_loop, nullptr, 0, nullptr);
   }
   llarp::LogInfo("created ", nThreads, " threads for TUN event queue");
   poolSize = nThreads;
@@ -123,48 +124,11 @@ win32_tun_io::read(byte_t* buf, size_t sz)
   ReadFile(tunif->tun_fd, buf, sz, nullptr, &pkt->pkt);
 }
 
-static void
-tun_ev_tick_and_flush(void* user)
-{
-  llarp_tun_io* tun = static_cast< llarp_tun_io* >(user);
-  if(tun->tick)
-    tun->tick(tun);
-  tun->flush(tun);
-}
-
-struct tun_pkt_t
-{
-  std::vector< byte_t > pkt;
-  llarp_tun_io* tun;
-
-  tun_pkt_t(llarp_tun_io* t, const byte_t* buf, size_t sz) : tun(t), pkt(sz)
-  {
-    std::copy_n(buf, sz, pkt.begin());
-  }
-
-  static void
-  recv_pkt(void* user)
-  {
-    tun_pkt_t* pkt = static_cast< tun_pkt_t* >(user);
-    pkt->Recv();
-    delete pkt;
-  }
-
- private:
-  void
-  Recv()
-  {
-    llarp_buffer_t buf(pkt);
-    if(tun->recvpkt)
-      tun->recvpkt(tun, buf);
-  }
-}
-
 // and now the event loop itself
 extern "C" DWORD FAR PASCAL
-tun_ev_loop(void* user)
+tun_ev_loop(void* unused)
 {
-  win32_tun_io* tun_io = static_cast< win32_tun_io* >(user);
+  UNREFERENCED_PARAMETER(unused);
 
   DWORD size         = 0;
   OVERLAPPED* ovl    = nullptr;
@@ -184,14 +148,11 @@ tun_ev_loop(void* user)
       // of the tun logic
       for(const auto& tun : tun_listeners)
       {
-        /*
         EnterCriticalSection(&HandlerMtx);
         if(tun->t->tick)
           tun->t->tick(tun->t);
         tun->flush_write();
         LeaveCriticalSection(&HandlerMtx);
-        */
-        tun_io->logic->queue_job({tun->t, &tun_ev_tick_and_flush});
       }
       continue;  // let's go at it once more
     }
@@ -212,10 +173,8 @@ tun_ev_loop(void* user)
         continue;
       }
       // EnterCriticalSection(&HandlerMtx);
-      tun_pkt_t* recv_pkt = new tun_pkt_t(ev->t, pkt->buf, size);
-      tun_io->logic->queue_job({recv_pkt, &tun_pkt_t::recv_pkt});
-      // if(ev->t->recvpkt)
-      //  ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
+      if(ev->t->recvpkt)
+        ev->t->recvpkt(ev->t, llarp_buffer_t(pkt->buf, size));
       ev->read(ev->readbuf, sizeof(ev->readbuf));
       // LeaveCriticalSection(&HandlerMtx);
     }
@@ -226,14 +185,11 @@ tun_ev_loop(void* user)
       ev->read(ev->readbuf, sizeof(ev->readbuf));
       // LeaveCriticalSection(&HandlerMtx);
     }
-    /*
     EnterCriticalSection(&HandlerMtx);
     if(ev->t->tick)
       ev->t->tick(ev->t);
     ev->flush_write();
     LeaveCriticalSection(&HandlerMtx);
-    */
-    tun_io->logic->queue_job({ev->t, &tun_ev_tick_and_flush});
     delete pkt;  // don't leak
   }
   llarp::LogDebug("exit TUN event loop thread from system managed thread pool");

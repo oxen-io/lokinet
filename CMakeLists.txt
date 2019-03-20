@@ -17,6 +17,7 @@ option(DEBIAN "build for debian" )
 option(TESTNET "testnet build" )
 option(WITH_SHARED "build shared library")
 option(WITH_COVERAGE "generate coverage data")
+option(WARNINGS_AS_ERRORS "treat all warnings as errors. turn off for development, on for release" OFF)
 
 # Basic definitions
 get_filename_component(CORE_INCLUDE include ABSOLUTE)
@@ -30,7 +31,7 @@ endif()
 if(WIN32)
   set(CMAKE_CXX_STANDARD 17)
   ENABLE_LANGUAGE(RC)
-  add_compile_options(-Wno-format)
+  set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lshlwapi")
 else()
   set(CMAKE_CXX_STANDARD 14)
 endif(WIN32)
@@ -42,8 +43,7 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
   message( FATAL_ERROR "shadow-framework is Linux only" )
 endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
-# might be redundant. Waiting on new 2U blade to spin up new
-# lunix box -rick
+# might be redundant. -rick
 if (STATIC_LINK_RUNTIME AND SHADOW)
   message(FATAL_ERROR "the shadow-framework build cannot be linked statically!")
 endif(STATIC_LINK_RUNTIME AND SHADOW)
@@ -51,7 +51,6 @@ endif(STATIC_LINK_RUNTIME AND SHADOW)
 if (WIN32 AND NOT STATIC_LINK_RUNTIME)
   message("must ship compiler runtime libraries with this build: libwinpthread-1.dll, libgcc_s_dw2-1.dll, and libstdc++-6.dll")
   message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
-  #set(STATIC_LINK_RUNTIME ON)
 endif(WIN32 AND NOT STATIC_LINK_RUNTIME)
 
 add_subdirectory(vendor/nlohmann)
@@ -67,7 +66,10 @@ add_subdirectory(${ABSEIL_DIR})
 # turns off those annoying warnings for
 # target-specific crypto code paths not
 # applicable to the host's FPU -rick
-add_compile_options(-Wall -Wextra -Werror -Wno-unknown-pragmas -Wno-unknown-warning-option)
+if (WARNINGS_AS_ERRORS)
+  add_compile_options(-Werror)
+endif()
+add_compile_options(-Wall -Wextra -Wno-unknown-pragmas -Wno-unknown-warning-option)
 # vla are evil
 add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
@@ -91,14 +93,12 @@ endif()
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 # dynamic linking does this all the time
   if (USING_CLANG) # windows only, also set by toolchain file
-    option(NO_LIBGCC "use compiler-rt instead" OFF)
+    option(NO_LIBGCC "use libunwind+compiler-rt instead, must already be installed in mingw-w64 sysroot" OFF)
     add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
     add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--allow-multiple-definition")
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,--allow-multiple-definition")
     if (NO_LIBGCC)
-      set(CMAKE_CXX_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_CXX_STANDARD_LIBRARIES}")
-      set(CMAKE_C_STANDARD_LIBRARIES "-lgcc_eh ${CMAKE_C_STANDARD_LIBRARIES}")
+      set(CMAKE_CXX_STANDARD_LIBRARIES "-lunwind -lpsapi ${CMAKE_CXX_STANDARD_LIBRARIES}")
+      set(CMAKE_C_STANDARD_LIBRARIES "-lunwind -lpsapi ${CMAKE_C_STANDARD_LIBRARIES}")
     endif(NO_LIBGCC)
   else()
     # found it. this is GNU only
@@ -127,10 +127,9 @@ elseif(NOT ANDROID AND NOT NON_PC_TARGET)
 endif()
 
 # only needed if using AVX2
-# TODO: generate a config-time test for this
-# in cmake
 if(AMD_RYZEN_HACK AND USE_AVX2)
   set(CRYPTO_FLAGS -march=native -mfpmath=sse -mavx -mavx2 -mfma)
+  message(WARNING "This option may be removed in a future release. Contact your computer manufacturer for updated ROMs or microcode patches.")
 endif(AMD_RYZEN_HACK AND USE_AVX2)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -140,9 +139,10 @@ find_package(Threads REQUIRED)
 if(STATIC_LINK_RUNTIME)
   add_compile_options(-static)
   if(USING_CLANG)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libstdc++ -pthread" )
   else()
     set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" )
+    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
   endif(USING_CLANG)
 endif(STATIC_LINK_RUNTIME)
 
@@ -167,8 +167,8 @@ if(ASAN)
 endif(ASAN)
 
 if(SHADOW)
+  set(WITH_STATIC OFF)
   set(WITH_SHARED ON)
-  add_compile_options(-fPIC)
   if("${SHADOW_ROOT}" STREQUAL "")
     set(SHADOW_ROOT "$ENV{HOME}/.shadow")
   endif("${SHADOW_ROOT}" STREQUAL "")
@@ -189,8 +189,9 @@ endif(SHADOW)
 
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
   set(OPTIMIZE_FLAGS "")
-  add_compile_options( ${DEBUG_FLAGS})
   add_definitions(-DLOKINET_DEBUG=1)
+  set(CRYPTO_FLAGS "")
+  add_compile_options( ${DEBUG_FLAGS} )
   link_libraries( ${DEBUG_FLAGS} )
 endif(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]")
 

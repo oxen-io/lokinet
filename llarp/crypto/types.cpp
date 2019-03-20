@@ -86,4 +86,27 @@ namespace llarp
     return true;
   }
 
+  byte_t*
+  Signature::R()
+  {
+    return data();
+  }
+
+  const byte_t*
+  Signature::R() const
+  {
+    return data();
+  }
+
+  byte_t*
+  Signature::C()
+  {
+    return data() + 32;
+  }
+
+  const byte_t*
+  Signature::C() const
+  {
+    return data() + 32;
+  }
 }  // namespace llarp

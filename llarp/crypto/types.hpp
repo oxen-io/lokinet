@@ -91,6 +91,7 @@ namespace llarp
     friend std::ostream &
     operator<<(std::ostream &out, const SecretKey &)
     {
+      //return out << k.ToHex();
       // make sure we never print out secret keys
       return out << "[secretkey]";
     }
@@ -128,6 +129,14 @@ namespace llarp
   {
     IdentitySecret() : AlignedBuffer< 32 >(){};
 
+    friend std::ostream &
+    operator<<(std::ostream &out, const IdentitySecret &)
+    {
+      //return out << k.ToHex();
+      // make sure we never print out secret keys
+      return out << "[secretkey]";
+    }
+
     /// no copy constructor
     explicit IdentitySecret(const IdentitySecret &) = delete;
     // no byte data constructor
@@ -139,9 +148,23 @@ namespace llarp
   };
 
   using ShortHash = AlignedBuffer< SHORTHASHSIZE >;
+  using LongHash  = AlignedBuffer< HASHSIZE >;
+
   struct Signature final : public AlignedBuffer< SIGSIZE >
   {
+    byte_t *
+    R();
+
+    const byte_t *
+    R() const;
+
+    byte_t *
+    C();
+
+    const byte_t *
+    C() const;
   };
+
   using TunnelNonce = AlignedBuffer< TUNNONCESIZE >;
   using SymmNonce   = AlignedBuffer< NONCESIZE >;
   using SymmKey     = AlignedBuffer< 32 >;

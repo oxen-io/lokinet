@@ -68,7 +68,8 @@ ZoneInfoSourceFactory default_factory = DefaultFactory;
 #if !defined(__has_attribute)
 #define __has_attribute(x) 0
 #endif
-#if __has_attribute(weak) || defined(__GNUC__)
+// gcc on windows doesn't support ELF-style weak symbols
+#if (__has_attribute(weak) || defined(__GNUC__)) && !__MINGW32__
 ZoneInfoSourceFactory zone_info_source_factory
     __attribute__((weak)) = DefaultFactory;
 #else

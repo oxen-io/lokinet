@@ -5,10 +5,13 @@
 #define MyAppVersion "0.4.0"
 #define MyAppPublisher "Loki Project"
 #define MyAppURL "https://loki.network"
-#define MyAppExeName "lokinet.exe"
+#define MyAppExeName "lokinetui.exe"
 ; change this to avoid compiler errors  -despair
+#ifndef DevPath
 #define DevPath "D:\dev\external\llarp\"
+#endif
 #include <idp.iss>
+#include "version.txt"
 
 ; see ../LICENSE
 
@@ -16,10 +19,14 @@
 ; NOTE: The value of AppId uniquely identifies this application.
 ; Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{11335EAC-0385-4C78-A3AA-67731326B653}
+AppId={{11335EAC-0385-4C78-A3AA-67731326B653}}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
-;AppVerName={#MyAppName} {#MyAppVersion}
+#ifndef RELEASE
+AppVerName={#MyAppName} {#MyAppVersion}-dev
+#else
+AppVerName={#MyAppName} {#MyAppVersion}
+#endif
 AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
@@ -34,15 +41,20 @@ Compression=lzma
 SolidCompression=yes
 VersionInfoVersion=0.4.0
 VersionInfoCompany=Loki Project
-VersionInfoDescription=lokinet for windows
-VersionInfoTextVersion=0.4.0-dev
-VersionInfoProductName=loki-network
+VersionInfoDescription=LokiNET for Microsoft® Windows® NT™
+#ifndef RELEASE
+VersionInfoTextVersion=0.4.0-dev-{#VCSRev}
+VersionInfoProductTextVersion=0.4.0-dev-{#VCSRev}
+#else
+VersionInfoTextVersion=0.4.0
+VersionInfoProductTextVersion=0.4.0 {#Codename}
+#endif
+VersionInfoProductName=LokiNET
 VersionInfoProductVersion=0.4.0
-VersionInfoProductTextVersion=0.4.0-dev
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
-VersionInfoCopyright=Copyright ©2018 Loki Project
+VersionInfoCopyright=Copyright ©2018-2019 Loki Project
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -53,13 +65,30 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; only one of these is installed
+#ifdef SINGLE_ARCH
+Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion
+#else
 Source: "{#DevPath}build\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
+Source: "{#DevPath}build\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 32bit; Check: not IsWin64
 Source: "{#DevPath}build64\lokinet.exe"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
+Source: "{#DevPath}build64\liblokinet-shared.dll"; DestDir: "{app}"; Flags: ignoreversion 64bit; Check: IsWin64
+#endif
+; UI has landed!
+#ifndef RELEASE
+Source: "{#DevPath}ui-win32\bin\debug\lokinetui.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}ui-win32\bin\debug\lokinetui.exe.config"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}ui-win32\bin\debug\lokinetui.pdb"; DestDir: "{app}"; Flags: ignoreversion
+#else
+Source: "{#DevPath}ui-win32\bin\release\lokinetui.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}ui-win32\bin\release\lokinetui.exe.config"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#DevPath}ui-win32\bin\release\lokinetui.pdb"; DestDir: "{app}"; Flags: ignoreversion
+#endif
 ; eh, might as well ship the 32-bit port of everything else
 Source: "{#DevPath}build\testAll.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#DevPath}LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 ; delet this after finishing setup, we only need it to extract the drivers
-; and download an initial RC
+; and download an initial RC. The UI has its own bootstrap built-in!
 Source: "{#DevPath}lokinet-bootstrap.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 Source: "{#DevPath}win32-setup\7z.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall
 ; if nonexistent, then inet6 was already installed
@@ -77,8 +106,8 @@ Type: filesandordirs; Name: "{app}\inet6_driver"; MinVersion: 0,5.0; OnlyBelowVe
 Type: filesandordirs; Name: "{userappdata}\.lokinet"
 
 [UninstallRun]
-Filename: "{app}\tap-windows-9.21.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.21.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; MinVersion: 0,6.0
-Filename: "{app}\tap-windows-9.9.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.9.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; OnlyBelowVersion: 0,6.0
+Filename: "{app}\tap-windows-9.21.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.21.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; RunOnceId: "RemoveTap"; MinVersion: 0,6.0
+Filename: "{app}\tap-windows-9.9.2\remove.bat"; WorkingDir: "{app}\tap-windows-9.9.2"; Flags: runascurrentuser waituntilterminated skipifdoesntexist; RunOnceId: "RemoveTap"; OnlyBelowVersion: 0,6.0
 
 [Dirs]
 Name: "{userappdata}\.lokinet"

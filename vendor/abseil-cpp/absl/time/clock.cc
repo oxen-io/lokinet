@@ -542,7 +542,7 @@ constexpr absl::Duration MaxSleep() {
 // Sleeps for the given duration.
 // REQUIRES: to_sleep <= MaxSleep().
 void SleepOnce(absl::Duration to_sleep) {
-#ifdef _WIN32
+#ifdef _MSC_VER
   Sleep(to_sleep / absl::Milliseconds(1));
 #else
   struct timespec sleep_time = absl::ToTimespec(to_sleep);

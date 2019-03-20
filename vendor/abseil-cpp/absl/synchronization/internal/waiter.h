@@ -42,7 +42,8 @@
 
 #if defined(ABSL_FORCE_WAITER_MODE)
 #define ABSL_WAITER_MODE ABSL_FORCE_WAITER_MODE
-#elif defined(_WIN32)
+// Use pthreads with mingw-w64
+#elif defined(_WIN32) && defined(_MSC_VER)
 #define ABSL_WAITER_MODE ABSL_WAITER_MODE_WIN32
 #elif defined(__linux__)
 #define ABSL_WAITER_MODE ABSL_WAITER_MODE_FUTEX

@@ -52,7 +52,7 @@ absl::Time LimitedDeadline(absl::Time deadline) {
 
 }  // namespace
 
-#if defined(_WIN32)
+#if defined(_WIN32) && defined(_MSC_VER)
 
 MutexImpl::MutexImpl() {}
 

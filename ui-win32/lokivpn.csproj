@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{1CDEE73C-29C5-4781-BD74-1EEAC6F75A14}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>lokivpn</RootNamespace>
-    <AssemblyName>lokivpn</AssemblyName>
+    <RootNamespace>network.loki.lokinet.win32.ui</RootNamespace>
+    <AssemblyName>lokinetui</AssemblyName>
     <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
@@ -46,6 +46,25 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AboutBox.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="AboutBox.Designer.cs">
+      <DependentUpon>AboutBox.cs</DependentUpon>
+    </Compile>
+    <Compile Include="LogDumper.cs" />
+    <Compile Include="dlgBootstrap.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="dlgBootstrap.Designer.cs">
+      <DependentUpon>dlgBootstrap.cs</DependentUpon>
+    </Compile>
+    <Compile Include="UserSettings.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="UserSettings.Designer.cs">
+      <DependentUpon>UserSettings.cs</DependentUpon>
+    </Compile>
     <Compile Include="UIMain.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -54,6 +73,15 @@
     </Compile>
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <EmbeddedResource Include="AboutBox.resx">
+      <DependentUpon>AboutBox.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="dlgBootstrap.resx">
+      <DependentUpon>dlgBootstrap.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="UserSettings.resx">
+      <DependentUpon>UserSettings.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="UIMain.resx">
       <DependentUpon>UIMain.cs</DependentUpon>
     </EmbeddedResource>
@@ -65,6 +93,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <None Include="App.config" />
     <None Include="Properties\Settings.settings">
@@ -81,4 +110,12 @@
     <Content Include="lokinet.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PreBuildEvent>$(SolutionDir)versioning\NetRevisionTool /info /patch "$(ProjectDir)"
+$(SolutionDir)versioning\release.bat</PreBuildEvent>
+  </PropertyGroup>
+  <PropertyGroup>
+    <PostBuildEvent>$(SolutionDir)versioning\NetRevisionTool /restore "$(ProjectDir)"
+$(SolutionDir)versioning\unpatch.bat</PostBuildEvent>
+  </PropertyGroup>
 </Project>

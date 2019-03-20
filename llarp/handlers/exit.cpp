@@ -61,6 +61,7 @@ namespace llarp
     {
       if(msg.questions.size() == 0)
         return false;
+
       // always hook ptr for ranges we own
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
@@ -69,21 +70,59 @@ namespace llarp
           return false;
         return m_OurRange.Contains(ip);
       }
-      else if(msg.questions[0].qtype == dns::qTypeA
+
+      // we'll hook all the standard stuff
+      // and let the HandleHookedDNSMessage handle the rejections
+      // we probably don't want to leak our internal stuff to a regular DNS
+      //   server anyways
+
+      // always hook mx records
+      if(msg.questions[0].qtype == llarp::dns::qTypeMX)
+        return true;
+
+      // hook random.snode
+      if(msg.questions[0].qname == "random.snode"
+         || msg.questions[0].qname == "random.snode.")
+        return true;
+
+      // hook localhost.loki
+      if(msg.questions[0].qname == "localhost.loki"
+         || msg.questions[0].qname == "localhost.loki.")
+        return true;
+
+      llarp::service::Address addr;
+
+      // hook .loki A records
+      if(addr.FromString(msg.questions[0].qname, ".loki"))
+        return true;
+
+      // hook .snode A records
+      if(addr.FromString(msg.questions[0].qname, ".snode"))
+        return true;
+
+      if(msg.questions[0].qtype == dns::qTypeA
               || msg.questions[0].qtype == dns::qTypeCNAME)
       {
         // hook for forward dns or cname when using snode tld
         return msg.questions[0].qname.find(".snode.")
             == (msg.questions[0].qname.size() - 7);
       }
-      else
-        return false;
+
+      return false;
     }
 
     bool
     ExitEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
+      //llarp::LogInfo("Exit.HandleHookedDNSMessage ", msg.questions[0].qname, " of type", msg.questions[0].qtype);
+      //llarp::LogInfo((is_random_snode(msg)?"random":""), is_localhost_loki(msg)?"localhost":"");
+
+      // Hack to make localhost.loki work for now
+      if (is_localhost_loki(msg)) {
+        return llarp_HandleHookedDNSMessage(std::move(msg), reply, m_Router, m_IfAddr);
+      }
+
       if(msg.questions[0].qtype == dns::qTypePTR)
       {
         huint32_t ip;

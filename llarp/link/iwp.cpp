@@ -7,10 +7,10 @@ namespace llarp
   namespace iwp
   {
     std::array< byte_t, 6 > OuterMessage::obtain_flow_id_magic =
-        std::array< byte_t, 6 >{'n', 'e', 't', 'i', 'd', '?'};
-
+      std::array< byte_t, 6 >{{'n', 'e', 't', 'i', 'd', '?'}};
+    
     std::array< byte_t, 6 > OuterMessage::give_flow_id_magic =
-        std::array< byte_t, 6 >{'n', 'e', 't', 'i', 'd', '!'};
+      std::array< byte_t, 6 >{{'n', 'e', 't', 'i', 'd', '!'}};
 
     OuterMessage::OuterMessage()
     {
@@ -273,7 +273,7 @@ namespace llarp
     LinkLayer::GenFlowIDFor(const PubKey& pk, const Addr& from,
                             FlowID_t& flow) const
     {
-      std::array< byte_t, 128 > tmp = {0};
+      std::array< byte_t, 128 > tmp = {{0}};
       if(inet_ntop(AF_INET6, from.addr6(), (char*)tmp.data(), tmp.size())
          == nullptr)
         return false;

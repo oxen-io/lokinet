@@ -2,6 +2,10 @@
 #include <util/threading.hpp>
 #include <condition_variable>
 
+#include <thread>
+#include <mutex>
+#include <condition_variable>
+
 #include <gtest/gtest.h>
 
 using namespace llarp;
