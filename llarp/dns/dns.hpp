@@ -2,7 +2,9 @@
 #define LLARP_DNS_DNS_HPP
 
 #include <stdint.h>
-
+//#include <dns/server.hpp>
+#include <dns/message.hpp>
+#include <service/context.hpp>
 namespace llarp
 {
   namespace dns
@@ -26,6 +28,34 @@ namespace llarp
     constexpr uint16_t flags_RCODENoError   = (1 << 0);
 
   }  // namespace dns
+
+  /*
+  struct dnsHandler : public dns::IQueryHandler
+  {
+
+    bool
+    ShouldHookDNSMessage(const dns::Message& msg) const override;
+
+    //bool
+    //HandleHookedDNSMessage(
+        //dns::Message&& query,
+        //std::function< void(dns::Message) > sendreply) override;
+
+  };
+  */
+
+  struct AbstractRouter; // fwd declr
+
+  bool
+  is_random_snode(const dns::Message &msg);
+
+  bool
+  is_localhost_loki(const dns::Message &msg);
+
+  bool
+  llarp_HandleHookedDNSMessage(
+      dns::Message &&msg, std::function< void(dns::Message) > reply, AbstractRouter *router, huint32_t local_ip);
+
 }  // namespace llarp
 
 #endif

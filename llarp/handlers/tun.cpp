@@ -230,20 +230,6 @@ namespace llarp
       FlushSend();
     }
 
-    static bool
-    is_random_snode(const dns::Message &msg)
-    {
-      return msg.questions[0].qname == "random.snode"
-          || msg.questions[0].qname == "random.snode.";
-    }
-
-    static bool
-    is_localhost_loki(const dns::Message &msg)
-    {
-      return msg.questions[0].qname == "localhost.loki"
-          || msg.questions[0].qname == "localhost.loki.";
-    }
-
     bool
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
