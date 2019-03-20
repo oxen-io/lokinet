@@ -38,10 +38,15 @@ SolidCompression=yes
 VersionInfoVersion=0.4.0
 VersionInfoCompany=Loki Project
 VersionInfoDescription=LokiNET for Microsoft® Windows® NT™
+#ifndef RELEASE
 VersionInfoTextVersion=0.4.0-dev-{#VCSRev}
+VersionInfoProductTextVersion=0.4.0-dev-{#VCSRev}
+#else
+VersionInfoTextVersion=0.4.0
+VersionInfoProductTextVersion=0.4.0 {#Codename}
+#endif
 VersionInfoProductName=LokiNET
 VersionInfoProductVersion=0.4.0
-VersionInfoProductTextVersion=0.4.0-dev-{#VCSRev}
 InternalCompressLevel=ultra64
 MinVersion=0,5.0
 ArchitecturesInstallIn64BitMode=x64
