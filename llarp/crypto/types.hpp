@@ -148,9 +148,23 @@ namespace llarp
   };
 
   using ShortHash = AlignedBuffer< SHORTHASHSIZE >;
+  using LongHash  = AlignedBuffer< HASHSIZE >;
+
   struct Signature final : public AlignedBuffer< SIGSIZE >
   {
+    byte_t *
+    R();
+
+    const byte_t *
+    R() const;
+
+    byte_t *
+    C();
+
+    const byte_t *
+    C() const;
   };
+
   using TunnelNonce = AlignedBuffer< TUNNONCESIZE >;
   using SymmNonce   = AlignedBuffer< NONCESIZE >;
   using SymmKey     = AlignedBuffer< 32 >;
