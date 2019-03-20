@@ -38,6 +38,7 @@
             this.btnConnect = new System.Windows.Forms.Button();
             this.btnDrop = new System.Windows.Forms.Button();
             this.btnConfigProfile = new System.Windows.Forms.Button();
+            this.btnAbout = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // StatusLabel
@@ -131,11 +132,22 @@
             this.btnConfigProfile.UseVisualStyleBackColor = true;
             this.btnConfigProfile.Click += new System.EventHandler(this.btnConfigProfile_Click);
             // 
+            // btnAbout
+            // 
+            this.btnAbout.Location = new System.Drawing.Point(259, 415);
+            this.btnAbout.Name = "btnAbout";
+            this.btnAbout.Size = new System.Drawing.Size(75, 23);
+            this.btnAbout.TabIndex = 7;
+            this.btnAbout.Text = "About...";
+            this.btnAbout.UseVisualStyleBackColor = true;
+            this.btnAbout.Click += new System.EventHandler(this.btnAbout_Click);
+            // 
             // main_frame
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
+            this.Controls.Add(this.btnAbout);
             this.Controls.Add(this.btnConfigProfile);
             this.Controls.Add(this.btnDrop);
             this.Controls.Add(this.btnConnect);
@@ -163,6 +175,7 @@
         private System.Windows.Forms.Button btnDrop;
         private System.Windows.Forms.Button btnConfigProfile;
         public System.Windows.Forms.TextBox lokinetd_fd1;
+        private System.Windows.Forms.Button btnAbout;
     }
 }
 

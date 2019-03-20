@@ -100,5 +100,12 @@ namespace network.loki.lokinet.win32.ui
         {
             Show();
         }
+
+        private void btnAbout_Click(object sender, EventArgs e)
+        {
+            AboutBox a = new AboutBox();
+            a.ShowDialog();
+            a.Dispose();
+        }
     }
 }

@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("LokiNET end-user interface")]
+[assembly: AssemblyTitle("LokiNET")]
 [assembly: AssemblyDescription("LokiNET end-user UI")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Loki Project")]
-[assembly: AssemblyProduct("LokiNET for Microsoft® Windows® NT™")]
-[assembly: AssemblyCopyright("Copyright ©2018-2019 Rick V for the Loki Project. All rights reserved. See LICENSE for more details.")]
+[assembly: AssemblyProduct("LokiNET Launcher")]
+[assembly: AssemblyCopyright("Copyright ©2018-2019 Loki Project. All rights reserved. See LICENSE for more details.")]
 [assembly: AssemblyTrademark("Loki, Loki Project, LokiNET are ™ & ©2018-2019 Loki Foundation")]
 [assembly: AssemblyCulture("")]
 
