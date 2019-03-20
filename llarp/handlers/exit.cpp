@@ -73,8 +73,11 @@ namespace llarp
               || msg.questions[0].qtype == dns::qTypeCNAME)
       {
         // hook for forward dns or cname when using snode tld
-        return msg.questions[0].qname.find(".snode.")
-            == (msg.questions[0].qname.size() - 7);
+        if(msg.questions[0].qname.find(".snode.")
+           == (msg.questions[0].qname.size() - 7))
+          return true;
+        return msg.questions[0].qname == "localhost.loki"
+            || msg.questions[0].qname == "localhost.loki.";
       }
       else
         return false;
@@ -118,11 +121,24 @@ namespace llarp
           else
             msg.AddNXReply();
         }
+        else if(msg.questions[0].qname == "localhost.loki"
+                || msg.questions[0].qname == "localhost.loki.")
+        {
+          RouterID us = m_Router->pubkey();
+          msg.AddAReply(us.ToString(), 1);
+        }
         else
           msg.AddNXReply();
       }
       else if(msg.questions[0].qtype == dns::qTypeA)
       {
+        if(msg.questions[0].qname == "localhost.loki."
+           || msg.questions[0].qname == "localhost.loki")
+        {
+          msg.AddINReply(GetIfAddr());
+          reply(msg);
+          return true;
+        }
         // forward dns for snode
         RouterID r;
         if(r.FromString(msg.questions[0].qname))
