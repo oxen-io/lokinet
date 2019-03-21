@@ -355,6 +355,7 @@ namespace llarp
         std::unordered_map< Introduction, llarp_time_t, Introduction::Hash >
             m_BadIntros;
         llarp_time_t lastShift = 0;
+        uint16_t m_LookupFails = 0;
       };
 
       // passed a sendto context when we have a path established otherwise

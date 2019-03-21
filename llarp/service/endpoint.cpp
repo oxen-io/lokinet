@@ -1227,6 +1227,8 @@ namespace llarp
         else
           SwapIntros();
       }
+      else
+        ++m_LookupFails;
       return true;
     }
 
@@ -1770,6 +1772,9 @@ namespace llarp
     bool
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
+      // we are probably dead af
+      if(m_LookupFails > 16)
+        return true;
       // check for expiration
       if(remoteIntro.ExpiresSoon(now))
       {
