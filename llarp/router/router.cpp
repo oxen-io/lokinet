@@ -1085,9 +1085,9 @@ namespace llarp
         LogInfo("connecting to ", dlt, " random routers to keep alive");
         ConnectToRandomRouters(dlt);
       }
-      paths.BuildPaths(now);
       _hiddenServiceContext.Tick(now);
     }
+    paths.BuildPaths(now);
     _exitContext.Tick(now);
     if(rpcCaller)
       rpcCaller->Tick(now);
