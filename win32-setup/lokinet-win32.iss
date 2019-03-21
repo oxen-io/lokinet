@@ -161,7 +161,6 @@ end;
 procedure InitializeWizard();
 var
   Version: TWindowsVersion;
-  S: String;
 begin
   GetWindowsVersionEx(Version);
   // if we already have a generic openvpn tap driver installed, then skip all the downloading

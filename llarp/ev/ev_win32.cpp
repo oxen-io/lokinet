@@ -40,11 +40,6 @@ win32_tun_io::setup()
     llarp::LogWarn("failed to start interface");
     return false;
   }
-  if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
-  {
-    llarp::LogWarn("failed to set ip");
-    return false;
-  }
   if(tuntap_up(tunif) == -1)
   {
     char ebuf[1024];
@@ -52,6 +47,12 @@ win32_tun_io::setup()
     FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, nullptr, err, LANG_NEUTRAL, ebuf,
                   1024, nullptr);
     llarp::LogWarn("failed to put interface up: ", ebuf);
+    return false;
+  }
+
+  if(tuntap_set_ip(tunif, t->ifaddr, t->ifaddr, t->netmask) == -1)
+  {
+    llarp::LogWarn("failed to set ip");
     return false;
   }
 
