@@ -12,7 +12,6 @@
 #endif
 #include <idp.iss>
 #include "version.txt"
-#define RELEASE
 
 ; see ../LICENSE
 
