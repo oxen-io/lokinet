@@ -2445,13 +2445,27 @@ url_parser_url_t *parsed_url;
 	return 0;
 }
 
+void *memncat(a, an, b, bn, s)
+const void *a;
+size_t an;
+const void *b;
+size_t bn;
+size_t s;
+{
+  char *p = malloc(s * (an + bn));
+  memset(p, '\0', s * (an + bn));
+  memcpy(p, a, an*s);
+  memcpy(p + an*s, b, bn*s);
+  return p;
+}
+
 main(argc, argv)
 char** argv; /* It never occurred to me that this was writable to begin with... */
 {
 	DWORD version, major, minor, build, flags;
 	int r, len;
 	FILE *bootstrapRC;
-	char path[MAX_PATH], buf[512], port[8];
+	char path[MAX_PATH], buf[1024], port[8];
 	char *ua, *rq, *resp, *uri, *savePath;
 	url_parser_url_t *parsed_uri;
 
@@ -2555,12 +2569,12 @@ char** argv; /* It never occurred to me that this was writable to begin with... 
 	memset(rq, 0, 4096);
 	len = 0;
 	do {
-		r = mbedtls_ssl_read(&ssl, (unsigned char*)buf, 512);
+		r = mbedtls_ssl_read(&ssl, (unsigned char*)buf, 1024);
 		if (r <= 0)
 			break;
 		else 
 		{
-			strncat(rq, buf, r);
+			rq = memncat(rq, len, buf, r, sizeof(char));
 			len += r;
 		}
 	} while (r);
@@ -2575,10 +2589,11 @@ char** argv; /* It never occurred to me that this was writable to begin with... 
 	snprintf(path, MAX_PATH, savePath);
 	resp = strstr(rq, "Content-Length");
 	r = strcspn(resp, "0123456789");
-	snprintf(buf, 4, "%s", &resp[r]);
+	memcpy(buf, &resp[r], 4);
+	buf[3] = '\0';
 	r = atoi(buf);
 	resp = strstr(rq, "\r\n\r\n");
-	snprintf(buf, r, "%s", &resp[4]);
+	memcpy(buf, &resp[4], r);
 	printf("Writing %s...\n", path);
 	bootstrapRC = fopen(path, "wb");
 	fwrite(buf, 1, r, bootstrapRC);
