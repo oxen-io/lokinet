@@ -140,7 +140,7 @@ reg_query(char *key_name)
       goto clean;
     }
     /* If its a tap adapter, its all good */
-    if(strncmp(data, "tap", 3) == 0)
+    if(strncmp(data, "tap0901", 7) == 0)
     {
       DWORD type;
 
