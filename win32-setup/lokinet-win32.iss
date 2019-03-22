@@ -47,7 +47,7 @@ VersionInfoTextVersion=0.4.0-dev-{#VCSRev}
 VersionInfoProductTextVersion=0.4.0-dev-{#VCSRev}
 #else
 VersionInfoTextVersion=0.4.0
-VersionInfoProductTextVersion=0.4.0 {#Codename}
+VersionInfoProductTextVersion=0.4.0 ({#Codename})
 #endif
 VersionInfoProductName=LokiNET
 VersionInfoProductVersion=0.4.0
@@ -99,6 +99,27 @@ Source: "{tmp}\tuntapv9_n6.7z"; DestDir: "{app}"; Flags: ignoreversion external 
 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files
 Source: "regdbhelper.dll"; Flags: dontcopy
+Source: "C:\Windows\Fonts\iosevka-term-bold.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Bold"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-bolditalic.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Bold Italic"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-boldoblique.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Bold Oblique"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-extralight.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Extralight"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-extralightitalic.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Extralight Italic"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-extralightoblique.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Extralight Oblique"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-heavy.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Heavy"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-heavyitalic.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Heavy Italic"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-heavyoblique.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Heavy Oblique"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-italic.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Italic"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-light.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Light"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-lightitalic.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Light Italic"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-lightoblique.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Light Oblique"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-medium.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Medium"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-mediumitalic.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Medium Italic"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-mediumoblique.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Medium Oblique"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-oblique.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Oblique"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-regular.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-thin.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Thin"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-thinitalic.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Thin Italic"; Flags: onlyifdoesntexist uninsneveruninstall
+Source: "C:\Windows\Fonts\iosevka-term-thinoblique.ttf"; DestDir: "{fonts}"; FontInstall: "Iosevka Term Thin Oblique"; Flags: onlyifdoesntexist uninsneveruninstall
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}\tap-windows*"
@@ -140,7 +161,6 @@ end;
 procedure InitializeWizard();
 var
   Version: TWindowsVersion;
-  S: String;
 begin
   GetWindowsVersionEx(Version);
   // if we already have a generic openvpn tap driver installed, then skip all the downloading

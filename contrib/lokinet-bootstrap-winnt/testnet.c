@@ -2202,6 +2202,19 @@ bool initTLS()
 	return true;
 }
 
+void *memncat(a, an, b, bn, s)
+const void *a;
+size_t an;
+const void *b;
+size_t bn;
+size_t s;
+{
+  char *p = malloc(s * (an + bn));
+  memset(p, '\0', s * (an + bn));
+  memcpy(p, a, an*s);
+  memcpy(p + an*s, b, bn*s);
+  return p;
+}
 
 main(argc, argv)
 char** argv;
@@ -2292,7 +2305,7 @@ char** argv;
 			break;
 		}
 		else {
-			strncat(rq, buf, r);
+			rq = memncat(rq, len, buf, r, sizeof(char));
 			len += r;
 		}
 	} while (r != 0);
@@ -2307,10 +2320,11 @@ char** argv;
 	snprintf(path, MAX_PATH, "%s\\.lokinet\\bootstrap.signed", getenv("APPDATA"));
 	resp = strstr(rq, "Content-Length");
 	r = strcspn(resp, "0123456789");
-	snprintf(buf, 4, "%s", &resp[r]);
+	memcpy(buf, &resp[r], 4);
+	buf[3] = '\0';
 	r = atoi(buf);
 	resp = strstr(rq, "\r\n\r\n");
-	snprintf(buf, r, "%s", &resp[4]);
+	memcpy(buf, &resp[4], r);
 	printf("Writing %s...\n", path);
 	bootstrapRC = fopen(path, "wb");
 	fwrite(buf, 1, r, bootstrapRC);

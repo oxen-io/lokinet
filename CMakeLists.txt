@@ -3,6 +3,9 @@ cmake_minimum_required(VERSION 3.6.0)
 
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
+set(CMAKE_C_FLAGS_RELEASE "")
+set(CMAKE_CXX_FLAGS_RELEASE "")
+set(CMAKE_ASM_FLAGS_RELEASE "")
 
 # Core options
 option(USE_AVX2 "enable avx2 code" )
@@ -120,7 +123,8 @@ if(DEBIAN)
   add_definitions(-DDEBIAN)
 elseif(NOT ANDROID AND NOT NON_PC_TARGET)
   if (NOT USE_AVX2)
-    set(CRYPTO_FLAGS -march=nocona -mtune=native -mfpmath=sse)
+    # Public binary releases
+    set(CRYPTO_FLAGS -march=nocona -mtune=core2 -mfpmath=sse)
   else()
     set(CRYPTO_FLAGS -march=haswell -mtune=native -mfpmath=sse)
   endif()
