@@ -53,7 +53,7 @@ namespace llarp
     }
 
     bool
-    IsBad(const RouterID& r, uint64_t chances = 2)
+    IsBad(const RouterID& r, uint64_t chances = 8)
         LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void
