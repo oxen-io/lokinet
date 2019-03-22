@@ -58,8 +58,8 @@ namespace llarp
   void
   RouterProfile::Tick()
   {
-    // 20 minutes
-    static constexpr llarp_time_t updateInterval = DEFAULT_PATH_LIFETIME * 2;
+    // 5 minutes
+    static constexpr llarp_time_t updateInterval = DEFAULT_PATH_LIFETIME / 2;
     auto now                                     = llarp::time_now_ms();
     if(lastUpdated < now && now - lastUpdated > updateInterval)
     {
