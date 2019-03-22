@@ -281,22 +281,22 @@ namespace llarp
       size_t idx = 0;
       while(idx < numHops)
       {
+        size_t tries = 4;
         if(idx == 0)
         {
-          if(!SelectHop(nodedb, hops[0], hops[0], 0, roles))
-          {
-            LogError("failed to select first hop");
-            return false;
-          }
+          while(tries > 0 && !SelectHop(nodedb, hops[0], hops[0], 0, roles))
+            --tries;
         }
         else
         {
-          if(!SelectHop(nodedb, hops[idx - 1], hops[idx], idx, roles))
-          {
-            /// TODO: handle this failure properly
-            LogWarn("Failed to select hop ", idx);
-            return false;
-          }
+          while(tries > 0
+                && !SelectHop(nodedb, hops[idx - 1], hops[idx], idx, roles))
+            --tries;
+        }
+        if(tries == 0)
+        {
+          LogWarn("failed to select hop ", idx);
+          return false;
         }
         ++idx;
       }
