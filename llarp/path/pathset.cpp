@@ -243,11 +243,6 @@ namespace llarp
       return itr->second;
     }
 
-    void
-    PathSet::HandlePathBuilt(Path*)
-    {
-    }
-
     bool
     PathSet::GetCurrentIntroductionsWithFilter(
         std::set< service::Introduction >& intros,
@@ -292,7 +287,7 @@ namespace llarp
     void
     PathSet::HandlePathBuildTimeout(Path* p)
     {
-      LogInfo("path build ", p->HopsString(), " timed out");
+      LogInfo(Name(), " path build ", p->HopsString(), " timed out");
     }
 
     bool
