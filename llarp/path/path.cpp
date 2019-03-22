@@ -635,6 +635,8 @@ namespace llarp
     {
       std::stringstream ss;
       ss << "TX=" << TXID() << " RX=" << RXID();
+      if(m_PathSet)
+        ss << " on " << m_PathSet->Name();
       return ss.str();
     }
 

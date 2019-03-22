@@ -61,7 +61,8 @@ namespace llarp
       if(!ctx->crypto->dh_client(hop.shared, hop.rc.enckey, hop.commkey,
                                  hop.nonce))
       {
-        LogError("Failed to generate shared key for path build");
+        LogError(ctx->pathset->Name(),
+                 " Failed to generate shared key for path build");
         delete ctx;
         return;
       }
@@ -95,7 +96,7 @@ namespace llarp
       if(!record.BEncode(&buf))
       {
         // failed to encode?
-        LogError("Failed to generate Commit Record");
+        LogError(ctx->pathset->Name(), " Failed to generate Commit Record");
         DumpBuffer(buf);
         delete ctx;
         return;
@@ -106,7 +107,7 @@ namespace llarp
       ctx->crypto->encryption_keygen(framekey);
       if(!frame.EncryptInPlace(framekey, hop.rc.enckey, ctx->crypto))
       {
-        LogError("Failed to encrypt LRCR");
+        LogError(ctx->pathset->Name(), " Failed to encrypt LRCR");
         delete ctx;
         return;
       }
@@ -162,7 +163,7 @@ namespace llarp
         ctx->path = nullptr;
       }
       else
-        LogError("failed to send LRCM to ", remote);
+        LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
     }
     // decrement keygen counter
     ctx->pathset->keygens--;
@@ -281,22 +282,22 @@ namespace llarp
       size_t idx = 0;
       while(idx < numHops)
       {
+        size_t tries = 4;
         if(idx == 0)
         {
-          if(!SelectHop(nodedb, hops[0], hops[0], 0, roles))
-          {
-            LogError("failed to select first hop");
-            return false;
-          }
+          while(tries > 0 && !SelectHop(nodedb, hops[0], hops[0], 0, roles))
+            --tries;
         }
         else
         {
-          if(!SelectHop(nodedb, hops[idx - 1], hops[idx], idx, roles))
-          {
-            /// TODO: handle this failure properly
-            LogWarn("Failed to select hop ", idx);
-            return false;
-          }
+          while(tries > 0
+                && !SelectHop(nodedb, hops[idx - 1], hops[idx], idx, roles))
+            --tries;
+        }
+        if(tries == 0)
+        {
+          LogWarn(Name(), " failed to select hop ", idx);
+          return false;
         }
         ++idx;
       }
@@ -321,8 +322,7 @@ namespace llarp
       ctx->router  = router;
       ctx->pathset = this;
       auto path    = new path::Path(hops, this, roles);
-      path->SetBuildResultHook(std::bind(&path::Builder::HandlePathBuilt, this,
-                                         std::placeholders::_1));
+      path->SetBuildResultHook([this](Path* p) { this->HandlePathBuilt(p); });
       ++keygens;
       ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(), this,
                              &PathBuilderKeysGenerated);
@@ -333,7 +333,7 @@ namespace llarp
     {
       buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
       router->routerProfiling().MarkPathSuccess(p);
-      PathSet::HandlePathBuilt(p);
+      LogInfo(p->Name(), " built latency=", p->intro.latency);
     }
 
     void
@@ -342,7 +342,7 @@ namespace llarp
       // linear backoff
       static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
       buildIntervalLimit =
-          std::max(1000 + buildIntervalLimit, MaxBuildInterval);
+          std::min(1000 + buildIntervalLimit, MaxBuildInterval);
       router->routerProfiling().MarkPathFail(p);
       PathSet::HandlePathBuildTimeout(p);
     }
@@ -350,7 +350,7 @@ namespace llarp
     void
     Builder::ManualRebuild(size_t num, PathRole roles)
     {
-      LogDebug("manual rebuild ", num);
+      LogDebug(Name(), " manual rebuild ", num);
       while(num--)
         BuildOne(roles);
     }

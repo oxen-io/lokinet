@@ -76,7 +76,7 @@ namespace llarp
       RemovePath(Path* path);
 
       virtual void
-      HandlePathBuilt(__attribute__((unused)) Path* path);
+      HandlePathBuilt(Path* path) = 0;
 
       virtual void
       HandlePathBuildTimeout(__attribute__((unused)) Path* path);
@@ -112,6 +112,10 @@ namespace llarp
       /// return true if we are stopped
       virtual bool
       IsStopped() const = 0;
+
+      /// get the "name" of this pathset
+      virtual std::string
+      Name() const = 0;
 
       /// return true if we can and should remove this pathset and underlying
       /// resources from its parent context

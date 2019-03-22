@@ -273,5 +273,17 @@ namespace llarp
         m_ExitIdentity = r->identity();
       }
     }
+
+    std::string
+    SNodeSession::Name() const
+    {
+      return "SNode::" + m_ExitRouter.ToString();
+    }
+
+    std::string
+    ExitSession::Name() const
+    {
+      return "Exit::" + m_ExitRouter.ToString();
+    }
   }  // namespace exit
 }  // namespace llarp
