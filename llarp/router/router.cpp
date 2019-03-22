@@ -597,21 +597,19 @@ namespace llarp
   }
 
   void
-  Router::HandleDHTLookupForExplore(RouterID remote,
+  Router::HandleDHTLookupForExplore(RouterID,
                                     const std::vector< RouterContact > &results)
   {
-    if(results.size() == 0)
-      return;
+    const auto numConnected = NumberOfConnectedRouters();
     for(const auto &rc : results)
     {
-      if(rc.Verify(crypto(), Now()))
-        nodedb()->Insert(rc);
-      else
-        return;
-    }
-    if(ConnectionToRouterAllowed(remote))
-    {
-      TryEstablishTo(remote);
+      if(!rc.Verify(crypto(), Now()))
+        continue;
+      nodedb()->Insert(rc);
+
+      if(ConnectionToRouterAllowed(rc.pubkey)
+         && numConnected < minConnectedRouters)
+        TryEstablishTo(rc.pubkey);
     }
   }
 
