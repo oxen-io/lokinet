@@ -136,6 +136,9 @@ namespace llarp
 
       ~ExitSession(){};
 
+      std::string
+      Name() const override;
+
      protected:
       virtual void
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const override
@@ -154,6 +157,9 @@ namespace llarp
                    bool useRouterSNodeKey = false);
 
       ~SNodeSession(){};
+
+      std::string
+      Name() const override;
 
      protected:
       void
