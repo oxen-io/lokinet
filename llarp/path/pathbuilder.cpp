@@ -342,7 +342,7 @@ namespace llarp
       // linear backoff
       static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
       buildIntervalLimit =
-          std::max(1000 + buildIntervalLimit, MaxBuildInterval);
+          std::min(1000 + buildIntervalLimit, MaxBuildInterval);
       router->routerProfiling().MarkPathFail(p);
       PathSet::HandlePathBuildTimeout(p);
     }
