@@ -228,19 +228,9 @@ namespace llarp
     bool
     Session::IsTimedOut(llarp_time_t now) const
     {
-      if(state == eConnecting)
-        return false;
-      if(state == eClose)
-        return true;
-      if(now <= lastActive)
-        return false;
-      auto dlt = now - lastActive;
-      if(dlt >= sessionTimeout)
-      {
-        LogInfo("session timeout reached for ", remoteAddr, " dlt=", dlt);
-        return true;
-      }
-      return false;
+      (void)now;
+      // let utp manage this
+      return state == eClose;
     }
 
     const PubKey&
