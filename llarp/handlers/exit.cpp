@@ -132,6 +132,17 @@ namespace llarp
       }
       else if(msg.questions[0].qtype == dns::qTypeA)
       {
+        if(msg.questions[0].qname == "random.snode"
+           || msg.questions[0].qname == "random.snode.")
+        {
+          RouterID random;
+          if(GetRouter()->GetRandomGoodRouter(random))
+            msg.AddCNAMEReply(random.ToString(), 1);
+          else
+            msg.AddNXReply();
+          reply(msg);
+          return true;
+        }
         if(msg.questions[0].qname == "localhost.loki."
            || msg.questions[0].qname == "localhost.loki")
         {
