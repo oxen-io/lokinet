@@ -16,6 +16,7 @@ Build requirements:
 * CMake
 * C++ 17 capable C++ compiler
 * gcovr (if generating test coverage with gcc)
+* IMPORTANT NOTE: To use the optimiser, make sure the default -DNDEBUG macro is removed before generating (see #400)
 
 ### Linux
 
@@ -90,7 +91,7 @@ build (where `$ARCH` is your platform - `i686` or `x86_64`):
     $ git clone https://github.com/loki-project/loki-network.git
     $ cd loki-network
     $ mkdir -p build; cd build
-    $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK=ON -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -DDNS_PORT=53 -G 'Unix Makefiles'
+    $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK_RUNTIME=ON -DCMAKE_C_COMPILER=gcc -DCMAKE_CXX_COMPILER=g++ -G 'Unix Makefiles'
 
 install (elevated) to `$PROGRAMFILES/lokinet` or `$ProgramFiles(x86)/lokinet`:
 
@@ -100,7 +101,7 @@ if cross-compiling, install mingw-w64 from your distro's package manager, or [bu
 
     $ mkdir -p build; cd build
     $ export COMPILER=clang # if using clang for windows
-    $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK=ON -DCMAKE_CROSSCOMPILING=ON -DDNS_PORT=53 -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake
+    $ cmake .. -DCMAKE_BUILD_TYPE=[Debug|Release] -DSTATIC_LINK_RUNTIME=ON -DCMAKE_CROSSCOMPILING=ON -DCMAKE_TOOLCHAIN_FILE=../contrib/cross/mingw[32].cmake
 
 this will create a static binary that can be installed anywhere, with no other dependency other than libc (minimum v6.1)
 
