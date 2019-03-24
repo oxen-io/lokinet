@@ -30,6 +30,44 @@ install:
 
     $ sudo make install
 
+### Solaris 2.10+
+
+NOTE: Oracle Solaris users need to download/compile the TAP driver from http://www.whiteboard.ne.jp/~admin2/tuntap/
+
+The generated binaries _may_ work on Solaris 2.10 or earlier, you're on your own. (Recommended: `-static-libstdc++ -static-libgcc`, and the TAP driver if not already installed on the target system.)
+
+Building on a v2.10 or earlier system is unsupported, and may not even work; recent GCC releases have progressively dropped support for older system releases.
+
+build:
+
+    $ sudo pkg install build-essential gcc8 wget tuntap cmake (optional: ninja ccache - from omnios extra) (OmniOS CE)
+    $ sudo pkg install base-developer-utilities developer-gnu developer-studio-utilities gcc-7 wget cmake (Oracle Solaris, see note)
+    $ sudo pkg install build-essential wget gcc-8 documentation/tuntap header-tun tun (optional: ninja ccache) (all other SunOS)
+    $ git clone https://github.com/loki-project/loki-network
+    $ cd loki-network
+    $ gmake -j8
+
+install:
+
+    $ sudo make install
+
+
+### NetBSD (and other platforms where pkgsrc is _the_ native package mgr)
+
+TODO: add pkgsrc instructions
+
+### OpenBSD (uses legacy netbsd pkg manager)
+
+build:
+
+    # pkg_add wget cmake git (optional: ninja ccache)
+    $ git clone https://github.com/loki-project/loki-network
+    $ cd loki-network
+    $ gmake -j8
+
+install (root):
+
+    # gmake install
 
 ### FreeBSD
 
@@ -44,7 +82,7 @@ install (root):
 
     # gmake install
 
-## Windows
+### Windows
 
 build (where `$ARCH` is your platform - `i686` or `x86_64`):
 
