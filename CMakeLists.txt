@@ -38,6 +38,8 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
 # this, the header check is the only method we have to distinguish
 # them. -rick the svr4 guy
   set(SOLARIS ON)
+  set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lsocket -lnsl")
+  add_definitions(-D_POSIX_PTHREAD_SEMANTICS)
   INCLUDE(CheckIncludeFiles)
   CHECK_INCLUDE_FILES(sys/epoll.h SOLARIS_HAVE_EPOLL)
   if (SOLARIS_HAVE_EPOLL)
