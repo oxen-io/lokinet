@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 3.6.0)
 
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
-set(CMAKE_C_FLAGS_RELEASE "")
-set(CMAKE_CXX_FLAGS_RELEASE "")
-set(CMAKE_ASM_FLAGS_RELEASE "")
 
 # Core options
 option(USE_AVX2 "enable avx2 code" )
@@ -75,11 +72,9 @@ add_subdirectory(vendor/nlohmann)
 
 # still need the headers unconditionally
 set(ABSEIL_DIR vendor/abseil-cpp)
-include_directories(${ABSEIL_DIR})
 if (NOT WIN32)
   add_compile_options(-fPIC)
 endif(NOT WIN32)
-add_subdirectory(${ABSEIL_DIR})
 
 # turns off those annoying warnings for
 # target-specific crypto code paths not
@@ -354,6 +349,9 @@ set(ABYSS_SRC
   ${ABYSS}/src/client.cpp
   ${ABYSS}/src/server.cpp)
 add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
+
+add_subdirectory(${ABSEIL_DIR})
+include_directories(${ABSEIL_DIR})
 
 add_subdirectory(crypto)
 add_subdirectory(libutp)
