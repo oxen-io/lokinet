@@ -356,7 +356,7 @@ namespace llarp
     if(results.size())
     {
       if(whitelistRouters
-         && lokinetRouters.find(remote) == lokinetRouters.end())
+         && lokinetRouters.find(results[0].pubkey) == lokinetRouters.end())
       {
         return;
       }
@@ -598,7 +598,7 @@ namespace llarp
     if(strictConnectPubkeys.size() && strictConnectPubkeys.count(router) == 0)
       return false;
     else if(IsServiceNode() && whitelistRouters)
-      return lokinetRouters.count(router) != 0;
+      return lokinetRouters.find(router) != lokinetRouters.end();
     else
       return true;
   }
