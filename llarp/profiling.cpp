@@ -127,9 +127,10 @@ namespace llarp
   Profiling::MarkPathSuccess(path::Path* p)
   {
     lock_t lock(&m_ProfilesMutex);
+    const auto sz = p->hops.size();
     for(const auto& hop : p->hops)
     {
-      m_Profiles[hop.rc.pubkey].pathSuccessCount += 1;
+      m_Profiles[hop.rc.pubkey].pathSuccessCount += sz;
       m_Profiles[hop.rc.pubkey].lastUpdated = llarp::time_now_ms();
     }
   }
@@ -151,6 +152,7 @@ namespace llarp
       if(f.is_open())
       {
         f.write((char*)buf.base, buf.sz);
+        m_LastSave = llarp::time_now_ms();
       }
     }
     return res;
@@ -206,4 +208,10 @@ namespace llarp
     return true;
   }
 
+  bool
+  Profiling::ShouldSave(llarp_time_t now) const
+  {
+    auto dlt = now - m_LastSave;
+    return dlt > 60000;
+  }
 }  // namespace llarp

@@ -471,6 +471,15 @@ namespace llarp
     return outboundLinks.size() > 0;
   }
 
+  /// called in disk worker thread
+  static void
+  HandleSaveRC(void *u)
+  {
+    Router *self      = static_cast< Router * >(u);
+    std::string fname = self->our_rc_file.string();
+    self->_rc.Write(fname.c_str());
+  }
+
   bool
   Router::SaveRC()
   {
@@ -481,8 +490,8 @@ namespace llarp
       LogError("RC is invalid, not saving");
       return false;
     }
-    std::string fname = our_rc_file.string();
-    return _rc.Write(fname.c_str());
+    llarp_threadpool_queue_job(diskworker(), {this, &HandleSaveRC});
+    return true;
   }
 
   bool
@@ -692,6 +701,7 @@ namespace llarp
     {
       crypto()->encryption_keygen(nextOnionKey);
       std::string f = encryption_keyfile.string();
+      // TODO: use disk worker
       if(nextOnionKey.SaveToFile(f.c_str()))
       {
         nextRC.enckey = seckey_topublic(nextOnionKey);
@@ -710,9 +720,8 @@ namespace llarp
         LogWarn("failed to renegotiate session");
     });
 
-    // TODO: do this async
     return SaveRC();
-  }  // namespace llarp
+  }
 
   void
   Router::router_iter_config(const char *section, const char *key,
@@ -1112,6 +1121,16 @@ namespace llarp
     _exitContext.Tick(now);
     if(rpcCaller)
       rpcCaller->Tick(now);
+    // save profiles async
+    if(routerProfiling().ShouldSave(now))
+    {
+      llarp_threadpool_queue_job(
+          diskworker(),
+          {this, [](void *u) {
+             Router *self = static_cast< Router * >(u);
+             self->routerProfiling().Save(self->routerProfilesFile.c_str());
+           }});
+    }
   }
 
   bool

@@ -365,6 +365,7 @@ namespace llarp
     {
       if(tcp.closed)
         tcp.closed(&tcp);
+      ::shutdown(fd, SHUT_RDWR);
       return false;
     }
     else if(tcp.tick)

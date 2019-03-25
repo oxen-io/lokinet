@@ -185,9 +185,9 @@ namespace abyss
                && m_Request["params"].is_object())
             {
               nlohmann::json response;
-              response["jsonrpc"]     = "2.0";
-              response["id"]          = m_Request["id"];
-              auto value              = handler->HandleJSONRPC(
+              response["jsonrpc"] = "2.0";
+              response["id"]      = m_Request["id"];
+              auto value          = handler->HandleJSONRPC(
                   m_Request["method"].get< std::string >(),
                   m_Request["params"]);
               if(value)
