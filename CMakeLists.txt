@@ -38,15 +38,16 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
 # this, the header check is the only method we have to distinguish
 # them. -rick the svr4 guy
   set(SOLARIS ON)
+  option(USE_POLL "Revert to using poll(2) event loop (useful if targeting Oracle Solaris)" OFF)
   set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lsocket -lnsl")
   add_definitions(-D_POSIX_PTHREAD_SEMANTICS)
   INCLUDE(CheckIncludeFiles)
   CHECK_INCLUDE_FILES(sys/epoll.h SOLARIS_HAVE_EPOLL)
-  if (SOLARIS_HAVE_EPOLL)
+  if (SOLARIS_HAVE_EPOLL AND NOT USE_POLL)
 	  add_definitions(-DSOLARIS_HAVE_EPOLL)
 	  message(STATUS "Using fast emulation of Linux epoll(5) on Solaris.")
   else()
-	  message(STATUS "Falling back to poll(2) based event loop.")
+	  message(STATUS "Falling back to poll(2)-based event loop.")
   endif()
 endif()
 
