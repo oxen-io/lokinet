@@ -161,6 +161,9 @@ namespace llarp
   bool
   Router::TryConnectAsync(RouterContact remote, uint16_t numretries)
   {
+    const RouterID us = pubkey();
+    if(remote.pubkey == us)
+      return false;
     // do we already have a pending job for this remote?
     if(HasPendingConnectJob(remote.pubkey))
     {
@@ -611,6 +614,9 @@ namespace llarp
   void
   Router::TryEstablishTo(const RouterID &remote)
   {
+    const RouterID us = pubkey();
+    if(us == remote)
+      return;
     if(!ConnectionToRouterAllowed(remote))
     {
       LogWarn("not connecting to ", remote, " as it's not permitted by config");
