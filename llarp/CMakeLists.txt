@@ -17,10 +17,17 @@ set(LIB_UTIL_SRC
   util/logger.cpp
   util/logic.cpp
   util/mem.cpp
+  util/metrics_core.cpp
+  util/metrics_publishers.cpp
+  util/metrics_types.cpp
+  util/metrics.cpp
+  util/object.cpp
+  util/printer.cpp
   util/queue_manager.cpp
   util/queue.cpp
-  util/printer.cpp
+  util/scheduler.cpp
   util/status.cpp
+  util/stopwatch.cpp
   util/str.cpp
   util/string_view.cpp
   util/thread_pool.cpp
@@ -28,6 +35,7 @@ set(LIB_UTIL_SRC
   util/threadpool.cpp
   util/time.cpp
   util/timer.cpp
+  util/timerqueue.cpp
   util/traits.cpp
   util/types.cpp
 )

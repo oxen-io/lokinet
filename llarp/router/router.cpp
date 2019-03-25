@@ -15,6 +15,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/metrics.hpp>
 #include <util/str.hpp>
 
 #include <fstream>
@@ -1136,12 +1137,14 @@ namespace llarp
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
   {
+    METRICS_TIME_BLOCK("Router", "Sign");
     return crypto()->sign(sig, identity(), buf);
   }
 
   void
   Router::SendTo(RouterID remote, const ILinkMessage *msg, ILinkLayer *selected)
   {
+    METRICS_TIME_BLOCK("RouterSendTo", remote.ToString().c_str());
     llarp_buffer_t buf(linkmsg_buffer);
 
     if(!msg->BEncode(&buf))
