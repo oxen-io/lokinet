@@ -521,9 +521,6 @@ llarp_nodedb::select_random_hop_excluding(
   const size_t sz = entries.size();
   if(sz < 3)
   {
-    llarp::LogWarn(
-        "we don't have enough entries in nodedb to select hop, have ", sz,
-        " need ", 3);
     return false;
   }
   llarp_time_t now = llarp::time_now_ms();
