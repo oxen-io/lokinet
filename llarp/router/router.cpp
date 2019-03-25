@@ -914,6 +914,24 @@ namespace llarp
         else
           llarp::LogError("invalid netid '", val, "', is too long");
       }
+      if(StrEq(key, "max-connections"))
+      {
+        auto ival = atoi(val);
+        if(ival > 0)
+        {
+          maxConnectedRouters = ival;
+          LogInfo("max connections set to ", maxConnectedRouters);
+        }
+      }
+      if(StrEq(key, "min-connections"))
+      {
+        auto ival = atoi(val);
+        if(ival > 0)
+        {
+          minConnectedRouters = ival;
+          LogInfo("min connections set to ", minConnectedRouters);
+        }
+      }
       if(StrEq(key, "nickname"))
       {
         _rc.SetNick(val);
@@ -1074,17 +1092,17 @@ namespace llarp
         LogError("we have no bootstrap nodes specified");
     }
 
-    if(!IsServiceNode())
+    const size_t connected = NumberOfConnectedRouters();
+    if(connected < minConnectedRouters)
     {
-      size_t connected = NumberOfConnectedRouters();
-      if(connected < minConnectedRouters)
-      {
-        size_t dlt = minConnectedRouters - connected;
-        LogInfo("connecting to ", dlt, " random routers to keep alive");
-        ConnectToRandomRouters(dlt);
-      }
-      _hiddenServiceContext.Tick(now);
+      size_t dlt = minConnectedRouters - connected;
+      LogInfo("connecting to ", dlt, " random routers to keep alive");
+      ConnectToRandomRouters(dlt);
     }
+
+    if(!IsServiceNode())
+      _hiddenServiceContext.Tick(now);
+
     paths.BuildPaths(now);
     _exitContext.Tick(now);
     if(rpcCaller)
@@ -1401,6 +1419,8 @@ namespace llarp
       }
       RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
+      if(minConnectedRouters < 6)
+        minConnectedRouters = 6;
     }
     else
     {
