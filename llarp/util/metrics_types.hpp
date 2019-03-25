@@ -6,6 +6,10 @@
 #include <util/types.hpp>
 
 #include <absl/types/span.h>
+#include <absl/types/optional.h>
+#include <set>
+#include <memory>
+#include <cstring>
 #include <iosfwd>
 
 namespace llarp
