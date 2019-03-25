@@ -245,6 +245,7 @@ namespace llarp
           if(itr->second.IsExpired(now))
           {
             llarp::LogInfo("lookup for ", itr->first, " timed out");
+            router->routerProfiling().MarkTimeout(itr->first);
             itr = m_PendingRouters.erase(itr);
           }
           else
