@@ -356,7 +356,7 @@ namespace llarp
     if(results.size())
     {
       if(whitelistRouters
-         && lokinetRouters.find(remote) == lokinetRouters.end())
+         && lokinetRouters.find(results[0].pubkey) == lokinetRouters.end())
       {
         return;
       }
