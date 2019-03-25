@@ -228,7 +228,10 @@ namespace llarp
     bool
     Session::IsTimedOut(llarp_time_t now) const
     {
-      (void)now;
+      if(sendq.size() >= MaxSendQueueSize)
+      {
+        return now - lastActive > 5000;
+      }
       // let utp manage this
       return state == eClose;
     }

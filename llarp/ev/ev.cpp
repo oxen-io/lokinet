@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 // apparently current Solaris will emulate epoll.
-#if __linux__ || __sun__
+#if __linux__ || SOLARIS_HAVE_EPOLL
 #include <ev/ev_epoll.hpp>
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
@@ -365,6 +365,7 @@ namespace llarp
     {
       if(tcp.closed)
         tcp.closed(&tcp);
+      ::shutdown(fd, SHUT_RDWR);
       return false;
     }
     else if(tcp.tick)

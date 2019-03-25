@@ -3,9 +3,6 @@ cmake_minimum_required(VERSION 3.6.0)
 
 set(PROJECT_NAME lokinet)
 project(${PROJECT_NAME} C CXX ASM)
-set(CMAKE_C_FLAGS_RELEASE "")
-set(CMAKE_CXX_FLAGS_RELEASE "")
-set(CMAKE_ASM_FLAGS_RELEASE "")
 
 # Core options
 option(USE_AVX2 "enable avx2 code" )
@@ -31,6 +28,29 @@ if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
 endif()
 
+if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
+# check if we have the (saner) emulation of epoll here
+# it's basically linux epoll but with a sane method of 
+# dealing with closed file handles that still exist in the
+# epoll set
+#
+# Note that the zombie of Oracle Solaris 2.11.x will NOT have
+# this, the header check is the only method we have to distinguish
+# them. -rick the svr4 guy
+  set(SOLARIS ON)
+  option(USE_POLL "Revert to using poll(2) event loop (useful if targeting Oracle Solaris)" OFF)
+  set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lsocket -lnsl")
+  add_definitions(-D_POSIX_PTHREAD_SEMANTICS)
+  INCLUDE(CheckIncludeFiles)
+  CHECK_INCLUDE_FILES(sys/epoll.h SOLARIS_HAVE_EPOLL)
+  if (SOLARIS_HAVE_EPOLL AND NOT USE_POLL)
+	  add_definitions(-DSOLARIS_HAVE_EPOLL)
+	  message(STATUS "Using fast emulation of Linux epoll(5) on Solaris.")
+  else()
+	  message(STATUS "Falling back to poll(2)-based event loop.")
+  endif()
+endif()
+
 if(WIN32)
   set(CMAKE_CXX_STANDARD 17)
   ENABLE_LANGUAGE(RC)
@@ -46,11 +66,6 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
   message( FATAL_ERROR "shadow-framework is Linux only" )
 endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
-# might be redundant. -rick
-if (STATIC_LINK_RUNTIME AND SHADOW)
-  message(FATAL_ERROR "the shadow-framework build cannot be linked statically!")
-endif(STATIC_LINK_RUNTIME AND SHADOW)
-
 if (WIN32 AND NOT STATIC_LINK_RUNTIME)
   message("must ship compiler runtime libraries with this build: libwinpthread-1.dll, libgcc_s_dw2-1.dll, and libstdc++-6.dll")
   message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
@@ -60,11 +75,9 @@ add_subdirectory(vendor/nlohmann)
 
 # still need the headers unconditionally
 set(ABSEIL_DIR vendor/abseil-cpp)
-include_directories(${ABSEIL_DIR})
 if (NOT WIN32)
   add_compile_options(-fPIC)
 endif(NOT WIN32)
-add_subdirectory(${ABSEIL_DIR})
 
 # turns off those annoying warnings for
 # target-specific crypto code paths not
@@ -72,18 +85,22 @@ add_subdirectory(${ABSEIL_DIR})
 if (WARNINGS_AS_ERRORS)
   add_compile_options(-Werror)
 endif()
-add_compile_options(-Wall -Wextra -Wno-unknown-pragmas -Wno-unknown-warning-option)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+  add_compile_options(-Wno-unknown-warning-option)
+endif()
+
+add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
 # vla are evil
 add_compile_options(-Wvla)
 add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
 add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
 
-if (USING_CLANG)
+if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wthread-safety)
 endif()
 
 if (WITH_COVERAGE)
-  if (USING_CLANG)
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options( -fprofile-instr-generate -fcoverage-mapping )
     link_libraries( -fprofile-instr-generate )
   else()
@@ -95,7 +112,7 @@ endif()
 # these vars are set by the cmake toolchain spec
 if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 # dynamic linking does this all the time
-  if (USING_CLANG) # windows only, also set by toolchain file
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     option(NO_LIBGCC "use libunwind+compiler-rt instead, must already be installed in mingw-w64 sysroot" OFF)
     add_compile_options(-Wno-unused-command-line-argument -Wno-c++11-narrowing)
     add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
@@ -106,7 +123,7 @@ if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
   else()
     # found it. this is GNU only
     add_compile_options(-Wno-cast-function-type)
-  endif(USING_CLANG)
+  endif()
 endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
 if(WIN32)
@@ -140,14 +157,20 @@ set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 
+# not supported on Solaris - system libraries are not available as archives
 if(STATIC_LINK_RUNTIME)
-  add_compile_options(-static)
-  if(USING_CLANG)
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libstdc++ -pthread" )
+  if (NOT SOLARIS)
+    add_compile_options(-static) 
+    if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libstdc++ -pthread" )
+    else()
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" )
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+    endif()
   else()
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc -static -Wl,--whole-archive -lpthread -Wl,--no-whole-archive" )
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
-  endif(USING_CLANG)
+      set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc" )
+      set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
+ endif()
 endif(STATIC_LINK_RUNTIME)
 
 if(USE_NETNS)
@@ -283,10 +306,13 @@ if(UNIX)
   elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
       set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-darwin.c ${TT_ROOT}/tuntap-unix-bsd.c)
       get_filename_component(EV_SRC "llarp/ev/ev_kqueue.cpp" ABSOLUTE)
-# TODO: _actually_ port to solaris/illumos (it's fairly complete...except for TUN) -rick
   elseif (${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
       set(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-unix-sunos.c)
-      get_filename_component(EV_SRC "llarp/ev/ev_epoll.cpp" ABSOLUTE)
+      if (SOLARIS_HAVE_EPOLL)
+        get_filename_component(EV_SRC "llarp/ev/ev_epoll.cpp" ABSOLUTE)
+      else()
+        get_filename_component(EV_SRC "llarp/ev/ev_poll.cpp" ABSOLUTE)
+      endif()
   else()
       message(FATAL_ERROR "Your operating system is not supported yet")
   endif()
@@ -326,6 +352,9 @@ set(ABYSS_SRC
   ${ABYSS}/src/client.cpp
   ${ABYSS}/src/server.cpp)
 add_library(${ABYSS_LIB} STATIC ${ABYSS_SRC})
+
+add_subdirectory(${ABSEIL_DIR})
+include_directories(${ABSEIL_DIR})
 
 add_subdirectory(crypto)
 add_subdirectory(libutp)

@@ -47,5 +47,4 @@ tuntap_sys_set_ifname(struct device *dev, const char *ifname, size_t len)
    */
   return -1;
 }
-
 #endif
