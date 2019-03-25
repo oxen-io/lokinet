@@ -6,8 +6,6 @@ namespace llarp
 {
   namespace metrics
   {
-    const char *FormatSpec::DEFAULT_FORMAT = "%f";
-
     std::ostream &
     FormatSpec::format(std::ostream &stream, double data,
                        const FormatSpec &format)

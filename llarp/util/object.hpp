@@ -1,8 +1,10 @@
 #ifndef LLARP_OBJECT_HPP
 #define LLARP_OBJECT_HPP
 
-#include <absl/types/optional.h>
 #include <util/threading.hpp>
+
+#include <absl/types/optional.h>
+#include <vector>
 
 namespace llarp
 {

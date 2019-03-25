@@ -5,6 +5,7 @@
 #include <util/types.hpp>
 
 #include <bitset>
+#include <vector>
 
 namespace llarp
 {

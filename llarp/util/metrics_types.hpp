@@ -43,13 +43,13 @@ namespace llarp
       float m_scale;
       const char *m_format;
 
-      static const char *DEFAULT_FORMAT;
+      static constexpr char DEFAULT_FORMAT[] = "%f";
 
-      FormatSpec() : m_scale(1.0), m_format(DEFAULT_FORMAT)
+      constexpr FormatSpec() : m_scale(1.0), m_format(DEFAULT_FORMAT)
       {
       }
 
-      FormatSpec(float scale, const char *format)
+      constexpr FormatSpec(float scale, const char *format)
           : m_scale(scale), m_format(format)
       {
       }
@@ -71,7 +71,7 @@ namespace llarp
 
       std::array< Spec, Publication::MaxSize > m_specs;
 
-      Format() : m_specs()
+      constexpr Format() : m_specs()
       {
       }
 
@@ -81,13 +81,13 @@ namespace llarp
         m_specs[static_cast< size_t >(pub)].emplace(spec);
       }
 
-      void
+      constexpr void
       clear()
       {
         m_specs = decltype(m_specs)();
       }
 
-      const FormatSpec *
+      constexpr const FormatSpec *
       specFor(Publication::Type val) const
       {
         const auto &spec = m_specs[static_cast< size_t >(val)];
@@ -158,7 +158,7 @@ namespace llarp
       const Category *m_category;
       CategoryContainer *m_nextCategory;
 
-      void
+      constexpr void
       clear()
       {
         m_enabled      = false;
@@ -261,33 +261,33 @@ namespace llarp
       const Description *m_description;
 
      public:
-      Id() : m_description(nullptr)
+      constexpr Id() : m_description(nullptr)
       {
       }
 
-      Id(const Description *description) : m_description(description)
+      constexpr Id(const Description *description) : m_description(description)
       {
       }
 
-      const Description *&
+      constexpr const Description *&
       description()
       {
         return m_description;
       }
 
-      const Description *const &
+      constexpr const Description *const &
       description() const
       {
         return m_description;
       }
 
-      constexpr bool
+      bool
       valid() const noexcept
       {
         return m_description != nullptr;
       }
 
-      explicit constexpr operator bool() const noexcept
+      explicit operator bool() const noexcept
       {
         return valid();
       }
