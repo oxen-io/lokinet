@@ -1039,6 +1039,10 @@ namespace llarp
         return true;
       });
     }
+    // kill dead nodes
+    nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+      return routerProfiling().IsBad(rc.pubkey);
+    });
     paths.TickPaths(now);
     paths.ExpirePaths(now);
 

@@ -45,6 +45,48 @@ llarp_nodedb::Get(const llarp::RouterID &pk, llarp::RouterContact &result)
   return true;
 }
 
+// kill rcs from disk async
+struct AsyncKillRCJobs
+{
+  std::set< std::string > files;
+
+  static void
+  Work(void *u)
+  {
+    static_cast< AsyncKillRCJobs * >(u)->Kill();
+  }
+
+  void
+  Kill()
+  {
+    for(const auto &file : files)
+      fs::remove(file);
+    delete this;
+  }
+};
+
+void
+llarp_nodedb::RemoveIf(
+    std::function< bool(const llarp::RouterContact &rc) > filter)
+{
+  AsyncKillRCJobs *job = new AsyncKillRCJobs();
+  {
+    llarp::util::Lock l(&access);
+    auto itr = entries.begin();
+    while(itr != entries.end())
+    {
+      if(filter(itr->second))
+      {
+        job->files.insert(getRCFilePath(itr->second.pubkey));
+        itr = entries.erase(itr);
+      }
+      else
+        ++itr;
+    }
+  }
+  llarp_threadpool_queue_job(disk, {job, AsyncKillRCJobs::Work});
+}
+
 bool
 llarp_nodedb::Has(const llarp::RouterID &pk)
 {
@@ -476,9 +518,14 @@ llarp_nodedb::select_random_hop_excluding(
   llarp::util::Lock lock(&access);
   /// checking for "guard" status for N = 0 is done by caller inside of
   /// pathbuilder's scope
-  size_t sz = entries.size();
+  const size_t sz = entries.size();
   if(sz < 3)
+  {
+    llarp::LogWarn(
+        "we don't have enough entries in nodedb to select hop, have ", sz,
+        " need ", 3);
     return false;
+  }
   llarp_time_t now = llarp::time_now_ms();
 
   auto itr   = entries.begin();
