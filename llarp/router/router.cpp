@@ -74,12 +74,9 @@ struct TryConnectJob
       Attempt();
       return;
     }
-    if(!router->IsServiceNode())
+    if(router->routerProfiling().IsBad(rc.pubkey))
     {
-      if(router->routerProfiling().IsBad(rc.pubkey))
-      {
-        router->nodedb()->Remove(rc.pubkey);
-      }
+      router->nodedb()->Remove(rc.pubkey);
     }
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
@@ -91,8 +88,6 @@ struct TryConnectJob
     --triesLeft;
     if(!link->TryEstablishTo(rc))
     {
-      llarp::LogError("did not attempt connection to ", rc.pubkey,
-                      " and it has ", rc.addrs.size(), " advertised addresses");
       // delete this
       router->pendingEstablishJobs.erase(rc.pubkey);
     }
