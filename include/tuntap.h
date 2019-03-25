@@ -148,6 +148,10 @@ extern "C"
 #if defined(FreeBSD)
     int mode;
 #endif
+#if defined(__sun)
+    int ip_fd;
+    char internal_name[IF_NAMESIZE];
+#endif
   };
 
   /* User definable log callback */
