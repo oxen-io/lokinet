@@ -74,12 +74,9 @@ struct TryConnectJob
       Attempt();
       return;
     }
-    if(!router->IsServiceNode())
+    if(router->routerProfiling().IsBad(rc.pubkey))
     {
-      if(router->routerProfiling().IsBad(rc.pubkey))
-      {
-        router->nodedb()->Remove(rc.pubkey);
-      }
+      router->nodedb()->Remove(rc.pubkey);
     }
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
@@ -91,8 +88,6 @@ struct TryConnectJob
     --triesLeft;
     if(!link->TryEstablishTo(rc))
     {
-      llarp::LogError("did not attempt connection to ", rc.pubkey,
-                      " and it has ", rc.addrs.size(), " advertised addresses");
       // delete this
       router->pendingEstablishJobs.erase(rc.pubkey);
     }
@@ -166,6 +161,9 @@ namespace llarp
   bool
   Router::TryConnectAsync(RouterContact remote, uint16_t numretries)
   {
+    const RouterID us = pubkey();
+    if(remote.pubkey == us)
+      return false;
     // do we already have a pending job for this remote?
     if(HasPendingConnectJob(remote.pubkey))
     {
@@ -473,6 +471,15 @@ namespace llarp
     return outboundLinks.size() > 0;
   }
 
+  /// called in disk worker thread
+  static void
+  HandleSaveRC(void *u)
+  {
+    Router *self      = static_cast< Router * >(u);
+    std::string fname = self->our_rc_file.string();
+    self->_rc.Write(fname.c_str());
+  }
+
   bool
   Router::SaveRC()
   {
@@ -483,8 +490,8 @@ namespace llarp
       LogError("RC is invalid, not saving");
       return false;
     }
-    std::string fname = our_rc_file.string();
-    return _rc.Write(fname.c_str());
+    llarp_threadpool_queue_job(diskworker(), {this, &HandleSaveRC});
+    return true;
   }
 
   bool
@@ -616,6 +623,9 @@ namespace llarp
   void
   Router::TryEstablishTo(const RouterID &remote)
   {
+    const RouterID us = pubkey();
+    if(us == remote)
+      return;
     if(!ConnectionToRouterAllowed(remote))
     {
       LogWarn("not connecting to ", remote, " as it's not permitted by config");
@@ -691,6 +701,7 @@ namespace llarp
     {
       crypto()->encryption_keygen(nextOnionKey);
       std::string f = encryption_keyfile.string();
+      // TODO: use disk worker
       if(nextOnionKey.SaveToFile(f.c_str()))
       {
         nextRC.enckey = seckey_topublic(nextOnionKey);
@@ -709,9 +720,8 @@ namespace llarp
         LogWarn("failed to renegotiate session");
     });
 
-    // TODO: do this async
     return SaveRC();
-  }  // namespace llarp
+  }
 
   void
   Router::router_iter_config(const char *section, const char *key,
@@ -914,6 +924,24 @@ namespace llarp
         else
           llarp::LogError("invalid netid '", val, "', is too long");
       }
+      if(StrEq(key, "max-connections"))
+      {
+        auto ival = atoi(val);
+        if(ival > 0)
+        {
+          maxConnectedRouters = ival;
+          LogInfo("max connections set to ", maxConnectedRouters);
+        }
+      }
+      if(StrEq(key, "min-connections"))
+      {
+        auto ival = atoi(val);
+        if(ival > 0)
+        {
+          minConnectedRouters = ival;
+          LogInfo("min connections set to ", minConnectedRouters);
+        }
+      }
       if(StrEq(key, "nickname"))
       {
         _rc.SetNick(val);
@@ -1026,6 +1054,10 @@ namespace llarp
         return true;
       });
     }
+    // kill dead nodes
+    nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+      return routerProfiling().IsBad(rc.pubkey);
+    });
     paths.TickPaths(now);
     paths.ExpirePaths(now);
 
@@ -1074,21 +1106,31 @@ namespace llarp
         LogError("we have no bootstrap nodes specified");
     }
 
-    if(!IsServiceNode())
+    const size_t connected = NumberOfConnectedRouters();
+    if(connected < minConnectedRouters)
     {
-      size_t connected = NumberOfConnectedRouters();
-      if(connected < minConnectedRouters)
-      {
-        size_t dlt = minConnectedRouters - connected;
-        LogInfo("connecting to ", dlt, " random routers to keep alive");
-        ConnectToRandomRouters(dlt);
-      }
-      _hiddenServiceContext.Tick(now);
+      size_t dlt = minConnectedRouters - connected;
+      LogInfo("connecting to ", dlt, " random routers to keep alive");
+      ConnectToRandomRouters(dlt);
     }
+
+    if(!IsServiceNode())
+      _hiddenServiceContext.Tick(now);
+
     paths.BuildPaths(now);
     _exitContext.Tick(now);
     if(rpcCaller)
       rpcCaller->Tick(now);
+    // save profiles async
+    if(routerProfiling().ShouldSave(now))
+    {
+      llarp_threadpool_queue_job(
+          diskworker(),
+          {this, [](void *u) {
+             Router *self = static_cast< Router * >(u);
+             self->routerProfiling().Save(self->routerProfilesFile.c_str());
+           }});
+    }
   }
 
   bool
@@ -1401,6 +1443,8 @@ namespace llarp
       }
       RouterID us = pubkey();
       LogInfo("initalized service node: ", us);
+      if(minConnectedRouters < 6)
+        minConnectedRouters = 6;
     }
     else
     {

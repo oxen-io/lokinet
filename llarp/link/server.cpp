@@ -205,7 +205,6 @@ namespace llarp
     llarp::AddressInfo to;
     if(!PickAddress(rc, to))
       return false;
-    llarp::LogInfo("Try establish to ", RouterID(rc.pubkey.as_array()));
     llarp::Addr addr(to);
     auto s = NewOutboundSession(rc, to);
     if(PutSession(s))

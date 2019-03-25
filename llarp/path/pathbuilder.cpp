@@ -211,15 +211,17 @@ namespace llarp
         return router->NumberOfConnectedRouters()
             && router->GetRandomConnectedRouter(cur);
 
-      size_t tries = 10;
+      size_t tries                 = 10;
+      std::set< RouterID > exclude = {prev.pubkey};
       do
       {
         cur.Clear();
         --tries;
-        if(db->select_random_hop(prev, cur, hop))
+        if(db->select_random_hop_excluding(cur, exclude))
         {
           if(!router->routerProfiling().IsBad(cur.pubkey))
             return true;
+          exclude.insert(cur.pubkey);
         }
       } while(tries > 0);
       return tries > 0;
@@ -343,7 +345,7 @@ namespace llarp
       static constexpr llarp_time_t MaxBuildInterval = 30 * 1000;
       buildIntervalLimit =
           std::min(1000 + buildIntervalLimit, MaxBuildInterval);
-      // router->routerProfiling().MarkPathFail(p);
+      router->routerProfiling().MarkPathFail(p);
       PathSet::HandlePathBuildTimeout(p);
     }
 

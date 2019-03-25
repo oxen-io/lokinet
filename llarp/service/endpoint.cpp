@@ -113,6 +113,8 @@ namespace llarp
       m_IntroSet.I.clear();
       for(const auto& intro : I)
       {
+        if(router->routerProfiling().IsBad(intro.router))
+          continue;
         m_IntroSet.I.push_back(intro);
       }
       if(m_IntroSet.I.size() == 0)
@@ -243,6 +245,7 @@ namespace llarp
           if(itr->second.IsExpired(now))
           {
             llarp::LogInfo("lookup for ", itr->first, " timed out");
+            router->routerProfiling().MarkTimeout(itr->first);
             itr = m_PendingRouters.erase(itr);
           }
           else
@@ -1172,10 +1175,12 @@ namespace llarp
         , currentIntroSet(introset)
 
     {
+      auto& profiling  = parent->m_Router->routerProfiling();
       updatingIntroSet = false;
       for(const auto intro : introset.I)
       {
-        if(intro.expiresAt > m_NextIntro.expiresAt)
+        if(intro.expiresAt > m_NextIntro.expiresAt
+           && !profiling.IsBad(intro.router))
         {
           m_NextIntro = intro;
           remoteIntro = intro;
@@ -1437,6 +1442,8 @@ namespace llarp
       for(const auto& intro : currentIntroSet.I)
       {
         if(intro.ExpiresSoon(now))
+          continue;
+        if(router->routerProfiling().IsBad(intro.router))
           continue;
         auto itr = m_BadIntros.find(intro);
         if(itr == m_BadIntros.end() && intro.router == m_NextIntro.router)

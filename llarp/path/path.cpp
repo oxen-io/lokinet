@@ -562,6 +562,7 @@ namespace llarp
           m_LastLatencyTestID   = latency.T;
           m_LastLatencyTestTime = now;
           SendRoutingMessage(&latency, r);
+          return;
         }
         if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
         {
@@ -591,7 +592,7 @@ namespace llarp
             EnterState(ePathTimeout, now);
           }
         }
-        else if(dlt >= 10000 && m_LastRecvMessage == 0)
+        else if(dlt >= PATH_ALIVE_TIMEOUT && m_LastRecvMessage == 0)
         {
           r->routerProfiling().MarkPathFail(this);
           EnterState(ePathTimeout, now);
@@ -650,7 +651,10 @@ namespace llarp
         n ^= hop.nonceXOR;
         r->crypto()->xchacha20(buf, hop.shared, n);
       }
-      return HandleRoutingMessage(buf, r);
+      if(!HandleRoutingMessage(buf, r))
+        return false;
+      m_LastRecvMessage = r->Now();
+      return true;
     }
 
     bool
@@ -661,7 +665,6 @@ namespace llarp
         LogWarn("Failed to parse inbound routing message");
         return false;
       }
-      m_LastRecvMessage = r->Now();
       return true;
     }
 
@@ -795,10 +798,10 @@ namespace llarp
     bool
     Path::HandleDHTMessage(const dht::IMessage* msg, AbstractRouter* r)
     {
+      MarkActive(r->Now());
       routing::DHTMessage reply;
       if(!msg->HandleMessage(r->dht(), reply.M))
         return false;
-      MarkActive(r->Now());
       if(reply.M.size())
         return SendRoutingMessage(&reply, r);
       return true;

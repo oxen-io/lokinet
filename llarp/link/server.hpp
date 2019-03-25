@@ -88,10 +88,11 @@ namespace llarp
         llarp::LogWarn("no udp set");
         return;
       }
+      const llarp::Addr srcaddr(*from);
       // maybe check from too?
       // no it's never null
       static_cast< ILinkLayer* >(udp->user)->RecvFrom(
-          *from, buf.underlying.base, buf.underlying.sz);
+          srcaddr, buf.underlying.base, buf.underlying.sz);
     }
 
     void

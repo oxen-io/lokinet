@@ -57,6 +57,10 @@ struct llarp_nodedb
   Remove(const llarp::RouterID &pk) LOCKS_EXCLUDED(access);
 
   void
+  RemoveIf(std::function< bool(const llarp::RouterContact &) > filter)
+      LOCKS_EXCLUDED(access);
+
+  void
   Clear() LOCKS_EXCLUDED(access);
 
   bool

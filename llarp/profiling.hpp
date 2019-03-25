@@ -84,6 +84,9 @@ namespace llarp
     bool
     Save(const char* fname) LOCKS_EXCLUDED(m_ProfilesMutex);
 
+    bool
+    ShouldSave(llarp_time_t now) const;
+
    private:
     bool
     BEncodeNoLock(llarp_buffer_t* buf) const
@@ -91,6 +94,7 @@ namespace llarp
     using lock_t = util::Lock;
     mutable util::Mutex m_ProfilesMutex;  // protects m_Profiles
     std::map< RouterID, RouterProfile > m_Profiles GUARDED_BY(m_ProfilesMutex);
+    llarp_time_t m_LastSave = 0;
   };
 
 }  // namespace llarp
