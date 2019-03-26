@@ -1175,12 +1175,10 @@ namespace llarp
         , currentIntroSet(introset)
 
     {
-      auto& profiling  = parent->m_Router->routerProfiling();
       updatingIntroSet = false;
       for(const auto intro : introset.I)
       {
-        if(intro.expiresAt > m_NextIntro.expiresAt
-           && !profiling.IsBad(intro.router))
+        if(intro.expiresAt > m_NextIntro.expiresAt)
         {
           m_NextIntro = intro;
           remoteIntro = intro;
@@ -1848,12 +1846,20 @@ namespace llarp
                                          llarp::path::PathRole roles)
     {
       if(m_NextIntro.router.IsZero())
+      {
+        llarp::LogError("intro is not set, cannot select hops");
         return false;
+      }
       if(hop == numHops - 1)
       {
         if(db->Get(m_NextIntro.router, cur))
         {
           return true;
+        }
+        else if(router->routerProfiling().IsBad(m_NextIntro.router))
+        {
+          llarp::LogError("bad intro chosen, not selecting hop");
+          return false;
         }
         else
         {
