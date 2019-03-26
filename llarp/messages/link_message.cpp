@@ -68,10 +68,12 @@ namespace llarp
       }
       // create the message to parse based off message type
       llarp::LogDebug("inbound message ", *strbuf.cur);
+      bool isLIM = false;
       switch(*strbuf.cur)
       {
         case 'i':
           handler->msg = &handler->holder->i;
+          isLIM        = true;
           break;
         case 'd':
           handler->msg = &handler->holder->d;
@@ -91,14 +93,14 @@ namespace llarp
         default:
           return false;
       }
+
+      if(!isLIM)
       {
         const std::string host =
-            handler->from->GetRemoteEndpoint().xtohl().ToString();
-        char buf[16] = "LinkLayerRecv_";
-        buf[14]      = *strbuf.cur;
-        buf[15]      = 0;
-        METRICS_DYNAMIC_INCREMENT(buf, host.c_str());
+            "RX_" + RouterID(handler->from->GetPubKey()).ToString();
+        METRICS_DYNAMIC_INCREMENT(handler->msg->Name(), host.c_str());
       }
+
       handler->msg->session = handler->from;
       handler->firstkey     = false;
       return true;
@@ -116,8 +118,6 @@ namespace llarp
     bool result = false;
     if(msg)
     {
-      const std::string host = from->GetRemoteEndpoint().xtohl().ToString();
-      METRICS_TIME_BLOCK("HandleMessage", host.c_str());
       result = msg->HandleMessage(router);
     }
     Reset();

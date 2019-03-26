@@ -1145,7 +1145,8 @@ namespace llarp
   void
   Router::SendTo(RouterID remote, const ILinkMessage *msg, ILinkLayer *selected)
   {
-    METRICS_TIME_BLOCK("RouterSendTo", remote.ToString().c_str());
+    const std::string remoteName = "TX_" + remote.ToString();
+    METRICS_DYNAMIC_INCREMENT(msg->Name(), remoteName.c_str());
     llarp_buffer_t buf(linkmsg_buffer);
 
     if(!msg->BEncode(&buf))

@@ -182,6 +182,9 @@ namespace llarp
       PruneInboundMessages(now);
       m_TXRate = 0;
       m_RXRate = 0;
+      METRICS_DYNAMIC_UPDATE("utp.session.sendq",
+                             RouterID(remoteRC.pubkey).ToString().c_str(),
+                             sendq.size());
     }
 
     /// low level read
