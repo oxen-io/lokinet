@@ -291,7 +291,7 @@ bool
 llarp_poll_loop::init()
 {
   if(!upollfd)
-    upollfd = upoll_create(1);  // why do we return false? (see ev_poll.cpp)
+    upollfd = upoll_create(1);  // why do we return false? (see ev_epoll.cpp)
   return false;
 }
 
