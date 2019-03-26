@@ -97,7 +97,7 @@ namespace llarp
       Start();
 
       virtual std::string
-      Name() const;
+      Name() const override;
 
       bool
       ShouldPublishDescriptors(llarp_time_t now) const override;

@@ -39,6 +39,14 @@
             this.btnDrop = new System.Windows.Forms.Button();
             this.btnConfigProfile = new System.Windows.Forms.Button();
             this.btnAbout = new System.Windows.Forms.Button();
+            this.TrayMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
+            this.TrayConnect = new System.Windows.Forms.ToolStripMenuItem();
+            this.TrayDisconnect = new System.Windows.Forms.ToolStripMenuItem();
+            this.saveLogToFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.aboutToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.showToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.TrayMenu.SuspendLayout();
             this.SuspendLayout();
             // 
             // StatusLabel
@@ -72,6 +80,7 @@
             // 
             // NotificationTrayIcon
             // 
+            this.NotificationTrayIcon.ContextMenuStrip = this.TrayMenu;
             this.NotificationTrayIcon.Icon = ((System.Drawing.Icon)(resources.GetObject("NotificationTrayIcon.Icon")));
             this.NotificationTrayIcon.Text = "LokiNET - disconnected";
             this.NotificationTrayIcon.Visible = true;
@@ -143,6 +152,60 @@
             this.btnAbout.UseVisualStyleBackColor = true;
             this.btnAbout.Click += new System.EventHandler(this.btnAbout_Click);
             // 
+            // TrayMenu
+            // 
+            this.TrayMenu.Items.AddRange(new System.Windows.Forms.ToolStripItem[] {
+            this.showToolStripMenuItem,
+            this.TrayConnect,
+            this.TrayDisconnect,
+            this.saveLogToFileToolStripMenuItem,
+            this.aboutToolStripMenuItem,
+            this.exitToolStripMenuItem});
+            this.TrayMenu.Name = "TrayMenu";
+            this.TrayMenu.Size = new System.Drawing.Size(181, 158);
+            // 
+            // TrayConnect
+            // 
+            this.TrayConnect.Name = "TrayConnect";
+            this.TrayConnect.Size = new System.Drawing.Size(180, 22);
+            this.TrayConnect.Text = "Connect";
+            this.TrayConnect.Click += new System.EventHandler(this.TrayConnect_Click);
+            // 
+            // TrayDisconnect
+            // 
+            this.TrayDisconnect.Name = "TrayDisconnect";
+            this.TrayDisconnect.Size = new System.Drawing.Size(180, 22);
+            this.TrayDisconnect.Text = "Disconnect";
+            this.TrayDisconnect.Click += new System.EventHandler(this.TrayDisconnect_Click);
+            // 
+            // saveLogToFileToolStripMenuItem
+            // 
+            this.saveLogToFileToolStripMenuItem.Name = "saveLogToFileToolStripMenuItem";
+            this.saveLogToFileToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.saveLogToFileToolStripMenuItem.Text = "Save Log to File...";
+            this.saveLogToFileToolStripMenuItem.Click += new System.EventHandler(this.saveLogToFileToolStripMenuItem_Click);
+            // 
+            // aboutToolStripMenuItem
+            // 
+            this.aboutToolStripMenuItem.Name = "aboutToolStripMenuItem";
+            this.aboutToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.aboutToolStripMenuItem.Text = "About...";
+            this.aboutToolStripMenuItem.Click += new System.EventHandler(this.aboutToolStripMenuItem_Click);
+            // 
+            // exitToolStripMenuItem
+            // 
+            this.exitToolStripMenuItem.Name = "exitToolStripMenuItem";
+            this.exitToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.exitToolStripMenuItem.Text = "Exit";
+            this.exitToolStripMenuItem.Click += new System.EventHandler(this.exitToolStripMenuItem_Click);
+            // 
+            // showToolStripMenuItem
+            // 
+            this.showToolStripMenuItem.Name = "showToolStripMenuItem";
+            this.showToolStripMenuItem.Size = new System.Drawing.Size(180, 22);
+            this.showToolStripMenuItem.Text = "Show";
+            this.showToolStripMenuItem.Click += new System.EventHandler(this.showToolStripMenuItem_Click);
+            // 
             // main_frame
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -161,6 +224,7 @@
             this.SizeGripStyle = System.Windows.Forms.SizeGripStyle.Hide;
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "LokiNET Launcher";
+            this.TrayMenu.ResumeLayout(false);
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -177,6 +241,13 @@
         private System.Windows.Forms.Button btnConfigProfile;
         public System.Windows.Forms.TextBox lokinetd_fd1;
         private System.Windows.Forms.Button btnAbout;
+        private System.Windows.Forms.ContextMenuStrip TrayMenu;
+        private System.Windows.Forms.ToolStripMenuItem TrayConnect;
+        private System.Windows.Forms.ToolStripMenuItem TrayDisconnect;
+        private System.Windows.Forms.ToolStripMenuItem saveLogToFileToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem aboutToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem showToolStripMenuItem;
     }
 }
 

@@ -12,6 +12,7 @@
     || (__APPLE__ && __MACH__)
 #include <ev/ev_kqueue.hpp>
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+#define SHUT_RDWR SD_BOTH
 #include <ev/ev_win32.hpp>
 #else
 #error No async event loop for your platform, subclass llarp_ev_loop
