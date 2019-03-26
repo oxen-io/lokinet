@@ -64,6 +64,8 @@ namespace llarp
           return "Rate";
         case Type::RateCount:
           return "RateCount";
+        default:
+          return "???";
       }
     }
 

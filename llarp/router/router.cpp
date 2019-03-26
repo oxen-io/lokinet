@@ -63,6 +63,7 @@ struct TryConnectJob
   void
   Success()
   {
+    router->routerProfiling().MarkSuccess(rc.pubkey);
     router->FlushOutboundFor(rc.pubkey, link);
   }
 
