@@ -166,6 +166,8 @@ namespace llarp
     const RouterID us = pubkey();
     if(remote.pubkey == us)
       return false;
+    if(!ConnectionToRouterAllowed(remote.pubkey))
+      return false;
     // do we already have a pending job for this remote?
     if(HasPendingConnectJob(remote.pubkey))
     {
@@ -628,6 +630,7 @@ namespace llarp
     const RouterID us = pubkey();
     if(us == remote)
       return;
+
     if(!ConnectionToRouterAllowed(remote))
     {
       LogWarn("not connecting to ", remote, " as it's not permitted by config");
@@ -1265,6 +1268,11 @@ namespace llarp
   {
     if(rc.IsPublicRouter() && whitelistRouters && IsServiceNode())
     {
+      if(lokinetRouters.size() == 0)
+      {
+        LogError("we have no service nodes in whitelist");
+        return false;
+      }
       if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
       {
         RouterID sn(rc.pubkey);
