@@ -30,6 +30,10 @@ namespace llarp
 
     virtual void
     Clear() = 0;
+
+    // the name of this kind of message
+    virtual const char*
+    Name() const = 0;
   };
 
 }  // namespace llarp

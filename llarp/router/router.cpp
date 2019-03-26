@@ -63,6 +63,7 @@ struct TryConnectJob
   void
   Success()
   {
+    router->routerProfiling().MarkSuccess(rc.pubkey);
     router->FlushOutboundFor(rc.pubkey, link);
   }
 
@@ -164,6 +165,8 @@ namespace llarp
   {
     const RouterID us = pubkey();
     if(remote.pubkey == us)
+      return false;
+    if(!ConnectionToRouterAllowed(remote.pubkey))
       return false;
     // do we already have a pending job for this remote?
     if(HasPendingConnectJob(remote.pubkey))
@@ -627,6 +630,7 @@ namespace llarp
     const RouterID us = pubkey();
     if(us == remote)
       return;
+
     if(!ConnectionToRouterAllowed(remote))
     {
       LogWarn("not connecting to ", remote, " as it's not permitted by config");
@@ -1144,7 +1148,8 @@ namespace llarp
   void
   Router::SendTo(RouterID remote, const ILinkMessage *msg, ILinkLayer *selected)
   {
-    METRICS_TIME_BLOCK("RouterSendTo", remote.ToString().c_str());
+    const std::string remoteName = "TX_" + remote.ToString();
+    METRICS_DYNAMIC_INCREMENT(msg->Name(), remoteName.c_str());
     llarp_buffer_t buf(linkmsg_buffer);
 
     if(!msg->BEncode(&buf))
@@ -1263,6 +1268,11 @@ namespace llarp
   {
     if(rc.IsPublicRouter() && whitelistRouters && IsServiceNode())
     {
+      if(lokinetRouters.size() == 0)
+      {
+        LogError("we have no service nodes in whitelist");
+        return false;
+      }
       if(lokinetRouters.find(rc.pubkey) == lokinetRouters.end())
       {
         RouterID sn(rc.pubkey);

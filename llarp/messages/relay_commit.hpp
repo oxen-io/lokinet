@@ -68,6 +68,12 @@ namespace llarp
 
     bool
     AsyncDecrypt(llarp::path::PathContext *context) const;
+
+    const char *
+    Name() const override
+    {
+      return "RelayCommit";
+    }
   };
 }  // namespace llarp
 
