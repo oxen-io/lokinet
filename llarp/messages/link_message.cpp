@@ -9,6 +9,7 @@
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
+#include <util/metrics.hpp>
 
 namespace llarp
 {
@@ -90,6 +91,14 @@ namespace llarp
         default:
           return false;
       }
+      {
+        const std::string host =
+            handler->from->GetRemoteEndpoint().xtohl().ToString();
+        char buf[16] = "LinkLayerRecv_";
+        buf[14]      = *strbuf.cur;
+        buf[15]      = 0;
+        METRICS_DYNAMIC_INCREMENT(buf, host.c_str());
+      }
       handler->msg->session = handler->from;
       handler->firstkey     = false;
       return true;
@@ -107,6 +116,8 @@ namespace llarp
     bool result = false;
     if(msg)
     {
+      const std::string host = from->GetRemoteEndpoint().xtohl().ToString();
+      METRICS_TIME_BLOCK("HandleMessage", host.c_str());
       result = msg->HandleMessage(router);
     }
     Reset();
