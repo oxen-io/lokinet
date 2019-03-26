@@ -240,8 +240,8 @@ namespace llarp
         m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
     Mutex m_PendingMutex
         ACQUIRED_AFTER(m_AuthedLinksMutex);  // protects m_Pending
-    std::unordered_map< llarp::Addr, std::unique_ptr< ILinkSession >,
-                        llarp::Addr::Hash >
+    std::unordered_multimap< llarp::Addr, std::unique_ptr< ILinkSession >,
+                             llarp::Addr::Hash >
         m_Pending GUARDED_BY(m_PendingMutex);
   };
 }  // namespace llarp
