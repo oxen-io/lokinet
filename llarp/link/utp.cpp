@@ -346,9 +346,6 @@ namespace llarp
       LinkLayer* link =
           static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
 
-      const llarp::Addr remoteAddr(*arg->address);
-      llarp::LogError(utp_error_code_names[arg->error_code], " via ",
-                      remoteAddr);
       if(session && link)
       {
         if(arg->error_code == UTP_ETIMEDOUT)
