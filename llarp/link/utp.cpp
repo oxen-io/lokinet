@@ -228,6 +228,8 @@ namespace llarp
     bool
     Session::IsTimedOut(llarp_time_t now) const
     {
+      if(state == eInitial)
+        return false;
       if(sendq.size() >= MaxSendQueueSize)
       {
         return now - lastActive > 5000;
@@ -346,11 +348,11 @@ namespace llarp
 
       if(session && link)
       {
-        link->HandleTimeout(session);
-        llarp::LogError(utp_error_code_names[arg->error_code], " via ",
-                        session->remoteAddr);
         if(arg->error_code == UTP_ETIMEDOUT)
+        {
+          link->HandleTimeout(session);
           utp_close(arg->socket);
+        }
         else
           session->Close();
       }
@@ -577,6 +579,7 @@ namespace llarp
     /// base constructor
     Session::Session(LinkLayer* p)
     {
+      state         = eInitial;
       m_NextTXMsgID = 0;
       m_NextRXMsgID = 0;
       parent        = p;

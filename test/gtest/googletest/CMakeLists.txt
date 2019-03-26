@@ -16,11 +16,11 @@ option(gtest_build_tests "Build all of gtest's own tests." OFF)
 
 option(gtest_build_samples "Build gtest's sample programs." OFF)
 
-if (WIN32)
+if (WIN32 OR ${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
 option(gtest_disable_pthreads "Disable uses of pthreads in gtest." ON)
-else (NOT WIN32)
+else ()
 option(gtest_disable_pthreads "Disable uses of pthreads in gtest." OFF)
-endif(WIN32)
+endif()
 
 option(
   gtest_hide_internal_symbols

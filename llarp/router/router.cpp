@@ -15,6 +15,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/metrics.hpp>
 #include <util/str.hpp>
 
 #include <fstream>
@@ -62,6 +63,7 @@ struct TryConnectJob
   void
   Success()
   {
+    router->routerProfiling().MarkSuccess(rc.pubkey);
     router->FlushOutboundFor(rc.pubkey, link);
   }
 
@@ -356,7 +358,7 @@ namespace llarp
     if(results.size())
     {
       if(whitelistRouters
-         && lokinetRouters.find(remote) == lokinetRouters.end())
+         && lokinetRouters.find(results[0].pubkey) == lokinetRouters.end())
       {
         return;
       }
@@ -598,7 +600,7 @@ namespace llarp
     if(strictConnectPubkeys.size() && strictConnectPubkeys.count(router) == 0)
       return false;
     else if(IsServiceNode() && whitelistRouters)
-      return lokinetRouters.count(router) != 0;
+      return lokinetRouters.find(router) != lokinetRouters.end();
     else
       return true;
   }
@@ -1136,12 +1138,14 @@ namespace llarp
   bool
   Router::Sign(Signature &sig, const llarp_buffer_t &buf) const
   {
+    METRICS_TIME_BLOCK("Router", "Sign");
     return crypto()->sign(sig, identity(), buf);
   }
 
   void
   Router::SendTo(RouterID remote, const ILinkMessage *msg, ILinkLayer *selected)
   {
+    METRICS_TIME_BLOCK("RouterSendTo", remote.ToString().c_str());
     llarp_buffer_t buf(linkmsg_buffer);
 
     if(!msg->BEncode(&buf))

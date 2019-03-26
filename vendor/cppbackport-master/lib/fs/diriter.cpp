@@ -164,6 +164,7 @@ namespace cpp17
         // printf("directory_iterator::impl::type\n");
         if(e)
         {
+#ifdef DT_BLK
           switch(e->d_type)
           {
             case DT_FIFO:
@@ -197,6 +198,7 @@ namespace cpp17
             default:
               break;
           }  // switch
+#endif
         }
 
         return file_type::unknown;

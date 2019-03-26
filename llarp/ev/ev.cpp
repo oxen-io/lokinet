@@ -6,12 +6,13 @@
 #include <stddef.h>
 
 // apparently current Solaris will emulate epoll.
-#if __linux__ || __sun__
+#if __linux__ || SOLARIS_HAVE_EPOLL
 #include <ev/ev_epoll.hpp>
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
 #include <ev/ev_kqueue.hpp>
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
+#define SHUT_RDWR SD_BOTH
 #include <ev/ev_win32.hpp>
 #else
 #error No async event loop for your platform, subclass llarp_ev_loop
