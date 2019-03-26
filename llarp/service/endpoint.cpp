@@ -1487,7 +1487,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::OutboundContext::ShiftIntroduction()
+    Endpoint::OutboundContext::ShiftIntroduction(bool rebuild)
     {
       bool success = false;
       auto now     = Now();
@@ -1522,7 +1522,7 @@ namespace llarp
           break;
         }
       }
-      if(shifted)
+      if(shifted && rebuild)
       {
         lastShift = now;
         BuildOneAlignedTo(m_NextIntro.router);
@@ -1858,8 +1858,12 @@ namespace llarp
         }
         else if(router->routerProfiling().IsBad(m_NextIntro.router))
         {
-          llarp::LogError("bad intro chosen, not selecting hop");
-          return false;
+          if(!ShiftIntroduction(false))
+          {
+            llarp::LogError("bad intro chosen, not selecting hop");
+            return false;
+          }
+          return db->Get(m_NextIntro.router, cur);
         }
         else
         {

@@ -360,11 +360,11 @@ namespace llarp
         if(arg->error_code == UTP_ETIMEDOUT)
         {
           link->HandleTimeout(session);
+          utp_close(arg->socket);
         }
         else
           session->Close();
       }
-      utp_close(arg->socket);
       return 0;
     }
 
