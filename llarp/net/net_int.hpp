@@ -16,6 +16,7 @@
 
 #include <stdlib.h>  // for itoa
 #include <iostream>
+#include <util/endian.hpp>
 
 namespace llarp
 {
