@@ -239,8 +239,9 @@ namespace llarp
         bool markedBad              = false;
 
         virtual bool
-        ShiftIntroduction()
+        ShiftIntroduction(bool rebuild = true)
         {
+          (void)rebuild;
           return true;
         };
 
@@ -288,7 +289,7 @@ namespace llarp
         /// update the current selected intro to be a new best introduction
         /// return true if we have changed intros
         bool
-        ShiftIntroduction() override;
+        ShiftIntroduction(bool rebuild = true) override;
 
         /// mark the current remote intro as bad
         bool
@@ -356,6 +357,7 @@ namespace llarp
             m_BadIntros;
         llarp_time_t lastShift = 0;
         uint16_t m_LookupFails = 0;
+        uint16_t m_BuildFails = 0;
       };
 
       // passed a sendto context when we have a path established otherwise

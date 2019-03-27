@@ -1057,8 +1057,11 @@ namespace llarp
     }
 
     bool
-    Endpoint::CheckPathIsDead(path::Path*, llarp_time_t)
+    Endpoint::CheckPathIsDead(path::Path*, llarp_time_t dlt)
     {
+      if(dlt <= 30000)
+        return false;
+
       RouterLogic()->call_later(
           {100, this, [](void* u, uint64_t, uint64_t left) {
              if(left)
@@ -1175,12 +1178,10 @@ namespace llarp
         , currentIntroSet(introset)
 
     {
-      auto& profiling  = parent->m_Router->routerProfiling();
       updatingIntroSet = false;
       for(const auto intro : introset.I)
       {
-        if(intro.expiresAt > m_NextIntro.expiresAt
-           && !profiling.IsBad(intro.router))
+        if(intro.expiresAt > m_NextIntro.expiresAt)
         {
           m_NextIntro = intro;
           remoteIntro = intro;
@@ -1489,7 +1490,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::OutboundContext::ShiftIntroduction()
+    Endpoint::OutboundContext::ShiftIntroduction(bool rebuild)
     {
       bool success = false;
       auto now     = Now();
@@ -1524,7 +1525,7 @@ namespace llarp
           break;
         }
       }
-      if(shifted)
+      if(shifted && rebuild)
       {
         lastShift = now;
         BuildOneAlignedTo(m_NextIntro.router);
@@ -1780,7 +1781,7 @@ namespace llarp
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
       // we are probably dead af
-      if(m_LookupFails > 16)
+      if(m_LookupFails > 16 || m_BuildFails > 10)
         return true;
       // check for expiration
       if(remoteIntro.ExpiresSoon(now))
@@ -1848,30 +1849,23 @@ namespace llarp
                                          llarp::path::PathRole roles)
     {
       if(m_NextIntro.router.IsZero())
+      {
+        llarp::LogError("intro is not set, cannot select hops");
         return false;
+      }
       if(hop == numHops - 1)
       {
+        m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
         if(db->Get(m_NextIntro.router, cur))
-        {
           return true;
-        }
-        else
-        {
-          // we don't have it?
-          llarp::LogError(
-              "cannot build aligned path, don't have router for "
-              "introduction ",
-              m_NextIntro);
-          m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
-          return false;
-        }
+        ++m_BuildFails;
+        return false;
       }
       else if(hop == numHops - 2)
       {
         return db->select_random_hop_excluding(
             cur, {prev.pubkey, m_NextIntro.router});
       }
-      (void)roles;
       return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
 

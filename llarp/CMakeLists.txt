@@ -17,10 +17,17 @@ set(LIB_UTIL_SRC
   util/logger.cpp
   util/logic.cpp
   util/mem.cpp
+  util/metrics_core.cpp
+  util/metrics_publishers.cpp
+  util/metrics_types.cpp
+  util/metrics.cpp
+  util/object.cpp
+  util/printer.cpp
   util/queue_manager.cpp
   util/queue.cpp
-  util/printer.cpp
+  util/scheduler.cpp
   util/status.cpp
+  util/stopwatch.cpp
   util/str.cpp
   util/string_view.cpp
   util/thread_pool.cpp
@@ -28,6 +35,7 @@ set(LIB_UTIL_SRC
   util/threadpool.cpp
   util/time.cpp
   util/timer.cpp
+  util/timerqueue.cpp
   util/traits.cpp
   util/types.cpp
 )
@@ -69,6 +77,13 @@ win32/win32_intrnl.c
 win32/win32_upoll.c
 )
 endif(WIN32)
+
+if (SOLARIS)
+set(LIB_PLATFORM_SRC
+${LIB_PLATFORM_SRC}
+ev/upoll_sun.c
+)
+endif(SOLARIS)
 
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
 target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} libutp Threads::Threads)

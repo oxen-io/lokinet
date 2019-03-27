@@ -31,6 +31,12 @@ namespace llarp
 
     void
     Clear() override;
+    const char*
+
+    Name() const override
+    {
+      return "RelayUpstream";
+    }
   };
 
   struct RelayDownstreamMessage : public ILinkMessage
@@ -53,6 +59,12 @@ namespace llarp
 
     void
     Clear() override;
+
+    const char*
+    Name() const override
+    {
+      return "RelayDownstream";
+    }
   };
 }  // namespace llarp
 

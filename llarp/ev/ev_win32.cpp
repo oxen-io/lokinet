@@ -464,7 +464,8 @@ llarp_win32_loop::tick(int ms)
 {
   upoll_event_t events[1024];
   int result;
-  result = upoll_wait(upollfd, events, 1024, ms);
+  result     = upoll_wait(upollfd, events, 1024, ms);
+  bool didIO = false;
   if(result > 0)
   {
     int idx = 0;
@@ -473,28 +474,46 @@ llarp_win32_loop::tick(int ms)
       llarp::ev_io* ev = static_cast< llarp::ev_io* >(events[idx].data.ptr);
       if(ev)
       {
-        if(events[idx].events & UPOLLERR)
+        llarp::LogDebug(idx, " of ", result, " on ", ev->fd,
+                        " events=", std::to_string(events[idx].events));
+        if(events[idx].events & UPOLLERR && WSAGetLastError())
         {
-          ev->error();
+          IO([&]() -> ssize_t {
+            llarp::LogDebug("upoll error");
+            ev->error();
+            return 0;
+          });
         }
         else
         {
-          if(events[idx].events & UPOLLIN)
-          {
-            ev->read(readbuf, sizeof(readbuf));
-          }
+          // write THEN READ don't revert me
           if(events[idx].events & UPOLLOUT)
           {
-            ev->flush_write();
+            IO([&]() -> ssize_t {
+              llarp::LogDebug("upoll out");
+              ev->flush_write();
+              return 0;
+            });
+          }
+          if(events[idx].events & UPOLLIN)
+          {
+            ssize_t amount = IO([&]() -> ssize_t {
+              llarp::LogDebug("upoll in");
+              return ev->read(readbuf, sizeof(readbuf));
+            });
+            if(amount > 0)
+              didIO = true;
           }
         }
       }
       ++idx;
     }
   }
-
   if(result != -1)
     tick_listeners();
+  /// if we didn't get an io events we sleep to avoid 100% cpu use
+  if(!didIO)
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
   return result;
 }
 

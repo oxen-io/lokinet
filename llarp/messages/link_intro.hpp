@@ -44,6 +44,12 @@ namespace llarp
 
     void
     Clear() override;
+
+    const char*
+    Name() const override
+    {
+      return "LinkIntro";
+    }
   };
 }  // namespace llarp
 
