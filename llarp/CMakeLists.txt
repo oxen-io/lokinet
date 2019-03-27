@@ -78,6 +78,13 @@ win32/win32_upoll.c
 )
 endif(WIN32)
 
+if (SOLARIS)
+set(LIB_PLATFORM_SRC
+${LIB_PLATFORM_SRC}
+ev/upoll_sun.c
+)
+endif(SOLARIS)
+
 add_library(${PLATFORM_LIB} STATIC ${LIB_PLATFORM_SRC})
 target_link_libraries(${PLATFORM_LIB} PUBLIC ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} libutp Threads::Threads)
 

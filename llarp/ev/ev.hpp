@@ -55,7 +55,11 @@ static ssize_t
 IO(std::function< ssize_t(void) > iofunc)
 {
   ssize_t ret = iofunc();
-  errno       = 0;
+#ifndef _WIN32
+  errno = 0;
+#else
+  WSASetLastError(0);
+#endif
   return ret;
 }
 

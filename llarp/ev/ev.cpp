@@ -14,6 +14,8 @@
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
 #define SHUT_RDWR SD_BOTH
 #include <ev/ev_win32.hpp>
+#elif defined(__sun) && !defined(SOLARIS_HAVE_EPOLL)
+#include <ev/ev_sun.hpp>
 #else
 #error No async event loop for your platform, subclass llarp_ev_loop
 #endif
@@ -22,13 +24,15 @@
 void
 llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 {
-#if __linux__ || __sun__
+#if __linux__ || SOLARIS_HAVE_EPOLL
   *ev = new llarp_epoll_loop;
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
   *ev                                = new llarp_kqueue_loop;
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
   *ev                                = new llarp_win32_loop;
+#elif defined(__sun) && !defined(SOLARIS_HAVE_EPOLL)
+  *ev                                = new llarp_poll_loop;
 #else
 // TODO: fall back to a generic select-based event loop
 #error no event loop subclass
@@ -40,15 +44,16 @@ llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
 std::unique_ptr< llarp_ev_loop >
 llarp_make_ev_loop()
 {
-#if __linux__ || __sun__
+#if __linux__ || SOLARIS_HAVE_EPOLL
   std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_epoll_loop >();
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
   std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_kqueue_loop >();
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
   std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_win32_loop >();
+#elif defined(__sun) && !defined(SOLARIS_HAVE_EPOLL)
+  std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_poll_loop >();
 #else
-// TODO: fall back to a generic select-based event loop
 #error no event loop subclass
 #endif
   r->init();
