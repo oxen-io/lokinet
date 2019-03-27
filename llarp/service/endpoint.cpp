@@ -1778,7 +1778,7 @@ namespace llarp
     Endpoint::OutboundContext::Tick(llarp_time_t now)
     {
       // we are probably dead af
-      if(m_LookupFails > 16)
+      if(m_LookupFails > 16 || m_BuildFails > 10)
         return true;
       // check for expiration
       if(remoteIntro.ExpiresSoon(now))
@@ -1853,35 +1853,15 @@ namespace llarp
       if(hop == numHops - 1)
       {
         if(db->Get(m_NextIntro.router, cur))
-        {
           return true;
-        }
-        else if(router->routerProfiling().IsBad(m_NextIntro.router))
-        {
-          if(!ShiftIntroduction(false))
-          {
-            llarp::LogError("bad intro chosen, not selecting hop");
-            return false;
-          }
-          return db->Get(m_NextIntro.router, cur);
-        }
-        else
-        {
-          // we don't have it?
-          llarp::LogError(
-              "cannot build aligned path, don't have router for "
-              "introduction ",
-              m_NextIntro);
-          m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
-          return false;
-        }
+        ++m_BuildFails;
+        return false;
       }
       else if(hop == numHops - 2)
       {
         return db->select_random_hop_excluding(
             cur, {prev.pubkey, m_NextIntro.router});
       }
-      (void)roles;
       return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
 
