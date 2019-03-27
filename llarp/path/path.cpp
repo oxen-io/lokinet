@@ -575,18 +575,10 @@ namespace llarp
             return;
           }
         }
-        if(m_LastRecvMessage && now > m_LastRecvMessage
-           && now - m_LastRecvMessage > PATH_ALIVE_TIMEOUT)
+        if(m_LastRecvMessage && now > m_LastRecvMessage)
         {
-          if(m_CheckForDead)
-          {
-            if(m_CheckForDead(this, dlt))
-            {
-              r->routerProfiling().MarkPathFail(this);
-              EnterState(ePathTimeout, now);
-            }
-          }
-          else
+          auto dlt = now - m_LastRecvMessage;
+          if(m_CheckForDead && m_CheckForDead(this, dlt))
           {
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
