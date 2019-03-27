@@ -43,26 +43,6 @@ extern "C"
   void
   upoll_destroy(upoll_t* upq);
 
-  intptr_t
-  usocket(int domain, int type, int proto);
-  intptr_t
-  uaccept(intptr_t sock);
-
-  int
-  ubind(intptr_t sock, const char* name, const char* serv);
-  int
-  ulisten(intptr_t sock, int backlog);
-  int
-  uconnect(intptr_t sock, const char* name, const char* serv);
-  int
-  uclose(intptr_t sock);
-  int
-  uread(intptr_t fd, char* buf, size_t len);
-  int
-  uwrite(intptr_t fd, const char* buf, size_t len);
-  int
-  usocketpair(intptr_t socks[2], int async);
-
 #if(defined(__64BIT__) || defined(__x86_64__))
 #define __IS_64BIT__
 #else
