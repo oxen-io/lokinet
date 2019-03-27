@@ -1057,8 +1057,11 @@ namespace llarp
     }
 
     bool
-    Endpoint::CheckPathIsDead(path::Path*, llarp_time_t)
+    Endpoint::CheckPathIsDead(path::Path*, llarp_time_t dlt)
     {
+      if(dlt <= 30000)
+        return false;
+
       RouterLogic()->call_later(
           {100, this, [](void* u, uint64_t, uint64_t left) {
              if(left)
