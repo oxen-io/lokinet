@@ -611,9 +611,7 @@ namespace llarp
             return false;
           buf.sz  = buf.cur - buf.base;
           buf.cur = buf.base;
-          if(!this->QueueWriteBuffers(buf))
-            return false;
-          PumpWrite();
+          return this->QueueWriteBuffers(buf);
         }
         return true;
       };
@@ -765,6 +763,9 @@ namespace llarp
     {
       if(sendq.size() >= MaxSendQueueSize)
         return false;
+      // premptive pump
+      if(sendq.size() >= MaxSendQueueSize / 2)
+        PumpWrite();
       size_t sz      = buf.sz;
       byte_t* ptr    = buf.base;
       uint32_t msgid = m_NextTXMsgID++;
