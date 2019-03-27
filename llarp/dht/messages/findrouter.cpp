@@ -167,7 +167,7 @@ namespace llarp
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;
       }
-      else if(dht.GetRouter()->nodedb()->Get(K, found))
+      else if(dht.GetRCFromNodeDB(k, found))
       {
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;

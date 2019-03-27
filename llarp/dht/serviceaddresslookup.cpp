@@ -39,8 +39,8 @@ namespace llarp
     ServiceAddressLookup::GetNextPeer(Key_t &next,
                                       const std::set< Key_t > &exclude)
     {
-      Key_t k    = target.ToKey();
-      auto nodes = parent->Nodes();
+      Key_t k           = target.ToKey();
+      const auto &nodes = parent->Nodes();
       if(nodes)
       {
         return nodes->FindCloseExcluding(k, next, exclude);

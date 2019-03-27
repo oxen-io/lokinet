@@ -130,6 +130,9 @@ namespace llarp
       virtual llarp::AbstractRouter*
       GetRouter() const = 0;
 
+      virtual bool
+      GetRCFromNodeDB(const Key_t& k, llarp::RouterContact& rc) const = 0;
+
       virtual const Key_t&
       OurKey() const = 0;
 

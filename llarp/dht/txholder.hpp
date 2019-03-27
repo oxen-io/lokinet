@@ -140,21 +140,15 @@ namespace llarp
     TXHolder< K, V, K_Hash, requestTimeoutMS >::NotFound(
         const TXOwner& from, const std::unique_ptr< Key_t >& next)
     {
-      bool sendReply = true;
-      auto txitr     = tx.find(from);
+      auto txitr = tx.find(from);
       if(txitr == tx.end())
       {
         return;
       }
 
       // ask for next peer
-      if(txitr->second->AskNextPeer(from.node, next))
-      {
-        sendReply = false;
-      }
-
-      llarp::LogWarn("Target key ", txitr->second->target);
-      Inform(from, txitr->second->target, {}, sendReply, sendReply);
+      if(!txitr->second->AskNextPeer(from.node, next))
+        Inform(from, txitr->second->target, {}, true, true);
     }
 
     template < typename K, typename V, typename K_Hash,
