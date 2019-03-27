@@ -98,25 +98,23 @@ namespace llarp
         // explicit next peer provided
         peer = *next;
       }
-      else if(!GetNextPeer(peer, peersAsked))
+      else if(GetNextPeer(peer, peersAsked))
       {
-        // no more peers
-        llarp::LogInfo("no more peers for request asking for ", target);
-        return false;
-      }
-
-      const Key_t targetKey{target};
-      if((prevPeer ^ targetKey) < (peer ^ targetKey))
-      {
-        // next peer is not closer
-        llarp::LogInfo("next peer ", peer, " is not closer to ", target,
-                       " than ", prevPeer);
-        return false;
+        const Key_t targetKey{target};
+        if((prevPeer ^ targetKey) < (peer ^ targetKey))
+        {
+          // next peer is not closer
+          llarp::LogInfo("next peer ", peer, " is not closer to ", target,
+                         " than ", prevPeer);
+          return false;
+        }
       }
       else
       {
-        peersAsked.insert(peer);
+        llarp::LogInfo("no more peers for request asking for ", target);
+        return false;
       }
+      peersAsked.insert(peer);
       DoNextRequest(peer);
       return true;
     }

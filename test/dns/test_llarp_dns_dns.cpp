@@ -115,7 +115,7 @@ TEST_F(DNSLibTest, TestSerializeMessage)
   q.qname      = "whatever.tld";
   q.qclass     = 1;
   q.qtype      = 1;
-  m.AddINReply({1});
+  m.AddINReply({1}, false);
   ASSERT_EQ(m.questions.size(), 1U);
   ASSERT_EQ(m.answers.size(), 1U);
   ASSERT_TRUE(m.Encode(&buf));

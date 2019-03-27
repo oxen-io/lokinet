@@ -53,6 +53,16 @@ namespace llarp
       return out;
     }
 
+    template<typename Container>
+    void SIIT(Container & c)
+    {
+      c.resize(16);
+      std::fill(c.begin(), c.end(), 0);
+      htobe32buf(c.data() + 12, h);
+      c[11] = 0xff;
+      c[10] = 0xff;
+    }
+    
     std::string ToString() const
     {
       uint32_t n = htonl(h);

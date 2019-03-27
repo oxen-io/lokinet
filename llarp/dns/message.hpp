@@ -61,7 +61,7 @@ namespace llarp
       AddCNAMEReply(std::string name, RR_TTL_t ttl = 1);
 
       void
-      AddINReply(llarp::huint32_t addr, RR_TTL_t ttl = 1);
+      AddINReply(llarp::huint32_t addr, bool isV6, RR_TTL_t ttl = 1);
 
       void
       AddAReply(std::string name, RR_TTL_t ttl = 1);

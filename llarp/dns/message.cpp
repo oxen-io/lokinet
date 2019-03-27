@@ -153,7 +153,7 @@ namespace llarp
     }
 
     void
-    Message::AddINReply(llarp::huint32_t ip, RR_TTL_t ttl)
+    Message::AddINReply(llarp::huint32_t ip, bool isV6, RR_TTL_t ttl)
     {
       if(questions.size())
       {
@@ -161,11 +161,19 @@ namespace llarp
         const auto& question = questions[0];
         ResourceRecord rec;
         rec.rr_name  = question.qname;
-        rec.rr_type  = qTypeA;
         rec.rr_class = qClassIN;
         rec.ttl      = ttl;
-        rec.rData.resize(4);
-        htobe32buf(rec.rData.data(), ip.h);
+        if(isV6)
+        {
+          rec.rr_type = qTypeAAAA;
+          ip.SIIT(rec.rData);
+        }
+        else
+        {
+          rec.rr_type = qTypeA;
+          rec.rData.resize(4);
+          htobe32buf(rec.rData.data(), ip.h);
+        }
         answers.emplace_back(std::move(rec));
       }
     }
