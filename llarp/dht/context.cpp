@@ -18,6 +18,7 @@
 #include <path/path.hpp>
 #include <router/abstractrouter.hpp>
 #include <util/logic.hpp>
+#include <nodedb.hpp>
 
 #include <vector>
 
@@ -205,6 +206,12 @@ namespace llarp
       GetRouter() const override
       {
         return router;
+      }
+
+      bool
+      GetRCFromNodeDB(const Key_t& k, llarp::RouterContact& rc) const override
+      {
+        return router->nodedb()->Get(k.as_array(), rc);
       }
 
       PendingIntrosetLookups _pendingIntrosetLookups;

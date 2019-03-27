@@ -357,6 +357,7 @@ namespace llarp
             m_BadIntros;
         llarp_time_t lastShift = 0;
         uint16_t m_LookupFails = 0;
+        uint16_t m_BuildFails = 0;
       };
 
       // passed a sendto context when we have a path established otherwise

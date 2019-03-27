@@ -62,6 +62,9 @@ namespace llarp
       MOCK_METHOD2(RelayRequestForPath,
                    bool(const PathID_t& localPath, const dht::IMessage* msg));
 
+      MOCK_CONST_METHOD2(GetRCFromNodeDB,
+                         bool(const dht::Key_t& k, RouterContact& rc));
+
       MOCK_METHOD6(PropagateIntroSetTo,
                    void(const dht::Key_t& source, uint64_t sourceTX,
                         const service::IntroSet& introset,
