@@ -118,7 +118,6 @@ TEST_F(TestDhtTx, ask_next_peer)
   const auto key0 = makeBuf< dht::Key_t >(0x00);
   const auto key1 = makeBuf< dht::Key_t >(0x01);
   const auto key2 = makeBuf< dht::Key_t >(0x02);
-
   {
     // GetNextPeer fails
     EXPECT_CALL(tx, GetNextPeer(_, _)).WillOnce(Return(false));
