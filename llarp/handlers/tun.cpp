@@ -248,7 +248,8 @@ namespace llarp
     TunEndpoint::HandleHookedDNSMessage(
         dns::Message &&msg, std::function< void(dns::Message) > reply)
     {
-      //llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname, " of type", msg.questions[0].qtype);
+      // llarp::LogInfo("Tun.HandleHookedDNSMessage ", msg.questions[0].qname, "
+      // of type", msg.questions[0].qtype);
       if(msg.questions.size() != 1)
       {
         llarp::LogWarn("bad number of dns questions: ", msg.questions.size());
@@ -294,8 +295,10 @@ namespace llarp
           msg.AddNXReply();
         reply(msg);
       }
-      else if(msg.questions[0].qtype == dns::qTypeA)
+      else if(msg.questions[0].qtype == dns::qTypeA
+              || msg.questions[0].qtype == dns::qTypeAAAA)
       {
+        const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
         llarp::service::Address addr;
         // on MacOS this is a typeA query
         if(is_random_snode(msg))
@@ -315,7 +318,7 @@ namespace llarp
                 huint32_t ip = service->GetIfAddr();
                 if(ip.h)
                 {
-                  msg.AddINReply(ip);
+                  msg.AddINReply(ip, isV6);
                   ++counter;
                 }
                 return true;
@@ -328,7 +331,7 @@ namespace llarp
           if(HasAddress(addr))
           {
             huint32_t ip = ObtainIPForAddr(addr, false);
-            msg.AddINReply(ip);
+            msg.AddINReply(ip, isV6);
           }
           else
           {
@@ -336,7 +339,7 @@ namespace llarp
             return EnsurePathToService(
                 addr,
                 [=](const service::Address &remote, OutboundContext *ctx) {
-                  SendDNSReply(remote, ctx, replyMsg, reply, false);
+                  SendDNSReply(remote, ctx, replyMsg, reply, false, isV6);
                 },
                 2000);
           }
@@ -346,7 +349,8 @@ namespace llarp
           dns::Message *replyMsg = new dns::Message(std::move(msg));
           EnsurePathToSNode(addr.as_array(),
                             [=](const RouterID &remote, exit::BaseSession *s) {
-                              SendDNSReply(remote, s, replyMsg, reply, true);
+                              SendDNSReply(remote, s, replyMsg, reply, true,
+                                           isV6);
                             });
           return true;
         }

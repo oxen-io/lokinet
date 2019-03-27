@@ -70,7 +70,8 @@ namespace llarp
         return m_OurRange.Contains(ip);
       }
       else if(msg.questions[0].qtype == dns::qTypeA
-              || msg.questions[0].qtype == dns::qTypeCNAME)
+              || msg.questions[0].qtype == dns::qTypeCNAME
+              || msg.questions[0].qtype == dns::qTypeAAAA)
       {
         // hook for forward dns or cname when using snode tld
         if(msg.questions[0].qname.find(".snode.")
@@ -130,8 +131,10 @@ namespace llarp
         else
           msg.AddNXReply();
       }
-      else if(msg.questions[0].qtype == dns::qTypeA)
+      else if(msg.questions[0].qtype == dns::qTypeA
+              || msg.questions[0].qtype == dns::qTypeAAAA)
       {
+        const bool isV6 = msg.questions[0].qtype == dns::qTypeAAAA;
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
         {
@@ -146,7 +149,7 @@ namespace llarp
         if(msg.questions[0].qname == "localhost.loki."
            || msg.questions[0].qname == "localhost.loki")
         {
-          msg.AddINReply(GetIfAddr());
+          msg.AddINReply(GetIfAddr(), isV6);
           reply(msg);
           return true;
         }
@@ -161,7 +164,7 @@ namespace llarp
             // we do not have it mapped
             // map it
             ip = ObtainServiceNodeIP(r);
-            msg.AddINReply(ip);
+            msg.AddINReply(ip, isV6);
           }
           else
           {
@@ -170,7 +173,7 @@ namespace llarp
             if(itr != m_KeyToIP.end())
             {
               ip = itr->second;
-              msg.AddINReply(ip);
+              msg.AddINReply(ip, isV6);
             }
             else  // fallback case that should never happen (probably)
               msg.AddNXReply();

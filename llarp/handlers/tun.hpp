@@ -196,12 +196,13 @@ namespace llarp
       template < typename Addr_t, typename Endpoint_t >
       void
       SendDNSReply(Addr_t addr, Endpoint_t* ctx, dns::Message* query,
-                   std::function< void(dns::Message) > reply, bool snode)
+                   std::function< void(dns::Message) > reply, bool snode,
+                   bool sendIPv6)
       {
         if(ctx)
         {
           huint32_t ip = ObtainIPForAddr(addr, snode);
-          query->AddINReply(ip);
+          query->AddINReply(ip, sendIPv6);
         }
         else
           query->AddNXReply();
