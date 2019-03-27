@@ -239,8 +239,9 @@ namespace llarp
         bool markedBad              = false;
 
         virtual bool
-        ShiftIntroduction()
+        ShiftIntroduction(bool rebuild = true)
         {
+          (void)rebuild;
           return true;
         };
 
@@ -288,7 +289,7 @@ namespace llarp
         /// update the current selected intro to be a new best introduction
         /// return true if we have changed intros
         bool
-        ShiftIntroduction() override;
+        ShiftIntroduction(bool rebuild = true) override;
 
         /// mark the current remote intro as bad
         bool

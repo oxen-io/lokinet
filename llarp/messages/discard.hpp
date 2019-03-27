@@ -31,6 +31,12 @@ namespace llarp
     {
     }
 
+    const char*
+    Name() const override
+    {
+      return "Discard";
+    }
+
     bool
     DecodeKey(__attribute__((unused)) const llarp_buffer_t& key,
               __attribute__((unused)) llarp_buffer_t* buf) override

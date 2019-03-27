@@ -9,6 +9,7 @@
 #include <router_contact.hpp>
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
+#include <util/metrics.hpp>
 
 namespace llarp
 {
@@ -67,10 +68,12 @@ namespace llarp
       }
       // create the message to parse based off message type
       llarp::LogDebug("inbound message ", *strbuf.cur);
+      bool isLIM = false;
       switch(*strbuf.cur)
       {
         case 'i':
           handler->msg = &handler->holder->i;
+          isLIM        = true;
           break;
         case 'd':
           handler->msg = &handler->holder->d;
@@ -90,6 +93,14 @@ namespace llarp
         default:
           return false;
       }
+
+      if(!isLIM)
+      {
+        const std::string host =
+            "RX_" + RouterID(handler->from->GetPubKey()).ToString();
+        METRICS_DYNAMIC_INCREMENT(handler->msg->Name(), host.c_str());
+      }
+
       handler->msg->session = handler->from;
       handler->firstkey     = false;
       return true;

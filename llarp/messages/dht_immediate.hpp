@@ -29,6 +29,12 @@ namespace llarp
 
     void
     Clear() override;
+
+    const char*
+    Name() const override
+    {
+      return "DHTImmediate";
+    }
   };
 }  // namespace llarp
 

@@ -25,6 +25,8 @@
 
 #include <link/utp_internal.hpp>
 
+#include <util/metrics.hpp>
+
 namespace llarp
 {
   namespace utp
@@ -85,6 +87,8 @@ namespace llarp
         ssize_t s = utp_writev(sock, vecs.data(), vecs.size());
         if(s < 0)
           return;
+        METRICS_DYNAMIC_INT_UPDATE(
+            "utp.session.tx", RouterID(remoteRC.pubkey).ToString().c_str(), s);
         m_TXRate += s;
         size_t sz = s;
         while(vecq.size() && sz >= vecq.front().iov_len)
@@ -178,6 +182,9 @@ namespace llarp
       PruneInboundMessages(now);
       m_TXRate = 0;
       m_RXRate = 0;
+      METRICS_DYNAMIC_UPDATE("utp.session.sendq",
+                             RouterID(remoteRC.pubkey).ToString().c_str(),
+                             sendq.size());
     }
 
     /// low level read
@@ -188,6 +195,8 @@ namespace llarp
       Alive();
       m_RXRate += sz;
       size_t s = sz;
+      METRICS_DYNAMIC_INT_UPDATE(
+          "utp.session.rx", RouterID(remoteRC.pubkey).ToString().c_str(), s);
       // process leftovers
       if(recvBufOffset)
       {
