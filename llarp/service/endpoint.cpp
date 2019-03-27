@@ -1852,6 +1852,7 @@ namespace llarp
       }
       if(hop == numHops - 1)
       {
+        m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
         if(db->Get(m_NextIntro.router, cur))
           return true;
         ++m_BuildFails;
