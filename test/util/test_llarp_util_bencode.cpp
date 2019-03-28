@@ -442,3 +442,12 @@ ReadData listReadData[] = {
 
 INSTANTIATE_TEST_CASE_P(TestBencode, ListReadTest,
                         ::testing::ValuesIn(listReadData), );
+
+TEST(TestBencode, ReadDictEmptyBuffer)
+{
+  llarp_buffer_t buf((byte_t*)nullptr, 0);
+  dict_reader reader;
+  reader.on_key = [](dict_reader*, llarp_buffer_t*) -> bool { return true; };
+  reader.user   = nullptr;
+  ASSERT_FALSE(bencode_read_dict(&buf, &reader));
+};
