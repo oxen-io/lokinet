@@ -86,8 +86,6 @@ struct llarp_poll_loop : public llarp_ev_loop
 
   ~llarp_poll_loop()
   {
-    if(upollfd)
-      upoll_destroy(upollfd);
   }
 
   bool
