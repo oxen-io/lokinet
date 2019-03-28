@@ -20,8 +20,8 @@ struct LinkLayerTest : public ::testing::Test
       crypto = &c;
       crypto->identity_keygen(signingKey);
       crypto->encryption_keygen(encryptionKey);
-      rc.pubkey = llarp::seckey_topublic(signingKey);
-      rc.enckey = llarp::seckey_topublic(encryptionKey);
+      rc.pubkey = signingKey.toPublic();
+      rc.enckey = encryptionKey.toPublic();
     }
 
     llarp::SecretKey signingKey;
