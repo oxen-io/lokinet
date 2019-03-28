@@ -122,6 +122,8 @@ bencode_end(llarp_buffer_t* buff)
 bool
 bencode_read_dict(llarp_buffer_t* buff, struct dict_reader* r)
 {
+  if(buff->size_left() < 2)  // minimum case is 'de'
+    return false;
   llarp_buffer_t strbuf;      // temporary buffer for current element
   r->buffer = buff;           // set up dict_reader
   if(*r->buffer->cur != 'd')  // ensure is a dictionary
@@ -151,6 +153,8 @@ bencode_read_dict(llarp_buffer_t* buff, struct dict_reader* r)
 bool
 bencode_read_list(llarp_buffer_t* buff, struct list_reader* r)
 {
+  if(buff->size_left() < 2)  // minimum case is 'le'
+    return false;
   r->buffer = buff;
   if(*r->buffer->cur != 'l')  // ensure is a list
   {
