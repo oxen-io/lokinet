@@ -166,9 +166,9 @@ set(LIB_SRC
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
-  link/iwp_linklayer.cpp
-  link/iwp_outermessage.cpp
-  link/iwp.cpp
+  iwp/linklayer.cpp
+  iwp/outermessage.cpp
+  iwp/iwp.cpp
   link/server.cpp
   link/session.cpp
   messages/dht_immediate.cpp

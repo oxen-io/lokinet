@@ -1,4 +1,4 @@
-#include <link/iwp_outermessage.hpp>
+#include <iwp/outermessage.hpp>
 
 namespace llarp
 {

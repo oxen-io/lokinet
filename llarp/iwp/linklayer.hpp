@@ -1,12 +1,12 @@
-#ifndef LLARP_LINK_IWP_LINKLAYER_HPP
-#define LLARP_LINK_IWP_LINKLAYER_HPP
+#ifndef LLARP_IWP_LINKLAYER_HPP
+#define LLARP_IWP_LINKLAYER_HPP
 
 #include <constants/link_layer.hpp>
 #include <crypto/crypto.hpp>
 #include <crypto/encrypted.hpp>
 #include <crypto/types.hpp>
 #include <link/server.hpp>
-#include <link/iwp_outermessage.hpp>
+#include <iwp/outermessage.hpp>
 
 namespace llarp
 {

@@ -1,5 +1,5 @@
-#ifndef LLARP_LINK_IWP_HPP
-#define LLARP_LINK_IWP_HPP
+#ifndef LLARP_IWP_HPP
+#define LLARP_IWP_HPP
 
 #include <link/server.hpp>
 

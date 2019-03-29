@@ -1,5 +1,5 @@
-#ifndef LLARP_LINK_IWP_OUTERMESSAGE_HPP
-#define LLARP_LINK_IWP_OUTERMESSAGE_HPP
+#ifndef LLARP_IWP_OUTERMESSAGE_HPP
+#define LLARP_IWP_OUTERMESSAGE_HPP
 
 #include <crypto/types.hpp>
 #include <router_contact.hpp>

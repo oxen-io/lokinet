@@ -1,5 +1,5 @@
-#include <link/iwp.hpp>
-#include <link/iwp_linklayer.hpp>
+#include <iwp/iwp.hpp>
+#include <iwp/linklayer.hpp>
 #include <router/abstractrouter.hpp>
 
 namespace llarp

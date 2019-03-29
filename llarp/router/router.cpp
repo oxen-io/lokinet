@@ -6,7 +6,7 @@
 #include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
 #include <dht/node.hpp>
-#include <link/iwp.hpp>
+#include <iwp/iwp.hpp>
 #include <link/server.hpp>
 #include <messages/link_message.hpp>
 #include <net/net.hpp>
