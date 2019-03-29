@@ -166,13 +166,13 @@ set(LIB_SRC
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
-  link/encoder.cpp
-  link/iwp.cpp
+  iwp/linklayer.cpp
+  iwp/outermessage.cpp
+  iwp/iwp.cpp
   link/server.cpp
   link/session.cpp
-  link/utp.cpp
-  messages/dht.cpp
   messages/dht_immediate.cpp
+  messages/dht.cpp
   messages/discard.cpp
   messages/exit.cpp
   messages/link_intro.cpp
@@ -221,6 +221,10 @@ set(LIB_SRC
   service/tag.cpp
   service/types.cpp
   service/vanity.cpp
+  utp/inbound_message.cpp
+  utp/linklayer.cpp
+  utp/session.cpp
+  utp/utp.cpp
 )
 if(TESTNET)
   set(LIB_SRC ${LIB_SRC} testnet.c)

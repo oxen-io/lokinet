@@ -233,16 +233,17 @@ namespace llarp
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;
 
-    Mutex m_AuthedLinksMutex
-        ACQUIRED_BEFORE(m_PendingMutex);  // protects m_AuthedLinks
-    std::unordered_multimap< RouterID, std::unique_ptr< ILinkSession >,
-                             RouterID::Hash >
-        m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
-    Mutex m_PendingMutex
-        ACQUIRED_AFTER(m_AuthedLinksMutex);  // protects m_Pending
-    std::unordered_multimap< llarp::Addr, std::unique_ptr< ILinkSession >,
-                             llarp::Addr::Hash >
-        m_Pending GUARDED_BY(m_PendingMutex);
+    using AuthedLinks =
+        std::unordered_multimap< RouterID, std::unique_ptr< ILinkSession >,
+                                 RouterID::Hash >;
+    using Pending =
+        std::unordered_multimap< llarp::Addr, std::unique_ptr< ILinkSession >,
+                                 llarp::Addr::Hash >;
+
+    Mutex m_AuthedLinksMutex ACQUIRED_BEFORE(m_PendingMutex);
+    AuthedLinks m_AuthedLinks GUARDED_BY(m_AuthedLinksMutex);
+    Mutex m_PendingMutex ACQUIRED_AFTER(m_AuthedLinksMutex);
+    Pending m_Pending GUARDED_BY(m_PendingMutex);
   };
 }  // namespace llarp
 
