@@ -166,13 +166,13 @@ set(LIB_SRC
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
-  link/encoder.cpp
+  link/iwp_internal.cpp
   link/iwp.cpp
   link/server.cpp
   link/session.cpp
   link/utp.cpp
-  messages/dht.cpp
   messages/dht_immediate.cpp
+  messages/dht.cpp
   messages/discard.cpp
   messages/exit.cpp
   messages/link_intro.cpp
