@@ -105,22 +105,25 @@ namespace llarp
     template < typename Value >
     class Catalog
     {
-      static constexpr int32_t INDEX_MASK      = 0X007FFFFF;
-      static constexpr int32_t BUSY_INDICATOR  = 0x00800000;
-      static constexpr int32_t GENERATION_INC  = 0x01000000;
-      static constexpr int32_t GENERATION_MASK = 0XFF000000;
+      enum
+      {
+        INDEX_MASK      = 0X007FFFFF,
+        BUSY_INDICATOR  = 0x00800000,
+        GENERATION_INC  = 0x01000000,
+        GENERATION_MASK = 0XFF000000
+      };
 
       struct Node
       {
-        typedef union {
+        union Payload {
           Buffer< Value > m_buffer;
           Node* m_next;
-        } Payload;
+        };
         Payload m_payload;
         int32_t m_handle;
       };
 
-      std::vector< Node* > m_nodes;
+      std::vector< Node* > m_nodes GUARDED_BY(m_mutex);
       Node* m_next;
       std::atomic_size_t m_size;
 
@@ -146,11 +149,11 @@ namespace llarp
       }
 
       Node*
-      findNode(int32_t handle) const
+      findNode(int32_t handle) const SHARED_LOCKS_REQUIRED(m_mutex)
       {
         int32_t index = handle & INDEX_MASK;
 
-        if(0 > index || index >= (int32_t)m_nodes.size()
+        if(0 > index || index >= static_cast< int32_t >(m_nodes.size())
            || !(handle & BUSY_INDICATOR))
         {
           return nullptr;
@@ -190,11 +193,11 @@ namespace llarp
         {
           assert(m_nodes.size() < BUSY_INDICATOR);
 
-          node = static_cast< Node* >(operator new(sizeof(Node)));
+          node = new Node;
           guard.manageNode(node, true);
 
           m_nodes.push_back(node);
-          node->m_handle = static_cast< int32_t >(m_nodes.size()) - 1;
+          node->m_handle = static_cast< int32_t >(m_nodes.size() - 1);
           guard.manageNode(node, false);
         }
 
@@ -282,7 +285,7 @@ namespace llarp
       absl::optional< Value >
       find(int32_t handle)
       {
-        util::Lock l(&m_mutex);
+        absl::ReaderMutexLock l(&m_mutex);
         Node* node = findNode(handle);
 
         if(!node)
@@ -305,43 +308,48 @@ namespace llarp
     };
 
     template < typename Value >
-    class CatalogIterator
+    class SCOPED_LOCKABLE CatalogIterator
     {
       const Catalog< Value >* m_catalog;
       size_t m_index;
 
+      CatalogIterator(const CatalogIterator&) = delete;
+      CatalogIterator&
+      operator=(const CatalogIterator&) = delete;
+
      public:
-      CatalogIterator(const Catalog< Value >& catalog)
-          : m_catalog(&catalog), m_index(-1)
+      explicit CatalogIterator(const Catalog< Value >* catalog)
+          SHARED_LOCK_FUNCTION(m_catalog->m_mutex)
+          : m_catalog(catalog), m_index(-1)
       {
         m_catalog->m_mutex.ReaderLock();
         operator++();
       }
 
-      ~CatalogIterator()
+      ~CatalogIterator() UNLOCK_FUNCTION()
       {
         m_catalog->m_mutex.ReaderUnlock();
       }
 
       void
-      operator++()
+      operator++() NO_THREAD_SAFETY_ANALYSIS
       {
         m_index++;
         while(m_index < m_catalog->m_nodes.size()
               && !(m_catalog->m_nodes[m_index]->m_handle
                    & Catalog< Value >::BUSY_INDICATOR))
         {
-          ++m_index;
+          m_index++;
         }
       }
 
-      explicit operator bool() const
+      explicit operator bool() const NO_THREAD_SAFETY_ANALYSIS
       {
         return m_index < m_catalog->m_nodes.size();
       }
 
       std::pair< int32_t, Value >
-      operator()() const
+      operator()() const NO_THREAD_SAFETY_ANALYSIS
       {
         auto* node = m_catalog->m_nodes[m_index];
         return {node->m_handle, *Catalog< Value >::getValue(node)};
