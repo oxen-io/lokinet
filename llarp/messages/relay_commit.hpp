@@ -55,16 +55,16 @@ namespace llarp
     ~LR_CommitMessage();
 
     void
-    Clear();
+    Clear() override;
 
     bool
-    DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf);
+    DecodeKey(const llarp_buffer_t &key, llarp_buffer_t *buf) override;
 
     bool
-    BEncode(llarp_buffer_t *buf) const;
+    BEncode(llarp_buffer_t *buf) const override;
 
     bool
-    HandleMessage(AbstractRouter *router) const;
+    HandleMessage(AbstractRouter *router) const override;
 
     bool
     AsyncDecrypt(llarp::path::PathContext *context) const;
