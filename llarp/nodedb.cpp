@@ -84,7 +84,7 @@ llarp_nodedb::RemoveIf(
         ++itr;
     }
   }
-  llarp_threadpool_queue_job(disk, {job, AsyncKillRCJobs::Work});
+  llarp_threadpool_queue_job(disk, {job, &AsyncKillRCJobs::Work});
 }
 
 bool

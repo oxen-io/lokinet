@@ -252,7 +252,7 @@ docker-fedora:
 
 debian-configure:
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)" -DCMAKE_BUILD_TYPE=Release
+	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)"
 
 debian: debian-configure
 	$(MAKE) -C '$(BUILD_ROOT)'

@@ -366,7 +366,6 @@ namespace llarp
       }
       if(results[0].Verify(crypto(), Now()))
       {
-        nodedb()->Insert(results[0]);
         TryConnectAsync(results[0], 10);
         return;
       }
@@ -415,11 +414,6 @@ namespace llarp
     if(remote.Verify(crypto(), Now()))
     {
       LogDebug("verified signature");
-      // store into filesystem
-      if(!nodedb()->Insert(remote))
-      {
-        LogWarn("failed to store");
-      }
       if(!TryConnectAsync(remote, 10))
       {
         // or error?
@@ -616,11 +610,11 @@ namespace llarp
     {
       if(!rc.Verify(crypto(), Now()))
         continue;
-      nodedb()->Insert(rc);
+      nodedb()->InsertAsync(rc);
 
       if(ConnectionToRouterAllowed(rc.pubkey)
          && numConnected < minConnectedRouters)
-        TryEstablishTo(rc.pubkey);
+        TryConnectAsync(rc, 10);
     }
   }
 
@@ -684,7 +678,6 @@ namespace llarp
       if(whitelistRouters
          && lokinetRouters.find(result.pubkey) == lokinetRouters.end())
         continue;
-      nodedb()->Insert(result);
       TryConnectAsync(result, 10);
     }
   }
@@ -1093,7 +1086,8 @@ namespace llarp
       }
     }
 
-    size_t N = nodedb()->num_loaded();
+    const size_t connected = NumberOfConnectedRouters();
+    const size_t N         = nodedb()->num_loaded();
     if(N < minRequiredRouters)
     {
       LogInfo("We need at least ", minRequiredRouters,
@@ -1110,8 +1104,6 @@ namespace llarp
       else
         LogError("we have no bootstrap nodes specified");
     }
-
-    const size_t connected = NumberOfConnectedRouters();
     if(connected < minConnectedRouters)
     {
       size_t dlt = minConnectedRouters - connected;

@@ -11,7 +11,7 @@ Vcs-Browser: https://github.com/loki-project/lokinet-builder
 Package: lokinet
 Architecture: any
 Pre-Depends: adduser
-Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base, libcap2-bin, wget
+Depends: ${shlibs:Depends}, ${misc:Depends}, lsb-base, libcap2-bin, curl
 Description: Reference implementation for LLARP.
  Lokinet is a private, decentralized and Market based, Sybil
  resistant overlay network for the internet.
