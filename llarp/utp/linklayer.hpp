@@ -1,7 +1,7 @@
-#ifndef LLARP_LINK_UTP_LINKLAYER_HPP
-#define LLARP_LINK_UTP_LINKLAYER_HPP
+#ifndef LLARP_UTP_LINKLAYER_HPP
+#define LLARP_UTP_LINKLAYER_HPP
 
-#include <link/utp_inbound_message.hpp>
+#include <utp/inbound_message.hpp>
 
 #include <crypto/crypto.hpp>
 #include <crypto/types.hpp>

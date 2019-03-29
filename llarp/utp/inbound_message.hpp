@@ -1,5 +1,5 @@
-#ifndef LLARP_LINK_UTP_INBOUND_MESSAGE_HPP
-#define LLARP_LINK_UTP_INBOUND_MESSAGE_HPP
+#ifndef LLARP_UTP_INBOUND_MESSAGE_HPP
+#define LLARP_UTP_INBOUND_MESSAGE_HPP
 
 #include <constants/link_layer.hpp>
 #include <util/aligned.hpp>

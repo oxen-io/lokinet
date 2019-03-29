@@ -1,9 +1,9 @@
-#ifndef LLARP_LINK_UTP_SESSION_HPP
-#define LLARP_LINK_UTP_SESSION_HPP
+#ifndef LLARP_UTP_SESSION_HPP
+#define LLARP_UTP_SESSION_HPP
 
 #include <crypto/crypto.hpp>
 #include <link/session.hpp>
-#include <link/utp_inbound_message.hpp>
+#include <utp/inbound_message.hpp>
 
 #include <utp.h>
 

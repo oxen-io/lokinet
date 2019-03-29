@@ -1,6 +1,6 @@
-#include <link/utp_linklayer.hpp>
+#include <utp/linklayer.hpp>
 
-#include <link/utp_session.hpp>
+#include <utp/session.hpp>
 
 #ifdef __linux__
 #include <linux/errqueue.h>

@@ -1,6 +1,6 @@
-#include <link/utp_session.hpp>
+#include <utp/session.hpp>
 
-#include <link/utp_linklayer.hpp>
+#include <utp/linklayer.hpp>
 #include <messages/discard.hpp>
 #include <messages/link_intro.hpp>
 #include <util/metrics.hpp>

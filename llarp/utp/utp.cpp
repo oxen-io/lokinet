@@ -1,6 +1,6 @@
-#include <link/utp.hpp>
+#include <utp/utp.hpp>
 
-#include <link/utp_linklayer.hpp>
+#include <utp/linklayer.hpp>
 #include <router/abstractrouter.hpp>
 
 namespace llarp

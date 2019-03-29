@@ -8,7 +8,6 @@
 #include <dht/node.hpp>
 #include <link/iwp.hpp>
 #include <link/server.hpp>
-#include <link/utp.hpp>
 #include <messages/link_message.hpp>
 #include <net/net.hpp>
 #include <rpc/rpc.hpp>
@@ -17,6 +16,7 @@
 #include <util/logger.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
+#include <utp/utp.hpp>
 
 #include <fstream>
 #include <cstdlib>

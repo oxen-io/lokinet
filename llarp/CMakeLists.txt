@@ -170,10 +170,6 @@ set(LIB_SRC
   link/iwp.cpp
   link/server.cpp
   link/session.cpp
-  link/utp_inbound_message.cpp
-  link/utp_linklayer.cpp
-  link/utp_session.cpp
-  link/utp.cpp
   messages/dht_immediate.cpp
   messages/dht.cpp
   messages/discard.cpp
@@ -224,6 +220,10 @@ set(LIB_SRC
   service/tag.cpp
   service/types.cpp
   service/vanity.cpp
+  utp/inbound_message.cpp
+  utp/linklayer.cpp
+  utp/session.cpp
+  utp/utp.cpp
 )
 if(TESTNET)
   set(LIB_SRC ${LIB_SRC} testnet.c)

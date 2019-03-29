@@ -1,4 +1,4 @@
-#include <link/utp_inbound_message.hpp>
+#include <utp/inbound_message.hpp>
 
 #include <string.h>
 
