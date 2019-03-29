@@ -11,7 +11,7 @@
 #include <service/handler.hpp>
 #include <service/protocol.hpp>
 
-// minimum time between interoset shifts
+// minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
 #define MIN_SHIFT_INTERVAL (5 * 1000)
 #endif
@@ -336,7 +336,7 @@ namespace llarp
         HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame* frame);
 
         std::string
-        Name() const;
+        Name() const override;
 
        private:
         /// swap remoteIntro with next intro
@@ -357,7 +357,7 @@ namespace llarp
             m_BadIntros;
         llarp_time_t lastShift = 0;
         uint16_t m_LookupFails = 0;
-        uint16_t m_BuildFails = 0;
+        uint16_t m_BuildFails  = 0;
       };
 
       // passed a sendto context when we have a path established otherwise
