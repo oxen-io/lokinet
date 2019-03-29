@@ -30,7 +30,7 @@ endif()
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
 # check if we have the (saner) emulation of epoll here
-# it's basically linux epoll but with a sane method of 
+# it's basically linux epoll but with a sane method of
 # dealing with closed file handles that still exist in the
 # epoll set
 #
@@ -161,7 +161,7 @@ find_package(Threads REQUIRED)
 # not supported on Solaris - system libraries are not available as archives
 if(STATIC_LINK_RUNTIME)
   if (NOT SOLARIS)
-    add_compile_options(-static) 
+    add_compile_options(-static)
     if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
       set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static -static-libstdc++ -pthread" )
     else()
@@ -190,7 +190,7 @@ if(NOT DEBIAN)
 endif(NOT DEBIAN)
 
 if(ASAN)
-  set(DEBUG_FLAGS ${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer)
+  set(DEBUG_FLAGS ${DEBUG_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer)
   set(OPTIMIZE_FLAGS "-O0")
 endif(ASAN)
 
