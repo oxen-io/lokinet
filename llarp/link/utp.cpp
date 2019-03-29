@@ -87,6 +87,9 @@ namespace llarp
         ssize_t s = utp_writev(sock, vecs.data(), vecs.size());
         if(s < 0)
           return;
+        if(s > 0)
+          lastSend = parent->Now();
+
         METRICS_DYNAMIC_INT_UPDATE(
             "utp.session.tx", RouterID(remoteRC.pubkey).ToString().c_str(), s);
         m_TXRate += s;
@@ -241,7 +244,7 @@ namespace llarp
         return false;
       if(sendq.size() >= MaxSendQueueSize)
       {
-        return now - lastActive > 5000;
+        return now - lastSend > 5000;
       }
       // let utp manage this
       return state == eClose;

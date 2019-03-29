@@ -109,6 +109,8 @@ namespace llarp
       SharedSecret txKey;
       /// timestamp last active
       llarp_time_t lastActive;
+      /// timestamp last send success
+      llarp_time_t lastSend;
       /// session timeout (60s)
       const static llarp_time_t sessionTimeout = DefaultLinkSessionLifetime;
 
