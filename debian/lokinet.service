@@ -6,8 +6,8 @@ After=network.target
 [Service]
 User=debian-lokinet
 SyslogIdentifier=lokinet
-ExecStartPre=/usr/bin/lokinet-bootstrap
-ExecStart=/usr/bin/lokinet /var/lib/lokinet/.lokinet/lokinet.ini
+ExecStartPre=/usr/bin/lokinet-bootstrap && /usr/bin/lokinet -g
+ExecStart=/usr/bin/lokinet
 Restart=always
 
 [Install]
