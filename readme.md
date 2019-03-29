@@ -6,6 +6,8 @@ You can learn more about the high level design of LLARP [here](docs/high-level.t
 
 And you can read the LLARP protocol specification [here](docs/proto_v0.txt)
 
+You can view documentation on how to get started [here](https://loki-project.github.io/loki-docs/Lokinet/LokinetOverview/) .
+
 ![build status](https://gitlab.com/lokiproject/loki-network/badges/master/pipeline.svg "build status")
 
 ## Building
