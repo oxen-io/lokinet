@@ -1058,6 +1058,8 @@ namespace llarp
     void
     Endpoint::OutboundContext::HandlePathDied(path::Path* path)
     {
+      // unconditionally update introset
+      UpdateIntroSet(true);
       const RouterID endpoint(path->Endpoint());
       // if a path to our current intro died...
       if(endpoint == remoteIntro.router)
@@ -1100,7 +1102,6 @@ namespace llarp
           // we got nothing
           if(picked.router.IsZero())
           {
-            UpdateIntroSet(true);
             return;
           }
           m_NextIntro = picked;
