@@ -21,7 +21,8 @@ then
 fi
 
 # use temp file to not overrwrite existing bootstrap file on fail
-tmp=mktemp
+#tmp=mktemp
+tmp=/tmp/bootstrap.tmp
 
 # MacOS does not have wget without homebrew but does have curl
 # Rick also had indicated most BSDs have curl too
