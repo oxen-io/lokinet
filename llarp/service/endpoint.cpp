@@ -1050,17 +1050,15 @@ namespace llarp
     }
 
     void
-    Endpoint::HandlePathDied(path::Path* p)
+    Endpoint::HandlePathDied(path::Path*)
     {
-      RemovePath(p);
       RegenAndPublishIntroSet(Now(), true);
     }
 
     void
-    Endpoint::OutboundContext::HandlePathDied(path::Path* p)
+    Endpoint::OutboundContext::HandlePathDied(path::Path* path)
     {
-      const RouterID endpoint(p->Endpoint());
-      RemovePath(p);
+      const RouterID endpoint(path->Endpoint());
       // if a path to our current intro died...
       if(endpoint == remoteIntro.router)
       {

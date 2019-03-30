@@ -477,8 +477,9 @@ namespace llarp
       }
       else if(st == ePathTimeout && _status == ePathEstablished)
       {
+        LogInfo("path ", Name(), " died");
+        _status = st;
         m_PathSet->HandlePathDied(this);
-        return;
       }
       _status = st;
     }

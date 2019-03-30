@@ -26,9 +26,8 @@ namespace llarp
     }
 
     void
-    BaseSession::HandlePathDied(path::Path* p)
+    BaseSession::HandlePathDied(path::Path*)
     {
-      RemovePath(p);
     }
 
     util::StatusObject
