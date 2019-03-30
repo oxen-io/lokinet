@@ -175,7 +175,7 @@ testnet:
 $(TEST_EXE): debug
 
 test: $(TEST_EXE)
-	$(TEST_EXE)
+	test x$(CROSS) = xOFF && $(TEST_EXE)
 
 android-gradle-prepare:
 	rm -f $(ANDROID_PROPS)
@@ -222,7 +222,7 @@ coverage-config: clean
 
 coverage: coverage-config
 	$(MAKE) -C $(BUILD_ROOT)
-	$(TEST_EXE) || true # continue even if tests fail
+	test x$(CROSS) = xOFF && $(TEST_EXE) || true # continue even if tests fail
 	mkdir -p "$(COVERAGE_OUTDIR)"
 ifeq ($(CLANG),OFF)
 	gcovr -r . --branches --html --html-details -o "$(COVERAGE_OUTDIR)/lokinet.html"
@@ -259,7 +259,7 @@ debian: debian-configure
 	cp $(EXE) lokinet
 
 debian-test:
-	$(TEST_EXE) || true
+	test x$(CROSS) = xOFF && $(TEST_EXE) || true
 
 install:
 	$(MAKE) -C '$(BUILD_ROOT)' install
