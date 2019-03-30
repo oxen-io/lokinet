@@ -177,7 +177,7 @@ testnet:
 $(TEST_EXE): debug
 
 test: $(TEST_EXE)
-	test x$(CROSS) = xOFF && $(TEST_EXE)
+	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
 android-gradle-prepare:
 	rm -f $(ANDROID_PROPS)
@@ -261,7 +261,7 @@ debian: debian-configure
 	cp $(EXE) lokinet
 
 debian-test:
-	test x$(CROSS) = xOFF && $(TEST_EXE) || true
+	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
 install:
 	$(MAKE) -C '$(BUILD_ROOT)' install
