@@ -462,7 +462,7 @@ namespace llarp
     void
     Path::EnterState(PathStatus st, llarp_time_t now)
     {
-      if(st == ePathTimeout)
+      if(st == ePathTimeout && _status == ePathBuilding)
       {
         m_PathSet->HandlePathBuildTimeout(this);
       }
@@ -474,6 +474,11 @@ namespace llarp
       else if(st == ePathEstablished && _status == ePathBuilding)
       {
         LogInfo("path ", Name(), " is built, took ", now - buildStarted, " ms");
+      }
+      else if(st == ePathTimeout && _status == ePathEstablished)
+      {
+        m_PathSet->HandlePathDied(this);
+        return;
       }
       _status = st;
     }

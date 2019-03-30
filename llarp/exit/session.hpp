@@ -32,6 +32,9 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
+      void
+      HandlePathDied(llarp::path::Path* p) override;
+
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop, llarp::path::PathRole roles) override;

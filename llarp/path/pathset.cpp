@@ -231,6 +231,7 @@ namespace llarp
     {
       Lock_t l(&m_PathsMutex);
       m_Paths.erase({path->Upstream(), path->RXID()});
+      delete path;
     }
 
     Path*
