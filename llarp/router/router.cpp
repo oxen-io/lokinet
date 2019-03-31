@@ -1075,6 +1075,7 @@ namespace llarp
     nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
       if(!routerProfiling().IsBad(rc.pubkey))
         return false;
+      routerProfiling().ClearProfile(rc.pubkey);
       removed.insert(rc.pubkey);
       return true;
     });

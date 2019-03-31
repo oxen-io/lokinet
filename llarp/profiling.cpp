@@ -112,6 +112,13 @@ namespace llarp
   }
 
   void
+  Profiling::ClearProfile(const RouterID& r)
+  {
+    lock_t lock(&m_ProfilesMutex);
+    m_Profiles.erase(r);
+  }
+
+  void
   Profiling::MarkPathFail(path::Path* p)
   {
     lock_t lock(&m_ProfilesMutex);

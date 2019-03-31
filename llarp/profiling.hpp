@@ -69,6 +69,9 @@ namespace llarp
     MarkPathSuccess(path::Path* p) LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void
+    ClearProfile(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
+
+    void
     Tick() LOCKS_EXCLUDED(m_ProfilesMutex);
 
     bool
