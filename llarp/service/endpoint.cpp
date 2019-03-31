@@ -853,6 +853,8 @@ namespace llarp
         job->hook                  = nullptr;
         job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
+        router->routerProfiling().MarkSuccess(msg->R[0].pubkey);
+        m_PendingRouters.erase(itr);
         return true;
       }
       return success;
