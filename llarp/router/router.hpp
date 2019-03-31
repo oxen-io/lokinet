@@ -211,11 +211,14 @@ namespace llarp
     uint16_t m_OutboundPort = 0;
 
     /// always maintain this many connections to other routers
-    size_t minConnectedRouters = 3;
+    size_t minConnectedRouters = 2;
     /// hard upperbound limit on the number of router to router connections
     size_t maxConnectedRouters = 2000;
 
     size_t minRequiredRouters = 4;
+    /// how often do we resign our RC? milliseconds.
+    // TODO: make configurable
+    llarp_time_t rcRegenInterval = 60 * 60 * 1000;
 
     // should we be sending padded messages every interval?
     bool sendPadding = false;
@@ -427,6 +430,9 @@ namespace llarp
     /// manually flush outbound message queue for just 1 router
     void
     FlushOutboundFor(RouterID remote, ILinkLayer *chosen = nullptr);
+
+    void
+    LookupRouter(RouterID remote) override;
 
     /// manually discard all pending messages to remote router
     void

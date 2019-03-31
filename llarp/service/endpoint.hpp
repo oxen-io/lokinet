@@ -103,6 +103,9 @@ namespace llarp
       ShouldPublishDescriptors(llarp_time_t now) const override;
 
       void
+      HandlePathDied(path::Path* p) override;
+
+      void
       EnsureReplyPath(const ServiceInfo& addr);
 
       bool
@@ -282,6 +285,9 @@ namespace llarp
 
         bool
         HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
+
+        void
+        HandlePathDied(path::Path* p) override;
 
         /// set to true if we are updating the remote introset right now
         bool updatingIntroSet;
