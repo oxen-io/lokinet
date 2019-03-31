@@ -1028,6 +1028,23 @@ namespace llarp
   }
 
   void
+  Router::LookupRouter(RouterID remote)
+  {
+    if(IsServiceNode())
+    {
+      ServiceNodeLookupRouterWhenExpired(remote);
+      return;
+    }
+    auto ep = hiddenServiceContext().getFirstEndpoint();
+    if(ep == nullptr)
+    {
+      LogError("cannot lookup ", remote, " no service endpoints available");
+      return;
+    }
+    ep->LookupRouterAnon(remote);
+  }
+
+  void
   Router::Tick()
   {
     // LogDebug("tick router");
@@ -1035,15 +1052,16 @@ namespace llarp
 
     routerProfiling().Tick();
 
-    if(_rc.ExpiresSoon(now, randint() % 10000))
-    {
-      LogInfo("regenerating RC");
-      if(!UpdateOurRC(false))
-        LogError("Failed to update our RC");
-    }
-
     if(IsServiceNode())
     {
+      if(_rc.ExpiresSoon(now, randint() % 10000)
+         || (now - _rc.last_updated) > rcRegenInterval)
+      {
+        LogInfo("regenerating RC");
+        if(!UpdateOurRC(false))
+          LogError("Failed to update our RC");
+      }
+
       // only do this as service node
       // client endpoints do this on their own
       nodedb()->visit([&](const RouterContact &rc) -> bool {
@@ -1053,9 +1071,18 @@ namespace llarp
       });
     }
     // kill dead nodes
+    std::set< RouterID > removed;
     nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-      return routerProfiling().IsBad(rc.pubkey);
+      if(!routerProfiling().IsBad(rc.pubkey))
+        return false;
+      removed.insert(rc.pubkey);
+      return true;
     });
+
+    // request killed nodes 1 time
+    for(const auto &pk : removed)
+      LookupRouter(pk);
+
     paths.TickPaths(now);
     paths.ExpirePaths(now);
 

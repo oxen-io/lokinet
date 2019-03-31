@@ -165,6 +165,12 @@ namespace llarp
     HandleDHTLookupForExplore(RouterID remote,
                               const std::vector< RouterContact > &results) = 0;
 
+    /// lookup router by pubkey
+    /// if we are a service node this is done direct otherwise it's done via
+    /// path
+    virtual void
+    LookupRouter(RouterID remote) = 0;
+
     /// check if newRc matches oldRC and update local rc for this remote contact
     /// if valid
     /// returns true on valid and updated
