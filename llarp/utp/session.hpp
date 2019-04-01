@@ -4,6 +4,7 @@
 #include <crypto/crypto.hpp>
 #include <link/session.hpp>
 #include <utp/inbound_message.hpp>
+#include <deque>
 
 #include <utp.h>
 
