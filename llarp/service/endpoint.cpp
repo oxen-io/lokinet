@@ -726,7 +726,20 @@ namespace llarp
     {
       if(NumInStatus(llarp::path::ePathEstablished) < 3)
         return false;
-      if(m_IntroSet.HasExpiredIntros(now))
+      // make sure we have all paths that are established
+      // in our introset
+      bool should = false;
+      ForEachPath([&](const path::Path *p) {
+                    if(!p->IsReady())
+                      return;
+                    for(const auto & i : m_IntroSet.I)
+                    {
+                      if(i == p->intro)
+                        return;
+                    }
+                    should = true;
+                  });
+      if(m_IntroSet.HasExpiredIntros(now) || should)
         return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
       return now - m_LastPublishAttempt >= INTROSET_PUBLISH_INTERVAL;
     }
