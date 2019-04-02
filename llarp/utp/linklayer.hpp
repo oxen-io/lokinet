@@ -58,11 +58,11 @@ namespace llarp
 
       /// get AI rank
       uint16_t
-      Rank() const;
+      Rank() const override;
 
       /// handle low level recv
       void
-      RecvFrom(const Addr& from, const void* buf, size_t sz);
+      RecvFrom(const Addr& from, const void* buf, size_t sz) override;
 
 #ifdef __linux__
       /// process ICMP stuff on linux
@@ -71,11 +71,14 @@ namespace llarp
 #endif
 
       Crypto*
-      OurCrypto();
+      OurCrypto() override
+      {
+        return _crypto;
+      }
 
       /// pump sessions
       void
-      Pump();
+      Pump() override;
 
       /// stop link layer
       void
@@ -83,15 +86,16 @@ namespace llarp
 
       /// regenerate transport keypair
       bool
-      KeyGen(SecretKey& k);
+      KeyGen(SecretKey& k) override;
 
       /// do tick
       void
       Tick(llarp_time_t now);
 
       /// create new outbound session
-      ILinkSession*
-      NewOutboundSession(const RouterContact& rc, const AddressInfo& addr);
+      std::shared_ptr< ILinkSession >
+      NewOutboundSession(const RouterContact& rc,
+                         const AddressInfo& addr) override;
 
       /// create new socket
       utp_socket*
@@ -99,7 +103,7 @@ namespace llarp
 
       /// get ai name
       const char*
-      Name() const;
+      Name() const override;
     };
 
   }  // namespace utp

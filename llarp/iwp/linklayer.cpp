@@ -91,14 +91,14 @@ namespace llarp
       }
     }
 
-    ILinkSession*
+    std::shared_ptr< ILinkSession >
     LinkLayer::NewOutboundSession(const RouterContact& rc,
                                   const AddressInfo& ai)
     {
       (void)rc;
       (void)ai;
       // TODO: implement me
-      return nullptr;
+      return {};
     }
 
     void

@@ -24,12 +24,6 @@ namespace llarp
 {
   namespace utp
   {
-    Crypto*
-    LinkLayer::OurCrypto()
-    {
-      return _crypto;
-    }
-
     uint64
     LinkLayer::OnConnect(utp_callback_arguments* arg)
     {
@@ -175,6 +169,8 @@ namespace llarp
 
     LinkLayer::~LinkLayer()
     {
+      m_Pending.clear();
+      m_AuthedLinks.clear();
       utp_destroy(_utp_ctx);
     }
 
@@ -302,7 +298,7 @@ namespace llarp
     void
     LinkLayer::Stop()
     {
-      ForEachSession([](ILinkSession* s) { s->SendClose(); });
+      ForEachSession([](ILinkSession* s) { s->Close(); });
     }
 
     bool
@@ -331,11 +327,12 @@ namespace llarp
       return "utp";
     }
 
-    ILinkSession*
+    std::shared_ptr< ILinkSession >
     LinkLayer::NewOutboundSession(const RouterContact& rc,
                                   const AddressInfo& addr)
     {
-      return new Session(this, utp_create_socket(_utp_ctx), rc, addr);
+      return std::make_shared< OutboundSession >(
+          this, utp_create_socket(_utp_ctx), rc, addr);
     }
 
     uint64
@@ -391,14 +388,16 @@ namespace llarp
           static_cast< LinkLayer* >(utp_context_get_userdata(arg->context));
       Addr remote(*arg->address);
       LogDebug("utp accepted from ", remote);
-      Session* session = new Session(self, arg->socket, remote);
+      std::shared_ptr< ILinkSession > session =
+          std::make_shared< InboundSession >(self, arg->socket, remote);
       if(!self->PutSession(session))
       {
         session->Close();
-        delete session;
       }
       else
+      {
         session->OnLinkEstablished(self);
+      }
 
       return 0;
     }
