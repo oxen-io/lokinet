@@ -1,0 +1,2 @@
+
+int cpp_test();

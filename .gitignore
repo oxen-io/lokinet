@@ -57,3 +57,7 @@ GTAGS
 GRTAGS
 GPATH
 version.txt
+
+# Xcode & MacOS
+xcuserdata/
+.DS_Store
