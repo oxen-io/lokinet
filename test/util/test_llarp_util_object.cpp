@@ -28,8 +28,8 @@ TEST(Catalog, smoke)
 {
   const double value1 = 1.0;
   const double value2 = 2.0;
-  int handle1         = -1;
-  int handle2         = -1;
+  int32_t handle1     = -1;
+  int32_t handle2     = -1;
 
   Catalog< double > catalog;
 
@@ -61,11 +61,12 @@ TEST(Catalog, Iterator)
 {
   static constexpr size_t THREAD_COUNT    = 10;
   static constexpr size_t ITERATION_COUNT = 1000;
+  static constexpr int32_t MAX = std::numeric_limits< int32_t >::max();
   std::array< std::thread, THREAD_COUNT + 3 > threads;
 
   using llarp::util::Barrier;
-  using Iterator = CatalogIterator< int >;
-  using Cat      = Catalog< int >;
+  using Iterator = CatalogIterator< int32_t >;
+  using Cat      = Catalog< int32_t >;
 
   Barrier barrier(THREAD_COUNT + 3);
   Cat catalog;
@@ -74,22 +75,22 @@ TEST(Catalog, Iterator)
   for(size_t i = 0; i < THREAD_COUNT; ++i)
   {
     threads[i] = std::thread(
-        [](Barrier *barrier, Cat *catalog, int id) {
+        [](Barrier *barrier, Cat *catalog, int32_t id) {
           barrier->Block();
           for(size_t i = 0; i < ITERATION_COUNT; ++i)
           {
-            int h                     = catalog->add(id);
-            absl::optional< int > res = catalog->find(h);
+            int32_t handle                = catalog->add(id);
+            absl::optional< int32_t > res = catalog->find(handle);
             ASSERT_TRUE(res);
             ASSERT_EQ(res.value(), id);
-            ASSERT_TRUE(catalog->replace(-id - 1, h));
-            res = catalog->find(h);
+            ASSERT_TRUE(catalog->replace(MAX - id, handle));
+            res = catalog->find(handle);
             ASSERT_TRUE(res);
-            ASSERT_EQ(-id - 1, res.value());
-            int removed = -1;
-            ASSERT_TRUE(catalog->remove(h, &removed));
-            ASSERT_EQ(removed, -id - 1);
-            ASSERT_FALSE(catalog->find(h));
+            ASSERT_EQ(MAX - id, res.value());
+            int32_t removed = 0;
+            ASSERT_TRUE(catalog->remove(handle, &removed));
+            ASSERT_EQ(removed, MAX - id);
+            ASSERT_FALSE(catalog->find(handle));
           }
         },
         &barrier, &catalog, i);
@@ -113,30 +114,29 @@ TEST(Catalog, Iterator)
         barrier->Block();
         for(size_t i = 0; i < ITERATION_COUNT; ++i)
         {
-          int arr[100];
+          int32_t arr[100];
           size_t size = 0;
-          for(Iterator it(*catalog); it; ++it)
+          for(Iterator it(catalog); it; ++it)
           {
             arr[size++] = it().second;
           }
-          for(int i = 0; i < 100; i++)
+          for(int32_t j = 0; j < 100; j++)
           {
             // value must be valid
             bool present = false;
-            for(int id = 0; id < static_cast< int >(THREAD_COUNT); id++)
+            for(int32_t id = 0; id < static_cast< int32_t >(THREAD_COUNT); id++)
             {
-              if(id == arr[i] || -id - 1 == arr[i])
+              if(id == arr[j] || MAX - id == arr[j])
               {
                 present = true;
                 break;
               }
             }
-            ASSERT_TRUE(present);
 
             // no duplicate should be there
-            for(size_t j = i + 1; j < size; j++)
+            for(size_t k = j + 1; k < size; k++)
             {
-              ASSERT_NE(arr[i], arr[j]);
+              ASSERT_NE(arr[j], arr[k]);
             }
           }
         }
