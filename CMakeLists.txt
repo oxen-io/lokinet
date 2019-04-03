@@ -190,7 +190,7 @@ if(NOT DEBIAN)
 endif(NOT DEBIAN)
 
 if(ASAN)
-  set(DEBUG_FLAGS ${DEBUG_FLAGS} -fsanitize=undefined -fno-omit-frame-pointer)
+  set(DEBUG_FLAGS ${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer)
   set(OPTIMIZE_FLAGS "-O0")
 endif(ASAN)
 

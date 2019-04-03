@@ -17,53 +17,70 @@ namespace llarp
   {
     virtual ~ILinkSession(){};
 
+    /// hook for utp for when we have established a connection
+    virtual void
+    OnLinkEstablished(ILinkLayer *p) = 0;
+
     /// called every event loop tick
-    std::function< void(void) > Pump;
+    virtual void
+    Pump() = 0;
 
     /// called every timer tick
-    std::function< void(llarp_time_t) > Tick;
+    virtual void Tick(llarp_time_t) = 0;
 
     /// send a message buffer to the remote endpoint
-    std::function< bool(const llarp_buffer_t &) > SendMessageBuffer;
+    virtual bool
+    SendMessageBuffer(const llarp_buffer_t &) = 0;
 
     /// start the connection
-    std::function< void(void) > Start;
+    virtual void
+    Start() = 0;
+
+    virtual void
+    Close() = 0;
 
     /// send a keepalive to the remote endpoint
-    std::function< bool(void) > SendKeepAlive;
-
-    /// send close message
-    std::function< void(void) > SendClose;
+    virtual bool
+    SendKeepAlive() = 0;
 
     /// return true if we are established
-    std::function< bool(void) > IsEstablished;
+    virtual bool
+    IsEstablished() = 0;
 
     /// return true if this session has timed out
-    std::function< bool(llarp_time_t) > TimedOut;
+    virtual bool
+    TimedOut(llarp_time_t now) const = 0;
 
     /// get remote public identity key
-    std::function< PubKey(void) > GetPubKey;
+    virtual PubKey
+    GetPubKey() const = 0;
 
     /// get remote address
-    std::function< Addr(void) > GetRemoteEndpoint;
+    virtual Addr
+    GetRemoteEndpoint() const = 0;
 
     // get remote rc
-    std::function< RouterContact(void) > GetRemoteRC;
+    virtual RouterContact
+    GetRemoteRC() const = 0;
 
     /// handle a valid LIM
     std::function< bool(const LinkIntroMessage *msg) > GotLIM;
 
     /// send queue current blacklog
-    std::function< size_t(void) > SendQueueBacklog;
+    virtual size_t
+    SendQueueBacklog() const = 0;
 
     /// get parent link layer
-    std::function< ILinkLayer *(void) > GetLinkLayer;
+    virtual ILinkLayer *
+    GetLinkLayer() const = 0;
 
     /// renegotiate session when we have a new RC locally
-    std::function< bool(void) > RenegotiateSession;
+    virtual bool
+    RenegotiateSession() = 0;
 
     /// return true if we should send an explicit keepalive message
-    std::function< bool(void) > ShouldPing;
+    virtual bool
+    ShouldPing() const = 0;
   };
 }  // namespace llarp
 
