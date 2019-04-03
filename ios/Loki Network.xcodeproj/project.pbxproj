@@ -13,7 +13,7 @@
 		C3FBE36C22542DD80006284B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C3FBE36B22542DD80006284B /* Assets.xcassets */; };
 		C3FBE36F22542DD80006284B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C3FBE36D22542DD80006284B /* LaunchScreen.storyboard */; };
 		C3FBE37E22543A670006284B /* liblokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE37D22543A670006284B /* liblokinet-wrapper.cpp */; };
-		C3FBE382225441180006284B /* liblokinet.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3FBE37922543A0C0006284B /* liblokinet.a */; };
+		C3FBE3842254996A0006284B /* liblokinet.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3FBE37922543A0C0006284B /* liblokinet.a */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,10 +24,10 @@
 		C3FBE36B22542DD80006284B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C3FBE36E22542DD80006284B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		C3FBE37022542DD80006284B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		C3FBE37922543A0C0006284B /* liblokinet.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = liblokinet.a; sourceTree = "<group>"; };
-		C3FBE37B22543A240006284B /* liblokinet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = liblokinet.h; sourceTree = SOURCE_ROOT; };
+		C3FBE37922543A0C0006284B /* liblokinet.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liblokinet.a; path = "Loki Network/liblokinet/liblokinet.a"; sourceTree = "<group>"; };
+		C3FBE37B22543A240006284B /* liblokinet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = liblokinet.h; path = "Loki Network/liblokinet/liblokinet.h"; sourceTree = SOURCE_ROOT; };
 		C3FBE37C22543A670006284B /* Loki-Network-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Loki-Network-Bridging-Header.h"; sourceTree = "<group>"; };
-		C3FBE37D22543A670006284B /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "liblokinet-wrapper.cpp"; sourceTree = SOURCE_ROOT; };
+		C3FBE37D22543A670006284B /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = "liblokinet-wrapper.cpp"; path = "Loki Network/liblokinet/liblokinet-wrapper.cpp"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -35,7 +35,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C3FBE382225441180006284B /* liblokinet.a in Frameworks */,
+				C3FBE3842254996A0006284B /* liblokinet.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -314,6 +314,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/Loki\\ Network/liblokinet",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -339,6 +340,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/Loki\\ Network/liblokinet",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
