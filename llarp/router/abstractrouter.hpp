@@ -115,6 +115,9 @@ namespace llarp
     virtual void
     Stop() = 0;
 
+    virtual bool
+    IsBootstrapNode(RouterID r) const = 0;
+    
     virtual const byte_t *
     pubkey() const = 0;
 
@@ -185,7 +188,7 @@ namespace llarp
     /// visit each connected link session
     virtual void
     ForEachPeer(
-        std::function< void(const ILinkSession *, bool) > visit) const = 0;
+      std::function< void(const ILinkSession *, bool) > visit, bool randomize) const = 0;
   };
 }  // namespace llarp
 

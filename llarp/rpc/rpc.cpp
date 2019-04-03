@@ -237,7 +237,7 @@ namespace llarp
               Response{{"ident", RouterID(session->GetPubKey()).ToString()},
                        {"addr", session->GetRemoteEndpoint().ToString()},
                        {"outbound", outbound}});
-        });
+        }, false);
         return resp;
       }
 
