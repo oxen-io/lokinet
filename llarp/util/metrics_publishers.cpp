@@ -154,7 +154,6 @@ namespace llarp
           }
         }
         stream << " ]\n";
-        stream.flush();
       }
 
     }  // namespace
