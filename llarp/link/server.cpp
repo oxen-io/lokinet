@@ -34,14 +34,32 @@ namespace llarp
 
   void
   ILinkLayer::ForEachSession(
-      std::function< void(const ILinkSession*) > visit) const
+    std::function< void(const ILinkSession*) > visit, bool randomize) const
   {
     Lock l(&m_AuthedLinksMutex);
+    if(m_AuthedLinks.size() == 0)
+      return;
+    const size_t sz = randint() % m_AuthedLinks.size();
     auto itr = m_AuthedLinks.begin();
+    auto begin = itr;
+    if(randomize)
+    {
+      std::advance(itr, sz);
+      begin = itr;
+    }
     while(itr != m_AuthedLinks.end())
     {
       visit(itr->second.get());
       ++itr;
+    }
+    if(randomize)
+    {
+      itr = m_AuthedLinks.begin();
+      while(itr != begin)
+      {
+        visit(itr->second.get());
+        ++itr;
+      }
     }
   }
 

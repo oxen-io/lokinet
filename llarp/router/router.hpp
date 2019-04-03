@@ -452,11 +452,14 @@ namespace llarp
 
     void
     ForEachPeer(
-        std::function< void(const ILinkSession *, bool) > visit) const override;
+      std::function< void(const ILinkSession *, bool) > visit, bool randomize=false) const override;
 
     void
     ForEachPeer(std::function< void(ILinkSession *) > visit);
 
+    bool
+    IsBootstrapNode(RouterID) const override;
+    
     /// check if newRc matches oldRC and update local rc for this remote contact
     /// if valid
     /// returns true on valid and updated
