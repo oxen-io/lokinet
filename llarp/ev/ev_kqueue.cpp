@@ -24,14 +24,11 @@ namespace llarp
     else
     {
       if(errno == EAGAIN || errno == EWOULDBLOCK)
-      {
-        errno = 0;
-        return 0;
-      }
+        return amount;
       _shouldClose = true;
       return -1;
     }
-    return 0;
+    return amount;
   }
 
   inline void
@@ -376,12 +373,17 @@ llarp_kqueue_loop::tick(int ms)
       {
         if(events[idx].filter & EVFILT_WRITE)
         {
-          ev->flush_write_buffers(events[idx].data);
+          IO([&]() -> ssize_t {
+            ev->flush_write_buffers(events[idx].data);
+            return 0;
+          });
         }
         if(events[idx].filter & EVFILT_READ)
         {
-          ev->read(readbuf,
-                   std::min(sizeof(readbuf), size_t(events[idx].data)));
+          IO([&]() -> ssize_t {
+            return ev->read(readbuf,
+              std::min(sizeof(readbuf), size_t(events[idx].data)));
+          });
         }
       }
       ++idx;
