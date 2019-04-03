@@ -14,14 +14,14 @@ namespace llarp
   {
     struct LinkLayer;
 
-    struct Session final : public ILinkSession
+    struct Session : public ILinkSession
     {
       /// remote router's rc
       RouterContact remoteRC;
       /// underlying socket
       utp_socket* sock;
       /// link layer parent
-      LinkLayer* parent;
+      ILinkLayer* parent;
       /// did we get a LIM from the remote yet?
       bool gotLIM;
       /// remote router's transport pubkey
@@ -69,15 +69,10 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
+      virtual ~Session() = 0;
+
       /// base
-      Session(LinkLayer* p);
-
-      /// outbound
-      Session(LinkLayer* p, utp_socket* s, const RouterContact& rc,
-              const AddressInfo& addr);
-
-      /// inbound
-      Session(LinkLayer* p, utp_socket* s, const Addr& remote);
+      explicit Session(LinkLayer* p);
 
       enum State
       {
@@ -89,26 +84,19 @@ namespace llarp
         eClose             // utp connection is closed
       };
 
-      /// get router
-      // Router*
-      // Router();
-
-      Crypto*
-      OurCrypto();
-
       /// session state, call EnterState(State) to set
       State state;
 
       /// hook for utp for when we have established a connection
       void
-      OnLinkEstablished(LinkLayer* p);
+      OnLinkEstablished(ILinkLayer* p) override;
+
+      Crypto*
+      OurCrypto();
 
       /// switch states
       void
       EnterState(State st);
-
-      Session();
-      ~Session();
 
       /// handle LIM after handshake
       bool
@@ -116,14 +104,29 @@ namespace llarp
 
       /// re negotiate session with our new local RC
       bool
-      Rehandshake();
+      RenegotiateSession() override;
+
+      bool
+      ShouldPing() const override;
 
       /// pump tx queue
       void
       PumpWrite();
 
       void
-      DoPump();
+      Pump() override;
+
+      bool
+      SendKeepAlive() override;
+
+      bool
+      IsEstablished() override
+      {
+        return state == eSessionReady || state == eLinkEstablished;
+      }
+
+      bool
+      TimedOut(llarp_time_t now) const override;
 
       /// verify a fragment buffer and the decrypt it
       /// buf is assumed to be FragmentBufferSize bytes long
@@ -137,7 +140,7 @@ namespace llarp
 
       /// queue a fully formed message
       bool
-      QueueWriteBuffers(const llarp_buffer_t& buf);
+      SendMessageBuffer(const llarp_buffer_t& buf) override;
 
       /// prune expired inbound messages
       void
@@ -166,42 +169,67 @@ namespace llarp
       MutateKey(SharedSecret& K, const AlignedBuffer< 24 >& A);
 
       void
-      TickImpl(llarp_time_t now);
+      Tick(llarp_time_t now) override;
 
       /// close session
       void
-      Close();
+      Close() override;
 
       /// low level read
       bool
       Recv(const byte_t* buf, size_t sz);
 
-      /// handle inbound LIM
-      bool
-      InboundLIM(const LinkIntroMessage* msg);
-
-      /// handle outbound LIM
-      bool
-      OutboundLIM(const LinkIntroMessage* msg);
-
-      /// return true if timed out
-      bool
-      IsTimedOut(llarp_time_t now) const;
-
       /// get remote identity pubkey
-      const PubKey&
-      RemotePubKey() const;
+      PubKey
+      GetPubKey() const override;
 
       /// get remote address
       Addr
-      RemoteEndpoint();
+      GetRemoteEndpoint() const override;
+
+      RouterContact
+      GetRemoteRC() const override
+      {
+        return remoteRC;
+      }
 
       /// get parent link
       ILinkLayer*
-      GetParent();
+      GetLinkLayer() const override;
 
       void
       MarkEstablished();
+
+      size_t
+      SendQueueBacklog() const override
+      {
+        return sendq.size();
+      }
+    };
+
+    struct InboundSession final : public Session
+    {
+      InboundSession(LinkLayer* p, utp_socket* s, const Addr& addr);
+
+      bool
+      InboundLIM(const LinkIntroMessage* msg);
+
+      void
+      Start() override
+      {
+      }
+    };
+
+    struct OutboundSession final : public Session
+    {
+      OutboundSession(LinkLayer* p, utp_socket* s, const RouterContact& rc,
+                      const AddressInfo& addr);
+
+      bool
+      OutboundLIM(const LinkIntroMessage* msg);
+
+      void
+      Start() override;
     };
   }  // namespace utp
 }  // namespace llarp

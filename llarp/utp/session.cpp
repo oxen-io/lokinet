@@ -12,7 +12,7 @@ namespace llarp
     using namespace std::placeholders;
 
     void
-    Session::OnLinkEstablished(LinkLayer* p)
+    Session::OnLinkEstablished(ILinkLayer* p)
     {
       parent = p;
       EnterState(eLinkEstablished);
@@ -80,13 +80,6 @@ namespace llarp
     }
 
     void
-    Session::Connect()
-    {
-      utp_connect(sock, remoteAddr, remoteAddr.SockLen());
-      EnterState(eConnecting);
-    }
-
-    void
     Session::OutboundLinkEstablished(LinkLayer* p)
     {
       OnLinkEstablished(p);
@@ -136,7 +129,7 @@ namespace llarp
     }
 
     void
-    Session::TickImpl(llarp_time_t now)
+    Session::Tick(llarp_time_t now)
     {
       PruneInboundMessages(now);
       m_TXRate = 0;
@@ -194,7 +187,7 @@ namespace llarp
     }
 
     bool
-    Session::IsTimedOut(llarp_time_t now) const
+    Session::TimedOut(llarp_time_t now) const
     {
       if(state == eInitial)
         return false;
@@ -206,14 +199,14 @@ namespace llarp
       return state == eClose;
     }
 
-    const PubKey&
-    Session::RemotePubKey() const
+    PubKey
+    Session::GetPubKey() const
     {
       return remoteRC.pubkey;
     }
 
     Addr
-    Session::RemoteEndpoint()
+    Session::GetRemoteEndpoint() const
     {
       return remoteAddr;
     }
@@ -227,163 +220,27 @@ namespace llarp
       parent        = p;
       remoteTransportPubKey.Zero();
 
-      SendQueueBacklog = [&]() -> size_t { return sendq.size(); };
-
-      ShouldPing = [&]() -> bool {
-        auto dlt = parent->Now() - lastActive;
-        return dlt >= 10000;
-      };
-
-      SendKeepAlive = [&]() -> bool {
-        if(state == eSessionReady)
-        {
-          DiscardMessage msg;
-          std::array< byte_t, 128 > tmp;
-          llarp_buffer_t buf(tmp);
-          if(!msg.BEncode(&buf))
-            return false;
-          buf.sz  = buf.cur - buf.base;
-          buf.cur = buf.base;
-          return this->QueueWriteBuffers(buf);
-        }
-        return true;
-      };
       gotLIM        = false;
       recvBufOffset = 0;
-      TimedOut  = std::bind(&Session::IsTimedOut, this, std::placeholders::_1);
-      GetPubKey = std::bind(&Session::RemotePubKey, this);
-      GetRemoteRC  = [&]() -> RouterContact { return this->remoteRC; };
-      GetLinkLayer = std::bind(&Session::GetParent, this);
 
       lastActive = parent->Now();
-
-      Pump = std::bind(&Session::DoPump, this);
-      Tick = std::bind(&Session::TickImpl, this, std::placeholders::_1);
-      SendMessageBuffer =
-          std::bind(&Session::QueueWriteBuffers, this, std::placeholders::_1);
-
-      IsEstablished = [=]() {
-        return this->state == eSessionReady || this->state == eLinkEstablished;
-      };
-
-      SendClose          = std::bind(&Session::Close, this);
-      GetRemoteEndpoint  = std::bind(&Session::RemoteEndpoint, this);
-      RenegotiateSession = std::bind(&Session::Rehandshake, this);
     }
 
-    /// outbound session
-    Session::Session(LinkLayer* p, utp_socket* s, const RouterContact& rc,
-                     const AddressInfo& addr)
-        : Session(p)
+    bool
+    Session::ShouldPing() const
     {
-      remoteTransportPubKey = addr.pubkey;
-      remoteRC              = rc;
-      RouterID rid          = remoteRC.pubkey;
-      OurCrypto()->shorthash(txKey, llarp_buffer_t(rid));
-      rid = p->GetOurRC().pubkey;
-      OurCrypto()->shorthash(rxKey, llarp_buffer_t(rid));
-
-      sock = s;
-      assert(utp_set_userdata(sock, this) == this);
-      assert(s == sock);
-      remoteAddr = addr;
-      Start      = std::bind(&Session::Connect, this);
-      GotLIM = std::bind(&Session::OutboundLIM, this, std::placeholders::_1);
-    }
-
-    /// inbound session
-    Session::Session(LinkLayer* p, utp_socket* s, const Addr& addr) : Session(p)
-    {
-      RouterID rid = p->GetOurRC().pubkey;
-      OurCrypto()->shorthash(rxKey, llarp_buffer_t(rid));
-      remoteRC.Clear();
-      sock = s;
-      assert(s == sock);
-      assert(utp_set_userdata(sock, this) == this);
-      remoteAddr = addr;
-      Start      = []() {};
-      GotLIM     = std::bind(&Session::InboundLIM, this, std::placeholders::_1);
-    }
+      auto dlt = parent->Now() - lastActive;
+      return dlt >= 10000;
+    };
 
     ILinkLayer*
-    Session::GetParent()
+    Session::GetLinkLayer() const
     {
       return parent;
     }
 
-    bool
-    Session::InboundLIM(const LinkIntroMessage* msg)
-    {
-      if(gotLIM && remoteRC.pubkey != msg->rc.pubkey)
-      {
-        Close();
-        return false;
-      }
-      if(!gotLIM)
-      {
-        remoteRC = msg->rc;
-        OurCrypto()->shorthash(txKey, llarp_buffer_t(remoteRC.pubkey));
-
-        if(!DoKeyExchange(std::bind(&Crypto::transport_dh_server, OurCrypto(),
-                                    _1, _2, _3, _4),
-                          rxKey, msg->N, remoteRC.enckey,
-                          parent->TransportSecretKey()))
-          return false;
-
-        std::array< byte_t, LinkIntroMessage::MaxSize > tmp;
-        llarp_buffer_t buf(tmp);
-        LinkIntroMessage replymsg;
-        replymsg.rc = parent->GetOurRC();
-        if(!replymsg.rc.Verify(OurCrypto(), parent->Now()))
-        {
-          LogError("our RC is invalid? closing session to", remoteAddr);
-          Close();
-          return false;
-        }
-        replymsg.N.Randomize();
-        replymsg.P = DefaultLinkSessionLifetime;
-        if(!replymsg.Sign(parent->Sign))
-        {
-          LogError("failed to sign LIM for inbound handshake from ",
-                   remoteAddr);
-          Close();
-          return false;
-        }
-        // encode
-        if(!replymsg.BEncode(&buf))
-        {
-          LogError("failed to encode LIM for handshake from ", remoteAddr);
-          Close();
-          return false;
-        }
-        // rewind
-        buf.sz  = buf.cur - buf.base;
-        buf.cur = buf.base;
-        // send
-        if(!SendMessageBuffer(buf))
-        {
-          LogError("failed to repl to handshake from ", remoteAddr);
-          Close();
-          return false;
-        }
-        if(!DoKeyExchange(std::bind(&Crypto::transport_dh_client, OurCrypto(),
-                                    _1, _2, _3, _4),
-                          txKey, replymsg.N, remoteRC.enckey,
-                          parent->RouterEncryptionSecret()))
-
-          return false;
-        LogDebug("Sent reply LIM");
-        gotLIM = true;
-        EnterState(eSessionReady);
-        /// future LIM are used for session renegotiation
-        GotLIM = std::bind(&Session::GotSessionRenegotiate, this,
-                           std::placeholders::_1);
-      }
-      return true;
-    }
-
     void
-    Session::DoPump()
+    Session::Pump()
     {
       // pump write queue
       PumpWrite();
@@ -392,11 +249,11 @@ namespace llarp
     }
 
     bool
-    Session::QueueWriteBuffers(const llarp_buffer_t& buf)
+    Session::SendMessageBuffer(const llarp_buffer_t& buf)
     {
       if(sendq.size() >= MaxSendQueueSize)
         return false;
-      // premptive pump
+      // preemptive pump
       if(sendq.size() >= MaxSendQueueSize / 2)
         PumpWrite();
       size_t sz      = buf.sz;
@@ -418,27 +275,19 @@ namespace llarp
     }
 
     bool
-    Session::OutboundLIM(const LinkIntroMessage* msg)
+    Session::SendKeepAlive()
     {
-      if(gotLIM && remoteRC.pubkey != msg->rc.pubkey)
+      if(state == eSessionReady)
       {
-        return false;
+        DiscardMessage msg;
+        std::array< byte_t, 128 > tmp;
+        llarp_buffer_t buf(tmp);
+        if(!msg.BEncode(&buf))
+          return false;
+        buf.sz  = buf.cur - buf.base;
+        buf.cur = buf.base;
+        return this->SendMessageBuffer(buf);
       }
-      remoteRC = msg->rc;
-      gotLIM   = true;
-
-      if(!DoKeyExchange(std::bind(&Crypto::transport_dh_server, OurCrypto(), _1,
-                                  _2, _3, _4),
-                        rxKey, msg->N, remoteRC.enckey,
-                        parent->RouterEncryptionSecret()))
-      {
-        Close();
-        return false;
-      }
-      /// future LIM are used for session renegotiation
-      GotLIM = std::bind(&Session::GotSessionRenegotiate, this,
-                         std::placeholders::_1);
-      EnterState(eSessionReady);
       return true;
     }
 
@@ -593,7 +442,7 @@ namespace llarp
     }
 
     bool
-    Session::Rehandshake()
+    Session::RenegotiateSession()
     {
       LinkIntroMessage lim;
       lim.rc = parent->GetOurRC();
@@ -740,6 +589,143 @@ namespace llarp
     Session::Alive()
     {
       lastActive = parent->Now();
+    }
+
+    InboundSession::InboundSession(LinkLayer* p, utp_socket* s,
+                                   const Addr& addr)
+        : Session(p)
+    {
+      sock         = s;
+      remoteAddr   = addr;
+      RouterID rid = p->GetOurRC().pubkey;
+      OurCrypto()->shorthash(rxKey, llarp_buffer_t(rid));
+      remoteRC.Clear();
+
+      assert(s == sock);
+      assert(utp_set_userdata(sock, this) == this);
+      GotLIM = std::bind(&InboundSession::InboundLIM, this, _1);
+    }
+
+    bool
+    InboundSession::InboundLIM(const LinkIntroMessage* msg)
+    {
+      if(gotLIM && remoteRC.pubkey != msg->rc.pubkey)
+      {
+        Close();
+        return false;
+      }
+      if(!gotLIM)
+      {
+        remoteRC = msg->rc;
+        OurCrypto()->shorthash(txKey, llarp_buffer_t(remoteRC.pubkey));
+
+        if(!DoKeyExchange(std::bind(&Crypto::transport_dh_server, OurCrypto(),
+                                    _1, _2, _3, _4),
+                          rxKey, msg->N, remoteRC.enckey,
+                          parent->TransportSecretKey()))
+          return false;
+
+        std::array< byte_t, LinkIntroMessage::MaxSize > tmp;
+        llarp_buffer_t buf(tmp);
+        LinkIntroMessage replymsg;
+        replymsg.rc = parent->GetOurRC();
+        if(!replymsg.rc.Verify(OurCrypto(), parent->Now()))
+        {
+          LogError("our RC is invalid? closing session to", remoteAddr);
+          Close();
+          return false;
+        }
+        replymsg.N.Randomize();
+        replymsg.P = DefaultLinkSessionLifetime;
+        if(!replymsg.Sign(parent->Sign))
+        {
+          LogError("failed to sign LIM for inbound handshake from ",
+                   remoteAddr);
+          Close();
+          return false;
+        }
+        // encode
+        if(!replymsg.BEncode(&buf))
+        {
+          LogError("failed to encode LIM for handshake from ", remoteAddr);
+          Close();
+          return false;
+        }
+        // rewind
+        buf.sz  = buf.cur - buf.base;
+        buf.cur = buf.base;
+        // send
+        if(!SendMessageBuffer(buf))
+        {
+          LogError("failed to repl to handshake from ", remoteAddr);
+          Close();
+          return false;
+        }
+        if(!DoKeyExchange(std::bind(&Crypto::transport_dh_client, OurCrypto(),
+                                    _1, _2, _3, _4),
+                          txKey, replymsg.N, remoteRC.enckey,
+                          parent->RouterEncryptionSecret()))
+
+          return false;
+        LogDebug("Sent reply LIM");
+        gotLIM = true;
+        EnterState(eSessionReady);
+        /// future LIM are used for session renegotiation
+        GotLIM = std::bind(&Session::GotSessionRenegotiate, this, _1);
+      }
+      return true;
+    }
+
+    OutboundSession::OutboundSession(LinkLayer* p, utp_socket* s,
+                                     const RouterContact& rc,
+                                     const AddressInfo& addr)
+        : Session(p)
+    {
+      remoteTransportPubKey = addr.pubkey;
+      remoteRC              = rc;
+      sock                  = s;
+      remoteAddr            = addr;
+
+      RouterID rid = remoteRC.pubkey;
+      OurCrypto()->shorthash(txKey, llarp_buffer_t(rid));
+      rid = p->GetOurRC().pubkey;
+      OurCrypto()->shorthash(rxKey, llarp_buffer_t(rid));
+
+      assert(utp_set_userdata(sock, this) == this);
+      assert(s == sock);
+
+      GotLIM = std::bind(&OutboundSession::OutboundLIM, this, _1);
+    }
+
+    void
+    OutboundSession::Start()
+    {
+      utp_connect(sock, remoteAddr, remoteAddr.SockLen());
+      EnterState(eConnecting);
+    }
+
+    bool
+    OutboundSession::OutboundLIM(const LinkIntroMessage* msg)
+    {
+      if(gotLIM && remoteRC.pubkey != msg->rc.pubkey)
+      {
+        return false;
+      }
+      remoteRC = msg->rc;
+      gotLIM   = true;
+
+      if(!DoKeyExchange(std::bind(&Crypto::transport_dh_server, OurCrypto(), _1,
+                                  _2, _3, _4),
+                        rxKey, msg->N, remoteRC.enckey,
+                        parent->RouterEncryptionSecret()))
+      {
+        Close();
+        return false;
+      }
+      /// future LIM are used for session renegotiation
+      GotLIM = std::bind(&Session::GotSessionRenegotiate, this, _1);
+      EnterState(eSessionReady);
+      return true;
     }
   }  // namespace utp
 }  // namespace llarp
