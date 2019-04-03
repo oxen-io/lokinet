@@ -94,8 +94,6 @@ struct llarp_epoll_loop : public llarp_ev_loop
 
   ~llarp_epoll_loop()
   {
-    if(epollfd != -1)
-      close(epollfd);
   }
 
   bool

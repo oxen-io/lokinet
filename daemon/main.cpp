@@ -257,7 +257,7 @@ main(int argc, char *argv[])
     llarp::metrics::PublisherScheduler publisherScheduler(
         scheduler, metricsGuard.instance());
     metricsGuard.instance()->addGlobalPublisher(
-        std::make_shared< llarp::metrics::StreamPublisher >(std::cout));
+        std::make_shared< llarp::metrics::StreamPublisher >(std::cerr));
 
     publisherScheduler.setDefault(absl::Seconds(30));
 
