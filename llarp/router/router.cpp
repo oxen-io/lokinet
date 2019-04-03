@@ -1478,9 +1478,11 @@ namespace llarp
       LogInfo("initalized service node: ", us);
       if(minConnectedRouters < 6)
         minConnectedRouters = 6;
+      
     }
     else
     {
+      maxConnectedRouters = minConnectedRouters + 1;
       // we are a client
       // regenerate keys and resign rc before everything else
       crypto()->identity_keygen(_identity);
@@ -1660,6 +1662,11 @@ namespace llarp
          && !(self->HasSessionTo(other.pubkey)
               || self->HasPendingConnectJob(other.pubkey)))
       {
+        for(const auto & rc : self->bootstrapRCList)
+        {
+          if(rc.pubkey == other.pubkey)
+            return want > 0;
+        }
         self->TryConnectAsync(other, 5);
         --want;
       }
