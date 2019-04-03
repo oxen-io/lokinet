@@ -25,6 +25,11 @@ namespace llarp
     {
     }
 
+    void
+    BaseSession::HandlePathDied(path::Path*)
+    {
+    }
+
     util::StatusObject
     BaseSession::ExtractStatus() const
     {

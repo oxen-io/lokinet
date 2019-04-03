@@ -6,9 +6,8 @@
 #include <crypto/crypto_libsodium.hpp>
 #include <dht/context.hpp>
 #include <dht/node.hpp>
-#include <link/iwp.hpp>
+#include <iwp/iwp.hpp>
 #include <link/server.hpp>
-#include <link/utp.hpp>
 #include <messages/link_message.hpp>
 #include <net/net.hpp>
 #include <rpc/rpc.hpp>
@@ -17,6 +16,7 @@
 #include <util/logger.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
+#include <utp/utp.hpp>
 
 #include <fstream>
 #include <cstdlib>
@@ -375,17 +375,17 @@ namespace llarp
 
   void
   Router::ForEachPeer(
-      std::function< void(const ILinkSession *, bool) > visit) const
+    std::function< void(const ILinkSession *, bool) > visit, bool randomize) const
   {
     for(const auto &link : outboundLinks)
     {
       link->ForEachSession(
-          [visit](const ILinkSession *peer) { visit(peer, true); });
+        [visit](const ILinkSession *peer) { visit(peer, true); }, randomize);
     }
     for(const auto &link : inboundLinks)
     {
       link->ForEachSession(
-          [visit](const ILinkSession *peer) { visit(peer, false); });
+        [visit](const ILinkSession *peer) { visit(peer, false); }, randomize);
     }
   }
 
@@ -1028,6 +1028,34 @@ namespace llarp
   }
 
   void
+  Router::LookupRouter(RouterID remote)
+  {
+    if(IsServiceNode())
+    {
+      ServiceNodeLookupRouterWhenExpired(remote);
+      return;
+    }
+    auto ep = hiddenServiceContext().getFirstEndpoint();
+    if(ep == nullptr)
+    {
+      LogError("cannot lookup ", remote, " no service endpoints available");
+      return;
+    }
+    ep->LookupRouterAnon(remote);
+  }
+
+  bool
+  Router::IsBootstrapNode(RouterID r) const
+  {
+    for(const auto & rc : bootstrapRCList)
+    {
+      if(rc.pubkey == r)
+        return true;
+    }
+    return false;
+  }
+  
+  void
   Router::Tick()
   {
     // LogDebug("tick router");
@@ -1035,15 +1063,16 @@ namespace llarp
 
     routerProfiling().Tick();
 
-    if(_rc.ExpiresSoon(now, randint() % 10000))
-    {
-      LogInfo("regenerating RC");
-      if(!UpdateOurRC(false))
-        LogError("Failed to update our RC");
-    }
-
     if(IsServiceNode())
     {
+      if(_rc.ExpiresSoon(now, randint() % 10000)
+         || (now - _rc.last_updated) > rcRegenInterval)
+      {
+        LogInfo("regenerating RC");
+        if(!UpdateOurRC(false))
+          LogError("Failed to update our RC");
+      }
+
       // only do this as service node
       // client endpoints do this on their own
       nodedb()->visit([&](const RouterContact &rc) -> bool {
@@ -1053,9 +1082,19 @@ namespace llarp
       });
     }
     // kill dead nodes
+    std::set< RouterID > removed;
     nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-      return routerProfiling().IsBad(rc.pubkey);
+      if(!routerProfiling().IsBad(rc.pubkey))
+        return false;
+      routerProfiling().ClearProfile(rc.pubkey);
+      removed.insert(rc.pubkey);
+      return true;
     });
+
+    // request killed nodes 1 time
+    for(const auto &pk : removed)
+      LookupRouter(pk);
+
     paths.TickPaths(now);
     paths.ExpirePaths(now);
 
@@ -1104,11 +1143,14 @@ namespace llarp
       else
         LogError("we have no bootstrap nodes specified");
     }
-    if(connected < minConnectedRouters)
+    else
     {
-      size_t dlt = minConnectedRouters - connected;
-      LogInfo("connecting to ", dlt, " random routers to keep alive");
-      ConnectToRandomRouters(dlt);
+      if(connected < minConnectedRouters)
+      {
+        size_t dlt = minConnectedRouters - connected;
+        LogInfo("connecting to ", dlt, " random routers to keep alive");
+        ConnectToRandomRouters(dlt);
+      }
     }
 
     if(!IsServiceNode())
@@ -1450,9 +1492,11 @@ namespace llarp
       LogInfo("initalized service node: ", us);
       if(minConnectedRouters < 6)
         minConnectedRouters = 6;
+      
     }
     else
     {
+      maxConnectedRouters = minConnectedRouters + 1;
       // we are a client
       // regenerate keys and resign rc before everything else
       crypto()->identity_keygen(_identity);
@@ -1632,6 +1676,11 @@ namespace llarp
          && !(self->HasSessionTo(other.pubkey)
               || self->HasPendingConnectJob(other.pubkey)))
       {
+        for(const auto & rc : self->bootstrapRCList)
+        {
+          if(rc.pubkey == other.pubkey)
+            return want > 0;
+        }
         self->TryConnectAsync(other, 5);
         --want;
       }

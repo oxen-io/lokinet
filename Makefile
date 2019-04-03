@@ -83,7 +83,9 @@ BUILD_ROOT = $(REPO)/build
 
 SCAN_BUILD ?= scan-build
 
-ifeq ($(shell /usr/bin/uname),SunOS)
+UNAME = $(shell which uname)
+
+ifeq ($(shell $(UNAME)),SunOS)
 CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
 
 ANALYZE_CONFIG_CMD = $(shell gecho -n "cd '$(BUILD_ROOT)' && " ; gecho -n "$(SCAN_BUILD) cmake -G'$(CMAKE_GEN)' -DCMAKE_CROSSCOMPILING=$(CROSS) -DSTATIC_LINK_RUNTIME=$(STATIC_LINK) -DUSE_NETNS=$(NETNS) -DUSE_AVX2=$(AVX2) -DUSE_LIBABYSS=$(JSONRPC) -DNON_PC_TARGET=$(NON_PC_TARGET) -DWITH_SHARED=$(SHARED_LIB) -DCMAKE_EXPORT_COMPILE_COMMANDS=ON '$(REPO)'")
@@ -175,7 +177,7 @@ testnet:
 $(TEST_EXE): debug
 
 test: $(TEST_EXE)
-	$(TEST_EXE)
+	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
 android-gradle-prepare:
 	rm -f $(ANDROID_PROPS)
@@ -222,7 +224,7 @@ coverage-config: clean
 
 coverage: coverage-config
 	$(MAKE) -C $(BUILD_ROOT)
-	$(TEST_EXE) || true # continue even if tests fail
+	test x$(CROSS) = xOFF && $(TEST_EXE) || true # continue even if tests fail
 	mkdir -p "$(COVERAGE_OUTDIR)"
 ifeq ($(CLANG),OFF)
 	gcovr -r . --branches --html --html-details -o "$(COVERAGE_OUTDIR)/lokinet.html"
@@ -252,14 +254,14 @@ docker-fedora:
 
 debian-configure:
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)" -DCMAKE_BUILD_TYPE=Release
+	$(CONFIG_CMD) -DDEBIAN=ON -DRELEASE_MOTTO="$(shell cat $(REPO)/motto.txt)"
 
 debian: debian-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
 	cp $(EXE) lokinet
 
 debian-test:
-	$(TEST_EXE) || true
+	test x$(CROSS) = xOFF && $(TEST_EXE) || test x$(CROSS) = xON
 
 install:
 	$(MAKE) -C '$(BUILD_ROOT)' install

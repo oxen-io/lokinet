@@ -211,11 +211,14 @@ namespace llarp
     uint16_t m_OutboundPort = 0;
 
     /// always maintain this many connections to other routers
-    size_t minConnectedRouters = 3;
+    size_t minConnectedRouters = 2;
     /// hard upperbound limit on the number of router to router connections
     size_t maxConnectedRouters = 2000;
 
     size_t minRequiredRouters = 4;
+    /// how often do we resign our RC? milliseconds.
+    // TODO: make configurable
+    llarp_time_t rcRegenInterval = 60 * 60 * 1000;
 
     // should we be sending padded messages every interval?
     bool sendPadding = false;
@@ -428,6 +431,9 @@ namespace llarp
     void
     FlushOutboundFor(RouterID remote, ILinkLayer *chosen = nullptr);
 
+    void
+    LookupRouter(RouterID remote) override;
+
     /// manually discard all pending messages to remote router
     void
     DiscardOutboundFor(const RouterID &remote);
@@ -446,11 +452,14 @@ namespace llarp
 
     void
     ForEachPeer(
-        std::function< void(const ILinkSession *, bool) > visit) const override;
+      std::function< void(const ILinkSession *, bool) > visit, bool randomize=false) const override;
 
     void
     ForEachPeer(std::function< void(ILinkSession *) > visit);
 
+    bool
+    IsBootstrapNode(RouterID) const override;
+    
     /// check if newRc matches oldRC and update local rc for this remote contact
     /// if valid
     /// returns true on valid and updated

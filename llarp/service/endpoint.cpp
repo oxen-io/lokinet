@@ -726,7 +726,20 @@ namespace llarp
     {
       if(NumInStatus(llarp::path::ePathEstablished) < 3)
         return false;
-      if(m_IntroSet.HasExpiredIntros(now))
+      // make sure we have all paths that are established
+      // in our introset
+      bool should = false;
+      ForEachPath([&](const path::Path *p) {
+                    if(!p->IsReady())
+                      return;
+                    for(const auto & i : m_IntroSet.I)
+                    {
+                      if(i == p->intro)
+                        return;
+                    }
+                    should = true;
+                  });
+      if(m_IntroSet.HasExpiredIntros(now) || should)
         return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
       return now - m_LastPublishAttempt >= INTROSET_PUBLISH_INTERVAL;
     }
@@ -853,6 +866,8 @@ namespace llarp
         job->hook                  = nullptr;
         job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
+        router->routerProfiling().MarkSuccess(msg->R[0].pubkey);
+        m_PendingRouters.erase(itr);
         return true;
       }
       return success;
@@ -1050,25 +1065,79 @@ namespace llarp
     }
 
     void
-    Endpoint::HandlePathDead(void* user)
+    Endpoint::HandlePathDied(path::Path*)
     {
-      Endpoint* self = static_cast< Endpoint* >(user);
-      self->RegenAndPublishIntroSet(self->Now(), true);
+      RegenAndPublishIntroSet(Now(), true);
+    }
+
+    void
+    Endpoint::OutboundContext::HandlePathDied(path::Path* path)
+    {
+      // unconditionally update introset
+      UpdateIntroSet(true);
+      const RouterID endpoint(path->Endpoint());
+      // if a path to our current intro died...
+      if(endpoint == remoteIntro.router)
+      {
+        // figure out how many paths to this router we have
+        size_t num = 0;
+        ForEachPath([&](path::Path* p) {
+          if(p->Endpoint() == endpoint && p->IsReady())
+            ++num;
+        });
+        // if we have more than two then we are probably fine
+        if(num > 2)
+          return;
+        // if we have one working one ...
+        if(num == 1)
+        {
+          num = 0;
+          ForEachPath([&](path::Path* p) {
+            if(p->Endpoint() == endpoint)
+              ++num;
+          });
+          // if we have 2 or more established or pending don't do anything
+          if(num > 2)
+            return;
+          BuildOneAlignedTo(endpoint);
+        }
+        else if(num == 0)
+        {
+          // we have no paths to this router right now
+          // hop off it
+          Introduction picked;
+          // get the latest intro that isn't on that endpoint
+          for(const auto& intro : currentIntroSet.I)
+          {
+            if(intro.router == endpoint)
+              continue;
+            if(intro.expiresAt > picked.expiresAt)
+              picked = intro;
+          }
+          // we got nothing
+          if(picked.router.IsZero())
+          {
+            return;
+          }
+          m_NextIntro = picked;
+          // check if we have a path to this router
+          num = 0;
+          ForEachPath([&](path::Path* p) {
+            if(p->Endpoint() == m_NextIntro.router)
+              ++num;
+          });
+          // build a path if one isn't already pending build or established
+          if(num == 0)
+            BuildOneAlignedTo(m_NextIntro.router);
+          SwapIntros();
+        }
+      }
     }
 
     bool
     Endpoint::CheckPathIsDead(path::Path*, llarp_time_t dlt)
     {
-      if(dlt <= 30000)
-        return false;
-
-      RouterLogic()->call_later(
-          {100, this, [](void* u, uint64_t, uint64_t left) {
-             if(left)
-               return;
-             HandlePathDead(u);
-           }});
-      return true;
+      return dlt > 20000;
     }
 
     bool

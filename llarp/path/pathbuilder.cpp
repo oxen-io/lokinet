@@ -207,11 +207,20 @@ namespace llarp
                        RouterContact& cur, size_t hop, PathRole roles)
     {
       (void)roles;
-      if(hop == 0)
-        return router->NumberOfConnectedRouters()
-            && router->GetRandomConnectedRouter(cur);
-
       size_t tries                 = 10;
+      if(hop == 0)
+      {
+        if(router->NumberOfConnectedRouters() == 0)
+          return false;
+        bool got = false;
+        router->ForEachPeer([&](const ILinkSession * s, bool ) {
+                              if(got || router->IsBootstrapNode(s->GetPubKey()))
+                                return;
+                              cur = s->GetRemoteRC();
+                              got = true;
+                            }, true);
+        return got;
+      }
       std::set< RouterID > exclude = {prev.pubkey};
       do
       {

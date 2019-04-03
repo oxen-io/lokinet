@@ -183,6 +183,8 @@ namespace llarp
           }
           prev = gIt;
         }
+        
+        m_stream.flush();
       }
     }
   }  // namespace metrics

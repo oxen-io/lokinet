@@ -81,6 +81,10 @@ namespace llarp
       virtual void
       HandlePathBuildTimeout(__attribute__((unused)) Path* path);
 
+      /// a path died now what?
+      virtual void
+      HandlePathDied(Path* path) = 0;
+
       bool
       GetNewestIntro(service::Introduction& intro) const;
 
