@@ -153,6 +153,28 @@ namespace llarp
     }
 
     void
+    Message::AddServFail(RR_TTL_t ttl)
+    {
+      if(questions.size())
+      {
+        hdr_fields |= flags_RCODEServFail;
+        // authorative response with recursion available
+        hdr_fields |= flags_QR | flags_AA | flags_RA;
+        // don't allow recursion on this request
+        hdr_fields &= ~flags_RD;
+        answers.emplace_back();
+        const auto& question = questions[0];
+        auto& nx             = answers.back();
+        nx.rr_name           = question.qname;
+        nx.rr_type           = question.qtype;
+        nx.rr_class          = question.qclass;
+        nx.ttl               = ttl;
+        nx.rData.resize(1);
+        nx.rData.data()[0] = 0;
+      }
+    }
+
+    void
     Message::AddINReply(llarp::huint32_t ip, bool isV6, RR_TTL_t ttl)
     {
       if(questions.size())

@@ -21,15 +21,6 @@
 #include <unordered_map>
 #include <vector>
 
-#define MAXHOPS (8)
-#ifndef DEFAULT_HOP_LENGTH
-#define DEFAULT_HOP_LENGTH (4)
-#endif
-#define DEFAULT_PATH_LIFETIME (10 * 60 * 1000)
-#define PATH_BUILD_TIMEOUT (15 * 1000)
-#define MESSAGE_PAD_SIZE (128)
-#define PATH_ALIVE_TIMEOUT (60 * 1000)
-
 namespace llarp
 {
   class Logic;
@@ -40,6 +31,23 @@ namespace llarp
 
   namespace path
   {
+    /// maximum path length
+    constexpr size_t max_len = 8;
+    /// default path length
+    constexpr size_t default_len = 4;
+    /// pad messages to the nearest this many bytes
+    constexpr size_t pad_size = 128;
+    /// default path lifetime in ms
+    constexpr llarp_time_t default_lifetime = 10 * 60 * 1000;
+    /// after this many ms a path build times out
+    constexpr llarp_time_t build_timeout = 15000;
+
+    /// measure latency every this interval ms
+    constexpr llarp_time_t latency_interval = 5000;
+
+    /// if a path is inactive for this amount of time it's dead
+    constexpr llarp_time_t alive_timeout = 60000;
+
     struct TransitHopInfo
     {
       TransitHopInfo() = default;
@@ -153,7 +161,7 @@ namespace llarp
       ShortHash nonceXOR;
       llarp_time_t started = 0;
       // 10 minutes default
-      llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
+      llarp_time_t lifetime = default_lifetime;
       llarp_proto_version_t version;
       llarp_time_t m_LastActivity = 0;
 
@@ -288,7 +296,7 @@ namespace llarp
       /// nonce for key exchange
       TunnelNonce nonce;
       // lifetime
-      llarp_time_t lifetime = DEFAULT_PATH_LIFETIME;
+      llarp_time_t lifetime = default_lifetime;
 
       ~PathHopConfig();
       PathHopConfig();

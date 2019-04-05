@@ -152,9 +152,10 @@ namespace llarp
       for(const auto& intro : I)
       {
         if(intro.expiresAt > now
-           && intro.expiresAt - now > DEFAULT_PATH_LIFETIME)
+           && intro.expiresAt - now > path::default_lifetime)
         {
-          if(W && intro.expiresAt - W->extendedLifetime > DEFAULT_PATH_LIFETIME)
+          if(W
+             && intro.expiresAt - W->extendedLifetime > path::default_lifetime)
             return false;
           else if(W == nullptr)
           {
