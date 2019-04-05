@@ -3,9 +3,6 @@
 #include <llarp.h>
 #include <util/fs.hpp>
 #include <util/logger.hpp>
-#include <util/metrics_core.hpp>
-#include <util/metrics_publishers.hpp>
-#include <util/scheduler.hpp>
 
 #include <getopt.h>
 #include <signal.h>
@@ -252,23 +249,10 @@ main(int argc, char *argv[])
     signal(SIGHUP, handle_signal);
 #endif
 
-    llarp::thread::Scheduler scheduler;
-    llarp::metrics::DefaultManagerGuard metricsGuard;
-    llarp::metrics::PublisherScheduler publisherScheduler(
-        scheduler, metricsGuard.instance());
-    metricsGuard.instance()->addGlobalPublisher(
-        std::make_shared< llarp::metrics::StreamPublisher >(std::cerr));
-
-    publisherScheduler.setDefault(absl::Seconds(30));
-
-    scheduler.start();
-
     code = llarp_main_setup(ctx);
     if(code == 0)
       code = llarp_main_run(ctx);
     llarp_main_free(ctx);
-
-    scheduler.stop();
   }
 #ifdef _WIN32
   ::WSACleanup();
