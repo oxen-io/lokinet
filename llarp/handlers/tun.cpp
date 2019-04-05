@@ -404,9 +404,6 @@ namespace llarp
       llarp::service::Address addr;
       if(msg.questions.size() == 1)
       {
-        // always hook mx records
-        if(msg.questions[0].qtype == llarp::dns::qTypeMX)
-          return true;
         // hook random.snode
         if(msg.questions[0].qname == "random.snode"
            || msg.questions[0].qname == "random.snode.")
@@ -415,10 +412,10 @@ namespace llarp
         if(msg.questions[0].qname == "localhost.loki"
            || msg.questions[0].qname == "localhost.loki.")
           return true;
-        // hook .loki A records
+        // hook .loki
         if(addr.FromString(msg.questions[0].qname, ".loki"))
           return true;
-        // hook .snode A records
+        // hook .snode
         if(addr.FromString(msg.questions[0].qname, ".snode"))
           return true;
         // hook any ranges we own
