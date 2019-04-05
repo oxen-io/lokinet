@@ -139,7 +139,7 @@ namespace llarp
       result = func;
       worker = pool;
 
-      for(size_t idx = 0; idx < MAXHOPS; ++idx)
+      for(size_t idx = 0; idx < path::max_len; ++idx)
       {
         LRCM.frames[idx].Randomize();
       }
@@ -207,18 +207,20 @@ namespace llarp
                        RouterContact& cur, size_t hop, PathRole roles)
     {
       (void)roles;
-      size_t tries                 = 10;
+      size_t tries = 10;
       if(hop == 0)
       {
         if(router->NumberOfConnectedRouters() == 0)
           return false;
         bool got = false;
-        router->ForEachPeer([&](const ILinkSession * s, bool ) {
-                              if(got || router->IsBootstrapNode(s->GetPubKey()))
-                                return;
-                              cur = s->GetRemoteRC();
-                              got = true;
-                            }, true);
+        router->ForEachPeer(
+            [&](const ILinkSession* s, bool) {
+              if(got || router->IsBootstrapNode(s->GetPubKey()))
+                return;
+              cur = s->GetRemoteRC();
+              got = true;
+            },
+            true);
         return got;
       }
       std::set< RouterID > exclude = {prev.pubkey};

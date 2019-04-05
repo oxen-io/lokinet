@@ -374,18 +374,18 @@ namespace llarp
   }
 
   void
-  Router::ForEachPeer(
-    std::function< void(const ILinkSession *, bool) > visit, bool randomize) const
+  Router::ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
+                      bool randomize) const
   {
     for(const auto &link : outboundLinks)
     {
       link->ForEachSession(
-        [visit](const ILinkSession *peer) { visit(peer, true); }, randomize);
+          [visit](const ILinkSession *peer) { visit(peer, true); }, randomize);
     }
     for(const auto &link : inboundLinks)
     {
       link->ForEachSession(
-        [visit](const ILinkSession *peer) { visit(peer, false); }, randomize);
+          [visit](const ILinkSession *peer) { visit(peer, false); }, randomize);
     }
   }
 
@@ -1047,14 +1047,14 @@ namespace llarp
   bool
   Router::IsBootstrapNode(RouterID r) const
   {
-    for(const auto & rc : bootstrapRCList)
+    for(const auto &rc : bootstrapRCList)
     {
       if(rc.pubkey == r)
         return true;
     }
     return false;
   }
-  
+
   void
   Router::Tick()
   {
@@ -1082,18 +1082,12 @@ namespace llarp
       });
     }
     // kill dead nodes
-    std::set< RouterID > removed;
     nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
       if(!routerProfiling().IsBad(rc.pubkey))
         return false;
       routerProfiling().ClearProfile(rc.pubkey);
-      removed.insert(rc.pubkey);
       return true;
     });
-
-    // request killed nodes 1 time
-    for(const auto &pk : removed)
-      LookupRouter(pk);
 
     paths.TickPaths(now);
     paths.ExpirePaths(now);
@@ -1492,7 +1486,6 @@ namespace llarp
       LogInfo("initalized service node: ", us);
       if(minConnectedRouters < 6)
         minConnectedRouters = 6;
-      
     }
     else
     {
@@ -1676,7 +1669,7 @@ namespace llarp
          && !(self->HasSessionTo(other.pubkey)
               || self->HasPendingConnectJob(other.pubkey)))
       {
-        for(const auto & rc : self->bootstrapRCList)
+        for(const auto &rc : self->bootstrapRCList)
         {
           if(rc.pubkey == other.pubkey)
             return want > 0;
