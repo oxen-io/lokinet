@@ -31,7 +31,7 @@ namespace llarp
     {
       /// minimum interval for publishing introsets
       static const llarp_time_t INTROSET_PUBLISH_INTERVAL =
-          DEFAULT_PATH_LIFETIME / 8;
+          path::default_lifetime / 8;
 
       static const llarp_time_t INTROSET_PUBLISH_RETRY_INTERVAL = 5000;
 
@@ -586,7 +586,7 @@ namespace llarp
 
         bool
         IsExpired(llarp_time_t now,
-                  llarp_time_t lifetime = (DEFAULT_PATH_LIFETIME * 2)) const
+                  llarp_time_t lifetime = (path::default_lifetime * 2)) const
         {
           if(now <= lastUsed)
             return false;

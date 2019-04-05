@@ -76,10 +76,10 @@ namespace llarp
       N.Randomize();
       buf.sz = buf.cur - buf.base;
       // pad to nearest MESSAGE_PAD_SIZE bytes
-      auto dlt = buf.sz % MESSAGE_PAD_SIZE;
+      auto dlt = buf.sz % pad_size;
       if(dlt)
       {
-        dlt = MESSAGE_PAD_SIZE - dlt;
+        dlt = pad_size - dlt;
         // randomize padding
         r->crypto()->randbytes(buf.cur, dlt);
         buf.sz += dlt;

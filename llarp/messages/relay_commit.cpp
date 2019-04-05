@@ -63,10 +63,10 @@ namespace llarp
   bool
   LR_CommitMessage::HandleMessage(AbstractRouter* router) const
   {
-    if(frames.size() != MAXHOPS)
+    if(frames.size() != path::max_len)
     {
       llarp::LogError("LRCM invalid number of records, ", frames.size(),
-                      "!=", MAXHOPS);
+                      "!=", path::max_len);
       return false;
     }
     if(!router->pathContext().AllowingTransit())

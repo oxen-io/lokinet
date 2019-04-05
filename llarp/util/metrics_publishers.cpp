@@ -153,7 +153,6 @@ namespace llarp
             formatValue(stream, record.max(), maxSpec);
           }
         }
-
         stream << " ]\n";
       }
 
@@ -183,8 +182,6 @@ namespace llarp
           }
           prev = gIt;
         }
-        
-        m_stream.flush();
       }
     }
   }  // namespace metrics

@@ -161,10 +161,10 @@ namespace llarp
     {
       if(m_AuthedLinks.count(pk) > MaxSessionsPerKey)
       {
-        s->SendClose();
+        s->Close();
         return false;
       }
-      m_AuthedLinks.emplace(pk, std::move(itr->second));
+      m_AuthedLinks.emplace(pk, itr->second);
       itr = m_Pending.erase(itr);
       return true;
     }
@@ -224,13 +224,12 @@ namespace llarp
     if(!PickAddress(rc, to))
       return false;
     llarp::Addr addr(to);
-    auto s = NewOutboundSession(rc, to);
+    std::shared_ptr< ILinkSession > s = NewOutboundSession(rc, to);
     if(PutSession(s))
     {
       s->Start();
       return true;
     }
-    delete s;
     return false;
   }
 
@@ -276,7 +275,7 @@ namespace llarp
       auto itr = m_AuthedLinks.begin();
       while(itr != m_AuthedLinks.end())
       {
-        itr->second->SendClose();
+        itr->second->Close();
         ++itr;
       }
     }
@@ -285,7 +284,7 @@ namespace llarp
       auto itr = m_Pending.begin();
       while(itr != m_Pending.end())
       {
-        itr->second->SendClose();
+        itr->second->Close();
         ++itr;
       }
     }
@@ -301,7 +300,7 @@ namespace llarp
     auto itr   = range.first;
     while(itr != range.second)
     {
-      itr->second->SendClose();
+      itr->second->Close();
       itr = m_AuthedLinks.erase(itr);
     }
   }
@@ -398,14 +397,14 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::PutSession(ILinkSession* s)
+  ILinkLayer::PutSession(const std::shared_ptr< ILinkSession >& s)
   {
     static constexpr size_t MaxSessionsPerEndpoint = 5;
     Lock lock(&m_PendingMutex);
     llarp::Addr addr = s->GetRemoteEndpoint();
     if(m_Pending.count(addr) >= MaxSessionsPerEndpoint)
       return false;
-    m_Pending.emplace(addr, std::unique_ptr< ILinkSession >(s));
+    m_Pending.emplace(addr, s);
     return true;
   }
 

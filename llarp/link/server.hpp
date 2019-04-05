@@ -11,6 +11,7 @@
 #include <util/status.hpp>
 
 #include <list>
+#include <memory>
 #include <unordered_map>
 
 namespace llarp
@@ -60,6 +61,9 @@ namespace llarp
       return llarp_ev_loop_time_now_ms(m_Loop);
     }
 
+    virtual Crypto*
+    OurCrypto() = 0;
+
     bool
     HasSessionTo(const RouterID& pk);
 
@@ -105,7 +109,7 @@ namespace llarp
     Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
               uint16_t port);
 
-    virtual ILinkSession*
+    virtual std::shared_ptr< ILinkSession >
     NewOutboundSession(const RouterContact& rc, const AddressInfo& ai) = 0;
 
     virtual void
@@ -225,7 +229,7 @@ namespace llarp
     using Mutex = util::NullMutex;
 
     bool
-    PutSession(ILinkSession* s);
+    PutSession(const std::shared_ptr< ILinkSession >& s);
 
     llarp::Logic* m_Logic = nullptr;
     llarp_ev_loop* m_Loop = nullptr;
@@ -234,10 +238,10 @@ namespace llarp
     SecretKey m_SecretKey;
 
     using AuthedLinks =
-        std::unordered_multimap< RouterID, std::unique_ptr< ILinkSession >,
+        std::unordered_multimap< RouterID, std::shared_ptr< ILinkSession >,
                                  RouterID::Hash >;
     using Pending =
-        std::unordered_multimap< llarp::Addr, std::unique_ptr< ILinkSession >,
+        std::unordered_multimap< llarp::Addr, std::shared_ptr< ILinkSession >,
                                  llarp::Addr::Hash >;
 
     Mutex m_AuthedLinksMutex ACQUIRED_BEFORE(m_PendingMutex);

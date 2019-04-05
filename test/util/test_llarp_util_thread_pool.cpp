@@ -419,10 +419,10 @@ TEST(TestThreadPool, recurseJob)
   static constexpr size_t depth    = 10;
   static constexpr size_t capacity = 100;
 
-  ThreadPool pool(threads, capacity);
-
   util::Barrier barrier(threads + 1);
   std::atomic_size_t counter{0};
+
+  ThreadPool pool(threads, capacity);
 
   pool.start();
 

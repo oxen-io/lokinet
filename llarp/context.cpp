@@ -10,6 +10,9 @@
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logger.h>
+#include <util/metrics.hpp>
+#include <util/metrics_publishers.hpp>
+#include <util/scheduler.hpp>
 
 #include <getopt.h>
 #include <signal.h>
@@ -22,10 +25,26 @@
 
 namespace llarp
 {
+  Context::Context()
+      : m_scheduler(std::make_unique< thread::Scheduler >())
+      , m_metricsManager(std::make_unique< metrics::DefaultManagerGuard >())
+      , m_metricsPublisher(std::make_unique< metrics::PublisherScheduler >(
+            *m_scheduler, m_metricsManager->instance()))
+  {
+    m_metricsManager->instance()->addGlobalPublisher(
+        std::make_shared< llarp::metrics::StreamPublisher >(std::cerr));
+
+    m_metricsPublisher->setDefault(absl::Seconds(30));
+
+    m_scheduler->start();
+  }
+
   Context::~Context()
   {
     llarp_ev_loop *ptr = mainloop.release();
     llarp_ev_loop_free(&ptr);
+
+    m_scheduler->stop();
   }
 
   void
@@ -339,8 +358,8 @@ extern "C"
     {
       cSetLogLevel(eLogDebug);
     }
-    llarp_main *m = new llarp_main;
-    m->ctx.reset(new llarp::Context());
+    llarp_main *m          = new llarp_main;
+    m->ctx                 = std::make_unique< llarp::Context >();
     m->ctx->singleThreaded = !multiProcess;
     if(!m->ctx->LoadConfig(fname))
     {

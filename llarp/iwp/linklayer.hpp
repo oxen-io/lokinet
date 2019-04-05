@@ -21,12 +21,19 @@ namespace llarp
                 TimeoutHandler timeout, SessionClosedHandler closed);
 
       ~LinkLayer();
+
       Crypto *const crypto;
+
+      Crypto *
+      OurCrypto() override
+      {
+        return crypto;
+      }
 
       bool
       Start(Logic *l) override;
 
-      ILinkSession *
+      std::shared_ptr< ILinkSession >
       NewOutboundSession(const RouterContact &rc,
                          const AddressInfo &ai) override;
 
