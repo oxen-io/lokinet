@@ -1391,7 +1391,7 @@ namespace llarp
                 continue;
               if(!GetCachedSessionKeyFor(tag, K))
                 continue;
-              if(p == nullptr && GetIntroFor(tag, remoteIntro))
+              if(GetIntroFor(tag, remoteIntro))
               {
                 if(!remoteIntro.ExpiresSoon(now))
                   p = GetNewestPathByRouter(remoteIntro.router);
@@ -1406,13 +1406,13 @@ namespace llarp
             {
               // TODO: check expiration of our end
               ProtocolMessage m(f.T);
-              PutReplyIntroFor(f.T, m.introReply);
               m.PutBuffer(data);
               f.N.Randomize();
               f.C.Zero();
               transfer.Y.Randomize();
               m.proto      = t;
               m.introReply = p->intro;
+              PutReplyIntroFor(f.T, m.introReply);
               m.sender     = m_Identity.pub;
               f.F          = m.introReply.pathID;
               f.S          = GetSeqNoForConvo(f.T);
