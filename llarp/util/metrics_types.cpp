@@ -123,6 +123,13 @@ namespace llarp
       return stream;
     }
 
+    std::string
+    Description::toString() const
+    {
+      util::Lock l(&m_mutex);
+      return m_category->name() + std::string(".") + m_name;
+    }
+
     std::ostream &
     Description::print(std::ostream &stream) const
     {

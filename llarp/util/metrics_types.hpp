@@ -248,6 +248,9 @@ namespace llarp
         return m_format;
       }
 
+      std::string
+      toString() const;
+
       std::ostream &
       print(std::ostream &stream) const;
     };
@@ -315,6 +318,20 @@ namespace llarp
       {
         assert(valid());
         return m_description->name();
+      }
+
+      std::string
+      toString() const
+      {
+        if(m_description)
+        {
+          return m_description->toString();
+          ;
+        }
+        else
+        {
+          return "INVALID_METRIC";
+        }
       }
 
       std::ostream &
