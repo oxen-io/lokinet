@@ -22,5 +22,17 @@ namespace network.loki.lokinet.win32.ui.Properties {
                 return defaultInstance;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool autoScroll {
+            get {
+                return ((bool)(this["autoScroll"]));
+            }
+            set {
+                this["autoScroll"] = value;
+            }
+        }
     }
 }
