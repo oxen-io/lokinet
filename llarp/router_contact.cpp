@@ -302,7 +302,10 @@ namespace llarp
     for(const auto &exit : exits)
     {
       if(IsBogonRange(exit.address, exit.netmask))
+      {
+        llarp::LogError("bogon exit: ", exit);
         return false;
+      }
     }
     if(!VerifySignature(crypto))
     {
