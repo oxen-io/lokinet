@@ -1404,6 +1404,9 @@ namespace llarp
 
     LogInfo("You have ", inboundLinks.size(), " inbound links");
 
+    // set public signing key
+    _rc.pubkey = seckey_topublic(identity());
+
     AddressInfo ai;
     for(const auto &link : inboundLinks)
     {
@@ -1418,23 +1421,23 @@ namespace llarp
         if(IsBogon(ai.ip))
           continue;
         _rc.addrs.push_back(ai);
+        if(ExitEnabled())
+        {
+          const llarp::Addr addr(ai);
+          const nuint32_t a{htonl(addr.addr4()->s_addr)};
+          _rc.exits.emplace_back(_rc.pubkey, a);
+          LogInfo(
+              "Neato teh l33toh, You are a freaking exit relay. w00t!!!!! your "
+              "exit "
+              "is advertised as exiting at ",
+              a);
+        }
       }
     }
 
     // set public encryption key
     _rc.enckey = seckey_topublic(encryption());
-    // set public signing key
-    _rc.pubkey = seckey_topublic(identity());
-    if(ExitEnabled())
-    {
-      nuint32_t a = publicAddr.xtonl();
-      _rc.exits.emplace_back(_rc.pubkey, a);
-      LogInfo(
-          "Neato teh l33toh, You are a freaking exit relay. w00t!!!!! your "
-          "exit "
-          "is advertised as exiting at ",
-          a);
-    }
+
     LogInfo("Signing rc...");
     if(!_rc.Sign(crypto(), identity()))
     {

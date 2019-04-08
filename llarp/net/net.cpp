@@ -1004,10 +1004,10 @@ namespace llarp
   }
 
   bool
-  IsBogonRange(const in6_addr&, const in6_addr&)
+  IsBogonRange(const in6_addr& host, const in6_addr&)
   {
     // TODO: implement me
-    return false;
+    return IsBogon(host);
   }
 
   bool
