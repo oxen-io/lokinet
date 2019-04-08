@@ -134,7 +134,9 @@ namespace llarp
         msg->from = from;
         result    = msg->HandleMessage(h, r);
         if(!result)
+        {
           llarp::LogWarn("Failed to handle inbound routing message ", key);
+        }
       }
       else
       {
