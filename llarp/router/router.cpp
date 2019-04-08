@@ -1424,7 +1424,7 @@ namespace llarp
         if(ExitEnabled())
         {
           const llarp::Addr addr(ai);
-          const nuint32_t a{htonl(addr.addr4()->s_addr)};
+          const nuint32_t a{addr.addr4()->s_addr};
           _rc.exits.emplace_back(_rc.pubkey, a);
           LogInfo(
               "Neato teh l33toh, You are a freaking exit relay. w00t!!!!! your "
