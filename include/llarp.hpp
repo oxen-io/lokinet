@@ -44,8 +44,10 @@ namespace llarp
     std::unique_ptr< metrics::DefaultManagerGuard > m_metricsManager;
     std::unique_ptr< metrics::PublisherScheduler > m_metricsPublisher;
 
-    int num_nethreads   = 1;
-    bool singleThreaded = false;
+    int num_nethreads      = 1;
+    bool singleThreaded    = false;
+    bool disableMetrics    = false;
+    bool disableMetricLogs = false;
     std::unique_ptr< Crypto > crypto;
     std::unique_ptr< AbstractRouter > router;
     std::unique_ptr< llarp_threadpool > worker;
@@ -106,6 +108,9 @@ namespace llarp
 
     void
     progress();
+
+    void
+    setupMetrics();
 
     std::string configfile;
     std::string pidfile;

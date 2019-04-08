@@ -26,17 +26,7 @@
 namespace llarp
 {
   Context::Context()
-      : m_scheduler(std::make_unique< thread::Scheduler >())
-      , m_metricsManager(std::make_unique< metrics::DefaultManagerGuard >())
-      , m_metricsPublisher(std::make_unique< metrics::PublisherScheduler >(
-            *m_scheduler, m_metricsManager->instance()))
   {
-    m_metricsManager->instance()->addGlobalPublisher(
-        std::make_shared< llarp::metrics::StreamPublisher >(std::cerr));
-
-    m_metricsPublisher->setDefault(absl::Seconds(30));
-
-    m_scheduler->start();
   }
 
   Context::~Context()
@@ -62,6 +52,16 @@ namespace llarp
     }
     using namespace std::placeholders;
     config->visit(std::bind(&Context::iter_config, this, _1, _2, _3));
+
+    if(!disableMetrics)
+    {
+      setupMetrics();
+      if(!disableMetricLogs)
+      {
+        m_metricsManager->instance()->addGlobalPublisher(
+            std::make_shared< metrics::StreamPublisher >(std::cerr));
+      }
+    }
     return true;
   }
 
@@ -73,6 +73,25 @@ namespace llarp
       if(!strcmp(key, "pidfile"))
       {
         SetPIDFile(val);
+      }
+    }
+    if(!strcmp(section, "metrics"))
+    {
+      if(!strcmp(key, "disable-metrics"))
+      {
+        disableMetrics = true;
+      }
+      if(!strcmp(key, "disable-metrics-log"))
+      {
+        disableMetricLogs = true;
+      }
+      if(!strcmp(key, "json-metrics-path"))
+      {
+        setupMetrics();
+        m_metricsManager->instance()->addGlobalPublisher(
+            std::make_shared< metrics::JsonPublisher >(
+                std::bind(&metrics::JsonPublisher::directoryPublisher,
+                          std::placeholders::_1, val)));
       }
     }
     if(!strcmp(section, "router"))
@@ -101,6 +120,28 @@ namespace llarp
         nodedb_dir = val;
       }
     }
+  }
+
+  void
+  Context::setupMetrics()
+  {
+    if(!m_scheduler)
+    {
+      m_scheduler = std::make_unique< thread::Scheduler >();
+    }
+    if(!m_metricsManager)
+    {
+      m_metricsManager = std::make_unique< metrics::DefaultManagerGuard >();
+    }
+    if(!m_metricsPublisher)
+    {
+      m_metricsPublisher = std::make_unique< metrics::PublisherScheduler >(
+          *m_scheduler, m_metricsManager->instance());
+    }
+
+    m_metricsPublisher->setDefault(absl::Seconds(30));
+
+    m_scheduler->start();
   }
 
   void
