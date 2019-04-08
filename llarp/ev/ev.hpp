@@ -448,7 +448,7 @@ namespace llarp
           {
             auto& itr      = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, std::min(amount, itr.bufsz));
-            if(result == -1)
+            if(result <= 0)
               return;
             ssize_t dlt = itr.bufsz - result;
             if(dlt > 0)
@@ -471,7 +471,7 @@ namespace llarp
           {
             auto& itr      = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, itr.bufsz);
-            if(result == -1)
+            if(result <= 0)
             {
               errno = 0;
               return;
