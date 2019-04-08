@@ -64,18 +64,19 @@ struct DemoCall : public abyss::http::IRPCClientHandler
 
 struct DemoClient : public abyss::http::JSONRPC
 {
-  llarp_ev_loop* m_Loop;
+  llarp_ev_loop_ptr m_Loop;
   llarp::Logic* m_Logic;
 
-  DemoClient(llarp_ev_loop* l, llarp::Logic* logic)
-      : abyss::http::JSONRPC(), m_Loop(l), m_Logic(logic)
+  DemoClient(llarp_ev_loop_ptr l, llarp::Logic* logic)
+      : abyss::http::JSONRPC(), m_Loop(std::move(l)), m_Logic(logic)
   {
   }
 
   abyss::http::IRPCClientHandler*
   NewConn(abyss::http::ConnImpl* impl)
   {
-    return new DemoCall(impl, m_Logic, std::bind(&llarp_ev_loop_stop, m_Loop));
+    return new DemoCall(impl, m_Logic,
+                        std::bind(&llarp_ev_loop_stop, m_Loop.get()));
   }
 
   void
@@ -124,9 +125,8 @@ main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
 #endif
   llarp::SetLogLevel(llarp::eLogDebug);
   llarp_threadpool* threadpool = llarp_init_same_process_threadpool();
-  llarp_ev_loop* loop          = nullptr;
-  llarp_ev_loop_alloc(&loop);
-  llarp::Logic* logic = new llarp::Logic(threadpool);
+  llarp_ev_loop_ptr loop       = llarp_make_ev_loop();
+  llarp::Logic* logic          = new llarp::Logic(threadpool);
   sockaddr_in addr;
   addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
   addr.sin_port        = htons(1222);

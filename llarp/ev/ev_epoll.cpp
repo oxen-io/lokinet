@@ -207,7 +207,7 @@ namespace llarp
   bool
   tun::setup()
   {
-    // for android
+    // for android / ios
     if(t->get_fd_promise)
     {
       tunif->obtain_fd = &wait_for_fd_promise;
@@ -476,7 +476,7 @@ llarp_epoll_loop::close_ev(llarp::ev_io* ev)
 llarp::ev_io*
 llarp_epoll_loop::create_tun(llarp_tun_io* tun)
 {
-  llarp::tun* t = new llarp::tun(tun, this);
+  llarp::tun* t = new llarp::tun(tun, shared_from_this());
   if(tun->get_fd_promise)
   {
   }

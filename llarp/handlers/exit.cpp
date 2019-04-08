@@ -267,7 +267,8 @@ namespace llarp
     {
       if(m_ShouldInitTun)
       {
-        if(!llarp_ev_add_tun(GetRouter()->netloop(), &m_Tun))
+        auto loop = GetRouter()->netloop();
+        if(!llarp_ev_add_tun(loop.get(), &m_Tun))
         {
           llarp::LogWarn("Could not create tunnel for exit endpoint");
           return false;

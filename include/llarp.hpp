@@ -2,6 +2,7 @@
 #define LLARP_HPP
 
 #include <util/types.hpp>
+#include <ev/ev.hpp>
 
 #include <iostream>
 #include <memory>
@@ -53,7 +54,7 @@ namespace llarp
     std::unique_ptr< Logic > logic;
     std::unique_ptr< Config > config;
     std::unique_ptr< llarp_nodedb > nodedb;
-    std::unique_ptr< llarp_ev_loop > mainloop;
+    llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
 
     bool

@@ -20,68 +20,24 @@
 #error No async event loop for your platform, subclass llarp_ev_loop
 #endif
 
-// This is dead now isn't it -rick
-void
-llarp_ev_loop_alloc(struct llarp_ev_loop **ev)
-{
-#if __linux__ || SOLARIS_HAVE_EPOLL
-  *ev = new llarp_epoll_loop;
-#elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
-    || (__APPLE__ && __MACH__)
-  *ev                                = new llarp_kqueue_loop;
-#elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
-  *ev                                = new llarp_win32_loop;
-#elif defined(__sun) && !defined(SOLARIS_HAVE_EPOLL)
-  *ev                                = new llarp_poll_loop;
-#else
-// TODO: fall back to a generic select-based event loop
-#error no event loop subclass
-#endif
-  (*ev)->init();
-  (*ev)->_now = llarp::time_now_ms();
-}
-
-std::unique_ptr< llarp_ev_loop >
+llarp_ev_loop_ptr
 llarp_make_ev_loop()
 {
 #if __linux__ || SOLARIS_HAVE_EPOLL
-  std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_epoll_loop >();
+  llarp_ev_loop_ptr r = std::make_shared< llarp_epoll_loop >();
 #elif defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__) \
     || (__APPLE__ && __MACH__)
-  std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_kqueue_loop >();
+  llarp_ev_loop_ptr r = std::make_shared< llarp_kqueue_loop >();
 #elif defined(_WIN32) || defined(_WIN64) || defined(__NT__)
-  std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_win32_loop >();
+  llarp_ev_loop_ptr r = std::make_shared< llarp_win32_loop >();
 #elif defined(__sun) && !defined(SOLARIS_HAVE_EPOLL)
-  std::unique_ptr< llarp_ev_loop > r = std::make_unique< llarp_poll_loop >();
+  llarp_ev_loop_ptr r = std::make_shared< llarp_poll_loop >();
 #else
 #error no event loop subclass
 #endif
   r->init();
   r->update_time();
   return r;
-}
-
-void
-llarp_ev_loop_free(struct llarp_ev_loop **ev)
-{
-  delete *ev;
-  *ev = nullptr;
-#ifdef _WIN32
-  exit_tun_loop();
-#endif
-}
-
-int
-llarp_ev_loop_run(struct llarp_ev_loop *ev, llarp::Logic *logic)
-{
-  while(ev->running())
-  {
-    ev->update_time();
-    ev->tick(EV_TICK_INTERVAL);
-    if(ev->running())
-      logic->tick(ev->_now);
-  }
-  return 0;
 }
 
 int
@@ -91,7 +47,7 @@ llarp_fd_promise_wait_for_value(struct llarp_fd_promise *p)
 }
 
 void
-llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
+llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
                                  struct llarp_threadpool *tp,
                                  llarp::Logic *logic)
 {
@@ -127,7 +83,7 @@ llarp_ev_close_udp(struct llarp_udp_io *udp)
 }
 
 llarp_time_t
-llarp_ev_loop_time_now_ms(struct llarp_ev_loop *loop)
+llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &loop)
 {
   if(loop)
     return loop->time_now();

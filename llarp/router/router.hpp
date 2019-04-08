@@ -167,7 +167,7 @@ namespace llarp
       return _routerProfiling;
     }
 
-    llarp_ev_loop *
+    llarp_ev_loop_ptr
     netloop() const override
     {
       return _netloop;
@@ -190,7 +190,7 @@ namespace llarp
     struct sockaddr_in ip4addr;
     AddressInfo addrInfo;
 
-    llarp_ev_loop *_netloop;
+    llarp_ev_loop_ptr _netloop;
     llarp_threadpool *tp;
     Logic *_logic;
     std::unique_ptr< Crypto > _crypto;
@@ -319,7 +319,7 @@ namespace llarp
     // set to max value right now
     std::unordered_map< RouterID, llarp_time_t, PubKey::Hash > lokinetRouters;
 
-    Router(struct llarp_threadpool *tp, struct llarp_ev_loop *__netloop,
+    Router(struct llarp_threadpool *tp, llarp_ev_loop_ptr __netloop,
            Logic *logic);
 
     ~Router();
@@ -451,15 +451,14 @@ namespace llarp
         RouterID remote, const std::vector< RouterContact > &results) override;
 
     void
-    ForEachPeer(
-      std::function< void(const ILinkSession *, bool) > visit, bool randomize=false) const override;
+    ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
+                bool randomize = false) const override;
 
     void
     ForEachPeer(std::function< void(ILinkSession *) > visit);
 
-    bool
-    IsBootstrapNode(RouterID) const override;
-    
+    bool IsBootstrapNode(RouterID) const override;
+
     /// check if newRc matches oldRC and update local rc for this remote contact
     /// if valid
     /// returns true on valid and updated

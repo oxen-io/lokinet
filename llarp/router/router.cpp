@@ -200,7 +200,7 @@ namespace llarp
     return async_verify_RC(s->GetRemoteRC());
   }
 
-  Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *__netloop,
+  Router::Router(struct llarp_threadpool *_tp, llarp_ev_loop_ptr __netloop,
                  Logic *l)
       : ready(false)
       , _netloop(__netloop)
@@ -502,7 +502,7 @@ namespace llarp
   Router::Close()
   {
     LogInfo("closing router");
-    llarp_ev_loop_stop(netloop());
+    llarp_ev_loop_stop(_netloop.get());
     inboundLinks.clear();
     outboundLinks.clear();
   }

@@ -109,8 +109,8 @@ namespace llarp
 
       struct PutTime
       {
-        llarp_ev_loop* loop;
-        PutTime(llarp_ev_loop* evloop) : loop(evloop)
+        llarp_ev_loop_ptr loop;
+        PutTime(llarp_ev_loop_ptr evloop) : loop(evloop)
         {
         }
         void
@@ -122,8 +122,8 @@ namespace llarp
 
       struct GetNow
       {
-        llarp_ev_loop* loop;
-        GetNow(llarp_ev_loop* evloop) : loop(evloop)
+        llarp_ev_loop_ptr loop;
+        GetNow(llarp_ev_loop_ptr evloop) : loop(evloop)
         {
         }
         llarp_time_t

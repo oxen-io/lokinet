@@ -98,8 +98,8 @@ namespace llarp
 
       struct GetNow
       {
-        llarp_ev_loop* loop;
-        GetNow(llarp_ev_loop* l) : loop(l)
+        llarp_ev_loop_ptr loop;
+        GetNow(llarp_ev_loop_ptr l) : loop(l)
         {
         }
 
@@ -112,8 +112,8 @@ namespace llarp
 
       struct PutTime
       {
-        llarp_ev_loop* loop;
-        PutTime(llarp_ev_loop* l) : loop(l)
+        llarp_ev_loop_ptr loop;
+        PutTime(llarp_ev_loop_ptr l) : loop(l)
         {
         }
         void
@@ -304,8 +304,8 @@ namespace llarp
 
       struct GetNow
       {
-        llarp_ev_loop* loop;
-        GetNow(llarp_ev_loop* l) : loop(l)
+        llarp_ev_loop_ptr loop;
+        GetNow(llarp_ev_loop_ptr l) : loop(l)
         {
         }
 
@@ -318,8 +318,8 @@ namespace llarp
 
       struct PutTime
       {
-        llarp_ev_loop* loop;
-        PutTime(llarp_ev_loop* l) : loop(l)
+        llarp_ev_loop_ptr loop;
+        PutTime(llarp_ev_loop_ptr l) : loop(l)
         {
         }
         void

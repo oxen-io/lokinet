@@ -31,9 +31,6 @@ namespace llarp
 
   Context::~Context()
   {
-    llarp_ev_loop *ptr = mainloop.release();
-    llarp_ev_loop_free(&ptr);
-
     m_scheduler->stop();
   }
 
@@ -223,8 +220,7 @@ namespace llarp
     else
       logic = std::make_unique< Logic >();
 
-    router =
-        std::make_unique< Router >(worker.get(), mainloop.get(), logic.get());
+    router = std::make_unique< Router >(worker.get(), mainloop, logic.get());
     if(!router->Configure(config.get()))
     {
       llarp::LogError("Failed to configure router");
@@ -255,7 +251,7 @@ namespace llarp
 
     // run net io thread
     llarp::LogInfo("running mainloop");
-    llarp_ev_loop_run_single_process(mainloop.get(), worker.get(), logic.get());
+    llarp_ev_loop_run_single_process(mainloop, worker.get(), logic.get());
     // waits for router graceful stop
     return 0;
   }
