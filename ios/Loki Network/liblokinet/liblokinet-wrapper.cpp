@@ -1,7 +1,9 @@
-#include "liblokinet.h"
+#include "llarp.h"
 
-extern "C" int
-cpp_test()
+extern "C"
+bool
+_llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
+                     bool asrouter)
 {
-    return test();
+    return llarp_ensure_config(fname, basedir, overwrite, asrouter);
 }

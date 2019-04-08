@@ -4,6 +4,6 @@ class ViewController : UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        print(cpp_test())
+        print(_llarp_ensure_config("liblokinet.ini", nil, false, false))
     }
 }

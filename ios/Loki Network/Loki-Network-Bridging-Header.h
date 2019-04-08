@@ -1,2 +1,1 @@
-
-int cpp_test();
+#import "liblokinet-wrapper.h"

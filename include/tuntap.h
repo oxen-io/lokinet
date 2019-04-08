@@ -43,7 +43,7 @@
 #if defined Linux
 #include <netinet/in.h>
 #else
-#include <netinet/if_ether.h>
+#include <net/ethernet.h>
 #endif
 #endif
 
