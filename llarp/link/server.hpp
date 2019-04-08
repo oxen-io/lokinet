@@ -71,7 +71,8 @@ namespace llarp
     HasSessionVia(const Addr& addr);
 
     void
-    ForEachSession(std::function< void(const ILinkSession*) > visit, bool randomize=false) const
+    ForEachSession(std::function< void(const ILinkSession*) > visit,
+                   bool randomize = false) const
         LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     void
@@ -106,7 +107,7 @@ namespace llarp
     }
 
     bool
-    Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
+    Configure(llarp_ev_loop_ptr loop, const std::string& ifname, int af,
               uint16_t port);
 
     virtual std::shared_ptr< ILinkSession >
@@ -232,7 +233,7 @@ namespace llarp
     PutSession(const std::shared_ptr< ILinkSession >& s);
 
     llarp::Logic* m_Logic = nullptr;
-    llarp_ev_loop* m_Loop = nullptr;
+    llarp_ev_loop_ptr m_Loop;
     Addr m_ourAddr;
     llarp_udp_io m_udp;
     SecretKey m_SecretKey;

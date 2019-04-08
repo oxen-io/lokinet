@@ -57,6 +57,7 @@ endif()
 set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
+  ev/pipe.cpp
   net/net.cpp
   net/net_addr.cpp
   net/net_inaddr.cpp

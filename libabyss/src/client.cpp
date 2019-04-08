@@ -367,7 +367,7 @@ namespace abyss
       llarp::LogDebug("tick connect to rpc ", numCalls, " times");
       while(numCalls--)
       {
-        llarp_tcp_async_try_connect(m_Loop, &m_connect);
+        llarp_tcp_async_try_connect(m_Loop.get(), &m_connect);
       }
     }
 
@@ -413,7 +413,7 @@ namespace abyss
     }
 
     bool
-    JSONRPC::RunAsync(llarp_ev_loop* loop, const std::string& remote)
+    JSONRPC::RunAsync(llarp_ev_loop_ptr loop, const std::string& remote)
     {
       strncpy(m_connect.remote, remote.c_str(), sizeof(m_connect.remote));
       // TODO: ipv6
@@ -421,7 +421,7 @@ namespace abyss
       m_connect.error     = &JSONRPC::OnConnectFail;
       m_connect.user      = this;
       m_connect.af        = AF_INET;
-      m_Loop              = loop;
+      m_Loop              = std::move(loop);
       return true;
     }
 

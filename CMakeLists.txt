@@ -365,7 +365,7 @@ target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
 
 if (NOT WIN32)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
-  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} Threads::Threads)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} Threads::Threads)
 else()
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)

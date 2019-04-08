@@ -4,10 +4,10 @@
 #include <util/types.hpp>
 #include <util/status.hpp>
 #include <vector>
+#include <ev/ev.h>
 
 struct llarp_buffer_t;
 struct llarp_dht_context;
-struct llarp_ev_loop;
 struct llarp_nodedb;
 struct llarp_threadpool;
 
@@ -87,7 +87,7 @@ namespace llarp
     virtual Profiling &
     routerProfiling() = 0;
 
-    virtual llarp_ev_loop *
+    virtual llarp_ev_loop_ptr
     netloop() const = 0;
 
     virtual llarp_threadpool *
@@ -117,7 +117,7 @@ namespace llarp
 
     virtual bool
     IsBootstrapNode(RouterID r) const = 0;
-    
+
     virtual const byte_t *
     pubkey() const = 0;
 
@@ -187,8 +187,8 @@ namespace llarp
 
     /// visit each connected link session
     virtual void
-    ForEachPeer(
-      std::function< void(const ILinkSession *, bool) > visit, bool randomize) const = 0;
+    ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
+                bool randomize) const = 0;
   };
 }  // namespace llarp
 
