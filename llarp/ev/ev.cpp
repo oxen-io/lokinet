@@ -40,12 +40,6 @@ llarp_make_ev_loop()
   return r;
 }
 
-int
-llarp_fd_promise_wait_for_value(struct llarp_fd_promise *p)
-{
-  return p->Get();
-}
-
 void
 llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
                                  struct llarp_threadpool *tp,

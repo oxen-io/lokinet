@@ -97,10 +97,10 @@ struct AndroidMain
   }
 
   void
-  SetVPN_FD(int fd)
+  SetVPN_FD(int rfd, int wfd)
   {
     if(m_impl)
-      llarp_main_inject_vpn_fd(m_impl, fd);
+      llarp_main_inject_vpn_fd(m_impl, rfd, wfd);
   }
 
   /// stop daemon thread
@@ -120,7 +120,7 @@ struct AndroidMain
   typedef std::unique_ptr< AndroidMain > Ptr;
 };
 
-static AndroidMain::Ptr daemon(new AndroidMain());
+static AndroidMain::Ptr daemon_ptr(new AndroidMain());
 
 extern "C"
 {
@@ -135,7 +135,7 @@ extern "C"
   Java_network_loki_lokinet_Lokinet_1JNI_startLokinet(JNIEnv* env, jclass,
                                                       jstring configfile)
   {
-    if(daemon->Running())
+    if(daemon_ptr->Running())
       return env->NewStringUTF("already running");
     std::string conf;
     fs::path basepath;
@@ -145,9 +145,9 @@ extern "C"
       env->ReleaseStringUTFChars(configfile, nativeString);
       basepath = fs::path(conf).parent_path();
     }
-    if(daemon->Configure(conf.c_str(), basepath.string().c_str()))
+    if(daemon_ptr->Configure(conf.c_str(), basepath.string().c_str()))
     {
-      if(daemon->Start())
+      if(daemon_ptr->Start())
         return env->NewStringUTF("ok");
       else
         return env->NewStringUTF("failed to start daemon");
@@ -159,24 +159,25 @@ extern "C"
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_stopLokinet(JNIEnv*, jclass)
   {
-    if(daemon->Running())
+    if(daemon_ptr->Running())
     {
-      daemon->Stop();
+      daemon_ptr->Stop();
     }
   }
 
   JNIEXPORT void JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_setVPNFileDescriptor(JNIEnv*, jclass,
-                                                              jint fd)
+                                                              jint rfd,
+                                                              jint wfd)
   {
-    daemon->SetVPN_FD(fd);
+    daemon_ptr->SetVPN_FD(rfd, wfd);
   }
 
   JNIEXPORT jstring JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_getIfAddr(JNIEnv* env, jclass)
   {
-    if(daemon)
-      return env->NewStringUTF(daemon->GetIfAddr());
+    if(daemon_ptr)
+      return env->NewStringUTF(daemon_ptr->GetIfAddr());
     else
       return env->NewStringUTF("");
   }
@@ -184,8 +185,8 @@ extern "C"
   JNIEXPORT jint JNICALL
   Java_network_loki_lokinet_Lokinet_1JNI_getIfRange(JNIEnv*, jclass)
   {
-    if(daemon)
-      return daemon->GetIfRange();
+    if(daemon_ptr)
+      return daemon_ptr->GetIfRange();
     else
       return -1;
   }
@@ -196,17 +197,17 @@ extern "C"
   {
     if(isConnected)
     {
-      if(!daemon->Running())
+      if(!daemon_ptr->Running())
       {
-        if(!daemon->Start())
+        if(!daemon_ptr->Start())
         {
           // TODO: do some kind of callback here
         }
       }
     }
-    else if(daemon->Running())
+    else if(daemon_ptr->Running())
     {
-      daemon->Stop();
+      daemon_ptr->Stop();
     }
   }
 }

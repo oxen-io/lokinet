@@ -3,13 +3,37 @@
 
 #include <ev/ev.hpp>
 
-struct llarp_ev_pipe
+/// a unidirectional packet pipe
+struct llarp_ev_pkt_pipe : public llarp::ev_io
 {
-  llarp_ev_pipe(llarp_ev_loop_ptr loop);
+  llarp_ev_pkt_pipe(llarp_ev_loop_ptr loop);
+
+  /// start the pipe, initialize fds
+  bool
+  Start();
+
+  /// write to the pipe from outside the event loop
+  /// returns true on success
+  /// returns false on failure
+  bool
+  Write(const llarp_buffer_t& buf);
+
+  /// override me to handle a packet from the other side in the owned event loop
+  virtual void
+  OnRead(const llarp_buffer_t& buf) = 0;
+
+  ssize_t
+  do_write(void* buf, size_t sz) override;
+
+  virtual bool
+  tick() override;
+
+  int
+  read(byte_t* buf, size_t sz) override;
 
  private:
-  std::pair< int, int > m_EventFDs;
-  std::pair< int, int > m_ExternFDs;
+  llarp_ev_loop_ptr m_Loop;
+  int writefd;
 };
 
 #endif

@@ -31,10 +31,12 @@ TEST_F(RCTest, TestSignVerify)
   RC_t rc;
   SecKey_t encr;
   SecKey_t sign;
+
   crypto.encryption_keygen(encr);
   crypto.identity_keygen(sign);
   rc.enckey = encr.toPublic();
   rc.pubkey = sign.toPublic();
+  rc.exits.emplace_back(rc.pubkey, llarp::nuint32_t{50000});
   ASSERT_TRUE(rc.netID == netid);
   ASSERT_TRUE(rc.netID == llarp::NetID::DefaultValue());
   ASSERT_TRUE(rc.Sign(&crypto, sign));

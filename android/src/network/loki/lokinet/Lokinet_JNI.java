@@ -29,10 +29,11 @@ public class Lokinet_JNI {
 	public static native void onNetworkStateChanged(boolean isConnected);
 
     /**
-     * set vpn network interface fd
-     * @param fd the file descriptor of the vpn interface
+     * set vpn network interface fd pair
+     * @param rfd the file descriptor of read end
+     * @param wfd the file descriptor of the write end
      */
-    public static native void setVPNFileDescriptor(int fd);
+  public static native void setVPNFileDescriptor(int rfd, int wfd);
 
     /**
      * load jni libraries

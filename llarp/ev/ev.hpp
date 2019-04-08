@@ -448,7 +448,7 @@ namespace llarp
           {
             auto& itr      = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, std::min(amount, itr.bufsz));
-            if(result == -1)
+            if(result <= 0)
               return;
             ssize_t dlt = itr.bufsz - result;
             if(dlt > 0)
@@ -471,7 +471,7 @@ namespace llarp
           {
             auto& itr      = m_BlockingWriteQueue->front();
             ssize_t result = do_write(itr.buf, itr.bufsz);
-            if(result == -1)
+            if(result <= 0)
             {
               errno = 0;
               return;
@@ -660,7 +660,7 @@ namespace llarp
 struct llarp_fd_promise
 {
   void
-  Set(int)
+  Set(std::pair< int, int >)
   {
   }
 
@@ -673,18 +673,19 @@ struct llarp_fd_promise
 #else
 struct llarp_fd_promise
 {
-  llarp_fd_promise(std::promise< int >* p) : _impl(p)
+  using promise_val_t = std::pair< int, int >;
+  llarp_fd_promise(std::promise< promise_val_t >* p) : _impl(p)
   {
   }
-  std::promise< int >* _impl;
+  std::promise< promise_val_t >* _impl;
 
   void
-  Set(int fd)
+  Set(promise_val_t fds)
   {
-    _impl->set_value(fd);
+    _impl->set_value(fds);
   }
 
-  int
+  promise_val_t
   Get()
   {
     auto future = _impl->get_future();

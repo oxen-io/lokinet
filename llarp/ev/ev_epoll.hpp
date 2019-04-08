@@ -18,11 +18,6 @@
 #include <tuntap.h>
 #include <unistd.h>
 
-#ifdef ANDROID
-/** TODO: correct this value */
-#define SOCK_NONBLOCK (0)
-#endif
-
 namespace llarp
 {
   struct udp_listener : public ev_io
@@ -36,22 +31,24 @@ namespace llarp
     }
 
     bool
-    tick();
+    tick() override;
 
     int
-    read(byte_t* buf, size_t sz);
+    read(byte_t* buf, size_t sz) override;
 
     int
-    sendto(const sockaddr* to, const void* data, size_t sz);
+    sendto(const sockaddr* to, const void* data, size_t sz) override;
   };
 
   struct tun : public ev_io
   {
     llarp_tun_io* t;
+    int writefd;
     device* tunif;
     tun(llarp_tun_io* tio, llarp_ev_loop_ptr l)
         : ev_io(-1, new LossyWriteQueue_t("tun_write_queue", l, l))
         , t(tio)
+        , writefd(-1)
         , tunif(tuntap_init())
 
               {
@@ -59,16 +56,19 @@ namespace llarp
               };
 
     int
-    sendto(const sockaddr* to, const void* data, size_t sz);
+    sendto(const sockaddr* to, const void* data, size_t sz) override;
 
     bool
-    tick();
+    tick() override;
 
     void
-    flush_write();
+    flush_write() override;
+
+    ssize_t
+    do_write(void* buf, size_t sz) override;
 
     int
-    read(byte_t* buf, size_t sz);
+    read(byte_t* buf, size_t sz) override;
 
     static int
     wait_for_fd_promise(struct device* dev);
@@ -84,8 +84,9 @@ namespace llarp
   };
 };  // namespace llarp
 
-struct llarp_epoll_loop : public llarp_ev_loop,
-                          public std::enable_shared_from_this< llarp_ev_loop >
+struct llarp_epoll_loop
+    : public llarp_ev_loop,
+      public std::enable_shared_from_this< llarp_epoll_loop >
 {
   int epollfd;
 
