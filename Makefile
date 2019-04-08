@@ -40,7 +40,7 @@ TESTNET_NETID ?= loopback
 ANDROID_NDK ?= $(HOME)/Android/Ndk
 ANDROID_SDK ?= $(HOME)/Android/Sdk
 ANDROID_ABI ?= armeabi-v7a
-ANDROID_API_LEVEL ?= 18
+ANDROID_API_LEVEL ?= 24
 
 ANDROID_DIR=$(REPO)/android
 JNI_DIR=$(ANDROID_DIR)/jni

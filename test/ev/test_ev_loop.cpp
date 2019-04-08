@@ -98,7 +98,8 @@ TEST_F(EventLoopTest, PipeWrite1K)
     Data_t data;
     size_t idx = 0;
     std::function< void(void) > stop;
-    TestPipe(size_t num, llarp_ev_loop_ptr l, std::function< void(void) > _stop)
+    TestPipe(const size_t num, llarp_ev_loop_ptr l,
+             std::function< void(void) > _stop)
         : llarp_ev_pkt_pipe(l), stop(_stop)
     {
       data.resize(num);

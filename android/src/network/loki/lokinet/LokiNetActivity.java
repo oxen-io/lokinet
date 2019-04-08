@@ -75,6 +75,7 @@ public class LokiNetActivity extends Activity {
 		bootstrapper.execute(DefaultBootstrapURL);
 	}
 
+  
 	public void runLokinetService()
 	{
 		startService(new Intent(LokiNetActivity.this,

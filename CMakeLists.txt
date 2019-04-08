@@ -263,7 +263,7 @@ set(LIBS ${MALLOC_LIB} ${FS_LIB})
 if(ANDROID)
   list(APPEND LIBS log)
   add_definitions(-DANDROID)
-  set(ANDROID_PLATFORM_SRC llarp/android/ifaddrs.c)
+  set(ANDROID_PLATFORM_SRC android/ifaddrs.c)
 endif(ANDROID)
 
 set(LIB lokinet)
