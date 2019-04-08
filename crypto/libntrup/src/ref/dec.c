@@ -1,15 +1,15 @@
 #ifdef KAT
 #include <stdio.h>
 #endif
+#include <sodium/crypto_hash_sha512.h>
+#include <sodium/crypto_verify_32.h>
+#include <sodium/crypto_kem.h>
 
 #include "params.h"
 #include "small.h"
 #include "mod3.h"
 #include "rq.h"
 #include "r3.h"
-#include <sodium/crypto_hash_sha512.h>
-#include <sodium/crypto_verify_32.h>
-#include <sodium/crypto_kem.h>
 
 int
 crypto_kem_dec_ref(unsigned char *k, const unsigned char *cstr,

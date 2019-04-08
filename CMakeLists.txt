@@ -416,6 +416,7 @@ else()
 
   if(ANDROID)
     add_library(${ANDROID_LIB} SHARED jni/lokinet_android.cpp)
+    set_property(TARGET ${ANDROID_LIB} PROPERTY CXX_STANDARD 14)
     add_log_tag(${ANDROID_LIB})
     target_link_libraries(${ANDROID_LIB} ${STATIC_LIB} ${LIBS})
   endif(ANDROID)

@@ -414,7 +414,7 @@ extern "C"
   }
 
   void
-  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int fd)
+  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int rfd, int wfd)
   {
     llarp::handlers::TunEndpoint *tun =
         ptr->ctx->router->hiddenServiceContext().getFirstTun();
@@ -422,7 +422,7 @@ extern "C"
       return;
     if(!tun->Promise)
       return;
-    tun->Promise->Set(fd);
+    tun->Promise->Set({rfd, wfd});
   }
 
   int

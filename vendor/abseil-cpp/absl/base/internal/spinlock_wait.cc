@@ -23,7 +23,7 @@
 
 #if defined(_WIN32) && defined(_MSC_VER)
 #include "absl/base/internal/spinlock_win32.inc"
-#elif defined(__linux__)
+#elif defined(__linux__) && !defined(ANDROID)
 #include "absl/base/internal/spinlock_linux.inc"
 #elif defined(__akaros__)
 #include "absl/base/internal/spinlock_akaros.inc"
@@ -63,11 +63,11 @@ int SpinLockSuggestedDelayNS(int loop) {
   // Weak pseudo-random number generator to get some spread between threads
   // when many are spinning.
   uint64_t r = delay_rand.load(std::memory_order_relaxed);
-  r = 0x5deece66dLL * r + 0xb;   // numbers from nrand48()
+  r = 0x5deece66dLL * r + 0xb;  // numbers from nrand48()
   delay_rand.store(r, std::memory_order_relaxed);
 
-  r <<= 16;   // 48-bit random number now in top 48-bits.
-  if (loop < 0 || loop > 32) {   // limit loop to 0..32
+  r <<= 16;                     // 48-bit random number now in top 48-bits.
+  if (loop < 0 || loop > 32) {  // limit loop to 0..32
     loop = 32;
   }
   // loop>>3 cannot exceed 4 because loop cannot exceed 32.
@@ -80,5 +80,5 @@ int SpinLockSuggestedDelayNS(int loop) {
 }
 
 }  // namespace base_internal
-}  // inline namespace lts_2018_12_18
+}  // namespace lts_2018_12_18
 }  // namespace absl

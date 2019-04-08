@@ -185,6 +185,7 @@ android-gradle-prepare:
 	echo "#auto generated don't modify kthnx" >> $(ANDROID_PROPS)
 	echo "lokinetCMake=$(REPO)/CMakeLists.txt" >> $(ANDROID_PROPS)
 	echo "org.gradle.parallel=true" >> $(ANDROID_PROPS)
+	echo "org.gradle.jvmargs=-Xmx1536M" >> $(ANDROID_PROPS)
 	echo "#auto generated don't modify kthnx" >> $(ANDROID_LOCAL_PROPS)
 	echo "sdk.dir=$(ANDROID_SDK)" >> $(ANDROID_LOCAL_PROPS)
 	echo "ndk.dir=$(ANDROID_NDK)" >> $(ANDROID_LOCAL_PROPS)
