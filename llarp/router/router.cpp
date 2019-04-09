@@ -1804,8 +1804,7 @@ namespace llarp
         netConfigDefaults = {
             {"ifname", []() -> std::string { return "auto"; }},
             {"ifaddr", []() -> std::string { return "auto"; }},
-            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }},
-            {"upstream-dns", []() -> std::string { return "1.1.1.1:53"; }}};
+            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
     // populate with fallback defaults if values not present
     auto itr = netConfigDefaults.begin();
     while(itr != netConfigDefaults.end())

@@ -131,14 +131,13 @@ namespace llarp
         {
           llarp::LogWarn("failed to handle hooked dns");
         }
-        return;
       }
       else if(m_Resolvers.size() == 0)
       {
         // no upstream resolvers
         // let's serv fail it
         msg.AddServFail();
-        SendMessageTo(from, msg);
+        SendMessageTo(from, std::move(msg));
       }
       else if(itr == m_Forwarded.end())
       {
