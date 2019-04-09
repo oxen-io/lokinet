@@ -42,7 +42,7 @@ namespace llarp
   {
     llarp_tun_io* t;
     device* tunif;
-    tun(llarp_tun_io* tio, llarp_ev_loop* l)
+    tun(llarp_tun_io* tio, llarp_ev_loop_ptr l)
         : ev_io(-1, new LossyWriteQueue_t("kqueue_tun_write", l, l))
         , t(tio)
         , tunif(tuntap_init()){};
@@ -77,7 +77,9 @@ namespace llarp
 
 }  // namespace llarp
 
-struct llarp_kqueue_loop final : public llarp_ev_loop
+struct llarp_kqueue_loop final
+    : public llarp_ev_loop,
+      public std::enable_shared_from_this< llarp_kqueue_loop >
 {
   int kqueuefd;
 
