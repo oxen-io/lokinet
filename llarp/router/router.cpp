@@ -1081,14 +1081,16 @@ namespace llarp
         return true;
       });
     }
-    // kill dead nodes
-    nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-      if(!routerProfiling().IsBad(rc.pubkey))
-        return false;
-      routerProfiling().ClearProfile(rc.pubkey);
-      return true;
-    });
-
+    else
+    {
+      // kill dead nodes if client
+      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        if(!routerProfiling().IsBad(rc.pubkey))
+          return false;
+        routerProfiling().ClearProfile(rc.pubkey);
+        return true;
+      });
+    }
     paths.TickPaths(now);
     paths.ExpirePaths(now);
 
