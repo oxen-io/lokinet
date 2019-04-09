@@ -7,11 +7,11 @@
 #include <dns/dotlokilookup.hpp>
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
+#include <metrics/publishers.hpp>
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logger.h>
 #include <util/metrics.hpp>
-#include <util/metrics_publishers.hpp>
 #include <util/scheduler.hpp>
 
 #include <getopt.h>
