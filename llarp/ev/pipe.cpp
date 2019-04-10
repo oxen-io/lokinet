@@ -11,6 +11,10 @@ llarp_ev_pkt_pipe::llarp_ev_pkt_pipe(llarp_ev_loop_ptr loop)
 bool
 llarp_ev_pkt_pipe::Start()
 {
+#if defined(_WIN32)
+  llarp::LogError("llarp_ev_pkt_pipe not supported on win32");
+  return false;
+#else
   int _fds[2];
 #if defined(__APPLE__)
   if(pipe(_fds) == -1
@@ -27,6 +31,7 @@ llarp_ev_pkt_pipe::Start()
   fd      = _fds[0];
   writefd = _fds[1];
   return true;
+#endif
 }
 
 int
