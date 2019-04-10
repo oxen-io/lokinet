@@ -9,6 +9,6 @@ enum LokiNetwork { // Used as a namespace
         let filePath = Bundle.main.bundlePath + "/" + "liblokinet-configuration.ini"
         _llarp_ensure_config(filePath, nil, true, false)
         let context = _llarp_main_init(filePath, false)!
-        _llarp_main_setup(context)
+        _llarp_main_setup(context) // TODO: Point this to the included bootstrap.signed
     }
 }

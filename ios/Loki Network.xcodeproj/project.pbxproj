@@ -28,6 +28,7 @@
 		B8F7986A225DB19A00003DE6 /* libabsl_bad_optional_access.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */; };
 		B8F7986C225DB1CE00003DE6 /* libabsl_int128.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */; };
 		B8F79879225DBCC500003DE6 /* LokiNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* LokiNetwork.swift */; };
+		B8F7987B225DC62900003DE6 /* bootstrap.signed in Resources */ = {isa = PBXBuildFile; fileRef = B8F7987A225DC62900003DE6 /* bootstrap.signed */; };
 		C3CBFB652256D47400F34631 /* liblokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */; };
 		C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3CBFB662256D57000F34631 /* liblokinet-static.a */; };
 		C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* AppDelegate.swift */; };
@@ -60,6 +61,7 @@
 		B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_int128.a; path = "../build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a"; sourceTree = "<group>"; };
 		B8F7986D225DB57100003DE6 /* logger.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = logger.hpp; path = ../../llarp/util/logger.hpp; sourceTree = "<group>"; };
 		B8F79878225DBCC500003DE6 /* LokiNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LokiNetwork.swift; sourceTree = "<group>"; };
+		B8F7987A225DC62900003DE6 /* bootstrap.signed */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = bootstrap.signed; sourceTree = "<group>"; };
 		C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "liblokinet-wrapper.cpp"; sourceTree = "<group>"; };
 		C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "liblokinet-wrapper.h"; sourceTree = "<group>"; };
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
@@ -116,6 +118,7 @@
 				C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */,
 				B8F7986D225DB57100003DE6 /* logger.hpp */,
 				C3CBFB682256D61600F34631 /* llarp.h */,
+				B8F7987A225DC62900003DE6 /* bootstrap.signed */,
 			);
 			name = Core;
 			sourceTree = "<group>";
@@ -249,6 +252,7 @@
 			files = (
 				C3FBE36F22542DD80006284B /* LaunchScreen.storyboard in Resources */,
 				C3FBE36C22542DD80006284B /* Assets.xcassets in Resources */,
+				B8F7987B225DC62900003DE6 /* bootstrap.signed in Resources */,
 				C3FBE36A22542DD60006284B /* Main.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
