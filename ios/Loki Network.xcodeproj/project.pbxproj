@@ -9,11 +9,11 @@
 /* Begin PBXBuildFile section */
 		B8F797F0225C5E1E00003DE6 /* libcppbackport.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F797EF225C5E1E00003DE6 /* libcppbackport.a */; };
 		B8F797FD225C641F00003DE6 /* liblokinet-platform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F797FB225C641200003DE6 /* liblokinet-platform.a */; };
-		B8F79800225C6D3600003DE6 /* liblokinet-util.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F797FF225C6D3600003DE6 /* liblokinet-util.a */; };
 		B8F79802225C736E00003DE6 /* libabsl_internal_city.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79801225C736E00003DE6 /* libabsl_internal_city.a */; };
 		B8F79805225C745400003DE6 /* libabsl_hash.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79803225C737300003DE6 /* libabsl_hash.a */; };
 		B8F79809225C74A800003DE6 /* libabsl_internal_throw_delegate.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79808225C74A800003DE6 /* libabsl_internal_throw_delegate.a */; };
 		B8F7980B225C74FA00003DE6 /* libabsl_strings.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7980A225C74FA00003DE6 /* libabsl_strings.a */; };
+		B8F7981A225D6F4100003DE6 /* liblokinet-util.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F797FF225C6D3600003DE6 /* liblokinet-util.a */; };
 		C3CBFB652256D47400F34631 /* liblokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */; };
 		C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3CBFB662256D57000F34631 /* liblokinet-static.a */; };
 		C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* AppDelegate.swift */; };
@@ -56,7 +56,7 @@
 				B8F79805225C745400003DE6 /* libabsl_hash.a in Frameworks */,
 				B8F79802225C736E00003DE6 /* libabsl_internal_city.a in Frameworks */,
 				B8F797F0225C5E1E00003DE6 /* libcppbackport.a in Frameworks */,
-				B8F79800225C6D3600003DE6 /* liblokinet-util.a in Frameworks */,
+				B8F7981A225D6F4100003DE6 /* liblokinet-util.a in Frameworks */,
 				B8F797FD225C641F00003DE6 /* liblokinet-platform.a in Frameworks */,
 				C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */,
 			);
@@ -346,8 +346,8 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/base",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/strings",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/hash",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/strings",
 					"$(PROJECT_DIR)/../build/vendor",
 					"$(PROJECT_DIR)/../build/llarp",
 				);
@@ -381,8 +381,8 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/base",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/strings",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/hash",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/strings",
 					"$(PROJECT_DIR)/../build/vendor",
 					"$(PROJECT_DIR)/../build/llarp",
 				);
