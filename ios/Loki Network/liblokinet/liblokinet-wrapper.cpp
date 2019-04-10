@@ -1,4 +1,11 @@
+#include "logger.h"
 #include "llarp.h"
+
+extern "C"
+void
+_enable_debug_mode() {
+    llarp::SetLogLevel(llarp::eLogDebug);
+}
 
 extern "C"
 bool

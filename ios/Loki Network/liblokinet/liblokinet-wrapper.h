@@ -1,5 +1,8 @@
 #import <stdbool.h>
 
+void
+_enable_debug_mode();
+
 bool
 _llarp_ensure_config(const char *fname, const char *basedir, bool overwrite, bool asRouter);
 
