@@ -104,8 +104,6 @@ struct llarp_win32_loop : public llarp_ev_loop
   {
   }
 
-  ~llarp_win32_loop();
-  
   bool
   tcp_connect(struct llarp_tcp_connecter* tcp, const sockaddr* remoteaddr);
 
@@ -115,9 +113,7 @@ struct llarp_win32_loop : public llarp_ev_loop
   virtual bool
   udp_listen(llarp_udp_io* l, const sockaddr* src);
 
-  ~llarp_win32_loop()
-  {
-  }
+  ~llarp_win32_loop();
 
   bool
   running() const;
