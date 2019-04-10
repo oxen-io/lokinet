@@ -592,8 +592,11 @@ namespace llarp
         }
         else if(dlt >= path::alive_timeout && m_LastRecvMessage == 0)
         {
-          r->routerProfiling().MarkPathFail(this);
-          EnterState(ePathTimeout, now);
+          if(m_CheckForDead && m_CheckForDead(this, dlt))
+          {
+            r->routerProfiling().MarkPathFail(this);
+            EnterState(ePathTimeout, now);
+          }
         }
       }
     }
