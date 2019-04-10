@@ -1,5 +1,7 @@
 #import <stdbool.h>
 
 bool
-_llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
-                     bool asrouter);
+_llarp_ensure_config(const char *fname, const char *basedir, bool overwrite, bool asRouter);
+
+struct llarp_main *
+_llarp_main_init(const char *fname, bool multiProcess);

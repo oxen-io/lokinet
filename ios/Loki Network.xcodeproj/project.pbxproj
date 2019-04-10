@@ -14,6 +14,19 @@
 		B8F79809225C74A800003DE6 /* libabsl_internal_throw_delegate.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79808225C74A800003DE6 /* libabsl_internal_throw_delegate.a */; };
 		B8F7980B225C74FA00003DE6 /* libabsl_strings.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7980A225C74FA00003DE6 /* libabsl_strings.a */; };
 		B8F7981A225D6F4100003DE6 /* liblokinet-util.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F797FF225C6D3600003DE6 /* liblokinet-util.a */; };
+		B8F79848225DAA0C00003DE6 /* liblibutp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79847225DAA0C00003DE6 /* liblibutp.a */; };
+		B8F7984E225DAB7A00003DE6 /* libabyss.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7984D225DAB7A00003DE6 /* libabyss.a */; };
+		B8F79852225DAC4000003DE6 /* liblokinet-cryptography.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79851225DAC4000003DE6 /* liblokinet-cryptography.a */; };
+		B8F79858225DAE1700003DE6 /* libabsl_synchronization.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79857225DAE1700003DE6 /* libabsl_synchronization.a */; };
+		B8F7985A225DAE7100003DE6 /* libabsl_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79859225DAE7100003DE6 /* libabsl_base.a */; };
+		B8F7985C225DAE8B00003DE6 /* libabsl_internal_malloc_internal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7985B225DAE8B00003DE6 /* libabsl_internal_malloc_internal.a */; };
+		B8F7985E225DAE9700003DE6 /* libabsl_internal_spinlock_wait.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7985D225DAE9700003DE6 /* libabsl_internal_spinlock_wait.a */; };
+		B8F79860225DAF4F00003DE6 /* libabsl_time.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7985F225DAF4F00003DE6 /* libabsl_time.a */; };
+		B8F79862225DB07800003DE6 /* libabsl_variant.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79861225DB07800003DE6 /* libabsl_variant.a */; };
+		B8F79864225DB0DB00003DE6 /* libabsl_symbolize.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79863225DB0DB00003DE6 /* libabsl_symbolize.a */; };
+		B8F79866225DB13E00003DE6 /* libabsl_stacktrace.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79865225DB13E00003DE6 /* libabsl_stacktrace.a */; };
+		B8F7986A225DB19A00003DE6 /* libabsl_bad_optional_access.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */; };
+		B8F7986C225DB1CE00003DE6 /* libabsl_int128.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */; };
 		C3CBFB652256D47400F34631 /* liblokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */; };
 		C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3CBFB662256D57000F34631 /* liblokinet-static.a */; };
 		C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* AppDelegate.swift */; };
@@ -31,6 +44,19 @@
 		B8F79803225C737300003DE6 /* libabsl_hash.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_hash.a; path = "../build/vendor/abseil-cpp/absl/hash/libabsl_hash.a"; sourceTree = "<group>"; };
 		B8F79808225C74A800003DE6 /* libabsl_internal_throw_delegate.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_internal_throw_delegate.a; path = "../build/vendor/abseil-cpp/absl/base/libabsl_internal_throw_delegate.a"; sourceTree = "<group>"; };
 		B8F7980A225C74FA00003DE6 /* libabsl_strings.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_strings.a; path = "../build/vendor/abseil-cpp/absl/strings/libabsl_strings.a"; sourceTree = "<group>"; };
+		B8F79847225DAA0C00003DE6 /* liblibutp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = liblibutp.a; path = ../build/libutp/liblibutp.a; sourceTree = "<group>"; };
+		B8F7984D225DAB7A00003DE6 /* libabyss.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabyss.a; path = ../build/libabyss.a; sourceTree = "<group>"; };
+		B8F79851225DAC4000003DE6 /* liblokinet-cryptography.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-cryptography.a"; path = "../build/crypto/liblokinet-cryptography.a"; sourceTree = "<group>"; };
+		B8F79857225DAE1700003DE6 /* libabsl_synchronization.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_synchronization.a; path = "../build/vendor/abseil-cpp/absl/synchronization/libabsl_synchronization.a"; sourceTree = "<group>"; };
+		B8F79859225DAE7100003DE6 /* libabsl_base.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_base.a; path = "../build/vendor/abseil-cpp/absl/base/libabsl_base.a"; sourceTree = "<group>"; };
+		B8F7985B225DAE8B00003DE6 /* libabsl_internal_malloc_internal.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_internal_malloc_internal.a; path = "../build/vendor/abseil-cpp/absl/base/libabsl_internal_malloc_internal.a"; sourceTree = "<group>"; };
+		B8F7985D225DAE9700003DE6 /* libabsl_internal_spinlock_wait.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_internal_spinlock_wait.a; path = "../build/vendor/abseil-cpp/absl/base/libabsl_internal_spinlock_wait.a"; sourceTree = "<group>"; };
+		B8F7985F225DAF4F00003DE6 /* libabsl_time.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_time.a; path = "../build/vendor/abseil-cpp/absl/time/libabsl_time.a"; sourceTree = "<group>"; };
+		B8F79861225DB07800003DE6 /* libabsl_variant.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_variant.a; path = "../build/vendor/abseil-cpp/absl/types/libabsl_variant.a"; sourceTree = "<group>"; };
+		B8F79863225DB0DB00003DE6 /* libabsl_symbolize.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_symbolize.a; path = "../build/vendor/abseil-cpp/absl/debugging/libabsl_symbolize.a"; sourceTree = "<group>"; };
+		B8F79865225DB13E00003DE6 /* libabsl_stacktrace.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_stacktrace.a; path = "../build/vendor/abseil-cpp/absl/debugging/libabsl_stacktrace.a"; sourceTree = "<group>"; };
+		B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_bad_optional_access.a; path = "../build/vendor/abseil-cpp/absl/types/libabsl_bad_optional_access.a"; sourceTree = "<group>"; };
+		B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_int128.a; path = "../build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a"; sourceTree = "<group>"; };
 		C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = "liblokinet-wrapper.cpp"; path = "liblokinet/liblokinet-wrapper.cpp"; sourceTree = "<group>"; };
 		C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "liblokinet-wrapper.h"; path = "liblokinet/liblokinet-wrapper.h"; sourceTree = "<group>"; };
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
@@ -51,11 +77,24 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8F7984E225DAB7A00003DE6 /* libabyss.a in Frameworks */,
+				B8F79848225DAA0C00003DE6 /* liblibutp.a in Frameworks */,
+				B8F7985A225DAE7100003DE6 /* libabsl_base.a in Frameworks */,
+				B8F7985C225DAE8B00003DE6 /* libabsl_internal_malloc_internal.a in Frameworks */,
+				B8F7985E225DAE9700003DE6 /* libabsl_internal_spinlock_wait.a in Frameworks */,
 				B8F79809225C74A800003DE6 /* libabsl_internal_throw_delegate.a in Frameworks */,
-				B8F7980B225C74FA00003DE6 /* libabsl_strings.a in Frameworks */,
+				B8F79866225DB13E00003DE6 /* libabsl_stacktrace.a in Frameworks */,
+				B8F79864225DB0DB00003DE6 /* libabsl_symbolize.a in Frameworks */,
 				B8F79805225C745400003DE6 /* libabsl_hash.a in Frameworks */,
 				B8F79802225C736E00003DE6 /* libabsl_internal_city.a in Frameworks */,
+				B8F7986C225DB1CE00003DE6 /* libabsl_int128.a in Frameworks */,
+				B8F7980B225C74FA00003DE6 /* libabsl_strings.a in Frameworks */,
+				B8F79858225DAE1700003DE6 /* libabsl_synchronization.a in Frameworks */,
+				B8F79860225DAF4F00003DE6 /* libabsl_time.a in Frameworks */,
+				B8F7986A225DB19A00003DE6 /* libabsl_bad_optional_access.a in Frameworks */,
+				B8F79862225DB07800003DE6 /* libabsl_variant.a in Frameworks */,
 				B8F797F0225C5E1E00003DE6 /* libcppbackport.a in Frameworks */,
+				B8F79852225DAC4000003DE6 /* liblokinet-cryptography.a in Frameworks */,
 				B8F7981A225D6F4100003DE6 /* liblokinet-util.a in Frameworks */,
 				B8F797FD225C641F00003DE6 /* liblokinet-platform.a in Frameworks */,
 				C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */,
@@ -103,11 +142,24 @@
 		C3FBE376225438E20006284B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				B8F7984D225DAB7A00003DE6 /* libabyss.a */,
+				B8F79847225DAA0C00003DE6 /* liblibutp.a */,
+				B8F79859225DAE7100003DE6 /* libabsl_base.a */,
+				B8F7985B225DAE8B00003DE6 /* libabsl_internal_malloc_internal.a */,
+				B8F7985D225DAE9700003DE6 /* libabsl_internal_spinlock_wait.a */,
 				B8F79808225C74A800003DE6 /* libabsl_internal_throw_delegate.a */,
-				B8F7980A225C74FA00003DE6 /* libabsl_strings.a */,
+				B8F79865225DB13E00003DE6 /* libabsl_stacktrace.a */,
+				B8F79863225DB0DB00003DE6 /* libabsl_symbolize.a */,
 				B8F79803225C737300003DE6 /* libabsl_hash.a */,
 				B8F79801225C736E00003DE6 /* libabsl_internal_city.a */,
+				B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */,
+				B8F7980A225C74FA00003DE6 /* libabsl_strings.a */,
+				B8F79857225DAE1700003DE6 /* libabsl_synchronization.a */,
+				B8F7985F225DAF4F00003DE6 /* libabsl_time.a */,
+				B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */,
+				B8F79861225DB07800003DE6 /* libabsl_variant.a */,
 				B8F797EF225C5E1E00003DE6 /* libcppbackport.a */,
+				B8F79851225DAC4000003DE6 /* liblokinet-cryptography.a */,
 				B8F797FF225C6D3600003DE6 /* liblokinet-util.a */,
 				B8F797FB225C641200003DE6 /* liblokinet-platform.a */,
 				C3CBFB662256D57000F34631 /* liblokinet-static.a */,
@@ -345,10 +397,18 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/../build",
+					"$(PROJECT_DIR)/../build/libutp",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/base",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/debugging",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/hash",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/numeric",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/strings",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/synchronization",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/time",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/types",
 					"$(PROJECT_DIR)/../build/vendor",
+					"$(PROJECT_DIR)/../build/crypto",
 					"$(PROJECT_DIR)/../build/llarp",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network";
@@ -380,10 +440,18 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)",
+					"$(PROJECT_DIR)/../build",
+					"$(PROJECT_DIR)/../build/libutp",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/base",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/debugging",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/hash",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/numeric",
 					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/strings",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/synchronization",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/time",
+					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/types",
 					"$(PROJECT_DIR)/../build/vendor",
+					"$(PROJECT_DIR)/../build/crypto",
 					"$(PROJECT_DIR)/../build/llarp",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network";
