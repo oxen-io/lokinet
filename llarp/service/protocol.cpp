@@ -1,5 +1,5 @@
 #include <service/protocol.hpp>
-
+#include <path/path.hpp>
 #include <routing/handler.hpp>
 #include <util/buffer.hpp>
 #include <util/logic.hpp>
@@ -250,16 +250,19 @@ namespace llarp
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
       const ProtocolFrame frame;
+      const Introduction fromIntro;
 
       AsyncFrameDecrypt(llarp::Logic* l, llarp::Crypto* c,
                         const Identity& localIdent, IDataHandler* h,
-                        ProtocolMessage* m, const ProtocolFrame& f)
+                        ProtocolMessage* m, const ProtocolFrame& f,
+                        const Introduction& recvIntro)
           : crypto(c)
           , logic(l)
           , msg(m)
           , m_LocalIdentity(localIdent)
           , handler(h)
           , frame(f)
+          , fromIntro(recvIntro)
       {
       }
 
@@ -325,6 +328,7 @@ namespace llarp
         crypto->shorthash(sharedKey, llarp_buffer_t(tmp));
 
         self->handler->PutIntroFor(self->msg->tag, self->msg->introReply);
+        self->handler->PutReplyIntroFor(self->msg->tag, self->fromIntro);
         self->handler->PutSenderFor(self->msg->tag, self->msg->sender);
         self->handler->PutCachedSessionKeyFor(self->msg->tag, sharedKey);
 
@@ -351,7 +355,7 @@ namespace llarp
 
     bool
     ProtocolFrame::AsyncDecryptAndVerify(llarp::Logic* logic, llarp::Crypto* c,
-                                         const PathID_t& srcPath,
+                                         path::Path* recvPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
                                          IDataHandler* handler) const
@@ -360,10 +364,10 @@ namespace llarp
       {
         llarp::LogInfo("Got protocol frame with new convo");
         ProtocolMessage* msg = new ProtocolMessage();
-        msg->srcPath         = srcPath;
+        msg->srcPath         = recvPath->RXID();
         // we need to dh
-        auto dh =
-            new AsyncFrameDecrypt(logic, c, localIdent, handler, msg, *this);
+        auto dh = new AsyncFrameDecrypt(logic, c, localIdent, handler, msg,
+                                        *this, recvPath->intro);
         llarp_threadpool_queue_job(worker, {dh, &AsyncFrameDecrypt::Work});
         return true;
       }
@@ -391,7 +395,7 @@ namespace llarp
         delete msg;
         return false;
       }
-      msg->srcPath = srcPath;
+      msg->srcPath = recvPath->RXID();
       msg->handler = handler;
       logic->queue_job({msg, &ProtocolMessage::ProcessAsync});
       return true;
