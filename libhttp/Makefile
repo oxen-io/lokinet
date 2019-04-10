@@ -49,7 +49,7 @@ libhttp.dll: cacerts.o miniz.o libhttp.o uri.o internal.o
 	$(CC) -fPIC $(CFLAGS) $^ -s -shared -o $@ -static -lmbedx509 -lmbedtls -lmbedcrypto $(LIBS)
 
 libhttp.so: cacerts.o miniz.o libhttp.o uri.o internal.o
-	$(CC) -fPIC $(CFLAGS) $^ -s -shared -o $@ -static -lmbedx509 -lmbedtls -lmbedcrypto $(LIBS)
+	$(CC) $^ -fPIC $(CFLAGS) -shared -o $@ $(LIBS) -lmbedx509 -lmbedtls -lmbedcrypto $(SYS_LIBS)
 
 clean:
 	-@rm base64enc
