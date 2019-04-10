@@ -1021,8 +1021,8 @@ namespace llarp
         RemoveConvoTag(frame->T);
         return true;
       }
-      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p->RXID(),
-                                       Worker(), m_Identity, m_DataHandler))
+      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p, Worker(),
+                                       m_Identity, m_DataHandler))
       {
         // send discard
         ProtocolFrame f;

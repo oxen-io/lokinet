@@ -21,6 +21,12 @@ namespace llarp
   struct Crypto;
   class Logic;
 
+  namespace path
+  {
+    /// forward declare
+    struct Path;
+  }  // namespace path
+
   namespace service
   {
     constexpr std::size_t MAX_PROTOCOL_MESSAGE_SIZE = 2048 * 2;
@@ -112,7 +118,7 @@ namespace llarp
       Sign(Crypto* c, const Identity& localIdent);
 
       bool
-      AsyncDecryptAndVerify(Logic* logic, Crypto* c, const PathID_t& srcpath,
+      AsyncDecryptAndVerify(Logic* logic, Crypto* c, path::Path* fromPath,
                             llarp_threadpool* worker,
                             const Identity& localIdent,
                             IDataHandler* handler) const;
