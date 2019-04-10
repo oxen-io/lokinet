@@ -58,8 +58,8 @@
 		B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_bad_optional_access.a; path = "../build/vendor/abseil-cpp/absl/types/libabsl_bad_optional_access.a"; sourceTree = "<group>"; };
 		B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_int128.a; path = "../build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a"; sourceTree = "<group>"; };
 		B8F7986D225DB57100003DE6 /* logger.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = logger.hpp; path = ../../llarp/util/logger.hpp; sourceTree = "<group>"; };
-		C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = "liblokinet-wrapper.cpp"; path = "liblokinet/liblokinet-wrapper.cpp"; sourceTree = "<group>"; };
-		C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "liblokinet-wrapper.h"; path = "liblokinet/liblokinet-wrapper.h"; sourceTree = "<group>"; };
+		C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "liblokinet-wrapper.cpp"; sourceTree = "<group>"; };
+		C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "liblokinet-wrapper.h"; sourceTree = "<group>"; };
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
 		C3CBFB682256D61600F34631 /* llarp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = llarp.h; path = ../../include/llarp.h; sourceTree = "<group>"; };
 		C3CBFB692257151D00F34631 /* C++ Interop Guide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "C++ Interop Guide.md"; sourceTree = "<group>"; };
@@ -105,6 +105,28 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B8F79871225DB9D600003DE6 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				C3CBFB692257151D00F34631 /* C++ Interop Guide.md */,
+				C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */,
+				C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */,
+				B8F7986D225DB57100003DE6 /* logger.hpp */,
+				C3CBFB682256D61600F34631 /* llarp.h */,
+			);
+			name = Core;
+			sourceTree = "<group>";
+		};
+		B8F79874225DB9FF00003DE6 /* Meta */ = {
+			isa = PBXGroup;
+			children = (
+				C3FBE37C22543A670006284B /* Loki-Network-Bridging-Header.h */,
+				C3FBE36B22542DD80006284B /* Assets.xcassets */,
+				C3FBE37022542DD80006284B /* Info.plist */,
+			);
+			name = Meta;
+			sourceTree = "<group>";
+		};
 		C3FBE35822542DD60006284B = {
 			isa = PBXGroup;
 			children = (
@@ -128,15 +150,9 @@
 				C3FBE36422542DD60006284B /* AppDelegate.swift */,
 				C3FBE36622542DD60006284B /* ViewController.swift */,
 				C3FBE36822542DD60006284B /* Main.storyboard */,
-				C3FBE36B22542DD80006284B /* Assets.xcassets */,
 				C3FBE36D22542DD80006284B /* LaunchScreen.storyboard */,
-				C3FBE37022542DD80006284B /* Info.plist */,
-				C3CBFB692257151D00F34631 /* C++ Interop Guide.md */,
-				C3FBE37C22543A670006284B /* Loki-Network-Bridging-Header.h */,
-				C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */,
-				C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */,
-				B8F7986D225DB57100003DE6 /* logger.hpp */,
-				C3CBFB682256D61600F34631 /* llarp.h */,
+				B8F79874225DB9FF00003DE6 /* Meta */,
+				B8F79871225DB9D600003DE6 /* Core */,
 			);
 			path = "Loki Network";
 			sourceTree = "<group>";
