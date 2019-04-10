@@ -12,8 +12,18 @@ bool
 llarp_ev_pkt_pipe::Start()
 {
   int _fds[2];
-  if(pipe2(_fds, O_DIRECT | O_NONBLOCK) == -1)
+#if defined(__APPLE__)
+  if(pipe(_fds) == -1
+     && fcntl(_fds[0], F_SETFL, fcntl(_fds[0], F_GETFL) | O_NONBLOCK))
+  {
     return false;
+  }
+#else
+  if(pipe2(_fds, O_DIRECT | O_NONBLOCK) == -1)
+  {
+    return false;
+  }
+#endif
   fd      = _fds[0];
   writefd = _fds[1];
   return true;

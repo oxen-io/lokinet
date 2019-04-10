@@ -306,7 +306,7 @@ llarp_kqueue_loop::bind_tcp(llarp_tcp_acceptor* tcp, const sockaddr* bindaddr)
 llarp::ev_io*
 llarp_kqueue_loop::create_tun(llarp_tun_io* tun)
 {
-  llarp::tun* t = new llarp::tun(tun, this);
+  llarp::tun* t = new llarp::tun(tun, shared_from_this());
   if(t->setup())
     return t;
   delete t;
@@ -381,8 +381,8 @@ llarp_kqueue_loop::tick(int ms)
         if(events[idx].filter & EVFILT_READ)
         {
           IO([&]() -> ssize_t {
-            return ev->read(readbuf,
-              std::min(sizeof(readbuf), size_t(events[idx].data)));
+            return ev->read(
+                readbuf, std::min(sizeof(readbuf), size_t(events[idx].data)));
           });
         }
       }
