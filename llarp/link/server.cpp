@@ -33,15 +33,15 @@ namespace llarp
   }
 
   void
-  ILinkLayer::ForEachSession(
-    std::function< void(const ILinkSession*) > visit, bool randomize) const
+  ILinkLayer::ForEachSession(std::function< void(const ILinkSession*) > visit,
+                             bool randomize) const
   {
     Lock l(&m_AuthedLinksMutex);
     if(m_AuthedLinks.size() == 0)
       return;
     const size_t sz = randint() % m_AuthedLinks.size();
-    auto itr = m_AuthedLinks.begin();
-    auto begin = itr;
+    auto itr        = m_AuthedLinks.begin();
+    auto begin      = itr;
     if(randomize)
     {
       std::advance(itr, sz);
@@ -89,10 +89,10 @@ namespace llarp
   }
 
   bool
-  ILinkLayer::Configure(llarp_ev_loop* loop, const std::string& ifname, int af,
-                        uint16_t port)
+  ILinkLayer::Configure(llarp_ev_loop_ptr loop, const std::string& ifname,
+                        int af, uint16_t port)
   {
-    m_Loop         = loop;
+    m_Loop         = std::move(loop);
     m_udp.user     = this;
     m_udp.recvfrom = &ILinkLayer::udp_recv_from;
     m_udp.tick     = &ILinkLayer::udp_tick;
@@ -104,7 +104,7 @@ namespace llarp
     else if(!GetIFAddr(ifname, m_ourAddr, af))
       return false;
     m_ourAddr.port(port);
-    return llarp_ev_add_udp(loop, &m_udp, m_ourAddr) != -1;
+    return llarp_ev_add_udp(m_Loop.get(), &m_udp, m_ourAddr) != -1;
   }
 
   void

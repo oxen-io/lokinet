@@ -45,7 +45,7 @@ namespace abyss
       ~BaseReqHandler();
 
       bool
-      ServeAsync(llarp_ev_loop* loop, llarp::Logic* logic,
+      ServeAsync(llarp_ev_loop_ptr loop, llarp::Logic* logic,
                  const sockaddr* bindaddr);
 
       void
@@ -75,7 +75,7 @@ namespace abyss
       static void
       OnAccept(struct llarp_tcp_acceptor*, struct llarp_tcp_conn*);
 
-      llarp_ev_loop* m_loop;
+      llarp_ev_loop_ptr m_loop;
       llarp::Logic* m_Logic;
       llarp_tcp_acceptor m_acceptor;
       std::list< std::unique_ptr< IRPCHandler > > m_Conns;

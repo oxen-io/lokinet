@@ -29,7 +29,7 @@ namespace llarp
 
     struct Proxy
     {
-      Proxy(llarp_ev_loop* loop, IQueryHandler* handler);
+      Proxy(llarp_ev_loop_ptr loop, IQueryHandler* handler);
 
       bool
       Start(const llarp::Addr& addr,
@@ -69,7 +69,7 @@ namespace llarp
      private:
       llarp_udp_io m_Server;
       llarp_udp_io m_Client;
-      llarp_ev_loop* m_Loop;
+      llarp_ev_loop_ptr m_Loop;
       IQueryHandler* m_QueryHandler;
       std::vector< llarp::Addr > m_Resolvers;
 

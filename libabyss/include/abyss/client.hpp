@@ -68,7 +68,7 @@ namespace abyss
       /// start runing on event loop async
       /// return true on success otherwise return false
       bool
-      RunAsync(llarp_ev_loop* loop, const std::string& endpoint);
+      RunAsync(llarp_ev_loop_ptr loop, const std::string& endpoint);
 
       /// must be called after RunAsync returns true
       /// queue a call for rpc
@@ -120,7 +120,7 @@ namespace abyss
 
       std::atomic< bool > m_Run;
       llarp_tcp_connecter m_connect;
-      llarp_ev_loop* m_Loop;
+      llarp_ev_loop_ptr m_Loop;
       std::deque< Call > m_PendingCalls;
       std::list< std::unique_ptr< IRPCClientHandler > > m_Conns;
     };

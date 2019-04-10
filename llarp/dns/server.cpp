@@ -8,8 +8,8 @@ namespace llarp
 {
   namespace dns
   {
-    Proxy::Proxy(llarp_ev_loop* loop, IQueryHandler* h)
-        : m_Loop(loop), m_QueryHandler(h)
+    Proxy::Proxy(llarp_ev_loop_ptr loop, IQueryHandler* h)
+        : m_Loop(std::move(loop)), m_QueryHandler(h)
     {
       m_Client.user     = this;
       m_Server.user     = this;
@@ -31,8 +31,8 @@ namespace llarp
       m_Resolvers.clear();
       m_Resolvers = resolvers;
       llarp::Addr any("0.0.0.0", 0);
-      return llarp_ev_add_udp(m_Loop, &m_Server, addr) == 0
-          && llarp_ev_add_udp(m_Loop, &m_Client, any) == 0;
+      return llarp_ev_add_udp(m_Loop.get(), &m_Server, addr) == 0
+          && llarp_ev_add_udp(m_Loop.get(), &m_Client, any) == 0;
     }
 
     void
@@ -131,14 +131,13 @@ namespace llarp
         {
           llarp::LogWarn("failed to handle hooked dns");
         }
-        return;
       }
       else if(m_Resolvers.size() == 0)
       {
         // no upstream resolvers
         // let's serv fail it
         msg.AddServFail();
-        SendMessageTo(from, msg);
+        SendMessageTo(from, std::move(msg));
       }
       else if(itr == m_Forwarded.end())
       {

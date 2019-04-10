@@ -12,7 +12,7 @@ struct AbyssTestBase : public ::testing::Test
 {
   llarp::sodium::CryptoLibSodium crypto;
   llarp_threadpool* threadpool = nullptr;
-  llarp_ev_loop* loop          = nullptr;
+  llarp_ev_loop_ptr loop       = nullptr;
   std::unique_ptr< llarp::Logic > logic;
   abyss::httpd::BaseReqHandler* server = nullptr;
   abyss::http::JSONRPC* client         = nullptr;
@@ -48,8 +48,8 @@ struct AbyssTestBase : public ::testing::Test
   Start()
   {
     threadpool = llarp_init_same_process_threadpool();
-    llarp_ev_loop_alloc(&loop);
-    logic = std::make_unique< llarp::Logic >(threadpool);
+    loop       = llarp_make_ev_loop();
+    logic      = std::make_unique< llarp::Logic >(threadpool);
 
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -72,7 +72,7 @@ struct AbyssTestBase : public ::testing::Test
   Stop()
   {
     llarp::LogDebug("test case Stop() called");
-    llarp_ev_loop_stop(loop);
+    llarp_ev_loop_stop(loop.get());
   }
 
   void
@@ -84,7 +84,6 @@ struct AbyssTestBase : public ::testing::Test
   ~AbyssTestBase()
   {
     logic.reset();
-    llarp_ev_loop_free(&loop);
     llarp_free_threadpool(&threadpool);
     llarp::SetLogLevel(llarp::eLogInfo);
   }

@@ -20,6 +20,7 @@ namespace llarp
     section_t connect;
     section_t services;
     section_t system;
+    section_t metrics;
     section_t api;
     section_t lokid;
     section_t bootstrap;

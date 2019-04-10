@@ -66,7 +66,7 @@ namespace llarp
       return false;
     }
 
-    llarp_ev_loop*
+    llarp_ev_loop_ptr
     Endpoint::EndpointNetLoop()
     {
       if(m_IsolatedNetLoop)
@@ -800,7 +800,7 @@ namespace llarp
     {
       if(failed)
         return IsolationFailed();
-      llarp_ev_loop_alloc(&m_IsolatedNetLoop);
+      m_IsolatedNetLoop = llarp_make_ev_loop();
       return SetupNetworking();
     }
 
@@ -1021,8 +1021,8 @@ namespace llarp
         RemoveConvoTag(frame->T);
         return true;
       }
-      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p->RXID(),
-                                       Worker(), m_Identity, m_DataHandler))
+      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p, Worker(),
+                                       m_Identity, m_DataHandler))
       {
         // send discard
         ProtocolFrame f;
@@ -1394,10 +1394,10 @@ namespace llarp
               m.proto      = t;
               m.introReply = p->intro;
               PutReplyIntroFor(f.T, m.introReply);
-              m.sender     = m_Identity.pub;
-              f.F          = m.introReply.pathID;
-              f.S          = GetSeqNoForConvo(f.T);
-              transfer.P   = remoteIntro.pathID;
+              m.sender   = m_Identity.pub;
+              f.F        = m.introReply.pathID;
+              f.S        = GetSeqNoForConvo(f.T);
+              transfer.P = remoteIntro.pathID;
               if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
               {
                 llarp::LogError("failed to encrypt and sign");

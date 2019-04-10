@@ -200,7 +200,7 @@ namespace llarp
     return async_verify_RC(s->GetRemoteRC());
   }
 
-  Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *__netloop,
+  Router::Router(struct llarp_threadpool *_tp, llarp_ev_loop_ptr __netloop,
                  Logic *l)
       : ready(false)
       , _netloop(__netloop)
@@ -502,7 +502,7 @@ namespace llarp
   Router::Close()
   {
     LogInfo("closing router");
-    llarp_ev_loop_stop(netloop());
+    llarp_ev_loop_stop(_netloop.get());
     inboundLinks.clear();
     outboundLinks.clear();
   }
@@ -1081,14 +1081,16 @@ namespace llarp
         return true;
       });
     }
-    // kill dead nodes
-    nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-      if(!routerProfiling().IsBad(rc.pubkey))
-        return false;
-      routerProfiling().ClearProfile(rc.pubkey);
-      return true;
-    });
-
+    else
+    {
+      // kill dead nodes if client
+      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        if(!routerProfiling().IsBad(rc.pubkey))
+          return false;
+        routerProfiling().ClearProfile(rc.pubkey);
+        return true;
+      });
+    }
     paths.TickPaths(now);
     paths.ExpirePaths(now);
 
@@ -1404,6 +1406,9 @@ namespace llarp
 
     LogInfo("You have ", inboundLinks.size(), " inbound links");
 
+    // set public signing key
+    _rc.pubkey = seckey_topublic(identity());
+
     AddressInfo ai;
     for(const auto &link : inboundLinks)
     {
@@ -1418,23 +1423,23 @@ namespace llarp
         if(IsBogon(ai.ip))
           continue;
         _rc.addrs.push_back(ai);
+        if(ExitEnabled())
+        {
+          const llarp::Addr addr(ai);
+          const nuint32_t a{addr.addr4()->s_addr};
+          _rc.exits.emplace_back(_rc.pubkey, a);
+          LogInfo(
+              "Neato teh l33toh, You are a freaking exit relay. w00t!!!!! your "
+              "exit "
+              "is advertised as exiting at ",
+              a);
+        }
       }
     }
 
     // set public encryption key
     _rc.enckey = seckey_topublic(encryption());
-    // set public signing key
-    _rc.pubkey = seckey_topublic(identity());
-    if(ExitEnabled())
-    {
-      nuint32_t a = publicAddr.xtonl();
-      _rc.exits.emplace_back(_rc.pubkey, a);
-      LogInfo(
-          "Neato teh l33toh, You are a freaking exit relay. w00t!!!!! your "
-          "exit "
-          "is advertised as exiting at ",
-          a);
-    }
+
     LogInfo("Signing rc...");
     if(!_rc.Sign(crypto(), identity()))
     {
@@ -1801,8 +1806,7 @@ namespace llarp
         netConfigDefaults = {
             {"ifname", []() -> std::string { return "auto"; }},
             {"ifaddr", []() -> std::string { return "auto"; }},
-            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }},
-            {"upstream-dns", []() -> std::string { return "1.1.1.1:53"; }}};
+            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
     // populate with fallback defaults if values not present
     auto itr = netConfigDefaults.begin();
     while(itr != netConfigDefaults.end())

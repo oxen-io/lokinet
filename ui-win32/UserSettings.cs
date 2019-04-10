@@ -51,5 +51,12 @@ namespace network.loki.lokinet.win32.ui
                 main_frame.logText = string.Empty;
             }
         }
+
+        private void btnVSettings_Click(object sender, EventArgs e)
+        {
+            VisualSettings v = new VisualSettings();
+            v.ShowDialog();
+            v.Dispose();
+        }
     }
 }

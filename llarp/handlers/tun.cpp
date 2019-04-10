@@ -472,7 +472,8 @@ namespace llarp
     bool
     TunEndpoint::SetupTun()
     {
-      if(!llarp_ev_add_tun(EndpointNetLoop(), &tunif))
+      auto loop = EndpointNetLoop();
+      if(!llarp_ev_add_tun(loop.get(), &tunif))
       {
         llarp::LogError(Name(),
                         " failed to set up tun interface: ", tunif.ifaddr,

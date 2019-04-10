@@ -74,8 +74,8 @@ namespace llarp
       llarp::Logic*
       EndpointLogic();
 
-      /// endpoint's net loop for sending data to user
-      llarp_ev_loop*
+      /// borrow endpoint's net loop for sending data to user
+      llarp_ev_loop_ptr
       EndpointNetLoop();
 
       llarp::Crypto*
@@ -488,9 +488,9 @@ namespace llarp
 
      private:
       AbstractRouter* m_Router;
-      llarp_threadpool* m_IsolatedWorker = nullptr;
-      llarp::Logic* m_IsolatedLogic      = nullptr;
-      llarp_ev_loop* m_IsolatedNetLoop   = nullptr;
+      llarp_threadpool* m_IsolatedWorker  = nullptr;
+      llarp::Logic* m_IsolatedLogic       = nullptr;
+      llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;

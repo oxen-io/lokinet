@@ -49,7 +49,7 @@ if (MSVC)
     /D_ENABLE_EXTENDED_ALIGNED_STORAGE
   )
 else()
-  set(ABSL_STD_CXX_FLAG "-std=c++11" CACHE STRING "c++ std flag (default: c++11)")
+  set(ABSL_STD_CXX_FLAG "-std=c++17" CACHE STRING "c++ std flag (default: c++11)")
 endif()
 
 
