@@ -4,6 +4,6 @@ class ViewController : UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        LokiNetwork.initialize()
+        LokiNetwork.initialize(isDebuggingEnabled: true)
     }
 }

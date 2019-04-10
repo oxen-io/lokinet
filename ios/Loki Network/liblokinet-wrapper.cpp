@@ -20,3 +20,10 @@ _llarp_main_init(const char *fname, bool multiProcess)
 {
     return llarp_main_init(fname, multiProcess);
 }
+
+extern "C"
+int
+_llarp_main_setup(struct llarp_main *ptr)
+{
+    return llarp_main_setup(ptr);
+}
