@@ -10,40 +10,14 @@ namespace llarp
   {
     namespace
     {
+      template < typename Value >
       void
-      formatValue(std::ostream &stream, size_t value,
+      formatValue(std::ostream &stream, Value value,
                   const FormatSpec *formatSpec)
       {
         if(formatSpec)
         {
-          FormatSpec::format(stream, (double)value, *formatSpec);
-        }
-        else
-        {
-          stream << value;
-        }
-      }
-
-      void
-      formatValue(std::ostream &stream, int value, const FormatSpec *formatSpec)
-      {
-        if(formatSpec)
-        {
-          FormatSpec::format(stream, (double)value, *formatSpec);
-        }
-        else
-        {
-          stream << value;
-        }
-      }
-
-      void
-      formatValue(std::ostream &stream, double value,
-                  const FormatSpec *formatSpec)
-      {
-        if(formatSpec)
-        {
-          FormatSpec::format(stream, value, *formatSpec);
+          FormatSpec::format(stream, static_cast< double >(value), *formatSpec);
         }
         else
         {
@@ -238,7 +212,6 @@ namespace llarp
 
         return result;
       }
-
     }  // namespace
 
     void
