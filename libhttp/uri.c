@@ -30,6 +30,11 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <wincrypt.h>
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
 #endif
 
 void free_parsed_url(url_parsed)
