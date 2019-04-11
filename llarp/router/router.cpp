@@ -838,6 +838,7 @@ namespace llarp
     {
       if(StrEq(key, "type") && StrEq(val, "syslog"))
       {
+      // TODO(despair): write event log syslog class
 #if defined(_WIN32)
         LogError("syslog not supported on win32");
 #else
