@@ -838,8 +838,12 @@ namespace llarp
     {
       if(StrEq(key, "type") && StrEq(val, "syslog"))
       {
+#if defined(_WIN32)
+        LogError("syslog not supported on win32");
+#else
         LogInfo("Switching to syslog");
         LogContext::Instance().logStream = std::make_unique< SysLogStream >();
+#endif
       }
     }
     else if(StrEq(section, "lokid"))
