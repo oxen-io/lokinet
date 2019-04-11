@@ -6,6 +6,11 @@
 #include <test_util.hpp>
 #include <gtest/gtest.h>
 
+// This used to be implied via the headers above *shrug*
+#ifdef _WIN32
+#include <windows.h>
+#endif
+
 struct ToStringData
 {
   llarp::PubKey::Data input;
