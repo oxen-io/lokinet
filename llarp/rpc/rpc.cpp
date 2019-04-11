@@ -232,12 +232,14 @@ namespace llarp
       ListNeighboors() const
       {
         Response resp = Response::array();
-        router->ForEachPeer([&](const ILinkSession* session, bool outbound) {
-          resp.emplace_back(
-              Response{{"ident", RouterID(session->GetPubKey()).ToString()},
-                       {"addr", session->GetRemoteEndpoint().ToString()},
-                       {"outbound", outbound}});
-        }, false);
+        router->ForEachPeer(
+            [&](const ILinkSession* session, bool outbound) {
+              resp.emplace_back(
+                  Response{{"ident", RouterID(session->GetPubKey()).ToString()},
+                           {"addr", session->GetRemoteEndpoint().ToString()},
+                           {"outbound", outbound}});
+            },
+            false);
         return resp;
       }
 
