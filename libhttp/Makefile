@@ -3,13 +3,14 @@
 # requires wget to be installed for ca bundle download
 
 # to build: 
-# $ [g]make prepare;[g]make libhttp
+# make prepare; make libhttp
 
 # set this beforehand if you use clang
 # make sure to preset CFLAGS if you use non-ix86 platform
 # or non-GNU-compat C compilation system
-CC ?= cc
-CFLAGS ?= -Ofast -march=nocona -mfpmath=sse
+# Uncomment these if you're on a 32-bit Linux?
+# CC = cc
+# CFLAGS = -Ofast -march=nocona -mfpmath=sse
 
 # path to mbedtls headers/libs and system libs
 # if you have local copies of libs in this folder,
@@ -17,8 +18,8 @@ CFLAGS ?= -Ofast -march=nocona -mfpmath=sse
 #
 # -lsocket -lnsl on Sun
 # -lws2_32 on windows nt
-INCLUDE ?=
-LIBS ?=
+#INCLUDE :=
+#LIBS :=
 
 .PHONY: download prepare all default
 
@@ -48,7 +49,7 @@ libhttp.dll: cacerts.o miniz.o libhttp.o uri.o internal.o
 	$(CC) -fPIC $(CFLAGS) $^ -s -shared -o $@ -static -lmbedx509 -lmbedtls -lmbedcrypto $(LIBS)
 
 libhttp.so: cacerts.o miniz.o libhttp.o uri.o internal.o
-	$(CC) -fPIC $(CFLAGS) $^ -s -shared -o $@ -static -lmbedx509 -lmbedtls -lmbedcrypto $(LIBS)
+	$(CC) $^ -fPIC $(CFLAGS) -shared -o $@ $(LIBS) -lmbedx509 -lmbedtls -lmbedcrypto $(SYS_LIBS)
 
 clean:
 	-@rm base64enc

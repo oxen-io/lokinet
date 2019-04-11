@@ -30,6 +30,11 @@
 #ifdef _WIN32
 #include <windows.h>
 #include <wincrypt.h>
+#else
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <netdb.h>
 #endif
 
 void free_parsed_url(url_parsed)
@@ -47,21 +52,13 @@ url_t *url_parsed;
 	free(url_parsed);
 }
 
-parse_url(url, verify_host, parsed_url) 
+parse_url(url, verify_host, parsed_url)
 char *url;
 bool verify_host;
 url_t *parsed_url;
 {
-	char *local_url;
-	char *token;
-	char *token_host;
-	char *host_port;
-	char *host_ip;
-
-	char *token_ptr;
-	char *host_token_ptr;
-
-	char *path = NULL;
+	char *local_url, *token, *token_host, *host_port, *host_ip, *token_ptr;
+	char *host_token_ptr, *path = NULL;
 
 	/* Copy our string */
 	local_url = strdup(url);
@@ -71,7 +68,7 @@ url_t *parsed_url;
 
 	/* Host:Port */
 	token = strtok_r(NULL, "/", &token_ptr);
-	if (token) 
+	if (token)
 		host_port = strdup(token);
 	else
 		host_port = (char *) calloc(1, sizeof(char));
