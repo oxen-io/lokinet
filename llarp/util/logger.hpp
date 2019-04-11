@@ -1,8 +1,10 @@
-#ifndef LLARP_LOGGER_HPP
-#define LLARP_LOGGER_HPP
+#ifndef LLARP_UTIL_LOGGER_HPP
+#define LLARP_UTIL_LOGGER_HPP
 
 #include <util/time.hpp>
-
+#include <util/logstream.hpp>
+#include <util/logger_internal.hpp>
+/*
 #ifdef _WIN32
 #define VC_EXTRALEAN
 #include <windows.h>
@@ -21,26 +23,19 @@
 #include <string>
 #include <thread>
 #include <functional>
+*/
 
 namespace llarp
 {
-  // probably will need to move out of llarp namespace for c api
-  enum LogLevel
-  {
-    eLogDebug,
-    eLogInfo,
-    eLogWarn,
-    eLogError,
-    eLogNone
-  };
-
+  /*
   struct Logger
   {
     std::string nodeName;
     LogLevel minlevel = eLogInfo;
-    std::ostream& out;
+    ILogStream_ptr m_stream;
 
-    std::function< void(const std::string&) > customLog;
+    std::unique_ptr< std::ostream > _altOut;
+
 #ifdef _WIN32
     bool isConsoleModern =
         true;  // qol fix so oldfag clients don't see ugly escapes
@@ -69,73 +64,51 @@ namespace llarp
     Logger(std::ostream& o) : out(o)
     {
     }
-  };
 
-  extern Logger _glog;
+    /// open logger to file
+    /// return false on failure
+    /// return true on successful open
+    bool
+    OpenLogFile(const std::string& file);
+
+    /// call once to use syslog based logging
+    void
+    UseSyslog();
+
+    virtual void
+    Print(LogLevel lvl, const std::string& msg);
+  };
+  */
+
+  struct LogContext
+  {
+    LogContext();
+    LogLevel minLevel = eLogInfo;
+    ILogStream_ptr logStream;
+    std::string nodeName;
+    static LogContext&
+    Instance();
+  };
 
   void
   SetLogLevel(LogLevel lvl);
-
-  /** internal */
-  template < typename TArg >
-  void
-  LogAppend(std::stringstream& ss, TArg&& arg) noexcept
-  {
-    ss << std::forward< TArg >(arg);
-  }
-  /** internal */
-  template < typename TArg, typename... TArgs >
-  void
-  LogAppend(std::stringstream& ss, TArg&& arg, TArgs&&... args) noexcept
-  {
-    LogAppend(ss, std::forward< TArg >(arg));
-    LogAppend(ss, std::forward< TArgs >(args)...);
-  }
-
-  static inline std::string
-  thread_id_string()
-  {
-    auto tid = std::this_thread::get_id();
-    std::hash< std::thread::id > h;
-    uint16_t id = h(tid) % 1000;
-#if defined(ANDROID) || defined(RPI)
-    char buff[8] = {0};
-    snprintf(buff, sizeof(buff), "%u", id);
-    return buff;
-#else
-    return std::to_string(id);
-#endif
-  }
-
-  struct log_timestamp
-  {
-    const char* format;
-
-    log_timestamp(const char* fmt = "%c %Z") : format(fmt)
-    {
-    }
-
-    friend std::ostream&
-    operator<<(std::ostream& out, const log_timestamp& ts)
-    {
-#if defined(ANDROID) || defined(RPI)
-      (void)ts;
-      return out << time_now_ms();
-#else
-      auto now = llarp::Clock_t::to_time_t(llarp::Clock_t::now());
-      return out << std::put_time(std::localtime(&now), ts.format);
-#endif
-    }
-  };
 
   /** internal */
   template < typename... TArgs >
   void
   _Log(LogLevel lvl, const char* fname, int lineno, TArgs&&... args) noexcept
   {
-    if(_glog.minlevel > lvl)
+    auto& log = LogContext::Instance();
+    if(log.minLevel > lvl)
       return;
 
+    std::stringstream ss;
+    log.logStream->PreLog(ss, lvl, fname, lineno);
+    LogAppend(ss, std::forward< TArgs >(args)...);
+    log.logStream->PostLog(ss);
+    log.logStream->Print(lvl, fname, ss.str());
+  }
+  /*
     std::stringstream ss;
 #ifdef ANDROID
     int loglev = -1;
@@ -259,6 +232,7 @@ namespace llarp
     }
 #endif
   }
+  */
 }  // namespace llarp
 
 #define LogDebug(...) _Log(llarp::eLogDebug, LOG_TAG, __LINE__, __VA_ARGS__)

@@ -944,7 +944,7 @@ namespace llarp
       {
         _rc.SetNick(val);
         // set logger name here
-        _glog.nodeName = rc().Nick();
+        LogContext::Instance().nodeName = rc().Nick();
       }
       if(StrEq(key, "encryption-privkey"))
       {

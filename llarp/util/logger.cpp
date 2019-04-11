@@ -1,14 +1,44 @@
 #include <util/logger.hpp>
 #include <util/logger.h>
+#include <util/ostream_logger.hpp>
+#if defined(_WIN32)
+#include <util/win32_logger.hpp>
+#endif
+#if defined(ANDROID)
+#include <util/android_logger.hpp>
+#endif
 
 namespace llarp
 {
-  Logger _glog;
+#if defined(_WIN32)
+  using Stream_t = Win32LogStream;
+#define _LOGSTREAM_INIT std::cout
+#else
+#if defined(ANDROID)
+  using Stream_t = AndroidLogStream;
+#define _LOGSTREAM_INIT
+#else
+  using Stream_t = OStreamLogStream;
+#define _LOGSTREAM_INIT std::cout
+#endif
+#endif
+
+  LogContext::LogContext()
+      : logStream(std::make_unique< Stream_t >(_LOGSTREAM_INIT))
+  {
+  }
+
+  LogContext&
+  LogContext::Instance()
+  {
+    static LogContext ctx;
+    return ctx;
+  }
 
   void
   SetLogLevel(LogLevel lvl)
   {
-    _glog.minlevel = lvl;
+    LogContext::Instance().minLevel = lvl;
   }
 }  // namespace llarp
 
@@ -23,6 +53,6 @@ extern "C"
   void
   cSetLogNodeName(const char* name)
   {
-    llarp::_glog.nodeName = name;
+    llarp::LogContext::Instance().nodeName = name;
   }
 }

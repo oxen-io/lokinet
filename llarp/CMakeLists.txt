@@ -15,6 +15,9 @@ set(LIB_UTIL_SRC
   util/ini.cpp
   util/json.cpp
   util/logger.cpp
+  util/android_logger.cpp
+  util/ostream_logger.cpp
+  util/win32_logger.cpp
   util/logic.cpp
   util/mem.cpp
   util/metrics_core.cpp

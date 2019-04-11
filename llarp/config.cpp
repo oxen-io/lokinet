@@ -52,6 +52,7 @@ namespace llarp
     api       = find_section(parser, "api", section_t{});
     lokid     = find_section(parser, "lokid", section_t{});
     bootstrap = find_section(parser, "bootstrap", section_t{});
+    logging   = find_section(parser, "logging", section_t{});
     return true;
   };
 
@@ -66,6 +67,7 @@ namespace llarp
                     {"metrics", metrics},
                     {"netdb", netdb},
                     {"api", api},
+                    {"logging", logging},
                     {"services", services}};
 
     auto visitor = [&](const char *name, const auto &item) {
@@ -178,9 +180,18 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "# nickname=lokinet" << std::endl;
   f << std::endl << std::endl;
 
+  // logging
+  f << "[logging]" << std::endl;
+  f << "level=info" << std::endl;
+  f << "# uncomment for logging to file" << std::endl;
+  f << "#type=file" << std::endl;
+  f << "#file=/path/to/logfile" << std::endl;
+  f << "# uncomment for syslog logging" << std::endl;
+  f << "#type=syslog" << std::endl;
+
   // metrics
-  f << "[metrics]\n";
-  f << "json-metrics-path=" << basepath << "metrics.json\n";
+  f << "[metrics]" << std::endl;
+  f << "json-metrics-path=" << basepath << "metrics.json" << std::endl;
 
   f << std::endl << std::endl;
 
