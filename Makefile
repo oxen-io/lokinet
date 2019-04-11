@@ -198,7 +198,7 @@ android: android-gradle
 
 windows-debug-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw32.cmake'  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 windows-debug: windows-debug-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
@@ -206,7 +206,7 @@ windows-debug: windows-debug-configure
 
 windows-release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw32.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 windows-release: windows-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
