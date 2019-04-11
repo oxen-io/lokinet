@@ -60,7 +60,7 @@ namespace cpp17
       {
         // printf("directory_iterator::impl::cstr path[%s]\n", path_.c_str());
         this->cPath = path_;
-        d           = nullptr;//::opendir(path_.c_str());
+        d           = ::opendir(path_.c_str());
 
         if(d)
         {
@@ -89,7 +89,7 @@ namespace cpp17
           release();
           ::closedir(d);
         }
-        d   = nullptr;//::opendir(this->cPath.c_str());
+        d   = ::opendir(this->cPath.c_str());
         pos = 0;
         if(d)
         {
@@ -130,7 +130,7 @@ namespace cpp17
           {
             dirent* ptr = 0;
 
-            const int res = 0;//::readdir_r(d, e, &ptr);
+            const int res = ::readdir_r(d, e, &ptr);
 
             if(res != 0 || ptr == 0)
             {

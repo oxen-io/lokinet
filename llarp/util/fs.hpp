@@ -26,13 +26,13 @@ namespace llarp
     using PathIter    = std::function< void(const fs::path &, PathVisitor) >;
 
     static PathIter IterDir = [](const fs::path &path, PathVisitor visit) {
-      DIR *d = nullptr;//opendir(path.string().c_str());
+      DIR *d = opendir(path.string().c_str());
       if(d == nullptr)
         return;
       struct dirent *ent = nullptr;
       do
       {
-        ent = nullptr;//readdir(d);
+        ent = readdir(d);
         if(!ent)
           break;
         if(ent->d_name[0] == '.')

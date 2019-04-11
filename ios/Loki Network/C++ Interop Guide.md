@@ -1,12 +1,53 @@
 There are a few steps that need to be taken to get the Loki Network C++ library to interoperate with Swift. They're a bit tricky to figure out, so for future reference:
 
 - Run `make -j8` from the loki-network root folder
-- Drag build/libabyss.a, build/libutp/liblibutp.a, build/vendor/abseil-cpp/absl/base/libabsl_base.a, build/vendor/abseil-cpp/absl/base/libabsl_internal_malloc_internal.a, build/vendor/abseil-cpp/absl/base/libabsl_internal_spinlock_wait.a, build/vendor/abseil-cpp/absl/base/libabsl_internal_throw_delegate.a, build/vendor/abseil-cpp/absl/debugging/libabsl_stacktrace.a, build/vendor/abseil-cpp/absl/debugging/libabsl_symbolize.a, build/vendor/abseil-cpp/absl/hash/libabsl_hash.a, build/vendor/abseil-cpp/absl/hash/libabsl_internal_city.a, build/vendor/abseil-cpp/absl/strings/libabsl_strings.a, build/vendor/abseil-cpp/absl/time/libabsl_time.a, build/vendor/abseil-cpp/absl/types/libabsl_bad_optional_access.a, build/vendor/abseil-cpp/absl/types/libabsl_variant.a, build/vendor/libcppbackport.a, build/crypto/liblokinet-cryptography.a, build/llarp/liblokinet-util.a, build/llarp/liblokinet-platform.a and build/llarp/liblokinet-static.a into the project and make sure they're included under Build Phases → Link Binary With Libraries
-- Update Build Settings → **Library** Search Paths to include `$(PROJECT_DIR)/../` ... `build`, `build/libutp`, `build/vendor/abseil-cpp/absl/base`, `build/vendor/abseil-cpp/absl/debugging`, `build/vendor/abseil-cpp/absl/hash`, `build/vendor/abseil-cpp/absl/strings`, `build/vendor/abseil-cpp/absl/synchronization`, `build/vendor/abseil-cpp/absl/time`, `build/vendor/abseil-cpp/absl/types`, `build/vendor`, `build/crypto` and `build/llarp`
-- Drag include/llarp.h into the project 
-- Update Build Settings → **System** Header Search Paths to include `$(PROJECT_DIR)/../include`
-- Create a liblokinet-wrapper.cpp, include llarp.h, and wrap the functions you want to expose
+- Drag the following files into the project and make sure they're included under Build Phases → Link Binary With Libraries:
+  - build/libabyss.a
+  - build/libutp/liblibutp.a
+  - build/vendor/abseil-cpp/absl/base/libabsl_base.a
+  - build/vendor/abseil-cpp/absl/base/libabsl_internal_malloc_internal.a
+  - build/vendor/abseil-cpp/absl/base/libabsl_internal_spinlock_wait.a
+  - build/vendor/abseil-cpp/absl/base/libabsl_internal_throw_delegate.a
+  - build/vendor/abseil-cpp/absl/debugging/libabsl_stacktrace.a
+  - build/vendor/abseil-cpp/absl/debugging/libabsl_symbolize.a
+  - build/vendor/abseil-cpp/absl/hash/libabsl_hash.a
+  - build/vendor/abseil-cpp/absl/hash/libabsl_internal_city.a
+  - build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a
+  - build/vendor/abseil-cpp/absl/strings/libabsl_strings.a
+  - build/vendor/abseil-cpp/absl/synchronization/libabsl_synchornization.a
+  - build/vendor/abseil-cpp/absl/time/libabsl_time.a
+  - build/vendor/abseil-cpp/absl/types/libabsl_bad_optional_access.a
+  - build/vendor/abseil-cpp/absl/types/libabsl_variant.a
+  - build/vendor/libcppbackport.a
+  - build/crypto/liblokinet-cryptography.a
+  - build/llarp/liblokinet-util.a
+  - build/llarp/liblokinet-platform.a
+  - build/llarp/liblokinet-static.a
+- Update Build Settings → **Library** Search Paths to include `$(PROJECT_DIR)/../`:
+  - `build`
+  - `build/libutp`
+  - `build/vendor/abseil-cpp/absl/base`
+  - `build/vendor/abseil-cpp/absl/debugging`
+  - `build/vendor/abseil-cpp/absl/hash`
+  - `build/vendor/abseil-cpp/absl/numeric`
+  - `build/vendor/abseil-cpp/absl/strings`
+  - `build/vendor/abseil-cpp/absl/synchronization`
+  - `build/vendor/abseil-cpp/absl/time`
+  - `build/vendor/abseil-cpp/absl/types`
+  - `build/vendor`
+  - `build/crypto`
+  - `build/llarp`
+- Drag llarp/util/logger.hpp, include/llarp.h and llarp/router/router.hpp into the project
+- Update Build Settings → **System** Header Search Paths to include `$(PROJECT_DIR)/../`:
+    - `llarp/util`
+    - `include`
+    - `llarp/router`
+- Create a liblokinet-wrapper.cpp, include logger.h and llarp.h, and wrap the LLARP functions you want to expose. `opendir$INODE64`, `readdir$INODE64` and `readdir_r$INODE64` must be wrapped as well as a workaround for an issue where Xcode can't find these functions during linking when targeting iOS
 - Create a liblokinet-wrapper.h and include any imports needed for the function definitions
 - Create a Loki-Network-Bridging-Header.h and include liblokinet-wrapper.h
 - Set Build Settings → Objective-C Bridging Header to Loki-Network-Bridging-Header.h
-- Update Build Settings → **System** Header Search Paths to include `$(PROJECT_DIR)/../` ... `llarp`, `crypto/include`, `vendor/abseil-cpp` and `vendor/nlohmann/include`
+- Update Build Settings → **System** Header Search Paths to include `$(PROJECT_DIR)/../`:
+  - `llarp`
+  - `crypto/include`
+  - `vendor/abseil-cpp`
+  - `vendor/nlohmann/include`
