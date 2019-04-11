@@ -2,6 +2,9 @@
 #include <util/win32_logger.hpp>
 #include <util/logger_internal.hpp>
 
+static CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
+static short old_attrs;
+
 namespace llarp
 {
   Win32LogStream::Win32LogStream(std::ostream& out) : OStreamLogStream(out)
