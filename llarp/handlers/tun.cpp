@@ -780,7 +780,6 @@ namespace llarp
       {
 #if defined(DEBUG) || !defined(RELEASE_MOTTO)
         llarp::LogInfo("invalid pkt");
-        llarp::DumpBuffer(buf.underlying);
 #endif
       }
     }

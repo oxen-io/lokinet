@@ -196,15 +196,23 @@ android-gradle: android-gradle-prepare
 android: android-gradle
 	cp -f $(ANDROID_DIR)/build/outputs/apk/*.apk $(REPO)
 
+windows-debug-configure: clean
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw32.cmake'  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+
+windows-debug: windows-debug-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
+
 windows-release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
-	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw32.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
 
 windows-release: windows-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
 	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
 
-windows: windows-release
+windows: windows-debug
 
 abyss: debug
 	$(ABYSS_EXE)

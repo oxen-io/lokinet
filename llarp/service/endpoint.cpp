@@ -1206,25 +1206,6 @@ namespace llarp
         return false;
       }
 
-      {
-        RouterID endpoint = path->Endpoint();
-        auto itr          = m_ServiceLookupFails.find(endpoint);
-        if(itr != m_ServiceLookupFails.end())
-        {
-          path = PickRandomEstablishedPath();
-        }
-      }
-      if(!path)
-      {
-        path = PickRandomEstablishedPath();
-        if(!path)
-        {
-          llarp::LogError(Name(), "no working paths for lookup");
-          hook(remote, nullptr);
-          return false;
-        }
-      }
-
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
           this,
           std::bind(&Endpoint::OnLookup, this, std::placeholders::_1,
@@ -1551,7 +1532,7 @@ namespace llarp
       else
       {
         llarp::LogInfo(Name(), " updating introset");
-        UpdateIntroSet(false);
+        UpdateIntroSet(true);
       }
       return shiftedIntro;
     }

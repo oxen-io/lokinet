@@ -15,6 +15,10 @@ set(LIB_UTIL_SRC
   util/ini.cpp
   util/json.cpp
   util/logger.cpp
+  util/android_logger.cpp
+  util/ostream_logger.cpp
+  util/syslog_logger.cpp
+  util/win32_logger.cpp
   util/logic.cpp
   util/mem.cpp
   util/metrics_core.cpp
@@ -44,10 +48,10 @@ add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
 target_link_libraries(${UTIL_LIB} PUBLIC absl::synchronization)
 target_link_libraries(${UTIL_LIB} PUBLIC nlohmann_json::nlohmann_json)
-
+target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings absl::hash)
 # cut back on fluff
 if (NOT WIN32)
-    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings absl::hash cppbackport)
+target_link_libraries(${UTIL_LIB} PUBLIC cppbackport)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")

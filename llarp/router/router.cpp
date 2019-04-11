@@ -14,6 +14,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/logger_syslog.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
 #include <utp/utp.hpp>
@@ -833,6 +834,18 @@ namespace llarp
         llarp::LogWarn("failed to load hidden service config for ", key);
       }
     }
+    else if(StrEq(section, "logging"))
+    {
+      if(StrEq(key, "type") && StrEq(val, "syslog"))
+      {
+#if defined(_WIN32)
+        LogError("syslog not supported on win32");
+#else
+        LogInfo("Switching to syslog");
+        LogContext::Instance().logStream = std::make_unique< SysLogStream >();
+#endif
+      }
+    }
     else if(StrEq(section, "lokid"))
     {
       if(StrEq(key, "service-node-seed"))
@@ -944,7 +957,7 @@ namespace llarp
       {
         _rc.SetNick(val);
         // set logger name here
-        _glog.nodeName = rc().Nick();
+        LogContext::Instance().nodeName = rc().Nick();
       }
       if(StrEq(key, "encryption-privkey"))
       {
