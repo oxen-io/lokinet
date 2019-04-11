@@ -23,7 +23,7 @@ llarp_ev_pkt_pipe::Start()
     return false;
   }
 #else
-#ifdef __linux__
+#if defined(__linux__) || defined(__FreeBSD__)
   if(pipe2(_fds, O_DIRECT | O_NONBLOCK) == -1)
 #else
   // non-linux reeeeeeeee
