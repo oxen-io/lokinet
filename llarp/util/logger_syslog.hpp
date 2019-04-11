@@ -1,0 +1,21 @@
+#ifndef LLARP_UTIL_LOGGER_SYSLOG_HPP
+#define LLARP_UTIL_LOGGER_SYSLOG_HPP
+#include <util/logstream.hpp>
+#include <iostream>
+
+namespace llarp
+{
+  struct SysLogStream : public ILogStream
+  {
+    void
+    PreLog(std::stringstream& s, LogLevel lvl, const char* fname,
+           int lineno) const override;
+
+    void
+    Print(LogLevel lvl, const char* tag, const std::string& msg) const override;
+
+    void
+    PostLog(std::stringstream& ss) const override;
+  };
+}  // namespace llarp
+#endif

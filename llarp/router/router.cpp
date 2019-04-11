@@ -14,6 +14,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/logger_syslog.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
 #include <utp/utp.hpp>
@@ -831,6 +832,14 @@ namespace llarp
       else
       {
         llarp::LogWarn("failed to load hidden service config for ", key);
+      }
+    }
+    else if(StrEq(section, "logger"))
+    {
+      if(StrEq(key, "type") && StrEq(val, "syslog"))
+      {
+        LogInfo("Switching to syslog");
+        LogContext::Instance().logStream = std::make_unique< SysLogStream >();
       }
     }
     else if(StrEq(section, "lokid"))

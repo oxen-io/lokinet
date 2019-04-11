@@ -67,7 +67,6 @@ namespace llarp
                     {"metrics", metrics},
                     {"netdb", netdb},
                     {"api", api},
-                    {"logging", logging},
                     {"services", services}};
 
     auto visitor = [&](const char *name, const auto &item) {
@@ -75,6 +74,9 @@ namespace llarp
     };
 
     using namespace std::placeholders;
+
+    std::for_each(logging.begin(), logging.end(),
+                  std::bind(visitor, "logging", _1));
 
     std::for_each(lokid.begin(), lokid.end(), std::bind(visitor, "lokid", _1));
     std::for_each(router.begin(), router.end(),

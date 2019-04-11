@@ -17,6 +17,7 @@ set(LIB_UTIL_SRC
   util/logger.cpp
   util/android_logger.cpp
   util/ostream_logger.cpp
+  util/syslog_logger.cpp
   util/win32_logger.cpp
   util/logic.cpp
   util/mem.cpp
