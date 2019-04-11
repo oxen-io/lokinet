@@ -834,7 +834,7 @@ namespace llarp
         llarp::LogWarn("failed to load hidden service config for ", key);
       }
     }
-    else if(StrEq(section, "logger"))
+    else if(StrEq(section, "logging"))
     {
       if(StrEq(key, "type") && StrEq(val, "syslog"))
       {
