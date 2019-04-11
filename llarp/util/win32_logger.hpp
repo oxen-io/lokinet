@@ -21,8 +21,6 @@ namespace llarp
     bool isConsoleModern =
         true;  // qol fix so oldfag clients don't see ugly escapes
     HANDLE fd1 = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_SCREEN_BUFFER_INFO consoleInfo;
-    short old_attrs;
   };
 }  // namespace llarp
 #endif
