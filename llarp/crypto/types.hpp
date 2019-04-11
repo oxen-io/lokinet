@@ -91,7 +91,7 @@ namespace llarp
     friend std::ostream &
     operator<<(std::ostream &out, const SecretKey &)
     {
-      //return out << k.ToHex();
+      // return out << k.ToHex();
       // make sure we never print out secret keys
       return out << "[secretkey]";
     }
@@ -132,7 +132,7 @@ namespace llarp
     friend std::ostream &
     operator<<(std::ostream &out, const IdentitySecret &)
     {
-      //return out << k.ToHex();
+      // return out << k.ToHex();
       // make sure we never print out secret keys
       return out << "[secretkey]";
     }
