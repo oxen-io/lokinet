@@ -28,6 +28,8 @@
 		B8F7986A225DB19A00003DE6 /* libabsl_bad_optional_access.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */; };
 		B8F7986C225DB1CE00003DE6 /* libabsl_int128.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */; };
 		B8F79879225DBCC500003DE6 /* Daemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* Daemon.swift */; };
+		B8F7988B226056DD00003DE6 /* Packet Tunnel Provider.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B8F798922260579100003DE6 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* PacketTunnelProvider.swift */; };
 		C3CBFB652256D47400F34631 /* liblokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */; };
 		C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3CBFB662256D57000F34631 /* liblokinet-static.a */; };
 		C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* AppDelegate.swift */; };
@@ -36,6 +38,30 @@
 		C3FBE36C22542DD80006284B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C3FBE36B22542DD80006284B /* Assets.xcassets */; };
 		C3FBE36F22542DD80006284B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C3FBE36D22542DD80006284B /* LaunchScreen.storyboard */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		B8F79889226056DD00003DE6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C3FBE35922542DD60006284B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B8F79882226056DD00003DE6;
+			remoteInfo = "Packet Tunnel Provider";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		B8F7988F226056DD00003DE6 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				B8F7988B226056DD00003DE6 /* Packet Tunnel Provider.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		B8F797EF225C5E1E00003DE6 /* libcppbackport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcppbackport.a; path = ../build/vendor/libcppbackport.a; sourceTree = "<group>"; };
@@ -60,6 +86,10 @@
 		B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_int128.a; path = "../build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a"; sourceTree = "<group>"; };
 		B8F7986D225DB57100003DE6 /* logger.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = logger.hpp; path = ../../llarp/util/logger.hpp; sourceTree = "<group>"; };
 		B8F79878225DBCC500003DE6 /* Daemon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Daemon.swift; sourceTree = "<group>"; };
+		B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Packet Tunnel Provider.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		B8F79887226056DD00003DE6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		B8F79888226056DD00003DE6 /* Packet_Tunnel_Provider.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Packet_Tunnel_Provider.entitlements; sourceTree = "<group>"; };
+		B8F798912260579100003DE6 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
 		C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "liblokinet-wrapper.cpp"; sourceTree = "<group>"; };
 		C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "liblokinet-wrapper.h"; sourceTree = "<group>"; };
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
@@ -76,6 +106,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		B8F79880226056DD00003DE6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C3FBE35E22542DD60006284B /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -130,10 +167,29 @@
 			name = Meta;
 			sourceTree = "<group>";
 		};
+		B8F79884226056DD00003DE6 /* Packet Tunnel Provider */ = {
+			isa = PBXGroup;
+			children = (
+				B8F798912260579100003DE6 /* PacketTunnelProvider.swift */,
+				B8F798902260573500003DE6 /* Meta */,
+			);
+			path = "Packet Tunnel Provider";
+			sourceTree = "<group>";
+		};
+		B8F798902260573500003DE6 /* Meta */ = {
+			isa = PBXGroup;
+			children = (
+				B8F79887226056DD00003DE6 /* Info.plist */,
+				B8F79888226056DD00003DE6 /* Packet_Tunnel_Provider.entitlements */,
+			);
+			name = Meta;
+			sourceTree = "<group>";
+		};
 		C3FBE35822542DD60006284B = {
 			isa = PBXGroup;
 			children = (
 				C3FBE36322542DD60006284B /* Loki Network */,
+				B8F79884226056DD00003DE6 /* Packet Tunnel Provider */,
 				C3FBE36222542DD60006284B /* Products */,
 				C3FBE376225438E20006284B /* Frameworks */,
 			);
@@ -143,6 +199,7 @@
 			isa = PBXGroup;
 			children = (
 				C3FBE36122542DD60006284B /* Loki Network.app */,
+				B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -191,6 +248,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		B8F79882226056DD00003DE6 /* Packet Tunnel Provider */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B8F7988C226056DD00003DE6 /* Build configuration list for PBXNativeTarget "Packet Tunnel Provider" */;
+			buildPhases = (
+				B8F7987F226056DD00003DE6 /* Sources */,
+				B8F79880226056DD00003DE6 /* Frameworks */,
+				B8F79881226056DD00003DE6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Packet Tunnel Provider";
+			productName = "Packet Tunnel Provider";
+			productReference = B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		C3FBE36022542DD60006284B /* Loki Network */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C3FBE37322542DD80006284B /* Build configuration list for PBXNativeTarget "Loki Network" */;
@@ -198,10 +272,12 @@
 				C3FBE35D22542DD60006284B /* Sources */,
 				C3FBE35E22542DD60006284B /* Frameworks */,
 				C3FBE35F22542DD60006284B /* Resources */,
+				B8F7988F226056DD00003DE6 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				B8F7988A226056DD00003DE6 /* PBXTargetDependency */,
 			);
 			name = "Loki Network";
 			productName = "Loki Network";
@@ -218,6 +294,9 @@
 				LastUpgradeCheck = 1020;
 				ORGANIZATIONNAME = loki;
 				TargetAttributes = {
+					B8F79882226056DD00003DE6 = {
+						CreatedOnToolsVersion = 10.2;
+					};
 					C3FBE36022542DD60006284B = {
 						CreatedOnToolsVersion = 10.2;
 						LastSwiftMigration = 1020;
@@ -238,11 +317,19 @@
 			projectRoot = "";
 			targets = (
 				C3FBE36022542DD60006284B /* Loki Network */,
+				B8F79882226056DD00003DE6 /* Packet Tunnel Provider */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		B8F79881226056DD00003DE6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C3FBE35F22542DD60006284B /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -256,6 +343,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B8F7987F226056DD00003DE6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B8F798922260579100003DE6 /* PacketTunnelProvider.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C3FBE35D22542DD60006284B /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -268,6 +363,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B8F7988A226056DD00003DE6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B8F79882226056DD00003DE6 /* Packet Tunnel Provider */;
+			targetProxy = B8F79889226056DD00003DE6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		C3FBE36822542DD60006284B /* Main.storyboard */ = {
@@ -289,6 +392,46 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		B8F7988D226056DD00003DE6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Packet Tunnel Provider/Packet_Tunnel_Provider.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = ZU63H493D4;
+				INFOPLIST_FILE = "Packet Tunnel Provider/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network.Packet-Tunnel-Provider";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B8F7988E226056DD00003DE6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Packet Tunnel Provider/Packet_Tunnel_Provider.entitlements";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = ZU63H493D4;
+				INFOPLIST_FILE = "Packet Tunnel Provider/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network.Packet-Tunnel-Provider";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		C3FBE37122542DD80006284B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -408,6 +551,7 @@
 		C3FBE37422542DD80006284B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = ZU63H493D4;
@@ -452,6 +596,7 @@
 		C3FBE37522542DD80006284B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = ZU63H493D4;
@@ -496,6 +641,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		B8F7988C226056DD00003DE6 /* Build configuration list for PBXNativeTarget "Packet Tunnel Provider" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B8F7988D226056DD00003DE6 /* Debug */,
+				B8F7988E226056DD00003DE6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C3FBE35C22542DD60006284B /* Build configuration list for PBXProject "Loki Network" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
