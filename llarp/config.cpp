@@ -302,7 +302,8 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
                               std::ios::binary | std::ios::out);
     if(f.is_open())
     {
-      clientini_f << "# this is an example configuration for a snapp";
+      clientini_f << "# this is an example configuration for a snapp"
+                  << std::endl;
       clientini_f << "[example-snapp]" << std::endl;
       clientini_f << "# keyfile is the path to the private key of the snapp"
                   << std::endl;
