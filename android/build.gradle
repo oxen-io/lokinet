@@ -24,17 +24,17 @@ android {
     defaultConfig {
         applicationId "network.loki.lokinet"
         targetSdkVersion 28
-        minSdkVersion 14
+        minSdkVersion 23
         versionCode 1
-        versionName "0.3.1"
+        versionName "0.4.0"
         ndk {
-            abiFilters 'armeabi'
+            abiFilters 'armeabi'             
         }
         externalNativeBuild {
             cmake {
                 targets "lokinetandroid"
-                arguments "-DANDROID=ON", "-DANDROID_STL=c++_static"
-                cppFlags "-fexceptions"
+                arguments "-DANDROID=ON", "-DANDROID_STL=c++_static", "-DANDROID_ARM_NEON=TRUE"
+                cppFlags "-fexceptions -std=c++14 -frtti"
             }
         }
         packagingOptions{

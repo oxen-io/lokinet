@@ -12,7 +12,7 @@ struct AbyssTestBase : public ::testing::Test
 {
   llarp::sodium::CryptoLibSodium crypto;
   llarp_threadpool* threadpool = nullptr;
-  llarp_ev_loop* loop          = nullptr;
+  llarp_ev_loop_ptr loop       = nullptr;
   std::unique_ptr< llarp::Logic > logic;
   abyss::httpd::BaseReqHandler* server = nullptr;
   abyss::http::JSONRPC* client         = nullptr;
@@ -21,19 +21,13 @@ struct AbyssTestBase : public ::testing::Test
 
   AbyssTestBase()
   {
+    llarp::SetLogLevel(llarp::eLogDebug);
   }
 
   void
   AssertMethod(const std::string& meth) const
   {
     ASSERT_EQ(meth, method);
-  }
-
-  void
-  SetUp()
-  {
-    llarp::SetLogLevel(llarp::eLogDebug);
-    // for llarp::randint
   }
 
   static void
@@ -54,8 +48,8 @@ struct AbyssTestBase : public ::testing::Test
   Start()
   {
     threadpool = llarp_init_same_process_threadpool();
-    llarp_ev_loop_alloc(&loop);
-    logic.reset(new llarp::Logic(threadpool));
+    loop       = llarp_make_ev_loop();
+    logic      = std::make_unique< llarp::Logic >(threadpool);
 
     sockaddr_in addr;
     addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -78,9 +72,7 @@ struct AbyssTestBase : public ::testing::Test
   Stop()
   {
     llarp::LogDebug("test case Stop() called");
-    if(server)
-      server->Close();
-    llarp_ev_loop_stop(loop);
+    llarp_ev_loop_stop(loop.get());
   }
 
   void
@@ -89,11 +81,9 @@ struct AbyssTestBase : public ::testing::Test
     logic->queue_job({this, &StopIt});
   }
 
-  void
-  TearDown()
+  ~AbyssTestBase()
   {
     logic.reset();
-    llarp_ev_loop_free(&loop);
     llarp_free_threadpool(&threadpool);
     llarp::SetLogLevel(llarp::eLogInfo);
   }
@@ -141,6 +131,10 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
     test->called = true;
     return Response();
   }
+
+  ~ServerHandler()
+  {
+  }
 };
 
 struct AbyssTest : public AbyssTestBase,
@@ -151,8 +145,9 @@ struct AbyssTest : public AbyssTestBase,
       : AbyssTestBase()
       , abyss::http::JSONRPC()
       , abyss::httpd::BaseReqHandler(1000)
-
   {
+    client = this;
+    server = this;
   }
 
   abyss::http::IRPCClientHandler*
@@ -165,14 +160,6 @@ struct AbyssTest : public AbyssTestBase,
   CreateHandler(abyss::httpd::ConnImpl* impl)
   {
     return new ServerHandler(impl, this);
-  }
-
-  void
-  SetUp()
-  {
-    AbyssTestBase::SetUp();
-    client = this;
-    server = this;
   }
 
   static void

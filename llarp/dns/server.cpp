@@ -8,8 +8,8 @@ namespace llarp
 {
   namespace dns
   {
-    Proxy::Proxy(llarp_ev_loop* loop, IQueryHandler* h)
-        : m_Loop(loop), m_QueryHandler(h)
+    Proxy::Proxy(llarp_ev_loop_ptr loop, IQueryHandler* h)
+        : m_Loop(std::move(loop)), m_QueryHandler(h)
     {
       m_Client.user     = this;
       m_Server.user     = this;
@@ -30,14 +30,9 @@ namespace llarp
     {
       m_Resolvers.clear();
       m_Resolvers = resolvers;
-      if(m_Resolvers.size() == 0)
-      {
-        llarp::LogError("no upstream dns provide specified");
-        return false;
-      }
       llarp::Addr any("0.0.0.0", 0);
-      return llarp_ev_add_udp(m_Loop, &m_Server, addr) == 0
-          && llarp_ev_add_udp(m_Loop, &m_Client, any) == 0;
+      return llarp_ev_add_udp(m_Loop.get(), &m_Server, addr) == 0
+          && llarp_ev_add_udp(m_Loop.get(), &m_Client, any) == 0;
     }
 
     void
@@ -57,10 +52,8 @@ namespace llarp
     llarp::Addr
     Proxy::PickRandomResolver() const
     {
-      size_t sz = m_Resolvers.size();
-      if(sz == 0)
-        return llarp::Addr("8.8.8.8", 53);
-      if(sz == 1)
+      const size_t sz = m_Resolvers.size();
+      if(sz <= 1)
         return m_Resolvers[0];
       auto itr = m_Resolvers.begin();
       std::advance(itr, llarp::randint() % sz);
@@ -138,7 +131,13 @@ namespace llarp
         {
           llarp::LogWarn("failed to handle hooked dns");
         }
-        return;
+      }
+      else if(m_Resolvers.size() == 0)
+      {
+        // no upstream resolvers
+        // let's serv fail it
+        msg.AddServFail();
+        SendMessageTo(from, std::move(msg));
       }
       else if(itr == m_Forwarded.end())
       {

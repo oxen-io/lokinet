@@ -35,9 +35,9 @@ extern "C"
   void
   llarp_main_signal(struct llarp_main *ptr, int sig);
 
-  /// give main context a vpn file descriptor (android/ios)
+  /// give main context a vpn file descriptor pair (android/ios)
   void
-  llarp_main_inject_vpn_fd(struct llarp_main *m, int fd);
+  llarp_main_inject_vpn_fd(struct llarp_main *m, int rfd, int wfd);
 
   /// setup main context, returns 0 on success
   int

@@ -15,6 +15,10 @@ set(LIB_UTIL_SRC
   util/ini.cpp
   util/json.cpp
   util/logger.cpp
+  util/android_logger.cpp
+  util/ostream_logger.cpp
+  util/syslog_logger.cpp
+  util/win32_logger.cpp
   util/logic.cpp
   util/mem.cpp
   util/metrics_core.cpp
@@ -57,6 +61,7 @@ endif()
 set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
+  ev/pipe.cpp
   net/net.cpp
   net/net_addr.cpp
   net/net_inaddr.cpp

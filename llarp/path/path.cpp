@@ -548,7 +548,7 @@ namespace llarp
         if(now >= buildStarted)
         {
           auto dlt = now - buildStarted;
-          if(dlt >= PATH_BUILD_TIMEOUT)
+          if(dlt >= path::build_timeout)
           {
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
@@ -561,7 +561,7 @@ namespace llarp
       if(_status == ePathEstablished)
       {
         auto dlt = now - m_LastLatencyTestTime;
-        if(dlt > 5000 && m_LastLatencyTestID == 0)
+        if(dlt > path::latency_interval && m_LastLatencyTestID == 0)
         {
           routing::PathLatencyMessage latency;
           latency.T             = randint();
@@ -573,7 +573,7 @@ namespace llarp
         if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
         {
           if(m_LastRecvMessage && now > m_LastRecvMessage
-             && now - m_LastRecvMessage > PATH_ALIVE_TIMEOUT)
+             && now - m_LastRecvMessage > path::alive_timeout)
           {
             // TODO: send close exit message
             // r->routerProfiling().MarkPathFail(this);
@@ -590,10 +590,13 @@ namespace llarp
             EnterState(ePathTimeout, now);
           }
         }
-        else if(dlt >= PATH_ALIVE_TIMEOUT && m_LastRecvMessage == 0)
+        else if(dlt >= path::alive_timeout && m_LastRecvMessage == 0)
         {
-          r->routerProfiling().MarkPathFail(this);
-          EnterState(ePathTimeout, now);
+          if(m_CheckForDead && m_CheckForDead(this, dlt))
+          {
+            r->routerProfiling().MarkPathFail(this);
+            EnterState(ePathTimeout, now);
+          }
         }
       }
     }
@@ -704,11 +707,11 @@ namespace llarp
       N.Randomize();
       buf.sz = buf.cur - buf.base;
       // pad smaller messages
-      if(buf.sz < MESSAGE_PAD_SIZE)
+      if(buf.sz < pad_size)
       {
         // randomize padding
-        r->crypto()->randbytes(buf.cur, MESSAGE_PAD_SIZE - buf.sz);
-        buf.sz = MESSAGE_PAD_SIZE;
+        r->crypto()->randbytes(buf.cur, pad_size - buf.sz);
+        buf.sz = pad_size;
       }
       buf.cur = buf.base;
       return HandleUpstream(buf, N, r);

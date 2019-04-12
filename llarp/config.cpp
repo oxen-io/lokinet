@@ -22,7 +22,8 @@ namespace llarp
                       [&ret](const ConfigParser::Section_t &s) -> bool {
                         for(const auto &item : s)
                         {
-                          ret.emplace_back(string_view_string(item.first), string_view_string(item.second));
+                          ret.emplace_back(string_view_string(item.first),
+                                           string_view_string(item.second));
                         }
                         return true;
                       }))
@@ -47,9 +48,11 @@ namespace llarp
     iwp_links = find_section(parser, "bind", section_t{});
     services  = find_section(parser, "services", section_t{});
     system    = find_section(parser, "system", section_t{});
+    metrics   = find_section(parser, "metrics", section_t{});
     api       = find_section(parser, "api", section_t{});
     lokid     = find_section(parser, "lokid", section_t{});
     bootstrap = find_section(parser, "bootstrap", section_t{});
+    logging   = find_section(parser, "logging", section_t{});
     return true;
   };
 
@@ -57,9 +60,13 @@ namespace llarp
   Config::visit(const Visitor &functor)
   {
     std::unordered_map< std::string, const llarp::Config::section_t & >
-        sections = {{"network", network},     {"connect", connect},
-                    {"bootstrap", bootstrap}, {"system", system},
-                    {"netdb", netdb},         {"api", api},
+        sections = {{"network", network},
+                    {"connect", connect},
+                    {"bootstrap", bootstrap},
+                    {"system", system},
+                    {"metrics", metrics},
+                    {"netdb", netdb},
+                    {"api", api},
                     {"services", services}};
 
     auto visitor = [&](const char *name, const auto &item) {
@@ -67,6 +74,9 @@ namespace llarp
     };
 
     using namespace std::placeholders;
+
+    std::for_each(logging.begin(), logging.end(),
+                  std::bind(visitor, "logging", _1));
 
     std::for_each(lokid.begin(), lokid.end(), std::bind(visitor, "lokid", _1));
     std::for_each(router.begin(), router.end(),
@@ -170,6 +180,21 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "# uncomment following line to set router nickname to 'lokinet'"
     << std::endl;
   f << "# nickname=lokinet" << std::endl;
+  f << std::endl << std::endl;
+
+  // logging
+  f << "[logging]" << std::endl;
+  f << "level=info" << std::endl;
+  f << "# uncomment for logging to file" << std::endl;
+  f << "#type=file" << std::endl;
+  f << "#file=/path/to/logfile" << std::endl;
+  f << "# uncomment for syslog logging" << std::endl;
+  f << "#type=syslog" << std::endl;
+
+  // metrics
+  f << "[metrics]" << std::endl;
+  f << "json-metrics-path=" << basepath << "metrics.json" << std::endl;
+
   f << std::endl << std::endl;
 
   f << "# admin api (disabled by default)" << std::endl;

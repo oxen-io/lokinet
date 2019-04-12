@@ -40,7 +40,7 @@ TESTNET_NETID ?= loopback
 ANDROID_NDK ?= $(HOME)/Android/Ndk
 ANDROID_SDK ?= $(HOME)/Android/Sdk
 ANDROID_ABI ?= armeabi-v7a
-ANDROID_API_LEVEL ?= 18
+ANDROID_API_LEVEL ?= 24
 
 ANDROID_DIR=$(REPO)/android
 JNI_DIR=$(ANDROID_DIR)/jni
@@ -185,6 +185,7 @@ android-gradle-prepare:
 	echo "#auto generated don't modify kthnx" >> $(ANDROID_PROPS)
 	echo "lokinetCMake=$(REPO)/CMakeLists.txt" >> $(ANDROID_PROPS)
 	echo "org.gradle.parallel=true" >> $(ANDROID_PROPS)
+	echo "org.gradle.jvmargs=-Xmx1536M" >> $(ANDROID_PROPS)
 	echo "#auto generated don't modify kthnx" >> $(ANDROID_LOCAL_PROPS)
 	echo "sdk.dir=$(ANDROID_SDK)" >> $(ANDROID_LOCAL_PROPS)
 	echo "ndk.dir=$(ANDROID_NDK)" >> $(ANDROID_LOCAL_PROPS)
@@ -195,6 +196,14 @@ android-gradle: android-gradle-prepare
 android: android-gradle
 	cp -f $(ANDROID_DIR)/build/outputs/apk/*.apk $(REPO)
 
+windows-debug-configure: clean
+	mkdir -p '$(BUILD_ROOT)'
+	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Debug -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
+
+windows-debug: windows-debug-configure
+	$(MAKE) -C '$(BUILD_ROOT)'
+	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
+
 windows-release-configure: clean
 	mkdir -p '$(BUILD_ROOT)'
 	$(CONFIG_CMD) -DCMAKE_TOOLCHAIN_FILE='$(REPO)/contrib/cross/mingw.cmake'  -DCMAKE_BUILD_TYPE=Release -DCMAKE_ASM_FLAGS='$(ASFLAGS)' -DCMAKE_C_FLAGS='$(CFLAGS)' -DCMAKE_CXX_FLAGS='$(CXXFLAGS)'
@@ -203,7 +212,7 @@ windows-release: windows-release-configure
 	$(MAKE) -C '$(BUILD_ROOT)'
 	cp '$(BUILD_ROOT)/lokinet.exe' '$(REPO)/lokinet.exe'
 
-windows: windows-release
+windows: windows-debug
 
 abyss: debug
 	$(ABYSS_EXE)

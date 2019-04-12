@@ -337,12 +337,12 @@ namespace abyss
     }
 
     bool
-    BaseReqHandler::ServeAsync(llarp_ev_loop* loop, llarp::Logic* logic,
+    BaseReqHandler::ServeAsync(llarp_ev_loop_ptr loop, llarp::Logic* logic,
                                const sockaddr* bindaddr)
     {
-      m_loop  = loop;
+      m_loop  = std::move(loop);
       m_Logic = logic;
-      return llarp_tcp_serve(m_loop, &m_acceptor, bindaddr);
+      return llarp_tcp_serve(m_loop.get(), &m_acceptor, bindaddr);
     }
 
     void

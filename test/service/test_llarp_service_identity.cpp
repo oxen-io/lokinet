@@ -42,10 +42,10 @@ TEST_F(HiddenServiceTest, TestGenerateIntroSet)
   while(I.I.size() < 10)
   {
     llarp::service::Introduction intro;
-    intro.expiresAt = now + (DEFAULT_PATH_LIFETIME / 2);
+    intro.expiresAt = now + (llarp::path::default_lifetime / 2);
     intro.router.Randomize();
     intro.pathID.Randomize();
-    I.I.push_back(intro);
+    I.I.emplace_back(std::move(intro));
   }
   ASSERT_TRUE(ident.SignIntroSet(I, Crypto(), now));
   ASSERT_TRUE(I.Verify(Crypto(), now));

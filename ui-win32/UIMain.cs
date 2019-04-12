@@ -96,7 +96,10 @@ namespace network.loki.lokinet.win32.ui
 
         private void lokinetd_fd1_TextChanged(object sender, EventArgs e)
         {
-            lokinetd_fd1.ScrollToCaret();
+            if (Properties.Settings.Default.autoScroll)
+                lokinetd_fd1.ScrollToCaret();
+            else
+                return;
         }
 
         private void btnHide_Click(object sender, EventArgs e)

@@ -230,6 +230,11 @@ exit_tun_loop()
   }
 }
 
+llarp_win32_loop::~llarp_win32_loop()
+{
+  exit_tun_loop();
+}
+
 namespace llarp
 {
   int

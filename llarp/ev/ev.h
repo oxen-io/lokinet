@@ -40,29 +40,20 @@ namespace llarp
   class Logic;
 }
 
-/// allocator
-void
-llarp_ev_loop_alloc(struct llarp_ev_loop **ev);
+using llarp_ev_loop_ptr = std::shared_ptr< llarp_ev_loop >;
 
-std::unique_ptr< llarp_ev_loop >
+llarp_ev_loop_ptr
 llarp_make_ev_loop();
 
-// deallocator
+// run mainloop
 void
-llarp_ev_loop_free(struct llarp_ev_loop **ev);
-
-/// run main loop
-int
-llarp_ev_loop_run(struct llarp_ev_loop *ev, llarp::Logic *logic);
-
-void
-llarp_ev_loop_run_single_process(struct llarp_ev_loop *ev,
+llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
                                  struct llarp_threadpool *tp,
                                  llarp::Logic *logic);
 
 /// get the current time on the event loop
 llarp_time_t
-llarp_ev_loop_time_now_ms(struct llarp_ev_loop *ev);
+llarp_ev_loop_time_now_ms(const llarp_ev_loop_ptr &ev);
 
 /// stop event loop and wait for it to complete all jobs
 void

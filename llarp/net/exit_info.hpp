@@ -28,7 +28,7 @@ namespace llarp
       memset(address.s6_addr, 0, 16);
       address.s6_addr[11] = 0xff;
       address.s6_addr[10] = 0xff;
-      memcpy(address.s6_addr + 12, &ipv4_exit, 4);
+      memcpy(address.s6_addr + 12, &ipv4_exit.n, 4);
       memset(netmask.s6_addr, 0xff, 16);
     }
 

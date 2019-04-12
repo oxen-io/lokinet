@@ -2,6 +2,7 @@
 #define LLARP_HPP
 
 #include <util/types.hpp>
+#include <ev/ev.hpp>
 
 #include <iostream>
 #include <memory>
@@ -21,19 +22,39 @@ namespace llarp
   struct AbstractRouter;
   struct RouterContact;
 
+  namespace metrics
+  {
+    class DefaultManagerGuard;
+    class PublisherScheduler;
+  }  // namespace metrics
+
+  namespace thread
+  {
+    class Scheduler;
+  }
+
   struct Context
   {
+    Context();
     ~Context();
 
-    int num_nethreads   = 1;
-    bool singleThreaded = false;
-    std::unique_ptr< llarp::Crypto > crypto;
-    std::unique_ptr< llarp::AbstractRouter > router;
+    // These come first, in this order.
+    // This ensures we get metric collection on shutdown
+    std::unique_ptr< thread::Scheduler > m_scheduler;
+    std::unique_ptr< metrics::DefaultManagerGuard > m_metricsManager;
+    std::unique_ptr< metrics::PublisherScheduler > m_metricsPublisher;
+
+    int num_nethreads      = 1;
+    bool singleThreaded    = false;
+    bool disableMetrics    = false;
+    bool disableMetricLogs = false;
+    std::unique_ptr< Crypto > crypto;
+    std::unique_ptr< AbstractRouter > router;
     std::unique_ptr< llarp_threadpool > worker;
-    std::unique_ptr< llarp::Logic > logic;
-    std::unique_ptr< llarp::Config > config;
+    std::unique_ptr< Logic > logic;
+    std::unique_ptr< Config > config;
     std::unique_ptr< llarp_nodedb > nodedb;
-    std::unique_ptr< llarp_ev_loop > mainloop;
+    llarp_ev_loop_ptr mainloop;
     std::string nodedb_dir;
 
     bool
@@ -87,6 +108,9 @@ namespace llarp
 
     void
     progress();
+
+    void
+    setupMetrics();
 
     std::string configfile;
     std::string pidfile;

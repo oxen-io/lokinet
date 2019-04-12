@@ -28,7 +28,8 @@ namespace abyss
       if(ShouldProcessHeader(string_view(lowerHeader)))
       {
         val = val.substr(val.find_first_not_of(' '));
-        Header.Headers.emplace(lowerHeader.c_str(), llarp::string_view_string(val));
+        Header.Headers.emplace(lowerHeader.c_str(),
+                               llarp::string_view_string(val));
       }
       return true;
     }

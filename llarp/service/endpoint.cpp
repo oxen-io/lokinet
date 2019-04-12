@@ -21,7 +21,7 @@ namespace llarp
   {
     Endpoint::Endpoint(const std::string& name, AbstractRouter* r,
                        Context* parent)
-        : path::Builder(r, r->dht(), 3, DEFAULT_HOP_LENGTH)
+        : path::Builder(r, r->dht(), 3, path::default_len)
         , context(parent)
         , m_Router(r)
         , m_Name(name)
@@ -66,7 +66,7 @@ namespace llarp
       return false;
     }
 
-    llarp_ev_loop*
+    llarp_ev_loop_ptr
     Endpoint::EndpointNetLoop()
     {
       if(m_IsolatedNetLoop)
@@ -726,7 +726,20 @@ namespace llarp
     {
       if(NumInStatus(llarp::path::ePathEstablished) < 3)
         return false;
-      if(m_IntroSet.HasExpiredIntros(now))
+      // make sure we have all paths that are established
+      // in our introset
+      bool should = false;
+      ForEachPath([&](const path::Path* p) {
+        if(!p->IsReady())
+          return;
+        for(const auto& i : m_IntroSet.I)
+        {
+          if(i == p->intro)
+            return;
+        }
+        should = true;
+      });
+      if(m_IntroSet.HasExpiredIntros(now) || should)
         return now - m_LastPublishAttempt >= INTROSET_PUBLISH_RETRY_INTERVAL;
       return now - m_LastPublishAttempt >= INTROSET_PUBLISH_INTERVAL;
     }
@@ -787,7 +800,7 @@ namespace llarp
     {
       if(failed)
         return IsolationFailed();
-      llarp_ev_loop_alloc(&m_IsolatedNetLoop);
+      m_IsolatedNetLoop = llarp_make_ev_loop();
       return SetupNetworking();
     }
 
@@ -853,7 +866,8 @@ namespace llarp
         job->hook                  = nullptr;
         job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
-        router->routerProfiling().MarkSuccess(msg->R[0].pubkey);
+        const RouterID k(msg->R[0].pubkey);
+        m_Router->routerProfiling().MarkSuccess(k);
         m_PendingRouters.erase(itr);
         return true;
       }
@@ -1007,8 +1021,8 @@ namespace llarp
         RemoveConvoTag(frame->T);
         return true;
       }
-      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p->RXID(),
-                                       Worker(), m_Identity, m_DataHandler))
+      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p, Worker(),
+                                       m_Identity, m_DataHandler))
       {
         // send discard
         ProtocolFrame f;
@@ -1124,7 +1138,7 @@ namespace llarp
     bool
     Endpoint::CheckPathIsDead(path::Path*, llarp_time_t dlt)
     {
-      return dlt > 20000;
+      return dlt > path::alive_timeout;
     }
 
     bool
@@ -1192,25 +1206,6 @@ namespace llarp
         return false;
       }
 
-      {
-        RouterID endpoint = path->Endpoint();
-        auto itr          = m_ServiceLookupFails.find(endpoint);
-        if(itr != m_ServiceLookupFails.end())
-        {
-          path = PickRandomEstablishedPath();
-        }
-      }
-      if(!path)
-      {
-        path = PickRandomEstablishedPath();
-        if(!path)
-        {
-          llarp::LogError(Name(), "no working paths for lookup");
-          hook(remote, nullptr);
-          return false;
-        }
-      }
-
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
           this,
           std::bind(&Endpoint::OnLookup, this, std::placeholders::_1,
@@ -1229,7 +1224,7 @@ namespace llarp
     Endpoint::OutboundContext::OutboundContext(const IntroSet& introset,
                                                Endpoint* parent)
         : path::Builder(parent->m_Router, parent->m_Router->dht(), 3,
-                        DEFAULT_HOP_LENGTH)
+                        path::default_len)
         , SendContext(introset.A, {}, this, parent)
         , currentIntroSet(introset)
 
@@ -1238,10 +1233,7 @@ namespace llarp
       for(const auto intro : introset.I)
       {
         if(intro.expiresAt > m_NextIntro.expiresAt)
-        {
           m_NextIntro = intro;
-          remoteIntro = intro;
-        }
       }
     }
 
@@ -1380,7 +1372,7 @@ namespace llarp
                 continue;
               if(!GetCachedSessionKeyFor(tag, K))
                 continue;
-              if(p == nullptr && GetIntroFor(tag, remoteIntro))
+              if(GetIntroFor(tag, remoteIntro))
               {
                 if(!remoteIntro.ExpiresSoon(now))
                   p = GetNewestPathByRouter(remoteIntro.router);
@@ -1395,17 +1387,17 @@ namespace llarp
             {
               // TODO: check expiration of our end
               ProtocolMessage m(f.T);
-              PutReplyIntroFor(f.T, m.introReply);
               m.PutBuffer(data);
               f.N.Randomize();
               f.C.Zero();
               transfer.Y.Randomize();
               m.proto      = t;
               m.introReply = p->intro;
-              m.sender     = m_Identity.pub;
-              f.F          = m.introReply.pathID;
-              f.S          = GetSeqNoForConvo(f.T);
-              transfer.P   = remoteIntro.pathID;
+              PutReplyIntroFor(f.T, m.introReply);
+              m.sender   = m_Identity.pub;
+              f.F        = m.introReply.pathID;
+              f.S        = GetSeqNoForConvo(f.T);
+              transfer.P = remoteIntro.pathID;
               if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
               {
                 llarp::LogError("failed to encrypt and sign");
@@ -1540,7 +1532,7 @@ namespace llarp
       else
       {
         llarp::LogInfo(Name(), " updating introset");
-        UpdateIntroSet(false);
+        UpdateIntroSet(true);
       }
       return shiftedIntro;
     }
@@ -1862,7 +1854,7 @@ namespace llarp
       auto itr = m_BadIntros.begin();
       while(itr != m_BadIntros.end())
       {
-        if(now - itr->second > DEFAULT_PATH_LIFETIME)
+        if(now - itr->second > path::default_lifetime)
           itr = m_BadIntros.erase(itr);
         else
           ++itr;
@@ -1904,15 +1896,14 @@ namespace llarp
                                          RouterContact& cur, size_t hop,
                                          llarp::path::PathRole roles)
     {
-      if(m_NextIntro.router.IsZero())
+      if(remoteIntro.router.IsZero())
       {
-        llarp::LogError("intro is not set, cannot select hops");
-        return false;
+        SwapIntros();
       }
       if(hop == numHops - 1)
       {
-        m_Endpoint->EnsureRouterIsKnown(m_NextIntro.router);
-        if(db->Get(m_NextIntro.router, cur))
+        m_Endpoint->EnsureRouterIsKnown(remoteIntro.router);
+        if(db->Get(remoteIntro.router, cur))
           return true;
         ++m_BuildFails;
         return false;
@@ -1920,7 +1911,7 @@ namespace llarp
       else if(hop == numHops - 2)
       {
         return db->select_random_hop_excluding(
-            cur, {prev.pubkey, m_NextIntro.router});
+            cur, {prev.pubkey, remoteIntro.router});
       }
       return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
@@ -1958,7 +1949,7 @@ namespace llarp
       auto dlt = now - intro.expiresAt;
       return should
           || (  // try spacing tunnel builds out evenly in time
-                 (dlt < (DEFAULT_PATH_LIFETIME / 2))
+                 (dlt < (path::default_lifetime / 2))
                  && (NumInStatus(path::ePathBuilding) < m_NumPaths)
                  && (dlt > buildIntervalLimit));
     }

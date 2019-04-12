@@ -212,7 +212,7 @@ namespace llarp
 
 #ifndef WIN32
       /// handles fd injection force android
-      std::promise< int > m_VPNPromise;
+      std::promise< std::pair< int, int > > m_VPNPromise;
 #endif
 
       /// our dns resolver

@@ -14,6 +14,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/logger_syslog.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
 #include <utp/utp.hpp>
@@ -200,7 +201,7 @@ namespace llarp
     return async_verify_RC(s->GetRemoteRC());
   }
 
-  Router::Router(struct llarp_threadpool *_tp, struct llarp_ev_loop *__netloop,
+  Router::Router(struct llarp_threadpool *_tp, llarp_ev_loop_ptr __netloop,
                  Logic *l)
       : ready(false)
       , _netloop(__netloop)
@@ -374,18 +375,18 @@ namespace llarp
   }
 
   void
-  Router::ForEachPeer(
-      std::function< void(const ILinkSession *, bool) > visit) const
+  Router::ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
+                      bool randomize) const
   {
     for(const auto &link : outboundLinks)
     {
       link->ForEachSession(
-          [visit](const ILinkSession *peer) { visit(peer, true); });
+          [visit](const ILinkSession *peer) { visit(peer, true); }, randomize);
     }
     for(const auto &link : inboundLinks)
     {
       link->ForEachSession(
-          [visit](const ILinkSession *peer) { visit(peer, false); });
+          [visit](const ILinkSession *peer) { visit(peer, false); }, randomize);
     }
   }
 
@@ -502,7 +503,7 @@ namespace llarp
   Router::Close()
   {
     LogInfo("closing router");
-    llarp_ev_loop_stop(netloop());
+    llarp_ev_loop_stop(_netloop.get());
     inboundLinks.clear();
     outboundLinks.clear();
   }
@@ -833,6 +834,19 @@ namespace llarp
         llarp::LogWarn("failed to load hidden service config for ", key);
       }
     }
+    else if(StrEq(section, "logging"))
+    {
+      if(StrEq(key, "type") && StrEq(val, "syslog"))
+      {
+      // TODO(despair): write event log syslog class
+#if defined(_WIN32)
+        LogError("syslog not supported on win32");
+#else
+        LogInfo("Switching to syslog");
+        LogContext::Instance().logStream = std::make_unique< SysLogStream >();
+#endif
+      }
+    }
     else if(StrEq(section, "lokid"))
     {
       if(StrEq(key, "service-node-seed"))
@@ -944,7 +958,7 @@ namespace llarp
       {
         _rc.SetNick(val);
         // set logger name here
-        _glog.nodeName = rc().Nick();
+        LogContext::Instance().nodeName = rc().Nick();
       }
       if(StrEq(key, "encryption-privkey"))
       {
@@ -1044,6 +1058,17 @@ namespace llarp
     ep->LookupRouterAnon(remote);
   }
 
+  bool
+  Router::IsBootstrapNode(RouterID r) const
+  {
+    for(const auto &rc : bootstrapRCList)
+    {
+      if(rc.pubkey == r)
+        return true;
+    }
+    return false;
+  }
+
   void
   Router::Tick()
   {
@@ -1070,20 +1095,16 @@ namespace llarp
         return true;
       });
     }
-    // kill dead nodes
-    std::set< RouterID > removed;
-    nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
-      if(!routerProfiling().IsBad(rc.pubkey))
-        return false;
-      routerProfiling().ClearProfile(rc.pubkey);
-      removed.insert(rc.pubkey);
-      return true;
-    });
-
-    // request killed nodes 1 time
-    for(const auto &pk : removed)
-      LookupRouter(pk);
-
+    else
+    {
+      // kill dead nodes if client
+      nodedb()->RemoveIf([&](const RouterContact &rc) -> bool {
+        if(!routerProfiling().IsBad(rc.pubkey))
+          return false;
+        routerProfiling().ClearProfile(rc.pubkey);
+        return true;
+      });
+    }
     paths.TickPaths(now);
     paths.ExpirePaths(now);
 
@@ -1132,11 +1153,14 @@ namespace llarp
       else
         LogError("we have no bootstrap nodes specified");
     }
-    if(connected < minConnectedRouters)
+    else
     {
-      size_t dlt = minConnectedRouters - connected;
-      LogInfo("connecting to ", dlt, " random routers to keep alive");
-      ConnectToRandomRouters(dlt);
+      if(connected < minConnectedRouters)
+      {
+        size_t dlt = minConnectedRouters - connected;
+        LogInfo("connecting to ", dlt, " random routers to keep alive");
+        ConnectToRandomRouters(dlt);
+      }
     }
 
     if(!IsServiceNode())
@@ -1396,6 +1420,9 @@ namespace llarp
 
     LogInfo("You have ", inboundLinks.size(), " inbound links");
 
+    // set public signing key
+    _rc.pubkey = seckey_topublic(identity());
+
     AddressInfo ai;
     for(const auto &link : inboundLinks)
     {
@@ -1410,23 +1437,23 @@ namespace llarp
         if(IsBogon(ai.ip))
           continue;
         _rc.addrs.push_back(ai);
+        if(ExitEnabled())
+        {
+          const llarp::Addr addr(ai);
+          const nuint32_t a{addr.addr4()->s_addr};
+          _rc.exits.emplace_back(_rc.pubkey, a);
+          LogInfo(
+              "Neato teh l33toh, You are a freaking exit relay. w00t!!!!! your "
+              "exit "
+              "is advertised as exiting at ",
+              a);
+        }
       }
     }
 
     // set public encryption key
     _rc.enckey = seckey_topublic(encryption());
-    // set public signing key
-    _rc.pubkey = seckey_topublic(identity());
-    if(ExitEnabled())
-    {
-      nuint32_t a = publicAddr.xtonl();
-      _rc.exits.emplace_back(_rc.pubkey, a);
-      LogInfo(
-          "Neato teh l33toh, You are a freaking exit relay. w00t!!!!! your "
-          "exit "
-          "is advertised as exiting at ",
-          a);
-    }
+
     LogInfo("Signing rc...");
     if(!_rc.Sign(crypto(), identity()))
     {
@@ -1481,6 +1508,7 @@ namespace llarp
     }
     else
     {
+      maxConnectedRouters = minConnectedRouters + 1;
       // we are a client
       // regenerate keys and resign rc before everything else
       crypto()->identity_keygen(_identity);
@@ -1660,6 +1688,11 @@ namespace llarp
          && !(self->HasSessionTo(other.pubkey)
               || self->HasPendingConnectJob(other.pubkey)))
       {
+        for(const auto &rc : self->bootstrapRCList)
+        {
+          if(rc.pubkey == other.pubkey)
+            return want > 0;
+        }
         self->TryConnectAsync(other, 5);
         --want;
       }
@@ -1787,8 +1820,7 @@ namespace llarp
         netConfigDefaults = {
             {"ifname", []() -> std::string { return "auto"; }},
             {"ifaddr", []() -> std::string { return "auto"; }},
-            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }},
-            {"upstream-dns", []() -> std::string { return "1.1.1.1:53"; }}};
+            {"local-dns", []() -> std::string { return "127.0.0.1:53"; }}};
     // populate with fallback defaults if values not present
     auto itr = netConfigDefaults.begin();
     while(itr != netConfigDefaults.end())

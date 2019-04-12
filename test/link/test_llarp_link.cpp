@@ -68,7 +68,7 @@ struct LinkLayerTest : public ::testing::Test
     }
 
     bool
-    Start(llarp::Logic* logic, llarp_ev_loop* loop, uint16_t port)
+    Start(llarp::Logic* logic, llarp_ev_loop_ptr loop, uint16_t port)
     {
       if(!link)
         return false;
@@ -106,7 +106,7 @@ struct LinkLayerTest : public ::testing::Test
 
   bool success = false;
 
-  llarp_ev_loop* netLoop;
+  llarp_ev_loop_ptr netLoop;
   std::unique_ptr< llarp::Logic > logic;
 
   llarp_time_t oldRCLifetime;
@@ -121,7 +121,7 @@ struct LinkLayerTest : public ::testing::Test
     oldRCLifetime                      = llarp::RouterContact::Lifetime;
     llarp::RouterContact::IgnoreBogons = true;
     llarp::RouterContact::Lifetime     = 500;
-    llarp_ev_loop_alloc(&netLoop);
+    netLoop                            = llarp_make_ev_loop();
     logic.reset(new llarp::Logic());
   }
 
@@ -131,7 +131,7 @@ struct LinkLayerTest : public ::testing::Test
     Alice.TearDown();
     Bob.TearDown();
     logic.reset();
-    llarp_ev_loop_free(&netLoop);
+    netLoop.reset();
     llarp::RouterContact::IgnoreBogons = false;
     llarp::RouterContact::Lifetime     = oldRCLifetime;
   }
@@ -154,7 +154,7 @@ struct LinkLayerTest : public ::testing::Test
   void
   Stop()
   {
-    llarp_ev_loop_stop(netLoop);
+    llarp_ev_loop_stop(netLoop.get());
   }
 
   bool

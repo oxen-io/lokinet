@@ -1,10 +1,5 @@
 #include <ev/ev_epoll.hpp>
 
-#ifdef ANDROID
-/** TODO: correct this value */
-#define SOCK_NONBLOCK (0)
-#endif
-
 namespace llarp
 {
   int
@@ -191,6 +186,14 @@ namespace llarp
     return ret;
   }
 
+  ssize_t
+  tun::do_write(void* buf, size_t sz)
+  {
+    if(writefd != -1)  // case of android
+      return ::write(writefd, buf, sz);
+    return ev_io::do_write(buf, sz);
+  }
+
   int
   tun::wait_for_fd_promise(struct device* dev)
   {
@@ -199,7 +202,14 @@ namespace llarp
     {
       struct llarp_fd_promise* promise = t->t->get_fd_promise(t->t);
       if(promise)
-        return llarp_fd_promise_wait_for_value(promise);
+      {
+        // get promise
+        auto p = promise->Get();
+        // set write fd
+        t->writefd = p.second;
+        // return read fd
+        return p.first;
+      }
     }
     return -1;
   }
@@ -207,7 +217,7 @@ namespace llarp
   bool
   tun::setup()
   {
-    // for android
+    // for android / ios
     if(t->get_fd_promise)
     {
       tunif->obtain_fd = &wait_for_fd_promise;
@@ -476,7 +486,7 @@ llarp_epoll_loop::close_ev(llarp::ev_io* ev)
 llarp::ev_io*
 llarp_epoll_loop::create_tun(llarp_tun_io* tun)
 {
-  llarp::tun* t = new llarp::tun(tun, this);
+  llarp::tun* t = new llarp::tun(tun, shared_from_this());
   if(tun->get_fd_promise)
   {
   }

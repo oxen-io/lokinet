@@ -59,7 +59,7 @@ namespace llarp
   RouterProfile::Tick()
   {
     // 5 minutes
-    static constexpr llarp_time_t updateInterval = DEFAULT_PATH_LIFETIME / 2;
+    static constexpr llarp_time_t updateInterval = path::default_lifetime / 2;
     auto now                                     = llarp::time_now_ms();
     if(lastUpdated < now && now - lastUpdated > updateInterval)
     {
@@ -71,10 +71,10 @@ namespace llarp
   RouterProfile::IsGood(uint64_t chances) const
   {
     if(connectTimeoutCount > chances)
-      return connectTimeoutCount <= connectGoodCount
-          && (pathSuccessCount * chances) >= pathFailCount;
-    else
-      return (pathSuccessCount * chances) >= pathFailCount;
+      return connectTimeoutCount < connectGoodCount
+          && (pathSuccessCount * chances) > pathFailCount;
+    chances /= 2;
+    return (pathSuccessCount * chances) > pathFailCount;
   }
 
   bool

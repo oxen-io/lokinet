@@ -10,6 +10,9 @@
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logger.h>
+#include <util/metrics.hpp>
+#include <util/metrics_publishers.hpp>
+#include <util/scheduler.hpp>
 
 #include <getopt.h>
 #include <signal.h>
@@ -22,10 +25,13 @@
 
 namespace llarp
 {
+  Context::Context()
+  {
+  }
+
   Context::~Context()
   {
-    llarp_ev_loop *ptr = mainloop.release();
-    llarp_ev_loop_free(&ptr);
+    m_scheduler->stop();
   }
 
   void
@@ -46,6 +52,16 @@ namespace llarp
     }
     using namespace std::placeholders;
     config->visit(std::bind(&Context::iter_config, this, _1, _2, _3));
+
+    if(!disableMetrics)
+    {
+      setupMetrics();
+      if(!disableMetricLogs)
+      {
+        m_metricsManager->instance()->addGlobalPublisher(
+            std::make_shared< metrics::StreamPublisher >(std::cerr));
+      }
+    }
     return true;
   }
 
@@ -57,6 +73,25 @@ namespace llarp
       if(!strcmp(key, "pidfile"))
       {
         SetPIDFile(val);
+      }
+    }
+    if(!strcmp(section, "metrics"))
+    {
+      if(!strcmp(key, "disable-metrics"))
+      {
+        disableMetrics = true;
+      }
+      if(!strcmp(key, "disable-metrics-log"))
+      {
+        disableMetricLogs = true;
+      }
+      if(!strcmp(key, "json-metrics-path"))
+      {
+        setupMetrics();
+        m_metricsManager->instance()->addGlobalPublisher(
+            std::make_shared< metrics::JsonPublisher >(
+                std::bind(&metrics::JsonPublisher::directoryPublisher,
+                          std::placeholders::_1, val)));
       }
     }
     if(!strcmp(section, "router"))
@@ -85,6 +120,28 @@ namespace llarp
         nodedb_dir = val;
       }
     }
+  }
+
+  void
+  Context::setupMetrics()
+  {
+    if(!m_scheduler)
+    {
+      m_scheduler = std::make_unique< thread::Scheduler >();
+    }
+    if(!m_metricsManager)
+    {
+      m_metricsManager = std::make_unique< metrics::DefaultManagerGuard >();
+    }
+    if(!m_metricsPublisher)
+    {
+      m_metricsPublisher = std::make_unique< metrics::PublisherScheduler >(
+          *m_scheduler, m_metricsManager->instance());
+    }
+
+    m_metricsPublisher->setDefault(absl::Seconds(30));
+
+    m_scheduler->start();
   }
 
   void
@@ -163,8 +220,7 @@ namespace llarp
     else
       logic = std::make_unique< Logic >();
 
-    router =
-        std::make_unique< Router >(worker.get(), mainloop.get(), logic.get());
+    router = std::make_unique< Router >(worker.get(), mainloop, logic.get());
     if(!router->Configure(config.get()))
     {
       llarp::LogError("Failed to configure router");
@@ -195,7 +251,7 @@ namespace llarp
 
     // run net io thread
     llarp::LogInfo("running mainloop");
-    llarp_ev_loop_run_single_process(mainloop.get(), worker.get(), logic.get());
+    llarp_ev_loop_run_single_process(mainloop, worker.get(), logic.get());
     // waits for router graceful stop
     return 0;
   }
@@ -339,8 +395,8 @@ extern "C"
     {
       cSetLogLevel(eLogDebug);
     }
-    llarp_main *m = new llarp_main;
-    m->ctx.reset(new llarp::Context());
+    llarp_main *m          = new llarp_main;
+    m->ctx                 = std::make_unique< llarp::Context >();
     m->ctx->singleThreaded = !multiProcess;
     if(!m->ctx->LoadConfig(fname))
     {
@@ -358,7 +414,7 @@ extern "C"
   }
 
   void
-  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int fd)
+  llarp_main_inject_vpn_fd(struct llarp_main *ptr, int rfd, int wfd)
   {
     llarp::handlers::TunEndpoint *tun =
         ptr->ctx->router->hiddenServiceContext().getFirstTun();
@@ -366,7 +422,7 @@ extern "C"
       return;
     if(!tun->Promise)
       return;
-    tun->Promise->Set(fd);
+    tun->Promise->Set({rfd, wfd});
   }
 
   int
