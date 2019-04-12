@@ -305,6 +305,16 @@ namespace llarp
           delete self;
           return;
         }
+
+        if(self->handler->HasConvoTag(self->msg->tag))
+        {
+          llarp::LogError("dropping duplicate convo tag T=", self->msg->tag);
+          // TODO: send convotag reset
+          delete self->msg;
+          delete self;
+          return;
+        }
+
         // PKE (A, B, N)
         SharedSecret sharedSecret;
         using namespace std::placeholders;
