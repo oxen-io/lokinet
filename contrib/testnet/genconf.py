@@ -63,14 +63,20 @@ def main():
         config['network'] = {
             'type' : 'null'
         }
+        config['api'] = {
+            'enabled': 'false'
+        }
         d = os.path.join(args.dir, svcNodeName(nodeid))
         if not os.path.exists(d):
             os.mkdir(d)
         fp = os.path.join(d, 'daemon.ini')
         with open(fp, 'w') as f:
             config.write(f)
-            if nodeid > 0:
-                f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(0), 'rc.signed')))
+            if nodeid == 0:
+                otherID = 1
+            else:
+                otherID = nodeid - 1
+            f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(otherID), 'rc.signed')))
 
         
     for nodeid in range(args.clients):
@@ -87,6 +93,9 @@ def main():
         config['netdb'] = {
             'dir': 'netdb'
         }
+        config['api'] = {
+            'enabled': 'false'
+        }
         config['network'] = {
             'type' : 'null'
         }
@@ -100,7 +109,11 @@ def main():
         fp = os.path.join(d, 'daemon.ini')
         with open(fp, 'w') as f:
             config.write(f)
-            f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(0), 'rc.signed')))
+            if nodeid == 0:
+                otherID = 1
+            else:
+                otherID = nodeid - 1
+            f.write("[bootstrap]\nadd-node={}\n".format(os.path.join(basedir,svcNodeName(otherID), 'rc.signed')))
         with open(hiddenservice, 'w') as f:
             f.write('''[test-service]
 tag=test

@@ -40,6 +40,11 @@ namespace llarp
       virtual bool
       LookupRouter(const RouterID& target, RouterLookupHandler result) = 0;
 
+      virtual void
+      LookupRouterRecursive(const RouterID& target, const Key_t& whoasked,
+                            uint64_t whoaskedTX, const Key_t& askpeer,
+                            RouterLookupHandler result = nullptr) = 0;
+
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
       virtual void
