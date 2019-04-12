@@ -4,8 +4,9 @@ class ViewController : UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        LokiNetwork.initialize(isDebuggingEnabled: true) { context in
-            LokiNetwork.run(with: context)
+        let lokiNetwork = LokiNetwork.shared
+        lokiNetwork.configure(isDebuggingEnabled: true) { [weak lokiNetwork] context in
+            lokiNetwork?.run(with: context)
         }
     }
 }
