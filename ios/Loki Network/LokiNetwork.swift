@@ -4,7 +4,7 @@ enum LokiNetwork { // Used as a namespace
     
     // TODO: Handle errors
     
-    static func initialize(isDebuggingEnabled: Bool) {
+    static func initialize(isDebuggingEnabled: Bool, completionHandler: @escaping (OpaquePointer) -> Void) {
         // Prepare
         let bundlePath = Bundle.main.bundlePath
         // Enable debugging mode if needed
@@ -20,7 +20,13 @@ enum LokiNetwork { // Used as a namespace
             // Perform main setup
             let context = _llarp_main_init(configurationFilePath, false)!
             _llarp_main_setup(context)
+            // Invoke completion handler
+            completionHandler(context)
         }
         downloadTask.resume()
+    }
+    
+    static func run(with context: OpaquePointer) {
+        _llarp_main_run(context)
     }
 }
