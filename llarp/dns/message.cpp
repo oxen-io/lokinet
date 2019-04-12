@@ -263,8 +263,7 @@ namespace llarp
       }
     }
 
-    void
-    Message::AddNXReply(RR_TTL_t ttl)
+    void Message::AddNXReply(RR_TTL_t)
     {
       if(questions.size())
       {
