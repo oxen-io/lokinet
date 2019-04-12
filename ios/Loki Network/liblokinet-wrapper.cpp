@@ -1,4 +1,5 @@
 #include <dirent.h>
+#include <syslog.h>
 #include <logger.hpp>
 #include <llarp.h>
 
@@ -25,6 +26,17 @@ int
 readdir_r$INODE64(DIR *dir, struct dirent *entry, struct dirent **result)
 {
     return readdir_r(dir, entry, result);
+}
+
+// MARK: - syslog.h workaround
+// The syslog$DARWIN_EXTSN function below is wrapped as a workaround for an issue where Xcode can't find
+// this function during linking when targetion iOS.
+
+extern "C"
+void
+syslog$DARWIN_EXTSN(int priority, const char *format, va_list ap)
+{
+    syslog(priority, format, ap);
 }
 
 // MARK: - LLARP

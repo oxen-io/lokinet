@@ -6,7 +6,7 @@ class ViewController : UIViewController {
         super.viewDidLoad()
         let daemon = Daemon.shared
         daemon.configure(isDebuggingEnabled: true) { [weak daemon] context in
-            lokiNetwork?.run(with: context)
+            daemon?.run(with: context)
         }
     }
 }

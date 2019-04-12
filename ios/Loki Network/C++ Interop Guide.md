@@ -39,7 +39,7 @@ There are a few steps that need to be taken to get the Loki Network C++ library 
   - `build/llarp`
 - Drag llarp/util/logger.hpp and include/llarp.h into the project
 - Update Build Settings → **System** Header Search Paths to include `$(PROJECT_DIR)/../` ... `llarp/util` and `include`
-- Create a liblokinet-wrapper.cpp, include logger.h and llarp.h, and wrap the LLARP functions you want to expose. `opendir$INODE64`, `readdir$INODE64` and `readdir_r$INODE64` must be wrapped as well as a workaround for an issue where Xcode can't find these functions during linking when targeting iOS
+- Create a liblokinet-wrapper.cpp, include logger.h and llarp.h, and wrap the LLARP functions you want to expose. `opendir$INODE64`, `readdir$INODE64`, `readdir_r$INODE64` and `syslog$DARWIN_EXTSN` must be wrapped as well as a workaround for an issue where Xcode can't find these functions during linking when targeting iOS
 - Create a liblokinet-wrapper.h and include any imports needed for the function definitions
 - Create a Loki-Network-Bridging-Header.h and include liblokinet-wrapper.h
 - Set Build Settings → Objective-C Bridging Header to Loki-Network-Bridging-Header.h

@@ -14,6 +14,13 @@ readdir$INODE64(DIR *dir);
 int
 readdir_r$INODE64(DIR *dir, struct dirent *entry, struct dirent **result);
 
+// MARK: - syslog.h workaround
+// The syslog$DARWIN_EXTSN function below is wrapped as a workaround for an issue where Xcode can't find
+// this function during linking when targetion iOS.
+
+void
+syslog$DARWIN_EXTSN(int priority, const char *format, va_list ap);
+
 // MARK: - LLARP
 
 void
