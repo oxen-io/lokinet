@@ -73,7 +73,6 @@ namespace llarp
     if(connectTimeoutCount > chances)
       return connectTimeoutCount < connectGoodCount
           && (pathSuccessCount * chances) > pathFailCount;
-    chances /= 2;
     return (pathSuccessCount * chances) > pathFailCount;
   }
 
@@ -212,6 +211,7 @@ namespace llarp
       llarp::LogWarn("failed to load router profiles from ", fname);
       return false;
     }
+    m_LastSave = llarp::time_now_ms();
     return true;
   }
 
