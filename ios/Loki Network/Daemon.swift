@@ -1,13 +1,13 @@
 import Foundation
 
-final class LokiNetwork {
+final class Daemon {
     private var isConfigured = false
     
     // MARK: Types
     typealias LLARPContext = OpaquePointer
     
     // MARK: Initialization
-    static let shared = LokiNetwork()
+    static let shared = Daemon()
     
     private init() { }
     

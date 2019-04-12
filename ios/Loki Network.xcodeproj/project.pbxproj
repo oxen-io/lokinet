@@ -27,7 +27,7 @@
 		B8F79866225DB13E00003DE6 /* libabsl_stacktrace.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79865225DB13E00003DE6 /* libabsl_stacktrace.a */; };
 		B8F7986A225DB19A00003DE6 /* libabsl_bad_optional_access.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */; };
 		B8F7986C225DB1CE00003DE6 /* libabsl_int128.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */; };
-		B8F79879225DBCC500003DE6 /* LokiNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* LokiNetwork.swift */; };
+		B8F79879225DBCC500003DE6 /* Daemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* Daemon.swift */; };
 		C3CBFB652256D47400F34631 /* liblokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */; };
 		C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3CBFB662256D57000F34631 /* liblokinet-static.a */; };
 		C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* AppDelegate.swift */; };
@@ -59,7 +59,7 @@
 		B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_bad_optional_access.a; path = "../build/vendor/abseil-cpp/absl/types/libabsl_bad_optional_access.a"; sourceTree = "<group>"; };
 		B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_int128.a; path = "../build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a"; sourceTree = "<group>"; };
 		B8F7986D225DB57100003DE6 /* logger.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = logger.hpp; path = ../../llarp/util/logger.hpp; sourceTree = "<group>"; };
-		B8F79878225DBCC500003DE6 /* LokiNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LokiNetwork.swift; sourceTree = "<group>"; };
+		B8F79878225DBCC500003DE6 /* Daemon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Daemon.swift; sourceTree = "<group>"; };
 		C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "liblokinet-wrapper.cpp"; sourceTree = "<group>"; };
 		C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "liblokinet-wrapper.h"; sourceTree = "<group>"; };
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
@@ -110,7 +110,7 @@
 		B8F79871225DB9D600003DE6 /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				B8F79878225DBCC500003DE6 /* LokiNetwork.swift */,
+				B8F79878225DBCC500003DE6 /* Daemon.swift */,
 				C3CBFB692257151D00F34631 /* C++ Interop Guide.md */,
 				C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */,
 				C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */,
@@ -261,7 +261,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C3CBFB652256D47400F34631 /* liblokinet-wrapper.cpp in Sources */,
-				B8F79879225DBCC500003DE6 /* LokiNetwork.swift in Sources */,
+				B8F79879225DBCC500003DE6 /* Daemon.swift in Sources */,
 				C3FBE36722542DD60006284B /* ViewController.swift in Sources */,
 				C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */,
 			);
