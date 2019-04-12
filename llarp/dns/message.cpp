@@ -272,21 +272,7 @@ namespace llarp
         hdr_fields |= flags_QR | flags_AA | flags_RA;
         // don't allow recursion on this request
         hdr_fields &= ~flags_RD;
-        const auto& question = questions[0];
-        if(question.qtype != qTypeAAAA)
-        {
-          hdr_fields |= flags_RCODENameError;
-          if(question.qtype == qTypeA)
-          {
-            answers.emplace_back();
-            auto& nx    = answers.back();
-            nx.rr_name  = question.qname;
-            nx.rr_type  = question.qtype;
-            nx.rr_class = question.qclass;
-            nx.ttl      = ttl;
-            nx.rData.resize(0);
-          }
-        }
+        hdr_fields |= flags_RCODENameError;
       }
     }
 
