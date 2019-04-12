@@ -65,7 +65,6 @@
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
 		C3CBFB682256D61600F34631 /* llarp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = llarp.h; path = ../../include/llarp.h; sourceTree = "<group>"; };
 		C3CBFB692257151D00F34631 /* C++ Interop Guide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "C++ Interop Guide.md"; sourceTree = "<group>"; };
-		C3D69196225F17B40084114A /* router.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = router.hpp; path = ../../llarp/router/router.hpp; sourceTree = "<group>"; };
 		C3FBE36122542DD60006284B /* Loki Network.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Loki Network.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3FBE36422542DD60006284B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		C3FBE36622542DD60006284B /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -117,7 +116,6 @@
 				C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */,
 				B8F7986D225DB57100003DE6 /* logger.hpp */,
 				C3CBFB682256D61600F34631 /* llarp.h */,
-				C3D69196225F17B40084114A /* router.hpp */,
 			);
 			name = Core;
 			sourceTree = "<group>";
@@ -443,7 +441,6 @@
 					"$(PROJECT_DIR)/../include",
 					"$(PROJECT_DIR)/../llarp/util",
 					"$(PROJECT_DIR)/../llarp",
-					"$(PROJECT_DIR)/../llarp/router",
 					"$(PROJECT_DIR)/../crypto/include",
 					"$(PROJECT_DIR)/../vendor/abseil-cpp",
 					"$(PROJECT_DIR)/../vendor/nlohmann/include",
@@ -488,7 +485,6 @@
 					"$(PROJECT_DIR)/../include",
 					"$(PROJECT_DIR)/../llarp/util",
 					"$(PROJECT_DIR)/../llarp",
-					"$(PROJECT_DIR)/../llarp/router",
 					"$(PROJECT_DIR)/../crypto/include",
 					"$(PROJECT_DIR)/../vendor/abseil-cpp",
 					"$(PROJECT_DIR)/../vendor/nlohmann/include",

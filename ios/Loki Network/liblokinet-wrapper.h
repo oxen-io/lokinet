@@ -12,12 +12,12 @@ struct dirent *
 readdir$INODE64(DIR *dir);
 
 int
-readdir_r$INODE64(DIR *dirp, struct dirent *entry, struct dirent **result);
+readdir_r$INODE64(DIR *dir, struct dirent *entry, struct dirent **result);
 
 // MARK: - LLARP
 
 void
-_enable_debug_mode();
+_llarp_enable_debug_mode();
 
 bool
 _llarp_ensure_config(const char *fname, const char *baseDir, bool overwrite, bool asRouter);
@@ -27,8 +27,3 @@ _llarp_main_init(const char *fname, bool multiProcess);
 
 int
 _llarp_main_setup(struct llarp_main *ptr);
-
-// MARK: - Router
-
-bool
-_llarp_find_or_create_encryption_file(const char *fpath);

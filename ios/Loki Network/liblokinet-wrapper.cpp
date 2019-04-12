@@ -1,7 +1,6 @@
 #include <dirent.h>
 #include <logger.hpp>
 #include <llarp.h>
-#include <router.hpp>
 
 // MARK: - dirent.h workaround
 // The opendir$INODE64, readdir$INODE64 and readdir_r$INODE64 functions below are wrapped as a workaround for
@@ -23,16 +22,16 @@ readdir$INODE64(DIR *dir)
 
 extern "C"
 int
-readdir_r$INODE64(DIR *dirp, struct dirent *entry, struct dirent **result)
+readdir_r$INODE64(DIR *dir, struct dirent *entry, struct dirent **result)
 {
-    return readdir_r(dirp, entry, result);
+    return readdir_r(dir, entry, result);
 }
 
 // MARK: - LLARP
 
 extern "C"
 void
-_enable_debug_mode() {
+_llarp_enable_debug_mode() {
     llarp::SetLogLevel(llarp::eLogDebug);
 }
 
@@ -55,13 +54,4 @@ int
 _llarp_main_setup(struct llarp_main *ptr)
 {
     return llarp_main_setup(ptr);
-}
-
-// MARK: - Router
-
-extern "C"
-bool
-_llarp_find_or_create_encryption_file(const char *fpath) {
-    llarp::Crypto crypt(llarp::Crypto::sodium{});
-    return llarp_findOrCreateEncryption(crypt, fpath, encryption);
 }

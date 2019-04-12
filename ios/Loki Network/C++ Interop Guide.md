@@ -14,7 +14,7 @@ There are a few steps that need to be taken to get the Loki Network C++ library 
   - build/vendor/abseil-cpp/absl/hash/libabsl_internal_city.a
   - build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a
   - build/vendor/abseil-cpp/absl/strings/libabsl_strings.a
-  - build/vendor/abseil-cpp/absl/synchronization/libabsl_synchornization.a
+  - build/vendor/abseil-cpp/absl/synchronization/libabsl_synchronization.a
   - build/vendor/abseil-cpp/absl/time/libabsl_time.a
   - build/vendor/abseil-cpp/absl/types/libabsl_bad_optional_access.a
   - build/vendor/abseil-cpp/absl/types/libabsl_variant.a
@@ -37,11 +37,8 @@ There are a few steps that need to be taken to get the Loki Network C++ library 
   - `build/vendor`
   - `build/crypto`
   - `build/llarp`
-- Drag llarp/util/logger.hpp, include/llarp.h and llarp/router/router.hpp into the project
-- Update Build Settings → **System** Header Search Paths to include `$(PROJECT_DIR)/../`:
-    - `llarp/util`
-    - `include`
-    - `llarp/router`
+- Drag llarp/util/logger.hpp and include/llarp.h into the project
+- Update Build Settings → **System** Header Search Paths to include `$(PROJECT_DIR)/../` ... `llarp/util` and `include`
 - Create a liblokinet-wrapper.cpp, include logger.h and llarp.h, and wrap the LLARP functions you want to expose. `opendir$INODE64`, `readdir$INODE64` and `readdir_r$INODE64` must be wrapped as well as a workaround for an issue where Xcode can't find these functions during linking when targeting iOS
 - Create a liblokinet-wrapper.h and include any imports needed for the function definitions
 - Create a Loki-Network-Bridging-Header.h and include liblokinet-wrapper.h
