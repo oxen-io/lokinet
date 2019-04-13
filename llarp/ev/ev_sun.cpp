@@ -449,7 +449,7 @@ llarp_poll_loop::close_ev(llarp::ev_io* ev)
 llarp::ev_io*
 llarp_poll_loop::create_tun(llarp_tun_io* tun)
 {
-  llarp::tun* t = new llarp::tun(tun, this);
+  llarp::tun* t = new llarp::tun(tun, shared_from_this());
   if(t->setup())
   {
     return t;
