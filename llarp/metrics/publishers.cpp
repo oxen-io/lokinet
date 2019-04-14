@@ -280,7 +280,7 @@ namespace llarp
 
     void
     JsonPublisher::directoryPublisher(const nlohmann::json &result,
-                                      fs::path path)
+                                      const fs::path& path)
     {
       std::ofstream fstream(path.string(), std::ios_base::app);
       if(!fstream)

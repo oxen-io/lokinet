@@ -12,7 +12,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #else
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
@@ -85,6 +87,7 @@ namespace llarp
           }
           break;
         }
+	assert(false && "Invalid publication type");
       }
 
       std::string
@@ -198,21 +201,21 @@ namespace llarp
       publishData(const std::vector< std::string > &toSend,
                   const std::string &host, short port)
       {
-        struct addrinfo *result = NULL, hints;
-        bzero(&hints, sizeof(hints));
+        struct addrinfo *addrs = NULL, hints;
+        ZeroMemory(&hints, sizeof(hints));
         hints.ai_family   = AF_UNSPEC;
         hints.ai_socktype = SOCK_STREAM;
         hints.ai_protocol = IPPROTO_TCP;
 
         const std::string portAsStr = std::to_string(port);
 
-        if(getaddrinfo(host.c_str(), portAsStr.c_str(), &hints, &result) != 0)
+        if(getaddrinfo(host.c_str(), portAsStr.c_str(), &hints, &addrs) != 0)
         {
           LogError("Failed to get address info");
           return;
         }
 
-        int sock =
+        SOCKET sock =
             ::socket(addrs->ai_family, addrs->ai_socktype, addrs->ai_protocol);
 
         if(sock == INVALID_SOCKET)
@@ -248,7 +251,7 @@ namespace llarp
                   && (static_cast< size_t >(sentLen) < val.size()));
         }
 
-        shutdown(sock, SHUT_RDWR);
+        shutdown(sock, SD_SEND);
         closesocket(sock);
       }
 #endif

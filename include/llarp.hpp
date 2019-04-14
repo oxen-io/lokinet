@@ -1,6 +1,7 @@
 #ifndef LLARP_HPP
 #define LLARP_HPP
 
+#include <util/fs.hpp>
 #include <util/types.hpp>
 #include <ev/ev.hpp>
 
@@ -49,7 +50,7 @@ namespace llarp
     bool singleThreaded    = false;
     bool disableMetrics    = false;
     bool disableMetricLogs = false;
-    std::string jsonMetricsPath;
+    fs::path jsonMetricsPath;
     std::string metricTankHost;
     std::map< std::string, std::string > metricTags;
 
