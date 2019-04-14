@@ -189,7 +189,7 @@ __        ___    ____  _   _ ___ _   _  ____
       }
     }
 
-    m_metricsPublisher->setDefault(absl::Seconds(1));
+    m_metricsPublisher->setDefault(absl::Seconds(30));
 
     m_scheduler->start();
   }

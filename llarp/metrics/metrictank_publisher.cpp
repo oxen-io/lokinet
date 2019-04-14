@@ -87,7 +87,7 @@ namespace llarp
           }
           break;
         }
-	assert(false && "Invalid publication type");
+        assert(false && "Invalid publication type");
       }
 
       std::string
@@ -279,7 +279,15 @@ namespace llarp
         if(tags.count("user") == 0)
         {
 #ifndef _WIN32
-          tags["user"] = getlogin();
+          const char *username = getlogin();
+          if(username != nullptr)
+          {
+            tags["user"] = username;
+          }
+          else
+          {
+            tags["user"] = "unknown";
+          }
 #else
           char username[UNLEN + 1];
           DWORD username_len = UNLEN + 1;
