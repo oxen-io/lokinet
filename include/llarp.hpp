@@ -5,6 +5,7 @@
 #include <ev/ev.hpp>
 
 #include <iostream>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -48,6 +49,10 @@ namespace llarp
     bool singleThreaded    = false;
     bool disableMetrics    = false;
     bool disableMetricLogs = false;
+    std::string jsonMetricsPath;
+    std::string metricTankHost;
+    std::map< std::string, std::string > metricTags;
+
     std::unique_ptr< Crypto > crypto;
     std::unique_ptr< AbstractRouter > router;
     std::unique_ptr< llarp_threadpool > worker;

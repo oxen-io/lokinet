@@ -61,6 +61,7 @@ set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
+  metrics/metrictank_publisher.cpp
   metrics/publishers.cpp
   net/net.cpp
   net/net_addr.cpp
