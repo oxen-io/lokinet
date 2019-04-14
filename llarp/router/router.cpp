@@ -71,15 +71,16 @@ struct TryConnectJob
   void
   AttemptTimedout()
   {
-    router->routerProfiling().MarkTimeout(rc.pubkey);
     if(ShouldRetry())
     {
       Attempt();
       return;
     }
+    router->routerProfiling().MarkTimeout(rc.pubkey);
     if(router->routerProfiling().IsBad(rc.pubkey))
     {
-      router->nodedb()->Remove(rc.pubkey);
+      if(!router->IsBootstrapNode(rc.pubkey))
+        router->nodedb()->Remove(rc.pubkey);
     }
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
@@ -1102,7 +1103,7 @@ namespace llarp
         if(!routerProfiling().IsBad(rc.pubkey))
           return false;
         routerProfiling().ClearProfile(rc.pubkey);
-        return true;
+        return !IsBootstrapNode(rc.pubkey);
       });
     }
     paths.TickPaths(now);
@@ -1690,12 +1691,8 @@ namespace llarp
          && !(self->HasSessionTo(other.pubkey)
               || self->HasPendingConnectJob(other.pubkey)))
       {
-        for(const auto &rc : self->bootstrapRCList)
-        {
-          if(rc.pubkey == other.pubkey)
-            return want > 0;
-        }
-        self->TryConnectAsync(other, 5);
+        if(!self->IsBootstrapNode(other.pubkey))
+          self->TryConnectAsync(other, 5);
         --want;
       }
       return want > 0;
