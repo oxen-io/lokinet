@@ -22,7 +22,6 @@ set(LIB_UTIL_SRC
   util/logic.cpp
   util/mem.cpp
   util/metrics_core.cpp
-  util/metrics_publishers.cpp
   util/metrics_types.cpp
   util/metrics.cpp
   util/object.cpp
@@ -62,6 +61,8 @@ set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
+  metrics/metrictank_publisher.cpp
+  metrics/publishers.cpp
   net/net.cpp
   net/net_addr.cpp
   net/net_inaddr.cpp

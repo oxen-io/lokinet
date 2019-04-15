@@ -50,7 +50,7 @@ namespace llarp
       publish(const Sample& values) override;
 
       static void
-      directoryPublisher(const nlohmann::json& result, fs::path path);
+      directoryPublisher(const nlohmann::json& result, const fs::path& path);
     };
   }  // namespace metrics
 

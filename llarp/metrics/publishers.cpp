@@ -1,4 +1,4 @@
-#include <util/metrics_publishers.hpp>
+#include <metrics/publishers.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -10,40 +10,14 @@ namespace llarp
   {
     namespace
     {
+      template < typename Value >
       void
-      formatValue(std::ostream &stream, size_t value,
+      formatValue(std::ostream &stream, Value value,
                   const FormatSpec *formatSpec)
       {
         if(formatSpec)
         {
-          FormatSpec::format(stream, (double)value, *formatSpec);
-        }
-        else
-        {
-          stream << value;
-        }
-      }
-
-      void
-      formatValue(std::ostream &stream, int value, const FormatSpec *formatSpec)
-      {
-        if(formatSpec)
-        {
-          FormatSpec::format(stream, (double)value, *formatSpec);
-        }
-        else
-        {
-          stream << value;
-        }
-      }
-
-      void
-      formatValue(std::ostream &stream, double value,
-                  const FormatSpec *formatSpec)
-      {
-        if(formatSpec)
-        {
-          FormatSpec::format(stream, value, *formatSpec);
+          FormatSpec::format(stream, static_cast< double >(value), *formatSpec);
         }
         else
         {
@@ -238,7 +212,6 @@ namespace llarp
 
         return result;
       }
-
     }  // namespace
 
     void
@@ -307,7 +280,7 @@ namespace llarp
 
     void
     JsonPublisher::directoryPublisher(const nlohmann::json &result,
-                                      fs::path path)
+                                      const fs::path& path)
     {
       std::ofstream fstream(path.string(), std::ios_base::app);
       if(!fstream)

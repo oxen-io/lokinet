@@ -7,13 +7,15 @@
 #include <dns/dotlokilookup.hpp>
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
+#include <metrics/metrictank_publisher.hpp>
+#include <metrics/publishers.hpp>
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logger.h>
 #include <util/metrics.hpp>
-#include <util/metrics_publishers.hpp>
 #include <util/scheduler.hpp>
 
+#include <absl/strings/str_split.h>
 #include <getopt.h>
 #include <signal.h>
 
@@ -81,17 +83,22 @@ namespace llarp
       {
         disableMetrics = true;
       }
-      if(!strcmp(key, "disable-metrics-log"))
+      else if(!strcmp(key, "disable-metrics-log"))
       {
         disableMetricLogs = true;
       }
-      if(!strcmp(key, "json-metrics-path"))
+      else if(!strcmp(key, "json-metrics-path"))
       {
-        setupMetrics();
-        m_metricsManager->instance()->addGlobalPublisher(
-            std::make_shared< metrics::JsonPublisher >(
-                std::bind(&metrics::JsonPublisher::directoryPublisher,
-                          std::placeholders::_1, val)));
+        jsonMetricsPath = val;
+      }
+      else if(!strcmp(key, "metric-tank-host"))
+      {
+        metricTankHost = val;
+      }
+      else
+      {
+        // consume everything else as a metric tag
+        metricTags[key] = val;
       }
     }
     if(!strcmp(section, "router"))
@@ -137,6 +144,49 @@ namespace llarp
     {
       m_metricsPublisher = std::make_unique< metrics::PublisherScheduler >(
           *m_scheduler, m_metricsManager->instance());
+    }
+
+    m_metricsManager->instance()->addGlobalPublisher(
+        std::make_shared< metrics::JsonPublisher >(
+            std::bind(&metrics::JsonPublisher::directoryPublisher,
+                      std::placeholders::_1, jsonMetricsPath)));
+
+    if(!metricTankHost.empty())
+    {
+      if(std::getenv("LOKINET_ENABLE_METRIC_TANK"))
+      {
+        static std::string WARNING = R"(
+__        ___    ____  _   _ ___ _   _  ____
+\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+ \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+
+This Lokinet session is not private
+
+Sending connection metrics to metrictank
+__        ___    ____  _   _ ___ _   _  ____
+\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+ \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+
+        )";
+
+        std::cerr << WARNING << '\n';
+
+        std::pair< std::string, std::string > split =
+            absl::StrSplit(metricTankHost, ':');
+
+        m_metricsManager->instance()->addGlobalPublisher(
+            std::make_shared< metrics::MetricTankPublisher >(
+                metricTags, split.first, stoi(split.second)));
+      }
+      else
+      {
+        std::cerr << "metrictank host specified, but "
+                     "LOKINET_ENABLE_METRIC_TANK not set, skipping\n";
+      }
     }
 
     m_metricsPublisher->setDefault(absl::Seconds(30));
@@ -227,8 +277,8 @@ namespace llarp
       return 1;
     }
     // must be done after router is made so we can use its disk io worker
-    // must also be done after configure so that netid is properly set if it is
-    // provided by config
+    // must also be done after configure so that netid is properly set if it
+    // is provided by config
     if(!this->LoadDatabase())
       return 1;
     return 0;
