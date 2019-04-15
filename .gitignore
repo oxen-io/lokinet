@@ -61,3 +61,4 @@ version.txt
 # Xcode & MacOS
 xcuserdata/
 .DS_Store
+!Info.plist
