@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.6.0)
 
 set(PROJECT_NAME lokinet)
-project(${PROJECT_NAME} C CXX ASM)
+project(${PROJECT_NAME} C CXX)
 
 # Core options
 option(USE_AVX2 "enable avx2 code" )
@@ -27,6 +27,15 @@ find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
     set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE "${CCACHE_PROGRAM}")
 endif()
+
+if (MSVC_VERSION)
+  enable_language(ASM_MASM)
+  list(APPEND CMAKE_ASM_MASM_SOURCE_FILE_EXTENSIONS s)
+  add_definitions(/D_WIN32_WINNT=0x0600 /DNOMINMAX /DSODIUM_STATIC)
+  add_compile_options(/MANIFEST:NO)
+else()
+  enable_language(ASM)
+endif(MSVC_VERSION)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
 # check if we have the (saner) emulation of epoll here
@@ -72,6 +81,7 @@ if (WIN32 AND NOT STATIC_LINK_RUNTIME)
   message("for release builds, turn on STATIC_LINK_RUNTIME in cmake options")
 endif(WIN32 AND NOT STATIC_LINK_RUNTIME)
 
+add_subdirectory(vendor/cxxopts)
 add_subdirectory(vendor/nlohmann)
 
 # still need the headers unconditionally
@@ -90,11 +100,13 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wno-unknown-warning-option)
 endif()
 
-add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
-# vla are evil
-add_compile_options(-Wvla)
-add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
-add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
+if (NOT MSVC_VERSION)
+	add_compile_options(-Wall -Wextra -Wno-unknown-pragmas)
+	# vla are evil
+	add_compile_options(-Wvla)
+	add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-fpermissive>)
+	add_compile_options(-Wno-unused-function -Wno-deprecated-declarations -Wno-unknown-pragmas)
+endif()
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wthread-safety)
@@ -127,15 +139,15 @@ if (WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
   endif()
 endif(WOW64_CROSS_COMPILE OR WIN64_CROSS_COMPILE)
 
-if(WIN32)
+if(WIN32 AND NOT MSVC_VERSION)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-bad-function-cast>)
   add_compile_options($<$<COMPILE_LANGUAGE:C>:-Wno-cast-function-type>)
-# unlike unix where you get a *single* compiler ID string in .comment
-# GNU ld sees fit to merge *all* the .ident sections in object files
-# to .r[o]data section one after the other!
+  # unlike unix where you get a *single* compiler ID string in .comment
+  # GNU ld sees fit to merge *all* the .ident sections in object files
+  # to .r[o]data section one after the other!
   add_compile_options(-fno-ident)
   set(FS_LIB stdc++fs)
-endif(WIN32)
+endif()
 
 if(DEBIAN)
   add_definitions(-DDEBIAN)
@@ -184,10 +196,10 @@ if(TESTNET)
   add_definitions(-DTESTNET=1)
 endif(TESTNET)
 
-if(NOT DEBIAN)
+if(NOT DEBIAN AND NOT MSVC_VERSION)
   set(OPTIMIZE_FLAGS -O3)
   set(DEBUG_FLAGS -O0 -g3)
-endif(NOT DEBIAN)
+endif()
 
 if(ASAN)
   set(DEBUG_FLAGS ${DEBUG_FLAGS} -fsanitize=address -fno-omit-frame-pointer)
@@ -232,8 +244,9 @@ endif(NON_PC_TARGET)
 add_compile_options(${OPTIMIZE_FLAGS} ${CRYPTO_FLAGS})
 
 if(NOT GIT_VERSION)
-  exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION)
-  add_definitions(-DGIT_REV="${GIT_VERSION}")
+  exec_program("git" ${CMAKE_CURRENT_SOURCE_DIR} ARGS "rev-parse --short HEAD" OUTPUT_VARIABLE GIT_VERSION_UNSTRIP)
+  string(STRIP "${GIT_VERSION_UNSTRIP}" GIT_VERSION)
+  add_definitions("-DGIT_REV=\"${GIT_VERSION}\"")
 endif(NOT GIT_VERSION)
 
 if(RELEASE_MOTTO)
@@ -320,7 +333,7 @@ if(UNIX)
 elseif(WIN32)
     get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c ABSOLUTE)
     get_filename_component(EV_SRC "llarp/ev/ev_win32.cpp" ABSOLUTE)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x500 -D_WIN32_WINNT=0x500)
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0602 -D_WIN32_WINNT=0x0602)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif(UNIX)

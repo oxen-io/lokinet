@@ -1,6 +1,8 @@
 #ifndef LLARP_UTIL_LOGGER_INTERNAL_HPP
 #define LLARP_UTIL_LOGGER_INTERNAL_HPP
 
+#include <absl/time/clock.h>
+#include <absl/time/time.h>
 #include <util/time.hpp>
 #include <sstream>
 #include <ctime>
@@ -55,8 +57,7 @@ namespace llarp
       (void)ts;
       return out << time_now_ms();
 #else
-      auto now = llarp::Clock_t::to_time_t(llarp::Clock_t::now());
-      return out << std::put_time(std::localtime(&now), ts.format);
+      return out << absl::FormatTime(ts.format, absl::Now(), absl::LocalTimeZone());
 #endif
     }
   };

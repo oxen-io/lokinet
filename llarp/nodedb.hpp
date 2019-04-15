@@ -81,10 +81,10 @@ struct llarp_nodedb
   void
   InsertAsync(llarp::RouterContact rc);
 
-  ssize_t
+  size_t
   Load(const fs::path &path);
 
-  ssize_t
+  size_t
   loadSubdir(const fs::path &dir);
 
   bool
@@ -100,9 +100,9 @@ struct llarp_nodedb
   void
   set_dir(const char *dir);
 
-  ssize_t
+  size_t
   load_dir(const char *dir);
-  ssize_t
+  size_t
   store_dir(const char *dir);
 
   int
