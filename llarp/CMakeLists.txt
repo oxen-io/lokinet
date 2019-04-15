@@ -104,7 +104,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if(WIN32)
-  target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
+  target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi shlwapi.lib)
 endif()
 set(DNSLIB_SRC
   dns/dotlokilookup.cpp
@@ -237,14 +237,14 @@ endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 set(LIBS ${LIBS} libutp)
-target_link_libraries(${STATIC_LIB} PUBLIC ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS})
+target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS})
 
 if(WITH_SHARED)
   add_library(${SHARED_LIB} SHARED ${LIB_SRC})
   set(LIBS ${LIBS} Threads::Threads)
   target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
   if (WIN32)
-    target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi)
+    target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi shlwapi.lib)
   else()
     install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
   endif()
