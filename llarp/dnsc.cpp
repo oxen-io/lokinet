@@ -7,12 +7,12 @@
 #include <netdb.h> /* getaddrinfo, getnameinfo */
 #include <netinet/in.h>
 #include <sys/socket.h>
+#include <unistd.h> /* close */
 #endif
 
 #include <stdlib.h> /* exit */
 #include <string.h> /* memset */
 #include <sys/types.h>
-#include <unistd.h> /* close */
 
 #include <algorithm>  // for std::find_if
 #include <stdio.h>    // sprintf
@@ -814,7 +814,7 @@ llarp_dnsc_init(struct dnsc_context *const dnsc, llarp::Logic *const logic,
 }
 
 bool
-llarp_dnsc_stop(__attribute__((unused)) struct dnsc_context *const dnsc)
+llarp_dnsc_stop(ABSL_ATTRIBUTE_UNUSED struct dnsc_context *const dnsc)
 {
   // delete(sockaddr_in *)dnsc->server;  // deallocation
   return true;

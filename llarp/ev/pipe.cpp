@@ -1,6 +1,8 @@
 #include <ev/pipe.hpp>
 
+#ifndef _MSC_VER
 #include <unistd.h>
+#endif
 #include <fcntl.h>
 
 llarp_ev_pkt_pipe::llarp_ev_pkt_pipe(llarp_ev_loop_ptr loop)

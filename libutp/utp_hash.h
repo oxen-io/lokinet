@@ -38,6 +38,8 @@ typedef uint32 utp_link_t;
 #pragma warning(disable : 4200)
 #endif
 
+#include <absl/base/attributes.h>
+
 typedef uint32 (*utp_hash_compute_t)(const void *keyp, size_t keysize);
 typedef uint (*utp_hash_equal_t)(const void *key_a, const void *key_b,
                                  size_t keysize);
@@ -146,12 +148,12 @@ class utpHashTable
 
  public:
   static uint
-  compare(const void *k1, const void *k2, __attribute__((unused)) size_t ks)
+  compare(const void *k1, const void *k2, ABSL_ATTRIBUTE_UNUSED size_t ks)
   {
     return *((K *)k1) == *((K *)k2);
   }
   static uint32
-  compute_hash(const void *k, __attribute__((unused)) size_t ks)
+  compute_hash(const void *k, ABSL_ATTRIBUTE_UNUSED size_t ks)
   {
     return ((K *)k)->compute_hash();
   }

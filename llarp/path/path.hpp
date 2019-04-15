@@ -15,6 +15,7 @@
 #include <util/threading.hpp>
 #include <util/time.hpp>
 
+#include <algorithm>
 #include <functional>
 #include <list>
 #include <map>
