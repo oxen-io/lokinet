@@ -102,16 +102,16 @@ namespace llarp
       return -1;
     }
     // build handler
-    llarp::tcp_conn* connimpl = new llarp::tcp_conn(loop, new_fd);
-    if(loop->add_ev(connimpl, true))
-    {
-      // call callback
-      if(tcp->accepted)
-        tcp->accepted(tcp, &connimpl->tcp);
-      return 0;
-    }
-    // cleanup error
-    delete connimpl;
+//    llarp::tcp_conn* connimpl = new llarp::tcp_conn(loop, new_fd);
+//    if(loop->add_ev(connimpl, true))
+//    {
+//      // call callback
+//      if(tcp->accepted)
+//        tcp->accepted(tcp, &connimpl->tcp);
+//      return 0;
+//    }
+//    // cleanup error
+//    delete connimpl;
     return -1;
   }
 
@@ -347,9 +347,9 @@ llarp_kqueue_loop::tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr)
     return false;
   }
 
-  llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, addr, tcp);
-  add_ev(conn, true);
-  conn->connect();
+  //llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, addr, tcp);
+  //add_ev(conn, true);
+  //conn->connect();
   return true;
 }
 

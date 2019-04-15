@@ -1,3 +1,4 @@
+#define ANDROID
 #if defined(ANDROID) || defined(RPI)
 
 #else

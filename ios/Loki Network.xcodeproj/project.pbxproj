@@ -7,31 +7,30 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		B8F797F0225C5E1E00003DE6 /* libcppbackport.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F797EF225C5E1E00003DE6 /* libcppbackport.a */; };
-		B8F797FD225C641F00003DE6 /* liblokinet-platform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F797FB225C641200003DE6 /* liblokinet-platform.a */; };
-		B8F79802225C736E00003DE6 /* libabsl_internal_city.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79801225C736E00003DE6 /* libabsl_internal_city.a */; };
-		B8F79805225C745400003DE6 /* libabsl_hash.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79803225C737300003DE6 /* libabsl_hash.a */; };
-		B8F79809225C74A800003DE6 /* libabsl_internal_throw_delegate.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79808225C74A800003DE6 /* libabsl_internal_throw_delegate.a */; };
-		B8F7980B225C74FA00003DE6 /* libabsl_strings.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7980A225C74FA00003DE6 /* libabsl_strings.a */; };
-		B8F7981A225D6F4100003DE6 /* liblokinet-util.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F797FF225C6D3600003DE6 /* liblokinet-util.a */; };
-		B8F79848225DAA0C00003DE6 /* liblibutp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79847225DAA0C00003DE6 /* liblibutp.a */; };
-		B8F7984E225DAB7A00003DE6 /* libabyss.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7984D225DAB7A00003DE6 /* libabyss.a */; };
-		B8F79852225DAC4000003DE6 /* liblokinet-cryptography.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79851225DAC4000003DE6 /* liblokinet-cryptography.a */; };
-		B8F79858225DAE1700003DE6 /* libabsl_synchronization.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79857225DAE1700003DE6 /* libabsl_synchronization.a */; };
-		B8F7985A225DAE7100003DE6 /* libabsl_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79859225DAE7100003DE6 /* libabsl_base.a */; };
-		B8F7985C225DAE8B00003DE6 /* libabsl_internal_malloc_internal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7985B225DAE8B00003DE6 /* libabsl_internal_malloc_internal.a */; };
-		B8F7985E225DAE9700003DE6 /* libabsl_internal_spinlock_wait.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7985D225DAE9700003DE6 /* libabsl_internal_spinlock_wait.a */; };
-		B8F79860225DAF4F00003DE6 /* libabsl_time.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7985F225DAF4F00003DE6 /* libabsl_time.a */; };
-		B8F79862225DB07800003DE6 /* libabsl_variant.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79861225DB07800003DE6 /* libabsl_variant.a */; };
-		B8F79864225DB0DB00003DE6 /* libabsl_symbolize.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79863225DB0DB00003DE6 /* libabsl_symbolize.a */; };
-		B8F79866225DB13E00003DE6 /* libabsl_stacktrace.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79865225DB13E00003DE6 /* libabsl_stacktrace.a */; };
-		B8F7986A225DB19A00003DE6 /* libabsl_bad_optional_access.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */; };
-		B8F7986C225DB1CE00003DE6 /* libabsl_int128.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */; };
+		B8EBA46F2266B7DD0098F863 /* libabyss.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA44E2266B7080098F863 /* libabyss.a */; };
+		B8EBA4702266B7E20098F863 /* liblibutp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA45C2266B7080098F863 /* liblibutp.a */; };
+		B8EBA4712266B7E70098F863 /* libabsl_base.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4162266B7080098F863 /* libabsl_base.a */; };
+		B8EBA4722266B7EB0098F863 /* libabsl_internal_malloc_internal.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA42A2266B7080098F863 /* libabsl_internal_malloc_internal.a */; };
+		B8EBA4732266B7F20098F863 /* libabsl_internal_spinlock_wait.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA42C2266B7080098F863 /* libabsl_internal_spinlock_wait.a */; };
+		B8EBA4742266B7F60098F863 /* libabsl_internal_throw_delegate.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA42E2266B7080098F863 /* libabsl_internal_throw_delegate.a */; };
+		B8EBA4752266B7FB0098F863 /* libabsl_stacktrace.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA43E2266B7080098F863 /* libabsl_stacktrace.a */; };
+		B8EBA4762266B7FF0098F863 /* libabsl_symbolize.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4442266B7080098F863 /* libabsl_symbolize.a */; };
+		B8EBA4772266B8030098F863 /* libabsl_hash.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4202266B7080098F863 /* libabsl_hash.a */; };
+		B8EBA4782266B8090098F863 /* libabsl_internal_city.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4242266B7080098F863 /* libabsl_internal_city.a */; };
+		B8EBA4792266B80C0098F863 /* libabsl_int128.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4222266B7080098F863 /* libabsl_int128.a */; };
+		B8EBA47A2266B8130098F863 /* libabsl_strings.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4422266B7080098F863 /* libabsl_strings.a */; };
+		B8EBA47B2266B8180098F863 /* libabsl_synchronization.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4462266B7080098F863 /* libabsl_synchronization.a */; };
+		B8EBA47C2266B81E0098F863 /* libabsl_time.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4482266B7080098F863 /* libabsl_time.a */; };
+		B8EBA47D2266B8240098F863 /* libabsl_bad_optional_access.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4142266B7080098F863 /* libabsl_bad_optional_access.a */; };
+		B8EBA47E2266B82A0098F863 /* libabsl_variant.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA44C2266B7080098F863 /* libabsl_variant.a */; };
+		B8EBA47F2266B82F0098F863 /* liblokinet-cryptography.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4602266B7080098F863 /* liblokinet-cryptography.a */; };
+		B8EBA4802266B8340098F863 /* liblokinet-util.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4662266B7080098F863 /* liblokinet-util.a */; };
+		B8EBA4812266B8380098F863 /* liblokinet-platform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4622266B7080098F863 /* liblokinet-platform.a */; };
+		B8EBA4822266B83B0098F863 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4642266B7080098F863 /* liblokinet-static.a */; };
+		B8EBA4832266B8550098F863 /* libcppbackport.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4522266B7080098F863 /* libcppbackport.a */; };
 		B8F79879225DBCC500003DE6 /* Daemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* Daemon.swift */; };
-		B8F7988B226056DD00003DE6 /* Packet Tunnel Provider.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		B8F798922260579100003DE6 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* PacketTunnelProvider.swift */; };
-		C3CBFB652256D47400F34631 /* liblokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */; };
-		C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C3CBFB662256D57000F34631 /* liblokinet-static.a */; };
+		C3CBFB652256D47400F34631 /* lokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */; };
 		C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* AppDelegate.swift */; };
 		C3FBE36722542DD60006284B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* ViewController.swift */; };
 		C3FBE36A22542DD60006284B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C3FBE36822542DD60006284B /* Main.storyboard */; };
@@ -40,12 +39,341 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		B8F79889226056DD00003DE6 /* PBXContainerItemProxy */ = {
+		B8EBA40F2266B7080098F863 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = C3FBE35922542DD60006284B /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = B8F79882226056DD00003DE6;
-			remoteInfo = "Packet Tunnel Provider";
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 12851CBEF2D340C2826E5C5E;
+			remoteInfo = absl_any;
+		};
+		B8EBA4112266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8AB658C39FCA4E7488979671;
+			remoteInfo = absl_bad_any_cast;
+		};
+		B8EBA4132266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 93485C961493450DACDAF2F3;
+			remoteInfo = absl_bad_optional_access;
+		};
+		B8EBA4152266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 88EF38228576471C8B124C96;
+			remoteInfo = absl_base;
+		};
+		B8EBA4172266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 57210768F7F2442B9430E62D;
+			remoteInfo = absl_container;
+		};
+		B8EBA4192266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 5D2040380F1A484EA924A924;
+			remoteInfo = absl_demangle_internal;
+		};
+		B8EBA41B2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 1D1219D33ACD41BDB23C835B;
+			remoteInfo = absl_dynamic_annotations;
+		};
+		B8EBA41D2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 79FD5A1A402F418DB503EDD1;
+			remoteInfo = absl_failure_signal_handler;
+		};
+		B8EBA41F2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 15A3C894450F498BB9A8D95C;
+			remoteInfo = absl_hash;
+		};
+		B8EBA4212266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = C9873AD7A3404EBBA588BD07;
+			remoteInfo = absl_int128;
+		};
+		B8EBA4232266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 90C0F223925E45ABA409E534;
+			remoteInfo = absl_internal_city;
+		};
+		B8EBA4252266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 8A01A27F0E204B32AB2D6187;
+			remoteInfo = absl_internal_debugging_internal;
+		};
+		B8EBA4272266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 798B77A152244451A234B26E;
+			remoteInfo = absl_internal_examine_stack;
+		};
+		B8EBA4292266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 58A6C936749141B0B5EA5037;
+			remoteInfo = absl_internal_malloc_internal;
+		};
+		B8EBA42B2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 54D601E305E24D959842C2D4;
+			remoteInfo = absl_internal_spinlock_wait;
+		};
+		B8EBA42D2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 23F11F1A025E44079FF88F97;
+			remoteInfo = absl_internal_throw_delegate;
+		};
+		B8EBA42F2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 18834323E2414BB49BB1A58B;
+			remoteInfo = absl_leak_check;
+		};
+		B8EBA4312266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 0FEFF3F1C1564131AEC01699;
+			remoteInfo = absl_leak_check_disable;
+		};
+		B8EBA4332266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = DDE163271B894CE7ADF822DD;
+			remoteInfo = absl_meta;
+		};
+		B8EBA4352266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 1CC4517E869741EB883A40C4;
+			remoteInfo = absl_numeric;
+		};
+		B8EBA4372266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 6916424004374968B19EF099;
+			remoteInfo = absl_optional;
+		};
+		B8EBA4392266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = C2755A7CDF244A6BBF0D9B2F;
+			remoteInfo = absl_raw_hash_set;
+		};
+		B8EBA43B2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 57147AB8BF80445F8491EFDA;
+			remoteInfo = absl_span;
+		};
+		B8EBA43D2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 3E88F57F3CDD4B16B514092E;
+			remoteInfo = absl_stacktrace;
+		};
+		B8EBA43F2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 0E03286007514DF2B792C29B;
+			remoteInfo = absl_str_format;
+		};
+		B8EBA4412266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = B76C659B2492432CAB4AEF16;
+			remoteInfo = absl_strings;
+		};
+		B8EBA4432266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = CA55D47B73D046C0B3813EAC;
+			remoteInfo = absl_symbolize;
+		};
+		B8EBA4452266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 49FD034FFFAD45BBAC6B1919;
+			remoteInfo = absl_synchronization;
+		};
+		B8EBA4472266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = AF792DDA6EE34EB1800723CC;
+			remoteInfo = absl_time;
+		};
+		B8EBA4492266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = BE03ACC5E7A4474C92861397;
+			remoteInfo = absl_utility;
+		};
+		B8EBA44B2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 1B2743E2129D43ED96642DEB;
+			remoteInfo = absl_variant;
+		};
+		B8EBA44D2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 0D0BA81168874C83A18BEF47;
+			remoteInfo = abyss;
+		};
+		B8EBA44F2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 71DB1AEA43D04EE8A40214A2;
+			remoteInfo = "abyss-main";
+		};
+		B8EBA4512266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 750C97A9C73742E6A27D8F48;
+			remoteInfo = cppbackport;
+		};
+		B8EBA4532266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 15F72EB31F0B4380A3D607CE;
+			remoteInfo = gmock;
+		};
+		B8EBA4552266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = F1ED649448AA4EFF82F9AE05;
+			remoteInfo = gmock_main;
+		};
+		B8EBA4572266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 5821B30BE5504D90BC3DED67;
+			remoteInfo = gtest;
+		};
+		B8EBA4592266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 332498756D16440BBE07FF43;
+			remoteInfo = gtest_main;
+		};
+		B8EBA45B2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 459DEE5B100D4E5F8AE194C8;
+			remoteInfo = libutp;
+		};
+		B8EBA45D2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 3A39D5E565B949978EF8F757;
+			remoteInfo = lokinet;
+		};
+		B8EBA45F2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = E9083849445D461DB8886B3A;
+			remoteInfo = "lokinet-cryptography";
+		};
+		B8EBA4612266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 72B61C292C19447FB024B6B1;
+			remoteInfo = "lokinet-platform";
+		};
+		B8EBA4632266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 75F55C18631B45E9A6D96557;
+			remoteInfo = "lokinet-static";
+		};
+		B8EBA4652266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = D784E18206F2436F83D65662;
+			remoteInfo = "lokinet-util";
+		};
+		B8EBA4672266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 21D756BD59784907B7745F4D;
+			remoteInfo = pow10_helper;
+		};
+		B8EBA4692266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 9A1B77BC544F45D6A7526CA0;
+			remoteInfo = str_format_extension_internal;
+		};
+		B8EBA46B2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 4CB51089016D4D5B8B844326;
+			remoteInfo = str_format_internal;
+		};
+		B8EBA46D2266B7080098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = B7887DB845E3490489BD6E4F;
+			remoteInfo = testAll;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -56,7 +384,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				B8F7988B226056DD00003DE6 /* Packet Tunnel Provider.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -64,6 +391,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = lokinet.xcodeproj; path = ../Core/lokinet.xcodeproj; sourceTree = "<group>"; };
 		B8F797EF225C5E1E00003DE6 /* libcppbackport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcppbackport.a; path = ../build/vendor/libcppbackport.a; sourceTree = "<group>"; };
 		B8F797FB225C641200003DE6 /* liblokinet-platform.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-platform.a"; path = "../build/llarp/liblokinet-platform.a"; sourceTree = "<group>"; };
 		B8F797FF225C6D3600003DE6 /* liblokinet-util.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-util.a"; path = "../build/llarp/liblokinet-util.a"; sourceTree = "<group>"; };
@@ -84,17 +412,14 @@
 		B8F79865225DB13E00003DE6 /* libabsl_stacktrace.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_stacktrace.a; path = "../build/vendor/abseil-cpp/absl/debugging/libabsl_stacktrace.a"; sourceTree = "<group>"; };
 		B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_bad_optional_access.a; path = "../build/vendor/abseil-cpp/absl/types/libabsl_bad_optional_access.a"; sourceTree = "<group>"; };
 		B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_int128.a; path = "../build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a"; sourceTree = "<group>"; };
-		B8F7986D225DB57100003DE6 /* logger.hpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.h; name = logger.hpp; path = ../../llarp/util/logger.hpp; sourceTree = "<group>"; };
 		B8F79878225DBCC500003DE6 /* Daemon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Daemon.swift; sourceTree = "<group>"; };
 		B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Packet Tunnel Provider.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B8F79887226056DD00003DE6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		B8F79888226056DD00003DE6 /* Packet_Tunnel_Provider.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Packet_Tunnel_Provider.entitlements; sourceTree = "<group>"; };
 		B8F798912260579100003DE6 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
-		C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "liblokinet-wrapper.cpp"; sourceTree = "<group>"; };
-		C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "liblokinet-wrapper.h"; sourceTree = "<group>"; };
+		C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "lokinet-wrapper.cpp"; sourceTree = "<group>"; };
+		C3CBFB642256D47400F34631 /* lokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "lokinet-wrapper.h"; sourceTree = "<group>"; };
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
-		C3CBFB682256D61600F34631 /* llarp.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = llarp.h; path = ../../include/llarp.h; sourceTree = "<group>"; };
-		C3CBFB692257151D00F34631 /* C++ Interop Guide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "C++ Interop Guide.md"; sourceTree = "<group>"; };
 		C3FBE36122542DD60006284B /* Loki Network.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Loki Network.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		C3FBE36422542DD60006284B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		C3FBE36622542DD60006284B /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -117,42 +442,95 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				B8F7984E225DAB7A00003DE6 /* libabyss.a in Frameworks */,
-				B8F79848225DAA0C00003DE6 /* liblibutp.a in Frameworks */,
-				B8F7985A225DAE7100003DE6 /* libabsl_base.a in Frameworks */,
-				B8F7985C225DAE8B00003DE6 /* libabsl_internal_malloc_internal.a in Frameworks */,
-				B8F7985E225DAE9700003DE6 /* libabsl_internal_spinlock_wait.a in Frameworks */,
-				B8F79809225C74A800003DE6 /* libabsl_internal_throw_delegate.a in Frameworks */,
-				B8F79866225DB13E00003DE6 /* libabsl_stacktrace.a in Frameworks */,
-				B8F79864225DB0DB00003DE6 /* libabsl_symbolize.a in Frameworks */,
-				B8F79805225C745400003DE6 /* libabsl_hash.a in Frameworks */,
-				B8F79802225C736E00003DE6 /* libabsl_internal_city.a in Frameworks */,
-				B8F7986C225DB1CE00003DE6 /* libabsl_int128.a in Frameworks */,
-				B8F7980B225C74FA00003DE6 /* libabsl_strings.a in Frameworks */,
-				B8F79858225DAE1700003DE6 /* libabsl_synchronization.a in Frameworks */,
-				B8F79860225DAF4F00003DE6 /* libabsl_time.a in Frameworks */,
-				B8F7986A225DB19A00003DE6 /* libabsl_bad_optional_access.a in Frameworks */,
-				B8F79862225DB07800003DE6 /* libabsl_variant.a in Frameworks */,
-				B8F797F0225C5E1E00003DE6 /* libcppbackport.a in Frameworks */,
-				B8F79852225DAC4000003DE6 /* liblokinet-cryptography.a in Frameworks */,
-				B8F7981A225D6F4100003DE6 /* liblokinet-util.a in Frameworks */,
-				B8F797FD225C641F00003DE6 /* liblokinet-platform.a in Frameworks */,
-				C3CBFB672256D57000F34631 /* liblokinet-static.a in Frameworks */,
+				B8EBA46F2266B7DD0098F863 /* libabyss.a in Frameworks */,
+				B8EBA4702266B7E20098F863 /* liblibutp.a in Frameworks */,
+				B8EBA4712266B7E70098F863 /* libabsl_base.a in Frameworks */,
+				B8EBA4722266B7EB0098F863 /* libabsl_internal_malloc_internal.a in Frameworks */,
+				B8EBA4732266B7F20098F863 /* libabsl_internal_spinlock_wait.a in Frameworks */,
+				B8EBA4742266B7F60098F863 /* libabsl_internal_throw_delegate.a in Frameworks */,
+				B8EBA4752266B7FB0098F863 /* libabsl_stacktrace.a in Frameworks */,
+				B8EBA4762266B7FF0098F863 /* libabsl_symbolize.a in Frameworks */,
+				B8EBA4772266B8030098F863 /* libabsl_hash.a in Frameworks */,
+				B8EBA4782266B8090098F863 /* libabsl_internal_city.a in Frameworks */,
+				B8EBA4792266B80C0098F863 /* libabsl_int128.a in Frameworks */,
+				B8EBA47A2266B8130098F863 /* libabsl_strings.a in Frameworks */,
+				B8EBA47B2266B8180098F863 /* libabsl_synchronization.a in Frameworks */,
+				B8EBA47C2266B81E0098F863 /* libabsl_time.a in Frameworks */,
+				B8EBA47D2266B8240098F863 /* libabsl_bad_optional_access.a in Frameworks */,
+				B8EBA47E2266B82A0098F863 /* libabsl_variant.a in Frameworks */,
+				B8EBA4832266B8550098F863 /* libcppbackport.a in Frameworks */,
+				B8EBA47F2266B82F0098F863 /* liblokinet-cryptography.a in Frameworks */,
+				B8EBA4802266B8340098F863 /* liblokinet-util.a in Frameworks */,
+				B8EBA4812266B8380098F863 /* liblokinet-platform.a in Frameworks */,
+				B8EBA4822266B83B0098F863 /* liblokinet-static.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		B8EBA3DA2266B7080098F863 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B8EBA4102266B7080098F863 /* libabsl_any.a */,
+				B8EBA4122266B7080098F863 /* libabsl_bad_any_cast.a */,
+				B8EBA4142266B7080098F863 /* libabsl_bad_optional_access.a */,
+				B8EBA4162266B7080098F863 /* libabsl_base.a */,
+				B8EBA4182266B7080098F863 /* libabsl_container.a */,
+				B8EBA41A2266B7080098F863 /* libabsl_demangle_internal.a */,
+				B8EBA41C2266B7080098F863 /* libabsl_dynamic_annotations.a */,
+				B8EBA41E2266B7080098F863 /* libabsl_failure_signal_handler.a */,
+				B8EBA4202266B7080098F863 /* libabsl_hash.a */,
+				B8EBA4222266B7080098F863 /* libabsl_int128.a */,
+				B8EBA4242266B7080098F863 /* libabsl_internal_city.a */,
+				B8EBA4262266B7080098F863 /* libabsl_internal_debugging_internal.a */,
+				B8EBA4282266B7080098F863 /* libabsl_internal_examine_stack.a */,
+				B8EBA42A2266B7080098F863 /* libabsl_internal_malloc_internal.a */,
+				B8EBA42C2266B7080098F863 /* libabsl_internal_spinlock_wait.a */,
+				B8EBA42E2266B7080098F863 /* libabsl_internal_throw_delegate.a */,
+				B8EBA4302266B7080098F863 /* libabsl_leak_check.a */,
+				B8EBA4322266B7080098F863 /* libabsl_leak_check_disable.a */,
+				B8EBA4342266B7080098F863 /* libabsl_meta.a */,
+				B8EBA4362266B7080098F863 /* libabsl_numeric.a */,
+				B8EBA4382266B7080098F863 /* libabsl_optional.a */,
+				B8EBA43A2266B7080098F863 /* libabsl_raw_hash_set.a */,
+				B8EBA43C2266B7080098F863 /* libabsl_span.a */,
+				B8EBA43E2266B7080098F863 /* libabsl_stacktrace.a */,
+				B8EBA4402266B7080098F863 /* libabsl_str_format.a */,
+				B8EBA4422266B7080098F863 /* libabsl_strings.a */,
+				B8EBA4442266B7080098F863 /* libabsl_symbolize.a */,
+				B8EBA4462266B7080098F863 /* libabsl_synchronization.a */,
+				B8EBA4482266B7080098F863 /* libabsl_time.a */,
+				B8EBA44A2266B7080098F863 /* libabsl_utility.a */,
+				B8EBA44C2266B7080098F863 /* libabsl_variant.a */,
+				B8EBA44E2266B7080098F863 /* libabyss.a */,
+				B8EBA4502266B7080098F863 /* abyss-main */,
+				B8EBA4522266B7080098F863 /* libcppbackport.a */,
+				B8EBA4542266B7080098F863 /* libgmockd.a */,
+				B8EBA4562266B7080098F863 /* libgmock_maind.a */,
+				B8EBA4582266B7080098F863 /* libgtestd.a */,
+				B8EBA45A2266B7080098F863 /* libgtest_maind.a */,
+				B8EBA45C2266B7080098F863 /* liblibutp.a */,
+				B8EBA45E2266B7080098F863 /* lokinet */,
+				B8EBA4602266B7080098F863 /* liblokinet-cryptography.a */,
+				B8EBA4622266B7080098F863 /* liblokinet-platform.a */,
+				B8EBA4642266B7080098F863 /* liblokinet-static.a */,
+				B8EBA4662266B7080098F863 /* liblokinet-util.a */,
+				B8EBA4682266B7080098F863 /* libpow10_helper.a */,
+				B8EBA46A2266B7080098F863 /* libstr_format_extension_internal.a */,
+				B8EBA46C2266B7080098F863 /* libstr_format_internal.a */,
+				B8EBA46E2266B7080098F863 /* testAll */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 		B8F79871225DB9D600003DE6 /* Core */ = {
 			isa = PBXGroup;
 			children = (
 				B8F79878225DBCC500003DE6 /* Daemon.swift */,
-				C3CBFB692257151D00F34631 /* C++ Interop Guide.md */,
-				C3CBFB642256D47400F34631 /* liblokinet-wrapper.h */,
-				C3CBFB632256D47400F34631 /* liblokinet-wrapper.cpp */,
-				B8F7986D225DB57100003DE6 /* logger.hpp */,
-				C3CBFB682256D61600F34631 /* llarp.h */,
+				B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */,
+				C3CBFB642256D47400F34631 /* lokinet-wrapper.h */,
+				C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */,
 			);
 			name = Core;
 			sourceTree = "<group>";
@@ -277,7 +655,6 @@
 			buildRules = (
 			);
 			dependencies = (
-				B8F7988A226056DD00003DE6 /* PBXTargetDependency */,
 			);
 			name = "Loki Network";
 			productName = "Loki Network";
@@ -314,6 +691,12 @@
 			mainGroup = C3FBE35822542DD60006284B;
 			productRefGroup = C3FBE36222542DD60006284B /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = B8EBA3DA2266B7080098F863 /* Products */;
+					ProjectRef = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				C3FBE36022542DD60006284B /* Loki Network */,
@@ -321,6 +704,348 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		B8EBA4102266B7080098F863 /* libabsl_any.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_any.a;
+			remoteRef = B8EBA40F2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4122266B7080098F863 /* libabsl_bad_any_cast.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_bad_any_cast.a;
+			remoteRef = B8EBA4112266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4142266B7080098F863 /* libabsl_bad_optional_access.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_bad_optional_access.a;
+			remoteRef = B8EBA4132266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4162266B7080098F863 /* libabsl_base.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_base.a;
+			remoteRef = B8EBA4152266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4182266B7080098F863 /* libabsl_container.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_container.a;
+			remoteRef = B8EBA4172266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA41A2266B7080098F863 /* libabsl_demangle_internal.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_demangle_internal.a;
+			remoteRef = B8EBA4192266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA41C2266B7080098F863 /* libabsl_dynamic_annotations.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_dynamic_annotations.a;
+			remoteRef = B8EBA41B2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA41E2266B7080098F863 /* libabsl_failure_signal_handler.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_failure_signal_handler.a;
+			remoteRef = B8EBA41D2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4202266B7080098F863 /* libabsl_hash.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_hash.a;
+			remoteRef = B8EBA41F2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4222266B7080098F863 /* libabsl_int128.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_int128.a;
+			remoteRef = B8EBA4212266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4242266B7080098F863 /* libabsl_internal_city.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_internal_city.a;
+			remoteRef = B8EBA4232266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4262266B7080098F863 /* libabsl_internal_debugging_internal.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_internal_debugging_internal.a;
+			remoteRef = B8EBA4252266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4282266B7080098F863 /* libabsl_internal_examine_stack.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_internal_examine_stack.a;
+			remoteRef = B8EBA4272266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA42A2266B7080098F863 /* libabsl_internal_malloc_internal.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_internal_malloc_internal.a;
+			remoteRef = B8EBA4292266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA42C2266B7080098F863 /* libabsl_internal_spinlock_wait.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_internal_spinlock_wait.a;
+			remoteRef = B8EBA42B2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA42E2266B7080098F863 /* libabsl_internal_throw_delegate.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_internal_throw_delegate.a;
+			remoteRef = B8EBA42D2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4302266B7080098F863 /* libabsl_leak_check.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_leak_check.a;
+			remoteRef = B8EBA42F2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4322266B7080098F863 /* libabsl_leak_check_disable.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_leak_check_disable.a;
+			remoteRef = B8EBA4312266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4342266B7080098F863 /* libabsl_meta.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_meta.a;
+			remoteRef = B8EBA4332266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4362266B7080098F863 /* libabsl_numeric.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_numeric.a;
+			remoteRef = B8EBA4352266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4382266B7080098F863 /* libabsl_optional.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_optional.a;
+			remoteRef = B8EBA4372266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA43A2266B7080098F863 /* libabsl_raw_hash_set.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_raw_hash_set.a;
+			remoteRef = B8EBA4392266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA43C2266B7080098F863 /* libabsl_span.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_span.a;
+			remoteRef = B8EBA43B2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA43E2266B7080098F863 /* libabsl_stacktrace.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_stacktrace.a;
+			remoteRef = B8EBA43D2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4402266B7080098F863 /* libabsl_str_format.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_str_format.a;
+			remoteRef = B8EBA43F2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4422266B7080098F863 /* libabsl_strings.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_strings.a;
+			remoteRef = B8EBA4412266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4442266B7080098F863 /* libabsl_symbolize.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_symbolize.a;
+			remoteRef = B8EBA4432266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4462266B7080098F863 /* libabsl_synchronization.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_synchronization.a;
+			remoteRef = B8EBA4452266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4482266B7080098F863 /* libabsl_time.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_time.a;
+			remoteRef = B8EBA4472266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA44A2266B7080098F863 /* libabsl_utility.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_utility.a;
+			remoteRef = B8EBA4492266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA44C2266B7080098F863 /* libabsl_variant.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabsl_variant.a;
+			remoteRef = B8EBA44B2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA44E2266B7080098F863 /* libabyss.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libabyss.a;
+			remoteRef = B8EBA44D2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4502266B7080098F863 /* abyss-main */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			name = "abyss-main";
+			path = "abyss-main.app";
+			remoteRef = B8EBA44F2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4522266B7080098F863 /* libcppbackport.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libcppbackport.a;
+			remoteRef = B8EBA4512266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4542266B7080098F863 /* libgmockd.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libgmockd.a;
+			remoteRef = B8EBA4532266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4562266B7080098F863 /* libgmock_maind.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libgmock_maind.a;
+			remoteRef = B8EBA4552266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4582266B7080098F863 /* libgtestd.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libgtestd.a;
+			remoteRef = B8EBA4572266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA45A2266B7080098F863 /* libgtest_maind.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libgtest_maind.a;
+			remoteRef = B8EBA4592266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA45C2266B7080098F863 /* liblibutp.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = liblibutp.a;
+			remoteRef = B8EBA45B2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA45E2266B7080098F863 /* lokinet */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			name = lokinet;
+			path = lokinet.app;
+			remoteRef = B8EBA45D2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4602266B7080098F863 /* liblokinet-cryptography.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "liblokinet-cryptography.a";
+			remoteRef = B8EBA45F2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4622266B7080098F863 /* liblokinet-platform.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "liblokinet-platform.a";
+			remoteRef = B8EBA4612266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4642266B7080098F863 /* liblokinet-static.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "liblokinet-static.a";
+			remoteRef = B8EBA4632266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4662266B7080098F863 /* liblokinet-util.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "liblokinet-util.a";
+			remoteRef = B8EBA4652266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4682266B7080098F863 /* libpow10_helper.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libpow10_helper.a;
+			remoteRef = B8EBA4672266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA46A2266B7080098F863 /* libstr_format_extension_internal.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libstr_format_extension_internal.a;
+			remoteRef = B8EBA4692266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA46C2266B7080098F863 /* libstr_format_internal.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libstr_format_internal.a;
+			remoteRef = B8EBA46B2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA46E2266B7080098F863 /* testAll */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			name = testAll;
+			path = testAll.app;
+			remoteRef = B8EBA46D2266B7080098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
 		B8F79881226056DD00003DE6 /* Resources */ = {
@@ -355,7 +1080,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C3CBFB652256D47400F34631 /* liblokinet-wrapper.cpp in Sources */,
+				C3CBFB652256D47400F34631 /* lokinet-wrapper.cpp in Sources */,
 				B8F79879225DBCC500003DE6 /* Daemon.swift in Sources */,
 				C3FBE36722542DD60006284B /* ViewController.swift in Sources */,
 				C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */,
@@ -363,14 +1088,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		B8F7988A226056DD00003DE6 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = B8F79882226056DD00003DE6 /* Packet Tunnel Provider */;
-			targetProxy = B8F79889226056DD00003DE6 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		C3FBE36822542DD60006284B /* Main.storyboard */ = {
@@ -396,16 +1113,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "Packet Tunnel Provider/Packet_Tunnel_Provider.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = ZU63H493D4;
+				DEVELOPMENT_TEAM = V694FHC546;
 				INFOPLIST_FILE = "Packet Tunnel Provider/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network.Packet-Tunnel-Provider";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.loki-project.loki-network.packet-tunnel-provider";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -416,16 +1135,18 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "Packet Tunnel Provider/Packet_Tunnel_Provider.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = ZU63H493D4;
+				DEVELOPMENT_TEAM = V694FHC546;
 				INFOPLIST_FILE = "Packet Tunnel Provider/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network.Packet-Tunnel-Provider";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.loki-project.loki-network.packet-tunnel-provider";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -553,32 +1274,17 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = ZU63H493D4;
+				DEVELOPMENT_TEAM = V694FHC546;
 				INFOPLIST_FILE = "Loki Network/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)",
-					"$(PROJECT_DIR)/../build",
-					"$(PROJECT_DIR)/../build/libutp",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/base",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/debugging",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/hash",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/numeric",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/strings",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/synchronization",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/time",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/types",
-					"$(PROJECT_DIR)/../build/vendor",
-					"$(PROJECT_DIR)/../build/crypto",
-					"$(PROJECT_DIR)/../build/llarp",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.loki-project.loki-network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Loki Network/Loki-Network-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (
@@ -598,32 +1304,17 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = ZU63H493D4;
+				DEVELOPMENT_TEAM = V694FHC546;
 				INFOPLIST_FILE = "Loki Network/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				LIBRARY_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)",
-					"$(PROJECT_DIR)/../build",
-					"$(PROJECT_DIR)/../build/libutp",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/base",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/debugging",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/hash",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/numeric",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/strings",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/synchronization",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/time",
-					"$(PROJECT_DIR)/../build/vendor/abseil-cpp/absl/types",
-					"$(PROJECT_DIR)/../build/vendor",
-					"$(PROJECT_DIR)/../build/crypto",
-					"$(PROJECT_DIR)/../build/llarp",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.loki.loki-network.Loki-Network";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.loki-project.loki-network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Loki Network/Loki-Network-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				SYSTEM_HEADER_SEARCH_PATHS = (

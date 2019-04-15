@@ -36,7 +36,7 @@ final class Daemon {
     }
     
     func run(with context: LLARPContext) {
-        guard isConfigured else { fatalError() }
+        guard isConfigured else { fatalError("configure(isDebuggingEnabled:completionHandler:) must be called before run(with:) is called.") }
         _llarp_main_run(context)
     }
 }

@@ -25,6 +25,8 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#define iOS
+
 #ifdef __sun
 #define BSD_COMP
 #define TUNSDEBUG _IOW('t', 90, int)
@@ -46,10 +48,12 @@
 #include <net/tun/if_tun.h>
 #elif defined(ANDROID)
 #include <linux/if_tun.h>
-#elif !defined(Darwin)
+#elif !defined(Darwin) && !defined(iOS)
 #include <net/if_tun.h>
 #endif
+#if !defined(iOS)
 #include <netinet/if_ether.h>
+#endif
 #include <netinet/in.h>
 #endif
 
@@ -349,7 +353,7 @@ tuntap_set_debug(struct device *dev, int set)
     return 0;
   }
 
-#if !defined Darwin
+#if !defined Darwin && !defined iOS
   if(ioctl(dev->tun_fd, TUNSDEBUG, &set) == -1)
   {
     switch(set)

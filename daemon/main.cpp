@@ -69,7 +69,7 @@ resolvePath(std::string conffname)
   // even though it is defined by POSIX.1-2001+
 #if !defined(_WIN32) && !defined(__OpenBSD__)
   wordexp_t exp_result;
-  wordexp(conffname.c_str(), &exp_result, 0);
+//  wordexp(conffname.c_str(), &exp_result, 0);
   char *resolvedPath = realpath(exp_result.we_wordv[0], NULL);
   if(!resolvedPath)
   {
