@@ -1170,9 +1170,6 @@ namespace llarp
       {
         for(const auto &rc : bootstrapRCList)
         {
-          if(HasPendingConnectJob(rc.pubkey))
-            continue;
-          TryConnectAsync(rc, 4);
           dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
         }
       }
