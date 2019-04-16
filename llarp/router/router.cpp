@@ -924,7 +924,6 @@ namespace llarp
       if(rc.Verify(crypto(), Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
-        nodedb()->InsertAsync(rc);
       }
       else
       {
@@ -1432,6 +1431,9 @@ namespace llarp
 
     llarp_threadpool_start(tp);
     llarp_threadpool_start(disk);
+
+    for(const auto &rc : bootstrapRCList)
+      this->nodedb()->InsertAsync(rc);
 
     routerProfiling().Load(routerProfilesFile.c_str());
 
