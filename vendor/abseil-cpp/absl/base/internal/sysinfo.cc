@@ -19,6 +19,8 @@
 #ifdef _WIN32
 #include <shlwapi.h>
 #include <windows.h>
+
+#pragma comment(lib, "shlwapi.lib")
 #else
 #include <fcntl.h>
 #include <pthread.h>

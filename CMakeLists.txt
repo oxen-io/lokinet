@@ -32,20 +32,19 @@ if (MSVC_VERSION)
   enable_language(ASM_MASM)
   list(APPEND CMAKE_ASM_MASM_SOURCE_FILE_EXTENSIONS s)
   add_definitions(/D_WIN32_WINNT=0x0600 /DNOMINMAX /DSODIUM_STATIC)
-  add_compile_options(/MANIFEST:NO)
 else()
   enable_language(ASM)
 endif(MSVC_VERSION)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "SunOS")
-# check if we have the (saner) emulation of epoll here
-# it's basically linux epoll but with a sane method of
-# dealing with closed file handles that still exist in the
-# epoll set
-#
-# Note that the zombie of Oracle Solaris 2.11.x will NOT have
-# this, the header check is the only method we have to distinguish
-# them. -rick the svr4 guy
+  # check if we have the (saner) emulation of epoll here
+  # it's basically linux epoll but with a sane method of
+  # dealing with closed file handles that still exist in the
+  # epoll set
+  #
+  # Note that the zombie of Oracle Solaris 2.11.x will NOT have
+  # this, the header check is the only method we have to distinguish
+  # them. -rick the svr4 guy
   set(SOLARIS ON)
   option(USE_POLL "Revert to using poll(2) event loop (useful if targeting Oracle Solaris)" OFF)
   set(CMAKE_CXX_STANDARD_LIBRARIES "${CMAKE_CXX_STANDARD_LIBRARIES} -lsocket -lnsl")
@@ -379,12 +378,17 @@ target_link_libraries(${ABYSS_LIB} PUBLIC ${PLATFORM_LIB})
 if (NOT WIN32)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} Threads::Threads)
-else()
+elseif(NOT MSVC_VERSION)
   add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp llarp/win32/abyss.rc)
   target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
+else()
+  add_executable(${ABYSS_EXE} ${ABYSS}/main.cpp)
+  target_link_libraries(${ABYSS_EXE} PUBLIC ${ABYSS_LIB} ${STATIC_LIB} ws2_32)
 endif(NOT WIN32)
+
 target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
 target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
+
 # for freebsd
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
   target_include_directories(${ABYSS_LIB} /usr/local/include)
@@ -408,8 +412,10 @@ if(SHADOW)
 else()
   if(NOT WIN32)
     add_executable(${EXE} ${EXE_SRC})
-  else()
+  elseif(NOT MSVC_VERSION)
     add_executable(${EXE} ${EXE_SRC} llarp/win32/version.rc)
+  else() 
+    add_executable(${EXE} ${EXE_SRC})
   endif(NOT WIN32)
 
   add_log_tag(${EXE})
@@ -437,6 +443,6 @@ endif(SHADOW)
 
 enable_testing()
 
-if (NOT SHADOW)
+if (NOT SHADOW AND NOT MSVC_VERSION)
   add_subdirectory(test)
 endif()

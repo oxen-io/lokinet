@@ -46,12 +46,12 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(${UTIL_LIB} PUBLIC absl::synchronization)
+target_link_libraries(${UTIL_LIB} PUBLIC absl::synchronization absl::hash)
 target_link_libraries(${UTIL_LIB} PUBLIC nlohmann_json::nlohmann_json)
 
 # cut back on fluff
 if (NOT WIN32)
-    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings absl::hash cppbackport)
+    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings cppbackport)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -104,7 +104,7 @@ if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 endif()
 
 if(WIN32)
-  target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi shlwapi.lib)
+  target_link_libraries(${PLATFORM_LIB} PUBLIC iphlpapi)
 endif()
 set(DNSLIB_SRC
   dns/dotlokilookup.cpp
@@ -244,7 +244,7 @@ if(WITH_SHARED)
   set(LIBS ${LIBS} Threads::Threads)
   target_link_libraries(${SHARED_LIB} PUBLIC ${ABYSS_LIB} ${CRYPTOGRAPHY_LIB} ${UTIL_LIB} ${PLATFORM_LIB} ${LIBS})
   if (WIN32)
-    target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi shlwapi.lib)
+    target_link_libraries(${SHARED_LIB} PUBLIC ws2_32 iphlpapi)
   else()
     install(TARGETS ${SHARED_LIB} LIBRARY DESTINATION lib)
   endif()
