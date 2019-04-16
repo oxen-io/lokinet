@@ -280,13 +280,13 @@ namespace llarp
 
     void
     JsonPublisher::directoryPublisher(const nlohmann::json &result,
-                                      const fs::path& path)
+                                      const fs::path &path)
     {
       std::ofstream fstream(path.string(), std::ios_base::app);
       if(!fstream)
       {
         std::cerr << "Skipping metrics publish, " << path << " is not a file\n";
-        abort();
+        return;
       }
 
       fstream << std::setw(0) << result << '\n';
