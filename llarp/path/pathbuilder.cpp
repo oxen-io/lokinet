@@ -216,8 +216,7 @@ namespace llarp
         router->ForEachPeer(
             [&](const ILinkSession* s, bool) {
               const PubKey k(s->GetPubKey());
-              if(got || router->IsBootstrapNode(k)
-                 || router->routerProfiling().IsBadForConnect(k))
+              if(got || router->IsBootstrapNode(k))
                 return;
               cur = s->GetRemoteRC();
               got = true;
