@@ -639,7 +639,7 @@ namespace llarp
       // try connecting async
       TryConnectAsync(rc, 5);
     }
-    else if(IsServiceNode() || !routerProfiling().IsBad(remote))
+    else if(IsServiceNode())
     {
       if(dht()->impl->HasRouterLookup(remote))
         return;

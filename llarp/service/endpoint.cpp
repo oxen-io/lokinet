@@ -113,7 +113,7 @@ namespace llarp
       m_IntroSet.I.clear();
       for(const auto& intro : I)
       {
-        if(router->routerProfiling().IsBad(intro.router))
+        if(router->routerProfiling().IsBadForPath(intro.router))
           continue;
         m_IntroSet.I.push_back(intro);
       }
@@ -1431,7 +1431,7 @@ namespace llarp
                                    if(c)
                                      c->UpdateIntroSet(true);
                                  },
-                                 5000, false);
+                                 5000, true);
     }
 
     bool
@@ -1445,13 +1445,7 @@ namespace llarp
       {
         if(hop == 0)
         {
-          // first hop
-          if(router->NumberOfConnectedRouters())
-          {
-            if(!router->GetRandomConnectedRouter(hops[0]))
-              return false;
-          }
-          else
+          if(!SelectHop(nodedb, hops[0], hops[0], 0, path::ePathRoleAny))
             return false;
         }
         else if(hop == numHops - 1)
@@ -1466,10 +1460,10 @@ namespace llarp
           size_t tries = 5;
           do
           {
-            nodedb->select_random_hop(hops[hop - 1], hops[hop], hop);
+            nodedb->select_random_hop_excluding(hops[hop], {hops[hop - 1].pubkey, remote});
             --tries;
           } while(
-              m_Endpoint->Router()->routerProfiling().IsBad(hops[hop].pubkey)
+              m_Endpoint->Router()->routerProfiling().IsBadForPath(hops[hop].pubkey)
               && tries > 0);
           return tries > 0;
         }
@@ -1492,7 +1486,7 @@ namespace llarp
       {
         if(intro.ExpiresSoon(now))
           continue;
-        if(router->routerProfiling().IsBad(intro.router))
+        if(router->routerProfiling().IsBadForPath(intro.router))
           continue;
         auto itr = m_BadIntros.find(intro);
         if(itr == m_BadIntros.end() && intro.router == m_NextIntro.router)

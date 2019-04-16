@@ -13,7 +13,7 @@ namespace llarp
   namespace path
   {
     // milliseconds waiting between builds on a path
-    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 5 * 1000;
+    constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 1000;
 
     struct Builder : public PathSet, public util::IStateful
     {
