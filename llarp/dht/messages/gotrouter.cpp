@@ -93,7 +93,7 @@ namespace llarp
         return pathset && pathset->HandleGotRouterMessage(this);
       }
       // not relayed
-      TXOwner owner(From, txid);
+      const TXOwner owner(From, txid);
 
       if(dht.pendingExploreLookups().HasPendingLookupFrom(owner))
       {
@@ -106,20 +106,16 @@ namespace llarp
         return true;
       }
       // not explore lookup
-
-      if(!dht.pendingRouterLookups().HasPendingLookupFrom(owner))
+      if(dht.pendingRouterLookups().HasPendingLookupFrom(owner))
       {
-        llarp::LogWarn("Unwarranted GRM from ", From, " txid=", txid);
-        return false;
+        if(R.size() == 0)
+          dht.pendingRouterLookups().NotFound(owner, K);
+        else
+          dht.pendingRouterLookups().Found(owner, R[0].pubkey, R);
+        return true;
       }
-      // no pending lookup
-
-      llarp::LogInfo("DHT no pending lookup");
-      if(R.size() == 1)
-        dht.pendingRouterLookups().Found(owner, R[0].pubkey, {R[0]});
-      else
-        dht.pendingRouterLookups().NotFound(owner, K);
-      return true;
+      llarp::LogWarn("Unwarranted GRM from ", From, " txid=", txid);
+      return false;
     }
   }  // namespace dht
 }  // namespace llarp
