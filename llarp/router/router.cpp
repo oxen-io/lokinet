@@ -924,6 +924,7 @@ namespace llarp
       if(rc.Verify(crypto(), Now()))
       {
         llarp::LogInfo("Added bootstrap node ", RouterID(rc.pubkey));
+        nodedb()->InsertAsync(rc);
       }
       else
       {

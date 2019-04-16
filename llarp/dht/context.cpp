@@ -329,7 +329,7 @@ namespace llarp
       if(left)
         return;
       Context* ctx = static_cast< Context* >(u);
-      ctx->Explore(1);
+      ctx->Explore();
       ctx->router->logic()->call_later({orig, ctx, &handle_explore_timer});
     }
 
