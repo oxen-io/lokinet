@@ -14,6 +14,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/file_logger.hpp>
 #include <util/logger_syslog.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
@@ -846,6 +847,28 @@ namespace llarp
         LogInfo("Switching to syslog");
         LogContext::Instance().logStream = std::make_unique< SysLogStream >();
 #endif
+      }
+      if(StrEq(key, "file"))
+      {
+        LogInfo("open log file: ", val);
+        FILE *logfile = ::fopen(val, "a");
+        if(logfile)
+        {
+          LogContext::Instance().logStream =
+              std::make_unique< FileLogStream >(diskworker(), logfile, 500);
+          LogInfo("started logging to ", val);
+        }
+        else if(errno)
+        {
+          LogError("could not open log file at '", val, "': ", strerror(errno));
+          errno = 0;
+        }
+        else
+        {
+          LogError("failed to open log file at '", val,
+                   "' for an unknown reason, bailing tf out kbai");
+          ::abort();
+        }
       }
     }
     else if(StrEq(section, "lokid"))

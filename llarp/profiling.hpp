@@ -64,13 +64,13 @@ namespace llarp
         LOCKS_EXCLUDED(m_ProfilesMutex);
 
     /// check if this rotuer should have paths built over it
-    bool 
-    IsBadForPath(const RouterID & r, uint64_t chances = 8)
+    bool
+    IsBadForPath(const RouterID& r, uint64_t chances = 8)
         LOCK_RETURNED(m_ProfilesMutex);
 
     /// check if this router should be connected directly to
-    bool 
-    IsBadForConnect(const RouterID & r, uint64_t chances = 8)
+    bool
+    IsBadForConnect(const RouterID& r, uint64_t chances = 8)
         LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void

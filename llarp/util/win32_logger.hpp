@@ -18,6 +18,8 @@ namespace llarp
     void
     PostLog(std::stringstream& s) const override;
 
+    void Tick(llarp_time_t) override{};
+
     bool isConsoleModern =
         true;  // qol fix so oldfag clients don't see ugly escapes
     HANDLE fd1 = GetStdHandle(STD_OUTPUT_HANDLE);

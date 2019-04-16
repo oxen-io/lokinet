@@ -1460,11 +1460,12 @@ namespace llarp
           size_t tries = 5;
           do
           {
-            nodedb->select_random_hop_excluding(hops[hop], {hops[hop - 1].pubkey, remote});
+            nodedb->select_random_hop_excluding(hops[hop],
+                                                {hops[hop - 1].pubkey, remote});
             --tries;
-          } while(
-              m_Endpoint->Router()->routerProfiling().IsBadForPath(hops[hop].pubkey)
-              && tries > 0);
+          } while(m_Endpoint->Router()->routerProfiling().IsBadForPath(
+                      hops[hop].pubkey)
+                  && tries > 0);
           return tries > 0;
         }
         return false;

@@ -54,6 +54,9 @@ llarp_ev_loop_run_single_process(llarp_ev_loop_ptr ev,
       ev->update_time();
       logic->tick_async(ev->time_now());
       llarp_threadpool_tick(tp);
+      // tick log stream at the VERY END of the tick cycle so that all logs
+      // flush
+      llarp::LogContext::Instance().logStream->Tick(ev->time_now());
     }
   }
 }

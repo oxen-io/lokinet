@@ -76,7 +76,8 @@ namespace llarp
     return (pathSuccessCount * chances) > pathFailCount;
   }
 
-  static bool constexpr checkIsGood(uint64_t fails, uint64_t success, uint64_t chances)
+  static bool constexpr checkIsGood(uint64_t fails, uint64_t success,
+                                    uint64_t chances)
   {
     if(fails > 0)
       return success / fails > chances;
@@ -90,7 +91,7 @@ namespace llarp
   {
     return checkIsGood(connectTimeoutCount, connectGoodCount, chances);
   }
-  
+
   bool
   RouterProfile::IsGoodForPath(uint64_t chances) const
   {
@@ -98,7 +99,7 @@ namespace llarp
   }
 
   bool
-  Profiling::IsBadForConnect(const RouterID & r, uint64_t chances)
+  Profiling::IsBadForConnect(const RouterID& r, uint64_t chances)
   {
     lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
@@ -108,7 +109,7 @@ namespace llarp
   }
 
   bool
-  Profiling::IsBadForPath(const RouterID & r, uint64_t chances)
+  Profiling::IsBadForPath(const RouterID& r, uint64_t chances)
   {
     lock_t lock(&m_ProfilesMutex);
     auto itr = m_Profiles.find(r);
