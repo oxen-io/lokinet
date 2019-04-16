@@ -79,7 +79,7 @@ namespace llarp
   static bool constexpr checkIsGood(uint64_t fails, uint64_t success,
                                     uint64_t chances)
   {
-    if(fails > 0)
+    if(fails > 0 && success > chances)
       return success / fails > chances;
     if(success == 0)
       return fails < chances;
