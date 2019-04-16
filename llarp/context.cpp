@@ -146,10 +146,13 @@ namespace llarp
           *m_scheduler, m_metricsManager->instance());
     }
 
-    m_metricsManager->instance()->addGlobalPublisher(
-        std::make_shared< metrics::JsonPublisher >(
-            std::bind(&metrics::JsonPublisher::directoryPublisher,
-                      std::placeholders::_1, jsonMetricsPath)));
+    if(!jsonMetricsPath.native().empty())
+    {
+      m_metricsManager->instance()->addGlobalPublisher(
+          std::make_shared< metrics::JsonPublisher >(
+              std::bind(&metrics::JsonPublisher::directoryPublisher,
+                        std::placeholders::_1, jsonMetricsPath)));
+    }
 
     if(!metricTankHost.empty())
     {
