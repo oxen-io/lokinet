@@ -58,8 +58,8 @@ namespace llarp
   void
   RouterProfile::Tick()
   {
-    // 5 minutes
-    static constexpr llarp_time_t updateInterval = path::default_lifetime / 2;
+    // 15 seconds
+    static constexpr llarp_time_t updateInterval = 15 * 1000;
     auto now                                     = llarp::time_now_ms();
     if(lastUpdated < now && now - lastUpdated > updateInterval)
     {
@@ -79,8 +79,8 @@ namespace llarp
   static bool constexpr checkIsGood(uint64_t fails, uint64_t success,
                                     uint64_t chances)
   {
-    if(fails > 0 && success > chances)
-      return success / fails > chances;
+    if(fails > 0 && (fails + success) >= chances)
+      return (success / fails) > 2;
     if(success == 0)
       return fails < chances;
     return true;
