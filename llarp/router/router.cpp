@@ -14,6 +14,7 @@
 #include <util/buffer.hpp>
 #include <util/encode.hpp>
 #include <util/logger.hpp>
+#include <util/file_logger.hpp>
 #include <util/logger_syslog.hpp>
 #include <util/metrics.hpp>
 #include <util/str.hpp>
@@ -71,15 +72,16 @@ struct TryConnectJob
   void
   AttemptTimedout()
   {
-    router->routerProfiling().MarkTimeout(rc.pubkey);
     if(ShouldRetry())
     {
       Attempt();
       return;
     }
+    router->routerProfiling().MarkTimeout(rc.pubkey);
     if(router->routerProfiling().IsBad(rc.pubkey))
     {
-      router->nodedb()->Remove(rc.pubkey);
+      if(!router->IsBootstrapNode(rc.pubkey))
+        router->nodedb()->Remove(rc.pubkey);
     }
     // delete this
     router->pendingEstablishJobs.erase(rc.pubkey);
@@ -638,7 +640,7 @@ namespace llarp
       // try connecting async
       TryConnectAsync(rc, 5);
     }
-    else if(IsServiceNode() || !routerProfiling().IsBad(remote))
+    else if(IsServiceNode())
     {
       if(dht()->impl->HasRouterLookup(remote))
         return;
@@ -845,6 +847,28 @@ namespace llarp
         LogInfo("Switching to syslog");
         LogContext::Instance().logStream = std::make_unique< SysLogStream >();
 #endif
+      }
+      if(StrEq(key, "file"))
+      {
+        LogInfo("open log file: ", val);
+        FILE *logfile = ::fopen(val, "a");
+        if(logfile)
+        {
+          LogContext::Instance().logStream =
+              std::make_unique< FileLogStream >(diskworker(), logfile, 500);
+          LogInfo("started logging to ", val);
+        }
+        else if(errno)
+        {
+          LogError("could not open log file at '", val, "': ", strerror(errno));
+          errno = 0;
+        }
+        else
+        {
+          LogError("failed to open log file at '", val,
+                   "' for an unknown reason, bailing tf out kbai");
+          ::abort();
+        }
       }
     }
     else if(StrEq(section, "lokid"))
@@ -1102,7 +1126,7 @@ namespace llarp
         if(!routerProfiling().IsBad(rc.pubkey))
           return false;
         routerProfiling().ClearProfile(rc.pubkey);
-        return true;
+        return !IsBootstrapNode(rc.pubkey);
       });
     }
     paths.TickPaths(now);
@@ -1146,9 +1170,6 @@ namespace llarp
       {
         for(const auto &rc : bootstrapRCList)
         {
-          if(HasPendingConnectJob(rc.pubkey))
-            continue;
-          TryConnectAsync(rc, 4);
           dht()->impl->ExploreNetworkVia(dht::Key_t{rc.pubkey});
         }
       }
@@ -1410,6 +1431,9 @@ namespace llarp
 
     llarp_threadpool_start(tp);
     llarp_threadpool_start(disk);
+
+    for(const auto &rc : bootstrapRCList)
+      this->nodedb()->InsertAsync(rc);
 
     routerProfiling().Load(routerProfilesFile.c_str());
 
@@ -1690,12 +1714,8 @@ namespace llarp
          && !(self->HasSessionTo(other.pubkey)
               || self->HasPendingConnectJob(other.pubkey)))
       {
-        for(const auto &rc : self->bootstrapRCList)
-        {
-          if(rc.pubkey == other.pubkey)
-            return want > 0;
-        }
-        self->TryConnectAsync(other, 5);
+        if(!self->IsBootstrapNode(other.pubkey))
+          self->TryConnectAsync(other, 5);
         --want;
       }
       return want > 0;

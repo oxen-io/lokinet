@@ -19,6 +19,7 @@ namespace llarp
     uint64_t pathSuccessCount       = 0;
     uint64_t pathFailCount          = 0;
     llarp_time_t lastUpdated        = 0;
+    llarp_time_t lastDecay          = 0;
 
     RouterProfile() : IBEncodeMessage(){};
 
@@ -32,6 +33,12 @@ namespace llarp
 
     bool
     IsGood(uint64_t chances) const;
+
+    bool
+    IsGoodForConnect(uint64_t chances) const;
+
+    bool
+    IsGoodForPath(uint64_t chances) const;
 
     /// decay stats
     void
@@ -52,8 +59,19 @@ namespace llarp
     {
     }
 
+    /// generic variant
     bool
     IsBad(const RouterID& r, uint64_t chances = 8)
+        LOCKS_EXCLUDED(m_ProfilesMutex);
+
+    /// check if this rotuer should have paths built over it
+    bool
+    IsBadForPath(const RouterID& r, uint64_t chances = 8)
+        LOCK_RETURNED(m_ProfilesMutex);
+
+    /// check if this router should be connected directly to
+    bool
+    IsBadForConnect(const RouterID& r, uint64_t chances = 8)
         LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void

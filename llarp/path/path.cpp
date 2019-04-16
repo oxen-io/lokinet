@@ -462,8 +462,9 @@ namespace llarp
     void
     Path::EnterState(PathStatus st, llarp_time_t now)
     {
-      if(st == ePathTimeout && _status == ePathBuilding)
+      if(st == ePathExpired && _status == ePathBuilding)
       {
+        _status = st;
         m_PathSet->HandlePathBuildTimeout(this);
       }
       else if(st == ePathBuilding)
@@ -480,6 +481,10 @@ namespace llarp
         LogInfo("path ", Name(), " died");
         _status = st;
         m_PathSet->HandlePathDied(this);
+      }
+      else if(st == ePathEstablished && _status == ePathTimeout)
+      {
+        LogInfo("path ", Name(), " reanimated");
       }
       _status = st;
     }
@@ -551,12 +556,11 @@ namespace llarp
           if(dlt >= path::build_timeout)
           {
             r->routerProfiling().MarkPathFail(this);
-            EnterState(ePathTimeout, now);
+            EnterState(ePathExpired, now);
             return;
           }
         }
       }
-
       // check to see if this path is dead
       if(_status == ePathEstablished)
       {
@@ -624,7 +628,7 @@ namespace llarp
     bool
     Path::Expired(llarp_time_t now) const
     {
-      if(_status == ePathEstablished)
+      if(_status == ePathEstablished || _status == ePathTimeout)
         return now >= ExpireTime();
       else if(_status == ePathBuilding)
         return false;
