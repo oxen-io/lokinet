@@ -329,7 +329,9 @@ namespace llarp
       if(left)
         return;
       Context* ctx = static_cast< Context* >(u);
-      ctx->Explore();
+      const auto num = std::min(ctx->router->NumberOfConnectedRouters(), size_t(4));
+      if(num)
+        ctx->Explore(num);
       ctx->router->logic()->call_later({orig, ctx, &handle_explore_timer});
     }
 
