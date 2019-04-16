@@ -81,6 +81,12 @@ namespace llarp
         return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
 
+    bool
+    BaseSession::CheckPathDead(path::Path *, llarp_time_t dlt)
+    {
+      return dlt >= 10000;
+    }
+
     void
     BaseSession::HandlePathBuilt(llarp::path::Path* p)
     {
@@ -88,7 +94,7 @@ namespace llarp
       p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
-
+      p->SetDeadChecker(std::bind(&BaseSession::CheckPathDead, this, std::placeholders::_1, std::placeholders::_2));
       p->SetExitTrafficHandler(
           std::bind(&BaseSession::HandleTraffic, this, std::placeholders::_1,
                     std::placeholders::_2, std::placeholders::_3));

@@ -36,6 +36,9 @@ namespace llarp
       HandlePathDied(llarp::path::Path* p) override;
 
       bool
+      CheckPathDead(path::Path * p, llarp_time_t dlt);
+
+      bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop, llarp::path::PathRole roles) override;
 
