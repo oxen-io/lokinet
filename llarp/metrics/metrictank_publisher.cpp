@@ -11,6 +11,9 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <sys/types.h>
+// bzero and friends graduated from /usr/ucb*
+// not too long ago
+#include <strings.h>
 #else
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
