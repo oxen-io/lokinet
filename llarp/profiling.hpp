@@ -19,6 +19,7 @@ namespace llarp
     uint64_t pathSuccessCount       = 0;
     uint64_t pathFailCount          = 0;
     llarp_time_t lastUpdated        = 0;
+    llarp_time_t lastDecay          = 0;
 
     RouterProfile() : IBEncodeMessage(){};
 

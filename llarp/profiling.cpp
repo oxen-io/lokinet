@@ -52,7 +52,7 @@ namespace llarp
     connectTimeoutCount /= 2;
     pathSuccessCount /= 2;
     pathFailCount /= 2;
-    lastUpdated = llarp::time_now_ms();
+    lastDecay = llarp::time_now_ms();
   }
 
   void
@@ -60,11 +60,9 @@ namespace llarp
   {
     // 15 seconds
     static constexpr llarp_time_t updateInterval = 15 * 1000;
-    auto now                                     = llarp::time_now_ms();
-    if(lastUpdated < now && now - lastUpdated > updateInterval)
-    {
+    const auto now                               = llarp::time_now_ms();
+    if(lastDecay < now && now - lastDecay > updateInterval)
       Decay();
-    }
   }
 
   bool
