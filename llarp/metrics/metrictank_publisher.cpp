@@ -240,7 +240,7 @@ namespace llarp
 
         for(const std::string &val : toSend)
         {
-          ssize_t sentLen = 0;
+          int sentLen = 0;
 
           do
           {

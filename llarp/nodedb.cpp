@@ -176,7 +176,7 @@ llarp_nodedb::Insert(const llarp::RouterContact &rc)
   return true;
 }
 
-size_t
+ssize_t
 llarp_nodedb::Load(const fs::path &path)
 {
   std::error_code ec;
@@ -184,7 +184,7 @@ llarp_nodedb::Load(const fs::path &path)
   {
     return -1;
   }
-  size_t loaded = 0;
+  ssize_t loaded = 0;
 
   for(const char &ch : skiplist_subdirs)
   {
@@ -194,17 +194,17 @@ llarp_nodedb::Load(const fs::path &path)
     p += ch;
     fs::path sub = path / p;
 
-    size_t l = loadSubdir(sub);
+    ssize_t l = loadSubdir(sub);
     if(l > 0)
       loaded += l;
   }
   return loaded;
 }
 
-size_t
+ssize_t
 llarp_nodedb::loadSubdir(const fs::path &dir)
 {
-  size_t sz = 0;
+  ssize_t sz = 0;
   llarp::util::IterDir(dir, [&](const fs::path &f) -> bool {
     if(fs::is_regular_file(f) && loadfile(f))
       sz++;
@@ -388,7 +388,7 @@ llarp_nodedb::set_dir(const char *dir)
   nodePath = dir;
 }
 
-size_t
+ssize_t
 llarp_nodedb::load_dir(const char *dir)
 {
   std::error_code ec;

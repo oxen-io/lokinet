@@ -11,6 +11,12 @@
 
 #include <set>
 
+#ifdef _MSC_VER
+#include <BaseTsd.h>
+typedef SSIZE_T ssize_t;
+#endif
+
+
 /**
  * nodedb.hpp
  *
@@ -81,10 +87,10 @@ struct llarp_nodedb
   void
   InsertAsync(llarp::RouterContact rc);
 
-  size_t
+  ssize_t
   Load(const fs::path &path);
 
-  size_t
+  ssize_t
   loadSubdir(const fs::path &dir);
 
   bool
@@ -100,9 +106,9 @@ struct llarp_nodedb
   void
   set_dir(const char *dir);
 
-  size_t
+  ssize_t
   load_dir(const char *dir);
-  size_t
+  ssize_t
   store_dir(const char *dir);
 
   int

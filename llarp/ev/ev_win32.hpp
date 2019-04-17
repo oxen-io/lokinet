@@ -114,6 +114,22 @@ struct llarp_win32_loop : public llarp_ev_loop
   udp_listen(llarp_udp_io* l, const sockaddr* src);
 
   ~llarp_win32_loop();
+
+  bool
+  running() const;
+
+  bool
+  init();
+
+  int
+  tick(int ms);
+
+  int
+  run();
+
+  int
+  udp_bind(const sockaddr* addr);
+  
   bool
   close_ev(llarp::ev_io* ev);
 
