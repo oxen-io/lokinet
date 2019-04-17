@@ -15,10 +15,11 @@ class ViewController : UIViewController {
         tunnelProviderManager.saveToPreferences { error in
             if let error = error {
                 print(error)
+                print("--------")
             } else {
                 do {
-                    try tunnelProviderManager.connection.startVPNTunnel()
                     print("--------")
+                    try tunnelProviderManager.connection.startVPNTunnel()
                     print("Attempting to start daemon...")
                     print("--------")
                     // Start daemon
@@ -29,6 +30,7 @@ class ViewController : UIViewController {
                     }
                 } catch let error {
                     print(error)
+                    print("--------")
                 }
             }
         }
