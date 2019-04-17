@@ -9,25 +9,25 @@
 /* Begin PBXAggregateTarget section */
 		1A0D569358AB40F1AB883A3E /* ALL_BUILD */ = {
 			isa = PBXAggregateTarget;
-			buildConfigurationList = BD25EB2D935B48EBB52E7CA7 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */;
+			buildConfigurationList = 8D13F7A2465A43958CD10741 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */;
 			buildPhases = (
-				05D288A49E64417783F181F9 /* CMake Rules */,
+				EF9377CDAD9A4F4185710EF6 /* CMake Rules */,
 			);
 			dependencies = (
-				DD8D41604A724FC886621C0A /* PBXTargetDependency */,
-				15FD4A869ED24F779BECE269 /* PBXTargetDependency */,
-				47F7A9536D054F91995D289E /* PBXTargetDependency */,
-				595E1B9695DB4C7DA5479AD7 /* PBXTargetDependency */,
-				B3BA686C70BE428C89CA6FD3 /* PBXTargetDependency */,
+				E68A146AA4144951A1786829 /* PBXTargetDependency */,
+				E23F4F0668744E428FF2E887 /* PBXTargetDependency */,
+				FD81556A93AB4E8C8F592858 /* PBXTargetDependency */,
+				F8B4A4BEF786491E8F67E90F /* PBXTargetDependency */,
+				6086D38DFB4F4AF898E26D7C /* PBXTargetDependency */,
 			);
 			name = ALL_BUILD;
 			productName = ALL_BUILD;
 		};
 		9646D1E7711349EA98E3EFC9 /* ZERO_CHECK */ = {
 			isa = PBXAggregateTarget;
-			buildConfigurationList = 25284FBFD06240C083C7B5B6 /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */;
+			buildConfigurationList = A214F43D7F184F03A00726B8 /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */;
 			buildPhases = (
-				B8C237F8C6C24B609AEA3110 /* CMake Rules */,
+				1BC546C139E244BE990C36C6 /* CMake Rules */,
 			);
 			dependencies = (
 			);
@@ -36,9 +36,9 @@
 		};
 		DB2B665572124D539C90FB7F /* RUN_TESTS */ = {
 			isa = PBXAggregateTarget;
-			buildConfigurationList = E17568E0D3DD45F3B729766B /* Build configuration list for PBXAggregateTarget "RUN_TESTS" */;
+			buildConfigurationList = D6450017B1A54931A91F6AF7 /* Build configuration list for PBXAggregateTarget "RUN_TESTS" */;
 			buildPhases = (
-				429FA0CA6D6E49EDB247648C /* CMake PostBuild Rules */,
+				4CA0EA0824904D0E94293867 /* CMake PostBuild Rules */,
 			);
 			dependencies = (
 			);
@@ -48,43 +48,43 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
-		00388B8EED4C48B1886B07C2 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 384E438AC6714E48AAE1B473 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */; };
-		2F603EFDC8784E38BE3D1380 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist */ = {isa = PBXBuildFile; fileRef = 9FC07DF4B62C421884E52115 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist */; };
-		36008CCEEBA14B96A254A68E /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist */ = {isa = PBXBuildFile; fileRef = 3B4BDC7E03684EF1A4B4699C /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist */; };
-		38A1849C7EAF49349FA322F7 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */ = {isa = PBXBuildFile; fileRef = E0BABF8A4ABB45609DCFCCB0 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */; };
-		3CB4B1B677FF4F518CD7C817 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */ = {isa = PBXBuildFile; fileRef = 7BD49D2CFD41476D8F2E52F7 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */; };
-		5B772C1764524E8099707177 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */ = {isa = PBXBuildFile; fileRef = 48EF30869F1246C789B50C0E /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */; };
-		6DB93D159D4C4867854E5379 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = C0E3D98C2043412BA9D3B74A /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */; };
-		7913B073568F4F6FB375DBB7 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist */ = {isa = PBXBuildFile; fileRef = 64BA57B07A03457D9EB0F9F9 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist */; };
-		9287229C86B44632B8311237 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = CA9E28D36C0E498A8F635C08 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */; };
-		B2342B44327D4E02883605EE /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 4B4CC6E6B2504A35B89A20BB /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */; };
-		CCAF4E97B91F4B1FBE7CDEE7 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */ = {isa = PBXBuildFile; fileRef = 42D3832DDE8940CD92A13625 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */; };
-		F646E18F16EB455993B454FB /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist */ = {isa = PBXBuildFile; fileRef = FF9319C0034A461C9100A147 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist */; };
+		0416BF6E6A8A4C03871D379F /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 751C9BFA826E4C17A85CB5A8 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */; };
+		19A9712198A844B096CE89C4 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */ = {isa = PBXBuildFile; fileRef = 164FF163AA19462194953804 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */; };
+		65FE604C98CF40ECBCB1B3D3 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist */ = {isa = PBXBuildFile; fileRef = BB415EBE8334440F9966D769 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist */; };
+		812793D5612B40B9993CC901 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */ = {isa = PBXBuildFile; fileRef = 8782964143114B23ABF31BAA /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */; };
+		82AAEDC3B0D240479D226EF2 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 0DDDE0E429BD49FC9143F3A5 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */; };
+		BE325C1CB85E496A9915EC7C /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist */ = {isa = PBXBuildFile; fileRef = CD456CDB2DDD4A38A18CF8D4 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist */; };
+		D1217EE79408465B82BD351B /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist */ = {isa = PBXBuildFile; fileRef = E4BD65116DCA4C3C83BC0653 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist */; };
+		D6F356274EF44B98995D3BA0 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = CD23D0A9CB8241F196A9E829 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */; };
+		D8BCA3D9DF584BD1B66C6A77 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */ = {isa = PBXBuildFile; fileRef = 0EC08803E770494186323E99 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */; };
+		D8EDE766BF2E46E2A653B865 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */ = {isa = PBXBuildFile; fileRef = D20D550428944030BE6563B7 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */; };
+		DF5EA975F00C49F58406F2B6 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */ = {isa = PBXBuildFile; fileRef = C3A773E305BA4746AEE43890 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */; };
+		E227D2297BA0409F88193229 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist */ = {isa = PBXBuildFile; fileRef = 29212C13B7DB4A7E8FC45CFF /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildStyle section */
-		185A4CBC67D344C0AB0BEE73 /* Debug */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-			};
-			name = Debug;
-		};
-		693BFD22F6604460B3C30B3D /* MinSizeRel */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-			};
-			name = MinSizeRel;
-		};
-		CC9622AE2B65406EA76103F9 /* Release */ = {
+		69102EC275844B018A508B73 /* Release */ = {
 			isa = PBXBuildStyle;
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 			};
 			name = Release;
 		};
-		E525FB4104024DF2824F51E3 /* RelWithDebInfo */ = {
+		8B8394E8322C41EBB30F52E7 /* MinSizeRel */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = MinSizeRel;
+		};
+		9530C6B6D9E04E64861A3007 /* Debug */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Debug;
+		};
+		E9E464047A7341158B76BB5D /* RelWithDebInfo */ = {
 			isa = PBXBuildStyle;
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
@@ -94,233 +94,233 @@
 /* End PBXBuildStyle section */
 
 /* Begin PBXContainerItemProxy section */
-		19B7F26100944C448EFFB110 /* PBXContainerItemProxy */ = {
+		0747CF0529E3426DBB77F678 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 07FBAE029CC44A9FAFDE0986;
+			remoteInfo = gtest;
+		};
+		13D9A75CE23E45E7ACCE75EB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = E17773A5C8EA4B9C984166D3;
 			remoteInfo = gmock;
 		};
-		31ECE08993C546619AAA4B6C /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 9646D1E7711349EA98E3EFC9;
-			remoteInfo = ZERO_CHECK;
-		};
-		563BF111FBF0452898FAC4D9 /* PBXContainerItemProxy */ = {
+		17FE94467284491A8BD91FAF /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 07FBAE029CC44A9FAFDE0986;
 			remoteInfo = gtest;
 		};
-		5FF107C3C62640B8BF1E898E /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = E03877357E4E47C79C76BFF5;
-			remoteInfo = gmock_main;
-		};
-		7372C39334B846F2B5BD7C84 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 07FBAE029CC44A9FAFDE0986;
-			remoteInfo = gtest;
-		};
-		79FECAFB290A43C1A75BC569 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 07FBAE029CC44A9FAFDE0986;
-			remoteInfo = gtest;
-		};
-		B705476271834D96B8F2BCD4 /* PBXContainerItemProxy */ = {
+		2C3D75C7BF0A44AEBF9466C6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = E17773A5C8EA4B9C984166D3;
 			remoteInfo = gmock;
 		};
-		B9034BD08B7C47898FD329F3 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 07FBAE029CC44A9FAFDE0986;
-			remoteInfo = gtest;
-		};
-		FFFA9CC48A6D4437A8A8F7BD /* PBXContainerItemProxy */ = {
+		92E1E8512D3C4AA2866EF11F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 6EA350E3DD0344D3A16B0130;
 			remoteInfo = gtest_main;
 		};
+		ADF71986C9324E41AD2B4C60 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 07FBAE029CC44A9FAFDE0986;
+			remoteInfo = gtest;
+		};
+		C73AC767F8AB4EA99D719F02 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E03877357E4E47C79C76BFF5;
+			remoteInfo = gmock_main;
+		};
+		DBD9B3CEC84248D0B559E92A /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 9646D1E7711349EA98E3EFC9;
+			remoteInfo = ZERO_CHECK;
+		};
+		F2E4EED43FEC4C789F56BF48 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CC44C82FCA19415EA46B041F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 07FBAE029CC44A9FAFDE0986;
+			remoteInfo = gtest;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		03756076D7A64E228B2A3AAE /* /Users/niels/Code/loki-network/test/gtest/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
-		16D3A96439064F6CAC6937A7 /* gtest */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgtestd.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		384E438AC6714E48AAE1B473 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = googletest/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
-		3B4BDC7E03684EF1A4B4699C /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; name = Info.plist; path = ../../ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist; sourceTree = SOURCE_ROOT; };
-		42D3832DDE8940CD92A13625 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = gtest_main.cc; path = googletest/src/gtest_main.cc; sourceTree = SOURCE_ROOT; };
-		48EF30869F1246C789B50C0E /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = gmock_main.cc; path = googlemock/src/gmock_main.cc; sourceTree = SOURCE_ROOT; };
-		4B4CC6E6B2504A35B89A20BB /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = googlemock/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
-		64BA57B07A03457D9EB0F9F9 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; name = Info.plist; path = ../../ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist; sourceTree = SOURCE_ROOT; };
-		6EB8384430364ECEBE13B592 /* gmock_main */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgmock_maind.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		7BD49D2CFD41476D8F2E52F7 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = "gtest-all.cc"; path = "googletest/src/gtest-all.cc"; sourceTree = SOURCE_ROOT; };
-		92E3892F712B453D84D79625 /* gtest_main */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgtest_maind.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		9FC07DF4B62C421884E52115 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; name = Info.plist; path = ../../ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist; sourceTree = SOURCE_ROOT; };
-		C0E3D98C2043412BA9D3B74A /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = googletest/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
-		CA9E28D36C0E498A8F635C08 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = googlemock/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
-		E0BABF8A4ABB45609DCFCCB0 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = "gmock-all.cc"; path = "googlemock/src/gmock-all.cc"; sourceTree = SOURCE_ROOT; };
-		FB2ADDBF496A47CCA3F42C44 /* gmock */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgmockd.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		FF9319C0034A461C9100A147 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; name = Info.plist; path = ../../ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist; sourceTree = SOURCE_ROOT; };
+		0DDDE0E429BD49FC9143F3A5 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = googletest/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		0EC08803E770494186323E99 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = googlemock/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		164FF163AA19462194953804 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = gtest_main.cc; path = googletest/src/gtest_main.cc; sourceTree = SOURCE_ROOT; };
+		29212C13B7DB4A7E8FC45CFF /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; name = Info.plist; path = ../../ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist; sourceTree = SOURCE_ROOT; };
+		4394EE7D355341C1855A8FFA /* gmock */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgmockd.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		60C53BD5DBD74E6990906201 /* gtest_main */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgtest_maind.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		6BA0B6AC4BA54397AFC82C41 /* /Users/niels/Code/loki-network/test/gtest/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		751C9BFA826E4C17A85CB5A8 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = googlemock/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		8782964143114B23ABF31BAA /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = "gmock-all.cc"; path = "googlemock/src/gmock-all.cc"; sourceTree = SOURCE_ROOT; };
+		9FD1EF9F60E44755BCF8BCAD /* gtest */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgtestd.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		BB415EBE8334440F9966D769 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; name = Info.plist; path = ../../ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist; sourceTree = SOURCE_ROOT; };
+		C3A773E305BA4746AEE43890 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = "gtest-all.cc"; path = "googletest/src/gtest-all.cc"; sourceTree = SOURCE_ROOT; };
+		CD23D0A9CB8241F196A9E829 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = googletest/CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		CD456CDB2DDD4A38A18CF8D4 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; name = Info.plist; path = ../../ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist; sourceTree = SOURCE_ROOT; };
+		D20D550428944030BE6563B7 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 4; name = gmock_main.cc; path = googlemock/src/gmock_main.cc; sourceTree = SOURCE_ROOT; };
+		E4BD65116DCA4C3C83BC0653 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist */ = {isa = PBXFileReference; explicitFileType = sourcecode.text.plist; fileEncoding = 4; name = Info.plist; path = ../../ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist; sourceTree = SOURCE_ROOT; };
+		F895422AE0794ED0AA59D82B /* gmock_main */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libgmock_maind.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		1F9539191A9C4764A1078141 /* Source Files */ = {
+		00DBACF70D2C40A0950DA04A /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				E0BABF8A4ABB45609DCFCCB0 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */,
+				E4BD65116DCA4C3C83BC0653 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		07CB5B9F799348ABB9E053AC /* Source Files */ = {
+			isa = PBXGroup;
+			children = (
+				164FF163AA19462194953804 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */,
 			);
 			name = "Source Files";
 			sourceTree = "<group>";
 		};
-		28095F211D114E3C9ECDE7E4 /* gtest_main */ = {
+		348BD404080A4B26A29440BE /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				D70939E778694B0F9151E124 /* Source Files */,
-				70AB0CA634724D75811E0461 /* Resources */,
-				C0E3D98C2043412BA9D3B74A /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */,
-			);
-			name = gtest_main;
-			sourceTree = "<group>";
-		};
-		281A911D1A3C41FAB62E68D5 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				FF9319C0034A461C9100A147 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist */,
+				BB415EBE8334440F9966D769 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
 		};
-		2F75A65465364072A3DBBC92 /* Resources */ = {
+		47DED5ED1ADF4B64B16FEB72 /* gtest */ = {
 			isa = PBXGroup;
 			children = (
-				3B4BDC7E03684EF1A4B4699C /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock_main.dir/Info.plist */,
-			);
-			name = Resources;
-			sourceTree = "<group>";
-		};
-		3316B0FBC3394B68B55C0A2D /* ALL_BUILD */ = {
-			isa = PBXGroup;
-			children = (
-				BEEE58B2B4DA400A97B79DDD /* CMake Rules */,
-				03756076D7A64E228B2A3AAE /* /Users/niels/Code/loki-network/test/gtest/CMakeLists.txt */,
-			);
-			name = ALL_BUILD;
-			sourceTree = "<group>";
-		};
-		3C5D81497AA844589593F8B2 /* Source Files */ = {
-			isa = PBXGroup;
-			children = (
-				48EF30869F1246C789B50C0E /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */,
-			);
-			name = "Source Files";
-			sourceTree = "<group>";
-		};
-		5399F6DB57D74FA4BDA9F82E /* Source Files */ = {
-			isa = PBXGroup;
-			children = (
-				7BD49D2CFD41476D8F2E52F7 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */,
-			);
-			name = "Source Files";
-			sourceTree = "<group>";
-		};
-		5CC2CA2B9E314547A5C94767 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				FB2ADDBF496A47CCA3F42C44 /* gmock */,
-				6EB8384430364ECEBE13B592 /* gmock_main */,
-				16D3A96439064F6CAC6937A7 /* gtest */,
-				92E3892F712B453D84D79625 /* gtest_main */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		70AB0CA634724D75811E0461 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				9FC07DF4B62C421884E52115 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist */,
-			);
-			name = Resources;
-			sourceTree = "<group>";
-		};
-		92EBA37B114143A78271F0C3 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				64BA57B07A03457D9EB0F9F9 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest.dir/Info.plist */,
-			);
-			name = Resources;
-			sourceTree = "<group>";
-		};
-		BEB067CB88F7486FBC30274D /* gtest */ = {
-			isa = PBXGroup;
-			children = (
-				5399F6DB57D74FA4BDA9F82E /* Source Files */,
-				92EBA37B114143A78271F0C3 /* Resources */,
-				384E438AC6714E48AAE1B473 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */,
+				9E14BB15D5714CBEBF73B6A3 /* Source Files */,
+				348BD404080A4B26A29440BE /* Resources */,
+				0DDDE0E429BD49FC9143F3A5 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */,
 			);
 			name = gtest;
 			sourceTree = "<group>";
 		};
-		BEEE58B2B4DA400A97B79DDD /* CMake Rules */ = {
+		6804E7FFB4B745D6B28D5AB9 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4394EE7D355341C1855A8FFA /* gmock */,
+				F895422AE0794ED0AA59D82B /* gmock_main */,
+				9FD1EF9F60E44755BCF8BCAD /* gtest */,
+				60C53BD5DBD74E6990906201 /* gtest_main */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		8FAA9429622943E7AA9BEEAD /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				29212C13B7DB4A7E8FC45CFF /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/CMakeFiles/gmock.dir/Info.plist */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		97B8616FCC3245AEA226DE72 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				CD456CDB2DDD4A38A18CF8D4 /* /Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest/CMakeFiles/gtest_main.dir/Info.plist */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+		};
+		97F46E82633E4AFEA44C6D97 = {
+			isa = PBXGroup;
+			children = (
+				99AF396959CC43E2B93A8ECD /* ALL_BUILD */,
+				A076E55A2FC64B59AF63F030 /* gmock_main */,
+				F3AF5D3ED65E4FB9B388CEB4 /* gmock */,
+				9B72491FC1F94871A18BFD86 /* gtest_main */,
+				47DED5ED1ADF4B64B16FEB72 /* gtest */,
+				6804E7FFB4B745D6B28D5AB9 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		99AF396959CC43E2B93A8ECD /* ALL_BUILD */ = {
+			isa = PBXGroup;
+			children = (
+				DA78C5EB32E448089B134325 /* CMake Rules */,
+				6BA0B6AC4BA54397AFC82C41 /* /Users/niels/Code/loki-network/test/gtest/CMakeLists.txt */,
+			);
+			name = ALL_BUILD;
+			sourceTree = "<group>";
+		};
+		9B72491FC1F94871A18BFD86 /* gtest_main */ = {
+			isa = PBXGroup;
+			children = (
+				07CB5B9F799348ABB9E053AC /* Source Files */,
+				97B8616FCC3245AEA226DE72 /* Resources */,
+				CD23D0A9CB8241F196A9E829 /* /Users/niels/Code/loki-network/test/gtest/googletest/CMakeLists.txt */,
+			);
+			name = gtest_main;
+			sourceTree = "<group>";
+		};
+		9E14BB15D5714CBEBF73B6A3 /* Source Files */ = {
+			isa = PBXGroup;
+			children = (
+				C3A773E305BA4746AEE43890 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */,
+			);
+			name = "Source Files";
+			sourceTree = "<group>";
+		};
+		A076E55A2FC64B59AF63F030 /* gmock_main */ = {
+			isa = PBXGroup;
+			children = (
+				F5344E6FA272472EA75C805E /* Source Files */,
+				00DBACF70D2C40A0950DA04A /* Resources */,
+				751C9BFA826E4C17A85CB5A8 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */,
+			);
+			name = gmock_main;
+			sourceTree = "<group>";
+		};
+		CBCDEEE511DA49BAB01ACDE7 /* Source Files */ = {
+			isa = PBXGroup;
+			children = (
+				8782964143114B23ABF31BAA /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */,
+			);
+			name = "Source Files";
+			sourceTree = "<group>";
+		};
+		DA78C5EB32E448089B134325 /* CMake Rules */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			name = "CMake Rules";
 			sourceTree = "<group>";
 		};
-		BF66179BE5004EC8BBD8660A = {
+		F3AF5D3ED65E4FB9B388CEB4 /* gmock */ = {
 			isa = PBXGroup;
 			children = (
-				3316B0FBC3394B68B55C0A2D /* ALL_BUILD */,
-				F760529A40E5477499AE29BF /* gmock_main */,
-				D49B1D4316344E878746BF70 /* gmock */,
-				28095F211D114E3C9ECDE7E4 /* gtest_main */,
-				BEB067CB88F7486FBC30274D /* gtest */,
-				5CC2CA2B9E314547A5C94767 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		D49B1D4316344E878746BF70 /* gmock */ = {
-			isa = PBXGroup;
-			children = (
-				1F9539191A9C4764A1078141 /* Source Files */,
-				281A911D1A3C41FAB62E68D5 /* Resources */,
-				CA9E28D36C0E498A8F635C08 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */,
+				CBCDEEE511DA49BAB01ACDE7 /* Source Files */,
+				8FAA9429622943E7AA9BEEAD /* Resources */,
+				0EC08803E770494186323E99 /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */,
 			);
 			name = gmock;
 			sourceTree = "<group>";
 		};
-		D70939E778694B0F9151E124 /* Source Files */ = {
+		F5344E6FA272472EA75C805E /* Source Files */ = {
 			isa = PBXGroup;
 			children = (
-				42D3832DDE8940CD92A13625 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */,
+				D20D550428944030BE6563B7 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */,
 			);
 			name = "Source Files";
-			sourceTree = "<group>";
-		};
-		F760529A40E5477499AE29BF /* gmock_main */ = {
-			isa = PBXGroup;
-			children = (
-				3C5D81497AA844589593F8B2 /* Source Files */,
-				2F75A65465364072A3DBBC92 /* Resources */,
-				4B4CC6E6B2504A35B89A20BB /* /Users/niels/Code/loki-network/test/gtest/googlemock/CMakeLists.txt */,
-			);
-			name = gmock_main;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -328,9 +328,9 @@
 /* Begin PBXNativeTarget section */
 		07FBAE029CC44A9FAFDE0986 /* gtest */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 71C393CEE0E049D98A801516 /* Build configuration list for PBXNativeTarget "gtest" */;
+			buildConfigurationList = 47854FB267D74AF682B362EB /* Build configuration list for PBXNativeTarget "gtest" */;
 			buildPhases = (
-				7074DA940CBA46C59AF47C05 /* Sources */,
+				D20521B958A143539604DF50 /* Sources */,
 			);
 			buildRules = (
 			);
@@ -338,56 +338,56 @@
 			);
 			name = gtest;
 			productName = gtest;
-			productReference = 16D3A96439064F6CAC6937A7 /* gtest */;
+			productReference = 9FD1EF9F60E44755BCF8BCAD /* gtest */;
 			productType = "com.apple.product-type.library.static";
 		};
 		6EA350E3DD0344D3A16B0130 /* gtest_main */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0F8BCA20187F43B2A07F18A6 /* Build configuration list for PBXNativeTarget "gtest_main" */;
+			buildConfigurationList = 3703616C6BF347749076348F /* Build configuration list for PBXNativeTarget "gtest_main" */;
 			buildPhases = (
-				4C5E6EEE66CF4ACFAB533022 /* Sources */,
+				DBEBE30CF7B74294A49544ED /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				5B8DB378579D480B8120A08E /* PBXTargetDependency */,
+				5891C35EDA1E4D6AA4DC2910 /* PBXTargetDependency */,
 			);
 			name = gtest_main;
 			productName = gtest_main;
-			productReference = 92E3892F712B453D84D79625 /* gtest_main */;
+			productReference = 60C53BD5DBD74E6990906201 /* gtest_main */;
 			productType = "com.apple.product-type.library.static";
 		};
 		E03877357E4E47C79C76BFF5 /* gmock_main */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 7AB4E6EF26AC4DDD914CDEB4 /* Build configuration list for PBXNativeTarget "gmock_main" */;
+			buildConfigurationList = D55040BF0A0A46168BB7192F /* Build configuration list for PBXNativeTarget "gmock_main" */;
 			buildPhases = (
-				FEB4C185C7C8435DBB8B236F /* Sources */,
+				075623F9F0514A8A8933F18C /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				97DC1529B5D3479983AD9359 /* PBXTargetDependency */,
-				48DC3B0D174642869AD79D90 /* PBXTargetDependency */,
+				5D89D82728214887930472A2 /* PBXTargetDependency */,
+				F46A63FE34834EDE83194B21 /* PBXTargetDependency */,
 			);
 			name = gmock_main;
 			productName = gmock_main;
-			productReference = 6EB8384430364ECEBE13B592 /* gmock_main */;
+			productReference = F895422AE0794ED0AA59D82B /* gmock_main */;
 			productType = "com.apple.product-type.library.static";
 		};
 		E17773A5C8EA4B9C984166D3 /* gmock */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 69647A2F34D94A7190E4AF58 /* Build configuration list for PBXNativeTarget "gmock" */;
+			buildConfigurationList = 4A009D3ED13D4A0797B114E4 /* Build configuration list for PBXNativeTarget "gmock" */;
 			buildPhases = (
-				211D035555D9490C836F742C /* Sources */,
+				DD9467CD272B4FBDB6EB4CC0 /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				6EC9FA388DFF40D28C290399 /* PBXTargetDependency */,
+				D868269E098E4C42B541C108 /* PBXTargetDependency */,
 			);
 			name = gmock;
 			productName = gmock;
-			productReference = FB2ADDBF496A47CCA3F42C44 /* gmock */;
+			productReference = 4394EE7D355341C1855A8FFA /* gmock */;
 			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
@@ -399,18 +399,18 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1020;
 			};
-			buildConfigurationList = FB3952C5AA1C4D58926F0936 /* Build configuration list for PBXProject "googletest-distribution" */;
+			buildConfigurationList = 6352E18327F142B5A3D2FEF0 /* Build configuration list for PBXProject "googletest-distribution" */;
 			buildSettings = {
 			};
 			buildStyles = (
-				185A4CBC67D344C0AB0BEE73 /* Debug */,
-				CC9622AE2B65406EA76103F9 /* Release */,
-				693BFD22F6604460B3C30B3D /* MinSizeRel */,
-				E525FB4104024DF2824F51E3 /* RelWithDebInfo */,
+				9530C6B6D9E04E64861A3007 /* Debug */,
+				69102EC275844B018A508B73 /* Release */,
+				8B8394E8322C41EBB30F52E7 /* MinSizeRel */,
+				E9E464047A7341158B76BB5D /* RelWithDebInfo */,
 			);
 			compatibilityVersion = "Xcode 3.2";
 			hasScannedForEncodings = 0;
-			mainGroup = BF66179BE5004EC8BBD8660A;
+			mainGroup = 97F46E82633E4AFEA44C6D97;
 			projectDirPath = ../../../../test/gtest;
 			projectRoot = "";
 			targets = (
@@ -426,59 +426,7 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		05D288A49E64417783F181F9 /* CMake Rules */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			name = "CMake Rules";
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/test/gtest -f /Users/niels/Code/loki-network/ios/Core/test/gtest/CMakeScripts/ALL_BUILD_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
-			showEnvVarsInLog = 0;
-		};
-		429FA0CA6D6E49EDB247648C /* CMake PostBuild Rules */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			name = "CMake PostBuild Rules";
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/test/gtest -f /Users/niels/Code/loki-network/ios/Core/test/gtest/CMakeScripts/RUN_TESTS_postBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
-			showEnvVarsInLog = 0;
-		};
-		457F757F1DCE4D0D91E06B22 = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# shell script goes here
-exit 0";
-			showEnvVarsInLog = 0;
-		};
-		82158DB64FFE483097F48BFD = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# shell script goes here
-exit 0";
-			showEnvVarsInLog = 0;
-		};
-		B8C237F8C6C24B609AEA3110 /* CMake Rules */ = {
+		1BC546C139E244BE990C36C6 /* CMake Rules */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -489,7 +437,7 @@ exit 0";
 			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/test/gtest -f /Users/niels/Code/loki-network/ios/Core/test/gtest/CMakeScripts/ZERO_CHECK_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
 			showEnvVarsInLog = 0;
 		};
-		BD1F1E1EB274429590D4A364 = {
+		2E622E167B9A4FE68A9F9450 = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -504,93 +452,145 @@ exit 0";
 exit 0";
 			showEnvVarsInLog = 0;
 		};
+		4CA0EA0824904D0E94293867 /* CMake PostBuild Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake PostBuild Rules";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/test/gtest -f /Users/niels/Code/loki-network/ios/Core/test/gtest/CMakeScripts/RUN_TESTS_postBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
+			showEnvVarsInLog = 0;
+		};
+		D807E590C7644C2CB96AED8E = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# shell script goes here
+exit 0";
+			showEnvVarsInLog = 0;
+		};
+		DA09869B6FAB42E69FA947B7 = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# shell script goes here
+exit 0";
+			showEnvVarsInLog = 0;
+		};
+		EF9377CDAD9A4F4185710EF6 /* CMake Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake Rules";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/test/gtest -f /Users/niels/Code/loki-network/ios/Core/test/gtest/CMakeScripts/ALL_BUILD_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
+			showEnvVarsInLog = 0;
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		211D035555D9490C836F742C /* Sources */ = {
+		075623F9F0514A8A8933F18C /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				38A1849C7EAF49349FA322F7 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */,
+				D8EDE766BF2E46E2A653B865 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		4C5E6EEE66CF4ACFAB533022 /* Sources */ = {
+		D20521B958A143539604DF50 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CCAF4E97B91F4B1FBE7CDEE7 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */,
+				DF5EA975F00C49F58406F2B6 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		7074DA940CBA46C59AF47C05 /* Sources */ = {
+		DBEBE30CF7B74294A49544ED /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3CB4B1B677FF4F518CD7C817 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest-all.cc */,
+				19A9712198A844B096CE89C4 /* /Users/niels/Code/loki-network/test/gtest/googletest/src/gtest_main.cc */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		FEB4C185C7C8435DBB8B236F /* Sources */ = {
+		DD9467CD272B4FBDB6EB4CC0 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5B772C1764524E8099707177 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock_main.cc */,
+				812793D5612B40B9993CC901 /* /Users/niels/Code/loki-network/test/gtest/googlemock/src/gmock-all.cc */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		15FD4A869ED24F779BECE269 /* PBXTargetDependency */ = {
+		5891C35EDA1E4D6AA4DC2910 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 07FBAE029CC44A9FAFDE0986 /* gtest */;
+			targetProxy = 17FE94467284491A8BD91FAF /* PBXContainerItemProxy */;
+		};
+		5D89D82728214887930472A2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E17773A5C8EA4B9C984166D3 /* gmock */;
+			targetProxy = 13D9A75CE23E45E7ACCE75EB /* PBXContainerItemProxy */;
+		};
+		6086D38DFB4F4AF898E26D7C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 07FBAE029CC44A9FAFDE0986 /* gtest */;
+			targetProxy = F2E4EED43FEC4C789F56BF48 /* PBXContainerItemProxy */;
+		};
+		D868269E098E4C42B541C108 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 07FBAE029CC44A9FAFDE0986 /* gtest */;
+			targetProxy = 0747CF0529E3426DBB77F678 /* PBXContainerItemProxy */;
+		};
+		E23F4F0668744E428FF2E887 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = E03877357E4E47C79C76BFF5 /* gmock_main */;
-			targetProxy = 5FF107C3C62640B8BF1E898E /* PBXContainerItemProxy */;
+			targetProxy = C73AC767F8AB4EA99D719F02 /* PBXContainerItemProxy */;
 		};
-		47F7A9536D054F91995D289E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = E17773A5C8EA4B9C984166D3 /* gmock */;
-			targetProxy = B705476271834D96B8F2BCD4 /* PBXContainerItemProxy */;
-		};
-		48DC3B0D174642869AD79D90 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 07FBAE029CC44A9FAFDE0986 /* gtest */;
-			targetProxy = 79FECAFB290A43C1A75BC569 /* PBXContainerItemProxy */;
-		};
-		595E1B9695DB4C7DA5479AD7 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 6EA350E3DD0344D3A16B0130 /* gtest_main */;
-			targetProxy = FFFA9CC48A6D4437A8A8F7BD /* PBXContainerItemProxy */;
-		};
-		5B8DB378579D480B8120A08E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 07FBAE029CC44A9FAFDE0986 /* gtest */;
-			targetProxy = B9034BD08B7C47898FD329F3 /* PBXContainerItemProxy */;
-		};
-		6EC9FA388DFF40D28C290399 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 07FBAE029CC44A9FAFDE0986 /* gtest */;
-			targetProxy = 7372C39334B846F2B5BD7C84 /* PBXContainerItemProxy */;
-		};
-		97DC1529B5D3479983AD9359 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = E17773A5C8EA4B9C984166D3 /* gmock */;
-			targetProxy = 19B7F26100944C448EFFB110 /* PBXContainerItemProxy */;
-		};
-		B3BA686C70BE428C89CA6FD3 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 07FBAE029CC44A9FAFDE0986 /* gtest */;
-			targetProxy = 563BF111FBF0452898FAC4D9 /* PBXContainerItemProxy */;
-		};
-		DD8D41604A724FC886621C0A /* PBXTargetDependency */ = {
+		E68A146AA4144951A1786829 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 9646D1E7711349EA98E3EFC9 /* ZERO_CHECK */;
-			targetProxy = 31ECE08993C546619AAA4B6C /* PBXContainerItemProxy */;
+			targetProxy = DBD9B3CEC84248D0B559E92A /* PBXContainerItemProxy */;
+		};
+		F46A63FE34834EDE83194B21 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 07FBAE029CC44A9FAFDE0986 /* gtest */;
+			targetProxy = ADF71986C9324E41AD2B4C60 /* PBXContainerItemProxy */;
+		};
+		F8B4A4BEF786491E8F67E90F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 6EA350E3DD0344D3A16B0130 /* gtest_main */;
+			targetProxy = 92E1E8512D3C4AA2866EF11F /* PBXContainerItemProxy */;
+		};
+		FD81556A93AB4E8C8F592858 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E17773A5C8EA4B9C984166D3 /* gmock */;
+			targetProxy = 2C3D75C7BF0A44AEBF9466C6 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		06ED126A97CE48D2B94E563D /* RelWithDebInfo */ = {
+		045E592AD8E64D4BAB240B7E /* RelWithDebInfo */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
@@ -610,7 +610,7 @@ exit 0";
 			};
 			name = RelWithDebInfo;
 		};
-		12ADBF2FEDB1441B81B687FE /* Debug */ = {
+		078A3E19C66E4BCA9989AE6D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -632,253 +632,7 @@ exit 0";
 			};
 			name = Debug;
 		};
-		137BCD87A8334A0097833FF5 /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/MinSizeRel";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gtest;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = MinSizeRel;
-		};
-		22A7589F808C4B74B01E45B5 /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/MinSizeRel";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gtest_main;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = MinSizeRel;
-		};
-		3657FF29CD204D289F42032B /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/RelWithDebInfo";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gmock_main;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = RelWithDebInfo;
-		};
-		37C1E9C6862542EAA184D1A6 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Release";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gmock;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Release;
-		};
-		38A73B874B694362BC9BA2BC /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ZERO_CHECK;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Release;
-		};
-		4C1462999CC948C8813E1A4F /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Release";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gmock_main;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Release;
-		};
-		54A3FE7803194070874F4EA8 /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ZERO_CHECK;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = MinSizeRel;
-		};
-		6A8DF20F749940238A25B99C /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/RelWithDebInfo";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gtest;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = RelWithDebInfo;
-		};
-		724BE4F6EACD4489855414D5 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				DEVELOPMENT_TEAM = 123456789A;
-				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				SDKROOT = iphoneos;
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/build";
-			};
-			name = Debug;
-		};
-		759A67F243644C2DAA53B13D /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ALL_BUILD;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = MinSizeRel;
-		};
-		780C1EC2485C4E2B869A3DC5 /* Debug */ = {
+		19B467E55C2E488EB69FEBF7 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -889,198 +643,7 @@ exit 0";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gtestd;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Debug;
-		};
-		81B799535BEF4D04AC7D40E8 /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/RelWithDebInfo";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gmock;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = RelWithDebInfo;
-		};
-		845F8A7685844E3C9A19D477 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Release";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gtest_main;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Release;
-		};
-		855ADDF333E94053AB6D0E72 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Release";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gtest;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Release;
-		};
-		86C7CE331EE649CBB0D46EDF /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ALL_BUILD;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Debug;
-		};
-		915CAD8CBE3F48C6B816FDD7 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Debug";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gmockd;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Debug;
-		};
-		9407C677B2BB414BB5214EEA /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				DEVELOPMENT_TEAM = 123456789A;
-				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				SDKROOT = iphoneos;
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/build";
-			};
-			name = RelWithDebInfo;
-		};
-		94229BD998A8470CB132B4B4 /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				DEVELOPMENT_TEAM = 123456789A;
-				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				SDKROOT = iphoneos;
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/build";
-			};
-			name = MinSizeRel;
-		};
-		A1BEC74BFF2940B88F7366A8 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Debug";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
 				INSTALL_PATH = "";
@@ -1098,7 +661,114 @@ exit 0";
 			};
 			name = Debug;
 		};
-		A1CC0E5D94C14D65945EEA55 /* Release */ = {
+		1FDE60DAD179409F85570BFD /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/MinSizeRel";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gmock;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		21C44EF7CF794A6088E2688B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Debug;
+		};
+		2A644FB3E59644B69967C7DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Debug";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gmock_maind;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Debug;
+		};
+		2C776536F8C043F29754CB0F /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/RelWithDebInfo";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gmock;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		31CA799E26D84EA2BDCAE0B9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
@@ -1118,58 +788,36 @@ exit 0";
 			};
 			name = Release;
 		};
-		A1D6EEC335B64CC58C6CAEC4 /* MinSizeRel */ = {
+		35D494DA55B743E488512BE2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
 				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/MinSizeRel";
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Release";
 				EXECUTABLE_PREFIX = lib;
 				EXECUTABLE_SUFFIX = .a;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock");
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
 				ONLY_ACTIVE_ARCH = NO;
 				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
 				OTHER_LIBTOOLFLAGS = " ";
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gmock;
+				PRODUCT_NAME = gmock_main;
 				SECTORDER_FLAGS = "";
 				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
 			};
-			name = MinSizeRel;
+			name = Release;
 		};
-		A55EBBE1A4434F0DB0783260 /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = RUN_TESTS;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = RelWithDebInfo;
-		};
-		AC70443E724443839DB0C115 /* Release */ = {
+		3DC40004F56A45E4B9C90495 /* MinSizeRel */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -1181,129 +829,9 @@ exit 0";
 				SDKROOT = iphoneos;
 				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/build";
 			};
-			name = Release;
+			name = MinSizeRel;
 		};
-		B1BB3E6336F5438D864EA458 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Debug";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "    -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gmock_maind;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Debug;
-		};
-		CD1398791CB84FF4A3CB0797 /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ZERO_CHECK;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = RelWithDebInfo;
-		};
-		CD442B86300D427392348FE1 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ZERO_CHECK;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Debug;
-		};
-		D66ECD1F5E234204A93945FB /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/RelWithDebInfo";
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = gtest_main;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
-				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = RelWithDebInfo;
-		};
-		DBEADFD9A8E74199B5688FFB /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				ONLY_ACTIVE_ARCH = NO;
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = RUN_TESTS;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = Release;
-		};
-		EF8D207681F0431DA3812386 /* MinSizeRel */ = {
+		411F40498A0C4F8FA294AAEC /* MinSizeRel */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -1314,7 +842,7 @@ exit 0";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
 				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"80f158e6\"'",iOS,UNIX,POSIX);
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
 				INSTALL_PATH = "";
@@ -1332,7 +860,108 @@ exit 0";
 			};
 			name = MinSizeRel;
 		};
-		F7C7FB4990A145E4A5B39383 /* MinSizeRel */ = {
+		4560C635D2E5487D91EBF54D /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/RelWithDebInfo";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gtest;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		4B3FD48B69C849B28ED47D4C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = RUN_TESTS;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Release;
+		};
+		642DB7F85134442BA35B0B10 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = RUN_TESTS;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		75CBD7EFFBF7440C87DB2D6E /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/MinSizeRel";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gtest_main;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		76494850D7B84DDDAF7AA3FD /* MinSizeRel */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -1354,93 +983,464 @@ exit 0";
 			};
 			name = MinSizeRel;
 		};
+		7DEE16F019CB42A1BFCCAB37 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Release";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gmock;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Release;
+		};
+		86487778FB5E4E648BA8D23D /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		8C68F4238B8B4919BC28BEDC /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		9C1C3960C0C142B197BFEE30 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Debug";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gmockd;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Debug;
+		};
+		A0229A8795564F01AEC887FA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Debug;
+		};
+		A40FDC07B7C3405CABA33F04 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BITCODE_GENERATION_MODE = bitcode;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEVELOPMENT_TEAM = 123456789A;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				SDKROOT = iphoneos;
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/build";
+			};
+			name = RelWithDebInfo;
+		};
+		A424BDED1D854788A1F47D0A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BITCODE_GENERATION_MODE = bitcode;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEVELOPMENT_TEAM = 123456789A;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				SDKROOT = iphoneos;
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/build";
+			};
+			name = Release;
+		};
+		AE0A42630323458990FF7AF8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Release;
+		};
+		B44A88E2A16D42B5B582B973 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Debug";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gtestd;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Debug;
+		};
+		C5299151B0B14969B38B2D13 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Release";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gtest_main;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Release;
+		};
+		C7C10F2134D14371B1E54AA8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/Release";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gtest;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = Release;
+		};
+		C9AF898F20574B3088940182 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/MinSizeRel";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "    -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gtest;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		DEE3DD1507564985A0FDA919 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/RelWithDebInfo";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gmock_main;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googlemock/include","/Users/niels/Code/loki-network/test/gtest/googlemock","/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		E53BEFA838494D9699742435 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		EA1AEB8DCB064DC28DBE1AE5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BITCODE_GENERATION_MODE = bitcode;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEVELOPMENT_TEAM = 123456789A;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				SDKROOT = iphoneos;
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/build";
+			};
+			name = Debug;
+		};
+		EE9F11A21FE140B38CFD8C42 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				COMBINE_HIDPI_IMAGES = YES;
+				CONFIGURATION_BUILD_DIR = "/Users/niels/Code/loki-network/ios/Core/lib/RelWithDebInfo";
+				EXECUTABLE_PREFIX = lib;
+				EXECUTABLE_SUFFIX = .a;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'","'NETNS=0'","'GIT_REV=\"6b84466e\"'",iOS,UNIX,POSIX);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/vendor/abseil-cpp");
+				INSTALL_PATH = "";
+				LIBRARY_STYLE = STATIC;
+				ONLY_ACTIVE_ARCH = NO;
+				OTHER_CPLUSPLUSFLAGS = "       -DNDEBUG  -DGTEST_HAS_PTHREAD=1   -fPIC -Wno-unknown-warning-option -Wall -Wextra -Wno-unknown-pragmas -Wvla -fpermissive -Wno-unused-function -Wno-deprecated-declarations -Wthread-safety     '-std=c++11'  ";
+				OTHER_LIBTOOLFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = gtest_main;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/test/gtest/googlemock/gtest";
+				SYSTEM_HEADER_SEARCH_PATHS = ("/Users/niels/Code/loki-network/test/gtest/googletest/include","/Users/niels/Code/loki-network/test/gtest/googletest");
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0F8BCA20187F43B2A07F18A6 /* Build configuration list for PBXNativeTarget "gtest_main" */ = {
+		3703616C6BF347749076348F /* Build configuration list for PBXNativeTarget "gtest_main" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				A1BEC74BFF2940B88F7366A8 /* Debug */,
-				845F8A7685844E3C9A19D477 /* Release */,
-				22A7589F808C4B74B01E45B5 /* MinSizeRel */,
-				D66ECD1F5E234204A93945FB /* RelWithDebInfo */,
+				19B467E55C2E488EB69FEBF7 /* Debug */,
+				C5299151B0B14969B38B2D13 /* Release */,
+				75CBD7EFFBF7440C87DB2D6E /* MinSizeRel */,
+				EE9F11A21FE140B38CFD8C42 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		25284FBFD06240C083C7B5B6 /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */ = {
+		47854FB267D74AF682B362EB /* Build configuration list for PBXNativeTarget "gtest" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				CD442B86300D427392348FE1 /* Debug */,
-				38A73B874B694362BC9BA2BC /* Release */,
-				54A3FE7803194070874F4EA8 /* MinSizeRel */,
-				CD1398791CB84FF4A3CB0797 /* RelWithDebInfo */,
+				B44A88E2A16D42B5B582B973 /* Debug */,
+				C7C10F2134D14371B1E54AA8 /* Release */,
+				C9AF898F20574B3088940182 /* MinSizeRel */,
+				4560C635D2E5487D91EBF54D /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		69647A2F34D94A7190E4AF58 /* Build configuration list for PBXNativeTarget "gmock" */ = {
+		4A009D3ED13D4A0797B114E4 /* Build configuration list for PBXNativeTarget "gmock" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				915CAD8CBE3F48C6B816FDD7 /* Debug */,
-				37C1E9C6862542EAA184D1A6 /* Release */,
-				A1D6EEC335B64CC58C6CAEC4 /* MinSizeRel */,
-				81B799535BEF4D04AC7D40E8 /* RelWithDebInfo */,
+				9C1C3960C0C142B197BFEE30 /* Debug */,
+				7DEE16F019CB42A1BFCCAB37 /* Release */,
+				1FDE60DAD179409F85570BFD /* MinSizeRel */,
+				2C776536F8C043F29754CB0F /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		71C393CEE0E049D98A801516 /* Build configuration list for PBXNativeTarget "gtest" */ = {
+		6352E18327F142B5A3D2FEF0 /* Build configuration list for PBXProject "googletest-distribution" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				780C1EC2485C4E2B869A3DC5 /* Debug */,
-				855ADDF333E94053AB6D0E72 /* Release */,
-				137BCD87A8334A0097833FF5 /* MinSizeRel */,
-				6A8DF20F749940238A25B99C /* RelWithDebInfo */,
+				EA1AEB8DCB064DC28DBE1AE5 /* Debug */,
+				A424BDED1D854788A1F47D0A /* Release */,
+				3DC40004F56A45E4B9C90495 /* MinSizeRel */,
+				A40FDC07B7C3405CABA33F04 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		7AB4E6EF26AC4DDD914CDEB4 /* Build configuration list for PBXNativeTarget "gmock_main" */ = {
+		8D13F7A2465A43958CD10741 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				B1BB3E6336F5438D864EA458 /* Debug */,
-				4C1462999CC948C8813E1A4F /* Release */,
-				EF8D207681F0431DA3812386 /* MinSizeRel */,
-				3657FF29CD204D289F42032B /* RelWithDebInfo */,
+				21C44EF7CF794A6088E2688B /* Debug */,
+				31CA799E26D84EA2BDCAE0B9 /* Release */,
+				86487778FB5E4E648BA8D23D /* MinSizeRel */,
+				045E592AD8E64D4BAB240B7E /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		BD25EB2D935B48EBB52E7CA7 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */ = {
+		A214F43D7F184F03A00726B8 /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				86C7CE331EE649CBB0D46EDF /* Debug */,
-				A1CC0E5D94C14D65945EEA55 /* Release */,
-				759A67F243644C2DAA53B13D /* MinSizeRel */,
-				06ED126A97CE48D2B94E563D /* RelWithDebInfo */,
+				A0229A8795564F01AEC887FA /* Debug */,
+				AE0A42630323458990FF7AF8 /* Release */,
+				E53BEFA838494D9699742435 /* MinSizeRel */,
+				8C68F4238B8B4919BC28BEDC /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		E17568E0D3DD45F3B729766B /* Build configuration list for PBXAggregateTarget "RUN_TESTS" */ = {
+		D55040BF0A0A46168BB7192F /* Build configuration list for PBXNativeTarget "gmock_main" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				12ADBF2FEDB1441B81B687FE /* Debug */,
-				DBEADFD9A8E74199B5688FFB /* Release */,
-				F7C7FB4990A145E4A5B39383 /* MinSizeRel */,
-				A55EBBE1A4434F0DB0783260 /* RelWithDebInfo */,
+				2A644FB3E59644B69967C7DE /* Debug */,
+				35D494DA55B743E488512BE2 /* Release */,
+				411F40498A0C4F8FA294AAEC /* MinSizeRel */,
+				DEE3DD1507564985A0FDA919 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		FB3952C5AA1C4D58926F0936 /* Build configuration list for PBXProject "googletest-distribution" */ = {
+		D6450017B1A54931A91F6AF7 /* Build configuration list for PBXAggregateTarget "RUN_TESTS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				724BE4F6EACD4489855414D5 /* Debug */,
-				AC70443E724443839DB0C115 /* Release */,
-				94229BD998A8470CB132B4B4 /* MinSizeRel */,
-				9407C677B2BB414BB5214EEA /* RelWithDebInfo */,
+				078A3E19C66E4BCA9989AE6D /* Debug */,
+				4B3FD48B69C849B28ED47D4C /* Release */,
+				76494850D7B84DDDAF7AA3FD /* MinSizeRel */,
+				642DB7F85134442BA35B0B10 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
