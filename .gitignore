@@ -62,3 +62,4 @@ version.txt
 xcuserdata/
 .DS_Store
 !Info.plist
+*.build
