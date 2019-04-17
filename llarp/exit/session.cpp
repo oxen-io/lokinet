@@ -82,7 +82,7 @@ namespace llarp
     }
 
     bool
-    BaseSession::CheckPathDead(path::Path *, llarp_time_t dlt)
+    BaseSession::CheckPathDead(path::Path*, llarp_time_t dlt)
     {
       return dlt >= 10000;
     }
@@ -94,7 +94,9 @@ namespace llarp
       p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
-      p->SetDeadChecker(std::bind(&BaseSession::CheckPathDead, this, std::placeholders::_1, std::placeholders::_2));
+      p->SetDeadChecker(std::bind(&BaseSession::CheckPathDead, this,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2));
       p->SetExitTrafficHandler(
           std::bind(&BaseSession::HandleTraffic, this, std::placeholders::_1,
                     std::placeholders::_2, std::placeholders::_3));

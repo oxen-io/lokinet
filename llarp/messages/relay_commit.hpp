@@ -26,6 +26,7 @@ namespace llarp
     TunnelNonce tunnelNonce;
     PathID_t txid, rxid;
 
+    std::unique_ptr< RouterContact > nextRC;
     std::unique_ptr< PoW > work;
     uint64_t version  = 0;
     uint64_t lifetime = 0;

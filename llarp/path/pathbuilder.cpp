@@ -72,6 +72,7 @@ namespace llarp
 
       bool isFarthestHop = ctx->idx == ctx->path->hops.size();
 
+      LR_CommitRecord record;
       if(isFarthestHop)
       {
         hop.upstream = hop.rc.pubkey;
@@ -79,10 +80,11 @@ namespace llarp
       else
       {
         hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
+        record.nextRC =
+            std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
       }
-
       // build record
-      LR_CommitRecord record;
+
       record.version     = LLARP_PROTO_VERSION;
       record.txid        = hop.txID;
       record.rxid        = hop.rxID;

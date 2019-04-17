@@ -189,6 +189,9 @@ namespace llarp
     virtual void
     ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
                 bool randomize) const = 0;
+
+    virtual bool
+    ConnectionToRouterAllowed(const RouterID &router) const = 0;
   };
 }  // namespace llarp
 

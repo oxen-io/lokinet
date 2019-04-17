@@ -46,7 +46,7 @@ namespace llarp
         replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
         return true;
       }
-       // lookup if we don't have it in our nodedb
+      // lookup if we don't have it in our nodedb
       dht.LookupRouterForPath(K, txid, pathID, peer);
       return true;
     }
