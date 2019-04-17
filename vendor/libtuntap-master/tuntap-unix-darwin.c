@@ -14,8 +14,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#define iOS
-
 #include <sys/types.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -53,52 +51,55 @@
 int
 tuntap_sys_start(struct device *dev, int mode, int tun)
 {
-//  (void)mode;
-//  (void)tun;
-//  uint32_t namesz = IFNAMSIZ;
-//  char name[IFNAMSIZ + 1];
-//  int fd;
-//  char *ifname;
-//
-//  fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
-//  if(fd == -1)
-//    return fd;
-//
-//  struct ctl_info info;
-//  memset(&info, 0, sizeof(info));
-//  strncpy(info.ctl_name, APPLE_UTUN, strlen(APPLE_UTUN));
-//
-//  if(ioctl(fd, CTLIOCGINFO, &info) < 0)
-//  {
-//    tuntap_log(TUNTAP_LOG_ERR, "call to ioctl() failed");
-//    tuntap_log(TUNTAP_LOG_ERR, strerror(errno));
-//    close(fd);
-//    return -1;
-//  }
-//
-//  struct sockaddr_ctl addr;
-//  addr.sc_id = info.ctl_id;
-//
-//  addr.sc_len     = sizeof(addr);
-//  addr.sc_family  = AF_SYSTEM;
-//  addr.ss_sysaddr = AF_SYS_CONTROL;
-//  addr.sc_unit    = 0;
-//
-//  if(connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
-//  {
-//    close(fd);
-//    return -1;
-//  }
-//  ifname = name;
-//  if(getsockopt(fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &namesz) < 0)
-//  {
-//    close(fd);
-//    return -1;
-//  }
-//  strncpy(dev->if_name, ifname, sizeof(dev->if_name));
-//
-//  return fd;
-    return 0;
+#if !defined(iOS)
+  (void)mode;
+  (void)tun;
+  uint32_t namesz = IFNAMSIZ;
+  char name[IFNAMSIZ + 1];
+  int fd;
+  char *ifname;
+
+  fd = socket(PF_SYSTEM, SOCK_DGRAM, SYSPROTO_CONTROL);
+  if(fd == -1)
+    return fd;
+
+  struct ctl_info info;
+  memset(&info, 0, sizeof(info));
+  strncpy(info.ctl_name, APPLE_UTUN, strlen(APPLE_UTUN));
+
+  if(ioctl(fd, CTLIOCGINFO, &info) < 0)
+  {
+    tuntap_log(TUNTAP_LOG_ERR, "call to ioctl() failed");
+    tuntap_log(TUNTAP_LOG_ERR, strerror(errno));
+    close(fd);
+    return -1;
+  }
+
+  struct sockaddr_ctl addr;
+  addr.sc_id = info.ctl_id;
+
+  addr.sc_len     = sizeof(addr);
+  addr.sc_family  = AF_SYSTEM;
+  addr.ss_sysaddr = AF_SYS_CONTROL;
+  addr.sc_unit    = 0;
+
+  if(connect(fd, (struct sockaddr *)&addr, sizeof(addr)) < 0)
+  {
+    close(fd);
+    return -1;
+  }
+  ifname = name;
+  if(getsockopt(fd, SYSPROTO_CONTROL, UTUN_OPT_IFNAME, ifname, &namesz) < 0)
+  {
+    close(fd);
+    return -1;
+  }
+  strncpy(dev->if_name, ifname, sizeof(dev->if_name));
+
+  return fd;
+#else
+  return 0; // TODO: Implement for iOS
+#endif
 }
 
 void
@@ -109,7 +110,9 @@ tuntap_sys_destroy(struct device *dev)
 
 struct tuntap_rtmsg
 {
-//  struct rt_msghdr hdr;
+#if !defined(iOS)
+  struct rt_msghdr hdr;
+#endif
   struct sockaddr_in saddr;
   struct sockaddr_in mask;
   struct sockaddr_in daddr;
@@ -118,37 +121,40 @@ struct tuntap_rtmsg
 int
 tuntap_sys_set_ipv4(struct device *dev, t_tun_in_addr *s4, uint32_t bits)
 {
-//  struct sockaddr_in mask;
-//  mask.sin_family      = AF_INET;
-//  mask.sin_addr.s_addr = bits;
-//  mask.sin_len         = sizeof(struct sockaddr_in);
-//  char addrbuf[32];
-//  inet_ntop(AF_INET, s4, addrbuf, sizeof(addrbuf));
-//  char buf[1028];
-//  const char *addr    = addrbuf;
-//
-//  char daddrbuf[32];
-//  in_addr_t daddr_s4 = {s4->s_addr & bits};
-//  inet_ntop(AF_INET, &daddr_s4, daddrbuf, sizeof(daddrbuf));
-//  const char *daddr = daddrbuf;
-//
-//  const char *netmask = inet_ntoa(mask.sin_addr);
-//  /** because fuck this other stuff */
-//  snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask 255.255.255.255 up",
-//           dev->if_name, addr, daddr);
-//  tuntap_log(TUNTAP_LOG_INFO, buf);
-//  system(buf);
-//
-//  snprintf(buf, sizeof(buf),
-//           "route add %s -netmask %s -interface %s", daddr, netmask, dev->if_name);
-//  tuntap_log(TUNTAP_LOG_INFO, buf);
-//  system(buf);
-//
-//
-//  snprintf(buf, sizeof(buf),
-//           "route add %s -interface lo0", addr);
-//  tuntap_log(TUNTAP_LOG_INFO, buf);
-//  system(buf);
+// TODO: Implement for iOS
+#if !defined(iOS)
+  struct sockaddr_in mask;
+  mask.sin_family      = AF_INET;
+  mask.sin_addr.s_addr = bits;
+  mask.sin_len         = sizeof(struct sockaddr_in);
+  char addrbuf[32];
+  inet_ntop(AF_INET, s4, addrbuf, sizeof(addrbuf));
+  char buf[1028];
+  const char *addr    = addrbuf;
+
+  char daddrbuf[32];
+  in_addr_t daddr_s4 = {s4->s_addr & bits};
+  inet_ntop(AF_INET, &daddr_s4, daddrbuf, sizeof(daddrbuf));
+  const char *daddr = daddrbuf;
+
+  const char *netmask = inet_ntoa(mask.sin_addr);
+  /** because fuck this other stuff */
+  snprintf(buf, sizeof(buf), "ifconfig %s %s %s mtu 1380 netmask 255.255.255.255 up",
+           dev->if_name, addr, daddr);
+  tuntap_log(TUNTAP_LOG_INFO, buf);
+  system(buf);
+
+  snprintf(buf, sizeof(buf),
+           "route add %s -netmask %s -interface %s", daddr, netmask, dev->if_name);
+  tuntap_log(TUNTAP_LOG_INFO, buf);
+  system(buf);
+
+
+  snprintf(buf, sizeof(buf),
+           "route add %s -interface lo0", addr);
+  tuntap_log(TUNTAP_LOG_INFO, buf);
+  system(buf);
+#endif
   
   /* Simpler than calling SIOCSIFADDR and/or SIOCSIFBRDADDR */
   /*

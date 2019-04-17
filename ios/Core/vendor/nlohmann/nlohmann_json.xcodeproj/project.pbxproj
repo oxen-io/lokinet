@@ -7,65 +7,65 @@
 	objects = {
 
 /* Begin PBXAggregateTarget section */
-		1A0D569358AB40F1AB883A3E /* ALL_BUILD */ = {
+		0B134DF6E7DF4E9C9D7C9E76 /* RUN_TESTS */ = {
 			isa = PBXAggregateTarget;
-			buildConfigurationList = 13F2D240DC7F4684AAEF96E5 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */;
+			buildConfigurationList = 11E2536A2F5046F381D58DF0 /* Build configuration list for PBXAggregateTarget "RUN_TESTS" */;
 			buildPhases = (
-				7C695FC9180F483391050C5B /* CMake Rules */,
-			);
-			dependencies = (
-				34DE5B6202D14D24B8FB7F11 /* PBXTargetDependency */,
-			);
-			name = ALL_BUILD;
-			productName = ALL_BUILD;
-		};
-		9646D1E7711349EA98E3EFC9 /* ZERO_CHECK */ = {
-			isa = PBXAggregateTarget;
-			buildConfigurationList = 7BA7557D3D004A0BA98C58DE /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */;
-			buildPhases = (
-				75CB54EC6C114E879D01144F /* CMake Rules */,
-			);
-			dependencies = (
-			);
-			name = ZERO_CHECK;
-			productName = ZERO_CHECK;
-		};
-		DB2B665572124D539C90FB7F /* RUN_TESTS */ = {
-			isa = PBXAggregateTarget;
-			buildConfigurationList = 1EEA14AFE6DA49868B941804 /* Build configuration list for PBXAggregateTarget "RUN_TESTS" */;
-			buildPhases = (
-				9BD2ED07C6AF4DD3B564CF78 /* CMake PostBuild Rules */,
+				57FA3BB8DC864631AB362225 /* CMake PostBuild Rules */,
 			);
 			dependencies = (
 			);
 			name = RUN_TESTS;
 			productName = RUN_TESTS;
 		};
+		4761411AEF99403C827CCC36 /* ALL_BUILD */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = B586FE29A6FC4BA496E00F03 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */;
+			buildPhases = (
+				747E45964A944693BB84E696 /* CMake Rules */,
+			);
+			dependencies = (
+				7594457422AC473688958241 /* PBXTargetDependency */,
+			);
+			name = ALL_BUILD;
+			productName = ALL_BUILD;
+		};
+		CBF6605D6C1C4640BD2961BC /* ZERO_CHECK */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 2C671C71258640DDAB939B23 /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */;
+			buildPhases = (
+				F4B01CF1CB424686B6C2C793 /* CMake Rules */,
+			);
+			dependencies = (
+			);
+			name = ZERO_CHECK;
+			productName = ZERO_CHECK;
+		};
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildStyle section */
-		8262912E4B474474873EE489 /* Release */ = {
+		081885442F0046DD91A0260E /* Release */ = {
 			isa = PBXBuildStyle;
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 			};
 			name = Release;
 		};
-		A90127BAF5FA47959C6B7B20 /* MinSizeRel */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-			};
-			name = MinSizeRel;
-		};
-		AD4DEB4B1ABB4F1C854AFD3F /* Debug */ = {
+		240001B3EEAE4F6AA70241B2 /* Debug */ = {
 			isa = PBXBuildStyle;
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 			};
 			name = Debug;
 		};
-		B677938A676B444A88E017E6 /* RelWithDebInfo */ = {
+		39B7E07EB5B6452585A6D937 /* MinSizeRel */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = MinSizeRel;
+		};
+		9381ADA795D141ACAA13685F /* RelWithDebInfo */ = {
 			isa = PBXBuildStyle;
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
@@ -75,106 +75,84 @@
 /* End PBXBuildStyle section */
 
 /* Begin PBXContainerItemProxy section */
-		C09D9170816443FFB7052C27 /* PBXContainerItemProxy */ = {
+		27C48875E9484C76AC4D0460 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
-			containerPortal = 5057FD10A18A4B6F94D182C0 /* Project object */;
+			containerPortal = C5914562254E4221B6655B27 /* Project object */;
 			proxyType = 1;
-			remoteGlobalIDString = 9646D1E7711349EA98E3EFC9;
+			remoteGlobalIDString = CBF6605D6C1C4640BD2961BC;
 			remoteInfo = ZERO_CHECK;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		CF11DD4284844E658D3E210C /* /Users/niels/Code/loki-network/vendor/nlohmann/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
+		6C3753744EE543EC842EF6B4 /* /Users/niels/Code/loki-network/vendor/nlohmann/CMakeLists.txt */ = {isa = PBXFileReference; explicitFileType = sourcecode.text; fileEncoding = 4; name = CMakeLists.txt; path = CMakeLists.txt; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-		159A8072C3484993ACD0ABE2 /* ALL_BUILD */ = {
+		2596AAE7A4B442019018058E /* CMake Rules */ = {
 			isa = PBXGroup;
 			children = (
-				74F6022552A34F218F941ACC /* CMake Rules */,
-				CF11DD4284844E658D3E210C /* /Users/niels/Code/loki-network/vendor/nlohmann/CMakeLists.txt */,
 			);
-			name = ALL_BUILD;
+			name = "CMake Rules";
 			sourceTree = "<group>";
 		};
-		63622723372D46F0AB39ED86 /* Products */ = {
+		861FE1957D2C47C9856DB3D8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		74F6022552A34F218F941ACC /* CMake Rules */ = {
+		C80CB0B1FDDF4E8ABF946E65 = {
 			isa = PBXGroup;
 			children = (
+				E0EED2978AF7442384420AD8 /* ALL_BUILD */,
+				861FE1957D2C47C9856DB3D8 /* Products */,
 			);
-			name = "CMake Rules";
 			sourceTree = "<group>";
 		};
-		C50BE7D9787C43D6B0A468D1 = {
+		E0EED2978AF7442384420AD8 /* ALL_BUILD */ = {
 			isa = PBXGroup;
 			children = (
-				159A8072C3484993ACD0ABE2 /* ALL_BUILD */,
-				63622723372D46F0AB39ED86 /* Products */,
+				2596AAE7A4B442019018058E /* CMake Rules */,
+				6C3753744EE543EC842EF6B4 /* /Users/niels/Code/loki-network/vendor/nlohmann/CMakeLists.txt */,
 			);
+			name = ALL_BUILD;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXProject section */
-		5057FD10A18A4B6F94D182C0 /* Project object */ = {
+		C5914562254E4221B6655B27 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1020;
 			};
-			buildConfigurationList = 8A5A613C5DAC4C058B9C0F04 /* Build configuration list for PBXProject "nlohmann_json" */;
+			buildConfigurationList = 2AFDB816CF1943C498146A0A /* Build configuration list for PBXProject "nlohmann_json" */;
 			buildSettings = {
 			};
 			buildStyles = (
-				AD4DEB4B1ABB4F1C854AFD3F /* Debug */,
-				8262912E4B474474873EE489 /* Release */,
-				A90127BAF5FA47959C6B7B20 /* MinSizeRel */,
-				B677938A676B444A88E017E6 /* RelWithDebInfo */,
+				240001B3EEAE4F6AA70241B2 /* Debug */,
+				081885442F0046DD91A0260E /* Release */,
+				39B7E07EB5B6452585A6D937 /* MinSizeRel */,
+				9381ADA795D141ACAA13685F /* RelWithDebInfo */,
 			);
 			compatibilityVersion = "Xcode 3.2";
 			hasScannedForEncodings = 0;
-			mainGroup = C50BE7D9787C43D6B0A468D1;
+			mainGroup = C80CB0B1FDDF4E8ABF946E65;
 			projectDirPath = ../../../../vendor/nlohmann;
 			projectRoot = "";
 			targets = (
-				1A0D569358AB40F1AB883A3E /* ALL_BUILD */,
-				DB2B665572124D539C90FB7F /* RUN_TESTS */,
-				9646D1E7711349EA98E3EFC9 /* ZERO_CHECK */,
+				4761411AEF99403C827CCC36 /* ALL_BUILD */,
+				0B134DF6E7DF4E9C9D7C9E76 /* RUN_TESTS */,
+				CBF6605D6C1C4640BD2961BC /* ZERO_CHECK */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		75CB54EC6C114E879D01144F /* CMake Rules */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			name = "CMake Rules";
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann -f /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/CMakeScripts/ZERO_CHECK_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
-			showEnvVarsInLog = 0;
-		};
-		7C695FC9180F483391050C5B /* CMake Rules */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			name = "CMake Rules";
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann -f /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/CMakeScripts/ALL_BUILD_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
-			showEnvVarsInLog = 0;
-		};
-		9BD2ED07C6AF4DD3B564CF78 /* CMake PostBuild Rules */ = {
+		57FA3BB8DC864631AB362225 /* CMake PostBuild Rules */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -185,7 +163,7 @@
 			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann -f /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/CMakeScripts/RUN_TESTS_postBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
 			showEnvVarsInLog = 0;
 		};
-		B2136A71708E4A3BA3ED66E3 = {
+		63C1301DE29E4BCBB40BB5C5 = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -200,7 +178,7 @@
 exit 0";
 			showEnvVarsInLog = 0;
 		};
-		C974A732C49D4901B3A341F2 = {
+		6C23D2D621AC4D939C31D736 = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -215,7 +193,29 @@ exit 0";
 exit 0";
 			showEnvVarsInLog = 0;
 		};
-		F8CB1B08BCF24F1DAD231866 = {
+		747E45964A944693BB84E696 /* CMake Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake Rules";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann -f /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/CMakeScripts/ALL_BUILD_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
+			showEnvVarsInLog = 0;
+		};
+		F4B01CF1CB424686B6C2C793 /* CMake Rules */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "CMake Rules";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "make -C /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann -f /Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/CMakeScripts/ZERO_CHECK_cmakeRulesBuildPhase.make$CONFIGURATION OBJDIR=$(basename \"$OBJECT_FILE_DIR_normal\") all";
+			showEnvVarsInLog = 0;
+		};
+		F7B11BAAEA7B4B65AFB04761 = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -233,15 +233,29 @@ exit 0";
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		34DE5B6202D14D24B8FB7F11 /* PBXTargetDependency */ = {
+		7594457422AC473688958241 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 9646D1E7711349EA98E3EFC9 /* ZERO_CHECK */;
-			targetProxy = C09D9170816443FFB7052C27 /* PBXContainerItemProxy */;
+			target = CBF6605D6C1C4640BD2961BC /* ZERO_CHECK */;
+			targetProxy = 27C48875E9484C76AC4D0460 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
-		09A4556DB3F64C269010C540 /* Release */ = {
+		1F468EAE0F264180904DC6F7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BITCODE_GENERATION_MODE = bitcode;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEVELOPMENT_TEAM = 123456789A;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				SDKROOT = iphoneos;
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/build";
+			};
+			name = Debug;
+		};
+		3C261994426B4B55821BA247 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
@@ -261,7 +275,7 @@ exit 0";
 			};
 			name = Release;
 		};
-		0F36390A4E234289A14E938D /* MinSizeRel */ = {
+		4FD8D1B95E1D4462B0A9A88C /* MinSizeRel */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -283,87 +297,7 @@ exit 0";
 			};
 			name = MinSizeRel;
 		};
-		159E821611DC41718ACCE70A /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ZERO_CHECK;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = RelWithDebInfo;
-		};
-		190E3A055E0B4D49A8251607 /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ALL_BUILD;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = MinSizeRel;
-		};
-		203725B06B3E4841A92C41D0 /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ALL_BUILD;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = RelWithDebInfo;
-		};
-		39FE27E89A3A4F43BF63F552 /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				INSTALL_PATH = "";
-				OTHER_LDFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ZERO_CHECK;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
-			};
-			name = MinSizeRel;
-		};
-		40FF2AAC9DB542ABA5763B3D /* RelWithDebInfo */ = {
+		63E95FAC65E542DDB4792130 /* RelWithDebInfo */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -385,7 +319,7 @@ exit 0";
 			};
 			name = RelWithDebInfo;
 		};
-		5D1686D2AE6F4FE29316C005 /* Debug */ = {
+		890942BF28504156B12EF23F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -405,9 +339,43 @@ exit 0";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
 			};
-			name = Debug;
+			name = Release;
 		};
-		7D5816AA2E9944F284281E87 /* Debug */ = {
+		8FE7187475E14D05B9757A01 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		90DF19FCF8B84B71BFAAE8D8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = arm64;
+				BITCODE_GENERATION_MODE = bitcode;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEVELOPMENT_TEAM = 123456789A;
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
+				SDKROOT = iphoneos;
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/build";
+			};
+			name = Release;
+		};
+		A9A593FFE66045B88BC0F4A3 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
@@ -427,7 +395,47 @@ exit 0";
 			};
 			name = Debug;
 		};
-		911CD50F6AA241C0804E632F /* RelWithDebInfo */ = {
+		AFF40070950B4131A23D2392 /* MinSizeRel */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = MinSizeRel;
+		};
+		BBE87C057B2C40479036BFE6 /* RelWithDebInfo */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ZERO_CHECK;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
+			};
+			name = RelWithDebInfo;
+		};
+		C0DD4422893745DAA115D224 /* RelWithDebInfo */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -441,7 +449,7 @@ exit 0";
 			};
 			name = RelWithDebInfo;
 		};
-		B22730C129414894ABF2AA29 /* MinSizeRel */ = {
+		C2D1C9CBAC1A43F992857136 /* MinSizeRel */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -455,21 +463,27 @@ exit 0";
 			};
 			name = MinSizeRel;
 		};
-		B9FA0E59F98B49CCBF2A1535 /* Release */ = {
+		D722A09B04844680AE86054E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				DEVELOPMENT_TEAM = 123456789A;
-				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				SDKROOT = iphoneos;
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/build";
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = ("'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'");
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				INSTALL_PATH = "";
+				OTHER_LDFLAGS = " ";
+				OTHER_REZFLAGS = "";
+				PRODUCT_NAME = ALL_BUILD;
+				SECTORDER_FLAGS = "";
+				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
+				USE_HEADERMAP = NO;
+				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
 			};
 			name = Release;
 		};
-		BF69881EF49C497BB30CC01C /* Debug */ = {
+		DE584AD3AA644FC5B7826BED /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
@@ -489,7 +503,7 @@ exit 0";
 			};
 			name = Debug;
 		};
-		CF8345781815468F8CC40AE3 /* Release */ = {
+		E3792BE9787A451EBED1837C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ARCHS = arm64;
@@ -509,9 +523,9 @@ exit 0";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
 			};
-			name = Release;
+			name = Debug;
 		};
-		D86EFDAB7FB544A6A8807938 /* Release */ = {
+		F9614B5C17614311AA7C48C8 /* MinSizeRel */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COMBINE_HIDPI_IMAGES = YES;
@@ -523,76 +537,62 @@ exit 0";
 				INSTALL_PATH = "";
 				OTHER_LDFLAGS = " ";
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = ALL_BUILD;
+				PRODUCT_NAME = ZERO_CHECK;
 				SECTORDER_FLAGS = "";
 				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = ("-Wmost","-Wno-four-char-constants","-Wno-unknown-pragmas","$(inherited)");
 			};
-			name = Release;
-		};
-		F014126B84BA4E7CA697274A /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				DEVELOPMENT_TEAM = 123456789A;
-				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 10.0;
-				SDKROOT = iphoneos;
-				SYMROOT = "/Users/niels/Code/loki-network/ios/Core/vendor/nlohmann/build";
-			};
-			name = Debug;
+			name = MinSizeRel;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		13F2D240DC7F4684AAEF96E5 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */ = {
+		11E2536A2F5046F381D58DF0 /* Build configuration list for PBXAggregateTarget "RUN_TESTS" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				BF69881EF49C497BB30CC01C /* Debug */,
-				D86EFDAB7FB544A6A8807938 /* Release */,
-				190E3A055E0B4D49A8251607 /* MinSizeRel */,
-				203725B06B3E4841A92C41D0 /* RelWithDebInfo */,
+				E3792BE9787A451EBED1837C /* Debug */,
+				890942BF28504156B12EF23F /* Release */,
+				4FD8D1B95E1D4462B0A9A88C /* MinSizeRel */,
+				63E95FAC65E542DDB4792130 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		1EEA14AFE6DA49868B941804 /* Build configuration list for PBXAggregateTarget "RUN_TESTS" */ = {
+		2AFDB816CF1943C498146A0A /* Build configuration list for PBXProject "nlohmann_json" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				5D1686D2AE6F4FE29316C005 /* Debug */,
-				CF8345781815468F8CC40AE3 /* Release */,
-				0F36390A4E234289A14E938D /* MinSizeRel */,
-				40FF2AAC9DB542ABA5763B3D /* RelWithDebInfo */,
+				1F468EAE0F264180904DC6F7 /* Debug */,
+				90DF19FCF8B84B71BFAAE8D8 /* Release */,
+				C2D1C9CBAC1A43F992857136 /* MinSizeRel */,
+				C0DD4422893745DAA115D224 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		7BA7557D3D004A0BA98C58DE /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */ = {
+		2C671C71258640DDAB939B23 /* Build configuration list for PBXAggregateTarget "ZERO_CHECK" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				7D5816AA2E9944F284281E87 /* Debug */,
-				09A4556DB3F64C269010C540 /* Release */,
-				39FE27E89A3A4F43BF63F552 /* MinSizeRel */,
-				159E821611DC41718ACCE70A /* RelWithDebInfo */,
+				A9A593FFE66045B88BC0F4A3 /* Debug */,
+				3C261994426B4B55821BA247 /* Release */,
+				F9614B5C17614311AA7C48C8 /* MinSizeRel */,
+				BBE87C057B2C40479036BFE6 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
-		8A5A613C5DAC4C058B9C0F04 /* Build configuration list for PBXProject "nlohmann_json" */ = {
+		B586FE29A6FC4BA496E00F03 /* Build configuration list for PBXAggregateTarget "ALL_BUILD" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				F014126B84BA4E7CA697274A /* Debug */,
-				B9FA0E59F98B49CCBF2A1535 /* Release */,
-				B22730C129414894ABF2AA29 /* MinSizeRel */,
-				911CD50F6AA241C0804E632F /* RelWithDebInfo */,
+				DE584AD3AA644FC5B7826BED /* Debug */,
+				D722A09B04844680AE86054E /* Release */,
+				AFF40070950B4131A23D2392 /* MinSizeRel */,
+				8FE7187475E14D05B9757A01 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 5057FD10A18A4B6F94D182C0 /* Project object */;
+	rootObject = C5914562254E4221B6655B27 /* Project object */;
 }

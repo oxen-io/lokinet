@@ -102,16 +102,18 @@ namespace llarp
       return -1;
     }
     // build handler
-//    llarp::tcp_conn* connimpl = new llarp::tcp_conn(loop, new_fd);
-//    if(loop->add_ev(connimpl, true))
-//    {
-//      // call callback
-//      if(tcp->accepted)
-//        tcp->accepted(tcp, &connimpl->tcp);
-//      return 0;
-//    }
-//    // cleanup error
-//    delete connimpl;
+#if !defined(iOS) // TODO: Xcode doesn't seem to be able to find llarp:tcp_conn
+    llarp::tcp_conn* connimpl = new llarp::tcp_conn(loop, new_fd);
+    if(loop->add_ev(connimpl, true))
+    {
+      // call callback
+      if(tcp->accepted)
+        tcp->accepted(tcp, &connimpl->tcp);
+      return 0;
+    }
+    // cleanup error
+    delete connimpl;
+#endif
     return -1;
   }
 
@@ -347,9 +349,11 @@ llarp_kqueue_loop::tcp_connect(llarp_tcp_connecter* tcp, const sockaddr* addr)
     return false;
   }
 
-  //llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, addr, tcp);
-  //add_ev(conn, true);
-  //conn->connect();
+#if !defined(iOS) // TODO: Xcode doesn't seem to be able to find llarp:tcp_conn
+  llarp::tcp_conn* conn = new llarp::tcp_conn(this, fd, addr, tcp);
+  add_ev(conn, true);
+  conn->connect();
+#endif
   return true;
 }
 

@@ -1,5 +1,4 @@
-#define ANDROID
-#if defined(ANDROID) || defined(RPI)
+#if defined(ANDROID) || defined(iOS) || defined(RPI)
 
 #else
 #include <stdint.h>

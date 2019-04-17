@@ -66,6 +66,11 @@ _crypto_stream_salsa20_pick_best_implementation(void)
 {
   if(implementation)
     return 0;
+#if defined(iOS)
+  if(implementation == NULL)
+    implementation = &crypto_stream_salsa20_ref_implementation;
+  return 0; /* LCOV_EXCL_LINE */
+#endif
 #if __AVX2__
   if(sodium_runtime_has_avx2())
   {

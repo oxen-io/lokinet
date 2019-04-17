@@ -2,30 +2,35 @@ import UIKit
 import NetworkExtension
 
 class ViewController : UIViewController {
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        // Start tunnel
+        // Set up tunnel
+        print("Attempting to set up tunnel...")
+        print("--------")
         let tunnelProviderManager = NETunnelProviderManager()
-        let prtcl = NETunnelProviderProtocol()
-        prtcl.providerBundleIdentifier = Bundle.main.bundleIdentifier!
-        prtcl.serverAddress = "172.16.10.1"
-        tunnelProviderManager.protocolConfiguration = prtcl
+        let _protocol = NETunnelProviderProtocol()
+        _protocol.providerBundleIdentifier = Bundle.main.bundleIdentifier!
+        tunnelProviderManager.protocolConfiguration = _protocol
         tunnelProviderManager.saveToPreferences { error in
             if let error = error {
                 print(error)
             } else {
                 do {
                     try tunnelProviderManager.connection.startVPNTunnel()
+                    print("--------")
+                    print("Attempting to start daemon...")
+                    print("--------")
+                    // Start daemon
+                    let daemon = Daemon.shared
+                    daemon.configure(isDebuggingEnabled: true) { [weak daemon] context in
+                        daemon?.run(with: context)
+                        print("--------")
+                    }
                 } catch let error {
                     print(error)
                 }
             }
-        }
-        // Start daemon
-        let daemon = Daemon.shared
-        daemon.configure(isDebuggingEnabled: true) { [weak daemon] context in
-            daemon?.run(with: context)
         }
     }
 }

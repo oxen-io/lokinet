@@ -25,8 +25,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#define iOS
-
 #ifdef __sun
 #define BSD_COMP
 #define TUNSDEBUG _IOW('t', 90, int)
@@ -353,7 +351,7 @@ tuntap_set_debug(struct device *dev, int set)
     return 0;
   }
 
-#if !defined Darwin && !defined iOS
+#if !defined Darwin && !defined(iOS)
   if(ioctl(dev->tun_fd, TUNSDEBUG, &set) == -1)
   {
     switch(set)
