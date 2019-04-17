@@ -245,7 +245,6 @@ namespace llarp
           if(itr->second.IsExpired(now))
           {
             llarp::LogInfo("lookup for ", itr->first, " timed out");
-            router->routerProfiling().MarkTimeout(itr->first);
             itr = m_PendingRouters.erase(itr);
           }
           else
@@ -852,7 +851,6 @@ namespace llarp
     bool
     Endpoint::HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg)
     {
-      bool success = false;
       if(msg->R.size() == 1)
       {
         auto itr = m_PendingRouters.find(msg->R[0].pubkey);
@@ -866,12 +864,9 @@ namespace llarp
         job->hook                  = nullptr;
         job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
-        const RouterID k(msg->R[0].pubkey);
-        m_Router->routerProfiling().MarkSuccess(k);
         m_PendingRouters.erase(itr);
-        return true;
       }
-      return success;
+      return true;
     }
 
     void

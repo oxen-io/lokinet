@@ -65,7 +65,7 @@ struct TryConnectJob
   void
   Success()
   {
-    router->routerProfiling().MarkSuccess(rc.pubkey);
+    router->routerProfiling().MarkConnectSuccess(rc.pubkey);
     router->FlushOutboundFor(rc.pubkey, link);
   }
 
@@ -77,7 +77,7 @@ struct TryConnectJob
       Attempt();
       return;
     }
-    router->routerProfiling().MarkTimeout(rc.pubkey);
+    router->routerProfiling().MarkConnectTimeout(rc.pubkey);
     if(router->routerProfiling().IsBad(rc.pubkey))
     {
       if(!router->IsBootstrapNode(rc.pubkey))
@@ -561,7 +561,7 @@ namespace llarp
     router->dht()->impl->Nodes()->PutNode(rc);
 
     // mark success in profile
-    router->routerProfiling().MarkSuccess(pk);
+    router->routerProfiling().MarkConnectSuccess(pk);
 
     // this was an outbound establish job
     if(ctx->establish_job)
@@ -674,7 +674,7 @@ namespace llarp
     if(results.size() == 0)
     {
       if(!IsServiceNode())
-        routerProfiling().MarkTimeout(remote);
+        routerProfiling().MarkConnectTimeout(remote);
     }
     for(const auto &result : results)
     {
