@@ -229,7 +229,9 @@ namespace llarp
     bool
     Session::ShouldPing() const
     {
-      auto dlt = parent->Now() - lastActive;
+      if(state != eSessionReady)
+        return false;
+      const auto dlt = parent->Now() - lastActive;
       return dlt >= 10000;
     };
 
@@ -254,7 +256,7 @@ namespace llarp
       if(sendq.size() >= MaxSendQueueSize)
         return false;
       // preemptive pump
-      if(sendq.size() >= MaxSendQueueSize / 2)
+      if(sendq.size() >= MaxSendQueueSize / 8)
         PumpWrite();
       size_t sz      = buf.sz;
       byte_t* ptr    = buf.base;
@@ -277,7 +279,7 @@ namespace llarp
     bool
     Session::SendKeepAlive()
     {
-      if(state == eSessionReady)
+      if(ShouldPing())
       {
         DiscardMessage msg;
         std::array< byte_t, 128 > tmp;
@@ -480,7 +482,7 @@ namespace llarp
         LogError("keyed hash failed");
         return false;
       }
-      ShortHash expected(ptr);
+      const ShortHash expected(ptr);
       if(expected != digest)
       {
         LogError("Message Integrity Failed: got ", digest, " from ", remoteAddr,

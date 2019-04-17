@@ -78,7 +78,7 @@ namespace llarp
                                     uint64_t chances)
   {
     if(fails > 0 && (fails + success) >= chances)
-      return (success / fails) > 2;
+      return (success / fails) > 1;
     if(success == 0)
       return fails < chances;
     return true;
@@ -135,7 +135,7 @@ namespace llarp
   }
 
   void
-  Profiling::MarkTimeout(const RouterID& r)
+  Profiling::MarkConnectTimeout(const RouterID& r)
   {
     lock_t lock(&m_ProfilesMutex);
     m_Profiles[r].connectTimeoutCount += 1;
@@ -143,7 +143,7 @@ namespace llarp
   }
 
   void
-  Profiling::MarkSuccess(const RouterID& r)
+  Profiling::MarkConnectSuccess(const RouterID& r)
   {
     lock_t lock(&m_ProfilesMutex);
     m_Profiles[r].connectGoodCount += 1;

@@ -75,10 +75,10 @@ namespace llarp
         LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void
-    MarkTimeout(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
+    MarkConnectTimeout(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void
-    MarkSuccess(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
+    MarkConnectSuccess(const RouterID& r) LOCKS_EXCLUDED(m_ProfilesMutex);
 
     void
     MarkPathFail(path::Path* p) LOCKS_EXCLUDED(m_ProfilesMutex);
