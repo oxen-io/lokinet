@@ -216,8 +216,7 @@ namespace llarp
         router->ForEachPeer(
             [&](const ILinkSession* s, bool) {
               const PubKey k(s->GetPubKey());
-              if(got || router->IsBootstrapNode(k)
-                 || router->routerProfiling().IsBad(k))
+              if(got || router->IsBootstrapNode(k))
                 return;
               cur = s->GetRemoteRC();
               got = true;
@@ -232,7 +231,7 @@ namespace llarp
         --tries;
         if(db->select_random_hop_excluding(cur, exclude))
         {
-          if(!router->routerProfiling().IsBad(cur.pubkey))
+          if(!router->routerProfiling().IsBadForPath(cur.pubkey))
             return true;
           exclude.insert(cur.pubkey);
         }
@@ -276,6 +275,8 @@ namespace llarp
     bool
     Builder::ShouldBuildMore(llarp_time_t now) const
     {
+      if(IsStopped())
+        return false;
       if(llarp::randint() % 3 >= 1)
         return PathSet::ShouldBuildMore(now) && !BuildCooldownHit(now);
       return false;

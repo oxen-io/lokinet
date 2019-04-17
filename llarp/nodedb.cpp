@@ -18,13 +18,16 @@ static const std::string RC_FILE_EXT = ".signed";
 bool
 llarp_nodedb::Remove(const llarp::RouterID &pk)
 {
-  llarp::util::Lock lock(&access);
-  auto itr = entries.find(pk);
-  if(itr == entries.end())
+  bool removed = false;
+  RemoveIf([&](const llarp::RouterContact &rc) -> bool {
+    if(rc.pubkey == pk)
+    {
+      removed = true;
+      return true;
+    }
     return false;
-  entries.erase(itr);
-  fs::remove(fs::path(getRCFilePath(pk)));
-  return true;
+  });
+  return removed;
 }
 
 void

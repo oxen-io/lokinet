@@ -44,7 +44,7 @@ namespace llarp
   }
 
   void
-  OStreamLogStream::Print(LogLevel, const char*, const std::string& msg) const
+  OStreamLogStream::Print(LogLevel, const char*, const std::string& msg)
   {
     m_Out << msg;
   }

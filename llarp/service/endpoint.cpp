@@ -113,7 +113,7 @@ namespace llarp
       m_IntroSet.I.clear();
       for(const auto& intro : I)
       {
-        if(router->routerProfiling().IsBad(intro.router))
+        if(router->routerProfiling().IsBadForPath(intro.router))
           continue;
         m_IntroSet.I.push_back(intro);
       }
@@ -245,7 +245,6 @@ namespace llarp
           if(itr->second.IsExpired(now))
           {
             llarp::LogInfo("lookup for ", itr->first, " timed out");
-            router->routerProfiling().MarkTimeout(itr->first);
             itr = m_PendingRouters.erase(itr);
           }
           else
@@ -852,7 +851,6 @@ namespace llarp
     bool
     Endpoint::HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg)
     {
-      bool success = false;
       if(msg->R.size() == 1)
       {
         auto itr = m_PendingRouters.find(msg->R[0].pubkey);
@@ -866,12 +864,9 @@ namespace llarp
         job->hook                  = nullptr;
         job->rc                    = msg->R[0];
         llarp_nodedb_async_verify(job);
-        const RouterID k(msg->R[0].pubkey);
-        m_Router->routerProfiling().MarkSuccess(k);
         m_PendingRouters.erase(itr);
-        return true;
       }
-      return success;
+      return true;
     }
 
     void
@@ -1431,7 +1426,7 @@ namespace llarp
                                    if(c)
                                      c->UpdateIntroSet(true);
                                  },
-                                 5000, false);
+                                 5000, true);
     }
 
     bool
@@ -1445,13 +1440,7 @@ namespace llarp
       {
         if(hop == 0)
         {
-          // first hop
-          if(router->NumberOfConnectedRouters())
-          {
-            if(!router->GetRandomConnectedRouter(hops[0]))
-              return false;
-          }
-          else
+          if(!SelectHop(nodedb, hops[0], hops[0], 0, path::ePathRoleAny))
             return false;
         }
         else if(hop == numHops - 1)
@@ -1466,11 +1455,12 @@ namespace llarp
           size_t tries = 5;
           do
           {
-            nodedb->select_random_hop(hops[hop - 1], hops[hop], hop);
+            nodedb->select_random_hop_excluding(hops[hop],
+                                                {hops[hop - 1].pubkey, remote});
             --tries;
-          } while(
-              m_Endpoint->Router()->routerProfiling().IsBad(hops[hop].pubkey)
-              && tries > 0);
+          } while(m_Endpoint->Router()->routerProfiling().IsBadForPath(
+                      hops[hop].pubkey)
+                  && tries > 0);
           return tries > 0;
         }
         return false;
@@ -1492,7 +1482,7 @@ namespace llarp
       {
         if(intro.ExpiresSoon(now))
           continue;
-        if(router->routerProfiling().IsBad(intro.router))
+        if(router->routerProfiling().IsBadForPath(intro.router))
           continue;
         auto itr = m_BadIntros.find(intro);
         if(itr == m_BadIntros.end() && intro.router == m_NextIntro.router)

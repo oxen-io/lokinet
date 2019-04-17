@@ -12,10 +12,12 @@ namespace llarp
            int lineno) const override;
 
     void
-    Print(LogLevel lvl, const char* tag, const std::string& msg) const override;
+    Print(LogLevel lvl, const char* tag, const std::string& msg) override;
 
     void
     PostLog(std::stringstream& ss) const override;
+
+    void Tick(llarp_time_t) override{};
   };
 }  // namespace llarp
 #endif

@@ -78,9 +78,8 @@ namespace llarp
   };
 };  // namespace llarp
 
-struct llarp_poll_loop
-    : public llarp_ev_loop,
-      public std::enable_shared_from_this< llarp_poll_loop >
+struct llarp_poll_loop : public llarp_ev_loop,
+                         public std::enable_shared_from_this< llarp_poll_loop >
 {
   upoll_t* upollfd;
 

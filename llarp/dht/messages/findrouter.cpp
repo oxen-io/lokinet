@@ -40,9 +40,14 @@ namespace llarp
         replies.emplace_back(new GotRouterMessage(k, txid, {found}, false));
         return true;
       }
-      // lookup if we don't have it in our nodedb
-      if(dht.Nodes()->FindClosest(k, peer))
-        dht.LookupRouterForPath(K, txid, pathID, peer);
+      if((!dht.Nodes()->FindClosest(k, peer)) || peer == us)
+      {
+        // can't find any peers closer
+        replies.emplace_back(new GotRouterMessage(k, txid, {}, false));
+        return true;
+      }
+       // lookup if we don't have it in our nodedb
+      dht.LookupRouterForPath(K, txid, pathID, peer);
       return true;
     }
 

@@ -52,19 +52,17 @@ namespace llarp
     connectTimeoutCount /= 2;
     pathSuccessCount /= 2;
     pathFailCount /= 2;
-    lastUpdated = llarp::time_now_ms();
+    lastDecay = llarp::time_now_ms();
   }
 
   void
   RouterProfile::Tick()
   {
-    // 5 minutes
-    static constexpr llarp_time_t updateInterval = path::default_lifetime / 2;
-    auto now                                     = llarp::time_now_ms();
-    if(lastUpdated < now && now - lastUpdated > updateInterval)
-    {
+    // 15 seconds
+    static constexpr llarp_time_t updateInterval = 15 * 1000;
+    const auto now                               = llarp::time_now_ms();
+    if(lastDecay < now && now - lastDecay > updateInterval)
       Decay();
-    }
   }
 
   bool
@@ -74,6 +72,48 @@ namespace llarp
       return connectTimeoutCount < connectGoodCount
           && (pathSuccessCount * chances) > pathFailCount;
     return (pathSuccessCount * chances) > pathFailCount;
+  }
+
+  static bool constexpr checkIsGood(uint64_t fails, uint64_t success,
+                                    uint64_t chances)
+  {
+    if(fails > 0 && (fails + success) >= chances)
+      return (success / fails) > 1;
+    if(success == 0)
+      return fails < chances;
+    return true;
+  }
+
+  bool
+  RouterProfile::IsGoodForConnect(uint64_t chances) const
+  {
+    return checkIsGood(connectTimeoutCount, connectGoodCount, chances);
+  }
+
+  bool
+  RouterProfile::IsGoodForPath(uint64_t chances) const
+  {
+    return checkIsGood(pathFailCount, pathSuccessCount, chances);
+  }
+
+  bool
+  Profiling::IsBadForConnect(const RouterID& r, uint64_t chances)
+  {
+    lock_t lock(&m_ProfilesMutex);
+    auto itr = m_Profiles.find(r);
+    if(itr == m_Profiles.end())
+      return false;
+    return !itr->second.IsGoodForConnect(chances);
+  }
+
+  bool
+  Profiling::IsBadForPath(const RouterID& r, uint64_t chances)
+  {
+    lock_t lock(&m_ProfilesMutex);
+    auto itr = m_Profiles.find(r);
+    if(itr == m_Profiles.end())
+      return false;
+    return !itr->second.IsGoodForPath(chances);
   }
 
   bool
@@ -95,7 +135,7 @@ namespace llarp
   }
 
   void
-  Profiling::MarkTimeout(const RouterID& r)
+  Profiling::MarkConnectTimeout(const RouterID& r)
   {
     lock_t lock(&m_ProfilesMutex);
     m_Profiles[r].connectTimeoutCount += 1;
@@ -103,7 +143,7 @@ namespace llarp
   }
 
   void
-  Profiling::MarkSuccess(const RouterID& r)
+  Profiling::MarkConnectSuccess(const RouterID& r)
   {
     lock_t lock(&m_ProfilesMutex);
     m_Profiles[r].connectGoodCount += 1;
