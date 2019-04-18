@@ -69,8 +69,8 @@ endif(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND SHADOW)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
   message("Compiling for iOS...")
-  set(IOS ON)
-  add_definitions(-DIOS)
+  set(iOS ON)
+  add_definitions(-DiOS)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "iOS")
 
 if (WIN32 AND NOT STATIC_LINK_RUNTIME)

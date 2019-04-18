@@ -42,10 +42,10 @@
 #endif
 #if defined Linux
 #include <netinet/in.h>
-#elif defined(iOS) // TODO: Xcode doesn't seem to pick up on this
+#elif defined(iOS)
 #include <net/ethernet.h>
 #else
-//#include <netinet/if_ether.h>
+#include <netinet/if_ether.h>
 #endif
 #endif
 
