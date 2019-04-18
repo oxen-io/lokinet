@@ -1295,7 +1295,6 @@
 					"$(PROJECT_DIR)/../crypto/include",
 					"$(PROJECT_DIR)/../vendor/abseil-cpp",
 					"$(PROJECT_DIR)/../vendor/nlohmann/include",
-					"$(PROJECT_DIR)/../llarp/ev",
 				);
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -1327,7 +1326,6 @@
 					"$(PROJECT_DIR)/../crypto/include",
 					"$(PROJECT_DIR)/../vendor/abseil-cpp",
 					"$(PROJECT_DIR)/../vendor/nlohmann/include",
-					"$(PROJECT_DIR)/../llarp/ev",
 				);
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
