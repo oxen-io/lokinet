@@ -32,6 +32,13 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const override;
 
+      bool
+      ShouldBundleRC() const override
+      {
+        // TODO: make configurable
+        return false;
+      }
+
       void
       HandlePathDied(llarp::path::Path* p) override;
 

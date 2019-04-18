@@ -390,7 +390,7 @@ namespace llarp
     EnsureEncryptionKey();
 
     bool
-    ConnectionToRouterAllowed(const RouterID &router) const;
+    ConnectionToRouterAllowed(const RouterID &router) const override;
 
     bool
     SaveRC();

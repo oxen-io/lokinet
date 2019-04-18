@@ -54,6 +54,7 @@ namespace llarp
       // current hop
       auto& hop   = ctx->path->hops[ctx->idx];
       auto& frame = ctx->LRCM.frames[ctx->idx];
+
       // generate key
       ctx->crypto->encryption_keygen(hop.commkey);
       hop.nonce.Randomize();
@@ -80,8 +81,9 @@ namespace llarp
       else
       {
         hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
-        record.nextRC =
-            std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
+        if(ctx->pathset->ShouldBundleRC())
+          record.nextRC =
+              std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
       }
       // build record
 
