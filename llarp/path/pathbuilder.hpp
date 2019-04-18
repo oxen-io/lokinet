@@ -48,6 +48,10 @@ namespace llarp
       virtual bool
       ShouldBuildMore(llarp_time_t now) const override;
 
+      /// should we bundle RCs in builds?
+      virtual bool
+      ShouldBundleRC() const = 0;
+
       /// return true if we hit our soft limit for building paths too fast
       bool
       BuildCooldownHit(llarp_time_t now) const;

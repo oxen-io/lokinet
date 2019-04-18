@@ -214,6 +214,9 @@ namespace llarp
 
       using PendingBufferQueue = std::queue< PendingBuffer >;
 
+      bool
+      ShouldBundleRC() const override;
+
       struct SendContext
       {
         SendContext(const ServiceInfo& ident, const Introduction& intro,
@@ -279,6 +282,12 @@ namespace llarp
 
         util::StatusObject
         ExtractStatus() const override;
+
+        bool
+        ShouldBundleRC() const override
+        {
+          return m_Endpoint->ShouldBundleRC();
+        }
 
         bool
         Stop() override;
@@ -494,6 +503,7 @@ namespace llarp
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;
+      bool m_BundleRC = false;
 
       using PendingTraffic =
           std::unordered_map< Address, PendingBufferQueue, Address::Hash >;

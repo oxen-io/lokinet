@@ -122,6 +122,8 @@ struct async_insert_rc
 {
   llarp_nodedb *nodedb;
   llarp::RouterContact rc;
+  llarp::Logic *logic;
+  std::function< void(void) > completedHook;
   async_insert_rc(llarp_nodedb *n, const llarp::RouterContact &r)
       : nodedb(n), rc(r)
   {
@@ -133,13 +135,20 @@ handle_async_insert_rc(void *u)
 {
   async_insert_rc *job = static_cast< async_insert_rc * >(u);
   job->nodedb->Insert(job->rc);
+  if(job->logic && job->completedHook)
+  {
+    job->logic->queue_func(job->completedHook);
+  }
   delete job;
 }
 
 void
-llarp_nodedb::InsertAsync(llarp::RouterContact rc)
+llarp_nodedb::InsertAsync(llarp::RouterContact rc, llarp::Logic *logic,
+                          std::function< void(void) > completionHandler)
 {
   async_insert_rc *ctx = new async_insert_rc(this, rc);
+  ctx->completedHook   = completionHandler;
+  ctx->logic           = logic;
   llarp_threadpool_queue_job(disk, {ctx, &handle_async_insert_rc});
 }
 
