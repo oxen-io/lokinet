@@ -560,9 +560,7 @@ namespace llarp
       tcp.tick   = nullptr;
     }
 
-    virtual ~tcp_conn()
-    {
-    }
+    virtual ~tcp_conn();
 
     /// start connecting
     void

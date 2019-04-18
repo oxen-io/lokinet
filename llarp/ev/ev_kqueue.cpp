@@ -52,6 +52,10 @@ namespace llarp
 #endif
   }
 
+  tcp_conn::~tcp_conn()
+  {
+  }
+
   inline void
   tcp_conn::connect()
   {
