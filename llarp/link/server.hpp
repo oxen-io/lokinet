@@ -45,7 +45,7 @@ namespace llarp
   /// handles close of all sessions with pubkey
   using SessionClosedHandler = std::function< void(llarp::RouterID) >;
 
-  struct ILinkLayer : public util::IStateful
+  struct ILinkLayer
   {
     ILinkLayer(const SecretKey& routerEncSecret, GetRCFunc getrc,
                LinkMessageHandler handler, SignBufferFunc signFunc,
@@ -135,7 +135,7 @@ namespace llarp
     Name() const = 0;
 
     util::StatusObject
-    ExtractStatus() const override LOCKS_EXCLUDED(m_AuthedLinksMutex);
+    ExtractStatus() const LOCKS_EXCLUDED(m_AuthedLinksMutex);
 
     void
     CloseSessionTo(const RouterID& remote);

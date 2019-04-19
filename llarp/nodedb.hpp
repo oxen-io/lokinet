@@ -85,7 +85,8 @@ struct llarp_nodedb
 
   /// insert and write to disk in background
   void
-  InsertAsync(llarp::RouterContact rc);
+  InsertAsync(llarp::RouterContact rc, llarp::Logic *l = nullptr,
+              std::function< void(void) > completionHandler = nullptr);
 
   ssize_t
   Load(const fs::path &path);

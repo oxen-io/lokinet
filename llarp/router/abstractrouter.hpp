@@ -45,8 +45,10 @@ namespace llarp
     struct Context;
   }
 
-  struct AbstractRouter : public util::IStateful
+  struct AbstractRouter
   {
+    virtual ~AbstractRouter() = 0;
+
     virtual bool
     OnSessionEstablished(ILinkSession *) = 0;
 
@@ -189,6 +191,12 @@ namespace llarp
     virtual void
     ForEachPeer(std::function< void(const ILinkSession *, bool) > visit,
                 bool randomize) const = 0;
+
+    virtual bool
+    ConnectionToRouterAllowed(const RouterID &router) const = 0;
+
+    virtual util::StatusObject
+    ExtractStatus() const = 0;
   };
 }  // namespace llarp
 

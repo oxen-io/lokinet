@@ -15,7 +15,7 @@ namespace llarp
     // milliseconds waiting between builds on a path
     constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 1000;
 
-    struct Builder : public PathSet, public util::IStateful
+    struct Builder : public PathSet
     {
      protected:
       /// flag for PathSet::Stop()
@@ -38,8 +38,8 @@ namespace llarp
 
       virtual ~Builder();
 
-      virtual util::StatusObject
-      ExtractStatus() const override;
+      util::StatusObject
+      ExtractStatus() const;
 
       virtual bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
@@ -47,6 +47,10 @@ namespace llarp
 
       virtual bool
       ShouldBuildMore(llarp_time_t now) const override;
+
+      /// should we bundle RCs in builds?
+      virtual bool
+      ShouldBundleRC() const = 0;
 
       /// return true if we hit our soft limit for building paths too fast
       bool

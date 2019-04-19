@@ -63,7 +63,7 @@ namespace llarp
       void
       LookupRouterRecursive(const RouterID& target, const Key_t& whoasked,
                             uint64_t whoaskedTX, const Key_t& askpeer,
-                            RouterLookupHandler result = nullptr);
+                            RouterLookupHandler result = nullptr) override;
 
       bool
       LookupRouter(const RouterID& target, RouterLookupHandler result) override

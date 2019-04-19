@@ -12,7 +12,7 @@
 #include <router/abstractrouter.hpp>
 #include <service/protocol.hpp>
 #include <util/logic.hpp>
-
+#include <util/str.hpp>
 #include <util/buffer.hpp>
 
 namespace llarp
@@ -56,6 +56,10 @@ namespace llarp
         auto val = atoi(v.c_str());
         if(val > 0)
           m_MinPathLatency = val;
+      }
+      if(k == "bundle-rc")
+      {
+        m_BundleRC = IsTrueValue(v.c_str());
       }
       return true;
     }
@@ -810,6 +814,12 @@ namespace llarp
       llarp_ev_loop_run_single_process(self->m_IsolatedNetLoop,
                                        self->m_IsolatedWorker,
                                        self->m_IsolatedLogic);
+    }
+
+    bool
+    Endpoint::ShouldBundleRC() const
+    {
+      return m_BundleRC;
     }
 
     void

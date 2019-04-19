@@ -32,6 +32,18 @@ struct llarp_threadpool
     absl::ReaderMutexLock l(&m_access);
     return jobs.size();
   }
+
+  void
+  QueueFunc(std::function< void(void) > f) LOCKS_EXCLUDED(m_access)
+  {
+    if(impl)
+      impl->addJob(f);
+    else
+    {
+      llarp::util::Lock lock(&m_access);
+      jobs.emplace(f);
+    }
+  }
 };
 
 struct llarp_threadpool *

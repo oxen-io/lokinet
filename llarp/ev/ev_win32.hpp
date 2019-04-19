@@ -129,7 +129,7 @@ struct llarp_win32_loop : public llarp_ev_loop
 
   int
   udp_bind(const sockaddr* addr);
-  
+
   bool
   close_ev(llarp::ev_io* ev);
 

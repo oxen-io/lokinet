@@ -16,7 +16,7 @@ namespace llarp
   {
     template < typename K, typename V, typename K_Hash,
                llarp_time_t requestTimeoutMS = 5000UL >
-    struct TXHolder : public util::IStateful
+    struct TXHolder
     {
       using TXPtr = std::unique_ptr< TX< K, V > >;
       // tx who are waiting for a reply for each key
@@ -30,7 +30,7 @@ namespace llarp
       GetPendingLookupFrom(const TXOwner& owner) const;
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
         util::StatusObject obj{};
         std::vector< util::StatusObject > txObjs, timeoutsObjs, waitingObjs;

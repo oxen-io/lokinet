@@ -55,6 +55,12 @@ namespace llarp
     llarp_timer_run(this->timer, this->thread);
   }
 
+  void
+  Logic::queue_func(std::function< void(void) > f)
+  {
+    this->thread->QueueFunc(f);
+  }
+
   uint32_t
   Logic::call_later(const llarp_timeout_job& job)
   {

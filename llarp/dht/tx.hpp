@@ -16,7 +16,7 @@ namespace llarp
     struct AbstractContext;
 
     template < typename K, typename V >
-    struct TX : public util::IStateful
+    struct TX
     {
       K target;
       AbstractContext* parent;
@@ -39,7 +39,7 @@ namespace llarp
       AskNextPeer(const Key_t& prevPeer, const std::unique_ptr< Key_t >& next);
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
         util::StatusObject obj{{"whoasked", whoasked.ExtractStatus()},
                                {"target", target.ToHex()}};

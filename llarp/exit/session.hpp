@@ -30,13 +30,20 @@ namespace llarp
       virtual ~BaseSession();
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
+
+      bool
+      ShouldBundleRC() const override
+      {
+        // TODO: make configurable
+        return false;
+      }
 
       void
       HandlePathDied(llarp::path::Path* p) override;
 
       bool
-      CheckPathDead(path::Path * p, llarp_time_t dlt);
+      CheckPathDead(path::Path* p, llarp_time_t dlt);
 
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,

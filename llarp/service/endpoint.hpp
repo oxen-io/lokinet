@@ -40,8 +40,8 @@ namespace llarp
       Endpoint(const std::string& nickname, AbstractRouter* r, Context* parent);
       ~Endpoint();
 
-      virtual util::StatusObject
-      ExtractStatus() const override;
+      util::StatusObject
+      ExtractStatus() const;
 
       void
       SetHandler(IDataHandler* h);
@@ -214,6 +214,9 @@ namespace llarp
 
       using PendingBufferQueue = std::queue< PendingBuffer >;
 
+      bool
+      ShouldBundleRC() const override;
+
       struct SendContext
       {
         SendContext(const ServiceInfo& ident, const Introduction& intro,
@@ -278,7 +281,13 @@ namespace llarp
         ~OutboundContext();
 
         util::StatusObject
-        ExtractStatus() const override;
+        ExtractStatus() const;
+
+        bool
+        ShouldBundleRC() const override
+        {
+          return m_Endpoint->ShouldBundleRC();
+        }
 
         bool
         Stop() override;
@@ -494,6 +503,7 @@ namespace llarp
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;
+      bool m_BundleRC = false;
 
       using PendingTraffic =
           std::unordered_map< Address, PendingBufferQueue, Address::Hash >;
@@ -564,7 +574,7 @@ namespace llarp
       /// on initialize functions
       std::list< std::function< bool(void) > > m_OnInit;
 
-      struct Session : public util::IStateful
+      struct Session
       {
         Introduction replyIntro;
         SharedSecret sharedKey;
@@ -574,7 +584,7 @@ namespace llarp
         uint64_t seqno        = 0;
 
         util::StatusObject
-        ExtractStatus() const override
+        ExtractStatus() const
         {
           util::StatusObject obj{{"lastUsed", lastUsed},
                                  {"replyIntro", replyIntro.ExtractStatus()},

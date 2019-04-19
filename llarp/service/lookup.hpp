@@ -20,7 +20,7 @@ namespace llarp
 
     constexpr size_t MaxConcurrentLookups = size_t(4);
 
-    struct IServiceLookup : public util::IStateful
+    struct IServiceLookup
     {
       IServiceLookup() = delete;
       virtual ~IServiceLookup(){};
@@ -56,7 +56,7 @@ namespace llarp
       RouterID endpoint;
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
         auto now = llarp::time_now_ms();
         util::StatusObject obj{{"txid", txid},
