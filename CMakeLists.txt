@@ -374,7 +374,7 @@ target_include_directories(${ABYSS_LIB} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${AB
 target_include_directories(${ABYSS_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/${ABYSS}/include")
 # for freebsd
 if(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-  target_include_directories(${ABYSS_LIB} /usr/local/include)
+  target_include_directories(${ABYSS_LIB} PUBLIC /usr/local/include)
 endif(${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
 add_log_tag(${ABYSS_EXE})
 add_log_tag(${ABYSS_LIB})
