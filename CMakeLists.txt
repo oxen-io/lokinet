@@ -82,6 +82,7 @@ endif(WIN32 AND NOT STATIC_LINK_RUNTIME)
 
 add_subdirectory(vendor/cxxopts)
 add_subdirectory(vendor/nlohmann)
+include_directories(vendor/cxxopts/include)
 
 # still need the headers unconditionally
 set(ABSEIL_DIR vendor/abseil-cpp)
@@ -332,7 +333,7 @@ if(UNIX)
 elseif(WIN32)
     get_filename_component(LIBTUNTAP_IMPL ${TT_ROOT}/tuntap-windows.c ABSOLUTE)
     get_filename_component(EV_SRC "llarp/ev/ev_win32.cpp" ABSOLUTE)
-    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0602 -D_WIN32_WINNT=0x0602)
+    add_definitions(-DWIN32_LEAN_AND_MEAN -DWIN32 -DWINVER=0x0500 -D_WIN32_WINNT=0x0500)
 else()
     message(FATAL_ERROR "What operating system _are_ you building on/for?")
 endif(UNIX)
