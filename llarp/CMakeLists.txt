@@ -224,7 +224,9 @@ set(LIB_SRC
   service/handler.cpp
   service/info.cpp
   service/lookup.cpp
+  service/pendingbuffer.cpp
   service/protocol.cpp
+  service/sendcontext.cpp
   service/tag.cpp
   service/types.cpp
   service/vanity.cpp

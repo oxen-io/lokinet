@@ -1042,19 +1042,6 @@ namespace llarp
       return true;
     }
 
-    Endpoint::SendContext::SendContext(const ServiceInfo& ident,
-                                       const Introduction& intro, PathSet* send,
-                                       Endpoint* ep)
-        : remoteIdent(ident)
-        , remoteIntro(intro)
-        , m_PathSet(send)
-        , m_DataHandler(ep)
-        , m_Endpoint(ep)
-    {
-      createdAt = ep->Now();
-      currentConvoTag.Zero();
-    }
-
     void
     Endpoint::OutboundContext::HandlePathBuilt(path::Path* p)
     {
@@ -1431,12 +1418,13 @@ namespace llarp
         }
       }
       // no converstation
-      return EnsurePathToService(remote,
-                                 [](Address, OutboundContext* c) {
-                                   if(c)
-                                     c->UpdateIntroSet(true);
-                                 },
-                                 5000, true);
+      return EnsurePathToService(
+          remote,
+          [](Address, OutboundContext* c) {
+            if(c)
+              c->UpdateIntroSet(true);
+          },
+          5000, true);
     }
 
     bool
@@ -1581,28 +1569,6 @@ namespace llarp
       return success;
     }
 
-    void
-    Endpoint::SendContext::AsyncEncryptAndSendTo(const llarp_buffer_t& data,
-                                                 ProtocolType protocol)
-    {
-      auto now = m_Endpoint->Now();
-      if(remoteIntro.ExpiresSoon(now))
-      {
-        if(!MarkCurrentIntroBad(now))
-        {
-          llarp::LogWarn("no good path yet, your message may drop");
-        }
-      }
-      if(sequenceNo)
-      {
-        EncryptAndSendTo(data, protocol);
-      }
-      else
-      {
-        AsyncGenIntro(data, protocol);
-      }
-    }
-
     struct AsyncKeyExchange
     {
       llarp::Logic* logic;
@@ -1733,30 +1699,6 @@ namespace llarp
       ex->frame.F        = ex->msg.introReply.pathID;
       llarp_threadpool_queue_job(m_Endpoint->Worker(),
                                  {ex, &AsyncKeyExchange::Encrypt});
-    }
-
-    bool
-    Endpoint::SendContext::Send(const ProtocolFrame& msg)
-    {
-      auto path = m_PathSet->GetByEndpointWithID(remoteIntro.router, msg.F);
-      if(path)
-      {
-        const routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
-        if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
-        {
-          llarp::LogInfo("sent intro to ", remoteIntro.pathID, " on ",
-                         remoteIntro.router, " seqno=", sequenceNo);
-          lastGoodSend = m_Endpoint->Now();
-          ++sequenceNo;
-          return true;
-        }
-        else
-          llarp::LogError("Failed to send frame on path");
-      }
-      else
-        llarp::LogError("cannot send because we have no path to ",
-                        remoteIntro.router);
-      return false;
     }
 
     std::string
@@ -1952,74 +1894,6 @@ namespace llarp
                  (dlt < (path::default_lifetime / 2))
                  && (NumInStatus(path::ePathBuilding) < m_NumPaths)
                  && (dlt > buildIntervalLimit));
-    }
-
-    /// send on an established convo tag
-    void
-    Endpoint::SendContext::EncryptAndSendTo(const llarp_buffer_t& payload,
-                                            ProtocolType t)
-    {
-      auto crypto = m_Endpoint->Router()->crypto();
-      SharedSecret shared;
-      routing::PathTransferMessage msg;
-      ProtocolFrame& f = msg.T;
-      f.N.Randomize();
-      f.T = currentConvoTag;
-      f.S = m_Endpoint->GetSeqNoForConvo(f.T);
-
-      auto now = m_Endpoint->Now();
-      if(remoteIntro.ExpiresSoon(now))
-      {
-        // shift intro
-        if(MarkCurrentIntroBad(now))
-        {
-          llarp::LogInfo("intro shifted");
-        }
-      }
-      auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
-      if(!path)
-      {
-        llarp::LogError("cannot encrypt and send: no path for intro ",
-                        remoteIntro);
-        return;
-      }
-
-      if(m_DataHandler->GetCachedSessionKeyFor(f.T, shared))
-      {
-        ProtocolMessage m;
-        m_DataHandler->PutIntroFor(f.T, remoteIntro);
-        m_DataHandler->PutReplyIntroFor(f.T, path->intro);
-        m.proto      = t;
-        m.introReply = path->intro;
-        f.F          = m.introReply.pathID;
-        m.sender     = m_Endpoint->m_Identity.pub;
-        m.tag        = f.T;
-        m.PutBuffer(payload);
-        if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->m_Identity))
-        {
-          llarp::LogError("failed to sign");
-          return;
-        }
-      }
-      else
-      {
-        llarp::LogError("No cached session key");
-        return;
-      }
-
-      msg.P = remoteIntro.pathID;
-      msg.Y.Randomize();
-      if(path->SendRoutingMessage(&msg, m_Endpoint->Router()))
-      {
-        llarp::LogDebug("sent message via ", remoteIntro.pathID, " on ",
-                        remoteIntro.router);
-        ++sequenceNo;
-        lastGoodSend = now;
-      }
-      else
-      {
-        llarp::LogWarn("Failed to send routing message for data");
-      }
     }
 
     llarp::Logic*
