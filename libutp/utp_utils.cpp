@@ -41,6 +41,7 @@
 #include <mach/mach_time.h>
 #endif
 
+#include <absl/base/attributes.h>
 #include "utp_utils.h"
 
 #ifdef WIN32
@@ -286,20 +287,20 @@ utp_default_get_udp_overhead(utp_callback_arguments *args)
 }
 
 uint64
-utp_default_get_random(__attribute__((unused)) utp_callback_arguments *args)
+utp_default_get_random(ABSL_ATTRIBUTE_UNUSED utp_callback_arguments *args)
 {
   return rand();
 }
 
 uint64
-utp_default_get_milliseconds(__attribute__((unused))
+utp_default_get_milliseconds(ABSL_ATTRIBUTE_UNUSED
                              utp_callback_arguments *args)
 {
   return UTP_GetMilliseconds();
 }
 
 uint64
-utp_default_get_microseconds(__attribute__((unused))
+utp_default_get_microseconds(ABSL_ATTRIBUTE_UNUSED
                              utp_callback_arguments *args)
 {
   return UTP_GetMicroseconds();

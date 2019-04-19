@@ -2,6 +2,8 @@
 #include <util/mem.h>
 #include <cstdlib>
 
+#include <absl/base/attributes.h>
+
 namespace llarp
 {
   void
@@ -17,9 +19,9 @@ namespace llarp
 }  // namespace llarp
 
 void
-llarp_mem_slab(__attribute__((unused)) struct llarp_alloc *mem,
-               __attribute__((unused)) uint32_t *buf,
-               __attribute__((unused)) size_t sz)
+llarp_mem_slab(ABSL_ATTRIBUTE_UNUSED struct llarp_alloc *mem,
+               ABSL_ATTRIBUTE_UNUSED uint32_t *buf,
+               ABSL_ATTRIBUTE_UNUSED size_t sz)
 {
   // not implemented
   abort();

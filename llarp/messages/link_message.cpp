@@ -11,6 +11,8 @@
 #include <util/logger.hpp>
 #include <util/metrics.hpp>
 
+#include <memory>
+
 namespace llarp
 {
   struct InboundMessageParser::msg_holder_t
@@ -21,18 +23,21 @@ namespace llarp
     DHTImmediateMessage m;
     LR_CommitMessage c;
     DiscardMessage x;
+
+	msg_holder_t() = default;
   };
 
   InboundMessageParser::InboundMessageParser(AbstractRouter* _router)
       : router(_router)
       , from(nullptr)
       , msg(nullptr)
-      , holder(std::make_unique< msg_holder_t >())
+      , holder(new msg_holder_t())
   {
   }
 
   InboundMessageParser::~InboundMessageParser()
   {
+    delete holder;
   }
 
   bool

@@ -35,6 +35,12 @@ win32_tun_io::queue_write(const byte_t* buf, size_t sz)
 bool
 win32_tun_io::setup()
 {
+  // Create a critical section to synchronise access to the TUN handler.
+  // This *probably* has the effect of making packets move in order now
+  // as only one IOCP thread will have access to the TUN handler at a
+  // time
+  InitializeCriticalSection(&HandlerMtx);
+
   if(tuntap_start(tunif, TUNTAP_MODE_TUNNEL, 0) == -1)
   {
     llarp::LogWarn("failed to start interface");
@@ -58,12 +64,6 @@ win32_tun_io::setup()
 
   if(tunif->tun_fd == INVALID_HANDLE_VALUE)
     return false;
-
-  // Create a critical section to synchronise access to the TUN handler.
-  // This *probably* has the effect of making packets move in order now
-  // as only one IOCP thread will have access to the TUN handler at a
-  // time
-  InitializeCriticalSection(&HandlerMtx);
 
   return true;
 }

@@ -73,7 +73,7 @@ namespace llarp
   NetID::BEncode(llarp_buffer_t *buf) const
   {
     auto term = std::find(begin(), end(), '\0');
-    return bencode_write_bytestring(buf, begin(), std::distance(begin(), term));
+    return bencode_write_bytestring(buf, data(), std::distance(begin(), term));
   }
 
   bool

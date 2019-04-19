@@ -31,7 +31,7 @@ struct AbyssTestBase : public ::testing::Test
   }
 
   static void
-  CancelIt(void* u, __attribute__((unused)) uint64_t orig, uint64_t left)
+  CancelIt(void* u, ABSL_ATTRIBUTE_UNUSED uint64_t orig, uint64_t left)
   {
     if(left)
       return;
@@ -104,12 +104,12 @@ struct ClientHandler : public abyss::http::IRPCClientHandler
   }
 
   void
-  PopulateReqHeaders(__attribute__((unused)) abyss::http::Headers_t& hdr)
+  PopulateReqHeaders(ABSL_ATTRIBUTE_UNUSED abyss::http::Headers_t& hdr)
   {
   }
 
   bool
-  HandleResponse(__attribute__((unused)) abyss::http::RPC_Response response)
+  HandleResponse(ABSL_ATTRIBUTE_UNUSED abyss::http::RPC_Response response)
   {
     test->AsyncStop();
     return true;
@@ -125,7 +125,7 @@ struct ServerHandler : public abyss::httpd::IRPCHandler
   }
 
   absl::optional< Response >
-  HandleJSONRPC(Method_t method, __attribute__((unused)) const Params& params)
+  HandleJSONRPC(Method_t method, ABSL_ATTRIBUTE_UNUSED const Params& params)
   {
     test->AssertMethod(method);
     test->called = true;

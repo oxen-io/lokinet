@@ -69,8 +69,12 @@ typedef NTSTATUS(FAR PASCAL *CNGAPI_DRBG)(BCRYPT_ALG_HANDLE, UCHAR *, ULONG,
 #endif
 
 #ifndef TLS
-#ifdef _WIN32
+#ifdef _WIN32 
+#ifdef _MSC_VER
+#define TLS __declspec(thread)
+#else
 #define TLS __thread
+#endif
 #else
 #define TLS
 #endif

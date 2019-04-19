@@ -16,10 +16,8 @@
 #include <util/scheduler.hpp>
 
 #include <absl/strings/str_split.h>
-#include <getopt.h>
+#include <cxxopts.hpp>
 #include <signal.h>
-
-#include <sys/param.h>  // for MIN
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -645,50 +643,40 @@ extern "C"
   const char *
   handleBaseCmdLineArgs(int argc, char *argv[])
   {
-    const char *conffname = "daemon.ini";
-    int c;
-    while(1)
+
+	// clang-format off
+    cxxopts::Options options(
+		"lokinet",
+		"Lokinet is a private, decentralized and IP based overlay network for the internet"
+    );
+    options.add_options()
+		("c,config", "Config file", cxxopts::value< std::string >()->default_value("daemon.ini"))
+		("o,logLevel", "logging level");
+	// clang-format on
+
+    auto result = options.parse(argc, argv);
+    std::string logLevel = result["logLevel"].as< std::string >();
+
+    if(logLevel == "debug")
     {
-      static struct option long_options[] = {
-          {"config", required_argument, 0, 'c'},
-          {"logLevel", required_argument, 0, 'o'},
-          {0, 0, 0, 0}};
-      int option_index = 0;
-      c = getopt_long(argc, argv, "c:o:", long_options, &option_index);
-      if(c == -1)
-        break;
-      switch(c)
-      {
-        case 0:
-          break;
-        case 'c':
-          conffname = optarg;
-          break;
-        case 'o':
-          if(strncmp(optarg, "debug", std::min(strlen(optarg), size_t(5))) == 0)
-          {
-            cSetLogLevel(eLogDebug);
-          }
-          else if(strncmp(optarg, "info", std::min(strlen(optarg), size_t(4)))
-                  == 0)
-          {
-            cSetLogLevel(eLogInfo);
-          }
-          else if(strncmp(optarg, "warn", std::min(strlen(optarg), size_t(4)))
-                  == 0)
-          {
-            cSetLogLevel(eLogWarn);
-          }
-          else if(strncmp(optarg, "error", std::min(strlen(optarg), size_t(5)))
-                  == 0)
-          {
-            cSetLogLevel(eLogError);
-          }
-          break;
-        default:
-          break;
-      }
+      cSetLogLevel(eLogDebug);
     }
-    return conffname;
+    else if(logLevel == "info")
+    {
+      cSetLogLevel(eLogInfo);
+    }
+    else if(logLevel == "warn")
+    {
+      cSetLogLevel(eLogWarn);
+    }
+    else if(logLevel == "error")
+    {
+      cSetLogLevel(eLogError);
+    }
+
+	// this isn't thread safe, but reconfiguring during run is likely unsafe either way
+	static std::string confname = result["config"].as< std::string >();
+
+	return confname.c_str();
   }
 }

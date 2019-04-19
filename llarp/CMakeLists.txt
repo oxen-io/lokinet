@@ -46,12 +46,12 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(${UTIL_LIB} PUBLIC absl::synchronization)
+target_link_libraries(${UTIL_LIB} PUBLIC absl::synchronization absl::hash)
 target_link_libraries(${UTIL_LIB} PUBLIC nlohmann_json::nlohmann_json)
 
 # cut back on fluff
 if (NOT WIN32)
-    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings absl::hash cppbackport)
+    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings cppbackport)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -239,7 +239,7 @@ endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 set(LIBS ${LIBS} libutp)
-target_link_libraries(${STATIC_LIB} PUBLIC ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS})
+target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS})
 
 if(WITH_SHARED)
   add_library(${SHARED_LIB} SHARED ${LIB_SRC})
