@@ -6,7 +6,7 @@
 
 namespace llarp
 {
-  struct RouterID : public AlignedBuffer< 32 >, public util::IStateful
+  struct RouterID : public AlignedBuffer< 32 >
   {
     static constexpr size_t SIZE = 32;
 
@@ -25,7 +25,7 @@ namespace llarp
     }
 
     util::StatusObject
-    ExtractStatus() const override;
+    ExtractStatus() const;
 
     std::string
     ToString() const;

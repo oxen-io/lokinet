@@ -30,7 +30,7 @@ namespace llarp
       virtual ~BaseSession();
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       bool
       ShouldBundleRC() const override

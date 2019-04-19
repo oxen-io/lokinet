@@ -9,7 +9,7 @@ namespace llarp
 {
   namespace dht
   {
-    struct TXOwner : public util::IStateful
+    struct TXOwner
     {
       Key_t node;
       uint64_t txid = 0;
@@ -26,7 +26,7 @@ namespace llarp
       }
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
         util::StatusObject obj{
             {"txid", txid},
