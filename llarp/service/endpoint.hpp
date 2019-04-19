@@ -40,8 +40,8 @@ namespace llarp
       Endpoint(const std::string& nickname, AbstractRouter* r, Context* parent);
       ~Endpoint();
 
-      virtual util::StatusObject
-      ExtractStatus() const override;
+      util::StatusObject
+      ExtractStatus() const;
 
       void
       SetHandler(IDataHandler* h);
@@ -281,7 +281,7 @@ namespace llarp
         ~OutboundContext();
 
         util::StatusObject
-        ExtractStatus() const override;
+        ExtractStatus() const;
 
         bool
         ShouldBundleRC() const override
@@ -574,7 +574,7 @@ namespace llarp
       /// on initialize functions
       std::list< std::function< bool(void) > > m_OnInit;
 
-      struct Session : public util::IStateful
+      struct Session
       {
         Introduction replyIntro;
         SharedSecret sharedKey;
@@ -584,7 +584,7 @@ namespace llarp
         uint64_t seqno        = 0;
 
         util::StatusObject
-        ExtractStatus() const override
+        ExtractStatus() const
         {
           util::StatusObject obj{{"lastUsed", lastUsed},
                                  {"replyIntro", replyIntro.ExtractStatus()},

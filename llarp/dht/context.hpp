@@ -23,7 +23,7 @@ namespace llarp
 
   namespace dht
   {
-    struct AbstractContext : public util::IStateful
+    struct AbstractContext
     {
       using PendingIntrosetLookups =
           TXHolder< service::Address, service::IntroSet,
@@ -175,6 +175,9 @@ namespace llarp
 
       virtual Bucket< RCNode >*
       Nodes() const = 0;
+
+      virtual util::StatusObject
+      ExtractStatus() const = 0;
     };
 
     std::unique_ptr< AbstractContext >

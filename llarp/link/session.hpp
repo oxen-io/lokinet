@@ -13,7 +13,7 @@ namespace llarp
   struct LinkIntroMessage;
   struct ILinkMessage;
   struct ILinkLayer;
-  struct ILinkSession : public util::IStateful
+  struct ILinkSession
   {
     virtual ~ILinkSession(){};
 
@@ -81,6 +81,9 @@ namespace llarp
     /// return true if we should send an explicit keepalive message
     virtual bool
     ShouldPing() const = 0;
+
+    virtual util::StatusObject
+    ExtractStatus() const = 0;
   };
 }  // namespace llarp
 

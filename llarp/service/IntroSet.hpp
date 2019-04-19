@@ -24,11 +24,10 @@ namespace llarp
     constexpr std::size_t MAX_INTROSET_SIZE = 4096;
     // 10 seconds clock skew permitted for introset expiration
     constexpr llarp_time_t MAX_INTROSET_TIME_DELTA = (10 * 1000);
-    struct IntroSet final : public llarp::IBEncodeMessage,
-                            public util::IStateful
+    struct IntroSet final : public llarp::IBEncodeMessage
     {
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       ServiceInfo A;
       std::vector< Introduction > I;

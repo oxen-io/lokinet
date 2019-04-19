@@ -33,7 +33,7 @@ namespace llarp
       Tick(llarp_time_t now) override;
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;

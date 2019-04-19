@@ -19,7 +19,7 @@ namespace llarp
   namespace exit
   {
     /// persistant exit state for 1 identity on the exit node
-    struct Endpoint : public util::IStateful
+    struct Endpoint
     {
       static constexpr size_t MaxUpstreamQueueSize = 256;
 
@@ -35,7 +35,7 @@ namespace llarp
 
       /// implement istateful
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       /// return true if we are expired right now
       bool

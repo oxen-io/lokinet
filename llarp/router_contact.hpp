@@ -65,7 +65,7 @@ namespace llarp
   }
 
   /// RouterContact
-  struct RouterContact final : public IBEncodeMessage, public util::IStateful
+  struct RouterContact final : public IBEncodeMessage
   {
     /// for unit tests
     static bool IgnoreBogons;
@@ -117,7 +117,7 @@ namespace llarp
     uint64_t last_updated = 0;
 
     util::StatusObject
-    ExtractStatus() const override;
+    ExtractStatus() const;
 
     bool
     BEncode(llarp_buffer_t *buf) const override;

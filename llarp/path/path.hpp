@@ -279,7 +279,7 @@ namespace llarp
     }
 
     /// configuration for a single hop when building a path
-    struct PathHopConfig : public util::IStateful
+    struct PathHopConfig
     {
       /// path id
       PathID_t txID, rxID;
@@ -302,13 +302,11 @@ namespace llarp
       PathHopConfig();
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
     };
 
     /// A path we made
-    struct Path : public IHopHandler,
-                  public llarp::routing::IMessageHandler,
-                  public util::IStateful
+    struct Path : public IHopHandler, public llarp::routing::IMessageHandler
     {
       using BuildResultHookFunc = std::function< void(Path*) >;
       using CheckForDeadFunc    = std::function< bool(Path*, llarp_time_t) >;
@@ -336,7 +334,7 @@ namespace llarp
            PathRole startingRoles);
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       PathRole
       Role() const

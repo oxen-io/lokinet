@@ -11,7 +11,7 @@ namespace llarp
   namespace exit
   {
     /// owner of all the exit endpoints
-    struct Context : public util::IStateful
+    struct Context
     {
       using Config_t = std::unordered_multimap< std::string, std::string >;
 
@@ -25,7 +25,7 @@ namespace llarp
       ClearAllEndpoints();
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       /// send close to all exit sessions and remove all sessions
       void
