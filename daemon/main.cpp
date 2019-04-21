@@ -108,15 +108,16 @@ main(int argc, char *argv[])
 		"lokinet",
 		"Lokinet is a private, decentralized and IP based overlay network for the internet"
     );
-    options.add_options()
+  options.add_options()
 		("v,verbose", "Verbose", cxxopts::value<bool>())
 		("h,help", "help", cxxopts::value<bool>())
 		("g,generate", "generate config", cxxopts::value<bool>())
-		("c,config", "generate config", cxxopts::value<bool>())
 		("r,router", "run as router", cxxopts::value<bool>())
-		("f,force", "overwrite", cxxopts::value<bool>());
-	options.parse_positional({"config_file"});
-  // clang-format on
+		("f,force", "overwrite", cxxopts::value<bool>())
+    ("config","path to configuration file", cxxopts::value<std::string>());
+
+  options.parse_positional("config");
+    // clang-format on
 
   bool genconfigOnly = false;
   bool asRouter      = false;
@@ -138,7 +139,7 @@ main(int argc, char *argv[])
       return printHelp(argv[0], 0);
     }
 
-    if(result.count("generate") > 0 || result.count("config") > 0)
+    if(result.count("generate") > 0)
     {
       genconfigOnly = true;
     }
@@ -153,12 +154,12 @@ main(int argc, char *argv[])
       asRouter = true;
     }
 
-	if(result.count("config_file") > 0)
+	if(result.count("config") > 0)
     {
-      auto vec = result["config_file"].as< std::vector< std::string > >();
+      auto vec = result["config"].as< std::string >();
       if(!vec.empty())
       {
-        conffname = vec[0];
+        conffname = vec;
       }
     }
   }
@@ -185,7 +186,7 @@ main(int argc, char *argv[])
       // does this file exist?
       if(genconfigOnly)
       {
-        if(!llarp_ensure_config(conffname.c_str(), nullptr, overWrite,
+        if(!llarp_ensure_config(conffname.c_str(), basedir.c_str(), overWrite,
                                 asRouter))
           return 1;
       }
