@@ -7,9 +7,13 @@
 #include <path/path.hpp>
 #include <path/pathbuilder.hpp>
 #include <service/address.hpp>
-#include <service/Identity.hpp>
 #include <service/handler.hpp>
+#include <service/Identity.hpp>
+#include <service/pendingbuffer.hpp>
 #include <service/protocol.hpp>
+#include <service/sendcontext.hpp>
+#include <service/session.hpp>
+#include <service/tag_lookup_job.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -20,10 +24,9 @@ namespace llarp
 {
   namespace service
   {
-    // forward declare
-    struct Context;
-    // forward declare
     struct AsyncKeyExchange;
+    struct Context;
+    struct OutboundContext;
 
     struct Endpoint : public path::Builder,
                       public ILookupHolder,
@@ -67,18 +70,18 @@ namespace llarp
       }
 
       /// router's logic
-      llarp::Logic*
+      Logic*
       RouterLogic();
 
       /// endpoint's logic
-      llarp::Logic*
+      Logic*
       EndpointLogic();
 
       /// borrow endpoint's net loop for sending data to user
       llarp_ev_loop_ptr
       EndpointNetLoop();
 
-      llarp::Crypto*
+      Crypto*
       Crypto();
 
       llarp_threadpool*
@@ -115,14 +118,14 @@ namespace llarp
       PublishIntroSetVia(AbstractRouter* r, path::Path* p);
 
       bool
-      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg) override;
+      HandleGotIntroMessage(const dht::GotIntroMessage* msg) override;
 
       bool
-      HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg) override;
+      HandleGotRouterMessage(const dht::GotRouterMessage* msg) override;
 
       bool
       HandleHiddenServiceFrame(path::Path* p,
-                               const llarp::service::ProtocolFrame* msg);
+                               const service::ProtocolFrame* msg);
 
       /// return true if we have an established path to a hidden service
       bool
@@ -188,24 +191,6 @@ namespace llarp
       void
       FlushSNodeTraffic();
 
-      struct PendingBuffer
-      {
-        std::vector< byte_t > payload;
-        ProtocolType protocol;
-
-        PendingBuffer(const llarp_buffer_t& buf, ProtocolType t)
-            : payload(buf.sz), protocol(t)
-        {
-          memcpy(payload.data(), buf.base, buf.sz);
-        }
-
-        ManagedBuffer
-        Buffer()
-        {
-          return ManagedBuffer{llarp_buffer_t(payload)};
-        }
-      };
-
       bool
       HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
 
@@ -217,54 +202,6 @@ namespace llarp
       bool
       ShouldBundleRC() const override;
 
-      struct SendContext
-      {
-        SendContext(const ServiceInfo& ident, const Introduction& intro,
-                    PathSet* send, Endpoint* ep);
-
-        void
-        AsyncEncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
-
-        /// send a fully encrypted hidden service frame
-        /// via a path on our pathset with path id p
-        bool
-        Send(const ProtocolFrame& f);
-
-        llarp::SharedSecret sharedKey;
-        ServiceInfo remoteIdent;
-        Introduction remoteIntro;
-        ConvoTag currentConvoTag;
-        PathSet* m_PathSet;
-        IDataHandler* m_DataHandler;
-        Endpoint* m_Endpoint;
-        uint64_t sequenceNo       = 0;
-        llarp_time_t lastGoodSend = 0;
-        llarp_time_t createdAt;
-        llarp_time_t sendTimeout    = 40 * 1000;
-        llarp_time_t connectTimeout = 60 * 1000;
-        bool markedBad              = false;
-
-        virtual bool
-        ShiftIntroduction(bool rebuild = true)
-        {
-          (void)rebuild;
-          return true;
-        };
-
-        virtual void
-        UpdateIntroSet(bool randomizePath = false) = 0;
-
-        virtual bool
-        MarkCurrentIntroBad(llarp_time_t now) = 0;
-
-       private:
-        void
-        EncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
-
-        virtual void
-        AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t) = 0;
-      };
-
       static void
       HandlePathDead(void*);
 
@@ -273,107 +210,6 @@ namespace llarp
 
       bool
       ShouldBuildMore(llarp_time_t now) const override;
-
-      /// context needed to initiate an outbound hidden service session
-      struct OutboundContext : public path::Builder, public SendContext
-      {
-        OutboundContext(const IntroSet& introSet, Endpoint* parent);
-        ~OutboundContext();
-
-        util::StatusObject
-        ExtractStatus() const;
-
-        bool
-        ShouldBundleRC() const override
-        {
-          return m_Endpoint->ShouldBundleRC();
-        }
-
-        bool
-        Stop() override;
-
-        bool
-        HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
-
-        void
-        HandlePathDied(path::Path* p) override;
-
-        /// set to true if we are updating the remote introset right now
-        bool updatingIntroSet;
-
-        /// update the current selected intro to be a new best introduction
-        /// return true if we have changed intros
-        bool
-        ShiftIntroduction(bool rebuild = true) override;
-
-        /// mark the current remote intro as bad
-        bool
-        MarkCurrentIntroBad(llarp_time_t now) override;
-
-        /// return true if we are ready to send
-        bool
-        ReadyToSend() const;
-
-        bool
-        ShouldBuildMore(llarp_time_t now) const override;
-
-        /// tick internal state
-        /// return true to mark as dead
-        bool
-        Tick(llarp_time_t now);
-
-        /// return true if it's safe to remove ourselves
-        bool
-        IsDone(llarp_time_t now) const;
-
-        bool
-        CheckPathIsDead(path::Path* p, llarp_time_t dlt);
-
-        void
-        AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t) override;
-
-        /// issues a lookup to find the current intro set of the remote service
-        void
-        UpdateIntroSet(bool randomizePath) override;
-
-        bool
-        BuildOneAlignedTo(const RouterID& remote);
-
-        void
-        HandlePathBuilt(path::Path* path) override;
-
-        bool
-        SelectHop(llarp_nodedb* db, const RouterContact& prev,
-                  RouterContact& cur, size_t hop,
-                  llarp::path::PathRole roles) override;
-
-        bool
-        HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame* frame);
-
-        std::string
-        Name() const override;
-
-       private:
-        /// swap remoteIntro with next intro
-        void
-        SwapIntros();
-
-        void
-        OnGeneratedIntroFrame(AsyncKeyExchange* k, PathID_t p);
-
-        bool
-        OnIntroSetUpdate(const Address& addr, const IntroSet* i,
-                         const RouterID& endpoint);
-
-        uint64_t m_UpdateIntrosetTX = 0;
-        IntroSet currentIntroSet;
-        Introduction m_NextIntro;
-        std::unordered_map< Introduction, llarp_time_t, Introduction::Hash >
-            m_BadIntros;
-        llarp_time_t lastShift = 0;
-        uint16_t m_LookupFails = 0;
-        uint16_t m_BuildFails  = 0;
-      };
 
       // passed a sendto context when we have a path established otherwise
       // nullptr if the path was not made before the timeout
@@ -386,7 +222,7 @@ namespace llarp
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
       using SNodeEnsureHook =
-          std::function< void(RouterID, llarp::exit::BaseSession*) >;
+          std::function< void(RouterID, exit::BaseSession*) >;
 
       /// ensure a path to a service node by public key
       void
@@ -432,10 +268,16 @@ namespace llarp
       void
       PutNewOutboundContext(const IntroSet& introset);
 
+      uint64_t
+      GetSeqNoForConvo(const ConvoTag& tag);
+
       virtual void
       IntroSetPublishFail();
       virtual void
       IntroSetPublished();
+
+      uint64_t
+      GenTXID();
 
      protected:
       /// parent context that owns this endpoint
@@ -449,9 +291,6 @@ namespace llarp
 
       void
       PrefetchServicesByTag(const Tag& tag);
-
-      uint64_t
-      GetSeqNoForConvo(const ConvoTag& tag);
 
       bool
       IsolateNetwork();
@@ -487,18 +326,15 @@ namespace llarp
         return false;
       }
 
-      uint64_t
-      GenTXID();
-
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
-      std::unique_ptr< llarp::exit::BaseSession > m_Exit;
+      std::unique_ptr< exit::BaseSession > m_Exit;
 
      private:
       AbstractRouter* m_Router;
       llarp_threadpool* m_IsolatedWorker  = nullptr;
-      llarp::Logic* m_IsolatedLogic       = nullptr;
+      Logic* m_IsolatedLogic              = nullptr;
       llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
@@ -517,10 +353,8 @@ namespace llarp
 
       Sessions m_DeadSessions;
 
-      using SNodeSessions =
-          std::unordered_multimap< RouterID,
-                                   std::unique_ptr< llarp::exit::BaseSession >,
-                                   RouterID::Hash >;
+      using SNodeSessions = std::unordered_multimap<
+          RouterID, std::unique_ptr< exit::BaseSession >, RouterID::Hash >;
 
       SNodeSessions m_SNodeSessions;
 
@@ -574,103 +408,11 @@ namespace llarp
       /// on initialize functions
       std::list< std::function< bool(void) > > m_OnInit;
 
-      struct Session
-      {
-        Introduction replyIntro;
-        SharedSecret sharedKey;
-        ServiceInfo remote;
-        Introduction intro;
-        llarp_time_t lastUsed = 0;
-        uint64_t seqno        = 0;
-
-        util::StatusObject
-        ExtractStatus() const
-        {
-          util::StatusObject obj{{"lastUsed", lastUsed},
-                                 {"replyIntro", replyIntro.ExtractStatus()},
-                                 {"remote", remote.Addr().ToString()},
-                                 {"seqno", seqno},
-                                 {"intro", intro.ExtractStatus()}};
-          return obj;
-        };
-
-        bool
-        IsExpired(llarp_time_t now,
-                  llarp_time_t lifetime = (path::default_lifetime * 2)) const
-        {
-          if(now <= lastUsed)
-            return false;
-          return now - lastUsed > lifetime;
-        }
-      };
-
       /// conversations
       using ConvoMap_t =
           std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
 
       ConvoMap_t m_Sessions;
-
-      struct CachedTagResult
-      {
-        const static llarp_time_t TTL = 10000;
-        llarp_time_t lastRequest      = 0;
-        llarp_time_t lastModified     = 0;
-        std::set< IntroSet > result;
-        Tag tag;
-        Endpoint* parent;
-
-        CachedTagResult(const Tag& t, Endpoint* p) : tag(t), parent(p)
-        {
-        }
-
-        ~CachedTagResult()
-        {
-        }
-
-        void
-        Expire(llarp_time_t now);
-
-        bool
-        ShouldRefresh(llarp_time_t now) const
-        {
-          if(now <= lastRequest)
-            return false;
-          return (now - lastRequest) > TTL;
-        }
-
-        llarp::routing::IMessage*
-        BuildRequestMessage(uint64_t txid);
-
-        bool
-        HandleResponse(const std::set< IntroSet >& results);
-      };
-
-      struct TagLookupJob : public IServiceLookup
-      {
-        TagLookupJob(Endpoint* parent, CachedTagResult* result)
-            : IServiceLookup(parent, parent->GenTXID(), "taglookup")
-            , m_result(result)
-        {
-        }
-
-        ~TagLookupJob()
-        {
-        }
-
-        llarp::routing::IMessage*
-        BuildRequestMessage()
-        {
-          return m_result->BuildRequestMessage(txid);
-        }
-
-        bool
-        HandleResponse(const std::set< IntroSet >& results)
-        {
-          return m_result->HandleResponse(results);
-        }
-
-        CachedTagResult* m_result;
-      };
 
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
     };
