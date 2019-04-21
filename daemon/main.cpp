@@ -156,10 +156,10 @@ main(int argc, char *argv[])
 
 	if(result.count("config") > 0)
     {
-      auto vec = result["config"].as< std::string >();
-      if(!vec.empty())
+      auto arg = result["config"].as< std::string >();
+      if(!arg.empty())
       {
-        conffname = vec;
+        conffname = arg;
       }
     }
   }
