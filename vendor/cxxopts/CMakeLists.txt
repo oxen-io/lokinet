@@ -90,15 +90,15 @@ export(TARGETS cxxopts NAMESPACE cxxopts::
     FILE ${PROJECT_BINARY_DIR}/${targets_export_name}.cmake)
 
 # Install version, config and target files.
-install(
-    FILES ${project_config} ${version_config}
-    DESTINATION ${CXXOPTS_CMAKE_DIR})
-install(EXPORT ${targets_export_name} DESTINATION ${CXXOPTS_CMAKE_DIR}
-    NAMESPACE cxxopts::)
+#install(
+#    FILES ${project_config} ${version_config}
+#    DESTINATION ${CXXOPTS_CMAKE_DIR})
+#install(EXPORT ${targets_export_name} DESTINATION ${CXXOPTS_CMAKE_DIR}
+#    NAMESPACE cxxopts::)
 
 # Install the header file and export the target
-install(TARGETS cxxopts EXPORT ${targets_export_name} DESTINATION lib)
-install(FILES ${PROJECT_SOURCE_DIR}/include/cxxopts.hpp DESTINATION include)
+#install(TARGETS cxxopts EXPORT ${targets_export_name} DESTINATION lib)
+#install(FILES ${PROJECT_SOURCE_DIR}/include/cxxopts.hpp DESTINATION include)
 
 add_subdirectory(src)
 add_subdirectory(test)
