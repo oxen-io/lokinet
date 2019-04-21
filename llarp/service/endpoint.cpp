@@ -600,50 +600,6 @@ namespace llarp
     }
 
     bool
-    Endpoint::CachedTagResult::HandleResponse(
-        const std::set< IntroSet >& introsets)
-    {
-      auto now = parent->Now();
-
-      for(const auto& introset : introsets)
-        if(result.insert(introset).second)
-          lastModified = now;
-      LogInfo("Tag result for ", tag.ToString(), " got ", introsets.size(),
-              " results from lookup, have ", result.size(),
-              " cached last modified at ", lastModified, " is ",
-              now - lastModified, "ms old");
-      return true;
-    }
-
-    void
-    Endpoint::CachedTagResult::Expire(llarp_time_t now)
-    {
-      auto itr = result.begin();
-      while(itr != result.end())
-      {
-        if(itr->HasExpiredIntros(now))
-        {
-          LogInfo("Removing expired tag Entry ", itr->A.Name());
-          itr          = result.erase(itr);
-          lastModified = now;
-        }
-        else
-        {
-          ++itr;
-        }
-      }
-    }
-
-    routing::IMessage*
-    Endpoint::CachedTagResult::BuildRequestMessage(uint64_t txid)
-    {
-      routing::DHTMessage* msg = new routing::DHTMessage();
-      msg->M.emplace_back(new dht::FindIntroMessage(tag, txid));
-      lastRequest = parent->Now();
-      return msg;
-    }
-
-    bool
     Endpoint::PublishIntroSet(AbstractRouter* r)
     {
       // publish via near router

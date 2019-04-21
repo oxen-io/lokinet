@@ -7,11 +7,12 @@
 #include <path/path.hpp>
 #include <path/pathbuilder.hpp>
 #include <service/address.hpp>
-#include <service/Identity.hpp>
 #include <service/handler.hpp>
+#include <service/Identity.hpp>
 #include <service/pendingbuffer.hpp>
-#include <service/sendcontext.hpp>
 #include <service/protocol.hpp>
+#include <service/sendcontext.hpp>
+#include <service/tag_lookup_job.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -443,68 +444,6 @@ namespace llarp
           std::unordered_map< ConvoTag, Session, ConvoTag::Hash >;
 
       ConvoMap_t m_Sessions;
-
-      struct CachedTagResult
-      {
-        const static llarp_time_t TTL = 10000;
-        llarp_time_t lastRequest      = 0;
-        llarp_time_t lastModified     = 0;
-        std::set< IntroSet > result;
-        Tag tag;
-        Endpoint* parent;
-
-        CachedTagResult(const Tag& t, Endpoint* p) : tag(t), parent(p)
-        {
-        }
-
-        ~CachedTagResult()
-        {
-        }
-
-        void
-        Expire(llarp_time_t now);
-
-        bool
-        ShouldRefresh(llarp_time_t now) const
-        {
-          if(now <= lastRequest)
-            return false;
-          return (now - lastRequest) > TTL;
-        }
-
-        llarp::routing::IMessage*
-        BuildRequestMessage(uint64_t txid);
-
-        bool
-        HandleResponse(const std::set< IntroSet >& results);
-      };
-
-      struct TagLookupJob : public IServiceLookup
-      {
-        TagLookupJob(Endpoint* parent, CachedTagResult* result)
-            : IServiceLookup(parent, parent->GenTXID(), "taglookup")
-            , m_result(result)
-        {
-        }
-
-        ~TagLookupJob()
-        {
-        }
-
-        llarp::routing::IMessage*
-        BuildRequestMessage()
-        {
-          return m_result->BuildRequestMessage(txid);
-        }
-
-        bool
-        HandleResponse(const std::set< IntroSet >& results)
-        {
-          return m_result->HandleResponse(results);
-        }
-
-        CachedTagResult* m_result;
-      };
 
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
     };
