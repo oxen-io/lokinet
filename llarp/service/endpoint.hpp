@@ -12,6 +12,7 @@
 #include <service/pendingbuffer.hpp>
 #include <service/protocol.hpp>
 #include <service/sendcontext.hpp>
+#include <service/session.hpp>
 #include <service/tag_lookup_job.hpp>
 
 // minimum time between introset shifts
@@ -69,18 +70,18 @@ namespace llarp
       }
 
       /// router's logic
-      llarp::Logic*
+      Logic*
       RouterLogic();
 
       /// endpoint's logic
-      llarp::Logic*
+      Logic*
       EndpointLogic();
 
       /// borrow endpoint's net loop for sending data to user
       llarp_ev_loop_ptr
       EndpointNetLoop();
 
-      llarp::Crypto*
+      Crypto*
       Crypto();
 
       llarp_threadpool*
@@ -117,14 +118,14 @@ namespace llarp
       PublishIntroSetVia(AbstractRouter* r, path::Path* p);
 
       bool
-      HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg) override;
+      HandleGotIntroMessage(const dht::GotIntroMessage* msg) override;
 
       bool
-      HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg) override;
+      HandleGotRouterMessage(const dht::GotRouterMessage* msg) override;
 
       bool
       HandleHiddenServiceFrame(path::Path* p,
-                               const llarp::service::ProtocolFrame* msg);
+                               const service::ProtocolFrame* msg);
 
       /// return true if we have an established path to a hidden service
       bool
@@ -221,7 +222,7 @@ namespace llarp
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
       using SNodeEnsureHook =
-          std::function< void(RouterID, llarp::exit::BaseSession*) >;
+          std::function< void(RouterID, exit::BaseSession*) >;
 
       /// ensure a path to a service node by public key
       void
@@ -328,12 +329,12 @@ namespace llarp
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
-      std::unique_ptr< llarp::exit::BaseSession > m_Exit;
+      std::unique_ptr< exit::BaseSession > m_Exit;
 
      private:
       AbstractRouter* m_Router;
       llarp_threadpool* m_IsolatedWorker  = nullptr;
-      llarp::Logic* m_IsolatedLogic       = nullptr;
+      Logic* m_IsolatedLogic              = nullptr;
       llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
@@ -352,10 +353,8 @@ namespace llarp
 
       Sessions m_DeadSessions;
 
-      using SNodeSessions =
-          std::unordered_multimap< RouterID,
-                                   std::unique_ptr< llarp::exit::BaseSession >,
-                                   RouterID::Hash >;
+      using SNodeSessions = std::unordered_multimap<
+          RouterID, std::unique_ptr< exit::BaseSession >, RouterID::Hash >;
 
       SNodeSessions m_SNodeSessions;
 
@@ -408,36 +407,6 @@ namespace llarp
       std::set< Tag > m_PrefetchTags;
       /// on initialize functions
       std::list< std::function< bool(void) > > m_OnInit;
-
-      struct Session
-      {
-        Introduction replyIntro;
-        SharedSecret sharedKey;
-        ServiceInfo remote;
-        Introduction intro;
-        llarp_time_t lastUsed = 0;
-        uint64_t seqno        = 0;
-
-        util::StatusObject
-        ExtractStatus() const
-        {
-          util::StatusObject obj{{"lastUsed", lastUsed},
-                                 {"replyIntro", replyIntro.ExtractStatus()},
-                                 {"remote", remote.Addr().ToString()},
-                                 {"seqno", seqno},
-                                 {"intro", intro.ExtractStatus()}};
-          return obj;
-        };
-
-        bool
-        IsExpired(llarp_time_t now,
-                  llarp_time_t lifetime = (path::default_lifetime * 2)) const
-        {
-          if(now <= lastUsed)
-            return false;
-          return now - lastUsed > lifetime;
-        }
-      };
 
       /// conversations
       using ConvoMap_t =

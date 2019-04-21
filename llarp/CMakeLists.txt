@@ -230,6 +230,7 @@ set(LIB_SRC
   service/pendingbuffer.cpp
   service/protocol.cpp
   service/sendcontext.cpp
+  service/session.cpp
   service/tag.cpp
   service/tag_lookup_job.cpp
   service/types.cpp
