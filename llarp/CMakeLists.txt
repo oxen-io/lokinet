@@ -214,6 +214,8 @@ set(LIB_SRC
   routing/path_latency.cpp
   routing/path_transfer.cpp
   rpc/rpc.cpp
+  service/async_key_exchange.cpp
+  service/hidden_service_address_lookup.cpp
   service/Identity.cpp
   service/Intro.cpp
   service/IntroSet.cpp
@@ -224,6 +226,7 @@ set(LIB_SRC
   service/handler.cpp
   service/info.cpp
   service/lookup.cpp
+  service/outbound_context.cpp
   service/pendingbuffer.cpp
   service/protocol.cpp
   service/sendcontext.cpp
