@@ -39,7 +39,7 @@ namespace llarp
       if(k == "tag")
       {
         m_Tag = v;
-        llarp::LogInfo("Setting tag to ", v);
+        LogInfo("Setting tag to ", v);
       }
       if(k == "prefetch-tag")
       {
@@ -108,8 +108,8 @@ namespace llarp
                    && intro.expiresAt - now > (2 * 60 * 1000);
              }))
       {
-        llarp::LogWarn("could not publish descriptors for endpoint ", Name(),
-                       " because we couldn't get enough valid introductions");
+        LogWarn("could not publish descriptors for endpoint ", Name(),
+                " because we couldn't get enough valid introductions");
         if(ShouldBuildMore(now) || forceRebuild)
           ManualRebuild(1);
         return;
@@ -123,22 +123,22 @@ namespace llarp
       }
       if(m_IntroSet.I.size() == 0)
       {
-        llarp::LogWarn("not enough intros to publish introset for ", Name());
+        LogWarn("not enough intros to publish introset for ", Name());
         return;
       }
       m_IntroSet.topic = m_Tag;
       if(!m_Identity.SignIntroSet(m_IntroSet, m_Router->crypto(), now))
       {
-        llarp::LogWarn("failed to sign introset for endpoint ", Name());
+        LogWarn("failed to sign introset for endpoint ", Name());
         return;
       }
       if(PublishIntroSet(m_Router))
       {
-        llarp::LogInfo("(re)publishing introset for endpoint ", Name());
+        LogInfo("(re)publishing introset for endpoint ", Name());
       }
       else
       {
-        llarp::LogWarn("failed to publish intro set for endpoint ", Name());
+        LogWarn("failed to publish intro set for endpoint ", Name());
       }
     }
 
@@ -201,7 +201,7 @@ namespace llarp
       {
         RegenAndPublishIntroSet(now);
       }
-      else if(NumInStatus(llarp::path::ePathEstablished) < 3)
+      else if(NumInStatus(path::ePathEstablished) < 3)
       {
         if(m_IntroSet.HasExpiredIntros(now))
           ManualRebuild(1);
@@ -233,7 +233,7 @@ namespace llarp
           {
             std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
 
-            llarp::LogInfo(lookup->name, " timed out txid=", lookup->txid);
+            LogInfo(lookup->name, " timed out txid=", lookup->txid);
             lookup->HandleResponse({});
             itr = m_PendingLookups.erase(itr);
           }
@@ -248,7 +248,7 @@ namespace llarp
         {
           if(itr->second.IsExpired(now))
           {
-            llarp::LogInfo("lookup for ", itr->first, " timed out");
+            LogInfo("lookup for ", itr->first, " timed out");
             itr = m_PendingRouters.erase(itr);
           }
           else
@@ -267,7 +267,7 @@ namespace llarp
                     __attribute__((unused)) OutboundContext* ctx) {},
                  10000))
           {
-            llarp::LogWarn("failed to ensure path to ", addr);
+            LogWarn("failed to ensure path to ", addr);
           }
         }
       }
@@ -288,12 +288,12 @@ namespace llarp
           llarp_buffer_t buf(tmp);
           if(SendToServiceOrQueue(introset.A.Addr().data(), buf,
                                   eProtocolControl))
-            llarp::LogInfo(Name(), " send message to ", introset.A.Addr(),
-                           " for tag ", tag.ToString());
+            LogInfo(Name(), " send message to ", introset.A.Addr(), " for tag ",
+                    tag.ToString());
           else
 
-            llarp::LogWarn(Name(), " failed to send/queue data to ",
-                           introset.A.Addr(), " for tag ", tag.ToString());
+            LogWarn(Name(), " failed to send/queue data to ", introset.A.Addr(),
+                    " for tag ", tag.ToString());
         }
         itr->second.Expire(now);
         if(itr->second.ShouldRefresh(now))
@@ -303,11 +303,11 @@ namespace llarp
           {
             auto job = new TagLookupJob(this, &itr->second);
             if(!job->SendRequestViaPath(path, Router()))
-              llarp::LogError(Name(), " failed to send tag lookup");
+              LogError(Name(), " failed to send tag lookup");
           }
           else
           {
-            llarp::LogError(Name(), " has no paths for tag lookup");
+            LogError(Name(), " has no paths for tag lookup");
           }
         }
       }
@@ -356,7 +356,7 @@ namespace llarp
     Endpoint::OutboundContext::Stop()
     {
       markedBad = true;
-      return llarp::path::Builder::Stop();
+      return path::Builder::Stop();
     }
 
     bool
@@ -372,7 +372,7 @@ namespace llarp
       {
         item.second->Stop();
       }
-      return llarp::path::Builder::Stop();
+      return path::Builder::Stop();
     }
 
     bool
@@ -385,7 +385,7 @@ namespace llarp
     uint64_t
     Endpoint::GenTXID()
     {
-      uint64_t txid = llarp::randint();
+      uint64_t txid = randint();
       while(m_PendingLookups.find(txid) != m_PendingLookups.end())
         ++txid;
       return txid;
@@ -421,7 +421,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleGotIntroMessage(const llarp::dht::GotIntroMessage* msg)
+    Endpoint::HandleGotIntroMessage(const dht::GotIntroMessage* msg)
     {
       auto crypto = m_Router->crypto();
       std::set< IntroSet > remote;
@@ -435,7 +435,7 @@ namespace llarp
         }
         if(m_Identity.pub == introset.A && m_CurrentPublishTX == msg->T)
         {
-          llarp::LogInfo(
+          LogInfo(
               "got introset publish confirmation for hidden service endpoint ",
               Name());
           IntroSetPublished();
@@ -449,8 +449,8 @@ namespace llarp
       auto itr = m_PendingLookups.find(msg->T);
       if(itr == m_PendingLookups.end())
       {
-        llarp::LogWarn("invalid lookup response for hidden service endpoint ",
-                       Name(), " txid=", msg->T);
+        LogWarn("invalid lookup response for hidden service endpoint ", Name(),
+                " txid=", msg->T);
         return true;
       }
       std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
@@ -573,7 +573,7 @@ namespace llarp
       {
         if(!m_Identity.EnsureKeys(m_Keyfile, crypto))
         {
-          llarp::LogWarn("Can't ensure keyfile [", m_Keyfile, "]");
+          LogWarn("Can't ensure keyfile [", m_Keyfile, "]");
           return false;
         }
       }
@@ -600,7 +600,7 @@ namespace llarp
           m_OnInit.pop_front();
         else
         {
-          llarp::LogWarn("Can't call init of network isolation");
+          LogWarn("Can't call init of network isolation");
           return false;
         }
       }
@@ -620,10 +620,10 @@ namespace llarp
       for(const auto& introset : introsets)
         if(result.insert(introset).second)
           lastModified = now;
-      llarp::LogInfo("Tag result for ", tag.ToString(), " got ",
-                     introsets.size(), " results from lookup, have ",
-                     result.size(), " cached last modified at ", lastModified,
-                     " is ", now - lastModified, "ms old");
+      LogInfo("Tag result for ", tag.ToString(), " got ", introsets.size(),
+              " results from lookup, have ", result.size(),
+              " cached last modified at ", lastModified, " is ",
+              now - lastModified, "ms old");
       return true;
     }
 
@@ -635,7 +635,7 @@ namespace llarp
       {
         if(itr->HasExpiredIntros(now))
         {
-          llarp::LogInfo("Removing expired tag Entry ", itr->A.Name());
+          LogInfo("Removing expired tag Entry ", itr->A.Name());
           itr          = result.erase(itr);
           lastModified = now;
         }
@@ -646,11 +646,11 @@ namespace llarp
       }
     }
 
-    llarp::routing::IMessage*
+    routing::IMessage*
     Endpoint::CachedTagResult::BuildRequestMessage(uint64_t txid)
     {
-      llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-      msg->M.emplace_back(new llarp::dht::FindIntroMessage(tag, txid));
+      routing::DHTMessage* msg = new routing::DHTMessage();
+      msg->M.emplace_back(new dht::FindIntroMessage(tag, txid));
       lastRequest = parent->Now();
       return msg;
     }
@@ -676,12 +676,11 @@ namespace llarp
       {
       }
 
-      llarp::routing::IMessage*
+      routing::IMessage*
       BuildRequestMessage()
       {
-        llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-        msg->M.emplace_back(
-            new llarp::dht::PublishIntroMessage(m_IntroSet, txid, 1));
+        routing::DHTMessage* msg = new routing::DHTMessage();
+        msg->M.emplace_back(new dht::PublishIntroMessage(m_IntroSet, txid, 1));
         return msg;
       }
 
@@ -705,7 +704,7 @@ namespace llarp
       {
         RegenAndPublishIntroSet(now);
       }
-      else if(NumInStatus(llarp::path::ePathEstablished) < 3)
+      else if(NumInStatus(path::ePathEstablished) < 3)
       {
         if(m_IntroSet.HasExpiredIntros(now))
           ManualRebuild(1);
@@ -727,7 +726,7 @@ namespace llarp
     bool
     Endpoint::ShouldPublishDescriptors(llarp_time_t now) const
     {
-      if(NumInStatus(llarp::path::ePathEstablished) < 3)
+      if(NumInStatus(path::ePathEstablished) < 3)
         return false;
       // make sure we have all paths that are established
       // in our introset
@@ -751,7 +750,7 @@ namespace llarp
     Endpoint::IntroSetPublished()
     {
       m_LastPublish = Now();
-      llarp::LogInfo(Name(), " IntroSet publish confirmed");
+      LogInfo(Name(), " IntroSet publish confirmed");
     }
 
     struct HiddenServiceAddressLookup : public IServiceLookup
@@ -775,7 +774,7 @@ namespace llarp
       bool
       HandleResponse(const std::set< IntroSet >& results)
       {
-        llarp::LogInfo("found ", results.size(), " for ", remote.ToString());
+        LogInfo("found ", results.size(), " for ", remote.ToString());
         if(results.size() > 0)
         {
           IntroSet selected;
@@ -789,11 +788,11 @@ namespace llarp
         return handle(remote, nullptr, endpoint);
       }
 
-      llarp::routing::IMessage*
+      routing::IMessage*
       BuildRequestMessage()
       {
-        llarp::routing::DHTMessage* msg = new llarp::routing::DHTMessage();
-        msg->M.emplace_back(new llarp::dht::FindIntroMessage(txid, remote, 0));
+        routing::DHTMessage* msg = new routing::DHTMessage();
+        msg->M.emplace_back(new dht::FindIntroMessage(txid, remote, 0));
         return msg;
       }
     };
@@ -823,7 +822,7 @@ namespace llarp
     }
 
     void
-    Endpoint::PutNewOutboundContext(const llarp::service::IntroSet& introset)
+    Endpoint::PutNewOutboundContext(const service::IntroSet& introset)
     {
       Address addr;
       introset.A.CalculateAddress(addr.as_array());
@@ -845,7 +844,7 @@ namespace llarp
 
       OutboundContext* ctx = new OutboundContext(introset, this);
       m_RemoteSessions.emplace(addr, std::unique_ptr< OutboundContext >(ctx));
-      llarp::LogInfo("Created New outbound context for ", addr.ToString());
+      LogInfo("Created New outbound context for ", addr.ToString());
 
       // inform pending
       auto range = m_PendingServiceLookups.equal_range(addr);
@@ -859,7 +858,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleGotRouterMessage(const llarp::dht::GotRouterMessage* msg)
+    Endpoint::HandleGotRouterMessage(const dht::GotRouterMessage* msg)
     {
       if(msg->R.size() == 1)
       {
@@ -903,12 +902,12 @@ namespace llarp
 
         if(path && path->SendRoutingMessage(&msg, m_Router))
         {
-          llarp::LogInfo(Name(), " looking up ", router);
+          LogInfo(Name(), " looking up ", router);
           m_PendingRouters.emplace(router, RouterLookupJob(this));
           return true;
         }
         else
-          llarp::LogError("failed to send request for router lookup");
+          LogError("failed to send request for router lookup");
       }
       return false;
     }
@@ -931,8 +930,8 @@ namespace llarp
     bool
     Endpoint::HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t seq)
     {
-      llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
-                     p->Endpoint(), " via ", dst);
+      LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(),
+              " via ", dst);
       return true;
     }
 
@@ -943,12 +942,12 @@ namespace llarp
       // pick another intro
       if(dst == remoteIntro.pathID && remoteIntro.router == p->Endpoint())
       {
-        llarp::LogWarn(Name(), " message ", seq, " dropped by endpoint ",
-                       p->Endpoint(), " via ", dst);
+        LogWarn(Name(), " message ", seq, " dropped by endpoint ",
+                p->Endpoint(), " via ", dst);
         if(MarkCurrentIntroBad(Now()))
         {
-          llarp::LogInfo(Name(), " switched intros to ", remoteIntro.router,
-                         " via ", remoteIntro.pathID);
+          LogInfo(Name(), " switched intros to ", remoteIntro.router, " via ",
+                  remoteIntro.pathID);
         }
         UpdateIntroSet(true);
       }
@@ -968,7 +967,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::HasPathToSNode(const llarp::RouterID& ident) const
+    Endpoint::HasPathToSNode(const RouterID& ident) const
     {
       auto range = m_SNodeSessions.equal_range(ident);
       auto itr   = range.first;
@@ -1147,8 +1146,8 @@ namespace llarp
       auto now = Now();
       if(introset == nullptr || introset->IsExpired(now))
       {
-        llarp::LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
-                        endpoint);
+        LogError(Name(), " failed to lookup ", addr.ToString(), " from ",
+                 endpoint);
         m_ServiceLookupFails[endpoint] = m_ServiceLookupFails[endpoint] + 1;
         // inform one
         auto itr = m_PendingServiceLookups.find(addr);
@@ -1177,11 +1176,11 @@ namespace llarp
         path = GetEstablishedPathClosestTo(remote.ToRouter());
       if(!path)
       {
-        llarp::LogWarn("No outbound path for lookup yet");
+        LogWarn("No outbound path for lookup yet");
         BuildOne();
         return false;
       }
-      llarp::LogInfo(Name(), " Ensure Path to ", remote.ToString());
+      LogInfo(Name(), " Ensure Path to ", remote.ToString());
       {
         auto itr = m_RemoteSessions.find(remote);
         if(itr != m_RemoteSessions.end())
@@ -1193,8 +1192,8 @@ namespace llarp
 
       if(m_PendingServiceLookups.count(remote) >= MaxConcurrentLookups)
       {
-        llarp::LogWarn(Name(), " has too many pending service lookups for ",
-                       remote.ToString());
+        LogWarn(Name(), " has too many pending service lookups for ",
+                remote.ToString());
         return false;
       }
 
@@ -1203,13 +1202,13 @@ namespace llarp
           std::bind(&Endpoint::OnLookup, this, std::placeholders::_1,
                     std::placeholders::_2, std::placeholders::_3),
           remote, GenTXID());
-      llarp::LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
+      LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
       if(job->SendRequestViaPath(path, Router()))
       {
         m_PendingServiceLookups.emplace(remote, hook);
         return true;
       }
-      llarp::LogError("send via path failed");
+      LogError("send via path failed");
       return false;
     }
 
@@ -1254,19 +1253,19 @@ namespace llarp
       {
         if(currentIntroSet.T >= i->T)
         {
-          llarp::LogInfo("introset is old, dropping");
+          LogInfo("introset is old, dropping");
           return true;
         }
         auto now = Now();
         if(i->IsExpired(now))
         {
-          llarp::LogError("got expired introset from lookup from ", endpoint);
+          LogError("got expired introset from lookup from ", endpoint);
           return true;
         }
         currentIntroSet = *i;
         if(!ShiftIntroduction())
         {
-          llarp::LogWarn("failed to pick new intro during introset update");
+          LogWarn("failed to pick new intro during introset update");
         }
         if(GetPathByRouter(m_NextIntro.router) == nullptr)
           BuildOneAlignedTo(m_NextIntro.router);
@@ -1316,7 +1315,7 @@ namespace llarp
     Endpoint::SendToSNodeOrQueue(const RouterID& addr,
                                  const llarp_buffer_t& buf)
     {
-      llarp::net::IPv4Packet pkt;
+      net::IPv4Packet pkt;
       if(!pkt.Load(buf))
         return false;
       auto range = m_SNodeSessions.equal_range(addr);
@@ -1325,8 +1324,7 @@ namespace llarp
       {
         if(itr->second->IsReady())
         {
-          if(itr->second->QueueUpstreamTraffic(pkt,
-                                               llarp::routing::ExitPadSize))
+          if(itr->second->QueueUpstreamTraffic(pkt, routing::ExitPadSize))
           {
             return true;
           }
@@ -1392,11 +1390,10 @@ namespace llarp
               transfer.P = remoteIntro.pathID;
               if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
               {
-                llarp::LogError("failed to encrypt and sign");
+                LogError("failed to encrypt and sign");
                 return false;
               }
-              llarp::LogDebug(Name(), " send ", data.sz, " via ",
-                              remoteIntro.router);
+              LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
               return p->SendRoutingMessage(&transfer, Router());
             }
           }
@@ -1430,7 +1427,7 @@ namespace llarp
     bool
     Endpoint::OutboundContext::BuildOneAlignedTo(const RouterID& remote)
     {
-      llarp::LogInfo(Name(), " building path to ", remote);
+      LogInfo(Name(), " building path to ", remote);
       auto nodedb = m_Endpoint->Router()->nodedb();
       std::vector< RouterContact > hops;
       hops.resize(numHops);
@@ -1519,7 +1516,7 @@ namespace llarp
       }
       else
       {
-        llarp::LogInfo(Name(), " updating introset");
+        LogInfo(Name(), " updating introset");
         UpdateIntroSet(true);
       }
       return shiftedIntro;
@@ -1571,8 +1568,8 @@ namespace llarp
 
     struct AsyncKeyExchange
     {
-      llarp::Logic* logic;
-      llarp::Crypto* crypto;
+      Logic* logic;
+      Crypto* crypto;
       SharedSecret sharedKey;
       ServiceInfo remote;
       const Identity& m_LocalIdentity;
@@ -1585,7 +1582,7 @@ namespace llarp
       IDataHandler* handler;
       ConvoTag tag;
 
-      AsyncKeyExchange(llarp::Logic* l, llarp::Crypto* c, const ServiceInfo& r,
+      AsyncKeyExchange(Logic* l, Crypto* c, const ServiceInfo& r,
                        const Identity& localident,
                        const PQPubKey& introsetPubKey,
                        const Introduction& remote, IDataHandler* h,
@@ -1633,7 +1630,7 @@ namespace llarp
         if(!self->m_LocalIdentity.KeyExchange(dh_client, sharedSecret,
                                               self->remote, self->frame.N))
         {
-          llarp::LogError("failed to derive x25519 shared key component");
+          LogError("failed to derive x25519 shared key component");
         }
         std::array< byte_t, 64 > tmp = {{0}};
         // K
@@ -1655,7 +1652,7 @@ namespace llarp
           self->logic->queue_job({self, &Result});
         else
         {
-          llarp::LogError("failed to encrypt and sign");
+          LogError("failed to encrypt and sign");
           delete self;
         }
       }
@@ -1680,8 +1677,8 @@ namespace llarp
         if(path == nullptr)
         {
           BuildOneAlignedTo(remoteIntro.router);
-          llarp::LogWarn(Name(), " dropping intro frame, no path to ",
-                         remoteIntro.router);
+          LogWarn(Name(), " dropping intro frame, no path to ",
+                  remoteIntro.router);
           return;
         }
       }
@@ -1734,9 +1731,8 @@ namespace llarp
       }
       else
       {
-        llarp::LogWarn(
-            "Cannot update introset no path for outbound session to ",
-            currentIntroSet.A.Addr().ToString());
+        LogWarn("Cannot update introset no path for outbound session to ",
+                currentIntroSet.A.Addr().ToString());
       }
     }
 
@@ -1786,7 +1782,7 @@ namespace llarp
         {
           // we can safely set remoteIntro to the next one
           SwapIntros();
-          llarp::LogInfo(Name(), " swapped intro");
+          LogInfo(Name(), " swapped intro");
         }
       }
       // lookup router in intro if set and unknown
@@ -1836,7 +1832,7 @@ namespace llarp
     Endpoint::OutboundContext::SelectHop(llarp_nodedb* db,
                                          const RouterContact& prev,
                                          RouterContact& cur, size_t hop,
-                                         llarp::path::PathRole roles)
+                                         path::PathRole roles)
     {
       if(remoteIntro.router.IsZero())
       {
@@ -1896,19 +1892,19 @@ namespace llarp
                  && (dlt > buildIntervalLimit));
     }
 
-    llarp::Logic*
+    Logic*
     Endpoint::RouterLogic()
     {
       return m_Router->logic();
     }
 
-    llarp::Logic*
+    Logic*
     Endpoint::EndpointLogic()
     {
       return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic();
     }
 
-    llarp::Crypto*
+    Crypto*
     Endpoint::Crypto()
     {
       return m_Router->crypto();
