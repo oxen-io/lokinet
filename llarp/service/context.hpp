@@ -68,7 +68,7 @@ namespace llarp
       void
       ForEachService(std::function< bool(const std::string &,
                                          const std::unique_ptr< Endpoint > &) >
-                         visit);
+                         visit) const;
 
       /// hint at possible path usage and trigger building early
       bool

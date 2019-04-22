@@ -50,8 +50,7 @@ struct DemoCall : public abyss::http::IRPCClientHandler
   }
 
   void
-  PopulateReqHeaders(ABSL_ATTRIBUTE_UNUSED
-                     abyss::http::Headers_t& hdr) override
+  PopulateReqHeaders(ABSL_ATTRIBUTE_UNUSED abyss::http::Headers_t& hdr) override
   {
   }
 

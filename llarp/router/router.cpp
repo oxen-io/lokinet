@@ -1569,7 +1569,17 @@ namespace llarp
     llarp_dht_context_start(dht(), pubkey());
     ScheduleTicker(1000);
     _running.store(true);
+    _startedAt = Now();
     return _running;
+  }
+
+  llarp_time_t
+  Router::Uptime() const
+  {
+    const llarp_time_t _now = Now();
+    if(_startedAt && _now > _startedAt)
+      return _now - _startedAt;
+    return 0;
   }
 
   static void

@@ -172,24 +172,26 @@ namespace llarp
     IHopHandler*
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
-      auto own = MapGet(m_OurPaths, id,
-                        [](__attribute__((unused)) const PathSet* s) -> bool {
-                          // TODO: is this right?
-                          return true;
-                        },
-                        [remote, id](PathSet* p) -> IHopHandler* {
-                          return p->GetByUpstream(remote, id);
-                        });
+      auto own = MapGet(
+          m_OurPaths, id,
+          [](__attribute__((unused)) const PathSet* s) -> bool {
+            // TODO: is this right?
+            return true;
+          },
+          [remote, id](PathSet* p) -> IHopHandler* {
+            return p->GetByUpstream(remote, id);
+          });
       if(own)
         return own;
 
-      return MapGet(m_TransitPaths, id,
-                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return hop->info.upstream == remote;
-                    },
-                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-                      return h.get();
-                    });
+      return MapGet(
+          m_TransitPaths, id,
+          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return hop->info.upstream == remote;
+          },
+          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+            return h.get();
+          });
     }
 
     bool
@@ -206,13 +208,14 @@ namespace llarp
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
-      return MapGet(m_TransitPaths, id,
-                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return hop->info.downstream == remote;
-                    },
-                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-                      return h.get();
-                    });
+      return MapGet(
+          m_TransitPaths, id,
+          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return hop->info.downstream == remote;
+          },
+          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+            return h.get();
+          });
     }
 
     PathSet*

@@ -195,7 +195,7 @@ namespace llarp
       }
       currentConvoTag.Randomize();
       AsyncKeyExchange* ex = new AsyncKeyExchange(
-          m_Endpoint->RouterLogic(), m_Endpoint->Crypto(), remoteIdent,
+          m_Endpoint->RouterLogic(), m_Endpoint->GetCrypto(), remoteIdent,
           m_Endpoint->GetIdentity(), currentIntroSet.K, remoteIntro,
           m_DataHandler, currentConvoTag);
 

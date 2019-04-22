@@ -539,6 +539,14 @@ namespace llarp
       llarp::LogInfo(Name(), " allocated up to ", m_MaxIP, " on range ",
                      m_OurRange);
       MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());
+      if(m_OnUp)
+      {
+        std::unordered_map< std::string, std::string > env = NotifyParams();
+        env.emplace("IP_ADDR", m_OurIP.ToString());
+        env.emplace("IF_ADDR", m_OurRange.ToString());
+        env.emplace("IF_NAME", tunif.ifname);
+        m_OnUp->NotifyAsync(std::move(env));
+      }
       return true;
     }
 

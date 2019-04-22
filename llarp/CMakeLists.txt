@@ -173,6 +173,7 @@ set(LIB_SRC
   handlers/exit.cpp
   handlers/null.cpp
   handlers/tun.cpp
+  hook/shell.cpp
   iwp/linklayer.cpp
   iwp/outermessage.cpp
   iwp/iwp.cpp

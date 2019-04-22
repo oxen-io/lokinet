@@ -643,8 +643,7 @@ extern "C"
   const char *
   handleBaseCmdLineArgs(int argc, char *argv[])
   {
-
-	// clang-format off
+    // clang-format off
     cxxopts::Options options(
 		"lokinet",
 		"Lokinet is a private, decentralized and IP based overlay network for the internet"
@@ -652,9 +651,9 @@ extern "C"
     options.add_options()
 		("c,config", "Config file", cxxopts::value< std::string >()->default_value("daemon.ini"))
 		("o,logLevel", "logging level");
-	// clang-format on
+    // clang-format on
 
-    auto result = options.parse(argc, argv);
+    auto result          = options.parse(argc, argv);
     std::string logLevel = result["logLevel"].as< std::string >();
 
     if(logLevel == "debug")
@@ -674,9 +673,10 @@ extern "C"
       cSetLogLevel(eLogError);
     }
 
-	// this isn't thread safe, but reconfiguring during run is likely unsafe either way
-	static std::string confname = result["config"].as< std::string >();
+    // this isn't thread safe, but reconfiguring during run is likely unsafe
+    // either way
+    static std::string confname = result["config"].as< std::string >();
 
-	return confname.c_str();
+    return confname.c_str();
   }
 }

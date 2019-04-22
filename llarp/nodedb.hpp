@@ -16,7 +16,6 @@
 typedef SSIZE_T ssize_t;
 #endif
 
-
 /**
  * nodedb.hpp
  *

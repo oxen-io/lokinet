@@ -206,6 +206,10 @@ namespace llarp
     llarp_threadpool *disk;
     llarp_dht_context *_dht = nullptr;
     llarp_nodedb *_nodedb;
+    llarp_time_t _startedAt;
+
+    llarp_time_t
+    Uptime() const override;
 
     bool
     Sign(Signature &sig, const llarp_buffer_t &buf) const override;

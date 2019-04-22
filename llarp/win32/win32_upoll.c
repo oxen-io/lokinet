@@ -184,7 +184,7 @@ upoll_wait_select(upoll_t* upq, upoll_event_t* evs, int nev, int timeout)
   if(nev > FD_SETSIZE)
     nev = FD_SETSIZE;
 
-  unote_t** nvec = calloc(nev, sizeof(unote_t *));
+  unote_t** nvec = calloc(nev, sizeof(unote_t*));
   int i, maxfd = 0, e = 0, nfds = 0;
 
   fd_set pollin, pollout, pollerr;

@@ -16,6 +16,7 @@
 #include <util/logic.hpp>
 #include <util/str.hpp>
 #include <util/buffer.hpp>
+#include <hook/shell.hpp>
 
 namespace llarp
 {
@@ -62,6 +63,30 @@ namespace llarp
       if(k == "bundle-rc")
       {
         m_BundleRC = IsTrueValue(v.c_str());
+      }
+      if(k == "on-up")
+      {
+        m_OnUp = hooks::ExecShellBackend(v);
+        if(m_OnUp)
+          LogInfo(Name(), " added on up script: ", v);
+        else
+          LogError(Name(), " failed to add on up script");
+      }
+      if(k == "on-down")
+      {
+        m_OnDown = hooks::ExecShellBackend(v);
+        if(m_OnDown)
+          LogInfo(Name(), " added on down script: ", v);
+        else
+          LogError(Name(), " failed to add on down script");
+      }
+      if(k == "on-ready")
+      {
+        m_OnReady = hooks::ExecShellBackend(v);
+        if(m_OnReady)
+          LogInfo(Name(), " added on ready script: ", v);
+        else
+          LogError(Name(), " failed to add on ready script");
       }
       return true;
     }
@@ -153,6 +178,23 @@ namespace llarp
         itr->second->Flush();
         ++itr;
       }
+    }
+
+    bool
+    Endpoint::IsReady() const
+    {
+      const auto now = Now();
+      if(m_IntroSet.I.size() == 0)
+        return false;
+      if(m_IntroSet.IsExpired(now))
+        return false;
+      return true;
+    }
+
+    bool
+    Endpoint::IntrosetIsStale() const
+    {
+      return m_IntroSet.HasExpiredIntros(Now());
     }
 
     util::StatusObject
@@ -367,6 +409,8 @@ namespace llarp
       {
         item.second->Stop();
       }
+      if(m_OnDown)
+        m_OnDown->NotifyAsync(NotifyParams());
       return path::Builder::Stop();
     }
 
@@ -597,6 +641,12 @@ namespace llarp
 
     Endpoint::~Endpoint()
     {
+      if(m_OnUp)
+        m_OnUp->Stop();
+      if(m_OnDown)
+        m_OnDown->Stop();
+      if(m_OnReady)
+        m_OnReady->Stop();
     }
 
     bool
@@ -695,6 +745,9 @@ namespace llarp
     {
       m_LastPublish = Now();
       LogInfo(Name(), " IntroSet publish confirmed");
+      if(m_OnReady)
+        m_OnReady->NotifyAsync(NotifyParams());
+      m_OnReady = nullptr;
     }
 
     bool
@@ -835,6 +888,12 @@ namespace llarp
       return true;
     }
 
+    std::unordered_map< std::string, std::string >
+    Endpoint::NotifyParams() const
+    {
+      return {{"LOKINET_ADDR", m_Identity.pub.Addr().ToString()}};
+    }
+
     bool
     Endpoint::HandleDataMessage(const PathID_t& src, ProtocolMessage* msg)
     {
@@ -899,22 +958,22 @@ namespace llarp
         if(!GetSenderFor(frame->T, si))
           return false;
         // verify source
-        if(!frame->Verify(Crypto(), si))
+        if(!frame->Verify(GetCrypto(), si))
           return false;
         // remove convotag it doesn't exist
         LogWarn("remove convotag T=", frame->T);
         RemoveConvoTag(frame->T);
         return true;
       }
-      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p, Worker(),
-                                       m_Identity, m_DataHandler))
+      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), GetCrypto(), p,
+                                       Worker(), m_Identity, m_DataHandler))
       {
         // send discard
         ProtocolFrame f;
         f.R = 1;
         f.T = frame->T;
         f.F = p->intro.pathID;
-        if(!f.Sign(Crypto(), m_Identity))
+        if(!f.Sign(GetCrypto(), m_Identity))
           return false;
         const routing::PathTransferMessage d(f, frame->F);
         return p->SendRoutingMessage(&d, router);
@@ -1200,7 +1259,7 @@ namespace llarp
     }
 
     Crypto*
-    Endpoint::Crypto()
+    Endpoint::GetCrypto()
     {
       return m_Router->crypto();
     }

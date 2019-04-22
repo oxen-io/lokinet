@@ -48,7 +48,7 @@ namespace llarp
     Context::ForEachService(
         std::function< bool(const std::string &,
                             const std::unique_ptr< Endpoint > &) >
-            visit)
+            visit) const
     {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())

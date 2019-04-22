@@ -14,6 +14,7 @@
 #include <service/sendcontext.hpp>
 #include <service/session.hpp>
 #include <service/tag_lookup_job.hpp>
+#include <hook/ihook.hpp>
 
 // minimum time between introset shifts
 #ifndef MIN_SHIFT_INTERVAL
@@ -42,6 +43,18 @@ namespace llarp
 
       Endpoint(const std::string& nickname, AbstractRouter* r, Context* parent);
       ~Endpoint();
+
+      /// return true if we are ready to recv packets from the void
+      bool
+      IsReady() const;
+
+      /// return true if our introset has expired intros
+      bool
+      IntrosetIsStale() const;
+
+      /// construct parameters for notify hooks
+      std::unordered_map< std::string, std::string >
+      NotifyParams() const;
 
       util::StatusObject
       ExtractStatus() const;
@@ -82,7 +95,7 @@ namespace llarp
       EndpointNetLoop();
 
       Crypto*
-      Crypto();
+      GetCrypto();
 
       llarp_threadpool*
       Worker();
@@ -330,6 +343,9 @@ namespace llarp
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
       std::unique_ptr< exit::BaseSession > m_Exit;
+      hooks::Backend_ptr m_OnUp;
+      hooks::Backend_ptr m_OnDown;
+      hooks::Backend_ptr m_OnReady;
 
      private:
       AbstractRouter* m_Router;

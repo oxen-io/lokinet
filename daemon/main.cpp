@@ -117,7 +117,7 @@ main(int argc, char *argv[])
     ("config","path to configuration file", cxxopts::value<std::string>());
 
   options.parse_positional("config");
-    // clang-format on
+  // clang-format on
 
   bool genconfigOnly = false;
   bool asRouter      = false;
@@ -154,7 +154,7 @@ main(int argc, char *argv[])
       asRouter = true;
     }
 
-	if(result.count("config") > 0)
+    if(result.count("config") > 0)
     {
       auto arg = result["config"].as< std::string >();
       if(!arg.empty())
@@ -163,7 +163,7 @@ main(int argc, char *argv[])
       }
     }
   }
-  catch (const cxxopts::option_not_exists_exception& ex)
+  catch(const cxxopts::option_not_exists_exception &ex)
   {
     std::cerr << ex.what();
     return printHelp(argv[0]);

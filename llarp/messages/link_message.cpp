@@ -24,14 +24,11 @@ namespace llarp
     LR_CommitMessage c;
     DiscardMessage x;
 
-	msg_holder_t() = default;
+    msg_holder_t() = default;
   };
 
   InboundMessageParser::InboundMessageParser(AbstractRouter* _router)
-      : router(_router)
-      , from(nullptr)
-      , msg(nullptr)
-      , holder(new msg_holder_t())
+      : router(_router), from(nullptr), msg(nullptr), holder(new msg_holder_t())
   {
   }
 
