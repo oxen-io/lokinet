@@ -289,7 +289,6 @@ namespace llarp
         if(!self->msg->BDecode(buf))
         {
           llarp::LogError("failed to decode inner protocol message");
-          llarp::DumpBuffer(*buf);
           delete self->msg;
           delete self;
           return;
@@ -299,8 +298,6 @@ namespace llarp
         {
           llarp::LogError("intro frame has invalid signature Z=", self->frame.Z,
                           " from ", self->msg->sender.Addr());
-          self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
-          self->msg->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
           return;

@@ -320,7 +320,7 @@ namespace llarp
       }
       if(h)
         return h;
-      RouterID us(OurRouterID());
+      const RouterID us(OurRouterID());
       auto& map = m_TransitPaths;
       {
         util::Lock lock(&map.first);
@@ -576,17 +576,6 @@ namespace llarp
           m_LastLatencyTestTime = now;
           SendRoutingMessage(&latency, r);
           return;
-        }
-        if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
-        {
-          if(m_LastRecvMessage && now > m_LastRecvMessage
-             && now - m_LastRecvMessage > path::alive_timeout)
-          {
-            // TODO: send close exit message
-            // r->routerProfiling().MarkPathFail(this);
-            // EnterState(ePathTimeout, now);
-            return;
-          }
         }
         if(m_LastRecvMessage && now > m_LastRecvMessage)
         {
@@ -931,7 +920,6 @@ namespace llarp
       // check if we can handle exit data
       if(!SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
         return false;
-      MarkActive(r->Now());
       // handle traffic if we have a handler
       if(!m_ExitTrafficHandler)
         return false;
@@ -941,8 +929,12 @@ namespace llarp
         if(pkt.size() <= 8)
           return false;
         uint64_t counter = bufbe64toh(pkt.data());
-        m_ExitTrafficHandler(
-            this, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter);
+        if(m_ExitTrafficHandler(
+               this, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter))
+        {
+          MarkActive(r->Now());
+          EnterState(ePathEstablished, r->Now());
+        }
       }
       return sent;
     }

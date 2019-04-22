@@ -71,11 +71,10 @@ namespace llarp
           LogInfo(_args[0], " exit code: ", status);
           delete self;
         }
-        else
-          if(::execvpe(_args[0].c_str(), args.data(), env.data()) == -1)
-          {
-            LogError("failed to exec ", _args[0], " : ", strerror(errno));
-          }
+        else if(::execvpe(_args[0].c_str(), args.data(), env.data()) == -1)
+        {
+          LogError("failed to exec ", _args[0], " : ", strerror(errno));
+        }
       }
     };
 

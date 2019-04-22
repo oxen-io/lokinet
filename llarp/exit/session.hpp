@@ -36,7 +36,7 @@ namespace llarp
       ShouldBundleRC() const override
       {
         // TODO: make configurable
-        return false;
+        return true;
       }
 
       void
