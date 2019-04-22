@@ -15,9 +15,12 @@ namespace llarp
     bool
     PathSet::ShouldBuildMore(llarp_time_t now) const
     {
-      (void)now;
-      Lock_t l(&m_PathsMutex);
-      return m_Paths.size() < m_NumPaths;
+      (void) now;
+      const auto building = NumInStatus(ePathBuilding);
+      if(building > m_NumPaths)
+        return false;
+      const auto established = NumInStatus(ePathEstablished);
+      return established <= m_NumPaths;
     }
 
     bool

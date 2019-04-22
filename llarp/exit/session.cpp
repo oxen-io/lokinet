@@ -55,10 +55,6 @@ namespace llarp
       if(NumPathsExistingAt(future) < expect)
         return llarp::randint() % 4
             == 0;  // 25% chance for build if we will run out soon
-      // if we don't have the expended number of paths right now try building
-      // some if the cooldown timer isn't hit
-      if(AvailablePaths(llarp::path::ePathRoleExit) < expect)
-        return !path::Builder::BuildCooldownHit(now);
       // maintain regular number of paths
       return path::Builder::ShouldBuildMore(now);
     }
