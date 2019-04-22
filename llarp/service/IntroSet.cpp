@@ -6,12 +6,6 @@ namespace llarp
 {
   namespace service
   {
-    IntroSet::~IntroSet()
-    {
-      if(W)
-        delete W;
-    }
-
     util::StatusObject
     IntroSet::ExtractStatus() const
     {
@@ -49,9 +43,7 @@ namespace llarp
 
       if(key == "w")
       {
-        if(W)
-          delete W;
-        W = new PoW();
+        W = std::make_unique< PoW >();
         return W->BDecode(buf);
       }
 
@@ -156,7 +148,9 @@ namespace llarp
         {
           if(W
              && intro.expiresAt - W->extendedLifetime > path::default_lifetime)
+          {
             return false;
+          }
           else if(W == nullptr)
           {
             llarp::LogWarn("intro has too high expire time");
@@ -201,7 +195,7 @@ namespace llarp
       }
 
       printer.printAttribute("T", T);
-      printer.printAttribute("W", W);
+      printer.printAttribute("W", W.get());
       printer.printAttribute("V", version);
       printer.printAttribute("Z", Z);
 
