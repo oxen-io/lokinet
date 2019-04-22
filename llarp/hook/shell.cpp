@@ -1,6 +1,7 @@
 #include <hook/shell.hpp>
 #include <util/thread_pool.hpp>
 #include <util/logger.hpp>
+#include <sys/wait.h>
 
 namespace llarp
 {
@@ -24,14 +25,33 @@ namespace llarp
         char *const _args[] = {0};
         std::vector< std::string > _env(m_env.size() + 1);
         std::vector< char * > env;
+        // copy environ
+        const char * ptr = *environ;
+        while(ptr)
+          env.emplace_back(ptr++);
+        // put in our variables
         for(const auto &item : m_env)
         {
           _env.emplace_back(item.first + "=" + item.second);
           env.emplace_back(_env.back().c_str());
         }
         env.emplace_back(nullptr);
-        auto code = ::execvpe(m_File.c_str(), _args, env.data());
-        LogInfo(m_File, " : ", code);
+        int status = 0;
+        pid_t child_pid = ::fork();
+        if(child_pid == -1)
+        {
+          LogError("fork failed: ", strerror(errno));
+          errno = 0;
+          return;
+        }
+        if(child_pid)
+        {
+          LogInfo(m_File, " spawned");
+          ::waitpid(child_pid, &status, 0);
+          LogInfo(m_File, " exit code: ", status);
+        }
+        else
+          ::execvpe(m_File.c_str(), _args, env.data());          
       }
     };
 
