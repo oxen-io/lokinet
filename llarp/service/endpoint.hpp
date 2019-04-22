@@ -53,7 +53,7 @@ namespace llarp
       IntrosetIsStale() const;
 
       /// construct parameters for notify hooks
-      std::unordered_map< std::string, std::string >
+      virtual std::unordered_map< std::string, std::string >
       NotifyParams() const;
 
       util::StatusObject

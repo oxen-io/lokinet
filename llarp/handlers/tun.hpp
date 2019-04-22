@@ -35,6 +35,9 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const;
 
+      std::unordered_map< std::string, std::string >
+      NotifyParams() const override;
+
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;
 

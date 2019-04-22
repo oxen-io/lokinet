@@ -1,5 +1,5 @@
 #include <hook/shell.hpp>
-#include <util/thread_pool.hpp>
+#include <util/threadpool.h>
 #include <util/logger.hpp>
 #include <sys/wait.h>
 
@@ -8,73 +8,86 @@ namespace llarp
   namespace hooks
   {
     struct ExecShellHookJob
-        : public std::enable_shared_from_this< ExecShellHookJob >
     {
-      const std::string m_File;
+      const std::string &m_File;
       const std::unordered_map< std::string, std::string > m_env;
       ExecShellHookJob(
-          const std::string f,
+          const std::string &f,
           const std::unordered_map< std::string, std::string > _env)
-          : m_File(std::move(f)), m_env(std::move(_env))
+          : m_File(f), m_env(std::move(_env))
       {
       }
 
-      void
-      Work()
+      static void
+      Exec(void *user)
       {
-        char *const _args[] = {0};
-        std::vector< std::string > _env(m_env.size() + 1);
+        ExecShellHookJob *self = static_cast< ExecShellHookJob * >(user);
+        char *const _args[]    = {0};
+        std::vector< std::string > _env(self->m_env.size() + 1);
         std::vector< char * > env;
         // copy environ
-        const char * ptr = *environ;
-        while(ptr)
-          env.emplace_back(ptr++);
+        char **ptr = environ;
+        do
+        {
+          env.emplace_back(*ptr);
+          ++ptr;
+        } while(ptr && *ptr);
         // put in our variables
-        for(const auto &item : m_env)
+        for(const auto &item : self->m_env)
         {
           _env.emplace_back(item.first + "=" + item.second);
           env.emplace_back(_env.back().c_str());
         }
-        env.emplace_back(nullptr);
-        int status = 0;
+        env.emplace_back(0);
+        int status      = 0;
         pid_t child_pid = ::fork();
         if(child_pid == -1)
         {
           LogError("fork failed: ", strerror(errno));
           errno = 0;
+          delete self;
           return;
         }
         if(child_pid)
         {
-          LogInfo(m_File, " spawned");
+          LogInfo(self->m_File, " spawned");
           ::waitpid(child_pid, &status, 0);
-          LogInfo(m_File, " exit code: ", status);
+          LogInfo(self->m_File, " exit code: ", status);
+          delete self;
         }
         else
-          ::execvpe(m_File.c_str(), _args, env.data());          
+          ::execvpe(self->m_File.c_str(), _args, env.data());
       }
     };
 
     struct ExecShellHookBackend : public IBackend
     {
+      llarp_threadpool *m_ThreadPool;
+      const std::string m_ScriptFile;
+
       ExecShellHookBackend(std::string script)
-          : m_ThreadPool(1, 8), m_ScriptFile(std::move(script))
+          : m_ThreadPool(llarp_init_threadpool(1, script.c_str()))
+          , m_ScriptFile(std::move(script))
       {
       }
 
-      llarp::thread::ThreadPool m_ThreadPool;
-      const std::string m_ScriptFile;
+      ~ExecShellHookBackend()
+      {
+        llarp_free_threadpool(&m_ThreadPool);
+      }
 
       bool
       Start() override
       {
-        return m_ThreadPool.start();
+        llarp_threadpool_start(m_ThreadPool);
+        return true;
       }
 
       bool
       Stop() override
       {
-        m_ThreadPool.stop();
+        llarp_threadpool_stop(m_ThreadPool);
+        llarp_threadpool_join(m_ThreadPool);
         return true;
       }
 
@@ -82,10 +95,10 @@ namespace llarp
       NotifyAsync(
           std::unordered_map< std::string, std::string > params) override
       {
-        auto job = std::make_shared< ExecShellHookJob >(m_ScriptFile,
-                                                        std::move(params));
-        m_ThreadPool.addJob(
-            std::bind(&ExecShellHookJob::Work, job->shared_from_this()));
+        ExecShellHookJob *job =
+            new ExecShellHookJob(m_ScriptFile, std::move(params));
+        llarp_threadpool_queue_job(m_ThreadPool,
+                                   {job, &ExecShellHookJob::Exec});
       }
     };
 

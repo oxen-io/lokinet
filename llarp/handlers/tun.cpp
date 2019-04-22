@@ -541,13 +541,19 @@ namespace llarp
       MapAddress(m_Identity.pub.Addr(), m_OurIP, IsSNode());
       if(m_OnUp)
       {
-        std::unordered_map< std::string, std::string > env = NotifyParams();
-        env.emplace("IP_ADDR", m_OurIP.ToString());
-        env.emplace("IF_ADDR", m_OurRange.ToString());
-        env.emplace("IF_NAME", tunif.ifname);
-        m_OnUp->NotifyAsync(std::move(env));
+        m_OnUp->NotifyAsync(NotifyParams());
       }
       return true;
+    }
+
+    std::unordered_map< std::string, std::string >
+    TunEndpoint::NotifyParams() const
+    {
+      auto env = Endpoint::NotifyParams();
+      env.emplace("IP_ADDR", m_OurIP.ToString());
+      env.emplace("IF_ADDR", m_OurRange.ToString());
+      env.emplace("IF_NAME", tunif.ifname);
+      return env;
     }
 
     bool
