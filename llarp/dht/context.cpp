@@ -135,7 +135,7 @@ namespace llarp
       /// relay a dht message from a local path to the main network
       bool
       RelayRequestForPath(const llarp::PathID_t& localPath,
-                          const IMessage* msg) override;
+                          const IMessage& msg) override;
 
       /// send introset to peer from source with S counter and excluding peers
       void
@@ -540,15 +540,15 @@ namespace llarp
     }
 
     bool
-    Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage* msg)
+    Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage& msg)
     {
       llarp::routing::DHTMessage reply;
-      if(!msg->HandleMessage(router->dht(), reply.M))
+      if(!msg.HandleMessage(router->dht(), reply.M))
         return false;
       if(!reply.M.empty())
       {
         auto path = router->pathContext().GetByUpstream(router->pubkey(), id);
-        return path && path->SendRoutingMessage(&reply, router);
+        return path && path->SendRoutingMessage(reply, router);
       }
       return true;
     }

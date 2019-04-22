@@ -43,10 +43,10 @@ namespace llarp
       }
 
       /// build request message for service lookup
-      virtual llarp::routing::IMessage*
+      virtual std::unique_ptr< routing::IMessage >
       BuildRequestMessage() = 0;
 
-      /// build a new requset message and send it via a path
+      /// build a new request message and send it via a path
       bool
       SendRequestViaPath(llarp::path::Path* p, AbstractRouter* r);
 

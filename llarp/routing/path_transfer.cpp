@@ -61,7 +61,7 @@ namespace llarp
     PathTransferMessage::HandleMessage(IMessageHandler* h,
                                        AbstractRouter* r) const
     {
-      return h->HandlePathTransferMessage(this, r);
+      return h->HandlePathTransferMessage(*this, r);
     }
 
   }  // namespace routing

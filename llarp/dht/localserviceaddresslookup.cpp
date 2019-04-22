@@ -47,7 +47,7 @@ namespace llarp
       }
       routing::DHTMessage msg;
       msg.M.emplace_back(new GotIntroMessage(valuesFound, whoasked.txid));
-      if(!path->SendRoutingMessage(&msg, parent->GetRouter()))
+      if(!path->SendRoutingMessage(msg, parent->GetRouter()))
       {
         llarp::LogWarn(
             "failed to send routing message when informing result of dht "

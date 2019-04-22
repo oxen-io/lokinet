@@ -443,10 +443,9 @@ namespace llarp
 
     bool
     ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
-                                 __attribute__((unused))
-                                 AbstractRouter* r) const
+                                 ABSL_ATTRIBUTE_UNUSED AbstractRouter* r) const
     {
-      return h->HandleHiddenServiceFrame(this);
+      return h->HandleHiddenServiceFrame(*this);
     }
 
   }  // namespace service

@@ -28,7 +28,7 @@ namespace llarp
       if(path)
       {
         const routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
-        if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
+        if(path->SendRoutingMessage(transfer, m_Endpoint->Router()))
         {
           llarp::LogInfo("sent intro to ", remoteIntro.pathID, " on ",
                          remoteIntro.router, " seqno=", sequenceNo);
@@ -99,7 +99,7 @@ namespace llarp
 
       msg.P = remoteIntro.pathID;
       msg.Y.Randomize();
-      if(path->SendRoutingMessage(&msg, m_Endpoint->Router()))
+      if(path->SendRoutingMessage(msg, m_Endpoint->Router()))
       {
         llarp::LogDebug("sent message via ", remoteIntro.pathID, " on ",
                         remoteIntro.router);

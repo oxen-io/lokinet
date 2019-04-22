@@ -27,7 +27,7 @@ namespace llarp
       bool
       HandleResponse(const std::set< IntroSet >& results);
 
-      routing::IMessage*
+      std::unique_ptr< routing::IMessage >
       BuildRequestMessage();
     };
   }  // namespace service
