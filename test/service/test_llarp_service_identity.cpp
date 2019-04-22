@@ -2,8 +2,8 @@
 #include <crypto/crypto_libsodium.hpp>
 #include <path/path.hpp>
 #include <service/address.hpp>
-#include <service/Identity.hpp>
-#include <service/IntroSet.hpp>
+#include <service/identity.hpp>
+#include <service/intro_set.hpp>
 #include <util/time.hpp>
 
 #include <gtest/gtest.h>

@@ -1,10 +1,10 @@
-#ifndef LLARP_SERVICE_INTROSET_HPP
-#define LLARP_SERVICE_INTROSET_HPP
+#ifndef LLARP_SERVICE_INTRO_SET_HPP
+#define LLARP_SERVICE_INTRO_SET_HPP
 
 #include <crypto/types.hpp>
 #include <pow.hpp>
-#include <service/Info.hpp>
-#include <service/Intro.hpp>
+#include <service/info.hpp>
+#include <service/intro.hpp>
 #include <service/tag.hpp>
 #include <util/bencode.hpp>
 #include <util/time.hpp>

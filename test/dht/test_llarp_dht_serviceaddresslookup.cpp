@@ -3,7 +3,7 @@
 #include <crypto/mock_crypto.hpp>
 #include <dht/mock_context.hpp>
 #include <dht/messages/gotintro.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>

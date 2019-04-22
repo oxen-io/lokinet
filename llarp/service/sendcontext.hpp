@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_SENDCONTEXT_HPP
 
 #include <path/pathset.hpp>
-#include <service/Intro.hpp>
+#include <service/intro.hpp>
 #include <service/protocol.hpp>
 #include <util/buffer.hpp>
 #include <util/types.hpp>

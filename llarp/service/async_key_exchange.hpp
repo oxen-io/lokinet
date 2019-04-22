@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_ASYNC_KEY_EXCHANGE_HPP
 
 #include <crypto/types.hpp>
-#include <service/Identity.hpp>
+#include <service/identity.hpp>
 #include <service/protocol.hpp>
 
 namespace llarp

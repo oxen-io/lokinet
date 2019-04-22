@@ -9,12 +9,12 @@ namespace llarp
     bool
     Config::Load(const std::string& fname)
     {
-      llarp::ConfigParser parser;
+      ConfigParser parser;
       if(!parser.LoadFile(fname.c_str()))
         return false;
-      parser.IterAll([&](const llarp::ConfigParser::String_t& name,
-                         const llarp::ConfigParser::Section_t& section) {
-        llarp::service::Config::section_t values;
+      parser.IterAll([&](const ConfigParser::String_t& name,
+                         const ConfigParser::Section_t& section) {
+        Config::section_t values;
         values.first.assign(name.begin(), name.end());
         for(const auto& item : section)
           values.second.emplace_back(string_view_string(item.first),

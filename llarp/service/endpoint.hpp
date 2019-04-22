@@ -8,7 +8,7 @@
 #include <path/pathbuilder.hpp>
 #include <service/address.hpp>
 #include <service/handler.hpp>
-#include <service/Identity.hpp>
+#include <service/identity.hpp>
 #include <service/pendingbuffer.hpp>
 #include <service/protocol.hpp>
 #include <service/sendcontext.hpp>

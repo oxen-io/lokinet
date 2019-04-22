@@ -1,4 +1,4 @@
-#include <service/Info.hpp>
+#include <service/info.hpp>
 
 #include <crypto/crypto.hpp>
 #include <service/address.hpp>
@@ -13,7 +13,7 @@ namespace llarp
   namespace service
   {
     bool
-    ServiceInfo::Verify(llarp::Crypto* crypto, const llarp_buffer_t& payload,
+    ServiceInfo::Verify(Crypto* crypto, const llarp_buffer_t& payload,
                         const Signature& sig) const
     {
       return crypto->verify(signkey, payload, sig);

@@ -1,4 +1,4 @@
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 #include <path/path.hpp>
 
@@ -114,7 +114,7 @@ namespace llarp
     }
 
     bool
-    IntroSet::Verify(llarp::Crypto* crypto, llarp_time_t now) const
+    IntroSet::Verify(Crypto* crypto, llarp_time_t now) const
     {
       std::array< byte_t, MAX_INTROSET_SIZE > tmp;
       llarp_buffer_t buf(tmp);
@@ -153,14 +153,14 @@ namespace llarp
           }
           else if(W == nullptr)
           {
-            llarp::LogWarn("intro has too high expire time");
+            LogWarn("intro has too high expire time");
             return false;
           }
         }
       }
       if(IsExpired(now))
       {
-        llarp::LogWarn("introset expired: ", *this);
+        LogWarn("introset expired: ", *this);
         return false;
       }
       return true;

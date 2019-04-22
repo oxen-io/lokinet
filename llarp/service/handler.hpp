@@ -3,14 +3,14 @@
 
 #include <crypto/types.hpp>
 #include <path/path_types.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <util/aligned.hpp>
 
 namespace llarp
 {
   namespace service
   {
-    using ConvoTag = llarp::AlignedBuffer< 16 >;
+    using ConvoTag = AlignedBuffer< 16 >;
 
     struct ProtocolMessage;
     struct IDataHandler
