@@ -73,6 +73,8 @@ namespace llarp
 
       ~ExecShellHookBackend()
       {
+        llarp_threadpool_stop(m_ThreadPool);
+        llarp_threadpool_join(m_ThreadPool);
         llarp_free_threadpool(&m_ThreadPool);
       }
 
