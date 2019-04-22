@@ -22,7 +22,25 @@ namespace llarp
       Exec(void *user)
       {
         ExecShellHookJob *self = static_cast< ExecShellHookJob * >(user);
-        char *const _args[]    = {0};
+        std::vector< std::string > _args;
+        std::istringstream s(self->m_File);
+        for(std::string arg; std::getline(s, arg, ' ');)
+        {
+          _args.emplace_back(std::move(arg));
+        }
+        std::vector< char * > args;
+        if(_args.size() > 1)
+        {
+          auto itr = _args.begin();
+          ++itr;
+
+          while(itr != _args.end())
+          {
+            args.emplace_back(itr->c_str());
+            ++itr;
+          }
+        }
+        args.emplace_back(0);
         std::vector< std::string > _env(self->m_env.size() + 1);
         std::vector< char * > env;
         // copy environ
@@ -39,24 +57,22 @@ namespace llarp
           env.emplace_back(_env.back().c_str());
         }
         env.emplace_back(0);
-        int status      = 0;
-        pid_t child_pid = ::fork();
-        if(child_pid == -1)
+        pid_t child_process = ::fork();
+        if(child_process == -1)
         {
-          LogError("fork failed: ", strerror(errno));
-          errno = 0;
+          LogError("failed to fork");
           delete self;
           return;
         }
-        if(child_pid)
+        if(child_process)
         {
-          LogInfo(self->m_File, " spawned");
-          ::waitpid(child_pid, &status, 0);
-          LogInfo(self->m_File, " exit code: ", status);
+          int status = 0;
+          ::waitpid(child_process, &status, 0);
+          LogInfo(_args[0], " exit code: ", status);
           delete self;
         }
         else
-          ::execvpe(self->m_File.c_str(), _args, env.data());
+          ::execvpe(_args[0].c_str(), args.data(), env.data());
       }
     };
 
@@ -74,7 +90,6 @@ namespace llarp
       ~ExecShellHookBackend()
       {
         llarp_threadpool_stop(m_ThreadPool);
-        llarp_threadpool_join(m_ThreadPool);
         llarp_free_threadpool(&m_ThreadPool);
       }
 
@@ -89,7 +104,6 @@ namespace llarp
       Stop() override
       {
         llarp_threadpool_stop(m_ThreadPool);
-        llarp_threadpool_join(m_ThreadPool);
         return true;
       }
 
