@@ -72,7 +72,10 @@ namespace llarp
           delete self;
         }
         else
-          ::execvpe(_args[0].c_str(), args.data(), env.data());
+          if(::execvpe(_args[0].c_str(), args.data(), env.data()) == -1)
+          {
+            LogError("failed to exec ", _args[0], " : ", strerror(errno));
+          }
       }
     };
 
