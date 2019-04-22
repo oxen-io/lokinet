@@ -49,14 +49,12 @@ namespace llarp
     bool
     BaseSession::ShouldBuildMore(llarp_time_t now) const
     {
+      if(!path::Builder::ShouldBuildMore(now))
+        return false;
       const size_t expect = (1 + (m_NumPaths / 2));
       // check 30 seconds into the future and see if we need more paths
       const llarp_time_t future = now + (30 * 1000);
-      if(NumPathsExistingAt(future) < expect)
-        return llarp::randint() % 4
-            == 0;  // 25% chance for build if we will run out soon
-      // maintain regular number of paths
-      return path::Builder::ShouldBuildMore(now);
+      return NumPathsExistingAt(future) < expect;
     }
 
     bool
