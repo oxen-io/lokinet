@@ -49,7 +49,7 @@ namespace llarp
     PathLatencyMessage::HandleMessage(IMessageHandler* h,
                                       AbstractRouter* r) const
     {
-      return h && h->HandlePathLatencyMessage(this, r);
+      return h && h->HandlePathLatencyMessage(*this, r);
     }
 
   }  // namespace routing

@@ -55,7 +55,7 @@ namespace llarp
     PathConfirmMessage::HandleMessage(IMessageHandler* h,
                                       AbstractRouter* r) const
     {
-      return h && h->HandlePathConfirmMessage(this, r);
+      return h && h->HandlePathConfirmMessage(*this, r);
     }
 
   }  // namespace routing

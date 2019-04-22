@@ -87,7 +87,7 @@ namespace llarp
     UpdateExitMessage::HandleMessage(IMessageHandler* h,
                                      AbstractRouter* r) const
     {
-      return h->HandleUpdateExitMessage(this, r);
+      return h->HandleUpdateExitMessage(*this, r);
     }
 
     bool
@@ -124,7 +124,7 @@ namespace llarp
     UpdateExitVerifyMessage::HandleMessage(IMessageHandler* h,
                                            AbstractRouter* r) const
     {
-      return h->HandleUpdateExitVerifyMessage(this, r);
+      return h->HandleUpdateExitVerifyMessage(*this, r);
     }
 
   }  // namespace routing

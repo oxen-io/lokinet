@@ -96,7 +96,7 @@ namespace llarp
     ObtainExitMessage::HandleMessage(IMessageHandler* h,
                                      AbstractRouter* r) const
     {
-      return h->HandleObtainExitMessage(this, r);
+      return h->HandleObtainExitMessage(*this, r);
     }
 
   }  // namespace routing

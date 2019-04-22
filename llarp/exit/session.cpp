@@ -113,7 +113,7 @@ namespace llarp
         llarp::LogError("Failed to sign exit request");
         return;
       }
-      if(p->SendExitRequest(&obtain, router))
+      if(p->SendExitRequest(obtain, router))
         llarp::LogInfo("asking ", m_ExitRouter, " for exit");
       else
         llarp::LogError("failed to send exit request");
@@ -162,7 +162,7 @@ namespace llarp
           llarp::LogInfo(p->Name(), " closing exit path");
           llarp::routing::CloseExitMessage msg;
           if(!(msg.Sign(router->crypto(), m_ExitIdentity)
-               && p->SendExitClose(&msg, router)))
+               && p->SendExitClose(msg, router)))
             llarp::LogWarn(p->Name(), " failed to send exit close message");
         }
       };
@@ -250,7 +250,7 @@ namespace llarp
           {
             auto& msg = queue.front();
             msg.S     = path->NextSeqNo();
-            if(path->SendRoutingMessage(&msg, router))
+            if(path->SendRoutingMessage(msg, router))
               m_LastUse = now;
             queue.pop_front();
           }

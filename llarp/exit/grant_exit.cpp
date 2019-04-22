@@ -85,7 +85,7 @@ namespace llarp
     bool
     GrantExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
-      return h->HandleGrantExitMessage(this, r);
+      return h->HandleGrantExitMessage(*this, r);
     }
 
   }  // namespace routing

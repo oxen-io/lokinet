@@ -309,22 +309,24 @@ namespace llarp
         if(option.first == "keyfile")
           keyfile = option.second;
       }
-      std::unique_ptr< llarp::service::Endpoint > service;
 
-      static std::map< std::string,
-                       std::function< llarp::service::Endpoint *(
-                           const std::string &, AbstractRouter *,
-                           llarp::service::Context *) > >
+      std::unique_ptr< service::Endpoint > service;
+
+      static std::map<
+          std::string,
+          std::function< std::unique_ptr< service::Endpoint >(
+              const std::string &, AbstractRouter *, service::Context *) > >
           endpointConstructors = {
               {"tun",
                [](const std::string &nick, AbstractRouter *r,
-                  llarp::service::Context *c) -> llarp::service::Endpoint * {
-                 return new llarp::handlers::TunEndpoint(nick, r, c);
+                  llarp::service::Context *c)
+                   -> std::unique_ptr< service::Endpoint > {
+                 return std::make_unique< handlers::TunEndpoint >(nick, r, c);
                }},
               {"null",
                [](const std::string &nick, AbstractRouter *r,
-                  llarp::service::Context *c) -> llarp::service::Endpoint * {
-                 return new llarp::handlers::NullEndpoint(nick, r, c);
+                  service::Context *c) -> std::unique_ptr< service::Endpoint > {
+                 return std::make_unique< handlers::NullEndpoint >(nick, r, c);
                }}};
 
       {
@@ -337,7 +339,7 @@ namespace llarp
         }
 
         // construct
-        service.reset(itr->second(conf.first, m_Router, this));
+        service = itr->second(conf.first, m_Router, this);
 
         // if ephemeral, then we need to regen key
         // if privkey file, then set it and load it

@@ -84,7 +84,7 @@ namespace llarp
                 size_t hop, llarp::path::PathRole roles) override;
 
       bool
-      HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame* frame);
+      HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame& frame);
 
       std::string
       Name() const override;

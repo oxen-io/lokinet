@@ -275,7 +275,7 @@ namespace llarp
       self->context->PutTransitHop(self->hop);
       // send path confirmation
       llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
-      if(!self->hop->SendRoutingMessage(&confirm, self->context->Router()))
+      if(!self->hop->SendRoutingMessage(confirm, self->context->Router()))
       {
         llarp::LogError("failed to send path confirmation for ",
                         self->hop->info);
@@ -329,7 +329,7 @@ namespace llarp
       using namespace std::placeholders;
       if(self->record.work
          && self->record.work->IsValid(
-                std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+             std::bind(&Crypto::shorthash, crypto, _1, _2), now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",

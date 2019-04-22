@@ -79,7 +79,7 @@ namespace llarp
     bool
     CloseExitMessage::HandleMessage(IMessageHandler* h, AbstractRouter* r) const
     {
-      return h->HandleCloseExitMessage(this, r);
+      return h->HandleCloseExitMessage(*this, r);
     }
 
   }  // namespace routing

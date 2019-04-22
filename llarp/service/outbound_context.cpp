@@ -535,7 +535,7 @@ namespace llarp
 
     bool
     OutboundContext::HandleHiddenServiceFrame(path::Path* p,
-                                              const ProtocolFrame* frame)
+                                              const ProtocolFrame& frame)
     {
       return m_Endpoint->HandleHiddenServiceFrame(p, frame);
     }

@@ -107,7 +107,7 @@ namespace llarp
           std::vector< std::unique_ptr< IMessage > >& replies) = 0;
 
       virtual bool
-      RelayRequestForPath(const PathID_t& localPath, const IMessage* msg) = 0;
+      RelayRequestForPath(const PathID_t& localPath, const IMessage& msg) = 0;
 
       /// send introset to peer from source with S counter and excluding peers
       virtual void

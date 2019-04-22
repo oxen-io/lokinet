@@ -125,7 +125,7 @@ namespace llarp
 
       bool
       HandleHiddenServiceFrame(path::Path* p,
-                               const service::ProtocolFrame* msg);
+                               const service::ProtocolFrame& msg);
 
       /// return true if we have an established path to a hidden service
       bool

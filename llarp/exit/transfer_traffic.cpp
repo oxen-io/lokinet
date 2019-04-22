@@ -66,7 +66,7 @@ namespace llarp
     TransferTrafficMessage::HandleMessage(IMessageHandler* h,
                                           AbstractRouter* r) const
     {
-      return h->HandleTransferTrafficMessage(this, r);
+      return h->HandleTransferTrafficMessage(*this, r);
     }
 
   }  // namespace routing

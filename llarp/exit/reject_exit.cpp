@@ -96,7 +96,7 @@ namespace llarp
     RejectExitMessage::HandleMessage(IMessageHandler* h,
                                      AbstractRouter* r) const
     {
-      return h->HandleRejectExitMessage(this, r);
+      return h->HandleRejectExitMessage(*this, r);
     }
 
   }  // namespace routing

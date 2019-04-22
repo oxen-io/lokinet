@@ -42,11 +42,11 @@ namespace llarp
       }
     }
 
-    routing::IMessage*
+    std::unique_ptr< routing::IMessage >
     CachedTagResult::BuildRequestMessage(uint64_t txid)
     {
-      routing::DHTMessage* msg = new routing::DHTMessage();
-      msg->M.emplace_back(new dht::FindIntroMessage(tag, txid));
+      auto msg = std::make_unique< routing::DHTMessage >();
+      msg->M.emplace_back(std::make_unique< dht::FindIntroMessage >(tag, txid));
       lastRequest = parent->Now();
       return msg;
     }
