@@ -10,7 +10,7 @@
 #include <dht/tx.hpp>
 #include <dht/txholder.hpp>
 #include <dht/txowner.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <util/time.hpp>
 #include <util/status.hpp>
 

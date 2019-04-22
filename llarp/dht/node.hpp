@@ -3,7 +3,7 @@
 
 #include <dht/key.hpp>
 #include <router_contact.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 namespace llarp
 {

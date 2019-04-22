@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_LOOKUP_HPP
 
 #include <routing/message.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 #include <set>
 
@@ -48,7 +48,7 @@ namespace llarp
 
       /// build a new request message and send it via a path
       bool
-      SendRequestViaPath(llarp::path::Path* p, AbstractRouter* r);
+      SendRequestViaPath(path::Path* p, AbstractRouter* r);
 
       ILookupHolder* parent;
       uint64_t txid;
@@ -58,7 +58,7 @@ namespace llarp
       util::StatusObject
       ExtractStatus() const
       {
-        auto now = llarp::time_now_ms();
+        auto now = time_now_ms();
         util::StatusObject obj{{"txid", txid},
                                {"endpoint", endpoint.ToHex()},
                                {"name", name},

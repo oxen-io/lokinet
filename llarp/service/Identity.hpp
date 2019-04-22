@@ -2,9 +2,9 @@
 #define LLARP_SERVICE_IDENTITY_HPP
 
 #include <crypto/types.hpp>
-#include <service/Info.hpp>
-#include <service/IntroSet.hpp>
-#include <service/types.hpp>
+#include <service/info.hpp>
+#include <service/intro_set.hpp>
+#include <service/vanity.hpp>
 #include <util/bencode.hpp>
 
 namespace llarp
@@ -14,11 +14,11 @@ namespace llarp
   namespace service
   {
     // private keys
-    struct Identity final : public llarp::IBEncodeMessage
+    struct Identity final : public IBEncodeMessage
     {
-      llarp::SecretKey enckey;
-      llarp::SecretKey signkey;
-      llarp::PQKeyPair pq;
+      SecretKey enckey;
+      SecretKey signkey;
+      PQKeyPair pq;
       uint64_t version = 0;
       VanityNonce vanity;
 
@@ -29,7 +29,7 @@ namespace llarp
 
       // regenerate secret keys
       void
-      RegenerateKeys(llarp::Crypto* c);
+      RegenerateKeys(Crypto* c);
 
       // load from file
       bool
@@ -39,20 +39,20 @@ namespace llarp
       BEncode(llarp_buffer_t* buf) const override;
 
       bool
-      EnsureKeys(const std::string& fpath, llarp::Crypto* c);
+      EnsureKeys(const std::string& fpath, Crypto* c);
 
       bool
-      KeyExchange(llarp::path_dh_func dh, SharedSecret& sharedkey,
+      KeyExchange(path_dh_func dh, SharedSecret& sharedkey,
                   const ServiceInfo& other, const KeyExchangeNonce& N) const;
 
       bool
       DecodeKey(const llarp_buffer_t& key, llarp_buffer_t* buf) override;
 
       bool
-      SignIntroSet(IntroSet& i, llarp::Crypto* c, llarp_time_t now) const;
+      SignIntroSet(IntroSet& i, Crypto* c, llarp_time_t now) const;
 
       bool
-      Sign(llarp::Crypto*, Signature& sig, const llarp_buffer_t& buf) const;
+      Sign(Crypto*, Signature& sig, const llarp_buffer_t& buf) const;
     };
   }  // namespace service
 }  // namespace llarp

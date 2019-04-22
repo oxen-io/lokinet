@@ -3,8 +3,8 @@
 
 #include <crypto/types.hpp>
 #include <path/path.hpp>
-#include <service/Info.hpp>
-#include <service/Intro.hpp>
+#include <service/info.hpp>
+#include <service/intro.hpp>
 #include <util/status.hpp>
 #include <util/types.hpp>
 

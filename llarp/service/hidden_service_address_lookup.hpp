@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_HIDDEN_SERVICE_ADDRESS_LOOKUP_HPP
 
 #include <messages/dht.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <service/lookup.hpp>
 
 namespace llarp

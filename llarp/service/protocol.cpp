@@ -34,7 +34,7 @@ namespace llarp
     {
       ProtocolMessage* self = static_cast< ProtocolMessage* >(user);
       if(!self->handler->HandleDataMessage(self->srcPath, self))
-        llarp::LogWarn("failed to handle data message from ", self->srcPath);
+        LogWarn("failed to handle data message from ", self->srcPath);
       delete self;
     }
 
@@ -170,7 +170,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::DecryptPayloadInto(llarp::Crypto* crypto,
+    ProtocolFrame::DecryptPayloadInto(Crypto* crypto,
                                       const SharedSecret& sharedkey,
                                       ProtocolMessage& msg) const
     {
@@ -181,7 +181,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::Sign(llarp::Crypto* crypto, const Identity& localIdent)
+    ProtocolFrame::Sign(Crypto* crypto, const Identity& localIdent)
     {
       Z.Zero();
       std::array< byte_t, MAX_PROTOCOL_MESSAGE_SIZE > tmp;
@@ -189,7 +189,7 @@ namespace llarp
       // encode
       if(!BEncode(&buf))
       {
-        llarp::LogError("message too big to encode");
+        LogError("message too big to encode");
         return false;
       }
       // rewind
@@ -200,8 +200,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::EncryptAndSign(llarp::Crypto* crypto,
-                                  const ProtocolMessage& msg,
+    ProtocolFrame::EncryptAndSign(Crypto* crypto, const ProtocolMessage& msg,
                                   const SharedSecret& sessionKey,
                                   const Identity& localIdent)
     {
@@ -210,7 +209,7 @@ namespace llarp
       // encode message
       if(!msg.BEncode(&buf))
       {
-        llarp::LogError("message too big to encode");
+        LogError("message too big to encode");
         return false;
       }
       // rewind
@@ -226,8 +225,8 @@ namespace llarp
       // encode frame
       if(!BEncode(&buf2))
       {
-        llarp::LogError("frame too big to encode");
-        llarp::DumpBuffer(buf2);
+        LogError("frame too big to encode");
+        DumpBuffer(buf2);
         return false;
       }
       // rewind
@@ -236,7 +235,7 @@ namespace llarp
       // sign
       if(!localIdent.Sign(crypto, Z, buf2))
       {
-        llarp::LogError("failed to sign? wtf?!");
+        LogError("failed to sign? wtf?!");
         return false;
       }
       return true;
@@ -244,18 +243,17 @@ namespace llarp
 
     struct AsyncFrameDecrypt
     {
-      llarp::Crypto* crypto;
-      llarp::Logic* logic;
+      Crypto* crypto;
+      Logic* logic;
       ProtocolMessage* msg;
       const Identity& m_LocalIdentity;
       IDataHandler* handler;
       const ProtocolFrame frame;
       const Introduction fromIntro;
 
-      AsyncFrameDecrypt(llarp::Logic* l, llarp::Crypto* c,
-                        const Identity& localIdent, IDataHandler* h,
-                        ProtocolMessage* m, const ProtocolFrame& f,
-                        const Introduction& recvIntro)
+      AsyncFrameDecrypt(Logic* l, Crypto* c, const Identity& localIdent,
+                        IDataHandler* h, ProtocolMessage* m,
+                        const ProtocolFrame& f, const Introduction& recvIntro)
           : crypto(c)
           , logic(l)
           , msg(m)
@@ -278,7 +276,7 @@ namespace llarp
         if(!crypto->pqe_decrypt(self->frame.C, K,
                                 pq_keypair_to_secret(self->m_LocalIdentity.pq)))
         {
-          llarp::LogError("pqke failed C=", self->frame.C);
+          LogError("pqke failed C=", self->frame.C);
           delete self->msg;
           delete self;
           return;
@@ -288,8 +286,8 @@ namespace llarp
         crypto->xchacha20(*buf, K, self->frame.N);
         if(!self->msg->BDecode(buf))
         {
-          llarp::LogError("failed to decode inner protocol message");
-          llarp::DumpBuffer(*buf);
+          LogError("failed to decode inner protocol message");
+          DumpBuffer(*buf);
           delete self->msg;
           delete self;
           return;
@@ -297,8 +295,8 @@ namespace llarp
         // verify signature of outer message after we parsed the inner message
         if(!self->frame.Verify(crypto, self->msg->sender))
         {
-          llarp::LogError("intro frame has invalid signature Z=", self->frame.Z,
-                          " from ", self->msg->sender.Addr());
+          LogError("intro frame has invalid signature Z=", self->frame.Z,
+                   " from ", self->msg->sender.Addr());
           self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           self->msg->Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
@@ -308,7 +306,7 @@ namespace llarp
 
         if(self->handler->HasConvoTag(self->msg->tag))
         {
-          llarp::LogError("dropping duplicate convo tag T=", self->msg->tag);
+          LogError("dropping duplicate convo tag T=", self->msg->tag);
           // TODO: send convotag reset
           delete self->msg;
           delete self;
@@ -324,7 +322,7 @@ namespace llarp
         if(!self->m_LocalIdentity.KeyExchange(dh_server, sharedSecret,
                                               self->msg->sender, self->frame.N))
         {
-          llarp::LogError("x25519 key exchange failed");
+          LogError("x25519 key exchange failed");
           self->frame.Dump< MAX_PROTOCOL_MESSAGE_SIZE >();
           delete self->msg;
           delete self;
@@ -364,7 +362,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::AsyncDecryptAndVerify(llarp::Logic* logic, llarp::Crypto* c,
+    ProtocolFrame::AsyncDecryptAndVerify(Logic* logic, Crypto* c,
                                          path::Path* recvPath,
                                          llarp_threadpool* worker,
                                          const Identity& localIdent,
@@ -372,7 +370,7 @@ namespace llarp
     {
       if(T.IsZero())
       {
-        llarp::LogInfo("Got protocol frame with new convo");
+        LogInfo("Got protocol frame with new convo");
         ProtocolMessage* msg = new ProtocolMessage();
         msg->srcPath         = recvPath->RXID();
         // we need to dh
@@ -384,24 +382,24 @@ namespace llarp
       SharedSecret shared;
       if(!handler->GetCachedSessionKeyFor(T, shared))
       {
-        llarp::LogError("No cached session for T=", T);
+        LogError("No cached session for T=", T);
         return false;
       }
       ServiceInfo si;
       if(!handler->GetSenderFor(T, si))
       {
-        llarp::LogError("No sender for T=", T);
+        LogError("No sender for T=", T);
         return false;
       }
       if(!Verify(c, si))
       {
-        llarp::LogError("Signature failure from ", si.Addr());
+        LogError("Signature failure from ", si.Addr());
         return false;
       }
       ProtocolMessage* msg = new ProtocolMessage();
       if(!DecryptPayloadInto(c, shared, *msg))
       {
-        llarp::LogError("failed to decrypt message");
+        LogError("failed to decrypt message");
         delete msg;
         return false;
       }
@@ -419,7 +417,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::Verify(llarp::Crypto* crypto, const ServiceInfo& from) const
+    ProtocolFrame::Verify(Crypto* crypto, const ServiceInfo& from) const
     {
       ProtocolFrame copy(*this);
       // save signature
@@ -430,7 +428,7 @@ namespace llarp
       llarp_buffer_t buf(tmp);
       if(!copy.BEncode(&buf))
       {
-        llarp::LogError("bencode fail");
+        LogError("bencode fail");
         return false;
       }
 
@@ -442,7 +440,7 @@ namespace llarp
     }
 
     bool
-    ProtocolFrame::HandleMessage(llarp::routing::IMessageHandler* h,
+    ProtocolFrame::HandleMessage(routing::IMessageHandler* h,
                                  ABSL_ATTRIBUTE_UNUSED AbstractRouter* r) const
     {
       return h->HandleHiddenServiceFrame(*this);

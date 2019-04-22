@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_TAG_LOOKUP_JOB_HPP
 
 #include <routing/message.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <service/lookup.hpp>
 #include <service/tag.hpp>
 #include <util/types.hpp>

@@ -4,7 +4,7 @@
 #include <dht/tx.hpp>
 #include <dht/txowner.hpp>
 #include <service/address.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 #include <set>
 

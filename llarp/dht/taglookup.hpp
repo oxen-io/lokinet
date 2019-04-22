@@ -2,7 +2,7 @@
 #define LLARP_DHT_TAGLOOKUP
 
 #include <dht/tx.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <service/tag.hpp>
 
 namespace llarp

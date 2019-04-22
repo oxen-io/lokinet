@@ -10,7 +10,7 @@
 #include <router_id.hpp>
 #include <routing/handler.hpp>
 #include <routing/message.hpp>
-#include <service/Intro.hpp>
+#include <service/intro.hpp>
 #include <util/aligned.hpp>
 #include <util/threading.hpp>
 #include <util/time.hpp>
