@@ -2,7 +2,8 @@
 #define LLARP_SERVICE_INFO_HPP
 
 #include <crypto/types.hpp>
-#include <service/types.hpp>
+#include <service/address.hpp>
+#include <service/vanity.hpp>
 #include <util/bencode.hpp>
 
 #include <absl/types/optional.h>
@@ -13,11 +14,11 @@ namespace llarp
 
   namespace service
   {
-    struct ServiceInfo final : public llarp::IBEncodeMessage
+    struct ServiceInfo final : public IBEncodeMessage
     {
      private:
-      llarp::PubKey enckey;
-      llarp::PubKey signkey;
+      PubKey enckey;
+      PubKey signkey;
 
      public:
       VanityNonce vanity;
@@ -52,7 +53,7 @@ namespace llarp
       }
 
       bool
-      Verify(llarp::Crypto* crypto, const llarp_buffer_t& payload,
+      Verify(Crypto* crypto, const llarp_buffer_t& payload,
              const Signature& sig) const;
 
       const PubKey&

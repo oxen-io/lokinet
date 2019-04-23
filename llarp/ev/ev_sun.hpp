@@ -43,10 +43,12 @@ namespace llarp
   struct tun : public ev_io
   {
     llarp_tun_io* t;
+    int writefd;
     device* tunif;
-    tun(llarp_tun_io* tio, llarp_ev_loop* l)
+    tun(llarp_tun_io* tio, llarp_ev_loop_ptr l)
         : ev_io(-1, new LossyWriteQueue_t("tun_write_queue", l, l))
         , t(tio)
+        , writefd(-1)
         , tunif(tuntap_init())
 
               {
@@ -76,7 +78,8 @@ namespace llarp
   };
 };  // namespace llarp
 
-struct llarp_poll_loop : public llarp_ev_loop
+struct llarp_poll_loop : public llarp_ev_loop,
+                         public std::enable_shared_from_this< llarp_poll_loop >
 {
   upoll_t* upollfd;
 

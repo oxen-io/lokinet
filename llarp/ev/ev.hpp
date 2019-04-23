@@ -9,13 +9,13 @@
 // writev
 #ifndef _WIN32
 #include <sys/uio.h>
+#include <unistd.h>
 #endif
 
 #include <algorithm>
 #include <deque>
 #include <list>
 #include <future>
-#include <unistd.h>
 
 #ifdef _WIN32
 #include <win32/win32_up.h>

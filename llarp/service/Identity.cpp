@@ -1,4 +1,4 @@
-#include <service/Identity.hpp>
+#include <service/identity.hpp>
 
 #include <util/fs.hpp>
 
@@ -57,12 +57,11 @@ namespace llarp
     }
 
     void
-    Identity::RegenerateKeys(llarp::Crypto* crypto)
+    Identity::RegenerateKeys(Crypto* crypto)
     {
       crypto->encryption_keygen(enckey);
       crypto->identity_keygen(signkey);
-      pub.Update(llarp::seckey_topublic(enckey),
-                 llarp::seckey_topublic(signkey));
+      pub.Update(seckey_topublic(enckey), seckey_topublic(signkey));
       crypto->pqe_keygen(pq);
     }
 
@@ -81,7 +80,7 @@ namespace llarp
     }
 
     bool
-    Identity::EnsureKeys(const std::string& fname, llarp::Crypto* c)
+    Identity::EnsureKeys(const std::string& fname, Crypto* c)
     {
       std::array< byte_t, 4096 > tmp;
       llarp_buffer_t buf(tmp);
@@ -91,7 +90,7 @@ namespace llarp
       {
         if(ec)
         {
-          llarp::LogError(ec);
+          LogError(ec);
           return false;
         }
         // regen and encode
@@ -125,14 +124,12 @@ namespace llarp
       if(!vanity.IsZero())
         van = vanity;
       // update pubkeys
-      pub.Update(llarp::seckey_topublic(enckey),
-                 llarp::seckey_topublic(signkey), van);
+      pub.Update(seckey_topublic(enckey), seckey_topublic(signkey), van);
       return true;
     }
 
     bool
-    Identity::SignIntroSet(IntroSet& i, llarp::Crypto* crypto,
-                           llarp_time_t now) const
+    Identity::SignIntroSet(IntroSet& i, Crypto* crypto, llarp_time_t now) const
     {
       if(i.I.size() == 0)
         return false;

@@ -10,7 +10,7 @@
 #include <dht/tx.hpp>
 #include <dht/txholder.hpp>
 #include <dht/txowner.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <util/time.hpp>
 #include <util/status.hpp>
 
@@ -23,7 +23,7 @@ namespace llarp
 
   namespace dht
   {
-    struct AbstractContext : public util::IStateful
+    struct AbstractContext
     {
       using PendingIntrosetLookups =
           TXHolder< service::Address, service::IntroSet,
@@ -39,6 +39,11 @@ namespace llarp
 
       virtual bool
       LookupRouter(const RouterID& target, RouterLookupHandler result) = 0;
+
+      virtual void
+      LookupRouterRecursive(const RouterID& target, const Key_t& whoasked,
+                            uint64_t whoaskedTX, const Key_t& askpeer,
+                            RouterLookupHandler result = nullptr) = 0;
 
       /// on behalf of whoasked request introset for target from dht router with
       /// key askpeer
@@ -102,7 +107,7 @@ namespace llarp
           std::vector< std::unique_ptr< IMessage > >& replies) = 0;
 
       virtual bool
-      RelayRequestForPath(const PathID_t& localPath, const IMessage* msg) = 0;
+      RelayRequestForPath(const PathID_t& localPath, const IMessage& msg) = 0;
 
       /// send introset to peer from source with S counter and excluding peers
       virtual void
@@ -170,6 +175,9 @@ namespace llarp
 
       virtual Bucket< RCNode >*
       Nodes() const = 0;
+
+      virtual util::StatusObject
+      ExtractStatus() const = 0;
     };
 
     std::unique_ptr< AbstractContext >

@@ -16,13 +16,13 @@ set(LIB_UTIL_SRC
   util/json.cpp
   util/logger.cpp
   util/android_logger.cpp
+  util/file_logger.cpp
   util/ostream_logger.cpp
   util/syslog_logger.cpp
   util/win32_logger.cpp
   util/logic.cpp
   util/mem.cpp
   util/metrics_core.cpp
-  util/metrics_publishers.cpp
   util/metrics_types.cpp
   util/metrics.cpp
   util/object.cpp
@@ -46,12 +46,12 @@ set(LIB_UTIL_SRC
 
 add_library(${UTIL_LIB} STATIC ${LIB_UTIL_SRC})
 target_include_directories(${UTIL_LIB} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(${UTIL_LIB} PUBLIC absl::synchronization)
+target_link_libraries(${UTIL_LIB} PUBLIC absl::synchronization absl::hash)
 target_link_libraries(${UTIL_LIB} PUBLIC nlohmann_json::nlohmann_json)
 
 # cut back on fluff
 if (NOT WIN32)
-    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings absl::hash cppbackport)
+    target_link_libraries(${UTIL_LIB} PUBLIC absl::optional absl::variant absl::strings cppbackport)
 endif(NOT WIN32)
 
 if(${CMAKE_SYSTEM_NAME} MATCHES "Linux")
@@ -62,6 +62,8 @@ set(LIB_PLATFORM_SRC
 # for networking
   ev/ev.cpp
   ev/pipe.cpp
+  metrics/metrictank_publisher.cpp
+  metrics/publishers.cpp
   net/net.cpp
   net/net_addr.cpp
   net/net_inaddr.cpp
@@ -212,19 +214,25 @@ set(LIB_SRC
   routing/path_latency.cpp
   routing/path_transfer.cpp
   rpc/rpc.cpp
-  service/Identity.cpp
-  service/Intro.cpp
-  service/IntroSet.cpp
   service/address.cpp
+  service/async_key_exchange.cpp
   service/config.cpp
   service/context.cpp
   service/endpoint.cpp
   service/handler.cpp
+  service/hidden_service_address_lookup.cpp
+  service/identity.cpp
   service/info.cpp
+  service/intro_set.cpp
+  service/intro.cpp
   service/lookup.cpp
+  service/outbound_context.cpp
+  service/pendingbuffer.cpp
   service/protocol.cpp
+  service/sendcontext.cpp
+  service/session.cpp
+  service/tag_lookup_job.cpp
   service/tag.cpp
-  service/types.cpp
   service/vanity.cpp
   utp/inbound_message.cpp
   utp/linklayer.cpp
@@ -237,7 +245,7 @@ endif()
 
 add_library(${STATIC_LIB} STATIC ${LIB_SRC})
 set(LIBS ${LIBS} libutp)
-target_link_libraries(${STATIC_LIB} PUBLIC ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS})
+target_link_libraries(${STATIC_LIB} PUBLIC cxxopts ${ABYSS_LIB} ${PLATFORM_LIB} ${UTIL_LIB} ${CRYPTOGRAPHY_LIB} ${LIBS})
 
 if(WITH_SHARED)
   add_library(${SHARED_LIB} SHARED ${LIB_SRC})

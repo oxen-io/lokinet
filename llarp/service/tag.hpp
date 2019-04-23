@@ -15,13 +15,13 @@ namespace llarp
 {
   namespace service
   {
-    struct Tag : public llarp::AlignedBuffer< 16 >, public util::IStateful
+    struct Tag : public AlignedBuffer< 16 >
     {
-      Tag() : llarp::AlignedBuffer< SIZE >()
+      Tag() : AlignedBuffer< SIZE >()
       {
       }
 
-      Tag(const byte_t* d) : llarp::AlignedBuffer< SIZE >(d)
+      Tag(const byte_t* d) : AlignedBuffer< SIZE >(d)
       {
       }
 
@@ -54,7 +54,7 @@ namespace llarp
       }
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
         return util::StatusObject{{"name", ToString()}};
       }

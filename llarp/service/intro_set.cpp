@@ -1,4 +1,4 @@
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 #include <path/path.hpp>
 
@@ -6,12 +6,6 @@ namespace llarp
 {
   namespace service
   {
-    IntroSet::~IntroSet()
-    {
-      if(W)
-        delete W;
-    }
-
     util::StatusObject
     IntroSet::ExtractStatus() const
     {
@@ -49,9 +43,7 @@ namespace llarp
 
       if(key == "w")
       {
-        if(W)
-          delete W;
-        W = new PoW();
+        W = std::make_unique< PoW >();
         return W->BDecode(buf);
       }
 
@@ -122,7 +114,7 @@ namespace llarp
     }
 
     bool
-    IntroSet::Verify(llarp::Crypto* crypto, llarp_time_t now) const
+    IntroSet::Verify(Crypto* crypto, llarp_time_t now) const
     {
       std::array< byte_t, MAX_INTROSET_SIZE > tmp;
       llarp_buffer_t buf(tmp);
@@ -156,17 +148,19 @@ namespace llarp
         {
           if(W
              && intro.expiresAt - W->extendedLifetime > path::default_lifetime)
+          {
             return false;
+          }
           else if(W == nullptr)
           {
-            llarp::LogWarn("intro has too high expire time");
+            LogWarn("intro has too high expire time");
             return false;
           }
         }
       }
       if(IsExpired(now))
       {
-        llarp::LogWarn("introset expired: ", *this);
+        LogWarn("introset expired: ", *this);
         return false;
       }
       return true;
@@ -201,7 +195,7 @@ namespace llarp
       }
 
       printer.printAttribute("T", T);
-      printer.printAttribute("W", W);
+      printer.printAttribute("W", W.get());
       printer.printAttribute("V", version);
       printer.printAttribute("Z", Z);
 

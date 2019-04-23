@@ -11,7 +11,7 @@ namespace llarp
   struct AbstractRouter;
   namespace handlers
   {
-    struct ExitEndpoint : public dns::IQueryHandler, public util::IStateful
+    struct ExitEndpoint : public dns::IQueryHandler
     {
       ExitEndpoint(const std::string& name, AbstractRouter* r);
       ~ExitEndpoint();
@@ -26,7 +26,7 @@ namespace llarp
       Name() const;
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       bool
       ShouldHookDNSMessage(const dns::Message& msg) const override;

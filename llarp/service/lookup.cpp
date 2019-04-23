@@ -1,7 +1,6 @@
 #include <service/lookup.hpp>
 
 #include <path/path.hpp>
-#include <service/endpoint.hpp>
 #include <util/time.hpp>
 
 namespace llarp
@@ -24,9 +23,8 @@ namespace llarp
       auto msg = BuildRequestMessage();
       if(!msg)
         return false;
-      auto result = path->SendRoutingMessage(msg, r);
+      auto result = path->SendRoutingMessage(*msg, r);
       endpoint    = path->Endpoint();
-      delete msg;
       return result;
     }
   }  // namespace service

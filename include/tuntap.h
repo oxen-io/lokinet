@@ -79,6 +79,7 @@
  * - t_tun_in6_addr: struct in6_addr/IN6_ADDR
  */
 #if defined Windows
+#include <windows.h>
 #include <in6addr.h>
 #include <winsock2.h>
 typedef HANDLE t_tun;

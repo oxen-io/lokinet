@@ -336,9 +336,11 @@ namespace llarp
           else
           {
             dns::Message *replyMsg = new dns::Message(std::move(msg));
+            using service::Address;
+            using service::OutboundContext;
             return EnsurePathToService(
                 addr,
-                [=](const service::Address &remote, OutboundContext *ctx) {
+                [=](const Address &remote, OutboundContext *ctx) {
                   SendDNSReply(remote, ctx, replyMsg, reply, false, isV6);
                 },
                 2000);

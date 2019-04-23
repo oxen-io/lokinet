@@ -77,7 +77,8 @@ bencode_write_uint64(llarp_buffer_t* buff, uint64_t i)
 {
 // NetBSDs also do this shit in long mode, wouldn't be surprised
 // if all the BSDs do by default
-#if !defined(__LP64__) || (__APPLE__ && __MACH__) || (__NetBSD__) || (__OpenBSD__)
+#if !defined(__LP64__) || (__APPLE__ && __MACH__) || (__NetBSD__) \
+    || (__OpenBSD__)
   if(!buff->writef("i%llu", i))
 #else
   if(!buff->writef("i%lu", i))

@@ -58,7 +58,7 @@ namespace llarp
       {
         msg->From   = us;
         msg->pathID = from;
-        if(!h->HandleDHTMessage(msg.get(), r))
+        if(!h->HandleDHTMessage(*msg, r))
           return false;
       }
       return true;

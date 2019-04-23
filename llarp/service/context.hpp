@@ -13,9 +13,9 @@ namespace llarp
   namespace service
   {
     /// holds all the hidden service endpoints we own
-    struct Context : public util::IStateful
+    struct Context
     {
-      Context(AbstractRouter *r);
+      explicit Context(AbstractRouter *r);
       ~Context();
 
       void
@@ -26,21 +26,21 @@ namespace llarp
       StopAll();
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       bool
       hasEndpoints();
 
       /// DRY refactor
-      llarp::service::Endpoint *
+      service::Endpoint *
       getFirstEndpoint();
 
       bool
-      FindBestAddressFor(const llarp::AlignedBuffer< 32 > &addr, bool isSNode,
+      FindBestAddressFor(const AlignedBuffer< 32 > &addr, bool isSNode,
                          huint32_t &);
 
       /// DRY refactor
-      llarp::handlers::TunEndpoint *
+      handlers::TunEndpoint *
       getFirstTun();
 
       /// punch a hole to get ip range from first tun endpoint
@@ -49,14 +49,14 @@ namespace llarp
 
       struct mapAddressAll_context
       {
-        llarp::service::Address serviceAddr;
-        llarp::Addr localPrivateIpAddr;
+        service::Address serviceAddr;
+        Addr localPrivateIpAddr;
       };
 
       struct endpoint_iter
       {
         void *user;
-        llarp::service::Endpoint *endpoint;
+        service::Endpoint *endpoint;
         size_t index;
         bool (*visit)(struct endpoint_iter *);
       };
@@ -72,11 +72,10 @@ namespace llarp
 
       /// hint at possible path usage and trigger building early
       bool
-      Prefetch(const llarp::service::Address &addr);
+      Prefetch(const service::Address &addr);
 
       bool
-      MapAddressAll(const llarp::service::Address &addr,
-                    llarp::Addr &localPrivateIpAddr);
+      MapAddressAll(const service::Address &addr, Addr &localPrivateIpAddr);
 
       /// add default endpoint with options
       bool

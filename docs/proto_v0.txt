@@ -343,6 +343,7 @@ the path is extended by w.y seconds
   n: "<32 bytes nounce for key exchange>",
   r: "<16 bytes rx path id>",
   t: "<16 bytes tx path id>",
+  u: "<optional RC of the next hop>",
   v: 0,
   w: proof of work
 }

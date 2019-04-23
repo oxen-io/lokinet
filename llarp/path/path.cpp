@@ -172,24 +172,26 @@ namespace llarp
     IHopHandler*
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
-      auto own = MapGet(m_OurPaths, id,
-                        [](__attribute__((unused)) const PathSet* s) -> bool {
-                          // TODO: is this right?
-                          return true;
-                        },
-                        [remote, id](PathSet* p) -> IHopHandler* {
-                          return p->GetByUpstream(remote, id);
-                        });
+      auto own = MapGet(
+          m_OurPaths, id,
+          [](ABSL_ATTRIBUTE_UNUSED const PathSet* s) -> bool {
+            // TODO: is this right?
+            return true;
+          },
+          [remote, id](PathSet* p) -> IHopHandler* {
+            return p->GetByUpstream(remote, id);
+          });
       if(own)
         return own;
 
-      return MapGet(m_TransitPaths, id,
-                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return hop->info.upstream == remote;
-                    },
-                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-                      return h.get();
-                    });
+      return MapGet(
+          m_TransitPaths, id,
+          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return hop->info.upstream == remote;
+          },
+          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+            return h.get();
+          });
     }
 
     bool
@@ -206,13 +208,14 @@ namespace llarp
     IHopHandler*
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
-      return MapGet(m_TransitPaths, id,
-                    [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
-                      return hop->info.downstream == remote;
-                    },
-                    [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-                      return h.get();
-                    });
+      return MapGet(
+          m_TransitPaths, id,
+          [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
+            return hop->info.downstream == remote;
+          },
+          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
+            return h.get();
+          });
     }
 
     PathSet*
@@ -462,8 +465,9 @@ namespace llarp
     void
     Path::EnterState(PathStatus st, llarp_time_t now)
     {
-      if(st == ePathTimeout && _status == ePathBuilding)
+      if(st == ePathExpired && _status == ePathBuilding)
       {
+        _status = st;
         m_PathSet->HandlePathBuildTimeout(this);
       }
       else if(st == ePathBuilding)
@@ -480,6 +484,10 @@ namespace llarp
         LogInfo("path ", Name(), " died");
         _status = st;
         m_PathSet->HandlePathDied(this);
+      }
+      else if(st == ePathEstablished && _status == ePathTimeout)
+      {
+        LogInfo("path ", Name(), " reanimated");
       }
       _status = st;
     }
@@ -551,12 +559,11 @@ namespace llarp
           if(dlt >= path::build_timeout)
           {
             r->routerProfiling().MarkPathFail(this);
-            EnterState(ePathTimeout, now);
+            EnterState(ePathExpired, now);
             return;
           }
         }
       }
-
       // check to see if this path is dead
       if(_status == ePathEstablished)
       {
@@ -567,7 +574,7 @@ namespace llarp
           latency.T             = randint();
           m_LastLatencyTestID   = latency.T;
           m_LastLatencyTestTime = now;
-          SendRoutingMessage(&latency, r);
+          SendRoutingMessage(latency, r);
           return;
         }
         if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
@@ -624,7 +631,7 @@ namespace llarp
     bool
     Path::Expired(llarp_time_t now) const
     {
-      if(_status == ePathEstablished)
+      if(_status == ePathEstablished || _status == ePathTimeout)
         return now >= ExpireTime();
       else if(_status == ePathBuilding)
         return false;
@@ -671,15 +678,15 @@ namespace llarp
 
     bool
     Path::HandleUpdateExitVerifyMessage(
-        const routing::UpdateExitVerifyMessage* msg, AbstractRouter* r)
+        const routing::UpdateExitVerifyMessage& msg, AbstractRouter* r)
     {
       (void)r;
-      if(m_UpdateExitTX && msg->T == m_UpdateExitTX)
+      if(m_UpdateExitTX && msg.T == m_UpdateExitTX)
       {
         if(m_ExitUpdated)
           return m_ExitUpdated(this);
       }
-      if(m_CloseExitTX && msg->T == m_CloseExitTX)
+      if(m_CloseExitTX && msg.T == m_CloseExitTX)
       {
         if(m_ExitClosed)
           return m_ExitClosed(this);
@@ -688,15 +695,15 @@ namespace llarp
     }
 
     bool
-    Path::SendRoutingMessage(const routing::IMessage* msg, AbstractRouter* r)
+    Path::SendRoutingMessage(const routing::IMessage& msg, AbstractRouter* r)
     {
       std::array< byte_t, MAX_LINK_MSG_SIZE / 2 > tmp;
       llarp_buffer_t buf(tmp);
       // should help prevent bad paths with uninitialized members
       // FIXME: Why would we get uninitialized IMessages?
-      if(msg->version != LLARP_PROTO_VERSION)
+      if(msg.version != LLARP_PROTO_VERSION)
         return false;
-      if(!msg->BEncode(&buf))
+      if(!msg.BEncode(&buf))
       {
         LogError("Bencode failed");
         DumpBuffer(buf);
@@ -718,9 +725,9 @@ namespace llarp
     }
 
     bool
-    Path::HandlePathTransferMessage(__attribute__((unused))
-                                    const routing::PathTransferMessage* msg,
-                                    __attribute__((unused)) AbstractRouter* r)
+    Path::HandlePathTransferMessage(
+        ABSL_ATTRIBUTE_UNUSED const routing::PathTransferMessage& msg,
+        ABSL_ATTRIBUTE_UNUSED AbstractRouter* r)
     {
       LogWarn("unwarranted path transfer message on tx=", TXID(),
               " rx=", RXID());
@@ -728,19 +735,19 @@ namespace llarp
     }
 
     bool
-    Path::HandleDataDiscardMessage(const routing::DataDiscardMessage* msg,
+    Path::HandleDataDiscardMessage(const routing::DataDiscardMessage& msg,
                                    AbstractRouter* r)
     {
       MarkActive(r->Now());
       if(m_DropHandler)
-        return m_DropHandler(this, msg->P, msg->S);
+        return m_DropHandler(this, msg.P, msg.S);
       return true;
     }
 
     bool
-    Path::HandlePathConfirmMessage(__attribute__((unused))
-                                   const routing::PathConfirmMessage* msg,
-                                   AbstractRouter* r)
+    Path::HandlePathConfirmMessage(
+        ABSL_ATTRIBUTE_UNUSED const routing::PathConfirmMessage& msg,
+        AbstractRouter* r)
     {
       auto now = r->Now();
       if(_status == ePathBuilding)
@@ -758,7 +765,7 @@ namespace llarp
         latency.T             = randint();
         m_LastLatencyTestID   = latency.T;
         m_LastLatencyTestTime = now;
-        return SendRoutingMessage(&latency, r);
+        return SendRoutingMessage(latency, r);
       }
       LogWarn("got unwarranted path confirm message on tx=", RXID(),
               " rx=", RXID());
@@ -766,19 +773,19 @@ namespace llarp
     }
 
     bool
-    Path::HandleHiddenServiceFrame(const service::ProtocolFrame* frame)
+    Path::HandleHiddenServiceFrame(const service::ProtocolFrame& frame)
     {
       MarkActive(m_PathSet->Now());
       return m_DataHandler && m_DataHandler(this, frame);
     }
 
     bool
-    Path::HandlePathLatencyMessage(const routing::PathLatencyMessage* msg,
+    Path::HandlePathLatencyMessage(const routing::PathLatencyMessage& msg,
                                    AbstractRouter* r)
     {
       auto now = r->Now();
       MarkActive(now);
-      if(msg->L == m_LastLatencyTestID)
+      if(msg.L == m_LastLatencyTestID)
       {
         intro.latency       = now - m_LastLatencyTestTime;
         m_LastLatencyTestID = 0;
@@ -797,25 +804,25 @@ namespace llarp
     }
 
     bool
-    Path::HandleDHTMessage(const dht::IMessage* msg, AbstractRouter* r)
+    Path::HandleDHTMessage(const dht::IMessage& msg, AbstractRouter* r)
     {
       MarkActive(r->Now());
       routing::DHTMessage reply;
-      if(!msg->HandleMessage(r->dht(), reply.M))
+      if(!msg.HandleMessage(r->dht(), reply.M))
         return false;
       if(reply.M.size())
-        return SendRoutingMessage(&reply, r);
+        return SendRoutingMessage(reply, r);
       return true;
     }
 
     bool
-    Path::HandleCloseExitMessage(const routing::CloseExitMessage* msg,
+    Path::HandleCloseExitMessage(const routing::CloseExitMessage& msg,
                                  AbstractRouter* r)
     {
       /// allows exits to close from their end
       if(SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
       {
-        if(msg->Verify(r->crypto(), EndpointPubKey()))
+        if(msg.Verify(r->crypto(), EndpointPubKey()))
         {
           LogInfo(Name(), " had its exit closed");
           _role &= ~ePathRoleExit;
@@ -830,16 +837,16 @@ namespace llarp
     }
 
     bool
-    Path::SendExitRequest(const routing::ObtainExitMessage* msg,
+    Path::SendExitRequest(const routing::ObtainExitMessage& msg,
                           AbstractRouter* r)
     {
       LogInfo(Name(), " sending exit request to ", Endpoint());
-      m_ExitObtainTX = msg->T;
+      m_ExitObtainTX = msg.T;
       return SendRoutingMessage(msg, r);
     }
 
     bool
-    Path::SendExitClose(const routing::CloseExitMessage* msg, AbstractRouter* r)
+    Path::SendExitClose(const routing::CloseExitMessage& msg, AbstractRouter* r)
     {
       LogInfo(Name(), " closing exit to ", Endpoint());
       // mark as not exit anymore
@@ -848,7 +855,7 @@ namespace llarp
     }
 
     bool
-    Path::HandleObtainExitMessage(const routing::ObtainExitMessage* msg,
+    Path::HandleObtainExitMessage(const routing::ObtainExitMessage& msg,
                                   AbstractRouter* r)
     {
       (void)msg;
@@ -858,7 +865,7 @@ namespace llarp
     }
 
     bool
-    Path::HandleUpdateExitMessage(const routing::UpdateExitMessage* msg,
+    Path::HandleUpdateExitMessage(const routing::UpdateExitMessage& msg,
                                   AbstractRouter* r)
     {
       (void)msg;
@@ -868,31 +875,31 @@ namespace llarp
     }
 
     bool
-    Path::HandleRejectExitMessage(const routing::RejectExitMessage* msg,
+    Path::HandleRejectExitMessage(const routing::RejectExitMessage& msg,
                                   AbstractRouter* r)
     {
-      if(m_ExitObtainTX && msg->T == m_ExitObtainTX)
+      if(m_ExitObtainTX && msg.T == m_ExitObtainTX)
       {
-        if(!msg->Verify(r->crypto(), EndpointPubKey()))
+        if(!msg.Verify(r->crypto(), EndpointPubKey()))
         {
           LogError(Name(), "RXM invalid signature");
           return false;
         }
         LogInfo(Name(), " ", Endpoint(), " Rejected exit");
         MarkActive(r->Now());
-        return InformExitResult(msg->B);
+        return InformExitResult(msg.B);
       }
       LogError(Name(), " got unwarranted RXM");
       return false;
     }
 
     bool
-    Path::HandleGrantExitMessage(const routing::GrantExitMessage* msg,
+    Path::HandleGrantExitMessage(const routing::GrantExitMessage& msg,
                                  AbstractRouter* r)
     {
-      if(m_ExitObtainTX && msg->T == m_ExitObtainTX)
+      if(m_ExitObtainTX && msg.T == m_ExitObtainTX)
       {
-        if(!msg->Verify(r->crypto(), EndpointPubKey()))
+        if(!msg.Verify(r->crypto(), EndpointPubKey()))
         {
           LogError(Name(), " GXM signature failed");
           return false;
@@ -919,7 +926,7 @@ namespace llarp
 
     bool
     Path::HandleTransferTrafficMessage(
-        const routing::TransferTrafficMessage* msg, AbstractRouter* r)
+        const routing::TransferTrafficMessage& msg, AbstractRouter* r)
     {
       // check if we can handle exit data
       if(!SupportsAnyRoles(ePathRoleExit | ePathRoleSVC))
@@ -928,8 +935,8 @@ namespace llarp
       // handle traffic if we have a handler
       if(!m_ExitTrafficHandler)
         return false;
-      bool sent = msg->X.size() > 0;
-      for(const auto& pkt : msg->X)
+      bool sent = msg.X.size() > 0;
+      for(const auto& pkt : msg.X)
       {
         if(pkt.size() <= 8)
           return false;

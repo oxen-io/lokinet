@@ -63,7 +63,7 @@ namespace llarp
       void
       LookupRouterRecursive(const RouterID& target, const Key_t& whoasked,
                             uint64_t whoaskedTX, const Key_t& askpeer,
-                            RouterLookupHandler result = nullptr);
+                            RouterLookupHandler result = nullptr) override;
 
       bool
       LookupRouter(const RouterID& target, RouterLookupHandler result) override
@@ -135,7 +135,7 @@ namespace llarp
       /// relay a dht message from a local path to the main network
       bool
       RelayRequestForPath(const llarp::PathID_t& localPath,
-                          const IMessage* msg) override;
+                          const IMessage& msg) override;
 
       /// send introset to peer from source with S counter and excluding peers
       void
@@ -329,7 +329,10 @@ namespace llarp
       if(left)
         return;
       Context* ctx = static_cast< Context* >(u);
-      ctx->Explore(1);
+      const auto num =
+          std::min(ctx->router->NumberOfConnectedRouters(), size_t(4));
+      if(num)
+        ctx->Explore(num);
       ctx->router->logic()->call_later({orig, ctx, &handle_explore_timer});
     }
 
@@ -537,15 +540,15 @@ namespace llarp
     }
 
     bool
-    Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage* msg)
+    Context::RelayRequestForPath(const llarp::PathID_t& id, const IMessage& msg)
     {
       llarp::routing::DHTMessage reply;
-      if(!msg->HandleMessage(router->dht(), reply.M))
+      if(!msg.HandleMessage(router->dht(), reply.M))
         return false;
       if(!reply.M.empty())
       {
         auto path = router->pathContext().GetByUpstream(router->pubkey(), id);
-        return path && path->SendRoutingMessage(&reply, router);
+        return path && path->SendRoutingMessage(reply, router);
       }
       return true;
     }

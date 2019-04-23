@@ -35,6 +35,7 @@ testnet_tmp
 
 *.pid
 vsproject/
+.vs
 
 daemon.ini
 lokinet-win32.exe

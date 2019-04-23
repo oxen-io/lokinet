@@ -7,6 +7,7 @@
 #include <util/buffer.hpp>
 #include <util/logger.hpp>
 #include <util/logic.hpp>
+#include <nodedb.hpp>
 
 namespace llarp
 {
@@ -98,6 +99,11 @@ namespace llarp
       return false;
     if(!BEncodeWriteDictEntry("t", txid, buf))
       return false;
+    if(nextRC)
+    {
+      if(!BEncodeWriteDictEntry("u", *nextRC, buf))
+        return false;
+    }
     if(!bencode_write_version_entry(buf))
       return false;
     if(work && !BEncodeWriteDictEntry("w", *work, buf))
@@ -129,6 +135,11 @@ namespace llarp
       return false;
     if(!BEncodeMaybeReadDictEntry("t", self->txid, read, *key, r->buffer))
       return false;
+    if(*key == "u")
+    {
+      self->nextRC = std::make_unique< RouterContact >();
+      return self->nextRC->BDecode(r->buffer);
+    }
     if(!BEncodeMaybeReadVersion("v", self->version, LLARP_PROTO_VERSION, read,
                                 *key, r->buffer))
       return false;
@@ -199,8 +210,16 @@ namespace llarp
     static void
     SendLRCM(void* user)
     {
-      std::unique_ptr< LRCMFrameDecrypt > self(
+      std::shared_ptr< LRCMFrameDecrypt > self(
           static_cast< LRCMFrameDecrypt* >(user));
+      if(!self->context->Router()->ConnectionToRouterAllowed(
+             self->hop->info.upstream))
+      {
+        // we are not allowed to forward it ... now what?
+        llarp::LogError("path to ", self->hop->info.upstream,
+                        "not allowed, dropping build request on the floor");
+        return;
+      }
       // persist sessions to upstream and downstream routers until the commit
       // ends
       self->context->Router()->PersistSessionUntil(
@@ -209,6 +228,35 @@ namespace llarp
           self->hop->info.upstream, self->hop->ExpireTime() + 10000);
       // put hop
       self->context->PutTransitHop(self->hop);
+      // if we have an rc for this hop...
+      if(self->record.nextRC)
+      {
+        // ... and it matches the next hop ...
+        if(self->record.nextHop == self->record.nextRC->pubkey)
+        {
+          // ... and it's valid
+          const auto now = self->context->Router()->Now();
+          if(self->record.nextRC->IsPublicRouter()
+             && self->record.nextRC->Verify(self->context->Crypto(), now))
+          {
+            llarp_nodedb* n        = self->context->Router()->nodedb();
+            const RouterContact rc = std::move(*self->record.nextRC);
+            // store it into netdb if we don't have it
+            if(!n->Has(rc.pubkey))
+            {
+              std::function< void(std::shared_ptr< LRCMFrameDecrypt >) > cb =
+                  [](std::shared_ptr< LRCMFrameDecrypt > ctx) {
+                    ctx->context->ForwardLRCM(ctx->hop->info.upstream,
+                                              ctx->frames);
+                    ctx->hop = nullptr;
+                  };
+              llarp::Logic* logic = self->context->Router()->logic();
+              n->InsertAsync(rc, logic, std::bind(cb, self));
+              return;
+            }
+          }
+        }
+      }
       // forward to next hop
       self->context->ForwardLRCM(self->hop->info.upstream, self->frames);
       self->hop = nullptr;
@@ -227,7 +275,7 @@ namespace llarp
       self->context->PutTransitHop(self->hop);
       // send path confirmation
       llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
-      if(!self->hop->SendRoutingMessage(&confirm, self->context->Router()))
+      if(!self->hop->SendRoutingMessage(confirm, self->context->Router()))
       {
         llarp::LogError("failed to send path confirmation for ",
                         self->hop->info);
@@ -281,7 +329,7 @@ namespace llarp
       using namespace std::placeholders;
       if(self->record.work
          && self->record.work->IsValid(
-                std::bind(&Crypto::shorthash, crypto, _1, _2), now))
+             std::bind(&Crypto::shorthash, crypto, _1, _2), now))
       {
         llarp::LogDebug("LRCM extended lifetime by ",
                         self->record.work->extendedLifetime, " seconds for ",

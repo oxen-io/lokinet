@@ -1,16 +1,15 @@
 #include <config.hpp>  // for ensure_config
-#include <libgen.h>
 #include <llarp.h>
 #include <util/fs.hpp>
 #include <util/logger.hpp>
 
-#include <getopt.h>
 #include <signal.h>
 
 #if !defined(_WIN32) && !defined(__OpenBSD__)
 #include <wordexp.h>
 #endif
 
+#include <cxxopts.hpp>
 #include <string>
 #include <iostream>
 
@@ -104,43 +103,76 @@ main(int argc, char *argv[])
   absl::SetMutexDeadlockDetectionMode(absl::OnDeadlockCycle::kAbort);
 #endif
 
-  int opt            = 0;
+  // clang-format off
+  cxxopts::Options options(
+		"lokinet",
+		"Lokinet is a private, decentralized and IP based overlay network for the internet"
+    );
+  options.add_options()
+		("v,verbose", "Verbose", cxxopts::value<bool>())
+		("h,help", "help", cxxopts::value<bool>())
+		("g,generate", "generate config", cxxopts::value<bool>())
+		("r,router", "run as router", cxxopts::value<bool>())
+		("f,force", "overwrite", cxxopts::value<bool>())
+    ("config","path to configuration file", cxxopts::value<std::string>());
+
+  options.parse_positional("config");
+    // clang-format on
+
   bool genconfigOnly = false;
   bool asRouter      = false;
   bool overWrite     = false;
-  while((opt = getopt(argc, argv, "hgcfrv")) != -1)
-  {
-    switch(opt)
-    {
-      case 'v':
-        SetLogLevel(llarp::eLogDebug);
-        llarp::LogDebug("debug logging activated");
-        break;
-      case 'h':
-        return printHelp(argv[0], 0);
-      case 'g':
-        genconfigOnly = true;
-        break;
-      case 'c':
-        genconfigOnly = true;
-        break;
-      case 'r':
-        asRouter = true;
-        break;
-      case 'f':
-        overWrite = true;
-        break;
-      default:
-        return printHelp(argv[0]);
-    }
-  }
-
   std::string conffname;  // suggestions: confFName? conf_fname?
 
-  if(optind < argc)
+  try
+  {
+    auto result = options.parse(argc, argv);
+
+    if(result.count("verbose") > 0)
+    {
+      SetLogLevel(llarp::eLogDebug);
+      llarp::LogDebug("debug logging activated");
+    }
+
+    if(result.count("help"))
+    {
+      return printHelp(argv[0], 0);
+    }
+
+    if(result.count("generate") > 0)
+    {
+      genconfigOnly = true;
+    }
+
+    if(result.count("force") > 0)
+    {
+      overWrite = true;
+    }
+
+    if(result.count("router") > 0)
+    {
+      asRouter = true;
+    }
+
+	if(result.count("config") > 0)
+    {
+      auto arg = result["config"].as< std::string >();
+      if(!arg.empty())
+      {
+        conffname = arg;
+      }
+    }
+  }
+  catch (const cxxopts::option_not_exists_exception& ex)
+  {
+    std::cerr << ex.what();
+    return printHelp(argv[0]);
+  }
+
+  if(!conffname.empty())
   {
     // when we have an explicit filepath
-    fs::path fname   = fs::path(argv[optind]);
+    fs::path fname   = fs::path(conffname);
     fs::path basedir = fname.parent_path();
     conffname        = fname.string();
     conffname        = resolvePath(conffname);
@@ -154,7 +186,7 @@ main(int argc, char *argv[])
       // does this file exist?
       if(genconfigOnly)
       {
-        if(!llarp_ensure_config(conffname.c_str(), nullptr, overWrite,
+        if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(), overWrite,
                                 asRouter))
           return 1;
       }

@@ -14,7 +14,7 @@ namespace llarp
   namespace dht
   {
     template < typename Val_t >
-    struct Bucket : public util::IStateful
+    struct Bucket
     {
       using BucketStorage_t = std::map< Key_t, Val_t, XorMetric >;
       using Random_t        = std::function< uint64_t() >;
@@ -22,7 +22,7 @@ namespace llarp
       Bucket(const Key_t& us, Random_t r) : nodes(XorMetric(us)), random(r){};
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
         util::StatusObject obj{};
         for(const auto& item : nodes)

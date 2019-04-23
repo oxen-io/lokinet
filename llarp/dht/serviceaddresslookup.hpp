@@ -4,7 +4,7 @@
 #include <dht/key.hpp>
 #include <dht/tx.hpp>
 #include <service/address.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 namespace llarp
 {

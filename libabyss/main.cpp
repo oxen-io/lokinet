@@ -15,7 +15,7 @@ struct DemoHandler : public abyss::httpd::IRPCHandler
 
   absl::optional< Response >
   HandleJSONRPC(Method_t method,
-                __attribute__((unused)) const Params& params) override
+                ABSL_ATTRIBUTE_UNUSED const Params& params) override
   {
     llarp::LogInfo("method: ", method);
     return Response::object();
@@ -50,7 +50,7 @@ struct DemoCall : public abyss::http::IRPCClientHandler
   }
 
   void
-  PopulateReqHeaders(__attribute__((unused))
+  PopulateReqHeaders(ABSL_ATTRIBUTE_UNUSED
                      abyss::http::Headers_t& hdr) override
   {
   }
@@ -102,7 +102,7 @@ struct DemoServer : public abyss::httpd::BaseReqHandler
 };
 
 int
-main(__attribute__((unused)) int argc, __attribute__((unused)) char* argv[])
+main(ABSL_ATTRIBUTE_UNUSED int argc, ABSL_ATTRIBUTE_UNUSED char* argv[])
 {
   // Ignore on Windows, we don't even get SIGPIPE (even though native *and*
   // emulated UNIX pipes exist - CreatePipe(2), pipe(3))

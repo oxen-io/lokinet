@@ -38,14 +38,14 @@ namespace llarp
     }
 
     bool
-    DecodeKey(__attribute__((unused)) const llarp_buffer_t& key,
-              __attribute__((unused)) llarp_buffer_t* buf) override
+    DecodeKey(ABSL_ATTRIBUTE_UNUSED const llarp_buffer_t& key,
+              ABSL_ATTRIBUTE_UNUSED llarp_buffer_t* buf) override
     {
       return false;
     }
 
     bool
-    HandleMessage(__attribute__((unused)) AbstractRouter* router) const override
+    HandleMessage(ABSL_ATTRIBUTE_UNUSED AbstractRouter* router) const override
     {
       return true;
     }
@@ -75,7 +75,7 @@ namespace llarp
       bool
       HandleMessage(IMessageHandler* h, AbstractRouter* r) const override
       {
-        return h->HandleDataDiscardMessage(this, r);
+        return h->HandleDataDiscardMessage(*this, r);
       }
 
       bool

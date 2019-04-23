@@ -2,7 +2,7 @@
 #define LLARP_SERVICE_LOOKUP_HPP
 
 #include <routing/message.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 #include <set>
 
@@ -20,7 +20,7 @@ namespace llarp
 
     constexpr size_t MaxConcurrentLookups = size_t(4);
 
-    struct IServiceLookup : public util::IStateful
+    struct IServiceLookup
     {
       IServiceLookup() = delete;
       virtual ~IServiceLookup(){};
@@ -43,12 +43,12 @@ namespace llarp
       }
 
       /// build request message for service lookup
-      virtual llarp::routing::IMessage*
+      virtual std::unique_ptr< routing::IMessage >
       BuildRequestMessage() = 0;
 
-      /// build a new requset message and send it via a path
+      /// build a new request message and send it via a path
       bool
-      SendRequestViaPath(llarp::path::Path* p, AbstractRouter* r);
+      SendRequestViaPath(path::Path* p, AbstractRouter* r);
 
       ILookupHolder* parent;
       uint64_t txid;
@@ -56,9 +56,9 @@ namespace llarp
       RouterID endpoint;
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
-        auto now = llarp::time_now_ms();
+        auto now = time_now_ms();
         util::StatusObject obj{{"txid", txid},
                                {"endpoint", endpoint.ToHex()},
                                {"name", name},

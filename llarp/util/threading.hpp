@@ -17,7 +17,7 @@ namespace llarp
     /// a lock that does nothing
     struct SCOPED_LOCKABLE NullLock
     {
-      NullLock(__attribute__((unused)) const NullMutex* mtx)
+      NullLock(ABSL_ATTRIBUTE_UNUSED const NullMutex* mtx)
           EXCLUSIVE_LOCK_FUNCTION(mtx)
       {
       }

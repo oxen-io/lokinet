@@ -18,6 +18,8 @@ list(APPEND TEST_SRC
     ev/test_ev_loop.cpp
     exit/test_llarp_exit_context.cpp
     link/test_llarp_link.cpp
+    metrics/test_llarp_metrics_metricktank.cpp
+    metrics/test_llarp_metrics_publisher.cpp
     net/test_llarp_net_inaddr.cpp
     net/test_llarp_net.cpp
     routing/llarp_routing_transfer_traffic.cpp
@@ -37,16 +39,15 @@ list(APPEND TEST_SRC
     util/test_llarp_util_encode.cpp
     util/test_llarp_util_ini.cpp
     util/test_llarp_util_metrics_core.cpp
-    util/test_llarp_util_metrics_publisher.cpp
     util/test_llarp_util_metrics_types.cpp
     util/test_llarp_util_object.cpp
     util/test_llarp_util_printer.cpp
     util/test_llarp_util_queue_manager.cpp
     util/test_llarp_util_queue.cpp
     util/test_llarp_util_thread_pool.cpp
-    util/test_llarp_utils_scheduler.cpp
     util/test_llarp_util_timerqueue.cpp
     util/test_llarp_util_traits.cpp
+    util/test_llarp_utils_scheduler.cpp
 )
 
 add_executable(${TEST_EXE}
@@ -66,5 +67,5 @@ if(NOT WIN32)
     target_link_libraries(${TEST_EXE} PUBLIC absl::variant)
 else()
     target_sources(${TEST_EXE} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/win32/test.rc")
-    target_link_libraries(${TEST_EXE} PUBLIC ws2_32 iphlpapi)
+    target_link_libraries(${TEST_EXE} PUBLIC ws2_32 iphlpapi shlwapi)
 endif(NOT WIN32)

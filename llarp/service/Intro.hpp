@@ -12,11 +12,10 @@ namespace llarp
 {
   namespace service
   {
-    struct Introduction final : public llarp::IBEncodeMessage,
-                                public util::IStateful
+    struct Introduction final : public IBEncodeMessage
     {
-      llarp::PubKey router;
-      llarp::PathID_t pathID;
+      PubKey router;
+      PathID_t pathID;
       uint64_t latency   = 0;
       uint64_t version   = 0;
       uint64_t expiresAt = 0;
@@ -32,7 +31,7 @@ namespace llarp
       }
 
       util::StatusObject
-      ExtractStatus() const override;
+      ExtractStatus() const;
 
       bool
       IsExpired(llarp_time_t now) const

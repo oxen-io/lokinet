@@ -19,8 +19,7 @@
 /* C++Builder defines a "random" macro */
 #undef random
 
-static const randombytes_implementation *implementation =
-    &randombytes_salsa20_implementation;
+static const randombytes_implementation *implementation = 0;
 
 static void
 randombytes_init_if_needed(void)

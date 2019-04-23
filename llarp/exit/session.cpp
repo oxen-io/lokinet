@@ -81,6 +81,12 @@ namespace llarp
         return path::Builder::SelectHop(db, prev, cur, hop, roles);
     }
 
+    bool
+    BaseSession::CheckPathDead(path::Path*, llarp_time_t dlt)
+    {
+      return dlt >= 10000;
+    }
+
     void
     BaseSession::HandlePathBuilt(llarp::path::Path* p)
     {
@@ -88,7 +94,9 @@ namespace llarp
       p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
                                   std::placeholders::_1, std::placeholders::_2,
                                   std::placeholders::_3));
-
+      p->SetDeadChecker(std::bind(&BaseSession::CheckPathDead, this,
+                                  std::placeholders::_1,
+                                  std::placeholders::_2));
       p->SetExitTrafficHandler(
           std::bind(&BaseSession::HandleTraffic, this, std::placeholders::_1,
                     std::placeholders::_2, std::placeholders::_3));
@@ -105,7 +113,7 @@ namespace llarp
         llarp::LogError("Failed to sign exit request");
         return;
       }
-      if(p->SendExitRequest(&obtain, router))
+      if(p->SendExitRequest(obtain, router))
         llarp::LogInfo("asking ", m_ExitRouter, " for exit");
       else
         llarp::LogError("failed to send exit request");
@@ -154,7 +162,7 @@ namespace llarp
           llarp::LogInfo(p->Name(), " closing exit path");
           llarp::routing::CloseExitMessage msg;
           if(!(msg.Sign(router->crypto(), m_ExitIdentity)
-               && p->SendExitClose(&msg, router)))
+               && p->SendExitClose(msg, router)))
             llarp::LogWarn(p->Name(), " failed to send exit close message");
         }
       };
@@ -242,7 +250,7 @@ namespace llarp
           {
             auto& msg = queue.front();
             msg.S     = path->NextSeqNo();
-            if(path->SendRoutingMessage(&msg, router))
+            if(path->SendRoutingMessage(msg, router))
               m_LastUse = now;
             queue.pop_front();
           }

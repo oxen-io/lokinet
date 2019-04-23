@@ -3,13 +3,13 @@
 
 #include <dht/key.hpp>
 #include <router_contact.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 namespace llarp
 {
   namespace dht
   {
-    struct RCNode : public util::IStateful
+    struct RCNode
     {
       RouterContact rc;
       Key_t ID;
@@ -24,7 +24,7 @@ namespace llarp
       }
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
         return rc.ExtractStatus();
       }
@@ -36,7 +36,7 @@ namespace llarp
       }
     };
 
-    struct ISNode : public util::IStateful
+    struct ISNode
     {
       service::IntroSet introset;
 
@@ -53,7 +53,7 @@ namespace llarp
       }
 
       util::StatusObject
-      ExtractStatus() const override
+      ExtractStatus() const
       {
         return introset.ExtractStatus();
       }

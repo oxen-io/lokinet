@@ -86,6 +86,11 @@ namespace llarp
     // path to write our self signed rc to
     fs::path our_rc_file = "rc.signed";
 
+    // use file based logging?
+    bool m_UseFileLogging = false;
+    // default log file path
+    fs::path logfile = "lokinet.log";
+
     // our router contact
     RouterContact _rc;
 
@@ -385,7 +390,7 @@ namespace llarp
     EnsureEncryptionKey();
 
     bool
-    ConnectionToRouterAllowed(const RouterID &router) const;
+    ConnectionToRouterAllowed(const RouterID &router) const override;
 
     bool
     SaveRC();

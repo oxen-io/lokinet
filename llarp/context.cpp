@@ -7,17 +7,17 @@
 #include <dns/dotlokilookup.hpp>
 #include <dnsd.hpp>
 #include <ev/ev.hpp>
+#include <metrics/metrictank_publisher.hpp>
+#include <metrics/publishers.hpp>
 #include <nodedb.hpp>
 #include <router/router.hpp>
 #include <util/logger.h>
 #include <util/metrics.hpp>
-#include <util/metrics_publishers.hpp>
 #include <util/scheduler.hpp>
 
-#include <getopt.h>
+#include <absl/strings/str_split.h>
+#include <cxxopts.hpp>
 #include <signal.h>
-
-#include <sys/param.h>  // for MIN
 
 #if(__FreeBSD__) || (__OpenBSD__) || (__NetBSD__)
 #include <pthread_np.h>
@@ -81,17 +81,22 @@ namespace llarp
       {
         disableMetrics = true;
       }
-      if(!strcmp(key, "disable-metrics-log"))
+      else if(!strcmp(key, "disable-metrics-log"))
       {
         disableMetricLogs = true;
       }
-      if(!strcmp(key, "json-metrics-path"))
+      else if(!strcmp(key, "json-metrics-path"))
       {
-        setupMetrics();
-        m_metricsManager->instance()->addGlobalPublisher(
-            std::make_shared< metrics::JsonPublisher >(
-                std::bind(&metrics::JsonPublisher::directoryPublisher,
-                          std::placeholders::_1, val)));
+        jsonMetricsPath = val;
+      }
+      else if(!strcmp(key, "metric-tank-host"))
+      {
+        metricTankHost = val;
+      }
+      else
+      {
+        // consume everything else as a metric tag
+        metricTags[key] = val;
       }
     }
     if(!strcmp(section, "router"))
@@ -137,6 +142,52 @@ namespace llarp
     {
       m_metricsPublisher = std::make_unique< metrics::PublisherScheduler >(
           *m_scheduler, m_metricsManager->instance());
+    }
+
+    if(!jsonMetricsPath.native().empty())
+    {
+      m_metricsManager->instance()->addGlobalPublisher(
+          std::make_shared< metrics::JsonPublisher >(
+              std::bind(&metrics::JsonPublisher::directoryPublisher,
+                        std::placeholders::_1, jsonMetricsPath)));
+    }
+
+    if(!metricTankHost.empty())
+    {
+      if(std::getenv("LOKINET_ENABLE_METRIC_TANK"))
+      {
+        static std::string WARNING = R"(
+__        ___    ____  _   _ ___ _   _  ____
+\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+ \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+
+This Lokinet session is not private
+
+Sending connection metrics to metrictank
+__        ___    ____  _   _ ___ _   _  ____
+\ \      / / \  |  _ \| \ | |_ _| \ | |/ ___|
+ \ \ /\ / / _ \ | |_) |  \| || ||  \| | |  _
+  \ V  V / ___ \|  _ <| |\  || || |\  | |_| |
+   \_/\_/_/   \_\_| \_\_| \_|___|_| \_|\____|
+
+        )";
+
+        std::cerr << WARNING << '\n';
+
+        std::pair< std::string, std::string > split =
+            absl::StrSplit(metricTankHost, ':');
+
+        m_metricsManager->instance()->addGlobalPublisher(
+            std::make_shared< metrics::MetricTankPublisher >(
+                metricTags, split.first, stoi(split.second)));
+      }
+      else
+      {
+        std::cerr << "metrictank host specified, but "
+                     "LOKINET_ENABLE_METRIC_TANK not set, skipping\n";
+      }
     }
 
     m_metricsPublisher->setDefault(absl::Seconds(30));
@@ -227,8 +278,8 @@ namespace llarp
       return 1;
     }
     // must be done after router is made so we can use its disk io worker
-    // must also be done after configure so that netid is properly set if it is
-    // provided by config
+    // must also be done after configure so that netid is properly set if it
+    // is provided by config
     if(!this->LoadDatabase())
       return 1;
     return 0;
@@ -592,50 +643,40 @@ extern "C"
   const char *
   handleBaseCmdLineArgs(int argc, char *argv[])
   {
-    const char *conffname = "daemon.ini";
-    int c;
-    while(1)
+
+	// clang-format off
+    cxxopts::Options options(
+		"lokinet",
+		"Lokinet is a private, decentralized and IP based overlay network for the internet"
+    );
+    options.add_options()
+		("c,config", "Config file", cxxopts::value< std::string >()->default_value("daemon.ini"))
+		("o,logLevel", "logging level");
+	// clang-format on
+
+    auto result = options.parse(argc, argv);
+    std::string logLevel = result["logLevel"].as< std::string >();
+
+    if(logLevel == "debug")
     {
-      static struct option long_options[] = {
-          {"config", required_argument, 0, 'c'},
-          {"logLevel", required_argument, 0, 'o'},
-          {0, 0, 0, 0}};
-      int option_index = 0;
-      c = getopt_long(argc, argv, "c:o:", long_options, &option_index);
-      if(c == -1)
-        break;
-      switch(c)
-      {
-        case 0:
-          break;
-        case 'c':
-          conffname = optarg;
-          break;
-        case 'o':
-          if(strncmp(optarg, "debug", std::min(strlen(optarg), size_t(5))) == 0)
-          {
-            cSetLogLevel(eLogDebug);
-          }
-          else if(strncmp(optarg, "info", std::min(strlen(optarg), size_t(4)))
-                  == 0)
-          {
-            cSetLogLevel(eLogInfo);
-          }
-          else if(strncmp(optarg, "warn", std::min(strlen(optarg), size_t(4)))
-                  == 0)
-          {
-            cSetLogLevel(eLogWarn);
-          }
-          else if(strncmp(optarg, "error", std::min(strlen(optarg), size_t(5)))
-                  == 0)
-          {
-            cSetLogLevel(eLogError);
-          }
-          break;
-        default:
-          break;
-      }
+      cSetLogLevel(eLogDebug);
     }
-    return conffname;
+    else if(logLevel == "info")
+    {
+      cSetLogLevel(eLogInfo);
+    }
+    else if(logLevel == "warn")
+    {
+      cSetLogLevel(eLogWarn);
+    }
+    else if(logLevel == "error")
+    {
+      cSetLogLevel(eLogError);
+    }
+
+	// this isn't thread safe, but reconfiguring during run is likely unsafe either way
+	static std::string confname = result["config"].as< std::string >();
+
+	return confname.c_str();
   }
 }
