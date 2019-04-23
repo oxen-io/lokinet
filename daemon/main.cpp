@@ -98,13 +98,13 @@ main(int argc, char *argv[])
   // clang-format off
   cxxopts::Options options(
 		"lokinet",
-		"Lokinet is a private, decentralized and IP based overlay network for the internet"
+		"LokiNET is a free, open source, private, decentralized, "market based sybil resistant" and IP based onion routing network"
     );
   options.add_options()
 		("v,verbose", "Verbose", cxxopts::value<bool>())
 		("h,help", "help", cxxopts::value<bool>())
-		("g,generate", "generate config", cxxopts::value<bool>())
-		("r,router", "run as router", cxxopts::value<bool>())
+		("g,generate", "generate client config", cxxopts::value<bool>())
+		("r,router", "generate router config", cxxopts::value<bool>())
 		("f,force", "overwrite", cxxopts::value<bool>())
     ("config","path to configuration file", cxxopts::value<std::string>());
 
