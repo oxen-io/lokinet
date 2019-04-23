@@ -28,11 +28,16 @@
 		B8EBA4812266B8380098F863 /* liblokinet-platform.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4622266B7080098F863 /* liblokinet-platform.a */; };
 		B8EBA4822266B83B0098F863 /* liblokinet-static.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4642266B7080098F863 /* liblokinet-static.a */; };
 		B8EBA4832266B8550098F863 /* libcppbackport.a in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4522266B7080098F863 /* libcppbackport.a */; };
-		B8F79879225DBCC500003DE6 /* Daemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* Daemon.swift */; };
+		B8EBA4CB226EA8EB0098F863 /* Packet Tunnel Provider.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		B8EBA4CF226EAC620098F863 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */; };
+		B8EBA4D0226EAC7D0098F863 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */; };
+		B8EBA4D4226ED7920098F863 /* LKTunnel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EBA4D3226ED7920098F863 /* LKTunnel.swift */; };
+		B8EBA4D7226EDD430098F863 /* LKError.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8EBA4D6226EDD430098F863 /* LKError.swift */; };
+		B8F79879225DBCC500003DE6 /* LKDaemon.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F79878225DBCC500003DE6 /* LKDaemon.swift */; };
 		B8F798922260579100003DE6 /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8F798912260579100003DE6 /* PacketTunnelProvider.swift */; };
 		C3CBFB652256D47400F34631 /* lokinet-wrapper.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */; };
-		C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* AppDelegate.swift */; };
-		C3FBE36722542DD60006284B /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* ViewController.swift */; };
+		C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36422542DD60006284B /* LKAppDelegate.swift */; };
+		C3FBE36722542DD60006284B /* LKViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3FBE36622542DD60006284B /* LKViewController.swift */; };
 		C3FBE36A22542DD60006284B /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C3FBE36822542DD60006284B /* Main.storyboard */; };
 		C3FBE36C22542DD80006284B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C3FBE36B22542DD80006284B /* Assets.xcassets */; };
 		C3FBE36F22542DD80006284B /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C3FBE36D22542DD80006284B /* LaunchScreen.storyboard */; };
@@ -375,6 +380,34 @@
 			remoteGlobalIDString = B7887DB845E3490489BD6E4F;
 			remoteInfo = testAll;
 		};
+		B8EBA4C2226EA2DB0098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = FD3EF13792714989A21E998B;
+			remoteInfo = example;
+		};
+		B8EBA4C4226EA2DB0098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = 454893C7E883473A94A17D42;
+			remoteInfo = link_test;
+		};
+		B8EBA4C6226EA2DB0098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = E66D38919D8242CB934F2898;
+			remoteInfo = options_test;
+		};
+		B8EBA4C9226EA8E50098F863 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C3FBE35922542DD60006284B /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = B8F79882226056DD00003DE6;
+			remoteInfo = "Packet Tunnel Provider";
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -384,6 +417,7 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
+				B8EBA4CB226EA8EB0098F863 /* Packet Tunnel Provider.appex in Embed App Extensions */,
 			);
 			name = "Embed App Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -392,6 +426,11 @@
 
 /* Begin PBXFileReference section */
 		B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = lokinet.xcodeproj; path = ../Core/lokinet.xcodeproj; sourceTree = "<group>"; };
+		B8EBA4CC226EAB5C0098F863 /* Packet Tunnel Provider.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Packet Tunnel Provider.entitlements"; sourceTree = "<group>"; };
+		B8EBA4CD226EAB6B0098F863 /* Loki Network.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "Loki Network.entitlements"; sourceTree = "<group>"; };
+		B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = System/Library/Frameworks/NetworkExtension.framework; sourceTree = SDKROOT; };
+		B8EBA4D3226ED7920098F863 /* LKTunnel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKTunnel.swift; sourceTree = "<group>"; };
+		B8EBA4D6226EDD430098F863 /* LKError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKError.swift; sourceTree = "<group>"; };
 		B8F797EF225C5E1E00003DE6 /* libcppbackport.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libcppbackport.a; path = ../build/vendor/libcppbackport.a; sourceTree = "<group>"; };
 		B8F797FB225C641200003DE6 /* liblokinet-platform.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-platform.a"; path = "../build/llarp/liblokinet-platform.a"; sourceTree = "<group>"; };
 		B8F797FF225C6D3600003DE6 /* liblokinet-util.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-util.a"; path = "../build/llarp/liblokinet-util.a"; sourceTree = "<group>"; };
@@ -412,17 +451,16 @@
 		B8F79865225DB13E00003DE6 /* libabsl_stacktrace.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_stacktrace.a; path = "../build/vendor/abseil-cpp/absl/debugging/libabsl_stacktrace.a"; sourceTree = "<group>"; };
 		B8F79869225DB19A00003DE6 /* libabsl_bad_optional_access.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_bad_optional_access.a; path = "../build/vendor/abseil-cpp/absl/types/libabsl_bad_optional_access.a"; sourceTree = "<group>"; };
 		B8F7986B225DB1CD00003DE6 /* libabsl_int128.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libabsl_int128.a; path = "../build/vendor/abseil-cpp/absl/numeric/libabsl_int128.a"; sourceTree = "<group>"; };
-		B8F79878225DBCC500003DE6 /* Daemon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Daemon.swift; sourceTree = "<group>"; };
+		B8F79878225DBCC500003DE6 /* LKDaemon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKDaemon.swift; sourceTree = "<group>"; };
 		B8F79883226056DD00003DE6 /* Packet Tunnel Provider.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "Packet Tunnel Provider.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B8F79887226056DD00003DE6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		B8F79888226056DD00003DE6 /* Packet_Tunnel_Provider.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Packet_Tunnel_Provider.entitlements; sourceTree = "<group>"; };
 		B8F798912260579100003DE6 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
 		C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "lokinet-wrapper.cpp"; sourceTree = "<group>"; };
 		C3CBFB642256D47400F34631 /* lokinet-wrapper.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "lokinet-wrapper.h"; sourceTree = "<group>"; };
 		C3CBFB662256D57000F34631 /* liblokinet-static.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "liblokinet-static.a"; path = "../build/llarp/liblokinet-static.a"; sourceTree = "<group>"; };
 		C3FBE36122542DD60006284B /* Loki Network.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Loki Network.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		C3FBE36422542DD60006284B /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		C3FBE36622542DD60006284B /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
+		C3FBE36422542DD60006284B /* LKAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKAppDelegate.swift; sourceTree = "<group>"; };
+		C3FBE36622542DD60006284B /* LKViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LKViewController.swift; sourceTree = "<group>"; };
 		C3FBE36922542DD60006284B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		C3FBE36B22542DD80006284B /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C3FBE36E22542DD80006284B /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -435,6 +473,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8EBA4CF226EAC620098F863 /* NetworkExtension.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -449,6 +488,7 @@
 				B8EBA4732266B7F20098F863 /* libabsl_internal_spinlock_wait.a in Frameworks */,
 				B8EBA4742266B7F60098F863 /* libabsl_internal_throw_delegate.a in Frameworks */,
 				B8EBA4752266B7FB0098F863 /* libabsl_stacktrace.a in Frameworks */,
+				B8EBA4D0226EAC7D0098F863 /* NetworkExtension.framework in Frameworks */,
 				B8EBA4762266B7FF0098F863 /* libabsl_symbolize.a in Frameworks */,
 				B8EBA4772266B8030098F863 /* libabsl_hash.a in Frameworks */,
 				B8EBA4782266B8090098F863 /* libabsl_internal_city.a in Frameworks */,
@@ -506,16 +546,19 @@
 				B8EBA44E2266B7080098F863 /* libabyss.a */,
 				B8EBA4502266B7080098F863 /* abyss-main */,
 				B8EBA4522266B7080098F863 /* libcppbackport.a */,
+				B8EBA4C3226EA2DB0098F863 /* example */,
 				B8EBA4542266B7080098F863 /* libgmockd.a */,
 				B8EBA4562266B7080098F863 /* libgmock_maind.a */,
 				B8EBA4582266B7080098F863 /* libgtestd.a */,
 				B8EBA45A2266B7080098F863 /* libgtest_maind.a */,
 				B8EBA45C2266B7080098F863 /* liblibutp.a */,
+				B8EBA4C5226EA2DB0098F863 /* link_test */,
 				B8EBA45E2266B7080098F863 /* lokinet */,
 				B8EBA4602266B7080098F863 /* liblokinet-cryptography.a */,
 				B8EBA4622266B7080098F863 /* liblokinet-platform.a */,
 				B8EBA4642266B7080098F863 /* liblokinet-static.a */,
 				B8EBA4662266B7080098F863 /* liblokinet-util.a */,
+				B8EBA4C7226EA2DB0098F863 /* options_test */,
 				B8EBA4682266B7080098F863 /* libpow10_helper.a */,
 				B8EBA46A2266B7080098F863 /* libstr_format_extension_internal.a */,
 				B8EBA46C2266B7080098F863 /* libstr_format_internal.a */,
@@ -524,13 +567,32 @@
 			name = Products;
 			sourceTree = "<group>";
 		};
+		B8EBA4D5226EDD240098F863 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				B8EBA4D6226EDD430098F863 /* LKError.swift */,
+			);
+			name = Utilities;
+			sourceTree = "<group>";
+		};
+		B8EBA4D8226EDF4D0098F863 /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				C3FBE36622542DD60006284B /* LKViewController.swift */,
+				C3FBE36822542DD60006284B /* Main.storyboard */,
+				C3FBE36D22542DD80006284B /* LaunchScreen.storyboard */,
+			);
+			name = UI;
+			sourceTree = "<group>";
+		};
 		B8F79871225DB9D600003DE6 /* Core */ = {
 			isa = PBXGroup;
 			children = (
-				B8F79878225DBCC500003DE6 /* Daemon.swift */,
-				B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */,
+				B8EBA4D3226ED7920098F863 /* LKTunnel.swift */,
+				B8F79878225DBCC500003DE6 /* LKDaemon.swift */,
 				C3CBFB642256D47400F34631 /* lokinet-wrapper.h */,
 				C3CBFB632256D47400F34631 /* lokinet-wrapper.cpp */,
+				B83E8F062265AC5F00315B9D /* lokinet.xcodeproj */,
 			);
 			name = Core;
 			sourceTree = "<group>";
@@ -538,9 +600,11 @@
 		B8F79874225DB9FF00003DE6 /* Meta */ = {
 			isa = PBXGroup;
 			children = (
+				C3FBE36422542DD60006284B /* LKAppDelegate.swift */,
 				C3FBE37C22543A670006284B /* Loki-Network-Bridging-Header.h */,
 				C3FBE36B22542DD80006284B /* Assets.xcassets */,
 				C3FBE37022542DD80006284B /* Info.plist */,
+				B8EBA4CD226EAB6B0098F863 /* Loki Network.entitlements */,
 			);
 			name = Meta;
 			sourceTree = "<group>";
@@ -558,7 +622,7 @@
 			isa = PBXGroup;
 			children = (
 				B8F79887226056DD00003DE6 /* Info.plist */,
-				B8F79888226056DD00003DE6 /* Packet_Tunnel_Provider.entitlements */,
+				B8EBA4CC226EAB5C0098F863 /* Packet Tunnel Provider.entitlements */,
 			);
 			name = Meta;
 			sourceTree = "<group>";
@@ -585,11 +649,9 @@
 		C3FBE36322542DD60006284B /* Loki Network */ = {
 			isa = PBXGroup;
 			children = (
-				C3FBE36422542DD60006284B /* AppDelegate.swift */,
-				C3FBE36622542DD60006284B /* ViewController.swift */,
-				C3FBE36822542DD60006284B /* Main.storyboard */,
-				C3FBE36D22542DD80006284B /* LaunchScreen.storyboard */,
 				B8F79874225DB9FF00003DE6 /* Meta */,
+				B8EBA4D5226EDD240098F863 /* Utilities */,
+				B8EBA4D8226EDF4D0098F863 /* UI */,
 				B8F79871225DB9D600003DE6 /* Core */,
 			);
 			path = "Loki Network";
@@ -598,6 +660,7 @@
 		C3FBE376225438E20006284B /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				B8EBA4CE226EAC620098F863 /* NetworkExtension.framework */,
 				B8F7984D225DAB7A00003DE6 /* libabyss.a */,
 				B8F79847225DAA0C00003DE6 /* liblibutp.a */,
 				B8F79859225DAE7100003DE6 /* libabsl_base.a */,
@@ -655,6 +718,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				B8EBA4CA226EA8E50098F863 /* PBXTargetDependency */,
 			);
 			name = "Loki Network";
 			productName = "Loki Network";
@@ -673,10 +737,32 @@
 				TargetAttributes = {
 					B8F79882226056DD00003DE6 = {
 						CreatedOnToolsVersion = 10.2;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+							com.apple.NetworkExtensions.iOS = {
+								enabled = 1;
+							};
+							com.apple.VPNLite = {
+								enabled = 1;
+							};
+						};
 					};
 					C3FBE36022542DD60006284B = {
 						CreatedOnToolsVersion = 10.2;
 						LastSwiftMigration = 1020;
+						SystemCapabilities = {
+							com.apple.ApplicationGroups.iOS = {
+								enabled = 1;
+							};
+							com.apple.NetworkExtensions.iOS = {
+								enabled = 1;
+							};
+							com.apple.VPNLite = {
+								enabled = 1;
+							};
+						};
 					};
 				};
 			};
@@ -1045,6 +1131,30 @@
 			remoteRef = B8EBA46D2266B7080098F863 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
+		B8EBA4C3226EA2DB0098F863 /* example */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			name = example;
+			path = example.app;
+			remoteRef = B8EBA4C2226EA2DB0098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4C5226EA2DB0098F863 /* link_test */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			name = link_test;
+			path = link_test.app;
+			remoteRef = B8EBA4C4226EA2DB0098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		B8EBA4C7226EA2DB0098F863 /* options_test */ = {
+			isa = PBXReferenceProxy;
+			fileType = "compiled.mach-o.executable";
+			name = options_test;
+			path = options_test.app;
+			remoteRef = B8EBA4C6226EA2DB0098F863 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
 /* End PBXReferenceProxy section */
 
 /* Begin PBXResourcesBuildPhase section */
@@ -1080,14 +1190,24 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				B8EBA4D4226ED7920098F863 /* LKTunnel.swift in Sources */,
 				C3CBFB652256D47400F34631 /* lokinet-wrapper.cpp in Sources */,
-				B8F79879225DBCC500003DE6 /* Daemon.swift in Sources */,
-				C3FBE36722542DD60006284B /* ViewController.swift in Sources */,
-				C3FBE36522542DD60006284B /* AppDelegate.swift in Sources */,
+				B8F79879225DBCC500003DE6 /* LKDaemon.swift in Sources */,
+				C3FBE36722542DD60006284B /* LKViewController.swift in Sources */,
+				B8EBA4D7226EDD430098F863 /* LKError.swift in Sources */,
+				C3FBE36522542DD60006284B /* LKAppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B8EBA4CA226EA8E50098F863 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = B8F79882226056DD00003DE6 /* Packet Tunnel Provider */;
+			targetProxy = B8EBA4C9226EA8E50098F863 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		C3FBE36822542DD60006284B /* Main.storyboard */ = {
@@ -1112,17 +1232,17 @@
 		B8F7988D226056DD00003DE6 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = "Packet Tunnel Provider/Packet_Tunnel_Provider.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Packet Tunnel Provider/Packet Tunnel Provider.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = V694FHC546;
+				DEVELOPMENT_TEAM = 8SQ45X653X;
 				INFOPLIST_FILE = "Packet Tunnel Provider/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.loki-project.loki-network.packet-tunnel-provider";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network.Loki-Network.Packet-Tunnel-Provider";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
@@ -1134,17 +1254,17 @@
 		B8F7988E226056DD00003DE6 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = "Packet Tunnel Provider/Packet_Tunnel_Provider.entitlements";
+				CODE_SIGN_ENTITLEMENTS = "Packet Tunnel Provider/Packet Tunnel Provider.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = V694FHC546;
+				DEVELOPMENT_TEAM = 8SQ45X653X;
 				INFOPLIST_FILE = "Packet Tunnel Provider/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.loki-project.loki-network.packet-tunnel-provider";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network.Loki-Network.Packet-Tunnel-Provider";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SKIP_INSTALL = YES;
@@ -1274,16 +1394,17 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Loki Network/Loki Network.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = V694FHC546;
+				DEVELOPMENT_TEAM = 8SQ45X653X;
 				INFOPLIST_FILE = "Loki Network/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				OTHER_CFLAGS = "-DiOS";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.loki-project.loki-network";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network.Loki-Network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Loki Network/Loki-Network-Bridging-Header.h";
@@ -1305,16 +1426,17 @@
 			buildSettings = {
 				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "Loki Network/Loki Network.entitlements";
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = V694FHC546;
+				DEVELOPMENT_TEAM = 8SQ45X653X;
 				INFOPLIST_FILE = "Loki Network/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				OTHER_CFLAGS = "-DiOS";
-				PRODUCT_BUNDLE_IDENTIFIER = "com.loki-project.loki-network";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network.Loki-Network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "Loki Network/Loki-Network-Bridging-Header.h";
