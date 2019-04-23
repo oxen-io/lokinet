@@ -35,6 +35,7 @@ namespace llarp
     {
       std::set< service::IntroSet > found(valuesFound.begin(),
                                           valuesFound.end());
+
       // collect our local values if we haven't hit a limit
       if(found.size() < 2)
       {
