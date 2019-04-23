@@ -66,31 +66,10 @@ namespace llarp
       return true;
     }
 
-    bool
-    Endpoint::IsolateNetwork()
-    {
-      return false;
-    }
-
     llarp_ev_loop_ptr
     Endpoint::EndpointNetLoop()
     {
-      if(m_IsolatedNetLoop)
-        return m_IsolatedNetLoop;
-      else
-        return m_Router->netloop();
-    }
-
-    bool
-    Endpoint::NetworkIsIsolated() const
-    {
-      return m_IsolatedLogic && m_IsolatedWorker;
-    }
-
-    bool
-    Endpoint::SetupIsolatedNetwork(void* user, bool failed)
-    {
-      return static_cast< Endpoint* >(user)->DoNetworkIsolation(!failed);
+      return m_Router->netloop();
     }
 
     bool
@@ -233,10 +212,8 @@ namespace llarp
         {
           if(itr->second->IsTimedOut(now))
           {
-            std::unique_ptr< IServiceLookup > lookup = std::move(itr->second);
-
-            LogInfo(lookup->name, " timed out txid=", lookup->txid);
-            lookup->HandleResponse({});
+            LogInfo(itr->second->name, " timed out txid=", itr->second->txid);
+            itr->second->HandleResponse({});
             itr = m_PendingLookups.erase(itr);
           }
           else
@@ -699,24 +676,6 @@ namespace llarp
     }
 
     bool
-    Endpoint::DoNetworkIsolation(bool failed)
-    {
-      if(failed)
-        return IsolationFailed();
-      m_IsolatedNetLoop = llarp_make_ev_loop();
-      return SetupNetworking();
-    }
-
-    void
-    Endpoint::RunIsolatedMainLoop(void* user)
-    {
-      Endpoint* self = static_cast< Endpoint* >(user);
-      llarp_ev_loop_run_single_process(self->m_IsolatedNetLoop,
-                                       self->m_IsolatedWorker,
-                                       self->m_IsolatedLogic);
-    }
-
-    bool
     Endpoint::ShouldBundleRC() const
     {
       return m_BundleRC;
@@ -904,7 +863,7 @@ namespace llarp
         RemoveConvoTag(frame.T);
         return true;
       }
-      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), Crypto(), p, Worker(),
+      if(!frame.AsyncDecryptAndVerify(RouterLogic(), Crypto(), p, Worker(),
                                       m_Identity, m_DataHandler))
       {
         // send discard
@@ -1188,12 +1147,6 @@ namespace llarp
     Endpoint::RouterLogic()
     {
       return m_Router->logic();
-    }
-
-    Logic*
-    Endpoint::EndpointLogic()
-    {
-      return m_IsolatedLogic ? m_IsolatedLogic : m_Router->logic();
     }
 
     Crypto*

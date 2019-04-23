@@ -22,6 +22,8 @@
 
 namespace llarp
 {
+  struct AbstractRouter;
+
   namespace service
   {
     struct AsyncKeyExchange;
@@ -72,10 +74,6 @@ namespace llarp
       /// router's logic
       Logic*
       RouterLogic();
-
-      /// endpoint's logic
-      Logic*
-      EndpointLogic();
 
       /// borrow endpoint's net loop for sending data to user
       llarp_ev_loop_ptr
@@ -292,39 +290,13 @@ namespace llarp
       void
       PrefetchServicesByTag(const Tag& tag);
 
-      bool
-      IsolateNetwork();
-
-      bool
-      NetworkIsIsolated() const;
-
-      static void
-      RunIsolatedMainLoop(void*);
-
      private:
       bool
       OnLookup(const service::Address& addr, const IntroSet* i,
                const RouterID& endpoint); /*  */
 
-      static bool
-      SetupIsolatedNetwork(void* user, bool success);
-
-      bool
-      DoNetworkIsolation(bool failed);
-
       virtual bool
-      SetupNetworking()
-      {
-        // XXX: override me
-        return true;
-      }
-
-      virtual bool
-      IsolationFailed()
-      {
-        // XXX: override me
-        return false;
-      }
+      SetupNetworking() = 0;
 
      protected:
       IDataHandler* m_DataHandler = nullptr;
@@ -333,9 +305,6 @@ namespace llarp
 
      private:
       AbstractRouter* m_Router;
-      llarp_threadpool* m_IsolatedWorker  = nullptr;
-      Logic* m_IsolatedLogic              = nullptr;
-      llarp_ev_loop_ptr m_IsolatedNetLoop = nullptr;
       std::string m_Keyfile;
       std::string m_Name;
       std::string m_NetNS;

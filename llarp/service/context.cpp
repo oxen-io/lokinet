@@ -99,17 +99,21 @@ namespace llarp
 
       auto ep = getFirstEndpoint();
       if(!ep)
+      {
         return;
+      }
       std::vector< RouterID > expired;
       m_Router->nodedb()->visit([&](const RouterContact &rc) -> bool {
         if(rc.IsExpired(now))
+        {
           expired.emplace_back(rc.pubkey);
+        }
         return true;
       });
       // TODO: we need to stop looking up service nodes that are gone forever
       // how do?
-      for(const auto &k : expired)
-        ep->LookupRouterAnon(k);
+      std::for_each(expired.begin(), expired.end(),
+                    [ep](const RouterID &k) { ep->LookupRouterAnon(k); });
     }
 
     bool

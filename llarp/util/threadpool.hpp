@@ -21,25 +21,6 @@ namespace llarp
       void
       Join();
 
-      /// isolate current thread
-      /// return true for success
-      /// return false for failure
-      /// set errno on fail
-      /// override me in subclass
-      virtual bool
-      IsolateCurrentProcess()
-      {
-        return true;
-      }
-
-      // override me to do specific setups after isolation
-      // return true for success
-      virtual bool
-      Isolated()
-      {
-        return true;
-      }
-
       /// called when isolation failed
       virtual void
       Fail()
@@ -65,18 +46,6 @@ namespace llarp
       /// implement me per platform
       virtual bool
       IsolateNetwork() = 0;
-
-      bool
-      IsolateCurrentProcess()
-      {
-        return IsolateNetwork();
-      }
-
-      bool
-      Isolated()
-      {
-        return m_NetSetup(m_user, true);
-      }
 
       void
       Fail()

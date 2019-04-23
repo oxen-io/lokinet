@@ -31,6 +31,12 @@ namespace llarp
       {
         return false;
       }
+
+      bool
+      SetupNetworking() override
+      {
+        return true;
+      }
     };
   }  // namespace handlers
 }  // namespace llarp
