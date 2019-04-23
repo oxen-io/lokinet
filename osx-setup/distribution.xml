@@ -22,7 +22,7 @@
       id="network.loki.lokinet"
       visible="false"
       title="LokiNET"
-      description="Anonymous network layer onion router"
+      description="LokiNET is a free, open source, private, decentralized, "market based sybil resistant" and IP based onion routing network"
       start_selected="true">
     <pkg-ref id="network.loki.lokinet"/>
   </choice>
