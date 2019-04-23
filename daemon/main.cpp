@@ -27,14 +27,6 @@ handle_signal(int sig)
     llarp_main_signal(ctx, sig);
 }
 
-int
-printHelp(const char *argv0, int code = 1)
-{
-  std::cout << "usage: " << argv0 << " [-h] [-v] [-g|-c] config.ini"
-            << std::endl;
-  return code;
-}
-
 #ifdef _WIN32
 int
 startWinsock()
@@ -117,7 +109,7 @@ main(int argc, char *argv[])
     ("config","path to configuration file", cxxopts::value<std::string>());
 
   options.parse_positional("config");
-    // clang-format on
+  // clang-format on
 
   bool genconfigOnly = false;
   bool asRouter      = false;
@@ -136,7 +128,8 @@ main(int argc, char *argv[])
 
     if(result.count("help"))
     {
-      return printHelp(argv[0], 0);
+      std::cout << options.help() << std::endl;
+      return 0;
     }
 
     if(result.count("generate") > 0)
@@ -154,7 +147,7 @@ main(int argc, char *argv[])
       asRouter = true;
     }
 
-	if(result.count("config") > 0)
+    if(result.count("config") > 0)
     {
       auto arg = result["config"].as< std::string >();
       if(!arg.empty())
@@ -163,10 +156,11 @@ main(int argc, char *argv[])
       }
     }
   }
-  catch (const cxxopts::option_not_exists_exception& ex)
+  catch(const cxxopts::option_not_exists_exception &ex)
   {
     std::cerr << ex.what();
-    return printHelp(argv[0]);
+    std::cout << options.help() << std::endl;
+    return 1;
   }
 
   if(!conffname.empty())
@@ -186,8 +180,8 @@ main(int argc, char *argv[])
       // does this file exist?
       if(genconfigOnly)
       {
-        if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(), overWrite,
-                                asRouter))
+        if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(),
+                                overWrite, asRouter))
           return 1;
       }
       else
