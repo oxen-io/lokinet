@@ -43,7 +43,7 @@ namespace llarp
 
       if(key == "w")
       {
-        W = std::make_unique< PoW >();
+        W = absl::make_optional< PoW >();
         return W->BDecode(buf);
       }
 
@@ -151,7 +151,7 @@ namespace llarp
           {
             return false;
           }
-          else if(W == nullptr)
+          else if(!W.has_value())
           {
             LogWarn("intro has too high expire time");
             return false;
@@ -195,7 +195,14 @@ namespace llarp
       }
 
       printer.printAttribute("T", T);
-      printer.printAttribute("W", W.get());
+      if(W)
+      {
+        printer.printAttribute("W", W.value());
+      }
+      else
+      {
+        printer.printAttribute("W", "NULL");
+      }
       printer.printAttribute("V", version);
       printer.printAttribute("Z", Z);
 
