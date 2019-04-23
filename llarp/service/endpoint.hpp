@@ -436,6 +436,9 @@ namespace llarp
 
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
     };
+
+    using Endpoint_ptr = std::shared_ptr<Endpoint>;
+
   }  // namespace service
 }  // namespace llarp
 

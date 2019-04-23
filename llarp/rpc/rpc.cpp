@@ -252,7 +252,7 @@ namespace llarp
         Response services       = Response::array();
         auto visitor =
             [&](const std::string& name,
-                const std::unique_ptr< service::Endpoint >& ptr) -> bool {
+                const std::shared_ptr< service::Endpoint >& ptr) -> bool {
           numServices++;
           if(ptr->IsReady())
             numServicesReady++;

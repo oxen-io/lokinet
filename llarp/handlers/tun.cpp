@@ -282,7 +282,7 @@ namespace llarp
           size_t counter = 0;
           context->ForEachService(
               [&](const std::string &,
-                  const std::unique_ptr< service::Endpoint > &service) -> bool {
+                  const std::shared_ptr< service::Endpoint > &service) -> bool {
                 service::Address addr = service->GetIdentity().pub.Addr();
                 msg.AddCNAMEReply(addr.ToString(), 1);
                 ++counter;
@@ -314,7 +314,7 @@ namespace llarp
           size_t counter = 0;
           context->ForEachService(
               [&](const std::string &,
-                  const std::unique_ptr< service::Endpoint > &service) -> bool {
+                  const std::shared_ptr< service::Endpoint > &service) -> bool {
                 huint32_t ip = service->GetIfAddr();
                 if(ip.h)
                 {

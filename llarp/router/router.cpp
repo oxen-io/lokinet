@@ -1073,13 +1073,9 @@ namespace llarp
       ServiceNodeLookupRouterWhenExpired(remote);
       return;
     }
-    auto ep = hiddenServiceContext().getFirstEndpoint();
-    if(ep == nullptr)
-    {
-      LogError("cannot lookup ", remote, " no service endpoints available");
-      return;
-    }
-    ep->LookupRouterAnon(remote);
+    _hiddenServiceContext.ForEachService([=](const std::string &, const std::shared_ptr<service::Endpoint> & ep) -> bool {
+      return !ep->LookupRouterAnon(remote);
+    });
   }
 
   bool
