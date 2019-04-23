@@ -1094,6 +1094,8 @@ namespace llarp
   void
   Router::Tick()
   {
+    if(_stopping)
+      return;
     // LogDebug("tick router");
     auto now = Now();
 
@@ -1724,8 +1726,10 @@ namespace llarp
               || self->HasPendingConnectJob(other.pubkey)))
       {
         if(!self->IsBootstrapNode(other.pubkey))
-          self->TryConnectAsync(other, 5);
-        --want;
+        {
+          if(self->TryConnectAsync(other, 5))
+            --want;
+        }
       }
       return want > 0;
     });

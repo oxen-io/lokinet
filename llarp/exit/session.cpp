@@ -27,6 +27,7 @@ namespace llarp
 
     void BaseSession::HandlePathDied(path::Path_ptr)
     {
+      BuildOne();
     }
 
     util::StatusObject
@@ -52,7 +53,7 @@ namespace llarp
         return false;
       const size_t expect = (1 + (m_NumPaths / 2));
       // check 30 seconds into the future and see if we need more paths
-      const llarp_time_t future = now + (30 * 1000);
+      const llarp_time_t future = now + (30 * 1000) + buildIntervalLimit;
       return NumPathsExistingAt(future) < expect;
     }
 
