@@ -4,7 +4,7 @@
 #include <path/path_types.hpp>
 #include <router_id.hpp>
 #include <routing/message.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <service/lookup.hpp>
 #include <util/status.hpp>
 #include <util/threading.hpp>

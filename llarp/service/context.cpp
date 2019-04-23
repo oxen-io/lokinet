@@ -118,12 +118,12 @@ namespace llarp
       return m_Endpoints.size() ? true : false;
     }
 
-    llarp::service::Endpoint *
+    service::Endpoint *
     Context::getFirstEndpoint()
     {
       if(!m_Endpoints.size())
       {
-        llarp::LogError("No endpoints found");
+        LogError("No endpoints found");
         return nullptr;
       }
       auto itr = m_Endpoints.begin();
@@ -137,11 +137,11 @@ namespace llarp
     {
       if(!m_Endpoints.size())
       {
-        llarp::LogError("No endpoints found");
+        LogError("No endpoints found");
         return false;
       }
       i.index = 0;
-      // llarp::util::Lock lock(access);
+      // util::Lock lock(access);
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
       {
@@ -155,34 +155,34 @@ namespace llarp
       return true;
     }
 
-    llarp::handlers::TunEndpoint *
+    handlers::TunEndpoint *
     Context::getFirstTun()
     {
-      llarp::service::Endpoint *endpointer = this->getFirstEndpoint();
+      service::Endpoint *endpointer = this->getFirstEndpoint();
       if(!endpointer)
       {
         return nullptr;
       }
-      llarp::handlers::TunEndpoint *tunEndpoint =
-          static_cast< llarp::handlers::TunEndpoint * >(endpointer);
+      handlers::TunEndpoint *tunEndpoint =
+          static_cast< handlers::TunEndpoint * >(endpointer);
       return tunEndpoint;
     }
 
     llarp_tun_io *
     Context::getRange()
     {
-      llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
+      handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
       if(!tunEndpoint)
       {
-        llarp::LogError("No tunnel endpoint found");
+        LogError("No tunnel endpoint found");
         return nullptr;
       }
       return &tunEndpoint->tunif;
     }
 
     bool
-    Context::FindBestAddressFor(const llarp::AlignedBuffer< 32 > &addr,
-                                bool isSNode, huint32_t &ip)
+    Context::FindBestAddressFor(const AlignedBuffer< 32 > &addr, bool isSNode,
+                                huint32_t &ip)
     {
       auto itr = m_Endpoints.begin();
       while(itr != m_Endpoints.end())
@@ -204,12 +204,12 @@ namespace llarp
     }
 
     bool
-    Context::Prefetch(const llarp::service::Address &addr)
+    Context::Prefetch(const service::Address &addr)
     {
-      llarp::handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
+      handlers::TunEndpoint *tunEndpoint = this->getFirstTun();
       if(!tunEndpoint)
       {
-        llarp::LogError("No tunnel endpoint found");
+        LogError("No tunnel endpoint found");
         return false;
       }
       // HiddenServiceAddresslookup *lookup = new
@@ -227,11 +227,11 @@ namespace llarp
     {
       Context::mapAddressAll_context *context =
           (Context::mapAddressAll_context *)endpointCfg->user;
-      llarp::handlers::TunEndpoint *tunEndpoint =
-          (llarp::handlers::TunEndpoint *)endpointCfg->endpoint;
+      handlers::TunEndpoint *tunEndpoint =
+          (handlers::TunEndpoint *)endpointCfg->endpoint;
       if(!tunEndpoint)
       {
-        llarp::LogError("No tunnel endpoint found");
+        LogError("No tunnel endpoint found");
         return true;  // still continue
       }
       return tunEndpoint->MapAddress(
@@ -239,8 +239,8 @@ namespace llarp
     }
 
     bool
-    Context::MapAddressAll(const llarp::service::Address &addr,
-                           llarp::Addr &localPrivateIpAddr)
+    Context::MapAddressAll(const service::Address &addr,
+                           Addr &localPrivateIpAddr)
     {
       struct Context::mapAddressAll_context context;
       context.serviceAddr        = addr;
@@ -278,10 +278,10 @@ namespace llarp
       {
         if(!itr->second->Start())
         {
-          llarp::LogError(itr->first, " failed to start");
+          LogError(itr->first, " failed to start");
           return false;
         }
-        llarp::LogInfo(itr->first, " started");
+        LogInfo(itr->first, " started");
         ++itr;
       }
       return true;
@@ -294,8 +294,8 @@ namespace llarp
         auto itr = m_Endpoints.find(conf.first);
         if(itr != m_Endpoints.end())
         {
-          llarp::LogError("cannot add hidden service with duplicate name: ",
-                          conf.first);
+          LogError("cannot add hidden service with duplicate name: ",
+                   conf.first);
           return false;
         }
       }
@@ -309,22 +309,23 @@ namespace llarp
         if(option.first == "keyfile")
           keyfile = option.second;
       }
-      std::unique_ptr< llarp::service::Endpoint > service;
 
-      static std::map< std::string,
-                       std::function< llarp::service::Endpoint *(
-                           const std::string &, AbstractRouter *,
-                           llarp::service::Context *) > >
+      std::unique_ptr< service::Endpoint > service;
+
+      static std::map<
+          std::string,
+          std::function< std::unique_ptr< service::Endpoint >(
+              const std::string &, AbstractRouter *, service::Context *) > >
           endpointConstructors = {
               {"tun",
                [](const std::string &nick, AbstractRouter *r,
-                  llarp::service::Context *c) -> llarp::service::Endpoint * {
-                 return new llarp::handlers::TunEndpoint(nick, r, c);
+                  service::Context *c) -> std::unique_ptr< service::Endpoint > {
+                 return std::make_unique< handlers::TunEndpoint >(nick, r, c);
                }},
               {"null",
                [](const std::string &nick, AbstractRouter *r,
-                  llarp::service::Context *c) -> llarp::service::Endpoint * {
-                 return new llarp::handlers::NullEndpoint(nick, r, c);
+                  service::Context *c) -> std::unique_ptr< service::Endpoint > {
+                 return std::make_unique< handlers::NullEndpoint >(nick, r, c);
                }}};
 
       {
@@ -332,12 +333,12 @@ namespace llarp
         auto itr = endpointConstructors.find(endpointType);
         if(itr == endpointConstructors.end())
         {
-          llarp::LogError("no such endpoint type: ", endpointType);
+          LogError("no such endpoint type: ", endpointType);
           return false;
         }
 
         // construct
-        service.reset(itr->second(conf.first, m_Router, this));
+        service = itr->second(conf.first, m_Router, this);
 
         // if ephemeral, then we need to regen key
         // if privkey file, then set it and load it
@@ -346,7 +347,7 @@ namespace llarp
           service->SetOption("keyfile", keyfile);
           // load keyfile, so we have the correct name for logging
         }
-        llarp::LogInfo("Establishing endpoint identity");
+        LogInfo("Establishing endpoint identity");
         service->LoadKeyFile();  // only start endpoint not tun
         // now Name() will be correct
       }
@@ -359,8 +360,8 @@ namespace llarp
         auto &v = option.second;
         if(!service->SetOption(k, v))
         {
-          llarp::LogError("failed to set ", k, "=", v,
-                          " for hidden service endpoint ", conf.first);
+          LogError("failed to set ", k, "=", v, " for hidden service endpoint ",
+                   conf.first);
           return false;
         }
       }
@@ -369,17 +370,16 @@ namespace llarp
         // start
         if(service->Start())
         {
-          llarp::LogInfo("autostarting hidden service endpoint ",
-                         service->Name());
+          LogInfo("autostarting hidden service endpoint ", service->Name());
           m_Endpoints.emplace(conf.first, std::move(service));
           return true;
         }
-        llarp::LogError("failed to start hidden service endpoint ", conf.first);
+        LogError("failed to start hidden service endpoint ", conf.first);
         return false;
       }
       else
       {
-        llarp::LogInfo("added hidden service endpoint ", service->Name());
+        LogInfo("added hidden service endpoint ", service->Name());
         m_Endpoints.emplace(conf.first, std::move(service));
         return true;
       }

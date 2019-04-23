@@ -275,7 +275,7 @@ namespace llarp
       self->context->PutTransitHop(self->hop);
       // send path confirmation
       llarp::routing::PathConfirmMessage confirm(self->hop->lifetime);
-      if(!self->hop->SendRoutingMessage(&confirm, self->context->Router()))
+      if(!self->hop->SendRoutingMessage(confirm, self->context->Router()))
       {
         llarp::LogError("failed to send path confirmation for ",
                         self->hop->info);

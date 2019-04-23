@@ -28,20 +28,19 @@ namespace llarp
       if(path)
       {
         const routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
-        if(path->SendRoutingMessage(&transfer, m_Endpoint->Router()))
+        if(path->SendRoutingMessage(transfer, m_Endpoint->Router()))
         {
-          llarp::LogInfo("sent intro to ", remoteIntro.pathID, " on ",
-                         remoteIntro.router, " seqno=", sequenceNo);
+          LogInfo("sent intro to ", remoteIntro.pathID, " on ",
+                  remoteIntro.router, " seqno=", sequenceNo);
           lastGoodSend = m_Endpoint->Now();
           ++sequenceNo;
           return true;
         }
         else
-          llarp::LogError("Failed to send frame on path");
+          LogError("Failed to send frame on path");
       }
       else
-        llarp::LogError("cannot send because we have no path to ",
-                        remoteIntro.router);
+        LogError("cannot send because we have no path to ", remoteIntro.router);
       return false;
     }
 
@@ -63,14 +62,13 @@ namespace llarp
         // shift intro
         if(MarkCurrentIntroBad(now))
         {
-          llarp::LogInfo("intro shifted");
+          LogInfo("intro shifted");
         }
       }
       auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(!path)
       {
-        llarp::LogError("cannot encrypt and send: no path for intro ",
-                        remoteIntro);
+        LogError("cannot encrypt and send: no path for intro ", remoteIntro);
         return;
       }
 
@@ -87,28 +85,28 @@ namespace llarp
         m.PutBuffer(payload);
         if(!f.EncryptAndSign(crypto, m, shared, m_Endpoint->GetIdentity()))
         {
-          llarp::LogError("failed to sign");
+          LogError("failed to sign");
           return;
         }
       }
       else
       {
-        llarp::LogError("No cached session key");
+        LogError("No cached session key");
         return;
       }
 
       msg.P = remoteIntro.pathID;
       msg.Y.Randomize();
-      if(path->SendRoutingMessage(&msg, m_Endpoint->Router()))
+      if(path->SendRoutingMessage(msg, m_Endpoint->Router()))
       {
-        llarp::LogDebug("sent message via ", remoteIntro.pathID, " on ",
-                        remoteIntro.router);
+        LogDebug("sent message via ", remoteIntro.pathID, " on ",
+                 remoteIntro.router);
         ++sequenceNo;
         lastGoodSend = now;
       }
       else
       {
-        llarp::LogWarn("Failed to send routing message for data");
+        LogWarn("Failed to send routing message for data");
       }
     }
 
@@ -121,7 +119,7 @@ namespace llarp
       {
         if(!MarkCurrentIntroBad(now))
         {
-          llarp::LogWarn("no good path yet, your message may drop");
+          LogWarn("no good path yet, your message may drop");
         }
       }
       if(sequenceNo)

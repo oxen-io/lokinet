@@ -33,53 +33,53 @@ namespace llarp
     struct IMessageHandler
     {
       virtual bool
-      HandleObtainExitMessage(const ObtainExitMessage *msg,
+      HandleObtainExitMessage(const ObtainExitMessage& msg,
                               AbstractRouter *r) = 0;
 
       virtual bool
-      HandleGrantExitMessage(const GrantExitMessage *msg,
+      HandleGrantExitMessage(const GrantExitMessage& msg,
                              AbstractRouter *r) = 0;
 
       virtual bool
-      HandleRejectExitMessage(const RejectExitMessage *msg,
+      HandleRejectExitMessage(const RejectExitMessage& msg,
                               AbstractRouter *r) = 0;
 
       virtual bool
-      HandleTransferTrafficMessage(const TransferTrafficMessage *msg,
+      HandleTransferTrafficMessage(const TransferTrafficMessage& msg,
                                    AbstractRouter *r) = 0;
 
       virtual bool
-      HandleUpdateExitMessage(const UpdateExitMessage *msg,
+      HandleUpdateExitMessage(const UpdateExitMessage& msg,
                               AbstractRouter *r) = 0;
 
       virtual bool
-      HandleUpdateExitVerifyMessage(const UpdateExitVerifyMessage *msg,
+      HandleUpdateExitVerifyMessage(const UpdateExitVerifyMessage& msg,
                                     AbstractRouter *r) = 0;
 
       virtual bool
-      HandleCloseExitMessage(const CloseExitMessage *msg,
+      HandleCloseExitMessage(const CloseExitMessage& msg,
                              AbstractRouter *r) = 0;
 
       virtual bool
-      HandleDataDiscardMessage(const DataDiscardMessage *msg,
+      HandleDataDiscardMessage(const DataDiscardMessage& msg,
                                AbstractRouter *r) = 0;
 
       virtual bool
-      HandlePathTransferMessage(const PathTransferMessage *msg,
+      HandlePathTransferMessage(const PathTransferMessage& msg,
                                 AbstractRouter *r) = 0;
 
       virtual bool
-      HandleHiddenServiceFrame(const service::ProtocolFrame *msg) = 0;
+      HandleHiddenServiceFrame(const service::ProtocolFrame& msg) = 0;
 
       virtual bool
-      HandlePathConfirmMessage(const PathConfirmMessage *msg,
+      HandlePathConfirmMessage(const PathConfirmMessage& msg,
                                AbstractRouter *r) = 0;
 
       virtual bool
-      HandlePathLatencyMessage(const PathLatencyMessage *msg,
+      HandlePathLatencyMessage(const PathLatencyMessage& msg,
                                AbstractRouter *r) = 0;
       virtual bool
-      HandleDHTMessage(const dht::IMessage *msg, AbstractRouter *r) = 0;
+      HandleDHTMessage(const dht::IMessage& msg, AbstractRouter *r) = 0;
     };
   }  // namespace routing
 }  // namespace llarp

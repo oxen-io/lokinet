@@ -10,7 +10,7 @@
 #include <dht/tx.hpp>
 #include <dht/txholder.hpp>
 #include <dht/txowner.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <util/time.hpp>
 #include <util/status.hpp>
 
@@ -107,7 +107,7 @@ namespace llarp
           std::vector< std::unique_ptr< IMessage > >& replies) = 0;
 
       virtual bool
-      RelayRequestForPath(const PathID_t& localPath, const IMessage* msg) = 0;
+      RelayRequestForPath(const PathID_t& localPath, const IMessage& msg) = 0;
 
       /// send introset to peer from source with S counter and excluding peers
       virtual void

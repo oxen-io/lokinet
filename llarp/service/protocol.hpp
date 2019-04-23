@@ -5,9 +5,9 @@
 #include <crypto/types.hpp>
 #include <dht/message.hpp>
 #include <routing/message.hpp>
-#include <service/Identity.hpp>
-#include <service/Info.hpp>
-#include <service/Intro.hpp>
+#include <service/identity.hpp>
+#include <service/info.hpp>
+#include <service/intro.hpp>
 #include <service/handler.hpp>
 #include <util/bencode.hpp>
 #include <util/time.hpp>

@@ -3,7 +3,7 @@
 #include <crypto/mock_crypto.hpp>
 #include <dht/mock_context.hpp>
 #include <dht/messages/gotintro.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 #include <test_util.hpp>
 
 #include <gtest/gtest.h>
@@ -204,9 +204,13 @@ TEST_F(TestDhtTagLookup, send_reply)
   {
     tagLookup.valuesFound.clear();
     tagLookup.valuesFound.emplace_back();
-    tagLookup.valuesFound.back().T = 1;
+    tagLookup.valuesFound.back().T           = 1;
+    tagLookup.valuesFound.back().A.vanity[0] = 1;
+    tagLookup.valuesFound.back().A.UpdateAddr();
     tagLookup.valuesFound.emplace_back();
-    tagLookup.valuesFound.back().T = 2;
+    tagLookup.valuesFound.back().T           = 2;
+    tagLookup.valuesFound.back().A.vanity[0] = 2;
+    tagLookup.valuesFound.back().A.UpdateAddr();
     // clang-format off
     EXPECT_CALL(context, FindRandomIntroSetsWithTagExcluding(_, _, _)).Times(0);
 

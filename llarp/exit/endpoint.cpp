@@ -176,7 +176,7 @@ namespace llarp
           {
             auto& msg = queue.front();
             msg.S     = path->NextSeqNo();
-            if(path->SendRoutingMessage(&msg, m_Parent->GetRouter()))
+            if(path->SendRoutingMessage(msg, m_Parent->GetRouter()))
             {
               m_RxRate += msg.Size();
               sent = true;

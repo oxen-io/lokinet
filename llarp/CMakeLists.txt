@@ -222,19 +222,18 @@ set(LIB_SRC
   service/endpoint.cpp
   service/handler.cpp
   service/hidden_service_address_lookup.cpp
-  service/Identity.cpp
+  service/identity.cpp
   service/info.cpp
-  service/Intro.cpp
-  service/IntroSet.cpp
+  service/intro_set.cpp
+  service/intro.cpp
   service/lookup.cpp
   service/outbound_context.cpp
   service/pendingbuffer.cpp
   service/protocol.cpp
   service/sendcontext.cpp
   service/session.cpp
-  service/tag.cpp
   service/tag_lookup_job.cpp
-  service/types.cpp
+  service/tag.cpp
   service/vanity.cpp
   utp/inbound_message.cpp
   utp/linklayer.cpp

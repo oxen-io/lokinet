@@ -81,10 +81,10 @@ namespace llarp
 
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
-                size_t hop, llarp::path::PathRole roles) override;
+                size_t hop, path::PathRole roles) override;
 
       bool
-      HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame* frame);
+      HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame& frame);
 
       std::string
       Name() const override;

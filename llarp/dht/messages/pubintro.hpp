@@ -1,7 +1,7 @@
 #ifndef LLARP_DHT_MESSAGES_PUB_INTRO_HPP
 #define LLARP_DHT_MESSAGES_PUB_INTRO_HPP
 #include <dht/message.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 #include <vector>
 

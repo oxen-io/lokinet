@@ -64,7 +64,7 @@ namespace llarp
                std::vector< std::unique_ptr< dht::IMessage > >& replies));
 
       MOCK_METHOD2(RelayRequestForPath,
-                   bool(const PathID_t& localPath, const dht::IMessage* msg));
+                   bool(const PathID_t& localPath, const dht::IMessage& msg));
 
       MOCK_CONST_METHOD2(GetRCFromNodeDB,
                          bool(const dht::Key_t& k, RouterContact& rc));

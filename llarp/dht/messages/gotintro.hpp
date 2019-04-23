@@ -2,7 +2,7 @@
 #define LLARP_DHT_MESSAGES_GOT_INTRO_HPP
 
 #include <dht/message.hpp>
-#include <service/IntroSet.hpp>
+#include <service/intro_set.hpp>
 
 #include <vector>
 

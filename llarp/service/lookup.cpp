@@ -23,9 +23,8 @@ namespace llarp
       auto msg = BuildRequestMessage();
       if(!msg)
         return false;
-      auto result = path->SendRoutingMessage(msg, r);
+      auto result = path->SendRoutingMessage(*msg, r);
       endpoint    = path->Endpoint();
-      delete msg;
       return result;
     }
   }  // namespace service

@@ -75,7 +75,7 @@ namespace llarp
       bool
       HandleMessage(IMessageHandler* h, AbstractRouter* r) const override
       {
-        return h->HandleDataDiscardMessage(this, r);
+        return h->HandleDataDiscardMessage(*this, r);
       }
 
       bool

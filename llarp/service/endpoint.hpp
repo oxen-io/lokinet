@@ -8,7 +8,7 @@
 #include <path/pathbuilder.hpp>
 #include <service/address.hpp>
 #include <service/handler.hpp>
-#include <service/Identity.hpp>
+#include <service/identity.hpp>
 #include <service/pendingbuffer.hpp>
 #include <service/protocol.hpp>
 #include <service/sendcontext.hpp>
@@ -138,7 +138,7 @@ namespace llarp
 
       bool
       HandleHiddenServiceFrame(path::Path* p,
-                               const service::ProtocolFrame* msg);
+                               const service::ProtocolFrame& msg);
 
       /// return true if we have an established path to a hidden service
       bool

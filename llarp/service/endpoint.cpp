@@ -670,11 +670,12 @@ namespace llarp
       {
       }
 
-      routing::IMessage*
+      std::unique_ptr< routing::IMessage >
       BuildRequestMessage()
       {
-        routing::DHTMessage* msg = new routing::DHTMessage();
-        msg->M.emplace_back(new dht::PublishIntroMessage(m_IntroSet, txid, 1));
+        auto msg = std::make_unique< routing::DHTMessage >();
+        msg->M.emplace_back(
+            std::make_unique< dht::PublishIntroMessage >(m_IntroSet, txid, 1));
         return msg;
       }
 
@@ -795,8 +796,8 @@ namespace llarp
         return;
       }
 
-      OutboundContext* ctx = new OutboundContext(introset, this);
-      m_RemoteSessions.emplace(addr, std::unique_ptr< OutboundContext >(ctx));
+      auto it = m_RemoteSessions.emplace(
+          addr, std::make_unique< OutboundContext >(introset, this));
       LogInfo("Created New outbound context for ", addr.ToString());
 
       // inform pending
@@ -804,7 +805,7 @@ namespace llarp
       auto itr   = range.first;
       if(itr != range.second)
       {
-        itr->second(addr, ctx);
+        itr->second(addr, it->second.get());
         ++itr;
       }
       m_PendingServiceLookups.erase(addr);
@@ -851,9 +852,10 @@ namespace llarp
         auto path = GetEstablishedPathClosestTo(router);
         routing::DHTMessage msg;
         auto txid = GenTXID();
-        msg.M.emplace_back(new dht::FindRouterMessage(txid, router));
+        msg.M.emplace_back(
+            std::make_unique< dht::FindRouterMessage >(txid, router));
 
-        if(path && path->SendRoutingMessage(&msg, m_Router))
+        if(path && path->SendRoutingMessage(msg, m_Router))
         {
           LogInfo(Name(), " looking up ", router);
           m_PendingRouters.emplace(router, RouterLookupJob(this));
@@ -868,15 +870,11 @@ namespace llarp
     void
     Endpoint::HandlePathBuilt(path::Path* p)
     {
-      p->SetDataHandler(std::bind(&Endpoint::HandleHiddenServiceFrame, this,
-                                  std::placeholders::_1,
-                                  std::placeholders::_2));
-      p->SetDropHandler(std::bind(&Endpoint::HandleDataDrop, this,
-                                  std::placeholders::_1, std::placeholders::_2,
-                                  std::placeholders::_3));
-      p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, this,
-                                  std::placeholders::_1,
-                                  std::placeholders::_2));
+      using namespace std::placeholders;
+      p->SetDataHandler(
+          std::bind(&Endpoint::HandleHiddenServiceFrame, this, _1, _2));
+      p->SetDropHandler(std::bind(&Endpoint::HandleDataDrop, this, _1, _2, _3));
+      p->SetDeadChecker(std::bind(&Endpoint::CheckPathIsDead, this, _1, _2));
       path::Builder::HandlePathBuilt(p);
     }
 
@@ -949,34 +947,35 @@ namespace llarp
 
     bool
     Endpoint::HandleHiddenServiceFrame(path::Path* p,
-                                       const ProtocolFrame* frame)
+                                       const ProtocolFrame& frame)
     {
-      if(frame->R)
+      if(frame.R)
       {
         // handle discard
         ServiceInfo si;
-        if(!GetSenderFor(frame->T, si))
+        if(!GetSenderFor(frame.T, si))
           return false;
         // verify source
         if(!frame->Verify(GetCrypto(), si))
           return false;
         // remove convotag it doesn't exist
-        LogWarn("remove convotag T=", frame->T);
-        RemoveConvoTag(frame->T);
+        LogWarn("remove convotag T=", frame.T);
+        RemoveConvoTag(frame.T);
         return true;
       }
-      if(!frame->AsyncDecryptAndVerify(EndpointLogic(), GetCrypto(), p,
+      if(!frame.AsyncDecryptAndVerify(EndpointLogic(), GetCrypto(), p,
                                        Worker(), m_Identity, m_DataHandler))
+
       {
         // send discard
         ProtocolFrame f;
         f.R = 1;
-        f.T = frame->T;
+        f.T = frame.T;
         f.F = p->intro.pathID;
         if(!f.Sign(GetCrypto(), m_Identity))
           return false;
-        const routing::PathTransferMessage d(f, frame->F);
-        return p->SendRoutingMessage(&d, router);
+        const routing::PathTransferMessage d(f, frame.F);
+        return p->SendRoutingMessage(d, router);
       }
       return true;
     }
@@ -1051,11 +1050,10 @@ namespace llarp
         return false;
       }
 
+      using namespace std::placeholders;
       HiddenServiceAddressLookup* job = new HiddenServiceAddressLookup(
-          this,
-          std::bind(&Endpoint::OnLookup, this, std::placeholders::_1,
-                    std::placeholders::_2, std::placeholders::_3),
-          remote, GenTXID());
+          this, std::bind(&Endpoint::OnLookup, this, _1, _2, _3), remote,
+          GenTXID());
       LogInfo("doing lookup for ", remote, " via ", path->Endpoint());
       if(job->SendRequestViaPath(path, Router()))
       {
@@ -1069,6 +1067,7 @@ namespace llarp
     void
     Endpoint::EnsurePathToSNode(const RouterID& snode, SNodeEnsureHook h)
     {
+      using namespace std::placeholders;
       if(m_SNodeSessions.count(snode) == 0)
       {
         auto themIP = ObtainIPForAddr(snode, true);
@@ -1076,8 +1075,7 @@ namespace llarp
             snode,
             std::make_unique< exit::SNodeSession >(
                 snode,
-                std::bind(&Endpoint::HandleWriteIPPacket, this,
-                          std::placeholders::_1,
+                std::bind(&Endpoint::HandleWriteIPPacket, this, _1,
                           [themIP]() -> huint32_t { return themIP; }),
                 m_Router, 2, numHops));
       }
@@ -1088,7 +1086,7 @@ namespace llarp
         if(itr->second->IsReady())
           h(snode, itr->second.get());
         else
-          itr->second->AddReadyHook(std::bind(h, snode, std::placeholders::_1));
+          itr->second->AddReadyHook(std::bind(h, snode, _1));
         ++itr;
       }
     }
@@ -1176,7 +1174,7 @@ namespace llarp
                 return false;
               }
               LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
-              return p->SendRoutingMessage(&transfer, Router());
+              return p->SendRoutingMessage(transfer, Router());
             }
           }
         }
