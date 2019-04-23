@@ -64,6 +64,5 @@ xcuserdata/
 .DS_Store
 !Info.plist
 lokinet.build
-CMakeFiles
 CMakeScripts
-Core/**/*.cmake
+CTestTestfile.cmake
