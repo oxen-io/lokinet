@@ -12,10 +12,10 @@ final class LKDaemon {
         // Prepare
         let directoryPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!.path
         // Enable debugging mode if needed
-        if isDebuggingEnabled { _llarp_enable_debug_mode() }
+        if isDebuggingEnabled { llarp_enable_debug_mode() }
         // Generate configuration file
         let configurationFilePath = directoryPath + "/" + "lokinet-configuration.ini"
-        _llarp_ensure_config(configurationFilePath, directoryPath, true, false)
+        llarp_ensure_config(configurationFilePath, directoryPath, true, false)
         // Download bootstrap file
         let remoteBootstrapFilePath = "https://i2p.rocks/i2procks.signed"
         let downloadTask = URLSession.shared.dataTask(with: URL(string: remoteBootstrapFilePath)!) { data, _, error in
@@ -23,10 +23,10 @@ final class LKDaemon {
             let localBootstrapFilePath = directoryPath + "/" + "bootstrap.signed"
             try! data.write(to: URL(fileURLWithPath: localBootstrapFilePath))
             // Perform main setup
-            guard let context = _llarp_main_init(configurationFilePath, false) else { return completionHandler(LKError(description: "LLARP initialization failed.")) }
-            _llarp_main_setup(context)
+            guard let context = llarp_main_init(configurationFilePath, false) else { return completionHandler(LKError(description: "LLARP initialization failed.")) }
+            llarp_main_setup(context)
             // Run
-            _llarp_main_run(context)
+            llarp_main_run(context)
             // Invoke completion handler
             completionHandler(nil)
         }
