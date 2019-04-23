@@ -94,7 +94,8 @@ namespace llarp
 
 }  // namespace llarp
 
-/// fname should be a relative path (from CWD) or absolute path to the config file
+/// fname should be a relative path (from CWD) or absolute path to the config
+/// file
 extern "C" bool
 llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
                     bool asRouter)
@@ -128,8 +129,7 @@ llarp_ensure_config(const char *fname, const char *basedir, bool overwrite,
   {
     if(fs::exists(fname, ec) && !overwrite)
     {
-      llarp::LogError(
-          fname, " currently exists, please use -f to overwrite");
+      llarp::LogError(fname, " currently exists, please use -f to overwrite");
       return true;
     }
     if(ec)
@@ -247,8 +247,8 @@ llarp_generic_ensure_config(std::ofstream &f, std::string basepath)
   f << "# if we don't have any peers we connect to this router" << std::endl;
   f << "add-node=" << basepath << "bootstrap.signed" << std::endl;
   // we only process one of these...
-  //f << "# add another bootstrap node" << std::endl;
-  //f << "#add-node=/path/to/alternative/self.signed" << std::endl;
+  // f << "# add another bootstrap node" << std::endl;
+  // f << "#add-node=/path/to/alternative/self.signed" << std::endl;
   f << std::endl << std::endl;
 }
 
@@ -294,7 +294,7 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   const std::string snappExample_fpath = basepath + "snapp-example.ini";
   {
     std::ofstream example_f(snappExample_fpath,
-                              std::ios::binary | std::ios::out);
+                            std::ios::binary | std::ios::out);
     if(f.is_open())
     {
       // pick ip
@@ -302,23 +302,25 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
       if(ip == "")
       {
         llarp::LogError(
-                        "Couldn't easily detect a private range to map lokinet onto");
+            "Couldn't easily detect a private range to map lokinet onto");
         return false;
       }
       example_f << "# this is an example configuration for a snapp"
-                  << std::endl;
+                << std::endl;
       example_f << "[example-snapp]" << std::endl;
-      example_f << "# keyfile is the path to the private key of the snapp, your .loki is tied to this key, DON'T LOSE IT"
-                  << std::endl;
+      example_f << "# keyfile is the path to the private key of the snapp, "
+                   "your .loki is tied to this key, DON'T LOSE IT"
+                << std::endl;
       example_f << "keyfile=" << basepath << "example-snap-keyfile.private"
-                  << std::endl;
+                << std::endl;
       example_f << "# ifaddr is the ip range to allocate to this snapp"
-                  << std::endl;
+                << std::endl;
       example_f << "ifaddr=" << ip << std::endl;
-      // probably fine to leave this (and not-auto-detect it) I'm not worried about any collisions
+      // probably fine to leave this (and not-auto-detect it) I'm not worried
+      // about any collisions
       example_f << "# ifname is the name to try and give to the network "
-                     "interface this snap owns"
-                  << std::endl;
+                   "interface this snap owns"
+                << std::endl;
       example_f << "ifname=snapp-tun0" << std::endl;
     }
     else
@@ -349,7 +351,7 @@ llarp_ensure_client_config(std::ofstream &f, std::string basepath)
   // operating environment may change over time and this will help adapt
   f << "ifname=auto" << std::endl;
   f << "ifaddr=auto" << std::endl;
-  
+
   // should this also be auto? or not declared?
   // probably auto in case they want to set up a hidden service
   f << "enabled=true" << std::endl;
