@@ -24,17 +24,17 @@ namespace llarp
       AsyncEncryptAndSendTo(const llarp_buffer_t& payload, ProtocolType t);
 
       /// send a fully encrypted hidden service frame
-      /// via a path on our pathset with path id p
+      /// via a path
       bool
-      Send(const ProtocolFrame& f);
+      Send(const ProtocolFrame& f, path::Path_ptr path);
 
       SharedSecret sharedKey;
       ServiceInfo remoteIdent;
       Introduction remoteIntro;
       ConvoTag currentConvoTag;
-      path::PathSet* m_PathSet;
-      IDataHandler* m_DataHandler;
-      Endpoint* m_Endpoint;
+      path::PathSet* const m_PathSet;
+      IDataHandler* const m_DataHandler;
+      Endpoint* const m_Endpoint;
       uint64_t sequenceNo       = 0;
       llarp_time_t lastGoodSend = 0;
       llarp_time_t createdAt;

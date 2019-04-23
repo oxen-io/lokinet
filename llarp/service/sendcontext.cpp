@@ -3,6 +3,7 @@
 #include <messages/path_transfer.hpp>
 #include <service/endpoint.hpp>
 #include <router/abstractrouter.hpp>
+#include <util/logic.hpp>
 
 namespace llarp
 {
@@ -22,26 +23,20 @@ namespace llarp
     }
 
     bool
-    SendContext::Send(const ProtocolFrame& msg)
+    SendContext::Send(const ProtocolFrame& msg, path::Path_ptr path)
     {
-      auto path = m_PathSet->GetByEndpointWithID(remoteIntro.router, msg.F);
-      if(path)
-      {
-        const routing::PathTransferMessage transfer(msg, remoteIntro.pathID);
-        if(path->SendRoutingMessage(transfer, m_Endpoint->Router()))
+      auto transfer = std::make_shared< const routing::PathTransferMessage >(
+          msg, remoteIntro.pathID);
+      m_Endpoint->RouterLogic()->queue_func([=]() {
+        if(path->SendRoutingMessage(*transfer, m_Endpoint->Router()))
         {
-          LogInfo("sent intro to ", remoteIntro.pathID, " on ",
-                  remoteIntro.router, " seqno=", sequenceNo);
           lastGoodSend = m_Endpoint->Now();
           ++sequenceNo;
-          return true;
         }
         else
           LogError("Failed to send frame on path");
-      }
-      else
-        LogError("cannot send because we have no path to ", remoteIntro.router);
-      return false;
+      });
+      return true;
     }
 
     /// send on an established convo tag
@@ -50,8 +45,7 @@ namespace llarp
     {
       auto crypto = m_Endpoint->Router()->crypto();
       SharedSecret shared;
-      routing::PathTransferMessage msg;
-      ProtocolFrame& f = msg.T;
+      ProtocolFrame f;
       f.N.Randomize();
       f.T = currentConvoTag;
       f.S = m_Endpoint->GetSeqNoForConvo(f.T);
@@ -94,20 +88,8 @@ namespace llarp
         LogError("No cached session key");
         return;
       }
-
-      msg.P = remoteIntro.pathID;
-      msg.Y.Randomize();
-      if(path->SendRoutingMessage(msg, m_Endpoint->Router()))
-      {
-        LogDebug("sent message via ", remoteIntro.pathID, " on ",
-                 remoteIntro.router);
-        ++sequenceNo;
-        lastGoodSend = now;
-      }
-      else
-      {
-        LogWarn("Failed to send routing message for data");
-      }
+      ++sequenceNo;
+      Send(f, path);
     }
 
     void

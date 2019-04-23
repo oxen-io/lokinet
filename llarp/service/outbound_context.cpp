@@ -178,9 +178,9 @@ namespace llarp
 
     void
     OutboundContext::AsyncGenIntro(const llarp_buffer_t& payload,
-                                   __attribute__((unused)) ProtocolType t)
+                                   ProtocolType t)
     {
-      auto path = m_PathSet->GetPathByRouter(remoteIntro.router);
+      auto path = m_PathSet->GetNewestPathByRouter(remoteIntro.router);
       if(path == nullptr)
       {
         // try parent as fallback
@@ -199,9 +199,11 @@ namespace llarp
           m_Endpoint->GetIdentity(), currentIntroSet.K, remoteIntro,
           m_DataHandler, currentConvoTag);
 
-      ex->hook = std::bind(&OutboundContext::Send, this, std::placeholders::_1);
+      ex->hook =
+          std::bind(&OutboundContext::Send, this, std::placeholders::_1, path);
 
       ex->msg.PutBuffer(payload);
+      ex->msg.proto      = t;
       ex->msg.introReply = path->intro;
       ex->frame.F        = ex->msg.introReply.pathID;
       llarp_threadpool_queue_job(m_Endpoint->CryptoWorker(),
