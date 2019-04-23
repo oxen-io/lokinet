@@ -65,4 +65,6 @@ xcuserdata/
 !Info.plist
 lokinet.build/
 CMakeScripts/
-CTestTestfile.cmake
+ios/Core/**/*.cmake
+ios/Core/**/project.pbxproj
+
