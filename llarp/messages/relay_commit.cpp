@@ -237,7 +237,7 @@ namespace llarp
           // ... and it's valid
           const auto now = self->context->Router()->Now();
           if(self->record.nextRC->IsPublicRouter()
-             && self->record.nextRC->Verify(self->context->Crypto(), now))
+             && self->record.nextRC->Verify(self->context->GetCrypto(), now))
           {
             llarp_nodedb* n        = self->context->Router()->nodedb();
             const RouterContact rc = std::move(*self->record.nextRC);
@@ -314,7 +314,7 @@ namespace llarp
         return;
       }
       // generate path key as we are in a worker thread
-      auto crypto = self->context->Crypto();
+      auto crypto = self->context->GetCrypto();
       if(!crypto->dh_server(self->hop->pathKey, self->record.commkey,
                             self->context->EncryptionSecretKey(),
                             self->record.tunnelNonce))
@@ -366,13 +366,13 @@ namespace llarp
         // we are the farthest hop
         llarp::LogDebug("We are the farthest hop for ", info);
         // send a LRAM down the path
-        self->context->Logic()->queue_job({self, &SendPathConfirm});
+        self->context->GetLogic()->queue_job({self, &SendPathConfirm});
       }
       else
       {
         // forward upstream
         // we are still in the worker thread so post job to logic
-        self->context->Logic()->queue_job({self, &SendLRCM});
+        self->context->GetLogic()->queue_job({self, &SendLRCM});
       }
     }
   };
@@ -381,7 +381,7 @@ namespace llarp
   LR_CommitMessage::AsyncDecrypt(llarp::path::PathContext* context) const
   {
     LRCMFrameDecrypt::Decrypter* decrypter = new LRCMFrameDecrypt::Decrypter(
-        context->Crypto(), context->EncryptionSecretKey(),
+        context->GetCrypto(), context->EncryptionSecretKey(),
         &LRCMFrameDecrypt::HandleDecrypted);
     // copy frames so we own them
     LRCMFrameDecrypt* frames = new LRCMFrameDecrypt(context, decrypter, this);

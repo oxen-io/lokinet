@@ -670,10 +670,10 @@ namespace llarp
       Worker();
 
       llarp::Crypto*
-      Crypto();
+      GetCrypto();
 
       Logic*
-      Logic();
+      GetLogic();
 
       AbstractRouter*
       Router();

@@ -956,7 +956,7 @@ namespace llarp
         if(!GetSenderFor(frame.T, si))
           return false;
         // verify source
-        if(!frame->Verify(GetCrypto(), si))
+        if(!frame.Verify(GetCrypto(), si))
           return false;
         // remove convotag it doesn't exist
         LogWarn("remove convotag T=", frame.T);

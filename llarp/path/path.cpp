@@ -58,13 +58,13 @@ namespace llarp
     }
 
     Crypto*
-    PathContext::Crypto()
+    PathContext::GetCrypto()
     {
       return m_Router->crypto();
     }
 
     Logic*
-    PathContext::Logic()
+    PathContext::GetLogic()
     {
       return m_Router->logic();
     }
