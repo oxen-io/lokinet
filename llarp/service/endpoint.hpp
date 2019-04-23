@@ -66,7 +66,7 @@ namespace llarp
       SetOption(const std::string& k, const std::string& v);
 
       virtual void
-      Tick(llarp_time_t now);
+      Tick(llarp_time_t now) override;
 
       /// return true if we have a resolvable ip address
       virtual bool
@@ -92,13 +92,13 @@ namespace llarp
       Logic*
       EndpointLogic();
 
-      /// borrow endpoint's net loop for sending data to user on local network interface
+      /// borrow endpoint's net loop for sending data to user on local network
+      /// interface
       llarp_ev_loop_ptr
       EndpointNetLoop();
 
       Crypto*
       GetCrypto();
-
 
       /// crypto worker threadpool
       llarp_threadpool*
@@ -239,7 +239,7 @@ namespace llarp
                           uint64_t timeoutMS, bool lookupOnRandomPath = false);
 
       using SNodeEnsureHook =
-          std::function< void(RouterID, exit::BaseSession*) >;
+          std::function< void(RouterID, exit::BaseSession_ptr) >;
 
       /// ensure a path to a service node by public key
       void
@@ -346,7 +346,7 @@ namespace llarp
      protected:
       IDataHandler* m_DataHandler = nullptr;
       Identity m_Identity;
-      std::unique_ptr< exit::BaseSession > m_Exit;
+      std::shared_ptr< exit::BaseSession > m_Exit;
       hooks::Backend_ptr m_OnUp;
       hooks::Backend_ptr m_OnDown;
       hooks::Backend_ptr m_OnReady;
@@ -367,14 +367,14 @@ namespace llarp
       PendingTraffic m_PendingTraffic;
 
       using Sessions =
-          std::unordered_multimap< Address, std::unique_ptr< OutboundContext >,
+          std::unordered_multimap< Address, std::shared_ptr< OutboundContext >,
                                    Address::Hash >;
       Sessions m_RemoteSessions;
 
       Sessions m_DeadSessions;
 
       using SNodeSessions = std::unordered_multimap<
-          RouterID, std::unique_ptr< exit::BaseSession >, RouterID::Hash >;
+          RouterID, std::shared_ptr< exit::BaseSession >, RouterID::Hash >;
 
       SNodeSessions m_SNodeSessions;
 
@@ -437,7 +437,7 @@ namespace llarp
       std::unordered_map< Tag, CachedTagResult, Tag::Hash > m_PrefetchedTags;
     };
 
-    using Endpoint_ptr = std::shared_ptr<Endpoint>;
+    using Endpoint_ptr = std::shared_ptr< Endpoint >;
 
   }  // namespace service
 }  // namespace llarp

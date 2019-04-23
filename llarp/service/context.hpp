@@ -31,16 +31,15 @@ namespace llarp
       bool
       hasEndpoints();
 
-      
       bool
       FindBestAddressFor(const AlignedBuffer< 32 > &addr, bool isSNode,
                          huint32_t &);
 
       /// function visitor returns false to prematurely break iteration
       void
-      ForEachService(std::function< bool(const std::string &,
-                                         const Endpoint_ptr &) >
-                         visit) const;
+      ForEachService(
+          std::function< bool(const std::string &, const Endpoint_ptr &) >
+              visit) const;
 
       /// add default endpoint with options
       bool

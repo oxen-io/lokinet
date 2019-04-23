@@ -552,14 +552,13 @@ namespace llarp
       huint32_t ip = GetIPForIdent(pubKey);
       if(m_SNodeKeys.emplace(pubKey).second)
       {
-        // this is a new service node make an outbound session to them
-        m_SNodeSessions.emplace(
+        auto session = std::make_shared< exit::SNodeSession >(
             other,
-            std::unique_ptr< exit::SNodeSession >(new exit::SNodeSession(
-                other,
-                std::bind(&ExitEndpoint::QueueSNodePacket, this,
-                          std::placeholders::_1, ip),
-                GetRouter(), 2, 1, true)));
+            std::bind(&ExitEndpoint::QueueSNodePacket, this,
+                      std::placeholders::_1, ip),
+            GetRouter(), 2, 1, true);
+        // this is a new service node make an outbound session to them
+        m_SNodeSessions.emplace(other, session);
       }
       return ip;
     }
@@ -625,7 +624,10 @@ namespace llarp
           if(itr->second->IsExpired(now))
             itr = m_SNodeSessions.erase(itr);
           else
+          {
+            itr->second->Tick(now);
             ++itr;
+          }
         }
       }
       {

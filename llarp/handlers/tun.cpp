@@ -102,11 +102,11 @@ namespace llarp
           llarp::LogError(Name(), " bad exit router key: ", v);
           return false;
         }
-        m_Exit.reset(new llarp::exit::ExitSession(
+        m_Exit = std::make_shared< llarp::exit::ExitSession >(
             exitRouter,
             std::bind(&TunEndpoint::QueueInboundPacketForExit, this,
                       std::placeholders::_1),
-            router, m_NumPaths, numHops));
+            router, m_NumPaths, numHops);
         llarp::LogInfo(Name(), " using exit at ", exitRouter);
       }
       if(k == "local-dns")
@@ -349,11 +349,11 @@ namespace llarp
         else if(addr.FromString(qname, ".snode"))
         {
           dns::Message *replyMsg = new dns::Message(std::move(msg));
-          EnsurePathToSNode(addr.as_array(),
-                            [=](const RouterID &remote, exit::BaseSession *s) {
-                              SendDNSReply(remote, s, replyMsg, reply, true,
-                                           isV6);
-                            });
+          EnsurePathToSNode(
+              addr.as_array(),
+              [=](const RouterID &remote, exit::BaseSession_ptr s) {
+                SendDNSReply(remote, s, replyMsg, reply, true, isV6);
+              });
           return true;
         }
         else
@@ -580,7 +580,10 @@ namespace llarp
       // call tun code in endpoint logic in case of network isolation
       // EndpointLogic()->queue_job({this, handleTickTun});
       if(m_Exit)
+      {
         EnsureRouterIsKnown(m_Exit->Endpoint());
+        m_Exit->Tick(now);
+      }
       Endpoint::Tick(now);
     }
 

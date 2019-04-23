@@ -16,7 +16,7 @@ namespace llarp
   struct AsyncPathKeyExchangeContext
   {
     typedef path::Path_ptr Path_t;
-    typedef path::Builder_ptr PathSet_t;
+    typedef path::PathSet_ptr PathSet_t;
     PathSet_t pathset = nullptr;
     Path_t path       = nullptr;
     typedef std::function< void(AsyncPathKeyExchangeContext< User >*) > Handler;
@@ -79,9 +79,8 @@ namespace llarp
       else
       {
         hop.upstream = ctx->path->hops[ctx->idx].rc.pubkey;
-        if(ctx->pathset->ShouldBundleRC())
-          record.nextRC =
-              std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
+        record.nextRC =
+            std::make_unique< RouterContact >(ctx->path->hops[ctx->idx].rc);
       }
       // build record
 
@@ -166,8 +165,6 @@ namespace llarp
       else
         LogError(ctx->pathset->Name(), " failed to send LRCM to ", remote);
     }
-    // decrement keygen counter
-    ctx->pathset->keygens--;
   }
 
   namespace path
@@ -176,21 +173,27 @@ namespace llarp
                      size_t pathNum, size_t hops)
         : path::PathSet(pathNum), router(p_router), dht(p_dht), numHops(hops)
     {
-      p_router->pathContext().AddPathBuilder(shared_from_this());
       p_router->crypto()->encryption_keygen(enckey);
       _run.store(true);
-      keygens.store(0);
     }
 
     Builder::~Builder()
     {
     }
 
+    void
+    Builder::Tick(llarp_time_t now)
+    {
+      ExpirePaths(now);
+      if(ShouldBuildMore(now))
+        BuildOne();
+      TickPaths(now, router);
+    }
+
     util::StatusObject
     Builder::ExtractStatus() const
     {
-      util::StatusObject obj{{"keygens", uint64_t(keygens.load())},
-                             {"numHops", uint64_t(numHops)},
+      util::StatusObject obj{{"numHops", uint64_t(numHops)},
                              {"numPaths", uint64_t(m_NumPaths)}};
       std::vector< util::StatusObject > pathObjs;
       std::transform(m_Paths.begin(), m_Paths.end(),
@@ -243,7 +246,6 @@ namespace llarp
     Builder::Stop()
     {
       _run.store(false);
-      router->pathContext().RemovePathBuilder(shared_from_this());
       return true;
     }
 
@@ -256,9 +258,7 @@ namespace llarp
     bool
     Builder::ShouldRemove() const
     {
-      if(!IsStopped())
-        return false;
-      return keygens.load() > 0;
+      return IsStopped();
     }
 
     const SecretKey&
@@ -337,10 +337,10 @@ namespace llarp
       AsyncPathKeyExchangeContext< Builder >* ctx =
           new AsyncPathKeyExchangeContext< Builder >(router->crypto());
       ctx->router  = router;
-      ctx->pathset = shared_from_this();
-      auto path    = std::make_shared<path::Path>(hops, this, roles);
-      path->SetBuildResultHook([this](Path_ptr p) { this->HandlePathBuilt(p); });
-      ++keygens;
+      ctx->pathset = GetSelf();
+      auto path    = std::make_shared< path::Path >(hops, this, roles);
+      path->SetBuildResultHook(
+          [this](Path_ptr p) { this->HandlePathBuilt(p); });
       ctx->AsyncGenerateKeys(path, router->logic(), router->threadpool(), this,
                              &PathBuilderKeysGenerated);
     }

@@ -15,7 +15,7 @@ namespace llarp
     // milliseconds waiting between builds on a path
     constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 1000;
 
-    struct Builder : public PathSet, std::enable_shared_from_this<Builder> // yes private scope
+    struct Builder : public PathSet
     {
      protected:
       /// flag for PathSet::Stop()
@@ -28,9 +28,6 @@ namespace llarp
       size_t numHops;
       llarp_time_t lastBuild          = 0;
       llarp_time_t buildIntervalLimit = MIN_PATH_BUILD_INTERVAL;
-
-      // how many keygens are currently happening
-      std::atomic< uint8_t > keygens;
 
       /// construct
       Builder(AbstractRouter* p_router, llarp_dht_context* p_dht,
@@ -75,8 +72,11 @@ namespace llarp
       llarp_time_t
       Now() const override;
 
+      virtual void
+      Tick(llarp_time_t now) override;
+
       void
-      BuildOne(PathRole roles = ePathRoleAny);
+      BuildOne(PathRole roles = ePathRoleAny) override;
 
       void
       Build(const std::vector< RouterContact >& hops,
@@ -99,7 +99,7 @@ namespace llarp
       HandlePathBuildTimeout(Path_ptr p) override;
     };
 
-    using Builder_ptr = std::shared_ptr<Builder>;
+    using Builder_ptr = std::shared_ptr< Builder >;
 
   }  // namespace path
 

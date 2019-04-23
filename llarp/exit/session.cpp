@@ -25,8 +25,7 @@ namespace llarp
     {
     }
 
-    void
-    BaseSession::HandlePathDied(path::Path_ptr)
+    void BaseSession::HandlePathDied(path::Path_ptr)
     {
     }
 
@@ -135,8 +134,9 @@ namespace llarp
     {
       if(success)
       {
+        auto self = shared_from_this();
         for(auto& f : m_PendingCallbacks)
-          f(this);
+          f(self);
       }
       else
       {
@@ -161,6 +161,7 @@ namespace llarp
         }
       };
       ForEachPath(sendExitClose);
+      router->pathContext().RemovePathSet(shared_from_this());
       return llarp::path::Builder::Stop();
     }
 

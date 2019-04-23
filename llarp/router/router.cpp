@@ -1073,9 +1073,11 @@ namespace llarp
       ServiceNodeLookupRouterWhenExpired(remote);
       return;
     }
-    _hiddenServiceContext.ForEachService([=](const std::string &, const std::shared_ptr<service::Endpoint> & ep) -> bool {
-      return !ep->LookupRouterAnon(remote);
-    });
+    _hiddenServiceContext.ForEachService(
+        [=](const std::string &,
+            const std::shared_ptr< service::Endpoint > &ep) -> bool {
+          return !ep->LookupRouterAnon(remote);
+        });
   }
 
   bool
@@ -1125,7 +1127,7 @@ namespace llarp
         return !IsBootstrapNode(rc.pubkey);
       });
     }
-    paths.TickPaths(now);
+    // expire transit paths
     paths.ExpirePaths(now);
 
     {
@@ -1183,9 +1185,10 @@ namespace llarp
     }
 
     if(!IsServiceNode())
+    {
       _hiddenServiceContext.Tick(now);
+    }
 
-    paths.BuildPaths(now);
     _exitContext.Tick(now);
     if(rpcCaller)
       rpcCaller->Tick(now);

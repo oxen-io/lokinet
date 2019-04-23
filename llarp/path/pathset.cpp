@@ -15,7 +15,7 @@ namespace llarp
     bool
     PathSet::ShouldBuildMore(llarp_time_t now) const
     {
-      (void) now;
+      (void)now;
       const auto building = NumInStatus(ePathBuilding);
       if(building > m_NumPaths)
         return false;
@@ -61,7 +61,7 @@ namespace llarp
     }
 
     void
-    PathSet::Tick(llarp_time_t now, AbstractRouter* r)
+    PathSet::TickPaths(llarp_time_t now, AbstractRouter* r)
     {
       Lock_t l(&m_PathsMutex);
       for(auto& item : m_Paths)
@@ -115,7 +115,7 @@ namespace llarp
     {
       Lock_t l(&m_PathsMutex);
       Path_ptr chosen = nullptr;
-      auto itr     = m_Paths.begin();
+      auto itr        = m_Paths.begin();
       while(itr != m_Paths.end())
       {
         if(itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))
@@ -138,7 +138,7 @@ namespace llarp
     {
       Lock_t l(&m_PathsMutex);
       Path_ptr chosen = nullptr;
-      auto itr     = m_Paths.begin();
+      auto itr        = m_Paths.begin();
       while(itr != m_Paths.end())
       {
         if(itr->second->IsReady() && itr->second->SupportsAnyRoles(roles))

@@ -270,50 +270,34 @@ namespace llarp
     void
     PathContext::ExpirePaths(llarp_time_t now)
     {
-      util::Lock lock(&m_TransitPaths.first);
-      auto& map = m_TransitPaths.second;
-      auto itr  = map.begin();
-      while(itr != map.end())
       {
-        if(itr->second->Expired(now))
+        util::Lock lock(&m_TransitPaths.first);
+        auto& map = m_TransitPaths.second;
+        auto itr  = map.begin();
+        while(itr != map.end())
         {
-          itr = map.erase(itr);
+          if(itr->second->Expired(now))
+          {
+            itr = map.erase(itr);
+          }
+          else
+            ++itr;
         }
-        else
-          ++itr;
       }
-
-      for(auto& builder : m_PathBuilders)
       {
-        if(builder)
-          builder->ExpirePaths(now);
-      }
-    }
-
-    void
-    PathContext::BuildPaths(llarp_time_t now)
-    {
-      for(auto& builder : m_PathBuilders)
-      {
-        if(builder->ShouldBuildMore(now))
+        util::Lock lock(&m_OurPaths.first);
+        auto& map = m_OurPaths.second;
+        for(auto& item : map)
         {
-          builder->BuildOne();
+          item.second->ExpirePaths(now);
         }
       }
     }
-
-    void
-    PathContext::TickPaths(llarp_time_t now)
-    {
-      for(auto& builder : m_PathBuilders)
-        builder->Tick(now, m_Router);
-    }
-
     routing::MessageHandler_ptr
     PathContext::GetHandler(const PathID_t& id)
     {
       routing::MessageHandler_ptr h = nullptr;
-      auto pathset                = GetLocalPathSet(id);
+      auto pathset                  = GetLocalPathSet(id);
       if(pathset)
       {
         h = pathset->GetPathByID(id);
@@ -335,12 +319,6 @@ namespace llarp
     }
 
     void
-    PathContext::AddPathBuilder(Builder_ptr ctx)
-    {
-      m_PathBuilders.emplace_back(ctx);
-    }
-
-    void
     PathContext::RemovePathSet(PathSet_ptr set)
     {
       util::Lock lock(&m_OurPaths.first);
@@ -353,13 +331,6 @@ namespace llarp
         else
           ++itr;
       }
-    }
-
-    void
-    PathContext::RemovePathBuilder(Builder_ptr ctx)
-    {
-      m_PathBuilders.remove(ctx);
-      RemovePathSet(ctx);
     }
 
     std::ostream&
@@ -906,7 +877,7 @@ namespace llarp
     bool
     Path::InformExitResult(llarp_time_t B)
     {
-      auto self = shared_from_this();
+      auto self   = shared_from_this();
       bool result = true;
       for(const auto& hook : m_ObtainedExitHooks)
         result &= hook(self, B);

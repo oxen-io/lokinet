@@ -274,7 +274,7 @@ namespace llarp
     }
 
     bool
-    OutboundContext::Tick(llarp_time_t now)
+    OutboundContext::Pump(llarp_time_t now)
     {
       // we are probably dead af
       if(m_LookupFails > 16 || m_BuildFails > 10)
@@ -480,7 +480,7 @@ namespace llarp
       {
         // figure out how many paths to this router we have
         size_t num = 0;
-        ForEachPath([&](const path::Path_ptr & p) {
+        ForEachPath([&](const path::Path_ptr& p) {
           if(p->Endpoint() == endpoint && p->IsReady())
             ++num;
         });
@@ -491,7 +491,7 @@ namespace llarp
         if(num == 1)
         {
           num = 0;
-          ForEachPath([&](const path::Path_ptr & p) {
+          ForEachPath([&](const path::Path_ptr& p) {
             if(p->Endpoint() == endpoint)
               ++num;
           });
@@ -521,7 +521,7 @@ namespace llarp
           m_NextIntro = picked;
           // check if we have a path to this router
           num = 0;
-          ForEachPath([&](const path::Path_ptr & p) {
+          ForEachPath([&](const path::Path_ptr& p) {
             if(p->Endpoint() == m_NextIntro.router)
               ++num;
           });

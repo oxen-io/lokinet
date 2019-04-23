@@ -186,8 +186,8 @@ main(int argc, char *argv[])
       // does this file exist?
       if(genconfigOnly)
       {
-        if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(), overWrite,
-                                asRouter))
+        if(!llarp_ensure_config(conffname.c_str(), basedir.string().c_str(),
+                                overWrite, asRouter))
           return 1;
       }
       else

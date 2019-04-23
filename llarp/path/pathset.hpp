@@ -56,7 +56,11 @@ namespace llarp
     // forward declare
     struct Path;
 
-    using Path_ptr = std::shared_ptr<Path>;
+    using Path_ptr = std::shared_ptr< Path >;
+
+    struct PathSet;
+
+    using PathSet_ptr = std::shared_ptr< PathSet >;
 
     /// a set of paths owned by an entity
     struct PathSet
@@ -65,9 +69,16 @@ namespace llarp
       /// @params numPaths the number of paths to maintain
       PathSet(size_t numPaths);
 
+      /// get a shared_ptr of ourself
+      virtual PathSet_ptr
+      GetSelf() = 0;
+
+      virtual void
+      BuildOne(PathRole roles = ePathRoleAny) = 0;
+
       /// tick owned paths
-      void
-      Tick(llarp_time_t now, AbstractRouter* r);
+      virtual void
+      Tick(llarp_time_t now) = 0;
 
       /// count the number of paths that will exist at this timestamp in future
       size_t
@@ -210,7 +221,10 @@ namespace llarp
       size_t m_NumPaths;
 
       void
-      ForEachPath(std::function< void(const Path_ptr &) > visit) const
+      TickPaths(llarp_time_t now, AbstractRouter* r);
+
+      void
+      ForEachPath(std::function< void(const Path_ptr&) > visit) const
       {
         Lock_t lock(&m_PathsMutex);
         auto itr = m_Paths.begin();
@@ -231,14 +245,13 @@ namespace llarp
           return RouterID::Hash()(i.first) ^ PathID_t::Hash()(i.second);
         }
       };
-      using Mtx_t     = util::NullMutex;
-      using Lock_t    = util::NullLock;
-      using PathMap_t = std::unordered_map< PathInfo_t, Path_ptr, PathInfoHash >;
+      using Mtx_t  = util::NullMutex;
+      using Lock_t = util::NullLock;
+      using PathMap_t =
+          std::unordered_map< PathInfo_t, Path_ptr, PathInfoHash >;
       mutable Mtx_t m_PathsMutex;
       PathMap_t m_Paths;
     };
-
-    using PathSet_ptr = std::shared_ptr<PathSet>;
 
   }  // namespace path
 }  // namespace llarp

@@ -15,7 +15,10 @@ namespace llarp
     struct Endpoint;
 
     /// context needed to initiate an outbound hidden service session
-    struct OutboundContext : public path::Builder, public SendContext
+    struct OutboundContext
+        : public path::Builder,
+          public SendContext,
+          public std::enable_shared_from_this< OutboundContext >
     {
       OutboundContext(const IntroSet& introSet, Endpoint* parent);
       ~OutboundContext();
@@ -25,6 +28,12 @@ namespace llarp
 
       bool
       ShouldBundleRC() const override;
+
+      path::PathSet_ptr
+      GetSelf() override
+      {
+        return shared_from_this();
+      }
 
       bool
       Stop() override;
@@ -54,10 +63,10 @@ namespace llarp
       bool
       ShouldBuildMore(llarp_time_t now) const override;
 
-      /// tick internal state
+      /// pump internal state
       /// return true to mark as dead
       bool
-      Tick(llarp_time_t now);
+      Pump(llarp_time_t now);
 
       /// return true if it's safe to remove ourselves
       bool

@@ -15,10 +15,13 @@ namespace llarp
   {
     struct BaseSession;
 
-    using SessionReadyFunc = std::function< void(BaseSession*) >;
+    using BaseSession_ptr = std::shared_ptr< BaseSession >;
+
+    using SessionReadyFunc = std::function< void(BaseSession_ptr) >;
 
     /// a persisting exit session with an exit router
-    struct BaseSession : public llarp::path::Builder
+    struct BaseSession : public llarp::path::Builder,
+                         public std::enable_shared_from_this< BaseSession >
     {
       static constexpr size_t MaxUpstreamQueueLength = 256;
       static constexpr llarp_time_t LifeSpan         = 60 * 10 * 1000;
@@ -28,6 +31,12 @@ namespace llarp
                   AbstractRouter* r, size_t numpaths, size_t hoplen);
 
       virtual ~BaseSession();
+
+      std::shared_ptr< path::PathSet >
+      GetSelf() override
+      {
+        return shared_from_this();
+      }
 
       util::StatusObject
       ExtractStatus() const;

@@ -102,7 +102,8 @@ namespace llarp
           expired.emplace_back(rc.pubkey);
         return true;
       });
-      ForEachService([&](const std::string &, const std::shared_ptr<Endpoint> &ep) -> bool {
+      ForEachService([&](const std::string &,
+                         const std::shared_ptr< Endpoint > &ep) -> bool {
         // TODO: we need to stop looking up service nodes that are gone forever
         // how do?
         for(const auto &k : expired)
@@ -198,22 +199,30 @@ namespace llarp
           keyfile = option.second;
       }
 
-      std::unique_ptr< service::Endpoint > service;
+      service::Endpoint_ptr service;
 
       static std::map<
           std::string,
-          std::function< std::unique_ptr< service::Endpoint >(
+          std::function< service::Endpoint_ptr(
               const std::string &, AbstractRouter *, service::Context *) > >
           endpointConstructors = {
               {"tun",
                [](const std::string &nick, AbstractRouter *r,
-                  service::Context *c) -> std::unique_ptr< service::Endpoint > {
-                 return std::make_unique< handlers::TunEndpoint >(nick, r, c);
+                  service::Context *c) -> service::Endpoint_ptr {
+                 return std::make_shared< handlers::TunEndpoint >(nick, r, c);
+               }},
+              {"ios-tun",
+               [](const std::string &nick, AbstractRouter *r,
+                  service::Context *c) -> service::Endpoint_ptr {
+                 return nullptr;
+                 /// SOOOOOOON (tm)
+                 // return std::make_shared<handlers::IOSTunEndpoint>(nick, r,
+                 // c);
                }},
               {"null",
                [](const std::string &nick, AbstractRouter *r,
-                  service::Context *c) -> std::unique_ptr< service::Endpoint > {
-                 return std::make_unique< handlers::NullEndpoint >(nick, r, c);
+                  service::Context *c) -> service::Endpoint_ptr {
+                 return std::make_shared< handlers::NullEndpoint >(nick, r, c);
                }}};
 
       {
@@ -227,18 +236,22 @@ namespace llarp
 
         // construct
         service = itr->second(conf.first, m_Router, this);
-
-        // if ephemeral, then we need to regen key
-        // if privkey file, then set it and load it
-        if(keyfile != "")
+        if(service)
         {
-          service->SetOption("keyfile", keyfile);
-          // load keyfile, so we have the correct name for logging
+          // if ephemeral, then we need to regen key
+          // if privkey file, then set it and load it
+          if(keyfile != "")
+          {
+            service->SetOption("keyfile", keyfile);
+            // load keyfile, so we have the correct name for logging
+          }
+          LogInfo("Establishing endpoint identity");
+          service->LoadKeyFile();  // only start endpoint not tun
+          // now Name() will be correct
         }
-        LogInfo("Establishing endpoint identity");
-        service->LoadKeyFile();  // only start endpoint not tun
-        // now Name() will be correct
       }
+      if(service == nullptr)
+        return false;
       // configure
       for(const auto &option : conf.second)
       {
@@ -259,7 +272,7 @@ namespace llarp
         if(service->Start())
         {
           LogInfo("autostarting hidden service endpoint ", service->Name());
-          m_Endpoints.emplace(conf.first, std::move(service));
+          m_Endpoints.emplace(conf.first, service);
           return true;
         }
         LogError("failed to start hidden service endpoint ", conf.first);
@@ -268,7 +281,7 @@ namespace llarp
       else
       {
         LogInfo("added hidden service endpoint ", service->Name());
-        m_Endpoints.emplace(conf.first, std::move(service));
+        m_Endpoints.emplace(conf.first, service);
         return true;
       }
     }

@@ -240,6 +240,7 @@ namespace llarp
     void
     Endpoint::Tick(llarp_time_t now)
     {
+      path::Builder::Tick(now);
       // publish descriptors
       if(ShouldPublishDescriptors(now))
       {
@@ -256,7 +257,8 @@ namespace llarp
         auto itr = m_SNodeSessions.begin();
         while(itr != m_SNodeSessions.end())
         {
-          if(itr->second->ShouldRemove() && itr->second->IsStopped())
+          itr->second->Tick(now);
+          if(itr->second->ShouldRemove())
           {
             itr = m_SNodeSessions.erase(itr);
             continue;
@@ -362,6 +364,7 @@ namespace llarp
         auto itr = m_DeadSessions.begin();
         while(itr != m_DeadSessions.end())
         {
+          itr->second->Tick(now);
           if(itr->second->IsDone(now))
             itr = m_DeadSessions.erase(itr);
           else
@@ -373,14 +376,17 @@ namespace llarp
         auto itr = m_RemoteSessions.begin();
         while(itr != m_RemoteSessions.end())
         {
-          if(itr->second->Tick(now))
+          if(itr->second->Pump(now))
           {
             itr->second->Stop();
             m_DeadSessions.emplace(itr->first, std::move(itr->second));
             itr = m_RemoteSessions.erase(itr);
           }
           else
+          {
+            itr->second->Tick(now);
             ++itr;
+          }
         }
       }
       // expire convotags
@@ -726,7 +732,7 @@ namespace llarp
       // make sure we have all paths that are established
       // in our introset
       bool should = false;
-      ForEachPath([&](const path::Path_ptr & p) {
+      ForEachPath([&](const path::Path_ptr& p) {
         if(!p->IsReady())
           return;
         for(const auto& i : m_IntroSet.I)
@@ -797,7 +803,7 @@ namespace llarp
       }
 
       auto it = m_RemoteSessions.emplace(
-          addr, std::make_unique< OutboundContext >(introset, this));
+          addr, std::make_shared< OutboundContext >(introset, this));
       LogInfo("Created New outbound context for ", addr.ToString());
 
       // inform pending
@@ -879,7 +885,8 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t seq)
+    Endpoint::HandleDataDrop(path::Path_ptr p, const PathID_t& dst,
+                             uint64_t seq)
     {
       LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(),
               " via ", dst);
@@ -964,7 +971,8 @@ namespace llarp
         return true;
       }
       if(!frame.AsyncDecryptAndVerify(EndpointLogic(), GetCrypto(), p,
-                                       CryptoWorker(), m_Identity, m_DataHandler))
+                                      CryptoWorker(), m_Identity,
+                                      m_DataHandler))
 
       {
         // send discard
@@ -974,17 +982,15 @@ namespace llarp
         f.F = p->intro.pathID;
         if(!f.Sign(GetCrypto(), m_Identity))
           return false;
-        auto d = std::make_shared<const routing::PathTransferMessage>(f, frame.F);
-        RouterLogic()->queue_func([=]() {
-          p->SendRoutingMessage(*d, router);
-        });
+        auto d =
+            std::make_shared< const routing::PathTransferMessage >(f, frame.F);
+        RouterLogic()->queue_func([=]() { p->SendRoutingMessage(*d, router); });
         return true;
       }
       return true;
     }
 
-    void
-    Endpoint::HandlePathDied(path::Path_ptr)
+    void Endpoint::HandlePathDied(path::Path_ptr)
     {
       RegenAndPublishIntroSet(Now(), true);
     }
@@ -1073,21 +1079,20 @@ namespace llarp
       using namespace std::placeholders;
       if(m_SNodeSessions.count(snode) == 0)
       {
-        auto themIP = ObtainIPForAddr(snode, true);
-        m_SNodeSessions.emplace(
+        auto themIP  = ObtainIPForAddr(snode, true);
+        auto session = std::make_shared< exit::SNodeSession >(
             snode,
-            std::make_unique< exit::SNodeSession >(
-                snode,
-                std::bind(&Endpoint::HandleWriteIPPacket, this, _1,
-                          [themIP]() -> huint32_t { return themIP; }),
-                m_Router, 2, numHops));
+            std::bind(&Endpoint::HandleWriteIPPacket, this, _1,
+                      [themIP]() -> huint32_t { return themIP; }),
+            m_Router, 2, numHops);
+        m_SNodeSessions.emplace(snode, session);
       }
       auto range = m_SNodeSessions.equal_range(snode);
       auto itr   = range.first;
       while(itr != range.second)
       {
         if(itr->second->IsReady())
-          h(snode, itr->second.get());
+          h(snode, itr->second);
         else
           itr->second->AddReadyHook(std::bind(h, snode, _1));
         ++itr;
@@ -1130,9 +1135,9 @@ namespace llarp
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
         {
-          auto transfer = std::make_shared<routing::PathTransferMessage>();
+          auto transfer    = std::make_shared< routing::PathTransferMessage >();
           ProtocolFrame& f = transfer->T;
-          std::shared_ptr<path::Path> p;
+          std::shared_ptr< path::Path > p;
           std::set< ConvoTag > tags;
           if(GetConvoTagsForService(itr->second, tags))
           {
@@ -1167,9 +1172,9 @@ namespace llarp
               m.proto      = t;
               m.introReply = p->intro;
               PutReplyIntroFor(f.T, m.introReply);
-              m.sender   = m_Identity.pub;
-              f.F        = m.introReply.pathID;
-              f.S        = GetSeqNoForConvo(f.T);
+              m.sender    = m_Identity.pub;
+              f.F         = m.introReply.pathID;
+              f.S         = GetSeqNoForConvo(f.T);
               transfer->P = remoteIntro.pathID;
               if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
               {
@@ -1178,9 +1183,8 @@ namespace llarp
               }
               LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
               auto router = Router();
-              RouterLogic()->queue_func([=]() {
-                p->SendRoutingMessage(*transfer, router);
-              });
+              RouterLogic()->queue_func(
+                  [=]() { p->SendRoutingMessage(*transfer, router); });
               return true;
             }
           }
