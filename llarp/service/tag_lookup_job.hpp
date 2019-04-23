@@ -43,7 +43,7 @@ namespace llarp
         return (now - lastRequest) > TTL;
       }
 
-      std::unique_ptr< routing::IMessage >
+      std::shared_ptr< routing::IMessage >
       BuildRequestMessage(uint64_t txid);
 
       bool
@@ -58,7 +58,7 @@ namespace llarp
       {
       }
 
-      std::unique_ptr< routing::IMessage >
+      std::shared_ptr< routing::IMessage >
       BuildRequestMessage() override
       {
         return m_result->BuildRequestMessage(txid);

@@ -32,7 +32,7 @@ namespace llarp
     }
 
     bool
-    OutboundContext::HandleDataDrop(path::Path* p, const PathID_t& dst,
+    OutboundContext::HandleDataDrop(path::Path_ptr p, const PathID_t& dst,
                                     uint64_t seq)
     {
       // pick another intro
@@ -122,7 +122,7 @@ namespace llarp
     }
 
     void
-    OutboundContext::HandlePathBuilt(path::Path* p)
+    OutboundContext::HandlePathBuilt(path::Path_ptr p)
     {
       path::Builder::HandlePathBuilt(p);
       /// don't use it if we are marked bad
@@ -204,7 +204,7 @@ namespace llarp
       ex->msg.PutBuffer(payload);
       ex->msg.introReply = path->intro;
       ex->frame.F        = ex->msg.introReply.pathID;
-      llarp_threadpool_queue_job(m_Endpoint->Worker(),
+      llarp_threadpool_queue_job(m_Endpoint->CryptoWorker(),
                                  {ex, &AsyncKeyExchange::Encrypt});
     }
 
@@ -222,7 +222,7 @@ namespace llarp
         return;
       auto addr = currentIntroSet.A.Addr();
 
-      path::Path* path = nullptr;
+      path::Path_ptr path = nullptr;
       if(randomizePath)
         path = m_Endpoint->PickRandomEstablishedPath();
       else
@@ -470,7 +470,7 @@ namespace llarp
     }
 
     void
-    OutboundContext::HandlePathDied(path::Path* path)
+    OutboundContext::HandlePathDied(path::Path_ptr path)
     {
       // unconditionally update introset
       UpdateIntroSet(true);
@@ -480,7 +480,7 @@ namespace llarp
       {
         // figure out how many paths to this router we have
         size_t num = 0;
-        ForEachPath([&](path::Path* p) {
+        ForEachPath([&](const path::Path_ptr & p) {
           if(p->Endpoint() == endpoint && p->IsReady())
             ++num;
         });
@@ -491,7 +491,7 @@ namespace llarp
         if(num == 1)
         {
           num = 0;
-          ForEachPath([&](path::Path* p) {
+          ForEachPath([&](const path::Path_ptr & p) {
             if(p->Endpoint() == endpoint)
               ++num;
           });
@@ -521,7 +521,7 @@ namespace llarp
           m_NextIntro = picked;
           // check if we have a path to this router
           num = 0;
-          ForEachPath([&](path::Path* p) {
+          ForEachPath([&](const path::Path_ptr & p) {
             if(p->Endpoint() == m_NextIntro.router)
               ++num;
           });
@@ -534,7 +534,7 @@ namespace llarp
     }
 
     bool
-    OutboundContext::HandleHiddenServiceFrame(path::Path* p,
+    OutboundContext::HandleHiddenServiceFrame(path::Path_ptr p,
                                               const ProtocolFrame& frame)
     {
       return m_Endpoint->HandleHiddenServiceFrame(p, frame);

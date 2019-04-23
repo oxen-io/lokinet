@@ -26,7 +26,7 @@ namespace llarp
     }
 
     void
-    BaseSession::HandlePathDied(path::Path*)
+    BaseSession::HandlePathDied(path::Path_ptr)
     {
     }
 
@@ -76,13 +76,13 @@ namespace llarp
     }
 
     bool
-    BaseSession::CheckPathDead(path::Path*, llarp_time_t dlt)
+    BaseSession::CheckPathDead(path::Path_ptr, llarp_time_t dlt)
     {
       return dlt >= 10000;
     }
 
     void
-    BaseSession::HandlePathBuilt(llarp::path::Path* p)
+    BaseSession::HandlePathBuilt(llarp::path::Path_ptr p)
     {
       path::Builder::HandlePathBuilt(p);
       p->SetDropHandler(std::bind(&BaseSession::HandleTrafficDrop, this,
@@ -120,7 +120,7 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleGotExit(llarp::path::Path* p, llarp_time_t b)
+    BaseSession::HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b)
     {
       m_LastUse = router->Now();
       if(b == 0)
@@ -150,7 +150,7 @@ namespace llarp
     BaseSession::Stop()
     {
       CallPendingCallbacks(false);
-      auto sendExitClose = [&](llarp::path::Path* p) {
+      auto sendExitClose = [&](const llarp::path::Path_ptr p) {
         if(p->SupportsAnyRoles(llarp::path::ePathRoleExit))
         {
           llarp::LogInfo(p->Name(), " closing exit path");
@@ -165,10 +165,9 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleTraffic(llarp::path::Path* p, const llarp_buffer_t& buf,
+    BaseSession::HandleTraffic(llarp::path::Path_ptr, const llarp_buffer_t& buf,
                                uint64_t counter)
     {
-      (void)p;
       if(m_WritePacket)
       {
         llarp::net::IPv4Packet pkt;
@@ -183,10 +182,9 @@ namespace llarp
     }
 
     bool
-    BaseSession::HandleTrafficDrop(llarp::path::Path* p, const PathID_t& path,
+    BaseSession::HandleTrafficDrop(llarp::path::Path_ptr, const PathID_t& path,
                                    uint64_t s)
     {
-      (void)p;
       llarp::LogError("dropped traffic on exit ", m_ExitRouter, " S=", s,
                       " P=", path);
       return true;

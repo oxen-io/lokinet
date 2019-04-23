@@ -33,10 +33,10 @@ namespace llarp
       return handle(remote, nullptr, endpoint);
     }
 
-    std::unique_ptr< routing::IMessage >
+    std::shared_ptr< routing::IMessage >
     HiddenServiceAddressLookup::BuildRequestMessage()
     {
-      auto msg = std::make_unique< routing::DHTMessage >();
+      auto msg = std::make_shared< routing::DHTMessage >();
       msg->M.emplace_back(
           std::make_unique< dht::FindIntroMessage >(txid, remote, 0));
       return msg;

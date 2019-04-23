@@ -1,6 +1,8 @@
 #ifndef LLARP_ROUTING_HANDLER_HPP
 #define LLARP_ROUTING_HANDLER_HPP
 
+#include <memory>
+
 namespace llarp
 {
   struct AbstractRouter;
@@ -81,6 +83,9 @@ namespace llarp
       virtual bool
       HandleDHTMessage(const dht::IMessage& msg, AbstractRouter *r) = 0;
     };
+
+    using MessageHandler_ptr = std::shared_ptr<IMessageHandler>;
+
   }  // namespace routing
 }  // namespace llarp
 

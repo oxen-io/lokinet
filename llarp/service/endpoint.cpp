@@ -670,10 +670,10 @@ namespace llarp
       {
       }
 
-      std::unique_ptr< routing::IMessage >
+      std::shared_ptr< routing::IMessage >
       BuildRequestMessage()
       {
-        auto msg = std::make_unique< routing::DHTMessage >();
+        auto msg = std::make_shared< routing::DHTMessage >();
         msg->M.emplace_back(
             std::make_unique< dht::PublishIntroMessage >(m_IntroSet, txid, 1));
         return msg;
@@ -707,7 +707,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::PublishIntroSetVia(AbstractRouter* r, path::Path* path)
+    Endpoint::PublishIntroSetVia(AbstractRouter* r, path::Path_ptr path)
     {
       auto job = new PublishIntroSetJob(this, GenTXID(), m_IntroSet);
       if(job->SendRequestViaPath(path, r))
@@ -726,7 +726,7 @@ namespace llarp
       // make sure we have all paths that are established
       // in our introset
       bool should = false;
-      ForEachPath([&](const path::Path* p) {
+      ForEachPath([&](const path::Path_ptr & p) {
         if(!p->IsReady())
           return;
         for(const auto& i : m_IntroSet.I)
@@ -868,7 +868,7 @@ namespace llarp
     }
 
     void
-    Endpoint::HandlePathBuilt(path::Path* p)
+    Endpoint::HandlePathBuilt(path::Path_ptr p)
     {
       using namespace std::placeholders;
       p->SetDataHandler(
@@ -879,7 +879,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t seq)
+    Endpoint::HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t seq)
     {
       LogWarn(Name(), " message ", seq, " dropped by endpoint ", p->Endpoint(),
               " via ", dst);
@@ -946,7 +946,7 @@ namespace llarp
     }
 
     bool
-    Endpoint::HandleHiddenServiceFrame(path::Path* p,
+    Endpoint::HandleHiddenServiceFrame(path::Path_ptr p,
                                        const ProtocolFrame& frame)
     {
       if(frame.R)
@@ -964,7 +964,7 @@ namespace llarp
         return true;
       }
       if(!frame.AsyncDecryptAndVerify(EndpointLogic(), GetCrypto(), p,
-                                       Worker(), m_Identity, m_DataHandler))
+                                       CryptoWorker(), m_Identity, m_DataHandler))
 
       {
         // send discard
@@ -974,20 +974,23 @@ namespace llarp
         f.F = p->intro.pathID;
         if(!f.Sign(GetCrypto(), m_Identity))
           return false;
-        const routing::PathTransferMessage d(f, frame.F);
-        return p->SendRoutingMessage(d, router);
+        auto d = std::make_shared<const routing::PathTransferMessage>(f, frame.F);
+        RouterLogic()->queue_func([=]() {
+          p->SendRoutingMessage(*d, router);
+        });
+        return true;
       }
       return true;
     }
 
     void
-    Endpoint::HandlePathDied(path::Path*)
+    Endpoint::HandlePathDied(path::Path_ptr)
     {
       RegenAndPublishIntroSet(Now(), true);
     }
 
     bool
-    Endpoint::CheckPathIsDead(path::Path*, llarp_time_t dlt)
+    Endpoint::CheckPathIsDead(path::Path_ptr, llarp_time_t dlt)
     {
       return dlt > path::alive_timeout;
     }
@@ -1022,7 +1025,7 @@ namespace llarp
                                   llarp_time_t timeoutMS,
                                   bool randomPath)
     {
-      path::Path* path = nullptr;
+      path::Path_ptr path = nullptr;
       if(randomPath)
         path = PickRandomEstablishedPath();
       else
@@ -1127,9 +1130,9 @@ namespace llarp
         auto itr = m_AddressToService.find(remote);
         if(itr != m_AddressToService.end())
         {
-          routing::PathTransferMessage transfer;
-          ProtocolFrame& f = transfer.T;
-          path::Path* p    = nullptr;
+          auto transfer = std::make_shared<routing::PathTransferMessage>();
+          ProtocolFrame& f = transfer->T;
+          std::shared_ptr<path::Path> p;
           std::set< ConvoTag > tags;
           if(GetConvoTagsForService(itr->second, tags))
           {
@@ -1160,21 +1163,25 @@ namespace llarp
               m.PutBuffer(data);
               f.N.Randomize();
               f.C.Zero();
-              transfer.Y.Randomize();
+              transfer->Y.Randomize();
               m.proto      = t;
               m.introReply = p->intro;
               PutReplyIntroFor(f.T, m.introReply);
               m.sender   = m_Identity.pub;
               f.F        = m.introReply.pathID;
               f.S        = GetSeqNoForConvo(f.T);
-              transfer.P = remoteIntro.pathID;
+              transfer->P = remoteIntro.pathID;
               if(!f.EncryptAndSign(Router()->crypto(), m, K, m_Identity))
               {
                 LogError("failed to encrypt and sign");
                 return false;
               }
               LogDebug(Name(), " send ", data.sz, " via ", remoteIntro.router);
-              return p->SendRoutingMessage(transfer, Router());
+              auto router = Router();
+              RouterLogic()->queue_func([=]() {
+                p->SendRoutingMessage(*transfer, router);
+              });
+              return true;
             }
           }
         }
@@ -1263,7 +1270,7 @@ namespace llarp
     }
 
     llarp_threadpool*
-    Endpoint::Worker()
+    Endpoint::CryptoWorker()
     {
       return m_Router->threadpool();
     }

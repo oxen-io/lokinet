@@ -93,7 +93,7 @@ namespace llarp
     }
     template < typename Map_t, typename Key_t, typename CheckValue_t,
                typename GetFunc_t >
-    IHopHandler*
+    HopHandler_ptr
     MapGet(Map_t& map, const Key_t& k, CheckValue_t check, GetFunc_t get)
     {
       util::Lock lock(&map.first);
@@ -153,7 +153,7 @@ namespace llarp
     }
 
     void
-    PathContext::AddOwnPath(PathSet* set, Path* path)
+    PathContext::AddOwnPath(PathSet_ptr set, Path_ptr path)
     {
       set->AddPath(path);
       MapPut(m_OurPaths, path->TXID(), set);
@@ -169,16 +169,16 @@ namespace llarp
                     });
     }
 
-    IHopHandler*
+    HopHandler_ptr
     PathContext::GetByUpstream(const RouterID& remote, const PathID_t& id)
     {
       auto own = MapGet(
           m_OurPaths, id,
-          [](ABSL_ATTRIBUTE_UNUSED const PathSet* s) -> bool {
+          [](const PathSet_ptr) -> bool {
             // TODO: is this right?
             return true;
           },
-          [remote, id](PathSet* p) -> IHopHandler* {
+          [remote, id](PathSet_ptr p) -> HopHandler_ptr {
             return p->GetByUpstream(remote, id);
           });
       if(own)
@@ -189,8 +189,8 @@ namespace llarp
           [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
             return hop->info.upstream == remote;
           },
-          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-            return h.get();
+          [](const std::shared_ptr< TransitHop >& h) -> HopHandler_ptr {
+            return h;
           });
     }
 
@@ -205,7 +205,7 @@ namespace llarp
       return itr->second->info.downstream == otherRouter;
     }
 
-    IHopHandler*
+    HopHandler_ptr
     PathContext::GetByDownstream(const RouterID& remote, const PathID_t& id)
     {
       return MapGet(
@@ -213,12 +213,12 @@ namespace llarp
           [remote](const std::shared_ptr< TransitHop >& hop) -> bool {
             return hop->info.downstream == remote;
           },
-          [](const std::shared_ptr< TransitHop >& h) -> IHopHandler* {
-            return h.get();
+          [](const std::shared_ptr< TransitHop >& h) -> HopHandler_ptr {
+            return h;
           });
     }
 
-    PathSet*
+    PathSet_ptr
     PathContext::GetLocalPathSet(const PathID_t& id)
     {
       auto& map = m_OurPaths;
@@ -243,7 +243,7 @@ namespace llarp
       return m_Router;
     }
 
-    IHopHandler*
+    HopHandler_ptr
     PathContext::GetPathForTransfer(const PathID_t& id)
     {
       RouterID us(OurRouterID());
@@ -254,7 +254,7 @@ namespace llarp
         for(auto i = range.first; i != range.second; ++i)
         {
           if(i->second->info.upstream == us)
-            return i->second.get();
+            return i->second;
         }
       }
       return nullptr;
@@ -309,10 +309,10 @@ namespace llarp
         builder->Tick(now, m_Router);
     }
 
-    routing::IMessageHandler*
+    routing::MessageHandler_ptr
     PathContext::GetHandler(const PathID_t& id)
     {
-      routing::IMessageHandler* h = nullptr;
+      routing::MessageHandler_ptr h = nullptr;
       auto pathset                = GetLocalPathSet(id);
       if(pathset)
       {
@@ -328,27 +328,27 @@ namespace llarp
         for(auto i = range.first; i != range.second; ++i)
         {
           if(i->second->info.upstream == us)
-            return i->second.get();
+            return i->second;
         }
       }
       return nullptr;
     }
 
     void
-    PathContext::AddPathBuilder(Builder* ctx)
+    PathContext::AddPathBuilder(Builder_ptr ctx)
     {
-      m_PathBuilders.push_back(ctx);
+      m_PathBuilders.emplace_back(ctx);
     }
 
     void
-    PathContext::RemovePathSet(PathSet* set)
+    PathContext::RemovePathSet(PathSet_ptr set)
     {
       util::Lock lock(&m_OurPaths.first);
       auto& map = m_OurPaths.second;
       auto itr  = map.begin();
       while(itr != map.end())
       {
-        if(itr->second == set)
+        if(itr->second.get() == set.get())
           itr = map.erase(itr);
         else
           ++itr;
@@ -356,7 +356,7 @@ namespace llarp
     }
 
     void
-    PathContext::RemovePathBuilder(Builder* ctx)
+    PathContext::RemovePathBuilder(Builder_ptr ctx)
     {
       m_PathBuilders.remove(ctx);
       RemovePathSet(ctx);
@@ -468,7 +468,7 @@ namespace llarp
       if(st == ePathExpired && _status == ePathBuilding)
       {
         _status = st;
-        m_PathSet->HandlePathBuildTimeout(this);
+        m_PathSet->HandlePathBuildTimeout(shared_from_this());
       }
       else if(st == ePathBuilding)
       {
@@ -483,7 +483,7 @@ namespace llarp
       {
         LogInfo("path ", Name(), " died");
         _status = st;
-        m_PathSet->HandlePathDied(this);
+        m_PathSet->HandlePathDied(shared_from_this());
       }
       else if(st == ePathEstablished && _status == ePathTimeout)
       {
@@ -580,7 +580,7 @@ namespace llarp
         if(m_LastRecvMessage && now > m_LastRecvMessage)
         {
           auto dlt = now - m_LastRecvMessage;
-          if(m_CheckForDead && m_CheckForDead(this, dlt))
+          if(m_CheckForDead && m_CheckForDead(shared_from_this(), dlt))
           {
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
@@ -588,7 +588,7 @@ namespace llarp
         }
         else if(dlt >= path::alive_timeout && m_LastRecvMessage == 0)
         {
-          if(m_CheckForDead && m_CheckForDead(this, dlt))
+          if(m_CheckForDead && m_CheckForDead(shared_from_this(), dlt))
           {
             r->routerProfiling().MarkPathFail(this);
             EnterState(ePathTimeout, now);
@@ -673,12 +673,12 @@ namespace llarp
       if(m_UpdateExitTX && msg.T == m_UpdateExitTX)
       {
         if(m_ExitUpdated)
-          return m_ExitUpdated(this);
+          return m_ExitUpdated(shared_from_this());
       }
       if(m_CloseExitTX && msg.T == m_CloseExitTX)
       {
         if(m_ExitClosed)
-          return m_ExitClosed(this);
+          return m_ExitClosed(shared_from_this());
       }
       return false;
     }
@@ -729,7 +729,7 @@ namespace llarp
     {
       MarkActive(r->Now());
       if(m_DropHandler)
-        return m_DropHandler(this, msg.P, msg.S);
+        return m_DropHandler(shared_from_this(), msg.P, msg.S);
       return true;
     }
 
@@ -765,7 +765,7 @@ namespace llarp
     Path::HandleHiddenServiceFrame(const service::ProtocolFrame& frame)
     {
       MarkActive(m_PathSet->Now());
-      return m_DataHandler && m_DataHandler(this, frame);
+      return m_DataHandler && m_DataHandler(shared_from_this(), frame);
     }
 
     bool
@@ -780,7 +780,7 @@ namespace llarp
         m_LastLatencyTestID = 0;
         EnterState(ePathEstablished, now);
         if(m_BuiltHook)
-          m_BuiltHook(this);
+          m_BuiltHook(shared_from_this());
         m_BuiltHook = nullptr;
         LogDebug("path latency is now ", intro.latency, " for ", Name());
         return true;
@@ -906,9 +906,10 @@ namespace llarp
     bool
     Path::InformExitResult(llarp_time_t B)
     {
+      auto self = shared_from_this();
       bool result = true;
       for(const auto& hook : m_ObtainedExitHooks)
-        result &= hook(this, B);
+        result &= hook(self, B);
       m_ObtainedExitHooks.clear();
       return result;
     }
@@ -924,13 +925,14 @@ namespace llarp
       if(!m_ExitTrafficHandler)
         return false;
       bool sent = msg.X.size() > 0;
+      auto self = shared_from_this();
       for(const auto& pkt : msg.X)
       {
         if(pkt.size() <= 8)
           return false;
         uint64_t counter = bufbe64toh(pkt.data());
         if(m_ExitTrafficHandler(
-               this, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter))
+               self, llarp_buffer_t(pkt.data() + 8, pkt.size() - 8), counter))
         {
           MarkActive(r->Now());
           EnterState(ePathEstablished, r->Now());

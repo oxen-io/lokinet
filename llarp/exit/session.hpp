@@ -40,10 +40,10 @@ namespace llarp
       }
 
       void
-      HandlePathDied(llarp::path::Path* p) override;
+      HandlePathDied(llarp::path::Path_ptr p) override;
 
       bool
-      CheckPathDead(path::Path* p, llarp_time_t dlt);
+      CheckPathDead(path::Path_ptr p, llarp_time_t dlt);
 
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
@@ -53,7 +53,7 @@ namespace llarp
       ShouldBuildMore(llarp_time_t now) const override;
 
       void
-      HandlePathBuilt(llarp::path::Path* p) override;
+      HandlePathBuilt(llarp::path::Path_ptr p) override;
 
       bool
       QueueUpstreamTraffic(llarp::net::IPv4Packet pkt, const size_t packSize);
@@ -99,14 +99,14 @@ namespace llarp
       PopulateRequest(llarp::routing::ObtainExitMessage& msg) const = 0;
 
       bool
-      HandleTrafficDrop(llarp::path::Path* p, const llarp::PathID_t& path,
+      HandleTrafficDrop(llarp::path::Path_ptr p, const llarp::PathID_t& path,
                         uint64_t s);
 
       bool
-      HandleGotExit(llarp::path::Path* p, llarp_time_t b);
+      HandleGotExit(llarp::path::Path_ptr p, llarp_time_t b);
 
       bool
-      HandleTraffic(llarp::path::Path* p, const llarp_buffer_t& buf,
+      HandleTraffic(llarp::path::Path_ptr p, const llarp_buffer_t& buf,
                     uint64_t seqno);
 
      private:

@@ -30,10 +30,10 @@ namespace llarp
       Stop() override;
 
       bool
-      HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
+      HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
 
       void
-      HandlePathDied(path::Path* p) override;
+      HandlePathDied(path::Path_ptr p) override;
 
       /// set to true if we are updating the remote introset right now
       bool updatingIntroSet;
@@ -64,7 +64,7 @@ namespace llarp
       IsDone(llarp_time_t now) const;
 
       bool
-      CheckPathIsDead(path::Path* p, llarp_time_t dlt);
+      CheckPathIsDead(path::Path_ptr p, llarp_time_t dlt);
 
       void
       AsyncGenIntro(const llarp_buffer_t& payload, ProtocolType t) override;
@@ -77,14 +77,14 @@ namespace llarp
       BuildOneAlignedTo(const RouterID& remote);
 
       void
-      HandlePathBuilt(path::Path* path) override;
+      HandlePathBuilt(path::Path_ptr path) override;
 
       bool
       SelectHop(llarp_nodedb* db, const RouterContact& prev, RouterContact& cur,
                 size_t hop, path::PathRole roles) override;
 
       bool
-      HandleHiddenServiceFrame(path::Path* p, const ProtocolFrame& frame);
+      HandleHiddenServiceFrame(path::Path_ptr p, const ProtocolFrame& frame);
 
       std::string
       Name() const override;

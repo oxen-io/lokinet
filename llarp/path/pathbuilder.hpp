@@ -15,7 +15,7 @@ namespace llarp
     // milliseconds waiting between builds on a path
     constexpr llarp_time_t MIN_PATH_BUILD_INTERVAL = 1000;
 
-    struct Builder : public PathSet
+    struct Builder : public PathSet, std::enable_shared_from_this<Builder> // yes private scope
     {
      protected:
       /// flag for PathSet::Stop()
@@ -93,11 +93,14 @@ namespace llarp
       GetTunnelEncryptionSecretKey() const;
 
       virtual void
-      HandlePathBuilt(Path* p) override;
+      HandlePathBuilt(Path_ptr p) override;
 
       virtual void
-      HandlePathBuildTimeout(Path* p) override;
+      HandlePathBuildTimeout(Path_ptr p) override;
     };
+
+    using Builder_ptr = std::shared_ptr<Builder>;
+
   }  // namespace path
 
 }  // namespace llarp

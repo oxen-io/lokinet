@@ -149,6 +149,8 @@ namespace llarp
       uint64_t m_SequenceNum = 0;
     };
 
+    using HopHandler_ptr = std::shared_ptr<IHopHandler>;
+
     struct TransitHop : public IHopHandler, public routing::IMessageHandler
     {
       TransitHop();
@@ -301,25 +303,25 @@ namespace llarp
     };
 
     /// A path we made
-    struct Path : public IHopHandler, public routing::IMessageHandler
+    struct Path : public IHopHandler, public routing::IMessageHandler, public std::enable_shared_from_this<Path>
     {
-      using BuildResultHookFunc = std::function< void(Path*) >;
-      using CheckForDeadFunc    = std::function< bool(Path*, llarp_time_t) >;
+      using BuildResultHookFunc = std::function< void(Path_ptr) >;
+      using CheckForDeadFunc    = std::function< bool(Path_ptr, llarp_time_t) >;
       using DropHandlerFunc =
-          std::function< bool(Path*, const PathID_t&, uint64_t) >;
+          std::function< bool(Path_ptr, const PathID_t&, uint64_t) >;
       using HopList = std::vector< PathHopConfig >;
       using DataHandlerFunc =
-          std::function< bool(Path*, const service::ProtocolFrame&) >;
-      using ExitUpdatedFunc = std::function< bool(Path*) >;
-      using ExitClosedFunc  = std::function< bool(Path*) >;
+          std::function< bool(Path_ptr, const service::ProtocolFrame&) >;
+      using ExitUpdatedFunc = std::function< bool(Path_ptr) >;
+      using ExitClosedFunc  = std::function< bool(Path_ptr) >;
       using ExitTrafficHandlerFunc =
-          std::function< bool(Path*, const llarp_buffer_t&, uint64_t) >;
+          std::function< bool(Path_ptr, const llarp_buffer_t&, uint64_t) >;
       /// (path, backoff) backoff is 0 on success
-      using ObtainedExitHandler = std::function< bool(Path*, llarp_time_t) >;
+      using ObtainedExitHandler = std::function< bool(Path_ptr, llarp_time_t) >;
 
       HopList hops;
 
-      PathSet* m_PathSet;
+      PathSet *const m_PathSet;
 
       service::Introduction intro;
 
@@ -588,7 +590,7 @@ namespace llarp
 
       ///  track a path builder with this context
       void
-      AddPathBuilder(Builder* set);
+      AddPathBuilder(Builder_ptr set);
 
       void
       AllowTransit();
@@ -608,22 +610,22 @@ namespace llarp
       void
       PutTransitHop(std::shared_ptr< TransitHop > hop);
 
-      IHopHandler*
+      HopHandler_ptr
       GetByUpstream(const RouterID& id, const PathID_t& path);
 
       bool
       TransitHopPreviousIsRouter(const PathID_t& path, const RouterID& r);
 
-      IHopHandler*
+      HopHandler_ptr
       GetPathForTransfer(const PathID_t& topath);
 
-      IHopHandler*
+      HopHandler_ptr
       GetByDownstream(const RouterID& id, const PathID_t& path);
 
-      PathSet*
+      PathSet_ptr
       GetLocalPathSet(const PathID_t& id);
 
-      routing::IMessageHandler*
+      routing::MessageHandler_ptr
       GetHandler(const PathID_t& id);
 
       bool
@@ -640,13 +642,13 @@ namespace llarp
       HandleLRDM(const RelayDownstreamMessage& msg);
 
       void
-      AddOwnPath(PathSet* set, Path* p);
+      AddOwnPath(PathSet_ptr set, Path_ptr p);
 
       void
-      RemovePathBuilder(Builder* ctx);
+      RemovePathBuilder(Builder_ptr ctx);
 
       void
-      RemovePathSet(PathSet* set);
+      RemovePathSet(PathSet_ptr set);
 
       using TransitHopsMap_t =
           std::multimap< PathID_t, std::shared_ptr< TransitHop > >;
@@ -658,7 +660,7 @@ namespace llarp
       };
 
       // maps path id -> pathset owner of path
-      using OwnedPathsMap_t = std::map< PathID_t, PathSet* >;
+      using OwnedPathsMap_t = std::map< PathID_t, PathSet_ptr >;
 
       struct SyncOwnedPathsMap_t
       {
@@ -689,7 +691,7 @@ namespace llarp
       SyncTransitMap_t m_TransitPaths;
       SyncTransitMap_t m_Paths;
       SyncOwnedPathsMap_t m_OurPaths;
-      std::list< Builder* > m_PathBuilders;
+      std::list< Builder_ptr > m_PathBuilders;
       bool m_AllowTransit;
     };
   }  // namespace path

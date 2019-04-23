@@ -83,22 +83,26 @@ namespace llarp
       }
 
       /// router's logic
+      /// use when sending any data on a path
       Logic*
       RouterLogic();
 
       /// endpoint's logic
+      /// use when writing any data to local network interfaces
       Logic*
       EndpointLogic();
 
-      /// borrow endpoint's net loop for sending data to user
+      /// borrow endpoint's net loop for sending data to user on local network interface
       llarp_ev_loop_ptr
       EndpointNetLoop();
 
       Crypto*
       GetCrypto();
 
+
+      /// crypto worker threadpool
       llarp_threadpool*
-      Worker();
+      CryptoWorker();
 
       AbstractRouter*
       Router()
@@ -119,7 +123,7 @@ namespace llarp
       ShouldPublishDescriptors(llarp_time_t now) const override;
 
       void
-      HandlePathDied(path::Path* p) override;
+      HandlePathDied(path::Path_ptr p) override;
 
       void
       EnsureReplyPath(const ServiceInfo& addr);
@@ -128,7 +132,7 @@ namespace llarp
       PublishIntroSet(AbstractRouter* r) override;
 
       bool
-      PublishIntroSetVia(AbstractRouter* r, path::Path* p);
+      PublishIntroSetVia(AbstractRouter* r, path::Path_ptr p);
 
       bool
       HandleGotIntroMessage(const dht::GotIntroMessage* msg) override;
@@ -137,7 +141,7 @@ namespace llarp
       HandleGotRouterMessage(const dht::GotRouterMessage* msg) override;
 
       bool
-      HandleHiddenServiceFrame(path::Path* p,
+      HandleHiddenServiceFrame(path::Path_ptr p,
                                const service::ProtocolFrame& msg);
 
       /// return true if we have an established path to a hidden service
@@ -192,7 +196,7 @@ namespace llarp
       PutLookup(IServiceLookup* lookup, uint64_t txid) override;
 
       void
-      HandlePathBuilt(path::Path* path) override;
+      HandlePathBuilt(path::Path_ptr path) override;
 
       bool
       SendToServiceOrQueue(const RouterID& addr, const llarp_buffer_t& payload,
@@ -205,10 +209,10 @@ namespace llarp
       FlushSNodeTraffic();
 
       bool
-      HandleDataDrop(path::Path* p, const PathID_t& dst, uint64_t s);
+      HandleDataDrop(path::Path_ptr p, const PathID_t& dst, uint64_t s);
 
       bool
-      CheckPathIsDead(path::Path* p, llarp_time_t latency);
+      CheckPathIsDead(path::Path_ptr p, llarp_time_t latency);
 
       using PendingBufferQueue = std::queue< PendingBuffer >;
 

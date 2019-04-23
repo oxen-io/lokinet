@@ -2,6 +2,8 @@
 
 #include <path/path.hpp>
 #include <util/time.hpp>
+#include <router/abstractrouter.hpp>
+#include <util/logic.hpp>
 
 namespace llarp
 {
@@ -18,14 +20,16 @@ namespace llarp
     }
 
     bool
-    IServiceLookup::SendRequestViaPath(path::Path *path, AbstractRouter *r)
+    IServiceLookup::SendRequestViaPath(path::Path_ptr path, AbstractRouter *r)
     {
       auto msg = BuildRequestMessage();
       if(!msg)
         return false;
-      auto result = path->SendRoutingMessage(*msg, r);
       endpoint    = path->Endpoint();
-      return result;
+      r->logic()->queue_func([=]() {
+        path->SendRoutingMessage(*msg, r);
+      });
+      return true;
     }
   }  // namespace service
 }  // namespace llarp
