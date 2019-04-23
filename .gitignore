@@ -63,6 +63,6 @@ version.txt
 xcuserdata/
 .DS_Store
 !Info.plist
-lokinet.build
-CMakeScripts
+lokinet.build/
+CMakeScripts/
 CTestTestfile.cmake
