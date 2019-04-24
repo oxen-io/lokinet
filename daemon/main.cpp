@@ -72,8 +72,9 @@ resolvePath(std::string conffname)
   char *resolvedPath = realpath(exp_result.we_wordv[0], NULL);
   if(!resolvedPath)
   {
-    llarp::LogWarn("Can't resolve path: ", exp_result.we_wordv[0]);
-    return "";
+    // relative paths don't need to be resolved
+    // llarp::LogWarn("Can't resolve path: ", exp_result.we_wordv[0]);
+    return conffname;
   }
   return resolvedPath;
 #else
@@ -106,7 +107,7 @@ main(int argc, char *argv[])
   // clang-format off
   cxxopts::Options options(
 		"lokinet",
-		"LokiNET is a free, open source, private, decentralized, "market based sybil resistant" and IP based onion routing network"
+		"LokiNET is a free, open source, private, decentralized, \"market based sybil resistant\" and IP based onion routing network"
     );
   options.add_options()
 		("v,verbose", "Verbose", cxxopts::value<bool>())
