@@ -1405,7 +1405,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				OTHER_CFLAGS = "-DiOS";
+				OTHER_CFLAGS = "-DDarwin";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network.Loki-Network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -1437,7 +1437,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				OTHER_CFLAGS = "-DiOS";
+				OTHER_CFLAGS = "-DDarwin";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.niels-andriesse.loki-network.Loki-Network";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";

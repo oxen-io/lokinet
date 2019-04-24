@@ -46,7 +46,7 @@
 #include <net/tun/if_tun.h>
 #elif defined(ANDROID)
 #include <linux/if_tun.h>
-#elif !defined(Darwin) && !defined(iOS)
+#elif !defined(Darwin)
 #include <net/if_tun.h>
 #endif
 #if !defined(iOS)
@@ -351,7 +351,7 @@ tuntap_set_debug(struct device *dev, int set)
     return 0;
   }
 
-#if !defined Darwin && !defined(iOS)
+#if !defined Darwin
   if(ioctl(dev->tun_fd, TUNSDEBUG, &set) == -1)
   {
     switch(set)
